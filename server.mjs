@@ -89,7 +89,8 @@ function newSession(id, file) {
     entries: [], entryCount: 0, loaded: false,
     offset: 0, partial: '', truncatedHead: false,
     pendingNotify: null, notifyTimer: null, pushTimer: null, newEntries: [],
-    lastHook: null
+    lastHook: null,
+    replying: null, replyError: null
   };
 }
 
@@ -106,7 +107,8 @@ function summary(s) {
     rawStatus: s.status, statusSince: s.statusSince, lastActivity: s.lastActivity,
     lastUserAt: s.lastUserAt, lastReplyAt: s.lastReplyAt,
     alive: s.alive, live: s.live, entryCount: s.entryCount, loaded: s.loaded, file: s.file, lastHook: s.lastHook,
-    done: isDone(s), doneAt: doneMarks[s.id] || null
+    done: isDone(s), doneAt: doneMarks[s.id] || null,
+    replying: s.replying, replyError: s.replyError
   };
 }
 
@@ -446,6 +448,65 @@ function handleHook(h) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Replying into a session
+// ---------------------------------------------------------------------------------------------
+
+// launchd and the Mac app hand the server almost no PATH, so `claude` is resolved the way the app
+// resolves node: PATH first, then the layouts the installer actually uses. CLAUDE_BIN overrides.
+const CLAUDE_BIN_FALLBACKS = [
+  join(homedir(), '.local', 'bin', 'claude'),
+  '/opt/homebrew/bin/claude',
+  '/usr/local/bin/claude'
+];
+const REPLY_TIMEOUT_MS = Number(process.env.REPLY_TIMEOUT_MS || 10 * 60_000);
+let claudeBinCache;
+
+function claudeBin() {
+  if (claudeBinCache !== undefined) return claudeBinCache;
+  const candidates = [
+    ...(process.env.CLAUDE_BIN ? [process.env.CLAUDE_BIN] : []),
+    ...(process.env.PATH || '').split(':').filter(Boolean).map(d => join(d, 'claude')),
+    ...CLAUDE_BIN_FALLBACKS
+  ];
+  claudeBinCache = candidates.find(f => existsSync(f)) || null;
+  if (!claudeBinCache) console.error('[peixairada] claude binary not found — replies to stale chats are disabled');
+  return claudeBinCache;
+}
+
+// `claude --resume <id> -p <text>` reuses the session id, so Claude appends to the *same* transcript
+// and the reply arrives through the watcher like any other line — nothing downstream special-cases it.
+// Resuming also registers a new pid, so the card walks Stale → Clauding → Ready on its own.
+//
+// Stale only, and deliberately: a live session already has a process writing that file, and a second
+// writer racing it is how a transcript gets mangled.
+//
+// The text is passed as an argv element to execFile — no shell — so quotes, newlines and $(…) in a
+// reply are inert.
+function replyToStale(s, text) {
+  const bin = claudeBin();
+  if (!bin) return { code: 503, error: 'claude binary not found — set CLAUDE_BIN to its path' };
+  const cwd = s.live?.cwd || s.cwd;
+  if (!cwd) return { code: 400, error: 'no cwd known for this session' };
+  if (!existsSync(cwd)) return { code: 409, error: `cwd no longer exists: ${cwd}` };
+  if (s.replying) return { code: 409, error: 'a reply is already running for this chat' };
+
+  s.replying = { snippet: snippet(text, 140), startedAt: new Date().toISOString() };
+  s.replyError = null;
+  schedulePush(s);
+
+  // Not awaited: a resumed turn runs for as long as it needs. The board already tails the transcript,
+  // so the prompt and the answer show up on their own. This only tracks the process, so the UI can
+  // say "sending" and surface a failure that never reaches the transcript at all.
+  execFile(bin, ['--resume', s.id, '-p', text], { cwd, timeout: REPLY_TIMEOUT_MS, maxBuffer: 16e6 }, (err, _stdout, stderr) => {
+    s.replying = null;
+    s.replyError = err ? (String(stderr || err.message).trim().split('\n').pop() || String(err)).slice(0, 300) : null;
+    if (s.replyError) console.error(`[peixairada] reply to ${s.id} failed:`, s.replyError);
+    schedulePush(s);
+  });
+  return { code: 202, ok: true };
+}
+
+// ---------------------------------------------------------------------------------------------
 // HTTP
 // ---------------------------------------------------------------------------------------------
 
@@ -497,6 +558,16 @@ const server = createServer(async (req, res) => {
       // `code <folder>` re-focuses the VS Code window that already has that folder open.
       execFile('code', [cwd], err => err ? json(res, 500, { error: String(err) }) : json(res, 200, { ok: true, cwd }));
       return;
+    }
+    if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/reply$/))) {
+      const s = sessions.get(m[1]);
+      if (!s) return json(res, 404, { error: 'unknown session' });
+      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const text = typeof body.text === 'string' ? body.text.trim() : '';
+      if (!text) return json(res, 400, { error: 'expected {text}' });
+      if (s.alive) return json(res, 409, { error: 'chat is live — resuming it would put a second writer on its transcript' });
+      const r = replyToStale(s, text);
+      return json(res, r.code, r.ok ? { ok: true, status: 'running' } : { error: r.error });
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/done$/))) {
       const s = sessions.get(m[1]);
