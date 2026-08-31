@@ -41,7 +41,7 @@
   #board { flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(230px, 340px) repeat(3, minmax(230px, 340px)); justify-content: start; overflow-x: auto; overflow-y: hidden; }
   #splitter { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--panel); }
   #splitter:hover, #splitter.drag { background: var(--accent); }
-  #chat { width: 520px; min-width: 320px; max-width: 75vw; flex: none; display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+  #chat { width: 520px; min-width: 320px; max-width: 75vw; flex: none; display: grid; grid-template-rows: auto 1fr auto; min-height: 0; }
 
   /* ---- lanes & cards ---- */
   .lane { display: grid; grid-template-rows: auto 1fr; min-height: 0; min-width: 0; overflow: hidden; border-right: 1px solid var(--line); }
@@ -141,6 +141,18 @@
   .shead .status { font-size: 12px; display: flex; align-items: center; gap: 6px; }
   .shead a { color: var(--accent); font-size: 12px; }
   #log { overflow-y: auto; padding: 14px 16px 40px; scroll-behavior: smooth; }
+  /* ---- composer (stale chats only) ---- */
+  #composer { border-top: 1px solid var(--line); background: var(--panel); padding: 8px 10px; display: grid; gap: 6px; }
+  #composer[hidden] { display: none; }   /* display:grid above would otherwise beat the UA [hidden] rule */
+  #composer textarea { font: inherit; font-size: 13px; resize: vertical; min-height: 44px; max-height: 40vh; padding: 8px 10px;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); width: 100%; }
+  #composer textarea:focus { outline: none; border-color: var(--accent); }
+  #composer textarea:disabled { opacity: .6; }
+  .composer-foot { display: flex; align-items: center; gap: 10px; }
+  .composer-foot .hint { font-size: 11px; color: var(--muted); flex: 1; min-width: 0; }
+  .composer-foot .hint.err { color: var(--needs); }
+  .composer-foot .hint code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  #composeSend:disabled { opacity: .5; cursor: default; border-color: var(--line); }
   .msg { margin: 0 0 10px; }
   .msg.user .bubble { background: var(--user-bg); border-radius: 10px; padding: 10px 14px; border-left: 3px solid var(--accent); }
   .msg.assistant .bubble { padding: 4px 2px; }
@@ -219,6 +231,13 @@
   <section id="chat">
     <div class="shead" id="shead"><h2>Pick a session</h2></div>
     <div id="log"><div class="empty">Click a card to open its chat</div></div>
+    <div id="composer" hidden>
+      <textarea id="composeText" rows="2" placeholder="Reply here — resumes this chat with `claude --resume`"></textarea>
+      <div class="composer-foot">
+        <span class="hint" id="composeHint"></span>
+        <button class="btn" id="composeSend">Send</button>
+      </div>
+    </div>
   </section>
 </main>
 <div id="toasts"></div>
@@ -436,9 +455,52 @@
       ${s.prLinks.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u.replace(/^https:\/\/github\.com\//, ''))}</a>`).join('')}
       <span class="spacer" style="flex:1"></span>
       ${s.cwd ? `<button class="btn" id="focusBtn">Focus in VS Code</button>` : ''}`;
+    renderComposer(s);
     const fb = $('#focusBtn'); if (fb) fb.onclick = () => fetch(`/api/sessions/${s.id}/focus`, { method: 'POST' });
     $('#hideChatBtn').onclick = () => { prefs.chatVisible = false; savePrefs(); applyChatPrefs(); };
   }
+
+  // ---- composer: reply into a stale chat -----------------------------------------------
+  // Stale only. The server refuses a live chat (resuming it would put a second writer on its
+  // transcript), so the box hides rather than offering something guaranteed to 409. Never touches
+  // the textarea's value — this re-runs on every SSE update, and you may be mid-sentence.
+  function renderComposer(s) {
+    const box = $('#composer'), ta = $('#composeText'), btn = $('#composeSend'), hint = $('#composeHint');
+    if (!s || s.alive || !s.file) { box.hidden = true; return; }
+    box.hidden = false;
+    const busy = !!s.replying;
+    ta.disabled = busy;
+    btn.disabled = busy || !ta.value.trim();
+    btn.textContent = busy ? 'Sending…' : 'Send';
+    if (busy) { hint.className = 'hint'; hint.textContent = `resuming — ${s.replying.snippet}`; }
+    else if (s.replyError) { hint.className = 'hint err'; hint.textContent = s.replyError; }
+    else { hint.className = 'hint'; hint.innerHTML = 'Resumes with <code>claude --resume</code> · ⏎ send, ⇧⏎ newline'; }
+  }
+
+  async function sendReply() {
+    const id = state.current, ta = $('#composeText'), hint = $('#composeHint'), text = ta.value.trim();
+    if (!id || !text) return;
+    $('#composeSend').disabled = true;
+    try {
+      const r = await fetch(`/api/sessions/${id}/reply`, {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text })
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { hint.className = 'hint err'; hint.textContent = d.error || `failed (${r.status})`; $('#composeSend').disabled = false; return; }
+      ta.value = '';   // the prompt comes back through the transcript like any other line
+    } catch (e) {
+      hint.className = 'hint err'; hint.textContent = String(e); $('#composeSend').disabled = false;
+    }
+  }
+
+  $('#composeSend').onclick = sendReply;
+  $('#composeText').addEventListener('input', () => {
+    const s = state.sessions.get(state.current);
+    $('#composeSend').disabled = !!s?.replying || !$('#composeText').value.trim();
+  });
+  $('#composeText').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendReply(); }
+  });
 
   // Fallback renderer (fenced code, inline code, bold) if the vendored libs failed to load.
   function mdFallback(t) {
