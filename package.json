@@ -1,0 +1,13 @@
+{
+  "name": "peixairada",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "One board for every Claude Code chat on this Mac — live transcripts, lanes, and alerts",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
