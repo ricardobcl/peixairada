@@ -112,11 +112,15 @@ node scripts/verify.mjs "JSON.stringify([...document.querySelectorAll('.lane')].
   `replyToStale` in `server.mjs`, which shells out to `claude --resume <id> -p <text>`: public CLI,
   same transcript, and the watcher shows the answer with no special casing. Live chats are refused on
   purpose (a second writer on one transcript). Reaching them means the peer socket at
-  `/tmp/cc-socks/<pid>.sock` — real and versioned (the registry advertises `peerProtocol` and
-  `peerFeatures`, and `messagingSocketPath` per session), but undocumented for third parties, and it
-  moves: this machine has had three Claude versions and three different `peerFeatures` sets live at
-  once. Auth is a 0600 `~/.claude/sessions/<pid>.<sha>.key`, which Claude Code's own tooling guards —
-  reading it is blocked by the auto-mode classifier, so the wire format was never established.
+  the session's inbox socket (`messagingSocketPath` in the registry). That is a *documented* feature —
+  https://code.claude.com/docs/en/cross-session-messaging — and "a script or hook posting into a
+  session" is a supported use of it; on macOS the `{"type":"auth","token":…}` first line is optional,
+  so no credential is needed. Two things stopped it anyway:
+  1. **It cannot do the job.** A message posted to the socket is attributed to another *session*, and
+     the docs state it "can't answer a pending permission prompt on your behalf". The red needs-input
+     lane — the only reason to want this — is off the table by design.
+  2. The exact JSON of a *message* line is not in the docs (only the auth line is), and establishing it
+     empirically means writing to a session socket, which the auto-mode classifier blocks.
 * **Hooks are not installed** in `~/.claude/settings.json`. Merging `hooks/settings-snippet.json` is
   what makes permission prompts visible and "replied" exact instead of inferred.
 * **This directory is not a git repo** and the Mac app is only ad-hoc signed (this machine, not

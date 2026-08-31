@@ -275,9 +275,14 @@ Either way, the UI carries over unchanged.
 * **You can reply to a stale chat, but not a live one.** Stale replies go through
   `claude --resume <id> -p`, which is the public CLI and appends to the same transcript. A *live*
   chat already has a process writing that file, and a second writer racing it is how a transcript
-  gets mangled — so the board refuses, and "Focus in VS Code" stays the answer there. Reaching a live
-  session would mean the peer socket at `/tmp/cc-socks/<pid>.sock`, which is undocumented and moves
-  between versions (`peerProtocol` / `peerFeatures` in the registry exist precisely because it does).
+  gets mangled — so the board refuses, and "Focus in VS Code" stays the answer there.
+* **A live chat could take a *nudge*, but never an *answer*.** Reaching one means its inbox socket
+  (`messagingSocketPath` in the registry), which is a documented feature — [cross-session
+  messaging](https://code.claude.com/docs/en/cross-session-messaging) — and on macOS a script may post
+  to it without authenticating. But a message arriving that way is attributed to *another session*,
+  not to you, and the docs are explicit that it "can't answer a pending permission prompt on your
+  behalf". So it could tell a running chat something; it could never approve its plan or answer its
+  question — which is exactly what the red lane is for.
 * Tested on **macOS 26 / Node 24 / Claude Code 2.1.25x**. Transcript line types are undocumented and
   may change at any time; the parser ignores anything it doesn't recognise, on purpose.
 
