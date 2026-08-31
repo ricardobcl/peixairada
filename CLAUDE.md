@@ -108,9 +108,15 @@ node scripts/verify.mjs "JSON.stringify([...document.querySelectorAll('.lane')].
 
 ## Deliberately not done
 
-* **Replying into a session from the board.** The per-session socket `/tmp/cc-socks/<pid>.sock` used by
-  `SendMessage` is documented as internal and only for a session's own children. "Focus in VS Code"
-  (`code <cwd>`) is the supported substitute.
+* **Replying into a *live* session from the board.** Stale chats *can* be replied to — see
+  `replyToStale` in `server.mjs`, which shells out to `claude --resume <id> -p <text>`: public CLI,
+  same transcript, and the watcher shows the answer with no special casing. Live chats are refused on
+  purpose (a second writer on one transcript). Reaching them means the peer socket at
+  `/tmp/cc-socks/<pid>.sock` — real and versioned (the registry advertises `peerProtocol` and
+  `peerFeatures`, and `messagingSocketPath` per session), but undocumented for third parties, and it
+  moves: this machine has had three Claude versions and three different `peerFeatures` sets live at
+  once. Auth is a 0600 `~/.claude/sessions/<pid>.<sha>.key`, which Claude Code's own tooling guards —
+  reading it is blocked by the auto-mode classifier, so the wire format was never established.
 * **Hooks are not installed** in `~/.claude/settings.json`. Merging `hooks/settings-snippet.json` is
   what makes permission prompts visible and "replied" exact instead of inferred.
 * **This directory is not a git repo** and the Mac app is only ad-hoc signed (this machine, not

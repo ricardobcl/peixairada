@@ -151,6 +151,10 @@ Read ×3"* — so the conversation actually **reads as prose** instead of a wall
 **tools:** selector switches between collapsed / expanded / hidden, and **fold code** tucks fenced
 blocks longer than 6 lines behind a *"bash · 23 lines"* summary.
 
+**On a stale chat a reply box appears at the bottom** — type, ⏎, and the board resumes the chat for
+you; ⇧⏎ for a newline. Your prompt and Claude's answer arrive through the transcript like any other
+line, and the card walks Stale → Clauding → Ready on its own.
+
 `hide chat` / `show chat` toggles it, `◨ chat right` / `◧ chat left` flips which side it sits on, and
 the divider drags to resize — all remembered per browser. Messages render as GitHub-flavoured
 markdown through **vendored** copies of `marked` and `DOMPurify` in
@@ -210,13 +214,15 @@ updates within **~100 ms** of Claude writing a line. Native notifications work f
 | `GET /api/sessions/:id/messages` | full (capped) entry list, parsed on demand |
 | `POST /api/sessions/:id/done` `{done: true\|false}` | tick / untick a card (persisted in the state file) |
 | `POST /api/pins` `{type: "session"\|"project", key, pinned}` | pin / unpin a card or a repo (same state file) |
+| `POST /api/sessions/:id/reply` `{text}` | **stale chats only** — resumes the chat with `claude --resume <id> -p <text>`; 202 and the answer arrives through the transcript |
 | `POST /api/sessions/:id/focus` | runs `code <cwd>` → brings that VS Code window to the front |
 | `POST /hook` | receives Claude Code hook payloads (`hooks/hook.sh`) |
 | `POST /api/test-notify` | fire a test alert |
 
 **Environment:** `PORT` (7331) · `HOST` (127.0.0.1) · `NOTIFY=native|off` · `CLAUDE_DIR` (`~/.claude`) ·
 `STATE_FILE` (defaults to `~/Library/Application Support/peixAIrada/state.json`;
-`$XDG_STATE_HOME/peixairada/` off macOS) · `TAIL_BYTES` · `MAX_ENTRIES`.
+`$XDG_STATE_HOME/peixairada/` off macOS) · `TAIL_BYTES` · `MAX_ENTRIES` · `CLAUDE_BIN` (path to the
+`claude` binary, if PATH can't find it) · `REPLY_TIMEOUT_MS` (10 min).
 
 </details>
 
@@ -266,9 +272,12 @@ Either way, the UI carries over unchanged.
 * **"Stale" is about the *process*, not the conversation.** Headless `claude -p` runs, and
   transcripts from before Claude Code kept a session registry, never had a tracked pid — so they show
   as stale too.
-* **Reading is solid; writing back is not.** Replying from the board would mean the per-session
-  socket at `/tmp/cc-socks/<pid>.sock` that `SendMessage` uses, and that's documented as internal.
-  "Focus in VS Code" is the supported next step instead.
+* **You can reply to a stale chat, but not a live one.** Stale replies go through
+  `claude --resume <id> -p`, which is the public CLI and appends to the same transcript. A *live*
+  chat already has a process writing that file, and a second writer racing it is how a transcript
+  gets mangled — so the board refuses, and "Focus in VS Code" stays the answer there. Reaching a live
+  session would mean the peer socket at `/tmp/cc-socks/<pid>.sock`, which is undocumented and moves
+  between versions (`peerProtocol` / `peerFeatures` in the registry exist precisely because it does).
 * Tested on **macOS 26 / Node 24 / Claude Code 2.1.25x**. Transcript line types are undocumented and
   may change at any time; the parser ignores anything it doesn't recognise, on purpose.
 
@@ -279,7 +288,8 @@ Either way, the UI carries over unchanged.
 - [ ] Launch the Mac app at login (System Settings → General → Login Items)
 - [ ] Per-session **mute** / quiet hours, and syntax highlighting in code blocks
 - [ ] **Search across every transcript** — they're already on disk, a grep box is cheap
-- [ ] Reply straight from the board, the day a supported API for sending into a session exists
+- [x] Reply straight from the board — done for stale chats, via `claude --resume`
+- [ ] Reply into a **live** chat, the day the peer socket is documented for third parties
 
 <div align="center">
 <br>
