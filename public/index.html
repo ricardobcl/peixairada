@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>peixAIrada</title>
+<style>
+  :root {
+    --bg: #f6f6f4; --panel: #ffffff; --ink: #1c1c1a; --muted: #6b6b66; --line: #e5e5e0; --accent: #c96442;
+    --working: #d9a82a; --idle: #2f9e5b; --needs: #d64545; --ended: #a3a39e; --unread: #c96442;
+    --lane-ready: #d64545; --lane-clauding: #d9a82a; --lane-done: #2f9e5b;
+    --user-bg: #f0efe9; --tool-bg: #f7f7f4; --code-bg: #ecebe6;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg: #141413; --panel: #1c1c1a; --ink: #e8e6df; --muted: #9a998f; --line: #2c2c29; --accent: #e08a68;
+    --user-bg: #23231f; --tool-bg: #1f1f1c; --code-bg: #101010; --ended: #5d5d58;
+  } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; height: 100vh; display: grid; grid-template-rows: auto 1fr; overflow: hidden; }
+
+  /* ---- header ---- */
+  header { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; min-height: 46px; padding: 6px 14px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { font-size: 16px; margin: 0 4px 0 0; letter-spacing: .2px; font-weight: 700; }
+  header h1 em { font-style: normal; color: var(--accent); }
+  header .spacer { flex: 1; }
+  header .sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
+  header button, .btn { font: inherit; font-size: 12px; padding: 5px 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  header button:hover, .btn:hover { border-color: var(--accent); }
+  header label { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 5px; cursor: pointer; white-space: nowrap; }
+  header select { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; }
+  header input[type=text] { font: inherit; font-size: 12px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; width: 170px; }
+  #conn { width: 8px; height: 8px; border-radius: 50%; background: var(--ended); flex: none; }
+  #conn.on { background: var(--idle); }
+  #counts { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+  /* ---- layout: board + splitter + chat ---- */
+  main { display: flex; min-height: 0; min-width: 0; }
+  main.chat-left { flex-direction: row-reverse; }
+  main.chat-hidden #chat, main.chat-hidden #splitter { display: none; }
+  #board { flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(230px, 340px) repeat(3, minmax(230px, 340px)); justify-content: start; overflow-x: auto; overflow-y: hidden; }
+  #splitter { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--panel); }
+  #splitter:hover, #splitter.drag { background: var(--accent); }
+  #chat { width: 520px; min-width: 320px; max-width: 75vw; flex: none; display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+
+  /* ---- lanes & cards ---- */
+  .lane { display: grid; grid-template-rows: auto 1fr; min-height: 0; min-width: 0; overflow: hidden; border-right: 1px solid var(--line); }
+  .lane:last-child { border-right: 0; }
+  .lane h2 { margin: 0; padding: 10px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); font-weight: 700; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--line); background: var(--panel); min-width: 0; cursor: pointer; user-select: none; }
+  .lane h2:hover { color: var(--ink); }
+  .lane h2::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--lane-color); }
+  .lane h2 .n { background: var(--user-bg); border-radius: 10px; padding: 0 7px; font-size: 11px; color: var(--ink); }
+  .lane h2 .hint { font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .lane h2 .tools { margin-left: auto; display: flex; gap: 2px; flex: none; }
+  .lane h2 button { font: inherit; font-size: 12px; line-height: 1; padding: 2px 5px; border: 1px solid transparent; background: transparent; color: var(--muted); border-radius: 4px; cursor: pointer; }
+  .lane h2 button:hover { border-color: var(--line); color: var(--ink); }
+  .lane .n.alert { background: var(--needs); color: #fff; }
+  .lane.stale { --lane-color: var(--ended); } .lane.ready { --lane-color: var(--lane-ready); } .lane.clauding { --lane-color: var(--lane-clauding); } .lane.done { --lane-color: var(--lane-done); }
+  /* collapsed lane = narrow strip: colour, counter, rotated name */
+  .lane .strip { display: none; }
+  .lane.collapsed { grid-template-rows: 1fr; cursor: pointer; background: var(--panel); }
+  .lane.collapsed:hover { background: var(--user-bg); }
+  .lane.collapsed h2, .lane.collapsed .cards { display: none; }
+  .lane.collapsed .strip { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 12px 0; }
+  .lane.collapsed .strip::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--lane-color); flex: none; }
+  .lane.collapsed .strip .n { background: var(--user-bg); border-radius: 10px; padding: 0 7px; font-size: 11px; font-weight: 700; }
+  .lane.collapsed .strip .name { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); }
+  .lane.collapsed:hover .strip .name { color: var(--ink); }
+  .cards { overflow-y: auto; overflow-x: hidden; min-width: 0; padding: 8px; display: flex; flex-direction: column; gap: 7px; }
+  .cards > * { flex: none; } /* never let a full lane squash its cards (overflow:hidden items would shrink to 0) */
+  .cards .none { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--repo, var(--line)); border-radius: 10px; padding: 8px 10px 7px; cursor: pointer; min-width: 0; overflow: hidden; }
+  .card:hover { border-color: var(--accent); border-left-color: var(--repo, var(--accent)); }
+  .card.active { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .card.needs-input { border-color: var(--needs); }
+  .card .top { display: flex; align-items: center; gap: 7px; min-width: 0; }
+  .card .repo { font-weight: 800; font-size: 14px; letter-spacing: .1px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .repo:hover { color: var(--accent); text-decoration: underline; text-decoration-style: dotted; }
+  .card .time { font-size: 11px; color: var(--muted); flex: none; }
+  .card .title { margin-top: 4px; font-size: 13.5px; font-weight: 500; line-height: 1.35; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .card .snip { margin-top: 5px; font-size: 12px; line-height: 1.4; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .card .snip.you { -webkit-line-clamp: 2; }
+  .card .snip b { font-weight: 600; color: var(--ink); opacity: .65; margin-right: 3px; }
+  body.compact .card .title { -webkit-line-clamp: 2; font-size: 13px; }
+  body.compact .card .snip { -webkit-line-clamp: 1; margin-top: 3px; }
+  body.compact .card:has(.snip.claude) .snip.you { display: none; }
+  body.compact .card .state { display: none; }
+  /* pins */
+  .pin { font: inherit; font-size: 12px; line-height: 1; padding: 0 2px; border: 0; background: transparent; cursor: pointer; opacity: .2; filter: grayscale(1); flex: none; }
+  .card:hover .pin, .ghead:hover .pin { opacity: .55; }
+  .pin.on { opacity: 1 !important; filter: none; }
+  .pin.proj:not(.on) { opacity: .5; }
+  .card.pinned { border-color: var(--accent); }
+  .cards .sep { border-top: 1px dashed var(--line); margin: 2px 6px 3px; }
+  /* repo groups (group by repo) */
+  .group { min-width: 0; margin-top: 6px; }
+  .group:first-child { margin-top: 0; }
+  .gcards { display: flex; flex-direction: column; gap: 7px; min-width: 0; margin-top: 5px; }
+  .gcards > * { flex: none; }
+  .group.collapsed .gcards { display: none; }
+  .ghead { display: flex; align-items: center; gap: 7px; padding: 4px 6px; min-width: 0; border-radius: 6px; cursor: pointer; user-select: none; }
+  .ghead:hover { background: var(--user-bg); }
+  .ghead::before { content: "▾"; font-size: 10px; color: var(--muted); flex: none; }
+  .group.collapsed .ghead::before { content: "▸"; }
+  .ghead .gname { font-weight: 800; font-size: 13.5px; color: var(--repo); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .ghead .gname::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: var(--repo); margin-right: 6px; vertical-align: 0; }
+  .ghead .gn { font-size: 11px; color: var(--muted); background: var(--user-bg); border-radius: 10px; padding: 0 6px; flex: none; }
+  .ghead .gn.alert { background: var(--needs); color: #fff; }
+  .ghead .pin { margin-left: auto; }
+  /* ⇕ collapse-all: with "group by repo" it folds the repo blocks, otherwise it folds this lane's
+     cards down to one line each (dot · repo · title · time · 📌). */
+  .cards.tight .card { display: flex; align-items: center; gap: 6px; padding: 5px 8px; }
+  .cards.tight .card .top { display: contents; }
+  .cards.tight .card .dot { order: 1; }
+  .cards.tight .card .repo { order: 2; flex: 0 1 auto; max-width: 45%; font-size: 12.5px; }
+  .cards.tight .card .title { order: 3; flex: 1 1 auto; min-width: 0; margin: 0; font-size: 12.5px; font-weight: 400; color: var(--muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cards.tight .card .time { order: 4; } .cards.tight .card .badge { order: 5; } .cards.tight .card .pin { order: 6; }
+  .cards.tight .card .snip, .cards.tight .card .state, .cards.tight .card .foot { display: none; }
+  .card .state { font-size: 11px; font-weight: 600; margin-top: 4px; }
+  .card .state.needs-input { color: var(--needs); } .card .state.working { color: var(--working); } .card .state.idle { color: var(--idle); } .card .state.stale { color: var(--muted); }
+  .card .foot { display: flex; align-items: center; gap: 4px; margin-top: 6px; min-width: 0; flex-wrap: wrap; }
+  .card .foot .grow { flex: 1; }
+  .act { font: inherit; font-size: 11px; padding: 2px 8px; border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 5px; cursor: pointer; white-space: nowrap; }
+  .act:hover { border-color: var(--accent); color: var(--accent); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .dot.working { background: var(--working); animation: pulse 1.4s ease-in-out infinite; }
+  .dot.idle { background: var(--idle); }
+  .dot.needs-input { background: var(--needs); animation: pulse .8s ease-in-out infinite; }
+  .dot.stale, .dot.unknown { background: var(--ended); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  .badge { background: var(--unread); color: #fff; border-radius: 10px; padding: 0 6px; font-size: 11px; font-weight: 600; min-width: 18px; text-align: center; flex: none; }
+  .chip { font-size: 10px; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; min-width: 0; flex: 0 1 auto; }
+
+  /* ---- chat pane ---- */
+  .shead { padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--panel); display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; }
+  .shead h2 { margin: 0; font-size: 14px; flex-basis: 100%; display: flex; gap: 8px; align-items: center; }
+  .shead h2 .repo { font-weight: 800; }
+  .shead h2 .sep { color: var(--muted); font-weight: 400; }
+  .shead h2 .x { margin-left: auto; }
+  .shead .path { font-size: 12px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .shead .status { font-size: 12px; display: flex; align-items: center; gap: 6px; }
+  .shead a { color: var(--accent); font-size: 12px; }
+  #log { overflow-y: auto; padding: 14px 16px 40px; scroll-behavior: smooth; }
+  .msg { margin: 0 0 10px; }
+  .msg.user .bubble { background: var(--user-bg); border-radius: 10px; padding: 10px 14px; border-left: 3px solid var(--accent); }
+  .msg.assistant .bubble { padding: 4px 2px; }
+  .msg .who { font-size: 11px; color: var(--muted); margin: 0 0 3px 2px; display: flex; gap: 8px; }
+  .msg .text { white-space: pre-wrap; word-break: break-word; }
+  .msg .text code { background: var(--code-bg); padding: 1px 4px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+  .msg .text pre { background: var(--code-bg); padding: 10px 12px; border-radius: 8px; overflow-x: auto; font-size: 12.5px; }
+  .msg .text pre code { background: none; padding: 0; }
+  .text.md { white-space: normal; }
+  .md p { margin: 0 0 8px; } .md > :last-child { margin-bottom: 0; } .md > :first-child { margin-top: 0; }
+  .md h1, .md h2, .md h3, .md h4 { margin: 14px 0 6px; line-height: 1.25; font-weight: 600; }
+  .md h1 { font-size: 18px; } .md h2 { font-size: 16px; } .md h3 { font-size: 14.5px; } .md h4 { font-size: 13.5px; }
+  .md ul, .md ol { margin: 4px 0 8px; padding-left: 22px; } .md li { margin: 2px 0; } .md li > p { margin: 0; }
+  .md pre { margin: 6px 0 10px; }
+  .md table { border-collapse: collapse; margin: 6px 0 10px; font-size: 13px; display: block; overflow-x: auto; max-width: 100%; }
+  .md th, .md td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
+  .md th { background: var(--tool-bg); font-weight: 600; }
+  .md blockquote { margin: 6px 0; padding: 2px 12px; border-left: 3px solid var(--line); color: var(--muted); }
+  .md a { color: var(--accent); text-decoration: none; } .md a:hover { text-decoration: underline; }
+  .md a[href^="vscode:"]::after { content: " ↗"; font-size: 10px; opacity: .6; }
+  .md hr { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
+  .md img { max-width: 100%; }
+  .md input[type=checkbox] { margin: 0 6px 0 0; }
+  .toolgroup { margin: 2px 0 10px; }
+  .toolgroup > summary, .codefold > summary { cursor: pointer; list-style: none; font-size: 11.5px; color: var(--muted); padding: 4px 8px; border-radius: 6px; background: var(--tool-bg); border: 1px solid var(--line); user-select: none; }
+  .toolgroup > summary::-webkit-details-marker, .codefold > summary::-webkit-details-marker { display: none; }
+  .toolgroup > summary::before, .codefold > summary::before { content: "▸ "; }
+  .toolgroup[open] > summary::before, .codefold[open] > summary::before { content: "▾ "; }
+  .toolgroup > summary:hover, .codefold > summary:hover { color: var(--ink); border-color: var(--accent); }
+  .toolgroup > summary .err { color: var(--needs); }
+  .toolgroup[open] > summary { margin-bottom: 4px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  .toolgroup .tool { margin-left: 10px; }
+  .codefold { margin: 6px 0 10px; } .codefold > summary { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; } .codefold[open] > summary { margin-bottom: 0; border-radius: 6px 6px 0 0; }
+  .codefold[open] > pre { margin-top: 0; border-radius: 0 0 8px 8px; }
+  .tool { margin: 0 0 4px; font-size: 12px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; display: flex; gap: 8px; padding: 3px 8px; background: var(--tool-bg); border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tool b { color: var(--ink); font-weight: 600; }
+  .tool.err { color: var(--needs); }
+  .sysline { margin: 10px auto; text-align: center; font-size: 11px; color: var(--muted); }
+  .empty { color: var(--muted); text-align: center; margin-top: 30vh; }
+
+  /* ---- toasts ---- */
+  #toasts { position: fixed; right: 14px; bottom: 14px; display: flex; flex-direction: column; gap: 8px; z-index: 9; }
+  .toast { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--idle); border-radius: 8px; padding: 10px 12px; width: 320px; box-shadow: 0 6px 20px rgba(0,0,0,.15); cursor: pointer; font-size: 12.5px; }
+  .toast.needs-input { border-left-color: var(--needs); }
+  .toast b { display: block; margin-bottom: 2px; }
+  .toast .s { color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <span id="conn" title="live connection"></span>
+  <h1>peix<em>AI</em>rada</h1>
+  <span id="counts"></span>
+  <span class="spacer"></span>
+  <input type="text" id="q" placeholder="filter repo / title…">
+  <label title="Group each lane by repo (groups ordered by latest update); off = one list ordered by latest update"><input type="checkbox" id="groupByRepo"> group by repo</label>
+  <label title="Shorter cards"><input type="checkbox" id="compact"> compact</label>
+  <label title="Also show live panels with no messages, and stale chats older than 30 days"><input type="checkbox" id="showAll"> show empty &amp; &gt;30d</label>
+  <select id="toolsMode" title="How tool calls (Bash, Read, Edit…) appear in the chat"><option value="collapsed">tools: collapsed</option><option value="expanded">tools: expanded</option><option value="hidden">tools: hidden</option></select>
+  <label title="Fold fenced code blocks longer than 6 lines"><input type="checkbox" id="foldCode"> fold code</label>
+  <label><input type="checkbox" id="sound"> sound</label>
+  <button id="notifBtn" title="Browser notifications (the server also sends native macOS ones)">🔔 enable browser alerts</button>
+  <button id="testBtn" title="Fire a test alert through the server">test alert</button>
+  <span class="sep"></span>
+  <button id="chatSideBtn" title="Move the chat pane to the other side">◨ chat right</button>
+  <button id="chatToggleBtn" title="Show / hide the chat pane">hide chat</button>
+</header>
+<main id="main">
+  <div id="board">
+    <div class="lane stale" data-lane="stale"><h2 title="Click to collapse"><span class="label">Stale</span> <span class="n">0</span><span class="hint">process gone — write to it and it comes back</span><span class="tools"><button data-groups title="Collapse / expand every repo in this lane">⇕</button><button data-focus title="Focus this lane (collapse the others)">⤢</button></span></h2><div class="cards"></div><div class="strip" title="Expand Stale"><span class="n">0</span><span class="name">Stale</span></div></div>
+    <div class="lane ready" data-lane="ready"><h2 title="Click to collapse"><span class="label">Ready</span> <span class="n">0</span><span class="hint">Claude stopped — your turn</span><span class="tools"><button data-groups title="Collapse / expand every repo in this lane">⇕</button><button data-focus title="Focus this lane (collapse the others)">⤢</button></span></h2><div class="cards"></div><div class="strip" title="Expand Ready"><span class="n">0</span><span class="name">Ready</span></div></div>
+    <div class="lane clauding" data-lane="clauding"><h2 title="Click to collapse"><span class="label">Clauding</span> <span class="n">0</span><span class="hint">Claude is working</span><span class="tools"><button data-groups title="Collapse / expand every repo in this lane">⇕</button><button data-focus title="Focus this lane (collapse the others)">⤢</button></span></h2><div class="cards"></div><div class="strip" title="Expand Clauding"><span class="n">0</span><span class="name">Clauding</span></div></div>
+    <div class="lane done" data-lane="done"><h2 title="Click to collapse"><span class="label">Done</span> <span class="n">0</span><span class="hint">ticked by you — persisted</span><span class="tools"><button data-groups title="Collapse / expand every repo in this lane">⇕</button><button data-focus title="Focus this lane (collapse the others)">⤢</button></span></h2><div class="cards"></div><div class="strip" title="Expand Done"><span class="n">0</span><span class="name">Done</span></div></div>
+  </div>
+  <div id="splitter" title="Drag to resize the chat"></div>
+  <section id="chat">
+    <div class="shead" id="shead"><h2>Pick a session</h2></div>
+    <div id="log"><div class="empty">Click a card to open its chat</div></div>
+  </section>
+</main>
+<div id="toasts"></div>
+<script src="/vendor/marked.min.js"></script>
+<script src="/vendor/purify.min.js"></script>
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const main = $('#main');
+  const state = { sessions: new Map(), current: null, unread: new Map(), entries: [], pins: { sessions: {}, projects: {} } };
+  const prefs = { sound: false, showAll: false, groupByRepo: false, compact: false, toolsMode: 'collapsed', foldCode: true, chatVisible: true, chatSide: 'right', chatWidth: 520, collapsed: {}, repoCollapsed: {}, tight: {} };
+  try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
+  const savePrefs = () => { try { localStorage.setItem('peixairada-prefs', JSON.stringify(prefs)); } catch {} };
+
+  // ---- header controls ---------------------------------------------------------------
+  if (prefs.showTools === false) prefs.toolsMode = 'hidden'; delete prefs.showTools; // migrate old pref
+  $('#sound').checked = prefs.sound; $('#showAll').checked = prefs.showAll; $('#toolsMode').value = prefs.toolsMode; $('#foldCode').checked = prefs.foldCode;
+  $('#groupByRepo').checked = prefs.groupByRepo; $('#compact').checked = prefs.compact;
+  document.body.classList.toggle('compact', prefs.compact); document.body.classList.toggle('grouped', prefs.groupByRepo);
+  $('#groupByRepo').onchange = e => { prefs.groupByRepo = e.target.checked; savePrefs(); document.body.classList.toggle('grouped', prefs.groupByRepo); renderBoard(); };
+  $('#compact').onchange = e => { prefs.compact = e.target.checked; savePrefs(); document.body.classList.toggle('compact', prefs.compact); };
+  $('#sound').onchange = e => { prefs.sound = e.target.checked; savePrefs(); if (prefs.sound) beep(); };
+  $('#showAll').onchange = e => { prefs.showAll = e.target.checked; savePrefs(); renderBoard(); };
+  $('#toolsMode').onchange = e => { prefs.toolsMode = e.target.value; savePrefs(); renderLog(true); };
+  $('#foldCode').onchange = e => { prefs.foldCode = e.target.checked; savePrefs(); renderLog(true); };
+  $('#q').oninput = renderBoard;
+  $('#testBtn').onclick = () => fetch('/api/test-notify', { method: 'POST' });
+  $('#notifBtn').onclick = async () => { const p = await Notification.requestPermission(); updateNotifBtn(p); };
+  function updateNotifBtn(p = Notification.permission) { $('#notifBtn').textContent = p === 'granted' ? '🔔 browser alerts on' : p === 'denied' ? '🔕 browser alerts blocked' : '🔔 enable browser alerts'; }
+  if ('Notification' in window) updateNotifBtn(); else $('#notifBtn').hidden = true;
+
+  // ---- chat pane: show/hide, side, resize ----------------------------------------------
+  function applyChatPrefs() {
+    main.classList.toggle('chat-hidden', !prefs.chatVisible);
+    main.classList.toggle('chat-left', prefs.chatSide === 'left');
+    $('#chat').style.width = prefs.chatWidth + 'px';
+    $('#chatToggleBtn').textContent = prefs.chatVisible ? 'hide chat' : 'show chat';
+    $('#chatSideBtn').textContent = prefs.chatSide === 'left' ? '◧ chat left' : '◨ chat right';
+  }
+  $('#chatToggleBtn').onclick = () => { prefs.chatVisible = !prefs.chatVisible; savePrefs(); applyChatPrefs(); };
+  $('#chatSideBtn').onclick = () => { prefs.chatSide = prefs.chatSide === 'left' ? 'right' : 'left'; savePrefs(); applyChatPrefs(); };
+  const splitter = $('#splitter'); let dragging = false;
+  splitter.addEventListener('mousedown', e => { dragging = true; splitter.classList.add('drag'); document.body.style.userSelect = 'none'; e.preventDefault(); });
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const r = main.getBoundingClientRect();
+    const w = prefs.chatSide === 'left' ? e.clientX - r.left : r.right - e.clientX;
+    prefs.chatWidth = Math.round(Math.max(320, Math.min(r.width * .75, w)));
+    $('#chat').style.width = prefs.chatWidth + 'px';
+  });
+  window.addEventListener('mouseup', () => { if (!dragging) return; dragging = false; splitter.classList.remove('drag'); document.body.style.userSelect = ''; savePrefs(); });
+  applyChatPrefs();
+
+  // ---- helpers -----------------------------------------------------------------------
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const rel = ts => { if (!ts) return ''; const d = (Date.now() - new Date(ts)) / 1000; if (d < 60) return `${Math.max(0, d | 0)}s`; if (d < 3600) return `${(d / 60) | 0}m`; if (d < 86400) return `${(d / 3600) | 0}h`; return `${(d / 86400) | 0}d`; };
+  const statusLabel = { working: 'working…', idle: 'replied — your turn', 'needs-input': 'needs your input', stale: 'stale — write to it to resume', unknown: '' };
+  const entryLabel = s => s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : s.live?.entrypoint === 'cli' ? 'CLI' : s.alive ? 'live' : 'stale';
+  const isPinned = s => !!state.pins.sessions[s.id];
+  const isProjPinned = s => !!state.pins.projects[s.project];
+  function setPin(type, key, pinned) {
+    const bucket = type === 'project' ? state.pins.projects : state.pins.sessions;
+    if (pinned) bucket[key] = new Date().toISOString(); else delete bucket[key]; // optimistic; server broadcasts the truth
+    renderBoard();
+    fetch('/api/pins', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ type, key, pinned }) });
+  }
+  function repoColor(name) { let h = 0; for (const c of String(name || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return `hsl(${h % 360} 55% 52%)`; }
+
+  // Lane assignment. "done" = you ticked it (persisted server-side; the mark expires on new activity);
+  // "stale" = the Claude process is gone (resume the chat and it comes back); "clauding" = Claude is
+  // working; "ready" = Claude stopped and the ball is with you.
+  function laneOf(s) {
+    if (s.done) return 'done';
+    if (!s.alive) return 'stale';
+    if (s.status === 'working') return 'clauding';
+    if (!s.lastActivity) return 'empty';
+    return 'ready';
+  }
+  const LANES = ['stale', 'ready', 'clauding', 'done'];
+  const STALE_MAX_AGE_MS = 30 * 86400e3; // Claude Code deletes transcripts after 30 idle days by default; mirror that
+  const laneRank = { 'needs-input': 0, idle: 1, working: 2, stale: 3, unknown: 4 };
+
+  function applyLanes() {
+    for (const n of LANES) document.querySelector(`.lane[data-lane="${n}"]`).classList.toggle('collapsed', !!prefs.collapsed[n]);
+    $('#board').style.gridTemplateColumns = LANES.map(n => prefs.collapsed[n] ? '44px' : 'minmax(230px, 340px)').join(' ');
+  }
+  function setCollapsed(name, v) { prefs.collapsed[name] = v; savePrefs(); applyLanes(); }
+  function setRepoCollapsed(lane, repo, v) {
+    if (v) prefs.repoCollapsed[`${lane}:${repo}`] = true; else delete prefs.repoCollapsed[`${lane}:${repo}`];
+    savePrefs(); renderBoard();
+  }
+  // ⇕ in the lane header. Grouped: fold every repo block. Ungrouped: fold the cards themselves.
+  function collapseAll(lane) { if (prefs.groupByRepo) toggleAllRepos(lane); else { prefs.tight[lane] = !prefs.tight[lane]; savePrefs(); renderBoard(); } }
+  function toggleAllRepos(lane) {
+    const repos = [...document.querySelectorAll(`.lane[data-lane="${lane}"] .group`)].map(g => g.dataset.repo);
+    const collapseAll = repos.some(r => !prefs.repoCollapsed[`${lane}:${r}`]);
+    for (const r of repos) { if (collapseAll) prefs.repoCollapsed[`${lane}:${r}`] = true; else delete prefs.repoCollapsed[`${lane}:${r}`]; }
+    savePrefs(); renderBoard();
+  }
+  function focusLane(name) {
+    const alreadyFocused = !prefs.collapsed[name] && LANES.every(n => n === name || prefs.collapsed[n]);
+    for (const n of LANES) prefs.collapsed[n] = alreadyFocused ? false : n !== name;
+    savePrefs(); applyLanes();
+  }
+  applyLanes();
+
+  // ---- board -------------------------------------------------------------------------
+  function cardHtml(s, lane, grouped = false) {
+    const un = state.unread.get(s.id) || 0;
+    const pinned = isPinned(s), projPinned = isProjPinned(s);
+    const showReply = s.lastReply && s.status !== 'working';
+    const act = s.done ? `<button class="act" data-act="reopen" title="Untick">↩ reopen</button>`
+      : (lane === 'ready' || lane === 'stale') && s.lastActivity ? `<button class="act" data-act="done" title="Tick as done (persisted; comes back on new activity)">✓ done</button>` : '';
+    const pinTitle = `${pinned ? 'Unpin' : 'Pin'} card · ⇧-click: ${projPinned ? 'unpin' : 'pin'} repo ${esc(s.project)}`;
+    return `<div class="card ${s.status} ${s.id === state.current ? 'active' : ''} ${pinned ? 'pinned' : ''}" data-id="${s.id}" style="--repo:${repoColor(s.project)}">
+      <div class="top"><span class="dot ${s.status}"></span>${grouped ? '<span class="grow" style="flex:1"></span>' : `<span class="repo" data-repo="${esc(s.project)}" title="Filter by ${esc(s.project)}">${esc(s.project)}</span>`}<span class="time">${rel(s.lastActivity)}</span>${un ? `<span class="badge">${un}</span>` : ''}<button class="pin ${pinned ? 'on' : ''} ${projPinned ? 'proj' : ''}" data-act="pin" title="${pinTitle}">📌</button></div>
+      <div class="title">${esc(s.title)}</div>
+      ${s.lastPrompt ? `<div class="snip you"><b>You</b>${esc(s.lastPrompt)}</div>` : ''}
+      ${showReply ? `<div class="snip claude"><b>Claude</b>${esc(s.lastReply)}</div>` : ''}
+      ${statusLabel[s.status] ? `<div class="state ${s.status}">${statusLabel[s.status]}</div>` : ''}
+      <div class="foot"><span class="chip">${entryLabel(s)}</span>${s.live?.name ? `<span class="chip">${esc(s.live.name)}</span>` : ''}${s.gitBranch && s.gitBranch !== 'HEAD' ? `<span class="chip" title="branch">⎇ ${esc(s.gitBranch)}</span>` : ''}<span class="grow"></span>${act}</div>
+    </div>`;
+  }
+
+  function renderBoard() {
+    const q = $('#q').value.trim().toLowerCase();
+    const lanes = { stale: [], ready: [], clauding: [], done: [] };
+    const now = Date.now();
+    for (const s of state.sessions.values()) {
+      let lane = laneOf(s);
+      if (lane === 'empty') { if (!prefs.showAll) continue; lane = 'ready'; }
+      if (lane === 'stale' && !prefs.showAll && (!s.lastActivity || now - new Date(s.lastActivity) > STALE_MAX_AGE_MS)) continue;
+      if (q && !`${s.project} ${s.title} ${s.lastPrompt} ${s.live?.name || ''} ${s.gitBranch || ''}`.toLowerCase().includes(q)) continue;
+      lanes[lane].push(s);
+    }
+    const byRecent = (a, b) => String(b.lastActivity || '').localeCompare(String(a.lastActivity || ''));
+    const readyOrder = (a, b) => (laneRank[a.status] - laneRank[b.status]) || byRecent(a, b);
+    const emptyText = { stale: 'No stale chats', ready: 'Nothing waiting on you', clauding: 'Nothing running', done: 'Nothing ticked yet' };
+    for (const [name, list] of Object.entries(lanes)) {
+      const el = document.querySelector(`.lane[data-lane="${name}"]`);
+      const alert = list.some(s => s.status === 'needs-input');
+      for (const n of el.querySelectorAll('.n')) { n.textContent = list.length; n.classList.toggle('alert', alert); }
+      el.querySelector('.cards').classList.toggle('tight', !prefs.groupByRepo && !!prefs.tight[name]);
+      el.querySelector('[data-groups]').title = prefs.groupByRepo ? 'Collapse / expand every repo in this column'
+        : `${prefs.tight[name] ? 'Expand' : 'Collapse'} every card in this column`;
+      el.querySelector('.cards').innerHTML = laneHtml(name, list, name === 'ready' ? readyOrder : byRecent) || `<div class="none">${emptyText[name]}</div>`;
+    }
+    const live = [...state.sessions.values()].filter(s => s.alive);
+    $('#counts').textContent = `${live.length} live · ${lanes.ready.length} ready · ${lanes.clauding.length} clauding · ${lanes.stale.length} stale`;
+    const total = [...state.unread.values()].reduce((a, b) => a + b, 0);
+    document.title = (total ? `(${total}) ` : '') + 'peixAIrada';
+  }
+  // One lane's cards: pinned first (card pin, then repo pin), then the lane's own order — or, with
+  // "group by repo", repo blocks (pinned repos first, then by latest update) each in that order.
+  function laneHtml(name, list, cmp) {
+    if (!prefs.groupByRepo) {
+      const tier = s => isPinned(s) ? 0 : isProjPinned(s) ? 1 : 2;
+      list.sort((a, b) => (tier(a) - tier(b)) || cmp(a, b));
+      let html = ''; let prevTier = null;
+      for (const s of list) { const t = tier(s); if (prevTier !== null && prevTier < 2 && t === 2) html += '<div class="sep"></div>'; html += cardHtml(s, name); prevTier = t; }
+      return html;
+    }
+    const groups = new Map();
+    for (const s of list) { if (!groups.has(s.project)) groups.set(s.project, []); groups.get(s.project).push(s); }
+    const blocks = [...groups.entries()].map(([repo, ss]) => {
+      ss.sort((a, b) => ((isPinned(a) ? 0 : 1) - (isPinned(b) ? 0 : 1)) || cmp(a, b));
+      return { repo, ss, pinned: !!state.pins.projects[repo], latest: ss.reduce((m, s) => String(s.lastActivity || '') > m ? String(s.lastActivity) : m, '') };
+    });
+    blocks.sort((a, b) => ((a.pinned ? 0 : 1) - (b.pinned ? 0 : 1)) || b.latest.localeCompare(a.latest));
+    return blocks.map(g => {
+      const collapsed = !!prefs.repoCollapsed[`${name}:${g.repo}`];
+      const alert = g.ss.some(s => s.status === 'needs-input');
+      return `<div class="group ${collapsed ? 'collapsed' : ''}" data-repo="${esc(g.repo)}" style="--repo:${repoColor(g.repo)}">
+        <div class="ghead" title="Click to ${collapsed ? 'expand' : 'collapse'} · ⌥-click to filter by ${esc(g.repo)}"><span class="gname">${esc(g.repo)}</span><span class="gn ${alert ? 'alert' : ''}">${g.ss.length}</span><button class="pin proj ${g.pinned ? 'on' : ''}" data-pinproj="${esc(g.repo)}" title="${g.pinned ? 'Unpin' : 'Pin'} repo">📌</button></div>
+        <div class="gcards">${g.ss.map(s => cardHtml(s, name, true)).join('')}</div>
+      </div>`;
+    }).join('');
+  }
+  $('#board').addEventListener('click', e => {
+    const laneEl = e.target.closest('.lane'); if (!laneEl) return;
+    const pinProj = e.target.closest('[data-pinproj]');
+    if (pinProj) { setPin('project', pinProj.dataset.pinproj, !state.pins.projects[pinProj.dataset.pinproj]); return; }
+    const laneName = laneEl.dataset.lane;
+    if (laneEl.classList.contains('collapsed')) { setCollapsed(laneName, false); return; }
+    const ghead = e.target.closest('.ghead');
+    if (ghead) {
+      const repo = ghead.parentElement.dataset.repo;
+      if (e.altKey) { const q = $('#q'); q.value = q.value.trim().toLowerCase() === repo.toLowerCase() ? '' : repo; renderBoard(); }
+      else setRepoCollapsed(laneName, repo, !prefs.repoCollapsed[`${laneName}:${repo}`]);
+      return;
+    }
+    if (e.target.closest('[data-groups]')) { collapseAll(laneName); return; }
+    if (e.target.closest('[data-focus]')) { focusLane(laneName); return; }
+    if (e.target.closest('h2')) { setCollapsed(laneName, true); return; }
+    const card = e.target.closest('.card');
+    if (!card) return;
+    if (e.target.closest('[data-act=pin]')) {
+      const s = state.sessions.get(card.dataset.id); if (!s) return;
+      if (e.shiftKey) setPin('project', s.project, !isProjPinned(s)); else setPin('session', s.id, !isPinned(s));
+      return;
+    }
+    const act = e.target.closest('.act');
+    if (act) { e.stopPropagation(); fetch(`/api/sessions/${card.dataset.id}/done`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ done: act.dataset.act === 'done' }) }); return; }
+    const repo = e.target.closest('.repo');
+    if (repo) { const q = $('#q'); q.value = q.value.trim().toLowerCase() === repo.dataset.repo.toLowerCase() ? '' : repo.dataset.repo; renderBoard(); return; }
+    openSession(card.dataset.id);
+  });
+
+  // ---- chat --------------------------------------------------------------------------
+  function renderHead(s) {
+    $('#shead').innerHTML = `<h2><span class="repo" style="color:${repoColor(s.project)}">${esc(s.project)}</span><span class="sep">/</span><span>${esc(s.title)}</span><button class="btn x" id="hideChatBtn" title="Hide chat">✕</button></h2>
+      <span class="status"><span class="dot ${s.status}"></span>${statusLabel[s.status] || s.status}${s.statusSince ? ` · ${rel(s.statusSince)}` : ''}</span>
+      <span class="path">${esc(s.cwd || '')}${s.gitBranch && s.gitBranch !== 'HEAD' ? ' @ ' + esc(s.gitBranch) : ''}</span>
+      ${s.model ? `<span class="chip">${esc(s.model)}</span>` : ''}${s.live?.pid ? `<span class="chip">pid ${s.live.pid}</span>` : ''}
+      ${s.prLinks.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u.replace(/^https:\/\/github\.com\//, ''))}</a>`).join('')}
+      <span class="spacer" style="flex:1"></span>
+      ${s.cwd ? `<button class="btn" id="focusBtn">Focus in VS Code</button>` : ''}`;
+    const fb = $('#focusBtn'); if (fb) fb.onclick = () => fetch(`/api/sessions/${s.id}/focus`, { method: 'POST' });
+    $('#hideChatBtn').onclick = () => { prefs.chatVisible = false; savePrefs(); applyChatPrefs(); };
+  }
+
+  // Fallback renderer (fenced code, inline code, bold) if the vendored libs failed to load.
+  function mdFallback(t) {
+    const parts = String(t).split(/```/);
+    return parts.map((p, i) => i % 2 ? `<pre><code>${esc(p.replace(/^\w*\n/, ''))}</code></pre>`
+      : esc(p).replace(/`([^`\n]+)`/g, '<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>')).join('');
+  }
+  const hasMd = typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined';
+  if (hasMd) marked.setOptions({ gfm: true, breaks: true });
+  const ABS_URL = /^([a-z][a-z0-9+.-]*:|\/\/|#)/i;
+  // Full GFM via marked, sanitised by DOMPurify (replies may contain raw HTML). Relative links —
+  // Claude writes [file.ts:42](src/file.ts#L42) — are resolved against the session cwd and opened in VS Code.
+  function md(t, cwd) {
+    if (!hasMd) return { html: mdFallback(t), cls: '' };
+    let html;
+    try { html = DOMPurify.sanitize(marked.parse(String(t ?? ''))); } catch { return { html: mdFallback(t), cls: '' }; }
+    const tpl = document.createElement('template'); tpl.innerHTML = html;
+    for (const a of tpl.content.querySelectorAll('a[href]')) {
+      const href = a.getAttribute('href') || '';
+      if (ABS_URL.test(href)) { a.target = '_blank'; a.rel = 'noopener'; continue; }
+      const m = href.match(/^([^#?]+)(?:#L(\d+))?/);
+      if (!m) continue;
+      const abs = m[1].startsWith('/') ? m[1] : `${cwd || ''}/${m[1].replace(/^\.\//, '')}`;
+      a.setAttribute('href', `vscode://file${abs}${m[2] ? ':' + m[2] : ''}`);
+      a.title = `Open ${abs}${m[2] ? ':' + m[2] : ''} in VS Code`;
+    }
+    if (prefs.foldCode) for (const pre of tpl.content.querySelectorAll('pre')) {
+      const code = pre.querySelector('code');
+      const lines = (code?.textContent || pre.textContent).replace(/\n$/, '').split('\n').length;
+      if (lines <= 6) continue;
+      const lang = (code?.className.match(/language-([\w+-]+)/) || [])[1] || 'code';
+      const d = document.createElement('details'); d.className = 'codefold';
+      const sm = document.createElement('summary'); sm.textContent = `${lang} · ${lines} lines`;
+      pre.replaceWith(d); d.append(sm, pre);
+    }
+    return { html: tpl.innerHTML, cls: 'md' };
+  }
+
+  function entryHtml(e) {
+    if (e.kind === 'text') {
+      const r = md(e.text, state.sessions.get(state.current)?.cwd);
+      return `<div class="msg ${e.role}"><div class="who"><span>${e.role === 'user' ? 'You' : 'Claude'}</span><span>${e.ts ? new Date(e.ts).toLocaleTimeString() : ''}</span></div><div class="bubble"><div class="text ${r.cls}">${r.html}</div></div></div>`;
+    }
+    if (e.kind === 'tool_use') return `<div class="tool"><b>${esc(e.name)}</b><span>${esc(e.text)}</span></div>`;
+    if (e.kind === 'tool_result') return `<div class="tool ${e.isError ? 'err' : ''}"><span>↳</span><span>${esc(e.text || '(no output)')}</span></div>`;
+    if (e.kind === 'interrupt' || e.kind === 'compact') return `<div class="sysline">${esc(e.text)}</div>`;
+    return '';
+  }
+
+  // Consecutive tool calls/results between two messages become one collapsible group, so the
+  // conversation reads as prose; open them when you want the detail.
+  function toolGroupHtml(run) {
+    const uses = run.filter(e => e.kind === 'tool_use');
+    const errs = run.filter(e => e.kind === 'tool_result' && e.isError).length;
+    const byName = {}; for (const u of uses) byName[u.name] = (byName[u.name] || 0) + 1;
+    const label = Object.entries(byName).sort((a, b) => b[1] - a[1]).map(([n, c]) => c > 1 ? `${n} ×${c}` : n).join(', ');
+    return `<details class="toolgroup"${prefs.toolsMode === 'expanded' ? ' open' : ''}><summary>${uses.length} tool call${uses.length === 1 ? '' : 's'} · ${esc(label)}${errs ? ` · <span class="err">${errs} error${errs > 1 ? 's' : ''}</span>` : ''}</summary>${run.map(entryHtml).join('')}</details>`;
+  }
+  function renderLog(reset = false) {
+    const log = $('#log');
+    const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
+    // keep groups the reader opened/closed by hand across live re-renders
+    const opened = reset ? null : [...log.querySelectorAll('details.toolgroup')].map(d => d.open);
+    const out = []; let run = [];
+    const flush = () => { if (run.length && prefs.toolsMode !== 'hidden') out.push(toolGroupHtml(run)); run = []; };
+    for (const e of state.entries) {
+      if (e.kind === 'tool_use' || e.kind === 'tool_result') { run.push(e); continue; }
+      flush(); out.push(entryHtml(e));
+    }
+    flush();
+    log.innerHTML = out.join('') || '<div class="empty">No messages yet</div>';
+    if (opened) log.querySelectorAll('details.toolgroup').forEach((d, i) => { if (i < opened.length) d.open = opened[i]; });
+    if (stick) log.scrollTop = log.scrollHeight;
+  }
+
+  async function openSession(id) {
+    state.current = id; state.unread.delete(id);
+    if (!prefs.chatVisible) { prefs.chatVisible = true; savePrefs(); applyChatPrefs(); }
+    renderBoard();
+    const s = state.sessions.get(id); if (s) renderHead(s);
+    const r = await fetch(`/api/sessions/${id}/messages`); if (!r.ok) return;
+    const data = await r.json();
+    state.sessions.set(id, data.session); state.entries = data.entries; renderHead(data.session); renderLog();
+    $('#log').scrollTop = $('#log').scrollHeight;
+    location.hash = id;
+  }
+
+  // ---- alerts --------------------------------------------------------------------------
+  let audio;
+  function beep() {
+    try {
+      audio ||= new (window.AudioContext || window.webkitAudioContext)();
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.connect(g); g.connect(audio.destination); o.frequency.value = 880; g.gain.value = .06;
+      o.start(); o.frequency.setValueAtTime(1175, audio.currentTime + .09); o.stop(audio.currentTime + .18);
+    } catch {}
+  }
+  function toast(a) {
+    const el = document.createElement('div'); el.className = `toast ${a.kind}`;
+    el.innerHTML = `<b>${a.kind === 'reply' ? 'Claude replied' : 'Claude needs input'} · ${esc(a.project)}</b><div>${esc(a.title)}</div><div class="s">${esc(a.snippet || '')}</div>`;
+    el.onclick = () => { if (a.sessionId) openSession(a.sessionId); el.remove(); };
+    $('#toasts').appendChild(el); setTimeout(() => el.remove(), 8000);
+  }
+  function onAlert(a) {
+    const viewing = a.sessionId && a.sessionId === state.current && prefs.chatVisible && document.visibilityState === 'visible' && document.hasFocus();
+    if (a.sessionId && !viewing) state.unread.set(a.sessionId, (state.unread.get(a.sessionId) || 0) + 1);
+    renderBoard(); toast(a); if (prefs.sound) beep();
+    if ('Notification' in window && Notification.permission === 'granted' && !viewing) {
+      const n = new Notification(`${a.kind === 'reply' ? 'Claude replied' : 'Claude needs input'} · ${a.project}`, { body: `${a.title}\n${a.snippet || ''}`, tag: a.sessionId || 'test' });
+      n.onclick = () => { window.focus(); if (a.sessionId) openSession(a.sessionId); n.close(); };
+    }
+  }
+
+  // ---- SSE ----------------------------------------------------------------------------
+  function connect() {
+    const es = new EventSource('/events');
+    es.onopen = () => $('#conn').classList.add('on');
+    es.onerror = () => { $('#conn').classList.remove('on'); };
+    es.addEventListener('snapshot', e => {
+      const d = JSON.parse(e.data); state.sessions = new Map(d.sessions.map(s => [s.id, s])); if (d.pins) state.pins = d.pins; renderBoard();
+      const want = location.hash.slice(1);
+      if (want && !state.current && state.sessions.has(want)) openSession(want);
+    });
+    es.addEventListener('session', e => { const s = JSON.parse(e.data); state.sessions.set(s.id, s); renderBoard(); if (s.id === state.current) renderHead(s); });
+    es.addEventListener('entries', e => { const d = JSON.parse(e.data); if (d.sessionId === state.current) { state.entries.push(...d.entries); renderLog(); } });
+    es.addEventListener('pins', e => { state.pins = JSON.parse(e.data); renderBoard(); });
+    es.addEventListener('alert', e => onAlert(JSON.parse(e.data)));
+  }
+  connect();
+  setInterval(renderBoard, 30_000); // refresh relative times
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && state.current) { state.unread.delete(state.current); renderBoard(); } });
+  // deep link: /#<session-id> opens that chat — also how the native app's notifications jump here
+  window.addEventListener('hashchange', () => {
+    const id = location.hash.slice(1);
+    if (id && id !== state.current && state.sessions.has(id)) openSession(id);
+  });
+})();
+</script>
+</body>
+</html>
