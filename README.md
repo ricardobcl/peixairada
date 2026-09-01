@@ -294,7 +294,9 @@ Either way, the UI carries over unchanged.
 - [ ] Per-session **mute** / quiet hours, and syntax highlighting in code blocks
 - [ ] **Search across every transcript** — they're already on disk, a grep box is cheap
 - [x] Reply straight from the board — done for stale chats, via `claude --resume`
-- [ ] Reply into a **live** chat, the day the peer socket is documented for third parties
+- [ ] ~~Reply into a **live** chat~~ — *not planned.* The socket is there and documented, but a
+      message posted to it can never answer the question a chat is waiting on, which is the only
+      reason to want it
 
 <div align="center">
 <br>
