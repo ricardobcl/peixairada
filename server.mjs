@@ -567,7 +567,12 @@ function handleHook(h) {
 // the way the app resolves node: PATH first, then the layouts the installers actually use.
 const BIN_FALLBACKS = {
   claude: [join(homedir(), '.local', 'bin', 'claude'), '/opt/homebrew/bin/claude', '/usr/local/bin/claude'],
-  gh: ['/opt/homebrew/bin/gh', '/usr/local/bin/gh', join(homedir(), '.local', 'bin', 'gh')]
+  gh: ['/opt/homebrew/bin/gh', '/usr/local/bin/gh', join(homedir(), '.local', 'bin', 'gh')],
+  // "Shell Command: Install 'code' command in PATH" symlinks /usr/local/bin/code; the last two
+  // entries are the binaries inside the app bundles, for when it was never run.
+  code: ['/usr/local/bin/code', '/opt/homebrew/bin/code',
+    '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code',
+    '/Applications/Cursor.app/Contents/Resources/app/bin/code']
 };
 const REPLY_TIMEOUT_MS = Number(process.env.REPLY_TIMEOUT_MS || 10 * 60_000);
 const binCache = new Map();
@@ -588,6 +593,7 @@ function findBin(name, missingNote) {
 // Declarations, not arrows: the PR-status code above calls ghBin().
 function claudeBin() { return findBin('claude', 'replies to stale chats are disabled'); }
 function ghBin() { return findBin('gh', 'PR status colours are disabled'); }
+function codeBin() { return findBin('code', '"Focus in VS Code" is disabled'); }
 
 // `claude --resume <id> -p <text>` reuses the session id, so Claude appends to the *same* transcript
 // and the reply arrives through the watcher like any other line — nothing downstream special-cases it.
@@ -672,8 +678,12 @@ const server = createServer(async (req, res) => {
       const s = sessions.get(m[1]);
       const cwd = s?.cwd || s?.live?.cwd;
       if (!cwd) return json(res, 400, { error: 'no cwd known' });
+      // Resolved, not spawned by name: the app hands the server PATH=/usr/bin:/bin:/usr/sbin:/sbin,
+      // which does not contain /usr/local/bin, so a bare `code` was ENOENT in the packaged app.
+      const code = codeBin();
+      if (!code) return json(res, 501, { error: 'code CLI not found — run "Shell Command: Install \'code\' command in PATH" in VS Code, or set CODE_BIN' });
       // `code <folder>` re-focuses the VS Code window that already has that folder open.
-      execFile('code', [cwd], err => err ? json(res, 500, { error: String(err) }) : json(res, 200, { ok: true, cwd }));
+      execFile(code, [cwd], err => err ? json(res, 500, { error: String(err.message || err) }) : json(res, 200, { ok: true, cwd }));
       return;
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/reply$/))) {

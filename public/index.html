@@ -9,14 +9,21 @@
     --bg: #f6f6f4; --panel: #ffffff; --ink: #1c1c1a; --muted: #6b6b66; --line: #e5e5e0; --accent: #c96442;
     --working: #d9a82a; --idle: #2f9e5b; --needs: #d64545; --ended: #a3a39e; --unread: #c96442;
     --lane-ready: #d64545; --lane-clauding: #d9a82a; --lane-done: #2f9e5b;
-    --user-bg: #f0efe9; --tool-bg: #f7f7f4; --code-bg: #ecebe6;
+    --user-bg: #f0efe9; --tool-bg: #f7f7f4; --code-bg: #efeee8; --code-line: #dedcd2;
+    --code-ink: #a8442a; --inline-bg: rgba(0, 0, 0, .055);
     --pr-open: #2f9e5b; --pr-merged: #8250df; --pr-closed: #d64545; --pr-draft: #8b8b85;
+    /* Syntax colours, one set per theme — the whole highlight.js palette hangs off these eight. */
+    --hl-com: #97968d; --hl-key: #9c27a0; --hl-str: #4a8c3f; --hl-num: #98651a;
+    --hl-fn: #2f6fd0; --hl-cls: #a8791a; --hl-var: #cf4b3c; --hl-meta: #6b7f9e;
     color-scheme: light dark;
   }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
     --bg: #141413; --panel: #1c1c1a; --ink: #e8e6df; --muted: #9a998f; --line: #2c2c29; --accent: #e08a68;
-    --user-bg: #23231f; --tool-bg: #1f1f1c; --code-bg: #101010; --ended: #5d5d58;
+    --user-bg: #23231f; --tool-bg: #1f1f1c; --code-bg: #101010; --code-line: #2e2e2a; --ended: #5d5d58;
+    --code-ink: #e0a284; --inline-bg: rgba(255, 255, 255, .075);
     --pr-open: #3fb950; --pr-merged: #a371f7; --pr-closed: #f85149; --pr-draft: #8b8b85;
+    --hl-com: #7c7c74; --hl-key: #c678dd; --hl-str: #98c379; --hl-num: #d19a66;
+    --hl-fn: #61afef; --hl-cls: #e5c07b; --hl-var: #e06c75; --hl-meta: #8fa6c4;
   } }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; height: 100vh; display: grid; grid-template-rows: auto 1fr; overflow: hidden; }
@@ -157,7 +164,7 @@
   .shead .pr[data-state="merged"] { color: var(--pr-merged); border-color: color-mix(in srgb, var(--pr-merged) 45%, transparent); }
   .shead .pr[data-state="closed"] { color: var(--pr-closed); border-color: color-mix(in srgb, var(--pr-closed) 45%, transparent); }
   .shead .pr[data-state="draft"] { color: var(--pr-draft); border-color: color-mix(in srgb, var(--pr-draft) 45%, transparent); }
-  #log { overflow-y: auto; padding: 14px 16px 40px; scroll-behavior: smooth; }
+  #log { overflow-y: auto; padding: 16px 18px 40px; scroll-behavior: smooth; }
   /* ---- composer (stale chats only) ---- */
   #composer { border-top: 1px solid var(--line); background: var(--panel); padding: 8px 10px; display: grid; gap: 6px; }
   #composer[hidden] { display: none; }   /* display:grid above would otherwise beat the UA [hidden] rule */
@@ -170,24 +177,34 @@
   .composer-foot .hint.err { color: var(--needs); }
   .composer-foot .hint code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   #composeSend:disabled { opacity: .5; cursor: default; border-color: var(--line); }
-  .msg { margin: 0 0 10px; }
-  .msg.user .bubble { background: var(--user-bg); border-radius: 10px; padding: 10px 14px; border-left: 3px solid var(--accent); }
+  /* The chat is prose, so it gets prose spacing: a taller line box than the dense board above it
+     and a clear gap between turns. Everything below is tuned against that 1.62. */
+  .msg { margin: 0 0 18px; }
+  .msg.user .bubble { background: var(--user-bg); border-radius: 10px; padding: 11px 15px; border-left: 3px solid var(--accent); }
   .msg.assistant .bubble { padding: 4px 2px; }
-  .msg .who { font-size: 11px; color: var(--muted); margin: 0 0 3px 2px; display: flex; gap: 8px; }
-  .msg .text { white-space: pre-wrap; word-break: break-word; }
-  .msg .text code { background: var(--code-bg); padding: 1px 4px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
-  .msg .text pre { background: var(--code-bg); padding: 10px 12px; border-radius: 8px; overflow-x: auto; font-size: 12.5px; }
-  .msg .text pre code { background: none; padding: 0; }
+  .msg .who { font-size: 11px; color: var(--muted); margin: 0 0 5px 2px; display: flex; gap: 8px; }
+  .msg .text { white-space: pre-wrap; word-break: break-word; line-height: 1.62; }
+  /* Inline code: a tint and a warm ink, no border. These paragraphs are dense with `code`, and a
+     bordered chip per term turns a sentence into a fence of boxes — and, being taller than the words
+     around it, it makes every line that contains one taller than the ones that don't. .88em keeps a
+     monospace term the same visual size as the prose it sits in. */
+  .msg .text code { background: var(--inline-bg); color: var(--code-ink); padding: .12em .34em; border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .88em; }
+  /* Blocks do keep a border — there the point is to delimit, not to sit inside a sentence. */
+  .msg .text pre { background: var(--code-bg); border: 1px solid var(--code-line); padding: 11px 13px; border-radius: 8px;
+    overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
+  .msg .text pre code { background: none; padding: 0; color: inherit; border-radius: 0; font-size: inherit; }
   .text.md { white-space: normal; }
-  .md p { margin: 0 0 8px; } .md > :last-child { margin-bottom: 0; } .md > :first-child { margin-top: 0; }
-  .md h1, .md h2, .md h3, .md h4 { margin: 14px 0 6px; line-height: 1.25; font-weight: 600; }
+  .md p { margin: 0 0 11px; } .md > :last-child { margin-bottom: 0; } .md > :first-child { margin-top: 0; }
+  .md h1, .md h2, .md h3, .md h4 { margin: 18px 0 8px; line-height: 1.3; font-weight: 600; }
   .md h1 { font-size: 18px; } .md h2 { font-size: 16px; } .md h3 { font-size: 14.5px; } .md h4 { font-size: 13.5px; }
-  .md ul, .md ol { margin: 4px 0 8px; padding-left: 22px; } .md li { margin: 2px 0; } .md li > p { margin: 0; }
-  .md pre { margin: 6px 0 10px; }
-  .md table { border-collapse: collapse; margin: 6px 0 10px; font-size: 13px; display: block; overflow-x: auto; max-width: 100%; }
-  .md th, .md td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
+  .md ul, .md ol { margin: 8px 0 12px; padding-left: 22px; } .md li { margin: 5px 0; } .md li > p { margin: 0 0 5px; }
+  .md li > ul, .md li > ol { margin: 5px 0 0; }
+  .md pre { margin: 10px 0 13px; }
+  .md table { border-collapse: collapse; margin: 10px 0 13px; font-size: 13px; display: block; overflow-x: auto; max-width: 100%; }
+  .md th, .md td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
   .md th { background: var(--tool-bg); font-weight: 600; }
-  .md blockquote { margin: 6px 0; padding: 2px 12px; border-left: 3px solid var(--line); color: var(--muted); }
+  .md blockquote { margin: 10px 0; padding: 3px 13px; border-left: 3px solid var(--line); color: var(--muted); }
   .md a { color: var(--accent); text-decoration: none; } .md a:hover { text-decoration: underline; }
   .md a[href^="vscode:"]::after { content: " ↗"; font-size: 10px; opacity: .6; }
   .md hr { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
@@ -203,19 +220,29 @@
   .toolgroup[open] > summary { margin-bottom: 4px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
   .toolgroup .tool { margin-left: 10px; }
   .codefold { margin: 6px 0 10px; } .codefold > summary { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; } .codefold[open] > summary { margin-bottom: 0; border-radius: 6px 6px 0 0; }
-  .codefold[open] > pre { margin-top: 0; border-radius: 0 0 8px 8px; }
+  .codefold[open] > pre { margin-top: 0; border-top: 0; border-radius: 0 0 8px 8px; }   /* one seam, not two borders */
   .tool { margin: 0 0 4px; font-size: 12px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; display: flex; gap: 8px; padding: 3px 8px; background: var(--tool-bg); border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tool b { color: var(--ink); font-weight: 600; }
   .tool.err { color: var(--needs); }
   .sysline { margin: 10px auto; text-align: center; font-size: 11px; color: var(--muted); }
   .empty { color: var(--muted); text-align: center; margin-top: 30vh; }
 
-  /* ---- toasts ---- */
-  #toasts { position: fixed; right: 14px; bottom: 14px; display: flex; flex-direction: column; gap: 8px; z-index: 9; }
-  .toast { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--idle); border-radius: 8px; padding: 10px 12px; width: 320px; box-shadow: 0 6px 20px rgba(0,0,0,.15); cursor: pointer; font-size: 12.5px; }
-  .toast.needs-input { border-left-color: var(--needs); }
-  .toast b { display: block; margin-bottom: 2px; }
-  .toast .s { color: var(--muted); }
+  /* ---- syntax highlighting (highlight.js class names, our colours) ---- */
+  /* Written out here rather than shipping a hljs theme stylesheet: the vendor route only serves
+     .js, and this way the palette follows the app's light/dark tokens like everything else. */
+  .hljs-comment, .hljs-quote { color: var(--hl-com); font-style: italic; }
+  .hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-doctag, .hljs-formula { color: var(--hl-key); }
+  .hljs-string, .hljs-regexp, .hljs-symbol, .hljs-bullet, .hljs-addition, .hljs-selector-attr, .hljs-selector-pseudo { color: var(--hl-str); }
+  .hljs-number, .hljs-template-variable, .hljs-link, .hljs-operator { color: var(--hl-num); }
+  .hljs-title, .hljs-title.function_, .hljs-section, .hljs-name, .hljs-selector-id { color: var(--hl-fn); }
+  .hljs-title.class_, .hljs-type, .hljs-built_in, .hljs-class .hljs-title, .hljs-selector-class { color: var(--hl-cls); }
+  .hljs-variable, .hljs-attr, .hljs-attribute, .hljs-property, .hljs-params, .hljs-tag, .hljs-deletion { color: var(--hl-var); }
+  .hljs-meta, .hljs-meta .hljs-keyword, .hljs-meta .hljs-string, .hljs-subst { color: var(--hl-meta); }
+  .hljs-emphasis { font-style: italic; } .hljs-strong { font-weight: 600; }
+  /* diff blocks read as a diff, not as stripes of text */
+  .language-diff .hljs-addition, .language-diff .hljs-deletion { display: inline-block; min-width: 100%; }
+  .language-diff .hljs-addition { background: color-mix(in srgb, var(--hl-str) 14%, transparent); }
+  .language-diff .hljs-deletion { background: color-mix(in srgb, var(--hl-var) 14%, transparent); }
 </style>
 </head>
 <body>
@@ -257,9 +284,9 @@
     </div>
   </section>
 </main>
-<div id="toasts"></div>
 <script src="/vendor/marked.min.js"></script>
 <script src="/vendor/purify.min.js"></script>
+<script src="/vendor/highlight.min.js"></script>
 <script>
 (() => {
   const $ = s => document.querySelector(s);
@@ -479,7 +506,22 @@
       ${s.cwd ? `<button class="btn" id="focusBtn">Focus in VS Code</button>` : ''}
       ${s.prs?.length ? `<div class="prs">${s.prs.map(prChip).join('')}</div>` : ''}`;
     renderComposer(s);
-    const fb = $('#focusBtn'); if (fb) fb.onclick = () => fetch(`/api/sessions/${s.id}/focus`, { method: 'POST' });
+    const fb = $('#focusBtn');
+    // Say so when it fails. Silently swallowing the response is how a missing `code` CLI looked
+    // like a dead button for weeks.
+    if (fb) fb.onclick = async () => {
+      fb.disabled = true;
+      try {
+        const r = await fetch(`/api/sessions/${s.id}/focus`, { method: 'POST' });
+        if (r.ok) return;
+        const d = await r.json().catch(() => ({}));
+        fb.classList.add('err'); fb.textContent = 'VS Code: failed'; fb.title = d.error || `HTTP ${r.status}`;
+      } catch (e) {
+        fb.classList.add('err'); fb.textContent = 'VS Code: failed'; fb.title = String(e);
+      } finally {
+        fb.disabled = false;
+      }
+    };
     $('#hideChatBtn').onclick = () => { prefs.chatVisible = false; savePrefs(); applyChatPrefs(); };
   }
 
@@ -533,6 +575,31 @@
   }
   const hasMd = typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined';
   if (hasMd) marked.setOptions({ gfm: true, breaks: true });
+
+  // Syntax highlighting. Optional like the other two vendored libs — without it code blocks just
+  // stay plain. hljs escapes everything it emits, so its output can go in after DOMPurify has run.
+  const hasHl = typeof hljs !== 'undefined';
+  // Unlabelled fences are as often terminal output as code, and auto-detect on those guesses badly
+  // (~4x the cost of a known language, and a whole log re-renders on every SSE update). So: guess
+  // only for short blocks, and only among the languages that actually turn up here.
+  const AUTO_LANGS = ['bash', 'javascript', 'typescript', 'python', 'json', 'yaml', 'go', 'sql', 'diff', 'xml', 'css'];
+  const AUTO_MAX = 2000;
+  function highlight(root) {
+    if (!hasHl) return;
+    for (const code of root.querySelectorAll('pre > code')) {
+      const src = code.textContent;
+      if (!src.trim()) continue;
+      const lang = (code.className.match(/language-([\w+#.-]+)/) || [])[1];
+      try {
+        const r = lang && hljs.getLanguage(lang) ? hljs.highlight(src, { language: lang, ignoreIllegals: true })
+          : !lang && src.length < AUTO_MAX ? hljs.highlightAuto(src, AUTO_LANGS)
+          : null;
+        if (!r) continue;
+        code.innerHTML = r.value;
+        if (!lang && r.language) code.classList.add(`language-${r.language}`);
+      } catch {}
+    }
+  }
   const ABS_URL = /^([a-z][a-z0-9+.-]*:|\/\/|#)/i;
   // Full GFM via marked, sanitised by DOMPurify (replies may contain raw HTML). Relative links —
   // Claude writes [file.ts:42](src/file.ts#L42) — are resolved against the session cwd and opened in VS Code.
@@ -541,6 +608,7 @@
     let html;
     try { html = DOMPurify.sanitize(marked.parse(String(t ?? ''))); } catch { return { html: mdFallback(t), cls: '' }; }
     const tpl = document.createElement('template'); tpl.innerHTML = html;
+    highlight(tpl.content);
     for (const a of tpl.content.querySelectorAll('a[href]')) {
       const href = a.getAttribute('href') || '';
       if (ABS_URL.test(href)) { a.target = '_blank'; a.rel = 'noopener'; continue; }
@@ -621,16 +689,12 @@
       o.start(); o.frequency.setValueAtTime(1175, audio.currentTime + .09); o.stop(audio.currentTime + .18);
     } catch {}
   }
-  function toast(a) {
-    const el = document.createElement('div'); el.className = `toast ${a.kind}`;
-    el.innerHTML = `<b>${a.kind === 'reply' ? 'Claude replied' : 'Claude needs input'} · ${esc(a.project)}</b><div>${esc(a.title)}</div><div class="s">${esc(a.snippet || '')}</div>`;
-    el.onclick = () => { if (a.sessionId) openSession(a.sessionId); el.remove(); };
-    $('#toasts').appendChild(el); setTimeout(() => el.remove(), 8000);
-  }
+  // No in-page toast: alerts surface as the unread badge on the card plus a *system* notification
+  // (the Mac app posts its own; a plain browser gets the Notification API one below).
   function onAlert(a) {
     const viewing = a.sessionId && a.sessionId === state.current && prefs.chatVisible && document.visibilityState === 'visible' && document.hasFocus();
     if (a.sessionId && !viewing) state.unread.set(a.sessionId, (state.unread.get(a.sessionId) || 0) + 1);
-    renderBoard(); toast(a); if (prefs.sound) beep();
+    renderBoard(); if (prefs.sound) beep();
     if ('Notification' in window && Notification.permission === 'granted' && !viewing) {
       const n = new Notification(`${a.kind === 'reply' ? 'Claude replied' : 'Claude needs input'} · ${a.project}`, { body: `${a.title}\n${a.snippet || ''}`, tag: a.sessionId || 'test' });
       n.onclick = () => { window.focus(); if (a.sessionId) openSession(a.sessionId); n.close(); };

@@ -167,8 +167,9 @@ line, and the card walks Stale → Clauding → Ready on its own.
 
 `hide chat` / `show chat` toggles it, `◨ chat right` / `◧ chat left` flips which side it sits on, and
 the divider drags to resize — all remembered per browser. Messages render as GitHub-flavoured
-markdown through **vendored** copies of `marked` and `DOMPurify` in
-[`public/vendor/`](public/vendor/) (no CDN at runtime, ever). Relative file links Claude writes —
+markdown through **vendored** copies of `marked`, `DOMPurify` and `highlight.js` in
+[`public/vendor/`](public/vendor/) (no CDN at runtime, ever) — so code blocks come out **syntax
+highlighted**, in a palette that follows the light/dark theme. Relative file links Claude writes —
 `[server.mjs:42](server.mjs#L42)` — resolve against the session cwd and **open in VS Code**.
 
 ---
@@ -207,7 +208,9 @@ updates within **~100 ms** of Claude writing a line. Native notifications work f
 * **Startup:** reads the last 512 KB of every transcript — ≈200 files / 0.5 GB indexed in **~0.4 s** —
   then tails from the byte offset. A full file is parsed only when you open its chat.
 * **Alerts:** debounced 400 ms (a reply's thinking block and text block arrive as separate lines) and
-  suppressed entirely during the initial scan, so starting up doesn't fire twenty banners.
+  suppressed entirely during the initial scan, so starting up doesn't fire twenty banners. They land
+  as a *system* notification plus the unread badge on the card — there is no in-page toast, on
+  purpose: in the Mac app it duplicated the banner the app had just posted.
 * Subagent transcripts, sidechain lines, injected skill/meta lines and `<system-reminder>` blocks are
   filtered out. `[Request interrupted by user]` flips a session back to idle.
 

@@ -23,7 +23,7 @@ needs `swiftc` (full Xcode is installed here).
 |---|---|
 | `server.mjs` | The whole backend: transcript tailing, session state, SSE, HTTP, notifications |
 | `public/index.html` | The whole frontend, one file, no build step |
-| `public/vendor/` | `marked` 18.0.11 + `DOMPurify` 3.4.14 (UMD builds, vendored on purpose — no CDN at runtime) |
+| `public/vendor/` | `marked` 18.0.11 + `DOMPurify` 3.4.14 + `highlight.js` 11.11.1 (UMD builds, vendored on purpose — no CDN at runtime) |
 | `mac/Sources/main.swift` | Native shell: window, server lifecycle, Dock badge, menu bar, notifications |
 | `mac/icon/MakeIcon.swift` | The app icon, drawn in CoreGraphics (no image assets) |
 | `mac/build.sh` | Compile + bundle + ad-hoc sign + optional install |
@@ -83,6 +83,22 @@ Lane order is `done → stale → clauding → ready` (first match wins), where 
 * **Notifications:** the app sets `NOTIFY=off` on the server it spawns, because it posts its own. When
   it attaches to a server it did not start, it reads `notify` from the SSE snapshot and stays quiet so
   you don't get two banners.
+* **The app's server has `PATH=/usr/bin:/bin:/usr/sbin:/sbin`** — no `/usr/local/bin`, no homebrew.
+  Every CLI the server shells out to therefore goes through `findBin()` (PATH, then the layouts the
+  installers actually use, `<NAME>_BIN` overriding both); `execFile('code', …)` by bare name is what
+  made "Focus in VS Code" a dead button in the packaged app while it worked fine under `npm start`.
+* **Syntax highlighting** is `hljs` over the DOM *after* DOMPurify (hljs escapes what it emits), with
+  the palette written into `index.html` as `--hl-*` tokens rather than shipping a hljs theme — the
+  vendor route only serves `.js`, and this way it follows light/dark like everything else. Unlabelled
+  fences auto-detect only under `AUTO_MAX` chars and only among `AUTO_LANGS`: `highlightAuto` costs
+  ~4× a known language and `renderLog` re-renders the whole transcript on every SSE update.
+* **No in-page toasts.** Alerts are the unread badge plus a *system* notification. The old bottom-right
+  toast double-banner'd inside the Mac app, which posts its own.
+* **Inline `code` gets a tint, never a border.** These transcripts are dense with inline code — a
+  bordered chip per term turns a paragraph into a fence of boxes, and the chip, being taller than the
+  words around it, makes every line containing one taller than the ones that don't. A translucent
+  `--inline-bg` (so it composites over the page, the user bubble or a table cell alike) at `.88em`
+  keeps a term the same visual size as the prose. Blocks are the opposite case and do keep a border.
 * **macOS has no `timeout(1)`** — use `perl -e 'alarm shift; exec @ARGV' 60 <cmd>`.
 * **Finding `node` from the GUI app is the fragile part.** launchd hands the app a bare PATH, and
   version managers (mise here) activate in `.zshrc`, so only an *interactive* login shell can resolve
