@@ -83,7 +83,7 @@ function newSession(id, file) {
     id, file,
     slug: file ? basename(dirname(file)) : null,
     cwd: null, gitBranch: null, model: null,
-    title: null, customTitle: null, lastPrompt: null, lastReply: null, prLinks: [],
+    title: null, customTitle: null, lastPrompt: null, lastReply: null, prs: [],
     status: 'unknown', statusSince: null, lastActivity: null, lastUserAt: null, lastReplyAt: null,
     live: null, alive: false,
     entries: [], entryCount: 0, loaded: false,
@@ -100,7 +100,7 @@ function summary(s) {
     id: s.id, slug: s.slug, cwd: s.live?.cwd || s.cwd, project: basename(s.live?.cwd || s.cwd || '') || s.slug,
     gitBranch: s.gitBranch, model: s.model,
     title: s.customTitle || s.title || s.lastPrompt || (!s.file && s.alive ? '(no messages yet)' : '(untitled)'), aiTitle: s.title, customTitle: s.customTitle,
-    lastPrompt: s.lastPrompt, lastReply: s.lastReply, prLinks: s.prLinks,
+    lastPrompt: s.lastPrompt, lastReply: s.lastReply, prs: s.prs,
     // A live process with no transcript yet is an empty, idle panel (e.g. restored by VS Code, never prompted).
     // Not alive = the Claude process is gone: 'stale'. Resuming the chat registers a new pid and it comes back.
     status: s.alive ? (s.status === 'unknown' && !s.file ? 'idle' : s.status) : (s.status === 'unknown' ? 'unknown' : 'stale'),
@@ -157,6 +157,117 @@ function toolResultSnippet(block) {
   return snippet(text, 200);
 }
 
+// ---- PRs mentioned in the chat ------------------------------------------------------------
+// Claude Code writes a `pr-link` line when it opens one, but most PRs are just URLs someone typed
+// or Claude wrote, so message text is scanned too. Only message text: tool results are snipped to
+// 200 chars and half a URL would name the wrong PR.
+const PR_RE = /https?:\/\/(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d+)/g;
+const PR_ONE = new RegExp(PR_RE.source);   // same pattern, no /g — safe to reuse for a single match
+const MAX_PRS = 40;
+
+/**
+ * Record one sighting: `by` is who said it ('user' / 'claude'), or null for a `pr-link` line — Claude
+ * Code writes several of those per PR, so they order the list and date it but do not count as mentions.
+ * Most recently mentioned first, so the header leads with the PR in play now.
+ */
+function notePr(s, url, ts, by) {
+  const m = PR_ONE.exec(url);
+  const clean = m ? `https://github.com/${m[1]}/${m[2]}/pull/${m[3]}` : url;
+  const at = s.prs.findIndex(p => p.url === clean);
+  const pr = at >= 0 ? s.prs.splice(at, 1)[0] : {
+    url: clean, repo: m ? m[2] : null, number: m ? Number(m[3]) : null,
+    // The owner rarely disambiguates and eats half the width of the chip; the URL is in the tooltip.
+    label: m ? `${m[2]}#${m[3]}` : clean.replace(/^https?:\/\/(www\.)?github\.com\//, ''),
+    count: 0, by: null, firstAt: ts, state: prStatus.get(clean)?.state ?? null
+  };
+  if (by) { pr.count++; pr.by = by; }
+  pr.lastAt = ts || pr.lastAt || null;
+  s.prs.unshift(pr);
+  if (s.prs.length > MAX_PRS) s.prs.length = MAX_PRS;
+  if (!indexing) queuePr(clean);   // at boot this would ask GitHub about every PR in every transcript
+}
+
+/** Scan one message. Repeats inside the same message count once. */
+function notePrs(s, text, ts, by) {
+  if (!text || !text.includes('/pull/')) return;
+  const seen = new Set();
+  for (const m of String(text).matchAll(PR_RE)) {
+    const url = `https://github.com/${m[1]}/${m[2]}/pull/${m[3]}`;
+    if (!seen.has(url)) { seen.add(url); notePr(s, url, ts, by); }
+  }
+}
+
+// ---- …and whether they are open, merged or closed --------------------------------------------
+// The transcript never says, so the colour comes from GitHub through `gh` — the user's own
+// authenticated CLI, which reads its token from its config and so works from the app's bare
+// launchd environment too. Lazy: statuses are fetched when a chat is opened and when a PR comes up
+// live, never for the whole history at boot. One GraphQL call covers a whole batch.
+const PR_TTL_MS = Number(process.env.PR_TTL_MS || 10 * 60_000);
+const PR_TTL_ERROR_MS = 60 * 60_000;   // a PR we cannot see (private, deleted, no access): back off
+const PR_BATCH = 40;
+const prStatus = new Map();            // url -> { state, checkedAt }
+const prQueue = new Set();
+let prTimer = null, prBusy = false, ghGone = false;
+
+/** Merged and closed are terminal — never asked about twice. */
+function prFresh(url) {
+  const e = prStatus.get(url);
+  if (!e) return false;
+  if (e.state === 'merged' || e.state === 'closed') return true;
+  return Date.now() - e.checkedAt < (e.state ? PR_TTL_MS : PR_TTL_ERROR_MS);
+}
+
+function queuePr(url) {
+  if (ghGone || prQueue.has(url) || prFresh(url)) return;
+  prQueue.add(url);
+  prTimer ??= setTimeout(() => { prTimer = null; drainPrQueue(); }, 250);
+}
+
+/** Called when a chat is opened: whatever its header will show, refreshed if it has aged out. */
+function queueSessionPrs(s) { for (const pr of s.prs) queuePr(pr.url); }
+
+function setPrState(url, state) {
+  prStatus.set(url, { state, checkedAt: Date.now() });
+  for (const s of sessions.values()) {
+    const pr = s.prs.find(p => p.url === url);
+    if (pr && pr.state !== state) { pr.state = state; schedulePush(s); }
+  }
+}
+
+function drainPrQueue() {
+  if (prBusy || !prQueue.size) return;
+  const bin = ghBin();
+  if (!bin) { ghGone = true; prQueue.clear(); return; }
+  const take = [...prQueue].slice(0, PR_BATCH);
+  const batch = [], parts = [];
+  for (const url of take) {
+    prQueue.delete(url);
+    const m = PR_ONE.exec(url);
+    if (!m) continue;
+    // owner/repo/number came out of PR_RE, so they cannot break out of the query string
+    parts.push(`p${batch.length}: repository(owner: "${m[1]}", name: "${m[2]}") { pullRequest(number: ${m[3]}) { state isDraft } }`);
+    batch.push(url);
+  }
+  if (!batch.length) return drainPrQueue();
+  prBusy = true;
+  execFile(bin, ['api', 'graphql', '-f', `query={${parts.join(' ')}}`], { timeout: 30_000, maxBuffer: 8e6 }, (err, stdout, stderr) => {
+    prBusy = false;
+    // A PR we cannot resolve fails its own alias only: gh exits non-zero but still prints the rest.
+    let data = null;
+    try { data = JSON.parse(stdout || '{}').data; } catch {}
+    if (!data && err) console.error('[peixairada] pr status:', String(stderr || err.message).trim().split('\n')[0].slice(0, 200));
+    batch.forEach((url, i) => {
+      const pr = data?.[`p${i}`]?.pullRequest;
+      const state = !pr ? null
+        : pr.state === 'MERGED' ? 'merged'
+        : pr.state === 'CLOSED' ? 'closed'
+        : pr.isDraft ? 'draft' : 'open';
+      setPrState(url, state);
+    });
+    if (prQueue.size) drainPrQueue();
+  });
+}
+
 function setStatus(s, status, ts) {
   if (s.status !== status) {
     s.status = status;
@@ -183,7 +294,7 @@ function fold(s, line) {
     case 'last-prompt': if (!s.lastPrompt && line.lastPrompt) s.lastPrompt = line.lastPrompt; return true;
     case 'pr-link': {
       const url = line.prUrl || line.url;
-      if (url && !s.prLinks.includes(url)) s.prLinks.push(url);
+      if (url) notePr(s, url, ts, null);
       return true;
     }
     case 'system':
@@ -214,6 +325,7 @@ function fold(s, line) {
       const text = cleanPrompt(raw);
       if (!text) return false;
       pushEntry(s, { role: 'user', kind: 'text', text, ts, uuid: line.uuid });
+      notePrs(s, text, ts, 'user');
       s.lastPrompt = snippet(text, 200);
       s.lastActivity = ts; s.lastUserAt = ts;
       setStatus(s, 'working', ts);
@@ -227,7 +339,7 @@ function fold(s, line) {
       if (m.model) s.model = m.model;
       let needsInput = false;
       for (const b of blocks) {
-        if (b.type === 'text' && b.text?.trim()) pushEntry(s, { role: 'assistant', kind: 'text', text: b.text, ts, msgId: m.id });
+        if (b.type === 'text' && b.text?.trim()) { pushEntry(s, { role: 'assistant', kind: 'text', text: b.text, ts, msgId: m.id }); notePrs(s, b.text, ts, 'claude'); }
         else if (b.type === 'tool_use') {
           pushEntry(s, { role: 'assistant', kind: 'tool_use', name: b.name, text: summarizeToolInput(b.name, b.input), toolUseId: b.id, ts });
           if (NEEDS_INPUT_TOOLS.has(b.name)) needsInput = true;
@@ -451,27 +563,31 @@ function handleHook(h) {
 // Replying into a session
 // ---------------------------------------------------------------------------------------------
 
-// launchd and the Mac app hand the server almost no PATH, so `claude` is resolved the way the app
-// resolves node: PATH first, then the layouts the installer actually uses. CLAUDE_BIN overrides.
-const CLAUDE_BIN_FALLBACKS = [
-  join(homedir(), '.local', 'bin', 'claude'),
-  '/opt/homebrew/bin/claude',
-  '/usr/local/bin/claude'
-];
+// launchd and the Mac app hand the server almost no PATH, so the CLIs we shell out to are resolved
+// the way the app resolves node: PATH first, then the layouts the installers actually use.
+const BIN_FALLBACKS = {
+  claude: [join(homedir(), '.local', 'bin', 'claude'), '/opt/homebrew/bin/claude', '/usr/local/bin/claude'],
+  gh: ['/opt/homebrew/bin/gh', '/usr/local/bin/gh', join(homedir(), '.local', 'bin', 'gh')]
+};
 const REPLY_TIMEOUT_MS = Number(process.env.REPLY_TIMEOUT_MS || 10 * 60_000);
-let claudeBinCache;
+const binCache = new Map();
 
-function claudeBin() {
-  if (claudeBinCache !== undefined) return claudeBinCache;
-  const candidates = [
-    ...(process.env.CLAUDE_BIN ? [process.env.CLAUDE_BIN] : []),
-    ...(process.env.PATH || '').split(':').filter(Boolean).map(d => join(d, 'claude')),
-    ...CLAUDE_BIN_FALLBACKS
-  ];
-  claudeBinCache = candidates.find(f => existsSync(f)) || null;
-  if (!claudeBinCache) console.error('[peixairada] claude binary not found — replies to stale chats are disabled');
-  return claudeBinCache;
+/** `<NAME>_BIN` in the environment (CLAUDE_BIN, GH_BIN) overrides the search. */
+function findBin(name, missingNote) {
+  if (binCache.has(name)) return binCache.get(name);
+  const found = [
+    ...(process.env[`${name.toUpperCase()}_BIN`] ? [process.env[`${name.toUpperCase()}_BIN`]] : []),
+    ...(process.env.PATH || '').split(':').filter(Boolean).map(d => join(d, name)),
+    ...BIN_FALLBACKS[name]
+  ].find(f => existsSync(f)) || null;
+  binCache.set(name, found);
+  if (!found) console.error(`[peixairada] ${name} not found — ${missingNote}`);
+  return found;
 }
+
+// Declarations, not arrows: the PR-status code above calls ghBin().
+function claudeBin() { return findBin('claude', 'replies to stale chats are disabled'); }
+function ghBin() { return findBin('gh', 'PR status colours are disabled'); }
 
 // `claude --resume <id> -p <text>` reuses the session id, so Claude appends to the *same* transcript
 // and the reply arrives through the watcher like any other line — nothing downstream special-cases it.
@@ -549,6 +665,7 @@ const server = createServer(async (req, res) => {
       if (!s) return json(res, 404, { error: 'unknown session' });
       if (!s.loaded && s.file) { indexFile(s.file, { full: true }); applyLiveness(sessions.get(m[1])); }
       const cur = sessions.get(m[1]);
+      queueSessionPrs(cur);   // opening a chat is what refreshes its PR statuses; the SSE push carries them in
       return json(res, 200, { session: summary(cur), entries: cur.entries });
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/focus$/))) {

@@ -39,7 +39,9 @@ needs `swiftc` (full Xcode is installed here).
 | Which sessions are alive | `~/.claude/sessions/<pid>.json` + `process.kill(pid, 0)` |
 | Reply finished | assistant line with `stop_reason: "end_turn"` (tool calls are `"tool_use"`) |
 | Waiting on the user | `AskUserQuestion` / `ExitPlanMode` tool call with no result yet |
-| Titles / PR links | `ai-title`, `custom-title`, `pr-link` lines |
+| Titles | `ai-title`, `custom-title` lines |
+| PRs mentioned | `pr-link` lines *and* GitHub pull URLs scanned out of user/assistant message text |
+| PR open/merged/closed | `gh api graphql`, batched — the only thing here that talks to the network |
 | Permission prompts | **only** via hooks — these never reach the transcript |
 
 Lane order is `done → stale → clauding → ready` (first match wins), where *stale* = process gone and
@@ -67,6 +69,10 @@ Lane order is `done → stale → clauding → ready` (first match wins), where 
   which moves with `cd`; the registry has the stable repo path. Grouping uses the registry.
 * **Flexbox squashed the cards.** `.cards` is a flex column and cards have `overflow: hidden`, so a
   full lane shrank them to 17 px. `.cards > * { flex: none }` is load-bearing — don't remove it.
+* **…and stretched the chat header.** `.shead` is a grid item, so its `min-width: auto` resolved to
+  min-content: a long cwd — never mind a row of PR chips — made the header wider than the chat pane
+  and spilled it over the board. `.shead { min-width: 0 }`, plus the same on the scrolling `.prs`
+  row, is what keeps it inside the pane.
 * **Swift:** `Result<Void, String>` does not compile (`String` isn't an `Error`); the server callbacks
   use `(String?) -> Void` where nil means success.
 * **CoreGraphics:** filling several overlapping subpaths in one path punches holes when their winding
@@ -121,7 +127,11 @@ node scripts/verify.mjs "JSON.stringify([...document.querySelectorAll('.lane')].
      lane — the only reason to want this — is off the table by design.
   2. The exact JSON of a *message* line is not in the docs (only the auth line is), and establishing it
      empirically means writing to a session socket, which the auto-mode classifier blocks.
+* **PR status costs a network call**, so it is lazy: statuses are fetched when a chat is *opened*
+  (and when a PR comes up live), never for the whole history at boot — `indexing` guards that. Merged
+  and closed are terminal and cached forever; open/draft re-check after `PR_TTL_MS` (10 min), a PR we
+  cannot see after an hour. `gh` brings its own token, so it works from the app's bare launchd
+  environment; `GH_BIN` overrides the search, and without `gh` the chips just stay neutral.
 * **Hooks are not installed** in `~/.claude/settings.json`. Merging `hooks/settings-snippet.json` is
   what makes permission prompts visible and "replied" exact instead of inferred.
-* **This directory is not a git repo** and the Mac app is only ad-hoc signed (this machine, not
-  distribution).
+* **The Mac app is only ad-hoc signed** — this machine, not distribution.

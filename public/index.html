@@ -10,11 +10,13 @@
     --working: #d9a82a; --idle: #2f9e5b; --needs: #d64545; --ended: #a3a39e; --unread: #c96442;
     --lane-ready: #d64545; --lane-clauding: #d9a82a; --lane-done: #2f9e5b;
     --user-bg: #f0efe9; --tool-bg: #f7f7f4; --code-bg: #ecebe6;
+    --pr-open: #2f9e5b; --pr-merged: #8250df; --pr-closed: #d64545; --pr-draft: #8b8b85;
     color-scheme: light dark;
   }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
     --bg: #141413; --panel: #1c1c1a; --ink: #e8e6df; --muted: #9a998f; --line: #2c2c29; --accent: #e08a68;
     --user-bg: #23231f; --tool-bg: #1f1f1c; --code-bg: #101010; --ended: #5d5d58;
+    --pr-open: #3fb950; --pr-merged: #a371f7; --pr-closed: #f85149; --pr-draft: #8b8b85;
   } }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; height: 100vh; display: grid; grid-template-rows: auto 1fr; overflow: hidden; }
@@ -132,7 +134,7 @@
   .chip { font-size: 10px; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; min-width: 0; flex: 0 1 auto; }
 
   /* ---- chat pane ---- */
-  .shead { padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--panel); display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; }
+  .shead { padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--panel); display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; min-width: 0; }
   .shead h2 { margin: 0; font-size: 14px; flex-basis: 100%; display: flex; gap: 8px; align-items: center; }
   .shead h2 .repo { font-weight: 800; }
   .shead h2 .sep { color: var(--muted); font-weight: 400; }
@@ -140,6 +142,21 @@
   .shead .path { font-size: 12px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .shead .status { font-size: 12px; display: flex; align-items: center; gap: 6px; }
   .shead a { color: var(--accent); font-size: 12px; }
+  /* PRs mentioned in the chat: own row, scrolls sideways so a busy session can't grow the header.
+     min-width:0 is load-bearing — without it the row's min-content width (chips never wrap) widens
+     the chat pane instead of scrolling. */
+  .shead .prs { flex-basis: 100%; min-width: 0; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+  .shead .pr { flex: none; font-size: 11px; text-decoration: none; white-space: nowrap;
+    border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; }
+  .shead .pr:hover { border-color: currentColor; }
+  /* open / merged / closed / draft, in the colours GitHub itself uses. No colour = not looked up
+     yet (or `gh` could not tell us), which is why the neutral chip stays the default. */
+  /* The border is a wash of the same colour — full strength only on hover — so a row of chips
+     stays as quiet as the rest of the header. No color-mix: the neutral border stands. */
+  .shead .pr[data-state="open"] { color: var(--pr-open); border-color: color-mix(in srgb, var(--pr-open) 45%, transparent); }
+  .shead .pr[data-state="merged"] { color: var(--pr-merged); border-color: color-mix(in srgb, var(--pr-merged) 45%, transparent); }
+  .shead .pr[data-state="closed"] { color: var(--pr-closed); border-color: color-mix(in srgb, var(--pr-closed) 45%, transparent); }
+  .shead .pr[data-state="draft"] { color: var(--pr-draft); border-color: color-mix(in srgb, var(--pr-draft) 45%, transparent); }
   #log { overflow-y: auto; padding: 14px 16px 40px; scroll-behavior: smooth; }
   /* ---- composer (stale chats only) ---- */
   #composer { border-top: 1px solid var(--line); background: var(--panel); padding: 8px 10px; display: grid; gap: 6px; }
@@ -447,14 +464,20 @@
   });
 
   // ---- chat --------------------------------------------------------------------------
+  // One chip per PR mentioned in the chat, most recently mentioned first (the server's order),
+  // coloured by its state on GitHub once the server has looked it up.
+  const prChip = pr => `<a class="pr"${pr.state ? ` data-state="${pr.state}"` : ''} href="${esc(pr.url)}" target="_blank" rel="noopener" title="${
+    esc(pr.url)}${pr.state ? ` — ${pr.state}` : ''}${pr.lastAt ? ` · last came up ${rel(pr.lastAt)} ago` : ''}${
+    pr.count ? ` · mentioned ${pr.count}× · last by ${pr.by === 'user' ? 'you' : 'Claude'}` : ''}">${esc(pr.label)}</a>`;
+
   function renderHead(s) {
     $('#shead').innerHTML = `<h2><span class="repo" style="color:${repoColor(s.project)}">${esc(s.project)}</span><span class="sep">/</span><span>${esc(s.title)}</span><button class="btn x" id="hideChatBtn" title="Hide chat">✕</button></h2>
       <span class="status"><span class="dot ${s.status}"></span>${statusLabel[s.status] || s.status}${s.statusSince ? ` · ${rel(s.statusSince)}` : ''}</span>
       <span class="path">${esc(s.cwd || '')}${s.gitBranch && s.gitBranch !== 'HEAD' ? ' @ ' + esc(s.gitBranch) : ''}</span>
       ${s.model ? `<span class="chip">${esc(s.model)}</span>` : ''}${s.live?.pid ? `<span class="chip">pid ${s.live.pid}</span>` : ''}
-      ${s.prLinks.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u.replace(/^https:\/\/github\.com\//, ''))}</a>`).join('')}
       <span class="spacer" style="flex:1"></span>
-      ${s.cwd ? `<button class="btn" id="focusBtn">Focus in VS Code</button>` : ''}`;
+      ${s.cwd ? `<button class="btn" id="focusBtn">Focus in VS Code</button>` : ''}
+      ${s.prs?.length ? `<div class="prs">${s.prs.map(prChip).join('')}</div>` : ''}`;
     renderComposer(s);
     const fb = $('#focusBtn'); if (fb) fb.onclick = () => fetch(`/api/sessions/${s.id}/focus`, { method: 'POST' });
     $('#hideChatBtn').onclick = () => { prefs.chatVisible = false; savePrefs(); applyChatPrefs(); };

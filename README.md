@@ -151,6 +151,16 @@ Read ×3"* — so the conversation actually **reads as prose** instead of a wall
 **tools:** selector switches between collapsed / expanded / hidden, and **fold code** tucks fenced
 blocks longer than 6 lines behind a *"bash · 23 lines"* summary.
 
+**The header lists every PR the chat mentioned** — one chip per pull request, most recently
+mentioned first, so the one you are on now leads. It picks them up from the URLs you or Claude wrote
+in the conversation as well as from Claude Code's own `pr-link` lines.
+
+Each chip is **coloured by what GitHub says about it** — green open, violet merged, red closed, grey
+draft — looked up through your own `gh` CLI when you open the chat, so a chat you have not touched in
+a week tells you at a glance which of its PRs actually landed. A neutral chip means the lookup has
+not come back (or `gh` is not installed — then the colours simply never appear). Hover for the full
+URL, the state, when it last came up and how many times it was mentioned.
+
 **On a stale chat a reply box appears at the bottom** — type, ⏎, and the board resumes the chat for
 you; ⇧⏎ for a newline. Your prompt and Claude's answer arrive through the transcript like any other
 line, and the card walks Stale → Clauding → Ready on its own.
@@ -267,6 +277,9 @@ Either way, the UI carries over unchanged.
 * 🔒 **Transcripts contain everything Claude read**: your code, secrets that landed in tool output,
   your prompts. The server binds to **loopback only** and has **no auth** — do *not* expose it on a
   network interface.
+* 🌐 **Opening a chat asks GitHub about its PRs.** That is the one thing here that leaves the
+  machine: `gh api graphql`, with your own credentials, sending nothing but `owner/repo#number` —
+  which GitHub already knows. Nothing from the transcript goes with it. No `gh`, no colours, no call.
 * Status is **inferred** from the transcript unless you install the hooks. A session interrupted in a
   way that writes nothing may sit in Clauding until its next line.
 * **"Stale" is about the *process*, not the conversation.** Headless `claude -p` runs, and
