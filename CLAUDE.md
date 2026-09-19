@@ -78,8 +78,7 @@ its tooltip carries `lastUserAt`.
 * **Browser-only** — `localStorage` key `peixairada-prefs`: selected project, filter chip, chat-list
   width, tools mode, fold code, sound, show-all, chat-header details fold, terminal drawer
   open/height, chat zoom (`chatZoom`: CSS `zoom` on `#log` plus xterm's fontSize, ⌘+/⌘−/⌘0), the
-  projects strip (`projectsCompact`, default on — `main.compact` pads for the strip and the column is
-  absolute over it, growing on hover). While the drawer's terminal is live the pane is all terminal — the rendered transcript
+  projects strip (`projectsCompact`, default on — a 46px column, opened only by the » button). While the drawer's terminal is live the pane is all terminal — the rendered transcript
   would be the same conversation twice — unless `show chat` split it (`term.split`, page state, reset on
   every attach); an exited terminal or a hidden drawer shows the transcript again. Keys from the lane board are deleted on load. `renderHead`
   re-runs on every SSE update, so anything it renders must read its open/closed state from here — the
@@ -180,10 +179,13 @@ its tooltip carries `lastUserAt`.
   `WKWebView` in an `NSSplitView` beside the board, with its *own* delegate: the board's delegate
   sends every non-local link to the system browser, and a web view with no UI delegate silently drops
   `target=_blank`, which is why `PrPaneDelegate` implements `createWebViewWith` by loading into the
-  same view. The page asks for the pane over the bridge (`{type: 'open', url, left}` — `left` is the chat column's
-  edge in CSS px, which are points in the board's web view, so the pane covers exactly the chat column;
-  `{type: 'toggle'}` is Esc from the board, and Esc inside the pane closes it only while it shows GitHub,
-  through a local key monitor — an editor in there needs its Esc) and sends other
+  same view. The page asks for the pane over the bridge (`{type: 'open', url, left, pane}` — `left` is the chat
+  column's edge in CSS px, which are points in the board's web view, so the pane covers exactly the chat
+  column; `pane` is `github` or `ide`, two web views on two toolbar tabs so a PR never replaces the
+  editor or the other way round). Esc is handled in Swift by a local key monitor, because in full screen
+  the window would otherwise take it to leave full screen: with the pane visible, Esc from the board or
+  from the GitHub web view closes the pane and is swallowed; from the editor it passes through, and with
+  the pane hidden it is not touched at all and sends other
   external links out the same way (`external`); in a plain browser the same clicks open tabs. Both
   web views share the default website data store, so the GitHub login survives a relaunch.
 

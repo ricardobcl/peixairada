@@ -118,8 +118,9 @@ working, 🟢 replied — plus an unread badge.
 
 The projects column is a **strip** by default — each project a solid tab in its colour, the name
 running vertically, the selected one running straight into the chat list, whose edge and header
-carry the same colour — and it opens into the full column while the pointer is over it, as an
-overlay, so nothing else moves. **»** in its header keeps it open; **«** folds it back.
+carry the same colour — and **»** opens it into the full column, **«** folds it back; nothing happens on hover. Each of
+the first two columns has its own filter box at the top: projects by name, chats by title, branch
+or prompt.
 
 **Chats** of the selected project, newest first by your own last touch, with filter chips for
 *needs you · working · ready · stale · done*. **+ new chat** starts one right there: a terminal
@@ -154,7 +155,8 @@ chip are remembered per browser.
 
 Every card leads with its **state dot**, the **repo name** when the list spans several folders
 (*All chats*, a named project) and where it is live (VS Code, CLI, or a terminal here), then the
-session title, the last thing you asked and the start of Claude's reply — each marked by a glyph
+session title, the PRs it mentions as `#32`-style chips in GitHub's state colours (click one and
+that chat opens with that PR), the last thing you asked and the start of Claude's reply — each marked by a glyph
 rather than a word — a teal figure for you, Claude's sunburst in clay for Claude, with Claude's line
 set brighter because that is the one you scan a list for. The card answers *what changed*; the dot
 answers *what state it is in*.
@@ -214,7 +216,7 @@ the chat here. Nothing respawns a CLI claude, so the transcript keeps one writer
 mid-way through is lost, and the button says *mid-reply* when that is the case. The first time in a folder Claude asks its usual *trust this folder?* question.
 
 **VS Code chats stay in VS Code.** A chat whose last turn came from the VS Code extension gets a
-**blue border and a blue wash over the chat pane** and a *VS Code* chip on its card and in its header; the board
+**blue border and a blue wash over the chat pane** and a *VS Code* chip on its card; the board
 reads it, the VS Code button opens it there, and that is all — no terminal, no reply box. Tried and dropped (2026-09-19): killing the
 extension's process to take the chat over only makes the extension respawn it a few seconds later,
 and a turn added from anywhere else never shows in the VS Code tab until the chat is reopened there.
@@ -241,8 +243,10 @@ does not reach this instance; open a chat from its own sidebar.
 open / merged / closed / draft, the review decision, checks passed or failing or still running,
 +added −deleted over how many files, head → base, the author — and the PR itself opens: in the Mac
 app in a **pane over the chat column** (GitHub refuses to be framed, so it is a second web view with
-its own back / reload / open-in-browser, and your GitHub login sticks between launches) — **Esc**
-hides it and brings it back; in a plain browser, in a new tab. PR links in Claude's replies and in the terminal do the same.
+its own back / reload / open-in-browser, and your GitHub login sticks between launches). The pane
+holds **two pages, GitHub and VS Code Web**, on two tabs in its toolbar, so opening one never
+replaces the other. **Esc** closes the pane — from the board, or from the GitHub side; the editor
+keeps its Esc — and a chip or the web button brings it back where it was. In a plain browser, a new tab. PR links in Claude's replies and in the terminal do the same.
 
 **On a stale CLI chat there is also a one-line reply box** — type, ⏎, and the board resumes the chat
 with `claude --resume <id> -p`; ⇧⏎ for a newline. It hides while a terminal is open on that chat.

@@ -138,8 +138,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   var web: WKWebView!
   var split: NSSplitView!
   var prPane: NSView!
-  var prWeb: WKWebView!
+  var prWeb: WKWebView!      // GitHub
+  var ideWeb: WKWebView!     // VS Code Web — its own view, so a PR never replaces the editor or the other way round
+  var paneTabs: NSSegmentedControl!
   var prTitle: NSTextField!
+  var currentWeb: WKWebView { paneTabs.selectedSegment == 1 ? ideWeb : prWeb }
   let prDelegate = PrPaneDelegate()
   let server = ServerController()
   var statusItem: NSStatusItem!
@@ -240,12 +243,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   // for it over the bridge ({type: "open", url}); "×" hides it and keeps the page loaded.
 
   private func buildPrPane() {
-    prWeb = WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
-    prWeb.navigationDelegate = prDelegate
-    prWeb.uiDelegate = prDelegate
-    prWeb.allowsBackForwardNavigationGestures = true
-    if prWeb.responds(to: Selector(("setInspectable:"))) { prWeb.setValue(true, forKey: "inspectable") }
-    prDelegate.onTitle = { [weak self] t in self?.prTitle.stringValue = t }
+    func paneWeb() -> WKWebView {
+      let w = WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
+      w.navigationDelegate = prDelegate
+      w.uiDelegate = prDelegate
+      w.allowsBackForwardNavigationGestures = true
+      if w.responds(to: Selector(("setInspectable:"))) { w.setValue(true, forKey: "inspectable") }
+      return w
+    }
+    prWeb = paneWeb(); ideWeb = paneWeb()
+    prDelegate.onTitle = { [weak self] wv, t in if let self = self, wv === self.currentWeb { self.prTitle.stringValue = t } }
 
     func button(_ title: String, _ action: Selector, _ target: AnyObject?, tip: String) -> NSButton {
       let b = NSButton(title: title, target: target, action: action)
@@ -258,10 +265,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     prTitle.font = .systemFont(ofSize: 12); prTitle.textColor = .secondaryLabelColor
     prTitle.setContentHuggingPriority(NSLayoutConstraint.Priority(1), for: .horizontal)
     prTitle.setContentCompressionResistancePriority(NSLayoutConstraint.Priority(1), for: .horizontal)
+    paneTabs = NSSegmentedControl(labels: ["GitHub", "VS Code"], trackingMode: .selectOne, target: self, action: #selector(paneTabChanged(_:)))
+    paneTabs.controlSize = .small; paneTabs.font = .systemFont(ofSize: 11); paneTabs.selectedSegment = 0
+    paneTabs.setContentHuggingPriority(.required, for: .horizontal)
     let bar = NSStackView(views: [
-      button("‹", #selector(WKWebView.goBack(_:)), prWeb, tip: "Back"),
-      button("›", #selector(WKWebView.goForward(_:)), prWeb, tip: "Forward"),
-      button("↻", #selector(WKWebView.reload(_:)), prWeb, tip: "Reload"),
+      paneTabs,
+      button("‹", #selector(paneBack(_:)), self, tip: "Back"),
+      button("›", #selector(paneForward(_:)), self, tip: "Forward"),
+      button("↻", #selector(paneReload(_:)), self, tip: "Reload"),
       prTitle,
       button("Open in Browser", #selector(openPrExternally(_:)), self, tip: "Open this page in your default browser"),
       button("×", #selector(closePrPane(_:)), self, tip: "Close the pane (the page stays loaded)")
@@ -272,14 +283,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     bar.edgeInsets = NSEdgeInsets(top: 5, left: 8, bottom: 5, right: 8)
     bar.setContentHuggingPriority(.required, for: .vertical)
     let sep = NSBox(); sep.boxType = .separator
-    prPane = NSStackView(views: [bar, sep, prWeb])
+    // Both web views fill the same body; the tabs say which one is on top. The other keeps its page.
+    let body = NSView()
+    for w in [prWeb!, ideWeb!] {
+      w.translatesAutoresizingMaskIntoConstraints = false
+      body.addSubview(w)
+      NSLayoutConstraint.activate([w.leadingAnchor.constraint(equalTo: body.leadingAnchor), w.trailingAnchor.constraint(equalTo: body.trailingAnchor),
+                                   w.topAnchor.constraint(equalTo: body.topAnchor), w.bottomAnchor.constraint(equalTo: body.bottomAnchor)])
+    }
+    ideWeb.isHidden = true
+    prPane = NSStackView(views: [bar, sep, body])
     (prPane as! NSStackView).orientation = .vertical
     (prPane as! NSStackView).spacing = 0
     (prPane as! NSStackView).alignment = .width
     (prPane as! NSStackView).distribution = .fill
-    prWeb.setContentHuggingPriority(NSLayoutConstraint.Priority(1), for: .vertical)
-    prWeb.setContentCompressionResistancePriority(NSLayoutConstraint.Priority(1), for: .vertical)
+    body.setContentHuggingPriority(NSLayoutConstraint.Priority(1), for: .vertical)
+    body.setContentCompressionResistancePriority(NSLayoutConstraint.Priority(1), for: .vertical)
   }
+  @objc func paneTabChanged(_ sender: Any?) { showPaneTab(paneTabs.selectedSegment) }
+  func showPaneTab(_ i: Int) {
+    paneTabs.selectedSegment = i
+    prWeb.isHidden = i != 0; ideWeb.isHidden = i != 1
+    prTitle.stringValue = currentWeb.title.flatMap { $0.isEmpty ? nil : $0 } ?? currentWeb.url?.absoluteString ?? ""
+  }
+  @objc func paneBack(_ sender: Any?) { currentWeb.goBack() }
+  @objc func paneForward(_ sender: Any?) { currentWeb.goForward() }
+  @objc func paneReload(_ sender: Any?) { currentWeb.reload() }
 
   // The pane takes the chat column: the page sends the column's left edge (CSS px, which are points
   // in the board's web view, so the divider lands exactly there), and the last one is kept for a
@@ -295,33 +324,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     if prPane.isHidden { prPane.isHidden = false }
     split.setPosition(paneLeft, ofDividerAt: 0)
   }
-  func openPrPane(_ url: URL, left: CGFloat? = nil) {
+  func openPrPane(_ url: URL, left: CGFloat? = nil, pane: String = "github") {
     showPrPane(left: left)
+    showPaneTab(pane == "ide" ? 1 : 0)
     prTitle.stringValue = url.absoluteString
-    prWeb.load(URLRequest(url: url))
-    logLine("pr pane: \(url.absoluteString)")
+    currentWeb.load(URLRequest(url: url))
+    logLine("pane \(pane): \(url.absoluteString)")
   }
   @objc func closePrPane(_ sender: Any?) {
     UserDefaults.standard.set(Double(prPane.bounds.width), forKey: "prPaneWidth")
     prPane.isHidden = true
   }
-  // Esc shows and hides the pane: from the board (the page posts "toggle"), and from inside the pane
-  // while it shows GitHub — never while it shows an editor, which needs its Esc.
+  // Esc closes the pane, and is swallowed so the window does not also leave full screen — from the
+  // board, and from the GitHub web view. The editor keeps its Esc, and with the pane hidden the key
+  // is not touched at all (dialogs, full screen, the rename box all keep theirs).
   func togglePrPane() {
-    if prPane.isHidden { if prWeb.url != nil { showPrPane(left: nil) } }
+    if prPane.isHidden { if currentWeb.url != nil { showPrPane(left: nil) } }
     else { closePrPane(nil) }
   }
   private func installEscapeMonitor() {
     NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
       guard let self = self, e.keyCode == 53, e.modifierFlags.intersection([.command, .control, .option]).isEmpty,
-            !self.prPane.isHidden, let fr = self.window.firstResponder as? NSView, fr.isDescendant(of: self.prWeb),
-            (self.prWeb.url?.host ?? "").hasSuffix("github.com") else { return e }
+            !self.prPane.isHidden, let fr = self.window.firstResponder as? NSView else { return e }
+      let fromBoard = fr.isDescendant(of: self.web)
+      let fromGitHub = fr.isDescendant(of: self.prWeb) && (self.prWeb.url?.host ?? "").hasSuffix("github.com")
+      guard fromBoard || fromGitHub else { return e }
       self.closePrPane(nil)
       return nil
     }
   }
   @objc func openPrExternally(_ sender: Any?) {
-    if let u = prWeb.url { NSWorkspace.shared.open(u) }
+    if let u = currentWeb.url { NSWorkspace.shared.open(u) }
   }
 
   private func showMessage(_ text: String) {
@@ -502,7 +535,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                sessionId: body["sessionId"] as? String ?? "")
       }
     case "open":
-      if let s = body["url"] as? String, let url = URL(string: s) { openPrPane(url, left: (body["left"] as? Double).map { CGFloat($0) }) }
+      if let s = body["url"] as? String, let url = URL(string: s) { openPrPane(url, left: (body["left"] as? Double).map { CGFloat($0) }, pane: body["pane"] as? String ?? "github") }
     case "toggle":
       togglePrPane()
     case "external":
@@ -600,7 +633,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 /// non-local link to the system browser), keeps GitHub's target=_blank links in the pane — a web
 /// view with no UI delegate silently drops those — and hands non-web schemes (mailto:, vscode:) out.
 final class PrPaneDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
-  var onTitle: ((String) -> Void)?
+  var onTitle: ((WKWebView, String) -> Void)?
   func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
     if let url = navigationAction.request.url { webView.load(URLRequest(url: url)) }
@@ -615,10 +648,10 @@ final class PrPaneDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
     decisionHandler(.allow)
   }
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-    onTitle?(webView.title.flatMap { $0.isEmpty ? nil : $0 } ?? webView.url?.absoluteString ?? "")
+    onTitle?(webView, webView.title.flatMap { $0.isEmpty ? nil : $0 } ?? webView.url?.absoluteString ?? "")
   }
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-    onTitle?("Could not load: \(error.localizedDescription)")
+    onTitle?(webView, "Could not load: \(error.localizedDescription)")
   }
 }
 
