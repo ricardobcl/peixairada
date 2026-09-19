@@ -715,6 +715,26 @@ function termEnv() {
  * the PATH that .zshrc builds (mise activates there). `exec` makes claude take over the shell's
  * pid, which is the pid the registry will report.
  */
+// Take a chat over from the terminal it runs in — iTerm, say: end that claude, then resume the chat
+// here. CLI only: nothing respawns a CLI process, so the transcript has one writer again the moment it
+// is gone (the VS Code extension respawns its own — VSCODE_CHAT_ERR). SIGTERM first, which is what
+// closing the terminal amounts to (claude exits and drops its registry entry); SIGKILL if it is still
+// there after 5 s. Whatever Claude was mid-way through is lost, and the page says so before the click.
+const TAKEOVER_WAIT_MS = 10_000;
+function takeOver(s, pid) {
+  return new Promise(resolve => {
+    try { process.kill(pid, 'SIGTERM'); } catch (e) { return resolve({ code: 500, error: `could not signal pid ${pid}: ${e.message}` }); }
+    const t0 = Date.now(); let hard = false;
+    const tick = () => {
+      if (!pidAlive(pid)) { s.live = null; applyLiveness(s); schedulePush(s); return resolve({ ok: true }); }
+      if (Date.now() - t0 > TAKEOVER_WAIT_MS) return resolve({ code: 504, error: `pid ${pid} is still running` });
+      if (!hard && Date.now() - t0 > 5000) { hard = true; try { process.kill(pid, 'SIGKILL'); } catch {} }
+      setTimeout(tick, 200);
+    };
+    setTimeout(tick, 200);
+  });
+}
+
 function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30 }) {
   if (!nodePty) return { code: 501, error: 'node-pty is not available — run npm install and restart the server' };
   const bin = claudeBin();
@@ -969,6 +989,20 @@ const server = createServer(async (req, res) => {
       let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
       const r = spawnTerm({ cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows });
       return json(res, r.code, r);
+    }
+    if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/takeover$/))) {   // end the claude it is live in, resume it here
+      const s = sessions.get(m[1]);
+      if (!s) return json(res, 404, { error: 'unknown session' });
+      if (inVsCode(s)) return json(res, 409, { error: VSCODE_CHAT_ERR });
+      const have = termOf(s);
+      if (have && have.exited === null) return json(res, 200, { terminal: termSummary(have) });   // it is already here
+      if (!s.alive || !s.live?.pid) return json(res, 409, { error: 'not live anywhere — open a terminal on it instead' });
+      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const cwd = s.live.cwd || s.cwd;   // before the registry entry goes
+      const r = await takeOver(s, s.live.pid);
+      if (!r.ok) return json(res, r.code, { error: r.error });
+      const t = spawnTerm({ cwd, sessionId: s.id, cols: body.cols, rows: body.rows });
+      return json(res, t.code, t);
     }
     if (req.method === 'DELETE' && (m = p.match(/^\/api\/terminals\/([\w-]+)$/))) {
       const t = terms.get(m[1]);

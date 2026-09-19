@@ -39,7 +39,7 @@ by hand). The Mac app needs `swiftc` (full Xcode is installed here) and bundles 
 |---|---|
 | Transcript, appended live | `~/.claude/projects/<cwd-slug>/<session-id>.jsonl` |
 | Which sessions are alive | `~/.claude/sessions/<pid>.json` + `process.kill(pid, 0)` |
-| Where a chat lives | `entrypoint` on every user/assistant line (`claude-vscode` / `cli`), the registry's while it runs — `inVsCode()` in server.mjs, `entrypoint` in the summary. VS Code chats: blue card border, 409 from reply and terminal, no `>_`, no composer |
+| Where a chat lives | `entrypoint` on every user/assistant line (`claude-vscode` / `cli`), the registry's while it runs — `inVsCode()` in server.mjs, `entrypoint` in the summary. VS Code chats: blue border on the chat pane, 409 from reply and terminal, no `>_`, no composer. CLI chats live in another terminal: `POST …/takeover` (SIGTERM, wait for the pid, `spawnTerm`) |
 | Reply finished | assistant line with `stop_reason: "end_turn"` (tool calls are `"tool_use"`) |
 | Waiting on the user | `AskUserQuestion` / `ExitPlanMode` tool call with no result yet |
 | Titles | the oldest still-open PR the chat mentions, else `custom-title` / `ai-title` lines |
@@ -213,7 +213,8 @@ someone did.
 
 * **Resuming a VS Code chat from the board** (dropped 2026-09-19). A chat whose registry entry, or
   failing that its last transcript line, says `entrypoint: "claude-vscode"` gets a 409 from the reply
-  and terminal routes, no `>_` button, no composer, and a blue border on its card. Two findings ended
+  and terminal routes, no `>_` button, no composer, and a blue border around the chat pane (the card
+  keeps a chip). Two findings ended
   it: (1) `kill <pid>` on the extension's claude just makes the extension spawn another
   `--resume=<id>` 10–30 s later — it embeds the Agent SDK and re-runs its query, and the bundle has
   no restart limit — so a take-over would race it into two writers on one transcript; (2) the
@@ -221,7 +222,8 @@ someone did.
   any other claude never appears in the open tab. The other direction still works: a chat started
   here, ended, and opened with the VS Code button registers there within seconds (verified) and is a
   VS Code chat from then on; whether its tab rebuilds the history from the transcript was not
-  confirmed on screen.
+  confirmed on screen. A *CLI* chat live in another terminal is the opposite case — nothing respawns
+  it — so that one can be taken over (`takeOver()` in server.mjs, the armed `>_` button in the page).
 * **Attaching to a *live* session from the board.** Stale chats *can* be replied to and chatted
   with — `replyToStale` shells out to `claude --resume <id> -p <text>` and the terminal drawer runs
   `claude --resume <id>` in a PTY: public CLI, same transcript, and the watcher shows the answer with

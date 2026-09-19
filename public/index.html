@@ -48,6 +48,8 @@
   .btn.icon.err { color: var(--needs); border-color: var(--needs); }
   #focusBtn.err .ic { fill: var(--needs); }   /* must out-specify #focusBtn .ic above */
   #termBtn.on { color: var(--accent); border-color: var(--accent); }
+  #termBtn.take { color: var(--ink); }                                        /* live in another terminal: can be taken over */
+  #termBtn.take.arm { color: var(--needs); border-color: var(--needs); }      /* armed: the next click ends that claude */
   .btn.icon .lbl { font-size: 11px; }
   header label { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 5px; cursor: pointer; white-space: nowrap; }
   header select, .colhead select { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; max-width: 180px; }
@@ -67,6 +69,8 @@
      and slid #log into an auto row and the drawer into the 1fr — a gap under the drawer on a short chat,
      a drawer pushed off the bottom on a long one. */
   #shead { grid-row: 1; } #prbar { grid-row: 2; } #log { grid-row: 3; } #term { grid-row: 4; } #composer { grid-row: 5; }
+  /* A VS Code chat: read here, continued there. The whole pane says so — an outline, so nothing moves. */
+  #chat.vsc { outline: 2px solid var(--vscode); outline-offset: -2px; }
   .colhead { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); font-weight: 700; min-width: 0; min-height: 43px; }
   .colhead .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--ink); font-weight: 800; display: flex; align-items: center; gap: 7px; }
   .colhead .n { background: var(--user-bg); border-radius: 10px; padding: 0 7px; font-size: 11px; color: var(--ink); font-weight: 600; letter-spacing: 0; }
@@ -106,9 +110,6 @@
   #slist .none { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 0; }
   .card { background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--repo, var(--line)); border-radius: 10px; padding: 8px 10px 7px; cursor: pointer; min-width: 0; overflow: hidden; }
   .card:hover { border-color: var(--accent); border-left-color: var(--repo, var(--accent)); }
-  /* A VS Code chat: read here, continued there. Blue on three sides, the repo colour keeps the left;
-     the padding gives the extra px back so its text lines up with the other cards. */
-  .card.vsc { border-color: var(--vscode); border-width: 2px; border-left-width: 5px; padding: 7px 9px 6px; }
   .chip.vsc { color: var(--vscode); border-color: var(--vscode); }
   .card.active { outline: 2px solid var(--accent); outline-offset: -1px; }
   .card.needs-input { border-color: var(--needs); }
@@ -533,7 +534,7 @@
       : (!s.alive || s.status === 'idle') && s.lastActivity ? `<button class="act" data-act="done" title="Tick as done (persisted; comes back on new activity)">✓</button>` : '';
     const tip = titleTip(s);
     const showRepo = p.key === ALL || p.custom;
-    return `<div class="card ${s.status} ${s.done ? 'done' : ''} ${s.id === state.current ? 'active' : ''} ${inVsCode(s) ? 'vsc' : ''}" data-id="${s.id}" style="--repo:${repoColor(s.project)}">
+    return `<div class="card ${s.status} ${s.done ? 'done' : ''} ${s.id === state.current ? 'active' : ''}" data-id="${s.id}" style="--repo:${repoColor(s.project)}">
       <div class="top"><span class="dot ${s.done ? 'done' : s.status}"></span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${esc(s.project)}</span>` : ''}<span class="grow"></span>${s.alive ? `<span class="chip${inVsCode(s) ? ' vsc' : ''}">${entryLabel(s)}</span>` : inVsCode(s) ? `<span class="chip vsc" title="${VSC_TIP}">VS Code</span>` : ''}<span class="time" title="${esc(timeTip(s))}">${rel(s.lastActivity)}</span>${un ? `<span class="badge">${un}</span>` : ''}${act}</div>
       <div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${esc(s.title)}</div>
       ${s.lastPrompt ? `<div class="snip you"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
@@ -639,15 +640,17 @@
       title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}\n${pr.state ? pr.state + ' · ' : ''}last mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}`)}">${esc(pr.label)}${pr.title ? `<span class="t">${esc(pr.title)}</span>` : ''}</a>`;
   const FOCUS_TIP = "Open this chat in VS Code";
   function renderHead(s) {
+    $('#chat').classList.toggle('vsc', inVsCode(s));
     // One row: title · dot+age · ··· · buttons, then PR chips flowing after them and spilling onto
     // further lines only when they genuinely do not fit. No status word — the dot carries it in
     // colour; what it cannot say is how long ago.
+    const take = takeable(s), armed = take && term.arm === s.id;
     $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" style="color:${repoColor(s.project)}" title="Show this folder's chats">${esc(s.project)}</span><span class="sep">/</span><span class="t">${esc(s.title)}</span></h2>
       <span class="status" title="${esc(statusLabel[s.status] || s.status)}"><span class="dot ${s.status}"></span>${s.statusSince ? rel(s.statusSince) : ''}</span>
       <button class="btn icon dots ${prefs.headDetails ? 'on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}"
         title="${prefs.headDetails ? 'Hide' : 'Show'} path, branch and session details">···</button>
       ${s.cwd ? `<button class="btn icon" id="focusBtn" title="${FOCUS_TIP}" aria-label="Focus in VS Code">${ICON.vscode}</button>` : ''}
-      ${s.cwd && !inVsCode(s) ? `<button class="btn icon${term.err ? ' err' : termLive(s) && term.id === s.terminal.id ? ' on' : ''}" id="termBtn" title="${esc(termTip(s))}" aria-label="Terminal"${!termLive(s) && s.alive ? ' disabled' : ''}>${ICON.term}${term.err ? '<span class="lbl">failed</span>' : ''}</button>` : ''}
+      ${s.cwd && !inVsCode(s) ? `<button class="btn icon${term.err ? ' err' : termLive(s) && term.id === s.terminal.id ? ' on' : take ? (armed ? ' take arm' : ' take') : ''}" id="termBtn" title="${esc(termTip(s))}" aria-label="Terminal"${!termLive(s) && s.alive && !take ? ' disabled' : ''}>${ICON.term}${term.err ? '<span class="lbl">failed</span>' : take ? `<span class="lbl">${armed ? (s.status === 'working' ? 'sure? mid-reply' : 'sure?') : 'take over'}</span>` : ''}</button>` : ''}
       ${inVsCode(s) ? `<span class="chip vsc" title="${VSC_TIP}">VS Code</span>` : ''}
       ${s.prs?.length ? s.prs.map(prChip).join('') : ''}
       <div class="details"${prefs.headDetails ? '' : ' hidden'}>
@@ -673,7 +676,7 @@
       };
     }
     $('#detailsBtn').onclick = () => { prefs.headDetails = !prefs.headDetails; savePrefs(); renderHead(s); };
-    const tb = $('#termBtn'); if (tb) tb.onclick = () => { term.err = null; openTerminalFor(s); };
+    const tb = $('#termBtn'); if (tb) tb.onclick = () => { term.err = null; if (takeable(s)) (term.arm === s.id ? takeOver(s) : armTakeOver(s)); else openTerminalFor(s); };
     $('#shead .repo').onclick = () => { if (s.cwd) selectProject(s.cwd); };
   }
 
@@ -683,7 +686,7 @@
   // switching chats does not end it — "end" does. The server replays its scrollback on every attach,
   // which is what makes a reload or a switch-and-back seamless. The transcript above it is the
   // reading view; the terminal is where you type.
-  const term = { id: null, sessionId: null, cwd: null, resume: false, ws: null, xt: null, fit: null, exited: null, err: null, split: false };
+  const term = { id: null, sessionId: null, cwd: null, resume: false, ws: null, xt: null, fit: null, exited: null, err: null, split: false, arm: null, armTimer: null };
   function xtTheme() {
     const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
     return { background: v('--term-bg'), foreground: v('--ink'), cursor: v('--accent'), cursorAccent: v('--term-bg'), selectionBackground: v('--term-sel') };
@@ -765,7 +768,29 @@
   }
   const termTip = s => term.err ? term.err
     : termLive(s) ? (prefs.termOpen && term.id === s.terminal.id ? 'The terminal is open below' : "Show this chat's terminal")
+    : takeable(s) ? (term.arm === s.id
+      ? `Click again to end claude (pid ${s.live.pid}) in its terminal and resume the chat here${s.status === 'working' ? ' — Claude is mid-reply, and that reply will be lost' : ''}`
+      : `Take over: end claude (pid ${s.live.pid}) in its terminal and resume the chat here`)
     : s.alive ? `Live in ${entryLabel(s)} — it cannot be attached from here` : 'Open a terminal on this chat (claude --resume)';
+  // Live in a terminal that is not ours — iTerm, say. Nothing respawns a CLI claude, so ending it and
+  // resuming here leaves one writer; a VS Code chat is never takeable (its extension respawns).
+  const takeable = s => !!(s?.alive && s.live?.pid && s.entrypoint === 'cli' && !termLive(s));
+  // Two clicks, six seconds apart at most: the first arms the button (it turns red and says so), the
+  // second ends the other claude. renderHead re-runs on every update and reads the armed state back.
+  function armTakeOver(s) {
+    term.arm = s.id; clearTimeout(term.armTimer);
+    term.armTimer = setTimeout(() => { if (term.arm === s.id) { term.arm = null; renderHead(state.sessions.get(s.id) || s); } }, 6000);
+    renderHead(s);
+  }
+  async function takeOver(s) {
+    term.arm = null; clearTimeout(term.armTimer);
+    const tb = $('#termBtn'); if (tb) { tb.disabled = true; const l = tb.querySelector('.lbl'); if (l) l.textContent = 'ending…'; }
+    const r = await fetch(`/api/sessions/${s.id}/takeover`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(termSize()) });
+    const d = await r.json().catch(() => ({}));
+    const now = state.sessions.get(s.id) || s;
+    if (!r.ok) { term.err = d.error || `HTTP ${r.status}`; renderHead(now); return; }
+    prefs.termOpen = true; savePrefs(); attachTerm(d.terminal); renderHead(now);
+  }
   async function openTerminalFor(s) {
     if (termLive(s)) { prefs.termOpen = true; savePrefs(); syncTerm(s); renderHead(s); return; }
     const r = await fetch(`/api/sessions/${s.id}/terminal`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(termSize()) });
@@ -782,6 +807,7 @@
     state.current = null; state.entries = []; history.replaceState(null, '', location.pathname); hidePr();
     if (!inProject({ cwd }, projectStub(prefs.project))) prefs.project = cwd;   // so the new chat lands in view
     savePrefs(); renderBoard();
+    $('#chat').classList.remove('vsc');
     $('#shead').innerHTML = `<h2><span class="repo" style="color:${repoColor(folderName(cwd))}">${esc(folderName(cwd))}</span><span class="sep">/</span><span class="t">new chat</span></h2>`;
     $('#log').innerHTML = '<div class="empty">Say something in the terminal below — the transcript shows up here once Claude has written it.</div>';
     renderComposer(null);
