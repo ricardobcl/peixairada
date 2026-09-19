@@ -97,6 +97,11 @@ its tooltip carries `lastUserAt`.
   which is why that row used to scroll sideways instead. `.shead h2` must keep a fixed `flex-basis`
   for the same reason: at `auto` a long title exceeds the line by itself and pushes the status, the
   buttons and every chip onto the next one.
+* **No Edit menu, no ⌘V.** A menu bar built in code has no Edit menu unless it makes one, and
+  without Cut/Copy/Paste/Select All items the key equivalents are dispatched to nobody: paste did
+  nothing in GitHub's login form in the PR pane, in the filter box, or in the terminal drawer. Fixed
+  on 2026-09-19 by adding the menu with the standard `cut:`/`copy:`/`paste:`/`selectAll:` actions
+  and a nil target (first responder).
 * **Swift:** `Result<Void, String>` does not compile (`String` isn't an `Error`); the server callbacks
   use `(String?) -> Void` where nil means success.
 * **The app can lose its server without noticing.** It adopts whatever already answers on 7331, and on

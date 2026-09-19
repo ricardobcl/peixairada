@@ -357,6 +357,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     appMenu.addItem(withTitle: "Quit peixAIrada", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     appItem.submenu = appMenu
 
+    // A menu bar built in code has no Edit menu unless it makes one — and without these items ⌘C,
+    // ⌘V, ⌘X, ⌘A and ⌘Z do nothing anywhere in the app: not in a text field, not in a web view
+    // (GitHub's login form), not in the terminal drawer. The key equivalents are dispatched
+    // through the menu to the first responder; the items are the mechanism, not decoration.
+    let editItem = NSMenuItem(); main.addItem(editItem)
+    let edit = NSMenu(title: "Edit")
+    edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+    edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+    edit.addItem(.separator())
+    edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+    edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+    edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+    edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+    editItem.submenu = edit
+
     let viewItem = NSMenuItem(); main.addItem(viewItem)
     let view = NSMenu(title: "View")
     view.addItem(withTitle: "Reload", action: #selector(reload(_:)), keyEquivalent: "r").target = self
