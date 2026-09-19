@@ -55,9 +55,9 @@ scripts/launchd.sh status    # …also: logs · uninstall · print
                              # PORT=8000 scripts/launchd.sh install  to pick another port
 ```
 
-Lane collapse, repo folds and chat position are remembered **per browser**. **Done** ticks live
-server-side in `~/Library/Application Support/peixAIrada/state.json`, so they survive a restart and
-look the same in every browser *and* in the Mac app.
+The selected project, filter chip and column width are remembered **per browser**. **Done** ticks
+and the **projects you name** live server-side in `~/Library/Application Support/peixAIrada/state.json`,
+so they survive a restart and look the same in every browser *and* in the Mac app.
 
 ---
 
@@ -105,58 +105,63 @@ defaults write net.peixairada.app nodePath "$(which node)"
 
 ---
 
-## 🎛 The board
+## 🎛 Projects → chats → chat
 
-Four lanes. A session lands in exactly one of them, and moves on its own.
+Three columns, left to right. Pick a project, pick a chat, read it — and talk to it.
 
-| | Lane | What lands there |
+**Projects.** One entry per folder a chat has run in — the repo path Claude Code registered for
+the session, so `cd`-ing around inside a chat never splits it — ordered by the newest thing
+*you* did in any of its chats. **All chats** sits on top as the flat list. Under it come the
+projects **you name yourself**: a name over one or more folders, for multi-repo work or an
+investigation — **+** in the column header, ✎ on hover to edit or delete. A chat belongs to its
+folder *and* to every named project that claims that folder (worktrees under a repo count as the
+repo). Each entry carries counts you can read from across the room — 🔴 waiting on you, 🟡 Claude
+working, 🟢 replied — plus an unread badge.
+
+**Chats** of the selected project, newest first by your own last touch, with filter chips for
+*needs you · working · ready · stale · done*. **+ new chat** starts one right there: a terminal
+running `claude` in that folder (a pick-list when the project spans several), and the chat pane
+switches to it the moment Claude registers the session.
+
+**Chat**: the transcript, the terminal drawer, the PR chips, the reply box. Described below.
+
+A chat is always in exactly one state, and the dot says which:
+
+| | State | What it means |
 |---|---|---|
-| 🟡 | **Clauding** | Claude is working — a prompt is in flight or tools are running. |
-| 🔴 | **Ready** | Claude stopped and the ball is with **you**: it replied (`idle`), or it asked a question / wants plan approval (`needs-input`, in red). |
-| 🟢 | **Done** | Only what **you tick ✓ done**, from Ready or Stale. Persisted server-side; a tick beats staleness, so a ticked chat stays put even after its process exits. The mark **expires the instant the session has new activity**, so a chat you re-prompt walks back through Clauding → Ready. |
-| ⚪ | **Stale** | The Claude process is gone — panel or terminal closed. Write to that chat again (resume it in VS Code, or `claude --resume <id>`) and it registers a new pid and walks back into Clauding / Ready by itself. Stale chats idle >30 days are hidden behind *show empty & >30d*; Claude Code deletes their transcripts after 30 days anyway. |
+| 🟡 | **working** | Claude is working — a prompt is in flight or tools are running. |
+| 🟢 | **ready** | Claude replied and the ball is with **you**. |
+| 🔴 | **needs input** | Claude asked a question, wants plan approval, or is waiting on a permission. The card says so in words too — it is the one state worth a word. |
+| ⚪ | **stale** | The Claude process is gone — panel or terminal closed. Open a terminal on it here, resume it in VS Code, or `claude --resume <id>`, and it walks back on its own. Stale chats idle >30 days hide behind *show empty & >30d*; Claude Code deletes their transcripts after 30 days anyway. |
+| ✓ | **done** | Only what **you tick ✓**, from ready or stale. Persisted server-side; a tick beats staleness. The mark **expires the instant the chat has new activity**, so a chat you re-prompt comes straight back. Done chats sink to the bottom of the list, dimmed. |
 
-### Sorting and folding
+### Sorting
 
-**Inside a lane:** the chat **you** wrote to most recently comes first — the one rule, in every lane.
-Claude finishing a long job does not move its card up; answering its question or interrupting it
-does. So the chats you are actively driving stay at the top and the ones you have parked sink by
-themselves, which is what pins used to be for (there are none any more). The time on a card is still
-when *anything* last happened to it; hover it for when you last wrote.
+The chat **you** wrote to most recently comes first — the one rule, in every list. Claude finishing
+a long job does not move its card up; answering its question or interrupting it does. So the chats
+you are actively driving stay at the top and the ones you have parked sink by themselves. The time on
+a card is still when *anything* last happened to it; hover it for when you last wrote. Projects
+follow the same rule through their newest chat.
 
-* **group by repo** turns each lane into repo blocks, ordered by the block's newest card, cards in
-  the same order inside.
-* **Click a repo header** to fold it to one line (colour, name, counter — red when something in it
-  needs you). **⌥-click** it to filter the whole board to that repo.
-* **⇕** in a column header is collapse-all: with *group by repo* on it folds every repo block in that
-  column, otherwise it folds that column's cards to one line each (dot · repo · title · time · ✓).
-* Folds are **per lane**, so folding `backend` under Stale leaves it open under Ready.
-* **compact** shrinks cards to a two-line title and one snippet line. By default a card shows up to
-  three title lines, the last thing you asked, and — once Claude answers — the start of its reply.
-
-**Whole lanes** collapse too: click a lane header for a narrow strip with its colour, name and live
-counter (red when something needs input); click the strip to expand. **⤢ focus** collapses every
-other lane, press again to restore. Lanes cap at 340 px and the board scrolls sideways if it needs to.
+The filter box in the header narrows the chat list by repo, title, session name or branch. The
+divider between the chat list and the chat drags; the width, the selected project and the filter
+chip are remembered per browser.
 
 ### Anatomy of a card
 
-Every card leads with the **repo name** — colour-coded per repo, click to filter the board to it —
-then the session title, the last thing you asked and the start of Claude's reply — each marked by a
-glyph rather than a word — a teal figure for you, Claude's sunburst in clay for Claude, with Claude's
-line set brighter because that is the one you scan a lane for. That is all: the
-card answers *what changed*, and the column it sits in already answers *what state it is in*, so
-there is no "working…" or "replied — your turn" line repeating it.
-
-The one exception is **needs your input**, in red — because Ready holds idle *and* needs-input, that
-is the single status its column cannot tell you.
+Every card leads with its **state dot**, the **repo name** when the list spans several folders
+(*All chats*, a named project) and where it is live (VS Code, CLI, or a terminal here), then the
+session title, the last thing you asked and the start of Claude's reply — each marked by a glyph
+rather than a word — a teal figure for you, Claude's sunburst in clay for Claude, with Claude's line
+set brighter because that is the one you scan a list for. The card answers *what changed*; the dot
+answers *what state it is in*.
 
 What a chat *is* rather than what just happened — VS Code or CLI, the session name
 (`peixairada-f1`), the path and branch, the model, the pid — lives in the **chat header** on the
 right, folded behind **···** so the header fits on **one line**: repo / title, a status dot with how
-long it has been that way, the fold, the VS Code button, then the PR chips. No status word — the
-dot's colour says it and hovering spells it out. PR chips flow after the button and spill onto
-further lines only when they genuinely do not fit. The fold is remembered per browser. Filtering
-still matches the session name and branch even though neither is printed.
+long it has been that way, the fold, the VS Code and terminal buttons, then the PR chips. No status
+word — the dot's colour says it and hovering spells it out. Click the repo name in the header to
+jump to that folder's chats.
 
 ### 💬 The chat pane
 
@@ -232,7 +237,7 @@ updates within **~100 ms** of Claude writing a line. Native notifications work f
 ```
   ~/.claude/projects/**/*.jsonl  ──fs.watch────▶┐
   ~/.claude/sessions/*.json      ──poll+watch──▶│                                   ┌──▶  the board
-  Claude Code hooks (optional)   ──POST /hook──▶├──▶  server.mjs  ──SSE /events──▶──┤     lanes · cards · live transcript
+  Claude Code hooks (optional)   ──POST /hook──▶├──▶  server.mjs  ──SSE /events──▶──┤     projects · chats · live transcript
   …/peixAIrada/state.json        ◀─done ticks──▶┘     tail from byte offset         └──▶  unread badges · alerts
                                                       fold lines → session state
                                                               │
@@ -256,8 +261,9 @@ updates within **~100 ms** of Claude writing a line. Native notifications work f
 | Route | Purpose |
 |---|---|
 | `GET /` | the UI (`/vendor/*.{js,css}` serves the vendored libraries) |
-| `GET /events` | SSE: `snapshot`, `session`, `entries`, `alert`, `terminal` |
-| `GET /api/sessions` | summaries of every known session (incl. `done`) |
+| `GET /events` | SSE: `snapshot`, `session`, `entries`, `alert`, `terminal`, `projects` |
+| `GET /api/sessions` | summaries of every known session (incl. `done`), plus the named projects |
+| `GET/POST /api/projects` · `PUT/DELETE /api/projects/:id` | the projects you name: `{name, cwds}` — a name over absolute folder paths (persisted in the state file) |
 | `GET /api/sessions/:id/messages` | full (capped) entry list, parsed on demand |
 | `POST /api/sessions/:id/done` `{done: true\|false}` | tick / untick a card (persisted in the state file) |
 | `POST /api/sessions/:id/reply` `{text}` | **stale chats only** — resumes the chat with `claude --resume <id> -p <text>`; 202 and the answer arrives through the transcript |
@@ -338,7 +344,7 @@ Either way, the UI carries over unchanged.
   to it without authenticating. But a message arriving that way is attributed to *another session*,
   not to you, and the docs are explicit that it "can't answer a pending permission prompt on your
   behalf". So it could tell a running chat something; it could never approve its plan or answer its
-  question — which is exactly what the red lane is for.
+  question — which is exactly what the red state is for.
 * Tested on **macOS 26 / Node 24 / Claude Code 2.1.25x**. Transcript line types are undocumented and
   may change at any time; the parser ignores anything it doesn't recognise, on purpose.
 
@@ -351,6 +357,7 @@ Either way, the UI carries over unchanged.
 - [ ] **Search across every transcript** — they're already on disk, a grep box is cheap
 - [x] Reply straight from the board — done for stale chats, via `claude --resume`
 - [x] **Chat from the board** — a real `claude` in a terminal drawer under the transcript, resume or new
+- [x] **Projects → chats → chat** — three columns instead of four lanes; name a project over several repos
 - [ ] ~~Reply into a **live** chat~~ — *not planned.* The socket is there and documented, but a
       message posted to it can never answer the question a chat is waiting on, which is the only
       reason to want it

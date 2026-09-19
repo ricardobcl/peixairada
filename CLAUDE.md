@@ -24,7 +24,7 @@ by hand). The Mac app needs `swiftc` (full Xcode is installed here) and bundles 
 | Path | What |
 |---|---|
 | `server.mjs` | The whole backend: transcript tailing, session state, SSE, HTTP, notifications |
-| `public/index.html` | The whole frontend, one file, no build step |
+| `public/index.html` | The whole frontend, one file, no build step: projects · chats · chat, the terminal drawer, the transcript renderer |
 | `public/vendor/` | `marked` 18.0.11 + `DOMPurify` 3.4.14 + `highlight.js` 11.11.1 + `xterm` 5.5.0 (+ fit 0.11, web-links 0.12) — UMD builds, vendored on purpose, no CDN at runtime |
 | `mac/Sources/main.swift` | Native shell: window, server lifecycle, Dock badge, menu bar, notifications |
 | `mac/icon/MakeIcon.swift` | The app icon, drawn in CoreGraphics (no image assets) |
@@ -47,28 +47,35 @@ by hand). The Mac app needs `swiftc` (full Xcode is installed here) and bundles 
 | Permission prompts | **only** via hooks — these never reach the transcript — *or* visibly, in the terminal drawer |
 | Chat from the board | a PTY (`node-pty`) running `claude --resume <id>` or `claude` in the chat's cwd, through an interactive login zsh so mise's PATH applies; it registers like any CLI run. A new chat is tied to its session by pid when the registry entry appears |
 
-Lane order is `done → stale → clauding → ready` (first match wins), where *stale* = process gone and
-*done* = user-ticked.
+The page is three columns — projects → chats of the selected project → the chat — since
+2026-09-19; the four lanes (stale / ready / clauding / done) are gone. A chat's state is
+`done → stale → needs-input → working → ready` (first match wins; `bucket()` in index.html), shown as
+a dot and offered as filter chips. A *project* is a folder (`s.cwd`, the registry's stable repo
+path — never the transcript's, which moves with `cd`) or a named set of folders from the state file
+(`projects`); a chat is in its folder and in every named project whose folder is a prefix of its
+cwd, so worktrees under a repo count as the repo. Folder projects exist only through their
+sessions; named ones always show.
 
-Card order inside a lane is by when *you* last acted on the chat (`lastUserAt`: a prompt, an answer
-to its question, an interrupt), newest first — one rule for every lane, grouped or not, and repo
-blocks order by their newest card. A session whose tail held no prompt of yours (boot reads only the
-end of a long transcript) sorts by `lastActivity` instead of sinking. Pins and the needs-input rank
-in Ready were both dropped on 2026-09-19: sorting by your own last touch keeps the chats you are
-driving on top, which is what pinning was for, and Claude finishing a long job no longer reshuffles
-the lane. The card still *shows* `lastActivity`; its tooltip carries `lastUserAt`.
+Order everywhere is by when *you* last acted on the chat (`lastUserAt`: a prompt, an answer to
+its question, an interrupt), newest first; done chats sink below the rest, and a project ranks by
+its newest chat. A session whose tail held no prompt of yours (boot reads only the end of a long
+transcript) sorts by `lastActivity` instead of sinking. Pins were dropped the same day: sorting by
+your own last touch keeps the chats you are driving on top, which is what pinning was for, and
+Claude finishing a long job no longer reshuffles the list. The card still *shows* `lastActivity`;
+its tooltip carries `lastUserAt`.
 
 ## State: what lives where
 
 * **Server-side, shared across browsers and the Mac app** —
   `~/Library/Application Support/peixAIrada/state.json` (Apple's location for app data, matching the
   logs in `~/Library/Logs/`; `$XDG_STATE_HOME/peixairada/state.json` off macOS, `STATE_FILE` overrides
-  both). Holds done ticks only — a `pins` key from before 2026-09-19 is ignored and dropped on the
-  next save. A done mark is `doneMarks[id] >= lastActivity`, so it expires by itself when the
+  both). Holds done ticks and the named projects (`projects: {id: {name, cwds, createdAt}}`) — a
+  `pins` key from before 2026-09-19 is ignored and dropped on the next save. A done mark is `doneMarks[id] >= lastActivity`, so it expires by itself when the
   session moves. It used to be `~/.peixairada/state.json`; the server moves that file
   across on first run and the migration code can go once it has clearly run everywhere.
-* **Browser-only** — `localStorage` key `peixairada-prefs`: lane collapse, repo folds, card folds,
-  grouping, compact, chat side/width/visibility, tools mode, chat-header details fold. `renderHead`
+* **Browser-only** — `localStorage` key `peixairada-prefs`: selected project, filter chip, chat-list
+  width, tools mode, fold code, sound, show-all, chat-header details fold, terminal drawer
+  open/height. Keys from the lane board are deleted on load. `renderHead`
   re-runs on every SSE update, so anything it renders must read its open/closed state from here — the
   DOM it built is thrown away each time.
 * **Never written**: anything under `~/.claude`. This tool is read-only against Claude Code's data.

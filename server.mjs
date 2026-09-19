@@ -59,6 +59,9 @@ let indexing = true; // suppress notifications while doing the initial scan
 // "Done" marks: sessionId -> ISO time it was marked. A mark only counts while nothing newer has
 // happened in the session, so a new prompt/reply automatically pulls the card back onto the board.
 let doneMarks = {};
+// Custom projects: id -> { id, name, cwds, createdAt }. A name over one or more folders — multi-repo
+// work, an investigation. Folders themselves need no record: they come from the sessions' cwds.
+let projects = {};
 
 // One-time move from the old ~/.peixairada location. Same filesystem, so the rename is atomic; the
 // empty directory is left behind rather than removing something we did not create.
@@ -74,12 +77,23 @@ if (!process.env.STATE_FILE && !existsSync(STATE_FILE) && existsSync(LEGACY_STAT
 try {
   const st = JSON.parse(readFileSync(existsSync(STATE_FILE) ? STATE_FILE : LEGACY_STATE_FILE, 'utf8'));
   doneMarks = st.done || {};   // files from before 2026-09-19 also carry a `pins` key — ignored, gone on the next save
+  projects = st.projects || {};
 } catch {}
 function saveState() {
-  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks }, null, 1)); }
+  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks, projects }, null, 1)); }
   catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
 const isDone = s => !!doneMarks[s.id] && doneMarks[s.id] >= (s.lastActivity || '');
+const projectList = () => Object.values(projects).sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+// name: non-empty, one line; cwds: absolute paths, deduplicated. Nothing checks they exist — a project
+// can name a folder before its first chat runs there.
+function projectInput(body, prev = {}) {
+  const name = typeof body.name === 'string' ? body.name.trim().replace(/\s+/g, ' ').slice(0, 80) : prev.name;
+  if (!name) return { error: 'a project needs a name' };
+  const cwds = body.cwds === undefined ? prev.cwds : Array.isArray(body.cwds) ? [...new Set(body.cwds.filter(c => typeof c === 'string' && c.startsWith('/')).map(c => c.replace(/\/+$/, '') || '/'))] : null;
+  if (!cwds) return { error: 'cwds must be a list of absolute paths' };
+  return { name, cwds };
+}
 
 function newSession(id, file) {
   return {
@@ -794,7 +808,7 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': m[2] === 'css' ? 'text/css; charset=utf-8' : 'application/javascript; charset=utf-8', 'cache-control': 'public, max-age=86400' });
       return res.end(readFileSync(f));
     }
-    if (req.method === 'GET' && p === '/api/sessions') return json(res, 200, { sessions: sortedSummaries(), claudeDir: CLAUDE_DIR, notify: NOTIFY });
+    if (req.method === 'GET' && p === '/api/sessions') return json(res, 200, { sessions: sortedSummaries(), projects: projectList(), claudeDir: CLAUDE_DIR, notify: NOTIFY });
     if (req.method === 'GET' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/messages$/))) {
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
@@ -854,6 +868,27 @@ const server = createServer(async (req, res) => {
       handleHook(h);
       return json(res, 200, { ok: true });
     }
+    if (req.method === 'GET' && p === '/api/projects') return json(res, 200, { projects: projectList() });
+    if (req.method === 'POST' && p === '/api/projects') {
+      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const v = projectInput(body, { cwds: [] });
+      if (v.error) return json(res, 400, { error: v.error });
+      const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      projects[id] = { id, ...v, createdAt: new Date().toISOString() };
+      saveState(); broadcast('projects', { projects: projectList() });
+      return json(res, 201, { project: projects[id] });
+    }
+    if ((req.method === 'PUT' || req.method === 'DELETE') && (m = p.match(/^\/api\/projects\/(\w+)$/))) {
+      const prev = projects[m[1]];
+      if (!prev) return json(res, 404, { error: 'unknown project' });
+      if (req.method === 'DELETE') { delete projects[m[1]]; saveState(); broadcast('projects', { projects: projectList() }); return json(res, 200, { ok: true }); }
+      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const v = projectInput(body, prev);
+      if (v.error) return json(res, 400, { error: v.error });
+      projects[m[1]] = { ...prev, ...v };
+      saveState(); broadcast('projects', { projects: projectList() });
+      return json(res, 200, { project: projects[m[1]] });
+    }
     if (req.method === 'GET' && p === '/api/terminals') return json(res, 200, { terminals: [...terms.values()].map(termSummary), available: !!nodePty });
     if (req.method === 'POST' && p === '/api/terminals') {   // a new chat in a folder
       let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
@@ -884,7 +919,7 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'GET' && p === '/events') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
-      res.write(`event: snapshot\ndata: ${JSON.stringify({ sessions: sortedSummaries(), notify: NOTIFY })}\n\n`);
+      res.write(`event: snapshot\ndata: ${JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), notify: NOTIFY })}\n\n`);
       sseClients.add(res);
       const ping = setInterval(() => res.write(': ping\n\n'), 25_000);
       req.on('close', () => { clearInterval(ping); sseClients.delete(res); });
