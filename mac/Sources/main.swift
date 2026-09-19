@@ -136,7 +136,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                          WKNavigationDelegate, UNUserNotificationCenterDelegate {
   var window: NSWindow!
   var web: WKWebView!
-  var split: NSSplitView!
+  var content: NSView!
+  var paneWidth: NSLayoutConstraint!
+  var grip: PaneGrip!
   var prPane: NSView!
   var prWeb: WKWebView!      // GitHub
   var ideWeb: WKWebView!     // VS Code Web — its own view, so a PR never replaces the editor or the other way round
@@ -217,17 +219,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     // Dock click, and showWindow messages a freed window (SIGSEGV in applicationShouldHandleReopen).
     window.isReleasedWhenClosed = false
     window.titlebarAppearsTransparent = false
-    // Board on the left, the PR pane (hidden until asked for) on the right.
+    // The board fills the window; the pane (hidden until asked for) lies over its right side, with a
+    // grip on its left edge to drag it wider or narrower. An overlay, not a split: resizing the pane
+    // must not reflow the board's columns underneath.
     buildPrPane()
-    split = NSSplitView(frame: NSRect(x: 0, y: 0, width: 1440, height: 900))
-    split.isVertical = true
-    split.dividerStyle = .thin
-    split.addArrangedSubview(web)
-    split.addArrangedSubview(prPane)
-    split.setHoldingPriority(NSLayoutConstraint.Priority(250), forSubviewAt: 0)
-    split.setHoldingPriority(NSLayoutConstraint.Priority(260), forSubviewAt: 1)
-    prPane.isHidden = true
-    window.contentView = split
+    content = NSView(frame: NSRect(x: 0, y: 0, width: 1440, height: 900))
+    web.translatesAutoresizingMaskIntoConstraints = false
+    prPane.translatesAutoresizingMaskIntoConstraints = false
+    grip = PaneGrip(); grip.translatesAutoresizingMaskIntoConstraints = false
+    content.addSubview(web); content.addSubview(prPane); content.addSubview(grip)
+    paneWidth = prPane.widthAnchor.constraint(equalToConstant: 700)
+    NSLayoutConstraint.activate([
+      web.leadingAnchor.constraint(equalTo: content.leadingAnchor), web.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+      web.topAnchor.constraint(equalTo: content.topAnchor), web.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+      prPane.trailingAnchor.constraint(equalTo: content.trailingAnchor), prPane.topAnchor.constraint(equalTo: content.topAnchor),
+      prPane.bottomAnchor.constraint(equalTo: content.bottomAnchor), paneWidth,
+      grip.leadingAnchor.constraint(equalTo: prPane.leadingAnchor, constant: -3), grip.widthAnchor.constraint(equalToConstant: 7),
+      grip.topAnchor.constraint(equalTo: prPane.topAnchor), grip.bottomAnchor.constraint(equalTo: prPane.bottomAnchor)
+    ])
+    grip.onDrag = { [weak self] dx in
+      guard let self = self else { return }
+      self.paneWidth.constant = max(360, min(self.content.bounds.width - 160, self.paneWidth.constant - dx))
+    }
+    grip.onEnd = { [weak self] in if let w = self?.paneWidth.constant { UserDefaults.standard.set(Double(w), forKey: "paneWidth") } }
+    prPane.isHidden = true; grip.isHidden = true
+    window.contentView = content
     installEscapeMonitor()
     window.contentMinSize = NSSize(width: 760, height: 520)
     window.setFrameAutosaveName("peixairada.main")
@@ -293,6 +309,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
     ideWeb.isHidden = true
     prPane = NSStackView(views: [bar, sep, body])
+    prPane.wantsLayer = true
+    prPane.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+    let shadow = NSShadow(); shadow.shadowBlurRadius = 14; shadow.shadowOffset = NSSize(width: -2, height: 0)
+    shadow.shadowColor = NSColor.black.withAlphaComponent(0.28); prPane.shadow = shadow
     (prPane as! NSStackView).orientation = .vertical
     (prPane as! NSStackView).spacing = 0
     (prPane as! NSStackView).alignment = .width
@@ -310,19 +330,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   @objc func paneForward(_ sender: Any?) { currentWeb.goForward() }
   @objc func paneReload(_ sender: Any?) { currentWeb.reload() }
 
-  // The pane takes the chat column: the page sends the column's left edge (CSS px, which are points
-  // in the board's web view, so the divider lands exactly there), and the last one is kept for a
-  // reopen from Esc. Without one — a very old page — the previous width, else 48%.
-  var paneLeft: CGFloat = 0
+  // The width you dragged it to, else the chat column: the page sends the column's left edge (CSS
+  // px, which are points in the board's web view), so the first open covers exactly that column.
   func showPrPane(left: CGFloat?) {
-    if let l = left, l > 200, l < split.bounds.width - 320 { paneLeft = l }
-    if paneLeft <= 0 {
-      let saved = UserDefaults.standard.double(forKey: "prPaneWidth")
-      let w = saved > 240 ? saved : split.bounds.width * 0.48
-      paneLeft = max(420, split.bounds.width - w - split.dividerThickness)
-    }
-    if prPane.isHidden { prPane.isHidden = false }
-    split.setPosition(paneLeft, ofDividerAt: 0)
+    let saved = CGFloat(UserDefaults.standard.double(forKey: "paneWidth"))
+    var w = saved > 240 ? saved : 0
+    if w == 0, let l = left, l > 200 { w = content.bounds.width - l }
+    if w == 0 { w = content.bounds.width * 0.48 }
+    paneWidth.constant = max(360, min(content.bounds.width - 160, w))
+    prPane.isHidden = false; grip.isHidden = false
   }
   func openPrPane(_ url: URL, left: CGFloat? = nil, pane: String = "github") {
     showPrPane(left: left)
@@ -332,12 +348,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     logLine("pane \(pane): \(url.absoluteString)")
   }
   @objc func closePrPane(_ sender: Any?) {
-    UserDefaults.standard.set(Double(prPane.bounds.width), forKey: "prPaneWidth")
-    prPane.isHidden = true
+    prPane.isHidden = true; grip.isHidden = true
   }
   // Esc closes the pane, and is swallowed so the window does not also leave full screen — from the
-  // board, and from the GitHub web view. The editor keeps its Esc, and with the pane hidden the key
-  // is not touched at all (dialogs, full screen, the rename box all keep theirs).
+  // board and from either page in the pane (the editor's own Esc is given up for this, by choice).
+  // With the pane hidden the key is not touched at all (dialogs, full screen, the rename box keep it).
   func togglePrPane() {
     if prPane.isHidden { if currentWeb.url != nil { showPrPane(left: nil) } }
     else { closePrPane(nil) }
@@ -346,9 +361,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
       guard let self = self, e.keyCode == 53, e.modifierFlags.intersection([.command, .control, .option]).isEmpty,
             !self.prPane.isHidden, let fr = self.window.firstResponder as? NSView else { return e }
-      let fromBoard = fr.isDescendant(of: self.web)
-      let fromGitHub = fr.isDescendant(of: self.prWeb) && (self.prWeb.url?.host ?? "").hasSuffix("github.com")
-      guard fromBoard || fromGitHub else { return e }
+      guard fr.isDescendant(of: self.web) || fr.isDescendant(of: self.prPane) else { return e }
       self.closePrPane(nil)
       return nil
     }
@@ -632,6 +645,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 /// The PR pane's own delegate: it navigates *inside* the pane (the board's delegate would send every
 /// non-local link to the system browser), keeps GitHub's target=_blank links in the pane — a web
 /// view with no UI delegate silently drops those — and hands non-web schemes (mailto:, vscode:) out.
+// The pane's left edge: drag it to make the pane wider or narrower. Only the pane moves.
+final class PaneGrip: NSView {
+  var onDrag: ((CGFloat) -> Void)?
+  var onEnd: (() -> Void)?
+  override func resetCursorRects() { addCursorRect(bounds, cursor: .resizeLeftRight) }
+  override func mouseDragged(with event: NSEvent) { onDrag?(event.deltaX) }
+  override func mouseUp(with event: NSEvent) { onEnd?() }
+  override func draw(_ dirtyRect: NSRect) {
+    NSColor.separatorColor.setFill()
+    NSRect(x: bounds.midX - 0.5, y: 0, width: 1, height: bounds.height).fill()
+  }
+}
+
 final class PrPaneDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
   var onTitle: ((WKWebView, String) -> Void)?
   func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
