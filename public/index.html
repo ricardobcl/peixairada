@@ -62,7 +62,7 @@
   #sessions { width: 380px; min-width: 260px; max-width: 60vw; flex: none; display: grid; grid-template-rows: auto auto 1fr; min-height: 0; min-width: 0; }
   #splitter { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--panel); }
   #splitter:hover, #splitter.drag { background: var(--accent); }
-  #chat { flex: 1; min-width: 320px; display: grid; grid-template-rows: auto 1fr auto auto; min-height: 0; }
+  #chat { flex: 1; min-width: 320px; display: grid; grid-template-rows: auto auto 1fr auto auto; min-height: 0; }
   .colhead { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); font-weight: 700; min-width: 0; min-height: 43px; }
   .colhead .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--ink); font-weight: 800; display: flex; align-items: center; gap: 7px; }
   .colhead .n { background: var(--user-bg); border-radius: 10px; padding: 0 7px; font-size: 11px; color: var(--ink); font-weight: 600; letter-spacing: 0; }
@@ -177,6 +177,19 @@
   .shead .pr[data-state="merged"] { color: var(--pr-merged); border-color: color-mix(in srgb, var(--pr-merged) 45%, transparent); }
   .shead .pr[data-state="closed"] { color: var(--pr-closed); border-color: color-mix(in srgb, var(--pr-closed) 45%, transparent); }
   .shead .pr[data-state="draft"] { color: var(--pr-draft); border-color: color-mix(in srgb, var(--pr-draft) 45%, transparent); }
+  /* ---- PR strip: what gh says about the PR you clicked, under the header ---- */
+  #prbar { border-bottom: 1px solid var(--line); background: var(--panel); padding: 5px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 3px 12px; font-size: 12px; color: var(--muted); min-width: 0; }
+  #prbar[hidden] { display: none; }
+  #prbar .num { font-weight: 700; color: var(--ink); }
+  #prbar .ptitle { color: var(--ink); flex: 1 1 160px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #prbar .st { font-weight: 700; text-transform: uppercase; font-size: 10.5px; letter-spacing: .5px; }
+  #prbar .st.open { color: var(--pr-open); } #prbar .st.merged { color: var(--pr-merged); } #prbar .st.closed { color: var(--pr-closed); } #prbar .st.draft { color: var(--pr-draft); }
+  #prbar .ok { color: var(--pr-open); } #prbar .bad { color: var(--needs); } #prbar .pend { color: var(--working); }
+  #prbar code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; background: var(--inline-bg); padding: 0 4px; border-radius: 3px; color: var(--ink); }
+  #prbar .diff .add { color: var(--pr-open); } #prbar .diff .del { color: var(--pr-closed); }
+  #prbar a { color: var(--accent); text-decoration: none; } #prbar a:hover { text-decoration: underline; }
+  #prbar .x { margin-left: auto; font: inherit; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
+  #prbar .x:hover { color: var(--ink); }
   #log { overflow-y: auto; padding: 16px 18px 40px; scroll-behavior: smooth; }
   /* ---- composer (stale chats only) ---- */
   #composer { border-top: 1px solid var(--line); background: var(--panel); padding: 8px 10px; display: grid; gap: 6px; }
@@ -313,6 +326,7 @@
   <div id="splitter" title="Drag to resize"></div>
   <section id="chat">
     <div class="shead" id="shead"><h2>Pick a chat</h2></div>
+    <div id="prbar" hidden></div>
     <div id="log"><div class="empty">Pick a project on the left, then a chat.</div></div>
     <div id="term" hidden>
       <div class="thead" id="termHead" title="Drag to resize"><span class="lbl" id="termLbl"></span><button id="termKill" title="End this claude process">end</button><button id="termHide" title="Hide the terminal — claude keeps running">hide</button></div>
@@ -556,6 +570,50 @@
   $('#psave').onclick = saveProject; $('#pdel').onclick = deleteProject; $('#pcancel').onclick = () => $('#pdlg').close();
   $('#pname').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); saveProject(); } });
 
+  // ---- PRs: the strip under the header, and where a GitHub link goes -------------------
+  // github.com refuses to be framed, so inside the Mac app a PR opens in a pane beside the board —
+  // a second web view the shell owns, asked for over the bridge — and in a plain browser it opens
+  // a tab. Either way a strip under the header says what gh knows about it: state, review, checks,
+  // size, branches. Non-GitHub links in the app go to the system browser the same way.
+  const inApp = !!window.webkit?.messageHandlers?.hub;
+  const post = m => window.webkit?.messageHandlers?.hub?.postMessage(m);
+  const GH_PR = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/;
+  function openExternal(url) {
+    if (!inApp) { window.open(url, '_blank', 'noopener'); return; }
+    post({ type: /^https:\/\/github\.com\//.test(url) ? 'open' : 'external', url });
+  }
+  const prbar = { url: null };
+  function hidePr() { $('#prbar').hidden = true; prbar.url = null; }
+  async function showPr(url) {
+    prbar.url = url;
+    const bar = $('#prbar'); bar.hidden = false;
+    bar.innerHTML = `<span class="num">${esc(url.replace(/^https:\/\/github\.com\//, ''))}</span><span class="ptitle">asking gh…</span><button class="x" title="Close">×</button>`;
+    bar.querySelector('.x').onclick = hidePr;
+    openExternal(url);
+    const r = await fetch(`/api/pr?url=${encodeURIComponent(url)}`);
+    const d = await r.json().catch(() => ({}));
+    if (prbar.url !== url) return;
+    if (!r.ok) { bar.querySelector('.ptitle').textContent = d.error || `HTTP ${r.status}`; return; }
+    const p = d.pr, c = p.checks;
+    const checks = !c.total ? '<span>no checks</span>' : c.failed ? `<span class="bad">✗ ${c.failed} of ${c.total} checks failed</span>` : c.pending ? `<span class="pend">○ ${c.pending} of ${c.total} checks running</span>` : `<span class="ok">✓ ${c.total} check${c.total === 1 ? '' : 's'}</span>`;
+    const review = p.reviewDecision === 'APPROVED' ? '<span class="ok">approved</span>' : p.reviewDecision === 'CHANGES_REQUESTED' ? '<span class="bad">changes requested</span>' : p.reviewDecision === 'REVIEW_REQUIRED' ? '<span>review required</span>' : '';
+    const merge = p.state !== 'open' ? '' : p.mergeable === 'CONFLICTING' ? '<span class="bad">conflicts</span>' : p.mergeable === 'MERGEABLE' ? '<span class="ok">mergeable</span>' : '';
+    bar.innerHTML = `<span class="num">#${p.number}</span><span class="ptitle" title="${esc(p.title)}">${esc(p.title)}</span><span class="st ${p.state}">${p.state}</span>${review}${checks}${merge}
+      <span class="diff"><span class="add">+${p.additions}</span> <span class="del">−${p.deletions}</span> · ${p.changedFiles} file${p.changedFiles === 1 ? '' : 's'}</span>
+      <span><code>${esc(p.head)}</code> → <code>${esc(p.base)}</code></span>${p.author ? `<span>by ${esc(p.author)}</span>` : ''}
+      <a href="${esc(p.url)}" data-ext target="_blank" rel="noopener" title="Open on GitHub">GitHub ↗</a><button class="x" title="Close">×</button>`;
+    bar.querySelector('.x').onclick = hidePr;
+  }
+  // Every link in the chat pane passes here: a PR chip or a PR link in a reply opens the strip (and the
+  // pane / a tab); any other external link inside the app goes out through the bridge, because a
+  // web view without a UI delegate simply drops target=_blank.
+  $('#chat').addEventListener('click', e => {
+    const a = e.target.closest('a[href]'); if (!a) return;
+    const href = a.getAttribute('href') || '';
+    if (GH_PR.test(href) && !a.dataset.ext) { e.preventDefault(); showPr(href.match(GH_PR)[0]); return; }
+    if (inApp && /^https?:/.test(href) && !href.startsWith(location.origin)) { e.preventDefault(); openExternal(href); }
+  });
+
   // ---- chat header -------------------------------------------------------------------
   const prChip = pr => `<a class="pr" data-state="${esc(pr.state || '')}" href="${esc(pr.url)}" target="_blank" rel="noopener"
       title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}\n${pr.state ? pr.state + ' · ' : ''}last mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}`)}">${esc(pr.label)}${pr.title ? `<span class="t">${esc(pr.title)}</span>` : ''}</a>`;
@@ -613,7 +671,7 @@
     if (term.xt) return;
     term.xt = new Terminal({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, lineHeight: 1.1, cursorBlink: true, scrollback: 5000, theme: xtTheme(), macOptionIsMeta: true });
     term.fit = new FitAddon.FitAddon(); term.xt.loadAddon(term.fit);
-    term.xt.loadAddon(new WebLinksAddon.WebLinksAddon((_e, uri) => window.open(uri, '_blank', 'noopener')));
+    term.xt.loadAddon(new WebLinksAddon.WebLinksAddon((_e, uri) => GH_PR.test(uri) ? showPr(uri.match(GH_PR)[0]) : openExternal(uri)));
     term.xt.open($('#termBody'));
     term.xt.onData(d => { if (term.ws?.readyState === 1 && term.exited === null) term.ws.send(JSON.stringify({ t: 'in', d })); });
     new ResizeObserver(() => fitTerm()).observe($('#termBody'));
@@ -686,7 +744,7 @@
     const r = await fetch('/api/terminals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cwd, ...termSize() }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { $('#log').innerHTML = `<div class="empty">Could not start a chat: ${esc(d.error || `HTTP ${r.status}`)}</div>`; return; }
-    state.current = null; state.entries = []; history.replaceState(null, '', location.pathname);
+    state.current = null; state.entries = []; history.replaceState(null, '', location.pathname); hidePr();
     if (!inProject({ cwd }, projectStub(prefs.project))) prefs.project = cwd;   // so the new chat lands in view
     savePrefs(); renderBoard();
     $('#shead').innerHTML = `<h2><span class="repo" style="color:${repoColor(folderName(cwd))}">${esc(folderName(cwd))}</span><span class="sep">/</span><span class="t">new chat</span></h2>`;
@@ -847,7 +905,7 @@
   }
 
   async function openSession(id) {
-    state.current = id; state.unread.delete(id);
+    state.current = id; state.unread.delete(id); hidePr();
     const s0 = state.sessions.get(id);
     // a deep link or a notification can point at a chat outside the selected project — switch to its folder
     if (s0 && !inProject(s0, projectStub(prefs.project))) { prefs.project = s0.cwd || '?'; savePrefs(); }

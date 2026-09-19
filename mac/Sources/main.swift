@@ -38,95 +38,19 @@ final class ServerController {
   private var process: Process?
   private(set) var adopted = false      // true when a server was already running and we just attached
 
-  /// Finding node from a GUI app is genuinely awkward:
-  ///  * launchd gives us a bare PATH (/usr/bin:/bin:…), so node is usually not on it;
-  ///  * version managers (mise, nvm, fnm, asdf) activate in `.zshrc`, i.e. only in an *interactive*
-  ///    shell — a plain login shell finds nothing;
-  ///  * an interactive shell also prints shell-integration escape sequences (iTerm2 emits
-  ///    `ESC ] 1337 ; … BEL`) onto stdout, so its output is not a bare path.
-  /// So: ask an interactive login shell, scrub the escapes, and fall back to known install layouts.
-  /// The answer is cached in UserDefaults, and `PEIXAIRADA_NODE` or
-  /// `defaults write net.peixairada.app nodePath /path/to/node` override everything.
-  static var triedPaths: [String] = []
-
-  private static func isExec(_ path: String) -> Bool {
-    FileManager.default.isExecutableFile(atPath: path)
-  }
-
-  /// Pull the path out of an interactive shell's output. No regex: split on control characters and
-  /// whitespace (which is exactly what the escape sequences are made of) and take the last token
-  /// that is an absolute path to something executable. `ESC ] 1337 ; CurrentDir=/x BEL` splits into
-  /// `]1337;CurrentDir=/x`, which does not start with "/" and is discarded.
-  private static func pathFromShellOutput(_ raw: String) -> String? {
-    let separators = CharacterSet.whitespacesAndNewlines.union(.controlCharacters)
-    return raw.components(separatedBy: separators)
-      .filter { $0.hasPrefix("/") }
-      .last { isExec($0) }
-  }
-
-  private static func askShell(_ args: [String]) -> String? {
-    let p = Process(), pipe = Pipe()
-    p.executableURL = URL(fileURLWithPath: "/bin/zsh")
-    p.arguments = args
-    p.standardOutput = pipe
-    p.standardError = FileHandle.nullDevice
-    p.standardInput = FileHandle.nullDevice
-    guard (try? p.run()) != nil else { return nil }
-    // a misbehaving .zshrc must not wedge startup
-    DispatchQueue.global().asyncAfter(deadline: .now() + 6) { if p.isRunning { p.terminate() } }
-    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-    p.waitUntilExit()
-    let raw = String(data: data, encoding: .utf8) ?? ""
-    let found = pathFromShellOutput(raw)
-    logLine("findNode: zsh \(args.joined(separator: " ")) → \(found ?? "nothing") (raw \(data.count) bytes)")
-    return found
-  }
-
-  /// Well-known install layouts, newest version first where a manager keeps several.
-  private static func candidatePaths() -> [String] {
-    let home = FileManager.default.homeDirectoryForCurrentUser.path
-    var out: [String] = ["\(home)/.local/share/mise/shims/node", "\(home)/.volta/bin/node"]
-    let versionDirs = [
-      ("\(home)/.local/share/mise/installs/node", "bin/node"),
-      ("\(home)/.nvm/versions/node", "bin/node"),
-      ("\(home)/Library/Application Support/fnm/node-versions", "installation/bin/node"),
-      ("\(home)/.asdf/installs/nodejs", "bin/node"),
-    ]
-    for (dir, suffix) in versionDirs {
-      let names = (try? FileManager.default.contentsOfDirectory(atPath: dir)) ?? []
-      // prefer an explicit "lts"/"latest" alias, then the highest-looking version
-      let ordered = names.filter { $0 == "lts" || $0 == "latest" }
-        + names.filter { $0 != "lts" && $0 != "latest" }.sorted {
-            $0.compare($1, options: .numeric) == .orderedDescending }
-      out += ordered.map { "\(dir)/\($0)/\(suffix)" }
-    }
-    return out + ["/opt/homebrew/bin/node", "/usr/local/bin/node", "/usr/bin/node"]
-  }
-
-  static func findNode() -> String? {
-    triedPaths = []
-    if let override = ProcessInfo.processInfo.environment["PEIXAIRADA_NODE"] {
-      triedPaths.append("PEIXAIRADA_NODE=\(override)")
-      if isExec(override) { return override }
-    }
-    if let saved = UserDefaults.standard.string(forKey: "nodePath"), isExec(saved) {
-      logLine("findNode: using remembered \(saved)")
-      return saved
-    }
-    for args in [["-lic", "command -v node"], ["-lc", "command -v node"]] {
-      triedPaths.append("zsh \(args[0])")
-      if let found = askShell(args) { remember(found); return found }
-    }
-    for candidate in candidatePaths() {
-      triedPaths.append(candidate)
-      if isExec(candidate) { logLine("findNode: found \(candidate)"); remember(candidate); return candidate }
-    }
-    logLine("findNode: FAILED after \(triedPaths.count) attempts")
+  /// The node that runs the server ships inside the bundle: build.sh copies the one that ran
+  /// `npm install`, so node-pty's native addon matches it. Finding a node on the machine from a
+  /// GUI app was the fragile part of this whole thing — bare launchd PATH, mise activating only in
+  /// interactive shells, shell-integration escapes in the shell's output — and is gone with it.
+  /// `PEIXAIRADA_NODE` still overrides, for running against a different node.
+  static func nodePath() -> String? {
+    if let override = ProcessInfo.processInfo.environment["PEIXAIRADA_NODE"], isExec(override) { return override }
+    if let bundled = Bundle.main.url(forResource: "node", withExtension: nil)?.path, isExec(bundled) { return bundled }
     return nil
   }
 
-  private static func remember(_ path: String) {
-    UserDefaults.standard.set(path, forKey: "nodePath")
+  private static func isExec(_ path: String) -> Bool {
+    FileManager.default.isExecutableFile(atPath: path)
   }
 
   static func isServing(_ completion: @escaping (Bool) -> Void) {
@@ -146,15 +70,12 @@ final class ServerController {
         DispatchQueue.main.async { done(nil) }
         return
       }
-      guard let node = ServerController.findNode() else {
-        let tried = ServerController.triedPaths.suffix(4).joined(separator: ", ")
+      guard let node = ServerController.nodePath() else {
         DispatchQueue.main.async {
           done("""
-          Could not find node — tried \(ServerController.triedPaths.count) places (…\(tried)).
-          Install Node ≥ 20, point the app at it with
-          `defaults write net.peixairada.app nodePath /full/path/to/node`,
-          or start the server yourself with `npm start` and reopen this app.
-          See ~/Library/Logs/peixairada-app.log
+          This app bundle has no node binary. Rebuild it with mac/build.sh (it copies the node that
+          ran npm install), point PEIXAIRADA_NODE at one, or start the server yourself with
+          `npm start` and reopen this app.
           """)
         }
         return
@@ -215,6 +136,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                          WKNavigationDelegate, UNUserNotificationCenterDelegate {
   var window: NSWindow!
   var web: WKWebView!
+  var split: NSSplitView!
+  var prPane: NSView!
+  var prWeb: WKWebView!
+  var prTitle: NSTextField!
+  let prDelegate = PrPaneDelegate()
   let server = ServerController()
   var statusItem: NSStatusItem!
   var unread = 0                 // alerts that arrived while the window was not in front
@@ -288,12 +214,89 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     // Dock click, and showWindow messages a freed window (SIGSEGV in applicationShouldHandleReopen).
     window.isReleasedWhenClosed = false
     window.titlebarAppearsTransparent = false
-    window.contentView = web
+    // Board on the left, the PR pane (hidden until asked for) on the right.
+    buildPrPane()
+    split = NSSplitView(frame: NSRect(x: 0, y: 0, width: 1440, height: 900))
+    split.isVertical = true
+    split.dividerStyle = .thin
+    split.addArrangedSubview(web)
+    split.addArrangedSubview(prPane)
+    split.setHoldingPriority(NSLayoutConstraint.Priority(250), forSubviewAt: 0)
+    split.setHoldingPriority(NSLayoutConstraint.Priority(260), forSubviewAt: 1)
+    prPane.isHidden = true
+    window.contentView = split
     window.contentMinSize = NSSize(width: 760, height: 520)
     window.setFrameAutosaveName("peixairada.main")
     window.center()
     window.makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)
+  }
+
+  // ---- PR pane ---------------------------------------------------------------------------------
+  // github.com sends `frame-ancestors 'none'`, so the board cannot iframe a pull request. The app
+  // shows it in a second web view beside the board instead: same window, its own history, and the
+  // default (persistent) website data store, so the GitHub login survives a relaunch. The page asks
+  // for it over the bridge ({type: "open", url}); "×" hides it and keeps the page loaded.
+
+  private func buildPrPane() {
+    prWeb = WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
+    prWeb.navigationDelegate = prDelegate
+    prWeb.uiDelegate = prDelegate
+    prWeb.allowsBackForwardNavigationGestures = true
+    if prWeb.responds(to: Selector(("setInspectable:"))) { prWeb.setValue(true, forKey: "inspectable") }
+    prDelegate.onTitle = { [weak self] t in self?.prTitle.stringValue = t }
+
+    func button(_ title: String, _ action: Selector, _ target: AnyObject?, tip: String) -> NSButton {
+      let b = NSButton(title: title, target: target, action: action)
+      b.bezelStyle = .rounded; b.controlSize = .small; b.font = .systemFont(ofSize: 12); b.toolTip = tip
+      b.setContentHuggingPriority(.required, for: .horizontal)
+      return b
+    }
+    prTitle = NSTextField(labelWithString: "")
+    prTitle.lineBreakMode = .byTruncatingTail
+    prTitle.font = .systemFont(ofSize: 12); prTitle.textColor = .secondaryLabelColor
+    prTitle.setContentHuggingPriority(NSLayoutConstraint.Priority(1), for: .horizontal)
+    prTitle.setContentCompressionResistancePriority(NSLayoutConstraint.Priority(1), for: .horizontal)
+    let bar = NSStackView(views: [
+      button("‹", #selector(WKWebView.goBack(_:)), prWeb, tip: "Back"),
+      button("›", #selector(WKWebView.goForward(_:)), prWeb, tip: "Forward"),
+      button("↻", #selector(WKWebView.reload(_:)), prWeb, tip: "Reload"),
+      prTitle,
+      button("Open in Browser", #selector(openPrExternally(_:)), self, tip: "Open this page in your default browser"),
+      button("×", #selector(closePrPane(_:)), self, tip: "Close the pane (the page stays loaded)")
+    ])
+    // .fill, not the default gravity areas: under those a view without an intrinsic size (the web
+    // view; the title label once it may shrink) is given nothing and the pane shows only a toolbar.
+    bar.orientation = .horizontal; bar.spacing = 6; bar.distribution = .fill
+    bar.edgeInsets = NSEdgeInsets(top: 5, left: 8, bottom: 5, right: 8)
+    bar.setContentHuggingPriority(.required, for: .vertical)
+    let sep = NSBox(); sep.boxType = .separator
+    prPane = NSStackView(views: [bar, sep, prWeb])
+    (prPane as! NSStackView).orientation = .vertical
+    (prPane as! NSStackView).spacing = 0
+    (prPane as! NSStackView).alignment = .width
+    (prPane as! NSStackView).distribution = .fill
+    prWeb.setContentHuggingPriority(NSLayoutConstraint.Priority(1), for: .vertical)
+    prWeb.setContentCompressionResistancePriority(NSLayoutConstraint.Priority(1), for: .vertical)
+  }
+
+  func openPrPane(_ url: URL) {
+    if prPane.isHidden {
+      prPane.isHidden = false
+      let saved = UserDefaults.standard.double(forKey: "prPaneWidth")
+      let w = saved > 240 ? saved : split.bounds.width * 0.48
+      split.setPosition(max(420, split.bounds.width - w - split.dividerThickness), ofDividerAt: 0)
+    }
+    prTitle.stringValue = url.absoluteString
+    prWeb.load(URLRequest(url: url))
+    logLine("pr pane: \(url.absoluteString)")
+  }
+  @objc func closePrPane(_ sender: Any?) {
+    UserDefaults.standard.set(Double(prPane.bounds.width), forKey: "prPaneWidth")
+    prPane.isHidden = true
+  }
+  @objc func openPrExternally(_ sender: Any?) {
+    if let u = prWeb.url { NSWorkspace.shared.open(u) }
   }
 
   private func showMessage(_ text: String) {
@@ -458,6 +461,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                snippet: body["snippet"] as? String ?? "",
                sessionId: body["sessionId"] as? String ?? "")
       }
+    case "open":
+      if let s = body["url"] as? String, let url = URL(string: s) { openPrPane(url) }
+    case "external":
+      if let s = body["url"] as? String, let url = URL(string: s) { NSWorkspace.shared.open(url) }
     default: break
     }
   }
@@ -544,6 +551,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
     showMessage("Could not reach the server on port \(kPort): \(error.localizedDescription)")
+  }
+}
+
+/// The PR pane's own delegate: it navigates *inside* the pane (the board's delegate would send every
+/// non-local link to the system browser), keeps GitHub's target=_blank links in the pane — a web
+/// view with no UI delegate silently drops those — and hands non-web schemes (mailto:, vscode:) out.
+final class PrPaneDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
+  var onTitle: ((String) -> Void)?
+  func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
+               for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+    if let url = navigationAction.request.url { webView.load(URLRequest(url: url)) }
+    return nil
+  }
+  func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
+               decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+    if let url = action.request.url, let scheme = url.scheme?.lowercased(), !["http", "https", "about", "blob", "data"].contains(scheme) {
+      NSWorkspace.shared.open(url)
+      return decisionHandler(.cancel)
+    }
+    decisionHandler(.allow)
+  }
+  func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+    onTitle?(webView.title.flatMap { $0.isEmpty ? nil : $0 } ?? webView.url?.absoluteString ?? "")
+  }
+  func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+    onTitle?("Could not load: \(error.localizedDescription)")
   }
 }
 

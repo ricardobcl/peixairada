@@ -9,7 +9,7 @@ file is what a future session needs to pick the work back up.
 
 ```sh
 npm start                 # node server.mjs → http://127.0.0.1:7331
-mac/build.sh install      # build the native app into /Applications and launch it
+mac/build.sh install      # build the native app (bundling node + node_modules) into /Applications and launch it
 scripts/launchd.sh install    # or run the bare server at login
 node scripts/verify.mjs '<js>'  # headless-browser check of the live UI (see "Verifying" below)
 ```
@@ -26,7 +26,7 @@ by hand). The Mac app needs `swiftc` (full Xcode is installed here) and bundles 
 | `server.mjs` | The whole backend: transcript tailing, session state, SSE, HTTP, notifications |
 | `public/index.html` | The whole frontend, one file, no build step: projects · chats · chat, the terminal drawer, the transcript renderer |
 | `public/vendor/` | `marked` 18.0.11 + `DOMPurify` 3.4.14 + `highlight.js` 11.11.1 + `xterm` 5.5.0 (+ fit 0.11, web-links 0.12) — UMD builds, vendored on purpose, no CDN at runtime |
-| `mac/Sources/main.swift` | Native shell: window, server lifecycle, Dock badge, menu bar, notifications |
+| `mac/Sources/main.swift` | Native shell: window, the PR pane (second web view), server lifecycle, Dock badge, menu bar, notifications |
 | `mac/icon/MakeIcon.swift` | The app icon, drawn in CoreGraphics (no image assets) |
 | `mac/build.sh` | Compile + bundle + ad-hoc sign + optional install |
 | `hooks/` | Optional Claude Code hooks that POST to `/hook`. **Not installed** — Ricardo's call |
@@ -159,14 +159,19 @@ its tooltip carries `lastUserAt`.
   (`CLAUDECODE`, `CLAUDE_CODE_*`), and the CLI refuses to nest. `termEnv()` strips those before
   spawning; keep it that way.
 * **macOS has no `timeout(1)`** — use `perl -e 'alarm shift; exec @ARGV' 60 <cmd>`.
-* **Finding `node` from the GUI app is the fragile part.** launchd hands the app a bare PATH, and
-  version managers (mise here) activate in `.zshrc`, so only an *interactive* login shell can resolve
-  node — and an interactive shell prints shell-integration escapes (iTerm2's `ESC ] 1337 ; … BEL`)
-  onto stdout, so its output is not a bare path. `pathFromShellOutput` therefore splits on control
-  characters and takes the last executable absolute path, and there is a fallback list of known
-  install layouts (mise/nvm/fnm/asdf/volta/homebrew). The result is cached in UserDefaults; override
-  with `PEIXAIRADA_NODE` or `defaults write net.peixairada.app nodePath /path/to/node`. If the app
-  ever says it cannot find node, `~/Library/Logs/peixairada-app.log` has the full `findNode:` trace.
+* **The app ships its own node** (since 2026-09-19). `build.sh` copies the node on PATH — the one
+  that ran `npm install`, so node-pty's addon matches its ABI — into `Contents/Resources/node`, and
+  the app runs that. The old search (an interactive login shell to get mise's PATH, scrubbing
+  iTerm2's shell-integration escapes off its output, a fallback list of install layouts, a
+  UserDefaults cache) is gone with the bugs it kept growing; `PEIXAIRADA_NODE` still overrides.
+  Rebuild after switching node versions, and after `npm install` — `node_modules` is copied too.
+* **GitHub cannot be iframed** (`frame-ancestors 'none'`), so the app's PR pane is a second
+  `WKWebView` in an `NSSplitView` beside the board, with its *own* delegate: the board's delegate
+  sends every non-local link to the system browser, and a web view with no UI delegate silently drops
+  `target=_blank`, which is why `PrPaneDelegate` implements `createWebViewWith` by loading into the
+  same view. The page asks for the pane over the bridge (`{type: 'open', url}`) and sends other
+  external links out the same way (`external`); in a plain browser the same clicks open tabs. Both
+  web views share the default website data store, so the GitHub login survives a relaunch.
 
 ## Verifying changes
 

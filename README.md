@@ -67,36 +67,34 @@ so they survive a restart and look the same in every browser *and* in the Mac ap
 mac/build.sh install     # build → /Applications → launch   (mac/build.sh alone just builds)
 ```
 
-**1.4 MB.** A 180 KB binary; the rest is the icon. It all lives in [`mac/`](mac/). It wraps the same board in a `WKWebView` — no
-Electron, nothing bundled but the UI and the server — and adds the things a web page simply cannot
-do for itself:
+A 180 KB binary plus the icon, the server, its two dependencies and **the node that runs it** (the
+one on your PATH at build time, so about 180 MB all in — most of it node). It all lives in
+[`mac/`](mac/). It wraps the same board in a `WKWebView` — no Electron — and adds the things a web
+page simply cannot do for itself:
 
 |  | What the app adds |
 |---|---|
-| 🚀 | **Owns the server.** Starts `node server.mjs` on launch (Node found through a login shell, so mise/nvm/homebrew all work), stops it on quit. If a server is *already* running on the port — from `npm start` or the launchd agent — it attaches to that one instead and defers to it for notifications, so you never get two of everything. |
+| 🚀 | **Owns the server.** Starts `server.mjs` on launch with the node inside the bundle (no PATH games, no version-manager guessing), stops it on quit. If a server is *already* running on the port — from `npm start` or the launchd agent — it attaches to that one instead and defers to it for notifications, so you never get two of everything. |
 | 🔔 | **Native notifications** from *peixAIrada*, not from "Script Editor" — and clicking one opens that session in the board. Only fires while the window isn't in front. Falls back to the old `osascript` banner if notification permission is refused. |
 | 🎯 | **Dock badge** with the alerts you haven't seen, and a **menu-bar fish** whose menu lists every session waiting on you. Click one to jump straight to it. |
+| 🐙 | **The PR pane.** Click a PR chip and the pull request opens beside the board — GitHub refuses to be framed, so it is a second web view with its own back / reload / open-in-browser, and your GitHub login sticks between launches. **×** hides it. |
 | ⌨️ | ⌘R reload, ⌘⇧R restart server. Close the window and it keeps running in the menu bar. |
 | 🎨 | **An icon drawn in code** ([`mac/icon/MakeIcon.swift`](mac/icon/MakeIcon.swift)) — a fish in Claude terracotta with a starburst eye, no image assets anywhere — that simplifies itself at 16/32 px so it stays legible in the menu bar. |
 
-Logs live in `~/Library/Logs/peixairada.log` (server) and `peixairada-app.log` (the shell: how it
-resolved node, notification permission, every alert, badge counts). Ad-hoc signed — this machine,
+Logs live in `~/Library/Logs/peixairada.log` (server) and `peixairada-app.log` (the shell:
+notification permission, every alert, badge counts, the PR pane). Ad-hoc signed — this machine,
 not distribution.
 
 <details>
-<summary><b>😤 "It says it cannot find node"</b></summary>
+<summary><b>😤 "It says the bundle has no node"</b></summary>
 
 <br>
 
-macOS hands the app essentially no PATH, and version managers activate in `.zshrc`. So the app asks
-an interactive login shell, then falls back to the usual install layouts (mise, nvm, fnm, asdf,
-volta, homebrew). If even that fails, point it straight at your binary:
-
-```sh
-defaults write net.peixairada.app nodePath "$(which node)"
-```
-
-`~/Library/Logs/peixairada-app.log` has the full `findNode:` trace if you want to see what it tried.
+The app runs the node that `mac/build.sh` copied into it at build time — the one on your PATH in
+that shell, which is also the one that ran `npm install`, so the native `node-pty` addon matches
+it. Rebuild after switching node versions. To run the app against a different node without
+rebuilding, launch it with `PEIXAIRADA_NODE=/path/to/node`, or just `npm start` in the repo and
+reopen the app — it attaches to any server already on the port.
 
 </details>
 
@@ -201,6 +199,13 @@ keeps it running, **end** stops it — and it does not survive a server restart.
 in VS Code or another terminal cannot be attached from here (the button says so); use the VS Code
 button instead. The first time in a folder Claude asks its usual *trust this folder?* question.
 
+**Click a PR chip and two things happen.** A strip under the header says what `gh` knows about it —
+open / merged / closed / draft, the review decision, checks passed or failing or still running,
++added −deleted over how many files, head → base, the author — and the PR itself opens: in the Mac
+app in a **pane beside the board** (GitHub refuses to be framed, so it is a second web view with its
+own back / reload / open-in-browser, and your GitHub login sticks between launches); in a plain
+browser, in a new tab. PR links in Claude's replies and in the terminal do the same.
+
 **On a stale chat there is also a one-line reply box** — type, ⏎, and the board resumes the chat
 with `claude --resume <id> -p`; ⇧⏎ for a newline. It hides while a terminal is open on that chat.
 
@@ -263,6 +268,7 @@ updates within **~100 ms** of Claude writing a line. Native notifications work f
 | `GET /` | the UI (`/vendor/*.{js,css}` serves the vendored libraries) |
 | `GET /events` | SSE: `snapshot`, `session`, `entries`, `alert`, `terminal`, `projects` |
 | `GET /api/sessions` | summaries of every known session (incl. `done`), plus the named projects |
+| `GET /api/pr?url=` | what `gh pr view` says about one PR: state, review decision, checks, size, branches (cached 60 s) |
 | `GET/POST /api/projects` · `PUT/DELETE /api/projects/:id` | the projects you name: `{name, cwds}` — a name over absolute folder paths (persisted in the state file) |
 | `GET /api/sessions/:id/messages` | full (capped) entry list, parsed on demand |
 | `POST /api/sessions/:id/done` `{done: true\|false}` | tick / untick a card (persisted in the state file) |
@@ -327,6 +333,7 @@ Either way, the UI carries over unchanged.
 * 🌐 **Opening a chat asks GitHub about its PRs.** That is the one thing here that leaves the
   machine: `gh api graphql`, with your own credentials, sending nothing but `owner/repo#number` —
   which GitHub already knows. Nothing from the transcript goes with it. No `gh`, no colours, no call.
+  Clicking a PR chip runs `gh pr view` for that one PR — same credentials, same nothing else.
 * Status is **inferred** from the transcript unless you install the hooks. A session interrupted in a
   way that writes nothing may sit in Clauding until its next line.
 * **"Stale" is about the *process*, not the conversation.** Headless `claude -p` runs, and
@@ -358,6 +365,7 @@ Either way, the UI carries over unchanged.
 - [x] Reply straight from the board — done for stale chats, via `claude --resume`
 - [x] **Chat from the board** — a real `claude` in a terminal drawer under the transcript, resume or new
 - [x] **Projects → chats → chat** — three columns instead of four lanes; name a project over several repos
+- [x] **PRs inline** — a strip from `gh` under the header, and the PR page in a pane beside the board (Mac app)
 - [ ] ~~Reply into a **live** chat~~ — *not planned.* The socket is there and documented, but a
       message posted to it can never answer the question a chat is waiting on, which is the only
       reason to want it
