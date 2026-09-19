@@ -226,8 +226,8 @@
   #term .thead button[hidden] { display: none; }
   #term .tbody { min-height: 0; padding: 4px 0 0 6px; background: var(--term-bg); }
   #term .tbody .xterm { height: 100%; }
-  /* The drawer as the whole pane: a chat with nothing to read yet, or `max` on any chat. The log row
-     collapses and the drawer takes its 1fr; the height it remembers is untouched for the way back. */
+  /* The drawer as the whole pane, which it is whenever its terminal is live. The log row collapses and
+     the drawer takes its 1fr; the height it remembers is untouched for the split. */
   #chat.termmax { grid-template-rows: auto auto 0 1fr auto; }
   #chat.termmax #log { display: none; }
   #chat.termmax #term { height: auto !important; max-height: none; min-height: 0; }
@@ -345,7 +345,7 @@
     <div id="prbar" hidden></div>
     <div id="log"><div class="empty">Pick a project on the left, then a chat.</div></div>
     <div id="term" hidden>
-      <div class="thead" id="termHead" title="Drag to resize"><span class="lbl" id="termLbl"></span><button id="termMax" title="Give the terminal the whole pane">max</button><button id="termKill" title="End this claude process">end</button><button id="termHide" title="Hide the terminal — claude keeps running">hide</button></div>
+      <div class="thead" id="termHead" title="Drag to resize"><span class="lbl" id="termLbl"></span><button id="termMax" title="Show the rendered chat above the terminal">show chat</button><button id="termKill" title="End this claude process">end</button><button id="termHide" title="Hide the terminal — claude keeps running">hide</button></div>
       <div class="tbody" id="termBody"></div>
     </div>
     <div id="composer" hidden>
@@ -376,7 +376,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], current: null, unread: new Map(), entries: [] };
-  const prefs = { project: 'all', filter: 'all', sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, headDetails: false, termOpen: true, termHeight: 320, termMax: false };
+  const prefs = { project: 'all', filter: 'all', sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, headDetails: false, termOpen: true, termHeight: 320 };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -683,7 +683,7 @@
   // switching chats does not end it — "end" does. The server replays its scrollback on every attach,
   // which is what makes a reload or a switch-and-back seamless. The transcript above it is the
   // reading view; the terminal is where you type.
-  const term = { id: null, sessionId: null, cwd: null, resume: false, ws: null, xt: null, fit: null, exited: null, err: null, autoFill: false };
+  const term = { id: null, sessionId: null, cwd: null, resume: false, ws: null, xt: null, fit: null, exited: null, err: null, split: false };
   function xtTheme() {
     const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
     return { background: v('--term-bg'), foreground: v('--ink'), cursor: v('--accent'), cursorAccent: v('--term-bg'), selectionBackground: v('--term-sel') };
@@ -709,20 +709,23 @@
     if (on) $('#term').style.height = prefs.termHeight + 'px';
     applyTermLayout();
   }
-  // The drawer fills the pane while there is nothing to read — a chat with no messages yet, which is
-  // every new chat until Claude writes its first line — or while `max` is on. autoFill drops the moment
-  // the transcript shows something, or when the size is touched. The ResizeObserver refits xterm.
-  const termFilled = () => !$('#term').hidden && (prefs.termMax || term.autoFill);
+  // While the chat runs here, the drawer is the whole pane: the rendered transcript above it would be
+  // the same conversation twice. `show chat` splits the pane for this attach (term.split is page state,
+  // reset on every attach), a drag on the divider does the same, and the transcript comes back on its
+  // own when the process ends. `hide` shows it while claude keeps running. Chats the board does not
+  // drive — VS Code, another terminal, stale — always render. The ResizeObserver refits xterm.
+  const termFilled = () => !$('#term').hidden && term.exited === null && !term.split;
   function applyTermLayout() {
     $('#chat').classList.toggle('termmax', termFilled());
-    $('#termMax').textContent = termFilled() ? 'restore' : 'max';
+    $('#termMax').textContent = termFilled() ? 'show chat' : 'hide chat';
+    $('#termMax').hidden = term.exited !== null;   // an exited terminal hides nothing worth reading
     requestAnimationFrame(fitTerm);
   }
-  function unfillTerm() { prefs.termMax = false; term.autoFill = false; savePrefs(); applyTermLayout(); }
+  function splitTerm() { term.split = true; applyTermLayout(); }
   function attachTerm(t) {
     detachTerm();
     ensureXterm(); term.xt.reset();
-    Object.assign(term, { id: t.id, sessionId: t.sessionId, cwd: t.cwd, resume: t.resume, exited: t.exited, err: null, autoFill: state.entries.length === 0 });
+    Object.assign(term, { id: t.id, sessionId: t.sessionId, cwd: t.cwd, resume: t.resume, exited: t.exited, err: null, split: false });
     showTermDrawer(true);
     const ws = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`);
     ws.binaryType = 'arraybuffer'; term.ws = ws;
@@ -730,7 +733,7 @@
     ws.onmessage = e => {
       if (typeof e.data !== 'string') return term.xt.write(new Uint8Array(e.data));
       const m = JSON.parse(e.data);
-      if (m.t === 'exit') { term.exited = m.code; renderTermHead(); }
+      if (m.t === 'exit') { term.exited = m.code; renderTermHead(); applyTermLayout(); }
     };
     ws.onclose = () => { if (term.ws === ws) { term.ws = null; renderTermHead(); } };
     renderTermHead();
@@ -738,7 +741,7 @@
   function detachTerm() {
     const ws = term.ws; term.ws = null;
     if (ws) { ws.onclose = null; ws.close(); }
-    Object.assign(term, { id: null, sessionId: null, cwd: null, resume: false, exited: null, autoFill: false });
+    Object.assign(term, { id: null, sessionId: null, cwd: null, resume: false, exited: null, split: false });
   }
   function hideTerm() {
     prefs.termOpen = false; savePrefs();
@@ -758,7 +761,7 @@
     const t = s?.terminal;
     if (termLive(s) && prefs.termOpen) { if (term.id !== t.id) attachTerm(t); }
     else if (term.id && term.sessionId && term.sessionId !== s?.id) { detachTerm(); showTermDrawer(false); }
-    else if (term.id && t && t.id === term.id && t.exited !== null && term.exited === null) { term.exited = t.exited; renderTermHead(); }
+    else if (term.id && t && t.id === term.id && t.exited !== null && term.exited === null) { term.exited = t.exited; renderTermHead(); applyTermLayout(); }
   }
   const termTip = s => term.err ? term.err
     : termLive(s) ? (prefs.termOpen && term.id === s.terminal.id ? 'The terminal is open below' : "Show this chat's terminal")
@@ -786,7 +789,7 @@
   }
   {
     let drag = false;
-    $('#termHead').addEventListener('mousedown', e => { if (e.target.closest('button')) return; if (termFilled()) unfillTerm(); drag = true; document.body.style.userSelect = 'none'; e.preventDefault(); });
+    $('#termHead').addEventListener('mousedown', e => { if (e.target.closest('button')) return; if (termFilled()) splitTerm(); drag = true; document.body.style.userSelect = 'none'; e.preventDefault(); });
     window.addEventListener('mousemove', e => {
       if (!drag) return;
       const r = $('#term').getBoundingClientRect();
@@ -795,7 +798,7 @@
     });
     window.addEventListener('mouseup', () => { if (!drag) return; drag = false; document.body.style.userSelect = ''; savePrefs(); });
     $('#termHide').onclick = hideTerm;
-    $('#termMax').onclick = () => { if (termFilled()) unfillTerm(); else { prefs.termMax = true; savePrefs(); applyTermLayout(); } };
+    $('#termMax').onclick = () => { term.split = !term.split; applyTermLayout(); };
     $('#termKill').onclick = killTerm;
   }
 
@@ -941,7 +944,6 @@
     }
     flush();
     log.innerHTML = out.join('') || '<div class="empty">No messages yet</div>';
-    if (state.entries.length && term.autoFill) { term.autoFill = false; applyTermLayout(); }   // something to read now: split the pane again
     if (opened) log.querySelectorAll('details.toolgroup').forEach((d, i) => { if (i < opened.length) d.open = opened[i]; });
     if (stick) log.scrollTop = log.scrollHeight;
   }

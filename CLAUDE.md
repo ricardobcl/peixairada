@@ -76,8 +76,9 @@ its tooltip carries `lastUserAt`.
   across on first run and the migration code can go once it has clearly run everywhere.
 * **Browser-only** — `localStorage` key `peixairada-prefs`: selected project, filter chip, chat-list
   width, tools mode, fold code, sound, show-all, chat-header details fold, terminal drawer
-  open/height/max. The drawer also fills the pane on its own while the chat has no entries (`term.autoFill`,
-  page state only) — a new chat is all terminal until Claude's first line. Keys from the lane board are deleted on load. `renderHead`
+  open/height. While the drawer's terminal is live the pane is all terminal — the rendered transcript
+  would be the same conversation twice — unless `show chat` split it (`term.split`, page state, reset on
+  every attach); an exited terminal or a hidden drawer shows the transcript again. Keys from the lane board are deleted on load. `renderHead`
   re-runs on every SSE update, so anything it renders must read its open/closed state from here — the
   DOM it built is thrown away each time.
 * **Never written**: anything under `~/.claude`. This tool is read-only against Claude Code's data.
