@@ -36,7 +36,14 @@ swiftc -swift-version 5 -O -target "$TARGET" "$DIR/Sources/main.swift" -o "$APP/
 echo "› bundle"
 cp "$DIR/icon/peixAIrada.icns" "$APP/Contents/Resources/AppIcon.icns"
 cp "$ROOT/server.mjs" "$APP/Contents/Resources/server.mjs"
+cp "$ROOT/package.json" "$APP/Contents/Resources/package.json"
 cp -R "$ROOT/public" "$APP/Contents/Resources/public"
+# The server imports ws and node-pty, so the bundle carries node_modules — installed here first if
+# it is missing. The xterm packages are dev-only (vendored copies live in public/vendor) and are
+# pruned from the copy; node-pty's spawn-helper keeps its executable bit through cp -R.
+[ -d "$ROOT/node_modules/node-pty" ] || (cd "$ROOT" && npm install --no-audit --no-fund)
+cp -R "$ROOT/node_modules" "$APP/Contents/Resources/node_modules"
+rm -rf "$APP/Contents/Resources/node_modules/@xterm"
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

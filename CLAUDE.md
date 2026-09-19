@@ -14,8 +14,10 @@ scripts/launchd.sh install    # or run the bare server at login
 node scripts/verify.mjs '<js>'  # headless-browser check of the live UI (see "Verifying" below)
 ```
 
-Node ≥ 20, zero npm dependencies (`marked`/`DOMPurify` are vendored in `public/vendor/`). The Mac app
-needs `swiftc` (full Xcode is installed here).
+Node ≥ 20. `npm install` first: two runtime dependencies since 2026-09-19 — `node-pty` (native, the
+terminal drawer) and `ws` (the WebSocket server Node lacks) — plus the xterm packages as dev-only
+sources for the copies vendored in `public/vendor/` (`marked`/`DOMPurify`/`highlight.js` are vendored
+by hand). The Mac app needs `swiftc` (full Xcode is installed here) and bundles `node_modules`.
 
 ## Layout
 
@@ -23,7 +25,7 @@ needs `swiftc` (full Xcode is installed here).
 |---|---|
 | `server.mjs` | The whole backend: transcript tailing, session state, SSE, HTTP, notifications |
 | `public/index.html` | The whole frontend, one file, no build step |
-| `public/vendor/` | `marked` 18.0.11 + `DOMPurify` 3.4.14 + `highlight.js` 11.11.1 (UMD builds, vendored on purpose — no CDN at runtime) |
+| `public/vendor/` | `marked` 18.0.11 + `DOMPurify` 3.4.14 + `highlight.js` 11.11.1 + `xterm` 5.5.0 (+ fit 0.11, web-links 0.12) — UMD builds, vendored on purpose, no CDN at runtime |
 | `mac/Sources/main.swift` | Native shell: window, server lifecycle, Dock badge, menu bar, notifications |
 | `mac/icon/MakeIcon.swift` | The app icon, drawn in CoreGraphics (no image assets) |
 | `mac/build.sh` | Compile + bundle + ad-hoc sign + optional install |
@@ -42,7 +44,8 @@ needs `swiftc` (full Xcode is installed here).
 | Titles | the oldest still-open PR the chat mentions, else `custom-title` / `ai-title` lines |
 | PRs mentioned | `pr-link` lines *and* GitHub pull URLs scanned out of user/assistant message text |
 | PR open/merged/closed | `gh api graphql`, batched — the only thing here that talks to the network |
-| Permission prompts | **only** via hooks — these never reach the transcript |
+| Permission prompts | **only** via hooks — these never reach the transcript — *or* visibly, in the terminal drawer |
+| Chat from the board | a PTY (`node-pty`) running `claude --resume <id>` or `claude` in the chat's cwd, through an interactive login zsh so mise's PATH applies; it registers like any CLI run. A new chat is tied to its session by pid when the registry entry appears |
 
 Lane order is `done → stale → clauding → ready` (first match wins), where *stale* = process gone and
 *done* = user-ticked.
@@ -140,6 +143,14 @@ the lane. The card still *shows* `lastActivity`; its tooltip carries `lastUserAt
   window is focused, so the focus endpoint runs `code <cwd>` first and the URI 400 ms later. If an
   update drops the parameter, the window still comes up and the chat does not — check the handler
   with `grep -oE 'case"/open":.{300}' ~/.vscode/extensions/anthropic.claude-code-*/extension.js`.
+* **node-pty's spawn-helper arrives without its executable bit.** npm's prebuilt
+  `prebuilds/darwin-arm64/spawn-helper` is mode 644, and the first terminal fails with
+  `posix_spawnp failed`. `postinstall` chmods it and the server does so again before importing the
+  module. The terminals' PTYs are owned by the server process: restart it and every claude in a
+  drawer gets SIGHUP. `exit code 129` in the drawer is that, not a crash.
+* **The server's own environment says it is inside Claude** when started from a Claude shell
+  (`CLAUDECODE`, `CLAUDE_CODE_*`), and the CLI refuses to nest. `termEnv()` strips those before
+  spawning; keep it that way.
 * **macOS has no `timeout(1)`** — use `perl -e 'alarm shift; exec @ARGV' 60 <cmd>`.
 * **Finding `node` from the GUI app is the fragile part.** launchd hands the app a bare PATH, and
   version managers (mise here) activate in `.zshrc`, so only an *interactive* login shell can resolve
@@ -158,14 +169,20 @@ Do not claim a UI change works without loading it in a real browser — several 
 ```sh
 node scripts/verify.mjs "document.querySelectorAll('.card').length"
 node scripts/verify.mjs "JSON.stringify([...document.querySelectorAll('.lane')].map(l => l.dataset.lane))"
+node scripts/verify.mjs --hash <id> --shot /tmp/x.png "1"    # screenshot after the expression; DARK=1 for dark mode
 ```
+
+Look at the screenshot (`Read` renders PNGs) — the drawer's first cut only looked right because
+someone did.
 
 * `--dump-dom` is **useless** here: it fires on `load`, before the SSE snapshot and `fetch` populate
   the page. `--virtual-time-budget` never expires either, because the SSE stream is always in flight.
   Drive Chrome over CDP and wait for the DOM state you expect — that is what `scripts/verify.mjs` does.
 * For server logic, point a throwaway server at a fixture tree:
   `CLAUDE_DIR=/tmp/fix STATE_FILE=/tmp/state.json PORT=7399 NOTIFY=off node server.mjs`, then append
-  JSONL lines to it and assert on `/api/sessions`. Stop it **by port** —
+  JSONL lines to it and assert on `/api/sessions`. Terminal endpoints spawn a *real* `claude` in a
+  PTY — point the test server at the real `~/.claude`, use a stale chat, and `DELETE` the terminals
+  you made (`GET /api/terminals` lists them). Stop it **by port** —
   `lsof -ti tcp:7399 -sTCP:LISTEN | xargs kill`. `pkill -f server.mjs` also matches the Mac app's own
   server (it runs the bundle's `server.mjs`); that is what took the board down on 2026-09-11 and left
   every button on it, VS Code first, failing with `Load failed`.
@@ -174,10 +191,10 @@ node scripts/verify.mjs "JSON.stringify([...document.querySelectorAll('.lane')].
 
 ## Deliberately not done
 
-* **Replying into a *live* session from the board.** Stale chats *can* be replied to — see
-  `replyToStale` in `server.mjs`, which shells out to `claude --resume <id> -p <text>`: public CLI,
-  same transcript, and the watcher shows the answer with no special casing. Live chats are refused on
-  purpose (a second writer on one transcript). Reaching them means the peer socket at
+* **Attaching to a *live* session from the board.** Stale chats *can* be replied to and chatted
+  with — `replyToStale` shells out to `claude --resume <id> -p <text>` and the terminal drawer runs
+  `claude --resume <id>` in a PTY: public CLI, same transcript, and the watcher shows the answer with
+  no special casing. Live chats are refused on purpose (a second writer on one transcript). Reaching them means the peer socket at
   the session's inbox socket (`messagingSocketPath` in the registry). That is a *documented* feature —
   https://code.claude.com/docs/en/cross-session-messaging — and "a script or hook posting into a
   session" is a supported use of it; on macOS the `{"type":"auth","token":…}` first line is optional,

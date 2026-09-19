@@ -5,7 +5,6 @@ mac/icon/peixAIrada.iconset/
 mac/icon/peixAIrada.icns
 mac/icon/preview-*.png
 
-# There are no npm dependencies on purpose, but keep the tree clean if that ever changes
 node_modules/
 
 # macOS

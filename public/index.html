@@ -13,6 +13,7 @@
     --code-ink: #a8442a; --inline-bg: rgba(0, 0, 0, .055);
     --you: #2f8b7c; --snip-claude: #45443f; --vscode: #0066b8;
     --pr-open: #2f9e5b; --pr-merged: #8250df; --pr-closed: #d64545; --pr-draft: #8b8b85;
+    --term-bg: #f4f3ee; --term-sel: rgba(0, 0, 0, .14);
     /* Syntax colours, one set per theme — the whole highlight.js palette hangs off these eight. */
     --hl-com: #97968d; --hl-key: #9c27a0; --hl-str: #4a8c3f; --hl-num: #98651a;
     --hl-fn: #2f6fd0; --hl-cls: #a8791a; --hl-var: #cf4b3c; --hl-meta: #6b7f9e;
@@ -24,6 +25,7 @@
     --code-ink: #e0a284; --inline-bg: rgba(255, 255, 255, .075);
     --you: #4fb8a8; --snip-claude: #c9c7bd; --vscode: #4aa5f0;
     --pr-open: #3fb950; --pr-merged: #a371f7; --pr-closed: #f85149; --pr-draft: #8b8b85;
+    --term-bg: #111110; --term-sel: rgba(255, 255, 255, .22);
     --hl-com: #7c7c74; --hl-key: #c678dd; --hl-str: #98c379; --hl-num: #d19a66;
     --hl-fn: #61afef; --hl-cls: #e5c07b; --hl-var: #e06c75; --hl-meta: #8fa6c4;
   } }
@@ -59,7 +61,7 @@
   #board { flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(230px, 340px) repeat(3, minmax(230px, 340px)); justify-content: start; overflow-x: auto; overflow-y: hidden; }
   #splitter { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--panel); }
   #splitter:hover, #splitter.drag { background: var(--accent); }
-  #chat { width: 520px; min-width: 320px; max-width: 75vw; flex: none; display: grid; grid-template-rows: auto 1fr auto; min-height: 0; }
+  #chat { width: 520px; min-width: 320px; max-width: 75vw; flex: none; display: grid; grid-template-rows: auto 1fr auto auto; min-height: 0; }
 
   /* ---- lanes & cards ---- */
   .lane { display: grid; grid-template-rows: auto 1fr; min-height: 0; min-width: 0; overflow: hidden; border-right: 1px solid var(--line); }
@@ -205,6 +207,21 @@
   .composer-foot .hint.err { color: var(--needs); }
   .composer-foot .hint code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   #composeSend:disabled { opacity: .5; cursor: default; border-color: var(--line); }
+  /* ---- terminal drawer: the real claude, in a PTY on the server ---- */
+  #term { border-top: 1px solid var(--line); background: var(--panel); display: grid; grid-template-rows: auto 1fr; height: 320px; min-height: 120px; max-height: 70vh; min-width: 0; }
+  #term[hidden] { display: none; }
+  #term .thead { display: flex; align-items: center; gap: 8px; padding: 3px 10px; font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--line); cursor: row-resize; user-select: none; }
+  #term .thead .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #term .thead .lbl b { color: var(--ink); font-weight: 600; }
+  #term .thead code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); }
+  #term .thead button { font: inherit; font-size: 11px; padding: 1px 7px; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 5px; cursor: pointer; }
+  #term .thead button:hover { border-color: var(--accent); }
+  #term .thead button[hidden] { display: none; }
+  #term .tbody { min-height: 0; padding: 4px 0 0 6px; background: var(--term-bg); }
+  #term .tbody .xterm { height: 100%; }
+  #termBtn .ic, #newChatBtn .ic { fill: currentColor; }
+  #termBtn.on { color: var(--accent); }
+  #termBtn.err .ic { fill: var(--needs); }
   /* The chat is prose, so it gets prose spacing: a taller line box than the dense board above it
      and a clear gap between turns. Everything below is tuned against that 1.62. */
   .msg { margin: 0 0 18px; }
@@ -303,6 +320,10 @@
   <section id="chat">
     <div class="shead" id="shead"><h2>Pick a session</h2></div>
     <div id="log"><div class="empty">Click a card to open its chat</div></div>
+    <div id="term" hidden>
+      <div class="thead" id="termHead" title="Drag to resize"><span class="lbl" id="termLbl"></span><button id="termKill" title="End this claude process">end</button><button id="termHide" title="Hide the terminal — claude keeps running">hide</button></div>
+      <div class="tbody" id="termBody"></div>
+    </div>
     <div id="composer" hidden>
       <textarea id="composeText" rows="2" placeholder="Reply here — resumes this chat with `claude --resume`"></textarea>
       <div class="composer-foot">
@@ -315,12 +336,16 @@
 <script src="/vendor/marked.min.js"></script>
 <script src="/vendor/purify.min.js"></script>
 <script src="/vendor/highlight.min.js"></script>
+<link rel="stylesheet" href="/vendor/xterm.css">
+<script src="/vendor/xterm.js"></script>
+<script src="/vendor/xterm-addon-fit.js"></script>
+<script src="/vendor/xterm-addon-web-links.js"></script>
 <script>
 (() => {
   const $ = s => document.querySelector(s);
   const main = $('#main');
   const state = { sessions: new Map(), current: null, unread: new Map(), entries: [] };
-  const prefs = { sound: false, showAll: false, groupByRepo: false, compact: false, toolsMode: 'collapsed', foldCode: true, chatVisible: true, chatSide: 'right', chatWidth: 520, headDetails: false, collapsed: {}, repoCollapsed: {}, tight: {} };
+  const prefs = { sound: false, showAll: false, groupByRepo: false, compact: false, toolsMode: 'collapsed', foldCode: true, chatVisible: true, chatSide: 'right', chatWidth: 520, headDetails: false, termOpen: true, termHeight: 320, collapsed: {}, repoCollapsed: {}, tight: {} };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   const savePrefs = () => { try { localStorage.setItem('peixairada-prefs', JSON.stringify(prefs)); } catch {} };
 
@@ -380,9 +405,11 @@
   const ICON = {
     you: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 8.2a3.1 3.1 0 1 0 0-6.2 3.1 3.1 0 0 0 0 6.2Zm0 1.4c-3.1 0-5.6 1.7-5.6 3.8V14h11.2v-.6c0-2.1-2.5-3.8-5.6-3.8Z"/></svg>',
     claude: '<svg class="ic burst" viewBox="0 0 24 24" aria-hidden="true"><path d="M11.22 9.10L12.00 0.50L12.78 9.10ZM13.08 9.20L18.76 2.70L14.33 10.11ZM14.52 10.37L22.94 8.45L15.00 11.84ZM15.00 12.16L22.94 15.55L14.52 13.63ZM14.33 13.89L18.76 21.30L13.08 14.80ZM12.78 14.90L12.00 23.50L11.22 14.90ZM10.92 14.80L5.24 21.30L9.67 13.89ZM9.48 13.63L1.06 15.55L9.00 12.16ZM9.00 11.84L1.06 8.45L9.48 10.37ZM9.67 10.11L5.24 2.70L10.92 9.20ZM9.20 12a2.80 2.80 0 1 0 5.60 0a2.80 2.80 0 1 0 -5.60 0Z"/></svg>',
+    term: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.6 3.1 6.4 8l-4.8 4.9 1.1 1.1L8.6 8 2.7 2ZM8 12.6h6.4v1.5H8Z"/></svg>',
+    plus: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M7.25 2h1.5v5.25H14v1.5H8.75V14h-1.5V8.75H2v-1.5h5.25Z"/></svg>',
     vscode: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>'
   };
-  const entryLabel = s => s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : s.live?.entrypoint === 'cli' ? 'CLI' : s.alive ? 'live' : 'stale';
+  const entryLabel = s => s.terminal && s.terminal.exited === null ? 'terminal here' : s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : s.live?.entrypoint === 'cli' ? 'CLI' : s.alive ? 'live' : 'stale';
   function repoColor(name) { let h = 0; for (const c of String(name || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return `hsl(${h % 360} 55% 52%)`; }
 
   // Lane assignment. "done" = you ticked it (persisted server-side; the mark expires on new activity);
@@ -532,6 +559,8 @@
       <button class="btn icon dots ${prefs.headDetails ? 'on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}"
         title="${prefs.headDetails ? 'Hide' : 'Show'} path, branch and session details">···</button>
       ${s.cwd ? `<button class="btn icon" id="focusBtn" title="${FOCUS_TIP}" aria-label="Focus in VS Code">${ICON.vscode}</button>` : ''}
+      ${s.cwd ? `<button class="btn icon${term.err ? ' err' : termLive(s) && term.id === s.terminal.id ? ' on' : ''}" id="termBtn" title="${esc(termTip(s))}" aria-label="Terminal"${!termLive(s) && s.alive ? ' disabled' : ''}>${ICON.term}${term.err ? '<span class="lbl">failed</span>' : ''}</button>` : ''}
+      ${s.cwd ? `<button class="btn icon" id="newChatBtn" title="New chat in ${esc(s.project)} — opens a terminal running claude there" aria-label="New chat">${ICON.plus}</button>` : ''}
       ${s.prs?.length ? s.prs.map(prChip).join('') : ''}
       <div class="details"${prefs.headDetails ? '' : ' hidden'}>
         <span class="path">${esc(s.cwd || '')}${s.gitBranch && s.gitBranch !== 'HEAD' ? ' @ ' + esc(s.gitBranch) : ''}</span>
@@ -557,6 +586,116 @@
       };
     }
     $('#detailsBtn').onclick = () => { prefs.headDetails = !prefs.headDetails; savePrefs(); renderHead(s); };
+    const tb = $('#termBtn'); if (tb) tb.onclick = () => { term.err = null; openTerminalFor(s); };
+    const nb = $('#newChatBtn'); if (nb) nb.onclick = () => newChat(s.cwd);
+  }
+
+  // ---- terminal drawer: the real claude in a PTY on the server, attached over a WebSocket -----
+  // The drawer belongs to the chat pane: it shows the terminal of the session being viewed, or the
+  // one a new chat is being started in. The process lives on the server, so hiding the drawer or
+  // switching chats does not end it — "end" does. The server replays its scrollback on every attach,
+  // which is what makes a reload or a switch-and-back seamless. The transcript above it is the
+  // reading view; the terminal is where you type.
+  const term = { id: null, sessionId: null, cwd: null, resume: false, ws: null, xt: null, fit: null, exited: null, err: null };
+  function xtTheme() {
+    const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
+    return { background: v('--term-bg'), foreground: v('--ink'), cursor: v('--accent'), cursorAccent: v('--term-bg'), selectionBackground: v('--term-sel') };
+  }
+  function ensureXterm() {
+    if (term.xt) return;
+    term.xt = new Terminal({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, lineHeight: 1.1, cursorBlink: true, scrollback: 5000, theme: xtTheme(), macOptionIsMeta: true });
+    term.fit = new FitAddon.FitAddon(); term.xt.loadAddon(term.fit);
+    term.xt.loadAddon(new WebLinksAddon.WebLinksAddon((_e, uri) => window.open(uri, '_blank', 'noopener')));
+    term.xt.open($('#termBody'));
+    term.xt.onData(d => { if (term.ws?.readyState === 1 && term.exited === null) term.ws.send(JSON.stringify({ t: 'in', d })); });
+    new ResizeObserver(() => fitTerm()).observe($('#termBody'));
+    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { term.xt.options.theme = xtTheme(); });
+  }
+  function fitTerm() {
+    if (!term.xt || $('#term').hidden) return;
+    try { term.fit.fit(); } catch { return; }
+    if (term.ws?.readyState === 1) term.ws.send(JSON.stringify({ t: 'resize', cols: term.xt.cols, rows: term.xt.rows }));
+  }
+  const termSize = () => term.xt ? { cols: term.xt.cols, rows: term.xt.rows } : { cols: 120, rows: 30 };
+  function showTermDrawer(on) {
+    $('#term').hidden = !on;
+    if (on) { $('#term').style.height = prefs.termHeight + 'px'; requestAnimationFrame(fitTerm); }
+  }
+  function attachTerm(t) {
+    detachTerm();
+    ensureXterm(); term.xt.reset();
+    Object.assign(term, { id: t.id, sessionId: t.sessionId, cwd: t.cwd, resume: t.resume, exited: t.exited, err: null });
+    showTermDrawer(true);
+    const ws = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`);
+    ws.binaryType = 'arraybuffer'; term.ws = ws;
+    ws.onopen = () => { fitTerm(); term.xt.focus(); };
+    ws.onmessage = e => {
+      if (typeof e.data !== 'string') return term.xt.write(new Uint8Array(e.data));
+      const m = JSON.parse(e.data);
+      if (m.t === 'exit') { term.exited = m.code; renderTermHead(); }
+    };
+    ws.onclose = () => { if (term.ws === ws) { term.ws = null; renderTermHead(); } };
+    renderTermHead();
+  }
+  function detachTerm() {
+    const ws = term.ws; term.ws = null;
+    if (ws) { ws.onclose = null; ws.close(); }
+    Object.assign(term, { id: null, sessionId: null, cwd: null, resume: false, exited: null });
+  }
+  function hideTerm() {
+    prefs.termOpen = false; savePrefs();
+    detachTerm(); showTermDrawer(false);
+    const s = state.sessions.get(state.current); if (s) renderHead(s);
+  }
+  async function killTerm() { if (term.id) await fetch(`/api/terminals/${term.id}`, { method: 'DELETE' }); }
+  function renderTermHead() {
+    const what = term.exited !== null ? `exited (${term.exited})` : term.ws ? '' : 'disconnected';
+    $('#termLbl').innerHTML = `<code>claude${term.resume ? ' --resume' : ''}</code> · ${esc(term.cwd || '')}${what ? ` · <b>${what}</b>` : ''}`;
+    $('#termKill').hidden = term.exited !== null;
+  }
+  const termLive = s => !!(s?.terminal && s.terminal.exited === null);
+  // Keep the drawer on the viewed session's terminal, or off. Runs on every open and SSE update,
+  // so it must never re-attach the terminal it already shows.
+  function syncTerm(s) {
+    const t = s?.terminal;
+    if (termLive(s) && prefs.termOpen) { if (term.id !== t.id) attachTerm(t); }
+    else if (term.id && term.sessionId && term.sessionId !== s?.id) { detachTerm(); showTermDrawer(false); }
+    else if (term.id && t && t.id === term.id && t.exited !== null && term.exited === null) { term.exited = t.exited; renderTermHead(); }
+  }
+  const termTip = s => term.err ? term.err
+    : termLive(s) ? (prefs.termOpen && term.id === s.terminal.id ? 'The terminal is open below' : "Show this chat's terminal")
+    : s.alive ? `Live in ${entryLabel(s)} — it cannot be attached from here` : 'Open a terminal on this chat (claude --resume)';
+  async function openTerminalFor(s) {
+    if (termLive(s)) { prefs.termOpen = true; savePrefs(); syncTerm(s); renderHead(s); return; }
+    const r = await fetch(`/api/sessions/${s.id}/terminal`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(termSize()) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { term.err = d.error || `HTTP ${r.status}`; renderHead(s); return; }
+    prefs.termOpen = true; savePrefs(); attachTerm(d.terminal); renderHead(s);
+  }
+  // A new chat has no session until claude registers; the server ties the two by pid and says so
+  // over SSE, at which point the pane switches to it.
+  async function newChat(cwd) {
+    const r = await fetch('/api/terminals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cwd, ...termSize() }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { $('#log').innerHTML = `<div class="empty">Could not start a chat: ${esc(d.error || `HTTP ${r.status}`)}</div>`; return; }
+    state.current = null; state.entries = []; location.hash = ''; renderBoard();
+    $('#shead').innerHTML = `<h2><span class="repo" style="color:${repoColor(cwd.split('/').filter(Boolean).pop())}">${esc(cwd.split('/').filter(Boolean).pop())}</span><span class="sep">/</span><span class="t">new chat</span></h2>`;
+    $('#log').innerHTML = '<div class="empty">Say something in the terminal below — the transcript shows up here once Claude has written it.</div>';
+    renderComposer(null);
+    prefs.termOpen = true; savePrefs(); attachTerm(d.terminal);
+  }
+  {
+    let drag = false;
+    $('#termHead').addEventListener('mousedown', e => { if (e.target.closest('button')) return; drag = true; document.body.style.userSelect = 'none'; e.preventDefault(); });
+    window.addEventListener('mousemove', e => {
+      if (!drag) return;
+      const r = $('#term').getBoundingClientRect();
+      prefs.termHeight = Math.round(Math.max(120, Math.min(innerHeight * .7, r.bottom - e.clientY)));
+      $('#term').style.height = prefs.termHeight + 'px';
+    });
+    window.addEventListener('mouseup', () => { if (!drag) return; drag = false; document.body.style.userSelect = ''; savePrefs(); });
+    $('#termHide').onclick = hideTerm;
+    $('#termKill').onclick = killTerm;
   }
 
   // ---- composer: reply into a stale chat -----------------------------------------------
@@ -565,7 +704,9 @@
   // the textarea's value — this re-runs on every SSE update, and you may be mid-sentence.
   function renderComposer(s) {
     const box = $('#composer'), ta = $('#composeText'), btn = $('#composeSend'), hint = $('#composeHint');
-    if (!s || s.alive || !s.file) { box.hidden = true; return; }
+    // …and not under a terminal on the same chat: that is the reply box now, and a `-p` reply racing it
+    // would be the second writer the server refuses anyway once claude has registered.
+    if (!s || s.alive || !s.file || termLive(s) || (term.id && term.sessionId === s.id && term.exited === null)) { box.hidden = true; return; }
     box.hidden = false;
     const busy = !!s.replying;
     ta.disabled = busy;
@@ -708,7 +849,7 @@
     const s = state.sessions.get(id); if (s) renderHead(s);
     const r = await fetch(`/api/sessions/${id}/messages`); if (!r.ok) return;
     const data = await r.json();
-    state.sessions.set(id, data.session); state.entries = data.entries; renderHead(data.session); renderLog();
+    state.sessions.set(id, data.session); state.entries = data.entries; renderHead(data.session); renderLog(); syncTerm(data.session);
     $('#log').scrollTop = $('#log').scrollHeight;
     location.hash = id;
   }
@@ -745,7 +886,13 @@
       const want = location.hash.slice(1);
       if (want && !state.current && state.sessions.has(want)) openSession(want);
     });
-    es.addEventListener('session', e => { const s = JSON.parse(e.data); state.sessions.set(s.id, s); renderBoard(); if (s.id === state.current) renderHead(s); });
+    es.addEventListener('session', e => { const s = JSON.parse(e.data); state.sessions.set(s.id, s); renderBoard(); if (s.id === state.current) { renderHead(s); syncTerm(s); } });
+    es.addEventListener('terminal', e => {
+      const t = JSON.parse(e.data);
+      if (t.id !== term.id) return;
+      if (t.sessionId && !term.sessionId) { term.sessionId = t.sessionId; openSession(t.sessionId); }
+      if (t.exited !== null && term.exited === null) { term.exited = t.exited; renderTermHead(); }
+    });
     es.addEventListener('entries', e => { const d = JSON.parse(e.data); if (d.sessionId === state.current) { state.entries.push(...d.entries); renderLog(); } });
     es.addEventListener('alert', e => onAlert(JSON.parse(e.data)));
   }

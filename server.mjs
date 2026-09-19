@@ -11,14 +11,20 @@
 
 import { createServer } from 'node:http';
 import {
-  closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, renameSync, statSync, watch, writeFileSync
+  chmodSync, closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, renameSync, statSync, watch, writeFileSync
 } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { WebSocketServer } from 'ws';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+// node-pty is the one native module here. Its prebuilt spawn-helper arrives from npm without the
+// executable bit, which surfaces as "posix_spawnp failed" on the first terminal — fix it before the
+// import rather than documenting it. Without the module the server still runs; terminals answer 501.
+try { const h = join(__dirname, 'node_modules', 'node-pty', 'prebuilds', `${process.platform}-${process.arch}`, 'spawn-helper'); if (existsSync(h)) chmodSync(h, 0o755); } catch {}
+const nodePty = await import('node-pty').then(m => m.default ?? m).catch(e => { console.error('[peixairada] node-pty unavailable — terminals are disabled:', e.message); return null; });
 const CLAUDE_DIR = process.env.CLAUDE_DIR || join(homedir(), '.claude');
 const PROJECTS_DIR = join(CLAUDE_DIR, 'projects');
 const SESSIONS_DIR = join(CLAUDE_DIR, 'sessions');
@@ -107,7 +113,7 @@ function summary(s) {
     status: s.alive ? (s.status === 'unknown' && !s.file ? 'idle' : s.status) : (s.status === 'unknown' ? 'unknown' : 'stale'),
     rawStatus: s.status, statusSince: s.statusSince, lastActivity: s.lastActivity,
     lastUserAt: s.lastUserAt, lastReplyAt: s.lastReplyAt,
-    alive: s.alive, live: s.live, entryCount: s.entryCount, loaded: s.loaded, file: s.file, lastHook: s.lastHook,
+    alive: s.alive, live: s.live, terminal: termSummary(termOf(s)), entryCount: s.entryCount, loaded: s.loaded, file: s.file, lastHook: s.lastHook,
     done: isDone(s), doneAt: doneMarks[s.id] || null,
     replying: s.replying, replyError: s.replyError
   };
@@ -486,6 +492,7 @@ function loadRegistry() {
     const changed = JSON.stringify(live) !== JSON.stringify(s.live);
     s.live = live;
     if (!s.cwd && reg.cwd) s.cwd = reg.cwd;
+    linkTermToRegistry(reg, s);
     if (applyLiveness(s) || changed) schedulePush(s);
   }
   for (const s of sessions.values()) {
@@ -646,6 +653,109 @@ function replyToStale(s, text) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Terminals: a real `claude` in a PTY, attached to from the page over a WebSocket
+// ---------------------------------------------------------------------------------------------
+// Chatting from the board means running Claude Code itself, not re-implementing its UI: the process
+// is the CLI in a pseudo-terminal, the page shows it through xterm.js, and every feature the TUI has
+// comes along — permission prompts, questions, plan mode, slash commands. It registers in
+// ~/.claude/sessions like any Terminal.app run (entrypoint "cli") and writes the same transcript,
+// so the watcher tracks it with no special casing; the rendered chat above the drawer is the reading
+// view and the terminal is where you type.
+//
+// The PTY lives here, so the process survives a page reload or a switch to another chat; it does
+// not survive this server. Output is kept in a bounded scrollback and replayed on every attach.
+// A resumed chat keeps its session id; a new one is matched to its session by pid when it registers.
+const TERM_SCROLLBACK = Number(process.env.TERM_SCROLLBACK || 256 * 1024);
+const TERM_LINGER_MS = 5 * 60_000;    // keep an exited terminal's output around this long
+const terms = new Map();              // id -> { id, sessionId, cwd, pid, proc, resume, startedAt, exited, chunks, bytes, clients }
+let termSeq = 0;
+
+function termOf(s) { for (const t of terms.values()) if (t.sessionId === s.id) return t; return null; }
+function termSummary(t) {
+  return t ? { id: t.id, sessionId: t.sessionId, cwd: t.cwd, pid: t.pid, resume: t.resume, startedAt: t.startedAt, exited: t.exited } : null;
+}
+
+// The server's own environment minus anything that says "you are inside a Claude session" — under
+// `npm start` from a Claude shell that is exactly what it says, and the CLI refuses to nest.
+function termEnv() {
+  const env = {};
+  for (const [k, v] of Object.entries(process.env)) if (!/^CLAUDE(CODE|_)/.test(k)) env[k] = v;
+  return { ...env, TERM: 'xterm-256color', COLORTERM: 'truecolor', LANG: env.LANG || 'en_US.UTF-8' };
+}
+
+/**
+ * Start `claude` (or `claude --resume <id>`) in a PTY in `cwd`. Through an interactive login zsh,
+ * because the app's server has a bare PATH and the tools Claude will call — git, gh, node — are on
+ * the PATH that .zshrc builds (mise activates there). `exec` makes claude take over the shell's
+ * pid, which is the pid the registry will report.
+ */
+function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30 }) {
+  if (!nodePty) return { code: 501, error: 'node-pty is not available — run npm install and restart the server' };
+  const bin = claudeBin();
+  if (!bin) return { code: 503, error: 'claude binary not found — set CLAUDE_BIN to its path' };
+  if (!cwd) return { code: 400, error: 'no cwd known for this chat' };
+  if (!existsSync(cwd)) return { code: 409, error: `cwd no longer exists: ${cwd}` };
+  const args = sessionId ? ['--resume', sessionId] : [];
+  const id = `t${++termSeq}-${Date.now().toString(36)}`;
+  let proc;
+  try {
+    proc = nodePty.spawn('/bin/zsh', ['-l', '-i', '-c', 'exec "$0" "$@"', bin, ...args],
+      { name: 'xterm-256color', cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), cwd, env: termEnv() });
+  } catch (e) { return { code: 500, error: `could not start a terminal: ${e.message}` }; }
+  const t = { id, sessionId, cwd, pid: proc.pid, proc, resume: !!sessionId, startedAt: new Date().toISOString(), exited: null, chunks: [], bytes: 0, clients: new Set() };
+  proc.onData(d => {
+    const buf = Buffer.from(d, 'utf8');
+    t.chunks.push(buf); t.bytes += buf.length;
+    while (t.bytes > TERM_SCROLLBACK && t.chunks.length > 1) t.bytes -= t.chunks.shift().length;
+    for (const ws of t.clients) if (ws.readyState === 1) ws.send(buf);
+  });
+  proc.onExit(({ exitCode }) => {
+    t.exited = exitCode ?? 0;
+    const msg = JSON.stringify({ t: 'exit', code: t.exited });
+    for (const ws of t.clients) if (ws.readyState === 1) ws.send(msg);
+    broadcast('terminal', termSummary(t));
+    const s = t.sessionId && sessions.get(t.sessionId); if (s) schedulePush(s);
+    setTimeout(() => { if (terms.get(id) === t) terms.delete(id); }, TERM_LINGER_MS).unref();
+  });
+  terms.set(id, t);
+  console.log(`[peixairada] terminal ${id}: claude${args.length ? ' ' + args.join(' ') : ''} in ${cwd} (pid ${proc.pid})`);
+  broadcast('terminal', termSummary(t));
+  const s = sessionId && sessions.get(sessionId); if (s) schedulePush(s);
+  return { code: 201, terminal: termSummary(t) };
+}
+
+/** A new chat has no session id until claude registers; the pid ties the two together. */
+function linkTermToRegistry(reg, s) {
+  for (const t of terms.values()) {
+    if (t.pid !== reg.pid || t.sessionId === reg.sessionId) continue;
+    t.sessionId = reg.sessionId;
+    broadcast('terminal', termSummary(t)); schedulePush(s);
+  }
+}
+
+// One WebSocket per attached page. Binary frames carry output (raw PTY bytes, replayed from the
+// scrollback first); text frames are JSON in both directions: {t:'in', d} and {t:'resize', cols, rows}
+// up, {t:'exit', code} down.
+const wss = new WebSocketServer({ noServer: true });
+function attachTermSocket(req, socket, head) {
+  const m = (req.url || '').match(/^\/api\/terminals\/([\w-]+)\/ws$/);
+  const t = m && terms.get(m[1]);
+  if (!t) { socket.write('HTTP/1.1 404 Not Found\r\n\r\n'); socket.destroy(); return; }
+  wss.handleUpgrade(req, socket, head, ws => {
+    t.clients.add(ws);
+    if (t.bytes) ws.send(Buffer.concat(t.chunks));
+    if (t.exited !== null) ws.send(JSON.stringify({ t: 'exit', code: t.exited }));
+    ws.on('message', data => {
+      if (t.exited !== null) return;
+      let msg; try { msg = JSON.parse(data.toString()); } catch { return; }
+      if (msg.t === 'in' && typeof msg.d === 'string') t.proc.write(msg.d);
+      else if (msg.t === 'resize' && msg.cols > 0 && msg.rows > 0) { try { t.proc.resize(Math.min(500, msg.cols | 0), Math.min(200, msg.rows | 0)); } catch {} }
+    });
+    ws.on('close', () => t.clients.delete(ws));
+  });
+}
+
+// ---------------------------------------------------------------------------------------------
 // HTTP
 // ---------------------------------------------------------------------------------------------
 
@@ -678,10 +788,10 @@ const server = createServer(async (req, res) => {
       return res.end(readFileSync(join(__dirname, 'public', 'index.html')));
     }
     let m;
-    if (req.method === 'GET' && (m = p.match(/^\/vendor\/([\w.-]+\.js)$/))) {
+    if (req.method === 'GET' && (m = p.match(/^\/vendor\/([\w.-]+\.(js|css))$/))) {
       const f = join(__dirname, 'public', 'vendor', m[1]);
       if (!existsSync(f)) return json(res, 404, { error: 'not found' });
-      res.writeHead(200, { 'content-type': 'application/javascript; charset=utf-8', 'cache-control': 'public, max-age=86400' });
+      res.writeHead(200, { 'content-type': m[2] === 'css' ? 'text/css; charset=utf-8' : 'application/javascript; charset=utf-8', 'cache-control': 'public, max-age=86400' });
       return res.end(readFileSync(f));
     }
     if (req.method === 'GET' && p === '/api/sessions') return json(res, 200, { sessions: sortedSummaries(), claudeDir: CLAUDE_DIR, notify: NOTIFY });
@@ -744,6 +854,29 @@ const server = createServer(async (req, res) => {
       handleHook(h);
       return json(res, 200, { ok: true });
     }
+    if (req.method === 'GET' && p === '/api/terminals') return json(res, 200, { terminals: [...terms.values()].map(termSummary), available: !!nodePty });
+    if (req.method === 'POST' && p === '/api/terminals') {   // a new chat in a folder
+      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const r = spawnTerm({ cwd: typeof body.cwd === 'string' ? body.cwd : null, cols: body.cols, rows: body.rows });
+      return json(res, r.code, r);
+    }
+    if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/terminal$/))) {   // attach to, or resume, this chat
+      const s = sessions.get(m[1]);
+      if (!s) return json(res, 404, { error: 'unknown session' });
+      const have = termOf(s);
+      if (have && have.exited === null) return json(res, 200, { terminal: termSummary(have) });
+      // Live elsewhere: same rule as replies — a second claude on one transcript is how it gets mangled.
+      if (s.alive) return json(res, 409, { error: `this chat is live in ${s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : 'another terminal'} — open it there` });
+      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const r = spawnTerm({ cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows });
+      return json(res, r.code, r);
+    }
+    if (req.method === 'DELETE' && (m = p.match(/^\/api\/terminals\/([\w-]+)$/))) {
+      const t = terms.get(m[1]);
+      if (!t) return json(res, 404, { error: 'unknown terminal' });
+      if (t.exited === null) { try { t.proc.kill(); } catch {} }
+      return json(res, 200, { ok: true });
+    }
     if (req.method === 'POST' && p === '/api/test-notify') {
       nativeNotify('peixAIrada', 'test', 'Native notifications are working.');
       broadcast('alert', { kind: 'reply', sessionId: null, project: 'peixAIrada', title: 'Test notification', snippet: 'If you can read this, alerts work.', ts: new Date().toISOString() });
@@ -762,6 +895,8 @@ const server = createServer(async (req, res) => {
     json(res, 500, { error: String(e?.stack || e) });
   }
 });
+
+server.on('upgrade', attachTermSocket);
 
 // ---------------------------------------------------------------------------------------------
 // Boot

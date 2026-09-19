@@ -6,6 +6,8 @@
 //   node scripts/verify.mjs "JSON.stringify({lanes: [...document.querySelectorAll('.lane')].map(l => l.dataset.lane)})"
 //   node scripts/verify.mjs --hash <session-id> "document.querySelectorAll('.text.md').length"
 //   URL=http://127.0.0.1:7399/ node scripts/verify.mjs "…"
+//   node scripts/verify.mjs --shot /tmp/board.png "1"      # also save a screenshot after the expression
+//   DARK=1 node scripts/verify.mjs …                      # emulate prefers-color-scheme: dark
 //
 // Why not `chrome --dump-dom`? It dumps on `load`, before the SSE snapshot and fetch fill the page in,
 // so it always shows an empty board; and `--virtual-time-budget` never expires because the SSE stream
@@ -28,6 +30,9 @@ const args = process.argv.slice(2);
 let hash = null;
 const hi = args.indexOf('--hash');
 if (hi !== -1) { hash = args[hi + 1]; args.splice(hi, 2); }
+let shot = null;
+const si = args.indexOf('--shot');
+if (si !== -1) { shot = args[si + 1]; args.splice(si, 2); }
 const expr = args.join(' ');
 if (!expr) { console.error('usage: node scripts/verify.mjs [--hash <session-id>] "<js expression>"'); process.exit(2); }
 
@@ -68,6 +73,7 @@ const evaluate = async e => {
 
 await send('Runtime.enable');
 await send('Page.enable');
+if (process.env.DARK) await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
 await send('Page.navigate', { url: URL_ });
 // wait for the board to actually render (SSE snapshot arrived), not merely for `load`
 const ready = await evaluate(`new Promise(res => { const t0 = Date.now(); const iv = setInterval(() => {
@@ -83,6 +89,10 @@ if (hash) {
 }
 
 const out = await evaluate(expr);
+if (shot) {
+  const png = await send('Page.captureScreenshot', { format: 'png' });
+  if (png.result?.data) { (await import('node:fs')).writeFileSync(shot, Buffer.from(png.result.data, 'base64')); console.error('screenshot → ' + shot); }
+}
 clearTimeout(bail);
 if (out.error) { console.error('EXCEPTION:', out.error); process.exitCode = 1; }
 else console.log(typeof out.value === 'string' ? out.value : JSON.stringify(out.value, null, 1));

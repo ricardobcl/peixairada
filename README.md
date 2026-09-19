@@ -7,7 +7,7 @@
 ### Every Claude Code chat on your Mac. One board.<br>**Zero guessing about which one is waiting for you.**
 
 [![node](https://img.shields.io/badge/node-%E2%89%A5%2020-3c873a?logo=node.js&logoColor=white)](https://nodejs.org)
-[![dependencies](https://img.shields.io/badge/npm%20dependencies-0-c96442)](package.json)
+[![dependencies](https://img.shields.io/badge/npm%20dependencies-2-c96442)](package.json)
 [![build step](https://img.shields.io/badge/build%20step-none-c96442)](public/index.html)
 [![macOS](https://img.shields.io/badge/macOS-13%2B-1c1c1a?logo=apple&logoColor=white)](mac/)
 [![native app](https://img.shields.io/badge/native%20app-1.4%20MB-2f9e5b)](mac/build.sh)
@@ -39,10 +39,10 @@ the shoulder the moment one of them finishes or needs you**.
 
 ## ⚡ Sixty seconds to a board
 
-Node ≥ 20. **No `npm install`** — there is nothing to install. macOS for native notifications;
-everything else is portable.
+Node ≥ 20. macOS for native notifications; everything else is portable.
 
 ```sh
+npm install                  # two runtime deps: node-pty (the terminal drawer) and ws
 npm start                    # = node server.mjs  →  http://127.0.0.1:7331
 open http://127.0.0.1:7331
 ```
@@ -184,9 +184,20 @@ glance which of its PRs actually landed. A neutral chip means the lookup has
 not come back (or `gh` is not installed — then the colours simply never appear). Hover for the full
 title and URL, the state, when it last came up and how many times it was mentioned.
 
-**On a stale chat a reply box appears at the bottom** — type, ⏎, and the board resumes the chat for
-you; ⇧⏎ for a newline. Your prompt and Claude's answer arrive through the transcript like any other
-line, and the card walks Stale → Clauding → Ready on its own.
+**⌨ Chat from the board — in a real terminal.** The `>_` button in the chat header opens a drawer
+under the transcript running *Claude Code itself*: `claude --resume <id>` for that chat, in its
+folder, in a pseudo-terminal on the server, shown through xterm.js. It is the actual TUI, so
+everything it can do you can do here — permission prompts, questions, plan mode, slash commands,
+pasting — and it registers and writes its transcript exactly like a Terminal.app run, so the card
+above walks Stale → Clauding → Ready and the rendered chat keeps up. Read above, type below. **+**
+starts a *new* chat in the same repo the same way; the pane switches to it as soon as Claude
+registers the session. The process lives on the server: **hide** keeps it running, switching chats
+keeps it running, **end** stops it — and it does not survive a server restart. A chat that is live
+in VS Code or another terminal cannot be attached from here (the button says so); use the VS Code
+button instead. The first time in a folder Claude asks its usual *trust this folder?* question.
+
+**On a stale chat there is also a one-line reply box** — type, ⏎, and the board resumes the chat
+with `claude --resume <id> -p`; ⇧⏎ for a newline. It hides while a terminal is open on that chat.
 
 `hide chat` / `show chat` toggles it, `◨ chat right` / `◧ chat left` flips which side it sits on, and
 the divider drags to resize — all remembered per browser. Messages render as GitHub-flavoured
@@ -244,12 +255,16 @@ updates within **~100 ms** of Claude writing a line. Native notifications work f
 
 | Route | Purpose |
 |---|---|
-| `GET /` | the UI (`/vendor/*.js` serves the two vendored libraries) |
-| `GET /events` | SSE: `snapshot`, `session`, `entries`, `alert` |
+| `GET /` | the UI (`/vendor/*.{js,css}` serves the vendored libraries) |
+| `GET /events` | SSE: `snapshot`, `session`, `entries`, `alert`, `terminal` |
 | `GET /api/sessions` | summaries of every known session (incl. `done`) |
 | `GET /api/sessions/:id/messages` | full (capped) entry list, parsed on demand |
 | `POST /api/sessions/:id/done` `{done: true\|false}` | tick / untick a card (persisted in the state file) |
 | `POST /api/sessions/:id/reply` `{text}` | **stale chats only** — resumes the chat with `claude --resume <id> -p <text>`; 202 and the answer arrives through the transcript |
+| `POST /api/sessions/:id/terminal` `{cols, rows}` | attach to this chat's terminal, or start one with `claude --resume <id>` in its cwd; 409 if the chat is live elsewhere |
+| `POST /api/terminals` `{cwd, cols, rows}` | start a **new** chat: `claude` in a PTY in that folder; the `terminal` SSE event carries its session id once Claude registers |
+| `GET /api/terminals` · `DELETE /api/terminals/:id` | list terminals · end one (SIGHUP) |
+| `WS /api/terminals/:id/ws` | the terminal: binary frames are output (scrollback replayed first), text frames are JSON — `{t:'in', d}` / `{t:'resize', cols, rows}` up, `{t:'exit', code}` down |
 | `POST /api/sessions/:id/focus` | runs `code <cwd>` to bring that window to the front, then opens `vscode://anthropic.claude-code/open?session=<id>` so the chat itself comes up in the Claude panel |
 | `POST /hook` | receives Claude Code hook payloads (`hooks/hook.sh`) |
 | `POST /api/test-notify` | fire a test alert |
@@ -257,7 +272,8 @@ updates within **~100 ms** of Claude writing a line. Native notifications work f
 **Environment:** `PORT` (7331) · `HOST` (127.0.0.1) · `NOTIFY=native|off` · `CLAUDE_DIR` (`~/.claude`) ·
 `STATE_FILE` (defaults to `~/Library/Application Support/peixAIrada/state.json`;
 `$XDG_STATE_HOME/peixairada/` off macOS) · `TAIL_BYTES` · `MAX_ENTRIES` · `CLAUDE_BIN` (path to the
-`claude` binary, if PATH can't find it) · `REPLY_TIMEOUT_MS` (10 min).
+`claude` binary, if PATH can't find it) · `REPLY_TIMEOUT_MS` (10 min) · `TERM_SCROLLBACK` (256 KB of
+terminal output kept per PTY for replay).
 
 </details>
 
@@ -287,7 +303,7 @@ exits 0 — so Claude is **never** slowed down or blocked, even with the server 
 | Native macOS notifications | ✅ via `osascript` (shows as "Script Editor"; `terminal-notifier` fixes the icon) | ✅ first-class, own icon, click → focus |
 | Menu-bar / dock badge with unread count | ❌ tab-title badge only | ✅ |
 | Always-on-top mini window | ❌ | ✅ |
-| Install / update cost | **zero deps, one file** | ~250 MB app, signing, notarising |
+| Install / update cost | **two deps (a PTY, a WebSocket server), one file** | ~250 MB app, signing, notarising |
 | Reuse | UI is already HTML — Electron could load the same page | — |
 
 **The verdict:** keep the web page + server (plus a `launchd` agent so it's always up, and
@@ -310,10 +326,12 @@ Either way, the UI carries over unchanged.
 * **"Stale" is about the *process*, not the conversation.** Headless `claude -p` runs, and
   transcripts from before Claude Code kept a session registry, never had a tracked pid — so they show
   as stale too.
-* **You can reply to a stale chat, but not a live one.** Stale replies go through
-  `claude --resume <id> -p`, which is the public CLI and appends to the same transcript. A *live*
-  chat already has a process writing that file, and a second writer racing it is how a transcript
-  gets mangled — so the board refuses, and "Focus in VS Code" stays the answer there.
+* **You can chat with a stale or new chat here, but not attach to a live one.** The terminal drawer
+  and the reply box both go through the public CLI (`claude --resume <id>`), which appends to the
+  same transcript. A *live* chat already has a process writing that file, and a second writer racing
+  it is how a transcript gets mangled — so the board refuses, and the VS Code button (which now opens
+  the chat itself) is the answer there. The terminals' processes belong to the server: restart it and
+  they are gone, along with anything Claude was in the middle of.
 * **A live chat could take a *nudge*, but never an *answer*.** Reaching one means its inbox socket
   (`messagingSocketPath` in the registry), which is a documented feature — [cross-session
   messaging](https://code.claude.com/docs/en/cross-session-messaging) — and on macOS a script may post
@@ -332,6 +350,7 @@ Either way, the UI carries over unchanged.
 - [ ] Per-session **mute** / quiet hours, and syntax highlighting in code blocks
 - [ ] **Search across every transcript** — they're already on disk, a grep box is cheap
 - [x] Reply straight from the board — done for stale chats, via `claude --resume`
+- [x] **Chat from the board** — a real `claude` in a terminal drawer under the transcript, resume or new
 - [ ] ~~Reply into a **live** chat~~ — *not planned.* The socket is there and documented, but a
       message posted to it can never answer the question a chat is waiting on, which is the only
       reason to want it
