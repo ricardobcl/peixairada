@@ -518,7 +518,7 @@
   // One chip per PR mentioned in the chat, most recently mentioned first (the server's order),
   // coloured by its state on GitHub and carrying its title once the server has looked it up. The
   // visible title is capped, so the tooltip keeps the whole of it.
-  const FOCUS_TIP = "Focus this folder's window in VS Code";
+  const FOCUS_TIP = "Open this chat in VS Code";
   const prChip = pr => `<a class="pr"${pr.state ? ` data-state="${pr.state}"` : ''} href="${esc(pr.url)}" target="_blank" rel="noopener" title="${
     pr.title ? esc(pr.title) + '\n' : ''}${esc(pr.url)}${pr.state ? ` — ${pr.state}` : ''}${pr.lastAt ? ` · last came up ${rel(pr.lastAt)} ago` : ''}${
     pr.count ? ` · mentioned ${pr.count}× · last by ${pr.by === 'user' ? 'you' : 'Claude'}` : ''}">${esc(pr.label)}${pr.title ? `<span class="t">${esc(pr.title)}</span>` : ''}</a>`;

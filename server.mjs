@@ -701,8 +701,21 @@ const server = createServer(async (req, res) => {
       // which does not contain /usr/local/bin, so a bare `code` was ENOENT in the packaged app.
       const code = codeBin();
       if (!code) return json(res, 501, { error: 'code CLI not found — run "Shell Command: Install \'code\' command in PATH" in VS Code, or set CODE_BIN' });
-      // `code <folder>` re-focuses the VS Code window that already has that folder open.
-      execFile(code, [cwd], err => err ? json(res, 500, { error: String(err.message || err) }) : json(res, 200, { ok: true, cwd }));
+      // `code <folder>` re-focuses the VS Code window that already has that folder open. Then the
+      // chat itself: the extension's URI handler takes a session id on its /open route and hands it
+      // to its own open-session command, so the right tab comes up in the Claude panel, not just the
+      // right window. Undocumented (the docs list q/cwd/repo, the code reads session/prompt), so it
+      // may stop working on an extension update — then the window still comes up, as before.
+      // The URI lands in whichever window is focused, hence after `code` and a beat later.
+      // A chat live in a terminal is left alone: opening it in VS Code would put a second writer
+      // on its transcript.
+      const deepLink = s && process.platform === 'darwin' && !(s.alive && s.live?.entrypoint !== 'claude-vscode');
+      execFile(code, [cwd], err => {
+        if (err) return json(res, 500, { error: String(err.message || err) });
+        if (!deepLink) return json(res, 200, { ok: true, cwd, chat: false });
+        setTimeout(() => execFile('/usr/bin/open', [`vscode://anthropic.claude-code/open?session=${s.id}`], e2 =>
+          e2 ? json(res, 200, { ok: true, cwd, chat: false, warning: String(e2.message || e2) }) : json(res, 200, { ok: true, cwd, chat: true })), 400);
+      });
       return;
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/reply$/))) {

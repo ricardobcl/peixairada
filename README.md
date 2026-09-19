@@ -250,7 +250,7 @@ updates within **~100 ms** of Claude writing a line. Native notifications work f
 | `GET /api/sessions/:id/messages` | full (capped) entry list, parsed on demand |
 | `POST /api/sessions/:id/done` `{done: true\|false}` | tick / untick a card (persisted in the state file) |
 | `POST /api/sessions/:id/reply` `{text}` | **stale chats only** — resumes the chat with `claude --resume <id> -p <text>`; 202 and the answer arrives through the transcript |
-| `POST /api/sessions/:id/focus` | runs `code <cwd>` → brings that VS Code window to the front |
+| `POST /api/sessions/:id/focus` | runs `code <cwd>` to bring that window to the front, then opens `vscode://anthropic.claude-code/open?session=<id>` so the chat itself comes up in the Claude panel |
 | `POST /hook` | receives Claude Code hook payloads (`hooks/hook.sh`) |
 | `POST /api/test-notify` | fire a test alert |
 

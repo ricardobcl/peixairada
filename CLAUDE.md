@@ -133,6 +133,13 @@ the lane. The card still *shows* `lastActivity`; its tooltip carries `lastUserAt
   run from the shell skips that check, which is why `makeicon` still worked. `build.sh` now passes
   `-target <arch>-apple-macosx$MIN_OS` and puts the same number in `LSMinimumSystemVersion`;
   `otool -l <binary> | grep -A4 LC_BUILD_VERSION` shows what a binary actually says.
+* **Opening the *chat* in VS Code rides on an undocumented URI parameter.** The extension's URI handler
+  (`vscode://anthropic.claude-code/open`) reads `session` and `prompt` and hands them to its own
+  open-session command; the docs only list `q`, `cwd` and `repo`. Verified on 2.1.278: a stale session
+  opened this way registers with `entrypoint: claude-vscode` within a second. It lands in whichever
+  window is focused, so the focus endpoint runs `code <cwd>` first and the URI 400 ms later. If an
+  update drops the parameter, the window still comes up and the chat does not — check the handler
+  with `grep -oE 'case"/open":.{300}' ~/.vscode/extensions/anthropic.claude-code-*/extension.js`.
 * **macOS has no `timeout(1)`** — use `perl -e 'alarm shift; exec @ARGV' 60 <cmd>`.
 * **Finding `node` from the GUI app is the fragile part.** launchd hands the app a bare PATH, and
   version managers (mise here) activate in `.zshrc`, so only an *interactive* login shell can resolve
