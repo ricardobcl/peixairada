@@ -9,6 +9,11 @@ DIR=$(cd "$(dirname "$0")" && pwd -P)
 ROOT=$(cd "$DIR/.." && pwd -P)
 BUILD="$DIR/build"
 APP="$BUILD/peixAIrada.app"
+# The deployment target must be explicit. swiftc's default follows the *toolchain*, not this Mac:
+# a beta Xcode stamped the binary "minos 28.0" on a 27.0 machine and LaunchServices refused to
+# open it (-10825, kLSIncompatibleSystemVersionErr) — after the old app had already been removed.
+MIN_OS=13.0
+TARGET="$(uname -m)-apple-macosx$MIN_OS"
 
 case "${1:-build}" in
   clean) rm -rf "$BUILD" "$DIR/icon/makeicon" "$DIR/icon/peixAIrada.iconset" "$DIR/icon/peixAIrada.icns"; echo "cleaned"; exit 0;;
@@ -20,13 +25,13 @@ command -v swiftc >/dev/null || { echo "swiftc not found — install the Xcode c
 
 echo "› icon"
 cd "$DIR/icon"
-swiftc -swift-version 5 -O MakeIcon.swift -o makeicon
+swiftc -swift-version 5 -O -target "$TARGET" MakeIcon.swift -o makeicon
 ./makeicon . >/dev/null
 iconutil -c icns peixAIrada.iconset -o peixAIrada.icns
 
 echo "› compile"
 rm -rf "$BUILD"; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-swiftc -swift-version 5 -O "$DIR/Sources/main.swift" -o "$APP/Contents/MacOS/peixAIrada"
+swiftc -swift-version 5 -O -target "$TARGET" "$DIR/Sources/main.swift" -o "$APP/Contents/MacOS/peixAIrada"
 
 echo "› bundle"
 cp "$DIR/icon/peixAIrada.icns" "$APP/Contents/Resources/AppIcon.icns"
@@ -44,7 +49,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>0.1.0</string>
   <key>CFBundleVersion</key><string>1</string>
-  <key>LSMinimumSystemVersion</key><string>13.0</string>
+  <key>LSMinimumSystemVersion</key><string>$MIN_OS</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSHumanReadableCopyright</key><string>Local tool — not distributed</string>
   <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>

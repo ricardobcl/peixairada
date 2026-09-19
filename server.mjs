@@ -28,7 +28,7 @@ const NOTIFY = process.env.NOTIFY || 'native'; // native | off
 const TAIL_BYTES = Number(process.env.TAIL_BYTES || 512 * 1024);
 const MAX_ENTRIES = Number(process.env.MAX_ENTRIES || 800);
 const REGISTRY_POLL_MS = 10_000;
-// Where the done ticks and pins live. macOS keeps app data in Application Support (same place the
+// Where the done ticks live. macOS keeps app data in Application Support (same place the
 // logs already go); elsewhere follow the XDG state dir. STATE_FILE overrides both — tests use it.
 function defaultStateFile() {
   if (process.platform === 'darwin') {
@@ -53,8 +53,6 @@ let indexing = true; // suppress notifications while doing the initial scan
 // "Done" marks: sessionId -> ISO time it was marked. A mark only counts while nothing newer has
 // happened in the session, so a new prompt/reply automatically pulls the card back onto the board.
 let doneMarks = {};
-// Pins: sessionId -> ISO time / project name -> ISO time. Pinned items float to the top of their lane.
-let pins = { sessions: {}, projects: {} };
 
 // One-time move from the old ~/.peixairada location. Same filesystem, so the rename is atomic; the
 // empty directory is left behind rather than removing something we did not create.
@@ -69,11 +67,10 @@ if (!process.env.STATE_FILE && !existsSync(STATE_FILE) && existsSync(LEGACY_STAT
 }
 try {
   const st = JSON.parse(readFileSync(existsSync(STATE_FILE) ? STATE_FILE : LEGACY_STATE_FILE, 'utf8'));
-  doneMarks = st.done || {};
-  pins = { sessions: st.pins?.sessions || {}, projects: st.pins?.projects || {} };
+  doneMarks = st.done || {};   // files from before 2026-09-19 also carry a `pins` key — ignored, gone on the next save
 } catch {}
 function saveState() {
-  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks, pins }, null, 1)); }
+  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks }, null, 1)); }
   catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
 const isDone = s => !!doneMarks[s.id] && doneMarks[s.id] >= (s.lastActivity || '');
@@ -95,11 +92,15 @@ function newSession(id, file) {
 }
 
 function summary(s) {
+  const prT = prTitle(s);
   return {
     // Prefer the registry cwd: transcript lines record the shell's *current* directory, which moves with `cd`.
     id: s.id, slug: s.slug, cwd: s.live?.cwd || s.cwd, project: basename(s.live?.cwd || s.cwd || '') || s.slug,
     gitBranch: s.gitBranch, model: s.model,
-    title: s.customTitle || s.title || s.lastPrompt || (!s.file && s.alive ? '(no messages yet)' : '(untitled)'), aiTitle: s.title, customTitle: s.customTitle,
+    // The PR title beats Claude's own: it is what the work is called everywhere else — the PR page, the
+    // branch, standup. A title the user typed still wins over both.
+    title: s.customTitle || prT || s.title || s.lastPrompt || (!s.file && s.alive ? '(no messages yet)' : '(untitled)'),
+    aiTitle: s.title, customTitle: s.customTitle, prTitle: prT,
     lastPrompt: s.lastPrompt, lastReply: s.lastReply, prs: s.prs,
     // A live process with no transcript yet is an empty, idle panel (e.g. restored by VS Code, never prompted).
     // Not alive = the Claude process is gone: 'stale'. Resuming the chat registers a new pid and it comes back.
@@ -178,7 +179,8 @@ function notePr(s, url, ts, by) {
     url: clean, repo: m ? m[2] : null, number: m ? Number(m[3]) : null,
     // The owner rarely disambiguates and eats half the width of the chip; the URL is in the tooltip.
     label: m ? `${m[2]}#${m[3]}` : clean.replace(/^https?:\/\/(www\.)?github\.com\//, ''),
-    count: 0, by: null, firstAt: ts, state: prStatus.get(clean)?.state ?? null
+    count: 0, by: null, firstAt: ts,
+    state: prStatus.get(clean)?.state ?? null, title: prStatus.get(clean)?.title ?? null
   };
   if (by) { pr.count++; pr.by = by; }
   pr.lastAt = ts || pr.lastAt || null;
@@ -197,6 +199,21 @@ function notePrs(s, text, ts, by) {
   }
 }
 
+/**
+ * Which PR names the chat. Several can come up in one conversation, and the oldest one still open is
+ * the one being worked on: the later ones are usually references — the PR this one follows, the one it
+ * conflicts with — while merged and closed are finished business. When none is open the oldest wins
+ * anyway, so a card keeps its title through the merge instead of flipping back to Claude's. Titles
+ * arrive from `gh` with the state, so this is null until that lands.
+ */
+function prTitle(s) {
+  const titled = s.prs.filter(p => p.title);
+  if (!titled.length) return null;
+  const open = titled.filter(p => p.state === 'open' || p.state === 'draft');
+  return (open.length ? open : titled)
+    .reduce((a, b) => (String(a.firstAt || '') <= String(b.firstAt || '') ? a : b)).title;
+}
+
 // ---- …and whether they are open, merged or closed --------------------------------------------
 // The transcript never says, so the colour comes from GitHub through `gh` — the user's own
 // authenticated CLI, which reads its token from its config and so works from the app's bare
@@ -205,7 +222,7 @@ function notePrs(s, text, ts, by) {
 const PR_TTL_MS = Number(process.env.PR_TTL_MS || 10 * 60_000);
 const PR_TTL_ERROR_MS = 60 * 60_000;   // a PR we cannot see (private, deleted, no access): back off
 const PR_BATCH = 40;
-const prStatus = new Map();            // url -> { state, checkedAt }
+const prStatus = new Map();            // url -> { state, title, checkedAt }
 const prQueue = new Set();
 let prTimer = null, prBusy = false, ghGone = false;
 
@@ -223,14 +240,14 @@ function queuePr(url) {
   prTimer ??= setTimeout(() => { prTimer = null; drainPrQueue(); }, 250);
 }
 
-/** Called when a chat is opened: whatever its header will show, refreshed if it has aged out. */
+/** Whatever a chat's header and card will show, refreshed if it has aged out. */
 function queueSessionPrs(s) { for (const pr of s.prs) queuePr(pr.url); }
 
-function setPrState(url, state) {
-  prStatus.set(url, { state, checkedAt: Date.now() });
+function setPrInfo(url, state, title) {
+  prStatus.set(url, { state, title, checkedAt: Date.now() });
   for (const s of sessions.values()) {
     const pr = s.prs.find(p => p.url === url);
-    if (pr && pr.state !== state) { pr.state = state; schedulePush(s); }
+    if (pr && (pr.state !== state || pr.title !== title)) { pr.state = state; pr.title = title; schedulePush(s); }
   }
 }
 
@@ -245,7 +262,7 @@ function drainPrQueue() {
     const m = PR_ONE.exec(url);
     if (!m) continue;
     // owner/repo/number came out of PR_RE, so they cannot break out of the query string
-    parts.push(`p${batch.length}: repository(owner: "${m[1]}", name: "${m[2]}") { pullRequest(number: ${m[3]}) { state isDraft } }`);
+    parts.push(`p${batch.length}: repository(owner: "${m[1]}", name: "${m[2]}") { pullRequest(number: ${m[3]}) { title state isDraft } }`);
     batch.push(url);
   }
   if (!batch.length) return drainPrQueue();
@@ -262,7 +279,7 @@ function drainPrQueue() {
         : pr.state === 'MERGED' ? 'merged'
         : pr.state === 'CLOSED' ? 'closed'
         : pr.isDraft ? 'draft' : 'open';
-      setPrState(url, state);
+      setPrInfo(url, state, pr?.title || null);
     });
     if (prQueue.size) drainPrQueue();
   });
@@ -311,13 +328,13 @@ function fold(s, line) {
       if (toolResults.length) {
         for (const b of toolResults) pushEntry(s, { role: 'user', kind: 'tool_result', toolUseId: b.tool_use_id, isError: !!b.is_error, text: toolResultSnippet(b), ts });
         s.lastActivity = ts;
-        if (s.status === 'needs-input') setStatus(s, 'working', ts); // question answered
+        if (s.status === 'needs-input') { s.lastUserAt = ts; setStatus(s, 'working', ts); } // question answered — that was you
         return true;
       }
       const raw = textOf(content);
       if (raw.startsWith('[Request interrupted')) {
         pushEntry(s, { role: 'user', kind: 'interrupt', text: raw, ts });
-        s.lastActivity = ts;
+        s.lastActivity = ts; s.lastUserAt = ts;   // Escape is you acting on the chat too
         setStatus(s, 'idle', ts);
         return true;
       }
@@ -646,8 +663,10 @@ function readBody(req) {
   });
 }
 
+/** Newest first by when *you* last acted on the chat — the board's own order (`byUser` in index.html). */
+const userAt = s => String(s.lastUserAt || s.lastActivity || '');
 function sortedSummaries() {
-  return [...sessions.values()].map(summary).sort((a, b) => String(b.lastActivity || '').localeCompare(String(a.lastActivity || '')));
+  return [...sessions.values()].map(summary).sort((a, b) => userAt(b).localeCompare(userAt(a)));
 }
 
 const server = createServer(async (req, res) => {
@@ -665,7 +684,7 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': 'application/javascript; charset=utf-8', 'cache-control': 'public, max-age=86400' });
       return res.end(readFileSync(f));
     }
-    if (req.method === 'GET' && p === '/api/sessions') return json(res, 200, { sessions: sortedSummaries(), pins, claudeDir: CLAUDE_DIR, notify: NOTIFY });
+    if (req.method === 'GET' && p === '/api/sessions') return json(res, 200, { sessions: sortedSummaries(), claudeDir: CLAUDE_DIR, notify: NOTIFY });
     if (req.method === 'GET' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/messages$/))) {
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
@@ -706,15 +725,6 @@ const server = createServer(async (req, res) => {
       saveState(); schedulePush(s);
       return json(res, 200, { ok: true, done: isDone(s) });
     }
-    if (req.method === 'POST' && p === '/api/pins') {
-      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
-      const bucket = body.type === 'project' ? pins.projects : body.type === 'session' ? pins.sessions : null;
-      if (!bucket || typeof body.key !== 'string' || !body.key) return json(res, 400, { error: 'expected {type: "session"|"project", key, pinned}' });
-      if (body.pinned !== false) bucket[body.key] = new Date().toISOString(); else delete bucket[body.key];
-      for (const id of Object.keys(pins.sessions)) if (!sessions.has(id)) delete pins.sessions[id]; // prune forgotten sessions
-      saveState(); broadcast('pins', pins);
-      return json(res, 200, { ok: true, pins });
-    }
     if (req.method === 'POST' && p === '/hook') {
       const body = await readBody(req);
       let h; try { h = JSON.parse(body || '{}'); } catch { return json(res, 400, { error: 'bad json' }); }
@@ -728,7 +738,7 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'GET' && p === '/events') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
-      res.write(`event: snapshot\ndata: ${JSON.stringify({ sessions: sortedSummaries(), pins, notify: NOTIFY })}\n\n`);
+      res.write(`event: snapshot\ndata: ${JSON.stringify({ sessions: sortedSummaries(), notify: NOTIFY })}\n\n`);
       sseClients.add(res);
       const ping = setInterval(() => res.write(': ping\n\n'), 25_000);
       req.on('close', () => { clearInterval(ping); sseClients.delete(res); });
@@ -748,6 +758,9 @@ const t0 = Date.now();
 scanProjects();
 loadRegistry();
 indexing = false;
+// Statuses alone could wait for a chat to be opened; titles cannot — they head every card, so the whole
+// board needs them up front. Batched 40 to a GraphQL call, in the background, once per run.
+for (const s of sessions.values()) queueSessionPrs(s);
 console.log(`[peixairada] indexed ${sessions.size} sessions (${[...sessions.values()].filter(s => s.alive).length} alive) from ${CLAUDE_DIR} in ${Date.now() - t0}ms`);
 
 const pendingFiles = new Map();

@@ -39,7 +39,7 @@ needs `swiftc` (full Xcode is installed here).
 | Which sessions are alive | `~/.claude/sessions/<pid>.json` + `process.kill(pid, 0)` |
 | Reply finished | assistant line with `stop_reason: "end_turn"` (tool calls are `"tool_use"`) |
 | Waiting on the user | `AskUserQuestion` / `ExitPlanMode` tool call with no result yet |
-| Titles | `ai-title`, `custom-title` lines |
+| Titles | the oldest still-open PR the chat mentions, else `custom-title` / `ai-title` lines |
 | PRs mentioned | `pr-link` lines *and* GitHub pull URLs scanned out of user/assistant message text |
 | PR open/merged/closed | `gh api graphql`, batched — the only thing here that talks to the network |
 | Permission prompts | **only** via hooks — these never reach the transcript |
@@ -47,16 +47,27 @@ needs `swiftc` (full Xcode is installed here).
 Lane order is `done → stale → clauding → ready` (first match wins), where *stale* = process gone and
 *done* = user-ticked.
 
+Card order inside a lane is by when *you* last acted on the chat (`lastUserAt`: a prompt, an answer
+to its question, an interrupt), newest first — one rule for every lane, grouped or not, and repo
+blocks order by their newest card. A session whose tail held no prompt of yours (boot reads only the
+end of a long transcript) sorts by `lastActivity` instead of sinking. Pins and the needs-input rank
+in Ready were both dropped on 2026-09-19: sorting by your own last touch keeps the chats you are
+driving on top, which is what pinning was for, and Claude finishing a long job no longer reshuffles
+the lane. The card still *shows* `lastActivity`; its tooltip carries `lastUserAt`.
+
 ## State: what lives where
 
 * **Server-side, shared across browsers and the Mac app** —
   `~/Library/Application Support/peixAIrada/state.json` (Apple's location for app data, matching the
   logs in `~/Library/Logs/`; `$XDG_STATE_HOME/peixairada/state.json` off macOS, `STATE_FILE` overrides
-  both). Holds done ticks and pins. A done mark is `doneMarks[id] >= lastActivity`, so it expires by
-  itself when the session moves. It used to be `~/.peixairada/state.json`; the server moves that file
+  both). Holds done ticks only — a `pins` key from before 2026-09-19 is ignored and dropped on the
+  next save. A done mark is `doneMarks[id] >= lastActivity`, so it expires by itself when the
+  session moves. It used to be `~/.peixairada/state.json`; the server moves that file
   across on first run and the migration code can go once it has clearly run everywhere.
 * **Browser-only** — `localStorage` key `peixairada-prefs`: lane collapse, repo folds, card folds,
-  grouping, compact, chat side/width/visibility, tools mode.
+  grouping, compact, chat side/width/visibility, tools mode, chat-header details fold. `renderHead`
+  re-runs on every SSE update, so anything it renders must read its open/closed state from here — the
+  DOM it built is thrown away each time.
 * **Never written**: anything under `~/.claude`. This tool is read-only against Claude Code's data.
 
 ## Things that bit us — keep them in mind
@@ -70,11 +81,20 @@ Lane order is `done → stale → clauding → ready` (first match wins), where 
 * **Flexbox squashed the cards.** `.cards` is a flex column and cards have `overflow: hidden`, so a
   full lane shrank them to 17 px. `.cards > * { flex: none }` is load-bearing — don't remove it.
 * **…and stretched the chat header.** `.shead` is a grid item, so its `min-width: auto` resolved to
-  min-content: a long cwd — never mind a row of PR chips — made the header wider than the chat pane
-  and spilled it over the board. `.shead { min-width: 0 }`, plus the same on the scrolling `.prs`
-  row, is what keeps it inside the pane.
+  min-content: a long cwd made the header wider than the chat pane and spilled it over the board.
+  `.shead { min-width: 0 }` is what keeps it inside. The cwd now lives in the `···` fold, and PR chips
+  are *direct* children of `.shead` rather than a nested row — as one flex item they could not wrap,
+  which is why that row used to scroll sideways instead. `.shead h2` must keep a fixed `flex-basis`
+  for the same reason: at `auto` a long title exceeds the line by itself and pushes the status, the
+  buttons and every chip onto the next one.
 * **Swift:** `Result<Void, String>` does not compile (`String` isn't an `Error`); the server callbacks
   use `(String?) -> Void` where nil means success.
+* **The app can lose its server without noticing.** It adopts whatever already answers on 7331, and on
+  2026-09-09 that was an orphan: the app had segfaulted on reopen (an `NSWindow` built in code defaults
+  to `isReleasedWhenClosed = true`, so ⌘W over-released it) and left its server running. Nothing
+  watched that server, so when it was killed the board froze with every button failing. The window now
+  sets `isReleasedWhenClosed = false`, and a watchdog polls `/api/sessions` every 5 s and starts a
+  server after three misses.
 * **CoreGraphics:** filling several overlapping subpaths in one path punches holes when their winding
   directions disagree. The icon fills each shape separately inside `beginTransparencyLayer` so they
   merge and still get one shadow.
@@ -99,6 +119,20 @@ Lane order is `done → stale → clauding → ready` (first match wins), where 
   words around it, makes every line containing one taller than the ones that don't. A translucent
   `--inline-bg` (so it composites over the page, the user bubble or a table cell alike) at `.88em`
   keeps a term the same visual size as the prose. Blocks are the opposite case and do keep a border.
+* **Card glyphs are inline SVG, not emoji.** At 11px inside muted snippet text an emoji brings its own
+  palette and weight and stops reading as part of the sentence; `currentColor` SVG stays typographic
+  and themes itself. The Claude sunburst needs *few, thick* rays — the first cut had 12 fine ones and
+  rendered as a fuzzy dot at card size. Rebuild it with the generator in the git history, not by hand.
+  You is teal, Claude is the accent clay, and Claude's snippet text sits brighter than yours — the reply
+  is the thing you scan a lane for. `#focusBtn .ic` is an *id* selector, so the VS Code icon's error
+  colour has to be `#focusBtn.err .ic` to out-specify it; `.btn.icon.err .ic` silently loses.
+* **Pin the Swift deployment target.** `swiftc` without `-target` stamps the binary with the
+  *toolchain's* default OS, not this Mac's: on 2026-09-19 a beta Xcode wrote `minos 28.0` on a 27.0
+  machine and LaunchServices refused to open the app (`-10825`, `kLSIncompatibleSystemVersionErr`)
+  — after `build.sh install` had already deleted the old one, so the board was simply gone. A CLI
+  run from the shell skips that check, which is why `makeicon` still worked. `build.sh` now passes
+  `-target <arch>-apple-macosx$MIN_OS` and puts the same number in `LSMinimumSystemVersion`;
+  `otool -l <binary> | grep -A4 LC_BUILD_VERSION` shows what a binary actually says.
 * **macOS has no `timeout(1)`** — use `perl -e 'alarm shift; exec @ARGV' 60 <cmd>`.
 * **Finding `node` from the GUI app is the fragile part.** launchd hands the app a bare PATH, and
   version managers (mise here) activate in `.zshrc`, so only an *interactive* login shell can resolve
@@ -124,7 +158,10 @@ node scripts/verify.mjs "JSON.stringify([...document.querySelectorAll('.lane')].
   Drive Chrome over CDP and wait for the DOM state you expect — that is what `scripts/verify.mjs` does.
 * For server logic, point a throwaway server at a fixture tree:
   `CLAUDE_DIR=/tmp/fix STATE_FILE=/tmp/state.json PORT=7399 NOTIFY=off node server.mjs`, then append
-  JSONL lines to it and assert on `/api/sessions`.
+  JSONL lines to it and assert on `/api/sessions`. Stop it **by port** —
+  `lsof -ti tcp:7399 -sTCP:LISTEN | xargs kill`. `pkill -f server.mjs` also matches the Mac app's own
+  server (it runs the bundle's `server.mjs`); that is what took the board down on 2026-09-11 and left
+  every button on it, VS Code first, failing with `Load failed`.
 * The Mac app logs its own decisions to `~/Library/Logs/peixairada-app.log` (notification permission,
   every alert with `focused=`/`useUN=`, badge counts) — read that instead of guessing.
 
@@ -143,11 +180,23 @@ node scripts/verify.mjs "JSON.stringify([...document.querySelectorAll('.lane')].
      lane — the only reason to want this — is off the table by design.
   2. The exact JSON of a *message* line is not in the docs (only the auth line is), and establishing it
      empirically means writing to a session socket, which the auto-mode classifier blocks.
-* **PR status costs a network call**, so it is lazy: statuses are fetched when a chat is *opened*
-  (and when a PR comes up live), never for the whole history at boot — `indexing` guards that. Merged
+* **PR status costs a network call.** It *used* to be lazy for everything — fetched when a chat was
+  opened, never for the whole history at boot. Titles ended that: they head every card, so the whole
+  board needs them up front and boot queues every PR it has seen (~280 here = ~7 batched GraphQL
+  calls, in the background, once per run). Everything else is still lazy and `indexing` still guards
+  the queue during the scan, so a PR is asked about once, not once per mention. Merged
   and closed are terminal and cached forever; open/draft re-check after `PR_TTL_MS` (10 min), a PR we
   cannot see after an hour. `gh` brings its own token, so it works from the app's bare launchd
-  environment; `GH_BIN` overrides the search, and without `gh` the chips just stay neutral.
+  environment; `GH_BIN` overrides the search, and without `gh` the chips just stay neutral and every
+  card keeps Claude's own title.
+* **A card is titled by its PR, and `prTitle()` picks which one.** Chats mention several — the one
+  being worked on is the *oldest still open*: the later ones are usually references (the PR this
+  follows, the one it conflicts with), and merged/closed is finished business. With none open the
+  oldest wins anyway, so a card keeps its title through the merge rather than flipping back. A title
+  the user typed (`custom-title`) still beats the PR. Two consequences to remember: the title is null
+  until `gh` answers, so cards render Claude's title for the first second or so of a run; and boot
+  reads only the last `TAIL_BYTES` of a long transcript, so a PR mentioned only near its top is not
+  known — and cannot title the card — until the chat is opened once and parsed in full.
 * **Hooks are not installed** in `~/.claude/settings.json`. Merging `hooks/settings-snippet.json` is
   what makes permission prompts visible and "replied" exact instead of inferred.
 * **The Mac app is only ad-hoc signed** — this machine, not distribution.

@@ -258,10 +258,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
 
     showMessage("Starting the server…")
-    server.start { [weak self] problem in
-      guard let self else { return }
-      if let problem { self.showMessage(problem) } else { self.web.load(URLRequest(url: kURL)) }
-    }
+    bringUpServer()
+    Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in self?.checkServer() }
   }
 
   func applicationWillTerminate(_ note: Notification) { server.stop() }
@@ -286,6 +284,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                       styleMask: [.titled, .closable, .resizable, .miniaturizable, .fullSizeContentView],
                       backing: .buffered, defer: false)
     window.title = "peixAIrada"
+    // A window built in code releases itself on close, on top of the strong ref above: ⌘W, then a
+    // Dock click, and showWindow messages a freed window (SIGSEGV in applicationShouldHandleReopen).
+    window.isReleasedWhenClosed = false
     window.titlebarAppearsTransparent = false
     window.contentView = web
     window.contentMinSize = NSSize(width: 760, height: 520)
@@ -381,9 +382,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   @objc func openLog(_ sender: Any?) { NSWorkspace.shared.open(kLog) }
   @objc func restartServer(_ sender: Any?) {
     showMessage("Restarting the server…")
-    server.restart { [weak self] problem in
+    bringUpServer(restart: true)
+  }
+
+  // ---- watchdog --------------------------------------------------------------------------------
+  // The server can vanish under the app: an adopted one was never ours to watch, and a
+  // `pkill -f server.mjs` aimed at a throwaway test server matches this one too. The page keeps
+  // showing the last board and every button on it just fails, so poll and bring it back.
+  private var misses = 0
+  private var recovering = false          // a start is in flight — don't race it with a second one
+
+  private func bringUpServer(restart: Bool = false) {
+    recovering = true
+    let done: (String?) -> Void = { [weak self] problem in
       guard let self else { return }
+      self.recovering = false; self.misses = 0
       if let problem { self.showMessage(problem) } else { self.web.load(URLRequest(url: kURL)) }
+    }
+    if restart { server.restart(done) } else { server.start(done) }
+  }
+
+  private func checkServer() {
+    guard !recovering else { return }
+    ServerController.isServing { [weak self] ok in
+      DispatchQueue.main.async {
+        guard let self, !self.recovering else { return }
+        self.misses = ok ? 0 : self.misses + 1
+        guard self.misses >= 3 else { return }   // ~15 s of silence, not one slow answer
+        logLine("watchdog: nothing answering on :\(kPort) — starting the server")
+        self.showMessage("The server stopped — starting it again…")
+        self.bringUpServer()
+      }
     }
   }
   @objc func openFromMenu(_ sender: NSMenuItem) {

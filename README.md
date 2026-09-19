@@ -55,9 +55,9 @@ scripts/launchd.sh status    # …also: logs · uninstall · print
                              # PORT=8000 scripts/launchd.sh install  to pick another port
 ```
 
-Lane collapse, repo folds and chat position are remembered **per browser**. **Done** ticks and
-**pins** live server-side in `~/Library/Application Support/peixAIrada/state.json`, so they survive a
-restart and look the same in every browser *and* in the Mac app.
+Lane collapse, repo folds and chat position are remembered **per browser**. **Done** ticks live
+server-side in `~/Library/Application Support/peixAIrada/state.json`, so they survive a restart and
+look the same in every browser *and* in the Mac app.
 
 ---
 
@@ -112,22 +112,24 @@ Four lanes. A session lands in exactly one of them, and moves on its own.
 | | Lane | What lands there |
 |---|---|---|
 | 🟡 | **Clauding** | Claude is working — a prompt is in flight or tools are running. |
-| 🔴 | **Ready** | Claude stopped and the ball is with **you**: it replied (`idle`), or it asked a question / wants plan approval (`needs-input` — sorted first, in red). |
+| 🔴 | **Ready** | Claude stopped and the ball is with **you**: it replied (`idle`), or it asked a question / wants plan approval (`needs-input`, in red). |
 | 🟢 | **Done** | Only what **you tick ✓ done**, from Ready or Stale. Persisted server-side; a tick beats staleness, so a ticked chat stays put even after its process exits. The mark **expires the instant the session has new activity**, so a chat you re-prompt walks back through Clauding → Ready. |
 | ⚪ | **Stale** | The Claude process is gone — panel or terminal closed. Write to that chat again (resume it in VS Code, or `claude --resume <id>`) and it registers a new pid and walks back into Clauding / Ready by itself. Stale chats idle >30 days are hidden behind *show empty & >30d*; Claude Code deletes their transcripts after 30 days anyway. |
 
-### Sorting, pinning, folding
+### Sorting and folding
 
-**Inside a lane:** pinned cards first, then cards of pinned repos, then everything else by latest
-update (Ready puts `needs-input` before `idle`).
+**Inside a lane:** the chat **you** wrote to most recently comes first — the one rule, in every lane.
+Claude finishing a long job does not move its card up; answering its question or interrupting it
+does. So the chats you are actively driving stay at the top and the ones you have parked sink by
+themselves, which is what pins used to be for (there are none any more). The time on a card is still
+when *anything* last happened to it; hover it for when you last wrote.
 
-* **📌 on a card** pins it. **⇧-click** that same 📌 to pin its whole repo.
-* **group by repo** turns each lane into repo blocks — pinned repos first, then by the repo's latest
-  update, cards by update inside. Every block header gets its own 📌.
+* **group by repo** turns each lane into repo blocks, ordered by the block's newest card, cards in
+  the same order inside.
 * **Click a repo header** to fold it to one line (colour, name, counter — red when something in it
   needs you). **⌥-click** it to filter the whole board to that repo.
 * **⇕** in a column header is collapse-all: with *group by repo* on it folds every repo block in that
-  column, otherwise it folds that column's cards to one line each (dot · repo · title · time · 📌).
+  column, otherwise it folds that column's cards to one line each (dot · repo · title · time · ✓).
 * Folds are **per lane**, so folding `backend` under Stale leaves it open under Ready.
 * **compact** shrinks cards to a two-line title and one snippet line. By default a card shows up to
   three title lines, the last thing you asked, and — once Claude answers — the start of its reply.
@@ -139,8 +141,22 @@ other lane, press again to restore. Lanes cap at 340 px and the board scrolls si
 ### Anatomy of a card
 
 Every card leads with the **repo name** — colour-coded per repo, click to filter the board to it —
-then the session title, the last reply or prompt, the state, and chips for VS Code/CLI, the session
-name (`peixairada-f1`) and the branch.
+then the session title, the last thing you asked and the start of Claude's reply — each marked by a
+glyph rather than a word — a teal figure for you, Claude's sunburst in clay for Claude, with Claude's
+line set brighter because that is the one you scan a lane for. That is all: the
+card answers *what changed*, and the column it sits in already answers *what state it is in*, so
+there is no "working…" or "replied — your turn" line repeating it.
+
+The one exception is **needs your input**, in red — because Ready holds idle *and* needs-input, that
+is the single status its column cannot tell you.
+
+What a chat *is* rather than what just happened — VS Code or CLI, the session name
+(`peixairada-f1`), the path and branch, the model, the pid — lives in the **chat header** on the
+right, folded behind **···** so the header fits on **one line**: repo / title, a status dot with how
+long it has been that way, the fold, the VS Code button, then the PR chips. No status word — the
+dot's colour says it and hovering spells it out. PR chips flow after the button and spill onto
+further lines only when they genuinely do not fit. The fold is remembered per browser. Filtering
+still matches the session name and branch even though neither is printed.
 
 ### 💬 The chat pane
 
@@ -155,11 +171,18 @@ blocks longer than 6 lines behind a *"bash · 23 lines"* summary.
 mentioned first, so the one you are on now leads. It picks them up from the URLs you or Claude wrote
 in the conversation as well as from Claude Code's own `pr-link` lines.
 
+**A chat with a PR is named by it.** The card and the header lead with the pull request's own title
+instead of the one Claude wrote for the chat — the name the work already has on GitHub, on the
+branch and at standup. Where a chat mentions several, the title comes from the *oldest one still
+open*: the later ones tend to be references, and a merged PR is finished business. A title you set
+yourself still wins over both, and hovering the title says which PR it came from and what Claude had
+called the chat.
+
 Each chip is **coloured by what GitHub says about it** — green open, violet merged, red closed, grey
-draft — looked up through your own `gh` CLI when you open the chat, so a chat you have not touched in
-a week tells you at a glance which of its PRs actually landed. A neutral chip means the lookup has
+draft — looked up through your own `gh` CLI, so a chat you have not touched in a week tells you at a
+glance which of its PRs actually landed. A neutral chip means the lookup has
 not come back (or `gh` is not installed — then the colours simply never appear). Hover for the full
-URL, the state, when it last came up and how many times it was mentioned.
+title and URL, the state, when it last came up and how many times it was mentioned.
 
 **On a stale chat a reply box appears at the bottom** — type, ⏎, and the board resumes the chat for
 you; ⇧⏎ for a newline. Your prompt and Claude's answer arrive through the transcript like any other
@@ -199,7 +222,7 @@ updates within **~100 ms** of Claude writing a line. Native notifications work f
   ~/.claude/projects/**/*.jsonl  ──fs.watch────▶┐
   ~/.claude/sessions/*.json      ──poll+watch──▶│                                   ┌──▶  the board
   Claude Code hooks (optional)   ──POST /hook──▶├──▶  server.mjs  ──SSE /events──▶──┤     lanes · cards · live transcript
-  …/peixAIrada/state.json        ◀──done+pins──▶┘     tail from byte offset         └──▶  unread badges · alerts
+  …/peixAIrada/state.json        ◀─done ticks──▶┘     tail from byte offset         └──▶  unread badges · alerts
                                                       fold lines → session state
                                                               │
                                                               └──▶ osascript ──▶ 🔔 native macOS alert
@@ -226,7 +249,6 @@ updates within **~100 ms** of Claude writing a line. Native notifications work f
 | `GET /api/sessions` | summaries of every known session (incl. `done`) |
 | `GET /api/sessions/:id/messages` | full (capped) entry list, parsed on demand |
 | `POST /api/sessions/:id/done` `{done: true\|false}` | tick / untick a card (persisted in the state file) |
-| `POST /api/pins` `{type: "session"\|"project", key, pinned}` | pin / unpin a card or a repo (same state file) |
 | `POST /api/sessions/:id/reply` `{text}` | **stale chats only** — resumes the chat with `claude --resume <id> -p <text>`; 202 and the answer arrives through the transcript |
 | `POST /api/sessions/:id/focus` | runs `code <cwd>` → brings that VS Code window to the front |
 | `POST /hook` | receives Claude Code hook payloads (`hooks/hook.sh`) |

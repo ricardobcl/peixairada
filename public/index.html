@@ -11,6 +11,7 @@
     --lane-ready: #d64545; --lane-clauding: #d9a82a; --lane-done: #2f9e5b;
     --user-bg: #f0efe9; --tool-bg: #f7f7f4; --code-bg: #efeee8; --code-line: #dedcd2;
     --code-ink: #a8442a; --inline-bg: rgba(0, 0, 0, .055);
+    --you: #2f8b7c; --snip-claude: #45443f; --vscode: #0066b8;
     --pr-open: #2f9e5b; --pr-merged: #8250df; --pr-closed: #d64545; --pr-draft: #8b8b85;
     /* Syntax colours, one set per theme — the whole highlight.js palette hangs off these eight. */
     --hl-com: #97968d; --hl-key: #9c27a0; --hl-str: #4a8c3f; --hl-num: #98651a;
@@ -21,6 +22,7 @@
     --bg: #141413; --panel: #1c1c1a; --ink: #e8e6df; --muted: #9a998f; --line: #2c2c29; --accent: #e08a68;
     --user-bg: #23231f; --tool-bg: #1f1f1c; --code-bg: #101010; --code-line: #2e2e2a; --ended: #5d5d58;
     --code-ink: #e0a284; --inline-bg: rgba(255, 255, 255, .075);
+    --you: #4fb8a8; --snip-claude: #c9c7bd; --vscode: #4aa5f0;
     --pr-open: #3fb950; --pr-merged: #a371f7; --pr-closed: #f85149; --pr-draft: #8b8b85;
     --hl-com: #7c7c74; --hl-key: #c678dd; --hl-str: #98c379; --hl-num: #d19a66;
     --hl-fn: #61afef; --hl-cls: #e5c07b; --hl-var: #e06c75; --hl-meta: #8fa6c4;
@@ -36,6 +38,13 @@
   header .sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
   header button, .btn { font: inherit; font-size: 12px; padding: 5px 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 6px; cursor: pointer; white-space: nowrap; }
   header button:hover, .btn:hover { border-color: var(--accent); }
+  .btn.icon { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; color: var(--muted); }
+  .btn.icon .ic { width: 15px; height: 15px; vertical-align: 0; }
+  .btn.icon:hover { color: var(--ink); }
+  #focusBtn .ic { fill: var(--vscode); }
+  .btn.icon.err { color: var(--needs); border-color: var(--needs); }
+  #focusBtn.err .ic { fill: var(--needs); }   /* must out-specify #focusBtn .ic above */
+  .btn.icon .lbl { font-size: 11px; }
   header label { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 5px; cursor: pointer; white-space: nowrap; }
   header select { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; }
   header input[type=text] { font: inherit; font-size: 12px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; width: 170px; }
@@ -89,18 +98,21 @@
   .card .title { margin-top: 4px; font-size: 13.5px; font-weight: 500; line-height: 1.35; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
   .card .snip { margin-top: 5px; font-size: 12px; line-height: 1.4; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
   .card .snip.you { -webkit-line-clamp: 2; }
-  .card .snip b { font-weight: 600; color: var(--ink); opacity: .65; margin-right: 3px; }
+  /* You and Claude are told apart twice over: hue on the glyph (cool teal vs Claude's clay) and
+     weight on the text — Claude's line is the one you scan a lane for, so it sits brighter and the
+     prompt that produced it recedes. */
+  .card .snip.claude { color: var(--snip-claude); }
+  .card .snip b { font-weight: 600; margin-right: 5px; display: inline; }
+  .card .snip.you b { color: var(--you); }
+  .card .snip.claude b { color: var(--accent); }
+  /* The speaker is now a glyph, so it has to sit on the text baseline rather than above it, and it
+     must not become a line box of its own when the snippet wraps. */
+  .ic { width: 1em; height: 1em; fill: currentColor; vertical-align: -.14em; flex: none; }
+  .card .snip .ic { width: 11px; height: 11px; }
+  .card .snip.claude .ic { width: 14px; height: 14px; vertical-align: -.24em; }
   body.compact .card .title { -webkit-line-clamp: 2; font-size: 13px; }
   body.compact .card .snip { -webkit-line-clamp: 1; margin-top: 3px; }
   body.compact .card:has(.snip.claude) .snip.you { display: none; }
-  body.compact .card .state { display: none; }
-  /* pins */
-  .pin { font: inherit; font-size: 12px; line-height: 1; padding: 0 2px; border: 0; background: transparent; cursor: pointer; opacity: .2; filter: grayscale(1); flex: none; }
-  .card:hover .pin, .ghead:hover .pin { opacity: .55; }
-  .pin.on { opacity: 1 !important; filter: none; }
-  .pin.proj:not(.on) { opacity: .5; }
-  .card.pinned { border-color: var(--accent); }
-  .cards .sep { border-top: 1px dashed var(--line); margin: 2px 6px 3px; }
   /* repo groups (group by repo) */
   .group { min-width: 0; margin-top: 6px; }
   .group:first-child { margin-top: 0; }
@@ -115,22 +127,25 @@
   .ghead .gname::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: var(--repo); margin-right: 6px; vertical-align: 0; }
   .ghead .gn { font-size: 11px; color: var(--muted); background: var(--user-bg); border-radius: 10px; padding: 0 6px; flex: none; }
   .ghead .gn.alert { background: var(--needs); color: #fff; }
-  .ghead .pin { margin-left: auto; }
   /* ⇕ collapse-all: with "group by repo" it folds the repo blocks, otherwise it folds this lane's
-     cards down to one line each (dot · repo · title · time · 📌). */
+     cards down to one line each (dot · repo · title · time · ✓). */
   .cards.tight .card { display: flex; align-items: center; gap: 6px; padding: 5px 8px; }
   .cards.tight .card .top { display: contents; }
   .cards.tight .card .dot { order: 1; }
   .cards.tight .card .repo { order: 2; flex: 0 1 auto; max-width: 45%; font-size: 12.5px; }
   .cards.tight .card .title { order: 3; flex: 1 1 auto; min-width: 0; margin: 0; font-size: 12.5px; font-weight: 400; color: var(--muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cards.tight .card .time { order: 4; } .cards.tight .card .badge { order: 5; } .cards.tight .card .pin { order: 6; }
-  .cards.tight .card .snip, .cards.tight .card .state, .cards.tight .card .foot { display: none; }
+  .cards.tight .card .time { order: 4; } .cards.tight .card .badge { order: 5; } .cards.tight .card .act { order: 6; }
+  .cards.tight .card .snip, .cards.tight .card .state { display: none; }
+  /* Only needs-input gets a status line. The lane already says stale / working / your turn, but Ready
+     holds idle *and* needs-input, so this is the one status the column cannot tell you. Entrypoint,
+     session name and branch live in the chat header now — the card is for what changed, not what it is. */
   .card .state { font-size: 11px; font-weight: 600; margin-top: 4px; }
-  .card .state.needs-input { color: var(--needs); } .card .state.working { color: var(--working); } .card .state.idle { color: var(--idle); } .card .state.stale { color: var(--muted); }
-  .card .foot { display: flex; align-items: center; gap: 4px; margin-top: 6px; min-width: 0; flex-wrap: wrap; }
-  .card .foot .grow { flex: 1; }
-  .act { font: inherit; font-size: 11px; padding: 2px 8px; border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 5px; cursor: pointer; white-space: nowrap; }
-  .act:hover { border-color: var(--accent); color: var(--accent); }
+  .card .state.needs-input { color: var(--needs); }
+  /* Done/reopen: an icon at the end of the top row, not a bordered pill in a row of its own. */
+  .act { font: inherit; font-size: 12px; line-height: 1; padding: 0 2px; border: 0; background: transparent;
+    color: var(--muted); cursor: pointer; flex: none; opacity: .35; }
+  .card:hover .act { opacity: .75; }
+  .act:hover { opacity: 1; color: var(--accent); }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .dot.working { background: var(--working); animation: pulse 1.4s ease-in-out infinite; }
   .dot.idle { background: var(--idle); }
@@ -141,20 +156,33 @@
   .chip { font-size: 10px; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; min-width: 0; flex: 0 1 auto; }
 
   /* ---- chat pane ---- */
-  .shead { padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--panel); display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; min-width: 0; }
-  .shead h2 { margin: 0; font-size: 14px; flex-basis: 100%; display: flex; gap: 8px; align-items: center; }
-  .shead h2 .repo { font-weight: 800; }
-  .shead h2 .sep { color: var(--muted); font-weight: 400; }
-  .shead h2 .x { margin-left: auto; }
+  .shead { padding: 7px 12px; border-bottom: 1px solid var(--line); background: var(--panel); display: flex; gap: 6px 9px; align-items: center; flex-wrap: wrap; min-width: 0; }
+  /* The title takes what is left and truncates. flex-basis must NOT be auto: a long title would then
+     exceed the line on its own and push the status, buttons and every chip onto the next one. */
+  .shead h2 { margin: 0; font-size: 14px; flex: 1 1 170px; min-width: 0; display: flex; gap: 6px; align-items: center; overflow: hidden; }
+  /* The repo is the identifier you navigate by, so it does not shrink — the title absorbs the
+     truncation instead, and only past 60% does the repo start to ellipsise too. */
+  .shead h2 .repo { font-weight: 800; flex: 0 0 auto; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .shead h2 .t { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .shead h2 .sep { color: var(--muted); font-weight: 400; flex: none; }
   .shead .path { font-size: 12px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-  .shead .status { font-size: 12px; display: flex; align-items: center; gap: 6px; }
+  .shead .status { font-size: 12px; display: flex; align-items: center; gap: 5px; flex: none; color: var(--muted); }
   .shead a { color: var(--accent); font-size: 12px; }
   /* PRs mentioned in the chat: own row, scrolls sideways so a busy session can't grow the header.
      min-width:0 is load-bearing — without it the row's min-content width (chips never wrap) widens
      the chat pane instead of scrolling. */
-  .shead .prs { flex-basis: 100%; min-width: 0; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
-  .shead .pr { flex: none; font-size: 11px; text-decoration: none; white-space: nowrap;
-    border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; }
+  /* Path, branch and the session chips fold away behind ··· — what stays in view is the status,
+     the PRs and the VS Code button. display:flex would beat the UA [hidden] rule, hence the override. */
+  .shead .details { flex-basis: 100%; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+  .shead .details[hidden] { display: none; }
+  .btn.icon.dots { font-size: 13px; line-height: 1; padding: 3px 7px; letter-spacing: .5px; }
+  .btn.icon.dots.on { color: var(--ink); border-color: var(--accent); }
+  /* `repo#123` in the state colour, then the PR's title in plain ink once `gh` has answered. The
+     title is what makes a chip readable without hovering, so it gets room but not the whole header:
+     it ellipsises past its cap, and the chip itself never exceeds one line of the header. */
+  .shead .pr { flex: none; max-width: 100%; min-width: 0; display: inline-flex; align-items: baseline; gap: 5px; font-size: 11px; text-decoration: none; white-space: nowrap;
+    border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; overflow: hidden; }
+  .shead .pr .t { flex: 0 1 auto; min-width: 0; max-width: 320px; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
   .shead .pr:hover { border-color: currentColor; }
   /* open / merged / closed / draft, in the colours GitHub itself uses. No colour = not looked up
      yet (or `gh` could not tell us), which is why the neutral chip stays the default. */
@@ -291,8 +319,8 @@
 (() => {
   const $ = s => document.querySelector(s);
   const main = $('#main');
-  const state = { sessions: new Map(), current: null, unread: new Map(), entries: [], pins: { sessions: {}, projects: {} } };
-  const prefs = { sound: false, showAll: false, groupByRepo: false, compact: false, toolsMode: 'collapsed', foldCode: true, chatVisible: true, chatSide: 'right', chatWidth: 520, collapsed: {}, repoCollapsed: {}, tight: {} };
+  const state = { sessions: new Map(), current: null, unread: new Map(), entries: [] };
+  const prefs = { sound: false, showAll: false, groupByRepo: false, compact: false, toolsMode: 'collapsed', foldCode: true, chatVisible: true, chatSide: 'right', chatWidth: 520, headDetails: false, collapsed: {}, repoCollapsed: {}, tight: {} };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   const savePrefs = () => { try { localStorage.setItem('peixairada-prefs', JSON.stringify(prefs)); } catch {} };
 
@@ -338,16 +366,23 @@
   // ---- helpers -----------------------------------------------------------------------
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const rel = ts => { if (!ts) return ''; const d = (Date.now() - new Date(ts)) / 1000; if (d < 60) return `${Math.max(0, d | 0)}s`; if (d < 3600) return `${(d / 60) | 0}m`; if (d < 86400) return `${(d / 3600) | 0}h`; return `${(d / 86400) | 0}d`; };
-  const statusLabel = { working: 'working…', idle: 'replied — your turn', 'needs-input': 'needs your input', stale: 'stale — write to it to resume', unknown: '' };
-  const entryLabel = s => s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : s.live?.entrypoint === 'cli' ? 'CLI' : s.alive ? 'live' : 'stale';
-  const isPinned = s => !!state.pins.sessions[s.id];
-  const isProjPinned = s => !!state.pins.projects[s.project];
-  function setPin(type, key, pinned) {
-    const bucket = type === 'project' ? state.pins.projects : state.pins.sessions;
-    if (pinned) bucket[key] = new Date().toISOString(); else delete bucket[key]; // optimistic; server broadcasts the truth
-    renderBoard();
-    fetch('/api/pins', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ type, key, pinned }) });
+  // A chat with a PR is titled by it, which is a title the user never wrote and Claude never chose —
+  // hover says which PR it is and keeps Claude's own title reachable rather than losing it.
+  function titleTip(s) {
+    if (!s.prTitle || s.title !== s.prTitle) return '';
+    const pr = s.prs?.find(p => p.title === s.prTitle);
+    const own = s.aiTitle || s.lastPrompt;
+    return `${pr ? pr.label + ' — ' : ''}${s.prTitle}${own ? `\n\nChat: ${own}` : ''}`;
   }
+  const statusLabel = { working: 'working…', idle: 'replied — your turn', 'needs-input': 'needs your input', stale: 'stale — write to it to resume', unknown: '' };
+  // Inline SVG, not emoji: these sit at ~11px inside muted snippet text, where emoji come with their
+  // own colours and weight and stop reading as part of the sentence. `currentColor` keeps them typographic.
+  const ICON = {
+    you: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 8.2a3.1 3.1 0 1 0 0-6.2 3.1 3.1 0 0 0 0 6.2Zm0 1.4c-3.1 0-5.6 1.7-5.6 3.8V14h11.2v-.6c0-2.1-2.5-3.8-5.6-3.8Z"/></svg>',
+    claude: '<svg class="ic burst" viewBox="0 0 24 24" aria-hidden="true"><path d="M11.22 9.10L12.00 0.50L12.78 9.10ZM13.08 9.20L18.76 2.70L14.33 10.11ZM14.52 10.37L22.94 8.45L15.00 11.84ZM15.00 12.16L22.94 15.55L14.52 13.63ZM14.33 13.89L18.76 21.30L13.08 14.80ZM12.78 14.90L12.00 23.50L11.22 14.90ZM10.92 14.80L5.24 21.30L9.67 13.89ZM9.48 13.63L1.06 15.55L9.00 12.16ZM9.00 11.84L1.06 8.45L9.48 10.37ZM9.67 10.11L5.24 2.70L10.92 9.20ZM9.20 12a2.80 2.80 0 1 0 5.60 0a2.80 2.80 0 1 0 -5.60 0Z"/></svg>',
+    vscode: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>'
+  };
+  const entryLabel = s => s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : s.live?.entrypoint === 'cli' ? 'CLI' : s.alive ? 'live' : 'stale';
   function repoColor(name) { let h = 0; for (const c of String(name || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return `hsl(${h % 360} 55% 52%)`; }
 
   // Lane assignment. "done" = you ticked it (persisted server-side; the mark expires on new activity);
@@ -362,7 +397,6 @@
   }
   const LANES = ['stale', 'ready', 'clauding', 'done'];
   const STALE_MAX_AGE_MS = 30 * 86400e3; // Claude Code deletes transcripts after 30 idle days by default; mirror that
-  const laneRank = { 'needs-input': 0, idle: 1, working: 2, stale: 3, unknown: 4 };
 
   function applyLanes() {
     for (const n of LANES) document.querySelector(`.lane[data-lane="${n}"]`).classList.toggle('collapsed', !!prefs.collapsed[n]);
@@ -389,20 +423,28 @@
   applyLanes();
 
   // ---- board -------------------------------------------------------------------------
+  // Every lane, grouped or not, in one order: the chat *you* wrote to most recently first. Claude
+  // finishing a long job does not move a card up — what ranks is your last touch (a prompt, an
+  // answer to its question, an interrupt), which keeps the chats you are driving at the top and
+  // lets the ones you have parked sink by themselves. A session whose tail held no prompt of yours
+  // (boot reads only the end of a long transcript) falls back to its last activity, not the bottom.
+  const userAt = s => String(s.lastUserAt || s.lastActivity || '');
+  const byUser = (a, b) => userAt(b).localeCompare(userAt(a));
+  // The card's time is still when *anything* last happened, so a lane can look out of order —
+  // hover explains a card sitting under an older-looking one.
+  const timeTip = s => !s.lastActivity ? '' : `last activity ${rel(s.lastActivity)} ago${s.lastUserAt ? ` · you last wrote ${rel(s.lastUserAt)} ago` : ''}`;
   function cardHtml(s, lane, grouped = false) {
     const un = state.unread.get(s.id) || 0;
-    const pinned = isPinned(s), projPinned = isProjPinned(s);
     const showReply = s.lastReply && s.status !== 'working';
-    const act = s.done ? `<button class="act" data-act="reopen" title="Untick">↩ reopen</button>`
-      : (lane === 'ready' || lane === 'stale') && s.lastActivity ? `<button class="act" data-act="done" title="Tick as done (persisted; comes back on new activity)">✓ done</button>` : '';
-    const pinTitle = `${pinned ? 'Unpin' : 'Pin'} card · ⇧-click: ${projPinned ? 'unpin' : 'pin'} repo ${esc(s.project)}`;
-    return `<div class="card ${s.status} ${s.id === state.current ? 'active' : ''} ${pinned ? 'pinned' : ''}" data-id="${s.id}" style="--repo:${repoColor(s.project)}">
-      <div class="top"><span class="dot ${s.status}"></span>${grouped ? '<span class="grow" style="flex:1"></span>' : `<span class="repo" data-repo="${esc(s.project)}" title="Filter by ${esc(s.project)}">${esc(s.project)}</span>`}<span class="time">${rel(s.lastActivity)}</span>${un ? `<span class="badge">${un}</span>` : ''}<button class="pin ${pinned ? 'on' : ''} ${projPinned ? 'proj' : ''}" data-act="pin" title="${pinTitle}">📌</button></div>
-      <div class="title">${esc(s.title)}</div>
-      ${s.lastPrompt ? `<div class="snip you"><b>You</b>${esc(s.lastPrompt)}</div>` : ''}
-      ${showReply ? `<div class="snip claude"><b>Claude</b>${esc(s.lastReply)}</div>` : ''}
-      ${statusLabel[s.status] ? `<div class="state ${s.status}">${statusLabel[s.status]}</div>` : ''}
-      <div class="foot"><span class="chip">${entryLabel(s)}</span>${s.live?.name ? `<span class="chip">${esc(s.live.name)}</span>` : ''}${s.gitBranch && s.gitBranch !== 'HEAD' ? `<span class="chip" title="branch">⎇ ${esc(s.gitBranch)}</span>` : ''}<span class="grow"></span>${act}</div>
+    const act = s.done ? `<button class="act" data-act="reopen" title="Untick — put this card back in its lane">↩</button>`
+      : (lane === 'ready' || lane === 'stale') && s.lastActivity ? `<button class="act" data-act="done" title="Tick as done (persisted; comes back on new activity)">✓</button>` : '';
+    const tip = titleTip(s);
+    return `<div class="card ${s.status} ${s.id === state.current ? 'active' : ''}" data-id="${s.id}" style="--repo:${repoColor(s.project)}">
+      <div class="top"><span class="dot ${s.status}"></span>${grouped ? '<span class="grow" style="flex:1"></span>' : `<span class="repo" data-repo="${esc(s.project)}" title="Filter by ${esc(s.project)}">${esc(s.project)}</span>`}<span class="time" title="${esc(timeTip(s))}">${rel(s.lastActivity)}</span>${un ? `<span class="badge">${un}</span>` : ''}${act}</div>
+      <div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${esc(s.title)}</div>
+      ${s.lastPrompt ? `<div class="snip you"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
+      ${showReply ? `<div class="snip claude"><b title="Claude">${ICON.claude}</b>${esc(s.lastReply)}</div>` : ''}
+      ${s.status === 'needs-input' ? `<div class="state needs-input">${statusLabel['needs-input']}</div>` : ''}
     </div>`;
   }
 
@@ -414,11 +456,9 @@
       let lane = laneOf(s);
       if (lane === 'empty') { if (!prefs.showAll) continue; lane = 'ready'; }
       if (lane === 'stale' && !prefs.showAll && (!s.lastActivity || now - new Date(s.lastActivity) > STALE_MAX_AGE_MS)) continue;
-      if (q && !`${s.project} ${s.title} ${s.lastPrompt} ${s.live?.name || ''} ${s.gitBranch || ''}`.toLowerCase().includes(q)) continue;
+      if (q && !`${s.project} ${s.title} ${s.aiTitle || ''} ${s.lastPrompt} ${s.live?.name || ''} ${s.gitBranch || ''}`.toLowerCase().includes(q)) continue;
       lanes[lane].push(s);
     }
-    const byRecent = (a, b) => String(b.lastActivity || '').localeCompare(String(a.lastActivity || ''));
-    const readyOrder = (a, b) => (laneRank[a.status] - laneRank[b.status]) || byRecent(a, b);
     const emptyText = { stale: 'No stale chats', ready: 'Nothing waiting on you', clauding: 'Nothing running', done: 'Nothing ticked yet' };
     for (const [name, list] of Object.entries(lanes)) {
       const el = document.querySelector(`.lane[data-lane="${name}"]`);
@@ -427,43 +467,32 @@
       el.querySelector('.cards').classList.toggle('tight', !prefs.groupByRepo && !!prefs.tight[name]);
       el.querySelector('[data-groups]').title = prefs.groupByRepo ? 'Collapse / expand every repo in this column'
         : `${prefs.tight[name] ? 'Expand' : 'Collapse'} every card in this column`;
-      el.querySelector('.cards').innerHTML = laneHtml(name, list, name === 'ready' ? readyOrder : byRecent) || `<div class="none">${emptyText[name]}</div>`;
+      el.querySelector('.cards').innerHTML = laneHtml(name, list) || `<div class="none">${emptyText[name]}</div>`;
     }
     const live = [...state.sessions.values()].filter(s => s.alive);
     $('#counts').textContent = `${live.length} live · ${lanes.ready.length} ready · ${lanes.clauding.length} clauding · ${lanes.stale.length} stale`;
     const total = [...state.unread.values()].reduce((a, b) => a + b, 0);
     document.title = (total ? `(${total}) ` : '') + 'peixAIrada';
   }
-  // One lane's cards: pinned first (card pin, then repo pin), then the lane's own order — or, with
-  // "group by repo", repo blocks (pinned repos first, then by latest update) each in that order.
-  function laneHtml(name, list, cmp) {
-    if (!prefs.groupByRepo) {
-      const tier = s => isPinned(s) ? 0 : isProjPinned(s) ? 1 : 2;
-      list.sort((a, b) => (tier(a) - tier(b)) || cmp(a, b));
-      let html = ''; let prevTier = null;
-      for (const s of list) { const t = tier(s); if (prevTier !== null && prevTier < 2 && t === 2) html += '<div class="sep"></div>'; html += cardHtml(s, name); prevTier = t; }
-      return html;
-    }
+  // One lane's cards in that order — or, with "group by repo", repo blocks ordered by their newest
+  // card, cards in the same order inside. The list is sorted once up front, so grouping it in that
+  // order gives both: a block's first card is its newest, and blocks appear in first-card order.
+  function laneHtml(name, list) {
+    list.sort(byUser);
+    if (!prefs.groupByRepo) return list.map(s => cardHtml(s, name)).join('');
     const groups = new Map();
     for (const s of list) { if (!groups.has(s.project)) groups.set(s.project, []); groups.get(s.project).push(s); }
-    const blocks = [...groups.entries()].map(([repo, ss]) => {
-      ss.sort((a, b) => ((isPinned(a) ? 0 : 1) - (isPinned(b) ? 0 : 1)) || cmp(a, b));
-      return { repo, ss, pinned: !!state.pins.projects[repo], latest: ss.reduce((m, s) => String(s.lastActivity || '') > m ? String(s.lastActivity) : m, '') };
-    });
-    blocks.sort((a, b) => ((a.pinned ? 0 : 1) - (b.pinned ? 0 : 1)) || b.latest.localeCompare(a.latest));
-    return blocks.map(g => {
-      const collapsed = !!prefs.repoCollapsed[`${name}:${g.repo}`];
-      const alert = g.ss.some(s => s.status === 'needs-input');
-      return `<div class="group ${collapsed ? 'collapsed' : ''}" data-repo="${esc(g.repo)}" style="--repo:${repoColor(g.repo)}">
-        <div class="ghead" title="Click to ${collapsed ? 'expand' : 'collapse'} · ⌥-click to filter by ${esc(g.repo)}"><span class="gname">${esc(g.repo)}</span><span class="gn ${alert ? 'alert' : ''}">${g.ss.length}</span><button class="pin proj ${g.pinned ? 'on' : ''}" data-pinproj="${esc(g.repo)}" title="${g.pinned ? 'Unpin' : 'Pin'} repo">📌</button></div>
-        <div class="gcards">${g.ss.map(s => cardHtml(s, name, true)).join('')}</div>
+    return [...groups.entries()].map(([repo, ss]) => {
+      const collapsed = !!prefs.repoCollapsed[`${name}:${repo}`];
+      const alert = ss.some(s => s.status === 'needs-input');
+      return `<div class="group ${collapsed ? 'collapsed' : ''}" data-repo="${esc(repo)}" style="--repo:${repoColor(repo)}">
+        <div class="ghead" title="Click to ${collapsed ? 'expand' : 'collapse'} · ⌥-click to filter by ${esc(repo)}"><span class="gname">${esc(repo)}</span><span class="gn ${alert ? 'alert' : ''}">${ss.length}</span></div>
+        <div class="gcards">${ss.map(s => cardHtml(s, name, true)).join('')}</div>
       </div>`;
     }).join('');
   }
   $('#board').addEventListener('click', e => {
     const laneEl = e.target.closest('.lane'); if (!laneEl) return;
-    const pinProj = e.target.closest('[data-pinproj]');
-    if (pinProj) { setPin('project', pinProj.dataset.pinproj, !state.pins.projects[pinProj.dataset.pinproj]); return; }
     const laneName = laneEl.dataset.lane;
     if (laneEl.classList.contains('collapsed')) { setCollapsed(laneName, false); return; }
     const ghead = e.target.closest('.ghead');
@@ -478,11 +507,6 @@
     if (e.target.closest('h2')) { setCollapsed(laneName, true); return; }
     const card = e.target.closest('.card');
     if (!card) return;
-    if (e.target.closest('[data-act=pin]')) {
-      const s = state.sessions.get(card.dataset.id); if (!s) return;
-      if (e.shiftKey) setPin('project', s.project, !isProjPinned(s)); else setPin('session', s.id, !isPinned(s));
-      return;
-    }
     const act = e.target.closest('.act');
     if (act) { e.stopPropagation(); fetch(`/api/sessions/${card.dataset.id}/done`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ done: act.dataset.act === 'done' }) }); return; }
     const repo = e.target.closest('.repo');
@@ -492,37 +516,47 @@
 
   // ---- chat --------------------------------------------------------------------------
   // One chip per PR mentioned in the chat, most recently mentioned first (the server's order),
-  // coloured by its state on GitHub once the server has looked it up.
+  // coloured by its state on GitHub and carrying its title once the server has looked it up. The
+  // visible title is capped, so the tooltip keeps the whole of it.
+  const FOCUS_TIP = "Focus this folder's window in VS Code";
   const prChip = pr => `<a class="pr"${pr.state ? ` data-state="${pr.state}"` : ''} href="${esc(pr.url)}" target="_blank" rel="noopener" title="${
-    esc(pr.url)}${pr.state ? ` — ${pr.state}` : ''}${pr.lastAt ? ` · last came up ${rel(pr.lastAt)} ago` : ''}${
-    pr.count ? ` · mentioned ${pr.count}× · last by ${pr.by === 'user' ? 'you' : 'Claude'}` : ''}">${esc(pr.label)}</a>`;
+    pr.title ? esc(pr.title) + '\n' : ''}${esc(pr.url)}${pr.state ? ` — ${pr.state}` : ''}${pr.lastAt ? ` · last came up ${rel(pr.lastAt)} ago` : ''}${
+    pr.count ? ` · mentioned ${pr.count}× · last by ${pr.by === 'user' ? 'you' : 'Claude'}` : ''}">${esc(pr.label)}${pr.title ? `<span class="t">${esc(pr.title)}</span>` : ''}</a>`;
 
   function renderHead(s) {
-    $('#shead').innerHTML = `<h2><span class="repo" style="color:${repoColor(s.project)}">${esc(s.project)}</span><span class="sep">/</span><span>${esc(s.title)}</span><button class="btn x" id="hideChatBtn" title="Hide chat">✕</button></h2>
-      <span class="status"><span class="dot ${s.status}"></span>${statusLabel[s.status] || s.status}${s.statusSince ? ` · ${rel(s.statusSince)}` : ''}</span>
-      <span class="path">${esc(s.cwd || '')}${s.gitBranch && s.gitBranch !== 'HEAD' ? ' @ ' + esc(s.gitBranch) : ''}</span>
-      ${s.model ? `<span class="chip">${esc(s.model)}</span>` : ''}${s.live?.pid ? `<span class="chip">pid ${s.live.pid}</span>` : ''}
-      <span class="spacer" style="flex:1"></span>
-      ${s.cwd ? `<button class="btn" id="focusBtn">Focus in VS Code</button>` : ''}
-      ${s.prs?.length ? `<div class="prs">${s.prs.map(prChip).join('')}</div>` : ''}`;
+    // One row: title · dot+age · ··· · VS Code, then PR chips flowing after them and spilling onto
+    // further lines only when they genuinely do not fit. The status *word* is gone — the dot carries
+    // it in colour and the lane it came from said it already; what the dot cannot say is how long ago.
+    $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" style="color:${repoColor(s.project)}">${esc(s.project)}</span><span class="sep">/</span><span class="t">${esc(s.title)}</span></h2>
+      <span class="status" title="${esc(statusLabel[s.status] || s.status)}"><span class="dot ${s.status}"></span>${s.statusSince ? rel(s.statusSince) : ''}</span>
+      <button class="btn icon dots ${prefs.headDetails ? 'on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}"
+        title="${prefs.headDetails ? 'Hide' : 'Show'} path, branch and session details">···</button>
+      ${s.cwd ? `<button class="btn icon" id="focusBtn" title="${FOCUS_TIP}" aria-label="Focus in VS Code">${ICON.vscode}</button>` : ''}
+      ${s.prs?.length ? s.prs.map(prChip).join('') : ''}
+      <div class="details"${prefs.headDetails ? '' : ' hidden'}>
+        <span class="path">${esc(s.cwd || '')}${s.gitBranch && s.gitBranch !== 'HEAD' ? ' @ ' + esc(s.gitBranch) : ''}</span>
+        ${s.live ? `<span class="chip">${entryLabel(s)}</span>` : ''}${s.live?.name ? `<span class="chip" title="session name">${esc(s.live.name)}</span>` : ''}${
+          s.model ? `<span class="chip">${esc(s.model)}</span>` : ''}${s.live?.pid ? `<span class="chip">pid ${s.live.pid}</span>` : ''}
+      </div>`;
     renderComposer(s);
+    // Say so when it fails — silently swallowing the response is how a missing `code` CLI looked
+    // like a dead button for weeks. The icon has to survive that, so failure adds a word beside it
+    // and puts the reason in the tooltip; assigning textContent, as the text button did, would
+    // delete the SVG.
     const fb = $('#focusBtn');
-    // Say so when it fails. Silently swallowing the response is how a missing `code` CLI looked
-    // like a dead button for weeks.
-    if (fb) fb.onclick = async () => {
-      fb.disabled = true;
-      try {
-        const r = await fetch(`/api/sessions/${s.id}/focus`, { method: 'POST' });
-        if (r.ok) return;
-        const d = await r.json().catch(() => ({}));
-        fb.classList.add('err'); fb.textContent = 'VS Code: failed'; fb.title = d.error || `HTTP ${r.status}`;
-      } catch (e) {
-        fb.classList.add('err'); fb.textContent = 'VS Code: failed'; fb.title = String(e);
-      } finally {
-        fb.disabled = false;
-      }
-    };
-    $('#hideChatBtn').onclick = () => { prefs.chatVisible = false; savePrefs(); applyChatPrefs(); };
+    if (fb) {
+      const reset = () => { fb.classList.remove('err'); fb.querySelector('.lbl')?.remove(); fb.title = FOCUS_TIP; };
+      const fail = why => { fb.classList.add('err'); fb.title = why; fb.insertAdjacentHTML('beforeend', '<span class="lbl">failed</span>'); };
+      fb.onclick = async () => {
+        reset(); fb.disabled = true;
+        try {
+          const r = await fetch(`/api/sessions/${s.id}/focus`, { method: 'POST' });
+          if (!r.ok) fail((await r.json().catch(() => ({}))).error || `HTTP ${r.status}`);
+        } catch (e) { fail(String(e)); }
+        finally { fb.disabled = false; }
+      };
+    }
+    $('#detailsBtn').onclick = () => { prefs.headDetails = !prefs.headDetails; savePrefs(); renderHead(s); };
   }
 
   // ---- composer: reply into a stale chat -----------------------------------------------
@@ -707,13 +741,12 @@
     es.onopen = () => $('#conn').classList.add('on');
     es.onerror = () => { $('#conn').classList.remove('on'); };
     es.addEventListener('snapshot', e => {
-      const d = JSON.parse(e.data); state.sessions = new Map(d.sessions.map(s => [s.id, s])); if (d.pins) state.pins = d.pins; renderBoard();
+      const d = JSON.parse(e.data); state.sessions = new Map(d.sessions.map(s => [s.id, s])); renderBoard();
       const want = location.hash.slice(1);
       if (want && !state.current && state.sessions.has(want)) openSession(want);
     });
     es.addEventListener('session', e => { const s = JSON.parse(e.data); state.sessions.set(s.id, s); renderBoard(); if (s.id === state.current) renderHead(s); });
     es.addEventListener('entries', e => { const d = JSON.parse(e.data); if (d.sessionId === state.current) { state.entries.push(...d.entries); renderLog(); } });
-    es.addEventListener('pins', e => { state.pins = JSON.parse(e.data); renderBoard(); });
     es.addEventListener('alert', e => onAlert(JSON.parse(e.data)));
   }
   connect();
