@@ -102,7 +102,7 @@ function newSession(id, file) {
     cwd: null, gitBranch: null, model: null,
     title: null, customTitle: null, lastPrompt: null, lastReply: null, prs: [],
     status: 'unknown', statusSince: null, lastActivity: null, lastUserAt: null, lastReplyAt: null,
-    live: null, alive: false,
+    live: null, alive: false, entrypoint: null,   // last 'entrypoint' a user/assistant line carried: 'claude-vscode' | 'cli'
     entries: [], entryCount: 0, loaded: false,
     offset: 0, partial: '', truncatedHead: false,
     pendingNotify: null, notifyTimer: null, pushTimer: null, newEntries: [],
@@ -110,6 +110,16 @@ function newSession(id, file) {
     replying: null, replyError: null
   };
 }
+
+// Where a chat lives: the registry's entry point while it runs, else the last one its transcript
+// recorded. Every line the CLI writes carries it, so a chat that was ever continued in VS Code says so
+// at its tail, and one taken to a terminal with `claude --resume` stops saying so.
+function inVsCode(s) { return (s.live?.entrypoint || s.entrypoint) === 'claude-vscode'; }
+// VS Code chats are not resumed from here, by decision (2026-09-19). The extension respawns its own
+// process when that process dies, so killing it hands nothing over; and its tab is bound to that
+// process, so a turn added by another claude never shows up in it until the chat is reopened there.
+// The board reads those chats and opens them in VS Code; it does not write to them.
+const VSCODE_CHAT_ERR = 'this chat lives in VS Code — continue it there';
 
 function summary(s) {
   const prT = prTitle(s);
@@ -127,7 +137,7 @@ function summary(s) {
     status: s.alive ? (s.status === 'unknown' && !s.file ? 'idle' : s.status) : (s.status === 'unknown' ? 'unknown' : 'stale'),
     rawStatus: s.status, statusSince: s.statusSince, lastActivity: s.lastActivity,
     lastUserAt: s.lastUserAt, lastReplyAt: s.lastReplyAt,
-    alive: s.alive, live: s.live, terminal: termSummary(termOf(s)), entryCount: s.entryCount, loaded: s.loaded, file: s.file, lastHook: s.lastHook,
+    alive: s.alive, live: s.live, entrypoint: s.live?.entrypoint || s.entrypoint, terminal: termSummary(termOf(s)), entryCount: s.entryCount, loaded: s.loaded, file: s.file, lastHook: s.lastHook,
     done: isDone(s), doneAt: doneMarks[s.id] || null,
     replying: s.replying, replyError: s.replyError
   };
@@ -340,6 +350,7 @@ function fold(s, line) {
     case 'user': {
       if (line.isSidechain) return false;
       if (line.cwd) s.cwd = line.cwd;
+      if (line.entrypoint) s.entrypoint = line.entrypoint;
       if (line.gitBranch) s.gitBranch = line.gitBranch;
       if (line.isMeta || line.isCompactSummary) return false;
       const content = line.message?.content;
@@ -371,6 +382,7 @@ function fold(s, line) {
     case 'assistant': {
       if (line.isSidechain) return false;
       if (line.cwd) s.cwd = line.cwd;
+      if (line.entrypoint) s.entrypoint = line.entrypoint;
       const m = line.message || {};
       const blocks = Array.isArray(m.content) ? m.content : [];
       if (m.model) s.model = m.model;
@@ -891,6 +903,7 @@ const server = createServer(async (req, res) => {
       let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
       const text = typeof body.text === 'string' ? body.text.trim() : '';
       if (!text) return json(res, 400, { error: 'expected {text}' });
+      if (inVsCode(s)) return json(res, 409, { error: VSCODE_CHAT_ERR });
       if (s.alive) return json(res, 409, { error: 'chat is live — resuming it would put a second writer on its transcript' });
       const r = replyToStale(s, text);
       return json(res, r.code, r.ok ? { ok: true, status: 'running' } : { error: r.error });
@@ -950,6 +963,7 @@ const server = createServer(async (req, res) => {
       if (!s) return json(res, 404, { error: 'unknown session' });
       const have = termOf(s);
       if (have && have.exited === null) return json(res, 200, { terminal: termSummary(have) });
+      if (inVsCode(s)) return json(res, 409, { error: VSCODE_CHAT_ERR });
       // Live elsewhere: same rule as replies — a second claude on one transcript is how it gets mangled.
       if (s.alive) return json(res, 409, { error: `this chat is live in ${s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : 'another terminal'} — open it there` });
       let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}

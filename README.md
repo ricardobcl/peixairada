@@ -130,7 +130,7 @@ A chat is always in exactly one state, and the dot says which:
 | 🟡 | **working** | Claude is working — a prompt is in flight or tools are running. |
 | 🟢 | **ready** | Claude replied and the ball is with **you**. |
 | 🔴 | **needs input** | Claude asked a question, wants plan approval, or is waiting on a permission. The card says so in words too — it is the one state worth a word. |
-| ⚪ | **stale** | The Claude process is gone — panel or terminal closed. Open a terminal on it here, resume it in VS Code, or `claude --resume <id>`, and it walks back on its own. Stale chats idle >30 days hide behind *show empty & >30d*; Claude Code deletes their transcripts after 30 days anyway. |
+| ⚪ | **stale** | The Claude process is gone — panel or terminal closed. Open a terminal on it here (a CLI chat), continue it in VS Code (a VS Code chat — blue border), or `claude --resume <id>`, and it walks back on its own. Stale chats idle >30 days hide behind *show empty & >30d*; Claude Code deletes their transcripts after 30 days anyway. |
 | ✓ | **done** | Only what **you tick ✓**, from ready or stale. Persisted server-side; a tick beats staleness. The mark **expires the instant the chat has new activity**, so a chat you re-prompt comes straight back. Done chats sink to the bottom of the list, dimmed. |
 
 ### Sorting
@@ -199,6 +199,13 @@ keeps it running, **end** stops it — and it does not survive a server restart.
 in VS Code or another terminal cannot be attached from here (the button says so); use the VS Code
 button instead. The first time in a folder Claude asks its usual *trust this folder?* question.
 
+**VS Code chats stay in VS Code.** A chat whose last turn came from the VS Code extension wears a
+**blue border** on its card and a *VS Code* chip; the board reads it, the VS Code button opens it
+there, and that is all — no terminal, no reply box. Tried and dropped (2026-09-19): killing the
+extension's process to take the chat over only makes the extension respawn it a few seconds later,
+and a turn added from anywhere else never shows in the VS Code tab until the chat is reopened there.
+A chat started here becomes a VS Code chat the moment you continue it in VS Code.
+
 **Click a PR chip and two things happen.** A strip under the header says what `gh` knows about it —
 open / merged / closed / draft, the review decision, checks passed or failing or still running,
 +added −deleted over how many files, head → base, the author — and the PR itself opens: in the Mac
@@ -206,7 +213,7 @@ app in a **pane beside the board** (GitHub refuses to be framed, so it is a seco
 own back / reload / open-in-browser, and your GitHub login sticks between launches); in a plain
 browser, in a new tab. PR links in Claude's replies and in the terminal do the same.
 
-**On a stale chat there is also a one-line reply box** — type, ⏎, and the board resumes the chat
+**On a stale CLI chat there is also a one-line reply box** — type, ⏎, and the board resumes the chat
 with `claude --resume <id> -p`; ⇧⏎ for a newline. It hides while a terminal is open on that chat.
 
 `hide chat` / `show chat` toggles it, `◨ chat right` / `◧ chat left` flips which side it sits on, and
@@ -230,6 +237,7 @@ extension run the same binary and share the same files. peixAIrada just reads th
 |---|---|---|
 | Full transcript, appended line-by-line as JSONL | `~/.claude/projects/<cwd-slug>/<session-id>.jsonl` | Messages, tool calls, status, titles, PR links |
 | Live-session registry, one file per running process | `~/.claude/sessions/<pid>.json` (`sessionId`, `cwd`, `name`, `entrypoint: "claude-vscode" \| "cli"`) | Which sessions are alive, which come from VS Code, names, the stable repo path |
+| Where a chat lives | `entrypoint` on every transcript line — `"claude-vscode"` or `"cli"` — and the registry's while it runs | VS Code chats: blue border, no terminal, no reply box |
 | Session titles | `ai-title` / `custom-title` lines inside the transcript | Card titles |
 | End of a reply | assistant line with `stop_reason: "end_turn"` (tool calls are `"tool_use"`) | The "replied" alert → Waiting feedback |
 | Waiting for the user | `AskUserQuestion` / `ExitPlanMode` tool call with no result yet | The "needs input" alert |
@@ -272,8 +280,8 @@ updates within **~100 ms** of Claude writing a line. Native notifications work f
 | `GET/POST /api/projects` · `PUT/DELETE /api/projects/:id` | the projects you name: `{name, cwds}` — a name over absolute folder paths (persisted in the state file) |
 | `GET /api/sessions/:id/messages` | full (capped) entry list, parsed on demand |
 | `POST /api/sessions/:id/done` `{done: true\|false}` | tick / untick a card (persisted in the state file) |
-| `POST /api/sessions/:id/reply` `{text}` | **stale chats only** — resumes the chat with `claude --resume <id> -p <text>`; 202 and the answer arrives through the transcript |
-| `POST /api/sessions/:id/terminal` `{cols, rows}` | attach to this chat's terminal, or start one with `claude --resume <id>` in its cwd; 409 if the chat is live elsewhere |
+| `POST /api/sessions/:id/reply` `{text}` | **stale CLI chats only** — resumes the chat with `claude --resume <id> -p <text>`; 202 and the answer arrives through the transcript; 409 on a live chat or a VS Code chat |
+| `POST /api/sessions/:id/terminal` `{cols, rows}` | attach to this chat's terminal, or start one with `claude --resume <id>` in its cwd; 409 if the chat is live elsewhere or lives in VS Code |
 | `POST /api/terminals` `{cwd, cols, rows}` | start a **new** chat: `claude` in a PTY in that folder; the `terminal` SSE event carries its session id once Claude registers |
 | `GET /api/terminals` · `DELETE /api/terminals/:id` | list terminals · end one (SIGHUP) |
 | `WS /api/terminals/:id/ws` | the terminal: binary frames are output (scrollback replayed first), text frames are JSON — `{t:'in', d}` / `{t:'resize', cols, rows}` up, `{t:'exit', code}` down |
@@ -339,7 +347,7 @@ Either way, the UI carries over unchanged.
 * **"Stale" is about the *process*, not the conversation.** Headless `claude -p` runs, and
   transcripts from before Claude Code kept a session registry, never had a tracked pid — so they show
   as stale too.
-* **You can chat with a stale or new chat here, but not attach to a live one.** The terminal drawer
+* **You can chat with a stale CLI chat or a new chat here, but not attach to a live one — and not write to a VS Code chat at all.** The terminal drawer
   and the reply box both go through the public CLI (`claude --resume <id>`), which appends to the
   same transcript. A *live* chat already has a process writing that file, and a second writer racing
   it is how a transcript gets mangled — so the board refuses, and the VS Code button (which now opens
@@ -366,6 +374,9 @@ Either way, the UI carries over unchanged.
 - [x] **Chat from the board** — a real `claude` in a terminal drawer under the transcript, resume or new
 - [x] **Projects → chats → chat** — three columns instead of four lanes; name a project over several repos
 - [x] **PRs inline** — a strip from `gh` under the header, and the PR page in a pane beside the board (Mac app)
+- [ ] ~~Continue a **VS Code** chat from the board~~ — *dropped.* The extension respawns its process when
+      it is killed, and its tab does not show turns made elsewhere until the chat is reopened there;
+      VS Code chats are read here and opened there, nothing more
 - [ ] ~~Reply into a **live** chat~~ — *not planned.* The socket is there and documented, but a
       message posted to it can never answer the question a chat is waiting on, which is the only
       reason to want it
