@@ -9,13 +9,13 @@
 //   PORT=8000 NOTIFY=off node server.mjs
 //   CLAUDE_DIR=/path/to/fixture node server.mjs   # point at a different ~/.claude (tests)
 
-import { createServer } from 'node:http';
+import { createServer, get as httpGet } from 'node:http';
 import {
   chmodSync, closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, renameSync, statSync, watch, writeFileSync
 } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { homedir } from 'node:os';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 
@@ -62,6 +62,9 @@ let doneMarks = {};
 // Custom projects: id -> { id, name, cwds, createdAt }. A name over one or more folders — multi-repo
 // work, an investigation. Folders themselves need no record: they come from the sessions' cwds.
 let projects = {};
+// Titles typed on the board: sessionId -> string. Kept here because the board never writes under
+// ~/.claude; they beat every title the transcript carries (PR, custom-title, ai-title).
+let titles = {};
 
 // One-time move from the old ~/.peixairada location. Same filesystem, so the rename is atomic; the
 // empty directory is left behind rather than removing something we did not create.
@@ -78,9 +81,10 @@ try {
   const st = JSON.parse(readFileSync(existsSync(STATE_FILE) ? STATE_FILE : LEGACY_STATE_FILE, 'utf8'));
   doneMarks = st.done || {};   // files from before 2026-09-19 also carry a `pins` key — ignored, gone on the next save
   projects = st.projects || {};
+  titles = st.titles || {};
 } catch {}
 function saveState() {
-  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks, projects }, null, 1)); }
+  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks, projects, titles }, null, 1)); }
   catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
 const isDone = s => !!doneMarks[s.id] && doneMarks[s.id] >= (s.lastActivity || '');
@@ -129,8 +133,8 @@ function summary(s) {
     gitBranch: s.gitBranch, model: s.model,
     // The PR title beats Claude's own: it is what the work is called everywhere else — the PR page, the
     // branch, standup. A title the user typed still wins over both.
-    title: s.customTitle || prT || s.title || s.lastPrompt || (!s.file && s.alive ? '(no messages yet)' : '(untitled)'),
-    aiTitle: s.title, customTitle: s.customTitle, prTitle: prT,
+    title: titles[s.id] || s.customTitle || prT || s.title || s.lastPrompt || (!s.file && s.alive ? '(no messages yet)' : '(untitled)'),
+    aiTitle: s.title, customTitle: s.customTitle, prTitle: prT, boardTitle: titles[s.id] || null,
     lastPrompt: s.lastPrompt, lastReply: s.lastReply, prs: s.prs,
     // A live process with no transcript yet is an empty, idle panel (e.g. restored by VS Code, never prompted).
     // Not alive = the Claude process is gone: 'stale'. Resuming the chat registers a new pid and it comes back.
@@ -645,6 +649,51 @@ function claudeBin() { return findBin('claude', 'replies to stale chats are disa
 function ghBin() { return findBin('gh', 'PR status colours are disabled'); }
 function codeBin() { return findBin('code', '"Focus in VS Code" is disabled'); }
 
+// ---------------------------------------------------------------------------------------------
+// VS Code Web: the editor UI served by `code serve-web`, for the pane beside the board
+// ---------------------------------------------------------------------------------------------
+// The desktop app cannot be embedded, but the VS Code CLI can serve the same editor as a web page,
+// with a server-side extension host on this Mac: real files, real terminal, real git, and the Claude
+// Code extension (a workspace-side extension) running against the same ~/.claude. It is a separate
+// VS Code instance: its own settings and extensions (`~/.vscode-server/extensions`, installed once
+// with the server's own CLI — see README), and the folder must be trusted once per browser profile.
+// Started on first use and adopted if something already answers on the port; the child belongs to
+// this server, so it goes when the server goes. Loopback only, no connection token: the same trust
+// boundary as the board itself.
+const VSWEB_PORT = Number(process.env.VSWEB_PORT || 7332);
+const VSWEB_URL = `http://127.0.0.1:${VSWEB_PORT}/`;
+let vsweb = null;   // the child, while it is ours
+// …and goes with it: a signal that ends this server ends the child too, instead of orphaning an
+// editor server on the port for the next run to adopt without knowing whose it is.
+// `code` is a wrapper script around the real binary, so the child runs in its own process group and
+// the whole group is signalled — killing the wrapper alone left the server behind on the port.
+process.on('exit', () => { if (vsweb) { try { process.kill(-vsweb.pid, 'SIGTERM'); } catch { try { vsweb.kill(); } catch {} } } });
+for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) process.on(sig, () => process.exit(0));
+function vswebAnswers() {
+  return new Promise(resolve => {
+    const req = httpGet(VSWEB_URL, r => { r.resume(); resolve(r.statusCode > 0); });
+    req.on('error', () => resolve(false)); req.setTimeout(1500, () => { req.destroy(); resolve(false); });
+  });
+}
+async function ensureVsWeb() {
+  if (await vswebAnswers()) return { ok: true, url: VSWEB_URL, started: false };
+  const code = codeBin();
+  if (!code) return { code: 501, error: 'code CLI not found — run "Shell Command: Install \'code\' command in PATH" in VS Code, or set CODE_BIN' };
+  if (!vsweb) {
+    try {
+      vsweb = spawn(code, ['serve-web', '--host', '127.0.0.1', '--port', String(VSWEB_PORT), '--without-connection-token', '--accept-server-license-terms'], { stdio: 'ignore', env: termEnv(), detached: true });
+      vsweb.on('exit', c => { console.log(`[peixairada] code serve-web exited (${c})`); vsweb = null; });
+    } catch (e) { vsweb = null; return { code: 500, error: `could not start code serve-web: ${e.message}` }; }
+  }
+  const t0 = Date.now();
+  while (Date.now() - t0 < 60_000) {   // the first run downloads the server build
+    await new Promise(r => setTimeout(r, 500));
+    if (await vswebAnswers()) return { ok: true, url: VSWEB_URL, started: true };
+    if (!vsweb) return { code: 500, error: 'code serve-web exited before it answered' };
+  }
+  return { code: 504, error: `code serve-web did not answer on ${VSWEB_PORT} within 60 s` };
+}
+
 // `claude --resume <id> -p <text>` reuses the session id, so Claude appends to the *same* transcript
 // and the reply arrives through the watcher like any other line — nothing downstream special-cases it.
 // Resuming also registers a new pid, so the card walks Stale → Clauding → Ready on its own.
@@ -928,6 +977,16 @@ const server = createServer(async (req, res) => {
       const r = replyToStale(s, text);
       return json(res, r.code, r.ok ? { ok: true, status: 'running' } : { error: r.error });
     }
+    if (req.method === 'PUT' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/title$/))) {   // a title typed on the board; empty clears it
+      const s = sessions.get(m[1]);
+      if (!s) return json(res, 404, { error: 'unknown session' });
+      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const title = String(body.title ?? '').replace(/\s+/g, ' ').trim().slice(0, 120);
+      if (title) titles[s.id] = title; else delete titles[s.id];
+      for (const id of Object.keys(titles)) if (!sessions.has(id)) delete titles[id];
+      saveState(); schedulePush(s);
+      return json(res, 200, { ok: true, title: summary(s).title, boardTitle: titles[s.id] || null });
+    }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/done$/))) {
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
@@ -1009,6 +1068,10 @@ const server = createServer(async (req, res) => {
       if (!t) return json(res, 404, { error: 'unknown terminal' });
       if (t.exited === null) { try { t.proc.kill(); } catch {} }
       return json(res, 200, { ok: true });
+    }
+    if (req.method === 'POST' && p === '/api/vscode-web') {   // VS Code Web for the pane: start it if need be, say where it is
+      const r = await ensureVsWeb();
+      return json(res, r.ok ? 200 : r.code, r.ok ? { url: r.url, started: r.started } : { error: r.error });
     }
     if (req.method === 'POST' && p === '/api/test-notify') {
       nativeNotify('peixAIrada', 'test', 'Native notifications are working.');

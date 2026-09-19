@@ -116,9 +116,10 @@ folder *and* to every named project that claims that folder (worktrees under a r
 repo). Each entry carries counts you can read from across the room — 🔴 waiting on you, 🟡 Claude
 working, 🟢 replied — plus an unread badge.
 
-The projects column is a **strip** by default — names run vertically, counts stacked under them —
-and opens into the full column while the pointer is over it, as an overlay, so nothing else moves.
-**»** in its header keeps it open; **«** folds it back.
+The projects column is a **strip** by default — each project a solid tab in its colour, the name
+running vertically, the selected one running straight into the chat list, whose edge and header
+carry the same colour — and it opens into the full column while the pointer is over it, as an
+overlay, so nothing else moves. **»** in its header keeps it open; **«** folds it back.
 
 **Chats** of the selected project, newest first by your own last touch, with filter chips for
 *needs you · working · ready · stale · done*. **+ new chat** starts one right there: a terminal
@@ -203,26 +204,45 @@ keeps it running, **end** stops it — and it does not survive a server restart.
 here, the drawer *is* the pane: the rendered transcript above it would be the same conversation twice,
 so it steps aside. **show chat** splits the pane again (so does a drag on the divider), **hide** shows
 the transcript while claude keeps running, and it comes back on its own when the process ends. Chats
-the board does not drive — VS Code, another terminal, stale — always render. **⌃+ / ⌃− / ⌃0** resize
-the chat pane, transcript and terminal together, and the size is remembered. A chat that is live
+the board does not drive — VS Code, another terminal, stale — always render. **⌘+ / ⌘− / ⌘0** resize
+the chat pane, transcript and terminal together, and the size is remembered. **Double-click the
+title** in the chat header to rename a chat; the name is kept by the board (never written into the
+transcript) and beats the PR title and Claude's own; an empty name gives the chat's own back. A chat that is live
 in VS Code cannot be attached from here; one live in **another terminal** — iTerm, say — can be
 **taken over**: the `>_` button says so, a first click arms it, a second ends that claude and resumes
 the chat here. Nothing respawns a CLI claude, so the transcript keeps one writer; anything Claude was
 mid-way through is lost, and the button says *mid-reply* when that is the case. The first time in a folder Claude asks its usual *trust this folder?* question.
 
 **VS Code chats stay in VS Code.** A chat whose last turn came from the VS Code extension gets a
-**blue border and a faint blue tint on the chat pane** and a *VS Code* chip on its card and in its header; the board
+**blue border and a blue wash over the chat pane** and a *VS Code* chip on its card and in its header; the board
 reads it, the VS Code button opens it there, and that is all — no terminal, no reply box. Tried and dropped (2026-09-19): killing the
 extension's process to take the chat over only makes the extension respawn it a few seconds later,
 and a turn added from anywhere else never shows in the VS Code tab until the chat is reopened there.
 A chat started here becomes a VS Code chat the moment you continue it in VS Code.
 
+**VS Code, inline — experimental.** The **web** button next to the VS Code one opens the chat's
+folder in *VS Code Web* in the same pane the PRs use: the editor served on this Mac by `code
+serve-web`, with a server-side extension host, so it is your real files, a real terminal, real git —
+and the Claude Code extension, which reads the same `~/.claude`, so its sidebar lists the same
+chats. The board starts the server on first use (loopback only, port 7332, `VSWEB_PORT` to change)
+and adopts one that is already running. Two things to know: it is a **separate VS Code** — its own
+settings, its own extensions, installed once into `~/.vscode-server/extensions` with the server's
+own CLI:
+
+```sh
+~/.vscode/cli/serve-web/*/bin/code-server --install-extension anthropic.claude-code
+```
+
+and the folder has to be **trusted once** (the *Restricted Mode* item in its status bar → *Trust*;
+the decision lives in the pane's browser profile, so it sticks). The desktop extension's deep link
+does not reach this instance; open a chat from its own sidebar.
+
 **Click a PR chip and two things happen.** A strip under the header says what `gh` knows about it —
 open / merged / closed / draft, the review decision, checks passed or failing or still running,
 +added −deleted over how many files, head → base, the author — and the PR itself opens: in the Mac
-app in a **pane beside the board** (GitHub refuses to be framed, so it is a second web view with its
-own back / reload / open-in-browser, and your GitHub login sticks between launches); in a plain
-browser, in a new tab. PR links in Claude's replies and in the terminal do the same.
+app in a **pane over the chat column** (GitHub refuses to be framed, so it is a second web view with
+its own back / reload / open-in-browser, and your GitHub login sticks between launches) — **Esc**
+hides it and brings it back; in a plain browser, in a new tab. PR links in Claude's replies and in the terminal do the same.
 
 **On a stale CLI chat there is also a one-line reply box** — type, ⏎, and the board resumes the chat
 with `claude --resume <id> -p`; ⇧⏎ for a newline. It hides while a terminal is open on that chat.
@@ -290,6 +310,7 @@ updates within **~100 ms** of Claude writing a line. Native notifications work f
 | `GET /api/pr?url=` | what `gh pr view` says about one PR: state, review decision, checks, size, branches (cached 60 s) |
 | `GET/POST /api/projects` · `PUT/DELETE /api/projects/:id` | the projects you name: `{name, cwds}` — a name over absolute folder paths (persisted in the state file) |
 | `GET /api/sessions/:id/messages` | full (capped) entry list, parsed on demand |
+| `PUT /api/sessions/:id/title` `{title}` | rename on the board (state file, not the transcript); empty clears |
 | `POST /api/sessions/:id/done` `{done: true\|false}` | tick / untick a card (persisted in the state file) |
 | `POST /api/sessions/:id/reply` `{text}` | **stale CLI chats only** — resumes the chat with `claude --resume <id> -p <text>`; 202 and the answer arrives through the transcript; 409 on a live chat or a VS Code chat |
 | `POST /api/sessions/:id/takeover` `{cols, rows}` | end the claude this chat is live in (SIGTERM, SIGKILL after 5 s), then the same as `terminal`; 409 for a VS Code chat or one not live |
@@ -299,6 +320,7 @@ updates within **~100 ms** of Claude writing a line. Native notifications work f
 | `WS /api/terminals/:id/ws` | the terminal: binary frames are output (scrollback replayed first), text frames are JSON — `{t:'in', d}` / `{t:'resize', cols, rows}` up, `{t:'exit', code}` down |
 | `POST /api/sessions/:id/focus` | runs `code <cwd>` to bring that window to the front, then opens `vscode://anthropic.claude-code/open?session=<id>` so the chat itself comes up in the Claude panel |
 | `POST /hook` | receives Claude Code hook payloads (`hooks/hook.sh`) |
+| `POST /api/vscode-web` | start `code serve-web` if nothing answers on its port, and say where it is: `{url, started}` |
 | `POST /api/test-notify` | fire a test alert |
 
 **Environment:** `PORT` (7331) · `HOST` (127.0.0.1) · `NOTIFY=native|off` · `CLAUDE_DIR` (`~/.claude`) ·

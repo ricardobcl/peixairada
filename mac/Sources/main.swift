@@ -225,6 +225,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     split.setHoldingPriority(NSLayoutConstraint.Priority(260), forSubviewAt: 1)
     prPane.isHidden = true
     window.contentView = split
+    installEscapeMonitor()
     window.contentMinSize = NSSize(width: 760, height: 520)
     window.setFrameAutosaveName("peixairada.main")
     window.center()
@@ -280,13 +281,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     prWeb.setContentCompressionResistancePriority(NSLayoutConstraint.Priority(1), for: .vertical)
   }
 
-  func openPrPane(_ url: URL) {
-    if prPane.isHidden {
-      prPane.isHidden = false
+  // The pane takes the chat column: the page sends the column's left edge (CSS px, which are points
+  // in the board's web view, so the divider lands exactly there), and the last one is kept for a
+  // reopen from Esc. Without one — a very old page — the previous width, else 48%.
+  var paneLeft: CGFloat = 0
+  func showPrPane(left: CGFloat?) {
+    if let l = left, l > 200, l < split.bounds.width - 320 { paneLeft = l }
+    if paneLeft <= 0 {
       let saved = UserDefaults.standard.double(forKey: "prPaneWidth")
       let w = saved > 240 ? saved : split.bounds.width * 0.48
-      split.setPosition(max(420, split.bounds.width - w - split.dividerThickness), ofDividerAt: 0)
+      paneLeft = max(420, split.bounds.width - w - split.dividerThickness)
     }
+    if prPane.isHidden { prPane.isHidden = false }
+    split.setPosition(paneLeft, ofDividerAt: 0)
+  }
+  func openPrPane(_ url: URL, left: CGFloat? = nil) {
+    showPrPane(left: left)
     prTitle.stringValue = url.absoluteString
     prWeb.load(URLRequest(url: url))
     logLine("pr pane: \(url.absoluteString)")
@@ -294,6 +304,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   @objc func closePrPane(_ sender: Any?) {
     UserDefaults.standard.set(Double(prPane.bounds.width), forKey: "prPaneWidth")
     prPane.isHidden = true
+  }
+  // Esc shows and hides the pane: from the board (the page posts "toggle"), and from inside the pane
+  // while it shows GitHub — never while it shows an editor, which needs its Esc.
+  func togglePrPane() {
+    if prPane.isHidden { if prWeb.url != nil { showPrPane(left: nil) } }
+    else { closePrPane(nil) }
+  }
+  private func installEscapeMonitor() {
+    NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
+      guard let self = self, e.keyCode == 53, e.modifierFlags.intersection([.command, .control, .option]).isEmpty,
+            !self.prPane.isHidden, let fr = self.window.firstResponder as? NSView, fr.isDescendant(of: self.prWeb),
+            (self.prWeb.url?.host ?? "").hasSuffix("github.com") else { return e }
+      self.closePrPane(nil)
+      return nil
+    }
   }
   @objc func openPrExternally(_ sender: Any?) {
     if let u = prWeb.url { NSWorkspace.shared.open(u) }
@@ -477,7 +502,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                sessionId: body["sessionId"] as? String ?? "")
       }
     case "open":
-      if let s = body["url"] as? String, let url = URL(string: s) { openPrPane(url) }
+      if let s = body["url"] as? String, let url = URL(string: s) { openPrPane(url, left: (body["left"] as? Double).map { CGFloat($0) }) }
+    case "toggle":
+      togglePrPane()
     case "external":
       if let s = body["url"] as? String, let url = URL(string: s) { NSWorkspace.shared.open(url) }
     default: break

@@ -68,11 +68,13 @@
   main.compact #projects:hover { width: 250px; box-shadow: 8px 0 24px rgba(0, 0, 0, .18); }
   main.compact #projects:not(:hover) .colhead { flex-direction: column; padding: 8px 0; gap: 6px; min-height: 0; }
   main.compact #projects:not(:hover) .colhead > span { display: none; }
-  main.compact #projects:not(:hover) .proj { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 9px 0; margin: 2px 5px; border-left: 0; border-radius: 6px; }
-  main.compact #projects:not(:hover) .proj.active { box-shadow: inset 3px 0 0 var(--repo); }
-  main.compact #projects:not(:hover) .pname { writing-mode: vertical-rl; font-size: 12.5px; max-height: 150px; overflow: hidden; text-overflow: ellipsis; }
-  main.compact #projects:not(:hover) .ptime, main.compact #projects:not(:hover) .pfold, main.compact #projects:not(:hover) .pedit { display: none; }
-  main.compact #projects:not(:hover) .pills { flex-direction: column; gap: 3px; }
+  main.compact #projects:not(:hover) .proj { display: flex; flex-direction: column; align-items: center; padding: 10px 0; margin: 3px 4px 3px 5px; border-left: 0; border-radius: 6px; background: var(--repo); color: #fff; opacity: .72; }
+  /* the selected one is solid and runs into the chat list, whose left edge carries the same colour */
+  main.compact #projects:not(:hover) .proj.active { opacity: 1; margin-right: 0; border-radius: 6px 0 0 6px; }
+  main.compact #projects:not(:hover) .pname { writing-mode: vertical-rl; font-size: 12.5px; max-height: 160px; overflow: hidden; text-overflow: ellipsis; }
+  main.compact #projects:not(:hover) .sq, main.compact #projects:not(:hover) .pills, main.compact #projects:not(:hover) .ptime, main.compact #projects:not(:hover) .pfold, main.compact #projects:not(:hover) .pedit { display: none; }
+  #sessions { border-left: 4px solid var(--repo, transparent); }
+  #sessions .colhead { background: color-mix(in srgb, var(--repo, var(--panel)) 18%, var(--panel)); }
   #sessions { width: 380px; min-width: 260px; max-width: 60vw; flex: none; display: grid; grid-template-rows: auto auto 1fr; min-height: 0; min-width: 0; }
   #splitter { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--panel); }
   #splitter:hover, #splitter.drag { background: var(--accent); }
@@ -83,7 +85,7 @@
   #shead { grid-row: 1; } #prbar { grid-row: 2; } #log { grid-row: 3; } #term { grid-row: 4; } #composer { grid-row: 5; }
   /* A VS Code chat: read here, continued there. The whole pane says so — an outline, so nothing moves. */
   #chat.vsc { outline: 2px solid var(--vscode); outline-offset: -2px; }
-  #chat.vsc #log { background: linear-gradient(165deg, color-mix(in srgb, var(--vscode) 11%, transparent), transparent 60%); }
+  #chat.vsc #log { background: linear-gradient(165deg, color-mix(in srgb, var(--vscode) 24%, transparent), color-mix(in srgb, var(--vscode) 6%, transparent) 70%, transparent); }
   .colhead { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); font-weight: 700; min-width: 0; min-height: 43px; }
   .colhead .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--ink); font-weight: 800; display: flex; align-items: center; gap: 7px; }
   .colhead .n { background: var(--user-bg); border-radius: 10px; padding: 0 7px; font-size: 11px; color: var(--ink); font-weight: 600; letter-spacing: 0; }
@@ -212,7 +214,10 @@
   #prbar a { color: var(--accent); text-decoration: none; } #prbar a:hover { text-decoration: underline; }
   #prbar .x { margin-left: auto; font: inherit; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
   #prbar .x:hover { color: var(--ink); }
-  #log { overflow-y: auto; padding: 16px 18px 40px; scroll-behavior: smooth; zoom: var(--chat-zoom, 1); }   /* ⌃+ / ⌃- */
+  #log { overflow-y: auto; padding: 16px 18px 40px; scroll-behavior: smooth; zoom: var(--chat-zoom, 1); }   /* ⌘+ / ⌘- */
+  #shead h2 .t { cursor: text; }
+  #shead h2 input.tedit { font: inherit; font-weight: inherit; width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid var(--accent); border-radius: 6px; padding: 0 6px; background: var(--bg); color: var(--ink); }
+  #shead h2 input.tedit:focus { outline: none; }
   /* ---- composer (stale chats only) ---- */
   #composer { border-top: 1px solid var(--line); background: var(--panel); padding: 8px 10px; display: grid; gap: 6px; }
   #composer[hidden] { display: none; }   /* display:grid above would otherwise beat the UA [hidden] rule */
@@ -533,6 +538,7 @@
   }
   function knownFolders() { return [...new Set([...state.sessions.values()].map(s => s.cwd).filter(Boolean))].sort(); }
   function renderSessionList(p) {
+    $('#sessions').style.setProperty('--repo', p.key === ALL ? 'var(--accent)' : repoColor(p.name));
     const q = $('#q').value.trim().toLowerCase();
     const list = p.sessions.filter(s => !q || `${s.project} ${s.title} ${s.aiTitle || ''} ${s.lastPrompt} ${s.live?.name || ''} ${s.gitBranch || ''}`.toLowerCase().includes(q));
     const counts = { all: list.length };
@@ -621,10 +627,16 @@
   const inApp = !!window.webkit?.messageHandlers?.hub;
   const post = m => window.webkit?.messageHandlers?.hub?.postMessage(m);
   const GH_PR = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/;
+  const IN_PANE = /^https:\/\/github\.com\/|^http:\/\/127\.0\.0\.1:\d+\//;   // GitHub, and anything the board serves itself
+  const paneLeft = () => Math.round($('#chat').getBoundingClientRect().left);   // the pane covers the chat column
   function openExternal(url) {
     if (!inApp) { window.open(url, '_blank', 'noopener'); return; }
-    post({ type: /^https:\/\/github\.com\//.test(url) ? 'open' : 'external', url });
+    post(IN_PANE.test(url) ? { type: 'open', url, left: paneLeft() } : { type: 'external', url });
   }
+  // Esc from the board shows or hides the pane (the app decides which); not while typing somewhere.
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && inApp && !e.target.closest?.('input, textarea, dialog, #termBody')) post({ type: 'toggle' });
+  });
   const prbar = { url: null };
   function hidePr() { $('#prbar').hidden = true; prbar.url = null; }
   async function showPr(url) {
@@ -661,17 +673,20 @@
   const prChip = pr => `<a class="pr" data-state="${esc(pr.state || '')}" href="${esc(pr.url)}" target="_blank" rel="noopener"
       title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}\n${pr.state ? pr.state + ' · ' : ''}last mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}`)}">${esc(pr.label)}${pr.title ? `<span class="t">${esc(pr.title)}</span>` : ''}</a>`;
   const FOCUS_TIP = "Open this chat in VS Code";
+  const WEB_TIP = "Open this folder in VS Code Web — the editor served locally by `code serve-web`, in the pane here (a separate VS Code: trust the folder once, then Claude Code is in its sidebar)";
   function renderHead(s) {
+    if (state.titleEdit === s.id) return;   // a rename in progress: leave the header alone until it ends
     $('#chat').classList.toggle('vsc', inVsCode(s));
     // One row: title · dot+age · ··· · buttons, then PR chips flowing after them and spilling onto
     // further lines only when they genuinely do not fit. No status word — the dot carries it in
     // colour; what it cannot say is how long ago.
     const take = takeable(s), armed = take && term.arm === s.id;
-    $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" style="color:${repoColor(s.project)}" title="Show this folder's chats">${esc(s.project)}</span><span class="sep">/</span><span class="t">${esc(s.title)}</span></h2>
+    $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" style="color:${repoColor(s.project)}" title="Show this folder's chats">${esc(s.project)}</span><span class="sep">/</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
       <span class="status" title="${esc(statusLabel[s.status] || s.status)}"><span class="dot ${s.status}"></span>${s.statusSince ? rel(s.statusSince) : ''}</span>
       <button class="btn icon dots ${prefs.headDetails ? 'on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}"
         title="${prefs.headDetails ? 'Hide' : 'Show'} path, branch and session details">···</button>
       ${s.cwd ? `<button class="btn icon" id="focusBtn" title="${FOCUS_TIP}" aria-label="Focus in VS Code">${ICON.vscode}</button>` : ''}
+      ${s.cwd ? `<button class="btn icon" id="webBtn" title="${WEB_TIP}" aria-label="VS Code Web">${ICON.vscode}<span class="lbl">web</span></button>` : ''}
       ${s.cwd && !inVsCode(s) ? `<button class="btn icon${term.err ? ' err' : termLive(s) && term.id === s.terminal.id ? ' on' : take ? (armed ? ' take arm' : ' take') : ''}" id="termBtn" title="${esc(termTip(s))}" aria-label="Terminal"${!termLive(s) && s.alive && !take ? ' disabled' : ''}>${ICON.term}${term.err ? '<span class="lbl">failed</span>' : take ? `<span class="lbl">${armed ? (s.status === 'working' ? 'sure? mid-reply' : 'sure?') : 'take over'}</span>` : ''}</button>` : ''}
       ${inVsCode(s) ? `<span class="chip vsc" title="${VSC_TIP}">VS Code</span>` : ''}
       ${s.prs?.length ? s.prs.map(prChip).join('') : ''}
@@ -698,8 +713,41 @@
       };
     }
     $('#detailsBtn').onclick = () => { prefs.headDetails = !prefs.headDetails; savePrefs(); renderHead(s); };
+    const wb = $('#webBtn');
+    if (wb) wb.onclick = async () => {
+      wb.disabled = true; wb.querySelector('.lbl').textContent = 'starting…';
+      try {
+        const r = await fetch('/api/vscode-web', { method: 'POST' });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { wb.classList.add('err'); wb.title = d.error || `HTTP ${r.status}`; wb.querySelector('.lbl').textContent = 'failed'; return; }
+        wb.querySelector('.lbl').textContent = 'web';
+        openExternal(`${d.url}?folder=${encodeURIComponent(s.cwd)}`);
+      } catch (e) { wb.classList.add('err'); wb.title = String(e); wb.querySelector('.lbl').textContent = 'failed'; }
+      finally { wb.disabled = false; }
+    };
     const tb = $('#termBtn'); if (tb) tb.onclick = () => { term.err = null; if (takeable(s)) (term.arm === s.id ? takeOver(s) : armTakeOver(s)); else openTerminalFor(s); };
     $('#shead .repo').onclick = () => { if (s.cwd) selectProject(s.cwd); };
+    $('#shead h2 .t').ondblclick = () => editTitle(s);
+  }
+  // Rename on the board: kept in the server's state file, never in the transcript. Enter saves, Esc
+  // cancels, blur saves; an empty name goes back to what the chat calls itself.
+  function editTitle(s) {
+    const t = $('#shead h2 .t'); if (!t) return;
+    state.titleEdit = s.id;
+    const inp = document.createElement('input'); inp.className = 'tedit'; inp.value = s.boardTitle || s.title; inp.placeholder = s.aiTitle || s.prTitle || 'title';
+    t.replaceWith(inp); inp.focus(); inp.select();
+    let done = false;
+    const end = async save => {
+      if (done) return; done = true; state.titleEdit = null;
+      if (save) {
+        const r = await fetch(`/api/sessions/${s.id}/title`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: inp.value }) });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok) { const cur = state.sessions.get(s.id); if (cur) { cur.title = d.title; cur.boardTitle = d.boardTitle; } }
+      }
+      const cur = state.sessions.get(s.id) || s; renderHead(cur); renderBoard();
+    };
+    inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); end(true); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); end(false); } };
+    inp.onblur = () => end(true);
   }
 
   // ---- terminal drawer: the real claude in a PTY on the server, attached over a WebSocket -----
@@ -716,7 +764,7 @@
   function ensureXterm() {
     if (term.xt) return;
     term.xt = new Terminal({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: termFontSize(), lineHeight: 1.1, cursorBlink: true, scrollback: 5000, theme: xtTheme(), macOptionIsMeta: true });
-    // ⌃+ / ⌃- / ⌃0 are the chat's size, not keys for claude; handled here, and the document handler skips them
+    // ⌘+ / ⌘- / ⌘0 are the chat's size, not keys for claude; handled here, and the document handler skips them
     term.xt.attachCustomKeyEventHandler(e => !(e.type === 'keydown' && chatZoomKey(e)));
     term.fit = new FitAddon.FitAddon(); term.xt.loadAddon(term.fit);
     term.xt.loadAddon(new WebLinksAddon.WebLinksAddon((_e, uri) => GH_PR.test(uri) ? showPr(uri.match(GH_PR)[0]) : openExternal(uri)));
@@ -852,7 +900,7 @@
     $('#termKill').onclick = killTerm;
   }
 
-  // ---- ⌃+ / ⌃- / ⌃0: the chat's size — the transcript through CSS zoom, the terminal through its font
+  // ---- ⌘+ / ⌘- / ⌘0: the chat's size — the transcript through CSS zoom, the terminal through its font
   const ZOOM_MIN = 0.6, ZOOM_MAX = 2, TERM_FONT = 12;
   const termFontSize = () => Math.round(TERM_FONT * (Number(prefs.chatZoom) || 1));
   function applyChatZoom() {
@@ -861,7 +909,7 @@
     if (term.xt) { term.xt.options.fontSize = termFontSize(); fitTerm(); }
   }
   function chatZoomKey(e) {
-    if (!e.ctrlKey || e.metaKey || e.altKey) return false;
+    if (!e.metaKey || e.ctrlKey || e.altKey) return false;
     const step = e.key === '=' || e.key === '+' ? .1 : e.key === '-' || e.key === '_' ? -.1 : e.key === '0' ? 0 : null;
     if (step === null) return false;
     prefs.chatZoom = step ? prefs.chatZoom + step : 1;

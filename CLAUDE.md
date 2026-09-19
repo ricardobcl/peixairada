@@ -70,13 +70,14 @@ its tooltip carries `lastUserAt`.
 * **Server-side, shared across browsers and the Mac app** —
   `~/Library/Application Support/peixAIrada/state.json` (Apple's location for app data, matching the
   logs in `~/Library/Logs/`; `$XDG_STATE_HOME/peixairada/state.json` off macOS, `STATE_FILE` overrides
-  both). Holds done ticks and the named projects (`projects: {id: {name, cwds, createdAt}}`) — a
+  both). Holds done ticks, the named projects (`projects: {id: {name, cwds, createdAt}}`) and board-side
+  chat titles (`titles: {id: string}`, above every title the transcript carries) — a
   `pins` key from before 2026-09-19 is ignored and dropped on the next save. A done mark is `doneMarks[id] >= lastActivity`, so it expires by itself when the
   session moves. It used to be `~/.peixairada/state.json`; the server moves that file
   across on first run and the migration code can go once it has clearly run everywhere.
 * **Browser-only** — `localStorage` key `peixairada-prefs`: selected project, filter chip, chat-list
   width, tools mode, fold code, sound, show-all, chat-header details fold, terminal drawer
-  open/height, chat zoom (`chatZoom`: CSS `zoom` on `#log` plus xterm's fontSize, ⌃+/⌃−/⌃0), the
+  open/height, chat zoom (`chatZoom`: CSS `zoom` on `#log` plus xterm's fontSize, ⌘+/⌘−/⌘0), the
   projects strip (`projectsCompact`, default on — `main.compact` pads for the strip and the column is
   absolute over it, growing on hover). While the drawer's terminal is live the pane is all terminal — the rendered transcript
   would be the same conversation twice — unless `show chat` split it (`term.split`, page state, reset on
@@ -179,7 +180,10 @@ its tooltip carries `lastUserAt`.
   `WKWebView` in an `NSSplitView` beside the board, with its *own* delegate: the board's delegate
   sends every non-local link to the system browser, and a web view with no UI delegate silently drops
   `target=_blank`, which is why `PrPaneDelegate` implements `createWebViewWith` by loading into the
-  same view. The page asks for the pane over the bridge (`{type: 'open', url}`) and sends other
+  same view. The page asks for the pane over the bridge (`{type: 'open', url, left}` — `left` is the chat column's
+  edge in CSS px, which are points in the board's web view, so the pane covers exactly the chat column;
+  `{type: 'toggle'}` is Esc from the board, and Esc inside the pane closes it only while it shows GitHub,
+  through a local key monitor — an editor in there needs its Esc) and sends other
   external links out the same way (`external`); in a plain browser the same clicks open tabs. Both
   web views share the default website data store, so the GitHub login survives a relaunch.
 
@@ -210,6 +214,19 @@ someone did.
   every button on it, VS Code first, failing with `Load failed`.
 * The Mac app logs its own decisions to `~/Library/Logs/peixairada-app.log` (notification permission,
   every alert with `focused=`/`useUN=`, badge counts) — read that instead of guessing.
+
+* **VS Code Web in the pane** (2026-09-20). `code serve-web` serves the editor with a server-side
+  extension host; the Claude Code extension (`main` only, no `browser`, `untrustedWorkspaces:
+  supported false`) runs there and reads the same `~/.claude`. Three things cost an evening to learn:
+  the server's extensions live in `~/.vscode-server/extensions` and are installed with
+  `~/.vscode/cli/serve-web/<commit>/bin/code-server --install-extension anthropic.claude-code` (the
+  desktop's are not seen); the web workbench keeps *user settings and the trust decision in the
+  browser profile*, not on the server — a settings.json under `~/.vscode-server/data/User` does
+  nothing, and a headless run with a fresh profile is always in Restricted Mode, where the extension
+  never activates — so trust is clicked once in the pane (status bar → *Trust*) and sticks in the
+  app's WKWebView store; and the extension's housekeeping runs there too (it archived idle sessions
+  on first start, as the desktop one does). `ensureVsWeb()` in server.mjs spawns it with the
+  claude-stripped env and adopts an instance that already answers.
 
 ## Deliberately not done
 
