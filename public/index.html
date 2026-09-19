@@ -61,6 +61,18 @@
   /* ---- layout: projects | sessions | splitter | chat ---- */
   main { display: flex; min-height: 0; min-width: 0; }
   #projects { width: 250px; flex: none; display: grid; grid-template-rows: auto 1fr; border-right: 1px solid var(--line); min-height: 0; background: var(--panel); }
+  /* The strip (default): names run vertically, counts stacked under them. The pointer over it opens
+     the full column as an overlay — main keeps the strip's width in its padding, so nothing moves. */
+  main.compact { position: relative; padding-left: 46px; }
+  main.compact #projects { position: absolute; left: 0; top: 0; bottom: 0; width: 46px; z-index: 5; overflow: hidden; transition: width .15s ease; }
+  main.compact #projects:hover { width: 250px; box-shadow: 8px 0 24px rgba(0, 0, 0, .18); }
+  main.compact #projects:not(:hover) .colhead { flex-direction: column; padding: 8px 0; gap: 6px; min-height: 0; }
+  main.compact #projects:not(:hover) .colhead > span { display: none; }
+  main.compact #projects:not(:hover) .proj { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 9px 0; margin: 2px 5px; border-left: 0; border-radius: 6px; }
+  main.compact #projects:not(:hover) .proj.active { box-shadow: inset 3px 0 0 var(--repo); }
+  main.compact #projects:not(:hover) .pname { writing-mode: vertical-rl; font-size: 12.5px; max-height: 150px; overflow: hidden; text-overflow: ellipsis; }
+  main.compact #projects:not(:hover) .ptime, main.compact #projects:not(:hover) .pfold, main.compact #projects:not(:hover) .pedit { display: none; }
+  main.compact #projects:not(:hover) .pills { flex-direction: column; gap: 3px; }
   #sessions { width: 380px; min-width: 260px; max-width: 60vw; flex: none; display: grid; grid-template-rows: auto auto 1fr; min-height: 0; min-width: 0; }
   #splitter { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--panel); }
   #splitter:hover, #splitter.drag { background: var(--accent); }
@@ -71,6 +83,7 @@
   #shead { grid-row: 1; } #prbar { grid-row: 2; } #log { grid-row: 3; } #term { grid-row: 4; } #composer { grid-row: 5; }
   /* A VS Code chat: read here, continued there. The whole pane says so — an outline, so nothing moves. */
   #chat.vsc { outline: 2px solid var(--vscode); outline-offset: -2px; }
+  #chat.vsc #log { background: linear-gradient(165deg, color-mix(in srgb, var(--vscode) 11%, transparent), transparent 60%); }
   .colhead { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); font-weight: 700; min-width: 0; min-height: 43px; }
   .colhead .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--ink); font-weight: 800; display: flex; align-items: center; gap: 7px; }
   .colhead .n { background: var(--user-bg); border-radius: 10px; padding: 0 7px; font-size: 11px; color: var(--ink); font-weight: 600; letter-spacing: 0; }
@@ -199,7 +212,7 @@
   #prbar a { color: var(--accent); text-decoration: none; } #prbar a:hover { text-decoration: underline; }
   #prbar .x { margin-left: auto; font: inherit; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
   #prbar .x:hover { color: var(--ink); }
-  #log { overflow-y: auto; padding: 16px 18px 40px; scroll-behavior: smooth; }
+  #log { overflow-y: auto; padding: 16px 18px 40px; scroll-behavior: smooth; zoom: var(--chat-zoom, 1); }   /* ⌃+ / ⌃- */
   /* ---- composer (stale chats only) ---- */
   #composer { border-top: 1px solid var(--line); background: var(--panel); padding: 8px 10px; display: grid; gap: 6px; }
   #composer[hidden] { display: none; }   /* display:grid above would otherwise beat the UA [hidden] rule */
@@ -332,7 +345,7 @@
 </header>
 <main id="main">
   <section id="projects">
-    <div class="colhead"><span>Projects</span><span class="spacer" style="flex:1"></span><button class="btn icon" id="newProjBtn" title="New project — a name over one or more folders (multi-repo work, an investigation)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M7.25 2h1.5v5.25H14v1.5H8.75V14h-1.5V8.75H2v-1.5h5.25Z"/></svg></button></div>
+    <div class="colhead"><span>Projects</span><span class="spacer" style="flex:1"></span><button class="btn icon" id="newProjBtn" title="New project — a name over one or more folders (multi-repo work, an investigation)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M7.25 2h1.5v5.25H14v1.5H8.75V14h-1.5V8.75H2v-1.5h5.25Z"/></svg></button><button class="btn icon" id="projPinBtn">»</button></div>
     <div id="plist"></div>
   </section>
   <section id="sessions">
@@ -377,7 +390,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], current: null, unread: new Map(), entries: [] };
-  const prefs = { project: 'all', filter: 'all', sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, headDetails: false, termOpen: true, termHeight: 320 };
+  const prefs = { project: 'all', filter: 'all', sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, headDetails: false, termOpen: true, termHeight: 320, chatZoom: 1, projectsCompact: true };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -486,6 +499,15 @@
     };
     return [stat(all), ...customs.map(stat), ...[...folders.values()].map(stat).sort((a, b) => b.last.localeCompare(a.last))];
   }
+  // ---- the projects column: a strip by default, the full column while the pointer is over it ------
+  function applyProjectsCompact() {
+    $('#main').classList.toggle('compact', !!prefs.projectsCompact);
+    const b = $('#projPinBtn');
+    b.textContent = prefs.projectsCompact ? '»' : '«';
+    b.title = prefs.projectsCompact ? 'Keep the column open' : 'Fold into a strip that opens when you hover it';
+  }
+  $('#projPinBtn').onclick = () => { prefs.projectsCompact = !prefs.projectsCompact; savePrefs(); applyProjectsCompact(); };
+  applyProjectsCompact();
   function projHtml(p) {
     const color = p.key === ALL ? 'var(--accent)' : repoColor(p.name);
     const pills = `${p.needs ? `<span class="pc needs" title="needs your input">${p.needs}</span>` : ''}${p.working ? `<span class="pc working" title="Claude working">${p.working}</span>` : ''}${p.ready ? `<span class="pc ready" title="replied — your turn">${p.ready}</span>` : ''}${p.unread ? `<span class="badge">${p.unread}</span>` : ''}`;
@@ -693,7 +715,9 @@
   }
   function ensureXterm() {
     if (term.xt) return;
-    term.xt = new Terminal({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, lineHeight: 1.1, cursorBlink: true, scrollback: 5000, theme: xtTheme(), macOptionIsMeta: true });
+    term.xt = new Terminal({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: termFontSize(), lineHeight: 1.1, cursorBlink: true, scrollback: 5000, theme: xtTheme(), macOptionIsMeta: true });
+    // ⌃+ / ⌃- / ⌃0 are the chat's size, not keys for claude; handled here, and the document handler skips them
+    term.xt.attachCustomKeyEventHandler(e => !(e.type === 'keydown' && chatZoomKey(e)));
     term.fit = new FitAddon.FitAddon(); term.xt.loadAddon(term.fit);
     term.xt.loadAddon(new WebLinksAddon.WebLinksAddon((_e, uri) => GH_PR.test(uri) ? showPr(uri.match(GH_PR)[0]) : openExternal(uri)));
     term.xt.open($('#termBody'));
@@ -827,6 +851,25 @@
     $('#termMax').onclick = () => { term.split = !term.split; applyTermLayout(); };
     $('#termKill').onclick = killTerm;
   }
+
+  // ---- ⌃+ / ⌃- / ⌃0: the chat's size — the transcript through CSS zoom, the terminal through its font
+  const ZOOM_MIN = 0.6, ZOOM_MAX = 2, TERM_FONT = 12;
+  const termFontSize = () => Math.round(TERM_FONT * (Number(prefs.chatZoom) || 1));
+  function applyChatZoom() {
+    prefs.chatZoom = Math.round(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(prefs.chatZoom) || 1)) * 10) / 10;
+    document.documentElement.style.setProperty('--chat-zoom', prefs.chatZoom);
+    if (term.xt) { term.xt.options.fontSize = termFontSize(); fitTerm(); }
+  }
+  function chatZoomKey(e) {
+    if (!e.ctrlKey || e.metaKey || e.altKey) return false;
+    const step = e.key === '=' || e.key === '+' ? .1 : e.key === '-' || e.key === '_' ? -.1 : e.key === '0' ? 0 : null;
+    if (step === null) return false;
+    prefs.chatZoom = step ? prefs.chatZoom + step : 1;
+    applyChatZoom(); savePrefs(); e.preventDefault();
+    return true;
+  }
+  document.addEventListener('keydown', e => { if (!e.target.closest?.('#termBody')) chatZoomKey(e); });
+  applyChatZoom();
 
   // ---- composer: reply into a stale chat -----------------------------------------------
   // Stale only. The server refuses a live chat (resuming it would put a second writer on its

@@ -116,6 +116,10 @@ folder *and* to every named project that claims that folder (worktrees under a r
 repo). Each entry carries counts you can read from across the room — 🔴 waiting on you, 🟡 Claude
 working, 🟢 replied — plus an unread badge.
 
+The projects column is a **strip** by default — names run vertically, counts stacked under them —
+and opens into the full column while the pointer is over it, as an overlay, so nothing else moves.
+**»** in its header keeps it open; **«** folds it back.
+
 **Chats** of the selected project, newest first by your own last touch, with filter chips for
 *needs you · working · ready · stale · done*. **+ new chat** starts one right there: a terminal
 running `claude` in that folder (a pick-list when the project spans several), and the chat pane
@@ -199,14 +203,15 @@ keeps it running, **end** stops it — and it does not survive a server restart.
 here, the drawer *is* the pane: the rendered transcript above it would be the same conversation twice,
 so it steps aside. **show chat** splits the pane again (so does a drag on the divider), **hide** shows
 the transcript while claude keeps running, and it comes back on its own when the process ends. Chats
-the board does not drive — VS Code, another terminal, stale — always render. A chat that is live
+the board does not drive — VS Code, another terminal, stale — always render. **⌃+ / ⌃− / ⌃0** resize
+the chat pane, transcript and terminal together, and the size is remembered. A chat that is live
 in VS Code cannot be attached from here; one live in **another terminal** — iTerm, say — can be
 **taken over**: the `>_` button says so, a first click arms it, a second ends that claude and resumes
 the chat here. Nothing respawns a CLI claude, so the transcript keeps one writer; anything Claude was
 mid-way through is lost, and the button says *mid-reply* when that is the case. The first time in a folder Claude asks its usual *trust this folder?* question.
 
 **VS Code chats stay in VS Code.** A chat whose last turn came from the VS Code extension gets a
-**blue border around the chat pane** and a *VS Code* chip on its card and in its header; the board
+**blue border and a faint blue tint on the chat pane** and a *VS Code* chip on its card and in its header; the board
 reads it, the VS Code button opens it there, and that is all — no terminal, no reply box. Tried and dropped (2026-09-19): killing the
 extension's process to take the chat over only makes the extension respawn it a few seconds later,
 and a turn added from anywhere else never shows in the VS Code tab until the chat is reopened there.

@@ -76,7 +76,9 @@ its tooltip carries `lastUserAt`.
   across on first run and the migration code can go once it has clearly run everywhere.
 * **Browser-only** — `localStorage` key `peixairada-prefs`: selected project, filter chip, chat-list
   width, tools mode, fold code, sound, show-all, chat-header details fold, terminal drawer
-  open/height. While the drawer's terminal is live the pane is all terminal — the rendered transcript
+  open/height, chat zoom (`chatZoom`: CSS `zoom` on `#log` plus xterm's fontSize, ⌃+/⌃−/⌃0), the
+  projects strip (`projectsCompact`, default on — `main.compact` pads for the strip and the column is
+  absolute over it, growing on hover). While the drawer's terminal is live the pane is all terminal — the rendered transcript
   would be the same conversation twice — unless `show chat` split it (`term.split`, page state, reset on
   every attach); an exited terminal or a hidden drawer shows the transcript again. Keys from the lane board are deleted on load. `renderHead`
   re-runs on every SSE update, so anything it renders must read its open/closed state from here — the
