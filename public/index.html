@@ -63,6 +63,10 @@
   #splitter { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--panel); }
   #splitter:hover, #splitter.drag { background: var(--accent); }
   #chat { flex: 1; min-width: 320px; display: grid; grid-template-rows: auto auto 1fr auto auto; min-height: 0; }
+  /* Placed by hand: #prbar and #composer hide with display:none, which takes them out of auto-placement
+     and slid #log into an auto row and the drawer into the 1fr — a gap under the drawer on a short chat,
+     a drawer pushed off the bottom on a long one. */
+  #shead { grid-row: 1; } #prbar { grid-row: 2; } #log { grid-row: 3; } #term { grid-row: 4; } #composer { grid-row: 5; }
   .colhead { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); font-weight: 700; min-width: 0; min-height: 43px; }
   .colhead .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--ink); font-weight: 800; display: flex; align-items: center; gap: 7px; }
   .colhead .n { background: var(--user-bg); border-radius: 10px; padding: 0 7px; font-size: 11px; color: var(--ink); font-weight: 600; letter-spacing: 0; }
@@ -222,6 +226,11 @@
   #term .thead button[hidden] { display: none; }
   #term .tbody { min-height: 0; padding: 4px 0 0 6px; background: var(--term-bg); }
   #term .tbody .xterm { height: 100%; }
+  /* The drawer as the whole pane: a chat with nothing to read yet, or `max` on any chat. The log row
+     collapses and the drawer takes its 1fr; the height it remembers is untouched for the way back. */
+  #chat.termmax { grid-template-rows: auto auto 0 1fr auto; }
+  #chat.termmax #log { display: none; }
+  #chat.termmax #term { height: auto !important; max-height: none; min-height: 0; }
   /* The chat is prose, so it gets prose spacing: a taller line box than the dense lists beside it
      and a clear gap between turns. Everything below is tuned against that 1.62. */
   .msg { margin: 0 0 18px; }
@@ -336,7 +345,7 @@
     <div id="prbar" hidden></div>
     <div id="log"><div class="empty">Pick a project on the left, then a chat.</div></div>
     <div id="term" hidden>
-      <div class="thead" id="termHead" title="Drag to resize"><span class="lbl" id="termLbl"></span><button id="termKill" title="End this claude process">end</button><button id="termHide" title="Hide the terminal — claude keeps running">hide</button></div>
+      <div class="thead" id="termHead" title="Drag to resize"><span class="lbl" id="termLbl"></span><button id="termMax" title="Give the terminal the whole pane">max</button><button id="termKill" title="End this claude process">end</button><button id="termHide" title="Hide the terminal — claude keeps running">hide</button></div>
       <div class="tbody" id="termBody"></div>
     </div>
     <div id="composer" hidden>
@@ -367,7 +376,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], current: null, unread: new Map(), entries: [] };
-  const prefs = { project: 'all', filter: 'all', sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, headDetails: false, termOpen: true, termHeight: 320 };
+  const prefs = { project: 'all', filter: 'all', sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, headDetails: false, termOpen: true, termHeight: 320, termMax: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -674,7 +683,7 @@
   // switching chats does not end it — "end" does. The server replays its scrollback on every attach,
   // which is what makes a reload or a switch-and-back seamless. The transcript above it is the
   // reading view; the terminal is where you type.
-  const term = { id: null, sessionId: null, cwd: null, resume: false, ws: null, xt: null, fit: null, exited: null, err: null };
+  const term = { id: null, sessionId: null, cwd: null, resume: false, ws: null, xt: null, fit: null, exited: null, err: null, autoFill: false };
   function xtTheme() {
     const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
     return { background: v('--term-bg'), foreground: v('--ink'), cursor: v('--accent'), cursorAccent: v('--term-bg'), selectionBackground: v('--term-sel') };
@@ -697,12 +706,23 @@
   const termSize = () => term.xt ? { cols: term.xt.cols, rows: term.xt.rows } : { cols: 120, rows: 30 };
   function showTermDrawer(on) {
     $('#term').hidden = !on;
-    if (on) { $('#term').style.height = prefs.termHeight + 'px'; requestAnimationFrame(fitTerm); }
+    if (on) $('#term').style.height = prefs.termHeight + 'px';
+    applyTermLayout();
   }
+  // The drawer fills the pane while there is nothing to read — a chat with no messages yet, which is
+  // every new chat until Claude writes its first line — or while `max` is on. autoFill drops the moment
+  // the transcript shows something, or when the size is touched. The ResizeObserver refits xterm.
+  const termFilled = () => !$('#term').hidden && (prefs.termMax || term.autoFill);
+  function applyTermLayout() {
+    $('#chat').classList.toggle('termmax', termFilled());
+    $('#termMax').textContent = termFilled() ? 'restore' : 'max';
+    requestAnimationFrame(fitTerm);
+  }
+  function unfillTerm() { prefs.termMax = false; term.autoFill = false; savePrefs(); applyTermLayout(); }
   function attachTerm(t) {
     detachTerm();
     ensureXterm(); term.xt.reset();
-    Object.assign(term, { id: t.id, sessionId: t.sessionId, cwd: t.cwd, resume: t.resume, exited: t.exited, err: null });
+    Object.assign(term, { id: t.id, sessionId: t.sessionId, cwd: t.cwd, resume: t.resume, exited: t.exited, err: null, autoFill: state.entries.length === 0 });
     showTermDrawer(true);
     const ws = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`);
     ws.binaryType = 'arraybuffer'; term.ws = ws;
@@ -718,7 +738,7 @@
   function detachTerm() {
     const ws = term.ws; term.ws = null;
     if (ws) { ws.onclose = null; ws.close(); }
-    Object.assign(term, { id: null, sessionId: null, cwd: null, resume: false, exited: null });
+    Object.assign(term, { id: null, sessionId: null, cwd: null, resume: false, exited: null, autoFill: false });
   }
   function hideTerm() {
     prefs.termOpen = false; savePrefs();
@@ -766,7 +786,7 @@
   }
   {
     let drag = false;
-    $('#termHead').addEventListener('mousedown', e => { if (e.target.closest('button')) return; drag = true; document.body.style.userSelect = 'none'; e.preventDefault(); });
+    $('#termHead').addEventListener('mousedown', e => { if (e.target.closest('button')) return; if (termFilled()) unfillTerm(); drag = true; document.body.style.userSelect = 'none'; e.preventDefault(); });
     window.addEventListener('mousemove', e => {
       if (!drag) return;
       const r = $('#term').getBoundingClientRect();
@@ -775,6 +795,7 @@
     });
     window.addEventListener('mouseup', () => { if (!drag) return; drag = false; document.body.style.userSelect = ''; savePrefs(); });
     $('#termHide').onclick = hideTerm;
+    $('#termMax').onclick = () => { if (termFilled()) unfillTerm(); else { prefs.termMax = true; savePrefs(); applyTermLayout(); } };
     $('#termKill').onclick = killTerm;
   }
 
@@ -920,6 +941,7 @@
     }
     flush();
     log.innerHTML = out.join('') || '<div class="empty">No messages yet</div>';
+    if (state.entries.length && term.autoFill) { term.autoFill = false; applyTermLayout(); }   // something to read now: split the pane again
     if (opened) log.querySelectorAll('details.toolgroup').forEach((d, i) => { if (i < opened.length) d.open = opened[i]; });
     if (stick) log.scrollTop = log.scrollHeight;
   }

@@ -195,7 +195,9 @@ pasting — and it registers and writes its transcript exactly like a Terminal.a
 above walks Stale → Clauding → Ready and the rendered chat keeps up. Read above, type below. **+**
 starts a *new* chat in the same repo the same way; the pane switches to it as soon as Claude
 registers the session. The process lives on the server: **hide** keeps it running, switching chats
-keeps it running, **end** stops it — and it does not survive a server restart. A chat that is live
+keeps it running, **end** stops it — and it does not survive a server restart. While a chat has
+nothing to read yet — every new chat, until Claude's first line — the drawer takes the whole pane;
+**max** asks for that on any chat, and **restore** or a drag on the divider gives the split back. A chat that is live
 in VS Code or another terminal cannot be attached from here (the button says so); use the VS Code
 button instead. The first time in a folder Claude asks its usual *trust this folder?* question.
 
