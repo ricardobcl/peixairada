@@ -4,8 +4,20 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-20 (the small hours).
 
-## Decisions of 2026-09-20, the small hours — ⌥⌘O is a new oracle chat, the project picker is ⌥⌘P
+## Decisions of 2026-09-20, the small hours — ⌥⌘O is a new oracle chat, the project picker is ⌥⌘P, acme goes black
 
+* **The `acme` folder is black** (Ricardo: "make acme folder special by making it's cards all black"): the root
+  the repos sit under is a project of its own — the chats that belong to no repo run there — and it had no Peacock
+  colour, so it wore the colourless gray like any unnamed folder. `PROJECT_COLORS` gives it the board's black, by the
+  shown name, the way `PROJECT_ICONS` gives oracle its crystal ball; Peacock still wins if it ever speaks for that
+  folder. The black flows everywhere a colour does — the strip tab, the cards' wash and edge, the list's edge, the
+  chat header's gradient (white ink by `inkOn()`). One thing needed a rule of its own: the open and hovered card is a
+  *solid* 55 % tint of the colour, and 55 % of black over a light panel is a mid-grey with the page's dark ink on it —
+  unreadable. `.card.black` makes that tint the black itself and redefines `--ink`, `--muted`, `--snip-claude`,
+  `--you` and `--accent` on the card: custom properties inherit, so title, snips, times and the two speaker marks
+  follow in one rule, and in the dark theme they are the values they already had. Looked at in both themes, on a
+  plain, an open and a done card. The `--all` CSS token went with it: black now has one spelling, `BLACK` in the
+  script, which `inkOn()` can also read (a `var()` is opaque to it).
 * **⌥⌘O opens oracle's environments and nothing else** (Ricardo: "the O hotkey should open oracle prompt directly,
   to select the env and open a chat"): `hotOracle()` is the ⌥⌘N flow with its first steps already answered. It takes
   the project `ORACLE` names in `projectList()` — a folder of its own, a pin, or a named set of folders, always by the

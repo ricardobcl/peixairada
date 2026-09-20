@@ -142,7 +142,9 @@ lookup off. Esc or a click elsewhere closes either popover. There is no page hea
 edge, the chat list's edge, the chat header. The board reads `peacock.color` from the nearest
 `.vscode/settings.json` at or above the folder (a chat in a subfolder or a worktree wears the repo's colour)
 and follows it live: change the colour in VS Code and the board has it within seconds. A folder without one is
-light gray — the board has no colours of its own, so a colour always means the VS Code window is that colour.
+light gray, with one exception the board paints itself: **`acme`**, the root the repos sit under, where the odd
+chat that belongs to no repo runs, is **black** in both themes — like ALL — so it reads as the plain one among the
+coloured ones. Give it a Peacock colour and that wins, as everywhere else.
 **And it works the other way**: the **colour square** on a folder's row in the open column — and the one in
 the chat list's header — is a picker. Click it, pick a colour, and the board writes it as `peacock.color` into
 that folder's `.vscode/settings.json` (creating the file if there is none, touching nothing else in it), so

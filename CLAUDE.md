@@ -81,9 +81,11 @@ refuses to run against the real directory for the same reason.
 * **A project is a folder** (the registry's `cwd`, never the transcript's — that one moves with `cd`) **or a
   named set of folders** (state file); worktrees under a repo count as the repo. **Pinned projects** head the
   column (`PUT /api/pins`, the whole list, a `pins` event); folder projects exist only through their sessions.
-* **A project's colour is Peacock's and nothing else** — `pollPeacock()` reads the nearest `.vscode/settings.json`
+* **A project's colour is Peacock's** — `pollPeacock()` reads the nearest `.vscode/settings.json`
   at or above every folder it knows, stopping short of `$HOME`; the board can *set* it (`PUT/DELETE /api/peacock`,
-  a text edit of the JSONC, tested). No colour → `--nocolor`. The colour square is the picker (`#colorInput`).
+  a text edit of the JSONC, tested). No colour → `--nocolor`, unless the folder is named in `PROJECT_COLORS` (by its
+  shown name, like `PROJECT_ICONS`): `acme` is the board's own `BLACK` (2026-09-20). Peacock still wins where it
+  speaks. The colour square is the picker (`#colorInput`).
 * **The chat header is a gradient of the project's colour** (2026-09-20): `tintChat()` sets `--repo`, `--rink`,
   `--rover`/`--rover2` and `#chat.tinted`; `--rink` is the ink that reads on it, white or near-black by Peacock's own
   brightness rule (`inkOn()`), and every control in `.shead` is redrawn in it; the veils (`--rover` across, `--rover2`
@@ -92,7 +94,9 @@ refuses to run against the real directory for the same reason.
 * **The open chat's card and a hovered one are a solid tint** of its colour (`.card.active`, `.card:hover`, 55 %), the
   rest keep the gradient wash **under a plain edge** (2026-09-20 evening): only the clauding card, the hovered one and
   the open one wear the colour on their border.
-  **ALL** (the flat list, `key: 'all'`) is black in both themes — `--all`, through `projColor()`.
+  **ALL** (the flat list, `key: 'all'`) is black in both themes — `BLACK`, through `projColor()` — and so is the
+  `acme` folder (`PROJECT_COLORS`). A card in that black is marked `.card.black`: its solid tint is the black
+  itself and it borrows the dark theme's inks, because 55 % of black over a light panel is a mid-grey nothing reads on.
 * **Clauding cards first, then ready, done last** (2026-09-20), inside each group **by when *you* last acted**
   (`lastUserAt`), newest first; a project ranks by its newest chat. The ascii fish (`.gsep`, a line of `><>` that slides a fish per cycle, phased by the clock so re-renders do not jolt it) swim
   once, between the clauding and the ready cards. A finished job moves its card into the ready group, where its

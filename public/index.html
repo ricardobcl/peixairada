@@ -15,7 +15,6 @@
     --pr-open: #2f9e5b; --pr-merged: #8250df; --pr-closed: #d64545; --pr-draft: #8b8b85;
     --term-bg: #f4f3ee; --term-sel: rgba(0, 0, 0, .14);
     --nocolor: #b9b9b3;   /* light gray: a project without a Peacock colour, wherever a colour is needed (the tab, the swatch, the card's edge and wash) */
-    --all: #000;   /* ALL, the flat list of every chat: black in both themes (2026-09-20, Ricardo) — its tab, swatch, edge and header wash */
     /* Syntax colours, one set per theme — the whole highlight.js palette hangs off these eight. */
     --hl-com: #97968d; --hl-key: #9c27a0; --hl-str: #4a8c3f; --hl-num: #98651a;
     --hl-fn: #2f6fd0; --hl-cls: #a8791a; --hl-var: #cf4b3c; --hl-meta: #6b7f9e;
@@ -237,6 +236,10 @@
   /* the open chat: a solid tint of its colour under a ring of it (2026-09-20, Ricardo: "a more solid
      background, so we can notice it better"); every other card keeps the gradient wash */
   .card.active { border-color: var(--repo, var(--nocolor)); outline: 2px solid var(--repo, var(--nocolor)); outline-offset: -1px; background: color-mix(in srgb, var(--repo, var(--nocolor)) 55%, var(--panel)); }
+  /* A card in the board's own black (PROJECT_COLORS — acme): 55 % of black over a light panel is a mid-grey
+     nothing reads on, so the tint is the colour itself and the card borrows the dark theme's inks — they inherit,
+     so title, snips, times and the two speaker marks follow in one rule. In the dark theme they are what they were. */
+  .card.black:hover, .card.black.active { background: var(--repo); --ink: #e8e6df; --muted: #9a998f; --snip-claude: #c9c7bd; --you: #4fb8a8; --accent: #e08a68; }
   .card.done { opacity: .55; }
   .card.gone { opacity: .8; }   /* no live process: still ready, but a resume is coming */
   .card .top { display: flex; align-items: center; gap: 7px; min-width: 0; margin-bottom: 2px; }
@@ -773,9 +776,12 @@
   // A project's colour is Peacock's for its folder — state.peacock, cwd → #rrggbb, read by the server from
   // the nearest .vscode/settings.json and pushed the moment it changes — and the first of its folders' for a
   // named project. Nothing else since 2026-09-20 (no board-set colours, no hashed hues): a folder without
-  // one has none, `--repo` stays unset, and the CSS paints --nocolor (black) wherever a colour is needed.
-  const repoColor = cwds => (Array.isArray(cwds) ? cwds : [cwds]).map(c => c && state.peacock[c]).find(Boolean) || null;
-  const projColor = p => p.key === ALL ? 'var(--all)' : repoColor(p.cwds);
+  // one has none, `--repo` stays unset, and the CSS paints --nocolor (a light gray) wherever a colour is needed.
+  // The board paints two things itself, in its own black, in both themes: ALL, the flat list of every chat, and
+  // the folders named in PROJECT_COLORS (below) where Peacock says nothing.
+  const BLACK = '#000000';
+  const repoColor = cwds => (Array.isArray(cwds) ? cwds : [cwds]).map(c => c && (state.peacock[c] || PROJECT_COLORS[folderName(c)])).find(Boolean) || null;
+  const projColor = p => p.key === ALL ? BLACK : repoColor(p.cwds);
   const repoStyle = color => color ? `--repo:${color}` : '';
   // The ink that reads on a colour: near-black on a light one, white on a dark one — Peacock's own rule (tinycolor's
   // brightness, (299r + 587g + 114b) / 1000, light from 128), so the header agrees with the VS Code title bar of the
@@ -803,6 +809,12 @@
   const ORACLE = 'oracle';   // …and the folder ⌥⌘O starts a chat in (hotOracle): one spelling of the name for both
   const PROJECT_ICONS = { [ORACLE]: ICON.oracle };
   const projIcon = name => PROJECT_ICONS[name] || '';
+  // A colour the board gives a folder that Peacock has nothing to say about — by the shown name too, so a
+  // worktree or a second checkout of it is the same colour. One so far (2026-09-20, Ricardo: "make acme folder
+  // special by making its cards all black"): `acme`, the root the repos sit under, where the chats that belong
+  // to no repo of their own run — black, ALL's black, so the odd one out is the plainest card on the board.
+  // Peacock still wins wherever it speaks: set a colour on the folder and that is the colour (repoColor).
+  const PROJECT_COLORS = { acme: BLACK };
   const STALE_MAX_AGE_MS = 30 * 86400e3; // Claude Code deletes transcripts after 30 idle days by default; mirror that
 
   // ---- projects ----------------------------------------------------------------------
@@ -942,13 +954,13 @@
     $('#slist .gsep')?.replaceWith(fishEl);
   }
   function cardHtml(s, p) {
-    const un = state.unread.get(s.id) || 0;
+    const color = repoColor(s.cwd), un = state.unread.get(s.id) || 0;
     const showReply = s.lastReply && s.status !== 'working';
     const act = s.done ? `<button class="act" data-act="reopen" title="Untick — bring it back">↩</button>`
       : (!s.alive || s.status === 'idle') && s.lastActivity ? `<button class="act" data-act="done" title="Tick as done (persisted; comes back on new activity)">✓</button>` : '';
     const tip = titleTip(s);
     const showRepo = p.key === ALL || p.custom;
-    return `<div class="card ${s.status} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''}" data-id="${s.id}" style="${repoStyle(repoColor(s.cwd))}">
+    return `<div class="card ${s.status} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${s.id}" style="${repoStyle(color)}">
       ${showRepo || s.alive || inVsCode(s) ? `<div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${esc(s.project)}</span>` : ''}<span class="grow"></span>${s.alive && !inVsCode(s) ? `<span class="chip">${entryLabel(s)}</span>${hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : ''}` : ''}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}</div>` : ''}
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${esc(s.title)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}<span class="time" title="${esc(timeTip(s))}">${rel(s.lastActivity)}</span>${un ? `<span class="badge">${un}</span>` : ''}${act}</div>
       ${s.prs?.length ? `<div class="cprs">${s.prs.slice(0, 8).map(pr => `<a class="cpr" data-state="${esc(pr.state || '')}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`).join('')}</div>` : ''}
