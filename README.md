@@ -206,7 +206,10 @@ answers *what state it is in*.
 What a chat *is* rather than what just happened — VS Code or CLI, the session name
 (`peixairada-f1`), the path and branch, the model, the pid — lives in the **chat header** on the
 right, folded behind the **status dot** so the header fits on **one line**: repo / title, the dot with how
-long it has been that way (click it for the fold), the `{ }` code-fold toggle, the VS Code and terminal buttons. No status
+long it has been that way (click it for the fold), the `{ }` code-fold toggle, the ◎ **focus-view** toggle while a
+claude runs in the drawer — it types Claude Code's own `/focus` into that session (your prompt, the summary and the
+reply only, every step in between hidden) and lights up from the line the session answers with, so what it shows is
+the session's state and not a wish —, the VS Code and terminal buttons. No status
 word — the dot's colour says it and hovering spells it out. Click the repo name in the header to
 jump to that folder's chats.
 

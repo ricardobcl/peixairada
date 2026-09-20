@@ -4,8 +4,17 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-20 (the small hours).
 
-## Decisions of 2026-09-20, the small hours — ⌥⌘O is a new oracle chat, the project picker is ⌥⌘P, acme goes black
+## Decisions of 2026-09-20, the small hours — ⌥⌘O is a new oracle chat, the project picker is ⌥⌘P, acme goes black, /focus from the header
 
+* **A focus-view toggle in the chat header** (Ricardo: "add a toggle on the chat header for toggling focus mode on the
+  current live session"): Claude Code's `/focus` — prompt, summary and reply, the steps hidden — has no keybinding and
+  no API, so the only way in is the drawer's own keyboard. The ◎ button types `/focus` into that chat's holder and
+  then reads the session's answer back off the screen (`Focus view enabled` / `disabled`), which is what lights it:
+  the board never claims a state it was not told, and the guess dies with the process. It shows only while a claude
+  runs here — the point is the live session — and from the zsh tab it shows the claude session first rather than type
+  a slash command into a shell. Checked twice: `scripts/scenarios/focus-view.mjs` drives it end to end against the
+  fake claude (which learned `/focus`, the same line the real one prints), and against the **real** CLI on the live
+  board — a stale chat of mine resumed in a drawer, toggled on and off, the terminal ended after.
 * **A black card's clauding light is white** (Ricardo: "when it acme card, the background is black and we don't
   notice the border animation because it's also black"): the light that runs round a clauding card — and the glow
   under it — is the card's own colour, which on the black card was black on black. Both now read `--ring`, the

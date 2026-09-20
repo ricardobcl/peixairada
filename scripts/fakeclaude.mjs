@@ -118,7 +118,7 @@ function clearSession() {
 }
 const timer = setInterval(tick, 1000);
 process.stdout.on('resize', drawLive);
-let ctrlC = 0, busy = false;
+let ctrlC = 0, busy = false, focusView = false;
 process.stdin.on('data', async d => {
   for (const ch of d) {
     if (ch === '\x03') { if (++ctrlC >= 2) bye(0); continue; }
@@ -128,6 +128,9 @@ process.stdin.on('data', async d => {
       const text = input.trim(); input = '';
       if (text === '/exit' || text === '/quit') bye(0);
       if (text === '/clear') { clearSession(); continue; }
+      // /focus, the view toggle the board's header button types in (2026-09-20): the real one answers with exactly
+      // this line, and the board reads it back off the screen to know which way it went.
+      if (text === '/focus') { focusView = !focusView; say([`\x1b[2mFocus view ${focusView ? 'enabled' : 'disabled'}\x1b[0m`, '']); continue; }
       if (text && !busy) { busy = true; await turn(text); busy = false; } else drawLive();
       continue;
     }

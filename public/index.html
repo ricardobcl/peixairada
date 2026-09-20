@@ -769,6 +769,7 @@
     you: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 8.2a3.1 3.1 0 1 0 0-6.2 3.1 3.1 0 0 0 0 6.2Zm0 1.4c-3.1 0-5.6 1.7-5.6 3.8V14h11.2v-.6c0-2.1-2.5-3.8-5.6-3.8Z"/></svg>',
     claude: '<svg class="ic burst" viewBox="0 0 24 24" aria-hidden="true"><path d="M11.22 9.10L12.00 0.50L12.78 9.10ZM13.08 9.20L18.76 2.70L14.33 10.11ZM14.52 10.37L22.94 8.45L15.00 11.84ZM15.00 12.16L22.94 15.55L14.52 13.63ZM14.33 13.89L18.76 21.30L13.08 14.80ZM12.78 14.90L12.00 23.50L11.22 14.90ZM10.92 14.80L5.24 21.30L9.67 13.89ZM9.48 13.63L1.06 15.55L9.00 12.16ZM9.00 11.84L1.06 8.45L9.48 10.37ZM9.67 10.11L5.24 2.70L10.92 9.20ZM9.20 12a2.80 2.80 0 1 0 5.60 0a2.80 2.80 0 1 0 -5.60 0Z"/></svg>',
     term: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.6 3.1 6.4 8l-4.8 4.9 1.1 1.1L8.6 8 2.7 2ZM8 12.6h6.4v1.5H8Z"/></svg>',
+    view: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 3.6a4.4 4.4 0 1 1 0 8.8 4.4 4.4 0 0 1 0-8.8Zm0 1.5a2.9 2.9 0 1 0 0 5.8 2.9 2.9 0 0 0 0-5.8Z"/><path d="M6.6 8a1.4 1.4 0 1 0 2.8 0 1.4 1.4 0 0 0-2.8 0ZM7.25 0h1.5v2.4h-1.5Zm0 13.6h1.5V16h-1.5ZM0 7.25h2.4v1.5H0Zm13.6 0H16v1.5h-2.4Z"/></svg>',
     plus: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M7.25 2h1.5v5.25H14v1.5H8.75V14h-1.5V8.75H2v-1.5h5.25Z"/></svg>',
     pin: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 1.5l4.5 4.5-1.6.6-2.5 2.5-.4 3.2-1.3 1.3-2.8-2.8-3.8 3.8-.7-.7 3.8-3.8-2.8-2.8 1.3-1.3 3.2-.4 2.5-2.5Z"/></svg>',
     vscode: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>'
@@ -1341,6 +1342,16 @@
   const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" href="${esc(pr.url)}" target="_blank" rel="noopener"
       title="${esc(`${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}`)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span><span class="meta">${rel(pr.lastAt)}</span></a>`;
   const FOCUS_TIP = "Open this chat in VS Code";   // the button only — its key went (2026-09-20, Ricardo: "leave the button up top only")
+  // Claude Code's own /focus — "just your prompt, summary, and response", every step in between hidden — on the
+  // session running in the drawer (2026-09-20, Ricardo: "add a toggle on the chat header for toggling focus mode on
+  // the current live session"). It is the running CLI's state, not the board's: there is no key and no API for it, so
+  // the button types the command into our own holder and reads the line the session prints back — what it shows is
+  // what the session said, never what we asked for. No drawer, no button.
+  const focusView = new Map();   // session id → what its drawer last said; page state, it dies with the process
+  const focusOn = id => focusView.get(id) === true;
+  const viewTip = s => focusOn(s.id)
+    ? 'Focus view is on in this session — your prompt, the summary and the reply only. Click to show every step again (/focus in the terminal)'
+    : 'Focus view: your prompt, the summary and the reply only, the steps hidden. Click to turn it on (/focus in the terminal)';
   const WEB_TIP = "Open this folder in VS Code Web — the editor served locally by `code serve-web`, in the pane here (a separate VS Code: trust the folder once, then Claude Code is in its sidebar) · ⌥⌘E";
   function renderHead(s) {
     if (state.titleEdit === s.id) return;   // a rename in progress: leave the header alone until it ends
@@ -1355,6 +1366,7 @@
       <button class="btn icon status${prefs.headDetails ? ' on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}"
         title="${esc(statusLabel[s.status] || s.status)}${s.statusSince ? ` for ${rel(s.statusSince)}` : ''} · click to ${prefs.headDetails ? 'hide' : 'show'} path, branch and session details"><span class="dot ${s.status}"></span>${s.statusSince ? rel(s.statusSince) : ''}</button>
       <button class="btn icon fold${foldOn(s.id) ? ' on' : ''}" id="foldBtn" aria-pressed="${foldOn(s.id)}" title="${foldOn(s.id) ? 'Code blocks longer than 6 lines are folded in this chat — click to show them whole' : 'Code blocks are shown whole in this chat — click to fold the long ones'}${s.id in prefs.foldBy ? ' (set here; the cog sets the default)' : ' (the cog’s default)'}">{ }</button>
+      ${termLive(s) ? `<button class="btn icon${focusOn(s.id) ? ' on' : ''}" id="viewBtn" aria-pressed="${focusOn(s.id)}" title="${esc(viewTip(s))}" aria-label="Focus view">${ICON.view}</button>` : ''}
       ${s.cwd ? `<button class="btn icon" id="focusBtn" title="${FOCUS_TIP}" aria-label="Focus in VS Code">${ICON.vscode}</button>` : ''}
       ${s.cwd ? `<button class="btn icon" id="webBtn" title="${WEB_TIP}" aria-label="VS Code Web">${ICON.vscode}<span class="lbl">web</span></button>` : ''}
       ${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it; ${s.alive ? 'the >_ button takes it over' : 'continue it here or there'}">${ICON.vscode}VS Code</span>` : ''}
@@ -1400,6 +1412,7 @@
       finally { wb.disabled = false; }
     };
     const tb = $('#termBtn'); if (tb) tb.onclick = () => termAction(s);
+    const vb = $('#viewBtn'); if (vb) vb.onclick = () => toggleFocusView(s);
     $('#foldBtn').onclick = () => { prefs.foldBy[s.id] = !foldOn(s.id); savePrefs(); renderHead(s); renderLog(true); };
     $('#shead .repo').onclick = () => { if (s.cwd) selectProject(s.cwd); };
     $('#shead h2 .t').ondblclick = () => editTitle(s);
@@ -1438,6 +1451,31 @@
     return { background: v('--term-bg'), foreground: v('--ink'), cursor: v('--accent'), cursorAccent: v('--term-bg'), selectionBackground: v('--term-sel') };
   }
   const termSend = d => { if (term.ws?.readyState === 1 && term.exited === null) term.ws.send(JSON.stringify({ t: 'in', d })); };
+  /** What the drawer last said about its focus view: the newest such line on its screen, null if it never said. */
+  function focusSaid() {
+    const b = term.xt?.buffer.active; if (!b) return null;
+    for (let i = b.length - 1; i >= Math.max(0, b.length - 200); i--) {
+      const m = /Focus view (enabled|disabled)/.exec(b.getLine(i)?.translateToString(true) || '');
+      if (m) return m[1] === 'enabled';
+    }
+    return null;
+  }
+  // The header's target button (#viewBtn): type /focus into this chat's own holder and wait for the session to say
+  // which way it went — the only channel there is, the one the drawer's keyboard uses. The zsh tab holds the other
+  // holder, so it shows the claude one first rather than type a slash command into a shell.
+  async function toggleFocusView(s) {
+    const at = () => $('#viewBtn') || $('#shead');
+    if (!termLive(s)) return note(at(), 'No claude running here — ⌥⌘C starts one', true);
+    if (term.id !== s.terminal.id || term.exited !== null) { setTab(s, 'chat'); syncTerm(s); return note(at(), 'Showing the claude session first — press again', true); }
+    const before = focusSaid();
+    termSend('/focus\r');
+    for (let i = 0; i < 20; i++) {   // ~2.4 s: the command runs at once, but it has a menu to close and a frame to paint
+      await new Promise(r => setTimeout(r, 120));
+      const now = focusSaid();
+      if (now !== null && now !== before) { focusView.set(s.id, now); renderHead(s); return note(at(), `Focus view ${now ? 'on' : 'off'} in this session`); }
+    }
+    note(at(), 'Sent /focus — the session said nothing back; the drawer shows what happened', true);
+  }
   function ensureXterm() {
     if (term.xt) return;
     term.xt = new Terminal({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: termFontSize(), lineHeight: 1.1, cursorBlink: true, scrollback: 5000, theme: xtTheme(), macOptionIsMeta: true });
@@ -1542,6 +1580,7 @@
   // A new chat that died before it registered says so where its transcript would be.
   function termEnded(code) {
     const wasNew = !term.sessionId && !state.current;
+    focusView.delete(term.sessionId);   // the view was that process's, not the chat's
     detachTerm(); showTermDrawer(false);
     if (wasNew) $('#log').innerHTML = `<div class="empty">The terminal ended (exit ${code}) before a chat began — the server log says why.</div>`;
     const s = state.sessions.get(state.current); if (s) { renderTabs(s); renderHead(s); }

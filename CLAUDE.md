@@ -172,6 +172,11 @@ refuses to run against the real directory for the same reason.
   display-scale change (`watchDpr`), on focus and on visibility. → Findings: *run off the right edge*, *round two*.
 * **Shift+Enter is a newline**: the drawer sends `ESC CR` itself (what `/terminal-setup` binds in VS Code) and
   swallows the keypress too. `macOptionIsMeta: true`. → Findings: *Shift+Enter*.
+* **The chat header's ◎ button types `/focus`** into that chat's holder (2026-09-20) — Claude Code's focus view, which
+  has no key and no API: `toggleFocusView()` sends the command, then reads the newest `Focus view enabled|disabled`
+  line off the drawer's screen (`focusSaid()`) and lights `#viewBtn` from *that*; `focusView` (page state, dropped in
+  `termEnded`) is only what the session last said. The button shows while `termLive(s)`; on the zsh tab it shows the
+  claude session instead of typing into a shell. The fake claude answers `/focus` with the same line — `scripts/scenarios/focus-view.mjs`.
 * **Attaching a file is typing its path** (`@dir/file`, spaces as `\ `); the app hands real paths over the
   bridge (`peixDrop`), a browser uploads (`PUT /api/attach`). ⌘V with an image sends ⌃V to claude in the app.
 * **`termEnv()` strips only `CLAUDECODE` and `CLAUDE_CODE_*`** (the CLI refuses to nest) and keeps `CLAUDE_DIR`
