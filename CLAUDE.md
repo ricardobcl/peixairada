@@ -90,7 +90,7 @@ refuses to run against the real directory for the same reason.
 * **The open chat's card is a solid tint** of its colour (`.card.active`, 36 %), the rest keep the gradient wash.
   **ALL** (the flat list, `key: 'all'`) is black in both themes — `--all`, through `projColor()`.
 * **Clauding cards first, then ready, done last** (2026-09-20), inside each group **by when *you* last acted**
-  (`lastUserAt`), newest first; a project ranks by its newest chat. The barbed wire (`.gsep`, an SVG mask) runs
+  (`lastUserAt`), newest first; a project ranks by its newest chat. The ascii fish (`.gsep`, a line of `><>`) swim
   once, between the clauding and the ready cards. A finished job moves its card into the ready group, where its
   last prompt puts it.
 * **State lives in three places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done
