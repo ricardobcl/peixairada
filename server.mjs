@@ -1094,6 +1094,10 @@ function onHolderMsg(t, m) {
     // A page still waiting for its snapshot gets what arrives meanwhile afterwards, in order and only what the
     // snapshot does not already contain (see attachTermSocket).
     for (const ws of t.clients) { if (ws.readyState !== 1) continue; if (ws.hold) ws.hold.push({ seq: m.seq, buf }); else ws.send(buf); }
+  } else if (m.t === 'clear') {
+    // The holder cleared its screen: every page on this drawer drops its own, in the same place in the stream.
+    const msg = JSON.stringify({ t: 'clear' });
+    for (const ws of t.clients) { if (ws.readyState !== 1) continue; if (ws.hold) ws.hold.push({ seq: m.seq, buf: msg }); else ws.send(msg); }
   } else if (m.t === 'snap') { const w = t.snapQ.shift(); t.lastSnap = m.d.length; if (w) w(m); }
   else if (m.t === 'exit') termExited(t, m.code);
 }
@@ -1237,9 +1241,10 @@ function killTerm(t) {
 
 // One WebSocket per attached page. Binary frames carry output — first the screen as it stands (the holder's
 // headless terminal serialized: scrollback, cells, cursor, modes), then the PTY's bytes as they come; text frames
-// are JSON in both directions: {t:'in', d} and {t:'resize', cols, rows} up, {t:'exit', code} down. Output that
-// arrives while the snapshot is on its way waits in `ws.hold` and follows it, minus what the snapshot already
-// contains (`upto`), so the page sees the screen and then, in order, only what came after it.
+// are JSON in both directions: {t:'in', d}, {t:'resize', cols, rows} and {t:'clear'} up, {t:'clear'} and
+// {t:'exit', code} down. Output that arrives while the snapshot is on its way waits in `ws.hold` and follows it,
+// minus what the snapshot already contains (`upto`), so the page sees the screen and then, in order, only what
+// came after it. A clear rides in that same queue — it is numbered like output, and wipes the page in its place.
 const wss = new WebSocketServer({ noServer: true });
 function attachTermSocket(req, socket, head) {
   const m = (req.url || '').match(/^\/api\/terminals\/([\w-]+)\/ws$/);
@@ -1264,6 +1269,7 @@ function attachTermSocket(req, socket, head) {
         const cols = Math.min(500, msg.cols | 0), rows = Math.min(200, msg.rows | 0);
         t.cols = cols; t.rows = rows; holderSend(t, { t: 'resize', cols, rows });
       }
+      else if (msg.t === 'clear') holderSend(t, { t: 'clear' });
     });
     ws.on('close', () => t.clients.delete(ws));
   });

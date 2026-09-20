@@ -574,6 +574,7 @@
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
     <kbd>⌥⌘←→</kbd><span>the tab to the left / right: chat, zsh, GitHub pages, VS Code</span>
     <kbd>⌘+ ⌘− ⌘0</kbd><span>chat and terminal size</span>
+    <kbd>⌘K</kbd><span>clear the terminal — the scrollback goes on the holder too, so it stays clear</span>
     <kbd>⇧⏎</kbd><span>newline in the terminal's prompt</span>
     <kbd>esc</kbd><span>closes a picker or popover · back to the chat from a page's tab · never leaves full screen while one is up</span>
     <kbd>⌘R · ⇧⌘R</kbd><span>reload · restart the server, in the app</span>
@@ -1451,6 +1452,12 @@
     return { background: v('--term-bg'), foreground: v('--ink'), cursor: v('--accent'), cursorAccent: v('--term-bg'), selectionBackground: v('--term-sel') };
   }
   const termSend = d => { if (term.ws?.readyState === 1 && term.exited === null) term.ws.send(JSON.stringify({ t: 'in', d })); };
+  // ⌘K clears the terminal, as Terminal.app and iTerm do — a key xterm.js does not ship and zsh cannot bind
+  // (⌃L is the shell's own, and keeps the scrollback). The holder clears its screen too and echoes the clear
+  // back, which is what wipes the page: every attached page drops the same rows, and a re-attach or a server
+  // restart serializes the cleared screen rather than the one we hid. The nudge makes whatever runs repaint
+  // into the empty screen — zsh redraws its prompt on the resize, Claude Code its whole live region.
+  const clearTerm = () => { if (term.ws?.readyState === 1 && term.exited === null) { term.ws.send(JSON.stringify({ t: 'clear' })); nudgeTerm(); } };
   /** What the drawer last said about its focus view: the newest such line on its screen, null if it never said. */
   function focusSaid() {
     const b = term.xt?.buffer.active; if (!b) return null;
@@ -1511,6 +1518,7 @@
     term.xt.attachCustomKeyEventHandler(e => {
       if (e.key === 'Enter' && e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); if (e.type === 'keydown') termSend('\x1b\r'); return false; }
       if (ALT_COMPOSES.test(e.code) && e.altKey && !e.ctrlKey && !e.metaKey && e.key.length === 1) { e.preventDefault(); if (e.type === 'keydown') termSend(e.key); return false; }
+      if (e.code === 'KeyK' && e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) { e.preventDefault(); if (e.type === 'keydown') clearTerm(); return false; }
       return !(e.type === 'keydown' && chatZoomKey(e));
     });
     term.fit = new FitAddon.FitAddon(); term.xt.loadAddon(term.fit);
@@ -1593,6 +1601,7 @@
       if (typeof e.data !== 'string') return term.xt.write(new Uint8Array(e.data));
       const m = JSON.parse(e.data);
       if (m.t === 'exit') termEnded(m.code);
+      else if (m.t === 'clear') term.xt.write('', () => term.xt.clear());   // after what is already queued, or it repaints over the clear (see termhold)
     };
     ws.onclose = () => { if (term.ws === ws) term.ws = null; };
   }

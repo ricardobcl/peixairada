@@ -4,8 +4,26 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-20 (dawn).
 
-## Decisions of 2026-09-20, dawn — ⌥ composes again in the drawer
+## Decisions of 2026-09-20, dawn — ⌥ composes again in the drawer, ⌘K clears it
 
+* **⌘K clears the drawer, holder and all** (Ricardo: "why does cmd+K not work to clear the shell?"): because nothing
+  bound it — the app's menus claim no ⌘K, the page claims only ⌘+ / ⌘− / ⌘0 and the ⌥⌘ family, and xterm.js acts
+  on exactly one ⌘ chord (⌘A). Clearing on ⌘K is the terminal emulator's feature, not the shell's: ⌃L is zsh's own
+  and keeps the scrollback, which is not what ⌘K means in Terminal.app or iTerm. The cheap version — clear the
+  page's xterm — would have come undone on the next attach, because what a page is served is the *holder's* screen,
+  serialized. So the holder learnt a `clear`: the page asks, the holder clears the screen it keeps and echoes the
+  clear back, and that echo is what wipes the pages, all of them, in their right place in the output stream. A nudge
+  follows so whatever runs repaints into the empty screen. `scripts/scenarios/drawer-clearscreen.mjs` runs a marker
+  through a zsh tab, presses ⌘K, and then opens a *second* socket to the same drawer to read what a re-attach would
+  be handed — the marker has to be gone from there too, which is the whole point of the holder's half.
+* **Two things that cost time getting there**, both worth knowing. **xterm parses on its own schedule**: `write()`
+  queues, and a `clear()` called straight after it wipes only what has been parsed — the tail lands afterwards and
+  paints the screen back. The snapshot path already knew this (`screen.write('', cb)`); the clear goes through the
+  same door now, on the holder and on the page. **And the first cut of the scenario measured a race, not the
+  feature**: it typed `echo peixmark` and waited for the marker, but zsh echoes what you type long before it runs
+  it, so the wait was satisfied by the *typed line* and ⌘K landed between the typing and the command. The holder's
+  own log (`<state dir>/terms/<id>.log`, where a holder's stdout goes) is what showed the command running after the
+  clear. The marker is `printf 'peix%s\n' mark` now: it can only reach the screen as output.
 * **⌥ over a digit or a punctuation key types the character macOS composed** (Ricardo: "why can't I write ‘at’ symbol
   with ‘option + 2’ combo on claude chat?"): on a Portuguese layout `@` *is* ⌥2, and the drawer swallowed it.
   `macOptionIsMeta: true` is why — xterm takes the third-level-shift path only when `isMac && !macOptionIsMeta`, and

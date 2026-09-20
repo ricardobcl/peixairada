@@ -149,8 +149,8 @@ refuses to run against the real directory for the same reason.
 
 * **A drawer is a holder** (`lib/termhold.mjs`): a detached process that owns the PTY (node-pty, `zsh -l -i -c
   'exec claude …'`) and the exact screen (`@xterm/headless` + serialize), listening on `<state dir>/terms/<id>.sock`
-  — newline-delimited JSON: `in`, `resize`, `snap`, `kill`, `quit`, `meta` in; `hello`, `out` (with `seq`), `snap`
-  (with `upto`), `exit` out. The server connects, proxies pages (`attachTermSocket`), adopts holders on boot
+  — newline-delimited JSON: `in`, `resize`, `snap`, `clear`, `kill`, `quit`, `meta` in; `hello`, `out` (with `seq`),
+  `snap` (with `upto`), `clear` (with `seq`), `exit` out. The server connects, proxies pages (`attachTermSocket`), adopts holders on boot
   (`adoptHolders`), and tells a holder its session id once the registry reveals it. An exited holder lingers
   `TERM_LINGER_MS` with its last screen, then removes its files. The socket path must stay under 104 bytes — test
   state dirs are short on purpose.
@@ -170,6 +170,10 @@ refuses to run against the real directory for the same reason.
   overflow: hidden` on `.tbody`, and `.tbody { box-sizing: content-box }` (the fit addon reads the padded size under
   the page's border-box rule and proposed one row too many). Refits on the body's `ResizeObserver`, on
   display-scale change (`watchDpr`), on focus and on visibility. → Findings: *run off the right edge*, *round two*.
+* **⌘K clears the terminal** (2026-09-20), the key Terminal.app and iTerm have and xterm.js does not: the page asks
+  the holder (`clearTerm()` → `{t:'clear'}`), the holder clears the screen *it* serializes and echoes the clear back,
+  and that echo is what wipes every page on that drawer — so a re-attach and a server restart stay clear. A nudge
+  follows, to make whatever runs repaint into the empty screen. ⌃L is still the shell's own, scrollback and all.
 * **Shift+Enter is a newline**: the drawer sends `ESC CR` itself (what `/terminal-setup` binds in VS Code) and
   swallows the keypress too. `macOptionIsMeta: true`. → Findings: *Shift+Enter*.
 * **⌥ over a digit or a punctuation key types what macOS composed** (2026-09-20): `macOptionIsMeta` reads every
@@ -218,6 +222,8 @@ refuses to run against the real directory for the same reason.
 * Opening a chat in VS Code rides on an undocumented URI parameter (`session`); `code <cwd>` first, the URI 400 ms later.
 * VS Code Web (`code serve-web`): extensions live in `~/.vscode-server`, trust lives in the browser profile. → Findings: *VS Code Web*.
 * Ink redraws only its live region on a resize; earlier lines keep the old width. That is Claude Code's, not ours.
+* xterm parses what it is written on its own schedule: read or wipe a screen through `write('', cb)`, never straight
+  after a `write()` — the snapshot does, and so does the clear, or the unparsed tail paints itself back over it.
 
 ## Verifying changes
 
@@ -233,8 +239,8 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   fake claude when asked, launches Chrome with **focus emulation on**, and ends terminals, holders, Chrome and temp
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
-  `assert`. The eight in `scripts/scenarios/` are the regression checks for the drawer (re-attach, restart,
-  geometry, `/clear`, the focus-view button, ⌥ as a compose key), the hotkeys and the tab strip.
+  `assert`. The nine in `scripts/scenarios/` are the regression checks for the drawer (re-attach, restart,
+  geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a compose key), the hotkeys and the tab strip.
 * **Test against the fake claude, not real chats**: `scripts/fakeclaude.mjs` via `CLAUDE_BIN` (the test server's
   `fake: true`) is instant and touches nothing. A test against the real `~/.claude` (read-only, `claudeDir` unset)
   must use a stale chat and `DELETE` the terminals it made.
