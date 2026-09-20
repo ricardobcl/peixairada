@@ -25,6 +25,11 @@ this file is the *why* and the *state*. Last updated 2026-09-20 (late night).
 * **⌥⌘G with several PRs is always the picker** (Ricardo: "always open the menu to choose the PR when there's more
   than 1, even if the web tab is already open"): the toggle/cycle on a second press is gone; the picker marks the
   one showing *current* and the other rows open theirs.
+* **⌥⌘V is gone** (Ricardo: "remove the V external vscode shortcut, leave the button up top only"): the real VS Code
+  is the header's focus button only — `hotCode` and the cog row went, `boardKeys` in the shell lost `v` (the app was
+  rebuilt), the hotkeys scenario checks the key hits no route.
+* **The open and hovered cards' tint is 55 % of the colour**, up from 36 % (Ricardo: "make the active/hover
+  background effect even stronger"); checked in both themes, the text still reads.
 
 ## Decisions of 2026-09-20, late night — five more: pages as tabs, the cards' own colour, the header's gradient, ⌥⌘↑↓, fish
 
