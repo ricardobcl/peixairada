@@ -30,6 +30,14 @@ this file is the *why* and the *state*. Last updated 2026-09-20 (late night).
   rebuilt), the hotkeys scenario checks the key hits no route.
 * **The open and hovered cards' tint is 55 % of the colour**, up from 36 % (Ricardo: "make the active/hover
   background effect even stronger"); checked in both themes, the text still reads.
+* **`/clear` in the drawer closed the chat** (Ricardo: "I'm trying to /clear and it closes this chat … and doesn't
+  really clear and I still have a lot of context"): Claude Code's `/clear` keeps the process and takes a new session id
+  — the registry file for the pid says so — and the server already re-linked the holder to it (`linkTermToRegistry`),
+  which took the drawer away from the old chat; the page only followed a holder to its *first* chat. Resuming the old
+  card then started a second `claude --resume` with the old context — the "not cleared". Now the page follows the
+  holder to whatever chat it runs (the `terminal` event), the drawer stays attached, and `openSession` no longer
+  detaches while the new chat's summary is still on its way. The fake claude has a `/clear` that does the same;
+  `scripts/scenarios/drawer-clear.mjs` checks it end to end: one process, the new chat open, the old one a stale card.
 
 ## Decisions of 2026-09-20, late night — five more: pages as tabs, the cards' own colour, the header's gradient, ⌥⌘↑↓, fish
 
