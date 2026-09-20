@@ -8,6 +8,26 @@
 //   npm start                       # same thing
 //   PORT=8000 NOTIFY=off node server.mjs
 //   CLAUDE_DIR=/path/to/fixture node server.mjs   # point at a different ~/.claude (tests)
+// Map ▾ — the sections, from the file's own banners (node scripts/map.mjs rewrites this; grep a name to jump)
+//  State
+//      · Peacock: the colour VS Code paints a folder with, from its .vscode/settings.json
+//      · attachments: a file dropped on the board from a browser
+//  Transcript parsing
+//      · PRs mentioned in the chat
+//      · …and whether they are open, merged or closed
+//  Live-session registry (~/.claude/sessions/<pid>.json)
+//  Notifications + SSE fan-out
+//  Hooks (optional precision): POST /hook receives Claude Code hook payloads (see hooks/hook.sh)
+//  Replying into a session
+//      · Claude plan usage, for the cog: the numbers `/usage` shows in the CLI
+//  VS Code Web: the editor UI served by `code serve-web`, for the pane beside the board
+//  Terminals: a real `claude` in a PTY, attached to from the page over a WebSocket
+//      · the holder protocol: newline-delimited JSON over the holder's socket (see lib/termhold.mjs)
+//  One PR in detail: the strip under the chat header when a chip is clicked
+//  HTTP
+//  Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
+// Map ▴
+
 
 import { createServer, get as httpGet } from 'node:http';
 import {

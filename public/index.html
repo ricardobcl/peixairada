@@ -541,6 +541,38 @@
 <script src="/vendor/xterm-addon-fit.js"></script>
 <script src="/vendor/xterm-addon-web-links.js"></script>
 <script>
+// Map ▾ — the page's sections, from its own banners (node scripts/map.mjs rewrites this; grep a name to jump)
+//   css · header
+//   css · layout: projects | sessions | splitter | chat
+//   css · projects: a folder, or a named set of folders
+//   css · sessions of the selected project
+//   css · chat pane
+//   css · The chat's PRs, one per row under the header: state, repo#n, the whole title.
+//   css · PR strip: what gh says about the PR you clicked, under the header
+//   css · a second claude on this chat: VS Code opened a chat that runs here (see renderRival)
+//   css · composer (stale chats only)
+//   css · terminal drawer: the real claude, in a PTY on the server
+//   css · project editor
+//   css · syntax highlighting (highlight.js class names, our colours)
+//   js  · header controls
+//   js  · sessions column width
+//   js  · helpers
+//   js  · projects
+//   js  · the projects column: a strip by default, the full column while the pointer is over it
+//   js  · render: both lists
+//   js  · ⌥⌘O: the project picker. Same list as the column, in the same order; the box filters by name.
+//   js  · the colour picker
+//   js  · project editor
+//   js  · PRs: the strip under the header, and where a GitHub link goes
+//   js  · chat header
+//   js  · terminal drawer: the real claude in a PTY on the server, attached over a WebSocket
+//   js  · composer: reply into a stale chat
+//   js  · attachments: files dropped on the board, images pasted
+//   js  · a second claude on this chat
+//   js  · transcript rendering
+//   js  · alerts
+//   js  · SSE
+// Map ▴
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, pins: [], peacock: {}, current: null, unread: new Map(), entries: [] };

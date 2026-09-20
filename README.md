@@ -233,7 +233,8 @@ pasting — and it registers and writes its transcript exactly like a Terminal.a
 above walks Stale → Clauding → Ready and the rendered chat keeps up. Read above, type below. **+**
 starts a *new* chat in the same repo the same way; the pane switches to it as soon as Claude
 registers the session. The process lives on the server: **hide** keeps it running, switching chats
-keeps it running, **end** stops it — and it does not survive a server restart. While the chat runs
+keeps it running, **end** stops it — and since 2026-09-20 it survives a server restart: each drawer is a small
+holder process of its own that the server connects to, so `scripts/launchd.sh restart` leaves every chat running. While the chat runs
 here, the drawer *is* the pane: the rendered transcript above it would be the same conversation twice,
 so it steps aside. **show chat** splits the pane again (so does a drag on the divider), **hide** shows
 the transcript while claude keeps running, and it comes back on its own when the process ends. **⇧⏎**
@@ -402,6 +403,24 @@ screen kept per drawer for a page that attaches; `TERM_SCROLLBACK`, 256 KB of ra
 </details>
 
 ---
+
+## 🧪 Hacking on it
+
+Everything an agent — or you — needs to change this without guessing, in `package.json`:
+
+| Command | What |
+|---|---|
+| `npm test` | `node:test` over `test/`: the transcript folder, PR titles, the Peacock edit, and the drawers end to end (a throwaway server, the fake claude, a holder, a server restart under it) |
+| `npm run check` | Ten seconds of static checks: every script parses, the page's inline script compiles, the shell parses, the Swift type-checks |
+| `npm run verify -- "<js>"` | One expression evaluated on the live board in headless Chrome (`--hash <id>`, `--shot file.png`, `DARK=1`, `URL=`) |
+| `npm run scenario -- scripts/scenarios/<name>.mjs` | A multi-step browser check: the scenario declares its needs (a server, the fake claude, a fixture) and the runner starts and cleans up all of it; screenshots per step under `$TMPDIR/peixairada-shots` |
+| `npm run map` | Rewrite the section maps at the top of `server.mjs` and `public/index.html` from their banners |
+
+`scripts/fakeclaude.mjs` stands in for the CLI in tests — registers, writes transcript lines, draws a prompt box and a
+status bar that ticks the way Claude Code's does, repaints on resize — and refuses to touch the real `~/.claude`.
+`scripts/fixture.mjs` makes a small `~/.claude` look-alike; `lib/testserver.mjs` runs `server.mjs` on a free port
+with its own state and ends what it started. The working notes for a session are `CLAUDE.md`; the reasoning and
+history are `docs/DECISIONS.md`.
 
 ## 🪝 Optional: hooks, for signals instead of guesses
 
