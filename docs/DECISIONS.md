@@ -15,6 +15,12 @@ this file is the *why* and the *state*. Last updated 2026-09-20 (the small hours
   a slash command into a shell. Checked twice: `scripts/scenarios/focus-view.mjs` drives it end to end against the
   fake claude (which learned `/focus`, the same line the real one prints), and against the **real** CLI on the live
   board — a stale chat of mine resumed in a drawer, toggled on and off, the terminal ended after.
+  **Then the other direction** (Ricardo, of a `/focus` typed in the drawer itself: "do it"): every attach reads the
+  newest such line off the screen and takes the button from it, so the board catches up with a session that was
+  toggled by hand. It polls while the snapshot is still being written, and a session that never printed the line —
+  `"viewMode": "focus"` in settings, or the line long scrolled past — leaves the button where it was, which is the
+  same rule as before: nothing is claimed that the session did not say. The scenario now types `/focus` into the
+  drawer as a hand would, checks the button stays dark, and re-attaches (⌥⌘T, ⌥⌘C) to watch it light by itself.
 * **A black card's clauding light is white** (Ricardo: "when it acme card, the background is black and we don't
   notice the border animation because it's also black"): the light that runs round a clauding card — and the glow
   under it — is the card's own colour, which on the black card was black on black. Both now read `--ring`, the

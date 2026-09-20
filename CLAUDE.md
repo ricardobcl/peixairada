@@ -175,7 +175,10 @@ refuses to run against the real directory for the same reason.
 * **The chat header's ◎ button types `/focus`** into that chat's holder (2026-09-20) — Claude Code's focus view, which
   has no key and no API: `toggleFocusView()` sends the command, then reads the newest `Focus view enabled|disabled`
   line off the drawer's screen (`focusSaid()`) and lights `#viewBtn` from *that*; `focusView` (page state, dropped in
-  `termEnded`) is only what the session last said. The button shows while `termLive(s)`; on the zsh tab it shows the
+  `termEnded`) is only what the session last said. **Every attach reads that line too** (`readFocusFromScreen()` from
+  `ws.onopen`, polling while the snapshot is still being written), so a `/focus` typed in the drawer by hand is picked
+  up; a session that never printed one — `"viewMode": "focus"` in settings, or the line scrolled past — leaves the
+  button as it was. The button shows while `termLive(s)`; on the zsh tab it shows the
   claude session instead of typing into a shell. The fake claude answers `/focus` with the same line — `scripts/scenarios/focus-view.mjs`.
 * **Attaching a file is typing its path** (`@dir/file`, spaces as `\ `); the app hands real paths over the
   bridge (`peixDrop`), a browser uploads (`PUT /api/attach`). ⌘V with an image sends ⌃V to claude in the app.

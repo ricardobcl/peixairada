@@ -209,7 +209,8 @@ right, folded behind the **status dot** so the header fits on **one line**: repo
 long it has been that way (click it for the fold), the `{ }` code-fold toggle, the ◎ **focus-view** toggle while a
 claude runs in the drawer — it types Claude Code's own `/focus` into that session (your prompt, the summary and the
 reply only, every step in between hidden) and lights up from the line the session answers with, so what it shows is
-the session's state and not a wish —, the VS Code and terminal buttons. No status
+the session's state and not a wish; it reads that line again whenever the drawer attaches, so a `/focus` you type
+yourself is picked up as well —, the VS Code and terminal buttons. No status
 word — the dot's colour says it and hovering spells it out. Click the repo name in the header to
 jump to that folder's chats.
 

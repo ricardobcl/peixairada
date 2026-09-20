@@ -1460,6 +1460,24 @@
     }
     return null;
   }
+  // A /focus typed in the drawer itself never reaches the board, so every attach reads the newest such line the
+  // screen still holds and takes the button from that (2026-09-20, Ricardo, of the button lit by the session only:
+  // "do it"). It polls while the snapshot is still being written into the buffer, and leaves the button alone when
+  // the session never said anything — set through "viewMode": "focus" in settings, or scrolled past, it cannot know.
+  function readFocusFromScreen() {
+    const ws = term.ws, id = term.sessionId;
+    if (term.kind !== 'claude' || !id) return;
+    let n = 0;
+    const tick = () => {
+      if (term.ws !== ws || term.sessionId !== id) return;   // switched away: this read belonged to that drawer
+      const said = focusSaid();
+      if (said === null) { if (++n < 10) setTimeout(tick, 200); return; }
+      if (focusView.get(id) === said) return;
+      focusView.set(id, said);
+      const s = state.sessions.get(state.current); if (s && s.id === id) renderHead(s);
+    };
+    setTimeout(tick, 250);
+  }
   // The header's target button (#viewBtn): type /focus into this chat's own holder and wait for the session to say
   // which way it went — the only channel there is, the one the drawer's keyboard uses. The zsh tab holds the other
   // holder, so it shows the claude one first rather than type a slash command into a shell.
@@ -1563,7 +1581,7 @@
     showTermDrawer(true);
     const ws = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`);
     ws.binaryType = 'arraybuffer'; term.ws = ws;
-    ws.onopen = () => { fitTerm(); nudgeTerm(); term.xt.focus(); };
+    ws.onopen = () => { fitTerm(); nudgeTerm(); term.xt.focus(); readFocusFromScreen(); };
     ws.onmessage = e => {
       if (typeof e.data !== 'string') return term.xt.write(new Uint8Array(e.data));
       const m = JSON.parse(e.data);
