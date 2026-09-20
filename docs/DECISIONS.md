@@ -2,7 +2,44 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-09-20 (late).
+this file is the *why* and the *state*. Last updated 2026-09-20 (late night).
+
+## Decisions of 2026-09-20, late night — five more: pages as tabs, the cards' own colour, the header's gradient, ⌥⌘↑↓, fish
+
+* **The chat's pages are tabs of the chat** (Ricardo: "I like the row that opens when there's a chat and a shell open
+  - can we make the same mechanism for the github and for vscode? so 4 tabs. maybe the a tab per PR also, instead of
+  being inside the browser? ESC should still navigate to chat."): `#ptabs` lists *chat* (*claude* while it runs
+  here), *zsh*, a `repo#n` tab per GitHub page the chat opened and *VS Code* for its folder's editor; the strip shows
+  while there is more than the chat. The app's pane lost its own toolbar and tabs: it is the chat column below the
+  strip, placed where the page says (`{type:'pane', id, keys, show, left, top}`, once per change and again when the
+  geometry moves), and ‹ › ↻ ↗ moved into the strip (`{type:'nav'}`). Esc with the pane up goes through the page
+  (`peixKey('Escape')` → `hotEscape()`): the chat tab, the pane hides, the pages stay; × on a tab forgets its page.
+  Each chat comes back on the tab it was on. Dropped with it: the pane's grip and remembered width (it *is* the column
+  now — resize the column), its title label, the "closed on this chat" memory (`paneClosedFor` — the tab is that), the
+  `open`/`chat`/`toggle` messages. The PR strip under the header stays: it is the PR's facts, the tab is the page.
+  Verified in Chrome with the bridge faked (`scripts/scenarios/pane-tabs.mjs`: five tabs, the messages, the geometry,
+  Esc, ×, the tab coming back, the zsh's tab going); the native side typechecks and the app was rebuilt — the pane's
+  placement under the strip is the part only the real app shows.
+* **Cards enhance their own colour on hover and when open** (Ricardo: "hovering and selecting a cards still show a
+  orange border. change it to just enhance the border with its own color."): hover is the full colour with a 1px halo
+  outside, the open card a 2px ring of it over its border — three pixels of its colour — on the solid tint. The
+  accent is off the cards.
+* **The chat header is a gradient** (Ricardo: "the top head of the chat has a solid background color. make it a
+  gradient"): the colour at the left, and to the right a veil *away* from the ink — black under white ink, white
+  under dark (`--rover`, set by `tintChat`) — so the buttons at that end keep their contrast whichever ink `inkOn`
+  chose. A fade towards the panel would have put white ink on a pale blue.
+* **⌥⌘↑ / ⌥⌘↓ walk the list** (Ricardo: "cmd option up/down arrow should chat the card selected" — change the card
+  selected): the chat above or below as the list stands, filters and order included, the ends stop; from the pane
+  too (`hotkeyCode()` maps the arrow key codes to the page's `e.code`). The cog lists it.
+* **The separator is a school of ascii fish** (Ricardo: "the divider for card looks good, maybe tweak it to be more
+  like ascii fishes instead of barbewire, to be more thematic"): `><>   ><>   ><>` in monospace, muted, clipped to
+  the column; the wire's SVG mask is gone.
+* **A fixture finding on the way**: `drawer-reattach` was red before any of this was touched — the fake claude erased
+  its own banner when the drawer shrank by the strip's two rows on re-attach (`\x1b[J` from the live region's new
+  top, which had moved above the banner). It now scrolls up by the difference before it repaints, as a terminal app
+  would, and clears the old region's rows on a grow. The scenario's scrollback check is unchanged and passes again
+  (a snapshot of 862 chars, the banner in it). Noted under *Verifying* in CLAUDE.md: a red drawer scenario can be the
+  fake's geometry, not the drawer's.
 
 ## Decisions of 2026-09-20, late — six more: the repo on G, sub-agents, the wire, borders, the automatic drawer, the zsh tab
 
