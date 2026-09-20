@@ -192,9 +192,15 @@
   #slist { overflow-y: auto; overflow-x: hidden; min-width: 0; padding: 8px; display: flex; flex-direction: column; gap: 7px; }
   #slist > * { flex: none; } /* never let a full column squash its cards (overflow:hidden items would shrink to 0) */
   /* Between the clauding cards and the ready ones: a school of ascii fish (2026-09-20, Ricardo: "1 separator …
-     something like ====== or barb-wire", then "more like ascii fishes … to be more thematic"). A line of ><> in
-     monospace, clipped to the column, in the muted ink; renderSessionList puts it there, once. */
+     something like ====== or barb-wire", then "more like ascii fishes … to be more thematic", then "animate"). A
+     line of ><> in monospace, clipped to the column, in the muted ink, swimming right: the text slides one fish per
+     cycle — six characters, letter-spacing included — so the loop is seamless. renderSessionList puts it there,
+     once, with a negative delay taken from the clock, so a re-render (every SSE update) does not jolt the school.
+     Still under reduced motion. */
   .gsep { margin: 2px 10px; font: 600 11px/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: color-mix(in srgb, var(--muted) 80%, transparent); white-space: nowrap; overflow: hidden; user-select: none; }
+  .gsep span { display: inline-block; animation: swim 2.4s linear infinite; }
+  @keyframes swim { from { transform: translateX(calc(-6ch - 6px)); } to { transform: translateX(0); } }
+  @media (prefers-reduced-motion: reduce) { .gsep span { animation: none; } }
   #slist .none { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 0; }
   /* --repo is reset here on purpose: custom properties inherit, and the chat list sets its own for its edge (the
      black on ALL) — without the reset every colourless card wore that. The card's inline --repo still wins. */
@@ -857,6 +863,8 @@
   }
   function knownFolders() { return [...new Set([...state.sessions.values()].map(s => s.cwd).filter(Boolean))].sort(); }
   const FISH = '><>   '.repeat(80);   // more than any column is wide; .gsep clips the rest
+  const SWIM_MS = 2400;                // one fish per cycle — the keyframes' duration, kept in step by hand
+  const fishHtml = () => `<div class="gsep" title="clauding above, ready below"><span style="animation-delay:-${Date.now() % SWIM_MS}ms">${FISH}</span></div>`;
   function renderSessionList(p) {
     const pc = projColor(p); if (pc) $('#sessions').style.setProperty('--repo', pc); else $('#sessions').style.removeProperty('--repo');
     const q = $('#q').value.trim().toLowerCase();
@@ -876,7 +884,7 @@
       : folders.length ? `<select id="newChatSel" title="New chat in a folder — opens a terminal running claude there"><option value="">＋ new chat in…</option>${folders.map(f => `<option value="${esc(f)}">${esc(folderName(f))}</option>`).join('')}</select>` : '';
     $('#fchips').innerHTML = FILTERS.map(([k, label]) => `<button class="fchip ${k} ${filterOn(k) ? 'on' : ''}" data-f="${k}" title="${filterOn(k) ? 'Hide' : 'Show'} ${label} chats">${label}<span class="n">${counts[k] || ''}</span></button>`).join('');
     const b = shown.map(bucket);   // the fish swim once, under the last clauding card when a ready one follows
-    $('#slist').innerHTML = shown.map((s, i) => `${i && b[i] === 'ready' && b[i - 1] === 'working' ? `<div class="gsep" title="clauding above, ready below">${FISH}</div>` : ''}${cardHtml(s, p)}`).join('') || `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
+    $('#slist').innerHTML = shown.map((s, i) => `${i && b[i] === 'ready' && b[i - 1] === 'working' ? fishHtml() : ''}${cardHtml(s, p)}`).join('') || `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
   }
   function cardHtml(s, p) {
     const un = state.unread.get(s.id) || 0;
