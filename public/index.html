@@ -194,13 +194,10 @@
   /* Between the clauding cards and the ready ones: a school of ascii fish (2026-09-20, Ricardo: "1 separator …
      something like ====== or barb-wire", then "more like ascii fishes … to be more thematic", then "animate"). A
      line of ><> in monospace, clipped to the column, in the muted ink, swimming right: the text slides one fish per
-     cycle — six characters, letter-spacing included — so the loop is seamless. renderSessionList puts it there,
-     once, with a negative delay taken from the clock, so a re-render (every SSE update) does not jolt the school.
-     Still under reduced motion. */
+     cycle — six characters, letter-spacing included — so the loop is seamless. One node, kept across renders and
+     animated by script (fishEl, by renderSessionList): see there for why not a CSS animation. */
   .gsep { margin: 2px 10px; font: 600 11px/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: color-mix(in srgb, var(--muted) 80%, transparent); white-space: nowrap; overflow: hidden; user-select: none; }
-  .gsep span { display: inline-block; animation: swim 2.4s linear infinite; }
-  @keyframes swim { from { transform: translateX(calc(-6ch - 6px)); } to { transform: translateX(0); } }
-  @media (prefers-reduced-motion: reduce) { .gsep span { animation: none; } }
+  .gsep span { display: inline-block; will-change: transform; }
   #slist .none { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 0; }
   /* --repo is reset here on purpose: custom properties inherit, and the chat list sets its own for its edge (the
      black on ALL) — without the reset every colourless card wore that. The card's inline --repo still wins. */
@@ -867,8 +864,17 @@
   }
   function knownFolders() { return [...new Set([...state.sessions.values()].map(s => s.cwd).filter(Boolean))].sort(); }
   const FISH = '><>   '.repeat(80);   // more than any column is wide; .gsep clips the rest
-  const SWIM_MS = 2400;                // one fish per cycle — the keyframes' duration, kept in step by hand
-  const fishHtml = () => `<div class="gsep" title="clauding above, ready below"><span style="animation-delay:-${Date.now() % SWIM_MS}ms">${FISH}</span></div>`;
+  const SWIM_MS = 2400;                // one fish per cycle
+  // One node for the school, kept across renders: innerHTML would make a new one — and a new animation — on every
+  // SSE update, a visible stutter every few seconds (2026-09-20, Ricardo: "the animation for the fish stutters after
+  // a few seconds"). The list is rendered with a stand-in that is swapped for it. Its animation is the Web Animations
+  // API's, not CSS: a CSS animation is cancelled when its element leaves the document and starts over on return; this
+  // one carries on across the swap, and startTime 0 phases it to the document clock, so the same fish is at the same
+  // place whenever the node comes back. Off under reduced motion.
+  const fishEl = document.createElement('div'); fishEl.className = 'gsep'; fishEl.title = 'clauding above, ready below';
+  const fishSpan = fishEl.appendChild(document.createElement('span')); fishSpan.textContent = FISH;
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) { const a = fishSpan.animate([{ transform: 'translateX(calc(-6ch - 6px))' }, { transform: 'translateX(0)' }], { duration: SWIM_MS, iterations: Infinity }); a.startTime = 0; }
+  const fishHtml = () => '<div class="gsep"></div>';   // the stand-in
   function renderSessionList(p) {
     const pc = projColor(p); if (pc) $('#sessions').style.setProperty('--repo', pc); else $('#sessions').style.removeProperty('--repo');
     const q = $('#q').value.trim().toLowerCase();
@@ -889,6 +895,7 @@
     $('#fchips').innerHTML = FILTERS.map(([k, label]) => `<button class="fchip ${k} ${filterOn(k) ? 'on' : ''}" data-f="${k}" title="${filterOn(k) ? 'Hide' : 'Show'} ${label} chats">${label}<span class="n">${counts[k] || ''}</span></button>`).join('');
     const b = shown.map(bucket);   // the fish swim once, under the last clauding card when a ready one follows
     $('#slist').innerHTML = shown.map((s, i) => `${i && b[i] === 'ready' && b[i - 1] === 'working' ? fishHtml() : ''}${cardHtml(s, p)}`).join('') || `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
+    $('#slist .gsep')?.replaceWith(fishEl);
   }
   function cardHtml(s, p) {
     const un = state.unread.get(s.id) || 0;
