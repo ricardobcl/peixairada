@@ -2,7 +2,51 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-09-20 (night).
+this file is the *why* and the *state*. Last updated 2026-09-20 (late).
+
+## Decisions of 2026-09-20, late — six more: the repo on G, sub-agents, the wire, borders, the automatic drawer, the zsh tab
+
+* **⌥⌘G with no PR opens the folder's repository** (Ricardo: "when there no PRs in the chat, make the G hotkey open
+  the github page of the project if it exists"): `pollRepos()` asks `git remote get-url origin` once per folder the
+  board knows (the Peacock set), hourly after, and ships the GitHub URL in the snapshot and as a `repos` event;
+  `hotGh` opens it the way a PR opens (the pane in the app). No remote → the note says so.
+* **A sub-agent at work keeps the chat clauding** (Ricardo: "seems like sub-agents don't make the animation for the
+  card work?"). Found: Claude Code writes each sub-agent's transcript to `<slug>/<id>/subagents/agent-*.jsonl`
+  (every line `isSidechain`, a `.meta.json` with `requestShape: "background"` or not), which the server ignored. A
+  foreground agent holds the main transcript at a tool_use, so the chat stayed working; a *background* one answers
+  at once and the main turn ends with `end_turn` — the card went ready, ring off, with agents still working.
+  `scanAgents()` counts an agent as running while its file's last line is not an assistant end_turn and it wrote
+  within `AGENT_STALE_MS` (15 min; a killed agent never writes its end_turn), on their fs events and every 10 s
+  for alive chats; the summary's status is `working` while any runs, `agents` carries the count (a chip on the
+  card), and the 'reply' alert waits for them. `test/agents.test.mjs`.
+* **Clauding on top, then ready, one barbed wire between them** (Ricardo: "I only want 1 separator on 2nd column
+  for live cards and ready cards. something like ====== or barb-wire"). One rule needs a group above it, so the
+  order changed: working › ready › done, inside each group your last touch, newest first — a finished job now moves
+  its card into the ready group, where its last prompt puts it (the morning's "never reshuffles" gave way to this;
+  the group move is the one reshuffle). The wire is an SVG mask (`.gsep`, a twist every 24 px) coloured by the
+  theme, put there once by `renderSessionList`.
+* **Cards: the colour on every side** (Ricardo: "cards have a left border more visible than the rest … make it
+  equal symmetrically"): a 2 px border in the project's colour all round, the 5 px left bar gone; a hover paints
+  the frame in the accent.
+* **The drawer is automatic** (Ricardo: "remove the row at the top of the chat for 'claude --resume …' and the
+  button on the right 'show chat | end | hide'. all of this is automatic now. either the session is live and
+  we're in a claude session, or we rendering the chat while we don't resume. also marking a card as Done, should
+  kill/archive the claude session to not waste resources"). The drawer's header, hide, end, show-chat, the split
+  and its drag, `prefs.termOpen` and `termHeight` are gone: the drawer is the pane's body while the chat runs here
+  and goes when the process exits (`termEnded`; the transcript is the pane again, the composer with it);
+  `syncTerm` decides on every open and update. The `done` route ends the chat's processes — the drawer's holders
+  (claude and zsh) and a claude live elsewhere (SIGTERM, not awaited; the registry notices). The done tick is
+  still offered only to idle or stale chats.
+* **⌥⌘T is a zsh tab beside the chat, inline** (Ricardo: "T -> the zsh terminal should be inline, not opening in
+  iterm" — the iTerm route of the previous round is gone). A holder with `shell: true` runs `zsh -l -i` in the
+  chat's folder (`POST /api/sessions/:id/shell`, `shellOf()`, `s.shell` on the summary, one per chat); the pane
+  grows a tab strip (`#ptabs`, a grid row of its own — `.termmax` repeats it) only while a zsh lives: [claude|chat]
+  and [zsh ×]. ⌥⌘T starts or shows it, ⌥⌘C brings the claude session back, `exit` or the × ends it; the tab a chat
+  is on is page state. A claude run inside the zsh tab registers like any CLI run and shows up as a chat of its
+  own. Verified: `test/terminals.test.mjs` (a zsh holder answers `echo`, one per chat, DELETE ends it), the four
+  scenarios (`drawer-reattach` now re-attaches through the zsh tab and back — the clean re-attach since hide is
+  gone; the tab strip costs the drawer a row, so the fake's banner moves into scrollback and the check reads
+  `peix.buffer()`, the whole buffer), and the live board.
 
 ## Decisions of 2026-09-20, night — the hotkeys, the header in the project's colour, the list's looks
 
