@@ -14,6 +14,7 @@
     --you: #2f8b7c; --snip-claude: #45443f; --vscode: #0066b8;
     --pr-open: #2f9e5b; --pr-merged: #8250df; --pr-closed: #d64545; --pr-draft: #8b8b85;
     --term-bg: #f4f3ee; --term-sel: rgba(0, 0, 0, .14);
+    --nocolor: #b9b9b3;   /* light gray: a project without a Peacock colour, wherever a colour is needed (the tab, the swatch, the card's edge and wash) */
     /* Syntax colours, one set per theme — the whole highlight.js palette hangs off these eight. */
     --hl-com: #97968d; --hl-key: #9c27a0; --hl-str: #4a8c3f; --hl-num: #98651a;
     --hl-fn: #2f6fd0; --hl-cls: #a8791a; --hl-var: #cf4b3c; --hl-meta: #6b7f9e;
@@ -23,23 +24,18 @@
     --bg: #141413; --panel: #1c1c1a; --ink: #e8e6df; --muted: #9a998f; --line: #2c2c29; --accent: #e08a68;
     --user-bg: #23231f; --tool-bg: #1f1f1c; --code-bg: #101010; --code-line: #2e2e2a; --ended: #5d5d58;
     --code-ink: #e0a284; --inline-bg: rgba(255, 255, 255, .075);
-    --you: #4fb8a8; --snip-claude: #c9c7bd; --vscode: #4aa5f0;
+    --you: #4fb8a8; --snip-claude: #c9c7bd; --vscode: #4aa5f0; --nocolor: #66665f;
     --pr-open: #3fb950; --pr-merged: #a371f7; --pr-closed: #f85149; --pr-draft: #8b8b85;
     --term-bg: #111110; --term-sel: rgba(255, 255, 255, .22);
     --hl-com: #7c7c74; --hl-key: #c678dd; --hl-str: #98c379; --hl-num: #d19a66;
     --hl-fn: #61afef; --hl-cls: #e5c07b; --hl-var: #e06c75; --hl-meta: #8fa6c4;
   } }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; height: 100vh; display: grid; grid-template-rows: auto 1fr; overflow: hidden; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; height: 100vh; display: grid; grid-template-rows: 1fr; overflow: hidden; }
 
   /* ---- header ---- */
-  header { display: flex; align-items: center; gap: 10px; padding: 7px 14px; border-bottom: 1px solid var(--line); background: var(--panel); min-width: 0; }
-  header h1 { margin: 0; font-size: 16px; letter-spacing: .2px; white-space: nowrap; }
-  header h1 em { font-style: normal; color: var(--accent); }
-  header .spacer { flex: 1; }
-  header .sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
-  header button, .btn { font: inherit; font-size: 12px; padding: 5px 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 6px; cursor: pointer; white-space: nowrap; }
-  header button:hover, .btn:hover { border-color: var(--accent); }
+  .btn { font: inherit; font-size: 12px; padding: 5px 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .btn:hover { border-color: var(--accent); }
   .btn.icon { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; color: var(--muted); }
   .btn.icon .ic { width: 15px; height: 15px; vertical-align: 0; fill: currentColor; }
   .btn.icon:hover { color: var(--ink); }
@@ -51,48 +47,81 @@
   #termBtn.take { color: var(--ink); }                                        /* live in another terminal: can be taken over */
   #termBtn.take.arm { color: var(--needs); border-color: var(--needs); }      /* armed: the next click ends that claude */
   .btn.icon .lbl { font-size: 11px; }
-  header label { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 5px; cursor: pointer; white-space: nowrap; }
-  header select, .colhead select { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; max-width: 180px; }
-  header input[type=text] { font: inherit; font-size: 12px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; width: 190px; }
-  #conn { width: 8px; height: 8px; border-radius: 50%; background: var(--ended); flex: none; }
-  #conn.on { background: var(--idle); }
-  #counts { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  /* No page header since 2026-09-20 — the Mac window has its own title bar, and a second bar was a strip of
+     controls nobody touched twice a day. The fish sits at the top of the projects strip, the settings behind
+     the cog at its bottom, in a popover anchored to it. */
+  .brand { position: relative; width: 28px; height: 28px; flex: none; display: inline-flex; cursor: pointer; }
+  .brand .logo { width: 28px; height: 28px; }
+  .pop { position: fixed; left: 54px; bottom: 10px; z-index: 40; display: grid; gap: 9px; min-width: 250px; padding: 12px 14px 13px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); box-shadow: 0 10px 34px rgba(0, 0, 0, .22); font-size: 12px; }
+  .pop[hidden] { display: none; }
+  .pop h4 { margin: 0 0 2px; font-size: 13px; display: flex; align-items: baseline; gap: 8px; }
+  .pop h4 em { font-style: normal; color: var(--accent); }
+  .pop h4 .sub { font-size: 11px; font-weight: 400; color: var(--muted); }
+  .upop { top: 6px; bottom: auto; min-width: 320px; }   /* the usage card, beside the fish */
+  .pop .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  /* Plan usage — one bar per window, the way `/usage` lists them; green → amber → red as it fills. */
+  .usage { display: grid; gap: 6px; padding: 2px 0 0; color: var(--muted); }
+  .usage:empty { display: none; }
+  .usage .urow { display: grid; grid-template-columns: 108px 1fr 34px auto; gap: 8px; align-items: center; white-space: nowrap; }
+  .usage .ul { overflow: hidden; text-overflow: ellipsis; }
+  .usage .ubar { height: 6px; border-radius: 3px; background: var(--inline-bg); overflow: hidden; }
+  .usage .ubar i { display: block; height: 100%; border-radius: 3px; background: var(--u, var(--idle)); }
+  .usage .up { text-align: right; font-weight: 700; color: var(--ink); }
+  .usage .ur { font-size: 11px; }
+  .usage .note { font-size: 11px; line-height: 1.35; white-space: normal; }
+  .pop label { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
+  /* The keys, so they can be looked up: two columns under a rule, the chord in ink, what it does in muted. */
+  .pop .keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: baseline; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); max-width: 380px; }
+  .pop .keys .kh { grid-column: 1 / -1; font-size: 11px; }
+  .pop .keys kbd { font: inherit; font-weight: 600; color: var(--ink); white-space: nowrap; }
+  .pop select, .colhead select { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; max-width: 180px; }
+  .brand.off .logo { filter: grayscale(1); opacity: .5; }   /* the SSE stream is down: the board is frozen */
+  #counts { font-size: 11px; font-weight: 400; color: var(--muted); white-space: nowrap; }
 
   /* ---- layout: projects | sessions | splitter | chat ---- */
   main { display: flex; min-height: 0; min-width: 0; }
-  #projects { width: 250px; flex: none; display: grid; grid-template-rows: auto 1fr; border-right: 1px solid var(--line); min-height: 0; background: var(--panel); }
+  #projects { width: 250px; flex: none; display: grid; grid-template-rows: auto 1fr auto; border-right: 1px solid var(--line); min-height: 0; background: var(--panel); }
   /* The strip (default): each project a solid tab in its colour, the name running vertically. » opens
      the full column, « folds it back; nothing happens on hover. */
   main.compact #projects { width: 46px; overflow: hidden; }
-  main.compact #projects #pqBtn, main.compact #projects #pq { display: none; }
+  main.compact #projects #pq { display: none; }
   main.compact #projects .colhead { flex-direction: column; padding: 8px 0; gap: 6px; min-height: 0; }
-  main.compact #projects .colhead > span { display: none; }
-  main.compact #projects .proj { display: flex; flex-direction: column; align-items: center; padding: 10px 0; margin: 3px 4px 3px 5px; border-left: 0; border-radius: 6px; background: var(--repo); color: #fff; opacity: .72; }
+  main.compact #projects .colhead > span:not(.brand) { display: none; }
+  main.compact #projects .proj { display: flex; flex-direction: column; align-items: center; padding: 10px 0; margin: 3px 4px 3px 5px; border-left: 0; border-radius: 6px; background: var(--repo, var(--nocolor)); color: #fff; opacity: .72; }
   /* the selected one is solid and runs into the chat list, whose left edge carries the same colour */
   main.compact #projects .proj.active { opacity: 1; margin-right: 0; border-radius: 6px 0 0 6px; }
   main.compact #projects .pname { writing-mode: vertical-rl; font-size: 12.5px; max-height: 160px; overflow: hidden; text-overflow: ellipsis; }
-  main.compact #projects .sq, main.compact #projects .pills, main.compact #projects .ptime, main.compact #projects .pfold, main.compact #projects .pedit { display: none; }
-  #sessions { border-left: 4px solid var(--repo, transparent); }
-  #sessions .colhead { background: color-mix(in srgb, var(--repo, var(--panel)) 18%, var(--panel)); }
+  main.compact #projects .sq, main.compact #projects .pills, main.compact #projects .ptime, main.compact #projects .pfold, main.compact #projects .pedit, main.compact #projects .ppin { display: none; }
+  #sessions { border-left: 4px solid var(--repo, var(--nocolor)); }
+  #sessions .colhead { background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); }
   #sessions { width: 380px; min-width: 260px; max-width: 60vw; flex: none; display: grid; grid-template-rows: auto auto 1fr; min-height: 0; min-width: 0; }
+  /* The chat list folded to a rail: the selected project's colour square and the » to open it again.
+     The width is set here, not inline, so the splitter's saved width comes back on unfold. */
+  main.scompact #sessions { width: 34px; min-width: 0; }
+  main.scompact #sessions #filters, main.scompact #sessions #slist, main.scompact #newChat, main.scompact #stitle > .t, main.scompact #stitle > .n, main.scompact #splitter { display: none; }
+  main.scompact #shd { flex-direction: column; padding: 8px 0; gap: 8px; min-height: 0; }
   #splitter { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--panel); }
   #splitter:hover, #splitter.drag { background: var(--accent); }
-  #chat { flex: 1; min-width: 320px; display: grid; grid-template-rows: auto auto 1fr auto auto; min-height: 0; }
+  #chat { --repo: initial; flex: 1; min-width: 320px; display: grid; grid-template-rows: auto auto auto auto 1fr auto auto; grid-template-columns: minmax(0, 1fr); min-height: 0; }
   /* Placed by hand: #prbar and #composer hide with display:none, which takes them out of auto-placement
      and slid #log into an auto row and the drawer into the 1fr — a gap under the drawer on a short chat,
-     a drawer pushed off the bottom on a long one. */
-  #shead { grid-row: 1; } #prbar { grid-row: 2; } #log { grid-row: 3; } #term { grid-row: 4; } #composer { grid-row: 5; }
+     a drawer pushed off the bottom on a long one. (.termmax below repeats the rows.) */
+  #shead { grid-row: 1; } #prlist { grid-row: 2; } #prbar { grid-row: 3; } #rival { grid-row: 4; } #log { grid-row: 5; } #term { grid-row: 6; } #composer { grid-row: 7; }
   /* A VS Code chat: read here, continued there. The whole pane says so — an outline, so nothing moves. */
-  #chat.vsc { outline: 2px solid var(--vscode); outline-offset: -2px; }
-  #chat.vsc #log { background: linear-gradient(165deg, color-mix(in srgb, var(--vscode) 24%, transparent), color-mix(in srgb, var(--vscode) 6%, transparent) 70%, transparent); }
+  /* The pane is washed in the project's colour — none for a folder without one (transparent mixed with
+     transparent). Where the chat lives is a mark in the header (.own), not a colour, since 2026-09-20. */
+  #log { background: linear-gradient(165deg, color-mix(in srgb, var(--repo, var(--nocolor)) 24%, transparent), color-mix(in srgb, var(--repo, var(--nocolor)) 6%, transparent) 70%, transparent); }
+  /* Every other chat is a CLI chat, lived here or in a terminal: the same wash in orange, no outline. */
   .colhead { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); font-weight: 700; min-width: 0; min-height: 43px; }
   .colhead .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--ink); font-weight: 800; display: flex; align-items: center; gap: 7px; }
   .colhead .n { background: var(--user-bg); border-radius: 10px; padding: 0 7px; font-size: 11px; color: var(--ink); font-weight: 600; letter-spacing: 0; }
-  .colhead .sq { width: 10px; height: 10px; border-radius: 3px; background: var(--repo, var(--accent)); flex: none; }
+  .colhead .sq { width: 10px; height: 10px; border-radius: 3px; background: var(--repo, var(--nocolor)); flex: none; }
   .colhead .btn.icon { padding: 3px 7px; }
 
   /* ---- projects: a folder, or a named set of folders ---- */
   #plist { overflow-y: auto; padding: 6px; min-width: 0; }
+  #pfoot { display: flex; padding: 8px 12px; border-top: 1px solid var(--line); }
+  main.compact #pfoot { justify-content: center; padding: 8px 0; }
   /* the filter boxes: a magnifier in the row, the box itself only while it is open or has text */
   .fsearch { font: inherit; border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 12px; padding: 2px 7px; cursor: pointer; display: inline-flex; align-items: center; flex: none; }
   .fsearch .ic { width: 12px; height: 12px; fill: currentColor; }
@@ -106,9 +135,9 @@
   #fchips { display: contents; }
   .proj { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 7px; align-items: center; padding: 6px 8px 6px 6px; border-radius: 8px; cursor: pointer; min-width: 0; border-left: 3px solid transparent; position: relative; }
   .proj:hover { background: var(--user-bg); }
-  .proj.active { background: var(--user-bg); border-left-color: var(--repo); }
+  .proj.active { background: var(--user-bg); border-left-color: var(--repo, var(--nocolor)); }
   .proj.all { margin-bottom: 4px; }
-  .proj .sq { width: 10px; height: 10px; border-radius: 3px; background: var(--repo); }
+  .proj .sq { width: 10px; height: 10px; border-radius: 3px; background: var(--repo, var(--nocolor)); }
   .proj.custom .sq { border-radius: 50%; }
   .proj .pname { font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .proj .ptime { font-size: 11px; color: var(--muted); }
@@ -116,9 +145,38 @@
   .proj .pills:empty { display: none; }
   .proj .pfold { grid-column: 2 / 4; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .pc { font-size: 10.5px; font-weight: 700; border-radius: 9px; padding: 0 6px; line-height: 16px; color: #fff; }
-  .pc.needs { background: var(--needs); } .pc.working { background: var(--working); color: #2a2205; } .pc.ready { background: var(--idle); }
+  .pc.working { background: var(--working); color: #2a2205; } .pc.ready { background: var(--idle); }
   .proj .pedit { position: absolute; right: 6px; top: 5px; font: inherit; font-size: 12px; line-height: 1; padding: 2px 5px; border: 1px solid transparent; background: var(--panel); color: var(--muted); border-radius: 4px; cursor: pointer; opacity: 0; }
   .proj:hover .pedit { opacity: 1; }
+  /* The pin: on hover like the pencil, always while pinned; the pencil moves left to make room on custom rows. */
+  .proj .ppin { position: absolute; right: 6px; top: 5px; font: inherit; line-height: 1; padding: 3px 4px; border: 1px solid transparent; background: var(--panel); color: var(--muted); border-radius: 4px; cursor: pointer; opacity: 0; display: inline-flex; }
+  .proj .ppin .ic { width: 12px; height: 12px; fill: currentColor; }
+  .proj:hover .ppin, .proj .ppin.on { opacity: 1; }
+  /* the colour swatch: on hover like the pin, one slot to its left (two on a named project, past the pencil) */
+  /* The square is the picker where the row is one folder (rows here, the chat list's header): click opens the
+     colour panel, ⌥-click clears. #colorInput is the one real control on the page, kept out of the re-rendered
+     lists so the panel it opened is still wired to something after the next render. */
+  .sq.pick { cursor: pointer; transition: transform .12s; }
+  .sq.pick:hover { transform: scale(1.35); box-shadow: 0 0 0 2px var(--panel), 0 0 0 3px var(--muted); }
+  #colorInput { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
+  .note { position: fixed; z-index: 60; font-size: 11px; line-height: 1.4; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, .18); max-width: 340px; pointer-events: none; }
+  .note.err { border-color: var(--needs); color: var(--needs); }
+  /* a file being dragged over the board (the shell says so in the app; the page sees it in a browser) */
+  #chat.dropping { outline: 2px dashed var(--accent); outline-offset: -5px; }
+  #chat.dropping > * { pointer-events: none; }
+  .proj .ppin.on { color: var(--ink); }
+  .proj.pinned .ptime { margin-right: 22px; }   /* the pin stays visible on a pinned row: keep it off the time */
+  .proj .ppin:hover { border-color: var(--line); color: var(--ink); }
+  .proj.custom .pedit { right: 30px; }
+  /* Pinned rows sit above a line, in your order. Drag any row above the line to pin it there; drag a pinned
+     one below it to let it go. The indicators are box-shadows, so nothing moves while you drag. */
+  .psep { border-top: 1px solid var(--line); margin: 4px 10px 6px; }
+  main.compact .psep { margin: 2px 9px 4px 10px; }
+  .proj.dropbefore { box-shadow: 0 -2px 0 var(--accent); }
+  .proj.dropafter { box-shadow: 0 2px 0 var(--accent); }
+  .psep.over { border-top: 2px solid var(--accent); }
+  #plist.unpin .psep { border-top-style: dashed; border-top-color: var(--needs); }
+  .proj.dragging { opacity: .4; }
   .proj .pedit:hover { border-color: var(--line); color: var(--ink); }
   .phint { font-size: 11px; color: var(--muted); padding: 10px 10px 6px; line-height: 1.4; }
 
@@ -128,27 +186,36 @@
   .fchip .n { font-weight: 600; }
   .fchip:hover { color: var(--ink); }
   .fchip.on { color: var(--ink); border-color: var(--accent); }
-  .fchip.needs-input.on { border-color: var(--needs); color: var(--needs); }
-  .fchip.needs-input:not(.on) .n:not(:empty) { color: var(--needs); }
+  .fchip.ready.on { border-color: var(--idle); color: var(--idle); }
+  .fchip.working.on { border-color: var(--working); color: var(--working); }
   #slist { overflow-y: auto; overflow-x: hidden; min-width: 0; padding: 8px; display: flex; flex-direction: column; gap: 7px; }
   #slist > * { flex: none; } /* never let a full column squash its cards (overflow:hidden items would shrink to 0) */
   #slist .none { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 0; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--repo, var(--line)); border-radius: 10px; padding: 8px 10px 7px; cursor: pointer; min-width: 0; overflow: hidden; position: relative; }
+  /* --repo is reset here on purpose: custom properties inherit, and the chat list sets its own for its edge (the
+     accent on All chats) — without the reset every colourless card wore that. The card's inline --repo still wins. */
+  .card { --repo: initial; background: var(--panel); border: 1px solid color-mix(in srgb, var(--repo, var(--line)) 70%, var(--line)); border-left: 5px solid var(--repo, var(--nocolor)); border-radius: 10px; padding: 8px 10px 7px; cursor: pointer; min-width: 0; overflow: hidden; position: relative; }
   /* a VS Code chat: the same wash as its pane */
-  .card.vsc { background: linear-gradient(165deg, color-mix(in srgb, var(--vscode) 22%, var(--panel)), color-mix(in srgb, var(--vscode) 6%, var(--panel)) 70%, var(--panel)); }
+  /* the same wash as the pane, in the project's colour; a card without one stays plain panel */
+  .card { background: linear-gradient(165deg, color-mix(in srgb, var(--repo, var(--nocolor)) 22%, var(--panel)), color-mix(in srgb, var(--repo, var(--nocolor)) 6%, var(--panel)) 70%, var(--panel)); }
+  /* VS Code owns this chat: a small mark, top right of the card and at the end of the chat header */
+  .own { display: inline-flex; align-items: center; gap: 4px; color: var(--vscode); font-size: 10.5px; font-weight: 600; white-space: nowrap; flex: none; }
+  .own .ic { width: 12px; height: 12px; fill: currentColor; }
+  .card .top .own { margin-left: auto; }
+  .shead .own { margin-left: auto; }
   /* Claude at work: a light runs round the card's edge. A ring drawn by a masked conic gradient on a
      pseudo-element just inside the border, its start angle animated through a registered property. */
   @property --spin { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
-  .card.working::before { content: ''; position: absolute; inset: 0; border-radius: 8px; padding: 2px; pointer-events: none;
-    background: conic-gradient(from var(--spin), transparent 0 60%, var(--working) 88%, transparent 100%);
+  .card.working { box-shadow: 0 0 0 1px color-mix(in srgb, var(--repo, var(--working)) 45%, transparent), 0 0 18px color-mix(in srgb, var(--repo, var(--working)) 35%, transparent); }
+  .card.working::before { content: ''; position: absolute; inset: 0; border-radius: 8px; padding: 3px; pointer-events: none;
+    background: conic-gradient(from var(--spin), transparent 0 45%, var(--repo, var(--working)) 92%, transparent 100%);
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
-    animation: ring 1.8s linear infinite; }
+    animation: ring 1.4s linear infinite; }
   @keyframes ring { to { --spin: 360deg; } }
-  .card:hover { border-color: var(--accent); border-left-color: var(--repo, var(--accent)); }
+  .card:hover { border-color: var(--accent); border-left-color: var(--repo, var(--nocolor)); }
   .chip.vsc { color: var(--vscode); border-color: var(--vscode); }
   .card.active { outline: 2px solid var(--accent); outline-offset: -1px; }
-  .card.needs-input { border-color: var(--needs); }
   .card.done { opacity: .55; }
+  .card.gone { opacity: .8; }   /* no live process: still ready, but a resume is coming */
   .card .top { display: flex; align-items: center; gap: 7px; min-width: 0; margin-bottom: 2px; }
   .card .trow { display: flex; align-items: flex-start; gap: 7px; min-width: 0; }
   .card .trow .title { flex: 1; margin-top: 0; }
@@ -191,9 +258,8 @@
   .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .dot.working { background: var(--working); animation: pulse 1.4s ease-in-out infinite; }
   .dot.idle { background: var(--idle); }
-  .dot.needs-input { background: var(--needs); animation: pulse .8s ease-in-out infinite; }
-  .dot.stale, .dot.unknown { background: var(--ended); }
-  .dot.done { background: var(--idle); animation: none; }
+  .dot.needs-input { background: var(--idle); animation: pulse .8s ease-in-out infinite; }   /* ready, and asking */
+  .dot.stale, .dot.unknown, .dot.done { background: var(--ended); animation: none; }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
   .badge { background: var(--unread); color: #fff; border-radius: 10px; padding: 0 6px; font-size: 11px; font-weight: 600; min-width: 18px; text-align: center; flex: none; }
   .chip { font-size: 10px; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; min-width: 0; flex: 0 1 auto; }
@@ -218,20 +284,21 @@
   .shead .details[hidden] { display: none; }
   .btn.icon.dots { font-size: 13px; line-height: 1; padding: 3px 7px; letter-spacing: .5px; }
   .btn.icon.dots.on { color: var(--ink); border-color: var(--accent); }
-  /* `repo#123` in the state colour, then the PR's title in plain ink once `gh` has answered. The
-     title is what makes a chip readable without hovering, so it gets room but not the whole header:
-     it ellipsises past its cap, and the chip itself never exceeds one line of the header. */
-  .shead .pr { flex: none; max-width: 100%; min-width: 0; display: inline-flex; align-items: baseline; gap: 5px; font-size: 11px; text-decoration: none; white-space: nowrap;
-    border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; overflow: hidden; }
-  .shead .pr .t { flex: 0 1 auto; min-width: 0; max-width: 320px; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
-  .shead .pr:hover { border-color: currentColor; }
-  /* open / merged / closed / draft, in the colours GitHub itself uses. No colour = not looked up
-     yet (or `gh` could not tell us), which is why the neutral chip stays the default and the title
-     stays as quiet as the rest of the header. No color-mix: the neutral border stands. */
-  .shead .pr[data-state="open"] { color: var(--pr-open); border-color: color-mix(in srgb, var(--pr-open) 45%, transparent); }
-  .shead .pr[data-state="merged"] { color: var(--pr-merged); border-color: color-mix(in srgb, var(--pr-merged) 45%, transparent); }
-  .shead .pr[data-state="closed"] { color: var(--pr-closed); border-color: color-mix(in srgb, var(--pr-closed) 45%, transparent); }
-  .shead .pr[data-state="draft"] { color: var(--pr-draft); border-color: color-mix(in srgb, var(--pr-draft) 45%, transparent); }
+  /* ---- The chat's PRs, one per row under the header: state, repo#n, the whole title. ---- */
+  #prlist { border-bottom: 1px solid var(--line); background: var(--panel); padding: 4px 12px 5px; display: grid; gap: 1px; min-width: 0; }
+  #prlist[hidden] { display: none; }
+  .prrow { display: flex; align-items: baseline; gap: 9px; min-width: 0; padding: 2px 0; font-size: 12px; color: var(--ink); text-decoration: none; }
+  .prrow .st { flex: none; width: 52px; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: .5px; color: var(--muted); }
+  :is(.prrow, .pkrow)[data-state="open"] .st { color: var(--pr-open); } :is(.prrow, .pkrow)[data-state="merged"] .st { color: var(--pr-merged); }
+  :is(.prrow, .pkrow)[data-state="closed"] .st { color: var(--pr-closed); } :is(.prrow, .pkrow)[data-state="draft"] .st { color: var(--pr-draft); }
+  .prrow .num { flex: none; color: var(--muted); font-size: 11px; }
+  .prrow .t { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .prrow .t.pending { font-weight: 400; color: var(--muted); font-style: italic; }
+  .prrow .meta { flex: none; color: var(--muted); font-size: 11px; }
+  .prrow:hover .t { text-decoration: underline; }
+  .prrow[hidden] { display: none; }
+  #prlist .more { justify-self: start; font: inherit; font-size: 11px; color: var(--accent); background: none; border: 0; padding: 1px 0 0 61px; cursor: pointer; }
+  #prlist .more:hover { text-decoration: underline; }
   /* ---- PR strip: what gh says about the PR you clicked, under the header ---- */
   #prbar { border-bottom: 1px solid var(--line); background: var(--panel); padding: 5px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 3px 12px; font-size: 12px; color: var(--muted); min-width: 0; }
   #prbar[hidden] { display: none; }
@@ -245,6 +312,12 @@
   #prbar a { color: var(--accent); text-decoration: none; } #prbar a:hover { text-decoration: underline; }
   #prbar .x { margin-left: auto; font: inherit; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
   #prbar .x:hover { color: var(--ink); }
+  /* ---- a second claude on this chat: VS Code opened a chat that runs here (see renderRival) ---- */
+  #rival { border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--needs) 12%, var(--panel)); padding: 6px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 12px; color: var(--ink); min-width: 0; line-height: 1.4; }
+  #rival[hidden] { display: none; }
+  #rival .t { flex: 1 1 300px; min-width: 0; }
+  #rival b { color: var(--needs); }
+  #rival .btn { padding: 2px 8px; font-size: 11px; flex: none; }
   #log { overflow-y: auto; padding: 16px 18px 40px; scroll-behavior: smooth; zoom: var(--chat-zoom, 1); }   /* ⌘+ / ⌘- */
   #shead h2 .t { cursor: text; }
   #shead h2 input.tedit { font: inherit; font-weight: inherit; width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid var(--accent); border-radius: 6px; padding: 0 6px; background: var(--bg); color: var(--ink); }
@@ -256,16 +329,16 @@
     border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); width: 100%; }
   #composer textarea:focus { outline: none; border-color: var(--accent); }
   #composer textarea:disabled { opacity: .6; }
-  #composer.vsc textarea, #composer.vsc #composeSend { display: none; }   /* a VS Code chat: the hint is the whole box */
-  #composer.vsc .hint a { color: var(--vscode); font-weight: 600; text-decoration: none; }
-  #composer.vsc .hint a:hover { text-decoration: underline; }
   .composer-foot { display: flex; align-items: center; gap: 10px; }
   .composer-foot .hint { font-size: 11px; color: var(--muted); flex: 1; min-width: 0; }
   .composer-foot .hint.err { color: var(--needs); }
   .composer-foot .hint code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   #composeSend:disabled { opacity: .5; cursor: default; border-color: var(--line); }
   /* ---- terminal drawer: the real claude, in a PTY on the server ---- */
-  #term { border-top: 1px solid var(--line); background: var(--panel); display: grid; grid-template-rows: auto 1fr; height: 320px; min-height: 120px; max-height: 70vh; min-width: 0; }
+  /* One explicit column of minmax(0, 1fr): the implicit `auto` column took the xterm screen's pixel width as its
+     minimum, so the drawer's body stayed as wide as the terminal had last been and fit() measured that instead of
+     the pane — the terminal ran off the right edge whenever the pane got narrower or the font larger. */
+  #term { border-top: 1px solid var(--line); background: var(--panel); display: grid; grid-template-rows: auto 1fr; grid-template-columns: minmax(0, 1fr); height: 320px; min-height: 120px; max-height: 70vh; min-width: 0; }
   #term[hidden] { display: none; }
   #term .thead { display: flex; align-items: center; gap: 8px; padding: 3px 10px; font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--line); cursor: row-resize; user-select: none; }
   #term .thead .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -274,11 +347,15 @@
   #term .thead button { font: inherit; font-size: 11px; padding: 1px 7px; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 5px; cursor: pointer; }
   #term .thead button:hover { border-color: var(--accent); }
   #term .thead button[hidden] { display: none; }
-  #term .tbody { min-height: 0; padding: 4px 0 0 6px; background: var(--term-bg); }
+  /* content-box on purpose: the fit addon reads getComputedStyle(parent).height/width and subtracts only the
+     terminal element's own padding — under the page's border-box rule that is the padded size, one row or column too
+     many when the remainder is short, and the bottom row (or last column) clipped by up to the padding (measured: 51
+     rows × 15 px in a 762 px body). */
+  #term .tbody { box-sizing: content-box; min-height: 0; min-width: 0; overflow: hidden; padding: 4px 0 0 6px; background: var(--term-bg); }
   #term .tbody .xterm { height: 100%; }
   /* The drawer as the whole pane, which it is whenever its terminal is live. The log row collapses and
      the drawer takes its 1fr; the height it remembers is untouched for the split. */
-  #chat.termmax { grid-template-rows: auto auto 0 1fr auto; }
+  #chat.termmax { grid-template-rows: auto auto auto auto 0 1fr auto; }
   #chat.termmax #log { display: none; }
   #chat.termmax #term { height: auto !important; max-height: none; min-height: 0; }
   /* The chat is prose, so it gets prose spacing: a taller line box than the dense lists beside it
@@ -334,6 +411,29 @@
   /* ---- project editor ---- */
   dialog { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); padding: 16px 18px; width: min(600px, 92vw); }
   dialog::backdrop { background: rgba(0, 0, 0, .35); }
+  /* ⌥⌘O: the project picker, VS Code's open-recent way — a box on top, rows under it, ↑↓ and ⏎. ⌥⌘G fills it with the chat's PRs. */
+  #pick { padding: 8px; width: min(520px, 92vw); margin-top: 10vh; }
+  /* In the app with the pane up: the pane is a native view over the chat column, and a dialog centred on the board
+     opens under it. `aside` (set by pickOpen from what the shell reports through peixPane) puts it in the part of the
+     board still showing, --pane-left wide. */
+  #pick.aside { margin-left: 8px; margin-right: auto; width: min(520px, calc(var(--pane-left, 100vw) - 16px)); }
+  #pick input { width: 100%; box-sizing: border-box; font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: inherit; outline: none; }
+  #pick input:focus { border-color: var(--accent); }
+  #picklist { margin-top: 6px; max-height: 50vh; overflow-y: auto; display: grid; gap: 1px; }
+  .pkrow { display: grid; grid-template-columns: auto 1fr auto auto; gap: 9px; align-items: center; padding: 6px 8px; border-radius: 7px; cursor: pointer; min-width: 0; }
+  .pkrow .sq { width: 10px; height: 10px; border-radius: 3px; background: var(--repo, var(--nocolor)); }
+  .pkrow .n { font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .pkrow :is(.n, .num) b { color: var(--accent); }
+  .pkrow .n .cur { font-weight: 400; font-size: 11px; color: var(--muted); margin-left: 6px; }
+  /* ⌥⌘G: the same rows over the chat's PRs — state · repo#n · title · age, as #prlist lays them out. */
+  .pkrow.pr { grid-template-columns: 52px auto 1fr auto; }
+  .pkrow .st { font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: .5px; color: var(--muted); }
+  .pkrow .num { color: var(--muted); font-size: 11px; }
+  .pkrow .n.pending { font-weight: 400; color: var(--muted); font-style: italic; }
+  .pkrow .pills { display: flex; gap: 5px; }
+  .pkrow .t { font-size: 11px; color: var(--muted); }
+  .pkrow.sel { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  #picklist .none { padding: 12px; color: var(--muted); font-size: 12px; text-align: center; }
   dialog h3 { margin: 0 0 10px; font-size: 15px; }
   dialog p.help { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
   dialog input[type=text], dialog textarea { font: inherit; font-size: 13px; width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--ink); }
@@ -366,32 +466,23 @@
 </style>
 </head>
 <body>
-<header>
-  <span id="conn" title="live connection"></span>
-  <h1>peix<em>AI</em>rada</h1>
-  <span id="counts"></span>
-  <span class="spacer"></span>
-  <label title="Also show live panels with no messages, and stale chats older than 30 days"><input type="checkbox" id="showAll"> show empty &amp; &gt;30d</label>
-  <select id="toolsMode" title="How tool calls (Bash, Read, Edit…) appear in the chat"><option value="collapsed">tools: collapsed</option><option value="expanded">tools: expanded</option><option value="hidden">tools: hidden</option></select>
-  <label title="Fold fenced code blocks longer than 6 lines"><input type="checkbox" id="foldCode"> fold code</label>
-  <label><input type="checkbox" id="sound"> sound</label>
-  <button id="notifBtn" title="Browser notifications (the server also sends native macOS ones)">🔔 enable browser alerts</button>
-  <button id="testBtn" title="Fire a test alert through the server">test alert</button>
-</header>
 <main id="main">
   <section id="projects">
-    <div class="colhead"><span>Projects</span><span class="spacer" style="flex:1"></span><button class="btn icon" id="pqBtn" title="Filter projects by name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="pq" class="fq" placeholder="name…" hidden><button class="btn icon" id="newProjBtn" title="New project — a name over one or more folders (multi-repo work, an investigation)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M7.25 2h1.5v5.25H14v1.5H8.75V14h-1.5V8.75H2v-1.5h5.25Z"/></svg></button><button class="btn icon" id="projPinBtn">»</button></div>
+    <div class="colhead"><span class="brand" id="brandBtn"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g><g fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span>Projects</span><span class="spacer" style="flex:1"></span><button class="btn icon" id="pqBtn" title="Filter projects by name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="pq" class="fq" placeholder="name…" hidden><button class="btn icon" id="newProjBtn" title="New project — a name over one or more folders (multi-repo work, an investigation)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M7.25 2h1.5v5.25H14v1.5H8.75V14h-1.5V8.75H2v-1.5h5.25Z"/></svg></button><button class="btn icon" id="projPinBtn">»</button></div>
     <div id="plist"></div>
+    <div id="pfoot"><button class="btn icon" id="cogBtn" title="Settings"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm0 1.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm-.9-5.5h1.8l.4 1.9c.4.15.8.35 1.15.6l1.85-.65 1.3 2.2-1.45 1.3c.05.4.05.8 0 1.2l1.45 1.3-1.3 2.2-1.85-.65c-.35.25-.75.45-1.15.6l-.4 1.9H7.1l-.4-1.9a5 5 0 0 1-1.15-.6l-1.85.65L2.4 10l1.45-1.3a5 5 0 0 1 0-1.2L2.4 6.2l1.3-2.2 1.85.65c.35-.25.75-.45 1.15-.6Z"/></svg></button></div>
   </section>
   <section id="sessions">
-    <div class="colhead" id="shd"><span id="stitle" class="t"></span><span id="newChat"></span></div>
+    <div class="colhead" id="shd"><span id="stitle" class="t"></span><span id="newChat"></span><button class="btn icon" id="sessPinBtn" title="Fold the chat list">«</button></div>
     <div id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" hidden><span id="fchips"></span></div>
     <div id="slist"></div>
   </section>
   <div id="splitter" title="Drag to resize"></div>
   <section id="chat">
     <div class="shead" id="shead"><h2>Pick a chat</h2></div>
+    <div id="prlist" hidden></div>
     <div id="prbar" hidden></div>
+    <div id="rival" hidden></div>
     <div id="log"><div class="empty">Pick a project on the left, then a chat.</div></div>
     <div id="term" hidden>
       <div class="thead" id="termHead" title="Drag to resize"><span class="lbl" id="termLbl"></span><button id="termMax" title="Show the rendered chat above the terminal">show chat</button><button id="termKill" title="End this claude process">end</button><button id="termHide" title="Hide the terminal — claude keeps running">hide</button></div>
@@ -406,6 +497,33 @@
     </div>
   </section>
 </main>
+<div id="settings" class="pop" hidden>
+  <h4><span>peix<em>AI</em>rada</span><span class="sub">settings</span></h4>
+  <label title="Also show live panels with no messages, and stale chats older than 30 days"><input type="checkbox" id="showAll"> show empty &amp; &gt;30d</label>
+  <label title="How tool calls (Bash, Read, Edit…) appear in the chat">tool calls <select id="toolsMode"><option value="collapsed">collapsed</option><option value="expanded">expanded</option><option value="hidden">hidden</option></select></label>
+  <label title="Fold fenced code blocks longer than 6 lines"><input type="checkbox" id="foldCode"> fold code</label>
+  <label><input type="checkbox" id="sound"> sound</label>
+  <div class="row"><button class="btn" id="notifBtn" title="Browser notifications (the server also sends native macOS ones)">🔔 enable browser alerts</button><button class="btn" id="testBtn" title="Fire a test alert through the server">test alert</button></div>
+  <div class="keys" title="From anywhere on the board, the terminal included">
+    <span class="kh">keys</span>
+    <kbd>⌥⌘O</kbd><span>project picker</span>
+    <kbd>⌥⌘T</kbd><span>this chat's terminal · takes over a live one</span>
+    <kbd>⌥⌘V</kbd><span>this folder in VS Code Web, in the pane</span>
+    <kbd>⌥⌘G</kbd><span>its PR on GitHub · a picker with several · again for the next</span>
+    <kbd>⌘+ ⌘− ⌘0</kbd><span>chat and terminal size</span>
+    <kbd>⇧⏎</kbd><span>newline in the terminal's prompt</span>
+    <kbd>esc</kbd><span>close a picker or popover · the pane, in the app</span>
+    <kbd>⌘R · ⇧⌘R</kbd><span>reload · restart the server, in the app</span>
+  </div>
+</div>
+<div id="usagePop" class="pop upop" hidden>
+  <h4><span>peix<em>AI</em>rada</span><span id="counts"></span></h4>
+  <div id="usage" class="usage"></div>
+</div>
+<dialog id="pick">
+  <input type="text" id="pickq" placeholder="Project — type to filter · ↑↓ · ⏎ opens · esc" autocomplete="off" spellcheck="false">
+  <div id="picklist"></div>
+</dialog>
 <dialog id="pdlg">
   <h3 id="pdlgTitle">New project</h3>
   <p class="help">A project is a name over one or more folders. Its chats are every chat in those folders; the folders keep their own entries too.</p>
@@ -415,6 +533,7 @@
   <textarea id="pextra" rows="2" placeholder="/Users/you/acme/some-repo"></textarea>
   <div class="dfoot"><button class="btn danger" id="pdel">Delete project</button><span class="err" id="perr"></span><span class="spacer"></span><button class="btn" id="pcancel">Cancel</button><button class="btn" id="psave">Save</button></div>
 </dialog>
+<input type="color" id="colorInput" aria-hidden="true" tabindex="-1">
 <script src="/vendor/marked.min.js"></script>
 <script src="/vendor/purify.min.js"></script>
 <script src="/vendor/highlight.min.js"></script>
@@ -424,11 +543,14 @@
 <script>
 (() => {
   const $ = s => document.querySelector(s);
-  const state = { sessions: new Map(), projects: [], current: null, unread: new Map(), entries: [] };
-  const prefs = { project: 'all', filter: 'all', sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, headDetails: false, termOpen: true, termHeight: 320, chatZoom: 1, projectsCompact: true };
+  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, pins: [], peacock: {}, current: null, unread: new Map(), entries: [] };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, headDetails: false, termOpen: true, termHeight: 320, chatZoom: 1, projectsCompact: true, sessionsCompact: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
+  // the one-of-four filter (before 2026-09-20) becomes the set of states shown; 'all' was every state
+  if ('filter' in prefs) { prefs.filters = prefs.filter === 'all' ? ['ready', 'working', 'done'] : [prefs.filter]; delete prefs.filter; }
+  if (!Array.isArray(prefs.filters)) prefs.filters = ['ready', 'working', 'done'];
   const savePrefs = () => { try { localStorage.setItem('peixairada-prefs', JSON.stringify(prefs)); } catch {} };
 
   // ---- header controls ---------------------------------------------------------------
@@ -440,19 +562,67 @@
   // The magnifier opens its box; Esc or an emptied box on blur closes it; the icon stays lit while a filter is on.
   for (const [b, i] of [['#qBtn', '#q'], ['#pqBtn', '#pq']]) {
     const btn = $(b), inp = $(i), head = btn.closest('.colhead');
-    const show = on => { inp.hidden = !on; head?.classList.toggle('searching', on); if (on) inp.focus(); };
+    let opened = false;   // the strip cannot hold a box: searching opens the column, and it folds back when the search ends
+    const show = on => {
+      if (i === '#pq' && on && prefs.projectsCompact) { opened = true; prefs.projectsCompact = false; applyProjectsCompact(); }
+      else if (i === '#pq' && !on && opened) { opened = false; prefs.projectsCompact = true; applyProjectsCompact(); }
+      inp.hidden = !on; head?.classList.toggle('searching', on); if (on) inp.focus();
+    };
     btn.onclick = () => show(inp.hidden);
     inp.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); inp.value = ''; btn.classList.remove('on'); show(false); renderBoard(); } });
     inp.addEventListener('blur', () => { if (!inp.value.trim()) show(false); });
     inp.addEventListener('input', () => { btn.classList.toggle('on', !!inp.value.trim()); renderBoard(); });
   }
+  const settingsOpen = on => {
+    const pop = $('#settings'); pop.hidden = !on; $('#cogBtn').classList.toggle('on', on);
+    if (on) pop.style.left = ($('#projects').offsetWidth + 8) + 'px';   // beside the strip, whatever its width
+  };
+  // Plan usage lives on the fish: hovering shows the card, a click pins it (to read at leisure, or on a
+  // touchpad tap); it goes when the pointer has left both, or on Esc / a click elsewhere once pinned.
+  const upop = { timer: null, pinned: false };
+  const usageShow = on => {
+    const pop = $('#usagePop'); clearTimeout(upop.timer);
+    if (on) { pop.style.left = ($('#projects').offsetWidth + 8) + 'px'; if (pop.hidden) { pop.hidden = false; loadUsage(); } }
+    else if (!upop.pinned) pop.hidden = true;
+  };
+  const usageLeave = () => { clearTimeout(upop.timer); upop.timer = setTimeout(() => usageShow(false), 250); };
+  $('#brandBtn').addEventListener('mouseenter', () => usageShow(true));
+  $('#brandBtn').addEventListener('mouseleave', usageLeave);
+  $('#usagePop').addEventListener('mouseenter', () => clearTimeout(upop.timer));
+  $('#usagePop').addEventListener('mouseleave', usageLeave);
+  $('#brandBtn').addEventListener('click', e => { e.stopPropagation(); upop.pinned = !upop.pinned; if (upop.pinned) usageShow(true); else $('#usagePop').hidden = true; });
+  document.addEventListener('click', e => { if (upop.pinned && !e.target.closest('#usagePop')) { upop.pinned = false; $('#usagePop').hidden = true; } });
+  // Plan usage, fetched when the popover opens (the server caches it for a minute). A failure is a
+  // sentence, not a blank: the first ask on a Mac is a keychain prompt, and an API-key login has none.
+  const untilReset = iso => { if (!iso) return ''; const m = Math.max(0, Math.round((new Date(iso) - Date.now()) / 60000)); return m >= 1440 ? `resets in ${Math.floor(m / 1440)}d ${Math.floor(m % 1440 / 60)}h` : m >= 60 ? `resets in ${Math.floor(m / 60)}h ${m % 60}m` : `resets in ${m}m`; };
+  async function loadUsage() {
+    const box = $('#usage'); box.innerHTML = '<span class="note">usage: asking…</span>';
+    let r, d;
+    try { r = await fetch('/api/usage'); d = await r.json().catch(() => ({})); } catch (e) { box.innerHTML = `<span class="note">usage: ${esc(String(e))}</span>`; return; }
+    if (!r.ok) { box.innerHTML = `<span class="note">usage: ${esc(d.error || `HTTP ${r.status}`)}</span>`; return; }
+    if (!d.windows?.length) { box.innerHTML = '<span class="note">usage: nothing reported for this account</span>'; return; }
+    box.innerHTML = d.windows.map(w => `<div class="urow" title="${esc(w.key)}${w.resetsAt ? ' · resets ' + esc(new Date(w.resetsAt).toLocaleString()) : ''}"><span class="ul">${esc(w.label)}</span><span class="ubar"><i style="width:${Math.min(100, w.percent)}%;--u:${w.percent >= 90 ? 'var(--needs)' : w.percent >= 70 ? 'var(--working)' : 'var(--idle)'}"></i></span><span class="up">${w.percent}%</span><span class="ur">${untilReset(w.resetsAt)}</span></div>`).join('');
+  }
+  $('#cogBtn').onclick = e => { e.stopPropagation(); settingsOpen($('#settings').hidden); };
+  document.addEventListener('click', e => { if (!$('#settings').hidden && !e.target.closest('#settings')) settingsOpen(false); });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (!$('#settings').hidden) { e.stopPropagation(); settingsOpen(false); }
+    if (!$('#usagePop').hidden) { e.stopPropagation(); upop.pinned = false; $('#usagePop').hidden = true; }
+  });
   $('#testBtn').onclick = () => fetch('/api/test-notify', { method: 'POST' });
   $('#notifBtn').onclick = async () => { const p = await Notification.requestPermission(); updateNotifBtn(p); };
   function updateNotifBtn(p = Notification.permission) { $('#notifBtn').textContent = p === 'granted' ? '🔔 browser alerts on' : p === 'denied' ? '🔕 browser alerts blocked' : '🔔 enable browser alerts'; }
   if ('Notification' in window) updateNotifBtn(); else $('#notifBtn').hidden = true;
 
   // ---- sessions column width ----------------------------------------------------------
-  $('#sessions').style.width = prefs.sessionsWidth + 'px';
+  function applySessionsCompact() {
+    $('#main').classList.toggle('scompact', !!prefs.sessionsCompact);
+    $('#sessions').style.width = prefs.sessionsCompact ? '' : prefs.sessionsWidth + 'px';
+    const b = $('#sessPinBtn'); b.textContent = prefs.sessionsCompact ? '»' : '«'; b.title = prefs.sessionsCompact ? 'Open the chat list' : 'Fold the chat list';
+  }
+  $('#sessPinBtn').onclick = () => { prefs.sessionsCompact = !prefs.sessionsCompact; savePrefs(); applySessionsCompact(); };
+  applySessionsCompact();
   {
     const splitter = $('#splitter'); let dragging = false;
     splitter.addEventListener('mousedown', e => { dragging = true; splitter.classList.add('drag'); document.body.style.userSelect = 'none'; e.preventDefault(); });
@@ -476,7 +646,7 @@
     const own = s.aiTitle || s.lastPrompt;
     return `${pr ? pr.label + ' — ' : ''}${s.prTitle}${own ? `\n\nChat: ${own}` : ''}`;
   }
-  const statusLabel = { working: 'working…', idle: 'replied — your turn', 'needs-input': 'needs your input', stale: 'stale — write to it to resume', unknown: '' };
+  const statusLabel = { working: 'clauding…', idle: 'ready — your turn', 'needs-input': 'ready — asking you', stale: 'ready — no process; write to it to resume', unknown: '' };
   // Inline SVG, not emoji: these sit at ~11px inside muted snippet text, where emoji come with their
   // own colours and weight and stop reading as part of the sentence. `currentColor` keeps them typographic.
   const ICON = {
@@ -484,14 +654,22 @@
     claude: '<svg class="ic burst" viewBox="0 0 24 24" aria-hidden="true"><path d="M11.22 9.10L12.00 0.50L12.78 9.10ZM13.08 9.20L18.76 2.70L14.33 10.11ZM14.52 10.37L22.94 8.45L15.00 11.84ZM15.00 12.16L22.94 15.55L14.52 13.63ZM14.33 13.89L18.76 21.30L13.08 14.80ZM12.78 14.90L12.00 23.50L11.22 14.90ZM10.92 14.80L5.24 21.30L9.67 13.89ZM9.48 13.63L1.06 15.55L9.00 12.16ZM9.00 11.84L1.06 8.45L9.48 10.37ZM9.67 10.11L5.24 2.70L10.92 9.20ZM9.20 12a2.80 2.80 0 1 0 5.60 0a2.80 2.80 0 1 0 -5.60 0Z"/></svg>',
     term: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.6 3.1 6.4 8l-4.8 4.9 1.1 1.1L8.6 8 2.7 2ZM8 12.6h6.4v1.5H8Z"/></svg>',
     plus: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M7.25 2h1.5v5.25H14v1.5H8.75V14h-1.5V8.75H2v-1.5h5.25Z"/></svg>',
+    pin: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 1.5l4.5 4.5-1.6.6-2.5 2.5-.4 3.2-1.3 1.3-2.8-2.8-3.8 3.8-.7-.7 3.8-3.8-2.8-2.8 1.3-1.3 3.2-.4 2.5-2.5Z"/></svg>',
     vscode: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>'
   };
   const entryLabel = s => s.terminal && s.terminal.exited === null ? 'terminal here' : s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : s.live?.entrypoint === 'cli' ? 'CLI' : s.alive ? 'live' : 'stale';
   // Lives in VS Code (the server's rule: the registry while it runs, else the transcript's last line).
-  // Such a chat is read here and continued there — no terminal, no reply box, a blue border instead.
+  // Such a chat wears a blue border and can be taken over like a CLI chat (2026-09-20) — the cost is the
+  // tab in VS Code, which goes dead and does not follow; every button and hint that offers it says so.
   const inVsCode = s => s?.entrypoint === 'claude-vscode';
-  const VSC_TIP = 'This chat lives in VS Code — the board reads it; continue it there';
-  function repoColor(name) { let h = 0; for (const c of String(name || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return `hsl(${h % 360} 55% 52%)`; }
+  // A project's colour is Peacock's for its folder — state.peacock, cwd → #rrggbb, read by the server from
+  // the nearest .vscode/settings.json and pushed the moment it changes — and the first of its folders' for a
+  // named project. Nothing else since 2026-09-20 (no board-set colours, no hashed hues): a folder without
+  // one has none, `--repo` stays unset, and the CSS paints --nocolor (black) wherever a colour is needed.
+  const repoColor = cwds => (Array.isArray(cwds) ? cwds : [cwds]).map(c => c && state.peacock[c]).find(Boolean) || null;
+  const projColor = p => p.key === ALL ? 'var(--accent)' : repoColor(p.cwds);
+  const repoStyle = color => color ? `--repo:${color}` : '';
+  const inkStyle = color => color ? ` style="color:${color}"` : '';
   const folderName = cwd => cwd ? cwd.split('/').filter(Boolean).pop() || cwd : '(no folder)';
   const STALE_MAX_AGE_MS = 30 * 86400e3; // Claude Code deletes transcripts after 30 idle days by default; mirror that
 
@@ -518,7 +696,14 @@
   const userAt = s => String(s.lastUserAt || s.lastActivity || '');
   const byUser = (a, b) => userAt(b).localeCompare(userAt(a));
   const timeTip = s => !s.lastActivity ? '' : `last activity ${rel(s.lastActivity)} ago${s.lastUserAt ? ` · you last wrote ${rel(s.lastUserAt)} ago` : ''}`;
-  const bucket = s => s.done ? 'done' : !s.alive ? 'stale' : s.status === 'needs-input' ? 'needs-input' : s.status === 'working' ? 'working' : 'ready';
+  // Three states since 2026-09-20, and done is *only* the tick (asked later that day; the first cut folded
+  // stale into done): a chat with no live process is ready — write to it and it resumes. The dot still says
+  // stale in grey and the card is dimmed a touch, so you know a resume is coming before you click. Clauding
+  // is working; ready is everything else, a pending question included (the card still says *asking you*).
+  // The server keeps the finer statuses for notifications and the app's badge.
+  const bucket = s => s.done ? 'done' : s.status === 'working' ? 'working' : 'ready';
+  // Pinned projects first, in your order (state.pins — server state, so every browser and the app agree),
+  // then the named ones, then folders by their newest chat. A pinned folder shows even with no chat in view.
   function projectList() {
     const all = { key: ALL, name: 'All chats', cwds: [], sessions: [] };
     const folders = new Map();
@@ -531,16 +716,20 @@
       folders.get(k).sessions.push(s);
       for (const c of customs) if (inProject(s, c)) c.sessions.push(s);
     }
+    for (const k of state.pins) if (k.startsWith('/') && !folders.has(k)) folders.set(k, { key: k, name: folderName(k), cwds: [k], sessions: [] });
     const stat = p => {
-      const live = p.sessions.filter(s => !s.done && s.alive);
-      p.needs = live.filter(s => s.status === 'needs-input').length;
-      p.working = live.filter(s => s.status === 'working').length;
-      p.ready = live.filter(s => s.status === 'idle').length;
+      const undone = p.sessions.filter(s => !s.done);   // the same rule as the chips: not ticked is working or ready
+      p.working = undone.filter(s => s.status === 'working').length;
+      p.ready = undone.length - p.working;   // a pending question is ready-for-you too, and so is a stale chat
       p.unread = p.sessions.reduce((n, s) => n + (state.unread.get(s.id) || 0), 0);
       p.last = p.sessions.reduce((m, s) => userAt(s) > m ? userAt(s) : m, '');
       return p;
     };
-    return [stat(all), ...customs.map(stat), ...[...folders.values()].map(stat).sort((a, b) => b.last.localeCompare(a.last))];
+    const every = [...customs, ...folders.values()].map(stat);
+    const pins = state.pins.map(k => every.find(p => p.key === k)).filter(Boolean);
+    for (const p of pins) p.pinned = true;
+    const rest = every.filter(p => !p.pinned);
+    return [stat(all), ...pins, ...rest.filter(p => p.custom), ...rest.filter(p => !p.custom).sort((a, b) => b.last.localeCompare(a.last))];
   }
   // ---- the projects column: a strip by default, the full column while the pointer is over it ------
   function applyProjectsCompact() {
@@ -551,49 +740,56 @@
   }
   $('#projPinBtn').onclick = () => { prefs.projectsCompact = !prefs.projectsCompact; savePrefs(); applyProjectsCompact(); };
   applyProjectsCompact();
+  const pillsHtml = p => `${p.working ? `<span class="pc working" title="clauding">${p.working}</span>` : ''}${p.ready ? `<span class="pc ready" title="ready for you">${p.ready}</span>` : ''}${p.unread ? `<span class="badge">${p.unread}</span>` : ''}`;   // the column's counts, and the picker's
+  // The colour square — and on a row that is one folder (folder rows, single-folder named projects, the chat
+  // list's header) the picker: Peacock's setting, written for the VS Code window too.
+  const sqHtml = (p, style = '') => p.cwds?.length === 1
+    ? `<span class="sq pick"${style ? ` style="${style}"` : ''} data-cwd="${esc(p.cwds[0])}" title="Colour of ${esc(p.name)} — click to pick; written as peacock.color into the folder's .vscode/settings.json, so the VS Code window shows it too; ⌥-click takes it out"></span>`
+    : `<span class="sq"${style ? ` style="${style}"` : ''}></span>`;
   function projHtml(p) {
-    const color = p.key === ALL ? 'var(--accent)' : repoColor(p.name);
-    const pills = `${p.needs ? `<span class="pc needs" title="needs your input">${p.needs}</span>` : ''}${p.working ? `<span class="pc working" title="Claude working">${p.working}</span>` : ''}${p.ready ? `<span class="pc ready" title="replied — your turn">${p.ready}</span>` : ''}${p.unread ? `<span class="badge">${p.unread}</span>` : ''}`;
-    return `<div class="proj ${p.key === prefs.project ? 'active' : ''} ${p.custom ? 'custom' : ''} ${p.key === ALL ? 'all' : ''}" data-key="${esc(p.key)}" style="--repo:${color}" title="${esc(p.custom ? (p.cwds.join('\n') || 'no folders yet') : p.key === ALL ? 'Every chat, newest first' : p.key)}">
-      <span class="sq"></span><span class="pname">${esc(p.name)}</span><span class="ptime">${p.last ? rel(p.last) : ''}</span>
+    const pills = pillsHtml(p);
+    return `<div class="proj ${p.key === prefs.project ? 'active' : ''} ${p.custom ? 'custom' : ''} ${p.key === ALL ? 'all' : ''} ${p.pinned ? 'pinned' : ''}" data-key="${esc(p.key)}" style="${repoStyle(projColor(p))}"${p.key === ALL ? '' : ' draggable="true"'} title="${esc(p.custom ? (p.cwds.join('\n') || 'no folders yet') : p.key === ALL ? 'Every chat, newest first' : p.key)}">
+      ${sqHtml(p)}<span class="pname">${esc(p.name)}</span><span class="ptime">${p.last ? rel(p.last) : ''}</span>
       <span class="pills">${pills}</span>
       ${p.custom ? `<span class="pfold">${esc(p.cwds.length ? p.cwds.map(folderName).join(' · ') : 'no folders')}</span><button class="pedit" title="Edit this project">✎</button>` : ''}
+      ${p.key === ALL ? '' : `<button class="ppin ${p.pinned ? 'on' : ''}" title="${p.pinned ? 'Unpin' : 'Pin to the top'} — drag rows to arrange">${ICON.pin}</button>`}
     </div>`;
   }
 
   // ---- render: both lists ------------------------------------------------------------
-  const FILTERS = [['all', 'all'], ['needs-input', 'needs you'], ['working', 'working'], ['ready', 'ready'], ['stale', 'stale'], ['done', 'done']];
+  // The three states as chips, each a toggle (prefs.filters, remembered); all three on is what "all" used to be.
+  const FILTERS = [['ready', 'ready'], ['working', 'clauding'], ['done', 'done']];
+  const filterOn = k => prefs.filters.includes(k);
   function renderBoard() {
     const every = projectList();
     if (!every.some(p => p.key === prefs.project)) prefs.project = ALL;
     const cur = every.find(p => p.key === prefs.project);
     const pq = $('#pq').value.trim().toLowerCase();   // the column's own filter; the selection is untouched by it
     const ps = every.filter(p => !pq || p.key === ALL || p.name.toLowerCase().includes(pq));
-    $('#plist').innerHTML = ps.map(projHtml).join('') + (every.length === 1 ? '<div class="phint">Folders show up here as soon as a chat runs in them. <b>+</b> names a project over several.</div>' : '');
+    $('#plist').innerHTML = ps.map((p, i) => projHtml(p) + (p.pinned && !ps[i + 1]?.pinned ? '<div class="psep"></div>' : '')).join('') + (every.length === 1 ? '<div class="phint">Folders show up here as soon as a chat runs in them. <b>+</b> names a project over several.</div>' : '');
     renderSessionList(cur);
     const all = ps[0];
-    $('#counts').textContent = `${[...state.sessions.values()].filter(s => s.alive).length} live · ${all.ready} ready · ${all.working} working${all.needs ? ` · ${all.needs} need you` : ''}`;
+    $('#counts').textContent = `${[...state.sessions.values()].filter(s => s.alive).length} live · ${all.ready} ready · ${all.working} clauding`;
     const total = [...state.unread.values()].reduce((a, b) => a + b, 0);
     document.title = (total ? `(${total}) ` : '') + 'peixAIrada';
   }
   function knownFolders() { return [...new Set([...state.sessions.values()].map(s => s.cwd).filter(Boolean))].sort(); }
   function renderSessionList(p) {
-    $('#sessions').style.setProperty('--repo', p.key === ALL ? 'var(--accent)' : repoColor(p.name));
+    const pc = projColor(p); if (pc) $('#sessions').style.setProperty('--repo', pc); else $('#sessions').style.removeProperty('--repo');
     const q = $('#q').value.trim().toLowerCase();
     const list = p.sessions.filter(s => !q || `${s.project} ${s.title} ${s.aiTitle || ''} ${s.lastPrompt} ${s.live?.name || ''} ${s.gitBranch || ''}`.toLowerCase().includes(q));
-    const counts = { all: list.length };
+    const counts = {};
     for (const s of list) counts[bucket(s)] = (counts[bucket(s)] || 0) + 1;
-    if (!FILTERS.some(f => f[0] === prefs.filter)) prefs.filter = 'all';
     // done chats sink under everything else; inside each half it is your last touch, newest first
-    const shown = (prefs.filter === 'all' ? list : list.filter(s => bucket(s) === prefs.filter)).sort((a, b) => (Number(!!a.done) - Number(!!b.done)) || byUser(a, b));
-    $('#stitle').innerHTML = `<span class="sq" style="--repo:${p.key === ALL ? 'var(--accent)' : repoColor(p.name)}"></span><span class="t">${esc(p.name)}</span><span class="n">${list.length}</span>`;
+    const shown = list.filter(s => filterOn(bucket(s))).sort((a, b) => (Number(!!a.done) - Number(!!b.done)) || byUser(a, b));
+    $('#stitle').innerHTML = `${sqHtml(p, repoStyle(projColor(p)))}<span class="t">${esc(p.name)}</span><span class="n">${list.length}</span>`;
     $('#stitle').title = p.custom ? p.cwds.join('\n') : p.key === ALL ? '' : p.key;
     // new chat: one folder is a button; several (a custom project, All) is a pick-list of folders
     const folders = p.key === ALL ? knownFolders() : p.cwds;
     $('#newChat').innerHTML = folders.length === 1 ? `<button class="btn icon" id="newChatBtn" data-cwd="${esc(folders[0])}" title="New chat in ${esc(folderName(folders[0]))} — opens a terminal running claude there">${ICON.plus}<span class="lbl">new chat</span></button>`
       : folders.length ? `<select id="newChatSel" title="New chat in a folder — opens a terminal running claude there"><option value="">＋ new chat in…</option>${folders.map(f => `<option value="${esc(f)}">${esc(folderName(f))}</option>`).join('')}</select>` : '';
-    $('#fchips').innerHTML = FILTERS.map(([k, label]) => `<button class="fchip ${k} ${prefs.filter === k ? 'on' : ''}" data-f="${k}">${label}<span class="n">${counts[k] || ''}</span></button>`).join('');
-    $('#slist').innerHTML = shown.map(s => cardHtml(s, p)).join('') || `<div class="none">${q ? 'Nothing matches' : prefs.filter !== 'all' ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
+    $('#fchips').innerHTML = FILTERS.map(([k, label]) => `<button class="fchip ${k} ${filterOn(k) ? 'on' : ''}" data-f="${k}" title="${filterOn(k) ? 'Hide' : 'Show'} ${label} chats">${label}<span class="n">${counts[k] || ''}</span></button>`).join('');
+    $('#slist').innerHTML = shown.map(s => cardHtml(s, p)).join('') || `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
   }
   function cardHtml(s, p) {
     const un = state.unread.get(s.id) || 0;
@@ -602,24 +798,188 @@
       : (!s.alive || s.status === 'idle') && s.lastActivity ? `<button class="act" data-act="done" title="Tick as done (persisted; comes back on new activity)">✓</button>` : '';
     const tip = titleTip(s);
     const showRepo = p.key === ALL || p.custom;
-    return `<div class="card ${s.status} ${s.done ? 'done' : ''} ${s.id === state.current ? 'active' : ''} ${inVsCode(s) ? 'vsc' : ''}" data-id="${s.id}" style="--repo:${repoColor(s.project)}">
-      ${showRepo || (s.alive && !inVsCode(s)) ? `<div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${esc(s.project)}</span>` : ''}<span class="grow"></span>${s.alive && !inVsCode(s) ? `<span class="chip">${entryLabel(s)}</span>` : ''}</div>` : ''}
+    return `<div class="card ${s.status} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''}" data-id="${s.id}" style="${repoStyle(repoColor(s.cwd))}">
+      ${showRepo || s.alive || inVsCode(s) ? `<div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${esc(s.project)}</span>` : ''}<span class="grow"></span>${s.alive && !inVsCode(s) ? `<span class="chip">${entryLabel(s)}</span>${hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : ''}` : ''}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}</div>` : ''}
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${esc(s.title)}</div><span class="time" title="${esc(timeTip(s))}">${rel(s.lastActivity)}</span>${un ? `<span class="badge">${un}</span>` : ''}${act}</div>
       ${s.prs?.length ? `<div class="cprs">${s.prs.slice(0, 8).map(pr => `<a class="cpr" data-state="${esc(pr.state || '')}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`).join('')}</div>` : ''}
       ${s.lastPrompt ? `<div class="snip you"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
       ${showReply ? `<div class="snip claude"><b title="Claude">${ICON.claude}</b>${esc(s.lastReply)}</div>` : ''}
-      ${s.status === 'needs-input' && s.alive && !s.done ? `<div class="state needs-input">${statusLabel['needs-input']}</div>` : ''}
+      ${s.status === 'needs-input' && s.alive && !s.done ? `<div class="state needs-input">asking you</div>` : ''}
     </div>`;
   }
   function selectProject(key) { prefs.project = key; savePrefs(); renderBoard(); }
+  // ---- ⌥⌘O: the project picker. Same list as the column, in the same order; the box filters by name. ----
+  // ⌥⌘G puts the chat's PRs in the same dialog (state · repo#n · title · age, as #prlist lays them out)
+  // when it mentions more than one; the box filters by number and title, ⏎ opens the PR as a row click would.
+  const pick = { mode: 'project', list: [], sel: 0 };
+  const PICK_HINT = { project: 'Project — type to filter · ↑↓ · ⏎ opens · esc', pr: 'Pull request — type to filter · ↑↓ · ⏎ opens · esc' };
+  function pickOpen(mode = 'project') {
+    const dlg = $('#pick'); if (dlg.open) return;
+    dlg.classList.toggle('aside', inApp && state.paneVisible); dlg.style.setProperty('--pane-left', state.paneLeft + 'px');
+    if (inApp) post({ type: 'focus' });   // the key may have come from the pane: the box needs the board's keyboard
+    pick.mode = mode; pick.sel = 0;
+    $('#pickq').value = ''; $('#pickq').placeholder = PICK_HINT[mode];
+    pickRender(); dlg.showModal(); $('#pickq').focus();
+  }
+  function pickRender() {
+    const q = $('#pickq').value.trim().toLowerCase();
+    const mark = text => { const i = q ? text.toLowerCase().indexOf(q) : -1; return i < 0 ? esc(text) : `${esc(text.slice(0, i))}<b>${esc(text.slice(i, i + q.length))}</b>${esc(text.slice(i + q.length))}`; };
+    const sel = i => i === pick.sel ? ' sel' : '';
+    let rows;
+    if (pick.mode === 'pr') {
+      pick.list = (state.sessions.get(state.current)?.prs || []).filter(pr => !q || `${pr.label} ${pr.title || ''}`.toLowerCase().includes(q));
+      pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
+      rows = pick.list.map((pr, i) => `<div class="pkrow pr${sel(i)}" data-i="${i}" data-state="${esc(pr.state || '')}" title="${esc(pr.url)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${mark(pr.label)}</span><span class="n${pr.title ? '' : ' pending'}">${pr.title ? mark(pr.title) : 'title on its way from gh…'}${pr.url === prbar.url ? '<span class="cur">current</span>' : ''}</span><span class="t">${rel(pr.lastAt)}</span></div>`);
+    } else {
+      pick.list = projectList().filter(p => !q || p.name.toLowerCase().includes(q));
+      pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
+      rows = pick.list.map((p, i) => `<div class="pkrow${sel(i)}" data-i="${i}" style="${repoStyle(projColor(p))}"><span class="sq"></span><span class="n">${mark(p.name)}${p.key === prefs.project ? '<span class="cur">current</span>' : ''}</span><span class="pills">${pillsHtml(p)}</span><span class="t">${p.last ? rel(p.last) : ''}</span></div>`);
+    }
+    $('#picklist').innerHTML = rows.join('') || `<div class="none">no ${pick.mode === 'pr' ? 'PR' : 'project'} matches</div>`;
+    $('#picklist .pkrow.sel')?.scrollIntoView({ block: 'nearest' });
+  }
+  function pickChoose(i) { const x = pick.list[i]; $('#pick').close(); if (!x) return; if (pick.mode === 'pr') showPr(x.url); else selectProject(x.key); }
+  $('#pickq').addEventListener('input', () => { pick.sel = 0; pickRender(); });
+  $('#pickq').addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); pick.sel++; pickRender(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); pick.sel--; pickRender(); }
+    else if (e.key === 'Enter') { e.preventDefault(); pickChoose(pick.sel); }
+  });
+  $('#picklist').addEventListener('click', e => { const r = e.target.closest('.pkrow'); if (r) pickChoose(+r.dataset.i); });
+  $('#pick').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.close(); });   // a click on the backdrop
+  // ⌥⌘ + a letter, from anywhere — the drawer included: capture phase, so its xterm never sees them; e.code,
+  // because with ⌥ held e.key is a symbol ('ø' for O) on a Mac. T, V and G are the chat header's own controls:
+  // the terminal (the >_ button's path, arm-and-take-over included, so a chat live elsewhere takes two presses),
+  // the VS Code Web button (the folder's editor, in the pane), and the chat's PR on GitHub — straight to it with
+  // one, the picker with several, and the next one when one is already showing (a toggle with two, a cycle with
+  // more; each PR is its own tab in the pane, so nothing reloads). A modal up (the picker, the project editor)
+  // swallows them all. In the app the pane is a native view with its own web views, so a key pressed there never
+  // reaches this page: the shell forwards ⌥⌘ + these letters through peixKey (the same list, kept by hand there).
+  const HOTKEYS = { KeyO: () => pickOpen('project'), KeyT: hotTerm, KeyV: hotVsCode, KeyG: hotGh };
+  const runHotkey = code => { const fn = HOTKEYS[code]; if (fn && !document.querySelector('dialog[open]')) fn(); };
+  document.addEventListener('keydown', e => {
+    if (!(e.metaKey && e.altKey && !e.ctrlKey && !e.shiftKey && HOTKEYS[e.code])) return;
+    e.preventDefault(); e.stopPropagation(); runHotkey(e.code);
+  }, true);
+  window.peixKey = runHotkey;
+  // …and tells the page whether the pane is up and where its edge is (points = this view's CSS px), so the picker
+  // can open beside it rather than under it.
+  window.peixPane = (visible, left) => { state.paneVisible = !!visible; state.paneLeft = Number(left) || 0; };
+  const noChat = () => note($('#shead'), 'Open a chat first');
+  function hotTerm() {
+    const s = state.sessions.get(state.current); if (!s) return noChat();
+    const tb = $('#termBtn'); if (!tb) return;
+    if (tb.disabled) return note(tb, tb.title, true);   // live somewhere it cannot be attached from — the tooltip says where
+    termAction(s);
+  }
+  function hotVsCode() { const b = $('#webBtn'); if (b) b.click(); else noChat(); }
+  function hotGh() {
+    const s = state.sessions.get(state.current); if (!s) return noChat();
+    const prs = s.prs || [];
+    if (!prs.length) return note($('#shead'), 'No PR mentioned in this chat');
+    const at = prs.findIndex(pr => pr.url === prbar.url);   // the strip under the header says which one is showing
+    if (prs.length === 1) showPr(prs[0].url);
+    else if (at >= 0) showPr(prs[(at + 1) % prs.length].url);
+    else pickOpen('pr');
+  }
+  // Pins: the ordered list lives on the server (state.pins), so every browser and the app agree. The button
+  // pins at the end of the pinned block; dragging a row sets its place — anywhere above the line pins it
+  // there, a pinned row dropped below the line is let go. Shown at once; the server confirms with a `pins` event.
+  const setPins = pins => { state.pins = pins; renderBoard(); fetch('/api/pins', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pins }) }); };
+  const togglePin = key => setPins(state.pins.includes(key) ? state.pins.filter(k => k !== key) : [...state.pins, key]);
+  let drag = null;   // the key of the row being dragged
+  // Where a drop lands: `at` is an index into state.pins, null below the line. The zone is the All row plus
+  // the pinned rows *as shown* (the column filter may hide some), so the index goes through the row's key.
+  function dropAt(e) {
+    if (e.target.closest?.('.psep')) return { at: state.pins.length, sep: true };
+    const zone = [...document.querySelectorAll('#plist .proj.all, #plist .proj.pinned')];
+    const row = e.target.closest?.('.proj');
+    if (!row || !zone.includes(row)) return { at: null };
+    const r = row.getBoundingClientRect(), before = e.clientY < r.top + r.height / 2;
+    const i = Math.max(0, zone.indexOf(row) - 1 + (before ? 0 : 1));   // All is zone[0]: a drop on it means first
+    const anchor = zone[i + 1]?.dataset.key;   // the pinned row the drop lands before, if any
+    return { at: anchor ? state.pins.indexOf(anchor) : state.pins.length, row, before: before && row.dataset.key !== ALL };
+  }
+  const clearDrop = () => { for (const el of document.querySelectorAll('#plist .dropbefore, #plist .dropafter, #plist .psep.over')) el.classList.remove('dropbefore', 'dropafter', 'over'); $('#plist').classList.remove('unpin'); };
+  $('#plist').addEventListener('dragstart', e => {
+    const row = e.target.closest('.proj');
+    if (!row || row.dataset.key === ALL) { e.preventDefault(); return; }
+    drag = row.dataset.key; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', drag);
+    setTimeout(() => row.classList.add('dragging'));   // after the drag image is taken, or it fades too
+  });
+  $('#plist').addEventListener('dragend', () => { drag = null; clearDrop(); $('#plist .dragging')?.classList.remove('dragging'); });
+  $('#plist').addEventListener('dragover', e => {
+    if (!drag) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+    const d = dropAt(e); clearDrop();
+    if (d.at === null) { if (state.pins.includes(drag)) $('#plist').classList.add('unpin'); return; }
+    if (d.sep) $('#plist .psep')?.classList.add('over');
+    else d.row.classList.add(d.before ? 'dropbefore' : 'dropafter');
+  });
+  $('#plist').addEventListener('drop', e => {
+    if (!drag) return;
+    e.preventDefault();
+    const d = dropAt(e), key = drag; drag = null; clearDrop();
+    const pins = state.pins.filter(k => k !== key);
+    if (d.at !== null) { const was = state.pins.indexOf(key); pins.splice(was >= 0 && was < d.at ? d.at - 1 : d.at, 0, key); }
+    if (JSON.stringify(pins) !== JSON.stringify(state.pins)) setPins(pins);
+  });
+  // ---- the colour picker ------------------------------------------------------------------
+  // One real <input type=color> for the page (#colorInput): the squares are re-rendered on every update, so the
+  // control is moved under the square that was clicked and opened from there — the panel stays wired to it
+  // through any render. `input` previews the colour on the board as the panel moves and writes it once the
+  // panel rests (350 ms); `change` writes at once. The answer — which file, whether git tracks it, or why it
+  // failed — pops up by the square (`note`, a transient line, not an alert).
+  const colorInput = $('#colorInput');
+  let colorTimer = null, previewRaf = 0;
+  const written = new Map();   // cwd → the last colour written, so a rest and the panel closing do not write twice
+  function note(anchor, text, err) {
+    document.querySelectorAll('.note').forEach(n => n.remove());
+    const r = anchor?.getBoundingClientRect?.(); if (!r) return;
+    const n = document.createElement('div'); n.className = 'note' + (err ? ' err' : ''); n.textContent = text; document.body.appendChild(n);
+    n.style.left = Math.max(8, Math.min(innerWidth - n.offsetWidth - 8, r.left)) + 'px';
+    n.style.top = (r.bottom + 6 + n.offsetHeight > innerHeight ? r.top - n.offsetHeight - 6 : r.bottom + 6) + 'px';
+    setTimeout(() => n.remove(), err ? 8000 : 4000);
+  }
+  const sqFor = cwd => document.querySelector(`#shd .sq.pick[data-cwd="${CSS.escape(cwd)}"]`) || document.querySelector(`.sq.pick[data-cwd="${CSS.escape(cwd)}"]`);
+  function openColorPicker(sq) {
+    const r = sq.getBoundingClientRect();
+    colorInput.style.left = r.left + 'px'; colorInput.style.top = r.bottom + 'px';
+    colorInput.dataset.cwd = sq.dataset.cwd; colorInput.value = repoColor(sq.dataset.cwd) || '#b9b9b3';
+    written.set(sq.dataset.cwd, colorInput.value);
+    try { colorInput.showPicker(); } catch { colorInput.click(); }
+  }
+  const setPeacock = async (cwd, hex) => {
+    clearTimeout(colorTimer);
+    if (written.get(cwd) === hex) return;
+    written.set(cwd, hex);
+    const r = await fetch('/api/peacock', { method: hex ? 'PUT' : 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cwd, color: hex }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { written.delete(cwd); note(sqFor(cwd), r.status === 404 ? 'Could not write the colour: the running server predates this page and has no route for it — scripts/launchd.sh restart (ends the drawers)' : `Could not write the colour: ${d.error || `HTTP ${r.status}`}`, true); return; }
+    note(sqFor(cwd), `${hex ? 'Written to' : 'Removed from'} ${d.file.replace(/^\/Users\/[^/]+/, '~')}${d.tracked ? ' — git tracks that file, so it shows in git status' : ''}`);
+  };
+  function previewColor(cwd, hex) {
+    if (hex) state.peacock[cwd] = hex; else delete state.peacock[cwd];
+    if (previewRaf) return;
+    previewRaf = requestAnimationFrame(() => { previewRaf = 0; renderBoard(); const s = state.sessions.get(state.current); if (s && s.cwd === cwd) renderHead(s); });
+  }
+  colorInput.addEventListener('input', () => { const { cwd } = colorInput.dataset, hex = colorInput.value; previewColor(cwd, hex); clearTimeout(colorTimer); colorTimer = setTimeout(() => setPeacock(cwd, hex), 350); });
+  colorInput.addEventListener('change', () => setPeacock(colorInput.dataset.cwd, colorInput.value));
+  document.addEventListener('click', e => {   // capture: before the row's own click selects the project
+    const sq = e.target.closest('.sq.pick'); if (!sq) return;
+    e.stopPropagation(); e.preventDefault();
+    if (e.altKey) { previewColor(sq.dataset.cwd, null); setPeacock(sq.dataset.cwd, null); } else openColorPicker(sq);
+  }, true);
   $('#plist').addEventListener('click', e => {
+    const pin = e.target.closest('.ppin');
+    if (pin) { e.stopPropagation(); togglePin(pin.closest('.proj').dataset.key); return; }
     const edit = e.target.closest('.pedit');
     if (edit) { e.stopPropagation(); openProjectEditor(edit.closest('.proj').dataset.key.slice(2)); return; }
     const row = e.target.closest('.proj'); if (row) selectProject(row.dataset.key);
   });
   $('#sessions').addEventListener('click', e => {
     const nb = e.target.closest('#newChatBtn'); if (nb) { newChat(nb.dataset.cwd); return; }
-    const f = e.target.closest('.fchip'); if (f) { prefs.filter = f.dataset.f; savePrefs(); renderBoard(); return; }
+    const f = e.target.closest('.fchip'); if (f) { const k = f.dataset.f; prefs.filters = FILTERS.map(x => x[0]).filter(x => x === k ? !filterOn(k) : filterOn(x)); savePrefs(); renderBoard(); return; }
     const card = e.target.closest('.card'); if (!card) return;
     const cpr = e.target.closest('.cpr');
     if (cpr) { e.stopPropagation(); openSession(card.dataset.id); showPr(cpr.dataset.url); return; }   // that chat, with that PR open
@@ -674,8 +1034,22 @@
   const paneLeft = () => Math.round($('#chat').getBoundingClientRect().left);   // the pane covers the chat column
   function openExternal(url) {
     if (!inApp) { window.open(url, '_blank', 'noopener'); return; }
-    // GitHub and the editor are two web views in the pane; `pane` says which. Esc closes the pane, in the app.
-    post(IN_PANE.test(url) ? { type: 'open', url, left: paneLeft(), pane: /^https:\/\/github\.com\//.test(url) ? 'github' : 'ide' } : { type: 'external', url });
+    if (!IN_PANE.test(url)) { post({ type: 'external', url }); return; }
+    // The pane has a tab per page of the chat: its GitHub pages (a PR each) and the folder's editor; `pane` says
+    // which kind. The shell keeps a web view per page (`key`), never reloaded on a switch, and the pages a chat
+    // opened come back with the chat — remembered here (every GitHub page, in the order first opened, and the one
+    // last shown), sent by syncPane on every switch. Esc closes the pane, in the app.
+    const gh = /^https:\/\/github\.com\//.test(url);
+    if (gh) { if (state.current) { const e = state.paneGh.get(state.current) || { list: [], cur: null }; if (!e.list.includes(url)) e.list.push(url); e.cur = url; state.paneGh.set(state.current, e); } }
+    else { const cwd = state.sessions.get(state.current)?.cwd; if (cwd) state.paneIde.set(cwd, url); }
+    post({ type: 'open', url, left: paneLeft(), pane: gh ? 'github' : 'ide', key: (gh ? 'gh:' : 'ide:') + url });
+  }
+  // Which pages a chat has in the pane: the GitHub pages it opened (and which of them last), its folder's editor.
+  // The shell rebuilds its tabs from that without loading anything, and hides the pane for a chat with none.
+  function syncPane(s) {
+    if (!inApp) return;
+    const gh = s?.id && state.paneGh.get(s.id), ide = s?.cwd && state.paneIde.get(s.cwd);
+    post({ type: 'chat', id: s?.id || null, github: gh ? gh.list.map(u => 'gh:' + u) : [], current: gh?.cur ? 'gh:' + gh.cur : null, ide: ide ? 'ide:' + ide : null });
   }
   const prbar = { url: null };
   function hidePr() { $('#prbar').hidden = true; prbar.url = null; }
@@ -710,31 +1084,37 @@
   });
 
   // ---- chat header -------------------------------------------------------------------
-  const prChip = pr => `<a class="pr" data-state="${esc(pr.state || '')}" href="${esc(pr.url)}" target="_blank" rel="noopener"
-      title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}\n${pr.state ? pr.state + ' · ' : ''}last mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}`)}">${esc(pr.label)}${pr.title ? `<span class="t">${esc(pr.title)}</span>` : ''}</a>`;
+  const PR_ROWS = 6;   // a chat that lists PRs mentions dozens; the block shows this many and folds the rest behind "more"
+  const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" href="${esc(pr.url)}" target="_blank" rel="noopener"
+      title="${esc(`${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}`)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span><span class="meta">${rel(pr.lastAt)}</span></a>`;
   const FOCUS_TIP = "Open this chat in VS Code";
-  const WEB_TIP = "Open this folder in VS Code Web — the editor served locally by `code serve-web`, in the pane here (a separate VS Code: trust the folder once, then Claude Code is in its sidebar)";
+  const WEB_TIP = "Open this folder in VS Code Web — the editor served locally by `code serve-web`, in the pane here (a separate VS Code: trust the folder once, then Claude Code is in its sidebar) · ⌥⌘V";
   function renderHead(s) {
     if (state.titleEdit === s.id) return;   // a rename in progress: leave the header alone until it ends
     $('#chat').classList.toggle('vsc', inVsCode(s));
-    // One row: title · dot+age · ··· · buttons, then PR chips flowing after them and spilling onto
-    // further lines only when they genuinely do not fit. No status word — the dot carries it in
-    // colour; what it cannot say is how long ago.
+    const paneColor = repoColor(s.cwd); if (paneColor) $('#chat').style.setProperty('--repo', paneColor); else $('#chat').style.removeProperty('--repo');
+    // One row: title · dot+age · ··· · buttons. No status word — the dot carries it in colour; what it
+    // cannot say is how long ago. The chat's PRs are the block under it, one per row (#prlist).
     const take = takeable(s), armed = take && term.arm === s.id;
-    $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" style="color:${repoColor(s.project)}" title="Show this folder's chats">${esc(s.project)}</span><span class="sep">/</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
+    $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo"${inkStyle(repoColor(s.cwd))} title="Show this folder's chats">${esc(s.project)}</span><span class="sep">/</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
       <span class="status" title="${esc(statusLabel[s.status] || s.status)}"><span class="dot ${s.status}"></span>${s.statusSince ? rel(s.statusSince) : ''}</span>
       <button class="btn icon dots ${prefs.headDetails ? 'on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}"
         title="${prefs.headDetails ? 'Hide' : 'Show'} path, branch and session details">···</button>
       ${s.cwd ? `<button class="btn icon" id="focusBtn" title="${FOCUS_TIP}" aria-label="Focus in VS Code">${ICON.vscode}</button>` : ''}
       ${s.cwd ? `<button class="btn icon" id="webBtn" title="${WEB_TIP}" aria-label="VS Code Web">${ICON.vscode}<span class="lbl">web</span></button>` : ''}
-      ${s.cwd && !inVsCode(s) ? `<button class="btn icon${term.err ? ' err' : termLive(s) && term.id === s.terminal.id ? ' on' : take ? (armed ? ' take arm' : ' take') : ''}" id="termBtn" title="${esc(termTip(s))}" aria-label="Terminal"${!termLive(s) && s.alive && !take ? ' disabled' : ''}>${ICON.term}${term.err ? '<span class="lbl">failed</span>' : take ? `<span class="lbl">${armed ? (s.status === 'working' ? 'sure? mid-reply' : 'sure?') : 'take over'}</span>` : ''}</button>` : ''}
-      ${s.prs?.length ? s.prs.map(prChip).join('') : ''}
+      ${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it; ${s.alive ? 'the >_ button takes it over' : 'continue it here or there'}">${ICON.vscode}VS Code</span>` : ''}
+      ${s.cwd ? `<button class="btn icon${term.err ? ' err' : termLive(s) && term.id === s.terminal.id ? ' on' : take ? (armed ? ' take arm' : ' take') : ''}" id="termBtn" title="${esc(termTip(s))}" aria-label="Terminal"${!termLive(s) && s.alive && !take ? ' disabled' : ''}>${ICON.term}${term.err ? '<span class="lbl">failed</span>' : take ? `<span class="lbl">${armed ? (s.status === 'working' ? 'sure? mid-reply' : inVsCode(s) ? 'sure? ends VS Code’s' : 'sure?') : 'take over'}</span>` : ''}</button>` : ''}
       <div class="details"${prefs.headDetails ? '' : ' hidden'}>
         <span class="path">${esc(s.cwd || '')}${s.gitBranch && s.gitBranch !== 'HEAD' ? ' @ ' + esc(s.gitBranch) : ''}</span>
         ${s.live ? `<span class="chip">${entryLabel(s)}</span>` : ''}${s.live?.name ? `<span class="chip" title="session name">${esc(s.live.name)}</span>` : ''}${
           s.model ? `<span class="chip">${esc(s.model)}</span>` : ''}${s.live?.pid ? `<span class="chip">pid ${s.live.pid}</span>` : ''}
       </div>`;
-    renderComposer(s);
+    if (state.prsFor !== s.id) { state.prsFor = s.id; state.prsAll = false; }   // "more" is per chat, not sticky
+    const pl = $('#prlist'), prs = s.prs || []; pl.hidden = !prs.length;
+    pl.innerHTML = prs.map((pr, i) => prRow(pr, i >= PR_ROWS && !state.prsAll)).join('')
+      + (prs.length > PR_ROWS ? `<button class="more" id="prMore">${state.prsAll ? 'fewer' : `… ${prs.length - PR_ROWS} more`}</button>` : '');
+    pl.querySelector('#prMore')?.addEventListener('click', () => { state.prsAll = !state.prsAll; renderHead(s); });
+    renderComposer(s); renderRival(s);
     // Say so when it fails — silently swallowing the response is how a missing `code` CLI looked
     // like a dead button for weeks. The icon has to survive that, so failure adds a word beside it
     // and puts the reason in the tooltip; assigning textContent would delete the SVG.
@@ -764,7 +1144,7 @@
       } catch (e) { wb.classList.add('err'); wb.title = String(e); wb.querySelector('.lbl').textContent = 'failed'; }
       finally { wb.disabled = false; }
     };
-    const tb = $('#termBtn'); if (tb) tb.onclick = () => { term.err = null; if (takeable(s)) (term.arm === s.id ? takeOver(s) : armTakeOver(s)); else openTerminalFor(s); };
+    const tb = $('#termBtn'); if (tb) tb.onclick = () => termAction(s);
     $('#shead .repo').onclick = () => { if (s.cwd) selectProject(s.cwd); };
     $('#shead h2 .t').ondblclick = () => editTitle(s);
   }
@@ -800,16 +1180,33 @@
     const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
     return { background: v('--term-bg'), foreground: v('--ink'), cursor: v('--accent'), cursorAccent: v('--term-bg'), selectionBackground: v('--term-sel') };
   }
+  const termSend = d => { if (term.ws?.readyState === 1 && term.exited === null) term.ws.send(JSON.stringify({ t: 'in', d })); };
   function ensureXterm() {
     if (term.xt) return;
     term.xt = new Terminal({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: termFontSize(), lineHeight: 1.1, cursorBlink: true, scrollback: 5000, theme: xtTheme(), macOptionIsMeta: true });
-    // ⌘+ / ⌘- / ⌘0 are the chat's size, not keys for claude; handled here, and the document handler skips them
-    term.xt.attachCustomKeyEventHandler(e => !(e.type === 'keydown' && chatZoomKey(e)));
+    // ⌘+ / ⌘- / ⌘0 are the chat's size, not keys for claude; handled here, and the document handler skips them.
+    // Shift+Enter: xterm.js sends the same \r as Enter, which submits the prompt. Claude reads ESC CR
+    // (Option+Enter) as a newline — it is what its own /terminal-setup binds Shift+Enter to in VS Code's
+    // terminal, which is xterm.js too. Sent on keydown; the keypress that follows is swallowed as well,
+    // or it would put the \r through anyway (a custom handler that returns false leaves _keyDownHandled unset).
+    term.xt.attachCustomKeyEventHandler(e => {
+      if (e.key === 'Enter' && e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); if (e.type === 'keydown') termSend('\x1b\r'); return false; }
+      return !(e.type === 'keydown' && chatZoomKey(e));
+    });
     term.fit = new FitAddon.FitAddon(); term.xt.loadAddon(term.fit);
     term.xt.loadAddon(new WebLinksAddon.WebLinksAddon((_e, uri) => GH_PR.test(uri) ? showPr(uri.match(GH_PR)[0]) : openExternal(uri)));
     term.xt.open($('#termBody'));
-    term.xt.onData(d => { if (term.ws?.readyState === 1 && term.exited === null) term.ws.send(JSON.stringify({ t: 'in', d })); });
+    term.xt.onData(termSend);
     new ResizeObserver(() => fitTerm()).observe($('#termBody'));
+    // The observer sees the body change size — not xterm's cell change size under it. On a display-scale change
+    // (the window moved to another screen, a monitor plugged or unplugged, the lid reopened) xterm re-measures the
+    // cell and repaints every row at the new height — device.char.height is ceil(h × dpr), the cell floor(× 1.1),
+    // so it rounds differently per scale — and refits nothing: the grid no longer matches the body until something
+    // calls fit(), which is what ⌘+ did by hand. Refit on that, and on focus and on coming back into view, the
+    // moments a page that sat behind something comes back; fit() sends a resize only when the numbers moved.
+    watchDpr();
+    window.addEventListener('focus', () => fitTerm());
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') fitTerm(); });
     matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { term.xt.options.theme = xtTheme(); });
   }
   function fitTerm() {
@@ -817,7 +1214,36 @@
     try { term.fit.fit(); } catch { return; }
     if (term.ws?.readyState === 1) term.ws.send(JSON.stringify({ t: 'resize', cols: term.xt.cols, rows: term.xt.rows }));
   }
+  // The media query is for the scale of the moment, so it is re-armed after each change; xterm listens to the
+  // same change and re-measures in its handler, and the refit must run after that — hence the timeout.
+  function watchDpr() {
+    matchMedia(`(resolution: ${devicePixelRatio}dppx)`).addEventListener('change', () => { setTimeout(fitTerm, 50); watchDpr(); }, { once: true });
+  }
+  // For the next "the drawer looks wrong" report: the numbers that decide the terminal's grid, readable from the
+  // console (the page's script is one closure, so nothing else in it is). Grid vs body vs what fit would propose.
+  window.peixDebug = () => {
+    const b = $('#termBody'), sc = b.querySelector('.xterm-screen'), cs = getComputedStyle(b), r = x => Math.round(x * 100) / 100;
+    return { dpr: devicePixelRatio, zoom: prefs.chatZoom, cols: term.xt?.cols, rows: term.xt?.rows, propose: term.fit?.proposeDimensions(),
+      body: { w: r(b.clientWidth - parseFloat(cs.paddingLeft)), h: r(b.clientHeight - parseFloat(cs.paddingTop)) },
+      screen: sc && { w: r(sc.getBoundingClientRect().width), h: r(sc.getBoundingClientRect().height) },
+      ws: term.ws?.readyState ?? null, id: term.id, exited: term.exited, termmax: $('#chat').classList.contains('termmax') };
+  };
   const termSize = () => term.xt ? { cols: term.xt.cols, rows: term.xt.rows } : { cols: 120, rows: 30 };
+  // What the socket replays on attach is the server's byte buffer — capped, cut at a chunk, so it starts wherever the
+  // drop landed, even inside an escape sequence. Claude Code paints its prompt box and status bar once and then
+  // rewrites only the cells that change, so a replay that starts after that paint gives blank rules and a status line
+  // of lone digits (2026-09-20: the 'visual bug after some time', every chat switch re-attaches; reproduced with a
+  // 1.2 KB cap). A resize makes it repaint the whole screen — ⌘+ did that by hand — so every attach ends with one: a
+  // row less, then the real size. Only the PTY is resized, xterm here is not; the repaint lands over the replay. The
+  // socket replays before it reads anything from us, so the order on the wire is replay, then the repaint.
+  // Two steps with a pause: a resize handler that debounces and compares sizes would see the same size twice
+  // if both arrived together, and repaint nothing. The second send re-reads the size, in case the layout moved.
+  function nudgeTerm() {
+    if (!term.xt || term.ws?.readyState !== 1) return;
+    const ws = term.ws, { cols, rows } = term.xt;
+    ws.send(JSON.stringify({ t: 'resize', cols, rows: Math.max(5, rows - 1) }));
+    setTimeout(() => { if (term.ws === ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'resize', cols: term.xt.cols, rows: term.xt.rows })); }, 150);
+  }
   function showTermDrawer(on) {
     $('#term').hidden = !on;
     if (on) $('#term').style.height = prefs.termHeight + 'px';
@@ -843,7 +1269,7 @@
     showTermDrawer(true);
     const ws = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`);
     ws.binaryType = 'arraybuffer'; term.ws = ws;
-    ws.onopen = () => { fitTerm(); term.xt.focus(); };
+    ws.onopen = () => { fitTerm(); nudgeTerm(); term.xt.focus(); };
     ws.onmessage = e => {
       if (typeof e.data !== 'string') return term.xt.write(new Uint8Array(e.data));
       const m = JSON.parse(e.data);
@@ -877,15 +1303,25 @@
     else if (term.id && term.sessionId && term.sessionId !== s?.id) { detachTerm(); showTermDrawer(false); }
     else if (term.id && t && t.id === term.id && t.exited !== null && term.exited === null) { term.exited = t.exited; renderTermHead(); applyTermLayout(); }
   }
+  // The take-over tooltip is the warning: for a VS Code chat it spells out what the tab there loses.
+  const VSC_COST = ' Its tab in VS Code goes dead and will not follow the chat — close it there; opening the chat in VS Code again starts another claude on it, and a bar here will say so.';
+  const takeTip = s => {
+    const vs = inVsCode(s), what = vs ? `the claude VS Code runs on this chat (pid ${s.live.pid})` : `claude (pid ${s.live.pid}) in its terminal`;
+    return (term.arm === s.id
+      ? `Click again to end ${what} and resume the chat here${s.status === 'working' ? ' — Claude is mid-reply, and that reply will be lost' : ''}.`
+      : `Take over: end ${what} and resume the chat here.`) + (vs ? VSC_COST : '');
+  };
+  const KEY_T = ' · ⌥⌘T';   // on every tip the button acts on; the disabled and failed ones say why instead
   const termTip = s => term.err ? term.err
-    : termLive(s) ? (prefs.termOpen && term.id === s.terminal.id ? 'The terminal is open below' : "Show this chat's terminal")
-    : takeable(s) ? (term.arm === s.id
-      ? `Click again to end claude (pid ${s.live.pid}) in its terminal and resume the chat here${s.status === 'working' ? ' — Claude is mid-reply, and that reply will be lost' : ''}`
-      : `Take over: end claude (pid ${s.live.pid}) in its terminal and resume the chat here`)
-    : s.alive ? `Live in ${entryLabel(s)} — it cannot be attached from here` : 'Open a terminal on this chat (claude --resume)';
-  // Live in a terminal that is not ours — iTerm, say. Nothing respawns a CLI claude, so ending it and
-  // resuming here leaves one writer; a VS Code chat is never takeable (its extension respawns).
-  const takeable = s => !!(s?.alive && s.live?.pid && s.entrypoint === 'cli' && !termLive(s));
+    : termLive(s) ? (prefs.termOpen && term.id === s.terminal.id ? 'The terminal is open below' : "Show this chat's terminal") + KEY_T
+    : takeable(s) ? takeTip(s) + KEY_T
+    : s.alive ? `Live in ${entryLabel(s)} — it cannot be attached from here`
+    : inVsCode(s) ? 'Open a terminal on this chat (claude --resume). It was last continued in VS Code: from here on it is a CLI chat, and the tab there, if still open, will not follow it' + KEY_T
+    : 'Open a terminal on this chat (claude --resume)' + KEY_T;
+  // Live somewhere that is not our drawer — iTerm, VS Code. Nothing respawns a CLI claude, and VS Code's
+  // extension does not respawn its own either (it launches one when a tab opens a chat, never after a
+  // death — measured 2026-09-20), so ending it and resuming here leaves one writer.
+  const takeable = s => !!(s?.alive && s.live?.pid && !termLive(s));
   // Two clicks, six seconds apart at most: the first arms the button (it turns red and says so), the
   // second ends the other claude. renderHead re-runs on every update and reads the armed state back.
   function armTakeOver(s) {
@@ -909,17 +1345,27 @@
     if (!r.ok) { term.err = d.error || `HTTP ${r.status}`; renderHead(s); return; }
     prefs.termOpen = true; savePrefs(); attachTerm(d.terminal); renderHead(s);
   }
+  // The >_ button and ⌥⌘T: show the chat's terminal, start one, or — live elsewhere — arm and, pressed again,
+  // take over. The terminal takes the keyboard at the end: attachTerm does that when its socket opens, this
+  // covers one that was already showing (⌥⌘T as "put me in the terminal").
+  async function termAction(s) {
+    term.err = null;
+    if (takeable(s)) await (term.arm === s.id ? takeOver(s) : armTakeOver(s));
+    else await openTerminalFor(s);
+    if (term.id && term.exited === null && term.xt) term.xt.focus();
+  }
   // A new chat has no session until claude registers; the server ties the two by pid and says so
   // over SSE, at which point the pane switches to it.
   async function newChat(cwd) {
     const r = await fetch('/api/terminals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cwd, ...termSize() }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { $('#log').innerHTML = `<div class="empty">Could not start a chat: ${esc(d.error || `HTTP ${r.status}`)}</div>`; return; }
-    state.current = null; state.entries = []; history.replaceState(null, '', location.pathname); hidePr();
+    state.current = null; state.entries = []; history.replaceState(null, '', location.pathname); hidePr(); syncPane({ cwd });
     if (!inProject({ cwd }, projectStub(prefs.project))) prefs.project = cwd;   // so the new chat lands in view
     savePrefs(); renderBoard();
     $('#chat').classList.remove('vsc');
-    $('#shead').innerHTML = `<h2><span class="repo" style="color:${repoColor(folderName(cwd))}">${esc(folderName(cwd))}</span><span class="sep">/</span><span class="t">new chat</span></h2>`;
+    const newColor = repoColor(cwd); if (newColor) $('#chat').style.setProperty('--repo', newColor); else $('#chat').style.removeProperty('--repo');
+    $('#shead').innerHTML = `<h2><span class="repo"${inkStyle(repoColor(cwd))}>${esc(folderName(cwd))}</span><span class="sep">/</span><span class="t">new chat</span></h2>`;
     $('#log').innerHTML = '<div class="empty">Say something in the terminal below — the transcript shows up here once Claude has written it.</div>';
     renderComposer(null);
     prefs.termOpen = true; savePrefs(); attachTerm(d.terminal);
@@ -966,23 +1412,90 @@
     const box = $('#composer'), ta = $('#composeText'), btn = $('#composeSend'), hint = $('#composeHint');
     // …and not under a terminal on the same chat: that is the reply box now, and a `-p` reply racing it
     // would be the second writer the server refuses anyway once claude has registered.
-    if (!s || s.alive || !s.file || termLive(s) || (term.id && term.sessionId === s.id && term.exited === null)) { box.hidden = true; box.classList.remove('vsc'); return; }
+    if (!s || s.alive || !s.file || termLive(s) || (term.id && term.sessionId === s.id && term.exited === null)) { box.hidden = true; return; }
     box.hidden = false;
-    // A VS Code chat gets no box, only the way out: a turn added from here would never reach its tab.
-    box.classList.toggle('vsc', inVsCode(s));
-    if (inVsCode(s)) {
-      hint.className = 'hint';
-      hint.innerHTML = 'This chat lives in VS Code — <a href="#" id="composeOpen">continue it there</a>';
-      hint.querySelector('#composeOpen').onclick = e => { e.preventDefault(); $('#focusBtn')?.click(); };
-      return;
-    }
     const busy = !!s.replying;
     ta.disabled = busy;
     btn.disabled = busy || !ta.value.trim();
     btn.textContent = busy ? 'Sending…' : 'Send';
     if (busy) { hint.className = 'hint'; hint.textContent = `resuming — ${s.replying.snippet}`; }
     else if (s.replyError) { hint.className = 'hint err'; hint.textContent = s.replyError; }
-    else { hint.className = 'hint'; hint.innerHTML = 'One-shot reply with <code>claude --resume -p</code> · ⏎ send, ⇧⏎ newline · or open the terminal above'; }
+    // A chat last continued in VS Code can be written to from here (2026-09-20): the one thing to know is
+    // that the tab there, if it is still open, will not show the turn.
+    else { hint.className = 'hint'; hint.innerHTML = `${inVsCode(s) ? '<b>Last continued in VS Code</b> — a reply from here makes it a CLI chat; the tab there will not follow · ' : ''}One-shot reply with <code>claude --resume -p</code> · ⏎ send, ⇧⏎ newline · or open the terminal above`; }
+  }
+  // ---- attachments: files dropped on the board, images pasted --------------------------------
+  // What claude wants is a path: an @-mention (`@dir/file`, a space escaped as `\ ` — how the CLI itself writes
+  // one) typed into the drawer's prompt, or into the reply box on a stale chat. In the Mac app the shell sees the
+  // pasteboard and calls peixDrop with the real paths (WebKit never sees the drag); a plain browser only gets the
+  // bytes, so the page uploads them (PUT /api/attach) and gets a path back. Images pasted with ⌘V: in the app
+  // the drawer's claude reads the Mac clipboard itself on ⌃V (verified: `[Image #1]` on the prompt line), so
+  // that key is sent for it; in a browser elsewhere the clipboard is that machine's, so the image is uploaded.
+  const atMention = p => '@' + p.replace(/ /g, '\\ ');
+  function attachPaths(paths) {
+    if (!paths.length) return false;
+    const text = paths.map(atMention).join(' ') + ' ';
+    const s = state.sessions.get(state.current);
+    if (term.id && term.xt && term.exited === null && term.sessionId === state.current) { termSend(text); term.xt.focus(); return true; }
+    if (!$('#composer').hidden) {
+      const ta = $('#composeText'), a = ta.selectionStart ?? ta.value.length, b = ta.selectionEnd ?? a;
+      ta.value = ta.value.slice(0, a) + text + ta.value.slice(b); ta.selectionStart = ta.selectionEnd = a + text.length;
+      ta.dispatchEvent(new Event('input')); ta.focus(); return true;
+    }
+    note($('#shead'), !s ? 'Pick a chat first, then drop the file' : s.alive ? 'Nowhere to put it: open the terminal on this chat (>_) first, then drop again' : 'Nowhere to put it on this chat', true);
+    return false;
+  }
+  async function uploadFiles(files) {
+    const paths = [];
+    for (const f of files) {
+      const r = await fetch(`/api/attach?session=${encodeURIComponent(state.current || 'new')}&name=${encodeURIComponent(f.name || 'pasted.png')}`, { method: 'PUT', body: f });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { note($('#shead'), r.status === 404 ? `Could not save ${f.name || 'the file'}: the running server predates this page and has no route for it — scripts/launchd.sh restart` : `Could not save ${f.name || 'the file'}: ${d.error || `HTTP ${r.status}`}`, true); continue; }
+      paths.push(d.path);
+    }
+    return paths;
+  }
+  const setDropping = on => $('#chat').classList.toggle('dropping', on);
+  const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
+  document.addEventListener('dragover', e => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; setDropping(true); });
+  document.addEventListener('dragleave', e => { if (hasFiles(e) && !e.relatedTarget) setDropping(false); });
+  document.addEventListener('drop', async e => { if (!hasFiles(e)) return; e.preventDefault(); setDropping(false); attachPaths(await uploadFiles([...e.dataTransfer.files])); });
+  window.peixDrop = paths => attachPaths(Array.isArray(paths) ? paths : []);   // the Mac app, with real paths
+  window.peixDragging = on => setDropping(!!on);
+  const pastedFiles = e => [...(e.clipboardData?.files || [])];
+  $('#termBody').addEventListener('paste', e => {   // capture, so xterm's own paste (the text, a file's name) does not run
+    const files = pastedFiles(e); if (!files.length) return;
+    e.preventDefault(); e.stopPropagation();
+    if (inApp) termSend('\x16'); else uploadFiles(files).then(attachPaths);
+  }, true);
+  $('#composeText').addEventListener('paste', e => { const files = pastedFiles(e); if (!files.length) return; e.preventDefault(); uploadFiles(files).then(attachPaths); });
+  // ---- a second claude on this chat --------------------------------------------------------
+  // VS Code launches a claude whenever a tab opens a chat, without looking for one that already runs — so a
+  // chat taken over here comes back under VS Code the moment it is opened there again (and VS Code mounts
+  // some chats twice on its own). The registry shows every process; the server hands the ones beyond the
+  // chat's own over as `rivals`. Only a chat driven from here or a terminal gets the bar: two of VS Code's
+  // own on a VS Code chat are VS Code's business. Idle, such a process writes nothing — but a turn typed
+  // into its tab forks the transcript, so the bar says close it there, and the button ends it (the take-over
+  // route, which with the chat already here only ends the others).
+  function hasRival(s) { return !!(s?.rivals?.length && s.live?.entrypoint !== 'claude-vscode'); }
+  function renderRival(s) {
+    const box = $('#rival');
+    if (!hasRival(s)) { box.hidden = true; return; }
+    const vs = s.rivals.filter(r => r.entrypoint === 'claude-vscode'), other = s.rivals.length - vs.length;
+    const who = vs.length ? `VS Code runs a claude on this chat too` : `Another claude runs on this chat`;
+    const pids = s.rivals.map(r => `pid ${r.pid}${r.startedAt ? ', since ' + rel(new Date(r.startedAt).toISOString()) + ' ago' : ''}`).join('; ');
+    // written by VS Code after our terminal started: the chat is forked already, not just at risk
+    const wrote = termLive(s) && s.tailEntrypoint === 'claude-vscode' && s.tailEntrypointAt && s.terminal.startedAt && s.tailEntrypointAt > s.terminal.startedAt;
+    box.hidden = false;
+    box.innerHTML = `<span class="t"><b>${who}</b> (${esc(pids)})${vs.length ? ' — it starts one whenever the chat is opened there' : ''}${other && vs.length ? `, and ${other} more elsewhere` : ''}. ${vs.length ? 'Its tab does not see what happens here, and a' : 'A'}nything typed there forks the transcript${wrote ? ' — <b>and it has written to it since the take-over</b>' : ''}. ${vs.length ? 'Close the chat in VS Code, then' : 'Then'} end ${s.rivals.length === 1 ? 'it' : 'them'} here.</span>
+      <button class="btn" id="rivalEnd" title="SIGTERM ${esc(s.rivals.map(r => r.pid).join(', '))} — what closing that chat amounts to; it comes back only if the chat is opened there again">end ${s.rivals.length === 1 ? 'it' : 'them'}</button>`;
+    box.querySelector('#rivalEnd').onclick = async e => {
+      const b = e.currentTarget; b.disabled = true; b.textContent = 'ending…';
+      const r = await fetch(`/api/sessions/${s.id}/takeover`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(termSize()) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { b.disabled = false; b.textContent = 'failed'; b.title = d.error || `HTTP ${r.status}`; }
+      // on success the registry changes and the SSE update re-renders the head, bar included
+    };
   }
   async function sendReply() {
     const id = state.current, ta = $('#composeText'), hint = $('#composeHint'), text = ta.value.trim();
@@ -1111,9 +1624,11 @@
     if (s0 && !inProject(s0, projectStub(prefs.project))) { prefs.project = s0.cwd || '?'; savePrefs(); }
     renderBoard();
     if (s0) renderHead(s0);
+    syncPane(s0 || { id });
     const r = await fetch(`/api/sessions/${id}/messages`); if (!r.ok) return;
     const data = await r.json();
     state.sessions.set(id, data.session); state.entries = data.entries; renderHead(data.session); renderLog(); syncTerm(data.session);
+    if (state.current === id) syncPane(data.session);
     $('#log').scrollTop = $('#log').scrollHeight;
     if (location.hash.slice(1) !== id) history.replaceState(null, '', '#' + id);
     document.querySelector(`#slist .card[data-id="${id}"]`)?.scrollIntoView({ block: 'nearest' });
@@ -1144,11 +1659,11 @@
   // ---- SSE ----------------------------------------------------------------------------
   function connect() {
     const es = new EventSource('/events');
-    es.onopen = () => $('#conn').classList.add('on');
-    es.onerror = () => { $('#conn').classList.remove('on'); };
+    es.onopen = () => $('#brandBtn').classList.remove('off');
+    es.onerror = () => { $('#brandBtn').classList.add('off'); };
     es.addEventListener('snapshot', e => {
       const d = JSON.parse(e.data);
-      state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || [];
+      state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.peacock = d.peacock || {};
       renderBoard();
       const want = location.hash.slice(1);
       if (want && !state.current && state.sessions.has(want)) openSession(want);
@@ -1156,6 +1671,8 @@
     es.addEventListener('session', e => { const s = JSON.parse(e.data); state.sessions.set(s.id, s); renderBoard(); if (s.id === state.current) { renderHead(s); syncTerm(s); } });
     es.addEventListener('entries', e => { const d = JSON.parse(e.data); if (d.sessionId === state.current) { state.entries.push(...d.entries); renderLog(); } });
     es.addEventListener('projects', e => { state.projects = JSON.parse(e.data).projects || []; renderBoard(); });
+    es.addEventListener('peacock', e => { state.peacock = JSON.parse(e.data).colors || {}; renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); });
+    es.addEventListener('pins', e => { state.pins = JSON.parse(e.data).pins || []; renderBoard(); });
     es.addEventListener('terminal', e => {
       const t = JSON.parse(e.data);
       if (t.id !== term.id) return;

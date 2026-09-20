@@ -50,12 +50,13 @@ open http://127.0.0.1:7331
 That's it. That's the whole setup. Want it always there?
 
 ```sh
-scripts/launchd.sh install   # starts at login, restarts if it dies
+scripts/launchd.sh install   # starts at login, restarts if it dies; hands over from a running app
+scripts/launchd.sh restart   # after a server.mjs change (ends the drawers; the app reattaches by itself)
 scripts/launchd.sh status    # …also: logs · uninstall · print
                              # PORT=8000 scripts/launchd.sh install  to pick another port
 ```
 
-The selected project, filter chip and column width are remembered **per browser**. **Done** ticks
+The selected project, the state chips and column width are remembered **per browser**. **Done** ticks
 and the **projects you name** live server-side in `~/Library/Application Support/peixAIrada/state.json`,
 so they survive a restart and look the same in every browser *and* in the Mac app.
 
@@ -77,7 +78,7 @@ page simply cannot do for itself:
 | 🚀 | **Owns the server.** Starts `server.mjs` on launch with the node inside the bundle (no PATH games, no version-manager guessing), stops it on quit. If a server is *already* running on the port — from `npm start` or the launchd agent — it attaches to that one instead and defers to it for notifications, so you never get two of everything. |
 | 🔔 | **Native notifications** from *peixAIrada*, not from "Script Editor" — and clicking one opens that session in the board. Only fires while the window isn't in front. Falls back to the old `osascript` banner if notification permission is refused. |
 | 🎯 | **Dock badge** with the alerts you haven't seen, and a **menu-bar fish** whose menu lists every session waiting on you. Click one to jump straight to it. |
-| 🐙 | **The PR pane.** Click a PR chip and the pull request opens beside the board — GitHub refuses to be framed, so it is a second web view with its own back / reload / open-in-browser, and your GitHub login sticks between launches. **×** hides it. |
+| 🐙 | **The PR pane.** Click a PR row under the chat header (or a card's chip) and the pull request opens beside the board — GitHub refuses to be framed, so it is a second web view with its own back / reload / open-in-browser, and your GitHub login sticks between launches. **×** hides it. |
 | ⌨️ | ⌘R reload, ⌘⇧R restart server. Close the window and it keeps running in the menu bar. |
 | 🎨 | **An icon drawn in code** ([`mac/icon/MakeIcon.swift`](mac/icon/MakeIcon.swift)) — a fish in Claude terracotta with a starburst eye, no image assets anywhere — that simplifies itself at 16/32 px so it stays legible in the menu bar. |
 
@@ -118,27 +119,51 @@ working, 🟢 replied — plus an unread badge.
 
 The projects column is a **strip** by default — each project a solid tab in its colour, the name
 running vertically, the selected one running straight into the chat list, whose edge and header
-carry the same colour — and **»** opens it into the full column, **«** folds it back; nothing happens on hover. Each of
+carry the same colour — and **»** opens it into the full column, **«** folds it back; nothing happens on hover. The fish at the strip's top is the
+app — it greys out when the board loses the server, and **hovering it opens the usage card** (below). The
+magnifier under it filters projects (the strip opens to let you type and folds back when you are done);
+**⌥⌘O** from anywhere opens a project picker the VS Code way — type to filter, ↑↓, ⏎ opens it, esc closes (the
+same ⌥⌘ family drives the open chat: **⌥⌘T** its terminal, **⌥⌘V** VS Code Web, **⌥⌘G** its PR, see *The chat*) —
+and the **cog** at its bottom opens the settings (show empty & >30d, tool calls, fold code, sound,
+browser alerts, test alert) and, under them, **the list of keys**, for when one slips the mind. The usage card on the fish (a click pins it) is your **Claude plan usage**: the session and weekly windows `/usage` shows,
+plus a weekly row per model the account meters apart (Fable, Sonnet…), read with Claude Code's own login.
+Buckets the API reports under a codename at 0 % stay out of the list. The first time, macOS asks whether `security` may read the
+*Claude Code-credentials* keychain item; *Always Allow* ends that, and `USAGE=off` on the server turns the
+lookup off. Esc or a click elsewhere closes either popover. There is no page header.
+
+**A project's colour is its Peacock colour**, and it is the same everywhere — the strip tab, the card's
+edge, the chat list's edge, the chat header. The board reads `peacock.color` from the nearest
+`.vscode/settings.json` at or above the folder (a chat in a subfolder or a worktree wears the repo's colour)
+and follows it live: change the colour in VS Code and the board has it within seconds. A folder without one is
+light gray — the board has no colours of its own, so a colour always means the VS Code window is that colour.
+**And it works the other way**: the **colour square** on a folder's row in the open column — and the one in
+the chat list's header — is a picker. Click it, pick a colour, and the board writes it as `peacock.color` into
+that folder's `.vscode/settings.json` (creating the file if there is none, touching nothing else in it), so
+Peacock repaints the VS Code window and both agree; the board follows while you drag through the panel and
+writes once it rests. ⌥-click the square to take the setting out again. A note by the square says which file
+was written and, if git tracks it in the repo, that the change will show in `git status`.
+**Pin** a project (the pin on its row in the open column) and it heads the column, above a line; **drag**
+rows — in the strip too — to arrange the pinned ones, or drag one below the line to let it go. Pins are saved
+on the server, so every browser and the app agree. Each of
 the first two columns has its own filter behind a magnifier — in the projects header, and at the
 start of the chat filter chips — projects by name, chats by title, branch or prompt; Esc or an
 emptied box closes it, and the magnifier stays lit while a filter is on.
 
-**Chats** of the selected project, newest first by your own last touch, with filter chips for
-*needs you · working · ready · stale · done*. **+ new chat** starts one right there: a terminal
+**Chats** of the selected project, newest first by your own last touch, with a chip per state —
+*ready · clauding · done* — each a toggle, and the set you leave on is remembered. **«** in its header folds the list to a rail and **»** brings
+it back, width and all. **+ new chat** starts one right there: a terminal
 running `claude` in that folder (a pick-list when the project spans several), and the chat pane
 switches to it the moment Claude registers the session.
 
-**Chat**: the transcript, the terminal drawer, the PR chips, the reply box. Described below.
+**Chat**: the PRs the chat mentions, the transcript, the terminal drawer, the reply box. Described below.
 
 A chat is always in exactly one state, and the dot says which:
 
 | | State | What it means |
 |---|---|---|
-| 🟡 | **working** | Claude is working — a prompt is in flight or tools are running. |
-| 🟢 | **ready** | Claude replied and the ball is with **you**. |
-| 🔴 | **needs input** | Claude asked a question, wants plan approval, or is waiting on a permission. The card says so in words too — it is the one state worth a word. |
-| ⚪ | **stale** | The Claude process is gone — panel or terminal closed. Open a terminal on it here (a CLI chat), continue it in VS Code (a VS Code chat — blue-bordered pane), or `claude --resume <id>`, and it walks back on its own. Stale chats idle >30 days hide behind *show empty & >30d*; Claude Code deletes their transcripts after 30 days anyway. |
-| ✓ | **done** | Only what **you tick ✓**, from ready or stale. Persisted server-side; a tick beats staleness. The mark **expires the instant the chat has new activity**, so a chat you re-prompt comes straight back. Done chats sink to the bottom of the list, dimmed. |
+| 🟢 | **ready** | The ball is with **you**: Claude replied — or asked a question, wants plan approval, or waits on a permission, and then the card says *asking you*. A chat whose Claude process is gone (panel or terminal closed) is ready too — grey dot, card dimmed a touch: open a terminal on it here, continue it in VS Code, or `claude --resume <id>`, and it walks back on its own. Such chats idle >30 days hide behind *show empty & >30d*; Claude Code deletes their transcripts after 30 days anyway. |
+| 🟡 | **clauding** | Claude is working — a prompt is in flight or tools are running. The card's edge carries a running light in the project's colour. |
+| ✓ | **done** | Only what **you tick ✓** — nothing is done by itself. Persisted server-side. The mark **expires the instant the chat has new activity**, so a chat you re-prompt comes straight back. Done chats sink to the bottom of the list, dimmed. |
 
 ### Sorting
 
@@ -149,8 +174,8 @@ a card is still when *anything* last happened to it; hover it for when you last 
 follow the same rule through their newest chat.
 
 The filter box in the header narrows the chat list by repo, title, session name or branch. The
-divider between the chat list and the chat drags; the width, the selected project and the filter
-chip are remembered per browser.
+divider between the chat list and the chat drags; the width, the selected project and the state
+chips are remembered per browser.
 
 ### Anatomy of a card
 
@@ -166,9 +191,13 @@ answers *what state it is in*.
 What a chat *is* rather than what just happened — VS Code or CLI, the session name
 (`peixairada-f1`), the path and branch, the model, the pid — lives in the **chat header** on the
 right, folded behind **···** so the header fits on **one line**: repo / title, a status dot with how
-long it has been that way, the fold, the VS Code and terminal buttons, then the PR chips. No status
+long it has been that way, the fold, the VS Code and terminal buttons. No status
 word — the dot's colour says it and hovering spells it out. Click the repo name in the header to
 jump to that folder's chats.
+
+**The PRs a chat mentions sit under the header, one per row**: the state in GitHub's colours, `repo#n`,
+the whole title once `gh` has answered, and when it was last mentioned. Six rows, then **… n more**.
+Click one and the PR pane opens on it.
 
 ### 💬 The chat pane
 
@@ -207,22 +236,39 @@ registers the session. The process lives on the server: **hide** keeps it runnin
 keeps it running, **end** stops it — and it does not survive a server restart. While the chat runs
 here, the drawer *is* the pane: the rendered transcript above it would be the same conversation twice,
 so it steps aside. **show chat** splits the pane again (so does a drag on the divider), **hide** shows
-the transcript while claude keeps running, and it comes back on its own when the process ends. Chats
+the transcript while claude keeps running, and it comes back on its own when the process ends. **⇧⏎**
+is a newline in Claude's prompt, as in iTerm2 or VS Code; ⏎ sends. Chats
 the board does not drive — VS Code, another terminal, stale — always render. **⌘+ / ⌘− / ⌘0** resize
-the chat pane, transcript and terminal together, and the size is remembered. **Double-click the
+the chat pane, transcript and terminal together, and the size is remembered. **⌥⌘T** is the `>_` button:
+the chat's terminal, opened or started, and the keyboard lands in it (on a chat live elsewhere the first
+press arms the take-over and the second ends that claude, as two clicks would). **⌥⌘V** opens the folder in
+VS Code Web, in the pane — the *web* button's route. **⌥⌘G** opens the chat's PR on GitHub — straight away with
+one; with several, the ⌥⌘O picker filled with the PR rows under the header (state · `repo#n` · title · age,
+filtered by number or title, ⏎ opens the selected one); **pressed again while one is showing it moves to the
+next** — a toggle with two, a cycle with more, each PR on a tab of its own in the pane so nothing reloads. The
+keys work from inside the pane too. With no chat open, or no PR in it, a note under the header says so; while
+a dialog is up the keys do nothing. **Double-click the
 title** in the chat header to rename a chat; the name is kept by the board (never written into the
 transcript) and beats the PR title and Claude's own; an empty name gives the chat's own back. A chat that is live
-in VS Code cannot be attached from here; one live in **another terminal** — iTerm, say — can be
-**taken over**: the `>_` button says so, a first click arms it, a second ends that claude and resumes
-the chat here. Nothing respawns a CLI claude, so the transcript keeps one writer; anything Claude was
-mid-way through is lost, and the button says *mid-reply* when that is the case. The first time in a folder Claude asks its usual *trust this folder?* question.
+somewhere else — **another terminal** (iTerm, say) or **VS Code** — can be **taken over**: the `>_`
+button says so, a first click arms it, a second ends that claude and resumes the chat here. Nothing
+respawns a CLI claude, and VS Code's extension does not respawn its own either, so the transcript keeps
+one writer; anything Claude was mid-way through is lost, and the button says *mid-reply* when that is the
+case. The first time in a folder Claude asks its usual *trust this folder?* question.
 
-**VS Code chats stay in VS Code.** A chat whose last turn came from the VS Code extension gets a
-**blue border and a blue wash over the chat pane**, and the same wash on its card; the board
-reads it, the VS Code button opens it there, and that is all — no terminal, no reply box. Tried and dropped (2026-09-19): killing the
-extension's process to take the chat over only makes the extension respawn it a few seconds later,
-and a turn added from anywhere else never shows in the VS Code tab until the chat is reopened there.
-A chat started here becomes a VS Code chat the moment you continue it in VS Code.
+**VS Code chats carry a VS Code mark, and can be taken over.** A chat whose last turn came from the VS Code
+extension shows a small **VS Code mark at the top right of its card and at the end of the chat header**;
+cards and the chat pane are washed in the *project's* colour, VS Code or not, and in a light gray without one. The VS Code
+button opens it there. Taking it over (`>_`, armed as *sure? ends VS Code's*) ends the claude VS Code
+runs on it and resumes the chat in the drawer, from which point it is a CLI chat. What that costs, and
+the tooltip says so: **the tab in VS Code goes dead and does not follow the chat** — close it there.
+VS Code starts a claude whenever a chat is *opened* in it (it never restarts one that died — measured on
+2.1.278, which is what made this possible; until 2026-09-20 the board believed the opposite), so if you
+open the chat there again, a second claude appears on it: a **red bar under the header** says so, warns
+that anything typed there forks the transcript, and its **end it** button ends that one too (the card
+gets a *VS Code too* chip meanwhile). A stale chat last continued in VS Code can be written to from
+here as well, terminal or reply box — the box notes that the tab there will not follow. A chat started
+here becomes a VS Code chat the moment you continue it in VS Code, and the other way round.
 
 **VS Code, inline — experimental.** The **web** button next to the VS Code one opens the chat's
 folder in *VS Code Web* in the same pane the PRs use: the editor served on this Mac by `code
@@ -246,11 +292,24 @@ open / merged / closed / draft, the review decision, checks passed or failing or
 +added −deleted over how many files, head → base, the author — and the PR itself opens: in the Mac
 app in a **pane over the chat column** (GitHub refuses to be framed, so it is a second web view with
 its own back / reload / open-in-browser, and your GitHub login sticks between launches). The pane
-holds **two pages, GitHub and VS Code Web**, on two tabs in its toolbar, so opening one never
-replaces the other. It lies *over* the board — drag its left edge to make it wider or narrower, and
+holds **a page per PR and an editor per folder**, a tab per page in its toolbar (`repo#n` for each PR the chat
+opened, *VS Code* for the editor), and
+nothing reloads when you switch chats: each chat brings back the PR it last opened and its folder's editor,
+the pane steps aside on a chat with neither and returns on one with a page (unless you closed it there),
+and the eight most recently shown pages stay loaded. It lies *over* the board — drag its left edge to make it wider or narrower, and
 the columns underneath never reflow — and it opens the width of the chat column the first time.
 **Esc** closes it from the board or from either page (the editor gives up its own Esc for that), and
 a chip or the web button brings it back. In a plain browser, a new tab. PR links in Claude's replies and in the terminal do the same.
+
+**📎 Attach a file: drop it on the chat.** Drag a file from the Finder onto the chat and it lands in the
+terminal's prompt as an `@` mention (`@path/to/file`, a space escaped as `\ ` — what Claude Code itself
+writes when you pick a file with `@`), or in the reply box on a stale chat; a dashed outline shows where it
+is going, and if there is nowhere for it yet (a live chat with no terminal open here) a note says so.
+Screenshots and other clipboard images paste with **⌃V** in the terminal, as in any terminal running Claude
+Code — ⌘V works too, the drawer hands the same key on — and with ⌘V into the reply box. In a plain browser
+the file's bytes are uploaded and saved beside the board's state
+(`~/Library/Application Support/peixAIrada/attachments/<chat>/`, never cleaned up), because a web page
+never learns a dropped file's path; in the app the path is used as is, nothing is copied.
 
 **On a stale CLI chat there is also a one-line reply box** — type, ⏎, and the board resumes the chat
 with `claude --resume <id> -p`; ⇧⏎ for a newline. It hides while a terminal is open on that chat.
@@ -276,7 +335,7 @@ extension run the same binary and share the same files. peixAIrada just reads th
 |---|---|---|
 | Full transcript, appended line-by-line as JSONL | `~/.claude/projects/<cwd-slug>/<session-id>.jsonl` | Messages, tool calls, status, titles, PR links |
 | Live-session registry, one file per running process | `~/.claude/sessions/<pid>.json` (`sessionId`, `cwd`, `name`, `entrypoint: "claude-vscode" \| "cli"`) | Which sessions are alive, which come from VS Code, names, the stable repo path |
-| Where a chat lives | `entrypoint` on every transcript line — `"claude-vscode"` or `"cli"` — and the registry's while it runs | VS Code chats: blue-bordered pane, no terminal, no reply box; CLI chats live elsewhere: take over |
+| Where a chat lives | `entrypoint` on every transcript line — `"claude-vscode"` or `"cli"` — and the registry's while it runs | VS Code chats: a VS Code mark on the card and in the header; a chat live elsewhere: take over |
 | Session titles | `ai-title` / `custom-title` lines inside the transcript | Card titles |
 | End of a reply | assistant line with `stop_reason: "end_turn"` (tool calls are `"tool_use"`) | The "replied" alert → Waiting feedback |
 | Waiting for the user | `AskUserQuestion` / `ExitPlanMode` tool call with no result yet | The "needs input" alert |
@@ -325,7 +384,9 @@ updates within **~100 ms** of Claude writing a line. Native notifications work f
 | `POST /api/sessions/:id/terminal` `{cols, rows}` | attach to this chat's terminal, or start one with `claude --resume <id>` in its cwd; 409 if the chat is live elsewhere or lives in VS Code |
 | `POST /api/terminals` `{cwd, cols, rows}` | start a **new** chat: `claude` in a PTY in that folder; the `terminal` SSE event carries its session id once Claude registers |
 | `GET /api/terminals` · `DELETE /api/terminals/:id` | list terminals · end one (SIGHUP) |
-| `WS /api/terminals/:id/ws` | the terminal: binary frames are output (scrollback replayed first), text frames are JSON — `{t:'in', d}` / `{t:'resize', cols, rows}` up, `{t:'exit', code}` down |
+| `PUT /api/peacock` · `DELETE /api/peacock` `{cwd, color}` | write (or remove) `peacock.color` in the folder's `.vscode/settings.json`; the folder must be one the board knows; answers `{file, changed, tracked}` |
+| `PUT /api/attach?session=<id>&name=<file>` (raw body) | save a dropped file for a browser page that has no path to give claude; answers `{path}`; 50 MB cap |
+| `WS /api/terminals/:id/ws` | the terminal: binary frames are output (the screen as it stands first — serialized from the headless xterm the server keeps per drawer — then the PTY's bytes), text frames are JSON — `{t:'in', d}` / `{t:'resize', cols, rows}` up, `{t:'exit', code}` down |
 | `POST /api/sessions/:id/focus` | runs `code <cwd>` to bring that window to the front, then opens `vscode://anthropic.claude-code/open?session=<id>` so the chat itself comes up in the Claude panel |
 | `POST /hook` | receives Claude Code hook payloads (`hooks/hook.sh`) |
 | `POST /api/vscode-web` | start `code serve-web` if nothing answers on its port, and say where it is: `{url, started}` |
@@ -334,8 +395,9 @@ updates within **~100 ms** of Claude writing a line. Native notifications work f
 **Environment:** `PORT` (7331) · `HOST` (127.0.0.1) · `NOTIFY=native|off` · `CLAUDE_DIR` (`~/.claude`) ·
 `STATE_FILE` (defaults to `~/Library/Application Support/peixAIrada/state.json`;
 `$XDG_STATE_HOME/peixairada/` off macOS) · `TAIL_BYTES` · `MAX_ENTRIES` · `CLAUDE_BIN` (path to the
-`claude` binary, if PATH can't find it) · `REPLY_TIMEOUT_MS` (10 min) · `TERM_SCROLLBACK` (256 KB of
-terminal output kept per PTY for replay).
+`claude` binary, if PATH can't find it) · `REPLY_TIMEOUT_MS` (10 min) · `TERM_SCROLLBACK_LINES` (5000 lines of
+screen kept per drawer for a page that attaches; `TERM_SCROLLBACK`, 256 KB of raw output, is the fallback without
+`@xterm/headless`).
 
 </details>
 

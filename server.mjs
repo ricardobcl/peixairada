@@ -23,8 +23,19 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // node-pty is the one native module here. Its prebuilt spawn-helper arrives from npm without the
 // executable bit, which surfaces as "posix_spawnp failed" on the first terminal — fix it before the
 // import rather than documenting it. Without the module the server still runs; terminals answer 501.
-try { const h = join(__dirname, 'node_modules', 'node-pty', 'prebuilds', `${process.platform}-${process.arch}`, 'spawn-helper'); if (existsSync(h)) chmodSync(h, 0o755); } catch {}
+// Only when the bit is missing: a chmod to the same mode is still a write, and from the app in
+// /Applications every start tripped App Management ("prevented from modifying apps on your Mac").
+try { const h = join(__dirname, 'node_modules', 'node-pty', 'prebuilds', `${process.platform}-${process.arch}`, 'spawn-helper'); if (existsSync(h) && (statSync(h).mode & 0o111) !== 0o111) chmodSync(h, 0o755); } catch {}
 const nodePty = await import('node-pty').then(m => m.default ?? m).catch(e => { console.error('[peixairada] node-pty unavailable — terminals are disabled:', e.message); return null; });
+// A headless xterm per drawer keeps the exact screen — cells, cursor, modes, scrollback — so a page that attaches gets
+// a faithful snapshot, serialized back to escape sequences, instead of a replay of the raw byte buffer. That buffer
+// was capped and trimmed by chunk, so the replay started wherever the drop landed (mid-sequence, even), and Claude
+// Code paints its prompt box and status bar once and then rewrites only the cells that change: a replay that started
+// after that paint showed blank rules and a status line of lone digits (2026-09-20). Without the modules the byte
+// buffer stays as the fallback, and the page's own nudge after attach makes Claude repaint over it.
+const xtHeadless = await Promise.all([import('@xterm/headless'), import('@xterm/addon-serialize')])
+  .then(([h, sz]) => ({ Terminal: (h.default ?? h).Terminal, SerializeAddon: (sz.default ?? sz).SerializeAddon }))
+  .catch(e => { console.error('[peixairada] @xterm/headless unavailable — drawers replay raw bytes on attach:', e.message); return null; });
 const CLAUDE_DIR = process.env.CLAUDE_DIR || join(homedir(), '.claude');
 const PROJECTS_DIR = join(CLAUDE_DIR, 'projects');
 const SESSIONS_DIR = join(CLAUDE_DIR, 'sessions');
@@ -65,6 +76,9 @@ let projects = {};
 // Titles typed on the board: sessionId -> string. Kept here because the board never writes under
 // ~/.claude; they beat every title the transcript carries (PR, custom-title, ai-title).
 let titles = {};
+// Pinned projects, in the order they sit at the top of the column: folder cwds and `c:<id>` keys. A
+// `colors` key (board-set project colours, 2026-09-20 only) is ignored and dropped on the next save.
+let pinned = [];
 
 // One-time move from the old ~/.peixairada location. Same filesystem, so the rename is atomic; the
 // empty directory is left behind rather than removing something we did not create.
@@ -82,12 +96,121 @@ try {
   doneMarks = st.done || {};   // files from before 2026-09-19 also carry a `pins` key — ignored, gone on the next save
   projects = st.projects || {};
   titles = st.titles || {};
+  pinned = Array.isArray(st.pinned) ? st.pinned.filter(k => typeof k === 'string') : [];
 } catch {}
 function saveState() {
-  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks, projects, titles }, null, 1)); }
+  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks, projects, titles, pinned }, null, 1)); }
   catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
 const isDone = s => !!doneMarks[s.id] && doneMarks[s.id] >= (s.lastActivity || '');
+
+// ---- Peacock: the colour VS Code paints a folder with, from its .vscode/settings.json ----------------
+// A project's colour is Peacock's and nothing else (2026-09-20): a folder without one is black on the page.
+// "peacock.color" is what the user picked; the activity-bar colour Peacock derives from it is the fallback
+// for a settings file that only carries the derived customizations. A regex, not JSON.parse: settings.json
+// allows comments and trailing commas. The nearest settings file at or above the folder counts, stopping
+// short of the home directory, so a chat in apps/x of a repo wears the repo's window colour. Every folder
+// the board knows — a session's cwd, a named project's, a pinned one — is stat'ed every PEACOCK_POLL_MS
+// and re-read on mtime; a change reaches every page as a `peacock` event within seconds.
+const PEACOCK_POLL_MS = 3000;
+const peacock = new Map();   // cwd -> { file, mtime, color }
+const HOME = homedir();
+function peacockFile(cwd) {
+  for (let dir = cwd; dir && dir !== HOME && dir !== '/' && dir !== '.'; dir = dirname(dir)) {
+    const f = join(dir, '.vscode', 'settings.json');
+    if (existsSync(f)) return f;
+  }
+  return null;
+}
+function readPeacock(cwd, prev) {
+  const file = peacockFile(cwd);
+  if (!file) return prev && !prev.file ? prev : { file: null, mtime: 0, color: null };
+  let mtime = 0;
+  try { mtime = statSync(file).mtimeMs; } catch { return { file: null, mtime: 0, color: null }; }
+  if (prev && prev.file === file && prev.mtime === mtime) return prev;
+  let color = null;
+  try {
+    const txt = readFileSync(file, 'utf8');
+    const m = txt.match(/"peacock\.color"\s*:\s*"(#[0-9a-fA-F]{6})/) || txt.match(/"activityBar\.background"\s*:\s*"(#[0-9a-fA-F]{6})/);
+    color = m ? m[1].toLowerCase() : null;
+  } catch {}
+  return { file, mtime, color };
+}
+function peacockCwds() {
+  const out = new Set();
+  for (const s of sessions.values()) { const c = s.live?.cwd || s.cwd; if (c) out.add(c); }
+  for (const p of Object.values(projects)) for (const c of p.cwds || []) out.add(c);
+  for (const k of pinned) if (k.startsWith('/')) out.add(k);
+  return out;
+}
+const peacockColors = () => Object.fromEntries([...peacock].map(([c, v]) => [c, v.color]));
+function pollPeacock() {
+  const want = peacockCwds();
+  let changed = false;
+  for (const c of [...peacock.keys()]) if (!want.has(c)) { peacock.delete(c); changed = true; }
+  for (const c of want) {
+    const prev = peacock.get(c), next = readPeacock(c, prev);
+    if (next === prev) continue;
+    peacock.set(c, next);
+    if ((prev?.color ?? null) !== next.color) changed = true;
+  }
+  if (changed) broadcast('peacock', { colors: peacockColors() });
+}
+// ---- Setting Peacock's colour from the board: the file pollPeacock() reads — the nearest .vscode/settings.json
+// at or above the folder — or a new one in the folder itself. A text edit, never a JSON rewrite: settings.json
+// is JSONC, and its other keys, comments and formatting must come out as they went in. Peacock re-applies the
+// workbench colours when peacock.color changes (its configuration watcher), so the VS Code window follows;
+// the board follows through the poll, forced right after the write.
+function writePeacock(cwd, color) {   // color '#rrggbb', or null to take the key out
+  const file = peacockFile(cwd) || join(cwd, '.vscode', 'settings.json');
+  let txt = '';
+  try { txt = readFileSync(file, 'utf8'); } catch {}
+  const keyLine = /^[ \t]*"peacock\.color"\s*:\s*"[^"]*"\s*,?[ \t]*(?:\r?\n|$)/m;
+  const keyInline = /"peacock\.color"\s*:\s*"[^"]*"\s*,?\s*/;
+  if (color) {
+    if (keyInline.test(txt)) txt = txt.replace(/("peacock\.color"\s*:\s*")[^"]*(")/, `$1${color}$2`);
+    else if (!txt.trim()) txt = `{\n  "peacock.color": "${color}"\n}\n`;
+    else {
+      const i = txt.indexOf('{');
+      if (i < 0) throw new Error(`${file} does not look like a JSON object`);
+      const rest = txt.slice(i + 1), empty = /^\s*}/.test(rest);
+      txt = txt.slice(0, i + 1) + `\n  "peacock.color": "${color}"` + (empty ? (/^\s*\n/.test(rest) ? '' : '\n') : ',') + rest;
+    }
+  } else {
+    if (!keyInline.test(txt)) return { file, changed: false };
+    txt = keyLine.test(txt) ? txt.replace(keyLine, '') : txt.replace(keyInline, '');
+    txt = txt.replace(/,(\s*)}/, '$1}');   // the comma the key used to follow, if it was the last property
+  }
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, txt);
+  return { file, changed: true };
+}
+// ---- attachments: a file dropped on the board from a browser ---------------------------------
+// The Mac app hands a dropped file's *path* to the page (the shell sees the pasteboard); a plain browser
+// only ever gets the bytes, so the page uploads them here and gets a path back to hand to claude as an
+// @-mention. Saved beside the state file, per chat, the name kept (deduplicated); never cleaned up.
+const ATTACH_DIR = join(dirname(STATE_FILE), 'attachments');
+const ATTACH_MAX = 50 * 1024 * 1024;
+function readRaw(req, max) {
+  return new Promise((resolve, reject) => {
+    const chunks = []; let n = 0;
+    req.on('data', c => { n += c.length; if (n > max) { req.destroy(); reject(new Error('too large')); } else chunks.push(c); });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
+function saveAttachment(sid, name, buf) {
+  const dir = join(ATTACH_DIR, /^[\w-]{1,80}$/.test(sid) ? sid : 'inbox');
+  mkdirSync(dir, { recursive: true });
+  const clean = (basename(name || 'file').replace(/[^\w.() -]+/g, '_').replace(/^\.+/, '') || 'file').slice(0, 120);
+  const dot = clean.lastIndexOf('.'), stem = dot > 0 ? clean.slice(0, dot) : clean, ext = dot > 0 ? clean.slice(dot) : '';
+  let file = join(dir, clean);
+  for (let i = 2; existsSync(file); i++) file = join(dir, `${stem}-${i}${ext}`);
+  writeFileSync(file, buf);
+  return file;
+}
+const gitTracked = file => new Promise(resolve => execFile('git', ['-C', dirname(file), 'ls-files', '--error-unmatch', file], { timeout: 5000 }, err => resolve(!err)));
+
 const projectList = () => Object.values(projects).sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
 // name: non-empty, one line; cwds: absolute paths, deduplicated. Nothing checks they exist — a project
 // can name a folder before its first chat runs there.
@@ -106,7 +229,8 @@ function newSession(id, file) {
     cwd: null, gitBranch: null, model: null,
     title: null, customTitle: null, lastPrompt: null, lastReply: null, prs: [],
     status: 'unknown', statusSince: null, lastActivity: null, lastUserAt: null, lastReplyAt: null,
-    live: null, alive: false, entrypoint: null,   // last 'entrypoint' a user/assistant line carried: 'claude-vscode' | 'cli'
+    live: null, alive: false, entrypoint: null, entrypointAt: null,   // last 'entrypoint' a user/assistant line carried ('claude-vscode' | 'cli'), and when
+    rivals: [],   // other live processes on this chat (registry entries beyond `live`) — see inVsCode()
     entries: [], entryCount: 0, loaded: false,
     offset: 0, partial: '', truncatedHead: false,
     pendingNotify: null, notifyTimer: null, pushTimer: null, newEntries: [],
@@ -119,11 +243,16 @@ function newSession(id, file) {
 // recorded. Every line the CLI writes carries it, so a chat that was ever continued in VS Code says so
 // at its tail, and one taken to a terminal with `claude --resume` stops saying so.
 function inVsCode(s) { return (s.live?.entrypoint || s.entrypoint) === 'claude-vscode'; }
-// VS Code chats are not resumed from here, by decision (2026-09-19). The extension respawns its own
-// process when that process dies, so killing it hands nothing over; and its tab is bound to that
-// process, so a turn added by another claude never shows up in it until the chat is reopened there.
-// The board reads those chats and opens them in VS Code; it does not write to them.
-const VSCODE_CHAT_ERR = 'this chat lives in VS Code — continue it there';
+// A VS Code chat can be taken over like a CLI one (2026-09-20 — refused from 2026-09-19 on a misread of the
+// extension). Measured on 2.1.278: the extension launches a claude when a *tab mounts* a chat — the sessions
+// list, the /open URI for a chat that has no tab yet, a window restore — and can do so twice for one chat;
+// it never respawns one that died. SIGTERM on the process behind the tab in front, hands off: the extension
+// logs "Closing Claude on channel" and nothing comes back in 60 s; the same for a chat in the background.
+// The 10–30 s "respawns" seen on 2026-09-19 were the user reopening the chat in its panel, per its log.
+// What a take-over costs: the tab in VS Code goes dead and does not follow the chat, and opening the chat
+// there again starts another claude on it — a second process on the transcript, idle until someone types
+// in it, and a turn typed there forks the chat. The registry shows every process, so `rivals` on the summary
+// carries the others and the page warns and offers to end them (the take-over route, when the chat is here).
 
 function summary(s) {
   const prT = prTitle(s);
@@ -142,6 +271,8 @@ function summary(s) {
     rawStatus: s.status, statusSince: s.statusSince, lastActivity: s.lastActivity,
     lastUserAt: s.lastUserAt, lastReplyAt: s.lastReplyAt,
     alive: s.alive, live: s.live, entrypoint: s.live?.entrypoint || s.entrypoint, terminal: termSummary(termOf(s)), entryCount: s.entryCount, loaded: s.loaded, file: s.file, lastHook: s.lastHook,
+    // the other live processes on this chat, and who wrote its last turn — the page's "VS Code too" warning
+    rivals: s.rivals, tailEntrypoint: s.entrypoint, tailEntrypointAt: s.entrypointAt,
     done: isDone(s), doneAt: doneMarks[s.id] || null,
     replying: s.replying, replyError: s.replyError
   };
@@ -354,7 +485,7 @@ function fold(s, line) {
     case 'user': {
       if (line.isSidechain) return false;
       if (line.cwd) s.cwd = line.cwd;
-      if (line.entrypoint) s.entrypoint = line.entrypoint;
+      if (line.entrypoint) { s.entrypoint = line.entrypoint; s.entrypointAt = ts; }
       if (line.gitBranch) s.gitBranch = line.gitBranch;
       if (line.isMeta || line.isCompactSummary) return false;
       const content = line.message?.content;
@@ -386,7 +517,7 @@ function fold(s, line) {
     case 'assistant': {
       if (line.isSidechain) return false;
       if (line.cwd) s.cwd = line.cwd;
-      if (line.entrypoint) s.entrypoint = line.entrypoint;
+      if (line.entrypoint) { s.entrypoint = line.entrypoint; s.entrypointAt = ts; }
       const m = line.message || {};
       const blocks = Array.isArray(m.content) ? m.content : [];
       if (m.model) s.model = m.model;
@@ -433,7 +564,7 @@ function indexFile(file, { full = false } = {}) {
   const id = basename(file, '.jsonl');
   const prev = sessions.get(id);
   const s = newSession(id, file);
-  if (prev) { s.live = prev.live; s.alive = prev.alive; s.lastHook = prev.lastHook; }
+  if (prev) { s.live = prev.live; s.rivals = prev.rivals; s.alive = prev.alive; s.lastHook = prev.lastHook; }
   const start = full || st.size <= TAIL_BYTES ? 0 : st.size - TAIL_BYTES;
   s.loaded = start === 0 || full;
   s.truncatedHead = start > 0;
@@ -509,24 +640,34 @@ function applyLiveness(s) {
 
 function loadRegistry() {
   if (!existsSync(SESSIONS_DIR)) return;
-  const seen = new Set();
+  const found = new Map();   // sessionId -> its registry entries, one per pid
   for (const name of readdirSync(SESSIONS_DIR)) {
     if (!name.endsWith('.json')) continue;
     let reg;
     try { reg = JSON.parse(readFileSync(join(SESSIONS_DIR, name), 'utf8')); } catch { continue; }
     if (!reg.sessionId) continue;
-    seen.add(reg.sessionId);
-    let s = sessions.get(reg.sessionId);
-    if (!s) { s = newSession(reg.sessionId, null); sessions.set(reg.sessionId, s); }
-    const live = { pid: reg.pid, name: reg.name, entrypoint: reg.entrypoint, kind: reg.kind, cwd: reg.cwd, startedAt: reg.startedAt, version: reg.version };
-    const changed = JSON.stringify(live) !== JSON.stringify(s.live);
-    s.live = live;
-    if (!s.cwd && reg.cwd) s.cwd = reg.cwd;
-    linkTermToRegistry(reg, s);
+    if (!found.has(reg.sessionId)) found.set(reg.sessionId, []);
+    found.get(reg.sessionId).push({ pid: reg.pid, name: reg.name, entrypoint: reg.entrypoint, kind: reg.kind, cwd: reg.cwd, startedAt: reg.startedAt, version: reg.version });
+  }
+  for (const [id, lives] of found) {
+    let s = sessions.get(id);
+    if (!s) { s = newSession(id, null); sessions.set(id, s); }
+    for (const l of lives) linkTermToRegistry(l.pid, s);   // a new chat's terminal learns its session id here
+    // Several processes can hold one chat: VS Code mounts a chat twice on its own, or reopens one that was
+    // taken over here. The chat's process is the drawer's own when there is one, else the newest live one
+    // that is not VS Code's (the one you are driving), else the newest live one, else whatever is left (a
+    // dead pid's file lingers until claude's housekeeping). The rest, live only, are its rivals.
+    const mine = [...terms.values()].find(t => t.sessionId === id && t.exited === null)?.pid;
+    const alive = lives.filter(l => pidAlive(l.pid)).sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
+    const live = alive.find(l => l.pid === mine) || alive.find(l => l.entrypoint !== 'claude-vscode') || alive[0] || lives[0];
+    const rivals = alive.filter(l => l !== live);
+    const changed = JSON.stringify(live) !== JSON.stringify(s.live) || JSON.stringify(rivals) !== JSON.stringify(s.rivals);
+    s.live = live; s.rivals = rivals;
+    if (!s.cwd && live.cwd) s.cwd = live.cwd;
     if (applyLiveness(s) || changed) schedulePush(s);
   }
   for (const s of sessions.values()) {
-    if (s.live && !seen.has(s.id)) { s.live = null; if (applyLiveness(s)) schedulePush(s); }
+    if (s.live && !found.has(s.id)) { s.live = null; s.rivals = []; if (applyLiveness(s)) schedulePush(s); }
     else if (s.live && applyLiveness(s)) schedulePush(s);
   }
 }
@@ -647,6 +788,66 @@ function findBin(name, missingNote) {
 // Declarations, not arrows: the PR-status code above calls ghBin().
 function claudeBin() { return findBin('claude', 'replies to stale chats are disabled'); }
 function ghBin() { return findBin('gh', 'PR status colours are disabled'); }
+
+// ---- Claude plan usage, for the cog: the numbers `/usage` shows in the CLI ---------------------------
+// GET https://api.anthropic.com/api/oauth/usage with Claude Code's own OAuth token (the CLI's endpoint and
+// beta header, read off the 2.1.278 binary). The token is where Claude Code keeps it — the macOS Keychain
+// item "Claude Code-credentials" (the first read asks you to allow `security`; *Always Allow* ends that),
+// or ~/.claude/.credentials.json elsewhere. It is used for that one request and never leaves this process:
+// the browser gets percentages and reset times. The second thing here that talks to the network, after gh.
+// USAGE=off disables the route (no keychain prompt, no call); answers are cached for a minute.
+const usageCache = { at: 0, code: 0, body: null };
+function oauthToken(cb) {
+  const parse = raw => { try { const t = JSON.parse(raw)?.claudeAiOauth?.accessToken; return typeof t === 'string' && t ? t : null; } catch { return null; } };
+  const file = join(CLAUDE_DIR, '.credentials.json');
+  if (existsSync(file)) { try { return cb(parse(readFileSync(file, 'utf8')), 'no OAuth token in .credentials.json'); } catch (e) { return cb(null, String(e.message || e)); } }
+  if (process.platform !== 'darwin') return cb(null, 'no ~/.claude/.credentials.json');
+  execFile('/usr/bin/security', ['find-generic-password', '-s', 'Claude Code-credentials', '-w'], { timeout: 60000 }, (err, out) => {
+    if (err) return cb(null, /could not be found/i.test(String(err.message || err)) ? 'no Claude Code login in the keychain' : 'keychain access refused (allow `security` when asked)');
+    cb(parse(out.trim()), 'the keychain item holds no OAuth token — API-key logins have no plan usage');
+  });
+}
+// What the usage endpoint answers, as far as the 2.1.278 binary shows: top-level windows — five_hour,
+// seven_day, seven_day_sonnet/opus ({utilization: 0–100, resets_at}) — plus codename buckets of the same
+// shape (cinder_cove is the CLI's "Claude Code and Cowork credit", a one-time grant; nimbus_quill turned up
+// at 0 % on 2026-09-20 and this CLI has no label for it, so it never shows there) and limits[]: the server's
+// own rows, {kind: session | weekly_all | weekly_scoped, percent, resets_at, scope: {model: {display_name}}}.
+// The CLI draws the known windows and adds "Current week (<model>)" from the weekly_scoped rows behind an
+// allowlist; here every scoped row shows — a per-model allowance (Fable's) is exactly what you want apart.
+// Codename buckets show only once they are non-zero; the zero ones come back under `other`.
+function usageWindows(d) {
+  const windows = [], other = [];
+  const add = (key, label, percent, resetsAt) => { if (typeof percent === 'number' && !windows.some(x => x.key === key)) windows.push({ key, label, percent: Math.round(percent), resetsAt: resetsAt || null }); };
+  const named = { five_hour: 'session · 5 h', seven_day: 'week · all models', seven_day_opus: 'week · Opus', seven_day_sonnet: 'week · Sonnet' };
+  const buckets = { cinder_cove: 'Claude Code & Cowork credit' };
+  for (const [k, label] of Object.entries(named)) if (d[k] && typeof d[k] === 'object') add(k, label, d[k].utilization, d[k].resets_at);
+  for (const row of Array.isArray(d.limits) ? d.limits : []) {
+    if (!row || typeof row !== 'object' || typeof row.percent !== 'number') continue;
+    const who = row.scope?.model?.display_name || row.scope?.surface?.display_name || row.scope?.display_name || row.label;
+    if (!who || row.kind === 'session' || row.kind === 'weekly_all') continue;   // those are the windows above
+    add(`limits:${row.kind}:${who}`, `${row.kind === 'weekly_scoped' ? 'week' : String(row.kind).replace(/_/g, ' ')} · ${who}`, row.percent, row.resets_at);
+  }
+  for (const [k, w] of Object.entries(d)) {
+    if (k in named || k === 'limits' || !w || typeof w !== 'object' || typeof w.utilization !== 'number') continue;
+    if (w.utilization > 0) add(k, buckets[k] || k.replace(/_/g, ' '), w.utilization, w.resets_at); else other.push(k);
+  }
+  return { windows, other };
+}
+function planUsage(cb) {
+  if (process.env.USAGE === 'off') return cb(503, { error: 'usage disabled (USAGE=off)' });
+  if (usageCache.body && Date.now() - usageCache.at < 60000) return cb(usageCache.code, usageCache.body);
+  oauthToken(async (token, why) => {
+    if (!token) return cb(503, { error: why });
+    try {
+      const r = await fetch('https://api.anthropic.com/api/oauth/usage', {
+        headers: { authorization: `Bearer ${token}`, 'anthropic-beta': 'oauth-2025-04-20', accept: 'application/json' }, signal: AbortSignal.timeout(15000) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) return cb(r.status === 401 ? 503 : 502, { error: d?.error?.message || `usage API: HTTP ${r.status}` });
+      Object.assign(usageCache, { at: Date.now(), code: 200, body: { ...usageWindows(d), fetchedAt: new Date().toISOString() } });
+      cb(200, usageCache.body);
+    } catch (e) { cb(502, { error: `usage API: ${e.message || e}` }); }
+  });
+}
 function codeBin() { return findBin('code', '"Focus in VS Code" is disabled'); }
 
 // ---------------------------------------------------------------------------------------------
@@ -740,12 +941,14 @@ function replyToStale(s, text) {
 // The PTY lives here, so the process survives a page reload or a switch to another chat; it does
 // not survive this server. Output is kept in a bounded scrollback and replayed on every attach.
 // A resumed chat keeps its session id; a new one is matched to its session by pid when it registers.
-const TERM_SCROLLBACK = Number(process.env.TERM_SCROLLBACK || 256 * 1024);
+const TERM_SCROLLBACK_LINES = Number(process.env.TERM_SCROLLBACK_LINES || 5000);   // the headless screen's, and the page's xterm keeps as many
+const TERM_SCROLLBACK = Number(process.env.TERM_SCROLLBACK || 256 * 1024);          // the byte buffer, only without @xterm/headless
 const TERM_LINGER_MS = 5 * 60_000;    // keep an exited terminal's output around this long
-const terms = new Map();              // id -> { id, sessionId, cwd, pid, proc, resume, startedAt, exited, chunks, bytes, clients }
+const terms = new Map();              // id -> { id, sessionId, cwd, pid, proc, resume, startedAt, exited, screen, serialize, chunks, bytes, clients }
 let termSeq = 0;
 
-function termOf(s) { for (const t of terms.values()) if (t.sessionId === s.id) return t; return null; }
+/** The chat's terminal — a live one over an exited one still lingering in `terms`. */
+function termOf(s) { let hit = null; for (const t of terms.values()) if (t.sessionId === s.id && (!hit || (hit.exited !== null && t.exited === null))) hit = t; return hit; }
 function termSummary(t) {
   return t ? { id: t.id, sessionId: t.sessionId, cwd: t.cwd, pid: t.pid, resume: t.resume, startedAt: t.startedAt, exited: t.exited } : null;
 }
@@ -755,7 +958,8 @@ function termSummary(t) {
 function termEnv() {
   const env = {};
   for (const [k, v] of Object.entries(process.env)) if (!/^CLAUDE(CODE|_)/.test(k)) env[k] = v;
-  return { ...env, TERM: 'xterm-256color', COLORTERM: 'truecolor', LANG: env.LANG || 'en_US.UTF-8' };
+  // PEIXAIRADA_DRAWER tells a script that its shell ends with this server (launchd.sh and build.sh check it).
+  return { ...env, TERM: 'xterm-256color', COLORTERM: 'truecolor', LANG: env.LANG || 'en_US.UTF-8', PEIXAIRADA_DRAWER: '1' };
 }
 
 /**
@@ -764,18 +968,19 @@ function termEnv() {
  * the PATH that .zshrc builds (mise activates there). `exec` makes claude take over the shell's
  * pid, which is the pid the registry will report.
  */
-// Take a chat over from the terminal it runs in — iTerm, say: end that claude, then resume the chat
-// here. CLI only: nothing respawns a CLI process, so the transcript has one writer again the moment it
-// is gone (the VS Code extension respawns its own — VSCODE_CHAT_ERR). SIGTERM first, which is what
-// closing the terminal amounts to (claude exits and drops its registry entry); SIGKILL if it is still
-// there after 5 s. Whatever Claude was mid-way through is lost, and the page says so before the click.
+// Take a chat over from wherever it runs — iTerm, VS Code: end that claude, then resume the chat here.
+// Nothing respawns a CLI process, and VS Code's extension does not respawn its own either (see inVsCode),
+// so the transcript has one writer again the moment it is gone. SIGTERM first, which is what closing the
+// terminal amounts to (claude exits and drops its registry entry); SIGKILL if it is still there after
+// 5 s. Whatever Claude was mid-way through is lost, and the page says so before the click. The caller
+// re-reads the registry afterwards; this only ends the process.
 const TAKEOVER_WAIT_MS = 10_000;
-function takeOver(s, pid) {
+function endClaude(pid) {
   return new Promise(resolve => {
     try { process.kill(pid, 'SIGTERM'); } catch (e) { return resolve({ code: 500, error: `could not signal pid ${pid}: ${e.message}` }); }
     const t0 = Date.now(); let hard = false;
     const tick = () => {
-      if (!pidAlive(pid)) { s.live = null; applyLiveness(s); schedulePush(s); return resolve({ ok: true }); }
+      if (!pidAlive(pid)) return resolve({ ok: true });
       if (Date.now() - t0 > TAKEOVER_WAIT_MS) return resolve({ code: 504, error: `pid ${pid} is still running` });
       if (!hard && Date.now() - t0 > 5000) { hard = true; try { process.kill(pid, 'SIGKILL'); } catch {} }
       setTimeout(tick, 200);
@@ -797,12 +1002,17 @@ function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30 }) {
     proc = nodePty.spawn('/bin/zsh', ['-l', '-i', '-c', 'exec "$0" "$@"', bin, ...args],
       { name: 'xterm-256color', cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), cwd, env: termEnv() });
   } catch (e) { return { code: 500, error: `could not start a terminal: ${e.message}` }; }
-  const t = { id, sessionId, cwd, pid: proc.pid, proc, resume: !!sessionId, startedAt: new Date().toISOString(), exited: null, chunks: [], bytes: 0, clients: new Set() };
+  const t = { id, sessionId, cwd, pid: proc.pid, proc, resume: !!sessionId, startedAt: new Date().toISOString(), exited: null, screen: null, serialize: null, chunks: [], bytes: 0, clients: new Set() };
+  if (xtHeadless) {
+    t.screen = new xtHeadless.Terminal({ cols: proc.cols, rows: proc.rows, scrollback: TERM_SCROLLBACK_LINES, allowProposedApi: true });
+    t.serialize = new xtHeadless.SerializeAddon(); t.screen.loadAddon(t.serialize);
+  }
   proc.onData(d => {
     const buf = Buffer.from(d, 'utf8');
-    t.chunks.push(buf); t.bytes += buf.length;
-    while (t.bytes > TERM_SCROLLBACK && t.chunks.length > 1) t.bytes -= t.chunks.shift().length;
-    for (const ws of t.clients) if (ws.readyState === 1) ws.send(buf);
+    if (t.screen) t.screen.write(d);
+    else { t.chunks.push(buf); t.bytes += buf.length; while (t.bytes > TERM_SCROLLBACK && t.chunks.length > 1) t.bytes -= t.chunks.shift().length; }
+    // A page still waiting for its snapshot gets what arrives meanwhile afterwards, in order (see attachTermSocket).
+    for (const ws of t.clients) { if (ws.readyState !== 1) continue; if (ws.hold) ws.hold.push(buf); else ws.send(buf); }
   });
   proc.onExit(({ exitCode }) => {
     t.exited = exitCode ?? 0;
@@ -810,7 +1020,7 @@ function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30 }) {
     for (const ws of t.clients) if (ws.readyState === 1) ws.send(msg);
     broadcast('terminal', termSummary(t));
     const s = t.sessionId && sessions.get(t.sessionId); if (s) schedulePush(s);
-    setTimeout(() => { if (terms.get(id) === t) terms.delete(id); }, TERM_LINGER_MS).unref();
+    setTimeout(() => { if (terms.get(id) === t) { terms.delete(id); t.screen?.dispose(); } }, TERM_LINGER_MS).unref();
   });
   terms.set(id, t);
   console.log(`[peixairada] terminal ${id}: claude${args.length ? ' ' + args.join(' ') : ''} in ${cwd} (pid ${proc.pid})`);
@@ -820,17 +1030,20 @@ function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30 }) {
 }
 
 /** A new chat has no session id until claude registers; the pid ties the two together. */
-function linkTermToRegistry(reg, s) {
+function linkTermToRegistry(pid, s) {
   for (const t of terms.values()) {
-    if (t.pid !== reg.pid || t.sessionId === reg.sessionId) continue;
-    t.sessionId = reg.sessionId;
+    if (t.pid !== pid || t.sessionId === s.id) continue;
+    t.sessionId = s.id;
     broadcast('terminal', termSummary(t)); schedulePush(s);
   }
 }
 
-// One WebSocket per attached page. Binary frames carry output (raw PTY bytes, replayed from the
-// scrollback first); text frames are JSON in both directions: {t:'in', d} and {t:'resize', cols, rows}
-// up, {t:'exit', code} down.
+// One WebSocket per attached page. Binary frames carry output — first the screen as it stands (the headless
+// terminal serialized: scrollback, cells, cursor, modes; the raw byte buffer without it), then the PTY's bytes as
+// they come; text frames are JSON in both directions: {t:'in', d} and {t:'resize', cols, rows} up, {t:'exit', code}
+// down. The snapshot is taken once everything the PTY has written so far is parsed (write('') resolves after the
+// queue), and output arriving in between waits in `ws.hold`, so the page sees the screen and then, in order, what
+// followed it.
 const wss = new WebSocketServer({ noServer: true });
 function attachTermSocket(req, socket, head) {
   const m = (req.url || '').match(/^\/api\/terminals\/([\w-]+)\/ws$/);
@@ -838,13 +1051,27 @@ function attachTermSocket(req, socket, head) {
   if (!t) { socket.write('HTTP/1.1 404 Not Found\r\n\r\n'); socket.destroy(); return; }
   wss.handleUpgrade(req, socket, head, ws => {
     t.clients.add(ws);
-    if (t.bytes) ws.send(Buffer.concat(t.chunks));
-    if (t.exited !== null) ws.send(JSON.stringify({ t: 'exit', code: t.exited }));
+    const exitMsg = () => { if (t.exited !== null && ws.readyState === 1) ws.send(JSON.stringify({ t: 'exit', code: t.exited })); };
+    if (t.screen) {
+      ws.hold = [];
+      t.screen.write('', () => {
+        if (ws.readyState !== 1) return;
+        const snap = t.serialize.serialize({ scrollback: TERM_SCROLLBACK_LINES });
+        if (snap) ws.send(Buffer.from(snap, 'utf8'));
+        for (const b of ws.hold) ws.send(b);
+        ws.hold = null;
+        exitMsg();
+        console.log(`[peixairada] terminal ${t.id}: a page attached — screen snapshot ${snap.length} chars, ${t.screen.cols}×${t.screen.rows}`);
+      });
+    } else { if (t.bytes) ws.send(Buffer.concat(t.chunks)); exitMsg(); }
     ws.on('message', data => {
       if (t.exited !== null) return;
       let msg; try { msg = JSON.parse(data.toString()); } catch { return; }
       if (msg.t === 'in' && typeof msg.d === 'string') t.proc.write(msg.d);
-      else if (msg.t === 'resize' && msg.cols > 0 && msg.rows > 0) { try { t.proc.resize(Math.min(500, msg.cols | 0), Math.min(200, msg.rows | 0)); } catch {} }
+      else if (msg.t === 'resize' && msg.cols > 0 && msg.rows > 0) {
+        const cols = Math.min(500, msg.cols | 0), rows = Math.min(200, msg.rows | 0);
+        try { t.proc.resize(cols, rows); t.screen?.resize(cols, rows); } catch {}
+      }
     });
     ws.on('close', () => t.clients.delete(ws));
   });
@@ -932,7 +1159,7 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': m[2] === 'css' ? 'text/css; charset=utf-8' : 'application/javascript; charset=utf-8', 'cache-control': 'public, max-age=86400' });
       return res.end(readFileSync(f));
     }
-    if (req.method === 'GET' && p === '/api/sessions') return json(res, 200, { sessions: sortedSummaries(), projects: projectList(), claudeDir: CLAUDE_DIR, notify: NOTIFY });
+    if (req.method === 'GET' && p === '/api/sessions') return json(res, 200, { sessions: sortedSummaries(), projects: projectList(), pins: pinned, peacock: peacockColors(), claudeDir: CLAUDE_DIR, notify: NOTIFY });
     if (req.method === 'GET' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/messages$/))) {
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
@@ -972,10 +1199,34 @@ const server = createServer(async (req, res) => {
       let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
       const text = typeof body.text === 'string' ? body.text.trim() : '';
       if (!text) return json(res, 400, { error: 'expected {text}' });
-      if (inVsCode(s)) return json(res, 409, { error: VSCODE_CHAT_ERR });
       if (s.alive) return json(res, 409, { error: 'chat is live — resuming it would put a second writer on its transcript' });
       const r = replyToStale(s, text);
       return json(res, r.code, r.ok ? { ok: true, status: 'running' } : { error: r.error });
+    }
+    if (req.method === 'PUT' && p === '/api/pins') {   // the pinned projects, in order — the whole list each time; folder cwds and c:<id>
+      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      if (!Array.isArray(body.pins)) return json(res, 400, { error: 'expected {pins: [key]}' });
+      pinned = [...new Set(body.pins.filter(k => typeof k === 'string' && /^(\/|c:\w+$)/.test(k)).map(k => k.slice(0, 1000)))].slice(0, 200);
+      saveState(); broadcast('pins', { pins: pinned }); pollPeacock();
+      return json(res, 200, { ok: true, pins: pinned });
+    }
+    if ((req.method === 'PUT' || req.method === 'DELETE') && p === '/api/peacock') {   // the board sets a folder's Peacock colour
+      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const cwd = typeof body.cwd === 'string' ? body.cwd.replace(/\/+$/, '') : '';
+      if (!peacockCwds().has(cwd)) return json(res, 400, { error: 'not a folder the board knows' });
+      const color = req.method === 'DELETE' ? null : String(body.color || '').toLowerCase();
+      if (color && !/^#[0-9a-f]{6}$/.test(color)) return json(res, 400, { error: 'color must be #rrggbb' });
+      try {
+        const r = writePeacock(cwd, color);
+        pollPeacock();
+        return json(res, 200, { ok: true, file: r.file, changed: r.changed, tracked: await gitTracked(r.file), color });
+      } catch (e) { return json(res, 500, { error: `could not write ${e.message || e}` }); }
+    }
+    if (req.method === 'PUT' && p === '/api/attach') {   // a dropped file's bytes (browsers only — the app knows the path); ?session=<id>&name=<file>
+      const sid = url.searchParams.get('session') || '', name = url.searchParams.get('name') || 'file';
+      let buf; try { buf = await readRaw(req, ATTACH_MAX); } catch (e) { return json(res, 413, { error: e.message === 'too large' ? `larger than ${ATTACH_MAX / 1048576} MB` : String(e.message || e) }); }
+      try { return json(res, 200, { ok: true, path: saveAttachment(sid, name, buf), bytes: buf.length }); }
+      catch (e) { return json(res, 500, { error: `could not save: ${e.message || e}` }); }
     }
     if (req.method === 'PUT' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/title$/))) {   // a title typed on the board; empty clears it
       const s = sessions.get(m[1]);
@@ -1010,20 +1261,26 @@ const server = createServer(async (req, res) => {
       if (v.error) return json(res, 400, { error: v.error });
       const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       projects[id] = { id, ...v, createdAt: new Date().toISOString() };
-      saveState(); broadcast('projects', { projects: projectList() });
+      saveState(); broadcast('projects', { projects: projectList() }); pollPeacock();
       return json(res, 201, { project: projects[id] });
     }
     if ((req.method === 'PUT' || req.method === 'DELETE') && (m = p.match(/^\/api\/projects\/(\w+)$/))) {
       const prev = projects[m[1]];
       if (!prev) return json(res, 404, { error: 'unknown project' });
-      if (req.method === 'DELETE') { delete projects[m[1]]; saveState(); broadcast('projects', { projects: projectList() }); return json(res, 200, { ok: true }); }
+      if (req.method === 'DELETE') {
+        delete projects[m[1]];
+        if (pinned.includes('c:' + m[1])) { pinned = pinned.filter(k => k !== 'c:' + m[1]); broadcast('pins', { pins: pinned }); }
+        saveState(); broadcast('projects', { projects: projectList() }); pollPeacock();
+        return json(res, 200, { ok: true });
+      }
       let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
       const v = projectInput(body, prev);
       if (v.error) return json(res, 400, { error: v.error });
       projects[m[1]] = { ...prev, ...v };
-      saveState(); broadcast('projects', { projects: projectList() });
+      saveState(); broadcast('projects', { projects: projectList() }); pollPeacock();
       return json(res, 200, { project: projects[m[1]] });
     }
+    if (req.method === 'GET' && p === '/api/usage') { planUsage((code, body) => json(res, code, body)); return; }
     if (req.method === 'GET' && p === '/api/pr') {
       // /files, ?diff=… and the like are fine to receive; the PR is the first four path segments
       const url = ((new URL(req.url, 'http://x').searchParams.get('url') || '').match(/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/) || [''])[0];
@@ -1042,24 +1299,28 @@ const server = createServer(async (req, res) => {
       if (!s) return json(res, 404, { error: 'unknown session' });
       const have = termOf(s);
       if (have && have.exited === null) return json(res, 200, { terminal: termSummary(have) });
-      if (inVsCode(s)) return json(res, 409, { error: VSCODE_CHAT_ERR });
       // Live elsewhere: same rule as replies — a second claude on one transcript is how it gets mangled.
-      if (s.alive) return json(res, 409, { error: `this chat is live in ${s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : 'another terminal'} — open it there` });
+      if (s.alive) return json(res, 409, { error: `this chat is live in ${s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : 'another terminal'} — take it over, or continue it there` });
       let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
       const r = spawnTerm({ cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows });
       return json(res, r.code, r);
     }
-    if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/takeover$/))) {   // end the claude it is live in, resume it here
+    if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/takeover$/))) {   // end every claude it is live in elsewhere, resume it here
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
-      if (inVsCode(s)) return json(res, 409, { error: VSCODE_CHAT_ERR });
-      const have = termOf(s);
-      if (have && have.exited === null) return json(res, 200, { terminal: termSummary(have) });   // it is already here
-      if (!s.alive || !s.live?.pid) return json(res, 409, { error: 'not live anywhere — open a terminal on it instead' });
       let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const have = termOf(s);
+      if (have && have.exited === null) {
+        // Already here: this ends the others — VS Code's, when the chat was opened there again after a take-over.
+        const others = s.rivals.map(r => r.pid);
+        for (const pid of others) { const r = await endClaude(pid); if (!r.ok) return json(res, r.code, { error: r.error }); }
+        loadRegistry();
+        return json(res, 200, { terminal: termSummary(have), ended: others });
+      }
+      if (!s.alive || !s.live?.pid) return json(res, 409, { error: 'not live anywhere — open a terminal on it instead' });
       const cwd = s.live.cwd || s.cwd;   // before the registry entry goes
-      const r = await takeOver(s, s.live.pid);
-      if (!r.ok) return json(res, r.code, { error: r.error });
+      for (const pid of [s.live.pid, ...s.rivals.map(r => r.pid)]) { const r = await endClaude(pid); if (!r.ok) return json(res, r.code, { error: r.error }); }
+      loadRegistry();
       const t = spawnTerm({ cwd, sessionId: s.id, cols: body.cols, rows: body.rows });
       return json(res, t.code, t);
     }
@@ -1080,7 +1341,7 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'GET' && p === '/events') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
-      res.write(`event: snapshot\ndata: ${JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), notify: NOTIFY })}\n\n`);
+      res.write(`event: snapshot\ndata: ${JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, peacock: peacockColors(), notify: NOTIFY })}\n\n`);
       sseClients.add(res);
       const ping = setInterval(() => res.write(': ping\n\n'), 25_000);
       req.on('close', () => { clearInterval(ping); sseClients.delete(res); });
@@ -1105,6 +1366,8 @@ indexing = false;
 // Statuses alone could wait for a chat to be opened; titles cannot — they head every card, so the whole
 // board needs them up front. Batched 40 to a GraphQL call, in the background, once per run.
 for (const s of sessions.values()) queueSessionPrs(s);
+pollPeacock();
+setInterval(pollPeacock, PEACOCK_POLL_MS);
 console.log(`[peixairada] indexed ${sessions.size} sessions (${[...sessions.values()].filter(s => s.alive).length} alive) from ${CLAUDE_DIR} in ${Date.now() - t0}ms`);
 
 const pendingFiles = new Map();
@@ -1123,4 +1386,12 @@ if (existsSync(SESSIONS_DIR)) {
 }
 setInterval(loadRegistry, REGISTRY_POLL_MS);
 
+// A busy port is waited for, not died on: the launchd agent starts while the app's own server still
+// holds 7331, and the handoff is the app quitting a moment later — a crash here would only make
+// launchd throttle and retry with noise in the log.
+server.on('error', e => {
+  if (e.code !== 'EADDRINUSE') throw e;
+  console.error(`[peixairada] port ${PORT} is busy — trying again in 3 s`);
+  setTimeout(() => server.listen(PORT, HOST), 3000);
+});
 server.listen(PORT, HOST, () => console.log(`[peixairada] listening on http://${HOST}:${PORT}  (notify=${NOTIFY})`));
