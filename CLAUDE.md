@@ -90,7 +90,8 @@ refuses to run against the real directory for the same reason.
   down) pull the colour *away* from that ink towards the bottom right, so contrast holds at the buttons. No colour →
   the plain panel header.
 * **The open chat's card and a hovered one are a solid tint** of its colour (`.card.active`, `.card:hover`, 55 %), the
-  rest keep the gradient wash.
+  rest keep the gradient wash **under a plain edge** (2026-09-20 evening): only the clauding card, the hovered one and
+  the open one wear the colour on their border.
   **ALL** (the flat list, `key: 'all'`) is black in both themes — `--all`, through `projColor()`.
 * **Clauding cards first, then ready, done last** (2026-09-20), inside each group **by when *you* last acted**
   (`lastUserAt`), newest first; a project ranks by its newest chat. The ascii fish (`.gsep`, a line of `><>` that slides a fish per cycle, phased by the clock so re-renders do not jolt it) swim
@@ -111,7 +112,8 @@ refuses to run against the real directory for the same reason.
   included, focus at the end), O the project picker, K the chat picker (`chat` mode: every ready or clauding chat,
   every project, the list's order, searched by `chatText()`; ⏎ is `openSession`), N a new chat as steps of the one
   dialog (`new` → `folder` when the project spans several → `env` when `newChatIn()` finds launchers; the + button and the
-  folder pick-list take the same `newChatIn` path), ↑ / ↓ the chat above or below in the list as shown (`hotMove()`).
+  folder pick-list take the same `newChatIn` path), ↑ / ↓ the chat above or below in the list as shown (`hotMove()`),
+  ← / → the tab beside in the strip, wrapping (`hotTab()` → `openTab()`, the tab click's path).
   Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A
   `dialog[open]` swallows them; no chat or no PR is a `note()`. The cog lists every key (`.keys` in `#settings`) —
   keep it in step by hand, with `boardKeys` in main.swift.
@@ -182,6 +184,10 @@ refuses to run against the real directory for the same reason.
 * `.shead { min-width: 0 }` and a fixed `flex-basis` on `.shead h2`; PR chips are direct children of the header.
 * `#chat` has explicit grid rows and `.termmax` repeats them — a new block in the chat pane means touching both.
 * Inline code gets a tint, never a border; card glyphs are inline SVG, not emoji; the working ring is the project's colour.
+* `PROJECT_ICONS` (index.html) marks a project by its shown name wherever the name is written — oracle's crystal ball;
+  `projIcon(name)` goes before the name in the strip, the column, the chat list's header, the chat header, the cards, the pickers.
+* Code folds per chat: `prefs.foldBy[id]` (the header's `{ }` button) over the cog's `foldCode`; `foldOn(id)` is the one
+  rule, used by `md()`. Claude Code cannot fold the code it prints in the drawer — ctrl+o is tool output only.
 * No in-page toasts: alerts are the badge plus a system notification; the app sets `NOTIFY=off` on its own server.
 * Swift: `Result<Void, String>` does not compile; `isReleasedWhenClosed = false` on the window; drop -999 in every
   navigation-failure callback; pin the deployment target (`-target`, `LSMinimumSystemVersion`); an Edit menu or no ⌘V.

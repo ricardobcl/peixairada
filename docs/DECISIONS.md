@@ -451,6 +451,16 @@ Test chats that exist only because of this work (safe to ignore or tick done): *
 
 ### The board
 
+* **A plain edge on ready cards, ⌥⌘←/→ for the tabs, oracle's crystal ball, code folding per chat** (2026-09-20, late
+  evening, Ricardo's list). The 2px border in the project's colour, asked for earlier that day, now stays only where a
+  card is special — clauding (under the ring), hovered, open; the rest are the wash with the panel's line. ← and → walk
+  the strip's tabs through `openTab`, the same function the tab click uses (extracted for it). The oracle folder — the
+  investigations project that runs claude against the clusters — wears a crystal ball next to its name wherever the name
+  is written; `PROJECT_ICONS` is keyed by the shown name, so nothing is configured and a worktree of it inherits the mark.
+  Ricardo asked whether Claude could collapse code: Claude Code's TUI cannot (its only collapse is ctrl+o for tool
+  output; the requests for it are open issues on the CLI), so the answer is the board's transcript fold, which existed
+  as one cog-wide switch and is now per chat as well — the `{ }` button in the header, `prefs.foldBy[id]` over
+  `prefs.foldCode`. In a drawer the transcript is not shown, so the button matters for chats rendered here.
 * **⌥⌘K, the chat picker; ⌥⌘N, a new chat as steps; and folders that launch claude their own way** (2026-09-20,
   evening, Ricardo's list). K fills the ⌥⌘O dialog with every chat that is ready or clauding — done ones out — across the
   projects, in the list's own order, searched by the magnifier's words; ⏎ is `openSession`, which switches project when

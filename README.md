@@ -128,7 +128,8 @@ magnifier under it filters projects (the strip opens to let you type and folds b
 when it lives elsewhere; **⌥⌘N** a **new chat**: pick the project, then the folder when the project spans several,
 then — in a folder whose Taskfile launches claude (see *+ new chat* below) — the environment (the
 same ⌥⌘ family drives the open chat: **⌥⌘C** its claude session, **⌥⌘T** a zsh in its folder, **⌥⌘E** VS Code Web,
-**⌥⌘G** its PR, **⌥⌘↑ / ⌥⌘↓** the chat above or below in the list, see *The chat*) —
+**⌥⌘G** its PR, **⌥⌘↑ / ⌥⌘↓** the chat above or below in the list, **⌥⌘← / ⌥⌘→** the tab beside — chat, zsh, GitHub
+pages, VS Code — see *The chat*) —
 and the **cog** at its bottom opens the settings (show empty & >30d, tool calls, fold code, sound,
 browser alerts, test alert) and, under them, **the list of keys**, for when one slips the mind. The usage card on the fish (a click pins it) is your **Claude plan usage**: the session and weekly windows `/usage` shows,
 plus a weekly row per model the account meters apart (Fable, Sonnet…), read with Claude Code's own login.
@@ -155,7 +156,8 @@ start of the chat filter chips — projects by name, chats by title, branch or p
 emptied box closes it, and the magnifier stays lit while a filter is on.
 
 **Chats** of the selected project, newest first by your own last touch, with a chip per state —
-*ready · clauding · done* — each a toggle, and the set you leave on is remembered. **«** in its header folds the list to a rail and **»** brings
+*ready · clauding · done* — each a toggle, and the set you leave on is remembered. A card is washed in its project's
+colour; only a clauding card (the running light), a hovered one and the open one wear the colour on their edge too. **«** in its header folds the list to a rail and **»** brings
 it back, width and all. **+ new chat** starts one right there: a terminal
 running `claude` in that folder (a pick-list when the project spans several), and the chat pane
 switches to it the moment Claude registers the session. **A folder that launches claude its own way** — a
@@ -262,7 +264,7 @@ is the focus button in the header, no key). **⌥⌘G** opens the chat's PR on G
 one; with several, the ⌥⌘O picker filled with the PR rows under the header (state · `repo#n` · title · age,
 filtered by number or title, ⏎ opens the selected one, the one showing marked *current*) — **every time**, a tab
 already open or not; each PR is a tab of its own (`repo#n`) so nothing reloads. The
-keys work from inside a page's tab too, and **Esc** there brings the chat back. **Esc with a picker or popover up closes
+keys work from inside a page's tab too, **⌥⌘← / ⌥⌘→** walk the strip's tabs (wrapping round), and **Esc** there brings the chat back. **Esc with a picker or popover up closes
 it and nothing else** — in the app it used to leave full screen as well. With no chat open, or no PR in it, a note under the header says so; while
 a dialog is up the keys do nothing. **Double-click the
 title** in the chat header to rename a chat; the name is kept by the board (never written into the
