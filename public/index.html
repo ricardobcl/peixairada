@@ -141,6 +141,10 @@
   .proj .sq { width: 10px; height: 10px; border-radius: 3px; background: var(--repo, var(--nocolor)); }
   .proj.custom .sq { border-radius: 50%; }
   .proj .pname { font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  /* a project's mark (PROJECT_ICONS), inline before its name; in the strip the name runs down, so the mark sits above
+     it — inline still (a block would stack beside the vertical text), with the gap on its physical bottom */
+  .pic { width: 13px; height: 13px; fill: currentColor; vertical-align: -2px; margin-right: 4px; flex: none; }
+  main.compact #projects .pname .pic { display: inline-block; margin: 0 0 4px; width: 14px; height: 14px; }
   .proj .ptime { font-size: 11px; color: var(--muted); }
   .proj .pills { grid-column: 2 / 4; display: flex; gap: 5px; align-items: center; }
   .proj .pills:empty { display: none; }
@@ -745,6 +749,8 @@
   // Inline SVG, not emoji: these sit at ~11px inside muted snippet text, where emoji come with their
   // own colours and weight and stop reading as part of the sentence. `currentColor` keeps them typographic.
   const ICON = {
+    // a crystal ball: the oracle project's mark (see PROJECT_ICONS)
+    oracle: '<svg class="ic pic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 1.5a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm-2 2a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2Z"/><path d="M4.6 12.3h6.8l1.3 2.2H3.3Z"/></svg>',
     you: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 8.2a3.1 3.1 0 1 0 0-6.2 3.1 3.1 0 0 0 0 6.2Zm0 1.4c-3.1 0-5.6 1.7-5.6 3.8V14h11.2v-.6c0-2.1-2.5-3.8-5.6-3.8Z"/></svg>',
     claude: '<svg class="ic burst" viewBox="0 0 24 24" aria-hidden="true"><path d="M11.22 9.10L12.00 0.50L12.78 9.10ZM13.08 9.20L18.76 2.70L14.33 10.11ZM14.52 10.37L22.94 8.45L15.00 11.84ZM15.00 12.16L22.94 15.55L14.52 13.63ZM14.33 13.89L18.76 21.30L13.08 14.80ZM12.78 14.90L12.00 23.50L11.22 14.90ZM10.92 14.80L5.24 21.30L9.67 13.89ZM9.48 13.63L1.06 15.55L9.00 12.16ZM9.00 11.84L1.06 8.45L9.48 10.37ZM9.67 10.11L5.24 2.70L10.92 9.20ZM9.20 12a2.80 2.80 0 1 0 5.60 0a2.80 2.80 0 1 0 -5.60 0Z"/></svg>',
     term: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.6 3.1 6.4 8l-4.8 4.9 1.1 1.1L8.6 8 2.7 2ZM8 12.6h6.4v1.5H8Z"/></svg>',
@@ -784,6 +790,11 @@
     } else for (const p of ['--repo', '--rink', '--rover', '--rover2']) c.style.removeProperty(p);
   };
   const folderName = cwd => cwd ? cwd.split('/').filter(Boolean).pop() || cwd : '(no folder)';
+  // A project's mark, by name, next to the name wherever it is written — the strip, the column, the chat list's header,
+  // the chat header, the cards, the pickers. One so far (2026-09-20, Ricardo): oracle, the investigations folder that
+  // runs claude against the clusters, wears a crystal ball. Keyed by the name the board shows, so a worktree of it too.
+  const PROJECT_ICONS = { oracle: ICON.oracle };
+  const projIcon = name => PROJECT_ICONS[name] || '';
   const STALE_MAX_AGE_MS = 30 * 86400e3; // Claude Code deletes transcripts after 30 idle days by default; mirror that
 
   // ---- projects ----------------------------------------------------------------------
@@ -864,7 +875,7 @@
   function projHtml(p) {
     const pills = pillsHtml(p);
     return `<div class="proj ${p.key === prefs.project ? 'active' : ''} ${p.custom ? 'custom' : ''} ${p.key === ALL ? 'all' : ''} ${p.pinned ? 'pinned' : ''}" data-key="${esc(p.key)}" style="${repoStyle(projColor(p))}"${p.key === ALL ? '' : ' draggable="true"'} title="${esc(p.custom ? (p.cwds.join('\n') || 'no folders yet') : p.key === ALL ? 'Every chat, newest first' : p.key)}">
-      ${sqHtml(p)}<span class="pname">${esc(p.name)}</span><span class="ptime">${p.last ? rel(p.last) : ''}</span>
+      ${sqHtml(p)}<span class="pname">${projIcon(p.name)}${esc(p.name)}</span><span class="ptime">${p.last ? rel(p.last) : ''}</span>
       <span class="pills">${pills}</span>
       ${p.custom ? `<span class="pfold">${esc(p.cwds.length ? p.cwds.map(folderName).join(' · ') : 'no folders')}</span><button class="pedit" title="Edit this project">✎</button>` : ''}
       ${p.key === ALL ? '' : `<button class="ppin ${p.pinned ? 'on' : ''}" title="${p.pinned ? 'Unpin' : 'Pin to the top'} — drag rows to arrange">${ICON.pin}</button>`}
@@ -911,7 +922,7 @@
     // which needs a group above it); inside each group your last touch, newest first. A finished job moves its card
     // into the ready group, where its last prompt puts it.
     const shown = list.filter(s => filterOn(bucket(s))).sort((a, b) => (RANK[bucket(a)] - RANK[bucket(b)]) || byUser(a, b));
-    $('#stitle').innerHTML = `${sqHtml(p, repoStyle(projColor(p)))}<span class="t">${esc(p.name)}</span><span class="n">${list.length}</span>`;
+    $('#stitle').innerHTML = `${sqHtml(p, repoStyle(projColor(p)))}<span class="t">${projIcon(p.name)}${esc(p.name)}</span><span class="n">${list.length}</span>`;
     $('#stitle').title = p.custom ? p.cwds.join('\n') : p.key === ALL ? '' : p.key;
     // new chat: one folder is a button; several (a custom project, All) is a pick-list of folders
     const folders = p.key === ALL ? knownFolders() : p.cwds;
@@ -930,7 +941,7 @@
     const tip = titleTip(s);
     const showRepo = p.key === ALL || p.custom;
     return `<div class="card ${s.status} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''}" data-id="${s.id}" style="${repoStyle(repoColor(s.cwd))}">
-      ${showRepo || s.alive || inVsCode(s) ? `<div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${esc(s.project)}</span>` : ''}<span class="grow"></span>${s.alive && !inVsCode(s) ? `<span class="chip">${entryLabel(s)}</span>${hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : ''}` : ''}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}</div>` : ''}
+      ${showRepo || s.alive || inVsCode(s) ? `<div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${esc(s.project)}</span>` : ''}<span class="grow"></span>${s.alive && !inVsCode(s) ? `<span class="chip">${entryLabel(s)}</span>${hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : ''}` : ''}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}</div>` : ''}
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${esc(s.title)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}<span class="time" title="${esc(timeTip(s))}">${rel(s.lastActivity)}</span>${un ? `<span class="badge">${un}</span>` : ''}${act}</div>
       ${s.prs?.length ? `<div class="cprs">${s.prs.slice(0, 8).map(pr => `<a class="cpr" data-state="${esc(pr.state || '')}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`).join('')}</div>` : ''}
       ${s.lastPrompt ? `<div class="snip you"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
@@ -981,7 +992,7 @@
     } else if (pick.mode === 'chat') {
       pick.list = [...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done' && (!q || chatText(s).includes(q))).sort((a, b) => (RANK[bucket(a)] - RANK[bucket(b)]) || byUser(a, b));
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
-      rows = pick.list.map((s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${mark(s.title)}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t">${rel(userAt(s))}</span></div>`);
+      rows = pick.list.map((s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${mark(s.title)}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t">${rel(userAt(s))}</span></div>`);
     } else if (pick.mode === 'folder') {   // the new chat's folder, from a project that spans several
       pick.list = pick.ctx.cwds.filter(f => !q || folderName(f).toLowerCase().includes(q) || f.toLowerCase().includes(q)).map(f => ({ cwd: f }));
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
@@ -993,7 +1004,7 @@
     } else {   // project — and new, the same rows without ALL and without a named project that has no folder yet
       pick.list = projectList().filter(p => (pick.mode === 'project' || (p.key !== ALL && p.cwds.length)) && (!q || p.name.toLowerCase().includes(q)));
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
-      rows = pick.list.map((p, i) => `<div class="pkrow${sel(i)}" data-i="${i}" style="${repoStyle(projColor(p))}"><span class="sq"></span><span class="n">${mark(p.name)}${p.key === prefs.project ? '<span class="cur">current</span>' : ''}</span><span class="pills">${pillsHtml(p)}</span><span class="t">${p.last ? rel(p.last) : ''}</span></div>`);
+      rows = pick.list.map((p, i) => `<div class="pkrow${sel(i)}" data-i="${i}" style="${repoStyle(projColor(p))}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}${p.key === prefs.project ? '<span class="cur">current</span>' : ''}</span><span class="pills">${pillsHtml(p)}</span><span class="t">${p.last ? rel(p.last) : ''}</span></div>`);
     }
     $('#picklist').innerHTML = rows.join('') || `<div class="none">no ${PICK_NOUN[pick.mode] || 'project'} matches</div>`;
     $('#picklist .pkrow.sel')?.scrollIntoView({ block: 'nearest' });
@@ -1301,7 +1312,7 @@
     // One row: title · dot+age · ··· · buttons. No status word — the dot carries it in colour; what it
     // cannot say is how long ago. The chat's PRs are the block under it, one per row (#prlist).
     const take = takeable(s), armed = take && term.arm === s.id;
-    $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${esc(s.project)}</span><span class="sep">/</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
+    $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">/</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
       <span class="status" title="${esc(statusLabel[s.status] || s.status)}"><span class="dot ${s.status}"></span>${s.statusSince ? rel(s.statusSince) : ''}</span>
       <button class="btn icon dots ${prefs.headDetails ? 'on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}"
         title="${prefs.headDetails ? 'Hide' : 'Show'} path, branch and session details">···</button>
