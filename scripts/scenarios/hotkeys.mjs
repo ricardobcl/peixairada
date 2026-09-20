@@ -1,5 +1,6 @@
 // The ⌥⌘ family on a fixture: G opens the picker on a two-PR chat, ⏎ opens the first, G again moves to the next
-// and back; T, E, V and C hit their routes (stubbed); O is the project picker; the cog lists every key; no chat → a note.
+// and back; T, E, V and C hit their routes (stubbed); O is the project picker; ↓ ↑ walk the list; the cog lists every
+// key; no chat → a note.
 export const meta = { server: true, fixture: 'auto' };
 export default async function (ctx) {
   const [two, plain] = ctx.fixture.chats;
@@ -38,12 +39,20 @@ export default async function (ctx) {
   out.projectPicker = { open: await ctx.evaluate(`document.querySelector('#pick').open`), rows: await ctx.evaluate(`document.querySelectorAll('#picklist .pkrow:not(.pr)').length`) };
   ctx.assert.ok(out.projectPicker.open && out.projectPicker.rows >= 2);
   await ctx.evaluate(`document.querySelector('#pick').close()`);
+  // ↓ and ↑ walk the list as shown: from the two-PR chat to the card beside it and back
+  await ctx.openChat(two.id);
+  const order = await ctx.evaluate(`[...document.querySelectorAll('#slist .card')].map(c => c.dataset.id)`);
+  const at = order.indexOf(two.id), down = at + 1 < order.length, beside = order[down ? at + 1 : at - 1];
+  ctx.assert.ok(beside, 'a card beside it');
+  await ctx.key(down ? 'ArrowDown' : 'ArrowUp'); await ctx.waitFor(`window.peix.state().current === ${JSON.stringify(beside)}`, { what: 'the chat beside it opened' });
+  await ctx.key(down ? 'ArrowUp' : 'ArrowDown'); await ctx.waitFor(`window.peix.state().current === ${JSON.stringify(two.id)}`, { what: 'and back' });
+  out.arrows = { cards: order.length, beside };
   // the plain chat: no PR → a note
   await ctx.openChat(plain.id); await ctx.key('KeyG'); out.noPrNote = await txt('.note');
   ctx.assert.match(out.noPrNote, /No PR/);
   // the cog lists the keys
   out.cog = await ctx.evaluate(`[...document.querySelectorAll('#settings .keys kbd')].map(k => k.textContent)`);
-  ctx.assert.deepEqual(out.cog.slice(0, 6), ['⌥⌘T', '⌥⌘E', '⌥⌘V', '⌥⌘G', '⌥⌘C', '⌥⌘O']);
+  ctx.assert.deepEqual(out.cog.slice(0, 7), ['⌥⌘T', '⌥⌘E', '⌥⌘V', '⌥⌘G', '⌥⌘C', '⌥⌘O', '⌥⌘↑↓']);
   await ctx.shot('cog');
   return out;
 }

@@ -466,16 +466,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       return nil
     }
   }
-  // ⌥⌘ + one of the board's hotkey letters (HOTKEYS in index.html — the same list here, kept by hand), pressed while
-  // the pane has the keyboard: its web views are not the board's, so the page would never hear it. Forwarded through
-  // peixKey; the page asks for the keyboard back ({type: "focus"}) only when it opens a dialog.
+  // ⌥⌘ + one of the board's hotkeys (HOTKEYS in index.html — the same list here, kept by hand): the letters, and ↑ ↓ for
+  // the chat above or below. Pressed while the pane has the keyboard: its web views are not the board's, so the page
+  // would never hear it. Forwarded through peixKey as the page's e.code; the page asks for the keyboard back
+  // ({type: "focus"}) only when it opens a dialog.
   static let boardKeys: Set<String> = ["t", "e", "v", "g", "c", "o"]
+  static func hotkeyCode(_ e: NSEvent) -> String? {
+    if e.keyCode == 126 { return "ArrowUp" }
+    if e.keyCode == 125 { return "ArrowDown" }
+    if let ch = e.charactersIgnoringModifiers?.lowercased(), boardKeys.contains(ch) { return "Key" + ch.uppercased() }
+    return nil
+  }
   private func installHotkeyForwarder() {
     NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
       guard let self = self, e.modifierFlags.intersection([.command, .option, .control, .shift]) == [.command, .option],
-            !self.prPane.isHidden, let ch = e.charactersIgnoringModifiers?.lowercased(), AppDelegate.boardKeys.contains(ch),
+            !self.prPane.isHidden, let code = AppDelegate.hotkeyCode(e),
             let fr = self.window.firstResponder as? NSView, fr.isDescendant(of: self.prPane) else { return e }
-      self.web.evaluateJavaScript("window.peixKey && window.peixKey('Key\(ch.uppercased())')", completionHandler: nil)
+      self.web.evaluateJavaScript("window.peixKey && window.peixKey('\(code)')", completionHandler: nil)
       return nil
     }
   }

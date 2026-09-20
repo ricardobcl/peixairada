@@ -537,6 +537,7 @@
     <kbd>⌥⌘G</kbd><span>its PR on GitHub · the repo when it has none · a picker with several · again for the next</span>
     <kbd>⌥⌘C</kbd><span>this chat's claude session — the pane while it runs here · starts or takes over one</span>
     <kbd>⌥⌘O</kbd><span>project picker</span>
+    <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
     <kbd>⌘+ ⌘− ⌘0</kbd><span>chat and terminal size</span>
     <kbd>⇧⏎</kbd><span>newline in the terminal's prompt</span>
     <kbd>esc</kbd><span>close a picker or popover · the pane, in the app</span>
@@ -934,10 +935,10 @@
   // with one, the picker with several, and the next one when one is already showing (a toggle with two, a cycle
   // with more; each PR is its own tab in the pane, so nothing reloads) —, C the claude session: the >_ button's
   // path (the drawer shown or started, arm-and-take-over included, so a chat live elsewhere takes two presses).
-  // O is the project picker. A modal up (the picker, the project editor) swallows them all. In the app the pane
-  // is a native view with its own web views, so a key pressed there never reaches this page: the shell forwards
-  // ⌥⌘ + these letters through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyV: hotCode, KeyG: hotGh, KeyC: hotClaude, KeyO: () => pickOpen('project') };
+  // O is the project picker; ↑ and ↓ open the chat above or below in the list. A modal up (the picker, the project
+  // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
+  // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
+  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyV: hotCode, KeyG: hotGh, KeyC: hotClaude, KeyO: () => pickOpen('project'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1) };
   const runHotkey = code => { const fn = HOTKEYS[code]; if (fn && !document.querySelector('dialog[open]')) fn(); };
   document.addEventListener('keydown', e => {
     if (!(e.metaKey && e.altKey && !e.ctrlKey && !e.shiftKey && HOTKEYS[e.code])) return;
@@ -955,6 +956,14 @@
     termAction(s);
   }
   function hotVsCode() { const b = $('#webBtn'); if (b) b.click(); else noChat(); }
+  // ⌥⌘↑ / ⌥⌘↓ (2026-09-20): the chat above or below in the list as it stands — filters and order included; from no
+  // chat, or one the list does not show, the top or the bottom; the ends stop.
+  function hotMove(dir) {
+    const cards = [...document.querySelectorAll('#slist .card')]; if (!cards.length) return note($('#shead'), 'No chats in this list');
+    const i = cards.findIndex(c => c.dataset.id === state.current);
+    const next = cards[i < 0 ? (dir > 0 ? 0 : cards.length - 1) : Math.max(0, Math.min(cards.length - 1, i + dir))];
+    if (next.dataset.id !== state.current) openSession(next.dataset.id);
+  }
   function hotCode() { const b = $('#focusBtn'); if (b) b.click(); else noChat(); }
   // ⌥⌘T: a fresh zsh in the chat's folder, inline — the pane's zsh tab, like a new tab in iTerm (2026-09-20). One per
   // chat: started on the first press, shown on the next ones; `exit` or the tab's × ends it. A failure is a note.

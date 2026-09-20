@@ -105,11 +105,13 @@ refuses to run against the real directory for the same reason.
   (edit inline, in the pane), V the real VS Code (the focus button), G the chat's PR on GitHub — one opens straight
   away, several open the picker in `pr` mode, and with one already showing the next opens (a toggle with two, a
   cycle with more; no PR → the folder's GitHub repo, `state.repos` from `git remote`) —, C this chat's claude session (`termAction()`, the `>_` button's path — arm and take over
-  included, focus at the end), O the project picker. Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A
+  included, focus at the end), O the project picker, ↑ / ↓ the chat above or below in the list as shown (`hotMove()`).
+  Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A
   `dialog[open]` swallows them; no chat or no PR is a `note()`. The cog lists every key (`.keys` in `#settings`) —
   keep it in step by hand, with `boardKeys` in main.swift.
 * **In the app the pane is a native view** over the chat column with its own web views: a key pressed there never
-  reaches the page, so `installHotkeyForwarder()` forwards ⌥⌘ + the six letters to `window.peixKey`; the shell
+  reaches the page, so `installHotkeyForwarder()` forwards ⌥⌘ + the letters and the arrows (`hotkeyCode()`, the page's
+  `e.code`) to `window.peixKey`; the shell
   reports `peixPane(visible, left)` so the picker opens beside the pane (`.aside`) and asks for the keyboard
   (`{type:'focus'}`). Esc closes the pane from anywhere (a local monitor, so full screen keeps it).
 * **The pane keeps a web view per page and a tab per page of the current chat** (`tabKeys`, `setTabs`,

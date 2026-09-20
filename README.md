@@ -124,7 +124,7 @@ app — it greys out when the board loses the server, and **hovering it opens th
 magnifier under it filters projects (the strip opens to let you type and folds back when you are done);
 **⌥⌘O** from anywhere opens a project picker the VS Code way — type to filter, ↑↓, ⏎ opens it, esc closes (the
 same ⌥⌘ family drives the open chat: **⌥⌘C** its claude session, **⌥⌘T** a zsh in its folder, **⌥⌘E** VS Code Web,
-**⌥⌘V** VS Code, **⌥⌘G** its PR, see *The chat*) —
+**⌥⌘V** VS Code, **⌥⌘G** its PR, **⌥⌘↑ / ⌥⌘↓** the chat above or below in the list, see *The chat*) —
 and the **cog** at its bottom opens the settings (show empty & >30d, tool calls, fold code, sound,
 browser alerts, test alert) and, under them, **the list of keys**, for when one slips the mind. The usage card on the fish (a click pins it) is your **Claude plan usage**: the session and weekly windows `/usage` shows,
 plus a weekly row per model the account meters apart (Fable, Sonnet…), read with Claude Code's own login.
