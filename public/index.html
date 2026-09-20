@@ -200,7 +200,7 @@
   #slist .none { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 0; }
   /* --repo is reset here on purpose: custom properties inherit, and the chat list sets its own for its edge (the
      black on ALL) — without the reset every colourless card wore that. The card's inline --repo still wins. */
-  .card { --repo: initial; background: var(--panel); border: 1px solid color-mix(in srgb, var(--repo, var(--line)) 70%, var(--line)); border-left: 5px solid var(--repo, var(--nocolor)); border-radius: 10px; padding: 8px 10px 7px; cursor: pointer; min-width: 0; overflow: hidden; position: relative; }
+  .card { --repo: initial; background: var(--panel); border: 2px solid color-mix(in srgb, var(--repo, var(--nocolor)) 85%, var(--line)); border-radius: 10px; padding: 8px 10px 7px; cursor: pointer; min-width: 0; overflow: hidden; position: relative; }
   /* a VS Code chat: the same wash as its pane */
   /* the same wash as the pane, in the project's colour; a card without one stays plain panel */
   .card { background: linear-gradient(165deg, color-mix(in srgb, var(--repo, var(--nocolor)) 22%, var(--panel)), color-mix(in srgb, var(--repo, var(--nocolor)) 6%, var(--panel)) 70%, var(--panel)); }
@@ -218,7 +218,7 @@
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
     animation: ring 1.4s linear infinite; }
   @keyframes ring { to { --spin: 360deg; } }
-  .card:hover { border-color: var(--accent); border-left-color: var(--repo, var(--nocolor)); }
+  .card:hover { border-color: var(--accent); }
   .chip.vsc { color: var(--vscode); border-color: var(--vscode); }
   /* the open chat: a solid tint of its colour under the accent outline (2026-09-20, Ricardo: "a more solid
      background, so we can notice it better"); every other card keeps the gradient wash */
