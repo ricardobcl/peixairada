@@ -84,9 +84,11 @@ refuses to run against the real directory for the same reason.
 * **A project's colour is Peacock's and nothing else** — `pollPeacock()` reads the nearest `.vscode/settings.json`
   at or above every folder it knows, stopping short of `$HOME`; the board can *set* it (`PUT/DELETE /api/peacock`,
   a text edit of the JSONC, tested). No colour → `--nocolor`. The colour square is the picker (`#colorInput`).
-* **The chat header is the project's colour** (2026-09-20): `tintChat()` sets `--repo`, `--rink` and `#chat.tinted`;
-  `--rink` is the ink that reads on it, white or near-black by Peacock's own brightness rule (`inkOn()`), and every
-  control in `.shead` is redrawn in it. No colour → the plain panel header.
+* **The chat header is a gradient of the project's colour** (2026-09-20): `tintChat()` sets `--repo`, `--rink`,
+  `--rover`/`--rover2` and `#chat.tinted`; `--rink` is the ink that reads on it, white or near-black by Peacock's own
+  brightness rule (`inkOn()`), and every control in `.shead` is redrawn in it; the veils (`--rover` across, `--rover2`
+  down) pull the colour *away* from that ink towards the bottom right, so contrast holds at the buttons. No colour →
+  the plain panel header.
 * **The open chat's card is a solid tint** of its colour (`.card.active`, 36 %), the rest keep the gradient wash.
   **ALL** (the flat list, `key: 'all'`) is black in both themes — `--all`, through `projColor()`.
 * **Clauding cards first, then ready, done last** (2026-09-20), inside each group **by when *you* last acted**

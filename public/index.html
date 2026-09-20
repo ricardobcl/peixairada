@@ -304,10 +304,11 @@
      the project"). #chat.tinted while the chat's folder has one; --rink is the ink that reads on it (white or
      near-black by the colour's luminance, set beside --repo by tintChat), and every control in the header is redrawn
      in it. An armed or failed button keeps its warning colour on a panel-coloured pill, so it reads on any project. */
-  /* A gradient, not a block (2026-09-20, Ricardo: "make it a gradient"): the colour itself at the left, and towards the
-     right a veil that pulls it *away* from the ink — darker under white ink, lighter under dark ink (--rover, set by
-     tintChat) — so the buttons at that end keep their contrast whichever ink the colour chose. */
-  #chat.tinted .shead { background: linear-gradient(100deg, transparent 8%, var(--rover)), var(--repo); color: var(--rink); border-bottom-color: color-mix(in srgb, var(--rink) 20%, var(--repo)); }
+  /* A gradient, not a block (2026-09-20, Ricardo: "make it a gradient", then "from top to bottom also"): the colour
+     itself at the top left, and towards the right — and, more lightly, down the header — a veil that pulls it *away*
+     from the ink: darker under white ink, lighter under dark ink (--rover across, --rover2 down, set by tintChat), so
+     the buttons at the far end keep their contrast whichever ink the colour chose; the bottom-right corner is deepest. */
+  #chat.tinted .shead { background: linear-gradient(180deg, transparent 15%, var(--rover2)), linear-gradient(100deg, transparent 8%, var(--rover)), var(--repo); color: var(--rink); border-bottom-color: color-mix(in srgb, var(--rink) 20%, var(--repo)); }
   #chat.tinted .shead :is(.sep, .status, .path, .own, .chip, a) { color: color-mix(in srgb, var(--rink) 78%, transparent); }
   #chat.tinted .shead .chip { border-color: color-mix(in srgb, var(--rink) 35%, transparent); }
   #chat.tinted .shead .btn, #chat.tinted .shead .btn:disabled { color: color-mix(in srgb, var(--rink) 78%, transparent); border-color: color-mix(in srgb, var(--rink) 40%, transparent); }
@@ -752,12 +753,14 @@
     return (299 * ch(0) + 587 * ch(2) + 114 * ch(4)) / 1000 >= 128 ? '#1c1c1a' : '#ffffff';
   };
   // The chat pane in a project's colour: --repo for the header and the transcript's wash, --rink for what reads
-  // on the header, --rover the veil its gradient ends in (away from the ink: black under white ink, white under
-  // dark), .tinted while there is one (CSS cannot ask whether --repo is set).
+  // on the header, --rover and --rover2 the veils its gradient ends in, across and down (away from the ink: black
+  // under white ink, white under dark), .tinted while there is one (CSS cannot ask whether --repo is set).
   const tintChat = color => {
     const c = $('#chat'); c.classList.toggle('tinted', !!color);
-    if (color) { const ink = inkOn(color); c.style.setProperty('--repo', color); c.style.setProperty('--rink', ink); c.style.setProperty('--rover', ink === '#ffffff' ? 'rgb(0 0 0 / .26)' : 'rgb(255 255 255 / .34)'); }
-    else for (const p of ['--repo', '--rink', '--rover']) c.style.removeProperty(p);
+    if (color) {
+      const ink = inkOn(color), veil = a => ink === '#ffffff' ? `rgb(0 0 0 / ${a})` : `rgb(255 255 255 / ${a + .08})`;
+      c.style.setProperty('--repo', color); c.style.setProperty('--rink', ink); c.style.setProperty('--rover', veil(.26)); c.style.setProperty('--rover2', veil(.16));
+    } else for (const p of ['--repo', '--rink', '--rover', '--rover2']) c.style.removeProperty(p);
   };
   const folderName = cwd => cwd ? cwd.split('/').filter(Boolean).pop() || cwd : '(no folder)';
   const STALE_MAX_AGE_MS = 30 * 86400e3; // Claude Code deletes transcripts after 30 idle days by default; mirror that
