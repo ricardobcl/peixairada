@@ -351,14 +351,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       return nil
     }
   }
-  // ⌥⌘ + one of the board's hotkeys (HOTKEYS in index.html — the same list here, kept by hand): the letters, and ↑ ↓ for
-  // the chat above or below. Pressed while the pane has the keyboard: its web views are not the board's, so the page
+  // ⌥⌘ + one of the board's hotkeys (HOTKEYS in index.html — the same list here, kept by hand): the letters, ↑ ↓ for
+  // the chat above or below, ← → for the tab beside. Pressed while the pane has the keyboard: its web views are not the board's, so the page
   // would never hear it. Forwarded through peixKey as the page's e.code; the page asks for the keyboard back
   // ({type: "focus"}) only when it opens a dialog.
   static let boardKeys: Set<String> = ["t", "e", "g", "c", "o", "k", "n"]
   static func hotkeyCode(_ e: NSEvent) -> String? {
     if e.keyCode == 126 { return "ArrowUp" }
     if e.keyCode == 125 { return "ArrowDown" }
+    if e.keyCode == 123 { return "ArrowLeft" }
+    if e.keyCode == 124 { return "ArrowRight" }
     if let ch = e.charactersIgnoringModifiers?.lowercased(), boardKeys.contains(ch) { return "Key" + ch.uppercased() }
     return nil
   }

@@ -558,6 +558,7 @@
     <kbd>⌥⌘K</kbd><span>chat picker — every ready or clauding chat, type to search</span>
     <kbd>⌥⌘N</kbd><span>new chat — pick the project, then the folder, then the environment when its Taskfile launches claude</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
+    <kbd>⌥⌘←→</kbd><span>the tab to the left / right: chat, zsh, GitHub pages, VS Code</span>
     <kbd>⌘+ ⌘− ⌘0</kbd><span>chat and terminal size</span>
     <kbd>⇧⏎</kbd><span>newline in the terminal's prompt</span>
     <kbd>esc</kbd><span>closes a picker or popover · back to the chat from a page's tab · never leaves full screen while one is up</span>
@@ -1023,9 +1024,10 @@
   // path (the drawer shown or started, arm-and-take-over included, so a chat live elsewhere takes two presses).
   // O is the project picker, K the chat picker (every ready or clauding chat, searched), N a new chat (the project, then
   // the folder, then the environment when the folder's Taskfile launches claude); ↑ and ↓ open the chat above or below
-  // in the list. A modal up (the picker, the project editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
+  // in the list; ← and → the tab to the left or right in the strip (chat | zsh | GitHub pages | VS Code, wrapping).
+  // A modal up (the picker, the project editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyO: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyN: () => pickOpen('new'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1) };
+  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyO: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyN: () => pickOpen('new'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1) };
   const runHotkey = code => { if (code === 'Escape') return hotEscape(); const fn = HOTKEYS[code]; if (fn && !document.querySelector('dialog[open]')) fn(); };
   document.addEventListener('keydown', e => {
     if (!(e.metaKey && e.altKey && !e.ctrlKey && !e.shiftKey && HOTKEYS[e.code])) return;
@@ -1060,6 +1062,13 @@
     const i = cards.findIndex(c => c.dataset.id === state.current);
     const next = cards[i < 0 ? (dir > 0 ? 0 : cards.length - 1) : Math.max(0, Math.min(cards.length - 1, i + dir))];
     if (next.dataset.id !== state.current) openSession(next.dataset.id);
+  }
+  // ⌥⌘← / ⌥⌘→ (2026-09-20, Ricardo: "cmd option left/right should change the open chat | shell | GH | vscode panes"):
+  // the tab beside the current one in the strip, wrapping round; the same path as a click on it. The chat alone: a note.
+  function hotTab(dir) {
+    const s = state.sessions.get(state.current); if (!s) return noChat();
+    const keys = tabKeys(s); if (keys.length < 2) return note($('#shead'), 'Only the chat here — ⌥⌘T a zsh, ⌥⌘G its PR, ⌥⌘E the editor');
+    openTab(s, keys[(keys.indexOf(tabOf(s)) + dir + keys.length) % keys.length]);
   }
   // ⌥⌘T: a fresh zsh in the chat's folder, inline — the pane's zsh tab, like a new tab in iTerm (2026-09-20). One per
   // chat: started on the first press, shown on the next ones; `exit` or the tab's × ends it. A failure is a note.
@@ -1543,10 +1552,14 @@
     const b = e.target.closest('.ptab'); if (!b) return;
     const k = b.dataset.tab;
     if (e.target.closest('.x')) return closeTab(s, k);
-    setTab(s, k);
-    if (k.startsWith('gh:')) showPr(k.slice(3));   // its strip under the header too
-    else { syncTerm(s); focusBoard(); if (term.xt && term.id) term.xt.focus(); }
+    openTab(s, k);
   });
+  /** A tab chosen — by a click or ⌥⌘←/→: a GitHub page opens through its strip too; the rest is syncTerm, and the keyboard follows. */
+  function openTab(s, k) {
+    setTab(s, k);
+    if (k.startsWith('gh:')) showPr(k.slice(3));
+    else { syncTerm(s); focusBoard(); if (term.xt && term.id) term.xt.focus(); }
+  }
   // × on a tab: the zsh ends (the server says so, and the tab goes with it); a page is forgotten here — its view
   // lingers in the shell until it needs the room — and the chat tab takes its place.
   function closeTab(s, k) {

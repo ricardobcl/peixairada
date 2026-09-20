@@ -1,6 +1,6 @@
 // The ⌥⌘ family on a fixture: G opens the picker on a two-PR chat, ⏎ opens the first, G again is the picker again
 // with that one marked, a click on the other opens it; T, E and C hit their routes (stubbed), V none; O is the project
-// picker; K the chat picker (search, ⏎ opens across projects); N a new chat (project → environment, stubbed); ↓ ↑ walk the list; Esc closes a picker and is taken; the cog
+// picker; K the chat picker (search, ⏎ opens across projects); N a new chat (project → environment, stubbed); ↓ ↑ walk the list; ← → the tab beside (a real zsh); Esc closes a picker and is taken; the cog
 // lists every key; no chat → a note.
 export const meta = { server: true, fixture: 'auto' };
 export default async function (ctx) {
@@ -29,6 +29,18 @@ export default async function (ctx) {
   ctx.assert.notEqual(out.second, out.first, 'the other row opened the other PR');
   out.peixState = await ctx.peix('state()');
   ctx.assert.match(String(out.peixState.prbar), /\/pull\/\d+$/, 'the strip holds the current PR (pane pages exist only in the app)');
+  // ← and →: the tab beside, wrapping. The chat alone is a note; a real zsh tab (⌥⌘T, ended below) makes two, → wraps to
+  // the chat, ← comes back; × on the zsh tab ends it and the strip goes with it
+  await ctx.key('ArrowRight'); out.tabNote = await txt('.note'); ctx.assert.match(out.tabNote, /Only the chat/);
+  await ctx.evaluate(`document.querySelectorAll('.note').forEach(n => n.remove())`);
+  await ctx.key('KeyT'); await ctx.waitFor(`!!document.querySelector('#ptabs .ptab[data-tab="shell"]')`, { what: 'the zsh tab' });
+  const onTab = () => ctx.evaluate(`document.querySelector('#ptabs .ptab.on')?.dataset.tab`);
+  ctx.assert.equal(await onTab(), 'shell');
+  await ctx.key('ArrowRight'); await ctx.waitFor(`document.querySelector('#ptabs .ptab.on')?.dataset.tab === 'chat'`, { what: '→ wraps to the chat' });
+  await ctx.key('ArrowLeft'); await ctx.waitFor(`document.querySelector('#ptabs .ptab.on')?.dataset.tab === 'shell'`, { what: '← back to the zsh' });
+  out.tabs = { after: await onTab() };
+  await ctx.evaluate(`document.querySelector('#ptabs .ptab[data-tab="shell"] .x').click()`);
+  await ctx.waitFor(`document.querySelector('#ptabs').hidden`, { what: 'the strip gone with the zsh' });
   // T, E and C, routes stubbed so nothing spawns or opens; V is no key any more (the focus button only)
   await ctx.evaluate(`window.__hits = []; const real = window.fetch; window.fetch = (u, o) => { const s = String(u); if (/\\/(terminal|vscode-web|focus|shell)$/.test(s)) { window.__hits.push([s, o?.method]); return Promise.resolve({ ok: false, status: 500, json: async () => ({ error: 'stubbed' }) }); } return real(u, o); }`);
   for (const k of ['KeyT', 'KeyE', 'KeyV', 'KeyC']) { await ctx.key(k); await ctx.sleep(200); }
@@ -99,7 +111,7 @@ export default async function (ctx) {
   out.escIdle = await escOn('body'); ctx.assert.equal(out.escIdle, false, 'with nothing to close, Esc is left alone');
   // the cog lists the keys
   out.cog = await ctx.evaluate(`[...document.querySelectorAll('#settings .keys kbd')].map(k => k.textContent)`);
-  ctx.assert.deepEqual(out.cog.slice(0, 8), ['⌥⌘T', '⌥⌘E', '⌥⌘G', '⌥⌘C', '⌥⌘O', '⌥⌘K', '⌥⌘N', '⌥⌘↑↓']);
+  ctx.assert.deepEqual(out.cog.slice(0, 9), ['⌥⌘T', '⌥⌘E', '⌥⌘G', '⌥⌘C', '⌥⌘O', '⌥⌘K', '⌥⌘N', '⌥⌘↑↓', '⌥⌘←→']);
   await ctx.shot('cog');
   return out;
 }
