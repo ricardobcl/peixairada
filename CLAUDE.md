@@ -68,7 +68,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | PRs mentioned | `pr-link` lines *and* GitHub pull URLs in user/assistant text; most recently mentioned first; `gh api graphql` batched for state and title (one of the two network calls) |
 | Plan usage (the fish) | `GET https://api.anthropic.com/api/oauth/usage` with Claude Code's own OAuth bearer from the keychain item *Claude Code-credentials*; `USAGE=off` disables; the token never reaches the page. → Findings: *plan usage* |
 | Permission prompts | only via hooks (they never reach the transcript), or visibly in the drawer |
-| Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login zsh (mise's PATH); it registers like any CLI run; a new chat is tied to its session by pid |
+| Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login zsh (mise's PATH); it registers like any CLI run; a new chat is tied to its session by pid. **`/clear` (or `/resume`) in the drawer** gives that pid a new session id — the registry file says so — and `linkTermToRegistry` moves the holder to it; the page follows the holder to whatever chat it runs (`terminal` event → `openSession`), the old chat is a stale card |
 
 **Never written: anything under `~/.claude`.** The board is read-only against Claude Code's data. The fake claude
 refuses to run against the real directory for the same reason.
@@ -200,8 +200,8 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   fake claude when asked, launches Chrome with **focus emulation on**, and ends terminals, holders, Chrome and temp
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
-  `assert`. The four in `scripts/scenarios/` are the regression checks for the drawer (re-attach, restart,
-  geometry) and the hotkeys.
+  `assert`. The six in `scripts/scenarios/` are the regression checks for the drawer (re-attach, restart,
+  geometry, `/clear`), the hotkeys and the tab strip.
 * **Test against the fake claude, not real chats**: `scripts/fakeclaude.mjs` via `CLAUDE_BIN` (the test server's
   `fake: true`) is instant and touches nothing. A test against the real `~/.claude` (read-only, `claudeDir` unset)
   must use a stale chat and `DELETE` the terminals it made.

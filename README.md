@@ -238,7 +238,9 @@ registers the session. The process lives on the server: switching chats keeps it
 connects to, so `scripts/launchd.sh restart` leaves every chat running. While the chat runs here, the drawer
 *is* the pane — the rendered transcript would be the same conversation twice — and the transcript comes back on
 its own when the process ends; nothing is hidden or shown by hand. **Ticking a card done ends its claude** (the
-drawer's, or one live elsewhere), so a finished chat costs nothing. **⇧⏎**
+drawer's, or one live elsewhere), so a finished chat costs nothing. **`/clear` in the drawer** starts a new chat in the
+same process, as it does anywhere: the board follows it — the drawer stays, the pane switches to the new chat, and
+the old one is a card without a process (resume it and its old context comes back, in a second process). **⇧⏎**
 is a newline in Claude's prompt, as in iTerm2 or VS Code; ⏎ sends. Chats
 the board does not drive — VS Code, another terminal, stale — always render. **⌘+ / ⌘− / ⌘0** resize
 the chat pane, transcript and terminal together, and the size is remembered. **⌥⌘C** is the `>_` button:

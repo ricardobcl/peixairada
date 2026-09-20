@@ -16,11 +16,11 @@ const CLAUDE_DIR = process.env.CLAUDE_DIR;
 if (!CLAUDE_DIR || CLAUDE_DIR === join(homedir(), '.claude')) { console.error('fakeclaude: CLAUDE_DIR must point at a fixture, never the real ~/.claude'); process.exit(2); }
 const args = process.argv.slice(2);
 const arg = f => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : null; };
-const sessionId = arg('--resume') || randomUUID();
+let sessionId = arg('--resume') || randomUUID();
 const oneShot = arg('-p');
 const cwd = process.cwd();
 const slug = cwd.replace(/[/.]/g, '-');
-const projDir = join(CLAUDE_DIR, 'projects', slug), file = join(projDir, `${sessionId}.jsonl`);
+const projDir = join(CLAUDE_DIR, 'projects', slug); let file = join(projDir, `${sessionId}.jsonl`);
 const sessDir = join(CLAUDE_DIR, 'sessions'), regFile = join(sessDir, `${process.pid}.json`);
 mkdirSync(projDir, { recursive: true }); mkdirSync(sessDir, { recursive: true });
 const now = () => new Date().toISOString();
@@ -107,6 +107,15 @@ const history = [];
 if (existsSync(file)) for (const raw of readFileSync(file, 'utf8').split('\n')) { try { const j = JSON.parse(raw); const t = j.message?.content?.find?.(c => c.type === 'text')?.text; if (t && (j.type === 'user' || j.type === 'assistant')) history.push(`${j.type === 'user' ? '\x1b[36m>\x1b[0m' : '\x1b[32m●\x1b[0m'} ${t.split('\n')[0].slice(0, 200)}`); } catch {} }
 out('\x1b[2J\x1b[H');
 say([`\x1b[1mfake claude\x1b[0m · session ${sessionId}${arg('--resume') ? ' (resumed)' : ''} · ${cwd}`, ...history.slice(-8), '']);
+/** /clear, as Claude Code does it: the same process goes on under a new session id — the registry file says so — with a
+ *  fresh transcript (written on the next turn) and the screen started over. The board must follow the pid to the new
+ *  chat (2026-09-20). */
+function clearSession() {
+  sessionId = randomUUID(); file = join(projDir, `${sessionId}.jsonl`); parent = null; tokens = 12300; dollars = 0;
+  writeFileSync(regFile, JSON.stringify({ pid: process.pid, sessionId, cwd, startedAt: Date.now(), version: 'fake', kind: 'interactive', entrypoint: 'cli', name: 'fake-' + basename(cwd), status: 'idle' }));
+  out('\x1b[2J\x1b[H');
+  say([`\x1b[1mfake claude\x1b[0m · session ${sessionId} (cleared) · ${cwd}`, '']);
+}
 const timer = setInterval(tick, 1000);
 process.stdout.on('resize', drawLive);
 let ctrlC = 0, busy = false;
@@ -118,6 +127,7 @@ process.stdin.on('data', async d => {
     if (ch === '\r' || ch === '\n') {
       const text = input.trim(); input = '';
       if (text === '/exit' || text === '/quit') bye(0);
+      if (text === '/clear') { clearSession(); continue; }
       if (text && !busy) { busy = true; await turn(text); busy = false; } else drawLive();
       continue;
     }

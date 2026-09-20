@@ -1799,7 +1799,7 @@
     if (s0 && !inProject(s0, projectStub(prefs.project))) { prefs.project = s0.cwd || '?'; savePrefs(); }
     renderBoard();
     if (s0) renderHead(s0);
-    syncTerm(s0 || { id });   // the tab it was on comes back at once — a page in the pane, its zsh; the drawer after the fetch
+    if (s0) syncTerm(s0);   // the tab it was on comes back at once — a page in the pane, its zsh; the drawer after the fetch (a chat not yet in the snapshot keeps what is attached until then)
     const r = await fetch(`/api/sessions/${id}/messages`); if (!r.ok) return;
     const data = await r.json();
     state.sessions.set(id, data.session); state.entries = data.entries; renderHead(data.session); renderLog(); syncTerm(data.session);
@@ -1851,7 +1851,11 @@
     es.addEventListener('terminal', e => {
       const t = JSON.parse(e.data);
       if (t.id !== term.id) return;
-      if (t.sessionId && !term.sessionId) { term.sessionId = t.sessionId; openSession(t.sessionId); }
+      // The holder's chat changed: a new chat just registered, or /clear (or /resume) in the drawer gave the same
+      // process a new session id and the server re-linked the holder (2026-09-20, Ricardo: "/clear … closes this
+      // chat"). Follow it — the drawer stays attached, the pane shows the chat it now runs; the old card is a stale
+      // chat now, and opening it again would resume the old context in a second process.
+      if (t.sessionId && t.sessionId !== term.sessionId) { term.sessionId = t.sessionId; if (state.current !== t.sessionId) openSession(t.sessionId); }
       if (t.exited !== null && term.id === t.id) termEnded(t.exited);
     });
     es.addEventListener('alert', e => onAlert(JSON.parse(e.data)));
