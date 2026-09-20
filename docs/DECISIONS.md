@@ -15,6 +15,16 @@ this file is the *why* and the *state*. Last updated 2026-09-20 (late night).
 * **The header's veil runs down as well as across** (Ricardo: "the header gradient, make it from top to bottom
   also"): a second, lighter layer (`--rover2`) from transparent at the top to the veil at the bottom, so the
   bottom-right corner is the deepest and the title at the top left the purest.
+* **The fish stuttered every few seconds** (Ricardo: "the animation for the fish stutters after a few seconds"): the
+  list is rebuilt by `innerHTML` on every SSE update, so the separator — and its CSS animation — was new each time,
+  and the negative delay from the clock could not hide the restart. Now one node (`fishEl`) is kept and swapped in
+  for a stand-in after every render, and its animation is the Web Animations API's with `startTime = 0`: it carries
+  on while the node is out of the document and is phased to the document clock, so the same fish is at the same
+  place whenever the node comes back. Measured through four re-renders: the same node, one animation, x on the
+  clock to a tenth of a pixel.
+* **⌥⌘G with several PRs is always the picker** (Ricardo: "always open the menu to choose the PR when there's more
+  than 1, even if the web tab is already open"): the toggle/cycle on a second press is gone; the picker marks the
+  one showing *current* and the other rows open theirs.
 
 ## Decisions of 2026-09-20, late night — five more: pages as tabs, the cards' own colour, the header's gradient, ⌥⌘↑↓, fish
 
