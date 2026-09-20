@@ -89,7 +89,8 @@ refuses to run against the real directory for the same reason.
   brightness rule (`inkOn()`), and every control in `.shead` is redrawn in it; the veils (`--rover` across, `--rover2`
   down) pull the colour *away* from that ink towards the bottom right, so contrast holds at the buttons. No colour →
   the plain panel header.
-* **The open chat's card is a solid tint** of its colour (`.card.active`, 36 %), the rest keep the gradient wash.
+* **The open chat's card and a hovered one are a solid tint** of its colour (`.card.active`, `.card:hover`, 55 %), the
+  rest keep the gradient wash.
   **ALL** (the flat list, `key: 'all'`) is black in both themes — `--all`, through `projColor()`.
 * **Clauding cards first, then ready, done last** (2026-09-20), inside each group **by when *you* last acted**
   (`lastUserAt`), newest first; a project ranks by its newest chat. The ascii fish (`.gsep`, a line of `><>` that slides a fish per cycle, phased by the clock so re-renders do not jolt it) swim
