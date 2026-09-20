@@ -307,7 +307,7 @@ function summary(s) {
     agents: s.agentsRunning || 0,   // sub-agents at work — what keeps the status 'working' past the main turn's end
     rawStatus: s.status, statusSince: s.statusSince, lastActivity: s.lastActivity,
     lastUserAt: s.lastUserAt, lastReplyAt: s.lastReplyAt,
-    alive: s.alive, live: s.live, entrypoint: s.live?.entrypoint || s.entrypoint, terminal: termSummary(termOf(s)), entryCount: s.entryCount, loaded: s.loaded, file: s.file, lastHook: s.lastHook,
+    alive: s.alive, live: s.live, entrypoint: s.live?.entrypoint || s.entrypoint, terminal: termSummary(termOf(s)), shell: termSummary(shellOf(s)), entryCount: s.entryCount, loaded: s.loaded, file: s.file, lastHook: s.lastHook,
     // the other live processes on this chat, and who wrote its last turn — the page's "VS Code too" warning
     rivals: s.rivals, tailEntrypoint: s.entrypoint, tailEntrypointAt: s.entrypointAt,
     done: isDone(s), doneAt: doneMarks[s.id] || null,
@@ -1020,10 +1020,12 @@ let termSeq = 0;
 const termsAvailable = () => !!nodePty && existsSync(HOLDER);
 
 /** The chat's terminal — a live one over an exited one still lingering in `terms`. */
-function termOf(s) { let hit = null; for (const t of terms.values()) if (t.sessionId === s.id && (!hit || (hit.exited !== null && t.exited === null))) hit = t; return hit; }
+function termOf(s) { let hit = null; for (const t of terms.values()) if (t.sessionId === s.id && !t.shell && (!hit || (hit.exited !== null && t.exited === null))) hit = t; return hit; }
+/** The chat's zsh (⌥⌘T), the same way. */
+function shellOf(s) { let hit = null; for (const t of terms.values()) if (t.sessionId === s.id && t.shell && (!hit || (hit.exited !== null && t.exited === null))) hit = t; return hit; }
 function termSummary(t) {
   return t ? {
-    id: t.id, sessionId: t.sessionId, cwd: t.cwd, pid: t.pid, holderPid: t.holderPid, resume: t.resume, startedAt: t.startedAt, exited: t.exited,
+    id: t.id, sessionId: t.sessionId, cwd: t.cwd, pid: t.pid, holderPid: t.holderPid, resume: t.resume, shell: !!t.shell, startedAt: t.startedAt, exited: t.exited,
     cols: t.cols, rows: t.rows, clients: t.clients.size, connected: !!(t.sock && !t.sock.destroyed), lastSnapshotChars: t.lastSnap,
   } : null;
 }
@@ -1113,16 +1115,16 @@ function onHolderGone(t) {
  * are on the PATH that .zshrc builds (mise activates there); `exec` makes claude take over the shell's pid, which
  * is the pid the registry will report.
  */
-async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30 }) {
+async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell = false }) {
   if (!termsAvailable()) return { code: 501, error: 'node-pty is not available — run npm install and restart the server' };
-  const bin = claudeBin();
+  const bin = shell ? '/bin/zsh' : claudeBin();   // a shell holder runs zsh itself (see termhold.mjs); the chat's is claude
   if (!bin) return { code: 503, error: 'claude binary not found — set CLAUDE_BIN to its path' };
   if (!cwd) return { code: 400, error: 'no cwd known for this chat' };
   if (!existsSync(cwd)) return { code: 409, error: `cwd no longer exists: ${cwd}` };
-  const args = sessionId ? ['--resume', sessionId] : [];
+  const args = shell || !sessionId ? [] : ['--resume', sessionId];
   const id = `t${++termSeq}-${Date.now().toString(36)}`;
   try { mkdirSync(TERMS_DIR, { recursive: true }); } catch {}
-  const spec = { id, sessionId, cwd, bin, args, cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), resume: !!sessionId, startedAt: new Date().toISOString() };
+  const spec = { id, sessionId, cwd, bin, args, shell, cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), resume: !shell && !!sessionId, startedAt: new Date().toISOString() };
   const logFile = join(TERMS_DIR, `${id}.log`);
   let child;
   try {
@@ -1145,7 +1147,7 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30 }) {
     }
   }
   terms.set(id, t);
-  console.log(`[peixairada] terminal ${id}: claude${args.length ? ' ' + args.join(' ') : ''} in ${cwd} (pid ${t.pid}, holder ${t.holderPid})`);
+  console.log(`[peixairada] terminal ${id}: ${shell ? 'zsh' : 'claude' + (args.length ? ' ' + args.join(' ') : '')} in ${cwd} (pid ${t.pid}, holder ${t.holderPid})`);
   broadcast('terminal', termSummary(t));
   const s = sessionId && sessions.get(sessionId); if (s) schedulePush(s);
   return { code: 201, terminal: termSummary(t) };
@@ -1176,7 +1178,7 @@ async function adoptHolders() {
 /** A new chat has no session id until claude registers; the pid ties the two together, and the holder is told. */
 function linkTermToRegistry(pid, s) {
   for (const t of terms.values()) {
-    if (t.pid !== pid || t.sessionId === s.id) continue;
+    if (t.shell || t.pid !== pid || t.sessionId === s.id) continue;
     t.sessionId = s.id; holderSend(t, { t: 'meta', sessionId: s.id });
     broadcast('terminal', termSummary(t)); schedulePush(s);
   }
@@ -1312,19 +1314,16 @@ const server = createServer(async (req, res) => {
       queueSessionPrs(cur);   // opening a chat is what refreshes its PR statuses; the SSE push carries them in
       return json(res, 200, { session: summary(cur), entries: cur.entries });
     }
-    // ⌥⌘T: a fresh zsh in the chat's folder — `open -a iTerm <folder>`, which iTerm answers with a new tab (a window
-    // when it has none) whose shell starts there; Terminal.app takes the same call. No AppleScript, so no Automation
-    // grant is asked of a launchd agent. The board's own drawer stays claude's.
+    // ⌥⌘T: a zsh in the chat's folder, in the pane's zsh tab — a holder like the claude one (`zsh -l -i` in the PTY),
+    // one per chat, alive until `exit` or a DELETE. The inline "new tab in iTerm" (2026-09-20).
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/shell$/))) {
       const s = sessions.get(m[1]);
-      const cwd = s?.cwd || s?.live?.cwd;
-      if (!cwd) return json(res, 400, { error: 'no cwd known' });
-      if (process.platform !== 'darwin') return json(res, 501, { error: 'macOS only' });
-      const app = ['iTerm', 'Terminal'].find(a => existsSync(`/Applications/${a}.app`) || existsSync(`/System/Applications/Utilities/${a}.app`));
-      if (!app) return json(res, 501, { error: 'neither iTerm nor Terminal found' });
-      execFile('/usr/bin/open', ['-a', app, cwd], { timeout: 15_000 }, (err, _out, stderr) =>
-        err ? json(res, 500, { error: String(stderr || err.message || err).trim() }) : json(res, 200, { ok: true, cwd, app }));
-      return;
+      if (!s) return json(res, 404, { error: 'unknown session' });
+      const have = shellOf(s);
+      if (have && have.exited === null) return json(res, 200, { terminal: termSummary(have) });
+      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const r = await spawnTerm({ cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows, shell: true });
+      return json(res, r.code, r);
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/focus$/))) {
       const s = sessions.get(m[1]);
@@ -1401,7 +1400,14 @@ const server = createServer(async (req, res) => {
       if (!s) return json(res, 404, { error: 'unknown session' });
       let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
       const done = body.done !== false;
-      if (done) doneMarks[s.id] = new Date().toISOString(); else delete doneMarks[s.id];
+      if (done) {
+        doneMarks[s.id] = new Date().toISOString();
+        // Done means done: the claude behind it stops too (2026-09-20, Ricardo: "marking a card as Done should
+        // kill/archive the claude session to not waste resources") — the drawer's, and one live elsewhere (SIGTERM,
+        // as closing that terminal would; a VS Code tab goes dead). Not awaited: the registry notices on its own.
+        for (const t of terms.values()) if (t.sessionId === s.id && t.exited === null) killTerm(t);
+        if (s.alive && s.live?.pid) for (const pid of [s.live.pid, ...(s.rivals || []).map(r => r.pid)]) endClaude(pid).then(() => loadRegistry());
+      } else delete doneMarks[s.id];
       for (const id of Object.keys(doneMarks)) if (!sessions.has(id)) delete doneMarks[id]; // prune forgotten sessions
       saveState(); schedulePush(s);
       return json(res, 200, { ok: true, done: isDone(s) });

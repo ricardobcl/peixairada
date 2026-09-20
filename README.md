@@ -51,7 +51,7 @@ That's it. That's the whole setup. Want it always there?
 
 ```sh
 scripts/launchd.sh install   # starts at login, restarts if it dies; hands over from a running app
-scripts/launchd.sh restart   # after a server.mjs change (ends the drawers; the app reattaches by itself)
+scripts/launchd.sh restart   # after a server.mjs change (the drawers survive; the app reattaches by itself)
 scripts/launchd.sh status    # …also: logs · uninstall · print
                              # PORT=8000 scripts/launchd.sh install  to pick another port
 ```
@@ -233,18 +233,19 @@ everything it can do you can do here — permission prompts, questions, plan mod
 pasting — and it registers and writes its transcript exactly like a Terminal.app run, so the card
 above walks Stale → Clauding → Ready and the rendered chat keeps up. Read above, type below. **+**
 starts a *new* chat in the same repo the same way; the pane switches to it as soon as Claude
-registers the session. The process lives on the server: **hide** keeps it running, switching chats
-keeps it running, **end** stops it — and since 2026-09-20 it survives a server restart: each drawer is a small
-holder process of its own that the server connects to, so `scripts/launchd.sh restart` leaves every chat running. While the chat runs
-here, the drawer *is* the pane: the rendered transcript above it would be the same conversation twice,
-so it steps aside. **show chat** splits the pane again (so does a drag on the divider), **hide** shows
-the transcript while claude keeps running, and it comes back on its own when the process ends. **⇧⏎**
+registers the session. The process lives on the server: switching chats keeps it running, and since
+2026-09-20 it survives a server restart: each drawer is a small holder process of its own that the server
+connects to, so `scripts/launchd.sh restart` leaves every chat running. While the chat runs here, the drawer
+*is* the pane — the rendered transcript would be the same conversation twice — and the transcript comes back on
+its own when the process ends; nothing is hidden or shown by hand. **Ticking a card done ends its claude** (the
+drawer's, or one live elsewhere), so a finished chat costs nothing. **⇧⏎**
 is a newline in Claude's prompt, as in iTerm2 or VS Code; ⏎ sends. Chats
 the board does not drive — VS Code, another terminal, stale — always render. **⌘+ / ⌘− / ⌘0** resize
 the chat pane, transcript and terminal together, and the size is remembered. **⌥⌘C** is the `>_` button:
 the chat's claude session in the terminal, opened or started, and the keyboard lands in it (on a chat live
 elsewhere the first press arms the take-over and the second ends that claude, as two clicks would). **⌥⌘T** is a
-fresh zsh in the chat's folder — a new iTerm tab (Terminal without iTerm); the drawer stays claude's. **⌥⌘E**
+fresh zsh in the chat's folder, inline: a *zsh* tab appears beside the chat (*claude* while it runs here, *chat*
+otherwise), one per chat, `exit` or its × ends it, and ⌥⌘C brings the claude session back. **⌥⌘E**
 opens the folder in VS Code Web, in the pane — the *web* button's route; **⌥⌘V** opens the chat in the real VS
 Code — the focus button's. **⌥⌘G** opens the chat's PR on GitHub — straight away with
 one; with several, the ⌥⌘O picker filled with the PR rows under the header (state · `repo#n` · title · age,

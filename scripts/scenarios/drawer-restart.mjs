@@ -4,7 +4,7 @@ export const meta = { server: true, fake: true, fixture: 'auto' };
 export default async function (ctx) {
   const chat = ctx.fixture.chats[1];
   await ctx.openChat(chat.id);
-  await ctx.key('KeyT');
+  await ctx.key('KeyC');                       // ⌥⌘C: resume it in the drawer
   await ctx.waitPrompt();
   const before = (await ctx.server.terminals())[0];
   ctx.log(`terminal ${before.id}: pid ${before.pid}, holder ${before.holderPid} — restarting the server under it`);

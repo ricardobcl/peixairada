@@ -100,3 +100,28 @@ test('a new chat in a folder is tied to its session by pid when the fake registe
     assert.equal(meta.sessionId, linked, 'and told its holder, so an adoption after a restart knows it too');
   } finally { await srv.stop(); }
 });
+
+test('a zsh drawer: a holder running zsh -l -i in the chat folder, beside the claude one', { timeout: 40_000 }, async () => {
+  const fx = defaultFixture(mkdtempSync(join(tmpdir(), 'peix-fx-')), { cwdA: process.cwd(), cwdB: tmpdir() });
+  const chat = fx.chats[1];
+  const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
+  try {
+    const r = await srv.api(`api/sessions/${chat.id}/shell`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cols: 100, rows: 30 }) });
+    assert.equal(r.status, 201, JSON.stringify(r.body));
+    const t = r.body.terminal; assert.equal(t.shell, true); assert.equal(t.sessionId, chat.id); assert.equal(t.resume, false);
+    const again = await srv.api(`api/sessions/${chat.id}/shell`, { method: 'POST' });
+    assert.equal(again.status, 200); assert.equal(again.body.terminal.id, t.id, 'one zsh per chat');
+    const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
+    assert.equal(s.shell?.id, t.id, 'the chat carries its zsh'); assert.equal(s.terminal, null, 'and it is not its claude drawer');
+    assert.equal(s.alive, false, 'a shell is no claude: the chat is not live');
+    const a = attach(srv.url, t.id, { until: 'peix-shell-22', timeout: 20_000 });
+    await sleep(2500);   // the login shell's rc files
+    a.ws.send2({ t: 'in', d: 'echo peix-shell-$((20+2))\r' });
+    const out = await a;
+    assert.ok(out.all.includes('peix-shell-22'), `the zsh ran the command: ${JSON.stringify(out.all.slice(-300))}`);
+    const d = await srv.api(`api/terminals/${t.id}`, { method: 'DELETE' }); assert.equal(d.status, 200);
+    let ended = null;
+    for (let i = 0; i < 40 && ended === null; i++) { await sleep(150); ended = (await srv.terminals()).find(x => x.id === t.id)?.exited ?? null; }
+    assert.notEqual(ended, null, 'the zsh ended');
+  } finally { await srv.stop(); }
+});

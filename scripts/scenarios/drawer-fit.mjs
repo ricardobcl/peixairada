@@ -4,7 +4,7 @@ export const meta = { server: true, fake: true, fixture: 'auto' };
 export default async function (ctx) {
   const chat = ctx.fixture.chats[1];
   await ctx.openChat(chat.id);
-  await ctx.key('KeyT'); await ctx.waitPrompt(); await ctx.sleep(500);
+  await ctx.key('KeyC'); await ctx.waitPrompt(); await ctx.sleep(500);
   const fits = async label => {
     const d = await ctx.peix('term()');
     ctx.assert.ok(d.screen.w <= d.body.w + 0.5 && d.screen.h <= d.body.h + 0.5, `${label}: the screen (${d.screen.w}×${d.screen.h}) fits the body (${d.body.w}×${d.body.h})`);

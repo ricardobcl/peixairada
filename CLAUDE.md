@@ -100,8 +100,8 @@ refuses to run against the real directory for the same reason.
 
 ## Hotkeys and the pane
 
-* **`HOTKEYS` in index.html is the whole ⌥⌘ family**: T a fresh zsh in this chat's folder (`hotShell()` →
-  `POST /api/sessions/:id/shell` → `open -a iTerm <cwd>`, Terminal without iTerm), E the VS Code *Web* button
+* **`HOTKEYS` in index.html is the whole ⌥⌘ family**: T this chat's zsh tab (`hotShell()` →
+  `POST /api/sessions/:id/shell`, a holder running `zsh -l -i` in its folder, `s.shell`), E the VS Code *Web* button
   (edit inline, in the pane), V the real VS Code (the focus button), G the chat's PR on GitHub — one opens straight
   away, several open the picker in `pr` mode, and with one already showing the next opens (a toggle with two, a
   cycle with more; no PR → the folder's GitHub repo, `state.repos` from `git remote`) —, C this chat's claude session (`termAction()`, the `>_` button's path — arm and take over
@@ -127,6 +127,12 @@ refuses to run against the real directory for the same reason.
   (`adoptHolders`), and tells a holder its session id once the registry reveals it. An exited holder lingers
   `TERM_LINGER_MS` with its last screen, then removes its files. The socket path must stay under 104 bytes — test
   state dirs are short on purpose.
+* **The drawer is automatic** (2026-09-20): it is the pane's body while the chat runs here and goes when the process
+  exits (`termEnded`) — no header, no hide/end/show-chat, no split; `syncTerm` on every open and update. **⌥⌘T is
+  a zsh tab** beside it: a holder with `shell: true` (`zsh -l -i` in the chat's folder; `shellOf()`, `s.shell` on the
+  summary, one per chat, `exit` or the tab's × ends it); `#ptabs` shows only while one lives, and the tab a chat is
+  on is page state (`tabs`). **Done ends the chat's processes** — the drawer's holders and a claude live elsewhere
+  (SIGTERM) — from the `done` route.
 * **A page that attaches gets the screen serialized, then only what followed it** (`ws.hold` until the snapshot,
   flushed minus `seq ≤ upto`). It replaced a raw byte replay that was capped and cut by chunk: Claude Code paints
   its prompt box and status bar once and then rewrites only changed cells, so a truncated replay showed blank rules
@@ -190,8 +196,8 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   must use a stale chat and `DELETE` the terminals it made.
 * **Two measurement traps** (2026-09-20): Claude Code stops rendering while the terminal reports focus lost — a
   headless page's `focus()` is not a focus without `Emulation.setFocusEmulationEnabled` (the runner sets it); and a
-  chat switch as a re-attach resizes the drawer by itself (the other chat's reply box) and masks results — hide
-  + `>_` is the clean re-attach.
+  chat switch as a re-attach resizes the drawer by itself (the other chat's reply box) and masks results — ⌥⌘T then
+  ⌥⌘C (the zsh tab and back) is the clean re-attach.
 * The page's script is one IIFE: read it through `window.peix` (`state()`, `session(id)`, `sessions()`, `prefs()`,
   `term()`, `screen()`) or the DOM; `#termBtn.click()` spawns, an `InputEvent` on `#termBody textarea` types.
 * Server logic without a browser: `npm test` (the terminals test is the reference for driving the API and the

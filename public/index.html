@@ -103,11 +103,11 @@
   main.scompact #shd { flex-direction: column; padding: 8px 0; gap: 8px; min-height: 0; }
   #splitter { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--panel); }
   #splitter:hover, #splitter.drag { background: var(--accent); }
-  #chat { --repo: initial; flex: 1; min-width: 320px; display: grid; grid-template-rows: auto auto auto auto 1fr auto auto; grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  #chat { --repo: initial; flex: 1; min-width: 320px; display: grid; grid-template-rows: auto auto auto auto auto 1fr auto auto; grid-template-columns: minmax(0, 1fr); min-height: 0; }
   /* Placed by hand: #prbar and #composer hide with display:none, which takes them out of auto-placement
      and slid #log into an auto row and the drawer into the 1fr — a gap under the drawer on a short chat,
      a drawer pushed off the bottom on a long one. (.termmax below repeats the rows.) */
-  #shead { grid-row: 1; } #prlist { grid-row: 2; } #prbar { grid-row: 3; } #rival { grid-row: 4; } #log { grid-row: 5; } #term { grid-row: 6; } #composer { grid-row: 7; }
+  #shead { grid-row: 1; } #prlist { grid-row: 2; } #prbar { grid-row: 3; } #rival { grid-row: 4; } #ptabs { grid-row: 5; } #log { grid-row: 6; } #term { grid-row: 7; } #composer { grid-row: 8; }
   /* A VS Code chat: read here, continued there. The whole pane says so — an outline, so nothing moves. */
   /* The pane is washed in the project's colour — none for a folder without one (transparent mixed with
      transparent). Where the chat lives is a mark in the header (.own), not a colour, since 2026-09-20. */
@@ -359,15 +359,15 @@
   /* One explicit column of minmax(0, 1fr): the implicit `auto` column took the xterm screen's pixel width as its
      minimum, so the drawer's body stayed as wide as the terminal had last been and fit() measured that instead of
      the pane — the terminal ran off the right edge whenever the pane got narrower or the font larger. */
-  #term { border-top: 1px solid var(--line); background: var(--panel); display: grid; grid-template-rows: auto 1fr; grid-template-columns: minmax(0, 1fr); height: 320px; min-height: 120px; max-height: 70vh; min-width: 0; }
+  #term { border-top: 1px solid var(--line); background: var(--panel); display: grid; grid-template-rows: 1fr; grid-template-columns: minmax(0, 1fr); min-height: 0; }
   #term[hidden] { display: none; }
-  #term .thead { display: flex; align-items: center; gap: 8px; padding: 3px 10px; font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--line); cursor: row-resize; user-select: none; }
-  #term .thead .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #term .thead .lbl b { color: var(--ink); font-weight: 600; }
-  #term .thead code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); }
-  #term .thead button { font: inherit; font-size: 11px; padding: 1px 7px; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 5px; cursor: pointer; }
-  #term .thead button:hover { border-color: var(--accent); }
-  #term .thead button[hidden] { display: none; }
+  /* The pane's tabs: shown only while the chat has a zsh beside it (⌥⌘T) — [claude|chat] and [zsh ×]. */
+  #ptabs { display: flex; gap: 4px; padding: 4px 10px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 11.5px; }
+  #ptabs[hidden] { display: none; }
+  .ptab { font: inherit; font-size: 11.5px; padding: 2px 9px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .ptab:hover { color: var(--ink); }
+  .ptab.on { color: var(--ink); border-color: var(--accent); }
+  .ptab .x { opacity: .5; font-size: 12px; line-height: 1; } .ptab .x:hover { opacity: 1; color: var(--needs); }
   /* content-box on purpose: the fit addon reads getComputedStyle(parent).height/width and subtracts only the
      terminal element's own padding — under the page's border-box rule that is the padded size, one row or column too
      many when the remainder is short, and the bottom row (or last column) clipped by up to the padding (measured: 51
@@ -375,10 +375,10 @@
   #term .tbody { box-sizing: content-box; min-height: 0; min-width: 0; overflow: hidden; padding: 4px 0 0 6px; background: var(--term-bg); }
   #term .tbody .xterm { height: 100%; }
   /* The drawer as the whole pane, which it is whenever its terminal is live. The log row collapses and
-     the drawer takes its 1fr; the height it remembers is untouched for the split. */
-  #chat.termmax { grid-template-rows: auto auto auto auto 0 1fr auto; }
+     the drawer takes its 1fr. */
+  #chat.termmax { grid-template-rows: auto auto auto auto auto 0 1fr auto; }
   #chat.termmax #log { display: none; }
-  #chat.termmax #term { height: auto !important; max-height: none; min-height: 0; }
+  #chat.termmax #term { min-height: 0; }
   /* The chat is prose, so it gets prose spacing: a taller line box than the dense lists beside it
      and a clear gap between turns. Everything below is tuned against that 1.62. */
   .msg { margin: 0 0 18px; }
@@ -504,9 +504,9 @@
     <div id="prlist" hidden></div>
     <div id="prbar" hidden></div>
     <div id="rival" hidden></div>
+    <div id="ptabs" hidden></div>
     <div id="log"><div class="empty">Pick a project on the left, then a chat.</div></div>
     <div id="term" hidden>
-      <div class="thead" id="termHead" title="Drag to resize"><span class="lbl" id="termLbl"></span><button id="termMax" title="Show the rendered chat above the terminal">show chat</button><button id="termKill" title="End this claude process">end</button><button id="termHide" title="Hide the terminal — claude keeps running">hide</button></div>
       <div class="tbody" id="termBody"></div>
     </div>
     <div id="composer" hidden>
@@ -527,11 +527,11 @@
   <div class="row"><button class="btn" id="notifBtn" title="Browser notifications (the server also sends native macOS ones)">🔔 enable browser alerts</button><button class="btn" id="testBtn" title="Fire a test alert through the server">test alert</button></div>
   <div class="keys" title="From anywhere on the board, the terminal included">
     <span class="kh">keys</span>
-    <kbd>⌥⌘T</kbd><span>a fresh zsh in this folder — a new iTerm tab</span>
+    <kbd>⌥⌘T</kbd><span>a zsh in this folder, a tab beside the chat · again to show it</span>
     <kbd>⌥⌘E</kbd><span>edit: this folder in VS Code Web, in the pane</span>
     <kbd>⌥⌘V</kbd><span>this chat in VS Code, the real one</span>
     <kbd>⌥⌘G</kbd><span>its PR on GitHub · the repo when it has none · a picker with several · again for the next</span>
-    <kbd>⌥⌘C</kbd><span>this chat's claude session, in the terminal below · takes over a live one</span>
+    <kbd>⌥⌘C</kbd><span>this chat's claude session — the pane while it runs here · starts or takes over one</span>
     <kbd>⌥⌘O</kbd><span>project picker</span>
     <kbd>⌘+ ⌘− ⌘0</kbd><span>chat and terminal size</span>
     <kbd>⇧⏎</kbd><span>newline in the terminal's prompt</span>
@@ -599,7 +599,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, pins: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [] };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, headDetails: false, termOpen: true, termHeight: 320, chatZoom: 1, projectsCompact: true, sessionsCompact: false };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, headDetails: false, chatZoom: 1, projectsCompact: true, sessionsCompact: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -923,7 +923,7 @@
   $('#pick').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.close(); });   // a click on the backdrop
   // ⌥⌘ + a letter, from anywhere — the drawer included: capture phase, so its xterm never sees them; e.code,
   // because with ⌥ held e.key is a symbol ('ø' for O) on a Mac. One letter per place the open chat lives: T a
-  // fresh zsh in its folder (a new iTerm tab, through the server), E the editor — VS Code Web in the pane, the
+  // fresh zsh in its folder (the pane's zsh tab — a holder like claude's), E the editor — VS Code Web in the pane, the
   // web button's route —, V the real VS Code (the focus button's), G the chat's PR on GitHub — straight to it
   // with one, the picker with several, and the next one when one is already showing (a toggle with two, a cycle
   // with more; each PR is its own tab in the pane, so nothing reloads) —, C the claude session: the >_ button's
@@ -950,15 +950,20 @@
   }
   function hotVsCode() { const b = $('#webBtn'); if (b) b.click(); else noChat(); }
   function hotCode() { const b = $('#focusBtn'); if (b) b.click(); else noChat(); }
-  // A fresh zsh in the chat's folder, the way a new tab in iTerm gives you one — and it is one: the server asks
-  // iTerm (Terminal without it) to open the folder. The board's own drawer is claude's. A failure is a note.
+  // ⌥⌘T: a fresh zsh in the chat's folder, inline — the pane's zsh tab, like a new tab in iTerm (2026-09-20). One per
+  // chat: started on the first press, shown on the next ones; `exit` or the tab's × ends it. A failure is a note.
   async function hotShell() {
     const s = state.sessions.get(state.current); if (!s) return noChat();
     if (!s.cwd) return note($('#shead'), 'No folder known for this chat', true);
-    try {
-      const r = await fetch(`/api/sessions/${s.id}/shell`, { method: 'POST' });
-      if (!r.ok) note($('#shead'), (await r.json().catch(() => ({}))).error || `HTTP ${r.status}`, true);
-    } catch (e) { note($('#shead'), String(e), true); }
+    if (!shellLive(s)) {
+      try {
+        const r = await fetch(`/api/sessions/${s.id}/shell`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(termSize()) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) return note($('#shead'), d.error || `HTTP ${r.status}`, true);
+        s.shell = d.terminal;   // the SSE update says the same a moment later
+      } catch (e) { return note($('#shead'), String(e), true); }
+    }
+    setTab(s, 'shell'); syncTerm(s); if (term.xt && term.id) term.xt.focus();
   }
   function hotGh() {
     const s = state.sessions.get(state.current); if (!s) return noChat();
@@ -1260,12 +1265,13 @@
   }
 
   // ---- terminal drawer: the real claude in a PTY on the server, attached over a WebSocket -----
-  // The drawer belongs to the chat pane: it shows the terminal of the session being viewed, or the
-  // one a new chat is being started in. The process lives on the server, so hiding the drawer or
-  // switching chats does not end it — "end" does. The server replays its scrollback on every attach,
-  // which is what makes a reload or a switch-and-back seamless. The transcript above it is the
-  // reading view; the terminal is where you type.
-  const term = { id: null, sessionId: null, cwd: null, resume: false, ws: null, xt: null, fit: null, exited: null, err: null, split: false, arm: null, armTimer: null };
+  // The drawer is the chat pane's body while the chat runs here — the claude session, or the zsh tab beside it (⌥⌘T)
+  // — and the rendered transcript is the body otherwise.
+  // Nothing is shown or hidden by hand (2026-09-20, Ricardo: "all of this is automatic now"): the drawer comes with
+  // the process and goes when it exits; a chat ticked done has its processes ended by the server. The process lives
+  // on the server, so switching chats does not end it, and every attach gets the exact screen, which is what makes a
+  // switch-and-back seamless.
+  const term = { id: null, sessionId: null, cwd: null, kind: null, ws: null, xt: null, fit: null, exited: null, err: null, arm: null, armTimer: null };
   function xtTheme() {
     const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
     return { background: v('--term-bg'), foreground: v('--ink'), cursor: v('--accent'), cursorAccent: v('--term-bg'), selectionBackground: v('--term-sel') };
@@ -1321,6 +1327,8 @@
     prefs: () => ({ ...prefs }),
     term: () => window.peixDebug(),
     screen: () => [...document.querySelectorAll('#termBody .xterm-rows > div')].map(r => r.textContent.replace(/\s+$/, '')),
+    /** The whole buffer, scrollback included — what a row that scrolled off the screen went into. */
+    buffer: () => { const b = term.xt?.buffer.active; const out = []; for (let i = 0; b && i < b.length; i++) out.push(b.getLine(i)?.translateToString(true) || ''); return out; },
   };
   window.peixDebug = () => {
     const b = $('#termBody'), sc = b.querySelector('.xterm-screen'), cs = getComputedStyle(b), r = x => Math.round(x * 100) / 100;
@@ -1345,28 +1353,14 @@
     ws.send(JSON.stringify({ t: 'resize', cols, rows: Math.max(5, rows - 1) }));
     setTimeout(() => { if (term.ws === ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'resize', cols: term.xt.cols, rows: term.xt.rows })); }, 150);
   }
-  function showTermDrawer(on) {
-    $('#term').hidden = !on;
-    if (on) $('#term').style.height = prefs.termHeight + 'px';
-    applyTermLayout();
-  }
-  // While the chat runs here, the drawer is the whole pane: the rendered transcript above it would be
-  // the same conversation twice. `show chat` splits the pane for this attach (term.split is page state,
-  // reset on every attach), a drag on the divider does the same, and the transcript comes back on its
-  // own when the process ends. `hide` shows it while claude keeps running. Chats the board does not
-  // drive — VS Code, another terminal, stale — always render. The ResizeObserver refits xterm.
-  const termFilled = () => !$('#term').hidden && term.exited === null && !term.split;
-  function applyTermLayout() {
-    $('#chat').classList.toggle('termmax', termFilled());
-    $('#termMax').textContent = termFilled() ? 'show chat' : 'hide chat';
-    $('#termMax').hidden = term.exited !== null;   // an exited terminal hides nothing worth reading
-    requestAnimationFrame(fitTerm);
-  }
-  function splitTerm() { term.split = true; applyTermLayout(); }
+  function showTermDrawer(on) { $('#term').hidden = !on; applyTermLayout(); }
+  // The drawer is the whole pane whenever it shows: the log row collapses and it takes the 1fr. The ResizeObserver
+  // refits xterm.
+  function applyTermLayout() { $('#chat').classList.toggle('termmax', !$('#term').hidden); requestAnimationFrame(fitTerm); }
   function attachTerm(t) {
     detachTerm();
     ensureXterm(); term.xt.reset();
-    Object.assign(term, { id: t.id, sessionId: t.sessionId, cwd: t.cwd, resume: t.resume, exited: t.exited, err: null, split: false });
+    Object.assign(term, { id: t.id, sessionId: t.sessionId, cwd: t.cwd, kind: t.shell ? 'shell' : 'claude', exited: t.exited, err: null });
     showTermDrawer(true);
     const ws = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`);
     ws.binaryType = 'arraybuffer'; term.ws = ws;
@@ -1374,36 +1368,51 @@
     ws.onmessage = e => {
       if (typeof e.data !== 'string') return term.xt.write(new Uint8Array(e.data));
       const m = JSON.parse(e.data);
-      if (m.t === 'exit') { term.exited = m.code; renderTermHead(); applyTermLayout(); }
+      if (m.t === 'exit') termEnded(m.code);
     };
-    ws.onclose = () => { if (term.ws === ws) { term.ws = null; renderTermHead(); } };
-    renderTermHead();
+    ws.onclose = () => { if (term.ws === ws) term.ws = null; };
   }
   function detachTerm() {
     const ws = term.ws; term.ws = null;
     if (ws) { ws.onclose = null; ws.close(); }
-    Object.assign(term, { id: null, sessionId: null, cwd: null, resume: false, exited: null, split: false });
+    Object.assign(term, { id: null, sessionId: null, cwd: null, kind: null, exited: null });
   }
-  function hideTerm() {
-    prefs.termOpen = false; savePrefs();
+  // The process ended: the drawer goes and the transcript is the pane again (a stale chat now — the composer shows).
+  // A new chat that died before it registered says so where its transcript would be.
+  function termEnded(code) {
+    const wasNew = !term.sessionId && !state.current;
     detachTerm(); showTermDrawer(false);
-    const s = state.sessions.get(state.current); if (s) renderHead(s);
-  }
-  async function killTerm() { if (term.id) await fetch(`/api/terminals/${term.id}`, { method: 'DELETE' }); }
-  function renderTermHead() {
-    const what = term.exited !== null ? `exited (${term.exited})` : term.ws ? '' : 'disconnected';
-    $('#termLbl').innerHTML = `<code>claude${term.resume ? ' --resume' : ''}</code> · ${esc(term.cwd || '')}${what ? ` · <b>${what}</b>` : ''}`;
-    $('#termKill').hidden = term.exited !== null;
+    if (wasNew) $('#log').innerHTML = `<div class="empty">The terminal ended (exit ${code}) before a chat began — the server log says why.</div>`;
+    const s = state.sessions.get(state.current); if (s) { renderTabs(s); renderHead(s); }
   }
   const termLive = s => !!(s?.terminal && s.terminal.exited === null);
-  // Keep the drawer on the viewed session's terminal, or off. Runs on every open and SSE update,
-  // so it must never re-attach the terminal it already shows.
+  const shellLive = s => !!(s?.shell && s.shell.exited === null);
+  // Which of the pane's tabs a chat is on — page state, per chat; the zsh tab only while its zsh is alive.
+  const tabs = new Map();
+  const tabOf = s => tabs.get(s.id) === 'shell' && shellLive(s) ? 'shell' : 'chat';
+  const setTab = (s, t) => { tabs.set(s.id, t); };
+  // Keep the pane's body right for the viewed chat: its zsh while that tab is chosen, its claude drawer while it
+  // runs here, the transcript otherwise. Runs on every open and SSE update, so it never re-attaches what it shows.
   function syncTerm(s) {
-    const t = s?.terminal;
-    if (termLive(s) && prefs.termOpen) { if (term.id !== t.id) attachTerm(t); }
-    else if (term.id && term.sessionId && term.sessionId !== s?.id) { detachTerm(); showTermDrawer(false); }
-    else if (term.id && t && t.id === term.id && t.exited !== null && term.exited === null) { term.exited = t.exited; renderTermHead(); applyTermLayout(); }
+    const want = !s ? null : tabOf(s) === 'shell' ? s.shell : termLive(s) ? s.terminal : null;
+    if (want) { if (term.id !== want.id) attachTerm(want); }
+    else if (term.id) { detachTerm(); showTermDrawer(false); }
+    renderTabs(s);
   }
+  // The tabs show only while the chat has a zsh: [claude|chat] — the claude session, or the rendered chat — and [zsh ×].
+  function renderTabs(s) {
+    const el = $('#ptabs'), has = !!(s && shellLive(s));
+    el.hidden = !has; if (!has) return;
+    const cur = tabOf(s);
+    el.innerHTML = `<button class="ptab${cur === 'chat' ? ' on' : ''}" data-tab="chat" title="${termLive(s) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C">${termLive(s) ? 'claude' : 'chat'}</button>`
+      + `<button class="ptab${cur === 'shell' ? ' on' : ''}" data-tab="shell" title="A zsh in ${esc(s.cwd || 'its folder')} · ⌥⌘T">zsh<span class="x" title="End this shell">×</span></button>`;
+  }
+  $('#ptabs').addEventListener('click', e => {
+    const s = state.sessions.get(state.current); if (!s) return;
+    if (e.target.closest('.x')) { if (s.shell) fetch(`/api/terminals/${s.shell.id}`, { method: 'DELETE' }); return; }
+    const b = e.target.closest('.ptab'); if (!b) return;
+    setTab(s, b.dataset.tab); syncTerm(s); if (term.xt && term.id) term.xt.focus();
+  });
   // The take-over tooltip is the warning: for a VS Code chat it spells out what the tab there loses.
   const VSC_COST = ' Its tab in VS Code goes dead and will not follow the chat — close it there; opening the chat in VS Code again starts another claude on it, and a bar here will say so.';
   const takeTip = s => {
@@ -1414,7 +1423,7 @@
   };
   const KEY_C = ' · ⌥⌘C';   // on every tip the button acts on; the disabled and failed ones say why instead
   const termTip = s => term.err ? term.err
-    : termLive(s) ? (prefs.termOpen && term.id === s.terminal.id ? 'The terminal is open below' : "Show this chat's terminal") + KEY_C
+    : termLive(s) ? (term.id === s.terminal.id ? 'This chat runs here — the terminal is the pane' : "Show this chat's claude session") + KEY_C
     : takeable(s) ? takeTip(s) + KEY_C
     : s.alive ? `Live in ${entryLabel(s)} — it cannot be attached from here`
     : inVsCode(s) ? 'Open a terminal on this chat (claude --resume). It was last continued in VS Code: from here on it is a CLI chat, and the tab there, if still open, will not follow it' + KEY_C
@@ -1437,20 +1446,20 @@
     const d = await r.json().catch(() => ({}));
     const now = state.sessions.get(s.id) || s;
     if (!r.ok) { term.err = d.error || `HTTP ${r.status}`; renderHead(now); return; }
-    prefs.termOpen = true; savePrefs(); attachTerm(d.terminal); renderHead(now);
+    attachTerm(d.terminal); renderHead(now);
   }
   async function openTerminalFor(s) {
-    if (termLive(s)) { prefs.termOpen = true; savePrefs(); syncTerm(s); renderHead(s); return; }
+    if (termLive(s)) { syncTerm(s); renderHead(s); return; }
     const r = await fetch(`/api/sessions/${s.id}/terminal`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(termSize()) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { term.err = d.error || `HTTP ${r.status}`; renderHead(s); return; }
-    prefs.termOpen = true; savePrefs(); attachTerm(d.terminal); renderHead(s);
+    attachTerm(d.terminal); renderHead(s);
   }
-  // The >_ button and ⌥⌘C: show the chat's terminal, start one, or — live elsewhere — arm and, pressed again,
-  // take over. The terminal takes the keyboard at the end: attachTerm does that when its socket opens, this
-  // covers one that was already showing (⌥⌘C as "put me in the terminal").
+  // The >_ button and ⌥⌘C: the chat's claude session — the drawer it runs in, started if need be, or — live
+  // elsewhere — arm and, pressed again, take over. The terminal takes the keyboard at the end: attachTerm does that
+  // when its socket opens, this covers one that was already showing (⌥⌘C as "put me in the terminal").
   async function termAction(s) {
-    term.err = null;
+    term.err = null; setTab(s, 'chat');
     if (takeable(s)) await (term.arm === s.id ? takeOver(s) : armTakeOver(s));
     else await openTerminalFor(s);
     if (term.id && term.exited === null && term.xt) term.xt.focus();
@@ -1469,23 +1478,8 @@
     $('#shead').innerHTML = `<h2><span class="repo">${esc(folderName(cwd))}</span><span class="sep">/</span><span class="t">new chat</span></h2>`;
     $('#log').innerHTML = '<div class="empty">Say something in the terminal below — the transcript shows up here once Claude has written it.</div>';
     renderComposer(null);
-    prefs.termOpen = true; savePrefs(); attachTerm(d.terminal);
+    attachTerm(d.terminal);
   }
-  {
-    let drag = false;
-    $('#termHead').addEventListener('mousedown', e => { if (e.target.closest('button')) return; if (termFilled()) splitTerm(); drag = true; document.body.style.userSelect = 'none'; e.preventDefault(); });
-    window.addEventListener('mousemove', e => {
-      if (!drag) return;
-      const r = $('#term').getBoundingClientRect();
-      prefs.termHeight = Math.round(Math.max(120, Math.min(innerHeight * .7, r.bottom - e.clientY)));
-      $('#term').style.height = prefs.termHeight + 'px';
-    });
-    window.addEventListener('mouseup', () => { if (!drag) return; drag = false; document.body.style.userSelect = ''; savePrefs(); });
-    $('#termHide').onclick = hideTerm;
-    $('#termMax').onclick = () => { term.split = !term.split; applyTermLayout(); };
-    $('#termKill').onclick = killTerm;
-  }
-
   // ---- ⌘+ / ⌘- / ⌘0: the chat's size — the transcript through CSS zoom, the terminal through its font
   const ZOOM_MIN = 0.6, ZOOM_MAX = 2, TERM_FONT = 12;
   const termFontSize = () => Math.round(TERM_FONT * (Number(prefs.chatZoom) || 1));
@@ -1779,7 +1773,7 @@
       const t = JSON.parse(e.data);
       if (t.id !== term.id) return;
       if (t.sessionId && !term.sessionId) { term.sessionId = t.sessionId; openSession(t.sessionId); }
-      if (t.exited !== null && term.exited === null) { term.exited = t.exited; renderTermHead(); }
+      if (t.exited !== null && term.id === t.id) termEnded(t.exited);
     });
     es.addEventListener('alert', e => onAlert(JSON.parse(e.data)));
   }
