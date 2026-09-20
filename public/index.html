@@ -365,13 +365,19 @@
      the pane — the terminal ran off the right edge whenever the pane got narrower or the font larger. */
   #term { border-top: 1px solid var(--line); background: var(--panel); display: grid; grid-template-rows: 1fr; grid-template-columns: minmax(0, 1fr); min-height: 0; }
   #term[hidden] { display: none; }
-  /* The pane's tabs: shown only while the chat has a zsh beside it (⌥⌘T) — [claude|chat] and [zsh ×]. */
-  #ptabs { display: flex; gap: 4px; padding: 4px 10px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 11.5px; }
+  /* The chat's tabs (2026-09-20): [claude|chat], [zsh ×] while a zsh lives, a [repo#n ×] per GitHub page the chat
+     opened and [VS Code ×] for its folder's editor — the pages the app's pane shows, a native view over the column
+     below this strip. Shown only while there is more than the chat; with a page's tab on, ‹ › ↻ ↗ at the right
+     drive its view through the shell. */
+  #ptabs { display: flex; gap: 4px; padding: 4px 10px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 11.5px; align-items: center; }
   #ptabs[hidden] { display: none; }
   .ptab { font: inherit; font-size: 11.5px; padding: 2px 9px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
   .ptab:hover { color: var(--ink); }
   .ptab.on { color: var(--ink); border-color: var(--accent); }
   .ptab .x { opacity: .5; font-size: 12px; line-height: 1; } .ptab .x:hover { opacity: 1; color: var(--needs); }
+  #ptabs .navs { margin-left: auto; display: flex; gap: 2px; }
+  #ptabs .nav { font: inherit; font-size: 13px; line-height: 1; padding: 2px 6px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; }
+  #ptabs .nav:hover { color: var(--ink); border-color: var(--line); }
   /* content-box on purpose: the fit addon reads getComputedStyle(parent).height/width and subtracts only the
      terminal element's own padding — under the page's border-box rule that is the padded size, one row or column too
      many when the remainder is short, and the bottom row (or last column) clipped by up to the padding (measured: 51
@@ -532,15 +538,15 @@
   <div class="keys" title="From anywhere on the board, the terminal included">
     <span class="kh">keys</span>
     <kbd>⌥⌘T</kbd><span>a zsh in this folder, a tab beside the chat · again to show it</span>
-    <kbd>⌥⌘E</kbd><span>edit: this folder in VS Code Web, in the pane</span>
+    <kbd>⌥⌘E</kbd><span>edit: this folder in VS Code Web, on a tab</span>
     <kbd>⌥⌘V</kbd><span>this chat in VS Code, the real one</span>
-    <kbd>⌥⌘G</kbd><span>its PR on GitHub · the repo when it has none · a picker with several · again for the next</span>
+    <kbd>⌥⌘G</kbd><span>its PR on GitHub, on a tab · the repo when it has none · a picker with several · again for the next</span>
     <kbd>⌥⌘C</kbd><span>this chat's claude session — the pane while it runs here · starts or takes over one</span>
     <kbd>⌥⌘O</kbd><span>project picker</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
     <kbd>⌘+ ⌘− ⌘0</kbd><span>chat and terminal size</span>
     <kbd>⇧⏎</kbd><span>newline in the terminal's prompt</span>
-    <kbd>esc</kbd><span>close a picker or popover · the pane, in the app</span>
+    <kbd>esc</kbd><span>back to the chat from a page's tab · closes a picker or popover</span>
     <kbd>⌘R · ⇧⌘R</kbd><span>reload · restart the server, in the app</span>
   </div>
 </div>
@@ -939,7 +945,7 @@
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
   const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyV: hotCode, KeyG: hotGh, KeyC: hotClaude, KeyO: () => pickOpen('project'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1) };
-  const runHotkey = code => { const fn = HOTKEYS[code]; if (fn && !document.querySelector('dialog[open]')) fn(); };
+  const runHotkey = code => { if (code === 'Escape') return hotEscape(); const fn = HOTKEYS[code]; if (fn && !document.querySelector('dialog[open]')) fn(); };
   document.addEventListener('keydown', e => {
     if (!(e.metaKey && e.altKey && !e.ctrlKey && !e.shiftKey && HOTKEYS[e.code])) return;
     e.preventDefault(); e.stopPropagation(); runHotkey(e.code);
@@ -949,11 +955,21 @@
   // can open beside it rather than under it.
   window.peixPane = (visible, left) => { state.paneVisible = !!visible; state.paneLeft = Number(left) || 0; };
   const noChat = () => note($('#shead'), 'Open a chat first');
+  const focusBoard = () => { if (inApp) post({ type: 'focus' }); };   // the key may have come from the pane: the board needs the keyboard back
   function hotClaude() {
     const s = state.sessions.get(state.current); if (!s) return noChat();
     const tb = $('#termBtn'); if (!tb) return;
     if (tb.disabled) return note(tb, tb.title, true);   // live somewhere it cannot be attached from — the tooltip says where
-    termAction(s);
+    focusBoard(); termAction(s);
+  }
+  // Esc with a page's tab on (2026-09-20, Ricardo: "ESC should still navigate to chat"): the chat tab, and the pane
+  // goes. Reaches here from the shell only (peixKey('Escape'), pressed on the board or in the pane, which the shell
+  // swallows while the pane is up) — so a dialog or the settings popover, whose own Esc that swallow took, close first.
+  function hotEscape() {
+    const dlg = document.querySelector('dialog[open]'); if (dlg) { dlg.close(); return true; }
+    if (!$('#settings').hidden) { settingsOpen(false); return true; }
+    const s = state.sessions.get(state.current); if (!s || !isPaneTab(tabOf(s))) return false;
+    setTab(s, 'chat'); syncTerm(s); focusBoard(); return true;
   }
   function hotVsCode() { const b = $('#webBtn'); if (b) b.click(); else noChat(); }
   // ⌥⌘↑ / ⌥⌘↓ (2026-09-20): the chat above or below in the list as it stands — filters and order included; from no
@@ -978,7 +994,7 @@
         s.shell = d.terminal;   // the SSE update says the same a moment later
       } catch (e) { return note($('#shead'), String(e), true); }
     }
-    setTab(s, 'shell'); syncTerm(s); if (term.xt && term.id) term.xt.focus();
+    setTab(s, 'shell'); syncTerm(s); focusBoard(); if (term.xt && term.id) term.xt.focus();
   }
   function hotGh() {
     const s = state.sessions.get(state.current); if (!s) return noChat();
@@ -1144,22 +1160,15 @@
   const paneLeft = () => Math.round($('#chat').getBoundingClientRect().left);   // the pane covers the chat column
   function openExternal(url) {
     if (!inApp) { window.open(url, '_blank', 'noopener'); return; }
-    if (!IN_PANE.test(url)) { post({ type: 'external', url }); return; }
-    // The pane has a tab per page of the chat: its GitHub pages (a PR each) and the folder's editor; `pane` says
-    // which kind. The shell keeps a web view per page (`key`), never reloaded on a switch, and the pages a chat
-    // opened come back with the chat — remembered here (every GitHub page, in the order first opened, and the one
-    // last shown), sent by syncPane on every switch. Esc closes the pane, in the app.
+    const s = state.sessions.get(state.current);
+    if (!IN_PANE.test(url) || !s) { post({ type: 'external', url }); return; }
+    // A page of the chat, on a tab of its own in #ptabs (2026-09-20): GitHub pages one per PR, in the order first
+    // opened; the folder's editor, one per folder. Remembered here so they come back with the chat; the shell keeps a
+    // web view per page and shows the one the tab says (syncTerm → postPane).
     const gh = /^https:\/\/github\.com\//.test(url);
-    if (gh) { if (state.current) { const e = state.paneGh.get(state.current) || { list: [], cur: null }; if (!e.list.includes(url)) e.list.push(url); e.cur = url; state.paneGh.set(state.current, e); } }
-    else { const cwd = state.sessions.get(state.current)?.cwd; if (cwd) state.paneIde.set(cwd, url); }
-    post({ type: 'open', url, left: paneLeft(), pane: gh ? 'github' : 'ide', key: (gh ? 'gh:' : 'ide:') + url });
-  }
-  // Which pages a chat has in the pane: the GitHub pages it opened (and which of them last), its folder's editor.
-  // The shell rebuilds its tabs from that without loading anything, and hides the pane for a chat with none.
-  function syncPane(s) {
-    if (!inApp) return;
-    const gh = s?.id && state.paneGh.get(s.id), ide = s?.cwd && state.paneIde.get(s.cwd);
-    post({ type: 'chat', id: s?.id || null, github: gh ? gh.list.map(u => 'gh:' + u) : [], current: gh?.cur ? 'gh:' + gh.cur : null, ide: ide ? 'ide:' + ide : null });
+    if (gh) { const l = state.paneGh.get(s.id) || []; if (!l.includes(url)) l.push(url); state.paneGh.set(s.id, l); }
+    else if (s.cwd) state.paneIde.set(s.cwd, url);
+    setTab(s, (gh ? 'gh:' : 'ide:') + url); syncTerm(s);
   }
   const prbar = { url: null };
   function hidePr() { $('#prbar').hidden = true; prbar.url = null; }
@@ -1336,7 +1345,7 @@
   // copies, never the live objects. The page's script is one IIFE, so nothing else in it is reachable.
   window.peix = {
     state: () => ({ current: state.current, project: prefs.project, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft,
-      paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, { list: [...v.list], cur: v.cur }])), prbar: prbar.url, termId: term.id, termSession: term.sessionId, termExited: term.exited }),
+      paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, [...v]])), tab: state.sessions.has(state.current) ? tabOf(state.sessions.get(state.current)) : null, tabs: state.sessions.has(state.current) ? tabKeys(state.sessions.get(state.current)) : [], prbar: prbar.url, termId: term.id, termSession: term.sessionId, termExited: term.exited }),
     session: id => { const s = state.sessions.get(id || state.current); return s ? JSON.parse(JSON.stringify(s)) : null; },
     sessions: () => [...state.sessions.values()].map(s => ({ id: s.id, project: s.project, title: s.title, status: s.status, alive: s.alive, prs: (s.prs || []).length, terminal: s.terminal?.id || null })),
     prefs: () => ({ ...prefs }),
@@ -1402,32 +1411,74 @@
   }
   const termLive = s => !!(s?.terminal && s.terminal.exited === null);
   const shellLive = s => !!(s?.shell && s.shell.exited === null);
-  // Which of the pane's tabs a chat is on — page state, per chat; the zsh tab only while its zsh is alive.
+  // Which tab a chat is on — page state, per chat: 'chat' (the claude session while it runs here, else the rendered
+  // chat), 'shell' while its zsh lives, or one of its pages in the app's pane — 'gh:<url>' a GitHub page (a PR each),
+  // 'ide:<url>' its folder's editor (2026-09-20, Ricardo: "the same mechanism for the github and for vscode … a tab
+  // per PR"). The pages a chat opened are remembered here (state.paneGh per chat, state.paneIde per folder), so they
+  // come back with the chat; a tab whose page is gone falls back to the chat.
   const tabs = new Map();
-  const tabOf = s => tabs.get(s.id) === 'shell' && shellLive(s) ? 'shell' : 'chat';
+  const isPaneTab = t => /^(gh|ide):/.test(t || '');
+  const paneKeys = s => !inApp || !s ? [] : [...(state.paneGh.get(s.id) || []).map(u => 'gh:' + u), ...(s.cwd && state.paneIde.get(s.cwd) ? ['ide:' + state.paneIde.get(s.cwd)] : [])];
+  const tabKeys = s => ['chat', ...(shellLive(s) ? ['shell'] : []), ...paneKeys(s)];
+  const tabOf = s => { const t = tabs.get(s.id); return t && tabKeys(s).includes(t) ? t : 'chat'; };
   const setTab = (s, t) => { tabs.set(s.id, t); };
-  // Keep the pane's body right for the viewed chat: its zsh while that tab is chosen, its claude drawer while it
-  // runs here, the transcript otherwise. Runs on every open and SSE update, so it never re-attaches what it shows.
+  const paneLabel = k => { const m = /github\.com\/[^/]+\/([^/]+)\/pull\/(\d+)/.exec(k); return m ? `${m[1]}#${m[2]}` : 'GitHub'; };
+  // Keep the pane right for the viewed chat: the body under the strip — its zsh on that tab, its claude drawer while
+  // it runs here (attached under a page's tab too: the native pane covers it, nothing re-attaches on the way back), the
+  // transcript otherwise — then the strip, then the shell's word (postPane). Runs on every open and SSE update, so it
+  // never re-attaches what it shows.
   function syncTerm(s) {
-    const want = !s ? null : tabOf(s) === 'shell' ? s.shell : termLive(s) ? s.terminal : null;
+    const t = s ? tabOf(s) : 'chat';
+    const want = !s ? null : t === 'shell' ? s.shell : termLive(s) ? s.terminal : null;
     if (want) { if (term.id !== want.id) attachTerm(want); }
     else if (term.id) { detachTerm(); showTermDrawer(false); }
-    renderTabs(s);
+    renderTabs(s); postPane(s, t);
   }
-  // The tabs show only while the chat has a zsh: [claude|chat] — the claude session, or the rendered chat — and [zsh ×].
+  // The strip shows only while there is more than the chat: [claude|chat], [zsh ×], a [repo#n ×] per GitHub page,
+  // [VS Code ×]; with a page's tab on, ‹ › ↻ ↗ at the right for its view.
   function renderTabs(s) {
-    const el = $('#ptabs'), has = !!(s && shellLive(s));
-    el.hidden = !has; if (!has) return;
+    const el = $('#ptabs'), keys = s ? tabKeys(s) : ['chat'];
+    el.hidden = keys.length < 2; if (el.hidden) return;
     const cur = tabOf(s);
-    el.innerHTML = `<button class="ptab${cur === 'chat' ? ' on' : ''}" data-tab="chat" title="${termLive(s) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C">${termLive(s) ? 'claude' : 'chat'}</button>`
-      + `<button class="ptab${cur === 'shell' ? ' on' : ''}" data-tab="shell" title="A zsh in ${esc(s.cwd || 'its folder')} · ⌥⌘T">zsh<span class="x" title="End this shell">×</span></button>`;
+    const tab = (k, label, title, x) => `<button class="ptab${cur === k ? ' on' : ''}${isPaneTab(k) ? ' pane' : ''}" data-tab="${esc(k)}" title="${esc(title)}">${esc(label)}${x ? `<span class="x" title="${esc(x)}">×</span>` : ''}</button>`;
+    el.innerHTML = keys.map(k =>
+      k === 'chat' ? tab(k, termLive(s) ? 'claude' : 'chat', `${termLive(s) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C`)
+      : k === 'shell' ? tab(k, 'zsh', `A zsh in ${s.cwd || 'its folder'} · ⌥⌘T`, 'End this shell')
+      : k.startsWith('gh:') ? tab(k, paneLabel(k), `${k.slice(3)} · ⌥⌘G`, 'Close this page')
+      : tab(k, 'VS Code', `${s.cwd} in VS Code Web · ⌥⌘E`, 'Close the editor')).join('')
+      + (isPaneTab(cur) ? '<span class="navs"><button class="nav" data-nav="back" title="Back">‹</button><button class="nav" data-nav="forward" title="Forward">›</button><button class="nav" data-nav="reload" title="Reload">↻</button><button class="nav" data-nav="external" title="Open this page in your browser">↗</button></span>' : '');
+  }
+  // The shell's word: the chat's pages, the one to show (null hides the pane) and where the pane goes — the chat
+  // column below the strip, in CSS px (points in the app). Sent by syncTerm, and again whenever that geometry moves.
+  const paneTop = () => Math.round($('#ptabs').getBoundingClientRect().bottom);
+  function postPane(s, t = s ? tabOf(s) : 'chat') {
+    if (!inApp) return;
+    post({ type: 'pane', id: s?.id || null, keys: paneKeys(s), show: isPaneTab(t) ? t : null, left: paneLeft(), top: paneTop() });
+  }
+  if (inApp) {
+    const repost = () => { const s = state.sessions.get(state.current); if (s && isPaneTab(tabOf(s))) postPane(s); };
+    const ro = new ResizeObserver(repost); for (const id of ['#chat', '#ptabs', '#log', '#term']) ro.observe($(id));
+    window.addEventListener('resize', repost);
   }
   $('#ptabs').addEventListener('click', e => {
     const s = state.sessions.get(state.current); if (!s) return;
-    if (e.target.closest('.x')) { if (s.shell) fetch(`/api/terminals/${s.shell.id}`, { method: 'DELETE' }); return; }
+    const nav = e.target.closest('.nav'); if (nav) { post({ type: 'nav', what: nav.dataset.nav }); return; }
     const b = e.target.closest('.ptab'); if (!b) return;
-    setTab(s, b.dataset.tab); syncTerm(s); if (term.xt && term.id) term.xt.focus();
+    const k = b.dataset.tab;
+    if (e.target.closest('.x')) return closeTab(s, k);
+    setTab(s, k);
+    if (k.startsWith('gh:')) showPr(k.slice(3));   // its strip under the header too
+    else { syncTerm(s); focusBoard(); if (term.xt && term.id) term.xt.focus(); }
   });
+  // × on a tab: the zsh ends (the server says so, and the tab goes with it); a page is forgotten here — its view
+  // lingers in the shell until it needs the room — and the chat tab takes its place.
+  function closeTab(s, k) {
+    if (k === 'shell') { if (s.shell) fetch(`/api/terminals/${s.shell.id}`, { method: 'DELETE' }); return; }
+    if (k.startsWith('gh:')) state.paneGh.set(s.id, (state.paneGh.get(s.id) || []).filter(u => 'gh:' + u !== k));
+    else if (s.cwd) state.paneIde.delete(s.cwd);
+    if (tabs.get(s.id) === k) setTab(s, 'chat');
+    syncTerm(s);
+  }
   // The take-over tooltip is the warning: for a VS Code chat it spells out what the tab there loses.
   const VSC_COST = ' Its tab in VS Code goes dead and will not follow the chat — close it there; opening the chat in VS Code again starts another claude on it, and a bar here will say so.';
   const takeTip = s => {
@@ -1485,7 +1536,7 @@
     const r = await fetch('/api/terminals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cwd, ...termSize() }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { $('#log').innerHTML = `<div class="empty">Could not start a chat: ${esc(d.error || `HTTP ${r.status}`)}</div>`; return; }
-    state.current = null; state.entries = []; history.replaceState(null, '', location.pathname); hidePr(); syncPane({ cwd });
+    state.current = null; state.entries = []; history.replaceState(null, '', location.pathname); hidePr(); syncTerm(null);
     if (!inProject({ cwd }, projectStub(prefs.project))) prefs.project = cwd;   // so the new chat lands in view
     savePrefs(); renderBoard();
     $('#chat').classList.remove('vsc');
@@ -1734,11 +1785,10 @@
     if (s0 && !inProject(s0, projectStub(prefs.project))) { prefs.project = s0.cwd || '?'; savePrefs(); }
     renderBoard();
     if (s0) renderHead(s0);
-    syncPane(s0 || { id });
+    syncTerm(s0 || { id });   // the tab it was on comes back at once — a page in the pane, its zsh; the drawer after the fetch
     const r = await fetch(`/api/sessions/${id}/messages`); if (!r.ok) return;
     const data = await r.json();
     state.sessions.set(id, data.session); state.entries = data.entries; renderHead(data.session); renderLog(); syncTerm(data.session);
-    if (state.current === id) syncPane(data.session);
     $('#log').scrollTop = $('#log').scrollHeight;
     if (location.hash.slice(1) !== id) history.replaceState(null, '', '#' + id);
     document.querySelector(`#slist .card[data-id="${id}"]`)?.scrollIntoView({ block: 'nearest' });

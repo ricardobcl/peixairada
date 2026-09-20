@@ -57,10 +57,18 @@ const elapsed = () => { const s = Math.floor((Date.now() - t0) / 1000); return `
 const status2prefix = () => `  ctx ${(tokens / 1000).toFixed(1)}K/1.0M ${'▓'.repeat(Math.max(1, Math.round(tokens / 100000)))}${'░'.repeat(10 - Math.max(1, Math.round(tokens / 100000)))} ${Math.round(tokens / 10000)}% | elapsed `;
 const status2suffix = () => ` | cost $${dollars.toFixed(2)} | 🧩 fake`;
 const at = (row, col) => `\x1b[${row};${col}H`;
-/** The live region, drawn whole at the bottom of the screen — what SIGWINCH and every turn end do. */
+/** The live region, drawn whole at the bottom of the screen — what SIGWINCH and every turn end do. A screen that
+ *  shrank since the last paint is scrolled up by the difference first (the transcript above the region moves into
+ *  scrollback, as under any terminal app), else the erase from the region's new top would eat the transcript's last
+ *  lines — which is what the board's tab strip did to the re-attach scenario (2026-09-20). A screen that grew has
+ *  the old region's rows cleared too, so no stale rule lingers above the new one. */
+let lastRows = 0;
 function drawLive() {
-  const top = rows() - LIVE + 1;
-  out(`\x1b[?25l${at(top, 1)}\x1b[J`);
+  const r = rows();
+  if (lastRows > r) out(at(r, 1) + '\n'.repeat(lastRows - r));
+  const top = r - LIVE + 1, from = lastRows && lastRows < r ? Math.min(top, lastRows - LIVE + 1) : top;
+  lastRows = r;
+  out(`\x1b[?25l${at(from, 1)}\x1b[J`);
   out(`\x1b[2m${rule()}\x1b[0m\n`);
   out(`\x1b[1m❯\x1b[0m ${input}\n`);
   out(`\x1b[2m${rule()}\x1b[0m\n`);

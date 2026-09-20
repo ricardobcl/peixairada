@@ -113,11 +113,17 @@ refuses to run against the real directory for the same reason.
   reaches the page, so `installHotkeyForwarder()` forwards ⌥⌘ + the letters and the arrows (`hotkeyCode()`, the page's
   `e.code`) to `window.peixKey`; the shell
   reports `peixPane(visible, left)` so the picker opens beside the pane (`.aside`) and asks for the keyboard
-  (`{type:'focus'}`). Esc closes the pane from anywhere (a local monitor, so full screen keeps it).
-* **The pane keeps a web view per page and a tab per page of the current chat** (`tabKeys`, `setTabs`,
-  `repo#n` per PR, *VS Code* for the editor); the page remembers each chat's pages (`state.paneGh` = `{list, cur}`,
-  `state.paneIde` per cwd) and posts them on every switch. GitHub cannot be iframed, hence a second `WKWebView`;
-  a web view with no UI delegate drops `target=_blank`, hence `PrPaneDelegate`. → Findings: *the pane*.
+  (`{type:'focus'}`). Esc with the pane up is forwarded as `peixKey('Escape')` (a local monitor swallows it, so full
+  screen keeps it) — `hotEscape()`: a dialog or the settings popover closes first, else the chat tab comes back.
+* **The page owns the tabs** (2026-09-20, late): `#ptabs` lists `chat` (`claude` while the session runs here), `shell`
+  while a zsh lives, `gh:<url>` per GitHub page the chat opened and `ide:<url>` for its folder's editor — `tabKeys()`
+  from `state.paneGh` (per chat) and `state.paneIde` (per folder); `tabs` holds each chat's tab, and one whose page is
+  gone falls back to the chat. `syncTerm()` keeps the body right and posts one `{type:'pane', id, keys, show, left,
+  top}` to the shell (`postPane`, again when the geometry moves): it keeps a web view per page (`paneViews`, up to
+  `paneViewsMax`, the chat's own spared), shows `show` or hides, and sits over the chat column below the strip.
+  `‹ › ↻ ↗` in the strip are `{type:'nav'}`; × forgets a page (`closeTab`). In a browser the tabs are chat and zsh
+  only (`inApp`). GitHub cannot be iframed, hence the second `WKWebView`; a web view with no UI delegate drops
+  `target=_blank`, hence `PrPaneDelegate`. → Findings: *the pane*.
 * **Both web views are inspectable** (main.swift sets it): Safari → Develop reaches the real app.
 
 ## The drawer
@@ -132,8 +138,8 @@ refuses to run against the real directory for the same reason.
 * **The drawer is automatic** (2026-09-20): it is the pane's body while the chat runs here and goes when the process
   exits (`termEnded`) — no header, no hide/end/show-chat, no split; `syncTerm` on every open and update. **⌥⌘T is
   a zsh tab** beside it: a holder with `shell: true` (`zsh -l -i` in the chat's folder; `shellOf()`, `s.shell` on the
-  summary, one per chat, `exit` or the tab's × ends it); `#ptabs` shows only while one lives, and the tab a chat is
-  on is page state (`tabs`). **Done ends the chat's processes** — the drawer's holders and a claude live elsewhere
+  summary, one per chat, `exit` or the tab's × ends it); `#ptabs` shows while there is more than the chat (a zsh, a
+  page in the pane), and the tab a chat is on is page state (`tabs`). **Done ends the chat's processes** — the drawer's holders and a claude live elsewhere
   (SIGTERM) — from the `done` route.
 * **A page that attaches gets the screen serialized, then only what followed it** (`ws.hold` until the snapshot,
   flushed minus `seq ≤ upto`). It replaced a raw byte replay that was capped and cut by chunk: Claude Code paints
@@ -200,6 +206,9 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   headless page's `focus()` is not a focus without `Emulation.setFocusEmulationEnabled` (the runner sets it); and a
   chat switch as a re-attach resizes the drawer by itself (the other chat's reply box) and masks results — ⌥⌘T then
   ⌥⌘C (the zsh tab and back) is the clean re-attach.
+* **The fake claude scrolls before it repaints on a shrink** (`drawLive`, 2026-09-20 late), as a terminal app would:
+  before that the strip's two rows made it erase its own banner on re-attach, and the scrollback check in
+  `drawer-reattach` failed for a fixture reason. A red drawer scenario can be the fake's geometry, not the drawer's.
 * The page's script is one IIFE: read it through `window.peix` (`state()`, `session(id)`, `sessions()`, `prefs()`,
   `term()`, `screen()`) or the DOM; `#termBtn.click()` spawns, an `InputEvent` on `#termBody textarea` types.
 * Server logic without a browser: `npm test` (the terminals test is the reference for driving the API and the

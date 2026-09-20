@@ -78,7 +78,7 @@ page simply cannot do for itself:
 | 🚀 | **Owns the server.** Starts `server.mjs` on launch with the node inside the bundle (no PATH games, no version-manager guessing), stops it on quit. If a server is *already* running on the port — from `npm start` or the launchd agent — it attaches to that one instead and defers to it for notifications, so you never get two of everything. |
 | 🔔 | **Native notifications** from *peixAIrada*, not from "Script Editor" — and clicking one opens that session in the board. Only fires while the window isn't in front. Falls back to the old `osascript` banner if notification permission is refused. |
 | 🎯 | **Dock badge** with the alerts you haven't seen, and a **menu-bar fish** whose menu lists every session waiting on you. Click one to jump straight to it. |
-| 🐙 | **The PR pane.** Click a PR row under the chat header (or a card's chip) and the pull request opens beside the board — GitHub refuses to be framed, so it is a second web view with its own back / reload / open-in-browser, and your GitHub login sticks between launches. **×** hides it. |
+| 🐙 | **Pages as tabs.** Click a PR row under the chat header (or a card's chip) and the pull request opens on a tab of the chat — beside *chat*, *zsh* and *VS Code* — in a web view of the app's (GitHub refuses to be framed), with ‹ › ↻ ↗ in the strip and your GitHub login kept between launches. **Esc** or the *chat* tab brings the chat back; **×** on a tab forgets its page. |
 | ⌨️ | ⌘R reload, ⌘⇧R restart server. Close the window and it keeps running in the menu bar. |
 | 🎨 | **An icon drawn in code** ([`mac/icon/MakeIcon.swift`](mac/icon/MakeIcon.swift)) — a fish in Claude terracotta with a starburst eye, no image assets anywhere — that simplifies itself at 16/32 px so it stays legible in the menu bar. |
 
@@ -246,12 +246,12 @@ the chat's claude session in the terminal, opened or started, and the keyboard l
 elsewhere the first press arms the take-over and the second ends that claude, as two clicks would). **⌥⌘T** is a
 fresh zsh in the chat's folder, inline: a *zsh* tab appears beside the chat (*claude* while it runs here, *chat*
 otherwise), one per chat, `exit` or its × ends it, and ⌥⌘C brings the claude session back. **⌥⌘E**
-opens the folder in VS Code Web, in the pane — the *web* button's route; **⌥⌘V** opens the chat in the real VS
+opens the folder in VS Code Web, on a *VS Code* tab of the same strip — the *web* button's route; **⌥⌘V** opens the chat in the real VS
 Code — the focus button's. **⌥⌘G** opens the chat's PR on GitHub — straight away with
 one; with several, the ⌥⌘O picker filled with the PR rows under the header (state · `repo#n` · title · age,
 filtered by number or title, ⏎ opens the selected one); **pressed again while one is showing it moves to the
-next** — a toggle with two, a cycle with more, each PR on a tab of its own in the pane so nothing reloads. The
-keys work from inside the pane too. With no chat open, or no PR in it, a note under the header says so; while
+next** — a toggle with two, a cycle with more, each PR on a tab of its own (`repo#n`) so nothing reloads. The
+keys work from inside a page's tab too, and **Esc** there brings the chat back. With no chat open, or no PR in it, a note under the header says so; while
 a dialog is up the keys do nothing. **Double-click the
 title** in the chat header to rename a chat; the name is kept by the board (never written into the
 transcript) and beats the PR title and Claude's own; an empty name gives the chat's own back. A chat that is live
@@ -295,16 +295,14 @@ does not reach this instance; open a chat from its own sidebar.
 **Click a PR chip and two things happen.** A strip under the header says what `gh` knows about it —
 open / merged / closed / draft, the review decision, checks passed or failing or still running,
 +added −deleted over how many files, head → base, the author — and the PR itself opens: in the Mac
-app in a **pane over the chat column** (GitHub refuses to be framed, so it is a second web view with
-its own back / reload / open-in-browser, and your GitHub login sticks between launches). The pane
-holds **a page per PR and an editor per folder**, a tab per page in its toolbar (`repo#n` for each PR the chat
-opened, *VS Code* for the editor), and
-nothing reloads when you switch chats: each chat brings back the PR it last opened and its folder's editor,
-the pane steps aside on a chat with neither and returns on one with a page (unless you closed it there),
-and the eight most recently shown pages stay loaded. It lies *over* the board — drag its left edge to make it wider or narrower, and
-the columns underneath never reflow — and it opens the width of the chat column the first time.
-**Esc** closes it from the board or from either page (the editor gives up its own Esc for that), and
-a chip or the web button brings it back. In a plain browser, a new tab. PR links in Claude's replies and in the terminal do the same.
+app on a **tab of the chat** — the strip under the header lists *chat* (or *claude* while its session runs here),
+*zsh* while one lives, a `repo#n` tab per PR the chat opened and *VS Code* for its folder's editor — shown in a
+web view of the app's over the chat column below the strip (GitHub refuses to be framed; your GitHub login
+sticks between launches), with ‹ › ↻ ↗ at the strip's right for that page. Nothing reloads when you switch tabs
+or chats: each chat comes back on the tab it was on, its pages kept, and the eight most recently shown pages
+stay loaded. **Esc** brings the chat tab back, from the board or from the page (the editor gives up its own Esc
+for that); **×** on a tab forgets its page; a chip, a PR link or the web button opens one again. In a plain
+browser, a new tab. PR links in Claude's replies and in the terminal do the same.
 
 **📎 Attach a file: drop it on the chat.** Drag a file from the Finder onto the chat and it lands in the
 terminal's prompt as an `@` mention (`@path/to/file`, a space escaped as `\ ` — what Claude Code itself
