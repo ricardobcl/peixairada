@@ -1221,6 +1221,17 @@
   }
   // For the next "the drawer looks wrong" report: the numbers that decide the terminal's grid, readable from the
   // console (the page's script is one closure, so nothing else in it is). Grid vs body vs what fit would propose.
+  // A read-only window on this closure for the console and the harness (scripts/scenario.mjs reads it as ctx.peix):
+  // copies, never the live objects. The page's script is one IIFE, so nothing else in it is reachable.
+  window.peix = {
+    state: () => ({ current: state.current, project: prefs.project, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft,
+      paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, { list: [...v.list], cur: v.cur }])), prbar: prbar.url, termId: term.id, termSession: term.sessionId, termExited: term.exited }),
+    session: id => { const s = state.sessions.get(id || state.current); return s ? JSON.parse(JSON.stringify(s)) : null; },
+    sessions: () => [...state.sessions.values()].map(s => ({ id: s.id, project: s.project, title: s.title, status: s.status, alive: s.alive, prs: (s.prs || []).length, terminal: s.terminal?.id || null })),
+    prefs: () => ({ ...prefs }),
+    term: () => window.peixDebug(),
+    screen: () => [...document.querySelectorAll('#termBody .xterm-rows > div')].map(r => r.textContent.replace(/\s+$/, '')),
+  };
   window.peixDebug = () => {
     const b = $('#termBody'), sc = b.querySelector('.xterm-screen'), cs = getComputedStyle(b), r = x => Math.round(x * 100) / 100;
     return { dpr: devicePixelRatio, zoom: prefs.chatZoom, cols: term.xt?.cols, rows: term.xt?.rows, propose: term.fit?.proposeDimensions(),

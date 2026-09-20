@@ -52,6 +52,7 @@ swiftc -swift-version 5 -O -target "$TARGET" "$DIR/Sources/main.swift" -o "$APP/
 echo "› bundle"
 cp "$DIR/icon/peixAIrada.icns" "$APP/Contents/Resources/AppIcon.icns"
 cp "$ROOT/server.mjs" "$APP/Contents/Resources/server.mjs"
+cp -R "$ROOT/lib" "$APP/Contents/Resources/lib"   # the terminal holder and the plumbing the server imports
 # The node that runs the server travels with the app: the one on PATH here, which is the one that
 # ran npm install, so node-pty's native addon matches its ABI. The app never looks for node again.
 NODE_BIN=$(command -v node) || { echo "node not found on PATH — it is copied into the bundle"; exit 1; }

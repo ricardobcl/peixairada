@@ -11,12 +11,13 @@
 
 import { createServer, get as httpGet } from 'node:http';
 import {
-  chmodSync, closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, renameSync, statSync, watch, writeFileSync
+  chmodSync, closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, renameSync, statSync, unlinkSync, watch, writeFileSync
 } from 'node:fs';
+import { connect as netConnect } from 'node:net';
 import { basename, dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 import { execFile, spawn } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { WebSocketServer } from 'ws';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -27,15 +28,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // /Applications every start tripped App Management ("prevented from modifying apps on your Mac").
 try { const h = join(__dirname, 'node_modules', 'node-pty', 'prebuilds', `${process.platform}-${process.arch}`, 'spawn-helper'); if (existsSync(h) && (statSync(h).mode & 0o111) !== 0o111) chmodSync(h, 0o755); } catch {}
 const nodePty = await import('node-pty').then(m => m.default ?? m).catch(e => { console.error('[peixairada] node-pty unavailable — terminals are disabled:', e.message); return null; });
-// A headless xterm per drawer keeps the exact screen — cells, cursor, modes, scrollback — so a page that attaches gets
-// a faithful snapshot, serialized back to escape sequences, instead of a replay of the raw byte buffer. That buffer
-// was capped and trimmed by chunk, so the replay started wherever the drop landed (mid-sequence, even), and Claude
-// Code paints its prompt box and status bar once and then rewrites only the cells that change: a replay that started
-// after that paint showed blank rules and a status line of lone digits (2026-09-20). Without the modules the byte
-// buffer stays as the fallback, and the page's own nudge after attach makes Claude repaint over it.
-const xtHeadless = await Promise.all([import('@xterm/headless'), import('@xterm/addon-serialize')])
-  .then(([h, sz]) => ({ Terminal: (h.default ?? h).Terminal, SerializeAddon: (sz.default ?? sz).SerializeAddon }))
-  .catch(e => { console.error('[peixairada] @xterm/headless unavailable — drawers replay raw bytes on attach:', e.message); return null; });
 const CLAUDE_DIR = process.env.CLAUDE_DIR || join(homedir(), '.claude');
 const PROJECTS_DIR = join(CLAUDE_DIR, 'projects');
 const SESSIONS_DIR = join(CLAUDE_DIR, 'sessions');
@@ -504,9 +496,10 @@ function fold(s, line) {
         setStatus(s, 'idle', ts);
         return true;
       }
-      if (SYNTHETIC_RE.test(raw)) return false;
+      // The reminder blocks go first: Claude Code puts them at the head of the user's own text, and a prompt that
+      // follows one is a prompt (the test that caught it: 2026-09-20). Only what remains is judged synthetic.
       const text = cleanPrompt(raw);
-      if (!text) return false;
+      if (!text || SYNTHETIC_RE.test(text)) return false;
       pushEntry(s, { role: 'user', kind: 'text', text, ts, uuid: line.uuid });
       notePrs(s, text, ts, 'user');
       s.lastPrompt = snippet(text, 200);
@@ -938,36 +931,41 @@ function replyToStale(s, text) {
 // so the watcher tracks it with no special casing; the rendered chat above the drawer is the reading
 // view and the terminal is where you type.
 //
-// The PTY lives here, so the process survives a page reload or a switch to another chat; it does
-// not survive this server. Output is kept in a bounded scrollback and replayed on every attach.
-// A resumed chat keeps its session id; a new one is matched to its session by pid when it registers.
-const TERM_SCROLLBACK_LINES = Number(process.env.TERM_SCROLLBACK_LINES || 5000);   // the headless screen's, and the page's xterm keeps as many
-const TERM_SCROLLBACK = Number(process.env.TERM_SCROLLBACK || 256 * 1024);          // the byte buffer, only without @xterm/headless
-const TERM_LINGER_MS = 5 * 60_000;    // keep an exited terminal's output around this long
-const terms = new Map();              // id -> { id, sessionId, cwd, pid, proc, resume, startedAt, exited, screen, serialize, chunks, bytes, clients }
+// The PTY does not live here. Each drawer is a holder (lib/termhold.mjs), a small process spawned detached
+// that owns the PTY and the exact screen (a headless xterm) and listens on a Unix socket under TERMS_DIR;
+// this server connects to it and proxies pages to it. So a server restart — `scripts/launchd.sh restart`,
+// a crash — leaves every chat running, and on boot the server adopts the holders it finds. Until
+// 2026-09-20 the PTY was in-process and every restart ended every drawer, this project's own included.
+// A resumed chat keeps its session id; a new one is matched to its session by pid when it registers —
+// the holder reports the PTY's pid, and is told the id back so an adoption after a restart knows it too.
+const TERMS_DIR = process.env.TERMS_DIR || join(dirname(STATE_FILE), 'terms');
+const HOLDER = join(__dirname, 'lib', 'termhold.mjs');
+const TERM_LINGER_MS = Number(process.env.TERM_LINGER_MS || 5 * 60_000);   // an exited holder keeps its last screen this long (the holder's own timer; this one forgets it here)
+const HOLDER_START_MS = 15_000;
+const terms = new Map();              // id -> { id, sessionId, cwd, pid, holderPid, resume, startedAt, exited, cols, rows, sock, clients, snapQ, lastSnap }
 let termSeq = 0;
+const termsAvailable = () => !!nodePty && existsSync(HOLDER);
 
 /** The chat's terminal — a live one over an exited one still lingering in `terms`. */
 function termOf(s) { let hit = null; for (const t of terms.values()) if (t.sessionId === s.id && (!hit || (hit.exited !== null && t.exited === null))) hit = t; return hit; }
 function termSummary(t) {
-  return t ? { id: t.id, sessionId: t.sessionId, cwd: t.cwd, pid: t.pid, resume: t.resume, startedAt: t.startedAt, exited: t.exited } : null;
+  return t ? {
+    id: t.id, sessionId: t.sessionId, cwd: t.cwd, pid: t.pid, holderPid: t.holderPid, resume: t.resume, startedAt: t.startedAt, exited: t.exited,
+    cols: t.cols, rows: t.rows, clients: t.clients.size, connected: !!(t.sock && !t.sock.destroyed), lastSnapshotChars: t.lastSnap,
+  } : null;
 }
 
 // The server's own environment minus anything that says "you are inside a Claude session" — under
 // `npm start` from a Claude shell that is exactly what it says, and the CLI refuses to nest.
 function termEnv() {
   const env = {};
-  for (const [k, v] of Object.entries(process.env)) if (!/^CLAUDE(CODE|_)/.test(k)) env[k] = v;
-  // PEIXAIRADA_DRAWER tells a script that its shell ends with this server (launchd.sh and build.sh check it).
+  // Only the nesting markers go: CLAUDECODE and CLAUDE_CODE_*. CLAUDE_DIR is this project's own (a fixture in tests —
+  // the fake claude reads it) and CLAUDE_BIN the override the server already resolved; neither means anything to the CLI.
+  for (const [k, v] of Object.entries(process.env)) if (!/^CLAUDECODE$|^CLAUDE_CODE_/.test(k)) env[k] = v;
+  // PEIXAIRADA_DRAWER tells a script that its shell is a drawer (launchd.sh and build.sh check it).
   return { ...env, TERM: 'xterm-256color', COLORTERM: 'truecolor', LANG: env.LANG || 'en_US.UTF-8', PEIXAIRADA_DRAWER: '1' };
 }
 
-/**
- * Start `claude` (or `claude --resume <id>`) in a PTY in `cwd`. Through an interactive login zsh,
- * because the app's server has a bare PATH and the tools Claude will call — git, gh, node — are on
- * the PATH that .zshrc builds (mise activates there). `exec` makes claude take over the shell's
- * pid, which is the pid the registry will report.
- */
 // Take a chat over from wherever it runs — iTerm, VS Code: end that claude, then resume the chat here.
 // Nothing respawns a CLI process, and VS Code's extension does not respawn its own either (see inVsCode),
 // so the transcript has one writer again the moment it is gone. SIGTERM first, which is what closing the
@@ -989,61 +987,138 @@ function endClaude(pid) {
   });
 }
 
-function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30 }) {
-  if (!nodePty) return { code: 501, error: 'node-pty is not available — run npm install and restart the server' };
+// ---- the holder protocol: newline-delimited JSON over the holder's socket (see lib/termhold.mjs) ----
+const holderSend = (t, m) => { if (t.sock && !t.sock.destroyed) { t.sock.write(JSON.stringify(m) + '\n'); return true; } return false; };
+/** The screen as it stands, with `upto`: the seq of the last output message it already contains. Null when the holder is gone. */
+const requestSnap = t => new Promise(res => { if (!holderSend(t, { t: 'snap' })) return res(null); t.snapQ.push(res); });
+function connectHolder(t) {
+  return new Promise((resolve, reject) => {
+    const sock = netConnect(join(TERMS_DIR, `${t.id}.sock`));
+    let buf = '', helloed = false;
+    sock.on('connect', () => { t.sock = sock; });
+    sock.on('data', chunk => {
+      buf += chunk;
+      let i; while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 1);
+        let m; try { m = JSON.parse(line); } catch { continue; }
+        if (!helloed && m.t === 'hello') { helloed = true; Object.assign(t, { pid: m.pid, holderPid: m.holderPid, exited: m.exited, cols: m.cols, rows: m.rows, cwd: m.cwd, resume: !!m.resume, startedAt: m.startedAt, sessionId: t.sessionId ?? m.sessionId ?? null }); resolve(m); }
+        else onHolderMsg(t, m);
+      }
+    });
+    sock.on('error', e => { if (!helloed) reject(e); });
+    sock.on('close', () => { if (t.sock === sock) { t.sock = null; onHolderGone(t); } if (!helloed) reject(new Error('the holder closed before saying hello')); });
+  });
+}
+function onHolderMsg(t, m) {
+  if (m.t === 'out') {
+    const buf = Buffer.from(m.d, 'utf8');
+    // A page still waiting for its snapshot gets what arrives meanwhile afterwards, in order and only what the
+    // snapshot does not already contain (see attachTermSocket).
+    for (const ws of t.clients) { if (ws.readyState !== 1) continue; if (ws.hold) ws.hold.push({ seq: m.seq, buf }); else ws.send(buf); }
+  } else if (m.t === 'snap') { const w = t.snapQ.shift(); t.lastSnap = m.d.length; if (w) w(m); }
+  else if (m.t === 'exit') termExited(t, m.code);
+}
+function termExited(t, code) {
+  if (t.exited !== null) return;
+  t.exited = code ?? 0;
+  const msg = JSON.stringify({ t: 'exit', code: t.exited });
+  for (const ws of t.clients) if (ws.readyState === 1) ws.send(msg);
+  broadcast('terminal', termSummary(t));
+  const s = t.sessionId && sessions.get(t.sessionId); if (s) schedulePush(s);
+  setTimeout(() => { if (terms.get(t.id) === t) { terms.delete(t.id); t.sock?.destroy(); } }, TERM_LINGER_MS).unref();
+}
+/** The socket closed: the holder ended (after its linger, or killed). A live PTY dies with its holder — its master closed — so 129. */
+function onHolderGone(t) {
+  for (const w of t.snapQ.splice(0)) w(null);
+  if (t.exited === null) termExited(t, 129); else terms.delete(t.id);
+}
+
+/**
+ * Start `claude` (or `claude --resume <id>`) in `cwd`: write the spec, spawn the holder detached (its own
+ * session, so a signal to this server never reaches it), wait for its socket. The holder runs the CLI through an
+ * interactive login zsh, because the app's server has a bare PATH and the tools Claude will call — git, gh, node —
+ * are on the PATH that .zshrc builds (mise activates there); `exec` makes claude take over the shell's pid, which
+ * is the pid the registry will report.
+ */
+async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30 }) {
+  if (!termsAvailable()) return { code: 501, error: 'node-pty is not available — run npm install and restart the server' };
   const bin = claudeBin();
   if (!bin) return { code: 503, error: 'claude binary not found — set CLAUDE_BIN to its path' };
   if (!cwd) return { code: 400, error: 'no cwd known for this chat' };
   if (!existsSync(cwd)) return { code: 409, error: `cwd no longer exists: ${cwd}` };
   const args = sessionId ? ['--resume', sessionId] : [];
   const id = `t${++termSeq}-${Date.now().toString(36)}`;
-  let proc;
+  try { mkdirSync(TERMS_DIR, { recursive: true }); } catch {}
+  const spec = { id, sessionId, cwd, bin, args, cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), resume: !!sessionId, startedAt: new Date().toISOString() };
+  const logFile = join(TERMS_DIR, `${id}.log`);
+  let child;
   try {
-    proc = nodePty.spawn('/bin/zsh', ['-l', '-i', '-c', 'exec "$0" "$@"', bin, ...args],
-      { name: 'xterm-256color', cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), cwd, env: termEnv() });
-  } catch (e) { return { code: 500, error: `could not start a terminal: ${e.message}` }; }
-  const t = { id, sessionId, cwd, pid: proc.pid, proc, resume: !!sessionId, startedAt: new Date().toISOString(), exited: null, screen: null, serialize: null, chunks: [], bytes: 0, clients: new Set() };
-  if (xtHeadless) {
-    t.screen = new xtHeadless.Terminal({ cols: proc.cols, rows: proc.rows, scrollback: TERM_SCROLLBACK_LINES, allowProposedApi: true });
-    t.serialize = new xtHeadless.SerializeAddon(); t.screen.loadAddon(t.serialize);
+    writeFileSync(join(TERMS_DIR, `${id}.json`), JSON.stringify(spec));
+    const log = openSync(logFile, 'a');
+    child = spawn(process.execPath, [HOLDER, TERMS_DIR, id], { cwd, env: termEnv(), detached: true, stdio: ['ignore', log, log] });
+    child.unref(); closeSync(log);
+  } catch (e) { return { code: 500, error: `could not start a terminal holder: ${e.message}` }; }
+  const t = { ...spec, pid: null, holderPid: child.pid, exited: null, sock: null, clients: new Set(), snapQ: [], lastSnap: null };
+  const t0 = Date.now();
+  for (;;) {
+    try { await connectHolder(t); break; }
+    catch (e) {
+      if (child.exitCode !== null) {
+        let why = ''; try { why = JSON.parse(readFileSync(join(TERMS_DIR, `${id}.json`), 'utf8')).error || ''; } catch {}
+        return { code: 500, error: why || `the terminal holder exited (${child.exitCode}) — see ${logFile}` };
+      }
+      if (Date.now() - t0 > HOLDER_START_MS) return { code: 500, error: `the terminal holder did not answer in ${HOLDER_START_MS / 1000} s (${e.message}) — see ${logFile}` };
+      await new Promise(r => setTimeout(r, 100));
+    }
   }
-  proc.onData(d => {
-    const buf = Buffer.from(d, 'utf8');
-    if (t.screen) t.screen.write(d);
-    else { t.chunks.push(buf); t.bytes += buf.length; while (t.bytes > TERM_SCROLLBACK && t.chunks.length > 1) t.bytes -= t.chunks.shift().length; }
-    // A page still waiting for its snapshot gets what arrives meanwhile afterwards, in order (see attachTermSocket).
-    for (const ws of t.clients) { if (ws.readyState !== 1) continue; if (ws.hold) ws.hold.push(buf); else ws.send(buf); }
-  });
-  proc.onExit(({ exitCode }) => {
-    t.exited = exitCode ?? 0;
-    const msg = JSON.stringify({ t: 'exit', code: t.exited });
-    for (const ws of t.clients) if (ws.readyState === 1) ws.send(msg);
-    broadcast('terminal', termSummary(t));
-    const s = t.sessionId && sessions.get(t.sessionId); if (s) schedulePush(s);
-    setTimeout(() => { if (terms.get(id) === t) { terms.delete(id); t.screen?.dispose(); } }, TERM_LINGER_MS).unref();
-  });
   terms.set(id, t);
-  console.log(`[peixairada] terminal ${id}: claude${args.length ? ' ' + args.join(' ') : ''} in ${cwd} (pid ${proc.pid})`);
+  console.log(`[peixairada] terminal ${id}: claude${args.length ? ' ' + args.join(' ') : ''} in ${cwd} (pid ${t.pid}, holder ${t.holderPid})`);
   broadcast('terminal', termSummary(t));
   const s = sessionId && sessions.get(sessionId); if (s) schedulePush(s);
   return { code: 201, terminal: termSummary(t) };
 }
 
-/** A new chat has no session id until claude registers; the pid ties the two together. */
-function linkTermToRegistry(pid, s) {
-  for (const t of terms.values()) {
-    if (t.pid !== pid || t.sessionId === s.id) continue;
-    t.sessionId = s.id;
-    broadcast('terminal', termSummary(t)); schedulePush(s);
+/** On boot: the holders from before this server — adopt the ones that answer, clean up after the dead. */
+async function adoptHolders() {
+  if (!existsSync(TERMS_DIR)) return;
+  for (const f of readdirSync(TERMS_DIR)) {
+    if (!f.endsWith('.json')) continue;
+    let meta; try { meta = JSON.parse(readFileSync(join(TERMS_DIR, f), 'utf8')); } catch { continue; }
+    const id = meta.id || f.slice(0, -5);
+    const n = Number((id.match(/^t(\d+)-/) || [])[1]); if (n > termSeq) termSeq = n;
+    const t = { id, sessionId: meta.sessionId ?? null, cwd: meta.cwd, bin: meta.bin, args: meta.args, cols: meta.cols, rows: meta.rows, resume: !!meta.resume, startedAt: meta.startedAt, pid: meta.pid, holderPid: meta.holderPid, exited: meta.exited ?? null, sock: null, clients: new Set(), snapQ: [], lastSnap: null };
+    try {
+      await connectHolder(t);
+      terms.set(id, t);
+      if (t.exited !== null) setTimeout(() => { if (terms.get(id) === t) terms.delete(id); }, TERM_LINGER_MS).unref();
+      console.log(`[peixairada] terminal ${id}: adopted — pid ${t.pid}, holder ${t.holderPid}${t.exited !== null ? ', exited ' + t.exited : ''}${t.sessionId ? ', chat ' + t.sessionId : ''}`);
+    } catch (e) {
+      if (meta.holderPid && pidAlive(meta.holderPid)) { console.log(`[peixairada] terminal ${id}: holder ${meta.holderPid} is alive but not answering (${e.message}) — left alone`); continue; }
+      for (const ext of ['.json', '.sock', '.log']) try { unlinkSync(join(TERMS_DIR, id + ext)); } catch {}
+      console.log(`[peixairada] terminal ${id}: its holder is gone — cleaned up`);
+    }
   }
 }
 
-// One WebSocket per attached page. Binary frames carry output — first the screen as it stands (the headless
-// terminal serialized: scrollback, cells, cursor, modes; the raw byte buffer without it), then the PTY's bytes as
-// they come; text frames are JSON in both directions: {t:'in', d} and {t:'resize', cols, rows} up, {t:'exit', code}
-// down. The snapshot is taken once everything the PTY has written so far is parsed (write('') resolves after the
-// queue), and output arriving in between waits in `ws.hold`, so the page sees the screen and then, in order, what
-// followed it.
+/** A new chat has no session id until claude registers; the pid ties the two together, and the holder is told. */
+function linkTermToRegistry(pid, s) {
+  for (const t of terms.values()) {
+    if (t.pid !== pid || t.sessionId === s.id) continue;
+    t.sessionId = s.id; holderSend(t, { t: 'meta', sessionId: s.id });
+    broadcast('terminal', termSummary(t)); schedulePush(s);
+  }
+}
+/** End the process in a drawer; an exited one is let go at once instead of lingering. */
+function killTerm(t) {
+  if (t.exited === null) holderSend(t, { t: 'kill' });
+  else { holderSend(t, { t: 'quit' }); terms.delete(t.id); }
+}
+
+// One WebSocket per attached page. Binary frames carry output — first the screen as it stands (the holder's
+// headless terminal serialized: scrollback, cells, cursor, modes), then the PTY's bytes as they come; text frames
+// are JSON in both directions: {t:'in', d} and {t:'resize', cols, rows} up, {t:'exit', code} down. Output that
+// arrives while the snapshot is on its way waits in `ws.hold` and follows it, minus what the snapshot already
+// contains (`upto`), so the page sees the screen and then, in order, only what came after it.
 const wss = new WebSocketServer({ noServer: true });
 function attachTermSocket(req, socket, head) {
   const m = (req.url || '').match(/^\/api\/terminals\/([\w-]+)\/ws$/);
@@ -1051,26 +1126,22 @@ function attachTermSocket(req, socket, head) {
   if (!t) { socket.write('HTTP/1.1 404 Not Found\r\n\r\n'); socket.destroy(); return; }
   wss.handleUpgrade(req, socket, head, ws => {
     t.clients.add(ws);
-    const exitMsg = () => { if (t.exited !== null && ws.readyState === 1) ws.send(JSON.stringify({ t: 'exit', code: t.exited })); };
-    if (t.screen) {
-      ws.hold = [];
-      t.screen.write('', () => {
-        if (ws.readyState !== 1) return;
-        const snap = t.serialize.serialize({ scrollback: TERM_SCROLLBACK_LINES });
-        if (snap) ws.send(Buffer.from(snap, 'utf8'));
-        for (const b of ws.hold) ws.send(b);
-        ws.hold = null;
-        exitMsg();
-        console.log(`[peixairada] terminal ${t.id}: a page attached — screen snapshot ${snap.length} chars, ${t.screen.cols}×${t.screen.rows}`);
-      });
-    } else { if (t.bytes) ws.send(Buffer.concat(t.chunks)); exitMsg(); }
+    ws.hold = [];
+    requestSnap(t).then(snap => {
+      if (ws.readyState !== 1) return;
+      if (snap?.d) ws.send(Buffer.from(snap.d, 'utf8'));
+      for (const h of ws.hold) if (!snap || h.seq > snap.upto) ws.send(h.buf);
+      ws.hold = null;
+      if (t.exited !== null) ws.send(JSON.stringify({ t: 'exit', code: t.exited }));
+      if (snap) console.log(`[peixairada] terminal ${t.id}: a page attached — screen snapshot ${snap.d.length} chars, ${snap.cols}×${snap.rows}`);
+    });
     ws.on('message', data => {
       if (t.exited !== null) return;
       let msg; try { msg = JSON.parse(data.toString()); } catch { return; }
-      if (msg.t === 'in' && typeof msg.d === 'string') t.proc.write(msg.d);
+      if (msg.t === 'in' && typeof msg.d === 'string') holderSend(t, { t: 'in', d: msg.d });
       else if (msg.t === 'resize' && msg.cols > 0 && msg.rows > 0) {
         const cols = Math.min(500, msg.cols | 0), rows = Math.min(200, msg.rows | 0);
-        try { t.proc.resize(cols, rows); t.screen?.resize(cols, rows); } catch {}
+        t.cols = cols; t.rows = rows; holderSend(t, { t: 'resize', cols, rows });
       }
     });
     ws.on('close', () => t.clients.delete(ws));
@@ -1288,10 +1359,10 @@ const server = createServer(async (req, res) => {
       prView(url, out => out.code === 200 ? json(res, 200, { pr: out.pr }) : json(res, out.code, { error: out.error }));
       return;
     }
-    if (req.method === 'GET' && p === '/api/terminals') return json(res, 200, { terminals: [...terms.values()].map(termSummary), available: !!nodePty });
+    if (req.method === 'GET' && p === '/api/terminals') return json(res, 200, { terminals: [...terms.values()].map(termSummary), available: termsAvailable(), dir: TERMS_DIR });
     if (req.method === 'POST' && p === '/api/terminals') {   // a new chat in a folder
       let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
-      const r = spawnTerm({ cwd: typeof body.cwd === 'string' ? body.cwd : null, cols: body.cols, rows: body.rows });
+      const r = await spawnTerm({ cwd: typeof body.cwd === 'string' ? body.cwd : null, cols: body.cols, rows: body.rows });
       return json(res, r.code, r);
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/terminal$/))) {   // attach to, or resume, this chat
@@ -1302,7 +1373,7 @@ const server = createServer(async (req, res) => {
       // Live elsewhere: same rule as replies — a second claude on one transcript is how it gets mangled.
       if (s.alive) return json(res, 409, { error: `this chat is live in ${s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : 'another terminal'} — take it over, or continue it there` });
       let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
-      const r = spawnTerm({ cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows });
+      const r = await spawnTerm({ cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows });
       return json(res, r.code, r);
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/takeover$/))) {   // end every claude it is live in elsewhere, resume it here
@@ -1321,13 +1392,13 @@ const server = createServer(async (req, res) => {
       const cwd = s.live.cwd || s.cwd;   // before the registry entry goes
       for (const pid of [s.live.pid, ...s.rivals.map(r => r.pid)]) { const r = await endClaude(pid); if (!r.ok) return json(res, r.code, { error: r.error }); }
       loadRegistry();
-      const t = spawnTerm({ cwd, sessionId: s.id, cols: body.cols, rows: body.rows });
+      const t = await spawnTerm({ cwd, sessionId: s.id, cols: body.cols, rows: body.rows });
       return json(res, t.code, t);
     }
     if (req.method === 'DELETE' && (m = p.match(/^\/api\/terminals\/([\w-]+)$/))) {
       const t = terms.get(m[1]);
       if (!t) return json(res, 404, { error: 'unknown terminal' });
-      if (t.exited === null) { try { t.proc.kill(); } catch {} }
+      killTerm(t);
       return json(res, 200, { ok: true });
     }
     if (req.method === 'POST' && p === '/api/vscode-web') {   // VS Code Web for the pane: start it if need be, say where it is
@@ -1356,11 +1427,15 @@ const server = createServer(async (req, res) => {
 server.on('upgrade', attachTermSocket);
 
 // ---------------------------------------------------------------------------------------------
-// Boot
+// Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-
+export { fold, newSession, summary, notePr, notePrs, prTitle, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
+async function main() {
 const t0 = Date.now();
 scanProjects();
+await adoptHolders();   // before the registry: a drawer's own process is what makes a chat's live process "mine"
 loadRegistry();
 indexing = false;
 // Statuses alone could wait for a chat to be opened; titles cannot — they head every card, so the whole
@@ -1394,4 +1469,5 @@ server.on('error', e => {
   console.error(`[peixairada] port ${PORT} is busy — trying again in 3 s`);
   setTimeout(() => server.listen(PORT, HOST), 3000);
 });
-server.listen(PORT, HOST, () => console.log(`[peixairada] listening on http://${HOST}:${PORT}  (notify=${NOTIFY})`));
+server.listen(PORT, HOST, () => console.log(`[peixairada] listening on http://${HOST}:${PORT}  (notify=${NOTIFY}, terminals in ${TERMS_DIR})`));
+}
