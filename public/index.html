@@ -223,9 +223,10 @@
     animation: ring 1.4s linear infinite; }
   @keyframes ring { to { --spin: 360deg; } }
   /* Hover and the open chat enhance the card's own colour, never the accent (2026-09-20, Ricardo: "still show a
-     orange border … just enhance the border with its own color"): the full colour on hover, with a soft 1px halo
-     outside; the open card wears a 2px ring of it over its border — a three-pixel edge — and the solid tint. */
-  .card:hover { border-color: var(--repo, var(--nocolor)); outline: 1px solid color-mix(in srgb, var(--repo, var(--nocolor)) 45%, transparent); outline-offset: 0; }
+     orange border … just enhance the border with its own color", then "the hover cards, make the background as if
+     it was select"): hover is the open card's solid tint under the full colour with a soft 1px halo outside; the open
+     card adds a 2px ring of it over its border — a three-pixel edge. */
+  .card:hover { border-color: var(--repo, var(--nocolor)); outline: 1px solid color-mix(in srgb, var(--repo, var(--nocolor)) 45%, transparent); outline-offset: 0; background: color-mix(in srgb, var(--repo, var(--nocolor)) 36%, var(--panel)); }
   .chip.vsc { color: var(--vscode); border-color: var(--vscode); }
   /* the open chat: a solid tint of its colour under a ring of it (2026-09-20, Ricardo: "a more solid
      background, so we can notice it better"); every other card keeps the gradient wash */
