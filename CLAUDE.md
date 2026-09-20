@@ -104,7 +104,7 @@ refuses to run against the real directory for the same reason.
 
 * **`HOTKEYS` in index.html is the whole ⌥⌘ family**: T this chat's zsh tab (`hotShell()` →
   `POST /api/sessions/:id/shell`, a holder running `zsh -l -i` in its folder, `s.shell`), E the VS Code *Web* button
-  (edit inline, in the pane), V the real VS Code (the focus button), G the chat's PR on GitHub — one opens straight
+  (edit inline, in the pane; the real VS Code is the header's focus button only, no key), G the chat's PR on GitHub — one opens straight
   away, several open the picker in `pr` mode every time, the one showing marked *current* (no PR → the folder's
   GitHub repo, `state.repos` from `git remote`) —, C this chat's claude session (`termAction()`, the `>_` button's path — arm and take over
   included, focus at the end), O the project picker, ↑ / ↓ the chat above or below in the list as shown (`hotMove()`).

@@ -1,5 +1,5 @@
 // The ⌥⌘ family on a fixture: G opens the picker on a two-PR chat, ⏎ opens the first, G again is the picker again
-// with that one marked, a click on the other opens it; T, E, V and C hit their routes (stubbed); O is the project
+// with that one marked, a click on the other opens it; T, E and C hit their routes (stubbed), V none; O is the project
 // picker; ↓ ↑ walk the list; the cog lists every key; no chat → a note.
 export const meta = { server: true, fixture: 'auto' };
 export default async function (ctx) {
@@ -28,11 +28,12 @@ export default async function (ctx) {
   ctx.assert.notEqual(out.second, out.first, 'the other row opened the other PR');
   out.peixState = await ctx.peix('state()');
   ctx.assert.match(String(out.peixState.prbar), /\/pull\/\d+$/, 'the strip holds the current PR (pane pages exist only in the app)');
-  // T, E, V and C, routes stubbed so nothing spawns or opens
+  // T, E and C, routes stubbed so nothing spawns or opens; V is no key any more (the focus button only)
   await ctx.evaluate(`window.__hits = []; const real = window.fetch; window.fetch = (u, o) => { const s = String(u); if (/\\/(terminal|vscode-web|focus|shell)$/.test(s)) { window.__hits.push([s, o?.method]); return Promise.resolve({ ok: false, status: 500, json: async () => ({ error: 'stubbed' }) }); } return real(u, o); }`);
   for (const k of ['KeyT', 'KeyE', 'KeyV', 'KeyC']) { await ctx.key(k); await ctx.sleep(200); }
   out.hits = await ctx.evaluate(`JSON.stringify(window.__hits)`).then(JSON.parse);
-  for (const route of ['/shell', '/vscode-web', '/focus', '/terminal']) ctx.assert.ok(out.hits.some(h => h[0].endsWith(route)), `${route} was hit (T zsh, E web editor, V VS Code, C claude)`);
+  for (const route of ['/shell', '/vscode-web', '/terminal']) ctx.assert.ok(out.hits.some(h => h[0].endsWith(route)), `${route} was hit (T zsh, E web editor, C claude)`);
+  ctx.assert.ok(!out.hits.some(h => h[0].endsWith('/focus')), '⌥⌘V does nothing');
   // ⌃⌘ is not the chord
   await ctx.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyO', key: 'o', metaKey: true, ctrlKey: true, bubbles: true, cancelable: true }))`);
   out.wrongChord = await ctx.evaluate(`document.querySelector('#pick').open`); ctx.assert.equal(out.wrongChord, false, '⌃⌘O does not open the picker');
@@ -55,7 +56,7 @@ export default async function (ctx) {
   ctx.assert.match(out.noPrNote, /No PR/);
   // the cog lists the keys
   out.cog = await ctx.evaluate(`[...document.querySelectorAll('#settings .keys kbd')].map(k => k.textContent)`);
-  ctx.assert.deepEqual(out.cog.slice(0, 7), ['⌥⌘T', '⌥⌘E', '⌥⌘V', '⌥⌘G', '⌥⌘C', '⌥⌘O', '⌥⌘↑↓']);
+  ctx.assert.deepEqual(out.cog.slice(0, 6), ['⌥⌘T', '⌥⌘E', '⌥⌘G', '⌥⌘C', '⌥⌘O', '⌥⌘↑↓']);
   await ctx.shot('cog');
   return out;
 }

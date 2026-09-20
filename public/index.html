@@ -544,7 +544,6 @@
     <span class="kh">keys</span>
     <kbd>⌥⌘T</kbd><span>a zsh in this folder, a tab beside the chat · again to show it</span>
     <kbd>⌥⌘E</kbd><span>edit: this folder in VS Code Web, on a tab</span>
-    <kbd>⌥⌘V</kbd><span>this chat in VS Code, the real one</span>
     <kbd>⌥⌘G</kbd><span>its PR on GitHub, on a tab · the repo when it has none · a picker with several, every time</span>
     <kbd>⌥⌘C</kbd><span>this chat's claude session — the pane while it runs here · starts or takes over one</span>
     <kbd>⌥⌘O</kbd><span>project picker</span>
@@ -956,14 +955,14 @@
   // ⌥⌘ + a letter, from anywhere — the drawer included: capture phase, so its xterm never sees them; e.code,
   // because with ⌥ held e.key is a symbol ('ø' for O) on a Mac. One letter per place the open chat lives: T a
   // fresh zsh in its folder (the pane's zsh tab — a holder like claude's), E the editor — VS Code Web in the pane, the
-  // web button's route —, V the real VS Code (the focus button's), G the chat's PR on GitHub — straight to it
+  // web button's route —, G the chat's PR on GitHub — straight to it
   // with one, the picker with several — every time, a tab open or not, the one showing marked (Ricardo, 2026-09-20:
   // "always open the menu to choose the PR"); each PR is its own tab, so nothing reloads —, C the claude session: the >_ button's
   // path (the drawer shown or started, arm-and-take-over included, so a chat live elsewhere takes two presses).
   // O is the project picker; ↑ and ↓ open the chat above or below in the list. A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyV: hotCode, KeyG: hotGh, KeyC: hotClaude, KeyO: () => pickOpen('project'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1) };
+  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyO: () => pickOpen('project'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1) };
   const runHotkey = code => { if (code === 'Escape') return hotEscape(); const fn = HOTKEYS[code]; if (fn && !document.querySelector('dialog[open]')) fn(); };
   document.addEventListener('keydown', e => {
     if (!(e.metaKey && e.altKey && !e.ctrlKey && !e.shiftKey && HOTKEYS[e.code])) return;
@@ -999,7 +998,6 @@
     const next = cards[i < 0 ? (dir > 0 ? 0 : cards.length - 1) : Math.max(0, Math.min(cards.length - 1, i + dir))];
     if (next.dataset.id !== state.current) openSession(next.dataset.id);
   }
-  function hotCode() { const b = $('#focusBtn'); if (b) b.click(); else noChat(); }
   // ⌥⌘T: a fresh zsh in the chat's folder, inline — the pane's zsh tab, like a new tab in iTerm (2026-09-20). One per
   // chat: started on the first press, shown on the next ones; `exit` or the tab's × ends it. A failure is a note.
   async function hotShell() {
@@ -1222,7 +1220,7 @@
   const PR_ROWS = 6;   // a chat that lists PRs mentions dozens; the block shows this many and folds the rest behind "more"
   const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" href="${esc(pr.url)}" target="_blank" rel="noopener"
       title="${esc(`${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}`)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span><span class="meta">${rel(pr.lastAt)}</span></a>`;
-  const FOCUS_TIP = "Open this chat in VS Code · ⌥⌘V";
+  const FOCUS_TIP = "Open this chat in VS Code";   // the button only — its key went (2026-09-20, Ricardo: "leave the button up top only")
   const WEB_TIP = "Open this folder in VS Code Web — the editor served locally by `code serve-web`, in the pane here (a separate VS Code: trust the folder once, then Claude Code is in its sidebar) · ⌥⌘E";
   function renderHead(s) {
     if (state.titleEdit === s.id) return;   // a rename in progress: leave the header alone until it ends

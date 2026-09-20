@@ -124,7 +124,7 @@ app — it greys out when the board loses the server, and **hovering it opens th
 magnifier under it filters projects (the strip opens to let you type and folds back when you are done);
 **⌥⌘O** from anywhere opens a project picker the VS Code way — type to filter, ↑↓, ⏎ opens it, esc closes (the
 same ⌥⌘ family drives the open chat: **⌥⌘C** its claude session, **⌥⌘T** a zsh in its folder, **⌥⌘E** VS Code Web,
-**⌥⌘V** VS Code, **⌥⌘G** its PR, **⌥⌘↑ / ⌥⌘↓** the chat above or below in the list, see *The chat*) —
+**⌥⌘G** its PR, **⌥⌘↑ / ⌥⌘↓** the chat above or below in the list, see *The chat*) —
 and the **cog** at its bottom opens the settings (show empty & >30d, tool calls, fold code, sound,
 browser alerts, test alert) and, under them, **the list of keys**, for when one slips the mind. The usage card on the fish (a click pins it) is your **Claude plan usage**: the session and weekly windows `/usage` shows,
 plus a weekly row per model the account meters apart (Fable, Sonnet…), read with Claude Code's own login.
@@ -246,8 +246,8 @@ the chat's claude session in the terminal, opened or started, and the keyboard l
 elsewhere the first press arms the take-over and the second ends that claude, as two clicks would). **⌥⌘T** is a
 fresh zsh in the chat's folder, inline: a *zsh* tab appears beside the chat (*claude* while it runs here, *chat*
 otherwise), one per chat, `exit` or its × ends it, and ⌥⌘C brings the claude session back. **⌥⌘E**
-opens the folder in VS Code Web, on a *VS Code* tab of the same strip — the *web* button's route; **⌥⌘V** opens the chat in the real VS
-Code — the focus button's. **⌥⌘G** opens the chat's PR on GitHub — straight away with
+opens the folder in VS Code Web, on a *VS Code* tab of the same strip — the *web* button's route (the real VS Code
+is the focus button in the header, no key). **⌥⌘G** opens the chat's PR on GitHub — straight away with
 one; with several, the ⌥⌘O picker filled with the PR rows under the header (state · `repo#n` · title · age,
 filtered by number or title, ⏎ opens the selected one, the one showing marked *current*) — **every time**, a tab
 already open or not; each PR is a tab of its own (`repo#n`) so nothing reloads. The
