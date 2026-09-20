@@ -440,9 +440,32 @@ Test chats that exist only because of this work (safe to ignore or tick done): *
   screen the window otherwise took Esc to leave full screen. Handled by a local key monitor in Swift.
   With the pane hidden Esc is untouched. Trade-off accepted by Ricardo: the editor in the pane gives up
   its own Esc; if it bites, give the pane its own shortcut instead.
+* **…and with the pane hidden, the page takes Esc itself when it has something to close** (2026-09-20, evening).
+  The project and PR pickers closed on Esc and the app left full screen with them: a `<dialog>`'s own Esc is not
+  reported to WebKit as handled, and an unhandled key climbs to the window, whose full-screen Esc is exactly that. The
+  page now closes the open dialog, the settings popover or the usage card in a capture-phase handler and calls
+  `preventDefault()`, which is what makes WebKit report the key handled and stop there; with nothing to close the key is
+  left alone, so the filter boxes, the rename box and full screen keep theirs. Not a second Swift monitor: the page
+  knows what is open, the shell does not. Verified for the close and the `defaultPrevented` in the hotkeys scenario;
+  the full-screen half follows from WebKit's rule and was not driven in the app.
 
 ### The board
 
+* **⌥⌘K, the chat picker; ⌥⌘N, a new chat as steps; and folders that launch claude their own way** (2026-09-20,
+  evening, Ricardo's list). K fills the ⌥⌘O dialog with every chat that is ready or clauding — done ones out — across the
+  projects, in the list's own order, searched by the magnifier's words; ⏎ is `openSession`, which switches project when
+  the chat is not in view. N is the same dialog as a flow: the project (no ALL, no folderless named project), the folder
+  when the project spans several, then the environment — because oracle does not start claude bare: its Taskfile has
+  `task production-workload`, `task sandbox-workload`, `task development-<cluster>`, each setting a cluster's credentials and
+  dashboards before `mise exec -- claude`. Rather than name oracle, a folder *has launchers* when its Taskfile's
+  `task --list --json` has tasks whose description mentions Claude (`launchersFor`, cached by mtime; `TASK_BIN`; mise's
+  shim is the first fallback and answers with the agent's bare PATH); the page asks before any new chat, from ⌥⌘N, the +
+  button or the folder pick-list alike (`newChatIn`), and `POST /api/terminals` takes `task`, checked against the list.
+  Behind task, claude is a descendant of the PTY's process (task → sh → mise → claude), so `linkTermToRegistry` walks
+  `ps -axo pid=,ppid=` while such a drawer waits for its session, and the holder keeps `claudePid`. A resume stays
+  `claude --resume`: the Taskfile's command line takes no arguments, and the environment is oracle's to pass through
+  (`{{.CLI_ARGS}}`) if it ever wants resumes to go through task. Tested with `scripts/faketask.mjs`, which runs the fake
+  claude as a child, not exec — the descent is the point.
 * **Attaching a file is a path typed for claude, never an upload the server understands** (2026-09-20).
   Claude Code's own forms — an `@` mention, ⌃V for the clipboard — already work in the drawer, so a Finder drop
   becomes `@path` in the prompt (or in the reply box on a stale chat). The app hands the real path over

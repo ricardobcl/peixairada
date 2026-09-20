@@ -68,7 +68,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | PRs mentioned | `pr-link` lines *and* GitHub pull URLs in user/assistant text; most recently mentioned first; `gh api graphql` batched for state and title (one of the two network calls) |
 | Plan usage (the fish) | `GET https://api.anthropic.com/api/oauth/usage` with Claude Code's own OAuth bearer from the keychain item *Claude Code-credentials*; `USAGE=off` disables; the token never reaches the page. → Findings: *plan usage* |
 | Permission prompts | only via hooks (they never reach the transcript), or visibly in the drawer |
-| Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login zsh (mise's PATH); it registers like any CLI run; a new chat is tied to its session by pid. **`/clear` (or `/resume`) in the drawer** gives that pid a new session id — the registry file says so — and `linkTermToRegistry` moves the holder to it; the page follows the holder to whatever chat it runs (`terminal` event → `openSession`), the old chat is a stale card |
+| Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login zsh (mise's PATH); it registers like any CLI run; a new chat is tied to its session by pid. **A folder whose Taskfile launches claude** (a task whose description mentions Claude — oracle's `task production-workload`…) starts new chats as `task <name>` instead: `GET /api/launchers?cwd=` lists them (`task --list --json`, cached by the file's mtime, `TASK_BIN` overrides), `POST /api/terminals {cwd, task}` checks the name against that list; claude is then a *descendant* of the PTY's pid, found through `ps` (`linkTermToRegistry`, `t.claudePid`). A resume never goes through task. **`/clear` (or `/resume`) in the drawer** gives that pid a new session id — the registry file says so — and `linkTermToRegistry` moves the holder to it; the page follows the holder to whatever chat it runs (`terminal` event → `openSession`), the old chat is a stale card |
 
 **Never written: anything under `~/.claude`.** The board is read-only against Claude Code's data. The fake claude
 refuses to run against the real directory for the same reason.
@@ -108,7 +108,10 @@ refuses to run against the real directory for the same reason.
   (edit inline, in the pane; the real VS Code is the header's focus button only, no key), G the chat's PR on GitHub — one opens straight
   away, several open the picker in `pr` mode every time, the one showing marked *current* (no PR → the folder's
   GitHub repo, `state.repos` from `git remote`) —, C this chat's claude session (`termAction()`, the `>_` button's path — arm and take over
-  included, focus at the end), O the project picker, ↑ / ↓ the chat above or below in the list as shown (`hotMove()`).
+  included, focus at the end), O the project picker, K the chat picker (`chat` mode: every ready or clauding chat,
+  every project, the list's order, searched by `chatText()`; ⏎ is `openSession`), N a new chat as steps of the one
+  dialog (`new` → `folder` when the project spans several → `env` when `newChatIn()` finds launchers; the + button and the
+  folder pick-list take the same `newChatIn` path), ↑ / ↓ the chat above or below in the list as shown (`hotMove()`).
   Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A
   `dialog[open]` swallows them; no chat or no PR is a `note()`. The cog lists every key (`.keys` in `#settings`) —
   keep it in step by hand, with `boardKeys` in main.swift.
@@ -118,6 +121,10 @@ refuses to run against the real directory for the same reason.
   reports `peixPane(visible, left)` so the picker opens beside the pane (`.aside`) and asks for the keyboard
   (`{type:'focus'}`). Esc with the pane up is forwarded as `peixKey('Escape')` (a local monitor swallows it, so full
   screen keeps it) — `hotEscape()`: a dialog or the settings popover closes first, else the chat tab comes back.
+  **With the pane hidden, Esc is the page's**: a capture-phase handler closes an open dialog or popover itself and
+  `preventDefault()`s, so WebKit reports the key handled — an unhandled Esc (a `<dialog>`'s own does not count) climbs
+  to the window, which in full screen leaves it. With nothing to close the key is untouched (the filter boxes, the
+  rename box, full screen keep theirs).
 * **The page owns the tabs** (2026-09-20, late): `#ptabs` lists `chat` (`claude` while the session runs here), `shell`
   while a zsh lives, `gh:<url>` per GitHub page the chat opened and `ide:<url>` for its folder's editor — `tabKeys()`
   from `state.paneGh` (per chat) and `state.paneIde` (per folder); `tabs` holds each chat's tab, and one whose page is
