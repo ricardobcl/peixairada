@@ -172,6 +172,10 @@ refuses to run against the real directory for the same reason.
   display-scale change (`watchDpr`), on focus and on visibility. → Findings: *run off the right edge*, *round two*.
 * **Shift+Enter is a newline**: the drawer sends `ESC CR` itself (what `/terminal-setup` binds in VS Code) and
   swallows the keypress too. `macOptionIsMeta: true`. → Findings: *Shift+Enter*.
+* **⌥ over a digit or a punctuation key types what macOS composed** (2026-09-20): `macOptionIsMeta` reads every
+  ⌥ chord as Meta, and a Portuguese layout lost its `@` (⌥2). The same handler sends `e.key` — the composed
+  character — for the codes in `ALT_COMPOSES`, and leaves ⌥+letter to Meta, where readline and ⌥Enter want it.
+  → Findings: *⌥ is a compose key too*.
 * **The chat header's ◎ button types `/focus`** into that chat's holder (2026-09-20) — Claude Code's focus view, which
   has no key and no API: `toggleFocusView()` sends the command, then reads the newest `Focus view enabled|disabled`
   line off the drawer's screen (`focusSaid()`) and lights `#viewBtn` from *that*; `focusView` (page state, dropped in
@@ -229,8 +233,8 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   fake claude when asked, launches Chrome with **focus emulation on**, and ends terminals, holders, Chrome and temp
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
-  `assert`. The six in `scripts/scenarios/` are the regression checks for the drawer (re-attach, restart,
-  geometry, `/clear`), the hotkeys and the tab strip.
+  `assert`. The eight in `scripts/scenarios/` are the regression checks for the drawer (re-attach, restart,
+  geometry, `/clear`, the focus-view button, ⌥ as a compose key), the hotkeys and the tab strip.
 * **Test against the fake claude, not real chats**: `scripts/fakeclaude.mjs` via `CLAUDE_BIN` (the test server's
   `fake: true`) is instant and touches nothing. A test against the real `~/.claude` (read-only, `claudeDir` unset)
   must use a stale chat and `DELETE` the terminals it made.

@@ -1494,6 +1494,7 @@
     }
     note(at(), 'Sent /focus — the session said nothing back; the drawer shows what happened', true);
   }
+  const ALT_COMPOSES = /^(Digit\d|Minus|Equal|Bracket(Left|Right)|Backslash|Semicolon|Quote|Comma|Period|Slash|Backquote|Intl(Backslash|Ro|Yen))$/;
   function ensureXterm() {
     if (term.xt) return;
     term.xt = new Terminal({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: termFontSize(), lineHeight: 1.1, cursorBlink: true, scrollback: 5000, theme: xtTheme(), macOptionIsMeta: true });
@@ -1502,8 +1503,14 @@
     // (Option+Enter) as a newline — it is what its own /terminal-setup binds Shift+Enter to in VS Code's
     // terminal, which is xterm.js too. Sent on keydown; the keypress that follows is swallowed as well,
     // or it would put the \r through anyway (a custom handler that returns false leaves _keyDownHandled unset).
+    // ⌥ is also how a non-US keyboard composes: @ is ⌥2 on a Portuguese layout, | is ⌥1. macOptionIsMeta turns
+    // that off wholesale — xterm takes the third-level-shift path only when `isMac && !macOptionIsMeta` — so ⌥2
+    // went out as ESC 2 and there was no way to type an @, of all characters. ⌥ over a letter stays Meta (readline's
+    // ⌥b / ⌥f / ⌥⌫, and the ⌥Enter newline); over a digit or a punctuation key we send what macOS already composed,
+    // which is `e.key` itself. A dead key ('Dead') is longer than one character and falls through to xterm as before.
     term.xt.attachCustomKeyEventHandler(e => {
       if (e.key === 'Enter' && e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); if (e.type === 'keydown') termSend('\x1b\r'); return false; }
+      if (ALT_COMPOSES.test(e.code) && e.altKey && !e.ctrlKey && !e.metaKey && e.key.length === 1) { e.preventDefault(); if (e.type === 'keydown') termSend(e.key); return false; }
       return !(e.type === 'keydown' && chatZoomKey(e));
     });
     term.fit = new FitAddon.FitAddon(); term.xt.loadAddon(term.fit);

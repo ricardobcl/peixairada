@@ -2,7 +2,22 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-09-20 (the small hours).
+this file is the *why* and the *state*. Last updated 2026-09-20 (dawn).
+
+## Decisions of 2026-09-20, dawn — ⌥ composes again in the drawer
+
+* **⌥ over a digit or a punctuation key types the character macOS composed** (Ricardo: "why can't I write ‘at’ symbol
+  with ‘option + 2’ combo on claude chat?"): on a Portuguese layout `@` *is* ⌥2, and the drawer swallowed it.
+  `macOptionIsMeta: true` is why — xterm takes the third-level-shift path only when `isMac && !macOptionIsMeta`, and
+  with the flag on it also skips the composition helper, so every ⌥ chord left as `ESC <key>`: ⌥2 went out as `ESC 2`
+  and the one character Claude Code asks for by name could only be pasted. The flag is not expendable — it is what
+  makes ⌥Enter a newline and what gives readline its ⌥b / ⌥f / ⌥⌫ — so the split is by key rather than wholesale:
+  the custom handler sends `e.key` (the browser hands the composed character over already) for `Digit*` and the
+  punctuation codes, `ALT_COMPOSES`; ⌥ over a letter is still Meta. A dead key reports `'Dead'`, longer than one
+  character, and falls through to xterm untouched. `scripts/scenarios/drawer-altkeys.mjs` types ⌥2 then ⌥b and reads
+  `❯ @b` off the drawer — the fake claude drops a lone ESC and echoes the rest, so the two behaviours land side by
+  side on one line; with the branch disabled the scenario times out waiting for the `@`, which is how we know the
+  character is ours and not something else's.
 
 ## Decisions of 2026-09-20, the small hours — ⌥⌘O is a new oracle chat, the project picker is ⌥⌘P, acme goes black, /focus from the header
 
@@ -898,6 +913,13 @@ its tooltip carries `lastUserAt`.
   keypress path would still put the `\r` through. Verified against a real claude in a PTY: `❯ hello` /
   `  world` on two lines, nothing submitted. `macOptionIsMeta: true` is what makes Option+Enter the same
   newline, so both work.
+* **⌥ is a compose key too, and `macOptionIsMeta` took that away** (fixed 2026-09-20). A Portuguese layout writes
+  `@` as ⌥2, `|` as ⌥1; the flag above turns xterm's third-level-shift path off (`isMac && !macOptionIsMeta`) and
+  skips the composition helper, so those chords left as `ESC <key>` and there was no way to type an `@` in the
+  drawer. The same handler now sends `e.key` — the composed character, which the browser reports on the keydown —
+  whenever ⌥ alone is down over a digit or a punctuation code (`ALT_COMPOSES`), and `preventDefault()`s, or xterm's
+  own path sends the `ESC` pair behind it. ⌥ over a letter is untouched: Meta is what readline wants there, and it
+  is what carries ⌥Enter. A layout that needs a chord outside that key class means growing the list.
 * **A Claude session in a drawer dies with the app — so `build.sh install` must never run plainly from
   one.** The install quits the app, the app's server owns every drawer PTY, and the SIGHUP lands on the
   script itself between the `quit` and the `cp` — after the `rm -rf` on a bad day, with no app left in
