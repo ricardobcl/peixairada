@@ -88,10 +88,11 @@ refuses to run against the real directory for the same reason.
   `--rink` is the ink that reads on it, white or near-black by Peacock's own brightness rule (`inkOn()`), and every
   control in `.shead` is redrawn in it. No colour → the plain panel header.
 * **The open chat's card is a solid tint** of its colour (`.card.active`, 36 %), the rest keep the gradient wash.
-  **A rule (`.gsep`) in a wider gap where a clauding card meets a ready one** (put there by `renderSessionList`), the order untouched.
   **ALL** (the flat list, `key: 'all'`) is black in both themes — `--all`, through `projColor()`.
-* **Order is by when *you* last acted** (`lastUserAt`), newest first; done chats sink; a project ranks by its
-  newest chat. Claude finishing a job never reshuffles the list.
+* **Clauding cards first, then ready, done last** (2026-09-20), inside each group **by when *you* last acted**
+  (`lastUserAt`), newest first; a project ranks by its newest chat. The barbed wire (`.gsep`, an SVG mask) runs
+  once, between the clauding and the ready cards. A finished job moves its card into the ready group, where its
+  last prompt puts it.
 * **State lives in three places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done
   ticks, named projects, board titles, pins; `STATE_FILE` overrides) shared by the app and every browser; the
   browser's `localStorage` `peixairada-prefs` (selected project, filters, widths, zoom, folds, drawer open/height);

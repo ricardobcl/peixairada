@@ -191,10 +191,12 @@
   .fchip.working.on { border-color: var(--working); color: var(--working); }
   #slist { overflow-y: auto; overflow-x: hidden; min-width: 0; padding: 8px; display: flex; flex-direction: column; gap: 7px; }
   #slist > * { flex: none; } /* never let a full column squash its cards (overflow:hidden items would shrink to 0) */
-  /* where a clauding card meets a ready one, a rule in a wider gap (2026-09-20, Ricardo: "a little horizontal space
-     … a bit bigger, or some extra visual cue") — the projects column's line between pinned and the rest, again, a
-     shade darker; renderSessionList puts it there. The order itself is untouched: your last touch, newest first. */
-  .gsep { border-top: 1px solid color-mix(in srgb, var(--muted) 45%, transparent); margin: 4px 8px; }
+  /* Between the clauding cards and the ready ones: barbed wire (2026-09-20, Ricardo: "1 separator … something like
+     ====== or barb-wire"). An SVG mask — a wire with a twist every 24px — coloured by the background under it, so
+     it follows the theme; renderSessionList puts it there, once. */
+  .gsep { height: 10px; margin: 6px 10px; background: color-mix(in srgb, var(--muted) 80%, transparent);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='10' viewBox='0 0 24 10'%3E%3Cpath d='M0 5h24M8.5 1.5l7 7M15.5 1.5l-7 7' stroke='%23000' stroke-width='1.6' fill='none'/%3E%3C/svg%3E") repeat-x left center / 24px 10px;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='10' viewBox='0 0 24 10'%3E%3Cpath d='M0 5h24M8.5 1.5l7 7M15.5 1.5l-7 7' stroke='%23000' stroke-width='1.6' fill='none'/%3E%3C/svg%3E") repeat-x left center / 24px 10px; }
   #slist .none { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 0; }
   /* --repo is reset here on purpose: custom properties inherit, and the chat list sets its own for its edge (the
      black on ALL) — without the reset every colourless card wore that. The card's inline --repo still wins. */
@@ -848,8 +850,11 @@
     const list = p.sessions.filter(s => !q || `${s.project} ${s.title} ${s.aiTitle || ''} ${s.lastPrompt} ${s.live?.name || ''} ${s.gitBranch || ''}`.toLowerCase().includes(q));
     const counts = {};
     for (const s of list) counts[bucket(s)] = (counts[bucket(s)] || 0) + 1;
-    // done chats sink under everything else; inside each half it is your last touch, newest first
-    const shown = list.filter(s => filterOn(bucket(s))).sort((a, b) => (Number(!!a.done) - Number(!!b.done)) || byUser(a, b));
+    // clauding on top, then ready, done last (2026-09-20, Ricardo: one rule between the live cards and the ready ones —
+    // which needs a group above it); inside each group your last touch, newest first. A finished job moves its card
+    // into the ready group, where its last prompt puts it.
+    const RANK = { working: 0, ready: 1, done: 2 };
+    const shown = list.filter(s => filterOn(bucket(s))).sort((a, b) => (RANK[bucket(a)] - RANK[bucket(b)]) || byUser(a, b));
     $('#stitle').innerHTML = `${sqHtml(p, repoStyle(projColor(p)))}<span class="t">${esc(p.name)}</span><span class="n">${list.length}</span>`;
     $('#stitle').title = p.custom ? p.cwds.join('\n') : p.key === ALL ? '' : p.key;
     // new chat: one folder is a button; several (a custom project, All) is a pick-list of folders
@@ -857,9 +862,8 @@
     $('#newChat').innerHTML = folders.length === 1 ? `<button class="btn icon" id="newChatBtn" data-cwd="${esc(folders[0])}" title="New chat in ${esc(folderName(folders[0]))} — opens a terminal running claude there">${ICON.plus}<span class="lbl">new chat</span></button>`
       : folders.length ? `<select id="newChatSel" title="New chat in a folder — opens a terminal running claude there"><option value="">＋ new chat in…</option>${folders.map(f => `<option value="${esc(f)}">${esc(folderName(f))}</option>`).join('')}</select>` : '';
     $('#fchips').innerHTML = FILTERS.map(([k, label]) => `<button class="fchip ${k} ${filterOn(k) ? 'on' : ''}" data-f="${k}" title="${filterOn(k) ? 'Hide' : 'Show'} ${label} chats">${label}<span class="n">${counts[k] || ''}</span></button>`).join('');
-    // a rule wherever a clauding card meets a ready one, either way round — the order is your last touch, not the state
-    const b = shown.map(bucket);
-    $('#slist').innerHTML = shown.map((s, i) => `${i && b[i] !== b[i - 1] && b[i] !== 'done' && b[i - 1] !== 'done' ? '<div class="gsep"></div>' : ''}${cardHtml(s, p)}`).join('') || `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
+    const b = shown.map(bucket);   // the wire runs once, under the last clauding card when a ready one follows
+    $('#slist').innerHTML = shown.map((s, i) => `${i && b[i] === 'ready' && b[i - 1] === 'working' ? '<div class="gsep" title="clauding above, ready below"></div>' : ''}${cardHtml(s, p)}`).join('') || `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
   }
   function cardHtml(s, p) {
     const un = state.unread.get(s.id) || 0;
