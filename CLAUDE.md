@@ -62,7 +62,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | Transcript, appended live | `~/.claude/projects/<cwd-slug>/<session-id>.jsonl`, `fs.watch(recursive)` — no polling needed |
 | Which sessions are alive | `~/.claude/sessions/<pid>.json` + `process.kill(pid, 0)`; watched *and* polled every 10 s (pids die silently) |
 | Where a chat lives | `entrypoint` on user/assistant lines (`claude-vscode` / `cli`), the registry's while it runs — `inVsCode()`. Several processes on one chat: the drawer's own is `live`, else the newest non-VS Code one; the rest are `rivals` on the summary |
-| Reply finished | assistant line with `stop_reason: "end_turn"` (tool calls are `"tool_use"`) |
+| Reply finished | assistant line with `stop_reason: "end_turn"` (tool calls are `"tool_use"`) — unless a **sub-agent** is at work: `<slug>/<id>/subagents/agent-*.jsonl`, running while its last line is not an end_turn and it wrote within `AGENT_STALE_MS` (`scanAgents()`, on their fs events and every 10 s); a background agent ends the main turn at once, so this is what keeps the card clauding |
 | Waiting on the user | `AskUserQuestion` / `ExitPlanMode` tool call with no result yet |
 | Titles | board title (state file) › `custom-title` › the oldest still-open PR › `ai-title` › last prompt — `summary()`, `prTitle()` |
 | PRs mentioned | `pr-link` lines *and* GitHub pull URLs in user/assistant text; most recently mentioned first; `gh api graphql` batched for state and title (one of the two network calls) |

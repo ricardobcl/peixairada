@@ -15,6 +15,7 @@
 //  Transcript parsing
 //      · PRs mentioned in the chat
 //      · …and whether they are open, merged or closed
+//  Sub-agents: <slug>/<id>/subagents/agent-*.jsonl — one at work keeps the chat clauding
 //  Live-session registry (~/.claude/sessions/<pid>.json)
 //  Notifications + SSE fan-out
 //  Hooks (optional precision): POST /hook receives Claude Code hook payloads (see hooks/hook.sh)
@@ -302,7 +303,8 @@ function summary(s) {
     lastPrompt: s.lastPrompt, lastReply: s.lastReply, prs: s.prs,
     // A live process with no transcript yet is an empty, idle panel (e.g. restored by VS Code, never prompted).
     // Not alive = the Claude process is gone: 'stale'. Resuming the chat registers a new pid and it comes back.
-    status: s.alive ? (s.status === 'unknown' && !s.file ? 'idle' : s.status) : (s.status === 'unknown' ? 'unknown' : 'stale'),
+    status: s.alive ? (s.agentsRunning ? 'working' : s.status === 'unknown' && !s.file ? 'idle' : s.status) : (s.status === 'unknown' ? 'unknown' : 'stale'),
+    agents: s.agentsRunning || 0,   // sub-agents at work — what keeps the status 'working' past the main turn's end
     rawStatus: s.status, statusSince: s.statusSince, lastActivity: s.lastActivity,
     lastUserAt: s.lastUserAt, lastReplyAt: s.lastReplyAt,
     alive: s.alive, live: s.live, entrypoint: s.live?.entrypoint || s.entrypoint, terminal: termSummary(termOf(s)), entryCount: s.entryCount, loaded: s.loaded, file: s.file, lastHook: s.lastHook,
@@ -570,7 +572,7 @@ function fold(s, line) {
         const text = textOf(blocks).trim();
         if (text) { s.lastReply = snippet(text, 300); s.lastReplyAt = ts; }
         setStatus(s, 'idle', ts);
-        queueNotify(s, 'reply');
+        if (!s.agentsRunning) queueNotify(s, 'reply');   // a turn that ends with agents still at work is not the reply yet
       } else if (needsInput) {
         setStatus(s, 'needs-input', ts);
         queueNotify(s, 'needs-input');
@@ -644,6 +646,34 @@ function tailFile(file) {
   let changed = false;
   parseLines(text.slice(0, nl + 1), line => { if (fold(s, line)) changed = true; });
   if (changed || s.newEntries.length) schedulePush(s);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Sub-agents: <slug>/<id>/subagents/agent-*.jsonl — one at work keeps the chat clauding
+// ---------------------------------------------------------------------------------------------
+// Claude Code writes each sub-agent's transcript beside the session's (every line isSidechain, a .meta.json with
+// requestShape 'background' or not). A foreground agent holds the main transcript at a tool_use, so the chat stays
+// working; a background one answers at once and the main turn ends — the card went ready while agents worked
+// (Ricardo, 2026-09-20: "sub-agents don't make the animation for the card work"). An agent's last line says
+// whether it is done: an assistant end_turn. One that went quiet AGENT_STALE_MS ago is not counted (a killed agent
+// never writes its end_turn). Only the status is touched — not the order, not the transcript, not the alerts
+// beyond holding the 'reply' one back until the agents are done.
+const AGENT_STALE_MS = Number(process.env.AGENT_STALE_MS || 15 * 60_000);
+function agentRunning(file, now = Date.now()) {
+  let st; try { st = statSync(file); } catch { return false; }
+  if (now - st.mtimeMs > AGENT_STALE_MS || !st.size) return false;
+  const len = Math.min(st.size, 65536), buf = Buffer.alloc(len);
+  const fd = openSync(file, 'r'); try { readSync(fd, buf, 0, len, st.size - len); } finally { closeSync(fd); }
+  const lines = buf.toString('utf8').trim().split('\n');
+  let last; try { last = JSON.parse(lines[lines.length - 1]); } catch { return true; }   // a line still being written: at work
+  return !(last.type === 'assistant' && (last.message?.stop_reason === 'end_turn' || last.message?.stop_reason === 'stop_sequence'));
+}
+const agentsDir = s => s.file ? join(dirname(s.file), s.id, 'subagents') : null;
+function scanAgents(s) {
+  const dir = agentsDir(s); let names = [];
+  if (dir) try { names = readdirSync(dir); } catch {}
+  const running = names.filter(n => n.endsWith('.jsonl') && agentRunning(join(dir, n))).length;
+  if (running !== (s.agentsRunning || 0)) { s.agentsRunning = running; schedulePush(s); }
 }
 
 function scanProjects() {
@@ -1486,7 +1516,7 @@ server.on('upgrade', attachTermSocket);
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { fold, newSession, summary, notePr, notePrs, prTitle, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { fold, newSession, summary, agentRunning, notePr, notePrs, prTitle, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
@@ -1502,13 +1532,21 @@ pollPeacock();
 setInterval(pollPeacock, PEACOCK_POLL_MS);
 pollRepos();
 setInterval(pollRepos, PEACOCK_POLL_MS);
+for (const s of sessions.values()) if (s.alive) scanAgents(s);
+setInterval(() => { for (const s of sessions.values()) if (s.alive) scanAgents(s); }, REGISTRY_POLL_MS);   // an agent gone quiet stops counting
 console.log(`[peixairada] indexed ${sessions.size} sessions (${[...sessions.values()].filter(s => s.alive).length} alive) from ${CLAUDE_DIR} in ${Date.now() - t0}ms`);
 
-const pendingFiles = new Map();
+const pendingFiles = new Map(), pendingAgents = new Map();
 function onFsEvent(_ev, rel) {
   if (!rel) return;
   const parts = String(rel).split('/');
-  if (parts.length !== 2 || !parts[1].endsWith('.jsonl')) return; // ignore memory/, <id>/subagents/, etc.
+  if (parts.length === 4 && parts[2] === 'subagents' && parts[3].endsWith('.jsonl')) {   // <slug>/<id>/subagents/agent-*.jsonl
+    const s = sessions.get(parts[1]); if (!s) return;
+    clearTimeout(pendingAgents.get(s.id));
+    pendingAgents.set(s.id, setTimeout(() => { pendingAgents.delete(s.id); scanAgents(s); }, 200));
+    return;
+  }
+  if (parts.length !== 2 || !parts[1].endsWith('.jsonl')) return; // ignore memory/, <id>/subagents/*.meta.json, etc.
   const file = join(PROJECTS_DIR, rel);
   clearTimeout(pendingFiles.get(file));
   pendingFiles.set(file, setTimeout(() => { pendingFiles.delete(file); try { tailFile(file); } catch (e) { console.error('[peixairada] tail error', file, e); } }, 40));
