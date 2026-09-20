@@ -355,7 +355,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   // the chat above or below, ← → for the tab beside. Pressed while the pane has the keyboard: its web views are not the board's, so the page
   // would never hear it. Forwarded through peixKey as the page's e.code; the page asks for the keyboard back
   // ({type: "focus"}) only when it opens a dialog.
-  static let boardKeys: Set<String> = ["t", "e", "g", "c", "o", "k", "n"]
+  static let boardKeys: Set<String> = ["t", "e", "g", "c", "o", "p", "k", "n"]
   static func hotkeyCode(_ e: NSEvent) -> String? {
     if e.keyCode == 126 { return "ArrowUp" }
     if e.keyCode == 125 { return "ArrowDown" }

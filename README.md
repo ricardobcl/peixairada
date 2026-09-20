@@ -122,11 +122,12 @@ running vertically, the selected one running straight into the chat list, whose 
 carry the same colour — and **»** opens it into the full column, **«** folds it back; nothing happens on hover. The fish at the strip's top is the
 app — it greys out when the board loses the server, and **hovering it opens the usage card** (below). The
 magnifier under it filters projects (the strip opens to let you type and folds back when you are done);
-**⌥⌘O** from anywhere opens a project picker the VS Code way — type to filter, ↑↓, ⏎ opens it, esc closes;
+**⌥⌘P** from anywhere opens a project picker the VS Code way — type to filter, ↑↓, ⏎ opens it, esc closes;
 **⌥⌘K** the same box filled with **every chat that is ready or clauding**, across the projects, in the list's order
 (colour · title · project · state · age), searched by title, project, prompt or branch — ⏎ opens it, switching project
 when it lives elsewhere; **⌥⌘N** a **new chat**: pick the project, then the folder when the project spans several,
-then — in a folder whose Taskfile launches claude (see *+ new chat* below) — the environment (the
+then — in a folder whose Taskfile launches claude (see *+ new chat* below) — the environment; **⌥⌘O** is that
+flow with the first answers in — a new chat in **oracle**, opening straight on its environments (the
 same ⌥⌘ family drives the open chat: **⌥⌘C** its claude session, **⌥⌘T** a zsh in its folder, **⌥⌘E** VS Code Web,
 **⌥⌘G** its PR, **⌥⌘↑ / ⌥⌘↓** the chat above or below in the list, **⌥⌘← / ⌥⌘→** the tab beside — chat, zsh, GitHub
 pages, VS Code — see *The chat*) —
@@ -163,8 +164,8 @@ running `claude` in that folder (a pick-list when the project spans several), an
 switches to it the moment Claude registers the session. **A folder that launches claude its own way** — a
 Taskfile whose tasks say *Launch Claude Code…*, the way oracle's `task production-workload`, `task sandbox-workload`
 and `task development-<cluster>` set a cluster's environment before running claude — asks **which environment** first
-(the picker, every time: the task's name and what the Taskfile says it does) and runs `task <name>` in the terminal
-instead; the board finds the chat under it all the same. Nothing is configured: any folder whose `task --list`
+(the picker, every time: the task's name and what the Taskfile says it does — **⌥⌘O** opens it on oracle from
+anywhere) and runs `task <name>` in the terminal instead; the board finds the chat under it all the same. Nothing is configured: any folder whose `task --list`
 mentions Claude in a description gets the question.
 
 **Chat**: the PRs the chat mentions, the transcript, the terminal drawer, the reply box. Described below.
@@ -261,7 +262,7 @@ fresh zsh in the chat's folder, inline: a *zsh* tab appears beside the chat (*cl
 otherwise), one per chat, `exit` or its × ends it, and ⌥⌘C brings the claude session back. **⌥⌘E**
 opens the folder in VS Code Web, on a *VS Code* tab of the same strip — the *web* button's route (the real VS Code
 is the focus button in the header, no key). **⌥⌘G** opens the chat's PR on GitHub — straight away with
-one; with several, the ⌥⌘O picker filled with the PR rows under the header (state · `repo#n` · title · age,
+one; with several, the same picker filled with the PR rows under the header (state · `repo#n` · title · age,
 filtered by number or title, ⏎ opens the selected one, the one showing marked *current*) — **every time**, a tab
 already open or not; each PR is a tab of its own (`repo#n`) so nothing reloads. The
 keys work from inside a page's tab too, **⌥⌘← / ⌥⌘→** walk the strip's tabs (wrapping round), and **Esc** there brings the chat back. **Esc with a picker or popover up closes

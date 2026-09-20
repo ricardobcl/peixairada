@@ -2,7 +2,27 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-09-20 (late night).
+this file is the *why* and the *state*. Last updated 2026-09-20 (the small hours).
+
+## Decisions of 2026-09-20, the small hours — ⌥⌘O is a new oracle chat, the project picker is ⌥⌘P
+
+* **⌥⌘O opens oracle's environments and nothing else** (Ricardo: "the O hotkey should open oracle prompt directly,
+  to select the env and open a chat"): `hotOracle()` is the ⌥⌘N flow with its first steps already answered. It takes
+  the project `ORACLE` names in `projectList()` — a folder of its own, a pin, or a named set of folders, always by the
+  name the board shows, the same key `PROJECT_ICONS` hangs the crystal ball on — and calls the same `newChatIn()`, so
+  the picker opens on the eight `task <env>` launchers of oracle's Taskfile and ⏎ starts one. A name over several
+  folders asks which folder first; oracle off the board altogether (nothing there in 30 days, nothing pinned) is a
+  note saying ⌥⌘N is the way in. Nothing else about the flow changed — one route to a new chat, not two.
+* **The project picker moved to ⌥⌘P** (asked before touching O; Ricardo chose to keep it rather than drop it): the
+  same dialog over the same list, one letter over. The cog's legend, `boardKeys` in main.swift (the shell forwards the
+  chord from the pane — the app was rebuilt) and the hotkeys scenario moved with it.
+* **The environment step names its folder** — *New chat in oracle — which environment?*: coming through ⌥⌘O nobody
+  ever said which folder, so the step has to. `PICK_HINT.env` is a function of the picker's ctx now; the ⌥⌘N flow
+  reads better for it too.
+* Checked end to end in `scripts/scenarios/hotkeys.mjs` (extended): the no-oracle note, ⌥⌘P the project picker, a
+  pinned `…/oracle` folder — a pin is how a folder reaches the board without a chat in it —, ⌥⌘O opening straight on
+  the environments with the folder in the hint, ⏎ posting `{cwd, task: 'production-workload'}`, and the cog's ten
+  chords in order. And on the live board headless: ⌥⌘O listed oracle's eight clusters, screenshot looked at.
 
 ## Decisions of 2026-09-20, later that night — three tweaks: the fish swim, hover is the open tint, the veil runs down
 

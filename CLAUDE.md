@@ -109,10 +109,12 @@ refuses to run against the real directory for the same reason.
   (edit inline, in the pane; the real VS Code is the header's focus button only, no key), G the chat's PR on GitHub — one opens straight
   away, several open the picker in `pr` mode every time, the one showing marked *current* (no PR → the folder's
   GitHub repo, `state.repos` from `git remote`) —, C this chat's claude session (`termAction()`, the `>_` button's path — arm and take over
-  included, focus at the end), O the project picker, K the chat picker (`chat` mode: every ready or clauding chat,
+  included, focus at the end), P the project picker, K the chat picker (`chat` mode: every ready or clauding chat,
   every project, the list's order, searched by `chatText()`; ⏎ is `openSession`), N a new chat as steps of the one
   dialog (`new` → `folder` when the project spans several → `env` when `newChatIn()` finds launchers; the + button and the
-  folder pick-list take the same `newChatIn` path), ↑ / ↓ the chat above or below in the list as shown (`hotMove()`),
+  folder pick-list take the same `newChatIn` path), **O the same flow answered down to the environment: a new chat in
+  oracle** (`hotOracle()` → `newChatIn()` on the project `ORACLE` names in `projectList()` — a folder, a pin or a named
+  set; off the board is a `note()`; the `env` step names the folder, since O never asked), ↑ / ↓ the chat above or below in the list as shown (`hotMove()`),
   ← / → the tab beside in the strip, wrapping (`hotTab()` → `openTab()`, the tab click's path).
   Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A
   `dialog[open]` swallows them; no chat or no PR is a `note()`. The cog lists every key (`.keys` in `#settings`) —

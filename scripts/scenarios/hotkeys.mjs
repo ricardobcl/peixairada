@@ -1,7 +1,10 @@
 // The ⌥⌘ family on a fixture: G opens the picker on a two-PR chat, ⏎ opens the first, G again is the picker again
-// with that one marked, a click on the other opens it; T, E and C hit their routes (stubbed), V none; O is the project
-// picker; K the chat picker (search, ⏎ opens across projects); N a new chat (project → environment, stubbed); ↓ ↑ walk the list; ← → the tab beside (a real zsh); { } folds per chat; Esc closes a picker and is taken; the cog
-// lists every key; no chat → a note.
+// with that one marked, a click on the other opens it; T, E and C hit their routes (stubbed), V none; P is the project
+// picker; K the chat picker (search, ⏎ opens across projects); N a new chat (project → environment, stubbed); O a new
+// oracle chat, straight to the environments (a pinned folder called oracle stands in for the real one); ↓ ↑ walk the list; ← → the tab beside (a real zsh); { } folds per chat; Esc closes a picker and is taken; the cog
+// lists every key; no chat → a note, no oracle → a note.
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 export const meta = { server: true, fixture: 'auto' };
 export default async function (ctx) {
   const [two, plain] = ctx.fixture.chats;
@@ -10,6 +13,10 @@ export default async function (ctx) {
   const bar = () => ctx.evaluate(`document.querySelector('#prbar').hidden ? null : document.querySelector('#prbar .num')?.textContent`);
   // no chat open: notes
   await ctx.key('KeyG'); out.noChatNote = await txt('.note');
+  await ctx.evaluate(`document.querySelectorAll('.note').forEach(n => n.remove())`);
+  // no oracle on this board yet: ⌥⌘O says so (it is pinned into place further down)
+  await ctx.key('KeyO'); out.noOracleNote = await txt('.note');
+  ctx.assert.match(out.noOracleNote, /No oracle folder/);
   await ctx.evaluate(`document.querySelectorAll('.note').forEach(n => n.remove())`);
   // the two-PR chat
   await ctx.openChat(two.id);
@@ -55,11 +62,11 @@ export default async function (ctx) {
   for (const route of ['/shell', '/vscode-web', '/terminal']) ctx.assert.ok(out.hits.some(h => h[0].endsWith(route)), `${route} was hit (T zsh, E web editor, C claude)`);
   ctx.assert.ok(!out.hits.some(h => h[0].endsWith('/focus')), '⌥⌘V does nothing');
   // ⌃⌘ is not the chord
-  await ctx.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyO', key: 'o', metaKey: true, ctrlKey: true, bubbles: true, cancelable: true }))`);
-  out.wrongChord = await ctx.evaluate(`document.querySelector('#pick').open`); ctx.assert.equal(out.wrongChord, false, '⌃⌘O does not open the picker');
-  // O, the project picker
+  await ctx.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyP', key: 'p', metaKey: true, ctrlKey: true, bubbles: true, cancelable: true }))`);
+  out.wrongChord = await ctx.evaluate(`document.querySelector('#pick').open`); ctx.assert.equal(out.wrongChord, false, '⌃⌘P does not open the picker');
+  // P, the project picker
   await ctx.evaluate(`document.querySelector('#pick').close()`);
-  await ctx.key('KeyO');
+  await ctx.key('KeyP');
   out.projectPicker = { open: await ctx.evaluate(`document.querySelector('#pick').open`), rows: await ctx.evaluate(`document.querySelectorAll('#picklist .pkrow:not(.pr)').length`) };
   ctx.assert.ok(out.projectPicker.open && out.projectPicker.rows >= 2);
   await ctx.evaluate(`document.querySelector('#pick').close()`);
@@ -84,7 +91,7 @@ export default async function (ctx) {
   out.newPicker = { placeholder: await ctx.evaluate(`document.querySelector('#pickq').placeholder`), names: await ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow .n')].map(e => e.firstChild.textContent)`) };
   ctx.assert.match(out.newPicker.placeholder, /^New chat — which project/); ctx.assert.ok(out.newPicker.names.length >= 2 && !out.newPicker.names.includes('ALL'), 'the projects, without ALL');
   await ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);   // the first project: one folder → the environment step
-  await ctx.waitFor(`document.querySelector('#pickq').placeholder.startsWith('New chat — which environment')`, { what: 'the environment step' });
+  await ctx.waitFor(`document.querySelector('#pickq').placeholder.startsWith('New chat in ')`, { what: 'the environment step, naming the folder' });
   out.envStep = { open: await ctx.evaluate(`document.querySelector('#pick').open`), names: await ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow.env .n')].map(e => e.textContent)`) };
   ctx.assert.deepEqual(out.envStep, { open: true, names: ['production-workload', 'sandbox-workload'] });
   await ctx.shot('env-picker');
@@ -94,6 +101,20 @@ export default async function (ctx) {
   ctx.assert.equal(out.newPosted.task, 'sandbox-workload', '⏎ on the second environment starts task sandbox-workload');
   ctx.assert.equal(out.newPosted.cwd.split('/').pop(), out.newPicker.names[0], 'in the project chosen first');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#pick').open`), false, 'the picker closed on the last step');
+  // O, a new oracle chat: the project and the folder are answered, so the picker opens on the environments (the
+  // launchers route above is still stubbed). A pin is how a folder reaches the board without a chat of its own.
+  const oracleCwd = join(tmpdir(), 'peix-oracle-fixture', 'oracle');
+  await ctx.server.api('api/pins', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pins: [oracleCwd] }) });
+  await ctx.waitFor(`!!document.querySelector('#projects .proj[data-key=${JSON.stringify(oracleCwd)}]')`, { what: 'the oracle folder on the board' });
+  await ctx.key('KeyO');
+  await ctx.waitFor(`document.querySelector('#pickq').placeholder.startsWith('New chat in ')`, { what: 'the environment step, straight from ⌥⌘O' });
+  out.oracleStep = { placeholder: await ctx.evaluate(`document.querySelector('#pickq').placeholder`), names: await ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow.env .n')].map(e => e.textContent)`) };
+  ctx.assert.match(out.oracleStep.placeholder, /^New chat in oracle — which environment/, 'the step says which folder, since ⌥⌘O never asked');
+  ctx.assert.deepEqual(out.oracleStep.names, ['production-workload', 'sandbox-workload'], '⌥⌘O opens on oracle\'s environments');
+  await ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);
+  await ctx.waitFor(`window.__posts.length === 2`, { what: 'the oracle chat posted' });
+  out.oraclePosted = (await ctx.evaluate(`JSON.stringify(window.__posts)`).then(JSON.parse))[1];
+  ctx.assert.deepEqual({ cwd: out.oraclePosted.cwd, task: out.oraclePosted.task }, { cwd: oracleCwd, task: 'production-workload' }, '⏎ on the first starts task production-workload in oracle');
   // ↓ and ↑ walk the list as shown: from the two-PR chat to the card beside it and back
   await ctx.openChat(two.id);
   const order = await ctx.evaluate(`[...document.querySelectorAll('#slist .card')].map(c => c.dataset.id)`);
@@ -109,7 +130,7 @@ export default async function (ctx) {
   // window, which in full screen leaves full screen; the same for the settings popover; with nothing to close it is left
   // alone (the filter boxes, the rename box, full screen keep it)
   const escOn = sel => ctx.evaluate(`(() => { const e = new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }); (document.querySelector(${JSON.stringify(sel)}) || document.body).dispatchEvent(e); return e.defaultPrevented; })()`);
-  await ctx.key('KeyO'); ctx.assert.equal(await ctx.evaluate(`document.querySelector('#pick').open`), true);
+  await ctx.key('KeyP'); ctx.assert.equal(await ctx.evaluate(`document.querySelector('#pick').open`), true);
   out.escPicker = { taken: await escOn('#pickq'), open: await ctx.evaluate(`document.querySelector('#pick').open`) };
   ctx.assert.deepEqual(out.escPicker, { taken: true, open: false }, 'Esc closes the picker and is marked handled');
   await ctx.evaluate(`document.querySelector('#cogBtn').click()`); ctx.assert.equal(await ctx.evaluate(`document.querySelector('#settings').hidden`), false);
@@ -118,7 +139,7 @@ export default async function (ctx) {
   out.escIdle = await escOn('body'); ctx.assert.equal(out.escIdle, false, 'with nothing to close, Esc is left alone');
   // the cog lists the keys
   out.cog = await ctx.evaluate(`[...document.querySelectorAll('#settings .keys kbd')].map(k => k.textContent)`);
-  ctx.assert.deepEqual(out.cog.slice(0, 9), ['⌥⌘T', '⌥⌘E', '⌥⌘G', '⌥⌘C', '⌥⌘O', '⌥⌘K', '⌥⌘N', '⌥⌘↑↓', '⌥⌘←→']);
+  ctx.assert.deepEqual(out.cog.slice(0, 10), ['⌥⌘T', '⌥⌘E', '⌥⌘G', '⌥⌘C', '⌥⌘O', '⌥⌘P', '⌥⌘K', '⌥⌘N', '⌥⌘↑↓', '⌥⌘←→']);
   await ctx.shot('cog');
   return out;
 }

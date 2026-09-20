@@ -455,7 +455,7 @@
   /* ---- project editor ---- */
   dialog { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); padding: 16px 18px; width: min(600px, 92vw); }
   dialog::backdrop { background: rgba(0, 0, 0, .35); }
-  /* ⌥⌘O: the project picker, VS Code's open-recent way — a box on top, rows under it, ↑↓ and ⏎. ⌥⌘G fills it with the chat's PRs. */
+  /* ⌥⌘P: the project picker, VS Code's open-recent way — a box on top, rows under it, ↑↓ and ⏎. ⌥⌘G fills it with the chat's PRs, ⌥⌘O with oracle's environments. */
   #pick { padding: 8px; width: min(520px, 92vw); margin-top: 10vh; }
   /* In the app with the pane up: the pane is a native view over the chat column, and a dialog centred on the board
      opens under it. `aside` (set by pickOpen from what the shell reports through peixPane) puts it in the part of the
@@ -559,7 +559,8 @@
     <kbd>⌥⌘E</kbd><span>edit: this folder in VS Code Web, on a tab</span>
     <kbd>⌥⌘G</kbd><span>its PR on GitHub, on a tab · the repo when it has none · a picker with several, every time</span>
     <kbd>⌥⌘C</kbd><span>this chat's claude session — the pane while it runs here · starts or takes over one</span>
-    <kbd>⌥⌘O</kbd><span>project picker</span>
+    <kbd>⌥⌘O</kbd><span>a new oracle chat — its environments, ⏎ starts one</span>
+    <kbd>⌥⌘P</kbd><span>project picker</span>
     <kbd>⌥⌘K</kbd><span>chat picker — every ready or clauding chat, type to search</span>
     <kbd>⌥⌘N</kbd><span>new chat — pick the project, then the folder, then the environment when its Taskfile launches claude</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
@@ -614,7 +615,7 @@
 //   js  · projects
 //   js  · the projects column: a strip by default, the full column while the pointer is over it
 //   js  · render: both lists
-//   js  · ⌥⌘O: the project picker. Same list as the column, in the same order; the box filters by name.
+//   js  · ⌥⌘P: the project picker. Same list as the column, in the same order; the box filters by name.
 //   js  · the colour picker
 //   js  · project editor
 //   js  · PRs: the strip under the header, and where a GitHub link goes
@@ -799,7 +800,8 @@
   // A project's mark, by name, next to the name wherever it is written — the strip, the column, the chat list's header,
   // the chat header, the cards, the pickers. One so far (2026-09-20, Ricardo): oracle, the investigations folder that
   // runs claude against the clusters, wears a crystal ball. Keyed by the name the board shows, so a worktree of it too.
-  const PROJECT_ICONS = { oracle: ICON.oracle };
+  const ORACLE = 'oracle';   // …and the folder ⌥⌘O starts a chat in (hotOracle): one spelling of the name for both
+  const PROJECT_ICONS = { [ORACLE]: ICON.oracle };
   const projIcon = name => PROJECT_ICONS[name] || '';
   const STALE_MAX_AGE_MS = 30 * 86400e3; // Claude Code deletes transcripts after 30 idle days by default; mirror that
 
@@ -956,7 +958,7 @@
     </div>`;
   }
   function selectProject(key) { prefs.project = key; savePrefs(); renderBoard(); }
-  // ---- ⌥⌘O: the project picker. Same list as the column, in the same order; the box filters by name. ----
+  // ---- ⌥⌘P: the project picker. Same list as the column, in the same order; the box filters by name. ----
   // ⌥⌘G puts the chat's PRs in the same dialog (state · repo#n · title · age, as #prlist lays them out)
   // when it mentions more than one; the box filters by number and title, ⏎ opens the PR as a row click would.
   // ⌥⌘K (2026-09-20) fills it with every chat that is ready or clauding — done ones stay out — across all projects, in
@@ -965,12 +967,13 @@
   // ⌥⌘N (2026-09-20) is a new chat as a flow of steps in the one dialog: the project (the column's list without ALL),
   // then the folder when the project spans several, then — when the folder's Taskfile launches claude itself, as
   // oracle's `task production-workload` does — the environment (newChatIn asks the server); ⏎ at the last step starts it.
+  // ⌥⌘O (2026-09-20) is that flow with the first steps answered: a new chat in oracle, opening on its environments (hotOracle).
   const pick = { mode: 'project', ctx: {}, list: [], sel: 0 };
   const PICK_HINT = {
     project: 'Project — type to filter · ↑↓ · ⏎ opens · esc', pr: 'Pull request — type to filter · ↑↓ · ⏎ opens · esc',
     chat: 'Chat — ready or clauding, every project · type to filter · ↑↓ · ⏎ opens · esc',
     new: 'New chat — which project? type to filter · ↑↓ · ⏎ · esc', folder: 'New chat — which folder? type to filter · ↑↓ · ⏎ · esc',
-    env: 'New chat — which environment? task <env> from the folder\'s Taskfile · ↑↓ · ⏎ starts it · esc',
+    env: ctx => `New chat in ${folderName(ctx.cwd)} — which environment? task <env> from the folder's Taskfile · ↑↓ · ⏎ starts it · esc`,   // named: ⌥⌘O never asked which folder
   };
   const PICK_NOUN = { pr: 'PR', chat: 'chat', folder: 'folder', env: 'environment' };   // for "no … matches"; the rest are projects
   const homePath = f => f.replace(/^\/Users\/[^/]+(?=\/|$)/, '~');
@@ -983,7 +986,7 @@
       dlg.showModal();
     }
     pick.mode = mode; pick.ctx = ctx; pick.sel = 0;
-    $('#pickq').value = ''; $('#pickq').placeholder = PICK_HINT[mode];
+    $('#pickq').value = ''; $('#pickq').placeholder = typeof PICK_HINT[mode] === 'function' ? PICK_HINT[mode](ctx) : PICK_HINT[mode];
     pickRender(); $('#pickq').focus();
   }
   function pickRender() {
@@ -1039,12 +1042,13 @@
   // with one, the picker with several — every time, a tab open or not, the one showing marked (Ricardo, 2026-09-20:
   // "always open the menu to choose the PR"); each PR is its own tab, so nothing reloads —, C the claude session: the >_ button's
   // path (the drawer shown or started, arm-and-take-over included, so a chat live elsewhere takes two presses).
-  // O is the project picker, K the chat picker (every ready or clauding chat, searched), N a new chat (the project, then
-  // the folder, then the environment when the folder's Taskfile launches claude); ↑ and ↓ open the chat above or below
+  // O is a new oracle chat, opening on its environments (hotOracle), P the project picker, K the chat picker (every
+  // ready or clauding chat, searched), N a new chat anywhere (the project, then the folder, then the environment when
+  // the folder's Taskfile launches claude); ↑ and ↓ open the chat above or below
   // in the list; ← and → the tab to the left or right in the strip (chat | zsh | GitHub pages | VS Code, wrapping).
   // A modal up (the picker, the project editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyO: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyN: () => pickOpen('new'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1) };
+  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyN: () => pickOpen('new'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1) };
   const runHotkey = code => { if (code === 'Escape') return hotEscape(); const fn = HOTKEYS[code]; if (fn && !document.querySelector('dialog[open]')) fn(); };
   document.addEventListener('keydown', e => {
     if (!(e.metaKey && e.altKey && !e.ctrlKey && !e.shiftKey && HOTKEYS[e.code])) return;
@@ -1061,6 +1065,16 @@
     const tb = $('#termBtn'); if (!tb) return;
     if (tb.disabled) return note(tb, tb.title, true);   // live somewhere it cannot be attached from — the tooltip says where
     focusBoard(); termAction(s);
+  }
+  // ⌥⌘O (2026-09-20, Ricardo: "the O hotkey should open oracle prompt directly, to select the env and open a chat"):
+  // ⌥⌘N with its first steps answered — a new chat in oracle, opening on the environments its Taskfile launches claude
+  // with; ⏎ starts one. The folder is the project ORACLE names on the board (a folder of its own, a pin or a named set
+  // of folders); nothing has run there in 30 days and it is off the board — a note then, and ⌥⌘N is the way in.
+  function hotOracle() {
+    const p = projectList().find(x => x.name === ORACLE && x.cwds.length);
+    if (!p) return note($('#shead'), `No ${ORACLE} folder on the board — ⌥⌘N starts a chat anywhere`);
+    focusBoard();
+    if (p.cwds.length === 1) newChatIn(p.cwds[0]); else pickOpen('folder', { cwds: p.cwds });   // one folder: straight to the environments
   }
   // Esc with a page's tab on (2026-09-20, Ricardo: "ESC should still navigate to chat"): the chat tab, and the pane
   // goes. Reaches here from the shell only (peixKey('Escape'), pressed on the board or in the pane, which the shell
