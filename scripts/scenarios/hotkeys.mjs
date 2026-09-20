@@ -54,6 +54,17 @@ export default async function (ctx) {
   // the plain chat: no PR → a note
   await ctx.openChat(plain.id); await ctx.key('KeyG'); out.noPrNote = await txt('.note');
   ctx.assert.match(out.noPrNote, /No PR/);
+  // Esc with the picker up closes it and is taken (defaultPrevented) — an Esc the page leaves alone climbs to the app's
+  // window, which in full screen leaves full screen; the same for the settings popover; with nothing to close it is left
+  // alone (the filter boxes, the rename box, full screen keep it)
+  const escOn = sel => ctx.evaluate(`(() => { const e = new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }); (document.querySelector(${JSON.stringify(sel)}) || document.body).dispatchEvent(e); return e.defaultPrevented; })()`);
+  await ctx.key('KeyO'); ctx.assert.equal(await ctx.evaluate(`document.querySelector('#pick').open`), true);
+  out.escPicker = { taken: await escOn('#pickq'), open: await ctx.evaluate(`document.querySelector('#pick').open`) };
+  ctx.assert.deepEqual(out.escPicker, { taken: true, open: false }, 'Esc closes the picker and is marked handled');
+  await ctx.evaluate(`document.querySelector('#cogBtn').click()`); ctx.assert.equal(await ctx.evaluate(`document.querySelector('#settings').hidden`), false);
+  out.escSettings = { taken: await escOn('body'), hidden: await ctx.evaluate(`document.querySelector('#settings').hidden`) };
+  ctx.assert.deepEqual(out.escSettings, { taken: true, hidden: true }, 'Esc closes the settings popover and is marked handled');
+  out.escIdle = await escOn('body'); ctx.assert.equal(out.escIdle, false, 'with nothing to close, Esc is left alone');
   // the cog lists the keys
   out.cog = await ctx.evaluate(`[...document.querySelectorAll('#settings .keys kbd')].map(k => k.textContent)`);
   ctx.assert.deepEqual(out.cog.slice(0, 6), ['⌥⌘T', '⌥⌘E', '⌥⌘G', '⌥⌘C', '⌥⌘O', '⌥⌘↑↓']);

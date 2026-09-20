@@ -550,7 +550,7 @@
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
     <kbd>⌘+ ⌘− ⌘0</kbd><span>chat and terminal size</span>
     <kbd>⇧⏎</kbd><span>newline in the terminal's prompt</span>
-    <kbd>esc</kbd><span>back to the chat from a page's tab · closes a picker or popover</span>
+    <kbd>esc</kbd><span>closes a picker or popover · back to the chat from a page's tab · never leaves full screen while one is up</span>
     <kbd>⌘R · ⇧⌘R</kbd><span>reload · restart the server, in the app</span>
   </div>
 </div>
@@ -675,11 +675,25 @@
   }
   $('#cogBtn').onclick = e => { e.stopPropagation(); settingsOpen($('#settings').hidden); };
   document.addEventListener('click', e => { if (!$('#settings').hidden && !e.target.closest('#settings')) settingsOpen(false); });
+  // Esc on the page itself: a dialog (the picker, the project editor), the settings popover or the usage card closes,
+  // and the key is *taken* — preventDefault, so WebKit reports it handled. An Esc the page leaves alone climbs to the
+  // app's window, which in full screen takes it to leave full screen: the picker closed and the window shrank with it
+  // (2026-09-20, Ricardo: "ESC should close it instead of leaving the app's fullscreen"). A <dialog>'s own Esc does not
+  // count as handled, hence closing it here, in the capture phase, before anything else sees the key. With nothing to
+  // close the key is not touched: the filter boxes and the rename box have their own Esc, and full screen keeps its.
+  // With the pane up the shell swallows Esc before the page and calls hotEscape() instead.
   document.addEventListener('keydown', e => {
-    if (e.key !== 'Escape') return;
-    if (!$('#settings').hidden) { e.stopPropagation(); settingsOpen(false); }
-    if (!$('#usagePop').hidden) { e.stopPropagation(); upop.pinned = false; $('#usagePop').hidden = true; }
-  });
+    if (e.key !== 'Escape' || e.metaKey || e.ctrlKey || e.altKey) return;
+    let took = false;
+    const dlg = document.querySelector('dialog[open]');
+    if (dlg) { dlg.close(); took = true; }
+    else {
+      if (!$('#settings').hidden) { settingsOpen(false); took = true; }
+      if (!$('#usagePop').hidden) { upop.pinned = false; $('#usagePop').hidden = true; took = true; }
+    }
+    if (!took) return;
+    e.preventDefault(); e.stopPropagation();
+  }, true);
   $('#testBtn').onclick = () => fetch('/api/test-notify', { method: 'POST' });
   $('#notifBtn').onclick = async () => { const p = await Notification.requestPermission(); updateNotifBtn(p); };
   function updateNotifBtn(p = Notification.permission) { $('#notifBtn').textContent = p === 'granted' ? '🔔 browser alerts on' : p === 'denied' ? '🔕 browser alerts blocked' : '🔔 enable browser alerts'; }
