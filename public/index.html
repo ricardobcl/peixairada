@@ -527,7 +527,7 @@
     <kbd>⌥⌘T</kbd><span>a fresh zsh in this folder — a new iTerm tab</span>
     <kbd>⌥⌘E</kbd><span>edit: this folder in VS Code Web, in the pane</span>
     <kbd>⌥⌘V</kbd><span>this chat in VS Code, the real one</span>
-    <kbd>⌥⌘G</kbd><span>its PR on GitHub · a picker with several · again for the next</span>
+    <kbd>⌥⌘G</kbd><span>its PR on GitHub · the repo when it has none · a picker with several · again for the next</span>
     <kbd>⌥⌘C</kbd><span>this chat's claude session, in the terminal below · takes over a live one</span>
     <kbd>⌥⌘O</kbd><span>project picker</span>
     <kbd>⌘+ ⌘− ⌘0</kbd><span>chat and terminal size</span>
@@ -595,7 +595,7 @@
 // Map ▴
 (() => {
   const $ = s => document.querySelector(s);
-  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, pins: [], peacock: {}, current: null, unread: new Map(), entries: [] };
+  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, pins: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [] };
   const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, headDetails: false, termOpen: true, termHeight: 320, chatZoom: 1, projectsCompact: true, sessionsCompact: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
@@ -958,7 +958,10 @@
   function hotGh() {
     const s = state.sessions.get(state.current); if (!s) return noChat();
     const prs = s.prs || [];
-    if (!prs.length) return note($('#shead'), 'No PR mentioned in this chat');
+    if (!prs.length) {   // no PR: the folder's repository on GitHub, when git names one (state.repos, from the server)
+      const url = s.cwd && state.repos[s.cwd];
+      return url ? openExternal(url) : note($('#shead'), 'No PR mentioned in this chat, and no GitHub remote in its folder');
+    }
     const at = prs.findIndex(pr => pr.url === prbar.url);   // the strip under the header says which one is showing
     if (prs.length === 1) showPr(prs[0].url);
     else if (at >= 0) showPr(prs[(at + 1) % prs.length].url);
@@ -1756,7 +1759,7 @@
     es.onerror = () => { $('#brandBtn').classList.add('off'); };
     es.addEventListener('snapshot', e => {
       const d = JSON.parse(e.data);
-      state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.peacock = d.peacock || {};
+      state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.peacock = d.peacock || {}; state.repos = d.repos || {};
       renderBoard();
       const want = location.hash.slice(1);
       if (want && !state.current && state.sessions.has(want)) openSession(want);
@@ -1765,6 +1768,7 @@
     es.addEventListener('entries', e => { const d = JSON.parse(e.data); if (d.sessionId === state.current) { state.entries.push(...d.entries); renderLog(); } });
     es.addEventListener('projects', e => { state.projects = JSON.parse(e.data).projects || []; renderBoard(); });
     es.addEventListener('peacock', e => { state.peacock = JSON.parse(e.data).colors || {}; renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); });
+    es.addEventListener('repos', e => { state.repos = JSON.parse(e.data).repos || {}; });
     es.addEventListener('pins', e => { state.pins = JSON.parse(e.data).pins || []; renderBoard(); });
     es.addEventListener('terminal', e => {
       const t = JSON.parse(e.data);

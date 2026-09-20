@@ -103,7 +103,7 @@ refuses to run against the real directory for the same reason.
   `POST /api/sessions/:id/shell` → `open -a iTerm <cwd>`, Terminal without iTerm), E the VS Code *Web* button
   (edit inline, in the pane), V the real VS Code (the focus button), G the chat's PR on GitHub — one opens straight
   away, several open the picker in `pr` mode, and with one already showing the next opens (a toggle with two, a
-  cycle with more) —, C this chat's claude session (`termAction()`, the `>_` button's path — arm and take over
+  cycle with more; no PR → the folder's GitHub repo, `state.repos` from `git remote`) —, C this chat's claude session (`termAction()`, the `>_` button's path — arm and take over
   included, focus at the end), O the project picker. Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A
   `dialog[open]` swallows them; no chat or no PR is a `note()`. The cog lists every key (`.keys` in `#settings`) —
   keep it in step by hand, with `boardKeys` in main.swift.

@@ -156,6 +156,29 @@ function peacockCwds() {
   return out;
 }
 const peacockColors = () => Object.fromEntries([...peacock].map(([c, v]) => [c, v.color]));
+// The folder's repository on GitHub, from `git remote get-url origin` — ⌥⌘G opens it when the chat mentions no PR
+// (2026-09-20). Asked once per folder the board knows, again after an hour; a change reaches every page as a `repos`
+// event. A folder that is no git checkout, or whose origin is not GitHub, has none.
+const repos = new Map();   // cwd -> { url, at }
+const REPO_TTL_MS = 60 * 60_000;
+const ghRepoUrl = remote => { const m = /github\.com[:/]([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?\s*$/.exec(String(remote)); return m ? `https://github.com/${m[1]}/${m[2]}` : null; };
+const repoUrls = () => Object.fromEntries([...repos].filter(([, v]) => v.url).map(([c, v]) => [c, v.url]));
+function pollRepos() {
+  const want = peacockCwds(); let changed = false;
+  for (const c of [...repos.keys()]) if (!want.has(c)) { repos.delete(c); changed = true; }
+  const due = [...want].filter(c => !repos.has(c) || Date.now() - repos.get(c).at > REPO_TTL_MS);
+  if (!due.length) { if (changed) broadcast('repos', { repos: repoUrls() }); return; }
+  let left = due.length;
+  for (const cwd of due) {
+    const prev = repos.get(cwd); repos.set(cwd, { url: prev?.url || null, at: Date.now() });   // claimed: not asked twice while git answers
+    execFile('git', ['-C', cwd, 'remote', 'get-url', 'origin'], { timeout: 5000 }, (err, out) => {
+      const url = err ? null : ghRepoUrl(out);
+      if ((prev?.url || null) !== url) changed = true;
+      repos.set(cwd, { url, at: Date.now() });
+      if (--left === 0 && changed) broadcast('repos', { repos: repoUrls() });
+    });
+  }
+}
 function pollPeacock() {
   const want = peacockCwds();
   let changed = false;
@@ -1250,7 +1273,7 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': m[2] === 'css' ? 'text/css; charset=utf-8' : 'application/javascript; charset=utf-8', 'cache-control': 'public, max-age=86400' });
       return res.end(readFileSync(f));
     }
-    if (req.method === 'GET' && p === '/api/sessions') return json(res, 200, { sessions: sortedSummaries(), projects: projectList(), pins: pinned, peacock: peacockColors(), claudeDir: CLAUDE_DIR, notify: NOTIFY });
+    if (req.method === 'GET' && p === '/api/sessions') return json(res, 200, { sessions: sortedSummaries(), projects: projectList(), pins: pinned, peacock: peacockColors(), repos: repoUrls(), claudeDir: CLAUDE_DIR, notify: NOTIFY });
     if (req.method === 'GET' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/messages$/))) {
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
@@ -1446,7 +1469,7 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'GET' && p === '/events') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
-      res.write(`event: snapshot\ndata: ${JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, peacock: peacockColors(), notify: NOTIFY })}\n\n`);
+      res.write(`event: snapshot\ndata: ${JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, peacock: peacockColors(), repos: repoUrls(), notify: NOTIFY })}\n\n`);
       sseClients.add(res);
       const ping = setInterval(() => res.write(': ping\n\n'), 25_000);
       req.on('close', () => { clearInterval(ping); sseClients.delete(res); });
@@ -1477,6 +1500,8 @@ indexing = false;
 for (const s of sessions.values()) queueSessionPrs(s);
 pollPeacock();
 setInterval(pollPeacock, PEACOCK_POLL_MS);
+pollRepos();
+setInterval(pollRepos, PEACOCK_POLL_MS);
 console.log(`[peixairada] indexed ${sessions.size} sessions (${[...sessions.values()].filter(s => s.alive).length} alive) from ${CLAUDE_DIR} in ${Date.now() - t0}ms`);
 
 const pendingFiles = new Map();
