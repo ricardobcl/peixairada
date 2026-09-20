@@ -249,8 +249,8 @@ otherwise), one per chat, `exit` or its × ends it, and ⌥⌘C brings the claud
 opens the folder in VS Code Web, on a *VS Code* tab of the same strip — the *web* button's route; **⌥⌘V** opens the chat in the real VS
 Code — the focus button's. **⌥⌘G** opens the chat's PR on GitHub — straight away with
 one; with several, the ⌥⌘O picker filled with the PR rows under the header (state · `repo#n` · title · age,
-filtered by number or title, ⏎ opens the selected one); **pressed again while one is showing it moves to the
-next** — a toggle with two, a cycle with more, each PR on a tab of its own (`repo#n`) so nothing reloads. The
+filtered by number or title, ⏎ opens the selected one, the one showing marked *current*) — **every time**, a tab
+already open or not; each PR is a tab of its own (`repo#n`) so nothing reloads. The
 keys work from inside a page's tab too, and **Esc** there brings the chat back. With no chat open, or no PR in it, a note under the header says so; while
 a dialog is up the keys do nothing. **Double-click the
 title** in the chat header to rename a chat; the name is kept by the board (never written into the

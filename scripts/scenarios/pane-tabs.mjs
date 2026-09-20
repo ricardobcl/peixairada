@@ -1,5 +1,5 @@
-// The chat's pages as tabs (2026-09-20), with the app's bridge faked: ⌥⌘G puts a PR on a tab of its own, again the
-// second beside it, ⌥⌘E the editor, ⌥⌘T a zsh — five tabs; the shell hears one `pane` message per change (the chat's
+// The chat's pages as tabs (2026-09-20), with the app's bridge faked: ⌥⌘G puts a PR on a tab of its own, again (the
+// picker, the other row) the second beside it, ⌥⌘E the editor, ⌥⌘T a zsh — five tabs; the shell hears one `pane` message per change (the chat's
 // pages, the one to show, the pane's place: the chat column below the strip); Esc through the shell goes back to
 // the chat; × forgets a page; the tab a chat was on comes back with it; a zsh that ends takes its tab.
 export const meta = { server: true, fixture: 'auto' };
@@ -28,8 +28,10 @@ export default async function (ctx) {
   ctx.assert.ok(await ctx.evaluate(`!!document.querySelector('#ptabs .navs .nav[data-nav="back"]')`), '‹ › ↻ ↗ with a page on');
   await ctx.evaluate(`document.querySelector('#ptabs .nav[data-nav="reload"]').click()`);
   ctx.assert.deepEqual(await ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'nav').pop())`).then(JSON.parse), { type: 'nav', what: 'reload' });
-  // ⌥⌘G again: the other PR, a second tab, on
-  await ctx.key('KeyG'); await ctx.waitFor(`document.querySelectorAll('#ptabs .ptab[data-tab^="gh:"]').length === 2`, { what: 'two PR tabs' });
+  // ⌥⌘G again: the picker (always, with several); the other row → a second tab, on
+  await ctx.key('KeyG'); await ctx.waitFor(`document.querySelector('#pick').open`, { what: 'the picker again' });
+  await ctx.evaluate(`document.querySelector('#picklist .pkrow.pr:not(:has(.cur))').click()`);
+  await ctx.waitFor(`document.querySelectorAll('#ptabs .ptab[data-tab^="gh:"]').length === 2`, { what: 'two PR tabs' });
   out.two = { tabs: await tabsNow(), pane: await lastPane() };
   ctx.assert.equal(out.two.tabs[2].on, true); ctx.assert.equal(out.two.pane.show, out.two.tabs[2].k); ctx.assert.equal(out.two.pane.keys.length, 2);
   // Esc, as the shell forwards it: the chat tab, the pane told to go, the pages kept

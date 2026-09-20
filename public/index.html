@@ -545,7 +545,7 @@
     <kbd>⌥⌘T</kbd><span>a zsh in this folder, a tab beside the chat · again to show it</span>
     <kbd>⌥⌘E</kbd><span>edit: this folder in VS Code Web, on a tab</span>
     <kbd>⌥⌘V</kbd><span>this chat in VS Code, the real one</span>
-    <kbd>⌥⌘G</kbd><span>its PR on GitHub, on a tab · the repo when it has none · a picker with several · again for the next</span>
+    <kbd>⌥⌘G</kbd><span>its PR on GitHub, on a tab · the repo when it has none · a picker with several, every time</span>
     <kbd>⌥⌘C</kbd><span>this chat's claude session — the pane while it runs here · starts or takes over one</span>
     <kbd>⌥⌘O</kbd><span>project picker</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
@@ -957,8 +957,8 @@
   // because with ⌥ held e.key is a symbol ('ø' for O) on a Mac. One letter per place the open chat lives: T a
   // fresh zsh in its folder (the pane's zsh tab — a holder like claude's), E the editor — VS Code Web in the pane, the
   // web button's route —, V the real VS Code (the focus button's), G the chat's PR on GitHub — straight to it
-  // with one, the picker with several, and the next one when one is already showing (a toggle with two, a cycle
-  // with more; each PR is its own tab in the pane, so nothing reloads) —, C the claude session: the >_ button's
+  // with one, the picker with several — every time, a tab open or not, the one showing marked (Ricardo, 2026-09-20:
+  // "always open the menu to choose the PR"); each PR is its own tab, so nothing reloads —, C the claude session: the >_ button's
   // path (the drawer shown or started, arm-and-take-over included, so a chat live elsewhere takes two presses).
   // O is the project picker; ↑ and ↓ open the chat above or below in the list. A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
@@ -1022,10 +1022,7 @@
       const url = s.cwd && state.repos[s.cwd];
       return url ? openExternal(url) : note($('#shead'), 'No PR mentioned in this chat, and no GitHub remote in its folder');
     }
-    const at = prs.findIndex(pr => pr.url === prbar.url);   // the strip under the header says which one is showing
-    if (prs.length === 1) showPr(prs[0].url);
-    else if (at >= 0) showPr(prs[(at + 1) % prs.length].url);
-    else pickOpen('pr');
+    if (prs.length === 1) showPr(prs[0].url); else pickOpen('pr');   // several: always the choice; the strip's says which is showing
   }
   // Pins: the ordered list lives on the server (state.pins), so every browser and the app agree. The button
   // pins at the end of the pinned block; dragging a row sets its place — anywhere above the line pins it

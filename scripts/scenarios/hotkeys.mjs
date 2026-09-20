@@ -1,6 +1,6 @@
-// The ⌥⌘ family on a fixture: G opens the picker on a two-PR chat, ⏎ opens the first, G again moves to the next
-// and back; T, E, V and C hit their routes (stubbed); O is the project picker; ↓ ↑ walk the list; the cog lists every
-// key; no chat → a note.
+// The ⌥⌘ family on a fixture: G opens the picker on a two-PR chat, ⏎ opens the first, G again is the picker again
+// with that one marked, a click on the other opens it; T, E, V and C hit their routes (stubbed); O is the project
+// picker; ↓ ↑ walk the list; the cog lists every key; no chat → a note.
 export const meta = { server: true, fixture: 'auto' };
 export default async function (ctx) {
   const [two, plain] = ctx.fixture.chats;
@@ -19,10 +19,13 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);
   await ctx.sleep(300);
   out.first = await bar(); ctx.assert.ok(out.first, 'the first PR opened in the strip');
-  await ctx.key('KeyG'); await ctx.sleep(300); out.second = await bar();
-  ctx.assert.notEqual(out.second, out.first, 'G again moved to the other PR');
-  await ctx.key('KeyG'); await ctx.sleep(300); out.third = await bar();
-  ctx.assert.equal(out.third, out.first, 'and back');
+  await ctx.key('KeyG');   // again, with one showing: the picker again, that one marked current
+  out.again = { open: await ctx.evaluate(`document.querySelector('#pick').open`), current: await ctx.evaluate(`document.querySelector('#picklist .pkrow.pr .cur')?.closest('.pkrow')?.title || null`) };
+  ctx.assert.equal(out.again.open, true, 'G with several PRs is always the picker');
+  ctx.assert.equal(out.again.current, (await ctx.peix('state()')).prbar, 'the one showing is marked current');
+  await ctx.evaluate(`document.querySelector('#picklist .pkrow.pr:not(:has(.cur))').click()`);
+  await ctx.sleep(300); out.second = await bar();
+  ctx.assert.notEqual(out.second, out.first, 'the other row opened the other PR');
   out.peixState = await ctx.peix('state()');
   ctx.assert.match(String(out.peixState.prbar), /\/pull\/\d+$/, 'the strip holds the current PR (pane pages exist only in the app)');
   // T, E, V and C, routes stubbed so nothing spawns or opens
