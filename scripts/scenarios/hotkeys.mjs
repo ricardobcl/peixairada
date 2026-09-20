@@ -1,6 +1,7 @@
 // The ⌥⌘ family on a fixture: G opens the picker on a two-PR chat, ⏎ opens the first, G again is the picker again
 // with that one marked, a click on the other opens it; T, E and C hit their routes (stubbed), V none; O is the project
-// picker; ↓ ↑ walk the list; the cog lists every key; no chat → a note.
+// picker; K the chat picker (search, ⏎ opens across projects); ↓ ↑ walk the list; Esc closes a picker and is taken; the cog
+// lists every key; no chat → a note.
 export const meta = { server: true, fixture: 'auto' };
 export default async function (ctx) {
   const [two, plain] = ctx.fixture.chats;
@@ -43,6 +44,20 @@ export default async function (ctx) {
   out.projectPicker = { open: await ctx.evaluate(`document.querySelector('#pick').open`), rows: await ctx.evaluate(`document.querySelectorAll('#picklist .pkrow:not(.pr)').length`) };
   ctx.assert.ok(out.projectPicker.open && out.projectPicker.rows >= 2);
   await ctx.evaluate(`document.querySelector('#pick').close()`);
+  // K, the chat picker: every ready or clauding chat across the projects (both fixture chats), the open one marked, the
+  // box searches title, project and prompt; ⏎ opens the chat and switches to its project
+  await ctx.openChat(two.id); await ctx.key('KeyK');
+  out.chatPicker = { open: await ctx.evaluate(`document.querySelector('#pick').open`), rows: await ctx.evaluate(`document.querySelectorAll('#picklist .pkrow.chat').length`), placeholder: await ctx.evaluate(`document.querySelector('#pickq').placeholder`), current: await ctx.evaluate(`document.querySelector('#picklist .pkrow.chat:has(.cur) .n')?.textContent || null`), states: await ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow.chat .st')].map(e => e.textContent)`) };
+  ctx.assert.equal(out.chatPicker.open, true); ctx.assert.equal(out.chatPicker.rows, 2, 'both fixture chats are ready');
+  ctx.assert.match(out.chatPicker.placeholder, /^Chat/); ctx.assert.match(out.chatPicker.current, /Two PRs/); ctx.assert.deepEqual(out.chatPicker.states, ['ready', 'ready']);
+  await ctx.shot('chat-picker');
+  await ctx.evaluate(`const q = document.querySelector('#pickq'); q.value = 'day is'; q.dispatchEvent(new Event('input', { bubbles: true }))`);   // the plain chat's prompt
+  out.chatFilter = await ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow.chat .n')].map(e => e.textContent)`);
+  ctx.assert.deepEqual(out.chatFilter, ['Plain chat'], 'the box searches the prompt too');
+  await ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);
+  await ctx.waitFor(`window.peix.state().current === ${JSON.stringify(plain.id)}`, { what: 'the plain chat opened from the picker' });
+  out.chatOpened = { current: (await ctx.peix('state()')).current, project: (await ctx.peix('prefs()')).project, inList: await ctx.evaluate(`!!document.querySelector('#slist .card[data-id=${JSON.stringify(plain.id)}]')`), picker: await ctx.evaluate(`document.querySelector('#pick').open`) };
+  ctx.assert.ok(out.chatOpened.inList, 'the opened chat is in the list shown (ALL here; openSession switches project when it is not)'); ctx.assert.equal(out.chatOpened.picker, false);
   // ↓ and ↑ walk the list as shown: from the two-PR chat to the card beside it and back
   await ctx.openChat(two.id);
   const order = await ctx.evaluate(`[...document.querySelectorAll('#slist .card')].map(c => c.dataset.id)`);
@@ -67,7 +82,7 @@ export default async function (ctx) {
   out.escIdle = await escOn('body'); ctx.assert.equal(out.escIdle, false, 'with nothing to close, Esc is left alone');
   // the cog lists the keys
   out.cog = await ctx.evaluate(`[...document.querySelectorAll('#settings .keys kbd')].map(k => k.textContent)`);
-  ctx.assert.deepEqual(out.cog.slice(0, 6), ['⌥⌘T', '⌥⌘E', '⌥⌘G', '⌥⌘C', '⌥⌘O', '⌥⌘↑↓']);
+  ctx.assert.deepEqual(out.cog.slice(0, 7), ['⌥⌘T', '⌥⌘E', '⌥⌘G', '⌥⌘C', '⌥⌘O', '⌥⌘K', '⌥⌘↑↓']);
   await ctx.shot('cog');
   return out;
 }

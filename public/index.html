@@ -463,6 +463,9 @@
   .pkrow .n .cur { font-weight: 400; font-size: 11px; color: var(--muted); margin-left: 6px; }
   /* ⌥⌘G: the same rows over the chat's PRs — state · repo#n · title · age, as #prlist lays them out. */
   .pkrow.pr { grid-template-columns: 52px auto 1fr auto; }
+  .pkrow.chat { grid-template-columns: auto 1fr auto auto auto; }   /* ⌥⌘K: colour · title · project · state · your last touch */
+  .pkrow.chat .num { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pkrow.chat[data-state="clauding"] .st { color: var(--working); } .pkrow.chat[data-state="asking"] .st { color: var(--needs); } .pkrow.chat[data-state="ready"] .st { color: var(--idle); }
   .pkrow .st { font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: .5px; color: var(--muted); }
   .pkrow .num { color: var(--muted); font-size: 11px; }
   .pkrow .n.pending { font-weight: 400; color: var(--muted); font-style: italic; }
@@ -547,6 +550,7 @@
     <kbd>⌥⌘G</kbd><span>its PR on GitHub, on a tab · the repo when it has none · a picker with several, every time</span>
     <kbd>⌥⌘C</kbd><span>this chat's claude session — the pane while it runs here · starts or takes over one</span>
     <kbd>⌥⌘O</kbd><span>project picker</span>
+    <kbd>⌥⌘K</kbd><span>chat picker — every ready or clauding chat, type to search</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
     <kbd>⌘+ ⌘− ⌘0</kbd><span>chat and terminal size</span>
     <kbd>⇧⏎</kbd><span>newline in the terminal's prompt</span>
@@ -804,6 +808,8 @@
   // is working; ready is everything else, a pending question included (the card still says *asking you*).
   // The server keeps the finer statuses for notifications and the app's badge.
   const bucket = s => s.done ? 'done' : s.status === 'working' ? 'working' : 'ready';
+  const RANK = { working: 0, ready: 1, done: 2 };   // the list's order, and the ⌥⌘K picker's: clauding on top, then ready, done last
+  const chatText = s => `${s.project} ${s.title} ${s.aiTitle || ''} ${s.lastPrompt} ${s.live?.name || ''} ${s.gitBranch || ''}`.toLowerCase();   // what the filters search
   // Pinned projects first, in your order (state.pins — server state, so every browser and the app agree),
   // then the named ones, then folders by their newest chat. A pinned folder shows even with no chat in view.
   function projectList() {
@@ -891,13 +897,12 @@
   function renderSessionList(p) {
     const pc = projColor(p); if (pc) $('#sessions').style.setProperty('--repo', pc); else $('#sessions').style.removeProperty('--repo');
     const q = $('#q').value.trim().toLowerCase();
-    const list = p.sessions.filter(s => !q || `${s.project} ${s.title} ${s.aiTitle || ''} ${s.lastPrompt} ${s.live?.name || ''} ${s.gitBranch || ''}`.toLowerCase().includes(q));
+    const list = p.sessions.filter(s => !q || chatText(s).includes(q));
     const counts = {};
     for (const s of list) counts[bucket(s)] = (counts[bucket(s)] || 0) + 1;
     // clauding on top, then ready, done last (2026-09-20, Ricardo: one rule between the live cards and the ready ones —
     // which needs a group above it); inside each group your last touch, newest first. A finished job moves its card
     // into the ready group, where its last prompt puts it.
-    const RANK = { working: 0, ready: 1, done: 2 };
     const shown = list.filter(s => filterOn(bucket(s))).sort((a, b) => (RANK[bucket(a)] - RANK[bucket(b)]) || byUser(a, b));
     $('#stitle').innerHTML = `${sqHtml(p, repoStyle(projColor(p)))}<span class="t">${esc(p.name)}</span><span class="n">${list.length}</span>`;
     $('#stitle').title = p.custom ? p.cwds.join('\n') : p.key === ALL ? '' : p.key;
@@ -930,8 +935,12 @@
   // ---- ⌥⌘O: the project picker. Same list as the column, in the same order; the box filters by name. ----
   // ⌥⌘G puts the chat's PRs in the same dialog (state · repo#n · title · age, as #prlist lays them out)
   // when it mentions more than one; the box filters by number and title, ⏎ opens the PR as a row click would.
+  // ⌥⌘K (2026-09-20) fills it with every chat that is ready or clauding — done ones stay out — across all projects, in
+  // the list's own order (clauding first, then by your last touch); the box searches the same words as the list's
+  // magnifier (project, title, prompt, branch); ⏎ opens the chat, switching project when it lives elsewhere.
   const pick = { mode: 'project', list: [], sel: 0 };
-  const PICK_HINT = { project: 'Project — type to filter · ↑↓ · ⏎ opens · esc', pr: 'Pull request — type to filter · ↑↓ · ⏎ opens · esc' };
+  const PICK_HINT = { project: 'Project — type to filter · ↑↓ · ⏎ opens · esc', pr: 'Pull request — type to filter · ↑↓ · ⏎ opens · esc', chat: 'Chat — ready or clauding, every project · type to filter · ↑↓ · ⏎ opens · esc' };
+  const chatState = s => bucket(s) === 'working' ? 'clauding' : s.status === 'needs-input' && s.alive ? 'asking' : 'ready';
   function pickOpen(mode = 'project') {
     const dlg = $('#pick'); if (dlg.open) return;
     dlg.classList.toggle('aside', inApp && state.paneVisible); dlg.style.setProperty('--pane-left', state.paneLeft + 'px');
@@ -949,15 +958,19 @@
       pick.list = (state.sessions.get(state.current)?.prs || []).filter(pr => !q || `${pr.label} ${pr.title || ''}`.toLowerCase().includes(q));
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
       rows = pick.list.map((pr, i) => `<div class="pkrow pr${sel(i)}" data-i="${i}" data-state="${esc(pr.state || '')}" title="${esc(pr.url)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${mark(pr.label)}</span><span class="n${pr.title ? '' : ' pending'}">${pr.title ? mark(pr.title) : 'title on its way from gh…'}${pr.url === prbar.url ? '<span class="cur">current</span>' : ''}</span><span class="t">${rel(pr.lastAt)}</span></div>`);
+    } else if (pick.mode === 'chat') {
+      pick.list = [...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done' && (!q || chatText(s).includes(q))).sort((a, b) => (RANK[bucket(a)] - RANK[bucket(b)]) || byUser(a, b));
+      pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
+      rows = pick.list.map((s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${mark(s.title)}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t">${rel(userAt(s))}</span></div>`);
     } else {
       pick.list = projectList().filter(p => !q || p.name.toLowerCase().includes(q));
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
       rows = pick.list.map((p, i) => `<div class="pkrow${sel(i)}" data-i="${i}" style="${repoStyle(projColor(p))}"><span class="sq"></span><span class="n">${mark(p.name)}${p.key === prefs.project ? '<span class="cur">current</span>' : ''}</span><span class="pills">${pillsHtml(p)}</span><span class="t">${p.last ? rel(p.last) : ''}</span></div>`);
     }
-    $('#picklist').innerHTML = rows.join('') || `<div class="none">no ${pick.mode === 'pr' ? 'PR' : 'project'} matches</div>`;
+    $('#picklist').innerHTML = rows.join('') || `<div class="none">no ${pick.mode === 'pr' ? 'PR' : pick.mode === 'chat' ? 'chat' : 'project'} matches</div>`;
     $('#picklist .pkrow.sel')?.scrollIntoView({ block: 'nearest' });
   }
-  function pickChoose(i) { const x = pick.list[i]; $('#pick').close(); if (!x) return; if (pick.mode === 'pr') showPr(x.url); else selectProject(x.key); }
+  function pickChoose(i) { const x = pick.list[i]; $('#pick').close(); if (!x) return; if (pick.mode === 'pr') showPr(x.url); else if (pick.mode === 'chat') openSession(x.id); else selectProject(x.key); }
   $('#pickq').addEventListener('input', () => { pick.sel = 0; pickRender(); });
   $('#pickq').addEventListener('keydown', e => {
     if (e.key === 'ArrowDown') { e.preventDefault(); pick.sel++; pickRender(); }
@@ -973,10 +986,10 @@
   // with one, the picker with several — every time, a tab open or not, the one showing marked (Ricardo, 2026-09-20:
   // "always open the menu to choose the PR"); each PR is its own tab, so nothing reloads —, C the claude session: the >_ button's
   // path (the drawer shown or started, arm-and-take-over included, so a chat live elsewhere takes two presses).
-  // O is the project picker; ↑ and ↓ open the chat above or below in the list. A modal up (the picker, the project
-  // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
+  // O is the project picker, K the chat picker (every ready or clauding chat, searched); ↑ and ↓ open the chat above or
+  // below in the list. A modal up (the picker, the project editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyO: () => pickOpen('project'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1) };
+  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyO: () => pickOpen('project'), KeyK: () => pickOpen('chat'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1) };
   const runHotkey = code => { if (code === 'Escape') return hotEscape(); const fn = HOTKEYS[code]; if (fn && !document.querySelector('dialog[open]')) fn(); };
   document.addEventListener('keydown', e => {
     if (!(e.metaKey && e.altKey && !e.ctrlKey && !e.shiftKey && HOTKEYS[e.code])) return;
