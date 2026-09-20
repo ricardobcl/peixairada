@@ -4,6 +4,18 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-20 (late night).
 
+## Decisions of 2026-09-20, later that night — three tweaks: the fish swim, hover is the open tint, the veil runs down
+
+* **The fish swim** (Ricardo: "animate ascii fish separator"): the line slides right one fish per 2.4 s — six
+  characters, letter-spacing included, so the loop is seamless — and starts with a negative delay taken from the
+  clock, because the list re-renders on every SSE update and a fresh animation would jolt the school each time. Off
+  under reduced motion.
+* **A hovered card takes the open card's solid tint** (Ricardo: "the hover cards, make the background as if it was
+  select"), keeping the full-colour border and halo; the open card still adds its ring.
+* **The header's veil runs down as well as across** (Ricardo: "the header gradient, make it from top to bottom
+  also"): a second, lighter layer (`--rover2`) from transparent at the top to the veil at the bottom, so the
+  bottom-right corner is the deepest and the title at the top left the purest.
+
 ## Decisions of 2026-09-20, late night — five more: pages as tabs, the cards' own colour, the header's gradient, ⌥⌘↑↓, fish
 
 * **The chat's pages are tabs of the chat** (Ricardo: "I like the row that opens when there's a chat and a shell open
