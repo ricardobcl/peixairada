@@ -15,6 +15,7 @@
     --pr-open: #2f9e5b; --pr-merged: #8250df; --pr-closed: #d64545; --pr-draft: #8b8b85;
     --term-bg: #f4f3ee; --term-sel: rgba(0, 0, 0, .14);
     --nocolor: #b9b9b3;   /* light gray: a project without a Peacock colour, wherever a colour is needed (the tab, the swatch, the card's edge and wash) */
+    --all: #000;   /* ALL, the flat list of every chat: black in both themes (2026-09-20, Ricardo) — its tab, swatch, edge and header wash */
     /* Syntax colours, one set per theme — the whole highlight.js palette hangs off these eight. */
     --hl-com: #97968d; --hl-key: #9c27a0; --hl-str: #4a8c3f; --hl-num: #98651a;
     --hl-fn: #2f6fd0; --hl-cls: #a8791a; --hl-var: #cf4b3c; --hl-meta: #6b7f9e;
@@ -196,7 +197,7 @@
   .gsep { border-top: 1px solid color-mix(in srgb, var(--muted) 45%, transparent); margin: 4px 8px; }
   #slist .none { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 0; }
   /* --repo is reset here on purpose: custom properties inherit, and the chat list sets its own for its edge (the
-     accent on All chats) — without the reset every colourless card wore that. The card's inline --repo still wins. */
+     black on ALL) — without the reset every colourless card wore that. The card's inline --repo still wins. */
   .card { --repo: initial; background: var(--panel); border: 1px solid color-mix(in srgb, var(--repo, var(--line)) 70%, var(--line)); border-left: 5px solid var(--repo, var(--nocolor)); border-radius: 10px; padding: 8px 10px 7px; cursor: pointer; min-width: 0; overflow: hidden; position: relative; }
   /* a VS Code chat: the same wash as its pane */
   /* the same wash as the pane, in the project's colour; a card without one stays plain panel */
@@ -718,7 +719,7 @@
   // named project. Nothing else since 2026-09-20 (no board-set colours, no hashed hues): a folder without
   // one has none, `--repo` stays unset, and the CSS paints --nocolor (black) wherever a colour is needed.
   const repoColor = cwds => (Array.isArray(cwds) ? cwds : [cwds]).map(c => c && state.peacock[c]).find(Boolean) || null;
-  const projColor = p => p.key === ALL ? 'var(--accent)' : repoColor(p.cwds);
+  const projColor = p => p.key === ALL ? 'var(--all)' : repoColor(p.cwds);
   const repoStyle = color => color ? `--repo:${color}` : '';
   // The ink that reads on a colour: near-black on a light one, white on a dark one — Peacock's own rule (tinycolor's
   // brightness, (299r + 587g + 114b) / 1000, light from 128), so the header agrees with the VS Code title bar of the
@@ -742,7 +743,7 @@
   // ---- projects ----------------------------------------------------------------------
   // A project is a folder — the registry cwd, which is the stable repo path — or a name you gave to
   // a set of folders (multi-repo work, an investigation). A chat lives in its folder and in every
-  // custom project that claims that folder. "All chats" is the flat list, newest first.
+  // custom project that claims that folder. "ALL" is the flat list, newest first.
   const ALL = 'all';
   const inFolder = (cwd, f) => !!cwd && (cwd === f || cwd.startsWith(f.replace(/\/$/, '') + '/'));
   const inProject = (s, p) => p.key === ALL || (p.custom ? p.cwds.some(f => inFolder(s.cwd, f)) : (s.cwd || '?') === p.key);
@@ -771,7 +772,7 @@
   // Pinned projects first, in your order (state.pins — server state, so every browser and the app agree),
   // then the named ones, then folders by their newest chat. A pinned folder shows even with no chat in view.
   function projectList() {
-    const all = { key: ALL, name: 'All chats', cwds: [], sessions: [] };
+    const all = { key: ALL, name: 'ALL', cwds: [], sessions: [] };
     const folders = new Map();
     const customs = state.projects.map(p => ({ key: 'c:' + p.id, id: p.id, name: p.name, cwds: p.cwds, custom: true, sessions: [] }));
     for (const s of state.sessions.values()) {

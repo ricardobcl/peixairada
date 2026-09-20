@@ -110,7 +110,7 @@ Three columns, left to right. Pick a project, pick a chat, read it — and talk 
 
 **Projects.** One entry per folder a chat has run in — the repo path Claude Code registered for
 the session, so `cd`-ing around inside a chat never splits it — ordered by the newest thing
-*you* did in any of its chats. **All chats** sits on top as the flat list. Under it come the
+*you* did in any of its chats. **ALL** sits on top as the flat list. Under it come the
 projects **you name yourself**: a name over one or more folders, for multi-repo work or an
 investigation — **+** in the column header, ✎ on hover to edit or delete. A chat belongs to its
 folder *and* to every named project that claims that folder (worktrees under a repo count as the
@@ -181,7 +181,7 @@ chips are remembered per browser.
 ### Anatomy of a card
 
 Every card leads with its **state dot**, the **repo name** when the list spans several folders
-(*All chats*, a named project) and where it is live (VS Code, CLI, or a terminal here), then the
+(*ALL*, a named project) and where it is live (VS Code, CLI, or a terminal here), then the
 session title with its age and the ✓ on the same line, the PRs it mentions as `#32`-style chips in
 GitHub's state colours (click one and that chat opens with that PR), the last thing you asked and the
 start of Claude's reply — each marked by a glyph

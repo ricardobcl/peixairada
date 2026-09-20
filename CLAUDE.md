@@ -89,6 +89,7 @@ refuses to run against the real directory for the same reason.
   control in `.shead` is redrawn in it. No colour → the plain panel header.
 * **The open chat's card is a solid tint** of its colour (`.card.active`, 36 %), the rest keep the gradient wash.
   **A rule (`.gsep`) in a wider gap where a clauding card meets a ready one** (put there by `renderSessionList`), the order untouched.
+  **ALL** (the flat list, `key: 'all'`) is black in both themes — `--all`, through `projColor()`.
 * **Order is by when *you* last acted** (`lastUserAt`), newest first; done chats sink; a project ranks by its
   newest chat. Claude finishing a job never reshuffles the list.
 * **State lives in three places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done
