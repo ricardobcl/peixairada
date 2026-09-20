@@ -465,6 +465,8 @@
   .pkrow.pr { grid-template-columns: 52px auto 1fr auto; }
   .pkrow.chat { grid-template-columns: auto 1fr auto auto auto; }   /* ⌥⌘K: colour · title · project · state · your last touch */
   .pkrow.chat .num { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pkrow.env { grid-template-columns: auto auto 1fr; }   /* ⌥⌘N's last step: colour · task name · what the Taskfile says it does */
+  .pkrow.env .num { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .pkrow.chat[data-state="clauding"] .st { color: var(--working); } .pkrow.chat[data-state="asking"] .st { color: var(--needs); } .pkrow.chat[data-state="ready"] .st { color: var(--idle); }
   .pkrow .st { font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: .5px; color: var(--muted); }
   .pkrow .num { color: var(--muted); font-size: 11px; }
@@ -551,6 +553,7 @@
     <kbd>⌥⌘C</kbd><span>this chat's claude session — the pane while it runs here · starts or takes over one</span>
     <kbd>⌥⌘O</kbd><span>project picker</span>
     <kbd>⌥⌘K</kbd><span>chat picker — every ready or clauding chat, type to search</span>
+    <kbd>⌥⌘N</kbd><span>new chat — pick the project, then the folder, then the environment when its Taskfile launches claude</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
     <kbd>⌘+ ⌘− ⌘0</kbd><span>chat and terminal size</span>
     <kbd>⇧⏎</kbd><span>newline in the terminal's prompt</span>
@@ -938,16 +941,29 @@
   // ⌥⌘K (2026-09-20) fills it with every chat that is ready or clauding — done ones stay out — across all projects, in
   // the list's own order (clauding first, then by your last touch); the box searches the same words as the list's
   // magnifier (project, title, prompt, branch); ⏎ opens the chat, switching project when it lives elsewhere.
-  const pick = { mode: 'project', list: [], sel: 0 };
-  const PICK_HINT = { project: 'Project — type to filter · ↑↓ · ⏎ opens · esc', pr: 'Pull request — type to filter · ↑↓ · ⏎ opens · esc', chat: 'Chat — ready or clauding, every project · type to filter · ↑↓ · ⏎ opens · esc' };
+  // ⌥⌘N (2026-09-20) is a new chat as a flow of steps in the one dialog: the project (the column's list without ALL),
+  // then the folder when the project spans several, then — when the folder's Taskfile launches claude itself, as
+  // oracle's `task production-workload` does — the environment (newChatIn asks the server); ⏎ at the last step starts it.
+  const pick = { mode: 'project', ctx: {}, list: [], sel: 0 };
+  const PICK_HINT = {
+    project: 'Project — type to filter · ↑↓ · ⏎ opens · esc', pr: 'Pull request — type to filter · ↑↓ · ⏎ opens · esc',
+    chat: 'Chat — ready or clauding, every project · type to filter · ↑↓ · ⏎ opens · esc',
+    new: 'New chat — which project? type to filter · ↑↓ · ⏎ · esc', folder: 'New chat — which folder? type to filter · ↑↓ · ⏎ · esc',
+    env: 'New chat — which environment? task <env> from the folder\'s Taskfile · ↑↓ · ⏎ starts it · esc',
+  };
+  const PICK_NOUN = { pr: 'PR', chat: 'chat', folder: 'folder', env: 'environment' };   // for "no … matches"; the rest are projects
+  const homePath = f => f.replace(/^\/Users\/[^/]+(?=\/|$)/, '~');
   const chatState = s => bucket(s) === 'working' ? 'clauding' : s.status === 'needs-input' && s.alive ? 'asking' : 'ready';
-  function pickOpen(mode = 'project') {
-    const dlg = $('#pick'); if (dlg.open) return;
-    dlg.classList.toggle('aside', inApp && state.paneVisible); dlg.style.setProperty('--pane-left', state.paneLeft + 'px');
-    if (inApp) post({ type: 'focus' });   // the key may have come from the pane: the box needs the board's keyboard
-    pick.mode = mode; pick.sel = 0;
+  function pickOpen(mode = 'project', ctx = {}) {
+    const dlg = $('#pick');
+    if (!dlg.open) {   // a step of the new-chat flow re-fills the open dialog; a hotkey never gets here with one up
+      dlg.classList.toggle('aside', inApp && state.paneVisible); dlg.style.setProperty('--pane-left', state.paneLeft + 'px');
+      if (inApp) post({ type: 'focus' });   // the key may have come from the pane: the box needs the board's keyboard
+      dlg.showModal();
+    }
+    pick.mode = mode; pick.ctx = ctx; pick.sel = 0;
     $('#pickq').value = ''; $('#pickq').placeholder = PICK_HINT[mode];
-    pickRender(); dlg.showModal(); $('#pickq').focus();
+    pickRender(); $('#pickq').focus();
   }
   function pickRender() {
     const q = $('#pickq').value.trim().toLowerCase();
@@ -962,15 +978,31 @@
       pick.list = [...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done' && (!q || chatText(s).includes(q))).sort((a, b) => (RANK[bucket(a)] - RANK[bucket(b)]) || byUser(a, b));
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
       rows = pick.list.map((s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${mark(s.title)}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t">${rel(userAt(s))}</span></div>`);
-    } else {
-      pick.list = projectList().filter(p => !q || p.name.toLowerCase().includes(q));
+    } else if (pick.mode === 'folder') {   // the new chat's folder, from a project that spans several
+      pick.list = pick.ctx.cwds.filter(f => !q || folderName(f).toLowerCase().includes(q) || f.toLowerCase().includes(q)).map(f => ({ cwd: f }));
+      pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
+      rows = pick.list.map((x, i) => `<div class="pkrow${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(x.cwd))}" title="${esc(x.cwd)}"><span class="sq"></span><span class="n">${mark(folderName(x.cwd))}<span class="cur">${esc(homePath(x.cwd))}</span></span><span class="pills"></span><span class="t"></span></div>`);
+    } else if (pick.mode === 'env') {   // the new chat's environment: a launcher of the folder's Taskfile (task <name>)
+      pick.list = pick.ctx.launchers.filter(l => !q || `${l.name} ${l.desc}`.toLowerCase().includes(q));
+      pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
+      rows = pick.list.map((l, i) => `<div class="pkrow env${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(pick.ctx.cwd))}" title="task ${esc(l.name)} in ${esc(pick.ctx.cwd)}"><span class="sq"></span><span class="n">${mark(l.name)}</span><span class="num">${mark(l.desc)}</span></div>`);
+    } else {   // project — and new, the same rows without ALL and without a named project that has no folder yet
+      pick.list = projectList().filter(p => (pick.mode === 'project' || (p.key !== ALL && p.cwds.length)) && (!q || p.name.toLowerCase().includes(q)));
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
       rows = pick.list.map((p, i) => `<div class="pkrow${sel(i)}" data-i="${i}" style="${repoStyle(projColor(p))}"><span class="sq"></span><span class="n">${mark(p.name)}${p.key === prefs.project ? '<span class="cur">current</span>' : ''}</span><span class="pills">${pillsHtml(p)}</span><span class="t">${p.last ? rel(p.last) : ''}</span></div>`);
     }
-    $('#picklist').innerHTML = rows.join('') || `<div class="none">no ${pick.mode === 'pr' ? 'PR' : pick.mode === 'chat' ? 'chat' : 'project'} matches</div>`;
+    $('#picklist').innerHTML = rows.join('') || `<div class="none">no ${PICK_NOUN[pick.mode] || 'project'} matches</div>`;
     $('#picklist .pkrow.sel')?.scrollIntoView({ block: 'nearest' });
   }
-  function pickChoose(i) { const x = pick.list[i]; $('#pick').close(); if (!x) return; if (pick.mode === 'pr') showPr(x.url); else if (pick.mode === 'chat') openSession(x.id); else selectProject(x.key); }
+  function pickChoose(i) {
+    const x = pick.list[i], dlg = $('#pick'); if (!x) { dlg.close(); return; }
+    if (pick.mode === 'pr') { dlg.close(); showPr(x.url); }
+    else if (pick.mode === 'chat') { dlg.close(); openSession(x.id); }
+    else if (pick.mode === 'new') { if (x.cwds.length === 1) newChatIn(x.cwds[0]); else pickOpen('folder', { cwds: x.cwds }); }   // the next step, or the chat
+    else if (pick.mode === 'folder') newChatIn(x.cwd);
+    else if (pick.mode === 'env') { dlg.close(); newChat(pick.ctx.cwd, x.name); }
+    else { dlg.close(); selectProject(x.key); }
+  }
   $('#pickq').addEventListener('input', () => { pick.sel = 0; pickRender(); });
   $('#pickq').addEventListener('keydown', e => {
     if (e.key === 'ArrowDown') { e.preventDefault(); pick.sel++; pickRender(); }
@@ -986,10 +1018,11 @@
   // with one, the picker with several — every time, a tab open or not, the one showing marked (Ricardo, 2026-09-20:
   // "always open the menu to choose the PR"); each PR is its own tab, so nothing reloads —, C the claude session: the >_ button's
   // path (the drawer shown or started, arm-and-take-over included, so a chat live elsewhere takes two presses).
-  // O is the project picker, K the chat picker (every ready or clauding chat, searched); ↑ and ↓ open the chat above or
-  // below in the list. A modal up (the picker, the project editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
+  // O is the project picker, K the chat picker (every ready or clauding chat, searched), N a new chat (the project, then
+  // the folder, then the environment when the folder's Taskfile launches claude); ↑ and ↓ open the chat above or below
+  // in the list. A modal up (the picker, the project editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyO: () => pickOpen('project'), KeyK: () => pickOpen('chat'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1) };
+  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyO: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyN: () => pickOpen('new'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1) };
   const runHotkey = code => { if (code === 'Escape') return hotEscape(); const fn = HOTKEYS[code]; if (fn && !document.querySelector('dialog[open]')) fn(); };
   document.addEventListener('keydown', e => {
     if (!(e.metaKey && e.altKey && !e.ctrlKey && !e.shiftKey && HOTKEYS[e.code])) return;
@@ -1145,7 +1178,7 @@
     const row = e.target.closest('.proj'); if (row) selectProject(row.dataset.key);
   });
   $('#sessions').addEventListener('click', e => {
-    const nb = e.target.closest('#newChatBtn'); if (nb) { newChat(nb.dataset.cwd); return; }
+    const nb = e.target.closest('#newChatBtn'); if (nb) { newChatIn(nb.dataset.cwd); return; }
     const f = e.target.closest('.fchip'); if (f) { const k = f.dataset.f; prefs.filters = FILTERS.map(x => x[0]).filter(x => x === k ? !filterOn(k) : filterOn(x)); savePrefs(); renderBoard(); return; }
     const card = e.target.closest('.card'); if (!card) return;
     const cpr = e.target.closest('.cpr');
@@ -1154,7 +1187,7 @@
     if (act) { e.stopPropagation(); fetch(`/api/sessions/${card.dataset.id}/done`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ done: act.dataset.act === 'done' }) }); return; }
     openSession(card.dataset.id);
   });
-  $('#sessions').addEventListener('change', e => { const sel = e.target.closest('#newChatSel'); if (sel && sel.value) { const cwd = sel.value; sel.value = ''; newChat(cwd); } });
+  $('#sessions').addEventListener('change', e => { const sel = e.target.closest('#newChatSel'); if (sel && sel.value) { const cwd = sel.value; sel.value = ''; newChatIn(cwd); } });
 
   // ---- project editor ----------------------------------------------------------------
   function openProjectEditor(id) {
@@ -1571,10 +1604,21 @@
     else await openTerminalFor(s);
     if (term.id && term.exited === null && term.xt) term.xt.focus();
   }
+  // A new chat in a folder: `claude` there — unless the folder's Taskfile launches claude itself (oracle's `task
+  // production-workload` and friends set a cluster's environment first, 2026-09-20), in which case the environment is
+  // asked for in the picker, every time; the server says whether the folder has such launchers (GET /api/launchers).
+  // The + button, the folder pick-list and ⌥⌘N all come through here.
+  async function newChatIn(cwd) {
+    let launchers = [];
+    if ($('#pick').open) $('#pickq').placeholder = 'asking the folder how it starts claude…';
+    try { const r = await fetch(`/api/launchers?cwd=${encodeURIComponent(cwd)}`); if (r.ok) launchers = (await r.json()).launchers || []; } catch {}
+    if (launchers.length) return pickOpen('env', { cwd, launchers });
+    $('#pick').close(); newChat(cwd);
+  }
   // A new chat has no session until claude registers; the server ties the two by pid and says so
-  // over SSE, at which point the pane switches to it.
-  async function newChat(cwd) {
-    const r = await fetch('/api/terminals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cwd, ...termSize() }) });
+  // over SSE, at which point the pane switches to it. `task` names a launcher of the folder's Taskfile (newChatIn).
+  async function newChat(cwd, task = null) {
+    const r = await fetch('/api/terminals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cwd, task, ...termSize() }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { $('#log').innerHTML = `<div class="empty">Could not start a chat: ${esc(d.error || `HTTP ${r.status}`)}</div>`; return; }
     state.current = null; state.entries = []; history.replaceState(null, '', location.pathname); hidePr(); syncTerm(null);
@@ -1582,7 +1626,7 @@
     savePrefs(); renderBoard();
     $('#chat').classList.remove('vsc');
     tintChat(repoColor(cwd));
-    $('#shead').innerHTML = `<h2><span class="repo">${esc(folderName(cwd))}</span><span class="sep">/</span><span class="t">new chat</span></h2>`;
+    $('#shead').innerHTML = `<h2><span class="repo">${esc(folderName(cwd))}</span><span class="sep">/</span><span class="t">new chat${task ? ` · task ${esc(task)}` : ''}</span></h2>`;
     $('#log').innerHTML = '<div class="empty">Say something in the terminal below — the transcript shows up here once Claude has written it.</div>';
     renderComposer(null);
     attachTerm(d.terminal);

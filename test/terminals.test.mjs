@@ -2,12 +2,14 @@
 // the socket's snapshot, a server restart with the holder alive under it, adoption, and the kill.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { startTestServer } from '../lib/testserver.mjs';
 import { defaultFixture } from '../scripts/fixture.mjs';
 
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const alive = pid => { try { process.kill(pid, 0); return true; } catch { return false; } };
 /** Attach like the page does: the first binary frame is the snapshot; `until` stops when a text is seen. */
@@ -98,6 +100,36 @@ test('a new chat in a folder is tied to its session by pid when the fake registe
     assert.ok(linked, 'the terminal learnt its session id from the registry');
     const meta = srv.holders().find(h => h.id === r.body.terminal.id);
     assert.equal(meta.sessionId, linked, 'and told its holder, so an adoption after a restart knows it too');
+  } finally { await srv.stop(); }
+});
+
+test('a launcher: a folder whose Taskfile launches claude lists it, a new chat there runs `task <name>`, and the chat is tied to the drawer by descent', { timeout: 40_000 }, async () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'peix-tf-')); writeFileSync(join(cwd, 'Taskfile.yml'), 'version: "3"\n');   // the fake task never reads it; the server looks for it
+  const fx = defaultFixture(mkdtempSync(join(tmpdir(), 'peix-fx-')), { cwdA: process.cwd(), cwdB: cwd });
+  const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { TASK_BIN: join(ROOT, 'scripts', 'faketask.mjs') } });
+  const post = body => srv.api('api/terminals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  try {
+    const none = await srv.api(`api/launchers?cwd=${encodeURIComponent(process.cwd())}`);
+    assert.deepEqual(none.body.launchers, [], 'a folder without a Taskfile has no launchers');
+    const l = await srv.api(`api/launchers?cwd=${encodeURIComponent(cwd)}`);
+    assert.deepEqual(l.body.launchers, [{ name: 'production-workload', desc: 'Launch Claude Code against the production workload cluster' }], 'only the task whose description mentions Claude');
+    assert.equal((await srv.api('api/launchers?cwd=relative')).status, 400);
+    const bad = await post({ cwd, task: 'setup' });
+    assert.equal(bad.status, 400); assert.match(bad.body.error, /no launcher named setup/);
+    const r = await post({ cwd, task: 'production-workload', cols: 90, rows: 24 });
+    assert.equal(r.status, 201, JSON.stringify(r.body));
+    const t = r.body.terminal;
+    assert.equal(t.task, 'production-workload'); assert.equal(t.sessionId, null);
+    assert.match(srv.logText(), /terminal t\d+-\w+: task production-workload in/);
+    let linked = null;
+    for (let i = 0; i < 60 && !linked; i++) { await sleep(150); linked = (await srv.terminals()).find(x => x.id === t.id)?.sessionId || null; }
+    assert.ok(linked, 'the terminal learnt its session id although claude is not the PTY\'s process');
+    const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === linked);
+    assert.ok(s.alive, 'the chat is alive'); assert.notEqual(s.live.pid, t.pid, 'with a claude below task, not task itself'); assert.equal(s.terminal?.id, t.id, 'and the drawer is its');
+    const meta = srv.holders().find(h => h.id === t.id);
+    assert.equal(meta.task, 'production-workload'); assert.equal(meta.claudePid, s.live.pid, 'the holder was told claude\'s pid, for an adoption after a restart');
+    const a = await attach(srv.url, t.id, { until: 'fake mode on' });
+    assert.ok(a.all.includes('❯'), 'a page attaching sees claude\'s prompt through task');
   } finally { await srv.stop(); }
 });
 

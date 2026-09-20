@@ -24,6 +24,7 @@
 //  VS Code Web: the editor UI served by `code serve-web`, for the pane beside the board
 //  Terminals: a real `claude` in a PTY, attached to from the page over a WebSocket
 //      · the holder protocol: newline-delimited JSON over the holder's socket (see lib/termhold.mjs)
+//      · launchers: a folder's own way to start claude
 //  One PR in detail: the strip under the chat header when a chip is clicked
 //  HTTP
 //  Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
@@ -37,7 +38,7 @@ import {
 import { connect as netConnect } from 'node:net';
 import { basename, dirname, join } from 'node:path';
 import { homedir } from 'node:os';
-import { execFile, spawn } from 'node:child_process';
+import { execFile, execFileSync, spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { WebSocketServer } from 'ws';
 
@@ -715,15 +716,16 @@ function loadRegistry() {
     if (!found.has(reg.sessionId)) found.set(reg.sessionId, []);
     found.get(reg.sessionId).push({ pid: reg.pid, name: reg.name, entrypoint: reg.entrypoint, kind: reg.kind, cwd: reg.cwd, startedAt: reg.startedAt, version: reg.version });
   }
+  const ppids = [...terms.values()].some(t => t.task && !t.sessionId && t.exited === null) ? parentPids() : null;   // a launcher's claude is below the PTY's pid
   for (const [id, lives] of found) {
     let s = sessions.get(id);
     if (!s) { s = newSession(id, null); sessions.set(id, s); }
-    for (const l of lives) linkTermToRegistry(l.pid, s);   // a new chat's terminal learns its session id here
+    for (const l of lives) linkTermToRegistry(l.pid, s, ppids);   // a new chat's terminal learns its session id here
     // Several processes can hold one chat: VS Code mounts a chat twice on its own, or reopens one that was
     // taken over here. The chat's process is the drawer's own when there is one, else the newest live one
     // that is not VS Code's (the one you are driving), else the newest live one, else whatever is left (a
     // dead pid's file lingers until claude's housekeeping). The rest, live only, are its rivals.
-    const mine = [...terms.values()].find(t => t.sessionId === id && t.exited === null)?.pid;
+    const mine = [...terms.values()].filter(t => t.sessionId === id && t.exited === null).map(t => t.claudePid || t.pid)[0];
     const alive = lives.filter(l => pidAlive(l.pid)).sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
     const live = alive.find(l => l.pid === mine) || alive.find(l => l.entrypoint !== 'claude-vscode') || alive[0] || lives[0];
     const rivals = alive.filter(l => l !== live);
@@ -829,6 +831,8 @@ function handleHook(h) {
 const BIN_FALLBACKS = {
   claude: [join(homedir(), '.local', 'bin', 'claude'), '/opt/homebrew/bin/claude', '/usr/local/bin/claude'],
   gh: ['/opt/homebrew/bin/gh', '/usr/local/bin/gh', join(homedir(), '.local', 'bin', 'gh')],
+  // go-task, for the folders whose Taskfile launches claude (see launchersFor): mise's shim first, then brew and go
+  task: [join(homedir(), '.local', 'share', 'mise', 'shims', 'task'), '/opt/homebrew/bin/task', '/usr/local/bin/task', join(homedir(), 'go', 'bin', 'task')],
   // "Shell Command: Install 'code' command in PATH" symlinks /usr/local/bin/code; the last two
   // entries are the binaries inside the app bundles, for when it was never run.
   code: ['/usr/local/bin/code', '/opt/homebrew/bin/code',
@@ -1025,7 +1029,7 @@ function termOf(s) { let hit = null; for (const t of terms.values()) if (t.sessi
 function shellOf(s) { let hit = null; for (const t of terms.values()) if (t.sessionId === s.id && t.shell && (!hit || (hit.exited !== null && t.exited === null))) hit = t; return hit; }
 function termSummary(t) {
   return t ? {
-    id: t.id, sessionId: t.sessionId, cwd: t.cwd, pid: t.pid, holderPid: t.holderPid, resume: t.resume, shell: !!t.shell, startedAt: t.startedAt, exited: t.exited,
+    id: t.id, sessionId: t.sessionId, cwd: t.cwd, pid: t.pid, holderPid: t.holderPid, resume: t.resume, shell: !!t.shell, task: t.task || null, startedAt: t.startedAt, exited: t.exited,
     cols: t.cols, rows: t.rows, clients: t.clients.size, connected: !!(t.sock && !t.sock.destroyed), lastSnapshotChars: t.lastSnap,
   } : null;
 }
@@ -1108,23 +1112,51 @@ function onHolderGone(t) {
   if (t.exited === null) termExited(t, 129); else terms.delete(t.id);
 }
 
+// ---- launchers: a folder's own way to start claude ---------------------------------------------------------------
+// Some folders do not start claude bare: oracle's Taskfile has `task production-workload`, `task sandbox-workload`,
+// `task development-<cluster>`… — each sets a cluster's environment (its credentials and
+// dashboards) and then runs claude. A new chat there has to go through one of them, and which is a choice (2026-09-20,
+// Ricardo: "if it's oracle … we should run `task <env>` instead of claude, and we should ask what env"). Nothing is
+// named here: a folder with a Taskfile whose tasks mention Claude in their description has launchers, and the page asks
+// (`GET /api/launchers?cwd=`) before starting a chat. `task --list --json` lists them; cached by the Taskfile's mtime,
+// so it runs once per edit. A resume (`claude --resume`) never goes through task: its command line is the Taskfile's.
+const TASKFILES = ['Taskfile.yml', 'Taskfile.yaml', 'taskfile.yml', 'taskfile.yaml', 'Taskfile.dist.yml', 'Taskfile.dist.yaml'];
+const launcherCache = new Map();   // cwd → { mtime, launchers }
+const TASK_NAME = /^[\w:.-]+$/;
+function taskfileOf(cwd) { for (const f of TASKFILES) { const p = join(cwd, f); if (existsSync(p)) return p; } return null; }
+function launchersFor(cwd) {
+  return new Promise(resolve => {
+    const file = cwd && taskfileOf(cwd); if (!file) return resolve([]);
+    let mtime; try { mtime = statSync(file).mtimeMs; } catch { return resolve([]); }
+    const hit = launcherCache.get(cwd); if (hit && hit.mtime === mtime) return resolve(hit.launchers);
+    const bin = findBin('task', 'Taskfile launchers are disabled'); if (!bin) return resolve([]);
+    execFile(bin, ['--list', '--json'], { cwd, env: termEnv(), timeout: 15_000, maxBuffer: 4e6 }, (err, stdout) => {
+      let launchers = [];
+      if (err) console.error(`[peixairada] task --list in ${cwd}: ${err.message}`);
+      else try { launchers = (JSON.parse(stdout).tasks || []).filter(t => /\bclaude\b/i.test(t.desc || '')).map(t => ({ name: t.name, desc: t.desc || '' })); } catch (e) { console.error(`[peixairada] task --list in ${cwd}: ${e.message}`); }
+      launcherCache.set(cwd, { mtime, launchers }); resolve(launchers);
+    });
+  });
+}
+
 /**
- * Start `claude` (or `claude --resume <id>`) in `cwd`: write the spec, spawn the holder detached (its own
- * session, so a signal to this server never reaches it), wait for its socket. The holder runs the CLI through an
- * interactive login zsh, because the app's server has a bare PATH and the tools Claude will call — git, gh, node —
- * are on the PATH that .zshrc builds (mise activates there); `exec` makes claude take over the shell's pid, which
- * is the pid the registry will report.
+ * Start `claude` (or `claude --resume <id>`, or `task <name>` — a launcher, see above) in `cwd`: write the spec, spawn
+ * the holder detached (its own session, so a signal to this server never reaches it), wait for its socket. The holder
+ * runs the CLI through an interactive login zsh, because the app's server has a bare PATH and the tools Claude will
+ * call — git, gh, node — are on the PATH that .zshrc builds (mise activates there); `exec` makes claude take over the
+ * shell's pid, which is the pid the registry will report — with a launcher, task takes the pid and claude is a
+ * descendant, which linkTermToRegistry knows.
  */
-async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell = false }) {
+async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell = false, task = null }) {
   if (!termsAvailable()) return { code: 501, error: 'node-pty is not available — run npm install and restart the server' };
-  const bin = shell ? '/bin/zsh' : claudeBin();   // a shell holder runs zsh itself (see termhold.mjs); the chat's is claude
-  if (!bin) return { code: 503, error: 'claude binary not found — set CLAUDE_BIN to its path' };
+  const bin = shell ? '/bin/zsh' : task ? findBin('task', 'Taskfile launchers are disabled') : claudeBin();   // a shell holder runs zsh itself (see termhold.mjs); the chat's is claude, or its launcher
+  if (!bin) return { code: 503, error: task ? 'task binary not found — set TASK_BIN to its path' : 'claude binary not found — set CLAUDE_BIN to its path' };
   if (!cwd) return { code: 400, error: 'no cwd known for this chat' };
   if (!existsSync(cwd)) return { code: 409, error: `cwd no longer exists: ${cwd}` };
-  const args = shell || !sessionId ? [] : ['--resume', sessionId];
+  const args = task ? [task] : shell || !sessionId ? [] : ['--resume', sessionId];
   const id = `t${++termSeq}-${Date.now().toString(36)}`;
   try { mkdirSync(TERMS_DIR, { recursive: true }); } catch {}
-  const spec = { id, sessionId, cwd, bin, args, shell, cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), resume: !shell && !!sessionId, startedAt: new Date().toISOString() };
+  const spec = { id, sessionId, cwd, bin, args, shell, task, cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), resume: !shell && !!sessionId, startedAt: new Date().toISOString() };
   const logFile = join(TERMS_DIR, `${id}.log`);
   let child;
   try {
@@ -1147,7 +1179,7 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
     }
   }
   terms.set(id, t);
-  console.log(`[peixairada] terminal ${id}: ${shell ? 'zsh' : 'claude' + (args.length ? ' ' + args.join(' ') : '')} in ${cwd} (pid ${t.pid}, holder ${t.holderPid})`);
+  console.log(`[peixairada] terminal ${id}: ${shell ? 'zsh' : task ? 'task ' + task : 'claude' + (args.length ? ' ' + args.join(' ') : '')} in ${cwd} (pid ${t.pid}, holder ${t.holderPid})`);
   broadcast('terminal', termSummary(t));
   const s = sessionId && sessions.get(sessionId); if (s) schedulePush(s);
   return { code: 201, terminal: termSummary(t) };
@@ -1161,7 +1193,7 @@ async function adoptHolders() {
     let meta; try { meta = JSON.parse(readFileSync(join(TERMS_DIR, f), 'utf8')); } catch { continue; }
     const id = meta.id || f.slice(0, -5);
     const n = Number((id.match(/^t(\d+)-/) || [])[1]); if (n > termSeq) termSeq = n;
-    const t = { id, sessionId: meta.sessionId ?? null, cwd: meta.cwd, bin: meta.bin, args: meta.args, cols: meta.cols, rows: meta.rows, resume: !!meta.resume, startedAt: meta.startedAt, pid: meta.pid, holderPid: meta.holderPid, exited: meta.exited ?? null, sock: null, clients: new Set(), snapQ: [], lastSnap: null };
+    const t = { id, sessionId: meta.sessionId ?? null, cwd: meta.cwd, bin: meta.bin, args: meta.args, shell: !!meta.shell, task: meta.task ?? null, claudePid: meta.claudePid ?? null, cols: meta.cols, rows: meta.rows, resume: !!meta.resume, startedAt: meta.startedAt, pid: meta.pid, holderPid: meta.holderPid, exited: meta.exited ?? null, sock: null, clients: new Set(), snapQ: [], lastSnap: null };
     try {
       await connectHolder(t);
       terms.set(id, t);
@@ -1175,11 +1207,25 @@ async function adoptHolders() {
   }
 }
 
-/** A new chat has no session id until claude registers; the pid ties the two together, and the holder is told. */
-function linkTermToRegistry(pid, s) {
+/** pid → parent pid for every process, from one `ps`. Asked for only while a launcher's drawer has no session yet. */
+function parentPids() {
+  const m = new Map();
+  try { for (const l of execFileSync('/bin/ps', ['-axo', 'pid=,ppid='], { encoding: 'utf8' }).split('\n')) { const [p, pp] = l.trim().split(/\s+/).map(Number); if (p) m.set(p, pp); } }
+  catch (e) { console.error(`[peixairada] ps: ${e.message}`); }
+  return m;
+}
+const descends = (pid, from, ppids) => { if (!ppids) return false; for (let p = ppids.get(pid), i = 0; p > 1 && i < 64; p = ppids.get(p), i++) if (p === from) return true; return false; };
+/**
+ * A new chat has no session id until claude registers; the pid ties the two together, and the holder is told. The PTY's
+ * process *is* claude (`exec`) — except behind a launcher, where it is `task` and claude a descendant (task → sh →
+ * mise → claude), found through `ps`: `ppids` when such a drawer is waiting. The registry pid is kept as claudePid, so
+ * the drawer's own process is known when the chat gets a rival.
+ */
+function linkTermToRegistry(pid, s, ppids = null) {
   for (const t of terms.values()) {
-    if (t.shell || t.pid !== pid || t.sessionId === s.id) continue;
-    t.sessionId = s.id; holderSend(t, { t: 'meta', sessionId: s.id });
+    if (t.shell || t.sessionId === s.id) continue;
+    if (t.pid !== pid && !(t.task && t.exited === null && descends(pid, t.pid, ppids))) continue;
+    t.sessionId = s.id; t.claudePid = pid; holderSend(t, { t: 'meta', sessionId: s.id, claudePid: pid });
     broadcast('terminal', termSummary(t)); schedulePush(s);
   }
 }
@@ -1453,9 +1499,16 @@ const server = createServer(async (req, res) => {
       return;
     }
     if (req.method === 'GET' && p === '/api/terminals') return json(res, 200, { terminals: [...terms.values()].map(termSummary), available: termsAvailable(), dir: TERMS_DIR });
-    if (req.method === 'POST' && p === '/api/terminals') {   // a new chat in a folder
+    if (req.method === 'GET' && p === '/api/launchers') {   // the folder's Taskfile tasks that launch claude, if any (see launchersFor)
+      const cwd = url.searchParams.get('cwd') || '';
+      if (!cwd.startsWith('/')) return json(res, 400, { error: 'cwd must be an absolute path' });
+      return json(res, 200, { cwd, launchers: await launchersFor(cwd) });
+    }
+    if (req.method === 'POST' && p === '/api/terminals') {   // a new chat in a folder — `claude`, or `task <name>` when the folder launches it so
       let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
-      const r = await spawnTerm({ cwd: typeof body.cwd === 'string' ? body.cwd : null, cols: body.cols, rows: body.rows });
+      const cwd = typeof body.cwd === 'string' ? body.cwd : null, task = typeof body.task === 'string' && body.task ? body.task : null;
+      if (task && !(TASK_NAME.test(task) && (await launchersFor(cwd)).some(l => l.name === task))) return json(res, 400, { error: `no launcher named ${task} in ${cwd || '(no folder)'} — its Taskfile has ${(await launchersFor(cwd)).map(l => l.name).join(', ') || 'none'}` });
+      const r = await spawnTerm({ cwd, cols: body.cols, rows: body.rows, task });
       return json(res, r.code, r);
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/terminal$/))) {   // attach to, or resume, this chat

@@ -1,6 +1,6 @@
 // The ⌥⌘ family on a fixture: G opens the picker on a two-PR chat, ⏎ opens the first, G again is the picker again
 // with that one marked, a click on the other opens it; T, E and C hit their routes (stubbed), V none; O is the project
-// picker; K the chat picker (search, ⏎ opens across projects); ↓ ↑ walk the list; Esc closes a picker and is taken; the cog
+// picker; K the chat picker (search, ⏎ opens across projects); N a new chat (project → environment, stubbed); ↓ ↑ walk the list; Esc closes a picker and is taken; the cog
 // lists every key; no chat → a note.
 export const meta = { server: true, fixture: 'auto' };
 export default async function (ctx) {
@@ -58,6 +58,23 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.state().current === ${JSON.stringify(plain.id)}`, { what: 'the plain chat opened from the picker' });
   out.chatOpened = { current: (await ctx.peix('state()')).current, project: (await ctx.peix('prefs()')).project, inList: await ctx.evaluate(`!!document.querySelector('#slist .card[data-id=${JSON.stringify(plain.id)}]')`), picker: await ctx.evaluate(`document.querySelector('#pick').open`) };
   ctx.assert.ok(out.chatOpened.inList, 'the opened chat is in the list shown (ALL here; openSession switches project when it is not)'); ctx.assert.equal(out.chatOpened.picker, false);
+  // N, a new chat: the project step (the column's list without ALL), then — the launchers route stubbed to answer as
+  // oracle's Taskfile would — the environment step, whose ⏎ posts `task <name>` to /api/terminals (stubbed: nothing spawns)
+  await ctx.evaluate(`window.__posts = []; const real2 = window.fetch; window.fetch = (u, o) => { const s = String(u); if (s.startsWith('/api/launchers')) return Promise.resolve({ ok: true, status: 200, json: async () => ({ launchers: [{ name: 'production-workload', desc: 'Launch Claude Code against the production workload cluster' }, { name: 'sandbox-workload', desc: 'Launch Claude Code against the sandbox workload cluster' }] }) }); if (s === '/api/terminals' && o?.method === 'POST') { window.__posts.push(JSON.parse(o.body)); return Promise.resolve({ ok: false, status: 500, json: async () => ({ error: 'stubbed' }) }); } return real2(u, o); }`);
+  await ctx.key('KeyN');
+  out.newPicker = { placeholder: await ctx.evaluate(`document.querySelector('#pickq').placeholder`), names: await ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow .n')].map(e => e.firstChild.textContent)`) };
+  ctx.assert.match(out.newPicker.placeholder, /^New chat — which project/); ctx.assert.ok(out.newPicker.names.length >= 2 && !out.newPicker.names.includes('ALL'), 'the projects, without ALL');
+  await ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);   // the first project: one folder → the environment step
+  await ctx.waitFor(`document.querySelector('#pickq').placeholder.startsWith('New chat — which environment')`, { what: 'the environment step' });
+  out.envStep = { open: await ctx.evaluate(`document.querySelector('#pick').open`), names: await ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow.env .n')].map(e => e.textContent)`) };
+  ctx.assert.deepEqual(out.envStep, { open: true, names: ['production-workload', 'sandbox-workload'] });
+  await ctx.shot('env-picker');
+  for (const key of ['ArrowDown', 'Enter']) await ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, bubbles: true, cancelable: true }))`);
+  await ctx.waitFor(`window.__posts.length === 1`, { what: 'the new chat posted' });
+  out.newPosted = (await ctx.evaluate(`JSON.stringify(window.__posts)`).then(JSON.parse))[0];
+  ctx.assert.equal(out.newPosted.task, 'sandbox-workload', '⏎ on the second environment starts task sandbox-workload');
+  ctx.assert.equal(out.newPosted.cwd.split('/').pop(), out.newPicker.names[0], 'in the project chosen first');
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#pick').open`), false, 'the picker closed on the last step');
   // ↓ and ↑ walk the list as shown: from the two-PR chat to the card beside it and back
   await ctx.openChat(two.id);
   const order = await ctx.evaluate(`[...document.querySelectorAll('#slist .card')].map(c => c.dataset.id)`);
@@ -82,7 +99,7 @@ export default async function (ctx) {
   out.escIdle = await escOn('body'); ctx.assert.equal(out.escIdle, false, 'with nothing to close, Esc is left alone');
   // the cog lists the keys
   out.cog = await ctx.evaluate(`[...document.querySelectorAll('#settings .keys kbd')].map(k => k.textContent)`);
-  ctx.assert.deepEqual(out.cog.slice(0, 7), ['⌥⌘T', '⌥⌘E', '⌥⌘G', '⌥⌘C', '⌥⌘O', '⌥⌘K', '⌥⌘↑↓']);
+  ctx.assert.deepEqual(out.cog.slice(0, 8), ['⌥⌘T', '⌥⌘E', '⌥⌘G', '⌥⌘C', '⌥⌘O', '⌥⌘K', '⌥⌘N', '⌥⌘↑↓']);
   await ctx.shot('cog');
   return out;
 }
