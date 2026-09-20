@@ -96,7 +96,8 @@ refuses to run against the real directory for the same reason.
   the open one wear the colour on their border.
   **ALL** (the flat list, `key: 'all'`) is black in both themes — `BLACK`, through `projColor()` — and so is the
   `acme` folder (`PROJECT_COLORS`). A card in that black is marked `.card.black`: its solid tint is the black
-  itself and it borrows the dark theme's inks, because 55 % of black over a light panel is a mid-grey nothing reads on.
+  itself and it borrows the dark theme's inks, because 55 % of black over a light panel is a mid-grey nothing reads on;
+  `--ring` turns its clauding light white wherever the card under it is dark (the dark theme, and the tint in either).
 * **Clauding cards first, then ready, done last** (2026-09-20), inside each group **by when *you* last acted**
   (`lastUserAt`), newest first; a project ranks by its newest chat. The ascii fish (`.gsep`, a line of `><>` that slides a fish per cycle, phased by the clock so re-renders do not jolt it) swim
   once, between the clauding and the ready cards. A finished job moves its card into the ready group, where its
@@ -189,7 +190,8 @@ refuses to run against the real directory for the same reason.
 * `.cards > * { flex: none }` is load-bearing; `.card { --repo: initial }` too (custom properties inherit — the orange cards).
 * `.shead { min-width: 0 }` and a fixed `flex-basis` on `.shead h2`; PR chips are direct children of the header.
 * `#chat` has explicit grid rows and `.termmax` repeats them — a new block in the chat pane means touching both.
-* Inline code gets a tint, never a border; card glyphs are inline SVG, not emoji; the working ring is the project's colour.
+* Inline code gets a tint, never a border; card glyphs are inline SVG, not emoji; the working ring is the project's
+  colour — `--ring`, which only a card too dark to show it (`.card.black`) overrides, with white.
 * `PROJECT_ICONS` (index.html) marks a project by its shown name wherever the name is written — oracle's crystal ball;
   `projIcon(name)` goes before the name in the strip, the column, the chat list's header, the chat header, the cards, the pickers.
 * Code folds per chat: `prefs.foldBy[id]` (the header's `{ }` button) over the cog's `foldCode`; `foldOn(id)` is the one

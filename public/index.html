@@ -221,9 +221,9 @@
   /* Claude at work: a light runs round the card's edge. A ring drawn by a masked conic gradient on a
      pseudo-element just inside the border, its start angle animated through a registered property. */
   @property --spin { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
-  .card.working { box-shadow: 0 0 0 1px color-mix(in srgb, var(--repo, var(--working)) 45%, transparent), 0 0 18px color-mix(in srgb, var(--repo, var(--working)) 35%, transparent); }
+  .card.working { box-shadow: 0 0 0 1px color-mix(in srgb, var(--ring, var(--repo, var(--working))) 45%, transparent), 0 0 18px color-mix(in srgb, var(--ring, var(--repo, var(--working))) 35%, transparent); }
   .card.working::before { content: ''; position: absolute; inset: 0; border-radius: 8px; padding: 3px; pointer-events: none;
-    background: conic-gradient(from var(--spin), transparent 0 45%, var(--repo, var(--working)) 92%, transparent 100%);
+    background: conic-gradient(from var(--spin), transparent 0 45%, var(--ring, var(--repo, var(--working))) 92%, transparent 100%);
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
     animation: ring 1.4s linear infinite; }
   @keyframes ring { to { --spin: 360deg; } }
@@ -239,7 +239,12 @@
   /* A card in the board's own black (PROJECT_COLORS — acme): 55 % of black over a light panel is a mid-grey
      nothing reads on, so the tint is the colour itself and the card borrows the dark theme's inks — they inherit,
      so title, snips, times and the two speaker marks follow in one rule. In the dark theme they are what they were. */
-  .card.black:hover, .card.black.active { background: var(--repo); --ink: #e8e6df; --muted: #9a998f; --snip-claude: #c9c7bd; --you: #4fb8a8; --accent: #e08a68; }
+  .card.black:hover, .card.black.active { background: var(--repo); --ring: #fff; --ink: #e8e6df; --muted: #9a998f; --snip-claude: #c9c7bd; --you: #4fb8a8; --accent: #e08a68; }
+  /* The light that runs round a clauding card is the card's colour, which on a black card is black on black
+     (Ricardo, 2026-09-20: "make the animation white when clauding for acme project"). --ring is what the light
+     and its glow run in: white wherever the card under them is dark — the dark theme, and the solid tint the
+     hovered and open card wear in either theme (above). On the light theme's pale wash, black still reads best. */
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card.black { --ring: #fff; } }
   .card.done { opacity: .55; }
   .card.gone { opacity: .8; }   /* no live process: still ready, but a resume is coming */
   .card .top { display: flex; align-items: center; gap: 7px; min-width: 0; margin-bottom: 2px; }

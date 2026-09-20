@@ -6,6 +6,12 @@ this file is the *why* and the *state*. Last updated 2026-09-20 (the small hours
 
 ## Decisions of 2026-09-20, the small hours — ⌥⌘O is a new oracle chat, the project picker is ⌥⌘P, acme goes black
 
+* **A black card's clauding light is white** (Ricardo: "when it acme card, the background is black and we don't
+  notice the border animation because it's also black"): the light that runs round a clauding card — and the glow
+  under it — is the card's own colour, which on the black card was black on black. Both now read `--ring`, the
+  colour unless the card under them is dark: white in the dark theme, and white in either theme while the card wears
+  the solid tint (hovered, open). On the light theme's pale wash the black light still reads best, so it stays.
+  Looked at in both themes with the ring forced on a plain, an open and a done card.
 * **The `acme` folder is black** (Ricardo: "make acme folder special by making it's cards all black"): the root
   the repos sit under is a project of its own — the chats that belong to no repo run there — and it had no Peacock
   colour, so it wore the colourless gray like any unnamed folder. `PROJECT_COLORS` gives it the board's black, by the
