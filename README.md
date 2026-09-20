@@ -123,7 +123,8 @@ carry the same colour — and **»** opens it into the full column, **«** folds
 app — it greys out when the board loses the server, and **hovering it opens the usage card** (below). The
 magnifier under it filters projects (the strip opens to let you type and folds back when you are done);
 **⌥⌘O** from anywhere opens a project picker the VS Code way — type to filter, ↑↓, ⏎ opens it, esc closes (the
-same ⌥⌘ family drives the open chat: **⌥⌘T** its terminal, **⌥⌘V** VS Code Web, **⌥⌘G** its PR, see *The chat*) —
+same ⌥⌘ family drives the open chat: **⌥⌘C** its claude session, **⌥⌘T** a zsh in its folder, **⌥⌘E** VS Code Web,
+**⌥⌘V** VS Code, **⌥⌘G** its PR, see *The chat*) —
 and the **cog** at its bottom opens the settings (show empty & >30d, tool calls, fold code, sound,
 browser alerts, test alert) and, under them, **the list of keys**, for when one slips the mind. The usage card on the fish (a click pins it) is your **Claude plan usage**: the session and weekly windows `/usage` shows,
 plus a weekly row per model the account meters apart (Fable, Sonnet…), read with Claude Code's own login.
@@ -240,10 +241,12 @@ so it steps aside. **show chat** splits the pane again (so does a drag on the di
 the transcript while claude keeps running, and it comes back on its own when the process ends. **⇧⏎**
 is a newline in Claude's prompt, as in iTerm2 or VS Code; ⏎ sends. Chats
 the board does not drive — VS Code, another terminal, stale — always render. **⌘+ / ⌘− / ⌘0** resize
-the chat pane, transcript and terminal together, and the size is remembered. **⌥⌘T** is the `>_` button:
-the chat's terminal, opened or started, and the keyboard lands in it (on a chat live elsewhere the first
-press arms the take-over and the second ends that claude, as two clicks would). **⌥⌘V** opens the folder in
-VS Code Web, in the pane — the *web* button's route. **⌥⌘G** opens the chat's PR on GitHub — straight away with
+the chat pane, transcript and terminal together, and the size is remembered. **⌥⌘C** is the `>_` button:
+the chat's claude session in the terminal, opened or started, and the keyboard lands in it (on a chat live
+elsewhere the first press arms the take-over and the second ends that claude, as two clicks would). **⌥⌘T** is a
+fresh zsh in the chat's folder — a new iTerm tab (Terminal without iTerm); the drawer stays claude's. **⌥⌘E**
+opens the folder in VS Code Web, in the pane — the *web* button's route; **⌥⌘V** opens the chat in the real VS
+Code — the focus button's. **⌥⌘G** opens the chat's PR on GitHub — straight away with
 one; with several, the ⌥⌘O picker filled with the PR rows under the header (state · `repo#n` · title · age,
 filtered by number or title, ⏎ opens the selected one); **pressed again while one is showing it moves to the
 next** — a toggle with two, a cycle with more, each PR on a tab of its own in the pane so nothing reloads. The

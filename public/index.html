@@ -506,10 +506,12 @@
   <div class="row"><button class="btn" id="notifBtn" title="Browser notifications (the server also sends native macOS ones)">🔔 enable browser alerts</button><button class="btn" id="testBtn" title="Fire a test alert through the server">test alert</button></div>
   <div class="keys" title="From anywhere on the board, the terminal included">
     <span class="kh">keys</span>
-    <kbd>⌥⌘O</kbd><span>project picker</span>
-    <kbd>⌥⌘T</kbd><span>this chat's terminal · takes over a live one</span>
-    <kbd>⌥⌘V</kbd><span>this folder in VS Code Web, in the pane</span>
+    <kbd>⌥⌘T</kbd><span>a fresh zsh in this folder — a new iTerm tab</span>
+    <kbd>⌥⌘E</kbd><span>edit: this folder in VS Code Web, in the pane</span>
+    <kbd>⌥⌘V</kbd><span>this chat in VS Code, the real one</span>
     <kbd>⌥⌘G</kbd><span>its PR on GitHub · a picker with several · again for the next</span>
+    <kbd>⌥⌘C</kbd><span>this chat's claude session, in the terminal below · takes over a live one</span>
+    <kbd>⌥⌘O</kbd><span>project picker</span>
     <kbd>⌘+ ⌘− ⌘0</kbd><span>chat and terminal size</span>
     <kbd>⇧⏎</kbd><span>newline in the terminal's prompt</span>
     <kbd>esc</kbd><span>close a picker or popover · the pane, in the app</span>
@@ -880,14 +882,16 @@
   $('#picklist').addEventListener('click', e => { const r = e.target.closest('.pkrow'); if (r) pickChoose(+r.dataset.i); });
   $('#pick').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.close(); });   // a click on the backdrop
   // ⌥⌘ + a letter, from anywhere — the drawer included: capture phase, so its xterm never sees them; e.code,
-  // because with ⌥ held e.key is a symbol ('ø' for O) on a Mac. T, V and G are the chat header's own controls:
-  // the terminal (the >_ button's path, arm-and-take-over included, so a chat live elsewhere takes two presses),
-  // the VS Code Web button (the folder's editor, in the pane), and the chat's PR on GitHub — straight to it with
-  // one, the picker with several, and the next one when one is already showing (a toggle with two, a cycle with
-  // more; each PR is its own tab in the pane, so nothing reloads). A modal up (the picker, the project editor)
-  // swallows them all. In the app the pane is a native view with its own web views, so a key pressed there never
-  // reaches this page: the shell forwards ⌥⌘ + these letters through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyO: () => pickOpen('project'), KeyT: hotTerm, KeyV: hotVsCode, KeyG: hotGh };
+  // because with ⌥ held e.key is a symbol ('ø' for O) on a Mac. One letter per place the open chat lives: T a
+  // fresh zsh in its folder (a new iTerm tab, through the server), E the editor — VS Code Web in the pane, the
+  // web button's route —, V the real VS Code (the focus button's), G the chat's PR on GitHub — straight to it
+  // with one, the picker with several, and the next one when one is already showing (a toggle with two, a cycle
+  // with more; each PR is its own tab in the pane, so nothing reloads) —, C the claude session: the >_ button's
+  // path (the drawer shown or started, arm-and-take-over included, so a chat live elsewhere takes two presses).
+  // O is the project picker. A modal up (the picker, the project editor) swallows them all. In the app the pane
+  // is a native view with its own web views, so a key pressed there never reaches this page: the shell forwards
+  // ⌥⌘ + these letters through peixKey (the same list, kept by hand there).
+  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyV: hotCode, KeyG: hotGh, KeyC: hotClaude, KeyO: () => pickOpen('project') };
   const runHotkey = code => { const fn = HOTKEYS[code]; if (fn && !document.querySelector('dialog[open]')) fn(); };
   document.addEventListener('keydown', e => {
     if (!(e.metaKey && e.altKey && !e.ctrlKey && !e.shiftKey && HOTKEYS[e.code])) return;
@@ -898,13 +902,24 @@
   // can open beside it rather than under it.
   window.peixPane = (visible, left) => { state.paneVisible = !!visible; state.paneLeft = Number(left) || 0; };
   const noChat = () => note($('#shead'), 'Open a chat first');
-  function hotTerm() {
+  function hotClaude() {
     const s = state.sessions.get(state.current); if (!s) return noChat();
     const tb = $('#termBtn'); if (!tb) return;
     if (tb.disabled) return note(tb, tb.title, true);   // live somewhere it cannot be attached from — the tooltip says where
     termAction(s);
   }
   function hotVsCode() { const b = $('#webBtn'); if (b) b.click(); else noChat(); }
+  function hotCode() { const b = $('#focusBtn'); if (b) b.click(); else noChat(); }
+  // A fresh zsh in the chat's folder, the way a new tab in iTerm gives you one — and it is one: the server asks
+  // iTerm (Terminal without it) to open the folder. The board's own drawer is claude's. A failure is a note.
+  async function hotShell() {
+    const s = state.sessions.get(state.current); if (!s) return noChat();
+    if (!s.cwd) return note($('#shead'), 'No folder known for this chat', true);
+    try {
+      const r = await fetch(`/api/sessions/${s.id}/shell`, { method: 'POST' });
+      if (!r.ok) note($('#shead'), (await r.json().catch(() => ({}))).error || `HTTP ${r.status}`, true);
+    } catch (e) { note($('#shead'), String(e), true); }
+  }
   function hotGh() {
     const s = state.sessions.get(state.current); if (!s) return noChat();
     const prs = s.prs || [];
@@ -1119,8 +1134,8 @@
   const PR_ROWS = 6;   // a chat that lists PRs mentions dozens; the block shows this many and folds the rest behind "more"
   const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" href="${esc(pr.url)}" target="_blank" rel="noopener"
       title="${esc(`${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}`)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span><span class="meta">${rel(pr.lastAt)}</span></a>`;
-  const FOCUS_TIP = "Open this chat in VS Code";
-  const WEB_TIP = "Open this folder in VS Code Web — the editor served locally by `code serve-web`, in the pane here (a separate VS Code: trust the folder once, then Claude Code is in its sidebar) · ⌥⌘V";
+  const FOCUS_TIP = "Open this chat in VS Code · ⌥⌘V";
+  const WEB_TIP = "Open this folder in VS Code Web — the editor served locally by `code serve-web`, in the pane here (a separate VS Code: trust the folder once, then Claude Code is in its sidebar) · ⌥⌘E";
   function renderHead(s) {
     if (state.titleEdit === s.id) return;   // a rename in progress: leave the header alone until it ends
     $('#chat').classList.toggle('vsc', inVsCode(s));
@@ -1354,13 +1369,13 @@
       ? `Click again to end ${what} and resume the chat here${s.status === 'working' ? ' — Claude is mid-reply, and that reply will be lost' : ''}.`
       : `Take over: end ${what} and resume the chat here.`) + (vs ? VSC_COST : '');
   };
-  const KEY_T = ' · ⌥⌘T';   // on every tip the button acts on; the disabled and failed ones say why instead
+  const KEY_C = ' · ⌥⌘C';   // on every tip the button acts on; the disabled and failed ones say why instead
   const termTip = s => term.err ? term.err
-    : termLive(s) ? (prefs.termOpen && term.id === s.terminal.id ? 'The terminal is open below' : "Show this chat's terminal") + KEY_T
-    : takeable(s) ? takeTip(s) + KEY_T
+    : termLive(s) ? (prefs.termOpen && term.id === s.terminal.id ? 'The terminal is open below' : "Show this chat's terminal") + KEY_C
+    : takeable(s) ? takeTip(s) + KEY_C
     : s.alive ? `Live in ${entryLabel(s)} — it cannot be attached from here`
-    : inVsCode(s) ? 'Open a terminal on this chat (claude --resume). It was last continued in VS Code: from here on it is a CLI chat, and the tab there, if still open, will not follow it' + KEY_T
-    : 'Open a terminal on this chat (claude --resume)' + KEY_T;
+    : inVsCode(s) ? 'Open a terminal on this chat (claude --resume). It was last continued in VS Code: from here on it is a CLI chat, and the tab there, if still open, will not follow it' + KEY_C
+    : 'Open a terminal on this chat (claude --resume)' + KEY_C;
   // Live somewhere that is not our drawer — iTerm, VS Code. Nothing respawns a CLI claude, and VS Code's
   // extension does not respawn its own either (it launches one when a tab opens a chat, never after a
   // death — measured 2026-09-20), so ending it and resuming here leaves one writer.
@@ -1388,9 +1403,9 @@
     if (!r.ok) { term.err = d.error || `HTTP ${r.status}`; renderHead(s); return; }
     prefs.termOpen = true; savePrefs(); attachTerm(d.terminal); renderHead(s);
   }
-  // The >_ button and ⌥⌘T: show the chat's terminal, start one, or — live elsewhere — arm and, pressed again,
+  // The >_ button and ⌥⌘C: show the chat's terminal, start one, or — live elsewhere — arm and, pressed again,
   // take over. The terminal takes the keyboard at the end: attachTerm does that when its socket opens, this
-  // covers one that was already showing (⌥⌘T as "put me in the terminal").
+  // covers one that was already showing (⌥⌘C as "put me in the terminal").
   async function termAction(s) {
     term.err = null;
     if (takeable(s)) await (term.arm === s.id ? takeOver(s) : armTakeOver(s));

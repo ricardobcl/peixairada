@@ -469,7 +469,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   // ⌥⌘ + one of the board's hotkey letters (HOTKEYS in index.html — the same list here, kept by hand), pressed while
   // the pane has the keyboard: its web views are not the board's, so the page would never hear it. Forwarded through
   // peixKey; the page asks for the keyboard back ({type: "focus"}) only when it opens a dialog.
-  static let boardKeys: Set<String> = ["o", "t", "v", "g"]
+  static let boardKeys: Set<String> = ["t", "e", "v", "g", "c", "o"]
   private func installHotkeyForwarder() {
     NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
       guard let self = self, e.modifierFlags.intersection([.command, .option, .control, .shift]) == [.command, .option],

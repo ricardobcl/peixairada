@@ -1259,6 +1259,20 @@ const server = createServer(async (req, res) => {
       queueSessionPrs(cur);   // opening a chat is what refreshes its PR statuses; the SSE push carries them in
       return json(res, 200, { session: summary(cur), entries: cur.entries });
     }
+    // ⌥⌘T: a fresh zsh in the chat's folder — `open -a iTerm <folder>`, which iTerm answers with a new tab (a window
+    // when it has none) whose shell starts there; Terminal.app takes the same call. No AppleScript, so no Automation
+    // grant is asked of a launchd agent. The board's own drawer stays claude's.
+    if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/shell$/))) {
+      const s = sessions.get(m[1]);
+      const cwd = s?.cwd || s?.live?.cwd;
+      if (!cwd) return json(res, 400, { error: 'no cwd known' });
+      if (process.platform !== 'darwin') return json(res, 501, { error: 'macOS only' });
+      const app = ['iTerm', 'Terminal'].find(a => existsSync(`/Applications/${a}.app`) || existsSync(`/System/Applications/Utilities/${a}.app`));
+      if (!app) return json(res, 501, { error: 'neither iTerm nor Terminal found' });
+      execFile('/usr/bin/open', ['-a', app, cwd], { timeout: 15_000 }, (err, _out, stderr) =>
+        err ? json(res, 500, { error: String(stderr || err.message || err).trim() }) : json(res, 200, { ok: true, cwd, app }));
+      return;
+    }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/focus$/))) {
       const s = sessions.get(m[1]);
       const cwd = s?.cwd || s?.live?.cwd;

@@ -1,5 +1,5 @@
 // The ⌥⌘ family on a fixture: G opens the picker on a two-PR chat, ⏎ opens the first, G again moves to the next
-// and back; T and V hit their routes (stubbed); O is the project picker; the cog lists every key; no chat → a note.
+// and back; T, E, V and C hit their routes (stubbed); O is the project picker; the cog lists every key; no chat → a note.
 export const meta = { server: true, fixture: 'auto' };
 export default async function (ctx) {
   const [two, plain] = ctx.fixture.chats;
@@ -24,11 +24,14 @@ export default async function (ctx) {
   ctx.assert.equal(out.third, out.first, 'and back');
   out.peixState = await ctx.peix('state()');
   ctx.assert.match(String(out.peixState.prbar), /\/pull\/\d+$/, 'the strip holds the current PR (pane pages exist only in the app)');
-  // T and V, routes stubbed so nothing spawns
-  await ctx.evaluate(`window.__hits = []; const real = window.fetch; window.fetch = (u, o) => { const s = String(u); if (/\\/(terminal|vscode-web|focus)$/.test(s)) { window.__hits.push([s, o?.method]); return Promise.resolve({ ok: false, status: 500, json: async () => ({ error: 'stubbed' }) }); } return real(u, o); }`);
-  await ctx.key('KeyT'); await ctx.sleep(200); await ctx.key('KeyV'); await ctx.sleep(200);
+  // T, E, V and C, routes stubbed so nothing spawns or opens
+  await ctx.evaluate(`window.__hits = []; const real = window.fetch; window.fetch = (u, o) => { const s = String(u); if (/\\/(terminal|vscode-web|focus|shell)$/.test(s)) { window.__hits.push([s, o?.method]); return Promise.resolve({ ok: false, status: 500, json: async () => ({ error: 'stubbed' }) }); } return real(u, o); }`);
+  for (const k of ['KeyT', 'KeyE', 'KeyV', 'KeyC']) { await ctx.key(k); await ctx.sleep(200); }
   out.hits = await ctx.evaluate(`JSON.stringify(window.__hits)`).then(JSON.parse);
-  ctx.assert.ok(out.hits.some(h => h[0].endsWith('/terminal')) && out.hits.some(h => h[0].endsWith('/vscode-web')), 'T and V hit the terminal and the web editor routes');
+  for (const route of ['/shell', '/vscode-web', '/focus', '/terminal']) ctx.assert.ok(out.hits.some(h => h[0].endsWith(route)), `${route} was hit (T zsh, E web editor, V VS Code, C claude)`);
+  // ⌃⌘ is not the chord
+  await ctx.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyO', key: 'o', metaKey: true, ctrlKey: true, bubbles: true, cancelable: true }))`);
+  out.wrongChord = await ctx.evaluate(`document.querySelector('#pick').open`); ctx.assert.equal(out.wrongChord, false, '⌃⌘O does not open the picker');
   // O, the project picker
   await ctx.evaluate(`document.querySelector('#pick').close()`);
   await ctx.key('KeyO');
@@ -40,7 +43,7 @@ export default async function (ctx) {
   ctx.assert.match(out.noPrNote, /No PR/);
   // the cog lists the keys
   out.cog = await ctx.evaluate(`[...document.querySelectorAll('#settings .keys kbd')].map(k => k.textContent)`);
-  ctx.assert.deepEqual(out.cog.slice(0, 4), ['⌥⌘O', '⌥⌘T', '⌥⌘V', '⌥⌘G']);
+  ctx.assert.deepEqual(out.cog.slice(0, 6), ['⌥⌘T', '⌥⌘E', '⌥⌘V', '⌥⌘G', '⌥⌘C', '⌥⌘O']);
   await ctx.shot('cog');
   return out;
 }
