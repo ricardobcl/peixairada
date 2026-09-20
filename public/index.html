@@ -282,6 +282,17 @@
      the PRs and the buttons. display:flex would beat the UA [hidden] rule, hence the override. */
   .shead .details { flex-basis: 100%; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
   .shead .details[hidden] { display: none; }
+  /* The header in the project's colour — Peacock's title bar, in effect (2026-09-20, Ricardo: "the same color as
+     the project"). #chat.tinted while the chat's folder has one; --rink is the ink that reads on it (white or
+     near-black by the colour's luminance, set beside --repo by tintChat), and every control in the header is redrawn
+     in it. An armed or failed button keeps its warning colour on a panel-coloured pill, so it reads on any project. */
+  #chat.tinted .shead { background: var(--repo); color: var(--rink); border-bottom-color: color-mix(in srgb, var(--rink) 20%, var(--repo)); }
+  #chat.tinted .shead :is(.sep, .status, .path, .own, .chip, a) { color: color-mix(in srgb, var(--rink) 78%, transparent); }
+  #chat.tinted .shead .chip { border-color: color-mix(in srgb, var(--rink) 35%, transparent); }
+  #chat.tinted .shead .btn, #chat.tinted .shead .btn:disabled { color: color-mix(in srgb, var(--rink) 78%, transparent); border-color: color-mix(in srgb, var(--rink) 40%, transparent); }
+  #chat.tinted .shead .btn:hover { color: var(--rink); border-color: var(--rink); }
+  #chat.tinted .shead .btn.on, #chat.tinted .shead #termBtn.take { color: var(--rink); border-color: var(--rink); background: color-mix(in srgb, var(--rink) 14%, transparent); }
+  #chat.tinted .shead :is(.btn.err, #termBtn.take.arm) { color: var(--needs); border-color: var(--needs); background: var(--panel); }
   .btn.icon.dots { font-size: 13px; line-height: 1; padding: 3px 7px; letter-spacing: .5px; }
   .btn.icon.dots.on { color: var(--ink); border-color: var(--accent); }
   /* ---- The chat's PRs, one per row under the header: state, repo#n, the whole title. ---- */
@@ -703,7 +714,22 @@
   const repoColor = cwds => (Array.isArray(cwds) ? cwds : [cwds]).map(c => c && state.peacock[c]).find(Boolean) || null;
   const projColor = p => p.key === ALL ? 'var(--accent)' : repoColor(p.cwds);
   const repoStyle = color => color ? `--repo:${color}` : '';
-  const inkStyle = color => color ? ` style="color:${color}"` : '';
+  // The ink that reads on a colour: near-black on a light one, white on a dark one — Peacock's own rule (tinycolor's
+  // brightness, (299r + 587g + 114b) / 1000, light from 128), so the header agrees with the VS Code title bar of the
+  // same folder; WCAG luminance would put black on #007fff. Peacock writes #rrggbb; anything else gets the page's ink.
+  const inkOn = color => {
+    const m = /^#([0-9a-f]{3,8})$/i.exec(String(color).trim()); if (!m) return 'var(--ink)';
+    const h = m[1].length < 6 ? [...m[1]].map(c => c + c).join('') : m[1];
+    const ch = i => parseInt(h.slice(i, i + 2), 16);
+    return (299 * ch(0) + 587 * ch(2) + 114 * ch(4)) / 1000 >= 128 ? '#1c1c1a' : '#ffffff';
+  };
+  // The chat pane in a project's colour: --repo for the header and the transcript's wash, --rink for what reads
+  // on the header, .tinted while there is one (CSS cannot ask whether --repo is set).
+  const tintChat = color => {
+    const c = $('#chat'); c.classList.toggle('tinted', !!color);
+    if (color) { c.style.setProperty('--repo', color); c.style.setProperty('--rink', inkOn(color)); }
+    else { c.style.removeProperty('--repo'); c.style.removeProperty('--rink'); }
+  };
   const folderName = cwd => cwd ? cwd.split('/').filter(Boolean).pop() || cwd : '(no folder)';
   const STALE_MAX_AGE_MS = 30 * 86400e3; // Claude Code deletes transcripts after 30 idle days by default; mirror that
 
@@ -1139,11 +1165,11 @@
   function renderHead(s) {
     if (state.titleEdit === s.id) return;   // a rename in progress: leave the header alone until it ends
     $('#chat').classList.toggle('vsc', inVsCode(s));
-    const paneColor = repoColor(s.cwd); if (paneColor) $('#chat').style.setProperty('--repo', paneColor); else $('#chat').style.removeProperty('--repo');
+    tintChat(repoColor(s.cwd));
     // One row: title · dot+age · ··· · buttons. No status word — the dot carries it in colour; what it
     // cannot say is how long ago. The chat's PRs are the block under it, one per row (#prlist).
     const take = takeable(s), armed = take && term.arm === s.id;
-    $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo"${inkStyle(repoColor(s.cwd))} title="Show this folder's chats">${esc(s.project)}</span><span class="sep">/</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
+    $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${esc(s.project)}</span><span class="sep">/</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
       <span class="status" title="${esc(statusLabel[s.status] || s.status)}"><span class="dot ${s.status}"></span>${s.statusSince ? rel(s.statusSince) : ''}</span>
       <button class="btn icon dots ${prefs.headDetails ? 'on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}"
         title="${prefs.headDetails ? 'Hide' : 'Show'} path, branch and session details">···</button>
@@ -1422,8 +1448,8 @@
     if (!inProject({ cwd }, projectStub(prefs.project))) prefs.project = cwd;   // so the new chat lands in view
     savePrefs(); renderBoard();
     $('#chat').classList.remove('vsc');
-    const newColor = repoColor(cwd); if (newColor) $('#chat').style.setProperty('--repo', newColor); else $('#chat').style.removeProperty('--repo');
-    $('#shead').innerHTML = `<h2><span class="repo"${inkStyle(repoColor(cwd))}>${esc(folderName(cwd))}</span><span class="sep">/</span><span class="t">new chat</span></h2>`;
+    tintChat(repoColor(cwd));
+    $('#shead').innerHTML = `<h2><span class="repo">${esc(folderName(cwd))}</span><span class="sep">/</span><span class="t">new chat</span></h2>`;
     $('#log').innerHTML = '<div class="empty">Say something in the terminal below — the transcript shows up here once Claude has written it.</div>';
     renderComposer(null);
     prefs.termOpen = true; savePrefs(); attachTerm(d.terminal);
