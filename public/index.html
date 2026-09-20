@@ -45,6 +45,8 @@
   .btn.icon.err { color: var(--needs); border-color: var(--needs); }
   #focusBtn.err .ic { fill: var(--needs); }   /* must out-specify #focusBtn .ic above */
   #termBtn.on { color: var(--accent); border-color: var(--accent); }
+  .btn.icon.fold { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; font-weight: 700; letter-spacing: -1px; }   /* { }: code folds in this chat */
+  #foldBtn.on { color: var(--accent); border-color: var(--accent); }
   #termBtn.take { color: var(--ink); }                                        /* live in another terminal: can be taken over */
   #termBtn.take.arm { color: var(--needs); border-color: var(--needs); }      /* armed: the next click ends that claude */
   .btn.icon .lbl { font-size: 11px; }
@@ -549,7 +551,7 @@
   <h4><span>peix<em>AI</em>rada</span><span class="sub">settings</span></h4>
   <label title="Also show live panels with no messages, and stale chats older than 30 days"><input type="checkbox" id="showAll"> show empty &amp; &gt;30d</label>
   <label title="How tool calls (Bash, Read, Edit…) appear in the chat">tool calls <select id="toolsMode"><option value="collapsed">collapsed</option><option value="expanded">expanded</option><option value="hidden">hidden</option></select></label>
-  <label title="Fold fenced code blocks longer than 6 lines"><input type="checkbox" id="foldCode"> fold code</label>
+  <label title="Fold fenced code blocks longer than 6 lines — the default; the { } button in a chat's header sets it for that chat"><input type="checkbox" id="foldCode"> fold code</label>
   <label><input type="checkbox" id="sound"> sound</label>
   <div class="row"><button class="btn" id="notifBtn" title="Browser notifications (the server also sends native macOS ones)">🔔 enable browser alerts</button><button class="btn" id="testBtn" title="Fire a test alert through the server">test alert</button></div>
   <div class="keys" title="From anywhere on the board, the terminal included">
@@ -629,14 +631,19 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, pins: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [] };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, headDetails: false, chatZoom: 1, projectsCompact: true, sessionsCompact: false };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, foldBy: {}, headDetails: false, chatZoom: 1, projectsCompact: true, sessionsCompact: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
   // the one-of-four filter (before 2026-09-20) becomes the set of states shown; 'all' was every state
   if ('filter' in prefs) { prefs.filters = prefs.filter === 'all' ? ['ready', 'working', 'done'] : [prefs.filter]; delete prefs.filter; }
   if (!Array.isArray(prefs.filters)) prefs.filters = ['ready', 'working', 'done'];
+  if (!prefs.foldBy || typeof prefs.foldBy !== 'object') prefs.foldBy = {};
   const savePrefs = () => { try { localStorage.setItem('peixairada-prefs', JSON.stringify(prefs)); } catch {} };
+  // Code folding per chat (2026-09-20, Ricardo: "a button to toggle for that session"): the header's { } button sets
+  // prefs.foldBy[id]; a chat without a word of its own follows the cog's *fold code*. Claude Code itself cannot fold the
+  // code it prints in the drawer — its only collapse is ctrl+o for tool output — so this is the rendered transcript's.
+  const foldOn = id => id && id in prefs.foldBy ? !!prefs.foldBy[id] : !!prefs.foldCode;
 
   // ---- header controls ---------------------------------------------------------------
   $('#sound').checked = prefs.sound; $('#showAll').checked = prefs.showAll; $('#toolsMode').value = prefs.toolsMode; $('#foldCode').checked = prefs.foldCode;
@@ -1316,6 +1323,7 @@
       <span class="status" title="${esc(statusLabel[s.status] || s.status)}"><span class="dot ${s.status}"></span>${s.statusSince ? rel(s.statusSince) : ''}</span>
       <button class="btn icon dots ${prefs.headDetails ? 'on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}"
         title="${prefs.headDetails ? 'Hide' : 'Show'} path, branch and session details">···</button>
+      <button class="btn icon fold${foldOn(s.id) ? ' on' : ''}" id="foldBtn" aria-pressed="${foldOn(s.id)}" title="${foldOn(s.id) ? 'Code blocks longer than 6 lines are folded in this chat — click to show them whole' : 'Code blocks are shown whole in this chat — click to fold the long ones'}${s.id in prefs.foldBy ? ' (set here; the cog sets the default)' : ' (the cog’s default)'}">{ }</button>
       ${s.cwd ? `<button class="btn icon" id="focusBtn" title="${FOCUS_TIP}" aria-label="Focus in VS Code">${ICON.vscode}</button>` : ''}
       ${s.cwd ? `<button class="btn icon" id="webBtn" title="${WEB_TIP}" aria-label="VS Code Web">${ICON.vscode}<span class="lbl">web</span></button>` : ''}
       ${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it; ${s.alive ? 'the >_ button takes it over' : 'continue it here or there'}">${ICON.vscode}VS Code</span>` : ''}
@@ -1361,6 +1369,7 @@
       finally { wb.disabled = false; }
     };
     const tb = $('#termBtn'); if (tb) tb.onclick = () => termAction(s);
+    $('#foldBtn').onclick = () => { prefs.foldBy[s.id] = !foldOn(s.id); savePrefs(); renderHead(s); renderLog(true); };
     $('#shead .repo').onclick = () => { if (s.cwd) selectProject(s.cwd); };
     $('#shead h2 .t').ondblclick = () => editTitle(s);
   }
@@ -1845,7 +1854,7 @@
       a.setAttribute('href', `vscode://file${abs}${m[2] ? ':' + m[2] : ''}`);
       a.title = `Open ${abs}${m[2] ? ':' + m[2] : ''} in VS Code`;
     }
-    if (prefs.foldCode) for (const pre of tpl.content.querySelectorAll('pre')) {
+    if (foldOn(state.current)) for (const pre of tpl.content.querySelectorAll('pre')) {
       const code = pre.querySelector('code');
       const lines = (code?.textContent || pre.textContent).replace(/\n$/, '').split('\n').length;
       if (lines <= 6) continue;

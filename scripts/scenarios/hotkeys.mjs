@@ -1,6 +1,6 @@
 // The ⌥⌘ family on a fixture: G opens the picker on a two-PR chat, ⏎ opens the first, G again is the picker again
 // with that one marked, a click on the other opens it; T, E and C hit their routes (stubbed), V none; O is the project
-// picker; K the chat picker (search, ⏎ opens across projects); N a new chat (project → environment, stubbed); ↓ ↑ walk the list; ← → the tab beside (a real zsh); Esc closes a picker and is taken; the cog
+// picker; K the chat picker (search, ⏎ opens across projects); N a new chat (project → environment, stubbed); ↓ ↑ walk the list; ← → the tab beside (a real zsh); { } folds per chat; Esc closes a picker and is taken; the cog
 // lists every key; no chat → a note.
 export const meta = { server: true, fixture: 'auto' };
 export default async function (ctx) {
@@ -41,6 +41,13 @@ export default async function (ctx) {
   out.tabs = { after: await onTab() };
   await ctx.evaluate(`document.querySelector('#ptabs .ptab[data-tab="shell"] .x').click()`);
   await ctx.waitFor(`document.querySelector('#ptabs').hidden`, { what: 'the strip gone with the zsh' });
+  // the { } button: folds by the cog's default, its own word per chat
+  out.fold = { before: await ctx.evaluate(`document.querySelector('#foldBtn').classList.contains('on')`) };
+  await ctx.evaluate(`document.querySelector('#foldBtn').click()`);
+  out.fold.after = await ctx.evaluate(`document.querySelector('#foldBtn').classList.contains('on')`);
+  out.fold.pref = (await ctx.peix('prefs()')).foldBy[two.id];
+  ctx.assert.deepEqual(out.fold, { before: true, after: false, pref: false }, 'the fold button flips this chat only');
+  await ctx.evaluate(`document.querySelector('#foldBtn').click()`);
   // T, E and C, routes stubbed so nothing spawns or opens; V is no key any more (the focus button only)
   await ctx.evaluate(`window.__hits = []; const real = window.fetch; window.fetch = (u, o) => { const s = String(u); if (/\\/(terminal|vscode-web|focus|shell)$/.test(s)) { window.__hits.push([s, o?.method]); return Promise.resolve({ ok: false, status: 500, json: async () => ({ error: 'stubbed' }) }); } return real(u, o); }`);
   for (const k of ['KeyT', 'KeyE', 'KeyV', 'KeyC']) { await ctx.key(k); await ctx.sleep(200); }
