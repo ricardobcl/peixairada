@@ -460,7 +460,9 @@ Test chats that exist only because of this work (safe to ignore or tick done): *
   Ricardo asked whether Claude could collapse code: Claude Code's TUI cannot (its only collapse is ctrl+o for tool
   output; the requests for it are open issues on the CLI), so the answer is the board's transcript fold, which existed
   as one cog-wide switch and is now per chat as well — the `{ }` button in the header, `prefs.foldBy[id]` over
-  `prefs.foldCode`. In a drawer the transcript is not shown, so the button matters for chats rendered here.
+  `prefs.foldCode`. In a drawer the transcript is not shown, so the button matters for chats rendered here. And "simplify
+  the icon on the top banner right" turned out to be the header's dot · age · ··· — three things for one fold — asked
+  about, answered; the dot and its age are the details button now, the ··· is gone.
 * **⌥⌘K, the chat picker; ⌥⌘N, a new chat as steps; and folders that launch claude their own way** (2026-09-20,
   evening, Ricardo's list). K fills the ⌥⌘O dialog with every chat that is ready or clauding — done ones out — across the
   projects, in the list's own order, searched by the magnifier's words; ⏎ is `openSession`, which switches project when

@@ -300,7 +300,8 @@
   .shead h2 .t { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .shead h2 .sep { color: var(--muted); font-weight: 400; flex: none; }
   .shead .path { font-size: 12px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-  .shead .status { font-size: 12px; display: flex; align-items: center; gap: 5px; flex: none; color: var(--muted); }
+  .shead .status { font-size: 12px; gap: 5px; padding: 3px 7px; flex: none; }   /* the dot and its age, and the details fold's button */
+  .shead .status.on { color: var(--ink); border-color: var(--accent); }
   .shead a { color: var(--accent); font-size: 12px; }
   /* Path, branch and the session chips fold away behind ··· — what stays in view is the status,
      the PRs and the buttons. display:flex would beat the UA [hidden] rule, hence the override. */
@@ -321,8 +322,6 @@
   #chat.tinted .shead .btn:hover { color: var(--rink); border-color: var(--rink); }
   #chat.tinted .shead .btn.on, #chat.tinted .shead #termBtn.take { color: var(--rink); border-color: var(--rink); background: color-mix(in srgb, var(--rink) 14%, transparent); }
   #chat.tinted .shead :is(.btn.err, #termBtn.take.arm) { color: var(--needs); border-color: var(--needs); background: var(--panel); }
-  .btn.icon.dots { font-size: 13px; line-height: 1; padding: 3px 7px; letter-spacing: .5px; }
-  .btn.icon.dots.on { color: var(--ink); border-color: var(--accent); }
   /* ---- The chat's PRs, one per row under the header: state, repo#n, the whole title. ---- */
   #prlist { border-bottom: 1px solid var(--line); background: var(--panel); padding: 4px 12px 5px; display: grid; gap: 1px; min-width: 0; }
   #prlist[hidden] { display: none; }
@@ -1316,13 +1315,14 @@
     if (state.titleEdit === s.id) return;   // a rename in progress: leave the header alone until it ends
     $('#chat').classList.toggle('vsc', inVsCode(s));
     tintChat(repoColor(s.cwd));
-    // One row: title · dot+age · ··· · buttons. No status word — the dot carries it in colour; what it
-    // cannot say is how long ago. The chat's PRs are the block under it, one per row (#prlist).
+    // One row: title · [dot+age] · buttons. No status word — the dot carries it in colour; what it cannot say is how
+    // long ago. The dot and its age *are* the details button (2026-09-20, Ricardo: "simplify the icon on the top banner
+    // right" — the dot, the age and a ··· were three things for one fold): a click shows path, branch and session
+    // details under the row. The chat's PRs are the block under it, one per row (#prlist).
     const take = takeable(s), armed = take && term.arm === s.id;
     $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">/</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
-      <span class="status" title="${esc(statusLabel[s.status] || s.status)}"><span class="dot ${s.status}"></span>${s.statusSince ? rel(s.statusSince) : ''}</span>
-      <button class="btn icon dots ${prefs.headDetails ? 'on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}"
-        title="${prefs.headDetails ? 'Hide' : 'Show'} path, branch and session details">···</button>
+      <button class="btn icon status${prefs.headDetails ? ' on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}"
+        title="${esc(statusLabel[s.status] || s.status)}${s.statusSince ? ` for ${rel(s.statusSince)}` : ''} · click to ${prefs.headDetails ? 'hide' : 'show'} path, branch and session details"><span class="dot ${s.status}"></span>${s.statusSince ? rel(s.statusSince) : ''}</button>
       <button class="btn icon fold${foldOn(s.id) ? ' on' : ''}" id="foldBtn" aria-pressed="${foldOn(s.id)}" title="${foldOn(s.id) ? 'Code blocks longer than 6 lines are folded in this chat — click to show them whole' : 'Code blocks are shown whole in this chat — click to fold the long ones'}${s.id in prefs.foldBy ? ' (set here; the cog sets the default)' : ' (the cog’s default)'}">{ }</button>
       ${s.cwd ? `<button class="btn icon" id="focusBtn" title="${FOCUS_TIP}" aria-label="Focus in VS Code">${ICON.vscode}</button>` : ''}
       ${s.cwd ? `<button class="btn icon" id="webBtn" title="${WEB_TIP}" aria-label="VS Code Web">${ICON.vscode}<span class="lbl">web</span></button>` : ''}
