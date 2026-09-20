@@ -213,7 +213,9 @@
   @keyframes ring { to { --spin: 360deg; } }
   .card:hover { border-color: var(--accent); border-left-color: var(--repo, var(--nocolor)); }
   .chip.vsc { color: var(--vscode); border-color: var(--vscode); }
-  .card.active { outline: 2px solid var(--accent); outline-offset: -1px; }
+  /* the open chat: a solid tint of its colour under the accent outline (2026-09-20, Ricardo: "a more solid
+     background, so we can notice it better"); every other card keeps the gradient wash */
+  .card.active { outline: 2px solid var(--accent); outline-offset: -1px; background: color-mix(in srgb, var(--repo, var(--nocolor)) 36%, var(--panel)); }
   .card.done { opacity: .55; }
   .card.gone { opacity: .8; }   /* no live process: still ready, but a resume is coming */
   .card .top { display: flex; align-items: center; gap: 7px; min-width: 0; margin-bottom: 2px; }

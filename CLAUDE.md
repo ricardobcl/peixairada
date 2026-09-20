@@ -87,6 +87,7 @@ refuses to run against the real directory for the same reason.
 * **The chat header is the project's colour** (2026-09-20): `tintChat()` sets `--repo`, `--rink` and `#chat.tinted`;
   `--rink` is the ink that reads on it, white or near-black by Peacock's own brightness rule (`inkOn()`), and every
   control in `.shead` is redrawn in it. No colour → the plain panel header.
+* **The open chat's card is a solid tint** of its colour (`.card.active`, 36 %), the rest keep the gradient wash.
 * **Order is by when *you* last acted** (`lastUserAt`), newest first; done chats sink; a project ranks by its
   newest chat. Claude finishing a job never reshuffles the list.
 * **State lives in three places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done
