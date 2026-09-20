@@ -2,7 +2,50 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-09-20 (later that morning).
+this file is the *why* and the *state*. Last updated 2026-09-20 (night).
+
+## Decisions of 2026-09-20, night — the hotkeys, the header in the project's colour, the list's looks
+
+* **The hotkeys are ⌥⌘, one letter per place the open chat lives** (Ricardo: "for hotkeys with command + control —
+  T open terminal · E editar inline aka vscode web · V real vscode · G github · C claude/chat session", then
+  "sorry, it should be option+command and not control+command · C was supposed to be the claude session. the chat
+  is only useful when there is no live session, so remove all the extra complexity · does T work? I want a zsh
+  like a new tab on iterm"). A first cut had moved the chord to ⌃⌘ and read C as "show the chat" (the pane closed,
+  a filled drawer split, the keyboard on the transcript, a `pane` bridge message); both undone. `HOTKEYS` is
+  now T `hotShell` (new: `POST /api/sessions/:id/shell` → `open -a iTerm <cwd>`, which iTerm answers with a new
+  tab whose zsh starts in the folder — Terminal takes the same call; no AppleScript, so no Automation grant is
+  asked of the launchd agent), E `hotVsCode` (the web button's route), V `hotCode` (the focus button's — the real
+  VS Code, new), G `hotGh`, C `hotClaude` (the `>_` button's path: the drawer shown or started, the take-over
+  armed — what T used to be), and O the project picker, unchanged. `boardKeys` in main.swift is the six letters.
+  Verified headless (`scenarios/hotkeys.mjs`: the shell, vscode-web, focus and terminal routes hit by T, E, V and
+  C; ⌃⌘ doing nothing; the cog's six entries), the route for real on a throwaway server (a zsh under iTerm's
+  `login` with this checkout as its cwd), the re-attach scenario re-run, the app rebuilt and installed.
+* **The chat header is the project's colour** (Ricardo: "make the chat header on top the same color as the
+  project"). Not the 18 % wash the chat column's header wears — the colour itself, Peacock's title bar in effect,
+  with an ink that reads on it: `inkOn()` uses Peacock's own rule (tinycolor's brightness, `(299r + 587g + 114b) /
+  1000`, light from 128) rather than WCAG luminance, which would put black on the azure `#007fff` that Peacock
+  paints white — the board and the VS Code title bar of the same folder agree. `tintChat()` sets `--repo`,
+  `--rink` and `#chat.tinted` (CSS cannot ask whether a custom property is set); every control in `.shead` is
+  redrawn in `--rink` — muted text at 78 %, borders at 40 %, `.on` and `.take` a 14 % pill — and an armed or
+  failed button keeps `--needs` on a panel-coloured pill so it reads on a red project too. `inkStyle` is gone:
+  the repo name used to wear the colour it now sits on. Checked on an orange (dark ink) and a blue (white ink) chat.
+* **The open chat's card is a solid tint** (Ricardo: "the 2nd column card that active, a more solid background,
+  so we can notice it better"): `.card.active` paints a flat 36 % mix of the colour over the panel under the
+  accent outline it already had; the others keep the 22 → 6 % gradient wash.
+* **A rule and more air where a clauding card meets a ready one** (Ricardo: "a little horizontal space between
+  clauding cards and ready cards", then "make the gap … a bit bigger, or some extra visual cue"): the working
+  ring's glow spreads 18 px into a 7 px gap. `renderSessionList` puts a `.gsep` rule — the projects column's
+  pinned line again, a shade darker — between a working card and a non-working neighbour, either way round; with
+  its margins the gap is 23 px. The sort is untouched (your last touch, newest first — Claude finishing never
+  reshuffles), so the rule sits once under the clauding cards when they are on top, as they usually are since you
+  just wrote to them, and at every transition when they are not. Grouping clauding on top would be a one-line
+  sort change and a reshuffle on every finish; not done.
+* **"All chats" is ALL, in black** (Ricardo): the row, the strip's tab, the swatch and the chat column's header
+  say ALL and paint `--all` (`#000` in both themes — an off-white tab would carry white text) where every other
+  project paints Peacock's; it borrowed the accent before.
+* A first run of `drawer-reattach` failed on "the status bar is whole" — the fake's two lower status lines missing
+  from the re-attached screen — while the tree was being edited under it; the re-run on the finished tree passed.
+  A flake to watch, not chased.
 
 ## Decisions of 2026-09-20, evening — the harness, and the drawers moved into holders
 
