@@ -77,6 +77,7 @@
   .pop .keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: baseline; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
   .pop .keys .kh { grid-column: 1 / -1; font-size: 11px; }
   .pop .keys kbd { font: inherit; font-weight: 600; color: var(--ink); white-space: nowrap; }
+  .pop .keys em { font-style: normal; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--ink); }
   .pop select, .colhead select { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; max-width: 180px; }
   .brand.off .logo { filter: grayscale(1); opacity: .5; }   /* the SSE stream is down: the board is frozen */
   #counts { font-size: 11px; font-weight: 400; color: var(--muted); white-space: nowrap; }
@@ -237,6 +238,13 @@
      colour with a soft 1px halo outside; the open card adds a 2px ring of it over its border — a three-pixel edge. */
   .card:hover { border-color: var(--repo, var(--nocolor)); outline: 1px solid color-mix(in srgb, var(--repo, var(--nocolor)) 45%, transparent); outline-offset: 0; background: color-mix(in srgb, var(--repo, var(--nocolor)) 55%, var(--panel)); }
   .chip.vsc { color: var(--vscode); border-color: var(--vscode); }
+  /* The environment a chat was started in (`task production-workload`…, 2026-09-21): beside the folder on the card,
+     in the project's own colour, because it is a fact about *where* the chat runs — not about its process, which is
+     what the bordered chips on the other side of the row are. No border for that reason: it reads as the second half
+     of the folder's name, quietly. It shows wherever the server has a record, so only the folders whose Taskfile
+     launches claude ever wear one. A card too dark or too tinted for the colour borrows the card's own ink. */
+  .card .top .chip.env { color: var(--repo, var(--muted)); border-color: transparent; padding-left: 0; font-weight: 600; }
+  .card.black .top .chip.env, .card.active .top .chip.env, .card:hover .top .chip.env { color: inherit; opacity: .8; }
   /* the open chat: a solid tint of its colour under a ring of it (2026-09-20, Ricardo: "a more solid
      background, so we can notice it better"); every other card keeps the gradient wash */
   .card.active { border-color: var(--repo, var(--nocolor)); outline: 2px solid var(--repo, var(--nocolor)); outline-offset: -1px; background: color-mix(in srgb, var(--repo, var(--nocolor)) 55%, var(--panel)); }
@@ -485,7 +493,8 @@
   .pkrow.pr { grid-template-columns: 52px auto 1fr auto; }
   .pkrow.chat { grid-template-columns: auto 1fr auto auto auto; }   /* ⌥⌘K: colour · title · project · state · your last touch */
   .pkrow.chat .num { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pkrow.env { grid-template-columns: auto auto 1fr; }   /* ⌥⌘N's last step: colour · task name · what the Taskfile says it does */
+  .pkrow.chat.new .n { color: var(--accent); }   /* ＋ new chat, head of the chats step: the project's colour, the accent's words */
+  .pkrow.env { grid-template-columns: auto auto 1fr auto; }   /* ⌥⌘N's last step: colour · task name · what the Taskfile says it does · how many chats are open under it */
   .pkrow.env .num { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .pkrow.chat[data-state="clauding"] .st { color: var(--working); } .pkrow.chat[data-state="asking"] .st { color: var(--needs); } .pkrow.chat[data-state="ready"] .st { color: var(--idle); }
   .pkrow .st { font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: .5px; color: var(--muted); }
@@ -567,10 +576,10 @@
     <kbd>⌥⌘E</kbd><span>edit: this folder in VS Code Web, on a tab</span>
     <kbd>⌥⌘G</kbd><span>its PR on GitHub, on a tab · the repo when it has none · a picker with several, every time</span>
     <kbd>⌥⌘C</kbd><span>this chat's claude session — the pane while it runs here · starts or takes over one</span>
-    <kbd>⌥⌘O</kbd><span>a new oracle chat — its environments, ⏎ starts one</span>
+    <kbd>⌥⌘O</kbd><span>oracle — its environments, then that one's open chats and ＋ a new one</span>
     <kbd>⌥⌘P</kbd><span>project picker</span>
-    <kbd>⌥⌘K</kbd><span>chat picker — every ready or clauding chat, type to search</span>
-    <kbd>⌥⌘N</kbd><span>new chat — pick the project, then the folder, then the environment when its Taskfile launches claude</span>
+    <kbd>⌥⌘K</kbd><span>chat picker — every ready or clauding chat, fuzzy: <em>wapi res</em> finds <em>wallet-api resolvers</em></span>
+    <kbd>⌥⌘N</kbd><span>a chat — pick the project, then one of its open chats or ＋ a new one (the folder and the environment follow)</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
     <kbd>⌥⌘←→</kbd><span>the tab to the left / right: chat, zsh, GitHub pages, VS Code</span>
     <kbd>⌘+ ⌘− ⌘0</kbd><span>chat and terminal size</span>
@@ -621,6 +630,7 @@
 //   js  · the projects column: a strip by default, the full column while the pointer is over it
 //   js  · render: both lists
 //   js  · ⌥⌘P: the project picker. Same list as the column, in the same order; the box filters by name.
+//   js  · the pickers' matcher: fuzzy since 2026-09-21
 //   js  · the colour picker
 //   js  · project editor
 //   js  · PRs: the strip under the header, and where a GitHub link goes
@@ -841,7 +851,11 @@
   // The server keeps the finer statuses for notifications and the app's badge.
   const bucket = s => s.done ? 'done' : s.status === 'working' ? 'working' : 'ready';
   const RANK = { working: 0, ready: 1, done: 2 };   // the list's order, and the ⌥⌘K picker's: clauding on top, then ready, done last
-  const chatText = s => `${s.project} ${s.title} ${s.aiTitle || ''} ${s.lastPrompt} ${s.live?.name || ''} ${s.gitBranch || ''}`.toLowerCase();   // what the filters search
+  // What the filters and the pickers search, as separate fields: the picker's matcher hunts each word *within* one
+  // of them, so `wapi` has to be somewhere in the project or the branch and cannot be spelled out of letters
+  // borrowed from a title and a prompt (2026-09-21). Short and identifying first — ties go to the earlier field.
+  const chatFields = s => [s.title, s.project, s.gitBranch || '', s.aiTitle || '', s.lastPrompt || '', s.live?.name || ''];
+  const chatText = s => chatFields(s).join(' ').toLowerCase();   // the column's magnifier, which matches literally
   // Pinned projects first, in your order (state.pins — server state, so every browser and the app agree),
   // then the named ones, then folders by their newest chat. A pinned folder shows even with no chat in view.
   function projectList() {
@@ -955,7 +969,7 @@
     const tip = titleTip(s);
     const showRepo = p.key === ALL || p.custom;
     return `<div class="card ${s.status} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${s.id}" style="${repoStyle(color)}">
-      ${showRepo || s.alive || inVsCode(s) ? `<div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${esc(s.project)}</span>` : ''}<span class="grow"></span>${s.alive && !inVsCode(s) ? `<span class="chip">${entryLabel(s)}</span>${hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : ''}` : ''}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}</div>` : ''}
+      ${showRepo || s.env || s.alive || inVsCode(s) ? `<div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${esc(s.project)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${s.alive && !inVsCode(s) ? `<span class="chip">${entryLabel(s)}</span>${hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : ''}` : ''}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}</div>` : ''}
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${esc(s.title)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}<span class="time" title="${esc(timeTip(s))}">${rel(s.lastActivity)}</span>${un ? `<span class="badge">${un}</span>` : ''}${act}</div>
       ${s.prs?.length ? `<div class="cprs">${s.prs.slice(0, 8).map(pr => `<a class="cpr" data-state="${esc(pr.state || '')}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`).join('')}</div>` : ''}
       ${s.lastPrompt ? `<div class="snip you"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
@@ -969,19 +983,88 @@
   // when it mentions more than one; the box filters by number and title, ⏎ opens the PR as a row click would.
   // ⌥⌘K (2026-09-20) fills it with every chat that is ready or clauding — done ones stay out — across all projects, in
   // the list's own order (clauding first, then by your last touch); the box searches the same words as the list's
-  // magnifier (project, title, prompt, branch); ⏎ opens the chat, switching project when it lives elsewhere.
-  // ⌥⌘N (2026-09-20) is a new chat as a flow of steps in the one dialog: the project (the column's list without ALL),
-  // then the folder when the project spans several, then — when the folder's Taskfile launches claude itself, as
-  // oracle's `task production-workload` does — the environment (newChatIn asks the server); ⏎ at the last step starts it.
-  // ⌥⌘O (2026-09-20) is that flow with the first steps answered: a new chat in oracle, opening on its environments (hotOracle).
+  // magnifier (title, project, prompt, branch) but fuzzily, and with something typed the best match leads instead
+  // (2026-09-21); ⏎ opens the chat, switching project when it lives elsewhere.
+  // ⌥⌘N (2026-09-20) is a chat in the one dialog, a step at a time: the project (the column's list without ALL),
+  // then — 2026-09-21, Ricardo: "after selecting the project, we should allow choosing open chats" — that project's
+  // open chats, newest by your last touch, with ＋ new chat first; ＋ then asks the folder when the project spans
+  // several and the environment when the folder's Taskfile launches claude itself, as oracle's `task
+  // production-workload` does (newChatIn asks the server); ⏎ at the last step starts it.
+  // ⌥⌘O (2026-09-20) is that flow with the project answered and the environment brought forward: oracle's
+  // environments first, then *that environment's* open chats with ＋ new chat first (hotOracle). A chat's environment
+  // is the server's record of the launcher it was started with (`s.env`), so it outlives the drawer; a chat with no
+  // record — a bare `claude` in the folder, or one from before the record existed — shows under ⌥⌘N, not ⌥⌘O.
+  // The chats step skips itself when the scope has none, so an empty board still goes straight to the new chat.
+  // ---- the pickers' matcher: fuzzy since 2026-09-21 ----------------------------------------------
+  // (Ricardo: "I want S hotkey to fuzzy search non-done chats", then — told ⌥⌘K already holds that list — "keep K
+  // but make it fuzzy".) The query's letters have to turn up in order, not together: `wapi res` finds *w*allet-*api*
+  // *res*olvers. Each space-separated word is hunted on its own, so the order you type them in does not matter.
+  // A run of letters is worth more than scattered ones and a letter starting a word more than one inside it — that
+  // is what makes `res` find *res*olvers rather than a*r*r*es*t. Every place a word's first letter appears is tried
+  // as a start and the best of them wins, which is how the run in *res*olvers is found at all. Null = not there.
+  const WORD_EDGE = /[^a-z0-9]/;
+  function fuzzWord(text, word) {
+    let best = null;
+    for (let start = 0; start <= text.length - word.length; start++) {
+      if (text[start] !== word[0]) continue;
+      const at = [start];
+      let i = start;
+      for (let k = 1; k < word.length; k++) { i = text.indexOf(word[k], i + 1); if (i < 0) break; at.push(i); }
+      if (i < 0) continue;
+      let score = -at[0] / 8;   // an earlier start beats a later one, gently
+      for (let k = 0; k < at.length; k++) {
+        const c = at[k], gap = k ? c - at[k - 1] - 1 : 0;   // what the matcher had to skip to get here
+        score += 1 + (k && !gap ? 10 : 0) - Math.min(5, gap / 3) + (!c || WORD_EDGE.test(text[c - 1]) ? 8 : 0);
+      }
+      if (!best || score > best.score) best = { score, at };
+    }
+    return best;
+  }
+  /**
+   * Every word of the query, each hunted in *one* field — not necessarily the same one, so `wapi res` can take its
+   * first word from the project and its second from the title, but neither may be spelled out of letters borrowed
+   * from both. Null the moment a word is in none of them.
+   *
+   * A field's worth falls off down the list (1, ¾, ⅗…), so a name or a branch beats a long prompt that a short
+   * word wanders into by accident — without the prompt ceasing to be searchable. A word that only just scraped a
+   * match is worth nothing rather than something negative, which would have made the weighting work backwards.
+   */
+  function fuzzy(fields, q) {
+    let total = 0;
+    for (const w of q.split(/\s+/)) {
+      if (!w) continue;
+      let best = null;
+      for (let i = 0; i < fields.length; i++) {
+        const m = fields[i] && fuzzWord(fields[i].toLowerCase(), w);
+        if (!m) continue;
+        const score = Math.max(0, m.score) / (1 + i / 3);
+        if (best === null || score > best) best = score;
+      }
+      if (best === null) return null;
+      total += best;
+    }
+    return { score: total };
+  }
+  /** Where the query's words landed in one string, for the bolding; a word that matched some other field is simply
+   *  not marked here. Runs come back merged by `mark`. */
+  function fuzzMarks(text, q) {
+    const hay = text.toLowerCase();
+    let at = [];
+    for (const w of q.split(/\s+/)) { if (!w) continue; const m = fuzzWord(hay, w); if (m) at = at.concat(m.at); }
+    return [...new Set(at)].sort((a, b) => a - b);
+  }
   const pick = { mode: 'project', ctx: {}, list: [], sel: 0 };
   const PICK_HINT = {
     project: 'Project — type to filter · ↑↓ · ⏎ opens · esc', pr: 'Pull request — type to filter · ↑↓ · ⏎ opens · esc',
-    chat: 'Chat — ready or clauding, every project · type to filter · ↑↓ · ⏎ opens · esc',
-    new: 'New chat — which project? type to filter · ↑↓ · ⏎ · esc', folder: 'New chat — which folder? type to filter · ↑↓ · ⏎ · esc',
-    env: ctx => `New chat in ${folderName(ctx.cwd)} — which environment? task <env> from the folder's Taskfile · ↑↓ · ⏎ starts it · esc`,   // named: ⌥⌘O never asked which folder
+    chat: 'Chat — ready or clauding, every project · type any letters in order · ↑↓ · ⏎ opens · esc',
+    new: 'New chat — which project? type to filter · ↑↓ · ⏎ · esc',
+    folder: ctx => `${ctx.then === 'chats' ? 'Which folder' : 'New chat — which folder'}? type to filter · ↑↓ · ⏎ · esc`,
+    // named: ⌥⌘O never asked which folder. From ⌥⌘O the environment is a scope (its chats follow); from ⌥⌘N it is the last step.
+    env: ctx => ctx.then === 'chats' ? `${folderName(ctx.cwd)} — which environment? its open chats, and a new one · ↑↓ · ⏎ · esc`
+      : `New chat in ${folderName(ctx.cwd)} — which environment? task <env> from the folder's Taskfile · ↑↓ · ⏎ starts it · esc`,
+    chats: ctx => `${ctx.name}${ctx.env ? ` · task ${ctx.env}` : ''} — an open chat, or ＋ a new one · type to filter · ↑↓ · ⏎ · esc`,
   };
-  const PICK_NOUN = { pr: 'PR', chat: 'chat', folder: 'folder', env: 'environment' };   // for "no … matches"; the rest are projects
+  const PICK_NOUN = { pr: 'PR', chat: 'chat', chats: 'chat', folder: 'folder', env: 'environment' };   // for "no … matches"; the rest are projects
   const homePath = f => f.replace(/^\/Users\/[^/]+(?=\/|$)/, '~');
   const chatState = s => bucket(s) === 'working' ? 'clauding' : s.status === 'needs-input' && s.alive ? 'asking' : 'ready';
   function pickOpen(mode = 'project', ctx = {}) {
@@ -997,27 +1080,50 @@
   }
   function pickRender() {
     const q = $('#pickq').value.trim().toLowerCase();
-    const mark = text => { const i = q ? text.toLowerCase().indexOf(q) : -1; return i < 0 ? esc(text) : `${esc(text.slice(0, i))}<b>${esc(text.slice(i, i + q.length))}</b>${esc(text.slice(i + q.length))}`; };
+    // Bold the letters the query actually landed on, runs merged so a word comes out as one <b>, not one per letter.
+    const mark = text => {
+      const at = q ? fuzzMarks(text, q) : []; if (!at.length) return esc(text);
+      let out = '', last = 0;
+      for (let k = 0; k < at.length; k++) {
+        const from = at[k]; let to = from + 1;
+        while (k + 1 < at.length && at[k + 1] === to) { to++; k++; }
+        out += esc(text.slice(last, from)) + `<b>${esc(text.slice(from, to))}</b>`; last = to;
+      }
+      return out + esc(text.slice(last));
+    };
+    // With something typed the best match leads; with the box empty each list keeps its own order (the board's for
+    // chats, mention order for PRs, the Taskfile's for environments). Ties go to whichever came first in that order.
+    const hunt = (items, fields) => { if (!q) return items; const hits = []; items.forEach((x, i) => { const m = fuzzy(fields(x), q); if (m) hits.push([m.score, i, x]); }); return hits.sort((a, b) => b[0] - a[0] || a[1] - b[1]).map(h => h[2]); };
     const sel = i => i === pick.sel ? ' sel' : '';
     let rows;
     if (pick.mode === 'pr') {
-      pick.list = (state.sessions.get(state.current)?.prs || []).filter(pr => !q || `${pr.label} ${pr.title || ''}`.toLowerCase().includes(q));
+      pick.list = hunt(state.sessions.get(state.current)?.prs || [], pr => [pr.label, pr.title || '']);
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
       rows = pick.list.map((pr, i) => `<div class="pkrow pr${sel(i)}" data-i="${i}" data-state="${esc(pr.state || '')}" title="${esc(pr.url)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${mark(pr.label)}</span><span class="n${pr.title ? '' : ' pending'}">${pr.title ? mark(pr.title) : 'title on its way from gh…'}${pr.url === prbar.url ? '<span class="cur">current</span>' : ''}</span><span class="t">${rel(pr.lastAt)}</span></div>`);
     } else if (pick.mode === 'chat') {
-      pick.list = [...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done' && (!q || chatText(s).includes(q))).sort((a, b) => (RANK[bucket(a)] - RANK[bucket(b)]) || byUser(a, b));
+      pick.list = hunt([...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done').sort((a, b) => (RANK[bucket(a)] - RANK[bucket(b)]) || byUser(a, b)), chatFields);
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
       rows = pick.list.map((s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${mark(s.title)}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t">${rel(userAt(s))}</span></div>`);
+    } else if (pick.mode === 'chats') {   // the scope's open chats, ＋ a new one — the row that carries on with the flow
+      const chats = hunt(scopeChats(pick.ctx), chatFields);   // ＋ is never filtered out: it is the fallback for a query that matches nothing
+      pick.list = [{ isNew: true }, ...chats];
+      pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
+      const how = pick.ctx.env ? `task ${pick.ctx.env}` : pick.ctx.cwds.length === 1 ? `in ${folderName(pick.ctx.cwds[0])}` : 'pick a folder…';   // reads under the chats' own environment column, so say it is a folder
+      rows = pick.list.map((x, i) => x.isNew
+        ? `<div class="pkrow chat new${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(pick.ctx.cwds))}" title="Start a new chat in ${esc(pick.ctx.name)}"><span class="sq"></span><span class="n">＋ new chat</span><span class="num">${esc(how)}</span><span class="st"></span><span class="t"></span></div>`
+        : `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(x)}" style="${repoStyle(repoColor(x.cwd))}" title="${esc(x.cwd || '')}"><span class="sq"></span><span class="n">${mark(x.title)}${x.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${esc(x.env || '')}</span><span class="st">${chatState(x)}</span><span class="t">${rel(userAt(x))}</span></div>`);
     } else if (pick.mode === 'folder') {   // the new chat's folder, from a project that spans several
-      pick.list = pick.ctx.cwds.filter(f => !q || folderName(f).toLowerCase().includes(q) || f.toLowerCase().includes(q)).map(f => ({ cwd: f }));
+      pick.list = hunt(pick.ctx.cwds.map(f => ({ cwd: f })), x => [folderName(x.cwd), x.cwd]);
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
       rows = pick.list.map((x, i) => `<div class="pkrow${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(x.cwd))}" title="${esc(x.cwd)}"><span class="sq"></span><span class="n">${mark(folderName(x.cwd))}<span class="cur">${esc(homePath(x.cwd))}</span></span><span class="pills"></span><span class="t"></span></div>`);
     } else if (pick.mode === 'env') {   // the new chat's environment: a launcher of the folder's Taskfile (task <name>)
-      pick.list = pick.ctx.launchers.filter(l => !q || `${l.name} ${l.desc}`.toLowerCase().includes(q));
+      pick.list = hunt(pick.ctx.launchers, l => [l.name, l.desc]);
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
-      rows = pick.list.map((l, i) => `<div class="pkrow env${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(pick.ctx.cwd))}" title="task ${esc(l.name)} in ${esc(pick.ctx.cwd)}"><span class="sq"></span><span class="n">${mark(l.name)}</span><span class="num">${mark(l.desc)}</span></div>`);
+      // …each with what the next step would show under it: the board's own pills, clauding first, then ready — the
+      // count of this environment's chats that are not ticked done, so an environment already busy says so here.
+      rows = pick.list.map((l, i) => `<div class="pkrow env${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(pick.ctx.cwd))}" title="task ${esc(l.name)} in ${esc(pick.ctx.cwd)}"><span class="sq"></span><span class="n">${mark(l.name)}</span><span class="num">${mark(l.desc)}</span><span class="pills">${pillsHtml(envCounts(pick.ctx.cwd, l.name))}</span></div>`);
     } else {   // project — and new, the same rows without ALL and without a named project that has no folder yet
-      pick.list = projectList().filter(p => (pick.mode === 'project' || (p.key !== ALL && p.cwds.length)) && (!q || p.name.toLowerCase().includes(q)));
+      pick.list = hunt(projectList().filter(p => pick.mode === 'project' || (p.key !== ALL && p.cwds.length)), p => [p.name]);
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
       rows = pick.list.map((p, i) => `<div class="pkrow${sel(i)}" data-i="${i}" style="${repoStyle(projColor(p))}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}${p.key === prefs.project ? '<span class="cur">current</span>' : ''}</span><span class="pills">${pillsHtml(p)}</span><span class="t">${p.last ? rel(p.last) : ''}</span></div>`);
     }
@@ -1028,12 +1134,30 @@
     const x = pick.list[i], dlg = $('#pick'); if (!x) { dlg.close(); return; }
     if (pick.mode === 'pr') { dlg.close(); showPr(x.url); }
     else if (pick.mode === 'chat') { dlg.close(); openSession(x.id); }
-    else if (pick.mode === 'new') { if (x.cwds.length === 1) newChatIn(x.cwds[0]); else pickOpen('folder', { cwds: x.cwds }); }   // the next step, or the chat
-    else if (pick.mode === 'folder') newChatIn(x.cwd);
-    else if (pick.mode === 'env') { dlg.close(); newChat(pick.ctx.cwd, x.name); }
+    else if (pick.mode === 'new') chatsStep({ key: x.key, name: x.name, cwds: x.cwds });   // the project's open chats, ＋ a new one
+    else if (pick.mode === 'chats') { if (x.isNew) newFromChats(pick.ctx); else { dlg.close(); openSession(x.id); } }
+    else if (pick.mode === 'folder') newChatIn(x.cwd, pick.ctx.then);
+    else if (pick.mode === 'env') {   // from ⌥⌘O the environment scopes the chats step; from ⌥⌘N it was the last thing asked
+      if (pick.ctx.then === 'chats') chatsStep({ key: pick.ctx.cwd, name: folderName(pick.ctx.cwd), cwds: [pick.ctx.cwd], env: x.name });
+      else { dlg.close(); newChat(pick.ctx.cwd, x.name); }
+    }
     else { dlg.close(); selectProject(x.key); }
   }
-  $('#pickq').addEventListener('input', () => { pick.sel = 0; pickRender(); });
+  // The open chats of a step's scope — a project (its own rule: a folder is its exact cwd, a named project its
+  // folders) narrowed to one environment when ⌥⌘O picked one — by your last touch, newest first. Done chats stay out.
+  const scopeChats = ctx => { const p = projectStub(ctx.key); return [...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done' && inProject(s, p) && (!ctx.env || s.env === ctx.env)).sort(byUser); };
+  const chatsStep = ctx => scopeChats(ctx).length ? pickOpen('chats', ctx) : newFromChats(ctx);   // nothing to choose between: straight on to the new chat
+  // What the chats step would show under one environment, split the way the column's pills split a project.
+  const envCounts = (cwd, env) => { const l = scopeChats({ key: cwd, env }); return { working: l.filter(s => bucket(s) === 'working').length, ready: l.filter(s => bucket(s) === 'ready').length }; };
+  // ＋ new chat, from wherever the flow had got to: the environment is already answered, or the folder is, or neither.
+  function newFromChats(ctx) {
+    if (ctx.env) { $('#pick').close(); newChat(ctx.cwds[0], ctx.env); }
+    else if (ctx.cwds.length === 1) newChatIn(ctx.cwds[0]);
+    else pickOpen('folder', { cwds: ctx.cwds });
+  }
+  // Typing filters the chats, not ＋, so the selection moves off it and onto the first match — and falls back to
+  // ＋ (the clamp below) when nothing matches, which is the thing to do with a name no chat has yet.
+  $('#pickq').addEventListener('input', () => { pick.sel = pick.mode === 'chats' && $('#pickq').value.trim() ? 1 : 0; pickRender(); });
   $('#pickq').addEventListener('keydown', e => {
     if (e.key === 'ArrowDown') { e.preventDefault(); pick.sel++; pickRender(); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); pick.sel--; pickRender(); }
@@ -1073,14 +1197,16 @@
     focusBoard(); termAction(s);
   }
   // ⌥⌘O (2026-09-20, Ricardo: "the O hotkey should open oracle prompt directly, to select the env and open a chat"):
-  // ⌥⌘N with its first steps answered — a new chat in oracle, opening on the environments its Taskfile launches claude
-  // with; ⏎ starts one. The folder is the project ORACLE names on the board (a folder of its own, a pin or a named set
-  // of folders); nothing has run there in 30 days and it is off the board — a note then, and ⌥⌘N is the way in.
+  // ⌥⌘N with its project answered and the environment brought forward — oracle's environments first, then that
+  // environment's open chats with ＋ new chat among them (2026-09-21, Ricardo: "we should show open chats with the
+  // option for a new one, scoped by env"). The folder is the project ORACLE names on the board (a folder of its own,
+  // a pin or a named set of folders); nothing has run there in 30 days and it is off the board — a note then, and
+  // ⌥⌘N is the way in.
   function hotOracle() {
     const p = projectList().find(x => x.name === ORACLE && x.cwds.length);
     if (!p) return note($('#shead'), `No ${ORACLE} folder on the board — ⌥⌘N starts a chat anywhere`);
     focusBoard();
-    if (p.cwds.length === 1) newChatIn(p.cwds[0]); else pickOpen('folder', { cwds: p.cwds });   // one folder: straight to the environments
+    if (p.cwds.length === 1) newChatIn(p.cwds[0], 'chats'); else pickOpen('folder', { cwds: p.cwds, then: 'chats' });   // one folder: straight to the environments
   }
   // Esc with a page's tab on (2026-09-20, Ricardo: "ESC should still navigate to chat"): the chat tab, and the pane
   // goes. Reaches here from the shell only (peixKey('Escape'), pressed on the board or in the pane, which the shell
@@ -1542,7 +1668,7 @@
     state: () => ({ current: state.current, project: prefs.project, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft,
       paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, [...v]])), tab: state.sessions.has(state.current) ? tabOf(state.sessions.get(state.current)) : null, tabs: state.sessions.has(state.current) ? tabKeys(state.sessions.get(state.current)) : [], prbar: prbar.url, termId: term.id, termSession: term.sessionId, termExited: term.exited }),
     session: id => { const s = state.sessions.get(id || state.current); return s ? JSON.parse(JSON.stringify(s)) : null; },
-    sessions: () => [...state.sessions.values()].map(s => ({ id: s.id, project: s.project, title: s.title, status: s.status, alive: s.alive, prs: (s.prs || []).length, terminal: s.terminal?.id || null })),
+    sessions: () => [...state.sessions.values()].map(s => ({ id: s.id, project: s.project, cwd: s.cwd, env: s.env || null, title: s.title, status: s.status, alive: s.alive, prs: (s.prs || []).length, terminal: s.terminal?.id || null })),
     prefs: () => ({ ...prefs }),
     term: () => window.peixDebug(),
     screen: () => [...document.querySelectorAll('#termBody .xterm-rows > div')].map(r => r.textContent.replace(/\s+$/, '')),
@@ -1734,12 +1860,14 @@
   // A new chat in a folder: `claude` there — unless the folder's Taskfile launches claude itself (oracle's `task
   // production-workload` and friends set a cluster's environment first, 2026-09-20), in which case the environment is
   // asked for in the picker, every time; the server says whether the folder has such launchers (GET /api/launchers).
-  // The + button, the folder pick-list and ⌥⌘N all come through here.
-  async function newChatIn(cwd) {
+  // The + button, the folder pick-list and ⌥⌘N's ＋ all come through here and start a chat at the end of it.
+  // `then` is ⌥⌘O's way through (2026-09-21): the environment scopes a chats step instead of starting anything.
+  async function newChatIn(cwd, then = 'new') {
     let launchers = [];
     if ($('#pick').open) $('#pickq').placeholder = 'asking the folder how it starts claude…';
     try { const r = await fetch(`/api/launchers?cwd=${encodeURIComponent(cwd)}`); if (r.ok) launchers = (await r.json()).launchers || []; } catch {}
-    if (launchers.length) return pickOpen('env', { cwd, launchers });
+    if (launchers.length) return pickOpen('env', { cwd, launchers, then });
+    if (then === 'chats') return chatsStep({ key: cwd, name: folderName(cwd), cwds: [cwd] });   // no launchers: the folder's own chats, ＋ a new one
     $('#pick').close(); newChat(cwd);
   }
   // A new chat has no session until claude registers; the server ties the two by pid and says so

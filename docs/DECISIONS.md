@@ -4,6 +4,80 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-21.
 
+## Decisions of 2026-09-21 — the pickers match the way fzf does
+
+* **⌥⌘K matches fuzzily and ranks by how well it matched** (Ricardo: "I want S hotkey to fuzzy search non-done
+  chats"; told ⌥⌘K already holds exactly that list with a literal filter, "keep K but make it fuzzy"). So no new
+  key — ⌥⌘S is still free — and the matcher became the picker's one matcher, in every mode: the chat picker, the
+  chats step of ⌥⌘N and ⌥⌘O, the projects, the folders, the environments, the PRs. With the box empty each list
+  keeps its own order (the board's for chats, mention order for PRs, the Taskfile's for environments); with
+  something typed the best match leads, because fuzzy without ranking is just a longer list.
+* **Each word of the query is hunted inside *one* field**, not across a concatenated blob. The first cut searched
+  `chatText(s)` — project, title, prompt, branch run together — and `wapi res` matched 92 of the 152 chats on the
+  real board, spelling words out of letters borrowed from a title *and* a prompt. Field by field it is 54, and the
+  wallet-api chats lead. Two words may still land in different fields (`oracle rollout` takes one from the project
+  and one from the title), which is the whole point.
+* **The scoring, in one line each**: a run of letters is worth far more than scattered ones; a letter starting a
+  word is worth more than one inside it (that is what makes `res` find *res*olvers rather than a*r*r*es*t); a gap
+  costs, capped, so a match that wanders the length of a prompt loses to a tight one; an earlier start wins a tie;
+  and a field's worth falls off down the list (1, ¾, ⅗…) so a name or a branch beats a long prompt. Every place a
+  word's first letter appears is tried as a start and the best wins — greedy from there, which is the one corner cut:
+  `wapi` scores *w*allet-a*pi* rather than the slightly better *w*allet-*api*, and both rank well above the noise.
+  A word that only scraped a match is worth nothing rather than something negative, which would have made the field
+  weighting work backwards.
+* **The column's own filter boxes stay literal.** Nothing there re-orders — the list keeps the board's order — so
+  fuzzy would only widen the list without saying which one you meant. Fuzzy where there is a selection to rank,
+  literal where the order is fixed.
+* **Measured on the real board** (152 ready-or-clauding chats): 2–6 ms per keystroke, the whole list re-ranked.
+  Checked in the browser — `peix` puts the peixairada chats on top, `oracle rollout` the oracle rollout ones,
+  `wapi res` the wallet-api ones. The regression check is in `scripts/scenarios/hotkeys.mjs`: `pln cht` matches no
+  chat literally, *P*l*a*i*n* *ch*a*t* leads, and the bolding comes back as `Pl`, `n`, `ch`, `t`.
+
+## Decisions of 2026-09-21 — ⌥⌘N and ⌥⌘O end on a chat, not only on a new one
+
+* **The new-chat flow's last step is a list of the scope's open chats, with ＋ new chat at its head** (Ricardo: "so
+  N hotkey opens the project to open a new chat — but after selecting the project, we should allow choosing open
+  chats (sorted by last interaction) with '+ new chat' as first option"). ⌥⌘N was a one-way street: project →
+  folder → environment → a chat that did not exist a second ago, while the chat you actually wanted was two keys
+  away on ⌥⌘K. Now the project step hands over to a `chats` step — that project's ready and clauding chats, ordered
+  by *your* last touch (`byUser`, the board's one order), done ones out — and the first row carries on with the old
+  flow. ⏎ with nothing typed still starts a chat, so the keystrokes that built one yesterday build one today;
+  typing filters the chats and moves the selection onto the first match, and a name no chat has leaves ＋ alone and
+  selected, which is exactly the moment you meant to start something new. A scope with no open chats skips the step
+  altogether, the way a project with one folder skips the folder step.
+* **⌥⌘O asks the environment first and then shows that environment's chats** (Ricardo: "same for oracle, we should
+  show open chats with the option for a new one, scoped by env"; asked which order, he picked env-then-chats over one
+  flat list). So the two keys differ on purpose: ⌥⌘N is oracle's chats whatever cluster they were started against,
+  ⌥⌘O is *production-workload's* chats and a new one beside them. One flag through the flow says which — `then:
+  'chats'` on the folder and environment steps, which ⌥⌘O sets and the + button never does.
+* **The server remembers which environment a chat was started in** (`envs` in `state.json`, keyed by session id).
+  The terminal has carried `task` all along, but only while it runs, and a cluster is what an oracle chat *is* about
+  long after its drawer has gone — without the record ⌥⌘O could only ever list the chats open in a drawer right
+  now. Written where the pid ties a terminal to its session (`noteEnv`, also on adoption, so a drawer from before the
+  record gets one), pruned of forgotten sessions there, and read back on the summary as `s.env`. Asked whether to
+  keep it live-only; Ricardo chose the record. A chat with none — a bare `claude` in the folder, or one that ran
+  before today — shows under ⌥⌘N and under no environment, so the rollout is quiet: until a launcher's chat is
+  linked, ⌥⌘O behaves exactly as it did.
+* **The environment step counts what each environment holds, and the cards say which one they ran in** (Ricardo:
+  "can we put a counter on 'not done' chats for each oracle env when doing the O hotkey?" and "on the oracle cards on
+  2nd column, can we put the env somewhere?"). The counter is the column's own pills — clauding then ready, the two
+  numbers that add up to *not done* — so the environment step tells you where the work already is before you pick
+  one, in the language the projects strip has always used. On the card the environment is a label beside the folder
+  name, not a bordered chip: the chips on the right of that row are about the chat's *process* (`cli`, *VS Code too*)
+  and this is about where it runs, so it is drawn quietly, in the project's colour, and borrows the card's ink where
+  the card is too dark or too tinted for that colour. It is also what pulls the card's top row into existence at all
+  in a project column, where there is no folder name to sit beside — and it appears only where the server has a
+  record, which is to say only in the folders whose Taskfile launches claude. Looked at in both themes.
+* **Checked in the browser**: `scripts/scenarios/new-chat-flow.mjs` is the new regression check — three oracle chats,
+  two of them recorded under environments, seeded into `state.json` and read back across a server restart; then ⌥⌘O
+  on each environment (only its own chat, ＋ at the head, ↓⏎ opens the chat), ⌥⌘N on the project (all three, newest
+  by last touch, each row wearing its environment), the filter moving the selection, and a query nothing matches
+  starting a chat through the environment step — plus the environments' counts and the cards' environment labels.
+  Screenshots looked at: the ＋ row reads `in oracle` for a folder and `task <env>` for an environment, because that
+  column is the chats' environment column and a bare folder name read like one; and the card label lost its border
+  after the first cut, where an unbordered chip on an uncoloured card and a bordered one on the open card were plainly
+  two different things.
+
 ## Decisions of 2026-09-21 — the cog holds everything, and opens on hover
 
 * **The settings popover is the plan usage and the keys, and nothing else** (Ricardo: "move the claude credits

@@ -93,6 +93,11 @@ let titles = {};
 // Pinned projects, in the order they sit at the top of the column: folder cwds and `c:<id>` keys. A
 // `colors` key (board-set project colours, 2026-09-20 only) is ignored and dropped on the next save.
 let pinned = [];
+// The environment a chat was started in: sessionId -> the launcher's name (`task production-workload`…). The
+// terminal carries it, but only while it runs, and the env outlives the drawer — it is what the chat *is* about
+// (2026-09-21, so ⌥⌘O can list oracle's open chats under the environment they belong to). Recorded when the pid
+// ties the terminal to its session, kept here because the board never writes under ~/.claude.
+let envs = {};
 
 // One-time move from the old ~/.peixairada location. Same filesystem, so the rename is atomic; the
 // empty directory is left behind rather than removing something we did not create.
@@ -111,9 +116,10 @@ try {
   projects = st.projects || {};
   titles = st.titles || {};
   pinned = Array.isArray(st.pinned) ? st.pinned.filter(k => typeof k === 'string') : [];
+  envs = st.envs || {};
 } catch {}
 function saveState() {
-  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks, projects, titles, pinned }, null, 1)); }
+  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks, projects, titles, pinned, envs }, null, 1)); }
   catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
 const isDone = s => !!doneMarks[s.id] && doneMarks[s.id] >= (s.lastActivity || '');
@@ -309,6 +315,7 @@ function summary(s) {
     rawStatus: s.status, statusSince: s.statusSince, lastActivity: s.lastActivity,
     lastUserAt: s.lastUserAt, lastReplyAt: s.lastReplyAt,
     alive: s.alive, live: s.live, entrypoint: s.live?.entrypoint || s.entrypoint, terminal: termSummary(termOf(s)), shell: termSummary(shellOf(s)), entryCount: s.entryCount, loaded: s.loaded, file: s.file, lastHook: s.lastHook,
+    env: envs[s.id] || termOf(s)?.task || null,   // the launcher it was started with (⌥⌘O groups oracle's chats by it)
     // the other live processes on this chat, and who wrote its last turn — the page's "VS Code too" warning
     rivals: s.rivals, tailEntrypoint: s.entrypoint, tailEntrypointAt: s.entrypointAt,
     done: isDone(s), doneAt: doneMarks[s.id] || null,
@@ -1201,6 +1208,7 @@ async function adoptHolders() {
     try {
       await connectHolder(t);
       terms.set(id, t);
+      noteEnv(t.sessionId, t.task);   // a launcher's drawer from before the record existed, or from before a restart
       if (t.exited !== null) setTimeout(() => { if (terms.get(id) === t) terms.delete(id); }, TERM_LINGER_MS).unref();
       console.log(`[peixairada] terminal ${id}: adopted — pid ${t.pid}, holder ${t.holderPid}${t.exited !== null ? ', exited ' + t.exited : ''}${t.sessionId ? ', chat ' + t.sessionId : ''}`);
     } catch (e) {
@@ -1225,11 +1233,24 @@ const descends = (pid, from, ppids) => { if (!ppids) return false; for (let p = 
  * mise → claude), found through `ps`: `ppids` when such a drawer is waiting. The registry pid is kept as claudePid, so
  * the drawer's own process is known when the chat gets a rival.
  */
+/**
+ * Remember which environment a chat was started in (`task production-workload`…), so ⌥⌘O can list oracle's open
+ * chats under it long after the drawer has gone. Forgotten sessions are pruned on the way, but never while the
+ * initial scan is still running — an adopted holder records its env before the registry is read, and `sessions`
+ * is not yet the whole truth then.
+ */
+function noteEnv(sessionId, task) {
+  if (!sessionId || !task || envs[sessionId] === task) return;
+  envs[sessionId] = task;
+  if (!indexing) for (const id of Object.keys(envs)) if (!sessions.has(id)) delete envs[id];
+  saveState();
+}
 function linkTermToRegistry(pid, s, ppids = null) {
   for (const t of terms.values()) {
     if (t.shell || t.sessionId === s.id) continue;
     if (t.pid !== pid && !(t.task && t.exited === null && descends(pid, t.pid, ppids))) continue;
     t.sessionId = s.id; t.claudePid = pid; holderSend(t, { t: 'meta', sessionId: s.id, claudePid: pid });
+    noteEnv(s.id, t.task);
     broadcast('terminal', termSummary(t)); schedulePush(s);
   }
 }

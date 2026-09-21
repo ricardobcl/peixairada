@@ -68,7 +68,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | PRs mentioned | `pr-link` lines *and* GitHub pull URLs in user/assistant text; most recently mentioned first; `gh api graphql` batched for state and title (one of the two network calls) |
 | Plan usage (the cog's popover) | `GET https://api.anthropic.com/api/oauth/usage` with Claude Code's own OAuth bearer from the keychain item *Claude Code-credentials*; `USAGE=off` disables; the token never reaches the page. → Findings: *plan usage* |
 | Permission prompts | only via hooks (they never reach the transcript), or visibly in the drawer |
-| Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login zsh (mise's PATH); it registers like any CLI run; a new chat is tied to its session by pid. **A folder whose Taskfile launches claude** (a task whose description mentions Claude — oracle's `task production-workload`…) starts new chats as `task <name>` instead: `GET /api/launchers?cwd=` lists them (`task --list --json`, cached by the file's mtime, `TASK_BIN` overrides), `POST /api/terminals {cwd, task}` checks the name against that list; claude is then a *descendant* of the PTY's pid, found through `ps` (`linkTermToRegistry`, `t.claudePid`). A resume never goes through task. **`/clear` (or `/resume`) in the drawer** gives that pid a new session id — the registry file says so — and `linkTermToRegistry` moves the holder to it; the page follows the holder to whatever chat it runs (`terminal` event → `openSession`), the old chat is a stale card |
+| Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login zsh (mise's PATH); it registers like any CLI run; a new chat is tied to its session by pid. **A folder whose Taskfile launches claude** (a task whose description mentions Claude — oracle's `task production-workload`…) starts new chats as `task <name>` instead: `GET /api/launchers?cwd=` lists them (`task --list --json`, cached by the file's mtime, `TASK_BIN` overrides), `POST /api/terminals {cwd, task}` checks the name against that list; claude is then a *descendant* of the PTY's pid, found through `ps` (`linkTermToRegistry`, `t.claudePid`), which is also where the launcher's name is written down for good (`noteEnv` → `envs` in the state file → `s.env`, what ⌥⌘O scopes by). A resume never goes through task. **`/clear` (or `/resume`) in the drawer** gives that pid a new session id — the registry file says so — and `linkTermToRegistry` moves the holder to it; the page follows the holder to whatever chat it runs (`terminal` event → `openSession`), the old chat is a stale card |
 
 **Never written: anything under `~/.claude`.** The board is read-only against Claude Code's data. The fake claude
 refuses to run against the real directory for the same reason.
@@ -103,7 +103,7 @@ refuses to run against the real directory for the same reason.
   once, between the clauding and the ready cards. A finished job moves its card into the ready group, where its
   last prompt puts it.
 * **State lives in three places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done
-  ticks, named projects, board titles, pins; `STATE_FILE` overrides) shared by the app and every browser; the
+  ticks, named projects, board titles, pins, the environment each chat was started in; `STATE_FILE` overrides) shared by the app and every browser; the
   browser's `localStorage` `peixairada-prefs` (selected project, filters, widths, zoom, folds, drawer open/height);
   and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it renders reads its state from prefs.
 
@@ -115,15 +115,32 @@ refuses to run against the real directory for the same reason.
   away, several open the picker in `pr` mode every time, the one showing marked *current* (no PR → the folder's
   GitHub repo, `state.repos` from `git remote`) —, C this chat's claude session (`termAction()`, the `>_` button's path — arm and take over
   included, focus at the end), P the project picker, K the chat picker (`chat` mode: every ready or clauding chat,
-  every project, the list's order, searched by `chatText()`; ⏎ is `openSession`), N a new chat as steps of the one
-  dialog (`new` → `folder` when the project spans several → `env` when `newChatIn()` finds launchers; the + button and the
-  folder pick-list take the same `newChatIn` path), **O the same flow answered down to the environment: a new chat in
-  oracle** (`hotOracle()` → `newChatIn()` on the project `ORACLE` names in `projectList()` — a folder, a pin or a named
-  set; off the board is a `note()`; the `env` step names the folder, since O never asked), ↑ / ↓ the chat above or below in the list as shown (`hotMove()`),
+  every project, the list's order, searched by `chatText()`; ⏎ is `openSession`), N a chat as steps of the one
+  dialog (`new` → `chats` → `folder` when the project spans several → `env` when `newChatIn()` finds launchers), **O the
+  same with the project answered and the environment brought forward** (`hotOracle()` → `newChatIn(cwd, 'chats')` on
+  the project `ORACLE` names in `projectList()` — a folder, a pin or a named set; off the board is a `note()`),
+  ↑ / ↓ the chat above or below in the list as shown (`hotMove()`),
   ← / → the tab beside in the strip, wrapping (`hotTab()` → `openTab()`, the tab click's path).
   Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A
   `dialog[open]` swallows them; no chat or no PR is a `note()`. The cog lists every key (`.keys` in `#settings`) —
   keep it in step by hand, with `boardKeys` in main.swift.
+* **The pickers match fuzzily, and with something typed the best match leads** (2026-09-21): `fuzzy(fields, q)` —
+  each word of the query hunted *within one field* (`chatFields(s)`, which `chatText` joins for the column's literal
+  magnifier), letters in order, a run worth more than scattered ones, a word's start worth more than its middle, a
+  gap costing; a field's worth falls off down the list, so a name or a branch beats a long prompt a short word
+  wandered into. `hunt()` ranks; an empty box leaves every list in its own order. `mark()` bolds what landed
+  (`fuzzMarks`), runs merged. **The column's own filter boxes stay literal** — nothing there re-orders, so fuzzy
+  would only add noise. → Decisions, 2026-09-21.
+* **The last step of the new-chat flow is a list of chats** (2026-09-21): the `chats` step is the scope's ready and
+  clauding chats by `byUser` (newest touch first, done ones out) under a ＋ *new chat* row that carries on with the
+  flow — `scopeChats()` / `chatsStep()` / `newFromChats()`; it skips itself when the scope has none. ⌥⌘N scopes it to
+  the project, ⌥⌘O to *one environment* (`then: 'chats'` rides the `folder` and `env` steps and makes the environment
+  a scope instead of the last thing asked). Typing filters the chats only, and moves the selection off ＋ onto the
+  first match. A chat's environment is `s.env` — the server's `envs` record, so it outlives the drawer; a chat with
+  none shows under ⌥⌘N and under no environment. The `env` step counts what each environment holds — the column's own
+  pills, `pillsHtml(envCounts(cwd, name))` — and a card whose chat has an `env` wears it beside the folder name
+  (`.chip.env`, borderless, in `--repo`; it forces the card's `.top` row into being in a project column, where there
+  is no folder name to sit next to). → `scripts/scenarios/new-chat-flow.mjs`.
 * **The cog's popover is the whole of the board's settings** (2026-09-21): the plan usage at the top, half again
   the size of the rest, and the keys under it — nothing else. It opens on *hover of `#pfoot`*, the strip's footer,
   which reaches the window's bottom left pixel; a click on the cog pins it, Esc or a click away closes it. The fish
@@ -244,8 +261,8 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   fake claude when asked, launches Chrome with **focus emulation on**, and ends terminals, holders, Chrome and temp
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
-  `assert`. The nine in `scripts/scenarios/` are the regression checks for the drawer (re-attach, restart,
-  geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a compose key), the hotkeys and the tab strip.
+  `assert`. The ten in `scripts/scenarios/` are the regression checks for the drawer (re-attach, restart,
+  geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a compose key), the hotkeys, the tab strip and the new-chat flow.
 * **Test against the fake claude, not real chats**: `scripts/fakeclaude.mjs` via `CLAUDE_BIN` (the test server's
   `fake: true`) is instant and touches nothing. A test against the real `~/.claude` (read-only, `claudeDir` unset)
   must use a stale chat and `DELETE` the terminals it made.
