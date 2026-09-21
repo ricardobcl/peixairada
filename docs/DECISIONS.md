@@ -4,6 +4,42 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-21.
 
+## Decisions of 2026-09-21 — a project is a folder in ~/acme, or a repo to clone
+
+* **⌥⌘N's project step lists the folders too** (Ricardo: "adding a new project is a bit cumbersome: we should
+  present all folders locally on ~/acme and to add a new one, assume it's an acme organization git repo, clone
+  it to ~/acme and open a new chat"). A project on this board is a folder some chat ran in, which is a fine rule
+  for a board of the work in flight and a poor one for *starting* work: the step could only ever offer a folder
+  that already had a chat, so a repo you had not opened here was reached by leaving the board — a terminal, a `cd`,
+  `claude`. The step now carries every folder directly under the org's directory that is on no project, after the
+  board's own, with its path beside the name.
+* **One name for the directory and the organisation.** `ORG` is `acme` and `ORG_DIR` is `~/acme`, the second
+  defaulting from the first, because that is how this Mac is laid out: the folder you keep the org's repos in is
+  named after the org. Both are env overrides, so a machine that does it differently says so once.
+* **The folders are matched by their exact path**, so a repo whose chats all live in a *subfolder* of it — the
+  wallet-api resolvers, oracle's own — is still offered at its root. Two rows with the same name, one of them
+  showing a path, is the honest picture: they are two places to start.
+* **A name that matches no folder is a repo you have not cloned**, and the last row offers to: `POST /api/clone`
+  runs `gh repo clone <org>/<name>` into ORG_DIR and the ordinary new-chat flow carries on in what it cloned, so
+  ⌥⌘N, a name and ⏎ is the whole of "add a project". gh, not git: it is already how the board asks GitHub about
+  PRs, it knows the account's protocol, and it says plainly when there is no such repo. The row is never filtered
+  out — it *is* what a query nothing matches is for — and it takes the query as typed, since a repository has a
+  name and not a spelling.
+* **This is the one thing the board writes outside its own state.** Everything else it does to `~` is reading, and
+  `~/.claude` is never written at all. A clone is a new directory with a name the server checks against
+  `/^[A-Za-z0-9][\w.-]*$/`, in one fixed parent; a clone that fails and left an empty directory behind takes it
+  away again, so the next try is not told the folder is already there.
+* **A long path goes beside the name, never in its own column.** The first cut put `~/acme/<name>` in the row's
+  last (`auto`) column: that track is sized by the whole string — a percentage `max-width` on the item does not
+  come into it — and the name's `1fr` collapsed to "＋ cl…". It reads `into ~/acme` inside the name span now,
+  where the row's own ellipsis takes it, which is what the folder rows were already doing.
+* **The hint is written twice**: the step opens before the server has answered, so the box first names no directory
+  at all (`~`), and `loadFolders` writes it again with the rows. Verified in the browser —
+  `scripts/scenarios/new-project.mjs` (its own ORG_DIR of three folders, the clone POST stubbed: the rows, the
+  ranking, the clone row and the chat that follows both it and a plain folder) — and `test/folders.test.mjs` for
+  the listing and what a clone refuses. `hotkeys` and `new-chat-flow` now point ORG_DIR at an empty directory of
+  their own: `~/acme/oracle` exists on this Mac and would have competed with the fixture's oracle project.
+
 ## Decisions of 2026-09-21 — ⌘F searches the page in the pane
 
 * **⌘F is find-on-page, for the pane only** (Ricardo: "I want to search inside github page like I do on browsers",

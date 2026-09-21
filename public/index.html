@@ -500,6 +500,11 @@
   .pkrow.chat .num { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pkrow.chat.new .n { color: var(--accent); }   /* ＋ new chat, head of the chats step: the project's colour, the accent's words */
   .pkrow.env { grid-template-columns: auto auto 1fr auto; }   /* ⌥⌘N's last step: colour · task name · what the Taskfile says it does · how many chats are open under it */
+  /* ⌥⌘N's project step carries the org's folders that have no chat yet — a project's weight, the path beside the name —
+     and ＋ clone <org>/<name> last, in the accent, for a name that is none of them. */
+  .pkrow.folder .n { font-weight: 600; }
+  .pkrow.clone .n { color: var(--accent); }
+  .pkrow.clone .n .cur { color: var(--muted); }
   .pkrow.env .num { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .pkrow.chat[data-state="clauding"] .st { color: var(--working); } .pkrow.chat[data-state="asking"] .st { color: var(--needs); } .pkrow.chat[data-state="ready"] .st { color: var(--idle); }
   .pkrow .st { font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: .5px; color: var(--muted); }
@@ -584,7 +589,7 @@
     <kbd>⌥⌘O</kbd><span>oracle — its environments, then that one's open chats and ＋ a new one</span>
     <kbd>⌥⌘P</kbd><span>project picker</span>
     <kbd>⌥⌘K</kbd><span>chat picker — every ready or clauding chat, fuzzy: <em>wapi res</em> finds <em>wallet-api resolvers</em></span>
-    <kbd>⌥⌘N</kbd><span>a chat — pick the project, then one of its open chats or ＋ a new one (the folder and the environment follow)</span>
+    <kbd>⌥⌘N</kbd><span>a chat — a project, a folder in ~/acme, or ＋ clone a repo of the org · then its open chats or ＋ a new one</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
     <kbd>⌥⌘←→</kbd><span>the tab to the left / right: chat, zsh, GitHub pages, VS Code</span>
     <kbd>⌘+ ⌘− ⌘0</kbd><span>chat and terminal size</span>
@@ -638,6 +643,7 @@
 //   js  · render: both lists
 //   js  · ⌥⌘P: the project picker. Same list as the column, in the same order; the box filters by name.
 //   js  · the pickers' matcher: fuzzy since 2026-09-21
+//   js  · the org's folders, and cloning one that is not here yet (2026-09-21)
 //   js  · the colour picker
 //   js  · project editor
 //   js  · PRs: the strip under the header, and where a GitHub link goes
@@ -1064,7 +1070,7 @@
   const PICK_HINT = {
     project: 'Project — type to filter · ↑↓ · ⏎ opens · esc', pr: 'Pull request — type to filter · ↑↓ · ⏎ opens · esc',
     chat: 'Chat — ready or clauding, every project · type any letters in order · ↑↓ · ⏎ opens · esc',
-    new: 'New chat — which project? type to filter · ↑↓ · ⏎ · esc',
+    new: () => `New chat — a project, a folder in ${homePath(folders.root) || '~'}, or a name to clone from ${folders.org} · ↑↓ · ⏎ · esc`,
     folder: ctx => `${ctx.then === 'chats' ? 'Which folder' : 'New chat — which folder'}? type to filter · ↑↓ · ⏎ · esc`,
     // named: ⌥⌘O never asked which folder. From ⌥⌘O the environment is a scope (its chats follow); from ⌥⌘N it is the last step.
     env: ctx => ctx.then === 'chats' ? `${folderName(ctx.cwd)} — which environment? its open chats, and a new one · ↑↓ · ⏎ · esc`
@@ -1074,6 +1080,56 @@
   const PICK_NOUN = { pr: 'PR', chat: 'chat', chats: 'chat', folder: 'folder', env: 'environment' };   // for "no … matches"; the rest are projects
   const homePath = f => f.replace(/^\/Users\/[^/]+(?=\/|$)/, '~');
   const chatState = s => bucket(s) === 'working' ? 'clauding' : s.status === 'needs-input' && s.alive ? 'asking' : 'ready';
+  // ---- the org's folders, and cloning one that is not here yet (2026-09-21) ----------------------
+  // Ricardo: "adding a new project is a bit cumbersome: we should present all folders locally on ~/acme and to add
+  // a new one, assume it's an acme organization git repo, clone it to ~/acme and open a new chat". A project on
+  // the board is a folder a chat ran in, so ⌥⌘N's project step could only ever offer a folder that already had one —
+  // the repos you had not touched today were not there, and the ones you had not cloned were nowhere at all. The step
+  // now carries every folder under the org's directory after the board's own projects, and a name that is none of
+  // them is offered as ＋ clone. The server answers `GET /api/folders` (cached by the directory's mtime), so this is
+  // asked on every opening and the rows appear when it lands.
+  const folders = { root: '', org: 'acme', list: [] };
+  async function loadFolders() {
+    try {
+      const r = await fetch('/api/folders'); if (!r.ok) return;
+      const d = await r.json();
+      Object.assign(folders, { root: d.root || '', org: d.org || folders.org, list: d.folders || [] });
+      if ($('#pick').open && pick.mode === 'new') { pickHint(); pickRender(); }   // the box named no directory until now
+    } catch {}
+  }
+  /** The folders that are not already a project on the board — matched by the exact folder, so a repo whose chats all
+   *  live in a subfolder of it is still offered at its root, which is a different place to start. */
+  const freeFolders = () => {
+    const taken = new Set(projectList().flatMap(p => p.cwds));
+    return folders.list.filter(f => !taken.has(f.cwd)).map(f => ({ key: f.cwd, name: f.name, cwd: f.cwd, cwds: [f.cwd], folder: true }));
+  };
+  const CLONE_NAME = /^[A-Za-z0-9][\w.-]*$/;   // the server's own rule for a name it will clone — no row it would refuse
+  /** ＋ clone, last and never filtered out: a name that is no folder here is a repo of the org you have not cloned.
+   *  The query as typed, not lowercased — a repository has a name, not a spelling. */
+  function cloneRow(items) {
+    const name = $('#pickq').value.trim();
+    if (!name || !CLONE_NAME.test(name) || !folders.root) return null;
+    if (items.some(x => x.name.toLowerCase() === name.toLowerCase())) return null;
+    return { clone: true, name };
+  }
+  // The clone itself, then the same flow as any folder: its chats (none, freshly cloned) and ＋ a new one, so the
+  // chat starts without another keystroke. The server answers only when git is done — a big repo takes a while — so
+  // the box says what is happening, and the list holds the answer when it goes wrong.
+  async function cloneAndStart(name) {
+    const q = $('#pickq'), was = q.placeholder;
+    q.value = ''; q.placeholder = `cloning ${folders.org}/${name}…`; q.disabled = true;
+    $('#picklist').innerHTML = `<div class="none">cloning ${esc(folders.org)}/${esc(name)} into ${esc(homePath(folders.root))} — a big repo takes a while…</div>`;
+    let d = {}, ok = false;
+    try {
+      const r = await fetch('/api/clone', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) });
+      ok = r.ok; d = await r.json().catch(() => ({}));
+    } catch (e) { d = { error: e.message }; }
+    q.disabled = false; q.placeholder = was; q.focus();
+    if (!ok || !d.cwd) { $('#picklist').innerHTML = `<div class="none">could not clone ${esc(folders.org)}/${esc(name)} — ${esc(d.error || 'the server said no')}</div>`; return; }
+    loadFolders();
+    chatsStep({ key: d.cwd, name, cwds: [d.cwd] });
+  }
+  const pickHint = () => { const h = PICK_HINT[pick.mode]; $('#pickq').placeholder = typeof h === 'function' ? h(pick.ctx) : h; };
   function pickOpen(mode = 'project', ctx = {}) {
     const dlg = $('#pick');
     if (!dlg.open) {   // a step of the new-chat flow re-fills the open dialog; a hotkey never gets here with one up
@@ -1082,7 +1138,8 @@
       dlg.showModal();
     }
     pick.mode = mode; pick.ctx = ctx; pick.sel = 0;
-    $('#pickq').value = ''; $('#pickq').placeholder = typeof PICK_HINT[mode] === 'function' ? PICK_HINT[mode](ctx) : PICK_HINT[mode];
+    if (mode === 'new') loadFolders();   // the org's folders, fresh: the rows join the list when the answer lands
+    $('#pickq').value = ''; pickHint();
     pickRender(); $('#pickq').focus();
   }
   function pickRender() {
@@ -1129,10 +1186,19 @@
       // …each with what the next step would show under it: the board's own pills, clauding first, then ready — the
       // count of this environment's chats that are not ticked done, so an environment already busy says so here.
       rows = pick.list.map((l, i) => `<div class="pkrow env${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(pick.ctx.cwd))}" title="task ${esc(l.name)} in ${esc(pick.ctx.cwd)}"><span class="sq"></span><span class="n">${mark(l.name)}</span><span class="num">${mark(l.desc)}</span><span class="pills">${pillsHtml(envCounts(pick.ctx.cwd, l.name))}</span></div>`);
-    } else {   // project — and new, the same rows without ALL and without a named project that has no folder yet
-      pick.list = hunt(projectList().filter(p => pick.mode === 'project' || (p.key !== ALL && p.cwds.length)), p => [p.name]);
+    } else {   // project — and new, the same rows without ALL and without a named project that has no folder yet,
+               // then the org's folders that are on no project, then ＋ clone for a name that is neither
+      const board = projectList().filter(p => pick.mode === 'project' || (p.key !== ALL && p.cwds.length));
+      const items = pick.mode === 'new' ? [...board, ...freeFolders()] : board;
+      pick.list = hunt(items, p => p.folder ? [p.name, homePath(p.cwd)] : [p.name]);
+      const clone = pick.mode === 'new' ? cloneRow(items) : null;
+      if (clone) pick.list = [...pick.list, clone];
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
-      rows = pick.list.map((p, i) => `<div class="pkrow${sel(i)}" data-i="${i}" style="${repoStyle(projColor(p))}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}${p.key === prefs.project ? '<span class="cur">current</span>' : ''}</span><span class="pills">${pillsHtml(p)}</span><span class="t">${p.last ? rel(p.last) : ''}</span></div>`);
+      rows = pick.list.map((p, i) => p.clone
+        ? `<div class="pkrow clone${sel(i)}" data-i="${i}" title="gh repo clone ${esc(folders.org)}/${esc(p.name)} into ${esc(homePath(folders.root))}"><span class="sq"></span><span class="n">＋ clone ${esc(folders.org)}/${esc(p.name)}<span class="cur">into ${esc(homePath(folders.root))}</span></span><span class="pills"></span><span class="t"></span></div>`
+        : p.folder
+          ? `<div class="pkrow folder${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(p.cwd))}" title="${esc(p.cwd)}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}<span class="cur">${esc(homePath(p.cwd))}</span></span><span class="pills"></span><span class="t"></span></div>`
+          : `<div class="pkrow${sel(i)}" data-i="${i}" style="${repoStyle(projColor(p))}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}${p.key === prefs.project ? '<span class="cur">current</span>' : ''}</span><span class="pills">${pillsHtml(p)}</span><span class="t">${p.last ? rel(p.last) : ''}</span></div>`);
     }
     $('#picklist').innerHTML = rows.join('') || `<div class="none">no ${PICK_NOUN[pick.mode] || 'project'} matches</div>`;
     $('#picklist .pkrow.sel')?.scrollIntoView({ block: 'nearest' });
@@ -1141,7 +1207,9 @@
     const x = pick.list[i], dlg = $('#pick'); if (!x) { dlg.close(); return; }
     if (pick.mode === 'pr') { dlg.close(); showPr(x.url); }
     else if (pick.mode === 'chat') { dlg.close(); openSession(x.id); }
-    else if (pick.mode === 'new') chatsStep({ key: x.key, name: x.name, cwds: x.cwds });   // the project's open chats, ＋ a new one
+    else if (pick.mode === 'new') {   // a project's, or a folder's, open chats with ＋ a new one — or the clone first
+      if (x.clone) cloneAndStart(x.name); else chatsStep({ key: x.key, name: x.name, cwds: x.cwds });
+    }
     else if (pick.mode === 'chats') { if (x.isNew) newFromChats(pick.ctx); else { dlg.close(); openSession(x.id); } }
     else if (pick.mode === 'folder') newChatIn(x.cwd, pick.ctx.then);
     else if (pick.mode === 'env') {   // from ⌥⌘O the environment scopes the chats step; from ⌥⌘N it was the last thing asked

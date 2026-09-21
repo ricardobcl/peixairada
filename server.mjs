@@ -25,6 +25,7 @@
 //  Terminals: a real `claude` in a PTY, attached to from the page over a WebSocket
 //      · the holder protocol: newline-delimited JSON over the holder's socket (see lib/termhold.mjs)
 //      · launchers: a folder's own way to start claude
+//      · the org's folders: where the repos live, and cloning one that is not there yet
 //  One PR in detail: the strip under the chat header when a chip is clicked
 //  HTTP
 //  Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
@@ -33,7 +34,7 @@
 
 import { createServer, get as httpGet } from 'node:http';
 import {
-  chmodSync, closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, renameSync, statSync, unlinkSync, watch, writeFileSync
+  chmodSync, closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, renameSync, rmSync, statSync, unlinkSync, watch, writeFileSync
 } from 'node:fs';
 import { connect as netConnect } from 'node:net';
 import { basename, dirname, join } from 'node:path';
@@ -1150,6 +1151,59 @@ function launchersFor(cwd) {
   });
 }
 
+// ---- the org's folders: where the repos live, and cloning one that is not there yet -------------------------------
+// A project on the board is a folder some chat ran in, so a repo you have not opened a chat in is nowhere to be seen,
+// and one you have not cloned is nowhere at all — which made starting work on a repo the longest thing the board
+// asked of you (2026-09-21, Ricardo: "adding a new project is a bit cumbersome"). `ORG_DIR` is the directory the
+// repos live in (~/acme) and `ORG` the GitHub organisation they come from — one name for both, since that is how
+// it is laid out here; both are env overrides, and neither is written to except by the one clone below.
+const ORG = process.env.ORG || 'acme';
+const ORG_DIR = process.env.ORG_DIR || join(homedir(), ORG);
+const REPO_NAME = /^[A-Za-z0-9][\w.-]*$/;          // a name for a folder and a repo, and nothing that walks out of ORG_DIR
+const CLONE_MS = Number(process.env.CLONE_MS || 10 * 60_000);   // a big repo over a slow line; the page waits on it
+const isDir = p => { try { return statSync(p).isDirectory(); } catch { return false; } };
+let folderCache = { mtime: -1, folders: [] };
+
+/** Every folder directly under ORG_DIR, by name. Cached by the directory's own mtime — a clone or a `git clone` by
+ *  hand moves it, and the picker asks on every opening. */
+function orgFolders() {
+  let mtime; try { mtime = statSync(ORG_DIR).mtimeMs; } catch { return []; }
+  if (folderCache.mtime === mtime) return folderCache.folders;
+  let folders = [];
+  try {
+    folders = readdirSync(ORG_DIR, { withFileTypes: true })
+      .filter(d => !d.name.startsWith('.') && (d.isDirectory() || (d.isSymbolicLink() && isDir(join(ORG_DIR, d.name)))))
+      .map(d => ({ name: d.name, cwd: join(ORG_DIR, d.name) }))
+      .map(f => ({ ...f, git: existsSync(join(f.cwd, '.git')) }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch (e) { console.error(`[peixairada] ${ORG_DIR}: ${e.message}`); }
+  folderCache = { mtime, folders };
+  return folders;
+}
+
+/** `gh repo clone <org>/<name>` into ORG_DIR — gh because it is already how the board asks GitHub about PRs, it knows
+ *  the account's protocol, and it says plainly when there is no such repo. A folder that is already there is handed
+ *  back as it is (the page carries straight on into the new-chat flow with it); a clone that failed leaves nothing
+ *  behind, so the next try is not told the folder exists. */
+function cloneRepo(name, done) {
+  if (!REPO_NAME.test(name || '')) return done({ code: 400, error: `"${name}" is not a repository name` });
+  const cwd = join(ORG_DIR, name);
+  if (existsSync(cwd)) return done({ code: 200, cwd, cloned: false });
+  const bin = findBin('gh', 'cloning from the board is disabled');
+  if (!bin) return done({ code: 503, error: 'gh not found — set GH_BIN to its path, or clone it by hand' });
+  try { mkdirSync(ORG_DIR, { recursive: true }); } catch (e) { return done({ code: 500, error: `${ORG_DIR}: ${e.message}` }); }
+  console.log(`[peixairada] clone ${ORG}/${name} → ${cwd}`);
+  execFile(bin, ['repo', 'clone', `${ORG}/${name}`, cwd], { cwd: ORG_DIR, env: termEnv(), timeout: CLONE_MS, maxBuffer: 4e6 }, (err, _out, stderr) => {
+    folderCache = { mtime: -1, folders: [] };
+    if (!err) { console.log(`[peixairada] cloned ${ORG}/${name}`); return done({ code: 200, cwd, cloned: true }); }
+    try { if (existsSync(cwd) && !readdirSync(cwd).length) rmSync(cwd, { recursive: true }); } catch {}
+    // execFile's callback error carries no output of its own: gh says why on stderr ("could not find any repository…").
+    const why = String(stderr || err.message).trim().split('\n').filter(Boolean).pop() || 'clone failed';
+    console.error(`[peixairada] clone ${ORG}/${name}: ${why}`);
+    done({ code: 502, error: why });
+  });
+}
+
 /**
  * Start `claude` (or `claude --resume <id>`, or `task <name>` — a launcher, see above) in `cwd`: write the spec, spawn
  * the holder detached (its own session, so a signal to this server never reaches it), wait for its socket. The holder
@@ -1530,6 +1584,11 @@ const server = createServer(async (req, res) => {
       const cwd = url.searchParams.get('cwd') || '';
       if (!cwd.startsWith('/')) return json(res, 400, { error: 'cwd must be an absolute path' });
       return json(res, 200, { cwd, launchers: await launchersFor(cwd) });
+    }
+    if (req.method === 'GET' && p === '/api/folders') return json(res, 200, { root: ORG_DIR, org: ORG, folders: orgFolders() });
+    if (req.method === 'POST' && p === '/api/clone') {   // a repo of the org, cloned into ORG_DIR — then the page starts a chat in it
+      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      return cloneRepo(typeof body.name === 'string' ? body.name.trim() : '', r => r.error ? json(res, r.code, { error: r.error }) : json(res, r.code, { cwd: r.cwd, cloned: r.cloned }));
     }
     if (req.method === 'POST' && p === '/api/terminals') {   // a new chat in a folder — `claude`, or `task <name>` when the folder launches it so
       let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}

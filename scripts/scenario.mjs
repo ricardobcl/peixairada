@@ -3,8 +3,9 @@
 // cannot do: attach a drawer, wait, act, measure, screenshot each step, restart the server under it.
 //   node scripts/scenario.mjs scripts/scenarios/<name>.mjs [--url URL | --server] [--fake] [--fixture auto|<dir>]
 //                              [--hash <id>] [--shots <dir>] [--keep] [--timeout <ms>] [-- <args for the scenario>]
-// A scenario is an ES module: `export const meta = { server: true, fake: true, fixture: 'auto' }` (its needs, so no
-// flags are required) and `export default async function (ctx) { … return result }`. `ctx` carries the page
+// A scenario is an ES module: `export const meta = { server: true, fake: true, fixture: 'auto', env: {…} }` (its
+// needs, so no flags are required — `env` goes to the throwaway server, for the ones it reads from its environment)
+// and `export default async function (ctx) { … return result }`. `ctx` carries the page
 // (evaluate, waitFor, send, sleep, shot(name), key(code), openChat(id), screen()), the throwaway server when there
 // is one (api, terminals, restart, holders, logText), the fixture's chats, `args`, `log` and node:assert as `assert`.
 // Everything is cleaned up on exit — Chrome, the server, its terminals and holders, the temp dirs — unless --keep.
@@ -45,7 +46,7 @@ if (meta.fixture) {
   log(`fixture ${dir}${fixture.chats.length ? ' — chats ' + fixture.chats.map(c => c.id.slice(0, 8)).join(', ') : ''}`);
 }
 if (meta.server || !boardUrl) {
-  server = await startTestServer({ claudeDir: fixture?.dir || null, fake: !!meta.fake, keep });
+  server = await startTestServer({ claudeDir: fixture?.dir || null, fake: !!meta.fake, env: meta.env || {}, keep });
   cleanups.push(() => server.stop());
   boardUrl = server.url;
   log(`server ${server.url} (state ${server.dir}${meta.fake ? ', fake claude' : ''})`);

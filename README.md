@@ -79,7 +79,7 @@ page simply cannot do for itself:
 | 🔔 | **Native notifications** from *peixAIrada*, not from "Script Editor" — and clicking one opens that session in the board. Only fires while the window isn't in front. Falls back to the old `osascript` banner if notification permission is refused. |
 | 🎯 | **Dock badge** with the alerts you haven't seen, and a **menu-bar fish** whose menu lists every session waiting on you. Click one to jump straight to it. |
 | 🐙 | **Pages as tabs.** Click a PR row under the chat header (or a card's chip) and the pull request opens on a tab of the chat — beside *chat*, *zsh* and *VS Code* — in a web view of the app's (GitHub refuses to be framed), with ‹ › ↻ ↗ in the strip and your GitHub login kept between launches. **Esc** or the *chat* tab brings the chat back; **×** on a tab forgets its page. |
-| ⌨️ | ⌘R reload, ⌘⇧R restart server. Close the window and it keeps running in the menu bar. |
+| ⌨️ | ⌘R reloads what is in front of you — the page on the pane while one is up, the board otherwise; ⌘⇧R restarts the server. **⌘F finds on the page in the pane**, as a browser does: a bar over its top right, ⏎ / ⇧⏎ or ⌘G / ⇧⌘G for the next match and the one before, esc to close it (no *1 of 12* — WebKit only says whether it found one, and a miss turns the text red). Close the window and it keeps running in the menu bar. |
 | 🎨 | **An icon drawn in code** ([`mac/icon/MakeIcon.swift`](mac/icon/MakeIcon.swift)) — a fish in Claude terracotta with a starburst eye, no image assets anywhere — that simplifies itself at 16/32 px so it stays legible in the menu bar. |
 
 Logs live in `~/Library/Logs/peixairada.log` (server) and `peixairada-app.log` (the shell:
@@ -125,8 +125,10 @@ magnifier under it filters projects (the strip opens to let you type and folds b
 **⌥⌘P** from anywhere opens a project picker the VS Code way — type to filter, ↑↓, ⏎ opens it, esc closes;
 **⌥⌘K** the same box filled with **every chat that is ready or clauding**, across the projects, in the list's order
 (colour · title · project · state · age), searched by title, project, prompt or branch — ⏎ opens it, switching project
-when it lives elsewhere; **⌥⌘N** a **new chat**: pick the project, then the folder when the project spans several,
-then — in a folder whose Taskfile launches claude (see *+ new chat* below) — the environment; **⌥⌘O** is that
+when it lives elsewhere; **⌥⌘N** a **new chat**: pick the project — or one of the folders in `~/acme` that has no chat yet, they come
+after the board's own, or type a name none of them has and **＋ clone `acme/<name>`** into `~/acme` (`gh repo
+clone`, then straight on into the chat) — then one of its open chats or ＋ a new one, the folder when the project
+spans several, and — in a folder whose Taskfile launches claude (see *+ new chat* below) — the environment; **⌥⌘O** is that
 flow with the first answers in — a new chat in **oracle**, opening straight on its environments (the
 same ⌥⌘ family drives the open chat: **⌥⌘C** its claude session, **⌥⌘T** a zsh in its folder, **⌥⌘E** VS Code Web,
 **⌥⌘G** its PR, **⌥⌘↑ / ⌥⌘↓** the chat above or below in the list, **⌥⌘← / ⌥⌘→** the tab beside — chat, zsh, GitHub

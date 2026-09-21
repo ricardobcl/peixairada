@@ -141,6 +141,15 @@ refuses to run against the real directory for the same reason.
   pills, `pillsHtml(envCounts(cwd, name))` — and a card whose chat has an `env` wears it beside the folder name
   (`.chip.env`, borderless, in `--repo`; it forces the card's `.top` row into being in a project column, where there
   is no folder name to sit next to). → `scripts/scenarios/new-chat-flow.mjs`.
+* **The project step holds the folders you have no chat in, and clones one you have not got** (2026-09-21): after the
+  board's own projects come the folders directly under `ORG_DIR` (`~/acme` — the env name doubles as the GitHub
+  organisation, `ORG`) that are on no project (`freeFolders()`, matched by the exact cwd), and a query that names none
+  of them is offered last as **＋ clone `<org>/<name>`** (`cloneRow()`, never filtered out, like the chats step's ＋).
+  `GET /api/folders` lists them, cached by that directory's mtime and asked on every opening; `POST /api/clone {name}`
+  runs `gh repo clone <org>/<name>` into it — **the only thing the board writes outside its own state** — and
+  `cloneAndStart()` carries straight on into the same flow in what it cloned. A long path belongs beside the name
+  (`.cur`), never in the row's `auto` column: it sizes the track and the name's `1fr` is left with nothing.
+  → `scripts/scenarios/new-project.mjs`, Decisions 2026-09-21.
 * **The cog's popover is the whole of the board's settings** (2026-09-21): the plan usage at the top, half again
   the size of the rest, and the keys under it — nothing else. It opens on *hover of `#pfoot`*, the strip's footer,
   which reaches the window's bottom left pixel; a click on the cog pins it, Esc or a click away closes it. The fish
@@ -276,8 +285,10 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   fake claude when asked, launches Chrome with **focus emulation on**, and ends terminals, holders, Chrome and temp
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
-  `assert`. The ten in `scripts/scenarios/` are the regression checks for the drawer (re-attach, restart,
-  geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a compose key), the hotkeys, the tab strip and the new-chat flow.
+  `assert`. The eleven in `scripts/scenarios/` are the regression checks for the drawer (re-attach, restart,
+  geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a compose key), the hotkeys, the tab strip, the new-chat flow
+  and the project step's folders. `meta.env` goes to the throwaway server — a scenario that reads a directory of the
+  machine's (`ORG_DIR`) points it at one of its own, so it does not depend on what `~/acme` happens to hold.
 * **Test against the fake claude, not real chats**: `scripts/fakeclaude.mjs` via `CLAUDE_BIN` (the test server's
   `fake: true`) is instant and touches nothing. A test against the real `~/.claude` (read-only, `claudeDir` unset)
   must use a stale chat and `DELETE` the terminals it made.

@@ -4,9 +4,13 @@
 // → environment, stubbed); O oracle, straight to the environments (a pinned folder called oracle stands in for the
 // real one — with no chats of its own the chats step skips itself); ↓ ↑ walk the list; ← → the tab beside (a real zsh); { } folds per chat; Esc closes a picker and is taken; the cog
 // lists every key; no chat → a note, no oracle → a note.
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-export const meta = { server: true, fixture: 'auto' };
+
+// ⌥⌘N's project step also lists the folders under the org's directory (ORG_DIR): an empty one keeps this
+// scenario about the board's own projects, and off whatever ~/acme happens to hold on this Mac.
+export const meta = { server: true, fixture: 'auto', env: { ORG_DIR: mkdtempSync(join(tmpdir(), 'peix-noorg-')) } };
 export default async function (ctx) {
   const [two, plain] = ctx.fixture.chats;
   const out = {};
@@ -103,7 +107,7 @@ export default async function (ctx) {
   await ctx.evaluate(`window.__posts = []; const real2 = window.fetch; window.fetch = (u, o) => { const s = String(u); if (s.startsWith('/api/launchers')) return Promise.resolve({ ok: true, status: 200, json: async () => ({ launchers: [{ name: 'production-workload', desc: 'Launch Claude Code against the production workload cluster' }, { name: 'sandbox-workload', desc: 'Launch Claude Code against the sandbox workload cluster' }] }) }); if (s === '/api/terminals' && o?.method === 'POST') { window.__posts.push(JSON.parse(o.body)); return Promise.resolve({ ok: false, status: 500, json: async () => ({ error: 'stubbed' }) }); } return real2(u, o); }`);
   await ctx.key('KeyN');
   out.newPicker = { placeholder: await ctx.evaluate(`document.querySelector('#pickq').placeholder`), names: await ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow .n')].map(e => e.firstChild.textContent)`) };
-  ctx.assert.match(out.newPicker.placeholder, /^New chat — which project/); ctx.assert.ok(out.newPicker.names.length >= 2 && !out.newPicker.names.includes('ALL'), 'the projects, without ALL');
+  ctx.assert.match(out.newPicker.placeholder, /^New chat — a project, a folder in /); ctx.assert.ok(out.newPicker.names.length >= 2 && !out.newPicker.names.includes('ALL'), 'the projects, without ALL');
   await ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);   // the first project: its open chats
   await ctx.waitFor(`document.querySelector('#pickq').placeholder.includes('an open chat, or ＋ a new one')`, { what: "the project's chats step" });
   out.chatsStep = { head: await ctx.evaluate(`document.querySelector('#picklist .pkrow')?.className`), rows: await ctx.evaluate(`document.querySelectorAll('#picklist .pkrow').length`), sel: await ctx.evaluate(`document.querySelector('#picklist .pkrow.sel .n')?.textContent`) };

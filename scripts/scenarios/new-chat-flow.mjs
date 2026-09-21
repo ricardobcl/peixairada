@@ -4,12 +4,14 @@
 // by your last touch. Typing moves the selection off ＋ onto the first match, and back onto it when nothing
 // matches — which is how a name no chat has yet starts one. The environment step counts what each one holds, and
 // the cards in the chat column wear the environment they were started in.
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { makeFixture } from '../fixture.mjs';
 
-export const meta = { server: true, fixture: 'auto' };
+// ⌥⌘N's project step also lists the folders under the org's directory (ORG_DIR): an empty one keeps this
+// scenario about the board's own projects, and off whatever ~/acme happens to hold on this Mac.
+export const meta = { server: true, fixture: 'auto', env: { ORG_DIR: mkdtempSync(join(tmpdir(), 'peix-noorg-')) } };
 
 const enter = ctx => ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);
 // In an IIFE: every evaluate lands in the same global scope, and a bare `const q` can only be declared once.
@@ -83,7 +85,7 @@ export default async function (ctx) {
 
   // ---- ⌥⌘N: the project's chats, whatever their environment, newest by your last touch ----
   await ctx.key('KeyN');
-  await ctx.waitFor(`document.querySelector('#pickq').placeholder.startsWith('New chat — which project')`, { what: 'the project step' });
+  await ctx.waitFor(`document.querySelector('#pickq').placeholder.startsWith('New chat — a project')`, { what: 'the project step' });
   await type(ctx, 'oracle'); await enter(ctx);
   await ctx.waitFor(`document.querySelector('#pickq').placeholder.startsWith('oracle — an open chat')`, { what: 'the project\'s chats step' });
   out.allChats = await rows(ctx);
@@ -100,7 +102,7 @@ export default async function (ctx) {
 
   // A name no chat has: only ＋ is left, selected — ⏎ starts a chat, and the environment is asked on the way
   await ctx.key('KeyN');
-  await ctx.waitFor(`document.querySelector('#pickq').placeholder.startsWith('New chat — which project')`, { what: 'the project step again' });
+  await ctx.waitFor(`document.querySelector('#pickq').placeholder.startsWith('New chat — a project')`, { what: 'the project step again' });
   await type(ctx, 'oracle'); await enter(ctx);
   await ctx.waitFor(`document.querySelector('#pickq').placeholder.startsWith('oracle — an open chat')`, { what: 'the chats step again' });
   await type(ctx, 'a thing nobody has asked yet');
