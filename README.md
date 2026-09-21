@@ -178,8 +178,17 @@ A chat is always in exactly one state, and the dot says which:
 
 | | State | What it means |
 |---|---|---|
-| 🟢 | **ready** | The ball is with **you**: Claude replied — or asked a question, wants plan approval, or waits on a permission, and then the card says *asking you*. A chat whose Claude process is gone (panel or terminal closed) is ready too — grey dot, card dimmed a touch: open a terminal on it here, continue it in VS Code, or `claude --resume <id>`, and it walks back on its own. Such chats idle >30 days hide behind *show empty & >30d*; Claude Code deletes their transcripts after 30 days anyway. |
+| 🟢 | **ready** | The ball is with **you**: Claude replied — or asked a question, wants plan approval, or waits on a permission. A chat whose Claude process is gone (panel or terminal closed) is ready too — grey dot, card dimmed a touch: open a terminal on it here, continue it in VS Code, or `claude --resume <id>`, and it walks back on its own. Such chats idle >30 days hide behind *show empty & >30d*; Claude Code deletes their transcripts after 30 days anyway. |
 | 🟡 | **clauding** | Claude is working — a prompt is in flight or tools are running. The card's edge carries a running light in the project's colour. |
+
+The edge says **which kind** of busy, at a glance — one mechanism, four readings:
+
+| Edge | | |
+|---|---|---|
+| **one light running**, project colour | Claude is working | the ordinary turn |
+| **N lights running** | **N sub-agents** are out | the card also wears an *N agents* chip; the chat stays clauding until they are all done |
+| **one light, slowly, in teal** | a **monitor** or a background command of this chat is **still running** | a *monitor* / *running* chip says what, and hovering it gives the description, what is left of its half hour and how many events it has reported. The chat itself may well be ready — that is the point: the turn ended, the watch did not |
+| **the whole edge in red, breathing** | Claude **asked you something** and is waiting | the card carries the question itself and how many answers it offers (⏎ on the card, or open it and answer in the drawer) |
 | ✓ | **done** | Only what **you tick ✓** — nothing is done by itself. Persisted server-side. The mark **expires the instant the chat has new activity**, so a chat you re-prompt comes straight back. Done chats sink to the bottom of the list, dimmed. |
 
 ### Sorting

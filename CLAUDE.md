@@ -63,7 +63,8 @@ npm run map                         # rewrite the section maps at the top of ser
 | Which sessions are alive | `~/.claude/sessions/<pid>.json` + `process.kill(pid, 0)`; watched *and* polled every 10 s (pids die silently) |
 | Where a chat lives | `entrypoint` on user/assistant lines (`claude-vscode` / `cli`), the registry's while it runs — `inVsCode()`. Several processes on one chat: the drawer's own is `live`, else the newest non-VS Code one; the rest are `rivals` on the summary |
 | Reply finished | assistant line with `stop_reason: "end_turn"` (tool calls are `"tool_use"`) — unless a **sub-agent** is at work: `<slug>/<id>/subagents/agent-*.jsonl`, running while its last line is not an end_turn and it wrote within `AGENT_STALE_MS` (`scanAgents()`, on their fs events and every 10 s); a background agent ends the main turn at once, so this is what keeps the card clauding |
-| Waiting on the user | `AskUserQuestion` / `ExitPlanMode` tool call with no result yet |
+| Waiting on the user | `AskUserQuestion` / `ExitPlanMode` tool call with no result yet; the question itself is `s.ask` (tool, text, how many options) and the summary only carries it while the status is `needs-input` |
+| Work behind the turn | `Monitor` and a `Bash` with `run_in_background` leave a task running: the tool_result names it (`Monitor started (task …`, `Command running in background with ID: …`) and `<task-notification>` lines carry its events and, with a `<status>`, its end. `s.tasks` → `tasks` on the summary; a task dies with the claude that started it (`live.startedAt`), at its expiry (`MONITOR_MS`, `TASK_MAX_MS`), or with the chat's process. The end is only seen when that notification is *written* — with the turn that received it — so a chat mid-turn can wear the chip a turn longer |
 | Titles | board title (state file) › `custom-title` › the oldest still-open PR › `ai-title` › last prompt — `summary()`, `prTitle()` |
 | PRs mentioned | `pr-link` lines *and* GitHub pull URLs in user/assistant text; most recently mentioned first; `gh api graphql` batched for state and title (one of the two network calls) |
 | Plan usage (the cog's popover) | `GET https://api.anthropic.com/api/oauth/usage` with Claude Code's own OAuth bearer from the keychain item *Claude Code-credentials*; `USAGE=off` disables; the token never reaches the page. → Findings: *plan usage* |
@@ -78,6 +79,14 @@ refuses to run against the real directory for the same reason.
 * **Three columns**: projects (a strip by default) → the selected project's chats → the chat. A chat is *ready ·
   clauding · done*: done is the tick only, clauding is `working`, ready is everything else (`bucket()`); the
   server keeps the finer `status` for notifications and the badge. → Findings: *The board and its state*.
+* **The card's edge is one ring with four readings** (2026-09-21): `--lit` is what runs in it, `--seg` how much of
+  the edge one light owns (`100% / --lights`, one light per sub-agent), `--spins` how fast. Clauding is the project's
+  colour; **watching** (`s.tasks` — a monitor or a background command still running, see *How it reads Claude Code*)
+  is one light in `--watch`, slowly, and can sit on a *ready* card; **asking** (`needs-input` while alive) is the
+  whole edge in `--needs`, breathing rather than running, with the question and its answer count on the card
+  (`askHtml`). The three CSS rules are in priority order — work beats a monitor, a question beats both — and the
+  chips beside the title say the numbers (`N agents`, `monitor`). → `scripts/scenarios/card-signals.mjs`,
+  Decisions 2026-09-21.
 * **A project is a folder** (the registry's `cwd`, never the transcript's — that one moves with `cd`) **or a
   named set of folders** (state file); worktrees under a repo count as the repo. **Pinned projects** head the
   column (`PUT /api/pins`, the whole list, a `pins` event); folder projects exist only through their sessions.

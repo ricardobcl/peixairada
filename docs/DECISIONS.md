@@ -4,6 +4,52 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-21.
 
+## Decisions of 2026-09-21 — the card's edge says which kind of busy
+
+* **Four readings, one mechanism** (Ricardo: "would be great to have different Card signaling for: normal claude
+  work · a monitor is still running · N sub-agents are running · claude is asking me something via multiple-choice
+  and waiting"). The card had two states in its edge — a running light or nothing — and everything else was a word
+  somewhere: *asking you* in small red type at the bottom, an *N agents* chip on the title row, and nothing at all
+  for a monitor. They are now the same ring with three variables: `--lit` (what runs), `--seg` (how much of the
+  edge one light owns) and `--spins` (how fast). Clauding is the project's colour, one light. N sub-agents are N
+  lights, `--seg: 100% / N`, so a card at work with three agents out is countable across the room. A monitor is one
+  light in the watch colour at a sixth of the speed. A question is the whole edge in red, breathing instead of
+  running — motion says *this one is stopped*, which is the opposite of everything else on the board.
+* **The three CSS rules are in priority order**, because a card can be more than one thing: work beats a monitor
+  (a chat clauding *and* watching shows the work), a question beats both. The states are otherwise independent —
+  a *ready* card can carry a monitor's ring, which is the whole point of having one.
+* **A monitor is something the board could never see before.** Claude Code leaves work running behind the turn —
+  `Monitor` watches something and wakes the chat on each event, a `Bash` with `run_in_background` runs on and
+  reports when it exits — and until now the turn ended, the card went ready, and a chat watching a CI run looked
+  exactly like a chat that was finished. The transcript had it all along: the tool_result of the call carries the
+  id the harness gave the task ("Monitor started (task bs6h9ok2c, expires in 30m…", "Command running in background
+  with ID: b3b928ii6"), and every event and the end arrive as `<task-notification>` lines. Those lines were already
+  dropped as synthetic — rightly, they are not your words — so they are now read *before* that drop, for their
+  `<task-id>` and the `<status>` that ends one.
+* **Nothing is polled and nothing is trusted forever.** A task belongs to the claude that started it: one older
+  than `live.startedAt` (the chat was resumed — the old process took its tasks with it), past a Monitor's own
+  expiry, or in a chat with no live process at all is not running, and `runningTasks` drops it on the next summary.
+  The ten-second loop that already lets a quiet sub-agent go now also pushes when a task expires, because a chat
+  whose last word was "monitor started" has nothing else to push.
+* **The question goes on the card.** `s.ask` — which tool asked, what it asked, how many answers it offers — is
+  carried only while the status is `needs-input`, so it cannot go stale. The card reads *asking you: Which database
+  should the service use?* with *3 answers* beside it, which is often enough to answer without opening the chat.
+* **A task is known to have ended when its notification reaches the transcript**, which is when the turn that
+  received it is written. Tried on the live board with a real background command in the board's own chat: the start
+  was on `/api/sessions` four seconds later, with the harness's own wording and the description — and the
+  completion notice, delivered while that chat was mid-turn, was not a line in the file yet a minute later (the
+  ones in older transcripts, delivered to a chat sitting idle, are there as ordinary user lines). So the chip can
+  lag by a turn on a chat that is clauding anyway — where the work ring wins and the chip is a detail — and the
+  guards above are what bound the rest: the claude's own life, a Monitor's expiry, `TASK_MAX_MS` for a background
+  command whose end never arrived at all. The harness's own `tasks/<id>.output` file is no help: it stays after the
+  command exits, and carries no status.
+* **Verified in the browser, both themes** (`scripts/scenarios/card-signals.mjs`): four chats, each with a live pid
+  of its own (a `sleep` — the server only asks whether the pid is there), the server's `tasks`/`ask`/`agents` and
+  then the cards built from them, down to `--lights: 3` and the chip text, and the monitor's completion taking its
+  ring and chip away again. The fixture grew what those need: `toolLines`, `taskNoteLine`, `replyLines` and a
+  `live` registry file (`scripts/fixture.mjs`). `peix.sessions()` — the harness's reduced view of the board —
+  carries `agents`, `tasks` and `ask` now; the first cut of the scenario failed against it, not against the code.
+
 ## Decisions of 2026-09-21 — a project is a folder in ~/acme, or a repo to clone
 
 * **⌥⌘N's project step lists the folders too** (Ricardo: "adding a new project is a bit cumbersome: we should

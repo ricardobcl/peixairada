@@ -16,6 +16,7 @@
 //      · PRs mentioned in the chat
 //      · …and whether they are open, merged or closed
 //  Sub-agents: <slug>/<id>/subagents/agent-*.jsonl — one at work keeps the chat clauding
+//      · background tasks: a monitor, or a command left running
 //  Live-session registry (~/.claude/sessions/<pid>.json)
 //  Notifications + SSE fan-out
 //  Hooks (optional precision): POST /hook receives Claude Code hook payloads (see hooks/hook.sh)
@@ -313,6 +314,8 @@ function summary(s) {
     // Not alive = the Claude process is gone: 'stale'. Resuming the chat registers a new pid and it comes back.
     status: s.alive ? (s.agentsRunning ? 'working' : s.status === 'unknown' && !s.file ? 'idle' : s.status) : (s.status === 'unknown' ? 'unknown' : 'stale'),
     agents: s.agentsRunning || 0,   // sub-agents at work — what keeps the status 'working' past the main turn's end
+    tasks: runningTasks(s),         // monitors and background commands still running behind the turn
+    ask: s.status === 'needs-input' ? s.ask || null : null,   // the question it is waiting on, and which tool asked
     rawStatus: s.status, statusSince: s.statusSince, lastActivity: s.lastActivity,
     lastUserAt: s.lastUserAt, lastReplyAt: s.lastReplyAt,
     alive: s.alive, live: s.live, entrypoint: s.live?.entrypoint || s.entrypoint, terminal: termSummary(termOf(s)), shell: termSummary(shellOf(s)), entryCount: s.entryCount, loaded: s.loaded, file: s.file, lastHook: s.lastHook,
@@ -363,11 +366,11 @@ function summarizeToolInput(name, input = {}) {
   } catch { return ''; }
 }
 
-function toolResultSnippet(block) {
+function resultText(block) {
   const c = block.content;
-  const text = typeof c === 'string' ? c : Array.isArray(c) ? c.filter(b => b.type === 'text').map(b => b.text).join('\n') : '';
-  return snippet(text, 200);
+  return typeof c === 'string' ? c : Array.isArray(c) ? c.filter(b => b.type === 'text').map(b => b.text).join('\n') : '';
 }
+function toolResultSnippet(block) { return snippet(resultText(block), 200); }
 
 // ---- PRs mentioned in the chat ------------------------------------------------------------
 // Claude Code writes a `pr-link` line when it opens one, but most PRs are just URLs someone typed
@@ -538,7 +541,7 @@ function fold(s, line) {
       const blocks = Array.isArray(content) ? content : null;
       const toolResults = blocks ? blocks.filter(b => b?.type === 'tool_result') : [];
       if (toolResults.length) {
-        for (const b of toolResults) pushEntry(s, { role: 'user', kind: 'tool_result', toolUseId: b.tool_use_id, isError: !!b.is_error, text: toolResultSnippet(b), ts });
+        for (const b of toolResults) { startTask(s, b, ts); pushEntry(s, { role: 'user', kind: 'tool_result', toolUseId: b.tool_use_id, isError: !!b.is_error, text: toolResultSnippet(b), ts }); }
         s.lastActivity = ts;
         if (s.status === 'needs-input') { s.lastUserAt = ts; setStatus(s, 'working', ts); } // question answered — that was you
         return true;
@@ -553,7 +556,9 @@ function fold(s, line) {
       // The reminder blocks go first: Claude Code puts them at the head of the user's own text, and a prompt that
       // follows one is a prompt (the test that caught it: 2026-09-20). Only what remains is judged synthetic.
       const text = cleanPrompt(raw);
-      if (!text || SYNTHETIC_RE.test(text)) return false;
+      if (!text) return false;
+      if (TASK_NOTE_RE.test(text)) return noteTaskEvent(s, text, ts);   // a monitor's event, or the end of one
+      if (SYNTHETIC_RE.test(text)) return false;
       pushEntry(s, { role: 'user', kind: 'text', text, ts, uuid: line.uuid });
       notePrs(s, text, ts, 'user');
       s.lastPrompt = snippet(text, 200);
@@ -573,7 +578,9 @@ function fold(s, line) {
         if (b.type === 'text' && b.text?.trim()) { pushEntry(s, { role: 'assistant', kind: 'text', text: b.text, ts, msgId: m.id }); notePrs(s, b.text, ts, 'claude'); }
         else if (b.type === 'tool_use') {
           pushEntry(s, { role: 'assistant', kind: 'tool_use', name: b.name, text: summarizeToolInput(b.name, b.input), toolUseId: b.id, ts });
-          if (NEEDS_INPUT_TOOLS.has(b.name)) needsInput = true;
+          if (NEEDS_INPUT_TOOLS.has(b.name)) { needsInput = true; s.ask = { tool: b.name, text: summarizeToolInput(b.name, b.input), options: b.input?.questions?.[0]?.options?.length || 0 }; }
+          if (b.name === 'Monitor' || (b.name === 'Bash' && b.input?.run_in_background)) noteTaskCall(s, b);
+          if (b.name === 'TaskStop' && s.tasks?.size) { const j = JSON.stringify(b.input || ''); for (const id of [...s.tasks.keys()]) if (j.includes(id)) s.tasks.delete(id); }
         }
       }
       s.lastActivity = ts;
@@ -683,6 +690,61 @@ function scanAgents(s) {
   if (dir) try { names = readdirSync(dir); } catch {}
   const running = names.filter(n => n.endsWith('.jsonl') && agentRunning(join(dir, n))).length;
   if (running !== (s.agentsRunning || 0)) { s.agentsRunning = running; schedulePush(s); }
+}
+
+// ---- background tasks: a monitor, or a command left running -------------------------------------------------
+// Claude Code can leave work running behind the turn: `Monitor` watches something and wakes the chat on each event,
+// and a Bash with `run_in_background` runs on and reports when it exits. Both were invisible here — the turn ends,
+// the card goes ready — and both are the difference between a chat that is finished and one that is *waiting*
+// (2026-09-21, Ricardo: "a monitor is still running"). The transcript says all of it: the tool_result of the call
+// carries the task's id ("Monitor started (task bs6h9ok2c, expires in 30m…", "Command running in background with
+// ID: b3b928ii6"), and every event and the end arrive as `<task-notification>` user lines — synthetic for the
+// transcript, read here for their `<task-id>` and the `<status>` that ends one. Nothing is polled: a task that
+// outlives the claude that started it (`live.startedAt`) or its own expiry is simply not running any more.
+const TASK_ID_RE = [[/Monitor started \(task ([a-z0-9]+)/i, 'monitor'], [/Command running in background with ID: ([a-z0-9]+)/i, 'bash']];
+const TASK_NOTE_RE = /^<task-notification>/;
+const MONITOR_MS = Number(process.env.MONITOR_MS || 30 * 60_000);      // what a Monitor gives itself when it says nothing else
+const TASK_MAX_MS = Number(process.env.TASK_MAX_MS || 6 * 60 * 60_000); // a background command whose end never reached the transcript
+
+/** The call: remembered by tool_use id until its result comes back with the task id the harness gave it. */
+function noteTaskCall(s, b) {
+  s.taskCalls ||= new Map();
+  const ms = Number(b.input?.timeout_ms) || (b.name === 'Monitor' ? MONITOR_MS : 0);
+  s.taskCalls.set(b.id, { kind: b.name === 'Monitor' ? 'monitor' : 'bash', what: snippet(b.input?.description || b.input?.command || '', 90), ms });
+  while (s.taskCalls.size > 40) s.taskCalls.delete(s.taskCalls.keys().next().value);
+}
+/** Its result: "…(task <id>" / "…ID: <id>" — from here on that id is something running in this chat. */
+function startTask(s, res, ts) {
+  const hint = s.taskCalls?.get(res.tool_use_id); if (!hint) return;
+  s.taskCalls.delete(res.tool_use_id);
+  for (const [re, kind] of TASK_ID_RE) {
+    const m = re.exec(resultText(res)); if (!m) continue;
+    const at = Date.parse(ts) || Date.now();
+    (s.tasks ||= new Map()).set(m[1], { kind: hint.kind || kind, what: hint.what, at: ts, until: hint.ms ? at + hint.ms : null, events: 0 });
+    return;
+  }
+}
+/** A `<task-notification>`: an event while it runs, and with a `<status>` (completed, failed, stopped) its end. */
+function noteTaskEvent(s, text, ts) {
+  const id = /<task-id>([^<]+)<\/task-id>/.exec(text)?.[1];
+  const t = id && s.tasks?.get(id);
+  if (!t) return false;
+  if (/<status>/.test(text)) { s.tasks.delete(id); return true; }
+  t.events++; t.lastEventAt = ts;
+  return true;
+}
+/** What is still running, and the pruning of what is not: a dead claude takes its tasks with it. */
+function runningTasks(s) {
+  if (!s.tasks?.size) return [];
+  if (!s.alive) { s.tasks.clear(); return []; }
+  const now = Date.now(), since = Number(s.live?.startedAt) || 0;
+  const out = [];
+  for (const [id, t] of s.tasks) {
+    const at = Date.parse(t.at) || 0;
+    if (at < since || now - at > TASK_MAX_MS || (t.until && now > t.until)) { s.tasks.delete(id); continue; }
+    out.push({ id, kind: t.kind, what: t.what, at: t.at, until: t.until ? new Date(t.until).toISOString() : null, events: t.events, lastEventAt: t.lastEventAt || null });
+  }
+  return out;
 }
 
 function scanProjects() {
@@ -816,7 +878,7 @@ function handleHook(h) {
       if (h.last_assistant_message) { s.lastReply = snippet(h.last_assistant_message, 300); s.lastReplyAt = ts; }
       setStatus(s, 'idle', ts); queueNotify(s, 'reply'); break;
     case 'StopFailure': setStatus(s, 'idle', ts); queueNotify(s, 'needs-input'); break;
-    case 'PermissionRequest': setStatus(s, 'needs-input', ts); queueNotify(s, 'needs-input'); break;
+    case 'PermissionRequest': s.ask = { tool: 'PermissionRequest', text: 'a permission prompt', options: 0 }; setStatus(s, 'needs-input', ts); queueNotify(s, 'needs-input'); break;
     case 'Notification': {
       const type = h.notification_type || '';
       const text = h.notification_text || h.message || '';
@@ -1678,7 +1740,15 @@ setInterval(pollPeacock, PEACOCK_POLL_MS);
 pollRepos();
 setInterval(pollRepos, PEACOCK_POLL_MS);
 for (const s of sessions.values()) if (s.alive) scanAgents(s);
-setInterval(() => { for (const s of sessions.values()) if (s.alive) scanAgents(s); }, REGISTRY_POLL_MS);   // an agent gone quiet stops counting
+// An agent gone quiet stops counting; a task past its expiry stops running. Both are only visible on a push, and
+// a chat whose last word was "monitor started" has nothing else to push.
+setInterval(() => {
+  for (const s of sessions.values()) {
+    if (!s.alive) continue;
+    scanAgents(s);
+    if (s.tasks?.size) { const n = s.tasks.size; runningTasks(s); if (s.tasks.size !== n) schedulePush(s); }
+  }
+}, REGISTRY_POLL_MS);
 console.log(`[peixairada] indexed ${sessions.size} sessions (${[...sessions.values()].filter(s => s.alive).length} alive) from ${CLAUDE_DIR} in ${Date.now() - t0}ms`);
 
 const pendingFiles = new Map(), pendingAgents = new Map();
