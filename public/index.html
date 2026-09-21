@@ -281,8 +281,11 @@
   .card .trow .chip.agents { margin-top: 3px; color: var(--working); border-color: color-mix(in srgb, var(--working) 55%, transparent); }
   /* a monitor or a background command the harness is still running: the same chip in the watch colour, with the
      radar mark — it says *something is running here*, next to the agents chip that says *Claude is* */
-  .card .trow .chip.watch { margin-top: 3px; display: inline-flex; align-items: center; gap: 4px; color: var(--watch); border-color: color-mix(in srgb, var(--watch) 55%, transparent); }
-  .card .trow .chip.watch .ic { width: 11px; height: 11px; }
+  .chip.watch { display: inline-flex; align-items: center; gap: 4px; color: var(--watch); border-color: color-mix(in srgb, var(--watch) 55%, transparent); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chip.watch .ic { width: 11px; height: 11px; flex: none; }
+  /* On a card it shares the title's row, so it takes at most half of it and the title keeps the rest. */
+  .card .trow .chip.watch { margin-top: 3px; max-width: 50%; }
+  .shead .chip.watch { max-width: 40%; flex: 0 1 auto; }
   .card .repo { font-weight: 800; font-size: 13px; letter-spacing: .1px; flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .card .grow { flex: 1; }
   .card .time { font-size: 11px; color: var(--muted); flex: none; }
@@ -1014,12 +1017,17 @@
   // (`tasks`, `ask`), and both are gone the moment the claude that owned them is (the server clears them).
   const minsLeft = iso => { const m = Math.round((new Date(iso) - Date.now()) / 60000); return m <= 0 ? 'expiring' : m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m left` : `${m}m left`; };
   const taskLine = t => `${t.kind === 'monitor' ? 'monitor' : 'background'}: ${t.what || '(no description)'}${t.until ? ` · ${minsLeft(t.until)}` : ''}${t.events ? ` · ${t.events} event${t.events === 1 ? '' : 's'}` : ''}`;
-  /** One chip for everything still running behind the turn, counted by kind; the tooltip is the list of them. */
-  function taskChip(s) {
+  /** One chip for everything still running behind the turn. With one task it says *what* — the description the
+   *  call gave it, which is the answer to "something is running here, but what?" and was a tooltip before
+   *  (2026-09-21, Ricardo: "if there is any background command working, where should I see what is it?"). With
+   *  more, it counts them by kind. The tooltip is the full list either way, with the time left and the events. */
+  function taskChip(s, where = 'card') {
     const t = s.tasks || []; if (!t.length) return '';
     const mon = t.filter(x => x.kind === 'monitor').length, bg = t.length - mon;
-    const label = [mon ? (mon > 1 ? `${mon} monitors` : 'monitor') : '', bg ? (bg > 1 ? `${bg} running` : 'running') : ''].filter(Boolean).join(' · ');
-    return `<span class="chip watch" title="${esc(t.map(taskLine).join('\n'))}">${ICON.watch}${esc(label)}</span>`;
+    const label = t.length === 1
+      ? `${t[0].kind === 'monitor' ? 'monitor' : 'running'}${t[0].what ? ` · ${t[0].what}` : ''}`
+      : [mon ? (mon > 1 ? `${mon} monitors` : 'monitor') : '', bg ? (bg > 1 ? `${bg} running` : 'running') : ''].filter(Boolean).join(' · ');
+    return `<span class="chip watch ${where}" title="${esc(t.map(taskLine).join('\n'))}">${ICON.watch}${esc(label)}</span>`;
   }
   /** The question itself on the card — which tool asked, what it asked, how many answers it is offering. */
   function askHtml(s) {
@@ -1607,6 +1615,7 @@
     // details under the row. The chat's PRs are the block under it, one per row (#prlist).
     const take = takeable(s), armed = take && term.arm === s.id;
     $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">/</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
+      ${taskChip(s, 'head')}
       <button class="btn icon status${prefs.headDetails ? ' on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}"
         title="${esc(statusLabel[s.status] || s.status)}${s.statusSince ? ` for ${rel(s.statusSince)}` : ''} · click to ${prefs.headDetails ? 'hide' : 'show'} path, branch and session details"><span class="dot ${s.status}"></span>${s.statusSince ? rel(s.statusSince) : ''}</button>
       <button class="btn icon fold${foldOn(s.id) ? ' on' : ''}" id="foldBtn" aria-pressed="${foldOn(s.id)}" title="${foldOn(s.id) ? 'Code blocks longer than 6 lines are folded in this chat — click to show them whole' : 'Code blocks are shown whole in this chat — click to fold the long ones'}${s.id in prefs.foldBy ? ' (set here; the cog sets the default)' : ' (the cog’s default)'}">{ }</button>

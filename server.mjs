@@ -60,7 +60,7 @@ const HOST = process.env.HOST || '127.0.0.1';
 const NOTIFY = process.env.NOTIFY || 'native'; // native | off
 const TAIL_BYTES = Number(process.env.TAIL_BYTES || 512 * 1024);
 const MAX_ENTRIES = Number(process.env.MAX_ENTRIES || 800);
-const REGISTRY_POLL_MS = 10_000;
+const REGISTRY_POLL_MS = Number(process.env.REGISTRY_POLL_MS || 10_000);   // pids die silently; so do background commands (sweepTasks)
 // Where the done ticks live. macOS keeps app data in Application Support (same place the
 // logs already go); elsewhere follow the XDG state dir. STATE_FILE overrides both — tests use it.
 function defaultStateFile() {
@@ -713,16 +713,46 @@ function noteTaskCall(s, b) {
   s.taskCalls.set(b.id, { kind: b.name === 'Monitor' ? 'monitor' : 'bash', what: snippet(b.input?.description || b.input?.command || '', 90), ms });
   while (s.taskCalls.size > 40) s.taskCalls.delete(s.taskCalls.keys().next().value);
 }
-/** Its result: "…(task <id>" / "…ID: <id>" — from here on that id is something running in this chat. */
+/** Its result: "…(task <id>" / "…ID: <id>" — from here on that id is something running in this chat. A background
+ *  command also says where its output goes, and that file is what `sweepTasks` asks about. */
 function startTask(s, res, ts) {
   const hint = s.taskCalls?.get(res.tool_use_id); if (!hint) return;
   s.taskCalls.delete(res.tool_use_id);
+  const body = resultText(res);
   for (const [re, kind] of TASK_ID_RE) {
-    const m = re.exec(resultText(res)); if (!m) continue;
+    const m = re.exec(body); if (!m) continue;
     const at = Date.parse(ts) || Date.now();
-    (s.tasks ||= new Map()).set(m[1], { kind: hint.kind || kind, what: hint.what, at: ts, until: hint.ms ? at + hint.ms : null, events: 0 });
+    const out = /Output is being written to:\s*(\S+?)\.?(?:\s|$)/.exec(body)?.[1] || null;
+    (s.tasks ||= new Map()).set(m[1], { kind: hint.kind || kind, what: hint.what, at: ts, until: hint.ms ? at + hint.ms : null, events: 0, out });
     return;
   }
+}
+
+/**
+ * Whether a background command is still running, asked of the machine rather than of the transcript: the harness
+ * spawns it with its output redirected to `tasks/<id>.output` and holds that file open until it exits, so `lsof`
+ * on the file answers plainly (measured: two holders while it runs, none the moment it ends). This is what the
+ * transcript cannot do — a completion notice delivered to a chat that is *mid-turn* never becomes a line in the
+ * file, and the task would otherwise sit on the card until TASK_MAX_MS (the board's own chat wore one for half an
+ * hour, 2026-09-21). Only for the first seconds is it unasked: the file exists before the process has opened it.
+ */
+const TASK_GRACE_MS = Number(process.env.TASK_GRACE_MS || 20_000);
+function taskGone(t) {
+  return new Promise(resolve => {
+    if (!t.out || Date.now() - (Date.parse(t.at) || 0) < TASK_GRACE_MS) return resolve(false);
+    if (!existsSync(t.out)) return resolve(false);          // not written yet, or cleaned up: no verdict from here
+    const bin = findBin('lsof', 'a background command is only let go by its notification or its age');
+    if (!bin) return resolve(false);
+    execFile(bin, ['-t', '--', t.out], { timeout: 5_000 }, (err, stdout) => {
+      if (err && err.code !== 1) return resolve(false);      // 1 is lsof's "nobody has it"; anything else is our problem
+      resolve(!String(stdout).trim());
+    });
+  });
+}
+/** The poll's half of the pruning: the dead let go, and a push if any were. */
+async function sweepTasks(s) {
+  if (!s.tasks?.size) return;
+  for (const [id, t] of [...s.tasks]) if (await taskGone(t) && s.tasks.get(id) === t) { s.tasks.delete(id); console.log(`[peixairada] task ${id} (${t.what}) is no longer running`); schedulePush(s); }
 }
 /** A `<task-notification>`: an event while it runs, and with a `<status>` (completed, failed, stopped) its end. */
 function noteTaskEvent(s, text, ts) {
@@ -901,6 +931,8 @@ function handleHook(h) {
 const BIN_FALLBACKS = {
   claude: [join(homedir(), '.local', 'bin', 'claude'), '/opt/homebrew/bin/claude', '/usr/local/bin/claude'],
   gh: ['/opt/homebrew/bin/gh', '/usr/local/bin/gh', join(homedir(), '.local', 'bin', 'gh')],
+  // who still holds a background command's output file open — the one honest answer to "is it still running"
+  lsof: ['/usr/sbin/lsof', '/usr/bin/lsof'],
   // go-task, for the folders whose Taskfile launches claude (see launchersFor): mise's shim first, then brew and go
   task: [join(homedir(), '.local', 'share', 'mise', 'shims', 'task'), '/opt/homebrew/bin/task', '/usr/local/bin/task', join(homedir(), 'go', 'bin', 'task')],
   // "Shell Command: Install 'code' command in PATH" symlinks /usr/local/bin/code; the last two
@@ -1746,7 +1778,7 @@ setInterval(() => {
   for (const s of sessions.values()) {
     if (!s.alive) continue;
     scanAgents(s);
-    if (s.tasks?.size) { const n = s.tasks.size; runningTasks(s); if (s.tasks.size !== n) schedulePush(s); }
+    if (s.tasks?.size) { const n = s.tasks.size; runningTasks(s); if (s.tasks.size !== n) schedulePush(s); sweepTasks(s); }
   }
 }, REGISTRY_POLL_MS);
 console.log(`[peixairada] indexed ${sessions.size} sessions (${[...sessions.values()].filter(s => s.alive).length} alive) from ${CLAUDE_DIR} in ${Date.now() - t0}ms`);

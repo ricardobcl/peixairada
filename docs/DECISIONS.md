@@ -46,15 +46,27 @@ this file is the *why* and the *state*. Last updated 2026-09-21.
   clauding, not below it, because it is the only state that costs you a second and unblocks a whole turn. The
   fish still swim where they always did (the last clauding card, the first plain ready one): they mark that
   boundary by the same rank, and an asking chat is no longer a 'ready' for their purposes.
-* **A task is known to have ended when its notification reaches the transcript**, which is when the turn that
-  received it is written. Tried on the live board with a real background command in the board's own chat: the start
-  was on `/api/sessions` four seconds later, with the harness's own wording and the description — and the
-  completion notice, delivered while that chat was mid-turn, was not a line in the file yet a minute later (the
-  ones in older transcripts, delivered to a chat sitting idle, are there as ordinary user lines). So the chip can
-  lag by a turn on a chat that is clauding anyway — where the work ring wins and the chip is a detail — and the
-  guards above are what bound the rest: the claude's own life, a Monitor's expiry, `TASK_MAX_MS` for a background
-  command whose end never arrived at all. The harness's own `tasks/<id>.output` file is no help: it stays after the
-  command exits, and carries no status.
+* **A task's end does not reliably reach the transcript at all** (found on the live board, Ricardo: "why is this
+  chat card hand the slow teal? I don't see a mention on having a monitor running"). The start does — four seconds
+  after a real background command in the board's own chat, `/api/sessions` had it with the harness's wording and
+  the description. The completion notice does *not*, when it is delivered to a chat that is mid-turn: the two test
+  jobs in that chat ended, and half an hour later their `<task-notification>` was still not a line in the file.
+  (The ones in older transcripts are there, as ordinary user lines — those went to a chat sitting idle, where the
+  notice *starts* a turn and is written as its prompt.) A board that only read the transcript would have shown that
+  chat as watching until `TASK_MAX_MS`.
+* **So a background command is asked about directly.** The harness spawns it with its output redirected to
+  `tasks/<id>.output` and holds that file open until it exits — measured on a running job: two holders, and none
+  the moment it ended. `taskGone` runs `lsof -t` on the file (the path comes from the tool_result, "Output is being
+  written to: …"), and `sweepTasks` on the registry poll lets go of what nothing holds any more. Only after
+  `TASK_GRACE_MS`, since the file exists before the process has opened it, and never on lsof's own failure: the
+  verdict is "no holders", not "no answer". A Monitor names no file, so it keeps the two signals it had — its
+  events and end do reach an idle chat's transcript, and it expires by itself.
+* **The first "live proof" of that sweep was no proof at all.** The board's own chat did drop its two stale tasks
+  seconds after a restart, which looked like the sweep working; it was the *tail window*. That transcript is 9.7 MB
+  and the board reads the last 512 KB, so on the re-index the lines that started those tasks were simply out of
+  view (`indexFile` rebuilds a session from the tail, carrying over only what the registry knows). Which errs the
+  right way — a forgotten task is no chip — but it is not the sweep, and the sweep's proof is the scenario, where
+  a real process holds a real output file and the task goes within one poll of it being killed.
 * **Verified in the browser, both themes** (`scripts/scenarios/card-signals.mjs`): four chats, each with a live pid
   of its own (a `sleep` — the server only asks whether the pid is there), the server's `tasks`/`ask`/`agents` and
   then the cards built from them, down to `--lights: 3` and the chip text, and the monitor's completion taking its

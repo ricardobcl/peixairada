@@ -4,12 +4,15 @@
 // and the card the page builds from it: the classes that drive the ring, how many lights it runs, the chips and
 // the question line.
 import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { makeFixture, replyLines, taskNoteLine, toolLines } from '../fixture.mjs';
 
-export const meta = { server: true, fixture: 'auto', env: { ORG_DIR: join(tmpdir(), 'peix-no-org-here') } };
+// The sweep that asks the machine whether a background command is still running is on the registry poll, and it
+// leaves a task alone for its first seconds (the file exists before the process has opened it): both are wound
+// down here so the scenario does not wait half a minute for them.
+export const meta = { server: true, fixture: 'auto', env: { ORG_DIR: join(tmpdir(), 'peix-no-org-here'), REGISTRY_POLL_MS: '1200', TASK_GRACE_MS: '400' } };
 
 const cards = ctx => ctx.evaluate(`[...document.querySelectorAll('#slist .card')].map(c => ({
   title: c.querySelector('.title')?.textContent || '',
@@ -23,7 +26,12 @@ const cards = ctx => ctx.evaluate(`[...document.querySelectorAll('#slist .card')
 
 export default async function (ctx) {
   const out = {}, cwd = join(tmpdir(), 'peix-signals', 'signals-repo');
-  const sleeps = Array.from({ length: 5 }, () => spawn('sleep', ['180'], { stdio: 'ignore' }));
+  const sleeps = Array.from({ length: 6 }, () => spawn('sleep', ['180'], { stdio: 'ignore' }));
+  // The output file of that last chat's command, and something holding it open exactly as the harness's own
+  // spawn does — this is what the server asks about, and killing it is that command ending.
+  const outFile = join(mkdtempSync(join(tmpdir(), 'peix-task-')), 'bldx1y2z3.output');
+  writeFileSync(outFile, '');
+  const holder = spawn('/bin/sh', ['-c', `exec sleep 120 >> ${JSON.stringify(outFile)}`], { stdio: 'ignore' });
   const live = i => ({ pid: sleeps[i].pid, startedAt: Date.now() - 3600_000 });
   const now = Date.now(), at = ms => new Date(now - ms);
   const mon = 'mon7yk1x2';
@@ -50,20 +58,26 @@ export default async function (ctx) {
           result: 'Monitor started (task dep99zz11, expires in 30m unless the source ends first).', at: at(200_000) }),
         ...toolLines({ id, cwd, name: 'Bash', input: { command: 'npm run build', description: 'build' }, at: at(80_000) }),
       ] },
+    // 6 · a background command with a real output file: held open while it runs, let go when it ends
+    { cwd, title: 'A real background job', prompt: 'build it in the background', reply: 'building', at: at(800_000), live: live(5),
+      lines: id => toolLines({ id, cwd, name: 'Bash', input: { command: 'npm run build', description: 'the long build', run_in_background: true },
+        result: `Command running in background with ID: bldx1y2z3. Output is being written to: ${outFile}. You will be notified when it completes.`, at: at(150_000) }) },
     // 4 · a question, waiting: an AskUserQuestion with no answer
     { cwd, title: 'Waiting on you', prompt: 'set up the database', reply: 'one question first', at: at(500_000), live: live(3),
       lines: id => toolLines({ id, cwd, name: 'AskUserQuestion', at: at(30_000),
         input: { questions: [{ question: 'Which database should the service use?', header: 'Database', options: [{ label: 'Postgres' }, { label: 'MySQL' }, { label: 'SQLite' }] }] } }) },
   ]);
-  // Three sub-agent transcripts for chat 3, each mid-turn: <slug>/<id>/subagents/agent-*.jsonl
-  const agentDir = join(dirname(chats[2].file), chats[2].id, 'subagents');
+  const chat = t => chats.find(c => c.title === t);
+  // Three sub-agent transcripts for the agents chat, each mid-turn: <slug>/<id>/subagents/agent-*.jsonl
+  const agents = chat('Three agents out');
+  const agentDir = join(dirname(agents.file), agents.id, 'subagents');
   mkdirSync(agentDir, { recursive: true });
   for (const n of [1, 2, 3]) writeFileSync(join(agentDir, `agent-${n}.jsonl`), JSON.stringify({ isSidechain: true, type: 'user', message: { role: 'user', content: 'go' } }) + '\n');
 
   try {
     await ctx.server.restart();
     await ctx.send('Page.reload'); await ctx.sleep(1500);
-    await ctx.waitFor(`window.peix.sessions().filter(s => s.cwd === ${JSON.stringify(cwd)}).length === 5`, { what: 'the five chats' });
+    await ctx.waitFor(`window.peix.sessions().filter(s => s.cwd === ${JSON.stringify(cwd)}).length === 6`, { what: 'the six chats' });
     await ctx.waitFor(`window.peix.sessions().some(s => s.agents === 3)`, { what: 'the three sub-agents counted', timeout: 20000 });
 
     // ---- what the server says ----
@@ -86,7 +100,7 @@ export default async function (ctx) {
     ctx.assert.deepEqual(card('Normal work').cls, ['working'], 'plain work: the clauding ring, nothing else');
     ctx.assert.equal(card('Normal work').lights, '', '…one light (the default)');
     ctx.assert.deepEqual(card('Watching CI').cls, ['idle', 'watching'], 'a ready card that is still watching something');
-    ctx.assert.deepEqual(card('Watching CI').chips, ['monitor'], '…and says what is running');
+    ctx.assert.deepEqual(card('Watching CI').chips, ['monitor · CI checks on PR #382'], '…and says what is running, not merely that something is');
     ctx.assert.equal(card('Three agents out').lights, '3', 'one light per sub-agent');
     ctx.assert.deepEqual(card('Three agents out').chips, ['3 agents']);
     ctx.assert.deepEqual(card('Waiting on you').cls, ['asking', 'needs-input'], 'the question stops the card');
@@ -95,11 +109,11 @@ export default async function (ctx) {
     ctx.assert.deepEqual(card('Both at once').cls, ['watching', 'working'], 'a chat can be both — clauding with a monitor of its own');
     ctx.assert.equal(card('Both at once').lit, card('Normal work').lit, '…and the work ring wins');
     ctx.assert.equal(card('Both at once').spins, '1.4s', '…at the work pace: every rule sets every variable, or the monitor\'s 6s leaks into it');
-    ctx.assert.deepEqual(card('Both at once').chips, ['monitor'], '…while the chip still says what is running');
+    ctx.assert.deepEqual(card('Both at once').chips, ['monitor · the deploy run'], '…while the chip still says what is running');
 
     // ---- and it leads the list: a question costs you a second and unblocks a turn (2026-09-21) ----
     out.order = await ctx.evaluate(`[...document.querySelectorAll('#slist > *')].map(e => e.classList.contains('gsep') ? '><>' : e.querySelector('.title')?.textContent)`);
-    ctx.assert.deepEqual(out.order.slice(0, 6), ['Waiting on you', 'Normal work', 'Three agents out', 'Both at once', '><>', 'Watching CI'],
+    ctx.assert.deepEqual(out.order.slice(0, 7), ['Waiting on you', 'Normal work', 'Three agents out', 'Both at once', 'A real background job', '><>', 'Watching CI'],
       'the question first, then the clauding chats by your last touch, then the fish, then the ready ones');
     await ctx.key('KeyK');   // the chat picker goes by the same rank
     await ctx.waitFor(`document.querySelector('#pick').open && document.querySelectorAll('#picklist .pkrow').length > 3`, { what: 'the chat picker' });
@@ -107,8 +121,21 @@ export default async function (ctx) {
     ctx.assert.match(out.picker[0], /^Waiting on you \/ asking$/, '⌥⌘K opens on it too');
     await ctx.evaluate(`document.querySelector('#pick').close()`);
 
+    // ---- the open chat's header carries the same chip, where there is room for it ----
+    await ctx.openChat(chat('A real background job').id);
+    await ctx.waitFor(`document.querySelector('#shead .chip.watch')`, { what: "the header's chip" });
+    out.headChip = await ctx.evaluate(`document.querySelector('#shead .chip.watch').textContent.trim()`);
+    ctx.assert.equal(out.headChip, 'running · the long build', 'the open chat says what it is running, in its header');
+    await ctx.shot('card-signals-header');
+
+    // ---- a background command is let go when nothing holds its output file open any more ----
+    ctx.assert.ok((await ctx.peix(`sessions().find(s => s.title === 'A real background job').tasks.length`)) === 1, 'it is running while something holds the file');
+    holder.kill();
+    await ctx.waitFor(`window.peix.sessions().find(s => s.title === 'A real background job').tasks.length === 0`,
+      { what: 'the command let go once its output file was closed', timeout: 20000 });
+
     // ---- the end of a monitor takes the chip away ----
-    const b = chats[1];
+    const b = chat('Watching CI');
     writeFileSync(b.file, '', { flag: 'a' });
     const { appendFileSync } = await import('node:fs');
     appendFileSync(b.file, JSON.stringify(taskNoteLine({ id: b.id, cwd, taskId: mon, summary: 'Monitor "CI checks on PR #382" completed', status: 'completed' })) + '\n');
@@ -118,6 +145,6 @@ export default async function (ctx) {
     ctx.assert.deepEqual(out.afterEnd.chips, [], '…and so does the chip');
     return out;
   } finally {
-    for (const p of sleeps) { try { p.kill(); } catch {} }
+    for (const p of [...sleeps, holder]) { try { p.kill(); } catch {} }
   }
 }
