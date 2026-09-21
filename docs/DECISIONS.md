@@ -4,6 +4,38 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-21.
 
+## Decisions of 2026-09-21 — ⌘F searches the page in the pane
+
+* **⌘F is find-on-page, for the pane only** (Ricardo: "I want to search inside github page like I do on browsers",
+  then "cmd f"). A PR is a long page and the pane is a native `WKWebView`, which has the search — `find(_:
+  configuration:)`, the very one Safari's bar drives — but no bar to drive it with and no key bound to it, so ⌘F
+  did nothing in the app while it works on every GitHub tab in a browser. The Edit menu now carries *Find… ·
+  Find Next · Find Previous* (⌘F · ⌘G · ⇧⌘G) pointed at the page on top of the pane.
+* **The board is not searched.** The three items grey out through `validateMenuItem` while the pane is down: the
+  board has the column filter boxes and the pickers (⌥⌘K, fuzzy since this morning) for finding a chat, and a
+  find bar over the transcript would be a second, worse one. ⌘F with the drawer showing is left alone entirely —
+  the key still goes to the page, as it did before.
+* **The bar floats over the top right of the pane**, Chrome's place, not Safari's. Safari's bar pushes the page
+  down; here that would mean moving the top constraint of every pane web view (they are pinned to all four edges
+  of `prPane`, made one per page) for a bar that is up for a few seconds. It is a `NSVisualEffectView` in the
+  *window's* content view — added after the pane, so a web view made later cannot cover it — with the `.popover`
+  material, which reads in either theme.
+* **No match count.** WebKit's `WKFindResult` says *whether* it found one, not how many: the count Safari shows
+  comes from an API macOS does not hand out (iOS has `findInteraction`; the counting one is private). Rather than
+  count matches ourselves in injected JavaScript — over GitHub's CSP, on a page it repaints under us — a miss
+  turns the field's text red, which is the thing you actually need to know.
+* **The match is the page's selection**, which is how WebKit's find shows it. So closing the bar has to drop the
+  selection (`kDropSelection`), and a query that has just changed has to drop it *before* searching, or the next
+  keystroke carries on from the last match instead of starting at the top (`runFind(fromTop:)`).
+* **The find bar takes Esc and ⏎ back from the pane.** Esc with the pane up means "back to the chat" here
+  (`peixKey('Escape')`), and in a text field it means "empty the box"; while the bar is up it closes the bar and
+  stops — the browser's answer, and the local monitor that already owns Esc is where that lives. ⏎ / ⇧⏎ step the
+  matches from the field, the keys the field would otherwise give to its own action. A pane change — a tab
+  switch, the pane hiding — closes the bar; `findQuery` outlives it, so ⌘G brings it back on the same words.
+* **Verified by hand in the app**: there is no harness for the native shell (the scenarios drive the board in
+  headless Chrome, which has no pane), so this is `npm run check`'s `swiftc -typecheck`, `mac/build.sh install`,
+  and a PR page in the pane.
+
 ## Decisions of 2026-09-21 — the pane behaves like a browser: ⌘R, pinch, and the address in the strip
 
 * **⌘R reloads what is in front of you** (Ricardo: "when web (github) open, can we have: 1) cmd R to refresh the

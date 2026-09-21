@@ -42,6 +42,9 @@ func jsStr(_ s: String) -> String {
   return "'" + out + "'"
 }
 
+/// The find bar's highlight *is* the page's selection: this is how it is taken away again.
+let kDropSelection = "window.getSelection && window.getSelection().removeAllRanges()"
+
 /// Append a line to the app log — the only way to see what the shell is doing once it is a bundle.
 func logLine(_ s: String) {
   let stamp = ISO8601DateFormatter().string(from: Date())
@@ -157,7 +160,8 @@ final class ServerController {
 // ---------------------------------------------------------------------------------------------
 
 final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler,
-                         WKNavigationDelegate, UNUserNotificationCenterDelegate, NSMenuItemValidation {
+                         WKNavigationDelegate, UNUserNotificationCenterDelegate, NSMenuItemValidation,
+                         NSSearchFieldDelegate {
   var window: NSWindow!
   var web: BoardWebView!
   var content: NSView!
@@ -172,6 +176,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   var paneLeftC: NSLayoutConstraint!           // the pane's place: the chat column below the strip, as the page says
   var paneTopC: NSLayoutConstraint!
   static let paneViewsMax = 8
+  var findBar: NSVisualEffectView!             // ⌘F's bar, over the pane's top right corner; hidden until asked for
+  var findField: NSSearchField!
+  var findQuery = ""                           // what was last searched for — ⌘G carries on with it after the bar closes
   let prDelegate = PrPaneDelegate()
   let server = ServerController()
   var statusItem: NSStatusItem!
@@ -269,6 +276,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       web.topAnchor.constraint(equalTo: content.topAnchor), web.bottomAnchor.constraint(equalTo: content.bottomAnchor),
       paneLeftC, paneTopC, prPane.trailingAnchor.constraint(equalTo: content.trailingAnchor), prPane.bottomAnchor.constraint(equalTo: content.bottomAnchor)
     ])
+    buildFindBar()
     prPane.isHidden = true
     window.contentView = content
     installEscapeMonitor()
@@ -330,7 +338,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     paneChat = id; paneKeys = keys
     paneLeftC.constant = max(0, left); paneTopC.constant = max(0, top)
     guard let k = show, let url = URL(string: String(k.drop(while: { $0 != ":" }).dropFirst())) else {
-      if !prPane.isHidden { prPane.isHidden = true; paneShown = nil; window.makeFirstResponder(web); tellPane(); logLine("pane: hidden") }
+      if !prPane.isHidden { closeFind(focusPage: false); prPane.isHidden = true; paneShown = nil; window.makeFirstResponder(web); tellPane(); logLine("pane: hidden") }
       return
     }
     if !paneKeys.contains(k) { paneKeys.append(k) }
@@ -340,7 +348,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     for (key, v) in paneViews { v.isHidden = key != k }
     paneShown = k; prPane.isHidden = false
     tellPaneUrl(k, w.url?.absoluteString ?? url.absoluteString)
-    if change { window.makeFirstResponder(w); tellPane(); logLine("pane: \(url.absoluteString)\(fresh ? "" : " (kept)") pages=\(keys.count) at \(Int(left)),\(Int(top))") }
+    if change { closeFind(focusPage: false); window.makeFirstResponder(w); tellPane(); logLine("pane: \(url.absoluteString)\(fresh ? "" : " (kept)") pages=\(keys.count) at \(Int(left)),\(Int(top))") }
   }
   /// The page cannot see the pane — a native view over its chat column — so it is told whether the pane is up and
   /// where its edge is (points, which are the board view's CSS px): a dialog can then open beside it, not under it.
@@ -364,14 +372,145 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     default: break
     }
   }
+  // ---- find in page ------------------------------------------------------------------------------
+  // ⌘F over a page in the pane, the one thing a browser does that a native web view does not: WKWebView has
+  // `find(_:configuration:)` (the same search Safari's bar drives — it selects and scrolls to the match) but no
+  // bar to drive it with. This is that bar: a floating strip over the *top right* of the pane, Chrome's place for
+  // it rather than Safari's, because pushing the page down would mean moving every pane view's top constraint.
+  // It lives in the window's content view, added after the pane, so a web view made later cannot cover it.
+  // The keys are the browser's: ⌘F opens it on whatever was last searched for and selects it, ⏎ / ⇧⏎ and ⌘G /
+  // ⇧⌘G step, Esc closes it (the pane stays — that Esc never reaches the page), a miss turns the text red.
+
+  private var findOn: Bool { findBar != nil && !findBar.isHidden }
+
+  private func buildFindBar() {
+    findBar = NSVisualEffectView()
+    findBar.material = .popover          // the popover's own background: light or dark, whichever the Mac is
+    findBar.blendingMode = .withinWindow
+    findBar.state = .active
+    findBar.wantsLayer = true
+    findBar.layer?.cornerRadius = 8
+    findBar.layer?.masksToBounds = true
+    findBar.translatesAutoresizingMaskIntoConstraints = false
+    findBar.isHidden = true
+
+    findField = NSSearchField()
+    findField.placeholderString = "Find on page"
+    findField.sendsWholeSearchString = true    // typing is searched by controlTextDidChange; the action is ⏎ only
+    findField.delegate = self
+    findField.target = self
+    findField.action = #selector(findNext(_:))
+    findField.controlSize = .small
+    findField.font = NSFont.systemFont(ofSize: 12)
+    findField.widthAnchor.constraint(equalToConstant: 190).isActive = true
+
+    let done = NSButton(title: "Done", target: self, action: #selector(findDone(_:)))
+    done.bezelStyle = .rounded
+    done.controlSize = .small
+    done.font = NSFont.systemFont(ofSize: 11)
+
+    let stack = NSStackView(views: [findField, findStep("chevron.up", "Previous match (⇧⌘G)", #selector(findPrevious(_:))),
+                                    findStep("chevron.down", "Next match (⌘G)", #selector(findNext(_:))), done])
+    stack.orientation = .horizontal
+    stack.spacing = 5
+    stack.edgeInsets = NSEdgeInsets(top: 6, left: 7, bottom: 6, right: 7)
+    stack.translatesAutoresizingMaskIntoConstraints = false
+    findBar.addSubview(stack)
+    content.addSubview(findBar)
+    NSLayoutConstraint.activate([
+      stack.leadingAnchor.constraint(equalTo: findBar.leadingAnchor), stack.trailingAnchor.constraint(equalTo: findBar.trailingAnchor),
+      stack.topAnchor.constraint(equalTo: findBar.topAnchor), stack.bottomAnchor.constraint(equalTo: findBar.bottomAnchor),
+      findBar.trailingAnchor.constraint(equalTo: prPane.trailingAnchor, constant: -14),
+      findBar.topAnchor.constraint(equalTo: prPane.topAnchor, constant: 12)
+    ])
+  }
+
+  private func findStep(_ symbol: String, _ tip: String, _ action: Selector) -> NSButton {
+    let b = NSButton(image: NSImage(systemSymbolName: symbol, accessibilityDescription: tip) ?? NSImage(),
+                     target: self, action: action)
+    b.bezelStyle = .texturedRounded
+    b.controlSize = .small
+    b.toolTip = tip
+    return b
+  }
+
+  /// ⌘F: the bar comes up on the last query, selected, so typing replaces it and ⏎ carries on with it.
+  @objc func findInPage(_ sender: Any?) {
+    guard !prPane.isHidden else { return }
+    findBar.isHidden = false
+    findField.stringValue = findQuery
+    findField.textColor = .labelColor
+    window.makeFirstResponder(findField)
+    findField.currentEditor()?.selectAll(nil)
+  }
+  @objc func findNext(_ sender: Any?) { stepFind(forward: true) }
+  @objc func findPrevious(_ sender: Any?) { stepFind(forward: false) }
+  @objc func findDone(_ sender: Any?) { closeFind() }
+
+  /// ⌘G with the bar closed opens it again rather than searching invisibly — the query is still there.
+  private func stepFind(forward: Bool) {
+    guard !prPane.isHidden, !findQuery.isEmpty else { return }
+    if !findOn { findBar.isHidden = false; findField.stringValue = findQuery }
+    runFind(fromTop: false, forward: forward)
+  }
+
+  func controlTextDidChange(_ note: Notification) {
+    guard (note.object as? NSSearchField) === findField else { return }
+    findQuery = findField.stringValue
+    runFind(fromTop: true, forward: true)
+  }
+
+  /// One pass over the page on top. A query that just changed starts from the top of the document — that means
+  /// dropping the selection first, since WebKit's find carries on from wherever the last match left it.
+  private func runFind(fromTop: Bool, forward: Bool) {
+    guard !prPane.isHidden, let w = paneShown.flatMap({ paneViews[$0] }) else { return }
+    let q = findQuery
+    guard !q.isEmpty else { findField.textColor = .labelColor; clearFindSelection(); return }
+    let go = { [weak self] in
+      let cfg = WKFindConfiguration()
+      cfg.backwards = !forward
+      cfg.caseSensitive = false
+      cfg.wraps = true
+      w.find(q, configuration: cfg) { res in
+        guard let self = self, self.findQuery == q else { return }
+        self.findField.textColor = res.matchFound ? .labelColor : .systemRed
+      }
+    }
+    if fromTop { w.evaluateJavaScript(kDropSelection) { _, _ in go() } } else { go() }
+  }
+
+  private func clearFindSelection() {
+    paneShown.flatMap({ paneViews[$0] })?.evaluateJavaScript(kDropSelection, completionHandler: nil)
+  }
+
+  /// The bar goes, the match's highlight with it (it is the page's selection), and the page takes the keyboard back.
+  /// `focusPage` is false when the caller is about to hand the keyboard somewhere itself.
+  func closeFind(focusPage: Bool = true) {
+    guard findOn else { return }
+    findBar.isHidden = true
+    findField.textColor = .labelColor
+    clearFindSelection()
+    guard focusPage else { return }
+    let page = prPane.isHidden ? nil : paneShown.flatMap({ paneViews[$0] })
+    window.makeFirstResponder(page ?? web)
+  }
+
   // Esc with the pane up, from the board or from the page in the pane: the page's business (the chat tab comes
   // back and the pane goes) — forwarded as peixKey('Escape') and swallowed, so the window does not also leave full
   // screen (the editor's own Esc is given up for this, by choice). With the pane hidden the key is not touched at
   // all (dialogs, full screen, the rename box keep it).
   private func installEscapeMonitor() {
     NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
-      guard let self = self, e.keyCode == 53, e.modifierFlags.intersection([.command, .control, .option]).isEmpty,
-            !self.prPane.isHidden, let fr = self.window.firstResponder as? NSView else { return e }
+      guard let self = self, e.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return e }
+      // The find bar takes both keys back from the pane while it is up: Esc closes it (and stops there — the pane
+      // stays), ⏎ / ⇧⏎ step the matches from the field, where Esc would otherwise only empty the box.
+      if self.findOn {
+        if e.keyCode == 53 { self.closeFind(); return nil }
+        if e.keyCode == 36, self.findField.currentEditor() != nil {
+          self.stepFind(forward: !e.modifierFlags.contains(.shift)); return nil
+        }
+      }
+      guard e.keyCode == 53, !self.prPane.isHidden, let fr = self.window.firstResponder as? NSView else { return e }
       guard fr.isDescendant(of: self.web) || fr.isDescendant(of: self.prPane) else { return e }
       self.web.evaluateJavaScript("window.peixKey && window.peixKey('Escape')", completionHandler: nil)
       return nil
@@ -394,7 +533,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
       guard let self = self, e.modifierFlags.intersection([.command, .option, .control, .shift]) == [.command, .option],
             !self.prPane.isHidden, let code = AppDelegate.hotkeyCode(e),
-            let fr = self.window.firstResponder as? NSView, fr.isDescendant(of: self.prPane) else { return e }
+            let fr = self.window.firstResponder as? NSView,
+            fr.isDescendant(of: self.prPane) || (self.findBar != nil && fr.isDescendant(of: self.findBar)) else { return e }
       self.web.evaluateJavaScript("window.peixKey && window.peixKey('\(code)')", completionHandler: nil)
       return nil
     }
@@ -471,6 +611,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
     edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
     edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+    edit.addItem(.separator())
+    // Find is the pane's: it searches the page in front of you (GitHub, the editor), the one thing in this window
+    // that is a real web page. The board has its own filter boxes and pickers, and the items grey out for it.
+    edit.addItem(withTitle: "Find…", action: #selector(findInPage(_:)), keyEquivalent: "f").target = self
+    edit.addItem(withTitle: "Find Next", action: #selector(findNext(_:)), keyEquivalent: "g").target = self
+    edit.addItem(withTitle: "Find Previous", action: #selector(findPrevious(_:)), keyEquivalent: "G").target = self
     editItem.submenu = edit
 
     let viewItem = NSMenuItem(); main.addItem(viewItem)
@@ -504,8 +650,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     web.load(URLRequest(url: kURL))
   }
   func validateMenuItem(_ item: NSMenuItem) -> Bool {
+    let paneUp = prPane != nil && !prPane.isHidden
     if item.action == #selector(reload(_:)) {
-      item.title = prPane != nil && !prPane.isHidden ? "Reload Page" : "Reload"
+      item.title = paneUp ? "Reload Page" : "Reload"
+    }
+    if item.action == #selector(findInPage(_:)) { return paneUp }
+    if item.action == #selector(findNext(_:)) || item.action == #selector(findPrevious(_:)) {
+      return paneUp && !findQuery.isEmpty
     }
     return true
   }

@@ -171,6 +171,15 @@ refuses to run against the real directory for the same reason.
   a click copying the whole URL (`copyPaneUrl`). The address is the shell's word: a KVO watch on each view's `url`
   (`paneObs`) reports every navigation as `peixPaneUrl(key, url)`, kept per key in `paneUrls` — so a tab switch,
   and a board reload (the shell re-sends on every `pane` message), keep it. → Decisions, 2026-09-21.
+* **⌘F finds on that page** (2026-09-21), the Edit menu's *Find… · Find Next · Find Previous* (⌘F · ⌘G · ⇧⌘G),
+  greyed out with the pane down — the board keeps its filter boxes and pickers. The bar is native (`buildFindBar`,
+  a `NSVisualEffectView` over the pane's **top right**, in `content` above the pane so a web view made later
+  cannot cover it) and drives WKWebView's own `find(_:configuration:)`: no match count, the match *is* the page's
+  selection, so closing the bar drops it (`kDropSelection`). Typing searches from the top of the document
+  (`runFind(fromTop:)` clears the selection first), ⏎ / ⇧⏎ step from the field — the Esc monitor takes both keys
+  while `findOn`, so Esc closes the bar instead of reaching the page — and a miss turns the text red. A pane
+  change closes it (`closeFind(focusPage: false)`); `findQuery` outlives it, so ⌘G opens it again on the same
+  words. → Decisions, 2026-09-21.
 * **Both web views are inspectable** (main.swift sets it): Safari → Develop reaches the real app.
 
 ## The drawer
