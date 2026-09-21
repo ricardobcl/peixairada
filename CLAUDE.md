@@ -107,8 +107,10 @@ refuses to run against the real directory for the same reason.
   `acme` folder (`PROJECT_COLORS`). A card in that black is marked `.card.black`: its solid tint is the black
   itself and it borrows the dark theme's inks, because 55 % of black over a light panel is a mid-grey nothing reads on;
   `--ring` turns its clauding light white wherever the card under it is dark (the dark theme, and the tint in either).
-* **Clauding cards first, then ready, done last** (2026-09-20), inside each group **by when *you* last acted**
-  (`lastUserAt`), newest first; a project ranks by its newest chat. The ascii fish (`.gsep`, a line of `><>` that slides a fish per cycle, phased by the clock so re-renders do not jolt it) swim
+* **A chat waiting on your answer first, then clauding, then ready, done last** (`RANK` / `rankOf`, the asking
+  step added 2026-09-21), inside each group **by when *you* last acted**
+  (`lastUserAt`), newest first; a project ranks by its newest chat. The filters and every count still go by
+  `bucket()`, where an asking chat is a ready one — only the order knows the difference, in the list and in ⌥⌘K. The ascii fish (`.gsep`, a line of `><>` that slides a fish per cycle, phased by the clock so re-renders do not jolt it) swim
   once, between the clauding and the ready cards. A finished job moves its card into the ready group, where its
   last prompt puts it.
 * **State lives in three places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done

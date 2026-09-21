@@ -85,6 +85,16 @@ export default async function (ctx) {
     ctx.assert.match(card('Waiting on you').state, /asking you: Which database should the service use\?3 answers/, 'the question is on the card, with how many answers it offers');
     ctx.assert.notEqual(card('Waiting on you').lit, card('Normal work').lit, 'and it is lit in another colour than work');
 
+    // ---- and it leads the list: a question costs you a second and unblocks a turn (2026-09-21) ----
+    out.order = await ctx.evaluate(`[...document.querySelectorAll('#slist > *')].map(e => e.classList.contains('gsep') ? '><>' : e.querySelector('.title')?.textContent)`);
+    ctx.assert.deepEqual(out.order.slice(0, 5), ['Waiting on you', 'Normal work', 'Three agents out', '><>', 'Watching CI'],
+      'the question first, then the clauding chats by your last touch, then the fish, then the ready ones');
+    await ctx.key('KeyK');   // the chat picker goes by the same rank
+    await ctx.waitFor(`document.querySelector('#pick').open && document.querySelectorAll('#picklist .pkrow').length > 3`, { what: 'the chat picker' });
+    out.picker = await ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow')].slice(0, 3).map(r => r.querySelector('.n').textContent.replace('current', '') + ' / ' + r.querySelector('.st').textContent)`);
+    ctx.assert.match(out.picker[0], /^Waiting on you \/ asking$/, '⌥⌘K opens on it too');
+    await ctx.evaluate(`document.querySelector('#pick').close()`);
+
     // ---- the end of a monitor takes the chip away ----
     const b = chats[1];
     writeFileSync(b.file, '', { flag: 'a' });

@@ -886,7 +886,15 @@
   // is working; ready is everything else, a pending question included (the card still says *asking you*).
   // The server keeps the finer statuses for notifications and the app's badge.
   const bucket = s => s.done ? 'done' : s.status === 'working' ? 'working' : 'ready';
-  const RANK = { working: 0, ready: 1, done: 2 };   // the list's order, and the ⌥⌘K picker's: clauding on top, then ready, done last
+  // The two states that live *inside* a bucket and the card draws its edge from: a question waiting on your answer
+  // (still a ready chat — the filters see 'ready'), and a monitor or background command of its own still running.
+  const asking = s => s.alive && !s.done && s.status === 'needs-input';
+  const watching = s => !s.done && (s.tasks?.length || 0) > 0;
+  // The list's order, and the ⌥⌘K picker's (2026-09-21): a chat waiting on *your* answer first — it costs you a
+  // second and unblocks a whole turn — then clauding, then ready, done last. The filters and the counts still go by
+  // `bucket`, so an asking chat is a ready one everywhere it is counted; only the order knows the difference.
+  const RANK = { asking: 0, working: 1, ready: 2, done: 3 };
+  const rankOf = s => asking(s) ? 'asking' : bucket(s);
   // What the filters and the pickers search, as separate fields: the picker's matcher hunts each word *within* one
   // of them, so `wapi` has to be somewhere in the project or the branch and cannot be spelled out of letters
   // borrowed from a title and a prompt (2026-09-21). Short and identifying first — ties go to the earlier field.
@@ -985,7 +993,7 @@
     // clauding on top, then ready, done last (2026-09-20, Ricardo: one rule between the live cards and the ready ones —
     // which needs a group above it); inside each group your last touch, newest first. A finished job moves its card
     // into the ready group, where its last prompt puts it.
-    const shown = list.filter(s => filterOn(bucket(s))).sort((a, b) => (RANK[bucket(a)] - RANK[bucket(b)]) || byUser(a, b));
+    const shown = list.filter(s => filterOn(bucket(s))).sort((a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byUser(a, b));
     $('#stitle').innerHTML = `${sqHtml(p, repoStyle(projColor(p)))}<span class="t">${projIcon(p.name)}${esc(p.name)}</span><span class="n">${list.length}</span>`;
     $('#stitle').title = p.custom ? p.cwds.join('\n') : p.key === ALL ? '' : p.key;
     // new chat: one folder is a button; several (a custom project, All) is a pick-list of folders
@@ -993,7 +1001,7 @@
     $('#newChat').innerHTML = folders.length === 1 ? `<button class="btn icon" id="newChatBtn" data-cwd="${esc(folders[0])}" title="New chat in ${esc(folderName(folders[0]))} — opens a terminal running claude there">${ICON.plus}<span class="lbl">new chat</span></button>`
       : folders.length ? `<select id="newChatSel" title="New chat in a folder — opens a terminal running claude there"><option value="">＋ new chat in…</option>${folders.map(f => `<option value="${esc(f)}">${esc(folderName(f))}</option>`).join('')}</select>` : '';
     $('#fchips').innerHTML = FILTERS.map(([k, label]) => `<button class="fchip ${k} ${filterOn(k) ? 'on' : ''}" data-f="${k}" title="${filterOn(k) ? 'Hide' : 'Show'} ${label} chats">${label}<span class="n">${counts[k] || ''}</span></button>`).join('');
-    const b = shown.map(bucket);   // the fish swim once, under the last clauding card when a ready one follows
+    const b = shown.map(rankOf);   // the fish swim once, under the last clauding card when a ready one follows
     $('#slist').innerHTML = shown.map((s, i) => `${i && b[i] === 'ready' && b[i - 1] === 'working' ? fishHtml() : ''}${cardHtml(s, p)}`).join('') || `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
     $('#slist .gsep')?.replaceWith(fishEl);
   }
@@ -1001,8 +1009,6 @@
   // A monitor or a background command runs on after the reply, so a *ready* card can still have something running;
   // a question is the opposite, nothing runs and nothing will until you answer. Both are the server's word
   // (`tasks`, `ask`), and both are gone the moment the claude that owned them is (the server clears them).
-  const watching = s => !s.done && (s.tasks?.length || 0) > 0;
-  const asking = s => s.alive && !s.done && s.status === 'needs-input';
   const minsLeft = iso => { const m = Math.round((new Date(iso) - Date.now()) / 60000); return m <= 0 ? 'expiring' : m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m left` : `${m}m left`; };
   const taskLine = t => `${t.kind === 'monitor' ? 'monitor' : 'background'}: ${t.what || '(no description)'}${t.until ? ` · ${minsLeft(t.until)}` : ''}${t.events ? ` · ${t.events} event${t.events === 1 ? '' : 's'}` : ''}`;
   /** One chip for everything still running behind the turn, counted by kind; the tooltip is the list of them. */
@@ -1125,7 +1131,7 @@
   };
   const PICK_NOUN = { pr: 'PR', chat: 'chat', chats: 'chat', folder: 'folder', env: 'environment' };   // for "no … matches"; the rest are projects
   const homePath = f => f.replace(/^\/Users\/[^/]+(?=\/|$)/, '~');
-  const chatState = s => bucket(s) === 'working' ? 'clauding' : s.status === 'needs-input' && s.alive ? 'asking' : 'ready';
+  const chatState = s => bucket(s) === 'working' ? 'clauding' : asking(s) ? 'asking' : 'ready';
   // ---- the org's folders, and cloning one that is not here yet (2026-09-21) ----------------------
   // Ricardo: "adding a new project is a bit cumbersome: we should present all folders locally on ~/acme and to add
   // a new one, assume it's an acme organization git repo, clone it to ~/acme and open a new chat". A project on
@@ -1211,7 +1217,7 @@
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
       rows = pick.list.map((pr, i) => `<div class="pkrow pr${sel(i)}" data-i="${i}" data-state="${esc(pr.state || '')}" title="${esc(pr.url)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${mark(pr.label)}</span><span class="n${pr.title ? '' : ' pending'}">${pr.title ? mark(pr.title) : 'title on its way from gh…'}${pr.url === prbar.url ? '<span class="cur">current</span>' : ''}</span><span class="t">${rel(pr.lastAt)}</span></div>`);
     } else if (pick.mode === 'chat') {
-      pick.list = hunt([...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done').sort((a, b) => (RANK[bucket(a)] - RANK[bucket(b)]) || byUser(a, b)), chatFields);
+      pick.list = hunt([...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done').sort((a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byUser(a, b)), chatFields);
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
       rows = pick.list.map((s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${mark(s.title)}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t">${rel(userAt(s))}</span></div>`);
     } else if (pick.mode === 'chats') {   // the scope's open chats, ＋ a new one — the row that carries on with the flow

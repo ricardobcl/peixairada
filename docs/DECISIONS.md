@@ -34,6 +34,13 @@ this file is the *why* and the *state*. Last updated 2026-09-21.
 * **The question goes on the card.** `s.ask` — which tool asked, what it asked, how many answers it offers — is
   carried only while the status is `needs-input`, so it cannot go stale. The card reads *asking you: Which database
   should the service use?* with *3 answers* beside it, which is often enough to answer without opening the chat.
+* **The asking card leads the list** (Ricardo, on being offered it: "yes, update the RANK"). It was the one state
+  whose card you might not see: a question sorts by your last touch like any ready chat, so it could sit below a
+  dozen others while Claude waited. `RANK` gained a step above clauding (`asking: 0`) and `rankOf` — the sort's
+  view of a chat, where `bucket` stays the filters' — puts it there, in the column and in ⌥⌘K alike. Above
+  clauding, not below it, because it is the only state that costs you a second and unblocks a whole turn. The
+  fish still swim where they always did (the last clauding card, the first plain ready one): they mark that
+  boundary by the same rank, and an asking chat is no longer a 'ready' for their purposes.
 * **A task is known to have ended when its notification reaches the transcript**, which is when the turn that
   received it is written. Tried on the live board with a real background command in the board's own chat: the start
   was on `/api/sessions` four seconds later, with the harness's own wording and the description — and the
