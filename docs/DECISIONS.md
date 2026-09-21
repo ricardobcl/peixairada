@@ -4,6 +4,33 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-21.
 
+## Decisions of 2026-09-21 — the pane behaves like a browser: ⌘R, pinch, and the address in the strip
+
+* **⌘R reloads what is in front of you** (Ricardo: "when web (github) open, can we have: 1) cmd R to refresh the
+  page"). The menu item reloaded the board whatever was on top, which with the pane up meant reloading the thing you
+  could not see and leaving the GitHub page untouched. It now reloads the page on top of the pane while the pane is
+  up, the board otherwise; the View menu's item renames itself (*Reload Page* / *Reload*) through
+  `validateMenuItem`, so the menu says which one the key will hit. The strip's ↻ still drives the same view — this
+  is the key for it.
+* **Pinch zooms a page in the pane**, as in Safari: `allowsMagnification` on each pane web view, one line, off by
+  default in a WKWebView (which is why it never worked). The board's own view keeps its ⌘+/⌘−/⌘0 zoom and is left
+  alone — the two are different things, and magnifying the board would fight the terminal's fit.
+* **The address of the page on top sits in the tab strip, and a click copies it** (Ricardo: "when web is open, make
+  the url visible and copy'able"). A tab is labelled `repo#n`, which says which PR but not *where* in it you are —
+  and a page in a native view has no address bar at all. The strip now shows the URL without its scheme (the tail is
+  what changes: `/files`, `/commits`, a review), ellipsised on the left-over room, selectable by hand, and a click
+  anywhere on it puts the whole URL — scheme and all — on the clipboard with a `note` to say so. A selection made
+  inside it wins over the click: that is someone copying part of it themselves.
+* **Where a page *is* comes from the shell, not from the key it was opened with.** Each pane web view gets a KVO
+  watch on its `url` (`paneObs`, invalidated with the view when it is evicted) and every navigation — a link
+  followed, a pushState inside GitHub — is reported to the board as `peixPaneUrl(key, url)`, carrying the key it
+  belongs to, since the board may be on another tab by the time a load finishes. The board keeps them per key
+  (`paneUrls`), so a tab switch and back shows the address it was left on; the shell also re-sends on every `pane`
+  message, which is what gives the address back after a board reload. → `scripts/scenarios/pane-tabs.mjs`.
+* **Headless Chrome has no clipboard**: `navigator.clipboard.writeText` resolves and `readText` comes back empty
+  regardless, so the scenario stubs `writeText` and checks what the page hands it. The page keeps a textarea +
+  `execCommand('copy')` fallback for a real browser that refuses the API.
+
 ## Decisions of 2026-09-21 — the pickers match the way fzf does
 
 * **⌥⌘K matches fuzzily and ranks by how well it matched** (Ricardo: "I want S hotkey to fuzzy search non-done

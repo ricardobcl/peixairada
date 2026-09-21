@@ -1,7 +1,9 @@
 // The chat's pages as tabs (2026-09-20), with the app's bridge faked: ⌥⌘G puts a PR on a tab of its own, again (the
 // picker, the other row) the second beside it, ⌥⌘E the editor, ⌥⌘T a zsh — five tabs; the shell hears one `pane` message per change (the chat's
 // pages, the one to show, the pane's place: the chat column below the strip); Esc through the shell goes back to
-// the chat; × forgets a page; the tab a chat was on comes back with it; a zsh that ends takes its tab.
+// the chat; × forgets a page; the tab a chat was on comes back with it; a zsh that ends takes its tab. The strip
+// also carries the address of the page on top (2026-09-21): the key's URL until the shell reports a navigation
+// (peixPaneUrl), shown without its scheme, copied whole by a click, and remembered per page across tab switches.
 export const meta = { server: true, fixture: 'auto' };
 export default async function (ctx) {
   const [two, plain] = ctx.fixture.chats;
@@ -26,6 +28,32 @@ export default async function (ctx) {
   const strip = await ctx.evaluate(`(r => ({ left: Math.round(document.querySelector('#chat').getBoundingClientRect().left), bottom: Math.round(r.bottom) }))(document.querySelector('#ptabs').getBoundingClientRect())`);
   ctx.assert.equal(out.one.pane.top, strip.bottom, 'the pane starts under the strip'); ctx.assert.equal(out.one.pane.left, strip.left, 'and at the chat column');
   ctx.assert.ok(await ctx.evaluate(`!!document.querySelector('#ptabs .navs .nav[data-nav="back"]')`), '‹ › ↻ ↗ with a page on');
+  // the address: the key's URL to begin with, then wherever the shell says the view went
+  const purl = () => ctx.evaluate(`JSON.stringify((el => el && { text: el.textContent, url: el.dataset.url, key: el.dataset.key })(document.querySelector('#purl')) || null)`).then(JSON.parse);
+  const ghKey = out.one.tabs[1].k, ghUrl = ghKey.slice(3);
+  out.url = { first: await purl() };
+  ctx.assert.equal(out.url.first.url, ghUrl, 'the address is the URL the tab was opened with');
+  ctx.assert.equal(out.url.first.text, ghUrl.replace(/^https:\/\//, ''), 'shown without its scheme');
+  const deep = ghUrl + '/files';
+  await ctx.evaluate(`window.peixPaneUrl(${JSON.stringify(ghKey)}, ${JSON.stringify(deep)})`);
+  out.url.moved = await purl();
+  ctx.assert.equal(out.url.moved.url, deep, 'a navigation reported by the shell moves it');
+  ctx.assert.equal(out.url.moved.text, deep.replace(/^https:\/\//, ''));
+  await ctx.shot('address', await ctx.evaluate(`(r => ({ x: r.left, y: Math.max(0, r.top - 70), width: r.width, height: 110 }))(document.querySelector('#ptabs').getBoundingClientRect())`));
+  // a click on it copies the whole address, scheme and all (headless Chrome resolves writeText into no clipboard at
+  // all — readText always comes back empty — so what is handed to it is what is checked)
+  await ctx.evaluate(`window.__clip = []; navigator.clipboard.writeText = t => { window.__clip.push(t); return Promise.resolve(); }`);
+  await ctx.evaluate(`document.querySelector('#purl').click()`);
+  out.url.copied = await ctx.evaluate(`window.__clip.slice(-1)[0] ?? null`);
+  out.url.note = await ctx.evaluate(`document.querySelector('.note')?.textContent || null`);
+  ctx.assert.equal(out.url.copied, deep, 'the whole address, scheme and all');
+  ctx.assert.match(out.url.note || '', /copied/i, 'and a note says so');
+  // …unless part of it is selected by hand: that click is someone copying their own selection
+  await ctx.evaluate(`(el => { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); })(document.querySelector('#purl'))`);
+  await ctx.evaluate(`document.querySelector('#purl').click()`);
+  out.url.selected = await ctx.evaluate(`window.__clip.length`);
+  ctx.assert.equal(out.url.selected, 1, 'a selection inside it wins');
+  await ctx.evaluate(`getSelection().removeAllRanges(); document.querySelectorAll('.note').forEach(n => n.remove())`);
   await ctx.evaluate(`document.querySelector('#ptabs .nav[data-nav="reload"]').click()`);
   ctx.assert.deepEqual(await ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'nav').pop())`).then(JSON.parse), { type: 'nav', what: 'reload' });
   // ⌥⌘G again: the picker (always, with several); the other row → a second tab, on
@@ -54,6 +82,8 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#ptabs .ptab[data-tab=${JSON.stringify(firstGh)}]').click()`);
   await ctx.waitFor(`document.querySelector('#ptabs .ptab.on')?.dataset.tab === ${JSON.stringify(firstGh)}`, { what: 'the first PR tab on again' });
   ctx.assert.equal((await lastPane()).show, firstGh); ctx.assert.equal(await ctx.evaluate(`document.querySelector('#prbar').hidden`), false, 'its strip shows');
+  out.url.back = await purl();
+  ctx.assert.equal(out.url.back.url, deep, 'the address it was left on comes back with the tab');
   await ctx.evaluate(`document.querySelector('#ptabs .ptab[data-tab=${JSON.stringify(firstGh)}] .x').click()`);
   out.closed = { tabs: await tabsNow(), pane: await lastPane() };
   ctx.assert.equal(out.closed.tabs.length, 4); ctx.assert.equal(out.closed.pane.show, null); ctx.assert.equal(out.closed.pane.keys.length, 2);

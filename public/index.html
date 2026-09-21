@@ -404,10 +404,15 @@
      drive its view through the shell. */
   #ptabs { display: flex; gap: 4px; padding: 4px 10px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 11.5px; align-items: center; }
   #ptabs[hidden] { display: none; }
-  .ptab { font: inherit; font-size: 11.5px; padding: 2px 9px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .ptab { flex: none; font: inherit; font-size: 11.5px; padding: 2px 9px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
   .ptab:hover { color: var(--ink); }
   .ptab.on { color: var(--ink); border-color: var(--accent); }
   .ptab .x { opacity: .5; font-size: 12px; line-height: 1; } .ptab .x:hover { opacity: 1; color: var(--needs); }
+  /* The address of the page on top (2026-09-21): without its scheme so the tail fits, selectable by hand, and a
+     click anywhere on it copies the whole URL. It takes whatever room is left between the tabs and ‹ › ↻ ↗. */
+  #ptabs .purl { flex: 1 1 auto; min-width: 0; margin-left: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    color: var(--muted); cursor: pointer; user-select: text; }
+  #ptabs .purl:hover { color: var(--ink); }
   #ptabs .navs { margin-left: auto; display: flex; gap: 2px; }
   #ptabs .nav { font: inherit; font-size: 13px; line-height: 1; padding: 2px 6px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; }
   #ptabs .nav:hover { color: var(--ink); border-color: var(--line); }
@@ -586,7 +591,8 @@
     <kbd>⌘K</kbd><span>clear the terminal — the scrollback goes on the holder too, so it stays clear</span>
     <kbd>⇧⏎</kbd><span>newline in the terminal's prompt</span>
     <kbd>esc</kbd><span>closes a picker or popover · back to the chat from a page's tab · never leaves full screen while one is up</span>
-    <kbd>⌘R · ⇧⌘R</kbd><span>reload · restart the server, in the app</span>
+    <kbd>⌘R · ⇧⌘R</kbd><span>reload — the page in the pane while one is up, else the board · restart the server, in the app</span>
+    <kbd>pinch</kbd><span>zoom a GitHub or VS Code page in the pane, as in Safari · its address sits in the strip, click to copy</span>
   </div>
 </div>
 <dialog id="pick">
@@ -1741,6 +1747,19 @@
   // come back with the chat; a tab whose page is gone falls back to the chat.
   const tabs = new Map();
   const isPaneTab = t => /^(gh|ide):/.test(t || '');
+  // Where each page actually is (2026-09-21): the key says where it was opened, the shell reports every navigation
+  // (peixPaneUrl, a KVO watch on the view's url), so a PR followed into a file or a review shows — and copies — the
+  // address on screen. Kept per key, so switching tabs and coming back keeps it; the shell re-sends on every pane
+  // message, which is what gives it back after a board reload.
+  const paneUrls = new Map();
+  const bareUrl = u => u.replace(/^https?:\/\//, '');
+  const paneUrl = k => paneUrls.get(k) || k.slice(k.indexOf(':') + 1);
+  window.peixPaneUrl = (key, url) => {
+    if (!url) return;
+    paneUrls.set(key, url);
+    const el = $('#purl');
+    if (el && el.dataset.key === key) { el.dataset.url = url; el.textContent = bareUrl(url); el.title = url + ' — click to copy'; }
+  };
   const paneKeys = s => !inApp || !s ? [] : [...(state.paneGh.get(s.id) || []).map(u => 'gh:' + u), ...(s.cwd && state.paneIde.get(s.cwd) ? ['ide:' + state.paneIde.get(s.cwd)] : [])];
   const tabKeys = s => ['chat', ...(shellLive(s) ? ['shell'] : []), ...paneKeys(s)];
   const tabOf = s => { const t = tabs.get(s.id); return t && tabKeys(s).includes(t) ? t : 'chat'; };
@@ -1769,6 +1788,7 @@
       : k === 'shell' ? tab(k, 'zsh', `A zsh in ${s.cwd || 'its folder'} · ⌥⌘T`, 'End this shell')
       : k.startsWith('gh:') ? tab(k, paneLabel(k), `${k.slice(3)} · ⌥⌘G`, 'Close this page')
       : tab(k, 'VS Code', `${s.cwd} in VS Code Web · ⌥⌘E`, 'Close the editor')).join('')
+      + (isPaneTab(cur) ? `<span class="purl" id="purl" data-key="${esc(cur)}" data-url="${esc(paneUrl(cur))}" title="${esc(paneUrl(cur))} — click to copy">${esc(bareUrl(paneUrl(cur)))}</span>` : '')
       + (isPaneTab(cur) ? '<span class="navs"><button class="nav" data-nav="back" title="Back">‹</button><button class="nav" data-nav="forward" title="Forward">›</button><button class="nav" data-nav="reload" title="Reload">↻</button><button class="nav" data-nav="external" title="Open this page in your browser">↗</button></span>' : '');
   }
   // The shell's word: the chat's pages, the one to show (null hides the pane) and where the pane goes — the chat
@@ -1786,11 +1806,27 @@
   $('#ptabs').addEventListener('click', e => {
     const s = state.sessions.get(state.current); if (!s) return;
     const nav = e.target.closest('.nav'); if (nav) { post({ type: 'nav', what: nav.dataset.nav }); return; }
+    const url = e.target.closest('.purl'); if (url) return copyPaneUrl(url);
     const b = e.target.closest('.ptab'); if (!b) return;
     const k = b.dataset.tab;
     if (e.target.closest('.x')) return closeTab(s, k);
     openTab(s, k);
   });
+  /** The strip's address, clicked: the whole URL (scheme and all) to the clipboard. A selection made by hand inside
+      it wins — that is someone copying part of it themselves. The clipboard API wants a gesture and a focused
+      document, which a click on the board gives it; the textarea is the fallback when it still says no. */
+  async function copyPaneUrl(el) {
+    const url = el.dataset.url || '';
+    const sel = getSelection();
+    if (!url || (sel && !sel.isCollapsed && el.contains(sel.anchorNode))) return;
+    try { await navigator.clipboard.writeText(url); return note(el, 'Address copied'); } catch {}
+    const ta = document.createElement('textarea');
+    ta.value = url; ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch {}
+    ta.remove();
+    note(el, ok ? 'Address copied' : 'Could not copy — select it and ⌘C', !ok);
+  }
   /** A tab chosen — by a click or ⌥⌘←/→: a GitHub page opens through its strip too; the rest is syncTerm, and the keyboard follows. */
   function openTab(s, k) {
     setTab(s, k);

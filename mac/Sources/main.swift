@@ -28,6 +28,20 @@ func isCancelled(_ error: Error) -> Bool {
   return e.domain == NSURLErrorDomain && e.code == NSURLErrorCancelled
 }
 
+/// A Swift string as a JavaScript literal, for the calls the shell makes into the board (a page's address).
+func jsStr(_ s: String) -> String {
+  var out = ""
+  for c in s.unicodeScalars {
+    switch c {
+    case "\\": out += "\\\\"
+    case "'": out += "\\'"
+    case "\n", "\r", "\u{2028}", "\u{2029}": out += " "
+    default: out.unicodeScalars.append(c)
+    }
+  }
+  return "'" + out + "'"
+}
+
 /// Append a line to the app log — the only way to see what the shell is doing once it is a bundle.
 func logLine(_ s: String) {
   let stamp = ISO8601DateFormatter().string(from: Date())
@@ -143,7 +157,7 @@ final class ServerController {
 // ---------------------------------------------------------------------------------------------
 
 final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler,
-                         WKNavigationDelegate, UNUserNotificationCenterDelegate {
+                         WKNavigationDelegate, UNUserNotificationCenterDelegate, NSMenuItemValidation {
   var window: NSWindow!
   var web: BoardWebView!
   var content: NSView!
@@ -151,6 +165,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   // A web view per page (`key`: gh:<a PR's url>, ide:<a folder's editor url>), kept loaded; the page's strip has the tabs.
   var paneViews: [String: WKWebView] = [:]
   var paneOrder: [String] = []                 // least recently shown first — what goes when there are too many
+  var paneObs: [String: NSKeyValueObservation] = [:]   // each view's url, watched — the strip shows the address it is on
   var paneKeys: [String] = []                  // the open chat's pages — spared by the eviction
   var paneShown: String?                       // the page on top; nil while the pane is hidden
   var paneChat: String?                        // the chat the page says is open
@@ -291,6 +306,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     w.navigationDelegate = prDelegate
     w.uiDelegate = prDelegate
     w.allowsBackForwardNavigationGestures = true
+    w.allowsMagnification = true                 // pinch to zoom, Safari's own gesture — off by default in a WKWebView
     if w.responds(to: Selector(("setInspectable:"))) { w.setValue(true, forKey: "inspectable") }
     w.translatesAutoresizingMaskIntoConstraints = false
     w.isHidden = true
@@ -298,8 +314,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     NSLayoutConstraint.activate([w.leadingAnchor.constraint(equalTo: prPane.leadingAnchor), w.trailingAnchor.constraint(equalTo: prPane.trailingAnchor),
                                  w.topAnchor.constraint(equalTo: prPane.topAnchor), w.bottomAnchor.constraint(equalTo: prPane.bottomAnchor)])
     paneViews[key] = w; paneOrder.append(key)
+    // Every navigation, a link followed or a pushState inside GitHub included: the strip shows where the view is.
+    paneObs[key] = w.observe(\.url) { [weak self] v, _ in self?.tellPaneUrl(key, v.url?.absoluteString) }
     while paneViews.count > AppDelegate.paneViewsMax, let old = paneOrder.first(where: { !paneKeys.contains($0) && $0 != key }) {
       paneViews[old]?.removeFromSuperview(); paneViews[old] = nil; paneOrder.removeAll { $0 == old }
+      paneObs[old]?.invalidate(); paneObs[old] = nil
       logLine("pane: let go of \(old)")
     }
     return (w, true)
@@ -320,12 +339,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     let change = paneShown != k || prPane.isHidden
     for (key, v) in paneViews { v.isHidden = key != k }
     paneShown = k; prPane.isHidden = false
+    tellPaneUrl(k, w.url?.absoluteString ?? url.absoluteString)
     if change { window.makeFirstResponder(w); tellPane(); logLine("pane: \(url.absoluteString)\(fresh ? "" : " (kept)") pages=\(keys.count) at \(Int(left)),\(Int(top))") }
   }
   /// The page cannot see the pane — a native view over its chat column — so it is told whether the pane is up and
   /// where its edge is (points, which are the board view's CSS px): a dialog can then open beside it, not under it.
   func tellPane() {
     web.evaluateJavaScript("window.peixPane && window.peixPane(\(prPane.isHidden ? "false" : "true"), \(Int(paneLeftC.constant)))", completionHandler: nil)
+  }
+  /// Where a page is now, for the strip to show and copy — with the key it belongs to, since the board may have
+  /// moved on to another tab by the time a load finishes. Sent on every pane message too: a board reload forgets it.
+  func tellPaneUrl(_ key: String, _ url: String?) {
+    guard let url = url, !url.isEmpty else { return }
+    web.evaluateJavaScript("window.peixPaneUrl && window.peixPaneUrl(\(jsStr(key)), \(jsStr(url)))", completionHandler: nil)
   }
   /// ‹ › ↻ ↗ from the strip, for the page on top.
   func paneNav(_ what: String) {
@@ -471,7 +497,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     window.makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)
   }
-  @objc func reload(_ sender: Any?) { web.load(URLRequest(url: kURL)) }
+  /// ⌘R reloads what you are looking at: the page on top of the pane while the pane is up (GitHub, the editor —
+  /// the board's own tab strip has ↻ for it too), the board itself otherwise. The menu item says which.
+  @objc func reload(_ sender: Any?) {
+    if let w = paneShown.flatMap({ paneViews[$0] }), !prPane.isHidden { w.reload(); return }
+    web.load(URLRequest(url: kURL))
+  }
+  func validateMenuItem(_ item: NSMenuItem) -> Bool {
+    if item.action == #selector(reload(_:)) {
+      item.title = prPane != nil && !prPane.isHidden ? "Reload Page" : "Reload"
+    }
+    return true
+  }
   @objc func openLog(_ sender: Any?) { NSWorkspace.shared.open(kLog) }
   @objc func restartServer(_ sender: Any?) {
     showMessage("Restarting the server…")

@@ -165,6 +165,12 @@ refuses to run against the real directory for the same reason.
   `‹ › ↻ ↗` in the strip are `{type:'nav'}`; × forgets a page (`closeTab`). In a browser the tabs are chat and zsh
   only (`inApp`). GitHub cannot be iframed, hence the second `WKWebView`; a web view with no UI delegate drops
   `target=_blank`, hence `PrPaneDelegate`. → Findings: *the pane*.
+* **A page in the pane behaves like a browser tab** (2026-09-21): **⌘R** reloads *it* while the pane is up (the
+  board otherwise — the View menu's item renames itself in `validateMenuItem`), **pinch zooms** it
+  (`allowsMagnification`, off by default in a WKWebView), and **its address sits in the strip**, scheme stripped,
+  a click copying the whole URL (`copyPaneUrl`). The address is the shell's word: a KVO watch on each view's `url`
+  (`paneObs`) reports every navigation as `peixPaneUrl(key, url)`, kept per key in `paneUrls` — so a tab switch,
+  and a board reload (the shell re-sends on every `pane` message), keep it. → Decisions, 2026-09-21.
 * **Both web views are inspectable** (main.swift sets it): Safari → Develop reaches the real app.
 
 ## The drawer
