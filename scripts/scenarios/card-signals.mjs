@@ -18,11 +18,12 @@ const cards = ctx => ctx.evaluate(`[...document.querySelectorAll('#slist .card')
   chips: [...c.querySelectorAll('.trow .chip')].map(x => x.textContent.trim()),
   state: c.querySelector('.state')?.textContent.trim() || '',
   lit: getComputedStyle(c).getPropertyValue('--lit').trim(),
+  spins: getComputedStyle(c).getPropertyValue('--spins').trim(),
 }))`);
 
 export default async function (ctx) {
   const out = {}, cwd = join(tmpdir(), 'peix-signals', 'signals-repo');
-  const sleeps = Array.from({ length: 4 }, () => spawn('sleep', ['180'], { stdio: 'ignore' }));
+  const sleeps = Array.from({ length: 5 }, () => spawn('sleep', ['180'], { stdio: 'ignore' }));
   const live = i => ({ pid: sleeps[i].pid, startedAt: Date.now() - 3600_000 });
   const now = Date.now(), at = ms => new Date(now - ms);
   const mon = 'mon7yk1x2';
@@ -42,6 +43,13 @@ export default async function (ctx) {
     // 3 · sub-agents: three of them at work behind one tool call
     { cwd, title: 'Three agents out', prompt: 'review the diff from every angle', reply: 'fanning out', at: at(400_000), live: live(2),
       lines: id => toolLines({ id, cwd, name: 'Agent', input: { description: 'review: bugs', prompt: 'look for bugs' }, at: at(90_000) }) },
+    // 5 · both at once — a monitor running *and* a turn in flight: the work ring must win, at the work pace
+    { cwd, title: 'Both at once', prompt: 'ship it while the CI runs', reply: 'on it', at: at(700_000), live: live(4),
+      lines: id => [
+        ...toolLines({ id, cwd, name: 'Monitor', input: { command: 'gh run watch', description: 'the deploy run', timeout_ms: 1800_000 },
+          result: 'Monitor started (task dep99zz11, expires in 30m unless the source ends first).', at: at(200_000) }),
+        ...toolLines({ id, cwd, name: 'Bash', input: { command: 'npm run build', description: 'build' }, at: at(80_000) }),
+      ] },
     // 4 · a question, waiting: an AskUserQuestion with no answer
     { cwd, title: 'Waiting on you', prompt: 'set up the database', reply: 'one question first', at: at(500_000), live: live(3),
       lines: id => toolLines({ id, cwd, name: 'AskUserQuestion', at: at(30_000),
@@ -55,7 +63,7 @@ export default async function (ctx) {
   try {
     await ctx.server.restart();
     await ctx.send('Page.reload'); await ctx.sleep(1500);
-    await ctx.waitFor(`window.peix.sessions().filter(s => s.cwd === ${JSON.stringify(cwd)}).length === 4`, { what: 'the four chats' });
+    await ctx.waitFor(`window.peix.sessions().filter(s => s.cwd === ${JSON.stringify(cwd)}).length === 5`, { what: 'the five chats' });
     await ctx.waitFor(`window.peix.sessions().some(s => s.agents === 3)`, { what: 'the three sub-agents counted', timeout: 20000 });
 
     // ---- what the server says ----
@@ -68,7 +76,7 @@ export default async function (ctx) {
     ctx.assert.equal(by('Waiting on you').ask, 'AskUserQuestion/3', 'the question, and the three answers it offers');
 
     // ---- what the card does with it ----
-    out.cards = (await cards(ctx)).filter(c => ['Normal work', 'Watching CI', 'Three agents out', 'Waiting on you'].includes(c.title));
+    out.cards = (await cards(ctx)).filter(c => ['Normal work', 'Watching CI', 'Three agents out', 'Waiting on you', 'Both at once'].includes(c.title));
     await ctx.shot('card-signals');
     // Both themes: the ring colours have to read on the light one too (--watch and --needs are a pair per theme).
     await ctx.evaluate(`document.documentElement.dataset.theme = 'light'`);
@@ -84,10 +92,14 @@ export default async function (ctx) {
     ctx.assert.deepEqual(card('Waiting on you').cls, ['asking', 'needs-input'], 'the question stops the card');
     ctx.assert.match(card('Waiting on you').state, /asking you: Which database should the service use\?3 answers/, 'the question is on the card, with how many answers it offers');
     ctx.assert.notEqual(card('Waiting on you').lit, card('Normal work').lit, 'and it is lit in another colour than work');
+    ctx.assert.deepEqual(card('Both at once').cls, ['watching', 'working'], 'a chat can be both — clauding with a monitor of its own');
+    ctx.assert.equal(card('Both at once').lit, card('Normal work').lit, '…and the work ring wins');
+    ctx.assert.equal(card('Both at once').spins, '1.4s', '…at the work pace: every rule sets every variable, or the monitor\'s 6s leaks into it');
+    ctx.assert.deepEqual(card('Both at once').chips, ['monitor'], '…while the chip still says what is running');
 
     // ---- and it leads the list: a question costs you a second and unblocks a turn (2026-09-21) ----
     out.order = await ctx.evaluate(`[...document.querySelectorAll('#slist > *')].map(e => e.classList.contains('gsep') ? '><>' : e.querySelector('.title')?.textContent)`);
-    ctx.assert.deepEqual(out.order.slice(0, 5), ['Waiting on you', 'Normal work', 'Three agents out', '><>', 'Watching CI'],
+    ctx.assert.deepEqual(out.order.slice(0, 6), ['Waiting on you', 'Normal work', 'Three agents out', 'Both at once', '><>', 'Watching CI'],
       'the question first, then the clauding chats by your last touch, then the fish, then the ready ones');
     await ctx.key('KeyK');   // the chat picker goes by the same rank
     await ctx.waitFor(`document.querySelector('#pick').open && document.querySelectorAll('#picklist .pkrow').length > 3`, { what: 'the chat picker' });

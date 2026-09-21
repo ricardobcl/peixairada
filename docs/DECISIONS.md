@@ -34,6 +34,11 @@ this file is the *why* and the *state*. Last updated 2026-09-21.
 * **The question goes on the card.** `s.ask` — which tool asked, what it asked, how many answers it offers — is
   carried only while the status is `needs-input`, so it cannot go stale. The card reads *asking you: Which database
   should the service use?* with *3 answers* beside it, which is often enough to answer without opening the chat.
+* **Every rule of the ring sets every variable of it.** A card can be two of these at once — clauding *with* a
+  monitor of its own is the ordinary case — and the priority order only decides what the *later* rule says, not
+  what it leaves out: `.card.working` gave no `--spins`, so the work light ran at the monitor's sixth of the speed.
+  Found on the live board, on the board's own chat, which was both while this was being written; the scenario has
+  a fifth chat that is both, to keep it found.
 * **The asking card leads the list** (Ricardo, on being offered it: "yes, update the RANK"). It was the one state
   whose card you might not see: a question sorts by your last touch like any ready chat, so it could sit below a
   dozen others while Claude waited. `RANK` gained a step above clauding (`asking: 0`) and `rankOf` — the sort's

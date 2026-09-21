@@ -84,7 +84,9 @@ refuses to run against the real directory for the same reason.
   colour; **watching** (`s.tasks` — a monitor or a background command still running, see *How it reads Claude Code*)
   is one light in `--watch`, slowly, and can sit on a *ready* card; **asking** (`needs-input` while alive) is the
   whole edge in `--needs`, breathing rather than running, with the question and its answer count on the card
-  (`askHtml`). The three CSS rules are in priority order — work beats a monitor, a question beats both — and the
+  (`askHtml`). The three CSS rules are in priority order — work beats a monitor, a question beats both — **and each
+  sets every variable**, since a card can be two of them (clauding with a monitor) and what a rule leaves out the
+  earlier one keeps. The
   chips beside the title say the numbers (`N agents`, `monitor`). → `scripts/scenarios/card-signals.mjs`,
   Decisions 2026-09-21.
 * **A project is a folder** (the registry's `cwd`, never the transcript's — that one moves with `cd`) **or a

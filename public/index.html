@@ -239,7 +239,10 @@
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
     animation: ring var(--spins, 1.4s) linear infinite; }
   .card.watching { --lit: var(--watch); --seg: 100%; --spins: 6s; }
-  .card.working { --lit: var(--ring, var(--repo, var(--working))); --seg: calc(100% / var(--lights, 1)); }
+  /* Every variable of the ring is set in every rule: a card can be two of these at once (clauding *and* watching is
+     the ordinary case for a chat running a monitor), and what the later rule leaves unsaid the earlier one keeps —
+     which had the work light running at the monitor's sixth of the speed. */
+  .card.working { --lit: var(--ring, var(--repo, var(--working))); --seg: calc(100% / var(--lights, 1)); --spins: 1.4s; }
   .card.asking { --lit: var(--needs); --seg: 100%; border-color: color-mix(in srgb, var(--needs) 70%, var(--line)); }
   .card.asking::before { background: var(--lit); animation: breathe 1.7s ease-in-out infinite; }
   @keyframes ring { to { --spin: 360deg; } }
