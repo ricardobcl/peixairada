@@ -50,40 +50,31 @@
   #termBtn.take.arm { color: var(--needs); border-color: var(--needs); }      /* armed: the next click ends that claude */
   .btn.icon .lbl { font-size: 11px; }
   /* No page header since 2026-09-20 — the Mac window has its own title bar, and a second bar was a strip of
-     controls nobody touched twice a day. The fish sits at the top of the projects strip, the settings behind
-     the cog at its bottom, in a popover anchored to it. */
-  .brand { position: relative; width: 28px; height: 28px; flex: none; display: inline-flex; cursor: pointer; }
+     controls nobody touched twice a day. The fish sits at the top of the projects strip and is a light, not a
+     button (it goes dim when the SSE stream drops); everything the board has to say for itself is in the one
+     popover at the bottom left, behind the cog: the plan usage and the keys. */
+  .brand { position: relative; width: 28px; height: 28px; flex: none; display: inline-flex; }
   .brand .logo { width: 28px; height: 28px; }
   .pop { position: fixed; left: 54px; bottom: 10px; z-index: 40; display: grid; gap: 9px; min-width: 250px; padding: 12px 14px 13px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); box-shadow: 0 10px 34px rgba(0, 0, 0, .22); font-size: 12px; }
   .pop[hidden] { display: none; }
   .pop h4 { margin: 0 0 2px; font-size: 13px; display: flex; align-items: baseline; gap: 8px; }
   .pop h4 em { font-style: normal; color: var(--accent); }
   .pop h4 .sub { font-size: 11px; font-weight: 400; color: var(--muted); }
-  /* The usage card, beside the fish, at half again the size (2026-09-21): it is glanced at from across the desk,
-     not read up close, and it is the one popover with nothing to click. Every number here is `.pop`'s × 1.5 —
-     twice was too much; the settings popover shares `.pop` and keeps the plain ones. */
-  .upop { top: 6px; bottom: auto; min-width: 480px; max-width: calc(100vw - 68px); gap: 14px; padding: 18px 21px 20px; border-radius: 18px; font-size: 18px; }
-  .upop h4 { margin: 0 0 3px; font-size: 20px; gap: 12px; }
-  .upop #counts { font-size: 17px; }
-  .upop .usage { gap: 9px; padding: 3px 0 0; }
-  .upop .usage .urow { grid-template-columns: 162px 1fr 51px auto; gap: 12px; }
-  .upop .usage .ubar { height: 9px; border-radius: 5px; }
-  .upop .usage .ubar i { border-radius: 5px; }
-  .upop .usage .ur, .upop .usage .note { font-size: 17px; }
-  .pop .row { display: flex; gap: 6px; flex-wrap: wrap; }
-  /* Plan usage — one bar per window, the way `/usage` lists them; green → amber → red as it fills. */
-  .usage { display: grid; gap: 6px; padding: 2px 0 0; color: var(--muted); }
+  /* Plan usage — one bar per window, the way `/usage` lists them; green → amber → red as it fills. It lives in
+     the settings popover (2026-09-21) and is half again the size of everything else there: read at a glance, from
+     further off than the keys under it, and the only thing in that card worth crossing the room for. */
+  .usage { display: grid; gap: 9px; padding: 3px 0 0; color: var(--muted); font-size: 18px; }
   .usage:empty { display: none; }
-  .usage .urow { display: grid; grid-template-columns: 108px 1fr 34px auto; gap: 8px; align-items: center; white-space: nowrap; }
+  .usage .urow { display: grid; grid-template-columns: 162px 1fr 51px auto; gap: 12px; align-items: center; white-space: nowrap; }
   .usage .ul { overflow: hidden; text-overflow: ellipsis; }
-  .usage .ubar { height: 6px; border-radius: 3px; background: var(--inline-bg); overflow: hidden; }
-  .usage .ubar i { display: block; height: 100%; border-radius: 3px; background: var(--u, var(--idle)); }
+  .usage .ubar { height: 9px; border-radius: 5px; background: var(--inline-bg); overflow: hidden; }
+  .usage .ubar i { display: block; height: 100%; border-radius: 5px; background: var(--u, var(--idle)); }
   .usage .up { text-align: right; font-weight: 700; color: var(--ink); }
-  .usage .ur { font-size: 11px; }
-  .usage .note { font-size: 11px; line-height: 1.35; white-space: normal; }
-  .pop label { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
+  .usage .ur, .usage .note { font-size: 17px; }
+  .usage .note { line-height: 1.35; white-space: normal; }
   /* The keys, so they can be looked up: two columns under a rule, the chord in ink, what it does in muted. */
-  .pop .keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: baseline; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); max-width: 380px; }
+  #settings { width: 480px; }   /* the usage rows set it; the keys wrap inside */
+  .pop .keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: baseline; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
   .pop .keys .kh { grid-column: 1 / -1; font-size: 11px; }
   .pop .keys kbd { font: inherit; font-weight: 600; color: var(--ink); white-space: nowrap; }
   .pop select, .colhead select { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; max-width: 180px; }
@@ -132,7 +123,10 @@
 
   /* ---- projects: a folder, or a named set of folders ---- */
   #plist { overflow-y: auto; padding: 6px; min-width: 0; }
-  #pfoot { display: flex; padding: 8px 12px; border-top: 1px solid var(--line); }
+  /* The cog opens on hover, and the target is the whole footer — every pixel down to the bottom left corner of
+     the window, so the pointer can be thrown at it. The button inside only shows where to look. */
+  #pfoot { display: flex; padding: 8px 12px; border-top: 1px solid var(--line); cursor: pointer; }
+  #pfoot:hover { background: var(--inline-bg); }
   main.compact #pfoot { justify-content: center; padding: 8px 0; }
   /* the filter boxes: a magnifier in the row, the box itself only while it is open or has text */
   .fsearch { font: inherit; border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 12px; padding: 2px 7px; cursor: pointer; display: inline-flex; align-items: center; flex: none; }
@@ -565,12 +559,8 @@
   </section>
 </main>
 <div id="settings" class="pop" hidden>
-  <h4><span>peix<em>AI</em>rada</span><span class="sub">settings</span></h4>
-  <label title="Also show live panels with no messages, and stale chats older than 30 days"><input type="checkbox" id="showAll"> show empty &amp; &gt;30d</label>
-  <label title="How tool calls (Bash, Read, Edit…) appear in the chat">tool calls <select id="toolsMode"><option value="collapsed">collapsed</option><option value="expanded">expanded</option><option value="hidden">hidden</option></select></label>
-  <label title="Fold fenced code blocks longer than 6 lines — the default; the { } button in a chat's header sets it for that chat"><input type="checkbox" id="foldCode"> fold code</label>
-  <label><input type="checkbox" id="sound"> sound</label>
-  <div class="row"><button class="btn" id="notifBtn" title="Browser notifications (the server also sends native macOS ones)">🔔 enable browser alerts</button><button class="btn" id="testBtn" title="Fire a test alert through the server">test alert</button></div>
+  <h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4>
+  <div id="usage" class="usage"></div>
   <div class="keys" title="From anywhere on the board, the terminal included">
     <span class="kh">keys</span>
     <kbd>⌥⌘T</kbd><span>a zsh in this folder, a tab beside the chat · again to show it</span>
@@ -589,10 +579,6 @@
     <kbd>esc</kbd><span>closes a picker or popover · back to the chat from a page's tab · never leaves full screen while one is up</span>
     <kbd>⌘R · ⇧⌘R</kbd><span>reload · restart the server, in the app</span>
   </div>
-</div>
-<div id="usagePop" class="pop upop" hidden>
-  <h4><span>peix<em>AI</em>rada</span><span id="counts"></span></h4>
-  <div id="usage" class="usage"></div>
 </div>
 <dialog id="pick">
   <input type="text" id="pickq" placeholder="Project — type to filter · ↑↓ · ⏎ opens · esc" autocomplete="off" spellcheck="false">
@@ -665,11 +651,9 @@
   const foldOn = id => id && id in prefs.foldBy ? !!prefs.foldBy[id] : !!prefs.foldCode;
 
   // ---- header controls ---------------------------------------------------------------
-  $('#sound').checked = prefs.sound; $('#showAll').checked = prefs.showAll; $('#toolsMode').value = prefs.toolsMode; $('#foldCode').checked = prefs.foldCode;
-  $('#sound').onchange = e => { prefs.sound = e.target.checked; savePrefs(); if (prefs.sound) beep(); };
-  $('#showAll').onchange = e => { prefs.showAll = e.target.checked; savePrefs(); renderBoard(); };
-  $('#toolsMode').onchange = e => { prefs.toolsMode = e.target.value; savePrefs(); renderLog(true); };
-  $('#foldCode').onchange = e => { prefs.foldCode = e.target.checked; savePrefs(); renderLog(true); };
+  // The settings popover is the plan usage and the keys, nothing else (2026-09-21, Ricardo: "just hotkeys and
+  // claude credits for now"). `sound`, `showAll`, `toolsMode` and `foldCode` keep their saved values — the code
+  // still reads them, and the chat header's { } button is still the fold for a chat — but nothing sets them now.
   // The magnifier opens its box; Esc or an emptied box on blur closes it; the icon stays lit while a filter is on.
   for (const [b, i] of [['#qBtn', '#q'], ['#pqBtn', '#pq']]) {
     const btn = $(b), inp = $(i), head = btn.closest('.colhead');
@@ -684,25 +668,23 @@
     inp.addEventListener('blur', () => { if (!inp.value.trim()) show(false); });
     inp.addEventListener('input', () => { btn.classList.toggle('on', !!inp.value.trim()); renderBoard(); });
   }
+  // The card hangs off the cog: hovering the footer shows it, a click pins it (to read at leisure, or on a
+  // touchpad tap); it goes when the pointer has left both, or on Esc / a click elsewhere once pinned. The usage
+  // is asked for once per opening — the server caches it for a minute anyway.
+  const spop = { timer: null, pinned: false };
   const settingsOpen = on => {
-    const pop = $('#settings'); pop.hidden = !on; $('#cogBtn').classList.toggle('on', on);
-    if (on) pop.style.left = ($('#projects').offsetWidth + 8) + 'px';   // beside the strip, whatever its width
+    const pop = $('#settings');
+    if (!on) { pop.hidden = true; spop.pinned = false; $('#cogBtn').classList.remove('on'); return; }
+    pop.style.left = ($('#projects').offsetWidth + 8) + 'px';   // beside the strip, whatever its width
+    if (pop.hidden) { pop.hidden = false; loadUsage(); }
+    $('#cogBtn').classList.add('on');
   };
-  // Plan usage lives on the fish: hovering shows the card, a click pins it (to read at leisure, or on a
-  // touchpad tap); it goes when the pointer has left both, or on Esc / a click elsewhere once pinned.
-  const upop = { timer: null, pinned: false };
-  const usageShow = on => {
-    const pop = $('#usagePop'); clearTimeout(upop.timer);
-    if (on) { pop.style.left = ($('#projects').offsetWidth + 8) + 'px'; if (pop.hidden) { pop.hidden = false; loadUsage(); } }
-    else if (!upop.pinned) pop.hidden = true;
-  };
-  const usageLeave = () => { clearTimeout(upop.timer); upop.timer = setTimeout(() => usageShow(false), 250); };
-  $('#brandBtn').addEventListener('mouseenter', () => usageShow(true));
-  $('#brandBtn').addEventListener('mouseleave', usageLeave);
-  $('#usagePop').addEventListener('mouseenter', () => clearTimeout(upop.timer));
-  $('#usagePop').addEventListener('mouseleave', usageLeave);
-  $('#brandBtn').addEventListener('click', e => { e.stopPropagation(); upop.pinned = !upop.pinned; if (upop.pinned) usageShow(true); else $('#usagePop').hidden = true; });
-  document.addEventListener('click', e => { if (upop.pinned && !e.target.closest('#usagePop')) { upop.pinned = false; $('#usagePop').hidden = true; } });
+  const settingsShow = on => { clearTimeout(spop.timer); if (on) settingsOpen(true); else if (!spop.pinned) settingsOpen(false); };
+  const settingsLeave = () => { clearTimeout(spop.timer); spop.timer = setTimeout(() => settingsShow(false), 250); };
+  $('#pfoot').addEventListener('mouseenter', () => settingsShow(true));
+  $('#pfoot').addEventListener('mouseleave', settingsLeave);
+  $('#settings').addEventListener('mouseenter', () => clearTimeout(spop.timer));
+  $('#settings').addEventListener('mouseleave', settingsLeave);
   // Plan usage, fetched when the popover opens (the server caches it for a minute). A failure is a
   // sentence, not a blank: the first ask on a Mac is a keychain prompt, and an API-key login has none.
   const untilReset = iso => { if (!iso) return ''; const m = Math.max(0, Math.round((new Date(iso) - Date.now()) / 60000)); return m >= 1440 ? `resets in ${Math.floor(m / 1440)}d ${Math.floor(m % 1440 / 60)}h` : m >= 60 ? `resets in ${Math.floor(m / 60)}h ${m % 60}m` : `resets in ${m}m`; };
@@ -714,8 +696,8 @@
     if (!d.windows?.length) { box.innerHTML = '<span class="note">usage: nothing reported for this account</span>'; return; }
     box.innerHTML = d.windows.map(w => `<div class="urow" title="${esc(w.key)}${w.resetsAt ? ' · resets ' + esc(new Date(w.resetsAt).toLocaleString()) : ''}"><span class="ul">${esc(w.label)}</span><span class="ubar"><i style="width:${Math.min(100, w.percent)}%;--u:${w.percent >= 90 ? 'var(--needs)' : w.percent >= 70 ? 'var(--working)' : 'var(--idle)'}"></i></span><span class="up">${w.percent}%</span><span class="ur">${untilReset(w.resetsAt)}</span></div>`).join('');
   }
-  $('#cogBtn').onclick = e => { e.stopPropagation(); settingsOpen($('#settings').hidden); };
-  document.addEventListener('click', e => { if (!$('#settings').hidden && !e.target.closest('#settings')) settingsOpen(false); });
+  $('#cogBtn').onclick = e => { e.stopPropagation(); spop.pinned = !spop.pinned; if (spop.pinned) settingsShow(true); else settingsOpen(false); };
+  document.addEventListener('click', e => { if (spop.pinned && !e.target.closest('#settings') && !e.target.closest('#pfoot')) settingsOpen(false); });
   // Esc on the page itself: a dialog (the picker, the project editor), the settings popover or the usage card closes,
   // and the key is *taken* — preventDefault, so WebKit reports it handled. An Esc the page leaves alone climbs to the
   // app's window, which in full screen takes it to leave full screen: the picker closed and the window shrank with it
@@ -730,15 +712,10 @@
     if (dlg) { dlg.close(); took = true; }
     else {
       if (!$('#settings').hidden) { settingsOpen(false); took = true; }
-      if (!$('#usagePop').hidden) { upop.pinned = false; $('#usagePop').hidden = true; took = true; }
     }
     if (!took) return;
     e.preventDefault(); e.stopPropagation();
   }, true);
-  $('#testBtn').onclick = () => fetch('/api/test-notify', { method: 'POST' });
-  $('#notifBtn').onclick = async () => { const p = await Notification.requestPermission(); updateNotifBtn(p); };
-  function updateNotifBtn(p = Notification.permission) { $('#notifBtn').textContent = p === 'granted' ? '🔔 browser alerts on' : p === 'denied' ? '🔕 browser alerts blocked' : '🔔 enable browser alerts'; }
-  if ('Notification' in window) updateNotifBtn(); else $('#notifBtn').hidden = true;
 
   // ---- sessions column width ----------------------------------------------------------
   function applySessionsCompact() {

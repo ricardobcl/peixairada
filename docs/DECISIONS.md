@@ -4,6 +4,24 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-21.
 
+## Decisions of 2026-09-21 — the cog holds everything, and opens on hover
+
+* **The settings popover is the plan usage and the keys, and nothing else** (Ricardo: "move the claude credits
+  there and remove all the options that I don't need: so just hotkeys and claude credits for now"): the credits
+  moved off the fish into the cog's card, still half again the size of the rest of it, with the live · ready ·
+  clauding counts in its heading; out went *show empty & >30d*, *tool calls*, *fold code*, *sound*, *enable browser
+  alerts* and *test alert*. The prefs behind them (`sound`, `showAll`, `toolsMode`, `foldCode`) are left exactly as
+  they were saved and the code still reads them — all four are at their defaults on this board, and the chat
+  header's `{ }` is still the fold for a chat — so nothing on the board moved; there is simply no control for them
+  any more. The fish keeps one job, the SSE light: it is not a button, and its cursor says so.
+* **The cog opens on hover, and the target is the whole footer** (Ricardo: "make the cog active on hover (it should
+  cover everything until the bottom leftest pixel)"): the listeners are on `#pfoot`, the strip's footer row, which
+  starts at x = 0 and ends at the window's last pixel — measured, 0 and 0 — so the pointer can be thrown into the
+  corner and the card is there. The rest is the behaviour the fish's card had, moved over: a click on the cog pins
+  it, leaving both closes it after 250 ms, Esc or a click away once pinned closes it too. Checked in the browser:
+  hover opens, leaving closes, the pin survives a leave, Esc closes, and the popover holds no input, select or
+  button at all any more.
+
 ## Decisions of 2026-09-21 — the usage card at half again the size
 
 * **The plan-usage card that hangs off the fish is half again as big** (Ricardo: "make the claude credits hover the
