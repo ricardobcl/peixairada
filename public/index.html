@@ -59,7 +59,17 @@
   .pop h4 { margin: 0 0 2px; font-size: 13px; display: flex; align-items: baseline; gap: 8px; }
   .pop h4 em { font-style: normal; color: var(--accent); }
   .pop h4 .sub { font-size: 11px; font-weight: 400; color: var(--muted); }
-  .upop { top: 6px; bottom: auto; min-width: 320px; }   /* the usage card, beside the fish */
+  /* The usage card, beside the fish, at half again the size (2026-09-21): it is glanced at from across the desk,
+     not read up close, and it is the one popover with nothing to click. Every number here is `.pop`'s × 1.5 —
+     twice was too much; the settings popover shares `.pop` and keeps the plain ones. */
+  .upop { top: 6px; bottom: auto; min-width: 480px; max-width: calc(100vw - 68px); gap: 14px; padding: 18px 21px 20px; border-radius: 18px; font-size: 18px; }
+  .upop h4 { margin: 0 0 3px; font-size: 20px; gap: 12px; }
+  .upop #counts { font-size: 17px; }
+  .upop .usage { gap: 9px; padding: 3px 0 0; }
+  .upop .usage .urow { grid-template-columns: 162px 1fr 51px auto; gap: 12px; }
+  .upop .usage .ubar { height: 9px; border-radius: 5px; }
+  .upop .usage .ubar i { border-radius: 5px; }
+  .upop .usage .ur, .upop .usage .note { font-size: 17px; }
   .pop .row { display: flex; gap: 6px; flex-wrap: wrap; }
   /* Plan usage — one bar per window, the way `/usage` lists them; green → amber → red as it fills. */
   .usage { display: grid; gap: 6px; padding: 2px 0 0; color: var(--muted); }

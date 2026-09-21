@@ -2,7 +2,18 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-09-20 (dawn).
+this file is the *why* and the *state*. Last updated 2026-09-21.
+
+## Decisions of 2026-09-21 — the usage card at half again the size
+
+* **The plan-usage card that hangs off the fish is half again as big** (Ricardo: "make the claude credits hover the
+  app icon 100% bigger", then "maybe 50% small now"): doubled first — 640 px wide, 24 px type — which was more card
+  than board, so it sits at × 1.5 instead: 480 px wide, 18 px type, 9 px bars, the label, percent and resets columns
+  with them. Every number in `.upop` is `.pop`'s times one and a half, and nothing else moved, because `.pop` is
+  shared with the settings popover, which keeps the plain ones (checked after the change: still 12 px type, still
+  410 px wide). It is the one popover with nothing to click in it, read at a glance from further off than anything
+  else on the board, so size is all it wants. A `max-width: calc(100vw - 68px)` keeps the wider card inside a narrow
+  window, which at 320 px was never a question. Looked at on the live board at both sizes: 480×185, three windows.
 
 ## Decisions of 2026-09-20, dawn — ⌥ composes again in the drawer, ⌘K clears it
 
