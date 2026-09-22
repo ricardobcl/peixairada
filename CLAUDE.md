@@ -114,7 +114,10 @@ refuses to run against the real directory for the same reason.
   `--rover`/`--rover2` and `#chat.tinted`; `--rink` is the ink that reads on it, white or near-black by Peacock's own
   brightness rule (`inkOn()`), and every control in `.shead` is redrawn in it; the veils (`--rover` across, `--rover2`
   down) pull the colour *away* from that ink towards the bottom right, so contrast holds at the buttons. No colour →
-  the plain panel header.
+  the plain panel header. **The colour square sits beside the project's name there too** (2026-09-22) — the same
+  `.sq.pick`, so the same picker and the same ⌥-click — inked only while the pointer is in the header; it keeps its
+  place in the row always, so nothing moves under the pointer. `colorAt` remembers which header the picker was
+  opened from, so the answer (`note`) pops up by the square that was clicked.
 * **The open chat's card and a hovered one are a solid tint** of its colour (`.card.active`, `.card:hover`, 55 %), the
   rest keep the gradient wash **under a plain edge** (2026-09-20 evening): only the clauding card, the hovered one and
   the open one wear the colour on their border.

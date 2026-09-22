@@ -64,6 +64,19 @@ export default async function (ctx) {
   out.fold.pref = (await ctx.peix('prefs()')).foldBy[two.id];
   ctx.assert.deepEqual(out.fold, { before: true, after: false, pref: false }, 'the fold button flips this chat only');
   await ctx.evaluate(`document.querySelector('#foldBtn').click()`);
+  // the header's colour square (2026-09-22): out of sight until the pointer is in the header, and a click moves the
+  // page's one <input type=color> under it, pointed at this chat's folder — the panel itself is the browser's, so
+  // this stops where the wiring does
+  const sq = `document.querySelector('#shead h2 .sq.pick')`;
+  out.sq = { cwd: await ctx.evaluate(`${sq}.dataset.cwd`), opacity: await ctx.evaluate(`getComputedStyle(${sq}).opacity`) };
+  ctx.assert.equal(out.sq.cwd, (await ctx.peix('session()')).cwd, "the square is this chat's folder");
+  ctx.assert.equal(out.sq.opacity, '0', 'and it is not inked until the header is hovered');
+  const hr = await ctx.evaluate(`JSON.stringify((r => ({ x: r.x, y: r.y, h: r.height }))(document.querySelector('#shead').getBoundingClientRect()))`).then(JSON.parse);
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: Math.round(hr.x + 20), y: Math.round(hr.y + hr.h / 2) });
+  await ctx.waitFor(`getComputedStyle(${sq}).opacity === '1'`, { what: 'the square shown with the pointer in the header' });
+  await ctx.shot('header-swatch', { x: Math.round(hr.x), y: Math.round(hr.y), width: 420, height: Math.round(hr.h) });
+  await ctx.evaluate(`${sq}.click()`);
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#colorInput').dataset.cwd`), out.sq.cwd, 'a click points the colour input at that folder');
   // T, E and C, routes stubbed so nothing spawns or opens; V is no key any more (the focus button only)
   await ctx.evaluate(`window.__hits = []; const real = window.fetch; window.fetch = (u, o) => { const s = String(u); if (/\\/(terminal|vscode-web|focus|shell)$/.test(s)) { window.__hits.push([s, o?.method]); return Promise.resolve({ ok: false, status: 500, json: async () => ({ error: 'stubbed' }) }); } return real(u, o); }`);
   for (const k of ['KeyT', 'KeyE', 'KeyV', 'KeyC']) { await ctx.key(k); await ctx.sleep(200); }

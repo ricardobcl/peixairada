@@ -395,6 +395,14 @@
   .shead h2 .repo:hover { text-decoration: underline; text-decoration-style: dotted; }
   .shead h2 .t { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .shead h2 .sep { color: var(--muted); font-weight: 400; flex: none; }
+  /* The project's colour beside its name, and the picker for it (2026-09-22, Ricardo: "allow me to quickly change
+     the project color on the header of the chat next to the project name (only on hover)"): the column's own
+     square, in the header where you are already looking. It keeps its place in the row always and only inks
+     itself while the pointer is in the header, so nothing moves under the pointer and the row stays as quiet as
+     it was. On a tinted header the square is the header's own colour, so it is read by its border — the ink that
+     reads on that tint, at a third. */
+  .shead h2 .sq { flex: none; width: 11px; height: 11px; border-radius: 3px; background: var(--repo, var(--nocolor)); border: 1px solid color-mix(in srgb, var(--rink, var(--muted)) 45%, transparent); opacity: 0; transition: opacity .12s, transform .12s; }
+  .shead:hover h2 .sq, .shead h2 .sq:focus-visible { opacity: 1; }
   .shead .path { font-size: 12px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .shead .status { font-size: 12px; gap: 5px; padding: 3px 7px; flex: none; }   /* the dot and its age, and the details fold's button */
   .shead .status.on { color: var(--ink); border-color: var(--accent); }
@@ -1608,8 +1616,12 @@
     n.style.top = (r.bottom + 6 + n.offsetHeight > innerHeight ? r.top - n.offsetHeight - 6 : r.bottom + 6) + 'px';
     setTimeout(() => n.remove(), err ? 8000 : 4000);
   }
-  const sqFor = cwd => document.querySelector(`#shd .sq.pick[data-cwd="${CSS.escape(cwd)}"]`) || document.querySelector(`.sq.pick[data-cwd="${CSS.escape(cwd)}"]`);
+  // The note belongs by the square that was clicked — the chat header's since 2026-09-22, the chat list's header
+  // before that — and every render makes a new element, so what is remembered is where it was, not which it was.
+  let colorAt = '#shd';
+  const sqFor = cwd => document.querySelector(`${colorAt} .sq.pick[data-cwd="${CSS.escape(cwd)}"]`) || document.querySelector(`.sq.pick[data-cwd="${CSS.escape(cwd)}"]`);
   function openColorPicker(sq) {
+    colorAt = sq.closest('#shead') ? '#shead' : sq.closest('#shd') ? '#shd' : '#plist';
     const r = sq.getBoundingClientRect();
     colorInput.style.left = r.left + 'px'; colorInput.style.top = r.bottom + 'px';
     colorInput.dataset.cwd = sq.dataset.cwd; colorInput.value = repoColor(sq.dataset.cwd) || '#b9b9b3';
@@ -1635,7 +1647,7 @@
   document.addEventListener('click', e => {   // capture: before the row's own click selects the project
     const sq = e.target.closest('.sq.pick'); if (!sq) return;
     e.stopPropagation(); e.preventDefault();
-    if (e.altKey) { previewColor(sq.dataset.cwd, null); setPeacock(sq.dataset.cwd, null); } else openColorPicker(sq);
+    if (e.altKey) { colorAt = sq.closest('#shead') ? '#shead' : '#shd'; previewColor(sq.dataset.cwd, null); setPeacock(sq.dataset.cwd, null); } else openColorPicker(sq);
   }, true);
   $('#plist').addEventListener('click', e => {
     const pin = e.target.closest('.ppin');
@@ -1770,7 +1782,7 @@
     // right" — the dot, the age and a ··· were three things for one fold): a click shows path, branch and session
     // details under the row. The chat's PRs are the block under it, one per row (#prlist).
     const take = takeable(s), armed = take && drawer.arm === s.id;
-    $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">/</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
+    $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span>${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}<span class="sep">/</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
       ${taskChip(s)}
       <button class="btn icon status${prefs.headDetails ? ' on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}"
         title="${esc(statusLabel[s.status] || s.status)}${s.statusSince ? ` for ${rel(s.statusSince)}` : ''} · click to ${prefs.headDetails ? 'hide' : 'show'} path, branch and session details"><span class="dot ${s.status}"></span>${s.statusSince ? rel(s.statusSince) : ''}</button>
