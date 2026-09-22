@@ -1146,12 +1146,14 @@
       : [mon ? (mon > 1 ? `${mon} monitors` : 'monitor') : '', bg ? (bg > 1 ? `${bg} running` : 'running') : ''].filter(Boolean).join(' · ');
     return `<span class="chip watch" title="${esc(t.map(taskLine).join('\n'))}">${ICON.watch}${esc(label)}</span>`;
   }
-  /** The question itself on the card — which tool asked, what it asked, how many answers it is offering. */
+  /** The question itself on the card — which tool asked, what it asked, how many answers it is offering; or, when
+   *  only the registry knows (the question's line is written with its answer), what Claude Code says it waits on. */
   function askHtml(s) {
     const a = s.ask || {};
     const what = a.tool === 'ExitPlanMode' ? 'asking you to approve its plan'
       : a.tool === 'PermissionRequest' ? 'asking for permission'
-      : a.text ? `asking you: ${a.text}` : 'asking you';
+      : a.text ? `asking you: ${a.text}`
+      : a.waitingFor ? `asking you — ${a.waitingFor}` : 'asking you';
     return `<div class="state needs-input" title="${esc(what)}">${ICON.ask}<span class="q">${esc(what)}</span>${a.options ? `<span class="opts">${a.options} answers</span>` : ''}</div>`;
   }
   function cardHtml(s, p) {

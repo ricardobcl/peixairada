@@ -136,3 +136,43 @@ test('the question on the card is the one still waiting for an answer', () => {
   assert.equal(summary(s).ask, null, 'answered: the card has nothing to ask you');
   assert.equal(s.status, 'working');
 });
+
+// The registry is Claude Code's own word on whether it is blocked on you (2026-09-22): the transcript line that asks
+// is written *with* its answer, and a permission prompt never reaches the transcript at all — so a chat whose
+// transcript reads as work in flight is asking the moment its process says `status: "waiting"`.
+test('a process that says it is waiting is asking, whatever the transcript reads', () => {
+  const s = newSession('s8', '/x/s8.jsonl');
+  s.alive = true; s.live = { pid: 1, startedAt: Date.now() - 600_000, status: 'busy' };
+  fold(s, user('clean up the branches'));
+  fold(s, assistant([{ type: 'tool_use', name: 'Bash', id: 'tb', input: { command: 'git branch -D old' } }], 'tool_use', 1));
+  assert.equal(summary(s).status, 'working', 'busy, and a tool call in flight: work');
+  s.live = { ...s.live, status: 'waiting', waitingFor: 'permission prompt' };
+  assert.equal(summary(s).status, 'needs-input', 'the prompt is up: asking, though the transcript never heard of it');
+  assert.deepEqual(summary(s).ask, { tool: null, text: null, options: 0, waitingFor: 'permission prompt' }, 'and the card says what it waits on');
+  s.agentsRunning = 2;
+  assert.equal(summary(s).status, 'needs-input', 'a question beats the agents at work');
+  s.agentsRunning = 0;
+  s.live = { ...s.live, status: 'busy', waitingFor: undefined };
+  assert.equal(summary(s).status, 'working', 'answered: back to work');
+  assert.equal(summary(s).ask, null);
+});
+
+test('the registry is the word on asking when it says anything; the transcript is only the fallback', () => {
+  const s = newSession('s9', '/x/s9.jsonl');
+  s.alive = true; s.live = { pid: 1, startedAt: Date.now() - 600_000 };
+  fold(s, user('set up the database'));
+  fold(s, assistant([{ type: 'tool_use', name: 'AskUserQuestion', id: 'tq', input: { questions: [{ question: 'Which database?', options: [{ label: 'Postgres' }, { label: 'MySQL' }] }] } }], 'tool_use', 1));
+  assert.equal(summary(s).status, 'needs-input', 'a claude that reports no status: the pending question in the transcript is the word');
+  s.live = { ...s.live, status: 'waiting', waitingFor: 'permission prompt' };
+  assert.deepEqual(summary(s).ask, { tool: 'AskUserQuestion', text: 'Which database?', options: 2 }, 'both agree: the transcript has the question itself');
+  s.live = { ...s.live, status: 'busy', waitingFor: undefined };
+  assert.equal(summary(s).status, 'working', 'the process says it is past the question: it is');
+  s.live = { ...s.live, status: 'idle' };
+  assert.equal(summary(s).status, 'idle');
+  s.live = { ...s.live, status: 'idle' }; s.rivals = [{ pid: 2, startedAt: Date.now(), status: 'waiting', waitingFor: 'input needed' }];
+  assert.equal(summary(s).status, 'needs-input', 'any live process on the chat that waits is the chat waiting');
+  s.rivals = [{ pid: 2, startedAt: Date.now(), status: 'waiting', waitingFor: 'dialog open' }];
+  assert.equal(summary(s).status, 'idle', 'a dialog you opened yourself (/model, /config) is not a question');
+  s.alive = false;
+  assert.equal(summary(s).status, 'stale', 'and nothing waits on a chat with no process');
+});

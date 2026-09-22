@@ -6,7 +6,8 @@
 // and, through `lines` (toolLines / taskNoteLine below), the tool calls and task notifications a chat mid-work has.
 // `live: { pid, startedAt }` writes the registry file that makes a chat *alive*: the states that only exist while a
 // claude is running — a pending question, a monitor, sub-agents — need one, and any live pid will do (the server
-// only asks whether it is there).
+// only asks whether it is there). `status` / `waitingFor` on it go into the file as Claude Code writes them
+// (`waiting` + `permission prompt` is a chat blocked on a prompt the transcript knows nothing of).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -30,7 +31,8 @@ export function chatLines({ id, cwd, prompt, reply, title = null, at = new Date(
 const lineBase = (id, cwd, entrypoint = 'cli') => ({ isSidechain: false, userType: 'external', entrypoint, cwd, sessionId: id, version: 'fixture', gitBranch: 'main' });
 
 /** A turn that calls a tool and stops there (stop_reason 'tool_use' — the chat is working), and its result if the
- *  tool answered. A call with no result is what a chat waiting on you looks like: AskUserQuestion, ExitPlanMode. */
+ *  tool answered. A call with no result is what a chat waiting on you looked like to a claude that reports no
+ *  status (AskUserQuestion, ExitPlanMode); a real one writes that line only with its answer — see `live.status`. */
 export function toolLines({ id, cwd, name, input, result = null, at = new Date() }) {
   const base = lineBase(id, cwd);
   const useId = 'toolu_' + randomUUID().replace(/-/g, '').slice(0, 20);
@@ -67,6 +69,7 @@ export function makeFixture(dir, chats) {
     if (c.live) writeFileSync(join(sessDir, `${c.live.pid}.json`), JSON.stringify({
       pid: c.live.pid, sessionId: id, cwd: c.cwd, startedAt: c.live.startedAt ?? Date.now() - 3600_000,
       version: 'fixture', kind: 'interactive', entrypoint: c.live.entrypoint || 'cli', pidDomain: process.platform,
+      ...c.live.status && { status: c.live.status, statusUpdatedAt: Date.now() }, ...c.live.waitingFor && { waitingFor: c.live.waitingFor },
     }));
     made.push({ id, cwd: c.cwd, file, title: c.title || null, pid: c.live?.pid || null });
   }

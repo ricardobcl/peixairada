@@ -294,6 +294,34 @@ function newSession(id, file) {
 // recorded. Every line the CLI writes carries it, so a chat that was ever continued in VS Code says so
 // at its tail, and one taken to a terminal with `claude --resume` stops saying so.
 function inVsCode(s) { return (s.live?.entrypoint || s.entrypoint) === 'claude-vscode'; }
+
+// Whether the chat is blocked on you, in Claude Code's own words: every interactive claude writes `status`
+// (busy · idle · waiting · shell) to its registry file on each change, and `waitingFor` while it is waiting —
+// "input needed" for an AskUserQuestion (measured), "permission prompt" for a tool's approval, "sandbox request"…
+// The transcript cannot say it: the assistant line that asks is written *with the answer*, not when the question
+// goes up (2026-09-22 — the needs-input alerts in the app's log were a second after each answer, and the card never
+// blinked while it mattered). A permission prompt never reaches the transcript at all. So: the waitingFor of any
+// live process on the chat that is waiting, null when they report and none is, undefined when none reports (a
+// claude from before the field) — and then the transcript's word stands. "dialog open" is left out: it is mostly a
+// slash command's dialog you opened yourself (/model, /config), at that terminal already (Ricardo, 2026-09-23).
+const NOT_ASKING = new Set(['dialog open']);
+function waitingOn(s) {
+  if (!s.alive) return undefined;
+  const procs = [s.live, ...s.rivals].filter(p => p?.status);
+  if (!procs.length) return undefined;
+  const w = procs.find(p => p.status === 'waiting' && !NOT_ASKING.has(p.waitingFor));
+  return w ? w.waitingFor || 'a prompt' : null;
+}
+
+function statusOf(s) {
+  if (!s.alive) return s.status === 'unknown' ? 'unknown' : 'stale';
+  const waiting = waitingOn(s);
+  if (waiting || (waiting === undefined && s.status === 'needs-input')) return 'needs-input';   // a question beats the agents' work
+  if (s.agentsRunning) return 'working';
+  if (s.status === 'unknown' && !s.file) return 'idle';
+  if (s.status === 'needs-input') return s.live?.status === 'busy' ? 'working' : 'idle';   // the registry has it answered already
+  return s.status;
+}
 // A VS Code chat can be taken over like a CLI one (2026-09-20 — refused from 2026-09-19 on a misread of the
 // extension). Measured on 2.1.278: the extension launches a claude when a *tab mounts* a chat — the sessions
 // list, the /open URI for a chat that has no tab yet, a window restore — and can do so twice for one chat;
@@ -306,7 +334,7 @@ function inVsCode(s) { return (s.live?.entrypoint || s.entrypoint) === 'claude-v
 // carries the others and the page warns and offers to end them (the take-over route, when the chat is here).
 
 function summary(s) {
-  const prT = prTitle(s);
+  const prT = prTitle(s), status = statusOf(s);
   return {
     // Prefer the registry cwd: transcript lines record the shell's *current* directory, which moves with `cd`.
     id: s.id, slug: s.slug, cwd: s.live?.cwd || s.cwd, project: basename(s.live?.cwd || s.cwd || '') || s.slug,
@@ -318,10 +346,12 @@ function summary(s) {
     lastPrompt: s.lastPrompt, lastReply: s.lastReply, prs: s.prs,
     // A live process with no transcript yet is an empty, idle panel (e.g. restored by VS Code, never prompted).
     // Not alive = the Claude process is gone: 'stale'. Resuming the chat registers a new pid and it comes back.
-    status: s.alive ? (s.agentsRunning ? 'working' : s.status === 'unknown' && !s.file ? 'idle' : s.status) : (s.status === 'unknown' ? 'unknown' : 'stale'),
+    status,
     agents: s.agentsRunning || 0,   // sub-agents at work — what keeps the status 'working' past the main turn's end
     tasks: runningTasks(s),         // monitors and background commands still running behind the turn
-    ask: s.status === 'needs-input' ? s.ask || null : null,   // the question it is waiting on, and which tool asked
+    // the question it is waiting on and which tool asked, when the transcript has it; else only what the registry
+    // says it is waiting for — the question itself is written with its answer (see waitingOn)
+    ask: status !== 'needs-input' ? null : s.status === 'needs-input' && s.ask ? s.ask : { tool: null, text: null, options: 0, waitingFor: waitingOn(s) || null },
     rawStatus: s.status, statusSince: s.statusSince, lastActivity: s.lastActivity,
     lastUserAt: s.lastUserAt, lastReplyAt: s.lastReplyAt,
     alive: s.alive, live: s.live, entrypoint: s.live?.entrypoint || s.entrypoint, terminal: termSummary(termOf(s)), shell: termSummary(shellOf(s)), entryCount: s.entryCount, loaded: s.loaded, file: s.file, lastHook: s.lastHook,
@@ -549,7 +579,11 @@ function fold(s, line) {
       if (toolResults.length) {
         for (const b of toolResults) { startTask(s, b, ts); pushEntry(s, { role: 'user', kind: 'tool_result', toolUseId: b.tool_use_id, isError: !!b.is_error, text: toolResultSnippet(b), ts }); }
         s.lastActivity = ts;
-        if (s.status === 'needs-input') { s.lastUserAt = ts; setStatus(s, 'working', ts); } // question answered — that was you
+        if (s.status === 'needs-input') {   // question answered — that was you
+          s.lastUserAt = ts; setStatus(s, 'working', ts);
+          // …and the question's line arrived with its answer (see waitingOn): an alert for it now would be after the fact
+          if (s.pendingNotify === 'needs-input') s.pendingNotify = null;
+        }
         return true;
       }
       const raw = textOf(content);
@@ -826,7 +860,8 @@ function loadRegistry() {
     try { reg = JSON.parse(readFileSync(join(SESSIONS_DIR, name), 'utf8')); } catch { continue; }
     if (!reg.sessionId) continue;
     if (!found.has(reg.sessionId)) found.set(reg.sessionId, []);
-    found.get(reg.sessionId).push({ pid: reg.pid, name: reg.name, entrypoint: reg.entrypoint, kind: reg.kind, cwd: reg.cwd, startedAt: reg.startedAt, version: reg.version });
+    found.get(reg.sessionId).push({ pid: reg.pid, name: reg.name, entrypoint: reg.entrypoint, kind: reg.kind, cwd: reg.cwd, startedAt: reg.startedAt, version: reg.version,
+      status: reg.status, waitingFor: reg.status === 'waiting' ? reg.waitingFor : undefined });   // what it is doing, and what it waits on (waitingOn)
   }
   const ppids = [...terms.values()].some(t => t.task && !t.sessionId && t.exited === null) ? parentPids() : null;   // a launcher's claude is below the PTY's pid
   for (const [id, lives] of found) {
@@ -842,9 +877,11 @@ function loadRegistry() {
     const live = alive.find(l => l.pid === mine) || alive.find(l => l.entrypoint !== 'claude-vscode') || alive[0] || lives[0];
     const rivals = alive.filter(l => l !== live);
     const changed = JSON.stringify(live) !== JSON.stringify(s.live) || JSON.stringify(rivals) !== JSON.stringify(s.rivals);
+    const wasWaiting = waitingOn(s);
     s.live = live; s.rivals = rivals;
     if (!s.cwd && live.cwd) s.cwd = live.cwd;
     if (applyLiveness(s) || changed) schedulePush(s);
+    if (waitingOn(s) && !wasWaiting) queueNotify(s, 'needs-input');   // the moment a prompt goes up — the transcript hears of it only with the answer
   }
   for (const s of sessions.values()) {
     if (s.live && !found.has(s.id)) { s.live = null; s.rivals = []; if (applyLiveness(s)) schedulePush(s); }
@@ -881,7 +918,8 @@ function fireNotify(s) {
   if (!sum.alive && sum.live === null && s.file && !process.env.NOTIFY_DEAD) {
     // No registry entry: most likely a non-interactive/headless run. Still surface it in the UI.
   }
-  const evt = { kind, sessionId: s.id, project: sum.project, title: sum.title, name: s.live?.name || null, cwd: s.cwd, snippet: kind === 'reply' ? sum.lastReply : (s.entries.findLast?.(e => e.kind === 'tool_use' && NEEDS_INPUT_TOOLS.has(e.name))?.text || 'Waiting for your input'), ts: new Date().toISOString() };
+  const asked = sum.ask?.text || (sum.ask?.waitingFor ? `Waiting on you: ${sum.ask.waitingFor}` : 'Waiting for your input');
+  const evt = { kind, sessionId: s.id, project: sum.project, title: sum.title, name: s.live?.name || null, cwd: s.cwd, snippet: kind === 'reply' ? sum.lastReply : asked, ts: new Date().toISOString() };
   broadcast('alert', evt);
   nativeNotify(kind === 'reply' ? `Claude replied · ${sum.project}` : `Claude needs input · ${sum.project}`, sum.title, evt.snippet || '');
 }

@@ -381,12 +381,12 @@ extension run the same binary and share the same files. peixAIrada just reads th
 | What | Where | Used for |
 |---|---|---|
 | Full transcript, appended line-by-line as JSONL | `~/.claude/projects/<cwd-slug>/<session-id>.jsonl` | Messages, tool calls, status, titles, PR links |
-| Live-session registry, one file per running process | `~/.claude/sessions/<pid>.json` (`sessionId`, `cwd`, `name`, `entrypoint: "claude-vscode" \| "cli"`) | Which sessions are alive, which come from VS Code, names, the stable repo path |
+| Live-session registry, one file per running process | `~/.claude/sessions/<pid>.json` (`sessionId`, `cwd`, `name`, `entrypoint: "claude-vscode" \| "cli"`, `status`, `waitingFor`) | Which sessions are alive, which come from VS Code, names, the stable repo path — and which are blocked on you |
 | Where a chat lives | `entrypoint` on every transcript line — `"claude-vscode"` or `"cli"` — and the registry's while it runs | VS Code chats: a VS Code mark on the card and in the header; a chat live elsewhere: take over |
 | Session titles | `ai-title` / `custom-title` lines inside the transcript | Card titles |
 | End of a reply | assistant line with `stop_reason: "end_turn"` (tool calls are `"tool_use"`) | The "replied" alert → Waiting feedback |
-| Waiting for the user | `AskUserQuestion` / `ExitPlanMode` tool call with no result yet | The "needs input" alert |
-| Hooks *(optional)* | `~/.claude/settings.json` → `Stop`, `Notification(permission_prompt…)`, `UserPromptSubmit`, `SessionEnd` | Exact signals, including **permission prompts**, which never reach the transcript |
+| Waiting for the user | the registry's `status: "waiting"` and `waitingFor` (`input needed`, `permission prompt`…), rewritten by Claude Code on every change of state — a question, a plan to approve, a tool awaiting permission. The transcript can't tell: the line that asks is written *with its answer*, and a permission prompt never at all | The blinking card, the "needs input" alert |
+| Hooks *(optional)* | `~/.claude/settings.json` → `Stop`, `Notification(permission_prompt…)`, `UserPromptSubmit`, `SessionEnd` | Exact "replied" signals |
 
 `fs.watch(…, { recursive: true })` fires on every append (verified on macOS / Node 24), so the board
 updates within **~100 ms** of Claude writing a line. Native notifications work from plain Node via
@@ -470,11 +470,11 @@ history are `docs/DECISIONS.md`.
 
 ## 🪝 Optional: hooks, for signals instead of guesses
 
-Watching the transcript already gets you "replied" and "asked a question". What it **cannot** see is
-a pending **permission prompt** — Claude waiting on you to approve a tool call. That never reaches
-the transcript at all.
+Watching the transcript and the session registry already gets you "replied", and "waiting on you"
+for questions, plans and permission prompts alike — Claude Code writes `status: "waiting"` into its
+registry file the moment one goes up.
 
-Hooks close that gap and make "replied" *exact* rather than inferred. They fire for VS Code sessions
+Hooks make "replied" *exact* rather than inferred. They fire for VS Code sessions
 too, since the extension and the CLI share settings.
 
 Merge [`hooks/settings-snippet.json`](hooks/settings-snippet.json) into `~/.claude/settings.json`.

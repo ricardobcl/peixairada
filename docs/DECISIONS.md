@@ -4,6 +4,43 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-22.
 
+## Decisions of 2026-09-22, late night — a question is the registry's word, not the transcript's (committed 2026-09-23)
+
+Ricardo: "the blink warning for cards that have claude blocked waiting for my response to a prompt is still not
+working … when I check the chat, there's a prompt with some questions". The blink was right; what fed it was not.
+
+* **The transcript hears of a question only with its answer.** The app's log has the proof: today's two
+  `needs-input` alerts came one second after each AskUserQuestion was *answered* (peixairada asked 16:23:37 and was
+  answered 16:24:36, alerted 16:24:37; scheduler asked 16:18:21, answered 16:25:04, alerted 16:25:05).
+  Claude Code writes the assistant line that asks together with the tool_result — the timestamp inside it is the
+  question's, the write is the answer's — so for the whole time the question was up the card read *clauding*: the
+  last line was a tool call in flight. A permission prompt (Bash, Edit… awaiting approval) never reaches the
+  transcript at all, which is the other half of "I think it's working, but there's a prompt". No reading of the
+  transcript fixes that.
+* **Claude Code says it itself, in the registry.** Since at least 2.1.278 every interactive claude rewrites its
+  `~/.claude/sessions/<pid>.json` on each change of state with `status` — `busy`, `idle`, `waiting`, `shell` — and,
+  while waiting, `waitingFor`: `input needed` (an AskUserQuestion, an MCP elicitation), `permission prompt` (the
+  default for a dialog on top — a tool's approval), `dialog open`, `sandbox request`, `worker request` (read out of
+  the 2.1.280 binary: `pme()` computes it, `Zbe({status, waitingFor})` writes it). **Measured on this very chat**
+  with a sampler at 200 ms: the question went up at 22:59:02.8 and the registry said `waiting / input needed` at
+  once; the board said `needs-input` 200 ms later and the alert went out; the transcript had no AskUserQuestion line
+  for the four minutes the question was up, and got it — with the answer — at 23:03:00.8. The board already
+  watches that directory for liveness; the status rides the same watch, 100 ms after the write. So `waitingOn(s)`
+  is the chat's waiting-for when any live process on it is waiting, and `statusOf(s)` makes that `needs-input`
+  ahead of everything, sub-agents included (the card's CSS already had a question beating both).
+* **The registry is the word when it says anything.** A claude that reports a status and is not waiting is not
+  asking, whatever the transcript's last lines say; the transcript's pending AskUserQuestion is only the fallback for
+  a claude from before the field. Where both agree the transcript still gives the card the question itself; where
+  only the registry knows, the card says what it waits on — *asking you — input needed*.
+* **`dialog open` does not blink** (Ricardo, asked: "not dialogs"). It is mostly a slash command's dialog you opened
+  yourself — /model, /config — at that terminal already; a few notices Claude raises share the label, and lose it.
+* **The alert goes out as the prompt goes up**, from `loadRegistry` on the flip into waiting — and the old one, which
+  fired when the question's line landed with its answer, is dropped by the answer (a system notification and an
+  unread badge for a question you had just answered).
+* `card-signals` has a chat blocked on a permission prompt whose transcript reads as work, and flips a live chat's
+  registry file to `waiting` and back with no transcript line at all — the blink, the alert and its words, and no
+  second alert when the asking and answering lines then land together.
+
 ## Decisions of 2026-09-22, night — six from a list: ✕, the second half, ⌘0, the day's rule, the header's colour, ＋ always
 
 Ricardo's list, one commit each.
