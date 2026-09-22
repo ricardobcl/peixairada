@@ -128,13 +128,17 @@ magnifier under it filters projects (the strip opens to let you type and folds b
 when it lives elsewhere; **⌥⌘N** a **new chat**: pick the project — or one of the folders in `~/acme` that has no chat yet, they come
 after the board's own, or type a name none of them has and **＋ clone `acme/<name>`** into `~/acme` (`gh repo
 clone`, then straight on into the chat) — then one of its open chats or ＋ a new one, the folder when the project
-spans several, and — in a folder whose Taskfile launches claude (see *+ new chat* below) — the environment; **⌥⌘O** is that
+spans several, and — in a folder whose Taskfile launches claude (see *+ new chat* below) — the environment. **✕ at
+the right of a row takes that project or folder off the board**: it stops being listed in the column and in every
+picker, nothing is deleted and its chats are still there under ALL, and the cog lists what is hidden with a *show*
+beside it. A step with no open chats still offers ＋ *new chat*, so ⏎ starts one and esc walks away; **⌥⌘O** is that
 flow with the first answers in — a new chat in **oracle**, opening straight on its environments (the
 same ⌥⌘ family drives the open chat: **⌥⌘C** its claude session, **⌥⌘T** a zsh in its folder, **⌥⌘E** VS Code Web,
 **⌥⌘G** its PR, **⌥⌘↑ / ⌥⌘↓** the chat above or below in the list, **⌥⌘← / ⌥⌘→** the tab beside — chat, zsh, GitHub
 pages, VS Code — see *The chat*) —
-and the **cog** at its bottom opens the settings (show empty & >30d, tool calls, fold code, sound,
-browser alerts, test alert) and, under them, **the list of keys**, for when one slips the mind. The usage card on the fish (a click pins it) is your **Claude plan usage**: the session and weekly windows `/usage` shows,
+and the **cog** at its bottom opens the settings, which are two things: your **Claude plan usage** at the top and,
+under it, **the list of keys**, for when one slips the mind (and, when you have hidden a project, the way back).
+Hovering the strip's footer opens it, a click on the cog pins it. The usage is the session and weekly windows `/usage` shows,
 plus a weekly row per model the account meters apart (Fable, Sonnet…), read with Claude Code's own login.
 Buckets the API reports under a codename at 0 % stay out of the list. The first time, macOS asks whether `security` may read the
 *Claude Code-credentials* keychain item; *Always Allow* ends that, and `USAGE=off` on the server turns the
@@ -147,8 +151,9 @@ and follows it live: change the colour in VS Code and the board has it within se
 light gray, with one exception the board paints itself: **`acme`**, the root the repos sit under, where the odd
 chat that belongs to no repo runs, is **black** in both themes — like ALL — so it reads as the plain one among the
 coloured ones. Give it a Peacock colour and that wins, as everywhere else.
-**And it works the other way**: the **colour square** on a folder's row in the open column — and the one in
-the chat list's header — is a picker. Click it, pick a colour, and the board writes it as `peacock.color` into
+**And it works the other way**: the **colour square** on a folder's row in the open column, the one in
+the chat list's header, and the one beside the project's name in the **chat header** — that last one shows while
+the pointer is in the header — is a picker. Click it, pick a colour, and the board writes it as `peacock.color` into
 that folder's `.vscode/settings.json` (creating the file if there is none, touching nothing else in it), so
 Peacock repaints the VS Code window and both agree; the board follows while you drag through the panel and
 writes once it rests. ⌥-click the square to take the setting out again. A note by the square says which file
@@ -198,7 +203,9 @@ that the chat **you** wrote to most recently, the one rule, in every list. Claud
 a long job does not move its card up; answering its question or interrupting it does. So the chats
 you are actively driving stay at the top and the ones you have parked sink by themselves. The time on
 a card is still when *anything* last happened to it; hover it for when you last wrote. Projects
-follow the same rule through their newest chat.
+follow the same rule through their newest chat. Two lines of little ascii fish break the list where it turns
+over: `><>` swimming right between what is clauding and what is ready, and `<><` swimming left where **today
+ends** — above it the chats you have been in today, below the ones from before.
 
 The filter box in the header narrows the chat list by repo, title, session name or branch. The
 divider between the chat list and the chat drags; the width, the selected project and the state
@@ -272,12 +279,16 @@ drawer's, or one live elsewhere), so a finished chat costs nothing. **`/clear` i
 same process, as it does anywhere: the board follows it — the drawer stays, the pane switches to the new chat, and
 the old one is a card without a process (resume it and its old context comes back, in a second process). **⇧⏎**
 is a newline in Claude's prompt, as in iTerm2 or VS Code; ⏎ sends. Chats
-the board does not drive — VS Code, another terminal, stale — always render. **⌘+ / ⌘− / ⌘0** resize
-the chat pane, transcript and terminal together, and the size is remembered. **⌥⌘C** is the `>_` button:
+the board does not drive — VS Code, another terminal, stale — always render. **⌘+ / ⌘−** resize
+the chat pane, transcript and terminal together, and the size is remembered; **⌘0** puts it back to normal when
+the column is whole, and closes the other half when it is split (**⌘2** splits it, **⌘1 / ⌘2** move between the
+halves, **⌘W** closes the one you are in). **⌥⌘C** is the `>_` button:
 the chat's claude session in the terminal, opened or started, and the keyboard lands in it (on a chat live
 elsewhere the first press arms the take-over and the second ends that claude, as two clicks would). **⌥⌘T** is a
 fresh zsh in the chat's folder, inline: a *zsh* tab appears beside the chat (*claude* while it runs here, *chat*
-otherwise), one per chat, `exit` or its × ends it, and ⌥⌘C brings the claude session back. **⌥⌘E**
+otherwise), one per chat, `exit` or its × ends it, and ⌥⌘C brings the claude session back. **A tab that is new
+opens the column in two and takes the right half**, so the chat stays where it is beside it; the column closes
+itself again when the chat is back to one tab. **⌥⌘E**
 opens the folder in VS Code Web, on a *VS Code* tab of the same strip — the *web* button's route (the real VS Code
 is the focus button in the header, no key). **⌥⌘G** opens the chat's PR on GitHub — straight away with
 one; with several, the same picker filled with the PR rows under the header (state · `repo#n` · title · age,

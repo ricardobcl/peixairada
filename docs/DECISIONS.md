@@ -4,6 +4,58 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-22.
 
+## Decisions of 2026-09-22, night — six from a list: ✕, the second half, ⌘0, the day's rule, the header's colour, ＋ always
+
+Ricardo's list, one commit each.
+
+* **✕ on a ⌥⌘N row takes a project off the board.** The project step has listed every folder under `~/acme`
+  since yesterday, which is the right list to start a chat from and the wrong one to keep reading: repos nobody
+  works in, one-off clones, a folder made by mistake. Asked what ✕ should *mean* — the named project only, the
+  folder into the Trash, or off the board — he chose **off the board**. So the key (a cwd, or `c:<id>` for a named
+  project, the pins' own spelling) goes into a `hidden` list in the server's state file, `projectList()` and
+  `freeFolders()` skip it, and that is all: no column row, no picker row, no pin. **No chat is hidden with it** —
+  they are still there under ALL. Hiding a folder is tidying an index, not throwing work away, and a board that
+  silently swallows chats is a board you cannot trust. The cog grew a line per hidden row with a *show* beside it
+  (the only way back), and starting a chat in a hidden folder puts it back by itself: working somewhere again is
+  the plainest way of saying it belongs.
+* **A second tab opens in the second half, splitting the column.** Opening a PR, the editor or a zsh replaced the
+  whole chat column with it — the thing you opened it *beside* went away, and getting both took ⌘2 and then the
+  tab again. `openNewTab()` is the path for a tab that has just come into being; it splits the first time and puts
+  the page in the right half. Only the first one splits: after that a new tab lands where the keys are, and
+  choosing a tab that already exists never splits. The split the board makes itself is remembered apart
+  (`autoSplit`) and folds back on its own once the chat is down to one tab — an empty half is what ⌘2 asks for,
+  not what a zsh's `exit` should leave behind.
+* **⌘0 keeps the half the keys are in.** ⌘W closes the one you are in; the mirror was missing, and ⌘0 is where a
+  browser and an editor both put it. With one half there is nothing to close and the key is what it always was —
+  the chat's size back to normal — so both meanings live in `hotOnlyHalf` rather than in two handlers that race.
+  `"0"` joined the forwarder's list in main.swift, so it works with the pane up.
+* **A second rule in the chat list, where today ends.** Inside a group the order is your own last touch, newest
+  first, so today's chats sit together at the top with nothing to say where they stop. A second school of fish
+  swims there, `<><` the other way, drawn at the first crossing from today into before-today wherever it falls —
+  and not at all when there is none. `school()` builds both as kept nodes with an animation phased to the document
+  clock: `innerHTML` would hand them a new animation every few seconds, which is a visible stutter.
+* **The project's colour is a square in the chat header, on hover.** Changing it meant finding the project's row
+  in a column that is a strip most of the time, while the thing the colour is *for* is the chat in front of you.
+  The same `.sq.pick`, so the same picker, the same ⌥-click, the same write to `.vscode/settings.json`. It is
+  inked only while the pointer is in the header but keeps its place in the row always, so nothing moves under the
+  pointer as you reach for it.
+* **The chats step shows even with nothing to choose from.** It used to skip itself when the scope had no chats,
+  and the next step spawned a terminal with nothing in between: a folder you had never worked in, a fresh clone
+  and an empty environment were each one keystroke from a running claude. Now it is ＋ alone, selected — ⏎ starts
+  one, esc walks away.
+
+### And one thing the split made visible
+
+**The page's screen and the holder's drift on every resize, and nothing re-syncs them.** The flake `focus-view`
+has been retried for two days is not the test's: the two emulators are fed bytes drawn for one size and read at
+another, and they stay drifted until the next attach rebuilds the page's screen from the snapshot. Moving a live
+drawer from one half to the other reproduces it on demand — which is how it was pinned down tonight. What reads a
+screen then reads the wrong line (the focus-view button), and the fake claude, which repaints its live region at
+an absolute row, eats a different transcript line in each. The scenario now re-attaches by reloading the page —
+what the app does on every restart, and the one re-attach no resize can spoil — so the suite is honest again.
+**The fix is still the one named on Saturday: after a resize settles, the page asks the holder for a fresh
+snapshot and rebuilds its screen from it.** It is a change to the drawer's protocol and has not been written.
+
 ## Decisions of 2026-09-22, evening — the harness: one command, a fast clock, and the flakes named
 
 * **`npm run scenarios` runs all thirteen**, one at a time, in about a minute, with a line each and a verdict.
