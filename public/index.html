@@ -617,6 +617,7 @@
     <kbd>⌥⌘N</kbd><span>a chat — a project, a folder in ~/acme, or ＋ clone a repo of the org · then its open chats or ＋ a new one</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
     <kbd>⌥⌘←→</kbd><span>the tab to the left / right: chat, zsh, GitHub pages, VS Code</span>
+    <kbd>⌘B</kbd><span>fold the chat list into a rail, and back</span>
     <kbd>⌘+ ⌘− ⌘0</kbd><span>chat and terminal size</span>
     <kbd>⌘K</kbd><span>clear the terminal — the scrollback goes on the holder too, so it stays clear</span>
     <kbd>⇧⏎</kbd><span>newline in the terminal's prompt</span>
@@ -771,7 +772,10 @@
     $('#sessions').style.width = prefs.sessionsCompact ? '' : prefs.sessionsWidth + 'px';
     const b = $('#sessPinBtn'); b.textContent = prefs.sessionsCompact ? '»' : '«'; b.title = prefs.sessionsCompact ? 'Open the chat list' : 'Fold the chat list';
   }
-  $('#sessPinBtn').onclick = () => { prefs.sessionsCompact = !prefs.sessionsCompact; savePrefs(); applySessionsCompact(); };
+  // ⌘B is the same switch from the keyboard (2026-09-21, Ricardo: "cmd B should toggle colapse of 2nd column"),
+  // VS Code's key for its sidebar, here the chat list — the column between the projects and the chat.
+  function toggleSessions() { prefs.sessionsCompact = !prefs.sessionsCompact; savePrefs(); applySessionsCompact(); }
+  $('#sessPinBtn').onclick = toggleSessions;
   applySessionsCompact();
   {
     const splitter = $('#splitter'); let dragging = false;
@@ -1317,10 +1321,20 @@
   // A modal up (the picker, the project editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
   const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyN: () => pickOpen('new'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1) };
-  const runHotkey = code => { if (code === 'Escape') return hotEscape(); const fn = HOTKEYS[code]; if (fn && !document.querySelector('dialog[open]')) fn(); };
+  // Plain ⌘ + a key, the board's own layout keys: ⌘B folds the chat list. They are a separate map because the
+  // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
+  // takes it for the terminal's clear — and neither are ⌘+ ⌘− ⌘0, which are chatZoomKey's.
+  const CMDKEYS = { KeyB: toggleSessions };
+  const runHotkey = (code, mods = 'altcmd') => {
+    if (code === 'Escape') return hotEscape();
+    const fn = (mods === 'cmd' ? CMDKEYS : HOTKEYS)[code];
+    if (fn && !document.querySelector('dialog[open]')) fn();
+  };
   document.addEventListener('keydown', e => {
-    if (!(e.metaKey && e.altKey && !e.ctrlKey && !e.shiftKey && HOTKEYS[e.code])) return;
-    e.preventDefault(); e.stopPropagation(); runHotkey(e.code);
+    if (e.ctrlKey || e.shiftKey || !e.metaKey) return;
+    const mods = e.altKey ? 'altcmd' : 'cmd';
+    if (!(mods === 'cmd' ? CMDKEYS : HOTKEYS)[e.code]) return;
+    e.preventDefault(); e.stopPropagation(); runHotkey(e.code, mods);
   }, true);
   window.peixKey = runHotkey;
   // …and tells the page whether the pane is up and where its edge is (points = this view's CSS px), so the picker

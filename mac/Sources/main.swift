@@ -517,25 +517,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
   }
   // ⌥⌘ + one of the board's hotkeys (HOTKEYS in index.html — the same list here, kept by hand): the letters, ↑ ↓ for
-  // the chat above or below, ← → for the tab beside. Pressed while the pane has the keyboard: its web views are not the board's, so the page
-  // would never hear it. Forwarded through peixKey as the page's e.code; the page asks for the keyboard back
-  // ({type: "focus"}) only when it opens a dialog.
+  // the chat above or below, ← → for the tab beside; and ⌘ + one of the layout keys (CMDKEYS there): B folds the
+  // chat list. Pressed while the pane has the keyboard: its web views are not the board's, so the page
+  // would never hear it. Forwarded through peixKey as the page's e.code and which map it belongs to; the page asks
+  // for the keyboard back ({type: "focus"}) only when it opens a dialog.
   static let boardKeys: Set<String> = ["t", "e", "g", "c", "o", "p", "k", "n"]
-  static func hotkeyCode(_ e: NSEvent) -> String? {
-    if e.keyCode == 126 { return "ArrowUp" }
-    if e.keyCode == 125 { return "ArrowDown" }
-    if e.keyCode == 123 { return "ArrowLeft" }
-    if e.keyCode == 124 { return "ArrowRight" }
-    if let ch = e.charactersIgnoringModifiers?.lowercased(), boardKeys.contains(ch) { return "Key" + ch.uppercased() }
+  static let cmdKeys: Set<String> = ["b"]
+  static func hotkeyCode(_ e: NSEvent) -> (code: String, mods: String)? {
+    let held = e.modifierFlags.intersection([.command, .option, .control, .shift])
+    let ch = e.charactersIgnoringModifiers?.lowercased()
+    if held == [.command, .option] {
+      if e.keyCode == 126 { return ("ArrowUp", "altcmd") }
+      if e.keyCode == 125 { return ("ArrowDown", "altcmd") }
+      if e.keyCode == 123 { return ("ArrowLeft", "altcmd") }
+      if e.keyCode == 124 { return ("ArrowRight", "altcmd") }
+      if let ch = ch, boardKeys.contains(ch) { return ("Key" + ch.uppercased(), "altcmd") }
+    }
+    if held == [.command], let ch = ch, cmdKeys.contains(ch) { return ("Key" + ch.uppercased(), "cmd") }
     return nil
   }
   private func installHotkeyForwarder() {
     NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
-      guard let self = self, e.modifierFlags.intersection([.command, .option, .control, .shift]) == [.command, .option],
-            !self.prPane.isHidden, let code = AppDelegate.hotkeyCode(e),
+      guard let self = self, !self.prPane.isHidden, let hot = AppDelegate.hotkeyCode(e),
             let fr = self.window.firstResponder as? NSView,
             fr.isDescendant(of: self.prPane) || (self.findBar != nil && fr.isDescendant(of: self.findBar)) else { return e }
-      self.web.evaluateJavaScript("window.peixKey && window.peixKey('\(code)')", completionHandler: nil)
+      self.web.evaluateJavaScript("window.peixKey && window.peixKey('\(hot.code)', '\(hot.mods)')", completionHandler: nil)
       return nil
     }
   }
