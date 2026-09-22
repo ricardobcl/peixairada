@@ -384,7 +384,7 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY` with what it failed on the first time, and the suite still exits 0; `--no-retry` is the honest gate.
-  Only `focus-view` is known to use it — see *Two measurement traps*.
+  Nothing is known to need it since the drift below was taken out of `focus-view` (2026-09-22).
 * **Every test server gets a fast clock and an empty org directory** (`lib/testserver.mjs`): `REGISTRY_POLL_MS`
   1200 and `TASK_GRACE_MS` 400, because the live ten seconds is what a scenario either waits out or races; and an
   `ORG_DIR` of its own under the state dir, so nothing ever lists the real `~/acme`. `meta.env` is spread last,
@@ -393,15 +393,19 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   `fake: true`) is instant and touches nothing. A test against the real `~/.claude` (read-only, `claudeDir` unset)
   must use a stale chat and `DELETE` the terminals it made.
 * **Two measurement traps** (2026-09-20): Claude Code stops rendering while the terminal reports focus lost — a
-  headless page's `focus()` is not a focus without `Emulation.setFocusEmulationEnabled` (the runner sets it); and a
-  chat switch as a re-attach resizes the drawer by itself (the other chat's reply box) and masks results — ⌥⌘T then
-  ⌥⌘C (the zsh tab and back) is the clean re-attach.
-* **The page's screen and the holder's are two emulators** fed the same bytes, and a resize reaches them at
-  slightly different moments — so they can drift by a line and stay drifted until the next attach re-syncs the
-  page from the snapshot. The fake claude repaints its live region at an absolute row, so a drift of one line
-  makes its erase eat a *different* transcript line in each: `focus-view`'s last step (a `/focus` typed by hand,
-  read back off the re-attached screen) loses that line perhaps one run in three, which is the flake
-  `npm run scenarios` retries. Measured 2026-09-22; the fix is a re-sync after a resize, and is not written.
+  headless page's `focus()` is not a focus without `Emulation.setFocusEmulationEnabled` (the runner sets it); and
+  **every re-attach that moves the drawer resizes it**, which is what the drift below rides on — a chat switch
+  (the other chat's reply box), and since 2026-09-22 ⌥⌘T too, which now splits the column and re-attaches nothing.
+  **The clean re-attach is a reload of the page** (`Page.reload`, then `openChat`): a fresh xterm, built from the
+  holder's snapshot, at one size. That is what `focus-view` does.
+* **The page's screen and the holder's are two emulators** fed the same bytes, and a *resize* is drawn for one
+  size and read at another — so they drift by a line and **stay** drifted until the next attach builds the page's
+  screen from the snapshot again. It is the board's bug, not the test's: a drawer that has drifted has whatever
+  reads its screen (the focus-view button) reading the wrong line, and the fake claude repainting its live region
+  at an absolute row then eats a *different* transcript line in each. Measured 2026-09-22, when the split made it
+  reproducible: move a live drawer from one half to the other and read the screen. **The fix is a re-sync after a
+  resize settles — the page asking for a fresh snapshot — and it is not written.** `focus-view` re-attaches by
+  reloading the page, which is why it no longer flakes.
 * **The fake claude scrolls before it repaints on a shrink** (`drawLive`, 2026-09-20 late), as a terminal app would:
   before that the strip's two rows made it erase its own banner on re-attach, and the scrollback check in
   `drawer-reattach` failed for a fixture reason. A red drawer scenario can be the fake's geometry, not the drawer's.

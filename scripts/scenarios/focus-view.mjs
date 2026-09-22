@@ -1,8 +1,9 @@
 // The chat header's focus-view button (#viewBtn): with a drawer running, a click types /focus into that holder and
 // the button lights from what the session answers — "Focus view enabled" / "…disabled" — never from what we asked
-// for. A second click turns it off again. On the zsh tab the click shows the claude session instead of typing a
-// slash command into a shell. And a /focus typed in the drawer by hand is picked up by the next attach, which reads
-// the newest such line off the screen. The fake claude answers /focus with the real one's line (2026-09-20).
+// for. A second click turns it off again. On the zsh tab the command still goes to the chat's claude holder — since
+// 2026-09-22 a second tab splits the column, so that holder is attached in the half next door; it is the chat's
+// session the button acts on, not the tab's. And a /focus typed in the drawer by hand is picked up by the next
+// attach, which reads the newest such line off the screen. The fake claude answers /focus with the real one's line.
 export const meta = { server: true, fake: true, fixture: 'auto' };
 export default async function (ctx) {
   const chat = ctx.fixture.chats[1];
@@ -10,9 +11,10 @@ export default async function (ctx) {
   const lit = () => ctx.evaluate(`document.querySelector('#viewBtn')?.classList.contains('on') ?? null`);
   const noted = re => ctx.waitFor(`${re}.test(document.querySelector('.note')?.textContent || '')`, { what: `the note ${re}` });
   const said = re => ctx.peix('buffer()').then(rows => rows.filter(r => re.test(r)).length);
-  const type = async text => {   // the drawer's keyboard, as a hand would use it (see drawer-clear)
-    await ctx.evaluate(`document.querySelector('#termBody textarea').dispatchEvent(new InputEvent('input', { data: ${JSON.stringify(text)}, inputType: 'insertText', bubbles: true }))`);
-    await ctx.evaluate(`document.querySelector('#termBody textarea').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }))`);
+  const type = async (text, g = 0) => {   // the drawer's keyboard, as a hand would use it (see drawer-clear)
+    const box = "document.querySelector('#termBody" + (g ? 'B' : '') + " textarea')";
+    await ctx.evaluate(`${box}.dispatchEvent(new InputEvent('input', { data: ${JSON.stringify(text)}, inputType: 'insertText', bubbles: true }))`);
+    await ctx.evaluate(`${box}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }))`);
   };
 
   await ctx.openChat(chat.id);
@@ -34,23 +36,36 @@ export default async function (ctx) {
   out.off = { lit: await lit(), said: await said(/Focus view disabled/) };
   ctx.assert.deepEqual(out.off, { lit: false, said: 1 }, 'and again, the other way');
 
-  // the zsh tab: the other holder is attached, so the click brings the claude session back instead of typing there
+  // the zsh, which is this chat's second tab: it splits the column and opens beside the claude drawer, which is
+  // still attached — so the button types into that holder from here. `said` reads the half the keys are in, the zsh.
   await ctx.key('KeyT');
-  await ctx.waitFor(`window.peix.state().tab === 'shell'`, { what: 'the zsh tab' });
+  await ctx.waitFor(`window.peix.state().tab === 'shell'`, { what: 'the zsh tab, in the half the split made' });
   await ctx.evaluate(`document.querySelector('#viewBtn').click()`);
-  await noted('/claude session first/');
-  out.fromShell = { tab: (await ctx.peix('state()')).tab, typed: await said(/\/focus/) };
-  ctx.assert.deepEqual(out.fromShell, { tab: 'chat', typed: 0 }, 'the claude session came back, nothing typed into the shell');
+  await noted('/Focus view on/');
+  out.fromShell = { lit: await lit(), typedInShell: await said(/focus/) };
+  ctx.assert.deepEqual(out.fromShell, { lit: true, typedInShell: 0 }, "the chat's claude took the command, and nothing was typed into the shell");
+  await ctx.evaluate(`document.querySelector('#viewBtn').click()`);   // …and off again, so what follows starts from a session that says off
+  await noted('/Focus view off/');
 
   // a /focus typed in the drawer by hand never reaches the board — the next attach reads it off the screen instead.
-  // ⌥⌘T then ⌥⌘C is the clean re-attach (a chat switch would resize the drawer by itself).
-  await ctx.waitFor(`window.peix.state().termId === window.peix.session().terminal.id`, { what: 'the claude drawer attached again' });
-  await type('/focus');
-  await ctx.waitFor(`window.peix.buffer().filter(r => /Focus view enabled/.test(r)).length === 2`, { what: 'the session turned its focus view on, by hand' });
+  // With the column in two, asking one half for what the other is showing trades the tabs and re-attaches both;
+  // the halves are the same width, so the drawer is not resized on the way and the screen read back is the
+  // holder's own (a chat switch, or closing a half, resizes it and the two emulators can drift by a line).
+  await ctx.key('KeyC');   // the claude session into the half the keys are in; the zsh goes the other way
+  await ctx.waitFor(`window.peix.state().tab === 'chat' && window.peix.state().termId === window.peix.session().terminal.id`, { what: 'the claude drawer under the keys' });
+  await ctx.waitPrompt(30_000, 1);
+  const wasOn = await said(/Focus view enabled/);
+  await type('/focus', 1);
+  await ctx.waitFor(`window.peix.buffer().filter(r => /Focus view enabled/.test(r)).length === ${wasOn + 1}`, { what: 'the session turned its focus view on, by hand' });
   out.byHand = { litBefore: await lit() };
   ctx.assert.equal(out.byHand.litBefore, false, 'the board was not told — nothing lights yet');
-  await ctx.key('KeyT'); await ctx.waitFor(`window.peix.state().tab === 'shell'`, { what: 'the zsh tab' });
-  await ctx.key('KeyC');
+  // The next attach is a reloaded board — what the app does every time it is restarted, and the one re-attach that
+  // cannot be spoiled by a resize: the page's screen is built from the holder's snapshot into a fresh xterm. Moving
+  // the drawer between halves re-attaches it too, but it resizes it on the way, and the page's emulator and the
+  // holder's then disagree by a line for as long as nothing re-syncs them — the read finds whichever line that
+  // leaves on screen (measured 2026-09-22; the re-sync is still not written).
+  await ctx.send('Page.reload'); await ctx.sleep(1200);
+  await ctx.openChat(chat.id);
   await ctx.waitFor(`document.querySelector('#viewBtn')?.classList.contains('on') === true`, { what: 'the button lit by what the re-attached screen says' });
   out.byHand.litAfterReattach = await lit();
   await ctx.shot('2-read-back');
