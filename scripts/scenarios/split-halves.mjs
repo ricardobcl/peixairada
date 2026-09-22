@@ -42,6 +42,16 @@ export default async function (ctx) {
     ctx.assert.ok(d.screen.w <= d.body.w + 0.5 && d.screen.h <= d.body.h + 0.5, `half ${g}: the screen (${d.screen.w}×${d.screen.h}) fits the body (${d.body.w}×${d.body.h})`);
   }
 
+  // the split is the chat's, not the board's: another chat is whole, and coming back finds it still in two
+  const other = ctx.fixture.chats[0];
+  await ctx.openChat(other.id);
+  await ctx.waitFor(`window.peix.state().current === ${JSON.stringify(other.id)}`, { what: 'the other chat' });
+  ctx.assert.equal(await ctx.peix('state().split'), false, 'the other chat is one half');
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#grpB').hidden`), true, 'and its right half is not even there');
+  await ctx.openChat(chat.id);
+  await ctx.waitFor(`window.peix.state().split === true`, { what: 'the split chat still split' });
+  await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === '["chat","shell"]'`, { what: 'both halves back as they were' });
+
   // ⌘1 goes back to the left half; asking the *other* half's strip for the chat tab moves it there and the zsh
   // back here — they trade places — and the keys go with the click
   await ctx.cmd('Digit1');

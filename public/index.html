@@ -716,7 +716,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, pins: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [] };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, foldBy: {}, headDetails: false, chatZoom: 1, projectsCompact: true, sessionsCompact: false, split: false, splitAt: .5 };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, foldBy: {}, headDetails: false, chatZoom: 1, projectsCompact: true, sessionsCompact: false, splitAt: .5 };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -1755,6 +1755,13 @@
   ];
   const terms = GEL.map((el, g) => ({ g, el, id: null, sessionId: null, cwd: null, kind: null, ws: null, xt: null, fit: null, exited: null }));
   const drawer = { arm: null, armTimer: null, err: null };
+  // Split in two or not is the *chat's* (2026-09-22, Ricardo: "the pane splitting should be chat, not a general
+  // setting"): a PR beside its terminal is a thing you want for the review you are doing, not for the board. Held
+  // here rather than in prefs for the same reason the tab a chat is on is — it lasts as long as the chats do.
+  // Only the divider's place is the board's (prefs.splitAt), like the column widths.
+  const splits = new Set();
+  const isSplit = s => !!s && splits.has(s.id);
+  const splitNow = () => splits.has(state.current);
   let focusG = 0;                                   // the half the keys, the pickers and a new tab act on
   const curTerm = () => terms[focusG];
   const termFor = id => id ? terms.find(t => t.id === id) || null : null;
@@ -1885,7 +1892,7 @@
   window.peix = {
     state: () => ({ current: state.current, project: prefs.project, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft,
       paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, [...v]])), tab: state.sessions.has(state.current) ? tabOf(state.sessions.get(state.current)) : null, tabs: state.sessions.has(state.current) ? tabKeys(state.sessions.get(state.current)) : [], prbar: prbar.url,
-      split: !!prefs.split, focusG, halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
+      split: splitNow(), focusG, halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
       termId: curTerm().id, termSession: curTerm().sessionId, termExited: curTerm().exited }),
     session: id => { const s = state.sessions.get(id || state.current); return s ? JSON.parse(JSON.stringify(s)) : null; },
     sessions: () => [...state.sessions.values()].map(s => ({ id: s.id, project: s.project, cwd: s.cwd, env: s.env || null, title: s.title, status: s.status, alive: s.alive, prs: (s.prs || []).length, terminal: s.terminal?.id || null, agents: s.agents || 0, tasks: s.tasks || [], ask: s.ask || null })),
@@ -1900,7 +1907,7 @@
     return { dpr: devicePixelRatio, zoom: prefs.chatZoom, cols: tm.xt?.cols, rows: tm.xt?.rows, propose: tm.fit?.proposeDimensions(),
       body: { w: r(b.clientWidth - parseFloat(cs.paddingLeft)), h: r(b.clientHeight - parseFloat(cs.paddingTop)) },
       screen: sc && { w: r(sc.getBoundingClientRect().width), h: r(sc.getBoundingClientRect().height) },
-      ws: tm.ws?.readyState ?? null, id: tm.id, exited: tm.exited, split: !!prefs.split };
+      ws: tm.ws?.readyState ?? null, id: tm.id, exited: tm.exited, split: splitNow() };
   };
   // The size a new drawer is started at. No xterm yet (the first ⌥⌘C after a reload) means no measurement, so
   // the last one this browser fitted is the guess — a far better one than a fixed 120×30, which every drawer then
@@ -1967,11 +1974,11 @@
       left half takes the first tab left, and the right half fills with a spare one while the column is split. */
   function placeOf(s) {
     if (!s) return [null, null];
-    const keys = tabKeys(s), p = tabs.get(s.id) || [];
+    const keys = tabKeys(s), p = tabs.get(s.id) || [], two = isSplit(s);
     let a = keys.includes(p[0]) ? p[0] : null;
-    let b = prefs.split && keys.includes(p[1]) && p[1] !== a ? p[1] : null;
+    let b = two && keys.includes(p[1]) && p[1] !== a ? p[1] : null;
     if (!a) a = keys.find(k => k !== b) || null;
-    if (prefs.split && !b) b = keys.find(k => k !== a) || null;
+    if (two && !b) b = keys.find(k => k !== a) || null;
     return [a, b];
   }
   // Where each page actually is (2026-09-21): the key says where it was opened, the shell reports every navigation
@@ -1997,7 +2004,7 @@
     const p = placeOf(s), o = g ? 0 : 1;
     if (p[o] === k) p[o] = p[g];
     p[g] = k;
-    tabs.set(s.id, prefs.split ? p : [p[0], null]);
+    tabs.set(s.id, isSplit(s) ? p : [p[0], null]);
   }
   const paneLabel = k => { const m = /github\.com\/[^/]+\/([^/]+)\/pull\/(\d+)/.exec(k); return m ? `${m[1]}#${m[2]}` : 'GitHub'; };
   // Keep the pane right for the viewed chat: the body under the strip — its zsh on that tab, its claude drawer while
@@ -2005,6 +2012,7 @@
   // transcript otherwise — then the strip, then the shell's word (postPane). Runs on every open and SSE update, so it
   // never re-attaches what it shows.
   function syncTerm(s) {
+    applySplit();                       // the split belongs to the chat, so the column follows whichever is open
     const p = placeOf(s);
     for (const tm of terms) {
       const k = p[tm.g];
@@ -2024,7 +2032,7 @@
     if (el.parentElement !== host) { const top = el.scrollTop; host.insertBefore(el, host.firstChild); el.scrollTop = top; }
     el.hidden = at < 0 || !!terms[g].id;
     for (const tm of terms) {
-      const host = $(tm.el.body), had = host.querySelector('.gempty'), want = prefs.split && s && !p[tm.g];
+      const host = $(tm.el.body), had = host.querySelector('.gempty'), want = isSplit(s) && !p[tm.g];
       if (want && !had) host.insertAdjacentHTML('beforeend', '<div class="gempty">Nothing in this half.<br>⌥⌘T a zsh · ⌥⌘G its PR · ⌥⌘E the editor<br>— or a tab from the strip above</div>');
       else if (!want && had) had.remove();
     }
@@ -2035,15 +2043,15 @@
   // right half's always shows. While there are two, each strip ends in the ⨯ that closes *its* half (⌘W closes
   // the one the keys are in). With a page's tab on, ‹ › ↻ ↗ for its view at the right, and the address it is at.
   function renderTabs(s, p = placeOf(s)) {
-    const keys = s ? tabKeys(s) : ['chat'];
+    const keys = s ? tabKeys(s) : ['chat'], two = isSplit(s);
     for (const tm of terms) {
       const g = tm.g, el = $(tm.el.tabs), cur = p[g], other = p[g ? 0 : 1];
       $(tm.el.grp).classList.toggle('on', g === focusG);
-      el.hidden = g === 0 ? !prefs.split && keys.length < 2 : false;
-      if (el.hidden || (g === 1 && !prefs.split)) continue;
+      el.hidden = g === 0 ? !two && keys.length < 2 : false;
+      if (el.hidden || (g === 1 && !two)) continue;
       const tab = (k, label, title, x) => `<button class="ptab${cur === k ? ' on' : ''}${other === k ? ' away' : ''}${isPaneTab(k) ? ' pane' : ''}" data-tab="${esc(k)}" title="${esc(title)}">${esc(label)}${x ? `<span class="x" title="${esc(x)}">×</span>` : ''}</button>`;
       const navs = (isPaneTab(cur) ? '<button class="nav" data-nav="back" title="Back">‹</button><button class="nav" data-nav="forward" title="Forward">›</button><button class="nav" data-nav="reload" title="Reload">↻</button><button class="nav" data-nav="external" title="Open this page in your browser">↗</button>' : '')
-        + (prefs.split ? '<button class="nav gclose" title="Close this half — the other one becomes the whole column · ⌘W">⨯</button>' : '');
+        + (two ? '<button class="nav gclose" title="Close this half — the other one becomes the whole column · ⌘W">⨯</button>' : '');
       el.innerHTML = keys.map(k =>
         k === 'chat' ? tab(k, termLive(s) ? 'claude' : 'chat', `${termLive(s) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C`)
         : k === 'shell' ? tab(k, 'zsh', `A zsh in ${s.cwd || 'its folder'} · ⌥⌘T`, 'End this shell')
@@ -2116,7 +2124,7 @@
   /** A tab chosen — by a click or ⌥⌘←/→: it goes into the half asked for, which becomes the one the keys are in.
       A GitHub page opens through its strip too; the rest is syncTerm, and the keyboard follows. */
   function openTab(s, k, g = focusG) {
-    focusG = prefs.split ? g : 0;
+    focusG = isSplit(s) ? g : 0;
     setTab(s, k, focusG);
     if (k.startsWith('gh:')) showPr(k.slice(3));
     else { syncTerm(s); focusBoard(); focusTerm(); }
@@ -2128,7 +2136,7 @@
   // and a tab is only ever in one of them (setTab trades places). ⨯ on the right half's strip closes the split:
   // whatever the keys were in stays, the other half's tab goes back to being one the strip offers.
   function applySplit() {
-    const on = !!prefs.split;
+    const on = splitNow();
     if (!on) focusG = 0;
     $('#main').classList.toggle('split', on);
     $('#grpB').hidden = !on; $('#gsplit').hidden = !on;
@@ -2138,7 +2146,7 @@
   }
   /** Which half the keys are in. Re-renders the strips (the rule moves) and tells the shell which page to focus. */
   function focusGroup(g) {
-    const to = prefs.split ? g : 0;
+    const to = splitNow() ? g : 0;
     if (to === focusG) return;
     focusG = to;
     const s = state.sessions.get(state.current);
@@ -2146,18 +2154,18 @@
     if (s) renderHead(s);
   }
   function splitOn() {
-    prefs.split = true; savePrefs(); applySplit();
+    const s = state.sessions.get(state.current); if (!s) return noChat();
+    splits.add(s.id); applySplit();
     focusG = 1;
-    const s = state.sessions.get(state.current) || null;
-    syncTerm(s); if (s) renderHead(s);
+    syncTerm(s); renderHead(s);
     focusBoard(); focusTerm();
   }
   /** One half closed — ⌘W on the one the keys are in, or the ⨯ in a half's own strip. The other half's tab is
       what the column keeps; a half that was showing nothing leaves the closer's tab behind rather than none. */
   function closeHalf(g) {
     const s = state.sessions.get(state.current) || null;
-    if (s) { const p = placeOf(s); tabs.set(s.id, [p[g ? 0 : 1] || p[g], null]); }
-    prefs.split = false; focusG = 0; savePrefs(); applySplit();
+    if (s) { const p = placeOf(s); splits.delete(s.id); tabs.set(s.id, [p[g ? 0 : 1] || p[g], null]); }
+    focusG = 0; applySplit();
     syncTerm(s); if (s) renderHead(s);
     focusBoard(); focusTerm();
   }
@@ -2166,13 +2174,13 @@
   // with one half there is nothing of the board's to close, so the key is handed back and the window takes it.
   function hotCloseHalf() {
     const dlg = document.querySelector('dialog[open]'); if (dlg) { dlg.close(); return true; }
-    if (!prefs.split) return false;
+    if (!splitNow()) return false;
     closeHalf(focusG);
     return true;
   }
   function hotGroup(g) {
-    if (g === 1 && !prefs.split) return splitOn();
-    if (!prefs.split) return;   // ⌘1 with one half is where you already are
+    if (g === 1 && !splitNow()) return splitOn();
+    if (!splitNow()) return;   // ⌘1 with one half is where you already are
     focusGroup(g); focusBoard(); focusTerm();
   }
   applySplit();
