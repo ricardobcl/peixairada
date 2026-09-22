@@ -4,13 +4,12 @@
 // → environment, stubbed); O oracle, straight to the environments (a pinned folder called oracle stands in for the
 // real one — with no chats of its own the chats step skips itself); ↓ ↑ walk the list; ← → the tab beside (a real zsh); { } folds per chat; Esc closes a picker and is taken; the cog
 // lists every key; no chat → a note, no oracle → a note.
-import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-// ⌥⌘N's project step also lists the folders under the org's directory (ORG_DIR): an empty one keeps this
-// scenario about the board's own projects, and off whatever ~/acme happens to hold on this Mac.
-export const meta = { server: true, fixture: 'auto', env: { ORG_DIR: mkdtempSync(join(tmpdir(), 'peix-noorg-')) } };
+// ⌥⌘N's project step also lists the folders under the org's directory — an empty one of the test server's own,
+// so this stays about the board's projects and off whatever ~/acme holds (lib/testserver.mjs sets ORG_DIR).
+export const meta = { server: true, fixture: 'auto' };
 export default async function (ctx) {
   const [two, plain] = ctx.fixture.chats;
   const out = {};

@@ -12,7 +12,7 @@ import { makeFixture, replyLines, taskNoteLine, toolLines } from '../fixture.mjs
 // The sweep that asks the machine whether a background command is still running is on the registry poll, and it
 // leaves a task alone for its first seconds (the file exists before the process has opened it): both are wound
 // down here so the scenario does not wait half a minute for them.
-export const meta = { server: true, fixture: 'auto', env: { ORG_DIR: join(tmpdir(), 'peix-no-org-here'), REGISTRY_POLL_MS: '1200', TASK_GRACE_MS: '400' } };
+export const meta = { server: true, fixture: 'auto', env: { REGISTRY_POLL_MS: '1200', TASK_GRACE_MS: '400' } };
 
 const cards = ctx => ctx.evaluate(`[...document.querySelectorAll('#slist .card')].map(c => ({
   title: c.querySelector('.title')?.textContent || '',

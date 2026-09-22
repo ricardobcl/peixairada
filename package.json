@@ -10,6 +10,7 @@
     "check": "sh scripts/check.sh",
     "verify": "node scripts/verify.mjs",
     "scenario": "node scripts/scenario.mjs",
+    "scenarios": "node scripts/scenarios.mjs",
     "postinstall": "chmod +x node_modules/node-pty/prebuilds/*/spawn-helper 2>/dev/null || true",
     "map": "node scripts/map.mjs"
   },

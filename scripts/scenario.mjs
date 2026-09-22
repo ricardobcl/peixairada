@@ -55,6 +55,9 @@ const cdp = await launchChrome({ dark: !!process.env.DARK });
 cleanups.push(() => cdp.close());
 await openBoard(cdp, boardUrl, { hash: hash || null });
 
+// The rows of a half's terminal. The left half keeps the plain ids — it is the whole column while nothing is
+// split — so `ROWS(0)` is what every scenario written before the split already asked for.
+const ROWS = g => `[...document.querySelectorAll('#termBody${g ? 'B' : ''} .xterm-rows > div')]`;
 const ctx = {
   url: boardUrl, server, fixture, args: scenarioArgs, log, assert, sleep,
   evaluate: cdp.evaluate, waitFor: cdp.waitFor, send: cdp.send, exceptions: cdp.exceptions, console: cdp.console,
@@ -64,10 +67,11 @@ const ctx = {
   key: code => cdp.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { code: ${JSON.stringify(code)}, key: 'π', metaKey: true, altKey: true, bubbles: true, cancelable: true }))`),
   /** ⌘ + a key on its own — the board's layout keys (CMDKEYS: ⌘B, ⌘1, ⌘2). */
   cmd: code => cdp.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { code: ${JSON.stringify(code)}, key: 'x', metaKey: true, bubbles: true, cancelable: true }))`),
-  /** The drawer's rows as text, trailing blanks trimmed, empty rows dropped. */
-  screen: () => cdp.evaluate(`[...document.querySelectorAll('#termBody .xterm-rows > div')].map(r => r.textContent.replace(/\\s+$/, '')).filter(Boolean)`),
-  /** Wait for the drawer to show a prompt line (the fake's or Claude's ❯). */
-  waitPrompt: (timeout = 30_000) => cdp.waitFor(`[...document.querySelectorAll('#termBody .xterm-rows > div')].some(r => r.textContent.includes('❯'))`, { timeout, every: 250, what: 'the ❯ prompt in the drawer' }),
+  /** The drawer's rows as text, trailing blanks trimmed, empty rows dropped. `g` is the half of the chat column:
+      0 — the whole of it while nothing is split — or 1. */
+  screen: (g = 0) => cdp.evaluate(`${ROWS(g)}.map(r => r.textContent.replace(/\\s+$/, '')).filter(Boolean)`),
+  /** Wait for a half's drawer to show a prompt line (the fake's or Claude's ❯). */
+  waitPrompt: (timeout = 30_000, g = 0) => cdp.waitFor(`${ROWS(g)}.some(r => r.textContent.includes('❯'))`, { timeout, every: 250, what: `the ❯ prompt in ${g ? 'the right half' : 'the drawer'}` }),
   /** A read-only look into the page's closure (window.peix). */
   peix: what => cdp.evaluate(`JSON.stringify(window.peix.${what})`).then(v => JSON.parse(v)),
 };

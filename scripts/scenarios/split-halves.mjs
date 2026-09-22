@@ -32,6 +32,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual({ termA: two.termA, termB: two.termB, empty: two.empty }, { termA: true, termB: true, empty: false }, 'a drawer in each half');
   ctx.assert.ok(!two.log, 'the transcript is under the claude drawer, not beside it');
   await ctx.waitFor(`[...document.querySelectorAll('#termBodyB .xterm-rows > div')].some(r => /[$%❯]/.test(r.textContent))`, { what: 'the zsh prompt in the right half' });
+  ctx.assert.ok((await ctx.screen(1)).length, 'ctx.screen(1) reads the right half');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#grpB').classList.contains('on') && !document.querySelector('#grp').classList.contains('on')`), true, 'the right half is the one marked');
   ctx.assert.ok(/inset/.test(await ctx.evaluate(`getComputedStyle(document.querySelector('#ptabsB')).boxShadow`)), 'and it wears the accent rule');
   await ctx.shot('split');

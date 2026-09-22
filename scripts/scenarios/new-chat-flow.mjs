@@ -4,14 +4,14 @@
 // by your last touch. Typing moves the selection off ＋ onto the first match, and back onto it when nothing
 // matches — which is how a name no chat has yet starts one. The environment step counts what each one holds, and
 // the cards in the chat column wear the environment they were started in.
-import { writeFileSync, mkdtempSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { makeFixture } from '../fixture.mjs';
 
-// ⌥⌘N's project step also lists the folders under the org's directory (ORG_DIR): an empty one keeps this
-// scenario about the board's own projects, and off whatever ~/acme happens to hold on this Mac.
-export const meta = { server: true, fixture: 'auto', env: { ORG_DIR: mkdtempSync(join(tmpdir(), 'peix-noorg-')) } };
+// ⌥⌘N's project step also lists the folders under the org's directory — an empty one of the test server's own,
+// so this stays about the board's projects and off whatever ~/acme holds (lib/testserver.mjs sets ORG_DIR).
+export const meta = { server: true, fixture: 'auto' };
 
 const enter = ctx => ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);
 // In an IIFE: every evaluate lands in the same global scope, and a bare `const q` can only be declared once.
