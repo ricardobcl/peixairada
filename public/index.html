@@ -102,9 +102,19 @@
   #sessions { width: 380px; min-width: 260px; max-width: 60vw; flex: none; display: grid; grid-template-rows: auto auto 1fr; min-height: 0; min-width: 0; }
   /* The chat list folded to a rail: the selected project's colour square and the » to open it again.
      The width is set here, not inline, so the splitter's saved width comes back on unfold. */
-  main.scompact #sessions { width: 34px; min-width: 0; }
-  main.scompact #sessions #filters, main.scompact #sessions #slist, main.scompact #newChat, main.scompact #stitle > .t, main.scompact #stitle > .n, main.scompact #splitter { display: none; }
+  /* Folded, the list is a rail of one square per chat (2026-09-22): the project's short name on its own colour,
+     and the card's own edge — so what is clauding, how many agents are out, what is watching and what is asking
+     still read from the rail. Everything inside the card goes; .abbr is the only child left standing. */
+  main.scompact #sessions { width: 58px; min-width: 0; }
+  main.scompact #sessions #filters, main.scompact #newChat, main.scompact #stitle > .t, main.scompact #stitle > .n, main.scompact #splitter { display: none; }
   main.scompact #shd { flex-direction: column; padding: 8px 0; gap: 8px; min-height: 0; }
+  main.scompact #slist { padding: 7px 6px 10px; gap: 6px; }
+  main.scompact #slist > .card { padding: 0; min-height: 36px; display: grid; place-items: center;
+    background: color-mix(in srgb, var(--repo, var(--nocolor)) 55%, var(--panel)); }
+  main.scompact #slist > .card > * { display: none; }
+  main.scompact #slist > .card .abbr { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .4px; }
+  main.scompact #slist .gsep { display: none; }   /* the fish need a line to swim along, and there is none here */
+  main.scompact #slist .none { padding: 14px 2px; font-size: 10px; }
   #splitter { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--panel); }
   #splitter:hover, #splitter.drag { background: var(--accent); }
   #chat { --repo: initial; flex: 1; min-width: 320px; display: grid; grid-template-rows: auto auto auto auto 1fr auto; grid-template-columns: minmax(0, 1fr); min-height: 0; }
@@ -290,6 +300,7 @@
      of the folder's name, quietly. It shows wherever the server has a record, so only the folders whose Taskfile
      launches claude ever wear one. A card too dark or too tinted for the colour borrows the card's own ink. */
   .card .top .chip.env { color: var(--repo, var(--muted)); border-color: transparent; padding-left: 0; font-weight: 600; }
+  .card .abbr { display: none; }   /* only the folded rail shows it */
   .card.black .top .chip.env, .card.active .top .chip.env, .card:hover .top .chip.env { color: inherit; opacity: .8; }
   /* the open chat: a solid tint of its colour under a ring of it (2026-09-20, Ricardo: "a more solid
      background, so we can notice it better"); every other card keeps the gradient wash */
@@ -898,6 +909,19 @@
   const ORACLE = 'oracle';   // …and the folder ⌥⌘O starts a chat in (hotOracle): one spelling of the name for both
   const PROJECT_ICONS = { [ORACLE]: ICON.oracle };
   const projIcon = name => PROJECT_ICONS[name] || '';
+  // The short name a project wears on a card in the folded chat list (2026-09-22, Ricardo: "small squares with only
+  // the project they are in, with initial (e.g. BE for backend, WAPI for wallet-api, NS for notifier)").
+  // The rule is the initial of each part of a hyphenated name, or the first two letters of a single word — which
+  // gives NS, AS, MS, FC on its own; the map is for the ones whose spoken short name is not that, and is kept by
+  // hand like PROJECT_ICONS, keyed by the name as it is shown.
+  const PROJECT_ABBR = { backend: 'BE', 'wallet-api': 'WAPI' };
+  function projAbbr(name) {
+    const n = String(name || '');
+    if (PROJECT_ABBR[n]) return PROJECT_ABBR[n];
+    const parts = n.split(/[^A-Za-z0-9]+/).filter(Boolean);
+    if (!parts.length) return '·';
+    return (parts.length > 1 ? parts.map(x => x[0]).join('') : parts[0].slice(0, 2)).toUpperCase().slice(0, 4);
+  }
   // A colour the board gives a folder that Peacock has nothing to say about — by the shown name too, so a
   // worktree or a second checkout of it is the same colour. One so far (2026-09-20, Ricardo: "make acme folder
   // special by making its cards all black"): `acme`, the root the repos sit under, where the chats that belong
@@ -1064,13 +1088,13 @@
    *  call gave it, which is the answer to "something is running here, but what?" and was a tooltip before
    *  (2026-09-21, Ricardo: "if there is any background command working, where should I see what is it?"). With
    *  more, it counts them by kind. The tooltip is the full list either way, with the time left and the events. */
-  function taskChip(s, where = 'card') {
+  function taskChip(s) {
     const t = s.tasks || []; if (!t.length) return '';
     const mon = t.filter(x => x.kind === 'monitor').length, bg = t.length - mon;
     const label = t.length === 1
       ? `${t[0].kind === 'monitor' ? 'monitor' : 'running'}${t[0].what ? ` · ${t[0].what}` : ''}`
       : [mon ? (mon > 1 ? `${mon} monitors` : 'monitor') : '', bg ? (bg > 1 ? `${bg} running` : 'running') : ''].filter(Boolean).join(' · ');
-    return `<span class="chip watch ${where}" title="${esc(t.map(taskLine).join('\n'))}">${ICON.watch}${esc(label)}</span>`;
+    return `<span class="chip watch" title="${esc(t.map(taskLine).join('\n'))}">${ICON.watch}${esc(label)}</span>`;
   }
   /** The question itself on the card — which tool asked, what it asked, how many answers it is offering. */
   function askHtml(s) {
@@ -1094,6 +1118,7 @@
       ${s.lastPrompt ? `<div class="snip you"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
       ${showReply ? `<div class="snip claude"><b title="Claude">${ICON.claude}</b>${esc(s.lastReply)}</div>` : ''}
       ${asking(s) ? askHtml(s) : ''}
+      <span class="abbr" title="${esc(`${s.project} · ${s.title}`)}">${esc(projAbbr(s.project))}</span>
     </div>`;
   }
   function selectProject(key) { prefs.project = key; savePrefs(); renderBoard(); }
@@ -1416,7 +1441,7 @@
   // ⌥⌘↑ / ⌥⌘↓ (2026-09-20): the chat above or below in the list as it stands — filters and order included; from no
   // chat, or one the list does not show, the top or the bottom; the ends stop.
   function hotMove(dir) {
-    const cards = [...document.querySelectorAll('#slist .card')]; if (!cards.length) return note($('#shead'), 'No chats in this list');
+    const cards = [...document.querySelectorAll('#slist > .card')]; if (!cards.length) return note($('#shead'), 'No chats in this list');
     const i = cards.findIndex(c => c.dataset.id === state.current);
     const next = cards[i < 0 ? (dir > 0 ? 0 : cards.length - 1) : Math.max(0, Math.min(cards.length - 1, i + dir))];
     if (next.dataset.id !== state.current) openSession(next.dataset.id);
@@ -1671,7 +1696,7 @@
     // details under the row. The chat's PRs are the block under it, one per row (#prlist).
     const take = takeable(s), armed = take && drawer.arm === s.id;
     $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">/</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
-      ${taskChip(s, 'head')}
+      ${taskChip(s)}
       <button class="btn icon status${prefs.headDetails ? ' on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}"
         title="${esc(statusLabel[s.status] || s.status)}${s.statusSince ? ` for ${rel(s.statusSince)}` : ''} · click to ${prefs.headDetails ? 'hide' : 'show'} path, branch and session details"><span class="dot ${s.status}"></span>${s.statusSince ? rel(s.statusSince) : ''}</button>
       <button class="btn icon fold${foldOn(s.id) ? ' on' : ''}" id="foldBtn" aria-pressed="${foldOn(s.id)}" title="${foldOn(s.id) ? 'Code blocks longer than 6 lines are folded in this chat — click to show them whole' : 'Code blocks are shown whole in this chat — click to fold the long ones'}${s.id in prefs.foldBy ? ' (set here; the cog sets the default)' : ' (the cog’s default)'}">{ }</button>
@@ -2539,7 +2564,7 @@
     state.sessions.set(id, data.session); state.entries = data.entries; renderHead(data.session); renderLog(); syncTerm(data.session);
     $('#log').scrollTop = $('#log').scrollHeight;
     if (location.hash.slice(1) !== id) history.replaceState(null, '', '#' + id);
-    document.querySelector(`#slist .card[data-id="${id}"]`)?.scrollIntoView({ block: 'nearest' });
+    document.querySelector(`#slist > .card[data-id="${id}"]`)?.scrollIntoView({ block: 'nearest' });
   }
 
   // ---- alerts --------------------------------------------------------------------------
