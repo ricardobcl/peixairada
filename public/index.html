@@ -1490,7 +1490,8 @@
   async function hotShell() {
     const s = state.sessions.get(state.current); if (!s) return noChat();
     if (!s.cwd) return note($('#shead'), 'No folder known for this chat', true);
-    if (!shellLive(s)) {
+    const fresh = !shellLive(s);   // the first press opens a tab; the next ones only show it
+    if (fresh) {
       try {
         const r = await fetch(`/api/sessions/${s.id}/shell`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(termSize()) });
         const d = await r.json().catch(() => ({}));
@@ -1498,7 +1499,8 @@
         s.shell = d.terminal;   // the SSE update says the same a moment later
       } catch (e) { return note($('#shead'), String(e), true); }
     }
-    setTab(s, 'shell'); syncTerm(s); focusBoard(); focusTerm();
+    if (fresh) openNewTab(s, 'shell'); else setTab(s, 'shell');
+    syncTerm(s); focusBoard(); focusTerm();
   }
   function hotGh() {
     const s = state.sessions.get(state.current); if (!s) return noChat();
@@ -1682,9 +1684,12 @@
     // opened; the folder's editor, one per folder. Remembered here so they come back with the chat; the shell keeps a
     // web view per page and shows the one the tab says (syncTerm → postPane).
     const gh = /^https:\/\/github\.com\//.test(url);
-    if (gh) { const l = state.paneGh.get(s.id) || []; if (!l.includes(url)) l.push(url); state.paneGh.set(s.id, l); }
-    else if (s.cwd) state.paneIde.set(s.cwd, url);
-    setTab(s, (gh ? 'gh:' : 'ide:') + url); syncTerm(s);
+    let fresh = false;
+    if (gh) { const l = state.paneGh.get(s.id) || []; fresh = !l.includes(url); if (fresh) l.push(url); state.paneGh.set(s.id, l); }
+    else if (s.cwd) { fresh = state.paneIde.get(s.cwd) !== url; state.paneIde.set(s.cwd, url); }
+    const k = (gh ? 'gh:' : 'ide:') + url;
+    if (fresh) openNewTab(s, k); else setTab(s, k);   // a page opened again is the tab it already has
+    syncTerm(s);
   }
   const prbar = { url: null };
   function hidePr() { $('#prbar').hidden = true; prbar.url = null; }
@@ -1841,6 +1846,7 @@
   // here rather than in prefs for the same reason the tab a chat is on is — it lasts as long as the chats do.
   // Only the divider's place is the board's (prefs.splitAt), like the column widths.
   const splits = new Set();
+  const autoSplit = new Set();   // …and which of those splits the board made itself, opening a second tab (openNewTab)
   const isSplit = s => !!s && splits.has(s.id);
   const splitNow = () => splits.has(state.current);
   let focusG = 0;                                   // the half the keys, the pickers and a new tab act on
@@ -2095,12 +2101,23 @@
     p[g] = k;
     tabs.set(s.id, isSplit(s) ? p : [p[0], null]);
   }
+  /** A tab that has just come into being — a zsh, a GitHub page, the editor — opens in the *second* half, and
+   *  splits the column the first time (2026-09-22, Ricardo: "when opening a second tab, use the 2nd split pane by
+   *  default"): what you open a second tab for is to have it beside the chat, not instead of it. Only the first
+   *  one splits; after that a new tab lands wherever the keys are, like everything else. Choosing a tab that
+   *  already exists is openTab's and never splits. The split the board makes itself goes again on its own, in
+   *  syncTerm, once the chat is down to one tab — an empty half is what ⌘2 is for, not what a zsh's exit leaves. */
+  function openNewTab(s, k) {
+    if (!isSplit(s)) { splits.add(s.id); autoSplit.add(s.id); focusG = 1; }
+    setTab(s, k, focusG);
+  }
   const paneLabel = k => { const m = /github\.com\/[^/]+\/([^/]+)\/pull\/(\d+)/.exec(k); return m ? `${m[1]}#${m[2]}` : 'GitHub'; };
   // Keep the pane right for the viewed chat: the body under the strip — its zsh on that tab, its claude drawer while
   // it runs here (attached under a page's tab too: the native pane covers it, nothing re-attaches on the way back), the
   // transcript otherwise — then the strip, then the shell's word (postPane). Runs on every open and SSE update, so it
   // never re-attaches what it shows.
   function syncTerm(s) {
+    if (s && autoSplit.has(s.id) && tabKeys(s).length < 2) { splits.delete(s.id); autoSplit.delete(s.id); }   // the zsh exited, the page was forgotten: one half again
     applySplit();                       // the split belongs to the chat, so the column follows whichever is open
     const p = placeOf(s);
     for (const tm of terms) {
@@ -2244,7 +2261,7 @@
   }
   function splitOn() {
     const s = state.sessions.get(state.current); if (!s) return noChat();
-    splits.add(s.id); applySplit();
+    splits.add(s.id); autoSplit.delete(s.id); applySplit();   // asked for by hand: it keeps its empty half
     focusG = 1;
     syncTerm(s); renderHead(s);
     focusBoard(); focusTerm();
@@ -2253,7 +2270,7 @@
       what the column keeps; a half that was showing nothing leaves the closer's tab behind rather than none. */
   function closeHalf(g) {
     const s = state.sessions.get(state.current) || null;
-    if (s) { const p = placeOf(s); splits.delete(s.id); tabs.set(s.id, [p[g ? 0 : 1] || p[g], null]); }
+    if (s) { const p = placeOf(s); splits.delete(s.id); autoSplit.delete(s.id); tabs.set(s.id, [p[g ? 0 : 1] || p[g], null]); }
     focusG = 0; applySplit();
     syncTerm(s); if (s) renderHead(s);
     focusBoard(); focusTerm();

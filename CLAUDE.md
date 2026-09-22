@@ -240,6 +240,12 @@ refuses to run against the real directory for the same reason.
   The left half keeps the plain ids (`#ptabs`, `#term`, `#termBody`, `#log`): it is the whole column while nothing
   is split, and the harness reads it by those names. `GEL` maps each half to its elements, `terms[g]` owns that
   half's xterm and socket, and the take-over state (armed, failed) is the board's `drawer`, not a terminal's.
+* **A tab that is new opens in the second half, and splits the column the first time** (2026-09-22): `openNewTab()`
+  — a zsh (⌥⌘T), a GitHub page, the editor — because what a second tab is for is standing beside the chat, not
+  replacing it. Only the first one splits; after that a new tab lands wherever the keys are. Choosing a tab that
+  already exists (a click, ⌥⌘←→, ⌥⌘G on a PR already open) is `openTab()` and never splits. The split the board
+  makes itself is remembered in `autoSplit` and **folds back on its own** when the chat is down to one tab again
+  (`syncTerm`) — the empty half is what ⌘2 asks for, not what a zsh's `exit` should leave behind.
 * **A tab lives in exactly one half.** One transcript element, one xterm per half, one web view per page — so
   choosing in one half what the other is showing makes the two **trade places** (`setTab`), which is also how a tab
   is moved across. The other half's tab is dimmed in your strip (`.ptab.away`), not hidden.
