@@ -1,6 +1,7 @@
 // ⌘2 splits the chat column in two and ⌘1 / ⌘2 move the keys between the halves (2026-09-22). What this keeps
 // honest: a tab lives in exactly one half, both halves can hold a live terminal at the same time, choosing in one
-// half what the other is showing makes the two trade places, and ⨯ leaves the half you were in.
+// half what the other is showing makes the two trade places, ⨯ leaves the half you were in, and ⌘0 leaves the one
+// the keys are in (with nothing split it is the chat's size again).
 export const meta = { server: true, fake: true, fixture: 'auto' };
 
 const halves = ctx => ctx.peix('state().halves');
@@ -79,6 +80,21 @@ export default async function (ctx) {
   ctx.assert.deepEqual({ termA: end.termA, termB: end.termB, logIn: end.logIn }, { termA: true, termB: false, logIn: 'gbody' },
     'the claude drawer is the whole column again');
   await ctx.shot('closed');
+
+  // ⌘0 is ⌘W the other way round (2026-09-22): the half the keys are in stays, the other one goes
+  await ctx.cmd('Digit2');
+  await ctx.waitFor(`window.peix.state().split === true`, { what: 'split once more' });
+  await ctx.waitFor(`window.peix.state().halves[1] !== null`, { what: 'the right half filled with the spare tab' });
+  const before = await halves(ctx);
+  ctx.assert.equal(await ctx.peix('state().focusG'), 1, '⌘2 put the keys in the right half');
+  await ctx.cmd('Digit0');
+  await ctx.waitFor(`window.peix.state().split === false`, { what: '⌘0 closed the other half' });
+  ctx.assert.deepEqual(await halves(ctx), [before[1], null], 'what the keys were in is what the column keeps');
+  // …and with one half it is what ⌘0 always was: the chat's size back to normal
+  await ctx.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: '-', metaKey: true, bubbles: true, cancelable: true }))`);
+  ctx.assert.ok((await ctx.peix('prefs()')).chatZoom < 1, '⌘− shrinks the chat');
+  ctx.assert.equal(await ctx.evaluate(`window.peixKey('Digit0', 'cmd')`), true, '⌘0 is taken with one half too');
+  ctx.assert.equal((await ctx.peix('prefs()')).chatZoom, 1, '…and there it is the size going back to normal');
 
   return { split: two, after: end };
 }

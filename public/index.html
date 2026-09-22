@@ -683,7 +683,8 @@
     <kbd>⌘B</kbd><span>fold the chat list into a rail, and back</span>
     <kbd>⌘1 ⌘2</kbd><span>the left half of the chat, the right one — ⌘2 splits it in two the first time</span>
     <kbd>⌘W</kbd><span>close the half the keys are in — or the picker · with one half it is the window's own key</span>
-    <kbd>⌘+ ⌘− ⌘0</kbd><span>chat and terminal size</span>
+    <kbd>⌘0</kbd><span>only this half: the other one closes and this tab is the column · with one half, the size back to normal</span>
+    <kbd>⌘+ ⌘−</kbd><span>chat and terminal size</span>
     <kbd>⌘K</kbd><span>clear the terminal — the scrollback goes on the holder too, so it stays clear</span>
     <kbd>⇧⏎</kbd><span>newline in the terminal's prompt</span>
     <kbd>esc</kbd><span>closes a picker or popover · back to the chat from a page's tab · never leaves full screen while one is up</span>
@@ -1418,8 +1419,11 @@
   const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyN: () => pickOpen('new'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘B folds the chat list. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
-  // takes it for the terminal's clear — and neither are ⌘+ ⌘− ⌘0, which are chatZoomKey's.
-  const CMDKEYS = { KeyB: toggleSessions, Digit1: () => hotGroup(0), Digit2: () => hotGroup(1), KeyW: hotCloseHalf };
+  // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
+  // half goes and the one the keys are in becomes the column (2026-09-22, Ricardo: "cmd 0 should close other panes
+  // and just keep the current one select/focused"), and with one half there is nothing to close, so it is still
+  // what it always was — the chat's size back to normal.
+  const CMDKEYS = { KeyB: toggleSessions, Digit1: () => hotGroup(0), Digit2: () => hotGroup(1), Digit0: hotOnlyHalf, KeyW: hotCloseHalf };
   // Every hotkey says whether it took the key, and ⌘W is the one that is asked: in the app it arrives as the
   // Window menu's own ⌘W, which closes the window when the board has nothing to close instead (see main.swift).
   // A dialog up swallows the rest, as it always did — but not ⌘W, which is how you close the dialog.
@@ -2284,6 +2288,13 @@
     closeHalf(focusG);
     return true;
   }
+  /** ⌘0: only this half. The *other* one closes, so the tab under the keys is what the column keeps — the opposite
+      end of ⌘2, and ⌘W's mirror (that one closes the half you are in). Nothing split: ⌘0 is the zoom's again. */
+  function hotOnlyHalf() {
+    if (!splitNow()) { prefs.chatZoom = 1; applyChatZoom(); savePrefs(); return true; }
+    closeHalf(focusG ? 0 : 1);
+    return true;
+  }
   function hotGroup(g) {
     if (g === 1 && !splitNow()) return splitOn();
     if (!splitNow()) return;   // ⌘1 with one half is where you already are
@@ -2393,6 +2404,8 @@
     attachTerm(curTerm(), d.terminal);
   }
   // ---- ⌘+ / ⌘- / ⌘0: the chat's size — the transcript through CSS zoom, the terminal through its font
+  // ⌘0 reaches here only with one half (CMDKEYS takes it first and hands it back through hotOnlyHalf): split, the
+  // key closes the other half instead, which is the thing you want it for when there are two.
   const ZOOM_MIN = 0.6, ZOOM_MAX = 2, TERM_FONT = 12;
   const termFontSize = () => Math.round(TERM_FONT * (Number(prefs.chatZoom) || 1));
   function applyChatZoom() {

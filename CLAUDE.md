@@ -152,11 +152,12 @@ refuses to run against the real directory for the same reason.
   keep it in step by hand, with `boardKeys` in main.swift.
 * **Plain ⌘ is the window's shape, and lives in `CMDKEYS`** (2026-09-22): **B** folds the chat list to a rail
   (`toggleSessions`, the « button's switch), **1** and **2** the left and right halves of the chat column —
-  ⌘2 splits it the first time —, **W** closes the half the keys are in, or a dialog that is up (see *The chat
-  column's two halves*). The modifier is the distinction: ⌥⌘ is
+  ⌘2 splits it the first time —, **W** closes the half the keys are in, or a dialog that is up, **0** closes the
+  *other* half so the one the keys are in is the column (`hotOnlyHalf`; with one half it is still the chat's size
+  back to normal, ⌘0's older meaning — see *The chat column's two halves*). The modifier is the distinction: ⌥⌘ is
   "this chat, over there", ⌘ alone is "this window, this shape". `peixKey(code, mods)` carries which map and
   **returns whether the key was taken**; `cmdKeys` in main.swift is the forwarder's copy of this list — a digit
-  goes over as `Digit<n>`. ⌘K is *not* here (the drawer's clear) and neither are ⌘+ ⌘− ⌘0 (`chatZoomKey`).
+  goes over as `Digit<n>`. ⌘K is *not* here (the drawer's clear) and neither are ⌘+ ⌘− (`chatZoomKey`, which sees ⌘0 only when nothing is split).
 * **⌘W is the Window menu's item, not the forwarder's** (2026-09-22): a key equivalent is dispatched before any
   responder, so the page never sees ⌘W in the app. `closeHalfOrWindow` asks the board (`peixKey('KeyW','cmd')`)
   and calls `performClose` only when it answers false. Anything else the board wants to take off ⌘-something that
@@ -260,7 +261,8 @@ refuses to run against the real directory for the same reason.
   `syncTerm` calls `applySplit()` on every open, so the column follows whichever chat is in front; only the
   divider's place is the board's (`prefs.splitAt`), like the column widths.
   **⌘W closes the half the keys are in**, and each strip's ⨯ closes *its own* half (`closeHalf(g)`): what the
-  column keeps is the other half's tab, or the closer's when the other had none.
+  column keeps is the other half's tab, or the closer's when the other had none. **⌘0 is the mirror** (2026-09-22):
+  it closes the *other* half, so the tab under the keys is what stays.
   → `scripts/scenarios/split-halves.mjs`, the split section of `pane-tabs.mjs`, Decisions 2026-09-22.
 
 ## The drawer
