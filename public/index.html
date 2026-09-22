@@ -507,10 +507,6 @@
   dialog::backdrop { background: rgba(0, 0, 0, .35); }
   /* ⌥⌘P: the project picker, VS Code's open-recent way — a box on top, rows under it, ↑↓ and ⏎. ⌥⌘G fills it with the chat's PRs, ⌥⌘O with oracle's environments. */
   #pick { padding: 8px; width: min(520px, 92vw); margin-top: 10vh; }
-  /* In the app with the pane up: the pane is a native view over the chat column, and a dialog centred on the board
-     opens under it. `aside` (set by pickOpen from what the shell reports through peixPane) puts it in the part of the
-     board still showing, --pane-left wide. */
-  #pick.aside { margin-left: 8px; margin-right: auto; width: min(520px, calc(var(--pane-left, 100vw) - 16px)); }
   #pick input { width: 100%; box-sizing: border-box; font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: inherit; outline: none; }
   #pick input:focus { border-color: var(--accent); }
   #picklist { margin-top: 6px; max-height: 50vh; overflow-y: auto; display: grid; gap: 1px; }
@@ -1200,9 +1196,8 @@
   function pickOpen(mode = 'project', ctx = {}) {
     const dlg = $('#pick');
     if (!dlg.open) {   // a step of the new-chat flow re-fills the open dialog; a hotkey never gets here with one up
-      dlg.classList.toggle('aside', inApp && state.paneVisible); dlg.style.setProperty('--pane-left', state.paneLeft + 'px');
       if (inApp) post({ type: 'focus' });   // the key may have come from the pane: the box needs the board's keyboard
-      dlg.showModal();
+      dlg.showModal(); repostPane();        // the pane goes down while it is up, so the dialog is centred and on top
     }
     pick.mode = mode; pick.ctx = ctx; pick.sel = 0;
     if (mode === 'new') loadFolders();   // the org's folders, fresh: the rows join the list when the answer lands
@@ -1337,8 +1332,8 @@
     e.preventDefault(); e.stopPropagation(); runHotkey(e.code, mods);
   }, true);
   window.peixKey = runHotkey;
-  // …and tells the page whether the pane is up and where its edge is (points = this view's CSS px), so the picker
-  // can open beside it rather than under it.
+  // …and tells the page whether the pane is up and where its edge is (points = this view's CSS px) — the board
+  // cannot see a native view over it, and window.peix reports it so the harness can.
   window.peixPane = (visible, left) => { state.paneVisible = !!visible; state.paneLeft = Number(left) || 0; };
   const noChat = () => note($('#shead'), 'Open a chat first');
   const focusBoard = () => { if (inApp) post({ type: 'focus' }); };   // the key may have come from the pane: the board needs the keyboard back
@@ -1526,7 +1521,7 @@
     $('#pfolders').innerHTML = known.map(f => `<label><input type="checkbox" value="${esc(f)}"${chosen.has(f) ? ' checked' : ''}> <b>${esc(folderName(f))}</b> <span>${esc(f)}</span></label>`).join('') || '<div class="none">No folders known yet</div>';
     $('#pextra').value = [...chosen].filter(f => !known.includes(f)).join('\n');
     $('#pdel').hidden = !p;
-    dlg.showModal(); $('#pname').focus();
+    dlg.showModal(); repostPane(); $('#pname').focus();
   }
   async function saveProject() {
     const dlg = $('#pdlg'), id = dlg.dataset.id;
@@ -1941,14 +1936,22 @@
   // The shell's word: the chat's pages, the one to show (null hides the pane) and where the pane goes — the chat
   // column below the strip, in CSS px (points in the app). Sent by syncTerm, and again whenever that geometry moves.
   const paneTop = () => Math.round($('#ptabs').getBoundingClientRect().bottom);
+  // A dialog open puts the pane down for as long as it is up (2026-09-21, Ricardo: "make it always centered"): a
+  // native view over the chat column covers a dialog centred on the board, and the picker used to sidle into the
+  // strip of board still showing rather than fight it. Lowering the pane instead leaves the dialog where every
+  // dialog belongs — the middle of the window, over a dimmed board — and hands the keyboard back on the way down.
+  // Nothing reloads: the shell only hides the web view, and the tab comes back with the dialog's close.
   function postPane(s, t = s ? tabOf(s) : 'chat') {
     if (!inApp) return;
-    post({ type: 'pane', id: s?.id || null, keys: paneKeys(s), show: isPaneTab(t) ? t : null, left: paneLeft(), top: paneTop() });
+    const show = isPaneTab(t) && !document.querySelector('dialog[open]') ? t : null;
+    post({ type: 'pane', id: s?.id || null, keys: paneKeys(s), show, left: paneLeft(), top: paneTop() });
   }
+  const repostPane = () => postPane(state.sessions.get(state.current) || null);
   if (inApp) {
     const repost = () => { const s = state.sessions.get(state.current); if (s && isPaneTab(tabOf(s))) postPane(s); };
     const ro = new ResizeObserver(repost); for (const id of ['#chat', '#ptabs', '#log', '#term']) ro.observe($(id));
     window.addEventListener('resize', repost);
+    for (const d of document.querySelectorAll('dialog')) d.addEventListener('close', repostPane);   // the pane comes back up
   }
   $('#ptabs').addEventListener('click', e => {
     const s = state.sessions.get(state.current); if (!s) return;
