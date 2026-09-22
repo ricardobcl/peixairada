@@ -77,6 +77,15 @@
   #settings { width: 480px; }   /* the usage rows set it; the keys wrap inside */
   .pop .keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: baseline; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
   .pop .keys .kh { grid-column: 1 / -1; font-size: 11px; }
+  /* What ⌥⌘N's ✕ took off the board, and the only way back to it. Empty is nothing at all — the popover is the
+     usage and the keys until something is hidden. */
+  .pop .hid { display: grid; gap: 3px; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
+  .pop .hid:empty { display: none; }
+  .pop .hid .hrow { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: baseline; }
+  .pop .hid .hrow b { font-weight: 600; color: var(--ink); }
+  .pop .hid .hrow span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pop .hid button { font: inherit; font-size: 11px; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 6px; padding: 1px 7px; cursor: pointer; }
+  .pop .hid button:hover { border-color: var(--accent); color: var(--accent); }
   .pop .keys kbd { font: inherit; font-weight: 600; color: var(--ink); white-space: nowrap; }
   .pop .keys em { font-style: normal; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--ink); }
   .pop select, .colhead select { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; max-width: 180px; }
@@ -574,6 +583,13 @@
   .pkrow .pills { display: flex; gap: 5px; }
   .pkrow .t { font-size: 11px; color: var(--muted); }
   .pkrow.sel { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  /* ⌥⌘N only: ✕ takes the row off the board's lists (2026-09-22). One more column on the rows that have it, and the
+     button only inks itself on the row under the pointer or the selection — a column of crosses reads as a list of
+     things to delete, which this is not. */
+  .pkrow.hides { grid-template-columns: auto 1fr auto auto auto; }
+  .pkrow .pkx { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; line-height: 1; padding: 2px 5px; border-radius: 6px; cursor: pointer; opacity: 0; }
+  .pkrow:hover .pkx, .pkrow.sel .pkx { opacity: .75; }
+  .pkrow .pkx:hover { opacity: 1; color: var(--needs); background: var(--inline-bg); }
   #picklist .none { padding: 12px; color: var(--muted); font-size: 12px; text-align: center; }
   dialog h3 { margin: 0 0 10px; font-size: 15px; }
   dialog p.help { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
@@ -661,7 +677,7 @@
     <kbd>⌥⌘O</kbd><span>oracle — its environments, then that one's open chats and ＋ a new one</span>
     <kbd>⌥⌘P</kbd><span>project picker</span>
     <kbd>⌥⌘K</kbd><span>chat picker — every ready or clauding chat, fuzzy: <em>wapi res</em> finds <em>wallet-api resolvers</em></span>
-    <kbd>⌥⌘N</kbd><span>a chat — a project, a folder in ~/acme, or ＋ clone a repo of the org · then its open chats or ＋ a new one</span>
+    <kbd>⌥⌘N</kbd><span>a chat — a project, a folder in ~/acme, or ＋ clone a repo of the org · then its open chats or ＋ a new one · ✕ takes a row off the board</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
     <kbd>⌥⌘←→</kbd><span>the tab to the left / right: chat, zsh, GitHub pages, VS Code</span>
     <kbd>⌘B</kbd><span>fold the chat list into a rail, and back</span>
@@ -675,6 +691,7 @@
     <kbd>⌘F · ⌘G</kbd><span>find on the page in the pane, as in a browser — ⏎ ⇧⏎ or ⌘G ⇧⌘G step the matches, esc closes the bar, in the app</span>
     <kbd>pinch</kbd><span>zoom a GitHub or VS Code page in the pane, as in Safari · its address sits in the strip, click to copy</span>
   </div>
+  <div id="hidden" class="hid"></div>
 </div>
 <dialog id="pick">
   <input type="text" id="pickq" placeholder="Project — type to filter · ↑↓ · ⏎ opens · esc" autocomplete="off" spellcheck="false">
@@ -734,7 +751,7 @@
 // Map ▴
 (() => {
   const $ = s => document.querySelector(s);
-  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, pins: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [] };
+  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [] };
   const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, foldBy: {}, headDetails: false, chatZoom: 1, projectsCompact: true, sessionsCompact: false, splitAt: .5 };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
@@ -939,6 +956,12 @@
   const inProject = (s, p) => p.key === ALL || (p.custom ? p.cwds.some(f => inFolder(s.cwd, f)) : (s.cwd || '?') === p.key);
   const projectStub = key => key === ALL ? { key } : key.startsWith('c:') ? { key, custom: true, cwds: state.projects.find(p => 'c:' + p.id === key)?.cwds || [] } : { key };
   // The same rules as the lane board had: empty live panels and stale chats older than 30 days hide unless asked.
+  // Taken off the board by ⌥⌘N's ✕ (2026-09-22, Ricardo: "I want to be able to remove a project when doing hotkey
+  // N"): the key is a folder's cwd or `c:<id>`, the pins' own spelling, and the server keeps the list (state.json),
+  // so every browser and the app agree. It takes the row out of the projects column and out of every picker — the
+  // chats themselves are untouched and still show under ALL, because hiding a folder is tidying an index, not
+  // throwing work away. The cog is the way back.
+  const isHidden = key => state.hidden.includes(key);
   function visible(s) {
     if (prefs.showAll) return true;
     if (s.alive && !s.lastActivity) return false;
@@ -996,7 +1019,7 @@
       p.last = p.sessions.reduce((m, s) => userAt(s) > m ? userAt(s) : m, '');
       return p;
     };
-    const every = [...customs, ...folders.values()].map(stat);
+    const every = [...customs, ...folders.values()].map(stat).filter(p => !isHidden(p.key));   // ✕ in ⌥⌘N: off every list, pins included
     const pins = state.pins.map(k => every.find(p => p.key === k)).filter(Boolean);
     for (const p of pins) p.pinned = true;
     const rest = every.filter(p => !p.pinned);
@@ -1038,7 +1061,7 @@
     const pq = $('#pq').value.trim().toLowerCase();   // the column's own filter; the selection is untouched by it
     const ps = every.filter(p => !pq || p.key === ALL || p.name.toLowerCase().includes(pq));
     $('#plist').innerHTML = ps.map((p, i) => projHtml(p) + (p.pinned && !ps[i + 1]?.pinned ? '<div class="psep"></div>' : '')).join('') + (every.length === 1 ? '<div class="phint">Folders show up here as soon as a chat runs in them. <b>+</b> names a project over several.</div>' : '');
-    renderSessionList(cur);
+    renderSessionList(cur); renderHidden();
     const all = ps[0];
     $('#counts').textContent = `${[...state.sessions.values()].filter(s => s.alive).length} live · ${all.ready} ready · ${all.working} clauding`;
     const total = [...state.unread.values()].reduce((a, b) => a + b, 0);
@@ -1235,7 +1258,7 @@
    *  live in a subfolder of it is still offered at its root, which is a different place to start. */
   const freeFolders = () => {
     const taken = new Set(projectList().flatMap(p => p.cwds));
-    return folders.list.filter(f => !taken.has(f.cwd)).map(f => ({ key: f.cwd, name: f.name, cwd: f.cwd, cwds: [f.cwd], folder: true }));
+    return folders.list.filter(f => !taken.has(f.cwd) && !isHidden(f.cwd)).map(f => ({ key: f.cwd, name: f.name, cwd: f.cwd, cwds: [f.cwd], folder: true }));
   };
   const CLONE_NAME = /^[A-Za-z0-9][\w.-]*$/;   // the server's own rule for a name it will clone — no row it would refuse
   /** ＋ clone, last and never filtered out: a name that is no folder here is a repo of the org you have not cloned.
@@ -1327,11 +1350,13 @@
       const clone = pick.mode === 'new' ? cloneRow(items) : null;
       if (clone) pick.list = [...pick.list, clone];
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
+      // ✕ on every row of ⌥⌘N that names a project or a folder — never on ＋ clone, which is not on the board yet.
+      const hx = p => pick.mode !== 'new' ? '' : `<button class="pkx" data-key="${esc(p.key)}" title="Take ${esc(p.name)} off the board — the column and every picker stop listing it; its chats stay under ALL and the cog puts it back">✕</button>`;
       rows = pick.list.map((p, i) => p.clone
         ? `<div class="pkrow clone${sel(i)}" data-i="${i}" title="gh repo clone ${esc(folders.org)}/${esc(p.name)} into ${esc(homePath(folders.root))}"><span class="sq"></span><span class="n">＋ clone ${esc(folders.org)}/${esc(p.name)}<span class="cur">into ${esc(homePath(folders.root))}</span></span><span class="pills"></span><span class="t"></span></div>`
         : p.folder
-          ? `<div class="pkrow folder${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(p.cwd))}" title="${esc(p.cwd)}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}<span class="cur">${esc(homePath(p.cwd))}</span></span><span class="pills"></span><span class="t"></span></div>`
-          : `<div class="pkrow${sel(i)}" data-i="${i}" style="${repoStyle(projColor(p))}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}${p.key === prefs.project ? '<span class="cur">current</span>' : ''}</span><span class="pills">${pillsHtml(p)}</span><span class="t">${p.last ? rel(p.last) : ''}</span></div>`);
+          ? `<div class="pkrow folder${pick.mode === 'new' ? ' hides' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(p.cwd))}" title="${esc(p.cwd)}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}<span class="cur">${esc(homePath(p.cwd))}</span></span><span class="pills"></span><span class="t"></span>${hx(p)}</div>`
+          : `<div class="pkrow${pick.mode === 'new' ? ' hides' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(projColor(p))}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}${p.key === prefs.project ? '<span class="cur">current</span>' : ''}</span><span class="pills">${pillsHtml(p)}</span><span class="t">${p.last ? rel(p.last) : ''}</span>${hx(p)}</div>`);
     }
     $('#picklist').innerHTML = rows.join('') || `<div class="none">no ${PICK_NOUN[pick.mode] || 'project'} matches</div>`;
     $('#picklist .pkrow.sel')?.scrollIntoView({ block: 'nearest' });
@@ -1371,7 +1396,11 @@
     else if (e.key === 'ArrowUp') { e.preventDefault(); pick.sel--; pickRender(); }
     else if (e.key === 'Enter') { e.preventDefault(); pickChoose(pick.sel); }
   });
-  $('#picklist').addEventListener('click', e => { const r = e.target.closest('.pkrow'); if (r) pickChoose(+r.dataset.i); });
+  $('#picklist').addEventListener('click', e => {
+    const x = e.target.closest('.pkx');   // ✕: the row goes off the board, the picker stays where it is
+    if (x) { e.stopPropagation(); hideProject(x.dataset.key); pickRender(); return; }
+    const r = e.target.closest('.pkrow'); if (r) pickChoose(+r.dataset.i);
+  });
   $('#pick').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.close(); });   // a click on the backdrop
   // ⌥⌘ + a letter, from anywhere — the drawer included: capture phase, so its xterm never sees them; e.code,
   // because with ⌥ held e.key is a symbol ('ø' for O) on a Mac. One letter per place the open chat lives: T a
@@ -1485,6 +1514,22 @@
   // there, a pinned row dropped below the line is let go. Shown at once; the server confirms with a `pins` event.
   const setPins = pins => { state.pins = pins; renderBoard(); fetch('/api/pins', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pins }) }); };
   const togglePin = key => setPins(state.pins.includes(key) ? state.pins.filter(k => k !== key) : [...state.pins, key]);
+  // Hiding is the pins' shape: the whole list each time, shown at once, the server confirms with a `hidden` event.
+  // A hidden project that is the selected one falls back to ALL on the next render (renderBoard does that already).
+  const setHidden = keys => { state.hidden = keys; renderBoard(); fetch('/api/hidden', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ hidden: keys }) }); };
+  const hideProject = key => { if (key) setHidden([...state.hidden.filter(k => k !== key), key]); };
+  const showProject = key => setHidden(state.hidden.filter(k => k !== key));
+  /** What a hidden key is called now: a named project by its name, a folder by its own and where it is. A named
+   *  project deleted while hidden leaves a key nothing answers — it is still listed, so it can be let go. */
+  const hiddenLabel = key => key.startsWith('c:')
+    ? { name: state.projects.find(x => 'c:' + x.id === key)?.name || 'a project that is gone', where: '' }
+    : { name: folderName(key), where: homePath(key) };
+  function renderHidden() {
+    const box = $('#hidden'); if (!box) return;
+    box.innerHTML = !state.hidden.length ? '' : `<span class="kh">hidden — off the column and the pickers; their chats are still on the board under ALL</span>`
+      + state.hidden.map(k => { const l = hiddenLabel(k); return `<div class="hrow"><span title="${esc(l.where || k)}"><b>${esc(l.name)}</b>${l.where ? ` ${esc(l.where)}` : ''}</span><button data-key="${esc(k)}" title="Put it back on the board">show</button></div>`; }).join('');
+  }
+  $('#hidden').addEventListener('click', e => { const b = e.target.closest('button'); if (b) showProject(b.dataset.key); });
   let drag = null;   // the key of the row being dragged
   // Where a drop lands: `at` is an index into state.pins, null below the line. The zone is the All row plus
   // the pinned rows *as shown* (the column filter may hide some), so the index goes through the row's key.
@@ -1934,7 +1979,7 @@
   // A read-only window on this closure for the console and the harness (scripts/scenario.mjs reads it as ctx.peix):
   // copies, never the live objects. The page's script is one IIFE, so nothing else in it is reachable.
   window.peix = {
-    state: () => ({ current: state.current, project: prefs.project, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft,
+    state: () => ({ current: state.current, project: prefs.project, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft, hidden: [...state.hidden],
       paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, [...v]])), tab: state.sessions.has(state.current) ? tabOf(state.sessions.get(state.current)) : null, tabs: state.sessions.has(state.current) ? tabKeys(state.sessions.get(state.current)) : [], prbar: prbar.url,
       split: splitNow(), focusG, halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
       termId: curTerm().id, termSession: curTerm().sessionId, termExited: curTerm().exited }),
@@ -2316,6 +2361,7 @@
   // A new chat has no session until claude registers; the server ties the two by pid and says so
   // over SSE, at which point the pane switches to it. `task` names a launcher of the folder's Taskfile (newChatIn).
   async function newChat(cwd, task = null) {
+    if (isHidden(cwd)) showProject(cwd);   // working in a folder again is the plainest way of saying it belongs on the board
     const r = await fetch('/api/terminals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cwd, task, ...termSize() }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { $('#log').innerHTML = `<div class="empty">Could not start a chat: ${esc(d.error || `HTTP ${r.status}`)}</div>`; return; }
@@ -2607,7 +2653,7 @@
     es.onerror = () => { $('#brandBtn').classList.add('off'); };
     es.addEventListener('snapshot', e => {
       const d = JSON.parse(e.data);
-      state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.peacock = d.peacock || {}; state.repos = d.repos || {};
+      state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.peacock = d.peacock || {}; state.repos = d.repos || {};
       renderBoard();
       const want = location.hash.slice(1);
       if (want && !state.current && state.sessions.has(want)) openSession(want);
@@ -2618,6 +2664,7 @@
     es.addEventListener('peacock', e => { state.peacock = JSON.parse(e.data).colors || {}; renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); });
     es.addEventListener('repos', e => { state.repos = JSON.parse(e.data).repos || {}; });
     es.addEventListener('pins', e => { state.pins = JSON.parse(e.data).pins || []; renderBoard(); });
+    es.addEventListener('hidden', e => { state.hidden = JSON.parse(e.data).hidden || []; renderBoard(); if ($('#pick').open) pickRender(); });
     es.addEventListener('terminal', e => {
       const t = JSON.parse(e.data);
       const term = termFor(t.id); if (!term) return;

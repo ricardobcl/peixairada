@@ -81,5 +81,34 @@ export default async function (ctx) {
   out.afterFolder = await ctx.evaluate(`window.__posts[1]`);
   ctx.assert.equal(out.afterFolder.cwd, join(ORG_DIR, 'alpha-service'), 'a folder with no chats offers ＋ new chat, and ⏎ starts one in it');
   ctx.assert.deepEqual(await ctx.evaluate(`window.__cloned`), ['brand-new-thing'], 'and nothing else was cloned');
+
+  // ---- ✕ takes a row off the board, and the cog is the way back (2026-09-22) ----
+  await ctx.key('KeyN');
+  await ctx.waitFor(`[...document.querySelectorAll('#picklist .pkrow.folder')].length === 3`, { what: "the org's three folders again (nothing spawned, so none of them has a chat)" });
+  out.beforeHide = (await rows(ctx)).map(r => r.name);
+  await ctx.evaluate(`document.querySelector('#picklist .pkrow.folder .pkx').click()`);
+  await ctx.waitFor(`[...document.querySelectorAll('#picklist .pkrow.folder')].length === 2`, { what: 'the row gone from the list' });
+  out.afterHide = (await rows(ctx)).map(r => r.name);
+  out.hidden = await ctx.peix('state().hidden');
+  await ctx.shot('hidden-row');
+  ctx.assert.equal(out.beforeHide.length - out.afterHide.length, 1, '✕ takes the row out of the step');
+  ctx.assert.deepEqual(out.hidden.map(k => k.split('/').pop()), ['alpha-service'], 'and the board remembers which one by its folder');
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#pick').open`), true, '…without choosing the row it sat on');
+  await ctx.evaluate(`document.querySelector('#pick').close()`);
+  // the server kept it: a fresh page finds the same list, and the column has no such project
+  await ctx.send('Page.reload'); await ctx.sleep(1200);
+  await ctx.waitFor(`window.peix.state().sessions > 0`, { what: 'the board again' });
+  out.kept = await ctx.peix('state().hidden');
+  ctx.assert.deepEqual(out.kept, out.hidden, 'the hidden list survives a reload — it is the server\'s');
+  out.cog = await ctx.evaluate(`[...document.querySelectorAll('#hidden .hrow')].map(r => r.textContent)`);
+  ctx.assert.equal(out.cog.length, 1, 'the cog lists what is hidden');
+  ctx.assert.ok(out.cog[0].includes('alpha-service'), `…by name: ${out.cog[0]}`);
+  await ctx.evaluate(`document.querySelector('#cogBtn').click()`);
+  await ctx.shot('cog-hidden');
+  await ctx.evaluate(`document.querySelector('#hidden button').click()`);
+  await ctx.waitFor(`window.peix.state().hidden.length === 0`, { what: 'the row put back' });
+  await ctx.key('KeyN');
+  await ctx.waitFor(`[...document.querySelectorAll('#picklist .pkrow.folder')].length === 3`, { what: 'and the folder offered again' });
+  await ctx.evaluate(`document.querySelector('#pick').close()`);
   return out;
 }

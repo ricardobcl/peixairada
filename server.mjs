@@ -95,6 +95,11 @@ let titles = {};
 // Pinned projects, in the order they sit at the top of the column: folder cwds and `c:<id>` keys. A
 // `colors` key (board-set project colours, 2026-09-20 only) is ignored and dropped on the next save.
 let pinned = [];
+// Projects taken off the board: the same keys the pins use — a folder cwd, or `c:<id>` for a named project.
+// The board lists the org's folders as well as its own projects now, so the ⌥⌘N step grew a tail of repos
+// nobody works in; ✕ on a row puts its key here and every list the board draws skips it (2026-09-22). Nothing
+// is deleted and no chat is touched: the cog hands the row back.
+let hiddenProjects = [];
 // The environment a chat was started in: sessionId -> the launcher's name (`task production-workload`…). The
 // terminal carries it, but only while it runs, and the env outlives the drawer — it is what the chat *is* about
 // (2026-09-21, so ⌥⌘O can list oracle's open chats under the environment they belong to). Recorded when the pid
@@ -118,10 +123,11 @@ try {
   projects = st.projects || {};
   titles = st.titles || {};
   pinned = Array.isArray(st.pinned) ? st.pinned.filter(k => typeof k === 'string') : [];
+  hiddenProjects = Array.isArray(st.hidden) ? st.hidden.filter(k => typeof k === 'string') : [];
   envs = st.envs || {};
 } catch {}
 function saveState() {
-  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks, projects, titles, pinned, envs }, null, 1)); }
+  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks, projects, titles, pinned, hidden: hiddenProjects, envs }, null, 1)); }
   catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
 const isDone = s => !!doneMarks[s.id] && doneMarks[s.id] >= (s.lastActivity || '');
@@ -1536,7 +1542,7 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': m[2] === 'css' ? 'text/css; charset=utf-8' : 'application/javascript; charset=utf-8', 'cache-control': 'public, max-age=86400' });
       return res.end(readFileSync(f));
     }
-    if (req.method === 'GET' && p === '/api/sessions') return json(res, 200, { sessions: sortedSummaries(), projects: projectList(), pins: pinned, peacock: peacockColors(), repos: repoUrls(), claudeDir: CLAUDE_DIR, notify: NOTIFY });
+    if (req.method === 'GET' && p === '/api/sessions') return json(res, 200, { sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), claudeDir: CLAUDE_DIR, notify: NOTIFY });
     if (req.method === 'GET' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/messages$/))) {
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
@@ -1597,6 +1603,13 @@ const server = createServer(async (req, res) => {
       pinned = [...new Set(body.pins.filter(k => typeof k === 'string' && /^(\/|c:\w+$)/.test(k)).map(k => k.slice(0, 1000)))].slice(0, 200);
       saveState(); broadcast('pins', { pins: pinned }); pollPeacock();
       return json(res, 200, { ok: true, pins: pinned });
+    }
+    if (req.method === 'PUT' && p === '/api/hidden') {   // the projects taken off the board, the whole list each time — same keys as the pins
+      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      if (!Array.isArray(body.hidden)) return json(res, 400, { error: 'expected {hidden: [key]}' });
+      hiddenProjects = [...new Set(body.hidden.filter(k => typeof k === 'string' && /^(\/|c:\w+$)/.test(k)).map(k => k.slice(0, 1000)))].slice(0, 500);
+      saveState(); broadcast('hidden', { hidden: hiddenProjects });
+      return json(res, 200, { ok: true, hidden: hiddenProjects });
     }
     if ((req.method === 'PUT' || req.method === 'DELETE') && p === '/api/peacock') {   // the board sets a folder's Peacock colour
       let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
@@ -1748,7 +1761,7 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'GET' && p === '/events') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
-      res.write(`event: snapshot\ndata: ${JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, peacock: peacockColors(), repos: repoUrls(), notify: NOTIFY })}\n\n`);
+      res.write(`event: snapshot\ndata: ${JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), notify: NOTIFY })}\n\n`);
       sseClients.add(res);
       const ping = setInterval(() => res.write(': ping\n\n'), 25_000);
       req.on('close', () => { clearInterval(ping); sseClients.delete(res); });
