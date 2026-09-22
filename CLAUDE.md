@@ -139,10 +139,15 @@ refuses to run against the real directory for the same reason.
   keep it in step by hand, with `boardKeys` in main.swift.
 * **Plain ⌘ is the window's shape, and lives in `CMDKEYS`** (2026-09-22): **B** folds the chat list
   (`toggleSessions`, the « button's switch), **1** and **2** the left and right halves of the chat column —
-  ⌘2 splits it the first time (see *The chat column's two halves*). The modifier is the distinction: ⌥⌘ is
-  "this chat, over there", ⌘ alone is "this window, this shape". `peixKey(code, mods)` carries which map, and
-  `cmdKeys` in main.swift is the forwarder's copy of this list — a digit goes over as `Digit<n>`. ⌘K is *not*
-  here (the drawer's clear) and neither are ⌘+ ⌘− ⌘0 (`chatZoomKey`).
+  ⌘2 splits it the first time —, **W** closes the half the keys are in, or a dialog that is up (see *The chat
+  column's two halves*). The modifier is the distinction: ⌥⌘ is
+  "this chat, over there", ⌘ alone is "this window, this shape". `peixKey(code, mods)` carries which map and
+  **returns whether the key was taken**; `cmdKeys` in main.swift is the forwarder's copy of this list — a digit
+  goes over as `Digit<n>`. ⌘K is *not* here (the drawer's clear) and neither are ⌘+ ⌘− ⌘0 (`chatZoomKey`).
+* **⌘W is the Window menu's item, not the forwarder's** (2026-09-22): a key equivalent is dispatched before any
+  responder, so the page never sees ⌘W in the app. `closeHalfOrWindow` asks the board (`peixKey('KeyW','cmd')`)
+  and calls `performClose` only when it answers false. Anything else the board wants to take off ⌘-something that
+  a menu item already claims has to go the same way.
 * **The pickers match fuzzily, and with something typed the best match leads** (2026-09-21): `fuzzy(fields, q)` —
   each word of the query hunted *within one field* (`chatFields(s)`, which `chatText` joins for the column's literal
   magnifier), letters in order, a run worth more than scattered ones, a word's start worth more than its middle, a
@@ -231,8 +236,9 @@ refuses to run against the real directory for the same reason.
   (scroll position carried by hand) and hides it under a live drawer; with no half showing it, it is parked in the
   left one, hidden.
 * **The split is the board's** (`prefs.split`, `prefs.splitAt` — the divider), **the placement is the chat's**.
-  ⨯ on the right strip closes the split and **keeps the half the keys were in**. → `scripts/scenarios/split-halves.mjs`,
-  the split section of `pane-tabs.mjs`, Decisions 2026-09-22.
+  **⌘W closes the half the keys are in**, and each strip's ⨯ closes *its own* half (`closeHalf(g)`): what the
+  column keeps is the other half's tab, or the closer's when the other had none.
+  → `scripts/scenarios/split-halves.mjs`, the split section of `pane-tabs.mjs`, Decisions 2026-09-22.
 
 ## The drawer
 

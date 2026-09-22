@@ -640,7 +640,8 @@
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
     <kbd>⌥⌘←→</kbd><span>the tab to the left / right: chat, zsh, GitHub pages, VS Code</span>
     <kbd>⌘B</kbd><span>fold the chat list into a rail, and back</span>
-    <kbd>⌘1 ⌘2</kbd><span>the left half of the chat, the right one — ⌘2 splits it in two the first time, ⨯ closes it</span>
+    <kbd>⌘1 ⌘2</kbd><span>the left half of the chat, the right one — ⌘2 splits it in two the first time</span>
+    <kbd>⌘W</kbd><span>close the half the keys are in — or the picker · with one half it is the window's own key</span>
     <kbd>⌘+ ⌘− ⌘0</kbd><span>chat and terminal size</span>
     <kbd>⌘K</kbd><span>clear the terminal — the scrollback goes on the holder too, so it stays clear</span>
     <kbd>⇧⏎</kbd><span>newline in the terminal's prompt</span>
@@ -1347,11 +1348,16 @@
   // Plain ⌘ + a key, the board's own layout keys: ⌘B folds the chat list. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ ⌘− ⌘0, which are chatZoomKey's.
-  const CMDKEYS = { KeyB: toggleSessions, Digit1: () => hotGroup(0), Digit2: () => hotGroup(1) };
+  const CMDKEYS = { KeyB: toggleSessions, Digit1: () => hotGroup(0), Digit2: () => hotGroup(1), KeyW: hotCloseHalf };
+  // Every hotkey says whether it took the key, and ⌘W is the one that is asked: in the app it arrives as the
+  // Window menu's own ⌘W, which closes the window when the board has nothing to close instead (see main.swift).
+  // A dialog up swallows the rest, as it always did — but not ⌘W, which is how you close the dialog.
   const runHotkey = (code, mods = 'altcmd') => {
     if (code === 'Escape') return hotEscape();
     const fn = (mods === 'cmd' ? CMDKEYS : HOTKEYS)[code];
-    if (fn && !document.querySelector('dialog[open]')) fn();
+    if (!fn) return false;
+    if (fn !== hotCloseHalf && document.querySelector('dialog[open]')) return false;
+    return fn() !== false;
   };
   document.addEventListener('keydown', e => {
     if (e.ctrlKey || e.shiftKey || !e.metaKey) return;
@@ -2001,8 +2007,8 @@
   // A half's strip lists every tab the chat has — [claude|chat], [zsh ×], a [repo#n ×] per GitHub page, [VS Code ×]
   // — with its own marked `on` and the other half's dimmed (`away`): clicking that one here makes the two trade
   // places. The left half's strip hides while the chat is one tab and nothing is split, as it always did; the
-  // right half's always shows, since it carries the ⨯ that closes the split. With a page's tab on, ‹ › ↻ ↗ for
-  // its view at the right, and the address it is at.
+  // right half's always shows. While there are two, each strip ends in the ⨯ that closes *its* half (⌘W closes
+  // the one the keys are in). With a page's tab on, ‹ › ↻ ↗ for its view at the right, and the address it is at.
   function renderTabs(s, p = placeOf(s)) {
     const keys = s ? tabKeys(s) : ['chat'];
     for (const tm of terms) {
@@ -2012,7 +2018,7 @@
       if (el.hidden || (g === 1 && !prefs.split)) continue;
       const tab = (k, label, title, x) => `<button class="ptab${cur === k ? ' on' : ''}${other === k ? ' away' : ''}${isPaneTab(k) ? ' pane' : ''}" data-tab="${esc(k)}" title="${esc(title)}">${esc(label)}${x ? `<span class="x" title="${esc(x)}">×</span>` : ''}</button>`;
       const navs = (isPaneTab(cur) ? '<button class="nav" data-nav="back" title="Back">‹</button><button class="nav" data-nav="forward" title="Forward">›</button><button class="nav" data-nav="reload" title="Reload">↻</button><button class="nav" data-nav="external" title="Open this page in your browser">↗</button>' : '')
-        + (g === 1 ? '<button class="nav gclose" title="Close this half — its tab goes back to the other one">⨯</button>' : '');
+        + (prefs.split ? '<button class="nav gclose" title="Close this half — the other one becomes the whole column · ⌘W">⨯</button>' : '');
       el.innerHTML = keys.map(k =>
         k === 'chat' ? tab(k, termLive(s) ? 'claude' : 'chat', `${termLive(s) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C`)
         : k === 'shell' ? tab(k, 'zsh', `A zsh in ${s.cwd || 'its folder'} · ⌥⌘T`, 'End this shell')
@@ -2051,7 +2057,7 @@
   $('#groups').addEventListener('click', e => {
     const strip = e.target.closest('.ptabs'); if (!strip) return;
     const g = strip.id === 'ptabsB' ? 1 : 0;
-    if (e.target.closest('.gclose')) return unsplit();
+    if (e.target.closest('.gclose')) return closeHalf(g);
     const s = state.sessions.get(state.current); if (!s) return;
     const nav = e.target.closest('.nav'); if (nav) { focusGroup(g); post({ type: 'nav', what: nav.dataset.nav }); return; }
     const url = e.target.closest('.purl'); if (url) return copyPaneUrl(url);
@@ -2121,12 +2127,23 @@
     syncTerm(s); if (s) renderHead(s);
     focusBoard(); focusTerm();
   }
-  function unsplit() {
+  /** One half closed — ⌘W on the one the keys are in, or the ⨯ in a half's own strip. The other half's tab is
+      what the column keeps; a half that was showing nothing leaves the closer's tab behind rather than none. */
+  function closeHalf(g) {
     const s = state.sessions.get(state.current) || null;
-    if (s) { const p = placeOf(s); tabs.set(s.id, [p[focusG] || p[0], null]); }
+    if (s) { const p = placeOf(s); tabs.set(s.id, [p[g ? 0 : 1] || p[g], null]); }
     prefs.split = false; focusG = 0; savePrefs(); applySplit();
     syncTerm(s); if (s) renderHead(s);
     focusBoard(); focusTerm();
+  }
+  // ⌘W (2026-09-22, Ricardo: "cmd W should close the focused pan[e]"): the half the keys are in, the way it closes
+  // an editor rather than the window. A dialog goes first — with the picker up ⌘W is how you get rid of it — and
+  // with one half there is nothing of the board's to close, so the key is handed back and the window takes it.
+  function hotCloseHalf() {
+    const dlg = document.querySelector('dialog[open]'); if (dlg) { dlg.close(); return true; }
+    if (!prefs.split) return false;
+    closeHalf(focusG);
+    return true;
   }
   function hotGroup(g) {
     if (g === 1 && !prefs.split) return splitOn();

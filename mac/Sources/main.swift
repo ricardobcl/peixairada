@@ -383,6 +383,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     guard let url = url, !url.isEmpty else { return }
     web.evaluateJavaScript("window.peixPaneUrl && window.peixPaneUrl(\(jsStr(key)), \(jsStr(url)))", completionHandler: nil)
   }
+  /// ⌘W: the board's business first — the half of the chat column the keys are in, or a picker that is up — and
+  /// the window only when it says it took neither (2026-09-22, Ricardo: "cmd W should close the focused pan[e]").
+  /// It has to be the menu item: a key equivalent is dispatched before any responder, so the page never sees ⌘W.
+  @objc func closeHalfOrWindow(_ sender: Any?) {
+    web.evaluateJavaScript("window.peixKey ? !!window.peixKey('KeyW', 'cmd') : false") { [weak self] v, _ in
+      if (v as? Bool) != true { self?.window.performClose(nil) }
+    }
+  }
   /// ‹ › ↻ ↗ from the strip, for the page on top.
   func paneNav(_ what: String) {
     guard let w = paneFocus.flatMap({ paneViews[$0] }) else { return }
@@ -667,7 +675,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     let winItem = NSMenuItem(); main.addItem(winItem)
     let win = NSMenu(title: "Window")
     win.addItem(withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
-    win.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+    win.addItem(withTitle: "Close", action: #selector(closeHalfOrWindow(_:)), keyEquivalent: "w").target = self
     winItem.submenu = win
     NSApp.mainMenu = main
     NSApp.windowsMenu = win

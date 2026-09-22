@@ -51,13 +51,22 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.peix('state().focusG'), 1, 'the keys followed the click into the right half');
   ctx.assert.equal((await shown(ctx)).logIn, 'gbodyB', 'the transcript moved with the chat tab');
 
-  // ⨯ closes the split, and the half the keys were in is what stays
-  await ctx.evaluate(`document.querySelector('#ptabsB .gclose').click()`);
+  // ⌘W closes the half the keys are in — the right one, on the chat tab — and the other one becomes the column
+  ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('.ptabs .gclose').length`), 2, 'each half carries its own ⨯');
+  ctx.assert.equal(await ctx.evaluate(`window.peixKey('KeyW', 'cmd')`), true, '⌘W was the board\'s to take');
   await ctx.waitFor(`window.peix.state().split === false`, { what: 'the split closed' });
-  ctx.assert.deepEqual(await halves(ctx), ['chat', null], 'the half the keys were in is what stayed');
+  ctx.assert.deepEqual(await halves(ctx), ['shell', null], 'the half the keys were not in is what stayed');
+  ctx.assert.equal(await ctx.evaluate(`window.peixKey('KeyW', 'cmd')`), false, 'with one half ⌘W is the window\'s again');
+
+  // ⌘2 again, and the ⨯ in the *left* strip closes the left half: the chat tab is the column
+  await ctx.cmd('Digit2');
+  await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === '["shell","chat"]'`, { what: 'the split again, the spare tab beside it' });
+  await ctx.evaluate(`document.querySelector('#ptabs .gclose').click()`);
+  await ctx.waitFor(`window.peix.state().split === false`, { what: 'the left half closed' });
+  ctx.assert.deepEqual(await halves(ctx), ['chat', null], '⨯ closes the half it sits in');
   const end = await shown(ctx);
   ctx.assert.deepEqual({ termA: end.termA, termB: end.termB, logIn: end.logIn }, { termA: true, termB: false, logIn: 'gbody' },
-    'the right half is gone and the claude drawer is the whole column again');
+    'the claude drawer is the whole column again');
   await ctx.shot('closed');
 
   return { split: two, after: end };

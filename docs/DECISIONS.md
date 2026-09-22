@@ -23,8 +23,14 @@ this file is the *why* and the *state*. Last updated 2026-09-22.
 * **The empty half says what would fill it** rather than showing a blank panel — ⌥⌘T, ⌥⌘G, ⌥⌘E, or a tab from the
   strip above. ⌘2 on a chat with nothing but its transcript is a legitimate thing to do; it should not look broken.
 * **The split is the board's, the placement is the chat's.** `prefs.split` and `prefs.splitAt` (the divider) are
-  per browser, like the column widths; which tab is in which half is per chat, like the tab was before. Closing
-  the split (⨯ on the right strip) keeps **the half the keys were in** — you close the one you are not looking at.
+  per browser, like the column widths; which tab is in which half is per chat, like the tab was before.
+* **⌘W closes the half the keys are in** (Ricardo: "cmd W should close the focused pan[e]"), the way it closes an
+  editor rather than a window, and each strip's ⨯ closes the half it sits in — so the mouse and the key say the
+  same thing. What the column keeps is the *other* half's tab. With one half the board has nothing to close, so
+  ⌘W is the window's own key again; with a picker up it closes the picker, which is what ⌘W does to a panel.
+  It has to be the Window menu's item in the app: a key equivalent is dispatched before any responder, so ⌘W
+  never reaches the page. `closeHalfOrWindow` asks the board and calls `performClose` only when the answer is no,
+  which is why every hotkey now returns whether it took the key.
 * **The app's pane is now an overlay over the whole window**, with each page's web view placed inside it from the
   rect the board gives it, instead of one view pinned to the chat column. That is what lets both halves hold a
   page at once. It has to let clicks through where no page is (`PaneOverlay.hitTest`), and the ⌘F bar is placed
