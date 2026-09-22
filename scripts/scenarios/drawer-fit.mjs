@@ -11,6 +11,15 @@ export default async function (ctx) {
     ctx.assert.deepEqual({ cols: d.propose.cols, rows: d.propose.rows }, { cols: d.cols, rows: d.rows }, `${label}: fit would change nothing`);
     return d;
   };
+  // The body must fill its half, strip or no strip: a hidden strip is display:none, and a half whose rows are not
+  // placed by hand slides the body into the `auto` row, where it sizes itself to the terminal instead of the pane
+  // — the drawer then keeps whatever height it was first drawn at, with black under it (2026-09-22).
+  const fills = async label => {
+    const g = await ctx.evaluate(`JSON.stringify(['#grp', '#gbody', '#ptabs'].map(s => { const e = document.querySelector(s); return e.hidden ? 0 : Math.round(e.getBoundingClientRect().height); }))`).then(JSON.parse);
+    ctx.assert.ok(Math.abs(g[0] - g[1] - g[2]) <= 1, `${label}: the body (${g[1]}) and the strip (${g[2]}) fill the half (${g[0]})`);
+    ctx.assert.ok(g[1] > 400, `${label}: the body is the pane's height, not the terminal's (${g[1]})`);
+  };
+  await fills('no strip');
   const a = await fits('after attach');
   await ctx.send('Emulation.setDeviceMetricsOverride', { width: 1700, height: 1000, deviceScaleFactor: 2, mobile: false }); await ctx.sleep(1200);
   const b = await fits('at scale 2');
@@ -19,5 +28,6 @@ export default async function (ctx) {
   ctx.assert.ok(c.zoom > a.zoom, 'the zoom step took');
   await ctx.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: '0', metaKey: true, bubbles: true, cancelable: true }))`); await ctx.sleep(800);
   await fits('after ⌘0');
+  await fills('after ⌘0');
   return { attach: a, scale2: b, zoomed: c };
 }

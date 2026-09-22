@@ -26,6 +26,11 @@ export default async function (ctx) {
   const has = (rows, re) => rows.some(r => re.test(r));
   ctx.assert.ok(has(back, /^❯/), 'the prompt is back');
   ctx.assert.ok(has(back, /^─{20,}/), 'the rules are back');
+  // …and the strip costs the body exactly its own height, no more: a half whose rows are not placed by hand
+  // slides the body into the `auto` row, where it sizes itself to the terminal instead of the pane (2026-09-22)
+  const g = await ctx.evaluate(`JSON.stringify(['#grp', '#gbody', '#ptabs'].map(s => { const e = document.querySelector(s); return e.hidden ? 0 : Math.round(e.getBoundingClientRect().height); }))`).then(JSON.parse);
+  ctx.assert.ok(Math.abs(g[0] - g[1] - g[2]) <= 1, `the body (${g[1]}) and the strip (${g[2]}) fill the half (${g[0]})`);
+  ctx.assert.ok(g[1] > 400, `the body is the pane's height, not the terminal's (${g[1]})`);
   ctx.assert.ok(has(back, /fake mode on/), 'the status bar is whole');
   ctx.assert.ok(has(back, /elapsed \d+m \d\ds/), 'the timer line is whole, not lone digits');
   // the tab strip costs the drawer a row, so the fake's first line sits in scrollback now: the whole buffer has it

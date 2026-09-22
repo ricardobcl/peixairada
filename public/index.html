@@ -119,6 +119,12 @@
   #groups { display: flex; min-height: 0; min-width: 0; }
   .grp { flex: 1 1 0; min-width: 0; min-height: 0; display: grid; grid-template-rows: auto 1fr; grid-template-columns: minmax(0, 1fr); }
   .grp[hidden] { display: none; }
+  /* Placed by hand, the same trap as #chat's rows: a hidden strip is display:none, which takes it out of
+     auto-placement and slides the body into the `auto` row — where it sizes itself to the terminal it holds
+     instead of to the pane, and the drawer stays whatever height it was first drawn at, black underneath.
+     (2026-09-22, Ricardo: "you restart the FE and all chats are pulled up, so ~60% bottom is just black".) */
+  .grp > .ptabs { grid-row: 1; }
+  .grp > .gbody { grid-row: 2; }
   /* One cell, everything stacked in it: the transcript, the drawer and the "nothing here" note take turns. */
   .gbody { min-height: 0; min-width: 0; display: grid; grid-template-rows: 1fr; grid-template-columns: minmax(0, 1fr); }
   .gbody > * { grid-area: 1 / 1; }
@@ -1845,11 +1851,27 @@
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') fitTerm(tm); });
     matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { tm.xt.options.theme = xtTheme(); });
   }
+  // The same rule as lib/refit.mjs, kept by hand (this page has no build step): a screen that grows has to park
+  // its cursor on the last line of the buffer for the length of the resize, or xterm appends blank rows at the
+  // bottom instead of pulling the scrollback back down, and the session stays stuck at the top of a black pane.
+  // The fit addon does the resize itself, so it is what gets wrapped — it clears the renderer first, which a
+  // bare resize would not.
+  function refitTerm(xt, rows, resize) {
+    const b = xt.buffer.active;
+    const tail = rows > xt.rows && b.baseY > 0
+      ? Math.max(0, Math.min(b.length - 1 - (b.baseY + b.cursorY), xt.rows - 1 - b.cursorY))
+      : 0;
+    if (!tail) return void resize();
+    xt.write(`\x1b[${tail}B`, () => { resize(); xt.write(`\x1b[${tail}A`); });
+  }
   function fitTerm(tm) {
     if (!tm) { for (const t of terms) fitTerm(t); return; }
     if (!tm.xt || $(tm.el.term).hidden) return;
-    try { tm.fit.fit(); } catch { return; }
-    if (tm.ws?.readyState === 1) tm.ws.send(JSON.stringify({ t: 'resize', cols: tm.xt.cols, rows: tm.xt.rows }));
+    let d; try { d = tm.fit.proposeDimensions(); } catch { return; }
+    if (!d || !(d.cols > 1) || !(d.rows > 1)) return;
+    if (d.cols !== tm.xt.cols || d.rows !== tm.xt.rows) refitTerm(tm.xt, d.rows, () => { try { tm.fit.fit(); } catch {} });
+    prefs.termSize = { cols: d.cols, rows: d.rows }; savePrefs();   // what a drawer started before any xterm exists asks for
+    if (tm.ws?.readyState === 1) tm.ws.send(JSON.stringify({ t: 'resize', cols: d.cols, rows: d.rows }));
   }
   // The media query is for the scale of the moment, so it is re-armed after each change; xterm listens to the
   // same change and re-measures in its handler, and the refit must run after that — hence the timeout.
@@ -1880,7 +1902,10 @@
       screen: sc && { w: r(sc.getBoundingClientRect().width), h: r(sc.getBoundingClientRect().height) },
       ws: tm.ws?.readyState ?? null, id: tm.id, exited: tm.exited, split: !!prefs.split };
   };
-  const termSize = () => { const xt = curTerm().xt || terms[0].xt; return xt ? { cols: xt.cols, rows: xt.rows } : { cols: 120, rows: 30 }; };
+  // The size a new drawer is started at. No xterm yet (the first ⌥⌘C after a reload) means no measurement, so
+  // the last one this browser fitted is the guess — a far better one than a fixed 120×30, which every drawer then
+  // had to grow out of.
+  const termSize = () => { const xt = curTerm().xt || terms[0].xt; return xt ? { cols: xt.cols, rows: xt.rows } : { cols: 120, rows: 30, ...(prefs.termSize || {}) }; };
   // What the socket replays on attach is the server's byte buffer — capped, cut at a chunk, so it starts wherever the
   // drop landed, even inside an escape sequence. Claude Code paints its prompt box and status bar once and then
   // rewrites only the cells that change, so a replay that starts after that paint gives blank rules and a status line
