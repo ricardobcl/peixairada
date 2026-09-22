@@ -125,8 +125,12 @@ refuses to run against the real directory for the same reason.
 * **A chat waiting on your answer first, then clauding, then ready, done last** (`RANK` / `rankOf`, the asking
   step added 2026-09-21), inside each group **by when *you* last acted**
   (`lastUserAt`), newest first; a project ranks by its newest chat. The filters and every count still go by
-  `bucket()`, where an asking chat is a ready one — only the order knows the difference, in the list and in ⌥⌘K. The ascii fish (`.gsep`, a line of `><>` that slides a fish per cycle, phased by the clock so re-renders do not jolt it) swim
-  once, between the clauding and the ready cards. A finished job moves its card into the ready group, where its
+  `bucket()`, where an asking chat is a ready one — only the order knows the difference, in the list and in ⌥⌘K. **Two rules of ascii fish** (`.gsep`, a line that slides one fish per cycle, phased by the document clock so a
+  re-render does not jolt it — `school()` builds both as kept nodes, `fishHtml(cls)` is their stand-in): `><>`
+  swimming right between the clauding cards and the ready ones, and `<><` swimming left where **today ends**
+  (2026-09-22) — above it the chats you were in today, below the ones from before. The day's rule is drawn at the
+  first crossing in the list as shown, wherever it falls, and not at all when there is none.
+  → `scripts/scenarios/day-separator.mjs`. A finished job moves its card into the ready group, where its
   last prompt puts it.
 * **State lives in three places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done
   ticks, named projects, board titles, pins, the environment each chat was started in; `STATE_FILE` overrides) shared by the app and every browser; the
@@ -370,9 +374,10 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
   `assert`, `cmd(code)` (a plain ⌘ press; `key(code)` is ⌥⌘), `screen(g)` / `waitPrompt(ms, g)` (the half, 0 by
-  default — the whole column while nothing is split). The thirteen in `scripts/scenarios/` are the
+  default — the whole column while nothing is split). The fourteen in `scripts/scenarios/` are the
   regression checks for the drawer (re-attach, restart, geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a
-  compose key), the hotkeys, the tab strip and the split, the new-chat flow and the project step's folders.
+  compose key), the hotkeys, the tab strip and the split, the new-chat flow, the project step's folders and ✕,
+  and the chat list's two rules.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY` with what it failed on the first time, and the suite still exits 0; `--no-retry` is the honest gate.

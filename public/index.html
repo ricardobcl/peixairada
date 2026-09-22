@@ -1070,6 +1070,7 @@
   }
   function knownFolders() { return [...new Set([...state.sessions.values()].map(s => s.cwd).filter(Boolean))].sort(); }
   const FISH = '><>   '.repeat(80);   // more than any column is wide; .gsep clips the rest
+  const BACKFISH = '<><   '.repeat(80);   // the day's line: the same school, facing the other way
   const SWIM_MS = 2400;                // one fish per cycle
   // One node for the school, kept across renders: innerHTML would make a new one — and a new animation — on every
   // SSE update, a visible stutter every few seconds (2026-09-20, Ricardo: "the animation for the fish stutters after
@@ -1077,10 +1078,20 @@
   // API's, not CSS: a CSS animation is cancelled when its element leaves the document and starts over on return; this
   // one carries on across the swap, and startTime 0 phases it to the document clock, so the same fish is at the same
   // place whenever the node comes back. Off under reduced motion.
-  const fishEl = document.createElement('div'); fishEl.className = 'gsep'; fishEl.title = 'clauding above, ready below';
-  const fishSpan = fishEl.appendChild(document.createElement('span')); fishSpan.textContent = FISH;
-  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) { const a = fishSpan.animate([{ transform: 'translateX(calc(-6ch - 6px))' }, { transform: 'translateX(0)' }], { duration: SWIM_MS, iterations: Infinity }); a.startTime = 0; }
-  const fishHtml = () => '<div class="gsep"></div>';   // the stand-in
+  // Two lines of them now (2026-09-22, Ricardo: "another card separator for cards that had interactions today vs
+  // before today — the same animation, going the other direction"): the first between what is clauding and what is
+  // ready, the second between the chats you touched today and the ones from before, its fish facing and swimming
+  // left. Both are kept nodes with an animation phased to the document clock, for the reason above.
+  const school = (cls, text, right, title) => {
+    const el = document.createElement('div'); el.className = 'gsep ' + cls; el.title = title;
+    const span = el.appendChild(document.createElement('span')); span.textContent = text;
+    const to = [{ transform: 'translateX(calc(-6ch - 6px))' }, { transform: 'translateX(0)' }];
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) { const a = span.animate(right ? to : [...to].reverse(), { duration: SWIM_MS, iterations: Infinity }); a.startTime = 0; }
+    return el;
+  };
+  const fishEl = school('fish', FISH, true, 'clauding above, ready below');
+  const dayEl = school('day', BACKFISH, false, 'you were in these today; below, before today');
+  const fishHtml = cls => `<div class="gsep ${cls}"></div>`;   // the stand-ins
   function renderSessionList(p) {
     const pc = projColor(p); if (pc) $('#sessions').style.setProperty('--repo', pc); else $('#sessions').style.removeProperty('--repo');
     const q = $('#q').value.trim().toLowerCase();
@@ -1099,8 +1110,15 @@
       : folders.length ? `<select id="newChatSel" title="New chat in a folder — opens a terminal running claude there"><option value="">＋ new chat in…</option>${folders.map(f => `<option value="${esc(f)}">${esc(folderName(f))}</option>`).join('')}</select>` : '';
     $('#fchips').innerHTML = FILTERS.map(([k, label]) => `<button class="fchip ${k} ${filterOn(k) ? 'on' : ''}" data-f="${k}" title="${filterOn(k) ? 'Hide' : 'Show'} ${label} chats">${label}<span class="n">${counts[k] || ''}</span></button>`).join('');
     const b = shown.map(rankOf);   // the fish swim once, under the last clauding card when a ready one follows
-    $('#slist').innerHTML = shown.map((s, i) => `${i && b[i] === 'ready' && b[i - 1] === 'working' ? fishHtml() : ''}${cardHtml(s, p)}`).join('') || `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
-    $('#slist .gsep')?.replaceWith(fishEl);
+    // …and once more where today ends. The list is grouped, and inside a group it is your last touch, newest first,
+    // so the day turns over at most once in each — the first crossing is the one that gets the line, wherever it
+    // falls: with everything from today (or nothing) there is none.
+    const dawn = new Date().setHours(0, 0, 0, 0);
+    const today = shown.map(s => new Date(userAt(s)).getTime() >= dawn);
+    const dayAt = today.findIndex((t, i) => i && !t && today[i - 1]);
+    $('#slist').innerHTML = shown.map((s, i) => `${i && b[i] === 'ready' && b[i - 1] === 'working' ? fishHtml('fish') : ''}${i === dayAt ? fishHtml('day') : ''}${cardHtml(s, p)}`).join('') || `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
+    $('#slist .gsep.fish')?.replaceWith(fishEl);
+    $('#slist .gsep.day')?.replaceWith(dayEl);
   }
   // Work that outlives the turn, and the one state that is waiting on you — the card's four readings (2026-09-21).
   // A monitor or a background command runs on after the reply, so a *ready* card can still have something running;
