@@ -125,8 +125,8 @@ export default async function (ctx) {
   ctx.assert.equal(out.newPosted.cwd.split('/').pop(), out.newPicker.names[0], 'in the project chosen first');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#pick').open`), false, 'the picker closed on the last step');
   // O, oracle: the project and the folder are answered, so the picker opens on the environments (the launchers route
-  // above is still stubbed) and the environment's own chats follow — this oracle has none, so the step skips itself and
-  // the chat starts. A pin is how a folder reaches the board without a chat of its own.
+  // above is still stubbed) and the environment's own chats follow — this oracle has none, so the step is ＋ new chat
+  // alone (2026-09-22) and a second ⏎ starts it. A pin is how a folder reaches the board without a chat of its own.
   const oracleCwd = join(tmpdir(), 'peix-oracle-fixture', 'oracle');
   await ctx.server.api('api/pins', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pins: [oracleCwd] }) });
   await ctx.waitFor(`!!document.querySelector('#projects .proj[data-key=${JSON.stringify(oracleCwd)}]')`, { what: 'the oracle folder on the board' });
@@ -136,9 +136,14 @@ export default async function (ctx) {
   ctx.assert.match(out.oracleStep.placeholder, /^oracle — which environment/, 'the step says which folder, since ⌥⌘O never asked');
   ctx.assert.deepEqual(out.oracleStep.names, ['production-workload', 'sandbox-workload'], '⌥⌘O opens on oracle\'s environments');
   await ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);
+  await ctx.waitFor(`document.querySelector('#pickq').placeholder.includes('task production-workload')`, { what: 'the chats step, with nothing in it' });
+  out.oracleChats = await ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow')].map(r => r.className)`);
+  ctx.assert.equal(out.oracleChats.length, 1, 'an environment with no chats still offers ＋ new chat');
+  ctx.assert.match(out.oracleChats[0], /\bnew\b/, '…and that row is the only one, selected for ⏎');
+  await ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);
   await ctx.waitFor(`window.__posts.length === 2`, { what: 'the oracle chat posted' });
   out.oraclePosted = (await ctx.evaluate(`JSON.stringify(window.__posts)`).then(JSON.parse))[1];
-  ctx.assert.deepEqual({ cwd: out.oraclePosted.cwd, task: out.oraclePosted.task }, { cwd: oracleCwd, task: 'production-workload' }, '⏎ on the first environment starts task production-workload in oracle — it has no chats to choose from');
+  ctx.assert.deepEqual({ cwd: out.oraclePosted.cwd, task: out.oraclePosted.task }, { cwd: oracleCwd, task: 'production-workload' }, '⏎ on ＋ new chat starts task production-workload in oracle');
   // ↓ and ↑ walk the list as shown: from the two-PR chat to the card beside it and back
   await ctx.openChat(two.id);
   const order = await ctx.evaluate(`[...document.querySelectorAll('#slist .card')].map(c => c.dataset.id)`);

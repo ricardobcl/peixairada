@@ -59,7 +59,10 @@ export default async function (ctx) {
   ctx.assert.equal(out.clone[0].path, `into ${ORG_DIR}`, 'and the directory it would land in');
   ctx.assert.ok(out.clone[0].sel, 'the clone row is what ⏎ takes');
 
-  // ---- ⏎ on it: the clone, then the new chat in what it cloned ----
+  // ---- ⏎ on it: the clone, then the chats step of what it cloned — empty but for ＋ new chat — and ⏎ again ----
+  await enter(ctx);
+  await ctx.waitFor(`document.querySelector('#pickq').placeholder.startsWith('brand-new-thing —')`, { what: "the cloned folder's chats step" });
+  ctx.assert.deepEqual(await rows(ctx).then(r => r.map(x => x.name)), ['＋ new chat'], 'a fresh clone has no chats: ＋ is the whole list (2026-09-22)');
   await enter(ctx);
   await ctx.waitFor(`window.__posts.length === 1`, { what: 'the new chat in the cloned folder' });
   out.cloned = await ctx.evaluate(`window.__cloned`);
@@ -72,9 +75,11 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelector('#pick').open && document.querySelector('#pickq').placeholder.startsWith('New chat —')`, { what: '⌥⌘N again' });
   await type(ctx, 'alpha-service');
   await enter(ctx);
+  await ctx.waitFor(`document.querySelector('#pickq').placeholder.startsWith('alpha-service —')`, { what: "the folder's chats step" });
+  await enter(ctx);
   await ctx.waitFor(`window.__posts.length === 2`, { what: 'the new chat in the folder' });
   out.afterFolder = await ctx.evaluate(`window.__posts[1]`);
-  ctx.assert.equal(out.afterFolder.cwd, join(ORG_DIR, 'alpha-service'), 'a folder with no chats goes straight to a new one in it');
+  ctx.assert.equal(out.afterFolder.cwd, join(ORG_DIR, 'alpha-service'), 'a folder with no chats offers ＋ new chat, and ⏎ starts one in it');
   ctx.assert.deepEqual(await ctx.evaluate(`window.__cloned`), ['brand-new-thing'], 'and nothing else was cloned');
   return out;
 }

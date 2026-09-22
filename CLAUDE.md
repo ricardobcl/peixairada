@@ -165,7 +165,8 @@ refuses to run against the real directory for the same reason.
   would only add noise. → Decisions, 2026-09-21.
 * **The last step of the new-chat flow is a list of chats** (2026-09-21): the `chats` step is the scope's ready and
   clauding chats by `byUser` (newest touch first, done ones out) under a ＋ *new chat* row that carries on with the
-  flow — `scopeChats()` / `chatsStep()` / `newFromChats()`; it skips itself when the scope has none. ⌥⌘N scopes it to
+  flow — `scopeChats()` / `chatsStep()` / `newFromChats()`; **it shows even when the scope has none** (2026-09-22):
+  ＋ alone, so ⏎ starts a chat and esc walks away — skipping the step ran the next one straight into a spawning terminal. ⌥⌘N scopes it to
   the project, ⌥⌘O to *one environment* (`then: 'chats'` rides the `folder` and `env` steps and makes the environment
   a scope instead of the last thing asked). Typing filters the chats only, and moves the selection off ＋ onto the
   first match. A chat's environment is `s.env` — the server's `envs` record, so it outlives the drawer; a chat with

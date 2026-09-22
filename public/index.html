@@ -1138,7 +1138,10 @@
   // environments first, then *that environment's* open chats with ＋ new chat first (hotOracle). A chat's environment
   // is the server's record of the launcher it was started with (`s.env`), so it outlives the drawer; a chat with no
   // record — a bare `claude` in the folder, or one from before the record existed — shows under ⌥⌘N, not ⌥⌘O.
-  // The chats step skips itself when the scope has none, so an empty board still goes straight to the new chat.
+  // The chats step shows even when the scope has no chats (2026-09-22, Ricardo: "when hotkey N and there is no
+  // active chat, still show the new chat option so I can open a new chat or give up (ESC)"): ＋ new chat is then the
+  // whole list, ⏎ starts it, esc walks away. Before, an empty scope skipped the step and the next one spawned a
+  // terminal with nothing to stop it.
   // ---- the pickers' matcher: fuzzy since 2026-09-21 ----------------------------------------------
   // (Ricardo: "I want S hotkey to fuzzy search non-done chats", then — told ⌥⌘K already holds that list — "keep K
   // but make it fuzzy".) The query's letters have to turn up in order, not together: `wapi res` finds *w*allet-*api*
@@ -1351,7 +1354,7 @@
   // The open chats of a step's scope — a project (its own rule: a folder is its exact cwd, a named project its
   // folders) narrowed to one environment when ⌥⌘O picked one — by your last touch, newest first. Done chats stay out.
   const scopeChats = ctx => { const p = projectStub(ctx.key); return [...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done' && inProject(s, p) && (!ctx.env || s.env === ctx.env)).sort(byUser); };
-  const chatsStep = ctx => scopeChats(ctx).length ? pickOpen('chats', ctx) : newFromChats(ctx);   // nothing to choose between: straight on to the new chat
+  const chatsStep = ctx => pickOpen('chats', ctx);   // even with nothing to choose between: ＋ new chat alone, and esc
   // What the chats step would show under one environment, split the way the column's pills split a project.
   const envCounts = (cwd, env) => { const l = scopeChats({ key: cwd, env }); return { working: l.filter(s => bucket(s) === 'working').length, ready: l.filter(s => bucket(s) === 'ready').length }; };
   // ＋ new chat, from wherever the flow had got to: the environment is already answered, or the folder is, or neither.
