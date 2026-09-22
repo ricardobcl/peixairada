@@ -2,7 +2,46 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-09-21.
+this file is the *why* and the *state*. Last updated 2026-09-22.
+
+## Decisions of 2026-09-22 — the chat column is one half or two, ⌘B folds the list, the pickers are centred again
+
+* **⌘2 splits the chat column in two; ⌘1 and ⌘2 are the halves** (Ricardo: "cmd 2 should split the main chat in
+  two, support opening the terminal/editor/chat/github in both paths — cmd 1 and 2 should move focus to left or
+  right panel, respectively"). Asked whether the right half should be able to hold *another chat*, he chose the
+  smaller thing: both halves belong to the open chat and pick from its own tabs — the claude session or the
+  transcript, the zsh, a GitHub page, the editor. One selection in the list, one transcript, two tab strips.
+* **A tab lives in exactly one half.** There is one transcript element, one xterm per half and one web view per
+  page, so showing a tab twice would mean duplicating whichever of those it is. Instead, choosing in one half what
+  the other is showing makes the two **trade places** (`setTab`) — which is also how you move a tab across: click
+  it in the strip of the half you want it in. The other half's tab is dimmed in your strip (`.ptab.away`), not
+  hidden, so the swap is offered rather than hidden away.
+* **Where things are is derived, not stored.** `tabs` keeps `[left, right]` per chat and `placeOf(s)` reads it
+  against the tabs the chat actually has now: a key that is gone falls away, the left half takes the first tab
+  left, and the right half fills with a spare one while the column is split. So a zsh that starts while the right
+  half is empty simply appears there, and a zsh that ends leaves no dangling half.
+* **The empty half says what would fill it** rather than showing a blank panel — ⌥⌘T, ⌥⌘G, ⌥⌘E, or a tab from the
+  strip above. ⌘2 on a chat with nothing but its transcript is a legitimate thing to do; it should not look broken.
+* **The split is the board's, the placement is the chat's.** `prefs.split` and `prefs.splitAt` (the divider) are
+  per browser, like the column widths; which tab is in which half is per chat, like the tab was before. Closing
+  the split (⨯ on the right strip) keeps **the half the keys were in** — you close the one you are not looking at.
+* **The app's pane is now an overlay over the whole window**, with each page's web view placed inside it from the
+  rect the board gives it, instead of one view pinned to the chat column. That is what lets both halves hold a
+  page at once. It has to let clicks through where no page is (`PaneOverlay.hitTest`), and the ⌘F bar is placed
+  from the focused page's rect rather than pinned to the pane, so it follows ⌘1 / ⌘2.
+* **⌘B folds the chat list** (Ricardo: "cmd B should toggle colapse of 2nd column") — the switch the « button
+  already was, on VS Code's key for the same idea. Plain ⌘ chords get their own map (`CMDKEYS`) beside the ⌥⌘ one,
+  because the modifier says what the key is about: ⌥⌘ is *this chat, over there*, ⌘ alone is *this window, this
+  shape*. The shell's forwarder carries both now, so the keys work with a page in the pane.
+* **The pickers are centred again** (Ricardo: "hover menu … is not centered when there's a webpage open. make it
+  always centered"). The pane is a native view over the chat column, so a dialog centred on the board opened
+  underneath it, and the picker used to sidle into whatever strip of board was still showing — off to one side and
+  narrower than it is anywhere else (`#pick.aside`). Lowering the pane for as long as a dialog is up is the better
+  trade: `postPane` sends no page while one is open, the shell hides the view and hands the keyboard back, and
+  every dialog's close puts it back. Nothing reloads — the web view is only hidden.
+* **Checks**: `scripts/scenarios/split-halves.mjs` (two live terminals side by side, the trade, the fit of each
+  half, ⨯ leaving the focused half) and the split section of `pane-tabs.mjs` (two pages placed side by side in one
+  `pane` message, with the focus). `ctx.cmd(code)` in the runner is the plain-⌘ press.
 
 ## Decisions of 2026-09-21 — the card's edge says which kind of busy
 

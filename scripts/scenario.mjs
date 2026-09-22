@@ -62,6 +62,8 @@ const ctx = {
   openChat: id => openChat(cdp, id),
   /** ⌥⌘ + a letter, as the page's hotkeys expect it (e.code; e.key is a symbol with ⌥ held on a Mac). */
   key: code => cdp.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { code: ${JSON.stringify(code)}, key: 'π', metaKey: true, altKey: true, bubbles: true, cancelable: true }))`),
+  /** ⌘ + a key on its own — the board's layout keys (CMDKEYS: ⌘B, ⌘1, ⌘2). */
+  cmd: code => cdp.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { code: ${JSON.stringify(code)}, key: 'x', metaKey: true, bubbles: true, cancelable: true }))`),
   /** The drawer's rows as text, trailing blanks trimmed, empty rows dropped. */
   screen: () => cdp.evaluate(`[...document.querySelectorAll('#termBody .xterm-rows > div')].map(r => r.textContent.replace(/\\s+$/, '')).filter(Boolean)`),
   /** Wait for the drawer to show a prompt line (the fake's or Claude's ❯). */

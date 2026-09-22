@@ -44,7 +44,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `server.mjs` | The backend: transcript tailing, sessions, SSE, HTTP, notifications, the holder proxy. A **section map** at its top (`npm run map`); boots only when run as the program, exports its pure parts for the tests |
 | `lib/termhold.mjs` | The holder: one process per drawer — the PTY, the exact screen, a Unix socket |
 | `lib/cdp.mjs`, `lib/testserver.mjs` | Harness plumbing: headless Chrome over the DevTools protocol; a throwaway server with cleanup |
-| `public/index.html` | The frontend, one file, no build step: projects · chats · chat, the drawer, the transcript renderer. A section map at the top of its script |
+| `public/index.html` | The frontend, one file, no build step: projects · chats · chat (one half or two), the drawer, the transcript renderer. A section map at the top of its script |
 | `public/vendor/` | `marked` 18.0.11 + `DOMPurify` 3.4.14 + `highlight.js` 11.11.1 + `xterm` 5.5.0 (+ fit 0.11, web-links 0.12) — UMD builds, no CDN at runtime |
 | `mac/Sources/main.swift` | The native shell: window, the pane (web views per page), server lifecycle, Dock badge, menu bar, notifications, the hotkey forwarder |
 | `mac/icon/MakeIcon.swift`, `mac/build.sh` | The icon, drawn in CoreGraphics; compile + bundle + sign + install |
@@ -137,6 +137,12 @@ refuses to run against the real directory for the same reason.
   Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A
   `dialog[open]` swallows them; no chat or no PR is a `note()`. The cog lists every key (`.keys` in `#settings`) —
   keep it in step by hand, with `boardKeys` in main.swift.
+* **Plain ⌘ is the window's shape, and lives in `CMDKEYS`** (2026-09-22): **B** folds the chat list
+  (`toggleSessions`, the « button's switch), **1** and **2** the left and right halves of the chat column —
+  ⌘2 splits it the first time (see *The chat column's two halves*). The modifier is the distinction: ⌥⌘ is
+  "this chat, over there", ⌘ alone is "this window, this shape". `peixKey(code, mods)` carries which map, and
+  `cmdKeys` in main.swift is the forwarder's copy of this list — a digit goes over as `Digit<n>`. ⌘K is *not*
+  here (the drawer's clear) and neither are ⌘+ ⌘− ⌘0 (`chatZoomKey`).
 * **The pickers match fuzzily, and with something typed the best match leads** (2026-09-21): `fuzzy(fields, q)` —
   each word of the query hunted *within one field* (`chatFields(s)`, which `chatText` joins for the column's literal
   magnifier), letters in order, a run worth more than scattered ones, a word's start worth more than its middle, a
@@ -169,21 +175,25 @@ refuses to run against the real directory for the same reason.
   is only the SSE light now. `sound`, `showAll`, `toolsMode` and `foldCode` keep whatever they were saved as and
   nothing sets them — the chat header's `{ }` is still the fold for a chat.
 * **In the app the pane is a native view** over the chat column with its own web views: a key pressed there never
-  reaches the page, so `installHotkeyForwarder()` forwards ⌥⌘ + the letters and the arrows (`hotkeyCode()`, the page's
-  `e.code`) to `window.peixKey`; the shell
-  reports `peixPane(visible, left)` so the picker opens beside the pane (`.aside`) and asks for the keyboard
-  (`{type:'focus'}`). Esc with the pane up is forwarded as `peixKey('Escape')` (a local monitor swallows it, so full
+  reaches the page, so `installHotkeyForwarder()` forwards ⌥⌘ + the letters and the arrows, and ⌘ + the layout
+  keys (`hotkeyCode()`, the page's `e.code` and which map), to `window.peixKey`; the shell
+  reports `peixPane(visible, left)`, which the board only reports on now — **a dialog open lowers the pane**
+  instead of dodging it (2026-09-22), so every picker is centred: `postPane` sends no page while a `dialog[open]`
+  exists, and every dialog's `close` puts it back. Esc with the pane up is forwarded as `peixKey('Escape')` (a local monitor swallows it, so full
   screen keeps it) — `hotEscape()`: a dialog or the settings popover closes first, else the chat tab comes back.
   **With the pane hidden, Esc is the page's**: a capture-phase handler closes an open dialog or popover itself and
   `preventDefault()`s, so WebKit reports the key handled — an unhandled Esc (a `<dialog>`'s own does not count) climbs
   to the window, which in full screen leaves it. With nothing to close the key is untouched (the filter boxes, the
   rename box, full screen keep theirs).
-* **The page owns the tabs** (2026-09-20, late): `#ptabs` lists `chat` (`claude` while the session runs here), `shell`
+* **The page owns the tabs** (2026-09-20, late): each half's strip lists `chat` (`claude` while the session runs here), `shell`
   while a zsh lives, `gh:<url>` per GitHub page the chat opened and `ide:<url>` for its folder's editor — `tabKeys()`
-  from `state.paneGh` (per chat) and `state.paneIde` (per folder); `tabs` holds each chat's tab, and one whose page is
-  gone falls back to the chat. `syncTerm()` keeps the body right and posts one `{type:'pane', id, keys, show, left,
-  top}` to the shell (`postPane`, again when the geometry moves): it keeps a web view per page (`paneViews`, up to
-  `paneViewsMax`, the chat's own spared), shows `show` or hides, and sits over the chat column below the strip.
+  from `state.paneGh` (per chat) and `state.paneIde` (per folder); `tabs` holds each chat's `[left, right]`, read back
+  through `placeOf()`, and one whose page is gone falls away. `syncTerm()` keeps both bodies right and posts one
+  `{type:'pane', id, keys, panes:[{key,left,top,width,height}], focus}` to the shell (`postPane`, again when the
+  geometry moves; `show`/`left`/`top` repeat the first pane for a shell built before the split): it keeps a web view
+  per page (`paneViews`, up to `paneViewsMax`, the chat's own spared) and places each one in its half. **The overlay
+  covers the whole window** and lets a click that lands on no page through (`PaneOverlay.hitTest`) — that is what lets
+  both halves hold a page at once; ⌘F's bar is placed from the focused page's rect, so it follows ⌘1 / ⌘2.
   `‹ › ↻ ↗` in the strip are `{type:'nav'}`; × forgets a page (`closeTab`). In a browser the tabs are chat and zsh
   only (`inApp`). GitHub cannot be iframed, hence the second `WKWebView`; a web view with no UI delegate drops
   `target=_blank`, hence `PrPaneDelegate`. → Findings: *the pane*.
@@ -203,6 +213,26 @@ refuses to run against the real directory for the same reason.
   change closes it (`closeFind(focusPage: false)`); `findQuery` outlives it, so ⌘G opens it again on the same
   words. → Decisions, 2026-09-21.
 * **Both web views are inspectable** (main.swift sets it): Safari → Develop reaches the real app.
+
+## The chat column's two halves
+
+* **⌘2 splits the chat column, ⌘1 / ⌘2 are the halves** (2026-09-22): each has its own tab strip and body, and both
+  pick from the *one* open chat's tabs — its claude session or transcript, its zsh, its GitHub pages, its editor.
+  The left half keeps the plain ids (`#ptabs`, `#term`, `#termBody`, `#log`): it is the whole column while nothing
+  is split, and the harness reads it by those names. `GEL` maps each half to its elements, `terms[g]` owns that
+  half's xterm and socket, and the take-over state (armed, failed) is the board's `drawer`, not a terminal's.
+* **A tab lives in exactly one half.** One transcript element, one xterm per half, one web view per page — so
+  choosing in one half what the other is showing makes the two **trade places** (`setTab`), which is also how a tab
+  is moved across. The other half's tab is dimmed in your strip (`.ptab.away`), not hidden.
+* **Placement is derived**: `tabs` holds `[left, right]` per chat and `placeOf(s)` reads it against the tabs the
+  chat has *now* — a key that is gone falls away, the left half takes the first tab left, the right half fills with
+  a spare one while split. `tabOf(s)` is the focused half's. A half with nothing says what would fill it (`.gempty`).
+* **The transcript moves, it does not multiply**: `placeLog()` reparents `#log` into the half holding the chat tab
+  (scroll position carried by hand) and hides it under a live drawer; with no half showing it, it is parked in the
+  left one, hidden.
+* **The split is the board's** (`prefs.split`, `prefs.splitAt` — the divider), **the placement is the chat's**.
+  ⨯ on the right strip closes the split and **keeps the half the keys were in**. → `scripts/scenarios/split-halves.mjs`,
+  the split section of `pane-tabs.mjs`, Decisions 2026-09-22.
 
 ## The drawer
 
@@ -264,7 +294,8 @@ refuses to run against the real directory for the same reason.
   `<system-reminder>` blocks (strip them *first* — a prompt can follow one) and `<local-command…>` synthetic lines.
 * `.cards > * { flex: none }` is load-bearing; `.card { --repo: initial }` too (custom properties inherit — the orange cards).
 * `.shead { min-width: 0 }` and a fixed `flex-basis` on `.shead h2`; PR chips are direct children of the header.
-* `#chat` has explicit grid rows and `.termmax` repeats them — a new block in the chat pane means touching both.
+* `#chat` has explicit grid rows and everything below the header is one of them (`#groups`) — a new block in the
+  chat pane means placing it by hand, or `display:none` on a sibling slides it into the wrong row.
 * Inline code gets a tint, never a border; card glyphs are inline SVG, not emoji; the working ring is the project's
   colour — `--ring`, which only a card too dark to show it (`.card.black`) overrides, with white.
 * `PROJECT_ICONS` (index.html) marks a project by its shown name wherever the name is written — oracle's crystal ball;
@@ -298,9 +329,9 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   fake claude when asked, launches Chrome with **focus emulation on**, and ends terminals, holders, Chrome and temp
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
-  `assert`. The eleven in `scripts/scenarios/` are the regression checks for the drawer (re-attach, restart,
-  geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a compose key), the hotkeys, the tab strip, the new-chat flow
-  and the project step's folders. `meta.env` goes to the throwaway server — a scenario that reads a directory of the
+  `assert`, `cmd(code)` (a plain ⌘ press; `key(code)` is ⌥⌘). The thirteen in `scripts/scenarios/` are the
+  regression checks for the drawer (re-attach, restart, geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a
+  compose key), the hotkeys, the tab strip and the split, the new-chat flow and the project step's folders. `meta.env` goes to the throwaway server — a scenario that reads a directory of the
   machine's (`ORG_DIR`) points it at one of its own, so it does not depend on what `~/acme` happens to hold.
 * **Test against the fake claude, not real chats**: `scripts/fakeclaude.mjs` via `CLAUDE_BIN` (the test server's
   `fake: true`) is instant and touches nothing. A test against the real `~/.claude` (read-only, `claudeDir` unset)

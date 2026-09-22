@@ -29,7 +29,7 @@ export default async function (ctx) {
   ctx.assert.equal(out.one.pane.top, strip.bottom, 'the pane starts under the strip'); ctx.assert.equal(out.one.pane.left, strip.left, 'and at the chat column');
   ctx.assert.ok(await ctx.evaluate(`!!document.querySelector('#ptabs .navs .nav[data-nav="back"]')`), '‹ › ↻ ↗ with a page on');
   // the address: the key's URL to begin with, then wherever the shell says the view went
-  const purl = () => ctx.evaluate(`JSON.stringify((el => el && { text: el.textContent, url: el.dataset.url, key: el.dataset.key })(document.querySelector('#purl')) || null)`).then(JSON.parse);
+  const purl = () => ctx.evaluate(`JSON.stringify((el => el && { text: el.textContent, url: el.dataset.url, key: el.dataset.key })(document.querySelector('#ptabs .purl')) || null)`).then(JSON.parse);
   const ghKey = out.one.tabs[1].k, ghUrl = ghKey.slice(3);
   out.url = { first: await purl() };
   ctx.assert.equal(out.url.first.url, ghUrl, 'the address is the URL the tab was opened with');
@@ -43,14 +43,14 @@ export default async function (ctx) {
   // a click on it copies the whole address, scheme and all (headless Chrome resolves writeText into no clipboard at
   // all — readText always comes back empty — so what is handed to it is what is checked)
   await ctx.evaluate(`window.__clip = []; navigator.clipboard.writeText = t => { window.__clip.push(t); return Promise.resolve(); }`);
-  await ctx.evaluate(`document.querySelector('#purl').click()`);
+  await ctx.evaluate(`document.querySelector('#ptabs .purl').click()`);
   out.url.copied = await ctx.evaluate(`window.__clip.slice(-1)[0] ?? null`);
   out.url.note = await ctx.evaluate(`document.querySelector('.note')?.textContent || null`);
   ctx.assert.equal(out.url.copied, deep, 'the whole address, scheme and all');
   ctx.assert.match(out.url.note || '', /copied/i, 'and a note says so');
   // …unless part of it is selected by hand: that click is someone copying their own selection
-  await ctx.evaluate(`(el => { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); })(document.querySelector('#purl'))`);
-  await ctx.evaluate(`document.querySelector('#purl').click()`);
+  await ctx.evaluate(`(el => { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); })(document.querySelector('#ptabs .purl'))`);
+  await ctx.evaluate(`document.querySelector('#ptabs .purl').click()`);
   out.url.selected = await ctx.evaluate(`window.__clip.length`);
   ctx.assert.equal(out.url.selected, 1, 'a selection inside it wins');
   await ctx.evaluate(`getSelection().removeAllRanges(); document.querySelectorAll('.note').forEach(n => n.remove())`);
@@ -101,5 +101,21 @@ export default async function (ctx) {
   await ctx.server.api(`/api/terminals/${shellId}`, { method: 'DELETE' });
   await ctx.waitFor(`!document.querySelector('#ptabs .ptab[data-tab="shell"]')`, { what: 'the zsh tab gone', timeout: 10_000 });
   out.end = await tabsNow();
+  // Split in two (2026-09-22): a page in each half, and the shell is told where each one goes — two rects side by
+  // side under their own strips, and which of them has the keys. The board sends `show` too, for a shell built
+  // before the split existed.
+  await ctx.cmd('Digit2');
+  await ctx.waitFor(`window.peix.state().split === true`, { what: 'the split' });
+  await ctx.evaluate(`document.querySelector('#ptabsB .ptab[data-tab^="ide:"]').click()`);
+  await ctx.waitFor(`window.peix.state().halves[1].startsWith('ide:')`, { what: 'the editor in the right half' });
+  const both = await lastPane();
+  ctx.assert.equal(both.panes.length, 2, 'a page placed in each half');
+  ctx.assert.ok(both.panes[0].key.startsWith('gh:') && both.panes[1].key.startsWith('ide:'), 'the PR on the left, the editor on the right');
+  ctx.assert.equal(both.focus, both.panes[1].key, 'the keys are in the half ⌘2 put them in');
+  ctx.assert.equal(both.show, both.focus, 'and an older shell is told that one');
+  ctx.assert.ok(both.panes[0].left + both.panes[0].width <= both.panes[1].left, 'side by side, not overlapping');
+  ctx.assert.ok(both.panes.every(p => p.width > 50 && p.height > 50), 'both have room');
+  out.split = both;
+  await ctx.shot('split');
   return out;
 }
