@@ -44,6 +44,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `server.mjs` | The backend: transcript tailing, sessions, SSE, HTTP, notifications, the holder proxy. A **section map** at its top (`npm run map`); boots only when run as the program, exports its pure parts for the tests |
 | `lib/termhold.mjs` | The holder: one process per drawer — the PTY, the exact screen, a Unix socket |
 | `lib/cdp.mjs`, `lib/testserver.mjs` | Harness plumbing: headless Chrome over the DevTools protocol; a throwaway server with cleanup |
+| `lib/refit.mjs` | Resizing a terminal so a grow pulls the scrollback back down (the holder's copy; the page keeps its own) |
 | `public/index.html` | The frontend, one file, no build step: projects · chats · chat (one half or two), the drawer, the transcript renderer. A section map at the top of its script |
 | `public/vendor/` | `marked` 18.0.11 + `DOMPurify` 3.4.14 + `highlight.js` 11.11.1 + `xterm` 5.5.0 (+ fit 0.11, web-links 0.12) — UMD builds, no CDN at runtime |
 | `mac/Sources/main.swift` | The native shell: window, the pane (web views per page), server lifecycle, Dock badge, menu bar, notifications, the hotkey forwarder |
@@ -82,13 +83,19 @@ refuses to run against the real directory for the same reason.
 * **The card's edge is one ring with four readings** (2026-09-21): `--lit` is what runs in it, `--seg` how much of
   the edge one light owns (`100% / --lights`, one light per sub-agent), `--spins` how fast. Clauding is the project's
   colour; **watching** (`s.tasks` — a monitor or a background command still running, see *How it reads Claude Code*)
-  is one light in `--watch`, slowly, and can sit on a *ready* card; **asking** (`needs-input` while alive) is the
-  whole edge in `--needs`, breathing rather than running, with the question and its answer count on the card
+  is one light in `--watch`, slowly, and can sit on a *ready* card; **asking** (`needs-input` while alive) has **no
+  ring at all** — the card's own border blinks red (`@keyframes blink`, two hard states), the one signal that is not
+  motion around the edge, because a question is the one state that is *stopped* (2026-09-22) — with the question and
+  its answer count on the card
   (`askHtml`). The three CSS rules are in priority order — work beats a monitor, a question beats both — **and each
   sets every variable**, since a card can be two of them (clauding with a monitor) and what a rule leaves out the
   earlier one keeps. The
   chips beside the title say the numbers (`N agents`, `monitor`). → `scripts/scenarios/card-signals.mjs`,
-  Decisions 2026-09-21.
+  Decisions 2026-09-21 and 2026-09-22.
+* **Folded (⌘B), the chat list is a rail of squares** (2026-09-22): one per chat, the project's short name
+  (`projAbbr`, `PROJECT_ABBR` for the ones the rule gets wrong) on a solid tint of its colour, and the card's own
+  edge — so clauding, the agents' count, a monitor and a question all still read from the rail. Everything inside
+  the card is `display: none` there; `.abbr` is the only child left standing, and it carries the hover tooltip.
 * **A project is a folder** (the registry's `cwd`, never the transcript's — that one moves with `cd`) **or a
   named set of folders** (state file); worktrees under a repo count as the repo. **Pinned projects** head the
   column (`PUT /api/pins`, the whole list, a `pins` event); folder projects exist only through their sessions.
@@ -137,7 +144,7 @@ refuses to run against the real directory for the same reason.
   Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A
   `dialog[open]` swallows them; no chat or no PR is a `note()`. The cog lists every key (`.keys` in `#settings`) —
   keep it in step by hand, with `boardKeys` in main.swift.
-* **Plain ⌘ is the window's shape, and lives in `CMDKEYS`** (2026-09-22): **B** folds the chat list
+* **Plain ⌘ is the window's shape, and lives in `CMDKEYS`** (2026-09-22): **B** folds the chat list to a rail
   (`toggleSessions`, the « button's switch), **1** and **2** the left and right halves of the chat column —
   ⌘2 splits it the first time —, **W** closes the half the keys are in, or a dialog that is up (see *The chat
   column's two halves*). The modifier is the distinction: ⌥⌘ is
@@ -235,7 +242,10 @@ refuses to run against the real directory for the same reason.
 * **The transcript moves, it does not multiply**: `placeLog()` reparents `#log` into the half holding the chat tab
   (scroll position carried by hand) and hides it under a live drawer; with no half showing it, it is parked in the
   left one, hidden.
-* **The split is the board's** (`prefs.split`, `prefs.splitAt` — the divider), **the placement is the chat's**.
+* **Split or not is the chat's** (2026-09-22): `splits`, a set of chat ids beside the `tabs` map and lasting as
+  long as it does — a PR beside its terminal is for the review you are doing, not for every chat you then open.
+  `syncTerm` calls `applySplit()` on every open, so the column follows whichever chat is in front; only the
+  divider's place is the board's (`prefs.splitAt`), like the column widths.
   **⌘W closes the half the keys are in**, and each strip's ⨯ closes *its own* half (`closeHalf(g)`): what the
   column keeps is the other half's tab, or the closer's when the other had none.
   → `scripts/scenarios/split-halves.mjs`, the split section of `pane-tabs.mjs`, Decisions 2026-09-22.
@@ -300,12 +310,21 @@ refuses to run against the real directory for the same reason.
   `<system-reminder>` blocks (strip them *first* — a prompt can follow one) and `<local-command…>` synthetic lines.
 * `.cards > * { flex: none }` is load-bearing; `.card { --repo: initial }` too (custom properties inherit — the orange cards).
 * `.shead { min-width: 0 }` and a fixed `flex-basis` on `.shead h2`; PR chips are direct children of the header.
-* `#chat` has explicit grid rows and everything below the header is one of them (`#groups`) — a new block in the
-  chat pane means placing it by hand, or `display:none` on a sibling slides it into the wrong row.
+* **Every grid row in the chat column is placed by hand** — `#chat`'s, and each half's `.ptabs` / `.gbody`. A
+  hidden block is `display:none`, which takes it out of auto-placement and slides its siblings up a row; a body
+  that lands in an `auto` row sizes itself to the terminal it holds instead of to the pane, and the drawer keeps
+  whatever height it was first drawn at with black under it (2026-09-22). A new block means placing it too.
+* **A terminal that grows has to pull its scrollback back down** (`lib/refit.mjs`, and the page's own copy in
+  `refitTerm`): xterm only does it when the cursor is on the last line of the buffer, and Claude Code's never is.
+  → `test/refit.test.mjs`.
 * Inline code gets a tint, never a border; card glyphs are inline SVG, not emoji; the working ring is the project's
   colour — `--ring`, which only a card too dark to show it (`.card.black`) overrides, with white.
 * `PROJECT_ICONS` (index.html) marks a project by its shown name wherever the name is written — oracle's crystal ball;
   `projIcon(name)` goes before the name in the strip, the column, the chat list's header, the chat header, the cards, the pickers.
+  `PROJECT_ABBR` is the same idea for the folded list's squares, and is read only by `projAbbr`.
+* **Never name a modifier class after something the page also selects by**: a background command's chip wore `card`
+  as a placement marker nothing read, and `#slist .card` matched it — ⌥⌘↑/↓ walked over a chip and opened nothing
+  (2026-09-22). The walkers take `#slist > .card` now.
 * Code folds per chat: `prefs.foldBy[id]` (the header's `{ }` button) over `prefs.foldCode`, which has no control now; `foldOn(id)` is the one
   rule, used by `md()`. Claude Code cannot fold the code it prints in the drawer — ctrl+o is tool output only.
 * No in-page toasts: alerts are the badge plus a system notification; the app sets `NOTIFY=off` on its own server.

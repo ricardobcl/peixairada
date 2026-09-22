@@ -4,6 +4,40 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-22.
 
+## Decisions of 2026-09-22, later — the split belongs to a chat, the rail, the blinking question, and a black pane
+
+* **The drawer was sizing itself to its terminal instead of to the pane** (Ricardo: "you restart the FE and all
+  chats are pulled up, so ~60% bottom is just black"). Mine, from the morning's split: a half's grid rows were not
+  placed by hand, and a hidden tab strip is `display: none` — which takes it out of auto-placement and slides the
+  body into the `auto` row. There it took its height from the terminal it held, so the drawer kept whatever height
+  it was first drawn at, and straight after a reload that is xterm's own default of 24 rows. The same trap `#chat`
+  has carried a warning about since the rows were placed there; the warning now covers both.
+* **And underneath it, a real one: a terminal that grows has to pull its scrollback back down.** xterm only takes
+  that path when the cursor is on the *last line of the buffer*, and Claude Code's never is — its live region is a
+  box with the prompt in it and three status lines under it, and the cursor stays in the box. So every grow appended
+  that many blank rows at the bottom instead, and the session stayed pinned to the top for good. `lib/refit.mjs`
+  parks the cursor on the last line for the length of the resize and puts it back after, which is enough to take
+  xterm down the scrollback path; the holder and the page both do it, and `test/refit.test.mjs` includes the case
+  that fails the old way round, so the test means something. A drawer started before any xterm exists also asked
+  for a fixed 120×30 and had to grow out of it — it asks for the last size this browser fitted now.
+* **The split is the chat's, not the board's** (Ricardo: "the pane splitting should be chat, not a general
+  setting"). A PR beside its terminal is something you want for the review you are doing; carrying it into every
+  chat you then open is noise. `splits` is a set of chat ids, alongside the `tabs` map and for the same reason —
+  it lasts as long as the chats do, not across reloads. Only the divider's place stays a board preference.
+* **A question blinks the border instead of running a light round it** (Ricardo: "a card that's waiting my input …
+  should flash the boarder instead on having the go-around animation"). Every other signal on a card is motion
+  around the edge, and a question is the one state that is *stopped* — so it gets the one signal that is not
+  motion. Two hard states, not a fade: a fade reads as another kind of running, which is what it was doing.
+* **Folded, the chat list is a rail of squares** (Ricardo: "small squares with only the project they are in, with
+  initial … in these condesed view, keep the visual cues for running, agents, etc."). One per chat: the project's
+  short name on a solid tint of its colour, and the card's own edge, so clauding, the agents' count, a monitor and
+  a question all still read from a 58 px rail. The short name is the initial of each part of a hyphenated name, or
+  the first two letters of a single word — NS, AS, MS, FC come out right on their own — and `PROJECT_ABBR` carries
+  the ones whose spoken short name is not that (backend is BE, wallet-api is WAPI), by hand, like `PROJECT_ICONS`.
+* **A class name that is also a selector is a trap.** A background command's chip wore `card` as a placement
+  marker that nothing read, and `#slist .card` matched it — so ⌥⌘↑/↓ walked over a chip and opened nothing. The
+  marker is gone and the walkers take `#slist > .card`.
+
 ## Decisions of 2026-09-22 — the chat column is one half or two, ⌘B folds the list, the pickers are centred again
 
 * **⌘2 splits the chat column in two; ⌘1 and ⌘2 are the halves** (Ricardo: "cmd 2 should split the main chat in
