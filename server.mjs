@@ -743,8 +743,14 @@ function taskGone(t) {
     if (!existsSync(t.out)) return resolve(false);          // not written yet, or cleaned up: no verdict from here
     const bin = findBin('lsof', 'a background command is only let go by its notification or its age');
     if (!bin) return resolve(false);
-    execFile(bin, ['-t', '--', t.out], { timeout: 5_000 }, (err, stdout) => {
-      if (err && err.code !== 1) return resolve(false);      // 1 is lsof's "nobody has it"; anything else is our problem
+    execFile(bin, ['-t', '-w', '--', t.out], { timeout: 15_000 }, (err, stdout) => {
+      if (err && err.code !== 1) {                           // 1 is lsof's "nobody has it"; anything else is our problem
+        // lsof reads every process on the Mac, so on a loaded one it takes seconds — and a run killed by the
+        // timeout is not an answer, it just looks like "still running". Say so, or the chip sits on the card
+        // with nothing in the log to explain it.
+        if (err.killed || err.signal) console.log(`[peixairada] task ${t.what || '?'}: lsof did not answer in time — leaving it running`);
+        return resolve(false);
+      }
       resolve(!String(stdout).trim());
     });
   });

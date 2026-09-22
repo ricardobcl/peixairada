@@ -1826,11 +1826,19 @@
   function readFocusFromScreen(tm) {
     const ws = tm.ws, id = tm.sessionId;
     if (tm.kind !== 'claude' || !id) return;
-    let n = 0;
+    // **Read a screen that has stopped arriving, not the first thing that looks like an answer** (2026-09-22): the
+    // snapshot is written into xterm over several parse ticks, and a scan that lands mid-write finds whichever
+    // line the parser has reached. On this chat that is the *older* `/focus` line as often as not — and taking it
+    // both lit the button wrong and stopped the read, because a verdict equal to what the board already thinks is
+    // a verdict. So: wait for the buffer to stop growing, then read once. `still` counts the quiet ticks; `n` caps
+    // the whole thing, for a drawer that never settles or never said anything.
+    let len = -1, still = 0, n = 0;
     const tick = () => {
       if (tm.ws !== ws || tm.sessionId !== id) return;   // switched away: this read belonged to that drawer
-      const said = focusSaid(tm);
-      if (said === null) { if (++n < 10) setTimeout(tick, 200); return; }
+      const now = tm.xt?.buffer.active.length ?? -1;
+      if (now !== len) { len = now; still = 0; } else still++;
+      const said = still >= 3 ? focusSaid(tm) : null;
+      if (said === null) { if (++n < 25) setTimeout(tick, 200); return; }
       if (focusView.get(id) === said) return;
       focusView.set(id, said);
       const s = state.sessions.get(state.current); if (s && s.id === id) renderHead(s);
