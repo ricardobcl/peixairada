@@ -104,6 +104,10 @@ export default async function (ctx) {
     ctx.assert.equal(card('Three agents out').lights, '3', 'one light per sub-agent');
     ctx.assert.deepEqual(card('Three agents out').chips, ['3 agents']);
     ctx.assert.deepEqual(card('Waiting on you').cls, ['asking', 'needs-input'], 'the question stops the card');
+    // …and it is the border blinking, not a light running round the edge (2026-09-22)
+    const ask = await ctx.evaluate(`JSON.stringify((c => ({ anim: getComputedStyle(c).animationName, ring: getComputedStyle(c, '::before').content }))([...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Waiting on you')))`).then(JSON.parse);
+    ctx.assert.equal(ask.anim, 'blink', 'the card itself blinks');
+    ctx.assert.equal(ask.ring, 'none', 'and there is no ring on it');
     ctx.assert.match(card('Waiting on you').state, /asking you: Which database should the service use\?3 answers/, 'the question is on the card, with how many answers it offers');
     ctx.assert.notEqual(card('Waiting on you').lit, card('Normal work').lit, 'and it is lit in another colour than work');
     ctx.assert.deepEqual(card('Both at once').cls, ['watching', 'working'], 'a chat can be both — clauding with a monitor of its own');

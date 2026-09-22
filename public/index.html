@@ -253,7 +253,8 @@
      work / a monitor is still running / N sub-agents are running / claude is asking me something"): --lit is what
      runs, --seg how much of the edge one light owns (100 % / the number of lights — one per sub-agent), --spins how
      fast. Clauding is the project's colour; watching is one light in the watch colour, slowly, because nothing is
-     waiting on you; asking is the whole edge in red and breathes instead of running, so it reads as *stopped*.
+     waiting on you; asking has no ring at all — the border itself blinks red, the one signal that is not motion
+     around the edge, because a question is the one state that is *stopped*.
      The order of the three rules is their priority: work beats a monitor, a question beats both. */
   @property --spin { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
   .card.working, .card.watching, .card.asking { box-shadow: 0 0 0 1px color-mix(in srgb, var(--lit) 45%, transparent), 0 0 18px color-mix(in srgb, var(--lit) 35%, transparent); }
@@ -266,10 +267,17 @@
      the ordinary case for a chat running a monitor), and what the later rule leaves unsaid the earlier one keeps —
      which had the work light running at the monitor's sixth of the speed. */
   .card.working { --lit: var(--ring, var(--repo, var(--working))); --seg: calc(100% / var(--lights, 1)); --spins: 1.4s; }
-  .card.asking { --lit: var(--needs); --seg: 100%; border-color: color-mix(in srgb, var(--needs) 70%, var(--line)); }
-  .card.asking::before { background: var(--lit); animation: breathe 1.7s ease-in-out infinite; }
+  /* A question is the one state that is *stopped*, so it gets the one signal that is not motion around the edge
+     (2026-09-22, Ricardo: "a card that's waiting my input … should flash the boarder instead on having the
+     go-around animation"): no ring at all, the border itself blinking on and off in red. Two hard states, not a
+     fade — a fade reads as another kind of running. */
+  .card.asking { --lit: var(--needs); --seg: 100%; animation: blink 1.2s steps(2, jump-none) infinite; }
+  .card.asking::before { content: none; }
   @keyframes ring { to { --spin: 360deg; } }
-  @keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: .22; } }
+  @keyframes blink {
+    from { border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
+    to { border-color: color-mix(in srgb, var(--needs) 28%, var(--line)); box-shadow: none; }
+  }
   /* Hover and the open chat enhance the card's own colour, never the accent (2026-09-20, Ricardo: "still show a
      orange border … just enhance the border with its own color", then "the hover cards, make the background as if
      it was select", then "even stronger"): hover is the open card's solid tint (55 % of the colour) under the full
