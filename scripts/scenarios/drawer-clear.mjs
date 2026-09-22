@@ -20,8 +20,11 @@ export default async function (ctx) {
   await ctx.waitPrompt();
   await ctx.sleep(500);
   ctx.assert.ok((await ctx.screen()).some(r => /\(cleared\)/.test(r)), 'the fake started over on screen');
-  const old = await ctx.peix(`session(${JSON.stringify(chat.id)})`);
-  ctx.assert.ok(old && !old.terminal && !old.alive, 'the old chat is a stale card now, without a drawer');
+  // The old chat goes stale on the registry poll, not with the switch: wait for it rather than race it. It used
+  // to time out one run in six, because the chat a holder *leaves* was never pushed — linkTermToRegistry told
+  // the new chat and nobody else, so the old card kept a drawer that had moved on (fixed 2026-09-22).
+  await ctx.waitFor(`(s => s && !s.terminal && !s.alive)(window.peix.session(${JSON.stringify(chat.id)}))`,
+    { what: 'the old chat a stale card now, without a drawer', timeout: 20_000 });
   const terms = await ctx.server.terminals();
   ctx.assert.equal(terms.filter(t => !t.shell && t.exited === null).length, 1, 'one claude process, not a second resume');
   ctx.assert.equal(terms.find(t => !t.shell).sessionId, after.current, "the holder is the new chat's");

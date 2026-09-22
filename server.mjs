@@ -1397,9 +1397,13 @@ function linkTermToRegistry(pid, s, ppids = null) {
   for (const t of terms.values()) {
     if (t.shell || t.sessionId === s.id) continue;
     if (t.pid !== pid && !(t.task && t.exited === null && descends(pid, t.pid, ppids))) continue;
+    const was = sessions.get(t.sessionId);   // the chat it is leaving — /clear gave this pid a new id
     t.sessionId = s.id; t.claudePid = pid; holderSend(t, { t: 'meta', sessionId: s.id, claudePid: pid });
     noteEnv(s.id, t.task);
     broadcast('terminal', termSummary(t)); schedulePush(s);
+    // The chat it left has to be told too, or its card keeps a drawer that is somewhere else now and only
+    // something unrelated happening to it ever clears that (2026-09-22, found through drawer-clear's flake).
+    if (was && was !== s) schedulePush(was);
   }
 }
 /** End the process in a drawer; an exited one is let go at once instead of lingering. */
