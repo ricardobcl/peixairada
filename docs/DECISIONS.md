@@ -4,6 +4,40 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-22.
 
+## Decisions of 2026-09-22, evening — the harness: one command, a fast clock, and the flakes named
+
+* **`npm run scenarios` runs all thirteen**, one at a time, in about a minute, with a line each and a verdict.
+  Sequential on purpose: four servers and four Chromes on one Mac is how a suite starts failing on the clock
+  rather than on the board, which is worse than a suite that takes a minute. A failure is run **once more**;
+  passing then is reported `FLAKY` *with what it failed on the first time*, and the suite still exits 0 — a
+  browser scenario that passes on the second go is usually the machine. `--no-retry` is the gate for a bisect.
+* **Every test server now gets a fast clock and an empty org directory.** The registry poll is what notices a pid
+  that died, a chat that moved to a new session id and a background command that let its output file go; at the
+  live ten seconds a scenario either waits half a minute or races it. `lib/testserver.mjs` sets it to 1.2 s (and
+  `TASK_GRACE_MS` to 400 ms) for every scenario, and gives each server an `ORG_DIR` of its own under its state
+  dir, so nothing can list the real `~/acme`. `meta.env` is spread last, so a scenario that means something
+  else still says so. Three scenarios lost their boilerplate to this.
+* **Two flakes were real and are fixed, and one of them was a bug in the board.** `drawer-clear` asserted that
+  the old chat had gone stale the instant the board followed the process to its new one — that happens on the
+  registry poll, so it is a wait, not an assertion; but with the wait it still failed one run in six, because
+  **the chat a holder leaves was never pushed**. `linkTermToRegistry` told the chat the drawer moved *to* and
+  nobody else, so the old card kept a drawer that had moved on until something unrelated happened to that chat.
+  A flake worth chasing: `/clear` in a drawer is the ordinary way to hit it. `focus-view`'s read-back gave up two seconds after an attach and took **the first line it found**,
+  which mid-snapshot is as often the older `/focus` line as the newer one — and a verdict equal to what the board
+  already thinks *is* a verdict, so it stopped looking. It waits for the screen to stop growing and reads once.
+* **One flake is understood and named rather than hidden.** `focus-view`'s last step still fails perhaps one run
+  in three. The page's screen and the holder's are two emulators fed the same bytes, and a resize reaches them at
+  slightly different moments, so they can drift by a line and stay drifted until the next attach re-syncs the
+  page. The fake claude repaints its live region at an absolute row, so one line of drift makes its erase eat a
+  *different* transcript line in each — measured: the page kept the newest `/focus` line and the holder did not,
+  and the snapshot is the holder's. The fix is a re-sync after a resize settles, which is a change to the drawer,
+  not to the test; until it is written the runner reports the flake with its reason, which is better than a green
+  suite that lies.
+* **lsof's silence is now audible.** `taskGone` shells out to `lsof`, which reads every process on the Mac and
+  takes the better part of a second on an idle one; a run killed by the five-second timeout looked exactly like
+  "still running", so a chip could sit on a card forever with nothing in the log. Fifteen seconds, `-w`, and a
+  line in the log when it does not answer.
+
 ## Decisions of 2026-09-22, later — the split belongs to a chat, the rail, the blinking question, and a black pane
 
 * **The drawer was sizing itself to its terminal instead of to the pane** (Ricardo: "you restart the FE and all

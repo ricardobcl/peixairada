@@ -20,6 +20,7 @@ npm test                            # node:test over test/ — pure logic, and t
 npm run check                       # static: every script parses, the page's script compiles, shell, swiftc -typecheck (≈10 s)
 npm run verify -- "<js>"            # one expression on the live board in headless Chrome (see Verifying)
 npm run scenario -- scripts/scenarios/<name>.mjs   # a multi-step browser check on its own server (see Verifying)
+npm run scenarios                   # all of them, one at a time, with a verdict (~60 s); `-- drawer` narrows it
 npm run map                         # rewrite the section maps at the top of server.mjs and index.html
 ```
 
@@ -70,7 +71,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | PRs mentioned | `pr-link` lines *and* GitHub pull URLs in user/assistant text; most recently mentioned first; `gh api graphql` batched for state and title (one of the two network calls) |
 | Plan usage (the cog's popover) | `GET https://api.anthropic.com/api/oauth/usage` with Claude Code's own OAuth bearer from the keychain item *Claude Code-credentials*; `USAGE=off` disables; the token never reaches the page. → Findings: *plan usage* |
 | Permission prompts | only via hooks (they never reach the transcript), or visibly in the drawer |
-| Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login zsh (mise's PATH); it registers like any CLI run; a new chat is tied to its session by pid. **A folder whose Taskfile launches claude** (a task whose description mentions Claude — oracle's `task production-workload`…) starts new chats as `task <name>` instead: `GET /api/launchers?cwd=` lists them (`task --list --json`, cached by the file's mtime, `TASK_BIN` overrides), `POST /api/terminals {cwd, task}` checks the name against that list; claude is then a *descendant* of the PTY's pid, found through `ps` (`linkTermToRegistry`, `t.claudePid`), which is also where the launcher's name is written down for good (`noteEnv` → `envs` in the state file → `s.env`, what ⌥⌘O scopes by). A resume never goes through task. **`/clear` (or `/resume`) in the drawer** gives that pid a new session id — the registry file says so — and `linkTermToRegistry` moves the holder to it; the page follows the holder to whatever chat it runs (`terminal` event → `openSession`), the old chat is a stale card |
+| Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login zsh (mise's PATH); it registers like any CLI run; a new chat is tied to its session by pid. **A folder whose Taskfile launches claude** (a task whose description mentions Claude — oracle's `task production-workload`…) starts new chats as `task <name>` instead: `GET /api/launchers?cwd=` lists them (`task --list --json`, cached by the file's mtime, `TASK_BIN` overrides), `POST /api/terminals {cwd, task}` checks the name against that list; claude is then a *descendant* of the PTY's pid, found through `ps` (`linkTermToRegistry`, `t.claudePid`), which is also where the launcher's name is written down for good (`noteEnv` → `envs` in the state file → `s.env`, what ⌥⌘O scopes by). A resume never goes through task. **`/clear` (or `/resume`) in the drawer** gives that pid a new session id — the registry file says so — and `linkTermToRegistry` moves the holder to it and pushes **both** chats, the one it joins and the one it leaves (2026-09-22: only the first was told, so the old card kept a drawer that had moved on); the page follows the holder to whatever chat it runs (`terminal` event → `openSession`), the old chat is a stale card |
 
 **Never written: anything under `~/.claude`.** The board is read-only against Claude Code's data. The fake claude
 refuses to run against the real directory for the same reason.
@@ -354,10 +355,18 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   fake claude when asked, launches Chrome with **focus emulation on**, and ends terminals, holders, Chrome and temp
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
-  `assert`, `cmd(code)` (a plain ⌘ press; `key(code)` is ⌥⌘). The thirteen in `scripts/scenarios/` are the
+  `assert`, `cmd(code)` (a plain ⌘ press; `key(code)` is ⌥⌘), `screen(g)` / `waitPrompt(ms, g)` (the half, 0 by
+  default — the whole column while nothing is split). The thirteen in `scripts/scenarios/` are the
   regression checks for the drawer (re-attach, restart, geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a
-  compose key), the hotkeys, the tab strip and the split, the new-chat flow and the project step's folders. `meta.env` goes to the throwaway server — a scenario that reads a directory of the
-  machine's (`ORG_DIR`) points it at one of its own, so it does not depend on what `~/acme` happens to hold.
+  compose key), the hotkeys, the tab strip and the split, the new-chat flow and the project step's folders.
+* **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
+  starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
+  `FLAKY` with what it failed on the first time, and the suite still exits 0; `--no-retry` is the honest gate.
+  Only `focus-view` is known to use it — see *Two measurement traps*.
+* **Every test server gets a fast clock and an empty org directory** (`lib/testserver.mjs`): `REGISTRY_POLL_MS`
+  1200 and `TASK_GRACE_MS` 400, because the live ten seconds is what a scenario either waits out or races; and an
+  `ORG_DIR` of its own under the state dir, so nothing ever lists the real `~/acme`. `meta.env` is spread last,
+  so a scenario that means something else says so (`new-project` points `ORG_DIR` at a tree it built).
 * **Test against the fake claude, not real chats**: `scripts/fakeclaude.mjs` via `CLAUDE_BIN` (the test server's
   `fake: true`) is instant and touches nothing. A test against the real `~/.claude` (read-only, `claudeDir` unset)
   must use a stale chat and `DELETE` the terminals it made.
@@ -365,6 +374,12 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   headless page's `focus()` is not a focus without `Emulation.setFocusEmulationEnabled` (the runner sets it); and a
   chat switch as a re-attach resizes the drawer by itself (the other chat's reply box) and masks results — ⌥⌘T then
   ⌥⌘C (the zsh tab and back) is the clean re-attach.
+* **The page's screen and the holder's are two emulators** fed the same bytes, and a resize reaches them at
+  slightly different moments — so they can drift by a line and stay drifted until the next attach re-syncs the
+  page from the snapshot. The fake claude repaints its live region at an absolute row, so a drift of one line
+  makes its erase eat a *different* transcript line in each: `focus-view`'s last step (a `/focus` typed by hand,
+  read back off the re-attached screen) loses that line perhaps one run in three, which is the flake
+  `npm run scenarios` retries. Measured 2026-09-22; the fix is a re-sync after a resize, and is not written.
 * **The fake claude scrolls before it repaints on a shrink** (`drawLive`, 2026-09-20 late), as a terminal app would:
   before that the strip's two rows made it erase its own banner on re-attach, and the scrollback check in
   `drawer-reattach` failed for a fixture reason. A red drawer scenario can be the fake's geometry, not the drawer's.
