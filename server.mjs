@@ -105,6 +105,9 @@ let hiddenProjects = [];
 // (2026-09-21, so ⌥⌘O can list oracle's open chats under the environment they belong to). Recorded when the pid
 // ties the terminal to its session, kept here because the board never writes under ~/.claude.
 let envs = {};
+// System notifications on or off — the cog's switch (2026-09-23). Off, an alert still reaches every page (the unread
+// badges, the Dock's count) but goes out `quiet`: nothing posts a banner for it, the app, a browser or osascript here.
+let notificationsOn = true;
 
 // One-time move from the old ~/.peixairada location. Same filesystem, so the rename is atomic; the
 // empty directory is left behind rather than removing something we did not create.
@@ -125,9 +128,10 @@ try {
   pinned = Array.isArray(st.pinned) ? st.pinned.filter(k => typeof k === 'string') : [];
   hiddenProjects = Array.isArray(st.hidden) ? st.hidden.filter(k => typeof k === 'string') : [];
   envs = st.envs || {};
+  notificationsOn = st.notifications !== false;
 } catch {}
 function saveState() {
-  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks, projects, titles, pinned, hidden: hiddenProjects, envs }, null, 1)); }
+  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn }, null, 1)); }
   catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
 const isDone = s => !!doneMarks[s.id] && doneMarks[s.id] >= (s.lastActivity || '');
@@ -919,9 +923,9 @@ function fireNotify(s) {
     // No registry entry: most likely a non-interactive/headless run. Still surface it in the UI.
   }
   const asked = sum.ask?.text || (sum.ask?.waitingFor ? `Waiting on you: ${sum.ask.waitingFor}` : 'Waiting for your input');
-  const evt = { kind, sessionId: s.id, project: sum.project, title: sum.title, name: s.live?.name || null, cwd: s.cwd, snippet: kind === 'reply' ? sum.lastReply : asked, ts: new Date().toISOString() };
+  const evt = { kind, sessionId: s.id, project: sum.project, title: sum.title, name: s.live?.name || null, cwd: s.cwd, snippet: kind === 'reply' ? sum.lastReply : asked, ts: new Date().toISOString(), quiet: !notificationsOn };
   broadcast('alert', evt);
-  nativeNotify(kind === 'reply' ? `Claude replied · ${sum.project}` : `Claude needs input · ${sum.project}`, sum.title, evt.snippet || '');
+  if (notificationsOn) nativeNotify(kind === 'reply' ? `Claude replied · ${sum.project}` : `Claude needs input · ${sum.project}`, sum.title, evt.snippet || '');
 }
 
 function schedulePush(s) {
@@ -1580,7 +1584,7 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': m[2] === 'css' ? 'text/css; charset=utf-8' : 'application/javascript; charset=utf-8', 'cache-control': 'public, max-age=86400' });
       return res.end(readFileSync(f));
     }
-    if (req.method === 'GET' && p === '/api/sessions') return json(res, 200, { sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), claudeDir: CLAUDE_DIR, notify: NOTIFY });
+    if (req.method === 'GET' && p === '/api/sessions') return json(res, 200, { sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), claudeDir: CLAUDE_DIR, notify: NOTIFY, notifications: notificationsOn });
     if (req.method === 'GET' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/messages$/))) {
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
@@ -1648,6 +1652,13 @@ const server = createServer(async (req, res) => {
       hiddenProjects = [...new Set(body.hidden.filter(k => typeof k === 'string' && /^(\/|c:\w+$)/.test(k)).map(k => k.slice(0, 1000)))].slice(0, 500);
       saveState(); broadcast('hidden', { hidden: hiddenProjects });
       return json(res, 200, { ok: true, hidden: hiddenProjects });
+    }
+    if (req.method === 'PUT' && p === '/api/notifications') {   // the cog's switch: system notifications on or off, for every page and the app
+      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      if (typeof body.on !== 'boolean') return json(res, 400, { error: 'expected {on: true|false}' });
+      notificationsOn = body.on;
+      saveState(); broadcast('notifications', { on: notificationsOn });
+      return json(res, 200, { ok: true, on: notificationsOn });
     }
     if ((req.method === 'PUT' || req.method === 'DELETE') && p === '/api/peacock') {   // the board sets a folder's Peacock colour
       let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
@@ -1793,13 +1804,13 @@ const server = createServer(async (req, res) => {
       return json(res, r.ok ? 200 : r.code, r.ok ? { url: r.url, started: r.started } : { error: r.error });
     }
     if (req.method === 'POST' && p === '/api/test-notify') {
-      nativeNotify('peixAIrada', 'test', 'Native notifications are working.');
-      broadcast('alert', { kind: 'reply', sessionId: null, project: 'peixAIrada', title: 'Test notification', snippet: 'If you can read this, alerts work.', ts: new Date().toISOString() });
+      if (notificationsOn) nativeNotify('peixAIrada', 'test', 'Native notifications are working.');
+      broadcast('alert', { kind: 'reply', sessionId: null, project: 'peixAIrada', title: 'Test notification', snippet: 'If you can read this, alerts work.', ts: new Date().toISOString(), quiet: !notificationsOn });
       return json(res, 200, { ok: true });
     }
     if (req.method === 'GET' && p === '/events') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
-      res.write(`event: snapshot\ndata: ${JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), notify: NOTIFY })}\n\n`);
+      res.write(`event: snapshot\ndata: ${JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn })}\n\n`);
       sseClients.add(res);
       const ping = setInterval(() => res.write(': ping\n\n'), 25_000);
       req.on('close', () => { clearInterval(ping); sseClients.delete(res); });

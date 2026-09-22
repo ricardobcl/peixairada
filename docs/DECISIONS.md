@@ -2,7 +2,36 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-09-22.
+this file is the *why* and the *state*. Last updated 2026-09-23.
+
+## Decisions of 2026-09-23 — notifications get a switch in the cog
+
+Ricardo: "are system notifications working? I like the notification when claude has finished or is asking me a
+question/prompt. let me turn on or off notifications in the cog settings".
+
+* **They were working.** The app's log for 2026-09-22: 114 alerts, 47 of them while the board was not in front, and
+  47 `notify: UN add ok` — every one posted through UserNotifications, none fell back to osascript; the permission is
+  `authorized` (2). The other 67 were *meant* to be silent: the app posts nothing while its window is key and the app
+  active — the board in front is where the alert would have sent you anyway. Seven of the 114 were `needs-input`, the
+  registry's `waiting` (2026-09-22) at work.
+* **One switch, and it is the server's.** Not a pref: the app posts its banners from the alerts it hears on its own
+  bridge, a browser tab posts its own, and a server run without the app posts through osascript — three posters, one
+  Mac, so the setting belongs in `state.json` (`notifications`) where all of them read the same word. `PUT
+  /api/notifications {on}` sets it and a `notifications` event tells every page; the snapshot carries it.
+* **Off is quiet, not silent.** Every alert still goes out, flagged `quiet: true`: the unread counts on the cards and
+  the Dock badge go on counting, and the posters skip the banner — main.swift (`quiet` on the bridge's message), the
+  page (`onAlert` returns before `Notification` and the old `sound` beep), the server (`nativeNotify` guarded). A
+  missing flag reads as loud, so an older app against a newer server, or the other way round, still notifies.
+* **One switch, not two.** Replies and questions share it: what was asked for is a way to turn them off, and a
+  question with no banner is still a blinking card.
+* A browser tab that has never been asked for notification permission is asked when the switch is turned on; the
+  app has its own, granted to the app.
+* **Found on the way**: the usage's messages (*usage: asking…*, a keychain failure) wore `.note` — the class of
+  `note()`'s popup, `position: fixed` — so they floated over the popover's top instead of sitting in it, over the
+  new switch every time the popover opened, and any `note()` elsewhere deleted them. Renamed `.unote`.
+* `scripts/scenarios/notifications.mjs`: a faked browser `Notification` counts banners — one for an alert while on,
+  none while off with the alert still arriving `quiet`; the switch flips the server and the state file; the API
+  flips the switch back (the event); a restart keeps it and a reloaded page reads it from the snapshot.
 
 ## Decisions of 2026-09-22, late night — a question is the registry's word, not the transcript's (committed 2026-09-23)
 

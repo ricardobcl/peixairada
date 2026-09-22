@@ -76,7 +76,7 @@ page simply cannot do for itself:
 |  | What the app adds |
 |---|---|
 | 🚀 | **Owns the server.** Starts `server.mjs` on launch with the node inside the bundle (no PATH games, no version-manager guessing), stops it on quit. If a server is *already* running on the port — from `npm start` or the launchd agent — it attaches to that one instead and defers to it for notifications, so you never get two of everything. |
-| 🔔 | **Native notifications** from *peixAIrada*, not from "Script Editor" — and clicking one opens that session in the board. Only fires while the window isn't in front. Falls back to the old `osascript` banner if notification permission is refused. |
+| 🔔 | **Native notifications** from *peixAIrada*, not from "Script Editor" — and clicking one opens that session in the board. Only fires while the window isn't in front, and not at all with the cog's *notifications* switch off (the Dock badge still counts). Falls back to the old `osascript` banner if notification permission is refused. |
 | 🎯 | **Dock badge** with the alerts you haven't seen, and a **menu-bar fish** whose menu lists every session waiting on you. Click one to jump straight to it. |
 | 🐙 | **Pages as tabs.** Click a PR row under the chat header (or a card's chip) and the pull request opens on a tab of the chat — beside *chat*, *zsh* and *VS Code* — in a web view of the app's (GitHub refuses to be framed), with ‹ › ↻ ↗ in the strip and your GitHub login kept between launches. **Esc** or the *chat* tab brings the chat back; **×** on a tab forgets its page. |
 | ⌨️ | ⌘R reloads what is in front of you — the page on the pane while one is up, the board otherwise; ⌘⇧R restarts the server. **⌘F finds on the page in the pane**, as a browser does: a bar over its top right, ⏎ / ⇧⏎ or ⌘G / ⇧⌘G for the next match and the one before, esc to close it (no *1 of 12* — WebKit only says whether it found one, and a miss turns the text red). Close the window and it keeps running in the menu bar. |
@@ -136,8 +136,10 @@ flow with the first answers in — a new chat in **oracle**, opening straight on
 same ⌥⌘ family drives the open chat: **⌥⌘C** its claude session, **⌥⌘T** a zsh in its folder, **⌥⌘E** VS Code Web,
 **⌥⌘G** its PR, **⌥⌘↑ / ⌥⌘↓** the chat above or below in the list, **⌥⌘← / ⌥⌘→** the tab beside — chat, zsh, GitHub
 pages, VS Code — see *The chat*) —
-and the **cog** at its bottom opens the settings, which are two things: your **Claude plan usage** at the top and,
-under it, **the list of keys**, for when one slips the mind (and, when you have hidden a project, the way back).
+and the **cog** at its bottom opens the settings, which are three things: your **Claude plan usage** at the top, the
+**notifications** switch — a banner when Claude finishes or asks you something, on by default, and one setting for the
+app and every browser tab — and **the list of keys**, for when one slips the mind (and, when you have hidden a project,
+the way back).
 Hovering the strip's footer opens it, a click on the cog pins it. The usage is the session and weekly windows `/usage` shows,
 plus a weekly row per model the account meters apart (Fable, Sonnet…), read with Claude Code's own login.
 Buckets the API reports under a codename at 0 % stay out of the list. The first time, macOS asks whether `security` may read the
@@ -438,6 +440,7 @@ updates within **~100 ms** of Claude writing a line. Native notifications work f
 | `POST /hook` | receives Claude Code hook payloads (`hooks/hook.sh`) |
 | `POST /api/vscode-web` | start `code serve-web` if nothing answers on its port, and say where it is: `{url, started}` |
 | `POST /api/test-notify` | fire a test alert |
+| `PUT /api/notifications` `{on}` | the cog's switch: system notifications on or off (state file); off, alerts still reach the pages with `quiet: true` and nothing posts a banner |
 
 **Environment:** `PORT` (7331) · `HOST` (127.0.0.1) · `NOTIFY=native|off` · `CLAUDE_DIR` (`~/.claude`) ·
 `STATE_FILE` (defaults to `~/Library/Application Support/peixAIrada/state.json`;

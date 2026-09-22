@@ -209,7 +209,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     es.addEventListener('session', e => { const s = JSON.parse(e.data); sessions.set(s.id, s); schedule(); });
     es.addEventListener('alert', e => { const a = JSON.parse(e.data);
       post({ type: 'alert', kind: a.kind, project: a.project || '', title: a.title || '',
-             snippet: a.snippet || '', sessionId: a.sessionId || '', serverNotify }); });
+             snippet: a.snippet || '', sessionId: a.sessionId || '', serverNotify, quiet: !!a.quiet }); });
   })();
   """
 
@@ -772,11 +772,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       refreshBadges()
     case "alert":
       let focused = window.isKeyWindow && NSApp.isActive
-      logLine("alert: kind=\(body["kind"] as? String ?? "?") project=\(body["project"] as? String ?? "?") focused=\(focused) serverNotify=\(body["serverNotify"] as? Bool ?? false) useUN=\(useUN)")
+      // Quiet: notifications are off (the board's cog). The Dock still counts it; no banner.
+      let quiet = body["quiet"] as? Bool ?? false
+      logLine("alert: kind=\(body["kind"] as? String ?? "?") project=\(body["project"] as? String ?? "?") focused=\(focused) serverNotify=\(body["serverNotify"] as? Bool ?? false) quiet=\(quiet) useUN=\(useUN)")
       if !focused { unread += 1; refreshBadges() }
       // If the user is running a server that already posts its own notifications, don't double up.
       let serverNotifies = body["serverNotify"] as? Bool ?? false
-      if !focused && !serverNotifies {
+      if !focused && !serverNotifies && !quiet {
         notify(kind: body["kind"] as? String ?? "reply",
                project: body["project"] as? String ?? "",
                title: body["title"] as? String ?? "",

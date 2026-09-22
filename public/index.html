@@ -71,12 +71,20 @@
   .usage .ubar { height: 9px; border-radius: 5px; background: var(--inline-bg); overflow: hidden; }
   .usage .ubar i { display: block; height: 100%; border-radius: 5px; background: var(--u, var(--idle)); }
   .usage .up { text-align: right; font-weight: 700; color: var(--ink); }
-  .usage .ur, .usage .note { font-size: 17px; }
-  .usage .note { line-height: 1.35; white-space: normal; }
+  .usage .ur, .usage .unote { font-size: 17px; }
+  .usage .unote { line-height: 1.35; white-space: normal; }   /* not `.note`: that is note()'s popup — position: fixed, and note() removes every one */
   /* The keys, so they can be looked up: two columns under a rule, the chord in ink, what it does in muted. */
   #settings { width: 480px; }   /* the usage rows set it; the keys wrap inside */
   .pop .keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: baseline; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
   .pop .keys .kh { grid-column: 1 / -1; font-size: 11px; }
+  /* The one switch (2026-09-23): system notifications on or off, the server's word so the app and every tab agree. */
+  .pop .opt { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); cursor: pointer; }
+  .pop .opt b { font-weight: 600; color: var(--ink); }
+  .pop .opt input { appearance: none; -webkit-appearance: none; position: relative; margin: 0; width: 28px; height: 16px; border-radius: 8px; background: var(--line); cursor: pointer; transition: background .15s; }
+  .pop .opt input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: transform .15s; }
+  .pop .opt input:checked { background: var(--accent); }
+  .pop .opt input:checked::after { transform: translateX(12px); }
+  .pop .opt input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   /* What ⌥⌘N's ✕ took off the board, and the only way back to it. Empty is nothing at all — the popover is the
      usage and the keys until something is hidden. */
   .pop .hid { display: grid; gap: 3px; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
@@ -676,6 +684,7 @@
 <div id="settings" class="pop" hidden>
   <h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4>
   <div id="usage" class="usage"></div>
+  <label class="opt" title="Off, nothing posts a banner — not the app, not a browser tab, not the server — and the unread counts on the cards and the Dock go on as before"><input type="checkbox" id="notifyOn" checked><span><b>notifications</b> — a banner when Claude finishes or asks you something, while the board is not in front</span></label>
   <div class="keys" title="From anywhere on the board, the terminal included">
     <span class="kh">keys</span>
     <kbd>⌥⌘T</kbd><span>a zsh in this folder, a tab beside the chat · again to show it</span>
@@ -760,7 +769,7 @@
 // Map ▴
 (() => {
   const $ = s => document.querySelector(s);
-  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [] };
+  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true };
   const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, foldBy: {}, headDetails: false, chatZoom: 1, projectsCompact: true, sessionsCompact: false, splitAt: .5 };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
@@ -814,13 +823,23 @@
   // sentence, not a blank: the first ask on a Mac is a keychain prompt, and an API-key login has none.
   const untilReset = iso => { if (!iso) return ''; const m = Math.max(0, Math.round((new Date(iso) - Date.now()) / 60000)); return m >= 1440 ? `resets in ${Math.floor(m / 1440)}d ${Math.floor(m % 1440 / 60)}h` : m >= 60 ? `resets in ${Math.floor(m / 60)}h ${m % 60}m` : `resets in ${m}m`; };
   async function loadUsage() {
-    const box = $('#usage'); box.innerHTML = '<span class="note">usage: asking…</span>';
+    const box = $('#usage'); box.innerHTML = '<span class="unote">usage: asking…</span>';
     let r, d;
-    try { r = await fetch('/api/usage'); d = await r.json().catch(() => ({})); } catch (e) { box.innerHTML = `<span class="note">usage: ${esc(String(e))}</span>`; return; }
-    if (!r.ok) { box.innerHTML = `<span class="note">usage: ${esc(d.error || `HTTP ${r.status}`)}</span>`; return; }
-    if (!d.windows?.length) { box.innerHTML = '<span class="note">usage: nothing reported for this account</span>'; return; }
+    try { r = await fetch('/api/usage'); d = await r.json().catch(() => ({})); } catch (e) { box.innerHTML = `<span class="unote">usage: ${esc(String(e))}</span>`; return; }
+    if (!r.ok) { box.innerHTML = `<span class="unote">usage: ${esc(d.error || `HTTP ${r.status}`)}</span>`; return; }
+    if (!d.windows?.length) { box.innerHTML = '<span class="unote">usage: nothing reported for this account</span>'; return; }
     box.innerHTML = d.windows.map(w => `<div class="urow" title="${esc(w.key)}${w.resetsAt ? ' · resets ' + esc(new Date(w.resetsAt).toLocaleString()) : ''}"><span class="ul">${esc(w.label)}</span><span class="ubar"><i style="width:${Math.min(100, w.percent)}%;--u:${w.percent >= 90 ? 'var(--needs)' : w.percent >= 70 ? 'var(--working)' : 'var(--idle)'}"></i></span><span class="up">${w.percent}%</span><span class="ur">${untilReset(w.resetsAt)}</span></div>`).join('');
   }
+  // System notifications, the popover's one switch (2026-09-23, Ricardo: "let me turn on or off notifications in the
+  // cog settings"). It is the server's setting, not a pref: the app posts its banners from the alerts it hears, a
+  // browser tab from its own, and all of them follow the `quiet` flag the server puts on each alert. A browser that
+  // has never been asked is asked on the way to on — the app has its own permission, granted to the app.
+  const showNotify = () => { $('#notifyOn').checked = state.notifications; };
+  $('#notifyOn').addEventListener('change', e => {
+    state.notifications = e.target.checked;
+    fetch('/api/notifications', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ on: state.notifications }) });
+    if (state.notifications && !inApp && window.Notification?.permission === 'default') Notification.requestPermission();
+  });
   $('#cogBtn').onclick = e => { e.stopPropagation(); spop.pinned = !spop.pinned; if (spop.pinned) settingsShow(true); else settingsOpen(false); };
   document.addEventListener('click', e => { if (spop.pinned && !e.target.closest('#settings') && !e.target.closest('#pfoot')) settingsOpen(false); });
   // Esc on the page itself: a dialog (the picker, the project editor), the settings popover or the usage card closes,
@@ -2701,7 +2720,8 @@
   function onAlert(a) {
     const viewing = a.sessionId && a.sessionId === state.current && document.visibilityState === 'visible' && document.hasFocus();
     if (a.sessionId && !viewing) state.unread.set(a.sessionId, (state.unread.get(a.sessionId) || 0) + 1);
-    renderBoard(); if (prefs.sound) beep();
+    renderBoard(); if (a.quiet) return;   // notifications off (the cog): the unread count above, nothing else
+    if (prefs.sound) beep();
     if ('Notification' in window && Notification.permission === 'granted' && !viewing) {
       const n = new Notification(`${a.kind === 'reply' ? 'Claude replied' : 'Claude needs input'} · ${a.project}`, { body: `${a.title}\n${a.snippet || ''}`, tag: a.sessionId || 'test' });
       n.onclick = () => { window.focus(); if (a.sessionId) openSession(a.sessionId); n.close(); };
@@ -2716,6 +2736,7 @@
     es.addEventListener('snapshot', e => {
       const d = JSON.parse(e.data);
       state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.peacock = d.peacock || {}; state.repos = d.repos || {};
+      state.notifications = d.notifications !== false; showNotify();
       renderBoard();
       const want = location.hash.slice(1);
       if (want && !state.current && state.sessions.has(want)) openSession(want);
@@ -2727,6 +2748,7 @@
     es.addEventListener('repos', e => { state.repos = JSON.parse(e.data).repos || {}; });
     es.addEventListener('pins', e => { state.pins = JSON.parse(e.data).pins || []; renderBoard(); });
     es.addEventListener('hidden', e => { state.hidden = JSON.parse(e.data).hidden || []; renderBoard(); if ($('#pick').open) pickRender(); });
+    es.addEventListener('notifications', e => { state.notifications = JSON.parse(e.data).on !== false; showNotify(); });
     es.addEventListener('terminal', e => {
       const t = JSON.parse(e.data);
       const term = termFor(t.id); if (!term) return;

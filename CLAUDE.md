@@ -136,7 +136,7 @@ refuses to run against the real directory for the same reason.
   → `scripts/scenarios/day-separator.mjs`. A finished job moves its card into the ready group, where its
   last prompt puts it.
 * **State lives in three places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done
-  ticks, named projects, board titles, pins, the environment each chat was started in; `STATE_FILE` overrides) shared by the app and every browser; the
+  ticks, named projects, board titles, pins, the environment each chat was started in, notifications on or off; `STATE_FILE` overrides) shared by the app and every browser; the
   browser's `localStorage` `peixairada-prefs` (selected project, filters, widths, zoom, folds, drawer open/height);
   and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it renders reads its state from prefs.
 
@@ -197,7 +197,8 @@ refuses to run against the real directory for the same reason.
   (`.cur`), never in the row's `auto` column: it sizes the track and the name's `1fr` is left with nothing.
   → `scripts/scenarios/new-project.mjs`, Decisions 2026-09-21.
 * **The cog's popover is the whole of the board's settings** (2026-09-21): the plan usage at the top, half again
-  the size of the rest, and the keys under it — nothing else. It opens on *hover of `#pfoot`*, the strip's footer,
+  the size of the rest, **the notifications switch** under it (2026-09-23, `#notifyOn`), and the keys — nothing
+  else. It opens on *hover of `#pfoot`*, the strip's footer,
   which reaches the window's bottom left pixel; a click on the cog pins it, Esc or a click away closes it. The fish
   is only the SSE light now. `sound`, `showAll`, `toolsMode` and `foldCode` keep whatever they were saved as and
   nothing sets them — the chat header's `{ }` is still the fold for a chat.
@@ -346,10 +347,15 @@ refuses to run against the real directory for the same reason.
   `PROJECT_ABBR` is the same idea for the folded list's squares, and is read only by `projAbbr`.
 * **Never name a modifier class after something the page also selects by**: a background command's chip wore `card`
   as a placement marker nothing read, and `#slist .card` matched it — ⌥⌘↑/↓ walked over a chip and opened nothing
-  (2026-09-22). The walkers take `#slist > .card` now.
+  (2026-09-22). The walkers take `#slist > .card` now. Same trap the other way: the usage's messages wore `.note`,
+  which is `note()`'s fixed-position popup — they floated over the popover (2026-09-23); `.unote` now.
 * Code folds per chat: `prefs.foldBy[id]` (the header's `{ }` button) over `prefs.foldCode`, which has no control now; `foldOn(id)` is the one
   rule, used by `md()`. Claude Code cannot fold the code it prints in the drawer — ctrl+o is tool output only.
 * No in-page toasts: alerts are the badge plus a system notification; the app sets `NOTIFY=off` on its own server.
+  **The cog's switch is the server's word** (`notifications` in the state file, `PUT /api/notifications`, a
+  `notifications` event): off, every alert still goes out — the cards' and the Dock's counts — but `quiet: true`,
+  and the three posters (main.swift, the page's `Notification`, the server's osascript) each skip it. A new poster
+  has to read `quiet` too. → `scripts/scenarios/notifications.mjs`.
 * Swift: `Result<Void, String>` does not compile; `isReleasedWhenClosed = false` on the window; drop -999 in every
   navigation-failure callback; pin the deployment target (`-target`, `LSMinimumSystemVersion`); an Edit menu or no ⌘V.
 * Sign with the one Apple Development identity (stable team → App Management grants survive installs); chmod
@@ -377,10 +383,10 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
   `assert`, `cmd(code)` (a plain ⌘ press; `key(code)` is ⌥⌘), `screen(g)` / `waitPrompt(ms, g)` (the half, 0 by
-  default — the whole column while nothing is split). The fourteen in `scripts/scenarios/` are the
+  default — the whole column while nothing is split). The fifteen in `scripts/scenarios/` are the
   regression checks for the drawer (re-attach, restart, geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a
   compose key), the hotkeys, the tab strip and the split, the new-chat flow, the project step's folders and ✕,
-  and the chat list's two rules.
+  the chat list's two rules and the notifications switch.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY` with what it failed on the first time, and the suite still exits 0; `--no-retry` is the honest gate.
