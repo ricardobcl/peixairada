@@ -1,10 +1,9 @@
 // The day's lines in the chat list. The fish have swum between the clauding cards and the ready ones since
-// 2026-09-20; since 2026-09-22 a second school swims the other way where the day turns over, and since 2026-09-23
-// there is one such line under every day's run of cards, naming it — "today", else DD-MM-YYYY — so a line closes
-// the day *above* it and the oldest day in the list gets one too. Each is a kept node with an animation phased to
-// the document clock (a re-render must not restart them), so what this checks is the lines' places and names, that
-// a day the list brings back (a done card from today, after older ready ones) gets a line of its own, and that a
-// re-render puts the same nodes back.
+// 2026-09-20; since 2026-09-22 a second school marked where the day turned over, and since 2026-09-23 there is one
+// such line under every day's run of cards, naming it in the middle — "today", else DD-MM-YYYY — with fish either
+// side that keep still. A line closes the day *above* it, so the oldest day in the list gets one too. What this
+// checks is the lines' places and names, that the day is centred and nothing on it moves, and that a day the list
+// brings back (a done card from today, after older ready ones) gets a line of its own.
 import { makeFixture } from '../fixture.mjs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -12,9 +11,17 @@ import { tmpdir } from 'node:os';
 export const meta = { server: true, fixture: 'auto' };
 
 // What #slist holds, in order: a card is its title, a line is its kind, the day it names and the way its fish point.
-const strip = ctx => ctx.evaluate(`JSON.stringify([...document.querySelector('#slist').children].map(el => el.classList.contains('gsep')
-  ? { sep: el.classList.contains('day') ? 'day' : 'fish', day: el.querySelector('b')?.textContent || '', fish: el.querySelector('span').textContent.slice(0, 3), anim: el.querySelector('span').getAnimations().length }
-  : { card: el.querySelector('.title')?.textContent || '' }))`).then(JSON.parse);
+// A day's line also says where its day sits against the line's middle, the fish either side of it that show (those
+// on the box's first row — the rest wrap out of sight), whether each of those is whole inside its box, and how many
+// animations run anywhere on it.
+const strip = ctx => ctx.evaluate(`JSON.stringify([...document.querySelector('#slist').children].map(el => {
+  if (!el.classList.contains('gsep')) return { card: el.querySelector('.title')?.textContent || '' };
+  const b = el.querySelector('b'), r = el.getBoundingClientRect(), br = b?.getBoundingClientRect();
+  const side = box => { const r = box.getBoundingClientRect(); const shown = [...box.children].filter(x => x.getBoundingClientRect().top < r.bottom);
+    return { n: shown.length, text: [...new Set(shown.map(x => x.textContent))], whole: shown.every(x => { const f = x.getBoundingClientRect(); return f.left >= r.left - .5 && f.right <= r.right + .5; }) }; };
+  return { sep: el.classList.contains('day') ? 'day' : 'fish', day: b?.textContent || '', off: br ? Math.round((br.left + br.width / 2) - (r.left + r.width / 2)) : null,
+    sides: b ? [...el.querySelectorAll('i')].map(side) : null, anim: el.getAnimations({ subtree: true }).length };
+}))`).then(JSON.parse);
 const pad2 = n => String(n).padStart(2, '0');
 const ddmmyyyy = d => `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()}`;
 const filter = (ctx, q) => ctx.evaluate(`(() => { const q = document.querySelector('#q'); q.value = ${JSON.stringify(q)}; q.dispatchEvent(new Event('input', { bubbles: true })); })()`);
@@ -46,14 +53,11 @@ export default async function (ctx) {
     { card: 'three days back' }, { sep: 'day', day: ddmmyyyy(d3) },
   ];
   ctx.assert.deepEqual(out.all.map(x => x.sep ? { sep: x.sep, day: x.day } : x), expect, 'a line under each day, naming it: today, then DD-MM-YYYY');
-  ctx.assert.ok(out.all.filter(x => x.sep).every(x => x.fish === '<><' && x.anim === 1), 'the fish on every line face left, and swim');
-
-  // A re-render — the list is redrawn on every update the board gets — puts the *same* nodes back, mid-swim: the
-  // whole reason they are kept nodes and not innerHTML (a new animation every few seconds is a visible stutter).
-  await ctx.evaluate(`document.querySelectorAll('#slist .gsep.day').forEach(el => { el.dataset.seen = '1'; })`);
-  await ctx.evaluate(`document.querySelector('#q').dispatchEvent(new Event('input', { bubbles: true }))`);
-  out.kept = await ctx.evaluate(`[...document.querySelectorAll('#slist .gsep.day')].map(el => ({ seen: el.dataset.seen === '1', running: el.querySelector('span').getAnimations()[0]?.playState || null }))`);
-  ctx.assert.deepEqual(out.kept, expect.filter(x => x.sep).map(() => ({ seen: true, running: 'running' })), 'the re-render moves those very nodes back, still swimming');
+  for (const x of out.all.filter(x => x.sep)) {
+    ctx.assert.ok(Math.abs(x.off) <= 1, `${x.day} sits in the middle of its line (${x.off}px off)`);
+    ctx.assert.ok(x.sides.every(f => f.n >= 2 && f.whole && f.text.join() === '<><'), `${x.day} has fish either side, all of them whole: ${JSON.stringify(x.sides)}`);
+    ctx.assert.equal(x.anim, 0, `and nothing on ${x.day}'s line moves`);
+  }
 
   // Done cards come last, whatever their day: ticking today's newest brings today back after the older days, and
   // that run gets a line of its own

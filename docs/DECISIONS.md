@@ -38,8 +38,13 @@ question/prompt. let me turn on or off notifications in the cog settings".
   still swimming left past it. *All cards up are from today* is the reading every line keeps: a line closes the day
   above it, so the oldest day in the list has its line at the bottom, and a list of today's chats alone ends in
   *today*. The list is grouped before it is dated — asking, clauding, ready, done — so a day can come back further
-  down (a chat from today ticked done sits under older ready ones) and that run gets a line of its own. Each line is a
-  kept node, like the fish, keyed by its day and its run.
+  down (a chat from today ticked done sits under older ready ones) and that run gets a line of its own.
+* **…centred, and still** (Ricardo, the same day: "center the date (or 'today') and stop the animation, leave it
+  static with the fishes"). The day sits between two equal boxes of `<><`, spaced as the swimming school was, the
+  day included. With nothing moving, the lines are plain markup again — the kept nodes were only ever there so a
+  re-render would not restart an animation. Each fish is its own item in a one-line wrapping row, so the ones that do
+  not fit drop out of sight whole instead of being cut in half at the column's edge — a clipped glyph read as a stray
+  `:` there. The fish between the clauding cards and the ready ones still swim.
 * `scripts/scenarios/notifications.mjs`: a faked browser `Notification` counts banners — one for an alert while on,
   none while off with the alert still arriving `quiet`; the switch flips the server and the state file; the API
   flips the switch back (the event); a restart keeps it and a reloaded page reads it from the snapshot.

@@ -206,9 +206,9 @@ a long job does not move its card up; answering its question or interrupting it 
 you are actively driving stay at the top and the ones you have parked sink by themselves. The time on
 a card is still when *anything* last happened to it; hover it for when you last wrote. Projects
 follow the same rule through their newest chat. Lines of little ascii fish break the list where it turns
-over: `><>` swimming right between what is clauding and what is ready, and `<><` swimming left **under each
-day's chats**, named at its left — *today* under the ones you have been in today, then a `DD-MM-YYYY` under each
-earlier day's.
+over: `><>` swimming right between what is clauding and what is ready, and a still line of `<><` **under each
+day's chats** with the day in its middle — *today* under the ones you have been in today, then a `DD-MM-YYYY` under
+each earlier day's.
 
 The filter box in the header narrows the chat list by repo, title, session name or branch. The
 divider between the chat list and the chat drags; the width, the selected project and the state
