@@ -32,6 +32,14 @@ question/prompt. let me turn on or off notifications in the cog settings".
 * **A card no longer says *terminal here*** (Ricardo: "remove the 'terminal here' from cards as that is the norm and
   becomes cleaner"). The chip is kept for the exceptions — *CLI* (live in iTerm), *live*, *VS Code too* — and a card
   in a project column whose only chip it was loses the whole `.top` row. The chat header still names it.
+* **A line per day in the chat list, named** (Ricardo: "instead use a per day divider and put the day there, using
+  'today' for today (all cards up are from today) and the rest of the dividers, use 'DD-MM-YYYY'"). The one line
+  where today ended becomes a line under every run of cards from one day, the day's name at its left and the fish
+  still swimming left past it. *All cards up are from today* is the reading every line keeps: a line closes the day
+  above it, so the oldest day in the list has its line at the bottom, and a list of today's chats alone ends in
+  *today*. The list is grouped before it is dated — asking, clauding, ready, done — so a day can come back further
+  down (a chat from today ticked done sits under older ready ones) and that run gets a line of its own. Each line is a
+  kept node, like the fish, keyed by its day and its run.
 * `scripts/scenarios/notifications.mjs`: a faked browser `Notification` counts banners — one for an alert while on,
   none while off with the alert still arriving `quiet`; the switch flips the server and the state file; the API
   flips the switch back (the event); a restart keeps it and a reloaded page reads it from the snapshot.

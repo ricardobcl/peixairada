@@ -128,12 +128,13 @@ refuses to run against the real directory for the same reason.
 * **A chat waiting on your answer first, then clauding, then ready, done last** (`RANK` / `rankOf`, the asking
   step added 2026-09-21), inside each group **by when *you* last acted**
   (`lastUserAt`), newest first; a project ranks by its newest chat. The filters and every count still go by
-  `bucket()`, where an asking chat is a ready one — only the order knows the difference, in the list and in ⌥⌘K. **Two rules of ascii fish** (`.gsep`, a line that slides one fish per cycle, phased by the document clock so a
-  re-render does not jolt it — `school()` builds both as kept nodes, `fishHtml(cls)` is their stand-in): `><>`
-  swimming right between the clauding cards and the ready ones, and `<><` swimming left where **today ends**
-  (2026-09-22) — above it the chats you were in today, below the ones from before. The day's rule is drawn at the
-  first crossing in the list as shown, wherever it falls, and not at all when there is none.
-  → `scripts/scenarios/day-separator.mjs`. A finished job moves its card into the ready group, where its
+  `bucket()`, where an asking chat is a ready one — only the order knows the difference, in the list and in ⌥⌘K. **Rules of ascii fish** (`.gsep`, a line that slides one fish per cycle, phased by the document clock so a
+  re-render does not jolt it — `school()` builds them as kept nodes, `fishHtml(cls, key)` is their stand-in): `><>`
+  swimming right between the clauding cards and the ready ones, and `<><` swimming left **under every run of cards
+  from one day** (2026-09-23), named at its left — `today`, else `DD-MM-YYYY` (`dayName()`, by `userAt`). A day's line
+  closes the cards *above* it, so the oldest day in the list gets one at the bottom; the list is grouped first, so a
+  day can come back (a done card from today after older ready ones) and each run gets its own line — kept per
+  `<day>#<run>` in `dayEls`, let go when not shown. → `scripts/scenarios/day-separator.mjs`. A finished job moves its card into the ready group, where its
   last prompt puts it.
 * **State lives in three places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done
   ticks, named projects, board titles, pins, the environment each chat was started in, notifications on or off; `STATE_FILE` overrides) shared by the app and every browser; the
@@ -386,7 +387,7 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   default — the whole column while nothing is split). The fifteen in `scripts/scenarios/` are the
   regression checks for the drawer (re-attach, restart, geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a
   compose key), the hotkeys, the tab strip and the split, the new-chat flow, the project step's folders and ✕,
-  the chat list's two rules and the notifications switch.
+  the chat list's rules and the notifications switch.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY` with what it failed on the first time, and the suite still exits 0; `--no-retry` is the honest gate.

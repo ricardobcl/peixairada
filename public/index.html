@@ -257,8 +257,10 @@
      line of ><> in monospace, clipped to the column, in the muted ink, swimming right: the text slides one fish per
      cycle — six characters, letter-spacing included — so the loop is seamless. One node, kept across renders and
      animated by script (fishEl, by renderSessionList): see there for why not a CSS animation. */
-  .gsep { margin: 2px 10px; font: 600 11px/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: color-mix(in srgb, var(--muted) 80%, transparent); white-space: nowrap; overflow: hidden; user-select: none; }
+  .gsep { display: flex; gap: 8px; margin: 2px 10px; font: 600 11px/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: color-mix(in srgb, var(--muted) 80%, transparent); white-space: nowrap; overflow: hidden; user-select: none; }
+  .gsep i { flex: 1; min-width: 0; overflow: hidden; font-style: normal; }   /* the water: the fish swim under nothing but themselves */
   .gsep span { display: inline-block; will-change: transform; }
+  .gsep b { flex: none; font-weight: 700; color: var(--muted); }   /* a day's line names its day: "today", else DD-MM-YYYY */
   #slist .none { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 0; }
   /* --repo is reset here on purpose: custom properties inherit, and the chat list sets its own for its edge (the
      black on ALL) — without the reset every colourless card wore that. The card's inline --repo still wins. */
@@ -1109,16 +1111,33 @@
   // before today — the same animation, going the other direction"): the first between what is clauding and what is
   // ready, the second between the chats you touched today and the ones from before, its fish facing and swimming
   // left. Both are kept nodes with an animation phased to the document clock, for the reason above.
-  const school = (cls, text, right, title) => {
+  // Since 2026-09-23 the day's line is one per day in the list, each naming its day (dayLine, below), so a school
+  // can carry a label: it stays put at the left and the fish swim in the water beside it.
+  const school = (cls, text, right, title, label = '') => {
     const el = document.createElement('div'); el.className = 'gsep ' + cls; el.title = title;
-    const span = el.appendChild(document.createElement('span')); span.textContent = text;
+    if (label) el.appendChild(document.createElement('b')).textContent = label;
+    const span = el.appendChild(document.createElement('i')).appendChild(document.createElement('span')); span.textContent = text;
     const to = [{ transform: 'translateX(calc(-6ch - 6px))' }, { transform: 'translateX(0)' }];
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches) { const a = span.animate(right ? to : [...to].reverse(), { duration: SWIM_MS, iterations: Infinity }); a.startTime = 0; }
     return el;
   };
   const fishEl = school('fish', FISH, true, 'clauding above, ready below');
-  const dayEl = school('day', BACKFISH, false, 'you were in these today; below, before today');
-  const fishHtml = cls => `<div class="gsep ${cls}"></div>`;   // the stand-ins
+  // A line under each day's cards, naming the day they are from (2026-09-23, Ricardo: "a per day divider and put the
+  // day there, using 'today' for today (all cards up are from today) and the rest … DD-MM-YYYY"). The day is your last
+  // touch, like the order. A line closes the run of cards *above* it, so the oldest day in the list gets one too, at
+  // the bottom. Kept nodes like the fish, by the day and which run of it this is — the list is grouped first, so the
+  // done cards can bring a day back after older ready ones, and each run gets its own line.
+  const pad2 = n => String(n).padStart(2, '0');
+  const dayName = s => {
+    const d = new Date(userAt(s)); if (isNaN(d)) return '';
+    return new Date(d).setHours(0, 0, 0, 0) === new Date().setHours(0, 0, 0, 0) ? 'today' : `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()}`;
+  };
+  const dayEls = new Map();   // 'today#0', '21-09-2026#0', 'today#1'… → its line
+  const dayLine = key => {
+    if (!dayEls.has(key)) { const day = key.split('#')[0]; dayEls.set(key, school('day', BACKFISH, false, day === 'today' ? 'above: the chats you were in today' : `above: the chats you were in on ${day}`, day)); }
+    return dayEls.get(key);
+  };
+  const fishHtml = (cls, key = '') => `<div class="gsep ${cls}"${key ? ` data-key="${key}"` : ''}></div>`;   // the stand-ins
   function renderSessionList(p) {
     const pc = projColor(p); if (pc) $('#sessions').style.setProperty('--repo', pc); else $('#sessions').style.removeProperty('--repo');
     const q = $('#q').value.trim().toLowerCase();
@@ -1137,15 +1156,13 @@
       : folders.length ? `<select id="newChatSel" title="New chat in a folder — opens a terminal running claude there"><option value="">＋ new chat in…</option>${folders.map(f => `<option value="${esc(f)}">${esc(folderName(f))}</option>`).join('')}</select>` : '';
     $('#fchips').innerHTML = FILTERS.map(([k, label]) => `<button class="fchip ${k} ${filterOn(k) ? 'on' : ''}" data-f="${k}" title="${filterOn(k) ? 'Hide' : 'Show'} ${label} chats">${label}<span class="n">${counts[k] || ''}</span></button>`).join('');
     const b = shown.map(rankOf);   // the fish swim once, under the last clauding card when a ready one follows
-    // …and once more where today ends. The list is grouped, and inside a group it is your last touch, newest first,
-    // so the day turns over at most once in each — the first crossing is the one that gets the line, wherever it
-    // falls: with everything from today (or nothing) there is none.
-    const dawn = new Date().setHours(0, 0, 0, 0);
-    const today = shown.map(s => new Date(userAt(s)).getTime() >= dawn);
-    const dayAt = today.findIndex((t, i) => i && !t && today[i - 1]);
-    $('#slist').innerHTML = shown.map((s, i) => `${i && b[i] === 'ready' && b[i - 1] === 'working' ? fishHtml('fish') : ''}${i === dayAt ? fishHtml('day') : ''}${cardHtml(s, p)}`).join('') || `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
+    // …and a day's line under every run of cards from one day: the card whose next one is from another day, or none.
+    const days = shown.map(dayName), runs = {};
+    const dayAfter = i => { const d = days[i]; if (!d || days[i + 1] === d) return ''; runs[d] = (runs[d] ?? -1) + 1; return fishHtml('day', `${d}#${runs[d]}`); };
+    $('#slist').innerHTML = shown.map((s, i) => `${i && b[i] === 'ready' && b[i - 1] === 'working' ? fishHtml('fish') : ''}${cardHtml(s, p)}${dayAfter(i)}`).join('') || `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
     $('#slist .gsep.fish')?.replaceWith(fishEl);
-    $('#slist .gsep.day')?.replaceWith(dayEl);
+    for (const el of document.querySelectorAll('#slist .gsep.day')) el.replaceWith(dayLine(el.dataset.key));
+    for (const k of dayEls.keys()) if (!$('#slist').contains(dayEls.get(k))) dayEls.delete(k);   // a day no longer shown lets its line go
   }
   // Work that outlives the turn, and the one state that is waiting on you — the card's four readings (2026-09-21).
   // A monitor or a background command runs on after the reply, so a *ready* card can still have something running;
