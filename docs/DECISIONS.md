@@ -29,6 +29,9 @@ question/prompt. let me turn on or off notifications in the cog settings".
 * **Found on the way**: the usage's messages (*usage: asking…*, a keychain failure) wore `.note` — the class of
   `note()`'s popup, `position: fixed` — so they floated over the popover's top instead of sitting in it, over the
   new switch every time the popover opened, and any `note()` elsewhere deleted them. Renamed `.unote`.
+* **A card no longer says *terminal here*** (Ricardo: "remove the 'terminal here' from cards as that is the norm and
+  becomes cleaner"). The chip is kept for the exceptions — *CLI* (live in iTerm), *live*, *VS Code too* — and a card
+  in a project column whose only chip it was loses the whole `.top` row. The chat header still names it.
 * `scripts/scenarios/notifications.mjs`: a faked browser `Notification` counts banners — one for an alert while on,
   none while off with the alert still arriving `quiet`; the switch flips the server and the state file; the API
   flips the switch back (the event); a restart keeps it and a reloaded page reads it from the snapshot.

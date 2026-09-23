@@ -216,7 +216,8 @@ chips are remembered per browser.
 ### Anatomy of a card
 
 Every card leads with its **state dot**, the **repo name** when the list spans several folders
-(*ALL*, a named project) and where it is live (VS Code, CLI, or a terminal here), then the
+(*ALL*, a named project) and where it is live when that is not here (VS Code, CLI — a chat in a drawer here, the
+usual case, says nothing), then the
 session title with its age and the ✓ on the same line, the PRs it mentions as `#32`-style chips in
 GitHub's state colours (click one and that chat opens with that PR), the last thing you asked and the
 start of Claude's reply — each marked by a glyph
