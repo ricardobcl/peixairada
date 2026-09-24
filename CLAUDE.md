@@ -137,7 +137,9 @@ refuses to run against the real directory for the same reason.
   comes back into the row while armed or failed** — a warning under a fold is none — and a note about a folded
   button is anchored at ··· (`seen()`). → `scripts/scenarios/head-menu.mjs`.
 * **The chat's PRs are chips in the header row, folded** (2026-09-24): `#prToggle`, one button of the cards' chips
-  (`.hpr` shares `.cpr`'s rule; `HPR_CHIPS` of them, then `+n`), toggles `#prlist` — the rows, one per PR — under the
+  (`.hpr` shares `.cpr`'s rule; every PR is drawn, and `fitHeadPrs()` folds the last ones into `+n` only while the
+  row would leave the title less than its repo name plus `TITLE_ROOM` — on every draw and on the header's
+  `ResizeObserver`; → `scripts/scenarios/header-prs-fit.mjs`), toggles `#prlist` — the rows, one per PR — under the
   header; `prefs.prsOpen`, the board's and not the chat's. The rows are rendered folded too (`#prlist` hidden), so
   ⌥⌘G and the harness still read `#prlist .prrow`. On a tinted header the chips sit on the panel, so a state's
   colour reads on any project's; taller (20 px) and with a 2 px edge than the cards' (`--prb`), on a wash of the

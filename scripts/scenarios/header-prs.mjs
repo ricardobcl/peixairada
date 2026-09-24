@@ -9,7 +9,7 @@ export default async function (ctx) {
   const [two, plain] = ctx.fixture.chats;
   const out = {};
   const head = () => ctx.evaluate(`JSON.stringify((() => { const t = document.querySelector('#prToggle'), pl = document.querySelector('#prlist');
-    return { chips: t ? [...t.querySelectorAll('.hpr')].map(c => c.textContent) : null, expanded: t?.getAttribute('aria-expanded') ?? null,
+    return { chips: t ? [...t.querySelectorAll('.hpr:not(.more)')].map(c => c.textContent) : null, expanded: t?.getAttribute('aria-expanded') ?? null,
       rows: pl.querySelectorAll('.prrow').length, shown: !pl.hidden && pl.offsetParent !== null, pref: window.peix.prefs().prsOpen }; })())`).then(JSON.parse);
   await ctx.openChat(two.id);
   await ctx.waitFor(`document.querySelectorAll('#prlist .prrow').length === 2`, { what: 'two PR rows' });

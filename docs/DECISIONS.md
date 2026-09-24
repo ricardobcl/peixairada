@@ -4,6 +4,22 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-24.
 
+## Decisions of 2026-09-24, small hours — the header's PR chips take the row
+
+Ricardo: "seems like after 4 PRs, they are being collapse even if we have space on the bar - try to use all
+real-estate and only collapse if its really close to the title".
+
+* **Every chip is drawn; only what does not fit folds.** The cap of four (`HPR_CHIPS`) went. `fitHeadPrs()` measures
+  the row — its width, the other things in it (a task's chip, `>_` while it warns, ···), the gaps — and hides chips
+  from the end into `+n` only while the button would leave the title less than its repo name plus 160 px
+  (`TITLE_ROOM`), 170 at the least, the title's own flex-basis, under which the row would wrap. One chip always
+  shows. `+n`'s tooltip lists the folded ones. It runs on every draw of the header and on its `ResizeObserver`, so
+  a window resize, the list's width or the split refit it. On the live board the twelve-PR admin-service chat now
+  shows all twelve with the title whole.
+* `scripts/scenarios/header-prs-fit.mjs`: a chat mentioning ten PRs shows all ten and no `+n` in a wide column;
+  with the list widened to 900 px some fold, `+n` counts them, the row stays one line and the title keeps its
+  room; the list back at 380 px, all ten return.
+
 ## Decisions of 2026-09-24, late night — the header's PR chips get a wash
 
 Ricardo: "the PRs on the header could have a bit of brackground gradient, to make it prettier".

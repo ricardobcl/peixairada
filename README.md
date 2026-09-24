@@ -241,7 +241,8 @@ it. The one button that comes out into the line is the claude session's while it
 before a take-over, or **failed**. Click the repo name in the header to jump to that folder's chats.
 
 **The PRs a chat mentions are chips in the header**, the way the cards show them — `#n` in the PR's state colour,
-on a wash of it, four of them and a `+n` for the rest. **Click them and they unfold under the header, one per row**: the state in
+on a wash of it, as many as the line has room for — the last ones fold into a `+n` only when they would crowd
+the title. **Click them and they unfold under the header, one per row**: the state in
 GitHub's colours, `repo#n`, the whole title once `gh` has answered, and when it was last mentioned. Six rows, then
 **… n more**. Click a row and the PR pane opens on it; click the chips again to fold the rows away. The board
 remembers which way you left them.

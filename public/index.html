@@ -1813,7 +1813,6 @@
 
   // ---- chat header -------------------------------------------------------------------
   const PR_ROWS = 6;   // a chat that lists PRs mentions dozens; the block shows this many and folds the rest behind "more"
-  const HPR_CHIPS = 4;   // …and the header's chips this many, the rest a +N
   const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" href="${esc(pr.url)}" target="_blank" rel="noopener"
       title="${esc(`${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}`)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span><span class="meta">${rel(pr.lastAt)}</span></a>`;
   const FOCUS_TIP = "Open this chat in VS Code";   // the button only — its key went (2026-09-20, Ricardo: "leave the button up top only")
@@ -1836,7 +1835,7 @@
     // long ago. The dot and its age *are* the details button (2026-09-20, Ricardo: "simplify the icon on the top banner
     // right" — the dot, the age and a ··· were three things for one fold): a click shows path, branch and session
     // details under the row. The chat's PRs are chips in the row, and a click on them the block under it, one per row
-    // (#prlist) — HPR_CHIPS of them, the rest counted.
+    // (#prlist) — as many as the row has room for, the rest counted (fitHeadPrs).
     const take = takeable(s), armed = take && drawer.arm === s.id;
     const menu = $('#hmenu'); if (menu.open && menu.dataset.id !== s.id) menu.close();   // another chat: its own menu, shut
     menu.dataset.id = s.id;
@@ -1845,8 +1844,8 @@
     const termWord = drawer.err ? 'failed' : take ? (armed ? (s.status === 'working' ? 'sure? mid-reply' : inVsCode(s) ? 'sure? ends VS Code’s' : 'sure?') : 'take over') : termLive(s) ? 'claude session' : 'claude here';
     const prs = s.prs || [], prsOpen = !!prefs.prsOpen;
     const hprs = !prs.length ? '' : `<button class="hprs${prsOpen ? ' on' : ''}" id="prToggle" aria-expanded="${prsOpen}" title="${prs.length} PR${prs.length === 1 ? '' : 's'} in this chat — click to ${prsOpen ? 'fold the list' : 'list them, one per row'} · ⌥⌘G opens one">${
-      prs.slice(0, HPR_CHIPS).map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</span>`).join('')
-    }${prs.length > HPR_CHIPS ? `<span class="hpr more">+${prs.length - HPR_CHIPS}</span>` : ''}<span class="caret">▾</span></button>`;
+      prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</span>`).join('')
+    }<span class="hpr more" hidden></span><span class="caret">▾</span></button>`;
     $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span>${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}<span class="sep">/</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
       ${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
@@ -1875,6 +1874,7 @@
       + (prs.length > PR_ROWS ? `<button class="more" id="prMore">${state.prsAll ? 'fewer' : `… ${prs.length - PR_ROWS} more`}</button>` : '');
     pl.querySelector('#prMore')?.addEventListener('click', () => { state.prsAll = !state.prsAll; renderHead(s); });
     const pt = $('#prToggle'); if (pt) pt.onclick = () => { prefs.prsOpen = !prefs.prsOpen; savePrefs(); renderHead(s); };
+    fitHeadPrs();
     renderComposer(s); renderRival(s);
     // Say so when it fails — silently swallowing the response is how a missing `code` CLI looked
     // like a dead button for weeks. The icon has to survive that, so failure adds a word beside it
@@ -1912,6 +1912,30 @@
     $('#shead .repo').onclick = () => { if (s.cwd) selectProject(s.cwd); };
     $('#shead h2 .t').ondblclick = () => editTitle(s);
   }
+  // The header's PR chips take whatever the row has (2026-09-24, Ricardo: "after 4 PRs, they are being collapse even
+  // if we have space on the bar - try to use all real-estate and only collapse if its really close to the title"): all
+  // of them are drawn, and the last ones fold into +n only while the row would otherwise crowd the title — its repo
+  // name and TITLE_ROOM of the title itself stay clear. At least one chip always shows. Run on every header draw and
+  // on every change of the header's size.
+  const TITLE_ROOM = 160;
+  function fitHeadPrs() {
+    const head = $('#shead'), t = $('#prToggle'); if (!t) return;
+    const chips = [...t.querySelectorAll('.hpr:not(.more)')], more = t.querySelector('.hpr.more');
+    for (const c of chips) c.hidden = false;
+    more.hidden = true;
+    const cs = getComputedStyle(head), gap = parseFloat(cs.columnGap) || 0;
+    const row = [...head.children].filter(el => el.tagName !== 'H2' && el !== t && !el.classList.contains('details') && el.getClientRects().length);
+    const title = Math.max(170, (head.querySelector('h2 .repo')?.offsetWidth || 0) + TITLE_ROOM);   // 170: the title's own flex-basis, below which the row wraps
+    const room = head.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - title
+      - row.reduce((w, el) => w + el.getBoundingClientRect().width, 0) - gap * (row.length + 1);
+    let shown = chips.length;
+    while (shown > 1 && t.getBoundingClientRect().width > room) {
+      chips[--shown].hidden = true;
+      more.hidden = false; more.textContent = `+${chips.length - shown}`;
+      more.title = chips.slice(shown).map(c => c.title).join('\n');
+    }
+  }
+  new ResizeObserver(() => fitHeadPrs()).observe($('#shead'));
   // ··· and its menu. Placed under the button, right-aligned, each time it opens and each time the header is drawn
   // while it is up; closed by a click anywhere else, Esc (every dialog's), a hotkey (runHotkey), or an action that
   // goes somewhere — the toggles leave it up, so their new state is read where they were clicked.
