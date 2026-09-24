@@ -4,6 +4,37 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-24.
 
+## Decisions of 2026-09-24, night — the header's buttons go under ···
+
+Ricardo: "on the chat top bar, every icon that's on the right should live under a discrete '...' borderless button".
+
+* **The row is the title, the PR chips, a running task's chip and ···.** The claude session, VS Code Web, open in
+  VS Code, focus view, the code fold and the state dot with its age (the details fold) are rows of a menu under a
+  borderless ···, each with a word and, on the right, its key or its state (*on*/*off*, *show path*). The VS Code
+  mark became an information row there. The task chip stayed in the row: it is not a button but news, like the PRs.
+* **The menu is a non-modal `<dialog>`**, for three things the board already does for dialogs: the pane goes down
+  while one is up (a GitHub page in the app is a native view and would cover the menu), Esc closes it without
+  leaving full screen, and it is out of the header's markup, so the header's redraw on every update does not close
+  it. Toggles leave it up and redraw their row; actions that go somewhere close it; so do a click elsewhere and any
+  hotkey — a menu should not swallow ⌥⌘K the way a picker does. The buttons kept their ids, which is what the hotkeys
+  and the scenarios reach them by.
+* **`>_` comes back into the row while it has a warning** — armed for a take-over (*sure?*) or failed. The take-over
+  is two presses, and a *sure?* folded under ··· would have made ⌥⌘C's second press a guess. A note about a folded
+  button (a failed VS Code open, focus view with no claude) is anchored at ··· instead of at an invisible button,
+  and the two VS Code rows now say their failures in a note too, since their words are out of sight.
+* **Found on the way**: a click on a toggle redraws the menu under it, so by the time the click reaches the page's
+  "click elsewhere closes it" handler its target is detached, and `closest('#hmenu')` from it finds nothing — the
+  menu closed on every toggle. The handler reads `composedPath()`, which keeps the path the click took. And
+  `show()` focuses the first row, which then wore a focus ring nobody asked for; the menu drops that focus.
+* `scripts/scenarios/head-menu.mjs`: the row's only buttons are the PRs' and ···, ··· borderless and last; the chips
+  22 px or taller with a 2 px edge; the menu right-aligned 4 px under ···, the actions by their ids; a toggle keeps it
+  up with its new state, details show the path; Esc, a click elsewhere and ⌥⌘K close it, the last opening its picker.
+  Looked at on the live board — a stale chat only — light and dark.
+* **A slip, owned**: while checking the PR chips earlier the same evening, a headless page opened
+  *chain-service*'s chat, which has a drawer, and resized its holder to 179×46. Nothing was typed into it and
+  nobody was watching it; the next time the app attaches it refits to its own size. The screenshot scripts now open
+  only chats with no process.
+
 ## Decisions of 2026-09-24, night — the header's PR chips stand out
 
 Ricardo: "make the PRs on that top bar take a bit more vertical space and with a ticker border to be more visible".

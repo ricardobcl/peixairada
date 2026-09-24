@@ -127,6 +127,15 @@ refuses to run against the real directory for the same reason.
   `.sq.pick`, so the same picker and the same ⌥-click — inked only while the pointer is in the header; it keeps its
   place in the row always, so nothing moves under the pointer. `colorAt` remembers which header the picker was
   opened from, so the answer (`note`) pops up by the square that was clicked.
+* **The chat header's row is the title, the PR chips, a task's chip and ···** (2026-09-24): every button it had —
+  `#termBtn`, `#viewBtn`, `#webBtn`, `#focusBtn`, `#foldBtn`, `#detailsBtn` (the state dot and its age), the VS Code
+  mark — is a row of `#hmenu`, keeping its id, so the hotkeys (`hotVsCode` clicks `#webBtn`) and the harness still
+  reach them, and `.click()` works on a closed menu. `#hmenu` is a **non-modal `<dialog>`**, static in the markup:
+  `postPane` lowers the pane while it is up (a web view would cover it), Esc closes it like any dialog, and
+  `runHotkey` closes it rather than let it swallow the key. Toggles leave it up (the click-outside test goes by
+  `composedPath()`, since the redraw detaches the row that was clicked); actions that go somewhere close it. **`>_`
+  comes back into the row while armed or failed** — a warning under a fold is none — and a note about a folded
+  button is anchored at ··· (`seen()`). → `scripts/scenarios/head-menu.mjs`.
 * **The chat's PRs are chips in the header row, folded** (2026-09-24): `#prToggle`, one button of the cards' chips
   (`.hpr` shares `.cpr`'s rule; `HPR_CHIPS` of them, then `+n`), toggles `#prlist` — the rows, one per PR — under the
   header; `prefs.prsOpen`, the board's and not the chat's. The rows are rendered folded too (`#prlist` hidden), so
@@ -170,7 +179,7 @@ refuses to run against the real directory for the same reason.
 
 * **`HOTKEYS` in index.html is the whole ⌥⌘ family**: T this chat's zsh tab (`hotShell()` →
   `POST /api/sessions/:id/shell`, a holder running `zsh -l -i` in its folder, `s.shell`), E the VS Code *Web* button
-  (edit inline, in the pane; the real VS Code is the header's focus button only, no key), G the chat's PR on GitHub — one opens straight
+  (edit inline, in the pane; the real VS Code is the header menu's *open in VS Code* only, no key), G the chat's PR on GitHub — one opens straight
   away, several open the picker in `pr` mode every time, the one showing marked *current* (no PR → the folder's
   GitHub repo, `state.repos` from `git remote`) —, C this chat's claude session (`termAction()`, the `>_` button's path — arm and take over
   included, focus at the end), P the project picker, K the chat picker (`chat` mode: every ready or clauding chat,
@@ -228,7 +237,7 @@ refuses to run against the real directory for the same reason.
   window's bottom left pixel — **drawn over the list's 4 px coloured edge** (`margin-left: -4px`, the edge carried on
   its own border), because the edge is not the cell; a click on the cog pins it, Esc or a click away closes it, and
   it opens beside the cell (`settingsOpen`). The fish is only the SSE light. `sound`, `showAll`, `toolsMode` and `foldCode` keep whatever they were saved as and
-  nothing sets them — the chat header's `{ }` is still the fold for a chat.
+  nothing sets them — the `{ }` row under the chat header's ··· is still the fold for a chat.
 * **In the app the pane is a native view** over the chat column with its own web views: a key pressed there never
   reaches the page, so `installHotkeyForwarder()` forwards ⌥⌘ + the letters and the arrows, and ⌘ + the layout
   keys (`hotkeyCode()`, the page's `e.code` and which map), to `window.peixKey`; the shell
@@ -335,13 +344,13 @@ refuses to run against the real directory for the same reason.
   ⌥ chord as Meta, and a Portuguese layout lost its `@` (⌥2). The same handler sends `e.key` — the composed
   character — for the codes in `ALT_COMPOSES`, and leaves ⌥+letter to Meta, where readline and ⌥Enter want it.
   → Findings: *⌥ is a compose key too*.
-* **The chat header's ◎ button types `/focus`** into that chat's holder (2026-09-20) — Claude Code's focus view, which
+* **The chat header menu's ◎ row types `/focus`** into that chat's holder (2026-09-20) — Claude Code's focus view, which
   has no key and no API: `toggleFocusView()` sends the command, then reads the newest `Focus view enabled|disabled`
   line off the drawer's screen (`focusSaid()`) and lights `#viewBtn` from *that*; `focusView` (page state, dropped in
   `termEnded`) is only what the session last said. **Every attach reads that line too** (`readFocusFromScreen()` from
   `ws.onopen`, polling while the snapshot is still being written), so a `/focus` typed in the drawer by hand is picked
   up; a session that never printed one — `"viewMode": "focus"` in settings, or the line scrolled past — leaves the
-  button as it was. The button shows while `termLive(s)`; on the zsh tab it shows the
+  button as it was. The row shows while `termLive(s)`; on the zsh tab it shows the
   claude session instead of typing into a shell. The fake claude answers `/focus` with the same line — `scripts/scenarios/focus-view.mjs`.
 * **Attaching a file is typing its path** (`@dir/file`, spaces as `\ `); the app hands real paths over the
   bridge (`peixDrop`), a browser uploads (`PUT /api/attach`). ⌘V with an image sends ⌃V to claude in the app.
@@ -377,7 +386,7 @@ refuses to run against the real directory for the same reason.
   as a placement marker nothing read, and `#slist .card` matched it — ⌥⌘↑/↓ walked over a chip and opened nothing
   (2026-09-22). The walkers take `#slist > .card` now. Same trap the other way: the usage's messages wore `.note`,
   which is `note()`'s fixed-position popup — they floated over the popover (2026-09-23); `.unote` now.
-* Code folds per chat: `prefs.foldBy[id]` (the header's `{ }` button) over `prefs.foldCode`, which has no control now; `foldOn(id)` is the one
+* Code folds per chat: `prefs.foldBy[id]` (the `{ }` row under the header's ···) over `prefs.foldCode`, which has no control now; `foldOn(id)` is the one
   rule, used by `md()`. Claude Code cannot fold the code it prints in the drawer — ctrl+o is tool output only.
 * No in-page toasts: alerts are the badge plus a system notification; the app sets `NOTIFY=off` on its own server.
   **The cog's switch is the server's word** (`notifications` in the state file, `PUT /api/notifications`, a
@@ -411,10 +420,10 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
   `assert`, `cmd(code)` (a plain ⌘ press; `key(code)` is ⌥⌘), `screen(g)` / `waitPrompt(ms, g)` (the half, 0 by
-  default — the whole column while nothing is split). The eighteen in `scripts/scenarios/` are the
+  default — the whole column while nothing is split). The nineteen in `scripts/scenarios/` are the
   regression checks for the drawer (re-attach, restart, geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a
   compose key), the hotkeys, the tab strip and the split, the new-chat flow, the project step's folders and ✕,
-  the chat list's rules, the notifications switch, the usage bar, the project cue and the header's PRs.
+  the chat list's rules, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY` with what it failed on the first time, and the suite still exits 0; `--no-retry` is the honest gate.

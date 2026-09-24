@@ -228,16 +228,17 @@ rather than a word — a teal figure for you, Claude's sunburst in clay for Clau
 set brighter because that is the one you scan a list for. The card answers *what changed*; the dot
 answers *what state it is in*.
 
-What a chat *is* rather than what just happened — VS Code or CLI, the session name
-(`peixairada-f1`), the path and branch, the model, the pid — lives in the **chat header** on the
-right, folded behind the **status dot** so the header fits on **one line**: repo / title, the dot with how
-long it has been that way (click it for the fold), the `{ }` code-fold toggle, the ◎ **focus-view** toggle while a
-claude runs in the drawer — it types Claude Code's own `/focus` into that session (your prompt, the summary and the
-reply only, every step in between hidden) and lights up from the line the session answers with, so what it shows is
-the session's state and not a wish; it reads that line again whenever the drawer attaches, so a `/focus` you type
-yourself is picked up as well —, the VS Code and terminal buttons. No status
-word — the dot's colour says it and hovering spells it out. Click the repo name in the header to
-jump to that folder's chats.
+The **chat header** is one quiet line: repo / title, the PR chips, a running task's chip, and **···**. Every
+action lives under ···, one row each with its key: the **claude session** (⌥⌘C — start it, show it, or take the chat
+over from another terminal), **VS Code Web** (⌥⌘E), **open in VS Code**, the ◎ **focus view** while a claude runs in
+the drawer — it types Claude Code's own `/focus` into that session (your prompt, the summary and the reply only,
+every step in between hidden) and says on/off from the line the session answers with, so what it shows is the
+session's state and not a wish; it reads that line again whenever the drawer attaches, so a `/focus` you type
+yourself is picked up as well —, the `{ }` **code fold**, and the chat's **state** with how long it has been that
+way, a click on which shows what a chat *is* under the title: VS Code or CLI, the session name (`peixairada-f1`),
+the path and branch, the model, the pid. The toggles leave the menu up; Esc, a click elsewhere or any hotkey closes
+it. The one button that comes out into the line is the claude session's while it has a warning to give — **sure?**
+before a take-over, or **failed**. Click the repo name in the header to jump to that folder's chats.
 
 **The PRs a chat mentions are chips in the header**, the way the cards show them — `#n` in the PR's state colour,
 four of them and a `+n` for the rest. **Click them and they unfold under the header, one per row**: the state in
@@ -297,8 +298,8 @@ fresh zsh in the chat's folder, inline: a *zsh* tab appears beside the chat (*cl
 otherwise), one per chat, `exit` or its × ends it, and ⌥⌘C brings the claude session back. **A tab that is new
 opens the column in two and takes the right half**, so the chat stays where it is beside it; the column closes
 itself again when the chat is back to one tab. **⌥⌘E**
-opens the folder in VS Code Web, on a *VS Code* tab of the same strip — the *web* button's route (the real VS Code
-is the focus button in the header, no key). **⌥⌘G** opens the chat's PR on GitHub — straight away with
+opens the folder in VS Code Web, on a *VS Code* tab of the same strip — the *VS Code Web* row's route under the
+header's ··· (the real VS Code is *open in VS Code* there, no key). **⌥⌘G** opens the chat's PR on GitHub — straight away with
 one; with several, the same picker filled with the PR rows under the header (state · `repo#n` · title · age,
 filtered by number or title, ⏎ opens the selected one, the one showing marked *current*) — **every time**, a tab
 already open or not; each PR is a tab of its own (`repo#n`) so nothing reloads. The
