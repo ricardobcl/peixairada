@@ -19,10 +19,10 @@ export default async function (ctx) {
   ctx.assert.equal(out.folded.shown, false, 'the rows folded by default');
   ctx.assert.equal(out.folded.expanded, 'false');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#prToggle').parentElement.id`), 'shead', 'in the header row itself');
-  // taller than the cards' and edged in 2 px, to be seen (the same evening)
+  // taller than the cards' to be seen (the same evening); the edge went back to 1 px once the chips had a wash
   out.chip = await ctx.evaluate(`JSON.stringify((c => ({ h: Math.round(c.getBoundingClientRect().height), border: getComputedStyle(c).borderTopWidth }))(document.querySelector('#shead .hpr')))`).then(JSON.parse);
   ctx.assert.ok(out.chip.h >= 22, `the PR chips are taller (${out.chip.h} px)`);
-  ctx.assert.equal(out.chip.border, '2px', '…and their edge thicker');
+  ctx.assert.equal(out.chip.border, '1px', '…with a 1 px edge');
   await ctx.shot('1-folded', { x: 400, y: 0, width: 1300, height: 120 });
 
   await ctx.evaluate(`document.querySelector('#prToggle').click()`);

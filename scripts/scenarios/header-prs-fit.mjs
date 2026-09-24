@@ -25,7 +25,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual([out.wide.shown, out.wide.more, out.wide.oneLine], [10, null, true], 'wide: all ten, no +n, one line');
   await ctx.shot('1-wide', { x: 380, y: 0, width: 1320, height: 60 });
 
-  await listWidth(900);   // the chat column ~800 px
+  await listWidth(1100);   // the chat column ~600 px: ten chips cannot fit beside the title
   out.narrow = await fit();
   ctx.assert.ok(out.narrow.shown >= 1 && out.narrow.shown < 10, `narrowed: some fold (${out.narrow.shown} shown)`);
   ctx.assert.equal(out.narrow.more, `+${10 - out.narrow.shown}`, '…and +n counts them');

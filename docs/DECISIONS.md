@@ -4,6 +4,16 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-24.
 
+## Decisions of 2026-09-24, small hours — the header's PR chips' edge is 1 px again
+
+Ricardo: "with the background gradient, we can go back on the extra thick border for each PR on the chat header - aka
+make it thinner again".
+
+* **1 px**, as the cards'. The 2 px edge was there to make the chips stand out; the wash does that now. What stays
+  from that change is the height (20 px lines, 11.5 px type) and the edge's strength, 85 % of the state's colour
+  against the cards' 55 % — a thin line in the full colour frames the wash better than a faint one. `header-prs`
+  expects 1 px.
+
 ## Decisions of 2026-09-24, small hours — the header's PR chips take the row
 
 Ricardo: "seems like after 4 PRs, they are being collapse even if we have space on the bar - try to use all
@@ -17,7 +27,7 @@ real-estate and only collapse if its really close to the title".
   a window resize, the list's width or the split refit it. On the live board the twelve-PR admin-service chat now
   shows all twelve with the title whole.
 * `scripts/scenarios/header-prs-fit.mjs`: a chat mentioning ten PRs shows all ten and no `+n` in a wide column;
-  with the list widened to 900 px some fold, `+n` counts them, the row stays one line and the title keeps its
+  with the list widened to 1100 px some fold, `+n` counts them, the row stays one line and the title keeps its
   room; the list back at 380 px, all ten return.
 
 ## Decisions of 2026-09-24, late night — the header's PR chips get a wash

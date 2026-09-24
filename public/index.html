@@ -491,9 +491,10 @@
      is a pref (prsOpen), not the chat's. On a tinted header the chips sit on the panel, so the state colours read on
      any project's. */
   .shead .hprs { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 1px 4px; margin: -3px 0; border: 1px solid transparent; border-radius: 7px; background: none; font: inherit; color: var(--muted); cursor: pointer; }
-  /* taller than the cards' and with a thicker edge, to be seen (2026-09-24, Ricardo: "make the PRs on that top bar
-     take a bit more vertical space and with a thicker border to be more visible") */
-  .shead .hpr { --prb: 85%; font-size: 11.5px; line-height: 20px; padding: 0 7px; border-width: 2px; border-radius: 5px;
+  /* taller than the cards', to be seen (2026-09-24, Ricardo: "make the PRs on that top bar take a bit more vertical
+     space and with a thicker border to be more visible"); the edge was 2 px until the wash below made that its job
+     ("we can go back on the extra thick border"), and keeps the stronger colour */
+  .shead .hpr { --prb: 85%; font-size: 11.5px; line-height: 20px; padding: 0 7px; border-radius: 5px;
     /* …on a wash of their own colour, deeper at the top left (the same evening: "a bit of background gradient, to make
        it prettier"); built over the panel, so it reads on a tinted header as on a plain one */
     background: linear-gradient(160deg, color-mix(in srgb, var(--prc, var(--muted)) var(--prg), var(--panel)), color-mix(in srgb, var(--prc, var(--muted)) 7%, var(--panel)) 80%); }
