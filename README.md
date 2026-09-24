@@ -144,7 +144,7 @@ There is no page header.
 
 **Your Claude plan usage sits under the chat list**, always in view: the session and weekly windows `/usage` shows,
 plus a weekly row per model the account meters apart (Fable, Sonnet…), read with Claude Code's own login. Each row
-is a bar that goes green → amber → red as it fills, a tick where the window's clock stands — a bar past its tick is
+is an orange bar, red once it passes 90 %, a tick where the window's clock stands — a bar past its tick is
 being spent faster than time —, the percent and the time to its reset. Click the heading to fold it to one line of
 rings, level with the cog beside it; folded with **⌘B**, the list's rail shows the rings stacked. It refreshes every
 two minutes while the board is in view. Buckets the API reports under a codename at 0 % stay out of it. The first

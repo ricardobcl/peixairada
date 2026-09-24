@@ -10,6 +10,7 @@
     --bg: #f6f6f4; --panel: #ffffff; --ink: #1c1c1a; --muted: #6b6b66; --line: #e5e5e0; --accent: #c96442;
     --working: #d9a82a; --idle: #2f9e5b; --needs: #d64545; --ended: #a3a39e; --unread: #c96442;
     --watch: #0e8a8a;   /* a monitor or a background command still running: cool, because nothing is waiting on you */
+    --spend: #e8782a;   /* the plan usage's bars and rings: what is spent, in orange */
     --user-bg: #f0efe9; --tool-bg: #f7f7f4; --code-bg: #efeee8; --code-line: #dedcd2;
     --code-ink: #a8442a; --inline-bg: rgba(0, 0, 0, .055);
     --you: #2f8b7c; --snip-claude: #45443f; --vscode: #0066b8;
@@ -25,7 +26,7 @@
     --bg: #141413; --panel: #1c1c1a; --ink: #e8e6df; --muted: #9a998f; --line: #2c2c29; --accent: #e08a68;
     --user-bg: #23231f; --tool-bg: #1f1f1c; --code-bg: #101010; --code-line: #2e2e2a; --ended: #5d5d58;
     --code-ink: #e0a284; --inline-bg: rgba(255, 255, 255, .075);
-    --you: #4fb8a8; --snip-claude: #c9c7bd; --vscode: #4aa5f0; --nocolor: #66665f; --watch: #45c8c8;
+    --you: #4fb8a8; --snip-claude: #c9c7bd; --vscode: #4aa5f0; --nocolor: #66665f; --watch: #45c8c8; --spend: #f28a3c;
     --pr-open: #3fb950; --pr-merged: #a371f7; --pr-closed: #f85149; --pr-draft: #8b8b85;
     --term-bg: #111110; --term-sel: rgba(255, 255, 255, .22);
     --hl-com: #7c7c74; --hl-key: #c678dd; --hl-str: #98c379; --hl-num: #d19a66;
@@ -394,8 +395,9 @@
   /* ---- plan usage: the chat list's footer ---- */
   /* The numbers `/usage` shows, always in view (2026-09-24, Ricardo: "move the credits from the cog to a permanent
      bottom bar on 2nd column, make it compact and pretty (and collapsable)"). Open, a row per window: its name, a thin
-     bar going green → amber → red as it fills, a tick where the window's clock stands — a bar past its tick is being
-     spent faster than time —, the percent and the time to its reset. Folded (the heading, the chevron), one line of
+     bar in orange (green until the same day's "make the credits used color green -> orange"), red from 90 %, a tick
+     where the window's clock stands — a bar past its tick is being spent faster than time —, the percent and the
+     time to its reset. Folded (the heading, the chevron), one line of
      rings. On the rail (⌘B) the rings stack with the percent inside, whatever the fold says. */
   /* min-height is #pfoot's, the cog's row beside it: folded, the two top rules run across the window as one line */
   #usage { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); display: grid; align-content: center; min-height: 44px; border-top: 1px solid var(--line); background: var(--panel); padding: 7px 12px 8px; font-size: 11px; color: var(--muted); min-width: 0; user-select: none; }
@@ -1018,7 +1020,9 @@
   const usage = { data: null, err: '', off: false, at: 0, fails: 0, busy: false, html: '' };
   const USAGE_SHORT = { five_hour: '5h', seven_day: 'week', seven_day_opus: 'Opus', seven_day_sonnet: 'Sonnet', cinder_cove: 'credit' };
   const uShort = w => USAGE_SHORT[w.key] || String(w.label).split(' · ').pop();
-  const uColor = p => p >= 90 ? 'var(--needs)' : p >= 70 ? 'var(--working)' : 'var(--idle)';
+  // Orange for what is spent, red once a window is nearly gone (2026-09-24, Ricardo: "make the credits used color
+  // green -> orange" — it was green, amber from 70 %, red from 90 %; amber under orange would have read as a step down).
+  const uColor = p => p >= 90 ? 'var(--needs)' : 'var(--spend)';
   // How far through its window the clock is, 0–1 — for the windows whose length is known; a credit grant has none.
   const uSpan = k => k === 'five_hour' ? 5 * 3600e3 : /^seven_day|^limits:weekly/.test(k) ? 7 * 86400e3 : 0;
   const uPace = w => { const len = uSpan(w.key), end = w.resetsAt ? new Date(w.resetsAt).getTime() : 0; if (!len || !end) return null; const f = 1 - (end - Date.now()) / len; return f >= 0 && f <= 1 ? f : null; };

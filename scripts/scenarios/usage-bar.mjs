@@ -57,7 +57,7 @@ export default async function (ctx) {
   ctx.assert.equal(out.open.open, true, 'open by default');
   ctx.assert.equal(out.open.line, false, 'and the folded line is not shown with it');
   ctx.assert.deepEqual(out.open.rows.map(r => r.pct), ['42%', '75%', '95%', '12%']);
-  ctx.assert.deepEqual(out.open.rows.map(r => r.colour), ['var(--idle)', 'var(--working)', 'var(--needs)', 'var(--idle)'], 'green → amber → red at 70 and 90');
+  ctx.assert.deepEqual(out.open.rows.map(r => r.colour), ['var(--spend)', 'var(--spend)', 'var(--needs)', 'var(--spend)'], 'orange, red from 90');
   // 2 h 30 m left of five hours, 3 d 12 h of seven days: both clocks stand half way; a credit grant has no clock
   ctx.assert.deepEqual(out.open.rows.map(r => r.tick), [50, 50, 50, null], 'a tick where the clock stands, where the window has one');
   ctx.assert.deepEqual(out.open.rows.map(r => r.reset), ['2h 30m', '3d 12h', '3d 12h', '']);

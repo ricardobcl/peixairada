@@ -4,6 +4,15 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-24.
 
+## Decisions of 2026-09-24, later — the usage spends in orange
+
+Ricardo: "make the credits used color green -> orange".
+
+* **Orange, red from 90 %.** Read as the colour of what is spent — the bars were green, and green is all this
+  account's numbers ever showed: every bar and ring is `--spend` (an orange of its own, one per theme — the accent
+  is too near the red), red from 90 % as before. The amber step at 70 % went: amber under orange would have read as
+  a step *down*. `usage-bar` expects it.
+
 ## Decisions of 2026-09-24 — the plan usage is the chat list's footer
 
 Ricardo: "move the credits from the cog to a permanent bottom bar on 2nd column, make it compact and pretty (and

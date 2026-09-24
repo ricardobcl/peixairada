@@ -138,7 +138,7 @@ refuses to run against the real directory for the same reason.
   → `scripts/scenarios/day-separator.mjs`. A finished job moves its card into the ready group, where its
   last prompt puts it.
 * **The plan usage is the chat list's footer** (2026-09-24): `#usage`, the fourth row of `#sessions`. Open, a row
-  per window — name, a bar green → amber → red (`uColor`, 70 / 90), a tick where the window's clock stands
+  per window — name, a bar in `--spend` (orange; red from 90 %, `uColor`), a tick where the window's clock stands
   (`uPace`, only for the windows whose length `uSpan` knows), percent, time to reset; folded (`prefs.usageFolded`,
   the heading or the chevron), one line of rings, **44 px — `#pfoot`'s height, so the two top rules are one line**;
   on the rail, the rings stacked with the percent inside. **The markup holds both shapes** and CSS picks (`.folded`,
