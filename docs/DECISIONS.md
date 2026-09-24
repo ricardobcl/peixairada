@@ -4,6 +4,14 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-24.
 
+## Decisions of 2026-09-24, night — the header's PR chips stand out
+
+Ricardo: "make the PRs on that top bar take a bit more vertical space and with a ticker border to be more visible".
+
+* **Taller, and edged in 2 px** — 20 px lines, 11.5 px type, the edge at 85 % of the state's colour against the
+  cards' 55 % (`--prb`, which the shared rule reads with the cards' value as its fallback). The cards' chips are
+  unchanged. `header-prs` holds them to 22 px or taller with a 2 px edge.
+
 ## Decisions of 2026-09-24, evening — a quieter foot, one row atop the list, the header's PRs folded
 
 Ricardo: "make the cog cleaner by removing the border and the vertical separator from the credits. also, mke that

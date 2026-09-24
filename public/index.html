@@ -344,10 +344,10 @@
   /* a PR as a chip — the card's, and the chat header's (.hpr) since 2026-09-24 */
   :is(.card .cpr, .shead .hpr) { font-size: 10.5px; font-weight: 600; line-height: 16px; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; color: var(--muted); }
   .card .cpr:hover { border-color: currentColor; }
-  :is(.card .cpr, .shead .hpr)[data-state="open"] { color: var(--pr-open); border-color: color-mix(in srgb, var(--pr-open) 55%, transparent); }
-  :is(.card .cpr, .shead .hpr)[data-state="merged"] { color: var(--pr-merged); border-color: color-mix(in srgb, var(--pr-merged) 55%, transparent); }
-  :is(.card .cpr, .shead .hpr)[data-state="closed"] { color: var(--pr-closed); border-color: color-mix(in srgb, var(--pr-closed) 55%, transparent); }
-  :is(.card .cpr, .shead .hpr)[data-state="draft"] { color: var(--pr-draft); border-color: color-mix(in srgb, var(--pr-draft) 55%, transparent); }
+  :is(.card .cpr, .shead .hpr)[data-state="open"] { color: var(--pr-open); border-color: color-mix(in srgb, var(--pr-open) var(--prb, 55%), transparent); }
+  :is(.card .cpr, .shead .hpr)[data-state="merged"] { color: var(--pr-merged); border-color: color-mix(in srgb, var(--pr-merged) var(--prb, 55%), transparent); }
+  :is(.card .cpr, .shead .hpr)[data-state="closed"] { color: var(--pr-closed); border-color: color-mix(in srgb, var(--pr-closed) var(--prb, 55%), transparent); }
+  :is(.card .cpr, .shead .hpr)[data-state="draft"] { color: var(--pr-draft); border-color: color-mix(in srgb, var(--pr-draft) var(--prb, 55%), transparent); }
   .card .state.needs-input { color: var(--needs); display: flex; align-items: baseline; gap: 5px; }
   .card .state.needs-input .ic { width: 11px; height: 11px; flex: none; align-self: center; }
   .card .state.needs-input .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -468,7 +468,10 @@
      colour, as one button; a click unfolds #prlist under the header — one row per PR — and folds it back. The fold
      is a pref (prsOpen), not the chat's. On a tinted header the chips sit on the panel, so the state colours read on
      any project's. */
-  .shead .hprs { flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 2px 5px; margin: -3px 0; border: 1px solid transparent; border-radius: 6px; background: none; font: inherit; color: var(--muted); cursor: pointer; }
+  .shead .hprs { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 1px 4px; margin: -3px 0; border: 1px solid transparent; border-radius: 7px; background: none; font: inherit; color: var(--muted); cursor: pointer; }
+  /* taller than the cards' and with a thicker edge, to be seen (2026-09-24, Ricardo: "make the PRs on that top bar
+     take a bit more vertical space and with a thicker border to be more visible") */
+  .shead .hpr { --prb: 85%; font-size: 11.5px; line-height: 20px; padding: 0 7px; border-width: 2px; border-radius: 5px; }
   .shead .hprs:hover, .shead .hprs.on { border-color: var(--line); }
   .shead .hprs .caret { font-size: 12px; line-height: 1; }
   .shead .hprs.on .caret { transform: rotate(180deg); }
