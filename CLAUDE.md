@@ -79,9 +79,12 @@ refuses to run against the real directory for the same reason.
 ## The board
 
 * **Two columns** (2026-09-24; a projects column before): the selected project's chats → the chat. **The chat list's
-  head is the project filter's whole cue** — the fish (the SSE light), then `#stitle`: the project's square, name, ▾
-  and count, a click being ⌥⌘P's picker, and × back to ALL on any other project; the list's edge and the head's
-  tint are the project's colour. The square there is only a colour; the colour picker is the chat header's. On the
+  head is the project filter's whole cue** — the fish (the SSE light), then `#stitle`: the project's square, name and
+  ▾, a click being ⌥⌘P's picker, and × back to ALL on any other project; the list's edge and the head's tint are the
+  project's colour. **The head is one row** (2026-09-24): `#filters` — the magnifier, whose box takes the chips'
+  place while open, and the state chips, a dot and a count (the word from 600 px of list, the count gone under 340;
+  `#sessions` is a size container) — then ＋ (`#newChatBtn`: one folder starts it, several ask which, ALL is ⌥⌘N's
+  flow) and «. The name is what gives way, which is why the list's minimum is 300 px. The square there is only a colour; the colour picker is the chat header's. On the
   rail the head keeps the fish and the square. ⌥⌘P's rows carry what the column's did: ✎ on a named project (the
   editor) and ＋ new project, last and never filtered out. → `scripts/scenarios/project-cue.mjs`. A chat is *ready ·
   clauding · done*: done is the tick only, clauding is `working`, ready is everything else (`bucket()`); the

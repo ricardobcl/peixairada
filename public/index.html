@@ -94,17 +94,18 @@
   main { display: flex; min-height: 0; min-width: 0; }
   #sessions { border-left: 4px solid var(--repo, var(--nocolor)); }
   #sessions .colhead { background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); }
-  #sessions { width: 380px; min-width: 260px; max-width: 60vw; flex: none; display: grid; grid-template-rows: auto auto 1fr auto; min-height: 0; min-width: 0; }
-  /* Placed by hand, like the chat column's rows: the rail hides #filters, and a hidden block leaves auto-placement —
-     the list would slide into the `auto` row and the usage under it into the 1fr. */
-  #shd { grid-row: 1; } #filters { grid-row: 2; } #slist { grid-row: 3; } #sfoot { grid-row: 4; }
+  /* 300 px at the narrowest (260 until the head became one row: below 300 the project's name had no room left) */
+  #sessions { width: 380px; min-width: 300px; max-width: 60vw; flex: none; display: grid; grid-template-rows: auto 1fr auto; min-height: 0; container-type: inline-size; }
+  /* Placed by hand, like the chat column's rows: a hidden block leaves auto-placement and slides the rest up a row —
+     the list into the `auto` row, sized to its cards instead of the column. */
+  #shd { grid-row: 1; } #slist { grid-row: 2; } #sfoot { grid-row: 3; }
   /* The chat list folded to a rail: the fish, the selected project's colour square and the » to open it again.
      The width is set here, not inline, so the splitter's saved width comes back on unfold. */
   /* Folded, the list is a rail of one square per chat (2026-09-22): the project's short name on its own colour,
      and the card's own edge — so what is clauding, how many agents are out, what is watching and what is asking
      still read from the rail. Everything inside the card goes; .abbr is the only child left standing. */
   main.scompact #sessions { width: 58px; min-width: 0; }
-  main.scompact #sessions #filters, main.scompact #newChat, main.scompact #stitle > :not(.sq), main.scompact #splitter { display: none; }
+  main.scompact #shd #filters, main.scompact #newChat, main.scompact #stitle > :not(.sq), main.scompact #splitter { display: none; }
   main.scompact #stitle { flex: none; margin: 0; padding: 5px; }
   main.scompact #shd { flex-direction: column; padding: 8px 0; gap: 8px; min-height: 0; }
   main.scompact #slist { padding: 7px 6px 10px; gap: 6px; }
@@ -151,7 +152,6 @@
   /* Every other chat is a CLI chat, lived here or in a terminal: the same wash in orange, no outline. */
   .colhead { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); font-weight: 700; min-width: 0; min-height: 43px; }
   .colhead .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--ink); font-weight: 800; display: flex; align-items: center; gap: 7px; }
-  .colhead .n { background: var(--user-bg); border-radius: 10px; padding: 0 7px; font-size: 11px; color: var(--ink); font-weight: 600; letter-spacing: 0; }
   .colhead .sq { width: 10px; height: 10px; border-radius: 3px; background: var(--repo, var(--nocolor)); flex: none; }
   .colhead .btn.icon { padding: 3px 7px; }
 
@@ -163,13 +163,19 @@
      project's colour, ALL's black. */
   #stitle { cursor: pointer; border-radius: 6px; margin: -4px 0 -4px -6px; padding: 4px 6px; }
   #stitle:hover { background: color-mix(in srgb, var(--repo, var(--nocolor)) 26%, transparent); }
-  #stitle > .t { flex: 0 1 auto; }   /* the name only as wide as it is, so ▾ and the count sit right after it */
+  #stitle > .t { flex: 0 1 auto; display: block; }   /* only as wide as the name, so ▾ sits right after it; a block, so a long one ends in … */
   #stitle .caret { flex: none; font-size: 10px; color: var(--muted); margin-left: -3px; }
   #stitle .sx { flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 13px; font-weight: 400; line-height: 1; color: var(--muted); }
   #stitle .sx:hover { color: var(--ink); background: var(--inline-bg); }
-  /* A select is as wide as its widest option — a long folder name took the head's width and cut the project's name
-     short. Its own label is all it needs to show. */
-  #shd #newChatSel { width: 128px; }
+  /* One row atop the list (2026-09-24, Ricardo: "at the top of the column, we have 2 rows, but we could use just 1:
+     remove the cards counter, the new chat should be a + icon only"): the fish, the project, the filters — the
+     magnifier and the three state chips —, ＋ and «. The project's name is what gives way when the row is short. */
+  #shd { gap: 5px; padding: 7px 10px; }
+  #shd .brand, #shd .brand .logo { width: 24px; height: 24px; }
+  #shd .btn.icon { padding: 3px 5px; }
+  #shd #filters { display: flex; align-items: center; gap: 3px; flex: none; text-transform: none; letter-spacing: 0; font-weight: 400; }
+  #shd #filters.searching #fchips { display: none; }   /* the box takes the chips' place while it is open */
+  #shd .fq { width: 130px; }
   /* the filter boxes: a magnifier in the row, the box itself only while it is open or has text */
   .fsearch { font: inherit; border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 12px; padding: 2px 7px; cursor: pointer; display: inline-flex; align-items: center; flex: none; }
   .fsearch .ic { width: 12px; height: 12px; fill: currentColor; }
@@ -196,13 +202,20 @@
   #chat.dropping > * { pointer-events: none; }
 
   /* ---- sessions of the selected project ---- */
-  #filters { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--line); background: var(--panel); }
-  .fchip { font: inherit; font-size: 11px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 12px; background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap; display: inline-flex; gap: 5px; align-items: center; flex: none; }
-  .fchip .n { font-weight: 600; }
+  /* The state chips, in the head's one row since 2026-09-24: a dot in the state's colour and the count — the word
+     only where the column is wide enough to hold it, and in the tooltip always. A chip that is on has its dot filled
+     and its edge in the colour; off, the dot is a ring and the chip goes quiet. */
+  .fchip { --c: var(--muted); font: inherit; font-size: 11px; padding: 1px 5px; border: 1px solid var(--line); border-radius: 12px; background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap; display: inline-flex; gap: 3px; align-items: center; flex: none; }
+  .fchip.ready { --c: var(--idle); } .fchip.working { --c: var(--working); } .fchip.done { --c: var(--ended); }
+  .fchip i { width: 7px; height: 7px; border-radius: 50%; box-sizing: border-box; border: 1.5px solid var(--c); flex: none; }
+  .fchip .lb { display: none; }
+  @container (min-width: 600px) { .fchip .lb { display: inline; } }
+  @container (max-width: 340px) { .fchip .n { display: none; } }   /* near the list's narrowest, the dots alone, so the name keeps some room */
+  .fchip .n { font-weight: 700; font-variant-numeric: tabular-nums; }
   .fchip:hover { color: var(--ink); }
-  .fchip.on { color: var(--ink); border-color: var(--accent); }
-  .fchip.ready.on { border-color: var(--idle); color: var(--idle); }
-  .fchip.working.on { border-color: var(--working); color: var(--working); }
+  .fchip.on { color: var(--ink); border-color: color-mix(in srgb, var(--c) 65%, transparent); }
+  .fchip.on i { background: var(--c); }
+  .fchip:not(.on) { opacity: .75; }
   #slist { overflow-y: auto; overflow-x: hidden; min-width: 0; padding: 8px; display: flex; flex-direction: column; gap: 7px; }
   #slist > * { flex: none; } /* never let a full column squash its cards (overflow:hidden items would shrink to 0) */
   /* Between the clauding cards and the ready ones: a school of ascii fish (2026-09-20, Ricardo: "1 separator …
@@ -663,8 +676,7 @@
 <body>
 <main id="main">
   <section id="sessions">
-    <div class="colhead" id="shd"><span class="brand" id="brandBtn"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g><g fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="stitle" class="t"></span><span id="newChat"></span><button class="btn icon" id="sessPinBtn" title="Fold the chat list">«</button></div>
-    <div id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" hidden><span id="fchips"></span></div>
+    <div class="colhead" id="shd"><span class="brand" id="brandBtn"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g><g fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="stitle" class="t"></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" hidden><span id="fchips"></span></span><span id="newChat"></span><button class="btn icon" id="sessPinBtn" title="Fold the chat list">«</button></div>
     <div id="slist"></div>
     <div id="sfoot"><div id="pfoot"><button class="btn icon" id="cogBtn" title="Settings"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm0 1.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm-.9-5.5h1.8l.4 1.9c.4.15.8.35 1.15.6l1.85-.65 1.3 2.2-1.45 1.3c.05.4.05.8 0 1.2l1.45 1.3-1.3 2.2-1.85-.65c-.35.25-.75.45-1.15.6l-.4 1.9H7.1l-.4-1.9a5 5 0 0 1-1.15-.6l-1.85.65L2.4 10l1.45-1.3a5 5 0 0 1 0-1.2L2.4 6.2l1.3-2.2 1.85.65c.35-.25.75-.45 1.15-.6Z"/></svg></button></div><div id="usage"></div></div>
   </section>
@@ -811,7 +823,7 @@
   // The magnifier opens its box; Esc or an emptied box on blur closes it; the icon stays lit while a filter is on.
   {
     const btn = $('#qBtn'), inp = $('#q');
-    const show = on => { inp.hidden = !on; if (on) inp.focus(); };
+    const show = on => { inp.hidden = !on; $('#filters').classList.toggle('searching', on); if (on) inp.focus(); };
     btn.onclick = () => show(inp.hidden);
     inp.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); inp.value = ''; btn.classList.remove('on'); show(false); renderBoard(); } });
     inp.addEventListener('blur', () => { if (!inp.value.trim()) show(false); });
@@ -881,7 +893,7 @@
     window.addEventListener('mousemove', e => {
       if (!dragging) return;
       const r = $('#sessions').getBoundingClientRect();
-      prefs.sessionsWidth = Math.round(Math.max(260, Math.min(innerWidth * .6, e.clientX - r.left)));
+      prefs.sessionsWidth = Math.round(Math.max(300, Math.min(innerWidth * .6, e.clientX - r.left)));
       $('#sessions').style.width = prefs.sessionsWidth + 'px';
     });
     window.addEventListener('mouseup', () => { if (!dragging) return; dragging = false; splitter.classList.remove('drag'); document.body.style.userSelect = ''; savePrefs(); });
@@ -1176,13 +1188,14 @@
     const shown = list.filter(s => filterOn(bucket(s))).sort((a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byUser(a, b));
     // The project filter's one cue: a click is ⌥⌘P's picker, × goes back to ALL. The square is only a colour here —
     // the colour picker is the chat header's.
-    $('#stitle').innerHTML = `<span class="sq" style="${repoStyle(projColor(p))}"></span><span class="t">${projIcon(p.name)}${esc(p.name)}</span><span class="caret">▾</span><span class="n">${list.length}</span>${p.key === ALL ? '' : '<span class="sx" title="Every project again (ALL)">×</span>'}`;
+    $('#stitle').innerHTML = `<span class="sq" style="${repoStyle(projColor(p))}"></span><span class="t">${projIcon(p.name)}${esc(p.name)}</span><span class="caret">▾</span>${p.key === ALL ? '' : '<span class="sx" title="Every project again (ALL)">×</span>'}`;
     $('#stitle').title = `${p.key === ALL ? 'Every project' : p.custom ? `${p.name}: ${p.cwds.join(', ') || 'no folders yet'}` : p.key} — click or ⌥⌘P for another`;
-    // new chat: one folder is a button; several (a custom project, All) is a pick-list of folders
+    // ＋ new chat, an icon alone (2026-09-24): one folder starts it there; a named project over several asks which
+    // folder; ALL is ⌥⌘N's flow — which project, its open chats, ＋ a new one.
     const folders = p.key === ALL ? knownFolders() : p.cwds;
-    $('#newChat').innerHTML = folders.length === 1 ? `<button class="btn icon" id="newChatBtn" data-cwd="${esc(folders[0])}" title="New chat in ${esc(folderName(folders[0]))} — opens a terminal running claude there">${ICON.plus}<span class="lbl">new chat</span></button>`
-      : folders.length ? `<select id="newChatSel" title="New chat in a folder — opens a terminal running claude there"><option value="">＋ new chat in…</option>${folders.map(f => `<option value="${esc(f)}">${esc(folderName(f))}</option>`).join('')}</select>` : '';
-    $('#fchips').innerHTML = FILTERS.map(([k, label]) => `<button class="fchip ${k} ${filterOn(k) ? 'on' : ''}" data-f="${k}" title="${filterOn(k) ? 'Hide' : 'Show'} ${label} chats">${label}<span class="n">${counts[k] || ''}</span></button>`).join('');
+    const ncTip = p.key === ALL ? 'New chat — which project first (⌥⌘N)' : folders.length === 1 ? `New chat in ${folderName(folders[0])} — opens a terminal running claude there` : `New chat in ${p.name} — which folder first`;
+    $('#newChat').innerHTML = folders.length ? `<button class="btn icon" id="newChatBtn" data-key="${esc(p.key)}" title="${esc(ncTip)}" aria-label="New chat">${ICON.plus}</button>` : '';
+    $('#fchips').innerHTML = FILTERS.map(([k, label]) => `<button class="fchip ${k} ${filterOn(k) ? 'on' : ''}" data-f="${k}" title="${counts[k] || 'no'} ${label} — click to ${filterOn(k) ? 'hide' : 'show'} them"><i></i><span class="lb">${label}</span><span class="n">${counts[k] || 0}</span></button>`).join('');
     const b = shown.map(rankOf);   // the fish swim once, under the last clauding card when a ready one follows
     // …and a day's line under every run of cards from one day: the card whose next one is from another day, or none.
     const days = shown.map(dayName);
@@ -1686,7 +1699,8 @@
   $('#sessions').addEventListener('click', e => {
     if (e.target.closest('#stitle .sx')) { selectProject(ALL); return; }
     if (e.target.closest('#stitle')) { pickOpen('project'); return; }
-    const nb = e.target.closest('#newChatBtn'); if (nb) { newChatIn(nb.dataset.cwd); return; }
+    const nb = e.target.closest('#newChatBtn');
+    if (nb) { const p = projectList().find(x => x.key === nb.dataset.key); if (!p || p.key === ALL) pickOpen('new'); else if (p.cwds.length === 1) newChatIn(p.cwds[0]); else pickOpen('folder', { cwds: p.cwds }); return; }
     const f = e.target.closest('.fchip'); if (f) { const k = f.dataset.f; prefs.filters = FILTERS.map(x => x[0]).filter(x => x === k ? !filterOn(k) : filterOn(x)); savePrefs(); renderBoard(); return; }
     const card = e.target.closest('.card'); if (!card) return;
     const cpr = e.target.closest('.cpr');
@@ -1695,7 +1709,6 @@
     if (act) { e.stopPropagation(); fetch(`/api/sessions/${card.dataset.id}/done`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ done: act.dataset.act === 'done' }) }); return; }
     openSession(card.dataset.id);
   });
-  $('#sessions').addEventListener('change', e => { const sel = e.target.closest('#newChatSel'); if (sel && sel.value) { const cwd = sel.value; sel.value = ''; newChatIn(cwd); } });
 
   // ---- project editor ----------------------------------------------------------------
   function openProjectEditor(id) {

@@ -19,9 +19,23 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.layout, { projects: false, first: 'brandBtn', fishX: out.layout.fishX }, 'no projects column, and the fish heads the chat list');
   ctx.assert.ok(out.layout.fishX < 24, 'at the window\'s left');
   out.all = await head();
-  ctx.assert.match(out.all.text, /^ALL▾\d+$/, 'ALL, its caret and its count');
+  ctx.assert.equal(out.all.text, 'ALL▾', 'ALL and its caret — no count since the head became one row');
   ctx.assert.equal(out.all.x, false, 'ALL has nothing to clear');
   await ctx.shot('1-all', { x: 0, y: 0, width: 520, height: 140 });
+
+  // One row atop the list (2026-09-24): the filters and ＋ are in the head, the cards start right under it, ＋ is an
+  // icon alone, and on ALL it is ⌥⌘N's flow
+  out.row = await ctx.evaluate(`JSON.stringify((() => { const h = document.querySelector('#shd'), r = h.getBoundingClientRect();
+    return { inHead: ['#qBtn', '#fchips', '#newChatBtn', '#sessPinBtn'].every(q => h.contains(document.querySelector(q))), h: Math.round(r.height),
+      under: Math.round(document.querySelector('#slist').getBoundingClientRect().top - r.bottom), plus: document.querySelector('#newChatBtn').textContent.trim(),
+      chips: [...document.querySelectorAll('#fchips .fchip')].map(c => c.className.replace(/\s+/g, ' ').trim()) }; })())`).then(JSON.parse);
+  ctx.assert.equal(out.row.inHead, true, 'the magnifier, the chips, ＋ and « are all in the head');
+  ctx.assert.ok(out.row.h <= 44 && out.row.under === 0, 'one row, and the cards right under it');
+  ctx.assert.equal(out.row.plus, '', '＋ is an icon, no words');
+  ctx.assert.deepEqual(out.row.chips, ['fchip ready on', 'fchip working on', 'fchip done on'], 'the three state chips, on');
+  await ctx.evaluate(`document.querySelector('#newChatBtn').click()`);
+  ctx.assert.match(await ctx.evaluate(`document.querySelector('#pick').open && document.querySelector('#pickq').placeholder`), /^New chat/, '＋ on ALL asks which project first');
+  await closePick();
 
   // The head is the picker
   await ctx.evaluate(`document.querySelector('#stitle .t').click()`);

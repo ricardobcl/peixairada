@@ -16,6 +16,22 @@ cards and on click, they toggle to the expanded version per row that we have now
   its only outline. Folded, the foot is 34 px (44 before): the cell's padding 8 → 5 px and the cog's 5/8 → 4 px, the
   usage's 7/8 → 5/6 px, and the open rows a pixel closer. The usage starts 6 px from the cell rather than 12, since
   nothing divides them now. `usage-bar` holds the foot to 34 px at the least.
+* **One row atop the list.** The filters moved into the head: the fish, the project (square, name, ▾, ×), the
+  magnifier, the three state chips, ＋ and «. The head's count went, as asked — the chips count by state anyway.
+  ＋ is an icon alone: one folder starts the chat there, a named project over several asks which folder, and ALL is
+  ⌥⌘N's flow (which project, its open chats, ＋ a new one) — the pick-list of every folder is gone with the words.
+* **The chips had to shrink to fit.** At the default 380 px the row with the words — *ready 153 · clauding 3 · done
+  102* — left the project's name no room at all, and the name is the cue this row is for. So a chip is a dot in the
+  state's colour and a count, filled while on and a ring while off; the word is in the tooltip always and on the chip
+  once the list is 600 px wide, and under 340 px the counts go too (container queries on `#sessions`). The fish is
+  24 px in the head, the buttons a little narrower. Even so a long name ends in … at 380 px (*notificat…*), and with
+  every chip at its narrowest the name had 4 px at 270: **the list's minimum is 300 px now** (260 before), where it
+  has 34. The magnifier's box, open, takes the chips' place rather than the name's.
+* **Found on the way**: `.colhead .n`, the head's count pill, also styled the chips' counts once they were in the
+  head, and `.colhead .t` is `display: flex`, which no `text-overflow` reaches — the name was cut mid-letter instead
+  of ending in …. The pill is gone with the count; the name is a block.
+* `project-cue` checks the one row: the magnifier, the chips, ＋ and « in the head, the cards straight under it, ＋
+  with no words, and ＋ on ALL opening ⌥⌘N's first step.
 
 ## Decisions of 2026-09-24, later still — the projects column goes
 

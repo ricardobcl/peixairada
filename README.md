@@ -117,8 +117,8 @@ it. A chat belongs to its folder *and* to every named project that claims that f
 as the repo). Each entry in the picker carries counts — 🟡 Claude working, 🟢 ready for you — plus an unread badge.
 
 There is no projects column (there was one until 2026-09-24): **the chat list's head is the project**. First the
-fish — the app, which greys out when the board loses the server —, then the project's colour square, its name, ▾ and
-how many chats it holds. **Click it**, or **⌥⌘P** from anywhere, for the project picker the VS Code way — type to
+fish — the app, which greys out when the board loses the server —, then the project's colour square, its name and
+▾, all in one row with the chat filters and ＋. **Click it**, or **⌥⌘P** from anywhere, for the project picker the VS Code way — type to
 filter, ↑↓, ⏎ opens it, esc closes — and **×** beside a project's name goes back to ALL. The list's edge and its
 head wear the project's colour, ALL's black, so a filter that is on is plain from across the room;
 **⌥⌘K** the same box filled with **every chat that is ready or clauding**, across the projects, in the list's order
@@ -164,14 +164,16 @@ writes once it rests. ⌥-click the square to take the setting out again. A note
 was written and, if git tracks it in the repo, that the change will show in `git status`.
 Projects **pinned** while the column was there still head the pickers, in their order — the pins live on the
 server, so every browser and the app agree — but the pin and the drag went with the column, so nothing on the board
-pins or unpins now. The chat list has its own filter behind a magnifier at the start of its chips — chats by title,
-branch or prompt; Esc or an emptied box closes it, and the magnifier stays lit while a filter is on.
+pins or unpins now. The chat list has its own filter behind a magnifier in that row — chats by title, branch or
+prompt, the box taking the chips' place while it is open; Esc or an emptied box closes it, and the magnifier stays lit
+while a filter is on.
 
-**Chats** of the selected project, newest first by your own last touch, with a chip per state —
-*ready · clauding · done* — each a toggle, and the set you leave on is remembered. A card is washed in its project's
+**Chats** of the selected project, newest first by your own last touch, with a chip per state in the head —
+*ready · clauding · done*, a dot in the state's colour and a count (the word too when the list is wide), each a
+toggle — and the set you leave on is remembered. A card is washed in its project's
 colour; only a clauding card (the running light), a hovered one and the open one wear the colour on their edge too. **«** in its header folds the list to a rail and **»** brings
-it back, width and all. **+ new chat** starts one right there: a terminal
-running `claude` in that folder (a pick-list when the project spans several), and the chat pane
+it back, width and all. **＋** in the head starts a new chat: a terminal running `claude` in that folder (it asks
+which folder when the project spans several, and which project first on ALL, as **⌥⌘N** does), and the chat pane
 switches to it the moment Claude registers the session. **A folder that launches claude its own way** — a
 Taskfile whose tasks say *Launch Claude Code…*, the way oracle's `task production-workload`, `task sandbox-workload`
 and `task development-<cluster>` set a cluster's environment before running claude — asks **which environment** first
