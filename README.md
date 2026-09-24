@@ -106,71 +106,66 @@ reopen the app — it attaches to any server already on the port.
 
 ## 🎛 Projects → chats → chat
 
-Three columns, left to right. Pick a project, pick a chat, read it — and talk to it.
+Two columns, left to right: a project's chats, and the chat. Pick a project, pick a chat, read it — and talk to it.
 
 **Projects.** One entry per folder a chat has run in — the repo path Claude Code registered for
 the session, so `cd`-ing around inside a chat never splits it — ordered by the newest thing
 *you* did in any of its chats. **ALL** sits on top as the flat list. Under it come the
 projects **you name yourself**: a name over one or more folders, for multi-repo work or an
-investigation — **+** in the column header, ✎ on hover to edit or delete. A chat belongs to its
-folder *and* to every named project that claims that folder (worktrees under a repo count as the
-repo). Each entry carries counts you can read from across the room — 🔴 waiting on you, 🟡 Claude
-working, 🟢 replied — plus an unread badge.
+investigation — **＋ new project** at the end of the project picker, ✎ on a named one's row there to edit or delete
+it. A chat belongs to its folder *and* to every named project that claims that folder (worktrees under a repo count
+as the repo). Each entry in the picker carries counts — 🟡 Claude working, 🟢 ready for you — plus an unread badge.
 
-The projects column is a **strip** by default — each project a solid tab in its colour, the name
-running vertically, the selected one running straight into the chat list, whose edge and header
-carry the same colour — and **»** opens it into the full column, **«** folds it back; nothing happens on hover. The fish at the strip's top is the
-app — it greys out when the board loses the server. The
-magnifier under it filters projects (the strip opens to let you type and folds back when you are done);
-**⌥⌘P** from anywhere opens a project picker the VS Code way — type to filter, ↑↓, ⏎ opens it, esc closes;
+There is no projects column (there was one until 2026-09-24): **the chat list's head is the project**. First the
+fish — the app, which greys out when the board loses the server —, then the project's colour square, its name, ▾ and
+how many chats it holds. **Click it**, or **⌥⌘P** from anywhere, for the project picker the VS Code way — type to
+filter, ↑↓, ⏎ opens it, esc closes — and **×** beside a project's name goes back to ALL. The list's edge and its
+head wear the project's colour, ALL's black, so a filter that is on is plain from across the room;
 **⌥⌘K** the same box filled with **every chat that is ready or clauding**, across the projects, in the list's order
 (colour · title · project · state · age), searched by title, project, prompt or branch — ⏎ opens it, switching project
 when it lives elsewhere; **⌥⌘N** a **new chat**: pick the project — or one of the folders in `~/acme` that has no chat yet, they come
 after the board's own, or type a name none of them has and **＋ clone `acme/<name>`** into `~/acme` (`gh repo
 clone`, then straight on into the chat) — then one of its open chats or ＋ a new one, the folder when the project
 spans several, and — in a folder whose Taskfile launches claude (see *+ new chat* below) — the environment. **✕ at
-the right of a row takes that project or folder off the board**: it stops being listed in the column and in every
+the right of a row takes that project or folder off the board**: it stops being listed in every
 picker, nothing is deleted and its chats are still there under ALL, and the cog lists what is hidden with a *show*
 beside it. A step with no open chats still offers ＋ *new chat*, so ⏎ starts one and esc walks away; **⌥⌘O** is that
 flow with the first answers in — a new chat in **oracle**, opening straight on its environments (the
 same ⌥⌘ family drives the open chat: **⌥⌘C** its claude session, **⌥⌘T** a zsh in its folder, **⌥⌘E** VS Code Web,
 **⌥⌘G** its PR, **⌥⌘↑ / ⌥⌘↓** the chat above or below in the list, **⌥⌘← / ⌥⌘→** the tab beside — chat, zsh, GitHub
 pages, VS Code — see *The chat*) —
-and the **cog** at its bottom opens the settings, which are two things: the
+and the **cog** in the window's bottom left corner, under the chat list, opens the settings, which are two things: the
 **notifications** switch — a banner when Claude finishes or asks you something, on by default, and one setting for the
 app and every browser tab — and **the list of keys**, for when one slips the mind (and, when you have hidden a project,
-the way back). Hovering the strip's footer opens it, a click on the cog pins it; Esc or a click elsewhere closes it.
+the way back). Hovering the corner opens it, a click on the cog pins it; Esc or a click elsewhere closes it.
 There is no page header.
 
-**Your Claude plan usage sits under the chat list**, always in view: the session and weekly windows `/usage` shows,
-plus a weekly row per model the account meters apart (Fable, Sonnet…), read with Claude Code's own login. Each row
-is an orange bar, red once it passes 90 %, a tick where the window's clock stands — a bar past its tick is
-being spent faster than time —, the percent and the time to its reset. Click the heading to fold it to one line of
-rings, level with the cog beside it; folded with **⌘B**, the list's rail shows the rings stacked. It refreshes every
-two minutes while the board is in view. Buckets the API reports under a codename at 0 % stay out of it. The first
+**Your Claude plan usage sits under the chat list**, beside the cog and always in view: the session and weekly
+windows `/usage` shows, plus a weekly row per model the account meters apart (Fable, Sonnet…), read with Claude Code's
+own login. Each row is an orange bar, red once it passes 90 %, a tick where the window's clock stands — a bar past
+its tick is being spent faster than time —, the percent and the time to its reset. Click the heading to fold it to
+one line of rings, level with the cog beside it; folded with **⌘B**, the list's rail shows the rings stacked, the cog
+under them. It refreshes every two minutes while the board is in view. Buckets the API reports under a codename at 0 % stay out of it. The first
 time, macOS asks whether `security` may read the *Claude Code-credentials* keychain item; *Always Allow* ends that,
 and `USAGE=off` on the server turns the lookup off and the bar with it.
 
-**A project's colour is its Peacock colour**, and it is the same everywhere — the strip tab, the card's
-edge, the chat list's edge, the chat header. The board reads `peacock.color` from the nearest
+**A project's colour is its Peacock colour**, and it is the same everywhere — the chat list's edge and
+head, the card's edge, the chat header. The board reads `peacock.color` from the nearest
 `.vscode/settings.json` at or above the folder (a chat in a subfolder or a worktree wears the repo's colour)
 and follows it live: change the colour in VS Code and the board has it within seconds. A folder without one is
 light gray, with one exception the board paints itself: **`acme`**, the root the repos sit under, where the odd
 chat that belongs to no repo runs, is **black** in both themes — like ALL — so it reads as the plain one among the
 coloured ones. Give it a Peacock colour and that wins, as everywhere else.
-**And it works the other way**: the **colour square** on a folder's row in the open column, the one in
-the chat list's header, and the one beside the project's name in the **chat header** — that last one shows while
-the pointer is in the header — is a picker. Click it, pick a colour, and the board writes it as `peacock.color` into
+**And it works the other way**: the **colour square** beside the project's name in the **chat header** — it
+shows while the pointer is in the header — is a picker. Click it, pick a colour, and the board writes it as `peacock.color` into
 that folder's `.vscode/settings.json` (creating the file if there is none, touching nothing else in it), so
 Peacock repaints the VS Code window and both agree; the board follows while you drag through the panel and
 writes once it rests. ⌥-click the square to take the setting out again. A note by the square says which file
 was written and, if git tracks it in the repo, that the change will show in `git status`.
-**Pin** a project (the pin on its row in the open column) and it heads the column, above a line; **drag**
-rows — in the strip too — to arrange the pinned ones, or drag one below the line to let it go. Pins are saved
-on the server, so every browser and the app agree. Each of
-the first two columns has its own filter behind a magnifier — in the projects header, and at the
-start of the chat filter chips — projects by name, chats by title, branch or prompt; Esc or an
-emptied box closes it, and the magnifier stays lit while a filter is on.
+Projects **pinned** while the column was there still head the pickers, in their order — the pins live on the
+server, so every browser and the app agree — but the pin and the drag went with the column, so nothing on the board
+pins or unpins now. The chat list has its own filter behind a magnifier at the start of its chips — chats by title,
+branch or prompt; Esc or an emptied box closes it, and the magnifier stays lit while a filter is on.
 
 **Chats** of the selected project, newest first by your own last touch, with a chip per state —
 *ready · clauding · done* — each a toggle, and the set you leave on is remembered. A card is washed in its project's

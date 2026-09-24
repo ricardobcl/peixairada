@@ -147,7 +147,7 @@ export default async function (ctx) {
   // alone (2026-09-22) and a second ⏎ starts it. A pin is how a folder reaches the board without a chat of its own.
   const oracleCwd = join(tmpdir(), 'peix-oracle-fixture', 'oracle');
   await ctx.server.api('api/pins', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pins: [oracleCwd] }) });
-  await ctx.waitFor(`!!document.querySelector('#projects .proj[data-key=${JSON.stringify(oracleCwd)}]')`, { what: 'the oracle folder on the board' });
+  await ctx.waitFor(`window.peix.state().pins.includes(${JSON.stringify(oracleCwd)})`, { what: 'the oracle folder pinned on the board' });
   await ctx.key('KeyO');
   await ctx.waitFor(`document.querySelector('#pickq').placeholder.startsWith('oracle — ')`, { what: 'the environment step, straight from ⌥⌘O' });
   out.oracleStep = { placeholder: await ctx.evaluate(`document.querySelector('#pickq').placeholder`), names: await ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow.env .n')].map(e => e.textContent)`) };

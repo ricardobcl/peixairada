@@ -46,7 +46,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `lib/termhold.mjs` | The holder: one process per drawer — the PTY, the exact screen, a Unix socket |
 | `lib/cdp.mjs`, `lib/testserver.mjs` | Harness plumbing: headless Chrome over the DevTools protocol; a throwaway server with cleanup |
 | `lib/refit.mjs` | Resizing a terminal so a grow pulls the scrollback back down (the holder's copy; the page keeps its own) |
-| `public/index.html` | The frontend, one file, no build step: projects · chats · chat (one half or two), the drawer, the transcript renderer. A section map at the top of its script |
+| `public/index.html` | The frontend, one file, no build step: chats · chat (one half or two), the drawer, the transcript renderer. A section map at the top of its script |
 | `public/vendor/` | `marked` 18.0.11 + `DOMPurify` 3.4.14 + `highlight.js` 11.11.1 + `xterm` 5.5.0 (+ fit 0.11, web-links 0.12) — UMD builds, no CDN at runtime |
 | `mac/Sources/main.swift` | The native shell: window, the pane (web views per page), server lifecycle, Dock badge, menu bar, notifications, the hotkey forwarder |
 | `mac/icon/MakeIcon.swift`, `mac/build.sh` | The icon, drawn in CoreGraphics; compile + bundle + sign + install |
@@ -78,7 +78,12 @@ refuses to run against the real directory for the same reason.
 
 ## The board
 
-* **Three columns**: projects (a strip by default) → the selected project's chats → the chat. A chat is *ready ·
+* **Two columns** (2026-09-24; a projects column before): the selected project's chats → the chat. **The chat list's
+  head is the project filter's whole cue** — the fish (the SSE light), then `#stitle`: the project's square, name, ▾
+  and count, a click being ⌥⌘P's picker, and × back to ALL on any other project; the list's edge and the head's
+  tint are the project's colour. The square there is only a colour; the colour picker is the chat header's. On the
+  rail the head keeps the fish and the square. ⌥⌘P's rows carry what the column's did: ✎ on a named project (the
+  editor) and ＋ new project, last and never filtered out. → `scripts/scenarios/project-cue.mjs`. A chat is *ready ·
   clauding · done*: done is the tick only, clauding is `working`, ready is everything else (`bucket()`); the
   server keeps the finer `status` for notifications and the badge. → Findings: *The board and its state*.
 * **The card's edge is one ring with four readings** (2026-09-21): `--lit` is what runs in it, `--seg` how much of
@@ -99,17 +104,18 @@ refuses to run against the real directory for the same reason.
   the card is `display: none` there; `.abbr` is the only child left standing, and it carries the hover tooltip.
 * **A project is a folder** (the registry's `cwd`, never the transcript's — that one moves with `cd`) **or a
   named set of folders** (state file); worktrees under a repo count as the repo. **Pinned projects** head the
-  column (`PUT /api/pins`, the whole list, a `pins` event); folder projects exist only through their sessions.
+  pickers (`state.pins`, a `pins` event) — nothing on the page sets them since the column went; `PUT /api/pins`
+  still does. Folder projects exist only through their sessions.
   **✕ on a row of ⌥⌘N hides a project** (2026-09-22): its key — a cwd or `c:<id>`, the pins' own spelling — goes to
   `hidden` in the state file (`PUT /api/hidden`, the whole list, a `hidden` event) and `projectList()` and
-  `freeFolders()` skip it, so it is on no column, no picker and no pin. **Its chats are untouched** and still show
+  `freeFolders()` skip it, so it is on no picker and no pin. **Its chats are untouched** and still show
   under ALL: hiding tidies the index, it does not throw work away. The cog lists what is hidden with a *show*
   beside it, and starting a chat in a hidden folder puts it back (`newChat`).
 * **A project's colour is Peacock's** — `pollPeacock()` reads the nearest `.vscode/settings.json`
   at or above every folder it knows, stopping short of `$HOME`; the board can *set* it (`PUT/DELETE /api/peacock`,
   a text edit of the JSONC, tested). No colour → `--nocolor`, unless the folder is named in `PROJECT_COLORS` (by its
   shown name, like `PROJECT_ICONS`): `acme` is the board's own `BLACK` (2026-09-20). Peacock still wins where it
-  speaks. The colour square is the picker (`#colorInput`).
+  speaks. The chat header's colour square is the picker (`#colorInput`).
 * **The chat header is a gradient of the project's colour** (2026-09-20): `tintChat()` sets `--repo`, `--rink`,
   `--rover`/`--rover2` and `#chat.tinted`; `--rink` is the ink that reads on it, white or near-black by Peacock's own
   brightness rule (`inkOn()`), and every control in `.shead` is redrawn in it; the veils (`--rover` across, `--rover2`
@@ -140,9 +146,9 @@ refuses to run against the real directory for the same reason.
 * **The plan usage is the chat list's footer** (2026-09-24): `#usage`, the fourth row of `#sessions`. Open, a row
   per window — name, a bar in `--spend` (orange; red from 90 %, `uColor`), a tick where the window's clock stands
   (`uPace`, only for the windows whose length `uSpan` knows), percent, time to reset; folded (`prefs.usageFolded`,
-  the heading or the chevron), one line of rings, **44 px — `#pfoot`'s height, so the two top rules are one line**;
-  on the rail, the rings stacked with the percent inside. **The markup holds both shapes** and CSS picks (`.folded`,
-  `main.scompact`), so ⌘B re-renders nothing. `loadUsage()` on load, every `USAGE_EVERY_MS` while visible, once a
+  the heading or the chevron), one line of rings, 44 px like the cog's cell beside it (`#pfoot`, in `#sfoot`);
+  on the rail, the rings stacked with the percent inside and the cog under them. **The markup holds both shapes**
+  and CSS picks (`.folded`, `main.scompact`), so ⌘B re-renders nothing. `loadUsage()` on load, every `USAGE_EVERY_MS` while visible, once a
   window's reset has passed, and on the way back to a hidden page, **backing off on failures** (a refused keychain
   prompt would come back every two minutes otherwise); a failure keeps the last numbers, `.stale`. The server's
   `USAGE=off` answers `off: true` and the bar hides — every test server. → `scripts/scenarios/usage-bar.mjs`.
@@ -209,9 +215,10 @@ refuses to run against the real directory for the same reason.
   → `scripts/scenarios/new-project.mjs`, Decisions 2026-09-21.
 * **The cog's popover is the whole of the board's settings** (2026-09-21): **the notifications switch**
   (2026-09-23, `#notifyOn`) and the keys — nothing else; the plan usage left it for the chat list's footer
-  (2026-09-24, below). It opens on *hover of `#pfoot`*, the strip's footer,
-  which reaches the window's bottom left pixel; a click on the cog pins it, Esc or a click away closes it. The fish
-  is only the SSE light now. `sound`, `showAll`, `toolsMode` and `foldCode` keep whatever they were saved as and
+  (2026-09-24, below). It opens on *hover of `#pfoot`*, the cog's cell in the chat list's foot, which reaches the
+  window's bottom left pixel — **drawn over the list's 4 px coloured edge** (`margin-left: -4px`, the edge carried on
+  its own border), because the edge is not the cell; a click on the cog pins it, Esc or a click away closes it, and
+  it opens beside the cell (`settingsOpen`). The fish is only the SSE light. `sound`, `showAll`, `toolsMode` and `foldCode` keep whatever they were saved as and
   nothing sets them — the chat header's `{ }` is still the fold for a chat.
 * **In the app the pane is a native view** over the chat column with its own web views: a key pressed there never
   reaches the page, so `installHotkeyForwarder()` forwards ⌥⌘ + the letters and the arrows, and ⌘ + the layout
@@ -355,7 +362,7 @@ refuses to run against the real directory for the same reason.
 * Inline code gets a tint, never a border; card glyphs are inline SVG, not emoji; the working ring is the project's
   colour — `--ring`, which only a card too dark to show it (`.card.black`) overrides, with white.
 * `PROJECT_ICONS` (index.html) marks a project by its shown name wherever the name is written — oracle's crystal ball;
-  `projIcon(name)` goes before the name in the strip, the column, the chat list's header, the chat header, the cards, the pickers.
+  `projIcon(name)` goes before the name in the chat list's header, the chat header, the cards, the pickers.
   `PROJECT_ABBR` is the same idea for the folded list's squares, and is read only by `projAbbr`.
 * **Never name a modifier class after something the page also selects by**: a background command's chip wore `card`
   as a placement marker nothing read, and `#slist .card` matched it — ⌥⌘↑/↓ walked over a chip and opened nothing
@@ -395,10 +402,10 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
   `assert`, `cmd(code)` (a plain ⌘ press; `key(code)` is ⌥⌘), `screen(g)` / `waitPrompt(ms, g)` (the half, 0 by
-  default — the whole column while nothing is split). The sixteen in `scripts/scenarios/` are the
+  default — the whole column while nothing is split). The seventeen in `scripts/scenarios/` are the
   regression checks for the drawer (re-attach, restart, geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a
   compose key), the hotkeys, the tab strip and the split, the new-chat flow, the project step's folders and ✕,
-  the chat list's rules, the notifications switch and the usage bar.
+  the chat list's rules, the notifications switch, the usage bar and the project cue.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY` with what it failed on the first time, and the suite still exits 0; `--no-retry` is the honest gate.

@@ -64,11 +64,13 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.open.chips.map(c => c.k), ['5h', 'week', 'Fable', 'credit'], 'the rings go by short names');
   await ctx.shot('1-open', { x: 0, y: 700, width: 520, height: 300 });
 
-  // Folded, from the heading; the line is as tall as the cog's row, so the two top rules are one line
+  // Folded, from the heading: the foot is one row, the rings beside the cog's cell and as tall as it
   await ctx.evaluate(`document.querySelector('#usage .uhd').click()`);
   out.folded = await bar(ctx);
   ctx.assert.equal(out.folded.folded && out.folded.line && !out.folded.open, true, 'folded shows the line alone');
-  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#usage').getBoundingClientRect().top === document.querySelector('#pfoot').getBoundingClientRect().top`), true, 'level with the cog row');
+  out.foot = await ctx.evaluate(`JSON.stringify(['#usage', '#pfoot'].map(q => { const r = document.querySelector(q).getBoundingClientRect(); return [Math.round(r.top), Math.round(r.height)]; }))`).then(JSON.parse);
+  ctx.assert.deepEqual(out.foot[0], out.foot[1], 'level with the cog cell, and as tall');
+  ctx.assert.ok(out.foot[0][1] >= 44, '…44 px at the least (four rings wrap to a second line beside the cog at this width)');
   ctx.assert.equal(out.folded.chips.every(c => c.shown && c.ring === 12), true, 'every ring shows, small');
   ctx.assert.equal((await ctx.peix('prefs()')).usageFolded, true, 'the fold is a pref');
   await ctx.shot('2-folded', { x: 0, y: 700, width: 520, height: 300 });

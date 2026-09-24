@@ -52,10 +52,10 @@
   #termBtn.take.arm { color: var(--needs); border-color: var(--needs); }      /* armed: the next click ends that claude */
   .btn.icon .lbl { font-size: 11px; }
   /* No page header since 2026-09-20 — the Mac window has its own title bar, and a second bar was a strip of
-     controls nobody touched twice a day. The fish sits at the top of the projects strip and is a light, not a
-     button (it goes dim when the SSE stream drops); everything the board has to say for itself is in the one
-     popover at the bottom left, behind the cog: the notifications switch and the keys. The plan usage is the chat
-     list's footer since 2026-09-24 (#usage). */
+     controls nobody touched twice a day. The fish sits at the top left of the chat list (of the projects strip until
+     2026-09-24) and is a light, not a button (it goes dim when the SSE stream drops); everything the board has to
+     say for itself is in the one popover at the bottom left, behind the cog: the notifications switch and the keys.
+     The plan usage is the chat list's footer, beside the cog (#usage). */
   .brand { position: relative; width: 28px; height: 28px; flex: none; display: inline-flex; }
   .brand .logo { width: 28px; height: 28px; }
   .pop { position: fixed; left: 54px; bottom: 10px; z-index: 40; display: grid; gap: 9px; min-width: 250px; padding: 12px 14px 13px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); box-shadow: 0 10px 34px rgba(0, 0, 0, .22); font-size: 12px; }
@@ -90,33 +90,22 @@
   .brand.off .logo { filter: grayscale(1); opacity: .5; }   /* the SSE stream is down: the board is frozen */
   #counts { font-size: 11px; font-weight: 400; color: var(--muted); white-space: nowrap; }
 
-  /* ---- layout: projects | sessions | splitter | chat (one half or two) ---- */
+  /* ---- layout: sessions | splitter | chat (one half or two) ---- */
   main { display: flex; min-height: 0; min-width: 0; }
-  #projects { width: 250px; flex: none; display: grid; grid-template-rows: auto 1fr auto; border-right: 1px solid var(--line); min-height: 0; background: var(--panel); }
-  /* The strip (default): each project a solid tab in its colour, the name running vertically. » opens
-     the full column, « folds it back; nothing happens on hover. */
-  main.compact #projects { width: 46px; overflow: hidden; }
-  main.compact #projects #pq { display: none; }
-  main.compact #projects .colhead { flex-direction: column; padding: 8px 0; gap: 6px; min-height: 0; }
-  main.compact #projects .colhead > span:not(.brand) { display: none; }
-  main.compact #projects .proj { display: flex; flex-direction: column; align-items: center; padding: 10px 0; margin: 3px 4px 3px 5px; border-left: 0; border-radius: 6px; background: var(--repo, var(--nocolor)); color: #fff; opacity: .72; }
-  /* the selected one is solid and runs into the chat list, whose left edge carries the same colour */
-  main.compact #projects .proj.active { opacity: 1; margin-right: 0; border-radius: 6px 0 0 6px; }
-  main.compact #projects .pname { writing-mode: vertical-rl; font-size: 12.5px; max-height: 160px; overflow: hidden; text-overflow: ellipsis; }
-  main.compact #projects .sq, main.compact #projects .pills, main.compact #projects .ptime, main.compact #projects .pfold, main.compact #projects .pedit, main.compact #projects .ppin { display: none; }
   #sessions { border-left: 4px solid var(--repo, var(--nocolor)); }
   #sessions .colhead { background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); }
   #sessions { width: 380px; min-width: 260px; max-width: 60vw; flex: none; display: grid; grid-template-rows: auto auto 1fr auto; min-height: 0; min-width: 0; }
   /* Placed by hand, like the chat column's rows: the rail hides #filters, and a hidden block leaves auto-placement —
      the list would slide into the `auto` row and the usage under it into the 1fr. */
-  #shd { grid-row: 1; } #filters { grid-row: 2; } #slist { grid-row: 3; } #usage { grid-row: 4; }
-  /* The chat list folded to a rail: the selected project's colour square and the » to open it again.
+  #shd { grid-row: 1; } #filters { grid-row: 2; } #slist { grid-row: 3; } #sfoot { grid-row: 4; }
+  /* The chat list folded to a rail: the fish, the selected project's colour square and the » to open it again.
      The width is set here, not inline, so the splitter's saved width comes back on unfold. */
   /* Folded, the list is a rail of one square per chat (2026-09-22): the project's short name on its own colour,
      and the card's own edge — so what is clauding, how many agents are out, what is watching and what is asking
      still read from the rail. Everything inside the card goes; .abbr is the only child left standing. */
   main.scompact #sessions { width: 58px; min-width: 0; }
-  main.scompact #sessions #filters, main.scompact #newChat, main.scompact #stitle > .t, main.scompact #stitle > .n, main.scompact #splitter { display: none; }
+  main.scompact #sessions #filters, main.scompact #newChat, main.scompact #stitle > :not(.sq), main.scompact #splitter { display: none; }
+  main.scompact #stitle { flex: none; margin: 0; padding: 5px; }
   main.scompact #shd { flex-direction: column; padding: 8px 0; gap: 8px; min-height: 0; }
   main.scompact #slist { padding: 7px 6px 10px; gap: 6px; }
   main.scompact #slist > .card { padding: 0; min-height: 36px; display: grid; place-items: center;
@@ -167,12 +156,20 @@
   .colhead .btn.icon { padding: 3px 7px; }
 
   /* ---- projects: a folder, or a named set of folders ---- */
-  #plist { overflow-y: auto; padding: 6px; min-width: 0; }
-  /* The cog opens on hover, and the target is the whole footer — every pixel down to the bottom left corner of
-     the window, so the pointer can be thrown at it. The button inside only shows where to look. */
-  #pfoot { display: flex; padding: 8px 12px; border-top: 1px solid var(--line); cursor: pointer; }
-  #pfoot:hover { background: var(--inline-bg); }
-  main.compact #pfoot { justify-content: center; padding: 8px 0; }
+  /* No column of their own since 2026-09-24 (Ricardo: "the first column ends up not being used and it's taking
+     space. I use more the hotkeys and I just want visual cues that a project filter is done or not"). The chat
+     list's head is the cue: the project's colour square, its name and ▾ — a click there is ⌥⌘P's picker — and × to
+     go back to ALL, which is the one project without one. The list's left edge and the head's tint are the
+     project's colour, ALL's black. */
+  #stitle { cursor: pointer; border-radius: 6px; margin: -4px 0 -4px -6px; padding: 4px 6px; }
+  #stitle:hover { background: color-mix(in srgb, var(--repo, var(--nocolor)) 26%, transparent); }
+  #stitle > .t { flex: 0 1 auto; }   /* the name only as wide as it is, so ▾ and the count sit right after it */
+  #stitle .caret { flex: none; font-size: 10px; color: var(--muted); margin-left: -3px; }
+  #stitle .sx { flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 13px; font-weight: 400; line-height: 1; color: var(--muted); }
+  #stitle .sx:hover { color: var(--ink); background: var(--inline-bg); }
+  /* A select is as wide as its widest option — a long folder name took the head's width and cut the project's name
+     short. Its own label is all it needs to show. */
+  #shd #newChatSel { width: 128px; }
   /* the filter boxes: a magnifier in the row, the box itself only while it is open or has text */
   .fsearch { font: inherit; border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 12px; padding: 2px 7px; cursor: pointer; display: inline-flex; align-items: center; flex: none; }
   .fsearch .ic { width: 12px; height: 12px; fill: currentColor; }
@@ -181,35 +178,13 @@
   .fq { font: inherit; font-size: 11px; padding: 2px 8px; border: 1px solid var(--accent); border-radius: 12px; background: var(--bg); color: var(--ink); width: 150px; min-width: 0; }
   .fq[hidden] { display: none; }
   .fq:focus { outline: none; }
-  .colhead .fq { width: 120px; }
-  .colhead.searching > span:first-child { display: none; }
   #fchips { display: contents; }
-  .proj { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 7px; align-items: center; padding: 6px 8px 6px 6px; border-radius: 8px; cursor: pointer; min-width: 0; border-left: 3px solid transparent; position: relative; }
-  .proj:hover { background: var(--user-bg); }
-  .proj.active { background: var(--user-bg); border-left-color: var(--repo, var(--nocolor)); }
-  .proj.all { margin-bottom: 4px; }
-  .proj .sq { width: 10px; height: 10px; border-radius: 3px; background: var(--repo, var(--nocolor)); }
-  .proj.custom .sq { border-radius: 50%; }
-  .proj .pname { font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  /* a project's mark (PROJECT_ICONS), inline before its name; in the strip the name runs down, so the mark sits above
-     it — inline still (a block would stack beside the vertical text), with the gap on its physical bottom */
+  /* a project's mark (PROJECT_ICONS), inline before its name */
   .pic { width: 13px; height: 13px; fill: currentColor; vertical-align: -2px; margin-right: 4px; flex: none; }
-  main.compact #projects .pname .pic { display: inline-block; margin: 0 0 4px; width: 14px; height: 14px; }
-  .proj .ptime { font-size: 11px; color: var(--muted); }
-  .proj .pills { grid-column: 2 / 4; display: flex; gap: 5px; align-items: center; }
-  .proj .pills:empty { display: none; }
-  .proj .pfold { grid-column: 2 / 4; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .pc { font-size: 10.5px; font-weight: 700; border-radius: 9px; padding: 0 6px; line-height: 16px; color: #fff; }
   .pc.working { background: var(--working); color: #2a2205; } .pc.ready { background: var(--idle); }
-  .proj .pedit { position: absolute; right: 6px; top: 5px; font: inherit; font-size: 12px; line-height: 1; padding: 2px 5px; border: 1px solid transparent; background: var(--panel); color: var(--muted); border-radius: 4px; cursor: pointer; opacity: 0; }
-  .proj:hover .pedit { opacity: 1; }
-  /* The pin: on hover like the pencil, always while pinned; the pencil moves left to make room on custom rows. */
-  .proj .ppin { position: absolute; right: 6px; top: 5px; font: inherit; line-height: 1; padding: 3px 4px; border: 1px solid transparent; background: var(--panel); color: var(--muted); border-radius: 4px; cursor: pointer; opacity: 0; display: inline-flex; }
-  .proj .ppin .ic { width: 12px; height: 12px; fill: currentColor; }
-  .proj:hover .ppin, .proj .ppin.on { opacity: 1; }
-  /* the colour swatch: on hover like the pin, one slot to its left (two on a named project, past the pencil) */
-  /* The square is the picker where the row is one folder (rows here, the chat list's header): click opens the
-     colour panel, ⌥-click clears. #colorInput is the one real control on the page, kept out of the re-rendered
+  /* The square is the colour picker where it stands for one folder (the chat header's, beside the project's name):
+     click opens the colour panel, ⌥-click clears. #colorInput is the one real control on the page, kept out of the re-rendered
      lists so the panel it opened is still wired to something after the next render. */
   .sq.pick { cursor: pointer; transition: transform .12s; }
   .sq.pick:hover { transform: scale(1.35); box-shadow: 0 0 0 2px var(--panel), 0 0 0 3px var(--muted); }
@@ -219,21 +194,6 @@
   /* a file being dragged over the board (the shell says so in the app; the page sees it in a browser) */
   #chat.dropping { outline: 2px dashed var(--accent); outline-offset: -5px; }
   #chat.dropping > * { pointer-events: none; }
-  .proj .ppin.on { color: var(--ink); }
-  .proj.pinned .ptime { margin-right: 22px; }   /* the pin stays visible on a pinned row: keep it off the time */
-  .proj .ppin:hover { border-color: var(--line); color: var(--ink); }
-  .proj.custom .pedit { right: 30px; }
-  /* Pinned rows sit above a line, in your order. Drag any row above the line to pin it there; drag a pinned
-     one below it to let it go. The indicators are box-shadows, so nothing moves while you drag. */
-  .psep { border-top: 1px solid var(--line); margin: 4px 10px 6px; }
-  main.compact .psep { margin: 2px 9px 4px 10px; }
-  .proj.dropbefore { box-shadow: 0 -2px 0 var(--accent); }
-  .proj.dropafter { box-shadow: 0 2px 0 var(--accent); }
-  .psep.over { border-top: 2px solid var(--accent); }
-  #plist.unpin .psep { border-top-style: dashed; border-top-color: var(--needs); }
-  .proj.dragging { opacity: .4; }
-  .proj .pedit:hover { border-color: var(--line); color: var(--ink); }
-  .phint { font-size: 11px; color: var(--muted); padding: 10px 10px 6px; line-height: 1.4; }
 
   /* ---- sessions of the selected project ---- */
   #filters { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--line); background: var(--panel); }
@@ -399,8 +359,18 @@
      where the window's clock stands — a bar past its tick is being spent faster than time —, the percent and the
      time to its reset. Folded (the heading, the chevron), one line of
      rings. On the rail (⌘B) the rings stack with the percent inside, whatever the fold says. */
-  /* min-height is #pfoot's, the cog's row beside it: folded, the two top rules run across the window as one line */
-  #usage { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); display: grid; align-content: center; min-height: 44px; border-top: 1px solid var(--line); background: var(--panel); padding: 7px 12px 8px; font-size: 11px; color: var(--muted); min-width: 0; user-select: none; }
+  /* The chat list's foot (2026-09-24): the cog in the window's bottom left corner, the usage beside it. The cog opens
+     on hover and the target is its whole cell — every pixel down to that corner, so the pointer can be thrown at
+     it; the button inside only shows where to look. On the rail the cell goes under the rings. */
+  #sfoot { display: flex; min-width: 0; border-top: 1px solid var(--line); background: var(--panel); }
+  /* …and it is drawn over the list's coloured edge, carrying the edge on its own border, since an edge is not a
+     cell: the pointer thrown into the corner lands on x = 0, which is the edge's. */
+  #pfoot { flex: none; width: 50px; margin-left: -4px; border-left: 4px solid var(--repo, var(--nocolor)); display: flex; align-items: flex-end; justify-content: center; padding: 8px 0; border-right: 1px solid var(--line); cursor: pointer; }
+  #pfoot:hover { background: var(--inline-bg); }
+  main.scompact #sfoot { flex-direction: column-reverse; }
+  main.scompact #pfoot { width: auto; border-right: 0; border-top: 1px solid var(--line); }
+  /* min-height is the cog cell's: folded, the foot is one row of 44 px */
+  #usage { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); flex: 1; display: grid; align-content: center; min-height: 44px; padding: 7px 12px 8px; font-size: 11px; color: var(--muted); min-width: 0; user-select: none; }
   #usage[hidden] { display: none; }
   #usage button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; width: 100%; min-width: 0; display: flex; align-items: center; gap: 6px; text-align: left; cursor: pointer; }
   #usage button:hover { color: var(--ink); }
@@ -425,7 +395,7 @@
   #usage .uring { --w: 2.5px; width: 12px; height: 12px; flex: none; border-radius: 50%; background: conic-gradient(var(--u) calc(var(--p) * 1%), var(--utrack) 0);
     -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--w) - .5px), #000 calc(100% - var(--w))); mask: radial-gradient(farthest-side, transparent calc(100% - var(--w) - .5px), #000 calc(100% - var(--w))); }
   #usage.stale .urows, #usage.stale .uchip { opacity: .5; }   /* the last answer, kept while the server cannot get a new one */
-  main.scompact #usage { padding: 9px 0 10px; }
+  main.scompact #usage { flex: none; padding: 9px 0 10px; }
   main.scompact #usage .uopen, main.scompact #usage .uchev { display: none; }
   main.scompact #usage .uline { display: flex; flex-direction: column; row-gap: 9px; cursor: default; }
   main.scompact #usage .uchip { position: relative; flex-direction: column; gap: 2px; font-size: 9.5px; }
@@ -647,6 +617,13 @@
   .pkrow .pkx { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; line-height: 1; padding: 2px 5px; border-radius: 6px; cursor: pointer; opacity: 0; }
   .pkrow:hover .pkx, .pkrow.sel .pkx { opacity: .75; }
   .pkrow .pkx:hover { opacity: 1; color: var(--needs); background: var(--inline-bg); }
+  /* ⌥⌘P, since the column went (2026-09-24): ✎ on a named project opens its editor, and ＋ new project closes the list,
+     never filtered out — the two things the column's rows did that no key did. */
+  .pkrow.named { grid-template-columns: auto 1fr auto auto auto; }
+  .pkrow .pked { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12px; line-height: 1; padding: 2px 5px; border-radius: 6px; cursor: pointer; opacity: 0; }
+  .pkrow:hover .pked, .pkrow.sel .pked { opacity: .75; }
+  .pkrow .pked:hover { opacity: 1; color: var(--ink); background: var(--inline-bg); }
+  .pkrow.newproj .n { color: var(--accent); font-weight: 600; }
   #picklist .none { padding: 12px; color: var(--muted); font-size: 12px; text-align: center; }
   dialog h3 { margin: 0 0 10px; font-size: 15px; }
   dialog p.help { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
@@ -681,16 +658,11 @@
 </head>
 <body>
 <main id="main">
-  <section id="projects">
-    <div class="colhead"><span class="brand" id="brandBtn"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g><g fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span>Projects</span><span class="spacer" style="flex:1"></span><button class="btn icon" id="pqBtn" title="Filter projects by name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="pq" class="fq" placeholder="name…" hidden><button class="btn icon" id="newProjBtn" title="New project — a name over one or more folders (multi-repo work, an investigation)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M7.25 2h1.5v5.25H14v1.5H8.75V14h-1.5V8.75H2v-1.5h5.25Z"/></svg></button><button class="btn icon" id="projPinBtn">»</button></div>
-    <div id="plist"></div>
-    <div id="pfoot"><button class="btn icon" id="cogBtn" title="Settings"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm0 1.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm-.9-5.5h1.8l.4 1.9c.4.15.8.35 1.15.6l1.85-.65 1.3 2.2-1.45 1.3c.05.4.05.8 0 1.2l1.45 1.3-1.3 2.2-1.85-.65c-.35.25-.75.45-1.15.6l-.4 1.9H7.1l-.4-1.9a5 5 0 0 1-1.15-.6l-1.85.65L2.4 10l1.45-1.3a5 5 0 0 1 0-1.2L2.4 6.2l1.3-2.2 1.85.65c.35-.25.75-.45 1.15-.6Z"/></svg></button></div>
-  </section>
   <section id="sessions">
-    <div class="colhead" id="shd"><span id="stitle" class="t"></span><span id="newChat"></span><button class="btn icon" id="sessPinBtn" title="Fold the chat list">«</button></div>
+    <div class="colhead" id="shd"><span class="brand" id="brandBtn"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g><g fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="stitle" class="t"></span><span id="newChat"></span><button class="btn icon" id="sessPinBtn" title="Fold the chat list">«</button></div>
     <div id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" hidden><span id="fchips"></span></div>
     <div id="slist"></div>
-    <div id="usage"></div>
+    <div id="sfoot"><div id="pfoot"><button class="btn icon" id="cogBtn" title="Settings"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm0 1.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm-.9-5.5h1.8l.4 1.9c.4.15.8.35 1.15.6l1.85-.65 1.3 2.2-1.45 1.3c.05.4.05.8 0 1.2l1.45 1.3-1.3 2.2-1.85-.65c-.35.25-.75.45-1.15.6l-.4 1.9H7.1l-.4-1.9a5 5 0 0 1-1.15-.6l-1.85.65L2.4 10l1.45-1.3a5 5 0 0 1 0-1.2L2.4 6.2l1.3-2.2 1.85.65c.35-.25.75-.45 1.15-.6Z"/></svg></button></div><div id="usage"></div></div>
   </section>
   <div id="splitter" title="Drag to resize"></div>
   <section id="chat">
@@ -702,7 +674,7 @@
       <div class="grp on" id="grp">
         <div class="ptabs" id="ptabs" hidden></div>
         <div class="gbody" id="gbody">
-          <div id="log"><div class="empty">Pick a project on the left, then a chat.</div></div>
+          <div id="log"><div class="empty">Pick a chat on the left — ⌥⌘K finds one anywhere, ⌥⌘P picks a project.</div></div>
           <div class="gterm" id="term" hidden><div class="tbody" id="termBody"></div></div>
         </div>
       </div>
@@ -733,7 +705,7 @@
     <kbd>⌥⌘G</kbd><span>its PR on GitHub, on a tab · the repo when it has none · a picker with several, every time</span>
     <kbd>⌥⌘C</kbd><span>this chat's claude session — the pane while it runs here · starts or takes over one</span>
     <kbd>⌥⌘O</kbd><span>oracle — its environments, then that one's open chats and ＋ a new one</span>
-    <kbd>⌥⌘P</kbd><span>project picker</span>
+    <kbd>⌥⌘P</kbd><span>project picker — or a click on the project's name atop the chat list · ✎ edits a named one, ＋ makes one</span>
     <kbd>⌥⌘K</kbd><span>chat picker — every ready or clauding chat, fuzzy: <em>wapi res</em> finds <em>wallet-api resolvers</em></span>
     <kbd>⌥⌘N</kbd><span>a chat — a project, a folder in ~/acme, or ＋ clone a repo of the org · then its open chats or ＋ a new one · ✕ takes a row off the board</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
@@ -775,7 +747,7 @@
 <script>
 // Map ▾ — the page's sections, from its own banners (node scripts/map.mjs rewrites this; grep a name to jump)
 //   css · header
-//   css · layout: projects | sessions | splitter | chat (one half or two)
+//   css · layout: sessions | splitter | chat (one half or two)
 //   css · projects: a folder, or a named set of folders
 //   css · sessions of the selected project
 //   css · plan usage: the chat list's footer
@@ -792,9 +764,8 @@
 //   js  · helpers
 //   js  · plan usage: the chat list's footer
 //   js  · projects
-//   js  · the projects column: a strip by default, the full column while the pointer is over it
 //   js  · render: both lists
-//   js  · ⌥⌘P: the project picker. Same list as the column, in the same order; the box filters by name.
+//   js  · ⌥⌘P: the project picker. The board's projects, pinned first; the box filters by name.
 //   js  · the pickers' matcher: fuzzy since 2026-09-21
 //   js  · the org's folders, and cloning one that is not here yet (2026-09-21)
 //   js  · the colour picker
@@ -813,10 +784,11 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, foldBy: {}, headDetails: false, chatZoom: 1, projectsCompact: true, sessionsCompact: false, splitAt: .5, usageFolded: false };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, foldBy: {}, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, usageFolded: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
+  delete prefs.projectsCompact;   // the projects column's strip or full width — there is no column since 2026-09-24
   // the one-of-four filter (before 2026-09-20) becomes the set of states shown; 'all' was every state
   if ('filter' in prefs) { prefs.filters = prefs.filter === 'all' ? ['ready', 'working', 'done'] : [prefs.filter]; delete prefs.filter; }
   if (!Array.isArray(prefs.filters)) prefs.filters = ['ready', 'working', 'done'];
@@ -833,14 +805,9 @@
   // list's footer on 2026-09-24. `sound`, `showAll`, `toolsMode` and `foldCode` keep their saved values — the code
   // still reads them, and the chat header's { } button is still the fold for a chat — but nothing sets them now.
   // The magnifier opens its box; Esc or an emptied box on blur closes it; the icon stays lit while a filter is on.
-  for (const [b, i] of [['#qBtn', '#q'], ['#pqBtn', '#pq']]) {
-    const btn = $(b), inp = $(i), head = btn.closest('.colhead');
-    let opened = false;   // the strip cannot hold a box: searching opens the column, and it folds back when the search ends
-    const show = on => {
-      if (i === '#pq' && on && prefs.projectsCompact) { opened = true; prefs.projectsCompact = false; applyProjectsCompact(); }
-      else if (i === '#pq' && !on && opened) { opened = false; prefs.projectsCompact = true; applyProjectsCompact(); }
-      inp.hidden = !on; head?.classList.toggle('searching', on); if (on) inp.focus();
-    };
+  {
+    const btn = $('#qBtn'), inp = $('#q');
+    const show = on => { inp.hidden = !on; if (on) inp.focus(); };
     btn.onclick = () => show(inp.hidden);
     inp.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); inp.value = ''; btn.classList.remove('on'); show(false); renderBoard(); } });
     inp.addEventListener('blur', () => { if (!inp.value.trim()) show(false); });
@@ -852,7 +819,7 @@
   const settingsOpen = on => {
     const pop = $('#settings');
     if (!on) { pop.hidden = true; spop.pinned = false; $('#cogBtn').classList.remove('on'); return; }
-    pop.style.left = ($('#projects').offsetWidth + 8) + 'px';   // beside the strip, whatever its width
+    pop.style.left = ($('#pfoot').getBoundingClientRect().right + 8) + 'px';   // beside the cog's cell, open list or rail
     pop.hidden = false;
     $('#cogBtn').classList.add('on');
   };
@@ -900,7 +867,7 @@
     const b = $('#sessPinBtn'); b.textContent = prefs.sessionsCompact ? '»' : '«'; b.title = prefs.sessionsCompact ? 'Open the chat list' : 'Fold the chat list';
   }
   // ⌘B is the same switch from the keyboard (2026-09-22, Ricardo: "cmd B should toggle colapse of 2nd column"),
-  // VS Code's key for its sidebar, here the chat list — the column between the projects and the chat.
+  // VS Code's key for its sidebar, here the chat list — the column beside the chat.
   function toggleSessions() { prefs.sessionsCompact = !prefs.sessionsCompact; savePrefs(); applySessionsCompact(); }
   $('#sessPinBtn').onclick = toggleSessions;
   applySessionsCompact();
@@ -1073,7 +1040,7 @@
   // The same rules as the lane board had: empty live panels and stale chats older than 30 days hide unless asked.
   // Taken off the board by ⌥⌘N's ✕ (2026-09-22, Ricardo: "I want to be able to remove a project when doing hotkey
   // N"): the key is a folder's cwd or `c:<id>`, the pins' own spelling, and the server keeps the list (state.json),
-  // so every browser and the app agree. It takes the row out of the projects column and out of every picker — the
+  // so every browser and the app agree. It takes the row out of every picker (and, while there was one, the projects column) — the
   // chats themselves are untouched and still show under ALL, because hiding a folder is tidying an index, not
   // throwing work away. The cog is the way back.
   const isHidden = key => state.hidden.includes(key);
@@ -1140,30 +1107,12 @@
     const rest = every.filter(p => !p.pinned);
     return [stat(all), ...pins, ...rest.filter(p => p.custom), ...rest.filter(p => !p.custom).sort((a, b) => b.last.localeCompare(a.last))];
   }
-  // ---- the projects column: a strip by default, the full column while the pointer is over it ------
-  function applyProjectsCompact() {
-    $('#main').classList.toggle('compact', !!prefs.projectsCompact);
-    const b = $('#projPinBtn');
-    b.textContent = prefs.projectsCompact ? '»' : '«';
-    b.title = prefs.projectsCompact ? 'Open the projects column' : 'Fold it into a strip';
-  }
-  $('#projPinBtn').onclick = () => { prefs.projectsCompact = !prefs.projectsCompact; savePrefs(); applyProjectsCompact(); };
-  applyProjectsCompact();
   const pillsHtml = p => `${p.working ? `<span class="pc working" title="clauding">${p.working}</span>` : ''}${p.ready ? `<span class="pc ready" title="ready for you">${p.ready}</span>` : ''}${p.unread ? `<span class="badge">${p.unread}</span>` : ''}`;   // the column's counts, and the picker's
-  // The colour square — and on a row that is one folder (folder rows, single-folder named projects, the chat
-  // list's header) the picker: Peacock's setting, written for the VS Code window too.
+  // The colour square — and where it stands for one folder (the chat header's) the picker: Peacock's setting, written
+  // for the VS Code window too.
   const sqHtml = (p, style = '') => p.cwds?.length === 1
     ? `<span class="sq pick"${style ? ` style="${style}"` : ''} data-cwd="${esc(p.cwds[0])}" title="Colour of ${esc(p.name)} — click to pick; written as peacock.color into the folder's .vscode/settings.json, so the VS Code window shows it too; ⌥-click takes it out"></span>`
     : `<span class="sq"${style ? ` style="${style}"` : ''}></span>`;
-  function projHtml(p) {
-    const pills = pillsHtml(p);
-    return `<div class="proj ${p.key === prefs.project ? 'active' : ''} ${p.custom ? 'custom' : ''} ${p.key === ALL ? 'all' : ''} ${p.pinned ? 'pinned' : ''}" data-key="${esc(p.key)}" style="${repoStyle(projColor(p))}"${p.key === ALL ? '' : ' draggable="true"'} title="${esc(p.custom ? (p.cwds.join('\n') || 'no folders yet') : p.key === ALL ? 'Every chat, newest first' : p.key)}">
-      ${sqHtml(p)}<span class="pname">${projIcon(p.name)}${esc(p.name)}</span><span class="ptime">${p.last ? rel(p.last) : ''}</span>
-      <span class="pills">${pills}</span>
-      ${p.custom ? `<span class="pfold">${esc(p.cwds.length ? p.cwds.map(folderName).join(' · ') : 'no folders')}</span><button class="pedit" title="Edit this project">✎</button>` : ''}
-      ${p.key === ALL ? '' : `<button class="ppin ${p.pinned ? 'on' : ''}" title="${p.pinned ? 'Unpin' : 'Pin to the top'} — drag rows to arrange">${ICON.pin}</button>`}
-    </div>`;
-  }
 
   // ---- render: both lists ------------------------------------------------------------
   // The three states as chips, each a toggle (prefs.filters, remembered); all three on is what "all" used to be.
@@ -1173,11 +1122,8 @@
     const every = projectList();
     if (!every.some(p => p.key === prefs.project)) prefs.project = ALL;
     const cur = every.find(p => p.key === prefs.project);
-    const pq = $('#pq').value.trim().toLowerCase();   // the column's own filter; the selection is untouched by it
-    const ps = every.filter(p => !pq || p.key === ALL || p.name.toLowerCase().includes(pq));
-    $('#plist').innerHTML = ps.map((p, i) => projHtml(p) + (p.pinned && !ps[i + 1]?.pinned ? '<div class="psep"></div>' : '')).join('') + (every.length === 1 ? '<div class="phint">Folders show up here as soon as a chat runs in them. <b>+</b> names a project over several.</div>' : '');
     renderSessionList(cur); renderHidden();
-    const all = ps[0];
+    const all = every[0];
     $('#counts').textContent = `${[...state.sessions.values()].filter(s => s.alive).length} live · ${all.ready} ready · ${all.working} clauding`;
     const total = [...state.unread.values()].reduce((a, b) => a + b, 0);
     document.title = (total ? `(${total}) ` : '') + 'peixAIrada';
@@ -1224,8 +1170,10 @@
     // which needs a group above it); inside each group your last touch, newest first. A finished job moves its card
     // into the ready group, where its last prompt puts it.
     const shown = list.filter(s => filterOn(bucket(s))).sort((a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byUser(a, b));
-    $('#stitle').innerHTML = `${sqHtml(p, repoStyle(projColor(p)))}<span class="t">${projIcon(p.name)}${esc(p.name)}</span><span class="n">${list.length}</span>`;
-    $('#stitle').title = p.custom ? p.cwds.join('\n') : p.key === ALL ? '' : p.key;
+    // The project filter's one cue: a click is ⌥⌘P's picker, × goes back to ALL. The square is only a colour here —
+    // the colour picker is the chat header's.
+    $('#stitle').innerHTML = `<span class="sq" style="${repoStyle(projColor(p))}"></span><span class="t">${projIcon(p.name)}${esc(p.name)}</span><span class="caret">▾</span><span class="n">${list.length}</span>${p.key === ALL ? '' : '<span class="sx" title="Every project again (ALL)">×</span>'}`;
+    $('#stitle').title = `${p.key === ALL ? 'Every project' : p.custom ? `${p.name}: ${p.cwds.join(', ') || 'no folders yet'}` : p.key} — click or ⌥⌘P for another`;
     // new chat: one folder is a button; several (a custom project, All) is a pick-list of folders
     const folders = p.key === ALL ? knownFolders() : p.cwds;
     $('#newChat').innerHTML = folders.length === 1 ? `<button class="btn icon" id="newChatBtn" data-cwd="${esc(folders[0])}" title="New chat in ${esc(folderName(folders[0]))} — opens a terminal running claude there">${ICON.plus}<span class="lbl">new chat</span></button>`
@@ -1289,14 +1237,14 @@
     </div>`;
   }
   function selectProject(key) { prefs.project = key; savePrefs(); renderBoard(); }
-  // ---- ⌥⌘P: the project picker. Same list as the column, in the same order; the box filters by name. ----
+  // ---- ⌥⌘P: the project picker. The board's projects, pinned first; the box filters by name. ----
   // ⌥⌘G puts the chat's PRs in the same dialog (state · repo#n · title · age, as #prlist lays them out)
   // when it mentions more than one; the box filters by number and title, ⏎ opens the PR as a row click would.
   // ⌥⌘K (2026-09-20) fills it with every chat that is ready or clauding — done ones stay out — across all projects, in
   // the list's own order (clauding first, then by your last touch); the box searches the same words as the list's
   // magnifier (title, project, prompt, branch) but fuzzily, and with something typed the best match leads instead
   // (2026-09-21); ⏎ opens the chat, switching project when it lives elsewhere.
-  // ⌥⌘N (2026-09-20) is a chat in the one dialog, a step at a time: the project (the column's list without ALL),
+  // ⌥⌘N (2026-09-20) is a chat in the one dialog, a step at a time: the project (⌥⌘P's list without ALL),
   // then — 2026-09-21, Ricardo: "after selecting the project, we should allow choosing open chats" — that project's
   // open chats, newest by your last touch, with ＋ new chat first; ＋ then asks the folder when the project spans
   // several and the environment when the folder's Taskfile launches claude itself, as oracle's `task
@@ -1493,14 +1441,18 @@
       pick.list = hunt(items, p => p.folder ? [p.name, homePath(p.cwd)] : [p.name]);
       const clone = pick.mode === 'new' ? cloneRow(items) : null;
       if (clone) pick.list = [...pick.list, clone];
+      if (pick.mode === 'project') pick.list = [...pick.list, { newProject: true }];   // ＋ new project, last and never filtered out
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
       // ✕ on every row of ⌥⌘N that names a project or a folder — never on ＋ clone, which is not on the board yet.
-      const hx = p => pick.mode !== 'new' ? '' : `<button class="pkx" data-key="${esc(p.key)}" title="Take ${esc(p.name)} off the board — the column and every picker stop listing it; its chats stay under ALL and the cog puts it back">✕</button>`;
-      rows = pick.list.map((p, i) => p.clone
+      const hx = p => pick.mode !== 'new' ? '' : `<button class="pkx" data-key="${esc(p.key)}" title="Take ${esc(p.name)} off the board — every picker stops listing it; its chats stay under ALL and the cog puts it back">✕</button>`;
+      const ed = p => pick.mode === 'project' && p.custom ? `<button class="pked" data-id="${esc(p.id)}" title="Edit ${esc(p.name)} — its name and folders">✎</button>` : '';
+      rows = pick.list.map((p, i) => p.newProject
+        ? `<div class="pkrow newproj${sel(i)}" data-i="${i}" title="A name over one or more folders — multi-repo work, an investigation"><span class="sq"></span><span class="n">＋ new project<span class="cur">a name over several folders</span></span><span class="pills"></span><span class="t"></span></div>`
+        : p.clone
         ? `<div class="pkrow clone${sel(i)}" data-i="${i}" title="gh repo clone ${esc(folders.org)}/${esc(p.name)} into ${esc(homePath(folders.root))}"><span class="sq"></span><span class="n">＋ clone ${esc(folders.org)}/${esc(p.name)}<span class="cur">into ${esc(homePath(folders.root))}</span></span><span class="pills"></span><span class="t"></span></div>`
         : p.folder
           ? `<div class="pkrow folder${pick.mode === 'new' ? ' hides' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(p.cwd))}" title="${esc(p.cwd)}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}<span class="cur">${esc(homePath(p.cwd))}</span></span><span class="pills"></span><span class="t"></span>${hx(p)}</div>`
-          : `<div class="pkrow${pick.mode === 'new' ? ' hides' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(projColor(p))}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}${p.key === prefs.project ? '<span class="cur">current</span>' : ''}</span><span class="pills">${pillsHtml(p)}</span><span class="t">${p.last ? rel(p.last) : ''}</span>${hx(p)}</div>`);
+          : `<div class="pkrow${pick.mode === 'new' ? ' hides' : ''}${ed(p) ? ' named' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(projColor(p))}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}${p.key === prefs.project ? '<span class="cur">current</span>' : ''}</span><span class="pills">${pillsHtml(p)}</span><span class="t">${p.last ? rel(p.last) : ''}</span>${hx(p)}${ed(p)}</div>`);
     }
     $('#picklist').innerHTML = rows.join('') || `<div class="none">no ${PICK_NOUN[pick.mode] || 'project'} matches</div>`;
     $('#picklist .pkrow.sel')?.scrollIntoView({ block: 'nearest' });
@@ -1518,6 +1470,7 @@
       if (pick.ctx.then === 'chats') chatsStep({ key: pick.ctx.cwd, name: folderName(pick.ctx.cwd), cwds: [pick.ctx.cwd], env: x.name });
       else { dlg.close(); newChat(pick.ctx.cwd, x.name); }
     }
+    else if (x.newProject) { dlg.close(); openProjectEditor(null); }
     else { dlg.close(); selectProject(x.key); }
   }
   // The open chats of a step's scope — a project (its own rule: a folder is its exact cwd, a named project its
@@ -1543,6 +1496,8 @@
   $('#picklist').addEventListener('click', e => {
     const x = e.target.closest('.pkx');   // ✕: the row goes off the board, the picker stays where it is
     if (x) { e.stopPropagation(); hideProject(x.dataset.key); pickRender(); return; }
+    const ed = e.target.closest('.pked');   // ✎: the picker gives way to the project's editor
+    if (ed) { e.stopPropagation(); $('#pick').close(); openProjectEditor(ed.dataset.id); return; }
     const r = e.target.closest('.pkrow'); if (r) pickChoose(+r.dataset.i);
   });
   $('#pick').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.close(); });   // a click on the backdrop
@@ -1658,11 +1613,6 @@
     }
     if (prs.length === 1) showPr(prs[0].url); else pickOpen('pr');   // several: always the choice; the strip's says which is showing
   }
-  // Pins: the ordered list lives on the server (state.pins), so every browser and the app agree. The button
-  // pins at the end of the pinned block; dragging a row sets its place — anywhere above the line pins it
-  // there, a pinned row dropped below the line is let go. Shown at once; the server confirms with a `pins` event.
-  const setPins = pins => { state.pins = pins; renderBoard(); fetch('/api/pins', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pins }) }); };
-  const togglePin = key => setPins(state.pins.includes(key) ? state.pins.filter(k => k !== key) : [...state.pins, key]);
   // Hiding is the pins' shape: the whole list each time, shown at once, the server confirms with a `hidden` event.
   // A hidden project that is the selected one falls back to ALL on the next render (renderBoard does that already).
   const setHidden = keys => { state.hidden = keys; renderBoard(); fetch('/api/hidden', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ hidden: keys }) }); };
@@ -1675,47 +1625,10 @@
     : { name: folderName(key), where: homePath(key) };
   function renderHidden() {
     const box = $('#hidden'); if (!box) return;
-    box.innerHTML = !state.hidden.length ? '' : `<span class="kh">hidden — off the column and the pickers; their chats are still on the board under ALL</span>`
+    box.innerHTML = !state.hidden.length ? '' : `<span class="kh">hidden — off the pickers; their chats are still on the board under ALL</span>`
       + state.hidden.map(k => { const l = hiddenLabel(k); return `<div class="hrow"><span title="${esc(l.where || k)}"><b>${esc(l.name)}</b>${l.where ? ` ${esc(l.where)}` : ''}</span><button data-key="${esc(k)}" title="Put it back on the board">show</button></div>`; }).join('');
   }
   $('#hidden').addEventListener('click', e => { const b = e.target.closest('button'); if (b) showProject(b.dataset.key); });
-  let drag = null;   // the key of the row being dragged
-  // Where a drop lands: `at` is an index into state.pins, null below the line. The zone is the All row plus
-  // the pinned rows *as shown* (the column filter may hide some), so the index goes through the row's key.
-  function dropAt(e) {
-    if (e.target.closest?.('.psep')) return { at: state.pins.length, sep: true };
-    const zone = [...document.querySelectorAll('#plist .proj.all, #plist .proj.pinned')];
-    const row = e.target.closest?.('.proj');
-    if (!row || !zone.includes(row)) return { at: null };
-    const r = row.getBoundingClientRect(), before = e.clientY < r.top + r.height / 2;
-    const i = Math.max(0, zone.indexOf(row) - 1 + (before ? 0 : 1));   // All is zone[0]: a drop on it means first
-    const anchor = zone[i + 1]?.dataset.key;   // the pinned row the drop lands before, if any
-    return { at: anchor ? state.pins.indexOf(anchor) : state.pins.length, row, before: before && row.dataset.key !== ALL };
-  }
-  const clearDrop = () => { for (const el of document.querySelectorAll('#plist .dropbefore, #plist .dropafter, #plist .psep.over')) el.classList.remove('dropbefore', 'dropafter', 'over'); $('#plist').classList.remove('unpin'); };
-  $('#plist').addEventListener('dragstart', e => {
-    const row = e.target.closest('.proj');
-    if (!row || row.dataset.key === ALL) { e.preventDefault(); return; }
-    drag = row.dataset.key; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', drag);
-    setTimeout(() => row.classList.add('dragging'));   // after the drag image is taken, or it fades too
-  });
-  $('#plist').addEventListener('dragend', () => { drag = null; clearDrop(); $('#plist .dragging')?.classList.remove('dragging'); });
-  $('#plist').addEventListener('dragover', e => {
-    if (!drag) return;
-    e.preventDefault(); e.dataTransfer.dropEffect = 'move';
-    const d = dropAt(e); clearDrop();
-    if (d.at === null) { if (state.pins.includes(drag)) $('#plist').classList.add('unpin'); return; }
-    if (d.sep) $('#plist .psep')?.classList.add('over');
-    else d.row.classList.add(d.before ? 'dropbefore' : 'dropafter');
-  });
-  $('#plist').addEventListener('drop', e => {
-    if (!drag) return;
-    e.preventDefault();
-    const d = dropAt(e), key = drag; drag = null; clearDrop();
-    const pins = state.pins.filter(k => k !== key);
-    if (d.at !== null) { const was = state.pins.indexOf(key); pins.splice(was >= 0 && was < d.at ? d.at - 1 : d.at, 0, key); }
-    if (JSON.stringify(pins) !== JSON.stringify(state.pins)) setPins(pins);
-  });
   // ---- the colour picker ------------------------------------------------------------------
   // One real <input type=color> for the page (#colorInput): the squares are re-rendered on every update, so the
   // control is moved under the square that was clicked and opened from there — the panel stays wired to it
@@ -1735,10 +1648,10 @@
   }
   // The note belongs by the square that was clicked — the chat header's since 2026-09-22, the chat list's header
   // before that — and every render makes a new element, so what is remembered is where it was, not which it was.
-  let colorAt = '#shd';
+  let colorAt = '#shead';
   const sqFor = cwd => document.querySelector(`${colorAt} .sq.pick[data-cwd="${CSS.escape(cwd)}"]`) || document.querySelector(`.sq.pick[data-cwd="${CSS.escape(cwd)}"]`);
   function openColorPicker(sq) {
-    colorAt = sq.closest('#shead') ? '#shead' : sq.closest('#shd') ? '#shd' : '#plist';
+    colorAt = '#shead';
     const r = sq.getBoundingClientRect();
     colorInput.style.left = r.left + 'px'; colorInput.style.top = r.bottom + 'px';
     colorInput.dataset.cwd = sq.dataset.cwd; colorInput.value = repoColor(sq.dataset.cwd) || '#b9b9b3';
@@ -1764,16 +1677,11 @@
   document.addEventListener('click', e => {   // capture: before the row's own click selects the project
     const sq = e.target.closest('.sq.pick'); if (!sq) return;
     e.stopPropagation(); e.preventDefault();
-    if (e.altKey) { colorAt = sq.closest('#shead') ? '#shead' : '#shd'; previewColor(sq.dataset.cwd, null); setPeacock(sq.dataset.cwd, null); } else openColorPicker(sq);
+    if (e.altKey) { colorAt = '#shead'; previewColor(sq.dataset.cwd, null); setPeacock(sq.dataset.cwd, null); } else openColorPicker(sq);
   }, true);
-  $('#plist').addEventListener('click', e => {
-    const pin = e.target.closest('.ppin');
-    if (pin) { e.stopPropagation(); togglePin(pin.closest('.proj').dataset.key); return; }
-    const edit = e.target.closest('.pedit');
-    if (edit) { e.stopPropagation(); openProjectEditor(edit.closest('.proj').dataset.key.slice(2)); return; }
-    const row = e.target.closest('.proj'); if (row) selectProject(row.dataset.key);
-  });
   $('#sessions').addEventListener('click', e => {
+    if (e.target.closest('#stitle .sx')) { selectProject(ALL); return; }
+    if (e.target.closest('#stitle')) { pickOpen('project'); return; }
     const nb = e.target.closest('#newChatBtn'); if (nb) { newChatIn(nb.dataset.cwd); return; }
     const f = e.target.closest('.fchip'); if (f) { const k = f.dataset.f; prefs.filters = FILTERS.map(x => x[0]).filter(x => x === k ? !filterOn(k) : filterOn(x)); savePrefs(); renderBoard(); return; }
     const card = e.target.closest('.card'); if (!card) return;
@@ -1814,7 +1722,6 @@
     $('#pdlg').close();
     if (prefs.project === 'c:' + id) selectProject(ALL);
   }
-  $('#newProjBtn').onclick = () => openProjectEditor(null);
   $('#psave').onclick = saveProject; $('#pdel').onclick = deleteProject; $('#pcancel').onclick = () => $('#pdlg').close();
   $('#pname').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); saveProject(); } });
 

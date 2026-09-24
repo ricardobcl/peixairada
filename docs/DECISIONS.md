@@ -4,6 +4,41 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-24.
 
+## Decisions of 2026-09-24, later still — the projects column goes
+
+Ricardo: "so the first column ends up not being used and it's taking space. I use more the hotkeys and I just want
+visual cues that a project filter is done or not. so remove the entire 1st column and make the project cue on the 2nd
+column open the project select (P hotkey). leave the app icon at the top on the old 2nd column (after this refactor
+should be the only colunm)".
+
+* **No projects column.** `#projects` is gone with everything only it had: the strip and its full width
+  (`projectsCompact`, dropped from saved prefs), its name filter, its rows' counts, the drag that pinned. The chat
+  list is the board's one column beside the chat.
+* **The list's head is the cue.** The fish first — the app icon, still the SSE light —, then `#stitle`: the
+  project's square, its name, ▾ and its count. A click anywhere on it is ⌥⌘P's picker; **×** beside any project but
+  ALL goes back to ALL. With the edge and the head's tint already in the project's colour (ALL's black), a filter
+  that is on reads from across the room, and the × is the one thing that says *this is a filter* rather than a title.
+  The square there is only a colour now — a click on it is the picker, like the rest of the head; picking a colour
+  is the chat header's square, which has done it since 2026-09-22. On the rail the head is the fish and the square.
+* **What only the column's rows did moved into ⌥⌘P**: ✎ on a named project opens its editor (three on this board:
+  web-clients, site, shop-backend), and ＋ new project closes the list, never filtered out, like ⌥⌘N's
+  ＋ clone. **Pins were not moved**: the five pinned folders still head the pickers in their order, but nothing on
+  the page pins or unpins any more — `PUT /api/pins` still does. Said so to Ricardo rather than guessed at.
+* **The cog stays in the window's bottom left corner**, now the chat list's: `#sfoot` is the cog's cell beside the
+  usage (under it on the rail). The corner pixel belonged to the list's 4 px coloured edge, not the cell, so the cell
+  is drawn over the edge (`margin-left: -4px`) and carries the edge on its own border — the pointer thrown into the
+  corner still opens the popover, which opens beside the cell. The folded usage and the cell are one 44 px row.
+* **A select is as wide as its widest option**: `+ new chat in…` on ALL took 180 px for a long folder name and cut
+  the project's name to `AL…`. It is 128 px wide in the head.
+* `scripts/scenarios/project-cue.mjs`: no column; the fish heads the list; the head says ALL with no ×, opens the
+  picker on a click, names the project chosen with × beside it, and × is ALL again; ✎ on the one named project and
+  nowhere else, opening its editor; ＋ new project last, opening an empty one; on the rail the head is the square, and
+  it opens the picker; the bottom left pixel is the cog's, rail or not, and the popover opens 8 px beside the cell.
+  `usage-bar` expects the foot as one row — four rings wrap to a second line beside the cog at the fixture's width,
+  so it asserts the cell and the usage are level and as tall, 44 px at the least. `hotkeys` waited
+  for the oracle folder's row in the column; it waits for the pin now. Looked at on the live board, light and dark:
+  ALL, a project, the picker, the rail, the popover.
+
 ## Decisions of 2026-09-24, later — the usage spends in orange
 
 Ricardo: "make the credits used color green -> orange".
