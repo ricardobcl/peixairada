@@ -4,6 +4,19 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-24.
 
+## Decisions of 2026-09-24, evening — a quieter foot, one row atop the list, the header's PRs folded
+
+Ricardo: "make the cog cleaner by removing the border and the vertical separator from the credits. also, mke that
+bottom row a bit smaller vertically", "a the top of the column, we have 2 rows, but we could use just 1: remove the
+cards counter, the new chat should be a + icon only", and "on the chat header, make PRs appear compact as they do on
+cards and on click, they toggle to the expanded version per row that we have now".
+
+* **The foot is quieter and shorter.** The cog lost its button border (the open state is its accent colour alone)
+  and the cell lost the rule between it and the usage — on the rail the rule above it too; the cell's hover wash is
+  its only outline. Folded, the foot is 34 px (44 before): the cell's padding 8 → 5 px and the cog's 5/8 → 4 px, the
+  usage's 7/8 → 5/6 px, and the open rows a pixel closer. The usage starts 6 px from the cell rather than 12, since
+  nothing divides them now. `usage-bar` holds the foot to 34 px at the least.
+
 ## Decisions of 2026-09-24, later still — the projects column goes
 
 Ricardo: "so the first column ends up not being used and it's taking space. I use more the hotkeys and I just want

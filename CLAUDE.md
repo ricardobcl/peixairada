@@ -146,7 +146,8 @@ refuses to run against the real directory for the same reason.
 * **The plan usage is the chat list's footer** (2026-09-24): `#usage`, the fourth row of `#sessions`. Open, a row
   per window — name, a bar in `--spend` (orange; red from 90 %, `uColor`), a tick where the window's clock stands
   (`uPace`, only for the windows whose length `uSpan` knows), percent, time to reset; folded (`prefs.usageFolded`,
-  the heading or the chevron), one line of rings, 44 px like the cog's cell beside it (`#pfoot`, in `#sfoot`);
+  the heading or the chevron), one line of rings, 34 px with the cog's cell beside it (`#pfoot`, in `#sfoot`; no
+  rule between them and no border on the cog — the cell's hover wash is its only outline);
   on the rail, the rings stacked with the percent inside and the cog under them. **The markup holds both shapes**
   and CSS picks (`.folded`, `main.scompact`), so ⌘B re-renders nothing. `loadUsage()` on load, every `USAGE_EVERY_MS` while visible, once a
   window's reset has passed, and on the way back to a hidden page, **backing off on failures** (a refused keychain

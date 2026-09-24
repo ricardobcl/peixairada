@@ -365,12 +365,16 @@
   #sfoot { display: flex; min-width: 0; border-top: 1px solid var(--line); background: var(--panel); }
   /* …and it is drawn over the list's coloured edge, carrying the edge on its own border, since an edge is not a
      cell: the pointer thrown into the corner lands on x = 0, which is the edge's. */
-  #pfoot { flex: none; width: 50px; margin-left: -4px; border-left: 4px solid var(--repo, var(--nocolor)); display: flex; align-items: flex-end; justify-content: center; padding: 8px 0; border-right: 1px solid var(--line); cursor: pointer; }
+  /* No rule between the cell and the usage, and no border on the cog (2026-09-24, Ricardo: "make the cog cleaner by
+     removing the border and the vertical separator from the credits") — the hover's wash is the cell's only outline. */
+  #pfoot { flex: none; width: 46px; margin-left: -4px; border-left: 4px solid var(--repo, var(--nocolor)); display: flex; align-items: flex-end; justify-content: center; padding: 5px 0; cursor: pointer; }
   #pfoot:hover { background: var(--inline-bg); }
+  #pfoot .btn, #pfoot .btn.on { border-color: transparent; padding: 4px; }
   main.scompact #sfoot { flex-direction: column-reverse; }
-  main.scompact #pfoot { width: auto; border-right: 0; border-top: 1px solid var(--line); }
-  /* min-height is the cog cell's: folded, the foot is one row of 44 px */
-  #usage { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); flex: 1; display: grid; align-content: center; min-height: 44px; padding: 7px 12px 8px; font-size: 11px; color: var(--muted); min-width: 0; user-select: none; }
+  main.scompact #pfoot { width: auto; }
+  /* folded, the foot is one row of 34 px, the cog's cell and the rings side by side ("a bit smaller vertically":
+     44 px until the same day) */
+  #usage { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); flex: 1; display: grid; align-content: center; min-height: 34px; padding: 5px 12px 6px 6px; font-size: 11px; color: var(--muted); min-width: 0; user-select: none; }
   #usage[hidden] { display: none; }
   #usage button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; width: 100%; min-width: 0; display: flex; align-items: center; gap: 6px; text-align: left; cursor: pointer; }
   #usage button:hover { color: var(--ink); }
@@ -378,9 +382,9 @@
   #usage button:hover .uchev { opacity: 1; }
   #usage .uline .uchev { transform: rotate(180deg); }   /* folded, it points up: the way the rows will come */
   #usage.folded .uopen, #usage:not(.folded) .uline { display: none; }
-  #usage .uhd { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 6px; }
+  #usage .uhd { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 4px; }
   /* one grid for every row, so the bars start and the numbers end in one line whatever the names' lengths */
-  #usage .urows { display: grid; grid-template-columns: auto minmax(36px, 1fr) auto auto; gap: 6px 9px; }
+  #usage .urows { display: grid; grid-template-columns: auto minmax(36px, 1fr) auto auto; gap: 5px 9px; }
   #usage .urow { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; white-space: nowrap; }
   #usage .ul { overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
   #usage .ubar { position: relative; height: 5px; border-radius: 3px; background: var(--utrack); }
@@ -395,7 +399,7 @@
   #usage .uring { --w: 2.5px; width: 12px; height: 12px; flex: none; border-radius: 50%; background: conic-gradient(var(--u) calc(var(--p) * 1%), var(--utrack) 0);
     -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--w) - .5px), #000 calc(100% - var(--w))); mask: radial-gradient(farthest-side, transparent calc(100% - var(--w) - .5px), #000 calc(100% - var(--w))); }
   #usage.stale .urows, #usage.stale .uchip { opacity: .5; }   /* the last answer, kept while the server cannot get a new one */
-  main.scompact #usage { flex: none; padding: 9px 0 10px; }
+  main.scompact #usage { flex: none; padding: 8px 0 6px; }
   main.scompact #usage .uopen, main.scompact #usage .uchev { display: none; }
   main.scompact #usage .uline { display: flex; flex-direction: column; row-gap: 9px; cursor: default; }
   main.scompact #usage .uchip { position: relative; flex-direction: column; gap: 2px; font-size: 9.5px; }

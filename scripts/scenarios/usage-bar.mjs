@@ -70,7 +70,7 @@ export default async function (ctx) {
   ctx.assert.equal(out.folded.folded && out.folded.line && !out.folded.open, true, 'folded shows the line alone');
   out.foot = await ctx.evaluate(`JSON.stringify(['#usage', '#pfoot'].map(q => { const r = document.querySelector(q).getBoundingClientRect(); return [Math.round(r.top), Math.round(r.height)]; }))`).then(JSON.parse);
   ctx.assert.deepEqual(out.foot[0], out.foot[1], 'level with the cog cell, and as tall');
-  ctx.assert.ok(out.foot[0][1] >= 44, '…44 px at the least (four rings wrap to a second line beside the cog at this width)');
+  ctx.assert.ok(out.foot[0][1] >= 34, '…34 px at the least (four rings wrap to a second line beside the cog at this width)');
   ctx.assert.equal(out.folded.chips.every(c => c.shown && c.ring === 12), true, 'every ring shows, small');
   ctx.assert.equal((await ctx.peix('prefs()')).usageFolded, true, 'the fold is a pref');
   await ctx.shot('2-folded', { x: 0, y: 700, width: 520, height: 300 });
