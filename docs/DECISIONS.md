@@ -4,6 +4,16 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-24.
 
+## Decisions of 2026-09-24, late night — the header's PR chips get a wash
+
+Ricardo: "the PRs on the header could have a bit of brackground gradient, to make it prettier".
+
+* **A wash of the chip's own state colour**, deeper at the top left: 28 % of it over the panel fading to 7 %, the
+  angle the cards' wash has. The state rules set `--prc` for both chips, and only the header's paints with it — the
+  cards' stay plain. On the dark panel 28 % hardly showed, so the start is a theme token (`--prg`, 44 % there). The
+  wash is built over the panel, so the tinted header needs no background of its own under the chips any more; `+n`
+  has no state and takes the muted grey.
+
 ## Decisions of 2026-09-24, late night — no strip under the header for the PR in front of you
 
 Ricardo: "when a PR is open in web, there a row at the top (below the header) with extra PR info (branch, etc.) ->

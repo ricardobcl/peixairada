@@ -140,7 +140,8 @@ refuses to run against the real directory for the same reason.
   (`.hpr` shares `.cpr`'s rule; `HPR_CHIPS` of them, then `+n`), toggles `#prlist` — the rows, one per PR — under the
   header; `prefs.prsOpen`, the board's and not the chat's. The rows are rendered folded too (`#prlist` hidden), so
   ⌥⌘G and the harness still read `#prlist .prrow`. On a tinted header the chips sit on the panel, so a state's
-  colour reads on any project's; taller (20 px) and with a 2 px edge than the cards' (`--prb`). → `scripts/scenarios/header-prs.mjs`.
+  colour reads on any project's; taller (20 px) and with a 2 px edge than the cards' (`--prb`), on a wash of the
+  state's colour (`--prc`, set by the shared state rules; `--prg` per theme, stronger on the dark panel). → `scripts/scenarios/header-prs.mjs`.
 * **The open chat's card and a hovered one are a solid tint** of its colour (`.card.active`, `.card:hover`, 55 %), the
   rest keep the gradient wash **under a plain edge** (2026-09-20 evening): only the clauding card, the hovered one and
   the open one wear the colour on their border.

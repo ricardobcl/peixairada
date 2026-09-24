@@ -11,6 +11,7 @@
     --working: #d9a82a; --idle: #2f9e5b; --needs: #d64545; --ended: #a3a39e; --unread: #c96442;
     --watch: #0e8a8a;   /* a monitor or a background command still running: cool, because nothing is waiting on you */
     --spend: #e8782a;   /* the plan usage's bars and rings: what is spent, in orange */
+    --prg: 28%;          /* how much of a PR's state colour the header chip's wash starts at — more on the dark panel, where less shows */
     --user-bg: #f0efe9; --tool-bg: #f7f7f4; --code-bg: #efeee8; --code-line: #dedcd2;
     --code-ink: #a8442a; --inline-bg: rgba(0, 0, 0, .055);
     --you: #2f8b7c; --snip-claude: #45443f; --vscode: #0066b8;
@@ -26,7 +27,7 @@
     --bg: #141413; --panel: #1c1c1a; --ink: #e8e6df; --muted: #9a998f; --line: #2c2c29; --accent: #e08a68;
     --user-bg: #23231f; --tool-bg: #1f1f1c; --code-bg: #101010; --code-line: #2e2e2a; --ended: #5d5d58;
     --code-ink: #e0a284; --inline-bg: rgba(255, 255, 255, .075);
-    --you: #4fb8a8; --snip-claude: #c9c7bd; --vscode: #4aa5f0; --nocolor: #66665f; --watch: #45c8c8; --spend: #f28a3c;
+    --you: #4fb8a8; --snip-claude: #c9c7bd; --vscode: #4aa5f0; --nocolor: #66665f; --watch: #45c8c8; --spend: #f28a3c; --prg: 44%;
     --pr-open: #3fb950; --pr-merged: #a371f7; --pr-closed: #f85149; --pr-draft: #8b8b85;
     --term-bg: #111110; --term-sel: rgba(255, 255, 255, .22);
     --hl-com: #7c7c74; --hl-key: #c678dd; --hl-str: #98c379; --hl-num: #d19a66;
@@ -343,10 +344,10 @@
   /* a PR as a chip — the card's, and the chat header's (.hpr) since 2026-09-24 */
   :is(.card .cpr, .shead .hpr) { font-size: 10.5px; font-weight: 600; line-height: 16px; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; color: var(--muted); }
   .card .cpr:hover { border-color: currentColor; }
-  :is(.card .cpr, .shead .hpr)[data-state="open"] { color: var(--pr-open); border-color: color-mix(in srgb, var(--pr-open) var(--prb, 55%), transparent); }
-  :is(.card .cpr, .shead .hpr)[data-state="merged"] { color: var(--pr-merged); border-color: color-mix(in srgb, var(--pr-merged) var(--prb, 55%), transparent); }
-  :is(.card .cpr, .shead .hpr)[data-state="closed"] { color: var(--pr-closed); border-color: color-mix(in srgb, var(--pr-closed) var(--prb, 55%), transparent); }
-  :is(.card .cpr, .shead .hpr)[data-state="draft"] { color: var(--pr-draft); border-color: color-mix(in srgb, var(--pr-draft) var(--prb, 55%), transparent); }
+  :is(.card .cpr, .shead .hpr)[data-state="open"] { --prc: var(--pr-open); color: var(--pr-open); border-color: color-mix(in srgb, var(--pr-open) var(--prb, 55%), transparent); }
+  :is(.card .cpr, .shead .hpr)[data-state="merged"] { --prc: var(--pr-merged); color: var(--pr-merged); border-color: color-mix(in srgb, var(--pr-merged) var(--prb, 55%), transparent); }
+  :is(.card .cpr, .shead .hpr)[data-state="closed"] { --prc: var(--pr-closed); color: var(--pr-closed); border-color: color-mix(in srgb, var(--pr-closed) var(--prb, 55%), transparent); }
+  :is(.card .cpr, .shead .hpr)[data-state="draft"] { --prc: var(--pr-draft); color: var(--pr-draft); border-color: color-mix(in srgb, var(--pr-draft) var(--prb, 55%), transparent); }
   .card .state.needs-input { color: var(--needs); display: flex; align-items: baseline; gap: 5px; }
   .card .state.needs-input .ic { width: 11px; height: 11px; flex: none; align-self: center; }
   .card .state.needs-input .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -492,14 +493,16 @@
   .shead .hprs { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 1px 4px; margin: -3px 0; border: 1px solid transparent; border-radius: 7px; background: none; font: inherit; color: var(--muted); cursor: pointer; }
   /* taller than the cards' and with a thicker edge, to be seen (2026-09-24, Ricardo: "make the PRs on that top bar
      take a bit more vertical space and with a thicker border to be more visible") */
-  .shead .hpr { --prb: 85%; font-size: 11.5px; line-height: 20px; padding: 0 7px; border-width: 2px; border-radius: 5px; }
+  .shead .hpr { --prb: 85%; font-size: 11.5px; line-height: 20px; padding: 0 7px; border-width: 2px; border-radius: 5px;
+    /* …on a wash of their own colour, deeper at the top left (the same evening: "a bit of background gradient, to make
+       it prettier"); built over the panel, so it reads on a tinted header as on a plain one */
+    background: linear-gradient(160deg, color-mix(in srgb, var(--prc, var(--muted)) var(--prg), var(--panel)), color-mix(in srgb, var(--prc, var(--muted)) 7%, var(--panel)) 80%); }
   .shead .hprs:hover, .shead .hprs.on { border-color: var(--line); }
   .shead .hprs .caret { font-size: 12px; line-height: 1; }
   .shead .hprs.on .caret { transform: rotate(180deg); }
   .shead .hpr.more { color: var(--muted); border-style: dashed; }
   #chat.tinted .shead .hprs { color: color-mix(in srgb, var(--rink) 78%, transparent); }
   #chat.tinted .shead .hprs:hover, #chat.tinted .shead .hprs.on { border-color: color-mix(in srgb, var(--rink) 40%, transparent); }
-  #chat.tinted .shead .hpr { background: var(--panel); }
   /* ---- The chat's PRs, one per row under the header: state, repo#n, the whole title. ---- */
   #prlist { border-bottom: 1px solid var(--line); background: var(--panel); padding: 4px 12px 5px; display: grid; gap: 1px; min-width: 0; }
   #prlist[hidden] { display: none; }
