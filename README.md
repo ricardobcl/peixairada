@@ -78,7 +78,7 @@ page simply cannot do for itself:
 | 🚀 | **Owns the server.** Starts `server.mjs` on launch with the node inside the bundle (no PATH games, no version-manager guessing), stops it on quit. If a server is *already* running on the port — from `npm start` or the launchd agent — it attaches to that one instead and defers to it for notifications, so you never get two of everything. |
 | 🔔 | **Native notifications** from *peixAIrada*, not from "Script Editor" — and clicking one opens that session in the board. Only fires while the window isn't in front, and not at all with the cog's *notifications* switch off (the Dock badge still counts). Falls back to the old `osascript` banner if notification permission is refused. |
 | 🎯 | **Dock badge** with the alerts you haven't seen, and a **menu-bar fish** whose menu lists every session waiting on you. Click one to jump straight to it. |
-| 🐙 | **Pages as tabs.** Click a PR row under the chat header (or a card's chip) and the pull request opens on a tab of the chat — beside *chat*, *zsh* and *VS Code* — in a web view of the app's (GitHub refuses to be framed), with ‹ › ↻ ↗ in the strip and your GitHub login kept between launches. **Esc** or the *chat* tab brings the chat back; **×** on a tab forgets its page. |
+| 🐙 | **Pages as tabs.** Click a PR row under the chat header (unfolded from its chips) or a card's chip and the pull request opens on a tab of the chat — beside *chat*, *zsh* and *VS Code* — in a web view of the app's (GitHub refuses to be framed), with ‹ › ↻ ↗ in the strip and your GitHub login kept between launches. **Esc** or the *chat* tab brings the chat back; **×** on a tab forgets its page. |
 | ⌨️ | ⌘R reloads what is in front of you — the page on the pane while one is up, the board otherwise; ⌘⇧R restarts the server. **⌘F finds on the page in the pane**, as a browser does: a bar over its top right, ⏎ / ⇧⏎ or ⌘G / ⇧⌘G for the next match and the one before, esc to close it (no *1 of 12* — WebKit only says whether it found one, and a miss turns the text red). Close the window and it keeps running in the menu bar. |
 | 🎨 | **An icon drawn in code** ([`mac/icon/MakeIcon.swift`](mac/icon/MakeIcon.swift)) — a fish in Claude terracotta with a starburst eye, no image assets anywhere — that simplifies itself at 16/32 px so it stays legible in the menu bar. |
 
@@ -239,9 +239,11 @@ yourself is picked up as well —, the VS Code and terminal buttons. No status
 word — the dot's colour says it and hovering spells it out. Click the repo name in the header to
 jump to that folder's chats.
 
-**The PRs a chat mentions sit under the header, one per row**: the state in GitHub's colours, `repo#n`,
-the whole title once `gh` has answered, and when it was last mentioned. Six rows, then **… n more**.
-Click one and the PR pane opens on it.
+**The PRs a chat mentions are chips in the header**, the way the cards show them — `#n` in the PR's state colour,
+four of them and a `+n` for the rest. **Click them and they unfold under the header, one per row**: the state in
+GitHub's colours, `repo#n`, the whole title once `gh` has answered, and when it was last mentioned. Six rows, then
+**… n more**. Click a row and the PR pane opens on it; click the chips again to fold the rows away. The board
+remembers which way you left them.
 
 ### 💬 The chat pane
 

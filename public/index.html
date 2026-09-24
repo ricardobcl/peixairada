@@ -341,12 +341,13 @@
   .card .state { font-size: 11px; font-weight: 600; margin-top: 4px; }
   /* the PRs it mentions: number and GitHub's state colour, nothing more; a click opens that PR */
   .card .cprs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
-  .card .cpr { font-size: 10.5px; font-weight: 600; line-height: 16px; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; color: var(--muted); }
+  /* a PR as a chip — the card's, and the chat header's (.hpr) since 2026-09-24 */
+  :is(.card .cpr, .shead .hpr) { font-size: 10.5px; font-weight: 600; line-height: 16px; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; color: var(--muted); }
   .card .cpr:hover { border-color: currentColor; }
-  .card .cpr[data-state="open"] { color: var(--pr-open); border-color: color-mix(in srgb, var(--pr-open) 55%, transparent); }
-  .card .cpr[data-state="merged"] { color: var(--pr-merged); border-color: color-mix(in srgb, var(--pr-merged) 55%, transparent); }
-  .card .cpr[data-state="closed"] { color: var(--pr-closed); border-color: color-mix(in srgb, var(--pr-closed) 55%, transparent); }
-  .card .cpr[data-state="draft"] { color: var(--pr-draft); border-color: color-mix(in srgb, var(--pr-draft) 55%, transparent); }
+  :is(.card .cpr, .shead .hpr)[data-state="open"] { color: var(--pr-open); border-color: color-mix(in srgb, var(--pr-open) 55%, transparent); }
+  :is(.card .cpr, .shead .hpr)[data-state="merged"] { color: var(--pr-merged); border-color: color-mix(in srgb, var(--pr-merged) 55%, transparent); }
+  :is(.card .cpr, .shead .hpr)[data-state="closed"] { color: var(--pr-closed); border-color: color-mix(in srgb, var(--pr-closed) 55%, transparent); }
+  :is(.card .cpr, .shead .hpr)[data-state="draft"] { color: var(--pr-draft); border-color: color-mix(in srgb, var(--pr-draft) 55%, transparent); }
   .card .state.needs-input { color: var(--needs); display: flex; align-items: baseline; gap: 5px; }
   .card .state.needs-input .ic { width: 11px; height: 11px; flex: none; align-self: center; }
   .card .state.needs-input .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -462,6 +463,19 @@
   #chat.tinted .shead .btn:hover { color: var(--rink); border-color: var(--rink); }
   #chat.tinted .shead .btn.on, #chat.tinted .shead #termBtn.take { color: var(--rink); border-color: var(--rink); background: color-mix(in srgb, var(--rink) 14%, transparent); }
   #chat.tinted .shead :is(.btn.err, #termBtn.take.arm) { color: var(--needs); border-color: var(--needs); background: var(--panel); }
+  /* The chat's PRs in the header row, compact (2026-09-24, Ricardo: "make PRs appear compact as they do on cards and
+     on click, they toggle to the expanded version per row that we have now"): the cards' chips, #n in the PR's state
+     colour, as one button; a click unfolds #prlist under the header — one row per PR — and folds it back. The fold
+     is a pref (prsOpen), not the chat's. On a tinted header the chips sit on the panel, so the state colours read on
+     any project's. */
+  .shead .hprs { flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 2px 5px; margin: -3px 0; border: 1px solid transparent; border-radius: 6px; background: none; font: inherit; color: var(--muted); cursor: pointer; }
+  .shead .hprs:hover, .shead .hprs.on { border-color: var(--line); }
+  .shead .hprs .caret { font-size: 12px; line-height: 1; }
+  .shead .hprs.on .caret { transform: rotate(180deg); }
+  .shead .hpr.more { color: var(--muted); border-style: dashed; }
+  #chat.tinted .shead .hprs { color: color-mix(in srgb, var(--rink) 78%, transparent); }
+  #chat.tinted .shead .hprs:hover, #chat.tinted .shead .hprs.on { border-color: color-mix(in srgb, var(--rink) 40%, transparent); }
+  #chat.tinted .shead .hpr { background: var(--panel); }
   /* ---- The chat's PRs, one per row under the header: state, repo#n, the whole title. ---- */
   #prlist { border-bottom: 1px solid var(--line); background: var(--panel); padding: 4px 12px 5px; display: grid; gap: 1px; min-width: 0; }
   #prlist[hidden] { display: none; }
@@ -800,7 +814,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, foldBy: {}, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, usageFolded: false };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, foldBy: {}, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, usageFolded: false, prsOpen: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -1800,6 +1814,7 @@
 
   // ---- chat header -------------------------------------------------------------------
   const PR_ROWS = 6;   // a chat that lists PRs mentions dozens; the block shows this many and folds the rest behind "more"
+  const HPR_CHIPS = 4;   // …and the header's chips this many, the rest a +N
   const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" href="${esc(pr.url)}" target="_blank" rel="noopener"
       title="${esc(`${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}`)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span><span class="meta">${rel(pr.lastAt)}</span></a>`;
   const FOCUS_TIP = "Open this chat in VS Code";   // the button only — its key went (2026-09-20, Ricardo: "leave the button up top only")
@@ -1821,10 +1836,15 @@
     // One row: title · [dot+age] · buttons. No status word — the dot carries it in colour; what it cannot say is how
     // long ago. The dot and its age *are* the details button (2026-09-20, Ricardo: "simplify the icon on the top banner
     // right" — the dot, the age and a ··· were three things for one fold): a click shows path, branch and session
-    // details under the row. The chat's PRs are the block under it, one per row (#prlist).
+    // details under the row. The chat's PRs are chips in the row, and a click on them the block under it, one per row
+    // (#prlist) — HPR_CHIPS of them, the rest counted.
     const take = takeable(s), armed = take && drawer.arm === s.id;
+    const prs = s.prs || [], prsOpen = !!prefs.prsOpen;
+    const hprs = !prs.length ? '' : `<button class="hprs${prsOpen ? ' on' : ''}" id="prToggle" aria-expanded="${prsOpen}" title="${prs.length} PR${prs.length === 1 ? '' : 's'} in this chat — click to ${prsOpen ? 'fold the list' : 'list them, one per row'} · ⌥⌘G opens one">${
+      prs.slice(0, HPR_CHIPS).map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</span>`).join('')
+    }${prs.length > HPR_CHIPS ? `<span class="hpr more">+${prs.length - HPR_CHIPS}</span>` : ''}<span class="caret">▾</span></button>`;
     $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span>${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}<span class="sep">/</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
-      ${taskChip(s)}
+      ${hprs}${taskChip(s)}
       <button class="btn icon status${prefs.headDetails ? ' on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}"
         title="${esc(statusLabel[s.status] || s.status)}${s.statusSince ? ` for ${rel(s.statusSince)}` : ''} · click to ${prefs.headDetails ? 'hide' : 'show'} path, branch and session details"><span class="dot ${s.status}"></span>${s.statusSince ? rel(s.statusSince) : ''}</button>
       <button class="btn icon fold${foldOn(s.id) ? ' on' : ''}" id="foldBtn" aria-pressed="${foldOn(s.id)}" title="${foldOn(s.id) ? 'Code blocks longer than 6 lines are folded in this chat — click to show them whole' : 'Code blocks are shown whole in this chat — click to fold the long ones'}${s.id in prefs.foldBy ? ' (set here; the cog sets the default)' : ' (the cog’s default)'}">{ }</button>
@@ -1839,10 +1859,11 @@
           s.model ? `<span class="chip">${esc(s.model)}</span>` : ''}${s.live?.pid ? `<span class="chip">pid ${s.live.pid}</span>` : ''}
       </div>`;
     if (state.prsFor !== s.id) { state.prsFor = s.id; state.prsAll = false; }   // "more" is per chat, not sticky
-    const pl = $('#prlist'), prs = s.prs || []; pl.hidden = !prs.length;
+    const pl = $('#prlist'); pl.hidden = !prs.length || !prsOpen;   // the rows are there folded too — ⌥⌘G and the harness read them
     pl.innerHTML = prs.map((pr, i) => prRow(pr, i >= PR_ROWS && !state.prsAll)).join('')
       + (prs.length > PR_ROWS ? `<button class="more" id="prMore">${state.prsAll ? 'fewer' : `… ${prs.length - PR_ROWS} more`}</button>` : '');
     pl.querySelector('#prMore')?.addEventListener('click', () => { state.prsAll = !state.prsAll; renderHead(s); });
+    const pt = $('#prToggle'); if (pt) pt.onclick = () => { prefs.prsOpen = !prefs.prsOpen; savePrefs(); renderHead(s); };
     renderComposer(s); renderRival(s);
     // Say so when it fails — silently swallowing the response is how a missing `code` CLI looked
     // like a dead button for weeks. The icon has to survive that, so failure adds a word beside it

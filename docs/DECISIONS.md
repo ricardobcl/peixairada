@@ -32,6 +32,14 @@ cards and on click, they toggle to the expanded version per row that we have now
   of ending in …. The pill is gone with the count; the name is a block.
 * `project-cue` checks the one row: the magnifier, the chips, ＋ and « in the head, the cards straight under it, ＋
   with no words, and ＋ on ALL opening ⌥⌘N's first step.
+* **The header's PRs are chips, and the rows are what a click on them unfolds.** One button in the header row holds
+  the cards' chips — `#n` in the state's colour, four and a `+n` (a chat here mentions up to twelve) — and a caret; a
+  click shows `#prlist` under the header, the rows as they were, and a second hides it. The fold is a pref, so a
+  review you keep open stays open from chat to chat, and folded is the default: the rows took a line per PR under
+  every header before. The rows are still rendered when folded, which keeps ⌥⌘G's list and the harness's
+  `#prlist .prrow` as they were. On a tinted header the chips sit on the panel — green or purple on a project's
+  colour was unreadable on half the projects. `scripts/scenarios/header-prs.mjs`: chips in the header row and the
+  rows folded; a click unfolds, a reload keeps it, a row opens its PR, a second click folds; no PRs, neither.
 
 ## Decisions of 2026-09-24, later still — the projects column goes
 

@@ -127,6 +127,11 @@ refuses to run against the real directory for the same reason.
   `.sq.pick`, so the same picker and the same ⌥-click — inked only while the pointer is in the header; it keeps its
   place in the row always, so nothing moves under the pointer. `colorAt` remembers which header the picker was
   opened from, so the answer (`note`) pops up by the square that was clicked.
+* **The chat's PRs are chips in the header row, folded** (2026-09-24): `#prToggle`, one button of the cards' chips
+  (`.hpr` shares `.cpr`'s rule; `HPR_CHIPS` of them, then `+n`), toggles `#prlist` — the rows, one per PR — under the
+  header; `prefs.prsOpen`, the board's and not the chat's. The rows are rendered folded too (`#prlist` hidden), so
+  ⌥⌘G and the harness still read `#prlist .prrow`. On a tinted header the chips sit on the panel, so a state's
+  colour reads on any project's. → `scripts/scenarios/header-prs.mjs`.
 * **The open chat's card and a hovered one are a solid tint** of its colour (`.card.active`, `.card:hover`, 55 %), the
   rest keep the gradient wash **under a plain edge** (2026-09-20 evening): only the clauding card, the hovered one and
   the open one wear the colour on their border.
@@ -406,10 +411,10 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
   `assert`, `cmd(code)` (a plain ⌘ press; `key(code)` is ⌥⌘), `screen(g)` / `waitPrompt(ms, g)` (the half, 0 by
-  default — the whole column while nothing is split). The seventeen in `scripts/scenarios/` are the
+  default — the whole column while nothing is split). The eighteen in `scripts/scenarios/` are the
   regression checks for the drawer (re-attach, restart, geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a
   compose key), the hotkeys, the tab strip and the split, the new-chat flow, the project step's folders and ✕,
-  the chat list's rules, the notifications switch, the usage bar and the project cue.
+  the chat list's rules, the notifications switch, the usage bar, the project cue and the header's PRs.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY` with what it failed on the first time, and the suite still exits 0; `--no-retry` is the honest gate.
