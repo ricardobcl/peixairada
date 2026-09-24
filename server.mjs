@@ -27,7 +27,6 @@
 //      · the holder protocol: newline-delimited JSON over the holder's socket (see lib/termhold.mjs)
 //      · launchers: a folder's own way to start claude
 //      · the org's folders: where the repos live, and cloning one that is not there yet
-//  One PR in detail: the strip under the chat header when a chip is clicked
 //  HTTP
 //  Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // Map ▴
@@ -1503,49 +1502,6 @@ function attachTermSocket(req, socket, head) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// One PR in detail: the strip under the chat header when a chip is clicked
-// ---------------------------------------------------------------------------------------------
-// `gh pr view --json` for what the strip shows — state, review, checks, size, branches. Cached
-// briefly per URL: a chip gets clicked a few times in a row, not a few hundred times a day. The
-// batched GraphQL above is for titles and states on every card; this is for the one PR in front
-// of you.
-const PR_VIEW_TTL_MS = 60_000;
-const PR_VIEW_FIELDS = 'number,url,title,state,isDraft,mergeable,reviewDecision,statusCheckRollup,headRefName,baseRefName,additions,deletions,changedFiles,author,updatedAt';
-const PR_URL_RE = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+$/;
-const prViews = new Map();   // url -> { at, code, pr | error }
-function prView(url, cb) {
-  const hit = prViews.get(url);
-  if (hit && Date.now() - hit.at < PR_VIEW_TTL_MS) return cb(hit);
-  const gh = ghBin();
-  if (!gh) return cb({ code: 501, error: 'gh not found — set GH_BIN to its path' });
-  execFile(gh, ['pr', 'view', url, '--json', PR_VIEW_FIELDS], { timeout: 20_000, maxBuffer: 4e6 }, (err, stdout, stderr) => {
-    let out;
-    if (err) out = { code: 502, error: (String(stderr || err.message).trim().split('\n').pop() || String(err)).slice(0, 300) };
-    else try {
-      const d = JSON.parse(stdout);
-      // CheckRun rows carry status/conclusion, StatusContext rows carry state; either way three buckets.
-      const checks = { total: 0, ok: 0, failed: 0, pending: 0 };
-      for (const c of d.statusCheckRollup || []) {
-        checks.total++;
-        const r = String(c.conclusion || c.state || '').toUpperCase();
-        if (['SUCCESS', 'NEUTRAL', 'SKIPPED'].includes(r)) checks.ok++;
-        else if (['FAILURE', 'ERROR', 'TIMED_OUT', 'CANCELLED', 'ACTION_REQUIRED', 'STARTUP_FAILURE'].includes(r)) checks.failed++;
-        else checks.pending++;
-      }
-      out = { code: 200, pr: {
-        number: d.number, url: d.url, title: d.title,
-        state: d.state === 'MERGED' ? 'merged' : d.state === 'CLOSED' ? 'closed' : d.isDraft ? 'draft' : 'open',
-        mergeable: d.mergeable || null, reviewDecision: d.reviewDecision || null, checks,
-        head: d.headRefName, base: d.baseRefName, additions: d.additions, deletions: d.deletions, changedFiles: d.changedFiles,
-        author: d.author?.login || null, updatedAt: d.updatedAt
-      } };
-    } catch { out = { code: 502, error: 'could not parse gh output' }; }
-    prViews.set(url, { at: Date.now(), ...out });
-    cb(out);
-  });
-}
-
-// ---------------------------------------------------------------------------------------------
 // HTTP
 // ---------------------------------------------------------------------------------------------
 
@@ -1738,13 +1694,6 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { project: projects[m[1]] });
     }
     if (req.method === 'GET' && p === '/api/usage') { planUsage((code, body) => json(res, code, body)); return; }
-    if (req.method === 'GET' && p === '/api/pr') {
-      // /files, ?diff=… and the like are fine to receive; the PR is the first four path segments
-      const url = ((new URL(req.url, 'http://x').searchParams.get('url') || '').match(/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/) || [''])[0];
-      if (!PR_URL_RE.test(url)) return json(res, 400, { error: 'expected a github.com pull request URL' });
-      prView(url, out => out.code === 200 ? json(res, 200, { pr: out.pr }) : json(res, out.code, { error: out.error }));
-      return;
-    }
     if (req.method === 'GET' && p === '/api/terminals') return json(res, 200, { terminals: [...terms.values()].map(termSummary), available: termsAvailable(), dir: TERMS_DIR });
     if (req.method === 'GET' && p === '/api/launchers') {   // the folder's Taskfile tasks that launch claude, if any (see launchersFor)
       const cwd = url.searchParams.get('cwd') || '';

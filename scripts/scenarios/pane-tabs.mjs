@@ -89,11 +89,12 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.zsh.panes.map(x => x.key.split(':')[0]), ['gh'], 'the zsh took the right half from the editor; the left half still shows its PR');
   ctx.assert.equal(out.zsh.focus, out.zsh.panes[0].key, 'and the page still up is the one the shell focuses');
   await ctx.shot('tabs', await ctx.evaluate(`(r => ({ x: r.left, y: Math.max(0, r.top - 70), width: r.width, height: 110 }))(document.querySelector('#ptabsB').getBoundingClientRect())`));
-  // a click on a PR's tab brings it back (and its strip under the header); × on it forgets the page
+  // a click on a PR's tab brings it back — and no strip under the header since 2026-09-24; × on it forgets the page
   const firstGh = out.two.tabs[1].k;
   await ctx.evaluate(`document.querySelector('#ptabs .ptab[data-tab=${JSON.stringify(firstGh)}]').click()`);
   await ctx.waitFor(`document.querySelector('#ptabs .ptab.on')?.dataset.tab === ${JSON.stringify(firstGh)}`, { what: 'the first PR tab on again' });
-  ctx.assert.equal((await lastPane()).show, firstGh); ctx.assert.equal(await ctx.evaluate(`document.querySelector('#prbar').hidden`), false, 'its strip shows');
+  ctx.assert.equal((await lastPane()).show, firstGh); ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#prbar')`), false, 'no strip under the header');
+  ctx.assert.equal('gh:' + await ctx.peix('state().pr'), firstGh, 'the board knows which PR is in front');
   out.url.back = await purl();
   ctx.assert.equal(out.url.back.url, deep, 'the address it was left on comes back with the tab');
   await ctx.evaluate(`document.querySelector('#ptabs .ptab[data-tab=${JSON.stringify(firstGh)}] .x').click()`);

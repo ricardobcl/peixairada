@@ -4,6 +4,20 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-24.
 
+## Decisions of 2026-09-24, late night — no strip under the header for the PR in front of you
+
+Ricardo: "when a PR is open in web, there a row at the top (below the header) with extra PR info (branch, etc.) ->
+remove it".
+
+* **The strip is gone, and so is what fed it.** `#prbar` said what `gh pr view` knew about the PR you had clicked —
+  state, review, checks, size, head → base, the author — in a row under the header, over the page that says all of
+  it. The page no longer asks, so the server's `GET /api/pr` and its `prView()` cache went too: one `gh` call per
+  click less, and the only `gh` left is the batched GraphQL for the cards' titles and states. The running server
+  keeps the route until its next restart; nothing calls it.
+* **What stays is which PR is in front** (`shownPr.url`, `peix.state().pr` — `prbar` before), for ⌥⌘G's picker to
+  mark *current*. `hotkeys`, `pane-tabs` and `header-prs` read that instead of the strip, and the last two check the
+  strip is not there.
+
 ## Decisions of 2026-09-24, night — the header's buttons go under ···
 
 Ricardo: "on the chat top bar, every icon that's on the right should live under a discrete '...' borderless button".

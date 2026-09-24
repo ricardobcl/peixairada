@@ -345,12 +345,10 @@ and the folder has to be **trusted once** (the *Restricted Mode* item in its sta
 the decision lives in the pane's browser profile, so it sticks). The desktop extension's deep link
 does not reach this instance; open a chat from its own sidebar.
 
-**Click a PR chip and two things happen.** A strip under the header says what `gh` knows about it —
-open / merged / closed / draft, the review decision, checks passed or failing or still running,
-+added −deleted over how many files, head → base, the author — and the PR itself opens: in the Mac
+**Click a PR chip and the PR opens**: in the Mac
 app on a **tab of the chat** — the strip under the header lists *chat* (or *claude* while its session runs here),
 *zsh* while one lives, a `repo#n` tab per PR the chat opened and *VS Code* for its folder's editor — shown in a
-web view of the app's over the chat column below the strip (GitHub refuses to be framed; your GitHub login
+web view of the app's over the chat column below the tabs (GitHub refuses to be framed; your GitHub login
 sticks between launches), with ‹ › ↻ ↗ at the strip's right for that page. Nothing reloads when you switch tabs
 or chats: each chat comes back on the tab it was on, its pages kept, and the eight most recently shown pages
 stay loaded. **Esc** brings the chat tab back, from the board or from the page (the editor gives up its own Esc
@@ -430,7 +428,6 @@ updates within **~100 ms** of Claude writing a line. Native notifications work f
 | `GET /` | the UI (`/vendor/*.{js,css}` serves the vendored libraries) |
 | `GET /events` | SSE: `snapshot`, `session`, `entries`, `alert`, `terminal`, `projects` |
 | `GET /api/sessions` | summaries of every known session (incl. `done`), plus the named projects |
-| `GET /api/pr?url=` | what `gh pr view` says about one PR: state, review decision, checks, size, branches (cached 60 s) |
 | `GET/POST /api/projects` · `PUT/DELETE /api/projects/:id` | the projects you name: `{name, cwds}` — a name over absolute folder paths (persisted in the state file) |
 | `GET /api/sessions/:id/messages` | full (capped) entry list, parsed on demand |
 | `PUT /api/sessions/:id/title` `{title}` | rename on the board (state file, not the transcript); empty clears |
@@ -520,7 +517,6 @@ Either way, the UI carries over unchanged.
 * 🌐 **Opening a chat asks GitHub about its PRs.** That is the one thing here that leaves the
   machine: `gh api graphql`, with your own credentials, sending nothing but `owner/repo#number` —
   which GitHub already knows. Nothing from the transcript goes with it. No `gh`, no colours, no call.
-  Clicking a PR chip runs `gh pr view` for that one PR — same credentials, same nothing else.
 * Status is **inferred** from the transcript unless you install the hooks. A session interrupted in a
   way that writes nothing may sit in Clauding until its next line.
 * **"Stale" is about the *process*, not the conversation.** Headless `claude -p` runs, and
@@ -552,7 +548,7 @@ Either way, the UI carries over unchanged.
 - [x] Reply straight from the board — done for stale chats, via `claude --resume`
 - [x] **Chat from the board** — a real `claude` in a terminal drawer under the transcript, resume or new
 - [x] **Projects → chats → chat** — three columns instead of four lanes; name a project over several repos
-- [x] **PRs inline** — a strip from `gh` under the header, and the PR page in a pane beside the board (Mac app)
+- [x] **PRs inline** — chips in the header, rows under it, and the PR page on a tab of the chat (Mac app)
 - [ ] ~~Continue a **VS Code** chat from the board~~ — *dropped.* The extension respawns its process when
       it is killed, and its tab does not show turns made elsewhere until the chat is reopened there;
       VS Code chats are read here and opened there, nothing more

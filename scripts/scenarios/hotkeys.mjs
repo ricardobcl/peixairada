@@ -14,7 +14,7 @@ export default async function (ctx) {
   const [two, plain] = ctx.fixture.chats;
   const out = {};
   const txt = sel => ctx.evaluate(`(document.querySelector(${JSON.stringify(sel)})?.textContent || '').trim().replace(/\\s+/g, ' ')`);
-  const bar = () => ctx.evaluate(`document.querySelector('#prbar').hidden ? null : document.querySelector('#prbar .num')?.textContent`);
+  const bar = () => ctx.peix('state().pr');   // the PR in front of you — the strip that said it went on 2026-09-24
   // no chat open: notes
   await ctx.key('KeyG'); out.noChatNote = await txt('.note');
   await ctx.evaluate(`document.querySelectorAll('.note').forEach(n => n.remove())`);
@@ -34,12 +34,12 @@ export default async function (ctx) {
   await ctx.key('KeyG');   // again, with one showing: the picker again, that one marked current
   out.again = { open: await ctx.evaluate(`document.querySelector('#pick').open`), current: await ctx.evaluate(`document.querySelector('#picklist .pkrow.pr .cur')?.closest('.pkrow')?.title || null`) };
   ctx.assert.equal(out.again.open, true, 'G with several PRs is always the picker');
-  ctx.assert.equal(out.again.current, (await ctx.peix('state()')).prbar, 'the one showing is marked current');
+  ctx.assert.equal(out.again.current, (await ctx.peix('state()')).pr, 'the one showing is marked current');
   await ctx.evaluate(`document.querySelector('#picklist .pkrow.pr:not(:has(.cur))').click()`);
   await ctx.sleep(300); out.second = await bar();
   ctx.assert.notEqual(out.second, out.first, 'the other row opened the other PR');
   out.peixState = await ctx.peix('state()');
-  ctx.assert.match(String(out.peixState.prbar), /\/pull\/\d+$/, 'the strip holds the current PR (pane pages exist only in the app)');
+  ctx.assert.match(String(out.peixState.pr), /\/pull\/\d+$/, 'the board holds the current PR (pane pages exist only in the app)');
   // ← and →: the tab beside, wrapping. The chat alone is a note; ⌥⌘T's zsh is this chat's second tab, so it splits the
   // column and opens in the right half (2026-09-22) — → wraps to the chat there, ← comes back; × on the zsh tab ends
   // it, and the split the board made itself goes with it

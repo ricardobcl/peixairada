@@ -35,9 +35,10 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelectorAll('#prlist .prrow').length === 2`, { what: 'the rows again' });
   ctx.assert.equal((await head()).shown, true, 'still unfolded after a reload');
 
-  // a row still opens its PR: the strip under the header says which
+  // a row still opens its PR — the board says which, and no strip comes under the header (2026-09-24)
   await ctx.evaluate(`document.querySelector('#prlist .prrow').click()`);
-  await ctx.waitFor(`!document.querySelector('#prbar').hidden`, { what: 'the PR strip' });
+  await ctx.waitFor(`(window.peix.state().pr || '').includes('/pull/')`, { what: 'the PR opened' });
+  ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#prbar')`), false, 'and no strip');
 
   await ctx.evaluate(`document.querySelector('#prToggle').click()`);
   out.again = await head();

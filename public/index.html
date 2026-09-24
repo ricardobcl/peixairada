@@ -117,11 +117,11 @@
   main.scompact #slist .none { padding: 14px 2px; font-size: 10px; }
   #splitter { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--panel); }
   #splitter:hover, #splitter.drag { background: var(--accent); }
-  #chat { --repo: initial; flex: 1; min-width: 320px; display: grid; grid-template-rows: auto auto auto auto 1fr auto; grid-template-columns: minmax(0, 1fr); min-height: 0; }
-  /* Placed by hand: #prbar and #composer hide with display:none, which takes them out of auto-placement
+  #chat { --repo: initial; flex: 1; min-width: 320px; display: grid; grid-template-rows: auto auto auto 1fr auto; grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  /* Placed by hand: #prlist, #rival and #composer hide with display:none, which takes them out of auto-placement
      and slid the body into an auto row — a gap under it on a short chat, the drawer pushed off the bottom
      on a long one. Everything below the header is #groups now, so there is one row to place, not three. */
-  #shead { grid-row: 1; } #prlist { grid-row: 2; } #prbar { grid-row: 3; } #rival { grid-row: 4; } #groups { grid-row: 5; } #composer { grid-row: 6; }
+  #shead { grid-row: 1; } #prlist { grid-row: 2; } #rival { grid-row: 3; } #groups { grid-row: 4; } #composer { grid-row: 5; }
   /* The chat column is one half or two (2026-09-22): ⌘2 splits it, ⌘1 / ⌘2 put the keys in the left or the right
      one. Each half has its own tab strip and its own body — the transcript, a terminal, or a page in the app's
      pane — and a tab belongs to exactly one of them. The left half keeps the plain ids: it is the whole column
@@ -515,19 +515,6 @@
   .prrow[hidden] { display: none; }
   #prlist .more { justify-self: start; font: inherit; font-size: 11px; color: var(--accent); background: none; border: 0; padding: 1px 0 0 61px; cursor: pointer; }
   #prlist .more:hover { text-decoration: underline; }
-  /* ---- PR strip: what gh says about the PR you clicked, under the header ---- */
-  #prbar { border-bottom: 1px solid var(--line); background: var(--panel); padding: 5px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 3px 12px; font-size: 12px; color: var(--muted); min-width: 0; }
-  #prbar[hidden] { display: none; }
-  #prbar .num { font-weight: 700; color: var(--ink); }
-  #prbar .ptitle { color: var(--ink); flex: 1 1 160px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #prbar .st { font-weight: 700; text-transform: uppercase; font-size: 10.5px; letter-spacing: .5px; }
-  #prbar .st.open { color: var(--pr-open); } #prbar .st.merged { color: var(--pr-merged); } #prbar .st.closed { color: var(--pr-closed); } #prbar .st.draft { color: var(--pr-draft); }
-  #prbar .ok { color: var(--pr-open); } #prbar .bad { color: var(--needs); } #prbar .pend { color: var(--working); }
-  #prbar code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; background: var(--inline-bg); padding: 0 4px; border-radius: 3px; color: var(--ink); }
-  #prbar .diff .add { color: var(--pr-open); } #prbar .diff .del { color: var(--pr-closed); }
-  #prbar a { color: var(--accent); text-decoration: none; } #prbar a:hover { text-decoration: underline; }
-  #prbar .x { margin-left: auto; font: inherit; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
-  #prbar .x:hover { color: var(--ink); }
   /* ---- a second claude on this chat: VS Code opened a chat that runs here (see renderRival) ---- */
   #rival { border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--needs) 12%, var(--panel)); padding: 6px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 12px; color: var(--ink); min-width: 0; line-height: 1.4; }
   #rival[hidden] { display: none; }
@@ -722,7 +709,6 @@
   <section id="chat">
     <div class="shead" id="shead"><h2>Pick a chat</h2></div>
     <div id="prlist" hidden></div>
-    <div id="prbar" hidden></div>
     <div id="rival" hidden></div>
     <div id="groups">
       <div class="grp on" id="grp">
@@ -808,7 +794,6 @@
 //   css · plan usage: the chat list's footer
 //   css · chat pane
 //   css · The chat's PRs, one per row under the header: state, repo#n, the whole title.
-//   css · PR strip: what gh says about the PR you clicked, under the header
 //   css · a second claude on this chat: VS Code opened a chat that runs here (see renderRival)
 //   css · composer (stale chats only)
 //   css · terminal drawer: the real claude, in a PTY on the server
@@ -1468,7 +1453,7 @@
     if (pick.mode === 'pr') {
       pick.list = hunt(state.sessions.get(state.current)?.prs || [], pr => [pr.label, pr.title || '']);
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
-      rows = pick.list.map((pr, i) => `<div class="pkrow pr${sel(i)}" data-i="${i}" data-state="${esc(pr.state || '')}" title="${esc(pr.url)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${mark(pr.label)}</span><span class="n${pr.title ? '' : ' pending'}">${pr.title ? mark(pr.title) : 'title on its way from gh…'}${pr.url === prbar.url ? '<span class="cur">current</span>' : ''}</span><span class="t">${rel(pr.lastAt)}</span></div>`);
+      rows = pick.list.map((pr, i) => `<div class="pkrow pr${sel(i)}" data-i="${i}" data-state="${esc(pr.state || '')}" title="${esc(pr.url)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${mark(pr.label)}</span><span class="n${pr.title ? '' : ' pending'}">${pr.title ? mark(pr.title) : 'title on its way from gh…'}${pr.url === shownPr.url ? '<span class="cur">current</span>' : ''}</span><span class="t">${rel(pr.lastAt)}</span></div>`);
     } else if (pick.mode === 'chat') {
       pick.list = hunt([...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done').sort((a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byUser(a, b)), chatFields);
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
@@ -1669,7 +1654,7 @@
       const url = s.cwd && state.repos[s.cwd];
       return url ? openExternal(url) : note($('#shead'), 'No PR mentioned in this chat, and no GitHub remote in its folder');
     }
-    if (prs.length === 1) showPr(prs[0].url); else pickOpen('pr');   // several: always the choice; the strip's says which is showing
+    if (prs.length === 1) showPr(prs[0].url); else pickOpen('pr');   // several: always the choice, the one showing marked current
   }
   // Hiding is the pins' shape: the whole list each time, shown at once, the server confirms with a `hidden` event.
   // A hidden project that is the selected one falls back to ALL on the next render (renderBoard does that already).
@@ -1807,30 +1792,14 @@
     if (fresh) openNewTab(s, k); else setTab(s, k);   // a page opened again is the tab it already has
     syncTerm(s);
   }
-  const prbar = { url: null };
-  function hidePr() { $('#prbar').hidden = true; prbar.url = null; }
-  async function showPr(url) {
-    prbar.url = url;
-    const bar = $('#prbar'); bar.hidden = false;
-    bar.innerHTML = `<span class="num">${esc(url.replace(/^https:\/\/github\.com\//, ''))}</span><span class="ptitle">asking gh…</span><button class="x" title="Close">×</button>`;
-    bar.querySelector('.x').onclick = hidePr;
-    openExternal(url);
-    const r = await fetch(`/api/pr?url=${encodeURIComponent(url)}`);
-    const d = await r.json().catch(() => ({}));
-    if (prbar.url !== url) return;
-    if (!r.ok) { bar.querySelector('.ptitle').textContent = d.error || `HTTP ${r.status}`; return; }
-    const p = d.pr, c = p.checks;
-    const checks = !c.total ? '<span>no checks</span>' : c.failed ? `<span class="bad">✗ ${c.failed} of ${c.total} checks failed</span>` : c.pending ? `<span class="pend">○ ${c.pending} of ${c.total} checks running</span>` : `<span class="ok">✓ ${c.total} check${c.total === 1 ? '' : 's'}</span>`;
-    const review = p.reviewDecision === 'APPROVED' ? '<span class="ok">approved</span>' : p.reviewDecision === 'CHANGES_REQUESTED' ? '<span class="bad">changes requested</span>' : p.reviewDecision === 'REVIEW_REQUIRED' ? '<span>review required</span>' : '';
-    const merge = p.state !== 'open' ? '' : p.mergeable === 'CONFLICTING' ? '<span class="bad">conflicts</span>' : p.mergeable === 'MERGEABLE' ? '<span class="ok">mergeable</span>' : '';
-    bar.innerHTML = `<span class="num">#${p.number}</span><span class="ptitle" title="${esc(p.title)}">${esc(p.title)}</span><span class="st ${p.state}">${p.state}</span>${review}${checks}${merge}
-      <span class="diff"><span class="add">+${p.additions}</span> <span class="del">−${p.deletions}</span> · ${p.changedFiles} file${p.changedFiles === 1 ? '' : 's'}</span>
-      <span><code>${esc(p.head)}</code> → <code>${esc(p.base)}</code></span>${p.author ? `<span>by ${esc(p.author)}</span>` : ''}
-      <a href="${esc(p.url)}" data-ext target="_blank" rel="noopener" title="Open on GitHub">GitHub ↗</a><button class="x" title="Close">×</button>`;
-    bar.querySelector('.x').onclick = hidePr;
-  }
-  // Every link in the chat pane passes here: a PR chip or a PR link in a reply opens the strip (and the
-  // pane / a tab); any other external link inside the app goes out through the bridge, because a
+  // The PR in front of you, for ⌥⌘G's picker to mark *current*. There was a strip under the header with what gh said
+  // about it — state, review, checks, size, branches — until 2026-09-24 (Ricardo: "when a PR is open in web, there a
+  // row at the top … with extra PR info (branch, etc.) -> remove it"): the page itself, on its tab, says all of that.
+  const shownPr = { url: null };
+  function hidePr() { shownPr.url = null; }
+  function showPr(url) { shownPr.url = url; openExternal(url); }
+  // Every link in the chat pane passes here: a PR chip or a PR link in a reply opens the PR (in the app, on a tab
+  // of the chat); any other external link inside the app goes out through the bridge, because a
   // web view without a UI delegate simply drops target=_blank.
   $('#chat').addEventListener('click', e => {
     const a = e.target.closest('a[href]'); if (!a) return;
@@ -2145,7 +2114,7 @@
   // copies, never the live objects. The page's script is one IIFE, so nothing else in it is reachable.
   window.peix = {
     state: () => ({ current: state.current, project: prefs.project, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft, hidden: [...state.hidden],
-      paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, [...v]])), tab: state.sessions.has(state.current) ? tabOf(state.sessions.get(state.current)) : null, tabs: state.sessions.has(state.current) ? tabKeys(state.sessions.get(state.current)) : [], prbar: prbar.url,
+      paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, [...v]])), tab: state.sessions.has(state.current) ? tabOf(state.sessions.get(state.current)) : null, tabs: state.sessions.has(state.current) ? tabKeys(state.sessions.get(state.current)) : [], pr: shownPr.url,
       split: splitNow(), focusG, halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
       termId: curTerm().id, termSession: curTerm().sessionId, termExited: curTerm().exited }),
     session: id => { const s = state.sessions.get(id || state.current); return s ? JSON.parse(JSON.stringify(s)) : null; },
