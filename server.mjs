@@ -21,7 +21,7 @@
 //  Notifications + SSE fan-out
 //  Hooks (optional precision): POST /hook receives Claude Code hook payloads (see hooks/hook.sh)
 //  Replying into a session
-//      · Claude plan usage, for the cog: the numbers `/usage` shows in the CLI
+//      · Claude plan usage, for the chat list's footer: the numbers `/usage` shows in the CLI
 //  VS Code Web: the editor UI served by `code serve-web`, for the pane beside the board
 //  Terminals: a real `claude` in a PTY, attached to from the page over a WebSocket
 //      · the holder protocol: newline-delimited JSON over the holder's socket (see lib/termhold.mjs)
@@ -1015,7 +1015,7 @@ function findBin(name, missingNote) {
 function claudeBin() { return findBin('claude', 'replies to stale chats are disabled'); }
 function ghBin() { return findBin('gh', 'PR status colours are disabled'); }
 
-// ---- Claude plan usage, for the cog: the numbers `/usage` shows in the CLI ---------------------------
+// ---- Claude plan usage, for the chat list's footer: the numbers `/usage` shows in the CLI --------------
 // GET https://api.anthropic.com/api/oauth/usage with Claude Code's own OAuth token (the CLI's endpoint and
 // beta header, read off the 2.1.278 binary). The token is where Claude Code keeps it — the macOS Keychain
 // item "Claude Code-credentials" (the first read asks you to allow `security`; *Always Allow* ends that),
@@ -1060,7 +1060,7 @@ function usageWindows(d) {
   return { windows, other };
 }
 function planUsage(cb) {
-  if (process.env.USAGE === 'off') return cb(503, { error: 'usage disabled (USAGE=off)' });
+  if (process.env.USAGE === 'off') return cb(503, { error: 'usage disabled (USAGE=off)', off: true });   // off: the page hides its bar
   if (usageCache.body && Date.now() - usageCache.at < 60000) return cb(usageCache.code, usageCache.body);
   oauthToken(async (token, why) => {
     if (!token) return cb(503, { error: why });

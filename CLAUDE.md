@@ -69,7 +69,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | Work behind the turn | `Monitor` and a `Bash` with `run_in_background` leave a task running: the tool_result names it (`Monitor started (task …`, `Command running in background with ID: …`) and `<task-notification>` lines carry its events and, with a `<status>`, its end. `s.tasks` → `tasks` on the summary; a task dies with the claude that started it (`live.startedAt`), at its expiry (`MONITOR_MS`, `TASK_MAX_MS`), or with the chat's process. **A completion notice delivered mid-turn never becomes a line at all**, so a background command is also asked about directly: `taskGone` runs `lsof -t` on the output file the tool_result named (the harness holds it open until the command exits) and `sweepTasks` lets go on the registry poll, after `TASK_GRACE_MS` and never on lsof's own failure |
 | Titles | board title (state file) › `custom-title` › the oldest still-open PR › `ai-title` › last prompt — `summary()`, `prTitle()` |
 | PRs mentioned | `pr-link` lines *and* GitHub pull URLs in user/assistant text; most recently mentioned first; `gh api graphql` batched for state and title (one of the two network calls) |
-| Plan usage (the cog's popover) | `GET https://api.anthropic.com/api/oauth/usage` with Claude Code's own OAuth bearer from the keychain item *Claude Code-credentials*; `USAGE=off` disables; the token never reaches the page. → Findings: *plan usage* |
+| Plan usage (the chat list's footer) | `GET https://api.anthropic.com/api/oauth/usage` with Claude Code's own OAuth bearer from the keychain item *Claude Code-credentials*; `USAGE=off` disables; the token never reaches the page. → Findings: *plan usage* |
 | Permission prompts | the registry's `waiting` (above) — they never reach the transcript; hooks are no longer needed for them |
 | Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login zsh (mise's PATH); it registers like any CLI run; a new chat is tied to its session by pid. **A folder whose Taskfile launches claude** (a task whose description mentions Claude — oracle's `task production-workload`…) starts new chats as `task <name>` instead: `GET /api/launchers?cwd=` lists them (`task --list --json`, cached by the file's mtime, `TASK_BIN` overrides), `POST /api/terminals {cwd, task}` checks the name against that list; claude is then a *descendant* of the PTY's pid, found through `ps` (`linkTermToRegistry`, `t.claudePid`), which is also where the launcher's name is written down for good (`noteEnv` → `envs` in the state file → `s.env`, what ⌥⌘O scopes by). A resume never goes through task. **`/clear` (or `/resume`) in the drawer** gives that pid a new session id — the registry file says so — and `linkTermToRegistry` moves the holder to it and pushes **both** chats, the one it joins and the one it leaves (2026-09-22: only the first was told, so the old card kept a drawer that had moved on); the page follows the holder to whatever chat it runs (`terminal` event → `openSession`), the old chat is a stale card |
 
@@ -137,6 +137,15 @@ refuses to run against the real directory for the same reason.
   first, so a day can come back (a done card from today after older ready ones) and each run gets its own line.
   → `scripts/scenarios/day-separator.mjs`. A finished job moves its card into the ready group, where its
   last prompt puts it.
+* **The plan usage is the chat list's footer** (2026-09-24): `#usage`, the fourth row of `#sessions`. Open, a row
+  per window — name, a bar green → amber → red (`uColor`, 70 / 90), a tick where the window's clock stands
+  (`uPace`, only for the windows whose length `uSpan` knows), percent, time to reset; folded (`prefs.usageFolded`,
+  the heading or the chevron), one line of rings, **44 px — `#pfoot`'s height, so the two top rules are one line**;
+  on the rail, the rings stacked with the percent inside. **The markup holds both shapes** and CSS picks (`.folded`,
+  `main.scompact`), so ⌘B re-renders nothing. `loadUsage()` on load, every `USAGE_EVERY_MS` while visible, once a
+  window's reset has passed, and on the way back to a hidden page, **backing off on failures** (a refused keychain
+  prompt would come back every two minutes otherwise); a failure keeps the last numbers, `.stale`. The server's
+  `USAGE=off` answers `off: true` and the bar hides — every test server. → `scripts/scenarios/usage-bar.mjs`.
 * **State lives in three places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done
   ticks, named projects, board titles, pins, the environment each chat was started in, notifications on or off; `STATE_FILE` overrides) shared by the app and every browser; the
   browser's `localStorage` `peixairada-prefs` (selected project, filters, widths, zoom, folds, drawer open/height);
@@ -198,9 +207,9 @@ refuses to run against the real directory for the same reason.
   `cloneAndStart()` carries straight on into the same flow in what it cloned. A long path belongs beside the name
   (`.cur`), never in the row's `auto` column: it sizes the track and the name's `1fr` is left with nothing.
   → `scripts/scenarios/new-project.mjs`, Decisions 2026-09-21.
-* **The cog's popover is the whole of the board's settings** (2026-09-21): the plan usage at the top, half again
-  the size of the rest, **the notifications switch** under it (2026-09-23, `#notifyOn`), and the keys — nothing
-  else. It opens on *hover of `#pfoot`*, the strip's footer,
+* **The cog's popover is the whole of the board's settings** (2026-09-21): **the notifications switch**
+  (2026-09-23, `#notifyOn`) and the keys — nothing else; the plan usage left it for the chat list's footer
+  (2026-09-24, below). It opens on *hover of `#pfoot`*, the strip's footer,
   which reaches the window's bottom left pixel; a click on the cog pins it, Esc or a click away closes it. The fish
   is only the SSE light now. `sound`, `showAll`, `toolsMode` and `foldCode` keep whatever they were saved as and
   nothing sets them — the chat header's `{ }` is still the fold for a chat.
@@ -335,7 +344,8 @@ refuses to run against the real directory for the same reason.
   `<system-reminder>` blocks (strip them *first* — a prompt can follow one) and `<local-command…>` synthetic lines.
 * `.cards > * { flex: none }` is load-bearing; `.card { --repo: initial }` too (custom properties inherit — the orange cards).
 * `.shead { min-width: 0 }` and a fixed `flex-basis` on `.shead h2`; PR chips are direct children of the header.
-* **Every grid row in the chat column is placed by hand** — `#chat`'s, and each half's `.ptabs` / `.gbody`. A
+* **Every grid row in the chat column is placed by hand** — `#chat`'s, each half's `.ptabs` / `.gbody`, and
+  `#sessions`' since the usage footer (the rail hides `#filters`). A
   hidden block is `display:none`, which takes it out of auto-placement and slides its siblings up a row; a body
   that lands in an `auto` row sizes itself to the terminal it holds instead of to the pane, and the drawer keeps
   whatever height it was first drawn at with black under it (2026-09-22). A new block means placing it too.
@@ -385,10 +395,10 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
   `assert`, `cmd(code)` (a plain ⌘ press; `key(code)` is ⌥⌘), `screen(g)` / `waitPrompt(ms, g)` (the half, 0 by
-  default — the whole column while nothing is split). The fifteen in `scripts/scenarios/` are the
+  default — the whole column while nothing is split). The sixteen in `scripts/scenarios/` are the
   regression checks for the drawer (re-attach, restart, geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a
   compose key), the hotkeys, the tab strip and the split, the new-chat flow, the project step's folders and ✕,
-  the chat list's rules and the notifications switch.
+  the chat list's rules, the notifications switch and the usage bar.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY` with what it failed on the first time, and the suite still exits 0; `--no-retry` is the honest gate.

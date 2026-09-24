@@ -53,7 +53,8 @@
   /* No page header since 2026-09-20 — the Mac window has its own title bar, and a second bar was a strip of
      controls nobody touched twice a day. The fish sits at the top of the projects strip and is a light, not a
      button (it goes dim when the SSE stream drops); everything the board has to say for itself is in the one
-     popover at the bottom left, behind the cog: the plan usage and the keys. */
+     popover at the bottom left, behind the cog: the notifications switch and the keys. The plan usage is the chat
+     list's footer since 2026-09-24 (#usage). */
   .brand { position: relative; width: 28px; height: 28px; flex: none; display: inline-flex; }
   .brand .logo { width: 28px; height: 28px; }
   .pop { position: fixed; left: 54px; bottom: 10px; z-index: 40; display: grid; gap: 9px; min-width: 250px; padding: 12px 14px 13px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); box-shadow: 0 10px 34px rgba(0, 0, 0, .22); font-size: 12px; }
@@ -61,20 +62,8 @@
   .pop h4 { margin: 0 0 2px; font-size: 13px; display: flex; align-items: baseline; gap: 8px; }
   .pop h4 em { font-style: normal; color: var(--accent); }
   .pop h4 .sub { font-size: 11px; font-weight: 400; color: var(--muted); }
-  /* Plan usage — one bar per window, the way `/usage` lists them; green → amber → red as it fills. It lives in
-     the settings popover (2026-09-21) and is half again the size of everything else there: read at a glance, from
-     further off than the keys under it, and the only thing in that card worth crossing the room for. */
-  .usage { display: grid; gap: 9px; padding: 3px 0 0; color: var(--muted); font-size: 18px; }
-  .usage:empty { display: none; }
-  .usage .urow { display: grid; grid-template-columns: 162px 1fr 51px auto; gap: 12px; align-items: center; white-space: nowrap; }
-  .usage .ul { overflow: hidden; text-overflow: ellipsis; }
-  .usage .ubar { height: 9px; border-radius: 5px; background: var(--inline-bg); overflow: hidden; }
-  .usage .ubar i { display: block; height: 100%; border-radius: 5px; background: var(--u, var(--idle)); }
-  .usage .up { text-align: right; font-weight: 700; color: var(--ink); }
-  .usage .ur, .usage .unote { font-size: 17px; }
-  .usage .unote { line-height: 1.35; white-space: normal; }   /* not `.note`: that is note()'s popup — position: fixed, and note() removes every one */
   /* The keys, so they can be looked up: two columns under a rule, the chord in ink, what it does in muted. */
-  #settings { width: 480px; }   /* the usage rows set it; the keys wrap inside */
+  #settings { width: 480px; }   /* the keys wrap inside */
   .pop .keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: baseline; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
   .pop .keys .kh { grid-column: 1 / -1; font-size: 11px; }
   /* The one switch (2026-09-23): system notifications on or off, the server's word so the app and every tab agree. */
@@ -86,7 +75,7 @@
   .pop .opt input:checked::after { transform: translateX(12px); }
   .pop .opt input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   /* What ⌥⌘N's ✕ took off the board, and the only way back to it. Empty is nothing at all — the popover is the
-     usage and the keys until something is hidden. */
+     switch and the keys until something is hidden. */
   .pop .hid { display: grid; gap: 3px; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
   .pop .hid:empty { display: none; }
   .pop .hid .hrow { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: baseline; }
@@ -116,7 +105,10 @@
   main.compact #projects .sq, main.compact #projects .pills, main.compact #projects .ptime, main.compact #projects .pfold, main.compact #projects .pedit, main.compact #projects .ppin { display: none; }
   #sessions { border-left: 4px solid var(--repo, var(--nocolor)); }
   #sessions .colhead { background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); }
-  #sessions { width: 380px; min-width: 260px; max-width: 60vw; flex: none; display: grid; grid-template-rows: auto auto 1fr; min-height: 0; min-width: 0; }
+  #sessions { width: 380px; min-width: 260px; max-width: 60vw; flex: none; display: grid; grid-template-rows: auto auto 1fr auto; min-height: 0; min-width: 0; }
+  /* Placed by hand, like the chat column's rows: the rail hides #filters, and a hidden block leaves auto-placement —
+     the list would slide into the `auto` row and the usage under it into the 1fr. */
+  #shd { grid-row: 1; } #filters { grid-row: 2; } #slist { grid-row: 3; } #usage { grid-row: 4; }
   /* The chat list folded to a rail: the selected project's colour square and the » to open it again.
      The width is set here, not inline, so the splitter's saved width comes back on unfold. */
   /* Folded, the list is a rail of one square per chat (2026-09-22): the project's short name on its own colour,
@@ -399,6 +391,46 @@
   .badge { background: var(--unread); color: #fff; border-radius: 10px; padding: 0 6px; font-size: 11px; font-weight: 600; min-width: 18px; text-align: center; flex: none; }
   .chip { font-size: 10px; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; min-width: 0; flex: 0 1 auto; }
 
+  /* ---- plan usage: the chat list's footer ---- */
+  /* The numbers `/usage` shows, always in view (2026-09-24, Ricardo: "move the credits from the cog to a permanent
+     bottom bar on 2nd column, make it compact and pretty (and collapsable)"). Open, a row per window: its name, a thin
+     bar going green → amber → red as it fills, a tick where the window's clock stands — a bar past its tick is being
+     spent faster than time —, the percent and the time to its reset. Folded (the heading, the chevron), one line of
+     rings. On the rail (⌘B) the rings stack with the percent inside, whatever the fold says. */
+  /* min-height is #pfoot's, the cog's row beside it: folded, the two top rules run across the window as one line */
+  #usage { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); display: grid; align-content: center; min-height: 44px; border-top: 1px solid var(--line); background: var(--panel); padding: 7px 12px 8px; font-size: 11px; color: var(--muted); min-width: 0; user-select: none; }
+  #usage[hidden] { display: none; }
+  #usage button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; width: 100%; min-width: 0; display: flex; align-items: center; gap: 6px; text-align: left; cursor: pointer; }
+  #usage button:hover { color: var(--ink); }
+  #usage .uchev { width: 12px; height: 12px; flex: none; margin-left: auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; opacity: .6; }
+  #usage button:hover .uchev { opacity: 1; }
+  #usage .uline .uchev { transform: rotate(180deg); }   /* folded, it points up: the way the rows will come */
+  #usage.folded .uopen, #usage:not(.folded) .uline { display: none; }
+  #usage .uhd { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 6px; }
+  /* one grid for every row, so the bars start and the numbers end in one line whatever the names' lengths */
+  #usage .urows { display: grid; grid-template-columns: auto minmax(36px, 1fr) auto auto; gap: 6px 9px; }
+  #usage .urow { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; white-space: nowrap; }
+  #usage .ul { overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+  #usage .ubar { position: relative; height: 5px; border-radius: 3px; background: var(--utrack); }
+  #usage .ubar i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: linear-gradient(90deg, color-mix(in srgb, var(--u) 50%, transparent), var(--u)); }
+  #usage .ubar b { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ink); opacity: .4; }
+  #usage .up { font-weight: 700; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+  #usage .ur { text-align: right; font-size: 10.5px; font-variant-numeric: tabular-nums; }
+  #usage .unote { line-height: 1.35; white-space: normal; text-align: left; }   /* not `.note`: that is note()'s popup — position: fixed, and note() removes every one */
+  #usage .uline { flex-wrap: wrap; column-gap: 12px; row-gap: 4px; }
+  #usage .uchip { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  #usage .uchip b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+  #usage .uring { --w: 2.5px; width: 12px; height: 12px; flex: none; border-radius: 50%; background: conic-gradient(var(--u) calc(var(--p) * 1%), var(--utrack) 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--w) - .5px), #000 calc(100% - var(--w))); mask: radial-gradient(farthest-side, transparent calc(100% - var(--w) - .5px), #000 calc(100% - var(--w))); }
+  #usage.stale .urows, #usage.stale .uchip { opacity: .5; }   /* the last answer, kept while the server cannot get a new one */
+  main.scompact #usage { padding: 9px 0 10px; }
+  main.scompact #usage .uopen, main.scompact #usage .uchev { display: none; }
+  main.scompact #usage .uline { display: flex; flex-direction: column; row-gap: 9px; cursor: default; }
+  main.scompact #usage .uchip { position: relative; flex-direction: column; gap: 2px; font-size: 9.5px; }
+  main.scompact #usage .uring { --w: 3px; width: 32px; height: 32px; }
+  main.scompact #usage .uchip b { position: absolute; top: 0; left: 0; right: 0; line-height: 32px; text-align: center; font-size: 9.5px; letter-spacing: -.2px; }
+  main.scompact #usage .unote { font-size: 9px; padding: 0 3px; text-align: center; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }   /* the rest is on hover */
+
   /* ---- chat pane ---- */
   .shead { padding: 7px 12px; border-bottom: 1px solid var(--line); background: var(--panel); display: flex; gap: 6px 9px; align-items: center; flex-wrap: wrap; min-width: 0; min-height: 43px; }
   /* The title takes what is left and truncates. flex-basis must NOT be auto: a long title would then
@@ -656,6 +688,7 @@
     <div class="colhead" id="shd"><span id="stitle" class="t"></span><span id="newChat"></span><button class="btn icon" id="sessPinBtn" title="Fold the chat list">«</button></div>
     <div id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" hidden><span id="fchips"></span></div>
     <div id="slist"></div>
+    <div id="usage"></div>
   </section>
   <div id="splitter" title="Drag to resize"></div>
   <section id="chat">
@@ -690,7 +723,6 @@
 </main>
 <div id="settings" class="pop" hidden>
   <h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4>
-  <div id="usage" class="usage"></div>
   <label class="opt" title="Off, nothing posts a banner — not the app, not a browser tab, not the server — and the unread counts on the cards and the Dock go on as before"><input type="checkbox" id="notifyOn" checked><span><b>notifications</b> — a banner when Claude finishes or asks you something, while the board is not in front</span></label>
   <div class="keys" title="From anywhere on the board, the terminal included">
     <span class="kh">keys</span>
@@ -744,6 +776,7 @@
 //   css · layout: projects | sessions | splitter | chat (one half or two)
 //   css · projects: a folder, or a named set of folders
 //   css · sessions of the selected project
+//   css · plan usage: the chat list's footer
 //   css · chat pane
 //   css · The chat's PRs, one per row under the header: state, repo#n, the whole title.
 //   css · PR strip: what gh says about the PR you clicked, under the header
@@ -755,6 +788,7 @@
 //   js  · header controls
 //   js  · sessions column width
 //   js  · helpers
+//   js  · plan usage: the chat list's footer
 //   js  · projects
 //   js  · the projects column: a strip by default, the full column while the pointer is over it
 //   js  · render: both lists
@@ -777,7 +811,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, foldBy: {}, headDetails: false, chatZoom: 1, projectsCompact: true, sessionsCompact: false, splitAt: .5 };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, foldBy: {}, headDetails: false, chatZoom: 1, projectsCompact: true, sessionsCompact: false, splitAt: .5, usageFolded: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -793,7 +827,8 @@
 
   // ---- header controls ---------------------------------------------------------------
   // The settings popover is the plan usage and the keys, nothing else (2026-09-21, Ricardo: "just hotkeys and
-  // claude credits for now"). `sound`, `showAll`, `toolsMode` and `foldCode` keep their saved values — the code
+  // claude credits for now") — the notifications switch joined them on 2026-09-23, and the usage left for the chat
+  // list's footer on 2026-09-24. `sound`, `showAll`, `toolsMode` and `foldCode` keep their saved values — the code
   // still reads them, and the chat header's { } button is still the fold for a chat — but nothing sets them now.
   // The magnifier opens its box; Esc or an emptied box on blur closes it; the icon stays lit while a filter is on.
   for (const [b, i] of [['#qBtn', '#q'], ['#pqBtn', '#pq']]) {
@@ -810,14 +845,13 @@
     inp.addEventListener('input', () => { btn.classList.toggle('on', !!inp.value.trim()); renderBoard(); });
   }
   // The card hangs off the cog: hovering the footer shows it, a click pins it (to read at leisure, or on a
-  // touchpad tap); it goes when the pointer has left both, or on Esc / a click elsewhere once pinned. The usage
-  // is asked for once per opening — the server caches it for a minute anyway.
+  // touchpad tap); it goes when the pointer has left both, or on Esc / a click elsewhere once pinned.
   const spop = { timer: null, pinned: false };
   const settingsOpen = on => {
     const pop = $('#settings');
     if (!on) { pop.hidden = true; spop.pinned = false; $('#cogBtn').classList.remove('on'); return; }
     pop.style.left = ($('#projects').offsetWidth + 8) + 'px';   // beside the strip, whatever its width
-    if (pop.hidden) { pop.hidden = false; loadUsage(); }
+    pop.hidden = false;
     $('#cogBtn').classList.add('on');
   };
   const settingsShow = on => { clearTimeout(spop.timer); if (on) settingsOpen(true); else if (!spop.pinned) settingsOpen(false); };
@@ -826,17 +860,6 @@
   $('#pfoot').addEventListener('mouseleave', settingsLeave);
   $('#settings').addEventListener('mouseenter', () => clearTimeout(spop.timer));
   $('#settings').addEventListener('mouseleave', settingsLeave);
-  // Plan usage, fetched when the popover opens (the server caches it for a minute). A failure is a
-  // sentence, not a blank: the first ask on a Mac is a keychain prompt, and an API-key login has none.
-  const untilReset = iso => { if (!iso) return ''; const m = Math.max(0, Math.round((new Date(iso) - Date.now()) / 60000)); return m >= 1440 ? `resets in ${Math.floor(m / 1440)}d ${Math.floor(m % 1440 / 60)}h` : m >= 60 ? `resets in ${Math.floor(m / 60)}h ${m % 60}m` : `resets in ${m}m`; };
-  async function loadUsage() {
-    const box = $('#usage'); box.innerHTML = '<span class="unote">usage: asking…</span>';
-    let r, d;
-    try { r = await fetch('/api/usage'); d = await r.json().catch(() => ({})); } catch (e) { box.innerHTML = `<span class="unote">usage: ${esc(String(e))}</span>`; return; }
-    if (!r.ok) { box.innerHTML = `<span class="unote">usage: ${esc(d.error || `HTTP ${r.status}`)}</span>`; return; }
-    if (!d.windows?.length) { box.innerHTML = '<span class="unote">usage: nothing reported for this account</span>'; return; }
-    box.innerHTML = d.windows.map(w => `<div class="urow" title="${esc(w.key)}${w.resetsAt ? ' · resets ' + esc(new Date(w.resetsAt).toLocaleString()) : ''}"><span class="ul">${esc(w.label)}</span><span class="ubar"><i style="width:${Math.min(100, w.percent)}%;--u:${w.percent >= 90 ? 'var(--needs)' : w.percent >= 70 ? 'var(--working)' : 'var(--idle)'}"></i></span><span class="up">${w.percent}%</span><span class="ur">${untilReset(w.resetsAt)}</span></div>`).join('');
-  }
   // System notifications, the popover's one switch (2026-09-23, Ricardo: "let me turn on or off notifications in the
   // cog settings"). It is the server's setting, not a pref: the app posts its banners from the alerts it hears, a
   // browser tab from its own, and all of them follow the `quiet` flag the server puts on each alert. A browser that
@@ -849,7 +872,7 @@
   });
   $('#cogBtn').onclick = e => { e.stopPropagation(); spop.pinned = !spop.pinned; if (spop.pinned) settingsShow(true); else settingsOpen(false); };
   document.addEventListener('click', e => { if (spop.pinned && !e.target.closest('#settings') && !e.target.closest('#pfoot')) settingsOpen(false); });
-  // Esc on the page itself: a dialog (the picker, the project editor), the settings popover or the usage card closes,
+  // Esc on the page itself: a dialog (the picker, the project editor) or the settings popover closes,
   // and the key is *taken* — preventDefault, so WebKit reports it handled. An Esc the page leaves alone climbs to the
   // app's window, which in full screen takes it to leave full screen: the picker closed and the window shrank with it
   // (2026-09-20, Ricardo: "ESC should close it instead of leaving the app's fullscreen"). A <dialog>'s own Esc does not
@@ -981,6 +1004,59 @@
   // Peacock still wins wherever it speaks: set a colour on the folder and that is the colour (repoColor).
   const PROJECT_COLORS = { acme: BLACK };
   const STALE_MAX_AGE_MS = 30 * 86400e3; // Claude Code deletes transcripts after 30 idle days by default; mirror that
+
+  // ---- plan usage: the chat list's footer ----------------------------------------------
+  // What `/usage` shows, always in view under the chat list (2026-09-24, Ricardo: "move the credits from the cog to a
+  // permanent bottom bar on 2nd column, make it compact and pretty (and collapsable)"). Asked for on load, every
+  // USAGE_EVERY_MS while the page is in view — the server caches the answer for a minute, so any number of pages
+  // cost one call a minute at most —, as soon as a window's reset has passed, and on the way back to a hidden page.
+  // A failure keeps the last numbers, dimmed, the error on hover; with no numbers yet it is a sentence, not a blank:
+  // the first ask on a Mac is a keychain prompt, and an API-key login has none. Failures back off (twice as long
+  // each, to half an hour), so a keychain prompt you refused is not put back up every two minutes. USAGE=off on the
+  // server hides the bar. The markup holds both shapes, open and folded; the fold and the rail (⌘B) pick in CSS.
+  const USAGE_EVERY_MS = 120e3;
+  const usage = { data: null, err: '', off: false, at: 0, fails: 0, busy: false, html: '' };
+  const USAGE_SHORT = { five_hour: '5h', seven_day: 'week', seven_day_opus: 'Opus', seven_day_sonnet: 'Sonnet', cinder_cove: 'credit' };
+  const uShort = w => USAGE_SHORT[w.key] || String(w.label).split(' · ').pop();
+  const uColor = p => p >= 90 ? 'var(--needs)' : p >= 70 ? 'var(--working)' : 'var(--idle)';
+  // How far through its window the clock is, 0–1 — for the windows whose length is known; a credit grant has none.
+  const uSpan = k => k === 'five_hour' ? 5 * 3600e3 : /^seven_day|^limits:weekly/.test(k) ? 7 * 86400e3 : 0;
+  const uPace = w => { const len = uSpan(w.key), end = w.resetsAt ? new Date(w.resetsAt).getTime() : 0; if (!len || !end) return null; const f = 1 - (end - Date.now()) / len; return f >= 0 && f <= 1 ? f : null; };
+  const untilReset = iso => { if (!iso) return ''; const m = Math.max(0, Math.round((new Date(iso) - Date.now()) / 60000)); return m >= 1440 ? `${Math.floor(m / 1440)}d ${Math.floor(m % 1440 / 60)}h` : m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`; };
+  const uTip = w => { const f = uPace(w); return `${w.label}: ${w.percent}% used${f != null ? ` · ${Math.round(f * 100)}% of the window gone` : ''}${w.resetsAt ? ` · resets ${new Date(w.resetsAt).toLocaleString()}` : ''}`; };
+  const CHEV = '<svg class="uchev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>';
+  function renderUsage() {
+    const box = $('#usage'), d = usage.data, ws = d?.windows || [];
+    box.hidden = usage.off;
+    box.classList.toggle('folded', !!prefs.usageFolded);
+    box.classList.toggle('stale', !!(d && usage.err));
+    const note = !d ? usage.err || 'asking…' : !ws.length ? 'nothing reported for this account' : '';   // under the heading; the line says what it is about
+    const said = d ? ` · as of ${new Date(d.fetchedAt).toLocaleTimeString()}${usage.err ? ` — since then: ${usage.err}` : ''}` : '';
+    const chips = ws.map(w => `<span class="uchip" title="${esc(uTip(w))}"><i class="uring" style="--p:${Math.min(100, w.percent)};--u:${uColor(w.percent)}"></i><span class="uk">${esc(uShort(w))}</span><b>${w.percent}%</b></span>`).join('');
+    const rows = ws.map(w => { const f = uPace(w); return `<div class="urow" title="${esc(uTip(w))}"><span class="ul">${esc(w.label)}</span><span class="ubar"><i style="width:${Math.min(100, w.percent)}%;--u:${uColor(w.percent)}"></i>${f != null ? `<b style="left:${(f * 100).toFixed(1)}%"></b>` : ''}</span><span class="up">${w.percent}%</span><span class="ur">${untilReset(w.resetsAt)}</span></div>`; }).join('');
+    const html = `<button class="uline" title="Claude plan usage${esc(said)}${note ? `: ${esc(note)}` : ''} — click to open">${note ? `<span class="unote">usage: ${esc(note)}</span>` : chips}${CHEV}</button>`
+      + `<div class="uopen"><button class="uhd" title="Claude plan usage${esc(said)} — click to fold"><span>plan usage</span>${CHEV}</button>${note ? `<span class="unote">${esc(note)}</span>` : `<div class="urows">${rows}</div>`}</div>`;
+    if (html !== usage.html) box.innerHTML = usage.html = html;   // the 30 s tick mostly changes nothing — keep a tooltip that is up
+  }
+  async function loadUsage() {
+    if (usage.busy) return; usage.busy = true;
+    try {
+      const r = await fetch('/api/usage'), d = await r.json().catch(() => ({}));
+      if (r.ok && Array.isArray(d.windows)) Object.assign(usage, { data: d, err: '', off: false, fails: 0 });
+      else Object.assign(usage, { err: d.error || `HTTP ${r.status}`, off: !!d.off, fails: usage.fails + 1 });
+    } catch (e) { Object.assign(usage, { err: String(e.message || e), fails: usage.fails + 1 }); }
+    Object.assign(usage, { busy: false, at: Date.now() }); renderUsage();
+  }
+  // Due: the interval is up (longer after failures), or a window has reset since the last answer — its numbers are old.
+  const usageDue = () => Date.now() - usage.at > USAGE_EVERY_MS * 2 ** Math.min(usage.fails, 4)
+    || !!usage.data?.windows.some(w => { const t = w.resetsAt ? new Date(w.resetsAt).getTime() : 0; return t > usage.at && t <= Date.now(); });
+  $('#usage').addEventListener('click', e => {
+    if (prefs.sessionsCompact || !e.target.closest('button')) return;   // the rail's rings are only to be read
+    prefs.usageFolded = !prefs.usageFolded; savePrefs(); renderUsage();
+  });
+  setInterval(() => { if (!document.hidden) usageDue() ? loadUsage() : renderUsage(); }, 30e3);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && usageDue()) loadUsage(); });
+  renderUsage(); loadUsage();
 
   // ---- projects ----------------------------------------------------------------------
   // A project is a folder — the registry cwd, which is the stable repo path — or a name you gave to

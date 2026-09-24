@@ -2,7 +2,49 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-09-23.
+this file is the *why* and the *state*. Last updated 2026-09-24.
+
+## Decisions of 2026-09-24 — the plan usage is the chat list's footer
+
+Ricardo: "move the credits from the cog to a permanent bottom bar on 2nd column, make it compact and pretty (and
+collapsable)".
+
+* **Always in view, under the chat list.** `#usage` is the fourth row of `#sessions`; the cog's popover is the
+  notifications switch and the keys now. Hovering to read a number was the popover's cost, and the number is the one
+  thing on it that changes while you work.
+* **Compact: a row per window at 11 px**, one grid for all of them (subgrid rows) so the bars start and the percents
+  end in one line: the window's name, a 5 px bar — green, amber from 70 %, red from 90 %, the thresholds the popover
+  had —, the percent in ink and the time to the reset, short (`4h 3m`, `3d 19h`; the date is on hover). Three windows
+  come to 96 px.
+* **One thing the popover did not have: a tick on each bar where the window's clock stands** — 57 minutes into five
+  hours is a tick at 19 %. A bar that has run past its tick is being spent faster than the window is passing, which
+  is the question the percent alone leaves you to work out. Only for the windows whose length is known (the five
+  hours, the weeks); a credit grant has no clock and no tick.
+* **Collapsible: the heading or its chevron folds it to one line of rings** — a conic ring per window, its short
+  name (`5h`, `week`, `Fable`) and the percent. Folded, the bar is 44 px, `#pfoot`'s height, so its top rule and the
+  cog's run across the window as one line. The fold is a pref (`usageFolded`), so it stays folded across reloads.
+* **On the rail (⌘B) the rings stack**, 32 px with the percent inside, whatever the fold says — the rail has no room
+  for rows and no reason to lose the numbers. The markup holds both shapes and CSS chooses, so neither the fold nor
+  ⌘B re-renders anything.
+* **Asked for on its own now**, not on hover: on load, every two minutes while the page is in view, once a window's
+  reset has passed since the last answer, and on the way back to a page that was hidden. The server's one-minute cache
+  still caps it at one call a minute however many pages are open. A tick every 30 s re-renders the countdown and
+  assigns nothing when the markup has not changed, so a tooltip that is up stays up.
+* **Failures back off** — twice as long each time, to half an hour. The first ask on a Mac can be a keychain prompt,
+  and a refused one would otherwise have been put back up every two minutes, all day. A failure keeps the last
+  numbers, dimmed, with the error on hover; with none yet, the bar says the error.
+* **`USAGE=off` hides the bar**: the server's 503 carries `off: true`, and the page keeps no bar for a lookup that was
+  turned off. Every test server runs so, so no other scenario sees it.
+* **`#sessions`' rows are placed by hand now**, the chat column's rule: the rail hides `#filters`, and with a fourth
+  row the list would have slid into the `auto` row and the bar into the `1fr`.
+* `scripts/scenarios/usage-bar.mjs`: against a faked `/api/usage` (a script the page runs before its own) — hidden
+  under `USAGE=off` and gone from the cog; four rows in the three colours; ticks at half way where the window has a
+  clock, none on the credit; the fold, level with the cog row, surviving a reload; the rail's stacked rings, which a
+  click does not unfold; a failure after numbers (kept, `.stale`, the error in the title) and one before any (the
+  error itself). Looked at on the live board, light and dark: open, folded and on the rail.
+* **Seen once, not chased**: `card-signals` failed its rail step (`['SR', 'T', 'PE']`, the order of the rail's short
+  names) in one `npm run scenarios` run and passed on the retry and four runs after it. The usage bar is hidden on
+  test servers; the step reads the cards' order, which this change does not touch.
 
 ## Decisions of 2026-09-23 — notifications get a switch in the cog
 

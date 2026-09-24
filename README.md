@@ -120,7 +120,7 @@ working, 🟢 replied — plus an unread badge.
 The projects column is a **strip** by default — each project a solid tab in its colour, the name
 running vertically, the selected one running straight into the chat list, whose edge and header
 carry the same colour — and **»** opens it into the full column, **«** folds it back; nothing happens on hover. The fish at the strip's top is the
-app — it greys out when the board loses the server, and **hovering it opens the usage card** (below). The
+app — it greys out when the board loses the server. The
 magnifier under it filters projects (the strip opens to let you type and folds back when you are done);
 **⌥⌘P** from anywhere opens a project picker the VS Code way — type to filter, ↑↓, ⏎ opens it, esc closes;
 **⌥⌘K** the same box filled with **every chat that is ready or clauding**, across the projects, in the list's order
@@ -136,15 +136,20 @@ flow with the first answers in — a new chat in **oracle**, opening straight on
 same ⌥⌘ family drives the open chat: **⌥⌘C** its claude session, **⌥⌘T** a zsh in its folder, **⌥⌘E** VS Code Web,
 **⌥⌘G** its PR, **⌥⌘↑ / ⌥⌘↓** the chat above or below in the list, **⌥⌘← / ⌥⌘→** the tab beside — chat, zsh, GitHub
 pages, VS Code — see *The chat*) —
-and the **cog** at its bottom opens the settings, which are three things: your **Claude plan usage** at the top, the
+and the **cog** at its bottom opens the settings, which are two things: the
 **notifications** switch — a banner when Claude finishes or asks you something, on by default, and one setting for the
 app and every browser tab — and **the list of keys**, for when one slips the mind (and, when you have hidden a project,
-the way back).
-Hovering the strip's footer opens it, a click on the cog pins it. The usage is the session and weekly windows `/usage` shows,
-plus a weekly row per model the account meters apart (Fable, Sonnet…), read with Claude Code's own login.
-Buckets the API reports under a codename at 0 % stay out of the list. The first time, macOS asks whether `security` may read the
-*Claude Code-credentials* keychain item; *Always Allow* ends that, and `USAGE=off` on the server turns the
-lookup off. Esc or a click elsewhere closes either popover. There is no page header.
+the way back). Hovering the strip's footer opens it, a click on the cog pins it; Esc or a click elsewhere closes it.
+There is no page header.
+
+**Your Claude plan usage sits under the chat list**, always in view: the session and weekly windows `/usage` shows,
+plus a weekly row per model the account meters apart (Fable, Sonnet…), read with Claude Code's own login. Each row
+is a bar that goes green → amber → red as it fills, a tick where the window's clock stands — a bar past its tick is
+being spent faster than time —, the percent and the time to its reset. Click the heading to fold it to one line of
+rings, level with the cog beside it; folded with **⌘B**, the list's rail shows the rings stacked. It refreshes every
+two minutes while the board is in view. Buckets the API reports under a codename at 0 % stay out of it. The first
+time, macOS asks whether `security` may read the *Claude Code-credentials* keychain item; *Always Allow* ends that,
+and `USAGE=off` on the server turns the lookup off and the bar with it.
 
 **A project's colour is its Peacock colour**, and it is the same everywhere — the strip tab, the card's
 edge, the chat list's edge, the chat header. The board reads `peacock.color` from the nearest
