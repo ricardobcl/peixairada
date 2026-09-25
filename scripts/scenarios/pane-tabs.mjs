@@ -6,6 +6,8 @@
 // the chat; × forgets a page; the tab a chat was on comes back with it; a zsh that ends takes its tab. The strip
 // also carries the address of the page on top (2026-09-21): the key's URL until the shell reports a navigation
 // (peixPaneUrl), shown without its scheme, copied whole by a click, and remembered per page across tab switches.
+// Since 2026-09-25 each half's strip lists its own tabs — claude on the left, the pages and the zsh on the right —
+// and a page dragged onto the left half is up there, beside the one on the right.
 export const meta = { server: true, fixture: 'auto' };
 export default async function (ctx) {
   const [two, plain] = ctx.fixture.chats;
@@ -14,9 +16,10 @@ export default async function (ctx) {
   await ctx.send('Page.addScriptToEvaluateOnNewDocument', { source: `window.__posts = []; window.webkit = { messageHandlers: { hub: { postMessage: m => window.__posts.push(m) } } };` });
   await ctx.evaluate(`location.reload()`);
   await ctx.waitFor(`window.__posts && document.querySelectorAll('.card').length > 0`, { what: 'the board again, with the bridge' });
-  // The strip of the half the keys are in: both strips list every tab of the chat, and only `on` says which half
-  // is showing which — so everything here reads the one the board is acting on.
+  // The strip of the half the keys are in — each lists only its own half's tabs, so everything here reads the one
+  // the board is acting on; `strips()` is both, left then right.
   const STRIP = `(window.peix.state().focusG ? '#ptabsB' : '#ptabs')`;
+  const strips = () => ctx.evaluate(`JSON.stringify(['#ptabs', '#ptabsB'].map(id => [...document.querySelectorAll(id + ' .ptab')].map(b => b.dataset.tab.split(':')[0])))`).then(JSON.parse);
   const tabsNow = () => ctx.evaluate(`JSON.stringify([...document.querySelector(${STRIP}).querySelectorAll('.ptab')].map(b => ({ k: b.dataset.tab, on: b.classList.contains('on'), label: b.firstChild.textContent })))`).then(JSON.parse);
   const lastPane = () => ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'pane').pop() || null)`).then(JSON.parse);
   const onTab = () => ctx.evaluate(`document.querySelector(${STRIP}).hidden ? 'hidden' : (document.querySelector(${STRIP}).querySelector('.ptab.on')?.dataset.tab || null)`);
@@ -31,14 +34,15 @@ export default async function (ctx) {
   out.one = { tabs: await tabsNow(), pane: await lastPane(), halves: await ctx.peix('state().halves'), focusG: await ctx.peix('state().focusG') };
   ctx.assert.equal(out.one.focusG, 1, 'a new tab takes the keys into the right half');
   ctx.assert.equal(out.one.halves[0], 'chat', '…and the chat keeps the left one');
-  ctx.assert.equal(out.one.tabs.length, 2); ctx.assert.match(out.one.tabs[1].label, /^[\w.-]+#\d+$/, 'labelled repo#n');
-  ctx.assert.equal(out.one.pane.show, out.one.tabs[1].k); ctx.assert.deepEqual(out.one.pane.keys, [out.one.tabs[1].k]);
+  ctx.assert.deepEqual(await strips(), [['chat'], ['gh']], 'each strip lists its own half\'s tabs');
+  ctx.assert.equal(out.one.tabs.length, 1); ctx.assert.match(out.one.tabs[0].label, /^[\w.-]+#\d+$/, 'labelled repo#n');
+  ctx.assert.equal(out.one.pane.show, out.one.tabs[0].k); ctx.assert.deepEqual(out.one.pane.keys, [out.one.tabs[0].k]);
   const strip = await ctx.evaluate(`(r => ({ left: Math.round(document.querySelector('#gbodyB').getBoundingClientRect().left), bottom: Math.round(r.bottom) }))(document.querySelector('#ptabsB').getBoundingClientRect())`);
   ctx.assert.equal(out.one.pane.top, strip.bottom, 'the pane starts under that half\'s strip'); ctx.assert.equal(out.one.pane.left, strip.left, 'and at that half');
   ctx.assert.ok(await ctx.evaluate(`!!document.querySelector('#ptabsB .navs .nav[data-nav="back"]')`), '‹ › ↻ ↗ with a page on');
   // the address: the key's URL to begin with, then wherever the shell says the view went
   const purl = () => ctx.evaluate(`JSON.stringify((el => el && { text: el.textContent, url: el.dataset.url, key: el.dataset.key })(document.querySelector(${STRIP}).querySelector('.purl')) || null)`).then(JSON.parse);
-  const ghKey = out.one.tabs[1].k, ghUrl = ghKey.slice(3);
+  const ghKey = out.one.tabs[0].k, ghUrl = ghKey.slice(3);
   out.url = { first: await purl() };
   ctx.assert.equal(out.url.first.url, ghUrl, 'the address is the URL the tab was opened with');
   ctx.assert.equal(out.url.first.text, ghUrl.replace(/^https:\/\//, ''), 'shown without its scheme');
@@ -67,9 +71,9 @@ export default async function (ctx) {
   // ⌥⌘G again: the picker (always, with several); the other row → a second tab, on
   await ctx.key('KeyG'); await ctx.waitFor(`document.querySelector('#pick').open`, { what: 'the picker again' });
   await ctx.evaluate(`document.querySelector('#picklist .pkrow.pr:not(:has(.cur))').click()`);
-  await ctx.waitFor(`document.querySelectorAll('#ptabs .ptab[data-tab^="gh:"]').length === 2`, { what: 'two PR tabs' });
+  await ctx.waitFor(`document.querySelectorAll('#ptabsB .ptab[data-tab^="gh:"]').length === 2`, { what: 'two PR tabs, both in the right half' });
   out.two = { tabs: await tabsNow(), pane: await lastPane() };
-  ctx.assert.equal(out.two.tabs[2].on, true); ctx.assert.equal(out.two.pane.show, out.two.tabs[2].k); ctx.assert.equal(out.two.pane.keys.length, 2);
+  ctx.assert.equal(out.two.tabs[1].on, true); ctx.assert.equal(out.two.pane.show, out.two.tabs[1].k); ctx.assert.equal(out.two.pane.keys.length, 2);
   // Esc, as the shell forwards it: back to the chat — which is in the left half, so the keys go there (2026-09-25:
   // claude keeps the first half) and the page in the right half stays up, which is what two halves are for
   await ctx.evaluate(`window.peixKey('Escape')`);
@@ -85,50 +89,54 @@ export default async function (ctx) {
   await ctx.key('KeyE'); await ctx.waitFor(`(document.querySelector('#ptabsB .ptab.on')?.dataset.tab || '').startsWith('ide:')`, { what: 'the editor tab on' });
   ctx.assert.equal((await ctx.peix('state().halves'))[0], 'chat', 'claude kept the left half');
   out.ide = { tabs: await tabsNow(), pane: await lastPane() };
-  ctx.assert.equal(out.ide.tabs.length, 4); ctx.assert.equal(out.ide.tabs[3].label, 'VS Code'); ctx.assert.match(out.ide.pane.show, /^ide:http:\/\/127\.0\.0\.1:1\/\?folder=/);
+  ctx.assert.equal(out.ide.tabs.length, 3); ctx.assert.equal(out.ide.tabs[2].label, 'VS Code'); ctx.assert.match(out.ide.pane.show, /^ide:http:\/\/127\.0\.0\.1:1\/\?folder=/);
   // ⌥⌘T: a zsh — five tabs, the zsh second; the pane goes under it
   await ctx.key('KeyT'); await ctx.waitFor(`document.querySelector('#ptabsB .ptab.on')?.dataset.tab === 'shell'`, { what: 'the zsh tab on', timeout: 20_000 });
-  out.five = await tabsNow(); ctx.assert.deepEqual(out.five.map(t => t.k.split(':')[0]), ['chat', 'shell', 'gh', 'gh', 'ide']);
+  out.five = await strips(); ctx.assert.deepEqual(out.five, [['chat'], ['shell', 'gh', 'gh', 'ide']], 'five tabs: claude on the left, the rest on the right');
   out.zsh = await lastPane();
   ctx.assert.deepEqual(out.zsh.panes, [], 'the zsh took the right half from the editor; the left half is claude\'s');
   ctx.assert.equal(out.zsh.focus, null, 'so no page is up for the shell to focus');
   await ctx.shot('tabs', await ctx.evaluate(`(r => ({ x: r.left, y: Math.max(0, r.top - 70), width: r.width, height: 110 }))(document.querySelector('#ptabsB').getBoundingClientRect())`));
   // a click on a PR's tab brings it back — and no strip under the header since 2026-09-24; × on it forgets the page
-  const firstGh = out.two.tabs[1].k;
-  await ctx.evaluate(`document.querySelector('#ptabs .ptab[data-tab=${JSON.stringify(firstGh)}]').click()`);
-  await ctx.waitFor(`document.querySelector('#ptabs .ptab.on')?.dataset.tab === ${JSON.stringify(firstGh)}`, { what: 'the first PR tab on again' });
+  const firstGh = out.two.tabs[0].k;
+  await ctx.evaluate(`document.querySelector('#ptabsB .ptab[data-tab=${JSON.stringify(firstGh)}]').click()`);
+  await ctx.waitFor(`document.querySelector('#ptabsB .ptab.on')?.dataset.tab === ${JSON.stringify(firstGh)}`, { what: 'the first PR tab on again' });
   ctx.assert.equal((await lastPane()).show, firstGh); ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#prbar')`), false, 'no strip under the header');
   ctx.assert.equal('gh:' + await ctx.peix('state().pr'), firstGh, 'the board knows which PR is in front');
   out.url.back = await purl();
   ctx.assert.equal(out.url.back.url, deep, 'the address it was left on comes back with the tab');
-  await ctx.evaluate(`document.querySelector('#ptabs .ptab[data-tab=${JSON.stringify(firstGh)}] .x').click()`);
+  await ctx.evaluate(`document.querySelector('#ptabsB .ptab[data-tab=${JSON.stringify(firstGh)}] .x').click()`);
   out.closed = { tabs: await tabsNow(), pane: await lastPane() };
-  ctx.assert.equal(out.closed.tabs.length, 4); ctx.assert.equal(out.closed.pane.show, null); ctx.assert.equal(out.closed.pane.keys.length, 2);
+  ctx.assert.equal(out.closed.tabs.length, 3); ctx.assert.equal(out.closed.tabs[0].on, true, 'its half shows the first of its own tabs left, the zsh');
+  ctx.assert.equal(out.closed.pane.show, null); ctx.assert.equal(out.closed.pane.keys.length, 2);
   // the tab a chat is on comes back with it: the other PR's, left on, survives a trip to the plain chat
-  const other = out.two.tabs[2].k;
-  await ctx.evaluate(`document.querySelector('#ptabs .ptab[data-tab=${JSON.stringify(other)}]').click()`);
-  await ctx.waitFor(`document.querySelector('#ptabs .ptab.on')?.dataset.tab === ${JSON.stringify(other)}`, { what: 'the other PR tab on' });
+  const other = out.two.tabs[1].k;
+  await ctx.evaluate(`document.querySelector('#ptabsB .ptab[data-tab=${JSON.stringify(other)}]').click()`);
+  await ctx.waitFor(`document.querySelector('#ptabsB .ptab.on')?.dataset.tab === ${JSON.stringify(other)}`, { what: 'the other PR tab on' });
   await ctx.openChat(plain.id);
   out.plain = { on: await onTab(), pane: await lastPane() }; ctx.assert.equal(out.plain.on, 'hidden'); ctx.assert.equal(out.plain.pane.show, null);
   await ctx.openChat(two.id);
-  await ctx.waitFor(`document.querySelector('#ptabs .ptab.on')?.dataset.tab === ${JSON.stringify(other)}`, { what: 'its tab back' });
+  await ctx.waitFor(`document.querySelector('#ptabsB .ptab.on')?.dataset.tab === ${JSON.stringify(other)}`, { what: 'its tab back' });
   out.back = await lastPane(); ctx.assert.equal(out.back.show, other);
   // the zsh, ended: its tab goes
   const shellId = (await ctx.peix('session()')).shell.id;
   await ctx.server.api(`/api/terminals/${shellId}`, { method: 'DELETE' });
-  await ctx.waitFor(`!document.querySelector('#ptabs .ptab[data-tab="shell"]')`, { what: 'the zsh tab gone', timeout: 10_000 });
+  await ctx.waitFor(`!document.querySelector('.ptab[data-tab="shell"]')`, { what: 'the zsh tab gone', timeout: 10_000 });
   out.end = await tabsNow();
-  // Split in two (2026-09-22): a page in each half, and the shell is told where each one goes — two rects side by
-  // side under their own strips, and which of them has the keys. The board sends `show` too, for a shell built
-  // before the split existed.
+  // A page in each half (2026-09-22), and the shell is told where each one goes — two rects side by side under
+  // their own strips, and which of them has the keys. The board sends `show` too, for a shell built before the
+  // split existed. Every page opens on the right, so the PR gets to the left by being dragged there (2026-09-25).
   await ctx.cmd('Digit2');
-  await ctx.waitFor(`window.peix.state().split === true`, { what: 'the split' });
+  await ctx.waitFor(`window.peix.state().split === true && window.peix.state().focusG === 1`, { what: 'the keys in the right half' });
   await ctx.evaluate(`document.querySelector('#ptabsB .ptab[data-tab^="ide:"]').click()`);
   await ctx.waitFor(`window.peix.state().halves[1].startsWith('ide:')`, { what: 'the editor in the right half' });
+  await ctx.drag(`#ptabsB .ptab[data-tab=${JSON.stringify(other)}]`, '#ptabs');
+  await ctx.waitFor(`window.peix.state().halves[0] === ${JSON.stringify(other)}`, { what: 'the PR dragged into the left half' });
+  ctx.assert.deepEqual(await strips(), [['chat', 'gh'], ['ide']], 'the PR is the left strip\'s now');
   const both = await lastPane();
   ctx.assert.equal(both.panes.length, 2, 'a page placed in each half');
   ctx.assert.ok(both.panes[0].key.startsWith('gh:') && both.panes[1].key.startsWith('ide:'), 'the PR on the left, the editor on the right');
-  ctx.assert.equal(both.focus, both.panes[1].key, 'the keys are in the half ⌘2 put them in');
+  ctx.assert.equal(both.focus, both.panes[0].key, 'the keys went with the page that was dropped');
   ctx.assert.equal(both.show, both.focus, 'and an older shell is told that one');
   ctx.assert.ok(both.panes[0].left + both.panes[0].width <= both.panes[1].left, 'side by side, not overlapping');
   ctx.assert.ok(both.panes.every(p => p.width > 50 && p.height > 50), 'both have room');

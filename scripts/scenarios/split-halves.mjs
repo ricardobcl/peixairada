@@ -1,11 +1,12 @@
 // ⌘2 splits the chat column in two and ⌘1 / ⌘2 move the keys between the halves (2026-09-22). What this keeps
-// honest: a tab lives in exactly one half, both halves can hold a live terminal at the same time, choosing in one
-// half what the other is showing makes the two trade places, ⨯ leaves the half you were in, and ⌘0 leaves the one
-// the keys are in (with nothing split it is the chat's size again). Since 2026-09-25 a split always puts claude in
-// the left half, whatever the column was showing.
+// honest: a tab lives in exactly one half, both halves can hold a live terminal at the same time, ⨯ leaves the half
+// you were in, and ⌘0 leaves the one the keys are in (with nothing split it is the chat's size again). Since
+// 2026-09-25 a split always puts claude in the left half, whatever the column was showing; each strip lists only its
+// own half's tabs, and a tab goes across by being dragged onto the other half — a real press, move and release.
 export const meta = { server: true, fake: true, fixture: 'auto' };
 
 const halves = ctx => ctx.peix('state().halves');
+const strips = ctx => ctx.evaluate(`JSON.stringify(['#ptabs', '#ptabsB'].map(id => [...document.querySelectorAll(id + ' .ptab')].map(b => b.dataset.tab)))`).then(JSON.parse);
 const shown = ctx => ctx.evaluate(`JSON.stringify({ termA: !document.querySelector('#term').hidden, termB: !document.querySelector('#termB').hidden, log: !document.querySelector('#log').hidden, logIn: document.querySelector('#log').parentElement.id, empty: !!document.querySelector('.gempty') })`).then(JSON.parse);
 
 export default async function (ctx) {
@@ -30,6 +31,7 @@ export default async function (ctx) {
   await ctx.key('KeyT');
   await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === '["chat","shell"]'`, { what: 'the zsh in the right half' });
   await ctx.waitFor(`window.peix.term(1).ws === 1 && window.peix.term(0).ws === 1`, { what: 'both halves attached' });
+  ctx.assert.deepEqual(await strips(ctx), [['chat'], ['shell']], 'each strip lists its own half\'s tabs, not the chat\'s every one');
   const two = await shown(ctx);
   ctx.assert.deepEqual({ termA: two.termA, termB: two.termB, empty: two.empty }, { termA: true, termB: true, empty: false }, 'a drawer in each half');
   ctx.assert.ok(!two.log, 'the transcript is under the claude drawer, not beside it');
@@ -55,14 +57,29 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.state().split === true`, { what: 'the split chat still split' });
   await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === '["chat","shell"]'`, { what: 'both halves back as they were' });
 
-  // ⌘1 goes back to the left half; asking the *other* half's strip for the chat tab moves it there and the zsh
-  // back here — they trade places — and the keys go with the click
+  // ⌘1 goes back to the left half; ⌥⌘→ walks the two strips as one row, into the zsh on the right
   await ctx.cmd('Digit1');
   ctx.assert.equal(await ctx.peix('state().focusG'), 0, '⌘1 put the keys back in the left half');
-  await ctx.evaluate(`document.querySelector('#ptabsB .ptab[data-tab="chat"]').click()`);
-  await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === '["shell","chat"]'`, { what: 'the two tabs trading places' });
-  ctx.assert.equal(await ctx.peix('state().focusG'), 1, 'the keys followed the click into the right half');
+  await ctx.key('ArrowRight');
+  await ctx.waitFor(`window.peix.state().focusG === 1`, { what: '⌥⌘→ across the divider' });
+  ctx.assert.equal(await ctx.peix('state().tab'), 'shell', 'onto the zsh, which stayed where it was');
+  // dragging the zsh onto the left half moves it there: the right half is left with nothing (a split asked for
+  // by hand keeps its empty half), and the keys go with the tab
+  const litA = await ctx.drag('#ptabsB .ptab[data-tab="shell"]', '#ptabs', () => ctx.evaluate(`[...document.querySelectorAll('.grp.drop')].map(g => g.id).join()`));
+  ctx.assert.equal(litA, 'grp', 'the half under the pointer lit up while the tab was on its way');
+  await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === '["shell",null]'`, { what: 'the zsh dragged into the left half' });
+  ctx.assert.deepEqual(await strips(ctx), [['chat', 'shell'], []], 'the left strip lists both, the right one none');
+  ctx.assert.equal(await ctx.peix('state().focusG'), 0, 'the keys went with the tab');
+  ctx.assert.ok(await ctx.evaluate(`!!document.querySelector('#ptabsB .pdrop')`), 'the empty strip says a tab can be dropped on it');
+  ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('.ptab.ghost, .grp.drop, body.tabdrag')`), false, 'nothing of the drag is left behind');
+  // …and the chat onto the right one: the two halves have traded, the transcript and the drawer with the tab
+  await ctx.drag('#ptabs .ptab[data-tab="chat"]', '#gbodyB');
+  await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === '["shell","chat"]'`, { what: 'the chat dragged into the right half' });
+  ctx.assert.deepEqual(await strips(ctx), [['shell'], ['chat']], 'each strip lists what was dragged into it');
+  ctx.assert.equal(await ctx.peix('state().focusG'), 1, 'the keys followed the drop into the right half');
   ctx.assert.equal((await shown(ctx)).logIn, 'gbodyB', 'the transcript moved with the chat tab');
+  await ctx.waitFor(`window.peix.term(1).ws === 1`, { what: 'the claude drawer attached in the right half' });
+  await ctx.shot('dragged');
 
   // ⌘W closes the half the keys are in — the right one, on the chat tab — and the other one becomes the column
   ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('.ptabs .gclose').length`), 2, 'each half carries its own ⨯');

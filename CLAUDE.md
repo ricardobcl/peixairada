@@ -309,12 +309,15 @@ refuses to run against the real directory for the same reason.
   already exists (a click, ⌥⌘←→, ⌥⌘G on a PR already open) is `openTab()` and never splits. The split the board
   makes itself is remembered in `autoSplit` and **folds back on its own** when the chat is down to one tab again
   (`syncTerm`) — the empty half is what ⌘2 asks for, not what a zsh's `exit` should leave behind.
-* **A tab lives in exactly one half.** One transcript element, one xterm per half, one web view per page — so
-  choosing in one half what the other is showing makes the two **trade places** (`setTab`), which is also how a tab
-  is moved across. The other half's tab is dimmed in your strip (`.ptab.away`), not hidden.
-* **Placement is derived**: `tabs` holds `[left, right]` per chat and `placeOf(s)` reads it against the tabs the
-  chat has *now* — a key that is gone falls away, the left half takes the first tab left, the right half fills with
-  a spare one while split. `tabOf(s)` is the focused half's. A half with nothing says what would fill it (`.gempty`).
+* **A tab lives in exactly one half, and split, each strip lists only its own** (2026-09-25): one transcript element,
+  one xterm per half, one web view per page. `homes` says which strip a tab is in — the chat's left, every other
+  right (`homeOf`), written down only for a tab that was **dragged across** (`moveTab`, pointer events so a drop
+  over the app's native pane still lands; a press that moves under 5 px is a click) and forgotten with the split.
+  `keysIn(s, g)` is a strip's list; choosing a tab (`setTab`) shows it in *its* half and takes the keys there —
+  nothing trades places any more. ⌥⌘←→ walk both strips as one row. An auto split whose half empties folds.
+* **Placement is derived**: `tabs` holds `[left, right]` per chat and `placeOf(s)` reads it against `keysIn` *now*
+  — a key that is gone falls away and its half shows the first of its own left, or nothing. `tabOf(s)` is the
+  focused half's. A half with nothing says what would fill it (`.gempty`) and its strip takes a drop (`.pdrop`).
 * **The transcript moves, it does not multiply**: `placeLog()` reparents `#log` into the half holding the chat tab
   (scroll position carried by hand) and hides it under a live drawer; with no half showing it, it is parked in the
   left one, hidden.
@@ -325,7 +328,7 @@ refuses to run against the real directory for the same reason.
   **⌘W closes the half the keys are in**, and each strip's ⨯ closes *its own* half (`closeHalf(g)`): what the
   column keeps is the other half's tab, or the closer's when the other had none. **⌘0 is the mirror** (2026-09-22):
   it closes the *other* half, so the tab under the keys is what stays.
-  → `scripts/scenarios/split-halves.mjs`, the split section of `pane-tabs.mjs`, Decisions 2026-09-22.
+  → `scripts/scenarios/split-halves.mjs`, the split section of `pane-tabs.mjs`, Decisions 2026-09-22 and 2026-09-25.
 
 ## The drawer
 
@@ -438,7 +441,7 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
   `assert`, `cmd(code)` (a plain ⌘ press; `key(code)` is ⌥⌘), `screen(g)` / `waitPrompt(ms, g)` (the half, 0 by
-  default — the whole column while nothing is split). The twenty-two in `scripts/scenarios/` are the
+  default — the whole column while nothing is split), `drag(from, to, mid)` (a real press, move and release). The twenty-two in `scripts/scenarios/` are the
   regression checks for the drawer (re-attach, restart, geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a
   compose key), the hotkeys, the tab strip and the split, the new-chat flow, the project step's folders and ✕,
   the chat list's rules and its filter, the card sizes, the notifications switch, the usage bar, the project cue, the header's PRs

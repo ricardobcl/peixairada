@@ -4,6 +4,36 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-25.
 
+## Decisions of 2026-09-25, later — each half's strip lists its own tabs
+
+Ricardo: "pane tabs show all open stuff, regardless if they are in the 1st or 2nd pane - filter by what's open on
+1st vs 2nd pane".
+
+* **Read as VS Code's editor groups**: a tab belongs to one half's strip, not only to the half showing it. Before,
+  both strips listed every tab of the chat and the other half's was dimmed; a click on the dimmed one traded the
+  two halves' tabs. Now the left strip is claude's (and whatever was dragged to it), the right one the zsh and the
+  pages — `homes`, per chat, beside `tabs`.
+* **The default is the rule of the commit before**: chat left, everything else right. Only a tab that was dragged is
+  written down (`moveTab`), and the record goes with the split (`unsplit`) — the next split starts from claude on
+  the left again, which is what "always on the 1st pane" asks.
+* **A tab goes across by being dragged** — a press on it, onto the other half (its strip or its body), a release.
+  Pointer events rather than HTML drag and drop, because the drop often lands over the app's pane, a native web
+  view the page cannot see: AppKit keeps sending the drag's moves to the board's view, where the press began, and
+  `elementFromPoint` still names the half under the pointer. The tab fades in its strip, a copy follows the pointer
+  and the half underneath lights its strip (the part the pane never covers) and outlines its body. A press that
+  travels under 5 px is a click; the click a real drag's release makes is swallowed.
+* **Choosing a tab never moves it**: a click, ⌥⌘G on a PR already open, ⌥⌘T on a live zsh show it in its own half
+  and take the keys there (`setTab`). ⌥⌘← / ⌥⌘→ read the two strips as one row, left then right, so they still reach
+  every tab and cross the divider on the way.
+* **An emptied half**: a split the board made itself folds away (the zsh exited, the last page closed, the last tab
+  dragged out) and the column shows what the other half was showing; a split asked for with ⌘2 keeps its empty half,
+  whose strip says *drop a tab here*.
+* Scenarios: `split-halves` drags the zsh from the right strip onto the left one (the left half lit while it
+  travels, the right one left empty, nothing of the drag left behind) and the chat onto the right half's body (the
+  transcript and the drawer go with it), and walks ⌥⌘→ across the divider; `pane-tabs` reads both strips — claude
+  alone on the left, zsh · PR · PR · editor on the right — and drags a PR into the left half to have a page up in
+  each. `ctx.drag(from, to, mid)` in the runner does the press, eight moves and the release through CDP's input.
+
 ## Decisions of 2026-09-25, later — a split keeps claude in the first half
 
 Ricardo: "when opening a 2nd pane on the chat, keep the claude always on the 1st pane".
@@ -18,11 +48,13 @@ Ricardo: "when opening a 2nd pane on the chat, keep the claude always on the 1st
   put the chat tab into the half the keys were in, trading it with the page there, which is how claude ended up on
   the right. Now the keys go to the half showing the chat, and the page beside it stays up. A chat shown in neither
   half comes back into the left one.
-* A click on a tab in the other half's strip still trades the two — that is a hand asking for it, not the board
-  deciding; the next commit changes what the strips list.
+* A click on a tab in the other half's strip still traded the two — a hand asking for it, not the board deciding;
+  the next entry changes what the strips list, and with it that.
 * Scenarios: `split-halves` (⌘2 from the zsh alone: claude left, zsh right, keys on the zsh), `pane-tabs` (Esc goes
   to the chat's half; ⌥⌘E with the keys on claude opens on the right), `focus-view` (⌥⌘C from the zsh goes left, so
-  its hand-typed /focus is typed into the left half now).
+  its hand-typed /focus is typed into the left half now), `drawer-reattach` (it re-attached the drawer by ⌥⌘C
+  trading the halves; now ⌘W folds the zsh's half away and the zsh tab and back happen in the one column, at the
+  size the drawer left at).
 
 ## Decisions of 2026-09-25 — the cards come in three sizes, a slider in the cog
 

@@ -72,6 +72,19 @@ const ctx = {
   screen: (g = 0) => cdp.evaluate(`${ROWS(g)}.map(r => r.textContent.replace(/\\s+$/, '')).filter(Boolean)`),
   /** Wait for a half's drawer to show a prompt line (the fake's or Claude's ❯). */
   waitPrompt: (timeout = 30_000, g = 0) => cdp.waitFor(`${ROWS(g)}.some(r => r.textContent.includes('❯'))`, { timeout, every: 250, what: `the ❯ prompt in ${g ? 'the right half' : 'the drawer'}` }),
+  /** A drag through the browser's own input: a press at the middle of `from`, eight moves to the middle of `to`, a
+      release there — the pointer events a hand makes. `mid` runs before the release, to look at the drag in flight;
+      what it returns is what this returns. Selectors, or {x, y} points. */
+  drag: async (from, to, mid = null) => {
+    const at = t => typeof t !== 'string' ? t : cdp.evaluate(`(r => ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }))(document.querySelector(${JSON.stringify(t)}).getBoundingClientRect())`);
+    const a = await at(from), b = await at(to), mouse = (type, x, y, buttons) => cdp.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons, clickCount: 1 });
+    await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: a.x, y: a.y });
+    await mouse('mousePressed', a.x, a.y, 1);
+    for (let i = 1; i <= 8; i++) await mouse('mouseMoved', Math.round(a.x + (b.x - a.x) * i / 8), Math.round(a.y + (b.y - a.y) * i / 8), 1);
+    const seen = mid ? await mid() : undefined;
+    await mouse('mouseReleased', b.x, b.y, 0);
+    return seen;
+  },
   /** A read-only look into the page's closure (window.peix). */
   peix: what => cdp.evaluate(`JSON.stringify(window.peix.${what})`).then(v => JSON.parse(v)),
 };

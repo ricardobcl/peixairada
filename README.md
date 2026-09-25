@@ -302,13 +302,15 @@ elsewhere the first press arms the take-over and the second ends that claude, as
 fresh zsh in the chat's folder, inline: a *zsh* tab appears beside the chat (*claude* while it runs here, *chat*
 otherwise), one per chat, `exit` or its × ends it, and ⌥⌘C brings the claude session back. **A tab that is new
 opens the column in two and takes the right half**, so the chat stays where it is beside it; the column closes
-itself again when the chat is back to one tab. **⌥⌘E**
+itself again when the chat is back to one tab. **Claude always keeps the left half**: every split puts it there,
+and a new tab never takes its place. Split, **each half's strip lists its own tabs** — claude on the left, the zsh
+and the pages on the right — and **dragging a tab onto the other half moves it there**. **⌥⌘E**
 opens the folder in VS Code Web, on a *VS Code* tab of the same strip — the *VS Code Web* row's route under the
 header's ··· (the real VS Code is *open in VS Code* there, no key). **⌥⌘G** opens the chat's PR on GitHub — straight away with
 one; with several, the same picker filled with the PR rows under the header (state · `repo#n` · title · age,
 filtered by number or title, ⏎ opens the selected one, the one showing marked *current*) — **every time**, a tab
 already open or not; each PR is a tab of its own (`repo#n`) so nothing reloads. The
-keys work from inside a page's tab too, **⌥⌘← / ⌥⌘→** walk the strip's tabs (wrapping round), and **Esc** there brings the chat back. **Esc with a picker or popover up closes
+keys work from inside a page's tab too, **⌥⌘← / ⌥⌘→** walk the strip's tabs (wrapping round; split, the two strips are one row, left then right), and **Esc** there brings the chat back. **Esc with a picker or popover up closes
 it and nothing else** — in the app it used to leave full screen as well. With no chat open, or no PR in it, a note under the header says so; while
 a dialog is up the keys do nothing. **Double-click the
 title** in the chat header to rename a chat; the name is kept by the board (never written into the

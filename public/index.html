@@ -574,7 +574,15 @@
   .ptab { flex: none; font: inherit; font-size: 11.5px; padding: 2px 9px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
   .ptab:hover { color: var(--ink); }
   .ptab.on { color: var(--ink); border-color: var(--accent); }
-  .ptab.away { opacity: .5; }   /* the other half has it — a click here makes the two trade places */
+  .ptabs .pdrop { color: var(--muted); font-style: italic; padding: 2px 4px; }
+  /* A tab on its way to the other half (2026-09-25): it stays in its strip, faded, while a copy follows the pointer,
+     and the half under the pointer lights its strip — the one place the drop is always visible, the app's pane
+     being a native view over the body. */
+  .ptab.dragging { opacity: .35; }
+  .ptab.ghost { position: fixed; z-index: 70; pointer-events: none; opacity: .9; background: var(--panel); border-color: var(--accent); color: var(--ink); box-shadow: 0 6px 18px rgba(0, 0, 0, .25); transform: translate(-50%, -50%); }
+  body.tabdrag, body.tabdrag * { cursor: grabbing !important; user-select: none; }
+  .grp.drop > .ptabs { background: color-mix(in srgb, var(--accent) 16%, var(--panel)); box-shadow: inset 0 0 0 1px var(--accent); }
+  .grp.drop > .gbody { outline: 2px dashed var(--accent); outline-offset: -4px; }
   .ptabs .nav.gclose { color: var(--muted); font-size: 12px; }
   .ptabs .nav.gclose:hover { color: var(--needs); border-color: var(--needs); }
   .ptab .x { opacity: .5; font-size: 12px; line-height: 1; } .ptab .x:hover { opacity: 1; color: var(--needs); }
@@ -777,7 +785,7 @@
     <kbd>⌥⌘F</kbd><span>the chat list's own filter, fuzzy the same way — the best match leads · ↑↓ walk the cards · ⏎ opens one · esc clears it</span>
     <kbd>⌥⌘N</kbd><span>a chat — a project, a folder in ~/acme, or ＋ clone a repo of the org · then its open chats or ＋ a new one · ✕ takes a row off the board</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
-    <kbd>⌥⌘←→</kbd><span>the tab to the left / right: chat, zsh, GitHub pages, VS Code</span>
+    <kbd>⌥⌘←→</kbd><span>the tab to the left / right: chat, zsh, GitHub pages, VS Code — split, across both halves' strips · drag a tab onto the other half to move it there</span>
     <kbd>⌘B</kbd><span>fold the chat list into a rail, and back</span>
     <kbd>⌘1 ⌘2</kbd><span>the left half of the chat, the right one — ⌘2 splits it in two the first time</span>
     <kbd>⌘W</kbd><span>close the half the keys are in — or the picker · with one half it is the window's own key</span>
@@ -1708,9 +1716,11 @@
   }
   // ⌥⌘← / ⌥⌘→ (2026-09-20, Ricardo: "cmd option left/right should change the open chat | shell | GH | vscode panes"):
   // the tab beside the current one in the strip, wrapping round; the same path as a click on it. The chat alone: a note.
+  // Split, the two strips read as one row, left then right (2026-09-25): each lists only its own tabs now, and the
+  // key walks across the divider into the other half rather than round one strip.
   function hotTab(dir) {
     const s = state.sessions.get(state.current); if (!s) return noChat();
-    const keys = tabKeys(s); if (keys.length < 2) return note($('#shead'), 'Only the chat here — ⌥⌘T a zsh, ⌥⌘G its PR, ⌥⌘E the editor');
+    const keys = [...keysIn(s, 0), ...keysIn(s, 1)]; if (keys.length < 2) return note($('#shead'), 'Only the chat here — ⌥⌘T a zsh, ⌥⌘G its PR, ⌥⌘E the editor');
     openTab(s, keys[(keys.indexOf(tabOf(s)) + dir + keys.length) % keys.length]);
   }
   // ⌥⌘T: a fresh zsh in the chat's folder, inline — the pane's zsh tab, like a new tab in iTerm (2026-09-20). One per
@@ -2223,6 +2233,7 @@
     state: () => ({ current: state.current, project: prefs.project, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft, hidden: [...state.hidden],
       paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, [...v]])), tab: state.sessions.has(state.current) ? tabOf(state.sessions.get(state.current)) : null, tabs: state.sessions.has(state.current) ? tabKeys(state.sessions.get(state.current)) : [], pr: shownPr.url,
       split: splitNow(), focusG, halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
+      strips: state.sessions.has(state.current) ? [0, 1].map(g => keysIn(state.sessions.get(state.current), g)) : [[], []],
       termId: curTerm().id, termSession: curTerm().sessionId, termExited: curTerm().exited }),
     session: id => { const s = state.sessions.get(id || state.current); return s ? JSON.parse(JSON.stringify(s)) : null; },
     sessions: () => [...state.sessions.values()].map(s => ({ id: s.id, project: s.project, cwd: s.cwd, env: s.env || null, title: s.title, status: s.status, alive: s.alive, prs: (s.prs || []).length, terminal: s.terminal?.id || null, agents: s.agents || 0, tasks: s.tasks || [], ask: s.ask || null })),
@@ -2299,17 +2310,21 @@
   // per PR"). The pages a chat opened are remembered here (state.paneGh per chat, state.paneIde per folder), so they
   // come back with the chat; a tab whose page is gone falls back to the chat.
   const tabs = new Map();
+  // Split, each tab belongs to one half's strip (2026-09-25, Ricardo: "pane tabs show all open stuff, regardless if
+  // they are in the 1st or 2nd pane — filter by what's open on 1st vs 2nd pane"): the chat's strip on the left and
+  // everything else on the right, until a tab is dragged across (moveTab). Written down only for the tabs that
+  // moved, and forgotten with the split — the next one starts from claude on the left again.
+  const homes = new Map();   // chat id → Map(tab → half), while that chat is split
+  const homeOf = (s, k) => homes.get(s.id)?.get(k) ?? (k === 'chat' ? 0 : 1);
+  /** The tabs a half's strip lists: every one of the chat's with one half, its own with two. */
+  const keysIn = (s, g) => !isSplit(s) ? (g ? [] : tabKeys(s)) : tabKeys(s).filter(k => homeOf(s, k) === g);
   const isPaneTab = t => /^(gh|ide):/.test(t || '');
-  /** Where this chat's tabs sit, read against the tabs it actually has now: a key that is gone falls away, the
-      left half takes the first tab left, and the right half fills with a spare one while the column is split. */
+  /** What each half is showing, read against the tabs it actually has now: a key that is gone falls away, and a
+      half whose tab went shows the first of its own that is left — or nothing, which is what an emptied half says. */
   function placeOf(s) {
     if (!s) return [null, null];
-    const keys = tabKeys(s), p = tabs.get(s.id) || [], two = isSplit(s);
-    let a = keys.includes(p[0]) ? p[0] : null;
-    let b = two && keys.includes(p[1]) && p[1] !== a ? p[1] : null;
-    if (!a) a = keys.find(k => k !== b) || null;
-    if (two && !b) b = keys.find(k => k !== a) || null;
-    return [a, b];
+    const p = tabs.get(s.id) || [];
+    return [0, 1].map(g => { const ks = keysIn(s, g); return ks.includes(p[g]) ? p[g] : ks[0] || null; });
   }
   // Where each page actually is (2026-09-21): the key says where it was opened, the shell reports every navigation
   // (peixPaneUrl, a KVO watch on the view's url), so a PR followed into a file or a review shows — and copies — the
@@ -2328,13 +2343,21 @@
   const paneKeys = s => !inApp || !s ? [] : [...(state.paneGh.get(s.id) || []).map(u => 'gh:' + u), ...(s.cwd && state.paneIde.get(s.cwd) ? ['ide:' + state.paneIde.get(s.cwd)] : [])];
   const tabKeys = s => ['chat', ...(shellLive(s) ? ['shell'] : []), ...paneKeys(s)];
   const tabOf = s => placeOf(s)[focusG];
-  /** A tab put in a half. If the other half is showing it, the two trade places rather than show it twice —
-      there is one transcript, one xterm per half and one web view per page, so a tab lives in exactly one. */
-  function setTab(s, k, g = focusG) {
-    const p = placeOf(s), o = g ? 0 : 1;
-    if (p[o] === k) p[o] = p[g];
-    p[g] = k;
-    tabs.set(s.id, isSplit(s) ? p : [p[0], null]);
+  /** A tab put on show, in the half whose strip lists it — the one there is, unsplit — and the keys go with it.
+      There is one transcript, one xterm per half and one web view per page, so a tab lives in exactly one half;
+      choosing it never pulls it across (that is a drag, moveTab). */
+  function setTab(s, k) {
+    const g = isSplit(s) ? homeOf(s, k) : 0, p = placeOf(s);
+    p[g] = k; tabs.set(s.id, p);
+    focusG = g;
+  }
+  /** A tab dragged onto the other half: its strip is that half's now, and it is on show there. The half it left
+      shows the next of its own, or nothing — and a split the board made itself folds away then (syncTerm). */
+  function moveTab(s, k, g) {
+    if (!isSplit(s)) return;
+    if (!homes.has(s.id)) homes.set(s.id, new Map());
+    homes.get(s.id).set(k, g);
+    setTab(s, k);
   }
   /** A tab that has just come into being — a zsh, a GitHub page, the editor — opens in the *second* half, and
    *  splits the column the first time (2026-09-22, Ricardo: "when opening a second tab, use the 2nd split pane by
@@ -2347,23 +2370,25 @@
    *  the half the chat is not in — so it never takes the chat's place. */
   function openNewTab(s, k) {
     if (!isSplit(s)) splitChat(s, true);
-    focusG = placeOf(s)[1] === 'chat' ? 0 : 1;
-    setTab(s, k, focusG);
+    homes.get(s.id).set(k, 1 - homeOf(s, 'chat'));
+    setTab(s, k);
   }
-  /** The chat tab brought forward — Esc from a page, ⌥⌘C, the focus view's row: the keys go to the half showing it,
-   *  and a chat showing nowhere takes the left half, its own, rather than come into the one the keys were in. */
-  function showChat(s) {
-    const at = placeOf(s).indexOf('chat');
-    focusG = at < 0 ? 0 : at;
-    if (at < 0) setTab(s, 'chat', 0);
-  }
-  /** The column in two for this chat: the chat on the left, and on the right what the column was showing when that
-   *  was not the chat — so ⌘2 over a zsh puts claude beside it rather than the other way round. */
+  /** The chat tab brought forward — Esc from a page, ⌥⌘C, the focus view's row: into its own half, the left one
+   *  unless it was dragged, and the keys go there rather than the chat coming into the half they were in. */
+  const showChat = s => setTab(s, 'chat');
+  /** The column in two for this chat: the chat on the left and every other tab on the right, showing what the
+   *  column was when that was not the chat — so ⌘2 over a zsh puts claude beside it rather than the other way round. */
   function splitChat(s, auto) {
     const was = placeOf(s)[0];
     splits.add(s.id);
     if (auto) autoSplit.add(s.id); else autoSplit.delete(s.id);
+    homes.set(s.id, new Map());
     tabs.set(s.id, ['chat', was !== 'chat' ? was : null]);
+  }
+  /** One half again: every tab back in the one strip, the one showing being what `keep` says. */
+  function unsplit(s, keep) {
+    splits.delete(s.id); autoSplit.delete(s.id); homes.delete(s.id);
+    tabs.set(s.id, [keep, null]);
   }
   const paneLabel = k => { const m = /github\.com\/[^/]+\/([^/]+)\/pull\/(\d+)/.exec(k); return m ? `${m[1]}#${m[2]}` : 'GitHub'; };
   // Keep the pane right for the viewed chat: the body under the strip — its zsh on that tab, its claude drawer while
@@ -2371,7 +2396,8 @@
   // transcript otherwise — then the strip, then the shell's word (postPane). Runs on every open and SSE update, so it
   // never re-attaches what it shows.
   function syncTerm(s) {
-    if (s && autoSplit.has(s.id) && tabKeys(s).length < 2) { splits.delete(s.id); autoSplit.delete(s.id); }   // the zsh exited, the page was forgotten: one half again
+    // the zsh exited, the page was forgotten, the last tab was dragged out: a split of the board's own goes with its half
+    if (s && autoSplit.has(s.id) && (!keysIn(s, 0).length || !keysIn(s, 1).length)) { const p = placeOf(s); unsplit(s, p[0] || p[1]); }
     applySplit();                       // the split belongs to the chat, so the column follows whichever is open
     const p = placeOf(s);
     for (const tm of terms) {
@@ -2393,23 +2419,25 @@
     el.hidden = at < 0 || !!terms[g].id;
     for (const tm of terms) {
       const host = $(tm.el.body), had = host.querySelector('.gempty'), want = isSplit(s) && !p[tm.g];
-      if (want && !had) host.insertAdjacentHTML('beforeend', '<div class="gempty">Nothing in this half.<br>⌥⌘T a zsh · ⌥⌘G its PR · ⌥⌘E the editor<br>— or a tab from the strip above</div>');
+      if (want && !had) host.insertAdjacentHTML('beforeend', '<div class="gempty">Nothing in this half.<br>⌥⌘T a zsh · ⌥⌘G its PR · ⌥⌘E the editor<br>— or drag a tab here from the other half</div>');
       else if (!want && had) had.remove();
     }
   }
-  // A half's strip lists every tab the chat has — [claude|chat], [zsh ×], a [repo#n ×] per GitHub page, [VS Code ×]
-  // — with its own marked `on` and the other half's dimmed (`away`): clicking that one here makes the two trade
-  // places. The left half's strip hides while the chat is one tab and nothing is split, as it always did; the
-  // right half's always shows. While there are two, each strip ends in the ⨯ that closes *its* half (⌘W closes
-  // the one the keys are in). With a page's tab on, ‹ › ↻ ↗ for its view at the right, and the address it is at.
+  // A half's strip lists its own tabs — [claude|chat], [zsh ×], a [repo#n ×] per GitHub page, [VS Code ×] — the
+  // one on show marked `on`: with one half that is every tab the chat has, with two it is that half's (keysIn), and
+  // a tab goes across by being dragged there. The left half's strip hides while the chat is one tab and nothing is
+  // split, as it always did; the right half's always shows, empty or not, since it is where a tab is dropped. While
+  // there are two, each strip ends in the ⨯ that closes *its* half (⌘W closes the one the keys are in). With a
+  // page's tab on, ‹ › ↻ ↗ for its view at the right, and the address it is at.
   function renderTabs(s, p = placeOf(s)) {
-    const keys = s ? tabKeys(s) : ['chat'], two = isSplit(s);
+    const two = isSplit(s);
     for (const tm of terms) {
-      const g = tm.g, el = $(tm.el.tabs), cur = p[g], other = p[g ? 0 : 1];
+      const g = tm.g, el = $(tm.el.tabs), cur = p[g], keys = s ? keysIn(s, g) : g ? [] : ['chat'];
       $(tm.el.grp).classList.toggle('on', g === focusG);
       el.hidden = g === 0 ? !two && keys.length < 2 : false;
       if (el.hidden || (g === 1 && !two)) continue;
-      const tab = (k, label, title, x) => `<button class="ptab${cur === k ? ' on' : ''}${other === k ? ' away' : ''}${isPaneTab(k) ? ' pane' : ''}" data-tab="${esc(k)}" title="${esc(title)}">${esc(label)}${x ? `<span class="x" title="${esc(x)}">×</span>` : ''}</button>`;
+      const tip = two ? ' · drag it to the other half to move it there' : '';
+      const tab = (k, label, title, x) => `<button class="ptab${cur === k ? ' on' : ''}${isPaneTab(k) ? ' pane' : ''}" data-tab="${esc(k)}" title="${esc(title + tip)}">${esc(label)}${x ? `<span class="x" title="${esc(x)}">×</span>` : ''}</button>`;
       const navs = (isPaneTab(cur) ? '<button class="nav" data-nav="back" title="Back">‹</button><button class="nav" data-nav="forward" title="Forward">›</button><button class="nav" data-nav="reload" title="Reload">↻</button><button class="nav" data-nav="external" title="Open this page in your browser">↗</button>' : '')
         + (two ? '<button class="nav gclose" title="Close this half — the other one becomes the whole column · ⌘W">⨯</button>' : '');
       el.innerHTML = keys.map(k =>
@@ -2417,6 +2445,7 @@
         : k === 'shell' ? tab(k, 'zsh', `A zsh in ${s.cwd || 'its folder'} · ⌥⌘T`, 'End this shell')
         : k.startsWith('gh:') ? tab(k, paneLabel(k), `${k.slice(3)} · ⌥⌘G`, 'Close this page')
         : tab(k, 'VS Code', `${s.cwd} in VS Code Web · ⌥⌘E`, 'Close the editor')).join('')
+        + (two && !keys.length ? '<span class="pdrop">drop a tab here</span>' : '')
         + (isPaneTab(cur) ? `<span class="purl" data-key="${esc(cur)}" data-url="${esc(paneUrl(cur))}" title="${esc(paneUrl(cur))} — click to copy">${esc(bareUrl(paneUrl(cur)))}</span>` : '')
         + (navs ? `<span class="navs">${navs}</span>` : '');
     }
@@ -2457,7 +2486,7 @@
     const b = e.target.closest('.ptab'); if (!b) return;
     const k = b.dataset.tab;
     if (e.target.closest('.x')) return closeTab(s, k);
-    openTab(s, k, g);
+    openTab(s, k);
   });
   // A click anywhere in a half is being in it — the keys follow the pointer, as they do between editor groups.
   // Not the strips: their own click already says which half, and re-rendering them under a mousedown would take
@@ -2466,6 +2495,52 @@
     if (e.target.closest('.ptabs')) return;
     const grp = e.target.closest('.grp'); if (grp) focusGroup(grp.id === 'grpB' ? 1 : 0);
   }, true);
+  // A tab dragged to the other half moves there (2026-09-25) — the strips list only their own tabs now, so this is
+  // how one goes across. Pointer events and not HTML drag and drop: the drop can land over the app's pane, a native
+  // view the page cannot see, and the board's web view keeps getting the drag's moves (AppKit sends them to the view
+  // the press started in) while elementFromPoint still names the half underneath. A press that never travels 5 px
+  // is a click, and the click that follows a real drag is swallowed. Only while split: with one half there is
+  // nowhere else to go.
+  {
+    let drag = null;
+    const halfAt = (x, y) => { const g = document.elementFromPoint(x, y)?.closest('.grp'); return g ? (g.id === 'grpB' ? 1 : 0) : null; };
+    const lit = g => { for (const tm of terms) $(tm.el.grp).classList.toggle('drop', g === tm.g && g !== drag?.from); };
+    const end = () => {
+      if (!drag) return;
+      drag.ghost?.remove(); drag.b.classList.remove('dragging'); document.body.classList.remove('tabdrag'); lit(null);
+      drag = null;
+    };
+    $('#groups').addEventListener('pointerdown', e => {
+      const b = e.target.closest('.ptab'); if (!b || e.button !== 0 || e.target.closest('.x')) return;
+      if (!splitNow()) return;
+      drag = { k: b.dataset.tab, from: b.closest('.ptabs').id === 'ptabsB' ? 1 : 0, x: e.clientX, y: e.clientY, b, ghost: null };
+    });
+    window.addEventListener('pointermove', e => {
+      if (!drag) return;
+      if (!drag.ghost) {
+        if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 5) return;
+        drag.ghost = document.body.appendChild(drag.b.cloneNode(true));
+        drag.ghost.classList.remove('on'); drag.ghost.classList.add('ghost');
+        drag.b.classList.add('dragging'); document.body.classList.add('tabdrag');
+      }
+      drag.ghost.style.left = e.clientX + 'px'; drag.ghost.style.top = e.clientY + 'px';
+      lit(halfAt(e.clientX, e.clientY));
+    });
+    window.addEventListener('pointerup', e => {
+      if (!drag) return;
+      const { k, from, ghost } = drag, to = ghost ? halfAt(e.clientX, e.clientY) : null;
+      end();
+      if (!ghost) return;
+      const swallow = ev => { ev.stopPropagation(); ev.preventDefault(); };   // the click this release makes, if it makes one
+      window.addEventListener('click', swallow, true); setTimeout(() => window.removeEventListener('click', swallow, true), 0);
+      const s = state.sessions.get(state.current);
+      if (!s || to === null || to === from || !tabKeys(s).includes(k)) return;
+      moveTab(s, k, to);
+      if (k.startsWith('gh:')) showPr(k.slice(3)); else { syncTerm(s); renderHead(s); focusBoard(); focusTerm(); }
+    });
+    window.addEventListener('pointercancel', end);
+    window.addEventListener('blur', end);
+  }
   /** The strip's address, clicked: the whole URL (scheme and all) to the clipboard. A selection made by hand inside
       it wins — that is someone copying part of it themselves. The clipboard API wants a gesture and a focused
       document, which a click on the board gives it; the textarea is the fallback when it still says no. */
@@ -2481,11 +2556,10 @@
     ta.remove();
     note(el, ok ? 'Address copied' : 'Could not copy — select it and ⌘C', !ok);
   }
-  /** A tab chosen — by a click or ⌥⌘←/→: it goes into the half asked for, which becomes the one the keys are in.
+  /** A tab chosen — by a click or ⌥⌘←/→: it comes up in its own half, which becomes the one the keys are in.
       A GitHub page opens through its strip too; the rest is syncTerm, and the keyboard follows. */
-  function openTab(s, k, g = focusG) {
-    focusG = isSplit(s) ? g : 0;
-    setTab(s, k, focusG);
+  function openTab(s, k) {
+    setTab(s, k);
     if (k.startsWith('gh:')) showPr(k.slice(3));
     else { syncTerm(s); focusBoard(); focusTerm(); }
   }
@@ -2524,7 +2598,7 @@
       what the column keeps; a half that was showing nothing leaves the closer's tab behind rather than none. */
   function closeHalf(g) {
     const s = state.sessions.get(state.current) || null;
-    if (s) { const p = placeOf(s); splits.delete(s.id); autoSplit.delete(s.id); tabs.set(s.id, [p[g ? 0 : 1] || p[g], null]); }
+    if (s) { const p = placeOf(s); unsplit(s, p[g ? 0 : 1] || p[g]); }
     focusG = 0; applySplit();
     syncTerm(s); if (s) renderHead(s);
     focusBoard(); focusTerm();
@@ -2569,7 +2643,8 @@
     if (k.startsWith('gh:')) state.paneGh.set(s.id, (state.paneGh.get(s.id) || []).filter(u => 'gh:' + u !== k));
     else if (s.cwd) state.paneIde.delete(s.cwd);
     const p = placeOf(s);
-    if (p.includes(k)) tabs.set(s.id, p.map(x => x === k ? null : x));   // placeOf fills the gap from what is left
+    if (p.includes(k)) tabs.set(s.id, p.map(x => x === k ? null : x));   // placeOf fills the gap from what that half has left
+    homes.get(s.id)?.delete(k);
     syncTerm(s);
   }
   // The take-over tooltip is the warning: for a VS Code chat it spells out what the tab there loses.
