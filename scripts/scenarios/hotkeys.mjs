@@ -1,6 +1,7 @@
 // The ⌥⌘ family on a fixture: G opens the picker on a two-PR chat, ⏎ opens the first, G again is the picker again
 // with that one marked, a click on the other opens it; T, E and C hit their routes (stubbed), V none; P is the project
-// picker; K the chat picker (fuzzy search, best match first, ⏎ opens across projects); N a chat (project → its open chats and ＋ a new one
+// picker; K the chat picker (fuzzy search, best match first, ⏎ opens across projects) — F, the list's own box, is
+// chat-filter.mjs; N a chat (project → its open chats and ＋ a new one
 // → environment, stubbed); O oracle, straight to the environments (a pinned folder called oracle stands in for the
 // real one — with no chats of its own the chats step skips itself); ↓ ↑ walk the list; ← → the tab beside (a real zsh); { } folds per chat; Esc closes a picker and is taken; the cog
 // lists every key; no chat → a note, no oracle → a note.
@@ -186,7 +187,7 @@ export default async function (ctx) {
   out.escIdle = await escOn('body'); ctx.assert.equal(out.escIdle, false, 'with nothing to close, Esc is left alone');
   // the cog lists the keys
   out.cog = await ctx.evaluate(`[...document.querySelectorAll('#settings .keys kbd')].map(k => k.textContent)`);
-  ctx.assert.deepEqual(out.cog.slice(0, 10), ['⌥⌘T', '⌥⌘E', '⌥⌘G', '⌥⌘C', '⌥⌘O', '⌥⌘P', '⌥⌘K', '⌥⌘N', '⌥⌘↑↓', '⌥⌘←→']);
+  ctx.assert.deepEqual(out.cog.slice(0, 11), ['⌥⌘T', '⌥⌘E', '⌥⌘G', '⌥⌘C', '⌥⌘O', '⌥⌘P', '⌥⌘K', '⌥⌘F', '⌥⌘N', '⌥⌘↑↓', '⌥⌘←→']);
   await ctx.shot('cog');
   return out;
 }

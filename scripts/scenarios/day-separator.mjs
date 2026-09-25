@@ -3,7 +3,9 @@
 // such line under every day's run of cards, naming it in the middle — "today", else DD-MM-YYYY — with fish either
 // side that keep still. A line closes the day *above* it, so the oldest day in the list gets one too. What this
 // checks is the lines' places and names, that the day is centred and nothing on it moves, and that a day the list
-// brings back (a done card from today, after older ready ones) gets a line of its own.
+// brings back (a done card from today, after older ready ones) gets a line of its own. The list is narrowed to the
+// scenario's folder by the project picker, not the magnifier: a query orders the list by the match since 2026-09-25,
+// and leaves the lines out (scripts/scenarios/chat-filter.mjs).
 import { makeFixture } from '../fixture.mjs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -24,7 +26,11 @@ const strip = ctx => ctx.evaluate(`JSON.stringify([...document.querySelector('#s
 }))`).then(JSON.parse);
 const pad2 = n => String(n).padStart(2, '0');
 const ddmmyyyy = d => `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()}`;
-const filter = (ctx, q) => ctx.evaluate(`(() => { const q = document.querySelector('#q'); q.value = ${JSON.stringify(q)}; q.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+// ⌥⌘P, the folder's name, ⏎: the list is that project's
+const project = async (ctx, name) => {
+  await ctx.key('KeyP');
+  await ctx.evaluate(`(() => { const q = document.querySelector('#pickq'); q.value = ${JSON.stringify(name)}; q.dispatchEvent(new Event('input', { bubbles: true })); q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); })()`);
+};
 
 export default async function (ctx) {
   const out = {};
@@ -42,8 +48,8 @@ export default async function (ctx) {
     { cwd, title: 'three days back', prompt: 'before that?', reply: 'before', at: d3 },
   ]).chats;
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 7`, { what: 'the five chats and the fixture\'s two' });
-  await filter(ctx, 'daylines-repo');
-  await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 5`, { what: 'the list filtered to the five' });
+  await project(ctx, 'daylines-repo');
+  await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 5`, { what: 'the list narrowed to the five' });
 
   out.all = await strip(ctx);
   await ctx.shot('day-lines');
@@ -68,10 +74,10 @@ export default async function (ctx) {
   out.done = (await strip(ctx)).map(x => x.sep ? x.day : x.card);
   ctx.assert.deepEqual(out.done, ['this morning', 'today', 'two days back, later', 'two days back', ddmmyyyy(d2), 'three days back', ddmmyyyy(d3), 'a minute ago', 'today'], 'today twice, each run under its own line');
 
-  // Only today's chats in view: still one line, under them, saying so
-  await filter(ctx, 'this morning');
-  await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 1`, { what: 'one of today\'s chats' });
+  // Only the done card in view — the ready chip off: still one line, under it, saying so
+  await ctx.evaluate(`document.querySelector('#fchips .fchip.ready').click()`);
+  await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 1`, { what: 'the done card alone' });
   out.filtered = (await strip(ctx)).map(x => x.sep ? x.day : x.card);
-  ctx.assert.deepEqual(out.filtered, ['this morning', 'today'], 'the day closes under its only card');
+  ctx.assert.deepEqual(out.filtered, ['a minute ago', 'today'], 'the day closes under its only card');
   return out;
 }

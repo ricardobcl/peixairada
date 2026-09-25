@@ -559,7 +559,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   // chat list, 1 and 2 the left and right halves of the chat column. Pressed while the pane has the keyboard: its web views are not the board's, so the page
   // would never hear it. Forwarded through peixKey as the page's e.code and which map it belongs to; the page asks
   // for the keyboard back ({type: "focus"}) only when it opens a dialog.
-  static let boardKeys: Set<String> = ["t", "e", "g", "c", "o", "p", "k", "n"]
+  static let boardKeys: Set<String> = ["t", "e", "g", "c", "o", "p", "k", "f", "n"]
   static let cmdKeys: Set<String> = ["b", "0", "1", "2"]
   static func hotkeyCode(_ e: NSEvent) -> (code: String, mods: String)? {
     let held = e.modifierFlags.intersection([.command, .option, .control, .shift])

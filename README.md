@@ -123,7 +123,7 @@ filter, ↑↓, ⏎ opens it, esc closes — and **×** beside a project's name 
 head wear the project's colour, ALL's black, so a filter that is on is plain from across the room;
 **⌥⌘K** the same box filled with **every chat that is ready or clauding**, across the projects, in the list's order
 (colour · title · project · state · age), searched by title, project, prompt or branch — ⏎ opens it, switching project
-when it lives elsewhere; **⌥⌘N** a **new chat**: pick the project — or one of the folders in `~/acme` that has no chat yet, they come
+when it lives elsewhere (**⌥⌘F** is the chat list's own box, matched the same way — see below); **⌥⌘N** a **new chat**: pick the project — or one of the folders in `~/acme` that has no chat yet, they come
 after the board's own, or type a name none of them has and **＋ clone `acme/<name>`** into `~/acme` (`gh repo
 clone`, then straight on into the chat) — then one of its open chats or ＋ a new one, the folder when the project
 spans several, and — in a folder whose Taskfile launches claude (see *+ new chat* below) — the environment. **✕ at
@@ -164,9 +164,11 @@ writes once it rests. ⌥-click the square to take the setting out again. A note
 was written and, if git tracks it in the repo, that the change will show in `git status`.
 Projects **pinned** while the column was there still head the pickers, in their order — the pins live on the
 server, so every browser and the app agree — but the pin and the drag went with the column, so nothing on the board
-pins or unpins now. The chat list has its own filter behind a magnifier in that row — chats by title, branch or
-prompt, the box taking the chips' place while it is open; Esc or an emptied box closes it, and the magnifier stays lit
-while a filter is on.
+pins or unpins now. The chat list has its own filter behind a magnifier in that row, or **⌥⌘F** from anywhere —
+chats by title, project, branch or prompt, matched the way ⌥⌘K matches (any letters in order: `pln cht` finds *Plain
+chat*), the best match first and the letters that landed underlined; ↑↓ walk the cards from the box and ⏎ opens one.
+The box takes the chips' place while it is open; Esc or an emptied box closes it, and the magnifier stays lit while a
+filter is on.
 
 **Chats** of the selected project, newest first by your own last touch, with a chip per state in the head —
 *ready · clauding · done*, a dot in the state's colour and a count (the word too when the list is wide), each a

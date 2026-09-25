@@ -2,7 +2,40 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-09-24.
+this file is the *why* and the *state*. Last updated 2026-09-25.
+
+## Decisions of 2026-09-25 — ⌥⌘F: the chat list's filter, fuzzy like ⌥⌘K
+
+Ricardo: "make hotkey F fuzzy search like K".
+
+* **Read as: F is the chat list's magnifier, from the keyboard, and it matches the way K does.** There was no ⌥⌘F, and
+  a second dialog that did what K does would be K twice. What K had that the list did not was the matcher, so the
+  list got it; what the list has that K does not — the done chats, the project in view, the state chips — is why a
+  finder there is worth a key of its own. A different reading (F as K over every chat, done ones included) would be
+  a small change on top of this one.
+* **This reverses 2026-09-21's "the column's own filter boxes stay literal"**, and for that entry's own reason: fuzzy
+  without ranking is only a longer list, so the list is ranked too. With something typed the cards are in the
+  match's order — `fuzzy(chatFields(s), q)`, the board's order breaking ties — and the fish and the day lines are
+  left out, since each says where a state or a day ends and neither is what the list is ordered by any more. An
+  emptied box (Esc) gives the board's order and its lines back.
+* **The letters that matched are bolded on the card**, title and folder name — `markHits()`, the picker's `mark()`
+  hoisted so both use it —, underlined as well as in the accent, because a card is tinted in its project's colour
+  and on the solid tint of the open, hovered or marked card the accent does not read (there it takes the card's ink).
+* **↑↓ from the box walk the cards, ⏎ opens the marked one** — K's keys. The mark (`.qsel`, the hover's tint) is
+  drawn only while the box has the keyboard, and on every render, so an SSE update does not drop it. ⏎ keeps the
+  query, lets go of the box and hands the keyboard to the chat's drawer if it has one (`focusTerm`); Esc in the box
+  is still what empties it.
+* **Folded to the rail, ⌥⌘F opens the list first** — the rail has no box. Again with the box open, it selects what is
+  in it, so typing replaces the query.
+* **The app forwards ⌥⌘F from the pane** (`boardKeys`), the rule for every ⌥⌘ letter. It costs VS Code Web in the
+  pane its ⌥⌘F (Replace), as ⌥⌘T and ⌥⌘C already cost it theirs.
+* Measured on the live board (277 chats): 2–10 ms a keystroke, the whole list re-ranked and redrawn.
+* `scripts/scenarios/chat-filter.mjs`: ⌥⌘F from the rail (the list opens, the box has the keyboard); `pln cht`,
+  held by no chat literally, puts *Plain chat* first with `Pl`, `n`, `ch`, `t` bolded and no lines; `res` puts
+  *Wallet resolvers* before the newer *Arrest the drift* (a word's start against a word's middle, against the board's
+  order); ↓ ↑ and ⏎; ⌥⌘F again selects the query; Esc gives the order and the lines back; the cog lists the key.
+  `day-separator` narrowed the list with the magnifier, which now drops the very lines it checks — it narrows by the
+  project picker now, and its "a day closes under its only card" is the done card alone, the ready chip off.
 
 ## Decisions of 2026-09-24, small hours — the header's PR chips' edge is 1 px again
 

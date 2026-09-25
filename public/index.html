@@ -298,7 +298,7 @@
   /* A card in the board's own black (PROJECT_COLORS — acme): 55 % of black over a light panel is a mid-grey
      nothing reads on, so the tint is the colour itself and the card borrows the dark theme's inks — they inherit,
      so title, snips, times and the two speaker marks follow in one rule. In the dark theme they are what they were. */
-  .card.black:hover, .card.black.active { background: var(--repo); --ring: #fff; --ink: #e8e6df; --muted: #9a998f; --snip-claude: #c9c7bd; --you: #4fb8a8; --accent: #e08a68; }
+  .card.black:hover, .card.black.active, .card.black.qsel { background: var(--repo); --ring: #fff; --ink: #e8e6df; --muted: #9a998f; --snip-claude: #c9c7bd; --you: #4fb8a8; --accent: #e08a68; }
   /* The light that runs round a clauding card is the card's colour, which on a black card is black on black
      (Ricardo, 2026-09-20: "make the animation white when clauding for acme project"). --ring is what the light
      and its glow run in: white wherever the card under them is dark — the dark theme, and the solid tint the
@@ -319,6 +319,12 @@
   .card .trow .chip.watch { margin-top: 3px; max-width: 50%; }
   .shead .chip.watch { max-width: 40%; flex: 0 1 auto; }
   .card .repo { font-weight: 800; font-size: 13px; letter-spacing: .1px; flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* The letters the magnifier's query landed on (2026-09-25), as ⌥⌘K bolds them — underlined here as well, because
+     a card is tinted in its project's colour and the accent alone does not read on every one of them. */
+  .card :is(.title, .repo) b { font-weight: 700; color: var(--accent); text-decoration: underline 1.5px; text-underline-offset: 2px; }
+  .card:is(.active, :hover, .qsel) :is(.title, .repo) b { color: inherit; }   /* the solid tint: the card's own ink */
+  /* ↑↓ in the magnifier's box walk the cards it ranked; ⏎ opens this one. The hover's look, with no halo. */
+  .card.qsel { border-color: var(--repo, var(--nocolor)); background: color-mix(in srgb, var(--repo, var(--nocolor)) 55%, var(--panel)); }
   .card .grow { flex: 1; }
   .card .time { font-size: 11px; color: var(--muted); flex: none; }
   .card .title { margin-top: 4px; font-size: 13.5px; font-weight: 500; line-height: 1.35; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
@@ -705,7 +711,7 @@
 <body>
 <main id="main">
   <section id="sessions">
-    <div class="colhead" id="shd"><span class="brand" id="brandBtn"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g><g fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="stitle" class="t"></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" hidden><span id="fchips"></span></span><span id="newChat"></span><button class="btn icon" id="sessPinBtn" title="Fold the chat list">«</button></div>
+    <div class="colhead" id="shd"><span class="brand" id="brandBtn"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g><g fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="stitle" class="t"></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" autocomplete="off" spellcheck="false" hidden><span id="fchips"></span></span><span id="newChat"></span><button class="btn icon" id="sessPinBtn" title="Fold the chat list">«</button></div>
     <div id="slist"></div>
     <div id="sfoot"><div id="pfoot"><button class="btn icon" id="cogBtn" title="Settings"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm0 1.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm-.9-5.5h1.8l.4 1.9c.4.15.8.35 1.15.6l1.85-.65 1.3 2.2-1.45 1.3c.05.4.05.8 0 1.2l1.45 1.3-1.3 2.2-1.85-.65c-.35.25-.75.45-1.15.6l-.4 1.9H7.1l-.4-1.9a5 5 0 0 1-1.15-.6l-1.85.65L2.4 10l1.45-1.3a5 5 0 0 1 0-1.2L2.4 6.2l1.3-2.2 1.85.65c.35-.25.75-.45 1.15-.6Z"/></svg></button></div><div id="usage"></div></div>
   </section>
@@ -751,6 +757,7 @@
     <kbd>⌥⌘O</kbd><span>oracle — its environments, then that one's open chats and ＋ a new one</span>
     <kbd>⌥⌘P</kbd><span>project picker — or a click on the project's name atop the chat list · ✎ edits a named one, ＋ makes one</span>
     <kbd>⌥⌘K</kbd><span>chat picker — every ready or clauding chat, fuzzy: <em>wapi res</em> finds <em>wallet-api resolvers</em></span>
+    <kbd>⌥⌘F</kbd><span>the chat list's own filter, fuzzy the same way — the best match leads · ↑↓ walk the cards · ⏎ opens one · esc clears it</span>
     <kbd>⌥⌘N</kbd><span>a chat — a project, a folder in ~/acme, or ＋ clone a repo of the org · then its open chats or ＋ a new one · ✕ takes a row off the board</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
     <kbd>⌥⌘←→</kbd><span>the tab to the left / right: chat, zsh, GitHub pages, VS Code</span>
@@ -849,13 +856,29 @@
   // list's footer on 2026-09-24. `sound`, `showAll`, `toolsMode` and `foldCode` keep their saved values — the code
   // still reads them, and the chat header's { } button is still the fold for a chat — but nothing sets them now.
   // The magnifier opens its box; Esc or an emptied box on blur closes it; the icon stays lit while a filter is on.
+  // Since 2026-09-25 it matches the way ⌥⌘K does and ⌥⌘F opens it from anywhere (hotFind): the best match leads
+  // (renderSessionList), so there is a card to choose — ↑↓ walk them from the box, ⏎ opens the one marked and hands
+  // the keyboard to its chat. The mark is shown only while the box has the keyboard: a click elsewhere is a choice too.
+  const qsel = { i: 0 };
+  function markQsel() {
+    const inp = $('#q'), cards = [...document.querySelectorAll('#slist > .card')];
+    const on = document.activeElement === inp && !!inp.value.trim();
+    qsel.i = Math.max(0, Math.min(qsel.i, cards.length - 1));
+    cards.forEach((c, i) => c.classList.toggle('qsel', on && i === qsel.i));
+    return on ? cards[qsel.i] || null : null;
+  }
+  const qShow = on => { const inp = $('#q'); inp.hidden = !on; $('#filters').classList.toggle('searching', on); if (on) { inp.focus(); inp.select(); } };
   {
     const btn = $('#qBtn'), inp = $('#q');
-    const show = on => { inp.hidden = !on; $('#filters').classList.toggle('searching', on); if (on) inp.focus(); };
-    btn.onclick = () => show(inp.hidden);
-    inp.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); inp.value = ''; btn.classList.remove('on'); show(false); renderBoard(); } });
-    inp.addEventListener('blur', () => { if (!inp.value.trim()) show(false); });
-    inp.addEventListener('input', () => { btn.classList.toggle('on', !!inp.value.trim()); renderBoard(); });
+    btn.onclick = () => qShow(inp.hidden);
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { e.stopPropagation(); inp.value = ''; btn.classList.remove('on'); qShow(false); renderBoard(); }
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); qsel.i += e.key === 'ArrowDown' ? 1 : -1; markQsel()?.scrollIntoView({ block: 'nearest' }); }
+      else if (e.key === 'Enter') { const c = markQsel(); if (!c) return; e.preventDefault(); inp.blur(); openSession(c.dataset.id).then(focusTerm); }
+    });
+    inp.addEventListener('focus', markQsel);
+    inp.addEventListener('blur', () => { if (!inp.value.trim()) qShow(false); markQsel(); });
+    inp.addEventListener('input', () => { btn.classList.toggle('on', !!inp.value.trim()); qsel.i = 0; renderBoard(); });
   }
   // The card hangs off the cog: hovering the footer shows it, a click pins it (to read at leisure, or on a
   // touchpad tap); it goes when the pointer has left both, or on Esc / a click elsewhere once pinned.
@@ -1122,7 +1145,6 @@
   // of them, so `wapi` has to be somewhere in the project or the branch and cannot be spelled out of letters
   // borrowed from a title and a prompt (2026-09-21). Short and identifying first — ties go to the earlier field.
   const chatFields = s => [s.title, s.project, s.gitBranch || '', s.aiTitle || '', s.lastPrompt || '', s.live?.name || ''];
-  const chatText = s => chatFields(s).join(' ').toLowerCase();   // the column's magnifier, which matches literally
   // Pinned projects first, in your order (state.pins — server state, so every browser and the app agree),
   // then the named ones, then folders by their newest chat. A pinned folder shows even with no chat in view.
   function projectList() {
@@ -1207,14 +1229,19 @@
   const fishHtml = cls => `<div class="gsep ${cls}"></div>`;   // the swimming school's stand-in
   function renderSessionList(p) {
     const pc = projColor(p); if (pc) $('#sessions').style.setProperty('--repo', pc); else $('#sessions').style.removeProperty('--repo');
+    // The magnifier matches the way ⌥⌘K does (2026-09-25, Ricardo: "make hotkey F fuzzy search like K"): any letters
+    // in order, each word within one of the chat's fields, and the best match leads — so with something typed the list
+    // is in the match's order, not the board's, and the lines that say where a state or a day ends are left out.
     const q = $('#q').value.trim().toLowerCase();
-    const list = p.sessions.filter(s => !q || chatText(s).includes(q));
+    const score = new Map();
+    const list = !q ? p.sessions : p.sessions.filter(s => { const m = fuzzy(chatFields(s), q); if (m) score.set(s.id, m.score); return !!m; });
     const counts = {};
     for (const s of list) counts[bucket(s)] = (counts[bucket(s)] || 0) + 1;
     // clauding on top, then ready, done last (2026-09-20, Ricardo: one rule between the live cards and the ready ones —
     // which needs a group above it); inside each group your last touch, newest first. A finished job moves its card
-    // into the ready group, where its last prompt puts it.
-    const shown = list.filter(s => filterOn(bucket(s))).sort((a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byUser(a, b));
+    // into the ready group, where its last prompt puts it. That order is also how a query's ties are broken.
+    const board = (a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byUser(a, b);
+    const shown = list.filter(s => filterOn(bucket(s))).sort(q ? (a, b) => (score.get(b.id) - score.get(a.id)) || board(a, b) : board);
     // The project filter's one cue: a click is ⌥⌘P's picker, × goes back to ALL. The square is only a colour here —
     // the colour picker is the chat header's.
     $('#stitle').innerHTML = `<span class="sq" style="${repoStyle(projColor(p))}"></span><span class="t">${projIcon(p.name)}${esc(p.name)}</span><span class="caret">▾</span>${p.key === ALL ? '' : '<span class="sx" title="Every project again (ALL)">×</span>'}`;
@@ -1228,9 +1255,11 @@
     const b = shown.map(rankOf);   // the fish swim once, under the last clauding card when a ready one follows
     // …and a day's line under every run of cards from one day: the card whose next one is from another day, or none.
     const days = shown.map(dayName);
-    const dayAfter = i => days[i] && days[i + 1] !== days[i] ? dayHtml(days[i]) : '';
-    $('#slist').innerHTML = shown.map((s, i) => `${i && b[i] === 'ready' && b[i - 1] === 'working' ? fishHtml('fish') : ''}${cardHtml(s, p)}${dayAfter(i)}`).join('') || `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
+    const fishBefore = i => !q && i && b[i] === 'ready' && b[i - 1] === 'working' ? fishHtml('fish') : '';
+    const dayAfter = i => !q && days[i] && days[i + 1] !== days[i] ? dayHtml(days[i]) : '';
+    $('#slist').innerHTML = shown.map((s, i) => `${fishBefore(i)}${cardHtml(s, p, q)}${dayAfter(i)}`).join('') || `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
     $('#slist .gsep.fish')?.replaceWith(fishEl);
+    markQsel();
   }
   // Work that outlives the turn, and the one state that is waiting on you — the card's four readings (2026-09-21).
   // A monitor or a background command runs on after the reply, so a *ready* card can still have something running;
@@ -1260,7 +1289,7 @@
       : a.waitingFor ? `asking you — ${a.waitingFor}` : 'asking you';
     return `<div class="state needs-input" title="${esc(what)}">${ICON.ask}<span class="q">${esc(what)}</span>${a.options ? `<span class="opts">${a.options} answers</span>` : ''}</div>`;
   }
-  function cardHtml(s, p) {
+  function cardHtml(s, p, q = '') {
     const color = repoColor(s.cwd), un = state.unread.get(s.id) || 0;
     const showReply = s.lastReply && s.status !== 'working';
     const act = s.done ? `<button class="act" data-act="reopen" title="Untick — bring it back">↩</button>`
@@ -1273,8 +1302,8 @@
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip">${entryLabel(s)}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${s.id}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
-      ${showRepo || s.env || where || inVsCode(s) ? `<div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${esc(s.project)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}</div>` : ''}
-      <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${esc(s.title)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}<span class="time" title="${esc(timeTip(s))}">${rel(s.lastActivity)}</span>${un ? `<span class="badge">${un}</span>` : ''}${act}</div>
+      ${showRepo || s.env || where || inVsCode(s) ? `<div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}</div>` : ''}
+      <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}<span class="time" title="${esc(timeTip(s))}">${rel(s.lastActivity)}</span>${un ? `<span class="badge">${un}</span>` : ''}${act}</div>
       ${s.prs?.length ? `<div class="cprs">${s.prs.slice(0, 8).map(pr => `<a class="cpr" data-state="${esc(pr.state || '')}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`).join('')}</div>` : ''}
       ${s.lastPrompt ? `<div class="snip you"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
       ${showReply ? `<div class="snip claude"><b title="Claude">${ICON.claude}</b>${esc(s.lastReply)}</div>` : ''}
@@ -1361,6 +1390,19 @@
     for (const w of q.split(/\s+/)) { if (!w) continue; const m = fuzzWord(hay, w); if (m) at = at.concat(m.at); }
     return [...new Set(at)].sort((a, b) => a - b);
   }
+  /** The text, escaped, with the letters the query landed on in <b> — runs merged, so a word comes out as one <b> and
+   *  not one per letter. The pickers' rows, and the cards under the magnifier's query. */
+  function markHits(text, q) {
+    text = String(text ?? '');
+    const at = q ? fuzzMarks(text, q) : []; if (!at.length) return esc(text);
+    let out = '', last = 0;
+    for (let k = 0; k < at.length; k++) {
+      const from = at[k]; let to = from + 1;
+      while (k + 1 < at.length && at[k + 1] === to) { to++; k++; }
+      out += esc(text.slice(last, from)) + `<b>${esc(text.slice(from, to))}</b>`; last = to;
+    }
+    return out + esc(text.slice(last));
+  }
   const pick = { mode: 'project', ctx: {}, list: [], sel: 0 };
   const PICK_HINT = {
     project: 'Project — type to filter · ↑↓ · ⏎ opens · esc', pr: 'Pull request — type to filter · ↑↓ · ⏎ opens · esc',
@@ -1438,17 +1480,7 @@
   }
   function pickRender() {
     const q = $('#pickq').value.trim().toLowerCase();
-    // Bold the letters the query actually landed on, runs merged so a word comes out as one <b>, not one per letter.
-    const mark = text => {
-      const at = q ? fuzzMarks(text, q) : []; if (!at.length) return esc(text);
-      let out = '', last = 0;
-      for (let k = 0; k < at.length; k++) {
-        const from = at[k]; let to = from + 1;
-        while (k + 1 < at.length && at[k + 1] === to) { to++; k++; }
-        out += esc(text.slice(last, from)) + `<b>${esc(text.slice(from, to))}</b>`; last = to;
-      }
-      return out + esc(text.slice(last));
-    };
+    const mark = text => markHits(text, q);
     // With something typed the best match leads; with the box empty each list keeps its own order (the board's for
     // chats, mention order for PRs, the Taskfile's for environments). Ties go to whichever came first in that order.
     const hunt = (items, fields) => { if (!q) return items; const hits = []; items.forEach((x, i) => { const m = fuzzy(fields(x), q); if (m) hits.push([m.score, i, x]); }); return hits.sort((a, b) => b[0] - a[0] || a[1] - b[1]).map(h => h[2]); };
@@ -1555,12 +1587,12 @@
   // "always open the menu to choose the PR"); each PR is its own tab, so nothing reloads —, C the claude session: the >_ button's
   // path (the drawer shown or started, arm-and-take-over included, so a chat live elsewhere takes two presses).
   // O is a new oracle chat, opening on its environments (hotOracle), P the project picker, K the chat picker (every
-  // ready or clauding chat, searched), N a new chat anywhere (the project, then the folder, then the environment when
-  // the folder's Taskfile launches claude); ↑ and ↓ open the chat above or below
-  // in the list; ← and → the tab to the left or right in the strip (chat | zsh | GitHub pages | VS Code, wrapping).
+  // ready or clauding chat, searched), F the chat list's own filter box (hotFind), N a new chat anywhere (the
+  // project, then the folder, then the environment when the folder's Taskfile launches claude); ↑ and ↓ open the
+  // chat above or below in the list; ← and → the tab to the left or right in the strip (chat | zsh | GitHub pages | VS Code, wrapping).
   // A modal up (the picker, the project editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyN: () => pickOpen('new'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1) };
+  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘B folds the chat list. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -1621,6 +1653,13 @@
   function hotVsCode() { const b = $('#webBtn'); if (b) b.click(); else noChat(); }
   // ⌥⌘↑ / ⌥⌘↓ (2026-09-20): the chat above or below in the list as it stands — filters and order included; from no
   // chat, or one the list does not show, the top or the bottom; the ends stop.
+  // ⌥⌘F (2026-09-25, Ricardo: "make hotkey F fuzzy search like K"): the chat list's magnifier, from anywhere, and it
+  // matches as K does — what K has that the list did not was the matcher, not the dialog. The list keeps what the
+  // picker hides: the done chats, the project in view, the state chips. Folded to the rail, the list opens for it.
+  function hotFind() {
+    if (prefs.sessionsCompact) toggleSessions();
+    focusBoard(); qShow(true);
+  }
   function hotMove(dir) {
     const cards = [...document.querySelectorAll('#slist > .card')]; if (!cards.length) return note($('#shead'), 'No chats in this list');
     const i = cards.findIndex(c => c.dataset.id === state.current);

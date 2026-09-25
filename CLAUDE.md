@@ -186,7 +186,8 @@ refuses to run against the real directory for the same reason.
   away, several open the picker in `pr` mode every time, the one showing marked *current* (no PR → the folder's
   GitHub repo, `state.repos` from `git remote`) —, C this chat's claude session (`termAction()`, the `>_` button's path — arm and take over
   included, focus at the end), P the project picker, K the chat picker (`chat` mode: every ready or clauding chat,
-  every project, the list's order, searched by `chatText()`; ⏎ is `openSession`), N a chat as steps of the one
+  every project, the list's order, searched by `chatFields()`; ⏎ is `openSession`), **F the chat list's own box**
+  (`hotFind()` → `qShow(true)`, the rail unfolding first — the magnifier, matched like K, below), N a chat as steps of the one
   dialog (`new` → `chats` → `folder` when the project spans several → `env` when `newChatIn()` finds launchers), **O the
   same with the project answered and the environment brought forward** (`hotOracle()` → `newChatIn(cwd, 'chats')` on
   the project `ORACLE` names in `projectList()` — a folder, a pin or a named set; off the board is a `note()`),
@@ -208,12 +209,17 @@ refuses to run against the real directory for the same reason.
   and calls `performClose` only when it answers false. Anything else the board wants to take off ⌘-something that
   a menu item already claims has to go the same way.
 * **The pickers match fuzzily, and with something typed the best match leads** (2026-09-21): `fuzzy(fields, q)` —
-  each word of the query hunted *within one field* (`chatFields(s)`, which `chatText` joins for the column's literal
-  magnifier), letters in order, a run worth more than scattered ones, a word's start worth more than its middle, a
-  gap costing; a field's worth falls off down the list, so a name or a branch beats a long prompt a short word
-  wandered into. `hunt()` ranks; an empty box leaves every list in its own order. `mark()` bolds what landed
-  (`fuzzMarks`), runs merged. **The column's own filter boxes stay literal** — nothing there re-orders, so fuzzy
-  would only add noise. → Decisions, 2026-09-21.
+  each word of the query hunted *within one field* (`chatFields(s)`), letters in order, a run worth more than
+  scattered ones, a word's start worth more than its middle, a gap costing; a field's worth falls off down the list,
+  so a name or a branch beats a long prompt a short word wandered into. `hunt()` ranks; an empty box leaves every
+  list in its own order. `markHits()` bolds what landed (`fuzzMarks`), runs merged. → Decisions, 2026-09-21.
+* **The chat list's magnifier matches the same way, and ⌥⌘F opens it** (2026-09-25; literal before, on purpose):
+  `renderSessionList` scores each chat with `fuzzy(chatFields(s), q)` and, with something typed, sorts by the score
+  (the board's order breaking ties) and **draws neither the fish nor the day lines** — they say where a state or a
+  day ends, and the order is the match's now. The title and the folder name are bolded (`markHits`, underlined on
+  a card). ↑↓ in the box walk a `.qsel` card, ⏎ opens it (`openSession`, then `focusTerm`) and keeps the query; the
+  mark shows only while the box has the keyboard (`markQsel()`, on every render). What it has over ⌥⌘K: done chats,
+  the project in view and the state chips still apply. → `scripts/scenarios/chat-filter.mjs`.
 * **The last step of the new-chat flow is a list of chats** (2026-09-21): the `chats` step is the scope's ready and
   clauding chats by `byUser` (newest touch first, done ones out) under a ＋ *new chat* row that carries on with the
   flow — `scopeChats()` / `chatsStep()` / `newFromChats()`; **it shows even when the scope has none** (2026-09-22):
@@ -423,10 +429,11 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
   `assert`, `cmd(code)` (a plain ⌘ press; `key(code)` is ⌥⌘), `screen(g)` / `waitPrompt(ms, g)` (the half, 0 by
-  default — the whole column while nothing is split). The nineteen in `scripts/scenarios/` are the
+  default — the whole column while nothing is split). The twenty-one in `scripts/scenarios/` are the
   regression checks for the drawer (re-attach, restart, geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a
   compose key), the hotkeys, the tab strip and the split, the new-chat flow, the project step's folders and ✕,
-  the chat list's rules, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu.
+  the chat list's rules and its filter, the notifications switch, the usage bar, the project cue, the header's PRs
+  and its ··· menu.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY` with what it failed on the first time, and the suite still exits 0; `--no-retry` is the honest gate.
