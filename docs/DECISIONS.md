@@ -4,6 +4,26 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-25.
 
+## Decisions of 2026-09-25, later — a split keeps claude in the first half
+
+Ricardo: "when opening a 2nd pane on the chat, keep the claude always on the 1st pane".
+
+* **Every split puts the chat on the left** (`splitChat()`): the one a new tab makes and ⌘2's alike. What the column
+  was showing, when it was not the chat, goes to the right — so ⌘2 over the zsh gives claude beside the zsh, with the
+  keys still on the zsh, instead of the zsh on the left and claude pushed across.
+* **A new tab goes into the half the chat is not in**, not the half the keys are in: ⌥⌘E with the keys on claude used
+  to replace claude in its own half. Only the chat is protected — a page in the right half is still what the next
+  new tab replaces.
+* **Going back to the chat moves the keys, not the chat** (`showChat()`): Esc from a page, ⌥⌘C and the ◎ row used to
+  put the chat tab into the half the keys were in, trading it with the page there, which is how claude ended up on
+  the right. Now the keys go to the half showing the chat, and the page beside it stays up. A chat shown in neither
+  half comes back into the left one.
+* A click on a tab in the other half's strip still trades the two — that is a hand asking for it, not the board
+  deciding; the next commit changes what the strips list.
+* Scenarios: `split-halves` (⌘2 from the zsh alone: claude left, zsh right, keys on the zsh), `pane-tabs` (Esc goes
+  to the chat's half; ⌥⌘E with the keys on claude opens on the right), `focus-view` (⌥⌘C from the zsh goes left, so
+  its hand-typed /focus is typed into the left half now).
+
 ## Decisions of 2026-09-25 — the cards come in three sizes, a slider in the cog
 
 Ricardo: "make a setting in the bottom left cog to compact the cards by 1) [large] as is 2) [medium] leave the last

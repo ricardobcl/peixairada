@@ -1683,11 +1683,12 @@
   // Esc with a page's tab on (2026-09-20, Ricardo: "ESC should still navigate to chat"): the chat tab, and the pane
   // goes. Reaches here from the shell only (peixKey('Escape'), pressed on the board or in the pane, which the shell
   // swallows while the pane is up) — so a dialog or the settings popover, whose own Esc that swallow took, close first.
+  // Split, the chat is in the left half and the keys go there; the page beside it stays up (showChat).
   function hotEscape() {
     const dlg = document.querySelector('dialog[open]'); if (dlg) { dlg.close(); return true; }
     if (!$('#settings').hidden) { settingsOpen(false); return true; }
     const s = state.sessions.get(state.current); if (!s || !isPaneTab(tabOf(s))) return false;
-    setTab(s, 'chat'); syncTerm(s); focusBoard(); return true;
+    showChat(s); syncTerm(s); focusBoard(); return true;
   }
   function hotVsCode() { const b = $('#webBtn'); if (b) b.click(); else noChat(); }
   // ⌥⌘↑ / ⌥⌘↓ (2026-09-20): the chat above or below in the list as it stands — filters and order included; from no
@@ -2140,7 +2141,7 @@
     const at = () => seen($('#viewBtn'));
     if (!termLive(s)) return note(at(), 'No claude running here — ⌥⌘C starts one', true);
     const tm = termFor(s.terminal.id);
-    if (!tm || tm.exited !== null) { setTab(s, 'chat'); syncTerm(s); return note(at(), 'Showing the claude session first — press again', true); }
+    if (!tm || tm.exited !== null) { showChat(s); syncTerm(s); return note(at(), 'Showing the claude session first — press again', true); }
     const before = focusSaid(tm);
     termSend(tm, '/focus\r');
     for (let i = 0; i < 20; i++) {   // ~2.4 s: the command runs at once, but it has a menu to close and a frame to paint
@@ -2340,10 +2341,29 @@
    *  default"): what you open a second tab for is to have it beside the chat, not instead of it. Only the first
    *  one splits; after that a new tab lands wherever the keys are, like everything else. Choosing a tab that
    *  already exists is openTab's and never splits. The split the board makes itself goes again on its own, in
-   *  syncTerm, once the chat is down to one tab — an empty half is what ⌘2 is for, not what a zsh's exit leaves. */
+   *  syncTerm, once the chat is down to one tab — an empty half is what ⌘2 is for, not what a zsh's exit leaves.
+   *  Claude keeps the first half (2026-09-25, Ricardo: "when opening a 2nd pane on the chat, keep the claude always
+   *  on the 1st pane"): a split puts the chat on the left whatever the column was showing, and a new tab goes into
+   *  the half the chat is not in — so it never takes the chat's place. */
   function openNewTab(s, k) {
-    if (!isSplit(s)) { splits.add(s.id); autoSplit.add(s.id); focusG = 1; }
+    if (!isSplit(s)) splitChat(s, true);
+    focusG = placeOf(s)[1] === 'chat' ? 0 : 1;
     setTab(s, k, focusG);
+  }
+  /** The chat tab brought forward — Esc from a page, ⌥⌘C, the focus view's row: the keys go to the half showing it,
+   *  and a chat showing nowhere takes the left half, its own, rather than come into the one the keys were in. */
+  function showChat(s) {
+    const at = placeOf(s).indexOf('chat');
+    focusG = at < 0 ? 0 : at;
+    if (at < 0) setTab(s, 'chat', 0);
+  }
+  /** The column in two for this chat: the chat on the left, and on the right what the column was showing when that
+   *  was not the chat — so ⌘2 over a zsh puts claude beside it rather than the other way round. */
+  function splitChat(s, auto) {
+    const was = placeOf(s)[0];
+    splits.add(s.id);
+    if (auto) autoSplit.add(s.id); else autoSplit.delete(s.id);
+    tabs.set(s.id, ['chat', was !== 'chat' ? was : null]);
   }
   const paneLabel = k => { const m = /github\.com\/[^/]+\/([^/]+)\/pull\/(\d+)/.exec(k); return m ? `${m[1]}#${m[2]}` : 'GitHub'; };
   // Keep the pane right for the viewed chat: the body under the strip — its zsh on that tab, its claude drawer while
@@ -2495,7 +2515,7 @@
   }
   function splitOn() {
     const s = state.sessions.get(state.current); if (!s) return noChat();
-    splits.add(s.id); autoSplit.delete(s.id); applySplit();   // asked for by hand: it keeps its empty half
+    splitChat(s, false); applySplit();   // asked for by hand: it keeps its empty half
     focusG = 1;
     syncTerm(s); renderHead(s);
     focusBoard(); focusTerm();
@@ -2598,7 +2618,7 @@
   // elsewhere — arm and, pressed again, take over. The terminal takes the keyboard at the end: attachTerm does that
   // when its socket opens, this covers one that was already showing (⌥⌘C as "put me in the terminal").
   async function termAction(s) {
-    drawer.err = null; setTab(s, 'chat');
+    drawer.err = null; showChat(s);
     if (takeable(s)) await (drawer.arm === s.id ? takeOver(s) : armTakeOver(s));
     else await openTerminalFor(s);
     focusTerm();

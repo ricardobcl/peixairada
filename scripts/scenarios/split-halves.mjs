@@ -1,7 +1,8 @@
 // ⌘2 splits the chat column in two and ⌘1 / ⌘2 move the keys between the halves (2026-09-22). What this keeps
 // honest: a tab lives in exactly one half, both halves can hold a live terminal at the same time, choosing in one
 // half what the other is showing makes the two trade places, ⨯ leaves the half you were in, and ⌘0 leaves the one
-// the keys are in (with nothing split it is the chat's size again).
+// the keys are in (with nothing split it is the chat's size again). Since 2026-09-25 a split always puts claude in
+// the left half, whatever the column was showing.
 export const meta = { server: true, fake: true, fixture: 'auto' };
 
 const halves = ctx => ctx.peix('state().halves');
@@ -70,12 +71,21 @@ export default async function (ctx) {
   ctx.assert.deepEqual(await halves(ctx), ['shell', null], 'the half the keys were not in is what stayed');
   ctx.assert.equal(await ctx.evaluate(`window.peixKey('KeyW', 'cmd')`), false, 'with one half ⌘W is the window\'s again');
 
-  // ⌘2 again, and the ⨯ in the *left* strip closes the left half: the chat tab is the column
+  // ⌘2 again, from the zsh alone: claude takes the left half back and the zsh goes beside it (2026-09-25, Ricardo:
+  // "keep the claude always on the 1st pane") — and the ⨯ in the *left* strip closes the left half, not the one the
+  // keys are in
   await ctx.cmd('Digit2');
-  await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === '["shell","chat"]'`, { what: 'the split again, the spare tab beside it' });
+  await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === '["chat","shell"]'`, { what: 'the split again, claude on the left' });
+  ctx.assert.equal(await ctx.peix('state().focusG'), 1, 'the keys stay on the zsh, now in the right half');
   await ctx.evaluate(`document.querySelector('#ptabs .gclose').click()`);
   await ctx.waitFor(`window.peix.state().split === false`, { what: 'the left half closed' });
-  ctx.assert.deepEqual(await halves(ctx), ['chat', null], '⨯ closes the half it sits in');
+  ctx.assert.deepEqual(await halves(ctx), ['shell', null], '⨯ closes the half it sits in');
+  // and once more, closing the right one this time: the claude drawer is the whole column
+  await ctx.cmd('Digit2');
+  await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === '["chat","shell"]'`, { what: 'split once more, claude on the left' });
+  await ctx.evaluate(`document.querySelector('#ptabsB .gclose').click()`);
+  await ctx.waitFor(`window.peix.state().split === false`, { what: 'the right half closed' });
+  ctx.assert.deepEqual(await halves(ctx), ['chat', null], 'the right ⨯ leaves the chat');
   const end = await shown(ctx);
   ctx.assert.deepEqual({ termA: end.termA, termB: end.termB, logIn: end.logIn }, { termA: true, termB: false, logIn: 'gbody' },
     'the claude drawer is the whole column again');

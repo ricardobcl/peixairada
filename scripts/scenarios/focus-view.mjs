@@ -48,14 +48,13 @@ export default async function (ctx) {
   await noted('/Focus view off/');
 
   // a /focus typed in the drawer by hand never reaches the board — the next attach reads it off the screen instead.
-  // With the column in two, asking one half for what the other is showing trades the tabs and re-attaches both;
-  // the halves are the same width, so the drawer is not resized on the way and the screen read back is the
-  // holder's own (a chat switch, or closing a half, resizes it and the two emulators can drift by a line).
-  await ctx.key('KeyC');   // the claude session into the half the keys are in; the zsh goes the other way
-  await ctx.waitFor(`window.peix.state().tab === 'chat' && window.peix.state().termId === window.peix.session().terminal.id`, { what: 'the claude drawer under the keys' });
-  await ctx.waitPrompt(30_000, 1);
+  // ⌥⌘C takes the keys back to the claude drawer, which kept the left half (2026-09-25: a split never moves claude
+  // out of it), so nothing re-attaches on the way.
+  await ctx.key('KeyC');
+  await ctx.waitFor(`window.peix.state().tab === 'chat' && window.peix.state().focusG === 0 && window.peix.state().termId === window.peix.session().terminal.id`, { what: 'the claude drawer under the keys, in the left half' });
+  await ctx.waitPrompt(30_000, 0);
   const wasOn = await said(/Focus view enabled/);
-  await type('/focus', 1);
+  await type('/focus', 0);
   await ctx.waitFor(`window.peix.buffer().filter(r => /Focus view enabled/.test(r)).length === ${wasOn + 1}`, { what: 'the session turned its focus view on, by hand' });
   out.byHand = { litBefore: await lit() };
   ctx.assert.equal(out.byHand.litBefore, false, 'the board was not told — nothing lights yet');

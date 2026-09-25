@@ -302,7 +302,10 @@ refuses to run against the real directory for the same reason.
   half's xterm and socket, and the take-over state (armed, failed) is the board's `drawer`, not a terminal's.
 * **A tab that is new opens in the second half, and splits the column the first time** (2026-09-22): `openNewTab()`
   — a zsh (⌥⌘T), a GitHub page, the editor — because what a second tab is for is standing beside the chat, not
-  replacing it. Only the first one splits; after that a new tab lands wherever the keys are. Choosing a tab that
+  replacing it. **Claude keeps the first half** (2026-09-25): every split puts the chat on the left whatever the
+  column was showing (`splitChat()`, ⌘2's path too), a new tab goes into the half the chat is *not* in, and Esc,
+  ⌥⌘C and the ◎ row take the keys to the chat where it stands (`showChat()`) instead of moving it into the half the
+  keys were in. Choosing a tab that
   already exists (a click, ⌥⌘←→, ⌥⌘G on a PR already open) is `openTab()` and never splits. The split the board
   makes itself is remembered in `autoSplit` and **folds back on its own** when the chat is down to one tab again
   (`syncTerm`) — the empty half is what ⌘2 asks for, not what a zsh's `exit` should leave behind.

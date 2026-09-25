@@ -70,24 +70,28 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelectorAll('#ptabs .ptab[data-tab^="gh:"]').length === 2`, { what: 'two PR tabs' });
   out.two = { tabs: await tabsNow(), pane: await lastPane() };
   ctx.assert.equal(out.two.tabs[2].on, true); ctx.assert.equal(out.two.pane.show, out.two.tabs[2].k); ctx.assert.equal(out.two.pane.keys.length, 2);
-  // Esc, as the shell forwards it: the chat comes back into the half the keys are in and the page that was there
-  // trades places with it — the other half keeps showing its own, which is what two halves are for; nothing is closed
+  // Esc, as the shell forwards it: back to the chat — which is in the left half, so the keys go there (2026-09-25:
+  // claude keeps the first half) and the page in the right half stays up, which is what two halves are for
   await ctx.evaluate(`window.peixKey('Escape')`);
-  out.esc = { on: await onTab(), pane: await lastPane(), halves: await ctx.peix('state().halves') };
-  ctx.assert.equal(out.esc.on, 'chat'); ctx.assert.equal(out.esc.pane.keys.length, 2, 'both pages kept');
+  out.esc = { on: await onTab(), pane: await lastPane(), halves: await ctx.peix('state().halves'), focusG: await ctx.peix('state().focusG') };
+  ctx.assert.equal(out.esc.on, 'chat'); ctx.assert.equal(out.esc.focusG, 0, 'the keys went to the chat\'s half');
+  ctx.assert.equal(out.esc.halves[0], 'chat', 'the chat did not move');
+  ctx.assert.equal(out.esc.pane.keys.length, 2, 'both pages kept');
   ctx.assert.equal(out.esc.pane.panes.length, 1, 'and one of them is still up — the other half\'s');
-  ctx.assert.ok(await ctx.evaluate(`!document.querySelector('#ptabsB .navs .nav[data-nav]')`), 'no ‹ › ↻ ↗ on the chat tab');
-  // ⌥⌘E: the editor's tab (its route stubbed to a URL the board would serve)
+  ctx.assert.ok(await ctx.evaluate(`!document.querySelector('#ptabs .navs .nav[data-nav]')`), 'no ‹ › ↻ ↗ on the chat tab');
+  // ⌥⌘E with the keys on the chat: the editor's tab (its route stubbed to a URL the board would serve) opens in the
+  // right half all the same — a new tab never takes the chat's place
   await ctx.evaluate(`window.__realFetch = window.fetch; window.fetch = (u, o) => String(u).endsWith('/api/vscode-web') ? Promise.resolve({ ok: true, status: 200, json: async () => ({ url: 'http://127.0.0.1:1/' }) }) : window.__realFetch(u, o)`);
   await ctx.key('KeyE'); await ctx.waitFor(`(document.querySelector('#ptabsB .ptab.on')?.dataset.tab || '').startsWith('ide:')`, { what: 'the editor tab on' });
+  ctx.assert.equal((await ctx.peix('state().halves'))[0], 'chat', 'claude kept the left half');
   out.ide = { tabs: await tabsNow(), pane: await lastPane() };
   ctx.assert.equal(out.ide.tabs.length, 4); ctx.assert.equal(out.ide.tabs[3].label, 'VS Code'); ctx.assert.match(out.ide.pane.show, /^ide:http:\/\/127\.0\.0\.1:1\/\?folder=/);
   // ⌥⌘T: a zsh — five tabs, the zsh second; the pane goes under it
   await ctx.key('KeyT'); await ctx.waitFor(`document.querySelector('#ptabsB .ptab.on')?.dataset.tab === 'shell'`, { what: 'the zsh tab on', timeout: 20_000 });
   out.five = await tabsNow(); ctx.assert.deepEqual(out.five.map(t => t.k.split(':')[0]), ['chat', 'shell', 'gh', 'gh', 'ide']);
   out.zsh = await lastPane();
-  ctx.assert.deepEqual(out.zsh.panes.map(x => x.key.split(':')[0]), ['gh'], 'the zsh took the right half from the editor; the left half still shows its PR');
-  ctx.assert.equal(out.zsh.focus, out.zsh.panes[0].key, 'and the page still up is the one the shell focuses');
+  ctx.assert.deepEqual(out.zsh.panes, [], 'the zsh took the right half from the editor; the left half is claude\'s');
+  ctx.assert.equal(out.zsh.focus, null, 'so no page is up for the shell to focus');
   await ctx.shot('tabs', await ctx.evaluate(`(r => ({ x: r.left, y: Math.max(0, r.top - 70), width: r.width, height: 110 }))(document.querySelector('#ptabsB').getBoundingClientRect())`));
   // a click on a PR's tab brings it back — and no strip under the header since 2026-09-24; × on it forgets the page
   const firstGh = out.two.tabs[1].k;
