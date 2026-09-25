@@ -266,6 +266,11 @@
   #tline > *, #tline :is(.tl-seg, .tl-tick, .tl-lab) { position: absolute; }
   #tline :is(.tl-segs, .tl-ticks, .tl-labs) { inset: 0; pointer-events: none; }
   #tline .tl-base { left: 21px; width: 1px; top: 0; bottom: 0; background: var(--line); }
+  /* The rail's reach for the pointer (2026-09-25, Ricardo: "any gap below or above a date closes it … if I go to the
+     far left of the screen, it's not triggering"): from the window's left edge — over the list's 4 px coloured edge,
+     as the cog's cell is, so a pointer thrown into the edge lands on it — and, while the days are out, as far right as
+     they have reached, so the gaps between the labels are still the rail. Under everything else on it. */
+  #tline .tl-catch { left: -4px; top: 0; bottom: 0; width: 30px; }
   #tline .tl-seg { left: 20px; width: 3px; border-radius: 2px; opacity: .75; }
   #tline .tl-seg.asking { background: var(--needs); } #tline .tl-seg.working { background: var(--working); }
   #tline .tl-seg.ready { background: var(--idle); } #tline .tl-seg.done { background: var(--ended); }
@@ -789,7 +794,7 @@
 <main id="main">
   <section id="sessions">
     <div class="colhead" id="shd"><span class="brand" id="brandBtn"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g><g fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="stitle" class="t"></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" autocomplete="off" spellcheck="false" hidden><span id="fchips"></span></span><span id="newChat"></span><button class="btn icon" id="sessPinBtn" title="Fold the chat list">«</button></div>
-    <div id="tline" aria-label="The list's days — point to read them, drag to scroll, click one to go there"><div class="tl-base"></div><div class="tl-segs"></div><div class="tl-ticks"></div><div class="tl-thumb"></div><div class="tl-labs"></div><div class="tl-lab tl-bub"></div></div>
+    <div id="tline" aria-label="The list's days — point to read them, drag to scroll, click one to go there"><div class="tl-catch"></div><div class="tl-base"></div><div class="tl-segs"></div><div class="tl-ticks"></div><div class="tl-thumb"></div><div class="tl-labs"></div><div class="tl-lab tl-bub"></div></div>
     <div id="slist"></div>
     <div class="sedge up" id="sup"><button data-dir="-1"></button></div>
     <div class="sedge down" id="sdown"><button data-dir="1"></button></div>
@@ -1425,7 +1430,7 @@
   // size at R), and one that would overlap a nearer one is left out — so a crowded stretch reads where it is pointed
   // at and thins out away from it. `tl.k` is how far the swell is in, by the clock (TL_IN / TL_OUT ms end to end), `tl.K` the same eased;
   // `tl.py` is the pointer, in the rail's pixels.
-  const tl = { runs: [], sig: '', k: 0, K: 0, want: 0, py: 0, press: null, raf: 0, bubT: 0 };
+  const tl = { runs: [], sig: '', k: 0, K: 0, want: 0, py: 0, press: null, raf: 0, bubT: 0, reach: 0 };
   const TL_PAD = 6, TL_R = 150, TL_D = 3, TL_MAX = 1.65, TL_LH = 17, TL_IN = 140, TL_OUT = 220;
   const TL_WORD = { asking: 'asking', working: 'clauding', ready: 'ready', done: 'done' };
   /** A run's day, short: today, yesterday, the weekday in the last week, else the date — the year only when not this one's. */
@@ -1458,6 +1463,7 @@
       tl.sig = sig;
       rail.querySelector('.tl-ticks').innerHTML = runs.map(r => `<div class="tl-tick${r.day === 'today' ? ' today' : ''}"></div>`).join('');
       rail.querySelector('.tl-labs').innerHTML = runs.map((r, i) => `<div class="tl-lab ${r.g}" data-run="${i}">${tlText(r)}</div>`).join('');
+      tl.widths = null;   // measured when first needed, once — the text only changes with the markup
       const groups = [];
       runs.forEach((r, i) => { if (!groups.length || groups[groups.length - 1].g !== r.g) groups.push({ g: r.g, from: i }); });
       rail.querySelector('.tl-segs').innerHTML = groups.map(x => `<div class="tl-seg ${x.g}" data-from="${x.from}"></div>`).join('');
@@ -1476,17 +1482,22 @@
     const grow = at.map(y => tl.K * tlBump(Math.abs(y - tl.py) / TL_R));
     ticks.forEach((el, i) => { const len = (runs[i].day === 'today' ? 9 : 6) + 8 * grow[i]; el.style.top = at[i] + 'px'; el.style.left = (21.5 - len) + 'px'; el.style.width = len + 'px'; });
     const taken = [], order = at.map((y, i) => i).sort((a, b) => Math.abs(at[a] - tl.py) - Math.abs(at[b] - tl.py));
-    let near = -1;
+    let near = -1, right = 0;
+    if (tl.K > 0 && !tl.widths) tl.widths = labs.map(el => el.offsetWidth);
     for (const i of order) {
       const el = labs[i]; if (!el) continue;
       const s = 1 + (TL_MAX - 1) * grow[i], h = TL_LH * s / 2 + 1, y = Math.max(h, Math.min(g.H + 2 * TL_PAD - h, at[i]));   // kept inside the rail, off the head and the foot
       const show = tl.K > .02 && !taken.some(([a, b]) => y + h > a && y - h < b);
-      if (show) { taken.push([y - h, y + h]); if (near < 0) near = i; }
+      if (show) { taken.push([y - h, y + h]); if (near < 0) near = i; right = Math.max(right, 30 + tl.widths[i] * s); }
       el.classList.toggle('on', show);
       el.style.opacity = show ? Math.min(1, tl.K * 1.5) : 0;
       el.style.transform = `translateY(${y - TL_LH / 2}px) translateX(${-10 * (1 - tl.K)}px) scale(${s})`;
     }
     labs.forEach((el, i) => el.classList.toggle('near', i === near));
+    // the reach: the furthest right a label has come this time out, and a margin — it only grows while the days are
+    // out, so a label shrinking as the pointer moves on never pulls the rail out from under it
+    tl.reach = tl.K > 0 ? Math.max(tl.reach, right + 28) : 0;
+    rail.querySelector('.tl-catch').style.width = Math.max(30, tl.reach + 4) + 'px';
   }
   /** The swell towards `tl.want` by the clock, not by the frame — a slow frame rate stretches nothing; reduced
       motion jumps. What is drawn is it eased (smoothstep). */
@@ -1534,11 +1545,14 @@
       e.preventDefault();
       const g = tlGeom(), y = railY(e), top = g.y(g.list.scrollTop), bottom = g.y(g.list.scrollTop + g.list.clientHeight);
       const lab = e.target.closest('.tl-lab.on');
-      // on the thumb it is held where it was grabbed; anywhere else the thumb comes to the pointer, centred
+      // out among the labels but on none of them: the nearest day, the one ringed — a click there goes to it
+      const gap = !lab && e.clientX - rail.getBoundingClientRect().left > 26;
+      const run = lab ? +lab.dataset.run : gap && rail.querySelector('.tl-labs .tl-lab.near') ? +rail.querySelector('.tl-labs .tl-lab.near').dataset.run : null;
+      // on the thumb it is held where it was grabbed; on the track the thumb comes to the pointer, centred
       const grab = y >= top && y <= bottom ? (y - top) / Math.max(1, bottom - top) : .5;
-      tl.press = { y0: e.clientY, grab, run: lab ? +lab.dataset.run : null, moved: false };
+      tl.press = { y0: e.clientY, grab, run, moved: false };
       rail.setPointerCapture(e.pointerId);
-      if (!lab && grab === .5) tlScrub(y, grab);
+      if (!lab && !gap && grab === .5) tlScrub(y, grab);
     });
     const release = e => {
       const p = tl.press; if (!p) return;

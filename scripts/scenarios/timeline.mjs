@@ -83,6 +83,31 @@ export default async function (ctx) {
   ctx.assert.ok(out.hover.labs.some(l => l.text === `today · 3 ready`), 'today is today');
   await ctx.shot('swell', { x: 0, y: 0, width: 420, height: 920 });
 
+  // out among the labels, in the gap between two of them: still the rail — the days stay out (2026-09-25, Ricardo:
+  // "any gap below or above a date closes it") — and a click there goes to the day ringed as nearest
+  const below = shown.find(l => l.top > near.bottom + 4);
+  const gap = { x: out.at.rect.left + 70, y: (near.bottom + below.top) / 2 };
+  await move(ctx, gap.x, gap.y);
+  await ctx.sleep(400);
+  out.gap = await ctx.evaluate(`JSON.stringify({ want: window.peix.state().timeline.want, k: window.peix.state().timeline.k, on: document.querySelectorAll('#tline .tl-labs .tl-lab.on').length, under: document.elementFromPoint(${gap.x}, ${gap.y})?.className, near: +document.querySelector('#tline .tl-lab.near')?.dataset.run })`).then(JSON.parse);
+  ctx.assert.deepEqual({ want: out.gap.want, k: out.gap.k }, { want: 1, k: 1 }, 'the days stay out with the pointer between two labels');
+  ctx.assert.equal(out.gap.under, 'tl-catch', 'the gap is the rail\'s');
+  ctx.assert.ok(out.gap.on >= 3, 'every label still out');
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: Math.round(gap.x), y: Math.round(gap.y), button: 'left', buttons: 1, clickCount: 1 });
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: Math.round(gap.x), y: Math.round(gap.y), button: 'left', buttons: 0, clickCount: 1 });
+  const gapWant = await ctx.evaluate(`(l => Math.min(l.scrollHeight - l.clientHeight, [...l.querySelectorAll(':scope > .card')][window.peix.state().timeline.runs[${out.gap.near}].i].offsetTop - 30))(document.querySelector('#slist'))`);
+  await ctx.waitFor(`Math.abs(document.querySelector('#slist').scrollTop - ${gapWant}) < 2`, { what: 'the list at the ringed day, from a click in the gap' });
+  await ctx.evaluate(`document.querySelector('#slist').scrollTop = 0`);
+  // …and past the furthest label's right edge, it is the cards again
+  await move(ctx, out.at.rect.left + 330, gap.y);
+  await settled(ctx, 0);
+  // the window's own left edge, over the list's coloured edge: that is the rail too
+  await move(ctx, 0, out.at.rect.top + out.at.rect.height / 2);
+  await settled(ctx, 1);
+  ctx.assert.equal(await ctx.evaluate(`document.elementFromPoint(0, ${Math.round(out.at.rect.top + out.at.rect.height / 2)})?.className`), 'tl-catch', 'x = 0 is the rail\'s');
+  await move(ctx, x, yOf(out.at, 2));
+  await ctx.sleep(300);
+
   // a click on that label: its first card to the top of the list, under the top pill
   await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: out.at.rect.right + 30, y: (near.top + near.bottom) / 2, button: 'left', buttons: 1, clickCount: 1 });
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: out.at.rect.right + 30, y: (near.top + near.bottom) / 2, button: 'left', buttons: 0, clickCount: 1 });

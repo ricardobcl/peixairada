@@ -221,10 +221,10 @@ either scrolls a screenful that way.
 
 **A slim timeline runs down the list's left edge**, from under the fish to over the cog: the list in miniature,
 to scale — its state groups as a track in the chips' colours, a tick where each day's cards begin (today's longer),
-and a thumb where the window is. It is the list's scrollbar with the days on it. **Point at it and it swells like
-the Dock**: every day comes out over the cards as a label — *today · 16 ready*, *Wed 23-09 · 9 done* — the ones
+and a thumb where the window is. It is the list's scrollbar with the days on it. **Point at it — the window's very left edge
+will do — and it swells like the Dock**: every day comes out over the cards as a label — *today · 16 ready*, *Wed 23-09 · 9 done* — the ones
 near the pointer largest and pushed apart, while the cards step back. **Drag it** to scroll the list, click a day
-to go there, or use the wheel over it; scroll the list anywhere else and the day at the top of the window shows
+to go there (or anywhere between the labels, for the one ringed), or use the wheel over it; scroll the list anywhere else and the day at the top of the window shows
 beside the thumb for a moment.
 
 The filter box in the header narrows the chat list by repo, title, session name or branch. The

@@ -188,6 +188,10 @@ refuses to run against the real directory for the same reason.
   clock (`tlAnimate`, `tl.k` linear, `tl.K` eased) — headless Chrome's frame rate is slow and a per-frame ease stalled.
   A label clicked scrolls its run under the top pill; a wheel over the rail scrolls the list; scrolling elsewhere
   shows the top run beside the thumb (`tlBubble`). `peix.state().timeline` has `k` and the runs.
+  **What counts as the rail is `.tl-catch`**, under everything on it: from x = 0 of the window (over the list's
+  coloured edge, as `#pfoot` is) and, while the days are out, as far right as a label has reached plus 28 px
+  (`tl.reach`, a high-water mark until the swell is back in) — so a gap between labels never closes it. A press
+  there (right of the strip, on no label) is a press on the label ringed `.near`.
   → `scripts/scenarios/timeline.mjs`.
 * **The plan usage is the chat list's footer** (2026-09-24): `#usage`, the fourth row of `#sessions`. Open, a row
   per window — name, a bar in `--spend` (orange; red from 90 %, `uColor`), a tick where the window's clock stands

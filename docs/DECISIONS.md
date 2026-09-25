@@ -4,6 +4,28 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-25.
 
+## Decisions of 2026-09-25, evening — the timeline holds on to the pointer
+
+Ricardo: "it a bit hard to keep the timeline open, because any gap below or above a date, closes it? also, if I go to
+the far left of the screen, it's not triggering the timeline effect".
+
+* **Both were the hit area**: the rail was its 26 px column and the labels themselves, so the pointer between two
+  labels was over the cards — the rail left, the days went back in — and the window's first 4 px are the list's
+  coloured edge, a border of `#sessions` that is no part of the rail.
+* **One transparent layer is the rail's reach** (`.tl-catch`, first in the rail, so everything else on it is above
+  it): from x = −4 px of the rail — the window's own edge, over the coloured border, the way the cog's cell already
+  reaches the bottom-left pixel — to the rail's right edge at rest, and while the days are out to the furthest right
+  a label has come plus 28 px. The furthest is a high-water mark for as long as the swell is out: labels shrink as
+  the pointer moves on, and a reach that shrank with them would pull the rail from under the pointer. Past it — or
+  above into the head, or below into the foot — is leaving.
+* **A press in the gaps means the day ringed as nearest** (`.near`), the one the swell is centred on: a click goes to
+  it, a drag scrubs from there. A press on the strip itself is what it was — the thumb comes to it.
+* The cost: while the days are out, the cards under the labels' reach take no clicks — they are dimmed then, and a
+  move past the labels gives them back.
+* `timeline.mjs` adds: the pointer in the gap between two labels keeps them out (`elementFromPoint` there is the
+  catch), a click there scrolls to the ringed day, past the labels the swell goes back in, and x = 0 halfway down
+  the list swells it.
+
 ## Decisions of 2026-09-25, later — a timeline down the list's left edge
 
 Ricardo: "can we build a slim vertical timeline - form the app icon to the bottom settings cog - showing where we are
