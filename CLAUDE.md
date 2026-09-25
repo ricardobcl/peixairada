@@ -150,12 +150,13 @@ refuses to run against the real directory for the same reason.
   lastUserAt`, which an answer or an Escape also moves); CSS hides by `#sessions[data-cards]`, so the slider
   re-renders nothing. The question line (`askHtml`) is neither word and shows at every size.
   → `scripts/scenarios/card-sizes.mjs`.
-* **The open chat's card and a hovered one are a solid tint** of its colour (`.card.active`, `.card:hover`, 55 %), the
-  rest keep the gradient wash **under a plain edge** (2026-09-20 evening): only the clauding card, the hovered one and
-  the open one wear the colour on their border.
+* **The open chat's card and a hovered one are a solid tint** of its colour (`.card.active`, `.card:hover`, 65 %
+  since 2026-09-26, 55 % before), the rest a wash nearly as strong (45 % to 37 %, 2026-09-26; 22 % to nothing before)
+  **under a plain edge** (2026-09-20 evening): only the clauding card, the hovered one and the open one wear the
+  colour on their border. A black card's wash stays lighter (28 % to 20 %), for the same reason as below.
   **ALL** (the flat list, `key: 'all'`) is black in both themes — `BLACK`, through `projColor()` — and so is the
   `acme` folder (`PROJECT_COLORS`). A card in that black is marked `.card.black`: its solid tint is the black
-  itself and it borrows the dark theme's inks, because 55 % of black over a light panel is a mid-grey nothing reads on;
+  itself and it borrows the dark theme's inks, because 65 % of black over a light panel is a mid-grey nothing reads on;
   `--ring` turns its clauding light white wherever the card under it is dark (the dark theme, and the tint in either).
 * **A chat waiting on your answer first, then clauding, then ready, done last** (`RANK` / `rankOf`, the asking
   step added 2026-09-21), inside each group **by when *you* last acted**

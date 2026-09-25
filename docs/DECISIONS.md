@@ -4,6 +4,26 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-25.
 
+## Decisions of 2026-09-26 — the cards wear more of their colour at rest
+
+Ricardo: "the brightness of cards is a bit low, bring it much closer to what it looks when hover. the hover should
+bring to full color + extra border like it is today".
+
+* **The wash goes from 22 %→6 %→panel to 45 %→37 %**: nearly the old hover's 55 %, and no longer fading to panel —
+  the wash was mostly panel, which is why a list read as grey with a coloured corner on each card. A faint slope is
+  kept (8 points), so a card is still a wash and not a swatch.
+* **Hover and the open card step up to 65 %**, keeping the full-colour border and the halo / the 2 px ring as they
+  were: with the wash at 45 % a hover at 55 % was too small a step to read as a change — the border alone is a thin
+  cue at a glance. Read "full colour" as the hover's tint at full strength, not a 100 % background: the card's inks
+  are not chosen by the colour's brightness (the header's `--rink` is, the cards' is not), and the PR chips wear
+  GitHub's state colours, which a solid card of the same hue would swallow.
+* **A black card's wash stays lighter (28 %→20 %)**: 45 % of black over the light panel is the mid-grey the
+  `.card.black` rule already had to dodge at 55 %; its hover and open tint are the black itself with the dark inks,
+  unchanged.
+* The muted snips lose some contrast on a bright colour in the dark theme (measured: ~2.3:1 at 45 % of the orange
+  against ~4:1 before). Asked for; the title and Claude's line are in the brighter inks.
+* Looked at in both themes on the live board; no scenario reads these numbers.
+
 ## Decisions of 2026-09-25, evening — glass under the days, and a smaller swell
 
 Ricardo: "put a glass tint on the background, when hovering the timeline with genie effect (also make the zoom a bit

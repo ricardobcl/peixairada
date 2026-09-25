@@ -315,8 +315,12 @@
      ready cards"); the colour stays on the clauding card's edge, under its ring, and comes back on hover and on the open card. */
   .card.working { border-color: color-mix(in srgb, var(--repo, var(--nocolor)) 85%, var(--line)); }
   /* a VS Code chat: the same wash as its pane */
-  /* the same wash as the pane, in the project's colour; a card without one stays plain panel */
-  .card { background: linear-gradient(165deg, color-mix(in srgb, var(--repo, var(--nocolor)) 22%, var(--panel)), color-mix(in srgb, var(--repo, var(--nocolor)) 6%, var(--panel)) 70%, var(--panel)); }
+  /* The wash, in the project's colour — since 2026-09-26 nearly the hover's tint (Ricardo: "the brightness of cards
+     is a bit low, bring it much closer to what it looks when hover"): 45 % at the top left down to 37 %, a faint
+     slope where the old wash (22 % to 6 % to nothing) was mostly panel. The hover and the open card go on above it.
+     A card in the board's black keeps a lighter wash: on the light panel 45 % of black is a grey its ink drowns in. */
+  .card { background: linear-gradient(165deg, color-mix(in srgb, var(--repo, var(--nocolor)) 45%, var(--panel)), color-mix(in srgb, var(--repo, var(--nocolor)) 37%, var(--panel))); }
+  .card.black { background: linear-gradient(165deg, color-mix(in srgb, var(--repo) 28%, var(--panel)), color-mix(in srgb, var(--repo) 20%, var(--panel))); }
   /* VS Code owns this chat: a small mark, top right of the card and at the end of the chat header */
   .own { display: inline-flex; align-items: center; gap: 4px; color: var(--vscode); font-size: 10.5px; font-weight: 600; white-space: nowrap; flex: none; }
   .own .ic { width: 12px; height: 12px; fill: currentColor; }
@@ -354,9 +358,10 @@
   }
   /* Hover and the open chat enhance the card's own colour, never the accent (2026-09-20, Ricardo: "still show a
      orange border … just enhance the border with its own color", then "the hover cards, make the background as if
-     it was select", then "even stronger"): hover is the open card's solid tint (55 % of the colour) under the full
-     colour with a soft 1px halo outside; the open card adds a 2px ring of it over its border — a three-pixel edge. */
-  .card:hover { border-color: var(--repo, var(--nocolor)); outline: 1px solid color-mix(in srgb, var(--repo, var(--nocolor)) 45%, transparent); outline-offset: 0; background: color-mix(in srgb, var(--repo, var(--nocolor)) 55%, var(--panel)); }
+     it was select", then "even stronger"): hover is the open card's solid tint (65 % of the colour since 2026-09-26,
+     55 % before — a step above the brighter wash) under the full colour with a soft 1px halo outside; the open card
+     adds a 2px ring of it over its border — a three-pixel edge. */
+  .card:hover { border-color: var(--repo, var(--nocolor)); outline: 1px solid color-mix(in srgb, var(--repo, var(--nocolor)) 45%, transparent); outline-offset: 0; background: color-mix(in srgb, var(--repo, var(--nocolor)) 65%, var(--panel)); }
   .chip.vsc { color: var(--vscode); border-color: var(--vscode); }
   /* The environment a chat was started in (`task production-workload`…, 2026-09-21): beside the folder on the card,
      in the project's own colour, because it is a fact about *where* the chat runs — not about its process, which is
@@ -368,8 +373,8 @@
   .card.black .top .chip.env, .card.active .top .chip.env, .card:hover .top .chip.env { color: inherit; opacity: .8; }
   /* the open chat: a solid tint of its colour under a ring of it (2026-09-20, Ricardo: "a more solid
      background, so we can notice it better"); every other card keeps the gradient wash */
-  .card.active { border-color: var(--repo, var(--nocolor)); outline: 2px solid var(--repo, var(--nocolor)); outline-offset: -1px; background: color-mix(in srgb, var(--repo, var(--nocolor)) 55%, var(--panel)); }
-  /* A card in the board's own black (PROJECT_COLORS — acme): 55 % of black over a light panel is a mid-grey
+  .card.active { border-color: var(--repo, var(--nocolor)); outline: 2px solid var(--repo, var(--nocolor)); outline-offset: -1px; background: color-mix(in srgb, var(--repo, var(--nocolor)) 65%, var(--panel)); }
+  /* A card in the board's own black (PROJECT_COLORS — acme): 65 % of black over a light panel is a mid-grey
      nothing reads on, so the tint is the colour itself and the card borrows the dark theme's inks — they inherit,
      so title, snips, times and the two speaker marks follow in one rule. In the dark theme they are what they were. */
   .card.black:hover, .card.black.active, .card.black.qsel { background: var(--repo); --ring: #fff; --ink: #e8e6df; --muted: #9a998f; --snip-claude: #c9c7bd; --you: #4fb8a8; --accent: #e08a68; }
@@ -398,7 +403,7 @@
   .card :is(.title, .repo) b { font-weight: 700; color: var(--accent); text-decoration: underline 1.5px; text-underline-offset: 2px; }
   .card:is(.active, :hover, .qsel) :is(.title, .repo) b { color: inherit; }   /* the solid tint: the card's own ink */
   /* ↑↓ in the magnifier's box walk the cards it ranked; ⏎ opens this one. The hover's look, with no halo. */
-  .card.qsel { border-color: var(--repo, var(--nocolor)); background: color-mix(in srgb, var(--repo, var(--nocolor)) 55%, var(--panel)); }
+  .card.qsel { border-color: var(--repo, var(--nocolor)); background: color-mix(in srgb, var(--repo, var(--nocolor)) 65%, var(--panel)); }
   .card .grow { flex: 1; }
   .card .time { font-size: 11px; color: var(--muted); flex: none; }
   .card .title { margin-top: 4px; font-size: 13.5px; font-weight: 500; line-height: 1.35; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
