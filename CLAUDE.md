@@ -176,6 +176,19 @@ refuses to run against the real directory for the same reason.
   `listChanged()` redraws once a frame, on scroll, after `renderSessionList`, on the list's `ResizeObserver` and
   from `applyCards` (the slider changes heights under the same scroll). An end that is off keeps its words while it
   fades — read it as zero. → `scripts/scenarios/list-ends.mjs`.
+* **The timeline is the list's scrollbar, with the days on it** (2026-09-25): `#tline`, the first of `#sessions`' two
+  columns (26 px, the track 21.5 px in — under the fish's middle and the cog's), row 2 only; the native scrollbar is
+  hidden while it shows, and it is `display: none` on the rail of squares. **To scale**: the rail's inner height is
+  the list's `scrollHeight`, so a tick is where its run starts in the list and the thumb is the window. A run
+  (`tl.runs`, built in `renderSessionList`, none under a query) is one day *and* one state group in a row, so today
+  can come back under the done cards. **The Dock's swell is a fisheye** (`tlWarp`, Sarkar–Brown, radius `TL_R`)
+  applied to everything drawn, around the pointer, which stays a fixed point — so a drag reads the list's position
+  straight off the pointer (`tlScrub`, holding the thumb where it was grabbed). Every day's label comes out, the
+  nearest largest (`TL_MAX`), overlaps culled nearest-first; the cards dim (`#sessions.tlon`). The swell is by the
+  clock (`tlAnimate`, `tl.k` linear, `tl.K` eased) — headless Chrome's frame rate is slow and a per-frame ease stalled.
+  A label clicked scrolls its run under the top pill; a wheel over the rail scrolls the list; scrolling elsewhere
+  shows the top run beside the thumb (`tlBubble`). `peix.state().timeline` has `k` and the runs.
+  → `scripts/scenarios/timeline.mjs`.
 * **The plan usage is the chat list's footer** (2026-09-24): `#usage`, the fourth row of `#sessions`. Open, a row
   per window — name, a bar in `--spend` (orange; red from 90 %, `uColor`), a tick where the window's clock stands
   (`uPace`, only for the windows whose length `uSpan` knows), percent, time to reset; folded (`prefs.usageFolded`,
@@ -398,7 +411,8 @@ refuses to run against the real directory for the same reason.
 * `.cards > * { flex: none }` is load-bearing; `.card { --repo: initial }` too (custom properties inherit — the orange cards).
 * `.shead { min-width: 0 }` and a fixed `flex-basis` on `.shead h2`; PR chips are direct children of the header.
 * **Every grid row in the chat column is placed by hand** — `#chat`'s, each half's `.ptabs` / `.gbody`, and
-  `#sessions`' since the usage footer (the rail hides `#filters`). A
+  `#sessions`' since the usage footer (the rail hides `#filters`), whose *columns* are placed too since the timeline
+  (2026-09-25: an item locked to a row and left to auto-place its column goes to the next free one — a new column). A
   hidden block is `display:none`, which takes it out of auto-placement and slides its siblings up a row; a body
   that lands in an `auto` row sizes itself to the terminal it holds instead of to the pane, and the drawer keeps
   whatever height it was first drawn at with black under it (2026-09-22). A new block means placing it too.
@@ -448,10 +462,10 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
   `assert`, `cmd(code)` (a plain ⌘ press; `key(code)` is ⌥⌘), `screen(g)` / `waitPrompt(ms, g)` (the half, 0 by
-  default — the whole column while nothing is split), `drag(from, to, mid)` (a real press, move and release). The twenty-three in `scripts/scenarios/` are the
+  default — the whole column while nothing is split), `drag(from, to, mid)` (a real press, move and release). The twenty-four in `scripts/scenarios/` are the
   regression checks for the drawer (re-attach, restart, geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a
   compose key), the hotkeys, the tab strip and the split, the new-chat flow, the project step's folders and ✕,
-  the chat list's rules, its filter and its ends, the card sizes, the notifications switch, the usage bar, the project cue, the header's PRs
+  the chat list's rules, its filter, its ends and its timeline, the card sizes, the notifications switch, the usage bar, the project cue, the header's PRs
   and its ··· menu.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported

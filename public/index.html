@@ -108,7 +108,11 @@
   #sessions { width: 380px; min-width: 300px; max-width: 60vw; flex: none; display: grid; grid-template-rows: auto 1fr auto; min-height: 0; container-type: inline-size; }
   /* Placed by hand, like the chat column's rows: a hidden block leaves auto-placement and slides the rest up a row —
      the list into the `auto` row, sized to its cards instead of the column. */
-  #shd { grid-row: 1; } #slist { grid-row: 2; grid-column: 1; } #sfoot { grid-row: 3; }   /* a column too: the list's ends (.sedge) lie over it, which only a definite cell allows */
+  /* Two columns since 2026-09-25: the timeline (#tline) down the left of the list, the list beside it; the head and
+     the foot span both. Every cell is definite — the list's ends (.sedge) lie over the list's, which only a definite
+     cell allows. Folded, the timeline is display:none and its `auto` column is nothing. */
+  #sessions { grid-template-columns: auto minmax(0, 1fr); }
+  #shd { grid-row: 1; grid-column: 1 / -1; } #tline { grid-row: 2; grid-column: 1; } #slist { grid-row: 2; grid-column: 2; } #sfoot { grid-row: 3; grid-column: 1 / -1; }
   /* The chat list folded to a rail: the fish, the selected project's colour square and the » to open it again.
      The width is set here, not inline, so the splitter's saved width comes back on unfold. */
   /* Folded, the list is a rail of one square per chat (2026-09-22): the project's short name on its own colour,
@@ -226,7 +230,10 @@
   .fchip.on { color: var(--ink); border-color: color-mix(in srgb, var(--c) 65%, transparent); }
   .fchip.on i { background: var(--c); }
   .fchip:not(.on) { opacity: .75; }
-  #slist { overflow-y: auto; overflow-x: hidden; min-width: 0; padding: 8px; display: flex; flex-direction: column; gap: 7px; position: relative; }   /* positioned: the cards' offsetTop is the list's */
+  #slist { overflow-y: auto; overflow-x: hidden; min-width: 0; padding: 8px 8px 8px 4px; display: flex; flex-direction: column; gap: 7px; position: relative; scrollbar-width: none; }   /* positioned: the cards' offsetTop is the list's */
+  #slist::-webkit-scrollbar { display: none; }   /* the timeline beside it is the scrollbar, with the days on it */
+  main.scompact #slist { scrollbar-width: auto; }
+  main.scompact #slist::-webkit-scrollbar { display: initial; }
   #slist > * { flex: none; } /* never let a full column squash its cards (overflow:hidden items would shrink to 0) */
   /* Between the clauding cards and the ready ones: a school of ascii fish (2026-09-20, Ricardo: "1 separator …
      something like ====== or barb-wire", then "more like ascii fishes … to be more thematic", then "animate"). A
@@ -243,10 +250,45 @@
   .gsep.day i:first-child { justify-content: flex-end; }
   .gsep.day b { flex: none; font-weight: 700; color: var(--muted); }
   #slist .none { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 0; }
+  /* ---- the chat list's timeline: its days, down the left edge ---- */
+  /* (2026-09-25) A slim rail from under the fish to over the cog, the list in miniature: its state groups as a track
+     in the chips' colours, a tick where each run of one day's cards begins (longer and in ink for today's), and a
+     thumb where the window is — the list's scrollbar, with the days on it. Pointed at, it swells like the Dock: the
+     days near the pointer grow out over the cards and push apart, the far ones stay ticks. Dragged, it scrolls the
+     list; a day clicked is scrolled to. Everything in it is placed by script (drawTimeline). The track sits under the
+     fish's middle and the cog's, 21.5 px in. */
+  #tline { width: 26px; position: relative; z-index: 5; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+  #tline.drag { cursor: grabbing; }
+  /* while the days are out, the cards step back a little so the labels over them read */
+  #slist { transition: opacity .18s; }
+  #sessions.tlon #slist { opacity: .5; }
+  main.scompact #tline { display: none; }
+  #tline > *, #tline :is(.tl-seg, .tl-tick, .tl-lab) { position: absolute; }
+  #tline :is(.tl-segs, .tl-ticks, .tl-labs) { inset: 0; pointer-events: none; }
+  #tline .tl-base { left: 21px; width: 1px; top: 0; bottom: 0; background: var(--line); }
+  #tline .tl-seg { left: 20px; width: 3px; border-radius: 2px; opacity: .75; }
+  #tline .tl-seg.asking { background: var(--needs); } #tline .tl-seg.working { background: var(--working); }
+  #tline .tl-seg.ready { background: var(--idle); } #tline .tl-seg.done { background: var(--ended); }
+  #tline .tl-tick { height: 1.5px; margin-top: -.75px; background: var(--muted); border-radius: 1px; opacity: .7; }
+  #tline .tl-tick.today { background: var(--ink); opacity: .9; }
+  #tline .tl-thumb { left: 15px; width: 13px; box-sizing: border-box; border: 1.5px solid color-mix(in srgb, var(--accent) 75%, transparent); border-radius: 6px; background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  #tline:hover .tl-thumb, #tline.drag .tl-thumb { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 28%, transparent); }
+  #tline .tl-thumb[hidden] { display: none; }
+  /* A day's label: the day, then how many of that run and in which state — out over the cards, from the rail. */
+  #tline .tl-lab { left: 30px; top: 0; transform-origin: 0 50%; white-space: nowrap; font-size: 10.5px; line-height: 15px; padding: 0 7px; border-radius: 8px;
+    background: var(--panel); border: 1px solid var(--line); color: var(--ink); box-shadow: 0 2px 10px rgba(0, 0, 0, .18); pointer-events: none; opacity: 0; font-weight: 600; }
+  #tline .tl-lab i { font-style: normal; font-weight: 400; color: var(--muted); }
+  #tline .tl-lab.on { pointer-events: auto; cursor: pointer; }
+  #tline .tl-lab.near { border-color: var(--accent); }
+  #tline .tl-lab::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 5px; vertical-align: .5px; background: var(--c, var(--muted)); }
+  #tline .tl-lab.asking { --c: var(--needs); } #tline .tl-lab.working { --c: var(--working); } #tline .tl-lab.ready { --c: var(--idle); } #tline .tl-lab.done { --c: var(--ended); }
+  /* while the list scrolls under a hand that is not on the rail: the day at the top of the window, beside the thumb */
+  #tline .tl-bub { left: 30px; opacity: 0; transition: opacity .25s; pointer-events: none; border-color: var(--accent); }
+  #tline .tl-bub.on { opacity: 1; transition: opacity .08s; }
   /* The list's two ends say what is out of sight past them (2026-09-25): a pill over a fog of the page, laid over the
      list's own cell — the list's row, so it neither scrolls with the cards nor takes any room from them. The fog lets
      every click through; only the pill takes one. A dot on it when a card out there is asking you or clauding. */
-  .sedge { grid-row: 2; grid-column: 1; z-index: 4; pointer-events: none; display: flex; justify-content: center; height: 30px; opacity: 0; transition: opacity .15s; }
+  .sedge { grid-row: 2; grid-column: 2; z-index: 4; pointer-events: none; display: flex; justify-content: center; height: 30px; opacity: 0; transition: opacity .15s; }
   .sedge.up { align-self: start; align-items: flex-start; padding-top: 5px; background: linear-gradient(var(--bg) 25%, transparent); }
   .sedge.down { align-self: end; align-items: flex-end; padding-bottom: 5px; background: linear-gradient(transparent, var(--bg) 75%); }
   .sedge.on { opacity: 1; }
@@ -747,6 +789,7 @@
 <main id="main">
   <section id="sessions">
     <div class="colhead" id="shd"><span class="brand" id="brandBtn"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g><g fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="stitle" class="t"></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" autocomplete="off" spellcheck="false" hidden><span id="fchips"></span></span><span id="newChat"></span><button class="btn icon" id="sessPinBtn" title="Fold the chat list">«</button></div>
+    <div id="tline" aria-label="The list's days — point to read them, drag to scroll, click one to go there"><div class="tl-base"></div><div class="tl-segs"></div><div class="tl-ticks"></div><div class="tl-thumb"></div><div class="tl-labs"></div><div class="tl-lab tl-bub"></div></div>
     <div id="slist"></div>
     <div class="sedge up" id="sup"><button data-dir="-1"></button></div>
     <div class="sedge down" id="sdown"><button data-dir="1"></button></div>
@@ -844,6 +887,7 @@
 //   css · layout: sessions | splitter | chat (one half or two)
 //   css · projects: a folder, or a named set of folders
 //   css · sessions of the selected project
+//   css · the chat list's timeline: its days, down the left edge
 //   css · plan usage: the chat list's footer
 //   css · chat pane
 //   css · The chat's PRs, one per row under the header: state, repo#n, the whole title.
@@ -859,6 +903,7 @@
 //   js  · projects
 //   js  · render: both lists
 //   js  · the list's ends: how many cards are out of sight
+//   js  · the chat list's timeline: its days, down the left edge
 //   js  · ⌥⌘P: the project picker. The board's projects, pinned first; the box filters by name.
 //   js  · the pickers' matcher: fuzzy since 2026-09-21
 //   js  · the org's folders, and cloning one that is not here yet (2026-09-21)
@@ -1318,6 +1363,9 @@
     // …and a day's line under every run of cards from one day: the card whose next one is from another day, or none.
     const days = shown.map(dayName);
     const fishBefore = i => !q && i && b[i] === 'ready' && b[i - 1] === 'working' ? fishHtml('fish') : '';
+    // the timeline's runs: the cards of one day *and* one state group in a row — none while a query orders the list
+    tl.runs = [];
+    if (!q) shown.forEach((s, i) => { const r = tl.runs[tl.runs.length - 1]; if (r && r.g === b[i] && r.day === days[i]) r.n++; else tl.runs.push({ g: b[i], day: days[i], at: userAt(s), i, n: 1 }); });
     const dayAfter = i => !q && days[i] && days[i + 1] !== days[i] ? dayHtml(days[i]) : '';
     $('#slist').innerHTML = shown.map((s, i) => `${fishBefore(i)}${cardHtml(s, p, q)}${dayAfter(i)}`).join('') || `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
     $('#slist .gsep.fish')?.replaceWith(fishEl);
@@ -1333,7 +1381,7 @@
   function listChanged() {   // called from applyCards before this line has run, hence the flag on the function
     if (listChanged.queued) return;
     listChanged.queued = true;
-    requestAnimationFrame(() => { listChanged.queued = false; drawEdges(); });
+    requestAnimationFrame(() => { listChanged.queued = false; drawEdges(); drawTimeline(); });
   }
   function drawEdges() {
     const list = $('#slist'), top = list.scrollTop, bottom = top + list.clientHeight;
@@ -1357,13 +1405,155 @@
       b.title = `${o.n} chat${o.n === 1 ? '' : 's'} ${way}${o.ask ? ` — ${o.ask} asking you` : ''}${o.work ? `${o.ask ? ',' : ' —'} ${o.work} clauding` : ''} · click for a screenful ${i ? 'down' : 'up'}`;
     });
   }
-  $('#slist').addEventListener('scroll', listChanged, { passive: true });
+  $('#slist').addEventListener('scroll', () => { listChanged(); tlBubble(); }, { passive: true });
   new ResizeObserver(listChanged).observe($('#slist'));
   for (const el of document.querySelectorAll('.sedge')) el.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     const list = $('#slist');
     list.scrollBy({ top: +b.dataset.dir * Math.max(80, list.clientHeight - 90), behavior: 'smooth' });
   });
+  // ---- the chat list's timeline: its days, down the left edge -------------------------
+  // (2026-09-25, Ricardo: "a slim vertical timeline — from the app icon to the bottom settings cog — showing where we
+  // are on dates on the cards … you can drag and has this 'genie effect' like macos dock"). The list in miniature,
+  // to scale: the whole rail is the whole list, so a run of cards sits on it where it sits in the list, the thumb is
+  // the window, and the rail is the list's scrollbar (the native one is hidden). A run is a day *and* a state group,
+  // since the list is grouped first — today comes back under the done cards — and each is its own place to go.
+  // The Dock's magnification is a fisheye around the pointer (Sarkar and Brown's: within R of it, a distance x·R
+  // becomes R·(D+1)x/(Dx+1)), applied to everything drawn on the rail, so nothing crosses and the point under the
+  // pointer stays put — which is why a drag can read the list's position straight off the pointer. Every day comes out
+  // as a label, as every app is on the Dock; the ones near the pointer swell (TL_MAX at it, a cosine down to their own
+  // size at R), and one that would overlap a nearer one is left out — so a crowded stretch reads where it is pointed
+  // at and thins out away from it. `tl.k` is how far the swell is in, by the clock (TL_IN / TL_OUT ms end to end), `tl.K` the same eased;
+  // `tl.py` is the pointer, in the rail's pixels.
+  const tl = { runs: [], sig: '', k: 0, K: 0, want: 0, py: 0, press: null, raf: 0, bubT: 0 };
+  const TL_PAD = 6, TL_R = 150, TL_D = 3, TL_MAX = 1.65, TL_LH = 17, TL_IN = 140, TL_OUT = 220;
+  const TL_WORD = { asking: 'asking', working: 'clauding', ready: 'ready', done: 'done' };
+  /** A run's day, short: today, yesterday, the weekday in the last week, else the date — the year only when not this one's. */
+  function tlDay(iso) {
+    const d = new Date(iso); if (isNaN(d)) return '';
+    const n = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 864e5), dm = `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}`;
+    return n <= 0 ? 'today' : n === 1 ? 'yesterday' : n < 7 ? `${d.toLocaleDateString('en', { weekday: 'short' })} ${dm}` : d.getFullYear() === new Date().getFullYear() ? dm : `${dm}-${d.getFullYear()}`;
+  }
+  const tlText = r => `${esc(tlDay(r.at))} <i>· ${r.n} ${TL_WORD[r.g] || r.g}</i>`;
+  /** The rail's geometry now: the list's size, and each run's top in the list — read off the cards, so it is the
+      layout as drawn (the card sizes, the width, the fish and the day lines all count). */
+  function tlGeom() {
+    const list = $('#slist'), rail = $('#tline'), cards = list.querySelectorAll(':scope > .card');
+    const H = Math.max(1, rail.clientHeight - 2 * TL_PAD), full = Math.max(list.scrollHeight, list.clientHeight, 1);
+    return { list, rail, H, full, y: v => TL_PAD + v / full * H, tops: tl.runs.map(r => cards[r.i] ? cards[r.i].offsetTop : 0) };
+  }
+  const tlBump = u => u >= 1 ? 0 : (1 + Math.cos(Math.PI * u)) / 2;
+  const tlWarp = y => {
+    if (!tl.K) return y;
+    const d = y - tl.py, x = Math.abs(d) / TL_R;
+    return x >= 1 ? y : y + tl.K * (Math.sign(d) * TL_R * (TL_D + 1) * x / (TL_D * x + 1) - d);
+  };
+  function drawTimeline() {
+    const rail = $('#tline');
+    if (!rail || rail.offsetParent === null) return;   // folded to the rail of squares: no room, and nothing drawn
+    const g = tlGeom(), runs = tl.runs;
+    // the runs' markup, only when the runs themselves change (an SSE update re-renders the list every few seconds)
+    const sig = runs.map(r => `${r.g}${r.day}${r.n}${r.i}`).join('|');
+    if (sig !== tl.sig) {
+      tl.sig = sig;
+      rail.querySelector('.tl-ticks').innerHTML = runs.map(r => `<div class="tl-tick${r.day === 'today' ? ' today' : ''}"></div>`).join('');
+      rail.querySelector('.tl-labs').innerHTML = runs.map((r, i) => `<div class="tl-lab ${r.g}" data-run="${i}">${tlText(r)}</div>`).join('');
+      const groups = [];
+      runs.forEach((r, i) => { if (!groups.length || groups[groups.length - 1].g !== r.g) groups.push({ g: r.g, from: i }); });
+      rail.querySelector('.tl-segs').innerHTML = groups.map(x => `<div class="tl-seg ${x.g}" data-from="${x.from}"></div>`).join('');
+    }
+    const place = (el, a, b) => { const t = tlWarp(g.y(a)), u = tlWarp(g.y(b)); el.style.top = t + 'px'; el.style.height = Math.max(0, u - t) + 'px'; };
+    // the state groups: from a group's first card to the next group's, the last one to the end of the list
+    const segs = [...rail.querySelectorAll('.tl-seg')];
+    segs.forEach((el, j) => place(el, g.tops[+el.dataset.from], j + 1 < segs.length ? g.tops[+segs[j + 1].dataset.from] : g.full - 8));
+    // the window
+    const th = rail.querySelector('.tl-thumb'), over = g.list.scrollHeight > g.list.clientHeight + 1;
+    th.hidden = !over;
+    if (over) { place(th, g.list.scrollTop, g.list.scrollTop + g.list.clientHeight); if (parseFloat(th.style.height) < 10) th.style.height = '10px'; }
+    // a tick per run, and its label — out over the cards while the rail is pointed at, the nearest ones largest
+    const ticks = rail.querySelectorAll('.tl-tick'), labs = [...rail.querySelectorAll('.tl-labs .tl-lab')];
+    const at = runs.map((r, i) => tlWarp(g.y(g.tops[i])));
+    const grow = at.map(y => tl.K * tlBump(Math.abs(y - tl.py) / TL_R));
+    ticks.forEach((el, i) => { const len = (runs[i].day === 'today' ? 9 : 6) + 8 * grow[i]; el.style.top = at[i] + 'px'; el.style.left = (21.5 - len) + 'px'; el.style.width = len + 'px'; });
+    const taken = [], order = at.map((y, i) => i).sort((a, b) => Math.abs(at[a] - tl.py) - Math.abs(at[b] - tl.py));
+    let near = -1;
+    for (const i of order) {
+      const el = labs[i]; if (!el) continue;
+      const s = 1 + (TL_MAX - 1) * grow[i], h = TL_LH * s / 2 + 1, y = Math.max(h, Math.min(g.H + 2 * TL_PAD - h, at[i]));   // kept inside the rail, off the head and the foot
+      const show = tl.K > .02 && !taken.some(([a, b]) => y + h > a && y - h < b);
+      if (show) { taken.push([y - h, y + h]); if (near < 0) near = i; }
+      el.classList.toggle('on', show);
+      el.style.opacity = show ? Math.min(1, tl.K * 1.5) : 0;
+      el.style.transform = `translateY(${y - TL_LH / 2}px) translateX(${-10 * (1 - tl.K)}px) scale(${s})`;
+    }
+    labs.forEach((el, i) => el.classList.toggle('near', i === near));
+  }
+  /** The swell towards `tl.want` by the clock, not by the frame — a slow frame rate stretches nothing; reduced
+      motion jumps. What is drawn is it eased (smoothstep). */
+  function tlAnimate() {
+    if (tl.raf) return;
+    let last = performance.now();
+    const step = now => {
+      const dt = Math.max(0, Math.min(80, now - last)); last = now;
+      const by = dt / (tl.want > tl.k ? TL_IN : TL_OUT);
+      tl.k = matchMedia('(prefers-reduced-motion: reduce)').matches ? tl.want : tl.want > tl.k ? Math.min(tl.want, tl.k + by) : Math.max(tl.want, tl.k - by);
+      tl.K = tl.k * tl.k * (3 - 2 * tl.k);
+      drawTimeline();
+      tl.raf = tl.k === tl.want ? 0 : requestAnimationFrame(step);
+    };
+    tl.raf = requestAnimationFrame(step);
+  }
+  /** The day at the top of the window, beside the thumb, while the list scrolls under a hand that is not on the rail. */
+  function tlBubble() {
+    const bub = $('#tline .tl-bub');
+    if (tl.k || tl.press || !tl.runs.length || $('#tline').offsetParent === null) return bub.classList.remove('on');
+    const g = tlGeom(), top = g.list.scrollTop + 30;   // under the top pill
+    let i = 0; while (i + 1 < tl.runs.length && g.tops[i + 1] <= top) i++;
+    bub.className = `tl-lab tl-bub on ${tl.runs[i].g}`; bub.innerHTML = tlText(tl.runs[i]);
+    bub.style.transform = `translateY(${tlWarp(g.y(g.list.scrollTop)) - TL_LH / 2 + 6}px)`;
+    clearTimeout(tl.bubT); tl.bubT = setTimeout(() => bub.classList.remove('on'), 900);
+  }
+  /** The list scrolled so the pointer's place on the rail is under the thumb where it was grabbed. */
+  function tlScrub(py, grab) {
+    const g = tlGeom();
+    g.list.scrollTop = (py - TL_PAD) / g.H * g.full - grab * g.list.clientHeight;
+  }
+  {
+    const rail = $('#tline'), railY = e => e.clientY - rail.getBoundingClientRect().top;
+    const swell = on => { tl.want = on ? 1 : 0; tlAnimate(); $('#sessions').classList.toggle('tlon', on); if (on) $('#tline .tl-bub').classList.remove('on'); };
+    rail.addEventListener('pointerenter', () => swell(true));
+    rail.addEventListener('pointerleave', () => { if (!tl.press) swell(false); });
+    rail.addEventListener('pointermove', e => {
+      tl.py = railY(e);
+      const p = tl.press;
+      if (p && (p.moved || Math.abs(e.clientY - p.y0) > 3)) { p.moved = true; rail.classList.add('drag'); tlScrub(tl.py, p.grab); }
+      if (!tl.raf) drawTimeline();
+    });
+    rail.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const g = tlGeom(), y = railY(e), top = g.y(g.list.scrollTop), bottom = g.y(g.list.scrollTop + g.list.clientHeight);
+      const lab = e.target.closest('.tl-lab.on');
+      // on the thumb it is held where it was grabbed; anywhere else the thumb comes to the pointer, centred
+      const grab = y >= top && y <= bottom ? (y - top) / Math.max(1, bottom - top) : .5;
+      tl.press = { y0: e.clientY, grab, run: lab ? +lab.dataset.run : null, moved: false };
+      rail.setPointerCapture(e.pointerId);
+      if (!lab && grab === .5) tlScrub(y, grab);
+    });
+    const release = e => {
+      const p = tl.press; if (!p) return;
+      tl.press = null; rail.classList.remove('drag');
+      if (!p.moved && p.run !== null) {   // a day clicked: its first card to the top, under the top pill
+        const g = tlGeom();
+        g.list.scrollTo({ top: Math.max(0, g.tops[p.run] - 30), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      }
+      if (e.type === 'pointercancel' || !rail.matches(':hover')) swell(false);
+    };
+    rail.addEventListener('pointerup', release);
+    rail.addEventListener('pointercancel', release);
+    rail.addEventListener('wheel', e => { e.preventDefault(); $('#slist').scrollBy({ top: e.deltaY }); }, { passive: false });
+    new ResizeObserver(listChanged).observe(rail);
+  }
   // Work that outlives the turn, and the one state that is waiting on you — the card's four readings (2026-09-21).
   // A monitor or a background command runs on after the reply, so a *ready* card can still have something running;
   // a question is the opposite, nothing runs and nothing will until you answer. Both are the server's word
@@ -2294,6 +2484,7 @@
       paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, [...v]])), tab: state.sessions.has(state.current) ? tabOf(state.sessions.get(state.current)) : null, tabs: state.sessions.has(state.current) ? tabKeys(state.sessions.get(state.current)) : [], pr: shownPr.url,
       split: splitNow(), focusG, halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
       strips: state.sessions.has(state.current) ? [0, 1].map(g => keysIn(state.sessions.get(state.current), g)) : [[], []],
+      timeline: { k: tl.k, want: tl.want, press: !!tl.press, runs: tl.runs.map(r => ({ g: r.g, day: r.day, n: r.n, i: r.i })) },
       termId: curTerm().id, termSession: curTerm().sessionId, termExited: curTerm().exited }),
     session: id => { const s = state.sessions.get(id || state.current); return s ? JSON.parse(JSON.stringify(s)) : null; },
     sessions: () => [...state.sessions.values()].map(s => ({ id: s.id, project: s.project, cwd: s.cwd, env: s.env || null, title: s.title, status: s.status, alive: s.alive, prs: (s.prs || []).length, terminal: s.terminal?.id || null, agents: s.agents || 0, tasks: s.tasks || [], ask: s.ask || null })),

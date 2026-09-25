@@ -219,6 +219,14 @@ many chats are above (*↑ 5 more*), and one at the bottom how many are below �
 asking you and an amber one when one is clauding, so a card that wants you cannot hide by scrolling. A click on
 either scrolls a screenful that way.
 
+**A slim timeline runs down the list's left edge**, from under the fish to over the cog: the list in miniature,
+to scale — its state groups as a track in the chips' colours, a tick where each day's cards begin (today's longer),
+and a thumb where the window is. It is the list's scrollbar with the days on it. **Point at it and it swells like
+the Dock**: every day comes out over the cards as a label — *today · 16 ready*, *Wed 23-09 · 9 done* — the ones
+near the pointer largest and pushed apart, while the cards step back. **Drag it** to scroll the list, click a day
+to go there, or use the wheel over it; scroll the list anywhere else and the day at the top of the window shows
+beside the thumb for a moment.
+
 The filter box in the header narrows the chat list by repo, title, session name or branch. The
 divider between the chat list and the chat drags; the width, the selected project and the state
 chips are remembered per browser.

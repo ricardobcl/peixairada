@@ -4,6 +4,49 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-25.
 
+## Decisions of 2026-09-25, later — a timeline down the list's left edge
+
+Ricardo: "can we build a slim vertical timeline - form the app icon to the bottom settings cog - showing where we are
+on dates on the cards? and you can drag and has this "genie effect" like macos dock".
+
+* **Read as the list's scrollbar, with the days on it.** "Showing where we are" is what a scrollbar does; "dates" is
+  what it lacked; "drag" is how one is used. So the rail is the list to scale — its inner height is the list's
+  scroll height — with a tick where each run of one day's cards begins and a thumb for the window, and the native
+  scrollbar is hidden while it shows. A chronological axis (today at the top, a day's place by its date) was the
+  other reading, and it cannot be what the list is: the list is grouped first — asking, clauding, ready, done — so
+  today comes back under the done cards, and a date axis would have had one place for two places in the list.
+* **A run is a day and a state group**, which is where the list's own lines fall (the fish between clauding and
+  ready, a day's line under each day). Its label says both: *today · 16 ready*, *Wed 23-09 · 9 done*. The track
+  under the ticks is coloured by group in the chips' colours, so the rail also says where ready ends and done begins.
+  Day names are short — today, yesterday, the weekday for the last week, then DD-MM (the year when not this one) —
+  in the day lines' DD-MM order.
+* **From the app icon to the cog**: the rail is the first of the list's two grid columns, 26 px, in the list's row;
+  its track sits 21.5 px in, under the middle of the fish above and of the cog below (measured: 25.5 against 26 and
+  25). The cards give up 22 px of width for it — the rail's 26, less 4 of left padding the list no longer needs.
+  Folded to the rail of squares there is no room, and no timeline.
+* **The "genie effect" is the Dock's magnification**, which is what the Dock does under a pointer (the genie proper is
+  its minimise animation, which has nothing to point at here). Pointed at, every day comes out over the cards as a
+  label, and the ones near the pointer swell and push apart — a fisheye (Sarkar and Brown's, radius 150 px) applied
+  to everything drawn on the rail: ticks, labels, the track, the thumb. Being a warp around the pointer, it keeps
+  the order and keeps the point under the pointer where it is, so a drag can read the list's position straight off
+  the pointer even while everything around it moves. Labels that would overlap a nearer one are left out, so a
+  crowded stretch (46 runs on the live board) reads where it is pointed at and thins out away from it. The cards dim
+  to half while the labels are out, which is what makes them readable over card text.
+* **Moving the list from the rail**: drag the thumb (it stays under the pointer where it was grabbed); press the
+  track elsewhere and the thumb comes there, centred, then drags; click a label and its run's first card is scrolled
+  to just under the top pill; the wheel over the rail scrolls the list. Scrolling the list anywhere else shows the
+  run at the top of the window beside the thumb for 0.9 s — the date a scrollbar's thumb never tells you.
+* **Under a query there are no days**: the list is in the match's order, as it has no day lines then either; the
+  thumb stays.
+* **The swell runs by the clock, not by the frame**: the first version eased a fixed fraction per frame, and in
+  headless Chrome, whose frames come slowly and irregularly, it was still at 5 % a second after the pointer left —
+  suppressing the bubble. 140 ms in, 220 ms out, smoothstepped.
+* `scripts/scenarios/timeline.mjs`: fourteen chats over four days and a done pair; the runs, the groups, the ticks
+  against their cards and the thumb against the window (to 0.4 %); the track under the fish and the cog; the swell
+  (every run's label, the nearest largest with its day and count, none overlapping); a label clicked; a thumb
+  dragged 120 px; a press on the track; the wheel; the labels going back in; the bubble; a query; the rail of
+  squares. Screenshots looked at in both themes and on the live board (283 chats, 46 runs).
+
 ## Decisions of 2026-09-25, later — the list's ends count what is out of sight
 
 Ricardo: "when scrolling down the cards, the top should visually say how many cards are hiding, same for below".
