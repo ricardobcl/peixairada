@@ -108,7 +108,7 @@
   #sessions { width: 380px; min-width: 300px; max-width: 60vw; flex: none; display: grid; grid-template-rows: auto 1fr auto; min-height: 0; container-type: inline-size; }
   /* Placed by hand, like the chat column's rows: a hidden block leaves auto-placement and slides the rest up a row —
      the list into the `auto` row, sized to its cards instead of the column. */
-  #shd { grid-row: 1; } #slist { grid-row: 2; } #sfoot { grid-row: 3; }
+  #shd { grid-row: 1; } #slist { grid-row: 2; grid-column: 1; } #sfoot { grid-row: 3; }   /* a column too: the list's ends (.sedge) lie over it, which only a definite cell allows */
   /* The chat list folded to a rail: the fish, the selected project's colour square and the » to open it again.
      The width is set here, not inline, so the splitter's saved width comes back on unfold. */
   /* Folded, the list is a rail of one square per chat (2026-09-22): the project's short name on its own colour,
@@ -226,7 +226,7 @@
   .fchip.on { color: var(--ink); border-color: color-mix(in srgb, var(--c) 65%, transparent); }
   .fchip.on i { background: var(--c); }
   .fchip:not(.on) { opacity: .75; }
-  #slist { overflow-y: auto; overflow-x: hidden; min-width: 0; padding: 8px; display: flex; flex-direction: column; gap: 7px; }
+  #slist { overflow-y: auto; overflow-x: hidden; min-width: 0; padding: 8px; display: flex; flex-direction: column; gap: 7px; position: relative; }   /* positioned: the cards' offsetTop is the list's */
   #slist > * { flex: none; } /* never let a full column squash its cards (overflow:hidden items would shrink to 0) */
   /* Between the clauding cards and the ready ones: a school of ascii fish (2026-09-20, Ricardo: "1 separator …
      something like ====== or barb-wire", then "more like ascii fishes … to be more thematic", then "animate"). A
@@ -243,6 +243,21 @@
   .gsep.day i:first-child { justify-content: flex-end; }
   .gsep.day b { flex: none; font-weight: 700; color: var(--muted); }
   #slist .none { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 0; }
+  /* The list's two ends say what is out of sight past them (2026-09-25): a pill over a fog of the page, laid over the
+     list's own cell — the list's row, so it neither scrolls with the cards nor takes any room from them. The fog lets
+     every click through; only the pill takes one. A dot on it when a card out there is asking you or clauding. */
+  .sedge { grid-row: 2; grid-column: 1; z-index: 4; pointer-events: none; display: flex; justify-content: center; height: 30px; opacity: 0; transition: opacity .15s; }
+  .sedge.up { align-self: start; align-items: flex-start; padding-top: 5px; background: linear-gradient(var(--bg) 25%, transparent); }
+  .sedge.down { align-self: end; align-items: flex-end; padding-bottom: 5px; background: linear-gradient(transparent, var(--bg) 75%); }
+  .sedge.on { opacity: 1; }
+  .sedge button { pointer-events: auto; font: inherit; font-size: 11px; line-height: 16px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 1px 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); white-space: nowrap; }
+  .sedge:not(.on) button { pointer-events: none; }
+  .sedge button:hover { color: var(--ink); border-color: var(--muted); }
+  .sedge b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .sedge i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .sedge i.ask { background: var(--needs); } .sedge i.work { background: var(--working); }
+  main.scompact .sedge button { padding: 1px 5px; gap: 2px; }
+  main.scompact .sedge .w { display: none; }   /* the rail has room for the arrow and the number */
   /* --repo is reset here on purpose: custom properties inherit, and the chat list sets its own for its edge (the
      black on ALL) — without the reset every colourless card wore that. The card's inline --repo still wins. */
   .card { --repo: initial; background: var(--panel); border: 2px solid var(--line); border-radius: 10px; padding: 8px 10px 7px; cursor: pointer; min-width: 0; overflow: hidden; position: relative; }
@@ -733,6 +748,8 @@
   <section id="sessions">
     <div class="colhead" id="shd"><span class="brand" id="brandBtn"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g><g fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="stitle" class="t"></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" autocomplete="off" spellcheck="false" hidden><span id="fchips"></span></span><span id="newChat"></span><button class="btn icon" id="sessPinBtn" title="Fold the chat list">«</button></div>
     <div id="slist"></div>
+    <div class="sedge up" id="sup"><button data-dir="-1"></button></div>
+    <div class="sedge down" id="sdown"><button data-dir="1"></button></div>
     <div id="sfoot"><div id="pfoot"><button class="btn icon" id="cogBtn" title="Settings"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm0 1.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm-.9-5.5h1.8l.4 1.9c.4.15.8.35 1.15.6l1.85-.65 1.3 2.2-1.45 1.3c.05.4.05.8 0 1.2l1.45 1.3-1.3 2.2-1.85-.65c-.35.25-.75.45-1.15.6l-.4 1.9H7.1l-.4-1.9a5 5 0 0 1-1.15-.6l-1.85.65L2.4 10l1.45-1.3a5 5 0 0 1 0-1.2L2.4 6.2l1.3-2.2 1.85.65c.35-.25.75-.45 1.15-.6Z"/></svg></button></div><div id="usage"></div></div>
   </section>
   <div id="splitter" title="Drag to resize"></div>
@@ -841,6 +858,7 @@
 //   js  · plan usage: the chat list's footer
 //   js  · projects
 //   js  · render: both lists
+//   js  · the list's ends: how many cards are out of sight
 //   js  · ⌥⌘P: the project picker. The board's projects, pinned first; the box filters by name.
 //   js  · the pickers' matcher: fuzzy since 2026-09-21
 //   js  · the org's folders, and cloning one that is not here yet (2026-09-21)
@@ -944,6 +962,7 @@
     $('#sessions').dataset.cards = prefs.cards;
     $('#cardsSize').value = v;
     document.querySelectorAll('#settings .dens .stops span').forEach(x => x.classList.toggle('on', +x.dataset.v === v));
+    listChanged();   // the cards changed height under the same scroll position
   }
   const setCards = v => { prefs.cards = CARD_SIZES[v] || 'large'; savePrefs(); applyCards(); };
   $('#cardsSize').addEventListener('input', e => setCards(+e.target.value));
@@ -1303,7 +1322,48 @@
     $('#slist').innerHTML = shown.map((s, i) => `${fishBefore(i)}${cardHtml(s, p, q)}${dayAfter(i)}`).join('') || `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
     $('#slist .gsep.fish')?.replaceWith(fishEl);
     markQsel();
+    listChanged();
   }
+  // ---- the list's ends: how many cards are out of sight ---------------------------------
+  // (2026-09-25, Ricardo: "when scrolling down the cards, the top should visually say how many cards are hiding, same
+  // for below"): a pill at each end, counting the cards more than half out of view that way — a card cut in two is
+  // still being shown. A dot on it when one of them is asking you (red) or clauding: the two states a card should not
+  // be able to hide. A click scrolls a screenful that way. Drawn at most once a frame: on scroll, after every render,
+  // when the list's box changes size (a fold, the splitter, the window) and when the cards do (the cog's slider).
+  function listChanged() {   // called from applyCards before this line has run, hence the flag on the function
+    if (listChanged.queued) return;
+    listChanged.queued = true;
+    requestAnimationFrame(() => { listChanged.queued = false; drawEdges(); });
+  }
+  function drawEdges() {
+    const list = $('#slist'), top = list.scrollTop, bottom = top + list.clientHeight;
+    const out = [{ n: 0, ask: 0, work: 0 }, { n: 0, ask: 0, work: 0 }];
+    for (const c of list.children) {
+      if (!c.classList.contains('card')) continue;
+      const mid = c.offsetTop + c.offsetHeight / 2, o = mid < top ? out[0] : mid > bottom ? out[1] : null;
+      if (!o) continue;
+      o.n++;
+      if (c.classList.contains('asking')) o.ask++;
+      else if (c.classList.contains('working') && !c.classList.contains('done')) o.work++;
+    }
+    out.forEach((o, i) => {
+      const el = $(i ? '#sdown' : '#sup'), b = el.firstElementChild, key = `${o.n}/${o.ask}/${o.work}`;
+      el.classList.toggle('on', o.n > 0);
+      if (b.dataset.key === key) return;
+      b.dataset.key = key;
+      if (!o.n) return;
+      const way = i ? 'below' : 'above', dot = o.ask ? 'ask' : o.work ? 'work' : '';
+      b.innerHTML = `${i ? '↓' : '↑'} <b>${o.n}</b><span class="w"> more</span>${dot ? `<i class="${dot}"></i>` : ''}`;
+      b.title = `${o.n} chat${o.n === 1 ? '' : 's'} ${way}${o.ask ? ` — ${o.ask} asking you` : ''}${o.work ? `${o.ask ? ',' : ' —'} ${o.work} clauding` : ''} · click for a screenful ${i ? 'down' : 'up'}`;
+    });
+  }
+  $('#slist').addEventListener('scroll', listChanged, { passive: true });
+  new ResizeObserver(listChanged).observe($('#slist'));
+  for (const el of document.querySelectorAll('.sedge')) el.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const list = $('#slist');
+    list.scrollBy({ top: +b.dataset.dir * Math.max(80, list.clientHeight - 90), behavior: 'smooth' });
+  });
   // Work that outlives the turn, and the one state that is waiting on you — the card's four readings (2026-09-21).
   // A monitor or a background command runs on after the reply, so a *ready* card can still have something running;
   // a question is the opposite, nothing runs and nothing will until you answer. Both are the server's word

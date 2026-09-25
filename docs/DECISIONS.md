@@ -4,6 +4,30 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-25.
 
+## Decisions of 2026-09-25, later — the list's ends count what is out of sight
+
+Ricardo: "when scrolling down the cards, the top should visually say how many cards are hiding, same for below".
+
+* **A pill at each end of the list, over a fog of the page**: *↑ 5 more* at the top once anything is scrolled past,
+  *↓ 12 more* at the bottom while anything is below. They lie over the list's own grid cell (`.sedge`), so they
+  neither scroll with the cards nor take room from them; the fog lets every click through to the cards, only the
+  pill takes one.
+* **Out of sight is more than half out**: a card counts once its middle is past the visible edge. A card cut in two
+  is still being shown, and one with a sliver showing is not something you can read.
+* **A dot for the two states that should not be able to hide**: red when a chat out there is asking you, amber when
+  one is clauding (asking wins, as it does in the order). Both sort to the top, so this is mostly the top pill once
+  you have scrolled down — the case where a question could otherwise sit unseen. The tooltip counts them.
+* **A click scrolls a screenful that way**, smoothly, not to the end: the count is a hint of how far, and the end of
+  a 280-card list is rarely where you meant to go.
+* **Redrawn at most once a frame** (`listChanged()`): on scroll, after every render, when the list's box changes
+  size (⌘B, the splitter, the window) and from the cog's card-size slider, which changes every card's height under
+  the same scroll position. A pass over ~280 cards' `offsetTop` is nothing when the layout is clean.
+* On the folded rail the pill keeps the arrow and the number and drops the word.
+* `scripts/scenarios/list-ends.mjs`: twenty-four chats, one asking and one clauding; the counts against the cards'
+  own rectangles at the top, the middle and the end; the red dot over the amber one; a click on the bottom pill; the
+  counts following the compact cards without a scroll; the rail. Screenshots looked at, the live board's too
+  (283 chats: *↑ 17 more* with an amber dot, *↓ 262 more*).
+
 ## Decisions of 2026-09-25, later — each half's strip lists its own tabs
 
 Ricardo: "pane tabs show all open stuff, regardless if they are in the 1st or 2nd pane - filter by what's open on

@@ -169,6 +169,13 @@ refuses to run against the real directory for the same reason.
   first, so a day can come back (a done card from today after older ready ones) and each run gets its own line.
   → `scripts/scenarios/day-separator.mjs`. A finished job moves its card into the ready group, where its
   last prompt puts it.
+* **The list's two ends count the cards out of sight** (2026-09-25): `#sup` / `#sdown` (`.sedge`), laid over the
+  list's own grid cell — so `#slist` has a definite `grid-column` too — a pill on a fog of `--bg`; a card is out of
+  sight when its *middle* is past the visible edge (`drawEdges()`, by `offsetTop`, hence `#slist { position:
+  relative }`). A dot: red when one out there is asking, amber when clauding. A click scrolls a screenful.
+  `listChanged()` redraws once a frame, on scroll, after `renderSessionList`, on the list's `ResizeObserver` and
+  from `applyCards` (the slider changes heights under the same scroll). An end that is off keeps its words while it
+  fades — read it as zero. → `scripts/scenarios/list-ends.mjs`.
 * **The plan usage is the chat list's footer** (2026-09-24): `#usage`, the fourth row of `#sessions`. Open, a row
   per window — name, a bar in `--spend` (orange; red from 90 %, `uColor`), a tick where the window's clock stands
   (`uPace`, only for the windows whose length `uSpan` knows), percent, time to reset; folded (`prefs.usageFolded`,
@@ -441,10 +448,10 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
   `assert`, `cmd(code)` (a plain ⌘ press; `key(code)` is ⌥⌘), `screen(g)` / `waitPrompt(ms, g)` (the half, 0 by
-  default — the whole column while nothing is split), `drag(from, to, mid)` (a real press, move and release). The twenty-two in `scripts/scenarios/` are the
+  default — the whole column while nothing is split), `drag(from, to, mid)` (a real press, move and release). The twenty-three in `scripts/scenarios/` are the
   regression checks for the drawer (re-attach, restart, geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a
   compose key), the hotkeys, the tab strip and the split, the new-chat flow, the project step's folders and ✕,
-  the chat list's rules and its filter, the card sizes, the notifications switch, the usage bar, the project cue, the header's PRs
+  the chat list's rules, its filter and its ends, the card sizes, the notifications switch, the usage bar, the project cue, the header's PRs
   and its ··· menu.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported

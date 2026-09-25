@@ -214,7 +214,10 @@ a card is still when *anything* last happened to it; hover it for when you last 
 follow the same rule through their newest chat. Lines of little ascii fish break the list where it turns
 over: `><>` swimming right between what is clauding and what is ready, and a still line of `<><` **under each
 day's chats** with the day in its middle — *today* under the ones you have been in today, then a `DD-MM-YYYY` under
-each earlier day's.
+each earlier day's. **The list's two ends count what is out of sight**: scrolled down, a pill at the top says how
+many chats are above (*↑ 5 more*), and one at the bottom how many are below — with a red dot when one of them is
+asking you and an amber one when one is clauding, so a card that wants you cannot hide by scrolling. A click on
+either scrolls a screenful that way.
 
 The filter box in the header narrows the chat list by repo, title, session name or branch. The
 divider between the chat list and the chat drags; the width, the selected project and the state
