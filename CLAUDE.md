@@ -184,7 +184,8 @@ refuses to run against the real directory for the same reason.
   can come back under the done cards. **The Dock's swell is a fisheye** (`tlWarp`, Sarkar–Brown, radius `TL_R`)
   applied to everything drawn, around the pointer, which stays a fixed point — so a drag reads the list's position
   straight off the pointer (`tlScrub`, holding the thumb where it was grabbed). Every day's label comes out, the
-  nearest largest (`TL_MAX`), overlaps culled nearest-first; the cards dim (`#sessions.tlon`). The swell is by the
+  nearest largest (`TL_MAX`, 1.4), overlaps culled nearest-first; a pane of glass goes over the list (`.tl-glass`,
+  in the list's cell under the ends and the rail, `backdrop-filter` blur + a wash of `--bg`, `#sessions.tlon`). The swell is by the
   clock (`tlAnimate`, `tl.k` linear, `tl.K` eased) — headless Chrome's frame rate is slow and a per-frame ease stalled.
   A label clicked scrolls its run under the top pill; a wheel over the rail scrolls the list; scrolling elsewhere
   shows the top run beside the thumb (`tlBubble`). `peix.state().timeline` has `k` and the runs.

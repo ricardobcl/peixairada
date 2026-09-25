@@ -81,6 +81,7 @@ export default async function (ctx) {
   for (let i = 1; i < shown.length; i++) ctx.assert.ok(shown[i].top >= shown[i - 1].bottom - .5, 'no two labels overlap');
   ctx.assert.deepEqual(out.hover.labs.filter(l => l.on).map(l => l.run).sort(), [0, 1, 2, 3, 4].filter(i => out.hover.labs[i].on), 'labels keep their runs');
   ctx.assert.ok(out.hover.labs.some(l => l.text === `today · 3 ready`), 'today is today');
+  ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('.tl-glass')).opacity`), '1', 'the glass is over the cards while the days are out');
   await ctx.shot('swell', { x: 0, y: 0, width: 420, height: 920 });
 
   // out among the labels, in the gap between two of them: still the rail — the days stay out (2026-09-25, Ricardo:
@@ -139,6 +140,7 @@ export default async function (ctx) {
   await move(ctx, 900, 400);
   await settled(ctx, 0);
   ctx.assert.ok((await rail(ctx)).labs.every(l => !l.on), 'no labels once the pointer has left');
+  await ctx.waitFor(`getComputedStyle(document.querySelector('.tl-glass')).opacity === '0'`, { what: 'the glass gone' });
   // the list scrolled by a hand elsewhere: the day at the top of the window beside the thumb, for a moment
   await ctx.evaluate(`document.querySelector('#slist').scrollTop = ${Math.round(want + 30)}`);
   await ctx.waitFor(`document.querySelector('#tline .tl-bub').classList.contains('on')`, { what: 'the bubble' });

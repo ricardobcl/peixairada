@@ -259,9 +259,12 @@
      fish's middle and the cog's, 21.5 px in. */
   #tline { width: 26px; position: relative; z-index: 5; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
   #tline.drag { cursor: grabbing; }
-  /* while the days are out, the cards step back a little so the labels over them read */
-  #slist { transition: opacity .18s; }
-  #sessions.tlon #slist { opacity: .5; }
+  /* While the days are out, a pane of glass over the cards (2026-09-25, Ricardo: "a glass tint on the background"):
+     a blur and a wash of the page over the list's cell, under the labels and the list's ends, so the labels read on
+     a frosted list rather than on card text. Lets every pointer event through. */
+  .tl-glass { grid-row: 2; grid-column: 2; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .2s;
+    background: color-mix(in srgb, var(--bg) 42%, transparent); -webkit-backdrop-filter: blur(3px) saturate(.85); backdrop-filter: blur(3px) saturate(.85); }
+  #sessions.tlon .tl-glass { opacity: 1; }
   main.scompact #tline { display: none; }
   #tline > *, #tline :is(.tl-seg, .tl-tick, .tl-lab) { position: absolute; }
   #tline :is(.tl-segs, .tl-ticks, .tl-labs) { inset: 0; pointer-events: none; }
@@ -796,6 +799,7 @@
     <div class="colhead" id="shd"><span class="brand" id="brandBtn"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g><g fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="stitle" class="t"></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" autocomplete="off" spellcheck="false" hidden><span id="fchips"></span></span><span id="newChat"></span><button class="btn icon" id="sessPinBtn" title="Fold the chat list">«</button></div>
     <div id="tline" aria-label="The list's days — point to read them, drag to scroll, click one to go there"><div class="tl-catch"></div><div class="tl-base"></div><div class="tl-segs"></div><div class="tl-ticks"></div><div class="tl-thumb"></div><div class="tl-labs"></div><div class="tl-lab tl-bub"></div></div>
     <div id="slist"></div>
+    <div class="tl-glass"></div>
     <div class="sedge up" id="sup"><button data-dir="-1"></button></div>
     <div class="sedge down" id="sdown"><button data-dir="1"></button></div>
     <div id="sfoot"><div id="pfoot"><button class="btn icon" id="cogBtn" title="Settings"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm0 1.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm-.9-5.5h1.8l.4 1.9c.4.15.8.35 1.15.6l1.85-.65 1.3 2.2-1.45 1.3c.05.4.05.8 0 1.2l1.45 1.3-1.3 2.2-1.85-.65c-.35.25-.75.45-1.15.6l-.4 1.9H7.1l-.4-1.9a5 5 0 0 1-1.15-.6l-1.85.65L2.4 10l1.45-1.3a5 5 0 0 1 0-1.2L2.4 6.2l1.3-2.2 1.85.65c.35-.25.75-.45 1.15-.6Z"/></svg></button></div><div id="usage"></div></div>
@@ -1431,7 +1435,7 @@
   // at and thins out away from it. `tl.k` is how far the swell is in, by the clock (TL_IN / TL_OUT ms end to end), `tl.K` the same eased;
   // `tl.py` is the pointer, in the rail's pixels.
   const tl = { runs: [], sig: '', k: 0, K: 0, want: 0, py: 0, press: null, raf: 0, bubT: 0, reach: 0 };
-  const TL_PAD = 6, TL_R = 150, TL_D = 3, TL_MAX = 1.65, TL_LH = 17, TL_IN = 140, TL_OUT = 220;
+  const TL_PAD = 6, TL_R = 150, TL_D = 3, TL_MAX = 1.4, TL_LH = 17, TL_IN = 140, TL_OUT = 220;
   const TL_WORD = { asking: 'asking', working: 'clauding', ready: 'ready', done: 'done' };
   /** A run's day, short: today, yesterday, the weekday in the last week, else the date — the year only when not this one's. */
   function tlDay(iso) {

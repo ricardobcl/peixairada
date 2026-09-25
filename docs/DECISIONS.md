@@ -4,6 +4,19 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-25.
 
+## Decisions of 2026-09-25, evening — glass under the days, and a smaller swell
+
+Ricardo: "put a glass tint on the background, when hovering the timeline with genie effect (also make the zoom a bit
+smaller)".
+
+* **Glass, not a dim**: the cards used to drop to half opacity while the days were out. Now a pane goes over the
+  list's cell — a 3 px `backdrop-filter` blur, a little desaturation and a 42 % wash of the page colour — under the
+  labels and the list's ends, taking no pointer events. Frosted, the card text stops competing with the labels, and
+  the cards' colours still show through as colour. Fades in and out with the swell (0.2 s).
+* **The swell is 1.4× at the pointer** (1.65 before); the fisheye's radius and strength are as they were, since what
+  was asked about was the size, not the spread.
+* `timeline.mjs` checks the glass is up while the days are out and gone once the pointer has left.
+
 ## Decisions of 2026-09-25, evening — the timeline holds on to the pointer
 
 Ricardo: "it a bit hard to keep the timeline open, because any gap below or above a date, closes it? also, if I go to
@@ -20,7 +33,7 @@ the far left of the screen, it's not triggering the timeline effect".
   above into the head, or below into the foot — is leaving.
 * **A press in the gaps means the day ringed as nearest** (`.near`), the one the swell is centred on: a click goes to
   it, a drag scrubs from there. A press on the strip itself is what it was — the thumb comes to it.
-* The cost: while the days are out, the cards under the labels' reach take no clicks — they are dimmed then, and a
+* The cost: while the days are out, the cards under the labels' reach take no clicks — they are under glass then, and a
   move past the labels gives them back.
 * `timeline.mjs` adds: the pointer in the gap between two labels keeps them out (`elementFromPoint` there is the
   catch), a click there scrolls to the ringed day, past the labels the swell goes back in, and x = 0 halfway down
