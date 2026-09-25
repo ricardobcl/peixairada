@@ -4,6 +4,31 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-25.
 
+## Decisions of 2026-09-25 — the cards come in three sizes, a slider in the cog
+
+Ricardo: "make a setting in the bottom left cog to compact the cards by 1) [large] as is 2) [medium] leave the last
+interaction, either me or claude and 3) [compact] remove both mine and claudes text … make it a slider".
+
+* **Three stops, in the order asked: large · medium · compact**, left to right — the slider is how much the cards are
+  compacted, so it runs the way the request counted. The stop names under it are its scale and a click each.
+* **Medium is the last word, and "last" is by time, not by who usually speaks second.** Claude's reply is the last
+  word when it came after your last touch (`lastReplyAt ≥ lastUserAt`); a prompt it has not answered yet, an Escape
+  after it, an answer to its question all make yours the last. The case that needs it: you asked again and pressed
+  Escape — the reply on the card is the turn before's, and showing it as the latest would be wrong. A card with only
+  one of the two keeps it.
+* **Compact drops both words and nothing else**: title, chips, time, PRs stay; so does a question waiting on you
+  (`askHtml`), which is neither your word nor Claude's reply but the one line on a card that asks you to act — the
+  blinking edge says *something*, the line says what.
+* **A pref of this window, not the server's word** — like the widths, the zoom and the folds. The notifications
+  switch is the server's because the server's alerts are what the switch silences; this is only how a list looks.
+* **The markup always holds both words**: `cardHtml` marks the older one `.older` and CSS hides by `#sessions`'
+  `data-cards` — the usage footer's way — so moving the slider re-renders nothing and the fuzzy filter still searches
+  the prompt a compact card does not show.
+* `scripts/scenarios/card-sizes.mjs`: three chats — Claude with the last word, you with it (a second prompt, then
+  Escape), one waiting on a permission prompt; both words at large, the right one each at medium, none at compact,
+  the two plain cards shorter at each step, the question at all three; the slider's input and the stop's click both
+  move it; compact survives a reload. Screenshots of each and of the popover looked at.
+
 ## Decisions of 2026-09-25 — ⌥⌘F: the chat list's filter, fuzzy like ⌥⌘K
 
 Ricardo: "make hotkey F fuzzy search like K".

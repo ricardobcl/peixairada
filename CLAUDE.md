@@ -144,6 +144,12 @@ refuses to run against the real directory for the same reason.
   ⌥⌘G and the harness still read `#prlist .prrow`. On a tinted header the chips sit on the panel, so a state's
   colour reads on any project's; taller (20 px) than the cards', edged in 1 px of the state's colour at 85 % (`--prb`), on a wash of the
   state's colour (`--prc`, set by the shared state rules; `--prg` per theme, stronger on the dark panel). → `scripts/scenarios/header-prs.mjs`.
+* **A card comes in three sizes, the cog's slider** (2026-09-25, `#cardsSize`, `prefs.cards`): *large* — your last
+  prompt and Claude's last reply, as always —, *medium* the last word only, *compact* neither. `cardHtml` always
+  writes both `.snip`s and marks the older one `.older` (Claude's reply is the last word when `lastReplyAt ≥
+  lastUserAt`, which an answer or an Escape also moves); CSS hides by `#sessions[data-cards]`, so the slider
+  re-renders nothing. The question line (`askHtml`) is neither word and shows at every size.
+  → `scripts/scenarios/card-sizes.mjs`.
 * **The open chat's card and a hovered one are a solid tint** of its colour (`.card.active`, `.card:hover`, 55 %), the
   rest keep the gradient wash **under a plain edge** (2026-09-20 evening): only the clauding card, the hovered one and
   the open one wear the colour on their border.
@@ -175,7 +181,7 @@ refuses to run against the real directory for the same reason.
   `USAGE=off` answers `off: true` and the bar hides — every test server. → `scripts/scenarios/usage-bar.mjs`.
 * **State lives in three places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done
   ticks, named projects, board titles, pins, the environment each chat was started in, notifications on or off; `STATE_FILE` overrides) shared by the app and every browser; the
-  browser's `localStorage` `peixairada-prefs` (selected project, filters, widths, zoom, folds, drawer open/height);
+  browser's `localStorage` `peixairada-prefs` (selected project, filters, widths, zoom, folds, card size, drawer open/height);
   and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it renders reads its state from prefs.
 
 ## Hotkeys and the pane
@@ -241,7 +247,7 @@ refuses to run against the real directory for the same reason.
   (`.cur`), never in the row's `auto` column: it sizes the track and the name's `1fr` is left with nothing.
   → `scripts/scenarios/new-project.mjs`, Decisions 2026-09-21.
 * **The cog's popover is the whole of the board's settings** (2026-09-21): **the notifications switch**
-  (2026-09-23, `#notifyOn`) and the keys — nothing else; the plan usage left it for the chat list's footer
+  (2026-09-23, `#notifyOn`), **the cards' size** (2026-09-25, `.dens`, above) and the keys — nothing else; the plan usage left it for the chat list's footer
   (2026-09-24, below). It opens on *hover of `#pfoot`*, the cog's cell in the chat list's foot, which reaches the
   window's bottom left pixel — **drawn over the list's 4 px coloured edge** (`margin-left: -4px`, the edge carried on
   its own border), because the edge is not the cell; a click on the cog pins it, Esc or a click away closes it, and
@@ -429,10 +435,10 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
   `assert`, `cmd(code)` (a plain ⌘ press; `key(code)` is ⌥⌘), `screen(g)` / `waitPrompt(ms, g)` (the half, 0 by
-  default — the whole column while nothing is split). The twenty-one in `scripts/scenarios/` are the
+  default — the whole column while nothing is split). The twenty-two in `scripts/scenarios/` are the
   regression checks for the drawer (re-attach, restart, geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a
   compose key), the hotkeys, the tab strip and the split, the new-chat flow, the project step's folders and ✕,
-  the chat list's rules and its filter, the notifications switch, the usage bar, the project cue, the header's PRs
+  the chat list's rules and its filter, the card sizes, the notifications switch, the usage bar, the project cue, the header's PRs
   and its ··· menu.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported

@@ -134,9 +134,11 @@ flow with the first answers in — a new chat in **oracle**, opening straight on
 same ⌥⌘ family drives the open chat: **⌥⌘C** its claude session, **⌥⌘T** a zsh in its folder, **⌥⌘E** VS Code Web,
 **⌥⌘G** its PR, **⌥⌘↑ / ⌥⌘↓** the chat above or below in the list, **⌥⌘← / ⌥⌘→** the tab beside — chat, zsh, GitHub
 pages, VS Code — see *The chat*) —
-and the **cog** in the window's bottom left corner, under the chat list, opens the settings, which are two things: the
+and the **cog** in the window's bottom left corner, under the chat list, opens the settings, which are three things: the
 **notifications** switch — a banner when Claude finishes or asks you something, on by default, and one setting for the
-app and every browser tab — and **the list of keys**, for when one slips the mind (and, when you have hidden a project,
+app and every browser tab —, the **cards** slider — *large*, your last prompt and Claude's last reply on every card;
+*medium*, only the last of the two, whoever said it; *compact*, neither, so the list holds about twice the chats (a question
+waiting on you stays at every size) — and **the list of keys**, for when one slips the mind (and, when you have hidden a project,
 the way back). Hovering the corner opens it, a click on the cog pins it; Esc or a click elsewhere closes it.
 There is no page header.
 

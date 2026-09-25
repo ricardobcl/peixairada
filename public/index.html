@@ -76,6 +76,15 @@
   .pop .opt input:checked { background: var(--accent); }
   .pop .opt input:checked::after { transform: translateX(12px); }
   .pop .opt input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* How much of a chat its card carries (2026-09-25): a slider of three stops under the switch — large as the cards
+     always were, medium the last word only, compact neither word. The stop names are the slider's scale, and a click. */
+  .pop .dens { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; align-items: center; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
+  .pop .dens b { font-weight: 600; color: var(--ink); }
+  .pop .dens input { width: 100%; margin: 0; accent-color: var(--accent); cursor: pointer; }
+  .pop .dens .stops { grid-column: 2; display: flex; justify-content: space-between; font-size: 11px; }
+  .pop .dens .stops span { cursor: pointer; }
+  .pop .dens .stops span:hover { color: var(--ink); }
+  .pop .dens .stops .on { color: var(--ink); font-weight: 600; }
   /* What ⌥⌘N's ✕ took off the board, and the only way back to it. Empty is nothing at all — the popover is the
      switch and the keys until something is hidden. */
   .pop .hid { display: grid; gap: 3px; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
@@ -330,6 +339,9 @@
   .card .title { margin-top: 4px; font-size: 13.5px; font-weight: 500; line-height: 1.35; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
   .card .snip { margin-top: 5px; font-size: 12px; line-height: 1.4; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
   .card .snip.you { -webkit-line-clamp: 2; }
+  /* The cog's slider (prefs.cards): medium drops whichever of the two words is the older one — the card marks it —,
+     compact drops both. The markup always holds both, so moving the slider re-renders nothing. */
+  #sessions[data-cards="medium"] .card .snip.older, #sessions[data-cards="compact"] .card .snip { display: none; }
   /* You and Claude are told apart twice over: hue on the glyph (cool teal vs Claude's clay) and
      weight on the text — Claude's line is the one you scan a list for, so it sits brighter and the
      prompt that produced it recedes. */
@@ -748,6 +760,11 @@
 <div id="settings" class="pop" hidden>
   <h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4>
   <label class="opt" title="Off, nothing posts a banner — not the app, not a browser tab, not the server — and the unread counts on the cards and the Dock go on as before"><input type="checkbox" id="notifyOn" checked><span><b>notifications</b> — a banner when Claude finishes or asks you something, while the board is not in front</span></label>
+  <div class="dens" title="How much of each chat its card carries — a question waiting on you shows at every size">
+    <b>cards</b><input type="range" id="cardsSize" min="0" max="2" step="1" value="0" list="cardsStops" aria-label="Card size">
+    <datalist id="cardsStops"><option value="0"></option><option value="1"></option><option value="2"></option></datalist>
+    <span class="stops"><span data-v="0" title="your last prompt and Claude's last reply, as always">large</span><span data-v="1" title="only the last word — yours or Claude's, whichever came last">medium</span><span data-v="2" title="neither: the title, its chips and its PRs">compact</span></span>
+  </div>
   <div class="keys" title="From anywhere on the board, the terminal included">
     <span class="kh">keys</span>
     <kbd>⌥⌘T</kbd><span>a zsh in this folder, a tab beside the chat · again to show it</span>
@@ -835,7 +852,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, foldBy: {}, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, usageFolded: false, prsOpen: false };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, foldBy: {}, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, usageFolded: false, prsOpen: false, cards: 'large' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -906,6 +923,24 @@
     fetch('/api/notifications', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ on: state.notifications }) });
     if (state.notifications && !inApp && window.Notification?.permission === 'default') Notification.requestPermission();
   });
+  // How much a card carries (2026-09-25, Ricardo: "a setting in the bottom left cog to compact the cards … make it a
+  // slider"): large is the card as it always was, your last prompt and Claude's last reply; medium keeps only the
+  // last word of the two, whoever said it; compact keeps neither — the title, its chips, its PRs. A pref, not the
+  // server's word: it is how this window looks, like the widths and the folds. cardHtml marks the older word and CSS
+  // hides by the list's data-cards, so the slider re-renders nothing. A pending question is not a word of either: it
+  // stays at every size, the one line on a card that asks you to act.
+  const CARD_SIZES = ['large', 'medium', 'compact'];
+  function applyCards() {
+    if (!CARD_SIZES.includes(prefs.cards)) prefs.cards = 'large';
+    const v = CARD_SIZES.indexOf(prefs.cards);
+    $('#sessions').dataset.cards = prefs.cards;
+    $('#cardsSize').value = v;
+    document.querySelectorAll('#settings .dens .stops span').forEach(x => x.classList.toggle('on', +x.dataset.v === v));
+  }
+  const setCards = v => { prefs.cards = CARD_SIZES[v] || 'large'; savePrefs(); applyCards(); };
+  $('#cardsSize').addEventListener('input', e => setCards(+e.target.value));
+  $('#settings .dens .stops').addEventListener('click', e => { const x = e.target.closest('[data-v]'); if (x) setCards(+x.dataset.v); });
+  applyCards();
   $('#cogBtn').onclick = e => { e.stopPropagation(); spop.pinned = !spop.pinned; if (spop.pinned) settingsShow(true); else settingsOpen(false); };
   document.addEventListener('click', e => { if (spop.pinned && !e.target.closest('#settings') && !e.target.closest('#pfoot')) settingsOpen(false); });
   // Esc on the page itself: a dialog (the picker, the project editor) or the settings popover closes,
@@ -1292,6 +1327,10 @@
   function cardHtml(s, p, q = '') {
     const color = repoColor(s.cwd), un = state.unread.get(s.id) || 0;
     const showReply = s.lastReply && s.status !== 'working';
+    // Which of the two words is the older, for the cog's *medium* cards: Claude's reply is the last word once it came
+    // after your last touch — a prompt, an answer, an Escape; before that it is the previous turn's, and yours leads.
+    const replyLast = showReply && String(s.lastReplyAt || '') >= String(s.lastUserAt || '');
+    const older = who => s.lastPrompt && showReply && (who === 'you') === replyLast ? ' older' : '';
     const act = s.done ? `<button class="act" data-act="reopen" title="Untick — bring it back">↩</button>`
       : (!s.alive || s.status === 'idle') && s.lastActivity ? `<button class="act" data-act="done" title="Tick as done (persisted; comes back on new activity)">✓</button>` : '';
     const tip = titleTip(s);
@@ -1305,8 +1344,8 @@
       ${showRepo || s.env || where || inVsCode(s) ? `<div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}</div>` : ''}
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}<span class="time" title="${esc(timeTip(s))}">${rel(s.lastActivity)}</span>${un ? `<span class="badge">${un}</span>` : ''}${act}</div>
       ${s.prs?.length ? `<div class="cprs">${s.prs.slice(0, 8).map(pr => `<a class="cpr" data-state="${esc(pr.state || '')}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`).join('')}</div>` : ''}
-      ${s.lastPrompt ? `<div class="snip you"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
-      ${showReply ? `<div class="snip claude"><b title="Claude">${ICON.claude}</b>${esc(s.lastReply)}</div>` : ''}
+      ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
+      ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${esc(s.lastReply)}</div>` : ''}
       ${asking(s) ? askHtml(s) : ''}
       <span class="abbr" title="${esc(`${s.project} · ${s.title}`)}">${esc(projAbbr(s.project))}</span>
     </div>`;
