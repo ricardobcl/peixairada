@@ -126,7 +126,9 @@ refuses to run against the real directory for the same reason.
   the plain panel header. **The colour square sits beside the project's name there too** (2026-09-22) — the same
   `.sq.pick`, so the same picker and the same ⌥-click — inked only while the pointer is in the header; it keeps its
   place in the row always, so nothing moves under the pointer. `colorAt` remembers which header the picker was
-  opened from, so the answer (`note`) pops up by the square that was clicked.
+  opened from, so the answer (`note`) pops up by the square that was clicked. **Between the project and the title
+  stands a 2 px bar in `--rink`** (2026-09-26; a `/` before): black on a light colour, white on a dark one like
+  acme's black, the page's ink on the plain header — `.shead h2 .sep`, an empty span.
 * **The chat header's row is the title, the PR chips, a task's chip and ···** (2026-09-24): every button it had —
   `#termBtn`, `#viewBtn`, `#webBtn`, `#focusBtn`, `#foldBtn`, `#detailsBtn` (the state dot and its age), the VS Code
   mark — is a row of `#hmenu`, keeping its id, so the hotkeys (`hotVsCode` clicks `#webBtn`) and the harness still

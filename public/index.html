@@ -526,7 +526,9 @@
   .shead h2 .repo { font-weight: 800; flex: 0 0 auto; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
   .shead h2 .repo:hover { text-decoration: underline; text-decoration-style: dotted; }
   .shead h2 .t { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  .shead h2 .sep { color: var(--muted); font-weight: 400; flex: none; }
+  /* a bar between the project and the title (2026-09-26, Ricardo: "instead of '/' … a vertical black bar (or white if
+     it's too dark, like 'acme' project black color)"): the header's ink, which inkOn picks by the colour's brightness */
+  .shead h2 .sep { flex: none; width: 2px; height: 15px; background: var(--rink, var(--ink)); opacity: .9; }
   /* The project's colour beside its name, and the picker for it (2026-09-22, Ricardo: "allow me to quickly change
      the project color on the header of the chat next to the project name (only on hover)"): the column's own
      square, in the header where you are already looking. It keeps its place in the row always and only inks
@@ -574,7 +576,7 @@
      from the ink: darker under white ink, lighter under dark ink (--rover across, --rover2 down, set by tintChat), so
      the buttons at the far end keep their contrast whichever ink the colour chose; the bottom-right corner is deepest. */
   #chat.tinted .shead { background: linear-gradient(180deg, transparent 15%, var(--rover2)), linear-gradient(100deg, transparent 8%, var(--rover)), var(--repo); color: var(--rink); border-bottom-color: color-mix(in srgb, var(--rink) 20%, var(--repo)); }
-  #chat.tinted .shead :is(.sep, .status, .path, .own, .chip, a) { color: color-mix(in srgb, var(--rink) 78%, transparent); }
+  #chat.tinted .shead :is(.status, .path, .own, .chip, a) { color: color-mix(in srgb, var(--rink) 78%, transparent); }
   #chat.tinted .shead .chip { border-color: color-mix(in srgb, var(--rink) 35%, transparent); }
   #chat.tinted .shead .btn, #chat.tinted .shead .btn:disabled { color: color-mix(in srgb, var(--rink) 78%, transparent); border-color: color-mix(in srgb, var(--rink) 40%, transparent); }
   #chat.tinted .shead .btn:hover { color: var(--rink); border-color: var(--rink); }
@@ -2286,7 +2288,7 @@
     const hprs = !prs.length ? '' : `<button class="hprs${prsOpen ? ' on' : ''}" id="prToggle" aria-expanded="${prsOpen}" title="${prs.length} PR${prs.length === 1 ? '' : 's'} in this chat — click to ${prsOpen ? 'fold the list' : 'list them, one per row'} · ⌥⌘G opens one">${
       prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</span>`).join('')
     }<span class="hpr more" hidden></span></button>`;
-    $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span>${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}<span class="sep">/</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
+    $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span>${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}<span class="sep"></span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
       ${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
       <button class="hmore${menu.open ? ' on' : ''}" id="moreBtn" aria-haspopup="menu" aria-expanded="${menu.open}" title="This chat: the claude session, VS Code, focus view, code folding, path and branch">${ICON.more}</button>
@@ -3076,7 +3078,7 @@
     savePrefs(); renderBoard();
     $('#chat').classList.remove('vsc');
     tintChat(repoColor(cwd));
-    $('#shead').innerHTML = `<h2><span class="repo">${esc(folderName(cwd))}</span><span class="sep">/</span><span class="t">new chat${task ? ` · task ${esc(task)}` : ''}</span></h2>`;
+    $('#shead').innerHTML = `<h2><span class="repo">${esc(folderName(cwd))}</span><span class="sep"></span><span class="t">new chat${task ? ` · task ${esc(task)}` : ''}</span></h2>`;
     $('#log').innerHTML = '<div class="empty">Say something in the terminal below — the transcript shows up here once Claude has written it.</div>';
     renderComposer(null);
     attachTerm(curTerm(), d.terminal);
