@@ -158,6 +158,9 @@ refuses to run against the real directory for the same reason.
   `acme` folder (`PROJECT_COLORS`). A card in that black is marked `.card.black`: its solid tint is the black
   itself and it borrows the dark theme's inks, because 65 % of black over a light panel is a mid-grey nothing reads on;
   `--ring` turns its clauding light white wherever the card under it is dark (the dark theme, and the tint in either).
+  **The open card bleeds into the splitter** (2026-09-26): `main:not(.scompact) #slist > .card.active` runs over the
+  list's padding to the column's edge with square right corners, and `#splitter` is `--open` on `main` — set by
+  `tintChat`, the chat's colour or the grey of none — so card, bar and the chat's tinted header are one stroke.
 * **A chat waiting on your answer first, then clauding, then ready, done last** (`RANK` / `rankOf`, the asking
   step added 2026-09-21), inside each group **by when *you* last acted**
   (`lastUserAt`), newest first; a project ranks by its newest chat. The filters and every count still go by

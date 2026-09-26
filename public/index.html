@@ -129,7 +129,9 @@
   main.scompact #slist > .card .abbr { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .4px; }
   main.scompact #slist .gsep { display: none; }   /* the fish need a line to swim along, and there is none here */
   main.scompact #slist .none { padding: 14px 2px; font-size: 10px; }
-  #splitter { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--panel); }
+  /* The bar between the list and the chat is the open chat's colour (2026-09-26): --open on main, set with the chat's
+     tint, so the open card, the bar and the chat's header are one stroke of it — see .card.active. */
+  #splitter { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--open, var(--line)); border-right: 1px solid var(--open, var(--line)); background: var(--open, var(--panel)); }
   #splitter:hover, #splitter.drag { background: var(--accent); }
   #chat { --repo: initial; flex: 1; min-width: 320px; display: grid; grid-template-rows: auto auto auto 1fr auto; grid-template-columns: minmax(0, 1fr); min-height: 0; }
   /* Placed by hand: #prlist, #rival and #composer hide with display:none, which takes them out of auto-placement
@@ -370,6 +372,11 @@
   /* the open chat: a solid tint of its colour under a ring of it (2026-09-20, Ricardo: "a more solid
      background, so we can notice it better"); every other card keeps the gradient wash */
   .card.active { border-color: var(--repo, var(--nocolor)); outline: 2px solid var(--repo, var(--nocolor)); outline-offset: -1px; background: color-mix(in srgb, var(--repo, var(--nocolor)) 65%, var(--panel)); }
+  /* …and it bleeds into the splitter (2026-09-26, Ricardo: "the open card now is hard to spot… bleeding the color to
+     the right so that the bar that divides the chat and the column stays in that card color"): over the list's
+     padding to the column's edge, its right corners square, against the bar in the same colour (#splitter, --open).
+     Not on the rail of squares, which has no splitter. */
+  main:not(.scompact) #slist > .card.active { margin-right: -8px; border-top-right-radius: 0; border-bottom-right-radius: 0; }
   /* A card in the board's own black (PROJECT_COLORS — acme): 65 % of black over a light panel is a mid-grey
      nothing reads on, so the tint is the colour itself and the card borrows the dark theme's inks — they inherit,
      so title, snips, times and the two speaker marks follow in one rule. In the dark theme they are what they were. */
@@ -1128,6 +1135,7 @@
   // under white ink, white under dark), .tinted while there is one (CSS cannot ask whether --repo is set).
   const tintChat = color => {
     const c = $('#chat'); c.classList.toggle('tinted', !!color);
+    $('#main').style.setProperty('--open', color || 'var(--nocolor)');   // the splitter: the chat's colour, the grey of none, the panel until a chat is open
     if (color) {
       const ink = inkOn(color), veil = a => ink === '#ffffff' ? `rgb(0 0 0 / ${a})` : `rgb(255 255 255 / ${a + .08})`;
       c.style.setProperty('--repo', color); c.style.setProperty('--rink', ink); c.style.setProperty('--rover', veil(.26)); c.style.setProperty('--rover2', veil(.16));

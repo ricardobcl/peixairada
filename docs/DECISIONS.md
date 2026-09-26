@@ -4,6 +4,21 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-26.
 
+## Decisions of 2026-09-26 — the open card bleeds into the splitter
+
+Ricardo: "the open card now is hard to spot... can we have some extra visual cue like bleeding the color to the right
+so that the bar that divides the chat and the column stays in that card color".
+
+* **The open card runs over the list's padding to the column's edge**, its right corners square, and **the splitter
+  is the open chat's colour** — `--open` on `main`, set by `tintChat` with the chat's tint (the grey of no colour
+  for a chat without one, the panel again while no chat is open) — so the card, the bar and the chat's tinted
+  header are one stroke of the colour: the card reads as the tab the chat hangs off. The card's 1 px border and
+  2 px ring at its right edge are in the same colour, so the seam does not show. The splitter's hover and drag
+  keep the accent.
+* Not on the rail of squares (⌘B), which has no splitter: the rule is scoped to `main:not(.scompact)`.
+* Looked at on the live board with the admin-service chat open (its blue from the card through the bar to the
+  header) and with none.
+
 ## Decisions of 2026-09-26 — the usage rows spaced out
 
 Ricardo: "space a bit more the 3 token usage on the bottom left".
