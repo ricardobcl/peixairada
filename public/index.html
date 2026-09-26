@@ -308,7 +308,7 @@
   main.scompact .sedge .w { display: none; }   /* the rail has room for the arrow and the number */
   /* --repo is reset here on purpose: custom properties inherit, and the chat list sets its own for its edge (the
      black on ALL) — without the reset every colourless card wore that. The card's inline --repo still wins. */
-  .card { --repo: initial; background: var(--panel); border: 2px solid var(--line); border-radius: 10px; padding: 8px 10px 7px; cursor: pointer; min-width: 0; overflow: hidden; position: relative; }
+  .card { --repo: initial; background: var(--panel); border: 2px solid var(--line); border-radius: 0; padding: 8px 10px 7px;   /* square since 2026-09-26 (Ricardo: "remove the round corners from cards"); 10 px before */ cursor: pointer; min-width: 0; overflow: hidden; position: relative; }
   /* Ready and done cards wear the wash and a plain edge (2026-09-20, Ricardo: "remove the border highlight for the
      ready cards"); the colour stays on the clauding card's edge, under its ring, and comes back on hover and on the open card. */
   .card.working { border-color: color-mix(in srgb, var(--repo, var(--nocolor)) 85%, var(--line)); }
@@ -334,7 +334,7 @@
      The order of the three rules is their priority: work beats a monitor, a question beats both. */
   @property --spin { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
   .card.working, .card.watching, .card.asking { box-shadow: 0 0 0 1px color-mix(in srgb, var(--lit) 45%, transparent), 0 0 18px color-mix(in srgb, var(--lit) 35%, transparent); }
-  .card.working::before, .card.watching::before, .card.asking::before { content: ''; position: absolute; inset: 0; border-radius: 8px; padding: 3px; pointer-events: none;
+  .card.working::before, .card.watching::before, .card.asking::before { content: ''; position: absolute; inset: 0; border-radius: 0; padding: 3px; pointer-events: none;
     background: repeating-conic-gradient(from var(--spin), transparent 0 calc(var(--seg) * .45), var(--lit) calc(var(--seg) * .92), transparent var(--seg));
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
     animation: ring var(--spins, 1.4s) linear infinite; }
@@ -374,9 +374,9 @@
   .card.active { border-color: var(--repo, var(--nocolor)); outline: 2px solid var(--repo, var(--nocolor)); outline-offset: -1px; background: color-mix(in srgb, var(--repo, var(--nocolor)) 65%, var(--panel)); }
   /* …and it bleeds into the splitter (2026-09-26, Ricardo: "the open card now is hard to spot… bleeding the color to
      the right so that the bar that divides the chat and the column stays in that card color"): over the list's
-     padding to the column's edge, its right corners square, against the bar in the same colour (#splitter, --open).
-     Not on the rail of squares, which has no splitter. */
-  main:not(.scompact) #slist > .card.active { margin-right: -8px; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+     padding to the column's edge, against the bar in the same colour (#splitter, --open). Not on the rail of squares,
+     which has no splitter. */
+  main:not(.scompact) #slist > .card.active { margin-right: -8px; }
   /* A card in the board's own black (PROJECT_COLORS — acme): 65 % of black over a light panel is a mid-grey
      nothing reads on, so the tint is the colour itself and the card borrows the dark theme's inks — they inherit,
      so title, snips, times and the two speaker marks follow in one rule. In the dark theme they are what they were. */

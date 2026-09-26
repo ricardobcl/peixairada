@@ -4,6 +4,15 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-26.
 
+## Decisions of 2026-09-26 — square cards
+
+Ricardo: "remove the round corners from cards".
+
+* `.card`'s 10 px radius is 0, and so is the 8 px of the ring its `::before` draws inside the border for a
+  clauding, watching or asking card — a round light on a square card would have shown at the corners. The open
+  card's bleed into the splitter no longer needs to square its right corners. The PR chips keep their 4 px: they
+  are chips, not cards. The folded rail's squares are square too.
+
 ## Decisions of 2026-09-26 — paths and pages in the chat are links
 
 Ricardo: "let me click url's on chat and open them if local or open in web if it's web".
