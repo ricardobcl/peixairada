@@ -123,9 +123,10 @@ refuses to run against the real directory for the same reason.
   `--rover`/`--rover2` and `#chat.tinted`; `--rink` is the ink that reads on it, white or near-black by Peacock's own
   brightness rule (`inkOn()`), and every control in `.shead` is redrawn in it; the veils (`--rover` across, `--rover2`
   down) pull the colour *away* from that ink towards the bottom right, so contrast holds at the buttons. No colour →
-  the plain panel header. **The colour square sits beside the project's name there too** (2026-09-22) — the same
-  `.sq.pick`, so the same picker and the same ⌥-click — inked only while the pointer is in the header; it keeps its
-  place in the row always, so nothing moves under the pointer. `colorAt` remembers which header the picker was
+  the plain panel header. **The colour square sits beside the project's name there too** (2026-09-22; *before* it since 2026-09-26, as in
+  the list's head, so the bar has the row's 6 px gap on both sides) — the same `.sq.pick`, so the same picker and
+  the same ⌥-click — inked only while the pointer is in the header; it keeps its place in the row always, so
+  nothing moves under the pointer. `colorAt` remembers which header the picker was
   opened from, so the answer (`note`) pops up by the square that was clicked. **Between the project and the title
   stands a 2 px bar in `--rink`, the header's whole height** (2026-09-26; a `/` before): black on a light colour,
   white on a dark one like acme's black, the page's ink on the plain header — `.shead h2 .sep`, an empty span

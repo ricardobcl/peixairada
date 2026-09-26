@@ -531,6 +531,9 @@
      ink, which inkOn picks by the colour's brightness, the whole height of the header. The span only holds the
      2 px of room in the row; the bar is its ::before, positioned from the header (.shead is the containing block),
      at the span's own x — so the h2's overflow: hidden, which clips the row, does not clip it. */
+  /* the same 6 px gap either side of it (2026-09-26, Ricardo: "make the space between the last letter and the bar equal
+     to the next letter on the right"): the colour square went before the project's name, as it is in the list's
+     head, so nothing but the row's gap stands between the name and the bar */
   .shead h2 .sep { flex: none; width: 2px; align-self: stretch; }
   .shead h2 .sep::before { content: ''; position: absolute; top: 0; bottom: 0; width: 2px; background: var(--rink, var(--ink)); opacity: .9; }
   /* The project's colour beside its name, and the picker for it (2026-09-22, Ricardo: "allow me to quickly change
@@ -2292,7 +2295,7 @@
     const hprs = !prs.length ? '' : `<button class="hprs${prsOpen ? ' on' : ''}" id="prToggle" aria-expanded="${prsOpen}" title="${prs.length} PR${prs.length === 1 ? '' : 's'} in this chat — click to ${prsOpen ? 'fold the list' : 'list them, one per row'} · ⌥⌘G opens one">${
       prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</span>`).join('')
     }<span class="hpr more" hidden></span></button>`;
-    $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span>${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}<span class="sep"></span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
+    $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}<span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span><span class="sep"></span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
       ${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
       <button class="hmore${menu.open ? ' on' : ''}" id="moreBtn" aria-haspopup="menu" aria-expanded="${menu.open}" title="This chat: the claude session, VS Code, focus view, code folding, path and branch">${ICON.more}</button>
