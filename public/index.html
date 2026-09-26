@@ -392,7 +392,6 @@
   .card .trow { display: flex; align-items: flex-start; gap: 7px; min-width: 0; }
   .card .trow .title { flex: 1; margin-top: 0; }
   .card .trow .badge { margin-top: 2px; }
-  .card .trow .act { margin-top: -1px; }
   .card .trow .chip.agents { margin-top: 3px; color: var(--working); border-color: color-mix(in srgb, var(--working) 55%, transparent); }
   /* a monitor or a background command the harness is still running: the same chip in the watch colour, with the
      radar mark — it says *something is running here*, next to the agents chip that says *Claude is* */
@@ -418,10 +417,12 @@
      hides it with the rest of the card's children. */
   .card .time { position: absolute; top: 0; left: 0; z-index: 1; font-size: 10px; line-height: 11px; padding: 0 6px 0 10px; color: var(--ink); opacity: 0; pointer-events: none; transition: opacity .12s; }
   .card:hover .time { opacity: .75; pointer-events: auto; }
-  /* on Fable (2026-09-27): a stylized F with a spark at the title row's end, in the accent — the card's own ink on the solid tint */
-  .card .trow .fable { margin-top: 1px; color: var(--accent); flex: none; }
-  .card .trow .fable .ic { width: 15px; height: 15px; }
+  /* on Fable (2026-09-27): a stylized F with a spark, last in the top row after the ✓, in the accent — the card's own ink on
+     the solid tint. Both are 18 px tall there, the row's own height, so a row that holds only the marks is no taller. */
+  .card .top .fable { color: var(--accent); flex: none; display: inline-flex; align-items: center; height: 18px; }
+  .card .top .fable .ic { width: 15px; height: 15px; }
   .card:is(.active, :hover, .qsel) .fable { color: inherit; }
+  .card .top .act { height: 18px; }
   .card .title { margin-top: 4px; font-size: 13.5px; font-weight: 500; line-height: 1.35; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
   .card .snip { margin-top: 5px; font-size: 12px; line-height: 1.4; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
   .card .snip.you { -webkit-line-clamp: 2; }
@@ -1653,6 +1654,11 @@
     const older = who => s.lastPrompt && showReply && (who === 'you') === replyLast ? ' older' : '';
     const act = s.done ? `<button class="act" data-act="reopen" title="Untick — bring it back">↩</button>`
       : (!s.alive || s.status === 'idle') && s.lastActivity ? `<button class="act" data-act="done" title="Tick as done (persisted; comes back on new activity)">✓</button>` : '';
+    // The F for Fable (2026-09-27) and the ✓ / ↩ end the top row — the project name's height —, the tick first and the
+    // F last, so the tick takes the F's place when there is none (Ricardo, the same day: "first done icon, then F for
+    // fable. when fable is not there, move the done icon to the right where F would be"). Either brings the row into
+    // being on a card that had none — a folder project's, where the name is not shown.
+    const fable = onFable(s) ? `<span class="fable" title="on Fable — ${esc(s.model)}, the model Claude last answered with">${ICON.fable}</span>` : '';
     const tip = titleTip(s);
     const showRepo = p.key === ALL || p.custom;
     // Where it runs, when that is news: a drawer here is the norm and says nothing (2026-09-23, Ricardo: "remove the
@@ -1662,8 +1668,8 @@
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${s.id}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
       <span class="time" title="${esc(timeTip(s))}">${rel(s.lastActivity)}</span>
-      ${showRepo || s.env || where || inVsCode(s) ? `<div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}</div>` : ''}
-      <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${onFable(s) ? `<span class="fable" title="on Fable — ${esc(s.model)}, the model Claude last answered with">${ICON.fable}</span>` : ''}${un ? `<span class="badge">${un}</span>` : ''}${act}</div>
+      ${showRepo || s.env || where || inVsCode(s) || act || onFable(s) ? `<div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}${act}${fable}</div>` : ''}
+      <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${un ? `<span class="badge">${un}</span>` : ''}</div>
       ${s.prs?.length ? `<div class="cprs">${s.prs.slice(0, 8).map(pr => `<a class="cpr" data-state="${esc(pr.state || '')}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`).join('')}</div>` : ''}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${esc(s.lastReply)}</div>` : ''}

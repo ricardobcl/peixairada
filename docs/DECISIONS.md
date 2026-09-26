@@ -19,14 +19,22 @@ on hover and should be a top left on the card".
 * **An F with a spark for a chat on Fable** (`onFable`, `ICON.fable`): the model is the last assistant line's
   (`s.model`, which the server already kept for the chat header), so a chat that switched models shows what it runs
   on now; a `<synthetic>` line — Claude Code's own, for an API error — no longer overwrites it. A stylized F over a
-  star: a star on a card reads as a favourite. It stands at the end of the title row, where the age was until the
-  same day; on the solid tint of a hovered or open card it takes the card's ink, like the matcher's hits.
+  star: a star on a card reads as a favourite. It stood at the end of the title row for an hour, where the age had
+  been; on the solid tint of a hovered or open card it takes the card's ink, like the matcher's hits.
+* **The ✓ and the F end the top row, the tick first** (Ricardo, next: "both F and done icon are on the row of the
+  card title, but I want them above, on the project name height. also, switch the order, first done icon, then F for
+  fable. when fable is not there, move the done icon to the right where F would be"): both leave the title row for the
+  end of `.top`, after the folder chips and VS Code's mark, right-aligned by the row's spacer — so with no F the tick is
+  the last thing on the row, where the F would be. A card in a folder project had no top row (the name is not shown
+  there); the tick or the F brings it into being, and both are 18 px tall in it, the row's own height, so a row
+  holding only the marks costs no more than one with a name. The title row keeps the agents and task chips and the
+  unread badge.
 * **The age is a corner mark under the pointer** (`.card .time`): the card's first child, absolute at the top left,
   invisible until the card is hovered. A first cut was a tag on a wash of the panel, 12 px tall — it sat over the
   first letters of the project's name. Now 11 px tall with a 10 px face, in the 8 px of top padding: it ends a pixel
   above the first row's capitals, so it covers nothing and needs no background. It cannot sit on the border — the
   card clips its overflow for the ring and the ellipsis. Nothing moves under the pointer (the ✓ that a hover brings
-  out narrows the title, as before). The tick, the badge and the chips keep the title row's right end.
+  out narrows the title, as before). The badge and the chips keep the title row's right end.
   → `scripts/scenarios/card-marks.mjs` checks all three: the order against the server's and ⌥⌘K's, the one F and
   its tooltip, the age's opacity and place at rest and hovered. `makeFixture` takes a `model` per chat for it.
 

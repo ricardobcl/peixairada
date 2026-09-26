@@ -52,7 +52,16 @@ export default async function (ctx) {
   // ---- the F on the Fable card, and on no other ----
   out.fable = await ctx.evaluate(`[...document.querySelectorAll('#slist > .card')].filter(c => c.querySelector('.fable')).map(c => [c.querySelector('.title').textContent, c.querySelector('.fable').title])`);
   ctx.assert.deepEqual(out.fable, [['Fable replied last', 'on Fable — claude-fable-5-1, the model Claude last answered with']], 'one mark, naming the model');
-  ctx.assert.ok(await ctx.evaluate(`${card('Fable replied last')}.querySelector('.trow .fable svg')`), 'an inline SVG in the title row');
+  ctx.assert.ok(await ctx.evaluate(`${card('Fable replied last')}.querySelector('.top .fable svg')`), 'an inline SVG in the top row');
+  // the ✓ before the F, both ending the top row; with no F the ✓ stands where the F would (Ricardo, the same day)
+  const ends = t => ctx.evaluate(`(c => { const r = e => e && Math.round(e.getBoundingClientRect().right), x = e => e && Math.round(e.getBoundingClientRect().left), edge = r(c) - 12; const a = c.querySelector('.top .act'), f = c.querySelector('.top .fable');
+    return { edge, act: r(a), actLeft: x(a), fable: r(f), fableLeft: x(f), y: Math.round(a.getBoundingClientRect().top) - Math.round(c.querySelector('.repo').getBoundingClientRect().top), inTrow: !!c.querySelector('.trow .act') }; })(${card(t)})`);
+  out.ends = { fable: await ends('Fable replied last'), opus: await ends('Opus, you wrote after it') };
+  ctx.assert.equal(out.ends.fable.fable, out.ends.fable.edge, 'the F ends the row, at the padding');
+  ctx.assert.ok(out.ends.fable.act < out.ends.fable.fableLeft, 'the ✓ before the F');
+  ctx.assert.equal(out.ends.opus.fable, null, 'no F on the Opus card');
+  ctx.assert.equal(out.ends.opus.act, out.ends.opus.edge, 'the ✓ takes the F\'s place');
+  ctx.assert.ok(Math.abs(out.ends.opus.y) <= 2 && !out.ends.opus.inTrow, 'at the project name\'s height, not in the title row');
 
   // ---- the time: hidden at rest, at the top left under the pointer, nothing moved ----
   const t = 'Opus, you wrote after it';

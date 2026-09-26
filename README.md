@@ -176,7 +176,7 @@ filter is on.
 *ready · clauding · done*, a dot in the state's colour and a count (the word too when the list is wide), each a
 toggle — and the set you leave on is remembered. A card is washed in its project's
 colour; only a clauding card (the running light), a hovered one and the open one wear the colour on their edge too.
-A chat running on **Fable** wears a small *F* with a spark at the end of its title row. **«** in its header folds the list to a rail and **»** brings
+A chat running on **Fable** wears a small *F* with a spark at the right of its top row, after the ✓ that ticks it done. **«** in its header folds the list to a rail and **»** brings
 it back, width and all. **＋** in the head starts a new chat: a terminal running `claude` in that folder (it asks
 which folder when the project spans several, and which project first on ALL, as **⌥⌘N** does), and the chat pane
 switches to it the moment Claude registers the session. **A folder that launches claude its own way** — a
