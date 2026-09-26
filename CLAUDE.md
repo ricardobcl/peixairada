@@ -178,9 +178,14 @@ refuses to run against the real directory for the same reason.
   from `applyCards` (the slider changes heights under the same scroll). An end that is off keeps its words while it
   fades — read it as zero. → `scripts/scenarios/list-ends.mjs`.
 * **The timeline is the list's scrollbar, with the days on it** (2026-09-25): `#tline`, the first of `#sessions`' two
-  columns (26 px, the track 21.5 px in — under the fish's middle and the cog's), row 2 only; the native scrollbar is
-  hidden while it shows, and it is `display: none` on the rail of squares. **To scale**: the rail's inner height is
-  the list's `scrollHeight`, so a tick is where its run starts in the list and the thumb is the window. A run
+  columns, row 2 only; the native scrollbar is hidden while it shows, and it is `display: none` on the rail of
+  squares. **At rest it is the thumb alone** (2026-09-26): 12 px wide flush against the list's coloured edge (`TL_W`;
+  26 px and lined up under the fish and the cog before), the cards 8 px on from it, the thumb an orange pill
+  (`--spend`, the usage bars' — beside the edge, not on it, so it reads on an orange project too), never under
+  `TL_MIN` tall, wider under the pointer. The track in the state groups' colours and the tick per day went (Ricardo:
+  "too close to the cards, it's green, it has the ticks for dates"): the fish line and the day lines in the list say
+  the same, and the labels say it in words, so they lost their coloured dot too. **To scale**: the rail's inner height
+  is the list's `scrollHeight`, so a label is where its run starts in the list and the thumb is the window. A run
   (`tl.runs`, built in `renderSessionList`, none under a query) is one day *and* one state group in a row, so today
   can come back under the done cards. **The Dock's swell is a fisheye** (`tlWarp`, Sarkar–Brown, radius `TL_R`)
   applied to everything drawn, around the pointer, which stays a fixed point — so a drag reads the list's position
@@ -191,9 +196,10 @@ refuses to run against the real directory for the same reason.
   A label clicked scrolls its run under the top pill; a wheel over the rail scrolls the list; scrolling elsewhere
   shows the top run beside the thumb (`tlBubble`). `peix.state().timeline` has `k` and the runs.
   **What counts as the rail is `.tl-catch`**, under everything on it: from x = 0 of the window (over the list's
-  coloured edge, as `#pfoot` is) and, while the days are out, as far right as a label has reached plus 28 px
-  (`tl.reach`, a high-water mark until the swell is back in) — so a gap between labels never closes it. A press
-  there (right of the strip, on no label) is a press on the label ringed `.near`.
+  coloured edge, as `#pfoot` is) to the cards' edge (`TL_CATCH`, over the list's padding) and, while the days are
+  out, as far right as a label has reached plus 28 px (`tl.reach`, a high-water mark until the swell is back in) —
+  so a gap between labels never closes it. A press there (right of the strip, on no label) is a press on the label
+  ringed `.near`; a press on the thumb *as drawn* holds it where it was grabbed.
   → `scripts/scenarios/timeline.mjs`.
 * **The plan usage is the chat list's footer** (2026-09-24): `#usage`, the fourth row of `#sessions`. Open, a row
   per window — name, a bar in `--spend` (orange; red from 90 %, `uColor`), a tick where the window's clock stands

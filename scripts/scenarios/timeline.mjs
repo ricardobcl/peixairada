@@ -1,11 +1,11 @@
-// The chat list's timeline (2026-09-25): a slim rail down the left of the list, from under the fish to over the cog,
-// that is the list in miniature — a tick where each run of one day's cards (in one state group) begins, the groups as
-// a coloured track, the window as a thumb. Pointed at it swells like the Dock: the days near the pointer come out
-// over the cards as labels, the nearest largest, pushed apart so none overlap. Dragged it scrolls the list, a day
-// clicked is scrolled to, a wheel over it scrolls, and while the list scrolls under a hand elsewhere the day at the
-// top of the window shows beside the thumb. What this checks is the runs, where the ticks and the thumb sit against
-// the list, the swell, the three ways of moving the list from the rail, the bubble, a query (no days), the rail of
-// squares (no timeline) and that the track lines up with the fish and the cog.
+// The chat list's timeline (2026-09-25; pared down 2026-09-26): a slim rail down the far left of the list, beside its
+// coloured edge, that is the list in miniature — at rest the window as an orange thumb and nothing else, a label per
+// run of one day's cards (in one state group) placed where the run begins. Pointed at it swells like the Dock: the
+// days near the pointer come out over the cards as labels, the nearest largest, pushed apart so none overlap. Dragged
+// it scrolls the list, a day clicked is scrolled to, a wheel over it scrolls, and while the list scrolls under a hand
+// elsewhere the day at the top of the window shows beside the thumb. What this checks is the runs, where the labels
+// and the thumb sit against the list, the rail's place and its thumb's look, the swell, the three ways of moving the
+// list from the rail, the bubble, a query (no days) and the rail of squares (no timeline).
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { makeFixture } from '../fixture.mjs';
@@ -17,18 +17,18 @@ const noonBack = n => { const d = new Date(); d.setDate(d.getDate() - n); d.setH
 const railDay = n => { const d = noonBack(n), dm = `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}`; return n < 7 ? `${d.toLocaleDateString('en', { weekday: 'short' })} ${dm}` : d.getFullYear() === new Date().getFullYear() ? dm : `${dm}-${d.getFullYear()}`; };
 const settled = (ctx, k) => ctx.waitFor(`window.peix.state().timeline.k === ${k}`, { what: `the swell at ${k}` });
 const move = (ctx, x, y) => ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: Math.round(x), y: Math.round(y) });
-// Where everything on the rail is, and where the list says it should be: a tick's top against its run's first card,
-// both as a fraction of the whole (the rail's inner height, the list's scroll height).
+// Where everything on the rail is, and where the list says it should be: a label's middle against its run's first
+// card, both as a fraction of the whole (the rail's inner height, the list's scroll height). At rest a label is placed
+// where its run is, unwarped, only kept inside the rail by half its height — so the first run's sits a few px low.
 const rail = ctx => ctx.evaluate(`(() => {
   const r = document.querySelector('#tline'), l = document.querySelector('#slist'), rr = r.getBoundingClientRect(), PAD = 6, H = r.clientHeight - 2 * PAD;
   const cards = [...l.querySelectorAll(':scope > .card')], runs = window.peix.state().timeline.runs;
   const frac = el => (parseFloat(el.style.top) - PAD) / H;
-  const th = r.querySelector('.tl-thumb');
-  const labs = [...r.querySelectorAll('.tl-labs .tl-lab')].map(el => { const b = el.getBoundingClientRect(); return { on: el.classList.contains('on'), near: el.classList.contains('near'), text: el.textContent, top: b.top, bottom: b.bottom, h: b.height, run: +el.dataset.run }; });
-  return JSON.stringify({ rect: rr.toJSON(), H, runs,
-    ticks: [...r.querySelectorAll('.tl-tick')].map((el, i) => ({ at: frac(el), want: cards[runs[i].i].offsetTop / l.scrollHeight, today: el.classList.contains('today') })),
-    segs: [...r.querySelectorAll('.tl-seg')].map(el => el.className.replace('tl-seg ', '')),
-    thumb: th.hidden ? null : { at: frac(th), len: parseFloat(th.style.height) / H, want: l.scrollTop / l.scrollHeight, wantLen: l.clientHeight / l.scrollHeight },
+  const th = r.querySelector('.tl-thumb'), ts = getComputedStyle(th);
+  const labY = el => (parseFloat(/translateY\\(([-\\d.]+)px\\)/.exec(el.style.transform)?.[1] ?? NaN) + 8.5 - PAD) / H;
+  const labs = [...r.querySelectorAll('.tl-labs .tl-lab')].map((el, i) => { const b = el.getBoundingClientRect(); return { on: el.classList.contains('on'), near: el.classList.contains('near'), text: el.textContent, top: b.top, bottom: b.bottom, h: b.height, run: +el.dataset.run, at: labY(el), want: cards[runs[i].i].offsetTop / l.scrollHeight }; });
+  return JSON.stringify({ rect: rr.toJSON(), H, runs, drawn: r.querySelectorAll('.tl-tick, .tl-seg, .tl-base').length,
+    thumb: th.hidden ? null : { at: frac(th), len: parseFloat(th.style.height) / H, want: l.scrollTop / l.scrollHeight, wantLen: l.clientHeight / l.scrollHeight, width: th.getBoundingClientRect().width, color: ts.backgroundColor, spend: getComputedStyle(document.documentElement).getPropertyValue('--spend').trim() },
     labs, scroll: l.scrollTop, full: l.scrollHeight, view: l.clientHeight });
 })()`).then(JSON.parse);
 
@@ -56,22 +56,26 @@ export default async function (ctx) {
   // the runs: a day and a state group in a row each — ready by your last touch, then the done ones
   out.at = await rail(ctx);
   ctx.assert.deepEqual(out.at.runs.map(r => [r.g, r.n]), [['ready', 3], ['ready', 4], ['ready', 3], ['ready', 2], ['done', 2]], 'five runs: four days of ready chats, then the done ones');
-  ctx.assert.deepEqual(out.at.segs, ['ready', 'done'], 'the track in two groups, in their colours');
-  ctx.assert.equal(out.at.ticks.length, 5, 'a tick for each run');
-  ctx.assert.deepEqual(out.at.ticks.map(t => t.today), [true, false, false, false, false], 'today\'s tick is today\'s');
-  for (const t of out.at.ticks) ctx.assert.ok(Math.abs(t.at - t.want) < .004, `a tick sits where its run begins in the list (${t.at.toFixed(3)} against ${t.want.toFixed(3)})`);
+  ctx.assert.equal(out.at.labs.length, 5, 'a label for each run');
+  for (const l of out.at.labs) ctx.assert.ok(Math.abs(l.at - l.want) < .006, `a label sits where its run begins in the list (${l.at.toFixed(3)} against ${l.want.toFixed(3)})`);
   ctx.assert.ok(out.at.thumb && Math.abs(out.at.thumb.at - out.at.thumb.want) < .004 && Math.abs(out.at.thumb.len - out.at.thumb.wantLen) < .004, 'the thumb is the window');
   ctx.assert.ok(out.at.labs.every(l => !l.on), 'no labels at rest');
-  // the track under the fish and over the cog
-  const line = await ctx.evaluate(`JSON.stringify(['#tline .tl-base', '#shd .brand', '#cogBtn'].map(s => (b => b.left + b.width / 2)(document.querySelector(s).getBoundingClientRect())))`).then(JSON.parse);
-  ctx.assert.ok(Math.abs(line[0] - line[1]) <= 1.5 && Math.abs(line[0] - line[2]) <= 1.5, `the track lines up with the fish and the cog (${line.join(', ')})`);
+  ctx.assert.equal(out.at.drawn, 0, 'no track and no ticks: the thumb is all there is at rest (2026-09-26)');
+  // the rail at the far left, 12 px beside the list's coloured edge, the cards 8 px on from it; the thumb in the
+  // board's orange, 5 px wide until the pointer is on the rail, then 8
+  const place = await ctx.evaluate(`(() => { const s = document.querySelector('#sessions').getBoundingClientRect(), r = document.querySelector('#tline').getBoundingClientRect(), c = document.querySelector('#slist > .card').getBoundingClientRect(); return JSON.stringify({ edge: r.left - s.left, width: r.width, card: c.left - r.right }); })()`).then(JSON.parse);
+  ctx.assert.deepEqual(place, { edge: 4, width: 12, card: 8 }, `the rail beside the edge, the cards 8 px on from it (${JSON.stringify(place)})`);
+  const rgb = hex => `rgb(${[1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
+  ctx.assert.equal(out.at.thumb.color, rgb(out.at.thumb.spend), `the thumb is the board's orange (${out.at.thumb.color} for ${out.at.thumb.spend})`);
+  ctx.assert.equal(out.at.thumb.width, 5, 'a 5 px pill at rest');
   await ctx.shot('rest', { x: 0, y: 0, width: 420, height: 920 });
 
   // pointed at, over the third run's tick: labels come out, that one nearest and largest, none overlapping
-  const x = out.at.rect.left + 18, yOf = (r, i) => r.rect.top + 6 + r.ticks[i].at * r.H;
+  const x = out.at.rect.left + 6, yOf = (r, i) => r.rect.top + 6 + r.labs[i].at * r.H;
   await move(ctx, x, yOf(out.at, 2));
   await settled(ctx, 1);
   out.hover = await rail(ctx);
+  ctx.assert.equal(out.hover.thumb.width, 8, 'the thumb widens under the pointer');
   const shown = out.hover.labs.filter(l => l.on).sort((a, b) => a.top - b.top);
   ctx.assert.ok(shown.length >= 3, `several days out (${shown.length})`);
   const near = out.hover.labs.find(l => l.near);
@@ -154,7 +158,7 @@ export default async function (ctx) {
   await ctx.evaluate(`(q => { q.value = 'back'; q.dispatchEvent(new Event('input', { bubbles: true })); })(document.querySelector('#q'))`);
   await ctx.waitFor(`window.peix.state().timeline.runs.length === 0`, { what: 'no runs under a query' });
   await ctx.sleep(100);
-  ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('#tline .tl-tick').length`), 0, 'and no ticks');
+  ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('#tline .tl-labs .tl-lab').length`), 0, 'and no labels');
   await ctx.evaluate(`document.querySelector('#q').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
   await ctx.waitFor(`window.peix.state().timeline.runs.length === 5`, { what: 'the runs back' });
 

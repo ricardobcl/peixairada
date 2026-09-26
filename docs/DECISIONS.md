@@ -2,7 +2,34 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-09-25.
+this file is the *why* and the *state*. Last updated 2026-09-26.
+
+## Decisions of 2026-09-26 — the timeline pared down to an orange thumb at the far left
+
+Ricardo: "the timeline on the left is a bit ugly: it's too close to the cards, it's green, it's has the ticks for
+dates, which is not pretty. what do you suggest? I would like it to stick to the far left and if we need color, use
+orange" — and, to the proposal below, "do it".
+
+* **The rail is 12 px, flush against the list's coloured edge** (26 px before, its track 21.5 px in so as to line up
+  under the fish and the cog — an alignment given up for the far left). The list's own padding grows from 4 to 8 px,
+  so the cards start 10 px further left than they did and 8 px clear of the rail.
+* **At rest, the thumb alone**: a 5 px pill in `--spend`, the usage bars' orange under it and the board's one true
+  orange (`--accent` is terracotta), 90 % opaque; under the pointer 8 px and solid, like an overlay scrollbar that
+  is hovered. Never under 24 px tall (`TL_MIN`; 10 before), so a long list's is still there to find — and a press
+  on the thumb *as drawn* (taller than the window, or swollen round the pointer) now holds it where it was grabbed
+  instead of counting as a press on the track and jumping.
+* **Beside the edge, not on it.** Mocked both: on the edge itself the thumb vanished on a project whose Peacock colour
+  is orange; beside it, on the panel, it reads on every colour and in both themes.
+* **The track in the state groups' colours went** — on ALL it was one long green — **and so did the tick per day.**
+  The fish line in the list already marks where clauding ends and ready begins, the day lines mark the days, and the
+  labels say the state in words on hover; the labels lost their coloured state dot for the same reason. What is
+  gone from the rail at rest: the ready/done boundary and the bold tick for today.
+* The labels come out 16 px from the rail's left (`TL_LX`; 30 before) and the rail's reach at rest is 24 px
+  (`TL_CATCH`: the 4 px edge, the rail and the list's padding, to the cards' edge). The near label's ring and the
+  scroll bubble's edge are in the same orange.
+* `timeline.mjs`: the runs are placed by their labels now (at rest a label sits where its run is, only kept inside
+  the rail by half its height); checks the rail's place and width, the cards' distance, the thumb's colour and its
+  two widths, and that nothing else is drawn at rest. The fish-and-cog alignment check is gone with the alignment.
 
 ## Decisions of 2026-09-26 — the cards wear more of their colour at rest
 
