@@ -19,7 +19,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.layout, { projects: false, first: 'brandBtn', fishX: out.layout.fishX }, 'no projects column, and the fish heads the chat list');
   ctx.assert.ok(out.layout.fishX < 24, 'at the window\'s left');
   out.all = await head();
-  ctx.assert.equal(out.all.text, 'ALL▾', 'ALL and its caret — no count since the head became one row');
+  ctx.assert.equal(out.all.text, 'ALL', 'ALL alone — no caret since 2026-09-26, no count since the head became one row');
   ctx.assert.equal(out.all.x, false, 'ALL has nothing to clear');
   await ctx.shot('1-all', { x: 0, y: 0, width: 520, height: 140 });
 
@@ -48,7 +48,7 @@ export default async function (ctx) {
   await ctx.evaluate(`(() => { const q = document.querySelector('#pickq'); q.value = ${JSON.stringify(folder)}; q.dispatchEvent(new Event('input')); q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })()`);
   out.proj = await head();
   ctx.assert.equal(await pickOpen(), false, 'the choice closes it');
-  ctx.assert.ok(out.proj.text.startsWith(folder + '▾'), 'the head names the project chosen');
+  ctx.assert.ok(out.proj.text.startsWith(folder), 'the head names the project chosen');
   ctx.assert.equal(out.proj.x, true, '…with × beside it');
   ctx.assert.notEqual(out.proj.project, 'all');
   await ctx.shot('2-project', { x: 0, y: 0, width: 520, height: 140 });

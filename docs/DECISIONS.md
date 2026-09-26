@@ -4,6 +4,14 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-26.
 
+## Decisions of 2026-09-26 — no carets after the project's name and the PR chips
+
+Ricardo: "remove the down [arrow] from PRs in the chat top bar and from the project picker next to the app icon".
+
+* The ▾ after the project's name in the chat list's head and the one after the PR chips in the chat header went.
+  Both said "this is a button"; the head's hover wash and the chips' own look say as much, and the caret took a few
+  px from the one row in which the name is what gives way. `project-cue.mjs` reads the head as `ALL` now.
+
 ## Decisions of 2026-09-26 — the timeline pared down to an orange thumb at the far left
 
 Ricardo: "the timeline on the left is a bit ugly: it's too close to the cards, it's green, it's has the ticks for

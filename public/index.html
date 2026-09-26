@@ -172,13 +172,12 @@
   /* ---- projects: a folder, or a named set of folders ---- */
   /* No column of their own since 2026-09-24 (Ricardo: "the first column ends up not being used and it's taking
      space. I use more the hotkeys and I just want visual cues that a project filter is done or not"). The chat
-     list's head is the cue: the project's colour square, its name and ▾ — a click there is ⌥⌘P's picker — and × to
+     list's head is the cue: the project's colour square and its name — a click there is ⌥⌘P's picker — and × to
      go back to ALL, which is the one project without one. The list's left edge and the head's tint are the
      project's colour, ALL's black. */
   #stitle { cursor: pointer; border-radius: 6px; margin: -4px 0 -4px -6px; padding: 4px 6px; }
   #stitle:hover { background: color-mix(in srgb, var(--repo, var(--nocolor)) 26%, transparent); }
-  #stitle > .t { flex: 0 1 auto; display: block; }   /* only as wide as the name, so ▾ sits right after it; a block, so a long one ends in … */
-  #stitle .caret { flex: none; font-size: 10px; color: var(--muted); margin-left: -3px; }
+  #stitle > .t { flex: 0 1 auto; display: block; }   /* only as wide as the name, so × sits right after it; a block, so a long one ends in … */
   #stitle .sx { flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 13px; font-weight: 400; line-height: 1; color: var(--muted); }
   #stitle .sx:hover { color: var(--ink); background: var(--inline-bg); }
   /* One row atop the list (2026-09-24, Ricardo: "at the top of the column, we have 2 rows, but we could use just 1:
@@ -584,8 +583,6 @@
        it prettier"); built over the panel, so it reads on a tinted header as on a plain one */
     background: linear-gradient(160deg, color-mix(in srgb, var(--prc, var(--muted)) var(--prg), var(--panel)), color-mix(in srgb, var(--prc, var(--muted)) 7%, var(--panel)) 80%); }
   .shead .hprs:hover, .shead .hprs.on { border-color: var(--line); }
-  .shead .hprs .caret { font-size: 12px; line-height: 1; }
-  .shead .hprs.on .caret { transform: rotate(180deg); }
   .shead .hpr.more { color: var(--muted); border-style: dashed; }
   #chat.tinted .shead .hprs { color: color-mix(in srgb, var(--rink) 78%, transparent); }
   #chat.tinted .shead .hprs:hover, #chat.tinted .shead .hprs.on { border-color: color-mix(in srgb, var(--rink) 40%, transparent); }
@@ -1362,7 +1359,7 @@
     const shown = list.filter(s => filterOn(bucket(s))).sort(q ? (a, b) => (score.get(b.id) - score.get(a.id)) || board(a, b) : board);
     // The project filter's one cue: a click is ⌥⌘P's picker, × goes back to ALL. The square is only a colour here —
     // the colour picker is the chat header's.
-    $('#stitle').innerHTML = `<span class="sq" style="${repoStyle(projColor(p))}"></span><span class="t">${projIcon(p.name)}${esc(p.name)}</span><span class="caret">▾</span>${p.key === ALL ? '' : '<span class="sx" title="Every project again (ALL)">×</span>'}`;
+    $('#stitle').innerHTML = `<span class="sq" style="${repoStyle(projColor(p))}"></span><span class="t">${projIcon(p.name)}${esc(p.name)}</span>${p.key === ALL ? '' : '<span class="sx" title="Every project again (ALL)">×</span>'}`;
     $('#stitle').title = `${p.key === ALL ? 'Every project' : p.custom ? `${p.name}: ${p.cwds.join(', ') || 'no folders yet'}` : p.key} — click or ⌥⌘P for another`;
     // ＋ new chat, an icon alone (2026-09-24): one folder starts it there; a named project over several asks which
     // folder; ALL is ⌥⌘N's flow — which project, its open chats, ＋ a new one.
@@ -2205,7 +2202,7 @@
     const prs = s.prs || [], prsOpen = !!prefs.prsOpen;
     const hprs = !prs.length ? '' : `<button class="hprs${prsOpen ? ' on' : ''}" id="prToggle" aria-expanded="${prsOpen}" title="${prs.length} PR${prs.length === 1 ? '' : 's'} in this chat — click to ${prsOpen ? 'fold the list' : 'list them, one per row'} · ⌥⌘G opens one">${
       prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</span>`).join('')
-    }<span class="hpr more" hidden></span><span class="caret">▾</span></button>`;
+    }<span class="hpr more" hidden></span></button>`;
     $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span>${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}<span class="sep">/</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
       ${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
