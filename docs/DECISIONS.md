@@ -4,6 +4,13 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-26.
 
+## Decisions of 2026-09-26 — the usage rows spaced out
+
+Ricardo: "space a bit more the 3 token usage on the bottom left".
+
+* The three rows of the plan usage sit 9 px apart (5 before), the heading 7 px above them (4), and the block has
+  2 px more above and below. Open, the foot is about 100 px now; folded it is the 34 px it was.
+
 ## Decisions of 2026-09-26 — the card's done button, bigger and only under the pointer
 
 Ricardo: "the done button on the card is a bit small and hard to see, also make it visible only on hover".

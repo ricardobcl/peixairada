@@ -475,7 +475,7 @@
   main.scompact #pfoot { width: auto; }
   /* folded, the foot is one row of 34 px, the cog's cell and the rings side by side ("a bit smaller vertically":
      44 px until the same day) */
-  #usage { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); flex: 1; display: grid; align-content: center; min-height: 34px; padding: 5px 12px 6px 6px; font-size: 11px; color: var(--muted); min-width: 0; user-select: none; }
+  #usage { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); flex: 1; display: grid; align-content: center; min-height: 34px; padding: 7px 12px 8px 6px; font-size: 11px; color: var(--muted); min-width: 0; user-select: none; }
   #usage[hidden] { display: none; }
   #usage button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; width: 100%; min-width: 0; display: flex; align-items: center; gap: 6px; text-align: left; cursor: pointer; }
   #usage button:hover { color: var(--ink); }
@@ -483,9 +483,10 @@
   #usage button:hover .uchev { opacity: 1; }
   #usage .uline .uchev { transform: rotate(180deg); }   /* folded, it points up: the way the rows will come */
   #usage.folded .uopen, #usage:not(.folded) .uline { display: none; }
-  #usage .uhd { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 4px; }
-  /* one grid for every row, so the bars start and the numbers end in one line whatever the names' lengths */
-  #usage .urows { display: grid; grid-template-columns: auto minmax(36px, 1fr) auto auto; gap: 5px 9px; }
+  #usage .uhd { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 7px; }
+  /* one grid for every row, so the bars start and the numbers end in one line whatever the names' lengths; the rows
+     9 px apart (5 until 2026-09-26, Ricardo: "space a bit more the 3 token usage on the bottom left") */
+  #usage .urows { display: grid; grid-template-columns: auto minmax(36px, 1fr) auto auto; gap: 9px 9px; }
   #usage .urow { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; white-space: nowrap; }
   #usage .ul { overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
   #usage .ubar { position: relative; height: 5px; border-radius: 3px; background: var(--utrack); }
