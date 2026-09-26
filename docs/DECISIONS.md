@@ -16,11 +16,13 @@ white if it's too dark, like 'acme' project black color)".
   to bottom 0 at the span's own x — since the h2 clips its overflow for the ellipsis and a bar drawn inside it
   could not leave it. The title's tooltip still reads "project / title". Checked on the live board on the blue
   header, and with the header's variables forced to the black one.
-* **The same gap either side of it** (Ricardo, next: "make the space between the last letter and the bar equal to
-  the next letter on the right"): the colour square stood between the name and the bar — 6 px, 11 px of square,
-  6 px on the left against 6 px on the right, and the square is invisible at rest, so the bar looked pushed to the
-  right. It went before the project's name, where it is in the list's head, and the row's 6 px gap is all that
-  stands on either side. The square keeps everything else: the picker, ⌥-click, its place in the row.
+* **The same room either side of the bar, and of the name** (Ricardo, next: "make the space between the last
+  letter and the bar equal to the next letter on the right", then "the spacing seems off. make left and right
+  spacing the same for the project name"): the colour square is invisible at rest, so wherever it took room in
+  the row — between the name and the bar first, before the name after that — the room read as a lopsided gap. It
+  takes none now: it sits on the bar, centred, out of the flow (positioned from `.shead` at the span's x, so the
+  h2's clip does not reach it; the picker's hover scale keeps that centre). The row's gap is 12 px, the header's
+  padding, so the name has 12 px either side and so does the bar. The square keeps the picker and ⌥-click.
 
 ## Decisions of 2026-09-26 — square cards
 

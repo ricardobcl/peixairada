@@ -520,7 +520,7 @@
   .shead { position: relative; padding: 7px 12px; border-bottom: 1px solid var(--line); background: var(--panel); display: flex; gap: 6px 9px; align-items: center; flex-wrap: wrap; min-width: 0; min-height: 43px; }
   /* The title takes what is left and truncates. flex-basis must NOT be auto: a long title would then
      exceed the line on its own and push the status, buttons and every chip onto the next one. */
-  .shead h2 { margin: 0; font-size: 14px; flex: 1 1 170px; min-width: 0; display: flex; gap: 6px; align-items: center; overflow: hidden; }
+  .shead h2 { margin: 0; font-size: 14px; flex: 1 1 170px; min-width: 0; display: flex; gap: 12px; align-items: center; overflow: hidden; }   /* 12: the header's padding, so the name has the same room either side (2026-09-26) */
   /* The repo is the identifier you navigate by, so it does not shrink — the title absorbs the
      truncation instead, and only past 60% does the repo start to ellipsise too. */
   .shead h2 .repo { font-weight: 800; flex: 0 0 auto; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
@@ -531,9 +531,11 @@
      ink, which inkOn picks by the colour's brightness, the whole height of the header. The span only holds the
      2 px of room in the row; the bar is its ::before, positioned from the header (.shead is the containing block),
      at the span's own x — so the h2's overflow: hidden, which clips the row, does not clip it. */
-  /* the same 6 px gap either side of it (2026-09-26, Ricardo: "make the space between the last letter and the bar equal
-     to the next letter on the right"): the colour square went before the project's name, as it is in the list's
-     head, so nothing but the row's gap stands between the name and the bar */
+  /* The same room either side of it, and of the name (2026-09-26, Ricardo: "make the space between the last letter
+     and the bar equal to the next letter on the right", then "make left and right spacing the same for the project
+     name"): the row's gap is the header's padding, 12 px, and the colour square — invisible at rest, so any room it
+     took read as a gap — takes none: it sits on the bar, centred, out of the flow (positioned from .shead like the
+     bar, at the span's own x). */
   .shead h2 .sep { flex: none; width: 2px; align-self: stretch; }
   .shead h2 .sep::before { content: ''; position: absolute; top: 0; bottom: 0; width: 2px; background: var(--rink, var(--ink)); opacity: .9; }
   /* The project's colour beside its name, and the picker for it (2026-09-22, Ricardo: "allow me to quickly change
@@ -542,7 +544,8 @@
      itself while the pointer is in the header, so nothing moves under the pointer and the row stays as quiet as
      it was. On a tinted header the square is the header's own colour, so it is read by its border — the ink that
      reads on that tint, at a third. */
-  .shead h2 .sq { flex: none; width: 11px; height: 11px; border-radius: 3px; background: var(--repo, var(--nocolor)); border: 1px solid color-mix(in srgb, var(--rink, var(--muted)) 45%, transparent); opacity: 0; transition: opacity .12s, transform .12s; }
+  .shead h2 .sq { position: absolute; top: 50%; transform: translate(calc(-50% + 1px), -50%); width: 11px; height: 11px; border-radius: 3px; background: var(--repo, var(--nocolor)); border: 1px solid color-mix(in srgb, var(--rink, var(--muted)) 45%, transparent); opacity: 0; transition: opacity .12s, transform .12s; }
+  .shead h2 .sq.pick:hover { transform: translate(calc(-50% + 1px), -50%) scale(1.35); }   /* the picker's own scale, around the same centre */
   .shead:hover h2 .sq, .shead h2 .sq:focus-visible { opacity: 1; }
   .shead .path { font-size: 12px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   /* Everything that was a button at the header's right lives under ··· (2026-09-24, Ricardo: "every icon that's on
@@ -2295,7 +2298,7 @@
     const hprs = !prs.length ? '' : `<button class="hprs${prsOpen ? ' on' : ''}" id="prToggle" aria-expanded="${prsOpen}" title="${prs.length} PR${prs.length === 1 ? '' : 's'} in this chat — click to ${prsOpen ? 'fold the list' : 'list them, one per row'} · ⌥⌘G opens one">${
       prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</span>`).join('')
     }<span class="hpr more" hidden></span></button>`;
-    $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}<span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span><span class="sep"></span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
+    $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
       ${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
       <button class="hmore${menu.open ? ' on' : ''}" id="moreBtn" aria-haspopup="menu" aria-expanded="${menu.open}" title="This chat: the claude session, VS Code, focus view, code folding, path and branch">${ICON.more}</button>
