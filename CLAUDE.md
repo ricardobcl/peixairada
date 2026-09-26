@@ -162,6 +162,13 @@ refuses to run against the real directory for the same reason.
   assistant line (`claude-fable-5-1`, `claude-fable-5[1m]`…), and the mark is `ICON.fable` — an italic F with a
   spark, inline SVG like every card glyph — at the end of the title row (`.trow .fable`), in `--accent`, the card's
   own ink on the solid tint. The rail does not show it.
+* **The card's age shows only under the pointer, top left** (2026-09-27, Ricardo: "the time since last update on the
+  card should only show on hover and should be a top left on the card"; the title row's right end, always, before):
+  `.time` is the card's first child, absolute at 0 0, 11 px tall in the card's 8 px of top padding so it ends above
+  the first row's capitals and covers no letter — hence no background; `opacity` 0 → .75 on `.card:hover`,
+  `pointer-events` with it so the tooltip (last activity · you last wrote · Claude last replied) still comes. Out of
+  the flow, so nothing moves under the pointer; the card clips its overflow, so it cannot sit on the border. The rail
+  hides it with every other child. → `scripts/scenarios/card-marks.mjs` (the order, the F and the age).
 * **Cards are square** (2026-09-26, Ricardo: "remove the round corners from cards"; 10 px before): `.card` and the
   ring its `::before` draws inside the border both at `border-radius: 0`. The PR chips keep their 4 px.
 * **The open chat's card and a hovered one are a solid tint** of its colour (`.card.active`, `.card:hover`, 65 %
@@ -501,10 +508,10 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
   `assert`, `cmd(code)` (a plain ⌘ press; `key(code)` is ⌥⌘), `screen(g)` / `waitPrompt(ms, g)` (the half, 0 by
-  default — the whole column while nothing is split), `drag(from, to, mid)` (a real press, move and release). The twenty-five in `scripts/scenarios/` are the
+  default — the whole column while nothing is split), `drag(from, to, mid)` (a real press, move and release). The twenty-six in `scripts/scenarios/` are the
   regression checks for the drawer (re-attach, restart, geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a
   compose key), the hotkeys, the tab strip and the split, the new-chat flow, the project step's folders and ✕,
-  the chat list's rules, its filter, its ends and its timeline, the card sizes, the notifications switch, the usage bar, the project cue, the header's PRs
+  the chat list's rules, its filter, its ends and its timeline, the card sizes and marks, the notifications switch, the usage bar, the project cue, the header's PRs
   and its ··· menu, the chat's links.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported

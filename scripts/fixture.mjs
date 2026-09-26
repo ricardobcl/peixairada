@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // A ~/.claude look-alike for tests: projects/<slug>/<id>.jsonl per chat, an empty sessions/ (nothing alive).
 //   node scripts/fixture.mjs <dir>        # the default fixture (a two-PR chat, a plain one), prints its chats as JSON
-// Or from a script: makeFixture(dir, [{ id?, cwd, prompt, reply, title?, at?, lines?, live? }]) → { dir, chats: […] }.
+// Or from a script: makeFixture(dir, [{ id?, cwd, prompt, reply, title?, at?, model?, lines?, live? }]) → { dir, chats: […] }.
 // The lines carry what server.mjs reads (fold()): user/assistant messages with text blocks, ai-title, pr-link —
 // and, through `lines` (toolLines / taskNoteLine below), the tool calls and task notifications a chat mid-work has.
 // `live: { pid, startedAt }` writes the registry file that makes a chat *alive*: the states that only exist while a
@@ -15,13 +15,13 @@ import { randomUUID } from 'node:crypto';
 export const slugOf = cwd => cwd.replace(/[/.]/g, '-');
 
 /** The JSONL lines of one chat: prompt, reply (end_turn), optionally an ai-title. `at` is the reply's time. */
-export function chatLines({ id, cwd, prompt, reply, title = null, at = new Date(Date.now() - 86_400_000), entrypoint = 'cli' }) {
+export function chatLines({ id, cwd, prompt, reply, title = null, at = new Date(Date.now() - 86_400_000), entrypoint = 'cli', model = 'fixture-1' }) {
   const ts = ms => new Date(at.getTime() + ms).toISOString();
   const u = randomUUID(), a = randomUUID();
   const base = { isSidechain: false, userType: 'external', entrypoint, cwd, sessionId: id, version: 'fixture', gitBranch: 'main' };
   const lines = [
     { ...base, parentUuid: null, type: 'user', message: { role: 'user', content: [{ type: 'text', text: prompt }] }, uuid: u, timestamp: ts(-60_000) },
-    { ...base, parentUuid: u, type: 'assistant', message: { model: 'fixture-1', id: 'msg_' + a.slice(0, 8), type: 'message', role: 'assistant', content: [{ type: 'text', text: reply }], stop_reason: 'end_turn' }, uuid: a, timestamp: ts(0) },
+    { ...base, parentUuid: u, type: 'assistant', message: { model, id: 'msg_' + a.slice(0, 8), type: 'message', role: 'assistant', content: [{ type: 'text', text: reply }], stop_reason: 'end_turn' }, uuid: a, timestamp: ts(0) },
   ];
   if (title) lines.push({ type: 'ai-title', sessionId: id, aiTitle: title });
   return lines;
@@ -50,9 +50,9 @@ export function taskNoteLine({ id, cwd, taskId, summary = '', event = '', status
 }
 
 /** A turn of plain words that ends (stop_reason 'end_turn') — the chat goes ready. */
-export function replyLines({ id, cwd, text, at = new Date() }) {
+export function replyLines({ id, cwd, text, at = new Date(), model = 'fixture-1' }) {
   return [{ ...lineBase(id, cwd), parentUuid: null, type: 'assistant', uuid: randomUUID(), timestamp: at.toISOString(),
-    message: { model: 'fixture-1', id: 'msg_' + randomUUID().slice(0, 8), type: 'message', role: 'assistant', content: [{ type: 'text', text }], stop_reason: 'end_turn' } }];
+    message: { model, id: 'msg_' + randomUUID().slice(0, 8), type: 'message', role: 'assistant', content: [{ type: 'text', text }], stop_reason: 'end_turn' } }];
 }
 
 export function makeFixture(dir, chats) {

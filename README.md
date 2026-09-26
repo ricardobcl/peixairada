@@ -211,9 +211,9 @@ A chat **waiting on your answer** comes first — it costs you a second and unbl
 that the chat with the **newest last word**, yours or Claude's, the one rule, in every list: your prompt, your
 answer to its question or your Escape, and Claude's reply when the turn ends — not every tool call on the way,
 so a clauding card does not climb with each step. A reply landing brings its card up to where you will look
-next; the ones you have parked sink by themselves. The time on
-a card is still when *anything* last happened to it; hover it for when you last wrote and when Claude last replied. Projects
-follow the same rule through their newest chat. Lines of little ascii fish break the list where it turns
+next; the ones you have parked sink by themselves. A card's age — when *anything* last happened to it —
+shows only under the pointer, in its top left corner; its tooltip says when you last wrote and when Claude last
+replied. Projects follow the same rule through their newest chat. Lines of little ascii fish break the list where it turns
 over: `><>` swimming right between what is clauding and what is ready, and a still line of `<><` **under each
 day's chats** with the day in its middle — *today* under the ones you have been in today, then a `DD-MM-YYYY` under
 each earlier day's. **The list's two ends count what is out of sight**: scrolled down, a pill at the top says how

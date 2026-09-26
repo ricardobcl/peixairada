@@ -21,6 +21,14 @@ on hover and should be a top left on the card".
   on now; a `<synthetic>` line — Claude Code's own, for an API error — no longer overwrites it. A stylized F over a
   star: a star on a card reads as a favourite. It stands at the end of the title row, where the age was until the
   same day; on the solid tint of a hovered or open card it takes the card's ink, like the matcher's hits.
+* **The age is a corner mark under the pointer** (`.card .time`): the card's first child, absolute at the top left,
+  invisible until the card is hovered. A first cut was a tag on a wash of the panel, 12 px tall — it sat over the
+  first letters of the project's name. Now 11 px tall with a 10 px face, in the 8 px of top padding: it ends a pixel
+  above the first row's capitals, so it covers nothing and needs no background. It cannot sit on the border — the
+  card clips its overflow for the ring and the ellipsis. Nothing moves under the pointer (the ✓ that a hover brings
+  out narrows the title, as before). The tick, the badge and the chips keep the title row's right end.
+  → `scripts/scenarios/card-marks.mjs` checks all three: the order against the server's and ⌥⌘K's, the one F and
+  its tooltip, the age's opacity and place at rest and hovered. `makeFixture` takes a `model` per chat for it.
 
 ## Decisions of 2026-09-26 — a bar between the project and the title
 
