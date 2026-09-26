@@ -68,6 +68,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | Waiting on the user | **the registry's `status: "waiting"`** — every interactive claude rewrites its `sessions/<pid>.json` on each change of state (`busy` · `idle` · `waiting` · `shell`), with `waitingFor` (`input needed` for an AskUserQuestion — measured; `permission prompt` for a tool's approval; `sandbox request`…) — `waitingOn()` / `statusOf()`; any live process on the chat waiting is the chat waiting, and it beats the agents. **`dialog open` is not asking** (`NOT_ASKING`, Ricardo's call): mostly a /model or /config you opened yourself. **The transcript cannot say it** (2026-09-22): the line that asks is written *with its answer*. It is only the fallback for a claude that reports no status: a pending `AskUserQuestion` / `ExitPlanMode`, whose question is `s.ask` (tool, text, options); otherwise the card says what the registry waits on (`ask.waitingFor`). The flip into waiting is the `needs-input` alert (`loadRegistry`) |
 | Work behind the turn | `Monitor` and a `Bash` with `run_in_background` leave a task running: the tool_result names it (`Monitor started (task …`, `Command running in background with ID: …`) and `<task-notification>` lines carry its events and, with a `<status>`, its end. `s.tasks` → `tasks` on the summary; a task dies with the claude that started it (`live.startedAt`), at its expiry (`MONITOR_MS`, `TASK_MAX_MS`), or with the chat's process. **A completion notice delivered mid-turn never becomes a line at all**, so a background command is also asked about directly: `taskGone` runs `lsof -t` on the output file the tool_result named (the harness holds it open until the command exits) and `sweepTasks` lets go on the registry poll, after `TASK_GRACE_MS` and never on lsof's own failure |
 | Titles | board title (state file) › `custom-title` › the oldest still-open PR › `ai-title` › last prompt — `summary()`, `prTitle()` |
+| Model | `message.model` on assistant lines, the last one wins, `<synthetic>` (an API error's line) skipped — `s.model`; the card wears an F for Fable (`onFable`) |
 | PRs mentioned | `pr-link` lines *and* GitHub pull URLs in user/assistant text; most recently mentioned first; `gh api graphql` batched for state and title (one of the two network calls) |
 | Plan usage (the chat list's footer) | `GET https://api.anthropic.com/api/oauth/usage` with Claude Code's own OAuth bearer from the keychain item *Claude Code-credentials*; `USAGE=off` disables; the token never reaches the page. → Findings: *plan usage* |
 | Permission prompts | the registry's `waiting` (above) — they never reach the transcript; hooks are no longer needed for them |
@@ -156,6 +157,11 @@ refuses to run against the real directory for the same reason.
   lastUserAt`, which an answer or an Escape also moves); CSS hides by `#sessions[data-cards]`, so the slider
   re-renders nothing. The question line (`askHtml`) is neither word and shows at every size.
   → `scripts/scenarios/card-sizes.mjs`.
+* **A chat on Fable wears an F** (2026-09-27, Ricardo: "if the chat is using Fable, put a special marker on the
+  card, like a star or a stylized F"): `onFable(s)` is `/fable/i` on `s.model`, the model of the chat's last
+  assistant line (`claude-fable-5-1`, `claude-fable-5[1m]`…), and the mark is `ICON.fable` — an italic F with a
+  spark, inline SVG like every card glyph — at the end of the title row (`.trow .fable`), in `--accent`, the card's
+  own ink on the solid tint. The rail does not show it.
 * **Cards are square** (2026-09-26, Ricardo: "remove the round corners from cards"; 10 px before): `.card` and the
   ring its `::before` draws inside the border both at `border-radius: 0`. The PR chips keep their 4 px.
 * **The open chat's card and a hovered one are a solid tint** of its colour (`.card.active`, `.card:hover`, 65 %

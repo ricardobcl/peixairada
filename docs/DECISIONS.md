@@ -16,6 +16,11 @@ on hover and should be a top left on the card".
   ("Claude finishing a long job does not move a card up"). Now it does: a reply landing brings the card to where
   you will look next, which is what a board of chats is for. A tool call is still not a word, so a clauding card
   keeps its place through a turn. The card's tooltip says when Claude last replied beside when you last wrote.
+* **An F with a spark for a chat on Fable** (`onFable`, `ICON.fable`): the model is the last assistant line's
+  (`s.model`, which the server already kept for the chat header), so a chat that switched models shows what it runs
+  on now; a `<synthetic>` line — Claude Code's own, for an API error — no longer overwrites it. A stylized F over a
+  star: a star on a card reads as a favourite. It stands at the end of the title row, where the age was until the
+  same day; on the solid tint of a hovered or open card it takes the card's ink, like the matcher's hits.
 
 ## Decisions of 2026-09-26 — a bar between the project and the title
 

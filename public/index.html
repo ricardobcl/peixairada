@@ -410,6 +410,10 @@
   .card.qsel { border-color: var(--repo, var(--nocolor)); background: color-mix(in srgb, var(--repo, var(--nocolor)) 65%, var(--panel)); }
   .card .grow { flex: 1; }
   .card .time { font-size: 11px; color: var(--muted); flex: none; }
+  /* on Fable (2026-09-27): a stylized F with a spark at the title row's end, in the accent — the card's own ink on the solid tint */
+  .card .trow .fable { margin-top: 1px; color: var(--accent); flex: none; }
+  .card .trow .fable .ic { width: 15px; height: 15px; }
+  .card:is(.active, :hover, .qsel) .fable { color: inherit; }
   .card .title { margin-top: 4px; font-size: 13.5px; font-weight: 500; line-height: 1.35; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
   .card .snip { margin-top: 5px; font-size: 12px; line-height: 1.4; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
   .card .snip.you { -webkit-line-clamp: 2; }
@@ -1118,6 +1122,8 @@
     watch: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 6.4a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2Z"/><path fill-rule="evenodd" d="M8 3.2A4.8 4.8 0 0 1 12.8 8h-1.5A3.3 3.3 0 0 0 8 4.7Zm0-3.2A8 8 0 0 1 16 8h-1.5A6.5 6.5 0 0 0 8 1.5Z"/></svg>',
     // a speech bubble: Claude has asked you something and is waiting on the answer
     ask: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 1.3c3.7 0 6.7 2.4 6.7 5.4S11.7 12 8 12c-.6 0-1.2 0-1.8-.2l-3.7 1.8 1-3C2.2 9.7 1.3 8.3 1.3 6.7c0-3 3-5.4 6.7-5.4Z"/></svg>',
+    // a stylized F with a spark: the chat runs on Fable (see onFable)
+    fable: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path transform="translate(1.6 0) skewX(-12)" d="M4 3.2h7v2.4H6.7v2.7h4.2v2.3H6.7V14H4Z"/><path d="M13.8 0l.7 1.5 1.5.7-1.5.7-.7 1.5-.7-1.5-1.5-.7 1.5-.7Z"/></svg>',
     pin: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 1.5l4.5 4.5-1.6.6-2.5 2.5-.4 3.2-1.3 1.3-2.8-2.8-3.8 3.8-.7-.7 3.8-3.8-2.8-2.8 1.3-1.3 3.2-.4 2.5-2.5Z"/></svg>',
     vscode: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>'
   };
@@ -1278,6 +1284,9 @@
   // The two states that live *inside* a bucket and the card draws its edge from: a question waiting on your answer
   // (still a ready chat — the filters see 'ready'), and a monitor or background command of its own still running.
   const asking = s => s.alive && !s.done && s.status === 'needs-input';
+  // The model Claude last answered with is the one the chat runs on: `claude-fable-5-1`, `claude-fable-5[1m]`… mark
+  // the card (2026-09-27, Ricardo: "if the chat is using Fable, put a special marker on the card").
+  const onFable = s => /fable/i.test(s.model || '');
   const watching = s => !s.done && (s.tasks?.length || 0) > 0;
   // The list's order, and the ⌥⌘K picker's (2026-09-21): a chat waiting on *your* answer first — it costs you a
   // second and unblocks a whole turn — then clauding, then ready, done last. The filters and the counts still go by
@@ -1645,7 +1654,7 @@
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${s.id}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
       ${showRepo || s.env || where || inVsCode(s) ? `<div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}</div>` : ''}
-      <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}<span class="time" title="${esc(timeTip(s))}">${rel(s.lastActivity)}</span>${un ? `<span class="badge">${un}</span>` : ''}${act}</div>
+      <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${onFable(s) ? `<span class="fable" title="on Fable — ${esc(s.model)}, the model Claude last answered with">${ICON.fable}</span>` : ''}<span class="time" title="${esc(timeTip(s))}">${rel(s.lastActivity)}</span>${un ? `<span class="badge">${un}</span>` : ''}${act}</div>
       ${s.prs?.length ? `<div class="cprs">${s.prs.slice(0, 8).map(pr => `<a class="cpr" data-state="${esc(pr.state || '')}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`).join('')}</div>` : ''}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${esc(s.lastReply)}</div>` : ''}

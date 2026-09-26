@@ -615,7 +615,7 @@ function fold(s, line) {
       if (line.entrypoint) { s.entrypoint = line.entrypoint; s.entrypointAt = ts; }
       const m = line.message || {};
       const blocks = Array.isArray(m.content) ? m.content : [];
-      if (m.model) s.model = m.model;
+      if (m.model && m.model !== '<synthetic>') s.model = m.model;   // an API error's line, not what the chat runs on
       let needsInput = false;
       for (const b of blocks) {
         if (b.type === 'text' && b.text?.trim()) { pushEntry(s, { role: 'assistant', kind: 'text', text: b.text, ts, msgId: m.id }); notePrs(s, b.text, ts, 'claude'); }
