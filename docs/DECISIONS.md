@@ -4,6 +4,33 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-26.
 
+## Decisions of 2026-09-26 — paths and pages in the chat are links
+
+Ricardo: "let me click url's on chat and open them if local or open in web if it's web".
+
+* **Read as: a local thing is a file, and it opens; a web thing opens "in web"**, which on this board is the pane —
+  the vocabulary of 2026-09-24 ("when a PR is open in web…"). So a file path opens in VS Code at its line, the href
+  `md()` already gave the `[file:42](src/file.ts#L42)` links Claude writes, and a web URL opens on a tab of the chat
+  like a PR does; `openExternal` takes every http(s) page there now, not GitHub's alone (the rest went to the
+  browser), with the strip's ↗ as the way out. A tab's label is the PR's `repo#n` or the page's hostname.
+* **What is a path** (`PATH_RE`): `/absolute`, `~/…`, `./…` with any segments; `folder/file.ext` with the first
+  segment dotless (a domain is not a folder) and not an npm scope; `name.ext` right before `:line`; `:line[:col]`
+  on any. `pathHref` then says no to what is no file of ours: an absolute path under no root a file lives under
+  (`/Users`, `/private`, `/tmp`, `/var`, `/opt`, `/etc`, `/usr`, `/Library`, `/Applications`, `/Volumes`,
+  `/home`) and with no extension — `/api/sessions`, `/clear` — a `~` with no home to read off the chat's folder, a
+  relative path with no folder. Claude Code's `@` before an attachment is not part of it. Trailing punctuation is
+  not either. Measured on a real chat: 332 files and 31 pages linked, one false positive (the `@` one, fixed).
+* **Where**: the transcript, after every render — `linkify` walks the text nodes the markdown and the tool rows
+  left, skipping anchors (marked's own autolinks, `md()`'s file links, the PR rows) and summaries; a tool row's
+  links are dotted-underlined in the row's own ink, the reply's are the accent as before. The drawer: a link provider
+  beside the web-links addon (`termLinks`), the line read back to its cells so a wide character does not shift
+  the range; activation goes through `openExternal`, which hands a `vscode://` URL to the system. Wrapped lines
+  are not joined; a path split by the wrap is two non-paths.
+* Not done: resolving `~` for a chat outside `/Users` or `/home`; joining wrapped lines in the drawer; VS Code
+  Web instead of VS Code for a file (no URL opens a file there).
+* `scripts/scenarios/chat-links.mjs`: one reply with nine links and eight look-alikes, checked as anchors in
+  order; a path typed into the fake claude's drawer, read back as a link on its own cells (`peix.links`).
+
 ## Decisions of 2026-09-26 — the open card bleeds into the splitter
 
 Ricardo: "the open card now is hard to spot... can we have some extra visual cue like bleeding the color to the right

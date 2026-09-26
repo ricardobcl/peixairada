@@ -300,7 +300,7 @@ refuses to run against the real directory for the same reason.
   to the window, which in full screen leaves it. With nothing to close the key is untouched (the filter boxes, the
   rename box, full screen keep theirs).
 * **The page owns the tabs** (2026-09-20, late): each half's strip lists `chat` (`claude` while the session runs here), `shell`
-  while a zsh lives, `gh:<url>` per GitHub page the chat opened and `ide:<url>` for its folder's editor — `tabKeys()`
+  while a zsh lives, `gh:<url>` per web page the chat opened (any page since 2026-09-26; GitHub's before, the rest went to the browser — the strip's ↗ is the way out to it) and `ide:<url>` for its folder's editor — `tabKeys()`
   from `state.paneGh` (per chat) and `state.paneIde` (per folder); `tabs` holds each chat's `[left, right]`, read back
   through `placeOf()`, and one whose page is gone falls away. `syncTerm()` keeps both bodies right and posts one
   `{type:'pane', id, keys, panes:[{key,left,top,width,height}], focus}` to the shell (`postPane`, again when the
@@ -408,6 +408,14 @@ refuses to run against the real directory for the same reason.
   up; a session that never printed one — `"viewMode": "focus"` in settings, or the line scrolled past — leaves the
   button as it was. The row shows while `termLive(s)`; on the zsh tab it shows the
   claude session instead of typing into a shell. The fake claude answers `/focus` with the same line — `scripts/scenarios/focus-view.mjs`.
+* **Paths and pages in the chat are links** (2026-09-26): a file path in the transcript or on a drawer's line —
+  `/absolute` (under a root a file lives under, or with an extension: `/api/sessions` is a route), `./relative`,
+  `folder/file.ext`, `~/…`, `name.ext:12`, one after Claude Code's `@` — opens in VS Code at that line
+  (`vscode://file`, the href `md()` gives `[file:42](src/file.ts#L42)`; relative ones against the chat's `cwd`,
+  `PATH_RE` / `pathHref` / `chatLinks`), a web URL opens the page in the pane on a tab of the chat (`openExternal`,
+  `IN_PANE` is every `http(s)` now). The transcript is linkified after every render (`linkify`, the text nodes the
+  markdown and the tool rows left, anchors and summaries skipped); the drawer has a link provider beside the
+  web-links addon (`termLinks`, `peix.links(y)` in the harness). → `scripts/scenarios/chat-links.mjs`.
 * **Attaching a file is typing its path** (`@dir/file`, spaces as `\ `); the app hands real paths over the
   bridge (`peixDrop`), a browser uploads (`PUT /api/attach`). ⌘V with an image sends ⌃V to claude in the app.
 * **`termEnv()` strips only `CLAUDECODE` and `CLAUDE_CODE_*`** (the CLI refuses to nest) and keeps `CLAUDE_DIR`
@@ -477,11 +485,11 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
   `assert`, `cmd(code)` (a plain ⌘ press; `key(code)` is ⌥⌘), `screen(g)` / `waitPrompt(ms, g)` (the half, 0 by
-  default — the whole column while nothing is split), `drag(from, to, mid)` (a real press, move and release). The twenty-four in `scripts/scenarios/` are the
+  default — the whole column while nothing is split), `drag(from, to, mid)` (a real press, move and release). The twenty-five in `scripts/scenarios/` are the
   regression checks for the drawer (re-attach, restart, geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a
   compose key), the hotkeys, the tab strip and the split, the new-chat flow, the project step's folders and ✕,
   the chat list's rules, its filter, its ends and its timeline, the card sizes, the notifications switch, the usage bar, the project cue, the header's PRs
-  and its ··· menu.
+  and its ··· menu, the chat's links.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY` with what it failed on the first time, and the suite still exits 0; `--no-retry` is the honest gate.

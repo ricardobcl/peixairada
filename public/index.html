@@ -705,6 +705,8 @@
   .md blockquote { margin: 10px 0; padding: 3px 13px; border-left: 3px solid var(--line); color: var(--muted); }
   .md a { color: var(--accent); text-decoration: none; } .md a:hover { text-decoration: underline; }
   .md a[href^="vscode:"]::after { content: " ↗"; font-size: 10px; opacity: .6; }
+  /* the paths and pages a tool row names are links too (2026-09-26, linkify): quiet, the row is one muted line */
+  .tool a { color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; } .tool a:hover { color: var(--accent); }
   .md hr { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
   .md img { max-width: 100%; }
   .md input[type=checkbox] { margin: 0 6px 0 0; }
@@ -929,6 +931,7 @@
 //   js  · the colour picker
 //   js  · project editor
 //   js  · PRs: the strip under the header, and where a GitHub link goes
+//   js  · links in the chat: files and pages
 //   js  · chat header
 //   js  · terminal drawer: the real claude in a PTY on the server, attached over a WebSocket
 //   js  · the two halves: ⌘1 and ⌘2
@@ -2148,15 +2151,18 @@
   const inApp = !!window.webkit?.messageHandlers?.hub;
   const post = m => window.webkit?.messageHandlers?.hub?.postMessage(m);
   const GH_PR = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/;
-  const IN_PANE = /^https:\/\/github\.com\/|^http:\/\/127\.0\.0\.1:\d+\//;   // GitHub, and anything the board serves itself
+  const IN_PANE = /^https?:\/\//;   // every web page (2026-09-26; GitHub and the board's own before, the rest went to the browser)
+  const IDE_URL = /^http:\/\/127\.0\.0\.1:\d+\//;   // VS Code Web, served by the board
   function openExternal(url) {
     if (!inApp) { window.open(url, '_blank', 'noopener'); return; }
     const s = state.sessions.get(state.current);
-    if (!IN_PANE.test(url) || !s) { post({ type: 'external', url }); return; }
-    // A page of the chat, on a tab of its own in the strip (2026-09-20): GitHub pages one per PR, in the order first
-    // opened; the folder's editor, one per folder. Remembered here so they come back with the chat; the shell keeps a
-    // web view per page and shows the one the tab says (syncTerm → postPane).
-    const gh = /^https:\/\/github\.com\//.test(url);
+    if (!IN_PANE.test(url) || !s) { post({ type: 'external', url }); return; }   // vscode://, mailto:… — the system's
+    // A page of the chat, on a tab of its own in the strip (2026-09-20): web pages one per URL, in the order first
+    // opened — a PR, a docs page, a dev server (Ricardo, 2026-09-26: "open in web if it's web"; the strip's ↗ is the
+    // way out to the browser); the folder's editor, one per folder. Remembered here so they come back with the chat;
+    // the shell keeps a web view per page and shows the one the tab says (syncTerm → postPane). The key's `gh:` is
+    // the name every page tab kept from when GitHub's were the only ones.
+    const gh = !IDE_URL.test(url);
     let fresh = false;
     if (gh) { const l = state.paneGh.get(s.id) || []; fresh = !l.includes(url); if (fresh) l.push(url); state.paneGh.set(s.id, l); }
     else if (s.cwd) { fresh = state.paneIde.get(s.cwd) !== url; state.paneIde.set(s.cwd, url); }
@@ -2171,14 +2177,79 @@
   function hidePr() { shownPr.url = null; }
   function showPr(url) { shownPr.url = url; openExternal(url); }
   // Every link in the chat pane passes here: a PR chip or a PR link in a reply opens the PR (in the app, on a tab
-  // of the chat); any other external link inside the app goes out through the bridge, because a
-  // web view without a UI delegate simply drops target=_blank.
+  // of the chat); any other web link inside the app goes through openExternal — a tab of the pane — because a
+  // web view without a UI delegate simply drops target=_blank. A vscode:// link is left to navigate: the shell's
+  // navigation policy hands it to VS Code (a browser asks); the board's own links are the board's.
   $('#chat').addEventListener('click', e => {
     const a = e.target.closest('a[href]'); if (!a) return;
     const href = a.getAttribute('href') || '';
     if (GH_PR.test(href) && !a.dataset.ext) { e.preventDefault(); showPr(href.match(GH_PR)[0]); return; }
     if (inApp && /^https?:/.test(href) && !href.startsWith(location.origin)) { e.preventDefault(); openExternal(href); }
   });
+
+  // ---- links in the chat: files and pages -------------------------------------------
+  // (2026-09-26, Ricardo: "let me click url's on chat and open them if local or open in web if it's web".) A file
+  // path in the transcript or the drawer — /absolute, ./relative, folder/file.ext, ~/…, a bare name.ext:12 — is a
+  // link that opens it in VS Code at that line, the href md() already gives the [file:42](src/file.ts#L42) links
+  // Claude writes, resolved against the chat's folder; a web URL is a link that opens the page in the pane, on a tab
+  // of the chat (openExternal). The transcript is linkified after every render (linkify — each text node the
+  // markdown and the tool rows left, anchors and summaries skipped); the drawer has a link provider beside the
+  // web-links addon (termLinks). What looks like a path but is not stays text: and/or, a date, a version, a route
+  // like /api/sessions (an absolute path is linked only under a root a file lives under, or with an extension).
+  const URL_RE = /https?:\/\/[^\s<>"'`]+/g;
+  const PATH_ROOTS = /^\/(?:Users|home|private|tmp|var|opt|etc|usr|Library|Applications|Volumes)\//;
+  // /absolute, ~/ or ./ with any segments (an @ before one is Claude Code's attachment mark, not part of it) ·
+  // folder/file.ext, the first segment dotless and not an npm scope (a domain is not a folder), an extension on the
+  // last · name.ext right before :line — and :line[:col] on any of them
+  const PATH_RE = /(?<![\w.\/~-])(?:(?:~|\.{1,2})?\/[\w.@+-]+(?:\/[\w.@+-]+)*|\.?[\w+-][\w@+-]*(?:\/[\w.@+-]+)*\/[\w@+-][\w.@+-]*\.[A-Za-z0-9]{1,8}|[\w@+-][\w.@+-]*\.[A-Za-z0-9]{1,8}(?=:\d))(?::\d+(?::\d+)?)?/g;
+  const EXT_RE = /\.[A-Za-z0-9]{1,8}$/;
+  /** A path's vscode://file URL against the chat's folder, or null for one that is no file of ours: ~ needs a home
+      (read off the folder), a relative path needs the folder, an absolute one a known root or an extension. */
+  function pathHref(p, cwd) {
+    const m = /^(.*?)(?::(\d+)(?::(\d+))?)?$/.exec(p); let f = m[1];
+    if (f.startsWith('~/')) { const home = /^\/(?:Users|home)\/[^/]+/.exec(cwd || '')?.[0]; if (!home) return null; f = home + f.slice(1); }
+    else if (f.startsWith('/')) { if (!PATH_ROOTS.test(f) && !EXT_RE.test(f)) return null; }
+    else { if (!cwd) return null; f = `${cwd}/${f}`; }
+    const out = []; for (const seg of f.split('/')) { if (seg === '.' || seg === '') continue; if (seg === '..') out.pop(); else out.push(seg); }
+    return `vscode://file/${out.join('/')}${m[2] ? ':' + m[2] : ''}${m[3] ? ':' + m[3] : ''}`;
+  }
+  /** Where the links are in a run of text: [{ start, end, href, web }], the pages first and no path inside one. */
+  function chatLinks(text, cwd) {
+    const out = [];
+    for (const m of text.matchAll(URL_RE)) { let u = m[0].replace(/[.,;:!?'"]+$/, ''); if (!u.includes('(')) u = u.replace(/\)+$/, ''); out.push({ start: m.index, end: m.index + u.length, href: u, web: true }); }
+    for (const m of text.matchAll(PATH_RE)) {
+      const p = m[0].replace(/[.,;:]+$/, ''), start = m.index, end = start + p.length;
+      if (out.some(o => start < o.end && end > o.start)) continue;
+      const href = pathHref(p, cwd); if (href) out.push({ start, end, href, web: false });
+    }
+    return out.sort((a, b) => a.start - b.start);
+  }
+  /** Anchors for the paths and pages in the text of a rendered transcript — the text nodes outside anchors. */
+  function linkify(root, cwd) {
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), nodes = [];
+    for (let n; (n = w.nextNode());) if (/[\/:]/.test(n.data) && !n.parentElement.closest('a, summary, .who')) nodes.push(n);
+    for (const n of nodes) {
+      const t = n.data, links = chatLinks(t, cwd); if (!links.length) continue;
+      const frag = document.createDocumentFragment(); let at = 0;
+      for (const l of links) {
+        frag.append(t.slice(at, l.start));
+        const a = document.createElement('a'); a.href = l.href; a.textContent = t.slice(l.start, l.end);
+        if (l.web) { a.target = '_blank'; a.rel = 'noopener'; } else a.title = `Open ${l.href.slice('vscode://file'.length)} in VS Code`;
+        frag.append(a); at = l.end;
+      }
+      frag.append(t.slice(at)); n.replaceWith(frag);
+    }
+  }
+  /** The paths on one line of a drawer, as xterm links: the line read back to its cells (a wide cell holds one
+      character and takes two cells), each path a range that opens the way the transcript's does. */
+  function termLinks(tm, y) {
+    const line = tm?.xt?.buffer.active.getLine(y - 1); if (!line) return undefined;
+    let text = ''; const cell = [];
+    for (let x = 0; x < line.length; x++) { const c = line.getCell(x); if (!c || c.getWidth() === 0) continue; const ch = c.getChars() || ' '; for (let i = 0; i < ch.length; i++) cell.push(x); text += ch; }
+    const links = chatLinks(text, state.sessions.get(state.current)?.cwd).filter(l => !l.web)
+      .map(l => ({ text: text.slice(l.start, l.end), href: l.href, range: { start: { x: cell[l.start] + 1, y }, end: { x: cell[l.end - 1] + 1, y } }, activate: () => openExternal(l.href) }));
+    return links.length ? links : undefined;
+  }
 
   // ---- chat header -------------------------------------------------------------------
   const PR_ROWS = 6;   // a chat that lists PRs mentions dozens; the block shows this many and folds the rest behind "more"
@@ -2462,6 +2533,7 @@
     });
     tm.fit = new FitAddon.FitAddon(); tm.xt.loadAddon(tm.fit);
     tm.xt.loadAddon(new WebLinksAddon.WebLinksAddon((_e, uri) => GH_PR.test(uri) ? showPr(uri.match(GH_PR)[0]) : openExternal(uri)));
+    tm.xt.registerLinkProvider({ provideLinks: (y, cb) => cb(termLinks(tm, y)) });   // the paths on a line (2026-09-26)
     tm.xt.open($(tm.el.tbody));
     tm.xt.onData(d => termSend(tm, d));
     $(tm.el.tbody).addEventListener('mousedown', () => focusGroup(tm.g));   // typing in a half is being in it
@@ -2521,6 +2593,7 @@
     term: g => window.peixDebug(g),
     screen: g => [...document.querySelectorAll(`${GEL[g ?? focusG].tbody} .xterm-rows > div`)].map(r => r.textContent.replace(/\s+$/, '')),
     /** The whole buffer, scrollback included — what a row that scrolled off the screen went into. */
+    links: (y, g) => (termLinks(terms[g ?? focusG], y) || []).map(l => ({ text: l.text, href: l.href, range: l.range })),
     buffer: g => { const b = terms[g ?? focusG].xt?.buffer.active; const out = []; for (let i = 0; b && i < b.length; i++) out.push(b.getLine(i)?.translateToString(true) || ''); return out; },
   };
   window.peixDebug = (g = focusG) => {
@@ -2670,7 +2743,7 @@
     splits.delete(s.id); autoSplit.delete(s.id); homes.delete(s.id);
     tabs.set(s.id, [keep, null]);
   }
-  const paneLabel = k => { const m = /github\.com\/[^/]+\/([^/]+)\/pull\/(\d+)/.exec(k); return m ? `${m[1]}#${m[2]}` : 'GitHub'; };
+  const paneLabel = k => { const m = /github\.com\/[^/]+\/([^/]+)\/pull\/(\d+)/.exec(k); if (m) return `${m[1]}#${m[2]}`; try { return new URL(k.slice(3)).hostname.replace(/^www\./, ''); } catch { return 'page'; } };
   // Keep the pane right for the viewed chat: the body under the strip — its zsh on that tab, its claude drawer while
   // it runs here (attached under a page's tab too: the native pane covers it, nothing re-attaches on the way back), the
   // transcript otherwise — then the strip, then the shell's word (postPane). Runs on every open and SSE update, so it
@@ -2723,7 +2796,7 @@
       el.innerHTML = keys.map(k =>
         k === 'chat' ? tab(k, termLive(s) ? 'claude' : 'chat', `${termLive(s) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C`)
         : k === 'shell' ? tab(k, 'zsh', `A zsh in ${s.cwd || 'its folder'} · ⌥⌘T`, 'End this shell')
-        : k.startsWith('gh:') ? tab(k, paneLabel(k), `${k.slice(3)} · ⌥⌘G`, 'Close this page')
+        : k.startsWith('gh:') ? tab(k, paneLabel(k), GH_PR.test(k.slice(3)) ? `${k.slice(3)} · ⌥⌘G` : k.slice(3), 'Close this page')
         : tab(k, 'VS Code', `${s.cwd} in VS Code Web · ⌥⌘E`, 'Close the editor')).join('')
         + (two && !keys.length ? '<span class="pdrop">drop a tab here</span>' : '')
         + (isPaneTab(cur) ? `<span class="purl" data-key="${esc(cur)}" data-url="${esc(paneUrl(cur))}" title="${esc(paneUrl(cur))} — click to copy">${esc(bareUrl(paneUrl(cur)))}</span>` : '')
@@ -3239,6 +3312,7 @@
     }
     flush();
     log.innerHTML = out.join('') || '<div class="empty">No messages yet</div>';
+    linkify(log, state.sessions.get(state.current)?.cwd);
     if (opened) log.querySelectorAll('details.toolgroup').forEach((d, i) => { if (i < opened.length) d.open = opened[i]; });
     if (stick) log.scrollTop = log.scrollHeight;
   }
