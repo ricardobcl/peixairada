@@ -9,10 +9,13 @@ this file is the *why* and the *state*. Last updated 2026-09-26.
 Ricardo: "instead of '/' dividing the project from the chat title, on the chat's header, but a vertical black bar (or
 white if it's too dark, like 'acme' project black color)".
 
-* The `/` is a 2 × 15 px bar in `--rink`, the ink `inkOn` already picks for the header by the colour's brightness
+* The `/` is a 2 px bar in `--rink`, the ink `inkOn` already picks for the header by the colour's brightness
   — black on admin-service's blue, white on acme's black — and the page's ink on the plain header of a chat
-  with no colour. The span is empty now; the title's tooltip still reads "project / title". Checked on the live
-  board on the blue header, and with the header's variables forced to the black one.
+  with no colour. **From the header's top to its bottom** (Ricardo, next: "the bar should go from top to bottom";
+  15 px tall for a moment): the span holds 2 px of the row and its `::before` is positioned from `.shead` — top 0
+  to bottom 0 at the span's own x — since the h2 clips its overflow for the ellipsis and a bar drawn inside it
+  could not leave it. The title's tooltip still reads "project / title". Checked on the live board on the blue
+  header, and with the header's variables forced to the black one.
 
 ## Decisions of 2026-09-26 — square cards
 

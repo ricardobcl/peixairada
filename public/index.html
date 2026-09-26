@@ -517,7 +517,7 @@
   main.scompact #usage .unote { font-size: 9px; padding: 0 3px; text-align: center; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }   /* the rest is on hover */
 
   /* ---- chat pane ---- */
-  .shead { padding: 7px 12px; border-bottom: 1px solid var(--line); background: var(--panel); display: flex; gap: 6px 9px; align-items: center; flex-wrap: wrap; min-width: 0; min-height: 43px; }
+  .shead { position: relative; padding: 7px 12px; border-bottom: 1px solid var(--line); background: var(--panel); display: flex; gap: 6px 9px; align-items: center; flex-wrap: wrap; min-width: 0; min-height: 43px; }
   /* The title takes what is left and truncates. flex-basis must NOT be auto: a long title would then
      exceed the line on its own and push the status, buttons and every chip onto the next one. */
   .shead h2 { margin: 0; font-size: 14px; flex: 1 1 170px; min-width: 0; display: flex; gap: 6px; align-items: center; overflow: hidden; }
@@ -527,8 +527,12 @@
   .shead h2 .repo:hover { text-decoration: underline; text-decoration-style: dotted; }
   .shead h2 .t { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   /* a bar between the project and the title (2026-09-26, Ricardo: "instead of '/' … a vertical black bar (or white if
-     it's too dark, like 'acme' project black color)"): the header's ink, which inkOn picks by the colour's brightness */
-  .shead h2 .sep { flex: none; width: 2px; height: 15px; background: var(--rink, var(--ink)); opacity: .9; }
+     it's too dark, like 'acme' project black color)" — then "the bar should go from top to bottom"): the header's
+     ink, which inkOn picks by the colour's brightness, the whole height of the header. The span only holds the
+     2 px of room in the row; the bar is its ::before, positioned from the header (.shead is the containing block),
+     at the span's own x — so the h2's overflow: hidden, which clips the row, does not clip it. */
+  .shead h2 .sep { flex: none; width: 2px; align-self: stretch; }
+  .shead h2 .sep::before { content: ''; position: absolute; top: 0; bottom: 0; width: 2px; background: var(--rink, var(--ink)); opacity: .9; }
   /* The project's colour beside its name, and the picker for it (2026-09-22, Ricardo: "allow me to quickly change
      the project color on the header of the chat next to the project name (only on hover)"): the column's own
      square, in the header where you are already looking. It keeps its place in the row always and only inks
