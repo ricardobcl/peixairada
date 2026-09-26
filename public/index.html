@@ -384,7 +384,8 @@
   .card .top { display: flex; align-items: center; gap: 7px; min-width: 0; margin-bottom: 2px; }
   .card .trow { display: flex; align-items: flex-start; gap: 7px; min-width: 0; }
   .card .trow .title { flex: 1; margin-top: 0; }
-  .card .trow .time, .card .trow .badge, .card .trow .act { margin-top: 2px; }
+  .card .trow .time, .card .trow .badge { margin-top: 2px; }
+  .card .trow .act { margin-top: -1px; }
   .card .trow .chip.agents { margin-top: 3px; color: var(--working); border-color: color-mix(in srgb, var(--working) 55%, transparent); }
   /* a monitor or a background command the harness is still running: the same chip in the watch colour, with the
      radar mark — it says *something is running here*, next to the agents chip that says *Claude is* */
@@ -436,11 +437,13 @@
   .card .state.needs-input .ic { width: 11px; height: 11px; flex: none; align-self: center; }
   .card .state.needs-input .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .card .state.needs-input .opts { color: var(--muted); font-weight: 500; flex: none; }
-  /* Done/reopen: an icon at the end of the top row, not a bordered pill in a row of its own. */
-  .act { font: inherit; font-size: 12px; line-height: 1; padding: 0 2px; border: 0; background: transparent;
-    color: var(--muted); cursor: pointer; flex: none; opacity: .35; }
-  .card:hover .act { opacity: .75; }
-  .act:hover { opacity: 1; color: var(--accent); }
+  /* Done/reopen: an icon at the end of the top row, not a bordered pill in a row of its own. Bigger, and only under
+     the pointer, since 2026-09-26 (Ricardo: "the done button on the card is a bit small and hard to see, also make it
+     visible only on hover"): it keeps its box at rest, so nothing in the row moves when it comes. */
+  .act { font: inherit; font-size: 16px; line-height: 1; width: 22px; height: 20px; padding: 0; border: 0; border-radius: 6px; background: transparent;
+    color: var(--ink); cursor: pointer; flex: none; opacity: 0; display: inline-grid; place-items: center; transition: opacity .12s; }
+  .card:hover .act, .act:focus-visible { opacity: .7; }
+  .act:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .dot.working { background: var(--working); animation: pulse 1.4s ease-in-out infinite; }
   .dot.idle { background: var(--idle); }

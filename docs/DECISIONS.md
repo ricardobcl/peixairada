@@ -4,6 +4,15 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-26.
 
+## Decisions of 2026-09-26 — the card's done button, bigger and only under the pointer
+
+Ricardo: "the done button on the card is a bit small and hard to see, also make it visible only on hover".
+
+* **A 22 × 20 px rounded button with a 16 px tick** (12 px, no box, before) at the end of the title row, beside the
+  time; the same for ↩ on a done card. At rest it is fully transparent and keeps its box, so the row does not move
+  when it comes; the card's hover brings it to 70 %, its own hover to full in the accent on a wash of it; in the card.s ink, not the muted grey, so it reads on a tinted card, and
+  keyboard focus shows it too (`:focus-visible`). Looked at on the live board with the two states forced.
+
 ## Decisions of 2026-09-26 — no carets after the project's name and the PR chips
 
 Ricardo: "remove the down [arrow] from PRs in the chat top bar and from the project picker next to the app icon".
