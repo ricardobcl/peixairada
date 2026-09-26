@@ -172,7 +172,7 @@ chat*), the best match first and the letters that landed underlined; ↑↓ walk
 The box takes the chips' place while it is open; Esc or an emptied box closes it, and the magnifier stays lit while a
 filter is on.
 
-**Chats** of the selected project, newest first by your own last touch, with a chip per state in the head —
+**Chats** of the selected project, newest first by the last word — yours or Claude's —, with a chip per state in the head —
 *ready · clauding · done*, a dot in the state's colour and a count (the word too when the list is wide), each a
 toggle — and the set you leave on is remembered. A card is washed in its project's
 colour; only a clauding card (the running light), a hovered one and the open one wear the colour on their edge too. **«** in its header folds the list to a rail and **»** brings
@@ -207,10 +207,11 @@ The card's **edge** says which kind of busy, at a glance — one mechanism, four
 ### Sorting
 
 A chat **waiting on your answer** comes first — it costs you a second and unblocks a whole turn — and after
-that the chat **you** wrote to most recently, the one rule, in every list. Claude finishing
-a long job does not move its card up; answering its question or interrupting it does. So the chats
-you are actively driving stay at the top and the ones you have parked sink by themselves. The time on
-a card is still when *anything* last happened to it; hover it for when you last wrote. Projects
+that the chat with the **newest last word**, yours or Claude's, the one rule, in every list: your prompt, your
+answer to its question or your Escape, and Claude's reply when the turn ends — not every tool call on the way,
+so a clauding card does not climb with each step. A reply landing brings its card up to where you will look
+next; the ones you have parked sink by themselves. The time on
+a card is still when *anything* last happened to it; hover it for when you last wrote and when Claude last replied. Projects
 follow the same rule through their newest chat. Lines of little ascii fish break the list where it turns
 over: `><>` swimming right between what is clauding and what is ready, and a still line of `<><` **under each
 day's chats** with the day in its middle — *today* under the ones you have been in today, then a `DD-MM-YYYY` under

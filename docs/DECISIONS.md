@@ -2,7 +2,20 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-09-26.
+this file is the *why* and the *state*. Last updated 2026-09-27.
+
+## Decisions of 2026-09-27 — the card: the last word, an F for Fable, the age under the pointer
+
+Ricardo: "sort by the latest: either my reply or claude reply · if the chat is using Fable, put a special marker
+on the card, like a star or a stylized F or something · the time since last update on the card should only show
+on hover and should be a top left on the card".
+
+* **The order goes by the last word, whoever said it** (`wordAt`, the newer of `lastUserAt` and `lastReplyAt`, falling
+  back to the last activity; `byWord`): every list — the cards, ⌥⌘K, the new-chat flow's chats step, the day lines
+  and the timeline's runs, the server's `/api/sessions` — where it had been your last touch alone since 2026-09-20
+  ("Claude finishing a long job does not move a card up"). Now it does: a reply landing brings the card to where
+  you will look next, which is what a board of chats is for. A tool call is still not a word, so a clauding card
+  keeps its place through a turn. The card's tooltip says when Claude last replied beside when you last wrote.
 
 ## Decisions of 2026-09-26 — a bar between the project and the title
 

@@ -1519,10 +1519,10 @@ function readBody(req) {
   });
 }
 
-/** Newest first by when *you* last acted on the chat — the board's own order (`byUser` in index.html). */
-const userAt = s => String(s.lastUserAt || s.lastActivity || '');
+/** Newest first by the chat's last word — yours or Claude's reply, whichever came later — the board's own order (`byWord` in index.html). */
+const wordAt = s => { const u = String(s.lastUserAt || ''), r = String(s.lastReplyAt || ''); return (u > r ? u : r) || String(s.lastActivity || ''); };
 function sortedSummaries() {
-  return [...sessions.values()].map(summary).sort((a, b) => userAt(b).localeCompare(userAt(a)));
+  return [...sessions.values()].map(summary).sort((a, b) => wordAt(b).localeCompare(wordAt(a)));
 }
 
 const server = createServer(async (req, res) => {

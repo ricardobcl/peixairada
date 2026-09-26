@@ -1260,14 +1260,15 @@
     if (!s.alive && !s.done && (!s.lastActivity || Date.now() - new Date(s.lastActivity) > STALE_MAX_AGE_MS)) return false;
     return true;
   }
-  // One order everywhere: the chat *you* wrote to most recently first. Claude finishing a long job
-  // does not move a card up — what ranks is your last touch (a prompt, an answer to its question, an
-  // interrupt), so the chats you are driving stay on top and the parked ones sink by themselves. A
-  // session whose tail held no prompt of yours (boot reads only the end of a long transcript) falls
-  // back to its last activity, not the bottom.
-  const userAt = s => String(s.lastUserAt || s.lastActivity || '');
-  const byUser = (a, b) => userAt(b).localeCompare(userAt(a));
-  const timeTip = s => !s.lastActivity ? '' : `last activity ${rel(s.lastActivity)} ago${s.lastUserAt ? ` · you last wrote ${rel(s.lastUserAt)} ago` : ''}`;
+  // One order everywhere: the chat whose last *word* is newest first — yours or Claude's, whichever came later
+  // (2026-09-27, Ricardo: "sort by the latest: either my reply or claude reply"; your last touch alone before, so a
+  // reply landing did not move a card). Yours is a prompt, an answer to its question, an interrupt; Claude's is the
+  // reply that ends a turn — not each tool call on the way, so a clauding card does not climb with every step. A
+  // session whose tail held neither (boot reads only the end of a long transcript) falls back to its last activity,
+  // not the bottom.
+  const wordAt = s => { const u = String(s.lastUserAt || ''), r = String(s.lastReplyAt || ''); return (u > r ? u : r) || String(s.lastActivity || ''); };
+  const byWord = (a, b) => wordAt(b).localeCompare(wordAt(a));
+  const timeTip = s => !s.lastActivity ? '' : `last activity ${rel(s.lastActivity)} ago${s.lastUserAt ? ` · you last wrote ${rel(s.lastUserAt)} ago` : ''}${s.lastReplyAt ? ` · Claude last replied ${rel(s.lastReplyAt)} ago` : ''}`;
   // Three states since 2026-09-20, and done is *only* the tick (asked later that day; the first cut folded
   // stale into done): a chat with no live process is ready — write to it and it resumes. The dot still says
   // stale in grey and the card is dimmed a touch, so you know a resume is coming before you click. Clauding
@@ -1307,7 +1308,7 @@
       p.working = undone.filter(s => s.status === 'working').length;
       p.ready = undone.length - p.working;   // a pending question is ready-for-you too, and so is a stale chat
       p.unread = p.sessions.reduce((n, s) => n + (state.unread.get(s.id) || 0), 0);
-      p.last = p.sessions.reduce((m, s) => userAt(s) > m ? userAt(s) : m, '');
+      p.last = p.sessions.reduce((m, s) => wordAt(s) > m ? wordAt(s) : m, '');
       return p;
     };
     const every = [...customs, ...folders.values()].map(stat).filter(p => !isHidden(p.key));   // ✕ in ⌥⌘N: off every list, pins included
@@ -1364,7 +1365,7 @@
   // date … stop the animation, leave it static with the fishes") — nothing moves, so nothing needs keeping.
   const pad2 = n => String(n).padStart(2, '0');
   const dayName = s => {
-    const d = new Date(userAt(s)); if (isNaN(d)) return '';
+    const d = new Date(wordAt(s)); if (isNaN(d)) return '';
     return new Date(d).setHours(0, 0, 0, 0) === new Date().setHours(0, 0, 0, 0) ? 'today' : `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()}`;
   };
   const dayHtml = day => `<div class="gsep day" title="above: the chats you were in ${day === 'today' ? 'today' : 'on ' + day}"><i>${STILLFISH}</i><b>${day}</b><i>${STILLFISH}</i></div>`;
@@ -1382,7 +1383,7 @@
     // clauding on top, then ready, done last (2026-09-20, Ricardo: one rule between the live cards and the ready ones —
     // which needs a group above it); inside each group your last touch, newest first. A finished job moves its card
     // into the ready group, where its last prompt puts it. That order is also how a query's ties are broken.
-    const board = (a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byUser(a, b);
+    const board = (a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byWord(a, b);
     const shown = list.filter(s => filterOn(bucket(s))).sort(q ? (a, b) => (score.get(b.id) - score.get(a.id)) || board(a, b) : board);
     // The project filter's one cue: a click is ⌥⌘P's picker, × goes back to ALL. The square is only a colour here —
     // the colour picker is the chat header's.
@@ -1400,7 +1401,7 @@
     const fishBefore = i => !q && i && b[i] === 'ready' && b[i - 1] === 'working' ? fishHtml('fish') : '';
     // the timeline's runs: the cards of one day *and* one state group in a row — none while a query orders the list
     tl.runs = [];
-    if (!q) shown.forEach((s, i) => { const r = tl.runs[tl.runs.length - 1]; if (r && r.g === b[i] && r.day === days[i]) r.n++; else tl.runs.push({ g: b[i], day: days[i], at: userAt(s), i, n: 1 }); });
+    if (!q) shown.forEach((s, i) => { const r = tl.runs[tl.runs.length - 1]; if (r && r.g === b[i] && r.day === days[i]) r.n++; else tl.runs.push({ g: b[i], day: days[i], at: wordAt(s), i, n: 1 }); });
     const dayAfter = i => !q && days[i] && days[i + 1] !== days[i] ? dayHtml(days[i]) : '';
     $('#slist').innerHTML = shown.map((s, i) => `${fishBefore(i)}${cardHtml(s, p, q)}${dayAfter(i)}`).join('') || `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
     $('#slist .gsep.fish')?.replaceWith(fishEl);
@@ -1832,9 +1833,9 @@
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
       rows = pick.list.map((pr, i) => `<div class="pkrow pr${sel(i)}" data-i="${i}" data-state="${esc(pr.state || '')}" title="${esc(pr.url)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${mark(pr.label)}</span><span class="n${pr.title ? '' : ' pending'}">${pr.title ? mark(pr.title) : 'title on its way from gh…'}${pr.url === shownPr.url ? '<span class="cur">current</span>' : ''}</span><span class="t">${rel(pr.lastAt)}</span></div>`);
     } else if (pick.mode === 'chat') {
-      pick.list = hunt([...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done').sort((a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byUser(a, b)), chatFields);
+      pick.list = hunt([...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done').sort((a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byWord(a, b)), chatFields);
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
-      rows = pick.list.map((s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${mark(s.title)}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t">${rel(userAt(s))}</span></div>`);
+      rows = pick.list.map((s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${mark(s.title)}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t">${rel(wordAt(s))}</span></div>`);
     } else if (pick.mode === 'chats') {   // the scope's open chats, ＋ a new one — the row that carries on with the flow
       const chats = hunt(scopeChats(pick.ctx), chatFields);   // ＋ is never filtered out: it is the fallback for a query that matches nothing
       pick.list = [{ isNew: true }, ...chats];
@@ -1842,7 +1843,7 @@
       const how = pick.ctx.env ? `task ${pick.ctx.env}` : pick.ctx.cwds.length === 1 ? `in ${folderName(pick.ctx.cwds[0])}` : 'pick a folder…';   // reads under the chats' own environment column, so say it is a folder
       rows = pick.list.map((x, i) => x.isNew
         ? `<div class="pkrow chat new${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(pick.ctx.cwds))}" title="Start a new chat in ${esc(pick.ctx.name)}"><span class="sq"></span><span class="n">＋ new chat</span><span class="num">${esc(how)}</span><span class="st"></span><span class="t"></span></div>`
-        : `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(x)}" style="${repoStyle(repoColor(x.cwd))}" title="${esc(x.cwd || '')}"><span class="sq"></span><span class="n">${mark(x.title)}${x.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${esc(x.env || '')}</span><span class="st">${chatState(x)}</span><span class="t">${rel(userAt(x))}</span></div>`);
+        : `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(x)}" style="${repoStyle(repoColor(x.cwd))}" title="${esc(x.cwd || '')}"><span class="sq"></span><span class="n">${mark(x.title)}${x.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${esc(x.env || '')}</span><span class="st">${chatState(x)}</span><span class="t">${rel(wordAt(x))}</span></div>`);
     } else if (pick.mode === 'folder') {   // the new chat's folder, from a project that spans several
       pick.list = hunt(pick.ctx.cwds.map(f => ({ cwd: f })), x => [folderName(x.cwd), x.cwd]);
       pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
@@ -1894,7 +1895,7 @@
   }
   // The open chats of a step's scope — a project (its own rule: a folder is its exact cwd, a named project its
   // folders) narrowed to one environment when ⌥⌘O picked one — by your last touch, newest first. Done chats stay out.
-  const scopeChats = ctx => { const p = projectStub(ctx.key); return [...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done' && inProject(s, p) && (!ctx.env || s.env === ctx.env)).sort(byUser); };
+  const scopeChats = ctx => { const p = projectStub(ctx.key); return [...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done' && inProject(s, p) && (!ctx.env || s.env === ctx.env)).sort(byWord); };
   const chatsStep = ctx => pickOpen('chats', ctx);   // even with nothing to choose between: ＋ new chat alone, and esc
   // What the chats step would show under one environment, split the way the column's pills split a project.
   const envCounts = (cwd, env) => { const l = scopeChats({ key: cwd, env }); return { working: l.filter(s => bucket(s) === 'working').length, ready: l.filter(s => bucket(s) === 'ready').length }; };

@@ -170,8 +170,10 @@ refuses to run against the real directory for the same reason.
   list's padding to the column's edge, and `#splitter` is `--open` on `main` — set by
   `tintChat`, the chat's colour or the grey of none — so card, bar and the chat's tinted header are one stroke.
 * **A chat waiting on your answer first, then clauding, then ready, done last** (`RANK` / `rankOf`, the asking
-  step added 2026-09-21), inside each group **by when *you* last acted**
-  (`lastUserAt`), newest first; a project ranks by its newest chat. The filters and every count still go by
+  step added 2026-09-21), inside each group **by the last word, yours or Claude's** (`wordAt`: the newer of
+  `lastUserAt` and `lastReplyAt`, 2026-09-27 — your last touch alone before, so a reply landing moved nothing; a tool
+  call is not a word, so a clauding card does not climb with every step), newest first; a project ranks by its
+  newest chat. The filters and every count still go by
   `bucket()`, where an asking chat is a ready one — only the order knows the difference, in the list and in ⌥⌘K. **Rules of ascii fish** (`.gsep`): `><>` swimming right between the clauding cards and the ready ones — one fish
   per cycle, phased by the document clock so a re-render does not jolt it; `school()` builds it as a kept node and
   `fishHtml(cls)` is its stand-in — and a still line **under every run of cards from one day** (2026-09-23,
@@ -270,7 +272,7 @@ refuses to run against the real directory for the same reason.
   mark shows only while the box has the keyboard (`markQsel()`, on every render). What it has over ⌥⌘K: done chats,
   the project in view and the state chips still apply. → `scripts/scenarios/chat-filter.mjs`.
 * **The last step of the new-chat flow is a list of chats** (2026-09-21): the `chats` step is the scope's ready and
-  clauding chats by `byUser` (newest touch first, done ones out) under a ＋ *new chat* row that carries on with the
+  clauding chats by `byWord` (newest word first, done ones out) under a ＋ *new chat* row that carries on with the
   flow — `scopeChats()` / `chatsStep()` / `newFromChats()`; **it shows even when the scope has none** (2026-09-22):
   ＋ alone, so ⏎ starts a chat and esc walks away — skipping the step ran the next one straight into a spawning terminal. ⌥⌘N scopes it to
   the project, ⌥⌘O to *one environment* (`then: 'chats'` rides the `folder` and `env` steps and makes the environment
