@@ -423,9 +423,11 @@ refuses to run against the real directory for the same reason.
   arrived; another chat, a new array from a fetch, or `renderLog(true)` starts over. A reconnect (a snapshot with a
   chat open) is `refetchCurrent()`, in place. **The log's last child is the presence line** (2026-09-27, night):
   `renderPresence()` — from `renderLog` and the `session` event — keeps `.presence` last while the open chat is
-  clauding (the `.pix` sprite and the word) or asking (`askHtml`), and removes it otherwise; anything that appends to
-  the log after `renderLog` has to leave it last, and a check for "the last message" reads `:scope > .msg:last-of-type`.
-  → `scripts/scenarios/transcript-live.mjs`.
+  clauding (the `.pix` sprite and the word) or asking (`askHtml`), and removes it otherwise, **and after it the
+  new-reply pill** (`.lognew`, `logNew()`, made on first need): `renderLog` inserts new nodes before that tail, marks
+  them `.in` (the fade; never on the first fill) and, when the log is not at its end, lights the pill; the log's scroll
+  listener puts it away at the end. Anything else that appends to the log has to go before the tail, and a check for
+  "the last message" reads `:scope > .msg:last-of-type`. → `scripts/scenarios/transcript-live.mjs`.
 * **Split or not is the chat's**: `splits`, a set of chat ids beside the `tabs` map and lasting as long as it does.
   `syncTerm` calls `applySplit()` on every open, so the column follows whichever chat is in front; only the divider's
   place is the board's. **⌘W closes the half the keys are in**, and each strip's ⨯ closes *its own* half

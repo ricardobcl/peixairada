@@ -72,6 +72,15 @@ transform and opacity where it can — the compositor's kind of motion, as the r
   in the card's red and the card's own markup (`askHtml`, its rules now `:is(.card, .presence)`), while it asks;
   nothing once it is ready. From `renderLog` and from the `session` event, where the state flips; it keeps the bottom
   when you are at it. → `scripts/scenarios/transcript-live.mjs`.
+* **What comes while you read fades in, and a pill says so when you have scrolled up**: `renderLog` marks what it
+  appends after the first fill `.in` (180 ms from 4 px down; not under a live drawer, not under reduced motion) and
+  puts new nodes before the log's tail. Scrolled up when something arrives, `logNew` lights a sticky pill at the
+  foot — *↓ new reply*, *↓ 3 new replies*, *↓ more below* for tool activity alone — the twin of the list's ends; a
+  click scrolls to the end, and reaching it yourself (the log's scroll listener) puts it away; at the end when a
+  reply comes, no pill, as before. The pill is made on first need and kept the last thing in the log; the presence
+  line sits before it. `motion()` records `msg` (with the count) and `pill`. → the long chat in `transcript-live.mjs`:
+  nothing fades on the first fill; a reply written in with the log at its top fades in and lights the pill, which
+  stays last while the log stays put; the click; a reply at the end with no pill.
 
 ## Decisions of 2026-09-27, night — an empty chat's card can be ticked done
 

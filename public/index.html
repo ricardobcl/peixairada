@@ -360,9 +360,9 @@
   .sedge.up { align-self: start; align-items: flex-start; padding-top: 5px; background: linear-gradient(var(--bg) 25%, transparent); }
   .sedge.down { align-self: end; align-items: flex-end; padding-bottom: 5px; background: linear-gradient(transparent, var(--bg) 75%); }
   .sedge.on { opacity: 1; }
-  .sedge button { pointer-events: auto; font: inherit; font-size: 11px; line-height: 16px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 1px 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); white-space: nowrap; }
+  :is(.sedge, .lognew) button { pointer-events: auto; font: inherit; font-size: 11px; line-height: 16px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 1px 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); white-space: nowrap; }
   .sedge:not(.on) button { pointer-events: none; }
-  .sedge button:hover { color: var(--ink); border-color: var(--muted); }
+  :is(.sedge, .lognew) button:hover { color: var(--ink); border-color: var(--muted); }
   .sedge b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
   .sedge i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
   .sedge i.ask { background: var(--needs); } .sedge i.work { background: var(--working); }
@@ -868,6 +868,19 @@
   .presence .w em { font-style: normal; font-weight: 400; }
   .presence .state.needs-input { font-size: 12px; font-weight: 600; min-width: 0; }
   .presence .state.needs-input .ic { width: 12px; height: 12px; }
+  /* A message that arrives fades in from 4 px down (2026-09-27, night) — what comes while the chat is open; the first
+     fill stands still (renderLog marks `.in`). */
+  @keyframes msgin { from { opacity: 0; transform: translateY(4px); } }
+  #log > .in { animation: msgin .18s ease-out both; }
+  /* …and when you have scrolled up, a pill at the log's foot says what came — "new reply", "3 new replies", "more
+     below" for tool activity alone — the twin of the list's ends: sticky at the bottom of the log's window (its box
+     is the last thing in the log, of no height, the button drawn above it), a click scrolls to the end, and getting
+     there yourself puts it away (logNew). */
+  .lognew { position: sticky; bottom: 10px; z-index: 2; height: 0; display: flex; justify-content: center; pointer-events: none; opacity: 0; transition: opacity .15s; }
+  .lognew.on { opacity: 1; }
+  .lognew button { transform: translateY(-100%); pointer-events: none; }
+  .lognew.on button { pointer-events: auto; }
+  .lognew button b { font-weight: 600; }
   .empty { color: var(--muted); text-align: center; margin-top: 30vh; padding: 0 20px; }
 
   /* ---- project editor ---- */
@@ -965,6 +978,7 @@
     .card.landed { animation: none; }
     .dot.working, .dot.needs-input { animation: none; }
     .pix, .pix svg { animation: none; }
+    #log > .in { animation: none; }
     dialog, dialog:not([open]), .pop, .pop[hidden], .note, .note.out { transform: none; }
     @starting-style { dialog[open], .pop:not([hidden]), .note { transform: none; } }
     .toolgroup > summary::before, .codefold > summary::before { transition: none; }
@@ -3724,25 +3738,49 @@
   function renderLog(reset = false) {
     const log = $('#log'), cwd = state.sessions.get(state.current)?.cwd;
     const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
-    if (reset || logView.arr !== state.entries || logView.n > state.entries.length) { log.innerHTML = ''; Object.assign(logView, { arr: state.entries, n: 0, run: [], group: null }); }
+    if (reset || logView.arr !== state.entries || logView.n > state.entries.length) { log.innerHTML = ''; Object.assign(logView, { arr: state.entries, n: 0, run: [], group: null, fresh: 0 }); }
+    // What comes while you read fades in (`.in`); the first fill stands still. New nodes go before the log's tail —
+    // the presence line and the new-reply pill, which stay last.
+    const live = logView.n > 0 && !log.hidden && !REDUCED.matches, arrived = state.entries.length - logView.n;
+    let replies = 0;
+    const add = frag => { if (live) for (const c of frag.children) c.classList.add('in'); const tail = log.querySelector(':scope > .presence, :scope > .lognew'); if (tail) log.insertBefore(frag, tail); else log.append(frag); };
     const group = () => {   // the trailing run of tool calls: its <details> made, or made again when it grew
       if (!logView.run.length) return;
       const frag = htmlNodes(toolGroupHtml(logView.run), cwd), el = frag.firstElementChild;
-      if (logView.group) { el.open = logView.group.open; logView.group.replaceWith(frag); } else log.append(frag);
+      if (logView.group) { el.open = logView.group.open; logView.group.replaceWith(frag); } else add(frag);
       logView.group = el;
     };
     for (const e of state.entries.slice(logView.n)) {
       if (e.kind === 'tool_use' || e.kind === 'tool_result') { logView.run.push(e); continue; }
       group(); logView.run = []; logView.group = null;
-      log.append(htmlNodes(entryHtml(e), cwd));
+      add(htmlNodes(entryHtml(e), cwd));
+      if (e.kind === 'text' && e.role === 'assistant') replies++;
     }
     group();
     logView.n = state.entries.length;
+    if (live && arrived) noteMotion(state.current, 'msg', arrived);
     log.querySelector(':scope > .empty')?.remove();
-    if (!log.querySelector(':scope > :not(.presence)')) log.insertAdjacentHTML('afterbegin', '<div class="empty">No messages yet</div>');
+    if (!log.querySelector(':scope > :not(.presence, .lognew)')) log.insertAdjacentHTML('afterbegin', '<div class="empty">No messages yet</div>');
     renderPresence();
-    if (stick) log.scrollTop = log.scrollHeight;
+    if (stick) { log.scrollTop = log.scrollHeight; logNew(0); }
+    else if (arrived) { logView.fresh += replies; logNew(logView.fresh, arrived); }
   }
+  // The pill at the log's foot (2026-09-27, night): what came while you were scrolled up — "new reply", "3 new
+  // replies", or "more below" for tool activity alone — sticky at the bottom of the window, the twin of the list's
+  // ends. A click scrolls to the end; reaching it yourself puts it away (the scroll listener). Made on first need,
+  // kept the last thing in the log.
+  function logNew(replies, arrived = 0) {
+    const log = $('#log'); let pill = log.querySelector(':scope > .lognew');
+    if (!replies && !arrived) { pill?.classList.remove('on'); logView.fresh = 0; return; }
+    if (!pill) {
+      pill = html2el('<div class="lognew"><button type="button" title="Scroll to the end of the chat">↓ <b></b></button></div>');
+      pill.querySelector('button').onclick = () => { log.scrollTo({ top: log.scrollHeight, behavior: REDUCED.matches ? 'auto' : 'smooth' }); logNew(0); };
+    }
+    pill.querySelector('b').textContent = replies ? (replies === 1 ? 'new reply' : `${replies} new replies`) : 'more below';
+    if (pill !== log.lastElementChild) log.append(pill);
+    pill.classList.add('on'); noteMotion(state.current, 'pill', replies);
+  }
+  $('#log').addEventListener('scroll', () => { const log = $('#log'); if (log.scrollHeight - log.scrollTop - log.clientHeight < 80) logNew(0); }, { passive: true });
   // Presence at the foot of the transcript (2026-09-27, night): while the open chat is clauding, Claude's mark and the
   // word — a reply on its way is seen where you are reading, not only on the card — with the sub-agents' count when
   // there is one; while it is asking, the question in the card's red. Kept the last thing in the log, gone when the
@@ -3754,9 +3792,10 @@
       : asking(s) ? `<div class="presence ask">${askHtml(s)}</div>` : '';
     let el = log.querySelector(':scope > .presence');
     if (!html) { el?.remove(); return; }
-    const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
-    if (!el || el.dataset.html !== html) { const n = html2el(html); n.dataset.html = html; if (el) el.replaceWith(n); else log.append(n); el = n; phaseAnims(); }
-    if (el !== log.lastElementChild) log.append(el);
+    const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80, pill = log.querySelector(':scope > .lognew');
+    const place = n => pill ? log.insertBefore(n, pill) : log.append(n);   // last, but for the new-reply pill
+    if (!el || el.dataset.html !== html) { const n = html2el(html); n.dataset.html = html; if (el) el.replaceWith(n); else place(n); el = n; phaseAnims(); }
+    if (el.nextElementSibling && el.nextElementSibling !== pill) place(el);
     if (stick) log.scrollTop = log.scrollHeight;
   }
 
