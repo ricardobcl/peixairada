@@ -39,7 +39,7 @@ the shoulder the moment one of them finishes or needs you**.
 
 ## ⚡ Sixty seconds to a board
 
-Node ≥ 20. macOS for native notifications; everything else is portable.
+Node ≥ 22. macOS for native notifications; everything else is portable.
 
 ```sh
 npm install                  # two runtime deps: node-pty (the terminal drawer) and ws
