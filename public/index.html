@@ -3487,23 +3487,34 @@
     const errs = run.filter(e => e.kind === 'tool_result' && e.isError).length;
     const byName = {}; for (const u of uses) byName[u.name] = (byName[u.name] || 0) + 1;
     const label = Object.entries(byName).sort((a, b) => b[1] - a[1]).map(([n, c]) => c > 1 ? `${n} ×${c}` : n).join(', ');
-    return `<details class="toolgroup"${prefs.toolsMode === 'expanded' ? ' open' : ''}><summary>${uses.length} tool call${uses.length === 1 ? '' : 's'} · ${esc(label)}${errs ? ` · <span class="err">${errs} error${errs > 1 ? 's' : ''}</span>` : ''}</summary>${run.map(entryHtml).join('')}</details>`;
+    return `<details class="toolgroup"><summary>${uses.length} tool call${uses.length === 1 ? '' : 's'} · ${esc(label)}${errs ? ` · <span class="err">${errs} error${errs > 1 ? 's' : ''}</span>` : ''}</summary>${run.map(entryHtml).join('')}</details>`;
   }
+  // The transcript is appended to, not rewritten (2026-09-27): every `entries` event rebuilt the whole log — each
+  // markdown body through marked, DOMPurify and highlight.js, then linkify over every text node — several times a
+  // second while the open chat was clauding. Only what arrived is rendered now: a new entry is appended, and a run of
+  // tool calls still growing at the end has its <details> drawn again, its open state kept. Another chat, another
+  // list (a fetch hands the page a new array) or the fold toggled starts the log over.
+  const logView = { arr: null, n: 0, run: [], group: null };
+  const htmlNodes = (html, cwd) => { const t = document.createElement('template'); t.innerHTML = html; linkify(t.content, cwd); return t.content; };
   function renderLog(reset = false) {
-    const log = $('#log');
+    const log = $('#log'), cwd = state.sessions.get(state.current)?.cwd;
     const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
-    // keep groups the reader opened/closed by hand across live re-renders
-    const opened = reset ? null : [...log.querySelectorAll('details.toolgroup')].map(d => d.open);
-    const out = []; let run = [];
-    const flush = () => { if (run.length && prefs.toolsMode !== 'hidden') out.push(toolGroupHtml(run)); run = []; };
-    for (const e of state.entries) {
-      if (e.kind === 'tool_use' || e.kind === 'tool_result') { run.push(e); continue; }
-      flush(); out.push(entryHtml(e));
+    if (reset || logView.arr !== state.entries || logView.n > state.entries.length) { log.innerHTML = ''; Object.assign(logView, { arr: state.entries, n: 0, run: [], group: null }); }
+    const group = () => {   // the trailing run of tool calls: its <details> made, or made again when it grew
+      if (!logView.run.length) return;
+      const frag = htmlNodes(toolGroupHtml(logView.run), cwd), el = frag.firstElementChild;
+      if (logView.group) { el.open = logView.group.open; logView.group.replaceWith(frag); } else log.append(frag);
+      logView.group = el;
+    };
+    for (const e of state.entries.slice(logView.n)) {
+      if (e.kind === 'tool_use' || e.kind === 'tool_result') { logView.run.push(e); continue; }
+      group(); logView.run = []; logView.group = null;
+      log.append(htmlNodes(entryHtml(e), cwd));
     }
-    flush();
-    log.innerHTML = out.join('') || '<div class="empty">No messages yet</div>';
-    linkify(log, state.sessions.get(state.current)?.cwd);
-    if (opened) log.querySelectorAll('details.toolgroup').forEach((d, i) => { if (i < opened.length) d.open = opened[i]; });
+    group();
+    logView.n = state.entries.length;
+    log.querySelector(':scope > .empty')?.remove();
+    if (!log.children.length) log.innerHTML = '<div class="empty">No messages yet</div>';
     if (stick) log.scrollTop = log.scrollHeight;
   }
 
