@@ -1299,6 +1299,7 @@ const requestSnap = t => new Promise(res => { if (!holderSend(t, { t: 'snap' }))
 function connectHolder(t) {
   return new Promise((resolve, reject) => {
     const sock = netConnect(join(TERMS_DIR, `${t.id}.sock`));
+    sock.setEncoding('utf8');   // a glyph split across two chunks decodes whole; `buf += chunk` on a Buffer decoded each alone
     let buf = '', helloed = false;
     sock.on('connect', () => { t.sock = sock; });
     sock.on('data', chunk => {
