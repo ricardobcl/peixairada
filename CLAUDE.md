@@ -123,6 +123,12 @@ refuses to run against the real directory for the same reason.
   **The reply landed** is the `landed` class: the `session` handler notes `working` → `idle` in `landedAt`, and
   `flareLanded()` (from `drawCards`) sets the class with a negative `animation-delay` for `LANDED_MS`, so a rebuilt card
   carries the flare on; the badge pops from `onAlert`. Neither is in `PHASED`.
+* **A card's tint is `--tint` and `--slope`, registered percentages** (2026-09-27, night): the gradient is built from
+  them (`calc(--tint + --slope)` at the top left, `--tint` at the bottom right) so hover, `.active`, `.qsel` and
+  `.card.black` set the numbers, never a `background`, and the change eases (`transition` on `.card`, shortened under
+  `:hover`; the `::after` cover inherits and follows). A new card state that wants a tint sets the two variables. The
+  outline is `1px solid transparent` at rest for the same reason. `#splitter` and `#gsplit` light after a 300 ms
+  `transition-delay` on hover, none on `.drag`; the small controls share one 120 ms hover transition.
 * **The card's edge is one ring with four readings**: `--lit` is what runs in it, `--seg` how much of the edge one
   light owns (`100% / --lights`, one light per sub-agent), `--spins` how fast. Clauding is the project's colour;
   **watching** (`s.tasks`) is one light in `--watch`, slowly, and can sit on a *ready* card; **asking** (`needs-input`

@@ -30,6 +30,16 @@ transform and opacity where it can — the compositor's kind of motion, as the r
   card is rebuilt on most updates in the seconds after a reply). The unread badge the alert brings pops in
   (`onAlert`, a 260 ms scale by WAAPI on the node the render made). Both are in `motion()` as `landed` and `pop`.
   → the landing section of `list-motion.mjs`: a live chat mid tool call, its end_turn written in.
+* **Hover and the open card ease in**: the card's tint is two registered percentages (`@property --tint`, `--slope`:
+  37 % at the bottom right and 8 % more at the top left at rest; 65 % and 0 under the pointer, on the open card and
+  on ⌥⌘F's mark; 20 % and 100 % on a black card), so the gradient *can* transition to the solid tint — a gradient
+  cannot go to a flat colour, and two gradients only when nothing but their colours differ. The border, the outline
+  (1 px transparent at rest, so its colour and width have something to come from) and the opacity (a card ticked done
+  dims rather than snaps) transition with it, 200 ms out and 100 ms in — the destination's transition is the one that
+  runs, so `.card:hover` shortens it. The `::after` cover inherits the background and follows. The two dividers light
+  after a 300 ms beat, as VS Code's sash does, so a pointer crossing on its way to the chat no longer flashes them; a
+  drag lights at once. Every small control — buttons, chips, tabs, menu rows — eases its ink, edge and wash in 120 ms
+  under one rule. Measured: `--tint` reads 61 % a hundred milliseconds into a click on a card.
 
 ## Decisions of 2026-09-27, night — an empty chat's card can be ticked done
 
