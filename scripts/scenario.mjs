@@ -10,7 +10,7 @@
 // is one (api, terminals, restart, holders, logText), the fixture's chats, `args`, `log` and node:assert as `assert`.
 // Everything is cleaned up on exit — Chrome, the server, its terminals and holders, the temp dirs — unless --keep.
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, realpathSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -39,23 +39,28 @@ async function cleanup() { if (done) return; done = true; for (const c of cleanu
 process.on('SIGINT', () => cleanup().then(() => process.exit(130)));
 const bail = setTimeout(async () => { log(`timed out after ${timeout} ms`); await cleanup(); process.exit(1); }, timeout);
 
-let fixture = null, server = null, boardUrl = url;
-if (meta.fixture) {
-  const dir = meta.fixture === 'auto' ? mkdtempSync(join(tmpdir(), 'peix-fixture-')) : resolve(meta.fixture);
-  // The temp dir as claude reports it (/private/var/…, not /var/…): a fake started there registers its real path, and a
-  // fixture chat under the other spelling would be another folder to the board — a second project named T.
-  fixture = meta.fixture === 'auto' ? defaultFixture(dir, { cwdA: process.cwd(), cwdB: realpathSync(tmpdir()) }) : { dir, chats: [] };
-  log(`fixture ${dir}${fixture.chats.length ? ' — chats ' + fixture.chats.map(c => c.id.slice(0, 8)).join(', ') : ''}`);
+let fixture = null, server = null, boardUrl = url, cdp;
+try {   // a server or a Chrome that does not come up: what did come up is ended, or it ran on after this exited (2026-09-27)
+  if (meta.fixture) {
+    const dir = meta.fixture === 'auto' ? mkdtempSync(join(tmpdir(), 'peix-fixture-')) : resolve(meta.fixture);
+    if (meta.fixture === 'auto' && !keep) cleanups.push(() => rmSync(dir, { recursive: true, force: true }));   // 1359 of them in $TMPDIR before this
+    // The temp dir as claude reports it (/private/var/…, not /var/…): a fake started there registers its real path, and a
+    // fixture chat under the other spelling would be another folder to the board — a second project named T.
+    fixture = meta.fixture === 'auto' ? defaultFixture(dir, { cwdA: process.cwd(), cwdB: realpathSync(tmpdir()) }) : { dir, chats: [] };
+    log(`fixture ${dir}${fixture.chats.length ? ' — chats ' + fixture.chats.map(c => c.id.slice(0, 8)).join(', ') : ''}`);
+  }
+  if (meta.server || !boardUrl) {
+    server = await startTestServer({ claudeDir: fixture?.dir || null, fake: !!meta.fake, env: meta.env || {}, keep });
+    cleanups.push(() => server.stop());
+    boardUrl = server.url;
+    log(`server ${server.url} (state ${server.dir}${meta.fake ? ', fake claude' : ''})`);
+  }
+  cdp = await launchChrome({ dark: !!process.env.DARK });
+  cleanups.push(() => cdp.close());
+  await openBoard(cdp, boardUrl, { hash: hash || null });
+} catch (e) {
+  log(`setup failed: ${e.stack || e}`); clearTimeout(bail); await cleanup(); process.exit(1);
 }
-if (meta.server || !boardUrl) {
-  server = await startTestServer({ claudeDir: fixture?.dir || null, fake: !!meta.fake, env: meta.env || {}, keep });
-  cleanups.push(() => server.stop());
-  boardUrl = server.url;
-  log(`server ${server.url} (state ${server.dir}${meta.fake ? ', fake claude' : ''})`);
-}
-const cdp = await launchChrome({ dark: !!process.env.DARK });
-cleanups.push(() => cdp.close());
-await openBoard(cdp, boardUrl, { hash: hash || null });
 
 // The rows of a half's terminal. The left half keeps the plain ids — it is the whole column while nothing is
 // split — so `ROWS(0)` is what every scenario written before the split already asked for.
