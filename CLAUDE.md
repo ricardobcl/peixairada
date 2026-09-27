@@ -541,6 +541,9 @@ refuses to run against the real directory for the same reason.
   → `scripts/scenarios/notifications.mjs`.
 * Swift: `Result<Void, String>` does not compile; `isReleasedWhenClosed = false` on the window; drop -999 in every
   navigation-failure callback; pin the deployment target (`-target`, `LSMinimumSystemVersion`); an Edit menu or no ⌘V.
+  **The board's web view draws no ground** (2026-09-27, night; `drawsBackground` off): the window's `backgroundColor`
+  and `underPageBackgroundColor` are the page's `--bg` per appearance, so nothing white shows before the CSS lands —
+  a change to `:root`'s `--bg` moves the two hex pairs in `buildWindow` with it.
 * Sign with the one Apple Development identity (stable team → App Management grants survive installs); chmod
   node-pty's spawn-helper only when the bit is missing (a same-mode chmod is still a write to the bundle).
 * macOS has no `timeout(1)`: `perl -e 'alarm shift; exec @ARGV' 60 <cmd>`. BSD sed has no `\b`.

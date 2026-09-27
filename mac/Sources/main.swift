@@ -263,6 +263,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     cfg.userContentController = ucc
     web = BoardWebView(frame: NSRect(x: 0, y: 0, width: 1440, height: 900), configuration: cfg)
     web.navigationDelegate = self
+    // No flash before the page paints (2026-09-27, night): a WKWebView draws white until the document's CSS lands —
+    // in dark mode a flash of the wrong colour at every launch and reload. The view draws no ground of its own and
+    // the window's is the page's --bg for the appearance in force, so what shows first is what the page will show;
+    // underPageBackgroundColor is the same colour for the moments WebKit paints its own ground (an overscroll).
+    let ground = NSColor(name: nil) { $0.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+      ? NSColor(srgbRed: 0x14 / 255, green: 0x14 / 255, blue: 0x13 / 255, alpha: 1)
+      : NSColor(srgbRed: 0xf6 / 255, green: 0xf6 / 255, blue: 0xf4 / 255, alpha: 1) }
+    web.setValue(false, forKey: "drawsBackground")
+    web.underPageBackgroundColor = ground
     // A file dragged in from the Finder: the page gets its path (a browser page never could) and hands
     // it to the chat as an @-mention; while it hovers, the page marks the chat pane.
     web.onDragging = { [weak self] on in self?.web.evaluateJavaScript("window.peixDragging && window.peixDragging(\(on))") }
@@ -281,6 +290,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     // Dock click, and showWindow messages a freed window (SIGSEGV in applicationShouldHandleReopen).
     window.isReleasedWhenClosed = false
     window.titlebarAppearsTransparent = false
+    window.backgroundColor = ground   // what shows until the page paints, and behind a web view that draws none (above)
     // The board fills the window; the pane is a transparent overlay over all of it, and each page's web view is
     // placed inside it where the page says — one half of the chat column, or both, below their tab strips. An
     // overlay, not a split: the board's columns never reflow under it, and it lets clicks that miss a page through.

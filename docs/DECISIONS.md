@@ -112,6 +112,12 @@ transform and opacity where it can — the compositor's kind of motion, as the r
   on the board: `pretty`/`break-word`/`auto` on a title, `balance` on the empty state, `tabular-nums` on a count, the
   selection `color(srgb … / 0.28)`, `contain` on the list and the log, and a 2 px solid accent outline on a focused
   button.
+* **No flash before the page paints** (the app): a WKWebView draws white until the document's CSS lands — in dark
+  mode a flash of the wrong colour at every launch and reload. The board's web view draws no ground of its own
+  (`drawsBackground` off), the window's `backgroundColor` is the page's `--bg` for the appearance in force (a dynamic
+  `NSColor`), and `underPageBackgroundColor` is the same for the moments WebKit paints its own ground. Type-checked
+  and built; not driven — the flash is a launch, which the harness does not do. The two hex pairs are `:root`'s `--bg`
+  and have to move with it.
 
 ## Decisions of 2026-09-27, night — an empty chat's card can be ticked done
 
