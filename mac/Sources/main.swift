@@ -48,16 +48,21 @@ func jsStr(_ s: String) -> String {
 /// The find bar's highlight *is* the page's selection: this is how it is taken away again.
 let kDropSelection = "window.getSelection && window.getSelection().removeAllRanges()"
 
-/// Append a line to the app log — the only way to see what the shell is doing once it is a bundle.
+/// Append a line to the app log — the only way to see what the shell is doing once it is a bundle. One formatter and
+/// one handle, kept open (2026-09-27: a formatter made and the file opened, sought and closed per line, on the main
+/// thread, for tens of lines a minute).
+let logStamp = ISO8601DateFormatter()
+var logHandle: FileHandle?
 func logLine(_ s: String) {
-  let stamp = ISO8601DateFormatter().string(from: Date())
-  let line = "\(stamp) \(s)\n"
-  if !FileManager.default.fileExists(atPath: kAppLog.path) {
-    FileManager.default.createFile(atPath: kAppLog.path, contents: nil)
+  let line = "\(logStamp.string(from: Date())) \(s)\n"
+  if logHandle == nil {
+    if !FileManager.default.fileExists(atPath: kAppLog.path) {
+      FileManager.default.createFile(atPath: kAppLog.path, contents: nil)
+    }
+    logHandle = try? FileHandle(forWritingTo: kAppLog)
+    logHandle?.seekToEndOfFile()
   }
-  if let h = try? FileHandle(forWritingTo: kAppLog) {
-    h.seekToEndOfFile(); h.write(line.data(using: .utf8)!); try? h.close()
-  }
+  logHandle?.write(Data(line.utf8))
 }
 
 // ---------------------------------------------------------------------------------------------
