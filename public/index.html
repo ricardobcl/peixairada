@@ -400,6 +400,16 @@
     from { border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
     to { border-color: color-mix(in srgb, var(--needs) 28%, var(--line)); box-shadow: none; }
   }
+  /* The reply landed (2026-09-27, night): the moment a card stops clauding — the ring gone, the one event the board is
+     watched for all day — its edge flares in the card's own colour and settles to the plain edge over LANDED_MS, once.
+     drawCards sets the class from landedAt, with a negative delay, so a card rebuilt mid-flare carries on where it was;
+     the light is the ring's (--ring: white on a dark card). The unread badge that comes with it pops in (onAlert). */
+  @keyframes landed {
+    from { border-color: var(--ring, var(--repo, var(--working))); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ring, var(--repo, var(--working))) 60%, transparent), 0 0 22px color-mix(in srgb, var(--ring, var(--repo, var(--working))) 45%, transparent); }
+    to { border-color: var(--line); box-shadow: none; }
+  }
+  .card.landed { animation: landed .6s ease-out both; }
+  @media (prefers-reduced-motion: reduce) { .card.landed { animation: none; } }
   /* Hover and the open chat enhance the card's own colour, never the accent (2026-09-20, Ricardo: "still show a
      orange border … just enhance the border with its own color", then "the hover cards, make the background as if
      it was select", then "even stronger"): hover is the open card's solid tint (65 % of the colour since 2026-09-26,
@@ -1543,7 +1553,21 @@
   // harness (list-motion.mjs) and the inspector.
   const FLIP_MS = 220, ENTER_MS = 180, LEAVE_MS = 200, EASE_OUT = 'cubic-bezier(.2, .7, .2, 1)';
   const MOTION = [];   // the last moves the list made, {id, kind, at} — window.peix.motion(), so a check need not catch a 200 ms slide in the act
-  const slide = (el, kind, frames, opts, dy = 0) => { MOTION.push({ id: el.dataset.id || null, kind, at: Math.round(performance.now()), dy }); if (MOTION.length > 64) MOTION.shift(); return el.animate(frames, { ...opts, id: kind }); };
+  const noteMotion = (id, kind, dy = 0) => { MOTION.push({ id, kind, at: Math.round(performance.now()), dy }); if (MOTION.length > 64) MOTION.shift(); };
+  const slide = (el, kind, frames, opts, dy = 0) => { noteMotion(el.dataset.id || null, kind, dy); return el.animate(frames, { ...opts, id: kind }); };
+  // The reply landed: a chat that goes from clauding to ready flares its card's edge once (the `landed` animation,
+  // LANDED_MS) — marked by the session handler, applied here with a negative delay so a rebuild mid-flare carries on.
+  const LANDED_MS = 600, landedAt = new Map();   // chat id → when it landed
+  function flareLanded() {
+    const t = performance.now();
+    for (const [id, at] of landedAt) {
+      const el = cardNodes.get(id)?.el, gone = t - at;
+      if (gone >= LANDED_MS || !el || REDUCED.matches) { landedAt.delete(id); continue; }
+      if (el.classList.contains('landed')) continue;
+      el.classList.add('landed'); el.style.animationDelay = `-${Math.round(gone)}ms`;
+      el.addEventListener('animationend', e => { if (e.animationName === 'landed') { el.classList.remove('landed'); el.style.animationDelay = ''; } }, { once: true });
+    }
+  }
   const cardNodes = new Map();   // chat id → { html, el }: the card as it stands in the list
   const html2el = html => { const t = document.createElement('template'); t.innerHTML = html; return t.content.firstElementChild; };
   const nearList = (r, l) => r.bottom > l.top - l.height && r.top < l.bottom + l.height;   // within a screen of the list's window
@@ -1578,6 +1602,7 @@
     }
     skip();
     for (const el of gone) leaveCard(el, lr);
+    flareLanded();
     if (!move) return;
     for (const c of cardNodes.values()) for (const a of c.el.getAnimations()) if (a.id === 'flip') a.cancel();   // the true place, not where a slide had got to
     for (const [id, c] of cardNodes) {
@@ -3653,6 +3678,9 @@
     const viewing = a.sessionId && a.sessionId === state.current && document.visibilityState === 'visible' && document.hasFocus();
     if (a.sessionId && !viewing) state.unread.set(a.sessionId, (state.unread.get(a.sessionId) || 0) + 1);
     renderBoard();
+    // the badge that just came, or grew, pops in — a one-shot on the node the render made
+    const badge = a.sessionId && !viewing && !REDUCED.matches && document.querySelector(`#slist > .card[data-id="${a.sessionId}"] .badge`);
+    if (badge) { noteMotion(a.sessionId, 'pop'); badge.animate([{ transform: 'scale(.5)', opacity: 0 }, { transform: 'scale(1.15)', opacity: 1, offset: .6 }, { transform: 'none' }], { duration: 260, easing: 'ease-out', id: 'pop' }); }
     if (inApp) post({ type: 'alert', kind: a.kind, project: a.project || '', title: a.title || '', snippet: a.snippet || '', sessionId: a.sessionId || '', serverNotify: !!state.serverNotify, quiet: !!a.quiet });   // the app posts the banner and counts the Dock's badge
     if (a.quiet) return;   // notifications off (the cog): the unread count above, nothing else
     if ('Notification' in window && Notification.permission === 'granted' && !viewing) {
@@ -3705,7 +3733,8 @@
       else if (state.current && state.sessions.has(state.current)) refetchCurrent();
     });
     es.addEventListener('session', e => {
-      const s = JSON.parse(e.data); state.sessions.set(s.id, s);
+      const s = JSON.parse(e.data), was = state.sessions.get(s.id); state.sessions.set(s.id, s);
+      if (was?.status === 'working' && s.status === 'idle' && !s.done) { landedAt.set(s.id, performance.now()); noteMotion(s.id, 'landed'); }   // the reply landed: the card flares once (flareLanded)
       if (s.id === state.current && !visible(s) && s.done) leaveChat();   // an empty chat ticked done: its card is gone, and so is the chat
       renderBoard(); if (s.id === state.current) { renderHead(s); syncTerm(s); }
     });

@@ -120,6 +120,9 @@ refuses to run against the real directory for the same reason.
   reduced motion. **A folding card is `.leaving` with no `data-id`**: the reconcile steps over it, and anything that
   walks the cards must skip it (`#slist > .card:not(.leaving)` — `listGeom`, `markQsel`, `hotMove`). Each animation
   carries its kind in `id`; `window.peix.motion()` is the log of the last moves. → `scripts/scenarios/list-motion.mjs`.
+  **The reply landed** is the `landed` class: the `session` handler notes `working` → `idle` in `landedAt`, and
+  `flareLanded()` (from `drawCards`) sets the class with a negative `animation-delay` for `LANDED_MS`, so a rebuilt card
+  carries the flare on; the badge pops from `onAlert`. Neither is in `PHASED`.
 * **The card's edge is one ring with four readings**: `--lit` is what runs in it, `--seg` how much of the edge one
   light owns (`100% / --lights`, one light per sub-agent), `--spins` how fast. Clauding is the project's colour;
   **watching** (`s.tasks`) is one light in `--watch`, slowly, and can sit on a *ready* card; **asking** (`needs-input`

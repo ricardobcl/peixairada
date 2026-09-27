@@ -23,6 +23,13 @@ transform and opacity where it can — the compositor's kind of motion, as the r
   folded those too, and every card below measured a card lower — a cascade of slides on every rebuild).
   `window.peix.motion()` lists the last moves by kind, so a check need not catch a 200 ms slide in the act.
   → `scripts/scenarios/list-motion.mjs`.
+* **The reply landed**: the flip from clauding to ready had no visual but the ring vanishing. The `session` handler
+  marks a chat that goes `working` → `idle` (`landedAt`) and `flareLanded`, from `drawCards`, gives its card the
+  `landed` class: the edge at the ring's colour with its glow, easing to the plain edge over 600 ms, once — with a
+  negative `animation-delay` of however long ago it landed, so a card rebuilt mid-flare carries on where it was (a
+  card is rebuilt on most updates in the seconds after a reply). The unread badge the alert brings pops in
+  (`onAlert`, a 260 ms scale by WAAPI on the node the render made). Both are in `motion()` as `landed` and `pop`.
+  → the landing section of `list-motion.mjs`: a live chat mid tool call, its end_turn written in.
 
 ## Decisions of 2026-09-27, night — an empty chat's card can be ticked done
 

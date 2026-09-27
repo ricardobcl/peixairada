@@ -3,11 +3,14 @@
 // checks is the moves the page records (window.peix.motion — each animation's id, so a 200 ms slide need not be caught
 // in the act): nothing on the first draw; a chat ticked done slides down and the cards under it slide up; a chat
 // written into the fixture while the board is up fades in; the done chip switched off folds the done card, which
-// takes no click meanwhile and is gone after. The list is narrowed to the scenario's folder with ⌥⌘P so nothing
-// else moves.
+// takes no click meanwhile and is gone after; and the reply landing — a live chat mid tool call whose end_turn is
+// written in — flares the card once (`landed`) and pops the unread badge that the alert brings. The list is narrowed
+// to the scenario's folder with ⌥⌘P so nothing else moves.
+import { spawn } from 'node:child_process';
+import { appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { makeFixture } from '../fixture.mjs';
+import { makeFixture, replyLines, toolLines } from '../fixture.mjs';
 
 export const meta = { server: true, fixture: 'auto' };
 
@@ -26,7 +29,7 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 7 && window.peix`, { what: 'the board back after the reload' });
   await ctx.sleep(300);
   out.first = await motion(ctx);
-  ctx.assert.deepEqual(out.first, [], 'nothing moves on the first draw');
+  ctx.assert.deepEqual(out.first.filter(m => ['flip', 'enter', 'leave'].includes(m.kind)), [], 'nothing moves on the first draw');   // the badges the replayed alerts bring do pop
   // narrowed to the folder (the two others go, and the day lines with them, so cards may slide: counted from here on)
   await ctx.key('KeyP');
   await ctx.fill('#pickq', 'motion-repo');
@@ -70,5 +73,27 @@ export default async function (ctx) {
   await ctx.waitFor(`!document.querySelector('#slist > .card.leaving') && document.querySelectorAll('#slist > .card').length === 5`, { what: 'and gone', every: 40, timeout: 3000 });
   out.after = (await cards(ctx)).map(c => c.title);
   ctx.assert.deepEqual(out.after, ['Chat 6', 'Chat 1', 'Chat 3', 'Chat 4', 'Chat 5'], 'the list without it');
+
+  // The reply lands: a live chat mid tool call is clauding; its end_turn written in makes it ready — the card flares
+  // once, and the alert for a chat that is not open brings an unread badge that pops in.
+  const sleeper = spawn('sleep', ['120'], { stdio: 'ignore' });
+  try {
+    const [landing] = makeFixture(ctx.fixture.dir, [{ cwd, title: 'Landing', prompt: 'build it', reply: 'on it', at: new Date(now - 30_000), live: { pid: sleeper.pid, startedAt: now - 3600_000 },
+      lines: id => toolLines({ id, cwd, name: 'Bash', input: { command: 'npm run build', description: 'build' }, at: new Date(now - 10_000) }) }]).chats;
+    await ctx.waitFor(`document.querySelector('#slist > .card[data-id=${JSON.stringify(landing.id)}]')?.classList.contains('working')`, { what: 'the landing chat clauding', timeout: 6000 });
+    n0 = (await motion(ctx)).length;
+    appendFileSync(landing.file, replyLines({ id: landing.id, cwd, text: 'Built.', at: new Date() }).map(l => JSON.stringify(l)).join('\n') + '\n');
+    await ctx.waitFor(`window.peix.motion().slice(${n0}).some(m => m.id === ${JSON.stringify(landing.id)} && m.kind === 'landed')`, { what: 'the reply landing', every: 40, timeout: 6000 });
+    out.landed = await ctx.evaluate(`JSON.stringify((c => ({ cls: [...c.classList].filter(x => ['working', 'idle', 'landed'].includes(x)), anim: getComputedStyle(c).animationName, delay: c.style.animationDelay }))(document.querySelector('#slist > .card[data-id=${JSON.stringify(landing.id)}]')))`).then(JSON.parse);
+    if (out.landed.cls.includes('landed')) {   // caught in the flare: the card's own animation, started where the landing was
+      ctx.assert.equal(out.landed.anim, 'landed', 'the flare is the landed animation');
+      ctx.assert.match(out.landed.delay, /^-\d+ms$/, 'run from where the landing was, not from its start');
+      await ctx.shot('landed');
+    }
+    ctx.assert.ok(!out.landed.cls.includes('working'), 'and the chat is ready');
+    await ctx.waitFor(`window.peix.motion().slice(${n0}).some(m => m.id === ${JSON.stringify(landing.id)} && m.kind === 'pop')`, { what: 'the unread badge popping in', every: 40, timeout: 6000 });
+    out.pop = await ctx.evaluate(`document.querySelector('#slist > .card[data-id=${JSON.stringify(landing.id)}] .badge')?.textContent || null`);
+    ctx.assert.equal(out.pop, '1', 'one unread on the card');
+  } finally { sleeper.kill(); }
   return out;
 }
