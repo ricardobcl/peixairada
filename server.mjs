@@ -343,8 +343,8 @@ function statusOf(s) {
 // in it, and a turn typed there forks the chat. The registry shows every process, so `rivals` on the summary
 // carries the others and the page warns and offers to end them (the take-over route, when the chat is here).
 
-function summary(s) {
-  const prT = prTitle(s), status = statusOf(s);
+function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is summarized at once
+  const prT = prTitle(s), status = statusOf(s), mine = ti ? ti.get(s.id) || NO_TERMS : { term: termOf(s), shell: shellOf(s) };
   return {
     // Prefer the registry cwd: transcript lines record the shell's *current* directory, which moves with `cd`.
     id: s.id, slug: s.slug, cwd: s.live?.cwd || s.cwd, project: basename(s.live?.cwd || s.cwd || '') || s.slug,
@@ -364,8 +364,8 @@ function summary(s) {
     ask: status !== 'needs-input' ? null : s.status === 'needs-input' && s.ask ? s.ask : { tool: null, text: null, options: 0, waitingFor: waitingOn(s) || null },
     rawStatus: s.status, statusSince: s.statusSince, lastActivity: s.lastActivity, startedAt: s.startedAt,
     lastUserAt: s.lastUserAt, lastReplyAt: s.lastReplyAt,
-    alive: s.alive, live: s.live, entrypoint: s.live?.entrypoint || s.entrypoint, terminal: termSummary(termOf(s)), shell: termSummary(shellOf(s)), entryCount: s.entryCount, loaded: s.loaded, file: s.file, lastHook: s.lastHook,
-    env: envs[s.id] || termOf(s)?.task || null,   // the launcher it was started with (⌥⌘O groups oracle's chats by it)
+    alive: s.alive, live: s.live, entrypoint: s.live?.entrypoint || s.entrypoint, terminal: termSummary(mine.term), shell: termSummary(mine.shell), entryCount: s.entryCount, loaded: s.loaded, file: s.file, lastHook: s.lastHook,
+    env: envs[s.id] || mine.term?.task || null,   // the launcher it was started with (⌥⌘O groups oracle's chats by it)
     // the other live processes on this chat, and who wrote its last turn — the page's "VS Code too" warning
     rivals: s.rivals, tailEntrypoint: s.entrypoint, tailEntrypointAt: s.entrypointAt,
     done: isDone(s), doneAt: doneMarks[s.id] || null,
@@ -1240,6 +1240,19 @@ const termsAvailable = () => !!nodePty && existsSync(HOLDER);
 function termOf(s) { let hit = null; for (const t of terms.values()) if (t.sessionId === s.id && !t.shell && (!hit || (hit.exited !== null && t.exited === null))) hit = t; return hit; }
 /** The chat's zsh (⌥⌘T), the same way. */
 function shellOf(s) { let hit = null; for (const t of terms.values()) if (t.sessionId === s.id && t.shell && (!hit || (hit.exited !== null && t.exited === null))) hit = t; return hit; }
+const NO_TERMS = Object.freeze({ term: null, shell: null });
+/** Every chat's drawer and zsh in one pass, by the same rule — for the summaries of the whole board, which asked
+ *  termOf and shellOf per chat, each a walk over every terminal (322 chats × 75 terminals × 2 per snapshot, 2026-09-27). */
+function termIndex() {
+  const m = new Map();
+  for (const t of terms.values()) {
+    if (!t.sessionId) continue;
+    let e = m.get(t.sessionId); if (!e) m.set(t.sessionId, e = { term: null, shell: null });
+    const k = t.shell ? 'shell' : 'term';
+    if (!e[k] || (e[k].exited !== null && t.exited === null)) e[k] = t;
+  }
+  return m;
+}
 function termSummary(t) {
   return t ? {
     id: t.id, sessionId: t.sessionId, cwd: t.cwd, pid: t.pid, holderPid: t.holderPid, resume: t.resume, shell: !!t.shell, task: t.task || null, startedAt: t.startedAt, exited: t.exited,
@@ -1580,7 +1593,8 @@ function readBody(req) {
 /** Newest first by the chat's last word — yours or Claude's reply, whichever came later — the board's own order (`byWord` in index.html). */
 const wordAt = s => { const u = String(s.lastUserAt || ''), r = String(s.lastReplyAt || ''); return (u > r ? u : r) || String(s.lastActivity || '') || String(s.startedAt || ''); };   // an empty chat: its start (the page's copy agrees)
 function sortedSummaries() {
-  return [...sessions.values()].map(summary).sort((a, b) => wordAt(b).localeCompare(wordAt(a)));
+  const ti = termIndex();
+  return [...sessions.values()].map(s => summary(s, ti)).sort((a, b) => wordAt(b).localeCompare(wordAt(a)));
 }
 
 const server = createServer(async (req, res) => {
