@@ -3,10 +3,11 @@
 #   mac/build.sh            build mac/build/peixAIrada.app
 #   mac/build.sh install    build, then move it into /Applications and open it
 #   mac/build.sh clean      remove build artefacts
-# Requires the Xcode command line tools (swiftc). Node is found at runtime, not bundled.
+# Requires the Xcode command line tools (swiftc) and node: the node that runs this is bundled, with node_modules.
 set -eu
 DIR=$(cd "$(dirname "$0")" && pwd -P)
 ROOT=$(cd "$DIR/.." && pwd -P)
+VERSION=$(node -p "require('$ROOT/package.json').version")   # the one version, package.json's — the About box shows it
 BUILD="$DIR/build"
 APP="$BUILD/peixAIrada.app"
 # The deployment target must be explicit. swiftc's default follows the *toolchain*, not this Mac:
@@ -79,7 +80,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleIdentifier</key><string>net.peixairada.app</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.1.0</string>
+  <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleVersion</key><string>1</string>
   <key>LSMinimumSystemVersion</key><string>$MIN_OS</string>
   <key>NSHighResolutionCapable</key><true/>
@@ -100,19 +101,20 @@ plutil -lint "$APP/Contents/Info.plist" >/dev/null
 # `security find-identity -v -p codesigning`); unset, the single valid identity in the keychain is
 # used; none, or CODESIGN_ID=-, means ad-hoc as before. The first signing asks for the key once.
 ID="${CODESIGN_ID:-}"
-if [ -z "$ID" ] && [ "$(security find-identity -v -p codesigning 2>/dev/null | grep -c '^ *[0-9][0-9]*) ')" = 1 ]; then
-  ID=$(security find-identity -v -p codesigning | sed -n 's/^ *1) \([0-9A-F]*\) .*/\1/p')
+IDS=$(security find-identity -v -p codesigning 2>/dev/null || true)
+if [ -z "$ID" ] && [ "$(printf '%s\n' "$IDS" | grep -c '^ *[0-9][0-9]*) ')" = 1 ]; then
+  ID=$(printf '%s\n' "$IDS" | sed -n 's/^ *1) \([0-9A-F]*\) .*/\1/p')
 fi
 [ -n "$ID" ] || ID=-
 if [ "$ID" = - ]; then echo "› sign (ad-hoc — privacy grants will not survive the next install)"
-else echo "› sign ($(security find-identity -v -p codesigning | grep -F "$ID" | sed 's/.*"\(.*\)".*/\1/'))"; fi
+else echo "› sign ($(printf '%s\n' "$IDS" | grep -F "$ID" | sed 's/.*"\(.*\)".*/\1/'))"; fi
 codesign --force --deep -s "$ID" "$APP"
 codesign --verify --deep "$APP" && echo "  signature OK"
 
 if [ "${1:-build}" = install ]; then
   echo "› install"
   osascript -e 'quit app "peixAIrada"' 2>/dev/null || true
-  sleep 1
+  for _ in 1 2 3 4 5 6 7 8 9 10; do pgrep -xq peixAIrada || break; sleep 0.5; done   # the copy must not land on a running app (a fixed second did not always cover the quit)
   rm -rf /Applications/peixAIrada.app
   cp -R "$APP" /Applications/
   # notifications are tied to the bundle's identity, so register the installed copy explicitly
