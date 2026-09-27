@@ -2991,8 +2991,9 @@
     const shut = !!document.querySelector('dialog[open]');
     const panes = shut ? [] : p.map((k, g) => isPaneTab(k) ? { key: k, ...groupRect(g) } : null).filter(Boolean);
     const focus = (!shut && isPaneTab(p[focusG]) ? p[focusG] : null) || panes[0]?.key || null;
-    post({ type: 'pane', id: s?.id || null, keys: paneKeys(s), panes, focus,
-      show: focus, left: panes[0]?.left || 0, top: panes[0]?.top || 0 });
+    const msg = { type: 'pane', id: s?.id || null, keys: paneKeys(s), panes, focus, show: focus, left: panes[0]?.left || 0, top: panes[0]?.top || 0 };
+    const sig = JSON.stringify(msg); if (sig === postPane.last) return;   // syncTerm posts on every update of the open chat; the shell lays its views out again on each
+    postPane.last = sig; post(msg);
   }
   const repostPane = () => postPane(state.sessions.get(state.current) || null);
   if (inApp) {
