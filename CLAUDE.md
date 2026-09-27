@@ -377,6 +377,9 @@ refuses to run against the real directory for the same reason.
   posts `{type: 'state', needs}` from `renderBoard` when the chats waiting on you change (`postState`), each alert as
   it comes with `serverNotify` (the snapshot's `notify === 'native'`) and `quiet`, and the pane's places; the shell's
   `hub` handler reads only those. `refreshBadges` redraws the badge and the status menu only on a change (`badged`).
+  **Since 2026-09-27 (night) also `{type: 'chat', project, title, cwd}`** from `renderHead` (a new header) and
+  `leaveChat` (`postChat`): the window's title and its `representedURL`; and a `state` with a chat that was not asking
+  before, while the app is in the back, bounces the Dock once (`requestUserAttention`).
 * **The page owns the tabs**: each half's strip lists `chat` (`claude` while the session runs here), `shell` while a
   zsh lives, `gh:<url>` per web page the chat opened (any page; the strip's ↗ is the way out to the browser) and
   `ide:<url>` for its folder's editor — `tabKeys()` from `state.paneGh` (per chat) and `state.paneIde` (per folder);

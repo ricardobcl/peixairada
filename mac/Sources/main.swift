@@ -910,11 +910,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     guard let body = message.body as? [String: Any], let type = body["type"] as? String else { return }
     switch type {
     case "state":   // the chats waiting on you, posted by the page when that changes (48k `state:` log lines before, one per burst)
+      let asked = Set(needsInput.map { $0["id"] ?? "" })
       needsInput = (body["needs"] as? [[String: Any]] ?? []).map {
         ["id": $0["id"] as? String ?? "", "project": $0["project"] as? String ?? "",
          "title": $0["title"] as? String ?? ""]
       }
       refreshBadges()
+      // A chat that starts asking while the app is in the back bounces the Dock icon once (2026-09-27, night): a
+      // question is the stopped state, and the badge only counts. AppKit ignores the request while the app is active,
+      // and takes it back when the app comes to the front.
+      if !NSApp.isActive, needsInput.contains(where: { !asked.contains($0["id"] ?? "") }) { NSApp.requestUserAttention(.informationalRequest) }
     case "alert":
       let focused = window.isKeyWindow && NSApp.isActive
       // Quiet: notifications are off (the board's cog). The Dock still counts it; no banner.

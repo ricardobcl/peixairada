@@ -125,6 +125,11 @@ transform and opacity where it can — the compositor's kind of motion, as the r
   icon in the title bar and the path under a ⌘-click on the title. Not `subtitle`: that makes the title bar taller.
   → `scripts/scenarios/window-title.mjs`, the bridge faked as `pane-tabs` fakes it: one post per header, none for a
   render that leaves it.
+* **The Dock bounces once for a question** (the app): the `state` message lists the chats waiting on you; one that was
+  not on the last list, arriving while the app is in the back, is `requestUserAttention(.informationalRequest)` — a
+  single bounce, the Dock's word for the one state that is stopped, beside the badge that only counts. AppKit ignores
+  the request while the app is active and cancels it when the app comes to the front. Type-checked and built; the
+  bounce needs a real Dock.
 
 ## Decisions of 2026-09-27, night — an empty chat's card can be ticked done
 
