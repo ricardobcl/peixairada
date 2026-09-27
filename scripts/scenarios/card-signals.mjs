@@ -163,6 +163,18 @@ export default async function (ctx) {
     ctx.assert.deepEqual(out.ring.map(r => r.start), [0, 0], 'the ring is at start time 0 on the document clock, before the update and on the new card after it');
     ctx.assert.deepEqual(out.ring[1].props, ['transform'], 'and it is a transform animation, the kind the compositor runs');
     for (const r of out.ring) ctx.assert.ok(Math.min(Math.abs(r.angle - r.expect), 360 - Math.abs(r.angle - r.expect)) <= 3, `the light is where the clock says: ${r.angle}° for ${r.expect}°`);
+    // The cog's switch (2026-09-27): off, each card's ring runs at a phase of its own, hashed from the chat's id —
+    // steady across renders, only not shared; on again, all at 0
+    const starts = () => ctx.evaluate(`JSON.stringify(Object.fromEntries([...document.querySelectorAll('#slist .card.working')].map(c => [c.querySelector('.title').textContent, c.getAnimations({ subtree: true }).find(a => a.animationName === 'ring')?.startTime])))`).then(JSON.parse);
+    await ctx.evaluate(`document.querySelector('#ringsInStep').click()`);
+    out.scattered = await starts();
+    ctx.assert.ok(Object.keys(out.scattered).length >= 3 && Object.values(out.scattered).every(t => t < 0) && new Set(Object.values(out.scattered)).size > 1, `off, every ring has a start of its own: ${JSON.stringify(out.scattered)}`);
+    ctx.assert.equal(await ctx.evaluate(`window.peix.prefs().ringsInStep`), false, '…and the choice is a pref');
+    appendFileSync(work.file, toolLines({ id: work.id, cwd, name: 'Bash', input: { command: 'npm run lint', description: 'lint' }, at: new Date() }).map(l => JSON.stringify(l)).join('\n') + '\n');
+    await ctx.waitFor(`(c => !!c && !c.__seen)([...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work'))`, { what: 'the card rebuilt once more' });
+    ctx.assert.deepEqual(await starts(), out.scattered, '…and a rebuild keeps each ring where it was');
+    await ctx.evaluate(`document.querySelector('#ringsInStep').click()`);
+    ctx.assert.ok(Object.values(await starts()).every(t => t === 0), 'on again, every ring in step');
 
     // ---- and it leads the list: a question costs you a second and unblocks a turn (2026-09-21) ----
     out.order = await ctx.evaluate(`[...document.querySelectorAll('#slist > *')].map(e => e.classList.contains('gsep') ? 'divider' : e.querySelector('.title')?.textContent)`);

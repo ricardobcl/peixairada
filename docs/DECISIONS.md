@@ -22,6 +22,11 @@ cards, which has fishes today, remove the fishes and leave a claude icon animati
   plain markup rebuilt with the list: the kept node, `school()` and its Web Animations phasing went with the fish.
   Off under reduced motion, as the school was. The rail still shows no line: a 36 px square has no room for one.
   `card-signals.mjs` checks the mark, its two lines and its two animations at start time 0.
+* **Rings in step is a switch on the cog** (`#ringsInStep`, `prefs.ringsInStep`, on by default): off,
+  `phaseAnims()` gives each card's animations a start time hashed from the chat's id instead of 0 — as steady across
+  renders, so nothing resets, only not shared, so the lights are scattered as they were before the phase lock (by
+  accident then, by the id now). The header's dot and the divider have no card and keep 0. Flipping it re-phases
+  what runs, so the two looks can be compared on the spot. `card-signals.mjs` flips it both ways across a rebuild.
 
 ## Decisions of 2026-09-27, later — the clauding ring: phased across renders, and off the main thread
 

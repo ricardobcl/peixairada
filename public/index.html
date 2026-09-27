@@ -886,6 +886,7 @@
 <div id="settings" class="pop" hidden>
   <h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4>
   <label class="opt" title="Off, nothing posts a banner — not the app, not a browser tab, not the server — and the unread counts on the cards and the Dock go on as before"><input type="checkbox" id="notifyOn" checked><span><b>notifications</b> — a banner when Claude finishes or asks you something, while the board is not in front</span></label>
+  <label class="opt" title="On, every clauding card's light stands at the same angle — the blinks and the dots too; off, each card runs at its own. Either way a card rebuilt by an update carries on where it was"><input type="checkbox" id="ringsInStep" checked><span><b>rings in step</b> — every card's light at the same angle; off, each at its own</span></label>
   <div class="dens" title="How much of each chat its card carries — a question waiting on you shows at every size">
     <b>cards</b><input type="range" id="cardsSize" min="0" max="2" step="1" value="0" list="cardsStops" aria-label="Card size">
     <datalist id="cardsStops"><option value="0"></option><option value="1"></option><option value="2"></option></datalist>
@@ -982,7 +983,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, foldBy: {}, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, usageFolded: false, prsOpen: false, cards: 'large' };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, foldBy: {}, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, usageFolded: false, prsOpen: false, cards: 'large', ringsInStep: true };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -1432,8 +1433,15 @@
   // old one was — and so every ring turns in step. Once at 0 it stays there. A CSSTransition (the
   // age fading in) has no animationName, so it is left alone. getAnimations() is the document's running animations,
   // a few dozen at most, and the style flush it forces is the one the frame was about to do.
+  // In step is the cog's choice (2026-09-27, Ricardo: "put that phase lock sync as an toggle on the settings cog, so
+  // I can switch back and forth to see what I like"): off, a card's animations start from a time of its own, hashed
+  // from the chat's id — as steady across renders as 0, only not shared. The header's dot and the divider have no
+  // card and stay at 0. Flipping the switch re-phases what is running, so the change shows at once.
   const PHASED = new Set(['ring', 'blink', 'pulse', 'spin', 'breathe']);
-  function phaseAnims() { for (const a of document.getAnimations()) if (PHASED.has(a.animationName) && a.startTime !== 0) a.startTime = 0; }
+  const phaseOf = a => { if (prefs.ringsInStep !== false) return 0; const id = a.effect?.target?.closest?.('.card')?.dataset.id || ''; let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0; return -(h % 60000); };
+  function phaseAnims() { for (const a of document.getAnimations()) if (PHASED.has(a.animationName)) { const t = phaseOf(a); if (a.startTime !== t) a.startTime = t; } }
+  $('#ringsInStep').checked = prefs.ringsInStep !== false;
+  $('#ringsInStep').addEventListener('change', e => { prefs.ringsInStep = e.target.checked; savePrefs(); phaseAnims(); });
   // ---- the list's ends: how many cards are out of sight ---------------------------------
   // (2026-09-25, Ricardo: "when scrolling down the cards, the top should visually say how many cards are hiding, same
   // for below"): a pill at each end, counting the cards more than half out of view that way — a card cut in two is

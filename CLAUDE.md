@@ -105,7 +105,8 @@ refuses to run against the real directory for the same reason.
   a registered property animated in place before — main-thread, repainted every frame, frozen under every transcript
   render): the compositor's kind of motion, in Chrome and in WebKit, and `phaseAnims()` puts every `ring`, `blink`
   and `pulse` at start time 0 on the document clock after each render, because every SSE update rebuilds the cards
-  and a CSS animation starts over on a new node. → `scripts/scenarios/card-signals.mjs`,
+  and a CSS animation starts over on a new node — or, with the cog's *rings in step* off (`prefs.ringsInStep`),
+  at a time hashed from the chat's id: each card's own, as steady across renders. → `scripts/scenarios/card-signals.mjs`,
   Decisions 2026-09-21, 2026-09-22 and 2026-09-27.
 * **Folded (⌘B), the chat list is a rail of squares** (2026-09-22): one per chat, the project's short name
   (`projAbbr`, `PROJECT_ABBR` for the ones the rule gets wrong) on a solid tint of its colour, and the card's own
@@ -315,7 +316,7 @@ refuses to run against the real directory for the same reason.
   (`.cur`), never in the row's `auto` column: it sizes the track and the name's `1fr` is left with nothing.
   → `scripts/scenarios/new-project.mjs`, Decisions 2026-09-21.
 * **The cog's popover is the whole of the board's settings** (2026-09-21): **the notifications switch**
-  (2026-09-23, `#notifyOn`), **the cards' size** (2026-09-25, `.dens`, above) and the keys — nothing else; the plan usage left it for the chat list's footer
+  (2026-09-23, `#notifyOn`), **the rings' step** (2026-09-27, `#ringsInStep`, above), **the cards' size** (2026-09-25, `.dens`, above) and the keys — nothing else; the plan usage left it for the chat list's footer
   (2026-09-24, below). It opens on *hover of `#pfoot`*, the cog's cell in the chat list's foot, which reaches the
   window's bottom left pixel — **drawn over the list's 4 px coloured edge** (`margin-left: -4px`, the edge carried on
   its own border), because the edge is not the cell; a click on the cog pins it, Esc or a click away closes it, and
