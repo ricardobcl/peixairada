@@ -838,8 +838,18 @@
   .toolgroup { margin: 2px 0 10px; }
   .toolgroup > summary, .codefold > summary { cursor: pointer; list-style: none; font-size: 11.5px; color: var(--muted); padding: 4px 8px; border-radius: 6px; background: var(--tool-bg); border: 1px solid var(--line); user-select: none; }
   .toolgroup > summary::-webkit-details-marker, .codefold > summary::-webkit-details-marker { display: none; }
-  .toolgroup > summary::before, .codefold > summary::before { content: "▸ "; }
-  .toolgroup[open] > summary::before, .codefold[open] > summary::before { content: "▾ "; }
+  /* One chevron that turns (2026-09-27, night; ▸ swapped for ▾ before), and a body that fades and rises in as the
+     fold opens — `::details-content`, both engines. Chrome also runs the height, which needs interpolate-size; WebKit
+     has not got it (probed), so there the height still jumps under the fade. */
+  .toolgroup > summary::before, .codefold > summary::before { content: "▸"; display: inline-block; width: 1.05em; transform-origin: 50% 55%; transition: transform .15s; }
+  .toolgroup[open] > summary::before, .codefold[open] > summary::before { transform: rotate(90deg); }
+  :is(.toolgroup, .codefold)::details-content { opacity: 1; transform: none; transition: opacity .15s, transform .15s, content-visibility .15s allow-discrete; }
+  :is(.toolgroup, .codefold):not([open])::details-content { opacity: 0; transform: translateY(-3px); }
+  @supports (interpolate-size: allow-keywords) {
+    :is(.toolgroup, .codefold) { interpolate-size: allow-keywords; }
+    :is(.toolgroup, .codefold)::details-content { height: 0; overflow: clip; transition: height .18s, opacity .15s, transform .15s, content-visibility .18s allow-discrete; }
+    :is(.toolgroup, .codefold)[open]::details-content { height: auto; }
+  }
   .toolgroup > summary:hover, .codefold > summary:hover { color: var(--ink); border-color: var(--accent); }
   .toolgroup > summary .err { color: var(--needs); }
   .toolgroup[open] > summary { margin-bottom: 4px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }

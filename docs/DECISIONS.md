@@ -55,6 +55,10 @@ transform and opacity where it can — the compositor's kind of motion, as the r
   and `::details-content`, no to `interpolate-size`). The `open` attribute still flips at once, which is what the Esc
   handler, `postPane` and the harness read. Measured on the board: the picker's opacity 0 at open and 1 at 220 ms,
   the backdrop from clear to its 35 %; the popover's fade-out at 0.42 forty milliseconds in, `display: none` at 120.
+* **A fold's chevron turns and its body fades in**: one ▸ rotated 90° (it swapped for ▾ before, which nothing can
+  ease), and `::details-content` from opacity 0 and 3 px up — both engines; Chrome also runs the height, under
+  `@supports (interpolate-size: allow-keywords)`, which WebKit has not got, so there the height still jumps under the
+  fade. Measured: the chevron mid-turn and the body at 0.85 with its height at 1084 of 1420 px, 120 ms after the click.
 
 ## Decisions of 2026-09-27, night — an empty chat's card can be ticked done
 
