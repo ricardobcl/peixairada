@@ -744,8 +744,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// auto-hidden menu bar slides in — and nothing in AppKit changes it (its own doc for NSScreen.safeAreaInsets says
   /// so), which is why the window does not offer it at all (fullScreenNone; Ricardo: "If I click on the fullscreen
   /// button (mac's green circle), I end up as before"). This is what Apple calls a custom full-screen experience,
-  /// kitty's and Sublime Text's: the window borderless, its frame the whole screen, the menu bar and the Dock
-  /// auto-hidden. The page is told where the housing is (tellFill) and lays its top row around it. No Space of its own —
+  /// kitty's and Sublime Text's: the window borderless, its frame the whole screen, the menu bar auto-hidden and the
+  /// Dock hidden outright (auto-hidden it kept coming out on the right edge, where the board's own controls are). The
+  /// page is told where the housing is (tellFill) and lays its top row around it. No Space of its own —
   /// Mission Control shows a window. The frame's autosave is off meanwhile, so a quit mid-fill does not bring the next
   /// launch up screen-sized; the fill itself is remembered (kFillKey), so it does come back filled. Info.plist says
   /// NSPrefersDisplaySafeAreaCompatibilityMode = false, or a window behind the housing could switch the display into
@@ -764,13 +765,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       window.setFrameAutosaveName("")
       window.fill = true
       window.styleMask = .borderless
-      NSApp.presentationOptions = [.autoHideMenuBar, .autoHideDock]
+      NSApp.presentationOptions = [.autoHideMenuBar, .hideDock]   // the Dock gone, not on the edge: it was still up on the right (Ricardo, 2026-09-27)
       window.setFrame(screen.frame, display: true)
     }
     window.makeKeyAndOrderFront(nil)
     window.makeFirstResponder(paneFocus.flatMap { paneViews[$0] } ?? web)   // a new style mask can drop the first responder
     UserDefaults.standard.set(fillSaved != nil, forKey: kFillKey)
-    logLine("fill: \(fillSaved != nil ? "on \(NSStringFromRect(window.frame))" : "off")")
+    // The visible frame says whether the options took: filled, it is the whole width (the Dock gone) and the height less the strip.
+    logLine("fill: \(fillSaved != nil ? "on \(NSStringFromRect(window.frame))" : "off") options \(NSApp.presentationOptions.rawValue) visible \(NSStringFromRect(window.screen?.visibleFrame ?? .zero))")
     tellFill()
   }
   /// The green button, and a title bar double-click, come here as a zoom (fullScreenNone above): a plain click on the

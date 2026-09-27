@@ -71,6 +71,12 @@ then "let's try it".
   before". `peixairada.fill` in the defaults says whether the board was filled when it was last up, and a launch
   fills itself again before the page loads (`didFinish` then tells the page). `kill -USR1` on the app's pid is the
   same toggle from a shell, for the drawers, which cannot press a key in the app.
+* **The Dock is hidden, not auto-hidden** (Ricardo: "one downside now is that in this mode, the dock is still
+  visible"): `.hideDock` in place of `.autoHideDock`. His Dock is on the right, where the chat column's edge and its
+  controls are, so an auto-hidden Dock came out under the pointer all the time; hidden, it is gone while the board
+  is in front and back the moment another app is. The menu bar stays auto-hidden — the menus have to be reachable.
+  The fill's log line now carries the presentation options and the screen's visible frame, which is the check that
+  the options took (the whole width, the height less the strip).
 
 ## Decisions of 2026-09-27, night — the head bare on ALL, the age beside the tick, About behind the fish
 

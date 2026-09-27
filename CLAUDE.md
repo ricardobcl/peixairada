@@ -294,7 +294,8 @@ refuses to run against the real directory for the same reason.
 * **⌃⌘F is the board's own full screen, up to the notch** (2026-09-27, Ricardo: "fullscreen app on a macbook with a
   notch, we don't really use that upper real estate"): `toggleFill` in main.swift — the window borderless
   (`BoardWindow`: still key, and while `fill` not constrained back under the menu bar), its frame the screen's, the
-  menu bar and the Dock auto-hidden — what Apple calls a *custom full-screen experience*, kitty's. **The system's full
+  menu bar auto-hidden and the Dock hidden outright (auto-hidden, it kept coming out on the right edge, where the
+  board's controls are) — what Apple calls a *custom full-screen experience*, kitty's. **The system's full
   screen always sits below the camera housing** (its doc for `NSScreen.safeAreaInsets` says so; the strip is the
   auto-hidden menu bar's), so the window does not offer it: `collectionBehavior` is `.fullScreenNone`, **the green
   button zooms and `windowShouldZoom` makes a plain click on it the fill** (⌥-click and a title-bar double-click zoom
