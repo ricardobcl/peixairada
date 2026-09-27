@@ -2452,6 +2452,11 @@
     ? 'Focus view is on in this session — your prompt, the summary and the reply only. Click to show every step again (/focus in the terminal)'
     : 'Focus view: your prompt, the summary and the reply only, the steps hidden. Click to turn it on (/focus in the terminal)';
   const WEB_TIP = "Open this folder in VS Code Web — the editor served locally by `code serve-web`, in the pane here (a separate VS Code: trust the folder once, then Claude Code is in its sidebar) · ⌥⌘E";
+  // The header, the menu and the PR rows are set only when their markup changed (2026-09-27): every SSE update of the
+  // open chat rebuilt all three — a live <dialog>, its rows detached under the pointer — and rebound nine handlers,
+  // then laid the notch and the chips out again. The handlers are still bound on every call: they close over `s`,
+  // the chat as it is now. A rename edits the title in place, so it forces the next draw (editTitle).
+  const drawn = { head: null, menu: null, prs: null };
   function renderHead(s) {
     if (state.titleEdit === s.id) return;   // a rename in progress: leave the header alone until it ends
     $('#chat').classList.toggle('vsc', inVsCode(s));
@@ -2471,7 +2476,7 @@
     const hprs = !prs.length ? '' : `<button class="hprs${prsOpen ? ' on' : ''}" id="prToggle" aria-expanded="${prsOpen}" title="${prs.length} PR${prs.length === 1 ? '' : 's'} in this chat — click to ${prsOpen ? 'fold the list' : 'list them, one per row'} · ⌥⌘G opens one">${
       prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</span>`).join('')
     }<span class="hpr more" hidden></span></button>`;
-    $('#shead').innerHTML = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
+    const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
       ${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
       <button class="hmore${menu.open ? ' on' : ''}" id="moreBtn" aria-haspopup="menu" aria-expanded="${menu.open}" title="This chat: the claude session, VS Code, focus view, code folding, path and branch">${ICON.more}</button>
@@ -2480,9 +2485,10 @@
         ${s.live ? `<span class="chip">${entryLabel(s)}</span>` : ''}${s.live?.name ? `<span class="chip" title="session name">${esc(s.live.name)}</span>` : ''}${
           s.model ? `<span class="chip">${esc(s.model)}</span>` : ''}${s.live?.pid ? `<span class="chip">pid ${s.live.pid}</span>` : ''}
       </div>`;
+    const headNew = headHtml !== drawn.head; if (headNew) $('#shead').innerHTML = drawn.head = headHtml;
     // The menu, one row per action: its mark, what it does, and its state or key on the right. The ids are the
     // buttons' own from when they sat in the row — the hotkeys and the harness reach them by those.
-    menu.innerHTML = [
+    const menuHtml = [
       s.cwd && !loud ? `${termBtn('hmi')}<span class="lbl">${termWord}</span><span class="k">⌥⌘C</span></button>` : '',
       termLive(s) ? `<button class="hmi${focusOn(s.id) ? ' on' : ''}" id="viewBtn" aria-pressed="${focusOn(s.id)}" title="${esc(viewTip(s))}">${ICON.view}<span>focus view</span><span class="k">${focusOn(s.id) ? 'on' : 'off'}</span></button>` : '',
       s.cwd ? `<button class="hmi" id="webBtn" title="${WEB_TIP}">${ICON.vscode}<span class="lbl">VS Code Web</span><span class="k">⌥⌘E</span></button>` : '',
@@ -2492,15 +2498,15 @@
       `<button class="hmi${foldOn(s.id) ? ' on' : ''}" id="foldBtn" aria-pressed="${foldOn(s.id)}" title="${foldOn(s.id) ? 'Code blocks longer than 6 lines are folded in this chat — click to show them whole' : 'Code blocks are shown whole in this chat — click to fold the long ones'}${s.id in prefs.foldBy ? ' (set here)' : ' (the default)'}"><span class="gl">{ }</span><span>fold long code</span><span class="k">${foldOn(s.id) ? 'on' : 'off'}</span></button>`,
       `<button class="hmi${prefs.headDetails ? ' on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}" title="${esc(statusLabel[s.status] || s.status)}${s.statusSince ? ` for ${rel(s.statusSince)}` : ''} · click to ${prefs.headDetails ? 'hide' : 'show'} path, branch and session details under the title"><span class="dot ${s.status}"></span><span>${esc((statusLabel[s.status] || s.status || '').split(' — ')[0])}${s.statusSince ? ` · ${rel(s.statusSince)}` : ''}</span><span class="k">${prefs.headDetails ? 'hide' : 'show'} path</span></button>`,
     ].join('');
-    phaseAnims();   // the state dot's pulse, rebuilt with the menu
-    if (menu.open) placeMenu();
+    if (menuHtml !== drawn.menu) { menu.innerHTML = drawn.menu = menuHtml; phaseAnims(); if (menu.open) placeMenu(); }   // the state dot's pulse, rebuilt with the menu
     if (state.prsFor !== s.id) { state.prsFor = s.id; state.prsAll = false; }   // "more" is per chat, not sticky
     const pl = $('#prlist'); pl.hidden = !prs.length || !prsOpen;   // the rows are there folded too — ⌥⌘G and the harness read them
-    pl.innerHTML = prs.map((pr, i) => prRow(pr, i >= PR_ROWS && !state.prsAll)).join('')
+    const prsHtml = prs.map((pr, i) => prRow(pr, i >= PR_ROWS && !state.prsAll)).join('')
       + (prs.length > PR_ROWS ? `<button class="more" id="prMore">${state.prsAll ? 'fewer' : `… ${prs.length - PR_ROWS} more`}</button>` : '');
-    pl.querySelector('#prMore')?.addEventListener('click', () => { state.prsAll = !state.prsAll; renderHead(s); });
+    if (prsHtml !== drawn.prs) pl.innerHTML = drawn.prs = prsHtml;
+    const pm = pl.querySelector('#prMore'); if (pm) pm.onclick = () => { state.prsAll = !state.prsAll; renderHead(s); };   // onclick, not a listener per draw
     const pt = $('#prToggle'); if (pt) pt.onclick = () => { prefs.prsOpen = !prefs.prsOpen; savePrefs(); renderHead(s); };
-    layoutNotch(); fitHeadPrs();
+    if (headNew) { layoutNotch(); fitHeadPrs(); }
     renderComposer(s); renderRival(s);
     // Say so when it fails — silently swallowing the response is how a missing `code` CLI looked
     // like a dead button for weeks. The icon has to survive that, so failure adds a word beside it
@@ -2630,7 +2636,7 @@
         try { const d = await api('PUT', `/api/sessions/${s.id}/title`, { title: inp.value }); const cur = state.sessions.get(s.id); if (cur) { cur.title = d.title; cur.boardTitle = d.boardTitle; } }
         catch (e) { note($('#shead'), `Could not rename: ${e.message}`, true); }
       }
-      const cur = state.sessions.get(s.id) || s; renderHead(cur); renderBoard();
+      const cur = state.sessions.get(s.id) || s; drawn.head = null; renderHead(cur); renderBoard();   // the title was edited in place: draw the header again whatever it says
     };
     inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); end(true); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); end(false); } };
     inp.onblur = () => end(true);
