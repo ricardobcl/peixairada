@@ -1602,8 +1602,8 @@
       b.title = `${o.n} chat${o.n === 1 ? '' : 's'} ${way}${o.ask ? ` — ${o.ask} asking you` : ''}${o.work ? `${o.ask ? ',' : ' —'} ${o.work} clauding` : ''} · click for a screenful ${i ? 'down' : 'up'}`;
     });
   }
-  $('#slist').addEventListener('scroll', () => { listChanged(); tlBubble(); }, { passive: true });
-  new ResizeObserver(listChanged).observe($('#slist'));
+  $('#slist').addEventListener('scroll', () => listChanged(true), { passive: true });   // the bubble too, in the same frame
+  new ResizeObserver(() => listChanged()).observe($('#slist'));
   for (const el of document.querySelectorAll('.sedge')) el.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     const list = $('#slist');
@@ -1635,23 +1635,19 @@
     return n <= 0 ? 'today' : n === 1 ? 'yesterday' : n < 7 ? `${d.toLocaleDateString('en', { weekday: 'short' })} ${dm}` : d.getFullYear() === new Date().getFullYear() ? dm : `${dm}-${d.getFullYear()}`;
   }
   const tlText = r => `${esc(tlDay(r.at))} <i>· ${r.n} ${TL_WORD[r.g] || r.g}</i>`;
-  /** The rail's geometry now: the list's size, and each run's top in the list — read off the cards, so it is the
-      layout as drawn (the card sizes, the width, the divider and the day lines all count). */
-  function tlGeom() {
-    const list = $('#slist'), rail = $('#tline'), cards = list.querySelectorAll(':scope > .card');
-    const H = Math.max(1, rail.clientHeight - 2 * TL_PAD), full = Math.max(list.scrollHeight, list.clientHeight, 1);
-    return { list, rail, H, full, y: v => TL_PAD + v / full * H, tops: tl.runs.map(r => cards[r.i] ? cards[r.i].offsetTop : 0) };
-  }
+  /** The rail's geometry now — listGeom, read off the cards, so it is the layout as drawn (the card sizes, the width,
+      the divider and the day lines all count); the pointer handlers read it themselves, the frame's drawing is handed it. */
+  const tlGeom = listGeom;
+  const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
   const tlBump = u => u >= 1 ? 0 : (1 + Math.cos(Math.PI * u)) / 2;
   const tlWarp = y => {
     if (!tl.K) return y;
     const d = y - tl.py, x = Math.abs(d) / TL_R;
     return x >= 1 ? y : y + tl.K * (Math.sign(d) * TL_R * (TL_D + 1) * x / (TL_D * x + 1) - d);
   };
-  function drawTimeline() {
-    const rail = $('#tline');
-    if (!rail || rail.offsetParent === null) return;   // folded to the rail of squares: no room, and nothing drawn
-    const g = tlGeom(), runs = tl.runs;
+  function drawTimeline(g = listGeom()) {
+    if (!g.railOn) return;   // folded to the rail of squares: no room, and nothing drawn
+    const rail = g.rail, runs = tl.runs;
     // the runs' markup, only when the runs themselves change (an SSE update re-renders the list every few seconds)
     const sig = runs.map(r => `${r.g}${r.day}${r.n}${r.i}`).join('|');
     if (sig !== tl.sig) {
@@ -1659,20 +1655,20 @@
       rail.querySelector('.tl-labs').innerHTML = runs.map((r, i) => `<div class="tl-lab ${r.g}" data-run="${i}">${tlText(r)}</div>`).join('');
       tl.widths = null;   // measured when first needed, once — the text only changes with the markup
     }
+    const labs = [...rail.querySelectorAll('.tl-labs .tl-lab')];
+    if (tl.K > 0 && !tl.widths) tl.widths = labs.map(el => el.offsetWidth);   // the one read left, before the writes below
     // the window: never under TL_MIN tall, and kept off the foot when that makes it taller than the window is
-    const th = rail.querySelector('.tl-thumb'), over = g.list.scrollHeight > g.list.clientHeight + 1;
+    const th = rail.querySelector('.tl-thumb'), over = g.sh > g.ch + 1;
     th.hidden = !over;
     if (over) {
-      const t = tlWarp(g.y(g.list.scrollTop)), u = tlWarp(g.y(g.list.scrollTop + g.list.clientHeight)), h = Math.max(TL_MIN, u - t);
+      const t = tlWarp(g.y(g.top)), u = tlWarp(g.y(g.top + g.ch)), h = Math.max(TL_MIN, u - t);
       th.style.top = Math.max(0, Math.min(t, g.H + 2 * TL_PAD - h)) + 'px'; th.style.height = h + 'px';
     }
     // a label per run — out over the cards while the rail is pointed at, the nearest ones largest
-    const labs = [...rail.querySelectorAll('.tl-labs .tl-lab')];
     const at = runs.map((r, i) => tlWarp(g.y(g.tops[i])));
     const grow = at.map(y => tl.K * tlBump(Math.abs(y - tl.py) / TL_R));
     const taken = [], order = at.map((y, i) => i).sort((a, b) => Math.abs(at[a] - tl.py) - Math.abs(at[b] - tl.py));
     let near = -1, right = 0;
-    if (tl.K > 0 && !tl.widths) tl.widths = labs.map(el => el.offsetWidth);
     for (const i of order) {
       const el = labs[i]; if (!el) continue;
       const s = 1 + (TL_MAX - 1) * grow[i], h = TL_LH * s / 2 + 1, y = Math.max(h, Math.min(g.H + 2 * TL_PAD - h, at[i]));   // kept inside the rail, off the head and the foot
@@ -1696,7 +1692,7 @@
     const step = now => {
       const dt = Math.max(0, Math.min(80, now - last)); last = now;
       const by = dt / (tl.want > tl.k ? TL_IN : TL_OUT);
-      tl.k = matchMedia('(prefers-reduced-motion: reduce)').matches ? tl.want : tl.want > tl.k ? Math.min(tl.want, tl.k + by) : Math.max(tl.want, tl.k - by);
+      tl.k = REDUCED.matches ? tl.want : tl.want > tl.k ? Math.min(tl.want, tl.k + by) : Math.max(tl.want, tl.k - by);
       tl.K = tl.k * tl.k * (3 - 2 * tl.k);
       drawTimeline();
       tl.raf = tl.k === tl.want ? 0 : requestAnimationFrame(step);
@@ -1704,13 +1700,13 @@
     tl.raf = requestAnimationFrame(step);
   }
   /** The day at the top of the window, beside the thumb, while the list scrolls under a hand that is not on the rail. */
-  function tlBubble() {
+  function tlBubble(g = listGeom()) {
     const bub = $('#tline .tl-bub');
-    if (tl.k || tl.press || !tl.runs.length || $('#tline').offsetParent === null) return bub.classList.remove('on');
-    const g = tlGeom(), top = g.list.scrollTop + 30;   // under the top pill
+    if (tl.k || tl.press || !tl.runs.length || !g.railOn) return bub.classList.remove('on');
+    const top = g.top + 30;   // under the top pill
     let i = 0; while (i + 1 < tl.runs.length && g.tops[i + 1] <= top) i++;
     bub.className = `tl-lab tl-bub on ${tl.runs[i].g}`; bub.innerHTML = tlText(tl.runs[i]);
-    bub.style.transform = `translateY(${tlWarp(g.y(g.list.scrollTop)) - TL_LH / 2 + 6}px)`;
+    bub.style.transform = `translateY(${tlWarp(g.y(g.top)) - TL_LH / 2 + 6}px)`;
     clearTimeout(tl.bubT); tl.bubT = setTimeout(() => bub.classList.remove('on'), 900);
   }
   /** The list scrolled so the pointer's place on the rail is under the thumb where it was grabbed. */
@@ -1751,14 +1747,14 @@
       tl.press = null; rail.classList.remove('drag');
       if (!p.moved && p.run !== null) {   // a day clicked: its first card to the top, under the top pill
         const g = tlGeom();
-        g.list.scrollTo({ top: Math.max(0, g.tops[p.run] - 30), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+        g.list.scrollTo({ top: Math.max(0, g.tops[p.run] - 30), behavior: REDUCED.matches ? 'auto' : 'smooth' });
       }
       if (e.type === 'pointercancel' || !rail.matches(':hover')) swell(false);
     };
     rail.addEventListener('pointerup', release);
     rail.addEventListener('pointercancel', release);
     rail.addEventListener('wheel', e => { e.preventDefault(); $('#slist').scrollBy({ top: e.deltaY }); }, { passive: false });
-    new ResizeObserver(listChanged).observe(rail);
+    new ResizeObserver(() => listChanged()).observe(rail);
   }
   // Work that outlives the turn, and the one state that is waiting on you — the card's four readings (2026-09-21).
   // A monitor or a background command runs on after the reply, so a *ready* card can still have something running;
@@ -2555,38 +2551,47 @@
   const NOTCH_PAD = 10, NOTCH_TITLE = 220, NOTCH_TAIL = 120;
   function layoutNotch() {
     const n = state.notch, main = $('#main'), list = $('#sessions'), chat = $('#chat'), head = $('#shead'), h2 = head.querySelector('h2');
+    if (!n && !main.classList.contains('notch')) return;   // no housing, and nothing laid around one to undo
+    // every read, then every write (2026-09-27): a read after a write is a layout each
+    const lr = n ? list.getBoundingClientRect().right : 0, hr = n ? head.getBoundingClientRect() : null;
+    const gap = n && h2 ? parseFloat(getComputedStyle(head).columnGap) || 0 : 0, x = n && h2 ? h2.getBoundingClientRect().left : 0;
+    const hole = !!(n && h2) && hr.left + NOTCH_TITLE <= n.left && n.right + NOTCH_TAIL <= hr.right;
     main.classList.toggle('notch', !!n);
     main.style.setProperty('--notch-top', `${n ? n.top : 0}px`);
-    list.classList.toggle('npad', !!n && list.getBoundingClientRect().right > n.left - NOTCH_PAD);
-    let hole = false;
-    if (n && h2) {
-      const hr = head.getBoundingClientRect(), gap = parseFloat(getComputedStyle(head).columnGap) || 0, x = h2.getBoundingClientRect().left;
-      hole = hr.left + NOTCH_TITLE <= n.left && n.right + NOTCH_TAIL <= hr.right;
-      if (hole) { const w = n.left - NOTCH_PAD - x; h2.style.flex = `0 0 ${w}px`; h2.style.marginRight = `${n.right + NOTCH_PAD - x - w - gap}px`; }
-    }
-    if (h2 && !hole) { h2.style.flex = ''; h2.style.marginRight = ''; }
+    list.classList.toggle('npad', !!n && lr > n.left - NOTCH_PAD);
+    if (hole) { const w = n.left - NOTCH_PAD - x; h2.style.flex = `0 0 ${w}px`; h2.style.marginRight = `${n.right + NOTCH_PAD - x - w - gap}px`; }
+    else if (h2) { h2.style.flex = ''; h2.style.marginRight = ''; }
     head.classList.toggle('hole', hole);
-    chat.classList.toggle('npad', !!n && !hole && head.getBoundingClientRect().left < n.right + NOTCH_PAD);
+    chat.classList.toggle('npad', !!n && !hole && hr.left < n.right + NOTCH_PAD);
   }
+  const TITLE_MIN = 170;   // the title's own flex-basis (.shead h2), below which the row wraps
   function fitHeadPrs() {
     const head = $('#shead'), t = $('#prToggle'); if (!t) return;
     const chips = [...t.querySelectorAll('.hpr:not(.more)')], more = t.querySelector('.hpr.more');
     for (const c of chips) c.hidden = false;
-    more.hidden = true;
+    more.hidden = false; more.textContent = `+${chips.length}`;   // shown for the measure, at its widest
+    // Every width in one layout, then the arithmetic (2026-09-27; hiding a chip and measuring the row again, per chip,
+    // was a layout each): the button is its frame plus the chips shown, a gap between each, plus +n when any are hidden.
     const cs = getComputedStyle(head), gap = parseFloat(cs.columnGap) || 0, h2 = head.querySelector('h2');
     const row = [...head.children].filter(el => el.tagName !== 'H2' && el !== t && !el.classList.contains('details') && el.getClientRects().length);
     const title = head.classList.contains('hole') ? h2.getBoundingClientRect().width + (parseFloat(h2.style.marginRight) || 0)   // the hole: the title's width is set, and the housing beside it is spent
-      : Math.max(170, (head.querySelector('h2 .repo')?.offsetWidth || 0) + TITLE_ROOM);   // 170: the title's own flex-basis, below which the row wraps
+      : Math.max(TITLE_MIN, (head.querySelector('h2 .repo')?.offsetWidth || 0) + TITLE_ROOM);
     const room = head.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - title
       - row.reduce((w, el) => w + el.getBoundingClientRect().width, 0) - gap * (row.length + 1);
-    let shown = chips.length;
-    while (shown > 1 && t.getBoundingClientRect().width > room) {
-      chips[--shown].hidden = true;
-      more.hidden = false; more.textContent = `+${chips.length - shown}`;
-      more.title = chips.slice(shown).map(c => c.title).join('\n');
-    }
+    const cw = chips.map(c => c.getBoundingClientRect().width), mw = more.getBoundingClientRect().width, tg = parseFloat(getComputedStyle(t).columnGap) || 0;
+    const all = t.getBoundingClientRect().width, frame = all - cw.reduce((a, b) => a + b, 0) - mw - tg * chips.length;
+    let shown = chips.length, width = all - mw - tg;   // every chip, no +n
+    while (shown > 1 && width > room) { shown--; width = frame + cw.slice(0, shown).reduce((a, b) => a + b, 0) + tg * shown + mw; }
+    for (let i = shown; i < chips.length; i++) chips[i].hidden = true;
+    more.hidden = shown === chips.length;
+    if (!more.hidden) { more.textContent = `+${chips.length - shown}`; more.title = chips.slice(shown).map(c => c.title).join('\n'); }
   }
-  new ResizeObserver(() => { if (state.notch) layoutNotch(); fitHeadPrs(); }).observe($('#shead'));
+  // The header's size changed: its width moves the fold (a height alone — a chip fold, the details — does not, and a
+  // fold that changes the height would otherwise run this again); under the housing every change moves the hole.
+  new ResizeObserver(() => {
+    const w = $('#shead').clientWidth; if (w === fitHeadPrs.w && !state.notch) return; fitHeadPrs.w = w;
+    if (state.notch) layoutNotch(); fitHeadPrs();
+  }).observe($('#shead'));
   // ··· and its menu. Placed under the button, right-aligned, each time it opens and each time the header is drawn
   // while it is up; closed by a click anywhere else, Esc (every dialog's), a hotkey (runHotkey), or an action that
   // goes somewhere — the toggles leave it up, so their new state is read where they were clicked.
