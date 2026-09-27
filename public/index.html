@@ -1501,10 +1501,37 @@
     tl.runs = [];
     if (!q) shown.forEach((s, i) => { const r = tl.runs[tl.runs.length - 1]; if (r && r.g === b[i] && r.day === days[i]) r.n++; else tl.runs.push({ g: b[i], day: days[i], at: wordAt(s), i, n: 1 }); });
     const dayAfter = i => !q && days[i] && days[i + 1] !== days[i] ? dayHtml(days[i]) : '';
-    $('#slist').innerHTML = shown.map((s, i) => `${dividerBefore(i)}${cardHtml(s, p, q)}${dayAfter(i)}`).join('') || `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
+    const items = [];
+    shown.forEach((s, i) => { const d = dividerBefore(i), a = dayAfter(i); if (d) items.push({ html: d }); items.push({ id: s.id, html: cardHtml(s, p, q) }); if (a) items.push({ html: a }); });
+    drawCards(items, `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`);
     phaseAnims();
     markQsel();
     listChanged();
+  }
+  // The cards are reconciled, not rebuilt (2026-09-27): every SSE update set the list's innerHTML — every card parsed
+  // again, six inline SVGs each, 183 of them under ALL, the one under the pointer detached — for a change on one. A
+  // card whose markup is what it was keeps its node; the rest are made anew; then the nodes are put in order with the
+  // fewest moves, a node already in place left alone. The lines between the cards are plain markup, made each time.
+  const cardNodes = new Map();   // chat id → { html, el }: the card as it stands in the list
+  const html2el = html => { const t = document.createElement('template'); t.innerHTML = html; return t.content.firstElementChild; };
+  function drawCards(items, empty) {
+    const list = $('#slist'), want = new Set(), nodes = [];
+    for (const it of items) {
+      if (!it.id) { nodes.push(html2el(it.html)); continue; }
+      let c = cardNodes.get(it.id);
+      if (!c || c.html !== it.html) { c = { html: it.html, el: html2el(it.html) }; cardNodes.set(it.id, c); }
+      nodes.push(c.el); want.add(it.id);
+    }
+    for (const id of [...cardNodes.keys()]) if (!want.has(id)) cardNodes.delete(id);
+    if (!nodes.length) { list.innerHTML = empty; return; }
+    const keep = new Set(nodes);
+    let cur = list.firstElementChild;
+    for (const el of nodes) {
+      while (cur && !keep.has(cur)) { const n = cur.nextElementSibling; cur.remove(); cur = n; }   // a card gone, an old line
+      if (cur === el) { cur = cur.nextElementSibling; continue; }
+      list.insertBefore(el, cur);   // a new node lands; an existing one further down moves up
+    }
+    while (cur) { const n = cur.nextElementSibling; cur.remove(); cur = n; }
   }
   // Every render rebuilds its nodes, and a CSS animation starts over on a new node — so the clauding ring, an asking
   // card's blink and the state dots' pulse jumped back to their start on every SSE update (2026-09-27, Ricardo: "the
@@ -1520,26 +1547,45 @@
   // card and stay at 0. Flipping the switch re-phases what is running, so the change shows at once.
   const PHASED = new Set(['ring', 'blink', 'pulse', 'pix', 'pixhop']);
   const phaseOf = a => { if (prefs.ringsInStep !== false) return 0; const id = a.effect?.target?.closest?.('.card')?.dataset.id || ''; let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0; return -(h % 60000); };
-  function phaseAnims() { for (const a of document.getAnimations()) if (PHASED.has(a.animationName)) { const t = phaseOf(a); if (a.startTime !== t) a.startTime = t; } }
+  // Once a frame, before it paints: the list and the header both ask after a render, and getAnimations() flushes style
+  // each time. `now` is the switch's: the change shows at once, and reads at once.
+  function phaseAnims(now = false) {
+    const run = () => { phaseAnims.queued = false; for (const a of document.getAnimations()) if (PHASED.has(a.animationName)) { const t = phaseOf(a); if (a.startTime !== t) a.startTime = t; } };
+    if (now) return run();
+    if (phaseAnims.queued) return; phaseAnims.queued = true;
+    requestAnimationFrame(run);
+  }
   $('#ringsInStep').checked = prefs.ringsInStep !== false;
-  $('#ringsInStep').addEventListener('change', e => { prefs.ringsInStep = e.target.checked; savePrefs(); phaseAnims(); });
+  $('#ringsInStep').addEventListener('change', e => { prefs.ringsInStep = e.target.checked; savePrefs(); phaseAnims(true); });
   // ---- the list's ends: how many cards are out of sight ---------------------------------
   // (2026-09-25, Ricardo: "when scrolling down the cards, the top should visually say how many cards are hiding, same
   // for below"): a pill at each end, counting the cards more than half out of view that way — a card cut in two is
   // still being shown. A dot on it when one of them is asking you (red) or clauding: the two states a card should not
   // be able to hide. A click scrolls a screenful that way. Drawn at most once a frame: on scroll, after every render,
   // when the list's box changes size (a fold, the splitter, the window) and when the cards do (the cog's slider).
-  function listChanged() {   // called from applyCards before this line has run, hence the flag on the function
+  function listChanged(scrolled = false) {   // called from applyCards before this line has run, hence the flags on the function
+    if (scrolled === true) listChanged.scrolled = true;
     if (listChanged.queued) return;
     listChanged.queued = true;
-    requestAnimationFrame(() => { listChanged.queued = false; drawEdges(); drawTimeline(); });
+    requestAnimationFrame(() => {
+      listChanged.queued = false; const bub = listChanged.scrolled; listChanged.scrolled = false;
+      const g = listGeom();   // every read of the frame first, then the writes: a read after a write is a layout each (2026-09-27)
+      drawEdges(g); drawTimeline(g); if (bub) tlBubble(g);
+    });
   }
-  function drawEdges() {
-    const list = $('#slist'), top = list.scrollTop, bottom = top + list.clientHeight;
+  /** The list's geometry, read once a frame: its window, each card's place, the rail's height and each run's top. */
+  function listGeom() {
+    const list = $('#slist'), rail = $('#tline'), cards = [];
+    for (const c of list.children) if (c.classList.contains('card')) cards.push({ el: c, top: c.offsetTop, h: c.offsetHeight });
+    const H = Math.max(1, (rail ? rail.clientHeight : 0) - 2 * TL_PAD), full = Math.max(list.scrollHeight, list.clientHeight, 1);
+    return { list, rail, cards, top: list.scrollTop, ch: list.clientHeight, sh: list.scrollHeight, H, full, y: v => TL_PAD + v / full * H,
+      tops: tl.runs.map(r => cards[r.i]?.top || 0), railOn: !!rail && rail.offsetParent !== null };
+  }
+  function drawEdges(g) {
+    const bottom = g.top + g.ch;
     const out = [{ n: 0, ask: 0, work: 0 }, { n: 0, ask: 0, work: 0 }];
-    for (const c of list.children) {
-      if (!c.classList.contains('card')) continue;
-      const mid = c.offsetTop + c.offsetHeight / 2, o = mid < top ? out[0] : mid > bottom ? out[1] : null;
+    for (const { el: c, top, h } of g.cards) {
+      const mid = top + h / 2, o = mid < g.top ? out[0] : mid > bottom ? out[1] : null;
       if (!o) continue;
       o.n++;
       if (c.classList.contains('asking')) o.ask++;

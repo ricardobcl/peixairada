@@ -170,9 +170,13 @@ export default async function (ctx) {
     out.scattered = await starts();
     ctx.assert.ok(Object.keys(out.scattered).length >= 3 && Object.values(out.scattered).every(t => t < 0) && new Set(Object.values(out.scattered)).size > 1, `off, every ring has a start of its own: ${JSON.stringify(out.scattered)}`);
     ctx.assert.equal(await ctx.evaluate(`window.peix.prefs().ringsInStep`), false, '…and the choice is a pref');
+    // Another tool call changes nothing on the card, so the card keeps its node (2026-09-27: the list is reconciled, not
+    // rebuilt) — the update lands, the server's word moves, and every ring stays where it was
+    const was = await ctx.peix(`session(${JSON.stringify(work.id)}).lastActivity`);
     appendFileSync(work.file, toolLines({ id: work.id, cwd, name: 'Bash', input: { command: 'npm run lint', description: 'lint' }, at: new Date() }).map(l => JSON.stringify(l)).join('\n') + '\n');
-    await ctx.waitFor(`(c => !!c && !c.__seen)([...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work'))`, { what: 'the card rebuilt once more' });
-    ctx.assert.deepEqual(await starts(), out.scattered, '…and a rebuild keeps each ring where it was');
+    await ctx.waitFor(`window.peix.session(${JSON.stringify(work.id)}).lastActivity !== ${JSON.stringify(was)}`, { what: 'the update on the chat' });
+    ctx.assert.ok(await ctx.evaluate(`[...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work').__seen > 0`), 'a card whose markup did not change keeps its node');
+    ctx.assert.deepEqual(await starts(), out.scattered, '…and each ring where it was');
     await ctx.evaluate(`document.querySelector('#ringsInStep').click()`);
     ctx.assert.ok(Object.values(await starts()).every(t => t === 0), 'on again, every ring in step');
 
