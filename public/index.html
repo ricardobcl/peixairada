@@ -1036,26 +1036,29 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, foldBy: {}, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, usageFolded: false, prsOpen: false, cards: 'large', ringsInStep: true };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, foldBy: {}, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, usageFolded: false, prsOpen: false, cards: 'large', ringsInStep: true };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
   delete prefs.projectsCompact;   // the projects column's strip or full width — there is no column since 2026-09-24
+  // the four switches nothing set since the cog was pared down (2026-09-21): a saved value was the only way to flip them
+  for (const k of ['sound', 'showAll', 'toolsMode', 'foldCode']) delete prefs[k];
   // the one-of-four filter (before 2026-09-20) becomes the set of states shown; 'all' was every state
   if ('filter' in prefs) { prefs.filters = prefs.filter === 'all' ? ['ready', 'working', 'done'] : [prefs.filter]; delete prefs.filter; }
   if (!Array.isArray(prefs.filters)) prefs.filters = ['ready', 'working', 'done'];
   if (!prefs.foldBy || typeof prefs.foldBy !== 'object') prefs.foldBy = {};
   const savePrefs = () => { try { localStorage.setItem('peixairada-prefs', JSON.stringify(prefs)); } catch {} };
   // Code folding per chat (2026-09-20, Ricardo: "a button to toggle for that session"): the header's { } button sets
-  // prefs.foldBy[id]; a chat without a word of its own follows the cog's *fold code*. Claude Code itself cannot fold the
-  // code it prints in the drawer — its only collapse is ctrl+o for tool output — so this is the rendered transcript's.
-  const foldOn = id => id && id in prefs.foldBy ? !!prefs.foldBy[id] : !!prefs.foldCode;
+  // prefs.foldBy[id]; a chat without a word of its own folds (the cog's *fold code* switch, before it went). Claude Code
+  // itself cannot fold the code it prints in the drawer — its only collapse is ctrl+o for tool output — so this is the
+  // rendered transcript's.
+  const FOLD_DEFAULT = true;
+  const foldOn = id => id && id in prefs.foldBy ? !!prefs.foldBy[id] : FOLD_DEFAULT;
 
   // ---- header controls ---------------------------------------------------------------
   // The settings popover is the plan usage and the keys, nothing else (2026-09-21, Ricardo: "just hotkeys and
   // claude credits for now") — the notifications switch joined them on 2026-09-23, and the usage left for the chat
-  // list's footer on 2026-09-24. `sound`, `showAll`, `toolsMode` and `foldCode` keep their saved values — the code
-  // still reads them, and the chat header's { } button is still the fold for a chat — but nothing sets them now.
+  // list's footer on 2026-09-24. The chat header's { } button is the fold for a chat.
   // The magnifier opens its box; Esc or an emptied box on blur closes it; the icon stays lit while a filter is on.
   // Since 2026-09-25 it matches the way ⌥⌘K does and ⌥⌘F opens it from anywhere (hotFind): the best match leads
   // (renderSessionList), so there is a card to choose — ↑↓ walk them from the box, ⏎ opens the one marked and hands
@@ -1341,7 +1344,6 @@
   // elsewhere. VS Code's empty panels stay hidden: it mounts one per tab it restores, and none of them was ever asked
   // anything. The card's time and place are the chat's start (`startedAt`, the server's), until a first word lands.
   function visible(s) {
-    if (prefs.showAll) return true;
     if (s.alive && !s.lastActivity) return !inVsCode(s);
     if (!s.alive && !s.done && (!s.lastActivity || Date.now() - new Date(s.lastActivity) > STALE_MAX_AGE_MS)) return false;
     return true;
@@ -2219,7 +2221,7 @@
     const r = await fetch('/api/peacock', { method: hex ? 'PUT' : 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cwd, color: hex }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { written.delete(cwd); note(sqFor(cwd), r.status === 404 ? 'Could not write the colour: the running server predates this page and has no route for it — scripts/launchd.sh restart (ends the drawers)' : `Could not write the colour: ${d.error || `HTTP ${r.status}`}`, true); return; }
-    note(sqFor(cwd), `${hex ? 'Written to' : 'Removed from'} ${d.file.replace(/^\/Users\/[^/]+/, '~')}${d.tracked ? ' — git tracks that file, so it shows in git status' : ''}`);
+    note(sqFor(cwd), `${hex ? 'Written to' : 'Removed from'} ${homePath(d.file)}${d.tracked ? ' — git tracks that file, so it shows in git status' : ''}`);
   };
   function previewColor(cwd, hex) {
     if (hex) state.peacock[cwd] = hex; else delete state.peacock[cwd];
@@ -3539,22 +3541,12 @@
   }
 
   // ---- alerts --------------------------------------------------------------------------
-  let audio;
-  function beep() {
-    try {
-      audio ||= new (window.AudioContext || window.webkitAudioContext)();
-      const o = audio.createOscillator(), g = audio.createGain();
-      o.connect(g); g.connect(audio.destination); o.frequency.value = 880; g.gain.value = .06;
-      o.start(); o.frequency.setValueAtTime(1175, audio.currentTime + .09); o.stop(audio.currentTime + .18);
-    } catch {}
-  }
   // No in-page toast: alerts surface as the unread badge on the card and its project plus a *system*
   // notification (the Mac app posts its own; a plain browser gets the Notification API one below).
   function onAlert(a) {
     const viewing = a.sessionId && a.sessionId === state.current && document.visibilityState === 'visible' && document.hasFocus();
     if (a.sessionId && !viewing) state.unread.set(a.sessionId, (state.unread.get(a.sessionId) || 0) + 1);
     renderBoard(); if (a.quiet) return;   // notifications off (the cog): the unread count above, nothing else
-    if (prefs.sound) beep();
     if ('Notification' in window && Notification.permission === 'granted' && !viewing) {
       const n = new Notification(`${a.kind === 'reply' ? 'Claude replied' : 'Claude needs input'} · ${a.project}`, { body: `${a.title}\n${a.snippet || ''}`, tag: a.sessionId || 'test' });
       n.onclick = () => { window.focus(); if (a.sessionId) openSession(a.sessionId); n.close(); };
