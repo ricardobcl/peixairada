@@ -83,6 +83,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleVersion</key><string>1</string>
   <key>LSMinimumSystemVersion</key><string>$MIN_OS</string>
   <key>NSHighResolutionCapable</key><true/>
+  <!-- ⌃⌘F fills the screen up to the camera housing: never the shrunken compatibility mode for a window behind it -->
+  <key>NSPrefersDisplaySafeAreaCompatibilityMode</key><false/>
   <key>NSHumanReadableCopyright</key><string>Local tool — not distributed</string>
   <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
 </dict></plist>

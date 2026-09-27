@@ -139,6 +139,14 @@
      and slid the body into an auto row — a gap under it on a short chat, the drawer pushed off the bottom
      on a long one. Everything below the header is #groups now, so there is one row to place, not three. */
   #shead { grid-row: 1; } #prlist { grid-row: 2; } #rival { grid-row: 3; } #groups { grid-row: 4; } #composer { grid-row: 5; }
+  /* The app filling the screen, camera housing included (2026-09-27, ⌃⌘F): peixFill says where the housing is, in this
+     page's px, and the strip either side of it is the top row's to use. The chat list's head stays put while the list
+     ends short of the housing, and the chat header keeps its title left of the housing and its chips right of it — a
+     hole in the row, the h2's width and right margin set by layoutNotch(). Whichever has not the room (a list dragged
+     under the housing, a header too far left of it for a title) pads down by the strip instead, its own tint filling
+     the room: .npad. The padding is the head's own plus the strip. */
+  main.notch #sessions.npad #shd { padding-top: calc(7px + var(--notch-top, 0px)); }
+  main.notch #chat.npad .shead { padding-top: calc(7px + var(--notch-top, 0px)); }
   /* The chat column is one half or two (2026-09-22): ⌘2 splits it, ⌘1 / ⌘2 put the keys in the left or the right
      one. Each half has its own tab strip and its own body — the transcript, a terminal, or a page in the app's
      pane — and a tab belongs to exactly one of them. The left half keeps the plain ids: it is the whole column
@@ -920,6 +928,7 @@
     <kbd>⌘1 ⌘2</kbd><span>the left half of the chat, the right one — ⌘2 splits it in two the first time</span>
     <kbd>⌘W</kbd><span>close the half the keys are in — or the picker · with one half it is the window's own key</span>
     <kbd>⌘0</kbd><span>only this half: the other one closes and this tab is the column · with one half, the size back to normal</span>
+    <kbd>⌃⌘F</kbd><span>full screen up to the notch, in the app: the strip beside the camera takes the list's head and the chat's title · the green button is the system's, which stops below it</span>
     <kbd>⌘+ ⌘−</kbd><span>chat and terminal size</span>
     <kbd>⌘K</kbd><span>clear the terminal — the scrollback goes on the holder too, so it stays clear</span>
     <kbd>⇧⏎</kbd><span>newline in the terminal's prompt</span>
@@ -994,7 +1003,7 @@
 // Map ▴
 (() => {
   const $ = s => document.querySelector(s);
-  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true };
+  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true };
   const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, foldBy: {}, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, usageFolded: false, prsOpen: false, cards: 'large', ringsInStep: true };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
@@ -2019,6 +2028,9 @@
   // …and tells the page whether the pane is up and where its edge is (points = this view's CSS px) — the board
   // cannot see a native view over it, and window.peix reports it so the harness can.
   window.peixPane = (visible, left) => { state.paneVisible = !!visible; state.paneLeft = Number(left) || 0; };
+  // …and whether the window fills the screen (⌃⌘F in the app) and, on a screen with a camera housing, where that is —
+  // the strip's height and the x range the housing covers, in this page's px — or null on a screen without one (layoutNotch).
+  window.peixFill = (on, notch) => { state.fill = !!on; state.notch = on && notch && notch.top > 0 ? notch : null; layoutNotch(); };
   const noChat = () => note($('#shead'), 'Open a chat first');
   const focusBoard = () => { if (inApp) post({ type: 'focus' }); };   // the key may have come from the pane: the board needs the keyboard back
   function hotClaude() {
@@ -2384,7 +2396,7 @@
       + (prs.length > PR_ROWS ? `<button class="more" id="prMore">${state.prsAll ? 'fewer' : `… ${prs.length - PR_ROWS} more`}</button>` : '');
     pl.querySelector('#prMore')?.addEventListener('click', () => { state.prsAll = !state.prsAll; renderHead(s); });
     const pt = $('#prToggle'); if (pt) pt.onclick = () => { prefs.prsOpen = !prefs.prsOpen; savePrefs(); renderHead(s); };
-    fitHeadPrs();
+    layoutNotch(); fitHeadPrs();
     renderComposer(s); renderRival(s);
     // Say so when it fails — silently swallowing the response is how a missing `code` CLI looked
     // like a dead button for weeks. The icon has to survive that, so failure adds a word beside it
@@ -2428,14 +2440,40 @@
   // name and TITLE_ROOM of the title itself stay clear. At least one chip always shows. Run on every header draw and
   // on every change of the header's size.
   const TITLE_ROOM = 160;
+  // The app filling the screen, camera housing included (2026-09-27, Ricardo: "fullscreen app on a macbook with a notch,
+  // we don't really use that upper real estate"): the shell says where the housing is in this page's px (peixFill — the
+  // strip's height, and the x range the housing covers) and the top row lays itself around it. The chat list's head
+  // stays where it is while the list ends short of the housing; the chat header keeps its title left of the housing and
+  // its chips and ··· right of it — the h2 given a width that ends NOTCH_PAD short of the housing and a right margin that
+  // carries the next item NOTCH_PAD past it — while both sides have the room (NOTCH_TITLE for the name and some title,
+  // NOTCH_TAIL for the chips and ···). What has not the room pads down by the strip instead (.npad), so nothing sits
+  // under the housing; a header wholly right of it lifts as it is. Run on every header draw and every change of its
+  // size, since a resize moves the hole; nothing else on the page knows about the fill.
+  const NOTCH_PAD = 10, NOTCH_TITLE = 220, NOTCH_TAIL = 120;
+  function layoutNotch() {
+    const n = state.notch, main = $('#main'), list = $('#sessions'), chat = $('#chat'), head = $('#shead'), h2 = head.querySelector('h2');
+    main.classList.toggle('notch', !!n);
+    main.style.setProperty('--notch-top', `${n ? n.top : 0}px`);
+    list.classList.toggle('npad', !!n && list.getBoundingClientRect().right > n.left - NOTCH_PAD);
+    let hole = false;
+    if (n && h2) {
+      const hr = head.getBoundingClientRect(), gap = parseFloat(getComputedStyle(head).columnGap) || 0, x = h2.getBoundingClientRect().left;
+      hole = hr.left + NOTCH_TITLE <= n.left && n.right + NOTCH_TAIL <= hr.right;
+      if (hole) { const w = n.left - NOTCH_PAD - x; h2.style.flex = `0 0 ${w}px`; h2.style.marginRight = `${n.right + NOTCH_PAD - x - w - gap}px`; }
+    }
+    if (h2 && !hole) { h2.style.flex = ''; h2.style.marginRight = ''; }
+    head.classList.toggle('hole', hole);
+    chat.classList.toggle('npad', !!n && !hole && head.getBoundingClientRect().left < n.right + NOTCH_PAD);
+  }
   function fitHeadPrs() {
     const head = $('#shead'), t = $('#prToggle'); if (!t) return;
     const chips = [...t.querySelectorAll('.hpr:not(.more)')], more = t.querySelector('.hpr.more');
     for (const c of chips) c.hidden = false;
     more.hidden = true;
-    const cs = getComputedStyle(head), gap = parseFloat(cs.columnGap) || 0;
+    const cs = getComputedStyle(head), gap = parseFloat(cs.columnGap) || 0, h2 = head.querySelector('h2');
     const row = [...head.children].filter(el => el.tagName !== 'H2' && el !== t && !el.classList.contains('details') && el.getClientRects().length);
-    const title = Math.max(170, (head.querySelector('h2 .repo')?.offsetWidth || 0) + TITLE_ROOM);   // 170: the title's own flex-basis, below which the row wraps
+    const title = head.classList.contains('hole') ? h2.getBoundingClientRect().width + (parseFloat(h2.style.marginRight) || 0)   // the hole: the title's width is set, and the housing beside it is spent
+      : Math.max(170, (head.querySelector('h2 .repo')?.offsetWidth || 0) + TITLE_ROOM);   // 170: the title's own flex-basis, below which the row wraps
     const room = head.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - title
       - row.reduce((w, el) => w + el.getBoundingClientRect().width, 0) - gap * (row.length + 1);
     let shown = chips.length;
@@ -2445,7 +2483,7 @@
       more.title = chips.slice(shown).map(c => c.title).join('\n');
     }
   }
-  new ResizeObserver(() => fitHeadPrs()).observe($('#shead'));
+  new ResizeObserver(() => { if (state.notch) layoutNotch(); fitHeadPrs(); }).observe($('#shead'));
   // ··· and its menu. Placed under the button, right-aligned, each time it opens and each time the header is drawn
   // while it is up; closed by a click anywhere else, Esc (every dialog's), a hotkey (runHotkey), or an action that
   // goes somewhere — the toggles leave it up, so their new state is read where they were clicked.
@@ -2651,7 +2689,7 @@
   // A read-only window on this closure for the console and the harness (scripts/scenario.mjs reads it as ctx.peix):
   // copies, never the live objects. The page's script is one IIFE, so nothing else in it is reachable.
   window.peix = {
-    state: () => ({ current: state.current, project: prefs.project, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft, hidden: [...state.hidden],
+    state: () => ({ current: state.current, project: prefs.project, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft, fill: state.fill, notch: state.notch, hidden: [...state.hidden],
       paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, [...v]])), tab: state.sessions.has(state.current) ? tabOf(state.sessions.get(state.current)) : null, tabs: state.sessions.has(state.current) ? tabKeys(state.sessions.get(state.current)) : [], pr: shownPr.url,
       split: splitNow(), focusG, halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
       strips: state.sessions.has(state.current) ? [0, 1].map(g => keysIn(state.sessions.get(state.current), g)) : [[], []],

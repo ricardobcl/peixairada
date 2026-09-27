@@ -281,6 +281,21 @@ refuses to run against the real directory for the same reason.
   responder, so the page never sees ⌘W in the app. `closeHalfOrWindow` asks the board (`peixKey('KeyW','cmd')`)
   and calls `performClose` only when it answers false. Anything else the board wants to take off ⌘-something that
   a menu item already claims has to go the same way.
+* **⌃⌘F is the board's own full screen, up to the notch** (2026-09-27, Ricardo: "fullscreen app on a macbook with a
+  notch, we don't really use that upper real estate"): `toggleFill` in main.swift — the window borderless
+  (`BoardWindow`: still key, and while `fill` not constrained back under the menu bar), its frame the screen's, the
+  menu bar and the Dock auto-hidden — what Apple calls a *custom full-screen experience*, kitty's. **The system's full
+  screen always sits below the camera housing** (its doc for `NSScreen.safeAreaInsets` says so; the strip is the
+  auto-hidden menu bar's) — the green button is still that, and ⌃⌘F pressed in it leaves it. The page hears
+  `peixFill(on, notch)` — the strip's height and the x range the housing covers, in CSS px, from `safeAreaInsets` and
+  the two `auxiliaryTop*Area`s; null on a screen without one — on every toggle, screen change and board load, and
+  `layoutNotch()` lays the top row around it: the chat list's head stays put while the list ends short of the housing,
+  the chat header keeps its title left of it and its chips right (`.hole`: the h2's width and right margin, which
+  `fitHeadPrs` then measures), and whichever has not the room pads down by the strip (`.npad`), its tint filling the
+  room. `NSFullScreenMenuItemEverywhere` is registered false, or AppKit adds its own *Enter Full Screen* beside ours;
+  the frame's autosave is off while filled; ⌘W leaves the fill first (no close button on a borderless window);
+  Info.plist says `NSPrefersDisplaySafeAreaCompatibilityMode` false. Mission Control shows a window, not a Space. On
+  this Mac the strip is 32 pt and the housing x 771.5–956.5 of 1728. → `scripts/scenarios/notch.mjs`, Decisions 2026-09-27.
 * **The pickers match fuzzily, and with something typed the best match leads** (2026-09-21): `fuzzy(fields, q)` —
   each word of the query hunted *within one field* (`chatFields(s)`), letters in order, a run worth more than
   scattered ones, a word's start worth more than its middle, a gap costing; a field's worth falls off down the list,
@@ -525,11 +540,11 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
   `assert`, `cmd(code)` (a plain ⌘ press; `key(code)` is ⌥⌘), `screen(g)` / `waitPrompt(ms, g)` (the half, 0 by
-  default — the whole column while nothing is split), `drag(from, to, mid)` (a real press, move and release). The twenty-six in `scripts/scenarios/` are the
+  default — the whole column while nothing is split), `drag(from, to, mid)` (a real press, move and release). The twenty-seven in `scripts/scenarios/` are the
   regression checks for the drawer (re-attach, restart, geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a
   compose key), the hotkeys, the tab strip and the split, the new-chat flow, the project step's folders and ✕,
   the chat list's rules, its filter, its ends and its timeline, the card sizes and marks, the notifications switch, the usage bar, the project cue, the header's PRs
-  and its ··· menu, the chat's links.
+  and its ··· menu, the chat's links, the top row around the notch.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY` with what it failed on the first time, and the suite still exits 0; `--no-retry` is the honest gate.

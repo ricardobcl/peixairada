@@ -13,6 +13,7 @@ import UserNotifications
 
 let kPort = ProcessInfo.processInfo.environment["PEIXAIRADA_PORT"].flatMap(Int.init) ?? 7331
 let kURL = URL(string: "http://127.0.0.1:\(kPort)/")!
+let kFrameName = "peixairada.main"   // the window's frame in the defaults — off while ⌃⌘F fills the screen
 let kLog = FileManager.default.homeDirectoryForCurrentUser
   .appendingPathComponent("Library/Logs/peixairada.log")
 let kAppLog = FileManager.default.homeDirectoryForCurrentUser
@@ -162,7 +163,7 @@ final class ServerController {
 final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler,
                          WKNavigationDelegate, UNUserNotificationCenterDelegate, NSMenuItemValidation,
                          NSSearchFieldDelegate {
-  var window: NSWindow!
+  var window: BoardWindow!
   var web: BoardWebView!
   var content: NSView!
   var prPane: PaneOverlay!
@@ -188,6 +189,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   var unread = 0                 // alerts that arrived while the window was not in front
   var needsInput: [[String: String]] = []
   var useUN = false              // native notifications available?
+  var fillSaved: (frame: NSRect, mask: NSWindow.StyleMask, opts: NSApplication.PresentationOptions)?   // set while ⌃⌘F fills the screen: what to come back to
 
   // ---- injected bridge -----------------------------------------------------------------------
   private let bridgeJS = """
@@ -256,7 +258,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
     if web.responds(to: Selector(("setInspectable:"))) { web.setValue(true, forKey: "inspectable") }
 
-    window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1440, height: 900),
+    window = BoardWindow(contentRect: NSRect(x: 0, y: 0, width: 1440, height: 900),
                       styleMask: [.titled, .closable, .resizable, .miniaturizable, .fullSizeContentView],
                       backing: .buffered, defer: false)
     window.title = "peixAIrada"
@@ -284,10 +286,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     installEscapeMonitor()
     installHotkeyForwarder()
     window.contentMinSize = NSSize(width: 760, height: 520)
-    window.setFrameAutosaveName("peixairada.main")
+    window.setFrameAutosaveName(kFrameName)
     window.center()
     window.makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)
+    // Filling the screen, the frame is the screen's: it follows the window to another display (Mission Control can
+    // drag it there) and through a change of resolution, and the page hears where the housing is now.
+    for name in [NSWindow.didChangeScreenNotification, NSApplication.didChangeScreenParametersNotification] {
+      NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+        guard let self, self.fillSaved != nil, let screen = self.window.screen else { return }
+        if self.window.frame != screen.frame { self.window.setFrame(screen.frame, display: true) }
+        self.tellFill()
+      }
+    }
   }
 
   // ---- the pane --------------------------------------------------------------------------------
@@ -388,7 +399,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// It has to be the menu item: a key equivalent is dispatched before any responder, so the page never sees ⌘W.
   @objc func closeHalfOrWindow(_ sender: Any?) {
     web.evaluateJavaScript("window.peixKey ? !!window.peixKey('KeyW', 'cmd') : false") { [weak self] v, _ in
-      if (v as? Bool) != true { self?.window.performClose(nil) }
+      guard let self, (v as? Bool) != true else { return }
+      if self.fillSaved != nil { self.toggleFill(nil) }   // borderless, the window has no close button for performClose to press
+      self.window.performClose(nil)
     }
   }
   /// ‹ › ↻ ↗ from the strip, for the page on top.
@@ -668,8 +681,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     view.addItem(withTitle: "Reload", action: #selector(reload(_:)), keyEquivalent: "r").target = self
     view.addItem(withTitle: "Restart Server", action: #selector(restartServer(_:)), keyEquivalent: "R").target = self
     view.addItem(.separator())
-    let full = view.addItem(withTitle: "Enter Full Screen", action: #selector(NSWindow.toggleFullScreen(_:)), keyEquivalent: "f")
-    full.keyEquivalentModifierMask = [.control, .command]
+    // ⌃⌘F is the board's own full screen (toggleFill), not the system's. AppKit adds an Enter Full Screen of its own to
+    // any View menu without a toggleFullScreen: item — the default below keeps it out; the green button stays the system's.
+    UserDefaults.standard.register(defaults: ["NSFullScreenMenuItemEverywhere": false])
+    let full = view.addItem(withTitle: "Enter Full Screen", action: #selector(toggleFill(_:)), keyEquivalent: "f")
+    full.keyEquivalentModifierMask = [.control, .command]; full.target = self
     viewItem.submenu = view
 
     let winItem = NSMenuItem(); main.addItem(winItem)
@@ -698,6 +714,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     if item.action == #selector(reload(_:)) {
       item.title = paneUp ? "Reload Page" : "Reload"
     }
+    if item.action == #selector(toggleFill(_:)) {
+      item.title = fillSaved != nil || window.styleMask.contains(.fullScreen) ? "Exit Full Screen" : "Enter Full Screen"
+    }
     if item.action == #selector(findInPage(_:)) { return paneUp }
     if item.action == #selector(findNext(_:)) || item.action == #selector(findPrevious(_:)) {
       return paneUp && !findQuery.isEmpty
@@ -705,6 +724,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     return true
   }
   @objc func openLog(_ sender: Any?) { NSWorkspace.shared.open(kLog) }
+  /// ⌃⌘F: the board fills the screen, the strip beside the camera housing included (2026-09-27, Ricardo: "fullscreen
+  /// app on a macbook with a notch, we don't really use that upper real estate"). Not the system's full screen: that
+  /// one always sets the window below the housing and leaves the strip black — it is where the auto-hidden menu bar
+  /// slides in — and nothing in AppKit changes it (its own doc for NSScreen.safeAreaInsets says so). This is what Apple
+  /// calls a custom full-screen experience, kitty's and Sublime Text's: the window borderless, its frame the whole
+  /// screen, the menu bar and the Dock auto-hidden. The page is told where the housing is (tellFill) and lays its top
+  /// row around it. No Space of its own — Mission Control shows a window — and the green button is still the system's;
+  /// pressed in that one, ⌃⌘F leaves it instead. The frame's autosave is off meanwhile, so a quit mid-fill does not
+  /// bring the next launch up screen-sized; Info.plist says NSPrefersDisplaySafeAreaCompatibilityMode = false, or a
+  /// window behind the housing could switch the display into the shrunken compatibility mode.
+  @objc func toggleFill(_ sender: Any?) {
+    if window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil); return }
+    if let saved = fillSaved {
+      fillSaved = nil
+      NSApp.presentationOptions = saved.opts
+      window.styleMask = saved.mask
+      window.fill = false
+      window.setFrame(saved.frame, display: true)
+      window.setFrameAutosaveName(kFrameName)
+    } else {
+      guard let screen = window.screen ?? NSScreen.main else { return }
+      fillSaved = (window.frame, window.styleMask, NSApp.presentationOptions)
+      window.setFrameAutosaveName("")
+      window.fill = true
+      window.styleMask = .borderless
+      NSApp.presentationOptions = [.autoHideMenuBar, .autoHideDock]
+      window.setFrame(screen.frame, display: true)
+    }
+    window.makeKeyAndOrderFront(nil)
+    window.makeFirstResponder(paneFocus.flatMap { paneViews[$0] } ?? web)   // a new style mask can drop the first responder
+    logLine("fill: \(fillSaved != nil ? "on \(NSStringFromRect(window.frame))" : "off")")
+    tellFill()
+  }
+  /// The page hears of the fill (peixFill): on or off and, on a screen with a camera housing, where the housing is in
+  /// its own px — the strip's height and the x range the housing covers — so its top row keeps out of it and uses the
+  /// strips either side. Sent on every toggle, on a change of screen, and when the board has loaded (a reload forgets).
+  func tellFill() {
+    var notch = "null"
+    if fillSaved != nil, let screen = window.screen, screen.safeAreaInsets.top > 0,
+       let l = screen.auxiliaryTopLeftArea, let r = screen.auxiliaryTopRightArea {
+      notch = "{top: \(screen.safeAreaInsets.top), left: \(l.maxX - window.frame.minX), right: \(r.minX - window.frame.minX)}"
+    }
+    web.evaluateJavaScript("window.peixFill && window.peixFill(\(fillSaved != nil), \(notch))", completionHandler: nil)
+  }
   @objc func restartServer(_ sender: Any?) {
     showMessage("Restarting the server…")
     bringUpServer(restart: true)
@@ -879,6 +942,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     decisionHandler(.allow)
   }
 
+  func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { tellFill() }   // a reload forgets the fill
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
     if isCancelled(error) { return }
     showMessage("Could not load the board: \(error.localizedDescription)")
@@ -955,6 +1019,17 @@ final class PaneOverlay: NSView {
 
 /// A page on show and the rect the board gave it, in the board view's CSS px (points here).
 struct PanePlace { let key: String; let rect: CGRect }
+
+/// The board's window. Borderless — ⌃⌘F's fill — a bare NSWindow refuses the keys, and its frame would be pulled back
+/// under the menu bar: while `fill` is on, the frame is left exactly where it was put, the whole screen.
+final class BoardWindow: NSWindow {
+  var fill = false
+  override var canBecomeKey: Bool { true }
+  override var canBecomeMain: Bool { true }
+  override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect {
+    fill ? frameRect : super.constrainFrameRect(frameRect, to: screen)
+  }
+}
 
 let app = NSApplication.shared
 let delegate = AppDelegate()

@@ -14,6 +14,37 @@ bit more the 3 counters".
 * **The divider is Claude's mark alone**, centred: its two hairlines went the way of the day lines' an hour earlier.
   Nothing on a line between the cards is a rule any more — the mark and the days say where a run ends.
 
+## Decisions of 2026-09-27, small hours after — ⌃⌘F fills the screen up to the notch
+
+Ricardo: "fullscreen app on a macbook with a notch, we don't really use that upper real estate. is it possible?" —
+then "let's try it".
+
+* **Not with the system's full screen.** Apple's doc for `NSScreen.safeAreaInsets` is plain: a window that enters
+  full screen through `toggleFullScreen` is placed below the camera housing, and the strip beside the housing is the
+  auto-hidden menu bar's. No key or option changes that. What Apple allows is a *custom full-screen experience*: the
+  window borderless, its frame the screen's, the menu bar and the Dock auto-hidden — kitty's and Sublime Text's
+  "traditional" full screen — and the two `auxiliaryTop*Area` rects are declared safe to draw in.
+* **So ⌃⌘F is the board's** (`toggleFill`): the View menu's item, its title flipped in `validateMenuItem`, the green
+  button left as the system's (⌃⌘F pressed in that one leaves it). `BoardWindow` is the subclass it needs: a
+  borderless NSWindow refuses to be key, and `constrainFrameRect` would pull the frame back under the menu bar. The
+  frame's autosave is off while filled, so a quit mid-fill does not bring the next launch up screen-sized; ⌘W leaves
+  the fill first, since a borderless window has no close button for `performClose` to press.
+  `NSFullScreenMenuItemEverywhere` registered false keeps AppKit from adding its own *Enter Full Screen* beside ours.
+  Info.plist carries `NSPrefersDisplaySafeAreaCompatibilityMode = false`: the system may otherwise answer a window
+  behind the housing with the shrunken compatibility mode.
+* **The page lays the top row around the housing** (`peixFill` → `layoutNotch`): the shell sends the strip's height
+  and the x range the housing covers, in CSS px (points), on every toggle, screen change and load. The chat list's
+  head stays put while the list ends short of the housing; the chat header keeps its title left of it and its chips
+  and ··· right of it — the h2 given a width ending 10 px short of the housing and a right margin carrying the next
+  item 10 px past it (`.hole`), while both sides have room (220 px for the name and a title, 120 for the tail); a
+  list dragged under the housing pads its head down by the strip, a header without the room pads down too (`.npad`,
+  the tint filling the room), a header wholly right of the housing lifts as it is. `fitHeadPrs` measures the fixed h2
+  and its margin in hole mode. Measured on the 16": a 32 pt strip, the housing x 771.5–956.5 of 1728 — about 3 % of
+  the height, with a 185 pt hole.
+* **What it costs**: no Space of its own (Mission Control shows a window, ⌃← → does not reach it), and the menu bar
+  slides down over the strip whenever the pointer touches the top edge. `notch.mjs` drives the page with the 16"'s
+  numbers; the app itself is checked by hand.
+
 ## Decisions of 2026-09-27, night — the head bare on ALL, the age beside the tick, About behind the fish
 
 Ricardo: "remove the lines left and right of the date, on the card separators · clicking on the app icon should
