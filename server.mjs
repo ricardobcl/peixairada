@@ -292,6 +292,7 @@ function newSession(id, file) {
     rivals: [],   // other live processes on this chat (registry entries beyond `live`) — see inVsCode()
     entries: [], entryCount: 0, loaded: false,
     offset: 0, partial: '', truncatedHead: false,
+    agentsRunning: 0, ask: null, tasks: null, taskCalls: null,   // sub-agents at work (scanAgents); the question a tool asked; background tasks and the calls that started them
     pendingNotify: null, notifyTimer: null, pushTimer: null, newEntries: [],
     lastHook: null,
     replying: null, replyError: null
@@ -659,14 +660,25 @@ function parseLines(text, onLine) {
   }
 }
 
-/** Read the tail (or all) of a transcript and rebuild the session from it. */
+/**
+ * Read the tail (or all) of a transcript and rebuild the session from it. A chat the board already holds keeps what
+ * the transcript cannot say — its process, its sub-agents, a reply under way — and its timers are stopped, so
+ * nothing fires later for the object that was replaced (a push 80 ms old carried a stale summary). It is re-read
+ * *in silence*: every reply in it was alerted about once already (2026-09-27 — opening any chat longer than
+ * TAIL_BYTES fired "Claude replied" for its last, old reply, since the full re-read folds every line with `indexing`
+ * long over). A chat the registry made a placeholder for has had no transcript read yet: its first lines are news.
+ */
 function indexFile(file, { full = false } = {}) {
   let st;
   try { st = statSync(file); } catch { return null; }
   const id = basename(file, '.jsonl');
   const prev = sessions.get(id);
   const s = newSession(id, file);
-  if (prev) { s.live = prev.live; s.rivals = prev.rivals; s.alive = prev.alive; s.lastHook = prev.lastHook; s.startedAt = prev.startedAt; }
+  if (prev) {
+    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'agentsRunning', 'replying', 'replyError', 'lastHook']) s[k] = prev[k];
+    clearTimeout(prev.pushTimer); clearTimeout(prev.notifyTimer);
+    s.silent = !!prev.file;
+  }
   const start = full || st.size <= TAIL_BYTES ? 0 : st.size - TAIL_BYTES;
   s.loaded = start === 0 || full;
   s.truncatedHead = start > 0;
@@ -683,8 +695,11 @@ function indexFile(file, { full = false } = {}) {
   s.offset = st.size;
   s.newEntries = []; // initial load: nothing is "new"
   if (!s.cwd && prev?.cwd) s.cwd = prev.cwd;
+  if (!s.tasks?.size && prev?.tasks?.size) s.tasks = prev.tasks;   // a tail re-read has not seen the calls that started them
+  delete s.silent;
   sessions.set(id, s);
   fileToSession.set(file, id);
+  if (prev) { if (prev.pendingNotify) queueNotify(s, prev.pendingNotify); schedulePush(s); }   // an alert still owed, and the fresh summary
   return s;
 }
 
@@ -917,7 +932,7 @@ function nativeNotify(title, subtitle, body) {
 }
 
 function queueNotify(s, kind) {
-  if (indexing) return;
+  if (indexing || s.silent) return;   // the boot's scan, or a chat being re-read (indexFile): nothing in it is news
   s.pendingNotify = kind;
   clearTimeout(s.notifyTimer);
   // Debounce: the thinking block and the text block of one reply land as separate lines.
