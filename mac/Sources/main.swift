@@ -98,27 +98,26 @@ final class ServerController {
     }.resume()
   }
 
-  /// Calls back with nil on success, or a message to show the user.
+  /// Calls back with nil on success, or a message to show the user. On the main thread throughout: `process` and
+  /// `adopted` are read and written by stop() and restart() there, and the probe answers on URLSession's own queue.
   func start(_ done: @escaping (String?) -> Void) {
-    ServerController.isServing { [weak self] running in
+    ServerController.isServing { [weak self] running in DispatchQueue.main.async {
       guard let self else { return }
       if running {                        // a server is already up (launchd, or a terminal) — use it
         self.adopted = true
-        DispatchQueue.main.async { done(nil) }
+        done(nil)
         return
       }
       guard let node = ServerController.nodePath() else {
-        DispatchQueue.main.async {
-          done("""
-          This app bundle has no node binary. Rebuild it with mac/build.sh (it copies the node that
-          ran npm install), point PEIXAIRADA_NODE at one, or start the server yourself with
-          `npm start` and reopen this app.
-          """)
-        }
+        done("""
+        This app bundle has no node binary. Rebuild it with mac/build.sh (it copies the node that
+        ran npm install), point PEIXAIRADA_NODE at one, or start the server yourself with
+        `npm start` and reopen this app.
+        """)
         return
       }
       guard let script = Bundle.main.url(forResource: "server", withExtension: "mjs") else {
-        DispatchQueue.main.async { done("server.mjs is missing from the app bundle.") }
+        done("server.mjs is missing from the app bundle.")
         return
       }
       let p = Process()
@@ -129,17 +128,21 @@ final class ServerController {
       env["PORT"] = String(kPort)
       env["NOTIFY"] = "off"               // this app posts the notifications instead
       p.environment = env
-      FileManager.default.createFile(atPath: kLog.path, contents: nil)
+      // appended, like the app's own log: createFile on an existing path truncated it, and Restart Server from the
+      // menu wiped the run being looked into (2026-09-27)
+      if !FileManager.default.fileExists(atPath: kLog.path) {
+        FileManager.default.createFile(atPath: kLog.path, contents: nil)
+      }
       if let h = try? FileHandle(forWritingTo: kLog) {
         h.seekToEndOfFile(); p.standardOutput = h; p.standardError = h
       }
       do { try p.run() } catch {
-        DispatchQueue.main.async { done("Could not start the server: \(error.localizedDescription)") }
+        done("Could not start the server: \(error.localizedDescription)")
         return
       }
       self.process = p
       self.waitUntilUp(attempts: 40, done)
-    }
+    } }
   }
 
   private func waitUntilUp(attempts: Int, _ done: @escaping (String?) -> Void) {
@@ -158,10 +161,21 @@ final class ServerController {
     process = nil
   }
 
+  /// Only once the port has fallen silent: a start right after the terminate found the server still answering while
+  /// it shut down, adopted it, and the watchdog reported it gone fifteen seconds later (2026-09-27).
   func restart(_ done: @escaping (String?) -> Void) {
     stop()
     adopted = false
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { self.start(done) }
+    waitUntilDown(attempts: 20) { self.start(done) }
+  }
+
+  private func waitUntilDown(attempts: Int, _ then: @escaping () -> Void) {
+    ServerController.isServing { ok in
+      DispatchQueue.main.async {
+        if !ok || attempts <= 1 { then() }
+        else { DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { self.waitUntilDown(attempts: attempts - 1, then) } }
+      }
+    }
   }
 }
 
