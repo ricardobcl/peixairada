@@ -2737,8 +2737,11 @@
     let d; try { d = tm.fit.proposeDimensions(); } catch { return; }
     if (!d || !(d.cols > 1) || !(d.rows > 1)) return;
     if (d.cols !== tm.xt.cols || d.rows !== tm.xt.rows) refitTerm(tm.xt, d.rows, () => { try { tm.fit.fit(); } catch {} });
-    prefs.termSize = { cols: d.cols, rows: d.rows }; savePrefs();   // what a drawer started before any xterm exists asks for
-    if (tm.ws?.readyState === 1) tm.ws.send(JSON.stringify({ t: 'resize', cols: d.cols, rows: d.rows }));
+    if (prefs.termSize?.cols !== d.cols || prefs.termSize?.rows !== d.rows) { prefs.termSize = { cols: d.cols, rows: d.rows }; savePrefs(); }   // what a drawer started before any xterm exists asks for
+    // Only a size that moved goes to the PTY (2026-09-27): the holder resizes it unchecked, and the body's observer
+    // fires on every frame of a splitter drag — each send was a SIGWINCH and a whole Claude Code repaint. `sent` is
+    // this attachment's: a new socket starts over (attachTerm), so the holder always hears the first size.
+    if (tm.ws?.readyState === 1 && (tm.sent?.cols !== d.cols || tm.sent?.rows !== d.rows)) { tm.sent = { cols: d.cols, rows: d.rows }; tm.ws.send(JSON.stringify({ t: 'resize', cols: d.cols, rows: d.rows })); }
   }
   // The media query is for the scale of the moment, so it is re-armed after each change; xterm listens to the
   // same change and re-measures in its handler, and the refit must run after that — hence the timeout.
@@ -2796,7 +2799,7 @@
   function attachTerm(tm, t) {
     detachTerm(tm);
     ensureXterm(tm); tm.xt.reset();
-    Object.assign(tm, { id: t.id, sessionId: t.sessionId, cwd: t.cwd, kind: t.shell ? 'shell' : 'claude', exited: t.exited });
+    Object.assign(tm, { id: t.id, sessionId: t.sessionId, cwd: t.cwd, kind: t.shell ? 'shell' : 'claude', exited: t.exited, sent: null });
     drawer.err = null;
     showDrawer(tm, true);
     const ws = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`);
@@ -2813,7 +2816,7 @@
   function detachTerm(tm) {
     const ws = tm.ws; tm.ws = null;
     if (ws) { ws.onclose = null; ws.close(); }
-    Object.assign(tm, { id: null, sessionId: null, cwd: null, kind: null, exited: null });
+    Object.assign(tm, { id: null, sessionId: null, cwd: null, kind: null, exited: null, sent: null });
   }
   // The process ended: the drawer goes and the transcript is the pane again (a stale chat now — the composer shows).
   // A new chat that died before it registered says so where its transcript would be.
