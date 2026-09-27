@@ -1035,7 +1035,7 @@
 // Map ▴
 (() => {
   const $ = s => document.querySelector(s);
-  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true };
+  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, titleEdit: null, prsFor: null, prsAll: false };
   const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, foldBy: {}, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, usageFolded: false, prsOpen: false, cards: 'large', ringsInStep: true };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
@@ -1428,6 +1428,15 @@
     $('#counts').textContent = `${[...state.sessions.values()].filter(s => s.alive).length} live · ${all.ready} ready · ${all.working} clauding`;
     const total = [...state.unread.values()].reduce((a, b) => a + b, 0);
     document.title = (total ? `(${total}) ` : '') + 'peixAIrada';
+    if (inApp) postState();
+  }
+  // The app's badge and status menu, from the board's own state (2026-09-27): the shell's bridge used to open a second
+  // SSE stream and keep its own copy of every session for four counts, three of which it only logged. What it needs is
+  // the chats waiting on you; posted when that changes.
+  function postState() {
+    const needs = [...state.sessions.values()].filter(s => s.alive && s.status === 'needs-input').map(s => ({ id: s.id, project: s.project, title: s.title }));
+    const sig = JSON.stringify(needs); if (sig === postState.last) return; postState.last = sig;
+    post({ type: 'state', needs });
   }
   function knownFolders() { return [...new Set([...state.sessions.values()].map(s => s.cwd).filter(Boolean))].sort(); }
   // Between the clauding cards and the ready ones: Claude's mark in pixels, alone (2026-09-27; a school of ><> from
@@ -3597,7 +3606,9 @@
   function onAlert(a) {
     const viewing = a.sessionId && a.sessionId === state.current && document.visibilityState === 'visible' && document.hasFocus();
     if (a.sessionId && !viewing) state.unread.set(a.sessionId, (state.unread.get(a.sessionId) || 0) + 1);
-    renderBoard(); if (a.quiet) return;   // notifications off (the cog): the unread count above, nothing else
+    renderBoard();
+    if (inApp) post({ type: 'alert', kind: a.kind, project: a.project || '', title: a.title || '', snippet: a.snippet || '', sessionId: a.sessionId || '', serverNotify: !!state.serverNotify, quiet: !!a.quiet });   // the app posts the banner and counts the Dock's badge
+    if (a.quiet) return;   // notifications off (the cog): the unread count above, nothing else
     if ('Notification' in window && Notification.permission === 'granted' && !viewing) {
       const n = new Notification(`${a.kind === 'reply' ? 'Claude replied' : 'Claude needs input'} · ${a.project}`, { body: `${a.title}\n${a.snippet || ''}`, tag: a.sessionId || 'test' });
       n.onclick = () => { window.focus(); if (a.sessionId) openSession(a.sessionId); n.close(); };
@@ -3638,6 +3649,7 @@
       state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.peacock = d.peacock || {}; state.repos = d.repos || {};
       state.about = d.about || {};
       state.notifications = d.notifications !== false; showNotify();
+      state.serverNotify = d.notify === 'native';   // the server posts its own banners: the app must not double them
       renderBoard();
       const want = location.hash.slice(1);
       if (want && !state.current && state.sessions.has(want)) openSession(want);
