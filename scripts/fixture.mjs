@@ -76,11 +76,14 @@ export function makeFixture(dir, chats) {
   return { dir, chats: made };
 }
 
-/** What most scenarios want: two stale chats in two folders — one mentioning two PRs, one plain. */
+/** What most scenarios want: two stale chats in two folders — one mentioning two PRs, one plain. The plain one is
+ *  the newer by a whole second, not by however long the first file took to write: the two landed in the same
+ *  millisecond now and then, and the board's order between them was then the readdir's (card-signals, 2026-09-27). */
 export function defaultFixture(dir, { cwdA = '/Users/test/repo-a', cwdB = '/Users/test/repo-b' } = {}) {
+  const at = new Date(Date.now() - 86_400_000);
   return makeFixture(dir, [
-    { cwd: cwdA, title: 'Two PRs mentioned', prompt: 'Look at https://github.com/acme/repo-a/pull/12 and its follow-up https://github.com/acme/repo-a/pull/13', reply: 'Both reviewed. #12 is the base, #13 (https://github.com/acme/repo-a/pull/13) depends on it.' },
-    { cwd: cwdB, title: 'Plain chat', prompt: 'what day is it?', reply: 'It is a fixture. No PRs here.' },
+    { cwd: cwdA, at, title: 'Two PRs mentioned', prompt: 'Look at https://github.com/acme/repo-a/pull/12 and its follow-up https://github.com/acme/repo-a/pull/13', reply: 'Both reviewed. #12 is the base, #13 (https://github.com/acme/repo-a/pull/13) depends on it.' },
+    { cwd: cwdB, at: new Date(at.getTime() + 1000), title: 'Plain chat', prompt: 'what day is it?', reply: 'It is a fixture. No PRs here.' },
   ]);
 }
 
