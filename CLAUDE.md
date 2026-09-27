@@ -356,7 +356,10 @@ refuses to run against the real directory for the same reason.
   cog's cell, **drawn over the list's 4 px coloured edge** (`margin-left: -4px`); a click pins it, Esc or a click away
   closes it (`settingsOpen`). The fish is the SSE light and, clicked, **the About box** (`#about`, a modal dialog:
   version, process and paths from the snapshot's `about`, and the chats' counts). The `{ }` row under the chat
-  header's ··· is the fold for a chat (`prefs.foldBy[id]`, else `FOLD_DEFAULT`).
+  header's ··· is the fold for a chat (`prefs.foldBy[id]`, else `FOLD_DEFAULT`). **Every `pre` in the transcript is
+  inside a `.codebox`** (2026-09-27, night; `md()`): the bar with the language and the copy button is its first
+  child, a folded block is `details.codefold > summary + .codebox`, and a rule that reaches a `pre` goes through the
+  box. The copy click is delegated on `#log`.
 * **In the app the pane is a native view** over the chat column with its own web views: a key pressed there never
   reaches the page, so `installHotkeyForwarder()` forwards ⌥⌘ + the letters and the arrows, and ⌘ + the layout keys
   (`hotkeyCode()`), to `window.peixKey`; the shell reports `peixPane(visible, left)` — **a dialog open lowers the
@@ -564,7 +567,7 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   `scripts/scenarios/` are the regression checks for the drawer, the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
   marks, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, the chat's links,
-  the notch, reduced motion, the transcript's presence line.
+  the notch, reduced motion, the transcript's presence line, the code blocks' bar.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.

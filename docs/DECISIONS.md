@@ -96,6 +96,13 @@ transform and opacity where it can — the compositor's kind of motion, as the r
   rectangle while the fixture's cards were still sliding in, then put the pointer at its centre — on the card above,
   once the slide had ended. The runner has `ctx.settle()` now, which waits for every animation the page named (flip ·
   enter · leave · pop) to end; a scenario reads a rectangle after it.
+* **Code blocks carry their language and a copy button**: `md()` wraps every `pre` in a `.codebox` with a bar at its
+  top right — the language from the fence (or from highlight.js's guess) and *copy* — that shows under the pointer;
+  the wrapper takes the pre's margins, so the bar stays put while the block scrolls sideways. A long block still folds,
+  the wrapper inside the `details` and the summary naming the language, so the bar there is the button alone. The
+  click writes the block's text with the async clipboard, else selects it and `execCommand`s, and the button says
+  *copied* (or *failed*) for a second — the button is the whole answer, there is no toast.
+  → `scripts/scenarios/code-blocks.mjs` (the clipboard granted over CDP, then read back).
 
 ## Decisions of 2026-09-27, night — an empty chat's card can be ticked done
 
