@@ -11,10 +11,7 @@ export default async function (ctx) {
   await ctx.key('KeyT');                       // ⌥⌘T: a zsh in the chat's folder, its own holder
   await ctx.waitFor(`window.peix.state().tab === 'shell' && window.peix.term().ws === 1`, { what: 'the zsh tab, attached' });
 
-  const type = async text => {                 // the drawer's keyboard, as a hand would use it (see drawer-clear)
-    await ctx.evaluate(`document.querySelector('#termBodyB textarea').dispatchEvent(new InputEvent('input', { data: ${JSON.stringify(text)}, inputType: 'insertText', bubbles: true }))`);
-    await ctx.evaluate(`document.querySelector('#termBodyB textarea').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }))`);
-  };
+  const type = text => ctx.type(text, 1);      // the zsh tab's keyboard, in the right half, as a hand would use it
   const marked = negate => ctx.waitFor(`${negate ? '!' : ''}[...document.querySelectorAll('#termBodyB .xterm-rows > div')].some(r => /peixmark/.test(r.textContent))`,
     { what: `the marker ${negate ? 'gone from' : 'on'} the screen`, timeout: 20_000 });
 

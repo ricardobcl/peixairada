@@ -13,7 +13,7 @@ const ORG_DIR = mkdtempSync(join(tmpdir(), 'peix-org-'));
 for (const f of ['alpha-service', 'ledger-service', 'wallet-api']) mkdirSync(join(ORG_DIR, f, '.git'), { recursive: true });
 export const meta = { server: true, fixture: 'auto', env: { ORG_DIR, ORG: 'acme' } };
 
-const type = (ctx, text) => ctx.evaluate(`(() => { const q = document.querySelector('#pickq'); q.value = ${JSON.stringify(text)}; q.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+const type = (ctx, text) => ctx.fill('#pickq', text);
 const enter = ctx => ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);
 // Each row as it reads: the name without the path badge, what the badge says, the tail column, and its kind.
 const rows = ctx => ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow')].map(r => { const n = r.querySelector('.n').cloneNode(true); const cur = n.querySelector('.cur'); const path = cur?.textContent || ''; cur?.remove(); return { name: n.textContent, path, tail: r.querySelector('.t')?.textContent || '', kind: r.classList.contains('clone') ? 'clone' : r.classList.contains('folder') ? 'folder' : 'project', sel: r.classList.contains('sel') }; })`);

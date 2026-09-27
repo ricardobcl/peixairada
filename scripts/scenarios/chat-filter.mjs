@@ -11,7 +11,7 @@ import { makeFixture } from '../fixture.mjs';
 export const meta = { server: true, fixture: 'auto' };
 
 const titles = ctx => ctx.evaluate(`[...document.querySelectorAll('#slist > .card .title')].map(t => t.textContent)`);
-const type = (ctx, q) => ctx.evaluate(`(() => { const b = document.querySelector('#q'); b.value = ${JSON.stringify(q)}; b.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+const type = (ctx, q) => ctx.fill('#q', q);
 const keyIn = (ctx, key) => ctx.evaluate(`document.querySelector('#q').dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, bubbles: true, cancelable: true }))`);
 const marked = ctx => ctx.evaluate(`[...document.querySelectorAll('#slist > .card.qsel .title')].map(t => t.textContent)`);
 

@@ -45,10 +45,7 @@ export default async function (ctx) {
   ctx.assert.equal(out.session.status, 'idle');
 
   // The first prompt titles the card, which stays where it was — the same card, not a second one.
-  const type = async text => {
-    await ctx.evaluate(`document.querySelector('#termBody textarea').dispatchEvent(new InputEvent('input', { data: ${JSON.stringify(text)}, inputType: 'insertText', bubbles: true }))`);
-    await ctx.evaluate(`document.querySelector('#termBody textarea').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }))`);
-  };
+  const type = text => ctx.type(text);
   await type('hello from the board');
   await ctx.waitFor(`window.peix.session(${JSON.stringify(id)})?.lastPrompt === 'hello from the board'`, { what: 'the prompt on the summary', timeout: 15_000 });
   await ctx.sleep(300);

@@ -14,8 +14,7 @@ import { makeFixture } from '../fixture.mjs';
 export const meta = { server: true, fixture: 'auto' };
 
 const enter = ctx => ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);
-// In an IIFE: every evaluate lands in the same global scope, and a bare `const q` can only be declared once.
-const type = (ctx, text) => ctx.evaluate(`(() => { const q = document.querySelector('#pickq'); q.value = ${JSON.stringify(text)}; q.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+const type = (ctx, text) => ctx.fill('#pickq', text);
 // The rows as they read: the title without the "current" tag the open chat wears, what the .num column says, and
 // whether the row is selected / is the new-chat row.
 const rows = ctx => ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow')].map(r => { const n = r.querySelector('.n').cloneNode(true); n.querySelector('.cur')?.remove(); return { name: n.textContent, env: r.querySelector('.num')?.textContent || '', pills: r.querySelector('.pills')?.textContent || '', sel: r.classList.contains('sel'), isNew: r.classList.contains('new') }; })`);

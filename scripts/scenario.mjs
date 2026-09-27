@@ -6,7 +6,7 @@
 // A scenario is an ES module: `export const meta = { server: true, fake: true, fixture: 'auto', env: {…} }` (its
 // needs, so no flags are required — `env` goes to the throwaway server, for the ones it reads from its environment)
 // and `export default async function (ctx) { … return result }`. `ctx` carries the page
-// (evaluate, waitFor, send, sleep, shot(name), key(code), openChat(id), screen()), the throwaway server when there
+// (evaluate, waitFor, send, sleep, shot(name), key(code), openChat(id), screen(), type(text), fill(sel, text)), the throwaway server when there
 // is one (api, terminals, restart, holders, logText), the fixture's chats, `args`, `log` and node:assert as `assert`.
 // Everything is cleaned up on exit — Chrome, the server, its terminals and holders, the temp dirs — unless --keep.
 import assert from 'node:assert/strict';
@@ -77,6 +77,15 @@ const ctx = {
   /** The drawer's rows as text, trailing blanks trimmed, empty rows dropped. `g` is the half of the chat column:
       0 — the whole of it while nothing is split — or 1. */
   screen: (g = 0) => cdp.evaluate(`${ROWS(g)}.map(r => r.textContent.replace(/\\s+$/, '')).filter(Boolean)`),
+  /** Type into a half's drawer as a hand would: the text as an InputEvent on xterm's textarea, then Enter as a keydown —
+      what the drawer sends on as keystrokes (four scenarios each spelled this out until 2026-09-27). */
+  type: async (text, g = 0) => {
+    const box = `document.querySelector('#termBody${g ? 'B' : ''} textarea')`;
+    await cdp.evaluate(`${box}.dispatchEvent(new InputEvent('input', { data: ${JSON.stringify(text)}, inputType: 'insertText', bubbles: true }))`);
+    await cdp.evaluate(`${box}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }))`);
+  },
+  /** Put text in a box on the page — the magnifier's, a picker's — and say so (`input`), as typing would. */
+  fill: (selector, text) => cdp.evaluate(`(() => { const q = document.querySelector(${JSON.stringify(selector)}); q.value = ${JSON.stringify(text)}; q.dispatchEvent(new Event('input', { bubbles: true })); })()`),
   /** Wait for a half's drawer to show a prompt line (the fake's or Claude's ❯). */
   waitPrompt: (timeout = 30_000, g = 0) => cdp.waitFor(`${ROWS(g)}.some(r => r.textContent.includes('❯'))`, { timeout, every: 250, what: `the ❯ prompt in ${g ? 'the right half' : 'the drawer'}` }),
   /** A drag through the browser's own input: a press at the middle of `from`, eight moves to the middle of `to`, a

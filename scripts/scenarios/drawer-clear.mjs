@@ -8,10 +8,7 @@ export default async function (ctx) {
   await ctx.key('KeyC'); await ctx.waitPrompt();
   const before = await ctx.peix('state()');
   ctx.assert.equal(before.termSession, chat.id, 'the drawer runs the chat');
-  const type = async text => {
-    await ctx.evaluate(`document.querySelector('#termBody textarea').dispatchEvent(new InputEvent('input', { data: ${JSON.stringify(text)}, inputType: 'insertText', bubbles: true }))`);
-    await ctx.evaluate(`document.querySelector('#termBody textarea').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }))`);
-  };
+  const type = text => ctx.type(text);   // the drawer's keyboard, as a hand would use it
   await type('/clear');
   await ctx.waitFor(`window.peix.state().current && window.peix.state().current !== ${JSON.stringify(chat.id)}`, { what: 'the board following the process to its new chat', timeout: 15_000 });
   const after = await ctx.peix('state()');

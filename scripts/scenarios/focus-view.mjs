@@ -11,11 +11,7 @@ export default async function (ctx) {
   const lit = () => ctx.evaluate(`document.querySelector('#viewBtn')?.classList.contains('on') ?? null`);
   const noted = re => ctx.waitFor(`${re}.test(document.querySelector('.note')?.textContent || '')`, { what: `the note ${re}` });
   const said = re => ctx.peix('buffer()').then(rows => rows.filter(r => re.test(r)).length);
-  const type = async (text, g = 0) => {   // the drawer's keyboard, as a hand would use it (see drawer-clear)
-    const box = "document.querySelector('#termBody" + (g ? 'B' : '') + " textarea')";
-    await ctx.evaluate(`${box}.dispatchEvent(new InputEvent('input', { data: ${JSON.stringify(text)}, inputType: 'insertText', bubbles: true }))`);
-    await ctx.evaluate(`${box}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }))`);
-  };
+  const type = (text, g = 0) => ctx.type(text, g);   // the drawer's keyboard, as a hand would use it
 
   await ctx.openChat(chat.id);
   ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#viewBtn')`), false, 'no drawer, no button');
