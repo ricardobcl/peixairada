@@ -26,6 +26,7 @@
 //      · the holder protocol: newline-delimited JSON over the holder's socket (see lib/termhold.mjs)
 //      · launchers: a folder's own way to start claude
 //      · the org's folders: where the repos live, and cloning one that is not there yet
+//      · idle drawers: ended after DRAWER_IDLE_MS with no page on them
 //      · who may ask: the board's own pages, and nothing a browser lets another site send
 //  HTTP
 //  Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
@@ -1498,6 +1499,30 @@ function killTerm(t) {
   else { holderSend(t, { t: 'quit' }); terms.delete(t.id); }
 }
 
+// ---- idle drawers: ended after DRAWER_IDLE_MS with no page on them -------------------------------------------------
+// Nothing ended a drawer but Done or its ×, and a week of chats had left 72 claudes idle at 13 GB, one of them with a
+// page on it (2026-09-27, Ricardo: "do it"). A drawer whose claude has been idle — the registry's word: not busy, not
+// waiting — with no sub-agent or background task at work, no page attached, and no word in the chat nor the drawer's
+// own start within DRAWER_IDLE_MS, is ended as Done ends it. The chat loses nothing: the transcript is on disk, the
+// card goes stale, and its >_ resumes it. A chat waiting on a question is left standing, and so is every zsh. 0 disables.
+const DRAWER_IDLE_MS = Number(process.env.DRAWER_IDLE_MS ?? 24 * 60 * 60_000);
+function sweepDrawers() {
+  if (!(DRAWER_IDLE_MS > 0)) return;
+  const now = Date.now();
+  for (const t of terms.values()) {
+    if (t.shell || t.exited !== null || t.clients.size) continue;
+    const s = t.sessionId ? sessions.get(t.sessionId) : null;
+    if (s) {
+      const st = statusOf(s);
+      if (s.agentsRunning || s.tasks?.size || (s.live?.status ? s.live.status !== 'idle' : st === 'working' || st === 'needs-input')) continue;
+    }
+    const last = Math.max(Date.parse(t.startedAt) || 0, Date.parse(s?.lastActivity) || 0, Date.parse(s?.startedAt) || 0);
+    if (now - last < DRAWER_IDLE_MS) continue;
+    console.log(`[peixairada] terminal ${t.id}: idle ${Math.round((now - last) / 3600_000)} h with no page on it — ending it${s ? ` (chat ${s.id})` : ''}`);
+    killTerm(t);
+  }
+}
+
 // ---- who may ask: the board's own pages, and nothing a browser lets another site send ----------------------------
 // Loopback is no trust boundary a browser keeps: any page open in one can POST here — start a claude in a folder the
 // board knows, write a Peacock colour — and open a WebSocket to a drawer and type into it, since WebSockets have no
@@ -1856,6 +1881,7 @@ setInterval(() => {
     if (s.alive) scanAgents(s);
   }
   sweepTasks();
+  sweepDrawers();
 }, REGISTRY_POLL_MS);
 console.log(`[peixairada] indexed ${sessions.size} sessions (${[...sessions.values()].filter(s => s.alive).length} alive) from ${CLAUDE_DIR} in ${Date.now() - t0}ms`);
 

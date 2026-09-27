@@ -31,14 +31,16 @@ the tests and the scenarios.
   leaks (the Chrome profile race, the fixture dirs, a failed setup, the holder's log); `waitFor`, `post`, `ctx.type` and
   `ctx.fill`; exact pins and Node 22; the vendored xterm compared in `npm run check`; `CLAUDE.md` pared to its
   invariants — its bullets as they stood are at the end of this file, under *Findings*.
-* **Left to Ricardo.**
-  * **An idle-drawer sweep.** The design: a drawer whose claude reports idle, with no sub-agent or background task at
-    work, no page attached and no word in the chat nor the drawer's own start within `DRAWER_IDLE_MS` (24 h), ended as
-    Done ends it — the chat loses nothing, the card goes stale, `>_` resumes it; a chat waiting on a question and every
-    zsh left standing; 0 disables. The harness's policy refused code that ends processes on its own, so it is not
-    written. It is the whole memory story: nothing ends a drawer but Done or its ×.
-  * **The two stray test servers**, left for the same reason: `kill 86170 86496` ends them (their state dirs under
-    `$TMPDIR/peix-RRX8cw` and `peix-LqiUHl` hold nothing but a log).
+* **Left to Ricardo at first, then done on his word.**
+  * **An idle-drawer sweep** (`sweepDrawers`, on the registry poll): a drawer whose claude reports idle, with no
+    sub-agent or background task at work, no page attached and no word in the chat nor the drawer's own start within
+    `DRAWER_IDLE_MS` (24 h), ended as Done ends it — the chat loses nothing, the card goes stale, `>_` resumes it; a
+    chat waiting on a question and every zsh left standing; 0 disables. The harness's policy had refused code that
+    ends processes on its own; Ricardo's "do it" later that evening settled it. It is the whole memory story: nothing
+    else ended a drawer but Done or its ×. → `test/idle-drawer.test.mjs`.
+  * **The two stray test servers** (pids 86170 and 86496) were ended by hand on the same word, and their state dirs
+    under `$TMPDIR` removed; so were the 1546 Chrome profiles and 1399 fixture dirs the harness had leaked before its
+    fix, and the 71 holder logs left by drawers that ended before theirs.
   * The reviewers' further findings, not in the report and not done: `openChat` in the harness never fails; the
     terminals test's 2.5 s sleep for zsh's rc files; `build.sh` copying every platform's node-pty prebuilds (58 MB of
     the bundle); the pane's closed pages kept until eight are open; the `WKScriptMessageHandler` retain cycle

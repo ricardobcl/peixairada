@@ -414,8 +414,11 @@ refuses to run against the real directory for the same reason.
   (`termEnded`); `syncTerm` on every open and update. **⌥⌘T is a zsh tab** beside it: a holder with `shell: true`
   (`shellOf()`, `s.shell` on the summary, one per chat, `exit` or the tab's × ends it); `#ptabs` shows while there is
   more than the chat, and the tab a chat is on is page state (`tabs`). **Done ends the chat's processes** — the
-  drawer's holders and a claude live elsewhere (SIGTERM) — from the `done` route. Nothing else ends a drawer
-  (→ Decisions 2026-09-27, evening: an idle sweep is designed and not written).
+  drawer's holders and a claude live elsewhere (SIGTERM) — from the `done` route. **An idle drawer ends itself**
+  (`sweepDrawers`, on the registry poll, 2026-09-27): a claude the registry reports idle, no sub-agent or task at work,
+  no page attached, and no word in the chat nor the drawer's own start within `DRAWER_IDLE_MS` (24 h; 0 disables) — as
+  Done ends it: the card goes stale and `>_` resumes it. A chat waiting on a question and every zsh are left standing.
+  → `test/idle-drawer.test.mjs`.
 * **A page that attaches gets the screen serialized, then only what followed it** (`ws.hold` until the snapshot,
   flushed minus `seq ≤ upto`). It replaced a raw byte replay. → Findings: *round three*.
 * **`nudgeTerm()` after every attach** — a resize one row short, then the true size 150 ms later — makes Claude
@@ -555,5 +558,3 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   open re-checked after `PR_TTL_MS`. A card is titled by the oldest still-open PR (`prTitle()`).
 * **The app is signed for this machine only**, not for distribution.
 * **Chat-level pins** were dropped for sorting by your own last touch; **board-set colours** for Peacock's.
-* **An idle-drawer sweep is designed and not written** (→ Decisions 2026-09-27, evening): nothing ends a drawer but
-  Done or its ×, and 72 idle claudes held 13 GB.
