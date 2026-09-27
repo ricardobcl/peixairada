@@ -100,9 +100,12 @@ refuses to run against the real directory for the same reason.
   (`askHtml`). The three CSS rules are in priority order — work beats a monitor, a question beats both — **and each
   sets every variable**, since a card can be two of them (clauding with a monitor) and what a rule leaves out the
   earlier one keeps. The
-  chips beside the title say the numbers (`N agents`, `monitor`). **`phaseAnims()` puts every `ring`, `blink` and
-  `pulse` at start time 0 on the document clock after each render** (2026-09-27), because every SSE update rebuilds
-  the cards and a CSS animation starts over on a new node. → `scripts/scenarios/card-signals.mjs`,
+  chips beside the title say the numbers (`N agents`, `monitor`). **The ring is a conic gradient on a square
+  `::before` turned by a `transform`, under an `::after` cover in the card's own background 3 px in** (2026-09-27;
+  a registered property animated in place before — main-thread, repainted every frame, frozen under every transcript
+  render): the compositor's kind of motion, in Chrome and in WebKit, and `phaseAnims()` puts every `ring`, `blink`
+  and `pulse` at start time 0 on the document clock after each render, because every SSE update rebuilds the cards
+  and a CSS animation starts over on a new node. → `scripts/scenarios/card-signals.mjs`,
   Decisions 2026-09-21, 2026-09-22 and 2026-09-27.
 * **Folded (⌘B), the chat list is a rail of squares** (2026-09-22): one per chat, the project's short name
   (`projAbbr`, `PROJECT_ABBR` for the ones the rule gets wrong) on a solid tint of its colour, and the card's own
@@ -460,6 +463,8 @@ refuses to run against the real directory for the same reason.
 * Transcript line types are undocumented: ignore the unknown; drop `isSidechain`, `isMeta`, `isCompactSummary`,
   `<system-reminder>` blocks (strip them *first* — a prompt can follow one) and `<local-command…>` synthetic lines.
 * `.cards > * { flex: none }` is load-bearing; `.card { --repo: initial }` too (custom properties inherit — the orange cards).
+  `.card { isolation: isolate }` as well: the ring and its cover sit at z-index -1, above the card's background only
+  because the card is its own stacking context.
 * `.shead { min-width: 0 }` and a fixed `flex-basis` on `.shead h2`; PR chips are direct children of the header.
 * **Every grid row in the chat column is placed by hand** — `#chat`'s, each half's `.ptabs` / `.gbody`, and
   `#sessions`' since the usage footer (the rail hides `#filters`), whose *columns* are placed too since the timeline
@@ -472,9 +477,11 @@ refuses to run against the real directory for the same reason.
   → `test/refit.test.mjs`.
 * Inline code gets a tint, never a border; card glyphs are inline SVG, not emoji; the working ring is the project's
   colour — `--ring`, which only a card too dark to show it (`.card.black`) overrides, with white.
-* **A CSS animation starts over on a rebuilt node** (2026-09-27): the list is `innerHTML` on every SSE update, so
-  anything that moves on a card is phased to the document clock after the render (`phaseAnims()`; the fish's
-  `school()`). → Decisions 2026-09-27.
+* **A CSS animation starts over on a rebuilt node, and only `transform` and `opacity` run off the main thread**
+  (2026-09-27): the list is `innerHTML` on every SSE update, so anything that moves on a card is phased to the
+  document clock after the render (`phaseAnims()`; the fish's `school()`) — and nothing continuous animates a custom
+  property, a gradient or a colour: Chrome repaints that on the main thread every frame and freezes it under every
+  transcript render (Chrome's own trace says `compositeFailed` for it). → Decisions 2026-09-27.
 * `PROJECT_ICONS` (index.html) marks a project by its shown name wherever the name is written — oracle's crystal ball;
   `projIcon(name)` goes before the name in the chat list's header, the chat header, the cards, the pickers.
   `PROJECT_ABBR` is the same idea for the folded list's squares, and is read only by `projAbbr`.

@@ -145,13 +145,15 @@ export default async function (ctx) {
     // ---- the ring keeps its place across a render (2026-09-27) ----
     // Every SSE update rebuilds the cards, and a CSS animation starts over on a new node: the light jumped back to
     // its start on every update (Ricardo: "the animations like the border when clauding still reset randomly").
-    // Now the ring is phased to the document clock after each render, so the new card's light is where the old
-    // one's was. A line appended to the clauding chat's transcript is one such update.
+    // Now the ring is a transform animation — the compositor's, off the main thread — phased to the document clock
+    // after each render, so the new card's light is where the old one's was. A line appended to the clauding
+    // chat's transcript is one such update.
     const ring = () => ctx.evaluate(`JSON.stringify((c => {
       const a = c.getAnimations({ subtree: true }).find(a => a.animationName === 'ring');
-      const doc = document.timeline.currentTime;
+      const m = new DOMMatrix(getComputedStyle(c, '::before').transform), doc = document.timeline.currentTime;
       c.__seen = (c.__seen || 0) + 1;
-      return { seen: c.__seen, start: a && a.startTime, angle: Math.round(parseFloat(getComputedStyle(c, '::before').getPropertyValue('--spin'))), expect: Math.round((doc % 1400) / 1400 * 360) };
+      return { seen: c.__seen, start: a && a.startTime, props: a && Object.keys(a.effect.getKeyframes().at(-1)).filter(k => !['offset', 'computedOffset', 'easing', 'composite'].includes(k)),
+        angle: Math.round((Math.atan2(m.b, m.a) * 180 / Math.PI + 360) % 360), expect: Math.round((doc % 1400) / 1400 * 360) };
     })([...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work')))`).then(JSON.parse);
     out.ring = [await ring()];
     const work = chat('Normal work');
@@ -159,6 +161,7 @@ export default async function (ctx) {
     await ctx.waitFor(`(c => !!c && !c.__seen)([...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work'))`, { what: 'the card rebuilt on the update' });
     out.ring.push(await ring());
     ctx.assert.deepEqual(out.ring.map(r => r.start), [0, 0], 'the ring is at start time 0 on the document clock, before the update and on the new card after it');
+    ctx.assert.deepEqual(out.ring[1].props, ['transform'], 'and it is a transform animation, the kind the compositor runs');
     for (const r of out.ring) ctx.assert.ok(Math.min(Math.abs(r.angle - r.expect), 360 - Math.abs(r.angle - r.expect)) <= 3, `the light is where the clock says: ${r.angle}° for ${r.expect}°`);
 
     // ---- and it leads the list: a question costs you a second and unblocks a turn (2026-09-21) ----

@@ -4,10 +4,11 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-27.
 
-## Decisions of 2026-09-27, later — the clauding ring: phased across renders
+## Decisions of 2026-09-27, later — the clauding ring: phased across renders, and off the main thread
 
 Ricardo: "the animations like the border when clauding still reset randomly and breaks the smoothness. research and
-check if we need to put this in a different thread".
+check if we need to put this in a different thread", then "do 1 and 2. be mindful of performance issues, I don't
+want this to consume measurable CPU".
 
 * **What reset it**: every SSE `session` event rebuilds the list with `innerHTML`, so each card is a new node and
   the ring's CSS animation starts over at its first frame — the fish's stutter of 2026-09-20, on the ring. Measured
@@ -21,6 +22,24 @@ check if we need to put this in a different thread".
   (checked in a WKWebView on this Mac: the new `::before`'s angle is the clock's). Once at 0 it stays there, so the
   loop touches nothing on a node that survived; `getAnimations()` is the document's running animations, a few
   dozen at most, and the style flush it forces is the one the frame was about to do.
+* **A thread is not the answer, the compositor is**: the ring animated a registered custom property feeding a conic
+  gradient. Chrome's own trace said `compositeFailed: 8192, unsupportedProperties: ["--spin"]` — main thread,
+  repainted every frame, frozen for every main-thread stall (11 ms for the list of 287 cards, 36 ms for a short
+  chat's transcript, 130 ms opening the largest) — and WebKit accelerates only transform, opacity and filter. A
+  worker cannot touch the DOM. So the ring is now a conic gradient on a square `::before` 160 % of the card's width,
+  turned by `transform: rotate()`, under an `::after` cover in the card's own background (`background: inherit`)
+  3 px in; both at z-index -1 in the card's stacking context (`isolation: isolate`), the card's overflow clipping
+  the square. The same picture — a rotated conic gradient is a conic gradient with another start angle — paused at
+  the same phase, screenshot for screenshot, on the plain, the hovered, the open and the black card, in both themes
+  and on the rail. Chrome's trace no longer flags it.
+* **The CPU, three clauding cards, ten seconds**: WebKit's WebContent process 7.2 % of a core → 3.0 %, of which the
+  ring is 1.3 % and the fish 1.5 % (every animation off: 0.2 %) — the residual is WebKit's rendering update per
+  frame while any animation runs, accelerated or not. Headless Chrome: the renderer 8.1 % → 0.9 %, the GPU process
+  2.7 % → 5.0 % (it draws the turning textures; headless composites in software). The square's texture is 2.56 × the
+  card's area at the display's scale, about 3 MB per clauding card at 2×, rasterised once.
+* **Measured with** `getAnimations()` across appended transcript lines, a `Tracing` capture of Chrome's `Animation`
+  events, `ps -o time` deltas on the browser's processes, and a WKWebView probe (a Swift tool of the session, not
+  kept). `card-signals.mjs` checks the phase, the property and the angle across a render.
 
 ## Decisions of 2026-09-27 — the card: the last word, an F for Fable, the age under the pointer
 

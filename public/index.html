@@ -308,7 +308,7 @@
   main.scompact .sedge .w { display: none; }   /* the rail has room for the arrow and the number */
   /* --repo is reset here on purpose: custom properties inherit, and the chat list sets its own for its edge (the
      black on ALL) — without the reset every colourless card wore that. The card's inline --repo still wins. */
-  .card { --repo: initial; background: var(--panel); border: 2px solid var(--line); border-radius: 0; padding: 8px 10px 7px;   /* square since 2026-09-26 (Ricardo: "remove the round corners from cards"); 10 px before */ cursor: pointer; min-width: 0; overflow: hidden; position: relative; }
+  .card { --repo: initial; background: var(--panel); border: 2px solid var(--line); border-radius: 0; padding: 8px 10px 7px;   /* square since 2026-09-26 (Ricardo: "remove the round corners from cards"); 10 px before */ cursor: pointer; min-width: 0; overflow: hidden; position: relative; isolation: isolate; }
   /* Ready and done cards wear the wash and a plain edge (2026-09-20, Ricardo: "remove the border highlight for the
      ready cards"); the colour stays on the clauding card's edge, under its ring, and comes back on hover and on the open card. */
   .card.working { border-color: color-mix(in srgb, var(--repo, var(--nocolor)) 85%, var(--line)); }
@@ -323,8 +323,15 @@
   .own { display: inline-flex; align-items: center; gap: 4px; color: var(--vscode); font-size: 10.5px; font-weight: 600; white-space: nowrap; flex: none; }
   .own .ic { width: 12px; height: 12px; fill: currentColor; }
   .card .top .own { margin-left: auto; }
-  /* Claude at work: a light runs round the card's edge. A ring drawn by a masked conic gradient on a
-     pseudo-element just inside the border, its start angle animated through a registered property.
+  /* Claude at work: a light runs round the card's edge. A conic gradient on a square pseudo-element bigger than
+     the card, turned by a transform — the one kind of motion a browser runs off its main thread: Chrome's compositor
+     thread, Core Animation under WebKit (2026-09-27; before, the gradient's start angle was a registered property
+     animated in place — repainted on the main thread every frame, so it froze with every transcript render and cost
+     ~7 % of a core for three clauding cards). The ::after is a cover in the card's own background 3 px in, so only
+     the edge of the turning square shows; the card's overflow clips the rest and the border stays on top. Both sit at
+     z-index -1 in the card's own stacking context (isolation: isolate on .card): above its background, under its
+     content. The square is 160 % of the card's width, so its corners stay past the card's while the card is no
+     taller than 1.25 × its width — no card is.
      Since 2026-09-21 it is one mechanism with four readings (Ricardo: "different card signaling for normal claude
      work / a monitor is still running / N sub-agents are running / claude is asking me something"): --lit is what
      runs, --seg how much of the edge one light owns (100 % / the number of lights — one per sub-agent), --spins how
@@ -335,12 +342,11 @@
      Every card is rebuilt on every SSE update and a CSS animation starts over on a new node, so phaseAnims() (in the
      script) puts every ring at start time 0 on the document clock after each render: the new light is where the old
      one was. */
-  @property --spin { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
   .card.working, .card.watching, .card.asking { box-shadow: 0 0 0 1px color-mix(in srgb, var(--lit) 45%, transparent), 0 0 18px color-mix(in srgb, var(--lit) 35%, transparent); }
-  .card.working::before, .card.watching::before, .card.asking::before { content: ''; position: absolute; inset: 0; border-radius: 0; padding: 3px; pointer-events: none;
-    background: repeating-conic-gradient(from var(--spin), transparent 0 calc(var(--seg) * .45), var(--lit) calc(var(--seg) * .92), transparent var(--seg));
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+  .card.working::before, .card.watching::before { content: ''; position: absolute; z-index: -1; left: 50%; top: 50%; width: 160%; aspect-ratio: 1; margin: -80% 0 0 -80%; pointer-events: none;
+    background: repeating-conic-gradient(transparent 0 calc(var(--seg) * .45), var(--lit) calc(var(--seg) * .92), transparent var(--seg));
     animation: ring var(--spins, 1.4s) linear infinite; }
+  .card.working::after, .card.watching::after { content: ''; position: absolute; z-index: -1; inset: 3px; background: inherit; pointer-events: none; }
   .card.watching { --lit: var(--watch); --seg: 100%; --spins: 6s; }
   /* Every variable of the ring is set in every rule: a card can be two of these at once (clauding *and* watching is
      the ordinary case for a chat running a monitor), and what the later rule leaves unsaid the earlier one keeps —
@@ -351,8 +357,8 @@
      go-around animation"): no ring at all, the border itself blinking on and off in red. Two hard states, not a
      fade — a fade reads as another kind of running. */
   .card.asking { --lit: var(--needs); --seg: 100%; animation: blink 1.2s steps(2, jump-none) infinite; }
-  .card.asking::before { content: none; }
-  @keyframes ring { to { --spin: 360deg; } }
+  .card.asking::before, .card.asking::after { content: none; }
+  @keyframes ring { to { transform: rotate(360deg); } }
   @keyframes blink {
     from { border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
     to { border-color: color-mix(in srgb, var(--needs) 28%, var(--line)); box-shadow: none; }
