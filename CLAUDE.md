@@ -191,7 +191,9 @@ refuses to run against the real directory for the same reason.
   Code's. The server's `startedAt` on a session born from the registry is the card's time and place — the moment the
   board first saw the id (the process's start only at boot) — carried over by `indexFile`, the last fallback of
   `wordAt` (both copies), the card's `.time`. `openSession` on a chat the snapshot lacks renders the board from its
-  fetch. → `scripts/scenarios/new-chat-card.mjs`, the card checks in `drawer-clear.mjs`.
+  fetch. **It has the ✓ like any idle chat, and ticked it is gone** — no dimmed done card, nothing to resume: `visible()`
+  drops an empty chat once done, and the column leaves it (`leaveChat()`, from the `session` event; ＋ goes through the
+  same function). → `scripts/scenarios/new-chat-card.mjs`, the card checks in `drawer-clear.mjs`.
 * **A chat waiting on your answer first, then clauding, then ready, done last** (`RANK` / `rankOf`), inside each
   group **by the last word, yours or Claude's** (`wordAt`: the newer of `lastUserAt` and `lastReplyAt`; a tool call
   is not a word), newest first; a project ranks by its newest chat. The filters and every count go by `bucket()`,

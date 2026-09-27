@@ -3,7 +3,11 @@
 // the registry names the session before any transcript exists, and the board hid a live chat with no activity — a rule
 // for VS Code's restored panels. Now the card is there at once: "(no messages yet)", the project's, first in the ready
 // group by its start, the open one, its age counted from the start; the first prompt then titles it and it keeps its
-// place, one card throughout. drawer-clear.mjs checks the same for /clear. Runs the fake claude.
+// place, one card throughout. drawer-clear.mjs checks the same for /clear. The empty card carries the ✓ like any idle
+// chat (Ricardo, the same day: "those cards don't have the done check to clean them up"), and ticked it is gone — its
+// drawer ended, no dimmed card left, since an empty chat has nothing to resume. Runs the fake claude.
+import { waitFor } from '../../lib/testserver.mjs';
+
 export const meta = { server: true, fake: true, fixture: 'auto' };
 
 const cardOf = (ctx, id) => ctx.evaluate(`(() => { const cards = [...document.querySelectorAll('#slist > .card')]; const c = cards.find(c => c.dataset.id === ${JSON.stringify(id)});
@@ -39,7 +43,7 @@ export default async function (ctx) {
   ctx.assert.match(out.fresh.time || '', /^\d+s$/, 'its age counts from its start');
   ctx.assert.match(out.fresh.tip || '', /^started \d+s ago · no messages yet$/, '…and the tooltip says which start');
   ctx.assert.equal(out.fresh.snips, 0, 'no words on it yet');
-  ctx.assert.equal(out.fresh.tick, false, 'nothing to tick done');
+  ctx.assert.equal(out.fresh.tick, true, 'the ✓ is there to clean it up');
   ctx.assert.equal(out.ready1, out.ready0 + 1, 'the ready count took it in');
   ctx.assert.ok(out.session.startedAt && !out.session.lastActivity && out.session.alive && !out.session.file, `the summary: a live chat with a start and no transcript — ${JSON.stringify(out.session)}`);
   ctx.assert.equal(out.session.status, 'idle');
@@ -58,5 +62,29 @@ export default async function (ctx) {
   ctx.assert.equal(out.spoken.active, true);
   ctx.assert.ok(out.after.file && out.after.lastActivity, 'the transcript exists now');
   ctx.assert.equal(out.after.startedAt, out.session.startedAt, 'the start is carried over the transcript arriving');
+
+  // A second empty chat, ticked done before a word: the card goes at once, and the drawer with it.
+  const ready2 = Number(await ctx.evaluate(`document.querySelector('#fchips .fchip.ready .n').textContent`));
+  await ctx.evaluate(`document.querySelector('#newChatBtn').click()`);
+  await ctx.waitFor(`(s => s.current && !${JSON.stringify([...known, id])}.includes(s.current) && s.termSession === s.current)(window.peix.state())`, { what: 'the board on a second new chat', timeout: 20_000 });
+  const id2 = (await ctx.peix('state()')).current;
+  await ctx.waitFor(`!!document.querySelector('#slist > .card[data-id=${JSON.stringify(id2)}] .act[data-act=done]')`, { what: "the second chat's card, with its ✓", timeout: 5000 });
+  await ctx.evaluate(`document.querySelector('#slist > .card[data-id=${JSON.stringify(id2)}] .act').click()`);
+  await ctx.waitFor(`!document.querySelector('#slist > .card[data-id=${JSON.stringify(id2)}]')`, { what: 'the ticked empty card gone', timeout: 5000 });
+  await waitFor(async () => (await ctx.server.terminals()).every(t => t.sessionId !== id2 || t.exited !== null), { what: "the ticked chat's drawer ended", timeout: 10_000 });
+  await ctx.waitFor(`(s => s && !s.alive && s.done)(window.peix.session(${JSON.stringify(id2)}))`, { what: 'its claude gone, the chat done', timeout: 10_000 });
+  await ctx.sleep(300);
+  out.ticked = { card: await cardOf(ctx, id2), first: await cardOf(ctx, id), ready: Number(await ctx.evaluate(`document.querySelector('#fchips .fchip.ready .n').textContent`)),
+    done: Number(await ctx.evaluate(`document.querySelector('#fchips .fchip.done .n')?.textContent || 0`)),
+    column: JSON.parse(await ctx.evaluate(`JSON.stringify({ current: window.peix.state().current, hash: location.hash, head: document.querySelector('#shead').textContent, log: document.querySelector('#log').textContent, tinted: document.querySelector('#chat').classList.contains('tinted') })`)) };
+  await ctx.shot('ticked', { x: 0, y: 0, width: 1270, height: 600 });
+  ctx.assert.equal(out.ticked.card, null, 'no card for the ticked empty chat, not even a dimmed one');
+  ctx.assert.ok(out.ticked.first, 'the first new chat keeps its card');
+  ctx.assert.equal(out.ticked.ready, ready2, 'the ready count is back where it was');
+  ctx.assert.equal(out.ticked.done, 0, 'and done did not take it in');
+  ctx.assert.deepEqual(out.ticked.column, { current: null, hash: '', head: 'Pick a chat', log: 'Pick a chat on the left — ⌥⌘K finds one anywhere, ⌥⌘P picks a project.', tinted: false },
+    'the column left the chat with its card: back to the page as a load with no chat draws it');
+  await ctx.evaluate(`document.querySelector('#slist > .card[data-id=${JSON.stringify(id)}]').click()`);
+  await ctx.waitFor(`window.peix.state().current === ${JSON.stringify(id)} && document.querySelector('#shead').textContent.includes('hello from the board')`, { what: 'the first chat opened again, its header drawn' });
   return out;
 }

@@ -1351,9 +1351,11 @@
   // drawer's — ＋, or /clear, which gives the process a new id and an empty chat — and a claude in a terminal
   // elsewhere. VS Code's empty panels stay hidden: it mounts one per tab it restores, and none of them was ever asked
   // anything. The card's time and place are the chat's start (`startedAt`, the server's), until a first word lands.
+  // Ticked done, an empty chat is gone at once (2026-09-27, Ricardo: "those cards don't have the done check to clean
+  // them up"): Done ends its claude, and there is nothing in it to read or resume.
   function visible(s) {
-    if (s.alive && !s.lastActivity) return !inVsCode(s);
-    if (!s.alive && !s.done && (!s.lastActivity || Date.now() - new Date(s.lastActivity) > STALE_MAX_AGE_MS)) return false;
+    if (!s.lastActivity) return s.alive && !s.done && !inVsCode(s);
+    if (!s.alive && !s.done && Date.now() - new Date(s.lastActivity) > STALE_MAX_AGE_MS) return false;
     return true;
   }
   // One order everywhere: the chat whose last *word* is newest first — yours or Claude's, whichever came later
@@ -1809,7 +1811,7 @@
     const replyLast = showReply && String(s.lastReplyAt || '') >= String(s.lastUserAt || '');
     const older = who => s.lastPrompt && showReply && (who === 'you') === replyLast ? ' older' : '';
     const act = s.done ? `<button class="act" data-act="reopen" title="Untick — bring it back">↩</button>`
-      : (!s.alive || s.status === 'idle') && s.lastActivity ? `<button class="act" data-act="done" title="Tick as done (persisted; comes back on new activity)">✓</button>` : '';
+      : (!s.alive || s.status === 'idle') && (s.lastActivity || s.startedAt) ? `<button class="act" data-act="done" title="Tick as done (persisted; comes back on new activity)">✓</button>` : '';
     // The F for Fable (2026-09-27) and the ✓ / ↩ end the top row — the project name's height —, the tick first and the
     // F last, so the tick takes the F's place when there is none (Ricardo, the same day: "first done icon, then F for
     // fable. when fable is not there, move the done icon to the right where F would be"). Either brings the row into
@@ -3311,6 +3313,17 @@
     if (then === 'chats') return chatsStep({ key: cwd, name: folderName(cwd), cwds: [cwd] });   // no launchers: the folder's own chats, ＋ a new one
     $('#pick').close(); newChat(cwd);
   }
+  // No chat in the column: the page as a load without a #id draws it, or, from newChat, a header and a word of its own.
+  // Also the way off an open chat that has left the board — an empty one ticked done (visible()): nothing in it to
+  // read or resume. The header is written here, so `drawn` starts over.
+  const NO_CHAT = { head: $('#shead').innerHTML, log: $('#log').innerHTML };
+  function leaveChat(head = NO_CHAT.head, log = NO_CHAT.log, color = null) {
+    state.current = null; state.entries = []; history.replaceState(null, '', location.pathname); hidePr(); syncTerm(null);
+    const menu = $('#hmenu'); if (menu.open) menu.close();
+    $('#prlist').hidden = true; $('#chat').classList.remove('vsc'); tintChat(color);
+    $('#shead').innerHTML = head; $('#log').innerHTML = log; drawn.head = drawn.menu = drawn.prs = null;
+    layoutNotch(); renderComposer(null);
+  }
   // A new chat has no session until claude registers; the server ties the two by pid and says so
   // over SSE, at which point the pane switches to it. `task` names a launcher of the folder's Taskfile (newChatIn).
   async function newChat(cwd, task = null) {
@@ -3318,14 +3331,10 @@
     let d;
     try { d = await api('POST', '/api/terminals', { cwd, task, ...termSize() }); }
     catch (e) { $('#log').innerHTML = `<div class="empty">Could not start a chat: ${esc(e.message)}</div>`; return; }
-    state.current = null; state.entries = []; history.replaceState(null, '', location.pathname); hidePr(); syncTerm(null);
+    leaveChat(`<h2><span class="repo">${esc(folderName(cwd))}</span><span class="sep"></span><span class="t">new chat${task ? ` · task ${esc(task)}` : ''}</span></h2>`,
+      '<div class="empty">Say something in the terminal below — the transcript shows up here once Claude has written it.</div>', repoColor(cwd));
     if (!inProject({ cwd }, projectStub(prefs.project))) prefs.project = cwd;   // so the new chat lands in view
     savePrefs(); renderBoard();
-    $('#chat').classList.remove('vsc');
-    tintChat(repoColor(cwd));
-    $('#shead').innerHTML = `<h2><span class="repo">${esc(folderName(cwd))}</span><span class="sep"></span><span class="t">new chat${task ? ` · task ${esc(task)}` : ''}</span></h2>`;
-    $('#log').innerHTML = '<div class="empty">Say something in the terminal below — the transcript shows up here once Claude has written it.</div>';
-    renderComposer(null);
     attachTerm(curTerm(), d.terminal);
   }
   // ---- ⌘+ / ⌘- / ⌘0: the chat's size — the transcript through CSS zoom, the terminal through its font
@@ -3646,7 +3655,11 @@
       // which would close the PR in the pane and scroll the list.
       else if (state.current && state.sessions.has(state.current)) refetchCurrent();
     });
-    es.addEventListener('session', e => { const s = JSON.parse(e.data); state.sessions.set(s.id, s); renderBoard(); if (s.id === state.current) { renderHead(s); syncTerm(s); } });
+    es.addEventListener('session', e => {
+      const s = JSON.parse(e.data); state.sessions.set(s.id, s);
+      if (s.id === state.current && !visible(s) && s.done) leaveChat();   // an empty chat ticked done: its card is gone, and so is the chat
+      renderBoard(); if (s.id === state.current) { renderHead(s); syncTerm(s); }
+    });
     es.addEventListener('entries', e => { const d = JSON.parse(e.data); if (d.sessionId === state.current) { state.entries.push(...d.entries); renderLog(); } });
     es.addEventListener('projects', e => { state.projects = JSON.parse(e.data).projects || []; renderBoard(); });
     es.addEventListener('peacock', e => { state.peacock = JSON.parse(e.data).colors || {}; renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); });

@@ -4,6 +4,23 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-27.
 
+## Decisions of 2026-09-27, night — an empty chat's card can be ticked done
+
+Ricardo: "new chats now create cards before I say anything, but those cards don't have the done check to clean them up."
+
+* **What kept the ✓ off**: `cardHtml` offered it only to a chat with a `lastActivity` — from the board's first day,
+  when a card without one did not exist. It goes by `lastActivity || startedAt` now, as the card's age does, so an empty
+  chat idle in its drawer has it.
+* **Ticked, an empty chat is gone, not dimmed**: Done ends its claude as it ends any, and a chat with no transcript has
+  nothing to read and nothing `claude --resume` could take up, so a *done* card for it would only be clutter. `visible()`
+  shows a chat with no activity only while it is alive, not done, and not VS Code's. The server needed nothing: `isDone`
+  already held for a mark against an empty `lastActivity`.
+* **The column leaves it too**: an open chat that a `session` event takes off the board that way is left for the page as
+  a load with no chat draws it — `leaveChat()`, the markup read from the page at start (`NO_CHAT`). ＋ (`newChat`) went
+  through the same few lines by hand and now calls it with its own header; it also resets `drawn`, which `newChat`'s
+  hand-written header never did. → `scripts/scenarios/new-chat-card.mjs` (the ✓ on the fresh card; a second empty chat
+  ticked: its card and drawer gone, the counts back, the column on *Pick a chat*, the first chat opening again).
+
 ## Decisions of 2026-09-27, evening — the review: what was measured, what changed, what is left
 
 Ricardo: "do a thorough review of the codebase, look for performance bootlenecks and code hygine", then "do them all".
