@@ -232,6 +232,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
 
   func applicationWillTerminate(_ note: Notification) { server.stop() }
+  /// Filled and behind another app, there is no pointer to watch for a hold at the Dock's edge: the poll stops, and
+  /// comes back with the app — with the Dock's edge read again, in case it moved meanwhile.
+  func applicationDidResignActive(_ note: Notification) { fillTick?.invalidate(); fillTick = nil }
+  func applicationDidBecomeActive(_ note: Notification) { if fillSaved != nil && fillTick == nil { startDockTick() } }
   func applicationShouldTerminateAfterLastWindowClosed(_ app: NSApplication) -> Bool { false }
   func applicationShouldHandleReopen(_ app: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
     showWindow(nil); return true
@@ -761,8 +765,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       window.styleMask = .borderless
       NSApp.presentationOptions = [.autoHideMenuBar, .hideDock]   // the Dock gone; a hold at its edge lets it out (dockTick)
       window.setFrame(screen.frame, display: true)
-      let t = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in self?.dockTick() }
-      RunLoop.main.add(t, forMode: .common); fillTick = t
+      startDockTick()
     }
     window.makeKeyAndOrderFront(nil)
     window.makeFirstResponder(paneFocus.flatMap { paneViews[$0] } ?? web)   // a new style mask can drop the first responder
@@ -773,6 +776,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
   /// The Dock's edge of the screen, from its own preference: bottom unless it says left or right.
   static func dockEdge() -> String { UserDefaults(suiteName: "com.apple.dock")?.string(forKey: "orientation") ?? "bottom" }
+  /// The poll, in .common so it runs under menu tracking too; the Dock's edge read once here, not on every tick
+  /// (a UserDefaults suite made ten times a second, 2026-09-27).
+  func startDockTick() {
+    dockSide = AppDelegate.dockEdge()
+    let t = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in self?.dockTick() }
+    RunLoop.main.add(t, forMode: .common); fillTick = t
+  }
   /// Ten times a second while filled. The Dock is hidden outright (hideDock): auto-hidden it came out under every touch
   /// of the right edge, where the chat column's own controls are (Ricardo, 2026-09-27: "the dock is still visible").
   /// A pointer *held* at its edge for dockHold lets it out (autoHideDock, with the pointer already there) until the
@@ -783,7 +793,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     let p = NSEvent.mouseLocation, f = screen.frame, now = Date().timeIntervalSinceReferenceDate
     guard f.insetBy(dx: -2, dy: -2).contains(p) else { return }   // on another screen
     let at: Bool, off: Bool
-    switch AppDelegate.dockEdge() {
+    switch dockSide {
     case "left": at = p.x <= f.minX + 2; off = p.x > f.minX + 100
     case "right": at = p.x >= f.maxX - 2; off = p.x < f.maxX - 100
     default: at = p.y <= f.minY + 2; off = p.y > f.minY + 100
