@@ -2002,33 +2002,28 @@
     // chats, mention order for PRs, the Taskfile's for environments). Ties go to whichever came first in that order.
     const hunt = (items, fields) => { if (!q) return items; const hits = []; items.forEach((x, i) => { const m = fuzzy(fields(x), q); if (m) hits.push([m.score, i, x]); }); return hits.sort((a, b) => b[0] - a[0] || a[1] - b[1]).map(h => h[2]); };
     const sel = i => i === pick.sel ? ' sel' : '';
-    let rows;
+    let row;   // each mode fills pick.list and says how a row of it is drawn; the selection is clamped once, below
     if (pick.mode === 'pr') {
       pick.list = hunt(state.sessions.get(state.current)?.prs || [], pr => [pr.label, pr.title || '']);
-      pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
-      rows = pick.list.map((pr, i) => `<div class="pkrow pr${sel(i)}" data-i="${i}" data-state="${esc(pr.state || '')}" title="${esc(pr.url)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${mark(pr.label)}</span><span class="n${pr.title ? '' : ' pending'}">${pr.title ? mark(pr.title) : 'title on its way from gh…'}${pr.url === shownPr.url ? '<span class="cur">current</span>' : ''}</span><span class="t">${rel(pr.lastAt)}</span></div>`);
+      row = (pr, i) => `<div class="pkrow pr${sel(i)}" data-i="${i}" data-state="${esc(pr.state || '')}" title="${esc(pr.url)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${mark(pr.label)}</span><span class="n${pr.title ? '' : ' pending'}">${pr.title ? mark(pr.title) : 'title on its way from gh…'}${pr.url === shownPr.url ? '<span class="cur">current</span>' : ''}</span><span class="t">${rel(pr.lastAt)}</span></div>`;
     } else if (pick.mode === 'chat') {
       pick.list = hunt([...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done').sort((a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byWord(a, b)), chatFields);
-      pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
-      rows = pick.list.map((s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${mark(s.title)}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t">${rel(wordAt(s))}</span></div>`);
+      row = (s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${mark(s.title)}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t">${rel(wordAt(s))}</span></div>`;
     } else if (pick.mode === 'chats') {   // the scope's open chats, ＋ a new one — the row that carries on with the flow
       const chats = hunt(scopeChats(pick.ctx), chatFields);   // ＋ is never filtered out: it is the fallback for a query that matches nothing
       pick.list = [{ isNew: true }, ...chats];
-      pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
       const how = pick.ctx.env ? `task ${pick.ctx.env}` : pick.ctx.cwds.length === 1 ? `in ${folderName(pick.ctx.cwds[0])}` : 'pick a folder…';   // reads under the chats' own environment column, so say it is a folder
-      rows = pick.list.map((x, i) => x.isNew
+      row = (x, i) => x.isNew
         ? `<div class="pkrow chat new${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(pick.ctx.cwds))}" title="Start a new chat in ${esc(pick.ctx.name)}"><span class="sq"></span><span class="n">＋ new chat</span><span class="num">${esc(how)}</span><span class="st"></span><span class="t"></span></div>`
-        : `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(x)}" style="${repoStyle(repoColor(x.cwd))}" title="${esc(x.cwd || '')}"><span class="sq"></span><span class="n">${mark(x.title)}${x.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${esc(x.env || '')}</span><span class="st">${chatState(x)}</span><span class="t">${rel(wordAt(x))}</span></div>`);
+        : `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(x)}" style="${repoStyle(repoColor(x.cwd))}" title="${esc(x.cwd || '')}"><span class="sq"></span><span class="n">${mark(x.title)}${x.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${esc(x.env || '')}</span><span class="st">${chatState(x)}</span><span class="t">${rel(wordAt(x))}</span></div>`;
     } else if (pick.mode === 'folder') {   // the new chat's folder, from a project that spans several
       pick.list = hunt(pick.ctx.cwds.map(f => ({ cwd: f })), x => [folderName(x.cwd), x.cwd]);
-      pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
-      rows = pick.list.map((x, i) => `<div class="pkrow${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(x.cwd))}" title="${esc(x.cwd)}"><span class="sq"></span><span class="n">${mark(folderName(x.cwd))}<span class="cur">${esc(homePath(x.cwd))}</span></span><span class="pills"></span><span class="t"></span></div>`);
+      row = (x, i) => `<div class="pkrow${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(x.cwd))}" title="${esc(x.cwd)}"><span class="sq"></span><span class="n">${mark(folderName(x.cwd))}<span class="cur">${esc(homePath(x.cwd))}</span></span><span class="pills"></span><span class="t"></span></div>`;
     } else if (pick.mode === 'env') {   // the new chat's environment: a launcher of the folder's Taskfile (task <name>)
       pick.list = hunt(pick.ctx.launchers, l => [l.name, l.desc]);
-      pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
       // …each with what the next step would show under it: the board's own pills, clauding first, then ready — the
       // count of this environment's chats that are not ticked done, so an environment already busy says so here.
-      rows = pick.list.map((l, i) => `<div class="pkrow env${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(pick.ctx.cwd))}" title="task ${esc(l.name)} in ${esc(pick.ctx.cwd)}"><span class="sq"></span><span class="n">${mark(l.name)}</span><span class="num">${mark(l.desc)}</span><span class="pills">${pillsHtml(envCounts(pick.ctx.cwd, l.name))}</span></div>`);
+      row = (l, i) => `<div class="pkrow env${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(pick.ctx.cwd))}" title="task ${esc(l.name)} in ${esc(pick.ctx.cwd)}"><span class="sq"></span><span class="n">${mark(l.name)}</span><span class="num">${mark(l.desc)}</span><span class="pills">${pillsHtml(envCounts(pick.ctx.cwd, l.name))}</span></div>`;
     } else {   // project — and new, the same rows without ALL and without a named project that has no folder yet,
                // then the org's folders that are on no project, then ＋ clone for a name that is neither
       const board = projectList().filter(p => pick.mode === 'project' || (p.key !== ALL && p.cwds.length));
@@ -2037,18 +2032,19 @@
       const clone = pick.mode === 'new' ? cloneRow(items) : null;
       if (clone) pick.list = [...pick.list, clone];
       if (pick.mode === 'project') pick.list = [...pick.list, { newProject: true }];   // ＋ new project, last and never filtered out
-      pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
       // ✕ on every row of ⌥⌘N that names a project or a folder — never on ＋ clone, which is not on the board yet.
       const hx = p => pick.mode !== 'new' ? '' : `<button class="pkx" data-key="${esc(p.key)}" title="Take ${esc(p.name)} off the board — every picker stops listing it; its chats stay under ALL and the cog puts it back">✕</button>`;
       const ed = p => pick.mode === 'project' && p.custom ? `<button class="pked" data-id="${esc(p.id)}" title="Edit ${esc(p.name)} — its name and folders">✎</button>` : '';
-      rows = pick.list.map((p, i) => p.newProject
+      row = (p, i) => p.newProject
         ? `<div class="pkrow newproj${sel(i)}" data-i="${i}" title="A name over one or more folders — multi-repo work, an investigation"><span class="sq"></span><span class="n">＋ new project<span class="cur">a name over several folders</span></span><span class="pills"></span><span class="t"></span></div>`
         : p.clone
         ? `<div class="pkrow clone${sel(i)}" data-i="${i}" title="gh repo clone ${esc(folders.org)}/${esc(p.name)} into ${esc(homePath(folders.root))}"><span class="sq"></span><span class="n">＋ clone ${esc(folders.org)}/${esc(p.name)}<span class="cur">into ${esc(homePath(folders.root))}</span></span><span class="pills"></span><span class="t"></span></div>`
         : p.folder
           ? `<div class="pkrow folder${pick.mode === 'new' ? ' hides' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(p.cwd))}" title="${esc(p.cwd)}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}<span class="cur">${esc(homePath(p.cwd))}</span></span><span class="pills"></span><span class="t"></span>${hx(p)}</div>`
-          : `<div class="pkrow${pick.mode === 'new' ? ' hides' : ''}${ed(p) ? ' named' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(projColor(p))}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}${p.key === prefs.project ? '<span class="cur">current</span>' : ''}</span><span class="pills">${pillsHtml(p)}</span><span class="t">${p.last ? rel(p.last) : ''}</span>${hx(p)}${ed(p)}</div>`);
+          : `<div class="pkrow${pick.mode === 'new' ? ' hides' : ''}${ed(p) ? ' named' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(projColor(p))}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}${p.key === prefs.project ? '<span class="cur">current</span>' : ''}</span><span class="pills">${pillsHtml(p)}</span><span class="t">${p.last ? rel(p.last) : ''}</span>${hx(p)}${ed(p)}</div>`;
     }
+    pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
+    const rows = pick.list.map(row);
     $('#picklist').innerHTML = rows.join('') || `<div class="none">no ${PICK_NOUN[pick.mode] || 'project'} matches</div>`;
     $('#picklist .pkrow.sel')?.scrollIntoView({ block: 'nearest' });
   }
