@@ -296,7 +296,10 @@ refuses to run against the real directory for the same reason.
   (`BoardWindow`: still key, and while `fill` not constrained back under the menu bar), its frame the screen's, the
   menu bar and the Dock auto-hidden — what Apple calls a *custom full-screen experience*, kitty's. **The system's full
   screen always sits below the camera housing** (its doc for `NSScreen.safeAreaInsets` says so; the strip is the
-  auto-hidden menu bar's) — the green button is still that, and ⌃⌘F pressed in it leaves it. The page hears
+  auto-hidden menu bar's), so the window does not offer it: `collectionBehavior` is `.fullScreenNone`, **the green
+  button zooms and `windowShouldZoom` makes a plain click on it the fill** (⌥-click and a title-bar double-click zoom
+  as ever; 2026-09-27, later, Ricardo: "If I click on the fullscreen button (mac's green circle), I end up as
+  before"). **The fill is remembered** (`peixairada.fill` in the defaults): a relaunch comes back filled. The page hears
   `peixFill(on, notch)` — the strip's height and the x range the housing covers, in CSS px, from `safeAreaInsets` and
   the two `auxiliaryTop*Area`s; null on a screen without one — on every toggle, screen change and board load, and
   `layoutNotch()` lays the top row around it: the chat list's head stays put while the list ends short of the housing,

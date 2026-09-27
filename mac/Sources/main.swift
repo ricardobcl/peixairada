@@ -14,6 +14,7 @@ import UserNotifications
 let kPort = ProcessInfo.processInfo.environment["PEIXAIRADA_PORT"].flatMap(Int.init) ?? 7331
 let kURL = URL(string: "http://127.0.0.1:\(kPort)/")!
 let kFrameName = "peixairada.main"   // the window's frame in the defaults — off while ⌃⌘F fills the screen
+let kFillKey = "peixairada.fill"      // whether the board filled the screen when it was last up: a relaunch comes back filled
 let kLog = FileManager.default.homeDirectoryForCurrentUser
   .appendingPathComponent("Library/Logs/peixairada.log")
 let kAppLog = FileManager.default.homeDirectoryForCurrentUser
@@ -162,7 +163,7 @@ final class ServerController {
 
 final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler,
                          WKNavigationDelegate, UNUserNotificationCenterDelegate, NSMenuItemValidation,
-                         NSSearchFieldDelegate {
+                         NSSearchFieldDelegate, NSWindowDelegate {
   var window: BoardWindow!
   var web: BoardWebView!
   var content: NSView!
@@ -295,9 +296,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     installHotkeyForwarder()
     window.contentMinSize = NSSize(width: 760, height: 520)
     window.setFrameAutosaveName(kFrameName)
+    // No system full screen: it always sits below the camera housing. The green button zooms instead, and
+    // windowShouldZoom makes a plain click on it the fill (toggleFill) — ⌥-click and a title bar double-click zoom.
+    window.collectionBehavior = [.fullScreenNone]
+    window.delegate = self
     window.center()
     window.makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)
+    if UserDefaults.standard.bool(forKey: kFillKey) { toggleFill(nil) }   // as it was left
     // Filling the screen, the frame is the screen's: it follows the window to another display (Mission Control can
     // drag it there) and through a change of resolution, and the page hears where the housing is now.
     for name in [NSWindow.didChangeScreenNotification, NSApplication.didChangeScreenParametersNotification] {
@@ -723,7 +729,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       item.title = paneUp ? "Reload Page" : "Reload"
     }
     if item.action == #selector(toggleFill(_:)) {
-      item.title = fillSaved != nil || window.styleMask.contains(.fullScreen) ? "Exit Full Screen" : "Enter Full Screen"
+      item.title = fillSaved != nil ? "Exit Full Screen" : "Enter Full Screen"
     }
     if item.action == #selector(findInPage(_:)) { return paneUp }
     if item.action == #selector(findNext(_:)) || item.action == #selector(findPrevious(_:)) {
@@ -732,18 +738,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     return true
   }
   @objc func openLog(_ sender: Any?) { NSWorkspace.shared.open(kLog) }
-  /// ⌃⌘F: the board fills the screen, the strip beside the camera housing included (2026-09-27, Ricardo: "fullscreen
-  /// app on a macbook with a notch, we don't really use that upper real estate"). Not the system's full screen: that
-  /// one always sets the window below the housing and leaves the strip black — it is where the auto-hidden menu bar
-  /// slides in — and nothing in AppKit changes it (its own doc for NSScreen.safeAreaInsets says so). This is what Apple
-  /// calls a custom full-screen experience, kitty's and Sublime Text's: the window borderless, its frame the whole
-  /// screen, the menu bar and the Dock auto-hidden. The page is told where the housing is (tellFill) and lays its top
-  /// row around it. No Space of its own — Mission Control shows a window — and the green button is still the system's;
-  /// pressed in that one, ⌃⌘F leaves it instead. The frame's autosave is off meanwhile, so a quit mid-fill does not
-  /// bring the next launch up screen-sized; Info.plist says NSPrefersDisplaySafeAreaCompatibilityMode = false, or a
-  /// window behind the housing could switch the display into the shrunken compatibility mode.
+  /// ⌃⌘F, and the green button: the board fills the screen, the strip beside the camera housing included (2026-09-27,
+  /// Ricardo: "fullscreen app on a macbook with a notch, we don't really use that upper real estate"). Not the system's
+  /// full screen: that one always sets the window below the housing and leaves the strip black — it is where the
+  /// auto-hidden menu bar slides in — and nothing in AppKit changes it (its own doc for NSScreen.safeAreaInsets says
+  /// so), which is why the window does not offer it at all (fullScreenNone; Ricardo: "If I click on the fullscreen
+  /// button (mac's green circle), I end up as before"). This is what Apple calls a custom full-screen experience,
+  /// kitty's and Sublime Text's: the window borderless, its frame the whole screen, the menu bar and the Dock
+  /// auto-hidden. The page is told where the housing is (tellFill) and lays its top row around it. No Space of its own —
+  /// Mission Control shows a window. The frame's autosave is off meanwhile, so a quit mid-fill does not bring the next
+  /// launch up screen-sized; the fill itself is remembered (kFillKey), so it does come back filled. Info.plist says
+  /// NSPrefersDisplaySafeAreaCompatibilityMode = false, or a window behind the housing could switch the display into
+  /// the shrunken compatibility mode.
   @objc func toggleFill(_ sender: Any?) {
-    if window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil); return }
     if let saved = fillSaved {
       fillSaved = nil
       NSApp.presentationOptions = saved.opts
@@ -762,8 +769,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
     window.makeKeyAndOrderFront(nil)
     window.makeFirstResponder(paneFocus.flatMap { paneViews[$0] } ?? web)   // a new style mask can drop the first responder
+    UserDefaults.standard.set(fillSaved != nil, forKey: kFillKey)
     logLine("fill: \(fillSaved != nil ? "on \(NSStringFromRect(window.frame))" : "off")")
     tellFill()
+  }
+  /// The green button, and a title bar double-click, come here as a zoom (fullScreenNone above): a plain click on the
+  /// button is the fill; ⌥-click, and the double-click, zoom as they always did. The button's click is the current
+  /// event — one click, ⌥ up; a zoom asked for any other way is left alone.
+  func windowShouldZoom(_ window: NSWindow, toFrame newFrame: NSRect) -> Bool {
+    guard let e = NSApp.currentEvent, e.type == .leftMouseUp || e.type == .leftMouseDown, e.clickCount <= 1,
+          !e.modifierFlags.contains(.option) else { return true }
+    toggleFill(nil)
+    return false
   }
   /// The page hears of the fill (peixFill): on or off and, on a screen with a camera housing, where the housing is in
   /// its own px — the strip's height and the x range the housing covers — so its top row keeps out of it and uses the

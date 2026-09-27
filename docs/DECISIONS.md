@@ -63,6 +63,14 @@ then "let's try it".
 * **What it costs**: no Space of its own (Mission Control shows a window, ⌃← → does not reach it), and the menu bar
   slides down over the strip whenever the pointer touches the top edge. `notch.mjs` drives the page with the 16"'s
   numbers; the app itself is checked by hand.
+* **The green button is the fill too, and the fill is remembered** (later that night, Ricardo: "I quit and now I
+  don't see it using the top part again. If I click on the fullscreen button (mac's green circle), I end up as
+  before"): the window's `collectionBehavior` is `.fullScreenNone`, so the button zooms, and `windowShouldZoom` turns
+  a plain click on it (the current event: one click, ⌥ up) into `toggleFill`; ⌥-click and a title-bar double-click
+  zoom as they always did. The system's full screen is not offered at all now — it would only ever be the "as
+  before". `peixairada.fill` in the defaults says whether the board was filled when it was last up, and a launch
+  fills itself again before the page loads (`didFinish` then tells the page). `kill -USR1` on the app's pid is the
+  same toggle from a shell, for the drawers, which cannot press a key in the app.
 
 ## Decisions of 2026-09-27, night — the head bare on ALL, the age beside the tick, About behind the fish
 
