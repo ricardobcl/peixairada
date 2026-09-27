@@ -9,7 +9,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startTestServer } from '../lib/testserver.mjs';
 
-const post = body => ({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
 test('the org folders are listed, and a clone is refused a name that is not one', { timeout: 60_000 }, async () => {
   const root = mkdtempSync(join(tmpdir(), 'peix-org-'));
@@ -26,10 +25,10 @@ test('the org folders are listed, and a clone is refused a name that is not one'
     assert.deepEqual(list.body.folders.map(f => f.git), [false, true], 'a .git says which one is a clone already');
 
     for (const name of ['../escape', 'has space', '', 'a/b']) {
-      const bad = await srv.api('api/clone', post({ name }));
+      const bad = await srv.post('api/clone', { name });
       assert.equal(bad.status, 400, `"${name}" is no repository name`);
     }
-    const here = await srv.api('api/clone', post({ name: 'oracle' }));
+    const here = await srv.post('api/clone', { name: 'oracle' });
     assert.equal(here.status, 200);
     assert.deepEqual(here.body, { cwd: join(root, 'oracle'), cloned: false }, 'a folder already there is handed back, not cloned over');
 

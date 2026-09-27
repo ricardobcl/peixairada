@@ -6,12 +6,10 @@ import { existsSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { startTestServer } from '../lib/testserver.mjs';
+import { alive, sleep, startTestServer, waitFor } from '../lib/testserver.mjs';
 import { defaultFixture } from '../scripts/fixture.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-const alive = pid => { try { process.kill(pid, 0); return true; } catch { return false; } };
 /** Attach like the page does: the first binary frame is the snapshot; `until` stops when a text is seen. */
 function attach(url, id, { until = null, timeout = 8000 } = {}) {
   const ws = new WebSocket(`${url.replace(/^http/, 'ws')}api/terminals/${id}/ws`); ws.binaryType = 'arraybuffer';
@@ -46,9 +44,7 @@ test('a drawer runs in a holder, gives a page a snapshot, survives a server rest
     assert.ok(alive(t.holderPid) && alive(t.pid));
     assert.deepEqual(readdirSync(join(srv.dir, 'terms')).filter(f => f.startsWith(t.id)).sort(), [`${t.id}.json`, `${t.id}.log`, `${t.id}.sock`]);
     // the fake registers → the chat is alive, with the drawer's process as its own
-    let alive1 = false;
-    for (let i = 0; i < 40 && !alive1; i++) { await sleep(150); const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id); alive1 = s.alive && s.live?.pid === t.pid && s.terminal?.id === t.id; }
-    assert.ok(alive1, 'the resumed chat is alive with the drawer as its process');
+    await waitFor(async () => { const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id); return s.alive && s.live?.pid === t.pid && s.terminal?.id === t.id; }, { what: 'the resumed chat alive with the drawer as its process' });
     await sleep(700);   // the fake registers first and draws right after; the snapshot must be of a drawn screen
     // a page attaches: the first frame is the whole screen (the fake's prompt and status), not a byte replay
     const a1 = await attach(srv.url, t.id, { until: 'fake mode on' });
@@ -77,9 +73,7 @@ test('a drawer runs in a holder, gives a page a snapshot, survives a server rest
     // end it: the fake exits, the registry entry goes, the holder lingers with the exit code then is let go
     const d = await srv.api(`api/terminals/${t.id}`, { method: 'DELETE' });
     assert.equal(d.status, 200);
-    let ended = null;
-    for (let i = 0; i < 40 && ended === null; i++) { await sleep(150); ended = (await srv.terminals()).find(x => x.id === t.id)?.exited ?? null; }
-    assert.notEqual(ended, null, 'the terminal reports its exit');
+    await waitFor(async () => (await srv.terminals()).find(x => x.id === t.id)?.exited != null, { what: 'the terminal reporting its exit' });
     assert.ok(!alive(t.pid), 'the fake is gone');
     const d2 = await srv.api(`api/terminals/${t.id}`, { method: 'DELETE' });   // an exited one is let go at once
     assert.equal(d2.status, 200);
@@ -95,9 +89,7 @@ test('a new chat in a folder is tied to its session by pid when the fake registe
   try {
     const r = await srv.api('api/terminals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cwd: process.cwd(), cols: 90, rows: 24 }) });
     assert.equal(r.status, 201, JSON.stringify(r.body)); assert.equal(r.body.terminal.sessionId, null);
-    let linked = null;
-    for (let i = 0; i < 40 && !linked; i++) { await sleep(150); linked = (await srv.terminals()).find(x => x.id === r.body.terminal.id)?.sessionId || null; }
-    assert.ok(linked, 'the terminal learnt its session id from the registry');
+    const linked = await waitFor(async () => (await srv.terminals()).find(x => x.id === r.body.terminal.id)?.sessionId || null, { what: 'the terminal learning its session id from the registry' });
     const meta = srv.holders().find(h => h.id === r.body.terminal.id);
     assert.equal(meta.sessionId, linked, 'and told its holder, so an adoption after a restart knows it too');
   } finally { await srv.stop(); }
@@ -107,7 +99,7 @@ test('a launcher: a folder whose Taskfile launches claude lists it, a new chat t
   const cwd = mkdtempSync(join(tmpdir(), 'peix-tf-')); writeFileSync(join(cwd, 'Taskfile.yml'), 'version: "3"\n');   // the fake task never reads it; the server looks for it
   const fx = defaultFixture(mkdtempSync(join(tmpdir(), 'peix-fx-')), { cwdA: process.cwd(), cwdB: cwd });
   const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { TASK_BIN: join(ROOT, 'scripts', 'faketask.mjs') } });
-  const post = body => srv.api('api/terminals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const post = body => srv.post('api/terminals', body);
   try {
     const none = await srv.api(`api/launchers?cwd=${encodeURIComponent(process.cwd())}`);
     assert.deepEqual(none.body.launchers, [], 'a folder without a Taskfile has no launchers');
@@ -121,9 +113,7 @@ test('a launcher: a folder whose Taskfile launches claude lists it, a new chat t
     const t = r.body.terminal;
     assert.equal(t.task, 'production-workload'); assert.equal(t.sessionId, null);
     assert.match(srv.logText(), /terminal t\d+-\w+: task production-workload in/);
-    let linked = null;
-    for (let i = 0; i < 60 && !linked; i++) { await sleep(150); linked = (await srv.terminals()).find(x => x.id === t.id)?.sessionId || null; }
-    assert.ok(linked, 'the terminal learnt its session id although claude is not the PTY\'s process');
+    const linked = await waitFor(async () => (await srv.terminals()).find(x => x.id === t.id)?.sessionId || null, { timeout: 10_000, what: 'the terminal learning its session id although claude is not the PTY\'s process' });
     const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === linked);
     assert.ok(s.alive, 'the chat is alive'); assert.notEqual(s.live.pid, t.pid, 'with a claude below task, not task itself'); assert.equal(s.terminal?.id, t.id, 'and the drawer is its');
     const meta = srv.holders().find(h => h.id === t.id);
@@ -152,8 +142,6 @@ test('a zsh drawer: a holder running zsh -l -i in the chat folder, beside the cl
     const out = await a;
     assert.ok(out.all.includes('peix-shell-22'), `the zsh ran the command: ${JSON.stringify(out.all.slice(-300))}`);
     const d = await srv.api(`api/terminals/${t.id}`, { method: 'DELETE' }); assert.equal(d.status, 200);
-    let ended = null;
-    for (let i = 0; i < 40 && ended === null; i++) { await sleep(150); ended = (await srv.terminals()).find(x => x.id === t.id)?.exited ?? null; }
-    assert.notEqual(ended, null, 'the zsh ended');
+    await waitFor(async () => (await srv.terminals()).find(x => x.id === t.id)?.exited != null, { what: 'the zsh ending' });
   } finally { await srv.stop(); }
 });
