@@ -243,12 +243,11 @@
      animated by script (fishEl, by renderSessionList): see there for why not a CSS animation. */
   .gsep { margin: 2px 10px; font: 600 11px/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: color-mix(in srgb, var(--muted) 80%, transparent); white-space: nowrap; overflow: hidden; user-select: none; }
   .gsep.fish > span { display: inline-block; will-change: transform; }
-  /* A day's line (2026-09-23): its day in the middle — "today", else DD-MM-YYYY — and fish either side that keep
-     still. Two equal boxes, so the day sits dead centre; each fish is its own item in a wrapping row one line high,
-     so a fish that does not fit goes to the hidden second line instead of being cut in half at the column's edge. */
-  .gsep.day { --gap: calc(3ch + 3px); display: flex; align-items: center; gap: var(--gap); }   /* the swimming school's spacing, day included */
-  .gsep.day i { flex: 1; min-width: 0; height: 14px; overflow: hidden; display: flex; flex-wrap: wrap; column-gap: var(--gap); font-style: normal; }
-  .gsep.day i:first-child { justify-content: flex-end; }
+  /* A day's line (2026-09-23): its day in the middle — "today", else DD-MM-YYYY — between two hairlines (2026-09-27,
+     Ricardo: "remove the fishes from the date spacing between cards"; still fish either side before). Two equal
+     boxes, so the day sits dead centre. */
+  .gsep.day { display: flex; align-items: center; gap: 10px; }
+  .gsep i { flex: 1; min-width: 0; height: 1px; background: color-mix(in srgb, var(--muted) 35%, transparent); }
   .gsep.day b { flex: none; font-weight: 700; color: var(--muted); }
   #slist .none { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 0; }
   /* ---- the chat list's timeline: its days, down the left edge ---- */
@@ -1367,7 +1366,6 @@
   }
   function knownFolders() { return [...new Set([...state.sessions.values()].map(s => s.cwd).filter(Boolean))].sort(); }
   const FISH = '><>   '.repeat(80);   // more than any column is wide; .gsep clips the rest
-  const STILLFISH = '<span>&lt;&gt;&lt;</span>'.repeat(30);   // a day's line, either side of its day: the school facing the other way, one fish an item
   const SWIM_MS = 2400;                // one fish per cycle
   // One node for the school, kept across renders: innerHTML would make a new one — and a new animation — on every
   // SSE update, a visible stutter every few seconds (2026-09-20, Ricardo: "the animation for the fish stutters after
@@ -1388,14 +1386,15 @@
   // day there, using 'today' for today (all cards up are from today) and the rest … DD-MM-YYYY"). The day is your last
   // touch, like the order. A line closes the run of cards *above* it, so the oldest day in the list gets one too, at
   // the bottom; the list is grouped first, so the done cards can bring a day back after older ready ones, and each run
-  // gets its own line. The day is centred and the fish either side keep still (Ricardo, the same day: "center the
-  // date … stop the animation, leave it static with the fishes") — nothing moves, so nothing needs keeping.
+  // gets its own line. The day is centred between two hairlines (2026-09-27, Ricardo: "remove the fishes from the
+  // date spacing between cards"; still fish either side before, from the same day's "center the date … stop the
+  // animation, leave it static with the fishes") — nothing moves, so it is plain markup.
   const pad2 = n => String(n).padStart(2, '0');
   const dayName = s => {
     const d = new Date(wordAt(s)); if (isNaN(d)) return '';
     return new Date(d).setHours(0, 0, 0, 0) === new Date().setHours(0, 0, 0, 0) ? 'today' : `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()}`;
   };
-  const dayHtml = day => `<div class="gsep day" title="above: the chats you were in ${day === 'today' ? 'today' : 'on ' + day}"><i>${STILLFISH}</i><b>${day}</b><i>${STILLFISH}</i></div>`;
+  const dayHtml = day => `<div class="gsep day" title="above: the chats you were in ${day === 'today' ? 'today' : 'on ' + day}"><i></i><b>${day}</b><i></i></div>`;
   const fishHtml = cls => `<div class="gsep ${cls}"></div>`;   // the swimming school's stand-in
   function renderSessionList(p) {
     const pc = projColor(p); if (pc) $('#sessions').style.setProperty('--repo', pc); else $('#sessions').style.removeProperty('--repo');

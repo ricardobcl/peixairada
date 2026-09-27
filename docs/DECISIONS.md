@@ -4,6 +4,17 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-27.
 
+## Decisions of 2026-09-27, evening — the lines between the cards, and the rings' step
+
+Ricardo: "put that phase lock sync as an toggle on the settings cog, so I can switch back and forth to see what I
+like · remove the fishes from the date spacing between cards · as for the divider between ready cards and clauding
+cards, which has fishes today, remove the fishes and leave a claude icon animation in the middle".
+
+* **The day lines are bare**: the day between two hairlines (`.gsep i`, 1 px of the muted ink at 35 %), where a
+  still school of `<><` stood either side since 2026-09-23. The two boxes are still equal, so the day sits dead
+  centre; nothing moves on the line, so it is plain markup as before. `day-separator.mjs` now measures the two
+  lines instead of counting whole fish.
+
 ## Decisions of 2026-09-27, later — the clauding ring: phased across renders, and off the main thread
 
 Ricardo: "the animations like the border when clauding still reset randomly and breaks the smoothness. research and
