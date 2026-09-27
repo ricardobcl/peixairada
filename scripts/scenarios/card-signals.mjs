@@ -180,10 +180,10 @@ export default async function (ctx) {
     out.order = await ctx.evaluate(`[...document.querySelectorAll('#slist > *')].map(e => e.classList.contains('gsep') ? 'divider' : e.querySelector('.title')?.textContent)`);
     ctx.assert.deepEqual(out.order.slice(0, 8), ['Blocked on a prompt', 'Waiting on you', 'Normal work', 'Three agents out', 'Both at once', 'A real background job', 'divider', 'Watching CI'],
       'the questions first, then the clauding chats by your last touch, then the divider, then the ready ones');
-    // The divider is Claude's mark alone, turning and breathing on the document clock (2026-09-27; a school of fish
-    // before, then two hairlines either side for an evening)
-    out.divider = await ctx.evaluate(`JSON.stringify((d => ({ svg: !!d.querySelector('svg'), lines: d.querySelectorAll('i').length, anims: d.getAnimations({ subtree: true }).map(a => a.animationName + '@' + a.startTime).sort() }))(document.querySelector('#slist .gsep.claude')))`).then(JSON.parse);
-    ctx.assert.deepEqual(out.divider, { svg: true, lines: 0, anims: ['breathe@0', 'spin@0'] }, "the divider is Claude's mark alone, turning and breathing on the document clock");
+    // The divider is Claude's mark alone and in pixels, its frames and its hop on the document clock (2026-09-27; a
+    // school of fish before, then the smooth starburst between two hairlines for an evening)
+    out.divider = await ctx.evaluate(`JSON.stringify((d => ({ svg: !!d.querySelector('.pix svg'), lines: d.querySelectorAll('i').length, anims: d.getAnimations({ subtree: true }).map(a => a.animationName + '@' + a.startTime).sort() }))(document.querySelector('#slist .gsep.claude')))`).then(JSON.parse);
+    ctx.assert.deepEqual(out.divider, { svg: true, lines: 0, anims: ['pix@0', 'pixhop@0'] }, "the divider is Claude's mark alone, in pixels, its frames and hop on the document clock");
     await ctx.key('KeyK');   // the chat picker goes by the same rank
     await ctx.waitFor(`document.querySelector('#pick').open && document.querySelectorAll('#picklist .pkrow').length > 3`, { what: 'the chat picker' });
     out.picker = await ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow')].slice(0, 3).map(r => r.querySelector('.n').textContent.replace('current', '') + ' / ' + r.querySelector('.st').textContent)`);

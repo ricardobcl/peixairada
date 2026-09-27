@@ -13,6 +13,13 @@ bit more the 3 counters".
 
 * **The divider is Claude's mark alone**, centred: its two hairlines went the way of the day lines' an hour earlier.
   Nothing on a line between the cards is a rule any more — the mark and the days say where a run ends.
+* **The mark is pixel art, and it plays**: a 9 × 9 star of 2 px pixels, in frames — full, twinkling (long axes, then
+  long diagonals), shrinking to a dot and bursting back with a two-pixel hop — the way Claude Code's spinner runs
+  `· ✢ ✳ ✶ ✻ ✽`. Frame by frame is what makes it read as pixels: a smooth turn of a pixel star blurs it into a
+  starburst again. So the frames are a sprite strip behind a one-frame window, and the animation is a `transform`
+  with `steps(1, end)` on each keyframe — still the compositor's, still phased at 0 with the rings, and the hop is
+  the same length so it stays on the burst. The sheet in the source (`PIX_SHEET`) is the strip, frame beside frame,
+  so a frame is redrawn by editing its `#`s.
 
 ## Decisions of 2026-09-27, small hours after — ⌃⌘F fills the screen up to the notch
 

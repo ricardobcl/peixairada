@@ -196,10 +196,13 @@ refuses to run against the real directory for the same reason.
   call is not a word, so a clauding card does not climb with every step), newest first; a project ranks by its
   newest chat. The filters and every count still go by
   `bucket()`, where an asking chat is a ready one — only the order knows the difference, in the list and in ⌥⌘K. **The lines between the cards** (`.gsep`): between the clauding cards and the ready ones, **Claude's mark**
-  (`ICON.claude`, the starburst) turning and breathing, alone and centred — `DIVIDER`, plain markup, `spin`
-  and `breathe` on the compositor and phased by `phaseAnims()` (2026-09-27, Ricardo: "remove the fishes and leave a
-  claude icon animation in the middle"; a school of `><>` swimming right since 2026-09-20, kept as one node across
-  renders; two hairlines either side for an evening) — and a still line **under every run of cards from one day** (2026-09-23,
+  in pixels, alone and centred — `DIVIDER`, plain markup: a 9 × 9 window on a strip of frames drawn from
+  `PIX_SHEET` (the sheet in the source *is* the strip, `#` a pixel of 2 px), `pix` sliding it a whole frame at a
+  time (`steps(1, end)` on every keyframe) so the star sits full, twinkles, shrinks to a dot and bursts back like
+  Claude Code's spinner, and `pixhop` lifting it by whole pixels on the burst; both transforms, both 2.4 s, phased
+  by `phaseAnims()` (2026-09-27, Ricardo: "remove the fishes and leave a claude icon animation in the middle", then
+  "more "pixely", more fun"; a school of `><>` swimming right since 2026-09-20, kept as one node across renders;
+  the smooth `ICON.claude` turning and breathing between two hairlines for an evening) — and a still line **under every run of cards from one day** (2026-09-23,
   `dayHtml()`, plain markup since nothing on it moves): the day centred — `today`, else `DD-MM-YYYY` (`dayName()`, by
   `userAt`) — alone on its line (2026-09-27; `<><` either side before, then two hairlines for an hour). A day's line closes the cards *above* it, so the oldest day in the list gets one at the bottom; the list is grouped
   first, so a day can come back (a done card from today after older ready ones) and each run gets its own line.

@@ -246,18 +246,31 @@
   main.scompact #slist { scrollbar-width: auto; }
   main.scompact #slist::-webkit-scrollbar { display: initial; }
   #slist > * { flex: none; } /* never let a full column squash its cards (overflow:hidden items would shrink to 0) */
-  /* Between the clauding cards and the ready ones, Claude's mark (ICON.claude, the starburst) turning slowly and
-     breathing, alone and centred (2026-09-27, Ricardo: "remove the fishes and leave a claude icon animation in
-     the middle", then "remove the lines next to the claude icon on the card separator"; a school of ><> swimming
-     right since 2026-09-20, kept as one node across renders so it did not jolt, then two hairlines for an evening).
-     Plain markup now: transform and opacity are the compositor's, and phaseAnims() keeps the mark's place across a
-     rebuild like the rings'. */
+  /* Between the clauding cards and the ready ones, Claude's mark in pixels, alone and centred (2026-09-27, Ricardo:
+     "remove the fishes and leave a claude icon animation in the middle", then "remove the lines next to the claude
+     icon on the card separator" and "make the claude icon animation more "pixely", more fun"; a school of ><>
+     swimming right since 2026-09-20, kept as one node across renders so it did not jolt, then for an evening the
+     smooth starburst turning and breathing between two hairlines). The window is one frame, 9 × 9 pixels of 2 px;
+     the strip behind it holds the frames side by side (PIX_SHEET), and `pix` slides it a whole frame at a time —
+     steps(1) on every keyframe, so no frame is ever half shown: the star sits full, twinkles, shrinks to a dot and
+     bursts back, the way Claude Code's own spinner runs · ✢ ✳ ✶ ✻ ✽. `pixhop` lifts the window by whole pixels as
+     it bursts back, over the divider's margin (hence overflow: visible). Both are transforms, the compositor's, both
+     2.4 s long, so phaseAnims() putting both at 0 keeps the hop on the burst. A frame is 18 px of strip; a keyframe
+     starts on a frame's boundary, k / 24 of the cycle. */
   .gsep { margin: 2px 10px; font: 600 11px/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: color-mix(in srgb, var(--muted) 80%, transparent); white-space: nowrap; overflow: hidden; user-select: none; }
-  .gsep.claude { display: flex; align-items: center; justify-content: center; margin: 4px 10px; }
-  .gsep.claude .ic { flex: none; width: 15px; height: 15px; fill: var(--accent); animation: spin 6s linear infinite, breathe 2.4s ease-in-out infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes breathe { 50% { opacity: .5; } }   /* softer than the dots' pulse: a divider that dropped to a third read as a flicker */
-  @media (prefers-reduced-motion: reduce) { .gsep.claude .ic { animation: none; } }
+  .gsep.claude { display: flex; align-items: center; justify-content: center; margin: 4px 10px; overflow: visible; }
+  .gsep.claude .pix { flex: none; width: 18px; height: 18px; overflow: hidden; animation: pixhop 2.4s steps(1, end) infinite; }
+  .gsep.claude .pix svg { display: block; width: 144px; height: 18px; fill: var(--accent); transform: translateX(-90px); animation: pix 2.4s steps(1, end) infinite; }
+  @keyframes pix {   /* the frames: 0 · 1 + 2 ◆ 3 ✳ 4 ✶ 5 ✽ (full) 6 and 7 the twinkle, long axes then long diagonals */
+    0% { transform: translateX(-90px); }   /* 5, at rest for 7 frames */
+    29.167% { transform: translateX(-108px); } 33.333% { transform: translateX(-126px); } 37.5% { transform: translateX(-108px); } 41.667% { transform: translateX(-126px); }   /* 6 7 6 7 */
+    45.833% { transform: translateX(-90px); }   /* 5 again, 4 frames */
+    62.5% { transform: translateX(-72px); } 66.667% { transform: translateX(-54px); } 70.833% { transform: translateX(-36px); } 75% { transform: translateX(-18px); } 79.167% { transform: translateX(0); }   /* 4 3 2 1 0: down to a dot */
+    83.333% { transform: translateX(-18px); } 87.5% { transform: translateX(-36px); } 91.667% { transform: translateX(-54px); } 95.833% { transform: translateX(-72px); }   /* 1 2 3 4, and back to 5 */
+    100% { transform: translateX(-90px); }
+  }
+  @keyframes pixhop { 0% { transform: none; } 83.333% { transform: translateY(-2px); } 87.5% { transform: translateY(-4px); } 95.833% { transform: translateY(-2px); } 100% { transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .gsep.claude .pix, .gsep.claude .pix svg { animation: none; } }
   /* A day's line (2026-09-23): its day alone, centred — "today", else DD-MM-YYYY (2026-09-27, Ricardo: "remove the
      fishes from the date spacing between cards", then "remove the lines left and right of the date"; still fish
      either side before, two hairlines for an hour). */
@@ -1391,10 +1404,26 @@
     document.title = (total ? `(${total}) ` : '') + 'peixAIrada';
   }
   function knownFolders() { return [...new Set([...state.sessions.values()].map(s => s.cwd).filter(Boolean))].sort(); }
-  // Between the clauding cards and the ready ones: Claude's mark, turning and breathing, alone (2026-09-27; a school
-  // of ><> from 2026-09-20 to then — one node kept across renders, so innerHTML did not hand it a new animation every
-  // few seconds; phaseAnims() does that for the mark now, so it is plain markup — and two hairlines for an evening).
-  const DIVIDER = `<div class="gsep claude" title="clauding above, ready below">${ICON.claude}</div>`;
+  // Between the clauding cards and the ready ones: Claude's mark in pixels, alone (2026-09-27; a school of ><> from
+  // 2026-09-20 to then — one node kept across renders, so innerHTML did not hand it a new animation every few seconds;
+  // phaseAnims() does that for the mark now, so it is plain markup — then the smooth starburst for an evening). The
+  // sheet below is the strip itself, frame beside frame, 9 × 9 each: one path, a run of # per subpath, drawn once;
+  // CSS shows one frame at a time (`pix`, `pixhop`, the numbers there are these frames').
+  const PIX_SHEET = [
+    // 0 ·      1 +       2 ◆       3 ✳       4 ✶       5 ✽       6 twinkle 7 twinkle
+    '......... ......... ......... ......... ......... #...#...# ....#.... #.......#',
+    '......... ......... ......... ......... .#..#..#. .#..#..#. ....#.... .#..#..#.',
+    '......... ......... ....#.... ..#.#.#.. ..#.#.#.. ..#.#.#.. ..#.#.#.. ..#.#.#..',
+    '......... ....#.... ...###... ...###... ...###... ...###... ...###... ...###...',
+    '....#.... ...###... ..#####.. ..#####.. .#######. ######### ######### .#######.',
+    '......... ....#.... ...###... ...###... ...###... ...###... ...###... ...###...',
+    '......... ......... ....#.... ..#.#.#.. ..#.#.#.. ..#.#.#.. ..#.#.#.. ..#.#.#..',
+    '......... ......... ......... ......... .#..#..#. .#..#..#. ....#.... .#..#..#.',
+    '......... ......... ......... ......... ......... #...#...# ....#.... #.......#',
+  ].map(row => row.replace(/ /g, ''));
+  const PIX = `<span class="pix"><svg viewBox="0 0 ${PIX_SHEET[0].length} 9" shape-rendering="crispEdges" aria-hidden="true"><path d="${
+    PIX_SHEET.flatMap((row, y) => [...row.matchAll(/#+/g)].map(m => `M${m.index} ${y}h${m[0].length}v1h-${m[0].length}z`)).join('')}"/></svg></span>`;
+  const DIVIDER = `<div class="gsep claude" title="clauding above, ready below">${PIX}</div>`;
   // A line under each day's cards, naming the day they are from (2026-09-23, Ricardo: "a per day divider and put the
   // day there, using 'today' for today (all cards up are from today) and the rest … DD-MM-YYYY"). The day is your last
   // touch, like the order. A line closes the run of cards *above* it, so the oldest day in the list gets one too, at
@@ -1463,7 +1492,7 @@
   // I can switch back and forth to see what I like"): off, a card's animations start from a time of its own, hashed
   // from the chat's id — as steady across renders as 0, only not shared. The header's dot and the divider have no
   // card and stay at 0. Flipping the switch re-phases what is running, so the change shows at once.
-  const PHASED = new Set(['ring', 'blink', 'pulse', 'spin', 'breathe']);
+  const PHASED = new Set(['ring', 'blink', 'pulse', 'pix', 'pixhop']);
   const phaseOf = a => { if (prefs.ringsInStep !== false) return 0; const id = a.effect?.target?.closest?.('.card')?.dataset.id || ''; let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0; return -(h % 60000); };
   function phaseAnims() { for (const a of document.getAnimations()) if (PHASED.has(a.animationName)) { const t = phaseOf(a); if (a.startTime !== t) a.startTime = t; } }
   $('#ringsInStep').checked = prefs.ringsInStep !== false;
