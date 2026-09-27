@@ -130,6 +130,15 @@ transform and opacity where it can — the compositor's kind of motion, as the r
   single bounce, the Dock's word for the one state that is stopped, beside the badge that only counts. AppKit ignores
   the request while the app is active and cancels it when the app comes to the front. Type-checked and built; the
   bounce needs a real Dock.
+* **Left: the title bar as one surface with the head row.** Measured with a probe window built like the app's
+  (`fullSizeContentView`, the web view pinned to the content view): WebKit insets the page by the title bar on its
+  own, so in a window the bar is the system's grey strip *above* the page — a second surface — and with
+  `titlebarAppearsTransparent` the page runs under it and the traffic lights and the title land on the head row's
+  fish and search box. One surface means the page laying its top row out around the traffic lights (as it does around
+  the camera housing when filled), the title hidden, and the folded rail — 58 px, narrower than the lights — padding
+  down instead; and a transparent bar leaves no strip to drag the window by, since a WKWebView does not move its
+  window. That is a design to settle in front of the app, which lives filled anyway (`fill: on` in every launch in
+  the log); not done blind.
 
 ## Decisions of 2026-09-27, night — an empty chat's card can be ticked done
 

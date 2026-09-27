@@ -609,6 +609,11 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
 
 ## Deliberately not done
 
+* **The title bar as one surface with the head row** (2026-09-27, night): WebKit insets the page by the bar on its
+  own, so in a window the bar is the system's strip above the page; making it transparent puts the traffic lights and
+  the title on the head row's fish and search box, and leaves nothing to drag the window by. The page would have to
+  lay its top row out around the lights (as it does around the camera housing when filled) and the rail pad down —
+  a design for in front of the app, which lives filled. → Decisions 2026-09-27, late night.
 * **Making VS Code's tab follow a chat continued elsewhere** — the extension watches only `~/.claude/sessions/`.
 * **Attaching to a *live* session from the board** — the session's inbox socket cannot answer a permission
   prompt on your behalf, and its message JSON is undocumented. Live chats are refused on purpose.
