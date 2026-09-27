@@ -14,6 +14,14 @@ cards, which has fishes today, remove the fishes and leave a claude icon animati
   still school of `<><` stood either side since 2026-09-23. The two boxes are still equal, so the day sits dead
   centre; nothing moves on the line, so it is plain markup as before. `day-separator.mjs` now measures the two
   lines instead of counting whole fish.
+* **The divider is Claude's mark**: between the last clauding card and the first ready one, the starburst
+  (`ICON.claude`, the reply glyph's) 15 px in the accent, turning once in six seconds and breathing to half its
+  ink and back every 2.4 s (`breathe`, its own: the dots' `pulse` drops to a third, which read as a flicker on a
+  line), between the same two hairlines — where the school of `><>` had swum since 2026-09-20. Both motions are
+  transform and opacity, the compositor's, and `spin` and `breathe` joined `phaseAnims()`'s names, so the mark is
+  plain markup rebuilt with the list: the kept node, `school()` and its Web Animations phasing went with the fish.
+  Off under reduced motion, as the school was. The rail still shows no line: a 36 px square has no room for one.
+  `card-signals.mjs` checks the mark, its two lines and its two animations at start time 0.
 
 ## Decisions of 2026-09-27, later — the clauding ring: phased across renders, and off the main thread
 

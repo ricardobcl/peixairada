@@ -127,7 +127,7 @@
     background: color-mix(in srgb, var(--repo, var(--nocolor)) 55%, var(--panel)); }
   main.scompact #slist > .card > * { display: none; }
   main.scompact #slist > .card .abbr { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .4px; }
-  main.scompact #slist .gsep { display: none; }   /* the fish need a line to swim along, and there is none here */
+  main.scompact #slist .gsep { display: none; }   /* no room for a line, or for Claude's mark, on a rail of squares */
   main.scompact #slist .none { padding: 14px 2px; font-size: 10px; }
   /* The bar between the list and the chat is the open chat's colour (2026-09-26): --open on main, set with the chat's
      tint, so the open card, the bar and the chat's header are one stroke of it — see .card.active. */
@@ -236,13 +236,17 @@
   main.scompact #slist { scrollbar-width: auto; }
   main.scompact #slist::-webkit-scrollbar { display: initial; }
   #slist > * { flex: none; } /* never let a full column squash its cards (overflow:hidden items would shrink to 0) */
-  /* Between the clauding cards and the ready ones: a school of ascii fish (2026-09-20, Ricardo: "1 separator …
-     something like ====== or barb-wire", then "more like ascii fishes … to be more thematic", then "animate"). A
-     line of ><> in monospace, clipped to the column, in the muted ink, swimming right: the text slides one fish per
-     cycle — six characters, letter-spacing included — so the loop is seamless. One node, kept across renders and
-     animated by script (fishEl, by renderSessionList): see there for why not a CSS animation. */
+  /* Between the clauding cards and the ready ones, Claude's mark (ICON.claude, the starburst) turning slowly and
+     breathing between two hairlines (2026-09-27, Ricardo: "remove the fishes and leave a claude icon animation in
+     the middle"; a school of ><> swimming right since 2026-09-20, kept as one node across renders so it did not
+     jolt). Plain markup now: transform and opacity are the compositor's, and phaseAnims() keeps the mark's place
+     across a rebuild like the rings'. The day lines below share the hairline. */
   .gsep { margin: 2px 10px; font: 600 11px/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: color-mix(in srgb, var(--muted) 80%, transparent); white-space: nowrap; overflow: hidden; user-select: none; }
-  .gsep.fish > span { display: inline-block; will-change: transform; }
+  .gsep.claude { display: flex; align-items: center; gap: 10px; margin: 4px 10px; }
+  .gsep.claude .ic { flex: none; width: 15px; height: 15px; fill: var(--accent); animation: spin 6s linear infinite, breathe 2.4s ease-in-out infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes breathe { 50% { opacity: .5; } }   /* softer than the dots' pulse: a divider that dropped to a third read as a flicker */
+  @media (prefers-reduced-motion: reduce) { .gsep.claude .ic { animation: none; } }
   /* A day's line (2026-09-23): its day in the middle — "today", else DD-MM-YYYY — between two hairlines (2026-09-27,
      Ricardo: "remove the fishes from the date spacing between cards"; still fish either side before). Two equal
      boxes, so the day sits dead centre. */
@@ -257,7 +261,7 @@
      ones near the pointer largest, pushed apart. Dragged, it scrolls the list; a day clicked is scrolled to.
      Everything in it is placed by script (drawTimeline). It had a track in the state groups' colours and a tick per
      day, 26 px wide and lined up under the fish and the cog (Ricardo: "too close to the cards, it's green, it has
-     the ticks for dates, which is not pretty"): the fish line and the day lines in the list say the same, and the
+     the ticks for dates, which is not pretty"): the divider and the day lines in the list say the same, and the
      labels say it in words. TL_W in the script is this width. */
   #tline { width: 12px; position: relative; z-index: 5; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
   #tline.drag { cursor: grabbing; }
@@ -1365,23 +1369,10 @@
     document.title = (total ? `(${total}) ` : '') + 'peixAIrada';
   }
   function knownFolders() { return [...new Set([...state.sessions.values()].map(s => s.cwd).filter(Boolean))].sort(); }
-  const FISH = '><>   '.repeat(80);   // more than any column is wide; .gsep clips the rest
-  const SWIM_MS = 2400;                // one fish per cycle
-  // One node for the school, kept across renders: innerHTML would make a new one — and a new animation — on every
-  // SSE update, a visible stutter every few seconds (2026-09-20, Ricardo: "the animation for the fish stutters after
-  // a few seconds"). The list is rendered with a stand-in that is swapped for it. Its animation is the Web Animations
-  // API's, not CSS: a CSS animation is cancelled when its element leaves the document and starts over on return; this
-  // one carries on across the swap, and startTime 0 phases it to the document clock, so the same fish is at the same
-  // place whenever the node comes back. Off under reduced motion.
-  // The only one that swims: the days' lines (below) keep still since 2026-09-23, so they are plain markup.
-  const school = (cls, text, right, title) => {
-    const el = document.createElement('div'); el.className = 'gsep ' + cls; el.title = title;
-    const span = el.appendChild(document.createElement('span')); span.textContent = text;
-    const to = [{ transform: 'translateX(calc(-6ch - 6px))' }, { transform: 'translateX(0)' }];
-    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) { const a = span.animate(right ? to : [...to].reverse(), { duration: SWIM_MS, iterations: Infinity }); a.startTime = 0; }
-    return el;
-  };
-  const fishEl = school('fish', FISH, true, 'clauding above, ready below');
+  // Between the clauding cards and the ready ones: Claude's mark, turning and breathing, between two hairlines
+  // (2026-09-27; a school of ><> from 2026-09-20 to then — one node kept across renders, so innerHTML did not hand it
+  // a new animation every few seconds; phaseAnims() does that for the mark now, so it is plain markup).
+  const DIVIDER = `<div class="gsep claude" title="clauding above, ready below"><i></i>${ICON.claude}<i></i></div>`;
   // A line under each day's cards, naming the day they are from (2026-09-23, Ricardo: "a per day divider and put the
   // day there, using 'today' for today (all cards up are from today) and the rest … DD-MM-YYYY"). The day is your last
   // touch, like the order. A line closes the run of cards *above* it, so the oldest day in the list gets one too, at
@@ -1395,7 +1386,6 @@
     return new Date(d).setHours(0, 0, 0, 0) === new Date().setHours(0, 0, 0, 0) ? 'today' : `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()}`;
   };
   const dayHtml = day => `<div class="gsep day" title="above: the chats you were in ${day === 'today' ? 'today' : 'on ' + day}"><i></i><b>${day}</b><i></i></div>`;
-  const fishHtml = cls => `<div class="gsep ${cls}"></div>`;   // the swimming school's stand-in
   function renderSessionList(p) {
     const pc = projColor(p); if (pc) $('#sessions').style.setProperty('--repo', pc); else $('#sessions').style.removeProperty('--repo');
     // The magnifier matches the way ⌥⌘K does (2026-09-25, Ricardo: "make hotkey F fuzzy search like K"): any letters
@@ -1421,16 +1411,15 @@
     const ncTip = p.key === ALL ? 'New chat — which project first (⌥⌘N)' : folders.length === 1 ? `New chat in ${folderName(folders[0])} — opens a terminal running claude there` : `New chat in ${p.name} — which folder first`;
     $('#newChat').innerHTML = folders.length ? `<button class="btn icon" id="newChatBtn" data-key="${esc(p.key)}" title="${esc(ncTip)}" aria-label="New chat">${ICON.plus}</button>` : '';
     $('#fchips').innerHTML = FILTERS.map(([k, label]) => `<button class="fchip ${k} ${filterOn(k) ? 'on' : ''}" data-f="${k}" title="${counts[k] || 'no'} ${label} — click to ${filterOn(k) ? 'hide' : 'show'} them"><i></i><span class="lb">${label}</span><span class="n">${counts[k] || 0}</span></button>`).join('');
-    const b = shown.map(rankOf);   // the fish swim once, under the last clauding card when a ready one follows
+    const b = shown.map(rankOf);   // the divider stands once, under the last clauding card when a ready one follows
     // …and a day's line under every run of cards from one day: the card whose next one is from another day, or none.
     const days = shown.map(dayName);
-    const fishBefore = i => !q && i && b[i] === 'ready' && b[i - 1] === 'working' ? fishHtml('fish') : '';
+    const dividerBefore = i => !q && i && b[i] === 'ready' && b[i - 1] === 'working' ? DIVIDER : '';
     // the timeline's runs: the cards of one day *and* one state group in a row — none while a query orders the list
     tl.runs = [];
     if (!q) shown.forEach((s, i) => { const r = tl.runs[tl.runs.length - 1]; if (r && r.g === b[i] && r.day === days[i]) r.n++; else tl.runs.push({ g: b[i], day: days[i], at: wordAt(s), i, n: 1 }); });
     const dayAfter = i => !q && days[i] && days[i + 1] !== days[i] ? dayHtml(days[i]) : '';
-    $('#slist').innerHTML = shown.map((s, i) => `${fishBefore(i)}${cardHtml(s, p, q)}${dayAfter(i)}`).join('') || `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
-    $('#slist .gsep.fish')?.replaceWith(fishEl);
+    $('#slist').innerHTML = shown.map((s, i) => `${dividerBefore(i)}${cardHtml(s, p, q)}${dayAfter(i)}`).join('') || `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
     phaseAnims();
     markQsel();
     listChanged();
@@ -1438,12 +1427,12 @@
   // Every render rebuilds its nodes, and a CSS animation starts over on a new node — so the clauding ring, an asking
   // card's blink and the state dots' pulse jumped back to their start on every SSE update (2026-09-27, Ricardo: "the
   // animations like the border when clauding still reset randomly and breaks the smoothness"; measured: a new card
-  // and a new start time on each of five updates). The fish's fix (school(), above), applied to them all: after a
+  // and a new start time on each of five updates). The school's fix of 2026-09-20, applied to them all: after a
   // render every such animation is put at start time 0 on the document clock, so the new node is exactly where the
-  // old one was — and so every ring turns in step, like the school. Once at 0 it stays there. A CSSTransition (the
+  // old one was — and so every ring turns in step. Once at 0 it stays there. A CSSTransition (the
   // age fading in) has no animationName, so it is left alone. getAnimations() is the document's running animations,
   // a few dozen at most, and the style flush it forces is the one the frame was about to do.
-  const PHASED = new Set(['ring', 'blink', 'pulse']);
+  const PHASED = new Set(['ring', 'blink', 'pulse', 'spin', 'breathe']);
   function phaseAnims() { for (const a of document.getAnimations()) if (PHASED.has(a.animationName) && a.startTime !== 0) a.startTime = 0; }
   // ---- the list's ends: how many cards are out of sight ---------------------------------
   // (2026-09-25, Ricardo: "when scrolling down the cards, the top should visually say how many cards are hiding, same
@@ -1498,7 +1487,7 @@
   // size at R), and one that would overlap a nearer one is left out — so a crowded stretch reads where it is pointed
   // at and thins out away from it. `tl.k` is how far the swell is in, by the clock (TL_IN / TL_OUT ms end to end), `tl.K` the same eased;
   // `tl.py` is the pointer, in the rail's pixels. At rest the rail is the thumb alone (2026-09-26): the state track and
-  // the tick per day it had went — the fish line and the day lines in the list say the same, the labels say it in words.
+  // the tick per day it had went — the divider and the day lines in the list say the same, the labels say it in words.
   // TL_W is the rail's width, TL_LX where a label starts and TL_CATCH the rail's reach at rest, each the CSS's number;
   // TL_MIN is the thumb's least height, so a long list's is still there to find and to grab.
   const tl = { runs: [], sig: '', k: 0, K: 0, want: 0, py: 0, press: null, raf: 0, bubT: 0, reach: 0 };
@@ -1512,7 +1501,7 @@
   }
   const tlText = r => `${esc(tlDay(r.at))} <i>· ${r.n} ${TL_WORD[r.g] || r.g}</i>`;
   /** The rail's geometry now: the list's size, and each run's top in the list — read off the cards, so it is the
-      layout as drawn (the card sizes, the width, the fish and the day lines all count). */
+      layout as drawn (the card sizes, the width, the divider and the day lines all count). */
   function tlGeom() {
     const list = $('#slist'), rail = $('#tline'), cards = list.querySelectorAll(':scope > .card');
     const H = Math.max(1, rail.clientHeight - 2 * TL_PAD), full = Math.max(list.scrollHeight, list.clientHeight, 1);

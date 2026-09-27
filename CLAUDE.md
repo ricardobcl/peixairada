@@ -195,9 +195,11 @@ refuses to run against the real directory for the same reason.
   `lastUserAt` and `lastReplyAt`, 2026-09-27 — your last touch alone before, so a reply landing moved nothing; a tool
   call is not a word, so a clauding card does not climb with every step), newest first; a project ranks by its
   newest chat. The filters and every count still go by
-  `bucket()`, where an asking chat is a ready one — only the order knows the difference, in the list and in ⌥⌘K. **Rules of ascii fish** (`.gsep`): `><>` swimming right between the clauding cards and the ready ones — one fish
-  per cycle, phased by the document clock so a re-render does not jolt it; `school()` builds it as a kept node and
-  `fishHtml(cls)` is its stand-in — and a still line **under every run of cards from one day** (2026-09-23,
+  `bucket()`, where an asking chat is a ready one — only the order knows the difference, in the list and in ⌥⌘K. **The lines between the cards** (`.gsep`): between the clauding cards and the ready ones, **Claude's mark**
+  (`ICON.claude`, the starburst) turning and breathing between two hairlines — `DIVIDER`, plain markup, `spin`
+  and `breathe` on the compositor and phased by `phaseAnims()` (2026-09-27, Ricardo: "remove the fishes and leave a
+  claude icon animation in the middle"; a school of `><>` swimming right since 2026-09-20, kept as one node across
+  renders) — and a still line **under every run of cards from one day** (2026-09-23,
   `dayHtml()`, plain markup since nothing on it moves): the day centred — `today`, else `DD-MM-YYYY` (`dayName()`, by
   `userAt`) — between two hairlines (`.gsep i`; 2026-09-27, `<><` either side before, each its own item so none
   was cut in half). A day's line closes the cards *above* it, so the oldest day in the list gets one at the bottom; the list is grouped
@@ -217,7 +219,7 @@ refuses to run against the real directory for the same reason.
   26 px and lined up under the fish and the cog before), the cards 8 px on from it, the thumb an orange pill
   (`--spend`, the usage bars' — beside the edge, not on it, so it reads on an orange project too), never under
   `TL_MIN` tall, wider under the pointer. The track in the state groups' colours and the tick per day went (Ricardo:
-  "too close to the cards, it's green, it has the ticks for dates"): the fish line and the day lines in the list say
+  "too close to the cards, it's green, it has the ticks for dates"): the divider and the day lines in the list say
   the same, and the labels say it in words, so they lost their coloured dot too. **To scale**: the rail's inner height
   is the list's `scrollHeight`, so a label is where its run starts in the list and the thumb is the window. A run
   (`tl.runs`, built in `renderSessionList`, none under a query) is one day *and* one state group in a row, so today
@@ -287,7 +289,7 @@ refuses to run against the real directory for the same reason.
   list in its own order. `markHits()` bolds what landed (`fuzzMarks`), runs merged. → Decisions, 2026-09-21.
 * **The chat list's magnifier matches the same way, and ⌥⌘F opens it** (2026-09-25; literal before, on purpose):
   `renderSessionList` scores each chat with `fuzzy(chatFields(s), q)` and, with something typed, sorts by the score
-  (the board's order breaking ties) and **draws neither the fish nor the day lines** — they say where a state or a
+  (the board's order breaking ties) and **draws neither the divider nor the day lines** — they say where a state or a
   day ends, and the order is the match's now. The title and the folder name are bolded (`markHits`, underlined on
   a card). ↑↓ in the box walk a `.qsel` card, ⏎ opens it (`openSession`, then `focusTerm`) and keeps the query; the
   mark shows only while the box has the keyboard (`markQsel()`, on every render). What it has over ⌥⌘K: done chats,
@@ -479,7 +481,7 @@ refuses to run against the real directory for the same reason.
   colour — `--ring`, which only a card too dark to show it (`.card.black`) overrides, with white.
 * **A CSS animation starts over on a rebuilt node, and only `transform` and `opacity` run off the main thread**
   (2026-09-27): the list is `innerHTML` on every SSE update, so anything that moves on a card is phased to the
-  document clock after the render (`phaseAnims()`; the fish's `school()`) — and nothing continuous animates a custom
+  document clock after the render (`phaseAnims()`) — and nothing continuous animates a custom
   property, a gradient or a colour: Chrome repaints that on the main thread every frame and freezes it under every
   transcript render (Chrome's own trace says `compositeFailed` for it). → Decisions 2026-09-27.
 * `PROJECT_ICONS` (index.html) marks a project by its shown name wherever the name is written — oracle's crystal ball;
