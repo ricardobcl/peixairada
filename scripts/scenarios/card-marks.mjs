@@ -65,6 +65,7 @@ export default async function (ctx) {
 
   // ---- the time: in the top row, left of the ✓ (2026-09-27, later), and only under the pointer (later still) ----
   const t = 'Opus, you wrote after it';
+  await ctx.settle();   // the fixture's cards slid in: a rectangle read mid-slide put the pointer on the card above (2026-09-27, night)
   out.rest = await rects(ctx, t);
   ctx.assert.equal(out.rest.op, '0', 'invisible at rest');
   ctx.assert.equal(out.rest.text, '2h', 'when anything last happened — the reply');

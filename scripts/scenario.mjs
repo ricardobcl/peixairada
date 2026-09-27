@@ -6,7 +6,7 @@
 // A scenario is an ES module: `export const meta = { server: true, fake: true, fixture: 'auto', env: {…} }` (its
 // needs, so no flags are required — `env` goes to the throwaway server, for the ones it reads from its environment)
 // and `export default async function (ctx) { … return result }`. `ctx` carries the page
-// (evaluate, waitFor, send, sleep, shot(name), key(code), openChat(id), screen(), type(text), fill(sel, text)), the throwaway server when there
+// (evaluate, waitFor, send, sleep, shot(name), key(code), openChat(id), screen(), type(text), fill(sel, text), settle()), the throwaway server when there
 // is one (api, terminals, restart, holders, logText), the fixture's chats, `args`, `log` and node:assert as `assert`.
 // Everything is cleaned up on exit — Chrome, the server, its terminals and holders, the temp dirs — unless --keep.
 import assert from 'node:assert/strict';
@@ -67,6 +67,10 @@ try {   // a server or a Chrome that does not come up: what did come up is ended
 const ROWS = g => `[...document.querySelectorAll('#termBody${g ? 'B' : ''} .xterm-rows > div')]`;
 const ctx = {
   url: boardUrl, server, fixture, args: scenarioArgs, log, assert, sleep,
+  // The list moves (2026-09-27, night): a card that arrived or changed rank is sliding for up to 220 ms, and a rectangle
+  // read meanwhile is mid-slide — the pointer then lands on the neighbour. Measure after this: it waits for every
+  // animation the page named (flip · enter · leave · pop) to end; the endless ones (the ring, the blink) have no id.
+  settle: (timeout = 4000) => cdp.waitFor(`!document.getAnimations().some(a => a.id && a.playState === 'running')`, { timeout, every: 40, what: 'the board to settle' }),
   evaluate: cdp.evaluate, waitFor: cdp.waitFor, send: cdp.send, exceptions: cdp.exceptions, console: cdp.console,
   shot: async (label, clip) => { const f = join(shots, `${name}-${label}.png`); await cdp.shot(f, clip); log(`screenshot → ${f}`); return f; },
   openChat: id => openChat(cdp, id),

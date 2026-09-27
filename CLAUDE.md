@@ -555,7 +555,9 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   `meta` (`server`, `fake`, `fixture`) and a default `async (ctx) => result`; the runner starts a throwaway server
   on a free port with its own state dir (`lib/testserver.mjs`), builds the fixture (`scripts/fixture.mjs`), runs the
   fake claude when asked, launches Chrome with **focus emulation on**, and ends terminals, holders, Chrome, the fixture
-  and temp dirs on exit — after a failed setup too (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`,
+  and temp dirs on exit — after a failed setup too (`--keep` to inspect). **A rectangle is read after `ctx.settle()`**
+  (2026-09-27, night): the list's cards slide for up to 220 ms after they arrive or change rank, and a rect read
+  mid-slide puts the pointer on the neighbour; `settle` waits for every animation the page named to end. `ctx`: `evaluate`, `waitFor`, `send`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
   `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The twenty-nine in

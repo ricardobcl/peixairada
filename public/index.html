@@ -901,6 +901,9 @@
   dialog::backdrop { transition: background-color .14s, overlay .14s allow-discrete, display .14s allow-discrete; }
   @starting-style { dialog[open]::backdrop { background-color: rgba(0, 0, 0, 0); } }
   dialog:not([open])::backdrop { background-color: rgba(0, 0, 0, 0); }
+  /* The ··· menu is anchored to its button, so it fades in place — a menu that slides off its anchor reads as loose. */
+  #hmenu, #hmenu:not([open]) { transform: none; }
+  @starting-style { #hmenu[open] { transform: none; } }
   /* ⌥⌘P: the project picker, VS Code's open-recent way — a box on top, rows under it, ↑↓ and ⏎. ⌥⌘G fills it with the chat's PRs, ⌥⌘O with oracle's environments. */
   #pick { padding: 8px; width: min(520px, 92vw); margin-top: 10vh; }
   /* About (2026-09-27, Ricardo: "clicking on the app icon should show an About info box center screen"): a modal

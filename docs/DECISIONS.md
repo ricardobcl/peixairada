@@ -90,6 +90,12 @@ transform and opacity where it can — the compositor's kind of motion, as the r
   `cardHtml` made a card's html change every minute and its node with it (the review had noted the tick rebuilding
   the list for the ages alone); a hover-only age that read *5m* when it was *25m* was wrong information. → the last
   section of `transcript-live.mjs`.
+* **Two things the motion taught**: the ··· menu is anchored to its button, so it fades in place — `#hmenu` keeps
+  `transform: none` through the dialog transition; `head-menu.mjs` measures it four pixels under the button the
+  moment it opens, and a menu that slides off its anchor reads as loose anyway. And `card-marks.mjs` read a card's
+  rectangle while the fixture's cards were still sliding in, then put the pointer at its centre — on the card above,
+  once the slide had ended. The runner has `ctx.settle()` now, which waits for every animation the page named (flip ·
+  enter · leave · pop) to end; a scenario reads a rectangle after it.
 
 ## Decisions of 2026-09-27, night — an empty chat's card can be ticked done
 
