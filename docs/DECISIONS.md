@@ -4,6 +4,16 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-27.
 
+## Decisions of 2026-09-27, late night — the divider alone and in pixels, the age under the pointer
+
+Ricardo: "remove the lines next to the claude icon on the card separator · make the claude icon animation more
+"pixely", more fun · the last update time on the card should only show on hover · the search icon on top, should
+take the entire space between the app icon and the ready counter · the token budget counter down low should space a
+bit more the 3 counters".
+
+* **The divider is Claude's mark alone**, centred: its two hairlines went the way of the day lines' an hour earlier.
+  Nothing on a line between the cards is a rule any more — the mark and the days say where a run ends.
+
 ## Decisions of 2026-09-27, night — the head bare on ALL, the age beside the tick, About behind the fish
 
 Ricardo: "remove the lines left and right of the date, on the card separators · clicking on the app icon should

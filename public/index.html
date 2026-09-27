@@ -239,20 +239,20 @@
   main.scompact #slist::-webkit-scrollbar { display: initial; }
   #slist > * { flex: none; } /* never let a full column squash its cards (overflow:hidden items would shrink to 0) */
   /* Between the clauding cards and the ready ones, Claude's mark (ICON.claude, the starburst) turning slowly and
-     breathing between two hairlines (2026-09-27, Ricardo: "remove the fishes and leave a claude icon animation in
-     the middle"; a school of ><> swimming right since 2026-09-20, kept as one node across renders so it did not
-     jolt). Plain markup now: transform and opacity are the compositor's, and phaseAnims() keeps the mark's place
-     across a rebuild like the rings'. The day lines below share the hairline. */
+     breathing, alone and centred (2026-09-27, Ricardo: "remove the fishes and leave a claude icon animation in
+     the middle", then "remove the lines next to the claude icon on the card separator"; a school of ><> swimming
+     right since 2026-09-20, kept as one node across renders so it did not jolt, then two hairlines for an evening).
+     Plain markup now: transform and opacity are the compositor's, and phaseAnims() keeps the mark's place across a
+     rebuild like the rings'. */
   .gsep { margin: 2px 10px; font: 600 11px/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: color-mix(in srgb, var(--muted) 80%, transparent); white-space: nowrap; overflow: hidden; user-select: none; }
-  .gsep.claude { display: flex; align-items: center; gap: 10px; margin: 4px 10px; }
+  .gsep.claude { display: flex; align-items: center; justify-content: center; margin: 4px 10px; }
   .gsep.claude .ic { flex: none; width: 15px; height: 15px; fill: var(--accent); animation: spin 6s linear infinite, breathe 2.4s ease-in-out infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes breathe { 50% { opacity: .5; } }   /* softer than the dots' pulse: a divider that dropped to a third read as a flicker */
   @media (prefers-reduced-motion: reduce) { .gsep.claude .ic { animation: none; } }
   /* A day's line (2026-09-23): its day alone, centred — "today", else DD-MM-YYYY (2026-09-27, Ricardo: "remove the
      fishes from the date spacing between cards", then "remove the lines left and right of the date"; still fish
-     either side before, two hairlines for an hour). The divider above keeps its hairlines. */
-  .gsep i { flex: 1; min-width: 0; height: 1px; background: color-mix(in srgb, var(--muted) 35%, transparent); }
+     either side before, two hairlines for an hour). */
   .gsep.day { text-align: center; }
   .gsep.day b { font-weight: 700; color: var(--muted); }
   #slist .none { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 0; }
@@ -1382,10 +1382,10 @@
     document.title = (total ? `(${total}) ` : '') + 'peixAIrada';
   }
   function knownFolders() { return [...new Set([...state.sessions.values()].map(s => s.cwd).filter(Boolean))].sort(); }
-  // Between the clauding cards and the ready ones: Claude's mark, turning and breathing, between two hairlines
-  // (2026-09-27; a school of ><> from 2026-09-20 to then — one node kept across renders, so innerHTML did not hand it
-  // a new animation every few seconds; phaseAnims() does that for the mark now, so it is plain markup).
-  const DIVIDER = `<div class="gsep claude" title="clauding above, ready below"><i></i>${ICON.claude}<i></i></div>`;
+  // Between the clauding cards and the ready ones: Claude's mark, turning and breathing, alone (2026-09-27; a school
+  // of ><> from 2026-09-20 to then — one node kept across renders, so innerHTML did not hand it a new animation every
+  // few seconds; phaseAnims() does that for the mark now, so it is plain markup — and two hairlines for an evening).
+  const DIVIDER = `<div class="gsep claude" title="clauding above, ready below">${ICON.claude}</div>`;
   // A line under each day's cards, naming the day they are from (2026-09-23, Ricardo: "a per day divider and put the
   // day there, using 'today' for today (all cards up are from today) and the rest … DD-MM-YYYY"). The day is your last
   // touch, like the order. A line closes the run of cards *above* it, so the oldest day in the list gets one too, at
