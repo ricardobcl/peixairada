@@ -139,6 +139,11 @@ refuses to run against the real directory for the same reason.
   html therefore does not change with the clock. `dayOf(ts)` is the one spelling of a day (`today` · `DD-MM-YYYY`), for
   the list's lines and the transcript's (`.sysline.day`, from `renderLog` where the day changes). The who-line's time is
   `toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })`.
+* **The small print is one CSS section** (2026-09-27, night, before the reduced-motion block): `text-wrap` for prose
+  and centred texts, tabular figures for every count and age, `::selection` in the accent (and `--term-sel` to match),
+  one `:where(…):focus-visible` ring — a text box that wants its border as its focus keeps its own `:focus { outline:
+  none }`, which out-specifies it — and `overscroll-behavior: contain` on every scroller. A new number, list or control
+  joins those lists rather than getting a rule of its own.
 * **Every animation has its line in the reduced-motion block** (2026-09-27, night): the one
   `@media (prefers-reduced-motion: reduce)` at the end of the CSS stills the ring (a flat edge in `--lit`), the blink
   (a steady red border), the pulse, the spinner, the flare and every transform; `drawCards` reads `REDUCED` and puts

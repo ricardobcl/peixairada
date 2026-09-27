@@ -16,7 +16,7 @@
     --code-ink: #a8442a; --inline-bg: rgba(0, 0, 0, .055);
     --you: #2f8b7c; --snip-claude: #45443f; --vscode: #0066b8;
     --pr-open: #2f9e5b; --pr-merged: #8250df; --pr-closed: #d64545; --pr-draft: #8b8b85;
-    --term-bg: #f4f3ee; --term-sel: rgba(0, 0, 0, .14);
+    --term-bg: #f4f3ee; --term-sel: rgba(201, 100, 66, .28);   /* the accent, as ::selection is */
     --nocolor: #b9b9b3;   /* light gray: a project without a Peacock colour, wherever a colour is needed (the tab, the swatch, the card's edge and wash) */
     /* Syntax colours, one set per theme — the whole highlight.js palette hangs off these eight. */
     --hl-com: #97968d; --hl-key: #9c27a0; --hl-str: #4a8c3f; --hl-num: #98651a;
@@ -29,7 +29,7 @@
     --code-ink: #e0a284; --inline-bg: rgba(255, 255, 255, .075);
     --you: #4fb8a8; --snip-claude: #c9c7bd; --vscode: #4aa5f0; --nocolor: #66665f; --watch: #45c8c8; --spend: #f28a3c; --prg: 44%;
     --pr-open: #3fb950; --pr-merged: #a371f7; --pr-closed: #f85149; --pr-draft: #8b8b85;
-    --term-bg: #111110; --term-sel: rgba(255, 255, 255, .22);
+    --term-bg: #111110; --term-sel: rgba(224, 138, 104, .32);
     --hl-com: #7c7c74; --hl-key: #c678dd; --hl-str: #98c379; --hl-num: #d19a66;
     --hl-fn: #61afef; --hl-cls: #e5c07b; --hl-var: #e06c75; --hl-meta: #8fa6c4;
   } }
@@ -984,6 +984,22 @@
   .dfoot .err { color: var(--needs); font-size: 12px; }
   .dfoot .danger { color: var(--needs); }
 
+  /* ---- the small print: wrapping, figures, selection, focus, overscroll ---- */
+  /* (2026-09-27, night) Prose wraps prettily and a short centred text balances; a title breaks at a word (with
+     hyphens) rather than anywhere, a snippet keeps `anywhere` for its paths. Every count, age and number sits in
+     tabular figures, so a digit changing under it moves nothing beside it. The selection is the accent's — the
+     default blue was the one foreign colour left on the board — and the terminal's matches it (--term-sel). One focus
+     ring for the keyboard, the accent's, on every control; the text boxes keep their border as their focus (their own
+     :focus rules out-specify :where). A fling at the end of a list stays in it. */
+  .card .title, .card .snip, .msg .text, .presence, .prrow .t { text-wrap: pretty; }
+  .empty, .gempty, dialog p.help, #slist .none, #picklist .none, .pop .opt span { text-wrap: balance; }
+  .card .title { overflow-wrap: break-word; hyphens: auto; }
+  .badge, .chip, :is(.card .cpr, .shead .hpr), .pkrow .num, #counts, .fchip .n, .sedge b, .tl-lab, .prrow .num, .pop .keys kbd, .lognew b { font-variant-numeric: tabular-nums; }
+  ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+  :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
+  #slist, #log, #picklist, #pfolders, #prlist, .gterm .tbody, .pop { overscroll-behavior: contain; }
+
   /* ---- reduced motion: the board says the same, still ---- */
   /* (2026-09-27, night) The spinner and the timeline honoured it; the ring, the blink, the pulse and the list's moves did
      not. Under it every state keeps its reading without the motion: clauding and watching a steady edge in the light's
@@ -1138,6 +1154,7 @@
 //   css · composer (stale chats only)
 //   css · terminal drawer: the real claude, in a PTY on the server
 //   css · project editor
+//   css · the small print: wrapping, figures, selection, focus, overscroll
 //   css · reduced motion: the board says the same, still
 //   css · syntax highlighting (highlight.js class names, our colours)
 //   js  · header controls

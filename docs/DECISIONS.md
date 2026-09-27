@@ -103,6 +103,15 @@ transform and opacity where it can — the compositor's kind of motion, as the r
   click writes the block's text with the async clipboard, else selects it and `execCommand`s, and the button says
   *copied* (or *failed*) for a second — the button is the whole answer, there is no toast.
   → `scripts/scenarios/code-blocks.mjs` (the clipboard granted over CDP, then read back).
+* **The small print**, one CSS section: prose wraps `pretty` and a short centred text `balance`s; a card's title breaks
+  at a word with hyphens instead of `anywhere` (the snippet keeps `anywhere` for its paths); every count, age, PR
+  number and key sits in tabular figures; the selection is the accent's at 28 % — the default blue was the one foreign
+  colour left — and the terminal's `--term-sel` matches it; one `:focus-visible` ring, 2 px of accent (the header's
+  ink on a tinted header), through `:where()` so the text boxes' own `:focus` rules still win and keep their border as
+  their focus; `overscroll-behavior: contain` on every scrolling list, so a fling at its end stays in it. Read back
+  on the board: `pretty`/`break-word`/`auto` on a title, `balance` on the empty state, `tabular-nums` on a count, the
+  selection `color(srgb … / 0.28)`, `contain` on the list and the log, and a 2 px solid accent outline on a focused
+  button.
 
 ## Decisions of 2026-09-27, night — an empty chat's card can be ticked done
 
