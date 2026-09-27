@@ -15,11 +15,11 @@
     "map": "node scripts/map.mjs"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "dependencies": {
-    "@xterm/addon-serialize": "^0.13.0",
-    "@xterm/headless": "^5.5.0",
+    "@xterm/addon-serialize": "0.13.0",
+    "@xterm/headless": "5.5.0",
     "node-pty": "^1.1.0",
     "ws": "^8.21.3"
   },
