@@ -1536,6 +1536,26 @@ function killTerm(t) {
   else { holderSend(t, { t: 'quit' }); terms.delete(t.id); }
 }
 
+// ---- who may ask: the board's own pages, and nothing a browser lets another site send ----------------------------
+// Loopback is no trust boundary a browser keeps: any page open in one can POST here — start a claude in a folder the
+// board knows, write a Peacock colour — and open a WebSocket to a drawer and type into it, since WebSockets have no
+// same-origin rule at all (2026-09-27). So a request has to be the board's own page (its Origin is this server) or
+// come from no browser at all (curl, the app's fetches and the tests send no Origin), and its Host has to be a
+// loopback name: a DNS name pointed at 127.0.0.1 (rebinding) would be the same page from an origin that is not ours.
+// A `null` Origin — a file:// page, a sandboxed frame — is nobody's.
+const LOOPBACK = new Set(['127.0.0.1', 'localhost', '[::1]', '::1', HOST]);
+const ANY_HOST = HOST === '0.0.0.0' || HOST === '::';   // bound to every interface: the Host is whichever address was used
+function foreign(req) {
+  const host = String(req.headers.host || '').replace(/:\d+$/, '');
+  if (host && !ANY_HOST && !LOOPBACK.has(host)) return `host ${host}`;
+  const origin = req.headers.origin;
+  if (origin === undefined) return null;
+  let o; try { o = new URL(origin); } catch { return `origin ${origin}`; }
+  const port = o.port || (o.protocol === 'https:' ? '443' : '80');
+  if ((!ANY_HOST && !LOOPBACK.has(o.hostname)) || port !== String(PORT)) return `origin ${origin}`;
+  return null;
+}
+
 // One WebSocket per attached page. Binary frames carry output — first the screen as it stands (the holder's
 // headless terminal serialized: scrollback, cells, cursor, modes), then the PTY's bytes as they come; text frames
 // are JSON in both directions: {t:'in', d}, {t:'resize', cols, rows} and {t:'clear'} up, {t:'clear'} and
@@ -1544,6 +1564,8 @@ function killTerm(t) {
 // came after it. A clear rides in that same queue — it is numbered like output, and wipes the page in its place.
 const wss = new WebSocketServer({ noServer: true });
 function attachTermSocket(req, socket, head) {
+  const why = foreign(req);
+  if (why) { socket.write('HTTP/1.1 403 Forbidden\r\n\r\n'); socket.destroy(); return; }
   const m = (req.url || '').match(/^\/api\/terminals\/([\w-]+)\/ws$/);
   const t = m && terms.get(m[1]);
   if (!t) { socket.write('HTTP/1.1 404 Not Found\r\n\r\n'); socket.destroy(); return; }
@@ -1598,6 +1620,8 @@ function sortedSummaries() {
 }
 
 const server = createServer(async (req, res) => {
+  const why = foreign(req);
+  if (why) return json(res, 403, { error: `not the board's own page (${why})` });
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const p = url.pathname;
   try {
