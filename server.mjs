@@ -34,7 +34,7 @@
 
 import { createServer, get as httpGet } from 'node:http';
 import {
-  chmodSync, closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, renameSync, rmSync, statSync, unlinkSync, watch, writeFileSync
+  chmodSync, closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, renameSync, rmSync, statSync, unlinkSync, watch, writeFileSync
 } from 'node:fs';
 import { connect as netConnect } from 'node:net';
 import { basename, dirname, join } from 'node:path';
@@ -808,36 +808,48 @@ function startTask(s, res, ts) {
 }
 
 /**
- * Whether a background command is still running, asked of the machine rather than of the transcript: the harness
- * spawns it with its output redirected to `tasks/<id>.output` and holds that file open until it exits, so `lsof`
+ * Whether the background commands are still running, asked of the machine rather than of the transcript: the harness
+ * spawns each with its output redirected to `tasks/<id>.output` and holds that file open until it exits, so `lsof`
  * on the file answers plainly (measured: two holders while it runs, none the moment it ends). This is what the
  * transcript cannot do — a completion notice delivered to a chat that is *mid-turn* never becomes a line in the
  * file, and the task would otherwise sit on the card until TASK_MAX_MS (the board's own chat wore one for half an
  * hour, 2026-09-21). Only for the first seconds is it unasked: the file exists before the process has opened it.
+ * One `lsof` for every file the board is watching, per poll (2026-09-27): it reads every process on the Mac, 0.9 s of
+ * wall here, and one run per task per poll timed out eight times in the log. `-F n` names each file someone holds;
+ * a file it does not name is held by nobody. Names are compared resolved — a task's file under /var is /private/var
+ * to lsof.
  */
 const TASK_GRACE_MS = Number(process.env.TASK_GRACE_MS || 20_000);
-function taskGone(t) {
+const realPath = f => { try { return realpathSync(f); } catch { return f; } };
+function heldFiles(files) {
   return new Promise(resolve => {
-    if (!t.out || Date.now() - (Date.parse(t.at) || 0) < TASK_GRACE_MS) return resolve(false);
-    if (!existsSync(t.out)) return resolve(false);          // not written yet, or cleaned up: no verdict from here
     const bin = findBin('lsof', 'a background command is only let go by its notification or its age');
-    if (!bin) return resolve(false);
-    execFile(bin, ['-t', '-w', '--', t.out], { timeout: 15_000 }, (err, stdout) => {
-      if (err && err.code !== 1) {                           // 1 is lsof's "nobody has it"; anything else is our problem
-        // lsof reads every process on the Mac, so on a loaded one it takes seconds — and a run killed by the
-        // timeout is not an answer, it just looks like "still running". Say so, or the chip sits on the card
-        // with nothing in the log to explain it.
-        if (err.killed || err.signal) console.log(`[peixairada] task ${t.what || '?'}: lsof did not answer in time — leaving it running`);
-        return resolve(false);
+    if (!bin) return resolve(null);
+    execFile(bin, ['-w', '-F', 'n', '--', ...files], { timeout: 15_000, maxBuffer: 4e6 }, (err, stdout) => {
+      if (err && err.code !== 1) {   // 1 is lsof's "some file is held by nobody"; anything else is our problem
+        // A run killed by the timeout is not an answer, it just looks like "still running": say so, or the chips sit
+        // on the cards with nothing in the log to explain it.
+        console.log(`[peixairada] lsof did not answer${err.killed || err.signal ? ' in time' : ` (${String(err.message).split('\n')[0]})`} — leaving every background command running`);
+        return resolve(null);
       }
-      resolve(!String(stdout).trim());
+      resolve(new Set(String(stdout).split('\n').filter(l => l[0] === 'n').map(l => realPath(l.slice(1)))));
     });
   });
 }
-/** The poll's half of the pruning: the dead let go, and a push if any were. */
-async function sweepTasks(s) {
-  if (!s.tasks?.size) return;
-  for (const [id, t] of [...s.tasks]) if (await taskGone(t) && s.tasks.get(id) === t) { s.tasks.delete(id); console.log(`[peixairada] task ${id} (${t.what}) is no longer running`); schedulePush(s); }
+/** The poll's half of the pruning, for every chat at once: the commands whose output file nobody holds are let go. */
+async function sweepTasks() {
+  const due = [];
+  for (const s of sessions.values()) {
+    if (!s.alive || !s.tasks?.size) continue;
+    for (const [id, t] of s.tasks) if (t.out && Date.now() - (Date.parse(t.at) || 0) >= TASK_GRACE_MS && existsSync(t.out)) due.push({ s, id, t });   // not written yet, or cleaned up: no verdict
+  }
+  if (!due.length) return;
+  const held = await heldFiles([...new Set(due.map(d => d.t.out))]);
+  if (!held) return;
+  for (const { s, id, t } of due) {
+    if (held.has(realPath(t.out)) || s.tasks?.get(id) !== t) continue;
+    s.tasks.delete(id); console.log(`[peixairada] task ${id} (${t.what}) is no longer running`); schedulePush(s);
+  }
 }
 /** A `<task-notification>`: an event while it runs, and with a `<status>` (completed, failed, stopped) its end. */
 function noteTaskEvent(s, text, ts) {
@@ -848,18 +860,23 @@ function noteTaskEvent(s, text, ts) {
   t.events++; t.lastEventAt = ts;
   return true;
 }
-/** What is still running, and the pruning of what is not: a dead claude takes its tasks with it. */
+/** A task from before this claude started (it died with the last one), past TASK_MAX_MS, or past its own expiry. */
+const taskExpired = (s, t, now = Date.now()) => { const at = Date.parse(t.at) || 0; return at < (Number(s.live?.startedAt) || 0) || now - at > TASK_MAX_MS || (t.until && now > t.until); };
+/** What is still running, for the summary — nothing on a chat whose claude is gone. Reads only: the pruning is
+ *  pruneTasks, on the poll (2026-09-27; the summary used to delete on the way, twelve times a minute from the app's
+ *  watchdog alone). */
 function runningTasks(s) {
-  if (!s.tasks?.size) return [];
-  if (!s.alive) { s.tasks.clear(); return []; }
-  const now = Date.now(), since = Number(s.live?.startedAt) || 0;
-  const out = [];
-  for (const [id, t] of s.tasks) {
-    const at = Date.parse(t.at) || 0;
-    if (at < since || now - at > TASK_MAX_MS || (t.until && now > t.until)) { s.tasks.delete(id); continue; }
-    out.push({ id, kind: t.kind, what: t.what, at: t.at, until: t.until ? new Date(t.until).toISOString() : null, events: t.events, lastEventAt: t.lastEventAt || null });
-  }
+  if (!s.alive || !s.tasks?.size) return [];
+  const now = Date.now(), out = [];
+  for (const [id, t] of s.tasks) if (!taskExpired(s, t, now)) out.push({ id, kind: t.kind, what: t.what, at: t.at, until: t.until ? new Date(t.until).toISOString() : null, events: t.events, lastEventAt: t.lastEventAt || null });
   return out;
+}
+/** The pruning: a dead claude takes its tasks with it, an expired one goes. True when any went. */
+function pruneTasks(s) {
+  if (!s.tasks?.size) return false;
+  const n = s.tasks.size, now = Date.now();
+  if (!s.alive) s.tasks.clear(); else for (const [id, t] of s.tasks) if (taskExpired(s, t, now)) s.tasks.delete(id);
+  return s.tasks.size !== n;
 }
 
 function scanProjects() {
@@ -1838,10 +1855,10 @@ for (const s of sessions.values()) if (s.alive) scanAgents(s);
 // a chat whose last word was "monitor started" has nothing else to push.
 setInterval(() => {
   for (const s of sessions.values()) {
-    if (!s.alive) continue;
-    scanAgents(s);
-    if (s.tasks?.size) { const n = s.tasks.size; runningTasks(s); if (s.tasks.size !== n) schedulePush(s); sweepTasks(s); }
+    if (pruneTasks(s)) schedulePush(s);
+    if (s.alive) scanAgents(s);
   }
+  sweepTasks();
 }, REGISTRY_POLL_MS);
 console.log(`[peixairada] indexed ${sessions.size} sessions (${[...sessions.values()].filter(s => s.alive).length} alive) from ${CLAUDE_DIR} in ${Date.now() - t0}ms`);
 
