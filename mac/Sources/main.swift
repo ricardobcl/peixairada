@@ -586,7 +586,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
   }
   // ⌥⌘ + one of the board's hotkeys (HOTKEYS in index.html — the same list here, kept by hand): the letters, ↑ ↓ for
-  // the chat above or below, ← → for the tab beside; and ⌘ + one of the layout keys (CMDKEYS there): B folds the
+  // the chat above or below, ← → for the tab beside, 1 and 2 for the top and bottom halves of a stacked chat column
+  // (2026-09-27; by key code, since ⌥ composes a symbol over a digit on a Portuguese layout); and ⌘ + one of the
+  // layout keys (CMDKEYS there): B folds the
   // chat list, 1 and 2 the left and right halves of the chat column. Pressed while the pane has the keyboard: its web views are not the board's, so the page
   // would never hear it. Forwarded through peixKey as the page's e.code and which map it belongs to; the page asks
   // for the keyboard back ({type: "focus"}) only when it opens a dialog.
@@ -600,6 +602,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       if e.keyCode == 125 { return ("ArrowDown", "altcmd") }
       if e.keyCode == 123 { return ("ArrowLeft", "altcmd") }
       if e.keyCode == 124 { return ("ArrowRight", "altcmd") }
+      if e.keyCode == 18 { return ("Digit1", "altcmd") }
+      if e.keyCode == 19 { return ("Digit2", "altcmd") }
       if let ch = ch, boardKeys.contains(ch) { return ("Key" + ch.uppercased(), "altcmd") }
     }
     if held == [.command], let ch = ch, cmdKeys.contains(ch) { return ((ch.first!.isNumber ? "Digit" : "Key") + ch.uppercased(), "cmd") }

@@ -4,6 +4,37 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-27.
 
+## Decisions of 2026-09-27, afternoon — the halves one over the other: ⌥⌘1 and ⌥⌘2
+
+Ricardo: "what do you suggest for toggling the vertical split for an horizontal one? · this should be a per chat
+setting · should be hotkey 2 to change to horizontal split. cmd 2 makes the vertical split · hotkey 1 goes the top
+split (pane 1 is up, pane 2 is down). cmd 0 still closes the non-active pane".
+
+* **The two halves can stand one over the other**, the same halves, the same tabs, the same terminals: `#groups`
+  turns into a flex column and the divider lies across it. The halves' flex basis runs along whichever axis is the
+  main one, so `applySplit` did not change its arithmetic — only which pref it reads.
+* **The digit is the pane, the modifier the layout.** ⌘1 / ⌘2 are the left and right halves as before, ⌥⌘1 / ⌥⌘2 the
+  top and the bottom; pane 1 is left or top, pane 2 right or bottom. A key pressed on the other layout turns the
+  split first, then moves the keys — so ⌘2 on a stacked column puts it side by side and ⌥⌘1 on a side-by-side one
+  stacks it. ⌘0 and ⌘W name no layout and close halves the same way in both. Considered and dropped: ⇧⌘2 as a flip
+  ("the split, the other way") — one more chord to learn, and a flip says nothing about which layout you get; VS
+  Code's ⌥⌘0 — the board's rule is that ⌥⌘ is about the chat, and a digit pair beside ⌘1 / ⌘2 keeps the pair readable.
+  This is the one ⌥⌘ pair about the window's shape.
+* **The layout is the chat's, like the split** (`stacked`, a set of ids beside `splits`), and Ricardo's call over the
+  board-level pref first proposed: a PR beside a terminal wants width, a terminal under a transcript wants height,
+  and that is the chat's work, not the window's. **It outlives the split**: `unsplit` leaves it, so the split the
+  board makes itself for a new tab (⌥⌘T, a PR) comes back the way the chat was left, while a split asked for by hand
+  takes its key's layout. Page state, like `tabs` and `splits`: gone with a reload.
+* **One divider place per layout**, both the board's (`prefs.splitAt`, `prefs.stackAt`): a tall column and a wide one
+  want the divider in different places, and neighbouring chats can now differ, so one shared fraction would have
+  had it jump as you walk the list.
+* **The second strip carries ◫ / ⊟ beside ⨯** (`.gturn`), the mouse's way, showing the layout it would give.
+* **The app forwards ⌥⌘1 / ⌥⌘2 by key code**, not by character: ⌥ composes a symbol over a digit on a Portuguese
+  layout (⌥2 is @), so `charactersIgnoringModifiers` was not to be trusted there.
+* **Learned by the harness**: a zsh ended through its × lingers on the summary with `exited` set (the holder keeps
+  its last screen for `TERM_LINGER_MS`), so a scenario waiting for the tab to go waits on `exited`, not on `s.shell`
+  being null — `split-stacked.mjs` timed out on that once before it was written that way.
+
 ## Decisions of 2026-09-27, small hours, later — the divider in pixels, the age on hover, the search as wide as the head
 
 Ricardo: "remove the lines next to the claude icon on the card separator · make the claude icon animation more

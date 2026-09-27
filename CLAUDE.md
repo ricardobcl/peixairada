@@ -275,7 +275,8 @@ refuses to run against the real directory for the same reason.
   same with the project answered and the environment brought forward** (`hotOracle()` → `newChatIn(cwd, 'chats')` on
   the project `ORACLE` names in `projectList()` — a folder, a pin or a named set; off the board is a `note()`),
   ↑ / ↓ the chat above or below in the list as shown (`hotMove()`),
-  ← / → the tab beside in the strip, wrapping (`hotTab()` → `openTab()`, the tab click's path).
+  ← / → the tab beside in the strip, wrapping (`hotTab()` → `openTab()`, the tab click's path), **1 / 2 the top and the bottom half of the chat column stood one over
+  the other** (`hotGroup(g, true)`; see *The chat column's two halves*).
   Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A
   `dialog[open]` swallows them; no chat or no PR is a `note()`. The cog lists every key (`.keys` in `#settings`) —
   keep it in step by hand, with `boardKeys` in main.swift.
@@ -286,7 +287,9 @@ refuses to run against the real directory for the same reason.
   back to normal, ⌘0's older meaning — see *The chat column's two halves*). The modifier is the distinction: ⌥⌘ is
   "this chat, over there", ⌘ alone is "this window, this shape". `peixKey(code, mods)` carries which map and
   **returns whether the key was taken**; `cmdKeys` in main.swift is the forwarder's copy of this list — a digit
-  goes over as `Digit<n>`. ⌘K is *not* here (the drawer's clear) and neither are ⌘+ ⌘− (`chatZoomKey`, which sees ⌘0 only when nothing is split).
+  goes over as `Digit<n>`. ⌘K is *not* here (the drawer's clear) and neither are ⌘+ ⌘− (`chatZoomKey`, which sees ⌘0 only when nothing is split). **⌥⌘1 / ⌥⌘2 are the one ⌥⌘ pair about the shape**
+  (2026-09-27): the same two panes stood one over the other — the digit is the pane, the modifier the layout; see
+  *The chat column's two halves*.
 * **⌘W is the Window menu's item, not the forwarder's** (2026-09-22): a key equivalent is dispatched before any
   responder, so the page never sees ⌘W in the app. `closeHalfOrWindow` asks the board (`peixKey('KeyW','cmd')`)
   and calls `performClose` only when it answers false. Anything else the board wants to take off ⌘-something that
@@ -400,6 +403,21 @@ refuses to run against the real directory for the same reason.
   The left half keeps the plain ids (`#ptabs`, `#term`, `#termBody`, `#log`): it is the whole column while nothing
   is split, and the harness reads it by those names. `GEL` maps each half to its elements, `terms[g]` owns that
   half's xterm and socket, and the take-over state (armed, failed) is the board's `drawer`, not a terminal's.
+* **⌥⌘2 splits it one half over the other, and ⌥⌘1 / ⌥⌘2 are the top and the bottom** (2026-09-27, Ricardo: "hotkey 2
+  to change to horizontal split. cmd 2 makes the vertical split · hotkey 1 goes the top split (pane 1 is up, pane 2 is
+  down) · cmd 0 still closes the non-active pane · this should be a per chat setting"): **the digit is the pane, the
+  modifier the layout** — pane 1 is left or top, pane 2 right or bottom, the keys go to the pane named, and a key
+  pressed on the other layout turns the split first (`hotGroup(g, stack)` → `stackSplit`, which is `syncTerm` and a
+  refit: the same terminals in the same halves, nothing re-attached). The layout is the chat's like the split
+  (`stacked`, a set of ids beside `splits`) **and outlives it** — `unsplit` leaves it alone — so the split the board
+  makes itself for a new tab comes back the way the chat was left; a split asked for by hand takes its key's layout.
+  The divider's place is the board's, one per layout (`prefs.splitAt`, `prefs.stackAt`): a tall column and a wide one
+  want it in different places. Stacked is `#groups.stack` (`flex-direction: column`; the halves' flex basis runs
+  along either axis, so `applySplit` is the same arithmetic), the divider 6 px tall across the column and dragged by y;
+  the second strip's ◫ / ⊟ (`.gturn`) turns it too. ⌘0 and ⌘W carry no layout and needed no change. The app forwards
+  ⌥⌘1 / ⌥⌘2 by key code (18, 19), since ⌥ composes a symbol over a digit on a Portuguese layout. **A zsh ended by its ×
+  lingers on the summary with `exited` set** — a wait for the tab to go is a wait on that, not on `s.shell` being gone.
+  → `scripts/scenarios/split-stacked.mjs`, Decisions 2026-09-27.
 * **A tab that is new opens in the second half, and splits the column the first time** (2026-09-22): `openNewTab()`
   — a zsh (⌥⌘T), a GitHub page, the editor — because what a second tab is for is standing beside the chat, not
   replacing it. **Claude keeps the first half** (2026-09-25): every split puts the chat on the left whatever the
@@ -557,9 +575,9 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
   `assert`, `cmd(code)` (a plain ⌘ press; `key(code)` is ⌥⌘), `screen(g)` / `waitPrompt(ms, g)` (the half, 0 by
-  default — the whole column while nothing is split), `drag(from, to, mid)` (a real press, move and release). The twenty-seven in `scripts/scenarios/` are the
+  default — the whole column while nothing is split), `drag(from, to, mid)` (a real press, move and release). The twenty-eight in `scripts/scenarios/` are the
   regression checks for the drawer (re-attach, restart, geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a
-  compose key), the hotkeys, the tab strip and the split, the new-chat flow, the project step's folders and ✕,
+  compose key), the hotkeys, the tab strip and the split (side by side and stacked), the new-chat flow, the project step's folders and ✕,
   the chat list's rules, its filter, its ends and its timeline, the card sizes and marks, the notifications switch, the usage bar, the project cue, the header's PRs
   and its ··· menu, the chat's links, the top row around the notch.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite

@@ -166,6 +166,11 @@
   #gsplit { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--panel); }
   #gsplit:hover, #gsplit.drag { background: var(--accent); }
   #gsplit[hidden] { display: none; }
+  /* The same two halves one over the other (2026-09-27, ⌥⌘1 / ⌥⌘2 — Ricardo: "hotkey 2 to change to horizontal
+     split. cmd 2 makes the vertical split"): #groups turns into a column and the divider lies across it. The halves
+     keep their flex basis (applySplit), which runs along whichever axis is the main one, so nothing else moves. */
+  #groups.stack { flex-direction: column; }
+  #groups.stack > #gsplit { width: auto; height: 6px; cursor: row-resize; border-left: 0; border-right: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
   /* Which half the keys are in: a 2 px accent rule under its tabs (inset, so nothing moves by a pixel when it
      lights up). Only worth saying when there are two halves. */
   main.split .grp.on > .ptabs { box-shadow: inset 0 -2px 0 var(--accent); }
@@ -729,6 +734,7 @@
   .grp.drop > .ptabs { background: color-mix(in srgb, var(--accent) 16%, var(--panel)); box-shadow: inset 0 0 0 1px var(--accent); }
   .grp.drop > .gbody { outline: 2px dashed var(--accent); outline-offset: -4px; }
   .ptabs .nav.gclose { color: var(--muted); font-size: 12px; }
+  .ptabs .nav.gturn { font-size: 12px; }
   .ptabs .nav.gclose:hover { color: var(--needs); border-color: var(--needs); }
   .ptab .x { opacity: .5; font-size: 12px; line-height: 1; } .ptab .x:hover { opacity: 1; color: var(--needs); }
   /* The address of the page on top (2026-09-21): without its scheme so the tail fits, selectable by hand, and a
@@ -949,8 +955,9 @@
     <kbd>⌥⌘N</kbd><span>a chat — a project, a folder in ~/acme, or ＋ clone a repo of the org · then its open chats or ＋ a new one · ✕ takes a row off the board</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
     <kbd>⌥⌘←→</kbd><span>the tab to the left / right: chat, zsh, GitHub pages, VS Code — split, across both halves' strips · drag a tab onto the other half to move it there</span>
+    <kbd>⌥⌘1 ⌥⌘2</kbd><span>the halves one over the other: the top one, the bottom one — ⌥⌘2 splits the chat that way the first time; side by side, either turns it</span>
     <kbd>⌘B</kbd><span>fold the chat list into a rail, and back</span>
-    <kbd>⌘1 ⌘2</kbd><span>the left half of the chat, the right one — ⌘2 splits it in two the first time</span>
+    <kbd>⌘1 ⌘2</kbd><span>the left half of the chat, the right one — ⌘2 splits it in two the first time; one over the other, either turns it back · the digit is the pane, the modifier the layout</span>
     <kbd>⌘W</kbd><span>close the half the keys are in — or the picker · with one half it is the window's own key</span>
     <kbd>⌘0</kbd><span>only this half: the other one closes and this tab is the column · with one half, the size back to normal</span>
     <kbd>⌃⌘F</kbd><span>full screen up to the notch, in the app — the green button too (⌥-click zooms): the strip beside the camera takes the list's head and the chat's title · remembered across launches</span>
@@ -1029,7 +1036,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, foldBy: {}, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, usageFolded: false, prsOpen: false, cards: 'large', ringsInStep: true };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, sound: false, showAll: false, toolsMode: 'collapsed', foldCode: true, foldBy: {}, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, usageFolded: false, prsOpen: false, cards: 'large', ringsInStep: true };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -2037,10 +2044,12 @@
   // O is a new oracle chat, opening on its environments (hotOracle), P the project picker, K the chat picker (every
   // ready or clauding chat, searched), F the chat list's own filter box (hotFind), N a new chat anywhere (the
   // project, then the folder, then the environment when the folder's Taskfile launches claude); ↑ and ↓ open the
-  // chat above or below in the list; ← and → the tab to the left or right in the strip (chat | zsh | GitHub pages | VS Code, wrapping).
+  // chat above or below in the list; ← and → the tab to the left or right in the strip (chat | zsh | GitHub pages | VS Code, wrapping);
+  // 1 and 2 the halves of the chat column stood one over the other (2026-09-27) — ⌘1 / ⌘2 are the same halves side by
+  // side: the digit is the pane, the modifier the layout, and a key pressed on the other layout turns it (hotGroup).
   // A modal up (the picker, the project editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1) };
+  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘B folds the chat list. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -2591,8 +2600,14 @@
   // Only the divider's place is the board's (prefs.splitAt), like the column widths.
   const splits = new Set();
   const autoSplit = new Set();   // …and which of those splits the board made itself, opening a second tab (openNewTab)
+  // …and which chats stand their halves one over the other (2026-09-27, ⌥⌘1 / ⌥⌘2 against ⌘1 / ⌘2 — Ricardo: "this
+  // should be a per chat setting"). The chat's too, and kept past its split — unsplit leaves it alone — so the next
+  // split, a tab opening beside the chat, comes back the way it was left. The divider's place is the board's for each
+  // layout (prefs.splitAt, prefs.stackAt): a tall column and a wide one want it in different places.
+  const stacked = new Set();
   const isSplit = s => !!s && splits.has(s.id);
   const splitNow = () => splits.has(state.current);
+  const stackNow = () => splitNow() && stacked.has(state.current);
   let focusG = 0;                                   // the half the keys, the pickers and a new tab act on
   const curTerm = () => terms[focusG];
   const termFor = id => id ? terms.find(t => t.id === id) || null : null;
@@ -2732,7 +2747,7 @@
   window.peix = {
     state: () => ({ current: state.current, project: prefs.project, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft, fill: state.fill, notch: state.notch, hidden: [...state.hidden],
       paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, [...v]])), tab: state.sessions.has(state.current) ? tabOf(state.sessions.get(state.current)) : null, tabs: state.sessions.has(state.current) ? tabKeys(state.sessions.get(state.current)) : [], pr: shownPr.url,
-      split: splitNow(), focusG, halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
+      split: splitNow(), stacked: stackNow(), focusG, halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
       strips: state.sessions.has(state.current) ? [0, 1].map(g => keysIn(state.sessions.get(state.current), g)) : [[], []],
       timeline: { k: tl.k, want: tl.want, press: !!tl.press, runs: tl.runs.map(r => ({ g: r.g, day: r.day, n: r.n, i: r.i })) },
       termId: curTerm().id, termSession: curTerm().sessionId, termExited: curTerm().exited }),
@@ -2941,6 +2956,7 @@
       const tip = two ? ' · drag it to the other half to move it there' : '';
       const tab = (k, label, title, x) => `<button class="ptab${cur === k ? ' on' : ''}${isPaneTab(k) ? ' pane' : ''}" data-tab="${esc(k)}" title="${esc(title + tip)}">${esc(label)}${x ? `<span class="x" title="${esc(x)}">×</span>` : ''}</button>`;
       const navs = (isPaneTab(cur) ? '<button class="nav" data-nav="back" title="Back">‹</button><button class="nav" data-nav="forward" title="Forward">›</button><button class="nav" data-nav="reload" title="Reload">↻</button><button class="nav" data-nav="external" title="Open this page in your browser">↗</button>' : '')
+        + (two ? `<button class="nav gturn" title="${stackNow() ? 'The halves side by side · ⌘1 ⌘2' : 'The halves one over the other · ⌥⌘1 ⌥⌘2'}">${stackNow() ? '◫' : '⊟'}</button>` : '')
         + (two ? '<button class="nav gclose" title="Close this half — the other one becomes the whole column · ⌘W">⨯</button>' : '');
       el.innerHTML = keys.map(k =>
         k === 'chat' ? tab(k, termLive(s) ? 'claude' : 'chat', `${termLive(s) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C`)
@@ -2983,6 +2999,7 @@
     const g = strip.id === 'ptabsB' ? 1 : 0;
     if (e.target.closest('.gclose')) return closeHalf(g);
     const s = state.sessions.get(state.current); if (!s) return;
+    if (e.target.closest('.gturn')) return stackSplit(s, !stacked.has(s.id));
     const nav = e.target.closest('.nav'); if (nav) { focusGroup(g); post({ type: 'nav', what: nav.dataset.nav }); return; }
     const url = e.target.closest('.purl'); if (url) return copyPaneUrl(url);
     const b = e.target.closest('.ptab'); if (!b) return;
@@ -3071,12 +3088,16 @@
   // paths — cmd 1 and 2 should move focus to left or right panel"). Both halves pick from the one chat's tabs,
   // and a tab is only ever in one of them (setTab trades places). ⨯ on the right half's strip closes the split:
   // whatever the keys were in stays, the other half's tab goes back to being one the strip offers.
+  // ⌥⌘1 and ⌥⌘2 are the same two panes one over the other (2026-09-27, Ricardo: "hotkey 2 to change to horizontal
+  // split. cmd 2 makes the vertical split · hotkey 1 goes the top split (pane 1 is up, pane 2 is down)"): the digit
+  // is the pane, the modifier the layout, and a key pressed on the other layout turns it. ⌘0 and ⌘W carry no layout.
   function applySplit() {
-    const on = splitNow();
+    const on = splitNow(), stack = stackNow();
     if (!on) focusG = 0;
     $('#main').classList.toggle('split', on);
+    $('#groups').classList.toggle('stack', stack);
     $('#grpB').hidden = !on; $('#gsplit').hidden = !on;
-    const at = Math.max(.15, Math.min(.85, prefs.splitAt || .5));
+    const at = Math.max(.15, Math.min(.85, (stack ? prefs.stackAt : prefs.splitAt) || .5));
     $('#grp').style.flex = on ? `${at} 1 0` : '1 1 0';
     $('#grpB').style.flex = `${1 - at} 1 0`;
   }
@@ -3089,9 +3110,11 @@
     renderTabs(s || null); postPane(s || null);
     if (s) renderHead(s);
   }
-  function splitOn() {
+  function splitOn(stack = false) {
     const s = state.sessions.get(state.current); if (!s) return noChat();
-    splitChat(s, false); applySplit();   // asked for by hand: it keeps its empty half
+    splitChat(s, false);                 // asked for by hand: it keeps its empty half
+    if (stack) stacked.add(s.id); else stacked.delete(s.id);
+    applySplit();
     focusG = 1;
     syncTerm(s); renderHead(s);
     focusBoard(); focusTerm();
@@ -3121,10 +3144,19 @@
     closeHalf(focusG ? 0 : 1);
     return true;
   }
-  function hotGroup(g) {
-    if (g === 1 && !splitNow()) return splitOn();
-    if (!splitNow()) return;   // ⌘1 with one half is where you already are
+  /** ⌘1 / ⌘2 (side by side) and ⌥⌘1 / ⌥⌘2 (one over the other): the keys to that pane, the split made or turned first. */
+  function hotGroup(g, stack = false) {
+    if (g === 1 && !splitNow()) return splitOn(stack);
+    if (!splitNow()) return;   // ⌘1 / ⌥⌘1 with one half is where you already are
+    const s = state.sessions.get(state.current);
+    if (s && stacked.has(s.id) !== stack) stackSplit(s, stack);
     focusGroup(g); focusBoard(); focusTerm();
+  }
+  /** This chat's halves the other way round — one over the other, or side by side again. syncTerm re-attaches
+      nothing (the same terminals in the same halves) and reposts the pane; the terminals refit to their new bodies. */
+  function stackSplit(s, on) {
+    if (on) stacked.add(s.id); else stacked.delete(s.id);
+    syncTerm(s); fitTerm();
   }
   applySplit();
   {
@@ -3132,8 +3164,9 @@
     bar.addEventListener('mousedown', e => { dragging = true; bar.classList.add('drag'); document.body.style.userSelect = 'none'; e.preventDefault(); });
     window.addEventListener('mousemove', e => {
       if (!dragging) return;
-      const r = $('#groups').getBoundingClientRect();
-      prefs.splitAt = Math.max(.15, Math.min(.85, (e.clientX - r.left) / r.width));
+      const r = $('#groups').getBoundingClientRect(), stack = stackNow();
+      const at = Math.max(.15, Math.min(.85, stack ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width));
+      if (stack) prefs.stackAt = at; else prefs.splitAt = at;
       applySplit();
     });
     window.addEventListener('mouseup', () => { if (!dragging) return; dragging = false; bar.classList.remove('drag'); document.body.style.userSelect = ''; savePrefs(); fitTerm(); });
