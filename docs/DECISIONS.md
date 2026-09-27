@@ -59,6 +59,13 @@ transform and opacity where it can — the compositor's kind of motion, as the r
   ease), and `::details-content` from opacity 0 and 3 px up — both engines; Chrome also runs the height, under
   `@supports (interpolate-size: allow-keywords)`, which WebKit has not got, so there the height still jumps under the
   fade. Measured: the chevron mid-turn and the body at 0.85 with its height at 1084 of 1420 px, 120 ms after the click.
+* **Reduced motion, honoured throughout**: the spinner and the timeline respected it; the ring, the blink, the pulse,
+  the flare and the new moves did not. One block now, at the end of the CSS, with a line for every animation on the
+  board: clauding and watching a steady edge in the light's colour (the `::before` square filled flat), a question a
+  steady red border with its glow, the dots still, the spinner its full frame, no flare; dialogs, the popover and the
+  note fade without moving; a fold's chevron and body switch; `drawCards` reads `REDUCED` and puts cards in place.
+  Colour eases stay — a fade is not motion. → `scripts/scenarios/reduced-motion.mjs`, the media feature emulated over
+  CDP (which `matchMedia` sees too), then lifted: the ring turns again.
 
 ## Decisions of 2026-09-27, night — an empty chat's card can be ticked done
 

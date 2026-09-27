@@ -307,7 +307,6 @@
     100% { transform: translateX(-90px); }
   }
   @keyframes pixhop { 0% { transform: none; } 83.333% { transform: translateY(-2px); } 87.5% { transform: translateY(-4px); } 95.833% { transform: translateY(-2px); } 100% { transform: none; } }
-  @media (prefers-reduced-motion: reduce) { .gsep.claude .pix, .gsep.claude .pix svg { animation: none; } }
   /* A day's line (2026-09-23): its day alone, centred — "today", else DD-MM-YYYY (2026-09-27, Ricardo: "remove the
      fishes from the date spacing between cards", then "remove the lines left and right of the date"; still fish
      either side before, two hairlines for an hour). */
@@ -445,7 +444,6 @@
     to { border-color: var(--line); box-shadow: none; }
   }
   .card.landed { animation: landed .6s ease-out both; }
-  @media (prefers-reduced-motion: reduce) { .card.landed { animation: none; } }
   /* Hover and the open chat enhance the card's own colour, never the accent (2026-09-20, Ricardo: "still show a
      orange border … just enhance the border with its own color", then "the hover cards, make the background as if
      it was select", then "even stronger"): hover is the open card's solid tint (65 % of the colour since 2026-09-26,
@@ -944,6 +942,26 @@
   .dfoot .err { color: var(--needs); font-size: 12px; }
   .dfoot .danger { color: var(--needs); }
 
+  /* ---- reduced motion: the board says the same, still ---- */
+  /* (2026-09-27, night) The spinner and the timeline honoured it; the ring, the blink, the pulse and the list's moves did
+     not. Under it every state keeps its reading without the motion: clauding and watching a steady edge in the light's
+     colour, a question a steady red border, the dots still, the spinner its full frame, no flare; the list puts cards
+     in place (drawCards reads REDUCED); dialogs, the popover and the note fade without moving; a fold's chevron and body
+     switch. Colour eases stay — a fade is not motion. Every animation on the board has its line here; a new one gets
+     one. → scripts/scenarios/reduced-motion.mjs */
+  @media (prefers-reduced-motion: reduce) {
+    .card.working::before, .card.watching::before { animation: none; background: var(--lit); }
+    .card.asking { animation: none; border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
+    .card.landed { animation: none; }
+    .dot.working, .dot.needs-input { animation: none; }
+    .gsep.claude .pix, .gsep.claude .pix svg { animation: none; }
+    dialog, dialog:not([open]), .pop, .pop[hidden], .note, .note.out { transform: none; }
+    @starting-style { dialog[open], .pop:not([hidden]), .note { transform: none; } }
+    .toolgroup > summary::before, .codefold > summary::before { transition: none; }
+    :is(.toolgroup, .codefold)::details-content, :is(.toolgroup, .codefold):not([open])::details-content { transform: none; transition-duration: 0s; }
+    .sq.pick, .shead h2 .sq { transition: opacity .12s; }
+  }
+
   /* ---- syntax highlighting (highlight.js class names, our colours) ---- */
   /* Written out here rather than shipping a hljs theme stylesheet, so the palette follows the
      app's light/dark tokens like everything else. */
@@ -1077,6 +1095,7 @@
 //   css · composer (stale chats only)
 //   css · terminal drawer: the real claude, in a PTY on the server
 //   css · project editor
+//   css · reduced motion: the board says the same, still
 //   css · syntax highlighting (highlight.js class names, our colours)
 //   js  · header controls
 //   js  · sessions column width
