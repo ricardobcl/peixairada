@@ -186,7 +186,8 @@
      list's head is the cue: the project's colour square and its name — a click there is ⌥⌘P's picker — and × to
      go back to ALL, which is the one project without one. The list's left edge and the head's tint are the
      project's colour, ALL's black. */
-  #stitle { cursor: pointer; border-radius: 6px; margin: -4px 0 -4px -6px; padding: 4px 6px; }
+  #stitle { flex: 0 1 auto; cursor: pointer; border-radius: 6px; margin: -4px 0 -4px -6px; padding: 4px 6px; }   /* as wide as the name: the magnifier's field takes the rest */
+  #stitle[hidden] { display: none; }   /* on ALL; `.colhead .t` is a flex box, which beats the attribute's own display */
   #stitle:hover { background: color-mix(in srgb, var(--repo, var(--nocolor)) 26%, transparent); }
   #stitle > .t { flex: 0 1 auto; display: block; }   /* only as wide as the name, so × sits right after it; a block, so a long one ends in … */
   #stitle .ab { display: none; }   /* the short name, for the rail */
@@ -198,9 +199,14 @@
   #shd { gap: 5px; padding: 7px 10px; }
   #shd .brand, #shd .brand .logo { width: 24px; height: 24px; }
   #shd .btn.icon { padding: 3px 5px; }
-  #shd #filters { display: flex; align-items: center; gap: 3px; flex: none; text-transform: none; letter-spacing: 0; font-weight: 400; }
-  #shd #filters.searching #fchips { display: none; }   /* the box takes the chips' place while it is open */
-  #shd .fq { width: 130px; }
+  #shd #filters { display: flex; align-items: center; gap: 3px; flex: 1 1 auto; text-transform: none; letter-spacing: 0; font-weight: 400; }
+  /* The magnifier is a field as wide as the row leaves it (2026-09-27, Ricardo: "the search icon on top, should take
+     the entire space between the app icon and the ready counter"; an icon-sized pill until then, and the box took the
+     chips' place while it was open): at rest a pill from the fish — or the project's name — to the first chip, the
+     icon at its left end; open, the icon is the field's left cap and the box runs on to the chips, which stay. */
+  #shd .fsearch { flex: 1 1 auto; min-width: 28px; height: 20px; cursor: text; }
+  #shd #filters.searching .fsearch { flex: none; min-width: 0; color: var(--accent); border-color: var(--accent); background: var(--bg); border-right: 0; border-radius: 12px 0 0 12px; padding-right: 3px; }
+  #shd .fq { flex: 1 1 0; width: 0; height: 20px; margin-left: -3px; border-left: 0; border-radius: 0 12px 12px 0; padding-left: 3px; }   /* width 0: a box's own width is what it asks of the row, and it would push ＋ and « out */
   /* the filter boxes: a magnifier in the row, the box itself only while it is open or has text */
   .fsearch { font: inherit; border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 12px; padding: 2px 7px; cursor: pointer; display: inline-flex; align-items: center; flex: none; }
   .fsearch .ic { width: 12px; height: 12px; fill: currentColor; }

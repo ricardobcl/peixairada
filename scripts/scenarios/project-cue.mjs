@@ -36,6 +36,21 @@ export default async function (ctx) {
   ctx.assert.ok(out.row.h <= 44 && out.row.under === 0, 'one row, and the cards right under it');
   ctx.assert.equal(out.row.plus, '', '＋ is an icon, no words');
   ctx.assert.deepEqual(out.row.chips, ['fchip ready on', 'fchip working on', 'fchip done on'], 'the three state chips, on');
+  // The magnifier is a field from the fish to the first chip (2026-09-27, late; an icon-sized pill before, and the
+  // box took the chips' place): open, its icon is the box's left cap, the box runs on to the chips, which stay put
+  const field = () => ctx.evaluate(`JSON.stringify((() => { const x = q => { const r = document.querySelector(q).getBoundingClientRect(); return r.width ? [Math.round(r.left), Math.round(r.right)] : null; };
+    return { fish: x('#brandBtn'), btn: x('#qBtn'), box: x('#q'), chip: x('#fchips .fchip'), plus: x('#newChatBtn') }; })())`).then(JSON.parse);
+  out.field = { rest: await field() };
+  const { rest } = out.field;
+  ctx.assert.ok(rest.btn[0] - rest.fish[1] <= 6 && rest.chip[0] - rest.btn[1] <= 4 && rest.btn[1] - rest.btn[0] > 100, `at rest the magnifier spans the fish to the first chip: ${JSON.stringify(rest)}`);
+  await ctx.evaluate(`document.querySelector('#qBtn').click()`);
+  out.field.open = await field();
+  const { open } = out.field;
+  ctx.assert.ok(open.box && open.box[0] <= open.btn[1] && open.chip[0] - open.box[1] <= 4 && open.btn[0] === rest.btn[0], `open, the icon and the box are the same span: ${JSON.stringify(open)}`);
+  ctx.assert.deepEqual([open.chip, open.plus], [rest.chip, rest.plus], 'the chips and ＋ stay where they were');
+  await ctx.shot('1b-search', { x: 0, y: 0, width: 520, height: 140 });
+  await ctx.evaluate(`document.querySelector('#q').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
+  ctx.assert.deepEqual(await field(), rest, 'Esc puts the field back as it was');
   await ctx.evaluate(`document.querySelector('#newChatBtn').click()`);
   ctx.assert.match(await ctx.evaluate(`document.querySelector('#pick').open && document.querySelector('#pickq').placeholder`), /^New chat/, '＋ on ALL asks which project first');
   await closePick();

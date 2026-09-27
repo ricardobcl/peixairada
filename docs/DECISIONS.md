@@ -23,6 +23,11 @@ bit more the 3 counters".
 * **The card's age comes back under the pointer only**, where it stands now (left of the ✓), not top left where the
   afternoon had it: transparent at rest but keeping its room, so the row does not shift when it shows. At rest a
   card says states — the ✓, the F, the chips — and the age, a reading, waits to be asked for.
+* **The magnifier is a field**, from the fish (or the project's name) to the first state chip: a search box at rest,
+  not an icon in a pill. Opened, the icon becomes the box's left cap and the box runs on to the chips — which stay,
+  now that the box has room of its own; they hid while it was open, since it had to take theirs. `#stitle` is as wide
+  as the name now (it held the row's slack before), and hidden on ALL for real: `[hidden]` lost to `.colhead .t`'s
+  `display: flex`, so an empty title had stood there invisibly all along.
 
 ## Decisions of 2026-09-27, small hours after — ⌃⌘F fills the screen up to the notch
 

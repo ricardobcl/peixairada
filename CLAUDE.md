@@ -83,8 +83,11 @@ refuses to run against the real directory for the same reason.
   head is the project filter's whole cue** — the fish (the SSE light), then `#stitle`: the project's name (2026-09-27: no colour square — Ricardo, "remove the color picking on the
   filter next to the icon, and leave it to the chats" — and **nothing at all on ALL**, `hidden`: "we assume not having
   anything is the default All"; no ▾ since 2026-09-26), a click being ⌥⌘P's picker, and × back to ALL; the list's
-  edge and the head's tint are the project's colour. **The head is one row** (2026-09-24): `#filters` — the magnifier, whose box takes the chips'
-  place while open, and the state chips, a dot and a count (the word from 600 px of list, the count gone under 340;
+  edge and the head's tint are the project's colour. **The head is one row** (2026-09-24): `#filters` — the magnifier, **a field as wide as
+  the row leaves it** (2026-09-27, late, Ricardo: "the search icon on top, should take the entire space between the app
+  icon and the ready counter"): at rest `#qBtn` spans the fish (or the project's name, `#stitle` being `flex: 0 1
+  auto`) to the first chip; open, it is the left cap of `#q` (`width: 0; flex: 1 1 0`, or the box's own width pushes ＋
+  and « out) and the chips stay where they were — and the state chips, a dot and a count (the word from 600 px of list, the count gone under 340;
   `#sessions` is a size container) — then ＋ (`#newChatBtn`: one folder starts it, several ask which, ALL is ⌥⌘N's
   flow) and «. The name is what gives way, which is why the list's minimum is 300 px. The colour picker is the chat header's. On the
   rail the head keeps the fish and, for a project, its short name (`projAbbr`, `.ab`) as the picker's handle. ⌥⌘P's rows carry what the column's did: ✎ on a named project (the
@@ -244,7 +247,9 @@ refuses to run against the real directory for the same reason.
 * **The plan usage is the chat list's footer** (2026-09-24): `#usage`, the fourth row of `#sessions`. Open, a row
   per window — name, a bar in `--spend` (orange; red from 90 %, `uColor`), a tick where the window's clock stands
   (`uPace`, only for the windows whose length `uSpan` knows), percent, time to reset; folded (`prefs.usageFolded`,
-  the heading or the chevron), one line of rings, 34 px with the cog's cell beside it (`#pfoot`, in `#sfoot`; no
+  the heading or the chevron), one line of rings — 20 px apart from 350 px of list (a container query on
+  `#sessions`; 12 below it, where 20 would wrap the line, and everywhere before 2026-09-27) —, 34 px with the cog's
+  cell beside it (`#pfoot`, in `#sfoot`; no
   rule between them and no border on the cog — the cell's hover wash is its only outline);
   on the rail, the rings stacked with the percent inside and the cog under them. **The markup holds both shapes**
   and CSS picks (`.folded`, `main.scompact`), so ⌘B re-renders nothing. `loadUsage()` on load, every `USAGE_EVERY_MS` while visible, once a
@@ -300,7 +305,9 @@ refuses to run against the real directory for the same reason.
   room. `NSFullScreenMenuItemEverywhere` is registered false, or AppKit adds its own *Enter Full Screen* beside ours;
   the frame's autosave is off while filled; ⌘W leaves the fill first (no close button on a borderless window);
   Info.plist says `NSPrefersDisplaySafeAreaCompatibilityMode` false. Mission Control shows a window, not a Space. On
-  this Mac the strip is 32 pt and the housing x 771.5–956.5 of 1728. → `scripts/scenarios/notch.mjs`, Decisions 2026-09-27.
+  this Mac the strip is 32 pt and the housing x 771.5–956.5 of 1728. **From a shell, `kill -USR1 $(pgrep -x peixAIrada)`
+  is the same toggle** — the app log says `fill: on {{0, 0}, {1728, 1117}}` — since no drawer can press a key in the app
+  without an Accessibility grant. → `scripts/scenarios/notch.mjs`, Decisions 2026-09-27.
 * **The pickers match fuzzily, and with something typed the best match leads** (2026-09-21): `fuzzy(fields, q)` —
   each word of the query hunted *within one field* (`chatFields(s)`), letters in order, a run worth more than
   scattered ones, a word's start worth more than its middle, a gap costing; a field's worth falls off down the list,
