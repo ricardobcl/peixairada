@@ -202,8 +202,7 @@ refuses to run against the real directory for the same reason.
   claude icon animation in the middle"; a school of `><>` swimming right since 2026-09-20, kept as one node across
   renders) — and a still line **under every run of cards from one day** (2026-09-23,
   `dayHtml()`, plain markup since nothing on it moves): the day centred — `today`, else `DD-MM-YYYY` (`dayName()`, by
-  `userAt`) — between two hairlines (`.gsep i`; 2026-09-27, `<><` either side before, each its own item so none
-  was cut in half). A day's line closes the cards *above* it, so the oldest day in the list gets one at the bottom; the list is grouped
+  `userAt`) — alone on its line (2026-09-27; `<><` either side before, then two hairlines for an hour). A day's line closes the cards *above* it, so the oldest day in the list gets one at the bottom; the list is grouped
   first, so a day can come back (a done card from today after older ready ones) and each run gets its own line.
   → `scripts/scenarios/day-separator.mjs`. A finished job moves its card into the ready group, where its
   last prompt puts it.

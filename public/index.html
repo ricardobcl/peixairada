@@ -247,12 +247,12 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes breathe { 50% { opacity: .5; } }   /* softer than the dots' pulse: a divider that dropped to a third read as a flicker */
   @media (prefers-reduced-motion: reduce) { .gsep.claude .ic { animation: none; } }
-  /* A day's line (2026-09-23): its day in the middle — "today", else DD-MM-YYYY — between two hairlines (2026-09-27,
-     Ricardo: "remove the fishes from the date spacing between cards"; still fish either side before). Two equal
-     boxes, so the day sits dead centre. */
-  .gsep.day { display: flex; align-items: center; gap: 10px; }
+  /* A day's line (2026-09-23): its day alone, centred — "today", else DD-MM-YYYY (2026-09-27, Ricardo: "remove the
+     fishes from the date spacing between cards", then "remove the lines left and right of the date"; still fish
+     either side before, two hairlines for an hour). The divider above keeps its hairlines. */
   .gsep i { flex: 1; min-width: 0; height: 1px; background: color-mix(in srgb, var(--muted) 35%, transparent); }
-  .gsep.day b { flex: none; font-weight: 700; color: var(--muted); }
+  .gsep.day { text-align: center; }
+  .gsep.day b { font-weight: 700; color: var(--muted); }
   #slist .none { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 0; }
   /* ---- the chat list's timeline: its days, down the left edge ---- */
   /* (2026-09-25; pared down 2026-09-26) A slim rail down the far left of the list, beside its coloured edge, the list
@@ -1378,15 +1378,15 @@
   // day there, using 'today' for today (all cards up are from today) and the rest … DD-MM-YYYY"). The day is your last
   // touch, like the order. A line closes the run of cards *above* it, so the oldest day in the list gets one too, at
   // the bottom; the list is grouped first, so the done cards can bring a day back after older ready ones, and each run
-  // gets its own line. The day is centred between two hairlines (2026-09-27, Ricardo: "remove the fishes from the
-  // date spacing between cards"; still fish either side before, from the same day's "center the date … stop the
-  // animation, leave it static with the fishes") — nothing moves, so it is plain markup.
+  // gets its own line. The day stands alone, centred (2026-09-27, Ricardo: "remove the fishes from the date spacing
+  // between cards", then "remove the lines left and right of the date"; still fish either side before, from the same
+  // day's "center the date … stop the animation, leave it static with the fishes") — nothing moves, plain markup.
   const pad2 = n => String(n).padStart(2, '0');
   const dayName = s => {
     const d = new Date(wordAt(s)); if (isNaN(d)) return '';
     return new Date(d).setHours(0, 0, 0, 0) === new Date().setHours(0, 0, 0, 0) ? 'today' : `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()}`;
   };
-  const dayHtml = day => `<div class="gsep day" title="above: the chats you were in ${day === 'today' ? 'today' : 'on ' + day}"><i></i><b>${day}</b><i></i></div>`;
+  const dayHtml = day => `<div class="gsep day" title="above: the chats you were in ${day === 'today' ? 'today' : 'on ' + day}"><b>${day}</b></div>`;
   function renderSessionList(p) {
     const pc = projColor(p); if (pc) $('#sessions').style.setProperty('--repo', pc); else $('#sessions').style.removeProperty('--repo');
     // The magnifier matches the way ⌥⌘K does (2026-09-25, Ricardo: "make hotkey F fuzzy search like K"): any letters

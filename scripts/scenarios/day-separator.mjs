@@ -1,9 +1,9 @@
 // The day's lines in the chat list. The fish have swum between the clauding cards and the ready ones since
 // 2026-09-20; since 2026-09-22 a second school marked where the day turned over, and since 2026-09-23 there is one
-// such line under every day's run of cards, naming it in the middle — "today", else DD-MM-YYYY — between two
-// hairlines (fish either side that kept still, until 2026-09-27). A line closes the day *above* it, so the oldest
+// such line under every day's run of cards, naming it in the middle — "today", else DD-MM-YYYY — alone (fish either
+// side that kept still until 2026-09-27, then two hairlines for an hour). A line closes the day *above* it, so the oldest
 // day in the list gets one too. What this
-// checks is the lines' places and names, that the day is centred between its two lines and nothing on it moves, and that a day the list
+// checks is the lines' places and names, that the day is centred with nothing beside it and nothing on it moves, and that a day the list
 // brings back (a done card from today, after older ready ones) gets a line of its own. The list is narrowed to the
 // scenario's folder by the project picker, not the magnifier: a query orders the list by the match since 2026-09-25,
 // and leaves the lines out (scripts/scenarios/chat-filter.mjs).
@@ -14,8 +14,8 @@ import { tmpdir } from 'node:os';
 export const meta = { server: true, fixture: 'auto' };
 
 // What #slist holds, in order: a card is its title, a line is its kind and the day it names. A day's line also says
-// where its day sits against the line's middle, the two hairlines either side of it (their width and height, and
-// that they hold no text), and how many animations run anywhere on it.
+// where its day sits against the line's middle, whatever stands either side of it (nothing, since 2026-09-27), and
+// how many animations run anywhere on it.
 const strip = ctx => ctx.evaluate(`JSON.stringify([...document.querySelector('#slist').children].map(el => {
   if (!el.classList.contains('gsep')) return { card: el.querySelector('.title')?.textContent || '' };
   const b = el.querySelector('b'), r = el.getBoundingClientRect(), br = b?.getBoundingClientRect();
@@ -60,7 +60,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.all.map(x => x.sep ? { sep: x.sep, day: x.day } : x), expect, 'a line under each day, naming it: today, then DD-MM-YYYY');
   for (const x of out.all.filter(x => x.sep)) {
     ctx.assert.ok(Math.abs(x.off) <= 1, `${x.day} sits in the middle of its line (${x.off}px off)`);
-    ctx.assert.ok(x.sides.length === 2 && x.sides.every(f => f.w > 40 && f.h === 1 && f.text === ''), `${x.day} has a hairline either side and nothing else: ${JSON.stringify(x.sides)}`);
+    ctx.assert.deepEqual(x.sides, [], `${x.day} stands alone on its line`);
     ctx.assert.equal(x.anim, 0, `and nothing on ${x.day}'s line moves`);
   }
 

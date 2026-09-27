@@ -4,6 +4,17 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-27.
 
+## Decisions of 2026-09-27, night — the head bare on ALL, the age beside the tick, About behind the fish
+
+Ricardo: "remove the lines left and right of the date, on the card separators · clicking on the app icon should
+show an About info box center screen · the ALL next to the app icon should disappear, as we assume not having
+anything is the default All (aka no filter) · also, remove the color picking on the filter next to the icon, and
+leave it to the chats that we have right now · the time since last update on the card should live left of the Done
+icon on each card".
+
+* **The day lines are the day alone**, centred: the two hairlines of an hour before went the way of the fish. The
+  divider between the clauding and the ready cards keeps its hairlines either side of Claude's mark.
+
 ## Decisions of 2026-09-27, evening — the lines between the cards, and the rings' step
 
 Ricardo: "put that phase lock sync as an toggle on the settings cog, so I can switch back and forth to see what I
