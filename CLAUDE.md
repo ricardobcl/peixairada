@@ -100,8 +100,10 @@ refuses to run against the real directory for the same reason.
   (`askHtml`). The three CSS rules are in priority order — work beats a monitor, a question beats both — **and each
   sets every variable**, since a card can be two of them (clauding with a monitor) and what a rule leaves out the
   earlier one keeps. The
-  chips beside the title say the numbers (`N agents`, `monitor`). → `scripts/scenarios/card-signals.mjs`,
-  Decisions 2026-09-21 and 2026-09-22.
+  chips beside the title say the numbers (`N agents`, `monitor`). **`phaseAnims()` puts every `ring`, `blink` and
+  `pulse` at start time 0 on the document clock after each render** (2026-09-27), because every SSE update rebuilds
+  the cards and a CSS animation starts over on a new node. → `scripts/scenarios/card-signals.mjs`,
+  Decisions 2026-09-21, 2026-09-22 and 2026-09-27.
 * **Folded (⌘B), the chat list is a rail of squares** (2026-09-22): one per chat, the project's short name
   (`projAbbr`, `PROJECT_ABBR` for the ones the rule gets wrong) on a solid tint of its colour, and the card's own
   edge — so clauding, the agents' count, a monitor and a question all still read from the rail. Everything inside
@@ -470,6 +472,9 @@ refuses to run against the real directory for the same reason.
   → `test/refit.test.mjs`.
 * Inline code gets a tint, never a border; card glyphs are inline SVG, not emoji; the working ring is the project's
   colour — `--ring`, which only a card too dark to show it (`.card.black`) overrides, with white.
+* **A CSS animation starts over on a rebuilt node** (2026-09-27): the list is `innerHTML` on every SSE update, so
+  anything that moves on a card is phased to the document clock after the render (`phaseAnims()`; the fish's
+  `school()`). → Decisions 2026-09-27.
 * `PROJECT_ICONS` (index.html) marks a project by its shown name wherever the name is written — oracle's crystal ball;
   `projIcon(name)` goes before the name in the chat list's header, the chat header, the cards, the pickers.
   `PROJECT_ABBR` is the same idea for the folded list's squares, and is read only by `projAbbr`.

@@ -142,6 +142,25 @@ export default async function (ctx) {
     ctx.assert.equal(card('Both at once').spins, '1.4s', '…at the work pace: every rule sets every variable, or the monitor\'s 6s leaks into it');
     ctx.assert.deepEqual(card('Both at once').chips, ['monitor · the deploy run'], '…while the chip still says what is running');
 
+    // ---- the ring keeps its place across a render (2026-09-27) ----
+    // Every SSE update rebuilds the cards, and a CSS animation starts over on a new node: the light jumped back to
+    // its start on every update (Ricardo: "the animations like the border when clauding still reset randomly").
+    // Now the ring is phased to the document clock after each render, so the new card's light is where the old
+    // one's was. A line appended to the clauding chat's transcript is one such update.
+    const ring = () => ctx.evaluate(`JSON.stringify((c => {
+      const a = c.getAnimations({ subtree: true }).find(a => a.animationName === 'ring');
+      const doc = document.timeline.currentTime;
+      c.__seen = (c.__seen || 0) + 1;
+      return { seen: c.__seen, start: a && a.startTime, angle: Math.round(parseFloat(getComputedStyle(c, '::before').getPropertyValue('--spin'))), expect: Math.round((doc % 1400) / 1400 * 360) };
+    })([...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work')))`).then(JSON.parse);
+    out.ring = [await ring()];
+    const work = chat('Normal work');
+    appendFileSync(work.file, toolLines({ id: work.id, cwd, name: 'Bash', input: { command: 'npm run build', description: 'build' }, at: new Date() }).map(l => JSON.stringify(l)).join('\n') + '\n');
+    await ctx.waitFor(`(c => !!c && !c.__seen)([...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work'))`, { what: 'the card rebuilt on the update' });
+    out.ring.push(await ring());
+    ctx.assert.deepEqual(out.ring.map(r => r.start), [0, 0], 'the ring is at start time 0 on the document clock, before the update and on the new card after it');
+    for (const r of out.ring) ctx.assert.ok(Math.min(Math.abs(r.angle - r.expect), 360 - Math.abs(r.angle - r.expect)) <= 3, `the light is where the clock says: ${r.angle}° for ${r.expect}°`);
+
     // ---- and it leads the list: a question costs you a second and unblocks a turn (2026-09-21) ----
     out.order = await ctx.evaluate(`[...document.querySelectorAll('#slist > *')].map(e => e.classList.contains('gsep') ? '><>' : e.querySelector('.title')?.textContent)`);
     ctx.assert.deepEqual(out.order.slice(0, 8), ['Blocked on a prompt', 'Waiting on you', 'Normal work', 'Three agents out', 'Both at once', 'A real background job', '><>', 'Watching CI'],

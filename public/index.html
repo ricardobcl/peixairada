@@ -331,7 +331,10 @@
      fast. Clauding is the project's colour; watching is one light in the watch colour, slowly, because nothing is
      waiting on you; asking has no ring at all — the border itself blinks red, the one signal that is not motion
      around the edge, because a question is the one state that is *stopped*.
-     The order of the three rules is their priority: work beats a monitor, a question beats both. */
+     The order of the three rules is their priority: work beats a monitor, a question beats both.
+     Every card is rebuilt on every SSE update and a CSS animation starts over on a new node, so phaseAnims() (in the
+     script) puts every ring at start time 0 on the document clock after each render: the new light is where the old
+     one was. */
   @property --spin { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
   .card.working, .card.watching, .card.asking { box-shadow: 0 0 0 1px color-mix(in srgb, var(--lit) 45%, transparent), 0 0 18px color-mix(in srgb, var(--lit) 35%, transparent); }
   .card.working::before, .card.watching::before, .card.asking::before { content: ''; position: absolute; inset: 0; border-radius: 0; padding: 3px; pointer-events: none;
@@ -1423,9 +1426,20 @@
     const dayAfter = i => !q && days[i] && days[i + 1] !== days[i] ? dayHtml(days[i]) : '';
     $('#slist').innerHTML = shown.map((s, i) => `${fishBefore(i)}${cardHtml(s, p, q)}${dayAfter(i)}`).join('') || `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`;
     $('#slist .gsep.fish')?.replaceWith(fishEl);
+    phaseAnims();
     markQsel();
     listChanged();
   }
+  // Every render rebuilds its nodes, and a CSS animation starts over on a new node — so the clauding ring, an asking
+  // card's blink and the state dots' pulse jumped back to their start on every SSE update (2026-09-27, Ricardo: "the
+  // animations like the border when clauding still reset randomly and breaks the smoothness"; measured: a new card
+  // and a new start time on each of five updates). The fish's fix (school(), above), applied to them all: after a
+  // render every such animation is put at start time 0 on the document clock, so the new node is exactly where the
+  // old one was — and so every ring turns in step, like the school. Once at 0 it stays there. A CSSTransition (the
+  // age fading in) has no animationName, so it is left alone. getAnimations() is the document's running animations,
+  // a few dozen at most, and the style flush it forces is the one the frame was about to do.
+  const PHASED = new Set(['ring', 'blink', 'pulse']);
+  function phaseAnims() { for (const a of document.getAnimations()) if (PHASED.has(a.animationName) && a.startTime !== 0) a.startTime = 0; }
   // ---- the list's ends: how many cards are out of sight ---------------------------------
   // (2026-09-25, Ricardo: "when scrolling down the cards, the top should visually say how many cards are hiding, same
   // for below"): a pill at each end, counting the cards more than half out of view that way — a card cut in two is
@@ -2344,6 +2358,7 @@
       `<button class="hmi${foldOn(s.id) ? ' on' : ''}" id="foldBtn" aria-pressed="${foldOn(s.id)}" title="${foldOn(s.id) ? 'Code blocks longer than 6 lines are folded in this chat — click to show them whole' : 'Code blocks are shown whole in this chat — click to fold the long ones'}${s.id in prefs.foldBy ? ' (set here)' : ' (the default)'}"><span class="gl">{ }</span><span>fold long code</span><span class="k">${foldOn(s.id) ? 'on' : 'off'}</span></button>`,
       `<button class="hmi${prefs.headDetails ? ' on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}" title="${esc(statusLabel[s.status] || s.status)}${s.statusSince ? ` for ${rel(s.statusSince)}` : ''} · click to ${prefs.headDetails ? 'hide' : 'show'} path, branch and session details under the title"><span class="dot ${s.status}"></span><span>${esc((statusLabel[s.status] || s.status || '').split(' — ')[0])}${s.statusSince ? ` · ${rel(s.statusSince)}` : ''}</span><span class="k">${prefs.headDetails ? 'hide' : 'show'} path</span></button>`,
     ].join('');
+    phaseAnims();   // the state dot's pulse, rebuilt with the menu
     if (menu.open) placeMenu();
     if (state.prsFor !== s.id) { state.prsFor = s.id; state.prsAll = false; }   // "more" is per chat, not sticky
     const pl = $('#prlist'); pl.hidden = !prs.length || !prsOpen;   // the rows are there folded too — ⌥⌘G and the harness read them

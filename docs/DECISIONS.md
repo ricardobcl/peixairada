@@ -4,6 +4,24 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-27.
 
+## Decisions of 2026-09-27, later — the clauding ring: phased across renders
+
+Ricardo: "the animations like the border when clauding still reset randomly and breaks the smoothness. research and
+check if we need to put this in a different thread".
+
+* **What reset it**: every SSE `session` event rebuilds the list with `innerHTML`, so each card is a new node and
+  the ring's CSS animation starts over at its first frame — the fish's stutter of 2026-09-20, on the ring. Measured
+  in headless Chrome: five renders, five start times, the light half a second old at every read. "Random" because
+  it is timed by any chat's transcript line, a registry poll, a peacock or pins event. The asking border's blink
+  and the state dot's pulse did the same.
+* **The fix is the fish's** — `phaseAnims()` after `renderSessionList` and `renderHead`: every `ring`, `blink` and
+  `pulse` animation in the document is put at start time 0 on the document clock, so a new node is exactly where
+  the old one was (and every ring turns in step, like the school). A CSS animation rather than the Web Animations
+  API, because the ring is on a pseudo-element; `startTime = 0` on a CSSAnimation holds in Chrome and in WebKit
+  (checked in a WKWebView on this Mac: the new `::before`'s angle is the clock's). Once at 0 it stays there, so the
+  loop touches nothing on a node that survived; `getAnimations()` is the document's running animations, a few
+  dozen at most, and the style flush it forces is the one the frame was about to do.
+
 ## Decisions of 2026-09-27 — the card: the last word, an F for Fable, the age under the pointer
 
 Ricardo: "sort by the latest: either my reply or claude reply · if the chat is using Fable, put a special marker
