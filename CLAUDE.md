@@ -133,6 +133,12 @@ refuses to run against the real directory for the same reason.
   held by `allow-discrete` until the exit ends — so a closed dialog is still `display: block` for 140 ms while its
   `open` attribute is already off (read `open`, never `display`, to know). `note()` fades its popup out (`.out`) before
   removing it. A new dialog or popover gets this for free; one that must vanish at once sets `transition: none`.
+* **An age is `data-at`, never words in markup** (2026-09-27, night): the card's `.time`, the pickers' `.t`, the menu's
+  *for …* carry the timestamp and `fillAges(root)` writes `rel()` of it — and the card's tooltip (`timeTip`) — after
+  the list's render, after `pickRender`, and on the 30 s tick (which also refreshes the open picker and menu). A card's
+  html therefore does not change with the clock. `dayOf(ts)` is the one spelling of a day (`today` · `DD-MM-YYYY`), for
+  the list's lines and the transcript's (`.sysline.day`, from `renderLog` where the day changes). The who-line's time is
+  `toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })`.
 * **Every animation has its line in the reduced-motion block** (2026-09-27, night): the one
   `@media (prefers-reduced-motion: reduce)` at the end of the CSS stills the ring (a flat edge in `--lit`), the blink
   (a steady red border), the pulse, the spinner, the flare and every transform; `drawCards` reads `REDUCED` and puts

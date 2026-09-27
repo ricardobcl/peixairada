@@ -28,8 +28,11 @@ export default async function (ctx) {
       { cwd, title: 'Asking', prompt: 'may I?', reply: 'one question', at: new Date(now - 120_000), live: live(1, { status: 'waiting', waitingFor: 'permission prompt' }) },
       { cwd, title: 'Long', prompt: 'tell me everything', reply: 'here goes', at: new Date(now - 7200_000),
         lines: id => Array.from({ length: 30 }, (_, i) => replyLines({ id, cwd, text: `Paragraph ${i + 1} of a long reply, long enough to take a line or two of the transcript, so that thirty of them run well past the bottom of the window.`, at: new Date(now - 7200_000 + (i + 1) * 1000) })).flat() },
+      // two days ago, then today: a date line at the top, "today" where it comes back
+      { cwd, title: 'Days', prompt: 'an old question', reply: 'an old answer', at: new Date(now - 2 * 86_400_000),
+        lines: id => replyLines({ id, cwd, text: 'And a new word today.', at: new Date(now - 60_000) }) },
     ]);
-    const [working, asking, long] = chats;
+    const [working, asking, long, days] = chats;
     await ctx.waitFor(`document.querySelector('#slist > .card.working') && document.querySelector('#slist > .card.asking')`, { what: 'a clauding card and an asking one' });
 
     // clauding: the mark and the word, last in the log, in step with the divider
@@ -84,6 +87,23 @@ export default async function (ctx) {
     out.atEnd = { ...(await logPos(ctx)), pill: await pill(ctx) };
     ctx.assert.ok(out.atEnd.gap < 80, 'kept at the end');
     ctx.assert.equal(out.atEnd.pill.on, false, 'no pill for a reply you saw come');
+
+    // Times: hours and minutes, no seconds; a day line where the transcript changes day, none for today at the top;
+    // the card's age written after the render from data-at, not in the markup.
+    out.times = await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#log > .msg .who span:last-child')].slice(0, 3).map(s => s.textContent))`).then(JSON.parse);
+    for (const t of out.times) ctx.assert.match(t, /^\d{1,2}:\d{2}(?:[\s\u202f][AP]M)?$/, `a time without seconds: ${t}`);
+    out.longDays = await ctx.evaluate(`document.querySelectorAll('#log > .sysline.day').length`);
+    ctx.assert.equal(out.longDays, 0, 'a chat from today has no day line');
+    await ctx.openChat(days.id);
+    await ctx.waitFor(`document.querySelectorAll('#log > .msg').length === 3`, { what: 'the two-day chat drawn' });
+    out.days = await ctx.evaluate(`JSON.stringify([...document.querySelector('#log').children].map(c => c.classList.contains('day') ? 'day:' + c.textContent : c.className.split(' ')[0]))`).then(JSON.parse);
+    ctx.assert.match(out.days[0], /^day:\d\d-\d\d-\d{4}$/, 'the old day named at the top');
+    ctx.assert.deepEqual(out.days.slice(1), ['msg', 'msg', 'day:today', 'msg'], 'then its messages, "today" where the transcript comes back, and the new word');
+    await ctx.shot('days');
+    out.age = await ctx.evaluate(`JSON.stringify((t => ({ at: t.dataset.at, text: t.textContent, tip: t.title }))(document.querySelector('#slist > .card[data-id=${JSON.stringify(days.id)}] .time')))`).then(JSON.parse);
+    ctx.assert.match(out.age.at, /^\d{4}-/, 'the card carries when, not the words');
+    ctx.assert.match(out.age.text, /^\d+[smhd]$/, `and fillAges wrote the age: ${out.age.text}`);
+    ctx.assert.match(out.age.tip, /last activity/, 'with the tooltip');
   } finally { for (const s of sleeps) s.kill(); }
   return out;
 }

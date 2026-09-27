@@ -81,6 +81,15 @@ transform and opacity where it can — the compositor's kind of motion, as the r
   line sits before it. `motion()` records `msg` (with the count) and `pill`. → the long chat in `transcript-live.mjs`:
   nothing fades on the first fill; a reply written in with the log at its top fades in and lights the pill, which
   stays last while the log stays put; the click; a reply at the end with no pill.
+* **Times without seconds, a day line in the transcript, and ages that tick**: the who-line said "6:50:13 PM"; it
+  says "6:50 PM" — or "18:50", the locale's — in tabular figures. Where the transcript crosses a day it gets the
+  list's day line (`dayOf`, shared with `dayName`; none for today's messages at the top, a date where it goes to
+  another day, *today* where it comes back). And an age is no longer written into markup: the card's, the pickers'
+  rows', the menu's *for 5m* carry `data-at` and `fillAges` writes the words — and the card's tooltip, from the chat's
+  own times — after every render and on the 30 s tick, touching only text that changed. Before, `rel()` in
+  `cardHtml` made a card's html change every minute and its node with it (the review had noted the tick rebuilding
+  the list for the ages alone); a hover-only age that read *5m* when it was *25m* was wrong information. → the last
+  section of `transcript-live.mjs`.
 
 ## Decisions of 2026-09-27, night — an empty chat's card can be ticked done
 

@@ -858,6 +858,10 @@
   .tool b { color: var(--ink); font-weight: 600; }
   .tool.err { color: var(--needs); }
   .sysline { margin: 10px auto; text-align: center; font-size: 11px; color: var(--muted); }
+  .sysline.day { margin: 14px auto 12px; }
+  .sysline.day b { font: 600 11px/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: var(--muted); }   /* the list's day line, in the transcript */
+  /* Times and ages in tabular figures (2026-09-27, night), so a digit changing under them moves nothing beside it. */
+  .msg .who, .card .top .time, .pkrow .t, .prrow .meta, #hmenu .hmi .k, #hmenu .hmi [data-at] { font-variant-numeric: tabular-nums; }
   /* Presence at the foot of the transcript (2026-09-27, night): while the open chat is clauding, Claude's mark (the
      divider's sprite) and the word under the last message — a reply on its way is seen where you are reading, not
      only on the card — with the sub-agents' count when there is one; while it is asking, the question, in the card's
@@ -1592,10 +1596,24 @@
   // between cards", then "remove the lines left and right of the date"; still fish either side before, from the same
   // day's "center the date … stop the animation, leave it static with the fishes") — nothing moves, plain markup.
   const pad2 = n => String(n).padStart(2, '0');
-  const dayName = s => {
-    const d = new Date(wordAt(s)); if (isNaN(d)) return '';
+  const dayOf = ts => {   // a timestamp's day, the way the list and the transcript both write it
+    const d = new Date(ts); if (isNaN(d)) return '';
     return new Date(d).setHours(0, 0, 0, 0) === new Date().setHours(0, 0, 0, 0) ? 'today' : `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()}`;
   };
+  const dayName = s => dayOf(wordAt(s));
+  // Ages are written after the render, not into the markup (2026-09-27, night): a card's age in its markup made the
+  // card's html change every minute and the node with it (and the review's 30 s tick rebuilt the list for the ages
+  // alone). Anything that shows an age carries `data-at` and nothing else; fillAges writes the words — and, on a
+  // card's age, the tooltip from the chat's own times — after every render and on the 30 s tick, touching only text
+  // that changed. So an age on screen is never stale by more than the tick.
+  function fillAges(root = document) {
+    for (const el of root.querySelectorAll('[data-at]')) {
+      const t = rel(el.dataset.at); if (el.textContent !== t) el.textContent = t;
+      if (!el.classList.contains('time')) continue;
+      const s = state.sessions.get(el.closest('.card')?.dataset.id); if (!s) continue;
+      const tip = timeTip(s); if (el.title !== tip) el.title = tip;
+    }
+  }
   const dayHtml = day => `<div class="gsep day" title="above: the chats you were in ${day === 'today' ? 'today' : 'on ' + day}"><b>${day}</b></div>`;
   function renderSessionList(p) {
     const pc = projColor(p); if (pc) $('#sessions').style.setProperty('--repo', pc); else $('#sessions').style.removeProperty('--repo');
@@ -1638,6 +1656,7 @@
     const items = [];
     shown.forEach((s, i) => { const d = dividerBefore(i), a = dayAfter(i); if (d) items.push({ html: d }); items.push({ id: s.id, html: cardHtml(s, p, q) }); if (a) items.push({ html: a }); });
     drawCards(items, `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`);
+    fillAges($('#slist'));
     phaseAnims();
     markQsel();
     listChanged();
@@ -2002,7 +2021,7 @@
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip">${entryLabel(s)}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${s.id}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
-      <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}${s.lastActivity || s.startedAt ? `<span class="time" title="${esc(timeTip(s))}">${rel(s.lastActivity || s.startedAt)}</span>` : ''}${act}${fable}</div>
+      <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}${s.lastActivity || s.startedAt ? `<span class="time" data-at="${esc(s.lastActivity || s.startedAt)}"></span>` : ''}${act}${fable}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${un ? `<span class="badge">${un}</span>` : ''}</div>
       ${s.prs?.length ? `<div class="cprs">${s.prs.slice(0, 8).map(pr => `<a class="cpr" data-state="${esc(pr.state || '')}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`).join('')}</div>` : ''}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
@@ -2184,17 +2203,17 @@
     let row;   // each mode fills pick.list and says how a row of it is drawn; the selection is clamped once, below
     if (pick.mode === 'pr') {
       pick.list = hunt(state.sessions.get(state.current)?.prs || [], pr => [pr.label, pr.title || '']);
-      row = (pr, i) => `<div class="pkrow pr${sel(i)}" data-i="${i}" data-state="${esc(pr.state || '')}" title="${esc(pr.url)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${mark(pr.label)}</span><span class="n${pr.title ? '' : ' pending'}">${pr.title ? mark(pr.title) : 'title on its way from gh…'}${pr.url === shownPr.url ? '<span class="cur">current</span>' : ''}</span><span class="t">${rel(pr.lastAt)}</span></div>`;
+      row = (pr, i) => `<div class="pkrow pr${sel(i)}" data-i="${i}" data-state="${esc(pr.state || '')}" title="${esc(pr.url)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${mark(pr.label)}</span><span class="n${pr.title ? '' : ' pending'}">${pr.title ? mark(pr.title) : 'title on its way from gh…'}${pr.url === shownPr.url ? '<span class="cur">current</span>' : ''}</span><span class="t" data-at="${esc(pr.lastAt || '')}"></span></div>`;
     } else if (pick.mode === 'chat') {
       pick.list = hunt([...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done').sort((a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byWord(a, b)), chatFields);
-      row = (s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${mark(s.title)}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t">${rel(wordAt(s))}</span></div>`;
+      row = (s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${mark(s.title)}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t" data-at="${esc(wordAt(s))}"></span></div>`;
     } else if (pick.mode === 'chats') {   // the scope's open chats, ＋ a new one — the row that carries on with the flow
       const chats = hunt(scopeChats(pick.ctx), chatFields);   // ＋ is never filtered out: it is the fallback for a query that matches nothing
       pick.list = [{ isNew: true }, ...chats];
       const how = pick.ctx.env ? `task ${pick.ctx.env}` : pick.ctx.cwds.length === 1 ? `in ${folderName(pick.ctx.cwds[0])}` : 'pick a folder…';   // reads under the chats' own environment column, so say it is a folder
       row = (x, i) => x.isNew
         ? `<div class="pkrow chat new${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(pick.ctx.cwds))}" title="Start a new chat in ${esc(pick.ctx.name)}"><span class="sq"></span><span class="n">＋ new chat</span><span class="num">${esc(how)}</span><span class="st"></span><span class="t"></span></div>`
-        : `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(x)}" style="${repoStyle(repoColor(x.cwd))}" title="${esc(x.cwd || '')}"><span class="sq"></span><span class="n">${mark(x.title)}${x.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${esc(x.env || '')}</span><span class="st">${chatState(x)}</span><span class="t">${rel(wordAt(x))}</span></div>`;
+        : `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(x)}" style="${repoStyle(repoColor(x.cwd))}" title="${esc(x.cwd || '')}"><span class="sq"></span><span class="n">${mark(x.title)}${x.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${esc(x.env || '')}</span><span class="st">${chatState(x)}</span><span class="t" data-at="${esc(wordAt(x))}"></span></div>`;
     } else if (pick.mode === 'folder') {   // the new chat's folder, from a project that spans several
       pick.list = hunt(pick.ctx.cwds.map(f => ({ cwd: f })), x => [folderName(x.cwd), x.cwd]);
       row = (x, i) => `<div class="pkrow${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(x.cwd))}" title="${esc(x.cwd)}"><span class="sq"></span><span class="n">${mark(folderName(x.cwd))}<span class="cur">${esc(homePath(x.cwd))}</span></span><span class="pills"></span><span class="t"></span></div>`;
@@ -2220,11 +2239,12 @@
         ? `<div class="pkrow clone${sel(i)}" data-i="${i}" title="gh repo clone ${esc(folders.org)}/${esc(p.name)} into ${esc(homePath(folders.root))}"><span class="sq"></span><span class="n">＋ clone ${esc(folders.org)}/${esc(p.name)}<span class="cur">into ${esc(homePath(folders.root))}</span></span><span class="pills"></span><span class="t"></span></div>`
         : p.folder
           ? `<div class="pkrow folder${pick.mode === 'new' ? ' hides' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(p.cwd))}" title="${esc(p.cwd)}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}<span class="cur">${esc(homePath(p.cwd))}</span></span><span class="pills"></span><span class="t"></span>${hx(p)}</div>`
-          : `<div class="pkrow${pick.mode === 'new' ? ' hides' : ''}${ed(p) ? ' named' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(projColor(p))}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}${p.key === prefs.project ? '<span class="cur">current</span>' : ''}</span><span class="pills">${pillsHtml(p)}</span><span class="t">${p.last ? rel(p.last) : ''}</span>${hx(p)}${ed(p)}</div>`;
+          : `<div class="pkrow${pick.mode === 'new' ? ' hides' : ''}${ed(p) ? ' named' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(projColor(p))}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}${p.key === prefs.project ? '<span class="cur">current</span>' : ''}</span><span class="pills">${pillsHtml(p)}</span><span class="t"${p.last ? ` data-at="${esc(p.last)}"` : ''}></span>${hx(p)}${ed(p)}</div>`;
     }
     pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
     const rows = pick.list.map(row);
     $('#picklist').innerHTML = rows.join('') || `<div class="none">no ${PICK_NOUN[pick.mode] || 'project'} matches</div>`;
+    fillAges($('#picklist'));
     $('#picklist .pkrow.sel')?.scrollIntoView({ block: 'nearest' });
   }
   function pickChoose(i) {
@@ -2675,7 +2695,7 @@
       inVsCode(s) ? `<div class="hmi info" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it; ${s.alive ? 'the claude session row takes it over' : 'continue it here or there'}">${ICON.vscode}<span>VS Code's chat</span><span></span></div>` : '',
       '<div class="sep"></div>',
       `<button class="hmi${foldOn(s.id) ? ' on' : ''}" id="foldBtn" aria-pressed="${foldOn(s.id)}" title="${foldOn(s.id) ? 'Code blocks longer than 6 lines are folded in this chat — click to show them whole' : 'Code blocks are shown whole in this chat — click to fold the long ones'}${s.id in prefs.foldBy ? ' (set here)' : ' (the default)'}"><span class="gl">{ }</span><span>fold long code</span><span class="k">${foldOn(s.id) ? 'on' : 'off'}</span></button>`,
-      `<button class="hmi${prefs.headDetails ? ' on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}" title="${esc(statusLabel[s.status] || s.status)}${s.statusSince ? ` for ${rel(s.statusSince)}` : ''} · click to ${prefs.headDetails ? 'hide' : 'show'} path, branch and session details under the title"><span class="dot ${s.status}"></span><span>${esc((statusLabel[s.status] || s.status || '').split(' — ')[0])}${s.statusSince ? ` · ${rel(s.statusSince)}` : ''}</span><span class="k">${prefs.headDetails ? 'hide' : 'show'} path</span></button>`,
+      `<button class="hmi${prefs.headDetails ? ' on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}" title="${esc(statusLabel[s.status] || s.status)} · click to ${prefs.headDetails ? 'hide' : 'show'} path, branch and session details under the title"><span class="dot ${s.status}"></span><span>${esc((statusLabel[s.status] || s.status || '').split(' — ')[0])}${s.statusSince ? ` · <span data-at="${esc(s.statusSince)}"></span>` : ''}</span><span class="k">${prefs.headDetails ? 'hide' : 'show'} path</span></button>`,
     ].join('');
     if (menuHtml !== drawn.menu) { menu.innerHTML = drawn.menu = menuHtml; phaseAnims(); if (menu.open) placeMenu(); }   // the state dot's pulse, rebuilt with the menu
     if (state.prsFor !== s.id) { state.prsFor = s.id; state.prsAll = false; }   // "more" is per chat, not sticky
@@ -3714,7 +3734,7 @@
   function entryHtml(e) {
     if (e.kind === 'text') {
       const r = md(e.text, state.sessions.get(state.current)?.cwd);
-      return `<div class="msg ${e.role}"><div class="who"><span>${e.role === 'user' ? 'You' : 'Claude'}</span><span>${e.ts ? new Date(e.ts).toLocaleTimeString() : ''}</span></div><div class="bubble"><div class="text ${r.cls}">${r.html}</div></div></div>`;
+      return `<div class="msg ${e.role}"><div class="who"><span>${e.role === 'user' ? 'You' : 'Claude'}</span><span>${e.ts ? new Date(e.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''}</span></div><div class="bubble"><div class="text ${r.cls}">${r.html}</div></div></div>`;
     }
     if (e.kind === 'tool_use') return `<div class="tool"><b>${esc(e.name)}</b><span>${esc(e.text)}</span></div>`;
     if (e.kind === 'tool_result') return `<div class="tool ${e.isError ? 'err' : ''}"><span>↳</span><span>${esc(e.text || '(no output)')}</span></div>`;
@@ -3738,7 +3758,7 @@
   function renderLog(reset = false) {
     const log = $('#log'), cwd = state.sessions.get(state.current)?.cwd;
     const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
-    if (reset || logView.arr !== state.entries || logView.n > state.entries.length) { log.innerHTML = ''; Object.assign(logView, { arr: state.entries, n: 0, run: [], group: null, fresh: 0 }); }
+    if (reset || logView.arr !== state.entries || logView.n > state.entries.length) { log.innerHTML = ''; Object.assign(logView, { arr: state.entries, n: 0, run: [], group: null, fresh: 0, day: 'today' }); }
     // What comes while you read fades in (`.in`); the first fill stands still. New nodes go before the log's tail —
     // the presence line and the new-reply pill, which stay last.
     const live = logView.n > 0 && !log.hidden && !REDUCED.matches, arrived = state.entries.length - logView.n;
@@ -3753,6 +3773,9 @@
     for (const e of state.entries.slice(logView.n)) {
       if (e.kind === 'tool_use' || e.kind === 'tool_result') { logView.run.push(e); continue; }
       group(); logView.run = []; logView.group = null;
+      // a line where the day changes, as the list has (2026-09-27, night): none for today's messages at the top, a
+      // date where the transcript goes to another day, "today" where it comes back
+      if (e.kind === 'text' && e.ts) { const d = dayOf(e.ts); if (d && d !== logView.day) { logView.day = d; add(htmlNodes(`<div class="sysline day"><b>${d}</b></div>`, cwd)); } }
       add(htmlNodes(entryHtml(e), cwd));
       if (e.kind === 'text' && e.role === 'assistant') replies++;
     }
@@ -3904,7 +3927,10 @@
     es.addEventListener('alert', e => onAlert(JSON.parse(e.data)));
   }
   connect();
-  setInterval(renderBoard, 30_000); // refresh relative times
+  // The 30 s tick: the ages (fillAges, in the list's render and, while they are up, the picker's rows and the menu),
+  // and the day lines and the list's order, which the clock moves too. The cards' markup no longer carries an age, so
+  // the render is a diff that rebuilds nothing on its own.
+  setInterval(() => { renderBoard(); if ($('#pick').open) fillAges($('#picklist')); if ($('#hmenu').open) fillAges($('#hmenu')); }, 30_000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && state.current) { state.unread.delete(state.current); renderBoard(); } });
   // deep link: /#<session-id> opens that chat — also how the native app's notifications jump here
   window.addEventListener('hashchange', () => {
