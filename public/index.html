@@ -57,7 +57,7 @@
      2026-09-24) and is a light, not a button (it goes dim when the SSE stream drops); everything the board has to
      say for itself is in the one popover at the bottom left, behind the cog: the notifications switch and the keys.
      The plan usage is the chat list's footer, beside the cog (#usage). */
-  .brand { position: relative; width: 28px; height: 28px; flex: none; display: inline-flex; }
+  .brand { position: relative; width: 28px; height: 28px; flex: none; display: inline-flex; cursor: pointer; }
   .brand .logo { width: 28px; height: 28px; }
   .pop { position: fixed; left: 54px; bottom: 10px; z-index: 40; display: grid; gap: 9px; min-width: 250px; padding: 12px 14px 13px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); box-shadow: 0 10px 34px rgba(0, 0, 0, .22); font-size: 12px; }
   .pop[hidden] { display: none; }
@@ -769,6 +769,17 @@
   dialog::backdrop { background: rgba(0, 0, 0, .35); }
   /* ⌥⌘P: the project picker, VS Code's open-recent way — a box on top, rows under it, ↑↓ and ⏎. ⌥⌘G fills it with the chat's PRs, ⌥⌘O with oracle's environments. */
   #pick { padding: 8px; width: min(520px, 92vw); margin-top: 10vh; }
+  /* About (2026-09-27, Ricardo: "clicking on the app icon should show an About info box center screen"): a modal
+     dialog, centred by the browser, the pane down under it like under any dialog; Esc or a click on the backdrop
+     closes it. Its facts come with the snapshot (state.about). */
+  #about { width: min(400px, 92vw); text-align: center; padding: 24px 24px 18px; outline: none; }   /* nothing in it takes focus, so the dialog would wear the ring */
+  #about .logo { width: 72px; height: 72px; }
+  #about h3 { margin: 8px 0 0; font-size: 19px; }
+  #about h3 em { font-style: normal; color: var(--accent); }
+  #about .tag { margin: 4px 0 14px; font-size: 12.5px; color: var(--muted); }
+  #about .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; text-align: left; font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
+  #about .facts b { color: var(--ink); font-weight: 600; text-align: right; }
+  #about .help { margin: 14px 0 0; }
   #pick input { width: 100%; box-sizing: border-box; font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: inherit; outline: none; }
   #pick input:focus { border-color: var(--accent); }
   #picklist { margin-top: 6px; max-height: 50vh; overflow-y: auto; display: grid; gap: 1px; }
@@ -845,7 +856,7 @@
 <body>
 <main id="main">
   <section id="sessions">
-    <div class="colhead" id="shd"><span class="brand" id="brandBtn"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g><g fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="stitle" class="t"></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" autocomplete="off" spellcheck="false" hidden><span id="fchips"></span></span><span id="newChat"></span><button class="btn icon" id="sessPinBtn" title="Fold the chat list">«</button></div>
+    <div class="colhead" id="shd"><span class="brand" id="brandBtn" title="About peixAIrada" role="button"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g><g fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="stitle" class="t"></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" autocomplete="off" spellcheck="false" hidden><span id="fchips"></span></span><span id="newChat"></span><button class="btn icon" id="sessPinBtn" title="Fold the chat list">«</button></div>
     <div id="tline" aria-label="The list's days — point to read them, drag to scroll, click one to go there"><div class="tl-catch"></div><div class="tl-thumb"></div><div class="tl-labs"></div><div class="tl-lab tl-bub"></div></div>
     <div id="slist"></div>
     <div class="tl-glass"></div>
@@ -920,6 +931,7 @@
   <div id="hidden" class="hid"></div>
 </div>
 <dialog id="hmenu" aria-label="This chat's actions"></dialog>
+<dialog id="about" aria-label="About peixAIrada"></dialog>
 <dialog id="pick">
   <input type="text" id="pickq" placeholder="Project — type to filter · ↑↓ · ⏎ opens · esc" autocomplete="off" spellcheck="false">
   <div id="picklist"></div>
@@ -3415,6 +3427,23 @@
   }
 
   // ---- SSE ----------------------------------------------------------------------------
+  // The fish is the SSE light and, clicked, the About box (2026-09-27, Ricardo: "clicking on the app icon should show
+  // an About info box center screen"): what the board is, its version and process, where it reads and writes, and
+  // the chats it holds. A modal <dialog>, so the pane goes down under it and Esc closes it like any other.
+  function aboutOpen() {
+    const a = state.about || {}, all = projectList()[0] || {};
+    const facts = [
+      ['version', esc(a.version || '?')],
+      ['server', `http://127.0.0.1:${a.port || location.port}${a.node ? ` · node ${esc(a.node)}` : ''}${a.pid ? ` · pid ${a.pid}` : ''}${a.since ? ` · up ${rel(a.since)}` : ''}`],
+      ['reads', `${esc(homePath(a.claudeDir || '~/.claude'))} — and writes nothing there`],
+      ['state', esc(homePath(a.stateFile || '?'))],
+      ['chats', `${[...state.sessions.values()].filter(s => s.alive).length} live · ${all.ready ?? 0} ready · ${all.working ?? 0} clauding`],
+    ];
+    $('#about').innerHTML = `${$('#brandBtn').innerHTML}<h3>peix<em>AI</em>rada</h3><p class="tag">One board for every Claude Code chat on this Mac.</p><div class="facts">${facts.map(([k, v]) => `<b>${k}</b><span>${v}</span>`).join('')}</div><p class="help">The ⌥⌘ keys and the switches are under the cog, bottom left.</p>`;
+    $('#about').showModal();
+  }
+  $('#brandBtn').addEventListener('click', aboutOpen);
+  $('#about').addEventListener('click', e => { if (e.target === $('#about')) $('#about').close(); });   // the backdrop
   function connect() {
     const es = new EventSource('/events');
     es.onopen = () => $('#brandBtn').classList.remove('off');
@@ -3422,6 +3451,7 @@
     es.addEventListener('snapshot', e => {
       const d = JSON.parse(e.data);
       state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.peacock = d.peacock || {}; state.repos = d.repos || {};
+      state.about = d.about || {};
       state.notifications = d.notifications !== false; showNotify();
       renderBoard();
       const want = location.hash.slice(1);

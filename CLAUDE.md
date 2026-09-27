@@ -318,7 +318,8 @@ refuses to run against the real directory for the same reason.
   (2026-09-24, below). It opens on *hover of `#pfoot`*, the cog's cell in the chat list's foot, which reaches the
   window's bottom left pixel — **drawn over the list's 4 px coloured edge** (`margin-left: -4px`, the edge carried on
   its own border), because the edge is not the cell; a click on the cog pins it, Esc or a click away closes it, and
-  it opens beside the cell (`settingsOpen`). The fish is only the SSE light. `sound`, `showAll`, `toolsMode` and `foldCode` keep whatever they were saved as and
+  it opens beside the cell (`settingsOpen`). The fish is the SSE light and, clicked, **the About box** (`#about`, a modal dialog centred by the browser,
+  2026-09-27: version, process and paths from the snapshot's `about`, and the chats' counts). `sound`, `showAll`, `toolsMode` and `foldCode` keep whatever they were saved as and
   nothing sets them — the `{ }` row under the chat header's ··· is still the fold for a chat.
 * **In the app the pane is a native view** over the chat column with its own web views: a key pressed there never
   reaches the page, so `installHotkeyForwarder()` forwards ⌥⌘ + the letters and the arrows, and ⌘ + the layout

@@ -55,6 +55,10 @@ const CLAUDE_DIR = process.env.CLAUDE_DIR || join(homedir(), '.claude');
 const PROJECTS_DIR = join(CLAUDE_DIR, 'projects');
 const SESSIONS_DIR = join(CLAUDE_DIR, 'sessions');
 const PORT = Number(process.env.PORT || 7331);
+// The About box's facts (2026-09-27): the package's version, this process, and where the board reads and writes.
+const PKG = (() => { try { return JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')); } catch { return {}; } })();
+const aboutInfo = () => ({ version: PKG.version || 'dev', node: process.version, pid: process.pid, port: PORT, claudeDir: CLAUDE_DIR, stateFile: STATE_FILE, since: SINCE });
+const SINCE = Date.now();
 const HOST = process.env.HOST || '127.0.0.1';
 const NOTIFY = process.env.NOTIFY || 'native'; // native | off
 const TAIL_BYTES = Number(process.env.TAIL_BYTES || 512 * 1024);
@@ -1759,7 +1763,7 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'GET' && p === '/events') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
-      res.write(`event: snapshot\ndata: ${JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn })}\n\n`);
+      res.write(`event: snapshot\ndata: ${JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, about: aboutInfo() })}\n\n`);
       sseClients.add(res);
       const ping = setInterval(() => res.write(': ping\n\n'), 25_000);
       req.on('close', () => { clearInterval(ping); sseClients.delete(res); });

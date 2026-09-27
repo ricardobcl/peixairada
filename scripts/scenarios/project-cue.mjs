@@ -1,15 +1,18 @@
 // The board without its projects column (2026-09-24, Ricardo: "remove the entire 1st column and make the project cue
 // on the 2nd column open the project select (P hotkey). leave the app icon at the top"). What this checks: there is
-// no column; the fish heads the chat list; the list's head names the project and is the way to another — a click is
-// ⌥⌘P's picker, × goes back to ALL, which has none —, open list or rail; the two things only the column's rows did
+// no column; the fish heads the chat list (and, clicked, is the About box, 2026-09-27); the list's head names the
+// project and is the way to another — a click is ⌥⌘P's picker, × goes back to ALL, which shows nothing at all and
+// no colour square since 2026-09-27 —, open list or rail; the two things only the column's rows did
 // are in the picker (✎ on a named project, ＋ new project last); and the cog still owns the window's bottom left
 // pixel, from the list's foot, with the popover opening beside its cell.
+import { readFileSync } from 'node:fs';
+
 export const meta = { server: true, fixture: 'auto' };
 
 export default async function (ctx) {
   const out = {};
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length > 0`, { what: 'the board' });
-  const head = () => ctx.evaluate(`JSON.stringify({ text: document.querySelector('#stitle').textContent, x: !!document.querySelector('#stitle .sx'), project: window.peix.prefs().project })`).then(JSON.parse);
+  const head = () => ctx.evaluate(`JSON.stringify({ text: document.querySelector('#stitle').textContent, hidden: document.querySelector('#stitle').hidden, sq: !!document.querySelector('#stitle .sq'), x: !!document.querySelector('#stitle .sx'), project: window.peix.prefs().project })`).then(JSON.parse);
   const pickOpen = () => ctx.evaluate(`document.querySelector('#pick').open`);
   const closePick = () => ctx.evaluate(`document.querySelector('#pick').close()`);
 
@@ -19,7 +22,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.layout, { projects: false, first: 'brandBtn', fishX: out.layout.fishX }, 'no projects column, and the fish heads the chat list');
   ctx.assert.ok(out.layout.fishX < 24, 'at the window\'s left');
   out.all = await head();
-  ctx.assert.equal(out.all.text, 'ALL', 'ALL alone — no caret since 2026-09-26, no count since the head became one row');
+  ctx.assert.deepEqual([out.all.text, out.all.hidden], ['', true], 'ALL says nothing: no filter is the default (2026-09-27; the word alone before)');
   ctx.assert.equal(out.all.x, false, 'ALL has nothing to clear');
   await ctx.shot('1-all', { x: 0, y: 0, width: 520, height: 140 });
 
@@ -99,5 +102,19 @@ export default async function (ctx) {
     await ctx.evaluate(`document.querySelector('#cogBtn').click()`);
     if (where === 'rail') await ctx.cmd('KeyB');
   }
+  await ctx.evaluate(`document.querySelector('#stitle .sx').click()`);
+
+  // The fish, clicked, is the About box (2026-09-27): modal, centred, saying the package's version and what the
+  // board touches; Esc closes it
+  await ctx.evaluate(`document.querySelector('#brandBtn').click()`);
+  out.about = await ctx.evaluate(`JSON.stringify((d => { const r = d.getBoundingClientRect(); return { open: d.open, modal: d.matches(':modal'),
+    centred: Math.abs((r.left + r.width / 2) - innerWidth / 2) < 2 && Math.abs((r.top + r.height / 2) - innerHeight / 2) < 2, text: d.textContent.replace(/\\s+/g, ' ') }; })(document.querySelector('#about')))`).then(JSON.parse);
+  const version = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version;
+  ctx.assert.deepEqual([out.about.open, out.about.modal, out.about.centred], [true, true, true], `the About box is up, modal and centred`);
+  ctx.assert.ok(out.about.text.includes(`version${version}`) && out.about.text.includes('writes nothing there'), `…saying the version and what the board touches: ${out.about.text}`);
+  await ctx.shot('5-about', { x: 0, y: 0, width: 1000, height: 700 });
+  await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+  await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+  await ctx.waitFor(`!document.querySelector('#about').open`, { what: 'Esc closing About' });
   return out;
 }

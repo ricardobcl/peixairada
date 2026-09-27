@@ -22,6 +22,10 @@ icon on each card".
 * **The card's age is in the top row, left of the ✓** (`.top .time`, always shown, in the muted ink): time · tick · F
   end the row. Every card has the row now, at least 18 px tall, so nothing jumps when a tick appears. The hover-only
   top-left placement of the afternoon lasted an afternoon.
+* **The fish opens About**: a modal `<dialog>` centred by the browser, lowered under nothing (the pane goes down
+  like under any dialog), Esc or the backdrop closing it. It says the version (the package's, read by the server
+  and sent with the snapshot as `about`, with node, pid, port, uptime, the Claude dir and the state file) and the
+  chats' counts. `project-cue.mjs` checks the head on ALL, on a project and on the rail, and the box.
 
 ## Decisions of 2026-09-27, evening — the lines between the cards, and the rings' step
 
