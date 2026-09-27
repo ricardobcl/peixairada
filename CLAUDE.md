@@ -171,14 +171,12 @@ refuses to run against the real directory for the same reason.
   name's height; the title row's end for an hour), in `--accent`, the card's own ink on the solid tint. The tick
   comes first so it takes the F's place when there is none; either brings the `.top` row into being on a card that
   had none (a folder project's), both 18 px tall there so the row is no taller. The rail does not show it.
-* **The card's age shows only under the pointer, top left** (2026-09-27, Ricardo: "the time since last update on the
-  card should only show on hover and should be a top left on the card"; the title row's right end, always, before):
-  `.time` is the card's first child, absolute at 0 0, 11 px tall in the card's 8 px of top padding so it ends above
-  the first row's capitals and covers no letter — hence no background; `opacity` 0 → .75 on `.card:hover`,
-  `pointer-events` with it so the tooltip (last activity · you last wrote · Claude last replied) still comes. Out of
-  the flow, so nothing moves under the pointer; the card clips its overflow, so it cannot sit on the border. The rail
-  hides it with every other child. The title row keeps the chips and the unread badge. → `scripts/scenarios/card-marks.mjs`
-  (the order, the F and the ✓'s place, the age).
+* **The card's age stands in the top row, left of the ✓** (2026-09-27, later, Ricardo: "the time since last update
+  on the card should live left of the Done icon on each card"; top left under the pointer only for an afternoon, the
+  title row's end before that): `.top .time`, 10 px in the muted ink, always shown, after the row's spacer and before
+  the ✓ / ↩ and the F — the row's end reads time · tick · F. Every card has the top row now, 18 px at least (the
+  marks' height), so a tick appearing changes no card's height. The tooltip (last activity · you last wrote · Claude
+  last replied) is on it. → `scripts/scenarios/card-marks.mjs` (the order, the F and the ✓'s place, the age).
 * **Cards are square** (2026-09-26, Ricardo: "remove the round corners from cards"; 10 px before): `.card` and the
   ring its `::before` draws inside the border both at `border-radius: 0`. The PR chips keep their 4 px.
 * **The open chat's card and a hovered one are a solid tint** of its colour (`.card.active`, `.card:hover`, 65 %

@@ -4,8 +4,7 @@
 // Opus you wrote to earlier — the reply came a minute later —, one you spoke last on, most recently of all. What is
 // checked: the order goes by the last word whoever said it — Claude's reply lifts a card above one you prompted
 // after its prompt, which your last touch alone never did — and ⌥⌘K and the day lines agree; the F marks the Fable
-// card and no other, and names the model on hover; the time is invisible at rest and shows under the pointer at the
-// card's top left, in the padding above the first row, with nothing else moving.
+// card and no other, and names the model on hover; the time stands in the top row left of the ✓, there at rest (2026-09-27, later).
 import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -63,23 +62,18 @@ export default async function (ctx) {
   ctx.assert.equal(out.ends.opus.act, out.ends.opus.edge, 'the ✓ takes the F\'s place');
   ctx.assert.ok(Math.abs(out.ends.opus.y) <= 2 && !out.ends.opus.inTrow, 'at the project name\'s height, not in the title row');
 
-  // ---- the time: hidden at rest, at the top left under the pointer, nothing moved ----
+  // ---- the time: in the top row, left of the ✓, there at rest (2026-09-27, later) ----
   const t = 'Opus, you wrote after it';
   out.rest = await rects(ctx, t);
-  ctx.assert.equal(out.rest.op, '0', 'invisible at rest');
+  ctx.assert.equal(out.rest.op, '1', 'shown at rest');
   ctx.assert.equal(out.rest.text, '2h', 'when anything last happened — the reply');
-  ctx.assert.ok(!(await ctx.evaluate(`${card(t)}.querySelector('.trow .time')`)), 'no longer in the title row');
+  const place = title => ctx.evaluate(`JSON.stringify((c => { const r = q => { const e = c.querySelector(q), b = e && e.getBoundingClientRect(); return b && { l: Math.round(b.left), r: Math.round(b.right), y: Math.round(b.top + b.height / 2) }; };
+    return { time: r('.top .time'), inTrow: !!c.querySelector('.trow .time'), act: r('.top .act'), fable: r('.top .fable') }; })(${card(title)}))`).then(JSON.parse);
+  out.place = { opus: await place(t), fable: await place('Fable replied last') };
+  ctx.assert.ok(out.place.opus.time && !out.place.opus.inTrow, 'in the top row, not the title row');
+  ctx.assert.ok(out.place.opus.act && out.place.opus.time.r <= out.place.opus.act.l, `left of the ✓ (time ends ${out.place.opus.time.r}, ✓ starts ${out.place.opus.act?.l})`);
+  ctx.assert.ok(Math.abs(out.place.opus.time.y - out.place.opus.act.y) <= 2, 'on the ✓\'s line');
+  ctx.assert.ok(out.place.fable.time.r <= out.place.fable.act.l && out.place.fable.act.r <= out.place.fable.fable.l, 'time · ✓ · F, in that order, on the Fable card');
   await ctx.shot('rest', { x: 0, y: 40, width: 400, height: 460 });
-  const c = out.rest.card;
-  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: c.x + c.w / 2, y: c.y + c.h / 2 });
-  await ctx.waitFor(`getComputedStyle(${card(t)}.querySelector('.time')).opacity !== '0'`, { what: 'the time fading in' });
-  await ctx.sleep(250);
-  out.hover = await rects(ctx, t);
-  ctx.assert.ok(Number(out.hover.op) > 0.5, `shown under the pointer (opacity ${out.hover.op})`);
-  ctx.assert.deepEqual([out.hover.time.x - c.x, out.hover.time.y - c.y], [2, 2], 'at the card\'s top left, inside the border');
-  ctx.assert.ok(out.hover.time.y + out.hover.time.h <= out.hover.top.y + 4, `in the padding above the first row (ends at ${out.hover.time.y + out.hover.time.h}, the row starts at ${out.hover.top.y})`);
-  const at = r => [r.x, r.y];   // the ✓ that a hover brings out narrows the title; where things start is what must hold
-  ctx.assert.deepEqual([at(out.hover.title), at(out.hover.top)], [at(out.rest.title), at(out.rest.top)], 'the title and the first row have not moved');
-  await ctx.shot('hover', { x: 0, y: 40, width: 400, height: 460 });
   return out;
 }

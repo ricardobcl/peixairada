@@ -19,6 +19,9 @@ icon on each card".
   chat header's square is the one that picks. On the rail the head shows the project's short name (`projAbbr`, the
   squares' rule) as the picker's handle, since the square was that; ALL shows nothing there either. ⌥⌘P is the way
   to the picker from ALL.
+* **The card's age is in the top row, left of the ✓** (`.top .time`, always shown, in the muted ink): time · tick · F
+  end the row. Every card has the row now, at least 18 px tall, so nothing jumps when a tick appears. The hover-only
+  top-left placement of the afternoon lasted an afternoon.
 
 ## Decisions of 2026-09-27, evening — the lines between the cards, and the rings' step
 
