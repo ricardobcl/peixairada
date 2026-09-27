@@ -4,7 +4,8 @@
 // Opus you wrote to earlier — the reply came a minute later —, one you spoke last on, most recently of all. What is
 // checked: the order goes by the last word whoever said it — Claude's reply lifts a card above one you prompted
 // after its prompt, which your last touch alone never did — and ⌥⌘K and the day lines agree; the F marks the Fable
-// card and no other, and names the model on hover; the time stands in the top row left of the ✓, there at rest (2026-09-27, later).
+// card and no other, and names the model on hover; the time stands in the top row left of the ✓ (2026-09-27, later),
+// and shows only under the pointer, with nothing in the row moving (later still).
 import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -62,11 +63,21 @@ export default async function (ctx) {
   ctx.assert.equal(out.ends.opus.act, out.ends.opus.edge, 'the ✓ takes the F\'s place');
   ctx.assert.ok(Math.abs(out.ends.opus.y) <= 2 && !out.ends.opus.inTrow, 'at the project name\'s height, not in the title row');
 
-  // ---- the time: in the top row, left of the ✓, there at rest (2026-09-27, later) ----
+  // ---- the time: in the top row, left of the ✓ (2026-09-27, later), and only under the pointer (later still) ----
   const t = 'Opus, you wrote after it';
   out.rest = await rects(ctx, t);
-  ctx.assert.equal(out.rest.op, '1', 'shown at rest');
+  ctx.assert.equal(out.rest.op, '0', 'invisible at rest');
   ctx.assert.equal(out.rest.text, '2h', 'when anything last happened — the reply');
+  const c = out.rest.card;
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: c.x + c.w / 2, y: c.y + c.h / 2 });
+  await ctx.waitFor(`getComputedStyle(${card(t)}.querySelector('.time')).opacity !== '0'`, { what: 'the time fading in' });
+  await ctx.sleep(250);
+  out.hover = await rects(ctx, t);
+  ctx.assert.ok(Number(out.hover.op) > 0.5, `shown under the pointer (opacity ${out.hover.op})`);
+  const at = r => [r.x, r.y];   // a hover brings out a mark in the title row, which narrows the title; where things start is what must hold
+  ctx.assert.deepEqual([out.hover.time, at(out.hover.title), at(out.hover.top)], [out.rest.time, at(out.rest.title), at(out.rest.top)], 'it kept its room at rest: nothing moved');
+  await ctx.shot('hover', { x: 0, y: 40, width: 400, height: 460 });
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1000, y: 500 });
   const place = title => ctx.evaluate(`JSON.stringify((c => { const r = q => { const e = c.querySelector(q), b = e && e.getBoundingClientRect(); return b && { l: Math.round(b.left), r: Math.round(b.right), y: Math.round(b.top + b.height / 2) }; };
     return { time: r('.top .time'), inTrow: !!c.querySelector('.trow .time'), act: r('.top .act'), fable: r('.top .fable') }; })(${card(title)}))`).then(JSON.parse);
   out.place = { opus: await place(t), fable: await place('Fable replied last') };

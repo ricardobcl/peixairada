@@ -445,11 +445,13 @@
   .card .grow { flex: 1; }
   /* The card's age (2026-09-27, later, Ricardo: "the time since last update on the card should live left of the
      Done icon on each card"; top left under the pointer only for an afternoon, the title row's end before): in the
-     top row after the spacer, before the ✓ / ↩ and the F, 10 px in the muted ink, always shown — the tooltip says
-     when you last wrote and when Claude last replied. Every card has the row now, so it is 18 px at least (the
-     marks' height) and a tick appearing changes no card's height. */
-  .card .top .time { flex: none; font-size: 10px; line-height: 18px; color: var(--muted); }
-  .card:is(.active, :hover, .qsel) .top .time { color: inherit; opacity: .8; }
+     top row after the spacer, before the ✓ / ↩ and the F, 10 px — the tooltip says when you last wrote and when
+     Claude last replied. Every card has the row now, so it is 18 px at least (the marks' height) and a tick appearing
+     changes no card's height. Only under the pointer (2026-09-27, later still, Ricardo: "the last update time on the
+     card should only show on hover"): transparent at rest but keeping its room, so nothing in the row moves when it
+     comes — the one mark there that is a reading, not a state. */
+  .card .top .time { flex: none; font-size: 10px; line-height: 18px; color: inherit; opacity: 0; transition: opacity .12s; }
+  .card:hover .top .time { opacity: .8; }
   /* on Fable (2026-09-27): a stylized F with a spark, last in the top row after the ✓, in the accent — the card's own ink on
      the solid tint. Both are 18 px tall there, the row's own height, so a row that holds only the marks is no taller. */
   .card .top .fable { color: var(--accent); flex: none; display: inline-flex; align-items: center; height: 18px; }

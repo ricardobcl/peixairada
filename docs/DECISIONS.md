@@ -20,6 +20,9 @@ bit more the 3 counters".
   with `steps(1, end)` on each keyframe — still the compositor's, still phased at 0 with the rings, and the hop is
   the same length so it stays on the burst. The sheet in the source (`PIX_SHEET`) is the strip, frame beside frame,
   so a frame is redrawn by editing its `#`s.
+* **The card's age comes back under the pointer only**, where it stands now (left of the ✓), not top left where the
+  afternoon had it: transparent at rest but keeping its room, so the row does not shift when it shows. At rest a
+  card says states — the ✓, the F, the chips — and the age, a reading, waits to be asked for.
 
 ## Decisions of 2026-09-27, small hours after — ⌃⌘F fills the screen up to the notch
 
