@@ -195,6 +195,14 @@ refuses to run against the real directory for the same reason.
   **The open card bleeds into the splitter** (2026-09-26): `main:not(.scompact) #slist > .card.active` runs over the
   list's padding to the column's edge, and `#splitter` is `--open` on `main` — set by
   `tintChat`, the chat's colour or the grey of none — so card, bar and the chat's tinted header are one stroke.
+* **A new chat has a card before its first word** (2026-09-27, Ricardo: "when I clear the chat or when I select new
+  chat, I don't see the card until I press enter"): `visible()` shows a live chat with no transcript unless it is VS
+  Code's (its restored panels, never prompted — the rule's original reason). The server's `startedAt` on a session born
+  from the registry is the card's time and place — the moment the board first saw the id, not the registry's
+  `startedAt`, which is the process's and survives a `/clear`; the process's start only at boot — carried over by
+  `indexFile` when the transcript lands, the last fallback of `wordAt` (both copies), the card's `.time`. `openSession`
+  on a chat the snapshot lacks renders the board from its fetch. → `scripts/scenarios/new-chat-card.mjs`, the card
+  checks in `drawer-clear.mjs`, Decisions 2026-09-27 (afternoon, later).
 * **A chat waiting on your answer first, then clauding, then ready, done last** (`RANK` / `rankOf`, the asking
   step added 2026-09-21), inside each group **by the last word, yours or Claude's** (`wordAt`: the newer of
   `lastUserAt` and `lastReplyAt`, 2026-09-27 — your last touch alone before, so a reply landing moved nothing; a tool
@@ -575,15 +583,18 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   dirs on exit (`--keep` to inspect). `ctx`: `evaluate`, `waitFor`, `send`, `sleep`, `shot(label)`, `key(code)`,
   `openChat(id)`, `screen()`, `waitPrompt()`, `peix(expr)`, `server.api/terminals/restart/logText`, `fixture.chats`,
   `assert`, `cmd(code)` (a plain ⌘ press; `key(code)` is ⌥⌘), `screen(g)` / `waitPrompt(ms, g)` (the half, 0 by
-  default — the whole column while nothing is split), `drag(from, to, mid)` (a real press, move and release). The twenty-eight in `scripts/scenarios/` are the
+  default — the whole column while nothing is split), `drag(from, to, mid)` (a real press, move and release). The twenty-nine in `scripts/scenarios/` are the
   regression checks for the drawer (re-attach, restart, geometry, `/clear`, ⌘K, the focus-view button, ⌥ as a
-  compose key), the hotkeys, the tab strip and the split (side by side and stacked), the new-chat flow, the project step's folders and ✕,
+  compose key), the hotkeys, the tab strip and the split (side by side and stacked), the new-chat flow and a new chat's card before its first word, the project step's folders and ✕,
   the chat list's rules, its filter, its ends and its timeline, the card sizes and marks, the notifications switch, the usage bar, the project cue, the header's PRs
   and its ··· menu, the chat's links, the top row around the notch.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY` with what it failed on the first time, and the suite still exits 0; `--no-retry` is the honest gate.
   Nothing is known to need it since the drift below was taken out of `focus-view` (2026-09-22).
+* **The auto fixture's second folder is the temp dir's real path** (`realpathSync(tmpdir())`, 2026-09-27): a fake
+  claude started there registers `/private/var/…`, and a fixture chat under `/var/…` is another folder to the board —
+  a second project named T, and the wrong one in view after ＋.
 * **Every test server gets a fast clock and an empty org directory** (`lib/testserver.mjs`): `REGISTRY_POLL_MS`
   1200 and `TASK_GRACE_MS` 400, because the live ten seconds is what a scenario either waits out or races; and an
   `ORG_DIR` of its own under the state dir, so nothing ever lists the real `~/acme`. `meta.env` is spread last,

@@ -4,6 +4,33 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-27.
 
+## Decisions of 2026-09-27, afternoon, later — a new chat's card before its first word
+
+Ricardo: "when I clear the chat or when I select new chat, I don't see the card until I press enter to send the first
+message."
+
+* **What hid it**: the page's `visible()` kept a rule from the lane board — a live chat with no activity is not shown —
+  written for VS Code's restored panels, which mount a claude per tab and never get asked anything. The server had the
+  session all along (`newSession(id, null)` from the registry, titled *(no messages yet)*, `idle`), and pushed it; the
+  page filtered it out of every project, so ＋ and `/clear` both left the chat column on a chat the list did not have.
+* **The rule now**: an empty live chat shows unless it is VS Code's. A drawer's (＋, `/clear`, which keeps the process
+  and gives it a new id) and a claude in a terminal elsewhere are both yours to type into; VS Code's empty panels stay
+  hidden for the reason they always were.
+* **The card needs a time**, for its place (first in the ready group — the newest thing you did) and its age: the
+  server records `startedAt` on a session born from the registry — the moment the board first saw the id, **not the
+  registry's `startedAt`**, which is the process's start and survives a `/clear` (measured on this Mac: `startedAt`
+  three seconds after `procStart`, the clear half an hour later). Only at boot, where every id is new to the board, does
+  the process's start stand in. `indexFile` carries it over when the transcript arrives; `wordAt`, both copies, falls
+  back to it after `lastActivity`; the card's `.time` and its tooltip (*started 4s ago · no messages yet*) read it.
+* **`openSession` on a chat the snapshot did not have** — the drawer's new one, told of over the `terminal` event a
+  beat before its own `session` push — now switches the project and renders the board from the answer it fetched,
+  as it does from `state.sessions` for a known one.
+* **Learned by the harness**: the auto fixture's second folder was `tmpdir()` — `/var/folders/…` — and a fake claude
+  started there registers its real path, `/private/var/folders/…`: to the board, another folder named T, so the new
+  chat's card switched the project in view and the fixture chat's card was gone. `scripts/scenario.mjs` builds the
+  fixture on the real path now. → `scripts/scenarios/new-chat-card.mjs` (＋, then the first prompt: the same card,
+  titled, in its place) and the card assertions added to `drawer-clear.mjs`.
+
 ## Decisions of 2026-09-27, afternoon — the halves one over the other: ⌥⌘1 and ⌥⌘2
 
 Ricardo: "what do you suggest for toggling the vertical split for an horizontal one? · this should be a per chat

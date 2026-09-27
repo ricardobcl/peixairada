@@ -1335,9 +1335,14 @@
   // chats themselves are untouched and still show under ALL, because hiding a folder is tidying an index, not
   // throwing work away. The cog is the way back.
   const isHidden = key => state.hidden.includes(key);
+  // A live chat with no transcript yet is a card too, when it is yours to type into (2026-09-27, Ricardo: "when I clear
+  // the chat or when I select new chat, I don't see the card until I press enter to send the first message"): the
+  // drawer's — ＋, or /clear, which gives the process a new id and an empty chat — and a claude in a terminal
+  // elsewhere. VS Code's empty panels stay hidden: it mounts one per tab it restores, and none of them was ever asked
+  // anything. The card's time and place are the chat's start (`startedAt`, the server's), until a first word lands.
   function visible(s) {
     if (prefs.showAll) return true;
-    if (s.alive && !s.lastActivity) return false;
+    if (s.alive && !s.lastActivity) return !inVsCode(s);
     if (!s.alive && !s.done && (!s.lastActivity || Date.now() - new Date(s.lastActivity) > STALE_MAX_AGE_MS)) return false;
     return true;
   }
@@ -1347,9 +1352,9 @@
   // reply that ends a turn — not each tool call on the way, so a clauding card does not climb with every step. A
   // session whose tail held neither (boot reads only the end of a long transcript) falls back to its last activity,
   // not the bottom.
-  const wordAt = s => { const u = String(s.lastUserAt || ''), r = String(s.lastReplyAt || ''); return (u > r ? u : r) || String(s.lastActivity || ''); };
+  const wordAt = s => { const u = String(s.lastUserAt || ''), r = String(s.lastReplyAt || ''); return (u > r ? u : r) || String(s.lastActivity || '') || String(s.startedAt || ''); };   // an empty chat: its start
   const byWord = (a, b) => wordAt(b).localeCompare(wordAt(a));
-  const timeTip = s => !s.lastActivity ? '' : `last activity ${rel(s.lastActivity)} ago${s.lastUserAt ? ` · you last wrote ${rel(s.lastUserAt)} ago` : ''}${s.lastReplyAt ? ` · Claude last replied ${rel(s.lastReplyAt)} ago` : ''}`;
+  const timeTip = s => !s.lastActivity ? (s.startedAt ? `started ${rel(s.startedAt)} ago · no messages yet` : '') : `last activity ${rel(s.lastActivity)} ago${s.lastUserAt ? ` · you last wrote ${rel(s.lastUserAt)} ago` : ''}${s.lastReplyAt ? ` · Claude last replied ${rel(s.lastReplyAt)} ago` : ''}`;
   // Three states since 2026-09-20, and done is *only* the tick (asked later that day; the first cut folded
   // stale into done): a chat with no live process is ready — write to it and it resumes. The dot still says
   // stale in grey and the card is dimmed a touch, so you know a resume is coming before you click. Clauding
@@ -1757,7 +1762,7 @@
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip">${entryLabel(s)}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${s.id}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
-      <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}${s.lastActivity ? `<span class="time" title="${esc(timeTip(s))}">${rel(s.lastActivity)}</span>` : ''}${act}${fable}</div>
+      <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}${s.lastActivity || s.startedAt ? `<span class="time" title="${esc(timeTip(s))}">${rel(s.lastActivity || s.startedAt)}</span>` : ''}${act}${fable}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${un ? `<span class="badge">${un}</span>` : ''}</div>
       ${s.prs?.length ? `<div class="cprs">${s.prs.slice(0, 8).map(pr => `<a class="cpr" data-state="${esc(pr.state || '')}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`).join('')}</div>` : ''}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
@@ -3510,6 +3515,9 @@
     const r = await fetch(`/api/sessions/${id}/messages`); if (!r.ok) return;
     const data = await r.json();
     state.sessions.set(id, data.session); state.entries = data.entries; renderHead(data.session); renderLog(); syncTerm(data.session);
+    // A chat the snapshot did not have yet — the drawer's new one, told of over the `terminal` event before its own
+    // `session` push — gets its card, and the project switch above, from the answer.
+    if (!s0) { if (!inProject(data.session, projectStub(prefs.project))) { prefs.project = data.session.cwd || '?'; savePrefs(); } renderBoard(); }
     $('#log').scrollTop = $('#log').scrollHeight;
     if (location.hash.slice(1) !== id) history.replaceState(null, '', '#' + id);
     document.querySelector(`#slist > .card[data-id="${id}"]`)?.scrollIntoView({ block: 'nearest' });

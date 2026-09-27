@@ -10,7 +10,7 @@
 // is one (api, terminals, restart, holders, logText), the fixture's chats, `args`, `log` and node:assert as `assert`.
 // Everything is cleaned up on exit — Chrome, the server, its terminals and holders, the temp dirs — unless --keep.
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -42,7 +42,9 @@ const bail = setTimeout(async () => { log(`timed out after ${timeout} ms`); awai
 let fixture = null, server = null, boardUrl = url;
 if (meta.fixture) {
   const dir = meta.fixture === 'auto' ? mkdtempSync(join(tmpdir(), 'peix-fixture-')) : resolve(meta.fixture);
-  fixture = meta.fixture === 'auto' ? defaultFixture(dir, { cwdA: process.cwd(), cwdB: tmpdir() }) : { dir, chats: [] };
+  // The temp dir as claude reports it (/private/var/…, not /var/…): a fake started there registers its real path, and a
+  // fixture chat under the other spelling would be another folder to the board — a second project named T.
+  fixture = meta.fixture === 'auto' ? defaultFixture(dir, { cwdA: process.cwd(), cwdB: realpathSync(tmpdir()) }) : { dir, chats: [] };
   log(`fixture ${dir}${fixture.chats.length ? ' — chats ' + fixture.chats.map(c => c.id.slice(0, 8)).join(', ') : ''}`);
 }
 if (meta.server || !boardUrl) {

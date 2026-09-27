@@ -287,6 +287,7 @@ function newSession(id, file) {
     cwd: null, gitBranch: null, model: null,
     title: null, customTitle: null, lastPrompt: null, lastReply: null, prs: [],
     status: 'unknown', statusSince: null, lastActivity: null, lastUserAt: null, lastReplyAt: null,
+    startedAt: null,   // when a chat with no transcript yet came to be (loadRegistry) — the card's time and place until a first word lands
     live: null, alive: false, entrypoint: null, entrypointAt: null,   // last 'entrypoint' a user/assistant line carried ('claude-vscode' | 'cli'), and when
     rivals: [],   // other live processes on this chat (registry entries beyond `live`) — see inVsCode()
     entries: [], entryCount: 0, loaded: false,
@@ -359,7 +360,7 @@ function summary(s) {
     // the question it is waiting on and which tool asked, when the transcript has it; else only what the registry
     // says it is waiting for — the question itself is written with its answer (see waitingOn)
     ask: status !== 'needs-input' ? null : s.status === 'needs-input' && s.ask ? s.ask : { tool: null, text: null, options: 0, waitingFor: waitingOn(s) || null },
-    rawStatus: s.status, statusSince: s.statusSince, lastActivity: s.lastActivity,
+    rawStatus: s.status, statusSince: s.statusSince, lastActivity: s.lastActivity, startedAt: s.startedAt,
     lastUserAt: s.lastUserAt, lastReplyAt: s.lastReplyAt,
     alive: s.alive, live: s.live, entrypoint: s.live?.entrypoint || s.entrypoint, terminal: termSummary(termOf(s)), shell: termSummary(shellOf(s)), entryCount: s.entryCount, loaded: s.loaded, file: s.file, lastHook: s.lastHook,
     env: envs[s.id] || termOf(s)?.task || null,   // the launcher it was started with (⌥⌘O groups oracle's chats by it)
@@ -665,7 +666,7 @@ function indexFile(file, { full = false } = {}) {
   const id = basename(file, '.jsonl');
   const prev = sessions.get(id);
   const s = newSession(id, file);
-  if (prev) { s.live = prev.live; s.rivals = prev.rivals; s.alive = prev.alive; s.lastHook = prev.lastHook; }
+  if (prev) { s.live = prev.live; s.rivals = prev.rivals; s.alive = prev.alive; s.lastHook = prev.lastHook; s.startedAt = prev.startedAt; }
   const start = full || st.size <= TAIL_BYTES ? 0 : st.size - TAIL_BYTES;
   s.loaded = start === 0 || full;
   s.truncatedHead = start > 0;
@@ -887,6 +888,11 @@ function loadRegistry() {
     const wasWaiting = waitingOn(s);
     s.live = live; s.rivals = rivals;
     if (!s.cwd && live.cwd) s.cwd = live.cwd;
+    // A chat with no transcript yet still gets a card (2026-09-27, Ricardo: "when I clear the chat or when I select new
+    // chat, I don't see the card until I press enter"), and the card needs a time: the moment the board first saw the id.
+    // Not the registry's startedAt — /clear keeps the process, and its start, and gives it a new id; the new chat is *now*.
+    // Only at boot, where every id is new to the board, does the process's start stand in.
+    if (!s.startedAt && !s.file) s.startedAt = new Date(indexing && Number(live.startedAt) > 0 ? Number(live.startedAt) : Date.now()).toISOString();
     if (applyLiveness(s) || changed) schedulePush(s);
     if (waitingOn(s) && !wasWaiting) queueNotify(s, 'needs-input');   // the moment a prompt goes up — the transcript hears of it only with the answer
   }
@@ -1524,7 +1530,7 @@ function readBody(req) {
 }
 
 /** Newest first by the chat's last word — yours or Claude's reply, whichever came later — the board's own order (`byWord` in index.html). */
-const wordAt = s => { const u = String(s.lastUserAt || ''), r = String(s.lastReplyAt || ''); return (u > r ? u : r) || String(s.lastActivity || ''); };
+const wordAt = s => { const u = String(s.lastUserAt || ''), r = String(s.lastReplyAt || ''); return (u > r ? u : r) || String(s.lastActivity || '') || String(s.startedAt || ''); };   // an empty chat: its start (the page's copy agrees)
 function sortedSummaries() {
   return [...sessions.values()].map(summary).sort((a, b) => wordAt(b).localeCompare(wordAt(a)));
 }
