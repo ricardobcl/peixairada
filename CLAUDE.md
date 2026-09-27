@@ -156,7 +156,11 @@ refuses to run against the real directory for the same reason.
   `PROJECT_ICONS`): `acme` is `BLACK`. The chat header's colour square is the picker (`#colorInput`).
 * **The chat header is a gradient of the project's colour**: `tintChat()` sets `--repo`, `--rink`, `--rover`/`--rover2`
   and `#chat.tinted`; `--rink` is the ink that reads on it (`inkOn()`), every control in `.shead` redrawn in it; the
-  veils pull the colour away from that ink towards the bottom right. No colour → the plain panel header. **The
+  veils pull the colour away from that ink towards the bottom right. No colour → the plain panel header. **The colour
+  eases from chat to chat** (2026-09-27, night): the header's ground, the two veils, the transcript's wash and the
+  divider read registered colours — `--hbg`, `--hveil`, `--hveil2` on `#chat`, `--openc`, `--openb` on `main`, all set
+  by `tintChat` — and `transition` on those two elements does the rest; `--repo` stays unregistered (its fallback is
+  load-bearing) and `--rink` cuts. A new surface in the chat's colour reads `--hbg`, not `--repo`. **The
   colour square sits on the bar**, centred, out of the flow — positioned from `.shead` at the `.sep`'s x — the same
   `.sq.pick`, inked only while the pointer is in the header; `colorAt` remembers which header the picker was opened
   from, so `note` pops up by the square. **Between the project and the title stands a 2 px bar in `--rink`**, the

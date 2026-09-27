@@ -40,6 +40,13 @@ transform and opacity where it can — the compositor's kind of motion, as the r
   after a 300 ms beat, as VS Code's sash does, so a pointer crossing on its way to the chat no longer flashes them; a
   drag lights at once. Every small control — buttons, chips, tabs, menu rows — eases its ink, edge and wash in 120 ms
   under one rule. Measured: `--tint` reads 61 % a hundred milliseconds into a click on a card.
+* **A switch of chat slides the colour**: the header's ground and its two veils, the transcript's wash and the
+  divider are registered colours (`@property --hbg`, `--hveil`, `--hveil2` on `#chat`; `--openc`, `--openb` on
+  `main`) that `tintChat` sets beside `--repo` and `--rink`, and a registered colour interpolates — 250 ms from one
+  project's colour to the next. `--repo` itself cannot be registered: its fallback to `--nocolor` is what a
+  colourless card relies on, and a registered property always has a value. The ink still cuts: a grey half-way
+  between white and black reads on neither. Measured: `--hbg` on the way from peixairada's orange to wallet-api's
+  blue read `rgb(81, 133, 174)` at 110 ms.
 
 ## Decisions of 2026-09-27, night — an empty chat's card can be ticked done
 

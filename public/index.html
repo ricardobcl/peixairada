@@ -102,6 +102,19 @@
 
   /* ---- layout: sessions | splitter | chat (one half or two) ---- */
   main { display: flex; min-height: 0; min-width: 0; }
+  /* The chat's colour eases from one chat to the next (2026-09-27, night): the header's ground and its two veils, the
+     transcript's wash and the divider are registered colours set by tintChat — --repo itself cannot be registered, its
+     fallback to --nocolor is what a colourless card relies on — and a registered colour interpolates, so a switch of
+     chat slides the header from one project's colour to the other's over 250 ms rather than cutting. The ink (--rink)
+     still cuts: a grey half-way between white and black reads on neither. Inherited, so the descendants that read
+     them see every step. */
+  @property --hbg { syntax: '<color>'; inherits: true; initial-value: transparent; }
+  @property --hveil { syntax: '<color>'; inherits: true; initial-value: transparent; }
+  @property --hveil2 { syntax: '<color>'; inherits: true; initial-value: transparent; }
+  @property --openc { syntax: '<color>'; inherits: true; initial-value: transparent; }
+  @property --openb { syntax: '<color>'; inherits: true; initial-value: transparent; }
+  main { --openc: var(--panel); --openb: var(--line); transition: --openc .25s, --openb .25s; }
+  #chat { --hbg: var(--nocolor); transition: --hbg .25s, --hveil .25s, --hveil2 .25s; }
   #sessions { border-left: 4px solid var(--repo, var(--nocolor)); }
   #sessions .colhead { background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); }
   /* 300 px at the narrowest (260 until the head became one row: below 300 the project's name had no room left) */
@@ -130,9 +143,9 @@
   main.scompact #slist > .card .abbr { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .4px; }
   main.scompact #slist .gsep { display: none; }   /* no room for a line, or for Claude's mark, on a rail of squares */
   main.scompact #slist .none { padding: 14px 2px; font-size: 10px; }
-  /* The bar between the list and the chat is the open chat's colour (2026-09-26): --open on main, set with the chat's
+  /* The bar between the list and the chat is the open chat's colour (2026-09-26): --openc and --openb on main (registered, so they ease), set with the chat's
      tint, so the open card, the bar and the chat's header are one stroke of it — see .card.active. */
-  #splitter { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--open, var(--line)); border-right: 1px solid var(--open, var(--line)); background: var(--open, var(--panel)); }
+  #splitter { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--openb); border-right: 1px solid var(--openb); background: var(--openc); }
   #splitter:hover, #splitter.drag { background: var(--accent); }
   /* The dividers light up after a beat, as VS Code's sash does (2026-09-27, night): a pointer crossing on its way to the
      chat no longer flashes them; a drag lights at once. */
@@ -183,7 +196,7 @@
   /* A VS Code chat: read here, continued there. The whole pane says so — an outline, so nothing moves. */
   /* The pane is washed in the project's colour — none for a folder without one (transparent mixed with
      transparent). Where the chat lives is a mark in the header (.own), not a colour, since 2026-09-20. */
-  #log { background: linear-gradient(165deg, color-mix(in srgb, var(--repo, var(--nocolor)) 24%, transparent), color-mix(in srgb, var(--repo, var(--nocolor)) 6%, transparent) 70%, transparent); }
+  #log { background: linear-gradient(165deg, color-mix(in srgb, var(--hbg) 24%, transparent), color-mix(in srgb, var(--hbg) 6%, transparent) 70%, transparent); }
   /* Every other chat is a CLI chat, lived here or in a terminal: the same wash in orange, no outline. */
   .colhead { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); font-weight: 700; min-width: 0; min-height: 43px; }
   .colhead .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--ink); font-weight: 800; display: flex; align-items: center; gap: 7px; }
@@ -445,7 +458,7 @@
   .card.active { border-color: var(--repo, var(--nocolor)); outline: 2px solid var(--repo, var(--nocolor)); outline-offset: -1px; --tint: 65%; --slope: 0%; }
   /* …and it bleeds into the splitter (2026-09-26, Ricardo: "the open card now is hard to spot… bleeding the color to
      the right so that the bar that divides the chat and the column stays in that card color"): over the list's
-     padding to the column's edge, against the bar in the same colour (#splitter, --open). Not on the rail of squares,
+     padding to the column's edge, against the bar in the same colour (#splitter, --openc). Not on the rail of squares,
      which has no splitter. */
   main:not(.scompact) #slist > .card.active { margin-right: -8px; }
   /* A card in the board's own black (PROJECT_COLORS — acme): 65 % of black over a light panel is a mid-grey
@@ -674,9 +687,9 @@
      in it. An armed or failed button keeps its warning colour on a panel-coloured pill, so it reads on any project. */
   /* A gradient, not a block (2026-09-20, Ricardo: "make it a gradient", then "from top to bottom also"): the colour
      itself at the top left, and towards the right — and, more lightly, down the header — a veil that pulls it *away*
-     from the ink: darker under white ink, lighter under dark ink (--rover across, --rover2 down, set by tintChat), so
+     from the ink: darker under white ink, lighter under dark ink (--hveil across, --hveil2 down, set by tintChat; registered, so a chat switch eases), so
      the buttons at the far end keep their contrast whichever ink the colour chose; the bottom-right corner is deepest. */
-  #chat.tinted .shead { background: linear-gradient(180deg, transparent 15%, var(--rover2)), linear-gradient(100deg, transparent 8%, var(--rover)), var(--repo); color: var(--rink); border-bottom-color: color-mix(in srgb, var(--rink) 20%, var(--repo)); }
+  #chat.tinted .shead { background: linear-gradient(180deg, transparent 15%, var(--hveil2)), linear-gradient(100deg, transparent 8%, var(--hveil)), var(--hbg); color: var(--rink); border-bottom-color: color-mix(in srgb, var(--rink) 20%, var(--hbg)); }
   #chat.tinted .shead :is(.status, .path, .own, .chip, a) { color: color-mix(in srgb, var(--rink) 78%, transparent); }
   #chat.tinted .shead .chip { border-color: color-mix(in srgb, var(--rink) 35%, transparent); }
   #chat.tinted .shead .btn, #chat.tinted .shead .btn:disabled { color: color-mix(in srgb, var(--rink) 78%, transparent); border-color: color-mix(in srgb, var(--rink) 40%, transparent); }
@@ -1266,15 +1279,17 @@
     return (299 * ch(0) + 587 * ch(2) + 114 * ch(4)) / 1000 >= 128 ? '#1c1c1a' : '#ffffff';
   };
   // The chat pane in a project's colour: --repo for the header and the transcript's wash, --rink for what reads
-  // on the header, --rover and --rover2 the veils its gradient ends in, across and down (away from the ink: black
+  // on the header, --hveil and --hveil2 the veils its gradient ends in, across and down (away from the ink: black
   // under white ink, white under dark), .tinted while there is one (CSS cannot ask whether --repo is set).
   const tintChat = color => {
     const c = $('#chat'); c.classList.toggle('tinted', !!color);
-    $('#main').style.setProperty('--open', color || 'var(--nocolor)');   // the splitter: the chat's colour, the grey of none, the panel until a chat is open
+    // the splitter: the chat's colour, the grey of none, the panel until a chat is open — registered (main's rule), so the change eases
+    for (const p of ['--openc', '--openb']) $('#main').style.setProperty(p, color || 'var(--nocolor)');
+    c.style.setProperty('--hbg', color || 'var(--nocolor)');   // the header's ground and the transcript's wash, eased
     if (color) {
       const ink = inkOn(color), veil = a => ink === '#ffffff' ? `rgb(0 0 0 / ${a})` : `rgb(255 255 255 / ${a + .08})`;
-      c.style.setProperty('--repo', color); c.style.setProperty('--rink', ink); c.style.setProperty('--rover', veil(.26)); c.style.setProperty('--rover2', veil(.16));
-    } else for (const p of ['--repo', '--rink', '--rover', '--rover2']) c.style.removeProperty(p);
+      c.style.setProperty('--repo', color); c.style.setProperty('--rink', ink); c.style.setProperty('--hveil', veil(.26)); c.style.setProperty('--hveil2', veil(.16));
+    } else for (const p of ['--repo', '--rink', '--hveil', '--hveil2']) c.style.removeProperty(p);
   };
   const folderName = cwd => cwd ? cwd.split('/').filter(Boolean).pop() || cwd : '(no folder)';
   // A project's mark, by name, next to the name wherever it is written — the strip, the column, the chat list's header,
