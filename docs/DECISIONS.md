@@ -66,6 +66,12 @@ transform and opacity where it can — the compositor's kind of motion, as the r
   note fade without moving; a fold's chevron and body switch; `drawCards` reads `REDUCED` and puts cards in place.
   Colour eases stay — a fade is not motion. → `scripts/scenarios/reduced-motion.mjs`, the media feature emulated over
   CDP (which `matchMedia` sees too), then lifted: the ring turns again.
+* **Presence at the foot of the transcript**: the open chat showed nothing of its state but a dot in the ··· menu.
+  `renderPresence` keeps a `.presence` line last in the log — Claude's mark (the divider's sprite, its rules now on
+  `.pix` alone, phased with the rest) and *clauding…* with the sub-agents' count while the chat works; the question,
+  in the card's red and the card's own markup (`askHtml`, its rules now `:is(.card, .presence)`), while it asks;
+  nothing once it is ready. From `renderLog` and from the `session` event, where the state flips; it keeps the bottom
+  when you are at it. → `scripts/scenarios/transcript-live.mjs`.
 
 ## Decisions of 2026-09-27, night — an empty chat's card can be ticked done
 

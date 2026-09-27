@@ -296,8 +296,8 @@
      starts on a frame's boundary, k / 24 of the cycle. */
   .gsep { margin: 2px 10px; font: 600 11px/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: color-mix(in srgb, var(--muted) 80%, transparent); white-space: nowrap; overflow: hidden; user-select: none; }
   .gsep.claude { display: flex; align-items: center; justify-content: center; margin: 4px 10px; overflow: visible; }
-  .gsep.claude .pix { flex: none; width: 18px; height: 18px; overflow: hidden; animation: pixhop 2.4s steps(1, end) infinite; }
-  .gsep.claude .pix svg { display: block; width: 144px; height: 18px; fill: var(--accent); transform: translateX(-90px); animation: pix 2.4s steps(1, end) infinite; }
+  .pix { flex: none; width: 18px; height: 18px; overflow: hidden; animation: pixhop 2.4s steps(1, end) infinite; }
+  .pix svg { display: block; width: 144px; height: 18px; fill: var(--accent); transform: translateX(-90px); animation: pix 2.4s steps(1, end) infinite; }
   @keyframes pix {   /* the frames: 0 · 1 + 2 ◆ 3 ✳ 4 ✶ 5 ✽ (full) 6 and 7 the twinkle, long axes then long diagonals */
     0% { transform: translateX(-90px); }   /* 5, at rest for 7 frames */
     29.167% { transform: translateX(-108px); } 33.333% { transform: translateX(-126px); } 37.5% { transform: translateX(-108px); } 41.667% { transform: translateX(-126px); }   /* 6 7 6 7 */
@@ -544,10 +544,10 @@
   :is(.card .cpr, .shead .hpr)[data-state="merged"] { --prc: var(--pr-merged); color: var(--pr-merged); border-color: color-mix(in srgb, var(--pr-merged) var(--prb, 55%), transparent); }
   :is(.card .cpr, .shead .hpr)[data-state="closed"] { --prc: var(--pr-closed); color: var(--pr-closed); border-color: color-mix(in srgb, var(--pr-closed) var(--prb, 55%), transparent); }
   :is(.card .cpr, .shead .hpr)[data-state="draft"] { --prc: var(--pr-draft); color: var(--pr-draft); border-color: color-mix(in srgb, var(--pr-draft) var(--prb, 55%), transparent); }
-  .card .state.needs-input { color: var(--needs); display: flex; align-items: baseline; gap: 5px; }
-  .card .state.needs-input .ic { width: 11px; height: 11px; flex: none; align-self: center; }
-  .card .state.needs-input .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-  .card .state.needs-input .opts { color: var(--muted); font-weight: 500; flex: none; }
+  :is(.card, .presence) .state.needs-input { color: var(--needs); display: flex; align-items: baseline; gap: 5px; }
+  :is(.card, .presence) .state.needs-input .ic { width: 11px; height: 11px; flex: none; align-self: center; }
+  :is(.card, .presence) .state.needs-input .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  :is(.card, .presence) .state.needs-input .opts { color: var(--muted); font-weight: 500; flex: none; }
   /* Done/reopen: an icon at the end of the top row, not a bordered pill in a row of its own. Bigger, and only under
      the pointer, since 2026-09-26 (Ricardo: "the done button on the card is a bit small and hard to see, also make it
      visible only on hover"): it keeps its box at rest, so nothing in the row moves when it comes. */
@@ -858,6 +858,16 @@
   .tool b { color: var(--ink); font-weight: 600; }
   .tool.err { color: var(--needs); }
   .sysline { margin: 10px auto; text-align: center; font-size: 11px; color: var(--muted); }
+  /* Presence at the foot of the transcript (2026-09-27, night): while the open chat is clauding, Claude's mark (the
+     divider's sprite) and the word under the last message — a reply on its way is seen where you are reading, not
+     only on the card — with the sub-agents' count when there is one; while it is asking, the question, in the card's
+     red and the card's own markup (askHtml). renderPresence keeps it the last thing in the log. */
+  .presence { display: flex; align-items: center; gap: 8px; margin: 2px 0 6px 2px; min-height: 18px; font-size: 11.5px; color: var(--muted); }
+  .presence .pix { flex: none; }
+  .presence .w { font-weight: 600; }
+  .presence .w em { font-style: normal; font-weight: 400; }
+  .presence .state.needs-input { font-size: 12px; font-weight: 600; min-width: 0; }
+  .presence .state.needs-input .ic { width: 12px; height: 12px; }
   .empty { color: var(--muted); text-align: center; margin-top: 30vh; padding: 0 20px; }
 
   /* ---- project editor ---- */
@@ -954,7 +964,7 @@
     .card.asking { animation: none; border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
     .card.landed { animation: none; }
     .dot.working, .dot.needs-input { animation: none; }
-    .gsep.claude .pix, .gsep.claude .pix svg { animation: none; }
+    .pix, .pix svg { animation: none; }
     dialog, dialog:not([open]), .pop, .pop[hidden], .note, .note.out { transform: none; }
     @starting-style { dialog[open], .pop:not([hidden]), .note { transform: none; } }
     .toolgroup > summary::before, .codefold > summary::before { transition: none; }
@@ -3729,7 +3739,24 @@
     group();
     logView.n = state.entries.length;
     log.querySelector(':scope > .empty')?.remove();
-    if (!log.children.length) log.innerHTML = '<div class="empty">No messages yet</div>';
+    if (!log.querySelector(':scope > :not(.presence)')) log.insertAdjacentHTML('afterbegin', '<div class="empty">No messages yet</div>');
+    renderPresence();
+    if (stick) log.scrollTop = log.scrollHeight;
+  }
+  // Presence at the foot of the transcript (2026-09-27, night): while the open chat is clauding, Claude's mark and the
+  // word — a reply on its way is seen where you are reading, not only on the card — with the sub-agents' count when
+  // there is one; while it is asking, the question in the card's red. Kept the last thing in the log, gone when the
+  // chat is neither; called from renderLog and from the session event, which is where the state flips. phaseAnims puts
+  // the mark in step with the divider's.
+  function renderPresence() {
+    const log = $('#log'), s = state.sessions.get(state.current);
+    const html = !s ? '' : s.status === 'working' ? `<div class="presence" title="Claude is working on a reply">${PIX}<span class="w">clauding…${s.agents ? ` <em>· ${s.agents} agent${s.agents === 1 ? '' : 's'} at work</em>` : ''}</span></div>`
+      : asking(s) ? `<div class="presence ask">${askHtml(s)}</div>` : '';
+    let el = log.querySelector(':scope > .presence');
+    if (!html) { el?.remove(); return; }
+    const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
+    if (!el || el.dataset.html !== html) { const n = html2el(html); n.dataset.html = html; if (el) el.replaceWith(n); else log.append(n); el = n; phaseAnims(); }
+    if (el !== log.lastElementChild) log.append(el);
     if (stick) log.scrollTop = log.scrollHeight;
   }
 
@@ -3816,7 +3843,7 @@
       const s = JSON.parse(e.data), was = state.sessions.get(s.id); state.sessions.set(s.id, s);
       if (was?.status === 'working' && s.status === 'idle' && !s.done) { landedAt.set(s.id, performance.now()); noteMotion(s.id, 'landed'); }   // the reply landed: the card flares once (flareLanded)
       if (s.id === state.current && !visible(s) && s.done) leaveChat();   // an empty chat ticked done: its card is gone, and so is the chat
-      renderBoard(); if (s.id === state.current) { renderHead(s); syncTerm(s); }
+      renderBoard(); if (s.id === state.current) { renderHead(s); syncTerm(s); renderPresence(); }
     });
     es.addEventListener('entries', e => { const d = JSON.parse(e.data); if (d.sessionId === state.current) { state.entries.push(...d.entries); renderLog(); } });
     es.addEventListener('projects', e => { state.projects = JSON.parse(e.data).projects || []; renderBoard(); });

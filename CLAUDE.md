@@ -421,7 +421,11 @@ refuses to run against the real directory for the same reason.
   left one, hidden. **The transcript is appended to, not rebuilt** (2026-09-27): `renderLog` keeps `logView` (the
   array, how many entries are drawn, the trailing run of tool calls and its `<details>`) and renders only what
   arrived; another chat, a new array from a fetch, or `renderLog(true)` starts over. A reconnect (a snapshot with a
-  chat open) is `refetchCurrent()`, in place.
+  chat open) is `refetchCurrent()`, in place. **The log's last child is the presence line** (2026-09-27, night):
+  `renderPresence()` — from `renderLog` and the `session` event — keeps `.presence` last while the open chat is
+  clauding (the `.pix` sprite and the word) or asking (`askHtml`), and removes it otherwise; anything that appends to
+  the log after `renderLog` has to leave it last, and a check for "the last message" reads `:scope > .msg:last-of-type`.
+  → `scripts/scenarios/transcript-live.mjs`.
 * **Split or not is the chat's**: `splits`, a set of chat ids beside the `tabs` map and lasting as long as it does.
   `syncTerm` calls `applySplit()` on every open, so the column follows whichever chat is in front; only the divider's
   place is the board's. **⌘W closes the half the keys are in**, and each strip's ⨯ closes *its own* half
@@ -550,7 +554,7 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   `scripts/scenarios/` are the regression checks for the drawer, the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
   marks, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, the chat's links,
-  the notch, reduced motion.
+  the notch, reduced motion, the transcript's presence line.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.
