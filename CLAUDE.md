@@ -385,7 +385,7 @@ refuses to run against the real directory for the same reason.
   both halves hold a page at once; ⌘F's bar is placed from the focused page's rect, so it follows ⌘1 / ⌘2.
   `‹ › ↻ ↗` in the strip are `{type:'nav'}`; × forgets a page (`closeTab`). In a browser the tabs are chat and zsh
   only (`inApp`). GitHub cannot be iframed, hence the second `WKWebView`; a web view with no UI delegate drops
-  `target=_blank`, hence `PrPaneDelegate`. → Findings: *the pane*.
+  `target=_blank`, hence `PaneDelegate`. → Findings: *the pane*.
 * **A page in the pane behaves like a browser tab** (2026-09-21): **⌘R** reloads *it* while the pane is up (the
   board otherwise — the View menu's item renames itself in `validateMenuItem`), **pinch zooms** it
   (`allowsMagnification`, off by default in a WKWebView), and **its address sits in the strip**, scheme stripped,

@@ -189,7 +189,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   var window: BoardWindow!
   var web: BoardWebView!
   var content: NSView!
-  var prPane: PaneOverlay!
+  var paneOverlay: PaneOverlay!
   // A web view per page (`key`: gh:<a PR's url>, ide:<a folder's editor url>), kept loaded; the page's strip has the tabs.
   var paneViews: [String: WKWebView] = [:]
   var paneOrder: [String] = []                 // least recently shown first — what goes when there are too many
@@ -199,14 +199,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   var paneKeys: [String] = []                  // the open chat's pages — spared by the eviction
   var paneShownKeys: [String] = []             // the pages up, one per half of the chat column; empty hides the overlay
   var paneFocus: String?                       // the one the keys, ⌘F and ‹ › ↻ ↗ act on
-  var paneChat: String?                        // the chat the page says is open
   static let paneViewsMax = 8
   var findBar: NSVisualEffectView!             // ⌘F's bar, over the focused page's top right corner; hidden until asked for
   var findRightC: NSLayoutConstraint!         // …placed from that page's rect, so it follows the keys between halves
   var findTopC: NSLayoutConstraint!
   var findField: NSSearchField!
   var findQuery = ""                           // what was last searched for — ⌘G carries on with it after the bar closes
-  let prDelegate = PrPaneDelegate()
+  let paneDelegate = PaneDelegate()
   let server = ServerController()
   var statusItem: NSStatusItem!
   var unread = 0                 // alerts that arrived while the window was not in front
@@ -285,19 +284,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     // The board fills the window; the pane is a transparent overlay over all of it, and each page's web view is
     // placed inside it where the page says — one half of the chat column, or both, below their tab strips. An
     // overlay, not a split: the board's columns never reflow under it, and it lets clicks that miss a page through.
-    buildPrPane()
+    buildPaneOverlay()
     content = NSView(frame: NSRect(x: 0, y: 0, width: 1440, height: 900))
     web.translatesAutoresizingMaskIntoConstraints = false
-    prPane.translatesAutoresizingMaskIntoConstraints = false
-    content.addSubview(web); content.addSubview(prPane)
+    paneOverlay.translatesAutoresizingMaskIntoConstraints = false
+    content.addSubview(web); content.addSubview(paneOverlay)
     NSLayoutConstraint.activate([
       web.leadingAnchor.constraint(equalTo: content.leadingAnchor), web.trailingAnchor.constraint(equalTo: content.trailingAnchor),
       web.topAnchor.constraint(equalTo: content.topAnchor), web.bottomAnchor.constraint(equalTo: content.bottomAnchor),
-      prPane.leadingAnchor.constraint(equalTo: content.leadingAnchor), prPane.topAnchor.constraint(equalTo: content.topAnchor),
-      prPane.trailingAnchor.constraint(equalTo: content.trailingAnchor), prPane.bottomAnchor.constraint(equalTo: content.bottomAnchor)
+      paneOverlay.leadingAnchor.constraint(equalTo: content.leadingAnchor), paneOverlay.topAnchor.constraint(equalTo: content.topAnchor),
+      paneOverlay.trailingAnchor.constraint(equalTo: content.trailingAnchor), paneOverlay.bottomAnchor.constraint(equalTo: content.bottomAnchor)
     ])
     buildFindBar()
-    prPane.isHidden = true
+    paneOverlay.isHidden = true
     window.contentView = content
     installEscapeMonitor()
     installHotkeyForwarder()
@@ -336,18 +335,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   // with the pane up goes to the page (peixKey('Escape')), which puts the chat tab back and hides the
   // pane; ‹ › ↻ ↗ sit in the strip too ({type: "nav", what}).
 
-  private func buildPrPane() {
-    prPane = PaneOverlay()
-    prPane.wantsLayer = true
-    prPane.layer?.backgroundColor = NSColor.clear.cgColor
+  private func buildPaneOverlay() {
+    paneOverlay = PaneOverlay()
+    paneOverlay.wantsLayer = true
+    paneOverlay.layer?.backgroundColor = NSColor.clear.cgColor
   }
   /// The web view for a page, made on first use (and then loaded by the caller). Touches the recency order
   /// and lets the oldest go once there are too many — never one of the current chat's.
   private func paneView(for key: String) -> (WKWebView, Bool) {
     if let w = paneViews[key] { paneOrder.removeAll { $0 == key }; paneOrder.append(key); return (w, false) }
     let w = WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
-    w.navigationDelegate = prDelegate
-    w.uiDelegate = prDelegate
+    w.navigationDelegate = paneDelegate
+    w.uiDelegate = paneDelegate
     w.allowsBackForwardNavigationGestures = true
     w.allowsMagnification = true                 // pinch to zoom, Safari's own gesture — off by default in a WKWebView
     if w.responds(to: Selector(("setInspectable:"))) { w.setValue(true, forKey: "inspectable") }
@@ -355,9 +354,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     w.isHidden = true
     w.wantsLayer = true
     w.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor   // the overlay is clear: a page still loading needs its own
-    prPane.addSubview(w)
-    let frame = [w.leadingAnchor.constraint(equalTo: prPane.leadingAnchor, constant: 0),
-                 w.topAnchor.constraint(equalTo: prPane.topAnchor, constant: 0),
+    paneOverlay.addSubview(w)
+    let frame = [w.leadingAnchor.constraint(equalTo: paneOverlay.leadingAnchor, constant: 0),
+                 w.topAnchor.constraint(equalTo: paneOverlay.topAnchor, constant: 0),
                  w.widthAnchor.constraint(equalToConstant: 100), w.heightAnchor.constraint(equalToConstant: 100)]
     NSLayoutConstraint.activate(frame)
     paneFrameC[key] = frame
@@ -376,7 +375,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// A page shown for the first time loads then; a switch between loaded pages loads nothing. Nothing up hides the
   /// overlay and the board takes the keyboard back.
   func setPane(chat id: String?, keys: [String], places: [PanePlace], focus: String?) {
-    paneChat = id; paneKeys = keys
+    paneKeys = keys
     var shown: [String] = []
     for pl in places {
       guard let url = URL(string: String(pl.key.drop(while: { $0 != ":" }).dropFirst())) else { continue }
@@ -394,7 +393,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     let was = paneShownKeys, wasFocus = paneFocus
     for (key, v) in paneViews { v.isHidden = !shown.contains(key) }
     paneShownKeys = shown
-    prPane.isHidden = shown.isEmpty
+    paneOverlay.isHidden = shown.isEmpty
     paneFocus = focus.flatMap { shown.contains($0) ? $0 : nil } ?? shown.first
     layoutFindBar()
     guard shown != was || paneFocus != wasFocus else { return }
@@ -407,7 +406,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// the focused one starts (points, which are the board view's CSS px). window.peix reports it for the harness.
   func tellPane() {
     let left = paneFocus.flatMap { paneRects[$0]?.minX } ?? 0
-    web.evaluateJavaScript("window.peixPane && window.peixPane(\(prPane.isHidden ? "false" : "true"), \(Int(left)))", completionHandler: nil)
+    web.evaluateJavaScript("window.peixPane && window.peixPane(\(paneOverlay.isHidden ? "false" : "true"), \(Int(left)))", completionHandler: nil)
   }
   /// Where a page is now, for the strip to show and copy — with the key it belongs to, since the board may have
   /// moved on to another tab by the time a load finishes. Sent on every pane message too: a board reload forgets it.
@@ -508,7 +507,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
   /// ⌘F: the bar comes up on the last query, selected, so typing replaces it and ⏎ carries on with it.
   @objc func findInPage(_ sender: Any?) {
-    guard !prPane.isHidden else { return }
+    guard !paneOverlay.isHidden else { return }
     findBar.isHidden = false
     findField.stringValue = findQuery
     findField.textColor = .labelColor
@@ -521,7 +520,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
   /// ⌘G with the bar closed opens it again rather than searching invisibly — the query is still there.
   private func stepFind(forward: Bool) {
-    guard !prPane.isHidden, !findQuery.isEmpty else { return }
+    guard !paneOverlay.isHidden, !findQuery.isEmpty else { return }
     if !findOn { findBar.isHidden = false; findField.stringValue = findQuery }
     runFind(fromTop: false, forward: forward)
   }
@@ -535,7 +534,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// One pass over the page on top. A query that just changed starts from the top of the document — that means
   /// dropping the selection first, since WebKit's find carries on from wherever the last match left it.
   private func runFind(fromTop: Bool, forward: Bool) {
-    guard !prPane.isHidden, let w = paneFocus.flatMap({ paneViews[$0] }) else { return }
+    guard !paneOverlay.isHidden, let w = paneFocus.flatMap({ paneViews[$0] }) else { return }
     let q = findQuery
     guard !q.isEmpty else { findField.textColor = .labelColor; clearFindSelection(); return }
     let go = { [weak self] in
@@ -563,7 +562,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     findField.textColor = .labelColor
     clearFindSelection()
     guard focusPage else { return }
-    let page = prPane.isHidden ? nil : paneFocus.flatMap({ paneViews[$0] })
+    let page = paneOverlay.isHidden ? nil : paneFocus.flatMap({ paneViews[$0] })
     window.makeFirstResponder(page ?? web)
   }
 
@@ -582,8 +581,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
           self.stepFind(forward: !e.modifierFlags.contains(.shift)); return nil
         }
       }
-      guard e.keyCode == 53, !self.prPane.isHidden, let fr = self.window.firstResponder as? NSView else { return e }
-      guard fr.isDescendant(of: self.web) || fr.isDescendant(of: self.prPane) else { return e }
+      guard e.keyCode == 53, !self.paneOverlay.isHidden, let fr = self.window.firstResponder as? NSView else { return e }
+      guard fr.isDescendant(of: self.web) || fr.isDescendant(of: self.paneOverlay) else { return e }
       self.web.evaluateJavaScript("window.peixKey && window.peixKey('Escape')", completionHandler: nil)
       return nil
     }
@@ -614,9 +613,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
   private func installHotkeyForwarder() {
     NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
-      guard let self = self, !self.prPane.isHidden, let hot = AppDelegate.hotkeyCode(e),
+      guard let self = self, !self.paneOverlay.isHidden, let hot = AppDelegate.hotkeyCode(e),
             let fr = self.window.firstResponder as? NSView,
-            fr.isDescendant(of: self.prPane) || (self.findBar != nil && fr.isDescendant(of: self.findBar)) else { return e }
+            fr.isDescendant(of: self.paneOverlay) || (self.findBar != nil && fr.isDescendant(of: self.findBar)) else { return e }
       self.web.evaluateJavaScript("window.peixKey && window.peixKey('\(hot.code)', '\(hot.mods)')", completionHandler: nil)
       return nil
     }
@@ -731,11 +730,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// ⌘R reloads what you are looking at: the page on top of the pane while the pane is up (GitHub, the editor —
   /// the board's own tab strip has ↻ for it too), the board itself otherwise. The menu item says which.
   @objc func reload(_ sender: Any?) {
-    if let w = paneFocus.flatMap({ paneViews[$0] }), !prPane.isHidden { w.reload(); return }
+    if let w = paneFocus.flatMap({ paneViews[$0] }), !paneOverlay.isHidden { w.reload(); return }
     web.load(URLRequest(url: kURL))
   }
   func validateMenuItem(_ item: NSMenuItem) -> Bool {
-    let paneUp = prPane != nil && !prPane.isHidden
+    let paneUp = paneOverlay != nil && !paneOverlay.isHidden
     if item.action == #selector(reload(_:)) {
       item.title = paneUp ? "Reload Page" : "Reload"
     }
@@ -1026,7 +1025,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
 }
 
-/// The PR pane's own delegate: it navigates *inside* the pane (the board's delegate would send every
+/// The pane's own delegate: it navigates *inside* the pane (the board's delegate would send every
 /// non-local link to the system browser), keeps GitHub's target=_blank links in the pane — a web
 /// view with no UI delegate silently drops those — and hands non-web schemes (mailto:, vscode:) out.
 /// The board's web view, with Finder drops taken before WebKit sees them. A web page only ever gets a
@@ -1064,7 +1063,7 @@ final class BoardWebView: WKWebView {
   override func draggingEnded(_ sender: NSDraggingInfo) { if mine { mine = false } else { super.draggingEnded(sender) } }
 }
 
-final class PrPaneDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
+final class PaneDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
   func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
     if let url = navigationAction.request.url { webView.load(URLRequest(url: url)) }
