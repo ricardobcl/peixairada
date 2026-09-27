@@ -5,7 +5,8 @@
 // waiting on you, and real notifications that come from this app (not from "Script Editor") and open
 // the right session when clicked.
 //
-// The web UI is untouched: a small injected script opens its own SSE stream and forwards a summary.
+// The page knows it is in the app (the `hub` message handler) and posts what the shell needs — the chats waiting on you,
+// each alert, the pane's places — and takes the shell's word back through window.peix* calls.
 
 import Cocoa
 import WebKit
@@ -195,31 +196,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   var fillTick: Timer?                    // while filled: watches the pointer for a hold at the Dock's edge (dockTick)
   var dockOut = false                     // the Dock let out after a hold at its edge, until the pointer is off it again
   var edgeSince: TimeInterval?            // when the pointer reached the Dock's edge
+  var dockSide = "bottom"                 // the Dock's edge, read when the fill starts and when the app comes back (dockEdge)
   static let dockHold: TimeInterval = 0.7 // how long the pointer is held at the edge before the Dock comes out
-
-  // ---- injected bridge -----------------------------------------------------------------------
-  private let bridgeJS = """
-  (() => {
-    if (window.__peix) return; window.__peix = true;
-    const post = m => window.webkit?.messageHandlers?.hub?.postMessage(m);
-    const sessions = new Map(); let serverNotify = false, t = null;
-    const summarize = () => {
-      const live = [...sessions.values()].filter(s => s.alive);
-      post({ type: 'state',
-             needs: live.filter(s => s.status === 'needs-input').map(s => ({ id: s.id, project: s.project, title: s.title })),
-             ready: live.filter(s => s.status === 'idle' && !s.done).length,
-             clauding: live.filter(s => s.status === 'working').length, live: live.length });
-    };
-    const schedule = () => { clearTimeout(t); t = setTimeout(summarize, 200); };
-    const es = new EventSource('/events');
-    es.addEventListener('snapshot', e => { const d = JSON.parse(e.data); serverNotify = d.notify === 'native';
-      sessions.clear(); for (const s of d.sessions) sessions.set(s.id, s); schedule(); });
-    es.addEventListener('session', e => { const s = JSON.parse(e.data); sessions.set(s.id, s); schedule(); });
-    es.addEventListener('alert', e => { const a = JSON.parse(e.data);
-      post({ type: 'alert', kind: a.kind, project: a.project || '', title: a.title || '',
-             snippet: a.snippet || '', sessionId: a.sessionId || '', serverNotify, quiet: !!a.quiet }); });
-  })();
-  """
 
   func applicationDidFinishLaunching(_ note: Notification) {
     NSApp.setActivationPolicy(.regular)
@@ -256,8 +234,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   private func buildWindow() {
     let cfg = WKWebViewConfiguration()
     let ucc = WKUserContentController()
-    ucc.add(self, name: "hub")
-    ucc.addUserScript(WKUserScript(source: bridgeJS, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+    ucc.add(self, name: "hub")   // the page sees the handler and posts its state, its alerts and the pane's places
     cfg.userContentController = ucc
     web = BoardWebView(frame: NSRect(x: 0, y: 0, width: 1440, height: 900), configuration: cfg)
     web.navigationDelegate = self
@@ -889,8 +866,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage) {
     guard let body = message.body as? [String: Any], let type = body["type"] as? String else { return }
     switch type {
-    case "state":
-      logLine("state: needs=\((body["needs"] as? [[String: Any]] ?? []).count) ready=\(body["ready"] as? Int ?? -1) clauding=\(body["clauding"] as? Int ?? -1) live=\(body["live"] as? Int ?? -1)")
+    case "state":   // the chats waiting on you, posted by the page when that changes (48k `state:` log lines before, one per burst)
       needsInput = (body["needs"] as? [[String: Any]] ?? []).map {
         ["id": $0["id"] as? String ?? "", "project": $0["project"] as? String ?? "",
          "title": $0["title"] as? String ?? ""]
