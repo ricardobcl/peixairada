@@ -14,6 +14,11 @@ icon on each card".
 
 * **The day lines are the day alone**, centred: the two hairlines of an hour before went the way of the fish. The
   divider between the clauding and the ready cards keeps its hairlines either side of Claude's mark.
+* **The head says nothing on ALL** (`#stitle` `hidden`) and, on a project, only its name and ×: no filter is the
+  default and needs no word; the colour square went too — it was only a colour, but it read as a picker, and the
+  chat header's square is the one that picks. On the rail the head shows the project's short name (`projAbbr`, the
+  squares' rule) as the picker's handle, since the square was that; ALL shows nothing there either. ⌥⌘P is the way
+  to the picker from ALL.
 
 ## Decisions of 2026-09-27, evening — the lines between the cards, and the rings' step
 

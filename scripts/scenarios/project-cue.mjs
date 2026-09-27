@@ -37,9 +37,9 @@ export default async function (ctx) {
   ctx.assert.match(await ctx.evaluate(`document.querySelector('#pick').open && document.querySelector('#pickq').placeholder`), /^New chat/, '＋ on ALL asks which project first');
   await closePick();
 
-  // The head is the picker
-  await ctx.evaluate(`document.querySelector('#stitle .t').click()`);
-  ctx.assert.equal(await pickOpen(), true, 'a click on the project opens the picker');
+  // The head is the picker — on ALL there is nothing to click, so ⌥⌘P
+  await ctx.key('KeyP');
+  ctx.assert.equal(await pickOpen(), true, '⌥⌘P opens the picker');
   out.picker = await ctx.evaluate(`JSON.stringify({ hint: document.querySelector('#pickq').placeholder, rows: [...document.querySelectorAll('#picklist .pkrow .n')].map(n => n.firstChild.textContent) })`).then(JSON.parse);
   ctx.assert.match(out.picker.hint, /^Project/, '…the project picker, ⌥⌘P\'s');
   ctx.assert.equal(out.picker.rows[0], 'ALL');
@@ -48,8 +48,12 @@ export default async function (ctx) {
   await ctx.evaluate(`(() => { const q = document.querySelector('#pickq'); q.value = ${JSON.stringify(folder)}; q.dispatchEvent(new Event('input')); q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })()`);
   out.proj = await head();
   ctx.assert.equal(await pickOpen(), false, 'the choice closes it');
-  ctx.assert.ok(out.proj.text.startsWith(folder), 'the head names the project chosen');
+  ctx.assert.ok(out.proj.text.startsWith(folder) && !out.proj.hidden, 'the head names the project chosen');
   ctx.assert.equal(out.proj.x, true, '…with × beside it');
+  ctx.assert.equal(out.proj.sq, false, '…and no colour square: the chat header\'s is the picker (2026-09-27)');
+  await ctx.evaluate(`document.querySelector('#stitle .t').click()`);
+  ctx.assert.equal(await pickOpen(), true, 'a click on the name opens the picker');
+  await closePick();
   ctx.assert.notEqual(out.proj.project, 'all');
   await ctx.shot('2-project', { x: 0, y: 0, width: 520, height: 140 });
   await ctx.evaluate(`document.querySelector('#stitle .sx').click()`);
@@ -73,11 +77,13 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.fresh, { editor: true, title: 'New project', name: '' }, '＋ new project opens an empty editor');
   await ctx.evaluate(`document.querySelector('#pdlg').close()`);
 
-  // The rail keeps the fish and the square, and the square is the picker too
+  // The rail keeps the fish and, for a project, its short name — the picker's handle there (the square, until 2026-09-27)
+  await ctx.key('KeyP');
+  await ctx.evaluate(`(() => { const q = document.querySelector('#pickq'); q.value = ${JSON.stringify(folder)}; q.dispatchEvent(new Event('input')); q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })()`);
   await ctx.cmd('KeyB');
-  out.rail = await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#stitle > *')].filter(e => getComputedStyle(e).display !== 'none').map(e => e.className))`).then(JSON.parse);
-  ctx.assert.deepEqual(out.rail, ['sq'], 'on the rail the head is the square alone');
-  await ctx.evaluate(`document.querySelector('#stitle .sq').click()`);
+  out.rail = await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#stitle > *')].filter(e => getComputedStyle(e).display !== 'none').map(e => e.className + ':' + e.textContent))`).then(JSON.parse);
+  ctx.assert.ok(out.rail.length === 1 && /^ab:\S{1,3}$/.test(out.rail[0]), `on the rail the head is the project's short name alone: ${JSON.stringify(out.rail)}`);
+  await ctx.evaluate(`document.querySelector('#stitle .ab').click()`);
   ctx.assert.equal(await pickOpen(), true, 'and it opens the picker');
   await closePick();
   await ctx.shot('3-rail', { x: 0, y: 0, width: 300, height: 1000 });

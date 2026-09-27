@@ -119,7 +119,8 @@
      and the card's own edge — so what is clauding, how many agents are out, what is watching and what is asking
      still read from the rail. Everything inside the card goes; .abbr is the only child left standing. */
   main.scompact #sessions { width: 58px; min-width: 0; }
-  main.scompact #shd #filters, main.scompact #newChat, main.scompact #stitle > :not(.sq), main.scompact #splitter { display: none; }
+  main.scompact #shd #filters, main.scompact #newChat, main.scompact #stitle > :not(.ab), main.scompact #splitter { display: none; }
+  main.scompact #stitle .ab { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .4px; color: var(--ink); }
   main.scompact #stitle { flex: none; margin: 0; padding: 5px; }
   main.scompact #shd { flex-direction: column; padding: 8px 0; gap: 8px; min-height: 0; }
   main.scompact #slist { padding: 7px 6px 10px; gap: 6px; }
@@ -180,6 +181,7 @@
   #stitle { cursor: pointer; border-radius: 6px; margin: -4px 0 -4px -6px; padding: 4px 6px; }
   #stitle:hover { background: color-mix(in srgb, var(--repo, var(--nocolor)) 26%, transparent); }
   #stitle > .t { flex: 0 1 auto; display: block; }   /* only as wide as the name, so × sits right after it; a block, so a long one ends in … */
+  #stitle .ab { display: none; }   /* the short name, for the rail */
   #stitle .sx { flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 13px; font-weight: 400; line-height: 1; color: var(--muted); }
   #stitle .sx:hover { color: var(--ink); background: var(--inline-bg); }
   /* One row atop the list (2026-09-24, Ricardo: "at the top of the column, we have 2 rows, but we could use just 1:
@@ -1404,8 +1406,13 @@
     const shown = list.filter(s => filterOn(bucket(s))).sort(q ? (a, b) => (score.get(b.id) - score.get(a.id)) || board(a, b) : board);
     // The project filter's one cue: a click is ⌥⌘P's picker, × goes back to ALL. The square is only a colour here —
     // the colour picker is the chat header's.
-    $('#stitle').innerHTML = `<span class="sq" style="${repoStyle(projColor(p))}"></span><span class="t">${projIcon(p.name)}${esc(p.name)}</span>${p.key === ALL ? '' : '<span class="sx" title="Every project again (ALL)">×</span>'}`;
-    $('#stitle').title = `${p.key === ALL ? 'Every project' : p.custom ? `${p.name}: ${p.cwds.join(', ') || 'no folders yet'}` : p.key} — click or ⌥⌘P for another`;
+    // The head names the project and nothing else (2026-09-27, Ricardo: "the ALL next to the app icon should
+    // disappear, as we assume not having anything is the default All (aka no filter)" · "remove the color picking on
+    // the filter next to the icon, and leave it to the chats": no colour square — the chat header's is the picker —
+    // and nothing at all on ALL). On the rail the short name (projAbbr, the squares' rule) is the picker's handle.
+    $('#stitle').hidden = p.key === ALL;
+    $('#stitle').innerHTML = p.key === ALL ? '' : `<span class="t">${projIcon(p.name)}${esc(p.name)}</span><span class="ab">${esc(projAbbr(p.name))}</span><span class="sx" title="Every project again (ALL)">×</span>`;
+    $('#stitle').title = p.key === ALL ? '' : `${p.custom ? `${p.name}: ${p.cwds.join(', ') || 'no folders yet'}` : p.key} — click or ⌥⌘P for another`;
     // ＋ new chat, an icon alone (2026-09-24): one folder starts it there; a named project over several asks which
     // folder; ALL is ⌥⌘N's flow — which project, its open chats, ＋ a new one.
     const folders = p.key === ALL ? knownFolders() : p.cwds;
