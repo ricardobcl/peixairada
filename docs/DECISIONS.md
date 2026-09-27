@@ -118,6 +118,13 @@ transform and opacity where it can — the compositor's kind of motion, as the r
   `NSColor`), and `underPageBackgroundColor` is the same for the moments WebKit paints its own ground. Type-checked
   and built; not driven — the flash is a launch, which the harness does not do. The two hex pairs are `:root`'s `--bg`
   and have to move with it.
+* **The window is named after the open chat** (the app): the page posts `{type: 'chat', project, title, cwd}` whenever
+  the chat header is drawn anew (`postChat`, from `renderHead` and `leaveChat`), and the shell sets the window's
+  title — *wallet-api · Price quote cache*, *peixAIrada* with the column empty — so ⌘Tab, Mission Control
+  and the Window menu name the chat, and its `representedURL` to the chat's folder, which puts the folder's proxy
+  icon in the title bar and the path under a ⌘-click on the title. Not `subtitle`: that makes the title bar taller.
+  → `scripts/scenarios/window-title.mjs`, the bridge faked as `pane-tabs` fakes it: one post per header, none for a
+  render that leaves it.
 
 ## Decisions of 2026-09-27, night — an empty chat's card can be ticked done
 

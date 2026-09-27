@@ -939,6 +939,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       setPane(chat: body["id"] as? String, keys: body["keys"] as? [String] ?? [], places: places, focus: body["focus"] as? String)
     case "nav":
       paneNav(body["what"] as? String ?? "")
+    case "chat":   // the open chat (2026-09-27, night): the window is named after it, and its folder is the represented file
+      let title = body["title"] as? String ?? "", project = body["project"] as? String ?? "", cwd = body["cwd"] as? String ?? ""
+      window.title = title.isEmpty ? "peixAIrada" : (project.isEmpty ? title : "\(project) · \(title)")
+      window.representedURL = cwd.isEmpty ? nil : URL(fileURLWithPath: cwd, isDirectory: true)   // the proxy icon, and ⌘-click on the title for the path
     case "focus":
       window.makeFirstResponder(web)
     case "external":

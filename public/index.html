@@ -1594,6 +1594,10 @@
   // The app's badge and status menu, from the board's own state (2026-09-27): the shell's bridge used to open a second
   // SSE stream and keep its own copy of every session for four counts, three of which it only logged. What it needs is
   // the chats waiting on you; posted when that changes.
+  // The open chat, for the window (2026-09-27, night): its project, title and folder go to the shell whenever the
+  // header is drawn anew, and nothing when the column is empty — the window's title (⌘Tab, Mission Control, the
+  // Window menu) and its represented folder (the title bar's proxy icon and ⌘-click path) follow.
+  const postChat = s => { if (inApp) post({ type: 'chat', project: s?.project || '', title: s?.title || '', cwd: s?.cwd || '' }); };
   function postState() {
     const needs = [...state.sessions.values()].filter(s => s.alive && s.status === 'needs-input').map(s => ({ id: s.id, project: s.project, title: s.title }));
     const sig = JSON.stringify(needs); if (sig === postState.last) return; postState.last = sig;
@@ -2749,7 +2753,7 @@
     if (prsHtml !== drawn.prs) pl.innerHTML = drawn.prs = prsHtml;
     const pm = pl.querySelector('#prMore'); if (pm) pm.onclick = () => { state.prsAll = !state.prsAll; renderHead(s); };   // onclick, not a listener per draw
     const pt = $('#prToggle'); if (pt) pt.onclick = () => { prefs.prsOpen = !prefs.prsOpen; savePrefs(); renderHead(s); };
-    if (headNew) { layoutNotch(); fitHeadPrs(); }
+    if (headNew) { layoutNotch(); fitHeadPrs(); postChat(s); }
     renderComposer(s); renderRival(s);
     // Say so when it fails — silently swallowing the response is how a missing `code` CLI looked
     // like a dead button for weeks. The icon has to survive that, so failure adds a word beside it
@@ -3563,7 +3567,7 @@
     state.current = null; state.entries = []; history.replaceState(null, '', location.pathname); hidePr(); syncTerm(null);
     const menu = $('#hmenu'); if (menu.open) menu.close();
     $('#prlist').hidden = true; $('#chat').classList.remove('vsc'); tintChat(color);
-    $('#shead').innerHTML = head; $('#log').innerHTML = log; drawn.head = drawn.menu = drawn.prs = null;
+    $('#shead').innerHTML = head; $('#log').innerHTML = log; drawn.head = drawn.menu = drawn.prs = null; postChat(null);
     layoutNotch(); renderComposer(null);
   }
   // A new chat has no session until claude registers; the server ties the two by pid and says so

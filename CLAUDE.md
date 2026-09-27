@@ -575,7 +575,7 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   `scripts/scenarios/` are the regression checks for the drawer, the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
   marks, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, the chat's links,
-  the notch, reduced motion, the transcript's presence line, the code blocks' bar.
+  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.
