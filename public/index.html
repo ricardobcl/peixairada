@@ -1048,6 +1048,14 @@
   if (!Array.isArray(prefs.filters)) prefs.filters = ['ready', 'working', 'done'];
   if (!prefs.foldBy || typeof prefs.foldBy !== 'object') prefs.foldBy = {};
   const savePrefs = () => { try { localStorage.setItem('peixairada-prefs', JSON.stringify(prefs)); } catch {} };
+  /** One way to ask the server (2026-09-27; thirteen copies of the fetch, the header and the JSON.stringify before):
+   *  JSON in, JSON out, and a throw with the server's own words — its `error`, else the status — when it says no. */
+  async function api(method, url, body) {
+    const r = await fetch(url, body === undefined ? { method } : { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw Object.assign(new Error(d.error || `HTTP ${r.status}`), { status: r.status, body: d });
+    return d;
+  }
   // Code folding per chat (2026-09-20, Ricardo: "a button to toggle for that session"): the header's { } button sets
   // prefs.foldBy[id]; a chat without a word of its own folds (the cog's *fold code* switch, before it went). Claude Code
   // itself cannot fold the code it prints in the drawer — its only collapse is ctrl+o for tool output — so this is the
@@ -1107,7 +1115,7 @@
   const showNotify = () => { $('#notifyOn').checked = state.notifications; };
   $('#notifyOn').addEventListener('change', e => {
     state.notifications = e.target.checked;
-    fetch('/api/notifications', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ on: state.notifications }) });
+    api('PUT', '/api/notifications', { on: state.notifications }).catch(e => note($('#notifyOn'), `Could not save the switch: ${e.message}`, true));
     if (state.notifications && !inApp && window.Notification?.permission === 'default') Notification.requestPermission();
   });
   // How much a card carries (2026-09-25, Ricardo: "a setting in the bottom left cog to compact the cards … make it a
@@ -1306,10 +1314,10 @@
   async function loadUsage() {
     if (usage.busy) return; usage.busy = true;
     try {
-      const r = await fetch('/api/usage'), d = await r.json().catch(() => ({}));
-      if (r.ok && Array.isArray(d.windows)) Object.assign(usage, { data: d, err: '', off: false, fails: 0 });
-      else Object.assign(usage, { err: d.error || `HTTP ${r.status}`, off: !!d.off, fails: usage.fails + 1 });
-    } catch (e) { Object.assign(usage, { err: String(e.message || e), fails: usage.fails + 1 }); }
+      const d = await api('GET', '/api/usage');
+      if (Array.isArray(d.windows)) Object.assign(usage, { data: d, err: '', off: false, fails: 0 });
+      else Object.assign(usage, { err: 'no windows in the answer', fails: usage.fails + 1 });
+    } catch (e) { Object.assign(usage, { err: e.message, off: !!e.body?.off, fails: usage.fails + 1 }); }
     Object.assign(usage, { busy: false, at: Date.now() }); renderUsage();
   }
   // Due: the interval is up (longer after failures), or a window has reset since the last answer — its numbers are old.
@@ -1941,8 +1949,7 @@
   const folders = { root: '', org: 'acme', list: [] };
   async function loadFolders() {
     try {
-      const r = await fetch('/api/folders'); if (!r.ok) return;
-      const d = await r.json();
+      const d = await api('GET', '/api/folders');
       Object.assign(folders, { root: d.root || '', org: d.org || folders.org, list: d.folders || [] });
       if ($('#pick').open && pick.mode === 'new') { pickHint(); pickRender(); }   // the box named no directory until now
     } catch {}
@@ -1969,13 +1976,10 @@
     const q = $('#pickq'), was = q.placeholder;
     q.value = ''; q.placeholder = `cloning ${folders.org}/${name}…`; q.disabled = true;
     $('#picklist').innerHTML = `<div class="none">cloning ${esc(folders.org)}/${esc(name)} into ${esc(homePath(folders.root))} — a big repo takes a while…</div>`;
-    let d = {}, ok = false;
-    try {
-      const r = await fetch('/api/clone', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) });
-      ok = r.ok; d = await r.json().catch(() => ({}));
-    } catch (e) { d = { error: e.message }; }
+    let d;
+    try { d = await api('POST', '/api/clone', { name }); } catch (e) { d = { error: e.message }; }
     q.disabled = false; q.placeholder = was; q.focus();
-    if (!ok || !d.cwd) { $('#picklist').innerHTML = `<div class="none">could not clone ${esc(folders.org)}/${esc(name)} — ${esc(d.error || 'the server said no')}</div>`; return; }
+    if (!d.cwd) { $('#picklist').innerHTML = `<div class="none">could not clone ${esc(folders.org)}/${esc(name)} — ${esc(d.error || 'the server said no')}</div>`; return; }
     loadFolders();
     chatsStep({ key: d.cwd, name, cwds: [d.cwd] });
   }
@@ -2201,12 +2205,8 @@
     if (!s.cwd) return note($('#shead'), 'No folder known for this chat', true);
     const fresh = !shellLive(s);   // the first press opens a tab; the next ones only show it
     if (fresh) {
-      try {
-        const r = await fetch(`/api/sessions/${s.id}/shell`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(termSize()) });
-        const d = await r.json().catch(() => ({}));
-        if (!r.ok) return note($('#shead'), d.error || `HTTP ${r.status}`, true);
-        s.shell = d.terminal;   // the SSE update says the same a moment later
-      } catch (e) { return note($('#shead'), String(e), true); }
+      try { s.shell = (await api('POST', `/api/sessions/${s.id}/shell`, termSize())).terminal; }   // the SSE update says the same a moment later
+      catch (e) { return note($('#shead'), e.message, true); }
     }
     if (fresh) openNewTab(s, 'shell'); else setTab(s, 'shell');
     syncTerm(s); focusBoard(); focusTerm();
@@ -2222,7 +2222,7 @@
   }
   // Hiding is the pins' shape: the whole list each time, shown at once, the server confirms with a `hidden` event.
   // A hidden project that is the selected one falls back to ALL on the next render (renderBoard does that already).
-  const setHidden = keys => { state.hidden = keys; renderBoard(); fetch('/api/hidden', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ hidden: keys }) }); };
+  const setHidden = keys => { state.hidden = keys; renderBoard(); api('PUT', '/api/hidden', { hidden: keys }).catch(e => note($('#stitle'), `Could not save the hidden list: ${e.message}`, true)); };
   const hideProject = key => { if (key) setHidden([...state.hidden.filter(k => k !== key), key]); };
   const showProject = key => setHidden(state.hidden.filter(k => k !== key));
   /** What a hidden key is called now: a named project by its name, a folder by its own and where it is. A named
@@ -2269,9 +2269,9 @@
     clearTimeout(colorTimer);
     if (written.get(cwd) === hex) return;
     written.set(cwd, hex);
-    const r = await fetch('/api/peacock', { method: hex ? 'PUT' : 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cwd, color: hex }) });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) { written.delete(cwd); note(sqFor(cwd), r.status === 404 ? 'Could not write the colour: the running server predates this page and has no route for it — scripts/launchd.sh restart (ends the drawers)' : `Could not write the colour: ${d.error || `HTTP ${r.status}`}`, true); return; }
+    let d;
+    try { d = await api(hex ? 'PUT' : 'DELETE', '/api/peacock', { cwd, color: hex }); }
+    catch (e) { written.delete(cwd); note(sqFor(cwd), e.status === 404 ? 'Could not write the colour: the running server predates this page and has no route for it — scripts/launchd.sh restart' : `Could not write the colour: ${e.message}`, true); return; }
     note(sqFor(cwd), `${hex ? 'Written to' : 'Removed from'} ${homePath(d.file)}${d.tracked ? ' — git tracks that file, so it shows in git status' : ''}`);
   };
   function previewColor(cwd, hex) {
@@ -2296,7 +2296,7 @@
     const cpr = e.target.closest('.cpr');
     if (cpr) { e.stopPropagation(); openSession(card.dataset.id); showPr(cpr.dataset.url); return; }   // that chat, with that PR open
     const act = e.target.closest('.act');
-    if (act) { e.stopPropagation(); fetch(`/api/sessions/${card.dataset.id}/done`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ done: act.dataset.act === 'done' }) }); return; }
+    if (act) { e.stopPropagation(); api('POST', `/api/sessions/${card.dataset.id}/done`, { done: act.dataset.act === 'done' }).catch(err => note(card, `Could not tick it: ${err.message}`, true)); return; }
     openSession(card.dataset.id);
   });
 
@@ -2317,15 +2317,15 @@
     const name = $('#pname').value.trim(); if (!name) { $('#pname').focus(); return; }
     const cwds = [...$('#pfolders').querySelectorAll('input:checked')].map(i => i.value);
     cwds.push(...$('#pextra').value.split('\n').map(x => x.trim()).filter(Boolean));
-    const r = await fetch(id ? `/api/projects/${id}` : '/api/projects', { method: id ? 'PUT' : 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, cwds: [...new Set(cwds)] }) });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) { $('#perr').textContent = d.error || `HTTP ${r.status}`; return; }
+    let d;
+    try { d = await api(id ? 'PUT' : 'POST', id ? `/api/projects/${id}` : '/api/projects', { name, cwds: [...new Set(cwds)] }); }
+    catch (e) { $('#perr').textContent = e.message; return; }
     dlg.close();
     if (d.project) selectProject('c:' + d.project.id);   // the `projects` event re-renders with it
   }
   async function deleteProject() {
     const id = $('#pdlg').dataset.id; if (!id) return;
-    await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+    try { await api('DELETE', `/api/projects/${id}`); } catch (e) { $('#perr').textContent = e.message; return; }
     $('#pdlg').close();
     if (prefs.project === 'c:' + id) selectProject(ALL);
   }
@@ -2515,10 +2515,8 @@
       const fail = why => { fb.classList.add('err'); fb.title = why; fb.querySelector('.k').textContent = 'failed'; note(seen(fb), `VS Code: ${why}`, true); };
       fb.onclick = async () => {
         reset(); fb.disabled = true;
-        try {
-          const r = await fetch(`/api/sessions/${s.id}/focus`, { method: 'POST' });
-          if (!r.ok) fail((await r.json().catch(() => ({}))).error || `HTTP ${r.status}`); else menu.close();
-        } catch (e) { fail(String(e)); }
+        try { await api('POST', `/api/sessions/${s.id}/focus`); menu.close(); }
+        catch (e) { fail(e.message); }
         finally { fb.disabled = false; }
       };
     }
@@ -2527,12 +2525,10 @@
     if (wb) wb.onclick = async () => {
       wb.disabled = true; wb.querySelector('.lbl').textContent = 'starting…';
       try {
-        const r = await fetch('/api/vscode-web', { method: 'POST' });
-        const d = await r.json().catch(() => ({}));
-        if (!r.ok) { wb.classList.add('err'); wb.title = d.error || `HTTP ${r.status}`; wb.querySelector('.lbl').textContent = 'failed'; note(seen(wb), `VS Code Web: ${wb.title}`, true); return; }
+        const d = await api('POST', '/api/vscode-web');
         wb.querySelector('.lbl').textContent = 'VS Code Web';
         menu.close(); openExternal(`${d.url}?folder=${encodeURIComponent(s.cwd)}`);
-      } catch (e) { wb.classList.add('err'); wb.title = String(e); wb.querySelector('.lbl').textContent = 'failed'; note(seen(wb), `VS Code Web: ${wb.title}`, true); }
+      } catch (e) { wb.classList.add('err'); wb.title = e.message; wb.querySelector('.lbl').textContent = 'failed'; note(seen(wb), `VS Code Web: ${wb.title}`, true); }
       finally { wb.disabled = false; }
     };
     const tb = $('#termBtn'); if (tb) tb.onclick = () => { menu.close(); termAction(s); };
@@ -2635,9 +2631,8 @@
     const end = async save => {
       if (done) return; done = true; state.titleEdit = null;
       if (save) {
-        const r = await fetch(`/api/sessions/${s.id}/title`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: inp.value }) });
-        const d = await r.json().catch(() => ({}));
-        if (r.ok) { const cur = state.sessions.get(s.id); if (cur) { cur.title = d.title; cur.boardTitle = d.boardTitle; } }
+        try { const d = await api('PUT', `/api/sessions/${s.id}/title`, { title: inp.value }); const cur = state.sessions.get(s.id); if (cur) { cur.title = d.title; cur.boardTitle = d.boardTitle; } }
+        catch (e) { note($('#shead'), `Could not rename: ${e.message}`, true); }
       }
       const cur = state.sessions.get(s.id) || s; renderHead(cur); renderBoard();
     };
@@ -3245,7 +3240,7 @@
   // × on a tab: the zsh ends (the server says so, and the tab goes with it); a page is forgotten here — its view
   // lingers in the shell until it needs the room — and the chat tab takes its place.
   function closeTab(s, k) {
-    if (k === 'shell') { if (s.shell) fetch(`/api/terminals/${s.shell.id}`, { method: 'DELETE' }); return; }
+    if (k === 'shell') { if (s.shell) api('DELETE', `/api/terminals/${s.shell.id}`).catch(e => note($('#ptabs'), `Could not end the zsh: ${e.message}`, true)); return; }
     if (k.startsWith('gh:')) state.paneGh.set(s.id, (state.paneGh.get(s.id) || []).filter(u => 'gh:' + u !== k));
     else if (s.cwd) state.paneIde.delete(s.cwd);
     const p = placeOf(s);
@@ -3282,18 +3277,15 @@
   async function takeOver(s) {
     drawer.arm = null; clearTimeout(drawer.armTimer);
     const tb = $('#termBtn'); if (tb) { tb.disabled = true; const l = tb.querySelector('.lbl'); if (l) l.textContent = 'ending…'; }
-    const r = await fetch(`/api/sessions/${s.id}/takeover`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(termSize()) });
-    const d = await r.json().catch(() => ({}));
-    const now = state.sessions.get(s.id) || s;
-    if (!r.ok) { drawer.err = d.error || `HTTP ${r.status}`; renderHead(now); return; }
-    attachTerm(curTerm(), d.terminal); renderHead(now);
+    let d = null;
+    try { d = await api('POST', `/api/sessions/${s.id}/takeover`, termSize()); } catch (e) { drawer.err = e.message; }
+    if (d) attachTerm(curTerm(), d.terminal);
+    renderHead(state.sessions.get(s.id) || s);
   }
   async function openTerminalFor(s) {
     if (termLive(s)) { syncTerm(s); renderHead(s); return; }
-    const r = await fetch(`/api/sessions/${s.id}/terminal`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(termSize()) });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) { drawer.err = d.error || `HTTP ${r.status}`; renderHead(s); return; }
-    attachTerm(curTerm(), d.terminal); renderHead(s);
+    try { attachTerm(curTerm(), (await api('POST', `/api/sessions/${s.id}/terminal`, termSize())).terminal); } catch (e) { drawer.err = e.message; }
+    renderHead(s);
   }
   // The >_ button and ⌥⌘C: the chat's claude session — the drawer it runs in, started if need be, or — live
   // elsewhere — arm and, pressed again, take over. The terminal takes the keyboard at the end: attachTerm does that
@@ -3312,7 +3304,7 @@
   async function newChatIn(cwd, then = 'new') {
     let launchers = [];
     if ($('#pick').open) $('#pickq').placeholder = 'asking the folder how it starts claude…';
-    try { const r = await fetch(`/api/launchers?cwd=${encodeURIComponent(cwd)}`); if (r.ok) launchers = (await r.json()).launchers || []; } catch {}
+    try { launchers = (await api('GET', `/api/launchers?cwd=${encodeURIComponent(cwd)}`)).launchers || []; } catch {}
     if (launchers.length) return pickOpen('env', { cwd, launchers, then });
     if (then === 'chats') return chatsStep({ key: cwd, name: folderName(cwd), cwds: [cwd] });   // no launchers: the folder's own chats, ＋ a new one
     $('#pick').close(); newChat(cwd);
@@ -3321,9 +3313,9 @@
   // over SSE, at which point the pane switches to it. `task` names a launcher of the folder's Taskfile (newChatIn).
   async function newChat(cwd, task = null) {
     if (isHidden(cwd)) showProject(cwd);   // working in a folder again is the plainest way of saying it belongs on the board
-    const r = await fetch('/api/terminals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cwd, task, ...termSize() }) });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) { $('#log').innerHTML = `<div class="empty">Could not start a chat: ${esc(d.error || `HTTP ${r.status}`)}</div>`; return; }
+    let d;
+    try { d = await api('POST', '/api/terminals', { cwd, task, ...termSize() }); }
+    catch (e) { $('#log').innerHTML = `<div class="empty">Could not start a chat: ${esc(e.message)}</div>`; return; }
     state.current = null; state.entries = []; history.replaceState(null, '', location.pathname); hidePr(); syncTerm(null);
     if (!inProject({ cwd }, projectStub(prefs.project))) prefs.project = cwd;   // so the new chat lands in view
     savePrefs(); renderBoard();
@@ -3443,9 +3435,8 @@
       <button class="btn" id="rivalEnd" title="SIGTERM ${esc(s.rivals.map(r => r.pid).join(', '))} — what closing that chat amounts to; it comes back only if the chat is opened there again">end ${s.rivals.length === 1 ? 'it' : 'them'}</button>`;
     box.querySelector('#rivalEnd').onclick = async e => {
       const b = e.currentTarget; b.disabled = true; b.textContent = 'ending…';
-      const r = await fetch(`/api/sessions/${s.id}/takeover`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(termSize()) });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) { b.disabled = false; b.textContent = 'failed'; b.title = d.error || `HTTP ${r.status}`; }
+      try { await api('POST', `/api/sessions/${s.id}/takeover`, termSize()); }
+      catch (e) { b.disabled = false; b.textContent = 'failed'; b.title = e.message; }
       // on success the registry changes and the SSE update re-renders the head, bar included
     };
   }
@@ -3454,14 +3445,10 @@
     if (!id || !text) return;
     $('#composeSend').disabled = true;
     try {
-      const r = await fetch(`/api/sessions/${id}/reply`, {
-        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text })
-      });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) { hint.className = 'hint err'; hint.textContent = d.error || `failed (${r.status})`; $('#composeSend').disabled = false; return; }
+      await api('POST', `/api/sessions/${id}/reply`, { text });
       ta.value = '';   // the prompt comes back through the transcript like any other line
     } catch (e) {
-      hint.className = 'hint err'; hint.textContent = String(e); $('#composeSend').disabled = false;
+      hint.className = 'hint err'; hint.textContent = e.message; $('#composeSend').disabled = false;
     }
   }
   $('#composeSend').onclick = sendReply;
@@ -3589,8 +3576,7 @@
     renderBoard();
     if (s0) renderHead(s0);
     if (s0) syncTerm(s0);   // the tab it was on comes back at once — a page in the pane, its zsh; the drawer after the fetch (a chat not yet in the snapshot keeps what is attached until then)
-    const r = await fetch(`/api/sessions/${id}/messages`); if (!r.ok) return;
-    const data = await r.json();
+    const data = await api('GET', `/api/sessions/${id}/messages`).catch(() => null); if (!data) return;
     state.sessions.set(id, data.session); state.entries = data.entries; renderHead(data.session); renderLog(); syncTerm(data.session);
     // A chat the snapshot did not have yet — the drawer's new one, told of over the `terminal` event before its own
     // `session` push — gets its card, and the project switch above, from the answer.
@@ -3636,8 +3622,7 @@
   /** The open chat again — its summary, its entries, its tabs — without moving anything else on the page. */
   async function refetchCurrent() {
     const id = state.current; if (!id) return;
-    const r = await fetch(`/api/sessions/${id}/messages`).catch(() => null); if (!r?.ok || state.current !== id) return;
-    const data = await r.json();
+    const data = await api('GET', `/api/sessions/${id}/messages`).catch(() => null); if (!data || state.current !== id) return;
     state.sessions.set(id, data.session); state.entries = data.entries; renderHead(data.session); renderLog(); syncTerm(data.session);
   }
   function connect() {
