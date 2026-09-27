@@ -77,6 +77,12 @@ then "let's try it".
   is in front and back the moment another app is. The menu bar stays auto-hidden — the menus have to be reachable.
   The fill's log line now carries the presentation options and the screen's visible frame, which is the check that
   the options took (the whole width, the height less the strip).
+* **…and comes out after a hold at its edge** (Ricardo, next: "the dock is not showing when I go to the edge on the
+  right"): the system full screen's push, done by hand — `dockTick`, a 10 Hz timer while filled, reads the pointer
+  (`NSEvent.mouseLocation`, over web views and native views alike) and, once it has been at the Dock's edge (its
+  `orientation` preference) for 0.7 s, swaps `.hideDock` for `.autoHideDock`, which lets the Dock out with the pointer
+  already there; 100 px off that edge, `.hideDock` again. A touch of the edge in passing shows nothing. The app log
+  says `dock: out` and `dock: back`.
 
 ## Decisions of 2026-09-27, night — the head bare on ALL, the age beside the tick, About behind the fish
 

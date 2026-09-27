@@ -192,6 +192,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   var useUN = false              // native notifications available?
   var fillSaved: (frame: NSRect, mask: NSWindow.StyleMask, opts: NSApplication.PresentationOptions)?   // set while ⌃⌘F fills the screen: what to come back to
   var fillSignal: DispatchSourceSignal!   // SIGUSR1 is ⌃⌘F from a shell
+  var fillTick: Timer?                    // while filled: watches the pointer for a hold at the Dock's edge (dockTick)
+  var dockOut = false                     // the Dock let out after a hold at its edge, until the pointer is off it again
+  var edgeSince: TimeInterval?            // when the pointer reached the Dock's edge
+  static let dockHold: TimeInterval = 0.7 // how long the pointer is held at the edge before the Dock comes out
 
   // ---- injected bridge -----------------------------------------------------------------------
   private let bridgeJS = """
@@ -745,8 +749,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// so), which is why the window does not offer it at all (fullScreenNone; Ricardo: "If I click on the fullscreen
   /// button (mac's green circle), I end up as before"). This is what Apple calls a custom full-screen experience,
   /// kitty's and Sublime Text's: the window borderless, its frame the whole screen, the menu bar auto-hidden and the
-  /// Dock hidden outright (auto-hidden it kept coming out on the right edge, where the board's own controls are). The
-  /// page is told where the housing is (tellFill) and lays its top row around it. No Space of its own —
+  /// Dock hidden, out only after a hold at its edge (dockTick). The page is told where the housing is (tellFill) and
+  /// lays its top row around it. No Space of its own —
   /// Mission Control shows a window. The frame's autosave is off meanwhile, so a quit mid-fill does not bring the next
   /// launch up screen-sized; the fill itself is remembered (kFillKey), so it does come back filled. Info.plist says
   /// NSPrefersDisplaySafeAreaCompatibilityMode = false, or a window behind the housing could switch the display into
@@ -754,6 +758,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   @objc func toggleFill(_ sender: Any?) {
     if let saved = fillSaved {
       fillSaved = nil
+      fillTick?.invalidate(); fillTick = nil; dockOut = false; edgeSince = nil
       NSApp.presentationOptions = saved.opts
       window.styleMask = saved.mask
       window.fill = false
@@ -765,8 +770,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       window.setFrameAutosaveName("")
       window.fill = true
       window.styleMask = .borderless
-      NSApp.presentationOptions = [.autoHideMenuBar, .hideDock]   // the Dock gone, not on the edge: it was still up on the right (Ricardo, 2026-09-27)
+      NSApp.presentationOptions = [.autoHideMenuBar, .hideDock]   // the Dock gone; a hold at its edge lets it out (dockTick)
       window.setFrame(screen.frame, display: true)
+      let t = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in self?.dockTick() }
+      RunLoop.main.add(t, forMode: .common); fillTick = t
     }
     window.makeKeyAndOrderFront(nil)
     window.makeFirstResponder(paneFocus.flatMap { paneViews[$0] } ?? web)   // a new style mask can drop the first responder
@@ -774,6 +781,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     // The visible frame says whether the options took: filled, it is the whole width (the Dock gone) and the height less the strip.
     logLine("fill: \(fillSaved != nil ? "on \(NSStringFromRect(window.frame))" : "off") options \(NSApp.presentationOptions.rawValue) visible \(NSStringFromRect(window.screen?.visibleFrame ?? .zero))")
     tellFill()
+  }
+  /// The Dock's edge of the screen, from its own preference: bottom unless it says left or right.
+  static func dockEdge() -> String { UserDefaults(suiteName: "com.apple.dock")?.string(forKey: "orientation") ?? "bottom" }
+  /// Ten times a second while filled. The Dock is hidden outright (hideDock): auto-hidden it came out under every touch
+  /// of the right edge, where the chat column's own controls are (Ricardo, 2026-09-27: "the dock is still visible").
+  /// A pointer *held* at its edge for dockHold lets it out (autoHideDock, with the pointer already there) until the
+  /// pointer is 100 px off that edge again — the system full screen's kind of push (then: "the dock is not showing
+  /// when I go to the edge on the right"). Polled, not tracked: the pointer is over web views and native views alike.
+  func dockTick() {
+    guard fillSaved != nil, let screen = window.screen else { return }
+    let p = NSEvent.mouseLocation, f = screen.frame, now = Date().timeIntervalSinceReferenceDate
+    guard f.insetBy(dx: -2, dy: -2).contains(p) else { return }   // on another screen
+    let at: Bool, off: Bool
+    switch AppDelegate.dockEdge() {
+    case "left": at = p.x <= f.minX + 2; off = p.x > f.minX + 100
+    case "right": at = p.x >= f.maxX - 2; off = p.x < f.maxX - 100
+    default: at = p.y <= f.minY + 2; off = p.y > f.minY + 100
+    }
+    if dockOut {
+      if off { dockOut = false; NSApp.presentationOptions = [.autoHideMenuBar, .hideDock]; logLine("dock: back") }
+    } else if at {
+      if let since = edgeSince, now - since >= AppDelegate.dockHold {
+        dockOut = true; edgeSince = nil; NSApp.presentationOptions = [.autoHideMenuBar, .autoHideDock]; logLine("dock: out")
+      } else if edgeSince == nil { edgeSince = now }
+    } else { edgeSince = nil }
   }
   /// The green button, and a title bar double-click, come here as a zoom (fullScreenNone above): a plain click on the
   /// button is the fill; ⌥-click, and the double-click, zoom as they always did. The button's click is the current
