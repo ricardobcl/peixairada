@@ -556,7 +556,11 @@
   #usage .up { font-weight: 700; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
   #usage .ur { text-align: right; font-size: 10.5px; font-variant-numeric: tabular-nums; }
   #usage .unote { line-height: 1.35; white-space: normal; text-align: left; }   /* not `.note`: that is note()'s popup — position: fixed, and note() removes every one */
+  /* folded, the rings 20 px apart where the list has the room (12 until 2026-09-27, Ricardo: "the token budget counter
+     down low should space a bit more the 3 counters" — the open rows had had the same ask the day before); under
+     350 px of list 20 would push the chevron, then a ring, onto a second line, so there they keep 12 */
   #usage .uline { flex-wrap: wrap; column-gap: 12px; row-gap: 4px; }
+  @container (min-width: 350px) { #usage .uline { column-gap: 20px; } }
   #usage .uchip { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
   #usage .uchip b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
   #usage .uring { --w: 2.5px; width: 12px; height: 12px; flex: none; border-radius: 50%; background: conic-gradient(var(--u) calc(var(--p) * 1%), var(--utrack) 0);

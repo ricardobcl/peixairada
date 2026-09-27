@@ -4,7 +4,7 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-27.
 
-## Decisions of 2026-09-27, late night — the divider alone and in pixels, the age under the pointer
+## Decisions of 2026-09-27, small hours, later — the divider in pixels, the age on hover, the search as wide as the head
 
 Ricardo: "remove the lines next to the claude icon on the card separator · make the claude icon animation more
 "pixely", more fun · the last update time on the card should only show on hover · the search icon on top, should
@@ -28,6 +28,10 @@ bit more the 3 counters".
   now that the box has room of its own; they hid while it was open, since it had to take theirs. `#stitle` is as wide
   as the name now (it held the row's slack before), and hidden on ALL for real: `[hidden]` lost to `.colhead .t`'s
   `display: flex`, so an empty title had stood there invisibly all along.
+* **The folded usage's rings are 20 px apart**, 12 before — the app's list is 378 px wide, and it is the folded line
+  Ricardo sees (the open rows got the same ask on 2026-09-26). From 350 px of list only: below that 20 pushes the
+  chevron, then a ring, onto a second line and the foot grows, so a narrow list keeps 12 (`@container` on
+  `#sessions`, the chips' own trick). `usage-bar.mjs` measures the gap.
 
 ## Decisions of 2026-09-27, small hours after — ⌃⌘F fills the screen up to the notch
 

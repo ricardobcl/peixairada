@@ -72,6 +72,8 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.foot[0], out.foot[1], 'level with the cog cell, and as tall');
   ctx.assert.ok(out.foot[0][1] >= 34, '…34 px at the least (four rings wrap to a second line beside the cog at this width)');
   ctx.assert.equal(out.folded.chips.every(c => c.shown && c.ring === 12), true, 'every ring shows, small');
+  out.gap = await ctx.evaluate(`(c => Math.round(c[1].getBoundingClientRect().left - c[0].getBoundingClientRect().right))([...document.querySelectorAll('#usage .uchip')])`);
+  ctx.assert.equal(out.gap, 20, 'the rings 20 px apart where the list has the room (12 until 2026-09-27)');
   ctx.assert.equal((await ctx.peix('prefs()')).usageFolded, true, 'the fold is a pref');
   await ctx.shot('2-folded', { x: 0, y: 700, width: 520, height: 300 });
   await ctx.send('Page.reload'); await ctx.sleep(800); await board();
