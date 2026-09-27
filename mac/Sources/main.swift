@@ -83,8 +83,10 @@ final class ServerController {
     FileManager.default.isExecutableFile(atPath: path)
   }
 
+  /// The smallest answer the server has had from the start — every session summarized, 584 KB, was the probe until
+  /// 2026-09-27, twelve times a minute from the watchdog.
   static func isServing(_ completion: @escaping (Bool) -> Void) {
-    var req = URLRequest(url: kURL.appendingPathComponent("api/sessions"))
+    var req = URLRequest(url: kURL.appendingPathComponent("api/projects"))
     req.timeoutInterval = 1.2
     URLSession.shared.dataTask(with: req) { _, resp, _ in
       completion((resp as? HTTPURLResponse)?.statusCode == 200)
