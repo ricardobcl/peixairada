@@ -129,6 +129,10 @@ refuses to run against the real directory for the same reason.
   `:hover`; the `::after` cover inherits and follows). A new card state that wants a tint sets the two variables. The
   outline is `1px solid transparent` at rest for the same reason. `#splitter` and `#gsplit` light after a 300 ms
   `transition-delay` on hover, none on `.drag`; the small controls share one 120 ms hover transition.
+* **Dialogs, `.pop` and `.note` ease in and out with `@starting-style`** (2026-09-27, night), `display` and `overlay`
+  held by `allow-discrete` until the exit ends — so a closed dialog is still `display: block` for 140 ms while its
+  `open` attribute is already off (read `open`, never `display`, to know). `note()` fades its popup out (`.out`) before
+  removing it. A new dialog or popover gets this for free; one that must vanish at once sets `transition: none`.
 * **The card's edge is one ring with four readings**: `--lit` is what runs in it, `--seg` how much of the edge one
   light owns (`100% / --lights`, one light per sub-agent), `--spins` how fast. Clauding is the project's colour;
   **watching** (`s.tasks`) is one light in `--watch`, slowly, and can sit on a *ready* card; **asking** (`needs-input`

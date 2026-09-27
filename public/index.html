@@ -60,7 +60,12 @@
   .brand { position: relative; width: 28px; height: 28px; flex: none; display: inline-flex; cursor: pointer; }
   .brand .logo { width: 28px; height: 28px; }
   .pop { position: fixed; left: 54px; bottom: 10px; z-index: 40; display: grid; gap: 9px; min-width: 250px; padding: 12px 14px 13px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); box-shadow: 0 10px 34px rgba(0, 0, 0, .22); font-size: 12px; }
-  .pop[hidden] { display: none; }
+  /* …and it eases in and out (2026-09-27, night): in 80 ms — it opens on hover, so the quickest of them — out 150,
+     `display` held by allow-discrete until the fade has run. */
+  .pop { transition: opacity .15s, transform .15s, display .15s allow-discrete; }
+  .pop:not([hidden]) { transition-duration: .08s; }
+  .pop[hidden] { display: none; opacity: 0; transform: translateY(4px); }
+  @starting-style { .pop:not([hidden]) { opacity: 0; transform: translateY(4px); } }
   .pop h4 { margin: 0 0 2px; font-size: 13px; display: flex; align-items: baseline; gap: 8px; }
   .pop h4 em { font-style: normal; color: var(--accent); }
   .pop h4 .sub { font-size: 11px; font-weight: 400; color: var(--muted); }
@@ -251,6 +256,9 @@
   #colorInput { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
   .note { position: fixed; z-index: 60; font-size: 11px; line-height: 1.4; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, .18); max-width: 340px; pointer-events: none; }
   .note.err { border-color: var(--needs); color: var(--needs); }
+  .note { transition: opacity .12s, transform .12s; }   /* in from 3 px up; note() adds .out before it removes it */
+  @starting-style { .note { opacity: 0; transform: translateY(-3px); } }
+  .note.out { opacity: 0; transform: translateY(-3px); }
   /* a file being dragged over the board (the shell says so in the app; the page sees it in a browser) */
   #chat.dropping { outline: 2px dashed var(--accent); outline-offset: -5px; }
   #chat.dropping > * { pointer-events: none; }
@@ -847,6 +855,17 @@
   /* ---- project editor ---- */
   dialog { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); padding: 16px 18px; width: min(600px, 92vw); }
   dialog::backdrop { background: rgba(0, 0, 0, .35); }
+  /* Dialogs come and go rather than pop (2026-09-27, night): @starting-style gives the open state something to
+     transition from, and `display` and `overlay` with allow-discrete hold the element — and its place in the top
+     layer — until the exit has run. In 120 ms with a 4 px rise and a touch of scale, out 140 ms; the backdrop fades
+     with it. The pickers' rows inside stay instant: a keyboard move is never eased. The harness and the Esc handler
+     read the `open` attribute, which flips at once as before. */
+  dialog { opacity: 1; transform: none; transition: opacity .12s ease-out, transform .12s ease-out, overlay .12s allow-discrete, display .12s allow-discrete; }
+  @starting-style { dialog[open] { opacity: 0; transform: translateY(4px) scale(.985); } }
+  dialog:not([open]) { opacity: 0; transform: translateY(3px); transition-duration: .14s; transition-timing-function: ease-in; }
+  dialog::backdrop { transition: background-color .14s, overlay .14s allow-discrete, display .14s allow-discrete; }
+  @starting-style { dialog[open]::backdrop { background-color: rgba(0, 0, 0, 0); } }
+  dialog:not([open])::backdrop { background-color: rgba(0, 0, 0, 0); }
   /* ⌥⌘P: the project picker, VS Code's open-recent way — a box on top, rows under it, ↑↓ and ⏎. ⌥⌘G fills it with the chat's PRs, ⌥⌘O with oracle's environments. */
   #pick { padding: 8px; width: min(520px, 92vw); margin-top: 10vh; }
   /* About (2026-09-27, Ricardo: "clicking on the app icon should show an About info box center screen"): a modal
@@ -2354,7 +2373,7 @@
     const n = document.createElement('div'); n.className = 'note' + (err ? ' err' : ''); n.textContent = text; document.body.appendChild(n);
     n.style.left = Math.max(8, Math.min(innerWidth - n.offsetWidth - 8, r.left)) + 'px';
     n.style.top = (r.bottom + 6 + n.offsetHeight > innerHeight ? r.top - n.offsetHeight - 6 : r.bottom + 6) + 'px';
-    setTimeout(() => n.remove(), err ? 8000 : 4000);
+    setTimeout(() => { n.classList.add('out'); setTimeout(() => n.remove(), 140); }, err ? 8000 : 4000);   // fades before it goes
   }
   // The note belongs by the square that was clicked — the chat header's since 2026-09-22, the chat list's header
   // before that — and every render makes a new element, so what is remembered is where it was, not which it was.

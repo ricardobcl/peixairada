@@ -47,6 +47,14 @@ transform and opacity where it can — the compositor's kind of motion, as the r
   colourless card relies on, and a registered property always has a value. The ink still cuts: a grey half-way
   between white and black reads on neither. Measured: `--hbg` on the way from peixairada's orange to wallet-api's
   blue read `rgb(81, 133, 174)` at 110 ms.
+* **Dialogs, the popover and the note come and go**: `@starting-style` gives the open state something to transition
+  from (opacity 0, 4 px down, a touch of scale), and `display` and `overlay` with `allow-discrete` hold the element —
+  and a modal's place in the top layer — until the exit has run; the backdrop fades with it. In 120 ms, out 140; the
+  cog's popover, which opens on hover, in 80. `note()` adds `.out` and removes the popup 140 ms later instead of at
+  once. Both engines have it (probed: WKWebView on this Mac answers yes to `@starting-style`, `transition-behavior`
+  and `::details-content`, no to `interpolate-size`). The `open` attribute still flips at once, which is what the Esc
+  handler, `postPane` and the harness read. Measured on the board: the picker's opacity 0 at open and 1 at 220 ms,
+  the backdrop from clear to its 35 %; the popover's fade-out at 0.42 forty milliseconds in, `display: none` at 120.
 
 ## Decisions of 2026-09-27, night — an empty chat's card can be ticked done
 
