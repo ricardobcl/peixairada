@@ -3628,6 +3628,7 @@
     es.addEventListener('snapshot', e => {
       const d = JSON.parse(e.data);
       state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.peacock = d.peacock || {}; state.repos = d.repos || {};
+      for (const m of [tabs, homes, splits, autoSplit, stacked, focusView, state.unread, state.paneGh]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);   // a chat gone from the board takes its page state with it
       state.about = d.about || {};
       state.notifications = d.notifications !== false; showNotify();
       state.serverNotify = d.notify === 'native';   // the server posts its own banners: the app must not double them
