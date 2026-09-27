@@ -3567,6 +3567,13 @@
   }
   $('#brandBtn').addEventListener('click', aboutOpen);
   $('#about').addEventListener('click', e => { if (e.target === $('#about')) $('#about').close(); });   // the backdrop
+  /** The open chat again — its summary, its entries, its tabs — without moving anything else on the page. */
+  async function refetchCurrent() {
+    const id = state.current; if (!id) return;
+    const r = await fetch(`/api/sessions/${id}/messages`).catch(() => null); if (!r?.ok || state.current !== id) return;
+    const data = await r.json();
+    state.sessions.set(id, data.session); state.entries = data.entries; renderHead(data.session); renderLog(); syncTerm(data.session);
+  }
   function connect() {
     const es = new EventSource('/events');
     es.onopen = () => $('#brandBtn').classList.remove('off');
@@ -3579,6 +3586,10 @@
       renderBoard();
       const want = location.hash.slice(1);
       if (want && !state.current && state.sessions.has(want)) openSession(want);
+      // A snapshot with a chat already open is a reconnect — the server restarted, the stream dropped — and the entries
+      // pushed while the stream was down never came (2026-09-27): fetch the open chat again, in place. Not openSession,
+      // which would close the PR in the pane and scroll the list.
+      else if (state.current && state.sessions.has(state.current)) refetchCurrent();
     });
     es.addEventListener('session', e => { const s = JSON.parse(e.data); state.sessions.set(s.id, s); renderBoard(); if (s.id === state.current) { renderHead(s); syncTerm(s); } });
     es.addEventListener('entries', e => { const d = JSON.parse(e.data); if (d.sessionId === state.current) { state.entries.push(...d.entries); renderLog(); } });
