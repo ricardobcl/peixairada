@@ -49,6 +49,7 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 7`, { what: 'the five chats and the fixture\'s two' });
   await project(ctx, 'daylines-repo');
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 5`, { what: 'the list narrowed to the five' });
+  await ctx.settle();   // the other project's cards fold out of the list first (2026-09-27, night); strip reads every child
 
   out.all = await strip(ctx);
   await ctx.shot('day-lines');
@@ -70,12 +71,14 @@ export default async function (ctx) {
   const tick = () => ctx.server.api(`api/sessions/${chats[1].id}/done`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ done: true }) });
   for (let i = 0; i < 70 && !(await tick()).body.done; i++) await ctx.sleep(1000);
   await ctx.waitFor(`[...document.querySelectorAll('#slist > .card')].pop()?.querySelector('.title')?.textContent === 'a minute ago'`, { what: 'the done card at the bottom' });
+  await ctx.settle();
   out.done = (await strip(ctx)).map(x => x.sep ? x.day : x.card);
   ctx.assert.deepEqual(out.done, ['this morning', 'today', 'two days back, later', 'two days back', ddmmyyyy(d2), 'three days back', ddmmyyyy(d3), 'a minute ago', 'today'], 'today twice, each run under its own line');
 
   // Only the done card in view — the ready chip off: still one line, under it, saying so
   await ctx.evaluate(`document.querySelector('#fchips .fchip.ready').click()`);
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 1`, { what: 'the done card alone' });
+  await ctx.settle();   // the ready cards fold out first; strip reads every child of the list
   out.filtered = (await strip(ctx)).map(x => x.sep ? x.day : x.card);
   ctx.assert.deepEqual(out.filtered, ['a minute ago', 'today'], 'the day closes under its only card');
   return out;

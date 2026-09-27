@@ -67,10 +67,11 @@ try {   // a server or a Chrome that does not come up: what did come up is ended
 const ROWS = g => `[...document.querySelectorAll('#termBody${g ? 'B' : ''} .xterm-rows > div')]`;
 const ctx = {
   url: boardUrl, server, fixture, args: scenarioArgs, log, assert, sleep,
-  // The list moves (2026-09-27, night): a card that arrived or changed rank is sliding for up to 220 ms, and a rectangle
-  // read meanwhile is mid-slide — the pointer then lands on the neighbour. Measure after this: it waits for every
-  // animation the page named (flip · enter · leave · pop) to end; the endless ones (the ring, the blink) have no id.
-  settle: (timeout = 4000) => cdp.waitFor(`!document.getAnimations().some(a => a.id && a.playState === 'running')`, { timeout, every: 40, what: 'the board to settle' }),
+  // The board moves (2026-09-27, night): a card that arrived or changed rank slides for up to 220 ms, a dialog rises
+  // as it opens, and a rectangle read meanwhile is mid-move — the pointer then lands on the neighbour, a box measures
+  // off-centre. Measure after this: it waits for every finite animation to end — the named slides (flip · enter ·
+  // leave · pop), the CSS transitions — and leaves the endless ones (the ring, the blink, the spinner) alone.
+  settle: (timeout = 4000) => cdp.waitFor(`!document.getAnimations().some(a => a.playState === 'running' && a.effect?.getTiming?.().iterations !== Infinity)`, { timeout, every: 40, what: 'the board to settle' }),
   evaluate: cdp.evaluate, waitFor: cdp.waitFor, send: cdp.send, exceptions: cdp.exceptions, console: cdp.console,
   shot: async (label, clip) => { const f = join(shots, `${name}-${label}.png`); await cdp.shot(f, clip); log(`screenshot → ${f}`); return f; },
   openChat: id => openChat(cdp, id),

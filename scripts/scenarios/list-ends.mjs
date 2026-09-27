@@ -19,7 +19,7 @@ const ends = ctx => ctx.evaluate(`(() => {
   const pill = id => { const e = document.querySelector(id), on = e.classList.contains('on'); return { on, n: on ? +(e.querySelector('b')?.textContent || 0) : 0, dot: on ? e.querySelector('i')?.className || null : null, text: on ? e.textContent.trim() : '' }; };
   return JSON.stringify({ up: pill('#sup'), down: pill('#sdown'), want: [cards.filter(m => m < top).length, cards.filter(m => m > bottom).length], total: cards.length, scroll: Math.round(l.scrollTop) });
 })()`).then(JSON.parse);
-const settle = ctx => ctx.sleep(250);   // a frame for the pills, and the smooth scroll's end
+const settle = async ctx => { await ctx.settle(); await ctx.sleep(250); };   // the list's moves (a fold shifts the cards under the pills), then a frame for the pills and the smooth scroll's end
 const scrollTo = async (ctx, where) => { await ctx.evaluate(`(l => { l.scrollTop = ${where}; })(document.querySelector('#slist'))`); await settle(ctx); };
 
 export default async function (ctx) {

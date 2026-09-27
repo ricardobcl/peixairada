@@ -5,6 +5,7 @@
 // and the card the page builds from it: the classes that drive the ring, how many lights it runs, the chips and
 // the question line.
 import { spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -146,8 +147,9 @@ export default async function (ctx) {
     // Every SSE update rebuilds the cards, and a CSS animation starts over on a new node: the light jumped back to
     // its start on every update (Ricardo: "the animations like the border when clauding still reset randomly").
     // Now the ring is a transform animation — the compositor's, off the main thread — phased to the document clock
-    // after each render, so the new card's light is where the old one's was. A line appended to the clauding
-    // chat's transcript is one such update.
+    // after each render, so the new card's light is where the old one's was. A prompt written into the clauding
+    // chat's transcript is one such update: the card's last word changes, so its markup does and the node is made
+    // anew (a tool call alone no longer is, since 2026-09-27 night — the age left the markup; see below).
     const ring = () => ctx.evaluate(`JSON.stringify((c => {
       const a = c.getAnimations({ subtree: true }).find(a => a.animationName === 'ring');
       const m = new DOMMatrix(getComputedStyle(c, '::before').transform), doc = document.timeline.currentTime;
@@ -157,7 +159,8 @@ export default async function (ctx) {
     })([...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work')))`).then(JSON.parse);
     out.ring = [await ring()];
     const work = chat('Normal work');
-    appendFileSync(work.file, toolLines({ id: work.id, cwd, name: 'Bash', input: { command: 'npm run build', description: 'build' }, at: new Date() }).map(l => JSON.stringify(l)).join('\n') + '\n');
+    appendFileSync(work.file, JSON.stringify({ isSidechain: false, userType: 'external', entrypoint: 'cli', cwd, sessionId: work.id, version: 'fixture', gitBranch: 'main', parentUuid: null, type: 'user', uuid: randomUUID(), timestamp: new Date().toISOString(),
+      message: { role: 'user', content: [{ type: 'text', text: 'and the tests after' }] } }) + '\n');
     await ctx.waitFor(`(c => !!c && !c.__seen)([...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work'))`, { what: 'the card rebuilt on the update' });
     out.ring.push(await ring());
     ctx.assert.deepEqual(out.ring.map(r => r.start), [0, 0], 'the ring is at start time 0 on the document clock, before the update and on the new card after it');

@@ -478,7 +478,7 @@
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card.black { --ring: #fff; } }
   .card.done { opacity: .55; }
   .card.gone { opacity: .8; }   /* no live process: still ready, but a resume is coming */
-  .card.leaving { pointer-events: none; }   /* on its way out (drawCards): it folds shut where it stood, and takes no click meanwhile */
+  #slist > .leaving { pointer-events: none; overflow: hidden; }   /* a card on its way out, wrapped (leaveCard): it folds shut where it stood and takes no click; `#slist > .card` never sees it */
   .card .top { display: flex; align-items: center; gap: 7px; min-width: 0; min-height: 18px; margin-bottom: 2px; }
   .card .trow { display: flex; align-items: flex-start; gap: 7px; min-width: 0; }
   .card .trow .title { flex: 1; margin-top: 0; }
@@ -1222,7 +1222,7 @@
   // the keyboard to its chat. The mark is shown only while the box has the keyboard: a click elsewhere is a choice too.
   const qsel = { i: 0 };
   function markQsel() {
-    const inp = $('#q'), cards = [...document.querySelectorAll('#slist > .card:not(.leaving)')];
+    const inp = $('#q'), cards = [...document.querySelectorAll('#slist > .card')];
     const on = document.activeElement === inp && !!inp.value.trim();
     qsel.i = Math.max(0, Math.min(qsel.i, cards.length - 1));
     cards.forEach((c, i) => c.classList.toggle('qsel', on && i === qsel.i));
@@ -1642,13 +1642,15 @@
   // alone). Anything that shows an age carries `data-at` and nothing else; fillAges writes the words — and, on a
   // card's age, the tooltip from the chat's own times — after every render and on the 30 s tick, touching only text
   // that changed. So an age on screen is never stale by more than the tick.
+  // A card's `.time` carries nothing at all in its markup — not even the timestamp, which a tool call moves — so a
+  // chat's activity leaves its card's html, and its node, as they were; the time and the tooltip come from the chat here.
   function fillAges(root = document) {
-    for (const el of root.querySelectorAll('[data-at]')) {
-      const t = rel(el.dataset.at); if (el.textContent !== t) el.textContent = t;
-      if (!el.classList.contains('time')) continue;
+    for (const el of root.querySelectorAll('.card .time')) {
       const s = state.sessions.get(el.closest('.card')?.dataset.id); if (!s) continue;
+      const at = s.lastActivity || s.startedAt || ''; if (el.dataset.at !== at) el.dataset.at = at;
       const tip = timeTip(s); if (el.title !== tip) el.title = tip;
     }
+    for (const el of root.querySelectorAll('[data-at]')) { const t = rel(el.dataset.at); if (el.textContent !== t) el.textContent = t; }
   }
   const dayHtml = day => `<div class="gsep day" title="above: the chats you were in ${day === 'today' ? 'today' : 'on ' + day}"><b>${day}</b></div>`;
   function renderSessionList(p) {
@@ -1752,8 +1754,8 @@
     const keep = new Set(nodes), gone = [];
     let cur = list.firstElementChild;
     // a node no longer wanted: a line, or the old node of a card redrawn, goes at once; a card that is gone from the
-    // list is kept in place to fold (leaveCard); one already folding is stepped over
-    const skip = () => { while (cur && !keep.has(cur)) { const n = cur.nextElementSibling; if (!cur.classList.contains('card') || want.has(cur.dataset.id)) cur.remove(); else if (!cur.classList.contains('leaving')) gone.push(cur); cur = n; } };
+    // list is kept in place to fold (leaveCard); a wrapper already folding is stepped over
+    const skip = () => { while (cur && !keep.has(cur)) { const n = cur.nextElementSibling; if (cur.classList.contains('leaving')) { cur = n; continue; } if (!cur.classList.contains('card') || want.has(cur.dataset.id)) cur.remove(); else gone.push(cur); cur = n; } };
     for (const el of nodes) {
       skip();
       if (cur === el) { cur = cur.nextElementSibling; continue; }
@@ -1773,16 +1775,17 @@
       if (Math.abs(dy) > 1) slide(el, 'flip', [{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: FLIP_MS, easing: EASE_OUT }, Math.round(dy));
     }
   }
+  // The card is wrapped in a `div.leaving` that folds shut around it (height, opacity and the list's 7 px gap to
+  // nothing): the card itself keeps its look, loses its data-id, and — no longer a child of the list — is out of
+  // `#slist > .card`, which is how everything on the page and in the harness counts and walks the cards.
   function leaveCard(el, lr) {
     const r = lr && el.getBoundingClientRect();
     if (!r || !nearList(r, lr)) { el.remove(); return; }
-    const cs = getComputedStyle(el);
-    const a = slide(el, 'leave',
-      [{ height: `${el.offsetHeight}px`, opacity: 1, marginBottom: '0px', paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, borderTopWidth: cs.borderTopWidth, borderBottomWidth: cs.borderBottomWidth, minHeight: '0px' },
-       { height: '0px', opacity: 0, marginBottom: '-7px', paddingTop: '0px', paddingBottom: '0px', borderTopWidth: '0px', borderBottomWidth: '0px', minHeight: '0px' }],   // -7: the list's gap
-      { duration: LEAVE_MS, easing: 'ease-in', fill: 'forwards' });
-    el.classList.add('leaving'); el.removeAttribute('data-id');
-    a.onfinish = a.oncancel = () => el.remove();
+    const h = el.offsetHeight, wrap = document.createElement('div'); wrap.className = 'leaving';
+    noteMotion(el.dataset.id || null, 'leave');
+    el.replaceWith(wrap); wrap.append(el); el.removeAttribute('data-id');
+    const a = wrap.animate([{ height: `${h}px`, opacity: 1, marginBottom: '0px' }, { height: '0px', opacity: 0, marginBottom: '-7px' }], { duration: LEAVE_MS, easing: 'ease-in', fill: 'forwards', id: 'leave' });
+    a.onfinish = a.oncancel = () => { wrap.remove(); listChanged(); };   // the cards below moved up under the fold: the ends' counts and the timeline read the list again
   }
   // Every render rebuilds its nodes, and a CSS animation starts over on a new node — so the clauding ring, an asking
   // card's blink and the state dots' pulse jumped back to their start on every SSE update (2026-09-27, Ricardo: "the
@@ -1827,7 +1830,7 @@
   /** The list's geometry, read once a frame: its window, each card's place, the rail's height and each run's top. */
   function listGeom() {
     const list = $('#slist'), rail = $('#tline'), cards = [];
-    for (const c of list.children) if (c.classList.contains('card') && !c.classList.contains('leaving')) cards.push({ el: c, top: c.offsetTop, h: c.offsetHeight });
+    for (const c of list.children) if (c.classList.contains('card')) cards.push({ el: c, top: c.offsetTop, h: c.offsetHeight });
     const H = Math.max(1, (rail ? rail.clientHeight : 0) - 2 * TL_PAD), full = Math.max(list.scrollHeight, list.clientHeight, 1);
     return { list, rail, cards, top: list.scrollTop, ch: list.clientHeight, sh: list.scrollHeight, H, full, y: v => TL_PAD + v / full * H,
       tops: tl.runs.map(r => cards[r.i]?.top || 0), railOn: !!rail && rail.offsetParent !== null };
@@ -2057,7 +2060,7 @@
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip">${entryLabel(s)}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${s.id}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
-      <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}${s.lastActivity || s.startedAt ? `<span class="time" data-at="${esc(s.lastActivity || s.startedAt)}"></span>` : ''}${act}${fable}</div>
+      <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${act}${fable}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${un ? `<span class="badge">${un}</span>` : ''}</div>
       ${s.prs?.length ? `<div class="cprs">${s.prs.slice(0, 8).map(pr => `<a class="cpr" data-state="${esc(pr.state || '')}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`).join('')}</div>` : ''}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
@@ -2415,7 +2418,7 @@
     focusBoard(); qShow(true);
   }
   function hotMove(dir) {
-    const cards = [...document.querySelectorAll('#slist > .card:not(.leaving)')]; if (!cards.length) return note($('#shead'), 'No chats in this list');
+    const cards = [...document.querySelectorAll('#slist > .card')]; if (!cards.length) return note($('#shead'), 'No chats in this list');
     const i = cards.findIndex(c => c.dataset.id === state.current);
     const next = cards[i < 0 ? (dir > 0 ? 0 : cards.length - 1) : Math.max(0, Math.min(cards.length - 1, i + dir))];
     if (next.dataset.id !== state.current) openSession(next.dataset.id);

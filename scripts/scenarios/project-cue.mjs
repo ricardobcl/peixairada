@@ -122,6 +122,7 @@ export default async function (ctx) {
   // The fish, clicked, is the About box (2026-09-27): modal, centred, saying the package's version and what the
   // board touches; Esc closes it
   await ctx.evaluate(`document.querySelector('#brandBtn').click()`);
+  await ctx.settle();   // a dialog rises as it opens (2026-09-27, night): centred once it has
   out.about = await ctx.evaluate(`JSON.stringify((d => { const r = d.getBoundingClientRect(); return { open: d.open, modal: d.matches(':modal'),
     centred: Math.abs((r.left + r.width / 2) - innerWidth / 2) < 2 && Math.abs((r.top + r.height / 2) - innerHeight / 2) < 2, text: d.textContent.replace(/\\s+/g, ' ') }; })(document.querySelector('#about')))`).then(JSON.parse);
   const version = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version;

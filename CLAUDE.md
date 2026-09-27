@@ -117,9 +117,10 @@ refuses to run against the real directory for the same reason.
 * **The list moves rather than jumps** (2026-09-27, night): `drawCards` FLIPs a card that changed rank (its rect before
   and after the reconcile, a `translateY` by WAAPI, `FLIP_MS`), fades in one that arrived (`ENTER_MS`) and folds shut
   one that left (`leaveCard`, `LEAVE_MS`) — within a screen of the list's window only, never on the first draw or under
-  reduced motion. **A folding card is `.leaving` with no `data-id`**: the reconcile steps over it, and anything that
-  walks the cards must skip it (`#slist > .card:not(.leaving)` — `listGeom`, `markQsel`, `hotMove`). Each animation
-  carries its kind in `id`; `window.peix.motion()` is the log of the last moves. → `scripts/scenarios/list-motion.mjs`.
+  reduced motion. **A folding card is wrapped in `div.leaving`** and loses its `data-id`: the wrapper is what folds, the
+  reconcile steps over it, and `#slist > .card` — the page's and the harness's count of the cards — never sees it.
+  Each animation carries its kind in `id`; `window.peix.motion()` is the log of the last moves.
+  → `scripts/scenarios/list-motion.mjs`.
   **The reply landed** is the `landed` class: the `session` handler notes `working` → `idle` in `landedAt`, and
   `flareLanded()` (from `drawCards`) sets the class with a negative `animation-delay` for `LANDED_MS`, so a rebuilt card
   carries the flare on; the badge pops from `onAlert`. Neither is in `PHASED`.
@@ -133,10 +134,12 @@ refuses to run against the real directory for the same reason.
   held by `allow-discrete` until the exit ends — so a closed dialog is still `display: block` for 140 ms while its
   `open` attribute is already off (read `open`, never `display`, to know). `note()` fades its popup out (`.out`) before
   removing it. A new dialog or popover gets this for free; one that must vanish at once sets `transition: none`.
-* **An age is `data-at`, never words in markup** (2026-09-27, night): the card's `.time`, the pickers' `.t`, the menu's
-  *for …* carry the timestamp and `fillAges(root)` writes `rel()` of it — and the card's tooltip (`timeTip`) — after
-  the list's render, after `pickRender`, and on the 30 s tick (which also refreshes the open picker and menu). A card's
-  html therefore does not change with the clock. `dayOf(ts)` is the one spelling of a day (`today` · `DD-MM-YYYY`), for
+* **An age is `data-at`, never words in markup** (2026-09-27, night): the pickers' `.t` and the menu's *for …* carry
+  the timestamp, and `fillAges(root)` writes `rel()` of it after the list's render, after `pickRender`, and on the 30 s
+  tick (which also refreshes the open picker and menu). **A card's `.time` carries nothing at all** — `fillAges` sets
+  its `data-at` and tooltip from the chat — so neither the clock nor a tool call (which moves `lastActivity`) changes a
+  card's html: the node is kept, and the ring on it (`card-signals` relies on this; a *prompt* still rebuilds the card,
+  since its last word changes). `dayOf(ts)` is the one spelling of a day (`today` · `DD-MM-YYYY`), for
   the list's lines and the transcript's (`.sysline.day`, from `renderLog` where the day changes). The who-line's time is
   `toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })`.
 * **The small print is one CSS section** (2026-09-27, night, before the reduced-motion block): `text-wrap` for prose
@@ -570,8 +573,9 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   on a free port with its own state dir (`lib/testserver.mjs`), builds the fixture (`scripts/fixture.mjs`), runs the
   fake claude when asked, launches Chrome with **focus emulation on**, and ends terminals, holders, Chrome, the fixture
   and temp dirs on exit — after a failed setup too (`--keep` to inspect). **A rectangle is read after `ctx.settle()`**
-  (2026-09-27, night): the list's cards slide for up to 220 ms after they arrive or change rank, and a rect read
-  mid-slide puts the pointer on the neighbour; `settle` waits for every animation the page named to end. `ctx`: `evaluate`, `waitFor`, `send`,
+  (2026-09-27, night): the list's cards slide for up to 220 ms after they arrive or change rank, a dialog rises as it
+  opens, and a rect read mid-move puts the pointer on the neighbour or a box off-centre; `settle` waits for every
+  finite animation (the named slides, the CSS transitions) to end and leaves the endless ones alone. `ctx`: `evaluate`, `waitFor`, `send`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
   `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The twenty-nine in

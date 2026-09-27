@@ -139,6 +139,21 @@ transform and opacity where it can — the compositor's kind of motion, as the r
   down instead; and a transparent bar leaves no strip to drag the window by, since a WKWebView does not move its
   window. That is a design to settle in front of the app, which lives filled anyway (`fill: on` in every launch in
   the log); not done blind.
+* **The suite, run whole, found three more** (31 of 34 on the first run): `chat-filter` read the first `#slist > .card`
+  while a card the filter had dropped was still folding at the top — a leaving card is now wrapped in a `div.leaving`
+  that does the folding, so the card is no longer a child of the list and nothing that counts `#slist > .card` sees it;
+  `project-cue` measured the About box the moment it opened, mid-rise — `ctx.settle()` waits for CSS transitions too
+  now (every finite animation), and the scenario calls it; `card-signals` expected a tool call to rebuild the clauding
+  card — it had, because the age in the markup ticked — and then expected a second one *not* to, which held only when
+  the two fell in the same second. The card's `.time` carries nothing in its markup at all now (`fillAges` sets its
+  `data-at` from the chat), so a tool call keeps the node and the ring on it; the scenario writes a prompt for the
+  rebuild it wants, since a new last word is a new card. The second whole run turned up two more of the first kind —
+  `day-separator` reading every child of the list and `list-ends` reading the pills while the other project's cards
+  were still folding out after ⌥⌘P (the pills themselves had gone stale: nothing re-read the list when a fold ended,
+  so `leaveCard` calls `listChanged()` on finish now) — both settle before they read. The rule for the harness is
+  in the notes: a rectangle, a count of children or a pill is read after `ctx.settle()`. The third whole run was
+  34 of 34, with `hotkeys` flaky once: ⌥⌘G on the plain chat read an empty note (the note is made synchronously, and
+  the scenario passed on the rerun and three times more by hand); seen once in five whole runs, not chased.
 
 ## Decisions of 2026-09-27, night — an empty chat's card can be ticked done
 
