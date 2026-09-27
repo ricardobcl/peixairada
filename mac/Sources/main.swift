@@ -190,6 +190,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   var statusItem: NSStatusItem!
   var unread = 0                 // alerts that arrived while the window was not in front
   var needsInput: [[String: String]] = []
+  var badged: (unread: Int, waiting: [[String: String]]) = (0, [])   // what the badge and the status menu last showed
   var useUN = false              // native notifications available?
   var fillSaved: (frame: NSRect, mask: NSWindow.StyleMask, opts: NSApplication.PresentationOptions)?   // set while ⌃⌘F fills the screen: what to come back to
   var fillSignal: DispatchSourceSignal!   // SIGUSR1 is ⌃⌘F from a shell
@@ -855,6 +856,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
 
   private func refreshBadges() {
+    guard badged.unread != unread || badged.waiting != needsInput else { return }   // the status menu was rebuilt per message before (2026-09-27)
+    badged = (unread, needsInput)
     NSApp.dockTile.badgeLabel = unread > 0 ? String(unread) : nil
     let waiting = needsInput.count
     statusItem.button?.title = waiting > 0 ? " \(waiting)" : (unread > 0 ? " \(unread)" : "")
