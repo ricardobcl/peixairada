@@ -39,6 +39,7 @@ import {
 import { connect as netConnect } from 'node:net';
 import { basename, dirname, join } from 'node:path';
 import { homedir } from 'node:os';
+import { StringDecoder } from 'node:string_decoder';
 import { execFile, execFileSync, spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { WebSocketServer } from 'ws';
@@ -651,13 +652,33 @@ function fold(s, line) {
   }
 }
 
-function parseLines(text, onLine) {
-  for (const raw of text.split('\n')) {
-    if (!raw) continue;
-    let line;
-    try { line = JSON.parse(raw); } catch { continue; }
-    onLine(line);
+function parseLine(raw, onLine) {
+  if (!raw) return;
+  let line;
+  try { line = JSON.parse(raw); } catch { return; }
+  onLine(line);
+}
+function parseLines(text, onLine) { for (const raw of text.split('\n')) parseLine(raw, onLine); }
+
+const READ_CHUNK = 1 << 20;
+/**
+ * Every complete line of the file between `start` and `end`, to `onLine`, a chunk at a time; returns the unterminated
+ * tail. A transcript is read whole when a chat is opened (indexFile), and reading it as one buffer, one string and
+ * one array of lines cost three times its size while it lasted — 300 MB of RSS for a 91 MB chat, to keep 800
+ * entries (2026-09-27). This costs a chunk and the longest line.
+ */
+function readLines(fd, start, end, onLine) {
+  const buf = Buffer.allocUnsafe(Math.max(1, Math.min(READ_CHUNK, end - start)));
+  const dec = new StringDecoder('utf8');
+  let pos = start, rest = '';
+  while (pos < end) {
+    const n = readSync(fd, buf, 0, Math.min(buf.length, end - pos), pos);
+    if (!n) break;
+    pos += n;
+    rest += dec.write(buf.subarray(0, n));
+    let i; while ((i = rest.indexOf('\n')) >= 0) { onLine(rest.slice(0, i)); rest = rest.slice(i + 1); }
   }
+  return rest + dec.end();
 }
 
 /**
@@ -684,13 +705,8 @@ function indexFile(file, { full = false } = {}) {
   s.truncatedHead = start > 0;
   const fd = openSync(file, 'r');
   try {
-    const buf = Buffer.alloc(st.size - start);
-    readSync(fd, buf, 0, buf.length, start);
-    let text = buf.toString('utf8');
-    if (start > 0) text = text.slice(text.indexOf('\n') + 1); // drop partial first line
-    const nl = text.lastIndexOf('\n');
-    s.partial = text.slice(nl + 1);
-    parseLines(text.slice(0, nl + 1), line => fold(s, line));
+    let skip = start > 0;   // a tail starts mid-line: the first "line" is the end of one
+    s.partial = readLines(fd, start, st.size, raw => { if (skip) skip = false; else parseLine(raw, line => fold(s, line)); });
   } finally { closeSync(fd); }
   s.offset = st.size;
   s.newEntries = []; // initial load: nothing is "new"
