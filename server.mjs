@@ -19,7 +19,6 @@
 //      · background tasks: a monitor, or a command left running
 //  Live-session registry (~/.claude/sessions/<pid>.json)
 //  Notifications + SSE fan-out
-//  Hooks (optional precision): POST /hook receives Claude Code hook payloads (see hooks/hook.sh)
 //  Replying into a session
 //      · Claude plan usage, for the chat list's footer: the numbers `/usage` shows in the CLI
 //  VS Code Web: the editor UI served by `code serve-web`, for the pane beside the board
@@ -27,6 +26,7 @@
 //      · the holder protocol: newline-delimited JSON over the holder's socket (see lib/termhold.mjs)
 //      · launchers: a folder's own way to start claude
 //      · the org's folders: where the repos live, and cloning one that is not there yet
+//      · who may ask: the board's own pages, and nothing a browser lets another site send
 //  HTTP
 //  Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // Map ▴
@@ -295,7 +295,6 @@ function newSession(id, file) {
     offset: 0, partial: '', truncatedHead: false,
     agentsRunning: 0, ask: null, tasks: null, taskCalls: null,   // sub-agents at work (scanAgents); the question a tool asked; background tasks and the calls that started them
     pendingNotify: null, notifyTimer: null, pushTimer: null, newEntries: [],
-    lastHook: null,
     replying: null, replyError: null
   };
 }
@@ -364,7 +363,7 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     ask: status !== 'needs-input' ? null : s.status === 'needs-input' && s.ask ? s.ask : { tool: null, text: null, options: 0, waitingFor: waitingOn(s) || null },
     rawStatus: s.status, statusSince: s.statusSince, lastActivity: s.lastActivity, startedAt: s.startedAt,
     lastUserAt: s.lastUserAt, lastReplyAt: s.lastReplyAt,
-    alive: s.alive, live: s.live, entrypoint: s.live?.entrypoint || s.entrypoint, terminal: termSummary(mine.term), shell: termSummary(mine.shell), entryCount: s.entryCount, loaded: s.loaded, file: s.file, lastHook: s.lastHook,
+    alive: s.alive, live: s.live, entrypoint: s.live?.entrypoint || s.entrypoint, terminal: termSummary(mine.term), shell: termSummary(mine.shell), entryCount: s.entryCount, loaded: s.loaded, file: s.file,
     env: envs[s.id] || mine.term?.task || null,   // the launcher it was started with (⌥⌘O groups oracle's chats by it)
     // the other live processes on this chat, and who wrote its last turn — the page's "VS Code too" warning
     rivals: s.rivals, tailEntrypoint: s.entrypoint, tailEntrypointAt: s.entrypointAt,
@@ -696,7 +695,7 @@ function indexFile(file, { full = false } = {}) {
   const prev = sessions.get(id);
   const s = newSession(id, file);
   if (prev) {
-    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'agentsRunning', 'replying', 'replyError', 'lastHook']) s[k] = prev[k];
+    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'agentsRunning', 'replying', 'replyError']) s[k] = prev[k];
     clearTimeout(prev.pushTimer); clearTimeout(prev.notifyTimer);
     s.silent = !!prev.file;
   }
@@ -976,10 +975,7 @@ function fireNotify(s) {
   const kind = s.pendingNotify; s.pendingNotify = null;
   if (!kind) return;
   const sum = summary(s);
-  if (!sum.alive && sum.live === null && s.file && !process.env.NOTIFY_DEAD) {
-    // No registry entry: most likely a non-interactive/headless run. Still surface it in the UI.
-  }
-  const asked = sum.ask?.text || (sum.ask?.waitingFor ? `Waiting on you: ${sum.ask.waitingFor}` : 'Waiting for your input');
+  const asked =sum.ask?.text || (sum.ask?.waitingFor ? `Waiting on you: ${sum.ask.waitingFor}` : 'Waiting for your input');
   const evt = { kind, sessionId: s.id, project: sum.project, title: sum.title, name: s.live?.name || null, cwd: s.cwd, snippet: kind === 'reply' ? sum.lastReply : asked, ts: new Date().toISOString(), quiet: !notificationsOn };
   broadcast('alert', evt);
   if (notificationsOn) nativeNotify(kind === 'reply' ? `Claude replied · ${sum.project}` : `Claude needs input · ${sum.project}`, sum.title, evt.snippet || '');
@@ -996,41 +992,6 @@ function schedulePush(s) {
 function broadcast(event, data) {
   const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   for (const res of sseClients) res.write(payload);
-}
-
-// ---------------------------------------------------------------------------------------------
-// Hooks (optional precision): POST /hook receives Claude Code hook payloads (see hooks/hook.sh)
-// ---------------------------------------------------------------------------------------------
-
-function handleHook(h) {
-  const id = h.session_id;
-  if (!id) return;
-  let s = sessions.get(id);
-  if (!s) {
-    if (h.transcript_path && existsSync(h.transcript_path)) s = indexFile(h.transcript_path);
-    if (!s) { s = newSession(id, h.transcript_path || null); sessions.set(id, s); }
-  }
-  if (h.cwd && !s.cwd) s.cwd = h.cwd;
-  const ts = new Date().toISOString();
-  s.lastHook = { event: h.hook_event_name, type: h.notification_type || null, ts };
-  switch (h.hook_event_name) {
-    case 'UserPromptSubmit': setStatus(s, 'working', ts); break;
-    case 'Stop':
-      if (h.last_assistant_message) { s.lastReply = snippet(h.last_assistant_message, 300); s.lastReplyAt = ts; }
-      setStatus(s, 'idle', ts); queueNotify(s, 'reply'); break;
-    case 'StopFailure': setStatus(s, 'idle', ts); queueNotify(s, 'needs-input'); break;
-    case 'PermissionRequest': s.ask = { tool: 'PermissionRequest', text: 'a permission prompt', options: 0 }; setStatus(s, 'needs-input', ts); queueNotify(s, 'needs-input'); break;
-    case 'Notification': {
-      const type = h.notification_type || '';
-      const text = h.notification_text || h.message || '';
-      if (type === 'permission_prompt' || type === 'agent_needs_input' || type.startsWith('elicitation') || /permission/i.test(text)) { setStatus(s, 'needs-input', ts); queueNotify(s, 'needs-input'); }
-      else if (type === 'idle_prompt') setStatus(s, 'idle', ts);
-      break;
-    }
-    case 'SessionEnd': s.alive = false; setStatus(s, 'stale', ts); break;
-    case 'SessionStart': loadRegistry(); break;
-  }
-  schedulePush(s);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1760,12 +1721,6 @@ const server = createServer(async (req, res) => {
       for (const id of Object.keys(doneMarks)) if (!sessions.has(id)) delete doneMarks[id]; // prune forgotten sessions
       saveState(); schedulePush(s);
       return json(res, 200, { ok: true, done: isDone(s) });
-    }
-    if (req.method === 'POST' && p === '/hook') {
-      const body = await readBody(req);
-      let h; try { h = JSON.parse(body || '{}'); } catch { return json(res, 400, { error: 'bad json' }); }
-      handleHook(h);
-      return json(res, 200, { ok: true });
     }
     if (req.method === 'GET' && p === '/api/projects') return json(res, 200, { projects: projectList() });
     if (req.method === 'POST' && p === '/api/projects') {

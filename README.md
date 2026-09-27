@@ -413,16 +413,14 @@ extension run the same binary and share the same files. peixAIrada just reads th
 | Session titles | `ai-title` / `custom-title` lines inside the transcript | Card titles |
 | End of a reply | assistant line with `stop_reason: "end_turn"` (tool calls are `"tool_use"`) | The "replied" alert → Waiting feedback |
 | Waiting for the user | the registry's `status: "waiting"` and `waitingFor` (`input needed`, `permission prompt`…), rewritten by Claude Code on every change of state — a question, a plan to approve, a tool awaiting permission. The transcript can't tell: the line that asks is written *with its answer*, and a permission prompt never at all | The blinking card, the "needs input" alert |
-| Hooks *(optional)* | `~/.claude/settings.json` → `Stop`, `Notification(permission_prompt…)`, `UserPromptSubmit`, `SessionEnd` | Exact "replied" signals |
 
 `fs.watch(…, { recursive: true })` fires on every append (verified on macOS / Node 24), so the board
 updates within **~100 ms** of Claude writing a line. Native notifications work from plain Node via
 `osascript` — which is exactly why **Electron is not required**.
 
 ```
-  ~/.claude/projects/**/*.jsonl  ──fs.watch────▶┐
-  ~/.claude/sessions/*.json      ──poll+watch──▶│                                   ┌──▶  the board
-  Claude Code hooks (optional)   ──POST /hook──▶├──▶  server.mjs  ──SSE /events──▶──┤     projects · chats · live transcript
+  ~/.claude/projects/**/*.jsonl  ──fs.watch────▶┐                                   ┌──▶  the board
+  ~/.claude/sessions/*.json      ──poll+watch──▶├──▶  server.mjs  ──SSE /events──▶──┤     projects · chats · live transcript
   …/peixAIrada/state.json        ◀─done ticks──▶┘     tail from byte offset         └──▶  unread badges · alerts
                                                       fold lines → session state
                                                               │
@@ -461,7 +459,6 @@ updates within **~100 ms** of Claude writing a line. Native notifications work f
 | `PUT /api/attach?session=<id>&name=<file>` (raw body) | save a dropped file for a browser page that has no path to give claude; answers `{path}`; 50 MB cap |
 | `WS /api/terminals/:id/ws` | the terminal: binary frames are output (the screen as it stands first — serialized from the headless xterm the server keeps per drawer — then the PTY's bytes), text frames are JSON — `{t:'in', d}` / `{t:'resize', cols, rows}` up, `{t:'exit', code}` down |
 | `POST /api/sessions/:id/focus` | runs `code <cwd>` to bring that window to the front, then opens `vscode://anthropic.claude-code/open?session=<id>` so the chat itself comes up in the Claude panel |
-| `POST /hook` | receives Claude Code hook payloads (`hooks/hook.sh`) |
 | `POST /api/vscode-web` | start `code serve-web` if nothing answers on its port, and say where it is: `{url, started}` |
 | `POST /api/test-notify` | fire a test alert |
 | `PUT /api/notifications` `{on}` | the cog's switch: system notifications on or off (state file); off, alerts still reach the pages with `quiet: true` and nothing posts a banner |
@@ -495,22 +492,6 @@ status bar that ticks the way Claude Code's does, repaints on resize — and ref
 with its own state and ends what it started. The working notes for a session are `CLAUDE.md`; the reasoning and
 history are `docs/DECISIONS.md`.
 
-## 🪝 Optional: hooks, for signals instead of guesses
-
-Watching the transcript and the session registry already gets you "replied", and "waiting on you"
-for questions, plans and permission prompts alike — Claude Code writes `status: "waiting"` into its
-registry file the moment one goes up.
-
-Hooks make "replied" *exact* rather than inferred. They fire for VS Code sessions
-too, since the extension and the CLI share settings.
-
-Merge [`hooks/settings-snippet.json`](hooks/settings-snippet.json) into `~/.claude/settings.json`.
-[`hooks/hook.sh`](hooks/hook.sh) POSTs the payload with a 1 s timeout, in the background, and always
-exits 0 — so Claude is **never** slowed down or blocked, even with the server stopped. Restart or
-`/hooks`-reload your sessions to pick it up.
-
----
-
 ## 🤔 Why not Electron?
 
 | | Web page + local server *(this)* | Electron |
@@ -537,7 +518,7 @@ Either way, the UI carries over unchanged.
 * 🌐 **Opening a chat asks GitHub about its PRs.** That is the one thing here that leaves the
   machine: `gh api graphql`, with your own credentials, sending nothing but `owner/repo#number` —
   which GitHub already knows. Nothing from the transcript goes with it. No `gh`, no colours, no call.
-* Status is **inferred** from the transcript unless you install the hooks. A session interrupted in a
+* Status is **inferred** from the transcript and the session registry. A session interrupted in a
   way that writes nothing may sit in Clauding until its next line.
 * **"Stale" is about the *process*, not the conversation.** Headless `claude -p` runs, and
   transcripts from before Claude Code kept a session registry, never had a tracked pid — so they show

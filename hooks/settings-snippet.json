@@ -1,8 +1,0 @@
-{
-  "hooks": {
-    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "/Users/me/acme/peixairada/hooks/hook.sh", "timeout": 3, "async": true }] }],
-    "Stop":             [{ "hooks": [{ "type": "command", "command": "/Users/me/acme/peixairada/hooks/hook.sh", "timeout": 3, "async": true }] }],
-    "Notification":     [{ "hooks": [{ "type": "command", "command": "/Users/me/acme/peixairada/hooks/hook.sh", "timeout": 3, "async": true }] }],
-    "SessionEnd":       [{ "hooks": [{ "type": "command", "command": "/Users/me/acme/peixairada/hooks/hook.sh", "timeout": 3, "async": true }] }]
-  }
-}

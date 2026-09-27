@@ -55,7 +55,6 @@ npm run map                         # rewrite the section maps at the top of ser
 | `scripts/fakeclaude.mjs`, `scripts/fixture.mjs` | A stand-in CLI for tests; a `~/.claude` look-alike |
 | `scripts/check.sh`, `scripts/check-page.mjs`, `scripts/map.mjs` | Static checks; the section maps |
 | `test/` | `node:test` files (`npm test`) |
-| `hooks/` | Optional Claude Code hooks that POST to `/hook`. **Not installed** — Ricardo's call |
 
 ## How it reads Claude Code
 
@@ -71,7 +70,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | Model | `message.model` on assistant lines, the last one wins, `<synthetic>` (an API error's line) skipped — `s.model`; the card wears an F for Fable (`onFable`) |
 | PRs mentioned | `pr-link` lines *and* GitHub pull URLs in user/assistant text; most recently mentioned first; `gh api graphql` batched for state and title (one of the two network calls) |
 | Plan usage (the chat list's footer) | `GET https://api.anthropic.com/api/oauth/usage` with Claude Code's own OAuth bearer from the keychain item *Claude Code-credentials*; `USAGE=off` disables; the token never reaches the page. → Findings: *plan usage* |
-| Permission prompts | the registry's `waiting` (above) — they never reach the transcript; hooks are no longer needed for them |
+| Permission prompts | the registry's `waiting` (above) — they never reach the transcript |
 | Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login zsh (mise's PATH); it registers like any CLI run; a new chat is tied to its session by pid. **A folder whose Taskfile launches claude** (a task whose description mentions Claude — oracle's `task production-workload`…) starts new chats as `task <name>` instead: `GET /api/launchers?cwd=` lists them (`task --list --json`, cached by the file's mtime, `TASK_BIN` overrides), `POST /api/terminals {cwd, task}` checks the name against that list; claude is then a *descendant* of the PTY's pid, found through `ps` (`linkTermToRegistry`, `t.claudePid`), which is also where the launcher's name is written down for good (`noteEnv` → `envs` in the state file → `s.env`, what ⌥⌘O scopes by). A resume never goes through task. **`/clear` (or `/resume`) in the drawer** gives that pid a new session id — the registry file says so — and `linkTermToRegistry` moves the holder to it and pushes **both** chats, the one it joins and the one it leaves (2026-09-22: only the first was told, so the old card kept a drawer that had moved on); the page follows the holder to whatever chat it runs (`terminal` event → `openSession`), the old chat is a stale card |
 
 **Never written: anything under `~/.claude`.** The board is read-only against Claude Code's data. The fake claude
@@ -633,7 +632,5 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   prompt on your behalf, and its message JSON is undocumented. Live chats are refused on purpose.
 * **PR status costs a network call**, so boot queues every PR once, batched; merged/closed cached forever,
   open re-checked after `PR_TTL_MS`. A card is titled by the oldest still-open PR (`prTitle()`).
-* **Hooks are not installed** in `~/.claude/settings.json`; `hooks/settings-snippet.json` would make "replied"
-  exact. Permission prompts no longer need them — the registry says `waiting` (2026-09-22).
 * **The app is signed for this machine only**, not for distribution.
 * **Chat-level pins** were dropped for sorting by your own last touch; **board-set colours** for Peacock's.

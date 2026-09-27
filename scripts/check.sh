@@ -8,7 +8,7 @@ for f in server.mjs lib/*.mjs scripts/*.mjs scripts/scenarios/*.mjs test/*.mjs; 
 echo "› the page's script"
 node scripts/check-page.mjs public/index.html
 echo "› shell"
-for f in scripts/launchd.sh scripts/check.sh hooks/hook.sh; do [ -f "$f" ] && sh -n "$f"; done
+for f in scripts/launchd.sh scripts/check.sh; do [ -f "$f" ] && sh -n "$f"; done
 bash -n mac/build.sh
 if command -v swiftc >/dev/null 2>&1; then
   MIN_OS=$(sed -n 's/^MIN_OS=\(.*\)$/\1/p' mac/build.sh)
