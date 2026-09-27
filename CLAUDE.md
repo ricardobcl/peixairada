@@ -114,6 +114,12 @@ refuses to run against the real directory for the same reason.
   them in order with the fewest moves; the lines between the cards are plain markup made each time. Anything that
   mutates a card's DOM directly is lost on the next change of its markup and kept until then. `markQsel` re-toggles
   `.qsel` after every render.
+* **The list moves rather than jumps** (2026-09-27, night): `drawCards` FLIPs a card that changed rank (its rect before
+  and after the reconcile, a `translateY` by WAAPI, `FLIP_MS`), fades in one that arrived (`ENTER_MS`) and folds shut
+  one that left (`leaveCard`, `LEAVE_MS`) — within a screen of the list's window only, never on the first draw or under
+  reduced motion. **A folding card is `.leaving` with no `data-id`**: the reconcile steps over it, and anything that
+  walks the cards must skip it (`#slist > .card:not(.leaving)` — `listGeom`, `markQsel`, `hotMove`). Each animation
+  carries its kind in `id`; `window.peix.motion()` is the log of the last moves. → `scripts/scenarios/list-motion.mjs`.
 * **The card's edge is one ring with four readings**: `--lit` is what runs in it, `--seg` how much of the edge one
   light owns (`100% / --lights`, one light per sub-agent), `--spins` how fast. Clauding is the project's colour;
   **watching** (`s.tasks`) is one light in `--watch`, slowly, and can sit on a *ready* card; **asking** (`needs-input`
@@ -521,8 +527,9 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
   `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The twenty-nine in
   `scripts/scenarios/` are the regression checks for the drawer, the hotkeys, the tab strip and the split, the new-chat
-  flow, the project step, the chat list's rules, its filter, its ends and its timeline, the card sizes and marks, the
-  notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, the chat's links, the notch.
+  flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
+  marks, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, the chat's links,
+  the notch.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.

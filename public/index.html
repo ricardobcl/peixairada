@@ -434,6 +434,7 @@
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card.black { --ring: #fff; } }
   .card.done { opacity: .55; }
   .card.gone { opacity: .8; }   /* no live process: still ready, but a resume is coming */
+  .card.leaving { pointer-events: none; }   /* on its way out (drawCards): it folds shut where it stood, and takes no click meanwhile */
   .card .top { display: flex; align-items: center; gap: 7px; min-width: 0; min-height: 18px; margin-bottom: 2px; }
   .card .trow { display: flex; align-items: flex-start; gap: 7px; min-width: 0; }
   .card .trow .title { flex: 1; margin-top: 0; }
@@ -1073,7 +1074,7 @@
   // the keyboard to its chat. The mark is shown only while the box has the keyboard: a click elsewhere is a choice too.
   const qsel = { i: 0 };
   function markQsel() {
-    const inp = $('#q'), cards = [...document.querySelectorAll('#slist > .card')];
+    const inp = $('#q'), cards = [...document.querySelectorAll('#slist > .card:not(.leaving)')];
     const on = document.activeElement === inp && !!inp.value.trim();
     qsel.i = Math.max(0, Math.min(qsel.i, cards.length - 1));
     cards.forEach((c, i) => c.classList.toggle('qsel', on && i === qsel.i));
@@ -1531,26 +1532,73 @@
   // again, six inline SVGs each, 183 of them under ALL, the one under the pointer detached — for a change on one. A
   // card whose markup is what it was keeps its node; the rest are made anew; then the nodes are put in order with the
   // fewest moves, a node already in place left alone. The lines between the cards are plain markup, made each time.
+  // …and the list moves rather than jumps (2026-09-27, night): a card that changes rank slides to its new place —
+  // FLIP: its rectangle read before the reconcile and after, the difference played back as a transform, the
+  // compositor's kind of motion like the ring —, a card that arrives fades in from a few pixels up, and a card that
+  // leaves (ticked done with done filtered out, a chip switched off) folds shut where it stood before it goes. Only
+  // what is within a screen of the list's window moves; the rest is put in place at once, as is everything on the
+  // first draw and under reduced motion. A leaving card keeps its node for LEAVE_MS as `.leaving` with no data-id (a
+  // chat that comes straight back gets a node of its own beside it): the reconcile steps over it, and everything that
+  // walks the cards — listGeom, markQsel, hotMove — leaves it out. Each animation carries its name in `id`, for the
+  // harness (list-motion.mjs) and the inspector.
+  const FLIP_MS = 220, ENTER_MS = 180, LEAVE_MS = 200, EASE_OUT = 'cubic-bezier(.2, .7, .2, 1)';
+  const MOTION = [];   // the last moves the list made, {id, kind, at} — window.peix.motion(), so a check need not catch a 200 ms slide in the act
+  const slide = (el, kind, frames, opts, dy = 0) => { MOTION.push({ id: el.dataset.id || null, kind, at: Math.round(performance.now()), dy }); if (MOTION.length > 64) MOTION.shift(); return el.animate(frames, { ...opts, id: kind }); };
   const cardNodes = new Map();   // chat id → { html, el }: the card as it stands in the list
   const html2el = html => { const t = document.createElement('template'); t.innerHTML = html; return t.content.firstElementChild; };
+  const nearList = (r, l) => r.bottom > l.top - l.height && r.top < l.bottom + l.height;   // within a screen of the list's window
   function drawCards(items, empty) {
-    const list = $('#slist'), want = new Set(), nodes = [];
+    const list = $('#slist'), want = new Set(), nodes = [], fresh = [];
+    const move = !!drawCards.drawn && !REDUCED.matches;
+    drawCards.drawn = true;
+    const lr = move ? list.getBoundingClientRect() : null, before = new Map();
+    if (move) for (const c of cardNodes.values()) if (c.el.isConnected) before.set(c.el, c.el.getBoundingClientRect());
     for (const it of items) {
       if (!it.id) { nodes.push(html2el(it.html)); continue; }
       let c = cardNodes.get(it.id);
-      if (!c || c.html !== it.html) { c = { html: it.html, el: html2el(it.html) }; cardNodes.set(it.id, c); }
+      if (!c) fresh.push(it.id);
+      if (!c || c.html !== it.html) {
+        const el = html2el(it.html);
+        if (c && before.has(c.el)) before.set(el, before.get(c.el));   // the card redrawn: it starts where its old node stood
+        c = { html: it.html, el }; cardNodes.set(it.id, c);
+      }
       nodes.push(c.el); want.add(it.id);
     }
     for (const id of [...cardNodes.keys()]) if (!want.has(id)) cardNodes.delete(id);
     if (!nodes.length) { list.innerHTML = empty; return; }
-    const keep = new Set(nodes);
+    const keep = new Set(nodes), gone = [];
     let cur = list.firstElementChild;
+    // a node no longer wanted: a line, or the old node of a card redrawn, goes at once; a card that is gone from the
+    // list is kept in place to fold (leaveCard); one already folding is stepped over
+    const skip = () => { while (cur && !keep.has(cur)) { const n = cur.nextElementSibling; if (!cur.classList.contains('card') || want.has(cur.dataset.id)) cur.remove(); else if (!cur.classList.contains('leaving')) gone.push(cur); cur = n; } };
     for (const el of nodes) {
-      while (cur && !keep.has(cur)) { const n = cur.nextElementSibling; cur.remove(); cur = n; }   // a card gone, an old line
+      skip();
       if (cur === el) { cur = cur.nextElementSibling; continue; }
       list.insertBefore(el, cur);   // a new node lands; an existing one further down moves up
     }
-    while (cur) { const n = cur.nextElementSibling; cur.remove(); cur = n; }
+    skip();
+    for (const el of gone) leaveCard(el, lr);
+    if (!move) return;
+    for (const c of cardNodes.values()) for (const a of c.el.getAnimations()) if (a.id === 'flip') a.cancel();   // the true place, not where a slide had got to
+    for (const [id, c] of cardNodes) {
+      const el = c.el, r = el.getBoundingClientRect();
+      if (!nearList(r, lr)) continue;
+      const was = before.get(el);
+      if (!was) { if (fresh.includes(id)) slide(el, 'enter', [{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }], { duration: ENTER_MS, easing: 'ease-out' }); continue; }
+      const dy = was.top - r.top;
+      if (Math.abs(dy) > 1) slide(el, 'flip', [{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: FLIP_MS, easing: EASE_OUT }, Math.round(dy));
+    }
+  }
+  function leaveCard(el, lr) {
+    const r = lr && el.getBoundingClientRect();
+    if (!r || !nearList(r, lr)) { el.remove(); return; }
+    const cs = getComputedStyle(el);
+    const a = slide(el, 'leave',
+      [{ height: `${el.offsetHeight}px`, opacity: 1, marginBottom: '0px', paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, borderTopWidth: cs.borderTopWidth, borderBottomWidth: cs.borderBottomWidth, minHeight: '0px' },
+       { height: '0px', opacity: 0, marginBottom: '-7px', paddingTop: '0px', paddingBottom: '0px', borderTopWidth: '0px', borderBottomWidth: '0px', minHeight: '0px' }],   // -7: the list's gap
+      { duration: LEAVE_MS, easing: 'ease-in', fill: 'forwards' });
+    el.classList.add('leaving'); el.removeAttribute('data-id');
+    a.onfinish = a.oncancel = () => el.remove();
   }
   // Every render rebuilds its nodes, and a CSS animation starts over on a new node — so the clauding ring, an asking
   // card's blink and the state dots' pulse jumped back to their start on every SSE update (2026-09-27, Ricardo: "the
@@ -1595,7 +1643,7 @@
   /** The list's geometry, read once a frame: its window, each card's place, the rail's height and each run's top. */
   function listGeom() {
     const list = $('#slist'), rail = $('#tline'), cards = [];
-    for (const c of list.children) if (c.classList.contains('card')) cards.push({ el: c, top: c.offsetTop, h: c.offsetHeight });
+    for (const c of list.children) if (c.classList.contains('card') && !c.classList.contains('leaving')) cards.push({ el: c, top: c.offsetTop, h: c.offsetHeight });
     const H = Math.max(1, (rail ? rail.clientHeight : 0) - 2 * TL_PAD), full = Math.max(list.scrollHeight, list.clientHeight, 1);
     return { list, rail, cards, top: list.scrollTop, ch: list.clientHeight, sh: list.scrollHeight, H, full, y: v => TL_PAD + v / full * H,
       tops: tl.runs.map(r => cards[r.i]?.top || 0), railOn: !!rail && rail.offsetParent !== null };
@@ -2182,7 +2230,7 @@
     focusBoard(); qShow(true);
   }
   function hotMove(dir) {
-    const cards = [...document.querySelectorAll('#slist > .card')]; if (!cards.length) return note($('#shead'), 'No chats in this list');
+    const cards = [...document.querySelectorAll('#slist > .card:not(.leaving)')]; if (!cards.length) return note($('#shead'), 'No chats in this list');
     const i = cards.findIndex(c => c.dataset.id === state.current);
     const next = cards[i < 0 ? (dir > 0 ? 0 : cards.length - 1) : Math.max(0, Math.min(cards.length - 1, i + dir))];
     if (next.dataset.id !== state.current) openSession(next.dataset.id);
@@ -2821,6 +2869,7 @@
       timeline: { k: tl.k, want: tl.want, press: !!tl.press, runs: tl.runs.map(r => ({ g: r.g, day: r.day, n: r.n, i: r.i })) },
       termId: curTerm().id, termSession: curTerm().sessionId, termExited: curTerm().exited }),
     session: id => { const s = state.sessions.get(id || state.current); return s ? JSON.parse(JSON.stringify(s)) : null; },
+    motion: () => MOTION.map(m => ({ ...m })),   // the list's last moves: {id, kind: flip | enter | leave, at}
     sessions: () => [...state.sessions.values()].map(s => ({ id: s.id, project: s.project, cwd: s.cwd, env: s.env || null, title: s.title, status: s.status, alive: s.alive, prs: (s.prs || []).length, terminal: s.terminal?.id || null, agents: s.agents || 0, tasks: s.tasks || [], ask: s.ask || null })),
     prefs: () => ({ ...prefs }),
     term: g => window.peixDebug(g),

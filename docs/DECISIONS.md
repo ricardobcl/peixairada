@@ -4,6 +4,26 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-27.
 
+## Decisions of 2026-09-27, late night — the last 1 %: the board moves, and the small things a craftsman looks at
+
+Ricardo: "what are the nice animations, nice touches, the things that only craftsman look at, the last 1% of dev that
+we can do on this project, from a visual/UX PoV?" — a list of nineteen, then "do everything". One commit each, each
+verified in headless Chrome (a scenario where there is state to drive, `npm run verify` where a look is enough), the
+app type-checked and rebuilt for the shell's. The rule under all of it: an enter is fast (80–150 ms) and an exit slower
+(200–250 ms), a keyboard move is instant, nothing runs past 300 ms but a one-shot mark, and everything runs on
+transform and opacity where it can — the compositor's kind of motion, as the ring taught.
+
+* **The list moves rather than jumps** (`drawCards`): a card that changes rank slides to its place — FLIP, its
+  rectangle read before the reconcile and after, the difference played back as a `translateY` by the Web Animations
+  API, 220 ms; a card that arrives fades in from 6 px up (180 ms); a card that leaves — ticked done with done filtered
+  out, a chip switched off — folds shut where it stood (200 ms: height, padding, border and the list's 7 px gap to
+  nothing) and goes on finish. Only what lies within a screen of the list's window moves; the first draw and reduced
+  motion put everything in place. A folding card is `.leaving` with no `data-id`, so the reconcile steps over it and
+  `listGeom`, `markQsel` and `hotMove` leave it out; the old node of a card merely redrawn goes at once (the first cut
+  folded those too, and every card below measured a card lower — a cascade of slides on every rebuild).
+  `window.peix.motion()` lists the last moves by kind, so a check need not catch a 200 ms slide in the act.
+  → `scripts/scenarios/list-motion.mjs`.
+
 ## Decisions of 2026-09-27, night — an empty chat's card can be ticked done
 
 Ricardo: "new chats now create cards before I say anything, but those cards don't have the done check to clean them up."
