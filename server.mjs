@@ -1604,14 +1604,17 @@ function json(res, code, body) {
   res.end(JSON.stringify(body));
 }
 
-function readBody(req) {
+const BODY_MAX = 1e6;
+function readBody(req, max = BODY_MAX) {
   return new Promise((resolve, reject) => {
     let data = '';
-    req.on('data', c => { data += c; if (data.length > 1e6) req.destroy(); });
+    req.on('data', c => { data += c; if (data.length > max) { req.destroy(); reject(new Error(`body larger than ${max} bytes`)); } });   // destroyed, the request ends nowhere: settle it here
     req.on('end', () => resolve(data));
     req.on('error', reject);
   });
 }
+/** The JSON body, or {} — none, unparseable, or too large (the request is dropped) all read as empty. */
+const jsonBody = req => readBody(req).then(t => JSON.parse(t || '{}')).catch(() => ({}));
 
 /** Newest first by the chat's last word — yours or Claude's reply, whichever came later — the board's own order (`byWord` in index.html). */
 const wordAt = s => { const u = String(s.lastUserAt || ''), r = String(s.lastReplyAt || ''); return (u > r ? u : r) || String(s.lastActivity || '') || String(s.startedAt || ''); };   // an empty chat: its start (the page's copy agrees)
@@ -1653,7 +1656,7 @@ const server = createServer(async (req, res) => {
       if (!s) return json(res, 404, { error: 'unknown session' });
       const have = shellOf(s);
       if (have && have.exited === null) return json(res, 200, { terminal: termSummary(have) });
-      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const body = await jsonBody(req);
       const r = await spawnTerm({ cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows, shell: true });
       return json(res, r.code, r);
     }
@@ -1685,7 +1688,7 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/reply$/))) {
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
-      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const body = await jsonBody(req);
       const text = typeof body.text === 'string' ? body.text.trim() : '';
       if (!text) return json(res, 400, { error: 'expected {text}' });
       if (s.alive) return json(res, 409, { error: 'chat is live — resuming it would put a second writer on its transcript' });
@@ -1693,28 +1696,28 @@ const server = createServer(async (req, res) => {
       return json(res, r.code, r.ok ? { ok: true, status: 'running' } : { error: r.error });
     }
     if (req.method === 'PUT' && p === '/api/pins') {   // the pinned projects, in order — the whole list each time; folder cwds and c:<id>
-      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const body = await jsonBody(req);
       if (!Array.isArray(body.pins)) return json(res, 400, { error: 'expected {pins: [key]}' });
       pinned = [...new Set(body.pins.filter(k => typeof k === 'string' && /^(\/|c:\w+$)/.test(k)).map(k => k.slice(0, 1000)))].slice(0, 200);
       saveState(); broadcast('pins', { pins: pinned }); pollPeacock();
       return json(res, 200, { ok: true, pins: pinned });
     }
     if (req.method === 'PUT' && p === '/api/hidden') {   // the projects taken off the board, the whole list each time — same keys as the pins
-      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const body = await jsonBody(req);
       if (!Array.isArray(body.hidden)) return json(res, 400, { error: 'expected {hidden: [key]}' });
       hiddenProjects = [...new Set(body.hidden.filter(k => typeof k === 'string' && /^(\/|c:\w+$)/.test(k)).map(k => k.slice(0, 1000)))].slice(0, 500);
       saveState(); broadcast('hidden', { hidden: hiddenProjects });
       return json(res, 200, { ok: true, hidden: hiddenProjects });
     }
     if (req.method === 'PUT' && p === '/api/notifications') {   // the cog's switch: system notifications on or off, for every page and the app
-      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const body = await jsonBody(req);
       if (typeof body.on !== 'boolean') return json(res, 400, { error: 'expected {on: true|false}' });
       notificationsOn = body.on;
       saveState(); broadcast('notifications', { on: notificationsOn });
       return json(res, 200, { ok: true, on: notificationsOn });
     }
     if ((req.method === 'PUT' || req.method === 'DELETE') && p === '/api/peacock') {   // the board sets a folder's Peacock colour
-      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const body = await jsonBody(req);
       const cwd = typeof body.cwd === 'string' ? body.cwd.replace(/\/+$/, '') : '';
       if (!peacockCwds().has(cwd)) return json(res, 400, { error: 'not a folder the board knows' });
       const color = req.method === 'DELETE' ? null : String(body.color || '').toLowerCase();
@@ -1734,7 +1737,7 @@ const server = createServer(async (req, res) => {
     if (req.method === 'PUT' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/title$/))) {   // a title typed on the board; empty clears it
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
-      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const body = await jsonBody(req);
       const title = String(body.title ?? '').replace(/\s+/g, ' ').trim().slice(0, 120);
       if (title) titles[s.id] = title; else delete titles[s.id];
       for (const id of Object.keys(titles)) if (!sessions.has(id)) delete titles[id];
@@ -1744,7 +1747,7 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/done$/))) {
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
-      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const body = await jsonBody(req);
       const done = body.done !== false;
       if (done) {
         doneMarks[s.id] = new Date().toISOString();
@@ -1766,7 +1769,7 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'GET' && p === '/api/projects') return json(res, 200, { projects: projectList() });
     if (req.method === 'POST' && p === '/api/projects') {
-      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const body = await jsonBody(req);
       const v = projectInput(body, { cwds: [] });
       if (v.error) return json(res, 400, { error: v.error });
       const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -1783,7 +1786,7 @@ const server = createServer(async (req, res) => {
         saveState(); broadcast('projects', { projects: projectList() }); pollPeacock();
         return json(res, 200, { ok: true });
       }
-      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const body = await jsonBody(req);
       const v = projectInput(body, prev);
       if (v.error) return json(res, 400, { error: v.error });
       projects[m[1]] = { ...prev, ...v };
@@ -1799,11 +1802,11 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'GET' && p === '/api/folders') return json(res, 200, { root: ORG_DIR, org: ORG, folders: orgFolders() });
     if (req.method === 'POST' && p === '/api/clone') {   // a repo of the org, cloned into ORG_DIR — then the page starts a chat in it
-      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const body = await jsonBody(req);
       return cloneRepo(typeof body.name === 'string' ? body.name.trim() : '', r => r.error ? json(res, r.code, { error: r.error }) : json(res, r.code, { cwd: r.cwd, cloned: r.cloned }));
     }
     if (req.method === 'POST' && p === '/api/terminals') {   // a new chat in a folder — `claude`, or `task <name>` when the folder launches it so
-      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const body = await jsonBody(req);
       const cwd = typeof body.cwd === 'string' ? body.cwd : null, task = typeof body.task === 'string' && body.task ? body.task : null;
       if (task && !(TASK_NAME.test(task) && (await launchersFor(cwd)).some(l => l.name === task))) return json(res, 400, { error: `no launcher named ${task} in ${cwd || '(no folder)'} — its Taskfile has ${(await launchersFor(cwd)).map(l => l.name).join(', ') || 'none'}` });
       const r = await spawnTerm({ cwd, cols: body.cols, rows: body.rows, task });
@@ -1816,14 +1819,14 @@ const server = createServer(async (req, res) => {
       if (have && have.exited === null) return json(res, 200, { terminal: termSummary(have) });
       // Live elsewhere: same rule as replies — a second claude on one transcript is how it gets mangled.
       if (s.alive) return json(res, 409, { error: `this chat is live in ${s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : 'another terminal'} — take it over, or continue it there` });
-      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const body = await jsonBody(req);
       const r = await spawnTerm({ cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows });
       return json(res, r.code, r);
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/takeover$/))) {   // end every claude it is live in elsewhere, resume it here
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
-      let body = {}; try { body = JSON.parse((await readBody(req)) || '{}'); } catch {}
+      const body = await jsonBody(req);
       const have = termOf(s);
       if (have && have.exited === null) {
         // Already here: this ends the others — VS Code's, when the chat was opened there again after a take-over.
