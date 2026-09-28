@@ -54,6 +54,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `scripts/launchd.sh` | The server as a login agent; `restart [--after N]` |
 | `scripts/verify.mjs`, `scripts/scenario.mjs`, `scripts/scenarios/` | The browser harness (see Verifying) |
 | `scripts/fakeclaude.mjs`, `scripts/fixture.mjs` | A stand-in CLI for tests; a `~/.claude` look-alike |
+| `scripts/fakegh.mjs`, `scripts/readme-shots.mjs` | `gh api graphql` answered from a file (`GH_BIN`, `FAKEGH_PRS`); the README's screenshots from a made-up board → `docs/shots/` — never shoot the real one |
 | `scripts/check.sh`, `scripts/check-page.mjs`, `scripts/map.mjs` | Static checks; the section maps |
 | `test/` | `node:test` files (`npm test`) |
 

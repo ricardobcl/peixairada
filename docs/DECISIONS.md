@@ -35,6 +35,13 @@ etc.) that could be made configurable for other people? also, the readme has too
 * **Deliberately not in the cog**: the port (the server's own address; the app reads `PEIXAIRADA_PORT`, the agent
   `PORT` — still two names, and a Finder-launched app has neither), the ⌥⌘ keys themselves (fixed, and repeated in
   main.swift), the idle drawers' 24 h (`DRAWER_IDLE_MS`), the notification's sound.
+* **The README went from 563 lines to 115** (Ricardo, after a first cut of 150: "make sure readme is reduced,
+  simplified and beautified"): a line of what it is, eight one-line features, install in four commands, the cog's
+  setup (the environment folded away), the everyday keys, three caveats, hacking in a line — and its facts checked
+  (the badges said Node ≥ 20, two npm dependencies and a 1.4 MB app). **Its screenshots are of a made-up board**
+  (`scripts/readme-shots.mjs`: projects under an `acme` org with Peacock colours, chats in every state, PR states from
+  `scripts/fakegh.mjs`, a plan-usage answer of the page's own) — never of this Mac's, whose chats are work. `npm run scenario -- scripts/readme-shots.mjs` redraws them into
+  `docs/shots/`, in both themes for the hero.
 
 ## Decisions of 2026-09-28, afternoon — a PR is polled by how recently its chat was touched
 
