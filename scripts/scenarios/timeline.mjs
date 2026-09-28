@@ -61,10 +61,10 @@ export default async function (ctx) {
   ctx.assert.ok(out.at.thumb && Math.abs(out.at.thumb.at - out.at.thumb.want) < .004 && Math.abs(out.at.thumb.len - out.at.thumb.wantLen) < .004, 'the thumb is the window');
   ctx.assert.ok(out.at.labs.every(l => !l.on), 'no labels at rest');
   ctx.assert.equal(out.at.drawn, 0, 'no track and no ticks: the thumb is all there is at rest (2026-09-26)');
-  // the rail at the far left, 12 px beside the list's coloured edge, over the cards — which start at that edge — and out
-  // of sight; the thumb in the board's orange, 5 px wide until the pointer is on the rail, then 8
+  // the rail at the far left, 12 px beside the list's coloured edge, over the cards — 8 px on from that edge, as on the
+  // right (2026-09-28, later) — and out of sight; the thumb in the board's orange, 5 px wide until pointed at, then 8
   const place = await ctx.evaluate(`(() => { const s = document.querySelector('#sessions').getBoundingClientRect(), t = document.querySelector('#tline'), r = t.getBoundingClientRect(), c = document.querySelector('#slist > .card').getBoundingClientRect(); return JSON.stringify({ edge: r.left - s.left, width: r.width, card: c.left - s.left, seen: getComputedStyle(t).visibility, shown: window.peix.state().timeline.shown }); })()`).then(JSON.parse);
-  ctx.assert.deepEqual(place, { edge: 4, width: 12, card: 4, seen: 'hidden', shown: false }, `the rail over the cards' edge, out of sight (${JSON.stringify(place)})`);
+  ctx.assert.deepEqual(place, { edge: 4, width: 12, card: 12, seen: 'hidden', shown: false }, `the rail over the cards' edge, out of sight (${JSON.stringify(place)})`);
   const rgb = hex => `rgb(${[1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
   ctx.assert.equal(out.at.thumb.color, rgb(out.at.thumb.spend), `the thumb is the board's orange (${out.at.thumb.color} for ${out.at.thumb.spend})`);
   ctx.assert.equal(out.at.thumb.width, 5, 'a 5 px pill at rest');

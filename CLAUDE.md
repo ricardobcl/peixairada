@@ -301,7 +301,7 @@ refuses to run against the real directory for the same reason.
 * **The timeline is the list's scrollbar, with the days on it, out of sight until called** (2026-09-28): `#tline`,
   laid over the list's own cell (`justify-self: start`, row 2), `display: none` on the rail of squares; the native
   scrollbar is hidden. **Hidden** (`visibility`, which its labels' own `pointer-events` cannot undo), the cards have the
-  whole width — flush against the list's coloured edge. **The pointer held on that edge** (x under `TL_EDGE`, within
+  whole width — 8 px from the list's coloured edge, as from its right (`#slist`'s padding). **The pointer held on that edge** (x under `TL_EDGE`, within
   the list's row) for `TL_DWELL_MS` calls it out, swollen round the pointer (`#sessions.tlshow`, `show()`, a document
   `pointermove`); off it and not dragging, it goes `TL_HIDE_MS` later. `peix.state().timeline.shown`. **Shown, the
   thumb**: 12 px wide (`TL_W`), an orange pill (`--spend`), never under `TL_MIN`, wider under the pointer. **To scale**: the rail's inner height is the list's `scrollHeight`, a

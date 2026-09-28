@@ -15,6 +15,8 @@ also move".
 
 * **No ＋**: ⌥⌘N opens with the project in view selected, so ⌥⌘N ⏎ ⏎ is what the button did on a one-folder project
   (and on a named one, its folder step). On ALL the project step starts at the top as before.
+* **The cards are 8 px from the list's edge on both sides again** — flush on the left for a day, to use the room the
+  timeline's column had held; symmetric reads better than 8 px more.
 
 ## Decisions of 2026-09-29, small hours — no edge at rest, the marks beside the title, the header black from the name, one row atop the list, no grey borders
 
