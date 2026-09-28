@@ -72,7 +72,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | PRs mentioned | `pr-link` lines *and* GitHub pull URLs in user/assistant text; most recently mentioned first; `gh api graphql` batched for state and title (one of the two network calls), polled by the chat's recency — see *The server* |
 | Plan usage (the chat list's footer) | `GET https://api.anthropic.com/api/oauth/usage` with Claude Code's own OAuth bearer from the keychain item *Claude Code-credentials*; `USAGE=off` disables; the token never reaches the page. → Findings: *plan usage* |
 | Permission prompts | the registry's `waiting` (above) — they never reach the transcript |
-| Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login zsh (mise's PATH); it registers like any CLI run; a new chat is tied to its session by pid. **A folder whose Taskfile launches claude** (a task whose description mentions Claude) starts new chats as `task <name>` instead: `GET /api/launchers?cwd=` lists them (`task --list --json`, cached by the file's mtime, `TASK_BIN` overrides), `POST /api/terminals {cwd, task}` checks the name; claude is then a *descendant* of the PTY's pid, found through `ps` (`linkTermToRegistry`, `t.claudePid`), which is also where the launcher's name is written down for good (`noteEnv` → `envs` in the state file → `s.env`, what ⌥⌘O scopes by). A resume never goes through task. **`/clear` (or `/resume`) in the drawer** gives that pid a new session id and `linkTermToRegistry` moves the holder to it and pushes **both** chats; the page follows the holder (`terminal` event → `openSession`), the old chat is a stale card |
+| Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login shell (mise's PATH; `RUN_SHELL` — the user's zsh or bash, else `/bin/zsh`); it registers like any CLI run; a new chat is tied to its session by pid. **A folder whose Taskfile launches claude** (a task whose description mentions Claude) starts new chats as `task <name>` instead: `GET /api/launchers?cwd=` lists them (`task --list --json`, cached by the file's mtime, `TASK_BIN` overrides), `POST /api/terminals {cwd, task}` checks the name; claude is then a *descendant* of the PTY's pid, found through `ps` (`linkTermToRegistry`, `t.claudePid`), which is also where the launcher's name is written down for good (`noteEnv` → `envs` in the state file → `s.env`, what ⌥⌘O scopes by). A resume never goes through task. **`/clear` (or `/resume`) in the drawer** gives that pid a new session id and `linkTermToRegistry` moves the holder to it and pushes **both** chats; the page follows the holder (`terminal` event → `openSession`), the old chat is a stale card |
 
 **Never written: anything under `~/.claude`.** The board is read-only against Claude Code's data. The fake claude
 refuses to run against the real directory for the same reason.
@@ -169,8 +169,8 @@ refuses to run against the real directory for the same reason.
   frame, before it paints; `phaseAnims(true)` at once, the cog's switch) puts every `ring`, `blink`, `pulse`, `pix`
   and `pixhop` at start time 0 on the document clock, or, with *rings in step* off (`prefs.ringsInStep`), at a time
   hashed from the chat's id. → `scripts/scenarios/card-signals.mjs`.
-* **Folded (⌘B), the chat list is a rail of squares**: one per chat, `projAbbr` (`PROJECT_ABBR` for the ones the rule
-  gets wrong) on a solid tint of its colour, and the card's own edge — clauding, the agents' count, a monitor and a
+* **Folded (⌘B), the chat list is a rail of squares**: one per chat, `projAbbr` (the setup's short name for the ones
+  the rule, `abbrRule`, gets wrong) on a solid tint of its colour, and the card's own edge — clauding, the agents' count, a monitor and a
   question still read from the rail. Everything inside the card is `display: none` there; `.abbr` is the only child
   left standing, and it carries the hover tooltip.
 * **A project is a folder** (the registry's `cwd`, never the transcript's) **or a named set of folders** (state
@@ -181,8 +181,8 @@ refuses to run against the real directory for the same reason.
   is hidden with a *show* beside it; starting a chat in a hidden folder puts it back (`newChat`).
 * **A project's colour is Peacock's** — `pollPeacock()` reads the nearest `.vscode/settings.json` at or above every
   folder it knows, stopping short of `$HOME`; the board can *set* it (`PUT/DELETE /api/peacock`, a text edit of the
-  JSONC, tested). No colour → `--nocolor`, unless the folder is named in `PROJECT_COLORS` (by its shown name, like
-  `PROJECT_ICONS`): `acme` is `BLACK`. The chat header's colour square is the picker (`#colorInput`).
+  JSONC, tested). No colour → `--nocolor`, unless the setup gives the folder one (by its shown name, `projCfg`); `#000000`
+  there is `BLACK`, with its inks. The chat header's colour square is the picker (`#colorInput`).
 * **The chat header is a gradient of the project's colour**: `tintChat()` sets `--repo`, `--rink`, `--rover`/`--rover2`
   and `#chat.tinted`; `--rink` is the ink that reads on it (`inkOn()`), every control in `.shead` redrawn in it; the
   veils pull the colour away from that ink towards the bottom right. No colour → the plain panel header. **The colour
@@ -231,7 +231,7 @@ refuses to run against the real directory for the same reason.
 * **The open chat's card and a hovered one are a solid tint** of its colour (`.card.active`, `.card:hover`, 65 %), the
   rest a wash (45 % to 37 %) **under a plain edge**: only the clauding card, the hovered one and the open one wear the
   colour on their border. A black card's wash stays lighter (28 % to 20 %). **ALL** (`key: 'all'`) is black in both
-  themes — `BLACK`, through `projColor()` — and so is `acme` (`PROJECT_COLORS`). A card in that black is
+  themes — `BLACK`, through `projColor()` — and so is a folder the setup paints `#000000` (`acme` here). A card in that black is
   `.card.black`: its solid tint is the black itself and it borrows the dark theme's inks; `--ring` turns its clauding
   light white wherever the card under it is dark. **The open card bleeds into the splitter**: `main:not(.scompact)
   #slist > .card.active` runs to the column's edge, and `#splitter` is `--open` on `main` (set by `tintChat`).
@@ -288,19 +288,28 @@ refuses to run against the real directory for the same reason.
   `.stale`. The server's `USAGE=off` answers `off: true` and the bar hides — every test server.
   → `scripts/scenarios/usage-bar.mjs`.
 * **State lives in three places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done ticks,
-  named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off;
-  `STATE_FILE` overrides) shared by the app and every browser; the browser's `localStorage` `peixairada-prefs`
-  (selected project, filters, widths, zoom, folds, card size, drawer open/height — the keys are the `prefs` literal,
+  named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, the
+  setup; `STATE_FILE` overrides) shared by the app and every browser; the browser's `localStorage` `peixairada-prefs`
+  (selected project, filters, widths, zoom, folds, card size, the code's fold, ⌥ as Meta, dates, drawer open/height — the keys are the `prefs` literal,
   and old ones are deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it
   renders reads its state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
+* **The setup is the server's, and nothing about one Mac is written in the code** (2026-09-28): `config` in the state
+  file — `roots` (`[{dir, org}]`: the folders of repos ⌥⌘N lists, the org ＋ clone asks), `quick` (⌥⌘O's project, which
+  wears the crystal ball) and `projects` (`{name: {abbr, color}}`, by shown name). `cleanSetup` shapes it (strict for a
+  PUT: says what is wrong, asks that a root exists); a key never set is the default at read time (`boardConfig()`: the
+  roots from `ORG_DIR` / `ORG` when either is in the environment, else none). `GET/PUT /api/config` — a PUT replaces
+  the keys it gives —, a `config` event, `config` in the snapshot; the page's `state.config`, `configChanged()`. The
+  cog draws it (`renderSetup`, never under a box that has the keyboard). → `test/config.test.mjs`,
+  `scripts/scenarios/cog-setup.mjs`.
 * **The page asks the server through `api(method, url, body)`** (2026-09-27): JSON in, JSON out, a throw with the
   server's own `error` (else the status) when it says no — `e.status`, `e.body`. Every caller says what went wrong
   where it happened, or catches on purpose. The attach upload keeps a raw `fetch`: its body is a file.
 
 ## Hotkeys and the pane
 
-* **`HOTKEYS` in index.html is the whole ⌥⌘ family**: T this chat's zsh tab (`hotShell()` →
-  `POST /api/sessions/:id/shell`, a holder running `zsh -l -i` in its folder, `s.shell`), E the VS Code *Web* button
+* **`HOTKEYS` in index.html is the whole ⌥⌘ family**: T this chat's shell tab (`hotShell()` →
+  `POST /api/sessions/:id/shell`, a holder running the login shell `-l -i` in its folder, `s.shell`; the tab wears its
+  name, `shName()`), E the VS Code *Web* button
   (in the pane; the real VS Code is the header menu's *open in VS Code* only, no key), G the chat's PR on GitHub — one
   opens straight away, several open the picker in `pr` mode, the one showing marked *current* (no PR → the folder's
   GitHub repo, `state.repos` from `git remote`) —, C this chat's claude session (`termAction()`, the `>_` button's
@@ -309,7 +318,8 @@ refuses to run against the real directory for the same reason.
   searched by `chatFields()`; ⏎ is `openSession`), **F the chat list's own box** (`hotFind()` → `qShow(true)`), N a
   chat as steps of the one dialog (`new` → `chats` → `folder` when the project spans several → `env` when
   `newChatIn()` finds launchers), **O the same with the project answered and the environment brought forward**
-  (`hotOracle()` → `newChatIn(cwd, 'chats')` on the project `ORACLE` names; off the board is a `note()`), ↑ / ↓ the
+  (`hotOracle()` → `newChatIn(cwd, 'chats')` on the project the setup names, `state.config.quick`; none named, or
+  off the board, is a `note()`), ↑ / ↓ the
   chat above or below in the list as shown (`hotMove()`), ← / → the tab beside in the strip, wrapping (`hotTab()` →
   `openTab()`), **1 / 2 the top and the bottom half of the chat column stood one over the other** (`hotGroup(g,
   true)`). Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A `dialog[open]` swallows them; no chat or no PR
@@ -366,18 +376,22 @@ refuses to run against the real directory for the same reason.
   (`pillsHtml(envCounts(cwd, name))`) and a card whose chat has an `env` wears it beside the folder name (`.chip.env`).
   → `scripts/scenarios/new-chat-flow.mjs`.
 * **The project step holds the folders you have no chat in, and clones one you have not got**: after the board's own
-  projects come the folders directly under `ORG_DIR` (`~/acme`; `ORG` doubles as the GitHub organisation) that are
-  on no project (`freeFolders()`, by the exact cwd), and a query that names none of them is offered last as **＋ clone
-  `<org>/<name>`** (`cloneRow()`, never filtered out). `GET /api/folders` lists them, cached by that directory's mtime;
-  `POST /api/clone {name}` runs `gh repo clone <org>/<name>` into it — **the only thing the board writes outside its
-  own state** — and `cloneAndStart()` carries on into the same flow. A long path belongs beside the name (`.cur`),
+  projects come the folders directly under each of the setup's roots that are on no project (`freeFolders()`, by the
+  exact cwd), and a query that names none of them is offered last as **＋ clone `<org>/<name>`**, a row per root with
+  an org (`cloneRows()`, never filtered out). `GET /api/folders` lists them (`{roots, folders}`, each folder with its
+  `root` and `org`), cached by each root's mtime; `POST /api/clone {name, root}` runs `gh repo clone <org>/<name>` into
+  that root (no `root`: the one root with an org, if only one) — **the only thing the board writes outside its own
+  state** — and `cloneAndStart()` carries on into the same flow. A long path belongs beside the name (`.cur`),
   never in the row's `auto` column. → `scripts/scenarios/new-project.mjs`.
-* **The cog's popover is the whole of the board's settings**: the notifications switch (`#notifyOn`), the rings'
-  step (`#ringsInStep`), the cards' size (`.dens`) and the keys — nothing else. It opens on *hover of `#pfoot`*, the
-  cog's cell, **drawn over the list's 4 px coloured edge** (`margin-left: -4px`); a click pins it, Esc or a click away
-  closes it (`settingsOpen`). The fish is the SSE light and, clicked, **the About box** (`#about`, a modal dialog:
+* **The cog's popover is the whole of the board's settings**, two columns (`.scol` and the keys; one over the other
+  where the window has not the room, `.one`, and scrolled past its height): the notifications switch (`#notifyOn`),
+  the rings' step (`#ringsInStep`), the cards' size (`.dens`), the code's fold (`#foldCode`), ⌥ as Meta (`#optMeta`),
+  how a date is written (`#datesStops` → `fmtDate`), the setup (`#setup`, the server's) and what is hidden — nothing
+  else. It opens on *hover of `#pfoot`*, the cog's cell, **drawn over the list's 4 px coloured edge**
+  (`margin-left: -4px`); a click pins it, and so does a box in it taking the keyboard; Esc or a click away closes it
+  (`settingsOpen`). **While it is up the pane is down** (`postPane`), as under a dialog. The fish is the SSE light and, clicked, **the About box** (`#about`, a modal dialog:
   version, process and paths from the snapshot's `about`, and the chats' counts). The `{ }` row under the chat
-  header's ··· is the fold for a chat (`prefs.foldBy[id]`, else `FOLD_DEFAULT`). **Every `pre` in the transcript is
+  header's ··· is the fold for a chat (`prefs.foldBy[id]`, else the cog's `prefs.foldCode`). **Every `pre` in the transcript is
   inside a `.codebox`** (2026-09-27, night; `md()`): the bar with the language and the copy button is its first
   child, a folded block is `details.codefold > summary + .codebox`, and a rule that reaches a `pre` goes through the
   box. The copy click is delegated on `#log`.
@@ -480,8 +494,8 @@ refuses to run against the real directory for the same reason.
 
 ## The drawer
 
-* **A drawer is a holder** (`lib/termhold.mjs`): a detached process that owns the PTY (node-pty, `zsh -l -i -c
-  'exec claude …'`) and the exact screen (`@xterm/headless` + serialize), listening on `<state dir>/terms/<id>.sock`
+* **A drawer is a holder** (`lib/termhold.mjs`): a detached process that owns the PTY (node-pty, `<sh> -l -i -c
+  'exec claude …'`, `sh` from the spec — the login shell when it is zsh or bash, else `/bin/zsh`) and the exact screen (`@xterm/headless` + serialize), listening on `<state dir>/terms/<id>.sock`
   — newline-delimited JSON: `in`, `resize`, `snap`, `clear`, `kill`, `quit`, `meta` in; `hello`, `out` (with `seq`),
   `snap` (with `upto`), `clear` (with `seq`), `exit` out. The server connects, proxies pages (`attachTermSocket`),
   adopts holders on boot (`adoptHolders`), and tells a holder its session id once the registry reveals it. An exited
@@ -510,10 +524,10 @@ refuses to run against the real directory for the same reason.
 * **⌘K clears the terminal**: the page asks the holder (`clearTerm()` → `{t:'clear'}`), the holder clears the screen
   *it* serializes and echoes the clear back, and that echo wipes every page on that drawer — so a re-attach and a
   server restart stay clear. A nudge follows. ⌃L is still the shell's own.
-* **Shift+Enter is a newline**: the drawer sends `ESC CR` itself and swallows the keypress. `macOptionIsMeta: true`.
-  → Findings: *Shift+Enter*.
-* **⌥ over a digit or a punctuation key types what macOS composed**: the handler sends `e.key` for the codes in
-  `ALT_COMPOSES`, and leaves ⌥+letter to Meta. → Findings: *⌥ is a compose key too*.
+* **Shift+Enter is a newline**: the drawer sends `ESC CR` itself and swallows the keypress. `macOptionIsMeta` is the
+  cog's *⌥ is Meta* (`prefs.optMeta`, on by default; a switch sets it on every live xterm). → Findings: *Shift+Enter*.
+* **⌥ over a digit or a punctuation key types what macOS composed**: with ⌥ as Meta, the handler sends `e.key` for the
+  codes in `ALT_COMPOSES`, and leaves ⌥+letter to Meta; off, xterm composes them all. → Findings: *⌥ is a compose key too*.
 * **The chat header menu's ◎ row types `/focus`** into that chat's holder — Claude Code's focus view, which has no key
   and no API: `toggleFocusView()` sends the command, then reads the newest `Focus view enabled|disabled` line off the
   drawer's screen (`focusSaid()`) and lights `#viewBtn` from *that*; `focusView` (page state) is only what the
@@ -558,8 +572,8 @@ refuses to run against the real directory for the same reason.
   clock after the render (`phaseAnims()`) — and nothing continuous animates a custom property, a gradient or a colour.
 * **A read after a write is a layout**: the list's frame (`listGeom`), `fitHeadPrs` and `layoutNotch` read everything
   first; keep it so when adding to them.
-* `PROJECT_ICONS` (index.html) marks a project by its shown name wherever the name is written; `projIcon(name)` goes
-  before the name. `PROJECT_ABBR` is the same idea for the folded list's squares, read only by `projAbbr`.
+* `projIcon(name)` marks ⌥⌘O's project wherever its name is written, before the name; `projAbbr` is the folded list's
+  squares. Both, and a folder's colour, read the setup by the shown name (`projCfg`) — never a map in the code.
 * **Never name a modifier class after something the page also selects by**: the walkers take `#slist > .card`; the
   usage's messages wear `.unote`, since `.note` is `note()`'s fixed-position popup.
 * No in-page toasts: alerts are the badge plus a system notification; the app sets `NOTIFY=off` on its own server.
@@ -602,11 +616,11 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   finite animation (the named slides, the CSS transitions) to end and leaves the endless ones alone. `ctx`: `evaluate`, `waitFor`, `send`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
-  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The twenty-nine in
+  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The thirty-five in
   `scripts/scenarios/` are the regression checks for the drawer, the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
   marks, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, the chat's links,
-  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title.
+  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.

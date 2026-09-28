@@ -2,9 +2,10 @@
 // with that one marked, a click on the other opens it; T, E and C hit their routes (stubbed), V none; P is the project
 // picker; K the chat picker (fuzzy search, best match first, ⏎ opens across projects) — F, the list's own box, is
 // chat-filter.mjs; N a chat (project → its open chats and ＋ a new one
-// → environment, stubbed); O oracle, straight to the environments (a pinned folder called oracle stands in for the
-// real one — with no chats of its own the chats step skips itself); ↓ ↑ walk the list; ← → the tab beside (a real zsh); { } folds per chat; Esc closes a picker and is taken; the cog
-// lists every key; no chat → a note, no oracle → a note.
+// → environment, stubbed); O the project the cog names for it (2026-09-28; oracle, written in, before), straight to the
+// environments (a pinned folder called oracle stands in for the real one — with no chats of its own the chats step
+// skips itself); ↓ ↑ walk the list; ← → the tab beside (a real zsh); { } folds per chat; Esc closes a picker and is
+// taken; the cog lists every key; no chat → a note, no project for ⌥⌘O → a note, one that is not on the board → a note.
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -19,7 +20,13 @@ export default async function (ctx) {
   // no chat open: notes
   await ctx.key('KeyG'); out.noChatNote = await txt('.note');
   await ctx.evaluate(`document.querySelectorAll('.note').forEach(n => n.remove())`);
-  // no oracle on this board yet: ⌥⌘O says so (it is pinned into place further down)
+  // ⌥⌘O with no project named for it says where to name one; named, but not on this board yet (it is pinned into place
+  // further down), it says that
+  await ctx.key('KeyO'); out.noQuickNote = await txt('.note');
+  ctx.assert.match(out.noQuickNote, /No project for ⌥⌘O yet — the cog/);
+  await ctx.evaluate(`document.querySelectorAll('.note').forEach(n => n.remove())`);
+  await ctx.server.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ quick: 'oracle' }) });
+  await ctx.waitFor(`document.querySelector('#quickKey').textContent.startsWith('oracle — ')`, { what: 'the setup reaching the page, the cog\'s key line with it' });
   await ctx.key('KeyO'); out.noOracleNote = await txt('.note');
   ctx.assert.match(out.noOracleNote, /No oracle folder/);
   await ctx.evaluate(`document.querySelectorAll('.note').forEach(n => n.remove())`);

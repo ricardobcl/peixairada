@@ -1,4 +1,5 @@
-// The org's folders, and the one thing the board writes outside its own state: a clone into ORG_DIR. The clone
+// A root's folders, and the one thing the board writes outside its own state: a clone into a root (ORG_DIR here — the
+// root the environment gives when the cog has set none; test/config.test.mjs is the cog's). The clone
 // itself is `gh repo clone` over the network — not a test's business — so what is checked here is everything around
 // it: what the listing holds, what it refuses to be told, and a folder that is already there being handed back so
 // the page can carry on into the new-chat flow with it.
@@ -19,10 +20,10 @@ test('the org folders are listed, and a clone is refused a name that is not one'
   const srv = await startTestServer({ env: { ORG_DIR: root, ORG: 'acme' } });
   try {
     const list = await srv.api('api/folders');
-    assert.equal(list.body.root, root);
-    assert.equal(list.body.org, 'acme');
+    assert.deepEqual(list.body.roots, [{ dir: root, org: 'acme' }]);
     assert.deepEqual(list.body.folders.map(f => f.name), ['oracle', 'wallet-api'], 'directories only, by name — a file and a dotfolder are not folders here');
     assert.deepEqual(list.body.folders.map(f => f.git), [false, true], 'a .git says which one is a clone already');
+    assert.deepEqual(list.body.folders.map(f => [f.root, f.org]), [[root, 'acme'], [root, 'acme']], 'each says which root and org it is of');
 
     for (const name of ['../escape', 'has space', '', 'a/b']) {
       const bad = await srv.post('api/clone', { name });

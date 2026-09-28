@@ -70,7 +70,6 @@
   .pop h4 em { font-style: normal; color: var(--accent); }
   .pop h4 .sub { font-size: 11px; font-weight: 400; color: var(--muted); }
   /* The keys, so they can be looked up: two columns under a rule, the chord in ink, what it does in muted. */
-  #settings { width: 480px; }   /* the keys wrap inside */
   .pop .keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: baseline; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
   .pop .keys .kh { grid-column: 1 / -1; font-size: 11px; }
   /* The one switch (2026-09-23): system notifications on or off, the server's word so the app and every tab agree. */
@@ -99,6 +98,32 @@
   .pop .hid .hrow span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pop .hid button { font: inherit; font-size: 11px; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 6px; padding: 1px 7px; cursor: pointer; }
   .pop .hid button:hover { border-color: var(--accent); color: var(--accent); }
+  /* The settings and the keys side by side (2026-09-28, when the setup joined the settings and one column outgrew the
+     window), one over the other where the window has not the room (.one, settingsOpen); scrolled, never cut off. */
+  #settings { grid-template-columns: 330px 480px; column-gap: 22px; align-items: start; max-height: calc(100vh - 20px); overflow: auto; }
+  #settings.one { grid-template-columns: minmax(0, 480px); }
+  #settings h4 { grid-column: 1 / -1; }
+  .pop .scol { display: grid; gap: 9px; align-content: start; min-width: 0; }
+  /* The setup (2026-09-28): the server's, under the switches that are this browser's — the folders of repos, ⌥⌘O's
+     project, a short name and a colour per project. Boxes in the popover's small print, a border that lights on focus. */
+  .pop .setup { display: grid; gap: 10px; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
+  .pop .setup .sg { display: grid; gap: 4px; }
+  .pop .setup .kh { font-size: 11px; margin-bottom: 1px; }
+  .pop .setup b { font-weight: 600; color: var(--ink); }
+  .pop .srow { display: grid; grid-template-columns: minmax(0, 1fr) 84px 18px; gap: 6px; align-items: center; }
+  .pop .srow.proj { grid-template-columns: minmax(0, 1fr) 64px 18px 18px; }
+  .pop .setup input[type=text] { font: inherit; font-size: 11.5px; min-width: 0; height: 22px; padding: 0 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--ink); }
+  .pop .setup input[type=text]:focus { outline: none; border-color: var(--accent); }
+  .pop .setup input::placeholder { color: var(--muted); opacity: .75; }
+  .pop .srow .pn { display: inline-flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+  .pop .sdel { font: inherit; font-size: 13px; line-height: 1; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; }
+  .pop .sdel:hover { color: var(--needs); }
+  .pop .ssw { position: relative; width: 16px; height: 16px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 3px; background: var(--c); cursor: pointer; }
+  .pop .ssw.none { background: linear-gradient(to top right, transparent calc(50% - .6px), var(--muted) calc(50% - .6px) calc(50% + .6px), transparent calc(50% + .6px)); }
+  .pop .ssw input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer; }
+  .pop .setup .quick { grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center; }
+  .pop .setup select { max-width: none; width: 100%; font-size: 11.5px; padding: 3px 6px; }
+  .pop .setup .sadd { color: var(--muted); }
   .pop .keys kbd { font: inherit; font-weight: 600; color: var(--ink); white-space: nowrap; }
   .pop .keys em { font-style: normal; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--ink); }
   .pop select, .colhead select { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; max-width: 180px; }
@@ -1088,27 +1113,34 @@
 </main>
 <div id="settings" class="pop" hidden>
   <h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4>
-  <label class="opt" title="Off, nothing posts a banner — not the app, not a browser tab, not the server — and the unread counts on the cards and the Dock go on as before"><input type="checkbox" id="notifyOn" checked><span><b>notifications</b> — a banner when Claude finishes or asks you something, while the board is not in front</span></label>
-  <label class="opt" title="On, every clauding card's light stands at the same angle — the blinks and the dots too; off, each card runs at its own. Either way a card rebuilt by an update carries on where it was"><input type="checkbox" id="ringsInStep" checked><span><b>rings in step</b> — every card's light at the same angle; off, each at its own</span></label>
-  <div class="dens" title="How much of each chat its card carries — a question waiting on you shows at every size">
-    <b>cards</b><input type="range" id="cardsSize" min="0" max="2" step="1" value="0" list="cardsStops" aria-label="Card size">
-    <datalist id="cardsStops"><option value="0"></option><option value="1"></option><option value="2"></option></datalist>
-    <span class="stops"><span data-v="0" title="your last prompt and Claude's last reply, as always">large</span><span data-v="1" title="only the last word — yours or Claude's, whichever came last">medium</span><span data-v="2" title="neither: the title, its chips and its PRs">compact</span></span>
+  <div class="scol">
+    <label class="opt" title="Off, nothing posts a banner — not the app, not a browser tab, not the server — and the unread counts on the cards and the Dock go on as before"><input type="checkbox" id="notifyOn" checked><span><b>notifications</b> — a banner when Claude finishes or asks you something, while the board is not in front</span></label>
+    <label class="opt" title="On, every clauding card's light stands at the same angle — the blinks and the dots too; off, each card runs at its own. Either way a card rebuilt by an update carries on where it was"><input type="checkbox" id="ringsInStep" checked><span><b>rings in step</b> — every card's light at the same angle; off, each at its own</span></label>
+    <div class="dens" title="How much of each chat its card carries — a question waiting on you shows at every size">
+      <b>cards</b><input type="range" id="cardsSize" min="0" max="2" step="1" value="0" list="cardsStops" aria-label="Card size">
+      <datalist id="cardsStops"><option value="0"></option><option value="1"></option><option value="2"></option></datalist>
+      <span class="stops"><span data-v="0" title="your last prompt and Claude's last reply, as always">large</span><span data-v="1" title="only the last word — yours or Claude's, whichever came last">medium</span><span data-v="2" title="neither: the title, its chips and its PRs">compact</span></span>
+    </div>
+    <label class="opt" title="How a chat's code blocks longer than six lines start out — the chat header's ··· { } turns it for that chat alone"><input type="checkbox" id="foldCode" checked><span><b>fold code</b> — long code blocks start folded; ··· { } turns a chat's</span></label>
+    <label class="opt" title="On, ⌥ with a letter is Meta in the terminal, as iTerm's Esc+ — ⌥B ⌥F move a word, ⌥⌫ deletes one; ⌥ with a digit or a sign still types what the keyboard makes. Off, ⌥ types whatever your layout composes (⌥L is @ on a German one)"><input type="checkbox" id="optMeta" checked><span><b>⌥ is Meta</b> in the terminal — off, ⌥ types what your keyboard composes</span></label>
+    <div class="dens dates" title="How a day is written — the lines between the cards, the transcript's, the timeline's"><b>dates</b><span class="stops" id="datesStops"></span></div>
+    <div id="setup" class="setup"></div>
+    <div id="hidden" class="hid"></div>
   </div>
   <div class="keys" title="From anywhere on the board, the terminal included">
     <span class="kh">keys</span>
-    <kbd>⌥⌘T</kbd><span>a zsh in this folder, a tab beside the chat · again to show it</span>
+    <kbd>⌥⌘T</kbd><span>a shell in this folder, a tab beside the chat · again to show it</span>
     <kbd>⌥⌘E</kbd><span>edit: this folder in VS Code Web, on a tab</span>
     <kbd>⌥⌘G</kbd><span>its PR on GitHub, on a tab · the repo when it has none · a picker with several, every time</span>
     <kbd>⌥⌘C</kbd><span>this chat's claude session — the pane while it runs here · starts or takes over one</span>
-    <kbd>⌥⌘O</kbd><span>oracle — its environments, then that one's open chats and ＋ a new one</span>
+    <kbd>⌥⌘O</kbd><span id="quickKey">a new chat in the project the cog names — its environments first, when its Taskfile has some</span>
     <kbd>⌥⌘P</kbd><span>project picker — or a click on the project's name atop the chat list · ✎ edits a named one, ＋ makes one</span>
-    <kbd>⌥⌘K</kbd><span>chat picker — every ready or clauding chat, fuzzy: <em>wapi res</em> finds <em>wallet-api resolvers</em></span>
+    <kbd>⌥⌘K</kbd><span>chat picker — every ready or clauding chat, fuzzy: <em>chk rtr</em> finds <em>checkout retry</em></span>
     <kbd>⌥⌘F</kbd><span>the chat list's own filter, fuzzy the same way — the best match leads · ↑↓ walk the cards · ⏎ opens one · esc clears it</span>
-    <kbd>⌥⌘N</kbd><span>a chat — a project, a folder in ~/acme, or ＋ clone a repo of the org · then its open chats or ＋ a new one · ✕ takes a row off the board</span>
+    <kbd>⌥⌘N</kbd><span id="newKey">a chat — a project, a folder of your repos, or ＋ clone one · then its open chats or ＋ a new one · ✕ takes a row off the board</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
-    <kbd>⌥⌘←→</kbd><span>the tab to the left / right: chat, zsh, GitHub pages, VS Code — split, across both halves' strips · drag a tab onto the other half to move it there</span>
-    <kbd>⌥⌘W</kbd><span>close the tab the keys are in: the zsh ends, a page or VS Code Web goes — the ··· menu too · split, a half with one tab shows no strip</span>
+    <kbd>⌥⌘←→</kbd><span>the tab to the left / right: chat, shell, GitHub pages, VS Code — split, across both halves' strips · drag a tab onto the other half to move it there</span>
+    <kbd>⌥⌘W</kbd><span>close the tab the keys are in: the shell ends, a page or VS Code Web goes — the ··· menu too · split, a half with one tab shows no strip</span>
     <kbd>⌥⌘1 ⌥⌘2</kbd><span>the halves one over the other: the top one, the bottom one — ⌥⌘2 splits the chat that way the first time; side by side, either turns it</span>
     <kbd>⌘B</kbd><span>fold the chat list into a rail, and back</span>
     <kbd>⌘1 ⌘2</kbd><span>the left half of the chat, the right one — ⌘2 splits it in two the first time; one over the other, either turns it back · the digit is the pane, the modifier the layout</span>
@@ -1123,7 +1155,6 @@
     <kbd>⌘F · ⌘G</kbd><span>find on the page in the pane, as in a browser — ⏎ ⇧⏎ or ⌘G ⇧⌘G step the matches, esc closes the bar, in the app</span>
     <kbd>pinch</kbd><span>zoom a GitHub or VS Code page in the pane, as in Safari · its address sits in the strip, click to copy</span>
   </div>
-  <div id="hidden" class="hid"></div>
 </div>
 <dialog id="hmenu" aria-label="This chat's actions"></dialog>
 <dialog id="about" aria-label="About peixAIrada"></dialog>
@@ -1137,7 +1168,7 @@
   <input type="text" id="pname" placeholder="Name — e.g. Wallet fees rollout" maxlength="80">
   <div id="pfolders"></div>
   <p class="help">Other folders, one per line (absolute paths):</p>
-  <textarea id="pextra" rows="2" placeholder="/Users/you/acme/some-repo"></textarea>
+  <textarea id="pextra" rows="2" placeholder="~/code/some-repo"></textarea>
   <div class="dfoot"><button class="btn danger" id="pdel">Delete project</button><span class="err" id="perr"></span><span class="spacer"></span><button class="btn" id="pcancel">Cancel</button><button class="btn" id="psave">Save</button></div>
 </dialog>
 <input type="color" id="colorInput" aria-hidden="true" tabindex="-1">
@@ -1191,14 +1222,15 @@
 // Map ▴
 (() => {
   const $ = s => document.querySelector(s);
-  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, titleEdit: null, prsFor: null, prsAll: false };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, foldBy: {}, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, usageFolded: false, prsOpen: false, cards: 'large', ringsInStep: true };
+  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, foldBy: {}, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, usageFolded: false, prsOpen: false, cards: 'large', ringsInStep: true, foldCode: true, optMeta: true, dates: 'dmy' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
   delete prefs.projectsCompact;   // the projects column's strip or full width — there is no column since 2026-09-24
-  // the four switches nothing set since the cog was pared down (2026-09-21): a saved value was the only way to flip them
-  for (const k of ['sound', 'showAll', 'toolsMode', 'foldCode']) delete prefs[k];
+  // the switches nothing set since the cog was pared down (2026-09-21): a saved value was the only way to flip them —
+  // foldCode was one of them, and is the cog's again since 2026-09-28
+  for (const k of ['sound', 'showAll', 'toolsMode']) delete prefs[k];
   // the one-of-four filter (before 2026-09-20) becomes the set of states shown; 'all' was every state
   if ('filter' in prefs) { prefs.filters = prefs.filter === 'all' ? ['ready', 'working', 'done'] : [prefs.filter]; delete prefs.filter; }
   if (!Array.isArray(prefs.filters)) prefs.filters = ['ready', 'working', 'done'];
@@ -1213,11 +1245,11 @@
     return d;
   }
   // Code folding per chat (2026-09-20, Ricardo: "a button to toggle for that session"): the header's { } button sets
-  // prefs.foldBy[id]; a chat without a word of its own folds (the cog's *fold code* switch, before it went). Claude Code
+  // prefs.foldBy[id]; a chat without a word of its own follows the cog's *fold code* switch (prefs.foldCode — gone on
+  // 2026-09-21, back on 2026-09-28 with the rest of the setup, on by default as it always was). Claude Code
   // itself cannot fold the code it prints in the drawer — its only collapse is ctrl+o for tool output — so this is the
   // rendered transcript's.
-  const FOLD_DEFAULT = true;
-  const foldOn = id => id && id in prefs.foldBy ? !!prefs.foldBy[id] : FOLD_DEFAULT;
+  const foldOn = id => id && id in prefs.foldBy ? !!prefs.foldBy[id] : prefs.foldCode !== false;
 
   // ---- header controls ---------------------------------------------------------------
   // The settings popover is the plan usage and the keys, nothing else (2026-09-21, Ricardo: "just hotkeys and
@@ -1253,9 +1285,11 @@
   const spop = { timer: null, pinned: false };
   const settingsOpen = on => {
     const pop = $('#settings');
-    if (!on) { pop.hidden = true; spop.pinned = false; $('#cogBtn').classList.remove('on'); return; }
-    pop.style.left = ($('#pfoot').getBoundingClientRect().right + 8) + 'px';   // beside the cog's cell, open list or rail
-    pop.hidden = false;
+    if (!on) { pop.hidden = true; spop.pinned = false; $('#cogBtn').classList.remove('on'); if (setupUi.pending.size) { setupUi.pending.clear(); renderSetup(); } repostPane(); return; }
+    const left = $('#pfoot').getBoundingClientRect().right + 8;
+    pop.style.left = left + 'px';   // beside the cog's cell, open list or rail
+    pop.classList.toggle('one', innerWidth - left < 870);   // the settings and the keys side by side, or one over the other
+    pop.hidden = false; repostPane();   // the pane goes down while it is up: the popover reaches over the chat column
     $('#cogBtn').classList.add('on');
   };
   const settingsShow = on => { clearTimeout(spop.timer); if (on) settingsOpen(true); else if (!spop.pinned) settingsOpen(false); };
@@ -1374,14 +1408,15 @@
   // Such a chat wears a blue border and can be taken over like a CLI chat (2026-09-20) — the cost is the
   // tab in VS Code, which goes dead and does not follow; every button and hint that offers it says so.
   const inVsCode = s => s?.entrypoint === 'claude-vscode';
+  const shName = () => state.about.shell || 'zsh';   // the shell a ⌥⌘T tab is — the login shell's name, from the server
   // A project's colour is Peacock's for its folder — state.peacock, cwd → #rrggbb, read by the server from
   // the nearest .vscode/settings.json and pushed the moment it changes — and the first of its folders' for a
   // named project. Nothing else since 2026-09-20 (no board-set colours, no hashed hues): a folder without
   // one has none, `--repo` stays unset, and the CSS paints --nocolor (a light gray) wherever a colour is needed.
-  // The board paints two things itself, in its own black, in both themes: ALL, the flat list of every chat, and
-  // the folders named in PROJECT_COLORS (below) where Peacock says nothing.
+  // The board paints ALL, the flat list of every chat, in its own black, in both themes — and a folder the cog gives a
+  // colour (projCfg, below) where Peacock says nothing; black there is the same black, with the same inks.
   const BLACK = '#000000';
-  const repoColor = cwds => (Array.isArray(cwds) ? cwds : [cwds]).map(c => c && (state.peacock[c] || PROJECT_COLORS[folderName(c)])).find(Boolean) || null;
+  const repoColor = cwds => (Array.isArray(cwds) ? cwds : [cwds]).map(c => c && (state.peacock[c] || projCfg(folderName(c)).color)).find(Boolean) || null;
   const projColor = p => p.key === ALL ? BLACK : repoColor(p.cwds);
   const repoStyle = color => color ? `--repo:${color}` : '';
   // The ink that reads on a colour: near-black on a light one, white on a dark one — Peacock's own rule (tinycolor's
@@ -1407,31 +1442,24 @@
     } else for (const p of ['--repo', '--rink', '--hveil', '--hveil2']) c.style.removeProperty(p);
   };
   const folderName = cwd => cwd ? cwd.split('/').filter(Boolean).pop() || cwd : '(no folder)';
-  // A project's mark, by name, next to the name wherever it is written — the strip, the column, the chat list's header,
-  // the chat header, the cards, the pickers. One so far (2026-09-20, Ricardo): oracle, the investigations folder that
-  // runs claude against the clusters, wears a crystal ball. Keyed by the name the board shows, so a worktree of it too.
-  const ORACLE = 'oracle';   // …and the folder ⌥⌘O starts a chat in (hotOracle): one spelling of the name for both
-  const PROJECT_ICONS = { [ORACLE]: ICON.oracle };
-  const projIcon = name => PROJECT_ICONS[name] || '';
+  // What the cog's setup says of a project, by the name the board shows — so a worktree or a second checkout of it is
+  // the same: a short name, a colour. Written into this file for one Mac until 2026-09-28 (PROJECT_ABBR, PROJECT_COLORS).
+  const projCfg = name => state.config.projects?.[name] || {};
+  // A project's mark, next to its name wherever it is written — the chat list's header, the chat header, the cards, the
+  // pickers: ⌥⌘O's project wears a crystal ball (2026-09-20, for oracle, the investigations folder that runs claude
+  // against the clusters; since 2026-09-28 whichever project the cog names for ⌥⌘O).
+  const projIcon = name => name && name === state.config.quick ? ICON.oracle : '';
   // The short name a project wears on a card in the folded chat list (2026-09-22, Ricardo: "small squares with only
   // the project they are in, with initial (e.g. BE for backend, WAPI for wallet-api, NS for notifier)").
   // The rule is the initial of each part of a hyphenated name, or the first two letters of a single word — which
-  // gives NS, AS, MS, FC on its own; the map is for the ones whose spoken short name is not that, and is kept by
-  // hand like PROJECT_ICONS, keyed by the name as it is shown.
-  const PROJECT_ABBR = { backend: 'BE', 'wallet-api': 'WAPI' };
-  function projAbbr(name) {
+  // gives NS, AS, MS, FC on its own; the cog names the ones whose spoken short name is not that.
+  const projAbbr = name => projCfg(String(name || '')).abbr || abbrRule(name);
+  function abbrRule(name) {
     const n = String(name || '');
-    if (PROJECT_ABBR[n]) return PROJECT_ABBR[n];
     const parts = n.split(/[^A-Za-z0-9]+/).filter(Boolean);
     if (!parts.length) return '·';
     return (parts.length > 1 ? parts.map(x => x[0]).join('') : parts[0].slice(0, 2)).toUpperCase().slice(0, 4);
   }
-  // A colour the board gives a folder that Peacock has nothing to say about — by the shown name too, so a
-  // worktree or a second checkout of it is the same colour. One so far (2026-09-20, Ricardo: "make acme folder
-  // special by making its cards all black"): `acme`, the root the repos sit under, where the chats that belong
-  // to no repo of their own run — black, ALL's black, so the odd one out is the plainest card on the board.
-  // Peacock still wins wherever it speaks: set a colour on the folder and that is the colour (repoColor).
-  const PROJECT_COLORS = { acme: BLACK };
   const STALE_MAX_AGE_MS = 30 * 86400e3; // Claude Code deletes transcripts after 30 idle days by default; mirror that
 
   // ---- plan usage: the chat list's footer ----------------------------------------------
@@ -1639,9 +1667,16 @@
   // between cards", then "remove the lines left and right of the date"; still fish either side before, from the same
   // day's "center the date … stop the animation, leave it static with the fishes") — nothing moves, plain markup.
   const pad2 = n => String(n).padStart(2, '0');
+  // How a date is written, the cog's *dates* (2026-09-28; DD-MM-YYYY alone before): day first, year first, or month
+  // first — `short` drops the year, for the timeline's labels.
+  const DATES = { dmy: ['-', 'd', 'm', 'y'], ymd: ['-', 'y', 'm', 'd'], mdy: ['/', 'm', 'd', 'y'] };
+  const fmtDate = (d, short, how = prefs.dates) => {
+    const [sep, ...order] = DATES[how] || DATES.dmy, part = { d: pad2(d.getDate()), m: pad2(d.getMonth() + 1), y: String(d.getFullYear()) };
+    return order.filter(k => !short || k !== 'y').map(k => part[k]).join(sep);
+  };
   const dayOf = ts => {   // a timestamp's day, the way the list and the transcript both write it
     const d = new Date(ts); if (isNaN(d)) return '';
-    return new Date(d).setHours(0, 0, 0, 0) === new Date().setHours(0, 0, 0, 0) ? 'today' : `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()}`;
+    return new Date(d).setHours(0, 0, 0, 0) === new Date().setHours(0, 0, 0, 0) ? 'today' : fmtDate(d);
   };
   const dayName = s => dayOf(wordAt(s));
   // Ages are written after the render, not into the markup (2026-09-27, night): a card's age in its markup made the
@@ -1892,8 +1927,8 @@
   /** A run's day, short: today, yesterday, the weekday in the last week, else the date — the year only when not this one's. */
   function tlDay(iso) {
     const d = new Date(iso); if (isNaN(d)) return '';
-    const n = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 864e5), dm = `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}`;
-    return n <= 0 ? 'today' : n === 1 ? 'yesterday' : n < 7 ? `${d.toLocaleDateString('en', { weekday: 'short' })} ${dm}` : d.getFullYear() === new Date().getFullYear() ? dm : `${dm}-${d.getFullYear()}`;
+    const n = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 864e5), dm = fmtDate(d, true);
+    return n <= 0 ? 'today' : n === 1 ? 'yesterday' : n < 7 ? `${d.toLocaleDateString('en', { weekday: 'short' })} ${dm}` : d.getFullYear() === new Date().getFullYear() ? dm : fmtDate(d);
   }
   const tlText = r => `${esc(tlDay(r.at))} <i>· ${r.n} ${TL_WORD[r.g] || r.g}</i>`;
   /** The rail's geometry now — listGeom, read off the cards, so it is the layout as drawn (the card sizes, the width,
@@ -2172,7 +2207,7 @@
   const PICK_HINT = {
     project: 'Project — type to filter · ↑↓ · ⏎ opens · esc', pr: 'Pull request — type to filter · ↑↓ · ⏎ opens · esc',
     chat: 'Chat — ready or clauding, every project · type any letters in order · ↑↓ · ⏎ opens · esc',
-    new: () => `New chat — a project, a folder in ${homePath(folders.root) || '~'}, or a name to clone from ${folders.org} · ↑↓ · ⏎ · esc`,
+    new: () => `New chat — a project${folders.roots.length ? `, a folder in ${folders.roots.map(r => homePath(r.dir)).join(' or ')}` : ''}${folders.roots.some(r => r.org) ? `, or a name to clone from ${folders.roots.filter(r => r.org).map(r => r.org).join(' or ')}` : ''} · ↑↓ · ⏎ · esc`,
     folder: ctx => `${ctx.then === 'chats' ? 'Which folder' : 'New chat — which folder'}? type to filter · ↑↓ · ⏎ · esc`,
     // named: ⌥⌘O never asked which folder. From ⌥⌘O the environment is a scope (its chats follow); from ⌥⌘N it is the last step.
     env: ctx => ctx.then === 'chats' ? `${folderName(ctx.cwd)} — which environment? its open chats, and a new one · ↑↓ · ⏎ · esc`
@@ -2182,19 +2217,20 @@
   const PICK_NOUN = { pr: 'PR', chat: 'chat', chats: 'chat', folder: 'folder', env: 'environment' };   // for "no … matches"; the rest are projects
   const homePath = f => f.replace(/^\/Users\/[^/]+(?=\/|$)/, '~');
   const chatState = s => bucket(s) === 'working' ? 'clauding' : asking(s) ? 'asking' : 'ready';
-  // ---- the org's folders, and cloning one that is not here yet (2026-09-21) ----------------------
+  // ---- the roots' folders, and cloning one that is not here yet (2026-09-21) --------------------
   // Ricardo: "adding a new project is a bit cumbersome: we should present all folders locally on ~/acme and to add
   // a new one, assume it's an acme organization git repo, clone it to ~/acme and open a new chat". A project on
   // the board is a folder a chat ran in, so ⌥⌘N's project step could only ever offer a folder that already had one —
   // the repos you had not touched today were not there, and the ones you had not cloned were nowhere at all. The step
   // now carries every folder under the org's directory after the board's own projects, and a name that is none of
   // them is offered as ＋ clone. The server answers `GET /api/folders` (cached by the directory's mtime), so this is
-  // asked on every opening and the rows appear when it lands.
-  const folders = { root: '', org: 'acme', list: [] };
+  // asked on every opening and the rows appear when it lands. Since 2026-09-28 the directories are the cog's — any
+  // number of roots, each with the GitHub org its clone asks for, or none (then it lists its folders only).
+  const folders = { roots: [], list: [] };
   async function loadFolders() {
     try {
       const d = await api('GET', '/api/folders');
-      Object.assign(folders, { root: d.root || '', org: d.org || folders.org, list: d.folders || [] });
+      Object.assign(folders, { roots: d.roots || [], list: d.folders || [] });
       if ($('#pick').open && pick.mode === 'new') { pickHint(); pickRender(); }   // the box named no directory until now
     } catch {}
   }
@@ -2205,25 +2241,25 @@
     return folders.list.filter(f => !taken.has(f.cwd) && !isHidden(f.cwd)).map(f => ({ key: f.cwd, name: f.name, cwd: f.cwd, cwds: [f.cwd], folder: true }));
   };
   const CLONE_NAME = /^[A-Za-z0-9][\w.-]*$/;   // the server's own rule for a name it will clone — no row it would refuse
-  /** ＋ clone, last and never filtered out: a name that is no folder here is a repo of the org you have not cloned.
-   *  The query as typed, not lowercased — a repository has a name, not a spelling. */
-  function cloneRow(items) {
+  /** ＋ clone, last and never filtered out: a name that is no folder here is a repo of an org you have not cloned — a
+   *  row per root that has an org. The query as typed, not lowercased — a repository has a name, not a spelling. */
+  function cloneRows(items) {
     const name = $('#pickq').value.trim();
-    if (!name || !CLONE_NAME.test(name) || !folders.root) return null;
-    if (items.some(x => x.name.toLowerCase() === name.toLowerCase())) return null;
-    return { clone: true, name };
+    if (!name || !CLONE_NAME.test(name)) return [];
+    if (items.some(x => x.name.toLowerCase() === name.toLowerCase())) return [];
+    return folders.roots.filter(r => r.org).map(r => ({ clone: true, name, root: r.dir, org: r.org }));
   }
   // The clone itself, then the same flow as any folder: its chats (none, freshly cloned) and ＋ a new one, so the
   // chat starts without another keystroke. The server answers only when git is done — a big repo takes a while — so
   // the box says what is happening, and the list holds the answer when it goes wrong.
-  async function cloneAndStart(name) {
+  async function cloneAndStart({ name, root, org }) {
     const q = $('#pickq'), was = q.placeholder;
-    q.value = ''; q.placeholder = `cloning ${folders.org}/${name}…`; q.disabled = true;
-    $('#picklist').innerHTML = `<div class="none">cloning ${esc(folders.org)}/${esc(name)} into ${esc(homePath(folders.root))} — a big repo takes a while…</div>`;
+    q.value = ''; q.placeholder = `cloning ${org}/${name}…`; q.disabled = true;
+    $('#picklist').innerHTML = `<div class="none">cloning ${esc(org)}/${esc(name)} into ${esc(homePath(root))} — a big repo takes a while…</div>`;
     let d;
-    try { d = await api('POST', '/api/clone', { name }); } catch (e) { d = { error: e.message }; }
+    try { d = await api('POST', '/api/clone', { name, root }); } catch (e) { d = { error: e.message }; }
     q.disabled = false; q.placeholder = was; q.focus();
-    if (!d.cwd) { $('#picklist').innerHTML = `<div class="none">could not clone ${esc(folders.org)}/${esc(name)} — ${esc(d.error || 'the server said no')}</div>`; return; }
+    if (!d.cwd) { $('#picklist').innerHTML = `<div class="none">could not clone ${esc(org)}/${esc(name)} — ${esc(d.error || 'the server said no')}</div>`; return; }
     loadFolders();
     chatsStep({ key: d.cwd, name, cwds: [d.cwd] });
   }
@@ -2273,8 +2309,7 @@
       const board = projectList().filter(p => pick.mode === 'project' || (p.key !== ALL && p.cwds.length));
       const items = pick.mode === 'new' ? [...board, ...freeFolders()] : board;
       pick.list = hunt(items, p => p.folder ? [p.name, homePath(p.cwd)] : [p.name]);
-      const clone = pick.mode === 'new' ? cloneRow(items) : null;
-      if (clone) pick.list = [...pick.list, clone];
+      if (pick.mode === 'new') pick.list = [...pick.list, ...cloneRows(items)];
       if (pick.mode === 'project') pick.list = [...pick.list, { newProject: true }];   // ＋ new project, last and never filtered out
       // ✕ on every row of ⌥⌘N that names a project or a folder — never on ＋ clone, which is not on the board yet.
       const hx = p => pick.mode !== 'new' ? '' : `<button class="pkx" data-key="${esc(p.key)}" title="Take ${esc(p.name)} off the board — every picker stops listing it; its chats stay under ALL and the cog puts it back">✕</button>`;
@@ -2282,7 +2317,7 @@
       row = (p, i) => p.newProject
         ? `<div class="pkrow newproj${sel(i)}" data-i="${i}" title="A name over one or more folders — multi-repo work, an investigation"><span class="sq"></span><span class="n">＋ new project<span class="cur">a name over several folders</span></span><span class="pills"></span><span class="t"></span></div>`
         : p.clone
-        ? `<div class="pkrow clone${sel(i)}" data-i="${i}" title="gh repo clone ${esc(folders.org)}/${esc(p.name)} into ${esc(homePath(folders.root))}"><span class="sq"></span><span class="n">＋ clone ${esc(folders.org)}/${esc(p.name)}<span class="cur">into ${esc(homePath(folders.root))}</span></span><span class="pills"></span><span class="t"></span></div>`
+        ? `<div class="pkrow clone${sel(i)}" data-i="${i}" title="gh repo clone ${esc(p.org)}/${esc(p.name)} into ${esc(homePath(p.root))}"><span class="sq"></span><span class="n">＋ clone ${esc(p.org)}/${esc(p.name)}<span class="cur">into ${esc(homePath(p.root))}</span></span><span class="pills"></span><span class="t"></span></div>`
         : p.folder
           ? `<div class="pkrow folder${pick.mode === 'new' ? ' hides' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(p.cwd))}" title="${esc(p.cwd)}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}<span class="cur">${esc(homePath(p.cwd))}</span></span><span class="pills"></span><span class="t"></span>${hx(p)}</div>`
           : `<div class="pkrow${pick.mode === 'new' ? ' hides' : ''}${ed(p) ? ' named' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(projColor(p))}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}${p.key === prefs.project ? '<span class="cur">current</span>' : ''}</span><span class="pills">${pillsHtml(p)}</span><span class="t"${p.last ? ` data-at="${esc(p.last)}"` : ''}></span>${hx(p)}${ed(p)}</div>`;
@@ -2298,7 +2333,7 @@
     if (pick.mode === 'pr') { dlg.close(); showPr(x.url); }
     else if (pick.mode === 'chat') { dlg.close(); openSession(x.id); }
     else if (pick.mode === 'new') {   // a project's, or a folder's, open chats with ＋ a new one — or the clone first
-      if (x.clone) cloneAndStart(x.name); else chatsStep({ key: x.key, name: x.name, cwds: x.cwds });
+      if (x.clone) cloneAndStart(x); else chatsStep({ key: x.key, name: x.name, cwds: x.cwds });
     }
     else if (pick.mode === 'chats') { if (x.isNew) newFromChats(pick.ctx); else { dlg.close(); openSession(x.id); } }
     else if (pick.mode === 'folder') newChatIn(x.cwd, pick.ctx.then);
@@ -2396,12 +2431,14 @@
   // ⌥⌘O (2026-09-20, Ricardo: "the O hotkey should open oracle prompt directly, to select the env and open a chat"):
   // ⌥⌘N with its project answered and the environment brought forward — oracle's environments first, then that
   // environment's open chats with ＋ new chat among them (2026-09-21, Ricardo: "we should show open chats with the
-  // option for a new one, scoped by env"). The folder is the project ORACLE names on the board (a folder of its own,
-  // a pin or a named set of folders); nothing has run there in 30 days and it is off the board — a note then, and
-  // ⌥⌘N is the way in.
+  // option for a new one, scoped by env"). The folder is the project the cog names for ⌥⌘O (state.config.quick — oracle
+  // here, written into this file until 2026-09-28): a folder of its own, a pin or a named set of folders. None named,
+  // or nothing has run there in 30 days and it is off the board — a note then, and ⌥⌘N is the way in.
   function hotOracle() {
-    const p = projectList().find(x => x.name === ORACLE && x.cwds.length);
-    if (!p) return note($('#shead'), `No ${ORACLE} folder on the board — ⌥⌘N starts a chat anywhere`);
+    const name = state.config.quick;
+    if (!name) return note($('#shead'), 'No project for ⌥⌘O yet — the cog (bottom left) names one · ⌥⌘N starts a chat anywhere');
+    const p = projectList().find(x => x.name === name && x.cwds.length);
+    if (!p) return note($('#shead'), `No ${name} folder on the board — ⌥⌘N starts a chat anywhere`);
     focusBoard();
     if (p.cwds.length === 1) newChatIn(p.cwds[0], 'chats'); else pickOpen('folder', { cwds: p.cwds, then: 'chats' });   // one folder: straight to the environments
   }
@@ -2478,6 +2515,111 @@
       + state.hidden.map(k => { const l = hiddenLabel(k); return `<div class="hrow"><span title="${esc(l.where || k)}"><b>${esc(l.name)}</b>${l.where ? ` ${esc(l.where)}` : ''}</span><button data-key="${esc(k)}" title="Put it back on the board">show</button></div>`; }).join('');
   }
   $('#hidden').addEventListener('click', e => { const b = e.target.closest('button'); if (b) showProject(b.dataset.key); });
+
+  // ---- the setup: the cog's second half (2026-09-28) ---------------------------------------------------------------
+  // Ricardo, handing the board to colleagues: "the config looks good, maybe we could integrate it into the cog setting?"
+  // What had been written into this page and the server for one Mac is set here, under the switches: the folders the
+  // repos live in, each with the GitHub org ＋ clone asks (`roots`), the project ⌥⌘O starts a chat in (`quick`), and a
+  // short name and a colour per project (`projects`). It is the server's (`config` in its state file, a `config` event),
+  // so the app and every browser agree — the switches above it are this browser's. A box is written on change, a colour
+  // as the panel rests; what the server refuses is said beside it and the row put back. The markup is drawn only when
+  // it changed, and never under a box that has the keyboard: that waits for the focus to leave the section.
+  const setupUi = { drawn: '', stale: false, pending: new Set(), colors: new Map(), colorTimer: null, raf: 0 };
+  const cfgProjects = () => state.config.projects || {};
+  const setupNames = () => [...new Set(projectList().filter(p => p.key !== ALL).map(p => p.name))].sort((a, b) => a.localeCompare(b));
+  function renderSetup(force = false) {
+    const box = $('#setup'), c = state.config, roots = c.roots || [], projs = cfgProjects();
+    const names = [...new Set([...Object.keys(projs), ...setupUi.pending])], all = setupNames();
+    const rootRow = (r, i) => `<div class="srow root" data-i="${i}"><input type="text" class="sdir" value="${esc(homePath(r.dir))}" spellcheck="false" autocomplete="off" title="${esc(r.dir)}"><input type="text" class="sorg" value="${esc(r.org)}" placeholder="org" spellcheck="false" autocomplete="off" title="The GitHub org ＋ clone asks for — empty, nothing is cloned into this folder"><button class="sdel" title="Forget this folder — nothing in it is touched">×</button></div>`;
+    const projRow = n => {
+      const p = projs[n] || {};
+      return `<div class="srow proj" data-name="${esc(n)}"><span class="pn" title="${esc(n)}">${projIcon(n)}${esc(n)}</span><input type="text" class="sab" value="${esc(p.abbr || '')}" placeholder="${esc(abbrRule(n))}" maxlength="6" spellcheck="false" autocomplete="off" title="Its short name on the rail (⌘B) — empty, its initials"><label class="ssw${p.color ? '' : ' none'}" style="${p.color ? `--c:${p.color}` : ''}" title="${p.color ? `${p.color} where Peacock gives none — click to change, ⌥-click to take it off` : 'A colour where Peacock gives none — click to pick'}"><input type="color" value="${esc(p.color || '#808080')}"></label><button class="sdel" title="Forget the short name and colour of ${esc(n)}">×</button></div>`;
+    };
+    const quick = [...new Set([...(c.quick ? [c.quick] : []), ...all])];
+    const html = `<div class="sg"><span class="kh"><b>your repos</b> — ⌥⌘N offers every folder in them; with an org, ＋ clone brings one you have not got</span>`
+      + roots.map(rootRow).join('')
+      + `<div class="srow root add"><input type="text" class="sdir" placeholder="＋ a folder of repos — ~/code" spellcheck="false" autocomplete="off"><input type="text" class="sorg" placeholder="org" spellcheck="false" autocomplete="off"><span></span></div></div>`
+      + `<label class="sg quick"><b>⌥⌘O</b><select id="quickSel" title="The project ⌥⌘O starts a chat in — on its environments first, when its Taskfile launches claude"><option value="">none — ⌥⌘N does it all</option>${quick.map(n => `<option${n === c.quick ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`
+      + `<div class="sg"><span class="kh"><b>projects</b> — a short name for the rail, a colour where Peacock gives none</span>${names.map(projRow).join('')}`
+      + `<select class="sadd" title="Give a project a short name or a colour"><option value="">＋ a project…</option>${all.filter(n => !names.includes(n)).map(n => `<option>${esc(n)}</option>`).join('')}</select></div>`;
+    $('#quickKey').textContent = c.quick ? `${c.quick} — a new chat there: its environments first, when its Taskfile launches claude, then their open chats` : 'a new chat in the project the setup names — none yet';
+    $('#newKey').textContent = `a chat — a project${roots.length ? `, a folder in ${roots.map(r => homePath(r.dir)).join(' or ')}` : ''}${roots.some(r => r.org) ? ', or ＋ clone a repo' : ''} · then its open chats or ＋ a new one · ✕ takes a row off the board`;
+    $('#pextra').placeholder = `${roots[0] ? homePath(roots[0].dir) : '~/code'}/some-repo`;
+    if (html === setupUi.drawn && !force) return;
+    if (!force && box.contains(document.activeElement)) { setupUi.stale = true; return; }
+    box.innerHTML = setupUi.drawn = html; setupUi.stale = false;
+  }
+  /** The setup changed — here or anywhere: everything it paints follows. */
+  function configChanged() {
+    renderSetup(); renderBoard(); loadFolders();
+    const s = state.sessions.get(state.current); if (s) renderHead(s);
+  }
+  async function putConfig(part, anchor) {
+    try { state.config = (await api('PUT', '/api/config', part)).config; configChanged(); }
+    catch (e) {
+      note(anchor, e.status === 404 ? 'The running server predates the setup — scripts/launchd.sh restart' : `Not saved: ${e.message}`, true);
+      renderSetup(true);   // the row as the server has it
+    }
+  }
+  const rootsInBox = () => [...$('#setup').querySelectorAll('.srow.root')].map(r => ({ dir: r.querySelector('.sdir').value.trim(), org: r.querySelector('.sorg').value.trim() })).filter(r => r.dir);
+  function setProject(name, patch, anchor) {
+    const all = { ...cfgProjects() }, next = { ...all[name], ...patch };
+    for (const k of Object.keys(next)) if (!next[k]) delete next[k];
+    if (Object.keys(next).length) all[name] = next; else delete all[name];
+    putConfig({ projects: all }, anchor);
+  }
+  {
+    const box = $('#setup');
+    box.addEventListener('focusout', e => { if (setupUi.stale && !box.contains(e.relatedTarget)) renderSetup(); });
+    box.addEventListener('change', e => {
+      const t = e.target, row = t.closest('.srow');
+      if (t.id === 'quickSel') return putConfig({ quick: t.value || null }, t);
+      if (t.classList.contains('sadd')) { if (!t.value) return; setupUi.pending.add(t.value); const n = t.value; renderSetup(true); box.querySelector(`.srow.proj[data-name="${CSS.escape(n)}"] .sab`)?.focus(); return; }
+      if (row?.classList.contains('root')) { if (row.classList.contains('add') && !row.querySelector('.sdir').value.trim()) return; return putConfig({ roots: rootsInBox() }, t); }
+      if (row?.classList.contains('proj')) {
+        const name = row.dataset.name;
+        if (t.classList.contains('sab')) return setProject(name, { abbr: t.value.trim() }, t);
+        if (t.type === 'color') { clearTimeout(setupUi.colorTimer); if (setupUi.colors.get(name) !== t.value) { setupUi.colors.set(name, t.value); setProject(name, { color: t.value }, row); } }
+      }
+    });
+    // A colour previews on the board as the panel moves and is written once it rests — the header's square's way.
+    box.addEventListener('input', e => {
+      const t = e.target; if (t.type !== 'color') return;
+      const row = t.closest('.srow.proj'), name = row.dataset.name, hex = t.value;
+      state.config.projects = { ...cfgProjects(), [name]: { ...cfgProjects()[name], color: hex } };
+      row.querySelector('.ssw').style.setProperty('--c', hex); row.querySelector('.ssw').classList.remove('none');
+      if (!setupUi.raf) setupUi.raf = requestAnimationFrame(() => { setupUi.raf = 0; renderBoard(); });
+      clearTimeout(setupUi.colorTimer);
+      setupUi.colorTimer = setTimeout(() => { if (setupUi.colors.get(name) !== hex) { setupUi.colors.set(name, hex); setProject(name, { color: hex }, row); } }, 350);
+    });
+    box.addEventListener('click', e => {
+      const x = e.target.closest('.sdel'), sw = e.target.closest('.ssw'), row = e.target.closest('.srow');
+      if (sw && e.altKey) { e.preventDefault(); setupUi.colors.delete(row.dataset.name); return setProject(row.dataset.name, { color: '' }, sw); }
+      if (!x) return;
+      if (row.classList.contains('root')) { row.remove(); return putConfig({ roots: rootsInBox() }, x); }
+      const name = row.dataset.name; setupUi.pending.delete(name);
+      if (cfgProjects()[name]) setProject(name, { abbr: '', color: '' }, x); else renderSetup(true);
+    });
+    box.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input[type=text]')) e.target.blur(); });
+  }
+  // A box in the popover takes the keyboard: the popover stays up however the pointer wanders, as a click on the cog does.
+  $('#settings').addEventListener('focusin', e => { if (e.target.matches('input[type=text], select, input[type=color]')) spop.pinned = true; });
+  // The switches that are this browser's (2026-09-28): the code's fold, ⌥ in the terminal, how a date is written.
+  const DATE_TIP = { dmy: 'day first', ymd: 'year first', mdy: 'month first' };
+  function showPrefs() {
+    $('#foldCode').checked = prefs.foldCode !== false;
+    $('#optMeta').checked = prefs.optMeta !== false;
+    const at = new Date(), on = prefs.dates in DATES ? prefs.dates : 'dmy';
+    $('#datesStops').innerHTML = Object.keys(DATES).map(k => `<span data-v="${k}"${k === on ? ' class="on"' : ''} title="${DATE_TIP[k]}">${fmtDate(at, false, k)}</span>`).join('');
+  }
+  $('#foldCode').addEventListener('change', e => { prefs.foldCode = e.target.checked; savePrefs(); const s = state.sessions.get(state.current); if (s) { renderHead(s); renderLog(true); } });
+  $('#optMeta').addEventListener('change', e => { prefs.optMeta = e.target.checked; savePrefs(); for (const tm of terms) if (tm.xt) tm.xt.options.macOptionIsMeta = prefs.optMeta; });
+  $('#datesStops').addEventListener('click', e => {
+    const x = e.target.closest('[data-v]'); if (!x) return;
+    prefs.dates = x.dataset.v; savePrefs(); showPrefs();
+    tl.sig = ''; renderBoard(); if (state.current) renderLog(true);   // the day lines, the timeline's labels, the transcript's
+  });
+  showPrefs();
   // ---- the colour picker ------------------------------------------------------------------
   // One real <input type=color> for the page (#colorInput): the squares are re-rendered on every update, so the
   // control is moved under the square that was clicked and opened from there — the panel stays wired to it
@@ -2752,7 +2894,7 @@
       s.cwd ? `<button class="hmi" id="webBtn" title="${WEB_TIP}">${ICON.vscode}<span class="lbl">VS Code Web</span><span class="k">⌥⌘E</span></button>` : '',
       s.cwd ? `<button class="hmi" id="focusBtn" title="${FOCUS_TIP}">${ICON.vscode}<span>open in VS Code</span><span class="k"></span></button>` : '',
       // what a tab's × does, for the tabs that lose their strip alone in a half (2026-09-28) — ⌥⌘W with the keys in it
-      shellLive(s) ? `<button class="hmi" id="shellEndBtn" title="End this chat's zsh and close its tab — exit in it does the same · ⌥⌘W with the keys in it"><span class="gl">×</span><span>end the zsh</span><span class="k"></span></button>` : '',
+      shellLive(s) ? `<button class="hmi" id="shellEndBtn" title="End this chat's ${shName()} and close its tab — exit in it does the same · ⌥⌘W with the keys in it"><span class="gl">×</span><span>end the ${shName()}</span><span class="k"></span></button>` : '',
       ideKey(s) ? `<button class="hmi" id="ideCloseBtn" title="Close VS Code Web's tab — ⌥⌘E opens it again · ⌥⌘W with the keys in it"><span class="gl">×</span><span>close VS Code Web</span><span class="k"></span></button>` : '',
       inVsCode(s) ? `<div class="hmi info" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it; ${s.alive ? 'the claude session row takes it over' : 'continue it here or there'}">${ICON.vscode}<span>VS Code's chat</span><span></span></div>` : '',
       '<div class="sep"></div>',
@@ -3006,7 +3148,7 @@
   const ALT_COMPOSES = /^(Digit\d|Minus|Equal|Bracket(Left|Right)|Backslash|Semicolon|Quote|Comma|Period|Slash|Backquote|Intl(Backslash|Ro|Yen))$/;
   function ensureXterm(tm) {
     if (tm.xt) return;
-    tm.xt = new Terminal({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: termFontSize(), lineHeight: 1.1, cursorBlink: true, scrollback: 5000, theme: xtTheme(), macOptionIsMeta: true });
+    tm.xt = new Terminal({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: termFontSize(), lineHeight: 1.1, cursorBlink: true, scrollback: 5000, theme: xtTheme(), macOptionIsMeta: prefs.optMeta !== false });
     // ⌘+ / ⌘- / ⌘0 are the chat's size, not keys for claude; handled here, and the document handler skips them.
     // Shift+Enter: xterm.js sends the same \r as Enter, which submits the prompt. Claude reads ESC CR
     // (Option+Enter) as a newline — it is what its own /terminal-setup binds Shift+Enter to in VS Code's
@@ -3019,7 +3161,7 @@
     // which is `e.key` itself. A dead key ('Dead') is longer than one character and falls through to xterm as before.
     tm.xt.attachCustomKeyEventHandler(e => {
       if (e.key === 'Enter' && e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); if (e.type === 'keydown') termSend(tm, '\x1b\r'); return false; }
-      if (ALT_COMPOSES.test(e.code) && e.altKey && !e.ctrlKey && !e.metaKey && e.key.length === 1) { e.preventDefault(); if (e.type === 'keydown') termSend(tm, e.key); return false; }
+      if (prefs.optMeta !== false && ALT_COMPOSES.test(e.code) && e.altKey && !e.ctrlKey && !e.metaKey && e.key.length === 1) { e.preventDefault(); if (e.type === 'keydown') termSend(tm, e.key); return false; }
       if (e.code === 'KeyK' && e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) { e.preventDefault(); if (e.type === 'keydown') clearTerm(tm); return false; }
       return !(e.type === 'keydown' && chatZoomKey(e));
     });
@@ -3297,7 +3439,7 @@
         + (two ? '<button class="nav gclose" title="Close this half — the other one becomes the whole column · ⌘W">⨯</button>' : '');
       el.innerHTML = keys.map(k =>
         k === 'chat' ? tab(k, termLive(s) ? 'claude' : 'chat', `${termLive(s) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C`)
-        : k === 'shell' ? tab(k, 'zsh', `A zsh in ${s.cwd || 'its folder'} · ⌥⌘T`, 'End this shell')
+        : k === 'shell' ? tab(k, shName(), `A ${shName()} in ${s.cwd || 'its folder'} · ⌥⌘T`, 'End this shell')
         : k.startsWith('gh:') ? tab(k, paneLabel(k), GH_PR.test(k.slice(3)) ? `${k.slice(3)} · ⌥⌘G` : k.slice(3), 'Close this page')
         : tab(k, 'VS Code', `${s.cwd} in VS Code Web · ⌥⌘E`, 'Close the editor')).join('')
         + (two && !keys.length ? '<span class="pdrop">drop a tab here</span>' : '')
@@ -3314,10 +3456,11 @@
   // native view over the chat column covers a dialog centred on the board, and the picker used to sidle into the
   // strip of board still showing rather than fight it. Lowering the pane instead leaves the dialog where every
   // dialog belongs — the middle of the window, over a dimmed board — and hands the keyboard back on the way down.
-  // Nothing reloads: the shell only hides the web view, and the tab comes back with the dialog's close.
+  // Nothing reloads: the shell only hides the web view, and the tab comes back with the dialog's close. The cog's
+  // popover does the same since it holds the setup beside the keys (2026-09-28) and reaches well into the chat column.
   function postPane(s, p = placeOf(s)) {
     if (!inApp) return;
-    const shut = !!document.querySelector('dialog[open]');
+    const shut = !!document.querySelector('dialog[open]') || !$('#settings').hidden;
     const panes = shut ? [] : p.map((k, g) => isPaneTab(k) ? { key: k, ...groupRect(g) } : null).filter(Boolean);
     const focus = (!shut && isPaneTab(p[focusG]) ? p[focusG] : null) || panes[0]?.key || null;
     const msg = { type: 'pane', id: s?.id || null, keys: paneKeys(s), panes, focus, show: focus, left: panes[0]?.left || 0, top: panes[0]?.top || 0 };
@@ -3988,6 +4131,8 @@
       state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.peacock = d.peacock || {}; state.repos = d.repos || {};
       for (const m of [tabs, homes, splits, autoSplit, stacked, focusView, state.unread, state.paneGh]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);   // a chat gone from the board takes its page state with it
       state.about = d.about || {};
+      if (d.config) state.config = d.config;
+      renderSetup();
       state.notifications = d.notifications !== false; showNotify();
       state.serverNotify = d.notify === 'native';   // the server posts its own banners: the app must not double them
       renderBoard();
@@ -4011,6 +4156,7 @@
     es.addEventListener('pins', e => { state.pins = JSON.parse(e.data).pins || []; renderBoard(); });
     es.addEventListener('hidden', e => { state.hidden = JSON.parse(e.data).hidden || []; renderBoard(); if ($('#pick').open) pickRender(); });
     es.addEventListener('notifications', e => { state.notifications = JSON.parse(e.data).on !== false; showNotify(); });
+    es.addEventListener('config', e => { state.config = JSON.parse(e.data); configChanged(); });
     es.addEventListener('terminal', e => {
       const t = JSON.parse(e.data);
       const term = termFor(t.id); if (!term) return;

@@ -38,8 +38,8 @@ import {
   chmodSync, closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, renameSync, rmSync, statSync, unlinkSync, watch, writeFileSync
 } from 'node:fs';
 import { connect as netConnect } from 'node:net';
-import { basename, dirname, join } from 'node:path';
-import { homedir } from 'node:os';
+import { basename, dirname, join, resolve } from 'node:path';
+import { homedir, userInfo } from 'node:os';
 import { StringDecoder } from 'node:string_decoder';
 import { execFile, execFileSync, spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -59,7 +59,7 @@ const SESSIONS_DIR = join(CLAUDE_DIR, 'sessions');
 const PORT = Number(process.env.PORT || 7331);
 // The About box's facts (2026-09-27): the package's version, this process, and where the board reads and writes.
 const PKG = (() => { try { return JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')); } catch { return {}; } })();
-const aboutInfo = () => ({ version: PKG.version || 'dev', node: process.version, pid: process.pid, port: PORT, claudeDir: CLAUDE_DIR, stateFile: STATE_FILE, since: SINCE });
+const aboutInfo = () => ({ version: PKG.version || 'dev', node: process.version, pid: process.pid, port: PORT, claudeDir: CLAUDE_DIR, stateFile: STATE_FILE, since: SINCE, shell: basename(LOGIN_SHELL) });
 const SINCE = Date.now();
 const HOST = process.env.HOST || '127.0.0.1';
 const NOTIFY = process.env.NOTIFY || 'native'; // native | off
@@ -113,6 +113,9 @@ let envs = {};
 // System notifications on or off — the cog's switch (2026-09-23). Off, an alert still reaches every page (the unread
 // badges, the Dock's count) but goes out `quiet`: nothing posts a banner for it, the app, a browser or osascript here.
 let notificationsOn = true;
+// The board's setup — the cog's second half (2026-09-28), see cleanSetup below. What the cog set and nothing else: a
+// key it never set is the default, worked out when asked (boardConfig).
+let setup = {};
 
 // One-time move from the old ~/.peixairada location. Same filesystem, so the rename is atomic; the
 // empty directory is left behind rather than removing something we did not create.
@@ -134,12 +137,67 @@ try {
   hiddenProjects = Array.isArray(st.hidden) ? st.hidden.filter(k => typeof k === 'string') : [];
   envs = st.envs || {};
   notificationsOn = st.notifications !== false;
+  setup = st.config;   // as saved — cleaned below, once what cleans it is defined
 } catch {}
 function saveState() {
-  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn }, null, 1)); }
+  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, config: setup }, null, 1)); }
   catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
 const isDone = s => !!doneMarks[s.id] && doneMarks[s.id] >= (s.lastActivity || '');
+
+// ---- the board's setup: the cog's second half --------------------------------------------------------------------
+// What had been written into this file and the page for one Mac — the directory the repos live in and the GitHub org
+// they come from, ⌥⌘O's folder, the short names and colours given by hand — is the cog's since the board went to
+// colleagues (2026-09-28, Ricardo: "maybe we could integrate it into the cog setting?"), kept here as `config` so the
+// app and every browser agree. A key the cog never set is the default: the roots are ORG_DIR / ORG's when either is in
+// the environment (the tests', a server run by hand), else none; no ⌥⌘O folder; no names or colours of the board's own.
+// A root's org is what ＋ clone asks GitHub for — a root without one lists its folders and clones nothing.
+const ORG_NAME = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/;   // GitHub's rule for an account's name
+const expandHome = p => p.trim().replace(/^~(?=\/|$)/, homedir());
+/**
+ * The setup as the state file or a PUT hands it over, down to what the board uses. `strict` (a PUT) says what is wrong
+ * instead of dropping it, and asks whether each root is a folder here; the state file's are only shaped, so a folder
+ * gone for a while (an unplugged disk) is not forgotten. Only the keys given come back: a PUT replaces those alone.
+ */
+function cleanSetup(c, strict = false) {
+  const out = {}, fail = error => ({ setup: null, error });
+  if (!c || typeof c !== 'object') return strict ? fail('expected {roots?, quick?, projects?}') : { setup: out };
+  if ('roots' in c) {
+    if (!Array.isArray(c.roots)) { if (strict) return fail('roots: expected a list of {dir, org}'); }
+    else {
+      out.roots = [];
+      for (const r of c.roots.slice(0, 20)) {
+        const dir = typeof r?.dir === 'string' ? expandHome(r.dir) : '', org = typeof r?.org === 'string' ? r.org.trim() : '';
+        const bad = !dir.startsWith('/') ? `"${r?.dir ?? ''}" is not a path — /… or ~/…` : org && !ORG_NAME.test(org) ? `"${org}" is not a GitHub org` : strict && !isDir(dir) ? `${dir} is not a folder here` : '';
+        if (bad) { if (strict) return fail(bad); continue; }
+        const at = resolve(dir);
+        if (!out.roots.some(x => x.dir === at)) out.roots.push({ dir: at, org });
+      }
+    }
+  }
+  if ('quick' in c) {
+    const q = typeof c.quick === 'string' ? c.quick.trim() : '';
+    if (q.length > 200 || q.includes('/')) { if (strict) return fail('quick: a project\'s name, not a path'); }
+    else out.quick = q || null;
+  }
+  if ('projects' in c) {
+    if (!c.projects || typeof c.projects !== 'object' || Array.isArray(c.projects)) { if (strict) return fail('projects: expected {name: {abbr?, color?}}'); }
+    else {
+      out.projects = {};
+      for (const [name, v] of Object.entries(c.projects).slice(0, 200)) {
+        const abbr = typeof v?.abbr === 'string' ? v.abbr.trim() : '', color = typeof v?.color === 'string' ? v.color.trim().toLowerCase() : '';
+        const bad = !name.trim() || name.length > 200 ? 'a project needs a name' : abbr.length > 6 ? `${name}: a short name is 6 letters at most` : color && !/^#[0-9a-f]{6}$/.test(color) ? `${name}: a colour is #rrggbb` : '';
+        if (bad) { if (strict) return fail(bad); continue; }
+        if (abbr || color) out.projects[name] = { ...abbr && { abbr }, ...color && { color } };
+      }
+    }
+  }
+  return { setup: out };
+}
+const envRoots = () => process.env.ORG_DIR || process.env.ORG ? [{ dir: resolve(expandHome(process.env.ORG_DIR || join(homedir(), process.env.ORG))), org: process.env.ORG || '' }] : [];
+/** The setup the board runs on: what the cog set, the defaults for the rest. */
+const boardConfig = () => ({ roots: setup.roots ?? envRoots(), quick: setup.quick ?? null, projects: setup.projects ?? {} });
+setup = cleanSetup(setup).setup;
 
 // ---- Peacock: the colour VS Code paints a folder with, from its .vscode/settings.json ----------------
 // A project's colour is Peacock's and nothing else (2026-09-20): a folder without one is black on the page.
@@ -1379,58 +1437,69 @@ function launchersFor(cwd) {
   });
 }
 
-// ---- the org's folders: where the repos live, and cloning one that is not there yet -------------------------------
+// ---- the roots' folders: where the repos live, and cloning one that is not there yet --------------------------------
 // A project on the board is a folder some chat ran in, so a repo you have not opened a chat in is nowhere to be seen,
 // and one you have not cloned is nowhere at all — which made starting work on a repo the longest thing the board
-// asked of you (2026-09-21, Ricardo: "adding a new project is a bit cumbersome"). `ORG_DIR` is the directory the
-// repos live in (~/acme) and `ORG` the GitHub organisation they come from — one name for both, since that is how
-// it is laid out here; both are env overrides, and neither is written to except by the one clone below.
-const ORG = process.env.ORG || 'acme';
-const ORG_DIR = process.env.ORG_DIR || join(homedir(), ORG);
-const REPO_NAME = /^[A-Za-z0-9][\w.-]*$/;          // a name for a folder and a repo, and nothing that walks out of ORG_DIR
+// asked of you (2026-09-21, Ricardo: "adding a new project is a bit cumbersome"). A root is a directory the repos live
+// in and the GitHub org they come from (boardConfig — ~/acme and acme here, one of each until 2026-09-28, when the
+// cog took them over); nothing under one is written to except by the one clone below.
+const REPO_NAME = /^[A-Za-z0-9][\w.-]*$/;          // a name for a folder and a repo, and nothing that walks out of its root
 const CLONE_MS = Number(process.env.CLONE_MS || 10 * 60_000);   // a big repo over a slow line; the page waits on it
 const isDir = p => { try { return statSync(p).isDirectory(); } catch { return false; } };
-let folderCache = { mtime: -1, folders: [] };
+const folderCache = new Map();   // root dir -> { mtime, folders }
 
-/** Every folder directly under ORG_DIR, by name. Cached by the directory's own mtime — a clone or a `git clone` by
+/** Every folder directly under a root, by name. Cached by the directory's own mtime — a clone or a `git clone` by
  *  hand moves it, and the picker asks on every opening. */
-function orgFolders() {
-  let mtime; try { mtime = statSync(ORG_DIR).mtimeMs; } catch { return []; }
-  if (folderCache.mtime === mtime) return folderCache.folders;
+function foldersIn(root) {
+  let mtime; try { mtime = statSync(root).mtimeMs; } catch { return []; }
+  const hit = folderCache.get(root); if (hit?.mtime === mtime) return hit.folders;
   let folders = [];
   try {
-    folders = readdirSync(ORG_DIR, { withFileTypes: true })
-      .filter(d => !d.name.startsWith('.') && (d.isDirectory() || (d.isSymbolicLink() && isDir(join(ORG_DIR, d.name)))))
-      .map(d => ({ name: d.name, cwd: join(ORG_DIR, d.name) }))
+    folders = readdirSync(root, { withFileTypes: true })
+      .filter(d => !d.name.startsWith('.') && (d.isDirectory() || (d.isSymbolicLink() && isDir(join(root, d.name)))))
+      .map(d => ({ name: d.name, cwd: join(root, d.name) }))
       .map(f => ({ ...f, git: existsSync(join(f.cwd, '.git')) }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  } catch (e) { console.error(`[peixairada] ${ORG_DIR}: ${e.message}`); }
-  folderCache = { mtime, folders };
+  } catch (e) { console.error(`[peixairada] ${root}: ${e.message}`); }
+  folderCache.set(root, { mtime, folders });
   return folders;
 }
+/** Every root's folders, a root at a time, each saying which root and org it is of. */
+const rootFolders = () => boardConfig().roots.flatMap(r => foldersIn(r.dir).map(f => ({ ...f, root: r.dir, org: r.org })));
 
-/** `gh repo clone <org>/<name>` into ORG_DIR — gh because it is already how the board asks GitHub about PRs, it knows
- *  the account's protocol, and it says plainly when there is no such repo. A folder that is already there is handed
- *  back as it is (the page carries straight on into the new-chat flow with it); a clone that failed leaves nothing
- *  behind, so the next try is not told the folder exists. */
-function cloneRepo(name, done) {
+/** `gh repo clone <org>/<name>` into a root — gh because it is already how the board asks GitHub about PRs, it knows
+ *  the account's protocol, and it says plainly when there is no such repo. `rootDir` names the root; without it, the
+ *  one root with an org, if there is only one. A folder that is already there is handed back as it is (the page
+ *  carries straight on into the new-chat flow with it); a clone that failed leaves nothing behind, so the next try is
+ *  not told the folder exists. */
+function cloneRepo(name, rootDir, done) {
   if (!REPO_NAME.test(name || '')) return done({ code: 400, error: `"${name}" is not a repository name` });
-  const cwd = join(ORG_DIR, name);
+  const roots = boardConfig().roots.filter(r => r.org);
+  const root = rootDir ? roots.find(r => r.dir === rootDir) : roots.length === 1 ? roots[0] : null;
+  if (!root) return done({ code: 400, error: rootDir ? `${rootDir} is not a folder of repos with an org — the cog sets them` : roots.length ? 'which folder of repos? more than one has an org' : 'no folder of repos has an org to clone from — the cog sets them' });
+  const cwd = join(root.dir, name), ref = `${root.org}/${name}`;
   if (existsSync(cwd)) return done({ code: 200, cwd, cloned: false });
   const bin = findBin('gh', 'cloning from the board is disabled');
   if (!bin) return done({ code: 503, error: 'gh not found — set GH_BIN to its path, or clone it by hand' });
-  try { mkdirSync(ORG_DIR, { recursive: true }); } catch (e) { return done({ code: 500, error: `${ORG_DIR}: ${e.message}` }); }
-  console.log(`[peixairada] clone ${ORG}/${name} → ${cwd}`);
-  execFile(bin, ['repo', 'clone', `${ORG}/${name}`, cwd], { cwd: ORG_DIR, env: termEnv(), timeout: CLONE_MS, maxBuffer: 4e6 }, (err, _out, stderr) => {
-    folderCache = { mtime: -1, folders: [] };
-    if (!err) { console.log(`[peixairada] cloned ${ORG}/${name}`); return done({ code: 200, cwd, cloned: true }); }
+  try { mkdirSync(root.dir, { recursive: true }); } catch (e) { return done({ code: 500, error: `${root.dir}: ${e.message}` }); }
+  console.log(`[peixairada] clone ${ref} → ${cwd}`);
+  execFile(bin, ['repo', 'clone', ref, cwd], { cwd: root.dir, env: termEnv(), timeout: CLONE_MS, maxBuffer: 4e6 }, (err, _out, stderr) => {
+    folderCache.delete(root.dir);
+    if (!err) { console.log(`[peixairada] cloned ${ref}`); return done({ code: 200, cwd, cloned: true }); }
     try { if (existsSync(cwd) && !readdirSync(cwd).length) rmSync(cwd, { recursive: true }); } catch {}
     // execFile's callback error carries no output of its own: gh says why on stderr ("could not find any repository…").
     const why = String(stderr || err.message).trim().split('\n').filter(Boolean).pop() || 'clone failed';
-    console.error(`[peixairada] clone ${ORG}/${name}: ${why}`);
+    console.error(`[peixairada] clone ${ref}: ${why}`);
     done({ code: 502, error: why });
   });
 }
+
+// The shell a drawer runs claude through, and the one a shell tab (⌥⌘T) is (2026-09-28; /bin/zsh for both before): the
+// login shell, which is where the PATH the tools want gets built (.zshrc, .bash_profile — mise activates there).
+// claude goes through `-l -i -c 'exec "$0" "$@"'`, which zsh and bash read alike; with any other login shell (fish) the
+// tab is still that shell and claude goes through zsh, as it always did.
+const LOGIN_SHELL = (() => { try { const sh = userInfo().shell; return sh && existsSync(sh) ? sh : '/bin/zsh'; } catch { return '/bin/zsh'; } })();
+const RUN_SHELL = /\/(zsh|bash)$/.test(LOGIN_SHELL) ? LOGIN_SHELL : '/bin/zsh';
 
 /**
  * Start `claude` (or `claude --resume <id>`, or `task <name>` — a launcher, see above) in `cwd`: write the spec, spawn
@@ -1442,14 +1511,14 @@ function cloneRepo(name, done) {
  */
 async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell = false, task = null }) {
   if (!termsAvailable()) return { code: 501, error: 'node-pty is not available — run npm install and restart the server' };
-  const bin = shell ? '/bin/zsh' : task ? findBin('task', 'Taskfile launchers are disabled') : claudeBin();   // a shell holder runs zsh itself (see termhold.mjs); the chat's is claude, or its launcher
+  const bin = shell ? LOGIN_SHELL : task ? findBin('task', 'Taskfile launchers are disabled') : claudeBin();   // a shell holder runs the shell itself (see termhold.mjs); the chat's is claude, or its launcher
   if (!bin) return { code: 503, error: task ? 'task binary not found — set TASK_BIN to its path' : 'claude binary not found — set CLAUDE_BIN to its path' };
   if (!cwd) return { code: 400, error: 'no cwd known for this chat' };
   if (!existsSync(cwd)) return { code: 409, error: `cwd no longer exists: ${cwd}` };
   const args = task ? [task] : shell || !sessionId ? [] : ['--resume', sessionId];
   const id = `t${++termSeq}-${Date.now().toString(36)}`;
   try { mkdirSync(TERMS_DIR, { recursive: true }); } catch {}
-  const spec = { id, sessionId, cwd, bin, args, shell, task, cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), resume: !shell && !!sessionId, startedAt: new Date().toISOString() };
+  const spec = { id, sessionId, cwd, bin, args, shell, sh: shell ? LOGIN_SHELL : RUN_SHELL, task, cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), resume: !shell && !!sessionId, startedAt: new Date().toISOString() };
   const logFile = join(TERMS_DIR, `${id}.log`);
   let child;
   try {
@@ -1472,7 +1541,7 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
     }
   }
   terms.set(id, t);
-  console.log(`[peixairada] terminal ${id}: ${shell ? 'zsh' : task ? 'task ' + task : 'claude' + (args.length ? ' ' + args.join(' ') : '')} in ${cwd} (pid ${t.pid}, holder ${t.holderPid})`);
+  console.log(`[peixairada] terminal ${id}: ${shell ? basename(LOGIN_SHELL) : task ? 'task ' + task : 'claude' + (args.length ? ' ' + args.join(' ') : '')} in ${cwd} (pid ${t.pid}, holder ${t.holderPid})`);
   broadcast('terminal', termSummary(t));
   const s = sessionId && sessions.get(sessionId); if (s) schedulePush(s);
   return { code: 201, terminal: termSummary(t) };
@@ -1828,10 +1897,18 @@ const server = createServer(async (req, res) => {
       if (!cwd.startsWith('/')) return json(res, 400, { error: 'cwd must be an absolute path' });
       return json(res, 200, { cwd, launchers: await launchersFor(cwd) });
     }
-    if (req.method === 'GET' && p === '/api/folders') return json(res, 200, { root: ORG_DIR, org: ORG, folders: orgFolders() });
-    if (req.method === 'POST' && p === '/api/clone') {   // a repo of the org, cloned into ORG_DIR — then the page starts a chat in it
+    if (req.method === 'GET' && p === '/api/folders') return json(res, 200, { roots: boardConfig().roots, folders: rootFolders() });
+    if (req.method === 'POST' && p === '/api/clone') {   // a repo of a root's org, cloned into that root — then the page starts a chat in it
       const body = await jsonBody(req);
-      return cloneRepo(typeof body.name === 'string' ? body.name.trim() : '', r => r.error ? json(res, r.code, { error: r.error }) : json(res, r.code, { cwd: r.cwd, cloned: r.cloned }));
+      return cloneRepo(typeof body.name === 'string' ? body.name.trim() : '', typeof body.root === 'string' ? body.root : null, r => r.error ? json(res, r.code, { error: r.error }) : json(res, r.code, { cwd: r.cwd, cloned: r.cloned }));
+    }
+    if (req.method === 'GET' && p === '/api/config') return json(res, 200, boardConfig());
+    if (req.method === 'PUT' && p === '/api/config') {   // the cog's setup: the keys given replace theirs, the rest stand
+      const r = cleanSetup(await jsonBody(req), true);
+      if (r.error) return json(res, 400, { error: r.error });
+      setup = { ...setup, ...r.setup };
+      folderCache.clear(); saveState(); broadcast('config', boardConfig());
+      return json(res, 200, { ok: true, config: boardConfig() });
     }
     if (req.method === 'POST' && p === '/api/terminals') {   // a new chat in a folder — `claude`, or `task <name>` when the folder launches it so
       const body = await jsonBody(req);
@@ -1887,7 +1964,7 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'GET' && p === '/events') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
-      res.write(`event: snapshot\ndata: ${JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, about: aboutInfo() })}\n\n`);
+      res.write(`event: snapshot\ndata: ${JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), about: aboutInfo() })}\n\n`);
       sseClients.add(res);
       const ping = setInterval(() => res.write(': ping\n\n'), 25_000);
       req.on('close', () => { clearInterval(ping); sseClients.delete(res); });

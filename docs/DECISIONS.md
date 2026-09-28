@@ -4,6 +4,38 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-28.
 
+## Decisions of 2026-09-28, evening — the board for colleagues: the setup in the cog, a README that fits a screen
+
+Ricardo: "I'm going to invite some colleagues to use this app. what decisions were made (like the default ~/acme,
+etc.) that could be made configurable for other people? also, the readme has too much text" — then, on the list:
+"the config looks good, maybe we could integrate it into the cog setting?"
+
+* **What was one Mac's, written into the code**: ⌥⌘O bound to `oracle` (`ORACLE`, and its crystal ball in
+  `PROJECT_ICONS`); `acme` painted black (`PROJECT_COLORS`); `BE` and `WAPI` on the rail (`PROJECT_ABBR`); the repos
+  under `~/acme` from the `acme` org (`ORG_DIR` / `ORG`, env only — and the login agent's plist carries only `PORT`
+  and `NOTIFY`, so an agent could not be told otherwise); `/bin/zsh` for every drawer and ⌥⌘T; ⌥ always Meta in the
+  terminal (a German layout's ⌥L is @); dates only `DD-MM-YYYY`; the cog's key list naming `~/acme` and oracle.
+* **Now the setup is the server's, set in the cog** (`config` in the state file, `GET/PUT /api/config`, a `config`
+  event): `roots` — any number of folders of repos, each with the GitHub org ＋ clone asks for, or none (then it only
+  lists) —, `quick` (⌥⌘O's project, which wears the crystal ball) and `projects` (a short name and a colour per project,
+  by shown name; the colour only where Peacock gives none, `#000000` being the board's black). A key never set is the
+  default, worked out when asked: the roots from `ORG_DIR` / `ORG` when either is in the environment (the tests' — so
+  every test server still has its own empty root), else none; no ⌥⌘O project; no names or colours. **Ricardo's own
+  values went into his state file through the API**, not into the code.
+* **The cog's other three are this browser's** (`prefs`): *fold code* (back — it went on 2026-09-21 when the ··· { }
+  took over per chat; that stays, this is the default under it), *⌥ is Meta* (on, as it always was), *dates* (day,
+  year or month first — the day lines, the transcript's and the timeline's labels, `fmtDate`).
+* **The shell is the login shell** (`LOGIN_SHELL` for ⌥⌘T, whatever it is; `RUN_SHELL` for claude, when it is zsh or
+  bash — `-l -i -c 'exec "$0" "$@"'` reads the same in both — else `/bin/zsh`, as before). The tab wears its name. No
+  switch: nobody wants a shell other than their own.
+* **The popover grew a second column**: the switches and the setup on the left, the keys on the right, 860 px; one
+  column (`.one`) where the window has not the room, scrolled past its height. It reaches well into the chat column, so
+  **the pane goes down while it is up**, as it does under a dialog; a box that takes the keyboard pins it, so the
+  pointer wandering off while typing does not close it.
+* **Deliberately not in the cog**: the port (the server's own address; the app reads `PEIXAIRADA_PORT`, the agent
+  `PORT` — still two names, and a Finder-launched app has neither), the ⌥⌘ keys themselves (fixed, and repeated in
+  main.swift), the idle drawers' 24 h (`DRAWER_IDLE_MS`), the notification's sound.
+
 ## Decisions of 2026-09-28, afternoon — a PR is polled by how recently its chat was touched
 
 Ricardo: "what's the logic behind updating the PR status? seems like it takes a while — we should improve the algorithm
