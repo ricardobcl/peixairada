@@ -320,7 +320,10 @@ refuses to run against the real directory for the same reason.
   page never sees ⌘W in the app. `closeHalfOrWindow` asks the board (`peixKey('KeyW','cmd')`) and calls
   `performClose` only when it answers false. Anything else the board wants off a ⌘ a menu item claims goes the same way.
 * **⌃⌘F is the board's own full screen, up to the notch**: `toggleFill` in main.swift — the window borderless
-  (`BoardWindow`), its frame the screen's, the menu bar auto-hidden and **the Dock hidden, out only after the pointer
+  (`BoardWindow`), its frame the whole screen, the menu bar auto-hidden **beside a camera housing and hidden outright
+  on a screen without one** (`placeFill`, on the fill and every change of screen, 2026-09-28: there the menu bar's strip
+  is the head row, which an auto-hidden one slid over; the housing is the screen's top safe-area inset, mirroring
+  included), and **the Dock hidden, out only after the pointer
   has been held at its edge for 0.7 s** (`dockTick`, a 10 Hz poll while filled *and the app active*; `dockSide` read
   when the poll starts, `startDockTick`). The system's full screen always sits below the camera housing, so the
   window does not offer it: `collectionBehavior` is `.fullScreenNone`, **the green button zooms and

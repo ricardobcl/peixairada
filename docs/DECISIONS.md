@@ -4,6 +4,31 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-28.
 
+## Decisions of 2026-09-28, later — without a notch, the fill hides the menu bar outright
+
+Ricardo, on the DELL with the MacBook mirroring it: "I'm on a external monitor and thus I don't have a notch. the menu
+bar is showing and overlapping the app" — and, to the first fix: "on the external monitor: I want the full app
+experience, to maximize vertical space. on my macbook, I want that the notch to be there, but also maximize vertical
+space - how can we have both? … maybe depending on the resolution of the screen you detect if the main display is
+external or not?"
+
+* **What happened**: the fill set the frame to the whole screen and the menu bar to auto-hide on every screen. Beside a
+  camera housing that is the point — the strip either side of it is dead space the menu bar and the board share. On a
+  screen without one the board's top row *is* the menu bar's strip, and the auto-hidden menu bar slid over the search
+  box, the chips and the chat's title at every reach for the top edge.
+* **The screen says which it is, exactly**: a housing is a top safe-area inset (`safeAreaInsets.top > 0`), which is
+  what the page's notch layout already went by — no guess from the resolution, and it follows the lid, a display
+  plugged in and mirroring (mirrored, the one `NSScreen` is the master's: the DELL, no housing). `placeFill(on:)`
+  decides per screen, on the fill and on every change of screen: **beside a housing, as before** — the whole screen,
+  the menu bar auto-hidden into the strip; **without one, the whole screen and `hideMenuBar`** — no menu bar while the
+  board is in front, not even at the top edge. Both hide the Dock; let out by a hold at its edge (`dockTick`), the
+  options are `autoHideMenuBar` + `autoHideDock` on both, since AppKit throws on `hideMenuBar` without `hideDock`.
+* **Tried first, same day**: without a housing the menu bar stayed and the frame started under it — nothing
+  overlapped, but 30 pt went to the menu bar; Ricardo wanted them. Also considered: the system full screen's trick of
+  sliding the top row down with the menu bar — a resize of every terminal at each reach for the top edge.
+* Checked on the DELL: the window 2560 × 1440 at 0, 0, options 10 (`hideMenuBar` + `hideDock`), in the app log and the
+  window server's list. The notch side is the code that was there, unchanged.
+
 ## Decisions of 2026-09-28 — a half with one tab has no strip; ⌥⌘W closes a tab
 
 Ricardo: "the a pane only has one thing active (e.g. claude, terminal) we don nee the tab up top, takes unnnecessary

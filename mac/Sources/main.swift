@@ -216,6 +216,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   var fillSignal: DispatchSourceSignal!   // SIGUSR1 is ⌃⌘F from a shell
   var fillTick: Timer?                    // while filled: watches the pointer for a hold at the Dock's edge (dockTick)
   var dockOut = false                     // the Dock let out after a hold at its edge, until the pointer is off it again
+  var fillMenu: NSApplication.PresentationOptions = []   // filled: the menu bar auto-hidden beside a camera housing, hidden outright without one (placeFill)
   var edgeSince: TimeInterval?            // when the pointer reached the Dock's edge
   var dockSide = "bottom"                 // the Dock's edge, read when the fill starts and when the app comes back (dockEdge)
   static let dockHold: TimeInterval = 0.7 // how long the pointer is held at the edge before the Dock comes out
@@ -326,7 +327,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     for name in [NSWindow.didChangeScreenNotification, NSApplication.didChangeScreenParametersNotification] {
       NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
         guard let self, self.fillSaved != nil, let screen = self.window.screen else { return }
-        if self.window.frame != screen.frame { self.window.setFrame(screen.frame, display: true) }
+        self.placeFill(on: screen)
         self.tellFill()
       }
     }
@@ -783,7 +784,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// so), which is why the window does not offer it at all (fullScreenNone; Ricardo: "If I click on the fullscreen
   /// button (mac's green circle), I end up as before"). This is what Apple calls a custom full-screen experience,
   /// kitty's and Sublime Text's: the window borderless, its frame the whole screen, the menu bar auto-hidden and the
-  /// Dock hidden, out only after a hold at its edge (dockTick). The page is told where the housing is (tellFill) and
+  /// Dock hidden, out only after a hold at its edge (dockTick) — on a screen with a housing; without one the menu bar
+  /// is hidden outright (placeFill). The page is told where the housing is (tellFill) and
   /// lays its top row around it. No Space of its own —
   /// Mission Control shows a window. The frame's autosave is off meanwhile, so a quit mid-fill does not bring the next
   /// launch up screen-sized; the fill itself is remembered (kFillKey), so it does come back filled. Info.plist says
@@ -804,17 +806,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       window.setFrameAutosaveName("")
       window.fill = true
       window.styleMask = .borderless
-      NSApp.presentationOptions = [.autoHideMenuBar, .hideDock]   // the Dock gone; a hold at its edge lets it out (dockTick)
-      window.setFrame(screen.frame, display: true)
+      placeFill(on: screen)
       startDockTick()
     }
     window.makeKeyAndOrderFront(nil)
     window.makeFirstResponder(paneFocus.flatMap { paneViews[$0] } ?? web)   // a new style mask can drop the first responder
     UserDefaults.standard.set(fillSaved != nil, forKey: kFillKey)
-    // The visible frame says whether the options took: filled, it is the whole width (the Dock gone) and the height less the strip.
+    // The visible frame says whether the options took: filled, it is the whole screen (the Dock and the menu bar gone).
     logLine("fill: \(fillSaved != nil ? "on \(NSStringFromRect(window.frame))" : "off") options \(NSApp.presentationOptions.rawValue) visible \(NSStringFromRect(window.screen?.visibleFrame ?? .zero))")
     tellFill()
   }
+  /// What becomes of the menu bar in the fill, per screen (2026-09-28, Ricardo: "on the external monitor: I want the
+  /// full app experience, to maximize vertical space. on my macbook, I want that the notch to be there, but also
+  /// maximize vertical space"). Both take the whole screen; what tells them apart is the camera housing, which the
+  /// screen reports exactly (a top safe-area inset) — no guessing from the resolution, and it follows the lid, a display
+  /// plugged in and mirroring (mirrored, the one screen is the external's). Beside a housing the strip either side of it
+  /// is the menu bar's and the board's both: the menu bar auto-hidden, sliding into the strip at the top edge, the page
+  /// laying its top row around the housing (tellFill). Without one there is no such strip — an auto-hidden menu bar
+  /// slid over the search box and the chat's title at every reach for the top edge ("the menu bar is showing and
+  /// overlapping the app") — so it is hidden outright while the board is in front. The Dock is hidden on both
+  /// (dockTick lets it out). Run on the fill and on every change of screen.
+  func placeFill(on screen: NSScreen) {
+    fillMenu = screen.safeAreaInsets.top > 0 ? [.autoHideMenuBar] : [.hideMenuBar]
+    NSApp.presentationOptions = dockOut ? AppDelegate.dockOutOptions : fillMenu.union(.hideDock)
+    if window.frame != screen.frame { window.setFrame(screen.frame, display: true) }
+  }
+  /// The Dock let out: auto-hidden, with the menu bar auto-hidden too on every screen — AppKit refuses hideMenuBar
+  /// without hideDock (an exception, not a no-op).
+  static let dockOutOptions: NSApplication.PresentationOptions = [.autoHideMenuBar, .autoHideDock]
   /// The Dock's edge of the screen, from its own preference: bottom unless it says left or right.
   static func dockEdge() -> String { UserDefaults(suiteName: "com.apple.dock")?.string(forKey: "orientation") ?? "bottom" }
   /// The poll, in .common so it runs under menu tracking too; the Dock's edge read once here, not on every tick
@@ -840,10 +859,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     default: at = p.y <= f.minY + 2; off = p.y > f.minY + 100
     }
     if dockOut {
-      if off { dockOut = false; NSApp.presentationOptions = [.autoHideMenuBar, .hideDock]; logLine("dock: back") }
+      if off { dockOut = false; NSApp.presentationOptions = fillMenu.union(.hideDock); logLine("dock: back") }
     } else if at {
       if let since = edgeSince, now - since >= AppDelegate.dockHold {
-        dockOut = true; edgeSince = nil; NSApp.presentationOptions = [.autoHideMenuBar, .autoHideDock]; logLine("dock: out")
+        dockOut = true; edgeSince = nil; NSApp.presentationOptions = AppDelegate.dockOutOptions; logLine("dock: out")
       } else if edgeSince == nil { edgeSince = now }
     } else { edgeSince = nil }
   }
