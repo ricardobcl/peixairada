@@ -752,14 +752,16 @@
      from the ink: darker under white ink, lighter under dark ink (--hveil across, --hveil2 down, set by tintChat; registered, so a chat switch eases), so
      the buttons at the far end keep their contrast whichever ink the colour chose; the bottom-right corner is deepest. */
   #chat.tinted .shead { background: linear-gradient(180deg, transparent 15%, var(--hveil2)), linear-gradient(100deg, transparent 8%, var(--hveil)), var(--hbg); color: var(--rink); border-bottom-color: color-mix(in srgb, var(--rink) 20%, var(--hbg)); }
-  /* Right of the title the header is black (2026-09-28, Ricardo: "on top chat header, make whatever is right of the
-     title black background"): the camera housing's colour, so at the notch the housing is part of it. Painted by
-     ::after from --hsplit (the title's right edge) down to --hrow (the first row; the details under it keep the
-     header's ground), both set by paintHeadSplit; what stands on it borrows the dark theme's inks, as a black card does. */
+  /* Right of the project's name the header is black (2026-09-28, Ricardo: "make whatever is right of the title black
+     background", then the same night "the summary should have the black background, only the project should have the
+     solid project color"): the camera housing's colour, so at the notch the housing is part of it. Painted by ::after
+     from --hsplit (the separator's right edge) down to --hrow (the first row; the details under it keep the header's
+     ground), both set by paintHeadSplit; the title and what follows it borrow the dark theme's inks, as a black card does. */
   .shead { isolation: isolate; }
   .shead::after { content: ''; position: absolute; top: 0; right: 0; left: var(--hsplit, 100%); height: var(--hrow, 100%); background: #000; z-index: -1; pointer-events: none; }
   .shead > :not(h2, .details) { --ink: #e8e6df; --muted: #9a998f; --line: #2c2c29; --rink: #e8e6df; --panel: #1c1c1a; --inline-bg: rgba(255, 255, 255, .075); }
   :where(.shead > :not(h2, .details)) { color: var(--ink); }   /* for what inherits its ink; a control's own rule still wins */
+  .shead h2 .t { color: #e8e6df; }
   #chat.tinted .shead :is(.status, .path, .own, .chip, a) { color: color-mix(in srgb, var(--rink) 78%, transparent); }
   #chat.tinted .shead .chip { border-color: color-mix(in srgb, var(--rink) 35%, transparent); }
   #chat.tinted .shead .btn, #chat.tinted .shead .btn:disabled { color: color-mix(in srgb, var(--rink) 78%, transparent); border-color: color-mix(in srgb, var(--rink) 40%, transparent); }
@@ -3073,19 +3075,29 @@
     const lr = n ? list.getBoundingClientRect().right : 0, hr = n ? head.getBoundingClientRect() : null;
     const gap = n && h2 ? parseFloat(getComputedStyle(head).columnGap) || 0 : 0, x = n && h2 ? h2.getBoundingClientRect().left : 0;
     const hole = !!(n && h2) && hr.left + NOTCH_TITLE <= n.left && n.right + NOTCH_TAIL <= hr.right;
+    // The title left of the housing when the whole of it fits there, else right of it (2026-09-28, Ricardo: "use the
+    // left for the card summary if it has space, otherwise use the right of the notch"): its margin jumps the housing,
+    // the project staying left of it. Where it would start is the separator's right edge and the h2's gap.
+    const t = h2?.querySelector('.t'), sep = h2?.querySelector('.sep');
+    const tx = hole && t && sep ? sep.getBoundingClientRect().right + (parseFloat(getComputedStyle(h2).columnGap) || 0) : 0;
+    const tw = tx ? (r => (r.selectNodeContents(t), r.getBoundingClientRect().width))(document.createRange()) : 0;   // the text's own width: scrollWidth is never under the box's
+    const tright = hole && !!tx && tx + tw > n.left - NOTCH_PAD;
     main.classList.toggle('notch', !!n);
     main.style.setProperty('--notch-top', `${n ? n.top : 0}px`);
     list.classList.toggle('npad', !!n && lr > n.left - NOTCH_PAD);
-    if (hole) { const w = n.left - NOTCH_PAD - x; h2.style.flex = `0 0 ${w}px`; h2.style.marginRight = `${n.right + NOTCH_PAD - x - w - gap}px`; }
+    if (hole && !tright) { const w = n.left - NOTCH_PAD - x; h2.style.flex = `0 0 ${w}px`; h2.style.marginRight = `${n.right + NOTCH_PAD - x - w - gap}px`; }
     else if (h2) { h2.style.flex = ''; h2.style.marginRight = ''; }
+    if (t) t.style.marginLeft = tright ? `${n.right + NOTCH_PAD - tx}px` : '';
     head.classList.toggle('hole', hole);
+    head.classList.toggle('tright', tright);
     chat.classList.toggle('npad', !!n && !hole && hr.left < n.right + NOTCH_PAD);
   }
-  /** Where the header's black starts (the title's right edge) and how far down it goes (the first row: the details
-   *  under it keep the header's ground) — read once the row is laid out: after the notch and the chips' fold. */
+  /** Where the header's black starts (after the project's name, at the separator's right edge) and how far down it goes
+   *  (the first row: the details under it keep the header's ground) — read once the row is laid out: after the notch
+   *  and the chips' fold. */
   function paintHeadSplit() {
-    const head = $('#shead'), h2 = head.querySelector('h2'); if (!h2) return;
-    const hr = head.getBoundingClientRect(), right = h2.getBoundingClientRect().right, d = head.querySelector('.details:not([hidden])');
+    const head = $('#shead'), sep = head.querySelector('h2 .sep'); if (!sep) return;
+    const hr = head.getBoundingClientRect(), right = sep.getBoundingClientRect().right, d = head.querySelector('.details:not([hidden])');
     head.style.setProperty('--hsplit', `${Math.round(right - hr.left)}px`);
     head.style.setProperty('--hrow', d ? `${Math.round(d.getBoundingClientRect().top - hr.top - 3)}px` : '100%');
   }
@@ -3099,7 +3111,8 @@
     // was a layout each): the button is its frame plus the chips shown, a gap between each, plus +n when any are hidden.
     const cs = getComputedStyle(head), gap = parseFloat(cs.columnGap) || 0, h2 = head.querySelector('h2');
     const row = [...head.children].filter(el => el.tagName !== 'H2' && el !== t && !el.classList.contains('details') && el.getClientRects().length);
-    const title = head.classList.contains('hole') ? h2.getBoundingClientRect().width + (parseFloat(h2.style.marginRight) || 0)   // the hole: the title's width is set, and the housing beside it is spent
+    const title = head.classList.contains('tright') && state.notch ? state.notch.right + NOTCH_PAD - h2.getBoundingClientRect().left + TITLE_ROOM   // the title past the housing: the jump, then its room
+      : head.classList.contains('hole') ? h2.getBoundingClientRect().width + (parseFloat(h2.style.marginRight) || 0)   // the hole: the title's width is set, and the housing beside it is spent
       : Math.max(TITLE_MIN, (head.querySelector('h2 .repo')?.offsetWidth || 0) + TITLE_ROOM);
     const room = head.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - title
       - row.reduce((w, el) => w + el.getBoundingClientRect().width, 0) - gap * (row.length + 1);

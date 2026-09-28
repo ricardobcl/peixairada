@@ -19,6 +19,11 @@ buttons and such — remove them and prefer solid background".
   edge was; the hover, the open card, the clauding ring and the question's blink bring their colour in as before.
 * **The age and the F moved beside the title** (the "summary" of the ask): title · chips · time · F · unread count,
   on the title's first line. The top row keeps the project, the ✓ and the PR chips.
+* **In the chat header only the project's name keeps the project's colour**; from the separator on it is black, the
+  title in the dark theme's ink.
+* **At the notch the title goes where it fits**: left of the housing when its whole text fits there (measured with a
+  `Range`: an element's `scrollWidth` is never under its own box, which the first try took for the text), else right
+  of the housing, its margin jumping it, the project alone on the left. The chips and ··· stay at the far right.
 
 ## Decisions of 2026-09-28, towards midnight — the card's line back, solid chips, the header in black, a hidden timeline
 

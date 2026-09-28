@@ -5,6 +5,8 @@
 // keeps its title left of the housing and its chips and ··· right of it, nothing of the row under it; a list dragged
 // under the housing pads its head down, and the header, too far left for a title, pads down too; a list past the
 // housing leaves a header that lifts as it is; the rail is the lifted case; and the fill going off puts it all back.
+// Since 2026-09-28: what follows the title stands at the far right, the header is black from the project's name on,
+// and a title that does not fit left of the housing goes right of it — a short one stays left.
 import { makeFixture } from '../fixture.mjs';
 
 export const meta = { server: true, fixture: 'auto' };
@@ -36,7 +38,9 @@ export default async function (ctx) {
       afterLeft: after ? Math.round(after.getBoundingClientRect().left) : null, afterTop: after ? Math.round(after.getBoundingClientRect().top) : null,
       underHousing: parts.filter(under).map(el => el.textContent.trim().slice(0, 30)),
       chips: [...head.querySelectorAll('#prToggle .hpr:not(.more)')].filter(c => !c.hidden).length, more: head.querySelector('.hpr.more')?.hidden === false,
-      title: h2.querySelector('.t')?.getBoundingClientRect().width | 0,
+      title: h2.querySelector('.t')?.getBoundingClientRect().width | 0, tright: head.classList.contains('tright'),
+      tLeft: Math.round(h2.querySelector('.t').getBoundingClientRect().left), tRight: Math.round(h2.querySelector('.t').getBoundingClientRect().right),
+      repoRight: Math.round(h2.querySelector('.repo').getBoundingClientRect().right), sepRight: Math.round(h2.querySelector('.sep').getBoundingClientRect().right),
       tailRight: Math.round(head.querySelector('.hmore').getBoundingClientRect().right + parseFloat(getComputedStyle(head.querySelector('.hmore')).marginRight)), headInner: Math.round(head.getBoundingClientRect().right - parseFloat(getComputedStyle(head).paddingRight)),
       split: Math.round(head.getBoundingClientRect().left + parseFloat(head.style.getPropertyValue('--hsplit'))), oneLine: after ? Math.abs(after.getBoundingClientRect().top - h2.getBoundingClientRect().top) < 12 : null };
   })())`).then(JSON.parse);
@@ -50,10 +54,11 @@ export default async function (ctx) {
   ctx.assert.deepEqual([out.on.notch, out.on.top, out.on.listPad, out.on.chatPad, out.on.hole], [true, '32px', false, false, true], 'filled: the list lifted, the header holed');
   ctx.assert.ok(out.on.listRight < NOTCH.left, `the list ends short of the housing (${out.on.listRight})`);
   ctx.assert.deepEqual([out.on.fishTop < 32, out.on.shdPad, out.on.headPad], [true, 7, 7], 'both heads at the top, their own padding');
-  ctx.assert.ok(out.on.h2Right <= NOTCH.left - 9 && out.on.h2Right > NOTCH.left - 40, `the title ends just short of the housing (${out.on.h2Right})`);
+  ctx.assert.ok(out.on.repoRight < NOTCH.left - 9, `the project's name left of the housing (${out.on.repoRight})`);
+  ctx.assert.ok(out.on.tright && out.on.tLeft >= NOTCH.right + 9 && out.on.tLeft < NOTCH.right + 20, `a title too long for the left goes right of the housing (${out.on.tLeft})`);
   ctx.assert.ok(out.on.afterLeft >= NOTCH.right + 9, `the chips start past it (${out.on.afterLeft})`);
   ctx.assert.equal(out.on.tailRight, out.on.headInner, 'and what follows the title stands at the far right (2026-09-28)');
-  ctx.assert.ok(out.on.split <= NOTCH.left && out.on.split > NOTCH.left - 40, `the header is black from the title's end, the housing inside it (${out.on.split})`);
+  ctx.assert.equal(out.on.split, out.on.sepRight, `the header is black from the project's name on, the housing inside it (${out.on.split})`);
   ctx.assert.deepEqual([out.on.underHousing, out.on.oneLine], [[], true], 'nothing of the row under the housing, and the row is one line');
   ctx.assert.ok(out.on.title > 150, `the title keeps room (${out.on.title} px)`);
   ctx.assert.equal(out.on.chips, 6, 'the six chips fit right of the housing');
@@ -89,6 +94,15 @@ export default async function (ctx) {
   out.redrawn = await read();
   ctx.assert.deepEqual([out.redrawn.hole, out.redrawn.underHousing], [true, []], 'redrawn, the hole is there again');
   await ctx.evaluate(`document.querySelector('#prToggle').click()`); await ctx.sleep(100);
+
+  // A title short enough for the left of the housing stays there, the chips still at the far right
+  await ctx.server.api(`api/sessions/${chat.id}/title`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: 'A short title' }) });
+  await ctx.waitFor(`document.querySelector('#shead h2 .t').textContent === 'A short title'`, { what: 'the short title drawn' });
+  await ctx.sleep(250);
+  out.short = await read();
+  ctx.assert.ok(!out.short.tright && out.short.tRight <= NOTCH.left - 9, `a short title left of the housing (${out.short.tRight})`);
+  ctx.assert.deepEqual([out.short.underHousing, out.short.tailRight], [[], out.short.headInner], 'nothing under it, the chips at the far right');
+  await ctx.shot('4-short-title', { x: 0, y: 0, width: 1728, height: 60 });
 
   // A screen without a housing (an external display): filled, but nothing to lay around
   await fill(true, null);
