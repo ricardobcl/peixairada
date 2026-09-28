@@ -202,9 +202,10 @@
   /* The bar between the list and the chat is the open chat's colour (2026-09-26): --openc and --openb on main (registered, so they ease), set with the chat's
      tint, so the open card, the bar and the chat's header are one stroke of it — see .card.active. */
   #splitter { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--openb); border-right: 1px solid var(--openb); background: var(--openc); position: relative; }
-  /* …down to the last card only, black under it (2026-09-28, Ricardo: "should be black from the lower card down — if I
-     scroll, that should also move"): --split is where the last card ends, from the splitter's top, set with the list's
-     ends on every scroll and render (drawSplit); a list whose last card is out of sight keeps the colour to its foot. */
+  /* …down to the open chat's card only, black under it (2026-09-28, Ricardo: "should be black from the lower card down
+     — if I scroll, that should also move", then "instead of top until the height the card it's select"): --split is
+     where the open card ends, from the splitter's top, set with the list's ends on every scroll and render
+     (drawSplit) — the card out of sight below, the colour runs to the list's foot; above, or not in the list, all black. */
   #splitter::after { content: ''; position: absolute; left: -1px; right: -1px; top: var(--split, 100%); bottom: 0; background: #000; pointer-events: none; }
   #splitter:is(:hover, .drag)::after { opacity: 0; transition: opacity 0s .3s; }
   #splitter:hover, #splitter.drag { background: var(--accent); }
@@ -1962,9 +1963,10 @@
       drawEdges(g); drawTimeline(g); drawSplit(g);
     });
   }
-  /** The splitter in the open chat's colour down to where the last card ends, as the list is scrolled; black under it. */
+  /** The splitter in the open chat's colour down to where its card ends, as the list is scrolled; black under it. */
   function drawSplit(g) {
-    const last = g.cards.at(-1), end = !last ? g.box.top : Math.min(g.box.bottom, g.box.top + last.top + last.h - g.top);
+    const open = g.cards.find(c => c.el.classList.contains('active'));
+    const end = !open ? g.box.top : Math.max(g.box.top, Math.min(g.box.bottom, g.box.top + open.top + open.h - g.top));
     const px = `${Math.max(0, Math.round(end - g.split))}px`, sp = $('#splitter');
     if (sp.style.getPropertyValue('--split') !== px) sp.style.setProperty('--split', px);
   }

@@ -22,6 +22,10 @@ dates"; "make the 'setup' inside settings pretty - seems pretty barebones".
 * **No VS Code logo on the cards.** A third of the list is VS Code's chats, and the blue mark on each said nothing
   the card needs; the chat header's ··· keeps its *VS Code's chat* row, and *VS Code too* (a rival process on a chat
   run elsewhere) stays a word on the card, since that one is news.
+* **The splitter's colour ends at the open chat's card**, not the last card: with a long list the last card is out of
+  sight, so the rule of the morning left the bar coloured top to bottom. `drawSplit` measures the `.active` card now —
+  in sight, the colour stops at its bottom; below the window, it runs to the list's foot; above it, or not in the list
+  (another project in view, a filter), the bar is black.
 
 ## Decisions of 2026-09-29, later — keyboard first: no ＋, settings under ···, the row at the bottom, the budget in words, the splitter's black
 
