@@ -15,6 +15,12 @@ also move".
 
 * **No ＋**: ⌥⌘N opens with the project in view selected, so ⌥⌘N ⏎ ⏎ is what the button did on a one-folder project
   (and on a named one, its folder step). On ALL the project step starts at the top as before.
+* **The settings are a modal dialog**, centred: ⌘, (the app menu's *Settings…* in the app), the last row of the chat
+  header's ···, and the empty header's ··· when no chat is open. A head with the name and the counts and a round ×, a
+  segmented control over three panes — Board (the switches, the cards' size, the dates, what is hidden), Setup (the
+  server's), Keys — one size for all three so switching does not jump. The cog and its cell at the list's foot went.
+  Being modal, it takes the keys while it is up, as every dialog here does; the scenarios that set something and then
+  press ⌥⌘N or ⌘B close it first.
 * **The cards are 8 px from the list's edge on both sides again** — flush on the left for a day, to use the room the
   timeline's column had held; symmetric reads better than 8 px more.
 

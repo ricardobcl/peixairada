@@ -439,6 +439,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       self.window.performClose(nil)
     }
   }
+  /// ⌘, — the board's settings dialog (2026-09-28: they left the list's cog for the chat header's ···). A menu item's
+  /// key equivalent comes before any responder, so it asks the page itself, as ⌘W does.
+  @objc func openSettings(_ sender: Any?) {
+    web.evaluateJavaScript("window.peixKey && window.peixKey('Comma', 'cmd')", completionHandler: nil)
+  }
   /// ‹ › ↻ ↗ from the strip, for the page on top.
   func paneNav(_ what: String) {
     guard let w = paneFocus.flatMap({ paneViews[$0] }) else { return }
@@ -706,6 +711,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     let appItem = NSMenuItem(); main.addItem(appItem)
     let appMenu = NSMenu()
     appMenu.addItem(withTitle: "About peixAIrada", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+    appMenu.addItem(.separator())
+    appMenu.addItem(withTitle: "Settings…", action: #selector(openSettings(_:)), keyEquivalent: ",").target = self
     appMenu.addItem(.separator())
     appMenu.addItem(withTitle: "Hide peixAIrada", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
     appMenu.addItem(withTitle: "Quit peixAIrada", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")

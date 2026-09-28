@@ -63,16 +63,30 @@
      The plan usage is the chat list's footer, beside the cog (#usage). */
   .brand { position: relative; width: 28px; height: 28px; flex: none; display: inline-flex; cursor: pointer; }
   .brand .logo { width: 28px; height: 28px; }
-  .pop { position: fixed; left: 54px; bottom: 10px; z-index: 40; display: grid; gap: 9px; min-width: 250px; padding: 12px 14px 13px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); box-shadow: 0 10px 34px rgba(0, 0, 0, .22); font-size: 12px; }
-  /* …and it eases in and out (2026-09-27, night): in 80 ms — it opens on hover, so the quickest of them — out 150,
-     `display` held by allow-discrete until the fade has run. */
-  .pop { transition: opacity .15s, transform .15s, display .15s allow-discrete; }
-  .pop:not([hidden]) { transition-duration: .08s; }
-  .pop[hidden] { display: none; opacity: 0; transform: translateY(4px); }
-  @starting-style { .pop:not([hidden]) { opacity: 0; transform: translateY(4px); } }
-  .pop h4 { margin: 0 0 2px; font-size: 13px; display: flex; align-items: baseline; gap: 8px; }
+  /* The settings (2026-09-28, Ricardo: "the settings can be moved to inside the '...' on the right and it should open a
+     nice and pretty settings popup"; a popover off the cog at the list's foot before): a modal dialog, centred, from
+     the chat header's ··· or ⌘, — the dialog rules give it the fade, the backdrop, Esc and the pane going down. A head
+     (the name, the counts, ×), a segmented control over three panes: the board's own switches, the server's setup,
+     the keys. The class is still `pop`: every row inside is styled as `.pop …`. */
+  #settings { width: min(560px, 94vw); height: min(640px, 86vh); padding: 0; border: 0; border-radius: 16px; overflow: hidden; background: var(--panel); color: var(--ink); font-size: 12px;
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 8%, transparent) inset, 0 30px 90px rgba(0, 0, 0, .45); }
+  #settings[open] { display: grid; grid-template-rows: auto auto minmax(0, 1fr); outline: none; }
+  #settings .shd2 { display: flex; align-items: center; gap: 10px; padding: 16px 16px 12px 22px; }
+  .pop h4 { margin: 0; flex: 1; font-size: 16px; display: flex; align-items: baseline; gap: 10px; min-width: 0; }
   .pop h4 em { font-style: normal; color: var(--accent); }
-  .pop h4 .sub { font-size: 11px; font-weight: 400; color: var(--muted); }
+  .pop h4 .sub { font-size: 11.5px; font-weight: 400; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #settings .sclose { flex: none; width: 26px; height: 26px; border: 0; border-radius: 50%; background: var(--ctl); color: var(--muted); font: inherit; font-size: 16px; line-height: 1; cursor: pointer; }
+  #settings .sclose:hover { background: var(--ctl-hi); color: var(--ink); }
+  /* the tabs: a segmented control, the one in front raised on it */
+  #settings .stabs { display: flex; gap: 2px; margin: 0 22px 10px; padding: 3px; width: max-content; border-radius: 9px; background: var(--ctl); }
+  #settings .stabs button { font: inherit; font-size: 12px; font-weight: 600; padding: 4px 16px; border: 0; border-radius: 7px; background: none; color: var(--muted); cursor: pointer; }
+  #settings .stabs button:hover { color: var(--ink); }
+  #settings .stabs button.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .22); }
+  #settings .spane { overflow: auto; padding: 4px 22px 20px; align-content: start; }
+  #settings .spane[hidden] { display: none; }
+  /* in a pane of their own, the setup and the keys need no rule above them, nor the first switch */
+  #settings .spane > .opt:first-child, #settings .spane > .setup, #settings .spane > .keys { margin-top: 0; padding-top: 0; border-top: 0; }
+  #settings .keys .kh { display: none; }
   /* The keys, so they can be looked up: two columns under a rule, the chord in ink, what it does in muted. */
   .pop .keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: baseline; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
   .pop .keys .kh { grid-column: 1 / -1; font-size: 11px; }
@@ -102,11 +116,6 @@
   .pop .hid .hrow span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pop .hid button { font: inherit; font-size: 11px; border: 1px solid transparent; background: var(--ctl); color: var(--ink); border-radius: 6px; padding: 1px 7px; cursor: pointer; }
   .pop .hid button:hover { border-color: var(--accent); color: var(--accent); }
-  /* The settings and the keys side by side (2026-09-28, when the setup joined the settings and one column outgrew the
-     window), one over the other where the window has not the room (.one, settingsOpen); scrolled, never cut off. */
-  #settings { grid-template-columns: 330px 480px; column-gap: 22px; align-items: start; max-height: calc(100vh - 20px); overflow: auto; }
-  #settings.one { grid-template-columns: minmax(0, 480px); }
-  #settings h4 { grid-column: 1 / -1; }
   .pop .scol { display: grid; gap: 9px; align-content: start; min-width: 0; }
   /* The setup (2026-09-28): the server's, under the switches that are this browser's — the folders of repos, ⌥⌘O's
      project, a short name and a colour per project. Boxes in the popover's small print, a border that lights on focus. */
@@ -621,7 +630,7 @@
     color: var(--ink); cursor: pointer; flex: none; opacity: 0; display: inline-grid; place-items: center; transition: opacity .12s; }
   .card:hover .act, .act:focus-visible { opacity: .7; }
   /* Every small control eases its hover (2026-09-27, night): the ink, the edge and the wash, 120 ms — the one rule. */
-  :is(.btn, .fchip, .ptab, .hmi, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, #stitle, #pfoot) { transition: color .12s, border-color .12s, background-color .12s, opacity .12s; }
+  :is(.btn, .fchip, .ptab, .hmi, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, #stitle) { transition: color .12s, border-color .12s, background-color .12s, opacity .12s; }
   .act:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .dot.working { background: var(--working); animation: pulse 1.4s ease-in-out infinite; }
@@ -639,20 +648,9 @@
      where the window's clock stands — a bar past its tick is being spent faster than time —, the percent and the
      time to its reset. Folded (the heading, the chevron), one line of
      rings. On the rail (⌘B) the rings stack with the percent inside, whatever the fold says. */
-  /* The chat list's foot (2026-09-24): the cog in the window's bottom left corner, the usage beside it. The cog opens
-     on hover and the target is its whole cell — every pixel down to that corner, so the pointer can be thrown at
-     it; the button inside only shows where to look. On the rail the cell goes under the rings. */
+  /* The chat list's foot (2026-09-24): the plan usage — the cog that stood beside it went into the chat header's ···
+     on 2026-09-28. */
   #sfoot { display: flex; min-width: 0; border-top: 1px solid var(--line); background: var(--panel); }
-  /* …and it is drawn over the list's coloured edge, carrying the edge on its own border, since an edge is not a
-     cell: the pointer thrown into the corner lands on x = 0, which is the edge's. */
-  /* No rule between the cell and the usage, and no border on the cog (2026-09-24, Ricardo: "make the cog cleaner by
-     removing the border and the vertical separator from the credits") — the hover's wash is the cell's only outline. */
-  #pfoot { flex: none; width: 46px; margin-left: -4px; border-left: 4px solid var(--repo, var(--nocolor)); display: flex; align-items: flex-end; justify-content: center; padding: 5px 0; cursor: pointer; }
-  #pfoot:hover { background: var(--inline-bg); }
-  #pfoot .btn, #pfoot .btn.on { border-color: transparent; padding: 4px; }
-  main.scompact #sfoot { flex-direction: column-reverse; }
-  main.scompact #pfoot { width: auto; }
-  main:not(.scompact) #pfoot { width: auto; margin: 0; border-left: 0; padding: 0; align-items: center; border-radius: 6px; }
   /* folded, the foot is one row of 34 px, the cog's cell and the rings side by side ("a bit smaller vertically":
      44 px until the same day) */
   #usage { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); flex: 1; display: grid; align-content: center; min-height: 34px; padding: 7px 12px 8px 6px; font-size: 11px; color: var(--muted); min-width: 0; user-select: none; }
@@ -1151,11 +1149,11 @@
     <div class="tl-glass"></div>
     <div class="sedge up" id="sup"><button data-dir="-1"></button></div>
     <div class="sedge down" id="sdown"><button data-dir="1"></button></div>
-    <div id="sfoot"><div id="pfoot"><button class="btn icon" id="cogBtn" title="Settings"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm0 1.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm-.9-5.5h1.8l.4 1.9c.4.15.8.35 1.15.6l1.85-.65 1.3 2.2-1.45 1.3c.05.4.05.8 0 1.2l1.45 1.3-1.3 2.2-1.85-.65c-.35.25-.75.45-1.15.6l-.4 1.9H7.1l-.4-1.9a5 5 0 0 1-1.15-.6l-1.85.65L2.4 10l1.45-1.3a5 5 0 0 1 0-1.2L2.4 6.2l1.3-2.2 1.85.65c.35-.25.75-.45 1.15-.6Z"/></svg></button></div><div id="usage"></div></div>
+    <div id="sfoot"><div id="usage"></div></div>
   </section>
   <div id="splitter" title="Drag to resize"></div>
   <section id="chat">
-    <div class="shead" id="shead"><h2>Pick a chat</h2></div>
+    <div class="shead" id="shead"><h2>Pick a chat</h2><button class="hmore" id="noChatMore" title="Settings · ⌘,"></button></div>
     <div id="prlist" hidden></div>
     <div id="rival" hidden></div>
     <div id="groups">
@@ -1183,9 +1181,10 @@
     </div>
   </section>
 </main>
-<div id="settings" class="pop" hidden>
-  <h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4>
-  <div class="scol">
+<dialog id="settings" class="pop" aria-label="Settings" tabindex="-1">
+  <div class="shd2"><h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4><button class="sclose" id="settingsClose" title="Close · esc" aria-label="Close">×</button></div>
+  <nav class="stabs" role="tablist"><button role="tab" data-tab="board" class="on">Board</button><button role="tab" data-tab="setup">Setup</button><button role="tab" data-tab="keys">Keys</button></nav>
+  <div class="spane scol" data-tab="board">
     <label class="opt" title="Off, nothing posts a banner — not the app, not a browser tab, not the server — and the unread counts on the cards and the Dock go on as before"><input type="checkbox" id="notifyOn" checked><span><b>notifications</b> — a banner when Claude finishes or asks you something, while the board is not in front</span></label>
     <label class="opt" title="On, every clauding card's light stands at the same angle — the blinks and the dots too; off, each card runs at its own. Either way a card rebuilt by an update carries on where it was"><input type="checkbox" id="ringsInStep" checked><span><b>rings in step</b> — every card's light at the same angle; off, each at its own</span></label>
     <div class="dens" title="How much of each chat its card carries — a question waiting on you shows at every size">
@@ -1196,24 +1195,25 @@
     <label class="opt" title="How a chat's code blocks longer than six lines start out — the chat header's ··· { } turns it for that chat alone"><input type="checkbox" id="foldCode" checked><span><b>fold code</b> — long code blocks start folded; ··· { } turns a chat's</span></label>
     <label class="opt" title="On, ⌥ with a letter is Meta in the terminal, as iTerm's Esc+ — ⌥B ⌥F move a word, ⌥⌫ deletes one; ⌥ with a digit or a sign still types what the keyboard makes. Off, ⌥ types whatever your layout composes (⌥L is @ on a German one)"><input type="checkbox" id="optMeta" checked><span><b>⌥ is Meta</b> in the terminal — off, ⌥ types what your keyboard composes</span></label>
     <div class="dens dates" title="How a day is written — the lines between the cards, the transcript's, the timeline's"><b>dates</b><span class="stops" id="datesStops"></span></div>
-    <div id="setup" class="setup"></div>
     <div id="hidden" class="hid"></div>
   </div>
-  <div class="keys" title="From anywhere on the board, the terminal included">
+  <div class="spane" data-tab="setup" hidden><div id="setup" class="setup"></div></div>
+  <div class="spane" data-tab="keys" hidden><div class="keys" title="From anywhere on the board, the terminal included">
     <span class="kh">keys</span>
     <kbd>⌥⌘T</kbd><span>a shell in this folder, a tab beside the chat · again to show it</span>
     <kbd>⌥⌘E</kbd><span>edit: this folder in VS Code Web, on a tab</span>
     <kbd>⌥⌘G</kbd><span>its PR on GitHub, on a tab · the repo when it has none · a picker with several, every time</span>
     <kbd>⌥⌘C</kbd><span>this chat's claude session — the pane while it runs here · starts or takes over one</span>
-    <kbd>⌥⌘O</kbd><span id="quickKey">a new chat in the project the cog names — its environments first, when its Taskfile has some</span>
+    <kbd>⌥⌘O</kbd><span id="quickKey">a new chat in the project the settings name — its environments first, when its Taskfile has some</span>
     <kbd>⌥⌘P</kbd><span>project picker — or a click on the project's name atop the chat list · ✎ edits a named one, ＋ makes one</span>
     <kbd>⌥⌘K</kbd><span>chat picker — every ready or clauding chat, fuzzy: <em>chk rtr</em> finds <em>checkout retry</em></span>
     <kbd>⌥⌘F</kbd><span>the chat list's own filter, fuzzy the same way — the best match leads · ↑↓ walk the cards · ⏎ opens one · esc clears it</span>
-    <kbd>⌥⌘N</kbd><span id="newKey">a chat — a project, a folder of your repos, or ＋ clone one · then its open chats or ＋ a new one · ✕ takes a row off the board</span>
+    <kbd>⌥⌘N</kbd><span id="newKey">a chat — the project in view first, ⏎ ⏎ a new one there · or a project, a folder of your repos, or ＋ clone one · then its open chats or ＋ a new one · ✕ takes a row off the board</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
     <kbd>⌥⌘←→</kbd><span>the tab to the left / right: chat, shell, GitHub pages, VS Code — split, across both halves' strips · drag a tab onto the other half to move it there</span>
     <kbd>⌥⌘W</kbd><span>close the tab the keys are in: the shell ends, a page or VS Code Web goes — the ··· menu too · split, a half with one tab shows no strip</span>
     <kbd>⌥⌘1 ⌥⌘2</kbd><span>the halves one over the other: the top one, the bottom one — ⌥⌘2 splits the chat that way the first time; side by side, either turns it</span>
+    <kbd>⌘,</kbd><span>these settings — the chat header's ··· has them too</span>
     <kbd>⌘B</kbd><span>fold the chat list into a rail, and back</span>
     <kbd>⌘1 ⌘2</kbd><span>the left half of the chat, the right one — ⌘2 splits it in two the first time; one over the other, either turns it back · the digit is the pane, the modifier the layout</span>
     <kbd>⌘W</kbd><span>close the half the keys are in — or the picker · with one half it is the window's own key</span>
@@ -1226,8 +1226,8 @@
     <kbd>⌘R · ⇧⌘R</kbd><span>reload — the page in the pane while one is up, else the board · restart the server, in the app</span>
     <kbd>⌘F · ⌘G</kbd><span>find on the page in the pane, as in a browser — ⏎ ⇧⏎ or ⌘G ⇧⌘G step the matches, esc closes the bar, in the app</span>
     <kbd>pinch</kbd><span>zoom a GitHub or VS Code page in the pane, as in Safari · its address sits in the strip, click to copy</span>
-  </div>
-</div>
+  </div></div>
+</dialog>
 <dialog id="hmenu" aria-label="This chat's actions"></dialog>
 <dialog id="about" aria-label="About peixAIrada"></dialog>
 <dialog id="pick">
@@ -1353,27 +1353,29 @@
     inp.addEventListener('blur', () => { if (!inp.value.trim()) qShow(false); markQsel(); });
     inp.addEventListener('input', () => { btn.classList.toggle('on', !!inp.value.trim()); qsel.i = 0; renderBoard(); });
   }
-  // The card hangs off the cog: hovering the footer shows it, a click pins it (to read at leisure, or on a
-  // touchpad tap); it goes when the pointer has left both, or on Esc / a click elsewhere once pinned.
-  const spop = { timer: null, pinned: false };
-  const settingsOpen = on => {
-    const pop = $('#settings');
-    if (!on) { pop.hidden = true; spop.pinned = false; $('#cogBtn').classList.remove('on'); if (setupUi.pending.size) { setupUi.pending.clear(); renderSetup(); } repostPane(); return; }
-    // under the cog in the open list's head row (2026-09-28), beside its cell at the rail's foot
-    const cell = $('#pfoot').getBoundingClientRect(), rail = !!prefs.sessionsCompact, left = rail ? cell.right + 8 : cell.left;
-    pop.style.left = left + 'px';
-    pop.style.top = rail ? '' : `${Math.round(cell.bottom + 6)}px`; pop.style.bottom = rail ? '' : 'auto';
-    pop.style.maxHeight = rail ? '' : `${Math.round(innerHeight - cell.bottom - 16)}px`;
-    pop.classList.toggle('one', innerWidth - left < 870);   // the settings and the keys side by side, or one over the other
-    pop.hidden = false; repostPane();   // the pane goes down while it is up: the popover reaches over the chat column
-    $('#cogBtn').classList.add('on');
+  // The settings: a modal dialog (2026-09-28), from the chat header's ··· or ⌘, — the dialog's own Esc, its backdrop
+  // clicked, or × close it; closing drops a setup row half typed. The pane goes down while it is up (postPane), and
+  // comes back on `close`, as under any dialog. The tab in front is remembered while the page lives.
+  const settingsOpen = (on = true) => {
+    const dlg = $('#settings');
+    if (!on) { if (dlg.open) dlg.close(); return; }
+    if (dlg.open) return;
+    if ($('#hmenu').open) $('#hmenu').close();
+    if (inApp) post({ type: 'focus' });   // from the pane's keys, the board needs the keyboard back
+    dlg.showModal(); dlg.focus(); repostPane();   // the dialog itself takes the focus, not × wearing its ring
   };
-  const settingsShow = on => { clearTimeout(spop.timer); if (on) settingsOpen(true); else if (!spop.pinned) settingsOpen(false); };
-  const settingsLeave = () => { clearTimeout(spop.timer); spop.timer = setTimeout(() => settingsShow(false), 250); };
-  $('#pfoot').addEventListener('mouseenter', () => settingsShow(true));
-  $('#pfoot').addEventListener('mouseleave', settingsLeave);
-  $('#settings').addEventListener('mouseenter', () => clearTimeout(spop.timer));
-  $('#settings').addEventListener('mouseleave', settingsLeave);
+  const settingsToggle = () => settingsOpen(!$('#settings').open);
+  $('#settings').addEventListener('close', () => { if (setupUi.pending.size) { setupUi.pending.clear(); renderSetup(); } repostPane(); });
+  $('#settings').addEventListener('click', e => { if (e.target === e.currentTarget) settingsOpen(false); });   // the backdrop
+  $('#settingsClose').onclick = () => settingsOpen(false);
+  $('#settings .stabs').addEventListener('click', e => {
+    const b = e.target.closest('[data-tab]'); if (!b) return;
+    document.querySelectorAll('#settings .stabs [data-tab]').forEach(x => x.classList.toggle('on', x === b));
+    document.querySelectorAll('#settings .spane').forEach(x => { x.hidden = x.dataset.tab !== b.dataset.tab; });
+  });
+  // no chat open: the header's ··· is the settings alone (delegated — leaveChat writes the header anew; its icon is
+  // drawn where ICON is defined, before leaveChat keeps the header)
+  $('#shead').addEventListener('click', e => { if (e.target.closest('#noChatMore')) settingsOpen(true); });
   // System notifications, the popover's one switch (2026-09-23, Ricardo: "let me turn on or off notifications in the
   // cog settings"). It is the server's setting, not a pref: the app posts its banners from the alerts it hears, a
   // browser tab from its own, and all of them follow the `quiet` flag the server puts on each alert. A browser that
@@ -1403,8 +1405,6 @@
   $('#cardsSize').addEventListener('input', e => setCards(+e.target.value));
   $('#settings .dens .stops').addEventListener('click', e => { const x = e.target.closest('[data-v]'); if (x) setCards(+x.dataset.v); });
   applyCards();
-  $('#cogBtn').onclick = e => { e.stopPropagation(); spop.pinned = !spop.pinned; if (spop.pinned) settingsShow(true); else settingsOpen(false); };
-  document.addEventListener('click', e => { if (spop.pinned && !e.target.closest('#settings') && !e.target.closest('#pfoot')) settingsOpen(false); });
   // Esc on the page itself: a dialog (the picker, the project editor) or the settings popover closes,
   // and the key is *taken* — preventDefault, so WebKit reports it handled. An Esc the page leaves alone climbs to the
   // app's window, which in full screen takes it to leave full screen: the picker closed and the window shrank with it
@@ -1417,9 +1417,6 @@
     let took = false;
     const dlg = document.querySelector('dialog[open]');
     if (dlg) { dlg.close(); took = true; }
-    else {
-      if (!$('#settings').hidden) { settingsOpen(false); took = true; }
-    }
     if (!took) return;
     e.preventDefault(); e.stopPropagation();
   }, true);
@@ -1471,6 +1468,8 @@
     watch: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 6.4a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2Z"/><path fill-rule="evenodd" d="M8 3.2A4.8 4.8 0 0 1 12.8 8h-1.5A3.3 3.3 0 0 0 8 4.7Zm0-3.2A8 8 0 0 1 16 8h-1.5A6.5 6.5 0 0 0 8 1.5Z"/></svg>',
     // a speech bubble: Claude has asked you something and is waiting on the answer
     ask: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 1.3c3.7 0 6.7 2.4 6.7 5.4S11.7 12 8 12c-.6 0-1.2 0-1.8-.2l-3.7 1.8 1-3C2.2 9.7 1.3 8.3 1.3 6.7c0-3 3-5.4 6.7-5.4Z"/></svg>',
+    // a cog: the settings, the last row of the chat header's ···
+    cog: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm0 1.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm-.9-5.5h1.8l.4 1.9c.4.15.8.35 1.15.6l1.85-.65 1.3 2.2-1.45 1.3c.05.4.05.8 0 1.2l1.45 1.3-1.3 2.2-1.85-.65c-.35.25-.75.45-1.15.6l-.4 1.9H7.1l-.4-1.9a5 5 0 0 1-1.15-.6l-1.85.65L2.4 10l1.45-1.3a5 5 0 0 1 0-1.2L2.4 6.2l1.3-2.2 1.85.65c.35-.25.75-.45 1.15-.6Z"/></svg>',
     // a pull request (Primer's octicon, MIT): a PR of the chat's has come round to you (moveHtml, headMove)
     pr: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 3.25a2.25 2.25 0 1 1 3 2.122v5.256a2.251 2.251 0 1 1-1.5 0V5.372A2.25 2.25 0 0 1 1.5 3.25Zm5.677-.177L9.573.677A.25.25 0 0 1 10 .854V2.5h1A2.5 2.5 0 0 1 13.5 5v5.628a2.251 2.251 0 1 1-1.5 0V5a1 1 0 0 0-1-1h-1v1.646a.25.25 0 0 1-.427.177L7.177 3.427a.25.25 0 0 1 0-.354ZM3.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm0 9.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm8.25.75a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Z"/></svg>',
     // a stylized F with a spark: the chat runs on Fable (see onFable)
@@ -1478,6 +1477,7 @@
     pin: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 1.5l4.5 4.5-1.6.6-2.5 2.5-.4 3.2-1.3 1.3-2.8-2.8-3.8 3.8-.7-.7 3.8-3.8-2.8-2.8 1.3-1.3 3.2-.4 2.5-2.5Z"/></svg>',
     vscode: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>'
   };
+  $('#noChatMore').innerHTML = ICON.more;
   const entryLabel = s => s.terminal && s.terminal.exited === null ? 'terminal here' : s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : s.live?.entrypoint === 'cli' ? 'CLI' : s.alive ? 'live' : 'stale';
   // Lives in VS Code (the server's rule: the registry while it runs, else the transcript's last line).
   // Such a chat wears a blue border and can be taken over like a CLI chat (2026-09-20) — the cost is the
@@ -2435,7 +2435,7 @@
       if (pick.mode === 'new') pick.list = [...pick.list, ...cloneRows(items)];
       if (pick.mode === 'project') pick.list = [...pick.list, { newProject: true }];   // ＋ new project, last and never filtered out
       // ✕ on every row of ⌥⌘N that names a project or a folder — never on ＋ clone, which is not on the board yet.
-      const hx = p => pick.mode !== 'new' ? '' : `<button class="pkx" data-key="${esc(p.key)}" title="Take ${esc(p.name)} off the board — every picker stops listing it; its chats stay under ALL and the cog puts it back">✕</button>`;
+      const hx = p => pick.mode !== 'new' ? '' : `<button class="pkx" data-key="${esc(p.key)}" title="Take ${esc(p.name)} off the board — every picker stops listing it; its chats stay under ALL and the settings (⌘,) put it back">✕</button>`;
       const ed = p => pick.mode === 'project' && p.custom ? `<button class="pked" data-id="${esc(p.id)}" title="Edit ${esc(p.name)} — its name and folders">✎</button>` : '';
       row = (p, i) => p.newProject
         ? `<div class="pkrow newproj${sel(i)}" data-i="${i}" title="A name over one or more folders — multi-repo work, an investigation"><span class="sq"></span><span class="n">＋ new project<span class="cur">a name over several folders</span></span><span class="pills"></span><span class="t"></span></div>`
@@ -2523,7 +2523,7 @@
   // half goes and the one the keys are in becomes the column (2026-09-22, Ricardo: "cmd 0 should close other panes
   // and just keep the current one select/focused"), and with one half there is nothing to close, so it is still
   // what it always was — the chat's size back to normal.
-  const CMDKEYS = { KeyB: toggleSessions, Digit1: () => hotGroup(0), Digit2: () => hotGroup(1), Digit0: hotOnlyHalf, KeyW: hotCloseHalf };
+  const CMDKEYS = { KeyB: toggleSessions, Digit1: () => hotGroup(0), Digit2: () => hotGroup(1), Digit0: hotOnlyHalf, KeyW: hotCloseHalf, Comma: settingsToggle };
   // Every hotkey says whether it took the key, and ⌘W is the one that is asked: in the app it arrives as the
   // Window menu's own ⌘W, which closes the window when the board has nothing to close instead (see main.swift).
   // A dialog up swallows the rest, as it always did — but not ⌘W, which is how you close the dialog.
@@ -2532,7 +2532,7 @@
     const fn = (mods === 'cmd' ? CMDKEYS : HOTKEYS)[code];
     if (!fn) return false;
     if ($('#hmenu').open) $('#hmenu').close();   // the header's menu is a dialog, but not one that should swallow a key
-    if (fn !== hotCloseHalf && document.querySelector('dialog[open]')) return false;
+    if (fn !== hotCloseHalf && !(fn === settingsToggle && $('#settings').open) && document.querySelector('dialog[open]')) return false;
     return fn() !== false;
   };
   document.addEventListener('keydown', e => {
@@ -2564,7 +2564,7 @@
   // or nothing has run there in 30 days and it is off the board — a note then, and ⌥⌘N is the way in.
   function hotOracle() {
     const name = state.config.quick;
-    if (!name) return note($('#shead'), 'No project for ⌥⌘O yet — the cog (bottom left) names one · ⌥⌘N starts a chat anywhere');
+    if (!name) return note($('#shead'), 'No project for ⌥⌘O yet — the settings (⌘,) name one under Setup · ⌥⌘N starts a chat anywhere');
     const p = projectList().find(x => x.name === name && x.cwds.length);
     if (!p) return note($('#shead'), `No ${name} folder on the board — ⌥⌘N starts a chat anywhere`);
     focusBoard();
@@ -2572,11 +2572,10 @@
   }
   // Esc with a page's tab on (2026-09-20, Ricardo: "ESC should still navigate to chat"): the chat tab, and the pane
   // goes. Reaches here from the shell only (peixKey('Escape'), pressed on the board or in the pane, which the shell
-  // swallows while the pane is up) — so a dialog or the settings popover, whose own Esc that swallow took, close first.
+  // swallows while the pane is up) — so a dialog (the settings are one), whose own Esc that swallow took, closes first.
   // Split, the chat is in the left half and the keys go there; the page beside it stays up (showChat).
   function hotEscape() {
     const dlg = document.querySelector('dialog[open]'); if (dlg) { dlg.close(); return true; }
-    if (!$('#settings').hidden) { settingsOpen(false); return true; }
     const s = state.sessions.get(state.current); if (!s || !isPaneTab(tabOf(s))) return false;
     showChat(s); syncTerm(s); focusBoard(); return true;
   }
@@ -2730,8 +2729,6 @@
     });
     box.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input[type=text]')) e.target.blur(); });
   }
-  // A box in the popover takes the keyboard: the popover stays up however the pointer wanders, as a click on the cog does.
-  $('#settings').addEventListener('focusin', e => { if (e.target.matches('input[type=text], select, input[type=color]')) spop.pinned = true; });
   // The switches that are this browser's (2026-09-28): the code's fold, ⌥ in the terminal, how a date is written.
   const DATE_TIP = { dmy: 'day first', ymd: 'year first', mdy: 'month first' };
   function showPrefs() {
@@ -3010,7 +3007,7 @@
     const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
       ${headMove(s)}${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
-      <button class="hmore${menu.open ? ' on' : ''}" id="moreBtn" aria-haspopup="menu" aria-expanded="${menu.open}" title="This chat: the claude session, VS Code, focus view, code folding, path and branch">${ICON.more}</button>
+      <button class="hmore${menu.open ? ' on' : ''}" id="moreBtn" aria-haspopup="menu" aria-expanded="${menu.open}" title="This chat: the claude session, VS Code, focus view, code folding, path and branch — and the settings">${ICON.more}</button>
       <div class="details"${prefs.headDetails ? '' : ' hidden'}>
         <span class="path">${esc(s.cwd || '')}${s.gitBranch && s.gitBranch !== 'HEAD' ? ' @ ' + esc(s.gitBranch) : ''}</span>
         ${s.live ? `<span class="chip">${entryLabel(s)}</span>` : ''}${s.live?.name ? `<span class="chip" title="session name">${esc(s.live.name)}</span>` : ''}${
@@ -3031,6 +3028,8 @@
       '<div class="sep"></div>',
       `<button class="hmi${foldOn(s.id) ? ' on' : ''}" id="foldBtn" aria-pressed="${foldOn(s.id)}" title="${foldOn(s.id) ? 'Code blocks longer than 6 lines are folded in this chat — click to show them whole' : 'Code blocks are shown whole in this chat — click to fold the long ones'}${s.id in prefs.foldBy ? ' (set here)' : ' (the default)'}"><span class="gl">{ }</span><span>fold long code</span><span class="k">${foldOn(s.id) ? 'on' : 'off'}</span></button>`,
       `<button class="hmi${prefs.headDetails ? ' on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}" title="${esc(statusLabel[s.status] || s.status)} · click to ${prefs.headDetails ? 'hide' : 'show'} path, branch and session details under the title"><span class="dot ${s.status}"></span><span>${esc((statusLabel[s.status] || s.status || '').split(' — ')[0])}${s.statusSince ? ` · <span data-at="${esc(s.statusSince)}"></span>` : ''}</span><span class="k">${prefs.headDetails ? 'hide' : 'show'} path</span></button>`,
+      '<div class="sep"></div>',
+      `<button class="hmi" id="settingsBtn" title="The board's settings, its setup and its keys">${ICON.cog}<span>settings</span><span class="k">⌘,</span></button>`,
     ].join('');
     if (menuHtml !== drawn.menu) { menu.innerHTML = drawn.menu = menuHtml; phaseAnims(); if (menu.open) placeMenu(); }   // the state dot's pulse, rebuilt with the menu
     if (state.prsFor !== s.id) { state.prsFor = s.id; state.prsAll = false; }   // "more" is per chat, not sticky
@@ -3070,6 +3069,7 @@
     const tb = $('#termBtn'); if (tb) tb.onclick = () => { menu.close(); termAction(s); };
     const sb = $('#shellEndBtn'); if (sb) sb.onclick = () => { menu.close(); dropTab(s, 'shell'); };
     const ib = $('#ideCloseBtn'); if (ib) ib.onclick = () => { menu.close(); if (ideKey(s)) dropTab(s, ideKey(s)); };
+    $('#settingsBtn').onclick = () => settingsOpen(true);
     $('#moreBtn').onclick = e => { e.stopPropagation(); if (menu.open) menu.close(); else openMenu(); };
     const vb = $('#viewBtn'); if (vb) vb.onclick = () => toggleFocusView(s);
     $('#foldBtn').onclick = () => { prefs.foldBy[s.id] = !foldOn(s.id); savePrefs(); renderHead(s); renderLog(true); };
@@ -3120,7 +3120,8 @@
    *  (the first row: the details under it keep the header's ground) — read once the row is laid out: after the notch
    *  and the chips' fold. */
   function paintHeadSplit() {
-    const head = $('#shead'), sep = head.querySelector('h2 .sep'); if (!sep) return;
+    const head = $('#shead'), sep = head.querySelector('h2 .sep');
+    if (!sep) { head.style.removeProperty('--hsplit'); head.style.removeProperty('--hrow'); return; }   // no chat: no project to keep in colour
     const hr = head.getBoundingClientRect(), right = sep.getBoundingClientRect().right, d = head.querySelector('.details:not([hidden])');
     head.style.setProperty('--hsplit', `${Math.round(right - hr.left)}px`);
     head.style.setProperty('--hrow', d ? `${Math.round(d.getBoundingClientRect().top - hr.top - 3)}px` : '100%');
@@ -3606,11 +3607,11 @@
   // native view over the chat column covers a dialog centred on the board, and the picker used to sidle into the
   // strip of board still showing rather than fight it. Lowering the pane instead leaves the dialog where every
   // dialog belongs — the middle of the window, over a dimmed board — and hands the keyboard back on the way down.
-  // Nothing reloads: the shell only hides the web view, and the tab comes back with the dialog's close. The cog's
-  // popover does the same since it holds the setup beside the keys (2026-09-28) and reaches well into the chat column.
+  // Nothing reloads: the shell only hides the web view, and the tab comes back with the dialog's close — the settings
+  // are a dialog too since 2026-09-28.
   function postPane(s, p = placeOf(s)) {
     if (!inApp) return;
-    const shut = !!document.querySelector('dialog[open]') || !$('#settings').hidden;
+    const shut = !!document.querySelector('dialog[open]');
     const panes = shut ? [] : p.map((k, g) => isPaneTab(k) ? { key: k, ...groupRect(g) } : null).filter(Boolean);
     const focus = (!shut && isPaneTab(p[focusG]) ? p[focusG] : null) || panes[0]?.key || null;
     const msg = { type: 'pane', id: s?.id || null, keys: paneKeys(s), panes, focus, show: focus, left: panes[0]?.left || 0, top: panes[0]?.top || 0 };
@@ -3905,7 +3906,7 @@
     const menu = $('#hmenu'); if (menu.open) menu.close();
     $('#prlist').hidden = true; $('#chat').classList.remove('vsc'); tintChat(color);
     $('#shead').innerHTML = head; $('#log').innerHTML = log; drawn.head = drawn.menu = drawn.prs = null; postChat(null);
-    layoutNotch(); renderComposer(null);
+    layoutNotch(); paintHeadSplit(); renderComposer(null);
   }
   // A new chat has no session until claude registers; the server ties the two by pid and says so
   // over SSE, at which point the pane switches to it. `task` names a launcher of the folder's Taskfile (newChatIn).

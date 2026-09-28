@@ -103,10 +103,11 @@ export default async function (ctx) {
   out.cog = await ctx.evaluate(`[...document.querySelectorAll('#hidden .hrow')].map(r => r.textContent)`);
   ctx.assert.equal(out.cog.length, 1, 'the cog lists what is hidden');
   ctx.assert.ok(out.cog[0].includes('alpha-service'), `…by name: ${out.cog[0]}`);
-  await ctx.evaluate(`document.querySelector('#cogBtn').click()`);
+  await ctx.cmd('Comma'); await ctx.settle();
   await ctx.shot('cog-hidden');
   await ctx.evaluate(`document.querySelector('#hidden button').click()`);
   await ctx.waitFor(`window.peix.state().hidden.length === 0`, { what: 'the row put back' });
+  await ctx.cmd('Comma');   // the settings are modal: closed for ⌥⌘N
   await ctx.key('KeyN');
   await ctx.waitFor(`[...document.querySelectorAll('#picklist .pkrow.folder')].length === 3`, { what: 'and the folder offered again' });
   await ctx.evaluate(`document.querySelector('#pick').close()`);

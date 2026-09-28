@@ -21,12 +21,19 @@ export default async function (ctx) {
   const set = (sel, value) => ctx.evaluate(`(() => { const x = document.querySelector('#setup ${sel}'); x.value = ${JSON.stringify(value)}; x.dispatchEvent(new Event('input', { bubbles: true })); x.dispatchEvent(new Event('change', { bubbles: true })); })()`);
   const cardOf = id => `document.querySelector('#slist > .card[data-id="${id}"]')`;
 
-  await ctx.evaluate(`document.querySelector('#cogBtn').click()`);
-  await ctx.waitFor(`!document.querySelector('#settings').hidden`, { what: 'the popover, pinned' });
-  await ctx.settle();
-  out.popover = await ctx.evaluate(`(r => ({ w: Math.round(r.width), h: Math.round(r.height), cols: getComputedStyle(document.querySelector('#settings')).gridTemplateColumns.split(' ').length, fits: r.bottom <= innerHeight && r.right <= innerWidth }))(document.querySelector('#settings').getBoundingClientRect())`);
-  ctx.assert.equal(out.popover.cols, 2, 'the settings and the keys side by side');
-  ctx.assert.ok(out.popover.fits, `and inside the window: ${JSON.stringify(out.popover)}`);
+  // the settings: a modal dialog since 2026-09-28 (⌘, or the chat header's ···), the setup on a tab of its own
+  const openSetup = async () => {
+    await ctx.cmd('Comma');
+    await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
+    await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="setup"]').click()`);
+    await ctx.settle();
+  };
+  await openSetup();
+  out.popover = await ctx.evaluate(`(r => ({ modal: document.querySelector('#settings').matches(':modal'), tabs: [...document.querySelectorAll('#settings .stabs button')].map(b => b.textContent),
+    shown: [...document.querySelectorAll('#settings .spane')].filter(p => !p.hidden).map(p => p.dataset.tab),
+    centred: Math.abs(r.left + r.width / 2 - innerWidth / 2) < 2 && Math.abs(r.top + r.height / 2 - innerHeight / 2) < 2, fits: r.bottom <= innerHeight && r.right <= innerWidth }))(document.querySelector('#settings').getBoundingClientRect())`);
+  ctx.assert.deepEqual([out.popover.modal, out.popover.tabs, out.popover.shown], [true, ['Board', 'Setup', 'Keys'], ['setup']], 'a modal of three tabs, the setup in front');
+  ctx.assert.ok(out.popover.centred && out.popover.fits, `centred, and inside the window: ${JSON.stringify(out.popover)}`);
   await ctx.shot('popover');
 
   // ---- a folder of repos, then its org: ⌥⌘N offers its folders, and ＋ clone names the org ----
@@ -37,6 +44,7 @@ export default async function (ctx) {
   await until(async () => (await cfg()).roots[1]?.org === 'acme', { what: 'its org saved' });
   out.roots = (await cfg()).roots;
   ctx.assert.deepEqual(out.roots[1], { dir: ROOT, org: 'acme' });
+  await ctx.cmd('Comma');   // a modal takes the keys: close it for ⌥⌘N
   await ctx.key('KeyN');
   await ctx.waitFor(`[...document.querySelectorAll('#picklist .pkrow.folder .n')].map(n => n.firstChild.textContent).join() === 'alpha,beta'`, { what: "the root's two folders in ⌥⌘N" });
   await ctx.fill('#pickq', 'gamma');
@@ -45,8 +53,7 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#pick').close()`);
 
   // ---- a folder that is not there: refused beside the box, and the rows are the server's ----
-  await ctx.evaluate(`document.querySelector('#cogBtn').click(); document.querySelector('#cogBtn').click()`);   // the picker's close unpinned it: pin it again
-  await ctx.waitFor(`!document.querySelector('#settings').hidden`, { what: 'the popover again' });
+  await openSetup();
   await set('.srow.root.add .sdir', join(ROOT, 'nope'));
   await ctx.waitFor(`document.querySelector('.note.err')?.textContent.includes('not a folder here')`, { what: 'the refusal, said' });
   ctx.assert.equal((await cfg()).roots.length, 2, 'nothing saved');
@@ -64,12 +71,12 @@ export default async function (ctx) {
   await ctx.waitFor(`document.activeElement?.matches('#setup .srow.proj[data-name="${repo}"] .sab')`, { what: 'the new row, its short name box with the keyboard' });
   await set(`.srow.proj[data-name="${repo}"] .sab`, 'PX');
   await until(async () => (await cfg()).projects[repo]?.abbr === 'PX', { what: 'the short name saved' });
+  await ctx.cmd('Comma');   // the modal takes the keys: closed for ⌘B
   await ctx.cmd('KeyB'); await ctx.settle();
   out.abbr = await ctx.evaluate(`${cardOf(two.id)}.querySelector('.abbr').textContent`);
   ctx.assert.equal(out.abbr, 'PX', "the rail's square says it");
   await ctx.cmd('KeyB'); await ctx.settle();
-  await ctx.evaluate(`document.querySelector('#cogBtn').click(); document.querySelector('#cogBtn').click()`);
-  await ctx.waitFor(`!document.querySelector('#settings').hidden`, { what: 'the popover again' });
+  await openSetup();
   await set('.sadd', tmp);
   await set(`.srow.proj[data-name="${tmp}"] input[type=color]`, '#cc3366');
   await until(async () => (await cfg()).projects[tmp]?.color === '#cc3366', { what: 'the colour saved' });

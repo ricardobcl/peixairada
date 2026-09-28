@@ -29,9 +29,10 @@ export default async function (ctx) {
   out.on = await ctx.evaluate(`({ quiet: window.__alerts[0]?.quiet, banner: window.__banners[0]?.title })`);
   ctx.assert.equal(out.on.quiet, false, 'the alert is not quiet');
 
-  // Off, from the popover itself
-  await ctx.evaluate(`document.querySelector('#cogBtn').click()`);
-  await ctx.waitFor(`!document.querySelector('#settings').hidden`, { what: 'the popover' });
+  // Off, from the settings themselves (⌘, since 2026-09-28; the cog's popover before)
+  await ctx.cmd('Comma');
+  await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
+  await ctx.settle();
   await ctx.shot('1-on', { x: 0, y: 0, width: 620, height: 1000 });
   await ctx.evaluate(`${sw}.click()`);
   ctx.assert.equal(await ctx.evaluate(`${sw}.checked`), false, 'the switch is off');

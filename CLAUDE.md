@@ -125,7 +125,7 @@ refuses to run against the real directory for the same reason.
   `#q` (`width: 0; flex: 1 1 0`), which takes the row's spare room and the rings' (hidden while it is open, `:has`) —
   the state chips (a dot and a count; the word from 600 px of list, the count gone under 340; `#sessions` is a size
   container) — no ＋ since 2026-09-28: ⌥⌘N, which opens on the project in view (⏎ ⏎ is a new chat there); then **`#sfoot`, in
-  the head's grid row as a column of its own** (`main:not(.scompact)`): the usage's rings, the cog. **No « / »**: ⌘B
+  the head's grid row as a column of its own** (`main:not(.scompact)`): the usage. No cog: the settings are ⌘, and ···. **No « / »**: ⌘B
   folds and unfolds. The name gives way, hence the list's 300 px minimum. On the rail the head keeps the fish and, for
   a project, `projAbbr` (`.ab`) as the picker's handle, and `#sfoot` is its foot. ⌥⌘P's rows carry
   ✎ on a named project and ＋ new project, last and never filtered out. → `scripts/scenarios/project-cue.mjs`. A chat
@@ -428,16 +428,18 @@ refuses to run against the real directory for the same reason.
   that root (no `root`: the one root with an org, if only one) — **the only thing the board writes outside its own
   state** — and `cloneAndStart()` carries on into the same flow. A long path belongs beside the name (`.cur`),
   never in the row's `auto` column. → `scripts/scenarios/new-project.mjs`.
-* **The cog's popover is the whole of the board's settings**, two columns (`.scol` and the keys; one over the other
-  where the window has not the room, `.one`, and scrolled past its height): the notifications switch (`#notifyOn`),
-  the rings' step (`#ringsInStep`), the cards' size (`.dens`), the code's fold (`#foldCode`), ⌥ as Meta (`#optMeta`),
-  how a date is written (`#datesStops` → `fmtDate`), the setup (`#setup`, the server's) and what is hidden — nothing
-  else. It opens on *hover of `#pfoot`*, the cog's cell — the head row's last on the open list, the popover under it;
-  at the rail's foot **drawn over the list's 4 px coloured edge** (`margin-left: -4px`), the popover beside it; a click
-  pins it, and so does a box in it taking the keyboard; Esc or a click away closes it
-  (`settingsOpen`). **While it is up the pane is down** (`postPane`), as under a dialog. The fish is the SSE light and, clicked, **the About box** (`#about`, a modal dialog:
+* **The settings are one modal dialog** (`#settings`, 2026-09-28; the cog's popover before): **⌘,** (`CMDKEYS.Comma`,
+  in the app the app menu's *Settings…*, which asks `peixKey` as ⌘W does), the chat header's ··· (`#settingsBtn`, the
+  menu's last row) and, with no chat open, the empty header's own ··· (`#noChatMore`, delegated — `leaveChat` rewrites
+  the header). A head (the name, the counts, × `#settingsClose`), a segmented control (`.stabs`) over three panes
+  (`.spane`): **Board** — the notifications switch (`#notifyOn`), the rings' step (`#ringsInStep`), the cards' size
+  (`.dens`), the code's fold (`#foldCode`), ⌥ as Meta (`#optMeta`), how a date is written (`#datesStops` →
+  `fmtDate`), what is hidden (`#hidden`); **Setup** — the server's (`#setup`); **Keys** — the list (`.keys`). The class
+  is still `pop`, so every row keeps its `.pop …` rule. Esc, the backdrop, ×, ⌘, or ⌘W close it; its `close` drops a
+  setup row half typed. **It is modal**: the pane is down while it is up (`postPane`), and the ⌥⌘ / ⌘ keys are swallowed
+  under it — close it first (the scenarios do). The fish is the SSE light and, clicked, **the About box** (`#about`, a modal dialog:
   version, process and paths from the snapshot's `about`, and the chats' counts). The `{ }` row under the chat
-  header's ··· is the fold for a chat (`prefs.foldBy[id]`, else the cog's `prefs.foldCode`). **Every `pre` in the transcript is
+  header's ··· is the fold for a chat (`prefs.foldBy[id]`, else the settings' `prefs.foldCode`). **Every `pre` in the transcript is
   inside a `.codebox`** (2026-09-27, night; `md()`): the bar with the language and the copy button is its first
   child, a folded block is `details.codefold > summary + .codebox`, and a rule that reaches a `pre` goes through the
   box. The copy click is delegated on `#log`.

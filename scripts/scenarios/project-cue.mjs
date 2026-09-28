@@ -106,20 +106,24 @@ export default async function (ctx) {
   await closePick();
   await ctx.shot('3-rail', { x: 0, y: 0, width: 300, height: 1000 });
 
-  // The cog: on the rail it owns the bottom left corner and its popover opens beside the cell; on the open list it ends
-  // the head row and its popover opens under it (2026-09-28)
-  ctx.assert.equal(await ctx.evaluate(`!!document.elementFromPoint(0, innerHeight - 1)?.closest('#pfoot')`), true, 'on the rail the bottom left pixel is the cog\'s');
-  await ctx.evaluate(`document.querySelector('#cogBtn').click()`);
-  const beside = await ctx.evaluate(`Math.round(document.querySelector('#settings').getBoundingClientRect().left - document.querySelector('#pfoot').getBoundingClientRect().right)`);
-  ctx.assert.equal(beside, 8, 'the popover opens beside the cog\'s cell on the rail');
-  await ctx.evaluate(`document.querySelector('#cogBtn').click()`);
   await ctx.cmd('KeyB');
-  await ctx.evaluate(`document.querySelector('#cogBtn').click()`);
+  // The settings (2026-09-28): no cog in the list — the chat header's ···, a chat or none, and ⌘,; a modal, centred
+  ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#cogBtn, #pfoot')`), false, 'no cog in the list');
+  await ctx.evaluate(`document.querySelector('#noChatMore').click()`);
+  await ctx.waitFor(`document.querySelector('#settings').open`, { what: "the settings from the empty header's ···" });
   await ctx.settle();
-  const under = await ctx.evaluate(`JSON.stringify((p => { const c = document.querySelector('#pfoot').getBoundingClientRect(); return [Math.round(p.left - c.left), Math.round(p.top - c.bottom)]; })(document.querySelector('#settings').getBoundingClientRect()))`).then(JSON.parse);
-  ctx.assert.ok(under[0] === 0 && Math.abs(under[1] - 6) <= 1, `on the open list it opens under the cog (${under})`);
-  await ctx.shot('4-cog', { x: 0, y: 0, width: 1200, height: 1000 });
-  await ctx.evaluate(`document.querySelector('#cogBtn').click()`);
+  const dlg = await ctx.evaluate(`JSON.stringify((d => { const r = d.getBoundingClientRect(); return { modal: d.matches(':modal'), centred: Math.abs(r.left + r.width / 2 - innerWidth / 2) < 2 && Math.abs(r.top + r.height / 2 - innerHeight / 2) < 2 }; })(document.querySelector('#settings')))`).then(JSON.parse);
+  ctx.assert.deepEqual(dlg, { modal: true, centred: true }, 'a modal dialog, centred');
+  await ctx.shot('4-settings', { x: 0, y: 0, width: 1400, height: 1000 });
+  await ctx.evaluate(`document.querySelector('#settingsClose').click()`);
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#settings').open`), false, '× closes it');
+  await ctx.openChat(ctx.fixture.chats[0].id);
+  await ctx.evaluate(`document.querySelector('#moreBtn').click()`);
+  await ctx.waitFor(`document.querySelector('#hmenu').open && !!document.querySelector('#hmenu #settingsBtn')`, { what: 'the chat header\'s ··· with its settings row' });
+  await ctx.evaluate(`document.querySelector('#settingsBtn').click()`);
+  ctx.assert.deepEqual(await ctx.evaluate(`[document.querySelector('#hmenu').open, document.querySelector('#settings').open]`), [false, true], 'the row closes the menu and opens the settings');
+  await ctx.cmd('Comma');
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#settings').open`), false, '⌘, toggles them');
   await ctx.evaluate(`document.querySelector('#stitle .sx').click()`);
 
   // The fish, clicked, is the About box (2026-09-27): modal, centred, saying the package's version and what the

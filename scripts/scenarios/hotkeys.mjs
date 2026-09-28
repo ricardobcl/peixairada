@@ -23,7 +23,7 @@ export default async function (ctx) {
   // ⌥⌘O with no project named for it says where to name one; named, but not on this board yet (it is pinned into place
   // further down), it says that
   await ctx.key('KeyO'); out.noQuickNote = await txt('.note');
-  ctx.assert.match(out.noQuickNote, /No project for ⌥⌘O yet — the cog/);
+  ctx.assert.match(out.noQuickNote, /No project for ⌥⌘O yet — the settings \(⌘,\)/);
   await ctx.evaluate(`document.querySelectorAll('.note').forEach(n => n.remove())`);
   await ctx.server.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ quick: 'oracle' }) });
   await ctx.waitFor(`document.querySelector('#quickKey').textContent.startsWith('oracle — ')`, { what: 'the setup reaching the page, the cog\'s key line with it' });
@@ -191,9 +191,11 @@ export default async function (ctx) {
   await ctx.key('KeyP'); ctx.assert.equal(await ctx.evaluate(`document.querySelector('#pick').open`), true);
   out.escPicker = { taken: await escOn('#pickq'), open: await ctx.evaluate(`document.querySelector('#pick').open`) };
   ctx.assert.deepEqual(out.escPicker, { taken: true, open: false }, 'Esc closes the picker and is marked handled');
-  await ctx.evaluate(`document.querySelector('#cogBtn').click()`); ctx.assert.equal(await ctx.evaluate(`document.querySelector('#settings').hidden`), false);
-  out.escSettings = { taken: await escOn('body'), hidden: await ctx.evaluate(`document.querySelector('#settings').hidden`) };
-  ctx.assert.deepEqual(out.escSettings, { taken: true, hidden: true }, 'Esc closes the settings popover and is marked handled');
+  await ctx.cmd('Comma'); ctx.assert.equal(await ctx.evaluate(`document.querySelector('#settings').open`), true, '⌘, opens the settings');
+  out.escSettings = { taken: await escOn('body'), open: await ctx.evaluate(`document.querySelector('#settings').open`) };
+  ctx.assert.deepEqual(out.escSettings, { taken: true, open: false }, 'Esc closes the settings and is marked handled');
+  await ctx.cmd('Comma'); await ctx.cmd('Comma');
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#settings').open`), false, '⌘, again closes them');
   out.escIdle = await escOn('body'); ctx.assert.equal(out.escIdle, false, 'with nothing to close, Esc is left alone');
   // the cog lists the keys
   out.cog = await ctx.evaluate(`[...document.querySelectorAll('#settings .keys kbd')].map(k => k.textContent)`);

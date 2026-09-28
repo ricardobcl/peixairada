@@ -68,11 +68,11 @@ export default async function (ctx) {
     await ctx.shot('compact', { x: 0, y: 0, width: 420, height: 640 });
     ctx.assert.equal((await ctx.peix('prefs()')).cards, 'compact');
 
-    // the popover, to look at the slider
-    await ctx.evaluate(`document.querySelector('#cogBtn').click()`);
+    // the settings, to look at the slider
+    await ctx.cmd('Comma'); await ctx.settle();
     const r = await ctx.evaluate(`(r => ({ x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) }))(document.querySelector('#settings').getBoundingClientRect())`);
     await ctx.shot('cog', r);
-    await ctx.evaluate(`document.querySelector('#cogBtn').click()`);
+    await ctx.cmd('Comma');
 
     // a reload keeps it: a pref of this window
     await ctx.send('Page.reload'); await ctx.sleep(1200);
