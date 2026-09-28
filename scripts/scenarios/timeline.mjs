@@ -1,11 +1,11 @@
-// The chat list's timeline (2026-09-25; pared down 2026-09-26): a slim rail down the far left of the list, beside its
-// coloured edge, that is the list in miniature — at rest the window as an orange thumb and nothing else, a label per
-// run of one day's cards (in one state group) placed where the run begins. Pointed at it swells like the Dock: the
-// days near the pointer come out over the cards as labels, the nearest largest, pushed apart so none overlap. Dragged
-// it scrolls the list, a day clicked is scrolled to, a wheel over it scrolls, and while the list scrolls under a hand
-// elsewhere the day at the top of the window shows beside the thumb. What this checks is the runs, where the labels
-// and the thumb sit against the list, the rail's place and its thumb's look, the swell, the three ways of moving the
-// list from the rail, the bubble, a query (no days) and the rail of squares (no timeline).
+// The chat list's timeline (2026-09-25; pared down 2026-09-26; out of sight until called 2026-09-28): a slim rail over
+// the far left of the list, beside its coloured edge, that is the list in miniature — the window as an orange thumb, a
+// label per run of one day's cards (in one state group) placed where the run begins. Hidden, the cards have the whole
+// width; the pointer held on the coloured edge for a second calls it out, like the Dock, swollen: the days near the
+// pointer come out over the cards as labels, the nearest largest, pushed apart so none overlap. Dragged it scrolls the
+// list, a day clicked is scrolled to, a wheel over it scrolls; off it, it goes. What this checks is the runs, where the
+// labels and the thumb sit against the list, the rail's place and its thumb's look, the call and the going, the swell,
+// the three ways of moving the list from the rail, a query (no days) and the rail of squares (no timeline).
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { makeFixture } from '../fixture.mjs';
@@ -51,7 +51,7 @@ export default async function (ctx) {
   await ctx.key('KeyP');
   await ctx.evaluate(`(() => { const q = document.querySelector('#pickq'); q.value = 'tline-repo'; q.dispatchEvent(new Event('input', { bubbles: true })); q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); })()`);
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 14 && document.querySelectorAll('#slist > .card.done').length === 2`, { what: 'the list narrowed to the fourteen, two of them done' });
-  await ctx.sleep(300);
+  await ctx.sleep(300); await ctx.settle();
 
   // the runs: a day and a state group in a row each — ready by your last touch, then the done ones
   out.at = await rail(ctx);
@@ -61,17 +61,23 @@ export default async function (ctx) {
   ctx.assert.ok(out.at.thumb && Math.abs(out.at.thumb.at - out.at.thumb.want) < .004 && Math.abs(out.at.thumb.len - out.at.thumb.wantLen) < .004, 'the thumb is the window');
   ctx.assert.ok(out.at.labs.every(l => !l.on), 'no labels at rest');
   ctx.assert.equal(out.at.drawn, 0, 'no track and no ticks: the thumb is all there is at rest (2026-09-26)');
-  // the rail at the far left, 12 px beside the list's coloured edge, the cards 8 px on from it; the thumb in the
-  // board's orange, 5 px wide until the pointer is on the rail, then 8
-  const place = await ctx.evaluate(`(() => { const s = document.querySelector('#sessions').getBoundingClientRect(), r = document.querySelector('#tline').getBoundingClientRect(), c = document.querySelector('#slist > .card').getBoundingClientRect(); return JSON.stringify({ edge: r.left - s.left, width: r.width, card: c.left - r.right }); })()`).then(JSON.parse);
-  ctx.assert.deepEqual(place, { edge: 4, width: 12, card: 8 }, `the rail beside the edge, the cards 8 px on from it (${JSON.stringify(place)})`);
+  // the rail at the far left, 12 px beside the list's coloured edge, over the cards — which start at that edge — and out
+  // of sight; the thumb in the board's orange, 5 px wide until the pointer is on the rail, then 8
+  const place = await ctx.evaluate(`(() => { const s = document.querySelector('#sessions').getBoundingClientRect(), t = document.querySelector('#tline'), r = t.getBoundingClientRect(), c = document.querySelector('#slist > .card').getBoundingClientRect(); return JSON.stringify({ edge: r.left - s.left, width: r.width, card: c.left - s.left, seen: getComputedStyle(t).visibility, shown: window.peix.state().timeline.shown }); })()`).then(JSON.parse);
+  ctx.assert.deepEqual(place, { edge: 4, width: 12, card: 4, seen: 'hidden', shown: false }, `the rail over the cards' edge, out of sight (${JSON.stringify(place)})`);
   const rgb = hex => `rgb(${[1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
   ctx.assert.equal(out.at.thumb.color, rgb(out.at.thumb.spend), `the thumb is the board's orange (${out.at.thumb.color} for ${out.at.thumb.spend})`);
   ctx.assert.equal(out.at.thumb.width, 5, 'a 5 px pill at rest');
   await ctx.shot('rest', { x: 0, y: 0, width: 420, height: 920 });
 
-  // pointed at, over the third run's tick: labels come out, that one nearest and largest, none overlapping
+  // called out: the pointer on the coloured edge — not straight away, after a second held there
   const x = out.at.rect.left + 6, yOf = (r, i) => r.rect.top + 6 + r.labs[i].at * r.H;
+  await move(ctx, 1, yOf(out.at, 2));
+  await ctx.sleep(500);
+  ctx.assert.equal(await ctx.evaluate(`window.peix.state().timeline.shown`), false, 'not at once');
+  await ctx.waitFor(`window.peix.state().timeline.shown`, { what: 'the rail called out by a second on the edge' });
+  ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#tline')).visibility`), 'visible');
+  // pointed at, over the third run's tick: labels come out, that one nearest and largest, none overlapping
   await move(ctx, x, yOf(out.at, 2));
   await settled(ctx, 1);
   out.hover = await rail(ctx);
@@ -103,10 +109,11 @@ export default async function (ctx) {
   const gapWant = await ctx.evaluate(`(l => Math.min(l.scrollHeight - l.clientHeight, [...l.querySelectorAll(':scope > .card')][window.peix.state().timeline.runs[${out.gap.near}].i].offsetTop - 30))(document.querySelector('#slist'))`);
   await ctx.waitFor(`Math.abs(document.querySelector('#slist').scrollTop - ${gapWant}) < 2`, { what: 'the list at the ringed day, from a click in the gap' });
   await ctx.evaluate(`document.querySelector('#slist').scrollTop = 0`);
-  // …and past the furthest label's right edge, it is the cards again
+  // …and past the furthest label's right edge, it is the cards again: the days go in, and the rail goes a moment later
   await move(ctx, out.at.rect.left + 330, gap.y);
   await settled(ctx, 0);
-  // the window's own left edge, over the list's coloured edge: that is the rail too
+  await ctx.waitFor(`!window.peix.state().timeline.shown && getComputedStyle(document.querySelector('#tline')).visibility === 'hidden'`, { what: 'the rail gone again' });
+  // the window's own left edge, over the list's coloured edge: held there, it calls the rail, which then covers it
   await move(ctx, 0, out.at.rect.top + out.at.rect.height / 2);
   await settled(ctx, 1);
   ctx.assert.equal(await ctx.evaluate(`document.elementFromPoint(0, ${Math.round(out.at.rect.top + out.at.rect.height / 2)})?.className`), 'tl-catch', 'x = 0 is the rail\'s');
@@ -140,18 +147,16 @@ export default async function (ctx) {
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: Math.round(x), y: Math.round(far), deltaX: 0, deltaY: 300 });
   await ctx.waitFor(`document.querySelector('#slist').scrollTop > 100`, { what: 'the wheel over the rail scrolling the list' });
 
-  // away from the rail: the labels go back in
+  // away from the rail: the labels go back in, and the rail goes
   await move(ctx, 900, 400);
   await settled(ctx, 0);
   ctx.assert.ok((await rail(ctx)).labs.every(l => !l.on), 'no labels once the pointer has left');
   await ctx.waitFor(`getComputedStyle(document.querySelector('.tl-glass')).opacity === '0'`, { what: 'the glass gone' });
-  // the list scrolled by a hand elsewhere: the day at the top of the window beside the thumb, for a moment
-  await ctx.evaluate(`document.querySelector('#slist').scrollTop = ${Math.round(want + 30)}`);
-  await ctx.waitFor(`document.querySelector('#tline .tl-bub').classList.contains('on')`, { what: 'the bubble' });
-  out.bubble = await ctx.evaluate(`document.querySelector('#tline .tl-bub').textContent`);
-  ctx.assert.equal(out.bubble, `${railDay(10)} · 3 ready`, 'the bubble names the run at the top of the window');
-  await ctx.shot('bubble', { x: 0, y: 0, width: 420, height: 920 });
-  await ctx.waitFor(`!document.querySelector('#tline .tl-bub').classList.contains('on')`, { what: 'the bubble gone again', timeout: 3000 });
+  await ctx.waitFor(`!window.peix.state().timeline.shown`, { what: 'the rail gone' });
+  // the pointer passing over the edge without stopping calls nothing
+  await move(ctx, 1, 400); await ctx.sleep(300); await move(ctx, 200, 400); await ctx.sleep(900);
+  ctx.assert.equal(await ctx.evaluate(`window.peix.state().timeline.shown`), false, 'a pass over the edge is not a call');
+  await ctx.shot('hidden', { x: 0, y: 0, width: 420, height: 920 });
 
   // a query orders the list by the match: no days to show, the thumb alone
   await ctx.key('KeyF');

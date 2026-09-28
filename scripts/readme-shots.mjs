@@ -174,9 +174,10 @@ export default async function (ctx) {
     await snap('picker-dark', { x: pick.x - pad, y: Math.max(0, pick.y - pad), width: pick.width + 2 * pad, height: pick.height + 2 * pad });
     await ctx.key('Escape'); await ctx.evaluate(`document.querySelector('dialog[open]')?.close()`);
 
-    // 4 · the timeline swelled: the pointer at the window's left edge
-    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 4, y: 420 });
-    await ctx.sleep(600);
+    // 4 · the timeline swelled: the pointer held at the window's left edge calls it out
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 420 });
+    await ctx.waitFor(`window.peix.state().timeline.shown && window.peix.state().timeline.k === 1`, { what: 'the timeline called out' });
+    await ctx.sleep(300);
     await snap('timeline-dark', { ...list, height: Math.min(list.height, 640) });
     await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: W - 5, y: H - 5 });
     return { shots };

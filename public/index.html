@@ -151,11 +151,11 @@
   #sessions { width: 380px; min-width: 300px; max-width: 60vw; flex: none; display: grid; grid-template-rows: auto 1fr auto; min-height: 0; container-type: inline-size; }
   /* Placed by hand, like the chat column's rows: a hidden block leaves auto-placement and slides the rest up a row —
      the list into the `auto` row, sized to its cards instead of the column. */
-  /* Two columns since 2026-09-25: the timeline (#tline) down the left of the list, the list beside it; the head and
-     the foot span both. Every cell is definite — the list's ends (.sedge) lie over the list's, which only a definite
-     cell allows. Folded, the timeline is display:none and its `auto` column is nothing. */
-  #sessions { grid-template-columns: auto minmax(0, 1fr); }
-  #shd { grid-row: 1; grid-column: 1 / -1; } #tline { grid-row: 2; grid-column: 1; } #slist { grid-row: 2; grid-column: 2; } #sfoot { grid-row: 3; grid-column: 1 / -1; }
+  /* One column: the timeline (#tline) lies over the list's left edge, out of sight until called (2026-09-28; a column
+     of its own beside the list from 2026-09-25). Every cell is definite — the list's ends (.sedge) and the glass lie
+     over the list's, which only a definite cell allows. */
+  #sessions { grid-template-columns: minmax(0, 1fr); }
+  #shd { grid-row: 1; grid-column: 1; } #tline { grid-row: 2; grid-column: 1; justify-self: start; } #slist { grid-row: 2; grid-column: 1; } #sfoot { grid-row: 3; grid-column: 1; }
   /* The chat list folded to a rail: the fish, the selected project's colour square and the » to open it again.
      The width is set here, not inline, so the splitter's saved width comes back on unfold. */
   /* Folded, the list is a rail of one square per chat (2026-09-22): the project's short name on its own colour,
@@ -306,7 +306,7 @@
   .fchip.on { color: var(--ink); border-color: color-mix(in srgb, var(--c) 65%, transparent); }
   .fchip.on i { background: var(--c); }
   .fchip:not(.on) { opacity: .75; }
-  #slist { overflow-y: auto; overflow-x: hidden; min-width: 0; padding: 8px; display: flex; flex-direction: column; gap: 7px; position: relative; scrollbar-width: none; }   /* positioned: the cards' offsetTop is the list's */
+  #slist { overflow-y: auto; overflow-x: hidden; min-width: 0; padding: 8px 8px 8px 0; display: flex; flex-direction: column; gap: 7px; position: relative; scrollbar-width: none; }   /* positioned: the cards' offsetTop is the list's */
   #slist::-webkit-scrollbar { display: none; }   /* the timeline beside it is the scrollbar, with the days on it */
   main.scompact #slist { scrollbar-width: auto; }
   main.scompact #slist::-webkit-scrollbar { display: initial; }
@@ -351,11 +351,18 @@
      the ticks for dates, which is not pretty"): the divider and the day lines in the list say the same, and the
      labels say it in words. TL_W in the script is this width. */
   #tline { width: 12px; position: relative; z-index: 5; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+  /* Out of sight until called, like the Dock (2026-09-28, Ricardo: "the timeline on the left should disappear and just
+     appear when the mouse [is] all the way to the [edge] and stays there … like the dock or the menu bar — given this,
+     the cards should be pushed all the way to the left"): the pointer held on the list's coloured edge for TL_DWELL_MS
+     brings it out, over the cards, with its days; off it, it goes after TL_HIDE_MS. Hidden, nothing on it takes the
+     pointer (visibility, which its labels' own pointer-events cannot undo), and the cards have the whole width. */
+  #tline { visibility: hidden; opacity: 0; transition: opacity .18s, visibility 0s .18s; }
+  #sessions.tlshow #tline { visibility: visible; opacity: 1; transition: opacity .18s, visibility 0s; }
   #tline.drag { cursor: grabbing; }
   /* While the days are out, a pane of glass over the cards (2026-09-25, Ricardo: "a glass tint on the background"):
      a blur and a wash of the page over the list's cell, under the labels and the list's ends, so the labels read on
      a frosted list rather than on card text. Lets every pointer event through. */
-  .tl-glass { grid-row: 2; grid-column: 2; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .2s;
+  .tl-glass { grid-row: 2; grid-column: 1; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .2s;
     background: color-mix(in srgb, var(--bg) 42%, transparent); -webkit-backdrop-filter: blur(3px) saturate(.85); backdrop-filter: blur(3px) saturate(.85); }
   #sessions.tlon .tl-glass { opacity: 1; }
   main.scompact #tline { display: none; }
@@ -378,13 +385,10 @@
   #tline .tl-lab i { font-style: normal; font-weight: 400; color: var(--muted); }
   #tline .tl-lab.on { pointer-events: auto; cursor: pointer; }
   #tline .tl-lab.near { border-color: var(--spend); }
-  /* while the list scrolls under a hand that is not on the rail: the day at the top of the window, beside the thumb */
-  #tline .tl-bub { opacity: 0; transition: opacity .25s; pointer-events: none; border-color: var(--spend); }
-  #tline .tl-bub.on { opacity: 1; transition: opacity .08s; }
   /* The list's two ends say what is out of sight past them (2026-09-25): a pill over a fog of the page, laid over the
      list's own cell — the list's row, so it neither scrolls with the cards nor takes any room from them. The fog lets
      every click through; only the pill takes one. A dot on it when a card out there is asking you or clauding. */
-  .sedge { grid-row: 2; grid-column: 2; z-index: 4; pointer-events: none; display: flex; justify-content: center; height: 30px; opacity: 0; transition: opacity .15s; }
+  .sedge { grid-row: 2; grid-column: 1; z-index: 4; pointer-events: none; display: flex; justify-content: center; height: 30px; opacity: 0; transition: opacity .15s; }
   .sedge.up { align-self: start; align-items: flex-start; padding-top: 5px; background: linear-gradient(var(--bg) 25%, transparent); }
   .sedge.down { align-self: end; align-items: flex-end; padding-bottom: 5px; background: linear-gradient(transparent, var(--bg) 75%); }
   .sedge.on { opacity: 1; }
@@ -1111,7 +1115,7 @@
 <main id="main">
   <section id="sessions">
     <div class="colhead" id="shd"><span class="brand" id="brandBtn" title="About peixAIrada" role="button"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g><g fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="stitle" class="t"></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" autocomplete="off" spellcheck="false" hidden><span id="fchips"></span></span><span id="newChat"></span><button class="btn icon" id="sessPinBtn" title="Fold the chat list">«</button></div>
-    <div id="tline" aria-label="The list's days — point to read them, drag to scroll, click one to go there"><div class="tl-catch"></div><div class="tl-thumb"></div><div class="tl-labs"></div><div class="tl-lab tl-bub"></div></div>
+    <div id="tline" aria-label="The list's days — point to read them, drag to scroll, click one to go there"><div class="tl-catch"></div><div class="tl-thumb"></div><div class="tl-labs"></div></div>
     <div id="slist"></div>
     <div class="tl-glass"></div>
     <div class="sedge up" id="sup"><button data-dir="-1"></button></div>
@@ -1905,14 +1909,13 @@
   // still being shown. A dot on it when one of them is asking you (red) or clauding: the two states a card should not
   // be able to hide. A click scrolls a screenful that way. Drawn at most once a frame: on scroll, after every render,
   // when the list's box changes size (a fold, the splitter, the window) and when the cards do (the cog's slider).
-  function listChanged(scrolled = false) {   // called from applyCards before this line has run, hence the flags on the function
-    if (scrolled === true) listChanged.scrolled = true;
+  function listChanged() {   // called from applyCards before this line has run, hence the flag on the function
     if (listChanged.queued) return;
     listChanged.queued = true;
     requestAnimationFrame(() => {
-      listChanged.queued = false; const bub = listChanged.scrolled; listChanged.scrolled = false;
+      listChanged.queued = false;
       const g = listGeom();   // every read of the frame first, then the writes: a read after a write is a layout each (2026-09-27)
-      drawEdges(g); drawTimeline(g); if (bub) tlBubble(g);
+      drawEdges(g); drawTimeline(g);
     });
   }
   /** The list's geometry, read once a frame: its window, each card's place, the rail's height and each run's top. */
@@ -1944,7 +1947,7 @@
       b.title = `${o.n} chat${o.n === 1 ? '' : 's'} ${way}${o.ask ? ` — ${o.ask} asking you` : ''}${o.work ? `${o.ask ? ',' : ' —'} ${o.work} clauding` : ''} · click for a screenful ${i ? 'down' : 'up'}`;
     });
   }
-  $('#slist').addEventListener('scroll', () => listChanged(true), { passive: true });   // the bubble too, in the same frame
+  $('#slist').addEventListener('scroll', () => listChanged(), { passive: true });
   new ResizeObserver(() => listChanged()).observe($('#slist'));
   for (const el of document.querySelectorAll('.sedge')) el.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
@@ -1967,8 +1970,12 @@
   // the tick per day it had went — the divider and the day lines in the list say the same, the labels say it in words.
   // TL_W is the rail's width, TL_LX where a label starts and TL_CATCH the rail's reach at rest, each the CSS's number;
   // TL_MIN is the thumb's least height, so a long list's is still there to find and to grab.
-  const tl = { runs: [], sig: '', k: 0, K: 0, want: 0, py: 0, press: null, raf: 0, bubT: 0, reach: 0 };
+  const tl = { runs: [], sig: '', k: 0, K: 0, want: 0, py: 0, press: null, raf: 0, reach: 0 };
   const TL_PAD = 6, TL_R = 150, TL_D = 3, TL_MAX = 1.4, TL_LH = 17, TL_IN = 140, TL_OUT = 220, TL_W = 12, TL_LX = 16, TL_CATCH = 24, TL_MIN = 24;
+  // Out of sight until called (2026-09-28): the pointer on the list's coloured edge — x under TL_EDGE, the window's own
+  // edge when filled — for TL_DWELL_MS brings it out, as the menu bar comes out when filled; it goes TL_HIDE_MS after
+  // the pointer has left it.
+  const TL_EDGE = 4, TL_DWELL_MS = 1000, TL_HIDE_MS = 500;
   const TL_WORD = { asking: 'asking', working: 'clauding', ready: 'ready', done: 'done' };
   /** A run's day, short: today, yesterday, the weekday in the last week, else the date — the year only when not this one's. */
   function tlDay(iso) {
@@ -2041,16 +2048,6 @@
     };
     tl.raf = requestAnimationFrame(step);
   }
-  /** The day at the top of the window, beside the thumb, while the list scrolls under a hand that is not on the rail. */
-  function tlBubble(g = listGeom()) {
-    const bub = $('#tline .tl-bub');
-    if (tl.k || tl.press || !tl.runs.length || !g.railOn) return bub.classList.remove('on');
-    const top = g.top + 30;   // under the top pill
-    let i = 0; while (i + 1 < tl.runs.length && g.tops[i + 1] <= top) i++;
-    bub.className = `tl-lab tl-bub on ${tl.runs[i].g}`; bub.innerHTML = tlText(tl.runs[i]);
-    bub.style.transform = `translateY(${tlWarp(g.y(g.top)) - TL_LH / 2 + 6}px)`;
-    clearTimeout(tl.bubT); tl.bubT = setTimeout(() => bub.classList.remove('on'), 900);
-  }
   /** The list scrolled so the pointer's place on the rail is under the thumb where it was grabbed. */
   function tlScrub(py, grab) {
     const g = tlGeom();
@@ -2058,7 +2055,7 @@
   }
   {
     const rail = $('#tline'), railY = e => e.clientY - rail.getBoundingClientRect().top;
-    const swell = on => { tl.want = on ? 1 : 0; tlAnimate(); $('#sessions').classList.toggle('tlon', on); if (on) $('#tline .tl-bub').classList.remove('on'); };
+    const swell = on => { tl.want = on ? 1 : 0; tlAnimate(); $('#sessions').classList.toggle('tlon', on); };
     rail.addEventListener('pointerenter', () => swell(true));
     rail.addEventListener('pointerleave', () => { if (!tl.press) swell(false); });
     rail.addEventListener('pointermove', e => {
@@ -2097,6 +2094,26 @@
     rail.addEventListener('pointercancel', release);
     rail.addEventListener('wheel', e => { e.preventDefault(); $('#slist').scrollBy({ top: e.deltaY }); }, { passive: false });
     new ResizeObserver(() => listChanged()).observe(rail);
+    // Called out like the Dock: the pointer held on the list's coloured edge, within the list's row, for TL_DWELL_MS
+    // brings the rail out with its days round the pointer; once the pointer is off it (and not dragging), it goes
+    // TL_HIDE_MS later. The rail itself cannot be pointed at while hidden, so its own enter never fires first.
+    let dwell = 0, away = 0;
+    const show = on => {
+      const list = $('#sessions'); if (list.classList.contains('tlshow') === on) return;
+      list.classList.toggle('tlshow', on); swell(on);
+      if (on) drawTimeline();
+    };
+    document.addEventListener('pointermove', e => {
+      if ($('#sessions').classList.contains('tlshow')) {
+        if (tl.press || e.target.closest?.('#tline')) { clearTimeout(away); away = 0; }
+        else if (!away) away = setTimeout(() => { away = 0; if (!tl.press) show(false); }, TL_HIDE_MS);
+        return;
+      }
+      const r = rail.getBoundingClientRect();
+      if (!(e.clientX < TL_EDGE && e.clientY >= r.top && e.clientY <= r.bottom && rail.offsetParent)) { clearTimeout(dwell); dwell = 0; return; }
+      tl.py = e.clientY - r.top;
+      dwell ||= setTimeout(() => { dwell = 0; show(true); }, TL_DWELL_MS);
+    }, { passive: true });
   }
   // Work that outlives the turn, and the one state that is waiting on you — the card's four readings (2026-09-21).
   // A monitor or a background command runs on after the reply, so a *ready* card can still have something running;
@@ -3315,7 +3332,7 @@
       paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, [...v]])), tab: state.sessions.has(state.current) ? tabOf(state.sessions.get(state.current)) : null, tabs: state.sessions.has(state.current) ? tabKeys(state.sessions.get(state.current)) : [], pr: shownPr.url,
       split: splitNow(), stacked: stackNow(), focusG, halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
       strips: state.sessions.has(state.current) ? [0, 1].map(g => keysIn(state.sessions.get(state.current), g)) : [[], []],
-      timeline: { k: tl.k, want: tl.want, press: !!tl.press, runs: tl.runs.map(r => ({ g: r.g, day: r.day, n: r.n, i: r.i })) },
+      timeline: { k: tl.k, want: tl.want, press: !!tl.press, shown: $('#sessions').classList.contains('tlshow'), runs: tl.runs.map(r => ({ g: r.g, day: r.day, n: r.n, i: r.i })) },
       termId: curTerm().id, termSession: curTerm().sessionId, termExited: curTerm().exited }),
     session: id => { const s = state.sessions.get(id || state.current); return s ? JSON.parse(JSON.stringify(s)) : null; },
     motion: () => MOTION.map(m => ({ ...m })),   // the list's last moves: {id, kind: flip | enter | leave, at}

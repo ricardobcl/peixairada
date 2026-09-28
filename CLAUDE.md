@@ -280,9 +280,9 @@ refuses to run against the real directory for the same reason.
   else `DD-MM-YYYY` (`dayName()`, by `wordAt`). A day's line closes the cards *above* it, so the oldest day gets one at
   the bottom; the list is grouped first, so a day can come back and each run gets its own line.
   → `scripts/scenarios/day-separator.mjs`.
-* **The list's frame reads its geometry once** (2026-09-27): `listChanged(scrolled?)` runs once a frame —
-  `listGeom()` (every card's top and height, the window, the rail) first, then `drawEdges(g)`, `drawTimeline(g)` and,
-  after a scroll, `tlBubble(g)`. A read after a write is a layout each; keep the reads at the top. The pointer
+* **The list's frame reads its geometry once** (2026-09-27): `listChanged()` runs once a frame — `listGeom()` (every
+  card's top and height, the window, the rail) first, then `drawEdges(g)` and `drawTimeline(g)`. A read after a write
+  is a layout each; keep the reads at the top. The pointer
   handlers call `tlGeom()` (the same function) themselves.
 * **The list's two ends count the cards out of sight**: `#sup` / `#sdown` (`.sedge`), over the list's grid cell (so
   `#slist` has a definite `grid-column`), a pill on a fog of `--bg`; a card is out of sight when its *middle* is past
@@ -290,17 +290,21 @@ refuses to run against the real directory for the same reason.
   asking, amber when clauding. A click scrolls a screenful. Redrawn on scroll, after every render, on the list's
   `ResizeObserver` and from `applyCards`. An end that is off keeps its words while it fades.
   → `scripts/scenarios/list-ends.mjs`.
-* **The timeline is the list's scrollbar, with the days on it**: `#tline`, the first of `#sessions`' two columns, row
-  2 only; the native scrollbar is hidden while it shows, `display: none` on the rail of squares. **At rest it is the
-  thumb alone**: 12 px wide against the list's coloured edge (`TL_W`), the cards 8 px on, an orange pill (`--spend`),
-  never under `TL_MIN`, wider under the pointer. **To scale**: the rail's inner height is the list's `scrollHeight`, a
+* **The timeline is the list's scrollbar, with the days on it, out of sight until called** (2026-09-28): `#tline`,
+  laid over the list's own cell (`justify-self: start`, row 2), `display: none` on the rail of squares; the native
+  scrollbar is hidden. **Hidden** (`visibility`, which its labels' own `pointer-events` cannot undo), the cards have the
+  whole width — flush against the list's coloured edge. **The pointer held on that edge** (x under `TL_EDGE`, within
+  the list's row) for `TL_DWELL_MS` calls it out, swollen round the pointer (`#sessions.tlshow`, `show()`, a document
+  `pointermove`); off it and not dragging, it goes `TL_HIDE_MS` later. `peix.state().timeline.shown`. **Shown, the
+  thumb**: 12 px wide (`TL_W`), an orange pill (`--spend`), never under `TL_MIN`, wider under the pointer. **To scale**: the rail's inner height is the list's `scrollHeight`, a
   label is where its run starts, the thumb is the window. A run (`tl.runs`, built in `renderSessionList`, none under a
   query) is one day *and* one state group in a row. **The Dock's swell is a fisheye** (`tlWarp`, Sarkar–Brown,
   radius `TL_R`) around the pointer, which stays a fixed point — so a drag reads the list's position off the pointer
   (`tlScrub`, holding the thumb where it was grabbed). Every day's label comes out, the nearest largest (`TL_MAX`),
   overlaps culled nearest-first; a pane of glass goes over the list (`.tl-glass`, `#sessions.tlon`). The swell is by
   the clock (`tlAnimate`, `tl.k` linear, `tl.K` eased; `REDUCED` jumps). A label clicked scrolls its run under the top
-  pill; a wheel over the rail scrolls the list; scrolling elsewhere shows the top run beside the thumb (`tlBubble`).
+  pill; a wheel over the rail scrolls the list. (The day beside the thumb while the list scrolled elsewhere went with
+  the rail going out of sight.)
   `peix.state().timeline` has `k` and the runs. **What counts as the rail is `.tl-catch`**: from x = 0 to the cards'
   edge (`TL_CATCH`) and, while the days are out, as far right as a label has reached plus 28 px (`tl.reach`). A press
   there on no label is a press on the label ringed `.near`; a press on the thumb *as drawn* holds it where grabbed.
@@ -590,7 +594,8 @@ refuses to run against the real directory for the same reason.
   because the card is its own stacking context.
 * `.shead { min-width: 0 }` and a fixed `flex-basis` on `.shead h2`; PR chips are direct children of the header.
 * **Every grid row in the chat column is placed by hand** — `#chat`'s, each half's `.ptabs` / `.gbody`, and
-  `#sessions`' (the rail hides `#filters`), whose *columns* are placed too since the timeline. A hidden block is
+  `#sessions`' (the rail hides `#filters`), whose *column* is placed too — the timeline, the glass and the ends lie over
+  the list's cell. A hidden block is
   `display:none`, which takes it out of auto-placement and slides its siblings up a row; a body that lands in an
   `auto` row sizes itself to the terminal it holds. A new block means placing it too.
 * **A terminal that grows has to pull its scrollback back down** (`lib/refit.mjs`, and the page's own copy in

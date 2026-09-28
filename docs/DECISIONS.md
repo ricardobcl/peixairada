@@ -29,6 +29,13 @@ be pushed all the way to the left, to use all real-estate".
   after the notch and the chips' fold), the first row only, what stands on it in the dark theme's inks. **"The
   separator" read as the bar between the project and the title**, the header's one separator: gone, its 2 px span
   kept as the colour square's place. If the words meant something else, the bar is one CSS line to put back.
+* **The timeline is out of sight until called**: the pointer held on the list's coloured edge — the window's own edge
+  when filled — for a second (the fill's menu bar's time; the Dock is on the right on this Mac, so the left edge is
+  free) brings it out over the cards, swollen round the pointer; half a second after the pointer leaves it, it goes.
+  "All the way to the right" in the ask read as the left: the timeline is on the left, the Dock takes the right. The
+  rail no longer has a column: the cards run from the coloured edge, 20 px wider. **The scroll bubble went** — the day
+  beside the thumb while the list scrolled under a hand elsewhere — since a rail shown only under the hand never saw
+  that scroll.
 
 ## Decisions of 2026-09-28, late night, later still — the tag where the F is, the reason in the header, your word answers
 
