@@ -106,7 +106,9 @@ refuses to run against the real directory for the same reason.
 * **A PR you wrote or reviewed has a turn** (2026-09-28): the same call asks `PR_FIELDS` and `viewer`, and `prTurn` —
   pure — says `you` when someone else's PR has a head that is not the commit your latest review was on (not after you
   approved), someone else wrote after your last word (a reply in a thread is a review), or your review is asked for
-  again; on your own PR, when someone else reviewed, commented or pushed after your last word. Bots are nobody. **A
+  again; on your own PR, when someone else reviewed, commented or pushed after your last word. Bots are nobody. **Any
+  word of yours answers every reason before it** (a comment after the push, after the request), and only a reason that
+  *came* is a move (`newsIn`: a new head, a newer word of theirs, a new request) — an answer never is. **A
   move un-ticks every chat that mentions the PR** (`isDone`: the tick against `turn.movedAt` too) and sends one alert,
   `kind: 'pr'` with a `heading`, to the chat touched last (`notifyPr`) — on the way from `them`, or when a ticked chat
   comes back. `movedAt` is `prTurns` in the state file (`moveTurn`): GitHub's time for a PR's first look, the board's
@@ -228,9 +230,11 @@ refuses to run against the real directory for the same reason.
 * **A PR at your move is a filled chip** (2026-09-28): `data-turn` (`turnOf(pr)`: `you` · `them` · empty) on `.cpr`,
   `.hpr` and `.prrow`; `you` fills the chip with `--prc` in the ground's ink, and `+n` too when it folds one away. The
   tooltips say why (`turnTip`), the row says it in `.why`. The card's eight chips always include every one at your
-  move (`cardPrs`), in the chat's order. **The card says it in a line** (`moveHtml`, after the question's, at every
-  size, not on a ticked card): a tag filled in the accent — *your move*, with `ICON.pr` — then the newest move's PR and
-  reason in the card's ink, `+n PRs` for the rest; the chat also ranks by the move (see the order below).
+  move (`cardPrs`), in the chat's order. **The card wears a tag** (`moveTag`, `.ymove`: *your move* with `ICON.pr`,
+  filled in the accent) **last in its top row** — the F's place, the F moving left of it —, at every size, not on a
+  ticked card, the reasons in its tooltip; **the chat header says why** (`headMove`, `.hmove`: the tag — in `--rink`
+  on a tinted header — the newest move's PR and reason, `+n`) just before the PR chips. The chat also ranks by the move
+  (see the order below).
 * **A card comes in three sizes, the cog's slider** (`#cardsSize`, `prefs.cards`): *large* — your last prompt and
   Claude's last reply —, *medium* the last word only, *compact* neither. `cardHtml` always writes both `.snip`s and
   marks the older one `.older` (Claude's reply is the last word when `lastReplyAt ≥ lastUserAt`); CSS hides by

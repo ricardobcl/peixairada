@@ -4,6 +4,30 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-28.
 
+## Decisions of 2026-09-28, late night, later still — the tag where the F is, the reason in the header, your word answers
+
+Ricardo, on the card's line: "'your move' should be where fable is (when fable is there, put fable left)"; "'your
+move' seems stable? just replied to a chat, left a comment and still says 'your move' (it's the latest
+notifier chat)"; "'your move' reason/text should live up on the chat header (to the right)".
+
+* **The card wears a tag, not a line**: `.ymove`, last in the top row — after the ✓ and the F — at every size, its
+  tooltip the reasons. **The reason moved to the chat header** (`headMove`): the tag, the newest move's `repo#n` and why,
+  `+n` for the others, right of the title and just before the PR chips; the tag in `--rink` on a tinted header, where
+  the accent could be the header's own colour.
+* **Why it stayed "your move"**: `notifier#137` was *pushed since your review · your review asked for
+  again*; Ricardo's comment at 21:07 was a conversation comment, not a review, so the review's commit was still behind
+  the head and he was still in `reviewRequests` — both reasons stood. Worse, the comment emptied the "newest word of
+  theirs" part of the move's key, and a changed key counted as a new move: the chat was stamped as moved *by his own
+  reply* and jumped to the top.
+* **Now any word of yours answers every reason before it**: a push counts only if its commit is newer than your last
+  word since the review (a comment made while an older commit sat unpushed still misses it — the commit's date is all
+  GitHub keeps), a re-request only if it came after your last word (the timeline's last 10 requests now, not 5). **And
+  only news is a move** (`newsIn`): a new head, a newer word of theirs, a new request; a reason answered keeps the
+  move's time. On the real board, the fixed rule puts `#137` at *1 comment from ana* — a reply at 21:13, after
+  Ricardo's — which is right.
+  → `test/pr-turn.test.mjs`, `scripts/scenarios/pr-turn.mjs` (a comment of yours hands the PR back, no alert, the chat
+  falls back to its place).
+
 ## Decisions of 2026-09-28, late night, later — a PR come round to you, on the card itself
 
 Ricardo, on the first cut: "what is exactly the visual cue for chats/PRs that need my attention?" — the answer was the

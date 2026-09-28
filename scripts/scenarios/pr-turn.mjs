@@ -4,9 +4,10 @@
 // tooltip; ticked, the chat is done; the author pushing un-ticks it by the PR's own watch — the chat is not touched —,
 // fills the chip, and sends one alert with the server's heading, a banner in a browser; the header's chip is filled and
 // its row says why; a second tick holds, and holds through a restart (the board remembers when it learnt of the move);
-// your next review hands the PR back and the chip empties. And the card itself (the same night, Ricardo: "what is
-// exactly the visual cue?" — the chip was all): a line saying whose move and why, at every card size, and the chat
-// ranked by the move — above a newer chat, under today's line.
+// your next word hands the PR back and the chip empties — a comment is enough, and is no move of its own (the same
+// night: "just replied … left a comment and still says your move"). And the card itself (Ricardo: "what is exactly the
+// visual cue?" — the chip was all): a *your move* tag last in its top row, at every card size, the reason in the
+// chat header, and the chat ranked by the move — above a newer chat, under today's line.
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -42,7 +43,7 @@ export default async function (ctx) {
     const chip = n => `${card}?.querySelector('.cpr[data-url$="/pull/${n}"]')`;
     const look = () => ctx.evaluate(`JSON.stringify({ done: window.peix.session('${two.id}').done, cls: ${card}?.className.trim().split(/\\s+/),
       turn12: ${chip(12)}?.dataset.turn, turn13: ${chip(13)}?.dataset.turn, tip12: ${chip(12)}?.title, bg12: ${chip(12)} && getComputedStyle(${chip(12)}).backgroundColor,
-      badge: ${card}?.querySelector('.badge')?.textContent || null, move: ${card}?.querySelector('.state.prmove .q')?.textContent ?? null,
+      badge: ${card}?.querySelector('.badge')?.textContent || null, move: ${card}?.querySelector('.top .ymove')?.textContent ?? null, last: ${card}?.querySelector('.top')?.lastElementChild?.className ?? null,
       rank: [...document.querySelectorAll('#slist > .card')].findIndex(c => c.dataset.id === '${two.id}') })`).then(JSON.parse);
     const tick = done => ctx.server.post(`api/sessions/${two.id}/done`, { done });
 
@@ -55,13 +56,16 @@ export default async function (ctx) {
     ctx.assert.equal(out.waiting.rank, 1, 'the fixture\'s other chat, a second newer, ranks above it');
 
     // a browser that has granted notifications, faked so the banners are counted; a second listener sees every alert
-    await ctx.evaluate(`(() => {
-      window.__banners = []; window.__alerts = [];
-      window.Notification = class { static permission = 'granted'; static requestPermission() { return Promise.resolve('granted'); }
-        constructor(title, o) { window.__banners.push({ title, body: o?.body || '' }); } close() {} };
-      window.__es = new EventSource('/events'); window.__es.addEventListener('alert', e => window.__alerts.push(JSON.parse(e.data)));
-    })()`);
-    await ctx.waitFor(`window.__es.readyState === 1`, { what: 'the second listener' });
+    const listen = async () => {
+      await ctx.evaluate(`(() => {
+        window.__banners = []; window.__alerts = [];
+        window.Notification = class { static permission = 'granted'; static requestPermission() { return Promise.resolve('granted'); }
+          constructor(title, o) { window.__banners.push({ title, body: o?.body || '' }); } close() {} };
+        window.__es = new EventSource('/events'); window.__es.addEventListener('alert', e => window.__alerts.push(JSON.parse(e.data)));
+      })()`);
+      await ctx.waitFor(`window.__es.readyState === 1`, { what: 'the second listener' });
+    };
+    await listen();
 
     await tick(true);
     await ctx.waitFor(`window.peix.session('${two.id}').done === true`, { what: 'the chat ticked done' });
@@ -83,13 +87,14 @@ export default async function (ctx) {
     ctx.assert.deepEqual([out.alerts[0].kind, out.alerts[0].heading, out.alerts[0].snippet, out.alerts[0].sessionId], ['pr', 'Your move · repo-a#12', 'pushed since your review', two.id]);
     ctx.assert.equal(out.banners[0]?.title, 'Your move · repo-a#12', 'the banner wears the server\'s heading');
     ctx.assert.equal(out.moved.badge, '1', 'and the card counts it unread');
-    ctx.assert.equal(out.moved.move, '#12 · pushed since your review', 'the card says whose move and why');
-    ctx.assert.equal(await ctx.evaluate(`${card}.querySelector('.state.prmove .tag').textContent`), 'your move');
+    ctx.assert.equal(out.moved.move, 'your move', 'the card wears the tag…');
+    ctx.assert.equal(out.moved.last, 'ymove', '…last in its top row, where the F would be');
+    ctx.assert.match(await ctx.evaluate(`${card}.querySelector('.top .ymove').title`), /repo-a#12 — your move: pushed since your review/, 'its tooltip says why');
     ctx.assert.equal(out.moved.rank, 0, 'the move is the chat\'s newest word: it tops the list');
     ctx.assert.equal(await ctx.evaluate(`${card}.previousElementSibling?.matches('.gsep') ? null : 'first'`), 'first', 'nothing above it');
     out.compact = await ctx.evaluate(`(() => { const l = document.querySelector('#sessions'), was = l.dataset.cards; l.dataset.cards = 'compact';
-      const shown = !!${card}.querySelector('.state.prmove').getClientRects().length; l.dataset.cards = was; return shown; })()`);
-    ctx.assert.equal(out.compact, true, 'the line shows on a compact card too');
+      const shown = !!${card}.querySelector('.top .ymove').getClientRects().length; l.dataset.cards = was; return shown; })()`);
+    ctx.assert.equal(out.compact, true, 'the tag shows on a compact card too');
     const list = () => ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: 330 }))(document.querySelector('#slist').getBoundingClientRect())`);
     await ctx.shot('1-card', await list());
     await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] }); await ctx.settle();
@@ -102,9 +107,12 @@ export default async function (ctx) {
     await ctx.waitFor(`document.querySelector('#prlist .prrow[data-turn="you"] .why')`, { what: 'the PR row saying why' });
     await ctx.settle();
     out.head = await ctx.evaluate(`JSON.stringify({ chip: document.querySelector('#prToggle .hpr[data-turn="you"]')?.textContent,
+      move: document.querySelector('#shead .hmove .q')?.textContent, moveNext: document.querySelector('#shead .hmove')?.nextElementSibling?.id,
       bg: getComputedStyle(document.querySelector('#prToggle .hpr[data-turn="you"]')).backgroundImage,
       why: document.querySelector('#prlist .prrow[data-turn="you"] .why').textContent })`).then(JSON.parse);
     ctx.assert.equal(out.head.chip, '#12');
+    ctx.assert.equal(out.head.move, 'repo-a#12 · pushed since your review', 'the header says whose move and why…');
+    ctx.assert.equal(out.head.moveNext, 'prToggle', '…just before the PR chips');
     ctx.assert.equal(out.head.bg, 'none', 'the header\'s chip drops its wash for the fill');
     ctx.assert.equal(out.head.why, 'your move · pushed since your review');
     await ctx.shot('2-header', await ctx.evaluate(`(r => ({ x: r.left, y: 0, width: r.width, height: 110 }))(document.querySelector('#chat').getBoundingClientRect())`));
@@ -115,7 +123,7 @@ export default async function (ctx) {
     await ctx.sleep(2500);
     const again = await look();
     ctx.assert.equal(again.done, true, 'the move already seen does not un-tick it again');
-    ctx.assert.equal(again.move, null, 'ticked, the card has no line; the chip stays filled');
+    ctx.assert.equal(again.move, null, 'ticked, the card has no tag; the chip stays filled');
     ctx.assert.equal(again.turn12, 'you');
     await ctx.server.restart();
     await ctx.send('Page.reload'); await ctx.sleep(800);
@@ -123,13 +131,20 @@ export default async function (ctx) {
     await ctx.sleep(1500);
     ctx.assert.equal((await look()).done, true, 'after a restart the tick still holds');
 
-    // my next review, on the new head: back with ana, the chip empties, the chat stays done
-    write({ headRefOid: 'B', pushes: { nodes: [commit(ago(1), 'ana')] }, viewerLatestReview: { submittedAt: ago(0), commit: { oid: 'B' } },
-      reviews: { nodes: [{ author: user('me'), state: 'APPROVED', submittedAt: ago(0) }] } });
-    await ctx.waitFor(`${chip(12)}?.dataset.turn === 'them'`, { timeout: 10_000, what: 'the PR handed back' });
+    // a comment of mine — no review — answers the push: back with ana, the chip empties, and it is no move of its own
+    const moved = await ctx.evaluate(`window.peix.session('${two.id}').prs.find(p => p.url.endsWith('/pull/12')).turn.movedAt`);
+    await listen();
+    await tick(false);
+    write({ headRefOid: 'B', pushes: { nodes: [commit(ago(120), 'ana'), commit(ago(1), 'ana')] }, comments: { nodes: [{ author: user('me'), createdAt: ago(0) }] } });
+    await ctx.waitFor(`${chip(12)}?.dataset.turn === 'them'`, { timeout: 10_000, what: 'the PR handed back by a comment' });
+    await ctx.sleep(1500);
     out.back = await look();
-    ctx.assert.equal(out.back.done, true, 'still done');
     ctx.assert.equal(out.back.bg12, 'rgba(0, 0, 0, 0)', 'an outlined chip again');
+    ctx.assert.match(out.back.tip12, /waiting on ana/);
+    ctx.assert.equal(out.back.move, null, 'no tag');
+    ctx.assert.equal(out.back.rank, 1, 'the chat falls back to where its own words put it');
+    ctx.assert.equal(await ctx.evaluate(`window.__alerts.length`), 0, 'and no alert for it');
+    ctx.assert.ok(moved, 'the move had a time');
     return out;
   } finally {
     rmSync(dir, { recursive: true, force: true });
