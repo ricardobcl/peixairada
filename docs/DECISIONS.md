@@ -4,6 +4,22 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-28.
 
+## Decisions of 2026-09-29, small hours — no edge at rest, the marks beside the title, the header black from the name, one row atop the list, no grey borders
+
+Ricardo, six at once: "when a card is not select, it has this gray border — make it the same color as the background,
+so it's invisible"; "maybe put fable icon and time on the 2nd row, next to the summary, since it has more room and the
+text wraps anyway"; "top chat, the summary should have the black background, only the project should have the solid
+project color"; "when working with a notch, use the left for the card summary if it has space, otherwise use the right
+of the notch"; "I want to combine the header with app icon with the footer with cog and credits into a single line —
+come up with ideas to compact it (remove compact button, since the hotkey is enough; make the search small and only
+expand when selected; compact view of credits, etc.)"; "in general, there seems to be these gray borders around
+buttons and such — remove them and prefer solid background".
+
+* **A card at rest has no edge**: transparent, with the wash drawn from the border box so nothing shows where the
+  edge was; the hover, the open card, the clauding ring and the question's blink bring their colour in as before.
+* **The age and the F moved beside the title** (the "summary" of the ask): title · chips · time · F · unread count,
+  on the title's first line. The top row keeps the project, the ✓ and the PR chips.
+
 ## Decisions of 2026-09-28, towards midnight — the card's line back, solid chips, the header in black, a hidden timeline
 
 Ricardo, five at once: "the 'your move' with the message below on the card was cool, put it back and move the PR's to

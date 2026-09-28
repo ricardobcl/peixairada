@@ -4,8 +4,8 @@
 // Opus you wrote to earlier — the reply came a minute later —, one you spoke last on, most recently of all. What is
 // checked: the order goes by the last word whoever said it — Claude's reply lifts a card above one you prompted
 // after its prompt, which your last touch alone never did — and ⌥⌘K and the day lines agree; the F marks the Fable
-// card and no other, and names the model on hover; the time stands in the top row left of the ✓ (2026-09-27, later),
-// and shows only under the pointer, with nothing in the row moving (later still).
+// card and no other, and names the model on hover; the time shows only under the pointer, with nothing moving (later
+// still); since 2026-09-28 the time and the F stand beside the title — time · F — and the ✓ ends the top row.
 import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -52,20 +52,23 @@ export default async function (ctx) {
   // ---- the F on the Fable card, and on no other ----
   out.fable = await ctx.evaluate(`[...document.querySelectorAll('#slist > .card')].filter(c => c.querySelector('.fable')).map(c => [c.querySelector('.title').textContent, c.querySelector('.fable').title])`);
   ctx.assert.deepEqual(out.fable, [['Fable replied last', 'on Fable — claude-fable-5-1, the model Claude last answered with']], 'one mark, naming the model');
-  ctx.assert.ok(await ctx.evaluate(`${card('Fable replied last')}.querySelector('.top .fable svg')`), 'an inline SVG in the top row');
-  // the ✓ before the F, both ending the top row; with no F the ✓ stands where the F would (Ricardo, the same day)
-  const ends = t => ctx.evaluate(`(c => { const r = e => e && Math.round(e.getBoundingClientRect().right), x = e => e && Math.round(e.getBoundingClientRect().left), edge = r(c) - 12; const a = c.querySelector('.top .act'), f = c.querySelector('.top .fable');
-    return { edge, act: r(a), actLeft: x(a), fable: r(f), fableLeft: x(f), y: Math.round(a.getBoundingClientRect().top) - Math.round(c.querySelector('.repo').getBoundingClientRect().top), inTrow: !!c.querySelector('.trow .act') }; })(${card(t)})`);
+  ctx.assert.ok(await ctx.evaluate(`${card('Fable replied last')}.querySelector('.trow .fable svg')`), 'an inline SVG beside the title');
+  // the ✓ ends the top row, at the project name's height; the F ends the title row (2026-09-28)
+  const ends = t => ctx.evaluate(`(c => { const r = e => e && Math.round(e.getBoundingClientRect().right), edge = r(c) - 12; const a = c.querySelector('.top .act'), f = c.querySelector('.trow .fable');
+    return { edge, act: r(a), fable: r(f), y: Math.round(a.getBoundingClientRect().top) - Math.round(c.querySelector('.repo').getBoundingClientRect().top), fy: f && Math.round(f.getBoundingClientRect().top - c.querySelector('.title').getBoundingClientRect().top), inTrow: !!c.querySelector('.trow .act') }; })(${card(t)})`);
   out.ends = { fable: await ends('Fable replied last'), opus: await ends('Opus, you wrote after it') };
-  ctx.assert.equal(out.ends.fable.fable, out.ends.fable.edge, 'the F ends the row, at the padding');
-  ctx.assert.ok(out.ends.fable.act < out.ends.fable.fableLeft, 'the ✓ before the F');
+  ctx.assert.ok(out.ends.fable.fable <= out.ends.fable.edge, 'the F in the title row, inside the padding');
+  ctx.assert.ok(Math.abs(out.ends.fable.fy) <= 2, 'on the title\'s first line');
   ctx.assert.equal(out.ends.opus.fable, null, 'no F on the Opus card');
-  ctx.assert.equal(out.ends.opus.act, out.ends.opus.edge, 'the ✓ takes the F\'s place');
+  ctx.assert.deepEqual([out.ends.opus.act, out.ends.fable.act], [out.ends.opus.edge, out.ends.fable.edge], 'the ✓ ends the top row');
   ctx.assert.ok(Math.abs(out.ends.opus.y) <= 2 && !out.ends.opus.inTrow, 'at the project name\'s height, not in the title row');
 
-  // ---- the time: in the top row, left of the ✓ (2026-09-27, later), and only under the pointer (later still) ----
+  // ---- the time: beside the title, left of the F (2026-09-28), and only under the pointer (2026-09-27) ----
   const t = 'Opus, you wrote after it';
   await ctx.settle();   // the fixture's cards slid in: a rectangle read mid-slide put the pointer on the card above (2026-09-27, night)
+  // the fixture's replies land after the board has loaded, so each card gets an unread count — beside the time since
+  // 2026-09-28, so it has to be there before the time is measured
+  await ctx.waitFor(`${card(t)}.querySelector('.trow .badge')`, { what: 'the unread count beside the time' });
   out.rest = await rects(ctx, t);
   ctx.assert.equal(out.rest.op, '0', 'invisible at rest');
   ctx.assert.equal(out.rest.text, '2h', 'when anything last happened — the reply');
@@ -80,12 +83,12 @@ export default async function (ctx) {
   await ctx.shot('hover', { x: 0, y: 40, width: 400, height: 460 });
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1000, y: 500 });
   const place = title => ctx.evaluate(`JSON.stringify((c => { const r = q => { const e = c.querySelector(q), b = e && e.getBoundingClientRect(); return b && { l: Math.round(b.left), r: Math.round(b.right), y: Math.round(b.top + b.height / 2) }; };
-    return { time: r('.top .time'), inTrow: !!c.querySelector('.trow .time'), act: r('.top .act'), fable: r('.top .fable') }; })(${card(title)}))`).then(JSON.parse);
+    return { time: r('.trow .time'), inTop: !!c.querySelector('.top .time'), title: r('.title'), fable: r('.trow .fable'), badge: r('.trow .badge') }; })(${card(title)}))`).then(JSON.parse);
   out.place = { opus: await place(t), fable: await place('Fable replied last') };
-  ctx.assert.ok(out.place.opus.time && !out.place.opus.inTrow, 'in the top row, not the title row');
-  ctx.assert.ok(out.place.opus.act && out.place.opus.time.r <= out.place.opus.act.l, `left of the ✓ (time ends ${out.place.opus.time.r}, ✓ starts ${out.place.opus.act?.l})`);
-  ctx.assert.ok(Math.abs(out.place.opus.time.y - out.place.opus.act.y) <= 2, 'on the ✓\'s line');
-  ctx.assert.ok(out.place.fable.time.r <= out.place.fable.act.l && out.place.fable.act.r <= out.place.fable.fable.l, 'time · ✓ · F, in that order, on the Fable card');
+  ctx.assert.ok(out.place.opus.time && !out.place.opus.inTop, 'beside the title, not in the top row');
+  ctx.assert.ok(out.place.opus.title.r <= out.place.opus.time.l, 'right of the title');
+  ctx.assert.ok(out.place.opus.time.r <= out.place.opus.badge.l, 'before the unread count');
+  ctx.assert.ok(out.place.fable.time.r <= out.place.fable.fable.l && out.place.fable.fable.r <= out.place.fable.badge.l, 'time · F · count, in that order, on the Fable card');
   await ctx.shot('rest', { x: 0, y: 40, width: 400, height: 460 });
   return out;
 }

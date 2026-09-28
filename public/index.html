@@ -402,9 +402,12 @@
   main.scompact .sedge .w { display: none; }   /* the rail has room for the arrow and the number */
   /* --repo is reset here on purpose: custom properties inherit, and the chat list sets its own for its edge (the
      black on ALL) — without the reset every colourless card wore that. The card's inline --repo still wins. */
-  .card { --repo: initial; background: var(--panel); border: 2px solid var(--line); border-radius: 0; padding: 8px 10px 7px;   /* square since 2026-09-26 (Ricardo: "remove the round corners from cards"); 10 px before */ cursor: pointer; min-width: 0; overflow: hidden; position: relative; isolation: isolate; }
+  .card { --repo: initial; background: var(--panel); border: 2px solid transparent; border-radius: 0; padding: 8px 10px 7px;   /* square since 2026-09-26 (Ricardo: "remove the round corners from cards"); 10 px before */ cursor: pointer; min-width: 0; overflow: hidden; position: relative; isolation: isolate; }
   /* Ready and done cards wear the wash and a plain edge (2026-09-20, Ricardo: "remove the border highlight for the
-     ready cards"); the colour stays on the clauding card's edge, under its ring, and comes back on hover and on the open card. */
+     ready cards"); the colour stays on the clauding card's edge, under its ring, and comes back on hover and on the open card.
+     The plain edge is no edge at all since 2026-09-28 (Ricardo: "when a card is not select, it has this gray border —
+     make it the same color as the background, so it's invisible"): transparent, the wash running under it
+     (background-origin, below), so an edge that comes eases in from the card's own colour. */
   .card.working { border-color: color-mix(in srgb, var(--repo, var(--nocolor)) 85%, var(--line)); }
   /* a VS Code chat: the same wash as its pane */
   /* The wash, in the project's colour — since 2026-09-26 nearly the hover's tint (Ricardo: "the brightness of cards
@@ -418,7 +421,7 @@
      inherits the background and follows. */
   @property --tint { syntax: '<percentage>'; inherits: false; initial-value: 37%; }
   @property --slope { syntax: '<percentage>'; inherits: false; initial-value: 8%; }
-  .card { background: linear-gradient(165deg, color-mix(in srgb, var(--repo, var(--nocolor)) calc(var(--tint) + var(--slope)), var(--panel)), color-mix(in srgb, var(--repo, var(--nocolor)) var(--tint), var(--panel)));
+  .card { background: linear-gradient(165deg, color-mix(in srgb, var(--repo, var(--nocolor)) calc(var(--tint) + var(--slope)), var(--panel)), color-mix(in srgb, var(--repo, var(--nocolor)) var(--tint), var(--panel))); background-origin: border-box;
     outline: 1px solid transparent; outline-offset: 0;
     transition: --tint .2s, --slope .2s, border-color .2s, outline-color .2s, outline-width .2s, outline-offset .2s, opacity .2s; }
   .card:hover { transition-duration: .1s; }
@@ -538,12 +541,14 @@
      changes no card's height. Only under the pointer (2026-09-27, later still, Ricardo: "the last update time on the
      card should only show on hover"): transparent at rest but keeping its room, so nothing in the row moves when it
      comes — the one mark there that is a reading, not a state. */
-  .card .top .time { flex: none; font-size: 10px; line-height: 18px; color: inherit; opacity: 0; transition: opacity .12s; }
-  .card:hover .top .time { opacity: .8; }
-  /* on Fable (2026-09-27): a stylized F with a spark, last in the top row after the ✓, in the accent — the card's own ink on
-     the solid tint. Both are 18 px tall there, the row's own height, so a row that holds only the marks is no taller. */
-  .card .top .fable { color: var(--accent); flex: none; display: inline-flex; align-items: center; height: 18px; }
-  .card .top .fable .ic { width: 15px; height: 15px; }
+  /* The age and the F moved beside the title on 2026-09-28 (Ricardo: "maybe put fable icon and time on the 2nd row,
+     next to the summary, since it has more room and the text wraps anyway"): after it and its chips, before the unread
+     count, on its first line — 18 px, the title's line. */
+  .card .trow .time { flex: none; font-size: 10px; line-height: 18px; color: inherit; opacity: 0; transition: opacity .12s; }
+  .card:hover .trow .time { opacity: .8; }
+  /* on Fable (2026-09-27): a stylized F with a spark, in the accent — the card's own ink on the solid tint */
+  .card .trow .fable { color: var(--accent); flex: none; display: inline-flex; align-items: center; height: 18px; }
+  .card .trow .fable .ic { width: 15px; height: 15px; }
   .card:is(.active, :hover, .qsel) .fable { color: inherit; }
   .card .top .act { height: 18px; }
   .card .title { margin-top: 4px; font-size: 13.5px; font-weight: 500; line-height: 1.35; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
@@ -939,7 +944,7 @@
   .sysline.day { margin: 14px auto 12px; }
   .sysline.day b { font: 600 11px/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: var(--muted); }   /* the list's day line, in the transcript */
   /* Times and ages in tabular figures (2026-09-27, night), so a digit changing under them moves nothing beside it. */
-  .msg .who, .card .top .time, .pkrow .t, .prrow .meta, #hmenu .hmi .k, #hmenu .hmi [data-at] { font-variant-numeric: tabular-nums; }
+  .msg .who, .card .trow .time, .pkrow .t, .prrow .meta, #hmenu .hmi .k, #hmenu .hmi [data-at] { font-variant-numeric: tabular-nums; }
   /* Presence at the foot of the transcript (2026-09-27, night): while the open chat is clauding, Claude's mark (the
      divider's sprite) and the word under the last message — a reply on its way is seen where you are reading, not
      only on the card — with the sub-agents' count when there is one; while it is asking, the question, in the card's
@@ -2176,10 +2181,8 @@
     const older = who => s.lastPrompt && showReply && (who === 'you') === replyLast ? ' older' : '';
     const act = s.done ? `<button class="act" data-act="reopen" title="Untick — bring it back">↩</button>`
       : canTick(s) ? `<button class="act" data-act="done" title="Tick as done (persisted; comes back on new activity)">✓</button>` : '';
-    // The F for Fable (2026-09-27) and the ✓ / ↩ end the top row — the project name's height —, the tick first and the
-    // F last, so the tick takes the F's place when there is none (Ricardo, the same day: "first done icon, then F for
-    // fable. when fable is not there, move the done icon to the right where F would be"). Either brings the row into
-    // being on a card that had none — a folder project's, where the name is not shown.
+    // The ✓ / ↩ and the PR chips end the top row — the project name's height; the F for Fable (2026-09-27) and the
+    // age stand beside the title since 2026-09-28, where there is more room.
     const fable = onFable(s) ? `<span class="fable" title="on Fable — ${esc(s.model)}, the model Claude last answered with">${ICON.fable}</span>` : '';
     const tip = titleTip(s);
     const showRepo = p.key === ALL || p.custom;
@@ -2189,8 +2192,8 @@
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip">${entryLabel(s)}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${s.id}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
-      <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${act}${fable}${cardPrs(s)}</div>
-      <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${un ? `<span class="badge">${un}</span>` : ''}</div>
+      <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}${act}${cardPrs(s)}</div>
+      <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge">${un}</span>` : ''}</div>
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${esc(s.lastReply)}</div>` : ''}
       ${asking(s) ? askHtml(s) : ''}${moveHtml(s)}

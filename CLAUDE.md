@@ -246,18 +246,17 @@ refuses to run against the real directory for the same reason.
   marks the older one `.older` (Claude's reply is the last word when `lastReplyAt ≥ lastUserAt`); CSS hides by
   `#sessions[data-cards]`, so the slider re-renders nothing. The question line (`askHtml`) shows at every size.
   → `scripts/scenarios/card-sizes.mjs`.
-* **A chat on Fable wears an F**: `onFable(s)` is `/fable/i` on `s.model`; the mark is `ICON.fable`, **in the top row
-  after the ✓ / ↩** (`.top .fable`) and before the PR chips, in `--accent`. The tick comes first so it takes the F's place when there
-  is none; either brings the `.top` row into being on a folder project's card, both 18 px tall. The rail does not
-  show it.
-* **The card's age stands in the top row, left of the ✓, under the pointer only**: `.top .time`, 10 px, after the
-  row's spacer — the row's end reads time · tick · F · PRs. `opacity` 0 → .8 on `.card:hover`, keeping its room, so nothing
-  moves. Every card has the top row, 18 px at least. The tooltip (last activity · you last wrote · Claude last replied)
-  is on it. → `scripts/scenarios/card-marks.mjs`.
+* **A chat on Fable wears an F**: `onFable(s)` is `/fable/i` on `s.model`; the mark is `ICON.fable`, **beside the
+  title** (`.trow .fable`, since 2026-09-28), in `--accent`. The rail does not show it.
+* **The card's age stands beside the title, under the pointer only** (`.trow .time`, 10 px, since 2026-09-28): the
+  title row reads title · chips · time · F · unread count, on the title's first line; the top row ends ✓ · PRs.
+  `opacity` 0 → .8 on `.card:hover`, keeping its room, so nothing moves. Every card has the top row, 18 px at least.
+  The tooltip (last activity · you last wrote · Claude last replied) is on it. → `scripts/scenarios/card-marks.mjs`.
 * **Cards are square**: `.card` and the ring its `::before` draws at `border-radius: 0`. The PR chips keep their 4 px.
 * **The open chat's card and a hovered one are a solid tint** of its colour (`.card.active`, `.card:hover`, 65 %), the
-  rest a wash (45 % to 37 %) **under a plain edge**: only the clauding card, the hovered one and the open one wear the
-  colour on their border. A black card's wash stays lighter (28 % to 20 %). **ALL** (`key: 'all'`) is black in both
+  rest a wash (45 % to 37 %) **with no edge** (transparent since 2026-09-28, the wash running under it:
+  `background-origin: border-box`): only the clauding card, the hovered one and the open one wear the colour on their
+  border. A black card's wash stays lighter (28 % to 20 %). **ALL** (`key: 'all'`) is black in both
   themes — `BLACK`, through `projColor()` — and so is a folder the setup paints `#000000` (`acme` here). A card in that black is
   `.card.black`: its solid tint is the black itself and it borrows the dark theme's inks; `--ring` turns its clauding
   light white wherever the card under it is dark. **The open card bleeds into the splitter**: `main:not(.scompact)
