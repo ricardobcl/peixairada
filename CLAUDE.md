@@ -224,28 +224,30 @@ refuses to run against the real directory for the same reason.
   leave the title less than its repo name plus `TITLE_ROOM` (`TITLE_MIN` is the h2's flex-basis) — on every new header
   draw and on the header's `ResizeObserver`, which runs only when the width moved or under the housing;
   → `scripts/scenarios/header-prs-fit.mjs`), toggles `#prlist` under the header; `prefs.prsOpen`, the board's. The rows
-  are rendered folded too (`#prlist` hidden), so ⌥⌘G and the harness still read `#prlist .prrow`. On a tinted header
-  the chips sit on the panel, 20 px tall, edged in the state's colour at 85 % (`--prb`) on a wash of it (`--prc`;
-  `--prg` per theme). → `scripts/scenarios/header-prs.mjs`.
-* **A PR at your move is a filled chip** (2026-09-28): `data-turn` (`turnOf(pr)`: `you` · `them` · empty) on `.cpr`,
-  `.hpr` and `.prrow`; `you` fills the chip with `--prc` in the ground's ink, and `+n` too when it folds one away. The
-  tooltips say why (`turnTip`), the row says it in `.why`. The card's eight chips always include every one at your
-  move (`cardPrs`), in the chat's order. **The card wears a tag** (`moveTag`, `.ymove`: *your move* with `ICON.pr`,
-  filled in the accent) **last in its top row** — the F's place, the F moving left of it —, at every size, not on a
-  ticked card, the reasons in its tooltip; **the chat header says why** (`headMove`, `.hmove`: the tag — in `--rink`
-  on a tinted header — the newest move's PR and reason, `+n`) just before the PR chips. The chat also ranks by the move
-  (see the order below).
+  are rendered folded too (`#prlist` hidden), so ⌥⌘G and the harness still read `#prlist .prrow`. The header's chips
+  are 20 px tall. → `scripts/scenarios/header-prs.mjs`.
+* **Every PR chip GitHub has answered for is solid** (2026-09-28): `.cpr` and `.hpr` filled with `--prc`, its state's
+  colour, the ink the page's `--bg`; one whose state is not known yet stays an outline (the header's on a wash of
+  `--prg`).
+* **A PR at your move is said by name, not by its chip**: `data-turn` (`turnOf(pr)`: `you` · `them` · empty) on
+  `.cpr`, `.hpr` and `.prrow` and the tooltips (`turnTip`), but no look of its own. **The card has a line** (`moveHtml`,
+  after the question's, at every size, not on a ticked card): a tag filled in the accent (`.ymove`: `ICON.pr`, *your
+  move*), the newest move's `#n` and reason, `+n PRs`; **the chat header says it too** (`headMove`, `.hmove`, just
+  before the PR chips), and the PR row in `.why`. The chat also ranks by the move (see the order below).
+* **The card's PR chips end its top row** (`cardPrs`, `.top .tprs`, 2026-09-28): after the ✓ and the F, three in the
+  chat's order — every one at your move among them — and a dashed `+n` for the rest; a chip past the row's room wraps
+  onto an 18 px line's hidden second line, whole.
 * **A card comes in three sizes, the cog's slider** (`#cardsSize`, `prefs.cards`): *large* — your last prompt and
   Claude's last reply —, *medium* the last word only, *compact* neither. `cardHtml` always writes both `.snip`s and
   marks the older one `.older` (Claude's reply is the last word when `lastReplyAt ≥ lastUserAt`); CSS hides by
   `#sessions[data-cards]`, so the slider re-renders nothing. The question line (`askHtml`) shows at every size.
   → `scripts/scenarios/card-sizes.mjs`.
-* **A chat on Fable wears an F**: `onFable(s)` is `/fable/i` on `s.model`; the mark is `ICON.fable`, **last in the
-  top row, after the ✓ / ↩** (`.top .fable`), in `--accent`. The tick comes first so it takes the F's place when there
+* **A chat on Fable wears an F**: `onFable(s)` is `/fable/i` on `s.model`; the mark is `ICON.fable`, **in the top row
+  after the ✓ / ↩** (`.top .fable`) and before the PR chips, in `--accent`. The tick comes first so it takes the F's place when there
   is none; either brings the `.top` row into being on a folder project's card, both 18 px tall. The rail does not
   show it.
 * **The card's age stands in the top row, left of the ✓, under the pointer only**: `.top .time`, 10 px, after the
-  row's spacer — the row's end reads time · tick · F. `opacity` 0 → .8 on `.card:hover`, keeping its room, so nothing
+  row's spacer — the row's end reads time · tick · F · PRs. `opacity` 0 → .8 on `.card:hover`, keeping its room, so nothing
   moves. Every card has the top row, 18 px at least. The tooltip (last activity · you last wrote · Claude last replied)
   is on it. → `scripts/scenarios/card-marks.mjs`.
 * **Cards are square**: `.card` and the ring its `::before` draws at `border-radius: 0`. The PR chips keep their 4 px.

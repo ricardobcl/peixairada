@@ -4,6 +4,25 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-28.
 
+## Decisions of 2026-09-28, towards midnight — the card's line back, solid chips, the header in black, a hidden timeline
+
+Ricardo, five at once: "the 'your move' with the message below on the card was cool, put it back and move the PR's to
+the same place as fable icon"; "why do some PR icon full background green and some aren't? I kinda like the solid
+background on all"; "the top chat [header] when there's a [notch], the right part '...' + PRs [are] not pushed to the
+right — make it"; "on top chat header, make whatever is right of the title black background (we don't need the
+separator visual anymore)"; "the timeline on the left should disappear and just appear when the mouse [is] all the way
+to the [edge] and stays there for a couple of seconds (like the dock or the menu bar) — given this, the cards should
+be pushed all the way to the left, to use all real-estate".
+
+* **The card's line is back** (`moveHtml`: the tag, `#n · why`, `+n PRs`), and **the PR chips moved up**: last in the
+  top row, after the ✓ and the F (`cardPrs`, `.tprs`) — three, every one at your move among them, and a dashed `+n`
+  whose tooltip names the rest. A chip past the row's room wraps onto a hidden line, whole, rather than being clipped
+  in half: measuring every card's row would be a layout per render for the rare card with a long project name and
+  three PRs. The body lost its chips' row, so every card with a PR is a line shorter.
+* **Every chip GitHub has answered for is solid**, in its state's colour with the page's ground as ink — the fill had
+  meant "your move", and with it on all, which PR is at your move is said by name (the card's line, the header), not
+  by the chip. One whose state is not known yet stays an outline.
+
 ## Decisions of 2026-09-28, late night, later still — the tag where the F is, the reason in the header, your word answers
 
 Ricardo, on the card's line: "'your move' should be where fable is (when fable is there, put fable left)"; "'your
