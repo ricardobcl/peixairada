@@ -216,10 +216,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   var fillSignal: DispatchSourceSignal!   // SIGUSR1 is ⌃⌘F from a shell
   var fillTick: Timer?                    // while filled: watches the pointer for a hold at the Dock's edge (dockTick)
   var dockOut = false                     // the Dock let out after a hold at its edge, until the pointer is off it again
-  var fillMenu: NSApplication.PresentationOptions = []   // filled: the menu bar auto-hidden beside a camera housing, hidden outright without one (placeFill)
+  var fillHousing = false                 // filled on a screen with a camera housing: the menu bar auto-hidden there, hidden outright elsewhere (placeFill)
+  var menuOut = false                     // no housing: the menu bar let out after a hold at the top edge, until it has hidden again
   var edgeSince: TimeInterval?            // when the pointer reached the Dock's edge
+  var topSince: TimeInterval?             // when the pointer reached the top edge
   var dockSide = "bottom"                 // the Dock's edge, read when the fill starts and when the app comes back (dockEdge)
   static let dockHold: TimeInterval = 0.7 // how long the pointer is held at the edge before the Dock comes out
+  static let menuHold: TimeInterval = 1.0 // …and at the top edge before the menu bar does, where the search box sits
 
   func applicationDidFinishLaunching(_ note: Notification) {
     NSApp.setActivationPolicy(.regular)
@@ -248,7 +251,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   func applicationWillTerminate(_ note: Notification) { server.stop() }
   /// Filled and behind another app, there is no pointer to watch for a hold at the Dock's edge: the poll stops, and
   /// comes back with the app — with the Dock's edge read again, in case it moved meanwhile.
-  func applicationDidResignActive(_ note: Notification) { fillTick?.invalidate(); fillTick = nil }
+  func applicationDidResignActive(_ note: Notification) { fillTick?.invalidate(); fillTick = nil; edgeSince = nil; topSince = nil }
   func applicationDidBecomeActive(_ note: Notification) { if fillSaved != nil && fillTick == nil { startDockTick() } }
   func applicationShouldTerminateAfterLastWindowClosed(_ app: NSApplication) -> Bool { false }
   func applicationShouldHandleReopen(_ app: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -794,7 +797,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   @objc func toggleFill(_ sender: Any?) {
     if let saved = fillSaved {
       fillSaved = nil
-      fillTick?.invalidate(); fillTick = nil; dockOut = false; edgeSince = nil
+      fillTick?.invalidate(); fillTick = nil; dockOut = false; edgeSince = nil; menuOut = false; topSince = nil
       NSApp.presentationOptions = saved.opts
       window.styleMask = saved.mask
       window.fill = false
@@ -824,16 +827,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// is the menu bar's and the board's both: the menu bar auto-hidden, sliding into the strip at the top edge, the page
   /// laying its top row around the housing (tellFill). Without one there is no such strip — an auto-hidden menu bar
   /// slid over the search box and the chat's title at every reach for the top edge ("the menu bar is showing and
-  /// overlapping the app") — so it is hidden outright while the board is in front. The Dock is hidden on both
-  /// (dockTick lets it out). Run on the fill and on every change of screen.
+  /// overlapping the app") — so it is hidden outright while the board is in front, and let out by a hold at the top
+  /// edge, as the Dock is at its own (dockTick). The Dock is hidden on both. Run on the fill and on every change of screen.
   func placeFill(on screen: NSScreen) {
-    fillMenu = screen.safeAreaInsets.top > 0 ? [.autoHideMenuBar] : [.hideMenuBar]
-    NSApp.presentationOptions = dockOut ? AppDelegate.dockOutOptions : fillMenu.union(.hideDock)
+    fillHousing = screen.safeAreaInsets.top > 0
+    NSApp.presentationOptions = fillOptions()
     if window.frame != screen.frame { window.setFrame(screen.frame, display: true) }
   }
-  /// The Dock let out: auto-hidden, with the menu bar auto-hidden too on every screen — AppKit refuses hideMenuBar
-  /// without hideDock (an exception, not a no-op).
-  static let dockOutOptions: NSApplication.PresentationOptions = [.autoHideMenuBar, .autoHideDock]
+  /// The fill's options as things stand: the Dock hidden unless let out; the menu bar auto-hidden beside a housing or
+  /// while let out, hidden outright otherwise — and auto-hidden whenever the Dock is out, since AppKit refuses
+  /// hideMenuBar without hideDock (an exception, not a no-op).
+  func fillOptions() -> NSApplication.PresentationOptions {
+    let menu: NSApplication.PresentationOptions = fillHousing || menuOut || dockOut ? .autoHideMenuBar : .hideMenuBar
+    return menu.union(dockOut ? .autoHideDock : .hideDock)
+  }
   /// The Dock's edge of the screen, from its own preference: bottom unless it says left or right.
   static func dockEdge() -> String { UserDefaults(suiteName: "com.apple.dock")?.string(forKey: "orientation") ?? "bottom" }
   /// The poll, in .common so it runs under menu tracking too; the Dock's edge read once here, not on every tick
@@ -848,6 +855,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// A pointer *held* at its edge for dockHold lets it out (autoHideDock, with the pointer already there) until the
   /// pointer is 100 px off that edge again — the system full screen's kind of push (then: "the dock is not showing
   /// when I go to the edge on the right"). Polled, not tracked: the pointer is over web views and native views alike.
+  /// The menu bar the same way on a screen without a housing (2026-09-28, Ricardo: "can the menubar still show if I go
+  /// to the top edge and stay for a sec? like the dock"): a hold at the top edge for menuHold lets it out (auto-hidden,
+  /// with the pointer already there), and it goes back to hidden outright once the pointer is 100 pt below the top
+  /// *and* the system has hidden it again — never under an open menu, ours or a status item's.
   func dockTick() {
     guard fillSaved != nil, let screen = window.screen else { return }
     let p = NSEvent.mouseLocation, f = screen.frame, now = Date().timeIntervalSinceReferenceDate
@@ -859,12 +870,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     default: at = p.y <= f.minY + 2; off = p.y > f.minY + 100
     }
     if dockOut {
-      if off { dockOut = false; NSApp.presentationOptions = fillMenu.union(.hideDock); logLine("dock: back") }
+      if off { dockOut = false; NSApp.presentationOptions = fillOptions(); logLine("dock: back") }
     } else if at {
       if let since = edgeSince, now - since >= AppDelegate.dockHold {
-        dockOut = true; edgeSince = nil; NSApp.presentationOptions = AppDelegate.dockOutOptions; logLine("dock: out")
+        dockOut = true; edgeSince = nil; NSApp.presentationOptions = fillOptions(); logLine("dock: out")
       } else if edgeSince == nil { edgeSince = now }
     } else { edgeSince = nil }
+    guard !fillHousing else { return }
+    if menuOut {
+      if p.y < f.maxY - 100, !NSMenu.menuBarVisible() { menuOut = false; NSApp.presentationOptions = fillOptions(); logLine("menu bar: back") }
+    } else if p.y >= f.maxY - 2 {
+      if let since = topSince, now - since >= AppDelegate.menuHold {
+        menuOut = true; topSince = nil; NSApp.presentationOptions = fillOptions(); logLine("menu bar: out")
+      } else if topSince == nil { topSince = now }
+    } else { topSince = nil }
   }
   /// The green button, and a title bar double-click, come here as a zoom (fullScreenNone above): a plain click on the
   /// button is the fill; ⌥-click, and the double-click, zoom as they always did. The button's click is the current

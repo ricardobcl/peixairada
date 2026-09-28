@@ -23,6 +23,15 @@ external or not?"
   the menu bar auto-hidden into the strip; **without one, the whole screen and `hideMenuBar`** — no menu bar while the
   board is in front, not even at the top edge. Both hide the Dock; let out by a hold at its edge (`dockTick`), the
   options are `autoHideMenuBar` + `autoHideDock` on both, since AppKit throws on `hideMenuBar` without `hideDock`.
+* **…and let out by a hold at the top edge** (Ricardo: "can the menubar still show if I go to the top edge and stay
+  for a sec? like the dock"): the Dock's own mechanism in `dockTick` — a pointer held at the top edge for `menuHold`
+  (1 s, longer than the Dock's 0.7: the search box is up there, and a pointer rests on the edge while typing) turns the
+  menu bar to auto-hidden with the pointer already there. It goes back to hidden outright only once the pointer is
+  100 pt below the top **and** `NSMenu.menuBarVisible()` says the system has hidden it — the Dock's "100 px off" alone
+  would pull the bar from under an open menu, ours or a status item's. `fillOptions()` spells the options in one
+  place: the menu bar auto-hidden beside a housing, while let out, or while the Dock is out (AppKit throws on
+  `hideMenuBar` without `hideDock`), hidden otherwise. The holds reset when the app goes to the back.
+  **Not seen yet**: the reveal itself needs a hand on the pointer; the app log says `menu bar: out` / `menu bar: back`.
 * **Tried first, same day**: without a housing the menu bar stayed and the frame started under it — nothing
   overlapped, but 30 pt went to the menu bar; Ricardo wanted them. Also considered: the system full screen's trick of
   sliding the top row down with the menu bar — a resize of every terminal at each reach for the top edge.

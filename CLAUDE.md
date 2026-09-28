@@ -323,7 +323,9 @@ refuses to run against the real directory for the same reason.
   (`BoardWindow`), its frame the whole screen, the menu bar auto-hidden **beside a camera housing and hidden outright
   on a screen without one** (`placeFill`, on the fill and every change of screen, 2026-09-28: there the menu bar's strip
   is the head row, which an auto-hidden one slid over; the housing is the screen's top safe-area inset, mirroring
-  included), and **the Dock hidden, out only after the pointer
+  included) **and let out, there, by the pointer held at the top edge for 1 s** (`menuOut`, back once the pointer is
+  100 pt down and the system has hidden it — `NSMenu.menuBarVisible()`; `fillOptions()` is the one spelling of the
+  options), and **the Dock hidden, out only after the pointer
   has been held at its edge for 0.7 s** (`dockTick`, a 10 Hz poll while filled *and the app active*; `dockSide` read
   when the poll starts, `startDockTick`). The system's full screen always sits below the camera housing, so the
   window does not offer it: `collectionBehavior` is `.fullScreenNone`, **the green button zooms and
