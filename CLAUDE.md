@@ -286,7 +286,10 @@ refuses to run against the real directory for the same reason.
   themes — `BLACK`, through `projColor()` — and so is a folder the setup paints `#000000` (`acme` here). A card in that black is
   `.card.black`: its solid tint is the black itself and it borrows the dark theme's inks; `--ring` turns its clauding
   light white wherever the card under it is dark. **The open card bleeds into the splitter**: `main:not(.scompact)
-  #slist > .card.active` runs to the column's edge, and `#splitter` is `--open` on `main` (set by `tintChat`). **The splitter wears it only down to the open card**
+  #slist > .card.active` runs to the column's edge, its tint rising to the full colour over its last 44 px so it
+  meets the bar seamlessly (a second `background-image` layer over the wash, 2026-09-29), and `#splitter` is `--open`
+  on `main` (set by `tintChat`); the bar ends at the card's edge as drawn — its rect, plus the outline's pixel
+  (`splitEnd`). **The splitter wears it only down to the open card**
   (2026-09-28): black under it (`#splitter::after` from `--split`), set by `drawSplit(g)` in the list's frame, so it
   follows a scroll; the open card out of sight below, the colour runs to the list's foot; above it, or not in the list,
   the splitter is black.

@@ -99,9 +99,10 @@ export default async function (ctx) {
 
     // the splitter: the open chat's colour down to where its card ends, black under it (2026-09-28; the last card's
     // end the same morning) — the card out of sight below, the colour runs to the list's foot; in sight, it stops
-    // where the card does; out of sight above, the splitter is black from the top
+    // where the card's edge does, its outline's pixel under it included (2026-09-29); out of sight above, the splitter
+    // is black from the top
     const split = () => ctx.evaluate(`JSON.stringify((() => { const l = document.querySelector('#slist'), b = l.getBoundingClientRect(), c = l.querySelector(':scope > .card.active').getBoundingClientRect(), sp = document.querySelector('#splitter').getBoundingClientRect();
-      return { at: parseFloat(document.querySelector('#splitter').style.getPropertyValue('--split')), want: Math.round(Math.max(b.top, Math.min(b.bottom, c.bottom)) - sp.top), card: Math.round(c.bottom - sp.top), foot: Math.round(b.bottom - sp.top), top: Math.round(b.top - sp.top) }; })())`).then(JSON.parse);
+      return { at: parseFloat(document.querySelector('#splitter').style.getPropertyValue('--split')), want: Math.round(Math.max(b.top, Math.min(b.bottom, c.bottom + 1)) - sp.top), card: Math.round(c.bottom + 1 - sp.top), foot: Math.round(b.bottom - sp.top), top: Math.round(b.top - sp.top) }; })())`).then(JSON.parse);
     const near = x => Math.abs(x.at - x.want) <= 1;
     await ctx.evaluate(`[...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title').textContent === 'Ready chat 8').click()`);
     await ctx.waitFor(`!!document.querySelector('#slist > .card.active')`, { what: 'the open chat\'s card' });

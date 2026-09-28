@@ -567,7 +567,12 @@
      the right so that the bar that divides the chat and the column stays in that card color"): over the list's
      padding to the column's edge, against the bar in the same colour (#splitter, --openc). Not on the rail of squares,
      which has no splitter. */
-  main:not(.scompact) #slist > .card.active { margin-right: -8px; }
+  main:not(.scompact) #slist > .card.active { margin-right: -8px;
+    /* …seamlessly (2026-09-29, Ricardo: "the colors don't blend well between the card gradient and the vertical
+       separator - make it seamless"): the card's tint rises to the full colour over its last 44 px, so it meets the bar
+       in the bar's own colour — the card's wash under it, as .card draws it. */
+    background-image: linear-gradient(to right, transparent calc(100% - 44px), var(--repo, var(--nocolor))),
+      linear-gradient(165deg, color-mix(in srgb, var(--repo, var(--nocolor)) calc(var(--tint) + var(--slope)), var(--panel)), color-mix(in srgb, var(--repo, var(--nocolor)) var(--tint), var(--panel))); }
   /* A card in the board's own black (PROJECT_COLORS — acme): 65 % of black over a light panel is a mid-grey
      nothing reads on, so the tint is the colour itself and the card borrows the dark theme's inks — they inherit,
      so title, snips, times and the two speaker marks follow in one rule. In the dark theme they are what they were. */
@@ -1999,8 +2004,10 @@
     const px = `${Math.max(0, Math.round(splitEnd(g) - g.sp.top))}px`, sp = $('#splitter');
     if (sp.style.getPropertyValue('--split') !== px) sp.style.setProperty('--split', px);
   }
-  /** Where the splitter's colour ends, on screen: the open card's bottom, held inside the list's window. */
-  const splitEnd = g => !g.open ? g.box.top : Math.max(g.box.top, Math.min(g.box.bottom, g.box.top + g.open.top + g.open.h - g.top));
+  /** Where the splitter's colour ends, on screen: the open card's bottom edge, held inside the list's window. The edge
+   *  as drawn — the card's rect, not its rounded offsets, and its outline's 1 px outside it (2026-09-29, Ricardo: the bar
+   *  "doesn't [go] all the way to the low border of the card"). */
+  const splitEnd = g => !g.openRect ? g.box.top : Math.max(g.box.top, Math.min(g.box.bottom, g.openRect.bottom + 1));
   // ---- the open chat's light runs on past its card ----------------------------------------------------------------
   // (2026-09-29, Ricardo: "should now travel across the vertical separator, go around the project box at the top of the
   // chat and go back again"). The open card, the splitter down to it and the project's box atop the chat are one shape
@@ -2095,7 +2102,7 @@
     const open = cards.find(c => c.el.classList.contains('active'));
     return { list, rail, cards, open, top: list.scrollTop, ch: list.clientHeight, sh: list.scrollHeight, H, full, y: v => TL_PAD + v / full * H,
       tops: tl.runs.map(r => cards[r.i]?.top || 0), railOn: !!rail && rail.offsetParent !== null,
-      box: list.getBoundingClientRect(), sp: $('#splitter').getBoundingClientRect(), trail: trailGeom(open) };
+      box: list.getBoundingClientRect(), sp: $('#splitter').getBoundingClientRect(), openRect: open?.el.getBoundingClientRect(), trail: trailGeom(open) };
   }
   /** What the open chat's light needs, read with the list's geometry: null unless it is clauding or watching, a chat is
    *  open and the list is not the rail. The card's own light — its colour, its pace, how many — when it is in the list. */

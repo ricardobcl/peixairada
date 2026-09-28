@@ -13,6 +13,12 @@ project box on the chat"; "can we get avatar of GH users in cards, that interact
 
 * **No *open in VS Code***: the header menu's row, its handler and the server's `/api/sessions/:id/focus` route (which
   ran `code <cwd>` and then the extension's undocumented `open?session=` URI) are gone. VS Code Web stays.
+* **The open card meets the splitter seamlessly**: its flat 65 % tint stood against the bar's full colour, a hard
+  step down the card's right side. The card's fill now rises to the full colour over its last 44 px, so it arrives at
+  the bar in the bar's colour; the text keeps the tint under it everywhere but the padding and the chips.
+* **The bar reaches the card's bottom edge**: it ended at the card's rounded `offsetTop + offsetHeight`, and the open
+  card's outline stands a pixel outside that — a notch at the corner. `splitEnd` reads the card's rect and adds the
+  outline's pixel.
 
 ## Decisions of 2026-09-29, small hours — the clauding light on the border, and on past the open card
 
