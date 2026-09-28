@@ -38,6 +38,12 @@ dates"; "make the 'setup' inside settings pretty - seems pretty barebones".
   the rail will draw — its short name on its colour (Peacock's when there is one, said under the name) — followed live
   as the short name is typed and the colour picked, with a round swatch and a × that comes with the pointer. A line
   at the foot says the setup is the server's. The class names the scenario reaches the rows by are unchanged.
+* **Verified**: `npm test`; the scenarios for each change (`drawer-clear` failing before the server's fix and passing
+  after it, `new-chat-card`, `list-ends`, `code-blocks`, `head-menu`, `hotkeys`, `cog-setup`, `day-separator`), then all
+  thirty-six. Run at 00:05 local, `card-signals` and `transcript-live` failed on day lines between fixtures that fell
+  either side of midnight — `transcript-live` the same on the commit before this work, `card-signals` passing again at
+  00:30; the README's shots, redrawn then, carried a stray day line and were left as they were. The trap is in
+  CLAUDE.md's *Verifying changes*.
 
 ## Decisions of 2026-09-29, later — keyboard first: no ＋, settings under ···, the row at the bottom, the budget in words, the splitter's black
 

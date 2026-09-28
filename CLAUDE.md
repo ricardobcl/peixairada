@@ -688,6 +688,10 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.
+* **Not just after local midnight**: the fixtures are minutes to hours old, so a run then puts a day line between
+  them — `card-signals` sees a divider too many (its first quarter hour), `transcript-live` a second node fading in
+  (until 02:00: its long chat is two hours old), and `readme-shots.mjs` draws a `DD-MM-YYYY` line into the README's
+  board. They fail the same on older commits; wait.
 * **The auto fixture's second folder is the temp dir's real path** (`realpathSync(tmpdir())`): a fake claude started
   there registers `/private/var/…`. **Its two chats are a second apart** (`defaultFixture`), so the board's order
   between them is never the readdir's.
