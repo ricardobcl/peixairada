@@ -19,6 +19,9 @@ project box on the chat"; "can we get avatar of GH users in cards, that interact
 * **The bar reaches the card's bottom edge**: it ended at the card's rounded `offsetTop + offsetHeight`, and the open
   card's outline stands a pixel outside that — a notch at the corner. `splitEnd` reads the card's rect and adds the
   outline's pixel.
+* **The first card is flush with the top**, as the project box atop the chat is: the list's top padding went (8 px),
+  and at the notch it pads by the strip alone. Card, splitter and box now share one top edge, so the open chat's
+  light runs round a shape without a step in it.
 
 ## Decisions of 2026-09-29, small hours — the clauding light on the border, and on past the open card
 

@@ -129,7 +129,8 @@ refuses to run against the real directory for the same reason.
   folds and unfolds. The name gives way, hence the list's 300 px minimum (and the row clips rather than run the chips
   under the usage). On the rail the fish and, for a project, `projAbbr` (`.ab`) as the picker's handle keep the bottom
   corner, the usage's rings over them. Filled at the notch with the list under the housing, the cards start under the
-  strip (`.npad` on `#slist` and the top pill). ⌥⌘P's rows carry
+  strip (`.npad` on `#slist` and the top pill); **elsewhere the first card is flush with the top** (no top padding,
+  2026-09-29), level with the project box atop the chat. ⌥⌘P's rows carry
   ✎ on a named project and ＋ new project, last and never filtered out. → `scripts/scenarios/project-cue.mjs`. A chat
   is *ready · clauding · done*: done is the tick only, clauding is `working`, ready is everything else (`bucket()`);
   the server keeps the finer `status` for notifications and the badge.

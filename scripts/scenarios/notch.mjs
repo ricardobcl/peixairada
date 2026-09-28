@@ -54,7 +54,7 @@ export default async function (ctx) {
   out.on = await read();
   ctx.assert.deepEqual([out.on.notch, out.on.top, out.on.listPad, out.on.chatPad, out.on.hole], [true, '32px', false, false, true], 'filled: the list lifted, the header holed');
   ctx.assert.ok(out.on.listRight < NOTCH.left, `the list ends short of the housing (${out.on.listRight})`);
-  ctx.assert.deepEqual([out.on.listPad0, out.on.headPad], [8, 7], 'the list\'s cards and the chat\'s header at the top, their own padding — the list\'s row is at its foot (2026-09-28, later)');
+  ctx.assert.deepEqual([out.on.listPad0, out.on.headPad], [0, 7], 'the list\'s cards and the chat\'s header at the top, their own padding — the list\'s row is at its foot (2026-09-28, later), the first card flush with the top (2026-09-29)');
   ctx.assert.ok(out.on.fishTop > 500, `the fish at the foot (${out.on.fishTop})`);
   ctx.assert.ok(out.on.repoRight < NOTCH.left - 9, `the project's name left of the housing (${out.on.repoRight})`);
   ctx.assert.ok(out.on.tright && out.on.tLeft >= NOTCH.right + 9 && out.on.tLeft < NOTCH.right + 20, `a title too long for the left goes right of the housing (${out.on.tLeft})`);
@@ -71,7 +71,7 @@ export default async function (ctx) {
   await listWidth(820);
   out.wide = await read();
   ctx.assert.deepEqual([out.wide.listPad, out.wide.chatPad, out.wide.hole, out.wide.h2Flex], [true, true, false, ''], 'the list under the housing: both pad, no hole');
-  ctx.assert.deepEqual([out.wide.listPad0, out.wide.headPad, out.wide.cardTop >= 32, out.wide.afterTop >= 32], [40, 39, true, true], '…by the strip, and the rows are under it');
+  ctx.assert.deepEqual([out.wide.listPad0, out.wide.headPad, out.wide.cardTop >= 32, out.wide.afterTop >= 32], [32, 39, true, true], '…by the strip, and the rows are under it');
   ctx.assert.deepEqual(out.wide.underHousing, [], 'nothing under the housing');
   await ctx.shot('2-list-under', { x: 0, y: 0, width: 1728, height: 90 });
 

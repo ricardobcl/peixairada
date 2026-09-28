@@ -208,7 +208,7 @@
   main:not(.scompact) #shd { padding-right: 4px; overflow: hidden; }   /* a list at its narrowest clips the chips rather than run them under the usage */
   main.scompact #sfoot { grid-row: 2; } main.scompact #shd { grid-row: 3; }
   /* the cards start under the camera's strip when the list is under the housing (the head used to pad down instead) */
-  main.notch #sessions.npad #slist { padding-top: calc(8px + var(--notch-top, 0px)); }
+  main.notch #sessions.npad #slist { padding-top: var(--notch-top, 0px); }
   main.notch #sessions.npad .sedge.up { padding-top: calc(5px + var(--notch-top, 0px)); }
   /* The chat list folded to a rail: the fish, the selected project's colour square and the » to open it again.
      The width is set here, not inline, so the splitter's saved width comes back on unfold. */
@@ -365,7 +365,9 @@
   .fchip.on { color: var(--ink); background: color-mix(in srgb, var(--c) 22%, transparent); }
   .fchip.on i { background: var(--c); }
   .fchip:not(.on) { opacity: .75; }
-  #slist { overflow-y: auto; overflow-x: hidden; min-width: 0; padding: 8px; display: flex; flex-direction: column; gap: 7px; position: relative; scrollbar-width: none; }   /* positioned: the cards' offsetTop is the list's */
+  /* no room above the first card (2026-09-29, Ricardo: "leave 0 space for the card at the top, so it matches the project
+     box on the chat"): its top is the chat header's */
+  #slist { overflow-y: auto; overflow-x: hidden; min-width: 0; padding: 0 8px 8px; display: flex; flex-direction: column; gap: 7px; position: relative; scrollbar-width: none; }   /* positioned: the cards' offsetTop is the list's */
   #slist::-webkit-scrollbar { display: none; }   /* the timeline beside it is the scrollbar, with the days on it */
   main.scompact #slist { scrollbar-width: auto; }
   main.scompact #slist::-webkit-scrollbar { display: initial; }
