@@ -986,6 +986,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       let serverNotifies = body["serverNotify"] as? Bool ?? false
       if !focused && !serverNotifies && !quiet {
         notify(kind: body["kind"] as? String ?? "reply",
+               heading: body["heading"] as? String ?? "",
                project: body["project"] as? String ?? "",
                title: body["title"] as? String ?? "",
                snippet: body["snippet"] as? String ?? "",
@@ -1029,8 +1030,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
   }
 
-  private func notify(kind: String, project: String, title: String, snippet: String, sessionId: String) {
-    let heading = (kind == "reply" ? "Claude replied" : "Claude needs input") + (project.isEmpty ? "" : " · \(project)")
+  /// `heading` is the server's own when it has one (a PR come round to you: "Your move · repo#n"), else the kind's.
+  private func notify(kind: String, heading given: String, project: String, title: String, snippet: String, sessionId: String) {
+    let heading = !given.isEmpty ? given : (kind == "reply" ? "Claude replied" : "Claude needs input") + (project.isEmpty ? "" : " · \(project)")
     let body = [title, snippet].filter { !$0.isEmpty }.joined(separator: "\n")
     guard useUN else {
       logLine("notify: falling back to osascript (useUN=false)")

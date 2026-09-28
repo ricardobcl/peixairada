@@ -16,6 +16,7 @@
 //  Transcript parsing
 //      · PRs mentioned in the chat
 //      · …and whether they are open, merged or closed
+//      · …and whose move it is
 //  Sub-agents: <slug>/<id>/subagents/agent-*.jsonl — one at work keeps the chat clauding
 //      · background tasks: a monitor, or a command left running
 //  Live-session registry (~/.claude/sessions/<pid>.json)
@@ -117,6 +118,10 @@ let notificationsOn = true;
 // The board's setup — the cog's second half (2026-09-28), see cleanSetup below. What the cog set and nothing else: a
 // key it never set is the default, worked out when asked (boardConfig).
 let setup = {};
+// Whose move each PR you wrote or reviewed was at, and since when the board has known it: url -> { key, at }
+// (2026-09-28). A PR come round to you un-ticks the chats that mention it (isDone), weighed by `at` — kept here so a
+// restart does not hand a move the board had already shown back to GitHub's own clock (moveTurn).
+let prTurns = {};
 
 // One-time move from the old ~/.peixairada location. Same filesystem, so the rename is atomic; the
 // empty directory is left behind rather than removing something we did not create.
@@ -139,12 +144,18 @@ try {
   envs = st.envs || {};
   notificationsOn = st.notifications !== false;
   setup = st.config;   // as saved — cleaned below, once what cleans it is defined
+  prTurns = st.prTurns && typeof st.prTurns === 'object' ? st.prTurns : {};
 } catch {}
 function saveState() {
-  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, config: setup }, null, 1)); }
+  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, config: setup, prTurns }, null, 1)); }
   catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
-const isDone = s => !!doneMarks[s.id] && doneMarks[s.id] >= (s.lastActivity || '');
+// A tick lasts until something newer happens in the chat — or on one of its PRs, once that PR has come round to you
+// (a push since your review, a reply, a review on yours: prTurn), which is what a tick after a review waits for.
+const isDone = s => {
+  const at = doneMarks[s.id];
+  return !!at && at >= (s.lastActivity || '') && s.prs.every(p => !p.turn?.you || at >= p.turn.movedAt);
+};
 
 // ---- the board's setup: the cog's second half --------------------------------------------------------------------
 // What had been written into this file and the page for one Mac — the directory the repos live in and the GitHub org
@@ -500,7 +511,7 @@ function notePr(s, url, ts, by) {
     // The owner rarely disambiguates and eats half the width of the chip; the URL is in the tooltip.
     label: m ? `${m[2]}#${m[3]}` : clean.replace(/^https?:\/\/(www\.)?github\.com\//, ''),
     count: 0, by: null, firstAt: ts,
-    state: prStatus.get(clean)?.state ?? null, title: prStatus.get(clean)?.title ?? null
+    state: prStatus.get(clean)?.state ?? null, title: prStatus.get(clean)?.title ?? null, turn: prStatus.get(clean)?.turn ?? null
   };
   if (by) { pr.count++; pr.by = by; }
   pr.lastAt = ts || pr.lastAt || null;
@@ -548,10 +559,17 @@ const PR_POLL = [                       // [touched within, asked every]
   [24 * 60 * 60_000, 5 * 60_000],       // the last day: every five minutes
   [3 * 24 * 60 * 60_000, 30 * 60_000]   // the last three days: every half hour
 ];
+// A PR you wrote or reviewed is also watched by its own clock (2026-09-28): a chat goes quiet exactly while you wait on
+// someone, and the push or the reply that answers you is the news. By the newest thing on the PR (prTurn's `last`).
+const PR_WATCH_MS = Number(process.env.PR_WATCH_MS || 2 * 60_000);
+const PR_WATCH = [                      // [the PR's last event within, asked every]
+  [2 * 24 * 60 * 60_000, PR_WATCH_MS],       // the last two days: every two minutes
+  [14 * 24 * 60 * 60_000, 5 * PR_WATCH_MS]   // the last two weeks: every ten
+];
 const PR_TTL_MS = Number(process.env.PR_TTL_MS || 30_000);
 const PR_TTL_ERROR_MS = 60 * 60_000;   // a PR we cannot see (private, deleted, no access): back off
 const PR_BATCH = 40;
-const prStatus = new Map();            // url -> { state, title, checkedAt }
+const prStatus = new Map();            // url -> { state, title, turn, checkedAt }
 const prQueue = new Set();
 let prTimer = null, prBusy = false, ghGone = false;
 let prAsking = new Set();              // the batch gh is being asked about now: a sweep or a mention meanwhile waits for it
@@ -571,10 +589,15 @@ function prEvery(s, now = Date.now()) {
   const age = now - touchedAt(s);
   return PR_POLL.find(([within]) => age < within)?.[1] ?? Infinity;
 }
+/** How often a PR with a turn is polled for its own sake, by its newest event; Infinity without one, or past PR_WATCH. */
+function prWatch(url, now = Date.now()) {
+  const last = Date.parse(prStatus.get(url)?.turn?.last);
+  return last ? PR_WATCH.find(([within]) => now - last < within)?.[1] ?? Infinity : Infinity;
+}
 
 /**
  * The PRs due a look, the most recently touched chat's first: never asked about, or not since the most
- * eager chat mentioning it asks for. At boot that is every PR, the chats in play first.
+ * eager chat mentioning it — or the PR's own watch — asks for. At boot that is every PR, the chats in play first.
  */
 function duePrs(list, now = Date.now()) {
   const every = new Map();   // url -> the shortest interval a chat mentioning it asks for
@@ -582,7 +605,7 @@ function duePrs(list, now = Date.now()) {
     const ms = prEvery(s, now);
     for (const pr of s.prs) if (!(every.get(pr.url) <= ms)) every.set(pr.url, ms);
   }
-  return [...every].filter(([url, ms]) => !prFresh(url, ms, now)).map(([url]) => url);
+  return [...every].filter(([url, ms]) => !prFresh(url, Math.min(ms, prWatch(url, now)), now)).map(([url]) => url);
 }
 
 /** On the registry poll, and once at boot. */
@@ -600,12 +623,19 @@ function queuePr(url, ttl = PR_TTL_MS) {
 /** Whatever a chat's header and card will show, refreshed if it has aged out. */
 function queueSessionPrs(s) { for (const pr of s.prs) queuePr(pr.url); }
 
-function setPrInfo(url, state, title) {
-  prStatus.set(url, { state, title, checkedAt: Date.now() });
-  for (const s of sessions.values()) {
+/** What GitHub said of one PR: `found` is prTurn's answer, undefined for a PR it would not show us. */
+function setPrInfo(url, state, title, found, now = Date.now()) {
+  const chats = [...sessions.values()].filter(s => s.prs.some(p => p.url === url));
+  const ticked = chats.filter(isDone);
+  const { turn, moved, from } = moveTurn(url, found, now);
+  prStatus.set(url, { state, title, turn, checkedAt: now });
+  const same = JSON.stringify(turn);
+  for (const s of chats) {
     const pr = s.prs.find(p => p.url === url);
-    if (pr && (pr.state !== state || pr.title !== title)) { pr.state = state; pr.title = title; schedulePush(s); }
+    if (pr.state !== state || pr.title !== title || JSON.stringify(pr.turn ?? null) !== same) { pr.state = state; pr.title = title; pr.turn = turn; schedulePush(s); }
   }
+  // Said once, as the ball comes back to you — or when a chat you had ticked comes back with it.
+  if (moved && (from === 'them' || ticked.some(s => !isDone(s)))) notifyPr(url, turn, chats);
 }
 
 function drainPrQueue() {
@@ -619,12 +649,12 @@ function drainPrQueue() {
     const m = PR_ONE.exec(url);
     if (!m) continue;
     // owner/repo/number came out of PR_RE, so they cannot break out of the query string
-    parts.push(`p${batch.length}: repository(owner: "${m[1]}", name: "${m[2]}") { pullRequest(number: ${m[3]}) { title state isDraft } }`);
+    parts.push(`p${batch.length}: repository(owner: "${m[1]}", name: "${m[2]}") { pullRequest(number: ${m[3]}) { ${PR_FIELDS} } }`);
     batch.push(url);
   }
   if (!batch.length) return drainPrQueue();
   prBusy = true; prAsking = new Set(batch);
-  execFile(bin, ['api', 'graphql', '-f', `query={${parts.join(' ')}}`], { timeout: 30_000, maxBuffer: 8e6 }, (err, stdout, stderr) => {
+  execFile(bin, ['api', 'graphql', '-f', `query={viewer { login } ${parts.join(' ')}}`], { timeout: 30_000, maxBuffer: 8e6 }, (err, stdout, stderr) => {
     prBusy = false; prAsking = new Set();
     // A PR we cannot resolve fails its own alias only: gh exits non-zero but still prints the rest.
     let data = null;
@@ -639,16 +669,112 @@ function drainPrQueue() {
       return;
     }
     prPause = 0;
+    const me = data.viewer?.login || null;
     batch.forEach((url, i) => {
       const pr = data?.[`p${i}`]?.pullRequest;
       const state = !pr ? null
         : pr.state === 'MERGED' ? 'merged'
         : pr.state === 'CLOSED' ? 'closed'
         : pr.isDraft ? 'draft' : 'open';
-      setPrInfo(url, state, pr?.title || null);
+      setPrInfo(url, state, pr?.title || null, pr && me ? prTurn(pr, me) : undefined);
     });
+    if (turnsDirty) { turnsDirty = false; saveState(); }
     if (prQueue.size) drainPrQueue();
   });
+}
+
+// ---- …and whose move it is ------------------------------------------------------------------------------------------
+// (2026-09-28, Ricardo: "me knowing that a chat with PRs where I asked for review or left a review was already
+// addressed, by pushed to the branch, or replies on the PR" — Slack and GitHub's app were the only way to know.) The
+// same call asks what it takes to say whose move a PR is at; forty PRs cost GitHub's GraphQL budget two points.
+// `pushes` are the newest commits and force-pushes, `asks` the review requests, both off the PR's timeline.
+const PR_FIELDS = 'title state isDraft createdAt headRefOid author { login __typename }'
+  + ' viewerLatestReview { submittedAt commit { oid } }'
+  + ' reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } } } }'
+  + ' reviews(last: 20) { nodes { author { login __typename } state submittedAt } }'
+  + ' comments(last: 20) { nodes { author { login __typename } createdAt } }'
+  + ' pushes: timelineItems(last: 5, itemTypes: [PULL_REQUEST_COMMIT, HEAD_REF_FORCE_PUSHED_EVENT]) { nodes { __typename'
+  + ' ... on HeadRefForcePushedEvent { createdAt actor { login } } ... on PullRequestCommit { commit { committedDate author { user { login } } } } } }'
+  + ' asks: timelineItems(last: 5, itemTypes: [REVIEW_REQUESTED_EVENT]) { nodes { ... on ReviewRequestedEvent { createdAt requestedReviewer { ... on User { login } } } } }';
+let turnsDirty = false;
+
+const isBot = a => !a?.login || a.__typename === 'Bot' || /\[bot\]$/.test(a.login);
+const newest = times => times.reduce((a, t) => (t && t > a ? t : a), '');
+const names = ws => [...new Set(ws.map(w => w.by.login))].join(', ');
+
+/**
+ * Whose move a PR is at, from what PR_FIELDS brings back and who `me` is; null when nobody waits on you — merged or
+ * closed, or a PR you neither wrote nor reviewed nor commented on. Pure.
+ *  · Someone else's PR comes round to you when its head is no longer the commit your latest review was on (a push, a
+ *    force-push — anyone's but yours, and not after you approved), when someone else writes after your last word (a
+ *    comment, a review, a reply in a thread: every reply is a review), or when your review is asked for again.
+ *  · Your own, when someone else writes, or pushes to it, after your last word — your comments, reviews and pushes.
+ * Bots are nobody. `key` names what came round, so another push or reply is a new move; `at` is GitHub's time for the
+ * newest of it; `last` the newest thing on the PR at all, whoever did it (what PR_WATCH goes by).
+ */
+function prTurn(pr, me) {
+  if (!pr || !me || pr.state !== 'OPEN') return null;
+  const mine = pr.author?.login === me;
+  const words = [
+    ...(pr.reviews?.nodes || []).filter(r => r?.submittedAt && r.state !== 'PENDING').map(r => ({ at: r.submittedAt, by: r.author, state: r.state })),
+    ...(pr.comments?.nodes || []).filter(c => c?.createdAt).map(c => ({ at: c.createdAt, by: c.author }))
+  ];
+  // a commit GitHub cannot tie to an account (an unlinked email, a bot) is the PR's author's
+  const pushes = (pr.pushes?.nodes || []).map(n => n?.__typename === 'HeadRefForcePushedEvent'
+    ? { at: n.createdAt, by: n.actor?.login } : { at: n?.commit?.committedDate, by: n?.commit?.author?.user?.login })
+    .filter(p => p.at).map(p => ({ ...p, by: p.by || pr.author?.login }));
+  const push = pushes.reduce((a, p) => (!a || p.at > a.at ? p : a), null);
+  const review = pr.viewerLatestReview?.submittedAt ? pr.viewerLatestReview : null;
+  const said = newest([review?.submittedAt, ...words.filter(w => w.by?.login === me).map(w => w.at), ...pushes.filter(p => p.by === me).map(p => p.at), mine && pr.createdAt]);
+  const asks = (pr.asks?.nodes || []).filter(a => a?.requestedReviewer?.login === me).map(a => a.createdAt);
+  const last = newest([said, pr.createdAt, ...words.map(w => w.at), ...pushes.map(p => p.at), ...asks]) || null;
+  if (!said) return null;
+  const theirs = words.filter(w => !isBot(w.by) && w.by.login !== me && w.at > said);
+  // a push after you approved is the author getting on with it — unless GitHub dismissed the approval for it
+  const verdict = words.filter(w => w.by?.login === me && /^(APPROVED|CHANGES_REQUESTED|DISMISSED)$/.test(w.state)).reduce((a, w) => (!a || w.at > a.at ? w : a), null);
+  const pushed = !!push && push.by !== me && (!mine && review ? review.commit?.oid !== pr.headRefOid && verdict?.state !== 'APPROVED' : push.at > said);
+  const again = !mine && !!review && (pr.reviewRequests?.nodes || []).some(n => n?.requestedReviewer?.login === me);
+  const you = pushed || theirs.length > 0 || again;
+  if (!you) return { you, mine, why: mine ? 'waiting on reviews' : `waiting on ${pr.author?.login || 'the author'}`, at: null, last, key: 'them' };
+  const why = [];
+  if (pushed) why.push(mine ? `${push.by} pushed` : 'pushed since your review');
+  const approved = theirs.filter(w => w.state === 'APPROVED'), asked = theirs.filter(w => w.state === 'CHANGES_REQUESTED');
+  const talk = theirs.filter(w => w.state !== 'APPROVED' && w.state !== 'CHANGES_REQUESTED');
+  if (approved.length) why.push(`approved by ${names(approved)}`);
+  if (asked.length) why.push(`changes asked by ${names(asked)}`);
+  if (talk.length) why.push(`${talk.length} comment${talk.length === 1 ? '' : 's'} from ${names(talk)}`);
+  if (again) why.push('your review asked for again');
+  const heard = newest(theirs.map(w => w.at)), askedAt = again ? newest(asks) : '';
+  return {
+    you, mine, why: why.join(' · '), at: newest([pushed && push.at, heard, askedAt]) || null, last,
+    key: [pushed ? pr.headRefOid : '', heard, again ? askedAt || 'asked' : ''].join('|')
+  };
+}
+
+/**
+ * Note the turn GitHub gave (`t`: prTurn's answer; undefined, a PR we could not see — what the board knew stands) and
+ * hand back the one to show. `movedAt` is when the move became news: GitHub's time for it the first time the board
+ * sees the PR, the board's own clock for every change after — a push committed before you ticked and pushed after
+ * is news all the same, and so is one the board only learnt of after the tick.
+ */
+function moveTurn(url, t, now = Date.now()) {
+  const prev = prTurns[url];
+  if (t === undefined) return { turn: null, moved: false, from: prev?.key };
+  if (!t) { if (prev) { delete prTurns[url]; turnsDirty = true; } return { turn: null, moved: false, from: prev?.key }; }
+  const moved = !!prev && prev.key !== t.key;
+  if (!prev || moved) { prTurns[url] = { key: t.key, at: new Date(prev ? now : Date.parse(t.at) || now).toISOString() }; turnsDirty = true; }
+  const { key, ...turn } = t;
+  return { turn: { ...turn, movedAt: prTurns[url].at }, moved: moved && t.you, from: prev?.key };
+}
+
+/** A PR come round to you: one alert, on the chat touched last of those that mention it. */
+function notifyPr(url, turn, chats) {
+  const s = [...chats].sort((a, b) => touchedAt(b) - touchedAt(a))[0];
+  if (!s || indexing) return;
+  const sum = summary(s), heading = `Your move · ${s.prs.find(p => p.url === url)?.label || url}`;
+  const evt = { kind: 'pr', sessionId: s.id, project: sum.project, title: sum.title, heading, snippet: turn.why, url, ts: new Date().toISOString(), quiet: !notificationsOn };
+  broadcast('alert', evt);
+  if (notificationsOn) nativeNotify(heading, sum.title, turn.why);
 }
 
 function setStatus(s, status, ts) {
@@ -1982,7 +2108,7 @@ server.on('upgrade', attachTermSocket);
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { fold, newSession, summary, agentRunning, notePr, notePrs, prTitle, duePrs, prStatus, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { fold, newSession, summary, agentRunning, notePr, notePrs, prTitle, duePrs, prStatus, prTurn, setPrInfo, doneMarks, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {

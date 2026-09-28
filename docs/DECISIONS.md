@@ -4,6 +4,49 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-28.
 
+## Decisions of 2026-09-28, late night — a PR come round to you
+
+Ricardo: "one workflow that is still lacking is me knowing that a chat with PR or PRs where I asked for review or left a
+review was already addressed (by pushed to the branch, or replies on the PR). I don't have that visibility which makes
+me have to check slack, github app messages on slack, or just re-check manually from time to time" — then, on the
+proposal (the rule, a filled chip, the tick undone, an alert, a watch of its own): "do it".
+
+* **The rule is GitHub's own record, asked in the call the board already makes** (`PR_FIELDS`, `viewer`; `prTurn`,
+  pure). Someone else's PR you reviewed is **your move** when its head is no longer the commit your latest review was on
+  — a push or a force-push, by anyone but you, and not after you approved (unless GitHub dismissed the approval) —,
+  when someone else wrote after your last word (a comment, a review; every reply in a thread is a review), or when your
+  review is asked for again (you are back in `reviewRequests`). Your own PR is your move when someone else reviewed,
+  commented or pushed after your last word — your reviews, comments and pushes. Bots are nobody (`__typename: Bot`, a
+  `[bot]` login). A PR you neither wrote nor reviewed nor commented on has no turn, and neither does a merged or closed
+  one. Comparing the reviewed commit with the head rather than times is what makes a push exact: a commit's date is
+  when it was committed, not pushed, and GitHub's push date is gone from the API.
+* **Measured on this board** before writing it: 40 open PRs with every field cost 2 points of the 5000 an hour.
+  Of them, 7 were at Ricardo's move — `backend#812` pushed, twice replied to and re-requested since 25-09, in a chat
+  past the three days `PR_POLL` still asks about, so the board could never have shown it.
+* **What it does**: the chip fills with its state's colour (card, header — and `+n` when it folds one —, and the row
+  under the header says why); **every chat that mentions the PR is un-ticked** (`isDone` weighs the tick against the
+  move's time as well as the chat's last activity: a tick after a review is "waiting on them"); **one alert**,
+  `kind: 'pr'`, on the chat touched last, heading `Your move · repo#n`, the reasons as its text — sent as the ball
+  comes back from them, or when a chat you had ticked comes back with it, not for every further comment while it is
+  already yours. The app, the page and the server's osascript read `heading` before the kind's words.
+* **When a move became news is the board's, kept in the state file** (`prTurns`: url → `{ key, at }`, `moveTurn`).
+  The first look at a PR takes GitHub's time for the move (so the first run un-ticks what moved after its tick); every
+  change after takes the board's clock — a push committed at 9 and pushed after a 13:30 tick is news, and so is one
+  the board learnt of after the tick. Kept across restarts, or a restart would hand every move back to GitHub's times.
+  The `key` is what came round (the head, the newest foreign word, the re-request): a new one is a new move.
+* **Watched by its own clock** (`PR_WATCH`): a chat goes quiet exactly while you wait on someone, so a PR with a turn
+  is asked every 2 min while its newest event is within two days and every 10 within two weeks, whatever its chat's
+  age. With ~60 such PRs that is a call or two every two minutes.
+* **Not done**: GitHub's notifications API as a faster trigger (a free 304 when nothing changed) — it does not cover
+  pushes, and its read state is the GitHub inbox's; a first review request (never reviewed) as your move — the chats
+  here are ones you already worked in; only the chat that holds the PR's review coming back — 97 of the 103 open PRs
+  on the board sit in one chat, 6 in two, so every chat it is.
+* Checked: `test/pr-turn.test.mjs` (the rules, the tick against the move, a first look, a PR out of sight),
+  `test/pr-poll.test.mjs` (the watch); `scripts/scenarios/pr-turn.mjs` on the fake gh (`FAKEGH_VIEWER`; an entry is
+  handed back whole): waiting, ticked, the push un-ticking it by the watch alone, the filled chips, one alert and its
+  banner, a second tick holding through a restart, the next review handing it back. `npm test`'s idle-drawer test
+  timed out waiting for its fakes to register — at HEAD too, in a scratch worktree, with the load average at 97.
+
 ## Decisions of 2026-09-28, night — ✓ in the chats step
 
 Ricardo: "when using hotkey N and then inside a project, I see the current chats there - I want to have the "done" icon

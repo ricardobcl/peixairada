@@ -54,7 +54,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `scripts/launchd.sh` | The server as a login agent; `restart [--after N]` |
 | `scripts/verify.mjs`, `scripts/scenario.mjs`, `scripts/scenarios/` | The browser harness (see Verifying) |
 | `scripts/fakeclaude.mjs`, `scripts/fixture.mjs` | A stand-in CLI for tests; a `~/.claude` look-alike |
-| `scripts/fakegh.mjs`, `scripts/readme-shots.mjs` | `gh api graphql` answered from a file (`GH_BIN`, `FAKEGH_PRS`); the README's screenshots from a made-up board → `docs/shots/` — never shoot the real one |
+| `scripts/fakegh.mjs`, `scripts/readme-shots.mjs` | `gh api graphql` answered from a file (`GH_BIN`, `FAKEGH_PRS`, `FAKEGH_VIEWER`; a PR's entry is handed back whole, so it can carry the turn's fields); the README's screenshots from a made-up board → `docs/shots/` — never shoot the real one |
 | `scripts/check.sh`, `scripts/check-page.mjs`, `scripts/map.mjs` | Static checks; the section maps |
 | `test/` | `node:test` files (`npm test`) |
 
@@ -70,7 +70,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | Work behind the turn | `Monitor` and a `Bash` with `run_in_background` leave a task running: the tool_result names it (`Monitor started (task …`, `Command running in background with ID: …`) and `<task-notification>` lines carry its events and, with a `<status>`, its end. `s.tasks` → `tasks` on the summary; a task dies with the claude that started it (`live.startedAt`), at its expiry (`MONITOR_MS`, `TASK_MAX_MS`), or with the chat's process (`pruneTasks`, on the poll — `runningTasks` only reads). **A completion notice delivered mid-turn never becomes a line**, so a background command is also asked about directly: `sweepTasks` runs **one** `lsof -F n` per poll over every task's output file (the harness holds it open until the command exits), after `TASK_GRACE_MS`, never on lsof's own failure, names compared resolved |
 | Titles | board title (state file) › `custom-title` › the oldest still-open PR › `ai-title` › last prompt — `summary()`, `prTitle()` |
 | Model | `message.model` on assistant lines, the last one wins, `<synthetic>` skipped — `s.model`; the card wears an F for Fable (`onFable`) |
-| PRs mentioned | `pr-link` lines *and* GitHub pull URLs in user/assistant text; most recently mentioned first; `gh api graphql` batched for state and title (one of the two network calls), polled by the chat's recency — see *The server* |
+| PRs mentioned | `pr-link` lines *and* GitHub pull URLs in user/assistant text; most recently mentioned first; `gh api graphql` batched for state, title and whose move it is (one of the two network calls), polled by the chat's recency and the PR's own — see *The server* |
 | Plan usage (the chat list's footer) | `GET https://api.anthropic.com/api/oauth/usage` with Claude Code's own OAuth bearer from the keychain item *Claude Code-credentials*; `USAGE=off` disables; the token never reaches the page. → Findings: *plan usage* |
 | Permission prompts | the registry's `waiting` (above) — they never reach the transcript |
 | Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login shell (mise's PATH; `RUN_SHELL` — the user's zsh or bash, else `/bin/zsh`); it registers like any CLI run; a new chat is tied to its session by pid. **A folder whose Taskfile launches claude** (a task whose description mentions Claude) starts new chats as `task <name>` instead: `GET /api/launchers?cwd=` lists them (`task --list --json`, cached by the file's mtime, `TASK_BIN` overrides), `POST /api/terminals {cwd, task}` checks the name; claude is then a *descendant* of the PTY's pid, found through `ps` (`linkTermToRegistry`, `t.claudePid`), which is also where the launcher's name is written down for good (`noteEnv` → `envs` in the state file → `s.env`, what ⌥⌘O scopes by). A resume never goes through task. **`/clear` (or `/resume`) in the drawer** gives that pid a new session id and `linkTermToRegistry` moves the holder to it and pushes **both** chats; the page follows the holder (`terminal` event → `openSession`), the old chat is a stale card |
@@ -103,6 +103,16 @@ refuses to run against the real directory for the same reason.
   (unless asked within `PR_TTL_MS`, 30 s). The most recent chat mentioning a PR sets its pace; merged and closed are
   never asked twice, one in flight is not queued (`prAsking`). **A call that fails as a whole changes nothing** (it used to wipe the batch's states and titles)
   and pauses the polls, 1 min doubling to 30. → `test/pr-poll.test.mjs`.
+* **A PR you wrote or reviewed has a turn** (2026-09-28): the same call asks `PR_FIELDS` and `viewer`, and `prTurn` —
+  pure — says `you` when someone else's PR has a head that is not the commit your latest review was on (not after you
+  approved), someone else wrote after your last word (a reply in a thread is a review), or your review is asked for
+  again; on your own PR, when someone else reviewed, commented or pushed after your last word. Bots are nobody. **A
+  move un-ticks every chat that mentions the PR** (`isDone`: the tick against `turn.movedAt` too) and sends one alert,
+  `kind: 'pr'` with a `heading`, to the chat touched last (`notifyPr`) — on the way from `them`, or when a ticked chat
+  comes back. `movedAt` is `prTurns` in the state file (`moveTurn`): GitHub's time for a PR's first look, the board's
+  clock for every change after, so a restart moves nothing. **The PR is watched by its own newest event as well**
+  (`PR_WATCH`: 2 min within two days, 10 within two weeks; `PR_WATCH_MS`), however quiet its chat.
+  → `test/pr-turn.test.mjs`, `scripts/scenarios/pr-turn.mjs`.
 
 ## The board
 
@@ -215,6 +225,10 @@ refuses to run against the real directory for the same reason.
   are rendered folded too (`#prlist` hidden), so ⌥⌘G and the harness still read `#prlist .prrow`. On a tinted header
   the chips sit on the panel, 20 px tall, edged in the state's colour at 85 % (`--prb`) on a wash of it (`--prc`;
   `--prg` per theme). → `scripts/scenarios/header-prs.mjs`.
+* **A PR at your move is a filled chip** (2026-09-28): `data-turn` (`turnOf(pr)`: `you` · `them` · empty) on `.cpr`,
+  `.hpr` and `.prrow`; `you` fills the chip with `--prc` in the ground's ink, and `+n` too when it folds one away. The
+  tooltips say why (`turnTip`), the row says it in `.why`. The card's eight chips always include every one at your
+  move (`cardPrs`), in the chat's order.
 * **A card comes in three sizes, the cog's slider** (`#cardsSize`, `prefs.cards`): *large* — your last prompt and
   Claude's last reply —, *medium* the last word only, *compact* neither. `cardHtml` always writes both `.snip`s and
   marks the older one `.older` (Claude's reply is the last word when `lastReplyAt ≥ lastUserAt`); CSS hides by
@@ -582,7 +596,8 @@ refuses to run against the real directory for the same reason.
 * No in-page toasts: alerts are the badge plus a system notification; the app sets `NOTIFY=off` on its own server.
   **The cog's switch is the server's word** (`notifications` in the state file, `PUT /api/notifications`, a
   `notifications` event): off, every alert still goes out but `quiet: true`, and the three posters (main.swift, the
-  page's `Notification`, the server's osascript) each skip it. A new poster has to read `quiet` too.
+  page's `Notification`, the server's osascript) each skip it. A new poster has to read `quiet` too — and `heading`,
+  the server's title for an alert that is not Claude's (a PR's turn), which the three put before the kind's words.
   → `scripts/scenarios/notifications.mjs`.
 * Swift: `Result<Void, String>` does not compile; `isReleasedWhenClosed = false` on the window; drop -999 in every
   navigation-failure callback; pin the deployment target (`-target`, `LSMinimumSystemVersion`); an Edit menu or no ⌘V.
@@ -619,10 +634,10 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   finite animation (the named slides, the CSS transitions) to end and leaves the endless ones alone. `ctx`: `evaluate`, `waitFor`, `send`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
-  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The thirty-five in
+  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The thirty-six in
   `scripts/scenarios/` are the regression checks for the drawer, the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
-  marks, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, the chat's links,
+  marks, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, a PR's turn, the chat's links,
   the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported

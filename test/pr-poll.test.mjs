@@ -64,3 +64,11 @@ test('merged and closed are never asked twice; one we cannot see backs off an ho
   checked(3, 61 * MIN, null);
   assert.deepEqual(due([s]), [3]);
 });
+
+test('a PR you wrote or reviewed is watched by its own last event, whatever its chat', () => {
+  prStatus.clear();
+  const s = chat('o', 20 * DAY, 1, 2, 3, 4);
+  const watched = (n, last, ago) => prStatus.set(url(n), { state: 'open', title: 'PR ' + n, turn: { you: false, last: new Date(NOW - last).toISOString() }, checkedAt: NOW - ago });
+  watched(1, HOUR, 3 * MIN); watched(2, 5 * DAY, 3 * MIN); watched(3, 5 * DAY, 11 * MIN); watched(4, 20 * DAY, 11 * MIN);
+  assert.deepEqual(due([s]).sort(), [1, 3]);   // two minutes within two days of its last event, ten within two weeks, then the chat's pace
+});

@@ -1,0 +1,110 @@
+// Whose move a PR is at, and what that does to a done tick (2026-09-28). prTurn reads what GitHub's GraphQL answers
+// for PR_FIELDS; setPrInfo keeps the board's record of when each move became news, and isDone weighs the tick by it.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+const tmp = mkdtempSync(join(tmpdir(), 'peix-test-'));
+process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
+const { prTurn, setPrInfo, isDone, doneMarks, newSession, notePr, sessions } = await import('../server.mjs');
+
+const t = h => new Date(Date.UTC(2026, 8, 28, h)).toISOString().replace('.000', '');   // GitHub writes no milliseconds
+const user = login => ({ login, __typename: 'User' });
+/** A PR as PR_FIELDS brings it back: `me` reviewed `author`'s PR at 10:00 on commit A. */
+function pr(o = {}) {
+  return {
+    state: 'OPEN', createdAt: t(8), headRefOid: 'A', author: user('ana'),
+    viewerLatestReview: { submittedAt: t(10), commit: { oid: 'A' } },
+    reviewRequests: { nodes: [] },
+    reviews: { nodes: [{ author: user('me'), state: 'COMMENTED', submittedAt: t(10) }] },
+    comments: { nodes: [] },
+    pushes: { nodes: [{ __typename: 'PullRequestCommit', commit: { committedDate: t(9), author: { user: { login: 'ana' } } } }] },
+    asks: { nodes: [] },
+    ...o
+  };
+}
+const commit = (h, login) => ({ __typename: 'PullRequestCommit', commit: { committedDate: t(h), author: { user: login ? { login } : null } } });
+
+test('someone else\'s PR you reviewed: theirs to move until they push, reply, or ask again', () => {
+  assert.deepEqual(prTurn(pr(), 'me'), { you: false, mine: false, why: 'waiting on ana', at: null, last: t(10), key: 'them' });
+  const pushed = prTurn(pr({ headRefOid: 'B', pushes: { nodes: [commit(11, 'ana')] } }), 'me');
+  assert.equal(pushed.you, true);
+  assert.equal(pushed.why, 'pushed since your review');
+  assert.equal(pushed.at, t(11));
+  // the commit your review was on is what counts, not the clock: committed before your review, pushed after it
+  assert.equal(prTurn(pr({ headRefOid: 'B', pushes: { nodes: [commit(9, 'ana')] } }), 'me').you, true);
+  const replied = prTurn(pr({ reviews: { nodes: [...pr().reviews.nodes, { author: user('ana'), state: 'COMMENTED', submittedAt: t(12) }] }, comments: { nodes: [{ author: user('rui'), createdAt: t(13) }] } }), 'me');
+  assert.deepEqual([replied.you, replied.why, replied.at], [true, '2 comments from ana, rui', t(13)]);
+  const again = prTurn(pr({ reviewRequests: { nodes: [{ requestedReviewer: { login: 'me' } }] }, asks: { nodes: [{ createdAt: t(14), requestedReviewer: { login: 'me' } }] } }), 'me');
+  assert.deepEqual([again.you, again.why, again.at], [true, 'your review asked for again', t(14)]);
+});
+
+test('nobody is waiting on you: bots, your own pushes, a push after you approved, words before yours', () => {
+  assert.equal(prTurn(pr({ comments: { nodes: [{ author: { login: 'codecov', __typename: 'Bot' }, createdAt: t(12) }, { author: { login: 'ci[bot]', __typename: 'User' }, createdAt: t(12) }] } }), 'me').you, false);
+  assert.equal(prTurn(pr({ headRefOid: 'B', pushes: { nodes: [commit(11, 'me')] } }), 'me').you, false);
+  const approved = { reviews: { nodes: [{ author: user('me'), state: 'APPROVED', submittedAt: t(10) }] } };
+  assert.equal(prTurn(pr({ ...approved, headRefOid: 'B', pushes: { nodes: [commit(11, 'ana')] } }), 'me').you, false);
+  assert.equal(prTurn(pr({ comments: { nodes: [{ author: user('ana'), createdAt: t(9) }] } }), 'me').you, false);
+});
+
+test('no turn at all: merged, closed, or a PR you never touched', () => {
+  assert.equal(prTurn(pr({ state: 'MERGED' }), 'me'), null);
+  assert.equal(prTurn(pr({ state: 'CLOSED' }), 'me'), null);
+  assert.equal(prTurn(pr({ viewerLatestReview: null, reviews: { nodes: [] } }), 'me'), null);
+  assert.equal(prTurn(pr(), null), null);
+});
+
+test('your own PR: yours to move once someone reviews, comments or pushes after your last word', () => {
+  const mine = o => pr({ author: user('me'), viewerLatestReview: null, reviews: { nodes: [] }, pushes: { nodes: [commit(9, 'me')] }, ...o });
+  assert.deepEqual(prTurn(mine(), 'me'), { you: false, mine: true, why: 'waiting on reviews', at: null, last: t(9), key: 'them' });
+  const reviewed = prTurn(mine({ reviews: { nodes: [{ author: user('rui'), state: 'CHANGES_REQUESTED', submittedAt: t(11) }, { author: user('ana'), state: 'APPROVED', submittedAt: t(12) }] } }), 'me');
+  assert.deepEqual([reviewed.you, reviewed.mine, reviewed.why], [true, true, 'approved by ana · changes asked by rui']);
+  // you pushed the fixes after: theirs again
+  assert.equal(prTurn(mine({ reviews: { nodes: [{ author: user('rui'), state: 'CHANGES_REQUESTED', submittedAt: t(11) }] }, pushes: { nodes: [commit(13, 'me')] } }), 'me').you, false);
+  // a commit GitHub cannot tie to anyone is the author's own
+  assert.equal(prTurn(mine({ pushes: { nodes: [commit(13, null)] } }), 'me').you, false);
+  const pushed = prTurn(mine({ pushes: { nodes: [commit(9, 'me'), commit(13, 'rui')] } }), 'me');
+  assert.deepEqual([pushed.you, pushed.why], [true, 'rui pushed']);
+});
+
+test('a move un-ticks the chats that mention the PR, weighed by when the board learnt of it', () => {
+  const url = 'https://github.com/acme/r/pull/7', at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+  const s = newSession('tick', '/x/tick.jsonl');
+  s.lastActivity = new Date(at(10)).toISOString(); notePr(s, url, s.lastActivity, 'user'); sessions.set(s.id, s);
+  const them = prTurn(pr(), 'me'), comment = h => prTurn(pr({ comments: { nodes: [{ author: user('ana'), createdAt: t(h) }] } }), 'me');
+  const tick = (h, m) => { doneMarks[s.id] = new Date(at(h, m)).toISOString(); };
+
+  setPrInfo(url, 'open', 'PR', them, at(11));
+  tick(11, 30); assert.equal(isDone(s), true, 'waiting on them: the tick holds');
+  setPrInfo(url, 'open', 'PR', comment(12), at(13));
+  assert.equal(isDone(s), false, 'the reply brings the chat back');
+  tick(13, 30); assert.equal(isDone(s), true, 'ticked again after seeing it');
+  setPrInfo(url, 'open', 'PR', comment(12), at(14));
+  assert.equal(isDone(s), true, 'the same move is not news twice');
+  // a move is news from when the board saw it, whatever GitHub's clock says of it
+  setPrInfo(url, 'open', 'PR', prTurn(pr({ headRefOid: 'B', pushes: { nodes: [commit(9, 'ana')] }, comments: { nodes: [{ author: user('ana'), createdAt: t(12) }] } }), 'me'), at(15));
+  assert.equal(isDone(s), false, 'a push the board saw at 15 un-ticks a 13:30 tick, though committed at 9');
+  assert.equal(s.prs[0].turn.why, 'pushed since your review · 1 comment from ana');
+  tick(16); setPrInfo(url, 'merged', 'PR', null, at(17));
+  assert.equal(s.prs[0].turn, null, 'merged: no turn');
+  assert.equal(isDone(s), true);
+});
+
+test('a PR the board has never looked at moves at GitHub\'s time for it, and one it cannot see keeps its record', () => {
+  const url = 'https://github.com/acme/r/pull/8', at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+  const s = newSession('first', '/x/first.jsonl');
+  s.lastActivity = new Date(at(10)).toISOString(); notePr(s, url, s.lastActivity, 'user'); sessions.set(s.id, s);
+  const reply = prTurn(pr({ comments: { nodes: [{ author: user('ana'), createdAt: t(12) }] } }), 'me');
+  doneMarks[s.id] = new Date(at(13)).toISOString();
+  setPrInfo(url, 'open', 'PR', reply, at(20));
+  assert.equal(s.prs[0].turn.movedAt, new Date(at(12)).toISOString());
+  assert.equal(isDone(s), true, 'a reply at 12 was there before the 13:00 tick');
+  doneMarks[s.id] = new Date(at(11)).toISOString();
+  assert.equal(isDone(s), false, '…and after an 11:00 one');
+  setPrInfo(url, null, null, undefined, at(21));
+  assert.equal(s.prs[0].turn, null, 'out of sight: no chip mark');
+  setPrInfo(url, 'open', 'PR', reply, at(22));
+  assert.equal(s.prs[0].turn.movedAt, new Date(at(12)).toISOString(), 'back in sight: the same move, the same time');
+});

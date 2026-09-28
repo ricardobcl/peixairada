@@ -569,6 +569,10 @@
   :is(.card .cpr, .shead .hpr)[data-state="merged"] { --prc: var(--pr-merged); color: var(--pr-merged); border-color: color-mix(in srgb, var(--pr-merged) var(--prb, 55%), transparent); }
   :is(.card .cpr, .shead .hpr)[data-state="closed"] { --prc: var(--pr-closed); color: var(--pr-closed); border-color: color-mix(in srgb, var(--pr-closed) var(--prb, 55%), transparent); }
   :is(.card .cpr, .shead .hpr)[data-state="draft"] { --prc: var(--pr-draft); color: var(--pr-draft); border-color: color-mix(in srgb, var(--pr-draft) var(--prb, 55%), transparent); }
+  /* a PR come round to you — pushed since your review, replied to, reviewed (the server's prTurn, 2026-09-28): the chip
+     filled with its state's colour, and the tooltip says why */
+  :is(.card .cpr, .shead .hpr)[data-turn="you"] { background: var(--prc, var(--muted)); border-color: var(--prc, var(--muted)); color: var(--bg); }
+  .card .cpr[data-turn="you"]:hover { border-color: var(--ink); }
   :is(.card, .presence) .state.needs-input { color: var(--needs); display: flex; align-items: baseline; gap: 5px; }
   :is(.card, .presence) .state.needs-input .ic { width: 11px; height: 11px; flex: none; align-self: center; }
   :is(.card, .presence) .state.needs-input .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -755,6 +759,7 @@
   .prrow .t { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
   .prrow .t.pending { font-weight: 400; color: var(--muted); font-style: italic; }
   .prrow .meta { flex: none; color: var(--muted); font-size: 11px; }
+  .prrow .why { flex: 0 1 auto; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent); font-size: 11px; font-weight: 600; }
   .prrow:hover .t { text-decoration: underline; }
   .prrow[hidden] { display: none; }
   #prlist .more { justify-self: start; font: inherit; font-size: 11px; color: var(--accent); background: none; border: 0; padding: 1px 0 0 61px; cursor: pointer; }
@@ -2090,6 +2095,8 @@
       : a.waitingFor ? `asking you — ${a.waitingFor}` : 'asking you';
     return `<div class="state needs-input" title="${esc(what)}">${ICON.ask}<span class="q">${esc(what)}</span>${a.options ? `<span class="opts">${a.options} answers</span>` : ''}</div>`;
   }
+  /** The card's eight PR chips, in the chat's order — every one at your move among them. */
+  const cardPrs = prs => { const keep = new Set([...prs.filter(p => p.turn?.you), ...prs].slice(0, 8)); return prs.filter(p => keep.has(p)); };
   function cardHtml(s, p, q = '') {
     const color = repoColor(s.cwd), un = state.unread.get(s.id) || 0;
     const showReply = s.lastReply && s.status !== 'working';
@@ -2114,7 +2121,7 @@
     return `<div class="card ${s.status} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${s.id}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
       <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${act}${fable}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${un ? `<span class="badge">${un}</span>` : ''}</div>
-      ${s.prs?.length ? `<div class="cprs">${s.prs.slice(0, 8).map(pr => `<a class="cpr" data-state="${esc(pr.state || '')}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`).join('')}</div>` : ''}
+      ${s.prs?.length ? `<div class="cprs">${cardPrs(s.prs).map(pr => `<a class="cpr" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}${pr.turn ? '\n' + turnTip(pr) : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`).join('')}</div>` : ''}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${esc(s.lastReply)}</div>` : ''}
       ${asking(s) ? askHtml(s) : ''}
@@ -2859,9 +2866,13 @@
   }
 
   // ---- chat header -------------------------------------------------------------------
+  // Whose move a PR is at (the server's prTurn, 2026-09-28): `you` — pushed since your review, replied to, reviewed —
+  // fills its chip, on the card and in the header, and its row says why; `them` only says so in the tooltip.
+  const turnOf = pr => pr.turn ? (pr.turn.you ? 'you' : 'them') : '';
+  const turnTip = pr => !pr.turn ? '' : pr.turn.you ? `your move — ${pr.turn.why}` : pr.turn.why;
   const PR_ROWS = 6;   // a chat that lists PRs mentions dozens; the block shows this many and folds the rest behind "more"
-  const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" href="${esc(pr.url)}" target="_blank" rel="noopener"
-      title="${esc(`${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}`)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span><span class="meta">${rel(pr.lastAt)}</span></a>`;
+  const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" href="${esc(pr.url)}" target="_blank" rel="noopener"
+      title="${esc(`${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}${pr.turn ? `\n${turnTip(pr)}` : ''}`)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span>${pr.turn?.you ? `<span class="why">your move · ${esc(pr.turn.why)}</span>` : ''}<span class="meta">${rel(pr.lastAt)}</span></a>`;
   const FOCUS_TIP = "Open this chat in VS Code";   // the button only — its key went (2026-09-20, Ricardo: "leave the button up top only")
   // Claude Code's own /focus — "just your prompt, summary, and response", every step in between hidden — on the
   // session running in the drawer (2026-09-20, Ricardo: "add a toggle on the chat header for toggling focus mode on
@@ -2896,7 +2907,7 @@
     const termWord = drawer.err ? 'failed' : take ? (armed ? (s.status === 'working' ? 'sure? mid-reply' : inVsCode(s) ? 'sure? ends VS Code’s' : 'sure?') : 'take over') : termLive(s) ? 'claude session' : 'claude here';
     const prs = s.prs || [], prsOpen = !!prefs.prsOpen;
     const hprs = !prs.length ? '' : `<button class="hprs${prsOpen ? ' on' : ''}" id="prToggle" aria-expanded="${prsOpen}" title="${prs.length} PR${prs.length === 1 ? '' : 's'} in this chat — click to ${prsOpen ? 'fold the list' : 'list them, one per row'} · ⌥⌘G opens one">${
-      prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</span>`).join('')
+      prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}${pr.turn ? `\n${turnTip(pr)}` : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</span>`).join('')
     }<span class="hpr more" hidden></span></button>`;
     const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
       ${hprs}${taskChip(s)}
@@ -3019,6 +3030,7 @@
     for (let i = shown; i < chips.length; i++) chips[i].hidden = true;
     more.hidden = shown === chips.length;
     if (!more.hidden) { more.textContent = `+${chips.length - shown}`; more.title = chips.slice(shown).map(c => c.title).join('\n'); }
+    more.dataset.turn = chips.slice(shown).some(c => c.dataset.turn === 'you') ? 'you' : '';
   }
   // The header's size changed: its width moves the fold (a height alone — a chip fold, the details — does not, and a
   // fold that changes the height would otherwise run this again); under the housing every change moves the hole.
@@ -4112,10 +4124,10 @@
     // the badge that just came, or grew, pops in — a one-shot on the node the render made
     const badge = a.sessionId && !viewing && !REDUCED.matches && document.querySelector(`#slist > .card[data-id="${a.sessionId}"] .badge`);
     if (badge) { noteMotion(a.sessionId, 'pop'); badge.animate([{ transform: 'scale(.5)', opacity: 0 }, { transform: 'scale(1.15)', opacity: 1, offset: .6 }, { transform: 'none' }], { duration: 260, easing: 'ease-out', id: 'pop' }); }
-    if (inApp) post({ type: 'alert', kind: a.kind, project: a.project || '', title: a.title || '', snippet: a.snippet || '', sessionId: a.sessionId || '', serverNotify: !!state.serverNotify, quiet: !!a.quiet });   // the app posts the banner and counts the Dock's badge
+    if (inApp) post({ type: 'alert', kind: a.kind, heading: a.heading || '', project: a.project || '', title: a.title || '', snippet: a.snippet || '', sessionId: a.sessionId || '', serverNotify: !!state.serverNotify, quiet: !!a.quiet });   // the app posts the banner and counts the Dock's badge
     if (a.quiet) return;   // notifications off (the cog): the unread count above, nothing else
     if ('Notification' in window && Notification.permission === 'granted' && !viewing) {
-      const n = new Notification(`${a.kind === 'reply' ? 'Claude replied' : 'Claude needs input'} · ${a.project}`, { body: `${a.title}\n${a.snippet || ''}`, tag: a.sessionId || 'test' });
+      const n = new Notification(a.heading || `${a.kind === 'reply' ? 'Claude replied' : 'Claude needs input'} · ${a.project}`, { body: `${a.title}\n${a.snippet || ''}`, tag: a.sessionId || 'test' });
       n.onclick = () => { window.focus(); if (a.sessionId) openSession(a.sessionId); n.close(); };
     }
   }
