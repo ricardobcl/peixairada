@@ -31,6 +31,13 @@ dates"; "make the 'setup' inside settings pretty - seems pretty barebones".
   2026-09-20) are gone, and their prefs (`foldCode`, `foldBy`) are deleted on load. A fold still opens with a click.
 * **A date is DD-MM-YYYY again**, the day lines', the transcript's and the timeline's (without the year there): the
   settings' *dates* (year or month first, added that morning with the setup) is gone and `prefs.dates` deleted on load.
+* **The Setup pane is dressed.** It was three bare groups of bordered boxes under one-line captions. Now each part is
+  a section — *Repositories*, *Quick chat*, *Projects* — with a title, a line of what it is for, and an inset list of
+  rows in the way of the system's own settings: a folder icon and the path as text until touched, the org as a
+  `github.com/…` pill, ⌥⌘O as a key cap beside a picker that wears the crystal ball, and for each project the square
+  the rail will draw — its short name on its colour (Peacock's when there is one, said under the name) — followed live
+  as the short name is typed and the colour picked, with a round swatch and a × that comes with the pointer. A line
+  at the foot says the setup is the server's. The class names the scenario reaches the rows by are unchanged.
 
 ## Decisions of 2026-09-29, later — keyboard first: no ＋, settings under ···, the row at the bottom, the budget in words, the splitter's black
 

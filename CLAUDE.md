@@ -348,8 +348,13 @@ refuses to run against the real directory for the same reason.
   PUT: says what is wrong, asks that a root exists); a key never set is the default at read time (`boardConfig()`: the
   roots from `ORG_DIR` / `ORG` when either is in the environment, else none). `GET/PUT /api/config` — a PUT replaces
   the keys it gives —, a `config` event, `config` in the snapshot; the page's `state.config`, `configChanged()`. The
-  cog draws it (`renderSetup`, never under a box that has the keyboard). → `test/config.test.mjs`,
-  `scripts/scenarios/cog-setup.mjs`.
+  settings' Setup pane draws it (`renderSetup`, never under a box that has the keyboard): **three sections —
+  Repositories, Quick chat, Projects — each a title and a line over an inset list of rows** (`.sg` › `.sgh`, `.slist` ›
+  `.srow`; 2026-09-28, night); a path or a name is text until hovered or focused, the org and the short name wear a
+  fill, and a project's row leads with its rail square (`.stile`, `tileStyle()`: Peacock's colour, else the setup's,
+  in `inkOn`'s ink), which follows the short name and the colour as they are typed and picked. The scenario reaches the
+  rows by `.srow.root(.add)`, `.sdir`, `.sorg`, `#quickSel`, `.srow.proj`, `.sab`, `.ssw`, `.sadd` — keep those names.
+  → `test/config.test.mjs`, `scripts/scenarios/cog-setup.mjs`.
 * **The page asks the server through `api(method, url, body)`** (2026-09-27): JSON in, JSON out, a throw with the
   server's own `error` (else the status) when it says no — `e.status`, `e.body`. Every caller says what went wrong
   where it happened, or catches on purpose. The attach upload keeps a raw `fetch`: its body is a file.
