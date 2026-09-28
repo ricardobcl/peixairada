@@ -23,18 +23,16 @@ export default async function (ctx) {
   out.menu = await ctx.evaluate(`JSON.stringify({ ids: [...document.querySelectorAll('#hmenu button')].map(b => b.id),
     right: Math.round(document.querySelector('#moreBtn').getBoundingClientRect().right - document.querySelector('#hmenu').getBoundingClientRect().right),
     below: Math.round(document.querySelector('#hmenu').getBoundingClientRect().top - document.querySelector('#moreBtn').getBoundingClientRect().bottom) })`).then(JSON.parse);
-  ctx.assert.deepEqual(out.menu.ids, ['termBtn', 'webBtn', 'focusBtn', 'foldBtn', 'detailsBtn', 'settingsBtn'], 'the actions, by their own ids — the settings last (2026-09-28)');
+  ctx.assert.deepEqual(out.menu.ids, ['termBtn', 'webBtn', 'focusBtn', 'detailsBtn', 'settingsBtn'], 'the actions, by their own ids — the settings last, no { } since long code is always folded (2026-09-28)');
   ctx.assert.ok(Math.abs(out.menu.right) <= 1 && out.menu.below === 4, 'right-aligned, just under ···');
   await ctx.shot('2-menu', { x: 1100, y: 0, width: 600, height: 300 });
 
   // a toggle keeps it up, with the new state on its row
-  const fold = () => ctx.evaluate(`document.querySelector('#foldBtn .k').textContent`);
-  const was = await fold();
-  await ctx.evaluate(`document.querySelector('#foldBtn').click()`);
-  ctx.assert.equal(await open(), true, 'a toggle leaves the menu up');
-  ctx.assert.notEqual(await fold(), was, '…and its row says the new state');
-  await ctx.evaluate(`document.querySelector('#foldBtn').click()`);
+  const details = () => ctx.evaluate(`document.querySelector('#detailsBtn .k').textContent`);
+  const was = await details();
   await ctx.evaluate(`document.querySelector('#detailsBtn').click()`);
+  ctx.assert.equal(await open(), true, 'a toggle leaves the menu up');
+  ctx.assert.notEqual(await details(), was, '…and its row says the new state');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#shead .details').hidden`), false, 'details: path and branch under the title');
   await ctx.evaluate(`document.querySelector('#detailsBtn').click()`);
 

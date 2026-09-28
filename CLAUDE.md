@@ -228,7 +228,7 @@ refuses to run against the real directory for the same reason.
   a new header; the handlers are still bound on every call (they close over `s`). Anything that edits the header in
   place must reset `drawn.head` (`editTitle` does).
 * **The chat header's row is the title, the PR chips, a task's chip and ···**: every button it had — `#termBtn`,
-  `#viewBtn`, `#webBtn`, `#focusBtn`, `#foldBtn`, `#detailsBtn` (the state dot and its age), the VS Code mark — is a
+  `#viewBtn`, `#webBtn`, `#focusBtn`, `#detailsBtn` (the state dot and its age), the VS Code mark — is a
   row of `#hmenu`, keeping its id, so the hotkeys and the harness still reach them, and `.click()` works on a closed
   menu. `#hmenu` is a **non-modal `<dialog>`**, static in the markup: `postPane` lowers the pane while it is up, Esc
   closes it, `runHotkey` closes it rather than let it swallow the key. Toggles leave it up (the click-outside test goes
@@ -339,7 +339,7 @@ refuses to run against the real directory for the same reason.
 * **State lives in three places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done ticks,
   named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, the
   setup; `STATE_FILE` overrides) shared by the app and every browser; the browser's `localStorage` `peixairada-prefs`
-  (selected project, filters, widths, zoom, folds, card size, the code's fold, ⌥ as Meta, dates, drawer open/height — the keys are the `prefs` literal,
+  (selected project, filters, widths, zoom, folds, card size, ⌥ as Meta, dates, drawer open/height — the keys are the `prefs` literal,
   and old ones are deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it
   renders reads its state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
 * **The setup is the server's, and nothing about one Mac is written in the code** (2026-09-28): `config` in the state
@@ -443,13 +443,13 @@ refuses to run against the real directory for the same reason.
   menu's last row) and, with no chat open, the empty header's own ··· (`#noChatMore`, delegated — `leaveChat` rewrites
   the header). A head (the name, the counts, × `#settingsClose`), a segmented control (`.stabs`) over three panes
   (`.spane`): **Board** — the notifications switch (`#notifyOn`), the rings' step (`#ringsInStep`), the cards' size
-  (`.dens`), the code's fold (`#foldCode`), ⌥ as Meta (`#optMeta`), how a date is written (`#datesStops` →
+  (`.dens`), ⌥ as Meta (`#optMeta`), how a date is written (`#datesStops` →
   `fmtDate`), what is hidden (`#hidden`); **Setup** — the server's (`#setup`); **Keys** — the list (`.keys`). The class
   is still `pop`, so every row keeps its `.pop …` rule. Esc, the backdrop, ×, ⌘, or ⌘W close it; its `close` drops a
   setup row half typed. **It is modal**: the pane is down while it is up (`postPane`), and the ⌥⌘ / ⌘ keys are swallowed
   under it — close it first (the scenarios do). The fish is the SSE light and, clicked, **the About box** (`#about`, a modal dialog:
-  version, process and paths from the snapshot's `about`, and the chats' counts). The `{ }` row under the chat
-  header's ··· is the fold for a chat (`prefs.foldBy[id]`, else the settings' `prefs.foldCode`). **Every `pre` in the transcript is
+  version, process and paths from the snapshot's `about`, and the chats' counts). **Long code is always folded**
+  (2026-09-28): a block over six lines, no switch in the settings and no `{ }` row per chat. **Every `pre` in the transcript is
   inside a `.codebox`** (2026-09-27, night; `md()`): the bar with the language and the copy button is its first
   child, a folded block is `details.codefold > summary + .codebox`, and a rule that reaches a `pre` goes through the
   box. The copy click is delegated on `#log`.

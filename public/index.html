@@ -51,8 +51,6 @@
   .btn.icon.err { color: var(--needs); border-color: var(--needs); }
   #focusBtn.err .ic { fill: var(--needs); }   /* must out-specify #focusBtn .ic above */
   #termBtn.on { color: var(--accent); border-color: var(--accent); }
-  .btn.icon.fold { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; font-weight: 700; letter-spacing: -1px; }   /* { }: code folds in this chat */
-  #foldBtn.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
   #termBtn.take { color: var(--ink); }                                        /* live in another terminal: can be taken over */
   #termBtn.take.arm { color: var(--needs); border-color: var(--needs); }      /* armed: the next click ends that claude */
   .btn.icon .lbl { font-size: 11px; }
@@ -1204,7 +1202,6 @@
       <datalist id="cardsStops"><option value="0"></option><option value="1"></option><option value="2"></option></datalist>
       <span class="stops"><span data-v="0" title="your last prompt and Claude's last reply, as always">large</span><span data-v="1" title="only the last word — yours or Claude's, whichever came last">medium</span><span data-v="2" title="neither: the title, its chips and its PRs">compact</span></span>
     </div>
-    <label class="opt" title="How a chat's code blocks longer than six lines start out — the chat header's ··· { } turns it for that chat alone"><input type="checkbox" id="foldCode" checked><span><b>fold code</b> — long code blocks start folded; ··· { } turns a chat's</span></label>
     <label class="opt" title="On, ⌥ with a letter is Meta in the terminal, as iTerm's Esc+ — ⌥B ⌥F move a word, ⌥⌫ deletes one; ⌥ with a digit or a sign still types what the keyboard makes. Off, ⌥ types whatever your layout composes (⌥L is @ on a German one)"><input type="checkbox" id="optMeta" checked><span><b>⌥ is Meta</b> in the terminal — off, ⌥ types what your keyboard composes</span></label>
     <div class="dens dates" title="How a day is written — the lines between the cards, the transcript's, the timeline's"><b>dates</b><span class="stops" id="datesStops"></span></div>
     <div id="hidden" class="hid"></div>
@@ -1308,18 +1305,17 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, foldBy: {}, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, foldCode: true, optMeta: true, dates: 'dmy' };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, dates: 'dmy' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
   delete prefs.projectsCompact;   // the projects column's strip or full width — there is no column since 2026-09-24
-  // the switches nothing set since the cog was pared down (2026-09-21): a saved value was the only way to flip them —
-  // foldCode was one of them, and is the cog's again since 2026-09-28
-  for (const k of ['sound', 'showAll', 'toolsMode']) delete prefs[k];
+  // the switches nothing set since the cog was pared down (2026-09-21): a saved value was the only way to flip them;
+  // and the code's fold, the settings' and each chat's, since long code is always folded (2026-09-28)
+  for (const k of ['sound', 'showAll', 'toolsMode', 'foldCode', 'foldBy']) delete prefs[k];
   // the one-of-four filter (before 2026-09-20) becomes the set of states shown; 'all' was every state
   if ('filter' in prefs) { prefs.filters = prefs.filter === 'all' ? ['ready', 'working', 'done'] : [prefs.filter]; delete prefs.filter; }
   if (!Array.isArray(prefs.filters)) prefs.filters = ['ready', 'working', 'done'];
-  if (!prefs.foldBy || typeof prefs.foldBy !== 'object') prefs.foldBy = {};
   const savePrefs = () => { try { localStorage.setItem('peixairada-prefs', JSON.stringify(prefs)); } catch {} };
   /** One way to ask the server (2026-09-27; thirteen copies of the fetch, the header and the JSON.stringify before):
    *  JSON in, JSON out, and a throw with the server's own words — its `error`, else the status — when it says no. */
@@ -1329,17 +1325,11 @@
     if (!r.ok) throw Object.assign(new Error(d.error || `HTTP ${r.status}`), { status: r.status, body: d });
     return d;
   }
-  // Code folding per chat (2026-09-20, Ricardo: "a button to toggle for that session"): the header's { } button sets
-  // prefs.foldBy[id]; a chat without a word of its own follows the cog's *fold code* switch (prefs.foldCode — gone on
-  // 2026-09-21, back on 2026-09-28 with the rest of the setup, on by default as it always was). Claude Code
-  // itself cannot fold the code it prints in the drawer — its only collapse is ctrl+o for tool output — so this is the
-  // rendered transcript's.
-  const foldOn = id => id && id in prefs.foldBy ? !!prefs.foldBy[id] : prefs.foldCode !== false;
 
   // ---- header controls ---------------------------------------------------------------
   // The settings popover is the plan usage and the keys, nothing else (2026-09-21, Ricardo: "just hotkeys and
   // claude credits for now") — the notifications switch joined them on 2026-09-23, and the usage left for the chat
-  // list's footer on 2026-09-24. The chat header's { } button is the fold for a chat.
+  // list's footer on 2026-09-24. Long code is always folded (2026-09-28): no switch, and no { } for a chat.
   // The magnifier opens its box; Esc or an emptied box on blur closes it; the icon stays lit while a filter is on.
   // Since 2026-09-25 it matches the way ⌥⌘K does and ⌥⌘F opens it from anywhere (hotFind): the best match leads
   // (renderSessionList), so there is a card to choose — ↑↓ walk them from the box, ⏎ opens the one marked and hands
@@ -2756,12 +2746,10 @@
   // The switches that are this browser's (2026-09-28): the code's fold, ⌥ in the terminal, how a date is written.
   const DATE_TIP = { dmy: 'day first', ymd: 'year first', mdy: 'month first' };
   function showPrefs() {
-    $('#foldCode').checked = prefs.foldCode !== false;
     $('#optMeta').checked = prefs.optMeta !== false;
     const at = new Date(), on = prefs.dates in DATES ? prefs.dates : 'dmy';
     $('#datesStops').innerHTML = Object.keys(DATES).map(k => `<span data-v="${k}"${k === on ? ' class="on"' : ''} title="${DATE_TIP[k]}">${fmtDate(at, false, k)}</span>`).join('');
   }
-  $('#foldCode').addEventListener('change', e => { prefs.foldCode = e.target.checked; savePrefs(); const s = state.sessions.get(state.current); if (s) { renderHead(s); renderLog(true); } });
   $('#optMeta').addEventListener('change', e => { prefs.optMeta = e.target.checked; savePrefs(); for (const tm of terms) if (tm.xt) tm.xt.options.macOptionIsMeta = prefs.optMeta; });
   $('#datesStops').addEventListener('click', e => {
     const x = e.target.closest('[data-v]'); if (!x) return;
@@ -3050,7 +3038,6 @@
       ideKey(s) ? `<button class="hmi" id="ideCloseBtn" title="Close VS Code Web's tab — ⌥⌘E opens it again · ⌥⌘W with the keys in it"><span class="gl">×</span><span>close VS Code Web</span><span class="k"></span></button>` : '',
       inVsCode(s) ? `<div class="hmi info" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it; ${s.alive ? 'the claude session row takes it over' : 'continue it here or there'}">${ICON.vscode}<span>VS Code's chat</span><span></span></div>` : '',
       '<div class="sep"></div>',
-      `<button class="hmi${foldOn(s.id) ? ' on' : ''}" id="foldBtn" aria-pressed="${foldOn(s.id)}" title="${foldOn(s.id) ? 'Code blocks longer than 6 lines are folded in this chat — click to show them whole' : 'Code blocks are shown whole in this chat — click to fold the long ones'}${s.id in prefs.foldBy ? ' (set here)' : ' (the default)'}"><span class="gl">{ }</span><span>fold long code</span><span class="k">${foldOn(s.id) ? 'on' : 'off'}</span></button>`,
       `<button class="hmi${prefs.headDetails ? ' on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}" title="${esc(statusLabel[s.status] || s.status)} · click to ${prefs.headDetails ? 'hide' : 'show'} path, branch and session details under the title"><span class="dot ${s.status}"></span><span>${esc((statusLabel[s.status] || s.status || '').split(' — ')[0])}${s.statusSince ? ` · <span data-at="${esc(s.statusSince)}"></span>` : ''}</span><span class="k">${prefs.headDetails ? 'hide' : 'show'} path</span></button>`,
       '<div class="sep"></div>',
       `<button class="hmi" id="settingsBtn" title="The board's settings, its setup and its keys">${ICON.cog}<span>settings</span><span class="k">⌘,</span></button>`,
@@ -3096,7 +3083,6 @@
     $('#settingsBtn').onclick = () => settingsOpen(true);
     $('#moreBtn').onclick = e => { e.stopPropagation(); if (menu.open) menu.close(); else openMenu(); };
     const vb = $('#viewBtn'); if (vb) vb.onclick = () => toggleFocusView(s);
-    $('#foldBtn').onclick = () => { prefs.foldBy[s.id] = !foldOn(s.id); savePrefs(); renderHead(s); renderLog(true); };
     $('#shead .repo').onclick = () => { if (s.cwd) selectProject(s.cwd); };
     $('#shead h2 .t').ondblclick = () => editTitle(s);
   }
@@ -4130,12 +4116,15 @@
       a.setAttribute('href', `vscode://file${abs}${m[2] ? ':' + m[2] : ''}`);
       a.title = `Open ${abs}${m[2] ? ':' + m[2] : ''} in VS Code`;
     }
-    // Every block in a .codebox with its bar — the language, a copy button — and the long ones folded when the chat folds
+    // Every block in a .codebox with its bar — the language, a copy button — and the long ones folded, always (2026-09-28,
+    // Ricardo: "fold code should be always on, remove that option"; a switch in the settings and a { } row per chat under
+    // ··· before). Claude Code cannot fold the code it prints in the drawer — its only collapse is ctrl+o for tool
+    // output — so this is the rendered transcript's; a folded block opens with a click on its summary.
     for (const pre of tpl.content.querySelectorAll('pre')) {
       const code = pre.querySelector('code');
       const lines = (code?.textContent || pre.textContent).replace(/\n$/, '').split('\n').length;
       const lang = (code?.className.match(/language-([\w+#.-]+)/) || [])[1] || '';
-      const fold = foldOn(state.current) && lines > 6;
+      const fold = lines > 6;
       const box = document.createElement('div'); box.className = 'codebox';
       box.innerHTML = `<div class="cbar">${lang && !fold ? `<span class="lang">${esc(lang)}</span>` : ''}<button class="copy" type="button" title="Copy this block">copy</button></div>`;
       pre.replaceWith(box); box.append(pre);

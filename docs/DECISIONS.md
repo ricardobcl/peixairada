@@ -26,6 +26,9 @@ dates"; "make the 'setup' inside settings pretty - seems pretty barebones".
   sight, so the rule of the morning left the bar coloured top to bottom. `drawSplit` measures the `.active` card now —
   in sight, the colour stops at its bottom; below the window, it runs to the list's foot; above it, or not in the list
   (another project in view, a filter), the bar is black.
+* **Long code is always folded.** A block over six lines is a `details` with its language and length as the summary,
+  in every chat; the settings' *fold code* switch and the `{ }` row under ··· (a chat's own word over it, since
+  2026-09-20) are gone, and their prefs (`foldCode`, `foldBy`) are deleted on load. A fold still opens with a click.
 
 ## Decisions of 2026-09-29, later — keyboard first: no ＋, settings under ···, the row at the bottom, the budget in words, the splitter's black
 

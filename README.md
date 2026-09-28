@@ -66,7 +66,7 @@ Everything is in the **cog**, bottom left:
 - **Your repos** — the folders they live in and their GitHub org. ⌥⌘N lists them all and clones the ones you don't have.
 - **⌥⌘O** — one project to start a chat in with a single key.
 - **Projects** — a short name for the folded list, a colour where Peacock has none.
-- **Preferences** — notifications, card size, code folding, ⌥ as Meta, date format.
+- **Preferences** — notifications, card size, ⌥ as Meta, date format.
 
 <details>
 <summary>Environment variables</summary>

@@ -68,13 +68,6 @@ export default async function (ctx) {
   await ctx.key('KeyW');
   ctx.assert.equal(await ctx.peix('state().focusG'), 0, 'the keys went back to the chat at once');
   await ctx.waitFor(`document.querySelector('#ptabs').hidden && !window.peix.state().split`, { what: 'the zsh ended by ⌥⌘W — and the split with it' });
-  // the { } button: folds by the cog's default, its own word per chat
-  out.fold = { before: await ctx.evaluate(`document.querySelector('#foldBtn').classList.contains('on')`) };
-  await ctx.evaluate(`document.querySelector('#foldBtn').click()`);
-  out.fold.after = await ctx.evaluate(`document.querySelector('#foldBtn').classList.contains('on')`);
-  out.fold.pref = (await ctx.peix('prefs()')).foldBy[two.id];
-  ctx.assert.deepEqual(out.fold, { before: true, after: false, pref: false }, 'the fold button flips this chat only');
-  await ctx.evaluate(`document.querySelector('#foldBtn').click()`);
   // the header's colour square (2026-09-22): out of sight until the pointer is in the header, and a click moves the
   // page's one <input type=color> under it, pointed at this chat's folder — the panel itself is the browser's, so
   // this stops where the wiring does
