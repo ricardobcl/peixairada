@@ -7,7 +7,10 @@
 // also carries the address of the page on top (2026-09-21): the key's URL until the shell reports a navigation
 // (peixPaneUrl), shown without its scheme, copied whole by a click, and remembered per page across tab switches.
 // Since 2026-09-25 each half's strip lists its own tabs — claude on the left, the pages and the zsh on the right —
-// and a page dragged onto the left half is up there, beside the one on the right.
+// and a page dragged onto the left half is up there, beside the one on the right. Since 2026-09-28 a half whose one
+// tab is not a web page has no strip, only a 2 px rule (claude alone on the left, the editor alone on the right), a
+// page alone keeps its strip for the address; a click on a page tells the board its half has the keys
+// (peixPaneFocus); ⌥⌘W closes the tab the keys are in, and ··· closes the editor.
 export const meta = { server: true, fixture: 'auto' };
 export default async function (ctx) {
   const [two, plain] = ctx.fixture.chats;
@@ -22,7 +25,8 @@ export default async function (ctx) {
   const strips = () => ctx.evaluate(`JSON.stringify(['#ptabs', '#ptabsB'].map(id => [...document.querySelectorAll(id + ' .ptab')].map(b => b.dataset.tab.split(':')[0])))`).then(JSON.parse);
   const tabsNow = () => ctx.evaluate(`JSON.stringify([...document.querySelector(${STRIP}).querySelectorAll('.ptab')].map(b => ({ k: b.dataset.tab, on: b.classList.contains('on'), label: b.firstChild.textContent })))`).then(JSON.parse);
   const lastPane = () => ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'pane').pop() || null)`).then(JSON.parse);
-  const onTab = () => ctx.evaluate(`document.querySelector(${STRIP}).hidden ? 'hidden' : (document.querySelector(${STRIP}).querySelector('.ptab.on')?.dataset.tab || null)`);
+  const onTab = () => ctx.evaluate(`document.querySelector(${STRIP}).hidden ? 'hidden' : window.peix.state().tab`);
+  const lone = () => ctx.evaluate(`JSON.stringify(['#ptabs', '#ptabsB'].map(id => document.querySelector(id).classList.contains('lone')))`).then(JSON.parse);
   await ctx.openChat(two.id);
   await ctx.waitFor(`document.querySelectorAll('#prlist .prrow').length === 2`, { what: 'two PR rows' });
   ctx.assert.equal(await onTab(), 'hidden', 'no strip before a page or a zsh');
@@ -34,7 +38,9 @@ export default async function (ctx) {
   out.one = { tabs: await tabsNow(), pane: await lastPane(), halves: await ctx.peix('state().halves'), focusG: await ctx.peix('state().focusG') };
   ctx.assert.equal(out.one.focusG, 1, 'a new tab takes the keys into the right half');
   ctx.assert.equal(out.one.halves[0], 'chat', '…and the chat keeps the left one');
-  ctx.assert.deepEqual(await strips(), [['chat'], ['gh']], 'each strip lists its own half\'s tabs');
+  ctx.assert.deepEqual(await ctx.peix('state().strips').then(s => s.map(l => l.map(k => k.split(':')[0]))), [['chat'], ['gh']], 'each half holds its own tabs');
+  ctx.assert.deepEqual(await strips(), [[], ['gh']], 'claude alone has no strip; a page alone keeps its own');
+  ctx.assert.deepEqual(await lone(), [true, false], 'the left one is a rule');
   ctx.assert.equal(out.one.tabs.length, 1); ctx.assert.match(out.one.tabs[0].label, /^[\w.-]+#\d+$/, 'labelled repo#n');
   ctx.assert.equal(out.one.pane.show, out.one.tabs[0].k); ctx.assert.deepEqual(out.one.pane.keys, [out.one.tabs[0].k]);
   const strip = await ctx.evaluate(`(r => ({ left: Math.round(document.querySelector('#gbodyB').getBoundingClientRect().left), bottom: Math.round(r.bottom) }))(document.querySelector('#ptabsB').getBoundingClientRect())`);
@@ -92,7 +98,7 @@ export default async function (ctx) {
   ctx.assert.equal(out.ide.tabs.length, 3); ctx.assert.equal(out.ide.tabs[2].label, 'VS Code'); ctx.assert.match(out.ide.pane.show, /^ide:http:\/\/127\.0\.0\.1:1\/\?folder=/);
   // ⌥⌘T: a zsh — five tabs, the zsh second; the pane goes under it
   await ctx.key('KeyT'); await ctx.waitFor(`document.querySelector('#ptabsB .ptab.on')?.dataset.tab === 'shell'`, { what: 'the zsh tab on', timeout: 20_000 });
-  out.five = await strips(); ctx.assert.deepEqual(out.five, [['chat'], ['shell', 'gh', 'gh', 'ide']], 'five tabs: claude on the left, the rest on the right');
+  out.five = await strips(); ctx.assert.deepEqual(out.five, [[], ['shell', 'gh', 'gh', 'ide']], 'five tabs: claude on the left, alone and so with no strip, the rest on the right');
   out.zsh = await lastPane();
   ctx.assert.deepEqual(out.zsh.panes, [], 'the zsh took the right half from the editor; the left half is claude\'s');
   ctx.assert.equal(out.zsh.focus, null, 'so no page is up for the shell to focus');
@@ -130,9 +136,12 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.state().split === true && window.peix.state().focusG === 1`, { what: 'the keys in the right half' });
   await ctx.evaluate(`document.querySelector('#ptabsB .ptab[data-tab^="ide:"]').click()`);
   await ctx.waitFor(`window.peix.state().halves[1].startsWith('ide:')`, { what: 'the editor in the right half' });
-  await ctx.drag(`#ptabsB .ptab[data-tab=${JSON.stringify(other)}]`, '#ptabs');
+  const litA = await ctx.drag(`#ptabsB .ptab[data-tab=${JSON.stringify(other)}]`, '#gbody', () => ctx.evaluate(`[...document.querySelectorAll('.grp.drop')].map(g => g.id).join()`));
+  ctx.assert.equal(litA, 'grp', 'the half under the pointer lit up while the tab was on its way');
   await ctx.waitFor(`window.peix.state().halves[0] === ${JSON.stringify(other)}`, { what: 'the PR dragged into the left half' });
-  ctx.assert.deepEqual(await strips(), [['chat', 'gh'], ['ide']], 'the PR is the left strip\'s now');
+  ctx.assert.deepEqual(await strips(), [['chat', 'gh'], []], 'the PR is the left strip\'s now, and the editor alone on the right has no strip');
+  ctx.assert.deepEqual(await lone(), [false, true], 'the right one is a rule');
+  ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('.ptab.ghost, .grp.drop, body.tabdrag')`), false, 'nothing of the drag is left behind');
   const both = await lastPane();
   ctx.assert.equal(both.panes.length, 2, 'a page placed in each half');
   ctx.assert.ok(both.panes[0].key.startsWith('gh:') && both.panes[1].key.startsWith('ide:'), 'the PR on the left, the editor on the right');
@@ -140,7 +149,54 @@ export default async function (ctx) {
   ctx.assert.equal(both.show, both.focus, 'and an older shell is told that one');
   ctx.assert.ok(both.panes[0].left + both.panes[0].width <= both.panes[1].left, 'side by side, not overlapping');
   ctx.assert.ok(both.panes.every(p => p.width > 50 && p.height > 50), 'both have room');
+  const rule = await ctx.evaluate(`Math.round(document.querySelector('#ptabsB').getBoundingClientRect().bottom)`);
+  ctx.assert.equal(both.panes[1].top, rule, 'the editor starts under its half\'s rule — the strip\'s room is the page\'s');
+  ctx.assert.ok(both.panes[1].top < both.panes[0].top, 'higher than the PR beside it, under a whole strip');
   out.split = both;
   await ctx.shot('split');
+
+  // a click on a page, as the shell reports it: the keys go to that page's half, and the shell is told to focus it
+  const ideK = both.panes[1].key, ghK = both.panes[0].key;
+  await ctx.evaluate(`window.peixPaneFocus(${JSON.stringify(ideK)})`);
+  ctx.assert.equal(await ctx.peix('state().focusG'), 1, 'a click on the editor put the keys in the right half');
+  ctx.assert.equal((await lastPane()).focus, ideK, 'and the shell is told to focus the editor');
+  await ctx.evaluate(`window.peixPaneFocus('gh:https://nowhere.example/')`);
+  ctx.assert.equal(await ctx.peix('state().focusG'), 1, 'a page not on show moves nothing');
+  await ctx.evaluate(`window.peixPaneFocus(${JSON.stringify(ghK)})`);
+  ctx.assert.equal(await ctx.peix('state().focusG'), 0, 'and one on the PR, back to the left');
+
+  // the chat dragged onto the right half: the transcript goes with its tab, and the PR alone on the left keeps its
+  // strip — its address is worth the room
+  await ctx.drag('#ptabs .ptab[data-tab="chat"]', '#gbodyB');
+  await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === ${JSON.stringify(JSON.stringify([other, 'chat']))}`, { what: 'the chat dragged into the right half' });
+  ctx.assert.deepEqual(await strips(), [['gh'], ['chat', 'ide']], 'each strip lists what was dragged into it, in the chat\'s order');
+  ctx.assert.deepEqual(await lone(), [false, false], 'a page alone keeps its strip');
+  ctx.assert.ok(await ctx.evaluate(`!!document.querySelector('#ptabs .purl')`), '…with the address in it');
+  ctx.assert.equal(await ctx.peix('state().focusG'), 1, 'the keys followed the drop into the right half');
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#log').parentElement.id`), 'gbodyB', 'the transcript moved with the chat tab');
+
+  // ⌥⌘W on the chat's own tab closes nothing; on the PR it lets the page go — its half empties, the split the board
+  // made folds, and the keys come back to the chat
+  await ctx.key('KeyW');
+  ctx.assert.match(await ctx.evaluate(`document.querySelector('.note')?.textContent || ''`), /chat tab stays/, '⌥⌘W on the chat: a note');
+  await ctx.evaluate(`document.querySelectorAll('.note').forEach(n => n.remove())`);
+  await ctx.evaluate(`window.peixPaneFocus(${JSON.stringify(ghK)})`);
+  await ctx.key('KeyW');
+  await ctx.waitFor(`window.peix.state().split === false`, { what: 'the PR closed by ⌥⌘W, and the board\'s split with it' });
+  ctx.assert.equal(await ctx.peix('state().tab'), 'chat', 'the keys are on the chat');
+  ctx.assert.ok(!(await ctx.peix(`state().paneGh[${JSON.stringify(two.id)}]`) || []).includes(ghK.slice(3)), 'the page is forgotten');
+  ctx.assert.deepEqual(await strips(), [['chat', 'ide'], []], 'one strip: the chat and the editor');
+
+  // ··· closes the editor — the × a lone editor's half does not show
+  await ctx.evaluate(`document.querySelector('#moreBtn').click()`);
+  ctx.assert.ok(await ctx.evaluate(`!!document.querySelector('#hmenu #ideCloseBtn')`), '··· has a row to close VS Code Web');
+  await ctx.evaluate(`document.querySelector('#ideCloseBtn').click()`);
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#hmenu').open`), false, 'the menu went');
+  ctx.assert.deepEqual(await ctx.peix('state().tabs'), ['chat'], 'the chat alone');
+  ctx.assert.equal(await onTab(), 'hidden', 'and no strip at all');
+  ctx.assert.deepEqual((await lastPane()).keys, [], 'the shell holds no page for the chat');
+  await ctx.evaluate(`document.querySelector('#moreBtn').click()`);
+  ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#hmenu #ideCloseBtn')`), false, 'and ··· has nothing of it left');
+  await ctx.evaluate(`document.querySelector('#hmenu').close()`);
   return out;
 }

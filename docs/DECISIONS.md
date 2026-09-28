@@ -2,7 +2,44 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-09-27.
+this file is the *why* and the *state*. Last updated 2026-09-28.
+
+## Decisions of 2026-09-28 — a half with one tab has no strip; ⌥⌘W closes a tab
+
+Ricardo: "the a pane only has one thing active (e.g. claude, terminal) we don nee the tab up top, takes unnnecessary
+screen. the exception may be the web, because we maybe want to copy the url. any suggestions for forcing the terminal
+or vscode to close if we want?"
+
+* **A lone tab's strip is a 2 px rule** (`.ptabs.lone`): split, a half whose one tab is claude, the zsh or VS Code Web
+  shows no tabs, no ⊟ and no ⨯. The rule is what said which half has the keys (the accent under the strip), so it
+  stays, and at the same height lit or not — a strip that came and went with the keys would resize both terminals on
+  every ⌘1 / ⌘2. **A web page alone keeps its strip**, as Ricardo asked: the address to copy and ‹ › ↻ ↗ live there.
+  VS Code Web counts as the terminal does — its address is a local port, and it has its own chrome. **An empty half
+  keeps its strip**: it is where a tab is dropped and the one visible way to close that half. Unsplit is unchanged:
+  the one strip shows from two tabs up.
+* **What is lost with it, on purpose**: a lone tab cannot be dragged to the other half (⌘W / ⌘0 fold it into the other
+  strip instead), and ⊟ / ⨯ are the keys' only (⌥⌘1 / ⌥⌘2 against ⌘1 / ⌘2, ⌘W, ⌘0). Considered and dropped: a strip
+  that slides down over the top of the half on hover — it would cover the terminal's first rows, and over VS Code
+  Web, a native view above the page, the page never sees the pointer.
+* **Closing without the ×**: **⌥⌘W closes the tab the keys are in** (`hotCloseTab()` → `dropTab()`): the zsh ends
+  through the server as its × did, a page or the editor is let go; the split the board made for the tab folds, one
+  asked for by hand keeps its empty half. When the half empties the keys go back to the chat, not into an empty half
+  or a zsh on its way out. On the chat's own tab it is a note (nothing to close; ⌘W closes a half, ✓ ends the chat).
+  ⌥⌘ is "this chat's thing"; plain ⌘W stays the half's. VS Code Web's own ⌥⌘W (whole word in its find box) is given
+  up for it in the app's forwarder. **The header's ··· menu has the mouse's way**: *end the zsh* while one runs and
+  *close VS Code Web* while the editor has a tab; the menu is redrawn when it opens, since the editor's tab is page
+  state no SSE update redraws. `exit` in the zsh still ends it too.
+* **The app reports a click on a page** (`installPaneClickMonitor`, `peixPaneFocus(key)`): a page is a native view
+  over the half, so a click into VS Code Web never moved the board's idea of where the keys were — ⌘W (and now ⌥⌘W)
+  acted on the half the keys had been in before. The page answers with `focusGroup`, and so the shell's own
+  `paneFocus` (⌘F, ‹ › ↻ ↗) follows as well.
+* **Learned by the harness**: the drag's click swallow was removed by a `setTimeout(0)`, and the harness's Chrome is a
+  page out of sight, whose timers run up to a second apart — so a click right after a drag (the rewritten
+  `pane-tabs.mjs`) was eaten, onclick and all. The swallow is `{ once: true }` now; the timeout stays for a release
+  that makes no click. → `split-halves.mjs` (lone rules, sizes kept across ⌘1, ⌥⌘W on the chat and on the zsh, the
+  empty half's strip back), `split-stacked.mjs` (⊟ on the empty half, ··· ends the zsh), `pane-tabs.mjs` (a page alone
+  keeps its strip, the editor's page under its rule, `peixPaneFocus`, the drags moved here, ⌥⌘W on a page, ··· closes
+  the editor), `hotkeys.mjs` (⌥⌘W ends the zsh and folds the board's split).
 
 ## Decisions of 2026-09-27, late night — the last 1 %: the board moves, and the small things a craftsman looks at
 

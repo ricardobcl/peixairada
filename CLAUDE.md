@@ -297,7 +297,8 @@ refuses to run against the real directory for the same reason.
   (in the pane; the real VS Code is the header menu's *open in VS Code* only, no key), G the chat's PR on GitHub — one
   opens straight away, several open the picker in `pr` mode, the one showing marked *current* (no PR → the folder's
   GitHub repo, `state.repos` from `git remote`) —, C this chat's claude session (`termAction()`, the `>_` button's
-  path), P the project picker, K the chat picker (`chat` mode: every ready or clauding chat, the list's order,
+  path), **W the tab the keys are in, closed** (`hotCloseTab()` → `dropTab()`: the zsh ended, a page or the editor let
+  go; on the chat's own tab a `note()`), P the project picker, K the chat picker (`chat` mode: every ready or clauding chat, the list's order,
   searched by `chatFields()`; ⏎ is `openSession`), **F the chat list's own box** (`hotFind()` → `qShow(true)`), N a
   chat as steps of the one dialog (`new` → `chats` → `folder` when the project spans several → `env` when
   `newChatIn()` finds launchers), **O the same with the project answered and the environment brought forward**
@@ -370,7 +371,9 @@ refuses to run against the real directory for the same reason.
   box. The copy click is delegated on `#log`.
 * **In the app the pane is a native view** over the chat column with its own web views: a key pressed there never
   reaches the page, so `installHotkeyForwarder()` forwards ⌥⌘ + the letters and the arrows, and ⌘ + the layout keys
-  (`hotkeyCode()`), to `window.peixKey`; the shell reports `peixPane(visible, left)` — **a dialog open lowers the
+  (`hotkeyCode()`), to `window.peixKey`, and **a click on a page there as `peixPaneFocus(key)`**
+  (`installPaneClickMonitor()`, 2026-09-28), so the half with the keys — ⌘W's, ⌥⌘W's — follows the pointer into a
+  page too; the shell reports `peixPane(visible, left)` — **a dialog open lowers the
   pane** so every picker is centred: `postPane` sends no page while a `dialog[open]` exists, and every dialog's
   `close` puts it back; `postPane` posts only a message that differs from the last. Esc with the pane up is forwarded
   as `peixKey('Escape')` — `hotEscape()`: a dialog or the settings popover closes first, else the chat tab comes back.
@@ -433,6 +436,13 @@ refuses to run against the real directory for the same reason.
   (`homeOf`), written down only for a tab that was **dragged across** (`moveTab`, pointer events; a press that moves
   under 5 px is a click) and forgotten with the split. `keysIn(s, g)` is a strip's list; `setTab` shows a tab in *its*
   half and takes the keys there. ⌥⌘←→ walk both strips as one row. An auto split whose half empties folds.
+* **A half whose one tab is not a web page has no strip** (2026-09-28): split, claude, the zsh or the editor alone in
+  a half makes its strip `.lone` — emptied, a 2 px rule, the accent under the keys and the line elsewhere, **the same
+  height either way**, so moving the keys resizes no terminal. A web page alone keeps its strip (the address, ‹ › ↻ ↗),
+  an empty half keeps its (the drop, ⊟, ⨯), and a half of two tabs is a strip as ever. What the lone tab's × did is
+  ⌥⌘W's and the header menu's (*end the zsh*, *close VS Code Web*; `dropTab()` — the keys go back to the chat when the
+  half empties); ⌘W / ⌘0 close the half and the keys turn it; a lone tab cannot be dragged. Unsplit, the strip hides
+  under two tabs as it always did. → `scripts/scenarios/split-halves.mjs`, `split-stacked.mjs`, `pane-tabs.mjs`.
 * **Placement is derived**: `tabs` holds `[left, right]` per chat and `placeOf(s)` reads it against `keysIn` *now* —
   a key that is gone falls away. `tabOf(s)` is the focused half's. A half with nothing says what would fill it
   (`.gempty`) and its strip takes a drop (`.pdrop`).

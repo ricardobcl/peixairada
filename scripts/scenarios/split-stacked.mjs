@@ -5,6 +5,8 @@
 // side by side, ⌥⌘1 on a side-by-side one turns it stacked, and neither re-attaches a terminal; the divider lies
 // across and drags up and down into a pref of its own; the layout is the chat's, follows it back, and outlives its
 // split, so a tab opening beside the chat later comes back stacked; ⌘0 and ⌘W close halves the same way either way.
+// Since 2026-09-28 a half with one tab that is not a web page has no strip, so ◫ / ⊟ are on an empty half's strip only
+// — the keys turn the rest — and the zsh's × is the ··· menu's (or ⌥⌘W).
 export const meta = { server: true, fake: true, fixture: 'auto' };
 
 const halves = ctx => ctx.peix('state().halves');
@@ -28,8 +30,14 @@ export default async function (ctx) {
   ctx.assert.ok(r.grpB.y >= r.grp.y + r.grp.h, `the second half (y ${r.grpB.y}) is under the first (ends ${r.grp.y + r.grp.h})`);
   ctx.assert.ok(Math.abs(r.grp.w - r.groups.w) <= 1 && Math.abs(r.grpB.w - r.groups.w) <= 1, 'both halves are as wide as the column');
   ctx.assert.ok(r.gsplit.h === 6 && Math.abs(r.gsplit.w - r.groups.w) <= 1, `the divider is 6 px tall across the column (${r.gsplit.w}×${r.gsplit.h})`);
-  ctx.assert.equal(l.turn, '◫', 'the strip offers the side-by-side layout');
+  ctx.assert.equal(l.turn, '◫', 'the empty half\'s strip offers the side-by-side layout');
   await ctx.shot('stacked-empty');
+  // …and turns it: side by side, then stacked again
+  await ctx.evaluate(`document.querySelector('#ptabsB .gturn').click()`);
+  await ctx.waitFor(`window.peix.state().stacked === false`, { what: 'the button turned it side by side' });
+  ctx.assert.equal((await layout(ctx)).turn, '⊟', 'and now offers the stack');
+  await ctx.evaluate(`document.querySelector('#ptabsB .gturn').click()`);
+  await ctx.waitFor(`window.peix.state().stacked === true`, { what: 'the button stacked it again' });
 
   // ⌥⌘T puts the zsh in the bottom half: two live terminals, one over the other, each fitted to its own body
   await ctx.key('KeyT');
@@ -37,6 +45,8 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.term(1).ws === 1 && window.peix.term(0).ws === 1`, { what: 'both halves attached' });
   await ctx.waitFor(`[...document.querySelectorAll('#termBodyB .xterm-rows > div')].some(r => /[$%❯]/.test(r.textContent))`, { what: 'the zsh prompt in the bottom half' });
   await fits(ctx);
+  ctx.assert.deepEqual(await ctx.evaluate(`JSON.stringify(['#ptabs', '#ptabsB'].map(id => { const e = document.querySelector(id); return [e.classList.contains('lone'), Math.round(e.getBoundingClientRect().height)]; }))`).then(JSON.parse),
+    [[true, 2], [true, 2]], 'one tab in each half: a 2 px rule over each, no strip');
   await ctx.shot('stacked');
 
   // ⌘2 on a stacked split turns it side by side — the same terminals in the same halves, nothing re-attached
@@ -45,7 +55,7 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.state().stacked === false && window.peix.state().split === true`, { what: 'turned side by side' });
   ctx.assert.equal(await ctx.peix('state().focusG'), 1, '⌘2 kept the keys in pane 2');
   l = await layout(ctx); r = await rects(ctx);
-  ctx.assert.deepEqual({ dir: l.dir, cursor: l.cursor, turn: l.turn }, { dir: 'row', cursor: 'col-resize', turn: '⊟' }, 'a row again, the divider upright, the strip offering the stack');
+  ctx.assert.deepEqual({ dir: l.dir, cursor: l.cursor, turn: l.turn }, { dir: 'row', cursor: 'col-resize', turn: null }, 'a row again, the divider upright — and no ⊟, neither half having a strip');
   ctx.assert.ok(r.grpB.x >= r.grp.x + r.grp.w, `the second half (x ${r.grpB.x}) is right of the first (ends ${r.grp.x + r.grp.w})`);
   ctx.assert.deepEqual(await halves(ctx), ['chat', 'shell'], 'the tabs stayed where they were');
   ctx.assert.deepEqual(await ids(ctx), before, 'the same two terminals, still attached');
@@ -113,10 +123,17 @@ export default async function (ctx) {
   await fits(ctx);
   await ctx.shot('remembered');
 
-  // the strip's button turns it too
-  await ctx.evaluate(`document.querySelector('#ptabsB .gturn').click()`);
-  await ctx.waitFor(`window.peix.state().stacked === false`, { what: 'the button turned it side by side' });
-  ctx.assert.equal((await layout(ctx)).turn, '⊟', 'and now offers the stack');
+  // ··· ends the zsh — the × its half has no strip for — the keys come back to claude, and the split the board made
+  // for the zsh folds with it
+  await ctx.evaluate(`document.querySelector('#moreBtn').click()`);
+  await ctx.evaluate(`document.querySelector('#hmenu #shellEndBtn').click()`);
+  ctx.assert.equal(await ctx.peix('state().focusG'), 0, 'the keys went back to claude at once');
+  await ctx.waitFor(`!window.peix.session().shell || window.peix.session().shell.exited !== null`, { what: 'the zsh ended from ···' });
+  await ctx.waitFor(`window.peix.state().split === false`, { what: 'the board\'s own split folded' });
+  ctx.assert.deepEqual(await halves(ctx), ['chat', null], 'claude is the column');
+  await ctx.evaluate(`document.querySelector('#moreBtn').click()`);
+  ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#hmenu #shellEndBtn')`), false, 'and ··· has no zsh to end');
+  await ctx.evaluate(`document.querySelector('#hmenu').close()`);
 
   return { stackAt: p.stackAt, splitAt: p.splitAt };
 }

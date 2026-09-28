@@ -310,6 +310,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     window.contentView = content
     installEscapeMonitor()
     installHotkeyForwarder()
+    installPaneClickMonitor()
     window.contentMinSize = NSSize(width: 760, height: 520)
     window.setFrameAutosaveName(kFrameName)
     // No system full screen: it always sits below the camera housing. The green button zooms instead, and
@@ -599,12 +600,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
   // ⌥⌘ + one of the board's hotkeys (HOTKEYS in index.html — the same list here, kept by hand): the letters, ↑ ↓ for
   // the chat above or below, ← → for the tab beside, 1 and 2 for the top and bottom halves of a stacked chat column
-  // (2026-09-27; by key code, since ⌥ composes a symbol over a digit on a Portuguese layout); and ⌘ + one of the
+  // (2026-09-27; by key code, since ⌥ composes a symbol over a digit on a Portuguese layout), W to close the tab the
+  // keys are in (2026-09-28 — VS Code Web's own ⌥⌘W, whole word in its find, is given up for it); and ⌘ + one of the
   // layout keys (CMDKEYS there): B folds the
   // chat list, 1 and 2 the left and right halves of the chat column. Pressed while the pane has the keyboard: its web views are not the board's, so the page
   // would never hear it. Forwarded through peixKey as the page's e.code and which map it belongs to; the page asks
   // for the keyboard back ({type: "focus"}) only when it opens a dialog.
-  static let boardKeys: Set<String> = ["t", "e", "g", "c", "o", "p", "k", "f", "n"]
+  static let boardKeys: Set<String> = ["t", "e", "g", "c", "w", "o", "p", "k", "f", "n"]
   static let cmdKeys: Set<String> = ["b", "0", "1", "2"]
   static func hotkeyCode(_ e: NSEvent) -> (code: String, mods: String)? {
     let held = e.modifierFlags.intersection([.command, .option, .control, .shift])
@@ -620,6 +622,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
     if held == [.command], let ch = ch, cmdKeys.contains(ch) { return ((ch.first!.isNumber ? "Digit" : "Key") + ch.uppercased(), "cmd") }
     return nil
+  }
+  // A click on a page in the pane takes the keys to its half (2026-09-28): the board hears a click on its own halves,
+  // but a page is a native view over them, so ⌘W, ⌥⌘W and the half's rule went on naming the half the keys were in
+  // before. The page answers with a `pane` message, as for any change of half; the click goes on to the page.
+  private func installPaneClickMonitor() {
+    NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] e in
+      guard let self = self, e.window === self.window, !self.paneOverlay.isHidden else { return e }
+      let key = self.paneShownKeys.first { k in
+        guard let v = self.paneViews[k], !v.isHidden else { return false }
+        return v.bounds.contains(v.convert(e.locationInWindow, from: nil))
+      }
+      if let key = key, key != self.paneFocus {
+        self.web.evaluateJavaScript("window.peixPaneFocus && window.peixPaneFocus(\(jsStr(key)))", completionHandler: nil)
+      }
+      return e
+    }
   }
   private func installHotkeyForwarder() {
     NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in

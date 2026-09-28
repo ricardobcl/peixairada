@@ -46,19 +46,21 @@ export default async function (ctx) {
   // in the left half and ← comes back across; × on the zsh tab ends it, and the split the board made itself goes too
   await ctx.key('ArrowRight'); out.tabNote = await txt('.note'); ctx.assert.match(out.tabNote, /Only the chat/);
   await ctx.evaluate(`document.querySelectorAll('.note').forEach(n => n.remove())`);
-  await ctx.key('KeyT'); await ctx.waitFor(`!!document.querySelector('#ptabsB .ptab[data-tab="shell"]')`, { what: 'the zsh tab, in the right half\'s strip' });
-  // the strip of the half the keys are in — the right one, since the second tab split the column
-  const onTab = () => ctx.evaluate(`document.querySelector(window.peix.state().focusG ? '#ptabsB' : '#ptabs')?.querySelector('.ptab.on')?.dataset.tab`);
+  await ctx.key('KeyT'); await ctx.waitFor(`window.peix.state().halves[1] === 'shell'`, { what: 'the zsh tab, in the right half' });
+  // the tab the keys are on — in the right half, since the second tab split the column; alone there, it has no strip
+  const onTab = () => ctx.peix('state().tab');
   out.split = { on: await ctx.peix('state().split'), focusG: await ctx.peix('state().focusG'), halves: await ctx.peix('state().halves') };
   ctx.assert.deepEqual(out.split, { on: true, focusG: 1, halves: ['chat', 'shell'] }, 'a second tab splits the column and opens in the right half');
   ctx.assert.equal(await onTab(), 'shell');
-  await ctx.key('ArrowRight'); await ctx.waitFor(`window.peix.state().focusG === 0 && document.querySelector('#ptabs .ptab.on')?.dataset.tab === 'chat'`, { what: '→ wraps to the chat, in the left half' });
-  await ctx.key('ArrowLeft'); await ctx.waitFor(`window.peix.state().focusG === 1 && document.querySelector('#ptabsB .ptab.on')?.dataset.tab === 'shell'`, { what: '← back across to the zsh' });
+  await ctx.key('ArrowRight'); await ctx.waitFor(`window.peix.state().focusG === 0 && window.peix.state().tab === 'chat'`, { what: '→ wraps to the chat, in the left half' });
+  await ctx.key('ArrowLeft'); await ctx.waitFor(`window.peix.state().focusG === 1 && window.peix.state().tab === 'shell'`, { what: '← back across to the zsh' });
   ctx.assert.deepEqual(await ctx.peix('state().halves'), ['chat', 'shell'], 'walking the tabs moved none of them');
   out.tabs = { after: await onTab() };
-  await ctx.evaluate(`document.querySelector('#ptabsB .ptab[data-tab="shell"] .x').click()`);
-  await ctx.waitFor(`document.querySelector('#ptabs').hidden`, { what: 'the strip gone with the zsh — and the split with it' });
-  ctx.assert.equal(await ctx.peix('state().split'), false, 'the split the board made itself goes when the tab does');
+  // ⌥⌘W ends the zsh the keys are in — the × its strip would have had — the keys go back to the chat, and the split
+  // the board made itself goes when the tab does
+  await ctx.key('KeyW');
+  ctx.assert.equal(await ctx.peix('state().focusG'), 0, 'the keys went back to the chat at once');
+  await ctx.waitFor(`document.querySelector('#ptabs').hidden && !window.peix.state().split`, { what: 'the zsh ended by ⌥⌘W — and the split with it' });
   // the { } button: folds by the cog's default, its own word per chat
   out.fold = { before: await ctx.evaluate(`document.querySelector('#foldBtn').classList.contains('on')`) };
   await ctx.evaluate(`document.querySelector('#foldBtn').click()`);
@@ -188,7 +190,7 @@ export default async function (ctx) {
   out.escIdle = await escOn('body'); ctx.assert.equal(out.escIdle, false, 'with nothing to close, Esc is left alone');
   // the cog lists the keys
   out.cog = await ctx.evaluate(`[...document.querySelectorAll('#settings .keys kbd')].map(k => k.textContent)`);
-  ctx.assert.deepEqual(out.cog.slice(0, 11), ['⌥⌘T', '⌥⌘E', '⌥⌘G', '⌥⌘C', '⌥⌘O', '⌥⌘P', '⌥⌘K', '⌥⌘F', '⌥⌘N', '⌥⌘↑↓', '⌥⌘←→']);
+  ctx.assert.deepEqual(out.cog.slice(0, 12), ['⌥⌘T', '⌥⌘E', '⌥⌘G', '⌥⌘C', '⌥⌘O', '⌥⌘P', '⌥⌘K', '⌥⌘F', '⌥⌘N', '⌥⌘↑↓', '⌥⌘←→', '⌥⌘W']);
   await ctx.shot('cog');
   return out;
 }

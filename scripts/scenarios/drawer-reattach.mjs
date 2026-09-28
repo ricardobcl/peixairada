@@ -15,7 +15,7 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#ptabs').hidden`), true, 'no tabs without a zsh');
   await ctx.shot('0-live', { x: 430, y: 0, width: 1270, height: 1000 });
   await ctx.key('KeyT');                       // ⌥⌘T: the zsh tab — the pane shows a shell now
-  await ctx.waitFor(`!document.querySelector('#ptabsB').hidden && document.querySelector('#ptabsB .ptab.on')?.dataset.tab === 'shell'`, { what: 'the zsh tab, in the half the split made' });
+  await ctx.waitFor(`window.peix.state().halves[1] === 'shell' && document.querySelector('#ptabsB').classList.contains('lone')`, { what: 'the zsh tab, in the half the split made — alone there, so a rule for a strip' });
   await ctx.waitFor(`window.peix.session()?.shell && window.peix.state().termId === window.peix.session().shell.id`, { what: 'the shell attached' });
   await ctx.sleep(1500);
   const shell = await ctx.screen(1);

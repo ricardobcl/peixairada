@@ -768,6 +768,12 @@
      drive its view through the shell. */
   .ptabs { display: flex; gap: 4px; padding: 4px 10px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 11.5px; align-items: center; }
   .ptabs[hidden] { display: none; }
+  /* A half holding one tab has nothing to choose between (2026-09-28, Ricardo: "when a pane only has one thing active
+     (e.g. claude, terminal) we don't need the tab up top, takes unnecessary screen"): split, its strip is a 2 px rule,
+     the accent under the keys (the .on rule above fills it) and the line elsewhere — the same height either way, so
+     moving the keys never resizes a terminal. A web page keeps its strip, for the address and ‹ › ↻ ↗; so does an empty
+     half, where a tab is dropped. */
+  .ptabs.lone { padding: 0; height: 2px; border: 0; background: var(--line); overflow: hidden; }
   .ptab { flex: none; font: inherit; font-size: 11.5px; padding: 2px 9px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
   .ptab:hover { color: var(--ink); }
   .ptab.on { color: var(--ink); border-color: var(--accent); }
@@ -1102,6 +1108,7 @@
     <kbd>⌥⌘N</kbd><span>a chat — a project, a folder in ~/acme, or ＋ clone a repo of the org · then its open chats or ＋ a new one · ✕ takes a row off the board</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
     <kbd>⌥⌘←→</kbd><span>the tab to the left / right: chat, zsh, GitHub pages, VS Code — split, across both halves' strips · drag a tab onto the other half to move it there</span>
+    <kbd>⌥⌘W</kbd><span>close the tab the keys are in: the zsh ends, a page or VS Code Web goes — the ··· menu too · split, a half with one tab shows no strip</span>
     <kbd>⌥⌘1 ⌥⌘2</kbd><span>the halves one over the other: the top one, the bottom one — ⌥⌘2 splits the chat that way the first time; side by side, either turns it</span>
     <kbd>⌘B</kbd><span>fold the chat list into a rail, and back</span>
     <kbd>⌘1 ⌘2</kbd><span>the left half of the chat, the right one — ⌘2 splits it in two the first time; one over the other, either turns it back · the digit is the pane, the modifier the layout</span>
@@ -2337,6 +2344,7 @@
   // with one, the picker with several — every time, a tab open or not, the one showing marked (Ricardo, 2026-09-20:
   // "always open the menu to choose the PR"); each PR is its own tab, so nothing reloads —, C the claude session: the >_ button's
   // path (the drawer shown or started, arm-and-take-over included, so a chat live elsewhere takes two presses).
+  // W closes the tab the keys are in (hotCloseTab, 2026-09-28) — a half with one tab has no strip, so no ×.
   // O is a new oracle chat, opening on its environments (hotOracle), P the project picker, K the chat picker (every
   // ready or clauding chat, searched), F the chat list's own filter box (hotFind), N a new chat anywhere (the
   // project, then the folder, then the environment when the folder's Taskfile launches claude); ↑ and ↓ open the
@@ -2345,7 +2353,7 @@
   // side: the digit is the pane, the modifier the layout, and a key pressed on the other layout turns it (hotGroup).
   // A modal up (the picker, the project editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyW: hotCloseTab, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘B folds the chat list. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -2743,6 +2751,9 @@
       termLive(s) ? `<button class="hmi${focusOn(s.id) ? ' on' : ''}" id="viewBtn" aria-pressed="${focusOn(s.id)}" title="${esc(viewTip(s))}">${ICON.view}<span>focus view</span><span class="k">${focusOn(s.id) ? 'on' : 'off'}</span></button>` : '',
       s.cwd ? `<button class="hmi" id="webBtn" title="${WEB_TIP}">${ICON.vscode}<span class="lbl">VS Code Web</span><span class="k">⌥⌘E</span></button>` : '',
       s.cwd ? `<button class="hmi" id="focusBtn" title="${FOCUS_TIP}">${ICON.vscode}<span>open in VS Code</span><span class="k"></span></button>` : '',
+      // what a tab's × does, for the tabs that lose their strip alone in a half (2026-09-28) — ⌥⌘W with the keys in it
+      shellLive(s) ? `<button class="hmi" id="shellEndBtn" title="End this chat's zsh and close its tab — exit in it does the same · ⌥⌘W with the keys in it"><span class="gl">×</span><span>end the zsh</span><span class="k"></span></button>` : '',
+      ideKey(s) ? `<button class="hmi" id="ideCloseBtn" title="Close VS Code Web's tab — ⌥⌘E opens it again · ⌥⌘W with the keys in it"><span class="gl">×</span><span>close VS Code Web</span><span class="k"></span></button>` : '',
       inVsCode(s) ? `<div class="hmi info" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it; ${s.alive ? 'the claude session row takes it over' : 'continue it here or there'}">${ICON.vscode}<span>VS Code's chat</span><span></span></div>` : '',
       '<div class="sep"></div>',
       `<button class="hmi${foldOn(s.id) ? ' on' : ''}" id="foldBtn" aria-pressed="${foldOn(s.id)}" title="${foldOn(s.id) ? 'Code blocks longer than 6 lines are folded in this chat — click to show them whole' : 'Code blocks are shown whole in this chat — click to fold the long ones'}${s.id in prefs.foldBy ? ' (set here)' : ' (the default)'}"><span class="gl">{ }</span><span>fold long code</span><span class="k">${foldOn(s.id) ? 'on' : 'off'}</span></button>`,
@@ -2784,6 +2795,8 @@
       finally { wb.disabled = false; }
     };
     const tb = $('#termBtn'); if (tb) tb.onclick = () => { menu.close(); termAction(s); };
+    const sb = $('#shellEndBtn'); if (sb) sb.onclick = () => { menu.close(); dropTab(s, 'shell'); };
+    const ib = $('#ideCloseBtn'); if (ib) ib.onclick = () => { menu.close(); if (ideKey(s)) dropTab(s, ideKey(s)); };
     $('#moreBtn').onclick = e => { e.stopPropagation(); if (menu.open) menu.close(); else openMenu(); };
     const vb = $('#viewBtn'); if (vb) vb.onclick = () => toggleFocusView(s);
     $('#foldBtn').onclick = () => { prefs.foldBy[s.id] = !foldOn(s.id); savePrefs(); renderHead(s); renderLog(true); };
@@ -2858,6 +2871,7 @@
     m.style.top = Math.round(r.bottom + 4) + 'px'; m.style.right = Math.max(8, Math.round(innerWidth - r.right)) + 'px'; m.style.left = 'auto';
   }
   function openMenu() {
+    const s = state.sessions.get(state.current); if (s) renderHead(s);   // the rows read page state too (the editor's tab), which no SSE update redraws
     const m = $('#hmenu'); m.show(); placeMenu(); repostPane();
     if (m.contains(document.activeElement)) document.activeElement.blur();   // show() focuses the first row, which then wears a ring it did not earn
     $('#moreBtn')?.classList.add('on'); $('#moreBtn')?.setAttribute('aria-expanded', 'true');
@@ -3175,7 +3189,8 @@
       if (el.dataset.key === key) { el.dataset.url = url; el.textContent = bareUrl(url); el.title = url + ' — click to copy'; }
     }
   };
-  const paneKeys = s => !inApp || !s ? [] : [...(state.paneGh.get(s.id) || []).map(u => 'gh:' + u), ...(s.cwd && state.paneIde.get(s.cwd) ? ['ide:' + state.paneIde.get(s.cwd)] : [])];
+  const ideKey = s => inApp && s?.cwd && state.paneIde.get(s.cwd) ? 'ide:' + state.paneIde.get(s.cwd) : null;
+  const paneKeys = s => !inApp || !s ? [] : [...(state.paneGh.get(s.id) || []).map(u => 'gh:' + u), ...(ideKey(s) ? [ideKey(s)] : [])];
   const tabKeys = s => ['chat', ...(shellLive(s) ? ['shell'] : []), ...paneKeys(s)];
   const tabOf = s => placeOf(s)[focusG];
   /** A tab put on show, in the half whose strip lists it — the one there is, unsplit — and the keys go with it.
@@ -3261,16 +3276,20 @@
   // A half's strip lists its own tabs — [claude|chat], [zsh ×], a [repo#n ×] per GitHub page, [VS Code ×] — the
   // one on show marked `on`: with one half that is every tab the chat has, with two it is that half's (keysIn), and
   // a tab goes across by being dragged there. The left half's strip hides while the chat is one tab and nothing is
-  // split, as it always did; the right half's always shows, empty or not, since it is where a tab is dropped. While
-  // there are two, each strip ends in the ⨯ that closes *its* half (⌘W closes the one the keys are in). With a
-  // page's tab on, ‹ › ↻ ↗ for its view at the right, and the address it is at.
+  // split, as it always did; an empty half's shows, since it is where a tab is dropped. While there are two, each
+  // strip ends in the ⨯ that closes *its* half (⌘W closes the one the keys are in). With a page's tab on, ‹ › ↻ ↗ for
+  // its view at the right, and the address it is at. A half whose one tab is not a web page — claude, the zsh, the
+  // editor — has no strip at all, only the 2 px rule (.lone, 2026-09-28): ⌥⌘W and the ··· menu close what its × would
+  // have, ⌘W and ⌘0 the half, and ⌥⌘1 / ⌥⌘2 against ⌘1 / ⌘2 turn it.
   function renderTabs(s, p = placeOf(s)) {
     const two = isSplit(s);
     for (const tm of terms) {
       const g = tm.g, el = $(tm.el.tabs), cur = p[g], keys = s ? keysIn(s, g) : g ? [] : ['chat'];
+      const lone = two && keys.length === 1 && !keys[0].startsWith('gh:');
       $(tm.el.grp).classList.toggle('on', g === focusG);
       el.hidden = g === 0 ? !two && keys.length < 2 : false;
-      if (el.hidden || (g === 1 && !two)) continue;
+      el.classList.toggle('lone', lone);
+      if (el.hidden || lone || (g === 1 && !two)) { if (el.firstChild) el.textContent = ''; continue; }   // nothing drawn, nothing left over to be found
       const tip = two ? ' · drag it to the other half to move it there' : '';
       const tab = (k, label, title, x) => `<button class="ptab${cur === k ? ' on' : ''}${isPaneTab(k) ? ' pane' : ''}" data-tab="${esc(k)}" title="${esc(title + tip)}">${esc(label)}${x ? `<span class="x" title="${esc(x)}">×</span>` : ''}</button>`;
       const navs = (isPaneTab(cur) ? '<button class="nav" data-nav="back" title="Back">‹</button><button class="nav" data-nav="forward" title="Forward">›</button><button class="nav" data-nav="reload" title="Reload">↻</button><button class="nav" data-nav="external" title="Open this page in your browser">↗</button>' : '')
@@ -3333,6 +3352,9 @@
     if (e.target.closest('.ptabs')) return;
     const grp = e.target.closest('.grp'); if (grp) focusGroup(grp.id === 'grpB' ? 1 : 0);
   }, true);
+  // …and a click on a page in the pane, which the shell reports (2026-09-28): a native view over the half, so the page
+  // never saw it, and ⌘W and ⌥⌘W went on acting on the half the keys had been in before.
+  window.peixPaneFocus = key => { const s = state.sessions.get(state.current), g = s ? placeOf(s).indexOf(key) : -1; if (g >= 0) focusGroup(g); };
   // A tab dragged to the other half moves there (2026-09-25) — the strips list only their own tabs now, so this is
   // how one goes across. Pointer events and not HTML drag and drop: the drop can land over the app's pane, a native
   // view the page cannot see, and the board's web view keeps getting the drag's moves (AppKit sends them to the view
@@ -3495,13 +3517,30 @@
   // × on a tab: the zsh ends (the server says so, and the tab goes with it); a page is forgotten here — its view
   // lingers in the shell until it needs the room — and the chat tab takes its place.
   function closeTab(s, k) {
-    if (k === 'shell') { if (s.shell) api('DELETE', `/api/terminals/${s.shell.id}`).catch(e => note($('#ptabs'), `Could not end the zsh: ${e.message}`, true)); return; }
+    if (k === 'shell') { if (s.shell) api('DELETE', `/api/terminals/${s.shell.id}`).catch(e => note(seen($('#ptabs')), `Could not end the zsh: ${e.message}`, true)); return; }
     if (k.startsWith('gh:')) state.paneGh.set(s.id, (state.paneGh.get(s.id) || []).filter(u => 'gh:' + u !== k));
     else if (s.cwd) state.paneIde.delete(s.cwd);
     const p = placeOf(s);
     if (p.includes(k)) tabs.set(s.id, p.map(x => x === k ? null : x));   // placeOf fills the gap from what that half has left
     homes.get(s.id)?.delete(k);
     syncTerm(s);
+  }
+  /** A tab closed from anywhere but its own × — ⌥⌘W, the ··· menu (2026-09-28): the × is gone from a half the tab
+      has to itself, which is exactly the half that empties. When the keys are in that half they go back to the chat,
+      rather than stay in an empty half or on a zsh on its way out (a zsh ends when the server says so, a moment on). */
+  function dropTab(s, k) {
+    const g = isSplit(s) ? homeOf(s, k) : 0, last = keysIn(s, g).length === 1;
+    closeTab(s, k);
+    if (last && g === focusG) { showChat(s); syncTerm(s); }
+    focusBoard(); focusTerm();
+  }
+  // ⌥⌘W: the tab the keys are in, closed — the zsh ended, a page or the editor let go. The split the board made for it
+  // folds with it; one asked for by hand keeps its half, empty. The chat's own tab has no ×, and no ⌥⌘W either.
+  function hotCloseTab() {
+    const s = state.sessions.get(state.current); if (!s) return noChat();
+    const k = tabOf(s);
+    if (!k || k === 'chat') return note($('#shead'), 'The chat tab stays — ⌘W closes a half, ✓ ends the chat');
+    dropTab(s, k);
   }
   // The take-over tooltip is the warning: for a VS Code chat it spells out what the tab there loses.
   const VSC_COST = ' Its tab in VS Code goes dead and will not follow the chat — close it there; opening the chat in VS Code again starts another claude on it, and a bar here will say so.';
