@@ -277,8 +277,11 @@ refuses to run against the real directory for the same reason.
 * **A new chat has a card before its first word**: `visible()` shows a live chat with no transcript unless it is VS
   Code's. The server's `startedAt` on a session born from the registry is the card's time and place — the moment the
   board first saw the id (the process's start only at boot) — carried over by `indexFile`, the last fallback of
-  `wordAt` (both copies), the card's `.time`. `openSession` on a chat the snapshot lacks renders the board from its
-  fetch. **It has the ✓ like any idle chat, and ticked it is gone** — no dimmed done card, nothing to resume: `visible()`
+  `wordAt` (both copies), the card's `.time`. **Empty is no word, not no file** (2026-09-28): `/clear` writes its own
+  lines into the new transcript at once, none of them a word, so the start, the `idle` of `statusOf` and the
+  *(no messages yet)* title all go by `!s.lastActivity` — by `!s.file`, a cleared chat's card sank to the bottom with no
+  age and no ✓; the fake writes those lines before the registry, the order that caught it. `openSession` on a chat the
+  snapshot lacks renders the board from its fetch. **It has the ✓ like any idle chat, and ticked it is gone** — no dimmed done card, nothing to resume: `visible()`
   drops an empty chat once done, and the column leaves it (`leaveChat()`, from the `session` event; ＋ goes through the
   same function). → `scripts/scenarios/new-chat-card.mjs`, the card checks in `drawer-clear.mjs`.
 * **A chat waiting on your answer first, then clauding, then ready, done last** (`RANK` / `rankOf`), inside each

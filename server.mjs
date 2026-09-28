@@ -399,7 +399,7 @@ function statusOf(s) {
   const waiting = waitingOn(s);
   if (waiting || (waiting === undefined && s.status === 'needs-input')) return 'needs-input';   // a question beats the agents' work
   if (s.agentsRunning) return 'working';
-  if (s.status === 'unknown' && !s.file) return 'idle';
+  if (s.status === 'unknown' && !s.lastActivity) return 'idle';   // live and empty — a new chat, or a cleared one (whose file holds only the /clear)
   if (s.status === 'needs-input') return s.live?.status === 'busy' ? 'working' : 'idle';   // the registry has it answered already
   return s.status;
 }
@@ -422,7 +422,7 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     gitBranch: s.gitBranch, model: s.model,
     // The PR title beats Claude's own: it is what the work is called everywhere else — the PR page, the
     // branch, standup. A title the user typed still wins over both.
-    title: titles[s.id] || s.customTitle || prT || s.title || s.lastPrompt || (!s.file && s.alive ? '(no messages yet)' : '(untitled)'),
+    title: titles[s.id] || s.customTitle || prT || s.title || s.lastPrompt || (!s.lastActivity && s.alive ? '(no messages yet)' : '(untitled)'),
     aiTitle: s.title, customTitle: s.customTitle, prTitle: prT, boardTitle: titles[s.id] || null,
     lastPrompt: s.lastPrompt, lastReply: s.lastReply, prs: s.prs,
     // A live process with no transcript yet is an empty, idle panel (e.g. restored by VS Code, never prompted).
@@ -1181,8 +1181,10 @@ function loadRegistry() {
     // A chat with no transcript yet still gets a card (2026-09-27, Ricardo: "when I clear the chat or when I select new
     // chat, I don't see the card until I press enter"), and the card needs a time: the moment the board first saw the id.
     // Not the registry's startedAt — /clear keeps the process, and its start, and gives it a new id; the new chat is *now*.
-    // Only at boot, where every id is new to the board, does the process's start stand in.
-    if (!s.startedAt && !s.file) s.startedAt = new Date(indexing && Number(live.startedAt) > 0 ? Number(live.startedAt) : Date.now()).toISOString();
+    // Only at boot, where every id is new to the board, does the process's start stand in. No word yet, not no file:
+    // /clear writes its own lines into the new transcript at once — a caveat, the command, its output, none of them a
+    // word — and a chat with a file had no start, so its card sank to the bottom of the list (2026-09-28).
+    if (!s.startedAt && !s.lastActivity) s.startedAt = new Date(indexing && Number(live.startedAt) > 0 ? Number(live.startedAt) : Date.now()).toISOString();
     if (applyLiveness(s) || changed) schedulePush(s);
     if (waitingOn(s) && !wasWaiting) queueNotify(s, 'needs-input');   // the moment a prompt goes up — the transcript hears of it only with the answer
   }

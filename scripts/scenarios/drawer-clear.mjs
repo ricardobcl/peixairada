@@ -16,12 +16,16 @@ export default async function (ctx) {
   ctx.assert.equal(after.termSession, after.current, 'on the new chat');
   // The new chat has a card before its first word (2026-09-27, Ricardo: "when I clear the chat … I don't see the card
   // until I press enter"): the empty chat's, first in the list by its start — the moment the board saw the id, not the
-  // process's own start, which /clear keeps —, and the open one. new-chat-card.mjs checks the same for ＋.
+  // process's own start, which /clear keeps —, and the open one. new-chat-card.mjs checks the same for ＋. The fake
+  // writes the /clear lines before the registry names the id, as Claude Code does; a chat with a file had no start, and
+  // its card sank to the bottom with no age and no ✓ (2026-09-28, Ricardo: "new chats seems to start all the way in the
+  // bottom, instead of at the top").
   await ctx.waitFor(`!!document.querySelector('#slist > .card[data-id=${JSON.stringify(after.current)}]')`, { what: "the new chat's card", timeout: 5000 });
   const card = await ctx.evaluate(`(() => { const cards = [...document.querySelectorAll('#slist > .card')], c = cards.find(c => c.dataset.id === ${JSON.stringify(after.current)});
-    return JSON.stringify({ at: cards.indexOf(c), active: c.classList.contains('active'), title: c.querySelector('.title').textContent, time: c.querySelector('.top .time')?.textContent ?? null, old: cards.some(c => c.dataset.id === ${JSON.stringify(chat.id)}) }); })()`).then(JSON.parse);
+    return JSON.stringify({ at: cards.indexOf(c), active: c.classList.contains('active'), title: c.querySelector('.title').textContent, time: c.querySelector('.trow .time')?.textContent ?? null, tick: !!c.querySelector('.act[data-act=done]'), old: cards.some(c => c.dataset.id === ${JSON.stringify(chat.id)}) }); })()`).then(JSON.parse);
   ctx.assert.deepEqual({ at: card.at, active: card.active, title: card.title, old: card.old }, { at: 0, active: true, title: '(no messages yet)', old: true }, `the cleared chat's card: first, open, empty, the old one still listed — ${JSON.stringify(card)}`);
   ctx.assert.match(card.time || '', /^\d+s$/, 'aged from the clear, not from the process start');
+  ctx.assert.equal(card.tick, true, 'the ✓ is there to clean it up');
   await ctx.waitPrompt();
   await ctx.sleep(500);
   ctx.assert.ok((await ctx.screen()).some(r => /\(cleared\)/.test(r)), 'the fake started over on screen');

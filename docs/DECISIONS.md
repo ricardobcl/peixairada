@@ -4,6 +4,22 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-28.
 
+## Decisions of 2026-09-28, near midnight — a cleared chat on top, fewer switches, the splitter to the open card, a setup worth looking at
+
+Ricardo, six at once: "new chats seems to start all the way in the bottom, instead of at the top"; "remove all vscode
+icons from cards"; "the vertical separator from cards and chat is still full color top to bottom, instead of top until
+the height the card it's select"; "fold code should be always on, remove that option"; "remove option to customize
+dates"; "make the 'setup' inside settings pretty - seems pretty barebones".
+
+* **A cleared chat's card is first, not last.** The chats he starts are mostly `/clear` in a drawer, and Claude Code
+  writes the new transcript at once with the command's own lines (a caveat, `/clear`, its empty output) — none of them
+  a word, so no `lastActivity`. The server gave a start only to a chat with *no file*, so a cleared one had neither:
+  `wordAt` was empty, the card sorted under every ready chat, with no age, no ✓ (`statusOf` said `unknown` for the same
+  reason) and titled *(untitled)*. The three rules now ask for no word instead of no file. The fake claude wrote a
+  cleared transcript only on the next turn, so `drawer-clear.mjs` never saw it; it writes the lines now, before the
+  registry names the id — the order that fails without the fix (run before the server's fix: the card not first, and *(untitled)*). The
+  scenario's age check read `.top .time`, which moved beside the title on 2026-09-28; it reads `.trow .time`.
+
 ## Decisions of 2026-09-29, later — keyboard first: no ＋, settings under ···, the row at the bottom, the budget in words, the splitter's black
 
 Ricardo, six more: "the '+' can be removed, let's be more keyboard centric"; "the settings can be moved to inside the
