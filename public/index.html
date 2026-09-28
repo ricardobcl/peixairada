@@ -649,6 +649,12 @@
      (cardPrs): a chip past the row's room wraps onto a line nobody sees, whole, rather than half-clipped. */
   .card .top .tprs { flex: 0 1 auto; min-width: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; height: 18px; overflow: hidden; }
   .card .top .tprs > * { flex: none; }
+  /* The people in the chat's PRs, before the chips (cardFaces, 2026-09-29): GitHub's faces, overlapping a little as a
+     facepile does, each ringed in the panel's colour so the overlap reads; one without a face is its initial. */
+  .card .top .faces { display: inline-flex; align-items: center; flex: none; padding-left: 4px; }
+  .card .top .faces > :is(img, .face) { width: 16px; height: 16px; flex: none; margin-left: -4px; border-radius: 50%; box-shadow: 0 0 0 1.5px var(--panel); background: var(--ctl-hi); }
+  .card .top .faces .face { display: grid; place-items: center; font-size: 9px; font-weight: 700; color: var(--ink); text-transform: uppercase; }
+  .card .top .faces .more { margin-left: 3px; font-size: 10px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
   .card .cpr.more { color: var(--muted); border-style: dashed; }
   /* a PR as a chip — the card's, and the chat header's (.hpr) since 2026-09-24 */
   :is(.card .cpr, .shead .hpr) { font-size: 10.5px; font-weight: 600; line-height: 16px; border: 1px solid transparent; border-radius: 4px; padding: 0 5px; color: var(--muted); background: var(--ctl); }
@@ -2354,6 +2360,26 @@
    *  to the same place as fable icon") —: three in the chat's order, every one at your move among them, then +n for
    *  the rest, its tooltip their labels. Where the row has not the room for them, the ones past it wrap out of sight. */
   const CARD_PRS = 3;
+  /** Who else has had a hand in the chat's PRs — each PR's author, reviewers, commenters and pushers, the server's
+   *  `people`, you left out — as GitHub's faces, the newest first: three, and a count for the rest (2026-09-29, Ricardo:
+   *  "can we get avatar of GH users in cards, that interacted with PRs associated with a chat?"). The tooltip says
+   *  what each did, PR by PR. */
+  const CARD_FACES = 3;
+  function cardFaces(s) {
+    const by = new Map();
+    for (const pr of s.prs || []) for (const p of pr.people || []) {
+      const had = by.get(p.login) || { login: p.login, avatar: p.avatar, at: '', what: [] };
+      had.avatar ||= p.avatar;
+      if (String(p.at) > had.at) had.at = String(p.at);
+      had.what.push(`${pr.label.replace(/^.*?#/, '#')} ${p.did.join(', ')}`);
+      by.set(p.login, had);
+    }
+    const all = [...by.values()].sort((a, b) => b.at.localeCompare(a.at)); if (!all.length) return '';
+    const face = p => { const tip = `${p.login} — ${p.what.join(' · ')}`;
+      return p.avatar ? `<img src="${esc(p.avatar)}" alt="${esc(p.login)}" title="${esc(tip)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : `<span class="face" title="${esc(tip)}">${esc(p.login[0])}</span>`; };
+    const rest = all.slice(CARD_FACES);
+    return `<span class="faces">${all.slice(0, CARD_FACES).map(face).join('')}${rest.length ? `<span class="more" title="${esc(rest.map(p => p.login).join(', '))}">+${rest.length}</span>` : ''}</span>`;
+  }
   function cardPrs(s) {
     const prs = s.prs || []; if (!prs.length) return '';
     const keep = new Set([...prs.filter(p => p.turn?.you), ...prs].slice(0, CARD_PRS)), shown = prs.filter(p => keep.has(p)), rest = prs.filter(p => !keep.has(p));
@@ -2382,7 +2408,7 @@
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip">${entryLabel(s)}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${s.id}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
-      <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${act}${cardPrs(s)}</div>
+      <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${act}${cardFaces(s)}${cardPrs(s)}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge">${un}</span>` : ''}</div>
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${esc(s.lastReply)}</div>` : ''}

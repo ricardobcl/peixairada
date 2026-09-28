@@ -22,6 +22,11 @@ project box on the chat"; "can we get avatar of GH users in cards, that interact
 * **The first card is flush with the top**, as the project box atop the chat is: the list's top padding went (8 px),
   and at the notch it pads by the strip alone. Card, splitter and box now share one top edge, so the open chat's
   light runs round a shape without a step in it.
+* **Faces on the cards**: the PR call already walked the author, the reviews, the comments and the pushes to say whose
+  move it is; each of those people now comes with `avatarUrl` (a scalar — the query costs the same), and the server
+  keeps who had a hand in each PR (`prPeople`: each person once, what they did, when last; you and bots out). The card
+  shows three faces before its PR chips, merged across the chat's PRs, newest first, and `+n`; hovering one says who
+  and what, PR by PR. The page loads the images from GitHub's avatar host directly — no proxy, as the PR links do.
 
 ## Decisions of 2026-09-29, small hours — the clauding light on the border, and on past the open card
 

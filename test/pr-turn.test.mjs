@@ -8,7 +8,7 @@ import { join } from 'node:path';
 
 const tmp = mkdtempSync(join(tmpdir(), 'peix-test-'));
 process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
-const { prTurn, setPrInfo, isDone, doneMarks, newSession, notePr, sessions } = await import('../server.mjs');
+const { prTurn, prPeople, setPrInfo, isDone, doneMarks, newSession, notePr, sessions, prStatus } = await import('../server.mjs');
 
 const t = h => new Date(Date.UTC(2026, 8, 28, h)).toISOString().replace('.000', '');   // GitHub writes no milliseconds
 const user = login => ({ login, __typename: 'User' });
@@ -131,4 +131,28 @@ test('a word of yours answers everything before it, and an answer is no move', (
   // you answer her: the request stands (its time unknown), the comment is answered — one reason fewer is no move
   setPrInfo(url, 'open', 'PR', prTurn(pr({ ...still, comments: { nodes: [hers, { author: user('me'), createdAt: t(13) }] } }), 'me'), at(14));
   assert.deepEqual([s.prs[0].turn.you, s.prs[0].turn.why, s.prs[0].turn.movedAt], [true, 'your review asked for again', moved]);
+});
+
+test('the faces on a PR: who else had a hand in it, each once, the newest first — you and the bots left out', () => {
+  const face = login => ({ ...user(login), avatarUrl: `https://avatars.example/${login}` });
+  const people = prPeople(pr({
+    author: face('ana'),
+    reviews: { nodes: [{ author: face('me'), state: 'COMMENTED', submittedAt: t(10) }, { author: face('rui'), state: 'APPROVED', submittedAt: t(12) }, { author: face('rui'), state: 'PENDING', submittedAt: t(15) }] },
+    comments: { nodes: [{ author: face('ana'), createdAt: t(13) }, { author: { login: 'ci', __typename: 'Bot' }, createdAt: t(14) }, { author: face('dependabot[bot]'), createdAt: t(14) }] },
+    pushes: { nodes: [commit(11, 'ana'), commit(16, null), { __typename: 'HeadRefForcePushedEvent', createdAt: t(17), actor: face('eva') }] }
+  }), 'me');
+  assert.deepEqual(people.map(p => [p.login, p.at, p.did.join(', ')]), [
+    ['eva', t(17), 'pushed'],
+    ['ana', t(13), 'opened it, commented, pushed'],
+    ['rui', t(12), 'approved']
+  ], 'a pending review is not had yet; an unlinked commit is nobody\'s');
+  assert.equal(people[1].avatar, 'https://avatars.example/ana');
+  assert.deepEqual(prPeople(null, 'me'), []);
+});
+
+test('a PR the board could not see keeps the faces it had', () => {
+  const url = 'https://github.com/acme/faces/pull/7';
+  setPrInfo(url, 'open', 'Faces', null, Date.parse(t(10)), [{ login: 'ana', avatar: null, at: t(9), did: ['opened it'] }]);
+  setPrInfo(url, null, null, undefined, Date.parse(t(11)));
+  assert.deepEqual(prStatus.get(url).people.map(p => p.login), ['ana']);
 });

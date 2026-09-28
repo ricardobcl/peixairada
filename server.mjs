@@ -511,7 +511,7 @@ function notePr(s, url, ts, by) {
     // The owner rarely disambiguates and eats half the width of the chip; the URL is in the tooltip.
     label: m ? `${m[2]}#${m[3]}` : clean.replace(/^https?:\/\/(www\.)?github\.com\//, ''),
     count: 0, by: null, firstAt: ts,
-    state: prStatus.get(clean)?.state ?? null, title: prStatus.get(clean)?.title ?? null, turn: prStatus.get(clean)?.turn ?? null
+    state: prStatus.get(clean)?.state ?? null, title: prStatus.get(clean)?.title ?? null, turn: prStatus.get(clean)?.turn ?? null, people: prStatus.get(clean)?.people ?? null
   };
   if (by) { pr.count++; pr.by = by; }
   pr.lastAt = ts || pr.lastAt || null;
@@ -569,7 +569,7 @@ const PR_WATCH = [                      // [the PR's last event within, asked ev
 const PR_TTL_MS = Number(process.env.PR_TTL_MS || 30_000);
 const PR_TTL_ERROR_MS = 60 * 60_000;   // a PR we cannot see (private, deleted, no access): back off
 const PR_BATCH = 40;
-const prStatus = new Map();            // url -> { state, title, turn, checkedAt }
+const prStatus = new Map();            // url -> { state, title, turn, people, checkedAt }
 const prQueue = new Set();
 let prTimer = null, prBusy = false, ghGone = false;
 let prAsking = new Set();              // the batch gh is being asked about now: a sweep or a mention meanwhile waits for it
@@ -624,15 +624,16 @@ function queuePr(url, ttl = PR_TTL_MS) {
 function queueSessionPrs(s) { for (const pr of s.prs) queuePr(pr.url); }
 
 /** What GitHub said of one PR: `found` is prTurn's answer, undefined for a PR it would not show us. */
-function setPrInfo(url, state, title, found, now = Date.now()) {
+function setPrInfo(url, state, title, found, now = Date.now(), people) {
   const chats = [...sessions.values()].filter(s => s.prs.some(p => p.url === url));
   const ticked = chats.filter(isDone);
   const { turn, moved, from } = moveTurn(url, found, now);
-  prStatus.set(url, { state, title, turn, checkedAt: now });
-  const same = JSON.stringify(turn);
+  if (people === undefined) people = prStatus.get(url)?.people ?? null;   // a PR we could not see: who we knew of stands
+  prStatus.set(url, { state, title, turn, people, checkedAt: now });
+  const same = JSON.stringify(turn), faces = JSON.stringify(people);
   for (const s of chats) {
     const pr = s.prs.find(p => p.url === url);
-    if (pr.state !== state || pr.title !== title || JSON.stringify(pr.turn ?? null) !== same) { pr.state = state; pr.title = title; pr.turn = turn; schedulePush(s); }
+    if (pr.state !== state || pr.title !== title || JSON.stringify(pr.turn ?? null) !== same || JSON.stringify(pr.people ?? null) !== faces) { pr.state = state; pr.title = title; pr.turn = turn; pr.people = people; schedulePush(s); }
   }
   // Said once, as the ball comes back to you — or when a chat you had ticked comes back with it.
   if (moved && (from === 'them' || ticked.some(s => !isDone(s)))) notifyPr(url, turn, chats);
@@ -676,7 +677,7 @@ function drainPrQueue() {
         : pr.state === 'MERGED' ? 'merged'
         : pr.state === 'CLOSED' ? 'closed'
         : pr.isDraft ? 'draft' : 'open';
-      setPrInfo(url, state, pr?.title || null, pr && me ? prTurn(pr, me) : undefined);
+      setPrInfo(url, state, pr?.title || null, pr && me ? prTurn(pr, me) : undefined, Date.now(), pr ? prPeople(pr, me) : undefined);
     });
     if (turnsDirty) { turnsDirty = false; saveState(); }
     if (prQueue.size) drainPrQueue();
@@ -688,13 +689,15 @@ function drainPrQueue() {
 // addressed, by pushed to the branch, or replies on the PR" — Slack and GitHub's app were the only way to know.) The
 // same call asks what it takes to say whose move a PR is at; forty PRs cost GitHub's GraphQL budget two points.
 // `pushes` are the newest commits and force-pushes, `asks` the review requests, both off the PR's timeline.
-const PR_FIELDS = 'title state isDraft createdAt headRefOid author { login __typename }'
+// Every person comes with a face since 2026-09-29 (`avatarUrl`, a scalar: no cost) — prPeople, the cards' faces.
+const WHO = 'login __typename avatarUrl(size: 48)';
+const PR_FIELDS = `title state isDraft createdAt headRefOid author { ${WHO} }`
   + ' viewerLatestReview { submittedAt commit { oid } }'
   + ' reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } } } }'
-  + ' reviews(last: 20) { nodes { author { login __typename } state submittedAt } }'
-  + ' comments(last: 20) { nodes { author { login __typename } createdAt } }'
+  + ` reviews(last: 20) { nodes { author { ${WHO} } state submittedAt } }`
+  + ` comments(last: 20) { nodes { author { ${WHO} } createdAt } }`
   + ' pushes: timelineItems(last: 5, itemTypes: [PULL_REQUEST_COMMIT, HEAD_REF_FORCE_PUSHED_EVENT]) { nodes { __typename'
-  + ' ... on HeadRefForcePushedEvent { createdAt actor { login } } ... on PullRequestCommit { commit { committedDate author { user { login } } } } } }'
+  + ` ... on HeadRefForcePushedEvent { createdAt actor { ${WHO} } } ... on PullRequestCommit { commit { committedDate author { user { login avatarUrl(size: 48) } } } } } }`
   + ' asks: timelineItems(last: 10, itemTypes: [REVIEW_REQUESTED_EVENT]) { nodes { ... on ReviewRequestedEvent { createdAt requestedReviewer { ... on User { login } } } } }';
 let turnsDirty = false;
 
@@ -753,6 +756,34 @@ function prTurn(pr, me) {
     you, mine, why: why.join(' · '), at: newest([pushed && push.at, heard, again && askedAt]) || null, last,
     key: [pushed ? pr.headRefOid : '', heard, again ? askedAt || 'asked' : ''].join('|')
   };
+}
+
+/**
+ * Who has had a hand in a PR, for the faces on its chats' cards (2026-09-29, Ricardo: "can we get avatar of GH users in
+ * cards, that interacted with PRs associated with a chat?"): the author, and whoever reviewed, commented or pushed —
+ * each once, with what they did and when they last did it, the newest first, at most PEOPLE_MAX. You and the bots are
+ * left out: the faces say who else is in it. Pure, from what PR_FIELDS brings back.
+ */
+const PEOPLE_MAX = 8;
+function prPeople(pr, me) {
+  if (!pr) return [];
+  const by = new Map();
+  const add = (a, at, did) => {
+    if (!a?.login || isBot(a) || a.login === me) return;
+    const p = by.get(a.login) || { login: a.login, avatar: null, at: '', did: [] };
+    p.avatar ||= a.avatarUrl || null;
+    if (at && at > p.at) p.at = at;
+    if (!p.did.includes(did)) p.did.push(did);
+    by.set(a.login, p);
+  };
+  add(pr.author, pr.createdAt, 'opened it');
+  for (const r of pr.reviews?.nodes || []) if (r?.submittedAt && r.state !== 'PENDING') add(r.author, r.submittedAt, r.state === 'APPROVED' ? 'approved' : r.state === 'CHANGES_REQUESTED' ? 'asked for changes' : 'reviewed');
+  for (const c of pr.comments?.nodes || []) add(c?.author, c?.createdAt, 'commented');
+  for (const n of pr.pushes?.nodes || []) {
+    if (n?.__typename === 'HeadRefForcePushedEvent') add(n.actor, n.createdAt, 'pushed');
+    else add(n?.commit?.author?.user, n?.commit?.committedDate, 'pushed');
+  }
+  return [...by.values()].sort((a, b) => b.at.localeCompare(a.at)).slice(0, PEOPLE_MAX);
 }
 
 /**
@@ -2100,7 +2131,7 @@ server.on('upgrade', attachTermSocket);
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { fold, newSession, summary, agentRunning, notePr, notePrs, prTitle, duePrs, prStatus, prTurn, setPrInfo, doneMarks, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { fold, newSession, summary, agentRunning, notePr, notePrs, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {

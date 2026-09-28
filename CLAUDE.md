@@ -115,6 +115,10 @@ refuses to run against the real directory for the same reason.
   clock for every change after, so a restart moves nothing. **The PR is watched by its own newest event as well**
   (`PR_WATCH`: 2 min within two days, 10 within two weeks; `PR_WATCH_MS`), however quiet its chat.
   → `test/pr-turn.test.mjs`, `scripts/scenarios/pr-turn.mjs`.
+* **A PR knows who had a hand in it** (2026-09-29): every person in `PR_FIELDS` comes with `avatarUrl(size: 48)`
+  (`WHO`; a scalar, no cost), and `prPeople` — pure — gives the author, reviewers (not pending), commenters and pushers,
+  each once with what they did and when last, newest first, at most `PEOPLE_MAX`, **you and the bots left out**.
+  `people` on `prStatus` and on each chat's PR; a PR the call could not see keeps the faces it had.
 
 ## The board
 
@@ -267,7 +271,10 @@ refuses to run against the real directory for the same reason.
   before the PR chips), and the PR row in `.why`. The chat also ranks by the move (see the order below).
 * **The card's PR chips end its top row** (`cardPrs`, `.top .tprs`, 2026-09-28): after the ✓ and the F, three in the
   chat's order — every one at your move among them — and a dashed `+n` for the rest; a chip past the row's room wraps
-  onto an 18 px line's hidden second line, whole.
+  onto an 18 px line's hidden second line, whole. **Before them, the faces** (`cardFaces`, `.top .faces`, 2026-09-29):
+  who else had a hand in the chat's PRs, merged across them, newest first — three GitHub avatars overlapping (an
+  initial when there is no `avatar`) and `+n`; the tooltip says what each did, PR by PR. The images come from GitHub's
+  avatar host; the tests hand the fake gh `data:` faces so nothing is fetched.
 * **A card comes in three sizes, the cog's slider** (`#cardsSize`, `prefs.cards`): *large* — your last prompt and
   Claude's last reply —, *medium* the last word only, *compact* neither. `cardHtml` always writes both `.snip`s and
   marks the older one `.older` (Claude's reply is the last word when `lastReplyAt ≥ lastUserAt`); CSS hides by

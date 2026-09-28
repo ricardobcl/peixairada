@@ -16,7 +16,8 @@ import { fileURLToPath } from 'node:url';
 
 const dir = mkdtempSync(join(tmpdir(), 'peix-gh-')), file = join(dir, 'prs.json');
 const ago = min => new Date(Date.now() - min * 60_000).toISOString().replace(/\.\d+Z$/, 'Z');
-const user = login => ({ login, __typename: 'User' });
+// a face as GitHub gives one (avatarUrl), drawn here so nothing is fetched
+const user = login => ({ login, __typename: 'User', avatarUrl: 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#8250df"/><text x="8" y="12" font-size="10" text-anchor="middle" fill="#fff">${login[0]}</text></svg>`) });
 const commit = (at, login) => ({ __typename: 'PullRequestCommit', commit: { committedDate: at, author: { user: { login } } } });
 /** acme/repo-a#12 by ana, reviewed by me an hour ago on commit A; `o` moves it. #13 nobody here has touched. */
 function write(o = {}) {
@@ -56,6 +57,9 @@ export default async function (ctx) {
     ctx.assert.equal(out.waiting.last, 'tprs', 'the chips end the top row');
     ctx.assert.equal(out.waiting.move, null, '…and no line on the card');
     ctx.assert.equal(out.waiting.rank, 1, 'the fixture\'s other chat, a second newer, ranks above it');
+    // the faces of who else is in its PRs (2026-09-29): ana wrote both and pushed to #12; you are not among them
+    out.faces = await ctx.evaluate(`JSON.stringify([...${card}.querySelectorAll('.top .faces > *')].map(f => [f.tagName, f.getAttribute('alt'), f.title, f.complete && f.naturalWidth > 0]))`).then(JSON.parse);
+    ctx.assert.deepEqual(out.faces, [['IMG', 'ana', 'ana — #13 opened it · #12 opened it, pushed', true]], `one face, ana's, before the chips: ${JSON.stringify(out.faces)}`);
 
     // a browser that has granted notifications, faked so the banners are counted; a second listener sees every alert
     const listen = async () => {
