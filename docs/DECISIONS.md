@@ -4,6 +4,24 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-28.
 
+## Decisions of 2026-09-28, night — ✓ in the chats step
+
+Ricardo: "when using hotkey N and then inside a project, I see the current chats there - I want to have the "done" icon
+there to clean the house"
+
+* **The card's ✓ on the row**: `button.pkdone`, last on each chat's row of the `chats` step (⌥⌘N and ⌥⌘O alike), the
+  card's route (`POST /api/sessions/:id/done`) and the card's rule — `canTick(s)`, now one function for both: an idle
+  claude or none, on a chat with a time. Ticking one that runs would end it mid-turn, so a clauding or asking row has an
+  empty cell instead. Every row keeps the 22 px column, so the ages line up. Inked only on the row under the pointer or
+  the selection, as the card's is since 2026-09-26.
+* **The picker stays up, and follows its chats**: the row leaves on the server's `session` event — the `chats` step now
+  redraws on one about a chat it lists or would list, with `pickRender(true)` keeping the selection on the chat it was
+  on (a ticked selected chat gives its place to the one that slid up). A click puts the keys back in the box. Only a
+  single click ticks: a double click's second press would land on the next row, slid up under the pointer.
+* **`note()` goes into an open dialog** when its anchor is in one — under the backdrop a failed tick said nothing.
+* **No key for it**: the box is for typing; a chord to tick the selected row is an easy addition if wanted.
+  → `scripts/scenarios/new-chat-flow.mjs`, its last section.
+
 ## Decisions of 2026-09-28, evening — the board for colleagues: the setup in the cog, a README that fits a screen
 
 Ricardo: "I'm going to invite some colleagues to use this app. what decisions were made (like the default ~/acme,

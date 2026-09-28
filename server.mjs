@@ -10,6 +10,7 @@
 //   CLAUDE_DIR=/path/to/fixture node server.mjs   # point at a different ~/.claude (tests)
 // Map ▾ — the sections, from the file's own banners (node scripts/map.mjs rewrites this; grep a name to jump)
 //  State
+//      · the board's setup: the cog's second half
 //      · Peacock: the colour VS Code paints a folder with, from its .vscode/settings.json
 //      · attachments: a file dropped on the board from a browser
 //  Transcript parsing
@@ -25,7 +26,7 @@
 //  Terminals: a real `claude` in a PTY, attached to from the page over a WebSocket
 //      · the holder protocol: newline-delimited JSON over the holder's socket (see lib/termhold.mjs)
 //      · launchers: a folder's own way to start claude
-//      · the org's folders: where the repos live, and cloning one that is not there yet
+//      · the roots' folders: where the repos live, and cloning one that is not there yet
 //      · idle drawers: ended after DRAWER_IDLE_MS with no page on them
 //      · who may ask: the board's own pages, and nothing a browser lets another site send
 //  HTTP

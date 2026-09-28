@@ -3,7 +3,8 @@
 // seeded here and read back after a restart); ⌥⌘N shows the project's chats whatever their environment, newest
 // by your last touch. Typing moves the selection off ＋ onto the first match, and back onto it when nothing
 // matches — which is how a name no chat has yet starts one. The environment step counts what each one holds, and
-// the cards in the chat column wear the environment they were started in.
+// the cards in the chat column wear the environment they were started in. Since 2026-09-28 each idle chat's row has
+// the card's ✓: ticked there it leaves the list, the picker stays up, and the selection stays on its chat.
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -116,5 +117,40 @@ export default async function (ctx) {
   out.posted = (await ctx.evaluate(`JSON.stringify(window.__posts)`).then(JSON.parse))[0];
   ctx.assert.deepEqual({ cwd: out.posted.cwd, task: out.posted.task }, { cwd: oracleCwd, task: 'production-workload' }, '⏎ starts task production-workload in oracle');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#pick').open`), false, 'the picker closed on the last step');
+
+  // ---- ✓ in the chats step: ticked done, a chat leaves the list and the picker stays up ----
+  const down = () => ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))`);
+  const tickRow = (i, detail = 1) => ctx.evaluate(`document.querySelectorAll('#picklist .pkrow')[${i}].querySelector('button.pkdone').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: ${detail} }))`);
+  const names = async () => (await rows(ctx)).map(r => r.name);
+  await ctx.key('KeyN');
+  await ctx.waitFor(`document.querySelector('#pickq').placeholder.startsWith('New chat — a project')`, { what: 'the project step, to clean up' });
+  await type(ctx, 'oracle'); await enter(ctx);
+  await ctx.waitFor(`document.querySelector('#pickq').placeholder.startsWith('oracle — an open chat')`, { what: 'the chats step, to clean up' });
+  out.tickable = await ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow')].map(r => !!r.querySelector('button.pkdone'))`);
+  ctx.assert.deepEqual(out.tickable, [false, true, true, true], '＋ has no ✓; every idle chat has one');
+  await down(); await down(); await down();   // onto ledger sweep, the last row
+  await ctx.settle();
+  out.tickInk = await ctx.evaluate(`[...document.querySelectorAll('#picklist button.pkdone')].map(b => getComputedStyle(b).opacity)`);
+  await ctx.shot('chats-step-tick');
+  ctx.assert.deepEqual(out.tickInk, ['0', '0', '0.7'], 'the ✓ shows on the selected row only (the pointer is elsewhere)');
+  // A double click's second press lands on whatever slid up under the pointer: it ticks nothing.
+  await tickRow(3, 2); await ctx.sleep(400);
+  ctx.assert.equal((await ctx.peix(`session(${JSON.stringify(prod.id)})`)).done, false, 'a second press ticks nothing');
+  // ✓ on another row: it leaves, and the selection stays on ledger sweep where the list moved it.
+  await tickRow(2);
+  await ctx.waitFor(`document.querySelectorAll('#picklist .pkrow').length === 3`, { what: 'replay a batch off the list' });
+  out.afterOne = await rows(ctx);
+  ctx.assert.deepEqual(out.afterOne.map(r => r.name), ['＋ new chat', 'read the Taskfile', 'ledger sweep'], 'the ticked chat left the list');
+  ctx.assert.ok(out.afterOne[2].sel, 'the selection stayed on its chat');
+  ctx.assert.equal((await ctx.peix(`session(${JSON.stringify(sand.id)})`)).done, true, 'the server has it done');
+  // ✓ on the selected row: it leaves, the picker stays up with the keys in its box.
+  await tickRow(2);
+  await ctx.waitFor(`document.querySelectorAll('#picklist .pkrow').length === 2`, { what: 'ledger sweep off the list' });
+  out.afterTwo = await names();
+  ctx.assert.deepEqual(out.afterTwo, ['＋ new chat', 'read the Taskfile']);
+  ctx.assert.equal((await ctx.peix(`session(${JSON.stringify(prod.id)})`)).done, true);
+  out.stays = await ctx.evaluate(`({ open: document.querySelector('#pick').open, focus: document.activeElement?.id })`);
+  ctx.assert.deepEqual(out.stays, { open: true, focus: 'pickq' }, 'the picker stays up, the keys in its box');
+  await closePick(ctx);
   return out;
 }

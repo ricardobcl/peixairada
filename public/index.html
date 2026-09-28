@@ -580,7 +580,7 @@
     color: var(--ink); cursor: pointer; flex: none; opacity: 0; display: inline-grid; place-items: center; transition: opacity .12s; }
   .card:hover .act, .act:focus-visible { opacity: .7; }
   /* Every small control eases its hover (2026-09-27, night): the ink, the edge and the wash, 120 ms — the one rule. */
-  :is(.btn, .fchip, .ptab, .hmi, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .sedge button, #usage button, #stitle, #pfoot) { transition: color .12s, border-color .12s, background-color .12s, opacity .12s; }
+  :is(.btn, .fchip, .ptab, .hmi, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, #stitle, #pfoot) { transition: color .12s, border-color .12s, background-color .12s, opacity .12s; }
   .act:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .dot.working { background: var(--working); animation: pulse 1.4s ease-in-out infinite; }
@@ -1001,6 +1001,12 @@
   .pkrow:hover .pked, .pkrow.sel .pked { opacity: .75; }
   .pkrow .pked:hover { opacity: 1; color: var(--ink); background: var(--inline-bg); }
   .pkrow.newproj .n { color: var(--accent); font-weight: 600; }
+  /* ⌥⌘N / ⌥⌘O's chats step (2026-09-28): ✓ ticks a chat done, the card's ✓ in a row — in the row under the pointer
+     or the selection only, as on the card. A column of its own on every row, filled or not, so the ages line up. */
+  .pkrow.chat.ticks { grid-template-columns: auto 1fr auto auto auto 22px; }
+  .pkrow .pkdone { width: 22px; height: 20px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--ink); font: inherit; font-size: 15px; line-height: 1; cursor: pointer; opacity: 0; display: inline-grid; place-items: center; }
+  .pkrow:hover button.pkdone, .pkrow.sel button.pkdone, .pkrow button.pkdone:focus-visible { opacity: .7; }
+  .pkrow button.pkdone:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   #picklist .none { padding: 12px; color: var(--muted); font-size: 12px; text-align: center; }
   dialog h3 { margin: 0 0 10px; font-size: 15px; }
   dialog p.help { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
@@ -1205,7 +1211,8 @@
 //   js  · the chat list's timeline: its days, down the left edge
 //   js  · ⌥⌘P: the project picker. The board's projects, pinned first; the box filters by name.
 //   js  · the pickers' matcher: fuzzy since 2026-09-21
-//   js  · the org's folders, and cloning one that is not here yet (2026-09-21)
+//   js  · the roots' folders, and cloning one that is not here yet (2026-09-21)
+//   js  · the setup: the cog's second half (2026-09-28)
 //   js  · the colour picker
 //   js  · project editor
 //   js  · PRs: the strip under the header, and where a GitHub link goes
@@ -1566,6 +1573,9 @@
   // the card (2026-09-27, Ricardo: "if the chat is using Fable, put a special marker on the card").
   const onFable = s => /fable/i.test(s.model || '');
   const watching = s => !s.done && (s.tasks?.length || 0) > 0;
+  // The ✓ is offered once nothing runs — an idle claude or none — on a chat the board has a time for: the card's
+  // and the chats step's (2026-09-28), one rule, since ticking one that runs would end it mid-turn.
+  const canTick = s => (!s.alive || s.status === 'idle') && !!(s.lastActivity || s.startedAt);
   // The list's order, and the ⌥⌘K picker's (2026-09-21): a chat waiting on *your* answer first — it costs you a
   // second and unblocks a whole turn — then clauding, then ready, done last. The filters and the counts still go by
   // `bucket`, so an asking chat is a ready one everywhere it is counted; only the order knows the difference.
@@ -2088,7 +2098,7 @@
     const replyLast = showReply && String(s.lastReplyAt || '') >= String(s.lastUserAt || '');
     const older = who => s.lastPrompt && showReply && (who === 'you') === replyLast ? ' older' : '';
     const act = s.done ? `<button class="act" data-act="reopen" title="Untick — bring it back">↩</button>`
-      : (!s.alive || s.status === 'idle') && (s.lastActivity || s.startedAt) ? `<button class="act" data-act="done" title="Tick as done (persisted; comes back on new activity)">✓</button>` : '';
+      : canTick(s) ? `<button class="act" data-act="done" title="Tick as done (persisted; comes back on new activity)">✓</button>` : '';
     // The F for Fable (2026-09-27) and the ✓ / ↩ end the top row — the project name's height —, the tick first and the
     // F last, so the tick takes the F's place when there is none (Ricardo, the same day: "first done icon, then F for
     // fable. when fable is not there, move the done icon to the right where F would be"). Either brings the row into
@@ -2275,7 +2285,10 @@
     $('#pickq').value = ''; pickHint();
     pickRender(); $('#pickq').focus();
   }
-  function pickRender() {
+  /** `keep`: a redraw the server caused, not the keys — the selection stays on the chat it was on, wherever the list
+   *  moved it; a chat that left gives its place to the one that slid up into it. */
+  function pickRender(keep = false) {
+    const was = keep ? pick.list[pick.sel] : null;
     const q = $('#pickq').value.trim().toLowerCase();
     const mark = text => markHits(text, q);
     // With something typed the best match leads; with the box empty each list keeps its own order (the board's for
@@ -2293,9 +2306,12 @@
       const chats = hunt(scopeChats(pick.ctx), chatFields);   // ＋ is never filtered out: it is the fallback for a query that matches nothing
       pick.list = [{ isNew: true }, ...chats];
       const how = pick.ctx.env ? `task ${pick.ctx.env}` : pick.ctx.cwds.length === 1 ? `in ${folderName(pick.ctx.cwds[0])}` : 'pick a folder…';   // reads under the chats' own environment column, so say it is a folder
+      // ✓ ticks the chat done from here (2026-09-28, Ricardo: "I want to have the 'done' icon there to clean the
+      // house"): the card's rule and route, and the row goes when the server says so. Every row keeps the column.
+      const tick = x => x.isNew || !canTick(x) ? '<span class="pkdone"></span>' : `<button class="pkdone" data-id="${esc(x.id)}" title="Tick as done — it leaves this list and the board's (persisted; comes back on new activity)">✓</button>`;
       row = (x, i) => x.isNew
-        ? `<div class="pkrow chat new${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(pick.ctx.cwds))}" title="Start a new chat in ${esc(pick.ctx.name)}"><span class="sq"></span><span class="n">＋ new chat</span><span class="num">${esc(how)}</span><span class="st"></span><span class="t"></span></div>`
-        : `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(x)}" style="${repoStyle(repoColor(x.cwd))}" title="${esc(x.cwd || '')}"><span class="sq"></span><span class="n">${mark(x.title)}${x.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${esc(x.env || '')}</span><span class="st">${chatState(x)}</span><span class="t" data-at="${esc(wordAt(x))}"></span></div>`;
+        ? `<div class="pkrow chat ticks new${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(pick.ctx.cwds))}" title="Start a new chat in ${esc(pick.ctx.name)}"><span class="sq"></span><span class="n">＋ new chat</span><span class="num">${esc(how)}</span><span class="st"></span><span class="t"></span>${tick(x)}</div>`
+        : `<div class="pkrow chat ticks${sel(i)}" data-i="${i}" data-state="${chatState(x)}" style="${repoStyle(repoColor(x.cwd))}" title="${esc(x.cwd || '')}"><span class="sq"></span><span class="n">${mark(x.title)}${x.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${esc(x.env || '')}</span><span class="st">${chatState(x)}</span><span class="t" data-at="${esc(wordAt(x))}"></span>${tick(x)}</div>`;
     } else if (pick.mode === 'folder') {   // the new chat's folder, from a project that spans several
       pick.list = hunt(pick.ctx.cwds.map(f => ({ cwd: f })), x => [folderName(x.cwd), x.cwd]);
       row = (x, i) => `<div class="pkrow${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(x.cwd))}" title="${esc(x.cwd)}"><span class="sq"></span><span class="n">${mark(folderName(x.cwd))}<span class="cur">${esc(homePath(x.cwd))}</span></span><span class="pills"></span><span class="t"></span></div>`;
@@ -2322,6 +2338,7 @@
           ? `<div class="pkrow folder${pick.mode === 'new' ? ' hides' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(p.cwd))}" title="${esc(p.cwd)}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}<span class="cur">${esc(homePath(p.cwd))}</span></span><span class="pills"></span><span class="t"></span>${hx(p)}</div>`
           : `<div class="pkrow${pick.mode === 'new' ? ' hides' : ''}${ed(p) ? ' named' : ''}${sel(i)}" data-i="${i}" style="${repoStyle(projColor(p))}"><span class="sq"></span><span class="n">${projIcon(p.name)}${mark(p.name)}${p.key === prefs.project ? '<span class="cur">current</span>' : ''}</span><span class="pills">${pillsHtml(p)}</span><span class="t"${p.last ? ` data-at="${esc(p.last)}"` : ''}></span>${hx(p)}${ed(p)}</div>`;
     }
+    if (was) { const i = pick.list.findIndex(x => x.isNew ? was.isNew : x.id === was.id); if (i >= 0) pick.sel = i; }
     pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
     const rows = pick.list.map(row);
     $('#picklist').innerHTML = rows.join('') || `<div class="none">no ${PICK_NOUN[pick.mode] || 'project'} matches</div>`;
@@ -2367,6 +2384,10 @@
   $('#picklist').addEventListener('click', e => {
     const x = e.target.closest('.pkx');   // ✕: the row goes off the board, the picker stays where it is
     if (x) { e.stopPropagation(); hideProject(x.dataset.key); pickRender(); return; }
+    // ✓: the chat is ticked done and the picker stays up — the row leaves on the server's `session` event. A double
+    // click's second press would land on the row that slid up under the pointer, so only a single one counts.
+    const dn = e.target.closest('button.pkdone');
+    if (dn) { e.stopPropagation(); $('#pickq').focus(); if (e.detail <= 1) api('POST', `/api/sessions/${dn.dataset.id}/done`, { done: true }).catch(err => note(dn, `Could not tick it: ${err.message}`, true)); return; }
     const ed = e.target.closest('.pked');   // ✎: the picker gives way to the project's editor
     if (ed) { e.stopPropagation(); $('#pick').close(); openProjectEditor(ed.dataset.id); return; }
     const r = e.target.closest('.pkrow'); if (r) pickChoose(+r.dataset.i);
@@ -2632,7 +2653,8 @@
   function note(anchor, text, err) {
     document.querySelectorAll('.note').forEach(n => n.remove());
     const r = anchor?.getBoundingClientRect?.(); if (!r) return;
-    const n = document.createElement('div'); n.className = 'note' + (err ? ' err' : ''); n.textContent = text; document.body.appendChild(n);
+    // Inside a modal dialog it goes into the dialog, the top layer: under it the backdrop would cover it.
+    const n = document.createElement('div'); n.className = 'note' + (err ? ' err' : ''); n.textContent = text; (anchor.closest?.('dialog[open]') || document.body).appendChild(n);
     n.style.left = Math.max(8, Math.min(innerWidth - n.offsetWidth - 8, r.left)) + 'px';
     n.style.top = (r.bottom + 6 + n.offsetHeight > innerHeight ? r.top - n.offsetHeight - 6 : r.bottom + 6) + 'px';
     setTimeout(() => { n.classList.add('out'); setTimeout(() => n.remove(), 140); }, err ? 8000 : 4000);   // fades before it goes
@@ -4148,6 +4170,8 @@
       if (was?.status === 'working' && s.status === 'idle' && !s.done) { landedAt.set(s.id, performance.now()); noteMotion(s.id, 'landed'); }   // the reply landed: the card flares once (flareLanded)
       if (s.id === state.current && !visible(s) && s.done) leaveChat();   // an empty chat ticked done: its card is gone, and so is the chat
       renderBoard(); if (s.id === state.current) { renderHead(s); syncTerm(s); renderPresence(); }
+      // The chats step follows its chats — one ticked there leaves, one that stopped clauding says ready.
+      if ($('#pick').open && pick.mode === 'chats' && (pick.list.some(x => x.id === s.id) || scopeChats(pick.ctx).some(x => x.id === s.id))) pickRender(true);
     });
     es.addEventListener('entries', e => { const d = JSON.parse(e.data); if (d.sessionId === state.current) { state.entries.push(...d.entries); renderLog(); } });
     es.addEventListener('projects', e => { state.projects = JSON.parse(e.data).projects || []; renderBoard(); });

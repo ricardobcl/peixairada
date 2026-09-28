@@ -375,7 +375,9 @@ refuses to run against the real directory for the same reason.
   filters the chats only, and moves the selection off ＋ onto the first match. A chat's environment is `s.env`; a chat
   with none shows under ⌥⌘N and under no environment. The `env` step counts what each environment holds
   (`pillsHtml(envCounts(cwd, name))`) and a card whose chat has an `env` wears it beside the folder name (`.chip.env`).
-  → `scripts/scenarios/new-chat-flow.mjs`.
+  **Each idle chat's row has the card's ✓** (`button.pkdone`, `canTick(s)` — the card's rule too), under the pointer
+  or the selection; ticked, the row leaves on the `session` event (the step redraws with `pickRender(true)`, which keeps
+  the selection on its chat) and the picker stays up. → `scripts/scenarios/new-chat-flow.mjs`.
 * **The project step holds the folders you have no chat in, and clones one you have not got**: after the board's own
   projects come the folders directly under each of the setup's roots that are on no project (`freeFolders()`, by the
   exact cwd), and a query that names none of them is offered last as **＋ clone `<org>/<name>`**, a row per root with
