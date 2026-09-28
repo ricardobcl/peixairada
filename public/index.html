@@ -3369,8 +3369,10 @@
       const { k, from, ghost } = drag, to = ghost ? halfAt(e.clientX, e.clientY) : null;
       end();
       if (!ghost) return;
-      const swallow = ev => { ev.stopPropagation(); ev.preventDefault(); };   // the click this release makes, if it makes one
-      window.addEventListener('click', swallow, true); setTimeout(() => window.removeEventListener('click', swallow, true), 0);
+      // the click this release makes, if it makes one — once: a page out of sight runs its timers a second apart, and a
+      // swallow left for the timeout ate the next real click (the harness's, 2026-09-28)
+      const swallow = ev => { ev.stopPropagation(); ev.preventDefault(); };
+      window.addEventListener('click', swallow, { capture: true, once: true }); setTimeout(() => window.removeEventListener('click', swallow, true), 0);
       const s = state.sessions.get(state.current);
       if (!s || to === null || to === from || !tabKeys(s).includes(k)) return;
       moveTab(s, k, to);
