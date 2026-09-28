@@ -243,7 +243,7 @@ refuses to run against the real directory for the same reason.
   a new header; the handlers are still bound on every call (they close over `s`). Anything that edits the header in
   place must reset `drawn.head` (`editTitle` does).
 * **The chat header's row is the title, the PR chips, a task's chip and ···**: every button it had — `#termBtn`,
-  `#viewBtn`, `#webBtn`, `#focusBtn`, `#detailsBtn` (the state dot and its age), the VS Code mark — is a
+  `#viewBtn`, `#webBtn`, `#detailsBtn` (the state dot and its age), the VS Code mark — is a
   row of `#hmenu`, keeping its id, so the hotkeys and the harness still reach them, and `.click()` works on a closed
   menu. `#hmenu` is a **non-modal `<dialog>`**, static in the markup: `postPane` lowers the pane while it is up, Esc
   closes it, `runHotkey` closes it rather than let it swallow the key. Toggles leave it up (the click-outside test goes
@@ -379,7 +379,7 @@ refuses to run against the real directory for the same reason.
 * **`HOTKEYS` in index.html is the whole ⌥⌘ family**: T this chat's shell tab (`hotShell()` →
   `POST /api/sessions/:id/shell`, a holder running the login shell `-l -i` in its folder, `s.shell`; the tab wears its
   name, `shName()`), E the VS Code *Web* button
-  (in the pane; the real VS Code is the header menu's *open in VS Code* only, no key), G the chat's PR on GitHub — one
+  (in the pane; nothing opens the real VS Code since 2026-09-29, when *open in VS Code* went), G the chat's PR on GitHub — one
   opens straight away, several open the picker in `pr` mode, the one showing marked *current* (no PR → the folder's
   GitHub repo, `state.repos` from `git remote`) —, C this chat's claude session (`termAction()`, the `>_` button's
   path), **W the tab the keys are in, closed** (`hotCloseTab()` → `dropTab()`: the zsh ended, a page or the editor let
@@ -669,7 +669,6 @@ refuses to run against the real directory for the same reason.
   node-pty's spawn-helper only when the bit is missing (a same-mode chmod is still a write to the bundle).
 * macOS has no `timeout(1)`: `perl -e 'alarm shift; exec @ARGV' 60 <cmd>`. BSD sed has no `\b`.
 * `pkill -f server.mjs` also kills the app's own server — stop test servers **by port**.
-* Opening a chat in VS Code rides on an undocumented URI parameter (`session`); `code <cwd>` first, the URI 400 ms later.
 * VS Code Web (`code serve-web`): extensions live in `~/.vscode-server`, trust lives in the browser profile. → Findings: *VS Code Web*.
 * Ink redraws only its live region on a resize; earlier lines keep the old width. That is Claude Code's, not ours.
 * xterm parses what it is written on its own schedule: read or wipe a screen through `write('', cb)`, never straight

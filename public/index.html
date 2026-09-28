@@ -47,9 +47,7 @@
   .btn.icon .ic { width: 15px; height: 15px; vertical-align: 0; fill: currentColor; }
   .btn.icon:hover { color: var(--ink); }
   .btn.icon:disabled { opacity: .45; cursor: default; background: var(--ctl); }
-  #focusBtn .ic { fill: var(--vscode); }
   .btn.icon.err { color: var(--needs); border-color: var(--needs); }
-  #focusBtn.err .ic { fill: var(--needs); }   /* must out-specify #focusBtn .ic above */
   #termBtn.on { color: var(--accent); border-color: var(--accent); }
   #termBtn.take { color: var(--ink); }                                        /* live in another terminal: can be taken over */
   #termBtn.take.arm { color: var(--needs); border-color: var(--needs); }      /* armed: the next click ends that claude */
@@ -3133,7 +3131,6 @@
   const PR_ROWS = 6;   // a chat that lists PRs mentions dozens; the block shows this many and folds the rest behind "more"
   const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" href="${esc(pr.url)}" target="_blank" rel="noopener"
       title="${esc(`${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}${pr.turn ? `\n${turnTip(pr)}` : ''}`)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span>${pr.turn?.you ? `<span class="why">your move · ${esc(pr.turn.why)}</span>` : ''}<span class="meta">${rel(pr.lastAt)}</span></a>`;
-  const FOCUS_TIP = "Open this chat in VS Code";   // the button only — its key went (2026-09-20, Ricardo: "leave the button up top only")
   // Claude Code's own /focus — "just your prompt, summary, and response", every step in between hidden — on the
   // session running in the drawer (2026-09-20, Ricardo: "add a toggle on the chat header for toggling focus mode on
   // the current live session"). It is the running CLI's state, not the board's: there is no key and no API for it, so
@@ -3185,7 +3182,6 @@
       s.cwd && !loud ? `${termBtn('hmi')}<span class="lbl">${termWord}</span><span class="k">⌥⌘C</span></button>` : '',
       termLive(s) ? `<button class="hmi${focusOn(s.id) ? ' on' : ''}" id="viewBtn" aria-pressed="${focusOn(s.id)}" title="${esc(viewTip(s))}">${ICON.view}<span>focus view</span><span class="k">${focusOn(s.id) ? 'on' : 'off'}</span></button>` : '',
       s.cwd ? `<button class="hmi" id="webBtn" title="${WEB_TIP}">${ICON.vscode}<span class="lbl">VS Code Web</span><span class="k">⌥⌘E</span></button>` : '',
-      s.cwd ? `<button class="hmi" id="focusBtn" title="${FOCUS_TIP}">${ICON.vscode}<span>open in VS Code</span><span class="k"></span></button>` : '',
       // what a tab's × does, for the tabs that lose their strip alone in a half (2026-09-28) — ⌥⌘W with the keys in it
       shellLive(s) ? `<button class="hmi" id="shellEndBtn" title="End this chat's ${shName()} and close its tab — exit in it does the same · ⌥⌘W with the keys in it"><span class="gl">×</span><span>end the ${shName()}</span><span class="k"></span></button>` : '',
       ideKey(s) ? `<button class="hmi" id="ideCloseBtn" title="Close VS Code Web's tab — ⌥⌘E opens it again · ⌥⌘W with the keys in it"><span class="gl">×</span><span>close VS Code Web</span><span class="k"></span></button>` : '',
@@ -3205,20 +3201,6 @@
     const pt = $('#prToggle'); if (pt) pt.onclick = () => { prefs.prsOpen = !prefs.prsOpen; savePrefs(); renderHead(s); };
     if (headNew) { layoutNotch(); fitHeadPrs(); paintHeadSplit(); postChat(s); }
     renderComposer(s); renderRival(s);
-    // Say so when it fails — silently swallowing the response is how a missing `code` CLI looked
-    // like a dead button for weeks. The icon has to survive that, so failure adds a word beside it
-    // and puts the reason in the tooltip; assigning textContent would delete the SVG.
-    const fb = $('#focusBtn');
-    if (fb) {
-      const reset = () => { fb.classList.remove('err'); fb.querySelector('.k').textContent = ''; fb.title = FOCUS_TIP; };
-      const fail = why => { fb.classList.add('err'); fb.title = why; fb.querySelector('.k').textContent = 'failed'; note(seen(fb), `VS Code: ${why}`, true); };
-      fb.onclick = async () => {
-        reset(); fb.disabled = true;
-        try { await api('POST', `/api/sessions/${s.id}/focus`); menu.close(); }
-        catch (e) { fail(e.message); }
-        finally { fb.disabled = false; }
-      };
-    }
     $('#detailsBtn').onclick = () => { prefs.headDetails = !prefs.headDetails; savePrefs(); renderHead(s); };
     const wb = $('#webBtn');
     if (wb) wb.onclick = async () => {

@@ -1337,7 +1337,7 @@ function planUsage(cb) {
     } catch (e) { cb(502, { error: `usage API: ${e.message || e}` }); }
   });
 }
-function codeBin() { return findBin('code', '"Focus in VS Code" is disabled'); }
+function codeBin() { return findBin('code', 'VS Code Web is disabled'); }
 
 // ---------------------------------------------------------------------------------------------
 // VS Code Web: the editor UI served by `code serve-web`, for the pane beside the board
@@ -1906,31 +1906,6 @@ const server = createServer(async (req, res) => {
       const body = await jsonBody(req);
       const r = await spawnTerm({ cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows, shell: true });
       return json(res, r.code, r);
-    }
-    if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/focus$/))) {
-      const s = sessions.get(m[1]);
-      const cwd = s?.cwd || s?.live?.cwd;
-      if (!cwd) return json(res, 400, { error: 'no cwd known' });
-      // Resolved, not spawned by name: the app hands the server PATH=/usr/bin:/bin:/usr/sbin:/sbin,
-      // which does not contain /usr/local/bin, so a bare `code` was ENOENT in the packaged app.
-      const code = codeBin();
-      if (!code) return json(res, 501, { error: 'code CLI not found — run "Shell Command: Install \'code\' command in PATH" in VS Code, or set CODE_BIN' });
-      // `code <folder>` re-focuses the VS Code window that already has that folder open. Then the
-      // chat itself: the extension's URI handler takes a session id on its /open route and hands it
-      // to its own open-session command, so the right tab comes up in the Claude panel, not just the
-      // right window. Undocumented (the docs list q/cwd/repo, the code reads session/prompt), so it
-      // may stop working on an extension update — then the window still comes up, as before.
-      // The URI lands in whichever window is focused, hence after `code` and a beat later.
-      // A chat live in a terminal is left alone: opening it in VS Code would put a second writer
-      // on its transcript.
-      const deepLink = s && process.platform === 'darwin' && !(s.alive && s.live?.entrypoint !== 'claude-vscode');
-      execFile(code, [cwd], err => {
-        if (err) return json(res, 500, { error: String(err.message || err) });
-        if (!deepLink) return json(res, 200, { ok: true, cwd, chat: false });
-        setTimeout(() => execFile('/usr/bin/open', [`vscode://anthropic.claude-code/open?session=${s.id}`], e2 =>
-          e2 ? json(res, 200, { ok: true, cwd, chat: false, warning: String(e2.message || e2) }) : json(res, 200, { ok: true, cwd, chat: true })), 400);
-      });
-      return;
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/reply$/))) {
       const s = sessions.get(m[1]);

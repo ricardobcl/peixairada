@@ -4,6 +4,16 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-28.
 
+## Decisions of 2026-09-29, towards one — no VS Code opener, the card flush with the box, faces on the cards
+
+Ricardo: "remove the 'open in VScode' option"; of a screenshot of the open card beside the splitter, "the colors don't
+blend well between the card gradient and the vertical separator - make it seamless" and "the vertical [splitter]
+doesn't [go] all the way to the low border of the card"; "leave 0 space for the card at the top, so it matches the
+project box on the chat"; "can we get avatar of GH users in cards, that interacted with PRs associated with a chat?".
+
+* **No *open in VS Code***: the header menu's row, its handler and the server's `/api/sessions/:id/focus` route (which
+  ran `code <cwd>` and then the extension's undocumented `open?session=` URI) are gone. VS Code Web stays.
+
 ## Decisions of 2026-09-29, small hours — the clauding light on the border, and on past the open card
 
 Ricardo: "the clauding ring glow that goes around should 1) be on the border and not inside the border and 2) should
