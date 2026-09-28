@@ -155,7 +155,14 @@
      of its own beside the list from 2026-09-25). Every cell is definite — the list's ends (.sedge) and the glass lie
      over the list's, which only a definite cell allows. */
   #sessions { grid-template-columns: minmax(0, 1fr); }
-  #shd { grid-row: 1; grid-column: 1; } #tline { grid-row: 2; grid-column: 1; justify-self: start; } #slist { grid-row: 2; grid-column: 1; } #sfoot { grid-row: 3; grid-column: 1; }
+  #shd { grid-row: 1; grid-column: 1; } #tline { grid-row: 2; grid-column: 1 / -1; justify-self: start; } #slist { grid-row: 2; grid-column: 1 / -1; } #sfoot { grid-row: 3; grid-column: 1; }
+  /* One row atop the open list (2026-09-28, Ricardo: "combine the header with app icon with the footer with cog and
+     credits into a single line"): the foot — the plan usage as rings, the cog — is the head row's right end, in a
+     column of its own there; on the rail of squares it is the foot it always was. */
+  main:not(.scompact) #sessions { grid-template-columns: minmax(0, 1fr) auto; }
+  main:not(.scompact) #sfoot { grid-row: 1; grid-column: 2; border-top: 0; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); align-items: center; gap: 2px; padding: 0 8px 0 0; position: relative; }
+  main:not(.scompact) #shd { padding-right: 4px; }
+  main.notch:not(.scompact) #sessions.npad #sfoot { padding-top: var(--notch-top, 0px); }
   /* The chat list folded to a rail: the fish, the selected project's colour square and the » to open it again.
      The width is set here, not inline, so the splitter's saved width comes back on unfold. */
   /* Folded, the list is a rail of one square per chat (2026-09-22): the project's short name on its own colour,
@@ -260,9 +267,9 @@
      the entire space between the app icon and the ready counter"; an icon-sized pill until then, and the box took the
      chips' place while it was open): at rest a pill from the fish — or the project's name — to the first chip, the
      icon at its left end; open, the icon is the field's left cap and the box runs on to the chips, which stay. */
-  #shd .fsearch { flex: 1 1 auto; min-width: 28px; height: 20px; cursor: text; }
+  #shd .fsearch { flex: none; height: 20px; }   /* small again since 2026-09-28 (Ricardo: "make the search small and only expand when selected"): the row has the foot's rings and cog to hold now */
   #shd #filters.searching .fsearch { flex: none; min-width: 0; color: var(--accent); border-color: var(--accent); background: var(--bg); border-right: 0; border-radius: 12px 0 0 12px; padding-right: 3px; }
-  #shd .fq { flex: 1 1 0; width: 0; height: 20px; margin-left: -3px; border-left: 0; border-radius: 0 12px 12px 0; padding-left: 3px; }   /* width 0: a box's own width is what it asks of the row, and it would push ＋ and « out */
+  #shd .fq { flex: 1 1 0; width: 0; height: 20px; margin-left: -3px; border-left: 0; border-radius: 0 12px 12px 0; padding-left: 3px; }   /* width 0: a box's own width is what it asks of the row, and it would push ＋ out; open, it takes the room the chips leave */
   /* the filter boxes: a magnifier in the row, the box itself only while it is open or has text */
   .fsearch { font: inherit; border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 12px; padding: 2px 7px; cursor: pointer; display: inline-flex; align-items: center; flex: none; }
   .fsearch .ic { width: 12px; height: 12px; fill: currentColor; }
@@ -362,7 +369,7 @@
   /* While the days are out, a pane of glass over the cards (2026-09-25, Ricardo: "a glass tint on the background"):
      a blur and a wash of the page over the list's cell, under the labels and the list's ends, so the labels read on
      a frosted list rather than on card text. Lets every pointer event through. */
-  .tl-glass { grid-row: 2; grid-column: 1; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .2s;
+  .tl-glass { grid-row: 2; grid-column: 1 / -1; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .2s;
     background: color-mix(in srgb, var(--bg) 42%, transparent); -webkit-backdrop-filter: blur(3px) saturate(.85); backdrop-filter: blur(3px) saturate(.85); }
   #sessions.tlon .tl-glass { opacity: 1; }
   main.scompact #tline { display: none; }
@@ -388,7 +395,7 @@
   /* The list's two ends say what is out of sight past them (2026-09-25): a pill over a fog of the page, laid over the
      list's own cell — the list's row, so it neither scrolls with the cards nor takes any room from them. The fog lets
      every click through; only the pill takes one. A dot on it when a card out there is asking you or clauding. */
-  .sedge { grid-row: 2; grid-column: 1; z-index: 4; pointer-events: none; display: flex; justify-content: center; height: 30px; opacity: 0; transition: opacity .15s; }
+  .sedge { grid-row: 2; grid-column: 1 / -1; z-index: 4; pointer-events: none; display: flex; justify-content: center; height: 30px; opacity: 0; transition: opacity .15s; }
   .sedge.up { align-self: start; align-items: flex-start; padding-top: 5px; background: linear-gradient(var(--bg) 25%, transparent); }
   .sedge.down { align-self: end; align-items: flex-end; padding-bottom: 5px; background: linear-gradient(transparent, var(--bg) 75%); }
   .sedge.on { opacity: 1; }
@@ -641,6 +648,7 @@
   #pfoot .btn, #pfoot .btn.on { border-color: transparent; padding: 4px; }
   main.scompact #sfoot { flex-direction: column-reverse; }
   main.scompact #pfoot { width: auto; }
+  main:not(.scompact) #pfoot { width: auto; margin: 0; border-left: 0; padding: 0; align-items: center; border-radius: 6px; }
   /* folded, the foot is one row of 34 px, the cog's cell and the rings side by side ("a bit smaller vertically":
      44 px until the same day) */
   #usage { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); flex: 1; display: grid; align-content: center; min-height: 34px; padding: 7px 12px 8px 6px; font-size: 11px; color: var(--muted); min-width: 0; user-select: none; }
@@ -650,7 +658,20 @@
   #usage .uchev { width: 12px; height: 12px; flex: none; margin-left: auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; opacity: .6; }
   #usage button:hover .uchev { opacity: 1; }
   #usage .uline .uchev { transform: rotate(180deg); }   /* folded, it points up: the way the rows will come */
-  #usage.folded .uopen, #usage:not(.folded) .uline { display: none; }
+  /* In the head row (2026-09-28, Ricardo: "compact view of credits"): the rings alone, 14 px, and the rows a panel under
+     the row — on hover, a beat late so a pointer on its way to the cog does not open it, or pinned by a click on the
+     rings (.pin; a click on its heading or anywhere else lets it go). The fold of 2026-09-24 went with the foot. */
+  main:not(.scompact) #usage { flex: none; min-height: 0; padding: 0 4px; display: flex; align-items: center; order: -1; }   /* the rings, then the cog at the row's end */
+  main:not(.scompact) #usage .uline { flex-wrap: nowrap; column-gap: 5px; width: auto; }
+  main:not(.scompact) #usage .uline :is(.uk, b, .uchev) { display: none; }
+  main:not(.scompact) #usage .uline .unote { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  main:not(.scompact) #usage .uring { width: 14px; height: 14px; }
+  main:not(.scompact) #sessions:has(#filters.searching) #usage { display: none; }   /* the box open: its room, the rings' too */
+  main:not(.scompact) #usage .uopen { position: absolute; top: 100%; right: 6px; z-index: 30; width: 300px; box-sizing: border-box; padding: 10px 12px 12px; border-radius: 10px; background: var(--panel); box-shadow: 0 10px 34px rgba(0, 0, 0, .22);
+    visibility: hidden; opacity: 0; transition: opacity .12s, visibility 0s .12s; }
+  main:not(.scompact) #usage:hover .uopen { visibility: visible; opacity: 1; transition: opacity .12s .25s, visibility 0s .25s; }
+  main:not(.scompact) #usage.pin .uopen { visibility: visible; opacity: 1; transition: opacity .12s, visibility 0s; }
+  main:not(.scompact) #usage .uhd .uchev { transform: rotate(180deg); }
   #usage .uhd { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 7px; }
   /* one grid for every row, so the bars start and the numbers end in one line whatever the names' lengths; the rows
      9 px apart (5 until 2026-09-26, Ricardo: "space a bit more the 3 token usage on the bottom left") */
@@ -1121,7 +1142,7 @@
 <body>
 <main id="main">
   <section id="sessions">
-    <div class="colhead" id="shd"><span class="brand" id="brandBtn" title="About peixAIrada" role="button"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g><g fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="stitle" class="t"></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" autocomplete="off" spellcheck="false" hidden><span id="fchips"></span></span><span id="newChat"></span><button class="btn icon" id="sessPinBtn" title="Fold the chat list">«</button></div>
+    <div class="colhead" id="shd"><span class="brand" id="brandBtn" title="About peixAIrada" role="button"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g><g fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="stitle" class="t"></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" autocomplete="off" spellcheck="false" hidden><span id="fchips"></span></span><span id="newChat"></span></div>
     <div id="tline" aria-label="The list's days — point to read them, drag to scroll, click one to go there"><div class="tl-catch"></div><div class="tl-thumb"></div><div class="tl-labs"></div></div>
     <div id="slist"></div>
     <div class="tl-glass"></div>
@@ -1272,7 +1293,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, foldBy: {}, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, usageFolded: false, prsOpen: false, cards: 'large', ringsInStep: true, foldCode: true, optMeta: true, dates: 'dmy' };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, foldBy: {}, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, foldCode: true, optMeta: true, dates: 'dmy' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -1335,8 +1356,11 @@
   const settingsOpen = on => {
     const pop = $('#settings');
     if (!on) { pop.hidden = true; spop.pinned = false; $('#cogBtn').classList.remove('on'); if (setupUi.pending.size) { setupUi.pending.clear(); renderSetup(); } repostPane(); return; }
-    const left = $('#pfoot').getBoundingClientRect().right + 8;
-    pop.style.left = left + 'px';   // beside the cog's cell, open list or rail
+    // under the cog in the open list's head row (2026-09-28), beside its cell at the rail's foot
+    const cell = $('#pfoot').getBoundingClientRect(), rail = !!prefs.sessionsCompact, left = rail ? cell.right + 8 : cell.left;
+    pop.style.left = left + 'px';
+    pop.style.top = rail ? '' : `${Math.round(cell.bottom + 6)}px`; pop.style.bottom = rail ? '' : 'auto';
+    pop.style.maxHeight = rail ? '' : `${Math.round(innerHeight - cell.bottom - 16)}px`;
     pop.classList.toggle('one', innerWidth - left < 870);   // the settings and the keys side by side, or one over the other
     pop.hidden = false; repostPane();   // the pane goes down while it is up: the popover reaches over the chat column
     $('#cogBtn').classList.add('on');
@@ -1401,12 +1425,10 @@
   function applySessionsCompact() {
     $('#main').classList.toggle('scompact', !!prefs.sessionsCompact);
     $('#sessions').style.width = prefs.sessionsCompact ? '' : prefs.sessionsWidth + 'px';
-    const b = $('#sessPinBtn'); b.textContent = prefs.sessionsCompact ? '»' : '«'; b.title = prefs.sessionsCompact ? 'Open the chat list' : 'Fold the chat list';
   }
   // ⌘B is the same switch from the keyboard (2026-09-22, Ricardo: "cmd B should toggle colapse of 2nd column"),
   // VS Code's key for its sidebar, here the chat list — the column beside the chat.
   function toggleSessions() { prefs.sessionsCompact = !prefs.sessionsCompact; savePrefs(); applySessionsCompact(); }
-  $('#sessPinBtn').onclick = toggleSessions;
   applySessionsCompact();
   {
     const splitter = $('#splitter'); let dragging = false;
@@ -1538,14 +1560,13 @@
   function renderUsage() {
     const box = $('#usage'), d = usage.data, ws = d?.windows || [];
     box.hidden = usage.off;
-    box.classList.toggle('folded', !!prefs.usageFolded);
     box.classList.toggle('stale', !!(d && usage.err));
     const note = !d ? usage.err || 'asking…' : !ws.length ? 'nothing reported for this account' : '';   // under the heading; the line says what it is about
     const said = d ? ` · as of ${new Date(d.fetchedAt).toLocaleTimeString()}${usage.err ? ` — since then: ${usage.err}` : ''}` : '';
     const chips = ws.map(w => `<span class="uchip" title="${esc(uTip(w))}"><i class="uring" style="--p:${Math.min(100, w.percent)};--u:${uColor(w.percent)}"></i><span class="uk">${esc(uShort(w))}</span><b>${w.percent}%</b></span>`).join('');
     const rows = ws.map(w => { const f = uPace(w); return `<div class="urow" title="${esc(uTip(w))}"><span class="ul">${esc(w.label)}</span><span class="ubar"><i style="width:${Math.min(100, w.percent)}%;--u:${uColor(w.percent)}"></i>${f != null ? `<b style="left:${(f * 100).toFixed(1)}%"></b>` : ''}</span><span class="up">${w.percent}%</span><span class="ur">${untilReset(w.resetsAt)}</span></div>`; }).join('');
-    const html = `<button class="uline" title="Claude plan usage${esc(said)}${note ? `: ${esc(note)}` : ''} — click to open">${note ? `<span class="unote">usage: ${esc(note)}</span>` : chips}${CHEV}</button>`
-      + `<div class="uopen"><button class="uhd" title="Claude plan usage${esc(said)} — click to fold"><span>plan usage</span>${CHEV}</button>${note ? `<span class="unote">${esc(note)}</span>` : `<div class="urows">${rows}</div>`}</div>`;
+    const html = `<button class="uline" title="Claude plan usage${esc(said)}${note ? `: ${esc(note)}` : ''} — point to see it, click to keep it open">${note ? `<span class="unote">usage: ${esc(note)}</span>` : chips}${CHEV}</button>`
+      + `<div class="uopen"><button class="uhd" title="Claude plan usage${esc(said)} — click to close"><span>plan usage</span>${CHEV}</button>${note ? `<span class="unote">${esc(note)}</span>` : `<div class="urows">${rows}</div>`}</div>`;
     if (html !== usage.html) box.innerHTML = usage.html = html;   // the 30 s tick mostly changes nothing — keep a tooltip that is up
   }
   async function loadUsage() {
@@ -1560,10 +1581,14 @@
   // Due: the interval is up (longer after failures), or a window has reset since the last answer — its numbers are old.
   const usageDue = () => Date.now() - usage.at > USAGE_EVERY_MS * 2 ** Math.min(usage.fails, 4)
     || !!usage.data?.windows.some(w => { const t = w.resetsAt ? new Date(w.resetsAt).getTime() : 0; return t > usage.at && t <= Date.now(); });
+  // In the head row the rings open the rows on hover; a click keeps them open, a click on their heading or anywhere
+  // else lets them go. The rail's rings are only to be read.
   $('#usage').addEventListener('click', e => {
-    if (prefs.sessionsCompact || !e.target.closest('button')) return;   // the rail's rings are only to be read
-    prefs.usageFolded = !prefs.usageFolded; savePrefs(); renderUsage();
+    if (prefs.sessionsCompact) return;
+    if (e.target.closest('.uline')) $('#usage').classList.toggle('pin');
+    else if (e.target.closest('.uhd')) $('#usage').classList.remove('pin');
   });
+  document.addEventListener('click', e => { if (!e.target.closest('#usage')) $('#usage').classList.remove('pin'); });
   setInterval(() => { if (!document.hidden) usageDue() ? loadUsage() : renderUsage(); }, 30e3);
   document.addEventListener('visibilitychange', () => { if (!document.hidden && usageDue()) loadUsage(); });
   renderUsage(); loadUsage();

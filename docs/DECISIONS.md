@@ -24,6 +24,13 @@ buttons and such — remove them and prefer solid background".
 * **At the notch the title goes where it fits**: left of the housing when its whole text fits there (measured with a
   `Range`: an element's `scrollWidth` is never under its own box, which the first try took for the text), else right
   of the housing, its margin jumping it, the project alone on the left. The chips and ··· stay at the far right.
+* **The list's head and foot are one row**: the fish, the project's name, a small magnifier, the state chips, ＋, then
+  the plan usage as four bare rings and the cog. The foot keeps its markup and moves by the grid alone — a column of
+  its own in the head's row while the list is open, its old row on the rail, where it is still the foot. Of the ideas
+  in the ask: « went (⌘B folds and unfolds, and » on the rail went with it); the magnifier is an icon again, and open,
+  its box takes the row's spare room and the rings' (hidden while searching); the usage is rings without words, the
+  rows a panel under the row on hover (a quarter of a second late, so a pointer on its way to the cog does not open
+  it) or pinned by a click — the fold it had went. The cog's popover opens under the cog.
 
 ## Decisions of 2026-09-28, towards midnight — the card's line back, solid chips, the header in black, a hidden timeline
 

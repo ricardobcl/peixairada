@@ -27,27 +27,30 @@ export default async function (ctx) {
   await ctx.shot('1-all', { x: 0, y: 0, width: 520, height: 140 });
 
   // One row atop the list (2026-09-24): the filters and ＋ are in the head, the cards start right under it, ＋ is an
-  // icon alone, and on ALL it is ⌥⌘N's flow
-  out.row = await ctx.evaluate(`JSON.stringify((() => { const h = document.querySelector('#shd'), r = h.getBoundingClientRect();
-    return { inHead: ['#qBtn', '#fchips', '#newChatBtn', '#sessPinBtn'].every(q => h.contains(document.querySelector(q))), h: Math.round(r.height),
+  // icon alone, and on ALL it is ⌥⌘N's flow; since 2026-09-28 the foot — the cog, the usage — ends that row, and « went
+  out.row = await ctx.evaluate(`JSON.stringify((() => { const h = document.querySelector('#shd'), r = h.getBoundingClientRect(), f = document.querySelector('#sfoot').getBoundingClientRect();
+    return { inHead: ['#qBtn', '#fchips', '#newChatBtn'].every(q => h.contains(document.querySelector(q))), fold: !!document.querySelector('#sessPinBtn'), h: Math.round(r.height),
+      foot: [Math.round(f.top), Math.round(f.height), Math.round(f.left - r.right)], head: [Math.round(r.top), Math.round(r.height)],
       under: Math.round(document.querySelector('#slist').getBoundingClientRect().top - r.bottom), plus: document.querySelector('#newChatBtn').textContent.trim(),
       chips: [...document.querySelectorAll('#fchips .fchip')].map(c => c.className.replace(/\s+/g, ' ').trim()) }; })())`).then(JSON.parse);
-  ctx.assert.equal(out.row.inHead, true, 'the magnifier, the chips, ＋ and « are all in the head');
+  ctx.assert.equal(out.row.inHead, true, 'the magnifier, the chips and ＋ are all in the head');
+  ctx.assert.equal(out.row.fold, false, 'no « — ⌘B folds the list');
+  ctx.assert.deepEqual([out.row.foot[0], out.row.foot[1], out.row.foot[2]], [out.row.head[0], out.row.head[1], 0], 'the foot is the head row\'s right end, as tall');
   ctx.assert.ok(out.row.h <= 44 && out.row.under === 0, 'one row, and the cards right under it');
   ctx.assert.equal(out.row.plus, '', '＋ is an icon, no words');
   ctx.assert.deepEqual(out.row.chips, ['fchip ready on', 'fchip working on', 'fchip done on'], 'the three state chips, on');
-  // The magnifier is a field from the fish to the first chip (2026-09-27, late; an icon-sized pill before, and the
-  // box took the chips' place): open, its icon is the box's left cap, the box runs on to the chips, which stay put
+  // The magnifier is small (2026-09-28; a field from the fish to the first chip from 2026-09-27): open, its icon is the
+  // box's left cap and the box takes the room the row has spare — the rings', too, while it is open
   const field = () => ctx.evaluate(`JSON.stringify((() => { const x = q => { const r = document.querySelector(q).getBoundingClientRect(); return r.width ? [Math.round(r.left), Math.round(r.right)] : null; };
     return { fish: x('#brandBtn'), btn: x('#qBtn'), box: x('#q'), chip: x('#fchips .fchip'), plus: x('#newChatBtn') }; })())`).then(JSON.parse);
   out.field = { rest: await field() };
   const { rest } = out.field;
-  ctx.assert.ok(rest.btn[0] - rest.fish[1] <= 6 && rest.chip[0] - rest.btn[1] <= 4 && rest.btn[1] - rest.btn[0] > 100, `at rest the magnifier spans the fish to the first chip: ${JSON.stringify(rest)}`);
+  ctx.assert.ok(rest.btn[0] - rest.fish[1] <= 6 && rest.chip[0] - rest.btn[1] <= 4 && rest.btn[1] - rest.btn[0] < 30, `at rest the magnifier is an icon beside the fish: ${JSON.stringify(rest)}`);
   await ctx.evaluate(`document.querySelector('#qBtn').click()`);
   out.field.open = await field();
   const { open } = out.field;
-  ctx.assert.ok(open.box && open.box[0] <= open.btn[1] && open.chip[0] - open.box[1] <= 4 && open.btn[0] === rest.btn[0], `open, the icon and the box are the same span: ${JSON.stringify(open)}`);
-  ctx.assert.deepEqual([open.chip, open.plus], [rest.chip, rest.plus], 'the chips and ＋ stay where they were');
+  ctx.assert.ok(open.box && open.box[0] <= open.btn[1] && open.chip[0] - open.box[1] <= 4 && open.btn[0] === rest.btn[0] && open.box[1] - open.btn[0] > 80, `open, the icon and the box are one field before the chips: ${JSON.stringify(open)}`);
+  ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#usage')).display`), 'none', 'the rings make room while it is open');
   await ctx.shot('1b-search', { x: 0, y: 0, width: 520, height: 140 });
   await ctx.evaluate(`document.querySelector('#q').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
   ctx.assert.deepEqual(await field(), rest, 'Esc puts the field back as it was');
@@ -106,17 +109,20 @@ export default async function (ctx) {
   await closePick();
   await ctx.shot('3-rail', { x: 0, y: 0, width: 300, height: 1000 });
 
-  // The cog owns the corner, rail or not, and its popover opens beside the cell
-  for (const where of ['rail', 'list']) {
-    const corner = await ctx.evaluate(`!!document.elementFromPoint(0, innerHeight - 1)?.closest('#pfoot')`);
-    ctx.assert.equal(corner, true, `the bottom left pixel is the cog's (${where})`);
-    await ctx.evaluate(`document.querySelector('#cogBtn').click()`);
-    const gap = await ctx.evaluate(`Math.round(document.querySelector('#settings').getBoundingClientRect().left - document.querySelector('#pfoot').getBoundingClientRect().right)`);
-    ctx.assert.equal(gap, 8, `the popover opens beside the cog's cell (${where})`);
-    if (where === 'list') await ctx.shot('4-cog', { x: 0, y: 0, width: 620, height: 1000 });
-    await ctx.evaluate(`document.querySelector('#cogBtn').click()`);
-    if (where === 'rail') await ctx.cmd('KeyB');
-  }
+  // The cog: on the rail it owns the bottom left corner and its popover opens beside the cell; on the open list it ends
+  // the head row and its popover opens under it (2026-09-28)
+  ctx.assert.equal(await ctx.evaluate(`!!document.elementFromPoint(0, innerHeight - 1)?.closest('#pfoot')`), true, 'on the rail the bottom left pixel is the cog\'s');
+  await ctx.evaluate(`document.querySelector('#cogBtn').click()`);
+  const beside = await ctx.evaluate(`Math.round(document.querySelector('#settings').getBoundingClientRect().left - document.querySelector('#pfoot').getBoundingClientRect().right)`);
+  ctx.assert.equal(beside, 8, 'the popover opens beside the cog\'s cell on the rail');
+  await ctx.evaluate(`document.querySelector('#cogBtn').click()`);
+  await ctx.cmd('KeyB');
+  await ctx.evaluate(`document.querySelector('#cogBtn').click()`);
+  await ctx.settle();
+  const under = await ctx.evaluate(`JSON.stringify((p => { const c = document.querySelector('#pfoot').getBoundingClientRect(); return [Math.round(p.left - c.left), Math.round(p.top - c.bottom)]; })(document.querySelector('#settings').getBoundingClientRect()))`).then(JSON.parse);
+  ctx.assert.ok(under[0] === 0 && Math.abs(under[1] - 6) <= 1, `on the open list it opens under the cog (${under})`);
+  await ctx.shot('4-cog', { x: 0, y: 0, width: 1200, height: 1000 });
+  await ctx.evaluate(`document.querySelector('#cogBtn').click()`);
   await ctx.evaluate(`document.querySelector('#stitle .sx').click()`);
 
   // The fish, clicked, is the About box (2026-09-27): modal, centred, saying the package's version and what the

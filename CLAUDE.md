@@ -121,11 +121,13 @@ refuses to run against the real directory for the same reason.
 * **Two columns**: the selected project's chats → the chat. **The chat list's head is the project filter's whole
   cue** — the fish (the SSE light), then `#stitle`: the project's name (nothing at all on ALL, `hidden`), a click being
   ⌥⌘P's picker, and × back to ALL; the list's edge and the head's tint are the project's colour. **The head is one
-  row**, `#filters`: the magnifier — at rest `#qBtn` spans the fish (or the name, `#stitle` being `flex: 0 1 auto`) to
-  the first chip; open, it is the left cap of `#q` (`width: 0; flex: 1 1 0`) — the state chips (a dot and a count; the
-  word from 600 px of list, the count gone under 340; `#sessions` is a size container), then ＋ (`#newChatBtn`: one
-  folder starts it, several ask which, ALL is ⌥⌘N's flow) and «. The name gives way, hence the list's 300 px minimum.
-  On the rail the head keeps the fish and, for a project, `projAbbr` (`.ab`) as the picker's handle. ⌥⌘P's rows carry
+  row, the foot included** (2026-09-28): `#filters` — the magnifier, an icon at rest (`#qBtn`); open, the left cap of
+  `#q` (`width: 0; flex: 1 1 0`), which takes the row's spare room and the rings' (hidden while it is open, `:has`) —
+  the state chips (a dot and a count; the word from 600 px of list, the count gone under 340; `#sessions` is a size
+  container), then ＋ (`#newChatBtn`: one folder starts it, several ask which, ALL is ⌥⌘N's flow); then **`#sfoot`, in
+  the head's grid row as a column of its own** (`main:not(.scompact)`): the usage's rings, the cog. **No « / »**: ⌘B
+  folds and unfolds. The name gives way, hence the list's 300 px minimum. On the rail the head keeps the fish and, for
+  a project, `projAbbr` (`.ab`) as the picker's handle, and `#sfoot` is its foot. ⌥⌘P's rows carry
   ✎ on a named project and ＋ new project, last and never filtered out. → `scripts/scenarios/project-cue.mjs`. A chat
   is *ready · clauding · done*: done is the tick only, clauding is `working`, ready is everything else (`bucket()`);
   the server keeps the finer `status` for notifications and the badge.
@@ -309,12 +311,12 @@ refuses to run against the real directory for the same reason.
   edge (`TL_CATCH`) and, while the days are out, as far right as a label has reached plus 28 px (`tl.reach`). A press
   there on no label is a press on the label ringed `.near`; a press on the thumb *as drawn* holds it where grabbed.
   → `scripts/scenarios/timeline.mjs`.
-* **The plan usage is the chat list's footer**: `#usage`, the fourth row of `#sessions`. Open, a row per window —
-  name, a bar in `--spend` (red from 90 %, `uColor`), a tick where the window's clock stands (`uPace`, for the windows
-  `uSpan` knows), percent, time to reset; folded (`prefs.usageFolded`), one line of rings — 20 px apart from 350 px
-  of list (a container query), 12 below — 34 px with the cog's cell beside it (`#pfoot`, in `#sfoot`); on the rail,
-  the rings stacked with the percent inside and the cog under them. **The markup holds both shapes** and CSS picks
-  (`.folded`, `main.scompact`). `loadUsage()` on load, every `USAGE_EVERY_MS` while visible, once a window's reset
+* **The plan usage is a ring per window at the head row's end** (2026-09-28; the list's footer before): `#usage` in
+  `#sfoot`, before the cog, 14 px rings and no words; **the rows** — name, a bar in `--spend` (red from 90 %,
+  `uColor`), a tick where the window's clock stands (`uPace`, for the windows `uSpan` knows), percent, time to reset —
+  **are a panel under the row** (`.uopen`), on hover a beat late or pinned by a click on the rings (`.pin`; its heading
+  or a click elsewhere lets go). On the rail, the rings stacked with the percent inside and the cog under them. **The
+  markup holds both shapes** and CSS picks (`main.scompact`). `loadUsage()` on load, every `USAGE_EVERY_MS` while visible, once a window's reset
   has passed, and on the way back to a hidden page, **backing off on failures**; a failure keeps the last numbers,
   `.stale`. The server's `USAGE=off` answers `off: true` and the bar hides — every test server.
   → `scripts/scenarios/usage-bar.mjs`.
@@ -424,8 +426,9 @@ refuses to run against the real directory for the same reason.
   where the window has not the room, `.one`, and scrolled past its height): the notifications switch (`#notifyOn`),
   the rings' step (`#ringsInStep`), the cards' size (`.dens`), the code's fold (`#foldCode`), ⌥ as Meta (`#optMeta`),
   how a date is written (`#datesStops` → `fmtDate`), the setup (`#setup`, the server's) and what is hidden — nothing
-  else. It opens on *hover of `#pfoot`*, the cog's cell, **drawn over the list's 4 px coloured edge**
-  (`margin-left: -4px`); a click pins it, and so does a box in it taking the keyboard; Esc or a click away closes it
+  else. It opens on *hover of `#pfoot`*, the cog's cell — the head row's last on the open list, the popover under it;
+  at the rail's foot **drawn over the list's 4 px coloured edge** (`margin-left: -4px`), the popover beside it; a click
+  pins it, and so does a box in it taking the keyboard; Esc or a click away closes it
   (`settingsOpen`). **While it is up the pane is down** (`postPane`), as under a dialog. The fish is the SSE light and, clicked, **the About box** (`#about`, a modal dialog:
   version, process and paths from the snapshot's `about`, and the chats' counts). The `{ }` row under the chat
   header's ··· is the fold for a chat (`prefs.foldBy[id]`, else the cog's `prefs.foldCode`). **Every `pre` in the transcript is
