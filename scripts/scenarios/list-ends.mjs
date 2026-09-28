@@ -96,6 +96,17 @@ export default async function (ctx) {
     ctx.assert.ok(fits, 'the pill fits the rail');
     await ctx.shot('rail', { x: 0, y: 0, width: 200, height: 1000 });
     await ctx.cmd('KeyB');
+
+    // the splitter: the open chat's colour down to where the last card ends, black under it — the last card out of
+    // sight, the colour runs to the list's foot; scrolled to the end, it stops where the card does (2026-09-28)
+    const split = () => ctx.evaluate(`JSON.stringify((() => { const l = document.querySelector('#slist'), b = l.getBoundingClientRect(), last = [...l.querySelectorAll(':scope > .card')].at(-1).getBoundingClientRect(), sp = document.querySelector('#splitter').getBoundingClientRect();
+      return { at: parseFloat(document.querySelector('#splitter').style.getPropertyValue('--split')), want: Math.round(Math.min(b.bottom, last.bottom) - sp.top) }; })())`).then(JSON.parse);
+    await scrollTo(ctx, 0); await settle(ctx);
+    out.splitTop = await split();
+    ctx.assert.ok(Math.abs(out.splitTop.at - out.splitTop.want) <= 1, `the last card out of sight: the colour to the list's foot (${JSON.stringify(out.splitTop)})`);
+    await scrollTo(ctx, 1e6); await settle(ctx);
+    out.splitEnd = await split();
+    ctx.assert.ok(Math.abs(out.splitEnd.at - out.splitEnd.want) <= 1 && out.splitEnd.at < out.splitTop.at, `scrolled to the end: it stops under the last card (${JSON.stringify(out.splitEnd)})`);
     return out;
   } finally {
     for (const p of sleeps) p.kill();

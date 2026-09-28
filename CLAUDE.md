@@ -271,7 +271,9 @@ refuses to run against the real directory for the same reason.
   themes — `BLACK`, through `projColor()` — and so is a folder the setup paints `#000000` (`acme` here). A card in that black is
   `.card.black`: its solid tint is the black itself and it borrows the dark theme's inks; `--ring` turns its clauding
   light white wherever the card under it is dark. **The open card bleeds into the splitter**: `main:not(.scompact)
-  #slist > .card.active` runs to the column's edge, and `#splitter` is `--open` on `main` (set by `tintChat`).
+  #slist > .card.active` runs to the column's edge, and `#splitter` is `--open` on `main` (set by `tintChat`). **The splitter wears it only down to the last card**
+  (2026-09-28): black under it (`#splitter::after` from `--split`), set by `drawSplit(g)` in the list's frame, so it
+  follows a scroll; the last card out of sight, the colour runs to the list's foot.
 * **A new chat has a card before its first word**: `visible()` shows a live chat with no transcript unless it is VS
   Code's. The server's `startedAt` on a session born from the registry is the card's time and place — the moment the
   board first saw the id (the process's start only at boot) — carried over by `indexFile`, the last fallback of

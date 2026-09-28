@@ -29,6 +29,10 @@ also move".
   colour (orange, red from 90 %), the percent in the ink. A credit grant (Claude Code & Cowork's) has no reset, so it
   stays out of the row and in the rows over it; four in the row ran the chips under the words at 380 px. The row clips
   rather than overlaps at the list's narrowest.
+* **The splitter wears the open chat's colour only down to the last card**, black under it: `--split` is where the
+  last card ends, measured with the list's ends once a frame (scroll, render, resize), so it moves as the list
+  scrolls; with the last card out of sight the colour runs to the list's foot, and hovering or dragging the splitter
+  lights the whole of it as before.
 * **The cards are 8 px from the list's edge on both sides again** — flush on the left for a day, to use the room the
   timeline's column had held; symmetric reads better than 8 px more.
 
