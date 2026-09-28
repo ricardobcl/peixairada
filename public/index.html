@@ -577,6 +577,13 @@
   :is(.card, .presence) .state.needs-input .ic { width: 11px; height: 11px; flex: none; align-self: center; }
   :is(.card, .presence) .state.needs-input .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   :is(.card, .presence) .state.needs-input .opts { color: var(--muted); font-weight: 500; flex: none; }
+  /* a PR come round to you (moveHtml): the question line's shape, led by a tag filled in the accent — like the chip it
+     names, it reads on any project's tint — and the PR and the reason in the card's ink */
+  .card .state.prmove { color: var(--ink); display: flex; align-items: baseline; gap: 6px; }
+  .card .state.prmove .tag { flex: none; display: inline-flex; align-items: center; gap: 3px; padding: 0 5px 0 4px; border-radius: 3px; background: var(--accent); color: var(--bg); font-size: 9.5px; font-weight: 700; line-height: 15px; letter-spacing: .4px; text-transform: uppercase; }
+  .card .state.prmove .ic { width: 10px; height: 10px; }
+  .card .state.prmove .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .card .state.prmove .opts { color: var(--muted); font-weight: 500; flex: none; }
   /* Done/reopen: an icon at the end of the top row, not a bordered pill in a row of its own. Bigger, and only under
      the pointer, since 2026-09-26 (Ricardo: "the done button on the card is a bit small and hard to see, also make it
      visible only on hover"): it keeps its box at rest, so nothing in the row moves when it comes. */
@@ -1410,6 +1417,8 @@
     watch: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 6.4a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2Z"/><path fill-rule="evenodd" d="M8 3.2A4.8 4.8 0 0 1 12.8 8h-1.5A3.3 3.3 0 0 0 8 4.7Zm0-3.2A8 8 0 0 1 16 8h-1.5A6.5 6.5 0 0 0 8 1.5Z"/></svg>',
     // a speech bubble: Claude has asked you something and is waiting on the answer
     ask: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 1.3c3.7 0 6.7 2.4 6.7 5.4S11.7 12 8 12c-.6 0-1.2 0-1.8-.2l-3.7 1.8 1-3C2.2 9.7 1.3 8.3 1.3 6.7c0-3 3-5.4 6.7-5.4Z"/></svg>',
+    // a pull request (Primer's octicon, MIT): a PR of the chat's has come round to you (moveHtml)
+    pr: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 3.25a2.25 2.25 0 1 1 3 2.122v5.256a2.251 2.251 0 1 1-1.5 0V5.372A2.25 2.25 0 0 1 1.5 3.25Zm5.677-.177L9.573.677A.25.25 0 0 1 10 .854V2.5h1A2.5 2.5 0 0 1 13.5 5v5.628a2.251 2.251 0 1 1-1.5 0V5a1 1 0 0 0-1-1h-1v1.646a.25.25 0 0 1-.427.177L7.177 3.427a.25.25 0 0 1 0-.354ZM3.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm0 9.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm8.25.75a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Z"/></svg>',
     // a stylized F with a spark: the chat runs on Fable (see onFable)
     fable: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path transform="translate(1.6 0) skewX(-12)" d="M4 3.2h7v2.4H6.7v2.7h4.2v2.3H6.7V14H4Z"/><path d="M13.8 0l.7 1.5 1.5.7-1.5.7-.7 1.5-.7-1.5-1.5-.7 1.5-.7Z"/></svg>',
     pin: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 1.5l4.5 4.5-1.6.6-2.5 2.5-.4 3.2-1.3 1.3-2.8-2.8-3.8 3.8-.7-.7 3.8-3.8-2.8-2.8 1.3-1.3 3.2-.4 2.5-2.5Z"/></svg>',
@@ -1562,9 +1571,12 @@
   // reply that ends a turn — not each tool call on the way, so a clauding card does not climb with every step. A
   // session whose tail held neither (boot reads only the end of a long transcript) falls back to its last activity,
   // not the bottom.
-  const wordAt = s => { const u = String(s.lastUserAt || ''), r = String(s.lastReplyAt || ''); return (u > r ? u : r) || String(s.lastActivity || '') || String(s.startedAt || ''); };   // an empty chat: its start
+  // A PR come round to you is a word too (2026-09-28): the chat rises to the top of its group, under today's line, from
+  // when the board learnt of the move (the server's turn.movedAt) — the server's copy agrees.
+  const movedAt = s => (s.prs || []).reduce((m, p) => (p.turn?.you && p.turn.movedAt > m ? p.turn.movedAt : m), '');
+  const wordAt = s => { const u = String(s.lastUserAt || ''), r = String(s.lastReplyAt || ''), m = movedAt(s); const w = (u > r ? u : r) || String(s.lastActivity || '') || String(s.startedAt || ''); return m > w ? m : w; };   // an empty chat: its start
   const byWord = (a, b) => wordAt(b).localeCompare(wordAt(a));
-  const timeTip = s => !s.lastActivity ? (s.startedAt ? `started ${rel(s.startedAt)} ago · no messages yet` : '') : `last activity ${rel(s.lastActivity)} ago${s.lastUserAt ? ` · you last wrote ${rel(s.lastUserAt)} ago` : ''}${s.lastReplyAt ? ` · Claude last replied ${rel(s.lastReplyAt)} ago` : ''}`;
+  const timeTip = s => !s.lastActivity ? (s.startedAt ? `started ${rel(s.startedAt)} ago · no messages yet` : '') : `last activity ${rel(s.lastActivity)} ago${s.lastUserAt ? ` · you last wrote ${rel(s.lastUserAt)} ago` : ''}${s.lastReplyAt ? ` · Claude last replied ${rel(s.lastReplyAt)} ago` : ''}${movedAt(s) ? ` · a PR came round to you ${rel(movedAt(s))} ago` : ''}`;
   // Three states since 2026-09-20, and done is *only* the tick (asked later that day; the first cut folded
   // stale into done): a chat with no live process is ready — write to it and it resumes. The dot still says
   // stale in grey and the card is dimmed a touch, so you know a resume is coming before you click. Clauding
@@ -2095,6 +2107,14 @@
       : a.waitingFor ? `asking you — ${a.waitingFor}` : 'asking you';
     return `<div class="state needs-input" title="${esc(what)}">${ICON.ask}<span class="q">${esc(what)}</span>${a.options ? `<span class="opts">${a.options} answers</span>` : ''}</div>`;
   }
+  /** The card's line for PRs come round to you — the newest move first, the others counted — the question line's
+   *  twin in the accent, at every card size; none on a ticked card (the tick after the move is "seen"). */
+  function moveHtml(s) {
+    const prs = (s.prs || []).filter(p => p.turn?.you).sort((a, b) => String(b.turn.movedAt).localeCompare(String(a.turn.movedAt)));
+    if (!prs.length || s.done) return '';
+    const tip = prs.map(p => `${p.label} — your move: ${p.turn.why}`).join('\n');
+    return `<div class="state prmove" title="${esc(tip)}"><b class="tag">${ICON.pr}your move</b><span class="q">${esc(prs[0].label.replace(/^.*?#/, '#'))} · ${esc(prs[0].turn.why)}</span>${prs.length > 1 ? `<span class="opts">+${prs.length - 1} PR${prs.length > 2 ? 's' : ''}</span>` : ''}</div>`;
+  }
   /** The card's eight PR chips, in the chat's order — every one at your move among them. */
   const cardPrs = prs => { const keep = new Set([...prs.filter(p => p.turn?.you), ...prs].slice(0, 8)); return prs.filter(p => keep.has(p)); };
   function cardHtml(s, p, q = '') {
@@ -2124,7 +2144,7 @@
       ${s.prs?.length ? `<div class="cprs">${cardPrs(s.prs).map(pr => `<a class="cpr" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}${pr.turn ? '\n' + turnTip(pr) : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`).join('')}</div>` : ''}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${esc(s.lastReply)}</div>` : ''}
-      ${asking(s) ? askHtml(s) : ''}
+      ${asking(s) ? askHtml(s) : ''}${moveHtml(s)}
       <span class="abbr" title="${esc(`${s.project} · ${s.title}`)}">${esc(projAbbr(s.project))}</span>
     </div>`;
   }

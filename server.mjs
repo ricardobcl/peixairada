@@ -1845,8 +1845,13 @@ function readBody(req, max = BODY_MAX) {
 /** The JSON body, or {} — none, unparseable, or too large (the request is dropped) all read as empty. */
 const jsonBody = req => readBody(req).then(t => JSON.parse(t || '{}')).catch(() => ({}));
 
-/** Newest first by the chat's last word — yours or Claude's reply, whichever came later — the board's own order (`byWord` in index.html). */
-const wordAt = s => { const u = String(s.lastUserAt || ''), r = String(s.lastReplyAt || ''); return (u > r ? u : r) || String(s.lastActivity || '') || String(s.startedAt || ''); };   // an empty chat: its start (the page's copy agrees)
+/** Newest first by the chat's last word — yours or Claude's reply, whichever came later, or a PR come round to you (its
+ *  turn's movedAt) — the board's own order (`byWord` in index.html). Over summaries. */
+const wordAt = s => {
+  const u = String(s.lastUserAt || ''), r = String(s.lastReplyAt || ''), m = s.prs.reduce((a, p) => (p.turn?.you && p.turn.movedAt > a ? p.turn.movedAt : a), '');
+  const w = (u > r ? u : r) || String(s.lastActivity || '') || String(s.startedAt || '');   // an empty chat: its start (the page's copy agrees)
+  return m > w ? m : w;
+};
 function sortedSummaries() {
   const ti = termIndex();
   return [...sessions.values()].map(s => summary(s, ti)).sort((a, b) => wordAt(b).localeCompare(wordAt(a)));

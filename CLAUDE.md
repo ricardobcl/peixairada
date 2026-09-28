@@ -228,7 +228,9 @@ refuses to run against the real directory for the same reason.
 * **A PR at your move is a filled chip** (2026-09-28): `data-turn` (`turnOf(pr)`: `you` · `them` · empty) on `.cpr`,
   `.hpr` and `.prrow`; `you` fills the chip with `--prc` in the ground's ink, and `+n` too when it folds one away. The
   tooltips say why (`turnTip`), the row says it in `.why`. The card's eight chips always include every one at your
-  move (`cardPrs`), in the chat's order.
+  move (`cardPrs`), in the chat's order. **The card says it in a line** (`moveHtml`, after the question's, at every
+  size, not on a ticked card): a tag filled in the accent — *your move*, with `ICON.pr` — then the newest move's PR and
+  reason in the card's ink, `+n PRs` for the rest; the chat also ranks by the move (see the order below).
 * **A card comes in three sizes, the cog's slider** (`#cardsSize`, `prefs.cards`): *large* — your last prompt and
   Claude's last reply —, *medium* the last word only, *compact* neither. `cardHtml` always writes both `.snip`s and
   marks the older one `.older` (Claude's reply is the last word when `lastReplyAt ≥ lastUserAt`); CSS hides by
@@ -259,7 +261,7 @@ refuses to run against the real directory for the same reason.
   same function). → `scripts/scenarios/new-chat-card.mjs`, the card checks in `drawer-clear.mjs`.
 * **A chat waiting on your answer first, then clauding, then ready, done last** (`RANK` / `rankOf`), inside each
   group **by the last word, yours or Claude's** (`wordAt`: the newer of `lastUserAt` and `lastReplyAt`; a tool call
-  is not a word), newest first; a project ranks by its newest chat. The filters and every count go by `bucket()`,
+  is not a word — **a PR come round to you is**, at its `turn.movedAt`: `movedAt(s)`, in both copies), newest first; a project ranks by its newest chat. The filters and every count go by `bucket()`,
   where an asking chat is a ready one — only the order knows the difference, in the list and in ⌥⌘K. **The lines
   between the cards** (`.gsep`): between the clauding cards and the ready ones, **Claude's mark in pixels**, alone and
   centred — `DIVIDER`, a 9 × 9 window on a strip of frames drawn from `PIX_SHEET` (`#` a pixel of 2 px), `pix`

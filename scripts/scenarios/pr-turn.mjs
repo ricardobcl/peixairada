@@ -4,7 +4,9 @@
 // tooltip; ticked, the chat is done; the author pushing un-ticks it by the PR's own watch — the chat is not touched —,
 // fills the chip, and sends one alert with the server's heading, a banner in a browser; the header's chip is filled and
 // its row says why; a second tick holds, and holds through a restart (the board remembers when it learnt of the move);
-// your next review hands the PR back and the chip empties.
+// your next review hands the PR back and the chip empties. And the card itself (the same night, Ricardo: "what is
+// exactly the visual cue?" — the chip was all): a line saying whose move and why, at every card size, and the chat
+// ranked by the move — above a newer chat, under today's line.
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -40,7 +42,8 @@ export default async function (ctx) {
     const chip = n => `${card}?.querySelector('.cpr[data-url$="/pull/${n}"]')`;
     const look = () => ctx.evaluate(`JSON.stringify({ done: window.peix.session('${two.id}').done, cls: ${card}?.className.trim().split(/\\s+/),
       turn12: ${chip(12)}?.dataset.turn, turn13: ${chip(13)}?.dataset.turn, tip12: ${chip(12)}?.title, bg12: ${chip(12)} && getComputedStyle(${chip(12)}).backgroundColor,
-      badge: ${card}?.querySelector('.badge')?.textContent || null })`).then(JSON.parse);
+      badge: ${card}?.querySelector('.badge')?.textContent || null, move: ${card}?.querySelector('.state.prmove .q')?.textContent ?? null,
+      rank: [...document.querySelectorAll('#slist > .card')].findIndex(c => c.dataset.id === '${two.id}') })`).then(JSON.parse);
     const tick = done => ctx.server.post(`api/sessions/${two.id}/done`, { done });
 
     await ctx.waitFor(`${chip(12)}?.dataset.turn === 'them'`, { timeout: 10_000, what: 'the reviewed PR waiting on its author' });
@@ -48,6 +51,8 @@ export default async function (ctx) {
     ctx.assert.equal(out.waiting.turn13, '', 'a PR nobody here touched has no turn');
     ctx.assert.match(out.waiting.tip12, /waiting on ana/, 'the tooltip says whom it waits on');
     ctx.assert.equal(out.waiting.bg12, 'rgba(0, 0, 0, 0)', 'waiting on them: an outlined chip');
+    ctx.assert.equal(out.waiting.move, null, '…and no line on the card');
+    ctx.assert.equal(out.waiting.rank, 1, 'the fixture\'s other chat, a second newer, ranks above it');
 
     // a browser that has granted notifications, faked so the banners are counted; a second listener sees every alert
     await ctx.evaluate(`(() => {
@@ -78,7 +83,18 @@ export default async function (ctx) {
     ctx.assert.deepEqual([out.alerts[0].kind, out.alerts[0].heading, out.alerts[0].snippet, out.alerts[0].sessionId], ['pr', 'Your move · repo-a#12', 'pushed since your review', two.id]);
     ctx.assert.equal(out.banners[0]?.title, 'Your move · repo-a#12', 'the banner wears the server\'s heading');
     ctx.assert.equal(out.moved.badge, '1', 'and the card counts it unread');
-    await ctx.shot('1-card', await ctx.evaluate(`(r => ({ x: r.left, y: r.top - 4, width: r.width, height: r.height + 8 }))(${card}.getBoundingClientRect())`));
+    ctx.assert.equal(out.moved.move, '#12 · pushed since your review', 'the card says whose move and why');
+    ctx.assert.equal(await ctx.evaluate(`${card}.querySelector('.state.prmove .tag').textContent`), 'your move');
+    ctx.assert.equal(out.moved.rank, 0, 'the move is the chat\'s newest word: it tops the list');
+    ctx.assert.equal(await ctx.evaluate(`${card}.previousElementSibling?.matches('.gsep') ? null : 'first'`), 'first', 'nothing above it');
+    out.compact = await ctx.evaluate(`(() => { const l = document.querySelector('#sessions'), was = l.dataset.cards; l.dataset.cards = 'compact';
+      const shown = !!${card}.querySelector('.state.prmove').getClientRects().length; l.dataset.cards = was; return shown; })()`);
+    ctx.assert.equal(out.compact, true, 'the line shows on a compact card too');
+    const list = () => ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: 330 }))(document.querySelector('#slist').getBoundingClientRect())`);
+    await ctx.shot('1-card', await list());
+    await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] }); await ctx.settle();
+    await ctx.shot('1-card-light', await list());
+    await ctx.send('Emulation.setEmulatedMedia', { features: [] });
 
     // the chat: the header's chip filled, its row saying why
     await ctx.openChat(two.id);
@@ -97,7 +113,10 @@ export default async function (ctx) {
     await tick(true);
     await ctx.waitFor(`window.peix.session('${two.id}').done === true`, { what: 'ticked again' });
     await ctx.sleep(2500);
-    ctx.assert.equal((await look()).done, true, 'the move already seen does not un-tick it again');
+    const again = await look();
+    ctx.assert.equal(again.done, true, 'the move already seen does not un-tick it again');
+    ctx.assert.equal(again.move, null, 'ticked, the card has no line; the chip stays filled');
+    ctx.assert.equal(again.turn12, 'you');
     await ctx.server.restart();
     await ctx.send('Page.reload'); await ctx.sleep(800);
     await ctx.waitFor(`window.peix.session('${two.id}')?.prs?.find(p => p.url.endsWith('/pull/12'))?.turn?.you === true`, { timeout: 10_000, what: 'the PR asked about after the restart' });

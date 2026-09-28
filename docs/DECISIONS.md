@@ -4,6 +4,23 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-28.
 
+## Decisions of 2026-09-28, late night, later — a PR come round to you, on the card itself
+
+Ricardo, on the first cut: "what is exactly the visual cue for chats/PRs that need my attention?" — the answer was the
+filled chip, a ✓ taken off, an unread count that goes when the chat is opened, and a notification: nothing on the card
+once seen, and the chat stayed where its last word put it, days down the list. Then: "do it" to both fixes.
+
+* **A line on the card** (`moveHtml`), the question line's twin, at every card size, after it: a tag filled in the
+  accent — the PR glyph (Primer's octicon) and *your move* — then the newest move's `#n` and its reason in the card's
+  ink, `+n PRs` for the others; the tooltip lists them all. **The tag is filled, not the text coloured**: the accent as
+  text read poorly on an orange project's wash (the first screenshot), a filled tag reads on any tint, as the chip does.
+  Not on a ticked card — a tick after the move is "seen"; the chip stays filled there.
+* **The move is a word** (`wordAt`, both copies): the newest `turn.movedAt` of the chat's PRs at your move, if newer
+  than its last word. The chat rises to the top of its group, under today's line, and the list slides it there; when
+  the PR goes back to them it falls back to where its own words put it. The age's tooltip names the move.
+* **Still not on the rail**: the squares carry the ring and the question's blink only.
+  → `scripts/scenarios/pr-turn.mjs` (the line, at compact size too, gone once ticked; the rank above a newer chat).
+
 ## Decisions of 2026-09-28, late night — a PR come round to you
 
 Ricardo: "one workflow that is still lacking is me knowing that a chat with PR or PRs where I asked for review or left a
