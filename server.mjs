@@ -695,7 +695,7 @@ const PR_FIELDS = 'title state isDraft createdAt headRefOid author { login __typ
   + ' comments(last: 20) { nodes { author { login __typename } createdAt } }'
   + ' pushes: timelineItems(last: 5, itemTypes: [PULL_REQUEST_COMMIT, HEAD_REF_FORCE_PUSHED_EVENT]) { nodes { __typename'
   + ' ... on HeadRefForcePushedEvent { createdAt actor { login } } ... on PullRequestCommit { commit { committedDate author { user { login } } } } } }'
-  + ' asks: timelineItems(last: 5, itemTypes: [REVIEW_REQUESTED_EVENT]) { nodes { ... on ReviewRequestedEvent { createdAt requestedReviewer { ... on User { login } } } } }';
+  + ' asks: timelineItems(last: 10, itemTypes: [REVIEW_REQUESTED_EVENT]) { nodes { ... on ReviewRequestedEvent { createdAt requestedReviewer { ... on User { login } } } } }';
 let turnsDirty = false;
 
 const isBot = a => !a?.login || a.__typename === 'Bot' || /\[bot\]$/.test(a.login);
@@ -732,8 +732,12 @@ function prTurn(pr, me) {
   const theirs = words.filter(w => !isBot(w.by) && w.by.login !== me && w.at > said);
   // a push after you approved is the author getting on with it — unless GitHub dismissed the approval for it
   const verdict = words.filter(w => w.by?.login === me && /^(APPROVED|CHANGES_REQUESTED|DISMISSED)$/.test(w.state)).reduce((a, w) => (!a || w.at > a.at ? w : a), null);
-  const pushed = !!push && push.by !== me && (!mine && review ? review.commit?.oid !== pr.headRefOid && verdict?.state !== 'APPROVED' : push.at > said);
-  const again = !mine && !!review && (pr.reviewRequests?.nodes || []).some(n => n?.requestedReviewer?.login === me);
+  // Any word of yours answers everything before it (Ricardo, the same night: "just replied … left a comment and still
+  // says your move"): a comment after your review is past a push committed before it, and past a re-request.
+  const since = review && said > review.submittedAt ? said : '';
+  const pushed = !!push && push.by !== me && (!mine && review ? review.commit?.oid !== pr.headRefOid && verdict?.state !== 'APPROVED' && !(since >= push.at) : push.at > said);
+  const askedAt = newest(asks);
+  const again = !mine && !!review && (pr.reviewRequests?.nodes || []).some(n => n?.requestedReviewer?.login === me) && !(askedAt && said > askedAt);
   const you = pushed || theirs.length > 0 || again;
   if (!you) return { you, mine, why: mine ? 'waiting on reviews' : `waiting on ${pr.author?.login || 'the author'}`, at: null, last, key: 'them' };
   const why = [];
@@ -744,9 +748,9 @@ function prTurn(pr, me) {
   if (asked.length) why.push(`changes asked by ${names(asked)}`);
   if (talk.length) why.push(`${talk.length} comment${talk.length === 1 ? '' : 's'} from ${names(talk)}`);
   if (again) why.push('your review asked for again');
-  const heard = newest(theirs.map(w => w.at)), askedAt = again ? newest(asks) : '';
+  const heard = newest(theirs.map(w => w.at));
   return {
-    you, mine, why: why.join(' · '), at: newest([pushed && push.at, heard, askedAt]) || null, last,
+    you, mine, why: why.join(' · '), at: newest([pushed && push.at, heard, again && askedAt]) || null, last,
     key: [pushed ? pr.headRefOid : '', heard, again ? askedAt || 'asked' : ''].join('|')
   };
 }
@@ -755,14 +759,20 @@ function prTurn(pr, me) {
  * Note the turn GitHub gave (`t`: prTurn's answer; undefined, a PR we could not see — what the board knew stands) and
  * hand back the one to show. `movedAt` is when the move became news: GitHub's time for it the first time the board
  * sees the PR, the board's own clock for every change after — a push committed before you ticked and pushed after
- * is news all the same, and so is one the board only learnt of after the tick.
+ * is news all the same, and so is one the board only learnt of after the tick. Only something that *came* is a move:
+ * a new head, a newer word of theirs, a new request; a reason gone (answered by a word of yours) keeps the time.
  */
+const newsIn = (was, now) => {
+  const [h0, w0, a0] = was === 'them' ? ['', '', ''] : was.split('|'), [h1, w1, a1] = now.split('|');
+  return (!!h1 && h1 !== h0) || w1 > w0 || (!!a1 && a1 !== a0);
+};
 function moveTurn(url, t, now = Date.now()) {
   const prev = prTurns[url];
   if (t === undefined) return { turn: null, moved: false, from: prev?.key };
   if (!t) { if (prev) { delete prTurns[url]; turnsDirty = true; } return { turn: null, moved: false, from: prev?.key }; }
-  const moved = !!prev && prev.key !== t.key;
+  const moved = !!prev && prev.key !== t.key && t.you && newsIn(prev.key, t.key);
   if (!prev || moved) { prTurns[url] = { key: t.key, at: new Date(prev ? now : Date.parse(t.at) || now).toISOString() }; turnsDirty = true; }
+  else if (prev.key !== t.key) { prTurns[url] = { ...prev, key: t.key }; turnsDirty = true; }
   const { key, ...turn } = t;
   return { turn: { ...turn, movedAt: prTurns[url].at }, moved: moved && t.you, from: prev?.key };
 }

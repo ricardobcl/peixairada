@@ -108,3 +108,27 @@ test('a PR the board has never looked at moves at GitHub\'s time for it, and one
   setPrInfo(url, 'open', 'PR', reply, at(22));
   assert.equal(s.prs[0].turn.movedAt, new Date(at(12)).toISOString(), 'back in sight: the same move, the same time');
 });
+
+test('a word of yours answers everything before it, and an answer is no move', () => {
+  const pushed = { headRefOid: 'B', pushes: { nodes: [commit(11, 'ana')] } };
+  const asked = { reviewRequests: { nodes: [{ requestedReviewer: { login: 'me' } }] }, asks: { nodes: [{ createdAt: t(11), requestedReviewer: { login: 'me' } }] } };
+  const mine = h => ({ comments: { nodes: [{ author: user('me'), createdAt: t(h) }] } });
+  assert.equal(prTurn(pr({ ...pushed, ...asked }), 'me').you, true);
+  assert.equal(prTurn(pr({ ...pushed, ...asked, ...mine(12) }), 'me').you, false, 'a comment after the push and the request');
+  assert.equal(prTurn(pr({ ...pushed, ...mine(10) }), 'me').you, true, 'a comment with the review, before the push, answers nothing');
+  const later = prTurn(pr({ headRefOid: 'C', pushes: { nodes: [commit(11, 'ana'), commit(13, 'ana')] }, ...mine(12) }), 'me');
+  assert.deepEqual([later.you, later.why], [true, 'pushed since your review'], 'a push after the comment is news again');
+
+  const url = 'https://github.com/acme/r/pull/9', at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+  const s = newSession('answer', '/x/answer.jsonl');
+  s.lastActivity = new Date(at(9)).toISOString(); notePr(s, url, s.lastActivity, 'user'); sessions.set(s.id, s);
+  // asked again at a time the timeline no longer shows, and a comment from ana
+  const still = { reviewRequests: { nodes: [{ requestedReviewer: { login: 'me' } }] } }, hers = { author: user('ana'), createdAt: t(11) };
+  setPrInfo(url, 'open', 'PR', prTurn(pr(), 'me'), at(10));
+  setPrInfo(url, 'open', 'PR', prTurn(pr({ ...still, comments: { nodes: [hers] } }), 'me'), at(12));
+  const moved = s.prs[0].turn.movedAt;
+  assert.equal(moved, new Date(at(12)).toISOString());
+  // you answer her: the request stands (its time unknown), the comment is answered — one reason fewer is no move
+  setPrInfo(url, 'open', 'PR', prTurn(pr({ ...still, comments: { nodes: [hers, { author: user('me'), createdAt: t(13) }] } }), 'me'), at(14));
+  assert.deepEqual([s.prs[0].turn.you, s.prs[0].turn.why, s.prs[0].turn.movedAt], [true, 'your review asked for again', moved]);
+});
