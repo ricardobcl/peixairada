@@ -36,7 +36,9 @@ export default async function (ctx) {
       afterLeft: after ? Math.round(after.getBoundingClientRect().left) : null, afterTop: after ? Math.round(after.getBoundingClientRect().top) : null,
       underHousing: parts.filter(under).map(el => el.textContent.trim().slice(0, 30)),
       chips: [...head.querySelectorAll('#prToggle .hpr:not(.more)')].filter(c => !c.hidden).length, more: head.querySelector('.hpr.more')?.hidden === false,
-      title: h2.querySelector('.t')?.getBoundingClientRect().width | 0, oneLine: after ? Math.abs(after.getBoundingClientRect().top - h2.getBoundingClientRect().top) < 12 : null };
+      title: h2.querySelector('.t')?.getBoundingClientRect().width | 0,
+      tailRight: Math.round(head.querySelector('.hmore').getBoundingClientRect().right + parseFloat(getComputedStyle(head.querySelector('.hmore')).marginRight)), headInner: Math.round(head.getBoundingClientRect().right - parseFloat(getComputedStyle(head).paddingRight)),
+      split: Math.round(head.getBoundingClientRect().left + parseFloat(head.style.getPropertyValue('--hsplit'))), oneLine: after ? Math.abs(after.getBoundingClientRect().top - h2.getBoundingClientRect().top) < 12 : null };
   })())`).then(JSON.parse);
 
   out.off = await read();
@@ -49,7 +51,9 @@ export default async function (ctx) {
   ctx.assert.ok(out.on.listRight < NOTCH.left, `the list ends short of the housing (${out.on.listRight})`);
   ctx.assert.deepEqual([out.on.fishTop < 32, out.on.shdPad, out.on.headPad], [true, 7, 7], 'both heads at the top, their own padding');
   ctx.assert.ok(out.on.h2Right <= NOTCH.left - 9 && out.on.h2Right > NOTCH.left - 40, `the title ends just short of the housing (${out.on.h2Right})`);
-  ctx.assert.ok(out.on.afterLeft >= NOTCH.right + 9 && out.on.afterLeft < NOTCH.right + 40, `the chips start just past it (${out.on.afterLeft})`);
+  ctx.assert.ok(out.on.afterLeft >= NOTCH.right + 9, `the chips start past it (${out.on.afterLeft})`);
+  ctx.assert.equal(out.on.tailRight, out.on.headInner, 'and what follows the title stands at the far right (2026-09-28)');
+  ctx.assert.ok(out.on.split <= NOTCH.left && out.on.split > NOTCH.left - 40, `the header is black from the title's end, the housing inside it (${out.on.split})`);
   ctx.assert.deepEqual([out.on.underHousing, out.on.oneLine], [[], true], 'nothing of the row under the housing, and the row is one line');
   ctx.assert.ok(out.on.title > 150, `the title keeps room (${out.on.title} px)`);
   ctx.assert.equal(out.on.chips, 6, 'the six chips fit right of the housing');

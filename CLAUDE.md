@@ -203,11 +203,15 @@ refuses to run against the real directory for the same reason.
   divider read registered colours — `--hbg`, `--hveil`, `--hveil2` on `#chat`, `--openc`, `--openb` on `main`, all set
   by `tintChat` — and `transition` on those two elements does the rest; `--repo` stays unregistered (its fallback is
   load-bearing) and `--rink` cuts. A new surface in the chat's colour reads `--hbg`, not `--repo`. **The
-  colour square sits on the bar**, centred, out of the flow — positioned from `.shead` at the `.sep`'s x — the same
-  `.sq.pick`, inked only while the pointer is in the header; `colorAt` remembers which header the picker was opened
-  from, so `note` pops up by the square. **Between the project and the title stands a 2 px bar in `--rink`**, the
-  header's whole height: `.shead h2 .sep`, its `::before` positioned from `.shead` so the h2's `overflow: hidden`
-  does not clip it. The h2's gap is 12 px, the header's padding.
+  colour square sits between the project and the title**, centred, out of the flow — positioned from `.shead` at the
+  `.sep`'s x (a 2 px span; the bar it drew went on 2026-09-28) — the same `.sq.pick`, inked only while the pointer is
+  in the header; `colorAt` remembers which header the picker was opened from, so `note` pops up by the square. The
+  h2's gap is 12 px, the header's padding.
+* **Right of the title the header is black** (2026-09-28): `.shead::after` from `--hsplit` (the h2's right edge) down
+  `--hrow` (the first row; open details keep the header's ground), set by `paintHeadSplit()` after `layoutNotch();
+  fitHeadPrs()` and on `peixFill`; `.shead` isolates so the paint sits under the row. Everything right of the h2
+  borrows the dark theme's inks (the variables; its colour through `:where`, so a control's own rule still wins).
+  At the notch the housing is inside the black.
 * **The chat header is drawn only when it changed** (2026-09-27): `renderHead` compares the header's, the menu's and
   the PR rows' markup with `drawn` and sets innerHTML only when different, then `layoutNotch(); fitHeadPrs()` only for
   a new header; the handlers are still bound on every call (they close over `s`). Anything that edits the header in
@@ -374,7 +378,8 @@ refuses to run against the real directory for the same reason.
   housing covers, in CSS px; null on a screen without one — on every toggle, screen change and board load, and
   `layoutNotch()` lays the top row around it (reads, then writes; returns at once with no housing and nothing to
   undo): the chat list's head stays put while the list ends short of the housing, the chat header keeps its title
-  left of it and its chips right (`.hole`: the h2's width and right margin, which `fitHeadPrs` then measures), and
+  left of it and its chips right — at the far right, `.shead.hole > h2 + *` taking the free room as a margin (`.hole`:
+  the h2's width and right margin, which `fitHeadPrs` then measures), and
   whichever has not the room pads down by the strip (`.npad`). `NSFullScreenMenuItemEverywhere` is registered false;
   the frame's autosave is off while filled; ⌘W leaves the fill first; Info.plist says
   `NSPrefersDisplaySafeAreaCompatibilityMode` false. On this Mac the strip is 32 pt and the housing x 771.5–956.5 of

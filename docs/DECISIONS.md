@@ -22,6 +22,13 @@ be pushed all the way to the left, to use all real-estate".
 * **Every chip GitHub has answered for is solid**, in its state's colour with the page's ground as ink — the fill had
   meant "your move", and with it on all, which PR is at your move is said by name (the card's line, the header), not
   by the chip. One whose state is not known yet stays an outline.
+* **At the notch, what follows the title stands at the far right**: the h2 has a set width there, so it no longer grew
+  to push the chips and ··· over; the first thing after it takes the free room as a margin.
+* **Right of the title the header is black** — the housing's colour, so filled at the notch the housing is part of the
+  header rather than a hole in its tint. A paint under the row from the title's right edge (`paintHeadSplit`, read
+  after the notch and the chips' fold), the first row only, what stands on it in the dark theme's inks. **"The
+  separator" read as the bar between the project and the title**, the header's one separator: gone, its 2 px span
+  kept as the colour square's place. If the words meant something else, the bar is one CSS line to put back.
 
 ## Decisions of 2026-09-28, late night, later still — the tag where the F is, the reason in the header, your word answers
 

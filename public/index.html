@@ -195,6 +195,9 @@
      the room: .npad. The padding is the head's own plus the strip. */
   main.notch #sessions.npad #shd { padding-top: calc(7px + var(--notch-top, 0px)); }
   main.notch #chat.npad .shead { padding-top: calc(7px + var(--notch-top, 0px)); }
+  /* …and right of the housing, what follows the title stands at the far right, as it does with no housing (2026-09-28,
+     Ricardo: "the right part '...' + PRs [are] not pushed to the right — make it"): the h2 no longer grows there. */
+  .shead.hole > h2 + * { margin-left: auto; }
   /* The chat column is one half or two (2026-09-22): ⌘2 splits it, ⌘1 / ⌘2 put the keys in the left or the right
      one. Each half has its own tab strip and its own body — the transcript, a terminal, or a page in the app's
      pane — and a tab belongs to exactly one of them. The left half keeps the plain ids: it is the whole column
@@ -591,7 +594,6 @@
   .shead .hmove { flex: 0 1 auto; max-width: 45%; min-width: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
   .shead .hmove .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .shead .hmove .n { flex: none; opacity: .7; font-weight: 500; }
-  #chat.tinted .shead .ymove { background: var(--rink); color: var(--hbg); }   /* the accent could be the header's own colour */
   /* Done/reopen: an icon at the end of the top row, not a bordered pill in a row of its own. Bigger, and only under
      the pointer, since 2026-09-26 (Ricardo: "the done button on the card is a bit small and hard to see, also make it
      visible only on hover"): it keeps its box at rest, so nothing in the row moves when it comes. */
@@ -690,8 +692,9 @@
      name"): the row's gap is the header's padding, 12 px, and the colour square — invisible at rest, so any room it
      took read as a gap — takes none: it sits on the bar, centred, out of the flow (positioned from .shead like the
      bar, at the span's own x). */
+  /* The bar itself went on 2026-09-28 (Ricardo, the header black right of the title: "we don't need the separator
+     visual anymore"); the span stays, 2 px of room and the colour square's place. */
   .shead h2 .sep { flex: none; width: 2px; align-self: stretch; }
-  .shead h2 .sep::before { content: ''; position: absolute; top: 0; bottom: 0; width: 2px; background: var(--rink, var(--ink)); opacity: .9; }
   /* The project's colour beside its name, and the picker for it (2026-09-22, Ricardo: "allow me to quickly change
      the project color on the header of the chat next to the project name (only on hover)"): the column's own
      square, in the header where you are already looking. It keeps its place in the row always and only inks
@@ -740,6 +743,14 @@
      from the ink: darker under white ink, lighter under dark ink (--hveil across, --hveil2 down, set by tintChat; registered, so a chat switch eases), so
      the buttons at the far end keep their contrast whichever ink the colour chose; the bottom-right corner is deepest. */
   #chat.tinted .shead { background: linear-gradient(180deg, transparent 15%, var(--hveil2)), linear-gradient(100deg, transparent 8%, var(--hveil)), var(--hbg); color: var(--rink); border-bottom-color: color-mix(in srgb, var(--rink) 20%, var(--hbg)); }
+  /* Right of the title the header is black (2026-09-28, Ricardo: "on top chat header, make whatever is right of the
+     title black background"): the camera housing's colour, so at the notch the housing is part of it. Painted by
+     ::after from --hsplit (the title's right edge) down to --hrow (the first row; the details under it keep the
+     header's ground), both set by paintHeadSplit; what stands on it borrows the dark theme's inks, as a black card does. */
+  .shead { isolation: isolate; }
+  .shead::after { content: ''; position: absolute; top: 0; right: 0; left: var(--hsplit, 100%); height: var(--hrow, 100%); background: #000; z-index: -1; pointer-events: none; }
+  .shead > :not(h2, .details) { --ink: #e8e6df; --muted: #9a998f; --line: #2c2c29; --rink: #e8e6df; --panel: #1c1c1a; --inline-bg: rgba(255, 255, 255, .075); }
+  :where(.shead > :not(h2, .details)) { color: var(--ink); }   /* for what inherits its ink; a control's own rule still wins */
   #chat.tinted .shead :is(.status, .path, .own, .chip, a) { color: color-mix(in srgb, var(--rink) 78%, transparent); }
   #chat.tinted .shead .chip { border-color: color-mix(in srgb, var(--rink) 35%, transparent); }
   #chat.tinted .shead .btn, #chat.tinted .shead .btn:disabled { color: color-mix(in srgb, var(--rink) 78%, transparent); border-color: color-mix(in srgb, var(--rink) 40%, transparent); }
@@ -2488,7 +2499,7 @@
   window.peixPane = (visible, left) => { state.paneVisible = !!visible; state.paneLeft = Number(left) || 0; };
   // …and whether the window fills the screen (⌃⌘F in the app) and, on a screen with a camera housing, where that is —
   // the strip's height and the x range the housing covers, in this page's px — or null on a screen without one (layoutNotch).
-  window.peixFill = (on, notch) => { state.fill = !!on; state.notch = on && notch && notch.top > 0 ? notch : null; layoutNotch(); };
+  window.peixFill = (on, notch) => { state.fill = !!on; state.notch = on && notch && notch.top > 0 ? notch : null; layoutNotch(); paintHeadSplit(); };
   const noChat = () => note($('#shead'), 'Open a chat first');
   const focusBoard = () => { if (inApp) post({ type: 'focus' }); };   // the key may have come from the pane: the board needs the keyboard back
   function hotClaude() {
@@ -2983,7 +2994,7 @@
     if (prsHtml !== drawn.prs) pl.innerHTML = drawn.prs = prsHtml;
     const pm = pl.querySelector('#prMore'); if (pm) pm.onclick = () => { state.prsAll = !state.prsAll; renderHead(s); };   // onclick, not a listener per draw
     const pt = $('#prToggle'); if (pt) pt.onclick = () => { prefs.prsOpen = !prefs.prsOpen; savePrefs(); renderHead(s); };
-    if (headNew) { layoutNotch(); fitHeadPrs(); postChat(s); }
+    if (headNew) { layoutNotch(); fitHeadPrs(); paintHeadSplit(); postChat(s); }
     renderComposer(s); renderRival(s);
     // Say so when it fails — silently swallowing the response is how a missing `code` CLI looked
     // like a dead button for weeks. The icon has to survive that, so failure adds a word beside it
@@ -3050,6 +3061,14 @@
     head.classList.toggle('hole', hole);
     chat.classList.toggle('npad', !!n && !hole && hr.left < n.right + NOTCH_PAD);
   }
+  /** Where the header's black starts (the title's right edge) and how far down it goes (the first row: the details
+   *  under it keep the header's ground) — read once the row is laid out: after the notch and the chips' fold. */
+  function paintHeadSplit() {
+    const head = $('#shead'), h2 = head.querySelector('h2'); if (!h2) return;
+    const hr = head.getBoundingClientRect(), right = h2.getBoundingClientRect().right, d = head.querySelector('.details:not([hidden])');
+    head.style.setProperty('--hsplit', `${Math.round(right - hr.left)}px`);
+    head.style.setProperty('--hrow', d ? `${Math.round(d.getBoundingClientRect().top - hr.top - 3)}px` : '100%');
+  }
   const TITLE_MIN = 170;   // the title's own flex-basis (.shead h2), below which the row wraps
   function fitHeadPrs() {
     const head = $('#shead'), t = $('#prToggle'); if (!t) return;
@@ -3076,7 +3095,7 @@
   // fold that changes the height would otherwise run this again); under the housing every change moves the hole.
   new ResizeObserver(() => {
     const w = $('#shead').clientWidth; if (w === fitHeadPrs.w && !state.notch) return; fitHeadPrs.w = w;
-    if (state.notch) layoutNotch(); fitHeadPrs();
+    if (state.notch) layoutNotch(); fitHeadPrs(); paintHeadSplit();
   }).observe($('#shead'));
   // ··· and its menu. Placed under the button, right-aligned, each time it opens and each time the header is drawn
   // while it is up; closed by a click anywhere else, Esc (every dialog's), a hotkey (runHotkey), or an action that
