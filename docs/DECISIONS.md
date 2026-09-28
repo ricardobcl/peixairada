@@ -31,6 +31,12 @@ buttons and such — remove them and prefer solid background".
   its box takes the row's spare room and the rings' (hidden while searching); the usage is rings without words, the
   rows a panel under the row on hover (a quarter of a second late, so a pointer on its way to the cog does not open
   it) or pinned by a click — the fold it had went. The cog's popover opens under the cog.
+* **Controls wear a fill, not a grey edge**: buttons, the magnifier, the state chips, the small chips, the tabs, the PR
+  chips GitHub has not answered for, the list's end pills, the tool-call folds, the timeline's labels. The edge stays
+  as a transparent pixel so nothing shifts; the fill is the ink at 7 % (13 % under the pointer), and what was a
+  coloured edge — the chip that is on, the tab in front, a VS Code or agents chip — is a tint of its colour. Text
+  boxes, dialogs and popovers keep their frames, and a meaningful edge — a failure's red, the accent round the open
+  search — stays.
 
 ## Decisions of 2026-09-28, towards midnight — the card's line back, solid chips, the header in black, a hidden timeline
 

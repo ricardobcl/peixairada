@@ -164,6 +164,12 @@ refuses to run against the real directory for the same reason.
   since its last word changes). `dayOf(ts)` is the one spelling of a day (`today` · `DD-MM-YYYY`), for
   the list's lines and the transcript's (`.sysline.day`, from `renderLog` where the day changes). The who-line's time is
   `toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })`.
+* **Controls wear a fill, never a grey edge** (2026-09-28): `.btn`, `.fsearch`, `.fchip`, `.chip`, `.ptab`, the PR chips,
+  the ends' pills — `border: 1px solid transparent` (so nothing moves) and `background: var(--ctl)`, `var(--ctl-hi)`
+  under the pointer; a state that was an accent or coloured edge (`.on`, a tab in front, the chips' state, a VS Code
+  or agents chip) is a tint of that colour instead. `--ctl` is the ink at 7 %, **set on every element** (`*`), so it
+  follows an `--ink` borrowed there (a black card, the header's black). Text boxes, dialogs and popovers keep their
+  edges; a semantic edge (the red of a failure, the accent round an open box) stays.
 * **The small print is one CSS section** (2026-09-27, night, before the reduced-motion block): `text-wrap` for prose
   and centred texts, tabular figures for every count and age, `::selection` in the accent (and `--term-sel` to match),
   one `:where(…):focus-visible` ring — a text box that wants its border as its focus keeps its own `:focus { outline:

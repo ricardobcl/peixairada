@@ -34,21 +34,25 @@
     --hl-fn: #61afef; --hl-cls: #e5c07b; --hl-var: #e06c75; --hl-meta: #8fa6c4;
   } }
   * { box-sizing: border-box; }
+  /* A control's fill, and its fill under the pointer (2026-09-28, Ricardo: "in general, there seems to be these gray
+     borders around buttons and such — remove them and prefer solid background"): the ink over whatever is under it.
+     Set on every element rather than :root, so it follows an --ink borrowed there (a black card, the header's black). */
+  * { --ctl: color-mix(in srgb, var(--ink) 7%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 13%, transparent); }
   body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; height: 100vh; display: grid; grid-template-rows: 1fr; overflow: hidden; }
 
   /* ---- header ---- */
-  .btn { font: inherit; font-size: 12px; padding: 5px 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 6px; cursor: pointer; white-space: nowrap; }
-  .btn:hover { border-color: var(--accent); }
+  .btn { font: inherit; font-size: 12px; padding: 5px 10px; border: 1px solid transparent; background: var(--ctl); color: var(--ink); border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .btn:hover { background: var(--ctl-hi); }
   .btn.icon { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; color: var(--muted); }
   .btn.icon .ic { width: 15px; height: 15px; vertical-align: 0; fill: currentColor; }
   .btn.icon:hover { color: var(--ink); }
-  .btn.icon:disabled { opacity: .45; cursor: default; border-color: var(--line); }
+  .btn.icon:disabled { opacity: .45; cursor: default; background: var(--ctl); }
   #focusBtn .ic { fill: var(--vscode); }
   .btn.icon.err { color: var(--needs); border-color: var(--needs); }
   #focusBtn.err .ic { fill: var(--needs); }   /* must out-specify #focusBtn .ic above */
   #termBtn.on { color: var(--accent); border-color: var(--accent); }
   .btn.icon.fold { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; font-weight: 700; letter-spacing: -1px; }   /* { }: code folds in this chat */
-  #foldBtn.on { color: var(--accent); border-color: var(--accent); }
+  #foldBtn.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
   #termBtn.take { color: var(--ink); }                                        /* live in another terminal: can be taken over */
   #termBtn.take.arm { color: var(--needs); border-color: var(--needs); }      /* armed: the next click ends that claude */
   .btn.icon .lbl { font-size: 11px; }
@@ -96,7 +100,7 @@
   .pop .hid .hrow { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: baseline; }
   .pop .hid .hrow b { font-weight: 600; color: var(--ink); }
   .pop .hid .hrow span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pop .hid button { font: inherit; font-size: 11px; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 6px; padding: 1px 7px; cursor: pointer; }
+  .pop .hid button { font: inherit; font-size: 11px; border: 1px solid transparent; background: var(--ctl); color: var(--ink); border-radius: 6px; padding: 1px 7px; cursor: pointer; }
   .pop .hid button:hover { border-color: var(--accent); color: var(--accent); }
   /* The settings and the keys side by side (2026-09-28, when the setup joined the settings and one column outgrew the
      window), one over the other where the window has not the room (.one, settingsOpen); scrolled, never cut off. */
@@ -271,10 +275,10 @@
   #shd #filters.searching .fsearch { flex: none; min-width: 0; color: var(--accent); border-color: var(--accent); background: var(--bg); border-right: 0; border-radius: 12px 0 0 12px; padding-right: 3px; }
   #shd .fq { flex: 1 1 0; width: 0; height: 20px; margin-left: -3px; border-left: 0; border-radius: 0 12px 12px 0; padding-left: 3px; }   /* width 0: a box's own width is what it asks of the row, and it would push ＋ out; open, it takes the room the chips leave */
   /* the filter boxes: a magnifier in the row, the box itself only while it is open or has text */
-  .fsearch { font: inherit; border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 12px; padding: 2px 7px; cursor: pointer; display: inline-flex; align-items: center; flex: none; }
+  .fsearch { font: inherit; border: 1px solid transparent; background: var(--ctl); color: var(--muted); border-radius: 12px; padding: 2px 7px; cursor: pointer; display: inline-flex; align-items: center; flex: none; }
   .fsearch .ic { width: 12px; height: 12px; fill: currentColor; }
-  .fsearch:hover { color: var(--ink); }
-  .fsearch.on, .btn.icon.on { color: var(--accent); border-color: var(--accent); }
+  .fsearch:hover { color: var(--ink); background: var(--ctl-hi); }
+  .fsearch.on, .btn.icon.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
   .fq { font: inherit; font-size: 11px; padding: 2px 8px; border: 1px solid var(--accent); border-radius: 12px; background: var(--bg); color: var(--ink); width: 150px; min-width: 0; }
   .fq[hidden] { display: none; }
   .fq:focus { outline: none; }
@@ -302,7 +306,7 @@
   /* The state chips, in the head's one row since 2026-09-24: a dot in the state's colour and the count — the word
      only where the column is wide enough to hold it, and in the tooltip always. A chip that is on has its dot filled
      and its edge in the colour; off, the dot is a ring and the chip goes quiet. */
-  .fchip { --c: var(--muted); font: inherit; font-size: 11px; padding: 1px 5px; border: 1px solid var(--line); border-radius: 12px; background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap; display: inline-flex; gap: 3px; align-items: center; flex: none; }
+  .fchip { --c: var(--muted); font: inherit; font-size: 11px; padding: 1px 5px; border: 1px solid transparent; border-radius: 12px; background: var(--ctl); color: var(--muted); cursor: pointer; white-space: nowrap; display: inline-flex; gap: 3px; align-items: center; flex: none; }
   .fchip.ready { --c: var(--idle); } .fchip.working { --c: var(--working); } .fchip.done { --c: var(--ended); }
   .fchip i { width: 7px; height: 7px; border-radius: 50%; box-sizing: border-box; border: 1.5px solid var(--c); flex: none; }
   .fchip .lb { display: none; }
@@ -310,7 +314,7 @@
   @container (max-width: 340px) { .fchip .n { display: none; } }   /* near the list's narrowest, the dots alone, so the name keeps some room */
   .fchip .n { font-weight: 700; font-variant-numeric: tabular-nums; }
   .fchip:hover { color: var(--ink); }
-  .fchip.on { color: var(--ink); border-color: color-mix(in srgb, var(--c) 65%, transparent); }
+  .fchip.on { color: var(--ink); background: color-mix(in srgb, var(--c) 22%, transparent); }
   .fchip.on i { background: var(--c); }
   .fchip:not(.on) { opacity: .75; }
   #slist { overflow-y: auto; overflow-x: hidden; min-width: 0; padding: 8px 8px 8px 0; display: flex; flex-direction: column; gap: 7px; position: relative; scrollbar-width: none; }   /* positioned: the cards' offsetTop is the list's */
@@ -388,7 +392,7 @@
   #tline .tl-thumb[hidden] { display: none; }
   /* A day's label: the day, then how many of that run and in which state — out over the cards, from the rail (TL_LX in). */
   #tline .tl-lab { left: 16px; top: 0; transform-origin: 0 50%; white-space: nowrap; font-size: 10.5px; line-height: 15px; padding: 0 7px; border-radius: 8px;
-    background: var(--panel); border: 1px solid var(--line); color: var(--ink); box-shadow: 0 2px 10px rgba(0, 0, 0, .18); pointer-events: none; opacity: 0; font-weight: 600; }
+    background: var(--panel); border: 1px solid transparent; color: var(--ink); box-shadow: 0 2px 10px rgba(0, 0, 0, .18); pointer-events: none; opacity: 0; font-weight: 600; }
   #tline .tl-lab i { font-style: normal; font-weight: 400; color: var(--muted); }
   #tline .tl-lab.on { pointer-events: auto; cursor: pointer; }
   #tline .tl-lab.near { border-color: var(--spend); }
@@ -399,9 +403,9 @@
   .sedge.up { align-self: start; align-items: flex-start; padding-top: 5px; background: linear-gradient(var(--bg) 25%, transparent); }
   .sedge.down { align-self: end; align-items: flex-end; padding-bottom: 5px; background: linear-gradient(transparent, var(--bg) 75%); }
   .sedge.on { opacity: 1; }
-  :is(.sedge, .lognew) button { pointer-events: auto; font: inherit; font-size: 11px; line-height: 16px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 1px 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); white-space: nowrap; }
+  :is(.sedge, .lognew) button { pointer-events: auto; font: inherit; font-size: 11px; line-height: 16px; color: var(--muted); background: color-mix(in srgb, var(--ink) 9%, var(--panel)); border: 1px solid transparent; border-radius: 10px; padding: 1px 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); white-space: nowrap; }
   .sedge:not(.on) button { pointer-events: none; }
-  :is(.sedge, .lognew) button:hover { color: var(--ink); border-color: var(--muted); }
+  :is(.sedge, .lognew) button:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 15%, var(--panel)); }
   .sedge b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
   .sedge i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
   .sedge i.ask { background: var(--needs); } .sedge i.work { background: var(--working); }
@@ -492,13 +496,13 @@
      55 % before — a step above the brighter wash) under the full colour with a soft 1px halo outside; the open card
      adds a 2px ring of it over its border — a three-pixel edge. */
   .card:hover { border-color: var(--repo, var(--nocolor)); outline-color: color-mix(in srgb, var(--repo, var(--nocolor)) 45%, transparent); --tint: 65%; --slope: 0%; }
-  .chip.vsc { color: var(--vscode); border-color: var(--vscode); }
+  .chip.vsc { color: var(--vscode); background: color-mix(in srgb, var(--vscode) 16%, transparent); }
   /* The environment a chat was started in (`task production-workload`…, 2026-09-21): beside the folder on the card,
      in the project's own colour, because it is a fact about *where* the chat runs — not about its process, which is
      what the bordered chips on the other side of the row are. No border for that reason: it reads as the second half
      of the folder's name, quietly. It shows wherever the server has a record, so only the folders whose Taskfile
      launches claude ever wear one. A card too dark or too tinted for the colour borrows the card's own ink. */
-  .card .top .chip.env { color: var(--repo, var(--muted)); border-color: transparent; padding-left: 0; font-weight: 600; }
+  .card .top .chip.env { color: var(--repo, var(--muted)); background: none; padding-left: 0; font-weight: 600; }
   .card .abbr { display: none; }   /* only the folded rail shows it */
   .card.black .top .chip.env, .card.active .top .chip.env, .card:hover .top .chip.env { color: inherit; opacity: .8; }
   /* the open chat: a solid tint of its colour under a ring of it (2026-09-20, Ricardo: "a more solid
@@ -525,10 +529,10 @@
   .card .trow { display: flex; align-items: flex-start; gap: 7px; min-width: 0; }
   .card .trow .title { flex: 1; margin-top: 0; }
   .card .trow .badge { margin-top: 2px; }
-  .card .trow .chip.agents { margin-top: 3px; color: var(--working); border-color: color-mix(in srgb, var(--working) 55%, transparent); }
+  .card .trow .chip.agents { margin-top: 3px; color: var(--working); background: color-mix(in srgb, var(--working) 16%, transparent); }
   /* a monitor or a background command the harness is still running: the same chip in the watch colour, with the
      radar mark — it says *something is running here*, next to the agents chip that says *Claude is* */
-  .chip.watch { display: inline-flex; align-items: center; gap: 4px; color: var(--watch); border-color: color-mix(in srgb, var(--watch) 55%, transparent); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chip.watch { display: inline-flex; align-items: center; gap: 4px; color: var(--watch); background: color-mix(in srgb, var(--watch) 16%, transparent); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .chip.watch .ic { width: 11px; height: 11px; flex: none; }
   /* On a card it shares the title's row, so it takes at most half of it and the title keeps the rest. */
   .card .trow .chip.watch { margin-top: 3px; max-width: 50%; }
@@ -585,7 +589,7 @@
   .card .top .tprs > * { flex: none; }
   .card .cpr.more { color: var(--muted); border-style: dashed; }
   /* a PR as a chip — the card's, and the chat header's (.hpr) since 2026-09-24 */
-  :is(.card .cpr, .shead .hpr) { font-size: 10.5px; font-weight: 600; line-height: 16px; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; color: var(--muted); }
+  :is(.card .cpr, .shead .hpr) { font-size: 10.5px; font-weight: 600; line-height: 16px; border: 1px solid transparent; border-radius: 4px; padding: 0 5px; color: var(--muted); background: var(--ctl); }
   :is(.card .cpr, .shead .hpr)[data-state="open"] { --prc: var(--pr-open); }
   :is(.card .cpr, .shead .hpr)[data-state="merged"] { --prc: var(--pr-merged); }
   :is(.card .cpr, .shead .hpr)[data-state="closed"] { --prc: var(--pr-closed); }
@@ -626,7 +630,7 @@
   .dot.stale, .dot.unknown, .dot.done { background: var(--ended); animation: none; }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
   .badge { background: var(--unread); color: #fff; border-radius: 10px; padding: 0 6px; font-size: 11px; font-weight: 600; min-width: 18px; text-align: center; flex: none; }
-  .chip { font-size: 10px; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; min-width: 0; flex: 0 1 auto; }
+  .chip { font-size: 10px; border: 1px solid transparent; background: var(--ctl); border-radius: 4px; padding: 0 4px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; min-width: 0; flex: 0 1 auto; }
 
   /* ---- plan usage: the chat list's footer ---- */
   /* The numbers `/usage` shows, always in view (2026-09-24, Ricardo: "move the credits from the cog to a permanent
@@ -784,10 +788,9 @@
   :where(.shead > :not(h2, .details)) { color: var(--ink); }   /* for what inherits its ink; a control's own rule still wins */
   .shead h2 .t { color: #e8e6df; }
   #chat.tinted .shead :is(.status, .path, .own, .chip, a) { color: color-mix(in srgb, var(--rink) 78%, transparent); }
-  #chat.tinted .shead .chip { border-color: color-mix(in srgb, var(--rink) 35%, transparent); }
-  #chat.tinted .shead .btn, #chat.tinted .shead .btn:disabled { color: color-mix(in srgb, var(--rink) 78%, transparent); border-color: color-mix(in srgb, var(--rink) 40%, transparent); }
-  #chat.tinted .shead .btn:hover { color: var(--rink); border-color: var(--rink); }
-  #chat.tinted .shead .btn.on, #chat.tinted .shead #termBtn.take { color: var(--rink); border-color: var(--rink); background: color-mix(in srgb, var(--rink) 14%, transparent); }
+  #chat.tinted .shead .btn, #chat.tinted .shead .btn:disabled { color: color-mix(in srgb, var(--rink) 78%, transparent); }
+  #chat.tinted .shead .btn:hover { color: var(--rink); }
+  #chat.tinted .shead .btn.on, #chat.tinted .shead #termBtn.take { color: var(--rink); background: color-mix(in srgb, var(--rink) 14%, transparent); }
   #chat.tinted .shead :is(.btn.err, #termBtn.take.arm) { color: var(--needs); border-color: var(--needs); background: var(--panel); }
   /* The chat's PRs in the header row, compact (2026-09-24, Ricardo: "make PRs appear compact as they do on cards and
      on click, they toggle to the expanded version per row that we have now"): the cards' chips, #n in the PR's state
@@ -802,10 +805,10 @@
     /* …on a wash of their own colour, deeper at the top left (the same evening: "a bit of background gradient, to make
        it prettier") — since 2026-09-28 only a chip whose state is not known yet: the rest are solid (above) */
     background: linear-gradient(160deg, color-mix(in srgb, var(--prc, var(--muted)) var(--prg), var(--panel)), color-mix(in srgb, var(--prc, var(--muted)) 7%, var(--panel)) 80%); }
-  .shead .hprs:hover, .shead .hprs.on { border-color: var(--line); }
+  .shead .hprs:hover, .shead .hprs.on { background: var(--ctl); }
   .shead .hpr.more { color: var(--muted); border-style: dashed; }
   #chat.tinted .shead .hprs { color: color-mix(in srgb, var(--rink) 78%, transparent); }
-  #chat.tinted .shead .hprs:hover, #chat.tinted .shead .hprs.on { border-color: color-mix(in srgb, var(--rink) 40%, transparent); }
+  #chat.tinted .shead .hprs:hover, #chat.tinted .shead .hprs.on { background: color-mix(in srgb, var(--rink) 12%, transparent); }
   /* ---- The chat's PRs, one per row under the header: state, repo#n, the whole title. ---- */
   #prlist { border-bottom: 1px solid var(--line); background: var(--panel); padding: 4px 12px 5px; display: grid; gap: 1px; min-width: 0; }
   #prlist[hidden] { display: none; }
@@ -862,9 +865,9 @@
      moving the keys never resizes a terminal. A web page keeps its strip, for the address and ‹ › ↻ ↗; so does an empty
      half, where a tab is dropped. */
   .ptabs.lone { padding: 0; height: 2px; border: 0; background: var(--line); overflow: hidden; }
-  .ptab { flex: none; font: inherit; font-size: 11.5px; padding: 2px 9px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-  .ptab:hover { color: var(--ink); }
-  .ptab.on { color: var(--ink); border-color: var(--accent); }
+  .ptab { flex: none; font: inherit; font-size: 11.5px; padding: 2px 9px; border: 1px solid transparent; border-radius: 6px; background: var(--ctl); color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .ptab:hover { color: var(--ink); background: var(--ctl-hi); }
+  .ptab.on { color: var(--ink); background: color-mix(in srgb, var(--accent) 22%, transparent); }
   .ptabs .pdrop { color: var(--muted); font-style: italic; padding: 2px 4px; }
   /* A tab on its way to the other half (2026-09-25): it stays in its strip, faded, while a copy follows the pointer,
      and the half under the pointer lights its strip — the one place the drop is always visible, the app's pane
@@ -885,7 +888,7 @@
   .ptabs .purl:hover { color: var(--ink); }
   .ptabs .navs { margin-left: auto; display: flex; gap: 2px; }
   .ptabs .nav { font: inherit; font-size: 13px; line-height: 1; padding: 2px 6px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; }
-  .ptabs .nav:hover { color: var(--ink); border-color: var(--line); }
+  .ptabs .nav:hover { color: var(--ink); background: var(--ctl); }
   /* content-box on purpose: the fit addon reads getComputedStyle(parent).height/width and subtracts only the
      terminal element's own padding — under the page's border-box rule that is the padded size, one row or column too
      many when the remainder is short, and the bottom row (or last column) clipped by up to the padding (measured: 51
@@ -939,7 +942,7 @@
   .md img { max-width: 100%; }
   .md input[type=checkbox] { margin: 0 6px 0 0; }
   .toolgroup { margin: 2px 0 10px; }
-  .toolgroup > summary, .codefold > summary { cursor: pointer; list-style: none; font-size: 11.5px; color: var(--muted); padding: 4px 8px; border-radius: 6px; background: var(--tool-bg); border: 1px solid var(--line); user-select: none; }
+  .toolgroup > summary, .codefold > summary { cursor: pointer; list-style: none; font-size: 11.5px; color: var(--muted); padding: 4px 8px; border-radius: 6px; background: var(--tool-bg); border: 1px solid transparent; user-select: none; }
   .toolgroup > summary::-webkit-details-marker, .codefold > summary::-webkit-details-marker { display: none; }
   /* One chevron that turns (2026-09-27, night; ▸ swapped for ▾ before), and a body that fades and rises in as the
      fold opens — `::details-content`, both engines. Chrome also runs the height, which needs interpolate-size; WebKit
