@@ -34,6 +34,7 @@ export default async function (ctx) {
       listPad: list.classList.contains('npad'), chatPad: chat.classList.contains('npad'), hole: head.classList.contains('hole'),
       listRight: Math.round(list.getBoundingClientRect().right), headLeft: Math.round(head.getBoundingClientRect().left),
       fishTop: Math.round(document.querySelector('#brandBtn').getBoundingClientRect().top), shdPad: parseFloat(getComputedStyle(shd).paddingTop),
+      listPad0: parseFloat(getComputedStyle(document.querySelector('#slist')).paddingTop), cardTop: Math.round(document.querySelector('#slist > .card')?.getBoundingClientRect().top ?? -1),
       headPad: parseFloat(getComputedStyle(head).paddingTop), h2Right: Math.round(h2.getBoundingClientRect().right), h2Flex: h2.style.flex,
       afterLeft: after ? Math.round(after.getBoundingClientRect().left) : null, afterTop: after ? Math.round(after.getBoundingClientRect().top) : null,
       underHousing: parts.filter(under).map(el => el.textContent.trim().slice(0, 30)),
@@ -53,7 +54,8 @@ export default async function (ctx) {
   out.on = await read();
   ctx.assert.deepEqual([out.on.notch, out.on.top, out.on.listPad, out.on.chatPad, out.on.hole], [true, '32px', false, false, true], 'filled: the list lifted, the header holed');
   ctx.assert.ok(out.on.listRight < NOTCH.left, `the list ends short of the housing (${out.on.listRight})`);
-  ctx.assert.deepEqual([out.on.fishTop < 32, out.on.shdPad, out.on.headPad], [true, 7, 7], 'both heads at the top, their own padding');
+  ctx.assert.deepEqual([out.on.listPad0, out.on.headPad], [8, 7], 'the list\'s cards and the chat\'s header at the top, their own padding — the list\'s row is at its foot (2026-09-28, later)');
+  ctx.assert.ok(out.on.fishTop > 500, `the fish at the foot (${out.on.fishTop})`);
   ctx.assert.ok(out.on.repoRight < NOTCH.left - 9, `the project's name left of the housing (${out.on.repoRight})`);
   ctx.assert.ok(out.on.tright && out.on.tLeft >= NOTCH.right + 9 && out.on.tLeft < NOTCH.right + 20, `a title too long for the left goes right of the housing (${out.on.tLeft})`);
   ctx.assert.ok(out.on.afterLeft >= NOTCH.right + 9, `the chips start past it (${out.on.afterLeft})`);
@@ -64,12 +66,12 @@ export default async function (ctx) {
   ctx.assert.equal(out.on.chips, 6, 'the six chips fit right of the housing');
   await ctx.shot('1-filled', { x: 0, y: 0, width: 1728, height: 60 });
 
-  // The list dragged under the housing: its head pads down, and the header — no room for a title left of the
-  // housing — pads down too, everything below the strip
+  // The list dragged under the housing: its cards start under the strip, and the header — no room for a title left of
+  // the housing — pads down too, everything below the strip
   await listWidth(820);
   out.wide = await read();
   ctx.assert.deepEqual([out.wide.listPad, out.wide.chatPad, out.wide.hole, out.wide.h2Flex], [true, true, false, ''], 'the list under the housing: both pad, no hole');
-  ctx.assert.deepEqual([out.wide.shdPad, out.wide.headPad, out.wide.fishTop >= 32, out.wide.afterTop >= 32], [39, 39, true, true], '…by the strip, and the rows are under it');
+  ctx.assert.deepEqual([out.wide.listPad0, out.wide.headPad, out.wide.cardTop >= 32, out.wide.afterTop >= 32], [40, 39, true, true], '…by the strip, and the rows are under it');
   ctx.assert.deepEqual(out.wide.underHousing, [], 'nothing under the housing');
   await ctx.shot('2-list-under', { x: 0, y: 0, width: 1728, height: 90 });
 

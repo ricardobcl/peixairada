@@ -161,21 +161,27 @@
   #sessions { border-left: 4px solid var(--repo, var(--nocolor)); }
   #sessions .colhead { background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); }
   /* 300 px at the narrowest (260 until the head became one row: below 300 the project's name had no room left) */
-  #sessions { width: 380px; min-width: 300px; max-width: 60vw; flex: none; display: grid; grid-template-rows: auto 1fr auto; min-height: 0; container-type: inline-size; }
+  #sessions { width: 380px; min-width: 300px; max-width: 60vw; flex: none; display: grid; grid-template-rows: minmax(0, 1fr) auto auto; min-height: 0; container-type: inline-size; }
   /* Placed by hand, like the chat column's rows: a hidden block leaves auto-placement and slides the rest up a row —
      the list into the `auto` row, sized to its cards instead of the column. */
   /* One column: the timeline (#tline) lies over the list's left edge, out of sight until called (2026-09-28; a column
      of its own beside the list from 2026-09-25). Every cell is definite — the list's ends (.sedge) and the glass lie
      over the list's, which only a definite cell allows. */
   #sessions { grid-template-columns: minmax(0, 1fr); }
-  #shd { grid-row: 1; grid-column: 1; } #tline { grid-row: 2; grid-column: 1 / -1; justify-self: start; } #slist { grid-row: 2; grid-column: 1 / -1; } #sfoot { grid-row: 3; grid-column: 1; }
-  /* One row atop the open list (2026-09-28, Ricardo: "combine the header with app icon with the footer with cog and
-     credits into a single line"): the foot — the plan usage as rings, the cog — is the head row's right end, in a
-     column of its own there; on the rail of squares it is the foot it always was. */
+  /* The list first, its row of controls under it (2026-09-28, later, Ricardo: "move the top app icon etc. from the top
+     to the bottom"): the cards run from the column's top. */
+  #tline { grid-row: 1; grid-column: 1 / -1; justify-self: start; } #slist { grid-row: 1; grid-column: 1 / -1; } #shd { grid-row: 2; grid-column: 1; } #sfoot { grid-row: 3; grid-column: 1; }
+  #shd { border-bottom: 0; border-top: 1px solid var(--line); }
+  /* One row under the open list (2026-09-28, Ricardo: "combine the header with app icon with the footer with cog and
+     credits into a single line"): the foot — the plan usage — is the row's right end, in a column of its own there;
+     on the rail of squares it is a row of its own over the fish, which keeps the corner. */
   main:not(.scompact) #sessions { grid-template-columns: minmax(0, 1fr) auto; }
-  main:not(.scompact) #sfoot { grid-row: 1; grid-column: 2; border-top: 0; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); align-items: center; gap: 2px; padding: 0 8px 0 0; position: relative; }
-  main:not(.scompact) #shd { padding-right: 4px; }
-  main.notch:not(.scompact) #sessions.npad #sfoot { padding-top: var(--notch-top, 0px); }
+  main:not(.scompact) #sfoot { grid-row: 2; grid-column: 2; background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); align-items: center; gap: 2px; padding: 0 10px 0 0; position: relative; }
+  main:not(.scompact) #shd { padding-right: 4px; overflow: hidden; }   /* a list at its narrowest clips the chips rather than run them under the usage */
+  main.scompact #sfoot { grid-row: 2; } main.scompact #shd { grid-row: 3; }
+  /* the cards start under the camera's strip when the list is under the housing (the head used to pad down instead) */
+  main.notch #sessions.npad #slist { padding-top: calc(8px + var(--notch-top, 0px)); }
+  main.notch #sessions.npad .sedge.up { padding-top: calc(5px + var(--notch-top, 0px)); }
   /* The chat list folded to a rail: the fish, the selected project's colour square and the » to open it again.
      The width is set here, not inline, so the splitter's saved width comes back on unfold. */
   /* Folded, the list is a rail of one square per chat (2026-09-22): the project's short name on its own colour,
@@ -213,7 +219,6 @@
      hole in the row, the h2's width and right margin set by layoutNotch(). Whichever has not the room (a list dragged
      under the housing, a header too far left of it for a title) pads down by the strip instead, its own tint filling
      the room: .npad. The padding is the head's own plus the strip. */
-  main.notch #sessions.npad #shd { padding-top: calc(7px + var(--notch-top, 0px)); }
   main.notch #chat.npad .shead { padding-top: calc(7px + var(--notch-top, 0px)); }
   /* …and right of the housing, what follows the title stands at the far right, as it does with no housing (2026-09-28,
      Ricardo: "the right part '...' + PRs [are] not pushed to the right — make it"): the h2 no longer grows there. */
@@ -382,7 +387,7 @@
   /* While the days are out, a pane of glass over the cards (2026-09-25, Ricardo: "a glass tint on the background"):
      a blur and a wash of the page over the list's cell, under the labels and the list's ends, so the labels read on
      a frosted list rather than on card text. Lets every pointer event through. */
-  .tl-glass { grid-row: 2; grid-column: 1 / -1; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .2s;
+  .tl-glass { grid-row: 1; grid-column: 1 / -1; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .2s;
     background: color-mix(in srgb, var(--bg) 42%, transparent); -webkit-backdrop-filter: blur(3px) saturate(.85); backdrop-filter: blur(3px) saturate(.85); }
   #sessions.tlon .tl-glass { opacity: 1; }
   main.scompact #tline { display: none; }
@@ -408,7 +413,7 @@
   /* The list's two ends say what is out of sight past them (2026-09-25): a pill over a fog of the page, laid over the
      list's own cell — the list's row, so it neither scrolls with the cards nor takes any room from them. The fog lets
      every click through; only the pill takes one. A dot on it when a card out there is asking you or clauding. */
-  .sedge { grid-row: 2; grid-column: 1 / -1; z-index: 4; pointer-events: none; display: flex; justify-content: center; height: 30px; opacity: 0; transition: opacity .15s; }
+  .sedge { grid-row: 1; grid-column: 1 / -1; z-index: 4; pointer-events: none; display: flex; justify-content: center; height: 30px; opacity: 0; transition: opacity .15s; }
   .sedge.up { align-self: start; align-items: flex-start; padding-top: 5px; background: linear-gradient(var(--bg) 25%, transparent); }
   .sedge.down { align-self: end; align-items: flex-end; padding-bottom: 5px; background: linear-gradient(transparent, var(--bg) 75%); }
   .sedge.on { opacity: 1; }
@@ -663,13 +668,18 @@
   /* In the head row (2026-09-28, Ricardo: "compact view of credits"): the rings alone, 14 px, and the rows a panel under
      the row — on hover, a beat late so a pointer on its way to the cog does not open it, or pinned by a click on the
      rings (.pin; a click on its heading or anywhere else lets it go). The fold of 2026-09-24 went with the foot. */
-  main:not(.scompact) #usage { flex: none; min-height: 0; padding: 0 4px; display: flex; align-items: center; order: -1; }   /* the rings, then the cog at the row's end */
-  main:not(.scompact) #usage .uline { flex-wrap: nowrap; column-gap: 5px; width: auto; }
-  main:not(.scompact) #usage .uline :is(.uk, b, .uchev) { display: none; }
+  main:not(.scompact) #usage { flex: none; min-height: 0; padding: 0 4px; display: flex; align-items: center; }
+  main:not(.scompact) #usage .uline { flex-wrap: nowrap; column-gap: 8px; width: auto; }
+  main:not(.scompact) #usage .uline :is(.uring, .uchev) { display: none; }
   main:not(.scompact) #usage .uline .unote { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  main:not(.scompact) #usage .uring { width: 14px; height: 14px; }
+  /* in words (2026-09-28, later): "5H 42%  1W 75%  F 95%" — the tag set in the rounded face, heavy, on a wash of the
+     window's colour (orange, red from 90 %), the percent in the ink beside it */
+  main:not(.scompact) #usage .uchip { gap: 4px; }
+  main:not(.scompact) #usage .uchip.grant { display: none; }   /* a credit grant runs out rather than resets: the rows over the row say it, the row has the limits */
+  main:not(.scompact) #usage .uchip .uk { font: 800 9.5px/1 ui-rounded, "SF Pro Rounded", ui-sans-serif, system-ui, sans-serif; letter-spacing: .5px; padding: 2px 4px; border-radius: 4px; background: color-mix(in srgb, var(--u) 22%, transparent); color: var(--u); }
+  main:not(.scompact) #usage .uchip b { font-size: 11px; }
   main:not(.scompact) #sessions:has(#filters.searching) #usage { display: none; }   /* the box open: its room, the rings' too */
-  main:not(.scompact) #usage .uopen { position: absolute; top: 100%; right: 6px; z-index: 30; width: 300px; box-sizing: border-box; padding: 10px 12px 12px; border-radius: 10px; background: var(--panel); box-shadow: 0 10px 34px rgba(0, 0, 0, .22);
+  main:not(.scompact) #usage .uopen { position: absolute; bottom: 100%; right: 6px; z-index: 30; width: 300px; box-sizing: border-box; padding: 10px 12px 12px; border-radius: 10px; background: var(--panel); box-shadow: 0 10px 34px rgba(0, 0, 0, .22);
     visibility: hidden; opacity: 0; transition: opacity .12s, visibility 0s .12s; }
   main:not(.scompact) #usage:hover .uopen { visibility: visible; opacity: 1; transition: opacity .12s .25s, visibility 0s .25s; }
   main:not(.scompact) #usage.pin .uopen { visibility: visible; opacity: 1; transition: opacity .12s, visibility 0s; }
@@ -1548,8 +1558,10 @@
   // server hides the bar. The markup holds both shapes, open and folded; the fold and the rail (⌘B) pick in CSS.
   const USAGE_EVERY_MS = 120e3;
   const usage = { data: null, err: '', off: false, at: 0, fails: 0, busy: false, html: '' };
-  const USAGE_SHORT = { five_hour: '5h', seven_day: 'week', seven_day_opus: 'Opus', seven_day_sonnet: 'Sonnet', cinder_cove: 'credit' };
-  const uShort = w => USAGE_SHORT[w.key] || String(w.label).split(' · ').pop();
+  // Each window's tag (2026-09-28, Ricardo: "the token budget should be more '5H x% 1W y% F z%' with stylized fonts for
+  // the 5H/1W/F"): the window's length, or a model's initial for its own week (F for Fable), CR for a credit grant.
+  const USAGE_SHORT = { five_hour: '5H', seven_day: '1W', seven_day_opus: 'O', seven_day_sonnet: 'S', cinder_cove: 'CR' };
+  const uShort = w => USAGE_SHORT[w.key] || (String(w.label).split(' · ').pop().trim()[0] || '?').toUpperCase();
   // Orange for what is spent, red once a window is nearly gone (2026-09-24, Ricardo: "make the credits used color
   // green -> orange" — it was green, amber from 70 %, red from 90 %; amber under orange would have read as a step down).
   const uColor = p => p >= 90 ? 'var(--needs)' : 'var(--spend)';
@@ -1565,7 +1577,7 @@
     box.classList.toggle('stale', !!(d && usage.err));
     const note = !d ? usage.err || 'asking…' : !ws.length ? 'nothing reported for this account' : '';   // under the heading; the line says what it is about
     const said = d ? ` · as of ${new Date(d.fetchedAt).toLocaleTimeString()}${usage.err ? ` — since then: ${usage.err}` : ''}` : '';
-    const chips = ws.map(w => `<span class="uchip" title="${esc(uTip(w))}"><i class="uring" style="--p:${Math.min(100, w.percent)};--u:${uColor(w.percent)}"></i><span class="uk">${esc(uShort(w))}</span><b>${w.percent}%</b></span>`).join('');
+    const chips = ws.map(w => `<span class="uchip${w.resetsAt ? '' : ' grant'}" title="${esc(uTip(w))}" style="--u:${uColor(w.percent)}"><i class="uring" style="--p:${Math.min(100, w.percent)}"></i><span class="uk">${esc(uShort(w))}</span><b>${w.percent}%</b></span>`).join('');
     const rows = ws.map(w => { const f = uPace(w); return `<div class="urow" title="${esc(uTip(w))}"><span class="ul">${esc(w.label)}</span><span class="ubar"><i style="width:${Math.min(100, w.percent)}%;--u:${uColor(w.percent)}"></i>${f != null ? `<b style="left:${(f * 100).toFixed(1)}%"></b>` : ''}</span><span class="up">${w.percent}%</span><span class="ur">${untilReset(w.resetsAt)}</span></div>`; }).join('');
     const html = `<button class="uline" title="Claude plan usage${esc(said)}${note ? `: ${esc(note)}` : ''} — point to see it, click to keep it open">${note ? `<span class="unote">usage: ${esc(note)}</span>` : chips}${CHEV}</button>`
       + `<div class="uopen"><button class="uhd" title="Claude plan usage${esc(said)} — click to close"><span>plan usage</span>${CHEV}</button>${note ? `<span class="unote">${esc(note)}</span>` : `<div class="urows">${rows}</div>`}</div>`;

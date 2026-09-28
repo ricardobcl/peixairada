@@ -31,13 +31,13 @@ export default async function (ctx) {
   out.row = await ctx.evaluate(`JSON.stringify((() => { const h = document.querySelector('#shd'), r = h.getBoundingClientRect(), f = document.querySelector('#sfoot').getBoundingClientRect();
     return { inHead: ['#qBtn', '#fchips'].every(q => h.contains(document.querySelector(q))), fold: !!document.querySelector('#sessPinBtn'), plus: !!document.querySelector('#newChatBtn'), h: Math.round(r.height),
       foot: [Math.round(f.top), Math.round(f.height), Math.round(f.left - r.right)], head: [Math.round(r.top), Math.round(r.height)],
-      under: Math.round(document.querySelector('#slist').getBoundingClientRect().top - r.bottom),
+      under: Math.round(r.top - document.querySelector('#slist').getBoundingClientRect().bottom), bottom: Math.round(innerHeight - r.bottom),
       chips: [...document.querySelectorAll('#fchips .fchip')].map(c => c.className.replace(/\s+/g, ' ').trim()) }; })())`).then(JSON.parse);
   ctx.assert.equal(out.row.inHead, true, 'the magnifier and the chips are in the head');
   ctx.assert.equal(out.row.plus, false, 'no ＋ — ⌥⌘N (2026-09-28)');
   ctx.assert.equal(out.row.fold, false, 'no « — ⌘B folds the list');
   ctx.assert.deepEqual([out.row.foot[0], out.row.foot[1], out.row.foot[2]], [out.row.head[0], out.row.head[1], 0], 'the foot is the head row\'s right end, as tall');
-  ctx.assert.ok(out.row.h <= 44 && out.row.under === 0, 'one row, and the cards right under it');
+  ctx.assert.ok(out.row.h <= 44 && out.row.under === 0 && out.row.bottom === 0, `one row, under the cards, at the window's foot (2026-09-28, later): ${JSON.stringify(out.row)}`);
   ctx.assert.deepEqual(out.row.chips, ['fchip ready on', 'fchip working on', 'fchip done on'], 'the three state chips, on');
   // The magnifier is small (2026-09-28; a field from the fish to the first chip from 2026-09-27): open, its icon is the
   // box's left cap and the box takes the room the row has spare — the rings', too, while it is open

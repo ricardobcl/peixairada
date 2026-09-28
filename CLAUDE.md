@@ -118,16 +118,18 @@ refuses to run against the real directory for the same reason.
 
 ## The board
 
-* **Two columns**: the selected project's chats → the chat. **The chat list's head is the project filter's whole
-  cue** — the fish (the SSE light), then `#stitle`: the project's name (nothing at all on ALL, `hidden`), a click being
-  ⌥⌘P's picker, and × back to ALL; the list's edge and the head's tint are the project's colour. **The head is one
-  row, the foot included** (2026-09-28): `#filters` — the magnifier, an icon at rest (`#qBtn`); open, the left cap of
+* **Two columns**: the selected project's chats → the chat. **The chat list's row — at its foot since 2026-09-28,
+  under the cards (`#sessions` rows: the list `minmax(0, 1fr)`, then the row) — is the project filter's whole cue** — the fish (the SSE light), then `#stitle`: the project's name (nothing at all on ALL, `hidden`), a click being
+  ⌥⌘P's picker, and × back to ALL; the list's edge and the row's tint are the project's colour. **It is one row, the
+  foot included** (2026-09-28): `#filters` — the magnifier, an icon at rest (`#qBtn`); open, the left cap of
   `#q` (`width: 0; flex: 1 1 0`), which takes the row's spare room and the rings' (hidden while it is open, `:has`) —
   the state chips (a dot and a count; the word from 600 px of list, the count gone under 340; `#sessions` is a size
   container) — no ＋ since 2026-09-28: ⌥⌘N, which opens on the project in view (⏎ ⏎ is a new chat there); then **`#sfoot`, in
   the head's grid row as a column of its own** (`main:not(.scompact)`): the usage. No cog: the settings are ⌘, and ···. **No « / »**: ⌘B
-  folds and unfolds. The name gives way, hence the list's 300 px minimum. On the rail the head keeps the fish and, for
-  a project, `projAbbr` (`.ab`) as the picker's handle, and `#sfoot` is its foot. ⌥⌘P's rows carry
+  folds and unfolds. The name gives way, hence the list's 300 px minimum (and the row clips rather than run the chips
+  under the usage). On the rail the fish and, for a project, `projAbbr` (`.ab`) as the picker's handle keep the bottom
+  corner, the usage's rings over them. Filled at the notch with the list under the housing, the cards start under the
+  strip (`.npad` on `#slist` and the top pill). ⌥⌘P's rows carry
   ✎ on a named project and ＋ new project, last and never filtered out. → `scripts/scenarios/project-cue.mjs`. A chat
   is *ready · clauding · done*: done is the tick only, clauding is `working`, ready is everything else (`bucket()`);
   the server keeps the finer `status` for notifications and the badge.
@@ -317,11 +319,13 @@ refuses to run against the real directory for the same reason.
   edge (`TL_CATCH`) and, while the days are out, as far right as a label has reached plus 28 px (`tl.reach`). A press
   there on no label is a press on the label ringed `.near`; a press on the thumb *as drawn* holds it where grabbed.
   → `scripts/scenarios/timeline.mjs`.
-* **The plan usage is a ring per window at the head row's end** (2026-09-28; the list's footer before): `#usage` in
-  `#sfoot`, before the cog, 14 px rings and no words; **the rows** — name, a bar in `--spend` (red from 90 %,
-  `uColor`), a tick where the window's clock stands (`uPace`, for the windows `uSpan` knows), percent, time to reset —
-  **are a panel under the row** (`.uopen`), on hover a beat late or pinned by a click on the rings (`.pin`; its heading
-  or a click elsewhere lets go). On the rail, the rings stacked with the percent inside and the cog under them. **The
+* **The plan usage is words at the row's end**: `#usage` in `#sfoot` — `5H 42%  1W 75%  F 95%`, a tag per limit
+  (`uShort`: 5H, 1W, a model's initial for its own week, CR for a credit grant — which stays out of the row, `.grant`)
+  set in the rounded face, heavy, on a wash of `--u` (the window's colour, on the chip), the percent beside it.
+  **The rows** — name, a bar in `--spend` (red from 90 %, `uColor`), a tick where the window's clock stands (`uPace`,
+  for the windows `uSpan` knows), percent, time to reset — **are a panel over the row** (`.uopen`), on hover a beat late
+  or pinned by a click on the words (`.pin`; its heading or a click elsewhere lets go). On the rail, rings stacked with
+  the percent inside and the tag under each, over the fish. **The
   markup holds both shapes** and CSS picks (`main.scompact`). `loadUsage()` on load, every `USAGE_EVERY_MS` while visible, once a window's reset
   has passed, and on the way back to a hidden page, **backing off on failures**; a failure keeps the last numbers,
   `.stale`. The server's `USAGE=off` answers `off: true` and the bar hides — every test server.

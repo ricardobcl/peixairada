@@ -21,6 +21,14 @@ also move".
   server's), Keys — one size for all three so switching does not jump. The cog and its cell at the list's foot went.
   Being modal, it takes the keys while it is up, as every dialog here does; the scenarios that set something and then
   press ⌥⌘N or ⌘B close it first.
+* **The list's row went to its foot**: the cards run from the column's top, the fish, the magnifier, the state chips
+  and the usage under them — the grid's rows swapped, nothing moved in the markup. On the rail the rings sit over the
+  fish, which keeps the bottom corner. Filled at the notch with the list under the housing, the cards start under the
+  strip instead of the head padding down.
+* **The budget is words**: `5H 42%  1W 75%  F 95%` — each limit's tag in the rounded face, heavy, on a wash of its
+  colour (orange, red from 90 %), the percent in the ink. A credit grant (Claude Code & Cowork's) has no reset, so it
+  stays out of the row and in the rows over it; four in the row ran the chips under the words at 380 px. The row clips
+  rather than overlaps at the list's narrowest.
 * **The cards are 8 px from the list's edge on both sides again** — flush on the left for a day, to use the room the
   timeline's column had held; symmetric reads better than 8 px more.
 
