@@ -1,6 +1,6 @@
 // The cog's setup (2026-09-28): what had been written into the page and the server for one Mac, set from the
-// popover — a folder of repos and its org, ⌥⌘O's project, a short name and a colour per project — and the
-// switches that are this browser's (⌥ as Meta, how a date is written; fold code until 2026-09-28, always on since). Each is set the way a hand would, a
+// popover — a folder of repos and its org, ⌥⌘O's project, a short name and a colour per project — and the switch
+// that is this browser's (⌥ as Meta; fold code and how a date is written were beside it for a day, 2026-09-28). Each is set the way a hand would, a
 // box and its change, and read back from the server's word and from what it paints: the folders ⌥⌘N offers, the
 // crystal ball, the rail's short name, a card's colour, the day lines. A folder that is not there is refused, beside
 // the box, and the row stays as the server has it.
@@ -86,14 +86,13 @@ export default async function (ctx) {
   await until(async () => !(await cfg()).projects[tmp], { what: 'the colour taken off — and the row with it, nothing left on it' });
   await ctx.waitFor(`${cardOf(plain.id)}.style.getPropertyValue('--repo') !== '#cc3366'`, { what: 'the card back to what Peacock says' });
 
-  // ---- this browser's: how a date is written, ⌥ in the terminal (the code's fold went on 2026-09-28: always on) ----
-  await ctx.evaluate(`document.querySelector('#datesStops [data-v="ymd"]').click()`);
+  // ---- this browser's: ⌥ in the terminal (the code's fold, always on, and the dates, day first, went on 2026-09-28) ----
   out.days = await ctx.evaluate(`[...document.querySelectorAll('#slist .gsep.day b')].map(b => b.textContent).filter(t => t !== 'today')`);
-  ctx.assert.ok(out.days.length && out.days.every(d => /^\d{4}-\d\d-\d\d$/.test(d)), `the day lines year first: ${out.days}`);
-  await ctx.evaluate(`document.querySelector('#datesStops [data-v="dmy"]').click()`);
+  ctx.assert.ok(out.days.length && out.days.every(d => /^\d\d-\d\d-\d{4}$/.test(d)), `the day lines day first: ${out.days}`);
+  ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#datesStops')`), false, 'no choice of how a date is written');
   await ctx.evaluate(`document.querySelector('#optMeta').click()`);
   out.prefs = await ctx.peix('prefs()').then(p => ({ foldCode: p.foldCode, foldBy: p.foldBy, optMeta: p.optMeta, dates: p.dates }));
-  ctx.assert.deepEqual(out.prefs, { foldCode: undefined, foldBy: undefined, optMeta: false, dates: 'dmy' });
+  ctx.assert.deepEqual(out.prefs, { foldCode: undefined, foldBy: undefined, optMeta: false, dates: undefined });
   ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#foldCode')`), false, 'no switch for the code\'s fold');
   return out;
 }

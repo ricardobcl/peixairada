@@ -339,7 +339,7 @@ refuses to run against the real directory for the same reason.
 * **State lives in three places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done ticks,
   named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, the
   setup; `STATE_FILE` overrides) shared by the app and every browser; the browser's `localStorage` `peixairada-prefs`
-  (selected project, filters, widths, zoom, folds, card size, ⌥ as Meta, dates, drawer open/height — the keys are the `prefs` literal,
+  (selected project, filters, widths, zoom, folds, card size, ⌥ as Meta, drawer open/height — the keys are the `prefs` literal,
   and old ones are deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it
   renders reads its state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
 * **The setup is the server's, and nothing about one Mac is written in the code** (2026-09-28): `config` in the state
@@ -443,8 +443,7 @@ refuses to run against the real directory for the same reason.
   menu's last row) and, with no chat open, the empty header's own ··· (`#noChatMore`, delegated — `leaveChat` rewrites
   the header). A head (the name, the counts, × `#settingsClose`), a segmented control (`.stabs`) over three panes
   (`.spane`): **Board** — the notifications switch (`#notifyOn`), the rings' step (`#ringsInStep`), the cards' size
-  (`.dens`), ⌥ as Meta (`#optMeta`), how a date is written (`#datesStops` →
-  `fmtDate`), what is hidden (`#hidden`); **Setup** — the server's (`#setup`); **Keys** — the list (`.keys`). The class
+  (`.dens`), ⌥ as Meta (`#optMeta`), what is hidden (`#hidden`) — no date format (DD-MM-YYYY, `fmtDate`); **Setup** — the server's (`#setup`); **Keys** — the list (`.keys`). The class
   is still `pop`, so every row keeps its `.pop …` rule. Esc, the backdrop, ×, ⌘, or ⌘W close it; its `close` drops a
   setup row half typed. **It is modal**: the pane is down while it is up (`postPane`), and the ⌥⌘ / ⌘ keys are swallowed
   under it — close it first (the scenarios do). The fish is the SSE light and, clicked, **the About box** (`#about`, a modal dialog:

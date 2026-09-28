@@ -29,6 +29,8 @@ dates"; "make the 'setup' inside settings pretty - seems pretty barebones".
 * **Long code is always folded.** A block over six lines is a `details` with its language and length as the summary,
   in every chat; the settings' *fold code* switch and the `{ }` row under ··· (a chat's own word over it, since
   2026-09-20) are gone, and their prefs (`foldCode`, `foldBy`) are deleted on load. A fold still opens with a click.
+* **A date is DD-MM-YYYY again**, the day lines', the transcript's and the timeline's (without the year there): the
+  settings' *dates* (year or month first, added that morning with the setup) is gone and `prefs.dates` deleted on load.
 
 ## Decisions of 2026-09-29, later — keyboard first: no ＋, settings under ···, the row at the bottom, the budget in words, the splitter's black
 

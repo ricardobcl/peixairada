@@ -1203,7 +1203,6 @@
       <span class="stops"><span data-v="0" title="your last prompt and Claude's last reply, as always">large</span><span data-v="1" title="only the last word — yours or Claude's, whichever came last">medium</span><span data-v="2" title="neither: the title, its chips and its PRs">compact</span></span>
     </div>
     <label class="opt" title="On, ⌥ with a letter is Meta in the terminal, as iTerm's Esc+ — ⌥B ⌥F move a word, ⌥⌫ deletes one; ⌥ with a digit or a sign still types what the keyboard makes. Off, ⌥ types whatever your layout composes (⌥L is @ on a German one)"><input type="checkbox" id="optMeta" checked><span><b>⌥ is Meta</b> in the terminal — off, ⌥ types what your keyboard composes</span></label>
-    <div class="dens dates" title="How a day is written — the lines between the cards, the transcript's, the timeline's"><b>dates</b><span class="stops" id="datesStops"></span></div>
     <div id="hidden" class="hid"></div>
   </div>
   <div class="spane" data-tab="setup" hidden><div id="setup" class="setup"></div></div>
@@ -1305,14 +1304,15 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, dates: 'dmy' };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
   delete prefs.projectsCompact;   // the projects column's strip or full width — there is no column since 2026-09-24
   // the switches nothing set since the cog was pared down (2026-09-21): a saved value was the only way to flip them;
-  // and the code's fold, the settings' and each chat's, since long code is always folded (2026-09-28)
-  for (const k of ['sound', 'showAll', 'toolsMode', 'foldCode', 'foldBy']) delete prefs[k];
+  // and the code's fold, the settings' and each chat's, since long code is always folded, and how a date is written,
+  // day first again (both 2026-09-28)
+  for (const k of ['sound', 'showAll', 'toolsMode', 'foldCode', 'foldBy', 'dates']) delete prefs[k];
   // the one-of-four filter (before 2026-09-20) becomes the set of states shown; 'all' was every state
   if ('filter' in prefs) { prefs.filters = prefs.filter === 'all' ? ['ready', 'working', 'done'] : [prefs.filter]; delete prefs.filter; }
   if (!Array.isArray(prefs.filters)) prefs.filters = ['ready', 'working', 'done'];
@@ -1755,13 +1755,9 @@
   // between cards", then "remove the lines left and right of the date"; still fish either side before, from the same
   // day's "center the date … stop the animation, leave it static with the fishes") — nothing moves, plain markup.
   const pad2 = n => String(n).padStart(2, '0');
-  // How a date is written, the cog's *dates* (2026-09-28; DD-MM-YYYY alone before): day first, year first, or month
-  // first — `short` drops the year, for the timeline's labels.
-  const DATES = { dmy: ['-', 'd', 'm', 'y'], ymd: ['-', 'y', 'm', 'd'], mdy: ['/', 'm', 'd', 'y'] };
-  const fmtDate = (d, short, how = prefs.dates) => {
-    const [sep, ...order] = DATES[how] || DATES.dmy, part = { d: pad2(d.getDate()), m: pad2(d.getMonth() + 1), y: String(d.getFullYear()) };
-    return order.filter(k => !short || k !== 'y').map(k => part[k]).join(sep);
-  };
+  // How a date is written: DD-MM-YYYY, `short` without the year for the timeline's labels. The settings offered year
+  // and month first for a day (2026-09-28), gone the same day (Ricardo: "remove option to customize dates").
+  const fmtDate = (d, short) => `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}${short ? '' : `-${d.getFullYear()}`}`;
   const dayOf = ts => {   // a timestamp's day, the way the list and the transcript both write it
     const d = new Date(ts); if (isNaN(d)) return '';
     return new Date(d).setHours(0, 0, 0, 0) === new Date().setHours(0, 0, 0, 0) ? 'today' : fmtDate(d);
@@ -2743,20 +2739,10 @@
     });
     box.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input[type=text]')) e.target.blur(); });
   }
-  // The switches that are this browser's (2026-09-28): the code's fold, ⌥ in the terminal, how a date is written.
-  const DATE_TIP = { dmy: 'day first', ymd: 'year first', mdy: 'month first' };
-  function showPrefs() {
-    $('#optMeta').checked = prefs.optMeta !== false;
-    const at = new Date(), on = prefs.dates in DATES ? prefs.dates : 'dmy';
-    $('#datesStops').innerHTML = Object.keys(DATES).map(k => `<span data-v="${k}"${k === on ? ' class="on"' : ''} title="${DATE_TIP[k]}">${fmtDate(at, false, k)}</span>`).join('');
-  }
+  // The switch that is this browser's alone (2026-09-28): ⌥ in the terminal. The code's fold and how a date is
+  // written were beside it for a day.
+  $('#optMeta').checked = prefs.optMeta !== false;
   $('#optMeta').addEventListener('change', e => { prefs.optMeta = e.target.checked; savePrefs(); for (const tm of terms) if (tm.xt) tm.xt.options.macOptionIsMeta = prefs.optMeta; });
-  $('#datesStops').addEventListener('click', e => {
-    const x = e.target.closest('[data-v]'); if (!x) return;
-    prefs.dates = x.dataset.v; savePrefs(); showPrefs();
-    tl.sig = ''; renderBoard(); if (state.current) renderLog(true);   // the day lines, the timeline's labels, the transcript's
-  });
-  showPrefs();
   // ---- the colour picker ------------------------------------------------------------------
   // One real <input type=color> for the page (#colorInput): the squares are re-rendered on every update, so the
   // control is moved under the square that was clicked and opened from there — the panel stays wired to it
