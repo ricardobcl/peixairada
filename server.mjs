@@ -290,6 +290,7 @@ function newSession(id, file) {
     title: null, customTitle: null, lastPrompt: null, lastReply: null, prs: [],
     status: 'unknown', statusSince: null, lastActivity: null, lastUserAt: null, lastReplyAt: null,
     startedAt: null,   // when a chat with no transcript yet came to be (loadRegistry) — the card's time and place until a first word lands
+    openedAt: null,    // when a page last opened the chat (ms): its PRs are polled as if it had just been touched (prEvery)
     live: null, alive: false, entrypoint: null, entrypointAt: null,   // last 'entrypoint' a user/assistant line carried ('claude-vscode' | 'cli'), and when
     rivals: [],   // other live processes on this chat (registry entries beyond `live`) — see inVsCode()
     entries: [], entryCount: 0, loaded: false,
@@ -477,25 +478,62 @@ function prTitle(s) {
 // ---- …and whether they are open, merged or closed --------------------------------------------
 // The transcript never says, so the colour comes from GitHub through `gh` — the user's own
 // authenticated CLI, which reads its token from its config and so works from the app's bare
-// launchd environment too. Lazy: statuses are fetched when a chat is opened and when a PR comes up
-// live, never for the whole history at boot. One GraphQL call covers a whole batch.
-const PR_TTL_MS = Number(process.env.PR_TTL_MS || 10 * 60_000);
+// launchd environment too. One GraphQL call covers a whole batch. Every PR is asked about once per
+// run — titles head every card — and then **polled by how recently its chat was touched** (2026-09-28;
+// nothing polled before, so a PR merged on GitHub stayed open on the card until its chat was opened):
+// touched is a word in the chat, or a page opening it. A chat past the last row of PR_POLL is not
+// polled at all; opening it asks at once and makes it recent again. A PR said again live, or on the
+// chat being opened, is asked about unless it was within PR_TTL_MS.
+const PR_POLL = [                       // [touched within, asked every]
+  [60 * 60_000, 60_000],                // the last hour: every minute
+  [24 * 60 * 60_000, 5 * 60_000],       // the last day: every five minutes
+  [3 * 24 * 60 * 60_000, 30 * 60_000]   // the last three days: every half hour
+];
+const PR_TTL_MS = Number(process.env.PR_TTL_MS || 30_000);
 const PR_TTL_ERROR_MS = 60 * 60_000;   // a PR we cannot see (private, deleted, no access): back off
 const PR_BATCH = 40;
 const prStatus = new Map();            // url -> { state, title, checkedAt }
 const prQueue = new Set();
 let prTimer = null, prBusy = false, ghGone = false;
+let prAsking = new Set();              // the batch gh is being asked about now: a sweep or a mention meanwhile waits for it
+let prPause = 0, prPauseUntil = 0;     // gh failing as a whole (offline, rate-limited): the polls back off, 1 min doubling to 30
 
-/** Merged and closed are terminal — never asked about twice. */
-function prFresh(url) {
+/** Asked about within `ttl`. Merged and closed are terminal — never asked about twice. */
+function prFresh(url, ttl = PR_TTL_MS, now = Date.now()) {
   const e = prStatus.get(url);
   if (!e) return false;
   if (e.state === 'merged' || e.state === 'closed') return true;
-  return Date.now() - e.checkedAt < (e.state ? PR_TTL_MS : PR_TTL_ERROR_MS);
+  return now - e.checkedAt < (e.state ? ttl : Math.max(ttl, PR_TTL_ERROR_MS));
 }
 
-function queuePr(url) {
-  if (ghGone || prQueue.has(url) || prFresh(url)) return;
+const touchedAt = s => Math.max(Date.parse(s.lastActivity) || 0, s.openedAt || 0);
+/** How often a chat's PRs are polled, by how long ago it was touched; Infinity past PR_POLL's last row. */
+function prEvery(s, now = Date.now()) {
+  const age = now - touchedAt(s);
+  return PR_POLL.find(([within]) => age < within)?.[1] ?? Infinity;
+}
+
+/**
+ * The PRs due a look, the most recently touched chat's first: never asked about, or not since the most
+ * eager chat mentioning it asks for. At boot that is every PR, the chats in play first.
+ */
+function duePrs(list, now = Date.now()) {
+  const every = new Map();   // url -> the shortest interval a chat mentioning it asks for
+  for (const s of [...list].sort((a, b) => touchedAt(b) - touchedAt(a))) {
+    const ms = prEvery(s, now);
+    for (const pr of s.prs) if (!(every.get(pr.url) <= ms)) every.set(pr.url, ms);
+  }
+  return [...every].filter(([url, ms]) => !prFresh(url, ms, now)).map(([url]) => url);
+}
+
+/** On the registry poll, and once at boot. */
+function sweepPrs() {
+  if (ghGone || Date.now() < prPauseUntil) return;
+  for (const url of duePrs(sessions.values())) queuePr(url, 0);   // 0: duePrs has judged it already
+}
+
+function queuePr(url, ttl = PR_TTL_MS) {
+  if (ghGone || prQueue.has(url) || prAsking.has(url) || prFresh(url, ttl)) return;
   prQueue.add(url);
   prTimer ??= setTimeout(() => { prTimer = null; drainPrQueue(); }, 250);
 }
@@ -526,13 +564,22 @@ function drainPrQueue() {
     batch.push(url);
   }
   if (!batch.length) return drainPrQueue();
-  prBusy = true;
+  prBusy = true; prAsking = new Set(batch);
   execFile(bin, ['api', 'graphql', '-f', `query={${parts.join(' ')}}`], { timeout: 30_000, maxBuffer: 8e6 }, (err, stdout, stderr) => {
-    prBusy = false;
+    prBusy = false; prAsking = new Set();
     // A PR we cannot resolve fails its own alias only: gh exits non-zero but still prints the rest.
     let data = null;
     try { data = JSON.parse(stdout || '{}').data; } catch {}
-    if (!data && err) console.error('[peixairada] pr status:', String(stderr || err.message).trim().split('\n')[0].slice(0, 200));
+    if (!data) {
+      // Nothing learned — offline, rate-limited, a timeout. What the cards show stands (until 2026-09-28 every PR in
+      // the batch lost its state and title), the rest of the queue is dropped, and the polls back off.
+      console.error('[peixairada] pr status:', String(stderr || err?.message || 'no data').trim().split('\n')[0].slice(0, 200));
+      prQueue.clear();
+      prPause = Math.min(prPause ? prPause * 2 : 60_000, 30 * 60_000);
+      prPauseUntil = Date.now() + prPause;
+      return;
+    }
+    prPause = 0;
     batch.forEach((url, i) => {
       const pr = data?.[`p${i}`]?.pullRequest;
       const state = !pr ? null
@@ -696,7 +743,7 @@ function indexFile(file, { full = false } = {}) {
   const prev = sessions.get(id);
   const s = newSession(id, file);
   if (prev) {
-    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'agentsRunning', 'replying', 'replyError']) s[k] = prev[k];
+    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'openedAt', 'agentsRunning', 'replying', 'replyError']) s[k] = prev[k];
     clearTimeout(prev.pushTimer); clearTimeout(prev.notifyTimer);
     s.silent = !!prev.file;
   }
@@ -1632,7 +1679,8 @@ const server = createServer(async (req, res) => {
       if (!s) return json(res, 404, { error: 'unknown session' });
       if (!s.loaded && s.file) { indexFile(s.file, { full: true }); applyLiveness(sessions.get(m[1])); }
       const cur = sessions.get(m[1]);
-      queueSessionPrs(cur);   // opening a chat is what refreshes its PR statuses; the SSE push carries them in
+      cur.openedAt = Date.now();
+      queueSessionPrs(cur);   // opening a chat refreshes its PR statuses and keeps them polled; the SSE push carries them in
       return json(res, 200, { session: summary(cur), entries: cur.entries });
     }
     // ⌥⌘T: a zsh in the chat's folder, in the pane's zsh tab — a holder like the claude one (`zsh -l -i` in the PTY),
@@ -1856,7 +1904,7 @@ server.on('upgrade', attachTermSocket);
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { fold, newSession, summary, agentRunning, notePr, notePrs, prTitle, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { fold, newSession, summary, agentRunning, notePr, notePrs, prTitle, duePrs, prStatus, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
@@ -1866,8 +1914,8 @@ await adoptHolders();   // before the registry: a drawer's own process is what m
 loadRegistry();
 indexing = false;
 // Statuses alone could wait for a chat to be opened; titles cannot — they head every card, so the whole
-// board needs them up front. Batched 40 to a GraphQL call, in the background, once per run.
-for (const s of sessions.values()) queueSessionPrs(s);
+// board needs them up front. Batched 40 to a GraphQL call, in the background, the recent chats' first.
+sweepPrs();
 pollPeacock();
 setInterval(pollPeacock, PEACOCK_POLL_MS);
 pollRepos();
@@ -1882,6 +1930,7 @@ setInterval(() => {
   }
   sweepTasks();
   sweepDrawers();
+  sweepPrs();
 }, REGISTRY_POLL_MS);
 console.log(`[peixairada] indexed ${sessions.size} sessions (${[...sessions.values()].filter(s => s.alive).length} alive) from ${CLAUDE_DIR} in ${Date.now() - t0}ms`);
 

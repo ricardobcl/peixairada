@@ -4,6 +4,39 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-28.
 
+## Decisions of 2026-09-28, afternoon — a PR is polled by how recently its chat was touched
+
+Ricardo: "what's the logic behind updating the PR status? seems like it takes a while — we should improve the algorithm
+to poll more for recent ones, and not poll after 3 days — unless we open the chat for example".
+
+* **What it was**: nothing polled. Boot asked GitHub about every PR once (for the cards' titles), in the sessions'
+  readdir order; after that a PR was asked about only when its chat was opened or the PR was said again live, and even
+  then not within 10 min (`PR_TTL_MS`). A PR merged on GitHub stayed open on its card until one of those happened —
+  or forever, for a chat nobody reopened.
+* **Now** (`duePrs`, from `sweepPrs` on the registry poll): a PR never asked about is due whatever its age — boot is
+  that, now in recency order, the chats in play first; otherwise the most recently touched chat mentioning it sets the
+  pace (`PR_POLL`): every minute within the hour, 5 min within the day, 30 within three days, never after. **Touched**
+  is the chat's `lastActivity` or `openedAt` — a page fetching its messages — so opening an old chat asks at once and
+  keeps it polled for as long as it counts as recent. A PR said live, or on the chat being opened, is asked unless it
+  was within `PR_TTL_MS`, now 30 s. Merged and closed are still terminal; a PR GitHub will not show us still backs off
+  an hour.
+* **A failed call no longer wipes anything**: `gh` failing as a whole (no `data` — offline, a timeout, rate-limited)
+  used to set every PR of the batch to `state: null, title: null` for an hour, which the cards showed as colourless
+  chips and the transcript's title instead of the PR's. With a poll every minute that would have been every blip; now
+  the entries stand, the queue is dropped, and the polls pause 1 min, doubling to 30. A PR GitHub cannot resolve still
+  fails its own alias only (checked: `data.p1: null` beside `data.p0`, exit 1).
+* **The numbers, the board as it stood**: 336 chats, 238 PRs — 8 in chats touched within the hour, 22 within the day,
+  16 within three days, 192 older; 138 merged and 8 closed are never asked again. Boot is 6–7 calls of 40 at ≈ 1.5 s
+  each; after that about one call a minute. The rate limit (5000 points an hour) is nowhere near.
+* **A PR being asked about is not queued again** (`prAsking`): the first live run asked the same 6 PRs twice, a second
+  apart. A sweep that lands while a batch is in flight finds its PRs unanswered and queues them again, to be asked the
+  moment the first answer comes; a run with logging caught one 10 s after boot, 20 PRs in flight.
+* Checked: `test/pr-poll.test.mjs` (the tiers, the opening, a PR in two chats, terminal and unseen states); a throwaway
+  server on the real `~/.claude` (port 7399, its own state file, a `gh` that logs each call): boot asked 220 PRs in
+  six calls, answered in 10 s, the newest chat's PR first; a chat 4.9 days old, once opened, led every sweep after
+  (its 4 drafts and the 2 open PRs of the last hour, every 60–70 s — the sweep rides the 10 s registry poll); three
+  PRs another session wrote live were asked within 250 ms, then joined the minute's sweep; no PR asked twice.
+
 ## Decisions of 2026-09-28, later — without a notch, the fill hides the menu bar outright
 
 Ricardo, on the DELL with the MacBook mirroring it: "I'm on a external monitor and thus I don't have a notch. the menu

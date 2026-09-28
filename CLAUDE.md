@@ -69,7 +69,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | Work behind the turn | `Monitor` and a `Bash` with `run_in_background` leave a task running: the tool_result names it (`Monitor started (task …`, `Command running in background with ID: …`) and `<task-notification>` lines carry its events and, with a `<status>`, its end. `s.tasks` → `tasks` on the summary; a task dies with the claude that started it (`live.startedAt`), at its expiry (`MONITOR_MS`, `TASK_MAX_MS`), or with the chat's process (`pruneTasks`, on the poll — `runningTasks` only reads). **A completion notice delivered mid-turn never becomes a line**, so a background command is also asked about directly: `sweepTasks` runs **one** `lsof -F n` per poll over every task's output file (the harness holds it open until the command exits), after `TASK_GRACE_MS`, never on lsof's own failure, names compared resolved |
 | Titles | board title (state file) › `custom-title` › the oldest still-open PR › `ai-title` › last prompt — `summary()`, `prTitle()` |
 | Model | `message.model` on assistant lines, the last one wins, `<synthetic>` skipped — `s.model`; the card wears an F for Fable (`onFable`) |
-| PRs mentioned | `pr-link` lines *and* GitHub pull URLs in user/assistant text; most recently mentioned first; `gh api graphql` batched for state and title (one of the two network calls) |
+| PRs mentioned | `pr-link` lines *and* GitHub pull URLs in user/assistant text; most recently mentioned first; `gh api graphql` batched for state and title (one of the two network calls), polled by the chat's recency — see *The server* |
 | Plan usage (the chat list's footer) | `GET https://api.anthropic.com/api/oauth/usage` with Claude Code's own OAuth bearer from the keychain item *Claude Code-credentials*; `USAGE=off` disables; the token never reaches the page. → Findings: *plan usage* |
 | Permission prompts | the registry's `waiting` (above) — they never reach the transcript |
 | Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login zsh (mise's PATH); it registers like any CLI run; a new chat is tied to its session by pid. **A folder whose Taskfile launches claude** (a task whose description mentions Claude) starts new chats as `task <name>` instead: `GET /api/launchers?cwd=` lists them (`task --list --json`, cached by the file's mtime, `TASK_BIN` overrides), `POST /api/terminals {cwd, task}` checks the name; claude is then a *descendant* of the PTY's pid, found through `ps` (`linkTermToRegistry`, `t.claudePid`), which is also where the launcher's name is written down for good (`noteEnv` → `envs` in the state file → `s.env`, what ⌥⌘O scopes by). A resume never goes through task. **`/clear` (or `/resume`) in the drawer** gives that pid a new session id and `linkTermToRegistry` moves the holder to it and pushes **both** chats; the page follows the holder (`terminal` event → `openSession`), the old chat is a stale card |
@@ -85,7 +85,7 @@ refuses to run against the real directory for the same reason.
   WebSockets have no same-origin rule. → `test/origin.test.mjs`.
 * **A chat re-read is silent and keeps what the transcript cannot say** (`indexFile` on a chat the board holds —
   opening one longer than `TAIL_BYTES`, a truncated file): `s.silent` stops `queueNotify` for the re-read (every reply
-  in it was alerted once), `live`/`rivals`/`alive`/`startedAt`/`agentsRunning`/`replying`/`replyError` carry over, a
+  in it was alerted once), `live`/`rivals`/`alive`/`startedAt`/`openedAt`/`agentsRunning`/`replying`/`replyError` carry over, a
   tail re-read keeps `prev.tasks`, and the replaced object's timers are cleared. A registry-made placeholder (no file
   yet) is **not** silent: its first reply is news. → `test/reindex.test.mjs`.
 * **`summary()` reads only.** `pruneTasks` (the poll) deletes expired tasks; `sortedSummaries` builds one
@@ -95,6 +95,13 @@ refuses to run against the real directory for the same reason.
 * **The holder socket is `setEncoding('utf8')` on both ends** — a glyph split across chunks decodes whole.
 * **Every CLI the server shells out to goes through `findBin()`** — the app's server has a bare PATH; `<NAME>_BIN`
   overrides. The two network calls are `gh` (PR state and title) and the usage endpoint.
+* **A PR is polled by how recently its chat was touched** (2026-09-28): `sweepPrs` on the registry poll queues what
+  `duePrs` says — a PR never asked about (so boot asks every one, the recent chats' first), else by `PR_POLL`: every
+  minute for a chat touched within the hour, 5 min within the day, 30 within three days, **never after**. Touched is
+  `lastActivity` or `s.openedAt` — a page fetching the chat's messages, which also asks at once, as a PR said live does
+  (unless asked within `PR_TTL_MS`, 30 s). The most recent chat mentioning a PR sets its pace; merged and closed are
+  never asked twice, one in flight is not queued (`prAsking`). **A call that fails as a whole changes nothing** (it used to wipe the batch's states and titles)
+  and pauses the polls, 1 min doubling to 30. → `test/pr-poll.test.mjs`.
 
 ## The board
 
@@ -638,7 +645,7 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
 * **Making VS Code's tab follow a chat continued elsewhere** — the extension watches only `~/.claude/sessions/`.
 * **Attaching to a *live* session from the board** — the session's inbox socket cannot answer a permission
   prompt on your behalf, and its message JSON is undocumented. Live chats are refused on purpose.
-* **PR status costs a network call**, so boot queues every PR once, batched; merged/closed cached forever,
-  open re-checked after `PR_TTL_MS`. A card is titled by the oldest still-open PR (`prTitle()`).
+* **PR status costs a network call**, so a chat untouched for three days is not polled — opening it asks — and
+  merged/closed are cached forever (see *The server*). A card is titled by the oldest still-open PR (`prTitle()`).
 * **The app is signed for this machine only**, not for distribution.
 * **Chat-level pins** were dropped for sorting by your own last touch; **board-set colours** for Peacock's.
