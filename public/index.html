@@ -513,6 +513,11 @@
      2 px in: the band the light runs in is where the border was, and what it runs on is the border's colour (--track). */
   .card:is(.working, .watching):not(.asking) { border-width: 0; padding: 10px 12px 9px; }
   .card.active:is(.working, .watching) { outline-width: 1px; outline-offset: 0; }   /* the open card's edge outside the band, not over it */
+  /* The open chat's light, when it runs past the card (drawTrail): the overlay is clipped to the band along the shape's
+     outline, a faint track of the light's colour on it, and the comet's blobs are moved by their own animations. */
+  #trail { position: fixed; inset: 0; z-index: 30; pointer-events: none; background: color-mix(in srgb, var(--lit) 25%, transparent); }
+  #trail i { position: absolute; left: 0; top: 0; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; background: radial-gradient(closest-side, var(--lit) 30%, transparent); will-change: transform; }
+  main.trail #slist > .card.active::before, main.trail #slist > .card.active::after { content: none; }
   .card.working::before, .card.watching::before { content: ''; position: absolute; z-index: -1; left: 50%; top: 50%; width: 160%; aspect-ratio: 1; margin: -80% 0 0 -80%; pointer-events: none;
     background: repeating-conic-gradient(var(--track) 0 calc(var(--seg) * .45), var(--lit) calc(var(--seg) * .92), var(--track) var(--seg));
     animation: ring var(--spins, 1.4s) linear infinite; }
@@ -1158,6 +1163,7 @@
      one. → scripts/scenarios/reduced-motion.mjs */
   @media (prefers-reduced-motion: reduce) {
     .card.working::before, .card.watching::before { animation: none; background: var(--lit); }
+    #trail { background: var(--lit); }   /* no comet under it (drawTrail makes none): the band steady in the light's colour */
     .card.asking { animation: none; border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
     .card.landed { animation: none; }
     .dot.working, .dot.needs-input { animation: none; }
@@ -1229,6 +1235,7 @@
     </div>
   </section>
 </main>
+<div id="trail" aria-hidden="true" hidden></div>
 <dialog id="settings" class="pop" aria-label="Settings" tabindex="-1">
   <div class="shd2"><h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4><button class="sclose" id="settingsClose" title="Close · esc" aria-label="Close">×</button></div>
   <nav class="stabs" role="tablist"><button role="tab" data-tab="board" class="on">Board</button><button role="tab" data-tab="setup">Setup</button><button role="tab" data-tab="keys">Keys</button></nav>
@@ -1986,24 +1993,124 @@
     requestAnimationFrame(() => {
       listChanged.queued = false;
       const g = listGeom();   // every read of the frame first, then the writes: a read after a write is a layout each (2026-09-27)
-      drawEdges(g); drawTimeline(g); drawSplit(g);
+      drawEdges(g); drawTimeline(g); drawSplit(g); drawTrail(g);
     });
   }
   /** The splitter in the open chat's colour down to where its card ends, as the list is scrolled; black under it. */
   function drawSplit(g) {
-    const open = g.cards.find(c => c.el.classList.contains('active'));
-    const end = !open ? g.box.top : Math.max(g.box.top, Math.min(g.box.bottom, g.box.top + open.top + open.h - g.top));
-    const px = `${Math.max(0, Math.round(end - g.split))}px`, sp = $('#splitter');
+    const px = `${Math.max(0, Math.round(splitEnd(g) - g.sp.top))}px`, sp = $('#splitter');
     if (sp.style.getPropertyValue('--split') !== px) sp.style.setProperty('--split', px);
+  }
+  /** Where the splitter's colour ends, on screen: the open card's bottom, held inside the list's window. */
+  const splitEnd = g => !g.open ? g.box.top : Math.max(g.box.top, Math.min(g.box.bottom, g.box.top + g.open.top + g.open.h - g.top));
+  // ---- the open chat's light runs on past its card ----------------------------------------------------------------
+  // (2026-09-29, Ricardo: "should now travel across the vertical separator, go around the project box at the top of the
+  // chat and go back again"). The open card, the splitter down to it and the project's box atop the chat are one shape
+  // in one colour; while the chat is clauding or watching, its light runs round the edge of that shape rather than the
+  // card's alone — clockwise, as the ring turns: up the splitter, round the box, down again and round the card.
+  // #trail is an overlay the window's size, clipped to a band as wide as a card's border just inside the shape's outline
+  // (clip-path, even-odd: the outline and the same inset). The light is a comet of round blobs, the head brightest,
+  // each moved along the outline by a transform — the compositor's kind of motion, like the ring. Its speed is the
+  // ring's (the card's perimeter per --spins), its lights the card's, one per sub-agent; the card's own ring stands down
+  // (main.trail). Drawn in the list's frame; when the shape changes (a scroll, a resize) each light keeps its place on
+  // the outline, which starts at the box's top right, the corner that does not move. On the rail, nothing: no splitter.
+  const TRAIL_W = 2, TRAIL_D = 64, TRAIL_GAP = 22;   // the band, a blob's diameter, a comet's spacing
+  const trail = { sig: '', loop: [], blobs: [], L: 0, v: 0, head: 0, at: 0 };
+  /** The outline of a union of rectangles — the longest loop, clockwise on screen (the inside on the right), from its
+   *  top-right corner, straight runs merged. Edges within 3 px are one, so a pixel's step makes no notch. */
+  function outline(rects) {
+    const snap = vals => { const m = new Map(); let last = null; for (const v of [...new Set(vals)].sort((a, b) => a - b)) { if (last === null || v - last >= 3) last = v; m.set(v, last); } return m; };
+    const mx = snap(rects.flatMap(r => [r.l, r.r])), my = snap(rects.flatMap(r => [r.t, r.b]));
+    const rs = rects.map(r => ({ l: mx.get(r.l), r: mx.get(r.r), t: my.get(r.t), b: my.get(r.b) })).filter(r => r.r > r.l && r.b > r.t);
+    const xs = [...new Set(rs.flatMap(r => [r.l, r.r]))].sort((a, b) => a - b), ys = [...new Set(rs.flatMap(r => [r.t, r.b]))].sort((a, b) => a - b);
+    const cell = (i, j) => i >= 0 && j >= 0 && i < xs.length - 1 && j < ys.length - 1 && rs.some(r => r.l <= xs[i] && xs[i + 1] <= r.r && r.t <= ys[j] && ys[j + 1] <= r.b);
+    const from = new Map(), edge = (a, b) => { const k = a.join(); if (!from.has(k)) from.set(k, []); from.get(k).push(b); };
+    for (let i = 0; i < xs.length - 1; i++) for (let j = 0; j < ys.length - 1; j++) {
+      if (!cell(i, j)) continue;
+      const [l, r, t, b] = [xs[i], xs[i + 1], ys[j], ys[j + 1]];
+      if (!cell(i, j - 1)) edge([l, t], [r, t]);
+      if (!cell(i + 1, j)) edge([r, t], [r, b]);
+      if (!cell(i, j + 1)) edge([r, b], [l, b]);
+      if (!cell(i - 1, j)) edge([l, b], [l, t]);
+    }
+    let best = [], bestLen = 0;
+    while (from.size) {
+      const start = from.keys().next().value, loop = [];
+      let k = start;
+      do { const outs = from.get(k), next = outs.pop(); if (!outs.length) from.delete(k); loop.push(k.split(',').map(Number)); k = next.join(); } while (k !== start && from.has(k));
+      const pts = loop.filter((p, i) => { const a = loop[(i + loop.length - 1) % loop.length], b = loop[(i + 1) % loop.length]; return !((a[0] === p[0] && p[0] === b[0]) || (a[1] === p[1] && p[1] === b[1])); });
+      const len = pts.reduce((n, p, i) => { const q = pts[(i + 1) % pts.length]; return n + Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]); }, 0);
+      if (len > bestLen) { best = pts; bestLen = len; }
+    }
+    const top = best.reduce((m, p, i) => (p[1] < best[m][1] || (p[1] === best[m][1] && p[0] > best[m][0]) ? i : m), 0);
+    return [...best.slice(top), ...best.slice(0, top)];
+  }
+  /** The loop moved w in, square corners kept: each point along both of its edges' inward normals. */
+  const insetLoop = (loop, w) => loop.map((p, i) => {
+    const a = loop[(i + loop.length - 1) % loop.length], b = loop[(i + 1) % loop.length], d1 = [Math.sign(p[0] - a[0]), Math.sign(p[1] - a[1])], d2 = [Math.sign(b[0] - p[0]), Math.sign(b[1] - p[1])];
+    return [p[0] + w * (-d1[1] - d2[1]), p[1] + w * (d1[0] + d2[0])];
+  });
+  const loopPath = loop => `M${loop.map(p => `${p[0]} ${p[1]}`).join('L')}Z`;
+  function drawTrail(g) {
+    const el = $('#trail'), t = g.trail;
+    const off = () => { if (!trail.sig) return; trail.sig = ''; trail.loop = []; el.hidden = true; for (const b of trail.blobs) b.remove(); trail.blobs = []; $('#main').classList.remove('trail'); };
+    if (!t) return off();
+    const rects = [];
+    if (t.box) rects.push({ ...t.box, l: g.sp.right });
+    const end = splitEnd(g);
+    if (end > g.sp.top + 1) rects.push({ l: g.sp.left, t: g.sp.top, r: g.sp.right, b: end });
+    if (t.card) { const ct = Math.max(g.box.top, t.card.top), cb = Math.min(g.box.bottom, t.card.bottom); if (cb > ct + 1) rects.push({ l: t.card.left, t: ct, r: g.sp.left, b: cb }); }
+    const loop = outline(rects.map(r => ({ l: Math.round(r.l), t: Math.round(r.t), r: Math.round(r.r), b: Math.round(r.b) })));
+    if (loop.length < 4) return off();
+    const mid = insetLoop(loop, TRAIL_W / 2), seg = mid.map((p, i) => { const q = mid[(i + 1) % mid.length]; return Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]); });
+    const L = seg.reduce((a, b) => a + b, 0), v = t.perim / t.spins, K = REDUCED.matches ? 0 : Math.max(2, Math.round(t.perim * .47 / t.n / TRAIL_GAP)), n = t.n;
+    const sig = `${loopPath(loop)}|${t.lit}|${v}|${n}|${K}`;
+    if (sig === trail.sig) return;
+    const first = !trail.sig; trail.sig = sig; trail.loop = loop;
+    el.hidden = false; el.style.setProperty('--lit', t.lit);
+    el.style.clipPath = `path(evenodd, '${loopPath(loop)} ${loopPath(insetLoop(loop, TRAIL_W))}')`;
+    $('#main').classList.add('trail');
+    // where the head is now on the old outline, carried onto the new one (both start at the box's top right)
+    const now = document.timeline.currentTime || 0;
+    trail.head = first || !trail.L ? 0 : ((trail.head + trail.v * (now - trail.at) / 1000) % trail.L + trail.L) % L;
+    Object.assign(trail, { L, v, at: now });
+    let s0 = 0;
+    const frames = mid.map((p, i) => { const f = { transform: `translate(${p[0]}px, ${p[1]}px)`, offset: s0 / L }; s0 += seg[i]; return f; });
+    frames.push({ transform: frames[0].transform, offset: 1 });
+    const dur = L / v * 1000;
+    if (trail.blobs.length !== n * K) {
+      for (const b of trail.blobs) b.remove();
+      trail.blobs = Array.from({ length: n * K }, (_, j) => { const b = document.createElement('i'), i = j % K; b.style.opacity = ((1 - i / K) ** 1.5).toFixed(3); el.append(b); b.animate(frames, { duration: dur, iterations: Infinity }); return b; });
+    }
+    trail.blobs.forEach((b, j) => {
+      const a = b.getAnimations()[0], i = j % K, k = Math.floor(j / K);
+      a.effect.setKeyframes(frames); a.effect.updateTiming({ duration: dur });
+      const p = ((trail.head - k * L / n - i * TRAIL_GAP) % L + L) % L;
+      a.currentTime = p / L * dur;
+    });
   }
   /** The list's geometry, read once a frame: its window, each card's place, the rail's height and each run's top. */
   function listGeom() {
     const list = $('#slist'), rail = $('#tline'), cards = [];
     for (const c of list.children) if (c.classList.contains('card')) cards.push({ el: c, top: c.offsetTop, h: c.offsetHeight });
     const H = Math.max(1, (rail ? rail.clientHeight : 0) - 2 * TL_PAD), full = Math.max(list.scrollHeight, list.clientHeight, 1);
-    return { list, rail, cards, top: list.scrollTop, ch: list.clientHeight, sh: list.scrollHeight, H, full, y: v => TL_PAD + v / full * H,
+    const open = cards.find(c => c.el.classList.contains('active'));
+    return { list, rail, cards, open, top: list.scrollTop, ch: list.clientHeight, sh: list.scrollHeight, H, full, y: v => TL_PAD + v / full * H,
       tops: tl.runs.map(r => cards[r.i]?.top || 0), railOn: !!rail && rail.offsetParent !== null,
-      box: list.getBoundingClientRect(), split: $('#splitter').getBoundingClientRect().top };
+      box: list.getBoundingClientRect(), sp: $('#splitter').getBoundingClientRect(), trail: trailGeom(open) };
+  }
+  /** What the open chat's light needs, read with the list's geometry: null unless it is clauding or watching, a chat is
+   *  open and the list is not the rail. The card's own light — its colour, its pace, how many — when it is in the list. */
+  function trailGeom(open) {
+    const s = state.sessions.get(state.current), head = $('#shead');
+    if (!s || s.done || asking(s) || !(s.status === 'working' || watching(s)) || $('#main').classList.contains('scompact') || !head.querySelector('h2 .sep')) return null;
+    const hr = head.getBoundingClientRect(), hs = parseFloat(head.style.getPropertyValue('--hsplit')), hrow = head.style.getPropertyValue('--hrow');
+    const work = s.status === 'working', card = open?.el.getBoundingClientRect();
+    return { card, box: hs > 0 ? { l: hr.left, t: hr.top, r: hr.left + hs, b: hr.top + (hrow.endsWith('px') ? parseFloat(hrow) : hr.height) } : null,
+      // the shape is the project's colour through and through, so the light is the ink that reads on it — the header's
+      // (white on a dark colour, as the ring is on a black card); a monitor's is its own colour
+      lit: work ? inkOn(repoColor(s.cwd)) : 'var(--watch)',
+      spins: work ? 1.4 : 6, n: work ? Math.min(5, s.agents || 1) : 1, perim: card ? 2 * (card.width + card.height) : 2 * (hr.left + 150) };
   }
   function drawEdges(g) {
     const bottom = g.top + g.ch;
@@ -3181,6 +3288,7 @@
     const hr = head.getBoundingClientRect(), right = sep.getBoundingClientRect().right, d = head.querySelector('.details:not([hidden])');
     head.style.setProperty('--hsplit', `${Math.round(right - hr.left)}px`);
     head.style.setProperty('--hrow', d ? `${Math.round(d.getBoundingClientRect().top - hr.top - 3)}px` : '100%');
+    listChanged();   // the open chat's light runs round the box this paints (drawTrail)
   }
   const TITLE_MIN = 170;   // the title's own flex-basis (.shead h2), below which the row wraps
   function fitHeadPrs() {
@@ -3432,7 +3540,8 @@
       timeline: { k: tl.k, want: tl.want, press: !!tl.press, shown: $('#sessions').classList.contains('tlshow'), runs: tl.runs.map(r => ({ g: r.g, day: r.day, n: r.n, i: r.i })) },
       termId: curTerm().id, termSession: curTerm().sessionId, termExited: curTerm().exited }),
     session: id => { const s = state.sessions.get(id || state.current); return s ? JSON.parse(JSON.stringify(s)) : null; },
-    motion: () => MOTION.map(m => ({ ...m })),   // the list's last moves: {id, kind: flip | enter | leave, at}
+    motion: () => MOTION.map(m => ({ ...m })),
+    trail: () => ({ on: !!trail.sig, loop: trail.loop.map(p => [...p]), L: trail.L, v: trail.v, blobs: trail.blobs.length }),   // the open chat's light past its card (drawTrail)   // the list's last moves: {id, kind: flip | enter | leave, at}
     sessions: () => [...state.sessions.values()].map(s => ({ id: s.id, project: s.project, cwd: s.cwd, env: s.env || null, title: s.title, status: s.status, alive: s.alive, prs: (s.prs || []).length, terminal: s.terminal?.id || null, agents: s.agents || 0, tasks: s.tasks || [], ask: s.ask || null })),
     prefs: () => ({ ...prefs }),
     term: g => window.peixDebug(g),

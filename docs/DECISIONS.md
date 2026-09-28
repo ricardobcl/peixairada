@@ -14,6 +14,15 @@ now travel across the vertical separator, go around the project box at the top o
   no border (its padding takes the 2 px, so nothing inside moves) and the cover stands 2 px in: the band is the edge
   itself, and where the light is not, it shows the border's own colour (`--track`: the clauding card's 85 % mix;
   nothing on a card that is only watching). The open card's outline moves outside the band rather than over it.
+* **The open chat's light runs on past its card.** The open card bleeds into the splitter, the splitter is its colour
+  down to it, and the header's project box is the same colour: one shape. While the chat clauds, the light runs round
+  that shape's edge, clockwise as the ring turns — up the splitter, round the box, down again and round the card. An
+  overlay (`#trail`) clipped to a 2 px band along the shape's outline carries a comet of round blobs, each moved by a
+  transform animation, so it is the compositor's motion like the ring (an SVG stroke with a moving dash would have
+  repainted every frame). The light is the ink that reads on the colour — white on a dark one — since the shape is
+  the colour itself and a light in the same colour vanished on it (tried first); a faint track of it outlines the
+  shape. Pace and number of lights are the card's ring's. Scrolled out of sight, the card leaves the shape and the
+  light runs round the box alone; the rail has no splitter and keeps the card's own ring.
 
 ## Decisions of 2026-09-28, near midnight — a cleared chat on top, fewer switches, the splitter to the open card, a setup worth looking at
 

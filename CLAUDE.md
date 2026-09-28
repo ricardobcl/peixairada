@@ -195,6 +195,18 @@ refuses to run against the real directory for the same reason.
   frame, before it paints; `phaseAnims(true)` at once, the cog's switch) puts every `ring`, `blink`, `pulse`, `pix`
   and `pixhop` at start time 0 on the document clock, or, with *rings in step* off (`prefs.ringsInStep`), at a time
   hashed from the chat's id. → `scripts/scenarios/card-signals.mjs`.
+* **The open chat's light runs past its card** (2026-09-29): while it is clauding or watching, the open card, the
+  splitter down to it (`splitEnd`) and the project's box atop the chat (`--hsplit` × `--hrow`) are one shape, and the
+  light runs clockwise round that shape's edge — up the splitter, round the box, down and round the card. `#trail`, a
+  fixed overlay (z 30, no pointer), is clipped to a 2 px band inside the outline (`clip-path: path(evenodd, outline,
+  inset)`; `outline()` unions the rectangles on a grid, `insetLoop()`), and the light is a comet of round blobs
+  (`#trail i`), each moved along the outline by a WAAPI `transform` animation — no paint per frame. The light is
+  `inkOn` of the colour (the shape is the colour through and through), a monitor's `--watch`; the pace and the lights
+  are the card's ring's (its perimeter per `--spins`, one per sub-agent), and `main.trail` stands the card's own ring
+  down. `drawTrail(g)` runs in the list's frame from `trailGeom()` (read in `listGeom`) and does nothing while the
+  shape is unchanged; a changed shape keeps each light's place on the outline, which starts at the box's top right.
+  The card out of sight: the box alone. On the rail, none. Reduced motion: no blobs, the band steady.
+  `peix.trail()`. → `scripts/scenarios/open-light.mjs`.
 * **Folded (⌘B), the chat list is a rail of squares**: one per chat, `projAbbr` (the setup's short name for the ones
   the rule, `abbrRule`, gets wrong) on a solid tint of its colour, and the card's own edge — clauding, the agents' count, a monitor and a
   question still read from the rail. Everything inside the card is `display: none` there; `.abbr` is the only child
@@ -683,11 +695,11 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   finite animation (the named slides, the CSS transitions) to end and leaves the endless ones alone. `ctx`: `evaluate`, `waitFor`, `send`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
-  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The thirty-six in
+  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The thirty-seven in
   `scripts/scenarios/` are the regression checks for the drawer, the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
   marks, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, a PR's turn, the chat's links,
-  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup.
+  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.
