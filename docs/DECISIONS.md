@@ -4,6 +4,17 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-28.
 
+## Decisions of 2026-09-29, small hours — the clauding light on the border, and on past the open card
+
+Ricardo: "the clauding ring glow that goes around should 1) be on the border and not inside the border and 2) should
+now travel across the vertical separator, go around the project box at the top of the chat and got back again".
+
+* **The ring runs on the border.** The card's `overflow: hidden` clips at its padding box, so the turning square showed
+  only inside the 2 px border, in a 3 px band — the light ran just inside the coloured edge. A card with a ring now has
+  no border (its padding takes the 2 px, so nothing inside moves) and the cover stands 2 px in: the band is the edge
+  itself, and where the light is not, it shows the border's own colour (`--track`: the clauding card's 85 % mix;
+  nothing on a card that is only watching). The open card's outline moves outside the band rather than over it.
+
 ## Decisions of 2026-09-28, near midnight — a cleared chat on top, fewer switches, the splitter to the open card, a setup worth looking at
 
 Ricardo, six at once: "new chats seems to start all the way in the bottom, instead of at the top"; "remove all vscode

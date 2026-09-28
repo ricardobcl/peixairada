@@ -188,7 +188,10 @@ refuses to run against the real directory for the same reason.
   question and its answer count on the card (`askHtml`). The three CSS rules are in priority order — work beats a
   monitor, a question beats both — **and each sets every variable**. The chips beside the title say the numbers
   (`N agents`, `monitor`). **The ring is a conic gradient on a square `::before` turned by a `transform`, under an
-  `::after` cover in the card's background 3 px in** — the compositor's kind of motion — and `phaseAnims()` (once a
+  `::after` cover in the card's background 2 px in, on the edge itself** (2026-09-29): a card with a ring has no
+  border — its padding takes the 2 px, so nothing inside moves — and the band's unlit part is the border's colour
+  (`--track`); the card's overflow clips at its padding box, so with a border the light ran inside it. The compositor's
+  kind of motion — and `phaseAnims()` (once a
   frame, before it paints; `phaseAnims(true)` at once, the cog's switch) puts every `ring`, `blink`, `pulse`, `pix`
   and `pixhop` at start time 0 on the document clock, or, with *rings in step* off (`prefs.ringsInStep`), at a time
   hashed from the chat's id. → `scripts/scenarios/card-signals.mjs`.

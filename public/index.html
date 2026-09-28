@@ -507,15 +507,21 @@
      script) puts every ring at start time 0 on the document clock after each render: the new light is where the old
      one was. */
   .card.working, .card.watching, .card.asking { box-shadow: 0 0 0 1px color-mix(in srgb, var(--lit) 45%, transparent), 0 0 18px color-mix(in srgb, var(--lit) 35%, transparent); }
+  /* On the border, not inside it (2026-09-29, Ricardo: "the clauding ring glow that goes around should be on the border
+     and not inside the border"): the card's overflow clips at its padding box, so the light ran 3 px inside the 2 px
+     edge. A card with a ring has no border — its padding takes the 2 px, so nothing inside moves — and the cover stands
+     2 px in: the band the light runs in is where the border was, and what it runs on is the border's colour (--track). */
+  .card:is(.working, .watching):not(.asking) { border-width: 0; padding: 10px 12px 9px; }
+  .card.active:is(.working, .watching) { outline-width: 1px; outline-offset: 0; }   /* the open card's edge outside the band, not over it */
   .card.working::before, .card.watching::before { content: ''; position: absolute; z-index: -1; left: 50%; top: 50%; width: 160%; aspect-ratio: 1; margin: -80% 0 0 -80%; pointer-events: none;
-    background: repeating-conic-gradient(transparent 0 calc(var(--seg) * .45), var(--lit) calc(var(--seg) * .92), transparent var(--seg));
+    background: repeating-conic-gradient(var(--track) 0 calc(var(--seg) * .45), var(--lit) calc(var(--seg) * .92), var(--track) var(--seg));
     animation: ring var(--spins, 1.4s) linear infinite; }
-  .card.working::after, .card.watching::after { content: ''; position: absolute; z-index: -1; inset: 3px; background: inherit; pointer-events: none; }
-  .card.watching { --lit: var(--watch); --seg: 100%; --spins: 6s; }
+  .card.working::after, .card.watching::after { content: ''; position: absolute; z-index: -1; inset: 2px; background: inherit; pointer-events: none; }
+  .card.watching { --lit: var(--watch); --seg: 100%; --spins: 6s; --track: transparent; }
   /* Every variable of the ring is set in every rule: a card can be two of these at once (clauding *and* watching is
      the ordinary case for a chat running a monitor), and what the later rule leaves unsaid the earlier one keeps —
      which had the work light running at the monitor's sixth of the speed. */
-  .card.working { --lit: var(--ring, var(--repo, var(--working))); --seg: calc(100% / var(--lights, 1)); --spins: 1.4s; }
+  .card.working { --lit: var(--ring, var(--repo, var(--working))); --seg: calc(100% / var(--lights, 1)); --spins: 1.4s; --track: color-mix(in srgb, var(--repo, var(--nocolor)) 85%, var(--line)); }
   /* A question is the one state that is *stopped*, so it gets the one signal that is not motion around the edge
      (2026-09-22, Ricardo: "a card that's waiting my input … should flash the boarder instead on having the
      go-around animation"): no ring at all, the border itself blinking on and off in red. Two hard states, not a
