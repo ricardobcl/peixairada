@@ -124,7 +124,7 @@ refuses to run against the real directory for the same reason.
   row, the foot included** (2026-09-28): `#filters` — the magnifier, an icon at rest (`#qBtn`); open, the left cap of
   `#q` (`width: 0; flex: 1 1 0`), which takes the row's spare room and the rings' (hidden while it is open, `:has`) —
   the state chips (a dot and a count; the word from 600 px of list, the count gone under 340; `#sessions` is a size
-  container), then ＋ (`#newChatBtn`: one folder starts it, several ask which, ALL is ⌥⌘N's flow); then **`#sfoot`, in
+  container) — no ＋ since 2026-09-28: ⌥⌘N, which opens on the project in view (⏎ ⏎ is a new chat there); then **`#sfoot`, in
   the head's grid row as a column of its own** (`main:not(.scompact)`): the usage's rings, the cog. **No « / »**: ⌘B
   folds and unfolds. The name gives way, hence the list's 300 px minimum. On the rail the head keeps the fish and, for
   a project, `projAbbr` (`.ab`) as the picker's handle, and `#sfoot` is its foot. ⌥⌘P's rows carry

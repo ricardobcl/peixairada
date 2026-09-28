@@ -4,6 +4,18 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-28.
 
+## Decisions of 2026-09-29, later — keyboard first: no ＋, settings under ···, the row at the bottom, the budget in words, the splitter's black
+
+Ricardo, six more: "the '+' can be removed, let's be more keyboard centric"; "the settings can be moved to inside the
+'...' on the right and it should open a nice and pretty settings popup"; "give the same padding on the left of the
+card, that we have on the right, so it's symmetrical"; "move the top app icon etc. from the top to the bottom"; "the
+token budget should be more '5H x% 1W y% F z%' with stylized fonts for the 5H/1W/F"; "the vertical splitter of cards
+and chat, that is the same color of the project, should be black from the lower card down — if I scroll, that should
+also move".
+
+* **No ＋**: ⌥⌘N opens with the project in view selected, so ⌥⌘N ⏎ ⏎ is what the button did on a one-folder project
+  (and on a named one, its folder step). On ALL the project step starts at the top as before.
+
 ## Decisions of 2026-09-29, small hours — no edge at rest, the marks beside the title, the header black from the name, one row atop the list, no grey borders
 
 Ricardo, six at once: "when a card is not select, it has this gray border — make it the same color as the background,

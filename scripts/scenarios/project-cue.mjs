@@ -29,20 +29,20 @@ export default async function (ctx) {
   // One row atop the list (2026-09-24): the filters and ＋ are in the head, the cards start right under it, ＋ is an
   // icon alone, and on ALL it is ⌥⌘N's flow; since 2026-09-28 the foot — the cog, the usage — ends that row, and « went
   out.row = await ctx.evaluate(`JSON.stringify((() => { const h = document.querySelector('#shd'), r = h.getBoundingClientRect(), f = document.querySelector('#sfoot').getBoundingClientRect();
-    return { inHead: ['#qBtn', '#fchips', '#newChatBtn'].every(q => h.contains(document.querySelector(q))), fold: !!document.querySelector('#sessPinBtn'), h: Math.round(r.height),
+    return { inHead: ['#qBtn', '#fchips'].every(q => h.contains(document.querySelector(q))), fold: !!document.querySelector('#sessPinBtn'), plus: !!document.querySelector('#newChatBtn'), h: Math.round(r.height),
       foot: [Math.round(f.top), Math.round(f.height), Math.round(f.left - r.right)], head: [Math.round(r.top), Math.round(r.height)],
-      under: Math.round(document.querySelector('#slist').getBoundingClientRect().top - r.bottom), plus: document.querySelector('#newChatBtn').textContent.trim(),
+      under: Math.round(document.querySelector('#slist').getBoundingClientRect().top - r.bottom),
       chips: [...document.querySelectorAll('#fchips .fchip')].map(c => c.className.replace(/\s+/g, ' ').trim()) }; })())`).then(JSON.parse);
-  ctx.assert.equal(out.row.inHead, true, 'the magnifier, the chips and ＋ are all in the head');
+  ctx.assert.equal(out.row.inHead, true, 'the magnifier and the chips are in the head');
+  ctx.assert.equal(out.row.plus, false, 'no ＋ — ⌥⌘N (2026-09-28)');
   ctx.assert.equal(out.row.fold, false, 'no « — ⌘B folds the list');
   ctx.assert.deepEqual([out.row.foot[0], out.row.foot[1], out.row.foot[2]], [out.row.head[0], out.row.head[1], 0], 'the foot is the head row\'s right end, as tall');
   ctx.assert.ok(out.row.h <= 44 && out.row.under === 0, 'one row, and the cards right under it');
-  ctx.assert.equal(out.row.plus, '', '＋ is an icon, no words');
   ctx.assert.deepEqual(out.row.chips, ['fchip ready on', 'fchip working on', 'fchip done on'], 'the three state chips, on');
   // The magnifier is small (2026-09-28; a field from the fish to the first chip from 2026-09-27): open, its icon is the
   // box's left cap and the box takes the room the row has spare — the rings', too, while it is open
   const field = () => ctx.evaluate(`JSON.stringify((() => { const x = q => { const r = document.querySelector(q).getBoundingClientRect(); return r.width ? [Math.round(r.left), Math.round(r.right)] : null; };
-    return { fish: x('#brandBtn'), btn: x('#qBtn'), box: x('#q'), chip: x('#fchips .fchip'), plus: x('#newChatBtn') }; })())`).then(JSON.parse);
+    return { fish: x('#brandBtn'), btn: x('#qBtn'), box: x('#q'), chip: x('#fchips .fchip') }; })())`).then(JSON.parse);
   out.field = { rest: await field() };
   const { rest } = out.field;
   ctx.assert.ok(rest.btn[0] - rest.fish[1] <= 6 && rest.chip[0] - rest.btn[1] <= 4 && rest.btn[1] - rest.btn[0] < 30, `at rest the magnifier is an icon beside the fish: ${JSON.stringify(rest)}`);
@@ -54,9 +54,6 @@ export default async function (ctx) {
   await ctx.shot('1b-search', { x: 0, y: 0, width: 520, height: 140 });
   await ctx.evaluate(`document.querySelector('#q').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
   ctx.assert.deepEqual(await field(), rest, 'Esc puts the field back as it was');
-  await ctx.evaluate(`document.querySelector('#newChatBtn').click()`);
-  ctx.assert.match(await ctx.evaluate(`document.querySelector('#pick').open && document.querySelector('#pickq').placeholder`), /^New chat/, '＋ on ALL asks which project first');
-  await closePick();
 
   // The head is the picker — on ALL there is nothing to click, so ⌥⌘P
   await ctx.key('KeyP');

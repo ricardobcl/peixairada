@@ -1,5 +1,5 @@
 // A new chat has a card before its first word (2026-09-27, Ricardo: "when I clear the chat or when I select new chat, I
-// don't see the card until I press enter to send the first message"). ＋ on a folder project starts claude in a drawer;
+// don't see the card until I press enter to send the first message"). ⌥⌘N ⏎ ⏎ on a folder project starts claude in a drawer;
 // the registry names the session before any transcript exists, and the board hid a live chat with no activity — a rule
 // for VS Code's restored panels. Now the card is there at once: "(no messages yet)", the project's, first in the ready
 // group by its start, the open one, its age counted from the start; the first prompt then titles it and it keeps its
@@ -12,20 +12,29 @@ export const meta = { server: true, fake: true, fixture: 'auto' };
 
 const cardOf = (ctx, id) => ctx.evaluate(`(() => { const cards = [...document.querySelectorAll('#slist > .card')]; const c = cards.find(c => c.dataset.id === ${JSON.stringify(id)});
   return JSON.stringify(!c ? null : { at: cards.indexOf(c), n: cards.filter(x => x.dataset.id === ${JSON.stringify(id)}).length, active: c.classList.contains('active'), title: c.querySelector('.title').textContent,
-    time: c.querySelector('.top .time')?.textContent ?? null, tip: c.querySelector('.top .time')?.title ?? null, snips: c.querySelectorAll('.snip').length, tick: !!c.querySelector('.act') }); })()`).then(JSON.parse);
+    time: c.querySelector('.trow .time')?.textContent ?? null, tip: c.querySelector('.trow .time')?.title ?? null, snips: c.querySelectorAll('.snip').length, tick: !!c.querySelector('.act') }); })()`).then(JSON.parse);
 
 export default async function (ctx) {
   const out = {};
-  const [a, b] = ctx.fixture.chats;   // b's folder is the temp dir: no Taskfile, so ＋ starts claude without a question
+  const [a, b] = ctx.fixture.chats;   // b's folder is the temp dir: no Taskfile, so ⌥⌘N ⏎ ⏎ starts claude without a question
   const known = [a.id, b.id];
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 2`, { what: 'the two fixture cards' });
-  // ＋ acts on the project in view: select b's folder the way the page remembers it, and load again
+  // ⌥⌘N opens on the project in view (＋ went on 2026-09-28): select b's folder the way the page remembers it, and load again
   await ctx.evaluate(`(() => { const p = JSON.parse(localStorage.getItem('peixairada-prefs') || '{}'); p.project = ${JSON.stringify(b.cwd)}; localStorage.setItem('peixairada-prefs', JSON.stringify(p)); })()`);
   await ctx.send('Page.reload'); await ctx.sleep(800);
-  await ctx.waitFor(`document.querySelector('#newChatBtn')?.dataset.key === ${JSON.stringify(b.cwd)} && document.querySelectorAll('#slist > .card').length === 1`, { what: "b's folder in view, ＋ on it" });
+  await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 1`, { what: "b's folder in view" });
+  // ⌥⌘N, ⏎ on the project it opened on, ⏎ on ＋ new chat
+  const newChat = async () => {
+    await ctx.key('KeyN');
+    await ctx.waitFor(`document.querySelector('#pick').open && document.querySelector('#picklist .pkrow.sel .cur')?.textContent === 'current'`, { what: 'the project step on the project in view' });
+    const enter = () => ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);
+    await enter();
+    await ctx.waitFor(`document.querySelector('#picklist .pkrow.sel')?.textContent.includes('new chat')`, { what: 'the chats step, ＋ new chat selected' });
+    await enter();
+  };
   out.ready0 = Number(await ctx.evaluate(`document.querySelector('#fchips .fchip.ready .n').textContent`));
 
-  await ctx.evaluate(`document.querySelector('#newChatBtn').click()`);
+  await newChat();
   await ctx.waitFor(`(s => s.current && !${JSON.stringify(known)}.includes(s.current) && s.termSession === s.current)(window.peix.state())`, { what: 'the board on the new chat, its drawer running it', timeout: 20_000 });
   const id = (await ctx.peix('state()')).current;
   // The card, before anything was typed: the session push follows the terminal event by a beat, so wait for it.
@@ -65,7 +74,7 @@ export default async function (ctx) {
 
   // A second empty chat, ticked done before a word: the card goes at once, and the drawer with it.
   const ready2 = Number(await ctx.evaluate(`document.querySelector('#fchips .fchip.ready .n').textContent`));
-  await ctx.evaluate(`document.querySelector('#newChatBtn').click()`);
+  await newChat();
   await ctx.waitFor(`(s => s.current && !${JSON.stringify([...known, id])}.includes(s.current) && s.termSession === s.current)(window.peix.state())`, { what: 'the board on a second new chat', timeout: 20_000 });
   const id2 = (await ctx.peix('state()')).current;
   await ctx.waitFor(`!!document.querySelector('#slist > .card[data-id=${JSON.stringify(id2)}] .act[data-act=done]')`, { what: "the second chat's card, with its ✓", timeout: 5000 });
