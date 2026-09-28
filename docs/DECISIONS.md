@@ -19,6 +19,9 @@ dates"; "make the 'setup' inside settings pretty - seems pretty barebones".
   cleared transcript only on the next turn, so `drawer-clear.mjs` never saw it; it writes the lines now, before the
   registry names the id — the order that fails without the fix (run before the server's fix: the card not first, and *(untitled)*). The
   scenario's age check read `.top .time`, which moved beside the title on 2026-09-28; it reads `.trow .time`.
+* **No VS Code logo on the cards.** A third of the list is VS Code's chats, and the blue mark on each said nothing
+  the card needs; the chat header's ··· keeps its *VS Code's chat* row, and *VS Code too* (a rival process on a chat
+  run elsewhere) stays a word on the card, since that one is news.
 
 ## Decisions of 2026-09-29, later — keyboard first: no ＋, settings under ···, the row at the bottom, the budget in words, the splitter's black
 

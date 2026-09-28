@@ -258,7 +258,7 @@
   .gempty { color: var(--muted); text-align: center; align-self: center; padding: 0 20px; font-size: 12.5px; line-height: 1.8; }
   /* A VS Code chat: read here, continued there. The whole pane says so — an outline, so nothing moves. */
   /* The pane is washed in the project's colour — none for a folder without one (transparent mixed with
-     transparent). Where the chat lives is a mark in the header (.own), not a colour, since 2026-09-20. */
+     transparent). Where the chat lives is the header menu's to say (its VS Code row), not a colour, since 2026-09-20. */
   #log { background: linear-gradient(165deg, color-mix(in srgb, var(--hbg) 24%, transparent), color-mix(in srgb, var(--hbg) 6%, transparent) 70%, transparent); }
   /* Every other chat is a CLI chat, lived here or in a terminal: the same wash in orange, no outline. */
   .colhead { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); font-weight: 700; min-width: 0; min-height: 43px; }
@@ -456,10 +456,6 @@
     transition: --tint .2s, --slope .2s, border-color .2s, outline-color .2s, outline-width .2s, outline-offset .2s, opacity .2s; }
   .card:hover { transition-duration: .1s; }
   .card.black { --tint: 20%; }
-  /* VS Code owns this chat: a small mark, top right of the card and at the end of the chat header */
-  .own { display: inline-flex; align-items: center; gap: 4px; color: var(--vscode); font-size: 10.5px; font-weight: 600; white-space: nowrap; flex: none; }
-  .own .ic { width: 12px; height: 12px; fill: currentColor; }
-  .card .top .own { margin-left: auto; }
   /* Claude at work: a light runs round the card's edge. A conic gradient on a square pseudo-element bigger than
      the card, turned by a transform — the one kind of motion a browser runs off its main thread: Chrome's compositor
      thread, Core Animation under WebKit (2026-09-27; before, the gradient's start angle was a registered property
@@ -800,7 +796,7 @@
   .shead > :not(h2, .details) { --ink: #e8e6df; --muted: #9a998f; --line: #2c2c29; --rink: #e8e6df; --panel: #1c1c1a; --inline-bg: rgba(255, 255, 255, .075); }
   :where(.shead > :not(h2, .details)) { color: var(--ink); }   /* for what inherits its ink; a control's own rule still wins */
   .shead h2 .t { color: #e8e6df; }
-  #chat.tinted .shead :is(.status, .path, .own, .chip, a) { color: color-mix(in srgb, var(--rink) 78%, transparent); }
+  #chat.tinted .shead :is(.status, .path, .chip, a) { color: color-mix(in srgb, var(--rink) 78%, transparent); }
   #chat.tinted .shead .btn, #chat.tinted .shead .btn:disabled { color: color-mix(in srgb, var(--rink) 78%, transparent); }
   #chat.tinted .shead .btn:hover { color: var(--rink); }
   #chat.tinted .shead .btn.on, #chat.tinted .shead #termBtn.take { color: var(--rink); background: color-mix(in srgb, var(--rink) 14%, transparent); }
@@ -2237,12 +2233,14 @@
     const tip = titleTip(s);
     const showRepo = p.key === ALL || p.custom;
     // Where it runs, when that is news: a drawer here is the norm and says nothing (2026-09-23, Ricardo: "remove the
-    // 'terminal here' from cards … that is the norm"); a CLI elsewhere, VS Code running it too, still do.
+    // 'terminal here' from cards … that is the norm"); a CLI elsewhere, VS Code running it too, still do. VS Code's own
+    // chat wore its logo here until 2026-09-28 (Ricardo: "remove all vscode icons from cards") — the chat header's ···
+    // still says it (*VS Code's chat*).
     const where = !s.alive || inVsCode(s) ? ''
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip">${entryLabel(s)}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${s.id}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
-      <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${inVsCode(s) ? `<span class="own" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it">${ICON.vscode}</span>` : ''}${act}${cardPrs(s)}</div>
+      <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${act}${cardPrs(s)}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge">${un}</span>` : ''}</div>
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${esc(s.lastReply)}</div>` : ''}
