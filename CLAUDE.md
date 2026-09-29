@@ -285,7 +285,10 @@ refuses to run against the real directory for the same reason.
 * **A card comes in three sizes, the cog's slider** (`#cardsSize`, `prefs.cards`): *large* — your last prompt and
   Claude's last reply —, *medium* the last word only, *compact* neither. `cardHtml` always writes both `.snip`s and
   marks the older one `.older` (Claude's reply is the last word when `lastReplyAt ≥ lastUserAt`); CSS hides by
-  `#sessions[data-cards]`, so the slider re-renders nothing. The question line (`askHtml`) shows at every size.
+  `#sessions[data-cards]`, so the slider re-renders nothing. The question line (`askHtml`) shows at every size —
+  **unless compact's own switch, *same height*, is on** (`#cardsEven` under the slider, shown only at compact;
+  `prefs.cardsEven` → `#sessions[data-even]`, 2026-09-29): the title on one line and no `.state` line under it, so
+  every card is one height; an asking card still blinks, a PR at your move is ringed in the accent.
   → `scripts/scenarios/card-sizes.mjs`.
 * **A chat on Fable wears an F**: `onFable(s)` is `/fable/i` on `s.model`; the mark is `ICON.fable`, **beside the
   title** (`.trow .fable`, since 2026-09-28), in `--accent`. The rail does not show it.
@@ -377,7 +380,7 @@ refuses to run against the real directory for the same reason.
 * **State lives in three places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done ticks,
   named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, the
   setup; `STATE_FILE` overrides) shared by the app and every browser; the browser's `localStorage` `peixairada-prefs`
-  (selected project, filters, widths, zoom, folds, card size, ⌥ as Meta, drawer open/height — the keys are the `prefs` literal,
+  (selected project, filters, widths, zoom, folds, card size and compact's same height, the person the list is narrowed to, ⌥ as Meta, drawer open/height — the keys are the `prefs` literal,
   and old ones are deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it
   renders reads its state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
 * **The setup is the server's, and nothing about one Mac is written in the code** (2026-09-28): `config` in the state

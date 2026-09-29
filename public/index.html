@@ -88,6 +88,8 @@
   .pop .keys .kh { grid-column: 1 / -1; font-size: 11px; }
   /* The one switch (2026-09-23): system notifications on or off, the server's word so the app and every tab agree. */
   .pop .opt { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); cursor: pointer; }
+  .pop .opt[hidden] { display: none; }
+  .pop .opt.sub { margin: -2px 0 0 43px; padding-top: 0; border-top: 0; }   /* a switch of the row above's (compact's same height), under its slider */
   .pop .opt b { font-weight: 600; color: var(--ink); }
   .pop .opt input { appearance: none; -webkit-appearance: none; position: relative; margin: 0; width: 28px; height: 16px; border-radius: 8px; background: var(--line); cursor: pointer; transition: background .15s; }
   .pop .opt input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: transform .15s; }
@@ -645,6 +647,12 @@
   /* The cog's slider (prefs.cards): medium drops whichever of the two words is the older one — the card marks it —,
      compact drops both. The markup always holds both, so moving the slider re-renders nothing. */
   #sessions[data-cards="medium"] .card .snip.older, #sessions[data-cards="compact"] .card .snip { display: none; }
+  /* …and compact's own switch, one height for every card (2026-09-29, Ricardo: "add an option in the compact setting to
+     make cards same height"; data-even, prefs.cardsEven): the title on one line, and the lines a card could add under
+     it left to its other signals — an asking card's border blinks as ever, a PR at your move is ringed in the accent. */
+  #sessions[data-even] .card .title { -webkit-line-clamp: 1; }
+  #sessions[data-even] .card .state { display: none; }
+  #sessions[data-even] .card .cpr[data-turn="you"] { box-shadow: 0 0 0 1.5px var(--accent); }
   /* You and Claude are told apart twice over: hue on the glyph (cool teal vs Claude's clay) and
      weight on the text — Claude's line is the one you scan a list for, so it sits brighter and the
      prompt that produced it recedes. */
@@ -1285,6 +1293,7 @@
       <datalist id="cardsStops"><option value="0"></option><option value="1"></option><option value="2"></option></datalist>
       <span class="stops"><span data-v="0" title="your last prompt and Claude's last reply, as always">large</span><span data-v="1" title="only the last word — yours or Claude's, whichever came last">medium</span><span data-v="2" title="neither: the title, its chips and its PRs">compact</span></span>
     </div>
+    <label class="opt sub" id="evenRow" title="Compact cards all the same height: the title on one line, and neither the question nor your move under it — a card asking you still blinks red, and a PR at your move wears a ring in the accent" hidden><input type="checkbox" id="cardsEven"><span><b>same height</b> — every compact card one title line tall</span></label>
     <label class="opt" title="On, ⌥ with a letter is Meta in the terminal, as iTerm's Esc+ — ⌥B ⌥F move a word, ⌥⌫ deletes one; ⌥ with a digit or a sign still types what the keyboard makes. Off, ⌥ types whatever your layout composes (⌥L is @ on a German one)"><input type="checkbox" id="optMeta" checked><span><b>⌥ is Meta</b> in the terminal — off, ⌥ types what your keyboard composes</span></label>
     <div id="hidden" class="hid"></div>
   </div>
@@ -1387,7 +1396,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -1482,12 +1491,15 @@
     if (!CARD_SIZES.includes(prefs.cards)) prefs.cards = 'large';
     const v = CARD_SIZES.indexOf(prefs.cards);
     $('#sessions').dataset.cards = prefs.cards;
+    $('#sessions').toggleAttribute('data-even', prefs.cards === 'compact' && !!prefs.cardsEven);   // compact's own switch
+    $('#evenRow').hidden = prefs.cards !== 'compact'; $('#cardsEven').checked = !!prefs.cardsEven;
     $('#cardsSize').value = v;
     document.querySelectorAll('#settings .dens .stops span').forEach(x => x.classList.toggle('on', +x.dataset.v === v));
     listChanged();   // the cards changed height under the same scroll position
   }
   const setCards = v => { prefs.cards = CARD_SIZES[v] || 'large'; savePrefs(); applyCards(); };
   $('#cardsSize').addEventListener('input', e => setCards(+e.target.value));
+  $('#cardsEven').addEventListener('change', e => { prefs.cardsEven = e.target.checked; savePrefs(); applyCards(); });
   $('#settings .dens .stops').addEventListener('click', e => { const x = e.target.closest('[data-v]'); if (x) setCards(+x.dataset.v); });
   applyCards();
   // Esc on the page itself: a dialog (the picker, the project editor) or the settings popover closes,

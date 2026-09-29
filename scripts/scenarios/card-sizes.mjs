@@ -34,8 +34,9 @@ export default async function (ctx) {
         lines: id => [said(id, 'and the one beside it too', 30_000), said(id, '[Request interrupted by user]', 40_000)] },
       { cwd, title: 'Asking you', prompt: 'clean the old branches', reply: 'on it', at: new Date(at.getTime() - 120_000),
         live: { pid: sleeper.pid, startedAt: Date.now() - 600_000, status: 'waiting', waitingFor: 'permission prompt' } },
+      { cwd, title: 'A title long enough to run onto a second line of the card, and on to a third where the list is narrow', prompt: 'a long one', reply: 'yes', at: new Date(at.getTime() - 180_000) },
     ]);
-    await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 5`, { what: 'the three chats and the fixture\'s two' });
+    await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 6`, { what: 'the four chats and the fixture\'s two' });
     await ctx.waitFor(`!!document.querySelector('#slist > .card.asking')`, { what: 'the asking card' });
 
     // large, the default: both words everywhere
@@ -68,6 +69,23 @@ export default async function (ctx) {
     await ctx.shot('compact', { x: 0, y: 0, width: 420, height: 640 });
     ctx.assert.equal((await ctx.peix('prefs()')).cards, 'compact');
 
+    // compact's own switch (2026-09-29, Ricardo: "add an option in the compact setting to make cards same height"):
+    // shown under compact only; on, the title is one line and nothing hangs under it, so every card is one height
+    const heights = cs => [...new Set(Object.values(cs).map(c => c.h))];
+    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#evenRow').hidden`), false, 'the switch shows under compact');
+    ctx.assert.ok(heights(out.compact.cards).length > 1, `compact cards are of several heights: ${heights(out.compact.cards)}`);
+    await ctx.evaluate(`document.querySelector('#cardsEven').click()`); await ctx.settle();
+    out.even = { cards: await cards(ctx), attr: await ctx.evaluate(`document.querySelector('#sessions').hasAttribute('data-even')`) };
+    ctx.assert.equal(out.even.attr, true);
+    ctx.assert.deepEqual(heights(out.even.cards).length, 1, `one height for every card: ${JSON.stringify(Object.fromEntries(Object.entries(out.even.cards).map(([t, c]) => [t, c.h])))}`);
+    ctx.assert.equal(out.even.cards['Asking you'].ask, false, 'the question is left to the card\'s blinking edge');
+    await ctx.shot('even', { x: 0, y: 0, width: 420, height: 640 });
+    await ctx.evaluate(`document.querySelector('#settings .dens .stops [data-v="1"]').click()`);
+    ctx.assert.deepEqual(await ctx.evaluate(`[document.querySelector('#evenRow').hidden, document.querySelector('#sessions').hasAttribute('data-even')]`), [true, false], 'medium: no switch, and nothing evened');
+    await ctx.evaluate(`document.querySelector('#settings .dens .stops [data-v="2"]').click()`);
+    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#sessions').hasAttribute('data-even')`), true, 'back to compact, the switch as it was left');
+    ctx.assert.equal((await ctx.peix('prefs()')).cardsEven, true, 'a pref');
+
     // the settings, to look at the slider
     await ctx.cmd('Comma'); await ctx.settle();
     const r = await ctx.evaluate(`(r => ({ x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) }))(document.querySelector('#settings').getBoundingClientRect())`);
@@ -76,7 +94,7 @@ export default async function (ctx) {
 
     // a reload keeps it: a pref of this window
     await ctx.send('Page.reload'); await ctx.sleep(1200);
-    await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 5`, { what: 'the list back after the reload' });
+    await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 6`, { what: 'the list back after the reload' });
     out.reloaded = { slider: await slider(ctx), words: Object.values(await cards(ctx)).flatMap(c => c.words) };
     ctx.assert.deepEqual(out.reloaded, { slider: { v: '2', list: 'compact', on: 'compact' }, words: [] }, 'compact after a reload');
     return out;

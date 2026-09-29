@@ -4,6 +4,16 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-28.
 
+## Decisions of 2026-09-29, morning — compact cards of one height
+
+Ricardo: "add an option in the compact setting to make cards same height".
+
+* **Same height, a switch of compact's own**: under the cards slider, shown only when compact is chosen. On, a card's
+  title is one line (ellipsed) and nothing hangs under it — the question and *your move* lines are what made compact
+  cards of different heights besides a wrapped title — so every card is the top row and one title line. The signals
+  those lines carried stay on the card: an asking card's edge blinks red as ever, and a PR at your move is ringed in
+  the accent. Off by default; a pref, kept while the slider is elsewhere.
+
 ## Decisions of 2026-09-29, one o'clock — /compact ends, the splitter scrolls with the list, a row of faces that filters
 
 Ricardo: "seems like when I do a /compact even after it finishes, the card stays 'clauding'"; "the vertical separator
