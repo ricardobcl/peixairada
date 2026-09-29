@@ -203,7 +203,11 @@
      credits into a single line"): the foot — the plan usage — is the row's right end, in a column of its own there;
      on the rail of squares it is a row of its own over the fish, which keeps the corner. */
   main:not(.scompact) #sessions { grid-template-columns: minmax(0, 1fr) auto; }
-  main:not(.scompact) #sfoot { grid-row: 2; grid-column: 2; background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); align-items: center; gap: 2px; padding: 0 10px 0 0; position: relative; }
+  /* The people row between the cards and the row (2026-09-29, renderPeople): the row and the usage one down; none on the rail. */
+  #people { grid-row: 2; grid-column: 1 / -1; }
+  main:not(.scompact) #shd { grid-row: 3; }
+  main.scompact #people { display: none; }
+  main:not(.scompact) #sfoot { grid-row: 3; grid-column: 2; background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); align-items: center; gap: 2px; padding: 0 10px 0 0; position: relative; }
   main:not(.scompact) #shd { padding-right: 4px; overflow: hidden; }   /* a list at its narrowest clips the chips rather than run them under the usage */
   main.scompact #sfoot { grid-row: 2; } main.scompact #shd { grid-row: 3; }
   /* the cards start under the camera's strip when the list is under the housing (the head used to pad down instead) */
@@ -666,6 +670,17 @@
   .card .top .faces > :is(img, .face) { width: 16px; height: 16px; flex: none; margin-left: -4px; border-radius: 50%; box-shadow: 0 0 0 1.5px var(--panel); background: var(--ctl-hi); }
   .card .top .faces .face { display: grid; place-items: center; font-size: 9px; font-weight: 700; color: var(--ink); text-transform: uppercase; }
   .card .top .faces .more { margin-left: 3px; font-size: 10px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+  /* Everyone in the PRs of the chats in view, a row under the cards (renderPeople, 2026-09-29): a face a button, a click
+     narrows the list to that person's chats and rings the face in the accent, the others dimmed; again, every chat. */
+  #people { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 6px 10px; border-top: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+  #people[hidden] { display: none; }
+  #people > .ic { flex: none; width: 13px; height: 13px; fill: var(--muted); margin-right: 2px; }
+  #people button { flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; transition: opacity .12s, transform .12s, box-shadow .12s; }
+  #people button:hover { transform: scale(1.12); }
+  #people :is(img, .face) { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--ctl-hi); font-size: 11px; font-weight: 700; color: var(--ink); text-transform: uppercase; }
+  #people.on button:not(.on) { opacity: .35; }
+  #people.on button:not(.on):hover { opacity: .8; }
+  #people button.on { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent); }
   .card .cpr.more { color: var(--muted); border-style: dashed; }
   /* a PR as a chip — the card's, and the chat header's (.hpr) since 2026-09-24 */
   :is(.card .cpr, .shead .hpr) { font-size: 10.5px; font-weight: 600; line-height: 16px; border: 1px solid transparent; border-radius: 4px; padding: 0 5px; color: var(--muted); background: var(--ctl); }
@@ -1225,6 +1240,7 @@
     <div class="tl-glass"></div>
     <div class="sedge up" id="sup"><button data-dir="-1"></button></div>
     <div class="sedge down" id="sdown"><button data-dir="1"></button></div>
+    <div id="people" hidden></div>
     <div id="sfoot"><div id="usage"></div></div>
   </section>
   <div id="splitter" title="Drag to resize"></div>
@@ -1371,7 +1387,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -1848,6 +1864,39 @@
     for (const el of root.querySelectorAll('[data-at]')) { const t = rel(el.dataset.at); if (el.textContent !== t) el.textContent = t; }
   }
   const dayHtml = day => `<div class="gsep day" title="above: the chats you were in ${day === 'today' ? 'today' : 'on ' + day}"><b>${day}</b></div>`;
+  // ---- the people row: everyone in the PRs of the chats in view ---------------------------------------------------
+  // (2026-09-29, Ricardo: "add an extra row at the bottom of the cards with all the users I have interactions with PRs
+  // and by clicking on their face, I filter only those cards"). The chats in view — the project's, in the states the
+  // chips show — give their PRs' people (the server's prPeople: author, reviewers, commenters, pushers; you and bots
+  // out), merged by login, the newest interaction first. A click is prefs.person: the list, its counts and its
+  // timeline narrow to the chats whose PRs have that person; the same face again, or the person leaving the view,
+  // lets go. The query and the chips still apply on top.
+  function peopleOf(chats) {
+    const by = new Map();
+    for (const s of chats) for (const pr of s.prs || []) for (const p of pr.people || []) {
+      const had = by.get(p.login) || { login: p.login, avatar: p.avatar, at: '', did: new Set(), chats: new Set() };
+      had.avatar ||= p.avatar;
+      if (String(p.at) > had.at) had.at = String(p.at);
+      for (const d of p.did) had.did.add(d);
+      had.chats.add(s.id);
+      by.set(p.login, had);
+    }
+    return [...by.values()].sort((a, b) => b.at.localeCompare(a.at));
+  }
+  const hasPerson = (s, login) => (s.prs || []).some(pr => (pr.people || []).some(x => x.login === login));
+  let peopleDrawn = '';
+  function renderPeople(chats) {
+    const box = $('#people'), people = peopleOf(chats);
+    if (prefs.person && !people.some(x => x.login === prefs.person)) { prefs.person = null; savePrefs(); }
+    const html = !people.length ? '' : ICON.pr + people.map(x => { const on = x.login === prefs.person;
+      return `<button type="button" data-login="${esc(x.login)}"${on ? ' class="on"' : ''} title="${esc(`${x.login} — ${[...x.did].join(', ')} · in ${x.chats.size} chat${x.chats.size === 1 ? '' : 's'} — click to ${on ? 'show every chat again' : 'show only those'}`)}">${faceHtml(x)}</button>`; }).join('');
+    if (html !== peopleDrawn) { box.innerHTML = peopleDrawn = html; box.hidden = !html; }   // drawn only when it changed: the faces are images
+    box.classList.toggle('on', !!prefs.person);
+  }
+  $('#people').addEventListener('click', e => {
+    const b = e.target.closest('button[data-login]'); if (!b) return;
+    prefs.person = prefs.person === b.dataset.login ? null : b.dataset.login; savePrefs(); renderBoard();
+  });
   function renderSessionList(p) {
     const pc = projColor(p); if (pc) $('#sessions').style.setProperty('--repo', pc); else $('#sessions').style.removeProperty('--repo');
     // The magnifier matches the way ⌥⌘K does (2026-09-25, Ricardo: "make hotkey F fuzzy search like K"): any letters
@@ -1855,7 +1904,9 @@
     // is in the match's order, not the board's, and the lines that say where a state or a day ends are left out.
     const q = $('#q').value.trim().toLowerCase();
     const score = new Map();
-    const list = !q ? p.sessions : p.sessions.filter(s => { const m = fuzzy(chatFields(s), q); if (m) score.set(s.id, m.score); return !!m; });
+    renderPeople(p.sessions.filter(s => filterOn(bucket(s))));   // may let go of a person no longer in view
+    const who = prefs.person;
+    const list = (!q ? p.sessions : p.sessions.filter(s => { const m = fuzzy(chatFields(s), q); if (m) score.set(s.id, m.score); return !!m; })).filter(s => !who || hasPerson(s, who));
     const counts = {};
     for (const s of list) counts[bucket(s)] = (counts[bucket(s)] || 0) + 1;
     // clauding on top, then ready, done last (2026-09-20, Ricardo: one rule between the live cards and the ready ones —
@@ -2383,6 +2434,10 @@
    *  "can we get avatar of GH users in cards, that interacted with PRs associated with a chat?"). The tooltip says
    *  what each did, PR by PR. */
   const CARD_FACES = 3;
+  /** A person's GitHub face — their avatar, or their initial when GitHub gave none. */
+  const faceHtml = (p, tip = '') => p.avatar
+    ? `<img src="${esc(p.avatar)}" alt="${esc(p.login)}"${tip ? ` title="${esc(tip)}"` : ''} loading="lazy" decoding="async" referrerpolicy="no-referrer">`
+    : `<span class="face"${tip ? ` title="${esc(tip)}"` : ''}>${esc(p.login[0])}</span>`;
   function cardFaces(s) {
     const by = new Map();
     for (const pr of s.prs || []) for (const p of pr.people || []) {
@@ -2393,10 +2448,8 @@
       by.set(p.login, had);
     }
     const all = [...by.values()].sort((a, b) => b.at.localeCompare(a.at)); if (!all.length) return '';
-    const face = p => { const tip = `${p.login} — ${p.what.join(' · ')}`;
-      return p.avatar ? `<img src="${esc(p.avatar)}" alt="${esc(p.login)}" title="${esc(tip)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : `<span class="face" title="${esc(tip)}">${esc(p.login[0])}</span>`; };
     const rest = all.slice(CARD_FACES);
-    return `<span class="faces">${all.slice(0, CARD_FACES).map(face).join('')}${rest.length ? `<span class="more" title="${esc(rest.map(p => p.login).join(', '))}">+${rest.length}</span>` : ''}</span>`;
+    return `<span class="faces">${all.slice(0, CARD_FACES).map(p => faceHtml(p, `${p.login} — ${p.what.join(' · ')}`)).join('')}${rest.length ? `<span class="more" title="${esc(rest.map(p => p.login).join(', '))}">+${rest.length}</span>` : ''}</span>`;
   }
   function cardPrs(s) {
     const prs = s.prs || []; if (!prs.length) return '';
@@ -3568,7 +3621,7 @@
   // A read-only window on this closure for the console and the harness (scripts/scenario.mjs reads it as ctx.peix):
   // copies, never the live objects. The page's script is one IIFE, so nothing else in it is reachable.
   window.peix = {
-    state: () => ({ current: state.current, project: prefs.project, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft, fill: state.fill, notch: state.notch, hidden: [...state.hidden],
+    state: () => ({ current: state.current, project: prefs.project, person: prefs.person, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft, fill: state.fill, notch: state.notch, hidden: [...state.hidden],
       paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, [...v]])), tab: state.sessions.has(state.current) ? tabOf(state.sessions.get(state.current)) : null, tabs: state.sessions.has(state.current) ? tabKeys(state.sessions.get(state.current)) : [], pr: shownPr.url,
       split: splitNow(), stacked: stackNow(), focusG, halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
       strips: state.sessions.has(state.current) ? [0, 1].map(g => keysIn(state.sessions.get(state.current), g)) : [[], []],

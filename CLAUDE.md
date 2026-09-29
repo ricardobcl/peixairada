@@ -275,6 +275,13 @@ refuses to run against the real directory for the same reason.
   who else had a hand in the chat's PRs, merged across them, newest first — three GitHub avatars overlapping (an
   initial when there is no `avatar`) and `+n`; the tooltip says what each did, PR by PR. The images come from GitHub's
   avatar host; the tests hand the fake gh `data:` faces so nothing is fetched.
+* **The people row: everyone in the PRs of the chats in view, under the cards** (`#people`, `renderPeople`,
+  2026-09-29): the project's chats in the states the chips show give their PRs' `people`, merged by login, newest
+  first (`peopleOf`), a face a button behind `ICON.pr`. A click is `prefs.person`: the list, its counts and its
+  timeline narrow to the chats whose PRs have that person (`hasPerson`, applied with the query in
+  `renderSessionList`), the face ringed in the accent and the others dimmed; the same face again, or the person
+  leaving the view, lets go. Grid row 2 of `#sessions`, the list's row and the usage in row 3; `display: none` on the
+  rail. Drawn only when its markup changed (`peopleDrawn`). → `scripts/scenarios/people-row.mjs`.
 * **A card comes in three sizes, the cog's slider** (`#cardsSize`, `prefs.cards`): *large* — your last prompt and
   Claude's last reply —, *medium* the last word only, *compact* neither. `cardHtml` always writes both `.snip`s and
   marks the older one `.older` (Claude's reply is the last word when `lastReplyAt ≥ lastUserAt`); CSS hides by
@@ -711,11 +718,11 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   scroll-driven ones, which run as long as the list can scroll. `ctx`: `evaluate`, `waitFor`, `send`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
-  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The thirty-seven in
+  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The thirty-nine in
   `scripts/scenarios/` are the regression checks for the drawer, the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
   marks, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, a PR's turn, the chat's links,
-  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light.
+  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.

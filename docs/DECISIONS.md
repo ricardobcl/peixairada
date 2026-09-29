@@ -28,6 +28,13 @@ filter only those cards".
   timelines and `timeline-scope`; Chrome runs it on the compositor. Without them, the old per-scroll write stays.
   The harness's `settle()` now leaves scroll-driven animations alone — one runs for as long as the list can scroll.
   The open chat's light (`#trail`) is still drawn from the list's frame, so it can trail the card while you scroll.
+* **A row of faces under the cards filters by person.** Everyone in the PRs of the chats in view (the project's, in
+  the states the chips show) — the same `people` the cards' faces come from, you and bots out — once each, newest
+  first, in a row between the cards and the list's own row. A click narrows the list, its counts and its timeline to
+  the chats whose PRs have that person, rings the face and dims the rest; the same face again lets go, and so does
+  the person leaving the view (another project, a chip turned off). It is a pref, like the project. Not on the rail.
+* **Verified**: `npm test` (47), and all thirty-nine scenarios at 09:46 — past the midnight trap, so `transcript-live`
+  passes again — with `drawer-compact` and `people-row` new.
 
 ## Decisions of 2026-09-29, towards one — no VS Code opener, the card flush with the box, faces on the cards
 
