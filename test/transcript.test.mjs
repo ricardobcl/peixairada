@@ -176,3 +176,24 @@ test('the registry is the word on asking when it says anything; the transcript i
   s.alive = false;
   assert.equal(summary(s).status, 'stale', 'and nothing waits on a chat with no process');
 });
+
+test('a turn the transcript never closes ends when the process says idle — /compact (2026-09-29)', () => {
+  const s = newSession('s10', '/x/s10.jsonl');
+  s.alive = true; s.live = { pid: 1, startedAt: Date.now() - 600_000, status: 'busy', statusAt: Date.parse('2026-09-28T22:28:45.800Z') };
+  // Claude Code 2.1.283: the typed command as a plain prompt, then — compacted — the boundary, the summary and the
+  // command's own tagged lines, and no assistant line at all
+  fold(s, { type: 'user', message: { role: 'user', content: '/compact' }, timestamp: '2026-09-28T22:28:45.706Z' });
+  assert.equal(summary(s).status, 'working', 'compacting: clauding, as the process says');
+  fold(s, { type: 'system', subtype: 'compact_boundary', content: 'Conversation compacted', timestamp: '2026-09-28T22:30:14.325Z' });
+  fold(s, { type: 'user', isCompactSummary: true, message: { role: 'user', content: 'This session is being continued…' }, timestamp: '2026-09-28T22:30:14.285Z' });
+  fold(s, { type: 'user', message: { role: 'user', content: '<command-name>/compact</command-name>' }, timestamp: '2026-09-28T22:28:45.712Z' });
+  fold(s, { type: 'user', message: { role: 'user', content: '<local-command-stdout>Compacted</local-command-stdout>' }, timestamp: '2026-09-28T22:30:14.424Z' });
+  assert.equal(summary(s).status, 'working', 'the transcript alone never says it is over');
+  s.live = { ...s.live, status: 'idle', statusAt: Date.parse('2026-09-28T22:30:14.500Z') };
+  assert.equal(summary(s).status, 'idle', 'the process went idle after the turn began: done');
+  // a prompt the transcript has before the registry has caught up: the idle is the last turn's, and it is clauding
+  fold(s, user('and now the tests', { timestamp: '2026-09-28T22:31:00.000Z' }));
+  assert.equal(summary(s).status, 'working', 'an idle older than the prompt is the turn before');
+  s.live = { ...s.live, statusAt: undefined };
+  assert.equal(summary(s).status, 'working', 'a claude that says nothing of when: the transcript stands');
+});

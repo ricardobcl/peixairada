@@ -4,6 +4,22 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-09-28.
 
+## Decisions of 2026-09-29, one o'clock — /compact ends, the splitter scrolls with the list, a row of faces that filters
+
+Ricardo: "seems like when I do a /compact even after it finishes, the card stays 'clauding'"; "the vertical separator
+has some kind of lag when scrolling, which looks bad because it's supposed to be attached to the card now"; "add an
+extra row at the bottom of the cards with all the users I have interactions with PRs and by clicking on their face, I
+filter only those cards".
+
+* **A /compact ends.** Claude Code 2.1.283 writes the typed `/compact` as a plain prompt line (no tags — it reads as a
+  prompt, so the chat went clauding and its last prompt read "/compact"), and once compacted writes the boundary, the
+  summary and the command's own tagged lines — no assistant line, so no `end_turn`, and nothing in the transcript ever
+  said the turn was over. The registry does: `statusOf` takes the process's `idle` over the transcript's `working` when
+  it came after your last word (`statusUpdatedAt` ≥ `lastUserAt`); an idle older than the prompt is the turn before,
+  so a prompt that reaches the transcript a beat before the registry says busy does not flicker. The fake claude now
+  reports busy and idle as the real one does, and does a `/compact` the real one's way; `drawer-compact.mjs` failed
+  without the rule and passes with it.
+
 ## Decisions of 2026-09-29, towards one — no VS Code opener, the card flush with the box, faces on the cards
 
 Ricardo: "remove the 'open in VScode' option"; of a screenshot of the open card beside the splitter, "the colors don't

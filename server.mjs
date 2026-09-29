@@ -401,6 +401,11 @@ function statusOf(s) {
   if (s.agentsRunning) return 'working';
   if (s.status === 'unknown' && !s.lastActivity) return 'idle';   // live and empty — a new chat, or a cleared one (whose file holds only the /clear)
   if (s.status === 'needs-input') return s.live?.status === 'busy' ? 'working' : 'idle';   // the registry has it answered already
+  // A turn the transcript never closes (2026-09-29, Ricardo: "when I do a /compact even after it finishes, the card stays
+  // clauding"): Claude Code writes the typed /compact as a plain prompt line and, compacted, no assistant line — no
+  // end_turn. A process that went idle after your last word is not clauding, whatever the last line reads. Only after:
+  // a prompt lands in the transcript a beat before the registry says busy, and the idle before it is the last turn's.
+  if (s.status === 'working' && s.live?.status === 'idle' && s.live.statusAt >= Date.parse(s.lastUserAt || s.statusSince)) return 'idle';
   return s.status;
 }
 // A VS Code chat can be taken over like a CLI one (2026-09-20 — refused from 2026-09-19 on a misread of the
@@ -1190,7 +1195,7 @@ function loadRegistry() {
     if (!reg.sessionId) continue;
     if (!found.has(reg.sessionId)) found.set(reg.sessionId, []);
     found.get(reg.sessionId).push({ pid: reg.pid, name: reg.name, entrypoint: reg.entrypoint, kind: reg.kind, cwd: reg.cwd, startedAt: reg.startedAt, version: reg.version,
-      status: reg.status, waitingFor: reg.status === 'waiting' ? reg.waitingFor : undefined });   // what it is doing, and what it waits on (waitingOn)
+      status: reg.status, statusAt: reg.statusUpdatedAt, waitingFor: reg.status === 'waiting' ? reg.waitingFor : undefined });   // what it is doing, since when, and what it waits on (waitingOn)
   }
   const ppids = [...terms.values()].some(t => t.task && !t.sessionId && t.exited === null) ? parentPids() : null;   // a launcher's claude is below the PTY's pid
   for (const [id, lives] of found) {
