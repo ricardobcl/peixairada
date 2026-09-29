@@ -100,6 +100,16 @@ export default async function (ctx) {
     out.compact = await ctx.evaluate(`(() => { const l = document.querySelector('#sessions'), was = l.dataset.cards; l.dataset.cards = 'compact';
       const shown = !!${card}.querySelector('.state.prmove').getClientRects().length; l.dataset.cards = was; return shown; })()`);
     ctx.assert.equal(out.compact, true, 'the line shows on a compact card too');
+    // …and on compact's same height (2026-09-29, Ricardo: "the same height should preserve the 'your move' row"): the
+    // line stays, and a card with no move holds an empty one, so the two cards are one height
+    out.even = await ctx.evaluate(`JSON.stringify((() => { const l = document.querySelector('#sessions'), was = l.dataset.cards; l.dataset.cards = 'compact'; l.toggleAttribute('data-even', true);
+      const other = [...document.querySelectorAll('#slist > .card')].find(c => c !== ${card});
+      const r = { shown: !!${card}.querySelector('.state.prmove').getClientRects().length, slot: getComputedStyle(other.querySelector('.state.moveslot')).visibility,
+        heights: [${card}, other].map(c => Math.round(c.getBoundingClientRect().height)) };
+      l.dataset.cards = was; l.toggleAttribute('data-even', false); return r; })())`).then(JSON.parse);
+    ctx.assert.equal(out.even.shown, true, 'same height keeps the your-move line');
+    ctx.assert.equal(out.even.slot, 'hidden', 'a card without one holds its place, unseen');
+    ctx.assert.equal(out.even.heights[0], out.even.heights[1], `one height: ${out.even.heights}`);
     const list = () => ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: 330 }))(document.querySelector('#slist').getBoundingClientRect())`);
     await ctx.shot('1-card', await list());
     await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] }); await ctx.settle();

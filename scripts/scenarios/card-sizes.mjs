@@ -79,6 +79,7 @@ export default async function (ctx) {
     ctx.assert.equal(out.even.attr, true);
     ctx.assert.deepEqual(heights(out.even.cards).length, 1, `one height for every card: ${JSON.stringify(Object.fromEntries(Object.entries(out.even.cards).map(([t, c]) => [t, c.h])))}`);
     ctx.assert.equal(out.even.cards['Asking you'].ask, false, 'the question is left to the card\'s blinking edge');
+    ctx.assert.equal(await ctx.evaluate(`[...document.querySelectorAll('#slist > .card .state.moveslot')].every(x => getComputedStyle(x).visibility === 'hidden' && x.getClientRects().length)`), true, 'no card has a move here: each holds the line\'s place, unseen');
     await ctx.shot('even', { x: 0, y: 0, width: 420, height: 640 });
     await ctx.evaluate(`document.querySelector('#settings .dens .stops [data-v="1"]').click()`);
     ctx.assert.deepEqual(await ctx.evaluate(`[document.querySelector('#evenRow').hidden, document.querySelector('#sessions').hasAttribute('data-even')]`), [true, false], 'medium: no switch, and nothing evened');

@@ -648,11 +648,15 @@
      compact drops both. The markup always holds both, so moving the slider re-renders nothing. */
   #sessions[data-cards="medium"] .card .snip.older, #sessions[data-cards="compact"] .card .snip { display: none; }
   /* …and compact's own switch, one height for every card (2026-09-29, Ricardo: "add an option in the compact setting to
-     make cards same height"; data-even, prefs.cardsEven): the title on one line, and the lines a card could add under
-     it left to its other signals — an asking card's border blinks as ever, a PR at your move is ringed in the accent. */
+     make cards same height"; data-even, prefs.cardsEven): the title on one line, the question left to the card's
+     blinking edge, and the *your move* line kept (the same morning: "the same height should preserve the 'your move'
+     row") — on a card without one, an invisible one of the same size holds its place (.moveslot, always in the markup
+     and shown only here; not .prmove, which the harness reads the real line by), so every card is the top row, one
+     title line and that row. */
+  .card .state.moveslot { display: none; }
   #sessions[data-even] .card .title { -webkit-line-clamp: 1; }
-  #sessions[data-even] .card .state { display: none; }
-  #sessions[data-even] .card .cpr[data-turn="you"] { box-shadow: 0 0 0 1.5px var(--accent); }
+  #sessions[data-even] .card .state.needs-input { display: none; }
+  #sessions[data-even] .card .state.moveslot { display: flex; visibility: hidden; }
   /* You and Claude are told apart twice over: hue on the glyph (cool teal vs Claude's clay) and
      weight on the text — Claude's line is the one you scan a list for, so it sits brighter and the
      prompt that produced it recedes. */
@@ -711,7 +715,8 @@
   .ymove { flex: none; display: inline-flex; align-items: center; gap: 3px; padding: 0 5px 0 4px; border-radius: 3px; background: var(--accent); color: var(--bg); font-size: 9.5px; font-weight: 700; line-height: 15px; letter-spacing: .4px; text-transform: uppercase; white-space: nowrap; }
   .ymove .ic { width: 10px; height: 10px; }
   .card .state.prmove { color: var(--ink); display: flex; align-items: baseline; gap: 6px; }
-  .card .state.prmove .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .card .state.moveslot { align-items: baseline; gap: 6px; }   /* the line's own metrics, for the place it holds */
+  .card .state:is(.prmove, .moveslot) .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .card .state.prmove .opts { color: var(--muted); font-weight: 500; flex: none; }
   .shead .hmove { flex: 0 1 auto; max-width: 45%; min-width: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
   .shead .hmove .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -1293,7 +1298,7 @@
       <datalist id="cardsStops"><option value="0"></option><option value="1"></option><option value="2"></option></datalist>
       <span class="stops"><span data-v="0" title="your last prompt and Claude's last reply, as always">large</span><span data-v="1" title="only the last word — yours or Claude's, whichever came last">medium</span><span data-v="2" title="neither: the title, its chips and its PRs">compact</span></span>
     </div>
-    <label class="opt sub" id="evenRow" title="Compact cards all the same height: the title on one line, and neither the question nor your move under it — a card asking you still blinks red, and a PR at your move wears a ring in the accent" hidden><input type="checkbox" id="cardsEven"><span><b>same height</b> — every compact card one title line tall</span></label>
+    <label class="opt sub" id="evenRow" title="Compact cards all the same height: the title on one line and the your-move line under it, held empty on a card without one; the question is left to the card's blinking red edge" hidden><input type="checkbox" id="cardsEven"><span><b>same height</b> — every compact card a title line and a your-move line tall</span></label>
     <label class="opt" title="On, ⌥ with a letter is Meta in the terminal, as iTerm's Esc+ — ⌥B ⌥F move a word, ⌥⌫ deletes one; ⌥ with a digit or a sign still types what the keyboard makes. Off, ⌥ types whatever your layout composes (⌥L is @ on a German one)"><input type="checkbox" id="optMeta" checked><span><b>⌥ is Meta</b> in the terminal — off, ⌥ types what your keyboard composes</span></label>
     <div id="hidden" class="hid"></div>
   </div>
@@ -2432,6 +2437,8 @@
     const prs = movedPrs(s); if (!prs.length || s.done) return '';
     return `<div class="state prmove" title="${esc(moveTip(prs))}"><b class="ymove">${ICON.pr}your move</b><span class="q">${esc(prs[0].label.replace(/^.*?#/, '#'))} · ${esc(prs[0].turn.why)}</span>${prs.length > 1 ? `<span class="opts">+${prs.length - 1} PR${prs.length > 2 ? 's' : ''}</span>` : ''}</div>`;
   }
+  /** A card with no move holds the line's place when compact's same height is on (.moveslot, hidden everywhere else). */
+  const MOVE_SLOT = `<div class="state moveslot" aria-hidden="true"><b class="ymove">${ICON.pr}your move</b><span class="q">#0</span></div>`;   // the tag and a word: the real line's metrics
   /** The chat header's: the tag, then the newest move's PR and reason, the others counted — right of the title. */
   function headMove(s) {
     const prs = movedPrs(s); if (!prs.length) return '';
@@ -2495,7 +2502,7 @@
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge">${un}</span>` : ''}</div>
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${esc(s.lastReply)}</div>` : ''}
-      ${asking(s) ? askHtml(s) : ''}${moveHtml(s)}
+      ${asking(s) ? askHtml(s) : ''}${moveHtml(s) || MOVE_SLOT}
       <span class="abbr" title="${esc(`${s.project} · ${s.title}`)}">${esc(projAbbr(s.project))}</span>
     </div>`;
   }

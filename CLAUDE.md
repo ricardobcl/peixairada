@@ -287,8 +287,10 @@ refuses to run against the real directory for the same reason.
   marks the older one `.older` (Claude's reply is the last word when `lastReplyAt ≥ lastUserAt`); CSS hides by
   `#sessions[data-cards]`, so the slider re-renders nothing. The question line (`askHtml`) shows at every size —
   **unless compact's own switch, *same height*, is on** (`#cardsEven` under the slider, shown only at compact;
-  `prefs.cardsEven` → `#sessions[data-even]`, 2026-09-29): the title on one line and no `.state` line under it, so
-  every card is one height; an asking card still blinks, a PR at your move is ringed in the accent.
+  `prefs.cardsEven` → `#sessions[data-even]`, 2026-09-29): the title on one line, the question left to the card's
+  blinking edge, and the *your move* line kept — a card without one shows `.moveslot` instead, an invisible line of
+  the same metrics (in the markup always, `display: none` elsewhere; not `.prmove`, which the harness reads the real
+  line by) — so every card is the top row, one title line and that row.
   → `scripts/scenarios/card-sizes.mjs`.
 * **A chat on Fable wears an F**: `onFable(s)` is `/fable/i` on `s.model`; the mark is `ICON.fable`, **beside the
   title** (`.trow .fable`, since 2026-09-28), in `--accent`. The rail does not show it.

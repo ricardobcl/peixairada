@@ -13,6 +13,9 @@ Ricardo: "add an option in the compact setting to make cards same height".
   cards of different heights besides a wrapped title — so every card is the top row and one title line. The signals
   those lines carried stay on the card: an asking card's edge blinks red as ever, and a PR at your move is ringed in
   the accent. Off by default; a pref, kept while the slider is elsewhere.
+* **…keeping the *your move* line** (the same morning: "the same height should preserve the 'your move' row"): it
+  stays on the cards that have one, and every other card holds an invisible line of the same metrics in its place, so
+  the heights still match — the top row, one title line, that row. The ring on the chip, a stand-in for the line, went.
 
 ## Decisions of 2026-09-29, one o'clock — /compact ends, the splitter scrolls with the list, a row of faces that filters
 
