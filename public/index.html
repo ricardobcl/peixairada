@@ -183,8 +183,7 @@
   @property --hveil { syntax: '<color>'; inherits: true; initial-value: transparent; }
   @property --hveil2 { syntax: '<color>'; inherits: true; initial-value: transparent; }
   @property --openc { syntax: '<color>'; inherits: true; initial-value: transparent; }
-  @property --openb { syntax: '<color>'; inherits: true; initial-value: transparent; }
-  main { --openc: var(--panel); --openb: var(--line); transition: --openc .25s, --openb .25s; }
+  main { --openc: var(--panel); transition: --openc .25s; }
   #chat { --hbg: var(--nocolor); transition: --hbg .25s, --hveil .25s, --hveil2 .25s; }
   #sessions { border-left: 4px solid var(--repo, var(--nocolor)); }
   #sessions .colhead { background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); }
@@ -227,15 +226,27 @@
   main.scompact #slist > .card .abbr { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .4px; }
   main.scompact #slist .gsep { display: none; }   /* no room for a line, or for Claude's mark, on a rail of squares */
   main.scompact #slist .none { padding: 14px 2px; font-size: 10px; }
-  /* The bar between the list and the chat is the open chat's colour (2026-09-26): --openc and --openb on main (registered, so they ease), set with the chat's
+  /* The bar between the list and the chat is the open chat's colour (2026-09-26): --openc on main (registered, so it eases; --openb, its edges, went on 2026-09-29), set with the chat's
      tint, so the open card, the bar and the chat's header are one stroke of it — see .card.active. */
-  #splitter { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--openb); border-right: 1px solid var(--openb); background: var(--openc); position: relative; }
+  #splitter { width: 6px; flex: none; cursor: col-resize; background: var(--openc); position: relative; overflow: hidden; }
   /* …down to the open chat's card only, black under it (2026-09-28, Ricardo: "should be black from the lower card down
      — if I scroll, that should also move", then "instead of top until the height the card it's select"): --split is
-     where the open card ends, from the splitter's top, set with the list's ends on every scroll and render
-     (drawSplit) — the card out of sight below, the colour runs to the list's foot; above, or not in the list, all black. */
-  #splitter::after { content: ''; position: absolute; left: -1px; right: -1px; top: var(--split, 100%); bottom: 0; background: #000; pointer-events: none; }
-  #splitter:is(:hover, .drag)::after { opacity: 0; transition: opacity 0s .3s; }
+     where the open card ends, from the splitter's top (drawSplit) — the card out of sight below, the colour runs to the
+     list's foot; above, or not in the list, all black. ::before blacks the bar beside the list's foot row (--sfoot).
+     The black moves with the list's scroll by itself (2026-09-29, Ricardo: "the vertical separator has some kind of lag
+     when scrolling, which looks bad because it's supposed to be attached to the card"): a --split rewritten from each
+     scroll event came a frame or two behind the list, whose scroll is the compositor's. So --split is in the list's own
+     coordinates, set only when the card moves in the list, and a scroll-driven animation on the list's timeline
+     (--slist, visible here through main's timeline-scope) slides the black up by the scroll — --smax, how far the list
+     scrolls, is its end. The black is taller than any window, so sliding it never bares its foot; the bar clips it.
+     Where the engine has no scroll timelines (.scrolls absent), drawSplit writes the on-screen place on every scroll. */
+  main { timeline-scope: --slist; }
+  #slist { scroll-timeline: --slist y; }
+  #splitter::after { content: ''; position: absolute; left: 0; right: 0; top: var(--split, 100%); height: 400vh; background: #000; pointer-events: none; }
+  #splitter::before { content: ''; position: absolute; left: 0; right: 0; top: var(--sfoot, 100%); bottom: 0; z-index: 1; background: #000; pointer-events: none; }
+  #splitter.scrolls::after { animation: split-scroll linear both; animation-timeline: --slist; }
+  @keyframes split-scroll { to { transform: translateY(calc(0px - var(--smax, 0px))); } }
+  #splitter:is(:hover, .drag)::after, #splitter:is(:hover, .drag)::before { opacity: 0; transition: opacity 0s .3s; }
   #splitter:hover, #splitter.drag { background: var(--accent); }
   /* The dividers light up after a beat, as VS Code's sash does (2026-09-27, night): a pointer crossing on its way to the
      chat no longer flashes them; a drag lights at once. */
@@ -1569,7 +1580,7 @@
   const tintChat = color => {
     const c = $('#chat'); c.classList.toggle('tinted', !!color);
     // the splitter: the chat's colour, the grey of none, the panel until a chat is open — registered (main's rule), so the change eases
-    for (const p of ['--openc', '--openb']) $('#main').style.setProperty(p, color || 'var(--nocolor)');
+    $('#main').style.setProperty('--openc', color || 'var(--nocolor)');
     c.style.setProperty('--hbg', color || 'var(--nocolor)');   // the header's ground and the transcript's wash, eased
     if (color) {
       const ink = inkOn(color), veil = a => ink === '#ffffff' ? `rgb(0 0 0 / ${a})` : `rgb(255 255 255 / ${a + .08})`;
@@ -2008,9 +2019,16 @@
     });
   }
   /** The splitter in the open chat's colour down to where its card ends, as the list is scrolled; black under it. */
+  const SPLIT_SCROLLS = CSS.supports('timeline-scope: --a') && CSS.supports('animation-timeline: scroll()');
+  if (SPLIT_SCROLLS) $('#splitter').classList.add('scrolls');
   function drawSplit(g) {
-    const px = `${Math.max(0, Math.round(splitEnd(g) - g.sp.top))}px`, sp = $('#splitter');
-    if (sp.style.getPropertyValue('--split') !== px) sp.style.setProperty('--split', px);
+    const sp = $('#splitter'), set = (k, v) => { if (sp.style.getPropertyValue(k) !== v) sp.style.setProperty(k, v); };
+    // where the black starts: in the list's coordinates when the scroll slides it (the card's bottom as at scroll 0 —
+    // the same on every scroll, so a scroll writes nothing), on screen when it cannot; no card, above everything
+    const end = !SPLIT_SCROLLS ? splitEnd(g) - g.sp.top : g.openRect ? g.openRect.bottom + 1 + g.top - g.sp.top : -1e5;
+    set('--split', `${Math.round(SPLIT_SCROLLS ? end : Math.max(0, end))}px`);
+    set('--smax', `${Math.max(0, g.sh - g.ch)}px`);
+    set('--sfoot', `${Math.round(g.box.bottom - g.sp.top)}px`);
   }
   /** Where the splitter's colour ends, on screen: the open card's bottom edge, held inside the list's window. The edge
    *  as drawn — the card's rect, not its rounded offsets, and its outline's 1 px outside it (2026-09-29, Ricardo: the bar

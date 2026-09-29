@@ -19,6 +19,15 @@ filter only those cards".
   so a prompt that reaches the transcript a beat before the registry says busy does not flicker. The fake claude now
   reports busy and idle as the real one does, and does a `/compact` the real one's way; `drawer-compact.mjs` failed
   without the rule and passes with it.
+* **The splitter's black scrolls with the list.** The list's scroll runs on the compositor; `--split` was rewritten
+  from the scroll event in the next frame, so the black trailed the card by a frame or two — visible now that the bar
+  is meant to be the card's. `--split` is in the list's own coordinates now (the card's bottom as at scroll 0, so a
+  scroll writes nothing), and a scroll-driven animation on the list's scroll timeline slides the black up by the
+  scroll; the bar lost its 1 px edges so it can clip what slides. A Swift probe of the system WebKit (a `WKWebView`
+  on the live board, scrolled 500 px) read the black slid by exactly -500, and `CSS.supports` true for scroll
+  timelines and `timeline-scope`; Chrome runs it on the compositor. Without them, the old per-scroll write stays.
+  The harness's `settle()` now leaves scroll-driven animations alone — one runs for as long as the list can scroll.
+  The open chat's light (`#trail`) is still drawn from the list's frame, so it can trail the card while you scroll.
 
 ## Decisions of 2026-09-29, towards one — no VS Code opener, the card flush with the box, faces on the cards
 

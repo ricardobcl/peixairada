@@ -230,7 +230,7 @@ refuses to run against the real directory for the same reason.
   and `#chat.tinted`; `--rink` is the ink that reads on it (`inkOn()`), every control in `.shead` redrawn in it; the
   veils pull the colour away from that ink towards the bottom right. No colour → the plain panel header. **The colour
   eases from chat to chat** (2026-09-27, night): the header's ground, the two veils, the transcript's wash and the
-  divider read registered colours — `--hbg`, `--hveil`, `--hveil2` on `#chat`, `--openc`, `--openb` on `main`, all set
+  divider read registered colours — `--hbg`, `--hveil`, `--hveil2` on `#chat`, `--openc` on `main`, all set
   by `tintChat` — and `transition` on those two elements does the rest; `--repo` stays unregistered (its fallback is
   load-bearing) and `--rink` cuts. A new surface in the chat's colour reads `--hbg`, not `--repo`. **The
   colour square sits between the project and the title**, centred, out of the flow — positioned from `.shead` at the
@@ -298,9 +298,14 @@ refuses to run against the real directory for the same reason.
   meets the bar seamlessly (a second `background-image` layer over the wash, 2026-09-29), and `#splitter` is `--open`
   on `main` (set by `tintChat`); the bar ends at the card's edge as drawn — its rect, plus the outline's pixel
   (`splitEnd`). **The splitter wears it only down to the open card**
-  (2026-09-28): black under it (`#splitter::after` from `--split`), set by `drawSplit(g)` in the list's frame, so it
-  follows a scroll; the open card out of sight below, the colour runs to the list's foot; above it, or not in the list,
-  the splitter is black.
+  (2026-09-28): black under it (`#splitter::after` from `--split`); the open card out of sight below, the colour runs
+  to the list's foot (`::before` blacks the bar beside the foot row, `--sfoot`); above it, or not in the list, the
+  splitter is black. **The black slides with the list's scroll by itself** (2026-09-29): `--split` is in the list's
+  own coordinates, written by `drawSplit(g)` only when the card moves in the list, and a scroll-driven animation
+  (`split-scroll` on the `--slist` scroll timeline, seen from the splitter through `main`'s `timeline-scope`) moves it
+  up by the scroll, to `--smax` — the compositor's scroll, not a scroll event's frame behind it. The bar clips it
+  (`overflow: hidden`; no edges since). An engine without scroll timelines gets `.scrolls` off and the old on-screen
+  `--split` on every scroll (`SPLIT_SCROLLS`); the system WebKit has them (probed 2026-09-29).
 * **A new chat has a card before its first word**: `visible()` shows a live chat with no transcript unless it is VS
   Code's. The server's `startedAt` on a session born from the registry is the card's time and place — the moment the
   board first saw the id (the process's start only at boot) — carried over by `indexFile`, the last fallback of
@@ -702,7 +707,8 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   and temp dirs on exit — after a failed setup too (`--keep` to inspect). **A rectangle is read after `ctx.settle()`**
   (2026-09-27, night): the list's cards slide for up to 220 ms after they arrive or change rank, a dialog rises as it
   opens, and a rect read mid-move puts the pointer on the neighbour or a box off-centre; `settle` waits for every
-  finite animation (the named slides, the CSS transitions) to end and leaves the endless ones alone. `ctx`: `evaluate`, `waitFor`, `send`,
+  finite animation (the named slides, the CSS transitions) to end and leaves the endless ones alone — and the
+  scroll-driven ones, which run as long as the list can scroll. `ctx`: `evaluate`, `waitFor`, `send`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
   `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The thirty-seven in

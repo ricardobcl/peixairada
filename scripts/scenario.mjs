@@ -71,7 +71,8 @@ const ctx = {
   // as it opens, and a rectangle read meanwhile is mid-move — the pointer then lands on the neighbour, a box measures
   // off-centre. Measure after this: it waits for every finite animation to end — the named slides (flip · enter ·
   // leave · pop), the CSS transitions — and leaves the endless ones (the ring, the blink, the spinner) alone.
-  settle: (timeout = 4000) => cdp.waitFor(`!document.getAnimations().some(a => a.playState === 'running' && a.effect?.getTiming?.().iterations !== Infinity)`, { timeout, every: 40, what: 'the board to settle' }),
+  // the endless ones and the scroll-driven ones (the splitter's black, which runs as long as the list can scroll) are left alone
+  settle: (timeout = 4000) => cdp.waitFor(`!document.getAnimations().some(a => a.playState === 'running' && a.timeline === document.timeline && a.effect?.getTiming?.().iterations !== Infinity)`, { timeout, every: 40, what: 'the board to settle' }),
   evaluate: cdp.evaluate, waitFor: cdp.waitFor, send: cdp.send, exceptions: cdp.exceptions, console: cdp.console,
   shot: async (label, clip) => { const f = join(shots, `${name}-${label}.png`); await cdp.shot(f, clip); log(`screenshot → ${f}`); return f; },
   openChat: id => openChat(cdp, id),
