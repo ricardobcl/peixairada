@@ -5,7 +5,8 @@
 // group by its start, the open one, its age counted from the start; the first prompt then titles it and it keeps its
 // place, one card throughout. drawer-clear.mjs checks the same for /clear. The empty card carries the ✓ like any idle
 // chat (Ricardo, the same day: "those cards don't have the done check to clean them up"), and ticked it is gone — its
-// drawer ended, no dimmed card left, since an empty chat has nothing to resume. Runs the fake claude.
+// drawer ended, no dimmed card left, since an empty chat has nothing to resume — and the column moves on to the card
+// below it (2026-09-30, tick-next.mjs). Runs the fake claude.
 import { waitFor } from '../../lib/testserver.mjs';
 
 export const meta = { server: true, fake: true, fixture: 'auto' };
@@ -91,9 +92,8 @@ export default async function (ctx) {
   ctx.assert.ok(out.ticked.first, 'the first new chat keeps its card');
   ctx.assert.equal(out.ticked.ready, ready2, 'the ready count is back where it was');
   ctx.assert.equal(out.ticked.done, 0, 'and done did not take it in');
-  ctx.assert.deepEqual(out.ticked.column, { current: null, hash: '', head: 'Pick a chat', log: 'Pick a chat on the left — ⌥⌘K finds one anywhere, ⌥⌘P picks a project.', tinted: false },
-    'the column left the chat with its card: back to the page as a load with no chat draws it');
-  await ctx.evaluate(`document.querySelector('#slist > .card[data-id=${JSON.stringify(id)}]').click()`);
-  await ctx.waitFor(`window.peix.state().current === ${JSON.stringify(id)} && document.querySelector('#shead').textContent.includes('hello from the board')`, { what: 'the first chat opened again, its header drawn' });
+  ctx.assert.deepEqual({ current: out.ticked.column.current, hash: out.ticked.column.hash }, { current: id, hash: '#' + id },
+    'the column moved on to the card below the ticked one: the first new chat');
+  await ctx.waitFor(`document.querySelector('#shead').textContent.includes('hello from the board')`, { what: 'the first chat\'s header drawn' });
   return out;
 }

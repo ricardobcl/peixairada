@@ -326,8 +326,8 @@ refuses to run against the real directory for the same reason.
   *(no messages yet)* title all go by `!s.lastActivity` — by `!s.file`, a cleared chat's card sank to the bottom with no
   age and no ✓; the fake writes those lines before the registry, the order that caught it. `openSession` on a chat the
   snapshot lacks renders the board from its fetch. **It has the ✓ like any idle chat, and ticked it is gone** — no dimmed done card, nothing to resume: `visible()`
-  drops an empty chat once done, and the column leaves it (`leaveChat()`, from the `session` event; ＋ goes through the
-  same function). → `scripts/scenarios/new-chat-card.mjs`, the card checks in `drawer-clear.mjs`.
+  drops an empty chat once done, and the column moves on to the next card (`tickDone`) or, with none, leaves it
+  (`leaveChat()`, from the `session` event; ＋ goes through the same function). → `scripts/scenarios/new-chat-card.mjs`, the card checks in `drawer-clear.mjs`.
 * **A chat waiting on your answer first, then clauding, then ready, done last** (`RANK` / `rankOf`), inside each
   group **by the last word, yours or Claude's** (`wordAt`: the newer of `lastUserAt` and `lastReplyAt`; a tool call
   is not a word — **a PR come round to you is**, at its `turn.movedAt`: `movedAt(s)`, in both copies), newest first; a project ranks by its newest chat. The filters and every count go by `bucket()`,
@@ -339,6 +339,10 @@ refuses to run against the real directory for the same reason.
   else `DD-MM-YYYY` (`dayName()`, by `wordAt`). A day's line closes the cards *above* it, so the oldest day gets one at
   the bottom; the list is grouped first, so a day can come back and each run gets its own line.
   → `scripts/scenarios/day-separator.mjs`.
+* **Ticking the open chat moves on** (2026-09-30): `tickDone` — the card's ✓ and ↩, the chats step's ✓ — opens the
+  card below it in the list as shown, else the one above, stepping over done cards; a chat ticked while another is
+  open moves nothing. The move is made **at the click**, not on the server's answer (an empty chat's `session` event
+  would `leaveChat` first). → `scripts/scenarios/tick-next.mjs`.
 * **The list's frame reads its geometry once** (2026-09-27): `listChanged()` runs once a frame — `listGeom()` (every
   card's top and height, the window, the rail) first, then `drawEdges(g)` and `drawTimeline(g)`. A read after a write
   is a layout each; keep the reads at the top. The pointer
@@ -723,11 +727,11 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   scroll-driven ones, which run as long as the list can scroll. `ctx`: `evaluate`, `waitFor`, `send`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
-  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The thirty-nine in
+  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The forty in
   `scripts/scenarios/` are the regression checks for the drawer, the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
   marks, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, a PR's turn, the chat's links,
-  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row.
+  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.

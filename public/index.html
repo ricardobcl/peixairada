@@ -2774,7 +2774,7 @@
     // ✓: the chat is ticked done and the picker stays up — the row leaves on the server's `session` event. A double
     // click's second press would land on the row that slid up under the pointer, so only a single one counts.
     const dn = e.target.closest('button.pkdone');
-    if (dn) { e.stopPropagation(); $('#pickq').focus(); if (e.detail <= 1) api('POST', `/api/sessions/${dn.dataset.id}/done`, { done: true }).catch(err => note(dn, `Could not tick it: ${err.message}`, true)); return; }
+    if (dn) { e.stopPropagation(); $('#pickq').focus(); if (e.detail <= 1) tickDone(dn.dataset.id, true, dn); return; }
     const ed = e.target.closest('.pked');   // ✎: the picker gives way to the project's editor
     if (ed) { e.stopPropagation(); $('#pick').close(); openProjectEditor(ed.dataset.id); return; }
     const r = e.target.closest('.pkrow'); if (r) pickChoose(+r.dataset.i);
@@ -2874,6 +2874,20 @@
     const i = cards.findIndex(c => c.dataset.id === state.current);
     const next = cards[i < 0 ? (dir > 0 ? 0 : cards.length - 1) : Math.max(0, Math.min(cards.length - 1, i + dir))];
     if (next.dataset.id !== state.current) openSession(next.dataset.id);
+  }
+  // ✓ and ↩ — the card's, and the chats step's ✓. Ticking the open chat moves on (2026-09-30, Ricardo: "when I mark
+  // as done, we should move the the next chat (up or down)"): to the card below it in the list as shown, the one that
+  // slides into its place, else the one above; done cards are skipped, and a chat ticked while another is open moves
+  // nothing. The move is made at the click, not on the answer: an empty chat's `session` event would leave it first.
+  function tickDone(id, done, anchor) {
+    if (done && id === state.current) {
+      const cards = [...document.querySelectorAll('#slist > .card')], i = cards.findIndex(c => c.dataset.id === id);
+      const open = c => !c.classList.contains('done');
+      const next = i < 0 ? null : cards.slice(i + 1).find(open) || cards.slice(0, i).reverse().find(open);
+      if (next) openSession(next.dataset.id);
+    }
+    api('POST', `/api/sessions/${id}/done`, { done })   // the card the click was on is redrawn by the move
+      .catch(err => note(anchor.isConnected ? anchor : document.querySelector(`#slist > .card[data-id="${id}"]`), `Could not tick it: ${err.message}`, true));
   }
   // ⌥⌘← / ⌥⌘→ (2026-09-20, Ricardo: "cmd option left/right should change the open chat | shell | GH | vscode panes"):
   // the tab beside the current one in the strip, wrapping round; the same path as a click on it. The chat alone: a note.
@@ -3092,7 +3106,7 @@
     const cpr = e.target.closest('.cpr');
     if (cpr) { e.stopPropagation(); openSession(card.dataset.id); showPr(cpr.dataset.url); return; }   // that chat, with that PR open
     const act = e.target.closest('.act');
-    if (act) { e.stopPropagation(); api('POST', `/api/sessions/${card.dataset.id}/done`, { done: act.dataset.act === 'done' }).catch(err => note(card, `Could not tick it: ${err.message}`, true)); return; }
+    if (act) { e.stopPropagation(); tickDone(card.dataset.id, act.dataset.act === 'done', card); return; }
     openSession(card.dataset.id);
   });
 

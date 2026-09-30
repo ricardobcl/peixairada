@@ -2,7 +2,22 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-09-28.
+this file is the *why* and the *state*. Last updated 2026-09-30.
+
+## Decisions of 2026-09-30 — ticking the open chat moves on
+
+Ricardo: "when I mark as done, we should move the the next chat (up or down)".
+
+* **Down first, then up**: ✓ on the open chat opens the card below it in the list as shown — the one that slides into
+  its place — and, when it was the last chat still to do, the one above. Done cards are stepped over (with the done
+  chip on they sit at the bottom, and opening one is no next thing to do); nothing left to do, the chat stays open as
+  before. One function, `tickDone`, for the card's ✓ and ↩ and the chats step's ✓, so ⌥⌘N's cleaning moves the column
+  along too while the picker stays up.
+* **Only the open chat**: a card ticked while another chat is open leaves the column where it is; ↩ moves nothing.
+* **At the click**: the move does not wait for the server. An empty chat ticked done leaves the board on its
+  `session` event (`leaveChat`), which can arrive before the POST's answer; moving first keeps that path for the case
+  with no neighbour only. A failed tick still says so, by the card.
+* **Verified**: `scripts/scenarios/tick-next.mjs`, new — down, up over a done card, another card, ↩, and the chats step.
 
 ## Decisions of 2026-09-29, morning — compact cards of one height
 
