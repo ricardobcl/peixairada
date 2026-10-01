@@ -8,7 +8,8 @@ private API, no cooperation from Claude Code itself. Built as a PoC on 2026-08-3
 [docs/DECISIONS.md](docs/DECISIONS.md) is the *why and the history*: dated decisions, open items, the state of the
 tree, and *Findings* — the full stories behind the bullets below (the bullets as they stood before 2026-09-27, with
 their dates and quotes, are there verbatim). When a finding is new, add a decision entry there and a bullet here with
-a pointer; do not grow this file with stories.
+a pointer; do not grow this file with stories. **A comment in the code carries the date of its decision, never a
+person's words**: the request, quoted, goes in the decision entry (since 2026-10-01 — the board is shared).
 
 ## Run, build, check
 

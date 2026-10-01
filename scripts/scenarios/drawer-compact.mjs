@@ -1,8 +1,7 @@
-// /compact in the drawer (2026-09-29, Ricardo: "seems like when I do a /compact even after it finishes, the card stays
-// clauding"). Claude Code 2.1.28x writes the typed command as a plain prompt line, says busy while it summarises, and
-// once compacted writes the boundary, the summary and the command's own tagged lines — no assistant line, so no
-// end_turn. The transcript alone never says the turn is over; the registry going idle after it began does. Runs the
-// fake claude, whose /compact writes what the real one does.
+// /compact in the drawer (2026-09-29). Claude Code 2.1.28x writes the typed command as a plain prompt line, says busy
+// while it summarises, and once compacted writes the boundary, the summary and the command's own tagged lines — no
+// assistant line, so no end_turn. The transcript alone never says the turn is over; the registry going idle after it
+// began does. Runs the fake claude, whose /compact writes what the real one does.
 export const meta = { server: true, fake: true, fixture: 'auto' };
 export default async function (ctx) {
   const chat = ctx.fixture.chats[1];

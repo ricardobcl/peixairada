@@ -1,5 +1,4 @@
-// The header's PR chips use the row (2026-09-24, Ricardo: "after 4 PRs, they are being collapse even if we have space
-// on the bar - try to use all real-estate and only collapse if its really close to the title"). A chat mentioning ten
+// The header's PR chips use the row (2026-09-24). A chat mentioning ten
 // PRs: with the chat column wide, every chip shows and there is no +n; narrowed, the last ones fold into +n — the
 // count right, the row still one line, and the repo name plus TITLE_ROOM of the title clear; wide again, all back.
 import { makeFixture } from '../fixture.mjs';

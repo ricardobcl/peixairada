@@ -430,7 +430,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     web.evaluateJavaScript("window.peixPaneUrl && window.peixPaneUrl(\(jsStr(key)), \(jsStr(url)))", completionHandler: nil)
   }
   /// ⌘W: the board's business first — the half of the chat column the keys are in, or a picker that is up — and
-  /// the window only when it says it took neither (2026-09-22, Ricardo: "cmd W should close the focused pan[e]").
+  /// the window only when it says it took neither (2026-09-22).
   /// It has to be the menu item: a key equivalent is dispatched before any responder, so the page never sees ⌘W.
   @objc func closeHalfOrWindow(_ sender: Any?) {
     web.evaluateJavaScript("window.peixKey ? !!window.peixKey('KeyW', 'cmd') : false") { [weak self] v, _ in
@@ -787,16 +787,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     return true
   }
   @objc func openLog(_ sender: Any?) { NSWorkspace.shared.open(kLog) }
-  /// ⌃⌘F, and the green button: the board fills the screen, the strip beside the camera housing included (2026-09-27,
-  /// Ricardo: "fullscreen app on a macbook with a notch, we don't really use that upper real estate"). Not the system's
-  /// full screen: that one always sets the window below the housing and leaves the strip black — it is where the
-  /// auto-hidden menu bar slides in — and nothing in AppKit changes it (its own doc for NSScreen.safeAreaInsets says
-  /// so), which is why the window does not offer it at all (fullScreenNone; Ricardo: "If I click on the fullscreen
-  /// button (mac's green circle), I end up as before"). This is what Apple calls a custom full-screen experience,
-  /// kitty's and Sublime Text's: the window borderless, its frame the whole screen, the menu bar auto-hidden and the
-  /// Dock hidden, out only after a hold at its edge (dockTick) — on a screen with a housing; without one the menu bar
-  /// is hidden outright (placeFill). The page is told where the housing is (tellFill) and
-  /// lays its top row around it. No Space of its own —
+  /// ⌃⌘F, and the green button: the board fills the screen, the strip beside the camera housing included (2026-09-27).
+  /// Not the system's full screen: that one always sets the window below the housing and leaves the strip black — it is
+  /// where the auto-hidden menu bar slides in — and nothing in AppKit changes it (its own doc for
+  /// NSScreen.safeAreaInsets says so), which is why the window does not offer it at all (fullScreenNone). This is what
+  /// Apple calls a custom full-screen experience, kitty's and Sublime Text's: the window borderless, its frame the
+  /// whole screen, the menu bar auto-hidden and the Dock hidden, out only after a hold at its edge (dockTick) — on a
+  /// screen with a housing; without one the menu bar is hidden outright (placeFill). The page is told where the housing
+  /// is (tellFill) and lays its top row around it. No Space of its own —
   /// Mission Control shows a window. The frame's autosave is off meanwhile, so a quit mid-fill does not bring the next
   /// launch up screen-sized; the fill itself is remembered (kFillKey), so it does come back filled. Info.plist says
   /// NSPrefersDisplaySafeAreaCompatibilityMode = false, or a window behind the housing could switch the display into
@@ -826,16 +824,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     logLine("fill: \(fillSaved != nil ? "on \(NSStringFromRect(window.frame))" : "off") options \(NSApp.presentationOptions.rawValue) visible \(NSStringFromRect(window.screen?.visibleFrame ?? .zero))")
     tellFill()
   }
-  /// What becomes of the menu bar in the fill, per screen (2026-09-28, Ricardo: "on the external monitor: I want the
-  /// full app experience, to maximize vertical space. on my macbook, I want that the notch to be there, but also
-  /// maximize vertical space"). Both take the whole screen; what tells them apart is the camera housing, which the
-  /// screen reports exactly (a top safe-area inset) — no guessing from the resolution, and it follows the lid, a display
-  /// plugged in and mirroring (mirrored, the one screen is the external's). Beside a housing the strip either side of it
-  /// is the menu bar's and the board's both: the menu bar auto-hidden, sliding into the strip at the top edge, the page
-  /// laying its top row around the housing (tellFill). Without one there is no such strip — an auto-hidden menu bar
-  /// slid over the search box and the chat's title at every reach for the top edge ("the menu bar is showing and
-  /// overlapping the app") — so it is hidden outright while the board is in front, and let out by a hold at the top
-  /// edge, as the Dock is at its own (dockTick). The Dock is hidden on both. Run on the fill and on every change of screen.
+  /// What becomes of the menu bar in the fill, per screen (2026-09-28). Both take the whole screen; what tells them
+  /// apart is the camera housing, which the screen reports exactly (a top safe-area inset) — no guessing from the
+  /// resolution, and it follows the lid, a display plugged in and mirroring (mirrored, the one screen is the
+  /// external's). Beside a housing the strip either side of it is the menu bar's and the board's both: the menu bar
+  /// auto-hidden, sliding into the strip at the top edge, the page laying its top row around the housing (tellFill).
+  /// Without one there is no such strip — an auto-hidden menu bar slid over the search box and the chat's title at
+  /// every reach for the top edge ("the menu bar is showing and overlapping the app") — so it is hidden outright while
+  /// the board is in front, and let out by a hold at the top edge, as the Dock is at its own (dockTick). The Dock is
+  /// hidden on both. Run on the fill and on every change of screen.
   func placeFill(on screen: NSScreen) {
     fillHousing = screen.safeAreaInsets.top > 0
     NSApp.presentationOptions = fillOptions()
@@ -858,14 +855,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     RunLoop.main.add(t, forMode: .common); fillTick = t
   }
   /// Ten times a second while filled. The Dock is hidden outright (hideDock): auto-hidden it came out under every touch
-  /// of the right edge, where the chat column's own controls are (Ricardo, 2026-09-27: "the dock is still visible").
+  /// of the right edge, where the chat column's own controls are (2026-09-27).
   /// A pointer *held* at its edge for dockHold lets it out (autoHideDock, with the pointer already there) until the
   /// pointer is 100 px off that edge again — the system full screen's kind of push (then: "the dock is not showing
   /// when I go to the edge on the right"). Polled, not tracked: the pointer is over web views and native views alike.
-  /// The menu bar the same way on a screen without a housing (2026-09-28, Ricardo: "can the menubar still show if I go
-  /// to the top edge and stay for a sec? like the dock"): a hold at the top edge for menuHold lets it out (auto-hidden,
-  /// with the pointer already there), and it goes back to hidden outright once the pointer is 100 pt below the top
-  /// *and* the system has hidden it again — never under an open menu, ours or a status item's.
+  /// The menu bar the same way on a screen without a housing (2026-09-28): a hold at the top edge for menuHold lets it
+  /// out (auto-hidden, with the pointer already there), and it goes back to hidden outright once the pointer is 100 pt
+  /// below the top *and* the system has hidden it again — never under an open menu, ours or a status item's.
   func dockTick() {
     guard fillSaved != nil, let screen = window.screen else { return }
     let p = NSEvent.mouseLocation, f = screen.frame, now = Date().timeIntervalSinceReferenceDate

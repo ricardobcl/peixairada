@@ -1,5 +1,4 @@
-// The cog's card slider (2026-09-25, Ricardo: "compact the cards by 1) [large] as is 2) [medium] leave the last
-// interaction, either me or claude and 3) [compact] remove both … make it a slider"). Three chats: one Claude had the
+// The cog's card slider (2026-09-25). Three chats: one Claude had the
 // last word on, one you had — a second prompt, then Escape, so the reply on its card is the turn before's —, and one
 // waiting on your answer. What is checked: large shows both words on every card; medium the last one only, yours or
 // Claude's as the case is; compact neither, the cards shorter each step; the question stays at every size; the
@@ -69,7 +68,7 @@ export default async function (ctx) {
     await ctx.shot('compact', { x: 0, y: 0, width: 420, height: 640 });
     ctx.assert.equal((await ctx.peix('prefs()')).cards, 'compact');
 
-    // compact's own switch (2026-09-29, Ricardo: "add an option in the compact setting to make cards same height"):
+    // compact's own switch (2026-09-29):
     // shown under compact only; on, the title is one line and nothing hangs under it, so every card is one height
     const heights = cs => [...new Set(Object.values(cs).map(c => c.h))];
     ctx.assert.equal(await ctx.evaluate(`document.querySelector('#evenRow').hidden`), false, 'the switch shows under compact');

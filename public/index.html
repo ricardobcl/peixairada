@@ -33,7 +33,7 @@
     --hl-com: #7c7c74; --hl-key: #c678dd; --hl-str: #98c379; --hl-num: #d19a66;
     --hl-fn: #61afef; --hl-cls: #e5c07b; --hl-var: #e06c75; --hl-meta: #8fa6c4;
   } }
-  /* Simple colours (2026-10-01, Ricardo: "some people don't like so many colors in the apps, it's too stimulating"):
+  /* Simple colours (2026-10-01):
      greys and the one accent. A project's colour goes (repoColor answers null, so every surface takes --nocolor's grey),
      and so does every hue that only names a state — clauding, ready, watching, the plan's spend, the code's syntax —
      told by tone instead. A PR's state and the people keep their colours: the PR chips, GitHub's faces, your mark on a
@@ -52,8 +52,7 @@
     --hl-fn: #e8e6df; --hl-cls: #e8e6df; --hl-var: #e8e6df; --hl-meta: #9a998f;
   } }
   * { box-sizing: border-box; }
-  /* A control's fill, and its fill under the pointer (2026-09-28, Ricardo: "in general, there seems to be these gray
-     borders around buttons and such — remove them and prefer solid background"): the ink over whatever is under it.
+  /* A control's fill, and its fill under the pointer (2026-09-28): the ink over whatever is under it.
      Set on every element rather than :root, so it follows an --ink borrowed there (a black card, the header's black). */
   * { --ctl: color-mix(in srgb, var(--ink) 7%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 13%, transparent); }
   body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; height: 100vh; display: grid; grid-template-rows: 1fr; overflow: hidden; }
@@ -77,8 +76,7 @@
      The plan usage is the chat list's footer, beside the cog (#usage). */
   .brand { position: relative; width: 28px; height: 28px; flex: none; display: inline-flex; cursor: pointer; }
   .brand .logo { width: 28px; height: 28px; }
-  /* The settings (2026-09-28, Ricardo: "the settings can be moved to inside the '...' on the right and it should open a
-     nice and pretty settings popup"; a popover off the cog at the list's foot before): a modal dialog, centred, from
+  /* The settings (2026-09-28; a popover off the cog at the list's foot before): a modal dialog, centred, from
      the chat header's ··· or ⌘, — the dialog rules give it the fade, the backdrop, Esc and the pane going down. A head
      (the name, the counts, ×), a segmented control over three panes: the board's own switches, the server's setup,
      the keys. The class is still `pop`: every row inside is styled as `.pop …`. */
@@ -133,11 +131,11 @@
   .pop .hid button { font: inherit; font-size: 11px; border: 1px solid transparent; background: var(--ctl); color: var(--ink); border-radius: 6px; padding: 1px 7px; cursor: pointer; }
   .pop .hid button:hover { border-color: var(--accent); color: var(--accent); }
   .pop .scol { display: grid; gap: 9px; align-content: start; min-width: 0; }
-  /* The setup (2026-09-28; dressed the same night, Ricardo: "make the 'setup' inside settings pretty - seems pretty
-     barebones"): three sections — the folders of repos, ⌥⌘O's project, the projects' short names and colours — each a
-     title and a line of what it is for, over an inset list of rows, as the system's own settings are. A path or a name
-     is text until the pointer or the keyboard is on it; the small fields (the org, the short name) and the pickers wear
-     a fill; a project's row leads with its square as the rail draws it, in its colour; × comes with the pointer. */
+  /* The setup (2026-09-28; dressed the same night): three sections — the folders of repos, ⌥⌘O's project, the projects'
+     short names and colours — each a title and a line of what it is for, over an inset list of rows, as the system's
+     own settings are. A path or a name is text until the pointer or the keyboard is on it; the small fields (the org,
+     the short name) and the pickers wear a fill; a project's row leads with its square as the rail draws it, in its
+     colour; × comes with the pointer. */
   .pop .setup { display: grid; gap: 22px; font-size: 12px; color: var(--muted); }
   .pop .setup .sgh { display: grid; gap: 2px; margin: 0 4px 8px; }
   .pop .setup .sgh b { font-size: 13px; font-weight: 650; color: var(--ink); }
@@ -217,13 +215,11 @@
      of its own beside the list from 2026-09-25). Every cell is definite — the list's ends (.sedge) and the glass lie
      over the list's, which only a definite cell allows. */
   #sessions { grid-template-columns: minmax(0, 1fr); }
-  /* The list first, its row of controls under it (2026-09-28, later, Ricardo: "move the top app icon etc. from the top
-     to the bottom"): the cards run from the column's top. */
+  /* The list first, its row of controls under it (2026-09-28, later): the cards run from the column's top. */
   #tline { grid-row: 1; grid-column: 1 / -1; justify-self: start; } #slist { grid-row: 1; grid-column: 1 / -1; } #shd { grid-row: 2; grid-column: 1; } #sfoot { grid-row: 3; grid-column: 1; }
   #shd { border-bottom: 0; border-top: 1px solid var(--line); }
-  /* One row under the open list (2026-09-28, Ricardo: "combine the header with app icon with the footer with cog and
-     credits into a single line"): the foot — the plan usage — is the row's right end, in a column of its own there;
-     on the rail of squares it is a row of its own over the fish, which keeps the corner. */
+  /* One row under the open list (2026-09-28): the foot — the plan usage — is the row's right end, in a column of its
+     own there; on the rail of squares it is a row of its own over the fish, which keeps the corner. */
   main:not(.scompact) #sessions { grid-template-columns: minmax(0, 1fr) auto; }
   /* The people row between the cards and the row (2026-09-29, renderPeople): the row and the usage one down; none on the rail. */
   #people { grid-row: 2; grid-column: 1 / -1; }
@@ -255,12 +251,10 @@
   /* The bar between the list and the chat is the open chat's colour (2026-09-26): --openc on main (registered, so it eases; --openb, its edges, went on 2026-09-29), set with the chat's
      tint, so the open card, the bar and the chat's header are one stroke of it — see .card.active. */
   #splitter { width: 6px; flex: none; cursor: col-resize; background: var(--openc); position: relative; overflow: hidden; }
-  /* …down to the open chat's card only, black under it (2026-09-28, Ricardo: "should be black from the lower card down
-     — if I scroll, that should also move", then "instead of top until the height the card it's select"): --split is
+  /* …down to the open chat's card only, black under it (2026-09-28): --split is
      where the open card ends, from the splitter's top (drawSplit) — the card out of sight below, the colour runs to the
      list's foot; above, or not in the list, all black. ::before blacks the bar beside the list's foot row (--sfoot).
-     The black moves with the list's scroll by itself (2026-09-29, Ricardo: "the vertical separator has some kind of lag
-     when scrolling, which looks bad because it's supposed to be attached to the card"): a --split rewritten from each
+     The black moves with the list's scroll by itself (2026-09-29): a --split rewritten from each
      scroll event came a frame or two behind the list, whose scroll is the compositor's. So --split is in the list's own
      coordinates, set only when the card moves in the list, and a scroll-driven animation on the list's timeline
      (--slist, visible here through main's timeline-scope) slides the black up by the scroll — --smax, how far the list
@@ -291,8 +285,8 @@
      under the housing, a header too far left of it for a title) pads down by the strip instead, its own tint filling
      the room: .npad. The padding is the head's own plus the strip. */
   main.notch #chat.npad .shead { padding-top: calc(7px + var(--notch-top, 0px)); }
-  /* …and right of the housing, what follows the title stands at the far right, as it does with no housing (2026-09-28,
-     Ricardo: "the right part '...' + PRs [are] not pushed to the right — make it"): the h2 no longer grows there. */
+  /* …and right of the housing, what follows the title stands at the far right, as it does with no housing (2026-09-28):
+     the h2 no longer grows there. */
   .shead.hole > h2 + * { margin-left: auto; }
   /* The chat column is one half or two (2026-09-22): ⌘2 splits it, ⌘1 / ⌘2 put the keys in the left or the right
      one. Each half has its own tab strip and its own body — the transcript, a terminal, or a page in the app's
@@ -303,8 +297,8 @@
   .grp[hidden] { display: none; }
   /* Placed by hand, the same trap as #chat's rows: a hidden strip is display:none, which takes it out of
      auto-placement and slides the body into the `auto` row — where it sizes itself to the terminal it holds
-     instead of to the pane, and the drawer stays whatever height it was first drawn at, black underneath.
-     (2026-09-22, Ricardo: "you restart the FE and all chats are pulled up, so ~60% bottom is just black".) */
+     instead of to the pane, and the drawer stays whatever height it was first drawn at, black underneath
+     (2026-09-22). */
   .grp > .ptabs { grid-row: 1; }
   .grp > .gbody { grid-row: 2; }
   /* One cell, everything stacked in it: the transcript, the drawer and the "nothing here" note take turns. */
@@ -313,9 +307,9 @@
   #gsplit { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--panel); }
   #gsplit:hover, #gsplit.drag { background: var(--accent); }   /* eased and delayed with #splitter, above */
   #gsplit[hidden] { display: none; }
-  /* The same two halves one over the other (2026-09-27, ⌥⌘1 / ⌥⌘2 — Ricardo: "hotkey 2 to change to horizontal
-     split. cmd 2 makes the vertical split"): #groups turns into a column and the divider lies across it. The halves
-     keep their flex basis (applySplit), which runs along whichever axis is the main one, so nothing else moves. */
+  /* The same two halves one over the other (2026-09-27, ⌥⌘1 / ⌥⌘2): #groups turns into a column and the divider lies
+     across it. The halves keep their flex basis (applySplit), which runs along whichever axis is the main one, so
+     nothing else moves. */
   #groups.stack { flex-direction: column; }
   #groups.stack > #gsplit { width: auto; height: 6px; cursor: row-resize; border-left: 0; border-right: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
   /* Which half the keys are in: a 2 px accent rule under its tabs (inset, so nothing moves by a pixel when it
@@ -333,8 +327,7 @@
   .colhead .btn.icon { padding: 3px 7px; }
 
   /* ---- projects: a folder, or a named set of folders ---- */
-  /* No column of their own since 2026-09-24 (Ricardo: "the first column ends up not being used and it's taking
-     space. I use more the hotkeys and I just want visual cues that a project filter is done or not"). The chat
+  /* No column of their own since 2026-09-24. The chat
      list's head is the cue: the project's colour square and its name — a click there is ⌥⌘P's picker — and × to
      go back to ALL, which is the one project without one. The list's left edge and the head's tint are the
      project's colour, ALL's black. */
@@ -345,18 +338,16 @@
   #stitle .ab { display: none; }   /* the short name, for the rail */
   #stitle .sx { flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 13px; font-weight: 400; line-height: 1; color: var(--muted); }
   #stitle .sx:hover { color: var(--ink); background: var(--inline-bg); }
-  /* One row atop the list (2026-09-24, Ricardo: "at the top of the column, we have 2 rows, but we could use just 1:
-     remove the cards counter, the new chat should be a + icon only"): the fish, the project, the filters — the
+  /* One row atop the list (2026-09-24): the fish, the project, the filters — the
      magnifier and the three state chips —, ＋ and «. The project's name is what gives way when the row is short. */
   #shd { gap: 5px; padding: 7px 10px; }
   #shd .brand, #shd .brand .logo { width: 24px; height: 24px; }
   #shd .btn.icon { padding: 3px 5px; }
   #shd #filters { display: flex; align-items: center; gap: 3px; flex: 1 1 auto; text-transform: none; letter-spacing: 0; font-weight: 400; }
-  /* The magnifier is a field as wide as the row leaves it (2026-09-27, Ricardo: "the search icon on top, should take
-     the entire space between the app icon and the ready counter"; an icon-sized pill until then, and the box took the
-     chips' place while it was open): at rest a pill from the fish — or the project's name — to the first chip, the
+  /* The magnifier is a field as wide as the row leaves it (2026-09-27; an icon-sized pill until then, and the box took
+     the chips' place while it was open): at rest a pill from the fish — or the project's name — to the first chip, the
      icon at its left end; open, the icon is the field's left cap and the box runs on to the chips, which stay. */
-  #shd .fsearch { flex: none; height: 20px; }   /* small again since 2026-09-28 (Ricardo: "make the search small and only expand when selected"): the row has the foot's rings and cog to hold now */
+  #shd .fsearch { flex: none; height: 20px; }   /* small again since 2026-09-28: the row has the foot's rings and cog to hold now */
   #shd #filters.searching .fsearch { flex: none; min-width: 0; color: var(--accent); border-color: var(--accent); background: var(--bg); border-right: 0; border-radius: 12px 0 0 12px; padding-right: 3px; }
   #shd .fq { flex: 1 1 0; width: 0; height: 20px; margin-left: -3px; border-left: 0; border-radius: 0 12px 12px 0; padding-left: 3px; }   /* width 0: a box's own width is what it asks of the row, and it would push ＋ out; open, it takes the room the chips leave */
   /* the filter boxes: a magnifier in the row, the box itself only while it is open or has text */
@@ -402,19 +393,16 @@
   .fchip.on { color: var(--ink); background: color-mix(in srgb, var(--c) 22%, transparent); }
   .fchip.on i { background: var(--c); }
   .fchip:not(.on) { opacity: .75; }
-  /* no room above the first card (2026-09-29, Ricardo: "leave 0 space for the card at the top, so it matches the project
-     box on the chat"): its top is the chat header's */
+  /* no room above the first card (2026-09-29): its top is the chat header's */
   #slist { overflow-y: auto; overflow-x: hidden; min-width: 0; padding: 0 8px 8px; display: flex; flex-direction: column; gap: 7px; position: relative; scrollbar-width: none; }   /* positioned: the cards' offsetTop is the list's */
   #slist::-webkit-scrollbar { display: none; }   /* the timeline beside it is the scrollbar, with the days on it */
   main.scompact #slist { scrollbar-width: auto; }
   main.scompact #slist::-webkit-scrollbar { display: initial; }
   #slist > * { flex: none; } /* never let a full column squash its cards (overflow:hidden items would shrink to 0) */
-  /* Between the clauding cards and the ready ones, Claude's mark in pixels, alone and centred (2026-09-27, Ricardo:
-     "remove the fishes and leave a claude icon animation in the middle", then "remove the lines next to the claude
-     icon on the card separator" and "make the claude icon animation more "pixely", more fun"; a school of ><>
-     swimming right since 2026-09-20, kept as one node across renders so it did not jolt, then for an evening the
-     smooth starburst turning and breathing between two hairlines). The window is one frame, 9 × 9 pixels of 2 px;
-     the strip behind it holds the frames side by side (PIX_SHEET), and `pix` slides it a whole frame at a time —
+  /* Between the clauding cards and the ready ones, Claude's mark in pixels, alone and centred (2026-09-27; a
+     school of ><> swimming right since 2026-09-20, kept as one node across renders so it did not jolt, then for an
+     evening the smooth starburst turning and breathing between two hairlines). The window is one frame, 9 × 9 pixels of
+     2 px; the strip behind it holds the frames side by side (PIX_SHEET), and `pix` slides it a whole frame at a time —
      steps(1) on every keyframe, so no frame is ever half shown: the star sits full, twinkles, shrinks to a dot and
      bursts back, the way Claude Code's own spinner runs · ✢ ✳ ✶ ✻ ✽. `pixhop` lifts the window by whole pixels as
      it bursts back, over the divider's margin (hence overflow: visible). Both are transforms, the compositor's, both
@@ -433,9 +421,8 @@
     100% { transform: translateX(-90px); }
   }
   @keyframes pixhop { 0% { transform: none; } 83.333% { transform: translateY(-2px); } 87.5% { transform: translateY(-4px); } 95.833% { transform: translateY(-2px); } 100% { transform: none; } }
-  /* A day's line (2026-09-23): its day alone, centred — "today", else DD-MM-YYYY (2026-09-27, Ricardo: "remove the
-     fishes from the date spacing between cards", then "remove the lines left and right of the date"; still fish
-     either side before, two hairlines for an hour). */
+  /* A day's line (2026-09-23): its day alone, centred — "today", else DD-MM-YYYY (2026-09-27; still fish either side
+     before, two hairlines for an hour). */
   .gsep.day { text-align: center; }
   .gsep.day b { font-weight: 700; color: var(--muted); }
   #slist .none { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 0; }
@@ -445,19 +432,16 @@
      Pointed at, the thumb widens and the rail swells like the Dock: the days come out over the cards as labels, the
      ones near the pointer largest, pushed apart. Dragged, it scrolls the list; a day clicked is scrolled to.
      Everything in it is placed by script (drawTimeline). It had a track in the state groups' colours and a tick per
-     day, 26 px wide and lined up under the fish and the cog (Ricardo: "too close to the cards, it's green, it has
-     the ticks for dates, which is not pretty"): the divider and the day lines in the list say the same, and the
-     labels say it in words. TL_W in the script is this width. */
+     day, 26 px wide and lined up under the fish and the cog: the divider and the day lines in the list say the same,
+     and the labels say it in words. TL_W in the script is this width. */
   #tline { width: 12px; position: relative; z-index: 5; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
-  /* Out of sight until called, like the Dock (2026-09-28, Ricardo: "the timeline on the left should disappear and just
-     appear when the mouse [is] all the way to the [edge] and stays there … like the dock or the menu bar — given this,
-     the cards should be pushed all the way to the left"): the pointer held on the list's coloured edge for TL_DWELL_MS
+  /* Out of sight until called, like the Dock (2026-09-28): the pointer held on the list's coloured edge for TL_DWELL_MS
      brings it out, over the cards, with its days; off it, it goes after TL_HIDE_MS. Hidden, nothing on it takes the
      pointer (visibility, which its labels' own pointer-events cannot undo), and the cards have the whole width. */
   #tline { visibility: hidden; opacity: 0; transition: opacity .18s, visibility 0s .18s; }
   #sessions.tlshow #tline { visibility: visible; opacity: 1; transition: opacity .18s, visibility 0s; }
   #tline.drag { cursor: grabbing; }
-  /* While the days are out, a pane of glass over the cards (2026-09-25, Ricardo: "a glass tint on the background"):
+  /* While the days are out, a pane of glass over the cards (2026-09-25):
      a blur and a wash of the page over the list's cell, under the labels and the list's ends, so the labels read on
      a frosted list rather than on card text. Lets every pointer event through. */
   .tl-glass { grid-row: 1; grid-column: 1 / -1; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .2s;
@@ -466,8 +450,7 @@
   main.scompact #tline { display: none; }
   #tline > *, #tline .tl-lab { position: absolute; }
   #tline .tl-labs { inset: 0; pointer-events: none; }
-  /* The rail's reach for the pointer (2026-09-25, Ricardo: "any gap below or above a date closes it … if I go to the
-     far left of the screen, it's not triggering"): from the window's left edge — over the list's 4 px coloured edge,
+  /* The rail's reach for the pointer (2026-09-25): from the window's left edge — over the list's 4 px coloured edge,
      as the cog's cell is, so a pointer thrown into the edge lands on it — to the cards' edge, over the list's own
      padding, and, while the days are out, as far right as they have reached, so the gaps between the labels are still
      the rail. Under everything else on it. TL_CATCH in the script is this width. */
@@ -500,18 +483,17 @@
   main.scompact .sedge .w { display: none; }   /* the rail has room for the arrow and the number */
   /* --repo is reset here on purpose: custom properties inherit, and the chat list sets its own for its edge (the
      black on ALL) — without the reset every colourless card wore that. The card's inline --repo still wins. */
-  .card { --repo: initial; background: var(--panel); border: 2px solid transparent; border-radius: 0; padding: 8px 10px 7px;   /* square since 2026-09-26 (Ricardo: "remove the round corners from cards"); 10 px before */ cursor: pointer; min-width: 0; overflow: hidden; position: relative; isolation: isolate; }
-  /* Ready and done cards wear the wash and a plain edge (2026-09-20, Ricardo: "remove the border highlight for the
-     ready cards"); the colour stays on the clauding card's edge, under its ring, and comes back on hover and on the open card.
-     The plain edge is no edge at all since 2026-09-28 (Ricardo: "when a card is not select, it has this gray border —
-     make it the same color as the background, so it's invisible"): transparent, the wash running under it
-     (background-origin, below), so an edge that comes eases in from the card's own colour. */
+  .card { --repo: initial; background: var(--panel); border: 2px solid transparent; border-radius: 0; padding: 8px 10px 7px;   /* square since 2026-09-26; 10 px before */ cursor: pointer; min-width: 0; overflow: hidden; position: relative; isolation: isolate; }
+  /* Ready and done cards wear the wash and a plain edge (2026-09-20); the colour stays on the clauding card's edge,
+     under its ring, and comes back on hover and on the open card. The plain edge is no edge at all since 2026-09-28:
+     transparent, the wash running under it (background-origin, below), so an edge that comes eases in from the card's
+     own colour. */
   .card.working { border-color: color-mix(in srgb, var(--repo, var(--nocolor)) 85%, var(--line)); }
   /* a VS Code chat: the same wash as its pane */
-  /* The wash, in the project's colour — since 2026-09-26 nearly the hover's tint (Ricardo: "the brightness of cards
-     is a bit low, bring it much closer to what it looks when hover"): 45 % at the top left down to 37 %, a faint
-     slope where the old wash (22 % to 6 % to nothing) was mostly panel. The hover and the open card go on above it.
-     A card in the board's black keeps a lighter wash: on the light panel 45 % of black is a grey its ink drowns in. */
+  /* The wash, in the project's colour — since 2026-09-26 nearly the hover's tint: 45 % at the top left down to 37 %, a
+     faint slope where the old wash (22 % to 6 % to nothing) was mostly panel. The hover and the open card go on above
+     it. A card in the board's black keeps a lighter wash: on the light panel 45 % of black is a grey its ink drowns
+     in. */
   /* …and it eases (2026-09-27, night): the tint is two registered percentages — --tint at the bottom right, --slope
      what the top left adds — that the hover and the open card raise, so a gradient can transition to the solid tint
      (a gradient cannot go to a flat colour, and two gradients only when nothing but their colours differ). In fast,
@@ -533,8 +515,7 @@
      z-index -1 in the card's own stacking context (isolation: isolate on .card): above its background, under its
      content. The square is 160 % of the card's width, so its corners stay past the card's while the card is no
      taller than 1.25 × its width — no card is.
-     Since 2026-09-21 it is one mechanism with four readings (Ricardo: "different card signaling for normal claude
-     work / a monitor is still running / N sub-agents are running / claude is asking me something"): --lit is what
+     Since 2026-09-21 it is one mechanism with four readings: --lit is what
      runs, --seg how much of the edge one light owns (100 % / the number of lights — one per sub-agent), --spins how
      fast. Clauding is the project's colour; watching is one light in the watch colour, slowly, because nothing is
      waiting on you; asking has no ring at all — the border itself blinks red, the one signal that is not motion
@@ -544,10 +525,10 @@
      script) puts every ring at start time 0 on the document clock after each render: the new light is where the old
      one was. */
   .card.working, .card.watching, .card.asking { box-shadow: 0 0 0 1px color-mix(in srgb, var(--lit) 45%, transparent), 0 0 18px color-mix(in srgb, var(--lit) 35%, transparent); }
-  /* On the border, not inside it (2026-09-29, Ricardo: "the clauding ring glow that goes around should be on the border
-     and not inside the border"): the card's overflow clips at its padding box, so the light ran 3 px inside the 2 px
-     edge. A card with a ring has no border — its padding takes the 2 px, so nothing inside moves — and the cover stands
-     2 px in: the band the light runs in is where the border was, and what it runs on is the border's colour (--track). */
+  /* On the border, not inside it (2026-09-29): the card's overflow clips at its padding box, so the light ran 3 px
+     inside the 2 px edge. A card with a ring has no border — its padding takes the 2 px, so nothing inside moves — and
+     the cover stands 2 px in: the band the light runs in is where the border was, and what it runs on is the border's
+     colour (--track). */
   .card:is(.working, .watching):not(.asking) { border-width: 0; padding: 10px 12px 9px; }
   .card.active:is(.working, .watching) { outline-width: 1px; outline-offset: 0; }   /* the open card's edge outside the band, not over it */
   /* The open chat's light, when it runs past the card (drawTrail): the overlay is clipped to the band along the shape's
@@ -565,8 +546,7 @@
      which had the work light running at the monitor's sixth of the speed. */
   .card.working { --lit: var(--ring, var(--repo, var(--working))); --seg: calc(100% / var(--lights, 1)); --spins: 1.4s; --track: color-mix(in srgb, var(--repo, var(--nocolor)) 85%, var(--line)); }
   /* A question is the one state that is *stopped*, so it gets the one signal that is not motion around the edge
-     (2026-09-22, Ricardo: "a card that's waiting my input … should flash the boarder instead on having the
-     go-around animation"): no ring at all, the border itself blinking on and off in red. Two hard states, not a
+     (2026-09-22): no ring at all, the border itself blinking on and off in red. Two hard states, not a
      fade — a fade reads as another kind of running. */
   .card.asking { --lit: var(--needs); --seg: 100%; animation: blink 1.2s steps(2, jump-none) infinite; }
   .card.asking::before, .card.asking::after { content: none; }
@@ -584,11 +564,9 @@
     to { border-color: var(--line); box-shadow: none; }
   }
   .card.landed { animation: landed .6s ease-out both; }
-  /* Hover and the open chat enhance the card's own colour, never the accent (2026-09-20, Ricardo: "still show a
-     orange border … just enhance the border with its own color", then "the hover cards, make the background as if
-     it was select", then "even stronger"): hover is the open card's solid tint (65 % of the colour since 2026-09-26,
-     55 % before — a step above the brighter wash) under the full colour with a soft 1px halo outside; the open card
-     adds a 2px ring of it over its border — a three-pixel edge. */
+  /* Hover and the open chat enhance the card's own colour, never the accent (2026-09-20): hover is the open card's
+     solid tint (65 % of the colour since 2026-09-26, 55 % before — a step above the brighter wash) under the full
+     colour with a soft 1px halo outside; the open card adds a 2px ring of it over its border — a three-pixel edge. */
   .card:hover { border-color: var(--repo, var(--nocolor)); outline-color: color-mix(in srgb, var(--repo, var(--nocolor)) 45%, transparent); --tint: 65%; --slope: 0%; }
   .chip.vsc { color: var(--vscode); background: color-mix(in srgb, var(--vscode) 16%, transparent); }
   /* The environment a chat was started in (`task production-workload`…, 2026-09-21): beside the folder on the card,
@@ -599,16 +577,14 @@
   .card .top .chip.env { color: var(--repo, var(--muted)); background: none; padding-left: 0; font-weight: 600; }
   .card .abbr { display: none; }   /* only the folded rail shows it */
   .card.black .top .chip.env, .card.active .top .chip.env, .card:hover .top .chip.env { color: inherit; opacity: .8; }
-  /* the open chat: a solid tint of its colour under a ring of it (2026-09-20, Ricardo: "a more solid
-     background, so we can notice it better"); every other card keeps the gradient wash */
+  /* the open chat: a solid tint of its colour under a ring of it (2026-09-20); every other card keeps the gradient
+     wash */
   .card.active { border-color: var(--repo, var(--nocolor)); outline: 2px solid var(--repo, var(--nocolor)); outline-offset: -1px; --tint: 65%; --slope: 0%; }
-  /* …and it bleeds into the splitter (2026-09-26, Ricardo: "the open card now is hard to spot… bleeding the color to
-     the right so that the bar that divides the chat and the column stays in that card color"): over the list's
+  /* …and it bleeds into the splitter (2026-09-26): over the list's
      padding to the column's edge, against the bar in the same colour (#splitter, --openc). Not on the rail of squares,
      which has no splitter. */
   main:not(.scompact) #slist > .card.active { margin-right: -8px;
-    /* …seamlessly (2026-09-29, Ricardo: "the colors don't blend well between the card gradient and the vertical
-       separator - make it seamless"): the card's tint rises to the full colour over its last 44 px, so it meets the bar
+    /* …seamlessly (2026-09-29): the card's tint rises to the full colour over its last 44 px, so it meets the bar
        in the bar's own colour — the card's wash under it, as .card draws it. */
     background-image: linear-gradient(to right, transparent calc(100% - 44px), var(--repo, var(--nocolor))),
       linear-gradient(165deg, color-mix(in srgb, var(--repo, var(--nocolor)) calc(var(--tint) + var(--slope)), var(--panel)), color-mix(in srgb, var(--repo, var(--nocolor)) var(--tint), var(--panel))); }
@@ -617,7 +593,7 @@
      so title, snips, times and the two speaker marks follow in one rule. In the dark theme they are what they were. */
   .card.black:hover, .card.black.active, .card.black.qsel { --tint: 100%; --slope: 0%; --ring: #fff; --ink: #e8e6df; --muted: #9a998f; --snip-claude: #c9c7bd; --you: #4fb8a8; --accent: #e08a68; }
   /* The light that runs round a clauding card is the card's colour, which on a black card is black on black
-     (Ricardo, 2026-09-20: "make the animation white when clauding for acme project"). --ring is what the light
+     (2026-09-20). --ring is what the light
      and its glow run in: white wherever the card under them is dark — the dark theme, and the solid tint the
      hovered and open card wear in either theme (above). On the light theme's pale wash, black still reads best. */
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card.black { --ring: #fff; } }
@@ -644,15 +620,12 @@
   /* ↑↓ in the magnifier's box walk the cards it ranked; ⏎ opens this one. The hover's look, with no halo. */
   .card.qsel { border-color: var(--repo, var(--nocolor)); --tint: 65%; --slope: 0%; }
   .card .grow { flex: 1; }
-  /* The card's age (2026-09-27, later, Ricardo: "the time since last update on the card should live left of the
-     Done icon on each card"; top left under the pointer only for an afternoon, the title row's end before): in the
-     top row after the spacer, before the ✓ / ↩ and the F, 10 px — the tooltip says when you last wrote and when
+  /* The card's age (2026-09-27, later; top left under the pointer only for an afternoon, the title row's end before):
+     in the top row after the spacer, before the ✓ / ↩ and the F, 10 px — the tooltip says when you last wrote and when
      Claude last replied. Every card has the row now, so it is 18 px at least (the marks' height) and a tick appearing
-     changes no card's height. Only under the pointer (2026-09-27, later still, Ricardo: "the last update time on the
-     card should only show on hover"): transparent at rest but keeping its room, so nothing in the row moves when it
-     comes — the one mark there that is a reading, not a state. */
-  /* The age and the F moved beside the title on 2026-09-28 (Ricardo: "maybe put fable icon and time on the 2nd row,
-     next to the summary, since it has more room and the text wraps anyway"): after it and its chips, before the unread
+     changes no card's height. Only under the pointer (2026-09-27, later still): transparent at rest but keeping its
+     room, so nothing in the row moves when it comes — the one mark there that is a reading, not a state. */
+  /* The age and the F moved beside the title on 2026-09-28: after it and its chips, before the unread
      count, on its first line — 18 px, the title's line. */
   .card .trow .time { flex: none; font-size: 10px; line-height: 18px; color: inherit; opacity: 0; transition: opacity .12s; }
   .card:hover .trow .time { opacity: .8; }
@@ -667,12 +640,11 @@
   /* The cog's slider (prefs.cards): medium drops whichever of the two words is the older one — the card marks it —,
      compact drops both. The markup always holds both, so moving the slider re-renders nothing. */
   #sessions[data-cards="medium"] .card .snip.older, #sessions[data-cards="compact"] .card .snip { display: none; }
-  /* …and compact's own switch, one height for every card (2026-09-29, Ricardo: "add an option in the compact setting to
-     make cards same height"; data-even, prefs.cardsEven): the title on one line, the question left to the card's
-     blinking edge, and the *your move* line kept (the same morning: "the same height should preserve the 'your move'
-     row") — on a card without one, an invisible one of the same size holds its place (.moveslot, always in the markup
-     and shown only here; not .prmove, which the harness reads the real line by), so every card is the top row, one
-     title line and that row. */
+  /* …and compact's own switch, one height for every card (2026-09-29; data-even, prefs.cardsEven): the title on one
+     line, the question left to the card's blinking edge, and the *your move* line kept (the same morning: "the same
+     height should preserve the 'your move' row") — on a card without one, an invisible one of the same size holds its
+     place (.moveslot, always in the markup and shown only here; not .prmove, which the harness reads the real line by),
+     so every card is the top row, one title line and that row. */
   .card .state.moveslot { display: none; }
   #sessions[data-even] .card .title { -webkit-line-clamp: 1; }
   #sessions[data-even] .card .state.needs-input { display: none; }
@@ -720,10 +692,9 @@
   :is(.card .cpr, .shead .hpr)[data-state="merged"] { --prc: var(--pr-merged); }
   :is(.card .cpr, .shead .hpr)[data-state="closed"] { --prc: var(--pr-closed); }
   :is(.card .cpr, .shead .hpr)[data-state="draft"] { --prc: var(--pr-draft); }
-  /* Solid in its state's colour, every chip GitHub has answered for (2026-09-28, Ricardo, on the chips filled only at
-     your move: "I kinda like the solid background on all"): the ink is the page's ground, the edge the fill. One whose
-     state is not known yet stays an outline in the muted ink. Which one is at your move, the card's line and the
-     header say by name. */
+  /* Solid in its state's colour, every chip GitHub has answered for (2026-09-28): the ink is the page's ground, the
+     edge the fill. One whose state is not known yet stays an outline in the muted ink. Which one is at your move, the
+     card's line and the header say by name. */
   :is(.card .cpr, .shead .hpr):is([data-state="open"], [data-state="merged"], [data-state="closed"], [data-state="draft"]) { background: var(--prc); border-color: var(--prc); color: var(--bg); }
   .card .cpr:hover { filter: brightness(1.12); }
   :is(.card, .presence) .state.needs-input { color: var(--needs); display: flex; align-items: baseline; gap: 5px; }
@@ -742,8 +713,7 @@
   .shead .hmove .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .shead .hmove .n { flex: none; opacity: .7; font-weight: 500; }
   /* Done/reopen: an icon at the end of the top row, not a bordered pill in a row of its own. Bigger, and only under
-     the pointer, since 2026-09-26 (Ricardo: "the done button on the card is a bit small and hard to see, also make it
-     visible only on hover"): it keeps its box at rest, so nothing in the row moves when it comes. */
+     the pointer, since 2026-09-26: it keeps its box at rest, so nothing in the row moves when it comes. */
   .act { font: inherit; font-size: 16px; line-height: 1; width: 22px; height: 20px; padding: 0; border: 0; border-radius: 6px; background: transparent;
     color: var(--ink); cursor: pointer; flex: none; opacity: 0; display: inline-grid; place-items: center; transition: opacity .12s; }
   .card:hover .act, .act:focus-visible { opacity: .7; }
@@ -760,8 +730,7 @@
   .chip { font-size: 10px; border: 1px solid transparent; background: var(--ctl); border-radius: 4px; padding: 0 4px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; min-width: 0; flex: 0 1 auto; }
 
   /* ---- plan usage: the chat list's footer ---- */
-  /* The numbers `/usage` shows, always in view (2026-09-24, Ricardo: "move the credits from the cog to a permanent
-     bottom bar on 2nd column, make it compact and pretty (and collapsable)"). Open, a row per window: its name, a thin
+  /* The numbers `/usage` shows, always in view (2026-09-24). Open, a row per window: its name, a thin
      bar in orange (green until the same day's "make the credits used color green -> orange"), red from 90 %, a tick
      where the window's clock stands — a bar past its tick is being spent faster than time —, the percent and the
      time to its reset. Folded (the heading, the chevron), one line of
@@ -778,7 +747,7 @@
   #usage .uchev { width: 12px; height: 12px; flex: none; margin-left: auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; opacity: .6; }
   #usage button:hover .uchev { opacity: 1; }
   #usage .uline .uchev { transform: rotate(180deg); }   /* folded, it points up: the way the rows will come */
-  /* In the head row (2026-09-28, Ricardo: "compact view of credits"): the rings alone, 14 px, and the rows a panel under
+  /* In the head row (2026-09-28): the rings alone, 14 px, and the rows a panel under
      the row — on hover, a beat late so a pointer on its way to the cog does not open it, or pinned by a click on the
      rings (.pin; a click on its heading or anywhere else lets it go). The fold of 2026-09-24 went with the foot. */
   main:not(.scompact) #usage { flex: none; min-height: 0; padding: 0 4px; display: flex; align-items: center; }
@@ -799,7 +768,7 @@
   main:not(.scompact) #usage .uhd .uchev { transform: rotate(180deg); }
   #usage .uhd { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 7px; }
   /* one grid for every row, so the bars start and the numbers end in one line whatever the names' lengths; the rows
-     9 px apart (5 until 2026-09-26, Ricardo: "space a bit more the 3 token usage on the bottom left") */
+     9 px apart (5 until 2026-09-26) */
   #usage .urows { display: grid; grid-template-columns: auto minmax(36px, 1fr) auto auto; gap: 9px 9px; }
   #usage .urow { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; white-space: nowrap; }
   #usage .ul { overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
@@ -809,9 +778,9 @@
   #usage .up { font-weight: 700; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
   #usage .ur { text-align: right; font-size: 10.5px; font-variant-numeric: tabular-nums; }
   #usage .unote { line-height: 1.35; white-space: normal; text-align: left; }   /* not `.note`: that is note()'s popup — position: fixed, and note() removes every one */
-  /* folded, the rings 20 px apart where the list has the room (12 until 2026-09-27, Ricardo: "the token budget counter
-     down low should space a bit more the 3 counters" — the open rows had had the same ask the day before); under
-     350 px of list 20 would push the chevron, then a ring, onto a second line, so there they keep 12 */
+  /* folded, the rings 20 px apart where the list has the room (12 until 2026-09-27 — the open rows had had the same ask
+     the day before); under 350 px of list 20 would push the chevron, then a ring, onto a second line, so there they
+     keep 12 */
   #usage .uline { flex-wrap: wrap; column-gap: 12px; row-gap: 4px; }
   @container (min-width: 350px) { #usage .uline { column-gap: 20px; } }
   #usage .uchip { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
@@ -837,21 +806,16 @@
   .shead h2 .repo { font-weight: 800; flex: 0 0 auto; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
   .shead h2 .repo:hover { text-decoration: underline; text-decoration-style: dotted; }
   .shead h2 .t { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  /* a bar between the project and the title (2026-09-26, Ricardo: "instead of '/' … a vertical black bar (or white if
-     it's too dark, like 'acme' project black color)" — then "the bar should go from top to bottom"): the header's
+  /* a bar between the project and the title (2026-09-26): the header's
      ink, which inkOn picks by the colour's brightness, the whole height of the header. The span only holds the
      2 px of room in the row; the bar is its ::before, positioned from the header (.shead is the containing block),
      at the span's own x — so the h2's overflow: hidden, which clips the row, does not clip it. */
-  /* The same room either side of it, and of the name (2026-09-26, Ricardo: "make the space between the last letter
-     and the bar equal to the next letter on the right", then "make left and right spacing the same for the project
-     name"): the row's gap is the header's padding, 12 px, and the colour square — invisible at rest, so any room it
-     took read as a gap — takes none: it sits on the bar, centred, out of the flow (positioned from .shead like the
-     bar, at the span's own x). */
-  /* The bar itself went on 2026-09-28 (Ricardo, the header black right of the title: "we don't need the separator
-     visual anymore"); the span stays, 2 px of room and the colour square's place. */
+  /* The same room either side of it, and of the name (2026-09-26): the row's gap is the header's padding, 12 px, and
+     the colour square — invisible at rest, so any room it took read as a gap — takes none: it sits on the bar, centred,
+     out of the flow (positioned from .shead like the bar, at the span's own x). */
+  /* The bar itself went on 2026-09-28; the span stays, 2 px of room and the colour square's place. */
   .shead h2 .sep { flex: none; width: 2px; align-self: stretch; }
-  /* The project's colour beside its name, and the picker for it (2026-09-22, Ricardo: "allow me to quickly change
-     the project color on the header of the chat next to the project name (only on hover)"): the column's own
+  /* The project's colour beside its name, and the picker for it (2026-09-22): the column's own
      square, in the header where you are already looking. It keeps its place in the row always and only inks
      itself while the pointer is in the header, so nothing moves under the pointer and the row stays as quiet as
      it was. On a tinted header the square is the header's own colour, so it is read by its border — the ink that
@@ -860,10 +824,9 @@
   .shead h2 .sq.pick:hover { transform: translate(calc(-50% + 1px), -50%) scale(1.35); }   /* the picker's own scale, around the same centre */
   .shead:hover h2 .sq, .shead h2 .sq:focus-visible { opacity: 1; }
   .shead .path { font-size: 12px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-  /* Everything that was a button at the header's right lives under ··· (2026-09-24, Ricardo: "every icon that's on
-     the right should live under a discrete '...' borderless button"): the title, the PRs, a running task's chip and
-     ··· are all the row holds. The one exception is the >_ button while it has something to say — armed to take a
-     chat over ("sure?") or failed — because a warning under a fold is not a warning. */
+  /* Everything that was a button at the header's right lives under ··· (2026-09-24): the title, the PRs, a running
+     task's chip and ··· are all the row holds. The one exception is the >_ button while it has something to say — armed
+     to take a chat over ("sure?") or failed — because a warning under a fold is not a warning. */
   .shead .hmore { flex: none; display: inline-flex; align-items: center; padding: 4px 6px; margin: -2px -4px -2px 0; border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; }
   .shead .hmore .ic { width: 16px; height: 16px; fill: currentColor; }
   .shead .hmore:hover, .shead .hmore.on { color: var(--ink); background: var(--inline-bg); }
@@ -889,20 +852,19 @@
      the PRs and the buttons. display:flex would beat the UA [hidden] rule, hence the override. */
   .shead .details { flex-basis: 100%; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
   .shead .details[hidden] { display: none; }
-  /* The header in the project's colour — Peacock's title bar, in effect (2026-09-20, Ricardo: "the same color as
-     the project"). #chat.tinted while the chat's folder has one; --rink is the ink that reads on it (white or
-     near-black by the colour's luminance, set beside --repo by tintChat), and every control in the header is redrawn
-     in it. An armed or failed button keeps its warning colour on a panel-coloured pill, so it reads on any project. */
-  /* A gradient, not a block (2026-09-20, Ricardo: "make it a gradient", then "from top to bottom also"): the colour
+  /* The header in the project's colour — Peacock's title bar, in effect (2026-09-20). #chat.tinted while the chat's
+     folder has one; --rink is the ink that reads on it (white or near-black by the colour's luminance, set beside
+     --repo by tintChat), and every control in the header is redrawn in it. An armed or failed button keeps its warning
+     colour on a panel-coloured pill, so it reads on any project. */
+  /* A gradient, not a block (2026-09-20): the colour
      itself at the top left, and towards the right — and, more lightly, down the header — a veil that pulls it *away*
      from the ink: darker under white ink, lighter under dark ink (--hveil across, --hveil2 down, set by tintChat; registered, so a chat switch eases), so
      the buttons at the far end keep their contrast whichever ink the colour chose; the bottom-right corner is deepest. */
   #chat.tinted .shead { background: linear-gradient(180deg, transparent 15%, var(--hveil2)), linear-gradient(100deg, transparent 8%, var(--hveil)), var(--hbg); color: var(--rink); border-bottom-color: color-mix(in srgb, var(--rink) 20%, var(--hbg)); }
-  /* Right of the project's name the header is black (2026-09-28, Ricardo: "make whatever is right of the title black
-     background", then the same night "the summary should have the black background, only the project should have the
-     solid project color"): the camera housing's colour, so at the notch the housing is part of it. Painted by ::after
-     from --hsplit (the separator's right edge) down to --hrow (the first row; the details under it keep the header's
-     ground), both set by paintHeadSplit; the title and what follows it borrow the dark theme's inks, as a black card does. */
+  /* Right of the project's name the header is black (2026-09-28): the camera housing's colour, so at the notch the
+     housing is part of it. Painted by ::after from --hsplit (the separator's right edge) down to --hrow (the first row;
+     the details under it keep the header's ground), both set by paintHeadSplit; the title and what follows it borrow
+     the dark theme's inks, as a black card does. */
   .shead { isolation: isolate; }
   .shead::after { content: ''; position: absolute; top: 0; right: 0; left: var(--hsplit, 100%); height: var(--hrow, 100%); background: #000; z-index: -1; pointer-events: none; }
   .shead > :not(h2, .details) { --ink: #e8e6df; --muted: #9a998f; --line: #2c2c29; --rink: #e8e6df; --panel: #1c1c1a; --inline-bg: rgba(255, 255, 255, .075); }
@@ -913,14 +875,12 @@
   #chat.tinted .shead .btn:hover { color: var(--rink); }
   #chat.tinted .shead .btn.on, #chat.tinted .shead #termBtn.take { color: var(--rink); background: color-mix(in srgb, var(--rink) 14%, transparent); }
   #chat.tinted .shead :is(.btn.err, #termBtn.take.arm) { color: var(--needs); border-color: var(--needs); background: var(--panel); }
-  /* The chat's PRs in the header row, compact (2026-09-24, Ricardo: "make PRs appear compact as they do on cards and
-     on click, they toggle to the expanded version per row that we have now"): the cards' chips, #n in the PR's state
+  /* The chat's PRs in the header row, compact (2026-09-24): the cards' chips, #n in the PR's state
      colour, as one button; a click unfolds #prlist under the header — one row per PR — and folds it back. The fold
      is a pref (prsOpen), not the chat's. On a tinted header the chips sit on the panel, so the state colours read on
      any project's. */
   .shead .hprs { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 1px 4px; margin: -3px 0; border: 1px solid transparent; border-radius: 7px; background: none; font: inherit; color: var(--muted); cursor: pointer; }
-  /* taller than the cards', to be seen (2026-09-24, Ricardo: "make the PRs on that top bar take a bit more vertical
-     space and with a thicker border to be more visible"); the edge was 2 px until the wash below made that its job
+  /* taller than the cards', to be seen (2026-09-24); the edge was 2 px until the wash below made that its job
      ("we can go back on the extra thick border"), and keeps the stronger colour */
   .shead .hpr { font-size: 11.5px; line-height: 20px; padding: 0 7px; border-radius: 5px;
     /* …on a wash of their own colour, deeper at the top left (the same evening: "a bit of background gradient, to make
@@ -980,8 +940,7 @@
      drive its view through the shell. */
   .ptabs { display: flex; gap: 4px; padding: 4px 10px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 11.5px; align-items: center; }
   .ptabs[hidden] { display: none; }
-  /* A half holding one tab has nothing to choose between (2026-09-28, Ricardo: "when a pane only has one thing active
-     (e.g. claude, terminal) we don't need the tab up top, takes unnecessary screen"): split, its strip is a 2 px rule,
+  /* A half holding one tab has nothing to choose between (2026-09-28): split, its strip is a 2 px rule,
      the accent under the keys (the .on rule above fills it) and the line elsewhere — the same height either way, so
      moving the keys never resizes a terminal. A web page keeps its strip, for the address and ‹ › ↻ ↗; so does an empty
      half, where a tab is dropped. */
@@ -1136,7 +1095,7 @@
   @starting-style { #hmenu[open] { transform: none; } }
   /* ⌥⌘P: the project picker, VS Code's open-recent way — a box on top, rows under it, ↑↓ and ⏎. ⌥⌘G fills it with the chat's PRs, ⌥⌘O with oracle's environments. */
   #pick { padding: 8px; width: min(520px, 92vw); margin-top: 10vh; }
-  /* About (2026-09-27, Ricardo: "clicking on the app icon should show an About info box center screen"): a modal
+  /* About (2026-09-27): a modal
      dialog, centred by the browser, the pane down under it like under any dialog; Esc or a click on the backdrop
      closes it. Its facts come with the snapshot (state.about). */
   #about { width: min(400px, 92vw); text-align: center; padding: 24px 24px 18px; outline: none; }   /* nothing in it takes focus, so the dialog would wear the ring */
@@ -1500,13 +1459,13 @@
   }
 
   // ---- header controls ---------------------------------------------------------------
-  // The settings popover is the plan usage and the keys, nothing else (2026-09-21, Ricardo: "just hotkeys and
-  // claude credits for now") — the notifications switch joined them on 2026-09-23, and the usage left for the chat
-  // list's footer on 2026-09-24. Long code is always folded (2026-09-28): no switch, and no { } for a chat.
-  // The magnifier opens its box; Esc or an emptied box on blur closes it; the icon stays lit while a filter is on.
-  // Since 2026-09-25 it matches the way ⌥⌘K does and ⌥⌘F opens it from anywhere (hotFind): the best match leads
-  // (renderSessionList), so there is a card to choose — ↑↓ walk them from the box, ⏎ opens the one marked and hands
-  // the keyboard to its chat. The mark is shown only while the box has the keyboard: a click elsewhere is a choice too.
+  // The settings popover is the plan usage and the keys, nothing else (2026-09-21) — the notifications switch joined
+  // them on 2026-09-23, and the usage left for the chat list's footer on 2026-09-24. Long code is always folded
+  // (2026-09-28): no switch, and no { } for a chat. The magnifier opens its box; Esc or an emptied box on blur closes
+  // it; the icon stays lit while a filter is on. Since 2026-09-25 it matches the way ⌥⌘K does and ⌥⌘F opens it from
+  // anywhere (hotFind): the best match leads (renderSessionList), so there is a card to choose — ↑↓ walk them from the
+  // box, ⏎ opens the one marked and hands the keyboard to its chat. The mark is shown only while the box has the
+  // keyboard: a click elsewhere is a choice too.
   const qsel = { i: 0 };
   function markQsel() {
     const inp = $('#q'), cards = [...document.querySelectorAll('#slist > .card')];
@@ -1551,22 +1510,21 @@
   // no chat open: the header's ··· is the settings alone (delegated — leaveChat writes the header anew; its icon is
   // drawn where ICON is defined, before leaveChat keeps the header)
   $('#shead').addEventListener('click', e => { if (e.target.closest('#noChatMore')) settingsOpen(true); });
-  // System notifications, the popover's one switch (2026-09-23, Ricardo: "let me turn on or off notifications in the
-  // cog settings"). It is the server's setting, not a pref: the app posts its banners from the alerts it hears, a
-  // browser tab from its own, and all of them follow the `quiet` flag the server puts on each alert. A browser that
-  // has never been asked is asked on the way to on — the app has its own permission, granted to the app.
+  // System notifications, the popover's one switch (2026-09-23). It is the server's setting, not a pref: the app posts
+  // its banners from the alerts it hears, a browser tab from its own, and all of them follow the `quiet` flag the
+  // server puts on each alert. A browser that has never been asked is asked on the way to on — the app has its own
+  // permission, granted to the app.
   const showNotify = () => { $('#notifyOn').checked = state.notifications; };
   $('#notifyOn').addEventListener('change', e => {
     state.notifications = e.target.checked;
     api('PUT', '/api/notifications', { on: state.notifications }).catch(e => note($('#notifyOn'), `Could not save the switch: ${e.message}`, true));
     if (state.notifications && !inApp && window.Notification?.permission === 'default') Notification.requestPermission();
   });
-  // How much a card carries (2026-09-25, Ricardo: "a setting in the bottom left cog to compact the cards … make it a
-  // slider"): large is the card as it always was, your last prompt and Claude's last reply; medium keeps only the
-  // last word of the two, whoever said it; compact keeps neither — the title, its chips, its PRs. A pref, not the
-  // server's word: it is how this window looks, like the widths and the folds. cardHtml marks the older word and CSS
-  // hides by the list's data-cards, so the slider re-renders nothing. A pending question is not a word of either: it
-  // stays at every size, the one line on a card that asks you to act.
+  // How much a card carries (2026-09-25): large is the card as it always was, your last prompt and Claude's last reply;
+  // medium keeps only the last word of the two, whoever said it; compact keeps neither — the title, its chips, its PRs.
+  // A pref, not the server's word: it is how this window looks, like the widths and the folds. cardHtml marks the older
+  // word and CSS hides by the list's data-cards, so the slider re-renders nothing. A pending question is not a word of
+  // either: it stays at every size, the one line on a card that asks you to act.
   const CARD_SIZES = ['large', 'medium', 'compact'];
   function applyCards() {
     if (!CARD_SIZES.includes(prefs.cards)) prefs.cards = 'large';
@@ -1594,7 +1552,7 @@
   // Esc on the page itself: a dialog (the picker, the project editor) or the settings popover closes,
   // and the key is *taken* — preventDefault, so WebKit reports it handled. An Esc the page leaves alone climbs to the
   // app's window, which in full screen takes it to leave full screen: the picker closed and the window shrank with it
-  // (2026-09-20, Ricardo: "ESC should close it instead of leaving the app's fullscreen"). A <dialog>'s own Esc does not
+  // (2026-09-20). A <dialog>'s own Esc does not
   // count as handled, hence closing it here, in the capture phase, before anything else sees the key. With nothing to
   // close the key is not touched: the filter boxes and the rename box have their own Esc, and full screen keeps its.
   // With the pane up the shell swallows Esc before the page and calls hotEscape() instead.
@@ -1612,7 +1570,7 @@
     $('#main').classList.toggle('scompact', !!prefs.sessionsCompact);
     $('#sessions').style.width = prefs.sessionsCompact ? '' : prefs.sessionsWidth + 'px';
   }
-  // ⌘B is the same switch from the keyboard (2026-09-22, Ricardo: "cmd B should toggle colapse of 2nd column"),
+  // ⌘B is the same switch from the keyboard (2026-09-22),
   // VS Code's key for its sidebar, here the chat list — the column beside the chat.
   function toggleSessions() { prefs.sessionsCompact = !prefs.sessionsCompact; savePrefs(); applySessionsCompact(); }
   applySessionsCompact();
@@ -1716,8 +1674,7 @@
   // pickers: ⌥⌘O's project wears a crystal ball (2026-09-20, for oracle, the investigations folder that runs claude
   // against the clusters; since 2026-09-28 whichever project the cog names for ⌥⌘O).
   const projIcon = name => name && name === state.config.quick ? ICON.oracle : '';
-  // The short name a project wears on a card in the folded chat list (2026-09-22, Ricardo: "small squares with only
-  // the project they are in, with initial (e.g. BE for backend, WAPI for wallet-api, NS for notifier)").
+  // The short name a project wears on a card in the folded chat list (2026-09-22).
   // The rule is the initial of each part of a hyphenated name, or the first two letters of a single word — which
   // gives NS, AS, MS, FC on its own; the cog names the ones whose spoken short name is not that.
   const projAbbr = name => projCfg(String(name || '')).abbr || abbrRule(name);
@@ -1730,8 +1687,7 @@
   const STALE_MAX_AGE_MS = 30 * 86400e3; // Claude Code deletes transcripts after 30 idle days by default; mirror that
 
   // ---- plan usage: the chat list's footer ----------------------------------------------
-  // What `/usage` shows, always in view under the chat list (2026-09-24, Ricardo: "move the credits from the cog to a
-  // permanent bottom bar on 2nd column, make it compact and pretty (and collapsable)"). Asked for on load, every
+  // What `/usage` shows, always in view under the chat list (2026-09-24). Asked for on load, every
   // USAGE_EVERY_MS while the page is in view — the server caches the answer for a minute, so any number of pages
   // cost one call a minute at most —, as soon as a window's reset has passed, and on the way back to a hidden page.
   // A failure keeps the last numbers, dimmed, the error on hover; with no numbers yet it is a sentence, not a blank:
@@ -1740,12 +1696,12 @@
   // server hides the bar. The markup holds both shapes, open and folded; the fold and the rail (⌘B) pick in CSS.
   const USAGE_EVERY_MS = 120e3;
   const usage = { data: null, err: '', off: false, at: 0, fails: 0, busy: false, html: '' };
-  // Each window's tag (2026-09-28, Ricardo: "the token budget should be more '5H x% 1W y% F z%' with stylized fonts for
-  // the 5H/1W/F"): the window's length, or a model's initial for its own week (F for Fable), CR for a credit grant.
+  // Each window's tag (2026-09-28): the window's length, or a model's initial for its own week (F for Fable), CR for a
+  // credit grant.
   const USAGE_SHORT = { five_hour: '5H', seven_day: '1W', seven_day_opus: 'O', seven_day_sonnet: 'S', cinder_cove: 'CR' };
   const uShort = w => USAGE_SHORT[w.key] || (String(w.label).split(' · ').pop().trim()[0] || '?').toUpperCase();
-  // Orange for what is spent, red once a window is nearly gone (2026-09-24, Ricardo: "make the credits used color
-  // green -> orange" — it was green, amber from 70 %, red from 90 %; amber under orange would have read as a step down).
+  // Orange for what is spent, red once a window is nearly gone (2026-09-24 — it was green, amber from 70 %, red from 90
+  // %; amber under orange would have read as a step down).
   const uColor = p => p >= 90 ? 'var(--needs)' : 'var(--spend)';
   // How far through its window the clock is, 0–1 — for the windows whose length is known; a credit grant has none.
   const uSpan = k => k === 'five_hour' ? 5 * 3600e3 : /^seven_day|^limits:weekly/.test(k) ? 7 * 86400e3 : 0;
@@ -1798,30 +1754,27 @@
   const inProject = (s, p) => p.key === ALL || (p.custom ? p.cwds.some(f => inFolder(s.cwd, f)) : (s.cwd || '?') === p.key);
   const projectStub = key => key === ALL ? { key } : key.startsWith('c:') ? { key, custom: true, cwds: state.projects.find(p => 'c:' + p.id === key)?.cwds || [] } : { key };
   // The same rules as the lane board had: empty live panels and stale chats older than 30 days hide unless asked.
-  // Taken off the board by ⌥⌘N's ✕ (2026-09-22, Ricardo: "I want to be able to remove a project when doing hotkey
-  // N"): the key is a folder's cwd or `c:<id>`, the pins' own spelling, and the server keeps the list (state.json),
-  // so every browser and the app agree. It takes the row out of every picker (and, while there was one, the projects column) — the
-  // chats themselves are untouched and still show under ALL, because hiding a folder is tidying an index, not
-  // throwing work away. The cog is the way back.
+  // Taken off the board by ⌥⌘N's ✕ (2026-09-22): the key is a folder's cwd or `c:<id>`, the pins' own spelling, and the
+  // server keeps the list (state.json), so every browser and the app agree. It takes the row out of every picker (and,
+  // while there was one, the projects column) — the chats themselves are untouched and still show under ALL, because
+  // hiding a folder is tidying an index, not throwing work away. The cog is the way back.
   const isHidden = key => state.hidden.includes(key);
-  // A live chat with no transcript yet is a card too, when it is yours to type into (2026-09-27, Ricardo: "when I clear
-  // the chat or when I select new chat, I don't see the card until I press enter to send the first message"): the
+  // A live chat with no transcript yet is a card too, when it is yours to type into (2026-09-27): the
   // drawer's — ＋, or /clear, which gives the process a new id and an empty chat — and a claude in a terminal
   // elsewhere. VS Code's empty panels stay hidden: it mounts one per tab it restores, and none of them was ever asked
   // anything. The card's time and place are the chat's start (`startedAt`, the server's), until a first word lands.
-  // Ticked done, an empty chat is gone at once (2026-09-27, Ricardo: "those cards don't have the done check to clean
-  // them up"): Done ends its claude, and there is nothing in it to read or resume.
+  // Ticked done, an empty chat is gone at once (2026-09-27): Done ends its claude, and there is nothing in it to read
+  // or resume.
   function visible(s) {
     if (!s.lastActivity) return s.alive && !s.done && !inVsCode(s);
     if (!s.alive && !s.done && Date.now() - new Date(s.lastActivity) > STALE_MAX_AGE_MS) return false;
     return true;
   }
   // One order everywhere: the chat whose last *word* is newest first — yours or Claude's, whichever came later
-  // (2026-09-27, Ricardo: "sort by the latest: either my reply or claude reply"; your last touch alone before, so a
-  // reply landing did not move a card). Yours is a prompt, an answer to its question, an interrupt; Claude's is the
-  // reply that ends a turn — not each tool call on the way, so a clauding card does not climb with every step. A
-  // session whose tail held neither (boot reads only the end of a long transcript) falls back to its last activity,
-  // not the bottom.
+  // (2026-09-27; your last touch alone before, so a reply landing did not move a card). Yours is a prompt, an answer to
+  // its question, an interrupt; Claude's is the reply that ends a turn — not each tool call on the way, so a clauding
+  // card does not climb with every step. A session whose tail held neither (boot reads only the end of a long
+  // transcript) falls back to its last activity, not the bottom.
   // A PR come round to you is a word too (2026-09-28): the chat rises to the top of its group, under today's line, from
   // when the board learnt of the move (the server's turn.movedAt) — the server's copy agrees.
   const movedAt = s => (s.prs || []).reduce((m, p) => (p.turn?.you && p.turn.movedAt > m ? p.turn.movedAt : m), '');
@@ -1838,7 +1791,7 @@
   // (still a ready chat — the filters see 'ready'), and a monitor or background command of its own still running.
   const asking = s => s.alive && !s.done && s.status === 'needs-input';
   // The model Claude last answered with is the one the chat runs on: `claude-fable-5-1`, `claude-fable-5[1m]`… mark
-  // the card (2026-09-27, Ricardo: "if the chat is using Fable, put a special marker on the card").
+  // the card (2026-09-27).
   const onFable = s => /fable/i.test(s.model || '');
   const watching = s => !s.done && (s.tasks?.length || 0) > 0;
   // The ✓ is offered once nothing runs — an idle claude or none — on a chat the board has a time for: the card's
@@ -1937,16 +1890,14 @@
   const PIX = `<span class="pix"><svg viewBox="0 0 ${PIX_SHEET[0].length} 9" shape-rendering="crispEdges" aria-hidden="true"><path d="${
     PIX_SHEET.flatMap((row, y) => [...row.matchAll(/#+/g)].map(m => `M${m.index} ${y}h${m[0].length}v1h-${m[0].length}z`)).join('')}"/></svg></span>`;
   const DIVIDER = `<div class="gsep claude" title="clauding above, ready below">${PIX}</div>`;
-  // A line under each day's cards, naming the day they are from (2026-09-23, Ricardo: "a per day divider and put the
-  // day there, using 'today' for today (all cards up are from today) and the rest … DD-MM-YYYY"). The day is your last
+  // A line under each day's cards, naming the day they are from (2026-09-23). The day is your last
   // touch, like the order. A line closes the run of cards *above* it, so the oldest day in the list gets one too, at
   // the bottom; the list is grouped first, so the done cards can bring a day back after older ready ones, and each run
-  // gets its own line. The day stands alone, centred (2026-09-27, Ricardo: "remove the fishes from the date spacing
-  // between cards", then "remove the lines left and right of the date"; still fish either side before, from the same
-  // day's "center the date … stop the animation, leave it static with the fishes") — nothing moves, plain markup.
+  // gets its own line. The day stands alone, centred (2026-09-27; still fish either side before, and
+  // hairlines for an hour) — nothing moves, plain markup.
   const pad2 = n => String(n).padStart(2, '0');
   // How a date is written: DD-MM-YYYY, `short` without the year for the timeline's labels. The settings offered year
-  // and month first for a day (2026-09-28), gone the same day (Ricardo: "remove option to customize dates").
+  // and month first for a day (2026-09-28), gone the same day.
   const fmtDate = (d, short) => `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}${short ? '' : `-${d.getFullYear()}`}`;
   const dayOf = ts => {   // a timestamp's day, the way the list and the transcript both write it
     const d = new Date(ts); if (isNaN(d)) return '';
@@ -1970,8 +1921,7 @@
   }
   const dayHtml = day => `<div class="gsep day" title="above: the chats you were in ${day === 'today' ? 'today' : 'on ' + day}"><b>${day}</b></div>`;
   // ---- the people row: everyone in the PRs of the chats in view ---------------------------------------------------
-  // (2026-09-29, Ricardo: "add an extra row at the bottom of the cards with all the users I have interactions with PRs
-  // and by clicking on their face, I filter only those cards"). The chats in view — the project's, in the states the
+  // (2026-09-29). The chats in view — the project's, in the states the
   // chips show — give their PRs' people (the server's prPeople: author, reviewers, commenters, pushers; you and bots
   // out), merged by login, the newest interaction first. A click is prefs.person: the list, its counts and its
   // timeline narrow to the chats whose PRs have that person; the same face again, or the person leaving the view,
@@ -2004,7 +1954,7 @@
   });
   function renderSessionList(p) {
     const pc = projColor(p); if (pc) $('#sessions').style.setProperty('--repo', pc); else $('#sessions').style.removeProperty('--repo');
-    // The magnifier matches the way ⌥⌘K does (2026-09-25, Ricardo: "make hotkey F fuzzy search like K"): any letters
+    // The magnifier matches the way ⌥⌘K does (2026-09-25): any letters
     // in order, each word within one of the chat's fields, and the best match leads — so with something typed the list
     // is in the match's order, not the board's, and the lines that say where a state or a day ends are left out.
     const q = $('#q').value.trim().toLowerCase();
@@ -2014,21 +1964,20 @@
     const list = (!q ? p.sessions : p.sessions.filter(s => { const m = fuzzy(chatFields(s), q); if (m) score.set(s.id, m.score); return !!m; })).filter(s => !who || hasPerson(s, who));
     const counts = {};
     for (const s of list) counts[bucket(s)] = (counts[bucket(s)] || 0) + 1;
-    // clauding on top, then ready, done last (2026-09-20, Ricardo: one rule between the live cards and the ready ones —
-    // which needs a group above it); inside each group your last touch, newest first. A finished job moves its card
+    // clauding on top, then ready, done last (2026-09-20: one rule between the live cards and the ready ones, which
+    // needs a group above it); inside each group your last touch, newest first. A finished job moves its card
     // into the ready group, where its last prompt puts it. That order is also how a query's ties are broken.
     const board = (a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byWord(a, b);
     const shown = list.filter(s => filterOn(bucket(s))).sort(q ? (a, b) => (score.get(b.id) - score.get(a.id)) || board(a, b) : board);
     // The project filter's one cue: a click is ⌥⌘P's picker, × goes back to ALL. The square is only a colour here —
     // the colour picker is the chat header's.
-    // The head names the project and nothing else (2026-09-27, Ricardo: "the ALL next to the app icon should
-    // disappear, as we assume not having anything is the default All (aka no filter)" · "remove the color picking on
-    // the filter next to the icon, and leave it to the chats": no colour square — the chat header's is the picker —
-    // and nothing at all on ALL). On the rail the short name (projAbbr, the squares' rule) is the picker's handle.
+    // The head names the project and nothing else (2026-09-27): no colour square — the chat header's is the picker —
+    // and nothing at all on ALL, which is what no filter means. On the rail the short name (projAbbr, the squares'
+    // rule) is the picker's handle.
     $('#stitle').hidden = p.key === ALL;
     $('#stitle').innerHTML = p.key === ALL ? '' : `<span class="t">${projIcon(p.name)}${esc(p.name)}</span><span class="ab">${esc(projAbbr(p.name))}</span><span class="sx" title="Every project again (ALL)">×</span>`;
     $('#stitle').title = p.key === ALL ? '' : `${p.custom ? `${p.name}: ${p.cwds.join(', ') || 'no folders yet'}` : p.key} — click or ⌥⌘P for another`;
-    // No ＋ since 2026-09-28 (Ricardo: "the '+' can be removed, let's be more keyboard centric"): ⌥⌘N, which opens on
+    // No ＋ since 2026-09-28: ⌥⌘N, which opens on
     // the project in view.
     $('#fchips').innerHTML = FILTERS.map(([k, label]) => `<button class="fchip ${k} ${filterOn(k) ? 'on' : ''}" data-f="${k}" title="${counts[k] || 'no'} ${label} — click to ${filterOn(k) ? 'hide' : 'show'} them"><i></i><span class="lb">${label}</span><span class="n">${counts[k] || 0}</span></button>`).join('');
     const b = shown.map(rankOf);   // the divider stands once, under the last clauding card when a ready one follows
@@ -2136,17 +2085,15 @@
     a.onfinish = a.oncancel = () => { wrap.remove(); listChanged(); };   // the cards below moved up under the fold: the ends' counts and the timeline read the list again
   }
   // Every render rebuilds its nodes, and a CSS animation starts over on a new node — so the clauding ring, an asking
-  // card's blink and the state dots' pulse jumped back to their start on every SSE update (2026-09-27, Ricardo: "the
-  // animations like the border when clauding still reset randomly and breaks the smoothness"; measured: a new card
-  // and a new start time on each of five updates). The school's fix of 2026-09-20, applied to them all: after a
-  // render every such animation is put at start time 0 on the document clock, so the new node is exactly where the
-  // old one was — and so every ring turns in step. Once at 0 it stays there. A CSSTransition (the
-  // age fading in) has no animationName, so it is left alone. getAnimations() is the document's running animations,
-  // a few dozen at most, and the style flush it forces is the one the frame was about to do.
-  // In step is the cog's choice (2026-09-27, Ricardo: "put that phase lock sync as an toggle on the settings cog, so
-  // I can switch back and forth to see what I like"): off, a card's animations start from a time of its own, hashed
-  // from the chat's id — as steady across renders as 0, only not shared. The header's dot and the divider have no
-  // card and stay at 0. Flipping the switch re-phases what is running, so the change shows at once.
+  // card's blink and the state dots' pulse jumped back to their start on every SSE update (2026-09-27; measured: a new
+  // card and a new start time on each of five updates). The school's fix of 2026-09-20, applied to them all: after a
+  // render every such animation is put at start time 0 on the document clock, so the new node is exactly where the old
+  // one was — and so every ring turns in step. Once at 0 it stays there. A CSSTransition (the age fading in) has no
+  // animationName, so it is left alone. getAnimations() is the document's running animations, a few dozen at most, and
+  // the style flush it forces is the one the frame was about to do. In step is the cog's choice (2026-09-27): off, a
+  // card's animations start from a time of its own, hashed from the chat's id — as steady across renders as 0, only not
+  // shared. The header's dot and the divider have no card and stay at 0. Flipping the switch re-phases what is running,
+  // so the change shows at once.
   const PHASED = new Set(['ring', 'blink', 'pulse', 'pix', 'pixhop']);
   const phaseOf = a => { if (prefs.ringsInStep !== false) return 0; const id = a.effect?.target?.closest?.('.card')?.dataset.id || ''; let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0; return -(h % 60000); };
   // Once a frame, before it paints: the list and the header both ask after a render, and getAnimations() flushes style
@@ -2160,8 +2107,7 @@
   $('#ringsInStep').checked = prefs.ringsInStep !== false;
   $('#ringsInStep').addEventListener('change', e => { prefs.ringsInStep = e.target.checked; savePrefs(); phaseAnims(true); });
   // ---- the list's ends: how many cards are out of sight ---------------------------------
-  // (2026-09-25, Ricardo: "when scrolling down the cards, the top should visually say how many cards are hiding, same
-  // for below"): a pill at each end, counting the cards more than half out of view that way — a card cut in two is
+  // (2026-09-25): a pill at each end, counting the cards more than half out of view that way — a card cut in two is
   // still being shown. A dot on it when one of them is asking you (red) or clauding: the two states a card should not
   // be able to hide. A click scrolls a screenful that way. Drawn at most once a frame: on scroll, after every render,
   // when the list's box changes size (a fold, the splitter, the window) and when the cards do (the cog's slider).
@@ -2187,12 +2133,10 @@
     set('--sfoot', `${Math.round(g.box.bottom - g.sp.top)}px`);
   }
   /** Where the splitter's colour ends, on screen: the open card's bottom edge, held inside the list's window. The edge
-   *  as drawn — the card's rect, not its rounded offsets, and its outline's 1 px outside it (2026-09-29, Ricardo: the bar
-   *  "doesn't [go] all the way to the low border of the card"). */
+   *  as drawn — the card's rect, not its rounded offsets, and its outline's 1 px outside it (2026-09-29). */
   const splitEnd = g => !g.openRect ? g.box.top : Math.max(g.box.top, Math.min(g.box.bottom, g.openRect.bottom + 1));
   // ---- the open chat's light runs on past its card ----------------------------------------------------------------
-  // (2026-09-29, Ricardo: "should now travel across the vertical separator, go around the project box at the top of the
-  // chat and go back again"). The open card, the splitter down to it and the project's box atop the chat are one shape
+  // (2026-09-29). The open card, the splitter down to it and the project's box atop the chat are one shape
   // in one colour; while the chat is clauding or watching, its light runs round the edge of that shape rather than the
   // card's alone — clockwise, as the ring turns: up the splitter, round the box, down again and round the card.
   // #trail is an overlay the window's size, clipped to a band as wide as a card's border just inside the shape's outline
@@ -2328,8 +2272,7 @@
     list.scrollBy({ top: +b.dataset.dir * Math.max(80, list.clientHeight - 90), behavior: 'smooth' });
   });
   // ---- the chat list's timeline: its days, down the left edge -------------------------
-  // (2026-09-25, Ricardo: "a slim vertical timeline — from the app icon to the bottom settings cog — showing where we
-  // are on dates on the cards … you can drag and has this 'genie effect' like macos dock"). The list in miniature,
+  // (2026-09-25). The list in miniature,
   // to scale: the whole rail is the whole list, so a run of cards sits on it where it sits in the list, the thumb is
   // the window, and the rail is the list's scrollbar (the native one is hidden). A run is a day *and* a state group,
   // since the list is grouped first — today comes back under the done cards — and each is its own place to go.
@@ -2496,7 +2439,7 @@
   const taskLine = t => `${t.kind === 'monitor' ? 'monitor' : 'background'}: ${t.what || '(no description)'}${t.until ? ` · ${minsLeft(t.until)}` : ''}${t.events ? ` · ${t.events} event${t.events === 1 ? '' : 's'}` : ''}`;
   /** One chip for everything still running behind the turn. With one task it says *what* — the description the
    *  call gave it, which is the answer to "something is running here, but what?" and was a tooltip before
-   *  (2026-09-21, Ricardo: "if there is any background command working, where should I see what is it?"). With
+   *  (2026-09-21). With
    *  more, it counts them by kind. The tooltip is the full list either way, with the time left and the events. */
   function taskChip(s) {
     const t = s.tasks || []; if (!t.length) return '';
@@ -2532,14 +2475,13 @@
     const prs = movedPrs(s); if (!prs.length) return '';
     return `<span class="hmove" title="${esc(moveTip(prs))}"><b class="ymove">${ICON.pr}your move</b><span class="q">${esc(prs[0].label)} · ${esc(prs[0].turn.why)}</span>${prs.length > 1 ? `<span class="n">+${prs.length - 1}</span>` : ''}</span>`;
   }
-  /** The card's PR chips, last in its top row — the F's place, the F left of them (2026-09-28, Ricardo: "move the PR's
-   *  to the same place as fable icon") —: three in the chat's order, every one at your move among them, then +n for
-   *  the rest, its tooltip their labels. Where the row has not the room for them, the ones past it wrap out of sight. */
+  /** The card's PR chips, last in its top row — the F's place, the F left of them (2026-09-28) —: three in the chat's
+   *  order, every one at your move among them, then +n for the rest, its tooltip their labels. Where the row has not
+   *  the room for them, the ones past it wrap out of sight. */
   const CARD_PRS = 3;
   /** Who else has had a hand in the chat's PRs — each PR's author, reviewers, commenters and pushers, the server's
-   *  `people`, you left out — as GitHub's faces, the newest first: three, and a count for the rest (2026-09-29, Ricardo:
-   *  "can we get avatar of GH users in cards, that interacted with PRs associated with a chat?"). The tooltip says
-   *  what each did, PR by PR. */
+   *  `people`, you left out — as GitHub's faces, the newest first: three, and a count for the rest (2026-09-29). The
+   *  tooltip says what each did, PR by PR. */
   const CARD_FACES = 3;
   /** A person's GitHub face — their avatar, or their initial when GitHub gave none. */
   const faceHtml = (p, tip = '') => p.avatar
@@ -2578,9 +2520,8 @@
     const fable = onFable(s) ? `<span class="fable" title="on Fable — ${esc(s.model)}, the model Claude last answered with">${ICON.fable}</span>` : '';
     const tip = titleTip(s);
     const showRepo = p.key === ALL || p.custom;
-    // Where it runs, when that is news: a drawer here is the norm and says nothing (2026-09-23, Ricardo: "remove the
-    // 'terminal here' from cards … that is the norm"); a CLI elsewhere, VS Code running it too, still do. VS Code's own
-    // chat wore its logo here until 2026-09-28 (Ricardo: "remove all vscode icons from cards") — the chat header's ···
+    // Where it runs, when that is news: a drawer here is the norm and says nothing (2026-09-23); a CLI elsewhere, VS
+    // Code running it too, still do. VS Code's own chat wore its logo here until 2026-09-28 — the chat header's ···
     // still says it (*VS Code's chat*).
     const where = !s.alive || inVsCode(s) ? ''
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip">${entryLabel(s)}</span>`)
@@ -2603,21 +2544,18 @@
   // magnifier (title, project, prompt, branch) but fuzzily, and with something typed the best match leads instead
   // (2026-09-21); ⏎ opens the chat, switching project when it lives elsewhere.
   // ⌥⌘N (2026-09-20) is a chat in the one dialog, a step at a time: the project (⌥⌘P's list without ALL),
-  // then — 2026-09-21, Ricardo: "after selecting the project, we should allow choosing open chats" — that project's
-  // open chats, newest by your last touch, with ＋ new chat first; ＋ then asks the folder when the project spans
-  // several and the environment when the folder's Taskfile launches claude itself, as oracle's `task
-  // production-workload` does (newChatIn asks the server); ⏎ at the last step starts it.
+  // then — since 2026-09-21 — that project's open chats, newest by your last touch, with ＋ new chat first; ＋ then asks
+  // the folder when the project spans several and the environment when the folder's Taskfile launches claude itself, as
+  // oracle's `task production-workload` does (newChatIn asks the server); ⏎ at the last step starts it.
   // ⌥⌘O (2026-09-20) is that flow with the project answered and the environment brought forward: oracle's
   // environments first, then *that environment's* open chats with ＋ new chat first (hotOracle). A chat's environment
   // is the server's record of the launcher it was started with (`s.env`), so it outlives the drawer; a chat with no
   // record — a bare `claude` in the folder, or one from before the record existed — shows under ⌥⌘N, not ⌥⌘O.
-  // The chats step shows even when the scope has no chats (2026-09-22, Ricardo: "when hotkey N and there is no
-  // active chat, still show the new chat option so I can open a new chat or give up (ESC)"): ＋ new chat is then the
+  // The chats step shows even when the scope has no chats (2026-09-22): ＋ new chat is then the
   // whole list, ⏎ starts it, esc walks away. Before, an empty scope skipped the step and the next one spawned a
   // terminal with nothing to stop it.
   // ---- the pickers' matcher: fuzzy since 2026-09-21 ----------------------------------------------
-  // (Ricardo: "I want S hotkey to fuzzy search non-done chats", then — told ⌥⌘K already holds that list — "keep K
-  // but make it fuzzy".) The query's letters have to turn up in order, not together: `wapi res` finds *w*allet-*api*
+  // The query's letters have to turn up in order, not together: `wapi res` finds *w*allet-*api*
   // *res*olvers. Each space-separated word is hunted on its own, so the order you type them in does not matter.
   // A run of letters is worth more than scattered ones and a letter starting a word more than one inside it — that
   // is what makes `res` find *res*olvers rather than a*r*r*es*t. Every place a word's first letter appears is tried
@@ -2701,14 +2639,13 @@
   const homePath = f => f.replace(/^\/Users\/[^/]+(?=\/|$)/, '~');
   const chatState = s => bucket(s) === 'working' ? 'clauding' : asking(s) ? 'asking' : 'ready';
   // ---- the roots' folders, and cloning one that is not here yet (2026-09-21) --------------------
-  // Ricardo: "adding a new project is a bit cumbersome: we should present all folders locally on ~/acme and to add
-  // a new one, assume it's an acme organization git repo, clone it to ~/acme and open a new chat". A project on
-  // the board is a folder a chat ran in, so ⌥⌘N's project step could only ever offer a folder that already had one —
-  // the repos you had not touched today were not there, and the ones you had not cloned were nowhere at all. The step
-  // now carries every folder under the org's directory after the board's own projects, and a name that is none of
-  // them is offered as ＋ clone. The server answers `GET /api/folders` (cached by the directory's mtime), so this is
-  // asked on every opening and the rows appear when it lands. Since 2026-09-28 the directories are the cog's — any
-  // number of roots, each with the GitHub org its clone asks for, or none (then it lists its folders only).
+  // Adding a project was the longest thing the board asked of you. A project on the board is a folder a chat ran in, so
+  // ⌥⌘N's project step could only ever offer a folder that already had one — the repos you had not touched today were
+  // not there, and the ones you had not cloned were nowhere at all. The step now carries every folder under the org's
+  // directory after the board's own projects, and a name that is none of them is offered as ＋ clone. The server answers
+  // `GET /api/folders` (cached by the directory's mtime), so this is asked on every opening and the rows appear when it
+  // lands. Since 2026-09-28 the directories are the cog's — any number of roots, each with the GitHub org its clone
+  // asks for, or none (then it lists its folders only).
   const folders = { roots: [], list: [] };
   async function loadFolders() {
     try {
@@ -2781,8 +2718,8 @@
       const chats = hunt(scopeChats(pick.ctx), chatFields);   // ＋ is never filtered out: it is the fallback for a query that matches nothing
       pick.list = [{ isNew: true }, ...chats];
       const how = pick.ctx.env ? `task ${pick.ctx.env}` : pick.ctx.cwds.length === 1 ? `in ${folderName(pick.ctx.cwds[0])}` : 'pick a folder…';   // reads under the chats' own environment column, so say it is a folder
-      // ✓ ticks the chat done from here (2026-09-28, Ricardo: "I want to have the 'done' icon there to clean the
-      // house"): the card's rule and route, and the row goes when the server says so. Every row keeps the column.
+      // ✓ ticks the chat done from here (2026-09-28): the card's rule and route, and the row goes when the server says
+      // so. Every row keeps the column.
       const tick = x => x.isNew || !canTick(x) ? '<span class="pkdone"></span>' : `<button class="pkdone" data-id="${esc(x.id)}" title="Tick as done — it leaves this list and the board's (persisted; comes back on new activity)">✓</button>`;
       row = (x, i) => x.isNew
         ? `<div class="pkrow chat ticks new${sel(i)}" data-i="${i}" style="${repoStyle(repoColor(pick.ctx.cwds))}" title="Start a new chat in ${esc(pick.ctx.name)}"><span class="sq"></span><span class="n">＋ new chat</span><span class="num">${esc(how)}</span><span class="st"></span><span class="t"></span>${tick(x)}</div>`
@@ -2872,25 +2809,24 @@
   // because with ⌥ held e.key is a symbol ('ø' for O) on a Mac. One letter per place the open chat lives: T a
   // fresh zsh in its folder (the pane's zsh tab — a holder like claude's), E the editor — VS Code Web in the pane, the
   // web button's route —, G the chat's PR on GitHub — straight to it
-  // with one, the picker with several — every time, a tab open or not, the one showing marked (Ricardo, 2026-09-20:
-  // "always open the menu to choose the PR"); each PR is its own tab, so nothing reloads —, C the claude session: the >_ button's
-  // path (the drawer shown or started, arm-and-take-over included, so a chat live elsewhere takes two presses).
-  // W closes the tab the keys are in (hotCloseTab, 2026-09-28) — a half with one tab has no strip, so no ×.
-  // O is a new oracle chat, opening on its environments (hotOracle), P the project picker, K the chat picker (every
-  // ready or clauding chat, searched), F the chat list's own filter box (hotFind), N a new chat anywhere (the
-  // project, then the folder, then the environment when the folder's Taskfile launches claude); ↑ and ↓ open the
-  // chat above or below in the list; ← and → the tab to the left or right in the strip (chat | zsh | GitHub pages | VS Code, wrapping);
-  // 1 and 2 the halves of the chat column stood one over the other (2026-09-27) — ⌘1 / ⌘2 are the same halves side by
-  // side: the digit is the pane, the modifier the layout, and a key pressed on the other layout turns it (hotGroup).
-  // A modal up (the picker, the project editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
+  // with one, the picker with several — every time, a tab open or not, the one showing marked (2026-09-20); each PR is
+  // its own tab, so nothing reloads —, C the claude session: the >_ button's path (the drawer shown or started,
+  // arm-and-take-over included, so a chat live elsewhere takes two presses). W closes the tab the keys are in
+  // (hotCloseTab, 2026-09-28) — a half with one tab has no strip, so no ×. O is a new oracle chat, opening on its
+  // environments (hotOracle), P the project picker, K the chat picker (every ready or clauding chat, searched), F the
+  // chat list's own filter box (hotFind), N a new chat anywhere (the project, then the folder, then the environment
+  // when the folder's Taskfile launches claude); ↑ and ↓ open the chat above or below in the list; ← and → the tab to
+  // the left or right in the strip (chat | zsh | GitHub pages | VS Code, wrapping); 1 and 2 the halves of the chat
+  // column stood one over the other (2026-09-27) — ⌘1 / ⌘2 are the same halves side by side: the digit is the pane, the
+  // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
+  // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
   const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyW: hotCloseTab, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘B folds the chat list. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
-  // half goes and the one the keys are in becomes the column (2026-09-22, Ricardo: "cmd 0 should close other panes
-  // and just keep the current one select/focused"), and with one half there is nothing to close, so it is still
-  // what it always was — the chat's size back to normal.
+  // half goes and the one the keys are in becomes the column (2026-09-22), and with one half there is nothing to close,
+  // so it is still what it always was — the chat's size back to normal.
   const CMDKEYS = { KeyB: toggleSessions, Digit1: () => hotGroup(0), Digit2: () => hotGroup(1), Digit0: hotOnlyHalf, KeyW: hotCloseHalf, Comma: settingsToggle };
   // Every hotkey says whether it took the key, and ⌘W is the one that is asked: in the app it arrives as the
   // Window menu's own ⌘W, which closes the window when the board has nothing to close instead (see main.swift).
@@ -2924,12 +2860,12 @@
     if (tb.disabled) return note(seen(tb), tb.title, true);   // live somewhere it cannot be attached from — the tooltip says where
     focusBoard(); termAction(s);
   }
-  // ⌥⌘O (2026-09-20, Ricardo: "the O hotkey should open oracle prompt directly, to select the env and open a chat"):
+  // ⌥⌘O (2026-09-20):
   // ⌥⌘N with its project answered and the environment brought forward — oracle's environments first, then that
-  // environment's open chats with ＋ new chat among them (2026-09-21, Ricardo: "we should show open chats with the
-  // option for a new one, scoped by env"). The folder is the project the cog names for ⌥⌘O (state.config.quick — oracle
-  // here, written into this file until 2026-09-28): a folder of its own, a pin or a named set of folders. None named,
-  // or nothing has run there in 30 days and it is off the board — a note then, and ⌥⌘N is the way in.
+  // environment's open chats with ＋ new chat among them (2026-09-21). The folder is the project the cog names for ⌥⌘O
+  // (state.config.quick — oracle here, written into this file until 2026-09-28): a folder of its own, a pin or a named
+  // set of folders. None named, or nothing has run there in 30 days and it is off the board — a note then, and ⌥⌘N is
+  // the way in.
   function hotOracle() {
     const name = state.config.quick;
     if (!name) return note($('#shead'), 'No project for ⌥⌘O yet — the settings (⌘,) name one under Setup · ⌥⌘N starts a chat anywhere');
@@ -2938,7 +2874,7 @@
     focusBoard();
     if (p.cwds.length === 1) newChatIn(p.cwds[0], 'chats'); else pickOpen('folder', { cwds: p.cwds, then: 'chats' });   // one folder: straight to the environments
   }
-  // Esc with a page's tab on (2026-09-20, Ricardo: "ESC should still navigate to chat"): the chat tab, and the pane
+  // Esc with a page's tab on (2026-09-20): the chat tab, and the pane
   // goes. Reaches here from the shell only (peixKey('Escape'), pressed on the board or in the pane, which the shell
   // swallows while the pane is up) — so a dialog (the settings are one), whose own Esc that swallow took, closes first.
   // Split, the chat is in the left half and the keys go there; the page beside it stays up (showChat).
@@ -2950,7 +2886,7 @@
   function hotVsCode() { const b = $('#webBtn'); if (b) b.click(); else noChat(); }
   // ⌥⌘↑ / ⌥⌘↓ (2026-09-20): the chat above or below in the list as it stands — filters and order included; from no
   // chat, or one the list does not show, the top or the bottom; the ends stop.
-  // ⌥⌘F (2026-09-25, Ricardo: "make hotkey F fuzzy search like K"): the chat list's magnifier, from anywhere, and it
+  // ⌥⌘F (2026-09-25): the chat list's magnifier, from anywhere, and it
   // matches as K does — what K has that the list did not was the matcher, not the dialog. The list keeps what the
   // picker hides: the done chats, the project in view, the state chips. Folded to the rail, the list opens for it.
   function hotFind() {
@@ -2963,10 +2899,10 @@
     const next = cards[i < 0 ? (dir > 0 ? 0 : cards.length - 1) : Math.max(0, Math.min(cards.length - 1, i + dir))];
     if (next.dataset.id !== state.current) openSession(next.dataset.id);
   }
-  // ✓ and ↩ — the card's, and the chats step's ✓. Ticking the open chat moves on (2026-09-30, Ricardo: "when I mark
-  // as done, we should move the the next chat (up or down)"): to the card below it in the list as shown, the one that
-  // slides into its place, else the one above; done cards are skipped, and a chat ticked while another is open moves
-  // nothing. The move is made at the click, not on the answer: an empty chat's `session` event would leave it first.
+  // ✓ and ↩ — the card's, and the chats step's ✓. Ticking the open chat moves on (2026-09-30): to the card below it in
+  // the list as shown, the one that slides into its place, else the one above; done cards are skipped, and a chat
+  // ticked while another is open moves nothing. The move is made at the click, not on the answer: an empty chat's
+  // `session` event would leave it first.
   function tickDone(id, done, anchor) {
     if (done && id === state.current) {
       const cards = [...document.querySelectorAll('#slist > .card')], i = cards.findIndex(c => c.dataset.id === id);
@@ -2977,7 +2913,7 @@
     api('POST', `/api/sessions/${id}/done`, { done })   // the card the click was on is redrawn by the move
       .catch(err => note(anchor.isConnected ? anchor : document.querySelector(`#slist > .card[data-id="${id}"]`), `Could not tick it: ${err.message}`, true));
   }
-  // ⌥⌘← / ⌥⌘→ (2026-09-20, Ricardo: "cmd option left/right should change the open chat | shell | GH | vscode panes"):
+  // ⌥⌘← / ⌥⌘→ (2026-09-20):
   // the tab beside the current one in the strip, wrapping round; the same path as a click on it. The chat alone: a note.
   // Split, the two strips read as one row, left then right (2026-09-25): each lists only its own tabs now, and the
   // key walks across the divider into the other half rather than round one strip.
@@ -3026,13 +2962,13 @@
   $('#hidden').addEventListener('click', e => { const b = e.target.closest('button'); if (b) showProject(b.dataset.key); });
 
   // ---- the setup: the cog's second half (2026-09-28) ---------------------------------------------------------------
-  // Ricardo, handing the board to colleagues: "the config looks good, maybe we could integrate it into the cog setting?"
-  // What had been written into this page and the server for one Mac is set here, under the switches: the folders the
-  // repos live in, each with the GitHub org ＋ clone asks (`roots`), the project ⌥⌘O starts a chat in (`quick`), and a
-  // short name and a colour per project (`projects`). It is the server's (`config` in its state file, a `config` event),
-  // so the app and every browser agree — the switches above it are this browser's. A box is written on change, a colour
-  // as the panel rests; what the server refuses is said beside it and the row put back. The markup is drawn only when
-  // it changed, and never under a box that has the keyboard: that waits for the focus to leave the section.
+  // Handed to colleagues, the board had to stop knowing one Mac. What had been written into this page and the server
+  // for one Mac is set here, under the switches: the folders the repos live in, each with the GitHub org ＋ clone asks
+  // (`roots`), the project ⌥⌘O starts a chat in (`quick`), and a short name and a colour per project (`projects`). It
+  // is the server's (`config` in its state file, a `config` event), so the app and every browser agree — the switches
+  // above it are this browser's. A box is written on change, a colour as the panel rests; what the server refuses is
+  // said beside it and the row put back. The markup is drawn only when it changed, and never under a box that has the
+  // keyboard: that waits for the focus to leave the section.
   const setupUi = { drawn: '', stale: false, pending: new Set(), colors: new Map(), colorTimer: null, raf: 0 };
   const cfgProjects = () => state.config.projects || {};
   const setupNames = () => [...new Set(projectList().filter(p => p.key !== ALL).map(p => p.name))].sort((a, b) => a.localeCompare(b));
@@ -3133,8 +3069,7 @@
     box.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input[type=text]')) e.target.blur(); });
   }
   // ---- the first run: where the repos live (2026-10-01) ------------------------------------------------------------
-  // Ricardo, handing the board to other developers: "if we never configured the app, we should probably prompt for the
-  // base folder where git project will live". A board whose setup never named one (`ask`, the server's word) asks,
+  // A board whose setup never named one (`ask`, the server's word) asks,
   // once, over everything: the folder and its GitHub org, as the server guesses them from the chats it holds
   // (GET /api/config/suggest) — the likeliest already in the boxes, so ⏎ is mostly the whole answer. Skip is an answer
   // too (no folder, never asked again); Esc only puts the question off to the next load. A folder under the home that
@@ -3305,10 +3240,10 @@
     const s = state.sessions.get(state.current);
     if (!IN_PANE.test(url) || !s) { post({ type: 'external', url }); return; }   // vscode://, mailto:… — the system's
     // A page of the chat, on a tab of its own in the strip (2026-09-20): web pages one per URL, in the order first
-    // opened — a PR, a docs page, a dev server (Ricardo, 2026-09-26: "open in web if it's web"; the strip's ↗ is the
-    // way out to the browser); the folder's editor, one per folder. Remembered here so they come back with the chat;
-    // the shell keeps a web view per page and shows the one the tab says (syncTerm → postPane). The key's `gh:` is
-    // the name every page tab kept from when GitHub's were the only ones.
+    // opened — a PR, a docs page, a dev server (2026-09-26; the strip's ↗ is the way out to the browser); the folder's
+    // editor, one per folder. Remembered here so they come back with the chat; the shell keeps a web view per page and
+    // shows the one the tab says (syncTerm → postPane). The key's `gh:` is the name every page tab kept from when
+    // GitHub's were the only ones.
     const gh = !IDE_URL.test(url);
     let fresh = false;
     if (gh) { const l = state.paneGh.get(s.id) || []; fresh = !l.includes(url); if (fresh) l.push(url); state.paneGh.set(s.id, l); }
@@ -3318,8 +3253,7 @@
     syncTerm(s);
   }
   // The PR in front of you, for ⌥⌘G's picker to mark *current*. There was a strip under the header with what gh said
-  // about it — state, review, checks, size, branches — until 2026-09-24 (Ricardo: "when a PR is open in web, there a
-  // row at the top … with extra PR info (branch, etc.) -> remove it"): the page itself, on its tab, says all of that.
+  // about it — state, review, checks, size, branches — until 2026-09-24: the page itself, on its tab, says all of that.
   const shownPr = { url: null };
   function hidePr() { shownPr.url = null; }
   function showPr(url) { shownPr.url = url; openExternal(url); }
@@ -3347,7 +3281,7 @@
   });
 
   // ---- links in the chat: files and pages -------------------------------------------
-  // (2026-09-26, Ricardo: "let me click url's on chat and open them if local or open in web if it's web".) A file
+  // (2026-09-26) A file
   // path in the transcript or the drawer — /absolute, ./relative, folder/file.ext, ~/…, a bare name.ext:12 — is a
   // link that opens it in VS Code at that line, the href md() already gives the [file:42](src/file.ts#L42) links
   // Claude writes, resolved against the chat's folder; a web URL is a link that opens the page in the pane, on a tab
@@ -3419,10 +3353,9 @@
   const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" href="${esc(pr.url)}" target="_blank" rel="noopener"
       title="${esc(`${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}${pr.turn ? `\n${turnTip(pr)}` : ''}`)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span>${pr.turn?.you ? `<span class="why">your move · ${esc(pr.turn.why)}</span>` : ''}<span class="meta">${rel(pr.lastAt)}</span></a>`;
   // Claude Code's own /focus — "just your prompt, summary, and response", every step in between hidden — on the
-  // session running in the drawer (2026-09-20, Ricardo: "add a toggle on the chat header for toggling focus mode on
-  // the current live session"). It is the running CLI's state, not the board's: there is no key and no API for it, so
-  // the button types the command into our own holder and reads the line the session prints back — what it shows is
-  // what the session said, never what we asked for. No drawer, no button.
+  // session running in the drawer (2026-09-20). It is the running CLI's state, not the board's: there is no key and no
+  // API for it, so the button types the command into our own holder and reads the line the session prints back — what
+  // it shows is what the session said, never what we asked for. No drawer, no button.
   const focusView = new Map();   // session id → what its drawer last said; page state, it dies with the process
   const focusOn = id => focusView.get(id) === true;
   const viewTip = s => focusOn(s.id)
@@ -3439,10 +3372,10 @@
     $('#chat').classList.toggle('vsc', inVsCode(s));
     tintChat(repoColor(s.cwd));
     // One row: title · [dot+age] · buttons. No status word — the dot carries it in colour; what it cannot say is how
-    // long ago. The dot and its age *are* the details button (2026-09-20, Ricardo: "simplify the icon on the top banner
-    // right" — the dot, the age and a ··· were three things for one fold): a click shows path, branch and session
-    // details under the row. The chat's PRs are chips in the row, and a click on them the block under it, one per row
-    // (#prlist) — as many as the row has room for, the rest counted (fitHeadPrs).
+    // long ago. The dot and its age *are* the details button (2026-09-20 — the dot, the age and a ··· were three things
+    // for one fold): a click shows path, branch and session details under the row. The chat's PRs are chips in the row,
+    // and a click on them the block under it, one per row (#prlist) — as many as the row has room for, the rest counted
+    // (fitHeadPrs).
     const take = takeable(s), armed = take && drawer.arm === s.id;
     const menu = $('#hmenu'); if (menu.open && menu.dataset.id !== s.id) menu.close();   // another chat: its own menu, shut
     menu.dataset.id = s.id;
@@ -3508,21 +3441,20 @@
     $('#shead .repo').onclick = () => { if (s.cwd) selectProject(s.cwd); };
     $('#shead h2 .t').ondblclick = () => editTitle(s);
   }
-  // The header's PR chips take whatever the row has (2026-09-24, Ricardo: "after 4 PRs, they are being collapse even
-  // if we have space on the bar - try to use all real-estate and only collapse if its really close to the title"): all
+  // The header's PR chips take whatever the row has (2026-09-24): all
   // of them are drawn, and the last ones fold into +n only while the row would otherwise crowd the title — its repo
   // name and TITLE_ROOM of the title itself stay clear. At least one chip always shows. Run on every header draw and
   // on every change of the header's size.
   const TITLE_ROOM = 160;
-  // The app filling the screen, camera housing included (2026-09-27, Ricardo: "fullscreen app on a macbook with a notch,
-  // we don't really use that upper real estate"): the shell says where the housing is in this page's px (peixFill — the
-  // strip's height, and the x range the housing covers) and the top row lays itself around it. The chat list's head
-  // stays where it is while the list ends short of the housing; the chat header keeps its title left of the housing and
-  // its chips and ··· right of it — the h2 given a width that ends NOTCH_PAD short of the housing and a right margin that
-  // carries the next item NOTCH_PAD past it — while both sides have the room (NOTCH_TITLE for the name and some title,
-  // NOTCH_TAIL for the chips and ···). What has not the room pads down by the strip instead (.npad), so nothing sits
-  // under the housing; a header wholly right of it lifts as it is. Run on every header draw and every change of its
-  // size, since a resize moves the hole; nothing else on the page knows about the fill.
+  // The app filling the screen, camera housing included (2026-09-27): the shell says where the housing is in this
+  // page's px (peixFill — the strip's height, and the x range the housing covers) and the top row lays itself around
+  // it. The chat list's head stays where it is while the list ends short of the housing; the chat header keeps its
+  // title left of the housing and its chips and ··· right of it — the h2 given a width that ends NOTCH_PAD short of the
+  // housing and a right margin that carries the next item NOTCH_PAD past it — while both sides have the room
+  // (NOTCH_TITLE for the name and some title, NOTCH_TAIL for the chips and ···). What has not the room pads down by the
+  // strip instead (.npad), so nothing sits under the housing; a header wholly right of it lifts as it is. Run on every
+  // header draw and every change of its size, since a resize moves the hole; nothing else on the page knows about the
+  // fill.
   const NOTCH_PAD = 10, NOTCH_TITLE = 220, NOTCH_TAIL = 120;
   function layoutNotch() {
     const n = state.notch, main = $('#main'), list = $('#sessions'), chat = $('#chat'), head = $('#shead'), h2 = head.querySelector('h2');
@@ -3531,9 +3463,8 @@
     const lr = n ? list.getBoundingClientRect().right : 0, hr = n ? head.getBoundingClientRect() : null;
     const gap = n && h2 ? parseFloat(getComputedStyle(head).columnGap) || 0 : 0, x = n && h2 ? h2.getBoundingClientRect().left : 0;
     const hole = !!(n && h2) && hr.left + NOTCH_TITLE <= n.left && n.right + NOTCH_TAIL <= hr.right;
-    // The title left of the housing when the whole of it fits there, else right of it (2026-09-28, Ricardo: "use the
-    // left for the card summary if it has space, otherwise use the right of the notch"): its margin jumps the housing,
-    // the project staying left of it. Where it would start is the separator's right edge and the h2's gap.
+    // The title left of the housing when the whole of it fits there, else right of it (2026-09-28): its margin jumps
+    // the housing, the project staying left of it. Where it would start is the separator's right edge and the h2's gap.
     const t = h2?.querySelector('.t'), sep = h2?.querySelector('.sep');
     const tx = hole && t && sep ? sep.getBoundingClientRect().right + (parseFloat(getComputedStyle(h2).columnGap) || 0) : 0;
     const tw = tx ? (r => (r.selectNodeContents(t), r.getBoundingClientRect().width))(document.createRange()) : 0;   // the text's own width: scrollWidth is never under the box's
@@ -3635,7 +3566,7 @@
   // ---- terminal drawer: the real claude in a PTY on the server, attached over a WebSocket -----
   // The drawer is the chat pane's body while the chat runs here — the claude session, or the zsh tab beside it (⌥⌘T)
   // — and the rendered transcript is the body otherwise.
-  // Nothing is shown or hidden by hand (2026-09-20, Ricardo: "all of this is automatic now"): the drawer comes with
+  // Nothing is shown or hidden by hand (2026-09-20): the drawer comes with
   // the process and goes when it exits; a chat ticked done has its processes ended by the server. The process lives
   // on the server, so switching chats does not end it, and every attach gets the exact screen, which is what makes a
   // switch-and-back seamless.
@@ -3648,16 +3579,15 @@
   ];
   const terms = GEL.map((el, g) => ({ g, el, id: null, sessionId: null, cwd: null, kind: null, ws: null, xt: null, fit: null, exited: null }));
   const drawer = { arm: null, armTimer: null, err: null };
-  // Split in two or not is the *chat's* (2026-09-22, Ricardo: "the pane splitting should be chat, not a general
-  // setting"): a PR beside its terminal is a thing you want for the review you are doing, not for the board. Held
-  // here rather than in prefs for the same reason the tab a chat is on is — it lasts as long as the chats do.
-  // Only the divider's place is the board's (prefs.splitAt), like the column widths.
+  // Split in two or not is the *chat's* (2026-09-22): a PR beside its terminal is a thing you want for the review you
+  // are doing, not for the board. Held here rather than in prefs for the same reason the tab a chat is on is — it lasts
+  // as long as the chats do. Only the divider's place is the board's (prefs.splitAt), like the column widths.
   const splits = new Set();
   const autoSplit = new Set();   // …and which of those splits the board made itself, opening a second tab (openNewTab)
-  // …and which chats stand their halves one over the other (2026-09-27, ⌥⌘1 / ⌥⌘2 against ⌘1 / ⌘2 — Ricardo: "this
-  // should be a per chat setting"). The chat's too, and kept past its split — unsplit leaves it alone — so the next
-  // split, a tab opening beside the chat, comes back the way it was left. The divider's place is the board's for each
-  // layout (prefs.splitAt, prefs.stackAt): a tall column and a wide one want it in different places.
+  // …and which chats stand their halves one over the other (2026-09-27, ⌥⌘1 / ⌥⌘2 against ⌘1 / ⌘2). The chat's too, and
+  // kept past its split — unsplit leaves it alone — so the next split, a tab opening beside the chat, comes back the
+  // way it was left. The divider's place is the board's for each layout (prefs.splitAt, prefs.stackAt): a tall column
+  // and a wide one want it in different places.
   const stacked = new Set();
   const isSplit = s => !!s && splits.has(s.id);
   const splitNow = () => splits.has(state.current);
@@ -3687,9 +3617,9 @@
     return null;
   }
   // A /focus typed in the drawer itself never reaches the board, so every attach reads the newest such line the
-  // screen still holds and takes the button from that (2026-09-20, Ricardo, of the button lit by the session only:
-  // "do it"). It polls while the snapshot is still being written into the buffer, and leaves the button alone when
-  // the session never said anything — set through "viewMode": "focus" in settings, or scrolled past, it cannot know.
+  // screen still holds and takes the button from that (2026-09-20). It polls while the snapshot is still being written
+  // into the buffer, and leaves the button alone when the session never said anything — set through "viewMode": "focus"
+  // in settings, or scrolled past, it cannot know.
   function readFocusFromScreen(tm) {
     const ws = tm.ws, id = tm.sessionId;
     if (tm.kind !== 'claude' || !id) return;
@@ -3882,12 +3812,10 @@
   const shellLive = s => !!(s?.shell && s.shell.exited === null);
   // Which tab a chat is on — page state, per chat: 'chat' (the claude session while it runs here, else the rendered
   // chat), 'shell' while its zsh lives, or one of its pages in the app's pane — 'gh:<url>' a GitHub page (a PR each),
-  // 'ide:<url>' its folder's editor (2026-09-20, Ricardo: "the same mechanism for the github and for vscode … a tab
-  // per PR"). The pages a chat opened are remembered here (state.paneGh per chat, state.paneIde per folder), so they
-  // come back with the chat; a tab whose page is gone falls back to the chat.
+  // 'ide:<url>' its folder's editor (2026-09-20). The pages a chat opened are remembered here (state.paneGh per chat,
+  // state.paneIde per folder), so they come back with the chat; a tab whose page is gone falls back to the chat.
   const tabs = new Map();
-  // Split, each tab belongs to one half's strip (2026-09-25, Ricardo: "pane tabs show all open stuff, regardless if
-  // they are in the 1st or 2nd pane — filter by what's open on 1st vs 2nd pane"): the chat's strip on the left and
+  // Split, each tab belongs to one half's strip (2026-09-25): the chat's strip on the left and
   // everything else on the right, until a tab is dragged across (moveTab). Written down only for the tabs that
   // moved, and forgotten with the split — the next one starts from claude on the left again.
   const homes = new Map();   // chat id → Map(tab → half), while that chat is split
@@ -3937,14 +3865,12 @@
     setTab(s, k);
   }
   /** A tab that has just come into being — a zsh, a GitHub page, the editor — opens in the *second* half, and
-   *  splits the column the first time (2026-09-22, Ricardo: "when opening a second tab, use the 2nd split pane by
-   *  default"): what you open a second tab for is to have it beside the chat, not instead of it. Only the first
-   *  one splits; after that a new tab lands wherever the keys are, like everything else. Choosing a tab that
-   *  already exists is openTab's and never splits. The split the board makes itself goes again on its own, in
-   *  syncTerm, once the chat is down to one tab — an empty half is what ⌘2 is for, not what a zsh's exit leaves.
-   *  Claude keeps the first half (2026-09-25, Ricardo: "when opening a 2nd pane on the chat, keep the claude always
-   *  on the 1st pane"): a split puts the chat on the left whatever the column was showing, and a new tab goes into
-   *  the half the chat is not in — so it never takes the chat's place. */
+   *  splits the column the first time (2026-09-22): what you open a second tab for is to have it beside the chat, not
+   *  instead of it. Only the first one splits; after that a new tab lands wherever the keys are, like everything else.
+   *  Choosing a tab that already exists is openTab's and never splits. The split the board makes itself goes again on
+   *  its own, in syncTerm, once the chat is down to one tab — an empty half is what ⌘2 is for, not what a zsh's exit
+   *  leaves. Claude keeps the first half (2026-09-25): a split puts the chat on the left whatever the column was
+   *  showing, and a new tab goes into the half the chat is not in — so it never takes the chat's place. */
   function openNewTab(s, k) {
     if (!isSplit(s)) splitChat(s, true);
     homes.get(s.id).set(k, 1 - homeOf(s, 'chat'));
@@ -4037,7 +3963,7 @@
   // halves can each have a page up. `show`/`left`/`top` repeat the first of them for a shell built before the
   // split existed. Sent by syncTerm, and again whenever that geometry moves.
   const groupRect = g => { const r = $(GEL[g].body).getBoundingClientRect(); return { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }; };
-  // A dialog open puts the pane down for as long as it is up (2026-09-22, Ricardo: "make it always centered"): a
+  // A dialog open puts the pane down for as long as it is up (2026-09-22): a
   // native view over the chat column covers a dialog centred on the board, and the picker used to sidle into the
   // strip of board still showing rather than fight it. Lowering the pane instead leaves the dialog where every
   // dialog belongs — the middle of the window, over a dimmed board — and hands the keyboard back on the way down.
@@ -4154,13 +4080,10 @@
     else { syncTerm(s); focusBoard(); focusTerm(); }
   }
   // ---- the two halves: ⌘1 and ⌘2 -----------------------------------------------------
-  // ⌘2 splits the chat column and puts the keys in the right half; ⌘1 brings them back to the left (2026-09-22,
-  // Ricardo: "cmd 2 should split the main chat in two, support opening the terminal/editor/chat/github in both
-  // paths — cmd 1 and 2 should move focus to left or right panel"). Both halves pick from the one chat's tabs,
-  // and a tab is only ever in one of them (setTab trades places). ⨯ on the right half's strip closes the split:
-  // whatever the keys were in stays, the other half's tab goes back to being one the strip offers.
-  // ⌥⌘1 and ⌥⌘2 are the same two panes one over the other (2026-09-27, Ricardo: "hotkey 2 to change to horizontal
-  // split. cmd 2 makes the vertical split · hotkey 1 goes the top split (pane 1 is up, pane 2 is down)"): the digit
+  // ⌘2 splits the chat column and puts the keys in the right half; ⌘1 brings them back to the left (2026-09-22). Both
+  // halves pick from the one chat's tabs, and a tab is only ever in one of them (setTab trades places). ⨯ on the right
+  // half's strip closes the split: whatever the keys were in stays, the other half's tab goes back to being one the
+  // strip offers. ⌥⌘1 and ⌥⌘2 are the same two panes one over the other (2026-09-27): the digit
   // is the pane, the modifier the layout, and a key pressed on the other layout turns it. ⌘0 and ⌘W carry no layout.
   function applySplit() {
     const on = splitNow(), stack = stackNow();
@@ -4199,7 +4122,7 @@
     syncTerm(s); if (s) renderHead(s);
     focusBoard(); focusTerm();
   }
-  // ⌘W (2026-09-22, Ricardo: "cmd W should close the focused pan[e]"): the half the keys are in, the way it closes
+  // ⌘W (2026-09-22): the half the keys are in, the way it closes
   // an editor rather than the window. A dialog goes first — with the picker up ⌘W is how you get rid of it — and
   // with one half there is nothing of the board's to close, so the key is handed back and the window takes it.
   function hotCloseHalf() {
@@ -4540,10 +4463,10 @@
       a.setAttribute('href', `vscode://file${abs}${m[2] ? ':' + m[2] : ''}`);
       a.title = `Open ${abs}${m[2] ? ':' + m[2] : ''} in VS Code`;
     }
-    // Every block in a .codebox with its bar — the language, a copy button — and the long ones folded, always (2026-09-28,
-    // Ricardo: "fold code should be always on, remove that option"; a switch in the settings and a { } row per chat under
-    // ··· before). Claude Code cannot fold the code it prints in the drawer — its only collapse is ctrl+o for tool
-    // output — so this is the rendered transcript's; a folded block opens with a click on its summary.
+    // Every block in a .codebox with its bar — the language, a copy button — and the long ones folded, always
+    // (2026-09-28; a switch in the settings and a { } row per chat under ··· before). Claude Code cannot fold the code
+    // it prints in the drawer — its only collapse is ctrl+o for tool output — so this is the rendered transcript's; a
+    // folded block opens with a click on its summary.
     for (const pre of tpl.content.querySelectorAll('pre')) {
       const code = pre.querySelector('code');
       const lines = (code?.textContent || pre.textContent).replace(/\n$/, '').split('\n').length;
@@ -4687,9 +4610,9 @@
   }
 
   // ---- SSE ----------------------------------------------------------------------------
-  // The fish is the SSE light and, clicked, the About box (2026-09-27, Ricardo: "clicking on the app icon should show
-  // an About info box center screen"): what the board is, its version and process, where it reads and writes, and
-  // the chats it holds. A modal <dialog>, so the pane goes down under it and Esc closes it like any other.
+  // The fish is the SSE light and, clicked, the About box (2026-09-27): what the board is, its version and process,
+  // where it reads and writes, and the chats it holds. A modal <dialog>, so the pane goes down under it and Esc closes
+  // it like any other.
   function aboutOpen() {
     const a = state.about || {}, all = projectList()[0] || {};
     const facts = [
@@ -4752,9 +4675,9 @@
       const t = JSON.parse(e.data);
       const term = termFor(t.id); if (!term) return;
       // The holder's chat changed: a new chat just registered, or /clear (or /resume) in the drawer gave the same
-      // process a new session id and the server re-linked the holder (2026-09-20, Ricardo: "/clear … closes this
-      // chat"). Follow it — the drawer stays attached, the pane shows the chat it now runs; the old card is a stale
-      // chat now, and opening it again would resume the old context in a second process.
+      // process a new session id and the server re-linked the holder (2026-09-20). Follow it — the drawer stays
+      // attached, the pane shows the chat it now runs; the old card is a stale chat now, and opening it again would
+      // resume the old context in a second process.
       if (t.sessionId && t.sessionId !== term.sessionId) { term.sessionId = t.sessionId; if (state.current !== t.sessionId) openSession(t.sessionId); }
       if (t.exited !== null) termEnded(term, t.exited);
     });

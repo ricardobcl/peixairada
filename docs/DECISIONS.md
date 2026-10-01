@@ -50,6 +50,11 @@ is ~/acme)."
   `acme` — the answer is ⏎. **Skip is an answer** (`roots: []`, never asked again); Esc only puts it off to the next
   load; a folder under the home that is not there yet is offered to be made (*Make it and use it*, `create: true` —
   the welcome's alone: a typo in the Setup stays a refusal). In the app, *Choose…* is the system's folder panel.
+* **The quotes left the code too** (the same day, "yes, strip the quotes too and push"): 175 mentions in comments that
+  said `(2026-09-28, Ricardo: "…")` now say `(2026-09-28)` — the date stays, the words are in this file's entries,
+  where they always were too. What a quote alone carried (a context after it, "a popover … before") was kept.
+  Checked mechanically: every changed file is the same code with its comments taken out. From here on a comment
+  carries a date and never a person's words (CLAUDE.md).
 * **Verified**: `test/config.test.mjs` (the move, a hand edit, a broken file, the guesses over a made-up home with a
   worktree, an ssh alias and a download, `create`), `scripts/scenarios/welcome.mjs` (new — the guess in the boxes, a
   folder made, the file deleted by hand bringing the question back, a double click answering it, ⌥⌘N listing the repo

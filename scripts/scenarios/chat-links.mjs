@@ -1,9 +1,9 @@
-// Links in the chat (2026-09-26, Ricardo: "let me click url's on chat and open them if local or open in web if it's
-// web"): a file path in a reply — /absolute, ./relative, folder/file.ext, ~/…, name.ext:line, one after Claude Code's
-// @ — is an anchor that opens it in VS Code at that line, resolved against the chat's folder; a web URL is an anchor
-// to the page (in the app, a tab of the chat). What only looks like a path stays text: and/or, a date, a version, a
-// route, a domain. In the drawer the same paths are links, through a provider on the terminal (peix.links reads a
-// line's). What this checks is the anchors of one reply, in order, and the link on a line the fake claude echoes.
+// Links in the chat (2026-09-26): a file path in a reply — /absolute, ./relative, folder/file.ext, ~/…, name.ext:line,
+// one after Claude Code's @ — is an anchor that opens it in VS Code at that line, resolved against the chat's folder; a
+// web URL is an anchor to the page (in the app, a tab of the chat). What only looks like a path stays text: and/or, a
+// date, a version, a route, a domain. In the drawer the same paths are links, through a provider on the terminal
+// (peix.links reads a line's). What this checks is the anchors of one reply, in order, and the link on a line the fake
+// claude echoes.
 import { makeFixture } from '../fixture.mjs';
 
 export const meta = { server: true, fake: true, fixture: 'auto' };

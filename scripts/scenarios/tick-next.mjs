@@ -1,8 +1,8 @@
-// Ticking the open chat moves on (2026-09-30, Ricardo: "when I mark as done, we should move the the next chat (up or
-// down)"). Three chats in one folder, minutes old, over the fixture's two a day old: the list reads First, Second,
-// Third, Plain chat, Two PRs mentioned. What is checked: ✓ on the open card opens the card below it; on the last card
-// still to do it opens the one above, stepping over the done cards under it; ✓ on a card that is not open leaves the
-// open chat alone; ↩ moves nothing; and the chats step's ✓ (⌥⌘N) moves on the same way.
+// Ticking the open chat moves on (2026-09-30). Three chats in one folder, minutes old, over the fixture's two a day
+// old: the list reads First, Second, Third, Plain chat, Two PRs mentioned. What is checked: ✓ on the open card opens
+// the card below it; on the last card still to do it opens the one above, stepping over the done cards under it; ✓ on a
+// card that is not open leaves the open chat alone; ↩ moves nothing; and the chats step's ✓ (⌥⌘N) moves on the same
+// way.
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { makeFixture } from '../fixture.mjs';

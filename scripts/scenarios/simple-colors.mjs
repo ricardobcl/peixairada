@@ -1,5 +1,4 @@
-// Simple colours (2026-10-01, Ricardo: "some people don't like so many colors in the apps, it's too stimulating. can
-// we have a them config with simple colors?"). A folder with a Peacock colour and three chats in it: one clauding, one
+// Simple colours (2026-10-01). A folder with a Peacock colour and three chats in it: one clauding, one
 // asking, one on an open PR with a face and a block of code. What this checks: off (the default), the cards, the
 // splitter and the open chat's header wear the folder's colour, the list ALL's black, a PR chip its state's green; the
 // settings' switch turns the board to greys — no card, list or header in a colour, the clauding light, the state

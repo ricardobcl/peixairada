@@ -1,14 +1,13 @@
-// A PR come round to you (2026-09-28, Ricardo: "me knowing that a chat with PRs where I asked for review or left a
-// review was already addressed, by pushed to the branch, or replies on the PR"). GitHub is the fake gh, answering from
+// A PR come round to you (2026-09-28). GitHub is the fake gh, answering from
 // a file the scenario rewrites. What this checks: a PR you reviewed and wait on says so in its chip's tooltip; ticked,
 // the chat is done; the author pushing un-ticks it by the PR's own watch — the chat is not touched —, and sends one
 // alert with the server's heading, a banner in a browser; the header and its PR row say why; a second tick holds, and
 // holds through a restart (the board remembers when it learnt of the move); your next word hands the PR back — a
 // comment is enough, and is no move of its own (the same
-// night: "just replied … left a comment and still says your move"). And the card itself (Ricardo: "what is exactly the
-// visual cue?" — the chip was all): a line under the card — a *your move* tag, the PR and why — at every card size,
-// the PR chips last in the top row, where the F would be, solid whatever their turn, the reason in the chat header too,
-// and the chat ranked by the move — above a newer chat, under today's line.
+// night: "just replied … left a comment and still says your move"). And the card itself (the chip was all): a line
+// under the card — a *your move* tag, the PR and why — at every card size, the PR chips last in the top row, where the
+// F would be, solid whatever their turn, the reason in the chat header too, and the chat ranked by the move — above a
+// newer chat, under today's line.
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -100,7 +99,7 @@ export default async function (ctx) {
     out.compact = await ctx.evaluate(`(() => { const l = document.querySelector('#sessions'), was = l.dataset.cards; l.dataset.cards = 'compact';
       const shown = !!${card}.querySelector('.state.prmove').getClientRects().length; l.dataset.cards = was; return shown; })()`);
     ctx.assert.equal(out.compact, true, 'the line shows on a compact card too');
-    // …and on compact's same height (2026-09-29, Ricardo: "the same height should preserve the 'your move' row"): the
+    // …and on compact's same height (2026-09-29): the
     // line stays, and a card with no move holds an empty one, so the two cards are one height
     out.even = await ctx.evaluate(`JSON.stringify((() => { const l = document.querySelector('#sessions'), was = l.dataset.cards; l.dataset.cards = 'compact'; l.toggleAttribute('data-even', true);
       const other = [...document.querySelectorAll('#slist > .card')].find(c => c !== ${card});

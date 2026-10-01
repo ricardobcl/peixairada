@@ -145,7 +145,7 @@ export default async function (ctx) {
 
     // ---- the ring keeps its place across a render (2026-09-27) ----
     // Every SSE update rebuilds the cards, and a CSS animation starts over on a new node: the light jumped back to
-    // its start on every update (Ricardo: "the animations like the border when clauding still reset randomly").
+    // its start on every update.
     // Now the ring is a transform animation — the compositor's, off the main thread — phased to the document clock
     // after each render, so the new card's light is where the old one's was. A prompt written into the clauding
     // chat's transcript is one such update: the card's last word changes, so its markup does and the node is made

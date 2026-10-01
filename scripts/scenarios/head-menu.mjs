@@ -1,5 +1,4 @@
-// The chat header's ··· (2026-09-24, Ricardo: "on the chat top bar, every icon that's on the right should live under
-// a discrete '...' borderless button"). What this checks: the header row holds the title, the PR chips and ··· — no
+// The chat header's ··· (2026-09-24). What this checks: the header row holds the title, the PR chips and ··· — no
 // button of its own; ··· opens a menu of the actions under it, right-aligned, with the buttons' own ids; a toggle
 // leaves it up with its new state; Esc, a click elsewhere and an action close it; a hotkey is not swallowed by it.
 export const meta = { server: true, fixture: 'auto' };

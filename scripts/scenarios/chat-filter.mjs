@@ -1,4 +1,4 @@
-// The chat list's magnifier, fuzzy since 2026-09-25 (Ricardo: "make hotkey F fuzzy search like K"), and ⌥⌘F, which
+// The chat list's magnifier, fuzzy since 2026-09-25, and ⌥⌘F, which
 // opens it from anywhere. What is checked: the key opens the box with the keyboard in it — the rail opening first when
 // the list is folded —; the box matches the way ⌥⌘K does (letters in order, no chat holding the query literally) and
 // the best match leads, *against* the board's order; the lines between states and days are left out while a query is

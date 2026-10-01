@@ -1,5 +1,4 @@
-// The board without its projects column (2026-09-24, Ricardo: "remove the entire 1st column and make the project cue
-// on the 2nd column open the project select (P hotkey). leave the app icon at the top"). What this checks: there is
+// The board without its projects column (2026-09-24). What this checks: there is
 // no column; the fish heads the chat list (and, clicked, is the About box, 2026-09-27); the list's head names the
 // project and is the way to another — a click is ⌥⌘P's picker, × goes back to ALL, which shows nothing at all and
 // no colour square since 2026-09-27 —, open list or rail; the two things only the column's rows did

@@ -1,8 +1,6 @@
-// The card's marks of 2026-09-27 (Ricardo: "sort by the latest: either my reply or claude reply · if the chat is using
-// Fable, put a special marker on the card · the time since last update on the card should only show on hover and
-// should be top left"). Three chats in one folder: one on Fable whose reply is the newest word of the three, one on
-// Opus you wrote to earlier — the reply came a minute later —, one you spoke last on, most recently of all. What is
-// checked: the order goes by the last word whoever said it — Claude's reply lifts a card above one you prompted
+// The card's marks of 2026-09-27. Three chats in one folder: one on Fable whose reply is the newest word of the three,
+// one on Opus you wrote to earlier — the reply came a minute later —, one you spoke last on, most recently of all. What
+// is checked: the order goes by the last word whoever said it — Claude's reply lifts a card above one you prompted
 // after its prompt, which your last touch alone never did — and ⌥⌘K and the day lines agree; the F marks the Fable
 // card and no other, and names the model on hover; the time shows only under the pointer, with nothing moving (later
 // still); since 2026-09-28 the time and the F stand beside the title — time · F — and the ✓ ends the top row.

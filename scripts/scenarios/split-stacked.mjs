@@ -1,8 +1,6 @@
 // ⌥⌘2 splits the chat column one half over the other, and ⌥⌘1 / ⌥⌘2 move the keys between the top and the bottom
-// (2026-09-27, Ricardo: "hotkey 2 to change to horizontal split. cmd 2 makes the vertical split · hotkey 1 goes the
-// top split (pane 1 is up, pane 2 is down) · cmd 0 still closes the non-active pane · this should be a per chat
-// setting"). What this keeps honest: the digit is the pane and the modifier the layout — ⌘2 on a stacked split turns it
-// side by side, ⌥⌘1 on a side-by-side one turns it stacked, and neither re-attaches a terminal; the divider lies
+// (2026-09-27). What this keeps honest: the digit is the pane and the modifier the layout — ⌘2 on a stacked split turns
+// it side by side, ⌥⌘1 on a side-by-side one turns it stacked, and neither re-attaches a terminal; the divider lies
 // across and drags up and down into a pref of its own; the layout is the chat's, follows it back, and outlives its
 // split, so a tab opening beside the chat later comes back stacked; ⌘0 and ⌘W close halves the same way either way.
 // Since 2026-09-28 a half with one tab that is not a web page has no strip, so ◫ / ⊟ are on an empty half's strip only

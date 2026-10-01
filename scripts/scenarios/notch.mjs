@@ -1,12 +1,11 @@
-// The app filling the screen to the notch (2026-09-27, Ricardo: "fullscreen app on a macbook with a notch, we don't
-// really use that upper real estate"): the shell says where the camera housing is (peixFill) and the page lays its top
-// row around it. What this checks, with a 16" MacBook Pro's housing (a 32 px strip, the housing from x 771.5 to
-// 956.5, measured): the chat list's head stays at the top while the list ends short of the housing; the chat header
-// keeps its title left of the housing and its chips and ··· right of it, nothing of the row under it; a list dragged
-// under the housing pads its head down, and the header, too far left for a title, pads down too; a list past the
-// housing leaves a header that lifts as it is; the rail is the lifted case; and the fill going off puts it all back.
-// Since 2026-09-28: what follows the title stands at the far right, the header is black from the project's name on,
-// and a title that does not fit left of the housing goes right of it — a short one stays left.
+// The app filling the screen to the notch (2026-09-27): the shell says where the camera housing is (peixFill) and the
+// page lays its top row around it. What this checks, with a 16" MacBook Pro's housing (a 32 px strip, the housing from
+// x 771.5 to 956.5, measured): the chat list's head stays at the top while the list ends short of the housing; the chat
+// header keeps its title left of the housing and its chips and ··· right of it, nothing of the row under it; a list
+// dragged under the housing pads its head down, and the header, too far left for a title, pads down too; a list past
+// the housing leaves a header that lifts as it is; the rail is the lifted case; and the fill going off puts it all
+// back. Since 2026-09-28: what follows the title stands at the far right, the header is black from the project's name
+// on, and a title that does not fit left of the housing goes right of it — a short one stays left.
 import { makeFixture } from '../fixture.mjs';
 
 export const meta = { server: true, fixture: 'auto' };

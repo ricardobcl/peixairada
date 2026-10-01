@@ -168,12 +168,11 @@ const isDone = s => {
 // ---- the board's setup: CONFIG_FILE, the settings' Setup ------------------------------------------------------------
 // What had been written into this file and the page for one Mac — the directory the repos live in and the GitHub org
 // they come from, ⌥⌘O's folder, the short names and colours given by hand — is the settings' since the board went to
-// colleagues (2026-09-28, Ricardo: "maybe we could integrate it into the cog setting?"), and the server's, so the app
-// and every browser agree: in the state file's `config` at first, in CONFIG_FILE of its own since 2026-10-01 (Ricardo:
-// "segregate my config … should we use ~/.config/peixairada?"). A key never set is the default: the roots are ORG_DIR /
-// ORG's when either is in the environment (the tests', a server run by hand), else none — and the page asks, once
-// (`ask`); no ⌥⌘O folder; no names or colours of the board's own. A root's org is what ＋ clone asks GitHub for — a
-// root without one lists its folders and clones nothing.
+// colleagues (2026-09-28), and the server's, so the app
+// and every browser agree: in the state file's `config` at first, in CONFIG_FILE of its own since 2026-10-01. A key
+// never set is the default: the roots are ORG_DIR / ORG's when either is in the environment (the tests', a server run
+// by hand), else none — and the page asks, once (`ask`); no ⌥⌘O folder; no names or colours of the board's own. A
+// root's org is what ＋ clone asks GitHub for — a root without one lists its folders and clones nothing.
 const ORG_NAME = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/;   // GitHub's rule for an account's name
 const expandHome = p => p.trim().replace(/^~(?=\/|$)/, homedir());
 /**
@@ -439,7 +438,7 @@ function inVsCode(s) { return (s.live?.entrypoint || s.entrypoint) === 'claude-v
 // blinked while it mattered). A permission prompt never reaches the transcript at all. So: the waitingFor of any
 // live process on the chat that is waiting, null when they report and none is, undefined when none reports (a
 // claude from before the field) — and then the transcript's word stands. "dialog open" is left out: it is mostly a
-// slash command's dialog you opened yourself (/model, /config), at that terminal already (Ricardo, 2026-09-23).
+// slash command's dialog you opened yourself (/model, /config), at that terminal already (2026-09-23).
 const NOT_ASKING = new Set(['dialog open']);
 function waitingOn(s) {
   if (!s.alive) return undefined;
@@ -456,10 +455,10 @@ function statusOf(s) {
   if (s.agentsRunning) return 'working';
   if (s.status === 'unknown' && !s.lastActivity) return 'idle';   // live and empty — a new chat, or a cleared one (whose file holds only the /clear)
   if (s.status === 'needs-input') return s.live?.status === 'busy' ? 'working' : 'idle';   // the registry has it answered already
-  // A turn the transcript never closes (2026-09-29, Ricardo: "when I do a /compact even after it finishes, the card stays
-  // clauding"): Claude Code writes the typed /compact as a plain prompt line and, compacted, no assistant line — no
-  // end_turn. A process that went idle after your last word is not clauding, whatever the last line reads. Only after:
-  // a prompt lands in the transcript a beat before the registry says busy, and the idle before it is the last turn's.
+  // A turn the transcript never closes (2026-09-29): Claude Code writes the typed /compact as a plain prompt line and,
+  // compacted, no assistant line — no end_turn. A process that went idle after your last word is not clauding, whatever
+  // the last line reads. Only after: a prompt lands in the transcript a beat before the registry says busy, and the
+  // idle before it is the last turn's.
   if (s.status === 'working' && s.live?.status === 'idle' && s.live.statusAt >= Date.parse(s.lastUserAt || s.statusSince)) return 'idle';
   return s.status;
 }
@@ -745,8 +744,7 @@ function drainPrQueue() {
 }
 
 // ---- …and whose move it is ------------------------------------------------------------------------------------------
-// (2026-09-28, Ricardo: "me knowing that a chat with PRs where I asked for review or left a review was already
-// addressed, by pushed to the branch, or replies on the PR" — Slack and GitHub's app were the only way to know.) The
+// (2026-09-28 — Slack and GitHub's app were the only way to know.) The
 // same call asks what it takes to say whose move a PR is at; forty PRs cost GitHub's GraphQL budget two points.
 // `pushes` are the newest commits and force-pushes, `asks` the review requests, both off the PR's timeline.
 // Every person comes with a face since 2026-09-29 (`avatarUrl`, a scalar: no cost) — prPeople, the cards' faces.
@@ -795,8 +793,8 @@ function prTurn(pr, me) {
   const theirs = words.filter(w => !isBot(w.by) && w.by.login !== me && w.at > said);
   // a push after you approved is the author getting on with it — unless GitHub dismissed the approval for it
   const verdict = words.filter(w => w.by?.login === me && /^(APPROVED|CHANGES_REQUESTED|DISMISSED)$/.test(w.state)).reduce((a, w) => (!a || w.at > a.at ? w : a), null);
-  // Any word of yours answers everything before it (Ricardo, the same night: "just replied … left a comment and still
-  // says your move"): a comment after your review is past a push committed before it, and past a re-request.
+  // Any word of yours answers everything before it (the same night): a comment after your review is past a push
+  // committed before it, and past a re-request.
   const since = review && said > review.submittedAt ? said : '';
   const pushed = !!push && push.by !== me && (!mine && review ? review.commit?.oid !== pr.headRefOid && verdict?.state !== 'APPROVED' && !(since >= push.at) : push.at > said);
   const askedAt = newest(asks);
@@ -819,10 +817,9 @@ function prTurn(pr, me) {
 }
 
 /**
- * Who has had a hand in a PR, for the faces on its chats' cards (2026-09-29, Ricardo: "can we get avatar of GH users in
- * cards, that interacted with PRs associated with a chat?"): the author, and whoever reviewed, commented or pushed —
- * each once, with what they did and when they last did it, the newest first, at most PEOPLE_MAX. You and the bots are
- * left out: the faces say who else is in it. Pure, from what PR_FIELDS brings back.
+ * Who has had a hand in a PR, for the faces on its chats' cards (2026-09-29): the author, and whoever reviewed,
+ * commented or pushed — each once, with what they did and when they last did it, the newest first, at most PEOPLE_MAX.
+ * You and the bots are left out: the faces say who else is in it. Pure, from what PR_FIELDS brings back.
  */
 const PEOPLE_MAX = 8;
 function prPeople(pr, me) {
@@ -1082,7 +1079,7 @@ function tailFile(file) {
 // Claude Code writes each sub-agent's transcript beside the session's (every line isSidechain, a .meta.json with
 // requestShape 'background' or not). A foreground agent holds the main transcript at a tool_use, so the chat stays
 // working; a background one answers at once and the main turn ends — the card went ready while agents worked
-// (Ricardo, 2026-09-20: "sub-agents don't make the animation for the card work"). An agent's last line says
+// (2026-09-20). An agent's last line says
 // whether it is done: an assistant end_turn. One that went quiet AGENT_STALE_MS ago is not counted (a killed agent
 // never writes its end_turn). Only the status is touched — not the order, not the transcript, not the alerts
 // beyond holding the 'reply' one back until the agents are done.
@@ -1108,7 +1105,7 @@ function scanAgents(s) {
 // Claude Code can leave work running behind the turn: `Monitor` watches something and wakes the chat on each event,
 // and a Bash with `run_in_background` runs on and reports when it exits. Both were invisible here — the turn ends,
 // the card goes ready — and both are the difference between a chat that is finished and one that is *waiting*
-// (2026-09-21, Ricardo: "a monitor is still running"). The transcript says all of it: the tool_result of the call
+// (2026-09-21). The transcript says all of it: the tool_result of the call
 // carries the task's id ("Monitor started (task bs6h9ok2c, expires in 30m…", "Command running in background with
 // ID: b3b928ii6"), and every event and the end arrive as `<task-notification>` user lines — synthetic for the
 // transcript, read here for their `<task-id>` and the `<status>` that ends one. Nothing is polled: a task that
@@ -1269,12 +1266,12 @@ function loadRegistry() {
     const wasWaiting = waitingOn(s);
     s.live = live; s.rivals = rivals;
     if (!s.cwd && live.cwd) s.cwd = live.cwd;
-    // A chat with no transcript yet still gets a card (2026-09-27, Ricardo: "when I clear the chat or when I select new
-    // chat, I don't see the card until I press enter"), and the card needs a time: the moment the board first saw the id.
-    // Not the registry's startedAt — /clear keeps the process, and its start, and gives it a new id; the new chat is *now*.
-    // Only at boot, where every id is new to the board, does the process's start stand in. No word yet, not no file:
-    // /clear writes its own lines into the new transcript at once — a caveat, the command, its output, none of them a
-    // word — and a chat with a file had no start, so its card sank to the bottom of the list (2026-09-28).
+    // A chat with no transcript yet still gets a card (2026-09-27), and the card needs a time: the moment the board
+    // first saw the id. Not the registry's startedAt — /clear keeps the process, and its start, and gives it a new id;
+    // the new chat is *now*. Only at boot, where every id is new to the board, does the process's start stand in. No
+    // word yet, not no file: /clear writes its own lines into the new transcript at once — a caveat, the command, its
+    // output, none of them a word — and a chat with a file had no start, so its card sank to the bottom of the list
+    // (2026-09-28).
     if (!s.startedAt && !s.lastActivity) s.startedAt = new Date(indexing && Number(live.startedAt) > 0 ? Number(live.startedAt) : Date.now()).toISOString();
     if (applyLiveness(s) || changed) schedulePush(s);
     if (waitingOn(s) && !wasWaiting) queueNotify(s, 'needs-input');   // the moment a prompt goes up — the transcript hears of it only with the answer
@@ -1643,11 +1640,11 @@ function onHolderGone(t) {
 // ---- launchers: a folder's own way to start claude ---------------------------------------------------------------
 // Some folders do not start claude bare: oracle's Taskfile has `task production-workload`, `task sandbox-workload`,
 // `task development-<cluster>`… — each sets a cluster's environment (its credentials and
-// dashboards) and then runs claude. A new chat there has to go through one of them, and which is a choice (2026-09-20,
-// Ricardo: "if it's oracle … we should run `task <env>` instead of claude, and we should ask what env"). Nothing is
-// named here: a folder with a Taskfile whose tasks mention Claude in their description has launchers, and the page asks
-// (`GET /api/launchers?cwd=`) before starting a chat. `task --list --json` lists them; cached by the Taskfile's mtime,
-// so it runs once per edit. A resume (`claude --resume`) never goes through task: its command line is the Taskfile's.
+// dashboards) and then runs claude. A new chat there has to go through one of them, and which is a choice (2026-09-20).
+// Nothing is named here: a folder with a Taskfile whose tasks mention Claude in their description has launchers, and
+// the page asks (`GET /api/launchers?cwd=`) before starting a chat. `task --list --json` lists them; cached by the
+// Taskfile's mtime, so it runs once per edit. A resume (`claude --resume`) never goes through task: its command line is
+// the Taskfile's.
 const TASKFILES = ['Taskfile.yml', 'Taskfile.yaml', 'taskfile.yml', 'taskfile.yaml', 'Taskfile.dist.yml', 'Taskfile.dist.yaml'];
 const launcherCache = new Map();   // cwd → { mtime, launchers }
 const TASK_NAME = /^[\w:.-]+$/;
@@ -1670,7 +1667,7 @@ function launchersFor(cwd) {
 // ---- the roots' folders: where the repos live, and cloning one that is not there yet --------------------------------
 // A project on the board is a folder some chat ran in, so a repo you have not opened a chat in is nowhere to be seen,
 // and one you have not cloned is nowhere at all — which made starting work on a repo the longest thing the board
-// asked of you (2026-09-21, Ricardo: "adding a new project is a bit cumbersome"). A root is a directory the repos live
+// asked of you (2026-09-21). A root is a directory the repos live
 // in and the GitHub org they come from (boardConfig — one of each, from the environment, until 2026-09-28, when the
 // settings took them over); nothing under one is written to except by the one clone below.
 const REPO_NAME = /^[A-Za-z0-9][\w.-]*$/;          // a name for a folder and a repo, and nothing that walks out of its root
@@ -1890,7 +1887,7 @@ function killTerm(t) {
 
 // ---- idle drawers: ended after DRAWER_IDLE_MS with no page on them -------------------------------------------------
 // Nothing ended a drawer but Done or its ×, and a week of chats had left 72 claudes idle at 13 GB, one of them with a
-// page on it (2026-09-27, Ricardo: "do it"). A drawer whose claude has been idle — the registry's word: not busy, not
+// page on it (2026-09-27). A drawer whose claude has been idle — the registry's word: not busy, not
 // waiting — with no sub-agent or background task at work, no page attached, and no word in the chat nor the drawer's
 // own start within DRAWER_IDLE_MS, is ended as Done ends it. The chat loses nothing: the transcript is on disk, the
 // card goes stale, and its >_ resumes it. A chat waiting on a question is left standing, and so is every zsh. 0 disables.
@@ -2107,8 +2104,7 @@ const server = createServer(async (req, res) => {
       const done = body.done !== false;
       if (done) {
         doneMarks[s.id] = new Date().toISOString();
-        // Done means done: the claude behind it stops too (2026-09-20, Ricardo: "marking a card as Done should
-        // kill/archive the claude session to not waste resources") — the drawer's, and one live elsewhere (SIGTERM,
+        // Done means done: the claude behind it stops too (2026-09-20) — the drawer's, and one live elsewhere (SIGTERM,
         // as closing that terminal would; a VS Code tab goes dead). Not awaited: the registry notices on its own.
         for (const t of terms.values()) if (t.sessionId === s.id && t.exited === null) killTerm(t);
         if (s.alive && s.live?.pid) for (const pid of [s.live.pid, ...(s.rivals || []).map(r => r.pid)]) endClaude(pid).then(() => loadRegistry());

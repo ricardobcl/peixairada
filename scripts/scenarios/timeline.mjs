@@ -94,8 +94,8 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('.tl-glass')).opacity`), '1', 'the glass is over the cards while the days are out');
   await ctx.shot('swell', { x: 0, y: 0, width: 420, height: 920 });
 
-  // out among the labels, in the gap between two of them: still the rail — the days stay out (2026-09-25, Ricardo:
-  // "any gap below or above a date closes it") — and a click there goes to the day ringed as nearest
+  // out among the labels, in the gap between two of them: still the rail — the days stay out (2026-09-25) — and a click
+  // there goes to the day ringed as nearest
   const below = shown.find(l => l.top > near.bottom + 4);
   const gap = { x: out.at.rect.left + 70, y: (near.bottom + below.top) / 2 };
   await move(ctx, gap.x, gap.y);

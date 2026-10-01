@@ -1,5 +1,4 @@
-// The people row (2026-09-29, Ricardo: "add an extra row at the bottom of the cards with all the users I have
-// interactions with PRs and by clicking on their face, I filter only those cards"). Three chats: one on a PR ana wrote
+// The people row (2026-09-29). Three chats: one on a PR ana wrote
 // and rui approved, one on a PR rui commented on and eva pushed to, one on no PR. GitHub is the fake gh; the faces are
 // data: images, so nothing is fetched. What this checks: the row under the cards holds everyone in the view's PRs —
 // you left out — once each, the newest first; a face narrows the list, its counts and the chips to that person's chats

@@ -1,5 +1,4 @@
-// The chat's PRs in the header (2026-09-24, Ricardo: "on the chat header, make PRs appear compact as they do on cards
-// and on click, they toggle to the expanded version per row that we have now"). What this checks: a chat with PRs
+// The chat's PRs in the header (2026-09-24). What this checks: a chat with PRs
 // shows them as the cards' chips in the header row, one button, with the rows under the header folded; a click
 // unfolds them and a second folds them back; the fold outlives a reload (a pref, not the chat's); a row still opens
 // its PR; a chat without PRs has neither.

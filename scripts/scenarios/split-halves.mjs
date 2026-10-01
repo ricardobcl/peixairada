@@ -98,13 +98,13 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#ptabs').classList.contains('lone')`), false, 'a whole strip, not a rule');
   ctx.assert.equal(await ctx.evaluate(`window.peixKey('KeyW', 'cmd')`), false, 'with one half ⌘W is the window\'s again');
 
-  // ⌘2 again, from the zsh alone: claude takes the left half back and the zsh goes beside it (2026-09-25, Ricardo:
-  // "keep the claude always on the 1st pane"), the keys staying on the zsh
+  // ⌘2 again, from the zsh alone: claude takes the left half back and the zsh goes beside it (2026-09-25), the keys
+  // staying on the zsh
   await ctx.cmd('Digit2');
   await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === '["chat","shell"]'`, { what: 'the split again, claude on the left' });
   ctx.assert.equal(await ctx.peix('state().focusG'), 1, 'the keys stay on the zsh, now in the right half');
 
-  // ⌥⌘W there ends the zsh (2026-09-28, Ricardo: "any suggestions for forcing the terminal or vscode to close") — the
+  // ⌥⌘W there ends the zsh (2026-09-28) — the
   // keys go back to claude, and a split asked for by hand keeps its half, empty, with its strip back
   await ctx.key('KeyW');
   await ctx.waitFor(`!window.peix.session().shell || window.peix.session().shell.exited !== null`, { what: 'the zsh ended by ⌥⌘W' });   // it lingers, exited, for a while

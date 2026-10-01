@@ -1,10 +1,8 @@
-// The clauding light (2026-09-29, Ricardo: "the clauding ring glow that goes around should 1) be on the border and not
-// inside the border and 2) should now travel across the vertical separator, go around the project box at the top of the
-// chat and go back again"). Two clauding chats in a folder with a Peacock colour and a few ready ones under them. On a
-// card that is not open the ring runs in the border's place: no border, the cover 2 px in. The open one's light runs
-// round the one shape its card, the splitter down to it and the project's box atop the chat make: #trail, a band along
-// that outline with a comet of blobs moved by transforms, in the ink that reads on the colour, and the card's own ring
-// stood down. Scrolled away, the card
+// The clauding light (2026-09-29). Two clauding chats in a folder with a Peacock colour and a few ready ones under
+// them. On a card that is not open the ring runs in the border's place: no border, the cover 2 px in. The open one's
+// light runs round the one shape its card, the splitter down to it and the project's box atop the chat make: #trail, a
+// band along that outline with a comet of blobs moved by transforms, in the ink that reads on the colour, and the
+// card's own ring stood down. Scrolled away, the card
 // leaves the shape; a turn that ends puts the light out; under reduced motion the band is steady and nothing moves.
 import { spawn } from 'node:child_process';
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';

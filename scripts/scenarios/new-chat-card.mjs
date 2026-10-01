@@ -1,10 +1,9 @@
-// A new chat has a card before its first word (2026-09-27, Ricardo: "when I clear the chat or when I select new chat, I
-// don't see the card until I press enter to send the first message"). ⌥⌘N ⏎ ⏎ on a folder project starts claude in a drawer;
+// A new chat has a card before its first word (2026-09-27). ⌥⌘N ⏎ ⏎ on a folder project starts claude in a drawer;
 // the registry names the session before any transcript exists, and the board hid a live chat with no activity — a rule
 // for VS Code's restored panels. Now the card is there at once: "(no messages yet)", the project's, first in the ready
 // group by its start, the open one, its age counted from the start; the first prompt then titles it and it keeps its
 // place, one card throughout. drawer-clear.mjs checks the same for /clear. The empty card carries the ✓ like any idle
-// chat (Ricardo, the same day: "those cards don't have the done check to clean them up"), and ticked it is gone — its
+// chat (the same day), and ticked it is gone — its
 // drawer ended, no dimmed card left, since an empty chat has nothing to resume — and the column moves on to the card
 // below it (2026-09-30, tick-next.mjs). Runs the fake claude.
 import { waitFor } from '../../lib/testserver.mjs';
