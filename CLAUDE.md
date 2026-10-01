@@ -226,6 +226,13 @@ refuses to run against the real directory for the same reason.
   folder it knows, stopping short of `$HOME`; the board can *set* it (`PUT/DELETE /api/peacock`, a text edit of the
   JSONC, tested). No colour → `--nocolor`, unless the setup gives the folder one (by its shown name, `projCfg`); `#000000`
   there is `BLACK`, with its inks. The chat header's colour square is the picker (`#colorInput`).
+* **Simple colours: greys and the one accent** (2026-10-01; the settings' `#simpleColors`, `prefs.simpleColors` →
+  `<html data-colors="simple">`, `applyColors`): `repoColor` and `projColor` answer null — ALL's black too — so every
+  surface takes the `--nocolor` path, and `:root[data-colors="simple"]` (light, and dark in its media block) redefines
+  the state, PR, spend and syntax tokens, `--needs` being the accent; a short block before the reduced-motion one does
+  what tokens cannot (the ✳ and the F grey, the header's PR chips on its black, faces in grayscale). **The setup's
+  squares and the colour picker read `ownColor`**, the colour as set. A new colour on the board reads a token or
+  `repoColor`, never a hex or `ownColor` of its own, or it shows through. → `scripts/scenarios/simple-colors.mjs`.
 * **The chat header is a gradient of the project's colour**: `tintChat()` sets `--repo`, `--rink`, `--rover`/`--rover2`
   and `#chat.tinted`; `--rink` is the ink that reads on it (`inkOn()`), every control in `.shead` redrawn in it; the
   veils pull the colour away from that ink towards the bottom right. No colour → the plain panel header. **The colour
@@ -386,7 +393,7 @@ refuses to run against the real directory for the same reason.
 * **State lives in three places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done ticks,
   named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, the
   setup; `STATE_FILE` overrides) shared by the app and every browser; the browser's `localStorage` `peixairada-prefs`
-  (selected project, filters, widths, zoom, folds, card size and compact's same height, the person the list is narrowed to, ⌥ as Meta, drawer open/height — the keys are the `prefs` literal,
+  (selected project, filters, widths, zoom, folds, card size and compact's same height, simple colours, the person the list is narrowed to, ⌥ as Meta, drawer open/height — the keys are the `prefs` literal,
   and old ones are deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it
   renders reads its state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
 * **The setup is the server's, and nothing about one Mac is written in the code** (2026-09-28): `config` in the state
@@ -727,11 +734,11 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   scroll-driven ones, which run as long as the list can scroll. `ctx`: `evaluate`, `waitFor`, `send`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
-  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The forty in
+  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The forty-one in
   `scripts/scenarios/` are the regression checks for the drawer, the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
   marks, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, a PR's turn, the chat's links,
-  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on.
+  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.

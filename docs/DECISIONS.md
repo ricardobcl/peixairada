@@ -2,7 +2,33 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-09-30.
+this file is the *why* and the *state*. Last updated 2026-10-01.
+
+## Decisions of 2026-10-01 — simple colours
+
+Ricardo: "some people don't like so many colors in the apps, it's too stimulating. can we have a them config with
+simple colors?"
+
+* **A switch, not a theme picker**: *simple colours* in the settings' Board pane, beside the other switches — a pref of
+  this browser, like the card size, since each person who wants it is at their own board. Light and dark still follow
+  the system; each has its simple set.
+* **Greys and one accent**: every project colour goes — Peacock's, the setup's and ALL's black — so the cards, the
+  list's edge, the splitter, the chat header and the rail take the grey a folder without a colour always had
+  (`repoColor` and `projColor` answer null). The hues that only name a state go grey and differ by tone: ready darker
+  than clauding, done lightest; a PR open darkest, merged lighter, closed and draft lighter still; the plan's spend,
+  the monitor's teal, VS Code's blue, inline code and the syntax (comments and strings apart by tone alone). GitHub's
+  faces go grayscale.
+* **The accent is kept for what wants you**: a question's blinking edge (`--needs` is the accent here, not red),
+  *your move*, the unread count, the focus ring, the selection, links. Claude's ✳ on every card and a Fable chat's F,
+  which wore it as decoration, go grey; Claude's pixel mark between the clauding and the ready cards keeps it — one per
+  list.
+* **The colours are not lost**: Peacock's setting and the setup's are untouched, and the setup's squares and the
+  header's colour picker show the colour as set (`ownColor`), since that is where it is set. Off again, all of it is back.
+* **Not done**: the terminal's colours are Claude Code's own (its `/theme`); and motion — the rings, the blink, the
+  comet — is the system's *reduce motion*, which the board already honours. A board quieter still is the two together.
+* **Verified**: `scripts/scenarios/simple-colors.mjs`, new — the chroma of every surface measured off, on, after a
+  reload and off again; the setup's square; the question still in the accent. open-light, card-signals, cog-setup,
+  header-prs, people-row and project-cue still pass.
 
 ## Decisions of 2026-09-30 — ticking the open chat moves on
 
