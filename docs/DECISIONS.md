@@ -2,7 +2,8 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-01.
+this file is the *why* and the *state*. Last updated 2026-10-01. The company, its repos and the people on its PRs go
+by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
 ## Decisions of 2026-10-01 — the setup in ~/.config, and a first run that asks where the repos live
 
@@ -11,12 +12,12 @@ Ricardo: "I want to make this available to other developer, so I need to segrega
 we never configured the app, we should probably prompt for the base folder where git project will leave (in my case
 is ~/acme)."
 
-* **What was still one Mac's in the tree**: nothing that runs — the setup left the code on 2026-09-28 — but words: a
-  test server's comment ("~/acme by default"), two scenarios' ("whatever ~/acme holds"), a CSS comment naming the
-  long-gone `PROJECT_COLORS — acme`, the new-project dialog's placeholder ("Wallet fees rollout"), the `acme` org
-  in two tests and a GitHub URL in another, "`acme` here" in CLAUDE.md. All generic now (`acme`, as the README's
-  shots). **Left as they are**: the dated quotes in comments ("Ricardo: …") and this file — they are the history of
-  why, not a setup, and nothing reads them; and the README's clone URL, which is where the repo lives.
+* **What was still one Mac's in the tree**: nothing that runs — the setup left the code on 2026-09-28 — but words: the
+  company's folder and org in a test server's comment and two scenarios', a CSS comment naming a long-gone
+  `PROJECT_COLORS` entry, the new-project dialog's placeholder, the org in two tests and a GitHub URL in another, the
+  org's name in CLAUDE.md. All generic now (`acme`, as the README's shots). **Left as they were then**: the dated
+  quotes in comments and this file (both went later the same day, below); and the README's clone URL, which is
+  where the repo lives.
 * **The setup is a file of the user's: `~/.config/peixairada/config.json`** (`$XDG_CONFIG_HOME`, `CONFIG_FILE`). The
   split is setup against state: what someone sets once and might keep with their dotfiles — the folders of repos,
   ⌥⌘O's project, the short names and colours — goes there; what the board records as it is used — ticks, titles,
@@ -55,6 +56,14 @@ is ~/acme)."
   then install, first open, updating and removing. Writing it found a gap: the login agent's PATH was Homebrew's and
   the system's only, so a `gh` installed by mise or asdf was never found and the PR states stayed off without a word.
   `launchd.sh install` now bakes the installing shell's PATH (absolute entries, once each) ahead of those.
+* **This file names no real org, repo or person** (the same day — Ricardo: "I don't think I want to leak
+  decisions.md as it is now, ca[n] we replace things like [the company's name] with "acme"?"): the company is `acme`,
+  its folder `~/acme`; the repos that told it apart have stand-ins (`notifier`, `admin-service`, `chain-service`,
+  `scheduler`, `web-clients`, `site`, `shop-backend`), PR numbers are made up, a reviewer's handle is `ana` (the
+  fixtures' name), a chat title and a search lost the words that said what the company does, and a launcher's
+  environment says *a cluster's credentials* instead of which services. Kept: names any company has (`wallet-api`,
+  `backend`, `oracle`), which the tests and the code use as fixtures too. **The history still holds the real names**
+  — every commit before this one; the GitHub repo is private, and rewriting the history is a separate decision.
 * **The quotes left the code too** (the same day, "yes, strip the quotes too and push"): 175 mentions in comments that
   said `(2026-09-28, Ricardo: "…")` now say `(2026-09-28)` — the date stays, the words are in this file's entries,
   where they always were too. What a quote alone carried (a context after it, "a popover … before") was kept.

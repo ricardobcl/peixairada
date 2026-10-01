@@ -1639,8 +1639,8 @@ function onHolderGone(t) {
 
 // ---- launchers: a folder's own way to start claude ---------------------------------------------------------------
 // Some folders do not start claude bare: oracle's Taskfile has `task production-workload`, `task sandbox-workload`,
-// `task development-<cluster>`… — each sets a cluster's environment (its credentials and
-// dashboards) and then runs claude. A new chat there has to go through one of them, and which is a choice (2026-09-20).
+// `task development-<cluster>`… — each sets a cluster's environment (its credentials and dashboards) and then runs
+// claude. A new chat there has to go through one of them, and which is a choice (2026-09-20).
 // Nothing is named here: a folder with a Taskfile whose tasks mention Claude in their description has launchers, and
 // the page asks (`GET /api/launchers?cwd=`) before starting a chat. `task --list --json` lists them; cached by the
 // Taskfile's mtime, so it runs once per edit. A resume (`claude --resume`) never goes through task: its command line is

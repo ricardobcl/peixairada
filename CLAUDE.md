@@ -9,7 +9,8 @@ private API, no cooperation from Claude Code itself. Built as a PoC on 2026-08-3
 tree, and *Findings* — the full stories behind the bullets below (the bullets as they stood before 2026-09-27, with
 their dates and quotes, are there verbatim). When a finding is new, add a decision entry there and a bullet here with
 a pointer; do not grow this file with stories. **A comment in the code carries the date of its decision, never a
-person's words**: the request, quoted, goes in the decision entry (since 2026-10-01 — the board is shared).
+person's words**: the request, quoted, goes in the decision entry (since 2026-10-01 — the board is shared). **Nothing
+names the real org, its repos or the people on its PRs** — `acme` and stand-ins, in the code, the tests and both docs.
 
 ## Run, build, check
 
