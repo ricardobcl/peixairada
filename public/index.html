@@ -186,6 +186,8 @@
   .pop .setup select.sadd { background-color: transparent; color: var(--muted); }
   .pop .setup select.sadd:hover { background-color: var(--ctl); color: var(--ink); }
   .pop .setup .sfoot { margin: -8px 4px 0; font-size: 11px; }
+  .pop .setup .sfoot code { font-size: 10.5px; }
+  .pop .setup .sfoot.serr { color: var(--needs); }
   .pop .keys kbd { font: inherit; font-weight: 600; color: var(--ink); white-space: nowrap; }
   .pop .keys em { font-style: normal; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--ink); }
   .pop select, .colhead select { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; max-width: 180px; }
@@ -1146,6 +1148,39 @@
   #about .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; text-align: left; font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
   #about .facts b { color: var(--ink); font-weight: 600; text-align: right; }
   #about .help { margin: 14px 0 0; }
+  /* The first run (2026-10-01): where the repos live, asked once, About's look — the fish, a question, a line of why —
+     over the server's guesses as the setup's inset rows, the two boxes, and Skip beside the answer. */
+  #welcome { width: min(500px, 92vw); padding: 24px 24px 16px; outline: none; }
+  #welcome .wlogo { display: block; width: 56px; height: 56px; margin: 0 auto; }
+  #welcome .wlogo .logo { width: 100%; height: 100%; }
+  #welcome h3 { margin: 8px 0 0; font-size: 17px; text-align: center; }
+  #welcome .tag { margin: 6px 8px 16px; font-size: 12.5px; line-height: 1.45; color: var(--muted); text-align: center; }
+  #welcome .wsugs { display: grid; margin-bottom: 14px; border-radius: 10px; background: color-mix(in srgb, var(--ink) 4.5%, transparent); }
+  #welcome .wsugs:empty { display: none; }
+  #welcome .wsug { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 44px; padding: 7px 12px; border: 1px solid transparent; border-radius: 10px; background: none; color: var(--muted); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+  #welcome .wsug + .wsug::before { content: ''; position: absolute; top: -1px; left: 44px; right: 0; border-top: 1px solid var(--line); }
+  #welcome .wsug:hover { background: var(--ctl); }
+  #welcome .wsug.on { background: color-mix(in srgb, var(--accent) 14%, transparent); border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+  #welcome .wsug.on + .wsug::before, #welcome .wsug.on::before { border-color: transparent; }
+  #welcome .wsug .ic { width: 16px; height: 16px; fill: currentColor; justify-self: center; }
+  #welcome .wsug.on .ic { color: var(--accent); }
+  #welcome .wsug .pn { display: grid; min-width: 0; }
+  #welcome .wsug b { font-size: 12.5px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #welcome .wsug small { font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #welcome .wsug .wo { font-size: 11.5px; white-space: nowrap; }
+  #welcome .wform { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; align-items: center; font-size: 12px; }
+  #welcome .wform > label { color: var(--muted); text-align: right; }
+  #welcome .wrow { display: flex; gap: 8px; min-width: 0; }
+  #welcome .wrow input[type=text] { flex: 1; min-width: 0; }
+  #welcome .worgw { flex: 1; display: inline-flex; align-items: center; min-width: 0; padding-left: 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--muted); font-size: 12.5px; cursor: text; }
+  #welcome .worgw:focus-within { border-color: var(--accent); }
+  #welcome .worgw input[type=text] { padding-left: 1px; border: 0; background: transparent; font-weight: 600; outline: none; }
+  #welcome #wdir:focus { outline: none; border-color: var(--accent); }
+  #welcome .werr { min-height: 16px; margin: 8px 0 0; font-size: 12px; color: var(--needs); text-align: center; }
+  #welcome .dfoot { margin-top: 6px; }
+  #welcome .wwhere { min-width: 0; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #welcome .wok { background: var(--accent); color: var(--bg); font-weight: 600; }
+  #welcome .wok:hover { background: color-mix(in srgb, var(--accent) 86%, var(--ink)); }
   #pick input { width: 100%; box-sizing: border-box; font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: inherit; outline: none; }
   #pick input:focus { border-color: var(--accent); }
   #picklist { margin-top: 6px; max-height: 50vh; overflow-y: auto; display: grid; gap: 1px; }
@@ -1364,6 +1399,18 @@
 </dialog>
 <dialog id="hmenu" aria-label="This chat's actions"></dialog>
 <dialog id="about" aria-label="About peixAIrada"></dialog>
+<dialog id="welcome" aria-label="Where your repositories live">
+  <span class="wlogo" aria-hidden="true"></span>
+  <h3>Where do your repositories live?</h3>
+  <p class="tag">The folder your git checkouts sit in. ⌥⌘N offers every repo in it, chat or not, and clones the ones you haven't got from its GitHub org.</p>
+  <div class="wsugs" id="wsugs"></div>
+  <div class="wform">
+    <label for="wdir">Folder</label><span class="wrow"><input type="text" id="wdir" placeholder="~/code" spellcheck="false" autocomplete="off"><button class="btn" id="wchoose" hidden>Choose…</button></span>
+    <label for="worg">GitHub org</label><span class="wrow"><span class="worgw">github.com/<input type="text" id="worg" placeholder="optional" spellcheck="false" autocomplete="off"></span></span>
+  </div>
+  <p class="werr" id="werr"></p>
+  <div class="dfoot"><span class="wwhere" id="wwhere"></span><span class="spacer"></span><button class="btn" id="wskip" title="Ask no more — Settings (⌘,) › Setup adds a folder whenever you like">Skip</button><button class="btn wok" id="wok">Use this folder</button></div>
+</dialog>
 <dialog id="pick">
   <input type="text" id="pickq" placeholder="Project — type to filter · ↑↓ · ⏎ opens · esc" autocomplete="off" spellcheck="false">
   <div id="picklist"></div>
@@ -1400,6 +1447,7 @@
 //   css · project editor
 //   css · the small print: wrapping, figures, selection, focus, overscroll
 //   css · reduced motion: the board says the same, still
+//   css · simple colours: what the tokens cannot reach
 //   css · syntax highlighting (highlight.js class names, our colours)
 //   js  · header controls
 //   js  · sessions column width
@@ -1407,12 +1455,15 @@
 //   js  · plan usage: the chat list's footer
 //   js  · projects
 //   js  · render: both lists
+//   js  · the people row: everyone in the PRs of the chats in view
 //   js  · the list's ends: how many cards are out of sight
+//   js  · the open chat's light runs on past its card
 //   js  · the chat list's timeline: its days, down the left edge
 //   js  · ⌥⌘P: the project picker. The board's projects, pinned first; the box filters by name.
 //   js  · the pickers' matcher: fuzzy since 2026-09-21
 //   js  · the roots' folders, and cloning one that is not here yet (2026-09-21)
 //   js  · the setup: the cog's second half (2026-09-28)
+//   js  · the first run: where the repos live (2026-10-01)
 //   js  · the colour picker
 //   js  · project editor
 //   js  · PRs: the strip under the header, and where a GitHub link goes
@@ -3019,7 +3070,8 @@
       + `<label class="srow quick"><kbd>⌥⌘O</kbd><span>starts a chat in</span><span class="ssel">${c.quick ? projIcon(c.quick) : ''}<select id="quickSel" title="The project ⌥⌘O starts a chat in — on its environments first, when its Taskfile launches claude"><option value="">nothing — ⌥⌘N does it all</option>${quick.map(n => `<option${n === c.quick ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></span></label></div></section>`
       + `<section class="sg">${head('Projects', 'A short name for the folded list (⌘B), and a colour where Peacock gives none.')}<div class="slist">${names.map(projRow).join('')}`
       + `<div class="srow padd"><span class="sic">＋</span><select class="sadd" title="Give a project a short name or a colour"><option value="">Add a project…</option>${all.filter(n => !names.includes(n)).map(n => `<option>${esc(n)}</option>`).join('')}</select></div></div></section>`
-      + `<p class="sfoot">Kept by the server: the app and every browser on this Mac share it.</p>`;
+      + (c.error ? `<p class="sfoot serr">${esc(c.error)} — the board keeps what it had and writes nothing over it until the file reads.</p>` : '')
+      + `<p class="sfoot">${c.file ? `In <code>${esc(homePath(c.file))}</code>, yours to edit by hand too — ` : 'Kept by the server — '}the app and every browser on this Mac share it.</p>`;
     $('#quickKey').textContent = c.quick ? `${c.quick} — a new chat there: its environments first, when its Taskfile launches claude, then their open chats` : 'a new chat in the project the setup names — none yet';
     $('#newKey').textContent = `a chat — a project${roots.length ? `, a folder in ${roots.map(r => homePath(r.dir)).join(' or ')}` : ''}${roots.some(r => r.org) ? ', or ＋ clone a repo' : ''} · then its open chats or ＋ a new one · ✕ takes a row off the board`;
     $('#pextra').placeholder = `${roots[0] ? homePath(roots[0].dir) : '~/code'}/some-repo`;
@@ -3029,7 +3081,7 @@
   }
   /** The setup changed — here or anywhere: everything it paints follows. */
   function configChanged() {
-    renderSetup(); renderBoard(); loadFolders();
+    renderSetup(); renderBoard(); loadFolders(); welcomeSync();
     const s = state.sessions.get(state.current); if (s) renderHead(s);
   }
   async function putConfig(part, anchor) {
@@ -3084,6 +3136,65 @@
     });
     box.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input[type=text]')) e.target.blur(); });
   }
+  // ---- the first run: where the repos live (2026-10-01) ------------------------------------------------------------
+  // Ricardo, handing the board to other developers: "if we never configured the app, we should probably prompt for the
+  // base folder where git project will live". A board whose setup never named one (`ask`, the server's word) asks,
+  // once, over everything: the folder and its GitHub org, as the server guesses them from the chats it holds
+  // (GET /api/config/suggest) — the likeliest already in the boxes, so ⏎ is mostly the whole answer. Skip is an answer
+  // too (no folder, never asked again); Esc only puts the question off to the next load. A folder under the home that
+  // is not there yet is offered to be made. In the app, Choose… is the system's folder panel (`chooseFolder`, which
+  // answers through peixFolder).
+  const welcome = { sugs: [], make: null };
+  /** The guesses' rows, the one the box names lit; a box changed by hand is no longer the folder offered to be made. */
+  function welcomeMark() {
+    const dir = $('#wdir').value.trim();
+    $('#wsugs').querySelectorAll('.wsug').forEach(b => b.classList.toggle('on', homePath(welcome.sugs[+b.dataset.i].dir) === dir));
+    if (welcome.make && welcome.make !== dir) { welcome.make = null; $('#werr').textContent = ''; $('#wok').textContent = 'Use this folder'; }
+  }
+  /** Up while the server asks, down once it does not — after an answer here or in another window. */
+  function welcomeSync() {
+    const dlg = $('#welcome');
+    if (!state.config.ask) { if (dlg.open) dlg.close(); return; }
+    if (dlg.open) return;
+    welcome.make = null; $('#werr').textContent = ''; $('#wok').textContent = 'Use this folder';
+    $('#wwhere').textContent = state.config.file ? `Saved to ${homePath(state.config.file)}` : '';
+    $('#welcome .wlogo').innerHTML = $('#brandBtn').innerHTML;
+    $('#wchoose').hidden = !inApp;
+    dlg.showModal(); repostPane(); $('#wdir').focus();
+    api('GET', '/api/config/suggest').then(d => {
+      welcome.sugs = d.roots || [];
+      const top = welcome.sugs[0];
+      if (top && !$('#wdir').value.trim()) { $('#wdir').value = homePath(top.dir); $('#worg').value = top.org || ''; }
+      $('#wsugs').innerHTML = welcome.sugs.map((r, i) => `<button class="wsug" data-i="${i}" title="${esc(r.dir)}">${ICON.folder}<span class="pn"><b>${esc(homePath(r.dir))}</b><small>${r.repos} repo${r.repos === 1 ? '' : 's'}${r.chats ? ` · ${r.chats} with chats` : ''}</small></span><span class="wo">${r.org ? `github.com/${esc(r.org)}` : ''}</span></button>`).join('');
+      welcomeMark();
+    }).catch(() => {});
+  }
+  async function welcomeAnswer(roots, create = false) {
+    $('#werr').textContent = '';
+    try { state.config = (await api('PUT', '/api/config', { roots, ...create && { create: true } })).config; }
+    catch (e) {
+      const dir = roots[0]?.dir;
+      if (!create && /is not a folder here/.test(e.message)) { welcome.make = dir; $('#werr').textContent = `${dir} isn't there yet.`; $('#wok').textContent = 'Make it and use it'; }
+      else $('#werr').textContent = e.status === 404 ? 'The running server predates the setup — scripts/launchd.sh restart' : e.message;
+      return;
+    }
+    configChanged();   // the board in the new setup; welcomeSync puts the dialog away
+  }
+  $('#wok').onclick = () => {
+    const dir = $('#wdir').value.trim();
+    if (!dir) { $('#werr').textContent = 'Which folder? Or Skip.'; $('#wdir').focus(); return; }
+    welcomeAnswer([{ dir, org: $('#worg').value.trim() }], dir === welcome.make);
+  };
+  $('#wskip').onclick = () => welcomeAnswer([]);
+  $('#wdir').addEventListener('input', welcomeMark);
+  $('#wsugs').addEventListener('click', e => {
+    const b = e.target.closest('.wsug'); if (!b) return;
+    const r = welcome.sugs[+b.dataset.i]; $('#wdir').value = homePath(r.dir); $('#worg').value = r.org || ''; welcomeMark();
+    if (e.detail > 1) $('#wok').click(); else $('#wok').focus();   // a double click is the answer
+  });
+  $('#welcome').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input')) { e.preventDefault(); $('#wok').click(); } });
+  $('#wchoose').onclick = () => post({ type: 'chooseFolder', dir: $('#wdir').value.trim() });
+  window.peixFolder = path => { if (!path) return; $('#wdir').value = homePath(path); welcomeMark(); $('#wok').focus(); };
   // The switch that is this browser's alone (2026-09-28): ⌥ in the terminal. The code's fold and how a date is
   // written were beside it for a day.
   $('#optMeta').checked = prefs.optMeta !== false;
@@ -4589,10 +4700,11 @@
       ['version', esc(a.version || '?')],
       ['server', `http://127.0.0.1:${a.port || location.port}${a.node ? ` · node ${esc(a.node)}` : ''}${a.pid ? ` · pid ${a.pid}` : ''}${a.since ? ` · up ${rel(a.since)}` : ''}`],
       ['reads', `${esc(homePath(a.claudeDir || '~/.claude'))} — and writes nothing there`],
+      ['setup', esc(homePath(a.configFile || '?'))],
       ['state', esc(homePath(a.stateFile || '?'))],
       ['chats', `${[...state.sessions.values()].filter(s => s.alive).length} live · ${all.ready ?? 0} ready · ${all.working ?? 0} clauding`],
     ];
-    $('#about').innerHTML = `${$('#brandBtn').innerHTML}<h3>peix<em>AI</em>rada</h3><p class="tag">One board for every Claude Code chat on this Mac.</p><div class="facts">${facts.map(([k, v]) => `<b>${k}</b><span>${v}</span>`).join('')}</div><p class="help">The ⌥⌘ keys and the switches are under the cog, bottom left.</p>`;
+    $('#about').innerHTML = `${$('#brandBtn').innerHTML}<h3>peix<em>AI</em>rada</h3><p class="tag">One board for every Claude Code chat on this Mac.</p><div class="facts">${facts.map(([k, v]) => `<b>${k}</b><span>${v}</span>`).join('')}</div><p class="help">The keys and the switches are in the settings — ⌘, or the chat header's ···.</p>`;
     $('#about').showModal();
   }
   $('#brandBtn').addEventListener('click', aboutOpen);
@@ -4616,7 +4728,7 @@
       renderSetup();
       state.notifications = d.notifications !== false; showNotify();
       state.serverNotify = d.notify === 'native';   // the server posts its own banners: the app must not double them
-      renderBoard();
+      renderBoard(); welcomeSync();
       const want = location.hash.slice(1);
       if (want && !state.current && state.sessions.has(want)) openSession(want);
       // A snapshot with a chat already open is a reconnect — the server restarted, the stream dropped — and the entries

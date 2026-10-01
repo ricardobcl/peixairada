@@ -10,7 +10,7 @@
 //   CLAUDE_DIR=/path/to/fixture node server.mjs   # point at a different ~/.claude (tests)
 // Map ▾ — the sections, from the file's own banners (node scripts/map.mjs rewrites this; grep a name to jump)
 //  State
-//      · the board's setup: the cog's second half
+//      · the board's setup: CONFIG_FILE, the settings' Setup
 //      · Peacock: the colour VS Code paints a folder with, from its .vscode/settings.json
 //      · attachments: a file dropped on the board from a browser
 //  Transcript parsing
@@ -28,6 +28,7 @@
 //      · the holder protocol: newline-delimited JSON over the holder's socket (see lib/termhold.mjs)
 //      · launchers: a folder's own way to start claude
 //      · the roots' folders: where the repos live, and cloning one that is not there yet
+//      · the first run: where the repos live, guessed
 //      · idle drawers: ended after DRAWER_IDLE_MS with no page on them
 //      · who may ask: the board's own pages, and nothing a browser lets another site send
 //  HTTP
@@ -61,7 +62,7 @@ const SESSIONS_DIR = join(CLAUDE_DIR, 'sessions');
 const PORT = Number(process.env.PORT || 7331);
 // The About box's facts (2026-09-27): the package's version, this process, and where the board reads and writes.
 const PKG = (() => { try { return JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')); } catch { return {}; } })();
-const aboutInfo = () => ({ version: PKG.version || 'dev', node: process.version, pid: process.pid, port: PORT, claudeDir: CLAUDE_DIR, stateFile: STATE_FILE, since: SINCE, shell: basename(LOGIN_SHELL) });
+const aboutInfo = () => ({ version: PKG.version || 'dev', node: process.version, pid: process.pid, port: PORT, claudeDir: CLAUDE_DIR, stateFile: STATE_FILE, configFile: CONFIG_FILE, since: SINCE, shell: basename(LOGIN_SHELL) });
 const SINCE = Date.now();
 const HOST = process.env.HOST || '127.0.0.1';
 const NOTIFY = process.env.NOTIFY || 'native'; // native | off
@@ -78,6 +79,12 @@ function defaultStateFile() {
 }
 const STATE_FILE = process.env.STATE_FILE || defaultStateFile();
 const LEGACY_STATE_FILE = join(homedir(), '.peixairada', 'state.json');
+// The setup — where the repos live, ⌥⌘O's project, the projects' short names and colours — is the user's, in a file of
+// its own under ~/.config (2026-10-01): what someone sets once and may keep with their dotfiles, while the state file
+// churns with every tick. $XDG_CONFIG_HOME moves it, CONFIG_FILE names it; a STATE_FILE of its own (every test server)
+// takes it along beside it, so a server run on the side never reads or writes the real one.
+const CONFIG_FILE = process.env.CONFIG_FILE
+  || (process.env.STATE_FILE ? join(dirname(STATE_FILE), 'config.json') : join(process.env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'peixairada', 'config.json'));
 
 // ---------------------------------------------------------------------------------------------
 // State
@@ -115,8 +122,9 @@ let envs = {};
 // System notifications on or off — the cog's switch (2026-09-23). Off, an alert still reaches every page (the unread
 // badges, the Dock's count) but goes out `quiet`: nothing posts a banner for it, the app, a browser or osascript here.
 let notificationsOn = true;
-// The board's setup — the cog's second half (2026-09-28), see cleanSetup below. What the cog set and nothing else: a
-// key it never set is the default, worked out when asked (boardConfig).
+// The board's setup — the settings' Setup (2026-09-28), see cleanSetup below. What was set and nothing else: a key never
+// set is the default, worked out when asked (boardConfig). Kept in CONFIG_FILE since 2026-10-01; the state file's
+// `config` is read once more, to move it there.
 let setup = {};
 // Whose move each PR you wrote or reviewed was at, and since when the board has known it: url -> { key, at }
 // (2026-09-28). A PR come round to you un-ticks the chats that mention it (isDone), weighed by `at` — kept here so a
@@ -143,11 +151,11 @@ try {
   hiddenProjects = Array.isArray(st.hidden) ? st.hidden.filter(k => typeof k === 'string') : [];
   envs = st.envs || {};
   notificationsOn = st.notifications !== false;
-  setup = st.config;   // as saved — cleaned below, once what cleans it is defined
+  setup = st.config;   // from before CONFIG_FILE — cleaned and moved there below, once what does it is defined
   prTurns = st.prTurns && typeof st.prTurns === 'object' ? st.prTurns : {};
 } catch {}
 function saveState() {
-  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, config: setup, prTurns }, null, 1)); }
+  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns }, null, 1)); }
   catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
 // A tick lasts until something newer happens in the chat — or on one of its PRs, once that PR has come round to you
@@ -157,13 +165,15 @@ const isDone = s => {
   return !!at && at >= (s.lastActivity || '') && s.prs.every(p => !p.turn?.you || at >= p.turn.movedAt);
 };
 
-// ---- the board's setup: the cog's second half --------------------------------------------------------------------
+// ---- the board's setup: CONFIG_FILE, the settings' Setup ------------------------------------------------------------
 // What had been written into this file and the page for one Mac — the directory the repos live in and the GitHub org
-// they come from, ⌥⌘O's folder, the short names and colours given by hand — is the cog's since the board went to
-// colleagues (2026-09-28, Ricardo: "maybe we could integrate it into the cog setting?"), kept here as `config` so the
-// app and every browser agree. A key the cog never set is the default: the roots are ORG_DIR / ORG's when either is in
-// the environment (the tests', a server run by hand), else none; no ⌥⌘O folder; no names or colours of the board's own.
-// A root's org is what ＋ clone asks GitHub for — a root without one lists its folders and clones nothing.
+// they come from, ⌥⌘O's folder, the short names and colours given by hand — is the settings' since the board went to
+// colleagues (2026-09-28, Ricardo: "maybe we could integrate it into the cog setting?"), and the server's, so the app
+// and every browser agree: in the state file's `config` at first, in CONFIG_FILE of its own since 2026-10-01 (Ricardo:
+// "segregate my config … should we use ~/.config/peixairada?"). A key never set is the default: the roots are ORG_DIR /
+// ORG's when either is in the environment (the tests', a server run by hand), else none — and the page asks, once
+// (`ask`); no ⌥⌘O folder; no names or colours of the board's own. A root's org is what ＋ clone asks GitHub for — a
+// root without one lists its folders and clones nothing.
 const ORG_NAME = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/;   // GitHub's rule for an account's name
 const expandHome = p => p.trim().replace(/^~(?=\/|$)/, homedir());
 /**
@@ -207,9 +217,54 @@ function cleanSetup(c, strict = false) {
   return { setup: out };
 }
 const envRoots = () => process.env.ORG_DIR || process.env.ORG ? [{ dir: resolve(expandHome(process.env.ORG_DIR || join(homedir(), process.env.ORG))), org: process.env.ORG || '' }] : [];
-/** The setup the board runs on: what the cog set, the defaults for the rest. */
-const boardConfig = () => ({ roots: setup.roots ?? envRoots(), quick: setup.quick ?? null, projects: setup.projects ?? {} });
-setup = cleanSetup(setup).setup;
+/** The setup the board runs on: what was set, the defaults for the rest — and, for the page, the file it lives in,
+ *  why that file cannot be read (while it cannot), and whether the repos' folder was never answered (`ask`: the
+ *  welcome). The three ride along on every answer and event; a PUT that hands them back is not read for them. */
+const boardConfig = () => ({ roots: setup.roots ?? envRoots(), quick: setup.quick ?? null, projects: setup.projects ?? {},
+  file: CONFIG_FILE, error: configError, ask: !configError && setup.roots === undefined && !envRoots().length });
+const tildePath = p => p === homedir() || p.startsWith(homedir() + '/') ? '~' + p.slice(homedir().length) : p;
+// The file is the user's as much as the board's: written with two spaces and `~/…` for a folder under the home, so it
+// reads by hand and travels with dotfiles; in place, never by a rename, so a symlink into a dotfiles repo stays one. A
+// file that does not parse is said in the Setup and never written over — the board keeps what it had until it reads.
+let configError = null;
+let configStamp = 0;   // its mtime as last read or written: the poll's news is a change of it
+const CONFIG_POLL_MS = 2000;
+function readConfigFile() {
+  let txt;
+  try { txt = readFileSync(CONFIG_FILE, 'utf8'); } catch (e) { return e.code === 'ENOENT' ? { missing: true } : { error: `${tildePath(CONFIG_FILE)}: ${e.message}` }; }
+  try { const c = JSON.parse(txt); if (c && typeof c === 'object' && !Array.isArray(c)) return { setup: c }; } catch (e) { return { error: `${tildePath(CONFIG_FILE)} does not parse — ${e.message}` }; }
+  return { error: `${tildePath(CONFIG_FILE)} is not a JSON object` };
+}
+function saveConfig() {
+  const out = {};
+  if (setup.roots) out.roots = setup.roots.map(r => ({ dir: tildePath(r.dir), org: r.org }));
+  if ('quick' in setup) out.quick = setup.quick;
+  if (setup.projects) out.projects = setup.projects;
+  try { mkdirSync(dirname(CONFIG_FILE), { recursive: true }); writeFileSync(CONFIG_FILE, JSON.stringify(out, null, 2) + '\n'); configStamp = statSync(CONFIG_FILE).mtimeMs; return null; }
+  catch (e) { console.error('[peixairada] could not save the setup', e.message); return e.message; }
+}
+setup = cleanSetup(setup).setup;   // the state file's, from before CONFIG_FILE — all an import of this module (a test) sees
+/** At boot, and only then: the setup from CONFIG_FILE — moved there from the state file the first time. Never on an
+ *  import: test/agents.test.mjs imports this module with no STATE_FILE of its own, and ran the move against this
+ *  Mac's real files the first time it was written at the top level. */
+function loadConfig() {
+  const r = readConfigFile();
+  if (r.setup) setup = cleanSetup(r.setup).setup;
+  else if (r.error) { setup = {}; configError = r.error; console.error(`[peixairada] ${r.error} — the setup waits for it to read`); }
+  else if (Object.keys(setup).length && !saveConfig()) { console.log(`[peixairada] moved the setup to ${CONFIG_FILE}`); saveState(); }   // out of the state file, for good
+  try { configStamp = statSync(CONFIG_FILE).mtimeMs; } catch {}
+}
+/** CONFIG_FILE changed under the board — a hand edit, a dotfiles checkout, a delete to start over: every page follows
+ *  within seconds (a `config` event); a file that stopped parsing leaves the board as it was and says why. */
+function reloadConfig() {
+  let at = 0; try { at = statSync(CONFIG_FILE).mtimeMs; } catch {}
+  if (at === configStamp) return;
+  configStamp = at;
+  const before = JSON.stringify(boardConfig()), r = readConfigFile();
+  if (r.error) { if (r.error !== configError) console.error(`[peixairada] ${r.error}`); configError = r.error; }
+  else { setup = r.setup ? cleanSetup(r.setup).setup : {}; configError = null; }
+  if (JSON.stringify(boardConfig()) !== before) { folderCache.clear(); broadcast('config', boardConfig()); }
+}
 
 // ---- Peacock: the colour VS Code paints a folder with, from its .vscode/settings.json ----------------
 // A project's colour is Peacock's and nothing else (2026-09-20): a folder without one is black on the page.
@@ -1616,8 +1671,8 @@ function launchersFor(cwd) {
 // A project on the board is a folder some chat ran in, so a repo you have not opened a chat in is nowhere to be seen,
 // and one you have not cloned is nowhere at all — which made starting work on a repo the longest thing the board
 // asked of you (2026-09-21, Ricardo: "adding a new project is a bit cumbersome"). A root is a directory the repos live
-// in and the GitHub org they come from (boardConfig — ~/acme and acme here, one of each until 2026-09-28, when the
-// cog took them over); nothing under one is written to except by the one clone below.
+// in and the GitHub org they come from (boardConfig — one of each, from the environment, until 2026-09-28, when the
+// settings took them over); nothing under one is written to except by the one clone below.
 const REPO_NAME = /^[A-Za-z0-9][\w.-]*$/;          // a name for a folder and a repo, and nothing that walks out of its root
 const CLONE_MS = Number(process.env.CLONE_MS || 10 * 60_000);   // a big repo over a slow line; the page waits on it
 const isDir = p => { try { return statSync(p).isDirectory(); } catch { return false; } };
@@ -1639,6 +1694,49 @@ function foldersIn(root) {
   folderCache.set(root, { mtime, folders });
   return folders;
 }
+// ---- the first run: where the repos live, guessed -------------------------------------------------------------------
+// A board never told where the repos live asks, once (2026-10-01: the page's welcome, while `ask`). It offers what the
+// chats already say — the folders holding the checkouts they ran in, by how many — then the usual names that hold a
+// checkout, each with the GitHub account most of its checkouts' `origin` names, so the answer is mostly one ⏎.
+const ROOT_NAMES = ['code', 'src', 'dev', 'Developer', 'projects', 'repos', 'git', 'github', 'workspace', 'work', 'Documents/GitHub'];
+/** The checkout a folder is in: the nearest folder at or above it whose .git is a directory — a worktree's or a
+ *  submodule's .git is a file, and the repo holding it is the one meant — else the nearest with a .git at all. */
+function checkoutOf(cwd) {
+  let any = null;
+  for (let d = cwd; d && d !== '/' && d !== homedir(); d = dirname(d)) {
+    let st; try { st = statSync(join(d, '.git')); } catch { continue; }
+    if (st.isDirectory()) return d;
+    any ||= d;
+  }
+  return any;
+}
+/** The GitHub account most of a root's checkouts come from, by their `origin` — an ssh alias (github.com-work) too. */
+function orgOf(root) {
+  const n = new Map();
+  for (const f of foldersIn(root).slice(0, 400)) {
+    let txt; try { txt = readFileSync(join(f.cwd, '.git', 'config'), 'utf8'); } catch { continue; }
+    const m = /\[remote "origin"\][^[]*?url\s*=\s*\S*?github[\w.-]*[:/]([A-Za-z0-9][A-Za-z0-9-]{0,38})\//.exec(txt);
+    if (m) n.set(m[1], (n.get(m[1]) || 0) + 1);
+  }
+  return [...n].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+}
+/** Up to four folders of repos, likeliest first: `{dir, org, repos, chats}` — `chats`, how many of its checkouts a
+ *  chat ran in; `repos`, how many it holds. */
+function suggestRoots() {
+  const used = new Map(), seen = new Set();   // root -> the checkouts under it a chat ran in
+  for (const s of sessions.values()) {
+    const cwd = s.live?.cwd || s.cwd; if (!cwd || seen.has(cwd)) continue; seen.add(cwd);
+    const top = checkoutOf(cwd), root = top && dirname(top);
+    if (!root || root === '/' || root === homedir()) continue;
+    if (!used.has(root)) used.set(root, new Set());
+    used.get(root).add(top);
+  }
+  for (const n of ROOT_NAMES) { const d = join(homedir(), n); if (!used.has(d)) used.set(d, new Set()); }
+  const all = [...used].map(([dir, tops]) => ({ dir, chats: tops.size, repos: foldersIn(dir).filter(f => f.git).length }))
+    .filter(r => r.repos).sort((a, b) => b.chats - a.chats || b.repos - a.repos);
+  const likely = all.filter(r => r.chats > 1 || r.repos > 1);   // one chat in one checkout is a download unzipped, not where the repos live
+  return (likely.length ? likely : all).slice(0, 4).map(r => ({ ...r, org: orgOf(r.dir) }));
+}
 /** Every root's folders, a root at a time, each saying which root and org it is of. */
 const rootFolders = () => boardConfig().roots.flatMap(r => foldersIn(r.dir).map(f => ({ ...f, root: r.dir, org: r.org })));
 
@@ -1651,7 +1749,7 @@ function cloneRepo(name, rootDir, done) {
   if (!REPO_NAME.test(name || '')) return done({ code: 400, error: `"${name}" is not a repository name` });
   const roots = boardConfig().roots.filter(r => r.org);
   const root = rootDir ? roots.find(r => r.dir === rootDir) : roots.length === 1 ? roots[0] : null;
-  if (!root) return done({ code: 400, error: rootDir ? `${rootDir} is not a folder of repos with an org — the cog sets them` : roots.length ? 'which folder of repos? more than one has an org' : 'no folder of repos has an org to clone from — the cog sets them' });
+  if (!root) return done({ code: 400, error: rootDir ? `${rootDir} is not a folder of repos with an org — Settings › Setup sets them` : roots.length ? 'which folder of repos? more than one has an org' : 'no folder of repos has an org to clone from — Settings › Setup sets them' });
   const cwd = join(root.dir, name), ref = `${root.org}/${name}`;
   if (existsSync(cwd)) return done({ code: 200, cwd, cloned: false });
   const bin = findBin('gh', 'cloning from the board is disabled');
@@ -2058,12 +2156,23 @@ const server = createServer(async (req, res) => {
       return cloneRepo(typeof body.name === 'string' ? body.name.trim() : '', typeof body.root === 'string' ? body.root : null, r => r.error ? json(res, r.code, { error: r.error }) : json(res, r.code, { cwd: r.cwd, cloned: r.cloned }));
     }
     if (req.method === 'GET' && p === '/api/config') return json(res, 200, boardConfig());
-    if (req.method === 'PUT' && p === '/api/config') {   // the cog's setup: the keys given replace theirs, the rest stand
-      const r = cleanSetup(await jsonBody(req), true);
+    if (req.method === 'GET' && p === '/api/config/suggest') return json(res, 200, { roots: suggestRoots() });
+    if (req.method === 'PUT' && p === '/api/config') {   // the settings' Setup: the keys given replace theirs, the rest stand
+      if (configError) return json(res, 409, { error: `${configError} — fix it by hand, or delete it to start over` });
+      const body = await jsonBody(req);
+      // `create`: the welcome's "make it" — a root under the home that is not there yet is made first, so a new Mac's
+      // ~/code can be the answer before anything is cloned into it. Nowhere else: a typo in the Setup stays a refusal.
+      if (body.create === true && Array.isArray(body.roots)) for (const r of body.roots) {
+        const dir = typeof r?.dir === 'string' && r.dir.trim() ? resolve(expandHome(r.dir)) : '';
+        if (dir.startsWith(homedir() + '/') && !existsSync(dir)) try { mkdirSync(dir, { recursive: true }); } catch (e) { return json(res, 400, { error: `${tildePath(dir)}: ${e.message}` }); }
+      }
+      const r = cleanSetup(body, true);
       if (r.error) return json(res, 400, { error: r.error });
       setup = { ...setup, ...r.setup };
-      folderCache.clear(); saveState(); broadcast('config', boardConfig());
-      return json(res, 200, { ok: true, config: boardConfig() });
+      folderCache.clear();
+      const failed = saveConfig();
+      broadcast('config', boardConfig());
+      return failed ? json(res, 500, { error: `not saved to ${tildePath(CONFIG_FILE)}: ${failed}` }) : json(res, 200, { ok: true, config: boardConfig() });
     }
     if (req.method === 'POST' && p === '/api/terminals') {   // a new chat in a folder — `claude`, or `task <name>` when the folder launches it so
       const body = await jsonBody(req);
@@ -2141,6 +2250,7 @@ const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.ar
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
 const t0 = Date.now();
+loadConfig();
 scanProjects();
 await adoptHolders();   // before the registry: a drawer's own process is what makes a chat's live process "mine"
 loadRegistry();
@@ -2152,6 +2262,7 @@ pollPeacock();
 setInterval(pollPeacock, PEACOCK_POLL_MS);
 pollRepos();
 setInterval(pollRepos, PEACOCK_POLL_MS);
+setInterval(reloadConfig, CONFIG_POLL_MS);   // a stat against the board's own record of it: a save-by-rename, a file not there yet, one made and gone between two looks
 for (const s of sessions.values()) if (s.alive) scanAgents(s);
 // An agent gone quiet stops counting; a task past its expiry stops running. Both are only visible on a push, and
 // a chat whose last word was "monitor started" has nothing else to push.

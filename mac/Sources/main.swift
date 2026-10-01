@@ -1016,6 +1016,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       window.makeFirstResponder(web)
     case "external":
       if let s = body["url"] as? String, let url = URL(string: s) { NSWorkspace.shared.open(url) }
+    case "chooseFolder":   // the first run's Choose… (2026-10-01): the system's folder panel, its path back to the page
+      let panel = NSOpenPanel()
+      panel.canChooseDirectories = true; panel.canChooseFiles = false; panel.allowsMultipleSelection = false
+      panel.canCreateDirectories = true
+      panel.prompt = "Use This Folder"; panel.message = "The folder your git checkouts sit in"
+      let dir = (body["dir"] as? String ?? "").replacingOccurrences(of: "^~(?=/|$)", with: NSHomeDirectory(), options: .regularExpression)
+      if !dir.isEmpty { panel.directoryURL = URL(fileURLWithPath: dir, isDirectory: true) }
+      panel.beginSheetModal(for: window) { [weak self] r in
+        let path = r == .OK ? panel.url?.path : nil
+        self?.web.evaluateJavaScript("window.peixFolder && window.peixFolder(\(path.map(jsStr) ?? "null"))", completionHandler: nil)
+      }
     default: break
     }
   }

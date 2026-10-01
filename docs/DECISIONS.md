@@ -4,6 +4,57 @@ What was decided, why, and what is still open, so the work can be picked up in a
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
 this file is the *why* and the *state*. Last updated 2026-10-01.
 
+## Decisions of 2026-10-01 — the setup in ~/.config, and a first run that asks where the repos live
+
+Ricardo: "I want to make this available to other developer, so I need to segregate my config (shoul we use
+~/.config/peixairada ?) for the source code, where the code has little to no leaks of specific stuff for my setup. if
+we never configured the app, we should probably prompt for the base folder where git project will leave (in my case
+is ~/acme)."
+
+* **What was still one Mac's in the tree**: nothing that runs — the setup left the code on 2026-09-28 — but words: a
+  test server's comment ("~/acme by default"), two scenarios' ("whatever ~/acme holds"), a CSS comment naming the
+  long-gone `PROJECT_COLORS — acme`, the new-project dialog's placeholder ("Wallet fees rollout"), the `acme` org
+  in two tests and a GitHub URL in another, "`acme` here" in CLAUDE.md. All generic now (`acme`, as the README's
+  shots). **Left as they are**: the dated quotes in comments ("Ricardo: …") and this file — they are the history of
+  why, not a setup, and nothing reads them; and the README's clone URL, which is where the repo lives.
+* **The setup is a file of the user's: `~/.config/peixairada/config.json`** (`$XDG_CONFIG_HOME`, `CONFIG_FILE`). The
+  split is setup against state: what someone sets once and might keep with their dotfiles — the folders of repos,
+  ⌥⌘O's project, the short names and colours — goes there; what the board records as it is used — ticks, titles,
+  pins, hidden projects, environments, PR turns, 35 KB that move every minute — stays in Application Support with the
+  holders' sockets and the attachments. Named projects, pins and hidden were weighed and left as state: they are made
+  by gestures on the board, not set. The notifications switch too (one bit, the board's).
+* **Moved, not copied**: the state file's `config` is written to the new file at boot and dropped from the state
+  file at once, so deleting the new file later starts over rather than resurrecting the old setup. **At boot only**
+  (`loadConfig()` in `main()`): written first at the module's top level, the move ran from `npm test` —
+  `test/agents.test.mjs` imports the server with no `STATE_FILE` of its own — against this Mac's real files. It did
+  the move that was meant (this Mac's setup is in `~/.config/peixairada/config.json` since), but a test writing a
+  user's files is the bug; a test now imports the module under a made-up home and checks nothing was written.
+* **The file reads by hand**: two spaces, keys in a fixed order, a folder under the home as `~/…` (so the same file
+  works for another user name), written in place — a rename would turn a dotfiles symlink into a plain file. **A hand
+  edit reaches every page within two seconds**: a stat every `CONFIG_POLL_MS` against the board's own record of the
+  file's mtime. `fs.watchFile` came first and missed a file made and deleted between two of its looks — the
+  scenario's own step, and a dotfiles checkout's.
+* **A file that does not parse is never written over**: the board keeps what it had, the Setup says why in red, and a
+  PUT is refused (409) until it reads — losing someone's hand-written file to a click in the settings is worse than a
+  refusal.
+* **A STATE_FILE of its own takes the config along**: unless `CONFIG_FILE` says otherwise, the config sits beside an
+  explicit `STATE_FILE`. Every test server and every `test/*.test.mjs` sets one, so none of them can read or write the
+  real `~/.config` file — the safe default without touching forty-two scenarios.
+* **The first run asks, once** (`ask`: no roots ever set, none from `ORG_DIR` / `ORG`, the file readable): a modal
+  over the board — the fish, "Where do your repositories live?", the server's guesses as rows, the folder and the
+  GitHub org in two boxes, Skip and *Use this folder*. **The guess comes from the chats**: the folders holding the
+  checkouts they ran in, by how many (a subfolder, a worktree, a submodule count as their repo; the home never), then
+  the usual names (`~/code`, `~/src`, `~/Developer`…) that hold a checkout; a lone chat in a lone checkout (a download
+  unzipped) is dropped while anything likelier is there. The org is the commonest GitHub account in those checkouts'
+  `origin`, an ssh alias's host (`github.com-work`) included. On this Mac: `~/acme`, 155 repos, 33 with chats,
+  `acme` — the answer is ⏎. **Skip is an answer** (`roots: []`, never asked again); Esc only puts it off to the next
+  load; a folder under the home that is not there yet is offered to be made (*Make it and use it*, `create: true` —
+  the welcome's alone: a typo in the Setup stays a refusal). In the app, *Choose…* is the system's folder panel.
+* **Verified**: `test/config.test.mjs` (the move, a hand edit, a broken file, the guesses over a made-up home with a
+  worktree, an ssh alias and a download, `create`), `scripts/scenarios/welcome.mjs` (new — the guess in the boxes, a
+  folder made, the file deleted by hand bringing the question back, a double click answering it, ⌥⌘N listing the repo
+  no chat ran in, Skip lasting a reload), the guesses against this Mac's real chats, and the dialog in both themes.
+
 ## Decisions of 2026-10-01 — simple colours
 
 Ricardo: "some people don't like so many colors in the apps, it's too stimulating. can we have a them config with

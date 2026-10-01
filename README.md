@@ -56,17 +56,30 @@ scripts/launchd.sh install     # the server, started at login → http://127.0.0
 mac/build.sh install           # the Mac app (optional — any browser works)
 ```
 
-After pulling, `scripts/launchd.sh restart` — your chats stay open. The first time, allow `security` to read the
+On first open the board asks where your repos live, its guess from your chats already filled in. After pulling,
+`scripts/launchd.sh restart` — your chats stay open. The first time, allow `security` to read the
 *Claude Code-credentials* keychain item (that's the plan usage).
 
 ## ⚙️ Setup
 
-Everything is in the **cog**, bottom left:
+**Settings** — ⌘, or ··· in the chat's header:
 
-- **Your repos** — the folders they live in and their GitHub org. ⌥⌘N lists them all and clones the ones you don't have.
-- **⌥⌘O** — one project to start a chat in with a single key.
-- **Projects** — a short name for the folded list, a colour where Peacock has none.
-- **Preferences** — notifications, simple colours (greys and one accent, for a quieter board), card size, ⌥ as Meta.
+- **Board** — notifications, simple colours (greys and one accent, for a quieter board), card size, ⌥ as Meta.
+- **Setup** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
+  project ⌥⌘O starts a chat in, and a short name and a colour where Peacock has none, per project.
+
+The setup is a file of yours, `~/.config/peixairada/config.json` (`$XDG_CONFIG_HOME` moves it) — edit it by hand or
+keep it with your dotfiles; the board picks up a change within seconds:
+
+```json
+{
+  "roots": [{ "dir": "~/code", "org": "my-org" }],
+  "quick": "my-service",
+  "projects": { "my-service": { "abbr": "SVC", "color": "#2f7fd8" } }
+}
+```
+
+What the board records as you use it — done ticks, titles, pins — stays in `~/Library/Application Support/peixAIrada/`.
 
 <details>
 <summary>Environment variables</summary>
@@ -79,6 +92,7 @@ Everything is in the **cog**, bottom left:
 | `DRAWER_IDLE_MS` | 24 h | an unwatched idle drawer ends itself; `0` never |
 | `CLAUDE_BIN` `GH_BIN` `CODE_BIN` `TASK_BIN` | from `PATH` | where the CLIs are |
 | `CLAUDE_DIR` · `STATE_FILE` | `~/.claude` · `~/Library/Application Support/peixAIrada/state.json` | what it reads · keeps |
+| `CONFIG_FILE` | `~/.config/peixairada/config.json` (beside `STATE_FILE` when that is set) | the setup |
 
 The login agent takes `PORT` and `NOTIFY` at `scripts/launchd.sh install`.
 
@@ -97,7 +111,7 @@ The login agent takes `PORT` and `NOTIFY` at `scripts/launchd.sh install`.
 | ⌘2 · ⌘W | split · close a half |
 | ⌘B | fold the list |
 
-The cog lists the rest.
+Settings › Keys lists the rest.
 
 <p align="center"><img src="docs/shots/picker-dark.png" alt="⌥⌘K, the chat picker" width="620"></p>
 

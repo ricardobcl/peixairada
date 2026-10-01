@@ -390,25 +390,40 @@ refuses to run against the real directory for the same reason.
   has passed, and on the way back to a hidden page, **backing off on failures**; a failure keeps the last numbers,
   `.stale`. The server's `USAGE=off` answers `off: true` and the bar hides — every test server.
   → `scripts/scenarios/usage-bar.mjs`.
-* **State lives in three places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done ticks,
-  named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, the
-  setup; `STATE_FILE` overrides) shared by the app and every browser; the browser's `localStorage` `peixairada-prefs`
+* **State lives in four places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done ticks,
+  named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, PR
+  turns; `STATE_FILE` overrides) and the user's `~/.config/peixairada/config.json` (the setup, below), both shared by
+  the app and every browser; the browser's `localStorage` `peixairada-prefs`
   (selected project, filters, widths, zoom, folds, card size and compact's same height, simple colours, the person the list is narrowed to, ⌥ as Meta, drawer open/height — the keys are the `prefs` literal,
   and old ones are deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it
   renders reads its state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
-* **The setup is the server's, and nothing about one Mac is written in the code** (2026-09-28): `config` in the state
-  file — `roots` (`[{dir, org}]`: the folders of repos ⌥⌘N lists, the org ＋ clone asks), `quick` (⌥⌘O's project, which
+* **The setup is the user's file, and nothing about one Mac is written in the code** (2026-09-28; the file since
+  2026-10-01): `CONFIG_FILE` — `$XDG_CONFIG_HOME/peixairada/config.json`, **beside `STATE_FILE` when that is set**
+  (so every test server has its own); the state file's old `config` is moved there **at boot, never on an import**
+  (`loadConfig()` from `main()` — a test imports the module against the real state file), and `saveState` no longer
+  writes it. Written in place (a dotfiles symlink stays one), two spaces, a root under the home as `~/…`; **re-read
+  on a hand edit** (`reloadConfig`, a stat every `CONFIG_POLL_MS` against `configStamp`, the board's own record — a
+  `fs.watchFile` missed a file made and gone between two looks); one that does not parse is `error` on the config,
+  the board keeps what it had, and a PUT is refused (409) rather than write over it. It holds `roots` (`[{dir, org}]`: the folders of repos ⌥⌘N lists, the org ＋ clone asks), `quick` (⌥⌘O's project, which
   wears the crystal ball) and `projects` (`{name: {abbr, color}}`, by shown name). `cleanSetup` shapes it (strict for a
   PUT: says what is wrong, asks that a root exists); a key never set is the default at read time (`boardConfig()`: the
   roots from `ORG_DIR` / `ORG` when either is in the environment, else none). `GET/PUT /api/config` — a PUT replaces
-  the keys it gives —, a `config` event, `config` in the snapshot; the page's `state.config`, `configChanged()`. The
+  the keys it gives —, a `config` event, `config` in the snapshot; the page's `state.config`, `configChanged()`; the
+  config also carries `file`, `error` and `ask`. **`ask` is the first run** (roots never set, none in the
+  environment, the file readable): the page's `#welcome`, a modal over everything (`welcomeSync`, from the snapshot
+  and `configChanged`), asks for the folder and its org, filled from `GET /api/config/suggest` (`suggestRoots`: the
+  parents of the checkouts the chats ran in — `checkoutOf`, a worktree's or a submodule's `.git` file climbing to its
+  repo —, then `ROOT_NAMES` under the home; the org by the commonest `origin` in their `.git/config`, `orgOf`). Skip
+  is `roots: []`, an answer; Esc only puts it off; a folder under the home not there yet is made on a second click
+  (`create: true` on the PUT, the welcome's only); in the app, Choose… is an `NSOpenPanel` (`chooseFolder` →
+  `peixFolder`). Test servers set `ORG_DIR`, so the welcome never shows there unless a scenario clears it. The
   settings' Setup pane draws it (`renderSetup`, never under a box that has the keyboard): **three sections —
   Repositories, Quick chat, Projects — each a title and a line over an inset list of rows** (`.sg` › `.sgh`, `.slist` ›
   `.srow`; 2026-09-28, night); a path or a name is text until hovered or focused, the org and the short name wear a
   fill, and a project's row leads with its rail square (`.stile`, `tileStyle()`: Peacock's colour, else the setup's,
   in `inkOn`'s ink), which follows the short name and the colour as they are typed and picked. The scenario reaches the
   rows by `.srow.root(.add)`, `.sdir`, `.sorg`, `#quickSel`, `.srow.proj`, `.sab`, `.ssw`, `.sadd` — keep those names.
-  → `test/config.test.mjs`, `scripts/scenarios/cog-setup.mjs`.
+  → `test/config.test.mjs`, `scripts/scenarios/cog-setup.mjs`, `scripts/scenarios/welcome.mjs`.
 * **The page asks the server through `api(method, url, body)`** (2026-09-27): JSON in, JSON out, a throw with the
   server's own `error` (else the status) when it says no — `e.status`, `e.body`. Every caller says what went wrong
   where it happened, or catches on purpose. The attach upload keeps a raw `fetch`: its body is a file.
@@ -494,8 +509,8 @@ refuses to run against the real directory for the same reason.
   exact cwd), and a query that names none of them is offered last as **＋ clone `<org>/<name>`**, a row per root with
   an org (`cloneRows()`, never filtered out). `GET /api/folders` lists them (`{roots, folders}`, each folder with its
   `root` and `org`), cached by each root's mtime; `POST /api/clone {name, root}` runs `gh repo clone <org>/<name>` into
-  that root (no `root`: the one root with an org, if only one) — **the only thing the board writes outside its own
-  state** — and `cloneAndStart()` carries on into the same flow. A long path belongs beside the name (`.cur`),
+  that root (no `root`: the one root with an org, if only one) — **with the welcome's *make it* (an empty folder of
+  repos under the home), the only thing the board writes outside its own state and config** — and `cloneAndStart()` carries on into the same flow. A long path belongs beside the name (`.cur`),
   never in the row's `auto` column. → `scripts/scenarios/new-project.mjs`.
 * **The settings are one modal dialog** (`#settings`, 2026-09-28; the cog's popover before): **⌘,** (`CMDKEYS.Comma`,
   in the app the app menu's *Settings…*, which asks `peixKey` as ⌘W does), the chat header's ··· (`#settingsBtn`, the
@@ -734,11 +749,11 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   scroll-driven ones, which run as long as the list can scroll. `ctx`: `evaluate`, `waitFor`, `send`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
-  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The forty-one in
+  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The forty-two in
   `scripts/scenarios/` are the regression checks for the drawer, the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
   marks, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, a PR's turn, the chat's links,
-  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours.
+  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.
@@ -750,7 +765,8 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   there registers `/private/var/…`. **Its two chats are a second apart** (`defaultFixture`), so the board's order
   between them is never the readdir's.
 * **Every test server gets a fast clock and an empty org directory** (`lib/testserver.mjs`): `REGISTRY_POLL_MS`
-  1200 and `TASK_GRACE_MS` 400, and an `ORG_DIR` of its own under the state dir. `meta.env` is spread last. `waitFor(fn,
+  1200 and `TASK_GRACE_MS` 400, and an `ORG_DIR` of its own under the state dir — which also keeps the first run's
+  welcome away; its config file is beside its `STATE_FILE`, never the real one. `meta.env` is spread last. `waitFor(fn,
   {timeout, what})` and `srv.post(path, body)` are the tests' polls and POSTs.
 * **Test against the fake claude, not real chats**: `scripts/fakeclaude.mjs` via `CLAUDE_BIN` (the test server's
   `fake: true`) is instant and touches nothing. A test against the real `~/.claude` (read-only, `claudeDir` unset)
