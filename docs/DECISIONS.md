@@ -82,6 +82,12 @@ simple colors?"
   mute the PR and user icons color"): a PR chip keeps its state's colour — on the card and in the header —, GitHub's
   faces theirs, and your mark before a card's prompt its teal. The first cut had greyed them all (a PR by tone, open
   darkest; the faces grayscale): the theme is the projects' colours and the states' hues, not who or which PR.
+* **One colour of your choosing instead of the grey** (later still, Ricardo: "for the file color, allow customized the
+  color itself with a color picker"): under the switch, while it is on, a swatch — the colour every project then
+  wears, ALL included: the cards, the list's edge, the splitter, the header, the rail. Grey until one is picked; ⌥-click
+  goes back to it. The chat header's square, which picks the folder's Peacock colour, picks this one instead while
+  simple colours are on — the square shows the board's colour then, and changing Peacock's from it changed nothing on
+  the board. The states stay grey and the PRs and faces keep theirs. A pref, like the switch.
 * **The accent is kept for what wants you**: a question's blinking edge (`--needs` is the accent here, not red),
   *your move*, the unread count, the focus ring, the selection, links. Claude's ✳ on every card and a Fable chat's F,
   which wore it as decoration, go grey; Claude's pixel mark between the clauding and the ready cards keeps it — one per
@@ -92,7 +98,8 @@ simple colors?"
   comet — is the system's *reduce motion*, which the board already honours. A board quieter still is the two together.
 * **Verified**: `scripts/scenarios/simple-colors.mjs`, new — the chroma of every surface measured off, on, after a
   reload and off again; the setup's square; the question still in the accent; the PR chips, a face and your mark in
-  colour either way. open-light, card-signals, cog-setup,
+  colour either way; the one colour picked under the switch and at the header's square (Peacock's file untouched),
+  ⌥-click back to grey, kept by a reload. open-light, card-signals, cog-setup,
   header-prs, people-row and project-cue still pass.
 
 ## Decisions of 2026-09-30 — ticking the open chat moves on

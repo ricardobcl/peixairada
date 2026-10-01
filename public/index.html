@@ -34,7 +34,8 @@
     --hl-fn: #61afef; --hl-cls: #e5c07b; --hl-var: #e06c75; --hl-meta: #8fa6c4;
   } }
   /* Simple colours (2026-10-01):
-     greys and the one accent. A project's colour goes (repoColor answers null, so every surface takes --nocolor's grey),
+     greys and the one accent. A project's colour goes (repoColor answers the one colour picked under the switch,
+     prefs.simpleColor, or null — every surface then takes --nocolor's grey),
      and so does every hue that only names a state — clauding, ready, watching, the plan's spend, the code's syntax —
      told by tone instead. A PR's state and the people keep their colours: the PR chips, GitHub's faces, your mark on a
      card. The accent stays for what wants you: a question (--needs is the accent here), your move, an unread count,
@@ -170,6 +171,7 @@
   .pop .ssw { position: relative; width: 22px; height: 22px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 20%, transparent); cursor: pointer; transition: transform .12s; }
   .pop .ssw:hover { transform: scale(1.1); }
   .pop .ssw.none { background: none; box-shadow: none; border: 1.5px dashed color-mix(in srgb, var(--ink) 32%, transparent); }
+  .pop .ssw:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
   .pop .ssw input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer; }
   .pop .sdel { font: inherit; font-size: 15px; line-height: 1; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; opacity: 0; transition: opacity .12s, background-color .12s, color .12s; }
   .pop .srow:hover .sdel, .pop .sdel:focus-visible { opacity: 1; }
@@ -1310,7 +1312,8 @@
   <nav class="stabs" role="tablist"><button role="tab" data-tab="board" class="on">Board</button><button role="tab" data-tab="setup">Setup</button><button role="tab" data-tab="keys">Keys</button></nav>
   <div class="spane scol" data-tab="board">
     <label class="opt" title="Off, nothing posts a banner — not the app, not a browser tab, not the server — and the unread counts on the cards and the Dock go on as before"><input type="checkbox" id="notifyOn" checked><span><b>notifications</b> — a banner when Claude finishes or asks you something, while the board is not in front</span></label>
-    <label class="opt" title="On, the board is greys and the one accent: no project colours (Peacock's or the setup's — they stay set, for VS Code and for when this is off), no colour per state or in the code — a PR's chip and the people's faces keep theirs; the accent is left for what wants you — a question, your move, an unread count"><input type="checkbox" id="simpleColors"><span><b>simple colours</b> — greys and one accent, for what wants you; off, every project in its colour</span></label>
+    <label class="opt" title="On, every project wears one colour — grey, or the one picked under this switch — instead of its own (Peacock's and the setup's stay set, for VS Code and for when this is off), and no state or code has a colour of its own — a PR's chip and the people's faces keep theirs; the accent is left for what wants you — a question, your move, an unread count"><input type="checkbox" id="simpleColors"><span><b>simple colours</b> — every project in one colour, the states in greys; off, each project in its own</span></label>
+    <label class="opt sub" id="tintRow" hidden><span class="ssw" id="tintSw"><input type="color" id="simpleTint" value="#b9b9b3" aria-label="The one colour every project wears"></span><span><b>one colour</b> for every project — the chat header's square picks it too · ⌥-click back to grey</span></label>
     <label class="opt" title="On, every clauding card's light stands at the same angle — the blinks and the dots too; off, each card runs at its own. Either way a card rebuilt by an update carries on where it was"><input type="checkbox" id="ringsInStep" checked><span><b>rings in step</b> — every card's light at the same angle; off, each at its own</span></label>
     <div class="dens" title="How much of each chat its card carries — a question waiting on you shows at every size">
       <b>cards</b><input type="range" id="cardsSize" min="0" max="2" step="1" value="0" list="cardsStops" aria-label="Card size">
@@ -1436,7 +1439,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -1543,12 +1546,26 @@
   applyCards();
   // Simple colours (2026-10-01): a pref like the card size — how this window looks. The tokens are the root's
   // data-colors; the project's colour is repoColor's null, so the list and the open chat's header are drawn again.
-  const applyColors = () => { document.documentElement.dataset.colors = prefs.simpleColors ? 'simple' : 'full'; $('#simpleColors').checked = !!prefs.simpleColors; };
+  // The one colour every project wears under it (prefs.simpleColor, none is the grey): the row under the switch and the
+  // chat header's square pick it, the board follows the panel as it moves, ⌥-click lets it go.
+  const tintTip = () => prefs.simpleColor ? `${prefs.simpleColor}, every project's colour — click to change, ⌥-click back to grey` : "Every project in grey — click to pick one colour for them all";
+  function applyColors() {
+    document.documentElement.dataset.colors = prefs.simpleColors ? 'simple' : 'full';
+    $('#simpleColors').checked = !!prefs.simpleColors;
+    $('#tintRow').hidden = !prefs.simpleColors; $('#tintRow').title = tintTip();
+    $('#tintSw').style.setProperty('--c', prefs.simpleColor || 'var(--nocolor)');
+    if ($('#simpleTint').value !== (prefs.simpleColor || '#b9b9b3')) $('#simpleTint').value = prefs.simpleColor || '#b9b9b3';
+  }
   applyColors();
-  $('#simpleColors').addEventListener('change', e => {
-    prefs.simpleColors = e.target.checked; savePrefs(); applyColors();
-    renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s);
-  });
+  const redrawColors = () => { renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); };
+  let tintRaf = 0;
+  function setTint(hex) {
+    prefs.simpleColor = hex || null; savePrefs(); applyColors();
+    if (!tintRaf) tintRaf = requestAnimationFrame(() => { tintRaf = 0; redrawColors(); });
+  }
+  $('#simpleColors').addEventListener('change', e => { prefs.simpleColors = e.target.checked; savePrefs(); applyColors(); redrawColors(); });
+  $('#simpleTint').addEventListener('input', e => setTint(e.target.value));
+  $('#tintRow').addEventListener('click', e => { if (e.altKey) { e.preventDefault(); setTint(null); } });
   // Esc on the page itself: a dialog (the picker, the project editor) or the settings popover closes,
   // and the key is *taken* — preventDefault, so WebKit reports it handled. An Esc the page leaves alone climbs to the
   // app's window, which in full screen takes it to leave full screen: the picker closed and the window shrank with it
@@ -1638,11 +1655,12 @@
   // colour (projCfg, below) where Peacock says nothing; black there is the same black, with the same inks.
   const BLACK = '#000000';
   const ownColor = cwds => (Array.isArray(cwds) ? cwds : [cwds]).map(c => c && (state.peacock[c] || projCfg(folderName(c)).color)).find(Boolean) || null;
-  // What the board paints with: nothing at all under simple colours (prefs.simpleColors), ALL's black included — every
-  // surface then takes --nocolor's grey, as a folder without a colour always has. The setup and the colour picker
-  // still read ownColor: they are where the colour is set, so they show it.
-  const repoColor = cwds => prefs.simpleColors ? null : ownColor(cwds);
-  const projColor = p => prefs.simpleColors ? null : p.key === ALL ? BLACK : repoColor(p.cwds);
+  // What the board paints with: under simple colours (prefs.simpleColors) every project, ALL included, wears the one
+  // colour picked for it (prefs.simpleColor) or none — every surface then takes --nocolor's grey, as a folder without
+  // a colour always has. The setup still reads ownColor, and so does the header's square outside simple colours: they
+  // are where a project's colour is set, so they show it.
+  const repoColor = cwds => prefs.simpleColors ? prefs.simpleColor || null : ownColor(cwds);
+  const projColor = p => prefs.simpleColors ? prefs.simpleColor || null : p.key === ALL ? BLACK : repoColor(p.cwds);
   const repoStyle = color => color ? `--repo:${color}` : '';
   // The ink that reads on a colour: near-black on a light one, white on a dark one — Peacock's own rule (tinycolor's
   // brightness, (299r + 587g + 114b) / 1000, light from 128), so the header agrees with the VS Code title bar of the
@@ -1839,7 +1857,7 @@
   // The colour square — and where it stands for one folder (the chat header's) the picker: Peacock's setting, written
   // for the VS Code window too.
   const sqHtml = (p, style = '') => p.cwds?.length === 1
-    ? `<span class="sq pick"${style ? ` style="${style}"` : ''} data-cwd="${esc(p.cwds[0])}" title="Colour of ${esc(p.name)} — click to pick; written as peacock.color into the folder's .vscode/settings.json, so the VS Code window shows it too; ⌥-click takes it out"></span>`
+    ? `<span class="sq pick"${style ? ` style="${style}"` : ''} data-cwd="${esc(p.cwds[0])}" title="${prefs.simpleColors ? `Simple colours: ${esc(tintTip())}` : `Colour of ${esc(p.name)} — click to pick; written as peacock.color into the folder's .vscode/settings.json, so the VS Code window shows it too; ⌥-click takes it out`}"></span>`
     : `<span class="sq"${style ? ` style="${style}"` : ''}></span>`;
 
   // ---- render: both lists ------------------------------------------------------------
@@ -3152,11 +3170,13 @@
   // before that — and every render makes a new element, so what is remembered is where it was, not which it was.
   let colorAt = '#shead';
   const sqFor = cwd => document.querySelector(`${colorAt} .sq.pick[data-cwd="${CSS.escape(cwd)}"]`) || document.querySelector(`.sq.pick[data-cwd="${CSS.escape(cwd)}"]`);
+  // Under simple colours the square stands for the board's one colour (setTint), and Peacock's is left alone.
   function openColorPicker(sq) {
     colorAt = '#shead';
     const r = sq.getBoundingClientRect();
     colorInput.style.left = r.left + 'px'; colorInput.style.top = r.bottom + 'px';
-    colorInput.dataset.cwd = sq.dataset.cwd; colorInput.value = ownColor(sq.dataset.cwd) || '#b9b9b3';
+    colorInput.dataset.tint = prefs.simpleColors ? '1' : '';
+    colorInput.dataset.cwd = sq.dataset.cwd; colorInput.value = (prefs.simpleColors ? prefs.simpleColor : ownColor(sq.dataset.cwd)) || '#b9b9b3';
     written.set(sq.dataset.cwd, colorInput.value);
     try { colorInput.showPicker(); } catch { colorInput.click(); }
   }
@@ -3174,12 +3194,17 @@
     if (previewRaf) return;
     previewRaf = requestAnimationFrame(() => { previewRaf = 0; renderBoard(); const s = state.sessions.get(state.current); if (s && s.cwd === cwd) renderHead(s); });
   }
-  colorInput.addEventListener('input', () => { const { cwd } = colorInput.dataset, hex = colorInput.value; previewColor(cwd, hex); clearTimeout(colorTimer); colorTimer = setTimeout(() => setPeacock(cwd, hex), 350); });
-  colorInput.addEventListener('change', () => setPeacock(colorInput.dataset.cwd, colorInput.value));
+  colorInput.addEventListener('input', () => {
+    const { cwd, tint } = colorInput.dataset, hex = colorInput.value;
+    if (tint) return setTint(hex);
+    previewColor(cwd, hex); clearTimeout(colorTimer); colorTimer = setTimeout(() => setPeacock(cwd, hex), 350);
+  });
+  colorInput.addEventListener('change', () => { if (!colorInput.dataset.tint) setPeacock(colorInput.dataset.cwd, colorInput.value); });
   document.addEventListener('click', e => {   // capture: before the row's own click selects the project
     const sq = e.target.closest('.sq.pick'); if (!sq) return;
     e.stopPropagation(); e.preventDefault();
-    if (e.altKey) { colorAt = '#shead'; previewColor(sq.dataset.cwd, null); setPeacock(sq.dataset.cwd, null); } else openColorPicker(sq);
+    if (e.altKey && prefs.simpleColors) setTint(null);
+    else if (e.altKey) { colorAt = '#shead'; previewColor(sq.dataset.cwd, null); setPeacock(sq.dataset.cwd, null); } else openColorPicker(sq);
   }, true);
   $('#sessions').addEventListener('click', e => {
     if (e.target.closest('#stitle .sx')) { selectProject(ALL); return; }

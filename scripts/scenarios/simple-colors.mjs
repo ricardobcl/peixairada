@@ -4,10 +4,11 @@
 // settings' switch turns the board to greys — no card, list or header in a colour, the clauding light, the state
 // chips' dots and the code in grey — while a question is still the accent, the PR chips, GitHub's faces and your mark
 // keep their colours (the theme is the projects' colours and the states', not the people's or the PRs'), and the setup
-// still shows the folder's colour (it is where the colour is set); the choice is this browser's pref and a reload keeps
-// it; off again, the colours come back.
+// still shows the folder's colour (it is where the colour is set). One colour can stand for every project instead of
+// the grey — picked under the switch, or at the chat header's square, which then leaves Peacock's alone — and ⌥-click
+// lets it go. The choice is this browser's pref and a reload keeps it; off again, Peacock's colours come back.
 import { spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -62,7 +63,8 @@ export default async function (ctx) {
       const cs = (el, p) => el ? getComputedStyle(el).getPropertyValue(p) : null, root = document.documentElement;
       const card = id => document.querySelector('#slist > .card[data-id="' + id + '"]'), plain = card(${JSON.stringify(onPr.id)});
       return {
-        colors: root.dataset.colors, pref: !!window.peix.prefs().simpleColors,
+        colors: root.dataset.colors, pref: !!window.peix.prefs().simpleColors, tint: window.peix.prefs().simpleColor,
+        all: [...new Set([...document.querySelectorAll('#slist > .card')].map(c => c.style.getPropertyValue('--repo')))],
         repo: [${JSON.stringify(busy.id)}, ${JSON.stringify(onPr.id)}].map(id => card(id).style.getPropertyValue('--repo')),
         list: document.querySelector('#sessions').style.getPropertyValue('--repo'),
         tinted: document.querySelector('#chat').classList.contains('tinted'),
@@ -127,7 +129,38 @@ export default async function (ctx) {
     await ctx.cmd('Comma');
     await ctx.waitFor(`!document.querySelector('#settings').open`, { what: 'the settings closed' });
 
-    // 4 · a reload keeps it
+    // 4 · one colour for every project instead of the grey: the row under the switch picks it, the board follows
+    const TINT = '#5a7d9a', TINT2 = '#7a5c8a';
+    const peacock = () => JSON.parse(readFileSync(join(cwd, '.vscode', 'settings.json'), 'utf8'))['peacock.color'];
+    await ctx.cmd('Comma');
+    await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
+    out.row = await ctx.evaluate(`JSON.stringify({ hidden: document.querySelector('#tintRow').hidden, sw: getComputedStyle(document.querySelector('#tintSw')).backgroundColor })`).then(JSON.parse);
+    ctx.assert.equal(out.row.hidden, false, 'the colour row shows under the switch');
+    ctx.assert.ok(chroma(out.row.sw) <= 12, `its swatch grey until one is picked: ${out.row.sw}`);
+    await ctx.evaluate(`(i => { i.value = '${TINT}'; i.dispatchEvent(new Event('input', { bubbles: true })); })(document.querySelector('#simpleTint'))`);
+    await ctx.waitFor(`getComputedStyle(document.querySelector('#tintSw')).backgroundColor === 'rgb(90, 125, 154)'`, { what: 'the swatch in it' });
+    await ctx.shot('tint-row', await ctx.evaluate(`JSON.stringify((r => ({ x: r.left - 10, y: r.top - 10, width: r.width + 20, height: r.height + 20 }))(document.querySelector('#settings').getBoundingClientRect()))`).then(JSON.parse));
+    await ctx.cmd('Comma');
+    await ctx.waitFor(`!document.querySelector('#settings').open`, { what: 'the settings closed' });
+    await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${busy.id}"]').style.getPropertyValue('--repo') === '${TINT}'`, { what: 'the cards in the one colour' });
+    await ctx.settle();
+    out.tint = await look();
+    ctx.assert.deepEqual([out.tint.tint, out.tint.all, out.tint.list, out.tint.tinted], [TINT, [TINT], TINT, true], 'every card, the list and the header in the one colour');
+    ctx.assert.ok(out.tint.card > 20 && out.tint.head > 40 && out.tint.split > 40, `in colour: ${JSON.stringify(out.tint)}`);
+    ctx.assert.ok(out.tint.dots.every(c => c >= 0 && c <= 12), 'the states still grey');
+    await ctx.shot('tint');
+
+    // the chat header's square is the same picker under simple colours, and Peacock's colour is left alone
+    await ctx.evaluate(`document.querySelector('#shead .sq.pick').dispatchEvent(new MouseEvent('click', { altKey: true, bubbles: true, cancelable: true }))`);
+    await ctx.waitFor(`!window.peix.prefs().simpleColor && !document.querySelector('#chat').classList.contains('tinted')`, { what: '⌥-click on the square: back to grey' });
+    await ctx.evaluate(`document.querySelector('#shead .sq.pick').click()`);
+    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#colorInput').dataset.tint`), '1', 'the square opens the one colour\'s picker');
+    await ctx.evaluate(`(i => { i.value = '${TINT2}'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); })(document.querySelector('#colorInput'))`);
+    await ctx.waitFor(`window.peix.prefs().simpleColor === '${TINT2}' && document.querySelector('#slist > .card[data-id="${onPr.id}"]').style.getPropertyValue('--repo') === '${TINT2}'`, { what: 'the board in the square\'s colour' });
+    await ctx.sleep(600);   // a Peacock write would land 350 ms after the panel rests
+    ctx.assert.equal(peacock(), COLOR, "Peacock's colour left as it was");
+
+    // 5 · a reload keeps it all
     await ctx.send('Page.reload'); await ctx.sleep(500);
     await ctx.waitFor(`document.querySelectorAll('#slist > .card').length >= 3`, { what: 'the board again' });
     await ctx.evaluate(`window.__chroma = ${chroma.toString()}`);
@@ -135,9 +168,9 @@ export default async function (ctx) {
     await ctx.waitFor(`document.querySelector('#log .hljs-keyword')`, { what: 'the code again' });
     await ctx.settle();
     out.reload = await look();
-    ctx.assert.deepEqual([out.reload.colors, out.reload.repo, out.reload.tinted], ['simple', ['', ''], false], 'still greys after a reload');
+    ctx.assert.deepEqual([out.reload.colors, out.reload.all, out.reload.tinted], ['simple', [TINT2], true], 'simple, in the one colour, after a reload');
 
-    // 5 · off again: the colours come back
+    // 6 · off again: Peacock's colours come back
     await setSimple(false);
     out.back = await look();
     ctx.assert.deepEqual([out.back.colors, out.back.repo, out.back.list, out.back.tinted], ['full', [COLOR, COLOR], '#000000', true], 'the colours are back');

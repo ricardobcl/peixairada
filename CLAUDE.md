@@ -229,12 +229,14 @@ refuses to run against the real directory for the same reason.
   JSONC, tested). No colour → `--nocolor`, unless the setup gives the folder one (by its shown name, `projCfg`); `#000000`
   there is `BLACK`, with its inks. The chat header's colour square is the picker (`#colorInput`).
 * **Simple colours: greys and the one accent** (2026-10-01; the settings' `#simpleColors`, `prefs.simpleColors` →
-  `<html data-colors="simple">`, `applyColors`): `repoColor` and `projColor` answer null — ALL's black too — so every
-  surface takes the `--nocolor` path, and `:root[data-colors="simple"]` (light, and dark in its media block) redefines
+  `<html data-colors="simple">`, `applyColors`): `repoColor` and `projColor` answer **the one colour** picked for
+  every project (`prefs.simpleColor`, `setTint`: the `#tintRow` swatch under the switch, or the chat header's square,
+  which then leaves Peacock's alone — `colorInput.dataset.tint`; ⌥-click lets go) or null — ALL's black too — so every
+  surface takes the `--repo` or the `--nocolor` path, and `:root[data-colors="simple"]` (light, and dark in its media block) redefines
   the state, spend and syntax tokens, `--needs` being the accent; a short block before the reduced-motion one does
   what tokens cannot (the ✳ and the F grey, a count pill's ink). **A PR and the people keep their colours** — the PR
   chips' `--pr-*`, GitHub's faces, `--you` — the theme is the projects' and the states'. **The setup's
-  squares and the colour picker read `ownColor`**, the colour as set. A new colour on the board reads a token or
+  squares read `ownColor`**, and so does the header's square outside simple colours — the colour as set. A new colour on the board reads a token or
   `repoColor`, never a hex or `ownColor` of its own, or it shows through. → `scripts/scenarios/simple-colors.mjs`.
 * **The chat header is a gradient of the project's colour**: `tintChat()` sets `--repo`, `--rink`, `--rover`/`--rover2`
   and `#chat.tinted`; `--rink` is the ink that reads on it (`inkOn()`), every control in `.shead` redrawn in it; the
@@ -397,7 +399,7 @@ refuses to run against the real directory for the same reason.
   named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, PR
   turns; `STATE_FILE` overrides) and the user's `~/.config/peixairada/config.json` (the setup, below), both shared by
   the app and every browser; the browser's `localStorage` `peixairada-prefs`
-  (selected project, filters, widths, zoom, folds, card size and compact's same height, simple colours, the person the list is narrowed to, ⌥ as Meta, drawer open/height — the keys are the `prefs` literal,
+  (selected project, filters, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the person the list is narrowed to, ⌥ as Meta, drawer open/height — the keys are the `prefs` literal,
   and old ones are deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it
   renders reads its state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
 * **The setup is the user's file, and nothing about one Mac is written in the code** (2026-09-28; the file since
