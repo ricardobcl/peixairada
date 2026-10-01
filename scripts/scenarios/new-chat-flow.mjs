@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { makeFixture } from '../fixture.mjs';
 
 // ⌥⌘N's project step also lists the folders under the org's directory — an empty one of the test server's own,
-// so this stays about the board's projects and off whatever ~/acme holds (lib/testserver.mjs sets ORG_DIR).
+// so this stays about the board's projects and off whatever this Mac's folder of repos holds (lib/testserver.mjs sets ORG_DIR).
 export const meta = { server: true, fixture: 'auto' };
 
 const enter = ctx => ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);

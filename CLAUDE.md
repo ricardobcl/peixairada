@@ -310,7 +310,7 @@ refuses to run against the real directory for the same reason.
   rest a wash (45 % to 37 %) **with no edge** (transparent since 2026-09-28, the wash running under it:
   `background-origin: border-box`): only the clauding card, the hovered one and the open one wear the colour on their
   border. A black card's wash stays lighter (28 % to 20 %). **ALL** (`key: 'all'`) is black in both
-  themes — `BLACK`, through `projColor()` — and so is a folder the setup paints `#000000` (`acme` here). A card in that black is
+  themes — `BLACK`, through `projColor()` — and so is a folder the setup paints `#000000`. A card in that black is
   `.card.black`: its solid tint is the black itself and it borrows the dark theme's inks; `--ring` turns its clauding
   light white wherever the card under it is dark. **The open card bleeds into the splitter**: `main:not(.scompact)
   #slist > .card.active` runs to the column's edge, its tint rising to the full colour over its last 44 px so it

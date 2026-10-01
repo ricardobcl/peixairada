@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 // ⌥⌘N's project step also lists the folders under the org's directory — an empty one of the test server's own,
-// so this stays about the board's projects and off whatever ~/acme holds (lib/testserver.mjs sets ORG_DIR).
+// so this stays about the board's projects and off whatever this Mac's folder of repos holds (lib/testserver.mjs sets ORG_DIR).
 export const meta = { server: true, fixture: 'auto' };
 export default async function (ctx) {
   const [two, plain] = ctx.fixture.chats;

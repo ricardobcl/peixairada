@@ -611,7 +611,7 @@
        in the bar's own colour — the card's wash under it, as .card draws it. */
     background-image: linear-gradient(to right, transparent calc(100% - 44px), var(--repo, var(--nocolor))),
       linear-gradient(165deg, color-mix(in srgb, var(--repo, var(--nocolor)) calc(var(--tint) + var(--slope)), var(--panel)), color-mix(in srgb, var(--repo, var(--nocolor)) var(--tint), var(--panel))); }
-  /* A card in the board's own black (PROJECT_COLORS — acme): 65 % of black over a light panel is a mid-grey
+  /* A card in the board's own black (a project the setup paints #000000): 65 % of black over a light panel is a mid-grey
      nothing reads on, so the tint is the colour itself and the card borrows the dark theme's inks — they inherit,
      so title, snips, times and the two speaker marks follow in one rule. In the dark theme they are what they were. */
   .card.black:hover, .card.black.active, .card.black.qsel { --tint: 100%; --slope: 0%; --ring: #fff; --ink: #e8e6df; --muted: #9a998f; --snip-claude: #c9c7bd; --you: #4fb8a8; --accent: #e08a68; }
@@ -1371,7 +1371,7 @@
 <dialog id="pdlg">
   <h3 id="pdlgTitle">New project</h3>
   <p class="help">A project is a name over one or more folders. Its chats are every chat in those folders; the folders keep their own entries too.</p>
-  <input type="text" id="pname" placeholder="Name — e.g. Wallet fees rollout" maxlength="80">
+  <input type="text" id="pname" placeholder="Name — e.g. Checkout redesign" maxlength="80">
   <div id="pfolders"></div>
   <p class="help">Other folders, one per line (absolute paths):</p>
   <textarea id="pextra" rows="2" placeholder="~/code/some-repo"></textarea>
