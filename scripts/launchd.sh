@@ -8,9 +8,10 @@
 #   scripts/launchd.sh status      # is it loaded / running?
 #   scripts/launchd.sh logs        # tail the log
 #   scripts/launchd.sh print       # show the plist that would be installed
-# PORT / NOTIFY env vars are baked into the plist at install time. PORT defaults to 7331. NOTIFY defaults
-# to `off` when the app is installed — the app adopts this server and posts its own (richer) notifications,
-# and would stay quiet if the server posted native ones — and to `native` for a bare-server setup.
+# PORT / NOTIFY env vars, this shell's PATH and its node are baked into the plist at install time — after switching
+# Node versions or moving a CLI, install again. PORT defaults to 7331. NOTIFY defaults to `off` when the app is
+# installed — the app adopts this server and posts its own (richer) notifications, and would stay quiet if the server
+# posted native ones — and to `native` for a bare-server setup.
 # Why an agent at all: the app's own server dies with the app, and every drawer's claude with it. The
 # agent's server outlives the app, so quitting or rebuilding the app leaves the chats running; and since the
 # drawers moved into holders (2026-09-20) a `restart` leaves them running too.
@@ -24,6 +25,10 @@ if [ -z "${NOTIFY:-}" ]; then if [ -d /Applications/peixAIrada.app ]; then NOTIF
 NODE=$(command -v node || true)
 [ -n "$NODE" ] || { echo "node not found in PATH" >&2; exit 1; }
 NODE="$(cd "$(dirname "$NODE")" && pwd -P)/$(basename "$NODE")"   # launchd has no PATH/shims: use the real binary
+# The CLIs the server shells out to — claude, gh, task, code — are wherever this shell finds them (Homebrew, mise or
+# asdf shims, ~/.local/bin), so the agent gets this PATH, then the system's: a fixed Homebrew-only PATH left a gh
+# installed by mise unfound, and the PR states silently off. Absolute entries only, once each, escaped for the plist.
+AGENT_PATH=$(printf '%s' "$PATH:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin" | awk -v RS=: -v ORS=: '/^\// && !seen[$0]++' | sed -e 's/:$//' -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
 
 plist() {
   cat <<PLIST
@@ -39,7 +44,7 @@ plist() {
   <dict>
     <key>PORT</key><string>$PORT</string>
     <key>NOTIFY</key><string>$NOTIFY</string>
-    <key>PATH</key><string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+    <key>PATH</key><string>$AGENT_PATH</string>
   </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>

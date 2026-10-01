@@ -50,6 +50,11 @@ is ~/acme)."
   `acme` — the answer is ⏎. **Skip is an answer** (`roots: []`, never asked again); Esc only puts it off to the next
   load; a folder under the home that is not there yet is offered to be made (*Make it and use it*, `create: true` —
   the welcome's alone: a typo in the Setup stays a refusal). In the app, *Choose…* is the system's folder panel.
+* **The README says what to install first** (the same day, "is readme update with installation setups (including
+  dependencies that need to be installed first)?" — it was not): a table of what it runs on, the optional three marked,
+  then install, first open, updating and removing. Writing it found a gap: the login agent's PATH was Homebrew's and
+  the system's only, so a `gh` installed by mise or asdf was never found and the PR states stayed off without a word.
+  `launchd.sh install` now bakes the installing shell's PATH (absolute entries, once each) ahead of those.
 * **The quotes left the code too** (the same day, "yes, strip the quotes too and push"): 175 mentions in comments that
   said `(2026-09-28, Ricardo: "…")` now say `(2026-09-28)` — the date stays, the words are in this file's entries,
   where they always were too. What a quote alone carried (a context after it, "a popover … before") was kept.

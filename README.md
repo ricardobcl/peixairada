@@ -47,18 +47,38 @@ It reads what Claude Code already writes to `~/.claude` — no plugin, no privat
 
 ## 🚀 Install
 
-Needs macOS, Node ≥ 22 and the Claude Code CLI. [`gh`](https://cli.github.com) adds PR states and cloning.
+**First, what it runs on** — the last three are optional: without one, only what it is for is missing.
+
+| | For | Install |
+|---|---|---|
+| macOS 13 or later | the app, the login agent, the keychain | |
+| Xcode Command Line Tools | `git`, and `swiftc` for the app | `xcode-select --install` |
+| Node ≥ 22 | the server | `brew install node` — or mise, nvm, asdf |
+| Claude Code, signed in | the chats themselves | `curl -fsSL https://claude.ai/install.sh \| bash`, then run `claude` once to sign in |
+| [GitHub CLI](https://cli.github.com), signed in | PR states, faces and turns, cloning | `brew install gh && gh auth login` |
+| VS Code | ⌥⌘E (VS Code Web); [Peacock](https://marketplace.visualstudio.com/items?itemName=johnpapa.vscode-peacock) for project colours | [code.visualstudio.com](https://code.visualstudio.com) |
+| [Task](https://taskfile.dev) | folders whose Taskfile starts Claude | `brew install go-task` |
+
+**Then**, from the shell you use every day — the login agent keeps its `PATH` and its `node`, which is how it finds
+`claude`, `gh` and the rest:
 
 ```sh
 git clone git@github.com:ricardobcl/peixairada.git && cd peixairada
-npm install
+npm install                    # node-pty comes prebuilt for macOS: no compiler needed
 scripts/launchd.sh install     # the server, started at login → http://127.0.0.1:7331
-mac/build.sh install           # the Mac app (optional — any browser works)
+mac/build.sh install           # the Mac app, in /Applications (optional — any browser works)
 ```
 
-On first open the board asks where your repos live, its guess from your chats already filled in. After pulling,
-`scripts/launchd.sh restart` — your chats stay open. The first time, allow `security` to read the
-*Claude Code-credentials* keychain item (that's the plan usage).
+**On first open** the board asks where your repos live, its guess from your chats already filled in. macOS asks to let
+`security` read the *Claude Code-credentials* keychain item (that's the plan usage — *Always Allow*), and the app to
+show notifications.
+
+**Updating**: `git pull && npm install`, then `scripts/launchd.sh restart` — your chats stay open — and
+`mac/build.sh install` when `mac/` or the dependencies changed. After switching Node versions, or installing a CLI
+somewhere new, run `scripts/launchd.sh install` and `mac/build.sh install` again.
+
+**Removing**: `scripts/launchd.sh uninstall`, then delete `/Applications/peixAIrada.app` — and `~/.config/peixairada`
+and `~/Library/Application Support/peixAIrada` to forget your setup and the board's state.
 
 ## ⚙️ Setup
 
@@ -94,7 +114,7 @@ What the board records as you use it — done ticks, titles, pins — stays in `
 | `CLAUDE_DIR` · `STATE_FILE` | `~/.claude` · `~/Library/Application Support/peixAIrada/state.json` | what it reads · keeps |
 | `CONFIG_FILE` | `~/.config/peixairada/config.json` (beside `STATE_FILE` when that is set) | the setup |
 
-The login agent takes `PORT` and `NOTIFY` at `scripts/launchd.sh install`.
+The login agent takes `PORT`, `NOTIFY` and your `PATH` at `scripts/launchd.sh install`.
 
 </details>
 
@@ -124,7 +144,7 @@ Settings › Keys lists the rest.
 ## 🛠 Hacking
 
 `npm test` · `npm run check` · `npm run scenarios` — and `npm run scenario -- scripts/readme-shots.mjs` redraws these
-screenshots from a made-up board. [CLAUDE.md](CLAUDE.md) holds the working notes, [docs/DECISIONS.md](docs/DECISIONS.md)
-the why.
+screenshots from a made-up board. The browser checks drive Google Chrome (`CHROME` points at another).
+[CLAUDE.md](CLAUDE.md) holds the working notes, [docs/DECISIONS.md](docs/DECISIONS.md) the why.
 
 <div align="center"><br><sub>🐟 A <i>peixarada</i> is a Portuguese fish feast — more than anyone planned for.</sub></div>

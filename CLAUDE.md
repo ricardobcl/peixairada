@@ -96,7 +96,8 @@ refuses to run against the real directory for the same reason.
   all read as `{}`.
 * **The holder socket is `setEncoding('utf8')` on both ends** — a glyph split across chunks decodes whole.
 * **Every CLI the server shells out to goes through `findBin()`** — the app's server has a bare PATH; `<NAME>_BIN`
-  overrides. The two network calls are `gh` (PR state and title) and the usage endpoint.
+  overrides. The login agent's PATH is the installing shell's, then the system's (`launchd.sh`, 2026-10-01). The two
+  network calls are `gh` (PR state and title) and the usage endpoint.
 * **A PR is polled by how recently its chat was touched** (2026-09-28): `sweepPrs` on the registry poll queues what
   `duePrs` says — a PR never asked about (so boot asks every one, the recent chats' first), else by `PR_POLL`: every
   minute for a chat touched within the hour, 5 min within the day, 30 within three days, **never after**. Touched is
