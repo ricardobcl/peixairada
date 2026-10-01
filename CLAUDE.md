@@ -229,8 +229,9 @@ refuses to run against the real directory for the same reason.
 * **Simple colours: greys and the one accent** (2026-10-01; the settings' `#simpleColors`, `prefs.simpleColors` →
   `<html data-colors="simple">`, `applyColors`): `repoColor` and `projColor` answer null — ALL's black too — so every
   surface takes the `--nocolor` path, and `:root[data-colors="simple"]` (light, and dark in its media block) redefines
-  the state, PR, spend and syntax tokens, `--needs` being the accent; a short block before the reduced-motion one does
-  what tokens cannot (the ✳ and the F grey, the header's PR chips on its black, faces in grayscale). **The setup's
+  the state, spend and syntax tokens, `--needs` being the accent; a short block before the reduced-motion one does
+  what tokens cannot (the ✳ and the F grey, a count pill's ink). **A PR and the people keep their colours** — the PR
+  chips' `--pr-*`, GitHub's faces, `--you` — the theme is the projects' and the states'. **The setup's
   squares and the colour picker read `ownColor`**, the colour as set. A new colour on the board reads a token or
   `repoColor`, never a hex or `ownColor` of its own, or it shows through. → `scripts/scenarios/simple-colors.mjs`.
 * **The chat header is a gradient of the project's colour**: `tintChat()` sets `--repo`, `--rink`, `--rover`/`--rover2`

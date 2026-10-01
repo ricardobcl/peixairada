@@ -2,8 +2,9 @@
 // we have a them config with simple colors?"). A folder with a Peacock colour and three chats in it: one clauding, one
 // asking, one on an open PR with a face and a block of code. What this checks: off (the default), the cards, the
 // splitter and the open chat's header wear the folder's colour, the list ALL's black, a PR chip its state's green; the
-// settings' switch turns the board to greys — no card, list or header in a colour, the clauding light, the PR chip,
-// the state chips' dots and the code in grey, GitHub's faces too — while a question is still the accent and the setup
+// settings' switch turns the board to greys — no card, list or header in a colour, the clauding light, the state
+// chips' dots and the code in grey — while a question is still the accent, the PR chips, GitHub's faces and your mark
+// keep their colours (the theme is the projects' colours and the states', not the people's or the PRs'), and the setup
 // still shows the folder's colour (it is where the colour is set); the choice is this browser's pref and a reload keeps
 // it; off again, the colours come back.
 import { spawn } from 'node:child_process';
@@ -72,7 +73,7 @@ export default async function (ctx) {
         pr: __chroma(cs(plain.querySelector('.cpr[data-state="open"]'), 'background-color')), hpr: __chroma(cs(document.querySelector('.shead .hpr[data-state="open"]'), 'background-color')),
         dots: [...document.querySelectorAll('#fchips .fchip')].map(c => __chroma(cs(c, '--c'))),
         code: ['.hljs-keyword', '.hljs-string'].map(q => __chroma(cs(document.querySelector('#log ' + q), 'color'))),
-        face: cs(plain.querySelector('.faces img'), 'filter'),
+        face: cs(plain.querySelector('.faces img'), 'filter'), you: __chroma(cs(plain.querySelector('.snip.you b'), 'color')),
         asking: card(${JSON.stringify(asking.id)}).classList.contains('asking'), needs: cs(root, '--needs').trim(), accent: cs(root, '--accent').trim(),
       };
     })())`).then(JSON.parse);
@@ -95,6 +96,7 @@ export default async function (ctx) {
     for (const k of ['card', 'open', 'head', 'split', 'lit', 'pr', 'hpr']) ctx.assert.ok(out.full[k] > 40, `${k} in a colour: ${JSON.stringify(out.full)}`);
     ctx.assert.ok(out.full.dots.some(c => c > 40) && out.full.code.every(c => c > 40), `the state chips' dots and the code in colour: ${JSON.stringify(out.full)}`);
     ctx.assert.equal(out.full.face, 'none', 'a face in its colours');
+    ctx.assert.ok(out.full.you > 40, `your mark in its colour: ${out.full.you}`);
     await ctx.shot('full');
 
     // 2 · the switch: greys, and the accent for the question
@@ -105,9 +107,11 @@ export default async function (ctx) {
     ctx.assert.deepEqual(out.simple.repo, ['', ''], 'no card wears the folder\'s colour');
     ctx.assert.equal(out.simple.list, '', 'nor the list, ALL\'s black included');
     ctx.assert.equal(out.simple.tinted, false, 'the chat header is the plain one');
-    for (const k of ['card', 'open', 'head', 'split', 'lit', 'pr', 'hpr']) ctx.assert.ok(out.simple[k] >= 0 && out.simple[k] <= 12, `${k} in grey: ${JSON.stringify(out.simple)}`);
+    for (const k of ['card', 'open', 'head', 'split', 'lit']) ctx.assert.ok(out.simple[k] >= 0 && out.simple[k] <= 12, `${k} in grey: ${JSON.stringify(out.simple)}`);
     ctx.assert.ok(out.simple.dots.every(c => c >= 0 && c <= 12) && out.simple.code.every(c => c >= 0 && c <= 12), `the dots and the code in grey: ${JSON.stringify(out.simple)}`);
-    ctx.assert.equal(out.simple.face, 'grayscale(1)', 'a face in grey');
+    // the PRs and the people are not the theme's (later the same day): a PR chip in its state's colour, a face in its own
+    for (const k of ['pr', 'hpr', 'you']) ctx.assert.ok(out.simple[k] > 40, `${k} keeps its colour: ${JSON.stringify(out.simple)}`);
+    ctx.assert.equal(out.simple.face, 'none', 'a face in its colours');
     ctx.assert.equal(out.simple.asking, true, 'the question is still on its card');
     ctx.assert.equal(out.simple.needs, out.simple.accent, 'and it is the accent — the one colour left, for what wants you');
     await ctx.shot('simple');

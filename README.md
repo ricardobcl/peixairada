@@ -64,7 +64,7 @@ On first open the board asks where your repos live, its guess from your chats al
 
 **Settings** — ⌘, or ··· in the chat's header:
 
-- **Board** — notifications, simple colours (greys and one accent, for a quieter board), card size, ⌥ as Meta.
+- **Board** — notifications, simple colours (projects and states in grey, for a quieter board), card size, ⌥ as Meta.
 - **Setup** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
   project ⌥⌘O starts a chat in, and a short name and a colour where Peacock has none, per project.
 

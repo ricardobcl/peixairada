@@ -35,20 +35,19 @@
   } }
   /* Simple colours (2026-10-01, Ricardo: "some people don't like so many colors in the apps, it's too stimulating"):
      greys and the one accent. A project's colour goes (repoColor answers null, so every surface takes --nocolor's grey),
-     and so does every hue that only names a state — clauding, ready, watching, a PR's state, the plan's spend, the
-     code's syntax — told by tone instead. The accent stays for what wants you: a question (--needs is the accent
-     here), your move, an unread count, the focus. data-colors on the root, from prefs.simpleColors (applyColors). */
+     and so does every hue that only names a state — clauding, ready, watching, the plan's spend, the code's syntax —
+     told by tone instead. A PR's state and the people keep their colours: the PR chips, GitHub's faces, your mark on a
+     card. The accent stays for what wants you: a question (--needs is the accent here), your move, an unread count,
+     the focus. data-colors on the root, from prefs.simpleColors (applyColors). */
   :root[data-colors="simple"] {
     --working: #6b6b66; --idle: #3a3a36; --needs: #c96442; --watch: #8b8b85; --spend: #8b8b85;
-    --you: #8b8b85; --vscode: #6b6b66; --code-ink: #45443f;
-    --pr-open: #3a3a36; --pr-merged: #6b6b66; --pr-closed: #8b8b85; --pr-draft: #8b8b85;
+    --vscode: #6b6b66; --code-ink: #45443f;
     --hl-com: #97968d; --hl-key: #1c1c1a; --hl-str: #6b6b66; --hl-num: #1c1c1a;
     --hl-fn: #1c1c1a; --hl-cls: #1c1c1a; --hl-var: #1c1c1a; --hl-meta: #6b6b66;
   }
   @media (prefers-color-scheme: dark) { :root[data-colors="simple"]:not([data-theme="light"]) {
     --working: #9a998f; --idle: #e8e6df; --needs: #e08a68; --watch: #7c7c74; --spend: #8b8b85;
-    --you: #7c7c74; --vscode: #9a998f; --code-ink: #d6d4cc;
-    --pr-open: #e8e6df; --pr-merged: #b5b3aa; --pr-closed: #7c7c74; --pr-draft: #7c7c74;
+    --vscode: #9a998f; --code-ink: #d6d4cc;
     --hl-com: #7c7c74; --hl-key: #e8e6df; --hl-str: #b5b3aa; --hl-num: #e8e6df;
     --hl-fn: #e8e6df; --hl-cls: #e8e6df; --hl-var: #e8e6df; --hl-meta: #9a998f;
   } }
@@ -1267,11 +1266,8 @@
      one. → scripts/scenarios/reduced-motion.mjs */
   /* ---- simple colours: what the tokens cannot reach ---- */
   /* (2026-10-01) The marks that wear the accent as decoration only — Claude's ✳ before a card's reply, a Fable chat's F
-     — go grey, so the accent on a card always means something; the chat header's PR chips sit on its black in both
-     themes, so they take the dark greys and ink; GitHub's faces lose their colour; a count pill reads in the ground. */
+     — go grey, so the accent on a card always means something; a count pill reads in the ground on its grey. */
   :root[data-colors="simple"] :is(.card .snip.claude b, .card .trow .fable) { color: var(--muted); }
-  :root[data-colors="simple"] .shead .hpr { --pr-open: #e8e6df; --pr-merged: #b5b3aa; --pr-closed: #7c7c74; --pr-draft: #7c7c74; --bg: #141413; }
-  :root[data-colors="simple"] :is(.faces, #people) img { filter: grayscale(1); }
   :root[data-colors="simple"] .pc { color: var(--bg); }
 
   @media (prefers-reduced-motion: reduce) {
@@ -1355,7 +1351,7 @@
   <nav class="stabs" role="tablist"><button role="tab" data-tab="board" class="on">Board</button><button role="tab" data-tab="setup">Setup</button><button role="tab" data-tab="keys">Keys</button></nav>
   <div class="spane scol" data-tab="board">
     <label class="opt" title="Off, nothing posts a banner — not the app, not a browser tab, not the server — and the unread counts on the cards and the Dock go on as before"><input type="checkbox" id="notifyOn" checked><span><b>notifications</b> — a banner when Claude finishes or asks you something, while the board is not in front</span></label>
-    <label class="opt" title="On, the board is greys and the one accent: no project colours (Peacock's or the setup's — they stay set, for VS Code and for when this is off), no colour per state, per PR or in the code; the accent is left for what wants you — a question, your move, an unread count"><input type="checkbox" id="simpleColors"><span><b>simple colours</b> — greys and one accent, for what wants you; off, every project in its colour</span></label>
+    <label class="opt" title="On, the board is greys and the one accent: no project colours (Peacock's or the setup's — they stay set, for VS Code and for when this is off), no colour per state or in the code — a PR's chip and the people's faces keep theirs; the accent is left for what wants you — a question, your move, an unread count"><input type="checkbox" id="simpleColors"><span><b>simple colours</b> — greys and one accent, for what wants you; off, every project in its colour</span></label>
     <label class="opt" title="On, every clauding card's light stands at the same angle — the blinks and the dots too; off, each card runs at its own. Either way a card rebuilt by an update carries on where it was"><input type="checkbox" id="ringsInStep" checked><span><b>rings in step</b> — every card's light at the same angle; off, each at its own</span></label>
     <div class="dens" title="How much of each chat its card carries — a question waiting on you shows at every size">
       <b>cards</b><input type="range" id="cardsSize" min="0" max="2" step="1" value="0" list="cardsStops" aria-label="Card size">

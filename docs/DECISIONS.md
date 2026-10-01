@@ -66,9 +66,12 @@ simple colors?"
 * **Greys and one accent**: every project colour goes — Peacock's, the setup's and ALL's black — so the cards, the
   list's edge, the splitter, the chat header and the rail take the grey a folder without a colour always had
   (`repoColor` and `projColor` answer null). The hues that only name a state go grey and differ by tone: ready darker
-  than clauding, done lightest; a PR open darkest, merged lighter, closed and draft lighter still; the plan's spend,
-  the monitor's teal, VS Code's blue, inline code and the syntax (comments and strings apart by tone alone). GitHub's
-  faces go grayscale.
+  than clauding, done lightest; the plan's spend, the monitor's teal, VS Code's blue, inline code and the syntax
+  (comments and strings apart by tone alone).
+* **…but not the PRs or the people** (later the same day, Ricardo: "the theme should affect the project colors, no
+  mute the PR and user icons color"): a PR chip keeps its state's colour — on the card and in the header —, GitHub's
+  faces theirs, and your mark before a card's prompt its teal. The first cut had greyed them all (a PR by tone, open
+  darkest; the faces grayscale): the theme is the projects' colours and the states' hues, not who or which PR.
 * **The accent is kept for what wants you**: a question's blinking edge (`--needs` is the accent here, not red),
   *your move*, the unread count, the focus ring, the selection, links. Claude's ✳ on every card and a Fable chat's F,
   which wore it as decoration, go grey; Claude's pixel mark between the clauding and the ready cards keeps it — one per
@@ -78,7 +81,8 @@ simple colors?"
 * **Not done**: the terminal's colours are Claude Code's own (its `/theme`); and motion — the rings, the blink, the
   comet — is the system's *reduce motion*, which the board already honours. A board quieter still is the two together.
 * **Verified**: `scripts/scenarios/simple-colors.mjs`, new — the chroma of every surface measured off, on, after a
-  reload and off again; the setup's square; the question still in the accent. open-light, card-signals, cog-setup,
+  reload and off again; the setup's square; the question still in the accent; the PR chips, a face and your mark in
+  colour either way. open-light, card-signals, cog-setup,
   header-prs, people-row and project-cue still pass.
 
 ## Decisions of 2026-09-30 — ticking the open chat moves on
