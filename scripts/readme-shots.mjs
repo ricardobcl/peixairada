@@ -179,7 +179,13 @@ export default async function (ctx) {
     await ctx.waitFor(`window.peix.state().timeline.shown && window.peix.state().timeline.k === 1`, { what: 'the timeline called out' });
     await ctx.sleep(300);
     await snap('timeline-dark', { ...list, height: Math.min(list.height, 640) });
-    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: W - 5, y: H - 5 });
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: W - 5, y: H / 2 });
+    await ctx.waitFor(`!window.peix.state().timeline.shown`, { what: 'the timeline gone again' });
+
+    // 5 · simple colours: every project in black, the states in grey — the settings' switch, as a click turns it
+    await ctx.evaluate(`document.querySelector('#simpleColors').click()`);
+    await ctx.waitFor(`document.documentElement.dataset.colors === 'simple'`, { what: 'simple colours' });
+    for (const dark of [true, false]) { await theme(dark); await snap(`simple-${dark ? 'dark' : 'light'}`); }
     return { shots };
   } finally {
     for (const s of sleeps) try { s.kill(); } catch {}

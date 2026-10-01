@@ -17,6 +17,13 @@
   <img src="docs/shots/board-light.png" alt="The board: chat cards coloured by project on the left, the open chat on the right">
 </picture>
 
+<p align="center"><sub>Every project in its colour — or, with <b>simple colours</b> on (Settings › Board), every project in black and the states in grey:</sub></p>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/shots/simple-dark.png">
+  <img src="docs/shots/simple-light.png" alt="The same board with simple colours: every project in black, the states in grey, the PRs and the question still in colour">
+</picture>
+
 It reads what Claude Code already writes to `~/.claude` — no plugin, no private API, and it never writes there.
 
 ## ✨ Features
@@ -31,6 +38,8 @@ It reads what Claude Code already writes to `~/.claude` — no plugin, no privat
   fills in, notifies you and brings its ticked chat back when it's your move again — a push, a reply, a review.
 - 🎨 **Projects** — folders in their [Peacock](https://marketplace.visualstudio.com/items?itemName=johnpapa.vscode-peacock)
   colour, or named sets of folders.
+- 🌑 **Simple colours** — a quieter board: every project in black (or one colour you pick), the states in grey; PRs
+  and faces keep their colours, and the accent is left for what needs you.
 - 🪟 **Tabs and splits** — a shell, VS Code Web and GitHub pages beside the chat.
 - 📊 **Plan usage** — your session and weekly limits, always in view.
 

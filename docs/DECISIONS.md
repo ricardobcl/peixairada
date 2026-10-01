@@ -107,6 +107,10 @@ simple colors?"
 * **Black is the default** (and again: "leave black as the default color when picking the 'simple color' option"):
   with no colour picked, simple colours paint every project black (`simpleTint()`), not grey; ⌥-click on the swatch
   or the header's square goes back to black. Grey is still a colour the picker can choose.
+* **The README shows both** (and: "update the readme screenshot with current UI and show case both colorful version
+  and the simple color (black) version"): `scripts/readme-shots.mjs` turns the switch on last and shoots the same
+  board again (`docs/shots/simple-*.png`), and the README shows it full width right under the board in colour, each
+  in the reader's theme (side by side in the features table first, at 380 px, it went unseen).
 * **The accent is kept for what wants you**: a question's blinking edge (`--needs` is the accent here, not red),
   *your move*, the unread count, the focus ring, the selection, links. Claude's ✳ on every card and a Fable chat's F,
   which wore it as decoration, go grey; Claude's pixel mark between the clauding and the ready cards keeps it — one per
