@@ -255,6 +255,11 @@ refuses to run against the real directory for the same reason.
   isolates so the paint sits under the row. The title (`.shead h2 .t`) and everything right of the h2 borrow the dark
   theme's inks (the variables; their colour through `:where`, so a control's own rule still wins). At the notch the
   housing is inside the black.
+* **A colour as dark as that black turns the black grey** (2026-10-01; `nearBlack`, Peacock's brightness under 40):
+  the open chat's (`tintChat` → `main.darkchat`) makes the header's `::after` and the splitter's `::after`/`::before`
+  `#4a4a45`, and a list whose cards are all that dark gets, in the dark theme, a grey ground (`renderSessionList` →
+  `#sessions.onblack`, `--bg: #2e2e2b`). Simple colours' black, or a project painted `#000000`. An open or hovered
+  black card's own ink is the borrowed light one (`color: var(--ink)` on `.card.black.active`).
 * **The chat header is drawn only when it changed** (2026-09-27): `renderHead` compares the header's, the menu's and
   the PR rows' markup with `drawn` and sets innerHTML only when different, then `layoutNotch(); fitHeadPrs()` only for
   a new header; the handlers are still bound on every call (they close over `s`). Anything that edits the header in

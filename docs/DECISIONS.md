@@ -88,6 +88,13 @@ simple colors?"
   goes back to it. The chat header's square, which picks the folder's Peacock colour, picks this one instead while
   simple colours are on — the square shows the board's colour then, and changing Peacock's from it changed nothing on
   the board. The states stay grey and the PRs and faces keep theirs. A pref, like the switch.
+* **Black as that colour still stands out** (later again, Ricardo: "the background color for the 2nd color is black,
+  but if we use a single mono color, ensure there is some contrast (e.g. if we choose all cards black, make the
+  background not balck (gray?))"): a colour as dark as the board's black (`nearBlack`) turns that black grey — the
+  header right of the project's box and the splitter under the open card (`#4a4a45`), and, in the dark theme, the
+  ground behind a list whose cards are all that dark (`#2e2e2b`); the light theme's ground was light enough. It goes
+  by the colour, not the switch, so a project painted `#000000` gets it too. An open black card's name, which kept
+  the light theme's dark ink on the black, takes the light one like the rest of the card.
 * **The accent is kept for what wants you**: a question's blinking edge (`--needs` is the accent here, not red),
   *your move*, the unread count, the focus ring, the selection, links. Claude's ✳ on every card and a Fable chat's F,
   which wore it as decoration, go grey; Claude's pixel mark between the clauding and the ready cards keeps it — one per
@@ -99,7 +106,7 @@ simple colors?"
 * **Verified**: `scripts/scenarios/simple-colors.mjs`, new — the chroma of every surface measured off, on, after a
   reload and off again; the setup's square; the question still in the accent; the PR chips, a face and your mark in
   colour either way; the one colour picked under the switch and at the header's square (Peacock's file untouched),
-  ⌥-click back to grey, kept by a reload. open-light, card-signals, cog-setup,
+  ⌥-click back to grey, kept by a reload; black as that colour, in both themes, against the greys beside it. open-light, card-signals, cog-setup,
   header-prs, people-row and project-cue still pass.
 
 ## Decisions of 2026-09-30 — ticking the open chat moves on

@@ -593,12 +593,15 @@
   /* A card in the board's own black (a project the setup paints #000000): 65 % of black over a light panel is a mid-grey
      nothing reads on, so the tint is the colour itself and the card borrows the dark theme's inks — they inherit,
      so title, snips, times and the two speaker marks follow in one rule. In the dark theme they are what they were. */
-  .card.black:hover, .card.black.active, .card.black.qsel { --tint: 100%; --slope: 0%; --ring: #fff; --ink: #e8e6df; --muted: #9a998f; --snip-claude: #c9c7bd; --you: #4fb8a8; --accent: #e08a68; }
+  .card.black:hover, .card.black.active, .card.black.qsel { color: var(--ink); --tint: 100%; --slope: 0%; --ring: #fff; --ink: #e8e6df; --muted: #9a998f; --snip-claude: #c9c7bd; --you: #4fb8a8; --accent: #e08a68; }
   /* The light that runs round a clauding card is the card's colour, which on a black card is black on black
      (2026-09-20). --ring is what the light
      and its glow run in: white wherever the card under them is dark — the dark theme, and the solid tint the
      hovered and open card wear in either theme (above). On the light theme's pale wash, black still reads best. */
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card.black { --ring: #fff; } }
+  /* (2026-10-01) Every card in view as dark as the dark theme's ground (nearBlack, renderSessionList): the ground behind
+     them is a grey, so the cards still stand out of it. The light theme's ground is light enough as it is. */
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #sessions.onblack { --bg: #2e2e2b; background: var(--bg); } }
   .card.done { opacity: .55; }
   .card.gone { opacity: .8; }   /* no live process: still ready, but a resume is coming */
   #slist > .leaving { pointer-events: none; overflow: hidden; }   /* a card on its way out, wrapped (leaveCard): it folds shut where it stood and takes no click; `#slist > .card` never sees it */
@@ -869,6 +872,9 @@
      the dark theme's inks, as a black card does. */
   .shead { isolation: isolate; }
   .shead::after { content: ''; position: absolute; top: 0; right: 0; left: var(--hsplit, 100%); height: var(--hrow, 100%); background: #000; z-index: -1; pointer-events: none; }
+  /* (2026-10-01) The open chat's colour as dark as that black (nearBlack, tintChat): the black beside it — here, and
+     the splitter under the open card — is a grey, so the project's box and the card still stand out of it. */
+  main.darkchat .shead::after, main.darkchat #splitter::after, main.darkchat #splitter::before { background: #4a4a45; }
   .shead > :not(h2, .details) { --ink: #e8e6df; --muted: #9a998f; --line: #2c2c29; --rink: #e8e6df; --panel: #1c1c1a; --inline-bg: rgba(255, 255, 255, .075); }
   :where(.shead > :not(h2, .details)) { color: var(--ink); }   /* for what inherits its ink; a control's own rule still wins */
   .shead h2 .t { color: #e8e6df; }
@@ -1665,17 +1671,22 @@
   // The ink that reads on a colour: near-black on a light one, white on a dark one — Peacock's own rule (tinycolor's
   // brightness, (299r + 587g + 114b) / 1000, light from 128), so the header agrees with the VS Code title bar of the
   // same folder; WCAG luminance would put black on #007fff. Peacock writes #rrggbb; anything else gets the page's ink.
-  const inkOn = color => {
-    const m = /^#([0-9a-f]{3,8})$/i.exec(String(color).trim()); if (!m) return 'var(--ink)';
+  const brightness = color => {
+    const m = /^#([0-9a-f]{3,8})$/i.exec(String(color).trim()); if (!m) return null;
     const h = m[1].length < 6 ? [...m[1]].map(c => c + c).join('') : m[1];
     const ch = i => parseInt(h.slice(i, i + 2), 16);
-    return (299 * ch(0) + 587 * ch(2) + 114 * ch(4)) / 1000 >= 128 ? '#1c1c1a' : '#ffffff';
+    return (299 * ch(0) + 587 * ch(2) + 114 * ch(4)) / 1000;
   };
+  const inkOn = color => { const b = brightness(color); return b === null ? 'var(--ink)' : b >= 128 ? '#1c1c1a' : '#ffffff'; };
+  // A colour too close to the board's black to be told from it (2026-10-01): the black beside it — the chat header's
+  // right of the project, the splitter under the open card (main.darkchat), the dark theme's ground behind a list of
+  // such cards (#sessions.onblack) — turns grey.
+  const nearBlack = color => { const b = brightness(color); return b !== null && b < 40; };
   // The chat pane in a project's colour: --repo for the header and the transcript's wash, --rink for what reads
   // on the header, --hveil and --hveil2 the veils its gradient ends in, across and down (away from the ink: black
   // under white ink, white under dark), .tinted while there is one (CSS cannot ask whether --repo is set).
   const tintChat = color => {
-    const c = $('#chat'); c.classList.toggle('tinted', !!color);
+    const c = $('#chat'); c.classList.toggle('tinted', !!color); $('#main').classList.toggle('darkchat', nearBlack(color));
     // the splitter: the chat's colour, the grey of none, the panel until a chat is open — registered (main's rule), so the change eases
     $('#main').style.setProperty('--openc', color || 'var(--nocolor)');
     c.style.setProperty('--hbg', color || 'var(--nocolor)');   // the header's ground and the transcript's wash, eased
@@ -1987,6 +1998,7 @@
     // into the ready group, where its last prompt puts it. That order is also how a query's ties are broken.
     const board = (a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byWord(a, b);
     const shown = list.filter(s => filterOn(bucket(s))).sort(q ? (a, b) => (score.get(b.id) - score.get(a.id)) || board(a, b) : board);
+    $('#sessions').classList.toggle('onblack', shown.length > 0 && shown.every(s => nearBlack(repoColor(s.cwd))));
     // The project filter's one cue: a click is ⌥⌘P's picker, × goes back to ALL. The square is only a colour here —
     // the colour picker is the chat header's.
     // The head names the project and nothing else (2026-09-27): no colour square — the chat header's is the picker —
