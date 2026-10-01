@@ -10,7 +10,8 @@ tree, and *Findings* — the full stories behind the bullets below (the bullets 
 their dates and quotes, are there verbatim). When a finding is new, add a decision entry there and a bullet here with
 a pointer; do not grow this file with stories. **A comment in the code carries the date of its decision, never a
 person's words**: the request, quoted, goes in the decision entry (since 2026-10-01 — the board is shared). **Nothing
-names the real org, its repos or the people on its PRs** — `acme` and stand-ins, in the code, the tests and both docs.
+names the real org, its repos or the people on its PRs** — `acme` and stand-ins, in the code, the tests and both docs;
+commits carry GitHub's noreply address (this repo's `user.email`).
 
 ## Run, build, check
 

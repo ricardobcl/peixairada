@@ -62,8 +62,13 @@ is ~/acme)."
   `scheduler`, `web-clients`, `site`, `shop-backend`), PR numbers are made up, a reviewer's handle is `ana` (the
   fixtures' name), a chat title and a search lost the words that said what the company does, and a launcher's
   environment says *a cluster's credentials* instead of which services. Kept: names any company has (`wallet-api`,
-  `backend`, `oracle`), which the tests and the code use as fixtures too. **The history still holds the real names**
-  — every commit before this one; the GitHub repo is private, and rewriting the history is a separate decision.
+  `backend`, `oracle`), which the tests and the code use as fixtures too. **The history was rewritten to match**, before the
+  repo goes public (Ricardo: "I WANT to redefine all commits to remove PII traces before making the project
+  public"): `git filter-repo` ran the same replacements over every version of every file and every commit message,
+  the home path became `/Users/me/`, and every commit's address GitHub's noreply one (`user.email` in this repo's
+  config, so new commits carry it too). 291 commits, the newest tree byte for byte the same; a scan of every blob and
+  message finds none of the names. GitHub's `main` was force-pushed; the commit IDs this file cites are the new ones.
+  The author's name stays — the repo is under it.
 * **The quotes left the code too** (the same day, "yes, strip the quotes too and push"): 175 mentions in comments that
   said `(2026-09-28, Ricardo: "…")` now say `(2026-09-28)` — the date stays, the words are in this file's entries,
   where they always were too. What a quote alone carried (a context after it, "a popover … before") was kept.
@@ -2442,7 +2447,7 @@ snapshot and rebuilds its screen from it.** It is a change to the drawer's proto
   * **Section maps** (`npm run map`, `scripts/map.mjs`) at the top of `server.mjs` and `public/index.html`,
     generated from the files' own banners — names, not line numbers, so they do not drift.
   * **Notes reshaped**: `CLAUDE.md` is current invariants, one bullet each, under stable headings; the stories moved
-    here verbatim (see *Findings* below). Commits per item from now on (`9560f90` bundled the day before this).
+    here verbatim (see *Findings* below). Commits per item from now on (`166dac3` bundled the day before this).
   * The app rebuilt with `lib/` in its bundle; the live server restarted last, `--after 20`, from this drawer.
 
 ## Decisions of 2026-09-20, later that morning (the uncommitted session)
@@ -2578,9 +2583,9 @@ snapshot and rebuilds its screen from it.** It is a change to the drawer's proto
 
 ## State of the tree (2026-09-20, early morning)
 
-* **`main` is 14 commits ahead of `origin/main`, nothing pushed.** Range `eace89a..217b3f3`, all from the
+* **`main` is 14 commits ahead of `origin/main`, nothing pushed.** Range `7aa56db..d5413bd`, all from the
   2026-09-19/20 session described below. Pushing is a deliberate choice left to Ricardo.
-* **The working tree carries a *second* session's uncommitted work** on top of `217b3f3`: `server.mjs`,
+* **The working tree carries a *second* session's uncommitted work** on top of `d5413bd`: `server.mjs`,
   `public/index.html`, `mac/build.sh`, `README.md`, `CLAUDE.md` (≈335 lines). Do not discard or blindly
   commit it; review it. What it contains, from its own CLAUDE.md notes:
   * plan usage — `GET /api/usage` calling `https://api.anthropic.com/api/oauth/usage` with Claude Code's
@@ -2590,7 +2595,7 @@ snapshot and rebuilds its screen from it.** It is a change to the drawer's proto
   * the **chat list folds to a rail** (`sessionsCompact`, `«` in its header); **⌥⌘O** opens a modal
     project picker;
   * **a chat's PRs as rows under the chat header (`#prlist`)** instead of chips in it — note this overlaps
-    with the per-card PR chips committed in `0d1eea2`; decide which stays;
+    with the per-card PR chips committed in `efc7348`; decide which stays;
   * the working ring recoloured to the **project's colour**, 3 px, with a glow (was amber, 2 px);
   * **Shift+Enter in the drawer** no longer submits (sends `ESC CR`, what Claude Code's own
     `/terminal-setup` binds);
