@@ -232,8 +232,8 @@ refuses to run against the real directory for the same reason.
 * **Simple colours: greys and the one accent** (2026-10-01; the settings' `#simpleColors`, `prefs.simpleColors` →
   `<html data-colors="simple">`, `applyColors`): `repoColor` and `projColor` answer **the one colour** picked for
   every project (`prefs.simpleColor`, `setTint`: the `#tintRow` swatch under the switch, or the chat header's square,
-  which then leaves Peacock's alone — `colorInput.dataset.tint`; ⌥-click lets go) or null — ALL's black too — so every
-  surface takes the `--repo` or the `--nocolor` path, and `:root[data-colors="simple"]` (light, and dark in its media block) redefines
+  which then leaves Peacock's alone — `colorInput.dataset.tint`; ⌥-click lets go), black until one is (`simpleTint()`)
+  — ALL included — so every surface takes the `--repo` path, and `:root[data-colors="simple"]` (light, and dark in its media block) redefines
   the state, spend and syntax tokens, `--needs` being the accent; a short block before the reduced-motion one does
   what tokens cannot (the ✳ and the F grey, a count pill's ink). **A PR and the people keep their colours** — the PR
   chips' `--pr-*`, GitHub's faces, `--you` — the theme is the projects' and the states'. **The setup's

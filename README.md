@@ -84,7 +84,7 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
 
 **Settings** — ⌘, or ··· in the chat's header:
 
-- **Board** — notifications, simple colours (every project in one colour you pick, the states in grey, for a quieter board), card size, ⌥ as Meta.
+- **Board** — notifications, simple colours (every project in black, or one colour you pick, the states in grey, for a quieter board), card size, ⌥ as Meta.
 - **Setup** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
   project ⌥⌘O starts a chat in, and a short name and a colour where Peacock has none, per project.
 

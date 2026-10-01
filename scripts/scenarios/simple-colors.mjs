@@ -1,12 +1,12 @@
 // Simple colours (2026-10-01). A folder with a Peacock colour and three chats in it: one clauding, one
 // asking, one on an open PR with a face and a block of code. What this checks: off (the default), the cards, the
 // splitter and the open chat's header wear the folder's colour, the list ALL's black, a PR chip its state's green; the
-// settings' switch turns the board to greys — no card, list or header in a colour, the clauding light, the state
-// chips' dots and the code in grey — while a question is still the accent, the PR chips, GitHub's faces and your mark
+// settings' switch turns the board to black and greys — every card, the list and the header in black, the clauding
+// light, the state chips' dots and the code in grey — while a question is still the accent, the PR chips, GitHub's faces and your mark
 // keep their colours (the theme is the projects' colours and the states', not the people's or the PRs'), and the setup
-// still shows the folder's colour (it is where the colour is set). One colour can stand for every project instead of
-// the grey — picked under the switch, or at the chat header's square, which then leaves Peacock's alone — and ⌥-click
-// lets it go. Black as that colour still stands out: the black beside it — the header right of the project, the
+// still shows the folder's colour (it is where the colour is set). Another colour can stand for every project instead
+// of the black — picked under the switch, or at the chat header's square, which then leaves Peacock's alone — and
+// ⌥-click goes back to black. Black still stands out: the black beside it — the header right of the project, the
 // splitter under the open card, the dark theme's ground behind the cards — turns grey, and an open black card's ink is
 // light. The choice is this browser's pref and a reload keeps it; off again, Peacock's colours come back.
 import { spawn } from 'node:child_process';
@@ -107,9 +107,9 @@ export default async function (ctx) {
     ctx.assert.match(out.switch, /simple colours/, 'the switch says what it is');
     out.simple = await look();
     ctx.assert.deepEqual([out.simple.colors, out.simple.pref], ['simple', true], 'the root says it, and it is a pref');
-    ctx.assert.deepEqual(out.simple.repo, ['', ''], 'no card wears the folder\'s colour');
-    ctx.assert.equal(out.simple.list, '', 'nor the list, ALL\'s black included');
-    ctx.assert.equal(out.simple.tinted, false, 'the chat header is the plain one');
+    ctx.assert.deepEqual(out.simple.repo, ['#000000', '#000000'], 'every card in black, the default — none in the folder\'s colour');
+    ctx.assert.equal(out.simple.list, '#000000', 'the list in black too');
+    ctx.assert.equal(out.simple.tinted, true, 'and the chat header');
     for (const k of ['card', 'open', 'head', 'split', 'lit']) ctx.assert.ok(out.simple[k] >= 0 && out.simple[k] <= 12, `${k} in grey: ${JSON.stringify(out.simple)}`);
     ctx.assert.ok(out.simple.dots.every(c => c >= 0 && c <= 12) && out.simple.code.every(c => c >= 0 && c <= 12), `the dots and the code in grey: ${JSON.stringify(out.simple)}`);
     // the PRs and the people are not the theme's (later the same day): a PR chip in its state's colour, a face in its own
@@ -138,7 +138,7 @@ export default async function (ctx) {
     await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
     out.row = await ctx.evaluate(`JSON.stringify({ hidden: document.querySelector('#tintRow').hidden, sw: getComputedStyle(document.querySelector('#tintSw')).backgroundColor })`).then(JSON.parse);
     ctx.assert.equal(out.row.hidden, false, 'the colour row shows under the switch');
-    ctx.assert.ok(chroma(out.row.sw) <= 12, `its swatch grey until one is picked: ${out.row.sw}`);
+    ctx.assert.equal(out.row.sw, 'rgb(0, 0, 0)', 'its swatch black until one is picked');
     await ctx.evaluate(`(i => { i.value = '${TINT}'; i.dispatchEvent(new Event('input', { bubbles: true })); })(document.querySelector('#simpleTint'))`);
     await ctx.waitFor(`getComputedStyle(document.querySelector('#tintSw')).backgroundColor === 'rgb(90, 125, 154)'`, { what: 'the swatch in it' });
     await ctx.shot('tint-row', await ctx.evaluate(`JSON.stringify((r => ({ x: r.left - 10, y: r.top - 10, width: r.width + 20, height: r.height + 20 }))(document.querySelector('#settings').getBoundingClientRect()))`).then(JSON.parse));
@@ -154,7 +154,7 @@ export default async function (ctx) {
 
     // the chat header's square is the same picker under simple colours, and Peacock's colour is left alone
     await ctx.evaluate(`document.querySelector('#shead .sq.pick').dispatchEvent(new MouseEvent('click', { altKey: true, bubbles: true, cancelable: true }))`);
-    await ctx.waitFor(`!window.peix.prefs().simpleColor && !document.querySelector('#chat').classList.contains('tinted')`, { what: '⌥-click on the square: back to grey' });
+    await ctx.waitFor(`!window.peix.prefs().simpleColor && document.querySelector('#slist > .card[data-id="${onPr.id}"]').style.getPropertyValue('--repo') === '#000000'`, { what: '⌥-click on the square: back to black' });
     await ctx.evaluate(`document.querySelector('#shead .sq.pick').click()`);
     ctx.assert.equal(await ctx.evaluate(`document.querySelector('#colorInput').dataset.tint`), '1', 'the square opens the one colour\'s picker');
     await ctx.evaluate(`(i => { i.value = '${TINT2}'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); })(document.querySelector('#colorInput'))`);
@@ -179,7 +179,7 @@ export default async function (ctx) {
       ground: getComputedStyle(document.querySelector('#sessions')).backgroundColor, ink: getComputedStyle(document.querySelector('#slist > .card.active .repo')).color })`).then(JSON.parse);
     out.mid = await frame();
     ctx.assert.deepEqual([out.mid.dark, out.mid.onblack, out.mid.head], [false, false, 'rgb(0, 0, 0)'], `a colour that is not black leaves the black alone: ${JSON.stringify(out.mid)}`);
-    await ctx.evaluate(`(i => { i.value = '#000000'; i.dispatchEvent(new Event('input', { bubbles: true })); })(document.querySelector('#simpleTint'))`);
+    await ctx.evaluate(`document.querySelector('#tintRow').dispatchEvent(new MouseEvent('click', { altKey: true, bubbles: true, cancelable: true }))`);   // ⌥-click: the default, black
     await ctx.waitFor(`document.querySelector('#main').classList.contains('darkchat')`, { what: 'the open chat in black' });
     await ctx.settle();
     for (const dark of [true, false]) {

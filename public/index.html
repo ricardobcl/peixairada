@@ -35,7 +35,7 @@
   } }
   /* Simple colours (2026-10-01):
      greys and the one accent. A project's colour goes (repoColor answers the one colour picked under the switch,
-     prefs.simpleColor, or null — every surface then takes --nocolor's grey),
+     prefs.simpleColor, or black, the default — simpleTint),
      and so does every hue that only names a state — clauding, ready, watching, the plan's spend, the code's syntax —
      told by tone instead. A PR's state and the people keep their colours: the PR chips, GitHub's faces, your mark on a
      card. The accent stays for what wants you: a question (--needs is the accent here), your move, an unread count,
@@ -1318,8 +1318,8 @@
   <nav class="stabs" role="tablist"><button role="tab" data-tab="board" class="on">Board</button><button role="tab" data-tab="setup">Setup</button><button role="tab" data-tab="keys">Keys</button></nav>
   <div class="spane scol" data-tab="board">
     <label class="opt" title="Off, nothing posts a banner — not the app, not a browser tab, not the server — and the unread counts on the cards and the Dock go on as before"><input type="checkbox" id="notifyOn" checked><span><b>notifications</b> — a banner when Claude finishes or asks you something, while the board is not in front</span></label>
-    <label class="opt" title="On, every project wears one colour — grey, or the one picked under this switch — instead of its own (Peacock's and the setup's stay set, for VS Code and for when this is off), and no state or code has a colour of its own — a PR's chip and the people's faces keep theirs; the accent is left for what wants you — a question, your move, an unread count"><input type="checkbox" id="simpleColors"><span><b>simple colours</b> — every project in one colour, the states in greys; off, each project in its own</span></label>
-    <label class="opt sub" id="tintRow" hidden><span class="ssw" id="tintSw"><input type="color" id="simpleTint" value="#b9b9b3" aria-label="The one colour every project wears"></span><span><b>one colour</b> for every project — the chat header's square picks it too · ⌥-click back to grey</span></label>
+    <label class="opt" title="On, every project wears one colour — black, or the one picked under this switch — instead of its own (Peacock's and the setup's stay set, for VS Code and for when this is off), and no state or code has a colour of its own — a PR's chip and the people's faces keep theirs; the accent is left for what wants you — a question, your move, an unread count"><input type="checkbox" id="simpleColors"><span><b>simple colours</b> — every project in one colour, the states in greys; off, each project in its own</span></label>
+    <label class="opt sub" id="tintRow" hidden><span class="ssw" id="tintSw"><input type="color" id="simpleTint" value="#000000" aria-label="The one colour every project wears"></span><span><b>one colour</b> for every project, black until you pick one — the chat header's square picks it too · ⌥-click back to black</span></label>
     <label class="opt" title="On, every clauding card's light stands at the same angle — the blinks and the dots too; off, each card runs at its own. Either way a card rebuilt by an update carries on where it was"><input type="checkbox" id="ringsInStep" checked><span><b>rings in step</b> — every card's light at the same angle; off, each at its own</span></label>
     <div class="dens" title="How much of each chat its card carries — a question waiting on you shows at every size">
       <b>cards</b><input type="range" id="cardsSize" min="0" max="2" step="1" value="0" list="cardsStops" aria-label="Card size">
@@ -1552,15 +1552,16 @@
   applyCards();
   // Simple colours (2026-10-01): a pref like the card size — how this window looks. The tokens are the root's
   // data-colors; the project's colour is repoColor's null, so the list and the open chat's header are drawn again.
-  // The one colour every project wears under it (prefs.simpleColor, none is the grey): the row under the switch and the
-  // chat header's square pick it, the board follows the panel as it moves, ⌥-click lets it go.
-  const tintTip = () => prefs.simpleColor ? `${prefs.simpleColor}, every project's colour — click to change, ⌥-click back to grey` : "Every project in grey — click to pick one colour for them all";
+  // The one colour every project wears under it (prefs.simpleColor; none picked is black, the board's own): the row
+  // under the switch and the chat header's square pick it, the board follows the panel as it moves, ⌥-click lets it go.
+  const simpleTint = () => prefs.simpleColor || '#000000';   // BLACK, which is declared further down
+  const tintTip = () => prefs.simpleColor ? `${prefs.simpleColor}, every project's colour — click to change, ⌥-click back to black` : "Every project in black — click to pick another colour for them all";
   function applyColors() {
     document.documentElement.dataset.colors = prefs.simpleColors ? 'simple' : 'full';
     $('#simpleColors').checked = !!prefs.simpleColors;
     $('#tintRow').hidden = !prefs.simpleColors; $('#tintRow').title = tintTip();
-    $('#tintSw').style.setProperty('--c', prefs.simpleColor || 'var(--nocolor)');
-    if ($('#simpleTint').value !== (prefs.simpleColor || '#b9b9b3')) $('#simpleTint').value = prefs.simpleColor || '#b9b9b3';
+    $('#tintSw').style.setProperty('--c', simpleTint());
+    if ($('#simpleTint').value !== simpleTint()) $('#simpleTint').value = simpleTint();
   }
   applyColors();
   const redrawColors = () => { renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); };
@@ -1662,11 +1663,10 @@
   const BLACK = '#000000';
   const ownColor = cwds => (Array.isArray(cwds) ? cwds : [cwds]).map(c => c && (state.peacock[c] || projCfg(folderName(c)).color)).find(Boolean) || null;
   // What the board paints with: under simple colours (prefs.simpleColors) every project, ALL included, wears the one
-  // colour picked for it (prefs.simpleColor) or none — every surface then takes --nocolor's grey, as a folder without
-  // a colour always has. The setup still reads ownColor, and so does the header's square outside simple colours: they
-  // are where a project's colour is set, so they show it.
-  const repoColor = cwds => prefs.simpleColors ? prefs.simpleColor || null : ownColor(cwds);
-  const projColor = p => prefs.simpleColors ? prefs.simpleColor || null : p.key === ALL ? BLACK : repoColor(p.cwds);
+  // colour picked for it — black until one is (simpleTint). The setup still reads ownColor, and so does the header's
+  // square outside simple colours: they are where a project's colour is set, so they show it.
+  const repoColor = cwds => prefs.simpleColors ? simpleTint() : ownColor(cwds);
+  const projColor = p => prefs.simpleColors ? simpleTint() : p.key === ALL ? BLACK : repoColor(p.cwds);
   const repoStyle = color => color ? `--repo:${color}` : '';
   // The ink that reads on a colour: near-black on a light one, white on a dark one — Peacock's own rule (tinycolor's
   // brightness, (299r + 587g + 114b) / 1000, light from 128), so the header agrees with the VS Code title bar of the
@@ -3188,7 +3188,7 @@
     const r = sq.getBoundingClientRect();
     colorInput.style.left = r.left + 'px'; colorInput.style.top = r.bottom + 'px';
     colorInput.dataset.tint = prefs.simpleColors ? '1' : '';
-    colorInput.dataset.cwd = sq.dataset.cwd; colorInput.value = (prefs.simpleColors ? prefs.simpleColor : ownColor(sq.dataset.cwd)) || '#b9b9b3';
+    colorInput.dataset.cwd = sq.dataset.cwd; colorInput.value = prefs.simpleColors ? simpleTint() : ownColor(sq.dataset.cwd) || '#b9b9b3';
     written.set(sq.dataset.cwd, colorInput.value);
     try { colorInput.showPicker(); } catch { colorInput.click(); }
   }

@@ -104,6 +104,9 @@ simple colors?"
   ground behind a list whose cards are all that dark (`#2e2e2b`); the light theme's ground was light enough. It goes
   by the colour, not the switch, so a project painted `#000000` gets it too. An open black card's name, which kept
   the light theme's dark ink on the black, takes the light one like the rest of the card.
+* **Black is the default** (and again: "leave black as the default color when picking the 'simple color' option"):
+  with no colour picked, simple colours paint every project black (`simpleTint()`), not grey; ⌥-click on the swatch
+  or the header's square goes back to black. Grey is still a colour the picker can choose.
 * **The accent is kept for what wants you**: a question's blinking edge (`--needs` is the accent here, not red),
   *your move*, the unread count, the focus ring, the selection, links. Claude's ✳ on every card and a Fable chat's F,
   which wore it as decoration, go grey; Claude's pixel mark between the clauding and the ready cards keeps it — one per
