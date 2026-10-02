@@ -4624,6 +4624,9 @@
 
   async function openSession(id) {
     state.current = id; state.unread.delete(id); hidePr();
+    // the address names the open chat at once (2026-10-02; after the fetch before, so a chat left before its answer
+    // came put its id back over the next one's, and a link to that one was then no change of hash)
+    if (location.hash.slice(1) !== id) history.replaceState(null, '', '#' + id);
     const s0 = state.sessions.get(id);
     // a deep link or a notification can point at a chat outside the selected project — switch to its folder
     if (s0 && !inProject(s0, projectStub(prefs.project))) { prefs.project = s0.cwd || '?'; savePrefs(); }
@@ -4631,12 +4634,14 @@
     if (s0) renderHead(s0);
     if (s0) syncTerm(s0);   // the tab it was on comes back at once — a page in the pane, its zsh; the drawer after the fetch (a chat not yet in the snapshot keeps what is attached until then)
     const data = await api('GET', `/api/sessions/${id}/messages`).catch(() => null); if (!data) return;
+    // another chat opened while this one's answer was on its way (⌥⌘↓ ⌥⌘↑ in quick succession): the answer is stale
+    // (2026-10-02) — it drew this chat's transcript under the other's header
+    if (state.current !== id) return;
     state.sessions.set(id, data.session); state.entries = data.entries; renderHead(data.session); renderLog(); syncTerm(data.session);
     // A chat the snapshot did not have yet — the drawer's new one, told of over the `terminal` event before its own
     // `session` push — gets its card, and the project switch above, from the answer.
     if (!s0) { if (!inProject(data.session, projectStub(prefs.project))) { prefs.project = data.session.cwd || '?'; savePrefs(); } renderBoard(); }
     $('#log').scrollTop = $('#log').scrollHeight;
-    if (location.hash.slice(1) !== id) history.replaceState(null, '', '#' + id);
     document.querySelector(`#slist > .card[data-id="${id}"]`)?.scrollIntoView({ block: 'nearest' });
   }
 

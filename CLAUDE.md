@@ -743,6 +743,8 @@ refuses to run against the real directory for the same reason.
 * Ink redraws only its live region on a resize; earlier lines keep the old width. That is Claude Code's, not ours.
 * xterm parses what it is written on its own schedule: read or wipe a screen through `write('', cb)`, never straight
   after a `write()`.
+* **`openSession` sets the address before it fetches, and drops an answer for a chat no longer open** (2026-10-02): a
+  late answer drew its transcript under another chat's header and put its id back in the address.
 * A page out of sight (the harness's Chrome) runs its timers up to a second apart: a listener left for a
   `setTimeout(0)` to remove outlives the next few steps. The drag's click swallow is `once` for that (2026-09-28).
 
