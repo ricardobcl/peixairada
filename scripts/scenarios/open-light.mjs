@@ -2,12 +2,14 @@
 // them. On a card that is not open the ring runs in the border's place: no border, the cover 2 px in. The open one's
 // light runs round the one shape its card, the splitter down to it and the project's box atop the chat make: #trail, a
 // band along that outline with a comet of blobs moved by transforms, in the ink that reads on the colour, and the
-// card's own ring stood down. Scrolled away, the card
-// leaves the shape; a turn that ends puts the light out; under reduced motion the band is steady and nothing moves.
+// card's own ring stood down. When the open card slides to another place in the list, the light and the splitter's
+// colour go with it (2026-10-02: they stayed where it had been until the next update). Scrolled away, the card leaves
+// the shape; a turn that ends puts the light out; under reduced motion the band is steady and nothing moves.
 import { spawn } from 'node:child_process';
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { randomUUID } from 'node:crypto';
 import { makeFixture, replyLines, toolLines } from '../fixture.mjs';
 
 export const meta = { server: true, fixture: 'auto' };
@@ -60,6 +62,24 @@ export default async function (ctx) {
     ctx.assert.ok(p0 !== p1, `and it moves: ${p0} → ${p1}`);
     await ctx.shot('open', { x: 0, y: 0, width: 640, height: 140 });
     ctx.assert.ok(await ctx.evaluate(`getComputedStyle(document.querySelector('#slist > .card.working:not(.active)'), '::before').content !== 'none'`), 'the other clauding card keeps its own ring');
+
+    // the other clauding chat says something newer: it takes the top, the open card slides down under it — and the
+    // light and the splitter's colour end where the card now ends, with nothing else written after
+    appendFileSync(beside.file, JSON.stringify({ isSidechain: false, userType: 'external', entrypoint: 'cli', cwd, sessionId: beside.id, version: 'fixture', gitBranch: 'main',
+      parentUuid: null, type: 'user', uuid: randomUUID(), timestamp: new Date().toISOString(), message: { role: 'user', content: [{ type: 'text', text: 'and a newer word' }] } }) + '\n');
+    await ctx.waitFor(`document.querySelector('#slist > .card').dataset.id === ${JSON.stringify(beside.id)}`, { what: 'the other chat on top', timeout: 8000 });
+    await ctx.settle(); await ctx.sleep(100);
+    const moved = await rect(ctx, `document.querySelector('#slist > .card.active')`), mb = bounds((await trail(ctx)).loop);
+    const split = await ctx.evaluate(`parseFloat(document.querySelector('#splitter').style.getPropertyValue('--split'))`);
+    out.slid = { card: moved, loop: mb, split };
+    ctx.assert.ok(moved.t > card.t + 20, `the open card slid down: ${card.t} → ${moved.t}`);
+    ctx.assert.ok(near(mb.b, moved.b) && near(split, moved.b + 1 - sp.t), `the light and the splitter end at the card's new bottom, not its old one (${card.b}): ${JSON.stringify(out.slid)}`);
+    // back on top: the open chat's own newer word
+    appendFileSync(open.file, JSON.stringify({ isSidechain: false, userType: 'external', entrypoint: 'cli', cwd, sessionId: open.id, version: 'fixture', gitBranch: 'main',
+      parentUuid: null, type: 'user', uuid: randomUUID(), timestamp: new Date().toISOString(), message: { role: 'user', content: [{ type: 'text', text: 'and newer still' }] } }) + '\n');
+    await ctx.waitFor(`document.querySelector('#slist > .card').classList.contains('active')`, { what: 'the open chat on top again', timeout: 8000 });
+    await ctx.settle(); await ctx.sleep(100);
+    ctx.assert.ok(near(bounds((await trail(ctx)).loop).b, (await rect(ctx, `document.querySelector('#slist > .card.active')`)).b), 'and back up with it');
 
     // scrolled so the card is out of sight: the splitter is black, the shape is the project's box alone
     await ctx.evaluate(`(l => { l.scrollTop = 1e6; })(document.querySelector('#slist'))`); await ctx.settle(); await ctx.sleep(200);

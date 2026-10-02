@@ -363,9 +363,13 @@ refuses to run against the real directory for the same reason.
   open moves nothing. The move is made **at the click**, not on the server's answer (an empty chat's `session` event
   would `leaveChat` first). → `scripts/scenarios/tick-next.mjs`.
 * **The list's frame reads its geometry once** (2026-09-27): `listChanged()` runs once a frame — `listGeom()` (every
-  card's top and height, the window, the rail) first, then `drawEdges(g)` and `drawTimeline(g)`. A read after a write
-  is a layout each; keep the reads at the top. The pointer
-  handlers call `tlGeom()` (the same function) themselves.
+  card's top and height, the window, the rail) first, then `drawEdges(g)`, `drawTimeline(g)`, `drawSplit(g)` and
+  `drawTrail(g)`. A read after a write is a layout each; keep the reads at the top. The pointer
+  handlers call `tlGeom()` (the same function) themselves. **It follows the list's motion** (2026-10-02): a rect read
+  mid-slide is where the slide has got to, so while a slide or a fold runs (`follow()`, `sliding`) the frame is drawn
+  every frame and once after — drawn once after the render, the splitter's colour and the open chat's light stood
+  where the card had been until the next update; and the open card's own size is watched (`watchOpen`). A new
+  animation that moves cards goes through `follow`. → the slide step of `scripts/scenarios/open-light.mjs`.
 * **The list's two ends count the cards out of sight**: `#sup` / `#sdown` (`.sedge`), over the list's grid cell (so
   `#slist` has a definite `grid-column`), a pill on a fog of `--bg`; a card is out of sight when its *middle* is past
   the edge (`drawEdges`, by `offsetTop`, hence `#slist { position: relative }`). A dot: red when one out there is

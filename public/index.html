@@ -2042,7 +2042,12 @@
   const FLIP_MS = 220, ENTER_MS = 180, LEAVE_MS = 200, EASE_OUT = 'cubic-bezier(.2, .7, .2, 1)';
   const MOTION = [];   // the last moves the list made, {id, kind, at} — window.peix.motion(), so a check need not catch a 200 ms slide in the act
   const noteMotion = (id, kind, dy = 0) => { MOTION.push({ id, kind, at: Math.round(performance.now()), dy }); if (MOTION.length > 64) MOTION.shift(); };
-  const slide = (el, kind, frames, opts, dy = 0) => { noteMotion(el.dataset.id || null, kind, dy); return el.animate(frames, { ...opts, id: kind }); };
+  const slide = (el, kind, frames, opts, dy = 0) => { noteMotion(el.dataset.id || null, kind, dy); return follow(el.animate(frames, { ...opts, id: kind })); };
+  // The list's frame follows a slide (2026-10-02): it was drawn once after a render, from rects read while the cards had
+  // only begun to move — so the splitter's colour and the open chat's light stood where the open card had been until the
+  // next update, seconds later. While anything in the list moves the frame is drawn every frame, and once more after.
+  const sliding = new Set();
+  const follow = a => { sliding.add(a); const end = () => { sliding.delete(a); listChanged(); }; a.addEventListener('finish', end); a.addEventListener('cancel', end); listChanged(); return a; };
   // The reply landed: a chat that goes from clauding to ready flares its card's edge once (the `landed` animation,
   // LANDED_MS) — marked by the session handler, applied here with a negative delay so a rebuild mid-flare carries on.
   const LANDED_MS = 600, landedAt = new Map();   // chat id → when it landed
@@ -2111,7 +2116,7 @@
     const h = el.offsetHeight, wrap = document.createElement('div'); wrap.className = 'leaving';
     noteMotion(el.dataset.id || null, 'leave');
     el.replaceWith(wrap); wrap.append(el); el.removeAttribute('data-id');
-    const a = wrap.animate([{ height: `${h}px`, opacity: 1, marginBottom: '0px' }, { height: '0px', opacity: 0, marginBottom: '-7px' }], { duration: LEAVE_MS, easing: 'ease-in', fill: 'forwards', id: 'leave' });
+    const a = follow(wrap.animate([{ height: `${h}px`, opacity: 1, marginBottom: '0px' }, { height: '0px', opacity: 0, marginBottom: '-7px' }], { duration: LEAVE_MS, easing: 'ease-in', fill: 'forwards', id: 'leave' }));
     a.onfinish = a.oncancel = () => { wrap.remove(); listChanged(); };   // the cards below moved up under the fold: the ends' counts and the timeline read the list again
   }
   // Every render rebuilds its nodes, and a CSS animation starts over on a new node — so the clauding ring, an asking
@@ -2148,8 +2153,15 @@
       listChanged.queued = false;
       const g = listGeom();   // every read of the frame first, then the writes: a read after a write is a layout each (2026-09-27)
       drawEdges(g); drawTimeline(g); drawSplit(g); drawTrail(g);
+      watchOpen(g.open?.el);
+      if (sliding.size) listChanged();   // a card is still on its way: the next frame too
     });
   }
+  // …and when the open card changes size with no render of the list (an age a digit longer, the title beside it wrapping
+  // to another line): the splitter and the light are drawn from it
+  const openSize = new ResizeObserver(() => listChanged());
+  let sized = null;
+  const watchOpen = el => { if (el === sized) return; if (sized) openSize.unobserve(sized); sized = el || null; if (sized) openSize.observe(sized); };
   /** The splitter in the open chat's colour down to where its card ends, as the list is scrolled; black under it. */
   const SPLIT_SCROLLS = CSS.supports('timeline-scope: --a') && CSS.supports('animation-timeline: scroll()');
   if (SPLIT_SCROLLS) $('#splitter').classList.add('scrolls');
