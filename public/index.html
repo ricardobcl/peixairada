@@ -519,8 +519,8 @@
      taller than 1.25 × its width — no card is.
      Since 2026-09-21 it is one mechanism with four readings: --lit is what
      runs, --seg how much of the edge one light owns (100 % / the number of lights — one per sub-agent), --spins how
-     fast. Clauding is the project's colour; watching is one light in the watch colour, slowly, because nothing is
-     waiting on you; asking has no ring at all — the border itself blinks red, the one signal that is not motion
+     fast. Clauding is the project's colour, lifted (--glow); watching is one light in the watch colour, slowly,
+     because nothing is waiting on you; asking has no ring at all — the border itself blinks red, the one signal that is not motion
      around the edge, because a question is the one state that is *stopped*.
      The order of the three rules is their priority: work beats a monitor, a question beats both.
      Every card is rebuilt on every SSE update and a CSS animation starts over on a new node, so phaseAnims() (in the
@@ -543,10 +543,14 @@
     animation: ring var(--spins, 1.4s) linear infinite; }
   .card.working::after, .card.watching::after { content: ''; position: absolute; z-index: -1; inset: 2px; background: inherit; pointer-events: none; }
   .card.watching { --lit: var(--watch); --seg: 100%; --spins: 6s; --track: transparent; }
+  /* The clauding light is the colour lifted towards white (2026-10-02): the colour itself, on a track of the colour, went
+     round a dark one — a navy — unseen. In OKLCH, 85 % of the way from its lightness to white, hue and chroma kept, so
+     every light is lighter than the edge it runs on, a dark colour's by far. --ring (white on a dark black card) wins. */
+  .card { --glow: var(--ring, oklch(from var(--repo, var(--working)) calc(l + (1 - l) * .85) c h)); }
   /* Every variable of the ring is set in every rule: a card can be two of these at once (clauding *and* watching is
      the ordinary case for a chat running a monitor), and what the later rule leaves unsaid the earlier one keeps —
      which had the work light running at the monitor's sixth of the speed. */
-  .card.working { --lit: var(--ring, var(--repo, var(--working))); --seg: calc(100% / var(--lights, 1)); --spins: 1.4s; --track: color-mix(in srgb, var(--repo, var(--nocolor)) 85%, var(--line)); }
+  .card.working { --lit: var(--glow); --seg: calc(100% / var(--lights, 1)); --spins: 1.4s; --track: color-mix(in srgb, var(--repo, var(--nocolor)) 85%, var(--line)); }
   /* A question is the one state that is *stopped*, so it gets the one signal that is not motion around the edge
      (2026-09-22): no ring at all, the border itself blinking on and off in red. Two hard states, not a
      fade — a fade reads as another kind of running. */
@@ -558,11 +562,11 @@
     to { border-color: color-mix(in srgb, var(--needs) 28%, var(--line)); box-shadow: none; }
   }
   /* The reply landed (2026-09-27, night): the moment a card stops clauding — the ring gone, the one event the board is
-     watched for all day — its edge flares in the card's own colour and settles to the plain edge over LANDED_MS, once.
+     watched for all day — its edge flares in the card's own light and settles to the plain edge over LANDED_MS, once.
      drawCards sets the class from landedAt, with a negative delay, so a card rebuilt mid-flare carries on where it was;
-     the light is the ring's (--ring: white on a dark card). The unread badge that comes with it pops in (onAlert). */
+     the light is the ring's (--glow). The unread badge that comes with it pops in (onAlert). */
   @keyframes landed {
-    from { border-color: var(--ring, var(--repo, var(--working))); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ring, var(--repo, var(--working))) 60%, transparent), 0 0 22px color-mix(in srgb, var(--ring, var(--repo, var(--working))) 45%, transparent); }
+    from { border-color: var(--glow); box-shadow: 0 0 0 1px color-mix(in srgb, var(--glow) 60%, transparent), 0 0 22px color-mix(in srgb, var(--glow) 45%, transparent); }
     to { border-color: var(--line); box-shadow: none; }
   }
   .card.landed { animation: landed .6s ease-out both; }
@@ -597,7 +601,8 @@
   /* The light that runs round a clauding card is the card's colour, which on a black card is black on black
      (2026-09-20). --ring is what the light
      and its glow run in: white wherever the card under them is dark — the dark theme, and the solid tint the
-     hovered and open card wear in either theme (above). On the light theme's pale wash, black still reads best. */
+     hovered and open card wear in either theme (above). On the light theme's pale wash the black's own light, lifted
+     (--glow), a grey on the black edge. */
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card.black { --ring: #fff; } }
   /* (2026-10-01) Every card in view as dark as the dark theme's ground (nearBlack, renderSessionList): the ground behind
      them is a grey, so the cards still stand out of it. The light theme's ground is light enough as it is. */
@@ -2280,9 +2285,10 @@
     const hr = head.getBoundingClientRect(), hs = parseFloat(head.style.getPropertyValue('--hsplit')), hrow = head.style.getPropertyValue('--hrow');
     const work = s.status === 'working', card = open?.el.getBoundingClientRect();
     return { card, box: hs > 0 ? { l: hr.left, t: hr.top, r: hr.left + hs, b: hr.top + (hrow.endsWith('px') ? parseFloat(hrow) : hr.height) } : null,
-      // the shape is the project's colour through and through, so the light is the ink that reads on it — the header's
-      // (white on a dark colour, as the ring is on a black card); a monitor's is its own colour
-      lit: work ? inkOn(repoColor(s.cwd)) : 'var(--watch)',
+      // the shape is the project's colour through and through, and the light on it is white (2026-10-02) — the lightest
+      // thing on every colour; it was the header's ink until then, near-black on a light colour: a shadow going round,
+      // not a light. A monitor's is its own colour
+      lit: work ? '#ffffff' : 'var(--watch)',
       spins: work ? 1.4 : 6, n: work ? Math.min(5, s.agents || 1) : 1, perim: card ? 2 * (card.width + card.height) : 2 * (hr.left + 150) };
   }
   function drawEdges(g) {

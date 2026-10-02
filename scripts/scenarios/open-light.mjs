@@ -1,10 +1,10 @@
 // The clauding light (2026-09-29). Two clauding chats in a folder with a Peacock colour and a few ready ones under
 // them. On a card that is not open the ring runs in the border's place: no border, the cover 2 px in. The open one's
 // light runs round the one shape its card, the splitter down to it and the project's box atop the chat make: #trail, a
-// band along that outline with a comet of blobs moved by transforms, in the ink that reads on the colour, and the
-// card's own ring stood down. When the open card slides to another place in the list, the light and the splitter's
-// colour go with it (2026-10-02: they stayed where it had been until the next update). Scrolled away, the card leaves
-// the shape; a turn that ends puts the light out; under reduced motion the band is steady and nothing moves.
+// band along that outline with a comet of blobs moved by transforms, in white, and the card's own ring stood down. When
+// the open card slides to another place in the list, the light and the splitter's colour go with it (2026-10-02: they
+// stayed where it had been until the next update). Scrolled away, the card leaves the shape; a turn that ends puts the
+// light out; under reduced motion the band is steady and nothing moves.
 import { spawn } from 'node:child_process';
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -41,6 +41,11 @@ export default async function (ctx) {
     ctx.assert.deepEqual(ring, { border: '0px', pad: '10px', cover: '2px', anim: 'ring' }, 'no border, its 2 px in the padding, the cover 2 px in: the band is the edge itself');
     const ready = await ctx.evaluate(`JSON.stringify((c => ({ border: getComputedStyle(c).borderTopWidth, pad: getComputedStyle(c).paddingTop }))(document.querySelector('#slist > .card:not(.working)')))`).then(JSON.parse);
     ctx.assert.deepEqual(ready, { border: '2px', pad: '8px' }, 'a ready card keeps its border — the same outer box, the same content box');
+    // and what runs is the colour lifted towards white (2026-10-02: a navy went round unseen in its own colour) — read
+    // off a probe painted in it, as an OKLCH lightness: the blue's is .6
+    out.lit = await ctx.evaluate(`(c => { const p = document.createElement('i'); p.style.color = 'var(--lit)'; c.append(p); const v = getComputedStyle(p).color; p.remove(); return v; })(document.querySelector('#slist > .card.working'))`);
+    const L = +(/^oklch\(([\d.]+)/.exec(out.lit) || [])[1];
+    ctx.assert.ok(L > .9 && L < 1, `the ring's light is the blue lifted, not the blue: ${out.lit}`);
 
     // 2 · open it: the light runs round the card, up the splitter, round the project's box and back
     await ctx.openChat(open.id);
@@ -93,7 +98,7 @@ export default async function (ctx) {
     await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
     await ctx.evaluate(`document.querySelector('#slist').dispatchEvent(new Event('scroll'))`); await ctx.sleep(300);
     out.reduced = { ...(await trail(ctx)), bg: await ctx.evaluate(`getComputedStyle(document.querySelector('#trail')).backgroundColor`) };
-    ctx.assert.ok(out.reduced.on && out.reduced.blobs === 0 && out.reduced.bg === 'rgb(255, 255, 255)', `reduced motion: no lights moving, the band in the light's colour — the ink on the blue, white (${JSON.stringify(out.reduced)})`);
+    ctx.assert.ok(out.reduced.on && out.reduced.blobs === 0 && out.reduced.bg === 'rgb(255, 255, 255)', `reduced motion: no lights moving, the band in the light's colour, white (${JSON.stringify(out.reduced)})`);
     await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
 
     // the turn ends: the light goes out, and the card's own edge is its border again

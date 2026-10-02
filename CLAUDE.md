@@ -191,27 +191,28 @@ refuses to run against the real directory for the same reason.
   (a steady red border), the pulse, the spinner, the flare and every transform; `drawCards` reads `REDUCED` and puts
   cards in place. A new animation adds a line there, and to `scripts/scenarios/reduced-motion.mjs` if it is a state's.
 * **The card's edge is one ring with four readings**: `--lit` is what runs in it, `--seg` how much of the edge one
-  light owns (`100% / --lights`, one light per sub-agent), `--spins` how fast. Clauding is the project's colour;
-  **watching** (`s.tasks`) is one light in `--watch`, slowly, and can sit on a *ready* card; **asking** (`needs-input`
-  while alive) has **no ring**: the card's own border blinks red (`@keyframes blink`, two hard states), with the
-  question and its answer count on the card (`askHtml`). The three CSS rules are in priority order — work beats a
-  monitor, a question beats both — **and each sets every variable**. The chips beside the title say the numbers
-  (`N agents`, `monitor`). **The ring is a conic gradient on a square `::before` turned by a `transform`, under an
-  `::after` cover in the card's background 2 px in, on the edge itself** (2026-09-29): a card with a ring has no
-  border — its padding takes the 2 px, so nothing inside moves — and the band's unlit part is the border's colour
-  (`--track`); the card's overflow clips at its padding box, so with a border the light ran inside it. The compositor's
-  kind of motion — and `phaseAnims()` (once a
-  frame, before it paints; `phaseAnims(true)` at once, the cog's switch) puts every `ring`, `blink`, `pulse`, `pix`
-  and `pixhop` at start time 0 on the document clock, or, with *rings in step* off (`prefs.ringsInStep`), at a time
-  hashed from the chat's id. → `scripts/scenarios/card-signals.mjs`.
+  light owns (`100% / --lights`, one light per sub-agent), `--spins` how fast. Clauding is the project's colour
+  **lifted towards white** (`--glow`, 2026-10-02: OKLCH, 85 % of the way to white, hue and chroma kept — the colour
+  itself went round a navy unseen; the landing flare is the same light); **watching** (`s.tasks`) is one light in
+  `--watch`, slowly, and can sit on a *ready* card; **asking** (`needs-input` while alive) has **no ring**: the card's
+  own border blinks red (`@keyframes blink`, two hard states), with the question and its answer count on the card
+  (`askHtml`). The three CSS rules are in priority order — work beats a monitor, a question beats both — **and each
+  sets every variable**. The chips beside the title say the numbers (`N agents`, `monitor`). **The ring is a conic
+  gradient on a square `::before` turned by a `transform`, under an `::after` cover in the card's background 2 px in,
+  on the edge itself** (2026-09-29): a card with a ring has no border — its padding takes the 2 px, so nothing inside
+  moves — and the band's unlit part is the border's colour (`--track`); the card's overflow clips at its padding box,
+  so with a border the light ran inside it. The compositor's kind of motion — and `phaseAnims()` (once a frame, before
+  it paints; `phaseAnims(true)` at once, the cog's switch) puts every `ring`, `blink`, `pulse`, `pix` and `pixhop` at
+  start time 0 on the document clock, or, with *rings in step* off (`prefs.ringsInStep`), at a time hashed from the
+  chat's id. → `scripts/scenarios/card-signals.mjs`.
 * **The open chat's light runs past its card** (2026-09-29): while it is clauding or watching, the open card, the
   splitter down to it (`splitEnd`) and the project's box atop the chat (`--hsplit` × `--hrow`) are one shape, and the
   light runs clockwise round that shape's edge — up the splitter, round the box, down and round the card. `#trail`, a
   fixed overlay (z 30, no pointer), is clipped to a 2 px band inside the outline (`clip-path: path(evenodd, outline,
   inset)`; `outline()` unions the rectangles on a grid, `insetLoop()`), and the light is a comet of round blobs
   (`#trail i`), each moved along the outline by a WAAPI `transform` animation — no paint per frame. The light is
-  `inkOn` of the colour (the shape is the colour through and through), a monitor's `--watch`; the pace and the lights
-  are the card's ring's (its perimeter per `--spins`, one per sub-agent), and `main.trail` stands the card's own ring
+  white (2026-10-02; the header's ink before, a shadow on a light colour), a monitor's `--watch`; the pace and the
+  lights are the card's ring's (its perimeter per `--spins`, one per sub-agent), and `main.trail` stands the card's own ring
   down. `drawTrail(g)` runs in the list's frame from `trailGeom()` (read in `listGeom`) and does nothing while the
   shape is unchanged; a changed shape keeps each light's place on the outline, which starts at the box's top right.
   The card out of sight: the box alone. On the rail, none. Reduced motion: no blobs, the band steady.
@@ -714,7 +715,7 @@ refuses to run against the real directory for the same reason.
 * **A terminal that grows has to pull its scrollback back down** (`lib/refit.mjs`, and the page's own copy in
   `refitTerm`): xterm only does it when the cursor is on the last line of the buffer. → `test/refit.test.mjs`.
 * Inline code gets a tint, never a border; card glyphs are inline SVG, not emoji; the working ring is the project's
-  colour — `--ring`, which only `.card.black` overrides, with white.
+  colour lifted (`--glow`) — `--ring`, which only `.card.black` sets, with white, wins over it.
 * **A CSS animation starts over on a rebuilt node, and only `transform` and `opacity` run off the main thread**: a
   card is rebuilt only when its markup changes now, but anything that moves on one is still phased to the document
   clock after the render (`phaseAnims()`) — and nothing continuous animates a custom property, a gradient or a colour.
