@@ -2,8 +2,59 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-01. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-02. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-02 — the light keeps up with its card, is lighter than its colour, and ⌥⌘B folds the list
+
+Ricardo: "sometimes the vertical separator bar has a delay accompaning the height of the card. it's a bit jarring
+because we can clearly see the colors now. · sometimes the go-araound card animation when it's clauding gets out of
+position, the height is wrong and takes a few seconds to recognize that the card is elsewhere · the go around-animation
+should have more contrast sometime, probably always on the lighter side. [a project] is a dark blue and I barely see
+the animation because it seems to dark, low contrast · the cmd B to hide the cards column should be hotkey B".
+
+* **One cause for the first two: the frame was drawn from the start of a slide.** A render calls `listChanged()`,
+  whose frame reads every rect once — but `drawCards` has just started the FLIPs, and a rect read then is the card at
+  its *old* place (the transform at its first frame). So when a card moved above the open one (another chat's newer
+  word, a new chat, a fold), the splitter's colour and the open chat's light stayed where the open card had been, at
+  the old height, until the next update — seconds later, or never while the board was quiet. Measured with a
+  scenario: the card at 87–167 after the slide, the light's shape and `--split` still ending at 80. **Now the frame
+  follows the motion**: every slide and fold goes through `follow()`, and while one runs (`sliding`) the frame is
+  drawn again each frame and once more when the last ends — the black under the card slides with it, and the light's
+  outline grows and shrinks with the card. A slide is 220 ms; the frame's reads were already the cheap kind (a few
+  hundred offsets under ALL). **And the open card's size is watched** (`watchOpen`, a `ResizeObserver` on that one
+  card): its height can change with no render of the list — the 30 s tick writing an age a digit longer, the title
+  beside it wrapping to another line — and nothing redrew the splitter then either.
+* **The clauding light is the colour lifted towards white** (`--glow`): the ring was the colour itself running on a
+  track of the colour at 85 % — on a navy (`#001e57`), navy on navy, nothing went round that the eye could follow.
+  Now it is OKLCH with the lightness 85 % of the way to white, hue and chroma kept: a periwinkle on the navy, a pink on
+  a wine, a pale orange on an orange — every light lighter than its edge, a dark colour's by far. Tried at 60, 75 and
+  85 % against six of this Mac's colours in both themes: 85 is the first where the darkest read at a glance and the
+  hue still names the project. The yellow's light is as faint as it always was — the yellow is nearly white already.
+  `--ring` (white, on a black card where the card is dark) still wins. **The landing flare is the same light**: it was
+  the ring's colour by design, and was as unseen on the navy.
+* **The open chat's light is white on every colour**: it was the header's ink (`inkOn`) — white on a dark colour, but
+  near-black on a light one (an orange, a green): a shadow going round, not a light. White is the lightest thing on
+  every colour, and in the dark theme the open card's tint under the band is darker than the colour, so it reads even
+  on a yellow. The light theme on a light colour reads less well than the black did; *always on the lighter side* is
+  the ask.
+* **⌥⌘B folds the list** (`HOTKEYS`; `boardKeys` in main.swift): ⌘B was VS Code's own sidebar key, and the app's
+  forwarder took it from every page in the pane — VS Code Web's sidebar, GitHub's bold. As every ⌥⌘ letter, ⌥⌘B is
+  now taken from the pane instead: VS Code Web gives up its ⌥⌘B (the secondary side bar), as it gave up ⌥⌘F and ⌥⌘W.
+  ⌘ alone keeps the halves (⌘1 ⌘2 ⌘0 ⌘W) and ⌘,.
+* **A chat's answer that comes after another was opened is dropped, and the address is set at once**: the suite's
+  `hotkeys` failed twice in a row with these changes (and 1 in 6 on the commit before them): ⌥⌘↓ then ⌥⌘↑ opened the
+  chat below and came back, and `openSession` wrote the address only once its fetch answered — so the first chat's
+  late answer put its id back in the address while the second was open, and the harness's next `location.hash =` that
+  id was no change of hash: nothing opened. The same late answer drew its transcript under the other chat's header.
+  Now `openSession` sets the address before it asks, and an answer for a chat no longer open changes nothing. 8 runs
+  out of 8 after.
+* **Verified**: `scripts/scenarios/open-light.mjs` — the other clauding chat says something newer, the open card
+  slides down under it, and the light's outline and `--split` end at its new bottom (against the page before this
+  change, in a scratch worktree, the same step fails: both still at 80); back up again with it; and the ring's light
+  read off a probe as an OKLCH lightness (.94 for a .6 blue). `chat-filter.mjs`: plain ⌘B no longer folds, ⌥⌘B does;
+  `hotkeys.mjs`: ⌥⌘B in the settings' list, no ⌘B; the nine scenarios that folded with ⌘B fold with ⌥⌘B. Screens of
+  six project colours, both themes.
 
 ## Decisions of 2026-10-01 — the setup in ~/.config, and a first run that asks where the repos live
 
