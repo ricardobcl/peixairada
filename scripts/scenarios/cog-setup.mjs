@@ -71,11 +71,11 @@ export default async function (ctx) {
   await ctx.waitFor(`document.activeElement?.matches('#setup .srow.proj[data-name="${repo}"] .sab')`, { what: 'the new row, its short name box with the keyboard' });
   await set(`.srow.proj[data-name="${repo}"] .sab`, 'PX');
   await until(async () => (await cfg()).projects[repo]?.abbr === 'PX', { what: 'the short name saved' });
-  await ctx.cmd('Comma');   // the modal takes the keys: closed for ⌘B
-  await ctx.cmd('KeyB'); await ctx.settle();
+  await ctx.cmd('Comma');   // the modal takes the keys: closed for ⌥⌘B
+  await ctx.key('KeyB'); await ctx.settle();
   out.abbr = await ctx.evaluate(`${cardOf(two.id)}.querySelector('.abbr').textContent`);
   ctx.assert.equal(out.abbr, 'PX', "the rail's square says it");
-  await ctx.cmd('KeyB'); await ctx.settle();
+  await ctx.key('KeyB'); await ctx.settle();
   await openSetup();
   await set('.sadd', tmp);
   await set(`.srow.proj[data-name="${tmp}"] input[type=color]`, '#cc3366');

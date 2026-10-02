@@ -85,7 +85,7 @@ export default async function (ctx) {
     await ctx.evaluate(`(e => { e.value = 0; e.dispatchEvent(new Event('input', { bubbles: true })); })(document.querySelector('#cardsSize'))`);
 
     // folded to the rail: the number and the arrow, no word
-    await ctx.cmd('KeyB');
+    await ctx.key('KeyB');
     await ctx.waitFor(`document.querySelector('#main').classList.contains('scompact')`, { what: 'the rail' });
     await scrollTo(ctx, 150);
     out.rail = await ends(ctx);
@@ -95,7 +95,7 @@ export default async function (ctx) {
     const fits = await ctx.evaluate(`(() => { const s = document.querySelector('#sessions').getBoundingClientRect(), b = document.querySelector('#sdown button').getBoundingClientRect(); return b.left >= s.left && b.right <= s.right; })()`);
     ctx.assert.ok(fits, 'the pill fits the rail');
     await ctx.shot('rail', { x: 0, y: 0, width: 200, height: 1000 });
-    await ctx.cmd('KeyB');
+    await ctx.key('KeyB');
 
     // the splitter: the open chat's colour down to where its card ends, black under it (2026-09-28; the last card's
     // end the same morning) — the card out of sight below, the colour runs to the list's foot; in sight, it stops

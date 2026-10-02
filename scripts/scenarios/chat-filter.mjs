@@ -31,7 +31,8 @@ export default async function (ctx) {
   ctx.assert.ok(out.before.cards.indexOf('Arrest the drift') < out.before.cards.indexOf('Wallet resolvers'), 'the board puts the newer chat first');
 
   // ⌥⌘F, the list folded to its rail: the list opens and the box has the keyboard
-  await ctx.cmd('KeyB'); ctx.assert.equal((await ctx.peix('prefs()')).sessionsCompact, true);
+  await ctx.cmd('KeyB'); ctx.assert.equal(!!(await ctx.peix('prefs()')).sessionsCompact, false, 'plain ⌘B is not the board\'s since 2026-10-02');
+  await ctx.key('KeyB'); ctx.assert.equal((await ctx.peix('prefs()')).sessionsCompact, true, '⌥⌘B folds the list');
   await ctx.key('KeyF');
   out.opened = {
     folded: (await ctx.peix('prefs()')).sessionsCompact,

@@ -78,7 +78,7 @@ const ctx = {
   openChat: id => openChat(cdp, id),
   /** ⌥⌘ + a letter, as the page's hotkeys expect it (e.code; e.key is a symbol with ⌥ held on a Mac). */
   key: code => cdp.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { code: ${JSON.stringify(code)}, key: 'π', metaKey: true, altKey: true, bubbles: true, cancelable: true }))`),
-  /** ⌘ + a key on its own — the board's layout keys (CMDKEYS: ⌘B, ⌘1, ⌘2). */
+  /** ⌘ + a key on its own — the board's layout keys (CMDKEYS: ⌘1, ⌘2, ⌘0, ⌘W, ⌘,). */
   cmd: code => cdp.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { code: ${JSON.stringify(code)}, key: 'x', metaKey: true, bubbles: true, cancelable: true }))`),
   /** The drawer's rows as text, trailing blanks trimmed, empty rows dropped. `g` is the half of the chat column:
       0 — the whole of it while nothing is split — or 1. */

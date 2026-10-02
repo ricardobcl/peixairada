@@ -34,7 +34,7 @@ export default async function (ctx) {
       chips: [...document.querySelectorAll('#fchips .fchip')].map(c => c.className.replace(/\s+/g, ' ').trim()) }; })())`).then(JSON.parse);
   ctx.assert.equal(out.row.inHead, true, 'the magnifier and the chips are in the head');
   ctx.assert.equal(out.row.plus, false, 'no ＋ — ⌥⌘N (2026-09-28)');
-  ctx.assert.equal(out.row.fold, false, 'no « — ⌘B folds the list');
+  ctx.assert.equal(out.row.fold, false, 'no « — ⌥⌘B folds the list');
   ctx.assert.deepEqual([out.row.foot[0], out.row.foot[1], out.row.foot[2]], [out.row.head[0], out.row.head[1], 0], 'the foot is the head row\'s right end, as tall');
   ctx.assert.ok(out.row.h <= 44 && out.row.under === 0 && out.row.bottom === 0, `one row, under the cards, at the window's foot (2026-09-28, later): ${JSON.stringify(out.row)}`);
   ctx.assert.deepEqual(out.row.chips, ['fchip ready on', 'fchip working on', 'fchip done on'], 'the three state chips, on');
@@ -97,7 +97,7 @@ export default async function (ctx) {
   // The rail keeps the fish and, for a project, its short name — the picker's handle there (the square, until 2026-09-27)
   await ctx.key('KeyP');
   await ctx.evaluate(`(() => { const q = document.querySelector('#pickq'); q.value = ${JSON.stringify(folder)}; q.dispatchEvent(new Event('input')); q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })()`);
-  await ctx.cmd('KeyB');
+  await ctx.key('KeyB');
   out.rail = await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#stitle > *')].filter(e => getComputedStyle(e).display !== 'none').map(e => e.className + ':' + e.textContent))`).then(JSON.parse);
   ctx.assert.ok(out.rail.length === 1 && /^ab:\S{1,3}$/.test(out.rail[0]), `on the rail the head is the project's short name alone: ${JSON.stringify(out.rail)}`);
   await ctx.evaluate(`document.querySelector('#stitle .ab').click()`);
@@ -105,7 +105,7 @@ export default async function (ctx) {
   await closePick();
   await ctx.shot('3-rail', { x: 0, y: 0, width: 300, height: 1000 });
 
-  await ctx.cmd('KeyB');
+  await ctx.key('KeyB');
   // The settings (2026-09-28): no cog in the list — the chat header's ···, a chat or none, and ⌘,; a modal, centred
   ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#cogBtn, #pfoot')`), false, 'no cog in the list');
   await ctx.evaluate(`document.querySelector('#noChatMore').click()`);

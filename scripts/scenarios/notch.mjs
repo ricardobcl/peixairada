@@ -83,12 +83,12 @@ export default async function (ctx) {
 
   // Back to the usual width, and the rail: the lifted case with a hole
   await listWidth(380);
-  await ctx.cmd('KeyB'); await ctx.sleep(250);
+  await ctx.key('KeyB'); await ctx.sleep(250);
   out.rail = await read();
   ctx.assert.deepEqual([out.rail.listPad, out.rail.chatPad, out.rail.hole], [false, false, true], 'the rail: lifted, the header holed');
   ctx.assert.deepEqual(out.rail.underHousing, [], 'nothing under the housing on the rail');
   await ctx.shot('3-rail', { x: 0, y: 0, width: 1728, height: 60 });
-  await ctx.cmd('KeyB'); await ctx.sleep(250);
+  await ctx.key('KeyB'); await ctx.sleep(250);
 
   // A redraw of the header keeps the hole (the h2 is rebuilt): the chips' fold toggled
   await ctx.evaluate(`document.querySelector('#prToggle').click()`); await ctx.sleep(250);

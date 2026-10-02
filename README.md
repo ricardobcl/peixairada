@@ -138,7 +138,7 @@ The login agent takes `PORT`, `NOTIFY` and your `PATH` at `scripts/launchd.sh in
 | ⌥⌘C | this chat's Claude, in the drawer |
 | ⌥⌘T · ⌥⌘E · ⌥⌘G | a shell · VS Code Web · the PR |
 | ⌘2 · ⌘W | split · close a half |
-| ⌘B | fold the list |
+| ⌥⌘B | fold the list |
 
 Settings › Keys lists the rest.
 

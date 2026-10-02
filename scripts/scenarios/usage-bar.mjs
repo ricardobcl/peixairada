@@ -1,7 +1,7 @@
 // The plan usage (2026-09-24 a footer of its own; since 2026-09-28 the right end of the list's one row, now under the
 // list): "5H 42%  1W 75%  F 95%" in the row, a tag per window, and over it, on hover or pinned by a click, a row per
 // window with its bar, the tick of the
-// window's clock, the percent and the time to reset; on the rail (⌘B) the rings stacked, bigger, at its foot. What this
+// window's clock, the percent and the time to reset; on the rail (⌥⌘B) the rings stacked, bigger, at its foot. What this
 // checks is the page's half against a faked /api/usage (the test server runs with USAGE=off, which is the first thing
 // checked: the bar is not there at all): the rings in the row, the rows and their colours, the ticks only where a
 // window's length is known, the panel on hover and pinned, the rail, and a failure — the last numbers kept, dimmed,
@@ -93,7 +93,7 @@ export default async function (ctx) {
   ctx.assert.equal((await bar(ctx)).pin, false, 'a click elsewhere too');
 
   // The rail: the rings stack over the fish, bigger, with their tags; a click there changes nothing
-  await ctx.cmd('KeyB');
+  await ctx.key('KeyB');
   await ctx.evaluate(`document.querySelector('#usage .uline').click()`);
   out.rail = await bar(ctx);
   ctx.assert.equal(out.rail.pin, false, 'a click on the rail pins nothing');
@@ -101,7 +101,7 @@ export default async function (ctx) {
   ctx.assert.equal(out.rail.chips.every(c => c.shown && c.ring === 32), true, 'big rings on the rail');
   ctx.assert.equal(await ctx.evaluate(`(() => { const t = [...document.querySelectorAll('#usage .uchip')].map(c => c.getBoundingClientRect().top); return t.every((y, i) => !i || y > t[i - 1]); })()`), true, 'stacked');
   await ctx.shot('3-rail', { x: 0, y: 600, width: 300, height: 400 });
-  await ctx.cmd('KeyB');
+  await ctx.key('KeyB');
 
   // A failure once there are numbers: kept, dimmed, the error on hover. Two minutes on and back into view is due.
   await ctx.evaluate(`sessionStorage.setItem('usageMode', 'fail'); { const real = Date.now; Date.now = () => real() + 3 * 60e3; } document.dispatchEvent(new Event('visibilitychange'))`);

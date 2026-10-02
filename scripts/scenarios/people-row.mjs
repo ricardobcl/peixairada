@@ -65,8 +65,8 @@ export default async function (ctx) {
   out.back = { ...(await row()), titles: await titles() };
   ctx.assert.deepEqual([out.back.on, out.back.titles.length, out.back.ready], [false, 3, 3], 'the same face again: every chat');
 
-  await ctx.cmd('KeyB'); await ctx.settle();
+  await ctx.key('KeyB'); await ctx.settle();
   ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#people')).display`), 'none', 'no row on the rail');
-  await ctx.cmd('KeyB');
+  await ctx.key('KeyB');
   return out;
 }

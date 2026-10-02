@@ -168,10 +168,10 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.state().timeline.runs.length === 5`, { what: 'the runs back' });
 
   // folded to the rail of squares: no timeline, and the squares have the column
-  await ctx.cmd('KeyB');
+  await ctx.key('KeyB');
   await ctx.waitFor(`document.querySelector('#main').classList.contains('scompact')`, { what: 'the rail of squares' });
   out.folded = await ctx.evaluate(`JSON.stringify({ shown: getComputedStyle(document.querySelector('#tline')).display, list: Math.round(document.querySelector('#slist').getBoundingClientRect().left - document.querySelector('#sessions').getBoundingClientRect().left) })`).then(JSON.parse);
   ctx.assert.deepEqual(out.folded, { shown: 'none', list: 4 }, 'no timeline on the folded list, and the squares start at its edge');
-  await ctx.cmd('KeyB');
+  await ctx.key('KeyB');
   return out;
 }

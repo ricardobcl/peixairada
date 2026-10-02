@@ -117,9 +117,9 @@ export default async function (ctx) {
     const ask = await ctx.evaluate(`JSON.stringify((c => ({ anim: getComputedStyle(c).animationName, ring: getComputedStyle(c, '::before').content }))([...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Waiting on you')))`).then(JSON.parse);
     ctx.assert.equal(ask.anim, 'blink', 'the card itself blinks');
     ctx.assert.equal(ask.ring, 'none', 'and there is no ring on it');
-    // ⌘B folds the list to a rail: one square per chat, the project's short name on it, the edge still saying
+    // ⌥⌘B folds the list to a rail: one square per chat, the project's short name on it, the edge still saying
     // what is clauding, how many agents are out, what is watching and what is asking (2026-09-22)
-    await ctx.cmd('KeyB');
+    await ctx.key('KeyB');
     await ctx.waitFor(`document.querySelector('#main').classList.contains('scompact')`, { what: 'the folded list' });
     const rail = await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#slist > .card')].map(c => ({
       abbr: c.querySelector('.abbr').textContent,
@@ -134,7 +134,7 @@ export default async function (ctx) {
     ctx.assert.ok(rail.some(r => r.cls.includes('asking')), 'the question still reads from the rail');
     ctx.assert.equal(rail.find(r => r.lights === '3')?.cls.join(), 'working', 'and so do the three agents');
     await ctx.shot('rail', { x: 0, y: 0, width: 300, height: 900 });
-    await ctx.cmd('KeyB');
+    await ctx.key('KeyB');
     await ctx.waitFor(`!document.querySelector('#main').classList.contains('scompact')`, { what: 'the list back' });
     ctx.assert.match(card('Waiting on you').state, /asking you: Which database should the service use\?3 answers/, 'the question is on the card, with how many answers it offers');
     ctx.assert.notEqual(card('Waiting on you').lit, card('Normal work').lit, 'and it is lit in another colour than work');

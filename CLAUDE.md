@@ -133,7 +133,7 @@ refuses to run against the real directory for the same reason.
   `#q` (`width: 0; flex: 1 1 0`), which takes the row's spare room and the rings' (hidden while it is open, `:has`) —
   the state chips (a dot and a count; the word from 600 px of list, the count gone under 340; `#sessions` is a size
   container) — no ＋ since 2026-09-28: ⌥⌘N, which opens on the project in view (⏎ ⏎ is a new chat there); then **`#sfoot`, in
-  the head's grid row as a column of its own** (`main:not(.scompact)`): the usage. No cog: the settings are ⌘, and ···. **No « / »**: ⌘B
+  the head's grid row as a column of its own** (`main:not(.scompact)`): the usage. No cog: the settings are ⌘, and ···. **No « / »**: ⌥⌘B
   folds and unfolds. The name gives way, hence the list's 300 px minimum (and the row clips rather than run the chips
   under the usage). On the rail the fish and, for a project, `projAbbr` (`.ab`) as the picker's handle keep the bottom
   corner, the usage's rings over them. Filled at the notch with the list under the housing, the cards start under the
@@ -217,7 +217,7 @@ refuses to run against the real directory for the same reason.
   shape is unchanged; a changed shape keeps each light's place on the outline, which starts at the box's top right.
   The card out of sight: the box alone. On the rail, none. Reduced motion: no blobs, the band steady.
   `peix.trail()`. → `scripts/scenarios/open-light.mjs`.
-* **Folded (⌘B), the chat list is a rail of squares**: one per chat, `projAbbr` (the setup's short name for the ones
+* **Folded (⌥⌘B), the chat list is a rail of squares**: one per chat, `projAbbr` (the setup's short name for the ones
   the rule, `abbrRule`, gets wrong) on a solid tint of its colour, and the card's own edge — clauding, the agents' count, a monitor and a
   question still read from the rail. Everything inside the card is `display: none` there; `.abbr` is the only child
   left standing, and it carries the hover tooltip.
@@ -455,7 +455,9 @@ refuses to run against the real directory for the same reason.
   GitHub repo, `state.repos` from `git remote`) —, C this chat's claude session (`termAction()`, the `>_` button's
   path), **W the tab the keys are in, closed** (`hotCloseTab()` → `dropTab()`: the zsh ended, a page or the editor let
   go; on the chat's own tab a `note()`), P the project picker, K the chat picker (`chat` mode: every ready or clauding chat, the list's order,
-  searched by `chatFields()`; ⏎ is `openSession`), **F the chat list's own box** (`hotFind()` → `qShow(true)`), N a
+  searched by `chatFields()`; ⏎ is `openSession`), **F the chat list's own box** (`hotFind()` → `qShow(true)`), **B the chat list
+  folded to a rail and back** (`toggleSessions`; plain ⌘B until 2026-10-02 — VS Code Web keeps its ⌘B, gives up its
+  ⌥⌘B), N a
   chat as steps of the one dialog (`new` → `chats` → `folder` when the project spans several → `env` when
   `newChatIn()` finds launchers), **O the same with the project answered and the environment brought forward**
   (`hotOracle()` → `newChatIn(cwd, 'chats')` on the project the setup names, `state.config.quick`; none named, or
@@ -465,14 +467,13 @@ refuses to run against the real directory for the same reason.
   true)`). Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A `dialog[open]` swallows them; no chat or no PR
   is a `note()`. The cog lists every key (`.keys` in `#settings`) — keep it in step by hand, with `boardKeys` in
   main.swift.
-* **Plain ⌘ is the window's shape, and lives in `CMDKEYS`**: **B** folds the chat list to a rail
-  (`toggleSessions`), **1** and **2** the left and right halves of the chat column — ⌘2 splits it the first time —,
+* **Plain ⌘ is the window's shape, and lives in `CMDKEYS`**: **1** and **2** the left and right halves of the chat column — ⌘2 splits it the first time —,
   **W** closes the half the keys are in, or a dialog that is up, **0** closes the *other* half (`hotOnlyHalf`; with
   one half it is the chat's size back to normal). ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this
   shape". `peixKey(code, mods)` carries which map and **returns whether the key was taken**; `cmdKeys` in main.swift
   is the forwarder's copy — a digit goes over as `Digit<n>`. ⌘K is *not* here (the drawer's clear) and neither are
-  ⌘+ ⌘− (`chatZoomKey`, which sees ⌘0 only when nothing is split). **⌥⌘1 / ⌥⌘2 are the one ⌥⌘ pair about the
-  shape**: the same two panes stood one over the other — see *The chat column's two halves*.
+  ⌘+ ⌘− (`chatZoomKey`, which sees ⌘0 only when nothing is split). **⌥⌘1 / ⌥⌘2 and ⌥⌘B are the ⌥⌘ keys
+  about the shape**: the same two panes stood one over the other — see *The chat column's two halves* —, and the fold.
 * **⌘W is the Window menu's item, not the forwarder's**: a key equivalent is dispatched before any responder, so the
   page never sees ⌘W in the app. `closeHalfOrWindow` asks the board (`peixKey('KeyW','cmd')`) and calls
   `performClose` only when it answers false. Anything else the board wants off a ⌘ a menu item claims goes the same way.

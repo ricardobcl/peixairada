@@ -744,7 +744,7 @@
      bar in orange (green until the same day's "make the credits used color green -> orange"), red from 90 %, a tick
      where the window's clock stands — a bar past its tick is being spent faster than time —, the percent and the
      time to its reset. Folded (the heading, the chevron), one line of
-     rings. On the rail (⌘B) the rings stack with the percent inside, whatever the fold says. */
+     rings. On the rail (⌥⌘B) the rings stack with the percent inside, whatever the fold says. */
   /* The chat list's foot (2026-09-24): the plan usage — the cog that stood beside it went into the chat header's ···
      on 2026-09-28. */
   #sfoot { display: flex; min-width: 0; border-top: 1px solid var(--line); background: var(--panel); }
@@ -1347,12 +1347,12 @@
     <kbd>⌥⌘K</kbd><span>chat picker — every ready or clauding chat, fuzzy: <em>chk rtr</em> finds <em>checkout retry</em></span>
     <kbd>⌥⌘F</kbd><span>the chat list's own filter, fuzzy the same way — the best match leads · ↑↓ walk the cards · ⏎ opens one · esc clears it</span>
     <kbd>⌥⌘N</kbd><span id="newKey">a chat — the project in view first, ⏎ ⏎ a new one there · or a project, a folder of your repos, or ＋ clone one · then its open chats or ＋ a new one · ✕ takes a row off the board</span>
+    <kbd>⌥⌘B</kbd><span>fold the chat list into a rail, and back</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
     <kbd>⌥⌘←→</kbd><span>the tab to the left / right: chat, shell, GitHub pages, VS Code — split, across both halves' strips · drag a tab onto the other half to move it there</span>
     <kbd>⌥⌘W</kbd><span>close the tab the keys are in: the shell ends, a page or VS Code Web goes — the ··· menu too · split, a half with one tab shows no strip</span>
     <kbd>⌥⌘1 ⌥⌘2</kbd><span>the halves one over the other: the top one, the bottom one — ⌥⌘2 splits the chat that way the first time; side by side, either turns it</span>
     <kbd>⌘,</kbd><span>these settings — the chat header's ··· has them too</span>
-    <kbd>⌘B</kbd><span>fold the chat list into a rail, and back</span>
     <kbd>⌘1 ⌘2</kbd><span>the left half of the chat, the right one — ⌘2 splits it in two the first time; one over the other, either turns it back · the digit is the pane, the modifier the layout</span>
     <kbd>⌘W</kbd><span>close the half the keys are in — or the picker · with one half it is the window's own key</span>
     <kbd>⌘0</kbd><span>only this half: the other one closes and this tab is the column · with one half, the size back to normal</span>
@@ -1599,8 +1599,9 @@
     $('#main').classList.toggle('scompact', !!prefs.sessionsCompact);
     $('#sessions').style.width = prefs.sessionsCompact ? '' : prefs.sessionsWidth + 'px';
   }
-  // ⌘B is the same switch from the keyboard (2026-09-22),
-  // VS Code's key for its sidebar, here the chat list — the column beside the chat.
+  // ⌥⌘B is the same switch from the keyboard (2026-09-22; ⌘B until 2026-10-02, VS Code's key for its sidebar — the
+  // chat list is the column beside the chat). As every ⌥⌘ letter, it is forwarded from the pane's pages: VS Code Web
+  // gives up its ⌥⌘B (the secondary side bar) and keeps its ⌘B, and GitHub its bold.
   function toggleSessions() { prefs.sessionsCompact = !prefs.sessionsCompact; savePrefs(); applySessionsCompact(); }
   applySessionsCompact();
   {
@@ -1727,7 +1728,7 @@
   // A failure keeps the last numbers, dimmed, the error on hover; with no numbers yet it is a sentence, not a blank:
   // the first ask on a Mac is a keychain prompt, and an API-key login has none. Failures back off (twice as long
   // each, to half an hour), so a keychain prompt you refused is not put back up every two minutes. USAGE=off on the
-  // server hides the bar. The markup holds both shapes, open and folded; the fold and the rail (⌘B) pick in CSS.
+  // server hides the bar. The markup holds both shapes, open and folded; the fold and the rail (⌥⌘B) pick in CSS.
   const USAGE_EVERY_MS = 120e3;
   const usage = { data: null, err: '', off: false, at: 0, fails: 0, busy: false, html: '' };
   // Each window's tag (2026-09-28): the window's length, or a model's initial for its own week (F for Fable), CR for a
@@ -2869,13 +2870,13 @@
   // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyW: hotCloseTab, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
-  // Plain ⌘ + a key, the board's own layout keys: ⌘B folds the chat list. They are a separate map because the
+  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyW: hotCloseTab, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
   // half goes and the one the keys are in becomes the column (2026-09-22), and with one half there is nothing to close,
   // so it is still what it always was — the chat's size back to normal.
-  const CMDKEYS = { KeyB: toggleSessions, Digit1: () => hotGroup(0), Digit2: () => hotGroup(1), Digit0: hotOnlyHalf, KeyW: hotCloseHalf, Comma: settingsToggle };
+  const CMDKEYS = { Digit1: () => hotGroup(0), Digit2: () => hotGroup(1), Digit0: hotOnlyHalf, KeyW: hotCloseHalf, Comma: settingsToggle };
   // Every hotkey says whether it took the key, and ⌘W is the one that is asked: in the app it arrives as the
   // Window menu's own ⌘W, which closes the window when the board has nothing to close instead (see main.swift).
   // A dialog up swallows the rest, as it always did — but not ⌘W, which is how you close the dialog.
@@ -3037,7 +3038,7 @@
       const p = projs[n] || {}, bp = byName.get(n), peacock = bp?.cwds.map(x => state.peacock[x]).find(Boolean);
       return `<div class="srow proj" data-name="${esc(n)}"><span class="stile" style="${tileStyle(n, byName)}">${esc(p.abbr || abbrRule(n))}</span>`
         + `<span class="pn" title="${esc(bp ? bp.cwds.map(homePath).join('\n') : n)}"><b>${projIcon(n)}${esc(n)}</b>${peacock ? `<small>in Peacock's ${esc(peacock)}</small>` : bp ? `<small>${esc(bp.cwds.map(homePath).join(' · '))}</small>` : ''}</span>`
-        + `<input ${text} class="sab" value="${esc(p.abbr || '')}" placeholder="${esc(abbrRule(n))}" maxlength="6" title="Its short name on the rail (⌘B) — empty, its initials">`
+        + `<input ${text} class="sab" value="${esc(p.abbr || '')}" placeholder="${esc(abbrRule(n))}" maxlength="6" title="Its short name on the rail (⌥⌘B) — empty, its initials">`
         + `<label class="ssw${p.color ? '' : ' none'}" style="${p.color ? `--c:${p.color}` : ''}" title="${p.color ? `${p.color} where Peacock gives none — click to change, ⌥-click to take it off` : 'A colour where Peacock gives none — click to pick'}"><input type="color" value="${esc(p.color || '#808080')}"></label>`
         + `<button class="sdel" title="Forget the short name and colour of ${esc(n)}" aria-label="Forget ${esc(n)}">×</button></div>`;
     };
@@ -3048,7 +3049,7 @@
       + `<div class="srow root add"><span class="sic">＋</span><input ${text} class="sdir" placeholder="Add a folder of repos — ~/code">${org('', 'org')}<span></span></div></div></section>`
       + `<section class="sg">${head('Quick chat', 'A new chat in one project, its environments first when its Taskfile launches claude.')}<div class="slist">`
       + `<label class="srow quick"><kbd>⌥⌘O</kbd><span>starts a chat in</span><span class="ssel">${c.quick ? projIcon(c.quick) : ''}<select id="quickSel" title="The project ⌥⌘O starts a chat in — on its environments first, when its Taskfile launches claude"><option value="">nothing — ⌥⌘N does it all</option>${quick.map(n => `<option${n === c.quick ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></span></label></div></section>`
-      + `<section class="sg">${head('Projects', 'A short name for the folded list (⌘B), and a colour where Peacock gives none.')}<div class="slist">${names.map(projRow).join('')}`
+      + `<section class="sg">${head('Projects', 'A short name for the folded list (⌥⌘B), and a colour where Peacock gives none.')}<div class="slist">${names.map(projRow).join('')}`
       + `<div class="srow padd"><span class="sic">＋</span><select class="sadd" title="Give a project a short name or a colour"><option value="">Add a project…</option>${all.filter(n => !names.includes(n)).map(n => `<option>${esc(n)}</option>`).join('')}</select></div></div></section>`
       + (c.error ? `<p class="sfoot serr">${esc(c.error)} — the board keeps what it had and writes nothing over it until the file reads.</p>` : '')
       + `<p class="sfoot">${c.file ? `In <code>${esc(homePath(c.file))}</code>, yours to edit by hand too — ` : 'Kept by the server — '}the app and every browser on this Mac share it.</p>`;

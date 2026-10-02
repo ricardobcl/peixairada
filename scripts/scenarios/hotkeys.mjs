@@ -192,7 +192,8 @@ export default async function (ctx) {
   out.escIdle = await escOn('body'); ctx.assert.equal(out.escIdle, false, 'with nothing to close, Esc is left alone');
   // the cog lists the keys
   out.cog = await ctx.evaluate(`[...document.querySelectorAll('#settings .keys kbd')].map(k => k.textContent)`);
-  ctx.assert.deepEqual(out.cog.slice(0, 12), ['⌥⌘T', '⌥⌘E', '⌥⌘G', '⌥⌘C', '⌥⌘O', '⌥⌘P', '⌥⌘K', '⌥⌘F', '⌥⌘N', '⌥⌘↑↓', '⌥⌘←→', '⌥⌘W']);
+  ctx.assert.deepEqual(out.cog.slice(0, 13), ['⌥⌘T', '⌥⌘E', '⌥⌘G', '⌥⌘C', '⌥⌘O', '⌥⌘P', '⌥⌘K', '⌥⌘F', '⌥⌘N', '⌥⌘B', '⌥⌘↑↓', '⌥⌘←→', '⌥⌘W']);
+  ctx.assert.ok(!out.cog.includes('⌘B'), 'the fold is ⌥⌘B since 2026-10-02, not ⌘B');
   await ctx.shot('cog');
   return out;
 }
