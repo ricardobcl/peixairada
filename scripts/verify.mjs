@@ -17,15 +17,19 @@ const si = args.indexOf('--shot'); if (si !== -1) { shot = args[si + 1]; args.sp
 const expr = args.join(' ');
 if (!expr) { console.error('usage: node scripts/verify.mjs [--hash <session-id>] [--shot file.png] "<js expression>"'); process.exit(2); }
 
-const bail = setTimeout(() => { console.error(`timed out after ${TIMEOUT}ms`); process.exit(1); }, TIMEOUT);
-const cdp = await launchChrome({ port: process.env.CDP_PORT ? Number(process.env.CDP_PORT) : undefined, dark: !!process.env.DARK });
-process.on('exit', cdp.close);
-await openBoard(cdp, URL_, { hash });
-let out;
-try { out = { value: await cdp.evaluate(expr) }; } catch (e) { out = { error: e.message }; }
-if (shot) { await cdp.shot(shot); console.error('screenshot → ' + shot); }
-clearTimeout(bail);
-if (out.error) { console.error('EXCEPTION:', out.error); process.exitCode = 1; }
-else console.log(typeof out.value === 'string' ? out.value : JSON.stringify(out.value, null, 1));
-if (cdp.exceptions.length) { console.error('page JS exceptions:', cdp.exceptions); process.exitCode = 1; }
+// Chrome is closed — and its profile removed — on every way out, awaited (2026-10-03: an exit hook cannot wait for
+// Chrome's own exit, so every run left its profile in $TMPDIR).
+let cdp = null;
+const bail = setTimeout(async () => { console.error(`timed out after ${TIMEOUT}ms`); await Promise.race([cdp?.close(), new Promise(r => setTimeout(r, 4000))]); process.exit(1); }, TIMEOUT);
+try {
+  cdp = await launchChrome({ port: process.env.CDP_PORT ? Number(process.env.CDP_PORT) : undefined, dark: !!process.env.DARK });
+  await openBoard(cdp, URL_, { hash });
+  let out;
+  try { out = { value: await cdp.evaluate(expr) }; } catch (e) { out = { error: e.message }; }
+  if (shot) { await cdp.shot(shot); console.error('screenshot → ' + shot); }
+  if (out.error) { console.error('EXCEPTION:', out.error); process.exitCode = 1; }
+  else console.log(typeof out.value === 'string' ? out.value : JSON.stringify(out.value, null, 1));
+  if (cdp.exceptions.length) { console.error('page JS exceptions:', cdp.exceptions); process.exitCode = 1; }
+} catch (e) { console.error(e.message); process.exitCode = 1; }
+finally { clearTimeout(bail); await cdp?.close(); }
 process.exit(process.exitCode || 0);

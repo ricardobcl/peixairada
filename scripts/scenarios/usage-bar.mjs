@@ -53,7 +53,7 @@ export default async function (ctx) {
 
   // Numbers, from the stub: a tag and a percent per window at the row's end, the rows out of sight
   await ctx.send('Page.addScriptToEvaluateOnNewDocument', { source: STUB });
-  await ctx.send('Page.reload'); await ctx.sleep(800); await board();
+  await ctx.reload(); await board();
   await ctx.waitFor(`document.querySelectorAll('#usage .urow').length === 4`, { what: 'four rows' });
   await move(900, 500); await ctx.settle();
   out.rest = await bar(ctx);
@@ -111,7 +111,7 @@ export default async function (ctx) {
   ctx.assert.match(out.stale.title, /since then: keychain access refused/, 'the error on hover');
 
   // A failure with no numbers yet is a sentence, cut short in the row
-  await ctx.send('Page.reload'); await ctx.sleep(800); await board();
+  await ctx.reload(); await board();
   await ctx.waitFor(`document.querySelector('#usage .unote')?.textContent.includes('keychain')`, { what: 'the error in the bar' });
   out.none = await bar(ctx);
   ctx.assert.equal(out.none.hidden, false, 'an error is shown, not hidden');

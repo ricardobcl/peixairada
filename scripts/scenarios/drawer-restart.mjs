@@ -13,7 +13,7 @@ export default async function (ctx) {
   ctx.assert.ok(after && after.id === before.id && after.exited === null, 'the new server adopted the drawer');
   ctx.assert.equal(after.pid, before.pid, 'same claude');
   // the page lost its SSE and socket with the old server; a reload is what the app does (the watchdog) — do the same
-  await ctx.send('Page.reload'); await ctx.sleep(1500);
+  await ctx.reload();
   await ctx.openChat(chat.id);
   await ctx.waitFor(`document.querySelector('#termBtn') && !document.querySelector('#termBtn').disabled`, { what: 'the >_ button' });
   await ctx.evaluate(`document.querySelector('#termBtn').click()`);

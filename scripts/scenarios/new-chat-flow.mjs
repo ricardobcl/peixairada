@@ -36,7 +36,7 @@ export default async function (ctx) {
   // The setup names oracle for ⌥⌘O, as the cog would (2026-09-28).
   writeFileSync(join(ctx.server.dir, 'state.json'), JSON.stringify({ envs: { [prod.id]: 'production-workload', [sand.id]: 'sandbox-workload' }, config: { quick: 'oracle' } }));
   await ctx.server.restart();
-  await ctx.send('Page.reload'); await ctx.sleep(1500);
+  await ctx.reload();
   await ctx.waitFor(`window.peix.sessions().filter(s => s.cwd === ${JSON.stringify(oracleCwd)}).length === 3`, { what: 'the three oracle chats on the board' });
   out.envs = await ctx.peix(`sessions().filter(s => s.cwd === ${JSON.stringify(oracleCwd)}).map(s => [s.title, s.env])`);
   ctx.assert.deepEqual(Object.fromEntries(out.envs), { 'ledger sweep': 'production-workload', 'replay a batch': 'sandbox-workload', 'read the Taskfile': null }, 'the server remembers each chat\'s environment across a restart');

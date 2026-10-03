@@ -6,7 +6,7 @@
 // A scenario is an ES module: `export const meta = { server: true, fake: true, fixture: 'auto', env: {…} }` (its
 // needs, so no flags are required — `env` goes to the throwaway server, for the ones it reads from its environment)
 // and `export default async function (ctx) { … return result }`. `ctx` carries the page
-// (evaluate, waitFor, send, sleep, shot(name), key(code), openChat(id), screen(), type(text), fill(sel, text), settle()), the throwaway server when there
+// (evaluate, waitFor, send, sleep, shot(name), key(code), openChat(id), reload(), screen(), type(text), fill(sel, text), settle()), the throwaway server when there
 // is one (api, terminals, restart, holders, logText), the fixture's chats, `args`, `log` and node:assert as `assert`.
 // Everything is cleaned up on exit — Chrome, the server, its terminals and holders, the temp dirs — unless --keep.
 import assert from 'node:assert/strict';
@@ -25,6 +25,7 @@ const flag = name => { const i = argv.indexOf(name); if (i < 0) return false; ar
 const url = opt('--url'), wantServer = flag('--server'), fake = flag('--fake'), fixtureOpt = opt('--fixture'), hash = opt('--hash');
 const shotsDir = opt('--shots'), keep = flag('--keep'), timeout = Number(opt('--timeout', 120_000));
 const file = argv.find(a => !a.startsWith('--'));
+if (!(timeout > 0)) { console.error('--timeout wants a number of ms'); process.exit(2); }   // NaN was a bail 1 ms in
 if (!file) { console.error('usage: node scripts/scenario.mjs <scenario.mjs> [--server] [--fake] [--fixture auto|dir] [--url URL] [--hash id] [--shots dir] [--keep] [--timeout ms] [-- args]'); process.exit(2); }
 const mod = await import(pathToFileURL(resolve(file)).href);
 const meta = { server: wantServer, fake, fixture: fixtureOpt, ...(mod.meta || {}) };
@@ -36,8 +37,13 @@ const log = (...a) => console.error(`[${name}]`, ...a);
 const cleanups = [];
 let done = false;
 async function cleanup() { if (done) return; done = true; for (const c of cleanups.reverse()) { try { await c(); } catch (e) { log('cleanup:', e.message); } } }
-process.on('SIGINT', () => cleanup().then(() => process.exit(130)));
-const bail = setTimeout(async () => { log(`timed out after ${timeout} ms`); await cleanup(); process.exit(1); }, timeout);
+/** End with `code`, cleaning up first — but never wait on a wedged server or Chrome for longer than 15 s. */
+const finish = async code => { setTimeout(() => process.exit(code), 15_000).unref(); await cleanup(); process.exit(code); };
+// Every way out cleans up (2026-10-03; SIGINT alone before: a Bash tool's timeout is a SIGTERM, a closed terminal a
+// SIGHUP, and a scenario's stray promise an unhandled rejection — each left Chrome, the server and its holders running).
+for (const [sig, code] of [['SIGINT', 130], ['SIGTERM', 143], ['SIGHUP', 129]]) process.on(sig, () => finish(code));
+for (const ev of ['uncaughtException', 'unhandledRejection']) process.on(ev, e => { log(`${ev}: ${e?.stack || e}`); finish(1); });
+const bail = setTimeout(() => { log(`timed out after ${timeout} ms`); finish(1); }, timeout);
 
 let fixture = null, server = null, boardUrl = url, cdp;
 try {   // a server or a Chrome that does not come up: what did come up is ended, or it ran on after this exited (2026-09-27)
@@ -59,7 +65,7 @@ try {   // a server or a Chrome that does not come up: what did come up is ended
   cleanups.push(() => cdp.close());
   await openBoard(cdp, boardUrl, { hash: hash || null });
 } catch (e) {
-  log(`setup failed: ${e.stack || e}`); clearTimeout(bail); await cleanup(); process.exit(1);
+  log(`setup failed: ${e.stack || e}`); clearTimeout(bail); await finish(1);
 }
 
 // The rows of a half's terminal. The left half keeps the plain ids — it is the whole column while nothing is
@@ -70,10 +76,10 @@ const ctx = {
   // The board moves (2026-09-27, night): a card that arrived or changed rank slides for up to 220 ms, a dialog rises
   // as it opens, and a rectangle read meanwhile is mid-move — the pointer then lands on the neighbour, a box measures
   // off-centre. Measure after this: it waits for every finite animation to end — the named slides (flip · enter ·
-  // leave · pop), the CSS transitions — and leaves the endless ones (the ring, the blink, the spinner) alone.
-  // the endless ones and the scroll-driven ones (the splitter's black, which runs as long as the list can scroll) are left alone
+  // leave · pop), the CSS transitions — and leaves alone the endless ones (the ring, the blink, the spinner) and the
+  // scroll-driven ones (the splitter's black, which runs as long as the list can scroll).
   settle: (timeout = 4000) => cdp.waitFor(`!document.getAnimations().some(a => a.playState === 'running' && a.timeline === document.timeline && a.effect?.getTiming?.().iterations !== Infinity)`, { timeout, every: 40, what: 'the board to settle' }),
-  evaluate: cdp.evaluate, waitFor: cdp.waitFor, send: cdp.send, exceptions: cdp.exceptions, console: cdp.console,
+  evaluate: cdp.evaluate, waitFor: cdp.waitFor, send: cdp.send, reload: cdp.reload, exceptions: cdp.exceptions, console: cdp.console,
   shot: async (label, clip) => { const f = join(shots, `${name}-${label}.png`); await cdp.shot(f, clip); log(`screenshot → ${f}`); return f; },
   openChat: id => openChat(cdp, id),
   /** ⌥⌘ + a letter, as the page's hotkeys expect it (e.code; e.key is a symbol with ⌥ held on a Mac). */
@@ -121,5 +127,4 @@ try {
   try { await ctx.shot('failed'); } catch {}
 }
 clearTimeout(bail);
-await cleanup();
-process.exit(code);
+await finish(code);

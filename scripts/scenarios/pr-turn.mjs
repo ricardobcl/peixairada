@@ -140,7 +140,7 @@ export default async function (ctx) {
     ctx.assert.equal(again.move, null, 'ticked, the card has no line');
     ctx.assert.equal(again.turn12, 'you');
     await ctx.server.restart();
-    await ctx.send('Page.reload'); await ctx.sleep(800);
+    await ctx.reload();
     await ctx.waitFor(`window.peix.session('${two.id}')?.prs?.find(p => p.url.endsWith('/pull/12'))?.turn?.you === true`, { timeout: 10_000, what: 'the PR asked about after the restart' });
     await ctx.sleep(1500);
     ctx.assert.equal((await look()).done, true, 'after a restart the tick still holds');

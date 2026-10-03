@@ -152,7 +152,7 @@ export default async function (ctx) {
     await ctx.send('Page.addScriptToEvaluateOnNewDocument', { source: `(() => { const f = window.fetch, u = ${JSON.stringify(USAGE)};
       window.fetch = (url, o) => String(url).includes('/api/usage') ? Promise.resolve(new Response(JSON.stringify(u), { status: 200, headers: { 'content-type': 'application/json' } })) : f(url, o); })()` });
     await ctx.server.post(`/api/sessions/${chat('Rewrite the getting-started guide').id}/done`, { done: true });
-    await ctx.send('Page.reload'); await ctx.sleep(800);
+    await ctx.reload();
     await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === ${chats.length}`, { what: 'every card', timeout: 15000 });
     await ctx.waitFor(`window.peix.sessions().some(s => s.agents === 3)`, { what: 'the three sub-agents', timeout: 20000 });
     const grid = chat('Dark mode for the product grid');

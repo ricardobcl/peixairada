@@ -163,7 +163,7 @@ export default async function (ctx) {
     ctx.assert.equal(peacock(), COLOR, "Peacock's colour left as it was");
 
     // 5 · a reload keeps it all
-    await ctx.send('Page.reload'); await ctx.sleep(500);
+    await ctx.reload();
     await ctx.waitFor(`document.querySelectorAll('#slist > .card').length >= 3`, { what: 'the board again' });
     await ctx.evaluate(`window.__chroma = ${chroma.toString()}`);
     await ctx.openChat(onPr.id);

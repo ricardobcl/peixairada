@@ -21,7 +21,7 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 2`, { what: 'the two fixture cards' });
   // ⌥⌘N opens on the project in view (＋ went on 2026-09-28): select b's folder the way the page remembers it, and load again
   await ctx.evaluate(`(() => { const p = JSON.parse(localStorage.getItem('peixairada-prefs') || '{}'); p.project = ${JSON.stringify(b.cwd)}; localStorage.setItem('peixairada-prefs', JSON.stringify(p)); })()`);
-  await ctx.send('Page.reload'); await ctx.sleep(800);
+  await ctx.reload();
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 1`, { what: "b's folder in view" });
   // ⌥⌘N, ⏎ on the project it opened on, ⏎ on ＋ new chat
   const newChat = async () => {

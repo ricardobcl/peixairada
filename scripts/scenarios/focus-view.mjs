@@ -59,7 +59,7 @@ export default async function (ctx) {
   // the drawer between halves re-attaches it too, but it resizes it on the way, and the page's emulator and the
   // holder's then disagree by a line for as long as nothing re-syncs them — the read finds whichever line that
   // leaves on screen (measured 2026-09-22; the re-sync is still not written).
-  await ctx.send('Page.reload'); await ctx.sleep(1200);
+  await ctx.reload();
   await ctx.openChat(chat.id);
   await ctx.waitFor(`document.querySelector('#viewBtn')?.classList.contains('on') === true`, { what: 'the button lit by what the re-attached screen says' });
   out.byHand.litAfterReattach = await lit();

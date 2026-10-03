@@ -57,7 +57,7 @@ export default async function (ctx) {
   // A restart keeps it, and a fresh page reads it from the snapshot (the markup's own default is on)
   await ctx.server.restart();
   ctx.assert.equal((await ctx.server.api('api/sessions')).body.notifications, false, 'off after a restart');
-  await ctx.send('Page.reload'); await ctx.sleep(1200);
+  await ctx.reload();
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length > 0`, { what: 'the board after the reload' });
   out.afterRestart = await ctx.evaluate(`${sw}.checked`);
   ctx.assert.equal(out.afterRestart, false, 'the reloaded page shows it off');

@@ -1449,7 +1449,7 @@
 // Map ▴
 (() => {
   const $ = s => document.querySelector(s);
-  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false };
+  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0 };
   const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
@@ -3788,7 +3788,7 @@
   // A read-only window on this closure for the console and the harness (scripts/scenario.mjs reads it as ctx.peix):
   // copies, never the live objects. The page's script is one IIFE, so nothing else in it is reachable.
   window.peix = {
-    state: () => ({ current: state.current, project: prefs.project, person: prefs.person, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft, fill: state.fill, notch: state.notch, hidden: [...state.hidden],
+    state: () => ({ current: state.current, snapshots: state.snapshots, project: prefs.project, person: prefs.person, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft, fill: state.fill, notch: state.notch, hidden: [...state.hidden],
       paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, [...v]])), tab: state.sessions.has(state.current) ? tabOf(state.sessions.get(state.current)) : null, tabs: state.sessions.has(state.current) ? tabKeys(state.sessions.get(state.current)) : [], pr: shownPr.url,
       split: splitNow(), stacked: stackNow(), focusG, halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
       strips: state.sessions.has(state.current) ? [0, 1].map(g => keysIn(state.sessions.get(state.current), g)) : [[], []],
@@ -4565,7 +4565,7 @@
   function renderLog(reset = false) {
     const log = $('#log'), cwd = state.sessions.get(state.current)?.cwd;
     const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
-    if (reset || logView.arr !== state.entries || logView.n > state.entries.length) { log.innerHTML = ''; Object.assign(logView, { arr: state.entries, n: 0, run: [], group: null, fresh: 0, day: 'today' }); }
+    if (reset || logView.arr !== state.entries || logView.n > state.entries.length) { log.innerHTML = ''; log.dataset.sid = state.current || ''; Object.assign(logView, { arr: state.entries, n: 0, run: [], group: null, fresh: 0, day: 'today' }); }
     // What comes while you read fades in (`.in`); the first fill stands still. New nodes go before the log's tail —
     // the presence line and the new-reply pill, which stay last.
     const live = logView.n > 0 && !log.hidden && !REDUCED.matches, arrived = state.entries.length - logView.n;
@@ -4700,7 +4700,7 @@
     es.onopen = () => $('#brandBtn').classList.remove('off');
     es.onerror = () => { $('#brandBtn').classList.add('off'); };
     es.addEventListener('snapshot', e => {
-      const d = JSON.parse(e.data);
+      const d = JSON.parse(e.data); state.snapshots++;   // the harness waits on the count: a reloaded page has its board
       state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.peacock = d.peacock || {}; state.repos = d.repos || {};
       for (const m of [tabs, homes, splits, autoSplit, stacked, focusView, state.unread, state.paneGh]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);   // a chat gone from the board takes its page state with it
       state.about = d.about || {};

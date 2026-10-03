@@ -93,7 +93,7 @@ export default async function (ctx) {
     await ctx.cmd('Comma');
 
     // a reload keeps it: a pref of this window
-    await ctx.send('Page.reload'); await ctx.sleep(1200);
+    await ctx.reload();
     await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 6`, { what: 'the list back after the reload' });
     out.reloaded = { slider: await slider(ctx), words: Object.values(await cards(ctx)).flatMap(c => c.words) };
     ctx.assert.deepEqual(out.reloaded, { slider: { v: '2', list: 'compact', on: 'compact' }, words: [] }, 'compact after a reload');

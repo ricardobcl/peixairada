@@ -25,7 +25,7 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 7`, { what: 'the five chats and the fixture\'s two' });
   // The five came in while the board was up, and moved in; the check that the *first* draw stands still is a reload
   // with them all there: the page comes back, the list is drawn, and nothing has moved.
-  await ctx.send('Page.reload'); await ctx.sleep(900);
+  await ctx.reload();
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 7 && window.peix`, { what: 'the board back after the reload' });
   await ctx.sleep(300);
   out.first = await motion(ctx);

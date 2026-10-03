@@ -28,7 +28,7 @@ export default async function (ctx) {
   out.open = await head();
   ctx.assert.deepEqual([out.open.shown, out.open.expanded, out.open.pref], [true, 'true', true], 'a click lists them, one per row');
   await ctx.shot('2-open', { x: 400, y: 0, width: 1300, height: 160 });
-  await ctx.send('Page.reload'); await ctx.sleep(800);
+  await ctx.reload();
   await ctx.waitFor(`document.querySelectorAll('.card').length > 0`, { what: 'the board again' });
   await ctx.openChat(two.id);
   await ctx.waitFor(`document.querySelectorAll('#prlist .prrow').length === 2`, { what: 'the rows again' });

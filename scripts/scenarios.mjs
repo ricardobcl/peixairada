@@ -31,7 +31,8 @@ if (!names.length) { console.error(`no scenario matches ${pats.join(' ')} — ha
 
 const run = file => new Promise(resolve => {
   const t0 = Date.now();
-  const p = spawn(process.execPath, [join(ROOT, 'scripts', 'scenario.mjs'), join(DIR, file)], { stdio: ['ignore', 'pipe', 'pipe'] });
+  // past its own bail and cleanup, a scenario is ended (SIGTERM, which it cleans up on) rather than hang the suite
+  const p = spawn(process.execPath, [join(ROOT, 'scripts', 'scenario.mjs'), join(DIR, file)], { stdio: ['ignore', 'pipe', 'pipe'], timeout: 180_000 });
   let out = '';
   p.stdout.on('data', d => { out += d; });
   p.stderr.on('data', d => { out += d; });
