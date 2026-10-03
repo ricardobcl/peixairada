@@ -45,10 +45,12 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { homedir, userInfo } from 'node:os';
 import { StringDecoder } from 'node:string_decoder';
 import { execFile, execFileSync, spawn } from 'node:child_process';
+import { promisify } from 'node:util';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { WebSocketServer } from 'ws';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const execFileP = promisify(execFile);
 // node-pty is the one native module here. Its prebuilt spawn-helper arrives from npm without the
 // executable bit, which surfaces as "posix_spawnp failed" on the first terminal — fix it before the
 // import rather than documenting it. Without the module the server still runs; terminals answer 501.
@@ -1192,15 +1194,24 @@ function heldFiles(files) {
     });
   });
 }
-/** The poll's half of the pruning, for every chat at once: the commands whose output file nobody holds are let go. */
+/** The poll's half of the pruning, for every chat at once: the commands whose output file nobody holds are let go.
+ *  One lsof at a time — it can outlast the poll — and a command asked about less often the longer it has run, up to
+ *  once a minute (2026-10-03: a dev server left running cost an lsof every ten seconds, 0.4 s of CPU each, for hours). */
+let sweeping = false;
 async function sweepTasks() {
-  const due = [];
+  if (sweeping) return;
+  const due = [], now = Date.now();
   for (const s of sessions.values()) {
     if (!s.alive || !s.tasks?.size) continue;
-    for (const [id, t] of s.tasks) if (t.out && Date.now() - (Date.parse(t.at) || 0) >= TASK_GRACE_MS && existsSync(t.out)) due.push({ s, id, t });   // not written yet, or cleaned up: no verdict
+    for (const [id, t] of s.tasks) {
+      const age = now - (Date.parse(t.at) || 0);
+      if (!t.out || age < TASK_GRACE_MS || now - (t.askedAt || 0) < Math.min(60_000, age / 10) || !existsSync(t.out)) continue;   // not written yet, or cleaned up: no verdict
+      t.askedAt = now; due.push({ s, id, t });
+    }
   }
   if (!due.length) return;
-  const held = await heldFiles([...new Set(due.map(d => d.t.out))]);
+  sweeping = true;
+  let held; try { held = await heldFiles([...new Set(due.map(d => d.t.out))]); } finally { sweeping = false; }
   if (!held) return;
   for (const { s, id, t } of due) {
     if (held.has(realPath(t.out)) || s.tasks?.get(id) !== t) continue;
@@ -1275,7 +1286,7 @@ function loadRegistry() {
     found.get(reg.sessionId).push({ pid: reg.pid, name: reg.name, entrypoint: reg.entrypoint, kind: reg.kind, cwd: reg.cwd, startedAt: reg.startedAt, version: reg.version,
       status: reg.status, statusAt: reg.statusUpdatedAt, waitingFor: reg.status === 'waiting' ? reg.waitingFor : undefined });   // what it is doing, since when, and what it waits on (waitingOn)
   }
-  const ppids = [...terms.values()].some(t => t.task && !t.sessionId && t.exited === null) ? parentPids() : null;   // a launcher's claude is below the PTY's pid
+  const ppids = [...terms.values()].some(t => t.task && !t.sessionId && t.exited === null) ? parentPids([...found.values()].flat().map(l => l.pid).filter(pidAlive)) : null;   // a launcher's claude is below the PTY's pid
   for (const [id, lives] of found) {
     let s = sessions.get(id);
     if (!s) { s = newSession(id, null); sessions.set(id, s); }
@@ -1333,8 +1344,9 @@ function queueNotify(s, kind) {
 function fireNotify(s) {
   const kind = s.pendingNotify; s.pendingNotify = null;
   if (!kind) return;
+  if (kind === 'needs-input' && statusOf(s) !== 'needs-input') return;   // answered within the debounce: nothing to say
   const sum = summary(s);
-  const asked =sum.ask?.text || (sum.ask?.waitingFor ? `Waiting on you: ${sum.ask.waitingFor}` : 'Waiting for your input');
+  const asked = sum.ask?.text || (sum.ask?.waitingFor ? `Waiting on you: ${sum.ask.waitingFor}` : 'Waiting for your input');
   const evt = { kind, sessionId: s.id, project: sum.project, title: sum.title, name: s.live?.name || null, cwd: s.cwd, snippet: kind === 'reply' ? sum.lastReply : asked, ts: new Date().toISOString(), quiet: !notificationsOn };
   broadcast('alert', evt);
   if (notificationsOn) nativeNotify(kind === 'reply' ? `Claude replied · ${sum.project}` : `Claude needs input · ${sum.project}`, sum.title, evt.snippet || '');
@@ -1403,16 +1415,17 @@ function ghBin() { return findBin('gh', 'PR status colours are disabled'); }
 // or ~/.claude/.credentials.json elsewhere. It is used for that one request and never leaves this process:
 // the browser gets percentages and reset times. The second thing here that talks to the network, after gh.
 // USAGE=off disables the route (no keychain prompt, no call); answers are cached for a minute.
-const usageCache = { at: 0, code: 0, body: null };
-function oauthToken(cb) {
+/** The OAuth token, or why there is none: { token } | { why }. */
+async function oauthToken() {
   const parse = raw => { try { const t = JSON.parse(raw)?.claudeAiOauth?.accessToken; return typeof t === 'string' && t ? t : null; } catch { return null; } };
   const file = join(CLAUDE_DIR, '.credentials.json');
-  if (existsSync(file)) { try { return cb(parse(readFileSync(file, 'utf8')), 'no OAuth token in .credentials.json'); } catch (e) { return cb(null, String(e.message || e)); } }
-  if (process.platform !== 'darwin') return cb(null, 'no ~/.claude/.credentials.json');
-  execFile('/usr/bin/security', ['find-generic-password', '-s', 'Claude Code-credentials', '-w'], { timeout: 60000 }, (err, out) => {
-    if (err) return cb(null, /could not be found/i.test(String(err.message || err)) ? 'no Claude Code login in the keychain' : 'keychain access refused (allow `security` when asked)');
-    cb(parse(out.trim()), 'the keychain item holds no OAuth token — API-key logins have no plan usage');
-  });
+  if (existsSync(file)) { try { const token = parse(readFileSync(file, 'utf8')); return token ? { token } : { why: 'no OAuth token in .credentials.json' }; } catch (e) { return { why: String(e.message || e) }; } }
+  if (process.platform !== 'darwin') return { why: 'no ~/.claude/.credentials.json' };
+  try {
+    const { stdout } = await execFileP('/usr/bin/security', ['find-generic-password', '-s', 'Claude Code-credentials', '-w'], { timeout: 60000 });
+    const token = parse(stdout.trim());
+    return token ? { token } : { why: 'the keychain item holds no OAuth token — API-key logins have no plan usage' };
+  } catch (err) { return { why: /could not be found/i.test(String(err.message || err)) ? 'no Claude Code login in the keychain' : 'keychain access refused (allow `security` when asked)' }; }
 }
 // What the usage endpoint answers, as far as the 2.1.278 binary shows: top-level windows — five_hour,
 // seven_day, seven_day_sonnet/opus ({utilization: 0–100, resets_at}) — plus codename buckets of the same
@@ -1440,20 +1453,26 @@ function usageWindows(d) {
   }
   return { windows, other };
 }
-function planUsage(cb) {
-  if (process.env.USAGE === 'off') return cb(503, { error: 'usage disabled (USAGE=off)', off: true });   // off: the page hides its bar
-  if (usageCache.body && Date.now() - usageCache.at < 60000) return cb(usageCache.code, usageCache.body);
-  oauthToken(async (token, why) => {
-    if (!token) return cb(503, { error: why });
-    try {
-      const r = await fetch('https://api.anthropic.com/api/oauth/usage', {
-        headers: { authorization: `Bearer ${token}`, 'anthropic-beta': 'oauth-2025-04-20', accept: 'application/json' }, signal: AbortSignal.timeout(15000) });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) return cb(r.status === 401 ? 503 : 502, { error: d?.error?.message || `usage API: HTTP ${r.status}` });
-      Object.assign(usageCache, { at: Date.now(), code: 200, body: { ...usageWindows(d), fetchedAt: new Date().toISOString() } });
-      cb(200, usageCache.body);
-    } catch (e) { cb(502, { error: `usage API: ${e.message || e}` }); }
-  });
+/** { code, body } for the route. One question at a time, and its answer kept: a minute when it is the numbers, half
+ *  a minute when it is a failure (2026-10-03: every page and every reload asked on its own — a keychain refused, or
+ *  its prompt still up, was a `security` and a prompt per ask). */
+const usageCache = { at: 0, code: 0, body: null };
+let usageAsk = null;
+function planUsage() {
+  if (process.env.USAGE === 'off') return Promise.resolve({ code: 503, body: { error: 'usage disabled (USAGE=off)', off: true } });   // off: the page hides its bar
+  if (usageCache.body && Date.now() - usageCache.at < (usageCache.code === 200 ? 60_000 : 30_000)) return Promise.resolve(usageCache);
+  return usageAsk ??= askUsage().then(r => Object.assign(usageCache, r, { at: Date.now() })).finally(() => { usageAsk = null; });
+}
+async function askUsage() {
+  const { token, why } = await oauthToken();
+  if (!token) return { code: 503, body: { error: why } };
+  try {
+    const r = await fetch('https://api.anthropic.com/api/oauth/usage', {
+      headers: { authorization: `Bearer ${token}`, 'anthropic-beta': 'oauth-2025-04-20', accept: 'application/json' }, signal: AbortSignal.timeout(15000) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) return { code: r.status === 401 ? 503 : 502, body: { error: d?.error?.message || `usage API: HTTP ${r.status}` } };
+    return { code: 200, body: { ...usageWindows(d), fetchedAt: new Date().toISOString() } };
+  } catch (e) { return { code: 502, body: { error: `usage API: ${e.message || e}` } }; }
 }
 function codeBin() { return findBin('code', 'VS Code Web is disabled'); }
 
@@ -1532,10 +1551,13 @@ function replyToStale(s, text) {
   // so the prompt and the answer show up on their own. This only tracks the process, so the UI can
   // say "sending" and surface a failure that never reaches the transcript at all.
   execFile(bin, ['--resume', s.id, '-p', text], { cwd, env: cleanEnv(), timeout: REPLY_TIMEOUT_MS, maxBuffer: 16e6 }, (err, _stdout, stderr) => {
-    s.replying = null;
-    s.replyError = err ? (String(stderr || err.message).trim().split('\n').pop() || String(err)).slice(0, 300) : null;
-    if (s.replyError) console.error(`[peixairada] reply to ${s.id} failed:`, s.replyError);
-    schedulePush(s);
+    // the chat as it is now: a re-read during the reply replaced the object and carried `replying` over, and clearing
+    // the old one's left the new one's set — every later reply refused as "already running" (2026-10-03)
+    const cur = sessions.get(s.id) ?? s;
+    cur.replying = null;
+    cur.replyError = err ? (String(stderr || err.message).trim().split('\n').pop() || String(err)).slice(0, 300) : null;
+    if (cur.replyError) console.error(`[peixairada] reply to ${s.id} failed:`, cur.replyError);
+    schedulePush(cur);
   });
   return { code: 202, ok: true };
 }
@@ -1885,12 +1907,16 @@ async function adoptHolder(f) {
   }
 }
 
-/** pid → parent pid for every process, from one `ps`. Asked for only while a launcher's drawer has no session yet. */
-function parentPids() {
+/** pid → parent pid for every process, from one `ps`. Asked for only while a launcher's drawer has no session yet —
+ *  and only when a process in the registry is not in the last table (2026-10-03: a `ps` blocked the server ~20 ms on
+ *  every registry write by any claude, for as long as a launcher sat at an SSO prompt). Parents do not change. */
+let ppidTable = null;
+function parentPids(need = []) {
+  if (ppidTable && need.every(p => ppidTable.has(p))) return ppidTable;
   const m = new Map();
   try { for (const l of execFileSync('/bin/ps', ['-axo', 'pid=,ppid='], { encoding: 'utf8' }).split('\n')) { const [p, pp] = l.trim().split(/\s+/).map(Number); if (p) m.set(p, pp); } }
   catch (e) { console.error(`[peixairada] ps: ${e.message}`); }
-  return m;
+  return ppidTable = m;
 }
 const descends = (pid, from, ppids) => { if (!ppids) return false; for (let p = ppids.get(pid), i = 0; p > 1 && i < 64; p = ppids.get(p), i++) if (p === from) return true; return false; };
 /**
@@ -2197,7 +2223,7 @@ const server = createServer(async (req, res) => {
       saveState(); broadcast('projects', { projects: projectList() }); pollPeacock();
       return json(res, 200, { project: projects[m[1]] });
     }
-    if (req.method === 'GET' && p === '/api/usage') { planUsage((code, body) => json(res, code, body)); return; }
+    if (req.method === 'GET' && p === '/api/usage') { const { code, body } = await planUsage(); return json(res, code, body); }
     if (req.method === 'GET' && p === '/api/terminals') return json(res, 200, { terminals: [...terms.values()].map(termSummary), available: termsAvailable(), dir: TERMS_DIR });
     if (req.method === 'GET' && p === '/api/launchers') {   // the folder's Taskfile tasks that launch claude, if any (see launchersFor)
       const cwd = url.searchParams.get('cwd') || '';
@@ -2354,7 +2380,7 @@ function onFsEvent(_ev, rel) {
   if (parts.length === 4 && parts[2] === 'subagents' && parts[3].endsWith('.jsonl')) {   // <slug>/<id>/subagents/agent-*.jsonl
     const s = sessions.get(parts[1]); if (!s) return;
     clearTimeout(pendingAgents.get(s.id));
-    pendingAgents.set(s.id, setTimeout(() => { pendingAgents.delete(s.id); scanAgents(s); }, 200));
+    pendingAgents.set(s.id, setTimeout(() => { pendingAgents.delete(s.id); scanAgents(sessions.get(s.id) ?? s); }, 200));   // the chat as it is then: a re-read (indexFile) replaces the object
     return;
   }
   if (parts.length !== 2 || !parts[1].endsWith('.jsonl')) return; // ignore memory/, <id>/subagents/*.meta.json, etc.
