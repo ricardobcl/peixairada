@@ -31,38 +31,37 @@ func isCancelled(_ error: Error) -> Bool {
   return e.domain == NSURLErrorDomain && e.code == NSURLErrorCancelled
 }
 
-/// A Swift string as a JavaScript literal, for the calls the shell makes into the board (a page's address).
-func jsStr(_ s: String) -> String {
-  var out = ""
-  for c in s.unicodeScalars {
-    switch c {
-    case "\\": out += "\\\\"
-    case "'": out += "\\'"
-    case "\n", "\r", "\u{2028}", "\u{2029}": out += " "
-    default: out.unicodeScalars.append(c)
-    }
-  }
-  return "'" + out + "'"
-}
-
 /// The find bar's highlight *is* the page's selection: this is how it is taken away again.
 let kDropSelection = "window.getSelection && window.getSelection().removeAllRanges()"
 
+/// A file opened for appending — every write lands at the end, whoever else writes it (the agent's server and the
+/// app's own share peixairada.log) — or nil.
+func appendHandle(_ url: URL) -> FileHandle? {
+  let fd = open(url.path, O_WRONLY | O_APPEND | O_CREAT, 0o644)
+  return fd < 0 ? nil : FileHandle(fileDescriptor: fd, closeOnDealloc: true)
+}
+
 /// Append a line to the app log — the only way to see what the shell is doing once it is a bundle. One formatter and
 /// one handle, kept open (2026-09-27: a formatter made and the file opened, sought and closed per line, on the main
-/// thread, for tens of lines a minute).
+/// thread, for tens of lines a minute) — on a queue of their own, since the notification center's callbacks come from
+/// another thread, and written with the throwing call: a full disk was an Objective-C exception, which ends an app.
+let logQueue = DispatchQueue(label: "net.peixairada.log")
 let logStamp = ISO8601DateFormatter()
 var logHandle: FileHandle?
 func logLine(_ s: String) {
-  let line = "\(logStamp.string(from: Date())) \(s)\n"
-  if logHandle == nil {
-    if !FileManager.default.fileExists(atPath: kAppLog.path) {
-      FileManager.default.createFile(atPath: kAppLog.path, contents: nil)
-    }
-    logHandle = try? FileHandle(forWritingTo: kAppLog)
-    logHandle?.seekToEndOfFile()
+  let when = Date()
+  logQueue.async {
+    if logHandle == nil { logHandle = appendHandle(kAppLog) }
+    try? logHandle?.write(contentsOf: Data("\(logStamp.string(from: when)) \(s)\n".utf8))
   }
-  logHandle?.write(Data(line.utf8))
+}
+
+/// A Swift string as a JavaScript literal — JSON's own escaping, so a quote, a backslash or a line break in a path or
+/// an id is the text it was (2026-10-03: three hand-rolled ways before, one of which turned newlines into spaces and one
+/// of which let a backslash through).
+func jsLit(_ s: String) -> String {
+  guard let d = try? JSONSerialization.data(withJSONObject: s, options: .fragmentsAllowed), let lit = String(data: d, encoding: .utf8) else { return "''" }
+  return lit
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -72,6 +71,12 @@ func logLine(_ s: String) {
 final class ServerController {
   private var process: Process?
   private(set) var adopted = false      // true when a server was already running and we just attached
+  /// The launchd agent's plist (scripts/launchd.sh): when it is there, the server answering is the agent's, and a
+  /// restart is launchd's to do — the app never had a process to stop, and ⇧⌘R restarted nothing (2026-10-03).
+  static let agentLabel = "net.peixairada.server"
+  static var agentInstalled: Bool {
+    FileManager.default.fileExists(atPath: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/LaunchAgents/\(agentLabel).plist").path)
+  }
 
   /// The node that runs the server ships inside the bundle: build.sh copies the one that ran
   /// `npm install`, so node-pty's native addon matches it. Finding a node on the machine from a
@@ -108,6 +113,17 @@ final class ServerController {
         done(nil)
         return
       }
+      // One of its own at a time (2026-10-03): a start while the last one was still coming up — ⇧⌘R twice, the
+      // watchdog during a slow boot — spawned another and dropped the first, which then outlived the app.
+      if let p = self.process, p.isRunning { self.waitUntilUp(attempts: 40, done); return }
+      // The agent installed: launchd keeps it alive and is the one to start it — a server of the app's own beside it
+      // only waited on the port (a probe that timed out while the agent booted was enough to spawn one).
+      if ServerController.agentInstalled {
+        logLine("server: nothing answering yet — the launchd agent is installed, so waiting for it")
+        self.adopted = true
+        self.waitUntilUp(attempts: 80, done)
+        return
+      }
       guard let node = ServerController.nodePath() else {
         done("""
         This app bundle has no node binary. Rebuild it with mac/build.sh (it copies the node that
@@ -133,9 +149,8 @@ final class ServerController {
       if !FileManager.default.fileExists(atPath: kLog.path) {
         FileManager.default.createFile(atPath: kLog.path, contents: nil)
       }
-      if let h = try? FileHandle(forWritingTo: kLog) {
-        h.seekToEndOfFile(); p.standardOutput = h; p.standardError = h
-      }
+      if let h = appendHandle(kLog) { p.standardOutput = h; p.standardError = h }   // appended, beside the agent's lines
+      p.terminationHandler = { [weak self] ended in DispatchQueue.main.async { if self?.process === ended { self?.process = nil } } }
       do { try p.run() } catch {
         done("Could not start the server: \(error.localizedDescription)")
         return
@@ -147,7 +162,8 @@ final class ServerController {
 
   private func waitUntilUp(attempts: Int, _ done: @escaping (String?) -> Void) {
     guard attempts > 0 else {
-      DispatchQueue.main.async { done("The server did not come up. See \(kLog.path)") }
+      // given up on, it is ended: it would otherwise come up later beside the next one, or hold the port for good
+      DispatchQueue.main.async { self.stop(); done("The server did not come up. See \(kLog.path)") }
       return
     }
     ServerController.isServing { ok in
@@ -164,6 +180,15 @@ final class ServerController {
   /// Only once the port has fallen silent: a start right after the terminate found the server still answering while
   /// it shut down, adopted it, and the watchdog reported it gone fifteen seconds later (2026-09-27).
   func restart(_ done: @escaping (String?) -> Void) {
+    if adopted && process == nil && ServerController.agentInstalled {
+      let k = Process()
+      k.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+      k.arguments = ["kickstart", "-k", "gui/\(getuid())/\(ServerController.agentLabel)"]
+      do { try k.run() } catch { return done("Could not restart the agent: \(error.localizedDescription)") }
+      logLine("server: launchctl kickstart -k \(ServerController.agentLabel)")
+      waitUntilDown(attempts: 20) { self.start(done) }
+      return
+    }
     stop()
     adopted = false
     waitUntilDown(attempts: 20) { self.start(done) }
@@ -245,7 +270,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
     showMessage("Starting the server…")
     bringUpServer()
-    Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in self?.checkServer() }
+    Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in self?.checkServer() }.tolerance = 1
   }
 
   func applicationWillTerminate(_ note: Notification) { server.stop() }
@@ -316,12 +341,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     installHotkeyForwarder()
     installPaneClickMonitor()
     window.contentMinSize = NSSize(width: 760, height: 520)
+    // Where it was left, centred only the first time (2026-10-03: centred after the saved frame was restored, and the
+    // autosave then wrote the centred one over it — every launch came up in the middle).
+    if !window.setFrameUsingName(kFrameName) { window.center() }
     window.setFrameAutosaveName(kFrameName)
     // No system full screen: it always sits below the camera housing. The green button zooms instead, and
     // windowShouldZoom makes a plain click on it the fill (toggleFill) — ⌥-click and a title bar double-click zoom.
     window.collectionBehavior = [.fullScreenNone]
     window.delegate = self
-    window.center()
     window.makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)
     if UserDefaults.standard.bool(forKey: kFillKey) { toggleFill(nil) }   // as it was left
@@ -427,12 +454,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// moved on to another tab by the time a load finishes. Sent on every pane message too: a board reload forgets it.
   func tellPaneUrl(_ key: String, _ url: String?) {
     guard let url = url, !url.isEmpty else { return }
-    web.evaluateJavaScript("window.peixPaneUrl && window.peixPaneUrl(\(jsStr(key)), \(jsStr(url)))", completionHandler: nil)
+    web.evaluateJavaScript("window.peixPaneUrl && window.peixPaneUrl(\(jsLit(key)), \(jsLit(url)))", completionHandler: nil)
   }
   /// ⌘W: the board's business first — the half of the chat column the keys are in, or a picker that is up — and
   /// the window only when it says it took neither (2026-09-22).
   /// It has to be the menu item: a key equivalent is dispatched before any responder, so the page never sees ⌘W.
   @objc func closeHalfOrWindow(_ sender: Any?) {
+    // another window in front (the About panel): it is the one ⌘W closes, not a half of the board
+    guard NSApp.keyWindow == nil || NSApp.keyWindow === window else { NSApp.keyWindow?.performClose(sender); return }
     web.evaluateJavaScript("window.peixKey ? !!window.peixKey('KeyW', 'cmd') : false") { [weak self] v, _ in
       guard let self, (v as? Bool) != true else { return }
       if self.fillSaved != nil { self.toggleFill(nil) }   // borderless, the window has no close button for performClose to press
@@ -592,7 +621,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   // all (dialogs, full screen, the rename box keep it).
   private func installEscapeMonitor() {
     NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
-      guard let self = self, e.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return e }
+      guard let self = self, e.window === self.window, e.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return e }
       // The find bar takes both keys back from the pane while it is up: Esc closes it (and stops there — the pane
       // stays), ⏎ / ⇧⏎ step the matches from the field, where Esc would otherwise only empty the box.
       if self.findOn {
@@ -643,7 +672,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         return v.bounds.contains(v.convert(e.locationInWindow, from: nil))
       }
       if let key = key, key != self.paneFocus {
-        self.web.evaluateJavaScript("window.peixPaneFocus && window.peixPaneFocus(\(jsStr(key)))", completionHandler: nil)
+        self.web.evaluateJavaScript("window.peixPaneFocus && window.peixPaneFocus(\(jsLit(key)))", completionHandler: nil)
       }
       return e
     }
@@ -659,6 +688,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
 
   private func showMessage(_ text: String) {
+    boardShown = false
     let esc = text.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;")
     web.loadHTMLString("""
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -815,7 +845,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       window.fill = true
       window.styleMask = .borderless
       placeFill(on: screen)
-      startDockTick()
+      if NSApp.isActive { startDockTick() }   // ⌃⌘F from a shell (SIGUSR1) comes with the app behind: it starts when the app comes forward
     }
     window.makeKeyAndOrderFront(nil)
     window.makeFirstResponder(paneFocus.flatMap { paneViews[$0] } ?? web)   // a new style mask can drop the first responder
@@ -850,8 +880,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// The poll, in .common so it runs under menu tracking too; the Dock's edge read once here, not on every tick
   /// (a UserDefaults suite made ten times a second, 2026-09-27).
   func startDockTick() {
+    fillTick?.invalidate()
     dockSide = AppDelegate.dockEdge()
     let t = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in self?.dockTick() }
+    t.tolerance = 0.03   // the system may fold its wakeups in with others
     RunLoop.main.add(t, forMode: .common); fillTick = t
   }
   /// Ten times a second while filled. The Dock is hidden outright (hideDock): auto-hidden it came out under every touch
@@ -909,6 +941,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     web.evaluateJavaScript("window.peixFill && window.peixFill(\(fillSaved != nil), \(notch))", completionHandler: nil)
   }
   @objc func restartServer(_ sender: Any?) {
+    guard !recovering else { return }   // a start or a restart is already on its way
     showMessage("Restarting the server…")
     bringUpServer(restart: true)
   }
@@ -919,6 +952,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   // showing the last board and every button on it just fails, so poll and bring it back.
   private var misses = 0
   private var recovering = false          // a start is in flight — don't race it with a second one
+  private var boardShown = false          // the board, not a message, is what the window shows
 
   private func bringUpServer(restart: Bool = false) {
     recovering = true
@@ -935,6 +969,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     ServerController.isServing { [weak self] ok in
       DispatchQueue.main.async {
         guard let self, !self.recovering else { return }
+        // A message up while the server answers — ⌘R mid-restart, a boot slower than the wait — went on saying so until
+        // a reload by hand (2026-10-03): the board comes back on its own.
+        if ok && !self.boardShown { logLine("watchdog: the server answers — the board again"); self.web.load(URLRequest(url: kURL)) }
         self.misses = ok ? 0 : self.misses + 1
         guard self.misses >= 3 else { return }   // ~15 s of silence, not one slow answer
         logLine("watchdog: nothing answering on :\(kPort) — starting the server")
@@ -950,8 +987,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
   private func open(sessionId: String) {
     showWindow(nil)
-    let safe = sessionId.replacingOccurrences(of: "'", with: "")
-    web.evaluateJavaScript("location.hash = '\(safe)'", completionHandler: nil)
+    web.evaluateJavaScript("location.hash = \(jsLit(sessionId))", completionHandler: nil)
   }
 
   private func refreshBadges() {
@@ -966,7 +1002,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   // ---- bridge ----------------------------------------------------------------------------------
 
   func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage) {
-    guard let body = message.body as? [String: Any], let type = body["type"] as? String else { return }
+    // The board's page, its main frame, and no one else: the bridge opens any URL in the system (`external`).
+    let origin = message.frameInfo.securityOrigin
+    guard message.frameInfo.isMainFrame, origin.host == "127.0.0.1", origin.port == kPort,
+          let body = message.body as? [String: Any], let type = body["type"] as? String else { return }
     switch type {
     case "state":   // the chats waiting on you, posted by the page when that changes (48k `state:` log lines before, one per burst)
       let asked = Set(needsInput.map { $0["id"] ?? "" })
@@ -1017,11 +1056,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       panel.canChooseDirectories = true; panel.canChooseFiles = false; panel.allowsMultipleSelection = false
       panel.canCreateDirectories = true
       panel.prompt = "Use This Folder"; panel.message = "The folder your git checkouts sit in"
-      let dir = (body["dir"] as? String ?? "").replacingOccurrences(of: "^~(?=/|$)", with: NSHomeDirectory(), options: .regularExpression)
+      let dir = ((body["dir"] as? String ?? "") as NSString).expandingTildeInPath   // a regex template took a $ or \\ in the home's path for its own
       if !dir.isEmpty { panel.directoryURL = URL(fileURLWithPath: dir, isDirectory: true) }
       panel.beginSheetModal(for: window) { [weak self] r in
         let path = r == .OK ? panel.url?.path : nil
-        self?.web.evaluateJavaScript("window.peixFolder && window.peixFolder(\(path.map(jsStr) ?? "null"))", completionHandler: nil)
+        self?.web.evaluateJavaScript("window.peixFolder && window.peixFolder(\(path.map(jsLit) ?? "null"))", completionHandler: nil)
       }
     default: break
     }
@@ -1094,18 +1133,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
   // ---- navigation ---------------------------------------------------------------------------------
 
-  /// Keep the app on the board; anything external (PR links, docs) opens in the real browser.
+  /// Keep the app on the board; anything external (PR links, docs) opens in the real browser — a dev server on another
+  /// port of this Mac included: only the board's own origin stays in its view, where the bridge is (2026-10-03).
   func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
-               decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+               decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void) {
     if let url = action.request.url, action.navigationType == .linkActivated,
-       url.host != "127.0.0.1" {
+       url.host != "127.0.0.1" || url.port != kPort {
       NSWorkspace.shared.open(url)
       return decisionHandler(.cancel)
     }
     decisionHandler(.allow)
   }
 
-  func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { tellFill() }   // a reload forgets the fill
+  func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+    if webView.url?.port == kPort { boardShown = true }
+    tellFill()   // a reload forgets the fill
+  }
+  /// The board's web process gone (killed under memory pressure, crashed): WebKit leaves the view blank and reloads
+  /// nothing, and the watchdog only asks the server.
+  func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+    logLine("board: its web process ended — loading it again")
+    boardShown = false
+    webView.load(URLRequest(url: kURL))
+  }
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
     if isCancelled(error) { return }
     showMessage("Could not load the board: \(error.localizedDescription)")
@@ -1161,7 +1211,7 @@ final class PaneDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
     return nil
   }
   func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
-               decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+               decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void) {
     if let url = action.request.url, let scheme = url.scheme?.lowercased(), !["http", "https", "about", "blob", "data"].contains(scheme) {
       NSWorkspace.shared.open(url)
       return decisionHandler(.cancel)
@@ -1171,6 +1221,49 @@ final class PaneDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
     if isCancelled(error) { return }
     logLine("pane: could not load \(webView.url?.absoluteString ?? "?"): \(error.localizedDescription)")
+  }
+  /// A page's web process gone: WebKit leaves the view blank and reloads nothing — the editor most of all, the
+  /// heaviest page there is.
+  func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+    logLine("pane: the web process of \(webView.url?.absoluteString ?? "?") ended — reloading it")
+    webView.reload()
+  }
+  // What a browser tab does and a web view does not until asked (2026-10-03): an <input type=file> opens the system's
+  // panel — GitHub's "attach files" did nothing — and alert(), confirm() and prompt() are sheets over the window:
+  // without them alert() was silent and confirm() always said no, so a GitHub button that asks first never went on.
+  func webView(_ webView: WKWebView, runOpenPanelWith parameters: WKOpenPanelParameters, initiatedByFrame frame: WKFrameInfo,
+               completionHandler: @escaping @MainActor @Sendable ([URL]?) -> Void) {
+    let panel = NSOpenPanel()
+    panel.allowsMultipleSelection = parameters.allowsMultipleSelection
+    panel.canChooseDirectories = parameters.allowsDirectories
+    panel.canChooseFiles = true
+    guard let w = webView.window else { return completionHandler(panel.runModal() == .OK ? panel.urls : nil) }
+    panel.beginSheetModal(for: w) { completionHandler($0 == .OK ? panel.urls : nil) }
+  }
+  func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo,
+               completionHandler: @escaping @MainActor @Sendable () -> Void) {
+    sheet(alert(frame, message, ["OK"]), over: webView) { _ in completionHandler() }
+  }
+  func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo,
+               completionHandler: @escaping @MainActor @Sendable (Bool) -> Void) {
+    sheet(alert(frame, message, ["OK", "Cancel"]), over: webView) { completionHandler($0 == .alertFirstButtonReturn) }
+  }
+  func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String, defaultText: String?, initiatedByFrame frame: WKFrameInfo,
+               completionHandler: @escaping @MainActor @Sendable (String?) -> Void) {
+    let a = alert(frame, prompt, ["OK", "Cancel"])
+    let field = NSTextField(string: defaultText ?? ""); field.frame = NSRect(x: 0, y: 0, width: 280, height: 24)
+    a.accessoryView = field; a.window.initialFirstResponder = field
+    sheet(a, over: webView) { completionHandler($0 == .alertFirstButtonReturn ? field.stringValue : nil) }
+  }
+  private func alert(_ frame: WKFrameInfo, _ text: String, _ buttons: [String]) -> NSAlert {
+    let a = NSAlert()
+    a.messageText = frame.securityOrigin.host.isEmpty ? "This page says" : "\(frame.securityOrigin.host) says"
+    a.informativeText = text
+    for b in buttons { a.addButton(withTitle: b) }
+    return a
+  }
+  private func sheet(_ a: NSAlert, over v: WKWebView, _ done: @escaping (NSApplication.ModalResponse) -> Void) {
+    if let w = v.window { a.beginSheetModal(for: w, completionHandler: done) } else { done(a.runModal()) }
   }
 }
 
