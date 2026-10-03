@@ -1813,8 +1813,10 @@
   // A PR come round to you is a word too (2026-09-28): the chat rises to the top of its group, under today's line, from
   // when the board learnt of the move (the server's turn.movedAt) — the server's copy agrees.
   const movedAt = s => (s.prs || []).reduce((m, p) => (p.turn?.you && p.turn.movedAt > m ? p.turn.movedAt : m), '');
-  const wordAt = s => { const u = String(s.lastUserAt || ''), r = String(s.lastReplyAt || ''), m = movedAt(s); const w = (u > r ? u : r) || String(s.lastActivity || '') || String(s.startedAt || ''); return m > w ? m : w; };   // an empty chat: its start
-  const byWord = (a, b) => wordAt(b).localeCompare(wordAt(a));
+  // Kept per summary (a new object with every update): the sort asked it twice a comparison, a thousand times a render.
+  const words = new WeakMap();
+  const wordAt = s => { let w = words.get(s); if (w === undefined) { const u = String(s.lastUserAt || ''), r = String(s.lastReplyAt || ''), m = movedAt(s); w = (u > r ? u : r) || String(s.lastActivity || '') || String(s.startedAt || ''); if (m > w) w = m; words.set(s, w); } return w; };   // an empty chat: its start
+  const byWord = (a, b) => { const x = wordAt(a), y = wordAt(b); return x < y ? 1 : x > y ? -1 : 0; };   // ISO strings: no collation needed
   const timeTip = s => !s.lastActivity ? (s.startedAt ? `started ${rel(s.startedAt)} ago · no messages yet` : '') : `last activity ${rel(s.lastActivity)} ago${s.lastUserAt ? ` · you last wrote ${rel(s.lastUserAt)} ago` : ''}${s.lastReplyAt ? ` · Claude last replied ${rel(s.lastReplyAt)} ago` : ''}${movedAt(s) ? ` · a PR came round to you ${rel(movedAt(s))} ago` : ''}`;
   // Three states since 2026-09-20, and done is *only* the tick (asked later that day; the first cut folded
   // stale into done): a chat with no live process is ready — write to it and it resumes. The dot still says
@@ -1881,7 +1883,15 @@
   // The three states as chips, each a toggle (prefs.filters, remembered); all three on is what "all" used to be.
   const FILTERS = [['ready', 'ready'], ['working', 'clauding'], ['done', 'done']];
   const filterOn = k => prefs.filters.includes(k);
+  /** What the stream says, drawn once a frame (2026-10-03): a gh batch is a burst of `session` events in one task, and
+   *  each drew the whole list. A frame, or 100 ms where there are no frames (a hidden window: the badge still follows). */
+  function renderBoardSoon() {
+    if (renderBoardSoon.t) return;
+    const run = () => { renderBoard(); phaseAnims(true); };   // in the frame already: the new nodes' rings phased before it paints
+    renderBoardSoon.raf = requestAnimationFrame(run); renderBoardSoon.t = setTimeout(run, 100);
+  }
   function renderBoard() {
+    cancelAnimationFrame(renderBoardSoon.raf); clearTimeout(renderBoardSoon.t); renderBoardSoon.t = 0;
     const every = projectList();
     if (!every.some(p => p.key === prefs.project)) prefs.project = ALL;
     const cur = every.find(p => p.key === prefs.project);
@@ -2011,11 +2021,11 @@
     // and nothing at all on ALL, which is what no filter means. On the rail the short name (projAbbr, the squares'
     // rule) is the picker's handle.
     $('#stitle').hidden = p.key === ALL;
-    $('#stitle').innerHTML = p.key === ALL ? '' : `<span class="t">${projIcon(p.name)}${esc(p.name)}</span><span class="ab">${esc(projAbbr(p.name))}</span><span class="sx" title="Every project again (ALL)">×</span>`;
+    setHtml($('#stitle'), p.key === ALL ? '' : `<span class="t">${projIcon(p.name)}${esc(p.name)}</span><span class="ab">${esc(projAbbr(p.name))}</span><span class="sx" title="Every project again (ALL)">×</span>`);
     $('#stitle').title = p.key === ALL ? '' : `${p.custom ? `${p.name}: ${p.cwds.join(', ') || 'no folders yet'}` : p.key} — click or ⌥⌘P for another`;
     // No ＋ since 2026-09-28: ⌥⌘N, which opens on
     // the project in view.
-    $('#fchips').innerHTML = FILTERS.map(([k, label]) => `<button class="fchip ${k} ${filterOn(k) ? 'on' : ''}" data-f="${k}" title="${counts[k] || 'no'} ${label} — click to ${filterOn(k) ? 'hide' : 'show'} them"><i></i><span class="lb">${label}</span><span class="n">${counts[k] || 0}</span></button>`).join('');
+    setHtml($('#fchips'), FILTERS.map(([k, label]) => `<button class="fchip ${k} ${filterOn(k) ? 'on' : ''}" data-f="${k}" title="${counts[k] || 'no'} ${label} — click to ${filterOn(k) ? 'hide' : 'show'} them"><i></i><span class="lb">${label}</span><span class="n">${counts[k] || 0}</span></button>`).join(''));
     const b = shown.map(rankOf);   // the divider stands once, under the last clauding card when a ready one follows
     // …and a day's line under every run of cards from one day: the card whose next one is from another day, or none.
     const days = shown.map(dayName);
@@ -2063,32 +2073,50 @@
       const el = cardNodes.get(id)?.el, gone = t - at;
       if (gone >= LANDED_MS || !el || REDUCED.matches) { landedAt.delete(id); continue; }
       if (el.classList.contains('landed')) continue;
-      el.classList.add('landed'); el.style.animationDelay = `-${Math.round(gone)}ms`;
+      el.classList.add('landed'); el.style.animationDelay = `-${Math.max(1, Math.round(gone))}ms`;   // never -0ms, which reads back as 0ms
       el.addEventListener('animationend', e => { if (e.animationName === 'landed') { el.classList.remove('landed'); el.style.animationDelay = ''; } }, { once: true });
     }
   }
   const cardNodes = new Map();   // chat id → { html, el }: the card as it stands in the list
+  let lineNodes = new Map();     // a line's html and its count in the list ("…#2") → its node, kept like the cards'
   const html2el = html => { const t = document.createElement('template'); t.innerHTML = html; return t.content.firstElementChild; };
+  /** innerHTML, only when it is new (2026-10-03): the project cue, the chips, the hidden list, the tab strips and the
+   *  rival's bar were set on every update — a button replaced between a press and its release loses the click, and
+   *  the keyboard's focus with it. Whatever edits such a box in place has to forget `_drawn`. */
+  const setHtml = (el, html) => { if (el._drawn === html) return false; el.innerHTML = el._drawn = html; return true; };
   const nearList = (r, l) => r.bottom > l.top - l.height && r.top < l.bottom + l.height;   // within a screen of the list's window
   function drawCards(items, empty) {
-    const list = $('#slist'), want = new Set(), nodes = [], fresh = [];
+    const list = $('#slist'), want = new Set(), nodes = [], fresh = new Set(), redrawn = [], lines = new Map(), seen = new Map();
     const move = !!drawCards.drawn && !REDUCED.matches;
     drawCards.drawn = true;
-    const lr = move ? list.getBoundingClientRect() : null, before = new Map();
-    if (move) for (const c of cardNodes.values()) if (c.el.isConnected) before.set(c.el, c.el.getBoundingClientRect());
     for (const it of items) {
-      if (!it.id) { nodes.push(html2el(it.html)); continue; }
+      if (!it.id) {   // a line: the node it had, by its html and how many of the same came before it
+        const n = (seen.get(it.html) || 0) + 1; seen.set(it.html, n);
+        const k = `${it.html}#${n}`, el = lineNodes.get(k) || html2el(it.html);
+        lines.set(k, el); nodes.push(el); continue;
+      }
       let c = cardNodes.get(it.id);
-      if (!c) fresh.push(it.id);
+      if (!c) fresh.add(it.id);
       if (!c || c.html !== it.html) {
         const el = html2el(it.html);
-        if (c && before.has(c.el)) before.set(el, before.get(c.el));   // the card redrawn: it starts where its old node stood
+        if (c) redrawn.push([c.el, el]);   // the card redrawn: it starts where its old node stood
         c = { html: it.html, el }; cardNodes.set(it.id, c);
       }
       nodes.push(c.el); want.add(it.id);
     }
+    lineNodes = lines;
     for (const id of [...cardNodes.keys()]) if (!want.has(id)) cardNodes.delete(id);
     if (!nodes.length) { list.innerHTML = empty; return; }
+    // Nothing moved, nothing new, nothing gone — most updates (2026-10-03: every one measured every card twice and
+    // made every line anew): the list is left as it is, and nothing is read.
+    let i = 0, same = true;
+    for (const c of list.children) { if (c.classList.contains('leaving')) continue; if (c !== nodes[i++]) { same = false; break; } }
+    if (same && i === nodes.length) { flareLanded(); return; }
+    const lr = move ? list.getBoundingClientRect() : null, before = new Map();
+    if (move) {
+      for (const c of cardNodes.values()) if (c.el.isConnected) before.set(c.el, c.el.getBoundingClientRect());
+      for (const [was, el] of redrawn) if (was.isConnected) before.set(el, was.getBoundingClientRect());
+    }
     const keep = new Set(nodes), gone = [];
     let cur = list.firstElementChild;
     // a node no longer wanted: a line, or the old node of a card redrawn, goes at once; a card that is gone from the
@@ -2103,14 +2131,20 @@
     for (const el of gone) leaveCard(el, lr);
     flareLanded();
     if (!move) return;
-    for (const c of cardNodes.values()) for (const a of c.el.getAnimations()) if (a.id === 'flip') a.cancel();   // the true place, not where a slide had got to
+    for (const a of [...sliding]) if (a.id === 'flip') a.cancel();   // the true place, not where a slide had got to
+    // every read first, then every animation: a read after an animate() is a style flush each
+    const moves = [];
     for (const [id, c] of cardNodes) {
       const el = c.el, r = el.getBoundingClientRect();
       if (!nearList(r, lr)) continue;
       const was = before.get(el);
-      if (!was) { if (fresh.includes(id)) slide(el, 'enter', [{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: getComputedStyle(el).opacity, transform: 'none' }], { duration: ENTER_MS, easing: 'ease-out' }); continue; }   // to its own opacity: a done card is dimmed
+      if (!was) { if (fresh.has(id)) moves.push([el, 'enter', getComputedStyle(el).opacity]); continue; }   // to its own opacity: a done card is dimmed
       const dy = was.top - r.top;
-      if (Math.abs(dy) > 1) slide(el, 'flip', [{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: FLIP_MS, easing: EASE_OUT }, Math.round(dy));
+      if (Math.abs(dy) > 1) moves.push([el, 'flip', dy]);
+    }
+    for (const [el, kind, v] of moves) {
+      if (kind === 'enter') slide(el, 'enter', [{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: v, transform: 'none' }], { duration: ENTER_MS, easing: 'ease-out' });
+      else slide(el, 'flip', [{ transform: `translateY(${v}px)` }, { transform: 'none' }], { duration: FLIP_MS, easing: EASE_OUT }, Math.round(v));
     }
   }
   // The card is wrapped in a `div.leaving` that folds shut around it (height, opacity and the list's 7 px gap to
@@ -2193,7 +2227,7 @@
   // ring's (the card's perimeter per --spins), its lights the card's, one per sub-agent; the card's own ring stands down
   // (main.trail). Drawn in the list's frame; when the shape changes (a scroll, a resize) each light keeps its place on
   // the outline, which starts at the box's top right, the corner that does not move. On the rail, nothing: no splitter.
-  const TRAIL_W = 2, TRAIL_D = 64, TRAIL_GAP = 22;   // the band, a blob's diameter, a comet's spacing
+  const TRAIL_W = 2, TRAIL_GAP = 22;   // the band, a comet's spacing (a blob's 64 px are the CSS's)
   const trail = { sig: '', loop: [], blobs: [], L: 0, v: 0, head: 0, at: 0 };
   /** The outline of a union of rectangles — the longest loop, clockwise on screen (the inside on the right), from its
    *  top-right corner, straight runs merged. Edges within 3 px are one, so a pixel's step makes no notch. */
@@ -2232,7 +2266,7 @@
   const loopPath = loop => `M${loop.map(p => `${p[0]} ${p[1]}`).join('L')}Z`;
   function drawTrail(g) {
     const el = $('#trail'), t = g.trail;
-    const off = () => { if (!trail.sig) return; trail.sig = ''; trail.loop = []; el.hidden = true; for (const b of trail.blobs) b.remove(); trail.blobs = []; $('#main').classList.remove('trail'); };
+    const off = () => { if (!trail.sig) return; trail.sig = ''; trail.loop = []; el.hidden = true; for (const b of trail.blobs) b.el.remove(); trail.blobs = []; $('#main').classList.remove('trail'); };
     if (!t) return off();
     const rects = [];
     if (t.box) rects.push({ ...t.box, l: g.sp.right });
@@ -2257,13 +2291,17 @@
     const frames = mid.map((p, i) => { const f = { transform: `translate(${p[0]}px, ${p[1]}px)`, offset: s0 / L }; s0 += seg[i]; return f; });
     frames.push({ transform: frames[0].transform, offset: 1 });
     const dur = L / v * 1000;
+    // each blob with its animation, kept (2026-10-03: fetched back with getAnimations() per blob per shape — a style
+    // flush each, every frame of a slide or a scroll with a clauding chat open)
+    let made = false;
     if (trail.blobs.length !== n * K) {
-      for (const b of trail.blobs) b.remove();
-      trail.blobs = Array.from({ length: n * K }, (_, j) => { const b = document.createElement('i'), i = j % K; b.style.opacity = ((1 - i / K) ** 1.5).toFixed(3); el.append(b); b.animate(frames, { duration: dur, iterations: Infinity }); return b; });
+      for (const b of trail.blobs) b.el.remove();
+      made = true;
+      trail.blobs = Array.from({ length: n * K }, (_, j) => { const b = document.createElement('i'), i = j % K; b.style.opacity = ((1 - i / K) ** 1.5).toFixed(3); el.append(b); return { el: b, anim: b.animate(frames, { duration: dur, iterations: Infinity }) }; });
     }
-    trail.blobs.forEach((b, j) => {
-      const a = b.getAnimations()[0], i = j % K, k = Math.floor(j / K);
-      a.effect.setKeyframes(frames); a.effect.updateTiming({ duration: dur });
+    trail.blobs.forEach(({ anim: a }, j) => {
+      const i = j % K, k = Math.floor(j / K);
+      if (!made) { a.effect.setKeyframes(frames); a.effect.updateTiming({ duration: dur }); }
       const p = ((trail.head - k * L / n - i * TRAIL_GAP) % L + L) % L;
       a.currentTime = p / L * dur;
     });
@@ -2474,8 +2512,9 @@
         else if (!away) away = setTimeout(() => { away = 0; if (!tl.press) show(false); }, TL_HIDE_MS);
         return;
       }
+      if (e.clientX >= TL_EDGE) { clearTimeout(dwell); dwell = 0; return; }   // before any rect: this runs on every move anywhere on the board
       const r = rail.getBoundingClientRect();
-      if (!(e.clientX < TL_EDGE && e.clientY >= r.top && e.clientY <= r.bottom && rail.offsetParent)) { clearTimeout(dwell); dwell = 0; return; }
+      if (!(e.clientY >= r.top && e.clientY <= r.bottom && rail.offsetParent)) { clearTimeout(dwell); dwell = 0; return; }
       tl.py = e.clientY - r.top;
       dwell ||= setTimeout(() => { dwell = 0; show(true); }, TL_DWELL_MS);
     }, { passive: true });
@@ -2575,7 +2614,7 @@
     const where = !s.alive || inVsCode(s) ? ''
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip">${entryLabel(s)}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : '');
-    return `<div class="card ${s.status} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${s.id}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
+    return `<div class="card ${s.status} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
       <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${act}${cardFaces(s)}${cardPrs(s)}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge">${un}</span>` : ''}</div>
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
@@ -2612,12 +2651,11 @@
   const WORD_EDGE = /[^a-z0-9]/;
   function fuzzWord(text, word) {
     let best = null;
-    for (let start = 0; start <= text.length - word.length; start++) {
-      if (text[start] !== word[0]) continue;
+    for (let start = text.indexOf(word[0]); start >= 0 && start <= text.length - word.length; start = text.indexOf(word[0], start + 1)) {
       const at = [start];
       let i = start;
       for (let k = 1; k < word.length; k++) { i = text.indexOf(word[k], i + 1); if (i < 0) break; at.push(i); }
-      if (i < 0) continue;
+      if (i < 0) break;   // a later start's letters only land further on: what this one could not find, none can
       let score = -at[0] / 8;   // an earlier start beats a later one, gently
       for (let k = 0; k < at.length; k++) {
         const c = at[k], gap = k ? c - at[k - 1] - 1 : 0;   // what the matcher had to skip to get here
@@ -3008,8 +3046,8 @@
     : { name: folderName(key), where: homePath(key) };
   function renderHidden() {
     const box = $('#hidden'); if (!box) return;
-    box.innerHTML = !state.hidden.length ? '' : `<span class="kh">hidden — off the pickers; their chats are still on the board under ALL</span>`
-      + state.hidden.map(k => { const l = hiddenLabel(k); return `<div class="hrow"><span title="${esc(l.where || k)}"><b>${esc(l.name)}</b>${l.where ? ` ${esc(l.where)}` : ''}</span><button data-key="${esc(k)}" title="Put it back on the board">show</button></div>`; }).join('');
+    setHtml(box, !state.hidden.length ? '' : `<span class="kh">hidden — off the pickers; their chats are still on the board under ALL</span>`
+      + state.hidden.map(k => { const l = hiddenLabel(k); return `<div class="hrow"><span title="${esc(l.where || k)}"><b>${esc(l.name)}</b>${l.where ? ` ${esc(l.where)}` : ''}</span><button data-key="${esc(k)}" title="Put it back on the board">show</button></div>`; }).join(''));
   }
   $('#hidden').addEventListener('click', e => { const b = e.target.closest('button'); if (b) showProject(b.dataset.key); });
 
@@ -3454,7 +3492,7 @@
     const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
       ${headMove(s)}${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
-      <button class="hmore${menu.open ? ' on' : ''}" id="moreBtn" aria-haspopup="menu" aria-expanded="${menu.open}" title="This chat: the claude session, VS Code, focus view, code folding, path and branch — and the settings">${ICON.more}</button>
+      <button class="hmore" id="moreBtn" aria-haspopup="menu" aria-expanded="false" title="This chat: the claude session, VS Code, focus view, code folding, path and branch — and the settings">${ICON.more}</button>
       <div class="details"${prefs.headDetails ? '' : ' hidden'}>
         <span class="path">${esc(s.cwd || '')}${s.gitBranch && s.gitBranch !== 'HEAD' ? ' @ ' + esc(s.gitBranch) : ''}</span>
         ${s.live ? `<span class="chip">${entryLabel(s)}</span>` : ''}${s.live?.name ? `<span class="chip" title="session name">${esc(s.live.name)}</span>` : ''}${
@@ -3484,7 +3522,7 @@
     if (prsHtml !== drawn.prs) pl.innerHTML = drawn.prs = prsHtml;
     const pm = pl.querySelector('#prMore'); if (pm) pm.onclick = () => { state.prsAll = !state.prsAll; renderHead(s); };   // onclick, not a listener per draw
     const pt = $('#prToggle'); if (pt) pt.onclick = () => { prefs.prsOpen = !prefs.prsOpen; savePrefs(); renderHead(s); };
-    if (headNew) { layoutNotch(); fitHeadPrs(); paintHeadSplit(); postChat(s); }
+    if (headNew) { layoutNotch(); fitHeadPrs(); paintHeadSplit(); postChat(s); if (menu.open) { $('#moreBtn').classList.add('on'); $('#moreBtn').setAttribute('aria-expanded', 'true'); } }   // the menu's state is not the markup's: opening it redrew the whole header
     renderComposer(s); renderRival(s);
     $('#detailsBtn').onclick = () => { prefs.headDetails = !prefs.headDetails; savePrefs(); renderHead(s); };
     const wb = $('#webBtn');
@@ -3811,7 +3849,7 @@
   // A read-only window on this closure for the console and the harness (scripts/scenario.mjs reads it as ctx.peix):
   // copies, never the live objects. The page's script is one IIFE, so nothing else in it is reachable.
   window.peix = {
-    state: () => ({ current: state.current, snapshots: state.snapshots, project: prefs.project, person: prefs.person, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft, fill: state.fill, notch: state.notch, hidden: [...state.hidden],
+    state: () => ({ current: state.current, snapshots: state.snapshots, rendering: !!renderBoardSoon.t, project: prefs.project, person: prefs.person, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft, fill: state.fill, notch: state.notch, hidden: [...state.hidden],
       paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, [...v]])), tab: state.sessions.has(state.current) ? tabOf(state.sessions.get(state.current)) : null, tabs: state.sessions.has(state.current) ? tabKeys(state.sessions.get(state.current)) : [], pr: shownPr.url,
       split: splitNow(), stacked: stackNow(), focusG, halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
       strips: state.sessions.has(state.current) ? [0, 1].map(g => keysIn(state.sessions.get(state.current), g)) : [[], []],
@@ -3933,7 +3971,7 @@
     if (!url) return;
     paneUrls.set(key, url);
     for (const el of document.querySelectorAll('.purl')) {
-      if (el.dataset.key === key) { el.dataset.url = url; el.textContent = bareUrl(url); el.title = url + ' — click to copy'; }
+      if (el.dataset.key === key) { el.dataset.url = url; el.textContent = bareUrl(url); el.title = url + ' — click to copy'; el.closest('.ptabs')._drawn = null; }
     }
   };
   const ideKey = s => inApp && s?.cwd && state.paneIde.get(s.cwd) ? 'ide:' + state.paneIde.get(s.cwd) : null;
@@ -4034,20 +4072,20 @@
       $(tm.el.grp).classList.toggle('on', g === focusG);
       el.hidden = g === 0 ? !two && keys.length < 2 : false;
       el.classList.toggle('lone', lone);
-      if (el.hidden || lone || (g === 1 && !two)) { if (el.firstChild) el.textContent = ''; continue; }   // nothing drawn, nothing left over to be found
+      if (el.hidden || lone || (g === 1 && !two)) { setHtml(el, ''); continue; }   // nothing drawn, nothing left over to be found
       const tip = two ? ' · drag it to the other half to move it there' : '';
       const tab = (k, label, title, x) => `<button class="ptab${cur === k ? ' on' : ''}${isPaneTab(k) ? ' pane' : ''}" data-tab="${esc(k)}" title="${esc(title + tip)}">${esc(label)}${x ? `<span class="x" title="${esc(x)}">×</span>` : ''}</button>`;
       const navs = (isPaneTab(cur) ? '<button class="nav" data-nav="back" title="Back">‹</button><button class="nav" data-nav="forward" title="Forward">›</button><button class="nav" data-nav="reload" title="Reload">↻</button><button class="nav" data-nav="external" title="Open this page in your browser">↗</button>' : '')
         + (two ? `<button class="nav gturn" title="${stackNow() ? 'The halves side by side · ⌘1 ⌘2' : 'The halves one over the other · ⌥⌘1 ⌥⌘2'}">${stackNow() ? '◫' : '⊟'}</button>` : '')
         + (two ? '<button class="nav gclose" title="Close this half — the other one becomes the whole column · ⌘W">⨯</button>' : '');
-      el.innerHTML = keys.map(k =>
+      setHtml(el, keys.map(k =>
         k === 'chat' ? tab(k, termLive(s) ? 'claude' : 'chat', `${termLive(s) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C`)
         : k === 'shell' ? tab(k, shName(), `A ${shName()} in ${s.cwd || 'its folder'} · ⌥⌘T`, 'End this shell')
         : k.startsWith('gh:') ? tab(k, paneLabel(k), GH_PR.test(k.slice(3)) ? `${k.slice(3)} · ⌥⌘G` : k.slice(3), 'Close this page')
         : tab(k, 'VS Code', `${s.cwd} in VS Code Web · ⌥⌘E`, 'Close the editor')).join('')
         + (two && !keys.length ? '<span class="pdrop">drop a tab here</span>' : '')
         + (isPaneTab(cur) ? `<span class="purl" data-key="${esc(cur)}" data-url="${esc(paneUrl(cur))}" title="${esc(paneUrl(cur))} — click to copy">${esc(bareUrl(paneUrl(cur)))}</span>` : '')
-        + (navs ? `<span class="navs">${navs}</span>` : '');
+        + (navs ? `<span class="navs">${navs}</span>` : ''));
     }
   }
   // The shell's word: the chat's pages, the ones to show and where each one goes — a half's body, in CSS px
@@ -4482,22 +4520,23 @@
   // into its tab forks the transcript, so the bar says close it there, and the button ends it (the take-over
   // route, which with the chat already here only ends the others).
   function hasRival(s) { return !!(s?.rivals?.length && s.live?.entrypoint !== 'claude-vscode'); }
+  let rivalEnding = null;   // the chat whose others are being ended: the bar says so across the updates until the answer
   function renderRival(s) {
     const box = $('#rival');
     if (!hasRival(s)) { box.hidden = true; return; }
+    const ending = rivalEnding === s.id;
     const vs = s.rivals.filter(r => r.entrypoint === 'claude-vscode'), other = s.rivals.length - vs.length;
     const who = vs.length ? `VS Code runs a claude on this chat too` : `Another claude runs on this chat`;
     const pids = s.rivals.map(r => `pid ${r.pid}${r.startedAt ? ', since ' + rel(new Date(r.startedAt).toISOString()) + ' ago' : ''}`).join('; ');
     // written by VS Code after our terminal started: the chat is forked already, not just at risk
     const wrote = termLive(s) && s.tailEntrypoint === 'claude-vscode' && s.tailEntrypointAt && s.terminal.startedAt && s.tailEntrypointAt > s.terminal.startedAt;
     box.hidden = false;
-    box.innerHTML = `<span class="t"><b>${who}</b> (${esc(pids)})${vs.length ? ' — it starts one whenever the chat is opened there' : ''}${other && vs.length ? `, and ${other} more elsewhere` : ''}. ${vs.length ? 'Its tab does not see what happens here, and a' : 'A'}nything typed there forks the transcript${wrote ? ' — <b>and it has written to it since the take-over</b>' : ''}. ${vs.length ? 'Close the chat in VS Code, then' : 'Then'} end ${s.rivals.length === 1 ? 'it' : 'them'} here.</span>
-      <button class="btn" id="rivalEnd" title="SIGTERM ${esc(s.rivals.map(r => r.pid).join(', '))} — what closing that chat amounts to; it comes back only if the chat is opened there again">end ${s.rivals.length === 1 ? 'it' : 'them'}</button>`;
-    box.querySelector('#rivalEnd').onclick = async e => {
-      const b = e.currentTarget; b.disabled = true; b.textContent = 'ending…';
-      try { await api('POST', `/api/sessions/${s.id}/takeover`, termSize()); }
-      catch (e) { b.disabled = false; b.textContent = 'failed'; b.title = e.message; }
-      // on success the registry changes and the SSE update re-renders the head, bar included
+    setHtml(box, `<span class="t"><b>${who}</b> (${esc(pids)})${vs.length ? ' — it starts one whenever the chat is opened there' : ''}${other && vs.length ? `, and ${other} more elsewhere` : ''}. ${vs.length ? 'Its tab does not see what happens here, and a' : 'A'}nything typed there forks the transcript${wrote ? ' — <b>and it has written to it since the take-over</b>' : ''}. ${vs.length ? 'Close the chat in VS Code, then' : 'Then'} end ${s.rivals.length === 1 ? 'it' : 'them'} here.</span>
+      <button class="btn" id="rivalEnd"${ending ? ' disabled' : ''} title="SIGTERM ${esc(s.rivals.map(r => r.pid).join(', '))} — what closing that chat amounts to; it comes back only if the chat is opened there again">${ending ? 'ending…' : `end ${s.rivals.length === 1 ? 'it' : 'them'}`}</button>`);
+    box.querySelector('#rivalEnd').onclick = async () => {
+      rivalEnding = s.id; renderRival(s);
+      try { await api('POST', `/api/sessions/${s.id}/takeover`, termSize()); rivalEnding = null; }   // the registry changes and the SSE update re-renders the head, bar included
+      catch (e) { rivalEnding = null; renderRival(state.sessions.get(s.id) || s); const b = $('#rivalEnd'); if (b) { b.textContent = 'failed'; b.title = e.message; box._drawn = null; } }
     };
   }
   let replySending = false;   // a quick second ⏎ sent the same text again, and came back a 409 shown as an error
@@ -4771,17 +4810,19 @@
     });
     es.addEventListener('session', e => {
       const s = JSON.parse(e.data), was = state.sessions.get(s.id); state.sessions.set(s.id, s);
-      if (was?.status === 'working' && s.status === 'idle' && !s.done) { landedAt.set(s.id, performance.now()); noteMotion(s.id, 'landed'); }   // the reply landed: the card flares once (flareLanded)
+      const landed = was?.status === 'working' && s.status === 'idle' && !s.done;
+      if (landed) { landedAt.set(s.id, performance.now()); noteMotion(s.id, 'landed'); }   // the reply landed: the card flares once (flareLanded)
       if (s.id === state.current && !visible(s) && s.done) leaveChat();   // an empty chat ticked done: its card is gone, and so is the chat
-      renderBoard(); if (s.id === state.current) { renderHead(s); syncTerm(s); renderPresence(); }
+      if (landed) renderBoard(); else renderBoardSoon();   // a landing is drawn as it is said, flare and all
+      if (s.id === state.current) { renderHead(s); syncTerm(s); renderPresence(); }
       // The chats step follows its chats — one ticked there leaves, one that stopped clauding says ready.
       if ($('#pick').open && pick.mode === 'chats' && (pick.list.some(x => x.id === s.id) || scopeChats(pick.ctx).some(x => x.id === s.id))) pickRender(true);
     });
     es.addEventListener('entries', e => { const d = JSON.parse(e.data); if (d.sessionId === state.current) { state.entries.push(...d.entries); renderLog(); } });
-    es.addEventListener('projects', e => { state.projects = JSON.parse(e.data).projects || []; renderBoard(); });
-    es.addEventListener('peacock', e => { state.peacock = JSON.parse(e.data).colors || {}; renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); });
+    es.addEventListener('projects', e => { state.projects = JSON.parse(e.data).projects || []; renderBoardSoon(); });
+    es.addEventListener('peacock', e => { state.peacock = JSON.parse(e.data).colors || {}; renderBoardSoon(); const s = state.sessions.get(state.current); if (s) renderHead(s); });
     es.addEventListener('repos', e => { state.repos = JSON.parse(e.data).repos || {}; });
-    es.addEventListener('pins', e => { state.pins = JSON.parse(e.data).pins || []; renderBoard(); });
+    es.addEventListener('pins', e => { state.pins = JSON.parse(e.data).pins || []; renderBoardSoon(); });
     es.addEventListener('hidden', e => { state.hidden = JSON.parse(e.data).hidden || []; renderBoard(); if ($('#pick').open) pickRender(); });
     es.addEventListener('notifications', e => { state.notifications = JSON.parse(e.data).on !== false; showNotify(); });
     es.addEventListener('config', e => { state.config = JSON.parse(e.data); configChanged(); });

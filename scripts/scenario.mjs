@@ -77,8 +77,9 @@ const ctx = {
   // as it opens, and a rectangle read meanwhile is mid-move — the pointer then lands on the neighbour, a box measures
   // off-centre. Measure after this: it waits for every finite animation to end — the named slides (flip · enter ·
   // leave · pop), the CSS transitions — and leaves alone the endless ones (the ring, the blink, the spinner) and the
-  // scroll-driven ones (the splitter's black, which runs as long as the list can scroll).
-  settle: (timeout = 4000) => cdp.waitFor(`!document.getAnimations().some(a => a.playState === 'running' && a.timeline === document.timeline && a.effect?.getTiming?.().iterations !== Infinity)`, { timeout, every: 40, what: 'the board to settle' }),
+  // scroll-driven ones (the splitter's black, which runs as long as the list can scroll). And the list drawn: what the
+  // stream says is drawn once a frame (renderBoardSoon), so a chat's state can be ahead of its card for that long.
+  settle: (timeout = 4000) => cdp.waitFor(`!window.peix?.state().rendering && !document.getAnimations().some(a => a.playState === 'running' && a.timeline === document.timeline && a.effect?.getTiming?.().iterations !== Infinity)`, { timeout, every: 40, what: 'the board to settle' }),
   evaluate: cdp.evaluate, waitFor: cdp.waitFor, send: cdp.send, reload: cdp.reload, exceptions: cdp.exceptions, console: cdp.console,
   shot: async (label, clip) => { const f = join(shots, `${name}-${label}.png`); await cdp.shot(f, clip); log(`screenshot → ${f}`); return f; },
   openChat: id => openChat(cdp, id),
