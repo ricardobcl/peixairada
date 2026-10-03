@@ -149,9 +149,32 @@ test('the faces on a PR: who else had a hand in it, each once, the newest first 
   assert.deepEqual(prPeople(null, 'me'), []);
 });
 
-test('a PR the board could not see keeps the faces it had', () => {
+test('a PR the board could not see keeps the faces it had — and its state and title', () => {
   const url = 'https://github.com/acme/faces/pull/7';
   setPrInfo(url, 'open', 'Faces', null, Date.parse(t(10)), [{ login: 'ana', avatar: null, at: t(9), did: ['opened it'] }]);
-  setPrInfo(url, null, null, undefined, Date.parse(t(11)));
+  setPrInfo(url, null, null, undefined, Date.parse(t(11)), undefined, true);
   assert.deepEqual(prStatus.get(url).people.map(p => p.login), ['ana']);
+  assert.deepEqual([prStatus.get(url).state, prStatus.get(url).title, prStatus.get(url).missing], ['open', 'Faces', true], 'what was known stands, marked missing');
+});
+
+test('on someone else\'s PR a comment of yours is no review: their pushes after it are not your move', () => {
+  const commented = { viewerLatestReview: null, reviews: { nodes: [] }, comments: { nodes: [{ author: user('me'), createdAt: t(10) }] } };
+  assert.equal(prTurn(pr({ ...commented, headRefOid: 'B', pushes: { nodes: [commit(11, 'ana')] } }), 'me').you, false);
+  assert.equal(prTurn(pr({ ...commented, comments: { nodes: [...commented.comments.nodes, { author: user('ana'), createdAt: t(12) }] } }), 'me').you, true, 'a reply still is');
+});
+
+test('a force-push by a bot is nobody\'s move', () => {
+  const mine = o => pr({ author: user('me'), viewerLatestReview: null, reviews: { nodes: [] }, pushes: { nodes: [commit(9, 'me')] }, ...o });
+  const force = actor => ({ __typename: 'HeadRefForcePushedEvent', createdAt: t(12), actor });
+  assert.equal(prTurn(mine({ pushes: { nodes: [commit(9, 'me'), force({ login: 'renovate', __typename: 'Bot' })] } }), 'me').you, false);
+  assert.equal(prTurn(mine({ pushes: { nodes: [commit(9, 'me'), force(user('ana'))] } }), 'me').why, 'ana pushed', 'a person\'s still is');
+});
+
+test('one PR whatever the case of its owner and repo', () => {
+  const s = newSession('cased', '/x/cased.jsonl');
+  notePr(s, 'https://github.com/Acme/Widgets/pull/12', t(9), 'user');
+  notePr(s, 'https://github.com/acme/widgets/pull/12', t(10), 'claude');
+  assert.equal(s.prs.length, 1); assert.equal(s.prs[0].count, 2); assert.equal(s.prs[0].label, 'Widgets#12', 'the case first seen');
+  notePr(s, 'javascript:alert(1)', t(11), null);
+  assert.equal(s.prs.length, 1, 'a pr-link that is no web address is not kept');
 });

@@ -590,9 +590,13 @@ const MAX_PRS = 40;
  * Code writes several of those per PR, so they order the list and date it but do not count as mentions.
  * Most recently mentioned first, so the header leads with the PR in play now.
  */
+/** A PR's one spelling: GitHub's owner and repo names are any case, so `Acme/Widgets` and `acme/widgets` were two PRs —
+ *  two chips, two turns, two alerts for one move (2026-10-03). The label keeps the case first seen. */
+const prKey = (owner, repo, n) => `https://github.com/${owner.toLowerCase()}/${repo.toLowerCase()}/pull/${n}`;
 function notePr(s, url, ts, by) {
   const m = PR_ONE.exec(url);
-  const clean = m ? `https://github.com/${m[1]}/${m[2]}/pull/${m[3]}` : url;
+  if (!m && !/^https?:\/\//i.test(url)) return;   // a pr-link that is no web address is nothing to put in an href
+  const clean = m ? prKey(m[1], m[2], m[3]) : url;
   const at = s.prs.findIndex(p => p.url === clean);
   const pr = at >= 0 ? s.prs.splice(at, 1)[0] : {
     url: clean, repo: m ? m[2] : null, number: m ? Number(m[3]) : null,
@@ -613,8 +617,8 @@ function notePrs(s, text, ts, by) {
   if (!text || !text.includes('/pull/')) return;
   const seen = new Set();
   for (const m of String(text).matchAll(PR_RE)) {
-    const url = `https://github.com/${m[1]}/${m[2]}/pull/${m[3]}`;
-    if (!seen.has(url)) { seen.add(url); notePr(s, url, ts, by); }
+    const key = prKey(m[1], m[2], m[3]);
+    if (!seen.has(key)) { seen.add(key); notePr(s, m[0], ts, by); }
   }
 }
 
@@ -667,8 +671,8 @@ let prPause = 0, prPauseUntil = 0;     // gh failing as a whole (offline, rate-l
 function prFresh(url, ttl = PR_TTL_MS, now = Date.now()) {
   const e = prStatus.get(url);
   if (!e) return false;
-  if (e.state === 'merged' || e.state === 'closed') return true;
-  return now - e.checkedAt < (e.state ? ttl : Math.max(ttl, PR_TTL_ERROR_MS));
+  if (!e.missing && (e.state === 'merged' || e.state === 'closed')) return true;
+  return now - e.checkedAt < (e.state && !e.missing ? ttl : Math.max(ttl, PR_TTL_ERROR_MS));
 }
 
 const touchedAt = s => Math.max(Date.parse(s.lastActivity) || 0, s.openedAt || 0);
@@ -711,13 +715,17 @@ function queuePr(url, ttl = PR_TTL_MS) {
 /** Whatever a chat's header and card will show, refreshed if it has aged out. */
 function queueSessionPrs(s) { for (const pr of s.prs) queuePr(pr.url); }
 
-/** What GitHub said of one PR: `found` is prTurn's answer, undefined for a PR it would not show us. */
-function setPrInfo(url, state, title, found, now = Date.now(), people) {
+/** What GitHub said of one PR: `found` is prTurn's answer, undefined for a PR it would not show us — `missing`, whose
+ *  state and title are what was known before (2026-10-03: they were wiped, and the card's title fell back to Claude's
+ *  over an SSO prompt or one field GitHub would not resolve), asked again an hour later. */
+function setPrInfo(url, state, title, found, now = Date.now(), people, missing = false) {
   const chats = [...sessions.values()].filter(s => s.prs.some(p => p.url === url));
   const ticked = chats.filter(isDone);
   const { turn, moved, from } = moveTurn(url, found, now);
-  if (people === undefined) people = prStatus.get(url)?.people ?? null;   // a PR we could not see: who we knew of stands
-  prStatus.set(url, { state, title, turn, people, checkedAt: now });
+  const known = prStatus.get(url);
+  if (people === undefined) people = known?.people ?? null;   // a PR we could not see: who we knew of stands
+  if (missing) { state = known?.state ?? null; title = known?.title ?? null; }
+  prStatus.set(url, { state, title, turn, people, checkedAt: now, missing });
   const same = JSON.stringify(turn), faces = JSON.stringify(people);
   for (const s of chats) {
     const pr = s.prs.find(p => p.url === url);
@@ -757,7 +765,7 @@ function drainPrQueue() {
       prPauseUntil = Date.now() + prPause;
       return;
     }
-    prPause = 0;
+    prPause = 0; prPauseUntil = 0;   // back: the sweeps poll again at once, not when a pause of up to 30 min would have run out
     const me = data.viewer?.login || null;
     batch.forEach((url, i) => {
       const pr = data?.[`p${i}`]?.pullRequest;
@@ -765,9 +773,9 @@ function drainPrQueue() {
         : pr.state === 'MERGED' ? 'merged'
         : pr.state === 'CLOSED' ? 'closed'
         : pr.isDraft ? 'draft' : 'open';
-      setPrInfo(url, state, pr?.title || null, pr && me ? prTurn(pr, me) : undefined, Date.now(), pr ? prPeople(pr, me) : undefined);
+      setPrInfo(url, state, pr?.title || null, pr && me ? prTurn(pr, me) : undefined, Date.now(), pr ? prPeople(pr, me) : undefined, !pr);
     });
-    if (turnsDirty) { turnsDirty = false; saveState(); }
+    if (turnsDirty) { turnsDirty = false; pruneTurns(); saveState(); }
     if (prQueue.size) drainPrQueue();
   });
 }
@@ -810,9 +818,10 @@ function prTurn(pr, me) {
     ...(pr.comments?.nodes || []).filter(c => c?.createdAt).map(c => ({ at: c.createdAt, by: c.author }))
   ];
   // a commit GitHub cannot tie to an account (an unlinked email, a bot) is the PR's author's
+  // and a force-push by a bot is nobody's (its actor's __typename says so; it was a move on your own PR)
   const pushes = (pr.pushes?.nodes || []).map(n => n?.__typename === 'HeadRefForcePushedEvent'
-    ? { at: n.createdAt, by: n.actor?.login } : { at: n?.commit?.committedDate, by: n?.commit?.author?.user?.login })
-    .filter(p => p.at).map(p => ({ ...p, by: p.by || pr.author?.login }));
+    ? { at: n.createdAt, by: n.actor?.login, bot: isBot(n.actor) } : { at: n?.commit?.committedDate, by: n?.commit?.author?.user?.login })
+    .filter(p => p.at && !p.bot).map(p => ({ at: p.at, by: p.by || pr.author?.login }));
   const push = pushes.reduce((a, p) => (!a || p.at > a.at ? p : a), null);
   const review = pr.viewerLatestReview?.submittedAt ? pr.viewerLatestReview : null;
   const said = newest([review?.submittedAt, ...words.filter(w => w.by?.login === me).map(w => w.at), ...pushes.filter(p => p.by === me).map(p => p.at), mine && pr.createdAt]);
@@ -825,7 +834,9 @@ function prTurn(pr, me) {
   // Any word of yours answers everything before it (the same night): a comment after your review is past a push
   // committed before it, and past a re-request.
   const since = review && said > review.submittedAt ? said : '';
-  const pushed = !!push && push.by !== me && (!mine && review ? review.commit?.oid !== pr.headRefOid && verdict?.state !== 'APPROVED' && !(since >= push.at) : push.at > said);
+  // On someone else's PR a push is a move only against a review of yours (2026-10-03: a comment alone made every push
+  // after it "pushed since your review", and un-ticked every chat that named the PR).
+  const pushed = !!push && push.by !== me && (mine ? push.at > said : !!review && review.commit?.oid !== pr.headRefOid && verdict?.state !== 'APPROVED' && !(since >= push.at));
   const askedAt = newest(asks);
   const again = !mine && !!review && (pr.reviewRequests?.nodes || []).some(n => n?.requestedReviewer?.login === me) && !(askedAt && said > askedAt);
   const you = pushed || theirs.length > 0 || again;
@@ -883,6 +894,15 @@ const newsIn = (was, now) => {
   const [h0, w0, a0] = was === 'them' ? ['', '', ''] : was.split('|'), [h1, w1, a1] = now.split('|');
   return (!!h1 && h1 !== h0) || w1 > w0 || (!!a1 && a1 !== a0);
 };
+/** A PR no chat mentions any more and whose turn has not moved in a month leaves the state file — it grew by every PR
+ *  ever reviewed (2026-10-03). A month, not at once: the boot reads only a transcript's tail, and a PR named before it
+ *  is still the chat's. */
+const TURN_KEEP_MS = 30 * 24 * 60 * 60_000;
+function pruneTurns(now = Date.now()) {
+  if (indexing) return;
+  const named = new Set(); for (const s of sessions.values()) for (const p of s.prs) named.add(p.url);
+  for (const [url, t] of Object.entries(prTurns)) if (!named.has(url) && now - (Date.parse(t.at) || 0) > TURN_KEEP_MS) delete prTurns[url];
+}
 function moveTurn(url, t, now = Date.now()) {
   const prev = prTurns[url];
   if (t === undefined) return { turn: null, moved: false, from: prev?.key };
