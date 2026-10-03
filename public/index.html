@@ -3888,7 +3888,7 @@
       strips: state.sessions.has(state.current) ? [0, 1].map(g => keysIn(state.sessions.get(state.current), g)) : [[], []],
       timeline: { k: tl.k, want: tl.want, press: !!tl.press, shown: $('#sessions').classList.contains('tlshow'), runs: tl.runs.map(r => ({ g: r.g, day: r.day, n: r.n, i: r.i })) },
       termId: curTerm().id, termSession: curTerm().sessionId, termExited: curTerm().exited }),
-    session: id => { const s = state.sessions.get(id || state.current); return s ? JSON.parse(JSON.stringify(s)) : null; },
+    session: id => { const s = state.sessions.get(id || state.current); return s ? structuredClone(s) : null; },
     motion: () => MOTION.map(m => ({ ...m })),
     trail: () => ({ on: !!trail.sig, loop: trail.loop.map(p => [...p]), L: trail.L, v: trail.v, blobs: trail.blobs.length }),   // the open chat's light past its card (drawTrail)   // the list's last moves: {id, kind: flip | enter | leave, at}
     sessions: () => [...state.sessions.values()].map(s => ({ id: s.id, project: s.project, cwd: s.cwd, env: s.env || null, title: s.title, status: s.status, alive: s.alive, prs: (s.prs || []).length, terminal: s.terminal?.id || null, agents: s.agents || 0, tasks: s.tasks || [], ask: s.ask || null })),
@@ -4607,7 +4607,7 @@
   // plain. hljs escapes everything it emits, so its output can go in after DOMPurify has run.
   const hasHl = typeof hljs !== 'undefined';
   // Unlabelled fences are as often terminal output as code, and auto-detect on those guesses badly
-  // (~4x the cost of a known language, and a whole log re-renders on every SSE update). So: guess
+  // (~4x the cost of a known language, paid again for every message a chat is opened on). So: guess
   // only for short blocks, and only among the languages that actually turn up here.
   const AUTO_LANGS = ['bash', 'javascript', 'typescript', 'python', 'json', 'yaml', 'go', 'sql', 'diff', 'xml', 'css'];
   const AUTO_MAX = 2000;
