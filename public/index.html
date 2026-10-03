@@ -53,9 +53,11 @@
     --hl-fn: #e8e6df; --hl-cls: #e8e6df; --hl-var: #e8e6df; --hl-meta: #9a998f;
   } }
   * { box-sizing: border-box; }
-  /* A control's fill, and its fill under the pointer (2026-09-28): the ink over whatever is under it.
-     Set on every element rather than :root, so it follows an --ink borrowed there (a black card, the header's black). */
-  * { --ctl: color-mix(in srgb, var(--ink) 7%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 13%, transparent); }
+  /* A control's fill, and its fill under the pointer (2026-09-28): the ink over whatever is under it. Set where --ink is
+     (2026-10-03; on every element before — two colour mixes resolved on each transcript node and terminal span): the
+     root, and the two places that borrow the dark theme's ink, so it follows a black card and the header's black. A new
+     rule that sets --ink sets these two beside it. */
+  :root, .card.black:is(:hover, .active, .qsel), .shead > :not(h2, .details) { --ctl: color-mix(in srgb, var(--ink) 7%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 13%, transparent); }
   body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; height: 100vh; display: grid; grid-template-rows: 1fr; overflow: hidden; }
 
   /* ---- header ---- */
@@ -269,6 +271,7 @@
   #splitter.scrolls::after { animation: split-scroll linear both; animation-timeline: --slist; }
   @keyframes split-scroll { to { transform: translateY(calc(0px - var(--smax, 0px))); } }
   #splitter:is(:hover, .drag)::after, #splitter:is(:hover, .drag)::before { opacity: 0; transition: opacity 0s .3s; }
+  #splitter.drag::after, #splitter.drag::before { transition: none; }   /* a drag lights the whole bar at once, its black too */
   #splitter:hover, #splitter.drag { background: var(--accent); }
   /* The dividers light up after a beat, as VS Code's sash does (2026-09-27, night): a pointer crossing on its way to the
      chat no longer flashes them; a drag lights at once. */
@@ -565,9 +568,10 @@
      watched for all day — its edge flares in the card's own light and settles to the plain edge over LANDED_MS, once.
      drawCards sets the class from landedAt, with a negative delay, so a card rebuilt mid-flare carries on where it was;
      the light is the ring's (--glow). The unread badge that comes with it pops in (onAlert). */
+  /* No `to`: it settles to whatever edge the card has (2026-10-03; a grey one before, which no card at rest wears since
+     2026-09-28 — it snapped away at the end, and the open card's colour came back with a jump). */
   @keyframes landed {
     from { border-color: var(--glow); box-shadow: 0 0 0 1px color-mix(in srgb, var(--glow) 60%, transparent), 0 0 22px color-mix(in srgb, var(--glow) 45%, transparent); }
-    to { border-color: var(--line); box-shadow: none; }
   }
   .card.landed { animation: landed .6s ease-out both; }
   /* Hover and the open chat enhance the card's own colour, never the accent (2026-09-20): hover is the open card's
@@ -940,7 +944,7 @@
   .composer-foot .hint { font-size: 11px; color: var(--muted); flex: 1; min-width: 0; }
   .composer-foot .hint.err { color: var(--needs); }
   .composer-foot .hint code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-  #composeSend:disabled { opacity: .5; cursor: default; border-color: var(--line); }
+  #composeSend:disabled { opacity: .5; cursor: default; }
   /* ---- terminal drawer: the real claude, in a PTY on the server ---- */
   /* One explicit column of minmax(0, 1fr): the implicit `auto` column took the xterm screen's pixel width as its
      minimum, so the drawer's body stayed as wide as the terminal had last been and fit() measured that instead of
@@ -1020,7 +1024,7 @@
   .codebox .cbar { position: absolute; top: 6px; right: 7px; display: flex; gap: 6px; align-items: center; font: 500 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); opacity: 0; transition: opacity .12s; }
   .codebox:hover .cbar, .codebox .cbar:focus-within { opacity: 1; }
   .codebox .lang { padding: 3px 4px; }
-  .codebox .copy { font: inherit; border: 1px solid var(--code-line); background: var(--code-bg); color: var(--muted); border-radius: 5px; padding: 3px 7px; cursor: pointer; transition: color .12s, border-color .12s; }
+  .codebox .copy { font: inherit; border: 1px solid transparent; background: color-mix(in srgb, var(--ink) 7%, var(--code-bg)); color: var(--muted); border-radius: 5px; padding: 3px 7px; cursor: pointer; transition: color .12s, border-color .12s; }
   .codebox .copy:hover { color: var(--ink); border-color: var(--accent); }
   .codebox .copy.did { color: var(--idle); border-color: var(--idle); }
   .md table { border-collapse: collapse; margin: 10px 0 13px; font-size: 13px; display: block; overflow-x: auto; max-width: 100%; }
@@ -1255,6 +1259,8 @@
     .toolgroup > summary::before, .codefold > summary::before { transition: none; }
     :is(.toolgroup, .codefold)::details-content, :is(.toolgroup, .codefold):not([open])::details-content { transform: none; transition-duration: 0s; }
     .sq.pick, .shead h2 .sq { transition: opacity .12s; }
+    #people button:hover, .pop .ssw:hover { transform: none; }
+    .pop .opt input::after, #tline .tl-thumb { transition: none; }
   }
 
   /* ---- syntax highlighting (highlight.js class names, our colours) ---- */
