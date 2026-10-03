@@ -144,8 +144,12 @@ if (!process.env.STATE_FILE && !existsSync(STATE_FILE) && existsSync(LEGACY_STAT
     console.error('[peixairada] could not move state, still reading the old path:', e.message);
   }
 }
+// A state file that does not parse is kept beside itself (2026-10-03): it was dropped in silence, the board started
+// from nothing — ticks, projects, titles, pins — and the first save wrote over the evidence. STATE_FILE set (a test
+// server) never reads the legacy one, or a fresh test state would start from the user's.
+const stateFrom = existsSync(STATE_FILE) || process.env.STATE_FILE ? STATE_FILE : LEGACY_STATE_FILE;
 try {
-  const st = JSON.parse(readFileSync(existsSync(STATE_FILE) ? STATE_FILE : LEGACY_STATE_FILE, 'utf8'));
+  const st = JSON.parse(readFileSync(stateFrom, 'utf8'));
   doneMarks = st.done || {};   // files from before 2026-09-19 also carry a `pins` key — ignored, gone on the next save
   projects = st.projects || {};
   titles = st.titles || {};
@@ -155,10 +159,22 @@ try {
   notificationsOn = st.notifications !== false;
   setup = st.config;   // from before CONFIG_FILE — cleaned and moved there below, once what does it is defined
   prTurns = st.prTurns && typeof st.prTurns === 'object' ? st.prTurns : {};
-} catch {}
+} catch (e) {
+  if (e.code !== 'ENOENT') {
+    const bad = `${stateFrom}.bad-${Date.now()}`;
+    console.error(`[peixairada] the state file does not read (${e.message}) — kept as ${bad}, starting afresh`);
+    try { renameSync(stateFrom, bad); } catch {}
+  }
+}
+/** Written beside itself and renamed over (2026-10-03; in place before): a full disk or a kill mid-write left a
+ *  truncated file, which the next boot read as no state at all. */
 function saveState() {
-  try { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(STATE_FILE, JSON.stringify({ done: doneMarks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns }, null, 1)); }
-  catch (e) { console.error('[peixairada] could not save state', e.message); }
+  try {
+    mkdirSync(dirname(STATE_FILE), { recursive: true });
+    const tmp = `${STATE_FILE}.${process.pid}.tmp`;
+    writeFileSync(tmp, JSON.stringify({ done: doneMarks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns }, null, 1));
+    renameSync(tmp, STATE_FILE);
+  } catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
 // A tick lasts until something newer happens in the chat — or on one of its PRs, once that PR has come round to you
 // (a push since your review, a reply, a review on yours: prTurn), which is what a tick after a review waits for.
@@ -2238,6 +2254,7 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && p === '/api/config') return json(res, 200, boardConfig());
     if (req.method === 'GET' && p === '/api/config/suggest') return json(res, 200, { roots: suggestRoots() });
     if (req.method === 'PUT' && p === '/api/config') {   // the settings' Setup: the keys given replace theirs, the rest stand
+      reloadConfig();   // a hand edit since the last poll first: merged into, not saved over — nor a broken one written over
       if (configError) return json(res, 409, { error: `${configError} — fix it by hand, or delete it to start over` });
       const body = await jsonBody(req);
       // `create`: the welcome's "make it" — a root under the home that is not there yet is made first, so a new Mac's

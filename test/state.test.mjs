@@ -47,3 +47,19 @@ test('small renderers', () => {
   assert.match(summarizeToolInput('Read', { file_path: '/a/b.txt' }), /b\.txt/);
   assert.equal(typeof toolResultSnippet({ type: 'tool_result', content: 'hello' }), 'string');
 });
+
+test('a state file that does not read is kept aside, not written over; a save is whole or nothing', { timeout: 30_000 }, async () => {
+  const { startTestServer } = await import('../lib/testserver.mjs');
+  const { readdirSync } = await import('node:fs');
+  const dir = tmpDir('peix-');
+  writeFileSync(join(dir, 'state.json'), '{"done": {"x": "2026-10-0');   // cut off mid-write
+  const srv = await startTestServer({ dir });
+  try {
+    const bad = readdirSync(dir).filter(f => f.startsWith('state.json.bad-'));
+    assert.equal(bad.length, 1, 'kept beside itself');
+    assert.equal(readFileSync(join(dir, bad[0]), 'utf8'), '{"done": {"x": "2026-10-0', 'as it was');
+    assert.equal((await srv.api('api/notifications', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ on: false }) })).status, 200);
+    assert.equal(JSON.parse(readFileSync(join(dir, 'state.json'), 'utf8')).notifications, false, 'the next save is a whole file');
+    assert.deepEqual(readdirSync(dir).filter(f => f.endsWith('.tmp')), [], 'and leaves nothing behind');
+  } finally { await srv.stop(); }
+});
