@@ -1088,19 +1088,29 @@ function tailFile(file) {
 // Claude Code writes each sub-agent's transcript beside the session's (every line isSidechain, a .meta.json with
 // requestShape 'background' or not). A foreground agent holds the main transcript at a tool_use, so the chat stays
 // working; a background one answers at once and the main turn ends — the card went ready while agents worked
-// (2026-09-20). An agent's last line says
-// whether it is done: an assistant end_turn. One that went quiet AGENT_STALE_MS ago is not counted (a killed agent
-// never writes its end_turn). Only the status is touched — not the order, not the transcript, not the alerts
-// beyond holding the 'reply' one back until the agents are done.
+// (2026-09-20). An agent's last lines say whether it is done: an assistant end_turn; or, since agents hand their
+// report back through a tool (2026-10-03), the result of its SubagentHandback call — no end_turn ever follows it, and
+// such an agent counted for AGENT_STALE_MS more, the card clauding and the chat's own reply never alerted; or an
+// interrupt (Esc). One that went quiet AGENT_STALE_MS ago is not counted (a killed agent never writes its end).
+// Only the status is touched — not the order, not the transcript, not the alerts beyond holding the 'reply' one back
+// until the agents are done.
 const AGENT_STALE_MS = Number(process.env.AGENT_STALE_MS || 15 * 60_000);
+const AGENT_ENDS = new Set(['end_turn', 'stop_sequence']);
+const isHandback = (line, id) => line?.type === 'assistant' && Array.isArray(line.message?.content) && line.message.content.some(b => b?.type === 'tool_use' && b.name === 'SubagentHandback' && b.id === id);
 function agentRunning(file, now = Date.now()) {
   let st; try { st = statSync(file); } catch { return false; }
   if (now - st.mtimeMs > AGENT_STALE_MS || !st.size) return false;
   const len = Math.min(st.size, 65536), buf = Buffer.alloc(len);
   const fd = openSync(file, 'r'); try { readSync(fd, buf, 0, len, st.size - len); } finally { closeSync(fd); }
-  const lines = buf.toString('utf8').trim().split('\n');
-  let last; try { last = JSON.parse(lines[lines.length - 1]); } catch { return true; }   // a line still being written: at work
-  return !(last.type === 'assistant' && (last.message?.stop_reason === 'end_turn' || last.message?.stop_reason === 'stop_sequence'));
+  const tail = buf.toString('utf8').trim().split('\n').slice(-8).map(l => { try { return JSON.parse(l); } catch { return null; } });
+  const last = tail.at(-1);
+  if (!last) return true;   // a line still being written: at work
+  if (last.type === 'assistant') return !AGENT_ENDS.has(last.message?.stop_reason);
+  if (last.type !== 'user') return true;   // an attachment (a token reminder) is an agent mid-way
+  const c = last.message?.content;
+  if (textOf(c).startsWith('[Request interrupted')) return false;
+  const res = Array.isArray(c) && c.find(b => b?.type === 'tool_result');
+  return !(res && tail.some(l => isHandback(l, res.tool_use_id)));
 }
 const agentsDir = s => s.file ? join(dirname(s.file), s.id, 'subagents') : null;
 function scanAgents(s) {
@@ -2322,6 +2332,7 @@ setInterval(() => {
   for (const s of sessions.values()) {
     if (pruneTasks(s)) schedulePush(s);
     if (s.alive) scanAgents(s);
+    else if (s.agentsRunning) { s.agentsRunning = 0; schedulePush(s); }   // its claude is gone, and its agents with it — a stale card read "2 agents" until a restart
   }
   sweepTasks();
   sweepDrawers();

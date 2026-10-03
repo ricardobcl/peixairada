@@ -26,3 +26,22 @@ test('a sub-agent file is running until its last line is an end_turn, never once
   assert.equal(agentRunning(f), false, 'empty');
   assert.equal(agentRunning(f + '.missing'), false, 'gone');
 });
+
+test('an agent that handed its report back is done — no end_turn ever follows the handback — and so is one interrupted', () => {
+  const f = join(tmpDir('peix-agents-'), 'agent-2.jsonl');
+  const line = o => JSON.stringify({ isSidechain: true, agentId: '2', ...o }) + '\n';
+  const user = line({ type: 'user', message: { role: 'user', content: 'review it' } });
+  const handback = line({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', id: 'toolu_1', name: 'SubagentHandback', input: { report: '…' } }] } });
+  const delivered = line({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_1', content: [{ type: 'text', text: 'Report delivered' }] }] } });
+  const other = line({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_9', content: 'file contents' }] } });
+  writeFileSync(f, user + handback);
+  assert.equal(agentRunning(f), true, 'the handback asked for, not yet answered');
+  writeFileSync(f, user + handback + delivered);
+  assert.equal(agentRunning(f), false, 'its result in: done');
+  writeFileSync(f, user + handback + other);
+  assert.equal(agentRunning(f), true, 'a tool result for another call is an agent at work');
+  writeFileSync(f, user + line({ type: 'attachment', attachment: { type: 'total_tokens_reminder' } }));
+  assert.equal(agentRunning(f), true, 'a token reminder is an agent mid-way');
+  writeFileSync(f, user + line({ type: 'user', message: { role: 'user', content: [{ type: 'text', text: '[Request interrupted by user]' }] } }));
+  assert.equal(agentRunning(f), false, 'interrupted');
+});
