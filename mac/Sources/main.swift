@@ -245,6 +245,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   var menuOut = false                     // no housing: the menu bar let out after a hold at the top edge, until it has hidden again
   var edgeSince: TimeInterval?            // when the pointer reached the Dock's edge
   var topSince: TimeInterval?             // when the pointer reached the top edge
+  var tuck: DispatchWorkItem?             // a tuckMenuBar pending after the app came forward or the Space changed
   var dockSide = "bottom"                 // the Dock's edge, read when the fill starts and when the app comes back (dockEdge)
   static let dockHold: TimeInterval = 0.7 // how long the pointer is held at the edge before the Dock comes out
   static let menuHold: TimeInterval = 1.0 // …and at the top edge before the menu bar does, where the search box sits
@@ -277,7 +278,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// Filled and behind another app, there is no pointer to watch for a hold at the Dock's edge: the poll stops, and
   /// comes back with the app — with the Dock's edge read again, in case it moved meanwhile.
   func applicationDidResignActive(_ note: Notification) { fillTick?.invalidate(); fillTick = nil; edgeSince = nil; topSince = nil }
-  func applicationDidBecomeActive(_ note: Notification) { if fillSaved != nil && fillTick == nil { startDockTick() } }
+  func applicationDidBecomeActive(_ note: Notification) { if fillSaved != nil && fillTick == nil { startDockTick() }; tuckMenuBarSoon() }
   func applicationShouldTerminateAfterLastWindowClosed(_ app: NSApplication) -> Bool { false }
   func applicationShouldHandleReopen(_ app: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
     showWindow(nil); return true
@@ -361,6 +362,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         self.tellFill()
       }
     }
+    NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil,
+                                                      queue: .main) { [weak self] _ in self?.tuckMenuBarSoon() }
   }
 
   // ---- the pane --------------------------------------------------------------------------------
@@ -874,6 +877,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   func fillOptions() -> NSApplication.PresentationOptions {
     let menu: NSApplication.PresentationOptions = fillHousing || menuOut || dockOut ? .autoHideMenuBar : .hideMenuBar
     return menu.union(dockOut ? .autoHideDock : .hideDock)
+  }
+  /// Beside a housing the menu bar is auto-hidden, and coming forward across a change of Space — a swipe, ⌘-Tab to the
+  /// board on another desktop, a launch — left it out over the head row until the pointer had been through it
+  /// (2026-10-03, measured: the system's options autoHideMenuBar all along and the bar still out 18 s on; back from
+  /// Mission Control, no Space changed, it went at once). So half a second on, the slide over, it is hidden outright for a
+  /// moment and auto-hidden again — not while the Dock is out (hideMenuBar wants hideDock), nor with the pointer in the
+  /// strip, reaching for it. The log says whether it was out.
+  func tuckMenuBarSoon() {
+    tuck?.cancel()
+    let w = DispatchWorkItem { [weak self] in self?.tuckMenuBar() }
+    tuck = w
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: w)
+  }
+  func tuckMenuBar() {
+    guard fillSaved != nil, fillHousing, !dockOut, NSApp.isActive, let screen = window.screen,
+          NSEvent.mouseLocation.y < screen.frame.maxY - screen.safeAreaInsets.top - 8 else { return }
+    let out = NSMenu.menuBarVisible()
+    NSApp.presentationOptions = [.hideDock, .hideMenuBar]
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+      guard let self, self.fillSaved != nil else { return }
+      NSApp.presentationOptions = self.fillOptions()
+    }
+    logLine("menu bar: tucked (\(out ? "it was out" : "it was in"))")
   }
   /// The Dock's edge of the screen, from its own preference: bottom unless it says left or right.
   static func dockEdge() -> String { UserDefaults(suiteName: "com.apple.dock")?.string(forKey: "orientation") ?? "bottom" }

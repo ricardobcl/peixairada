@@ -5,6 +5,27 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-03. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-03, night — the menu bar left out beside the notch
+
+Ricardo, back on the MacBook: "seems like the menu bar when the screen has a notch, is not disapearing anymore when
+the app is on?"
+
+* **What happened**: not the options. A probe outside the app (`NSApplication.currentSystemPresentationOptions`, and
+  the window server's `Menubar` window in `CGWindowListCopyWindowInfo`) read `hideDock` + `autoHideMenuBar` the whole
+  time the board was in front — and the menu bar down at y 0, 18 s on, the pointer nowhere near it. Each time it
+  stayed, the board had come forward **across a change of desktop** (its window sliding in from x -148, -103, -675;
+  the old build twice, the review's build once, at its launch). Back from Mission Control, no desktop changed, the bar
+  went within the second. Before 2026-09-28 every screen was auto-hidden; since, the user had mostly been on the DELL,
+  where the bar is hidden outright and a change of desktop cannot leave it out.
+* **The fix**: `tuckMenuBar()`, half a second after the app comes forward or the active Space changes
+  (`tuckMenuBarSoon`, one pending at a time): filled beside a housing, it sets `hideMenuBar` and 0.1 s later
+  `fillOptions()` again — hidden outright for a moment, then auto-hidden with nothing showing. Not while the Dock is
+  out (AppKit throws on `hideMenuBar` without `hideDock`), nor with the pointer in the strip, reaching for the bar. The
+  app log says `menu bar: tucked (it was out | it was in)`, by `NSMenu.menuBarVisible()`.
+* **Not seen on a stuck bar yet**: on the build with the fix, the one change of desktop measured had the bar gone at 1 s
+  — but the log said it was already in when the tuck ran, so macOS hid that one itself. The next `it was out` in the
+  log, with the bar gone, is the proof; one that stays out with that line says the hide-and-back is not enough.
+
 ## Decisions of 2026-10-03 — a review of the whole tree: what it found, what changed, what was left
 
 Ricardo: "do a thorough review of the code, try to improve performance, fix bugs and improve code quality (and

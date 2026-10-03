@@ -517,7 +517,9 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   is the head row, which an auto-hidden one slid over; the housing is the screen's top safe-area inset, mirroring
   included) **and let out, there, by the pointer held at the top edge for 1 s** (`menuOut`, back once the pointer is
   100 pt down and the system has hidden it — `NSMenu.menuBarVisible()`; `fillOptions()` is the one spelling of the
-  options), and **the Dock hidden, out only after the pointer
+  options); **beside the housing, coming forward across a change of desktop left the auto-hidden bar out** — the
+  options right all along — so `tuckMenuBar` hides it outright for 0.1 s half a second after (2026-10-03; the log
+  says `menu bar: tucked`), and **the Dock hidden, out only after the pointer
   has been held at its edge for 0.7 s** (`dockTick`, a 10 Hz poll while filled *and the app active*; `dockSide` read
   when the poll starts, `startDockTick`). The system's full screen always sits below the camera housing, so the
   window does not offer it: `collectionBehavior` is `.fullScreenNone`, **the green button zooms and
