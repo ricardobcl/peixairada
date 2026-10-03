@@ -36,7 +36,7 @@
 // Map ▴
 
 
-import { createServer, get as httpGet } from 'node:http';
+import { createServer } from 'node:http';
 import {
   accessSync, chmodSync, closeSync, constants as fsc, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, renameSync, rmSync, statSync, unlinkSync, watch, writeFileSync
 } from 'node:fs';
@@ -935,12 +935,12 @@ function moveTurn(url, t, now = Date.now()) {
   if (!prev || moved) { prTurns[url] = { key: t.key, at: new Date(prev ? now : Date.parse(t.at) || now).toISOString() }; turnsDirty = true; }
   else if (prev.key !== t.key) { prTurns[url] = { ...prev, key: t.key }; turnsDirty = true; }
   const { key, ...turn } = t;
-  return { turn: { ...turn, movedAt: prTurns[url].at }, moved: moved && t.you, from: prev?.key };
+  return { turn: { ...turn, movedAt: prTurns[url].at }, moved, from: prev?.key };   // moved is only ever a move to you
 }
 
 /** A PR come round to you: one alert, on the chat touched last of those that mention it. */
 function notifyPr(url, turn, chats) {
-  const s = [...chats].sort((a, b) => touchedAt(b) - touchedAt(a))[0];
+  const s = chats.reduce((a, b) => (!a || touchedAt(b) > touchedAt(a) ? b : a), null);
   if (!s || indexing) return;
   const sum = summary(s), heading = `Your move · ${s.prs.find(p => p.url === url)?.label || url}`;
   const evt = { kind: 'pr', sessionId: s.id, project: sum.project, title: sum.title, heading, snippet: turn.why, url, ts: new Date().toISOString(), quiet: !notificationsOn };
@@ -1560,12 +1560,7 @@ function endVsWebWithUs() {
   process.on('exit', () => { if (vsweb) { try { process.kill(-vsweb.pid, 'SIGTERM'); } catch { try { vsweb.kill(); } catch {} } } });
   for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) process.on(sig, () => process.exit(0));
 }
-function vswebAnswers() {
-  return new Promise(resolve => {
-    const req = httpGet(VSWEB_URL, r => { r.resume(); resolve(r.statusCode > 0); });
-    req.on('error', () => resolve(false)); req.setTimeout(1500, () => { req.destroy(); resolve(false); });
-  });
-}
+const vswebAnswers = () => fetch(VSWEB_URL, { signal: AbortSignal.timeout(1500) }).then(r => { r.body?.cancel(); return true; }, () => false);
 async function ensureVsWeb() {
   if (await vswebAnswers()) return { ok: true, url: VSWEB_URL, started: false };
   const code = codeBin();
@@ -1648,10 +1643,10 @@ const terms = new Map();              // id -> { id, sessionId, cwd, pid, holder
 let termSeq = 0;
 const termsAvailable = () => !!nodePty && existsSync(HOLDER);
 
-/** The chat's terminal — a live one over an exited one still lingering in `terms`. */
-function termOf(s) { let hit = null; for (const t of terms.values()) if (t.sessionId === s.id && !t.shell && (!hit || (hit.exited !== null && t.exited === null))) hit = t; return hit; }
-/** The chat's zsh (⌥⌘T), the same way. */
-function shellOf(s) { let hit = null; for (const t of terms.values()) if (t.sessionId === s.id && t.shell && (!hit || (hit.exited !== null && t.exited === null))) hit = t; return hit; }
+/** The chat's drawer (`shell` false) or its zsh (true) — a live one over an exited one still lingering in `terms`. The
+ *  same rule as termIndex, for one chat. */
+function drawerOf(s, shell) { let hit = null; for (const t of terms.values()) if (t.sessionId === s.id && !!t.shell === shell && (!hit || (hit.exited !== null && t.exited === null))) hit = t; return hit; }
+const termOf = s => drawerOf(s, false), shellOf = s => drawerOf(s, true);
 const NO_TERMS = Object.freeze({ term: null, shell: null });
 /** Every chat's drawer and zsh in one pass, by the same rule — for the summaries of the whole board, which asked
  *  termOf and shellOf per chat, each a walk over every terminal (322 chats × 75 terminals × 2 per snapshot, 2026-09-27). */
