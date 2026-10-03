@@ -5,19 +5,18 @@
 // after a hand edit, never written over while it does not parse; and the first run, which asks where the repos live.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeFixture } from '../scripts/fixture.mjs';
-import { startTestServer, waitFor } from '../lib/testserver.mjs';
+import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 
 const put = (srv, body) => srv.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
 test('the setup: defaults, refusals, partial PUTs, the roots behind the folders and the clone, a restart', { timeout: 60_000 }, async () => {
   // A home of its own, so `~/…` can be checked without touching the real one.
-  const home = realpathSync(mkdtempSync(join(tmpdir(), 'peix-home-')));
+  const home = realpathSync(tmpDir('peix-home-'));
   for (const f of ['code/acme/api', 'code/acme/web', 'code/other/tool', 'loose']) mkdirSync(join(home, f), { recursive: true });
   const srv = await startTestServer({ env: { HOME: home } });
   try {
@@ -72,9 +71,9 @@ test('the setup: defaults, refusals, partial PUTs, the roots behind the folders 
 });
 
 test('the config file: moved out of the state file, read back after a hand edit, never written over while it does not parse', { timeout: 60_000 }, async () => {
-  const home = realpathSync(mkdtempSync(join(tmpdir(), 'peix-home-')));
+  const home = realpathSync(tmpDir('peix-home-'));
   for (const f of ['code/acme/api', 'code/beta']) mkdirSync(join(home, f), { recursive: true });
-  const dir = mkdtempSync(join(tmpdir(), 'peix-'));
+  const dir = tmpDir('peix-');
   // a state file from before 2026-10-01, the setup in it
   writeFileSync(join(dir, 'state.json'), JSON.stringify({ done: { x: '2026-09-30T00:00:00.000Z' }, config: { roots: [{ dir: join(home, 'code', 'acme'), org: 'acme' }], quick: 'api' } }));
   const srv = await startTestServer({ dir, env: { HOME: home } });
@@ -108,7 +107,7 @@ test('the config file: moved out of the state file, read back after a hand edit,
 });
 
 test('the first run: asked until answered, the guesses from the chats, a folder made on request', { timeout: 60_000 }, async () => {
-  const home = realpathSync(mkdtempSync(join(tmpdir(), 'peix-home-')));
+  const home = realpathSync(tmpDir('peix-home-'));
   const repo = (path, origin) => { mkdirSync(join(home, path, '.git'), { recursive: true }); if (origin) writeFileSync(join(home, path, '.git', 'config'), `[core]\n\tbare = false\n[remote "origin"]\n\turl = ${origin}\n\tfetch = +refs/heads/*:refs/remotes/origin/*\n`); };
   repo('work/api', 'git@github.com:acme/api.git'); repo('work/web', 'https://github.com/acme/web'); repo('work/fork', 'git@github.com-personal:someone/fork.git'); repo('work/plain');
   repo('code/toy', 'git@github.com:me/toy.git'); repo('code/game', 'git@github.com:me/game.git'); repo('Downloads/once/thing');
@@ -150,7 +149,7 @@ test('the first run: asked until answered, the guesses from the chats, a folder 
 test('an import of the server moves nothing: the setup leaves the state file at boot only', () => {
   // test/agents.test.mjs imports server.mjs with no STATE_FILE of its own, so its state file is the real one — and the
   // move, at the module's top level when first written, ran against this Mac's files from `npm test`.
-  const home = realpathSync(mkdtempSync(join(tmpdir(), 'peix-home-')));
+  const home = realpathSync(tmpDir('peix-home-'));
   const state = join(home, 'Library', 'Application Support', 'peixAIrada', 'state.json');
   mkdirSync(join(state, '..'), { recursive: true });
   writeFileSync(state, JSON.stringify({ config: { quick: 'api' } }));

@@ -227,7 +227,7 @@ const tildePath = p => p === homedir() || p.startsWith(homedir() + '/') ? '~' + 
 // file that does not parse is said in the Setup and never written over — the board keeps what it had until it reads.
 let configError = null;
 let configStamp = 0;   // its mtime as last read or written: the poll's news is a change of it
-const CONFIG_POLL_MS = 2000;
+const CONFIG_POLL_MS = Number(process.env.CONFIG_POLL_MS || 2000);   // a test server's is 200 ms
 function readConfigFile() {
   let txt;
   try { txt = readFileSync(CONFIG_FILE, 'utf8'); } catch (e) { return e.code === 'ENOENT' ? { missing: true } : { error: `${tildePath(CONFIG_FILE)}: ${e.message}` }; }

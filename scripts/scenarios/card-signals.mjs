@@ -6,9 +6,10 @@
 // the question line.
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { tmpDir } from '../../lib/testserver.mjs';
 import { makeFixture, replyLines, taskNoteLine, toolLines } from '../fixture.mjs';
 
 // The sweep that asks the machine whether a background command is still running is on the registry poll, and it
@@ -31,7 +32,7 @@ export default async function (ctx) {
   const sleeps = Array.from({ length: 7 }, () => spawn('sleep', ['180'], { stdio: 'ignore' }));
   // The output file of that last chat's command, and something holding it open exactly as the harness's own
   // spawn does — this is what the server asks about, and killing it is that command ending.
-  const outFile = join(mkdtempSync(join(tmpdir(), 'peix-task-')), 'bldx1y2z3.output');
+  const outFile = join(tmpDir('peix-task-'), 'bldx1y2z3.output');
   writeFileSync(outFile, '');
   const holder = spawn('/bin/sh', ['-c', `exec sleep 120 >> ${JSON.stringify(outFile)}`], { stdio: 'ignore' });
   const live = i => ({ pid: sleeps[i].pid, startedAt: Date.now() - 3600_000 });
@@ -81,7 +82,7 @@ export default async function (ctx) {
 
   try {
     await ctx.server.restart();
-    await ctx.send('Page.reload'); await ctx.sleep(1500);
+    await ctx.reload();
     await ctx.waitFor(`window.peix.sessions().filter(s => s.cwd === ${JSON.stringify(cwd)}).length === 7`, { what: 'the seven chats' });
     await ctx.waitFor(`window.peix.sessions().some(s => s.agents === 3)`, { what: 'the three sub-agents counted', timeout: 20000 });
 

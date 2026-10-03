@@ -15,7 +15,7 @@ const ask = (srv, headers, method = 'GET', path = '/api/sessions') => new Promis
 const wsStatus = (srv, headers) => new Promise(res => {
   const ws = new WebSocket(`ws://127.0.0.1:${srv.port}/api/terminals/nothing/ws`, { headers });
   ws.on('unexpected-response', (_req, resp) => { res(resp.statusCode); ws.terminate(); });
-  ws.on('open', () => { res('open'); ws.close() }); ws.on('error', () => {});
+  ws.on('open', () => { res('open'); ws.close() }); ws.on('error', e => res(`error: ${e.code || e.message}`));   // a refused connection fails now, not at the test's timeout
 });
 
 test('another origin is refused on every route and on the terminal socket; the board and no browser are not', { timeout: 20_000 }, async () => {

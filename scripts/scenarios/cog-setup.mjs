@@ -4,12 +4,11 @@
 // box and its change, and read back from the server's word and from what it paints: the folders ⌥⌘N offers, the
 // crystal ball, the rail's short name, a card's colour, the day lines. A folder that is not there is refused, beside
 // the box, and the row stays as the server has it.
-import { mkdirSync, mkdtempSync, realpathSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, realpathSync } from 'node:fs';
 import { basename, join } from 'node:path';
-import { waitFor as until } from '../../lib/testserver.mjs';
+import { tmpDir, waitFor as until } from '../../lib/testserver.mjs';
 
-const ROOT = realpathSync(mkdtempSync(join(tmpdir(), 'peix-repos-')));
+const ROOT = realpathSync(tmpDir('peix-repos-'));
 for (const f of ['alpha', 'beta']) mkdirSync(join(ROOT, f), { recursive: true });
 export const meta = { server: true, fixture: 'auto' };
 

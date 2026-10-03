@@ -2,13 +2,13 @@
 // and not at all once it has gone quiet for a while (a killed agent never writes its end_turn).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, utimesSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpDir } from '../lib/testserver.mjs';
 import { agentRunning } from '../server.mjs';
 
 test('a sub-agent file is running until its last line is an end_turn, never once it went quiet', () => {
-  const f = join(mkdtempSync(join(tmpdir(), 'peix-agents-')), 'agent-1.jsonl');
+  const f = join(tmpDir('peix-agents-'), 'agent-1.jsonl');
   const line = o => JSON.stringify({ isSidechain: true, agentId: '1', ...o }) + '\n';
   const user = line({ type: 'user', message: { role: 'user', content: 'go' } });
   writeFileSync(f, user);

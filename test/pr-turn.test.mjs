@@ -2,11 +2,10 @@
 // for PR_FIELDS; setPrInfo keeps the board's record of when each move became news, and isDone weighs the tick by it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { tmpDir } from '../lib/testserver.mjs';
 
-const tmp = mkdtempSync(join(tmpdir(), 'peix-test-'));
+const tmp = tmpDir('peix-test-');
 process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
 const { prTurn, prPeople, setPrInfo, isDone, doneMarks, newSession, notePr, sessions, prStatus } = await import('../server.mjs');
 

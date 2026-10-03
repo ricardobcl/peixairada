@@ -1,11 +1,11 @@
 // Project input and the Peacock colour written into a JSONC settings file — the pure parts, no server running.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpDir } from '../lib/testserver.mjs';
 
-const tmp = mkdtempSync(join(tmpdir(), 'peix-test-'));
+const tmp = tmpDir('peix-test-');
 process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
 const { projectInput, writePeacock, readPeacock, termSummary, summarizeToolInput, toolResultSnippet } = await import('../server.mjs');
 

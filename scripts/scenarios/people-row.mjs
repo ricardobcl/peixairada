@@ -4,13 +4,14 @@
 // you left out — once each, the newest first; a face narrows the list, its counts and the chips to that person's chats
 // and rings the face; another face moves the filter; the same face again lets go; the choice is a pref; the rail has no
 // row.
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { tmpDir } from '../../lib/testserver.mjs';
 import { fileURLToPath } from 'node:url';
 import { makeFixture } from '../fixture.mjs';
 
-const dir = mkdtempSync(join(tmpdir(), 'peix-people-')), file = join(dir, 'prs.json');
+const dir = tmpDir('peix-people-'), file = join(dir, 'prs.json');
 const ago = min => new Date(Date.now() - min * 60_000).toISOString().replace(/\.\d+Z$/, 'Z');
 const face = (login, fill) => ({ login, __typename: 'User', avatarUrl: 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="${fill}"/></svg>`) });
 const [ana, rui, eva, me] = [face('ana', '#2f9e5b'), face('rui', '#8250df'), face('eva', '#d9a82a'), face('me', '#888')];

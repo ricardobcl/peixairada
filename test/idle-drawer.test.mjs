@@ -3,22 +3,24 @@
 // at 1.5 s and the registry poll at 1.2 s.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { alive, startTestServer, waitFor } from '../lib/testserver.mjs';
+import { alive, startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { defaultFixture } from '../scripts/fixture.mjs';
 
 test('an idle drawer with no page on it is ended after DRAWER_IDLE_MS; one with a page attached is not', { timeout: 40_000 }, async () => {
-  const fx = defaultFixture(mkdtempSync(join(tmpdir(), 'peix-fx-')), { cwdA: process.cwd(), cwdB: tmpdir() });
+  const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
   const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { DRAWER_IDLE_MS: '1500' } });
   try {
     const start = () => srv.post('api/terminals', { cwd: process.cwd(), cols: 90, rows: 24 });
     const [a, b] = await Promise.all([start(), start()]);
     assert.equal(a.status, 201, JSON.stringify(a.body)); assert.equal(b.status, 201, JSON.stringify(b.body));
-    const ws = new WebSocket(`${srv.url.replace(/^http/, 'ws')}api/terminals/${b.body.terminal.id}/ws`);   // a page on b
-    await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
-    await waitFor(async () => (await srv.terminals()).filter(t => t.sessionId).length === 2, { what: 'both fakes registered and tied to their drawers' });
+    // A page on each until both are tied to their chats — a drawer not yet tied is judged by its own start, and a slow
+    // shell had a's ended before its fake registered (2026-10-03) — then a's page leaves.
+    const page = async t => { const ws = new WebSocket(`${srv.url.replace(/^http/, 'ws')}api/terminals/${t.body.terminal.id}/ws`); await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; }); return ws; };
+    const [wa, ws] = await Promise.all([page(a), page(b)]);
+    await waitFor(async () => (await srv.terminals()).filter(t => t.sessionId).length === 2, { timeout: 10_000, what: 'both fakes registered and tied to their drawers' });
+    wa.close();
     await waitFor(async () => (await srv.terminals()).find(t => t.id === a.body.terminal.id)?.exited != null, { timeout: 10_000, what: 'the drawer nobody looks at to be ended' });
     assert.match(srv.logText(), /idle 0 h with no page on it — ending it \(chat /);
     const tb = (await srv.terminals()).find(t => t.id === b.body.terminal.id);

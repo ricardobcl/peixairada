@@ -3,13 +3,13 @@
 // here becomes a chat. The clone itself is `gh repo clone` over the network, so the POST is stubbed; what this
 // checks is the rows that are offered, and that choosing either of the new ones carries on into the new-chat flow
 // in the right folder.
-import { mkdirSync, mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpDir } from '../../lib/testserver.mjs';
 
 // meta is read when this module is imported, and the server starts with it — so the folders are made here, not in
 // the scenario body, and the server sees them from its first answer.
-const ORG_DIR = mkdtempSync(join(tmpdir(), 'peix-org-'));
+const ORG_DIR = tmpDir('peix-org-');
 for (const f of ['alpha-service', 'ledger-service', 'wallet-api']) mkdirSync(join(ORG_DIR, f, '.git'), { recursive: true });
 export const meta = { server: true, fixture: 'auto', env: { ORG_DIR, ORG: 'acme' } };
 
@@ -96,7 +96,7 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#pick').open`), true, '…without choosing the row it sat on');
   await ctx.evaluate(`document.querySelector('#pick').close()`);
   // the server kept it: a fresh page finds the same list, and the column has no such project
-  await ctx.send('Page.reload'); await ctx.sleep(1200);
+  await ctx.reload();
   await ctx.waitFor(`window.peix.state().sessions > 0`, { what: 'the board again' });
   out.kept = await ctx.peix('state().hidden');
   ctx.assert.deepEqual(out.kept, out.hidden, 'the hidden list survives a reload — it is the server\'s');

@@ -2,20 +2,22 @@
 // the socket's snapshot, a server restart with the holder alive under it, adoption, and the kill.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { alive, sleep, startTestServer, waitFor } from '../lib/testserver.mjs';
+import { alive, startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { defaultFixture } from '../scripts/fixture.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-/** Attach like the page does: the first binary frame is the snapshot; `until` stops when a text is seen. */
+/** Attach like the page does: the first binary frame is the snapshot; `until` stops when a text is seen. `p.opened`
+ *  is the socket open — a send before it throws — and `p.text()` what has come so far. */
 function attach(url, id, { until = null, timeout = 8000 } = {}) {
   const ws = new WebSocket(`${url.replace(/^http/, 'ws')}api/terminals/${id}/ws`); ws.binaryType = 'arraybuffer';
   ws.send2 = m => ws.send(JSON.stringify(m));
+  let first = null, all = '', exit = null;
+  const opened = new Promise(res => ws.addEventListener('open', res, { once: true }));
   const p = new Promise(res => {
-    let first = null, all = '', exit = null;
     const finish = () => { clearTimeout(t); try { ws.close(); } catch {} res({ first, all, exit }); };
     const t = setTimeout(finish, timeout);
     ws.onmessage = e => {
@@ -25,12 +27,12 @@ function attach(url, id, { until = null, timeout = 8000 } = {}) {
     };
     ws.onerror = () => {}; ws.onclose = () => { if (first !== null) finish(); };
   });
-  p.ws = ws;
+  Object.assign(p, { ws, opened, text: () => all });
   return p;
 }
 
 test('a drawer runs in a holder, gives a page a snapshot, survives a server restart, and ends on DELETE', { timeout: 60_000 }, async () => {
-  const fx = defaultFixture(mkdtempSync(join(tmpdir(), 'peix-fx-')), { cwdA: process.cwd(), cwdB: tmpdir() });
+  const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
   const chat = fx.chats[1];
   const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
   try {
@@ -45,9 +47,9 @@ test('a drawer runs in a holder, gives a page a snapshot, survives a server rest
     assert.deepEqual(readdirSync(join(srv.dir, 'terms')).filter(f => f.startsWith(t.id)).sort(), [`${t.id}.json`, `${t.id}.log`, `${t.id}.sock`]);
     // the fake registers → the chat is alive, with the drawer's process as its own
     await waitFor(async () => { const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id); return s.alive && s.live?.pid === t.pid && s.terminal?.id === t.id; }, { what: 'the resumed chat alive with the drawer as its process' });
-    await sleep(700);   // the fake registers first and draws right after; the snapshot must be of a drawn screen
-    // a page attaches: the first frame is the whole screen (the fake's prompt and status), not a byte replay
-    const a1 = await attach(srv.url, t.id, { until: 'fake mode on' });
+    // a page attaches: the first frame is the whole screen (the fake's prompt and status), not a byte replay — once the
+    // fake has drawn, which it does right after it registers
+    const a1 = await waitFor(async () => { const a = await attach(srv.url, t.id, { until: 'fake mode on', timeout: 1500 }); return a.first?.includes('fake mode on') && a; }, { what: 'a snapshot of the drawn screen' });
     assert.ok(a1.first.includes('❯') && a1.first.includes('fake mode on'), 'the snapshot carries the prompt and the status bar');
     assert.ok(a1.first.includes('\x1b[?2004h'), 'the snapshot carries the modes the program set');
     const snapLog = srv.logText().match(/screen snapshot (\d+) chars, (\d+)×(\d+)/);
@@ -67,7 +69,7 @@ test('a drawer runs in a holder, gives a page a snapshot, survives a server rest
     assert.equal(s2.terminal?.id, t.id, 'the chat still points at its drawer');
     // type through the new server and see the fake answer
     const p = attach(srv.url, t.id, { until: 'You said: ping', timeout: 8000 });
-    await sleep(300); p.ws.send2({ t: 'in', d: 'ping\r' });
+    await p.opened; p.ws.send2({ t: 'in', d: 'ping\r' });
     const a3 = await p;
     assert.ok(a3.all.includes('You said: ping'), 'input reaches the PTY through the adopted holder');
     // end it: the fake exits, the registry entry goes, the holder lingers with the exit code then is let go
@@ -77,14 +79,13 @@ test('a drawer runs in a holder, gives a page a snapshot, survives a server rest
     assert.ok(!alive(t.pid), 'the fake is gone');
     const d2 = await srv.api(`api/terminals/${t.id}`, { method: 'DELETE' });   // an exited one is let go at once
     assert.equal(d2.status, 200);
-    await sleep(600);
-    assert.ok(!(await srv.terminals()).some(x => x.id === t.id), 'forgotten');
-    assert.ok(!existsSync(join(srv.dir, 'terms', `${t.id}.sock`)), 'the holder removed its socket');
+    await waitFor(async () => !(await srv.terminals()).some(x => x.id === t.id), { what: 'the exited drawer forgotten' });
+    await waitFor(() => !existsSync(join(srv.dir, 'terms', `${t.id}.sock`)), { what: 'the holder removing its socket' });
   } finally { await srv.stop(); }
 });
 
 test('a new chat in a folder is tied to its session by pid when the fake registers', { timeout: 30_000 }, async () => {
-  const fx = defaultFixture(mkdtempSync(join(tmpdir(), 'peix-fx-')), { cwdA: process.cwd(), cwdB: tmpdir() });
+  const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
   const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
   try {
     const r = await srv.api('api/terminals', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cwd: process.cwd(), cols: 90, rows: 24 }) });
@@ -96,8 +97,8 @@ test('a new chat in a folder is tied to its session by pid when the fake registe
 });
 
 test('a launcher: a folder whose Taskfile launches claude lists it, a new chat there runs `task <name>`, and the chat is tied to the drawer by descent', { timeout: 40_000 }, async () => {
-  const cwd = mkdtempSync(join(tmpdir(), 'peix-tf-')); writeFileSync(join(cwd, 'Taskfile.yml'), 'version: "3"\n');   // the fake task never reads it; the server looks for it
-  const fx = defaultFixture(mkdtempSync(join(tmpdir(), 'peix-fx-')), { cwdA: process.cwd(), cwdB: cwd });
+  const cwd = tmpDir('peix-tf-'); writeFileSync(join(cwd, 'Taskfile.yml'), 'version: "3"\n');   // the fake task never reads it; the server looks for it
+  const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: cwd });
   const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { TASK_BIN: join(ROOT, 'scripts', 'faketask.mjs') } });
   const post = body => srv.post('api/terminals', body);
   try {
@@ -124,7 +125,7 @@ test('a launcher: a folder whose Taskfile launches claude lists it, a new chat t
 });
 
 test('a zsh drawer: a holder running zsh -l -i in the chat folder, beside the claude one', { timeout: 40_000 }, async () => {
-  const fx = defaultFixture(mkdtempSync(join(tmpdir(), 'peix-fx-')), { cwdA: process.cwd(), cwdB: tmpdir() });
+  const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
   const chat = fx.chats[1];
   const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
   try {
@@ -137,7 +138,7 @@ test('a zsh drawer: a holder running zsh -l -i in the chat folder, beside the cl
     assert.equal(s.shell?.id, t.id, 'the chat carries its zsh'); assert.equal(s.terminal, null, 'and it is not its claude drawer');
     assert.equal(s.alive, false, 'a shell is no claude: the chat is not live');
     const a = attach(srv.url, t.id, { until: 'peix-shell-22', timeout: 20_000 });
-    await sleep(2500);   // the login shell's rc files
+    await a.opened; await waitFor(() => /[%$#] *$/.test(a.text().replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')), { timeout: 10_000, what: 'the shell\'s prompt' });
     a.ws.send2({ t: 'in', d: 'echo peix-shell-$((20+2))\r' });
     const out = await a;
     assert.ok(out.all.includes('peix-shell-22'), `the zsh ran the command: ${JSON.stringify(out.all.slice(-300))}`);

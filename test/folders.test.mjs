@@ -5,14 +5,12 @@
 // the page can carry on into the new-chat flow with it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { startTestServer } from '../lib/testserver.mjs';
-
+import { startTestServer, tmpDir } from '../lib/testserver.mjs';
 
 test('the org folders are listed, and a clone is refused a name that is not one', { timeout: 60_000 }, async () => {
-  const root = mkdtempSync(join(tmpdir(), 'peix-org-'));
+  const root = tmpDir('peix-org-');
   mkdirSync(join(root, 'wallet-api', '.git'), { recursive: true });
   mkdirSync(join(root, 'oracle'), { recursive: true });
   mkdirSync(join(root, '.hidden'), { recursive: true });
