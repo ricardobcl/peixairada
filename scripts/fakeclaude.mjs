@@ -7,13 +7,19 @@
 // status timer rewrites only its own cells every second, and a resize (SIGWINCH) repaints the whole region —
 // which is exactly the behaviour behind the truncated-replay bug of 2026-09-20, and what the drawer tests need.
 // It refuses to run without CLAUDE_DIR set to something other than ~/.claude: it must never write the real one.
-import { appendFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
-import { homedir } from 'node:os';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join, resolve } from 'node:path';
+import { homedir, userInfo } from 'node:os';
 import { randomUUID } from 'node:crypto';
 
 const CLAUDE_DIR = process.env.CLAUDE_DIR;
-if (!CLAUDE_DIR || CLAUDE_DIR === join(homedir(), '.claude')) { console.error('fakeclaude: CLAUDE_DIR must point at a fixture, never the real ~/.claude'); process.exit(2); }
+// The real one by what it is, not how it is spelt (2026-10-03: a string compare let `~/.claude/`, `~/.Claude`, a
+// symlink, a folder under it, and any run with $HOME pointed elsewhere — config.test does — write the real registry).
+// Every folder from CLAUDE_DIR up is compared by device and inode with ~/.claude, for $HOME's home and the account's.
+const inode = p => { try { const s = statSync(p); return `${s.dev}:${s.ino}`; } catch { return null; } };
+const realClaude = new Set([homedir(), userInfo().homedir].map(h => inode(join(h, '.claude'))).filter(Boolean));
+const underReal = d => { for (let p = resolve(d); ; p = dirname(p)) { if (realClaude.has(inode(p))) return true; if (dirname(p) === p) return false; } };
+if (!CLAUDE_DIR || underReal(CLAUDE_DIR)) { console.error('fakeclaude: CLAUDE_DIR must point at a fixture, never the real ~/.claude'); process.exit(2); }
 const args = process.argv.slice(2);
 const arg = f => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : null; };
 let sessionId = arg('--resume') || randomUUID();
