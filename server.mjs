@@ -454,9 +454,12 @@ function projectInput(body, prev = {}) {
   return { name, cwds };
 }
 
+// Every session object a number of its own: a re-read replaces the object and counts its entries afresh, so the page
+// knows the numbers it holds are another reading's (the `entries` events and /messages carry it, with `upto`).
+let sessionGen = 0;
 function newSession(id, file) {
   return {
-    id, file,
+    id, file, gen: ++sessionGen,
     slug: file ? basename(dirname(file)) : null,
     cwd: null, gitBranch: null, model: null,
     title: null, customTitle: null, lastPrompt: null, lastReply: null, prs: [],
@@ -1413,7 +1416,8 @@ function schedulePush(s) {
   clearTimeout(s.pushTimer);
   s.pushTimer = setTimeout(() => {
     broadcast('session', summary(s));
-    if (s.newEntries.length) { broadcast('entries', { sessionId: s.id, entries: s.newEntries }); s.newEntries = []; }
+    // `upto`: the entries folded so far — these are the last of them, so the page can tell what it already has
+    if (s.newEntries.length) { broadcast('entries', { sessionId: s.id, gen: s.gen, upto: s.entryCount, entries: s.newEntries }); s.newEntries = []; }
   }, 80);
 }
 
@@ -2190,7 +2194,7 @@ const server = createServer(async (req, res) => {
       const cur = sessions.get(m[1]);
       cur.openedAt = Date.now();
       queueSessionPrs(cur);   // opening a chat refreshes its PR statuses and keeps them polled; the SSE push carries them in
-      return json(res, 200, { session: summary(cur), entries: cur.entries });
+      return json(res, 200, { session: summary(cur), entries: cur.entries, gen: cur.gen, upto: cur.entryCount });   // the entries end at upto
     }
     // ⌥⌘T: a zsh in the chat's folder, in the pane's zsh tab — a holder like the claude one (`zsh -l -i` in the PTY),
     // one per chat, alive until `exit` or a DELETE. The inline "new tab in iTerm" (2026-09-20).
