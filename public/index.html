@@ -3393,7 +3393,9 @@
   // /absolute, ~/ or ./ with any segments (an @ before one is Claude Code's attachment mark, not part of it) ·
   // folder/file.ext, the first segment dotless and not an npm scope (a domain is not a folder), an extension on the
   // last · name.ext right before :line — and :line[:col] on any of them
-  const PATH_RE = /(?<![\w.\/~-])(?:(?:~|\.{1,2})?\/[\w.@+-]+(?:\/[\w.@+-]+)*|\.?[\w+-][\w@+-]*(?:\/[\w.@+-]+)*\/[\w@+-][\w.@+-]*\.[A-Za-z0-9]{1,8}|[\w@+-][\w.@+-]*\.[A-Za-z0-9]{1,8}(?=:\d))(?::\d+(?::\d+)?)?/g;
+  // Not after a + or an @ inside a word (2026-10-03): every such place was a start that scanned to the run's end, and
+  // a 40 000-character line of them took 800 ms on the main thread; an @ that begins a word (Claude Code's) still may.
+  const PATH_RE = /(?<![\w.\/~+-])(?<![\w.\/~+@-]@)(?:(?:~|\.{1,2})?\/[\w.@+-]+(?:\/[\w.@+-]+)*|\.?[\w+-][\w@+-]*(?:\/[\w.@+-]+)*\/[\w@+-][\w.@+-]*\.[A-Za-z0-9]{1,8}|[\w@+-][\w.@+-]*\.[A-Za-z0-9]{1,8}(?=:\d))(?::\d+(?::\d+)?)?/g;
   const EXT_RE = /\.[A-Za-z0-9]{1,8}$/;
   /** A path's vscode://file URL against the chat's folder, or null for one that is no file of ours: ~ needs a home
       (read off the folder), a relative path needs the folder, an absolute one a known root or an extension. */
@@ -3408,7 +3410,12 @@
   /** Where the links are in a run of text: [{ start, end, href, web }], the pages first and no path inside one. */
   function chatLinks(text, cwd) {
     const out = [];
-    for (const m of text.matchAll(URL_RE)) { let u = m[0].replace(/[.,;:!?'"]+$/, ''); if (!u.includes('(')) u = u.replace(/\)+$/, ''); out.push({ start: m.index, end: m.index + u.length, href: u, web: true }); }
+    for (const m of text.matchAll(URL_RE)) {
+      // a closing parenthesis is the URL's while it closes one of the URL's own: (see https://x/wiki/Foo_(bar)) keeps one
+      let u = m[0].replace(/[.,;:!?'"]+$/, '');
+      while (u.endsWith(')') && u.split(')').length > u.split('(').length) u = u.slice(0, -1).replace(/[.,;:!?'"]+$/, '');
+      out.push({ start: m.index, end: m.index + u.length, href: u, web: true });
+    }
     for (const m of text.matchAll(PATH_RE)) {
       const p = m[0].replace(/[.,;:]+$/, ''), start = m.index, end = start + p.length;
       if (out.some(o => start < o.end && end > o.start)) continue;
@@ -3438,7 +3445,7 @@
     const line = tm?.xt?.buffer.active.getLine(y - 1); if (!line) return undefined;
     let text = ''; const cell = [];
     for (let x = 0; x < line.length; x++) { const c = line.getCell(x); if (!c || c.getWidth() === 0) continue; const ch = c.getChars() || ' '; for (let i = 0; i < ch.length; i++) cell.push(x); text += ch; }
-    const links = chatLinks(text, state.sessions.get(state.current)?.cwd).filter(l => !l.web)
+    const links = chatLinks(text, tm.cwd || state.sessions.get(state.current)?.cwd).filter(l => !l.web)   // the drawer's folder: a new chat's has no chat yet
       .map(l => ({ text: text.slice(l.start, l.end), href: l.href, range: { start: { x: cell[l.start] + 1, y }, end: { x: cell[l.end - 1] + 1, y } }, activate: () => openExternal(l.href) }));
     return links.length ? links : undefined;
   }
@@ -3449,7 +3456,7 @@
   const turnOf = pr => pr.turn ? (pr.turn.you ? 'you' : 'them') : '';
   const turnTip = pr => !pr.turn ? '' : pr.turn.you ? `your move — ${pr.turn.why}` : pr.turn.why;
   const PR_ROWS = 6;   // a chat that lists PRs mentions dozens; the block shows this many and folds the rest behind "more"
-  const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" href="${esc(pr.url)}" target="_blank" rel="noopener"
+  const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" href="${/^https:\/\//.test(pr.url) ? esc(pr.url) : '#'}" target="_blank" rel="noopener"
       title="${esc(`${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}${pr.turn ? `\n${turnTip(pr)}` : ''}`)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span>${pr.turn?.you ? `<span class="why">your move · ${esc(pr.turn.why)}</span>` : ''}<span class="meta">${rel(pr.lastAt)}</span></a>`;
   // Claude Code's own /focus — "just your prompt, summary, and response", every step in between hidden — on the
   // session running in the drawer (2026-09-20). It is the running CLI's state, not the board's: there is no key and no
