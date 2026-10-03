@@ -375,11 +375,15 @@ function writePeacock(cwd, color) {   // color '#rrggbb', or null to take the ke
 // @-mention. Saved beside the state file, per chat, the name kept (deduplicated); never cleaned up.
 const ATTACH_DIR = join(dirname(STATE_FILE), 'attachments');
 const ATTACH_MAX = 50 * 1024 * 1024;
+/** The body's bytes, up to `max`. Past it the rest is drained, not read, and the promise rejects — the request is
+ *  left alive, so the refusal reaches the page (2026-10-03: a destroyed request took its socket with it, and the 413
+ *  was written nowhere). A route that refuses this way closes the connection after its answer. */
 function readRaw(req, max) {
   return new Promise((resolve, reject) => {
     const chunks = []; let n = 0;
-    req.on('data', c => { n += c.length; if (n > max) { req.destroy(); reject(new Error('too large')); } else chunks.push(c); });
-    req.on('end', () => resolve(Buffer.concat(chunks)));
+    if (Number(req.headers['content-length']) > max) { req.resume(); return reject(new Error('too large')); }
+    req.on('data', c => { n += c.length; if (n <= max) chunks.push(c); else chunks.length = 0; });
+    req.on('end', () => n <= max ? resolve(Buffer.concat(chunks)) : reject(new Error('too large')));
     req.on('error', reject);
   });
 }
@@ -1915,17 +1919,24 @@ function sweepDrawers() {
 // same-origin rule at all (2026-09-27). So a request has to be the board's own page (its Origin is this server) or
 // come from no browser at all (curl, the app's fetches and the tests send no Origin), and its Host has to be a
 // loopback name: a DNS name pointed at 127.0.0.1 (rebinding) would be the same page from an origin that is not ours.
-// A `null` Origin — a file:// page, a sandboxed frame — is nobody's.
+// A `null` Origin — a file:// page, a sandboxed frame — is nobody's. And a browser sends no Origin at all on a GET it
+// makes for an <img>, a <script> or a navigation, so its Sec-Fetch-Site says whose page asked (2026-10-03): only this
+// server's own, or the user typing the address; another site may at most navigate to the board itself.
+// Bound to every interface (HOST 0.0.0.0), the Host is whichever address was used: the Origin must then name that
+// same host, and no Origin is only for a client on this Mac — the LAN reached every route before.
 const LOOPBACK = new Set(['127.0.0.1', 'localhost', '[::1]', '::1', HOST]);
-const ANY_HOST = HOST === '0.0.0.0' || HOST === '::';   // bound to every interface: the Host is whichever address was used
+const ANY_HOST = HOST === '0.0.0.0' || HOST === '::';
+const LOCAL_ADDR = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 function foreign(req) {
-  const host = String(req.headers.host || '').replace(/:\d+$/, '');
+  const hostPort = String(req.headers.host || ''), host = hostPort.replace(/:\d+$/, '');
   if (host && !ANY_HOST && !LOOPBACK.has(host)) return `host ${host}`;
+  const site = req.headers['sec-fetch-site'];
+  if (site && site !== 'same-origin' && site !== 'none' && !(req.headers['sec-fetch-mode'] === 'navigate' && /^\/(index\.html)?(\?|#|$)/.test(req.url || ''))) return `site ${site}`;
   const origin = req.headers.origin;
-  if (origin === undefined) return null;
+  if (origin === undefined) return ANY_HOST && !LOCAL_ADDR.has(req.socket?.remoteAddress) ? `no origin, from ${req.socket?.remoteAddress}` : null;
   let o; try { o = new URL(origin); } catch { return `origin ${origin}`; }
   const port = o.port || (o.protocol === 'https:' ? '443' : '80');
-  if ((!ANY_HOST && !LOOPBACK.has(o.hostname)) || port !== String(PORT)) return `origin ${origin}`;
+  if ((ANY_HOST ? o.host !== hostPort : !LOOPBACK.has(o.hostname)) || port !== String(PORT)) return `origin ${origin}`;
   return null;
 }
 
@@ -1935,7 +1946,7 @@ function foreign(req) {
 // {t:'exit', code} down. Output that arrives while the snapshot is on its way waits in `ws.hold` and follows it,
 // minus what the snapshot already contains (`upto`), so the page sees the screen and then, in order, only what
 // came after it. A clear rides in that same queue — it is numbered like output, and wipes the page in its place.
-const wss = new WebSocketServer({ noServer: true });
+const wss = new WebSocketServer({ noServer: true, maxPayload: 8 << 20 });   // a page sends keys, a paste at most
 function attachTermSocket(req, socket, head) {
   const why = foreign(req);
   if (why) { socket.write('HTTP/1.1 403 Forbidden\r\n\r\n'); socket.destroy(); return; }
@@ -1964,6 +1975,9 @@ function attachTermSocket(req, socket, head) {
       else if (msg.t === 'clear') holderSend(t, { t: 'clear' });
     });
     ws.on('close', () => t.clients.delete(ws));
+    // a bad frame (unmasked, not UTF-8, over maxPayload) is an 'error' on the socket — and an 'error' nobody listens
+    // for ends the server, every drawer's page and the board's stream with it (2026-10-03)
+    ws.on('error', e => console.error(`[peixairada] terminal ${t.id}: a page's socket: ${e.message}`));
   });
 }
 
@@ -1977,16 +1991,9 @@ function json(res, code, body) {
 }
 
 const BODY_MAX = 1e6;
-function readBody(req, max = BODY_MAX) {
-  return new Promise((resolve, reject) => {
-    let data = '';
-    req.on('data', c => { data += c; if (data.length > max) { req.destroy(); reject(new Error(`body larger than ${max} bytes`)); } });   // destroyed, the request ends nowhere: settle it here
-    req.on('end', () => resolve(data));
-    req.on('error', reject);
-  });
-}
-/** The JSON body, or {} — none, unparseable, or too large (the request is dropped) all read as empty. */
-const jsonBody = req => readBody(req).then(t => JSON.parse(t || '{}')).catch(() => ({}));
+/** The JSON object in the body, or {} — none, unparseable, not an object, or too large all read as empty. Decoded
+ *  whole (2026-10-03: a chunk at a time before, so a character split across two chunks came out as two U+FFFD). */
+const jsonBody = req => readRaw(req, BODY_MAX).then(b => { const v = JSON.parse(b.toString('utf8') || '{}'); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; }).catch(() => ({}));
 
 /** Newest first by the chat's last word — yours or Claude's reply, whichever came later, or a PR come round to you (its
  *  turn's movedAt) — the board's own order (`byWord` in index.html). Over summaries. */
@@ -2000,22 +2007,29 @@ function sortedSummaries() {
   return [...sessions.values()].map(s => summary(s, ti)).sort((a, b) => wordAt(b).localeCompare(wordAt(a)));
 }
 
+// Requests wait for the boot, which starts once the port is ours (main()). Everything a route does is inside the try,
+// and every answer's head is written only once its body is in hand: a throw after a writeHead used to throw again in
+// the catch's own writeHead, and the rejection nobody handled ended the server (2026-10-03).
+const booted = Promise.withResolvers();
 const server = createServer(async (req, res) => {
-  const why = foreign(req);
-  if (why) return json(res, 403, { error: `not the board's own page (${why})` });
-  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-  const p = url.pathname;
   try {
+    await booted.promise;
+    const why = foreign(req);
+    if (why) return json(res, 403, { error: `not the board's own page (${why})` });
+    const url = new URL(req.url, 'http://localhost');   // the path and the query: the Host was foreign()'s to judge
+    const p = url.pathname;
     if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
+      const html = readFileSync(join(__dirname, 'public', 'index.html'));
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
-      return res.end(readFileSync(join(__dirname, 'public', 'index.html')));
+      return res.end(html);
     }
     let m;
     if (req.method === 'GET' && (m = p.match(/^\/vendor\/([\w.-]+\.(js|css))$/))) {
       const f = join(__dirname, 'public', 'vendor', m[1]);
       if (!existsSync(f)) return json(res, 404, { error: 'not found' });
+      const body = readFileSync(f);
       res.writeHead(200, { 'content-type': m[2] === 'css' ? 'text/css; charset=utf-8' : 'application/javascript; charset=utf-8', 'cache-control': 'public, max-age=86400' });
-      return res.end(readFileSync(f));
+      return res.end(body);
     }
     if (req.method === 'GET' && p === '/api/sessions') return json(res, 200, { sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), claudeDir: CLAUDE_DIR, notify: NOTIFY, notifications: notificationsOn });
     if (req.method === 'GET' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/messages$/))) {
@@ -2083,7 +2097,7 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'PUT' && p === '/api/attach') {   // a dropped file's bytes (browsers only — the app knows the path); ?session=<id>&name=<file>
       const sid = url.searchParams.get('session') || '', name = url.searchParams.get('name') || 'file';
-      let buf; try { buf = await readRaw(req, ATTACH_MAX); } catch (e) { return json(res, 413, { error: e.message === 'too large' ? `larger than ${ATTACH_MAX / 1048576} MB` : String(e.message || e) }); }
+      let buf; try { buf = await readRaw(req, ATTACH_MAX); } catch (e) { res.setHeader('connection', 'close'); return json(res, 413, { error: e.message === 'too large' ? `larger than ${ATTACH_MAX / 1048576} MB` : String(e.message || e) }); }
       try { return json(res, 200, { ok: true, path: saveAttachment(sid, name, buf), bytes: buf.length }); }
       catch (e) { return json(res, 500, { error: `could not save: ${e.message || e}` }); }
     }
@@ -2223,8 +2237,9 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
     if (req.method === 'GET' && p === '/events') {
+      const snap = JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), about: aboutInfo() });
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
-      res.write(`event: snapshot\ndata: ${JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), about: aboutInfo() })}\n\n`);
+      res.write(`event: snapshot\ndata: ${snap}\n\n`);
       sseClients.add(res);
       const ping = setInterval(() => res.write(': ping\n\n'), 25_000);
       req.on('close', () => { clearInterval(ping); sseClients.delete(res); });
@@ -2232,11 +2247,12 @@ const server = createServer(async (req, res) => {
     }
     json(res, 404, { error: 'not found' });
   } catch (e) {
-    json(res, 500, { error: String(e?.stack || e) });
+    console.error(`[peixairada] ${req.method} ${req.url}:`, e);
+    if (res.headersSent) res.destroy(); else json(res, 500, { error: String(e?.stack || e) });
   }
 });
 
-server.on('upgrade', attachTermSocket);
+server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTermSocket(req, socket, head)).catch(e => { console.error('[peixairada] upgrade:', e); socket.destroy(); }); });
 
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
@@ -2245,6 +2261,18 @@ export { fold, newSession, summary, agentRunning, notePr, notePrs, prTitle, dueP
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
+// The port first, and nothing else until it is ours (2026-10-03): a server waiting on a busy port — the agent behind
+// the app's own, an `npm start` beside the agent — adopted every holder, polled GitHub, posted alerts and wrote its
+// boot-time copy of the state file over the live server's ticks, all while serving nobody. A busy port is waited
+// for, not died on: the launchd agent starts while the app's own server still holds 7331, and the handoff is the app
+// quitting a moment later — a crash here would only make launchd throttle and retry with noise in the log.
+server.on('error', e => {
+  if (e.code !== 'EADDRINUSE') throw e;
+  console.error(`[peixairada] port ${PORT} is busy — trying again in 3 s`);
+  setTimeout(() => server.listen(PORT, HOST), 3000);
+});
+await new Promise(res => server.listen(PORT, HOST, res));
+console.log(`[peixairada] listening on http://${HOST}:${PORT}  (notify=${NOTIFY}, terminals in ${TERMS_DIR})`);
 const t0 = Date.now();
 loadConfig();
 scanProjects();
@@ -2294,14 +2322,5 @@ if (existsSync(SESSIONS_DIR)) {
   watch(SESSIONS_DIR, () => { clearTimeout(regTimer); regTimer = setTimeout(loadRegistry, 100); });
 }
 setInterval(loadRegistry, REGISTRY_POLL_MS);
-
-// A busy port is waited for, not died on: the launchd agent starts while the app's own server still
-// holds 7331, and the handoff is the app quitting a moment later — a crash here would only make
-// launchd throttle and retry with noise in the log.
-server.on('error', e => {
-  if (e.code !== 'EADDRINUSE') throw e;
-  console.error(`[peixairada] port ${PORT} is busy — trying again in 3 s`);
-  setTimeout(() => server.listen(PORT, HOST), 3000);
-});
-server.listen(PORT, HOST, () => console.log(`[peixairada] listening on http://${HOST}:${PORT}  (notify=${NOTIFY}, terminals in ${TERMS_DIR})`));
+booted.resolve();
 }

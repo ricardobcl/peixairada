@@ -34,5 +34,11 @@ test('another origin is refused on every route and on the terminal socket; the b
     assert.equal(await wsStatus(srv, { origin: 'https://evil.example' }), 403, 'the terminal socket refuses before it looks the terminal up');
     assert.equal(await wsStatus(srv, {}), 404, 'no Origin reaches the lookup (and this terminal does not exist)');
     assert.equal(await wsStatus(srv, { origin: mine }), 404, 'so does the board\'s page');
+    // a browser sends no Origin on an <img>, a <script> or a navigation — Sec-Fetch-Site says whose page it was
+    assert.equal(await ask(srv, { 'sec-fetch-site': 'cross-site', 'sec-fetch-mode': 'no-cors' }, 'GET', '/api/launchers?cwd=/tmp'), 403, 'another site\'s <img> on a route');
+    assert.equal(await ask(srv, { 'sec-fetch-site': 'same-site', 'sec-fetch-mode': 'navigate' }, 'GET', '/api/sessions'), 403, 'another port\'s page sending the tab to a route');
+    assert.equal(await ask(srv, { 'sec-fetch-site': 'cross-site', 'sec-fetch-mode': 'navigate' }, 'GET', '/'), 200, 'a link to the board itself');
+    assert.equal(await ask(srv, { 'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'cors' }), 200, 'the board\'s own fetch');
+    assert.equal(await ask(srv, { 'sec-fetch-site': 'none', 'sec-fetch-mode': 'navigate' }), 200, 'the address typed');
   } finally { await srv.stop(); }
 });
