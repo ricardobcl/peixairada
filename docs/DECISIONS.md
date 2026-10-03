@@ -2,8 +2,91 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-02. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-03. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-03 — a review of the whole tree: what it found, what changed, what was left
+
+Ricardo: "do a thorough review of the code, try to improve performance, fix bugs and improve code quality (and
+modernize it)".
+
+Nine readers went over it in parallel — the server in three parts, the page's script in three, its CSS, the Swift
+shell with the two shell scripts, and the harness — about 150 findings between them. Each was checked against the
+code (and most by running something) before it was changed; the ones kept are in the commits from `ef298bf` to
+`15468c2`, a commit per subject. `npm test` grew from 50 tests to 62 and runs in 7.7 s instead of 12.7.
+
+* **The bugs worth a story.**
+  * *Agents counted for fifteen minutes after they were done.* Sub-agents now end by calling `SubagentHandback` — a
+    tool_use, its tool_result, and no `end_turn` after — and `agentRunning` took only an `end_turn` as the end. The
+    card stayed clauding with "N agents", and the chat's own reply, which ended while they counted, was never alerted
+    (found in a real chat: three agents handed back, two replies suppressed). The handback's result ends an agent now,
+    and so does an interrupt; a chat whose claude is gone counts none.
+  * *The drawer's drift, at its root.* The page's xterm and the holder's drifted by a line on a resize and stayed so —
+    the open item of 2026-09-22, whose fix was to be a re-sync after a resize settles. The cause was simpler: a grow
+    parks the cursor (`refit`) and returns it with a CUU written behind the parser's queue, so output that arrived
+    meanwhile — the app's repaint after its SIGWINCH, most of all — was parsed in between and had its cursor moved by
+    the CUU. The holder and the page now hold what reaches the screen until the refit is done. Measured against the
+    holder's own snapshot after six window resizes: two runs in three drifted before, none after. The re-sync protocol
+    was written, tried, and taken out again: not needed once the cause was gone. Behind it, the fake claude's own
+    geometry (its region drawn mid-screen after a grow, its cursor at the bottom) had `drawer-altkeys` failing every
+    run on this Mac; fixed in the fake.
+  * *A launcher's drawer never followed `/clear`*: it was known by its PTY's pid, which is `task`'s; it is known by the
+    claude it was tied to now.
+  * *The server could fall over or be held*: an error after a `writeHead` (a reload while a checkout briefly removed
+    index.html), a bad frame on a drawer's socket, a spawn of a `code` that is not a program, a holder that accepts the
+    connection and never says hello (held the boot, and the port, for good). And a server waiting on a busy port —
+    the agent behind the app's own, an `npm start` beside the agent — adopted the holders, polled GitHub, posted
+    alerts and wrote its boot-time state over the live server's: the port is taken first now, and nothing runs until
+    it is.
+  * *Two `claude --resume` on one transcript* from two quick presses of ⌥⌘C: one spawn per chat at a time, on the
+    server and on the page; and Done or Take over signalled whatever had inherited a dead claude's pid — the registry's
+    `procStart` is checked first.
+  * *Opening a chat raced its stream*: an entry pushed before the fetch's answer went into the previous chat's log,
+    one in both was drawn twice, one could be lost. Entries are numbered on the wire (`gen`, `upto`).
+  * *A late answer painted another chat*: the take-over's disarm timer, its spawn, the focus view's wait, the editor
+    row and ⌥⌘T all acted on whichever chat was open when they finished.
+  * *A drawer whose socket dropped was dead until a reload* — every server restart; it re-attaches now.
+  * *PRs*: case made two PRs of one, a comment on someone else's PR made every later push "your move", a bot's
+    force-push was a move, a PR GitHub would not show lost its title, a pause outlived the outage.
+  * *Peacock* read and wrote straight through settings.json's comments (a `{` in a comment took the inserted key), and
+    taking the colour out left Peacock's own copy, which the reading fell back to.
+  * *Safety*: the fake claude's guard compared spellings (`~/.claude/`, `~/.Claude`, a symlink and `HOME` pointed
+    elsewhere all got past it); any site could GET a route through an `<img>` (`Sec-Fetch-Site` now); bound to every
+    interface the board answered the LAN; a reply could have the board fetch `![](https://…?q=secret)` on sight, or
+    restyle the board with a `<style>`.
+* **Performance.** The list draws once a frame and touches nothing when nothing moved (it measured every card twice
+  per update); the boxes redrawn per update are drawn only when they changed — which also fixed clicks lost on a
+  button replaced between press and release (the project cue's × opened the picker instead). The path matcher was
+  quadratic on `+` and `@` (800 ms for a 40 000-character line, now under 1). The sort reads each chat's time once;
+  the fuzzy matcher stops at the first start that cannot finish; the open chat's light keeps its animations; a growing
+  run of tool calls is appended to rather than redrawn; the PTY hears a size once it stops moving. On the server: one
+  lsof at a time, backing off for a long-running command; ps only when a new process is in the registry; plan usage
+  one question at a time, a failure kept half a minute (a refused keychain was a prompt per poll).
+* **The harness** fails fast (a closed devtools socket rejects every pending command; a command gives up after 60 s;
+  Chrome picks its own port — `9222 + pid % 500` drove somebody else's page now and then), cleans up on every way out,
+  reloads with `ctx.reload()` (fifteen reload-and-sleep pairs), waits for the right chat in `openChat` (it waited for
+  any `.text.md`), and its test servers read nothing of this Mac's: an empty `~/.claude` (the real one before — and a
+  real `gh` call for every PR in it, every `npm test`), the fake gh, no inherited `CONFIG_FILE`, a zsh with no rc files.
+  Temp dirs go with the process (a hundred were left in `$TMPDIR`).
+* **The app**: one server of its own at a time, ended when given up on; with the agent installed, the app waits for
+  it and Restart Server is `launchctl kickstart -k` (it restarted nothing); the board comes back by itself once the
+  server answers again; a dead web process is reloaded; the pane opens a file panel and shows `alert`/`confirm`/
+  `prompt` (GitHub's "are you sure" buttons did nothing); the log is appended on a queue of its own; the window comes
+  back where it was left. **Not installed from here** — `mac/build.sh install` puts it in /Applications.
+* **Left as they were, on purpose or for now.**
+  * *The asking card's blink* animates `border-color` and `box-shadow` on the main thread for as long as a question
+    waits. Moving it to an `::after`'s opacity would run it on the compositor — but the card clips at its padding box,
+    so the red edge and its glow would move inside the card: a change of look, for Ricardo to see first.
+  * *The tint transitions* (`--hbg`, `--openc`… registered `inherits: true`, eased on `main` and `#chat`) restyle every
+    descendant each frame of the 250 ms after a chat switch; unmeasured, so unchanged.
+  * *The trail over the usage panel* (both z-index 30) and the rail's `::-webkit-scrollbar` want a look in the app's
+    WebKit, not Chrome's.
+  * *A link in VS Code Web* replaces the editor (the pane loads a `window.open` into the view that asked); a new tab
+    for it is a design question.
+  * *`latestOpinionatedReviews`* would see an approval older than the last twenty reviews; not added to the query.
+  * *The notes under a modal* go to `document.body` when their anchor is gone; a popover would put them in the top
+    layer. *md()* still parses a message three times (marked, DOMPurify, a template).
+  * `ServerController` is still callbacks, not async/await; the CSS's dark inks are still written out in four places.
 
 ## Decisions of 2026-10-02 — the light keeps up with its card, is lighter than its colour, and ⌥⌘B folds the list
 

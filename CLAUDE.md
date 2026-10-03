@@ -68,7 +68,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | Transcript, appended live | `~/.claude/projects/<cwd-slug>/<session-id>.jsonl`, `fs.watch(recursive)` — no polling needed. Boot reads the last `TAIL_BYTES` of each; opening a chat reads it whole, a chunk at a time (`readLines`) |
 | Which sessions are alive | `~/.claude/sessions/<pid>.json` + `process.kill(pid, 0)`; watched *and* polled every 10 s (pids die silently) |
 | Where a chat lives | `entrypoint` on user/assistant lines (`claude-vscode` / `cli`), the registry's while it runs — `inVsCode()`. Several processes on one chat: the drawer's own is `live`, else the newest non-VS Code one; the rest are `rivals` on the summary |
-| Reply finished | assistant line with `stop_reason: "end_turn"` (tool calls are `"tool_use"`) — **or the registry's `idle` with a `statusUpdatedAt` after your last word** (`statusOf`, 2026-09-29: `/compact` is written as a plain prompt line and ends with no assistant line at all) — unless a **sub-agent** is at work: `<slug>/<id>/subagents/agent-*.jsonl`, running while its last line is not an end_turn and it wrote within `AGENT_STALE_MS` (`scanAgents()`, on their fs events and every 10 s); a background agent ends the main turn at once, so this is what keeps the card clauding |
+| Reply finished | assistant line with `stop_reason` `end_turn` (also `stop_sequence`, `max_tokens` unless it cut a tool call, `refusal` — `TURN_ENDS`, 2026-10-03; tool calls are `"tool_use"`) — **or the registry's `idle` with a `statusUpdatedAt` after your last word** (`statusOf`, 2026-09-29: `/compact` is written as a plain prompt line and ends with no assistant line at all) — unless a **sub-agent** is at work: `<slug>/<id>/subagents/agent-*.jsonl`, running while its last line is not an end_turn — **nor the result of its `SubagentHandback` call, nor an interrupt** (2026-10-03: agents hand back through a tool and write no end_turn after) — and it wrote within `AGENT_STALE_MS` (`scanAgents()`, on their fs events and every 10 s; a dead chat counts none); a background agent ends the main turn at once, so this is what keeps the card clauding |
 | Waiting on the user | **the registry's `status: "waiting"`** — every interactive claude rewrites its `sessions/<pid>.json` on each change of state (`busy` · `idle` · `waiting` · `shell`), with `waitingFor` (`input needed` for an AskUserQuestion; `permission prompt` for a tool's approval; `sandbox request`…) — `waitingOn()` / `statusOf()`; any live process on the chat waiting is the chat waiting, and it beats the agents. **`dialog open` is not asking** (`NOT_ASKING`). **The transcript cannot say it**: the line that asks is written *with its answer*; it is only the fallback for a claude that reports no status (a pending `AskUserQuestion` / `ExitPlanMode`, whose question is `s.ask`); otherwise the card says what the registry waits on (`ask.waitingFor`). The flip into waiting is the `needs-input` alert (`loadRegistry`) |
 | Work behind the turn | `Monitor` and a `Bash` with `run_in_background` leave a task running: the tool_result names it (`Monitor started (task …`, `Command running in background with ID: …`) and `<task-notification>` lines carry its events and, with a `<status>`, its end. `s.tasks` → `tasks` on the summary; a task dies with the claude that started it (`live.startedAt`), at its expiry (`MONITOR_MS`, `TASK_MAX_MS`), or with the chat's process (`pruneTasks`, on the poll — `runningTasks` only reads). **A completion notice delivered mid-turn never becomes a line**, so a background command is also asked about directly: `sweepTasks` runs **one** `lsof -F n` per poll over every task's output file (the harness holds it open until the command exits), after `TASK_GRACE_MS`, never on lsof's own failure, names compared resolved |
 | Titles | board title (state file) › `custom-title` › the oldest still-open PR › `ai-title` › last prompt — `summary()`, `prTitle()` |
@@ -79,14 +79,23 @@ npm run map                         # rewrite the section maps at the top of ser
 | Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login shell (mise's PATH; `RUN_SHELL` — the user's zsh or bash, else `/bin/zsh`); it registers like any CLI run; a new chat is tied to its session by pid. **A folder whose Taskfile launches claude** (a task whose description mentions Claude) starts new chats as `task <name>` instead: `GET /api/launchers?cwd=` lists them (`task --list --json`, cached by the file's mtime, `TASK_BIN` overrides), `POST /api/terminals {cwd, task}` checks the name; claude is then a *descendant* of the PTY's pid, found through `ps` (`linkTermToRegistry`, `t.claudePid`), which is also where the launcher's name is written down for good (`noteEnv` → `envs` in the state file → `s.env`, what ⌥⌘O scopes by). A resume never goes through task. **`/clear` (or `/resume`) in the drawer** gives that pid a new session id and `linkTermToRegistry` moves the holder to it and pushes **both** chats; the page follows the holder (`terminal` event → `openSession`), the old chat is a stale card |
 
 **Never written: anything under `~/.claude`.** The board is read-only against Claude Code's data. The fake claude
-refuses to run against the real directory for the same reason.
+refuses to run against the real directory for the same reason — known by its device and inode, at CLAUDE_DIR or any
+folder above it, for `$HOME`'s home and the account's (2026-10-03; a string compare before).
 
 ## The server
 
 * **Only the board's own page may ask** (2026-09-27): every route and the terminal upgrade refuse a request whose
   Origin is not this server's, or whose Host is not a loopback name — `foreign()`; no Origin at all (curl, the app's
   fetches, the tests) passes; a `null` Origin is nobody's. Loopback is no trust boundary a browser keeps, and
-  WebSockets have no same-origin rule. → `test/origin.test.mjs`.
+  WebSockets have no same-origin rule. **A browser sends no Origin on an `<img>`, a `<script>` or a navigation**, so
+  `Sec-Fetch-Site` must be `same-origin` or `none` when sent — a navigation to `/` itself aside (2026-10-03). Bound to
+  every interface, the Origin must name the Host, and no Origin is only for this Mac. → `test/origin.test.mjs`.
+* **The port first, then the boot** (2026-10-03): `main()` waits until `listen` succeeds before it adopts holders,
+  reads the registry, polls GitHub or saves state — a server waiting on a busy port does nothing — and every request
+  and upgrade waits for `booted`. **A route writes its head only once its body is in hand**, and the handler's catch
+  destroys a response whose head went out: a second `writeHead` in the catch was an unhandled rejection, and the end.
+* **A drawer's WebSocket has an `'error'` listener** and `maxPayload` 8 MB: a bad frame was an unheard `'error'` —
+  and so is every spawn's (`code serve-web`): nothing the server starts or accepts may emit one unheard.
 * **A chat re-read is silent and keeps what the transcript cannot say** (`indexFile` on a chat the board holds —
   opening one longer than `TAIL_BYTES`, a truncated file): `s.silent` stops `queueNotify` for the re-read (every reply
   in it was alerted once), `live`/`rivals`/`alive`/`startedAt`/`openedAt`/`agentsRunning`/`replying`/`replyError` carry over, a
@@ -94,12 +103,26 @@ refuses to run against the real directory for the same reason.
   yet) is **not** silent: its first reply is news. → `test/reindex.test.mjs`.
 * **`summary()` reads only.** `pruneTasks` (the poll) deletes expired tasks; `sortedSummaries` builds one
   `termIndex()` and hands it to `summary(s, ti)` (a single summary still asks `termOf`/`shellOf`).
-* **Bodies go through `jsonBody(req)`**: none, unparseable or too large (`readBody` destroys the request *and* rejects)
-  all read as `{}`.
+* **Bodies go through `jsonBody(req)`**: `readRaw` collects the bytes and decodes them whole (a character split across
+  chunks was two U+FFFD); none, unparseable, not an object or too large all read as `{}`. Past its limit a body is
+  drained, not destroyed (a destroyed request took its socket, and the 413 went nowhere); a refusing route sets
+  `connection: close`.
+* **The state file is written beside itself and renamed over** (`saveState`, 2026-10-03), and one that does not parse
+  is kept as `state.json.bad-<ms>` and said in the log — never dropped in silence and written over. STATE_FILE set
+  never reads the legacy one. → `test/state.test.mjs`.
+* **One spawn per chat and kind at a time** (`spawnOnce`, `<chat>:claude` / `:shell`): a drawer is in `terms` only
+  once its holder answers, and a second ⌥⌘C meanwhile started a second `claude --resume`. **Nothing is signalled that
+  is not the registry's process**: `endClaude(entry)` compares `procStart` with `ps -o lstart=` in UTC
+  (`sameProcess`) — a dead claude's file lingers, and its pid can be anyone's by then. → `test/terminals.test.mjs`.
+* **The open chat's entries are numbered on the wire** (2026-10-03): `/messages` and every `entries` event carry
+  `gen` (which reading of the file — `newSession` numbers each object) and `upto` (`entryCount`: the entries end
+  there), and the page keeps only what is past what it holds; another `gen` or a gap is a fetch. See *The transcript*.
 * **The holder socket is `setEncoding('utf8')` on both ends** — a glyph split across chunks decodes whole.
-* **Every CLI the server shells out to goes through `findBin()`** — the app's server has a bare PATH; `<NAME>_BIN`
-  overrides. The login agent's PATH is the installing shell's, then the system's (`launchd.sh`, 2026-10-01). The two
-  network calls are `gh` (PR state and title) and the usage endpoint.
+* **Every CLI the server shells out to goes through `findBin()`** — `git` too — the app's server has a bare PATH;
+  `<NAME>_BIN` overrides. A file it can run, not any path that exists; none found is looked for again a minute later
+  (2026-10-03). The login agent's PATH is the installing shell's, then the system's (`launchd.sh`, 2026-10-01). The two
+  network calls are `gh` (PR state and title) and the usage endpoint — one usage question at a time, its answer kept a
+  minute, a failure half a minute (`planUsage`).
 * **A PR is polled by how recently its chat was touched** (2026-09-28): `sweepPrs` on the registry poll queues what
   `duePrs` says — a PR never asked about (so boot asks every one, the recent chats' first), else by `PR_POLL`: every
   minute for a chat touched within the hour, 5 min within the day, 30 within three days, **never after**. Touched is
@@ -144,9 +167,17 @@ refuses to run against the real directory for the same reason.
   the server keeps the finer `status` for notifications and the badge.
 * **The cards are reconciled, not rebuilt** (2026-09-27): `renderSessionList` builds `{id, html}` items and
   `drawCards` keeps the node of every card whose markup is what it was (`cardNodes`), makes the others anew, and puts
-  them in order with the fewest moves; the lines between the cards are plain markup made each time. Anything that
-  mutates a card's DOM directly is lost on the next change of its markup and kept until then. `markQsel` re-toggles
-  `.qsel` after every render.
+  them in order with the fewest moves; the lines between the cards are kept the same way, by their markup and its
+  count (`lineNodes`, 2026-10-03). **An update that moves, adds and removes nothing reads and touches nothing.**
+  Anything that mutates a card's DOM directly is lost on the next change of its markup and kept until then.
+  `markQsel` re-toggles `.qsel` after every render, on the chat it marked (`qsel.id`), not its place.
+* **What the stream says is drawn once a frame** (`renderBoardSoon`, 2026-10-03; a 100 ms timer where there are no
+  frames): the `session`, `projects`, `peacock` and `pins` events. A landing (`working` → `idle`) and anything a click
+  does are drawn at once (`renderBoard`, which cancels the pending one). `peix.state().rendering` says one is pending,
+  and `ctx.settle()` waits for it.
+* **A box the page redraws on every update is drawn only when its markup changed** (`setHtml(el, html)`, `el._drawn`):
+  the project cue, the state chips, the hidden list, the tab strips, the rival's bar — a button replaced between press
+  and release lost its click. Whatever edits such a box in place forgets `_drawn` (`peixPaneUrl` does).
 * **The list moves rather than jumps** (2026-09-27, night): `drawCards` FLIPs a card that changed rank (its rect before
   and after the reconcile, a `translateY` by WAAPI, `FLIP_MS`), fades in one that arrived (`ENTER_MS`) and folds shut
   one that left (`leaveCard`, `LEAVE_MS`) — within a screen of the list's window only, never on the first draw or under
@@ -465,7 +496,10 @@ refuses to run against the real directory for the same reason.
   chat above or below in the list as shown (`hotMove()`), ← / → the tab beside in the strip, wrapping (`hotTab()` →
   `openTab()`), **1 / 2 the top and the bottom half of the chat column stood one over the other** (`hotGroup(g,
   true)`). Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A `dialog[open]` swallows them; no chat or no PR
-  is a `note()`. The cog lists every key (`.keys` in `#settings`) — keep it in step by hand, with `boardKeys` in
+  is a `note()`. **A key held down is one press** (`e.repeat` is swallowed, the arrows aside), and `termAction` takes
+  one press per chat at a time (`termAsking`). **A late answer acts on its own chat only**: `renderHead` draws the open
+  chat's header and nothing else, a drawer the server just started attaches through `showTerminal` (the half holding
+  its chat tab, if still open), and ⌥⌘T's zsh and the editor's page wait on a chat that was left. The cog lists every key (`.keys` in `#settings`) — keep it in step by hand, with `boardKeys` in
   main.swift.
 * **Plain ⌘ is the window's shape, and lives in `CMDKEYS`**: **1** and **2** the left and right halves of the chat column — ⌘2 splits it the first time —,
   **W** closes the half the keys are in, or a dialog that is up, **0** closes the *other* half (`hotOnlyHalf`; with
@@ -582,8 +616,12 @@ refuses to run against the real directory for the same reason.
   ⇧⏎ step, a miss turns the text red. A pane change closes it; `findQuery` outlives it.
 * **Both web views are inspectable** (main.swift sets it): Safari → Develop reaches the real app.
 * **The app's server lifecycle** (`ServerController`, main-thread throughout): `start` adopts a server already
-  answering, else runs the bundled one with its log *appended*; `restart` waits for the probe to fail before
-  starting again; the 5 s watchdog probes `/api/projects`. `logLine` keeps one formatter and one handle.
+  answering, waits for the launchd agent when its plist is installed, else runs the bundled one — one at a time,
+  ended when given up on — with its log *appended* (`O_APPEND`); `restart` is `launchctl kickstart -k` for an adopted
+  agent, and otherwise waits for the probe to fail before starting again; the 5 s watchdog probes `/api/projects` and
+  brings the board back over a message once the server answers (`boardShown`). A web process that dies is loaded
+  again. `logLine` writes on its own queue with one formatter and one handle. The bridge answers the board's own main
+  frame only.
 
 ## The chat column's two halves
 
@@ -625,8 +663,13 @@ refuses to run against the real directory for the same reason.
   (scroll position carried by hand) and hides it under a live drawer; with no half showing it, it is parked in the
   left one, hidden. **The transcript is appended to, not rebuilt** (2026-09-27): `renderLog` keeps `logView` (the
   array, how many entries are drawn, the trailing run of tool calls and its `<details>`) and renders only what
-  arrived; another chat, a new array from a fetch, or `renderLog(true)` starts over. A reconnect (a snapshot with a
-  chat open) is `refetchCurrent()`, in place. **The log's last child is the presence line** (2026-09-27, night):
+  arrived (a run of tool calls growing at the end gets its new rows appended, its summary redone); another chat or a
+  new array from a fetch starts over. A reconnect (a snapshot with a chat open) is `refetchCurrent()`, in place —
+  **your place kept and no pill lit** for the same chat drawn again. **The fetch and the stream are reconciled**
+  (`logOf`, `awaitEntries` / `takeEntries` / `mergeEntries`, 2026-10-03): while a fetch is out the stream's entries wait
+  in `pending`, and only those past `upto` are taken; a summary older than a `session` event is not (`sessionSeen`).
+  `#log` has no `scroll-behavior` — every jump the page makes is a jump. A transcript's images load only when they are
+  `data:` (any other is a link to it), and DOMPurify forbids `<style>`, `style=` and form controls but the checkbox. **The log's last child is the presence line** (2026-09-27, night):
   `renderPresence()` — from `renderLog` and the `session` event — keeps `.presence` last while the open chat is
   clauding (the `.pix` sprite and the word) or asking (`askHtml`), and removes it otherwise, **and after it the
   new-reply pill** (`.lognew`, `logNew()`, made on first need): `renderLog` inserts new nodes before that tail, marks
@@ -661,11 +704,22 @@ refuses to run against the real directory for the same reason.
   → `test/idle-drawer.test.mjs`.
 * **A page that attaches gets the screen serialized, then only what followed it** (`ws.hold` until the snapshot,
   flushed minus `seq ≤ upto`). It replaced a raw byte replay. → Findings: *round three*.
+* **The two screens stay in step because nothing reaches one while it refits** (2026-10-03): a grow parks the cursor
+  and returns it with a CUU written behind the parser's queue (`refit`), so output parsed in between — the app's own
+  repaint after its SIGWINCH — had its cursor moved by the CUU. The holder holds its PTY's output, a clear and a
+  snapshot in `held` until `refit`'s `done`, resizes one at a time to the newest size, and reads the cursor behind the
+  queue; the page holds its socket's frames the same way (`toXt`, `tm.refits`) but reads the cursor at the call — its
+  fit must land at once, for the nudge and `termSize`. A clear is numbered where it was asked for. Measured: two
+  re-reads in three drifted after six window resizes before, none after.
+* **A drawer whose socket closed while its claude runs is attached again** (`tm.lost`, a backed-off `syncTerm`, 5 s
+  at most): a server restart left the last screen up and every key going nowhere. A holder that accepts the
+  connection and never says hello is a failure after `HELLO_MS` (it held the boot); the holders are adopted at once.
 * **`nudgeTerm()` after every attach** — a resize one row short, then the true size 150 ms later — makes Claude
   repaint over whatever the page holds.
-* **`fitTerm` sends a resize only when the size moved** (2026-09-27): `tm.sent` is the size this attachment last sent
-  and a new socket starts over (`attachTerm`); the holder forwards a resize unchecked, and every send is a SIGWINCH and
-  a whole Claude Code repaint. The prefs' `termSize` is saved only when it changed.
+* **`fitTerm` sends a resize only when the size moved** (2026-09-27), **and once it has stopped moving** (120 ms,
+  2026-10-03; at once with `now`, as a socket opens): `tm.sent` is the size this attachment last sent and a new socket
+  starts over (`attachTerm`); the holder forwards a resize unchecked, and every send is a SIGWINCH and a whole Claude
+  Code repaint. The prefs' `termSize` is saved only when it changed.
 * **The drawer's geometry**: `grid-template-columns: minmax(0, 1fr)` on `#term` and `#chat`, `min-width: 0;
   overflow: hidden` on `.tbody`, and `.tbody { box-sizing: content-box }` (the fit addon reads the padded size under
   the page's border-box rule). Refits on the body's `ResizeObserver`, on display-scale change (`watchDpr`), on focus
@@ -686,8 +740,9 @@ refuses to run against the real directory for the same reason.
 * **Paths and pages in the chat are links**: a file path in the transcript or on a drawer's line — `/absolute` (under
   a root a file lives under, or with an extension), `./relative`, `folder/file.ext`, `~/…`, `name.ext:12`, one after
   Claude Code's `@` — opens in VS Code at that line (`vscode://file`; relative ones against the chat's `cwd`,
-  `PATH_RE` / `pathHref` / `chatLinks`), a web URL opens the page in the pane on a tab of the chat (`openExternal`,
-  `IN_PANE` is every `http(s)`). The transcript is linkified as it is rendered (`linkify` on each new fragment); the
+  `PATH_RE` / `pathHref` / `chatLinks`; not after a `+` or an `@` inside a word, or it is quadratic), a web URL opens
+  the page in the pane on a tab of the chat (`openExternal(url, { ide, s })`, `IN_PANE` is every `http(s)`; the
+  folder's editor is the one the editor row opens, `ide: true`, never a port's guess). The transcript is linkified as it is rendered (`linkify` on each new fragment); the
   drawer has a link provider beside the web-links addon (`termLinks`, `peix.links(y)`).
   → `scripts/scenarios/chat-links.mjs`.
 * **Attaching a file is typing its path** (`@dir/file`, spaces as `\ `); the app hands real paths over the bridge
@@ -762,11 +817,15 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   `meta` (`server`, `fake`, `fixture`) and a default `async (ctx) => result`; the runner starts a throwaway server
   on a free port with its own state dir (`lib/testserver.mjs`), builds the fixture (`scripts/fixture.mjs`), runs the
   fake claude when asked, launches Chrome with **focus emulation on**, and ends terminals, holders, Chrome, the fixture
-  and temp dirs on exit — after a failed setup too (`--keep` to inspect). **A rectangle is read after `ctx.settle()`**
+  and temp dirs on exit — after a failed setup too, on SIGTERM, SIGHUP and a stray error too, never waiting on cleanup
+  for more than 15 s (`--keep` to inspect). The CDP client rejects every command waiting when Chrome goes and gives one
+  up after 60 s; Chrome picks its own port. **`ctx.reload()`** reloads and waits for the new document's snapshot
+  (`peix.state().snapshots`) — never a reload and a sleep; `openChat` waits for *that* chat's log (`#log[data-sid]`).
+  **A rectangle is read after `ctx.settle()`**
   (2026-09-27, night): the list's cards slide for up to 220 ms after they arrive or change rank, a dialog rises as it
   opens, and a rect read mid-move puts the pointer on the neighbour or a box off-centre; `settle` waits for every
   finite animation (the named slides, the CSS transitions) to end and leaves the endless ones alone — and the
-  scroll-driven ones, which run as long as the list can scroll. `ctx`: `evaluate`, `waitFor`, `send`,
+  scroll-driven ones, which run as long as the list can scroll — and for a pending draw. `ctx`: `evaluate`, `waitFor`, `send`, `reload`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
   `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The forty-two in
@@ -784,22 +843,26 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
 * **The auto fixture's second folder is the temp dir's real path** (`realpathSync(tmpdir())`): a fake claude started
   there registers `/private/var/…`. **Its two chats are a second apart** (`defaultFixture`), so the board's order
   between them is never the readdir's.
-* **Every test server gets a fast clock and an empty org directory** (`lib/testserver.mjs`): `REGISTRY_POLL_MS`
-  1200 and `TASK_GRACE_MS` 400, and an `ORG_DIR` of its own under the state dir — which also keeps the first run's
-  welcome away; its config file is beside its `STATE_FILE`, never the real one. `meta.env` is spread last. `waitFor(fn,
-  {timeout, what})` and `srv.post(path, body)` are the tests' polls and POSTs.
+* **Every test server gets a fast clock, an empty org directory, and nothing of this Mac's** (`lib/testserver.mjs`):
+  `REGISTRY_POLL_MS` 1200, `TASK_GRACE_MS` 400 and `CONFIG_POLL_MS` 200; an `ORG_DIR` of its own under the state dir —
+  which also keeps the first run's welcome away; an empty `CLAUDE_DIR` of its own unless given a fixture; the fake gh
+  (`GH_BIN`, no PR file: GitHub shows nothing); a `ZDOTDIR` with no rc files for its drawers' zsh; and no inherited
+  `CONFIG_FILE`, `TERMS_DIR` or XDG dirs. Its config file is beside its `STATE_FILE`, never the real one. Up is its own
+  `listening` line. `meta.env` is spread last. `waitFor(fn, {timeout, what})`, `srv.post(path, body)` and `tmpDir()`
+  (a temp dir that goes with the process) are the tests' polls, POSTs and dirs.
 * **Test against the fake claude, not real chats**: `scripts/fakeclaude.mjs` via `CLAUDE_BIN` (the test server's
-  `fake: true`) is instant and touches nothing. A test against the real `~/.claude` (read-only, `claudeDir` unset)
-  must use a stale chat and `DELETE` the terminals it made.
+  `fake: true`) is instant and touches nothing. A test against the real `~/.claude` names it as `claudeDir` outright
+  (read-only), uses a stale chat and `DELETE`s the terminals it made.
 * **Two measurement traps**: Claude Code stops rendering while the terminal reports focus lost — a headless page's
   `focus()` is not a focus without `Emulation.setFocusEmulationEnabled` (the runner sets it); and **every re-attach
   that moves the drawer resizes it**. **The clean re-attach is a reload of the page** (`Page.reload`, then
   `openChat`): a fresh xterm, built from the holder's snapshot, at one size. That is what `focus-view` does.
-* **The page's screen and the holder's are two emulators** fed the same bytes, and a *resize* is drawn for one
-  size and read at another — so they drift by a line and **stay** drifted until the next attach. **The fix is a
-  re-sync after a resize settles — the page asking for a fresh snapshot — and it is not written.**
-* **The fake claude scrolls before it repaints on a shrink** (`drawLive`), as a terminal app would. A red drawer
-  scenario can be the fake's geometry, not the drawer's.
+* **The page's screen and the holder's are two emulators** fed the same bytes; they drifted by a line on a resize and
+  stayed drifted until the next attach — output parsed between a refit's parked cursor and its return (see *The
+  drawer*, 2026-10-03). Fixed at the root; a re-sync protocol was tried and was not needed.
+* **The fake claude scrolls before it repaints on a shrink** (`drawLive`), as a terminal app would, and after a grow
+  erases from the old region's top and draws at the bottom (its cursor went to the bottom while the region stayed
+  mid-screen, 2026-10-03). A red drawer scenario can be the fake's geometry, not the drawer's.
 * The page's script is one IIFE: read it through `window.peix` (`state()`, `session(id)`, `sessions()`, `prefs()`,
   `term()`, `screen()`) or the DOM; `#termBtn.click()` spawns, an `InputEvent` on `#termBody textarea` types.
 * Server logic without a browser: `npm test` (the terminals test is the reference for driving the API and the
