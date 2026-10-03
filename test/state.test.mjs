@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { homedir } from 'node:os';
 import { tmpDir } from '../lib/testserver.mjs';
 
 const tmp = tmpDir('peix-test-');
@@ -10,8 +11,10 @@ process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(
 const { projectInput, writePeacock, readPeacock, termSummary, summarizeToolInput, toolResultSnippet } = await import('../server.mjs');
 
 test('projectInput: a name and absolute folders, trimmed and deduplicated; errors for the rest', () => {
-  const v = projectInput({ name: '  Fees  ', cwds: ['/a/b', '/a/b/', 'relative', '/c'] }, { cwds: [] });
+  const v = projectInput({ name: '  Fees  ', cwds: ['/a/b', '/a/b/', ' /c ', ''] }, { cwds: [] });
   assert.equal(v.name, 'Fees'); assert.deepEqual(v.cwds, ['/a/b', '/c']);
+  assert.deepEqual(projectInput({ name: 'x', cwds: ['~/code/x'] }, {}).cwds, [join(homedir(), 'code/x')], '~ is the home, as the placeholder writes it');
+  assert.match(projectInput({ name: 'x', cwds: ['/a', 'relative'] }, {}).error, /not relative/, 'a folder that is not absolute is said, not dropped');
   assert.ok(projectInput({ name: '', cwds: ['/a'] }, {}).error);
   assert.ok(projectInput({ name: 'x', cwds: 'nope' }, { cwds: [] }).error);
 });

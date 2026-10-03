@@ -152,3 +152,22 @@ test('a zsh drawer: a holder running zsh -l -i in the chat folder, beside the cl
     await waitFor(async () => (await srv.terminals()).find(x => x.id === t.id)?.exited != null, { what: 'the zsh ending' });
   } finally { await srv.stop(); }
 });
+
+test('two asks for a chat\'s drawer at once start one claude, and a pid the registry outlived is not signalled', { timeout: 40_000 }, async () => {
+  const { spawn } = await import('node:child_process');
+  const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
+  const chat = fx.chats[1], other = fx.chats[0];
+  // a "claude" whose registry file says it started in 2001: its pid is some other process now
+  const stranger = spawn('sleep', ['60'], { stdio: 'ignore' });
+  writeFileSync(join(fx.dir, 'sessions', `${stranger.pid}.json`), JSON.stringify({ pid: stranger.pid, sessionId: other.id, cwd: other.cwd, startedAt: Date.now(), procStart: 'Mon Jan  1 00:00:00 2001', kind: 'interactive', entrypoint: 'cli', status: 'idle' }));
+  const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
+  try {
+    const ask = () => srv.post(`api/sessions/${chat.id}/terminal`, { cols: 90, rows: 24 });
+    const [a, b] = await Promise.all([ask(), ask()]);
+    assert.equal(a.body.terminal.id, b.body.terminal.id, 'the second ask got the first one\'s drawer');
+    assert.equal((await srv.terminals()).filter(t => t.sessionId === chat.id && t.exited === null).length, 1, 'one holder');
+    const take = await srv.post(`api/sessions/${other.id}/takeover`, { cols: 90, rows: 24 });
+    assert.equal(take.status, 409); assert.match(take.body.error, /no longer that claude/);
+    assert.ok(alive(stranger.pid), 'and the process that has its pid now was left alone');
+  } finally { stranger.kill(); await srv.stop(); }
+});

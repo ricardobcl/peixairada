@@ -447,8 +447,10 @@ const projectList = () => Object.values(projects).sort((a, b) => String(a.create
 function projectInput(body, prev = {}) {
   const name = typeof body.name === 'string' ? cut(body.name.trim().replace(/\s+/g, ' '), 80) : prev.name;
   if (!name) return { error: 'a project needs a name' };
-  const cwds = body.cwds === undefined ? prev.cwds : Array.isArray(body.cwds) ? [...new Set(body.cwds.filter(c => typeof c === 'string' && c.startsWith('/')).map(c => c.replace(/\/+$/, '') || '/'))] : null;
-  if (!cwds) return { error: 'cwds must be a list of absolute paths' };
+  // `~/…` is a folder under the home, as the editor's own placeholder writes it (2026-10-03: dropped in silence before)
+  const list = body.cwds === undefined ? null : Array.isArray(body.cwds) ? body.cwds.filter(c => typeof c === 'string' && c.trim()).map(expandHome) : false;
+  if (list === false || list?.some(c => !c.startsWith('/'))) return { error: `cwds must be a list of absolute paths${list ? ` — not ${list.find(c => !c.startsWith('/'))}` : ''}` };
+  const cwds = list ? [...new Set(list.map(c => c.replace(/\/+$/, '') || '/'))] : prev.cwds;
   return { name, cwds };
 }
 
@@ -1338,7 +1340,7 @@ function loadRegistry() {
     try { reg = JSON.parse(readFileSync(join(SESSIONS_DIR, name), 'utf8')); } catch { continue; }
     if (!reg.sessionId) continue;
     if (!found.has(reg.sessionId)) found.set(reg.sessionId, []);
-    found.get(reg.sessionId).push({ pid: reg.pid, name: reg.name, entrypoint: reg.entrypoint, kind: reg.kind, cwd: reg.cwd, startedAt: reg.startedAt, version: reg.version,
+    found.get(reg.sessionId).push({ pid: reg.pid, procStart: reg.procStart, name: reg.name, entrypoint: reg.entrypoint, kind: reg.kind, cwd: reg.cwd, startedAt: reg.startedAt, version: reg.version,
       status: reg.status, statusAt: reg.statusUpdatedAt, waitingFor: reg.status === 'waiting' ? reg.waitingFor : undefined });   // what it is doing, since when, and what it waits on (waitingOn)
   }
   const ppids = [...terms.values()].some(t => t.task && !t.sessionId && t.exited === null) ? parentPids([...found.values()].flat().map(l => l.pid).filter(pidAlive)) : null;   // a launcher's claude is below the PTY's pid
@@ -1685,8 +1687,19 @@ function termEnv() {
 // 5 s. Whatever Claude was mid-way through is lost, and the page says so before the click. The caller
 // re-reads the registry afterwards; this only ends the process.
 const TAKEOVER_WAIT_MS = 10_000;
-function endClaude(pid) {
+/** Whether `pid` is still the process the registry entry was written by: the entry's procStart is the process's start
+ *  as `ps` gives it in UTC. A dead claude's file lingers until claude's housekeeping, and its pid can be handed to any
+ *  other process of yours meanwhile — Done and Take over signalled it, an editor say (2026-10-03). An entry without a
+ *  procStart (an older claude) is taken at its word. */
+function sameProcess({ pid, procStart }) {
+  if (!procStart) return true;
+  try { return execFileSync('/bin/ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', env: { ...process.env, TZ: 'UTC' } }).replace(/\s+/g, ' ').trim() === procStart.replace(/\s+/g, ' ').trim(); }
+  catch { return false; }
+}
+function endClaude(entry) {
+  const { pid } = entry;
   return new Promise(resolve => {
+    if (!sameProcess(entry)) return resolve({ code: 409, error: `pid ${pid} is no longer that claude — its registry file outlived it` });
     try { process.kill(pid, 'SIGTERM'); } catch (e) { return resolve({ code: 500, error: `could not signal pid ${pid}: ${e.message}` }); }
     const t0 = Date.now(); let hard = false;
     const tick = () => {
@@ -1763,22 +1776,29 @@ function onHolderGone(t) {
 // Taskfile's mtime, so it runs once per edit. A resume (`claude --resume`) never goes through task: its command line is
 // the Taskfile's.
 const TASKFILES = ['Taskfile.yml', 'Taskfile.yaml', 'taskfile.yml', 'taskfile.yaml', 'Taskfile.dist.yml', 'Taskfile.dist.yaml'];
-const launcherCache = new Map();   // cwd → { mtime, launchers }
+const launcherCache = new Map();   // cwd → { mtime, launchers } — or { mtime, asking }, the run under way
 const TASK_NAME = /^[\w:.-]+$/;
 function taskfileOf(cwd) { for (const f of TASKFILES) { const p = join(cwd, f); if (existsSync(p)) return p; } return null; }
+/** Only an answer is kept (2026-10-03): a `task` that failed — a timeout, a broken include, a shim's hiccup — was
+ *  cached as "no launchers" until the Taskfile itself changed, and a new chat there quietly started a bare claude.
+ *  Asks at the same time share one run. */
 function launchersFor(cwd) {
-  return new Promise(resolve => {
-    const file = cwd && taskfileOf(cwd); if (!file) return resolve([]);
-    let mtime; try { mtime = statSync(file).mtimeMs; } catch { return resolve([]); }
-    const hit = launcherCache.get(cwd); if (hit && hit.mtime === mtime) return resolve(hit.launchers);
-    const bin = findBin('task', 'Taskfile launchers are disabled'); if (!bin) return resolve([]);
-    execFile(bin, ['--list', '--json'], { cwd, env: termEnv(), timeout: 15_000, maxBuffer: 4e6 }, (err, stdout) => {
-      let launchers = [];
-      if (err) console.error(`[peixairada] task --list in ${cwd}: ${err.message}`);
-      else try { launchers = (JSON.parse(stdout).tasks || []).filter(t => /\bclaude\b/i.test(t.desc || '')).map(t => ({ name: t.name, desc: t.desc || '' })); } catch (e) { console.error(`[peixairada] task --list in ${cwd}: ${e.message}`); }
-      launcherCache.set(cwd, { mtime, launchers }); resolve(launchers);
-    });
+  const file = cwd && taskfileOf(cwd); if (!file) return Promise.resolve([]);
+  let mtime; try { mtime = statSync(file).mtimeMs; } catch { return Promise.resolve([]); }
+  const hit = launcherCache.get(cwd);
+  if (hit?.mtime === mtime) return hit.asking || Promise.resolve(hit.launchers);
+  const bin = findBin('task', 'Taskfile launchers are disabled'); if (!bin) return Promise.resolve([]);
+  const asking = execFileP(bin, ['--list', '--json'], { cwd, env: termEnv(), timeout: 15_000, maxBuffer: 4e6 }).then(({ stdout }) => {
+    const launchers = (JSON.parse(stdout).tasks || []).filter(t => /\bclaude\b/i.test(t.desc || '')).map(t => ({ name: t.name, desc: t.desc || '' }));
+    launcherCache.set(cwd, { mtime, launchers });
+    return launchers;
+  }, e => {
+    console.error(`[peixairada] task --list in ${cwd}: ${String(e.message).split('\n')[0]}`);
+    if (launcherCache.get(cwd)?.asking === asking) launcherCache.delete(cwd);
+    return [];
   });
+  launcherCache.set(cwd, { mtime, asking });
+  return asking;
 }
 
 // ---- the roots' folders: where the repos live, and cloning one that is not there yet --------------------------------
@@ -1817,6 +1837,7 @@ const ROOT_NAMES = ['code', 'src', 'dev', 'Developer', 'projects', 'repos', 'git
  *  submodule's .git is a file, and the repo holding it is the one meant — else the nearest with a .git at all. */
 function checkoutOf(cwd) {
   let any = null;
+  if (!cwd?.startsWith('/')) return null;   // dirname('.') is '.': a relative cwd climbed forever
   for (let d = cwd; d && d !== '/' && d !== homedir(); d = dirname(d)) {
     let st; try { st = statSync(join(d, '.git')); } catch { continue; }
     if (st.isDirectory()) return d;
@@ -2008,6 +2029,11 @@ function linkTermToRegistry(pid, s, ppids = null) {
     if (was && was !== s) schedulePush(was);
   }
 }
+/** One spawn per chat and kind at a time: a drawer is in `terms` only once its holder has answered, a few hundred ms
+ *  in, and a second ⌥⌘C meanwhile started a second `claude --resume` on the same transcript (2026-10-03). The second
+ *  ask gets the first one's answer. */
+const spawning = new Map();   // `<chat>:claude` | `<chat>:shell` -> the spawn under way
+const spawnOnce = (key, run) => { let p = spawning.get(key); if (!p) spawning.set(key, p = run().finally(() => spawning.delete(key))); return p; };
 /** End the process in a drawer; an exited one is let go at once instead of lingering. */
 function killTerm(t) {
   if (t.exited === null) holderSend(t, { t: 'kill' });
@@ -2173,8 +2199,7 @@ const server = createServer(async (req, res) => {
       if (!s) return json(res, 404, { error: 'unknown session' });
       const have = shellOf(s);
       if (have && have.exited === null) return json(res, 200, { terminal: termSummary(have) });
-      const body = await jsonBody(req);
-      const r = await spawnTerm({ cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows, shell: true });
+      const r = await spawnOnce(`${s.id}:shell`, async () => { const body = await jsonBody(req); return spawnTerm({ cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows, shell: true }); });
       return json(res, r.code, r);
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/reply$/))) {
@@ -2247,7 +2272,7 @@ const server = createServer(async (req, res) => {
         // Done means done: the claude behind it stops too (2026-09-20) — the drawer's, and one live elsewhere (SIGTERM,
         // as closing that terminal would; a VS Code tab goes dead). Not awaited: the registry notices on its own.
         for (const t of terms.values()) if (t.sessionId === s.id && t.exited === null) killTerm(t);
-        if (s.alive && s.live?.pid) for (const pid of [s.live.pid, ...(s.rivals || []).map(r => r.pid)]) endClaude(pid).then(() => loadRegistry());
+        if (s.alive && s.live?.pid) for (const p of [s.live, ...(s.rivals || [])]) endClaude(p).then(() => loadRegistry());
       } else delete doneMarks[s.id];
       for (const id of Object.keys(doneMarks)) if (!sessions.has(id)) delete doneMarks[id]; // prune forgotten sessions
       saveState(); schedulePush(s);
@@ -2325,8 +2350,7 @@ const server = createServer(async (req, res) => {
       if (have && have.exited === null) return json(res, 200, { terminal: termSummary(have) });
       // Live elsewhere: same rule as replies — a second claude on one transcript is how it gets mangled.
       if (s.alive) return json(res, 409, { error: `this chat is live in ${s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : 'another terminal'} — take it over, or continue it there` });
-      const body = await jsonBody(req);
-      const r = await spawnTerm({ cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows });
+      const r = await spawnOnce(`${s.id}:claude`, async () => { const body = await jsonBody(req); return spawnTerm({ cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows }); });
       return json(res, r.code, r);
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/takeover$/))) {   // end every claude it is live in elsewhere, resume it here
@@ -2336,16 +2360,16 @@ const server = createServer(async (req, res) => {
       const have = termOf(s);
       if (have && have.exited === null) {
         // Already here: this ends the others — VS Code's, when the chat was opened there again after a take-over.
-        const others = s.rivals.map(r => r.pid);
-        for (const pid of others) { const r = await endClaude(pid); if (!r.ok) return json(res, r.code, { error: r.error }); }
+        const others = s.rivals;
+        for (const p of others) { const r = await endClaude(p); if (!r.ok) return json(res, r.code, { error: r.error }); }
         loadRegistry();
-        return json(res, 200, { terminal: termSummary(have), ended: others });
+        return json(res, 200, { terminal: termSummary(have), ended: others.map(p => p.pid) });
       }
       if (!s.alive || !s.live?.pid) return json(res, 409, { error: 'not live anywhere — open a terminal on it instead' });
       const cwd = s.live.cwd || s.cwd;   // before the registry entry goes
-      for (const pid of [s.live.pid, ...s.rivals.map(r => r.pid)]) { const r = await endClaude(pid); if (!r.ok) return json(res, r.code, { error: r.error }); }
+      for (const p of [s.live, ...s.rivals]) { const r = await endClaude(p); if (!r.ok) return json(res, r.code, { error: r.error }); }
       loadRegistry();
-      const t = await spawnTerm({ cwd, sessionId: s.id, cols: body.cols, rows: body.rows });
+      const t = await spawnOnce(`${s.id}:claude`, () => spawnTerm({ cwd, sessionId: s.id, cols: body.cols, rows: body.rows }));
       return json(res, t.code, t);
     }
     if (req.method === 'DELETE' && (m = p.match(/^\/api\/terminals\/([\w-]+)$/))) {
