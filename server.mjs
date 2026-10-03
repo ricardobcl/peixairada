@@ -408,7 +408,7 @@ const projectList = () => Object.values(projects).sort((a, b) => String(a.create
 // name: non-empty, one line; cwds: absolute paths, deduplicated. Nothing checks they exist — a project
 // can name a folder before its first chat runs there.
 function projectInput(body, prev = {}) {
-  const name = typeof body.name === 'string' ? body.name.trim().replace(/\s+/g, ' ').slice(0, 80) : prev.name;
+  const name = typeof body.name === 'string' ? cut(body.name.trim().replace(/\s+/g, ' '), 80) : prev.name;
   if (!name) return { error: 'a project needs a name' };
   const cwds = body.cwds === undefined ? prev.cwds : Array.isArray(body.cwds) ? [...new Set(body.cwds.filter(c => typeof c === 'string' && c.startsWith('/')).map(c => c.replace(/\/+$/, '') || '/'))] : null;
   if (!cwds) return { error: 'cwds must be a list of absolute paths' };
@@ -427,7 +427,7 @@ function newSession(id, file) {
     live: null, alive: false, entrypoint: null, entrypointAt: null,   // last 'entrypoint' a user/assistant line carried ('claude-vscode' | 'cli'), and when
     rivals: [],   // other live processes on this chat (registry entries beyond `live`) — see inVsCode()
     entries: [], entryCount: 0, loaded: false,
-    offset: 0, partial: '', truncatedHead: false,
+    offset: 0, partial: '', dec: null, reading: false, truncatedHead: false,   // where the tail reads from, its unfinished line and character (indexFile)
     agentsRunning: 0, ask: null, tasks: null, taskCalls: null,   // sub-agents at work (scanAgents); the question a tool asked; background tasks and the calls that started them
     pendingNotify: null, notifyTimer: null, pushTimer: null, newEntries: [],
     replying: null, replyError: null
@@ -529,9 +529,11 @@ function cleanPrompt(text) {
   return text.replace(STRIP_RE, '').trim();
 }
 
+/** At most `n` UTF-16 units, never half an emoji: a cut between a surrogate pair left a lone one, a U+FFFD on the page. */
+const cut = (t, n) => t.length > n ? t.slice(0, n).replace(/[\uD800-\uDBFF]$/, '') : t;
 function snippet(text, n = 240) {
   const t = String(text || '').replace(/\s+/g, ' ').trim();
-  return t.length > n ? t.slice(0, n - 1) + '…' : t;
+  return t.length > n ? cut(t, n - 1) + '…' : t;
 }
 
 function summarizeToolInput(name, input = {}) {
@@ -896,10 +898,11 @@ function pushEntry(s, entry) {
   if (!s.loaded) return;
   s.entries.push(entry);
   if (s.entries.length > MAX_ENTRIES) s.entries.splice(0, s.entries.length - MAX_ENTRIES);
-  s.newEntries.push(entry);
+  if (!s.reading) s.newEntries.push(entry);   // a whole read is nothing new — every entry of it was kept twice until its end
 }
 
 const NEEDS_INPUT_TOOLS = new Set(['AskUserQuestion', 'ExitPlanMode']);
+const TURN_ENDS = new Set(['end_turn', 'stop_sequence', 'max_tokens', 'refusal']);
 
 /** Fold one JSONL line into the session. Returns true if the session summary changed. */
 function fold(s, line) {
@@ -907,7 +910,7 @@ function fold(s, line) {
   switch (line.type) {
     case 'ai-title': if (line.aiTitle) s.title = line.aiTitle; return true;
     case 'custom-title': s.customTitle = line.customTitle || line.title || null; return true;
-    case 'last-prompt': if (!s.lastPrompt && line.lastPrompt) s.lastPrompt = line.lastPrompt; return true;
+    case 'last-prompt': if (!s.lastPrompt && line.lastPrompt) s.lastPrompt = snippet(line.lastPrompt, 200); return true;   // whole, it was a card's and a search's to carry
     case 'pr-link': {
       const url = line.prUrl || line.url;
       if (url) notePr(s, url, ts, null);
@@ -973,7 +976,9 @@ function fold(s, line) {
         }
       }
       s.lastActivity = ts;
-      if (m.stop_reason === 'end_turn' || m.stop_reason === 'stop_sequence') {
+      // A turn ends at end_turn — or at max_tokens or a refusal (2026-10-03: a turn that ran out of tokens stayed
+      // working and its reply was never alerted), unless what ran out was a tool call Claude Code goes on with.
+      if (TURN_ENDS.has(m.stop_reason) && !(m.stop_reason === 'max_tokens' && blocks.some(b => b.type === 'tool_use'))) {
         const text = textOf(blocks).trim();
         if (text) { s.lastReply = snippet(text, 300); s.lastReplyAt = ts; }
         setStatus(s, 'idle', ts);
@@ -1006,9 +1011,8 @@ const READ_CHUNK = 1 << 20;
  * one array of lines cost three times its size while it lasted — 300 MB of RSS for a 91 MB chat, to keep 800
  * entries (2026-09-27). This costs a chunk and the longest line.
  */
-function readLines(fd, start, end, onLine) {
+function readLines(fd, start, end, onLine, dec = new StringDecoder('utf8')) {
   const buf = Buffer.allocUnsafe(Math.max(1, Math.min(READ_CHUNK, end - start)));
-  const dec = new StringDecoder('utf8');
   let pos = start, rest = '';
   while (pos < end) {
     const n = readSync(fd, buf, 0, Math.min(buf.length, end - pos), pos);
@@ -1017,7 +1021,7 @@ function readLines(fd, start, end, onLine) {
     rest += dec.write(buf.subarray(0, n));
     let i; while ((i = rest.indexOf('\n')) >= 0) { onLine(rest.slice(0, i)); rest = rest.slice(i + 1); }
   }
-  return rest + dec.end();
+  return rest;   // the decoder keeps the bytes of a character cut at `end`: the next read (tailFile, s.dec) completes it
 }
 
 /**
@@ -1043,10 +1047,11 @@ function indexFile(file, { full = false } = {}) {
   s.loaded = start === 0 || full;
   s.truncatedHead = start > 0;
   const fd = openSync(file, 'r');
+  s.dec = new StringDecoder('utf8'); s.reading = true;
   try {
     let skip = start > 0;   // a tail starts mid-line: the first "line" is the end of one
-    s.partial = readLines(fd, start, st.size, raw => { if (skip) skip = false; else parseLine(raw, line => fold(s, line)); });
-  } finally { closeSync(fd); }
+    s.partial = readLines(fd, start, st.size, raw => { if (skip) skip = false; else parseLine(raw, line => fold(s, line)); }, s.dec);
+  } finally { closeSync(fd); s.reading = false; }
   s.offset = st.size;
   s.newEntries = []; // initial load: nothing is "new"
   if (!s.cwd && prev?.cwd) s.cwd = prev.cwd;
@@ -1072,7 +1077,9 @@ function tailFile(file) {
   try {
     const buf = Buffer.alloc(st.size - s.offset);
     readSync(fd, buf, 0, buf.length, s.offset);
-    text = s.partial + buf.toString('utf8');
+    // one decoder for the file's whole life (2026-10-03): an append read while a character was half written decoded
+    // each half alone — "não" came out "n��o", and stayed so
+    text = s.partial + s.dec.write(buf);
   } finally { closeSync(fd); }
   s.offset = st.size;
   const nl = text.lastIndexOf('\n');
@@ -2142,7 +2149,7 @@ const server = createServer(async (req, res) => {
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
       const body = await jsonBody(req);
-      const title = String(body.title ?? '').replace(/\s+/g, ' ').trim().slice(0, 120);
+      const title = cut(String(body.title ?? '').replace(/\s+/g, ' ').trim(), 120);
       if (title) titles[s.id] = title; else delete titles[s.id];
       for (const id of Object.keys(titles)) if (!sessions.has(id)) delete titles[id];
       saveState(); schedulePush(s);

@@ -196,3 +196,23 @@ test('a turn the transcript never closes ends when the process says idle — /co
   s.live = { ...s.live, statusAt: undefined };
   assert.equal(summary(s).status, 'working', 'a claude that says nothing of when: the transcript stands');
 });
+
+test('a turn that ran out of tokens or was refused has ended; one cut off mid tool call has not', () => {
+  const s = srv.newSession('t-ends', null);
+  const say = (stop_reason, content = [{ type: 'text', text: 'partial answer' }]) => srv.fold(s, { type: 'assistant', timestamp: '2026-10-03T10:00:00Z', message: { role: 'assistant', stop_reason, content } });
+  srv.fold(s, { type: 'user', timestamp: '2026-10-03T09:59:00Z', message: { role: 'user', content: 'go' } });
+  say('max_tokens');
+  assert.equal(s.status, 'idle', 'max_tokens');
+  srv.fold(s, { type: 'user', timestamp: '2026-10-03T10:01:00Z', message: { role: 'user', content: 'again' } });
+  say('refusal');
+  assert.equal(s.status, 'idle', 'refusal');
+  srv.fold(s, { type: 'user', timestamp: '2026-10-03T10:02:00Z', message: { role: 'user', content: 'and again' } });
+  say('max_tokens', [{ type: 'tool_use', id: 'x', name: 'Write', input: {} }]);
+  assert.equal(s.status, 'working', 'a tool call cut short goes on');
+});
+
+test('a snippet never ends in half an emoji', () => {
+  const t = srv.snippet('x'.repeat(238) + '😀 and more', 240);
+  assert.ok(t.isWellFormed(), JSON.stringify(t.slice(-4)));
+  assert.ok(t.endsWith('…'));
+});

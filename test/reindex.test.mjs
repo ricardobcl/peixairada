@@ -3,11 +3,11 @@
 // transcript existed are news. Both through a throwaway server and its SSE stream, no browser.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFileSync } from 'node:fs';
+import { appendFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { startTestServer, tmpDir } from '../lib/testserver.mjs';
-import { chatLines, defaultFixture, slugOf } from '../scripts/fixture.mjs';
+import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
+import { chatLines, defaultFixture, replyLines, slugOf } from '../scripts/fixture.mjs';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 /** The `alert` events of the stream, as they come — handed back once the stream's snapshot is in, so an empty list
@@ -56,10 +56,25 @@ test('a chat the registry announced first alerts when its transcript lands with 
     const a = await alerts(srv.url);
     const lines = chatLines({ id, cwd, prompt: 'first words', reply: 'first answer', at: new Date() });
     writeFileSync(join(fx.dir, 'projects', slugOf(cwd), `${id}.jsonl`), lines.map(l => JSON.stringify(l)).join('\n') + '\n');
-    for (let i = 0; i < 30 && !a.got.length; i++) await sleep(100);
+    await waitFor(() => a.got.length, { timeout: 8000, what: 'the alert' }).catch(() => {});   // the assertion below says what came
     a.stop();
     assert.equal(a.got.length, 1, 'one alert'); assert.equal(a.got[0].kind, 'reply'); assert.equal(a.got[0].snippet, 'first answer');
     const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
     assert.ok(s.file && s.alive, 'the chat has its transcript and is still the live one');
+  } finally { await srv.stop(); }
+});
+
+test('an append read while a character was half written decodes whole', { timeout: 30_000 }, async () => {
+  const fx = defaultFixture(tmpDir('peix-fx-'));
+  const srv = await startTestServer({ claudeDir: fx.dir });
+  const chat = fx.chats[1], file = join(fx.dir, 'projects', slugOf(chat.cwd), `${chat.id}.jsonl`);
+  try {
+    await srv.api(`api/sessions/${chat.id}/messages`);   // open: entries are kept from here on
+    const line = Buffer.from(replyLines({ id: chat.id, cwd: chat.cwd, text: 'não, ação' }).map(l => JSON.stringify(l)).join('\n') + '\n');
+    const cutAt = line.indexOf(Buffer.from('ã')) + 1;   // between the two bytes of ã
+    appendFileSync(file, line.subarray(0, cutAt)); await sleep(400);   // the board reads the first half on its own
+    appendFileSync(file, line.subarray(cutAt));
+    const last = await waitFor(async () => (await srv.api(`api/sessions/${chat.id}/messages`)).body.entries.findLast(e => e.role === 'assistant')?.text.includes('ação') && (await srv.api(`api/sessions/${chat.id}/messages`)).body.entries.findLast(e => e.role === 'assistant').text, { what: 'the reply read' });
+    assert.equal(last, 'não, ação');
   } finally { await srv.stop(); }
 });
