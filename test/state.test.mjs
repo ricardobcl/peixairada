@@ -48,6 +48,33 @@ test('small renderers', () => {
   assert.equal(typeof toolResultSnippet({ type: 'tool_result', content: 'hello' }), 'string');
 });
 
+test('writePeacock and readPeacock see through comments: a brace or a key in one is neither written into nor read', () => {
+  const cwd = join(tmp, 'commented'); mkdirSync(join(cwd, '.vscode'), { recursive: true });
+  const f = join(cwd, '.vscode', 'settings.json');
+  writeFileSync(f, '// shared settings, see {wiki}\n{\n  "editor.tabSize": 2\n}\n');
+  writePeacock(cwd, '#123456');
+  assert.equal(readFileSync(f, 'utf8'), '// shared settings, see {wiki}\n{\n  "peacock.color": "#123456",\n  "editor.tabSize": 2\n}\n', 'into the object, not the comment');
+  writeFileSync(f, '{\n  // "peacock.color": "#00ff00",\n  "peacock.color": "#0000ff",\n  "a": 1\n}\n');
+  assert.equal(readPeacock(cwd).color, '#0000ff', 'the live key, not the commented one');
+  writePeacock(cwd, '#123456');
+  assert.match(readFileSync(f, 'utf8'), /\/\/ "peacock.color": "#00ff00",\n  "peacock.color": "#123456"/, 'and the live one is the one written');
+  writeFileSync(f, '{ "url": "http://x//y", "peacock.color": "#abcdef" }');
+  writePeacock(cwd, null);
+  assert.equal(readFileSync(f, 'utf8'), '{ "url": "http://x//y" }', 'a // in a string is no comment; the comma before a last key goes with it');
+});
+
+test('taking Peacock\'s colour out takes its activity-bar copy too, so the colour does not come straight back', () => {
+  const cwd = join(tmp, 'derived'); mkdirSync(join(cwd, '.vscode'), { recursive: true });
+  const f = join(cwd, '.vscode', 'settings.json');
+  writeFileSync(f, '{\n  "peacock.color": "#ff0000",\n  "workbench.colorCustomizations": {\n    "titleBar.activeBackground": "#ff0000",\n    "activityBar.background": "#ff0000"\n  }\n}\n');
+  writePeacock(cwd, null);
+  assert.equal(readPeacock(cwd).color, null);
+  assert.equal(readFileSync(f, 'utf8'), '{\n  "workbench.colorCustomizations": {\n    "titleBar.activeBackground": "#ff0000"\n  }\n}\n');
+  writeFileSync(f, '{\n  "peacock.color": "#ff0000",\n  "workbench.colorCustomizations": { "activityBar.background": "#00ff00" }\n}\n');
+  writePeacock(cwd, null);
+  assert.equal(readPeacock(cwd).color, '#00ff00', 'an activity bar painted by hand stays');
+});
+
 test('a state file that does not read is kept aside, not written over; a save is whole or nothing', { timeout: 30_000 }, async () => {
   const { startTestServer } = await import('../lib/testserver.mjs');
   const { readdirSync } = await import('node:fs');

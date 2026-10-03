@@ -301,6 +301,10 @@ function peacockFile(cwd) {
   }
   return null;
 }
+/** The text with its comments blanked to spaces, every offset kept (newlines too): what the regexes below read, so a
+ *  key or a brace inside a comment is neither read nor written into (2026-10-03: a `{` in a comment above the object
+ *  took the inserted key, and a commented-out colour won over the live one). */
+const bareJsonc = txt => txt.replace(/("(?:[^"\\\n]|\\.)*")|\/\/[^\n]*|\/\*[\s\S]*?\*\//g, (m, str) => str ?? m.replace(/[^\n]/g, ' '));
 function readPeacock(cwd, prev) {
   const file = peacockFile(cwd);
   if (!file) return prev && !prev.file ? prev : { file: null, mtime: 0, color: null };
@@ -309,7 +313,7 @@ function readPeacock(cwd, prev) {
   if (prev && prev.file === file && prev.mtime === mtime) return prev;
   let color = null;
   try {
-    const txt = readFileSync(file, 'utf8');
+    const txt = bareJsonc(readFileSync(file, 'utf8'));
     const m = txt.match(/"peacock\.color"\s*:\s*"(#[0-9a-fA-F]{6})/) || txt.match(/"activityBar\.background"\s*:\s*"(#[0-9a-fA-F]{6})/);
     color = m ? m[1].toLowerCase() : null;
   } catch {}
@@ -372,21 +376,36 @@ function writePeacock(cwd, color) {   // color '#rrggbb', or null to take the ke
   const file = peacockFile(cwd) || join(cwd, '.vscode', 'settings.json');
   let txt = '';
   try { txt = readFileSync(file, 'utf8'); } catch {}
-  const keyLine = /^[ \t]*"peacock\.color"\s*:\s*"[^"]*"\s*,?[ \t]*(?:\r?\n|$)/m;
-  const keyInline = /"peacock\.color"\s*:\s*"[^"]*"\s*,?\s*/;
+  // Every match is made on the comment-blanked copy, and the edit made at its offsets in the text itself.
+  const splice = (a, b, put = '') => { txt = txt.slice(0, a) + put + txt.slice(b); };
+  /** Take one key out: its line when it has one to itself, else the key alone — and the comma before it when it was
+   *  the object's last property. */
+  const drop = key => {
+    const t = bareJsonc(txt);
+    const m = new RegExp(`^[ \\t]*"${key}"\\s*:\\s*"[^"]*"\\s*,?[ \\t]*(?:\\r?\\n|$)`, 'm').exec(t) || new RegExp(`"${key}"\\s*:\\s*"[^"]*"\\s*,?\\s*`).exec(t);
+    if (!m) return false;
+    splice(m.index, m.index + m[0].length);
+    const t2 = bareJsonc(txt), before = t2.slice(0, m.index).trimEnd();
+    if (/^\s*}/.test(t2.slice(m.index)) && before.endsWith(',')) splice(before.length - 1, before.length);
+    return true;
+  };
   if (color) {
-    if (keyInline.test(txt)) txt = txt.replace(/("peacock\.color"\s*:\s*")[^"]*(")/, `$1${color}$2`);
-    else if (!txt.trim()) txt = `{\n  "peacock.color": "${color}"\n}\n`;
+    const t = bareJsonc(txt), m = /("peacock\.color"\s*:\s*")([^"]*)"/.exec(t);
+    if (m) splice(m.index + m[1].length, m.index + m[1].length + m[2].length, color);
+    else if (!t.trim()) txt = `{\n  "peacock.color": "${color}"\n}\n`;
     else {
-      const i = txt.indexOf('{');
+      const i = t.indexOf('{');
       if (i < 0) throw new Error(`${file} does not look like a JSON object`);
-      const rest = txt.slice(i + 1), empty = /^\s*}/.test(rest);
-      txt = txt.slice(0, i + 1) + `\n  "peacock.color": "${color}"` + (empty ? (/^\s*\n/.test(rest) ? '' : '\n') : ',') + rest;
+      const empty = /^\s*}/.test(t.slice(i + 1));
+      splice(i + 1, i + 1, `\n  "peacock.color": "${color}"` + (empty ? (/^\s*\n/.test(txt.slice(i + 1)) ? '' : '\n') : ','));
     }
   } else {
-    if (!keyInline.test(txt)) return { file, changed: false };
-    txt = keyLine.test(txt) ? txt.replace(keyLine, '') : txt.replace(keyInline, '');
-    txt = txt.replace(/,(\s*)}/, '$1}');   // the comma the key used to follow, if it was the last property
+    const was = readPeacock(cwd)?.color;
+    if (!drop('peacock\\.color')) return { file, changed: false };
+    // Peacock's own activity-bar colour is the reading's fallback, and it is the colour just taken out: it goes too,
+    // or the colour let go of came straight back (2026-10-03). Only when it is that colour — one set by hand stays.
+    const bar = /"activityBar\.background"\s*:\s*"(#[0-9a-fA-F]{6})"/.exec(bareJsonc(txt));
+    if (was && bar && bar[1].toLowerCase() === was) drop('activityBar\\.background');
   }
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, txt);
@@ -2193,6 +2212,7 @@ const server = createServer(async (req, res) => {
       const body = await jsonBody(req);
       const cwd = typeof body.cwd === 'string' ? body.cwd.replace(/\/+$/, '') : '';
       if (!peacockCwds().has(cwd)) return json(res, 400, { error: 'not a folder the board knows' });
+      if (cwd === HOME || cwd === '/') return json(res, 400, { error: 'the home folder has no Peacock colour — it is read from a folder below it' });   // peacockFile stops short of it
       const color = req.method === 'DELETE' ? null : String(body.color || '').toLowerCase();
       if (color && !/^#[0-9a-f]{6}$/.test(color)) return json(res, 400, { error: 'color must be #rrggbb' });
       try {
