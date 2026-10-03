@@ -38,7 +38,7 @@
 
 import { createServer, get as httpGet } from 'node:http';
 import {
-  chmodSync, closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, renameSync, rmSync, statSync, unlinkSync, watch, writeFileSync
+  accessSync, chmodSync, closeSync, constants as fsc, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, renameSync, rmSync, statSync, unlinkSync, watch, writeFileSync
 } from 'node:fs';
 import { connect as netConnect } from 'node:net';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -310,18 +310,23 @@ const peacockColors = () => Object.fromEntries([...peacock].map(([c, v]) => [c, 
 // event. A folder that is no git checkout, or whose origin is not GitHub, has none.
 const repos = new Map();   // cwd -> { url, at }
 const REPO_TTL_MS = 60 * 60_000;
-const ghRepoUrl = remote => { const m = /github\.com[:/]([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?\s*$/.exec(String(remote)); return m ? `https://github.com/${m[1]}/${m[2]}` : null; };
+// `git@github.com-work:` too — an SSH host alias, the usual way to keep two GitHub accounts apart
+const ghRepoUrl = remote => { const m = /github\.com(?:-[\w.-]+)?[:/]([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?\s*$/.exec(String(remote)); return m ? `https://github.com/${m[1]}/${m[2]}` : null; };
 const repoUrls = () => Object.fromEntries([...repos].filter(([, v]) => v.url).map(([c, v]) => [c, v.url]));
 function pollRepos() {
   const want = peacockCwds(); let changed = false;
   for (const c of [...repos.keys()]) if (!want.has(c)) { repos.delete(c); changed = true; }
-  const due = [...want].filter(c => !repos.has(c) || Date.now() - repos.get(c).at > REPO_TTL_MS);
-  if (!due.length) { if (changed) broadcast('repos', { repos: repoUrls() }); return; }
+  // Six a poll (every 3 s), not every folder at once (2026-10-03: forty gits at boot and again each hour, all on one
+  // poll); and an answer that is no answer — git timed out, or is not there — keeps the URL known before. Only "no
+  // origin" (2) and "not a repo" (128) say there is none.
+  const due = [...want].filter(c => !repos.has(c) || Date.now() - repos.get(c).at > REPO_TTL_MS).slice(0, 6);
+  const git = due.length && findBin('git', '⌥⌘G opens no repo');
+  if (!git) { if (changed) broadcast('repos', { repos: repoUrls() }); return; }
   let left = due.length;
   for (const cwd of due) {
     const prev = repos.get(cwd); repos.set(cwd, { url: prev?.url || null, at: Date.now() });   // claimed: not asked twice while git answers
-    execFile('git', ['-C', cwd, 'remote', 'get-url', 'origin'], { timeout: 5000 }, (err, out) => {
-      const url = err ? null : ghRepoUrl(out);
+    execFile(git, ['-C', cwd, 'remote', 'get-url', 'origin'], { timeout: 5000 }, (err, out) => {
+      const url = !err ? ghRepoUrl(out) : err.code === 2 || err.code === 128 ? null : prev?.url || null;
       if ((prev?.url || null) !== url) changed = true;
       repos.set(cwd, { url, at: Date.now() });
       if (--left === 0 && changed) broadcast('repos', { repos: repoUrls() });
@@ -397,7 +402,7 @@ function saveAttachment(sid, name, buf) {
   writeFileSync(file, buf);
   return file;
 }
-const gitTracked = file => new Promise(resolve => execFile('git', ['-C', dirname(file), 'ls-files', '--error-unmatch', file], { timeout: 5000 }, err => resolve(!err)));
+const gitTracked = file => new Promise(resolve => { const git = findBin('git', 'whether a settings file is tracked goes unsaid'); if (!git) return resolve(false); execFile(git, ['-C', dirname(file), 'ls-files', '--error-unmatch', file], { timeout: 5000 }, err => resolve(!err)); });
 
 const projectList = () => Object.values(projects).sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
 // name: non-empty, one line; cwds: absolute paths, deduplicated. Nothing checks they exist — a project
@@ -634,7 +639,7 @@ const PR_TTL_ERROR_MS = 60 * 60_000;   // a PR we cannot see (private, deleted, 
 const PR_BATCH = 40;
 const prStatus = new Map();            // url -> { state, title, turn, people, checkedAt }
 const prQueue = new Set();
-let prTimer = null, prBusy = false, ghGone = false;
+let prTimer = null, prBusy = false;
 let prAsking = new Set();              // the batch gh is being asked about now: a sweep or a mention meanwhile waits for it
 let prPause = 0, prPauseUntil = 0;     // gh failing as a whole (offline, rate-limited): the polls back off, 1 min doubling to 30
 
@@ -673,12 +678,12 @@ function duePrs(list, now = Date.now()) {
 
 /** On the registry poll, and once at boot. */
 function sweepPrs() {
-  if (ghGone || Date.now() < prPauseUntil) return;
+  if (Date.now() < prPauseUntil) return;
   for (const url of duePrs(sessions.values())) queuePr(url, 0);   // 0: duePrs has judged it already
 }
 
 function queuePr(url, ttl = PR_TTL_MS) {
-  if (ghGone || prQueue.has(url) || prAsking.has(url) || prFresh(url, ttl)) return;
+  if (prQueue.has(url) || prAsking.has(url) || prFresh(url, ttl)) return;
   prQueue.add(url);
   prTimer ??= setTimeout(() => { prTimer = null; drainPrQueue(); }, 250);
 }
@@ -705,7 +710,7 @@ function setPrInfo(url, state, title, found, now = Date.now(), people) {
 function drainPrQueue() {
   if (prBusy || !prQueue.size) return;
   const bin = ghBin();
-  if (!bin) { ghGone = true; prQueue.clear(); return; }
+  if (!bin) { prQueue.clear(); return; }   // no gh (yet: findBin looks again in a minute)
   const take = [...prQueue].slice(0, PR_BATCH);
   const batch = [], parts = [];
   for (const url of take) {
@@ -1342,6 +1347,8 @@ const BIN_FALLBACKS = {
   gh: ['/opt/homebrew/bin/gh', '/usr/local/bin/gh', join(homedir(), '.local', 'bin', 'gh')],
   // who still holds a background command's output file open — the one honest answer to "is it still running"
   lsof: ['/usr/sbin/lsof', '/usr/bin/lsof'],
+  // brew's or the Command Line Tools' — /usr/bin/git is only a shim that asks to install them when they are not there
+  git: ['/opt/homebrew/bin/git', '/usr/local/bin/git', '/Library/Developer/CommandLineTools/usr/bin/git', '/usr/bin/git'],
   // go-task, for the folders whose Taskfile launches claude (see launchersFor): mise's shim first, then brew and go
   task: [join(homedir(), '.local', 'share', 'mise', 'shims', 'task'), '/opt/homebrew/bin/task', '/usr/local/bin/task', join(homedir(), 'go', 'bin', 'task')],
   // "Shell Command: Install 'code' command in PATH" symlinks /usr/local/bin/code; the last two
@@ -1353,17 +1360,19 @@ const BIN_FALLBACKS = {
 const REPLY_TIMEOUT_MS = Number(process.env.REPLY_TIMEOUT_MS || 10 * 60_000);
 const binCache = new Map();
 
-/** `<NAME>_BIN` in the environment (CLAUDE_BIN, GH_BIN) overrides the search. */
+/** `<NAME>_BIN` in the environment (CLAUDE_BIN, GH_BIN) overrides the search. A file that can be run, not just a path
+ *  that exists (a directory, a file without the bit: a spawn of it is an 'error' event); and none found is asked again
+ *  a minute later rather than never — a gh installed while the board runs is found (2026-10-03). */
+const BIN_RETRY_MS = 60_000;
+const canRun = f => { try { accessSync(f, fsc.X_OK); return statSync(f).isFile(); } catch { return false; } };
 function findBin(name, missingNote) {
-  if (binCache.has(name)) return binCache.get(name);
-  const found = [
-    ...(process.env[`${name.toUpperCase()}_BIN`] ? [process.env[`${name.toUpperCase()}_BIN`]] : []),
-    ...(process.env.PATH || '').split(':').filter(Boolean).map(d => join(d, name)),
-    ...BIN_FALLBACKS[name]
-  ].find(f => existsSync(f)) || null;
-  binCache.set(name, found);
-  if (!found) console.error(`[peixairada] ${name} not found — ${missingNote}`);
-  return found;
+  const hit = binCache.get(name);
+  if (hit && (hit.path || Date.now() - hit.at < BIN_RETRY_MS)) return hit.path;
+  const env = process.env[`${name.toUpperCase()}_BIN`];
+  const path = [...(env ? [env] : []), ...(process.env.PATH || '').split(':').filter(Boolean).map(d => join(d, name)), ...(BIN_FALLBACKS[name] || [])].find(canRun) || null;
+  if (!path && !hit) console.error(`[peixairada] ${name} not found — ${missingNote}`);
+  binCache.set(name, { path, at: Date.now() });
+  return path;
 }
 
 // Declarations, not arrows: the PR-status code above calls ghBin().
@@ -1446,11 +1455,14 @@ const VSWEB_PORT = Number(process.env.VSWEB_PORT || 7332);
 const VSWEB_URL = `http://127.0.0.1:${VSWEB_PORT}/`;
 let vsweb = null;   // the child, while it is ours
 // …and goes with it: a signal that ends this server ends the child too, instead of orphaning an
-// editor server on the port for the next run to adopt without knowing whose it is.
+// editor server on the port for the next run to adopt without knowing whose it is (the hooks are main()'s: an
+// import — the tests — installs nothing).
 // `code` is a wrapper script around the real binary, so the child runs in its own process group and
 // the whole group is signalled — killing the wrapper alone left the server behind on the port.
-process.on('exit', () => { if (vsweb) { try { process.kill(-vsweb.pid, 'SIGTERM'); } catch { try { vsweb.kill(); } catch {} } } });
-for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) process.on(sig, () => process.exit(0));
+function endVsWebWithUs() {
+  process.on('exit', () => { if (vsweb) { try { process.kill(-vsweb.pid, 'SIGTERM'); } catch { try { vsweb.kill(); } catch {} } } });
+  for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) process.on(sig, () => process.exit(0));
+}
 function vswebAnswers() {
   return new Promise(resolve => {
     const req = httpGet(VSWEB_URL, r => { r.resume(); resolve(r.statusCode > 0); });
@@ -1465,6 +1477,8 @@ async function ensureVsWeb() {
     try {
       vsweb = spawn(code, ['serve-web', '--host', '127.0.0.1', '--port', String(VSWEB_PORT), '--without-connection-token', '--accept-server-license-terms'], { stdio: 'ignore', env: termEnv(), detached: true });
       vsweb.on('exit', c => { console.log(`[peixairada] code serve-web exited (${c})`); vsweb = null; });
+      // a spawn that fails is an 'error' and no 'exit' — and an 'error' nobody listens for ends the server
+      vsweb.on('error', e => { console.error(`[peixairada] code serve-web: ${e.message}`); vsweb = null; binCache.delete('code'); });
     } catch (e) { vsweb = null; return { code: 500, error: `could not start code serve-web: ${e.message}` }; }
   }
   const t0 = Date.now();
@@ -1500,7 +1514,7 @@ function replyToStale(s, text) {
   // Not awaited: a resumed turn runs for as long as it needs. The board already tails the transcript,
   // so the prompt and the answer show up on their own. This only tracks the process, so the UI can
   // say "sending" and surface a failure that never reaches the transcript at all.
-  execFile(bin, ['--resume', s.id, '-p', text], { cwd, timeout: REPLY_TIMEOUT_MS, maxBuffer: 16e6 }, (err, _stdout, stderr) => {
+  execFile(bin, ['--resume', s.id, '-p', text], { cwd, env: cleanEnv(), timeout: REPLY_TIMEOUT_MS, maxBuffer: 16e6 }, (err, _stdout, stderr) => {
     s.replying = null;
     s.replyError = err ? (String(stderr || err.message).trim().split('\n').pop() || String(err)).slice(0, 300) : null;
     if (s.replyError) console.error(`[peixairada] reply to ${s.id} failed:`, s.replyError);
@@ -1559,12 +1573,13 @@ function termSummary(t) {
 }
 
 // The server's own environment minus anything that says "you are inside a Claude session" — under
-// `npm start` from a Claude shell that is exactly what it says, and the CLI refuses to nest.
+// `npm start` from a Claude shell that is exactly what it says, and the CLI refuses to nest. Only the nesting markers
+// go: CLAUDECODE and CLAUDE_CODE_*. CLAUDE_DIR is this project's own (a fixture in tests — the fake claude reads it)
+// and CLAUDE_BIN the override the server already resolved; neither means anything to the CLI. A reply's `claude -p`
+// gets this too (2026-10-03; the raw environment before).
+const cleanEnv = () => Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^CLAUDECODE$|^CLAUDE_CODE_/.test(k)));
 function termEnv() {
-  const env = {};
-  // Only the nesting markers go: CLAUDECODE and CLAUDE_CODE_*. CLAUDE_DIR is this project's own (a fixture in tests —
-  // the fake claude reads it) and CLAUDE_BIN the override the server already resolved; neither means anything to the CLI.
-  for (const [k, v] of Object.entries(process.env)) if (!/^CLAUDECODE$|^CLAUDE_CODE_/.test(k)) env[k] = v;
+  const env = cleanEnv();
   // PEIXAIRADA_DRAWER tells a script that its shell is a drawer (launchd.sh and build.sh check it).
   return { ...env, TERM: 'xterm-256color', COLORTERM: 'truecolor', LANG: env.LANG || 'en_US.UTF-8', PEIXAIRADA_DRAWER: '1' };
 }
@@ -2261,6 +2276,7 @@ export { fold, newSession, summary, agentRunning, notePr, notePrs, prTitle, dueP
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
+endVsWebWithUs();
 // The port first, and nothing else until it is ours (2026-10-03): a server waiting on a busy port — the agent behind
 // the app's own, an `npm start` beside the agent — adopted every holder, polled GitHub, posted alerts and wrote its
 // boot-time copy of the state file over the live server's ticks, all while serving nobody. A busy port is waited
