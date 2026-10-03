@@ -1609,19 +1609,23 @@ function endClaude(pid) {
 const holderSend = (t, m) => { if (t.sock && !t.sock.destroyed) { t.sock.write(JSON.stringify(m) + '\n'); return true; } return false; };
 /** The screen as it stands, with `upto`: the seq of the last output message it already contains. Null when the holder is gone. */
 const requestSnap = t => new Promise(res => { if (!holderSend(t, { t: 'snap' })) return res(null); t.snapQ.push(res); });
+const HELLO_MS = 5000;
+/** The holder's socket, once it has said hello — which a stopped or wedged holder never does, though the kernel still
+ *  accepts the connection: no hello in HELLO_MS is a failure (2026-10-03: one such holder held the boot, and the port
+ *  with it, for good). Until the hello the socket is not the drawer's, and its close is no exit. */
 function connectHolder(t) {
   return new Promise((resolve, reject) => {
     const sock = netConnect(join(TERMS_DIR, `${t.id}.sock`));
     sock.setEncoding('utf8');   // a glyph split across two chunks decodes whole; `buf += chunk` on a Buffer decoded each alone
     let buf = '', helloed = false;
-    sock.on('connect', () => { t.sock = sock; });
+    sock.setTimeout(HELLO_MS, () => sock.destroy(new Error(`no hello in ${HELLO_MS / 1000} s`)));
     sock.on('data', chunk => {
       buf += chunk;
       let i; while ((i = buf.indexOf('\n')) >= 0) {
         const line = buf.slice(0, i); buf = buf.slice(i + 1);
         let m; try { m = JSON.parse(line); } catch { continue; }
-        if (!helloed && m.t === 'hello') { helloed = true; Object.assign(t, { pid: m.pid, holderPid: m.holderPid, exited: m.exited, cols: m.cols, rows: m.rows, cwd: m.cwd, resume: !!m.resume, startedAt: m.startedAt, sessionId: t.sessionId ?? m.sessionId ?? null }); resolve(m); }
-        else onHolderMsg(t, m);
+        if (!helloed && m.t === 'hello') { helloed = true; sock.setTimeout(0); t.sock = sock; Object.assign(t, { pid: m.pid, holderPid: m.holderPid, exited: m.exited, cols: m.cols, rows: m.rows, cwd: m.cwd, resume: !!m.resume, startedAt: m.startedAt, sessionId: t.sessionId ?? m.sessionId ?? null }); resolve(m); }
+        else if (helloed) onHolderMsg(t, m);
       }
     });
     sock.on('error', e => { if (!helloed) reject(e); });
@@ -1825,7 +1829,11 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
         let why = ''; try { why = JSON.parse(readFileSync(join(TERMS_DIR, `${id}.json`), 'utf8')).error || ''; } catch {}
         return { code: 500, error: why || `the terminal holder exited (${child.exitCode}) — see ${logFile}` };
       }
-      if (Date.now() - t0 > HOLDER_START_MS) return { code: 500, error: `the terminal holder did not answer in ${HOLDER_START_MS / 1000} s (${e.message}) — see ${logFile}` };
+      if (Date.now() - t0 > HOLDER_START_MS) {
+        // given up on, it is ended — or it comes up late with a claude in it that nothing tracks until the next boot
+        try { process.kill(child.pid, 'SIGTERM'); } catch {}
+        return { code: 500, error: `the terminal holder did not answer in ${HOLDER_START_MS / 1000} s (${e.message}) — see ${logFile}` };
+      }
       await new Promise(r => setTimeout(r, 100));
     }
   }
@@ -1836,26 +1844,27 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
   return { code: 201, terminal: termSummary(t) };
 }
 
-/** On boot: the holders from before this server — adopt the ones that answer, clean up after the dead. */
+/** On boot: the holders from before this server — adopt the ones that answer, clean up after the dead. All at once:
+ *  one after another, every holder that does not answer cost its whole wait before the board could start. */
 async function adoptHolders() {
   if (!existsSync(TERMS_DIR)) return;
-  for (const f of readdirSync(TERMS_DIR)) {
-    if (!f.endsWith('.json')) continue;
-    let meta; try { meta = JSON.parse(readFileSync(join(TERMS_DIR, f), 'utf8')); } catch { continue; }
-    const id = meta.id || f.slice(0, -5);
-    const n = Number((id.match(/^t(\d+)-/) || [])[1]); if (n > termSeq) termSeq = n;
-    const t = { id, sessionId: meta.sessionId ?? null, cwd: meta.cwd, bin: meta.bin, args: meta.args, shell: !!meta.shell, task: meta.task ?? null, claudePid: meta.claudePid ?? null, cols: meta.cols, rows: meta.rows, resume: !!meta.resume, startedAt: meta.startedAt, pid: meta.pid, holderPid: meta.holderPid, exited: meta.exited ?? null, sock: null, clients: new Set(), snapQ: [], lastSnap: null };
-    try {
-      await connectHolder(t);
-      terms.set(id, t);
-      noteEnv(t.sessionId, t.task);   // a launcher's drawer from before the record existed, or from before a restart
-      if (t.exited !== null) setTimeout(() => { if (terms.get(id) === t) terms.delete(id); }, TERM_LINGER_MS).unref();
-      console.log(`[peixairada] terminal ${id}: adopted — pid ${t.pid}, holder ${t.holderPid}${t.exited !== null ? ', exited ' + t.exited : ''}${t.sessionId ? ', chat ' + t.sessionId : ''}`);
-    } catch (e) {
-      if (meta.holderPid && pidAlive(meta.holderPid)) { console.log(`[peixairada] terminal ${id}: holder ${meta.holderPid} is alive but not answering (${e.message}) — left alone`); continue; }
-      for (const ext of ['.json', '.sock', '.log']) try { unlinkSync(join(TERMS_DIR, id + ext)); } catch {}
-      console.log(`[peixairada] terminal ${id}: its holder is gone — cleaned up`);
-    }
+  await Promise.allSettled(readdirSync(TERMS_DIR).filter(f => f.endsWith('.json')).map(adoptHolder));
+}
+async function adoptHolder(f) {
+  let meta; try { meta = JSON.parse(readFileSync(join(TERMS_DIR, f), 'utf8')); } catch { return; }
+  const id = meta.id || f.slice(0, -5);
+  const n = Number((id.match(/^t(\d+)-/) || [])[1]); if (n > termSeq) termSeq = n;
+  const t = { id, sessionId: meta.sessionId ?? null, cwd: meta.cwd, bin: meta.bin, args: meta.args, shell: !!meta.shell, task: meta.task ?? null, claudePid: meta.claudePid ?? null, cols: meta.cols, rows: meta.rows, resume: !!meta.resume, startedAt: meta.startedAt, pid: meta.pid, holderPid: meta.holderPid, exited: meta.exited ?? null, sock: null, clients: new Set(), snapQ: [], lastSnap: null };
+  try {
+    await connectHolder(t);
+    terms.set(id, t);
+    noteEnv(t.sessionId, t.task);   // a launcher's drawer from before the record existed, or from before a restart
+    if (t.exited !== null) setTimeout(() => { if (terms.get(id) === t) terms.delete(id); }, TERM_LINGER_MS).unref();
+    console.log(`[peixairada] terminal ${id}: adopted — pid ${t.pid}, holder ${t.holderPid}${t.exited !== null ? ', exited ' + t.exited : ''}${t.sessionId ? ', chat ' + t.sessionId : ''}`);
+  } catch (e) {
+    if (meta.holderPid && pidAlive(meta.holderPid)) { console.log(`[peixairada] terminal ${id}: holder ${meta.holderPid} is alive but not answering (${e.message}) — left alone`); return; }
+    for (const ext of ['.json', '.sock', '.log']) try { unlinkSync(join(TERMS_DIR, id + ext)); } catch {}
+    console.log(`[peixairada] terminal ${id}: its holder is gone — cleaned up`);
   }
 }
 
@@ -1888,7 +1897,10 @@ function noteEnv(sessionId, task) {
 function linkTermToRegistry(pid, s, ppids = null) {
   for (const t of terms.values()) {
     if (t.shell || t.sessionId === s.id) continue;
-    if (t.pid !== pid && !(t.task && t.exited === null && descends(pid, t.pid, ppids))) continue;
+    // the PTY's own process; the claude it was tied to (behind a launcher that is not the PTY's — /clear there gives
+    // that claude a new id, and the drawer has to follow it as it does any other, 2026-10-03); or, not yet tied, a
+    // claude below a launcher's task
+    if (t.pid !== pid && !(t.exited === null && t.claudePid === pid) && !(t.task && t.exited === null && descends(pid, t.pid, ppids))) continue;
     const was = sessions.get(t.sessionId);   // the chat it is leaving — /clear gave this pid a new id
     t.sessionId = s.id; t.claudePid = pid; holderSend(t, { t: 'meta', sessionId: s.id, claudePid: pid });
     noteEnv(s.id, t.task);

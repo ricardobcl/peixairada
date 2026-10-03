@@ -69,3 +69,13 @@ test('grown twice over, the way a window that opens small and then restores does
   assert.equal(lastFilled(t), 70, 'no blank tail has built up');
   assert.equal(view(t)[70], 'status2');
 });
+
+test('done comes once the parked resize has landed, so a shrink that follows a grow is the size that stays', async () => {
+  // the holder's order (lib/termhold.mjs, resizeScreen): the next resize waits for the last one's done (2026-10-03)
+  const t = await screen();
+  const sizes = [];
+  await new Promise(done => refit(t, 30, () => t.resize(80, 30), () => { sizes.push([t.cols, t.rows]); refit(t, 8, () => t.resize(70, 8), done); }));
+  await write(t, '');
+  assert.deepEqual(sizes, [[80, 30]], 'the grow was applied before done');
+  assert.deepEqual([t.cols, t.rows], [70, 8], 'the shrink after it is what the screen ends at');
+});

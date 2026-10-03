@@ -121,6 +121,12 @@ test('a launcher: a folder whose Taskfile launches claude lists it, a new chat t
     assert.equal(meta.task, 'production-workload'); assert.equal(meta.claudePid, s.live.pid, 'the holder was told claude\'s pid, for an adoption after a restart');
     const a = await attach(srv.url, t.id, { until: 'fake mode on' });
     assert.ok(a.all.includes('❯'), 'a page attaching sees claude\'s prompt through task');
+    // /clear there: the same claude under a new id — and claude is not the PTY's process, task is (2026-10-03: the
+    // drawer stayed on the old chat, and the new one read as live in another terminal)
+    const p = attach(srv.url, t.id, { timeout: 3000 }); await p.opened; p.ws.send2({ t: 'in', d: '/clear\r' });
+    const moved = await waitFor(async () => { const id = (await srv.terminals()).find(x => x.id === t.id)?.sessionId; return id !== linked && id; }, { timeout: 10_000, what: 'the drawer following /clear to the new chat' });
+    const s2 = (await srv.api('api/sessions')).body.sessions.find(s => s.id === moved);
+    assert.equal(s2.terminal?.id, t.id, 'the new chat has the drawer'); assert.equal(s2.live.pid, s.live.pid, 'the same claude');
   } finally { await srv.stop(); }
 });
 

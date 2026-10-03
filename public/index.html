@@ -3758,13 +3758,13 @@
   // bottom instead of pulling the scrollback back down, and the session stays stuck at the top of a black pane.
   // The fit addon does the resize itself, so it is what gets wrapped — it clears the renderer first, which a
   // bare resize would not.
-  function refitTerm(xt, rows, resize) {
+  function refitTerm(xt, rows, resize, done = () => {}) {
     const b = xt.buffer.active;
     const tail = rows > xt.rows && b.baseY > 0
       ? Math.max(0, Math.min(b.length - 1 - (b.baseY + b.cursorY), xt.rows - 1 - b.cursorY))
       : 0;
-    if (!tail) return void resize();
-    xt.write(`\x1b[${tail}B`, () => { resize(); xt.write(`\x1b[${tail}A`); });
+    if (!tail) { resize(); return void done(); }
+    xt.write(`\x1b[${tail}B`, () => { resize(); xt.write(`\x1b[${tail}A`, done); });
   }
   function fitTerm(tm) {
     if (!tm) { for (const t of terms) fitTerm(t); return; }
