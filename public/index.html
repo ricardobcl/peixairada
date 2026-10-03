@@ -1480,11 +1480,15 @@
   // anywhere (hotFind): the best match leads (renderSessionList), so there is a card to choose — ↑↓ walk them from the
   // box, ⏎ opens the one marked and hands the keyboard to its chat. The mark is shown only while the box has the
   // keyboard: a click elsewhere is a choice too.
-  const qsel = { i: 0 };
-  function markQsel() {
+  const qsel = { i: 0, id: null };
+  // The mark stays on its chat, not on its place (2026-10-03): an update that reordered the matches moved it to another
+  // card, and ⏎ opened that one.
+  function markQsel(step = 0) {
     const inp = $('#q'), cards = [...document.querySelectorAll('#slist > .card')];
     const on = document.activeElement === inp && !!inp.value.trim();
-    qsel.i = Math.max(0, Math.min(qsel.i, cards.length - 1));
+    const at = qsel.id ? cards.findIndex(c => c.dataset.id === qsel.id) : -1;
+    qsel.i = Math.max(0, Math.min((at >= 0 ? at : qsel.i) + step, cards.length - 1));
+    if (step) qsel.id = cards[qsel.i]?.dataset.id || null;
     cards.forEach((c, i) => c.classList.toggle('qsel', on && i === qsel.i));
     return on ? cards[qsel.i] || null : null;
   }
@@ -1494,12 +1498,12 @@
     btn.onclick = () => qShow(inp.hidden);
     inp.addEventListener('keydown', e => {
       if (e.key === 'Escape') { e.stopPropagation(); inp.value = ''; btn.classList.remove('on'); qShow(false); renderBoard(); }
-      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); qsel.i += e.key === 'ArrowDown' ? 1 : -1; markQsel()?.scrollIntoView({ block: 'nearest' }); }
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); markQsel(e.key === 'ArrowDown' ? 1 : -1)?.scrollIntoView({ block: 'nearest' }); }
       else if (e.key === 'Enter') { const c = markQsel(); if (!c) return; e.preventDefault(); inp.blur(); openSession(c.dataset.id).then(focusTerm); }
     });
     inp.addEventListener('focus', markQsel);
     inp.addEventListener('blur', () => { if (!inp.value.trim()) qShow(false); markQsel(); });
-    inp.addEventListener('input', () => { btn.classList.toggle('on', !!inp.value.trim()); qsel.i = 0; renderBoard(); });
+    inp.addEventListener('input', () => { btn.classList.toggle('on', !!inp.value.trim()); qsel.i = 0; qsel.id = null; renderBoard(); });
   }
   // The settings: a modal dialog (2026-09-28), from the chat header's ··· or ⌘, — the dialog's own Esc, its backdrop
   // clicked, or × close it; closing drops a setup row half typed. The pane goes down while it is up (postPane), and
@@ -1531,7 +1535,7 @@
   const showNotify = () => { $('#notifyOn').checked = state.notifications; };
   $('#notifyOn').addEventListener('change', e => {
     state.notifications = e.target.checked;
-    api('PUT', '/api/notifications', { on: state.notifications }).catch(e => note($('#notifyOn'), `Could not save the switch: ${e.message}`, true));
+    api('PUT', '/api/notifications', { on: state.notifications }).catch(e => { state.notifications = !state.notifications; showNotify(); note($('#notifyOn'), `Could not save the switch: ${e.message}`, true); });   // refused: it shows what the server has
     if (state.notifications && !inApp && window.Notification?.permission === 'default') Notification.requestPermission();
   });
   // How much a card carries (2026-09-25): large is the card as it always was, your last prompt and Claude's last reply;
@@ -1605,12 +1609,14 @@
   function toggleSessions() { prefs.sessionsCompact = !prefs.sessionsCompact; savePrefs(); applySessionsCompact(); }
   applySessionsCompact();
   {
-    const splitter = $('#splitter'); let dragging = false;
-    splitter.addEventListener('mousedown', e => { dragging = true; splitter.classList.add('drag'); document.body.style.userSelect = 'none'; e.preventDefault(); });
+    // The left button only (2026-10-03: a right or ⌃-click started a drag whose mouseup the context menu swallowed, and
+    // the column followed the bare pointer); the list's left edge is read once, at the press — read per move, it was a
+    // layout after every width written.
+    const splitter = $('#splitter'); let dragging = false, left = 0;
+    splitter.addEventListener('mousedown', e => { if (e.button !== 0 || e.ctrlKey) return; dragging = true; left = $('#sessions').getBoundingClientRect().left; splitter.classList.add('drag'); document.body.style.userSelect = 'none'; e.preventDefault(); });
     window.addEventListener('mousemove', e => {
       if (!dragging) return;
-      const r = $('#sessions').getBoundingClientRect();
-      prefs.sessionsWidth = Math.round(Math.max(300, Math.min(innerWidth * .6, e.clientX - r.left)));
+      prefs.sessionsWidth = Math.round(Math.max(300, Math.min(innerWidth * .6, e.clientX - left)));
       $('#sessions').style.width = prefs.sessionsWidth + 'px';
     });
     window.addEventListener('mouseup', () => { if (!dragging) return; dragging = false; splitter.classList.remove('drag'); document.body.style.userSelect = ''; savePrefs(); });
@@ -1987,11 +1993,16 @@
   let peopleDrawn = '';
   function renderPeople(chats) {
     const box = $('#people'), people = peopleOf(chats);
-    if (prefs.person && !people.some(x => x.login === prefs.person)) { prefs.person = null; savePrefs(); }
+    // Let go only when GitHub has answered for every PR in view (2026-10-03): after a server restart no PR has its faces
+    // until gh answers, and the person you had narrowed to was cleared — and saved cleared — on the first snapshot.
+    const known = chats.every(s => (s.prs || []).every(pr => pr.people != null));
+    if (prefs.person && known && !people.some(x => x.login === prefs.person)) { prefs.person = null; savePrefs(); }
     const html = !people.length ? '' : ICON.pr + people.map(x => { const on = x.login === prefs.person;
       return `<button type="button" data-login="${esc(x.login)}"${on ? ' class="on"' : ''} title="${esc(`${x.login} — ${[...x.did].join(', ')} · in ${x.chats.size} chat${x.chats.size === 1 ? '' : 's'} — click to ${on ? 'show every chat again' : 'show only those'}`)}">${faceHtml(x)}</button>`; }).join('');
     if (html !== peopleDrawn) { box.innerHTML = peopleDrawn = html; box.hidden = !html; }   // drawn only when it changed: the faces are images
-    box.classList.toggle('on', !!prefs.person);
+    const here = !!prefs.person && people.some(x => x.login === prefs.person);
+    box.classList.toggle('on', here);
+    return here;   // narrowed to them only while they are in view: until the faces come back, every chat shows
   }
   $('#people').addEventListener('click', e => {
     const b = e.target.closest('button[data-login]'); if (!b) return;
@@ -2004,8 +2015,7 @@
     // is in the match's order, not the board's, and the lines that say where a state or a day ends are left out.
     const q = $('#q').value.trim().toLowerCase();
     const score = new Map();
-    renderPeople(p.sessions.filter(s => filterOn(bucket(s))));   // may let go of a person no longer in view
-    const who = prefs.person;
+    const who = renderPeople(p.sessions.filter(s => filterOn(bucket(s)))) ? prefs.person : null;   // may let go of a person no longer in view
     const list = (!q ? p.sessions : p.sessions.filter(s => { const m = fuzzy(chatFields(s), q); if (m) score.set(s.id, m.score); return !!m; })).filter(s => !who || hasPerson(s, who));
     const counts = {};
     for (const s of list) counts[bucket(s)] = (counts[bucket(s)] || 0) + 1;
@@ -2036,7 +2046,7 @@
     const dayAfter = i => !q && days[i] && days[i + 1] !== days[i] ? dayHtml(days[i]) : '';
     const items = [];
     shown.forEach((s, i) => { const d = dividerBefore(i), a = dayAfter(i); if (d) items.push({ html: d }); items.push({ id: s.id, html: cardHtml(s, p, q) }); if (a) items.push({ html: a }); });
-    drawCards(items, `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — start one with + above'}</div>`);
+    drawCards(items, `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — ⌥⌘N starts one'}</div>`);
     fillAges($('#slist'));
     phaseAnims();
     markQsel();
@@ -2401,7 +2411,7 @@
     if (!g.railOn) return;   // folded to the rail of squares: no room, and nothing drawn
     const rail = g.rail, runs = tl.runs;
     // the runs' markup, only when the runs themselves change (an SSE update re-renders the list every few seconds)
-    const sig = runs.map(r => `${r.g}${r.day}${r.n}${r.i}`).join('|');
+    const sig = runs.map(r => `${r.g}${r.day}${r.n}${r.i}${tlText(r)}`).join('|');   // the words too: "yesterday" moves on at midnight with no run changing
     if (sig !== tl.sig) {
       tl.sig = sig;
       rail.querySelector('.tl-labs').innerHTML = runs.map((r, i) => `<div class="tl-lab ${r.g}" data-run="${i}">${tlText(r)}</div>`).join('');
@@ -2711,7 +2721,7 @@
     }
     return out + esc(text.slice(last));
   }
-  const pick = { mode: 'project', ctx: {}, list: [], sel: 0 };
+  const pick = { mode: 'project', ctx: {}, list: [], sel: 0, gen: 0, cloning: false };   // gen: which opening of the picker
   const PICK_HINT = {
     project: 'Project — type to filter · ↑↓ · ⏎ opens · esc', pr: 'Pull request — type to filter · ↑↓ · ⏎ opens · esc',
     chat: 'Chat — ready or clauding, every project · type any letters in order · ↑↓ · ⏎ opens · esc',
@@ -2733,10 +2743,12 @@
   // `GET /api/folders` (cached by the directory's mtime), so this is asked on every opening and the rows appear when it
   // lands. Since 2026-09-28 the directories are the cog's — any number of roots, each with the GitHub org its clone
   // asks for, or none (then it lists its folders only).
-  const folders = { roots: [], list: [] };
+  const folders = { roots: [], list: [], asked: 0 };
   async function loadFolders() {
+    const n = ++folders.asked;   // only the newest question's answer: an older one held the roots just removed
     try {
       const d = await api('GET', '/api/folders');
+      if (n !== folders.asked) return;
       Object.assign(folders, { roots: d.roots || [], list: d.folders || [] });
       if ($('#pick').open && pick.mode === 'new') { pickHint(); pickRender(); }   // the box named no directory until now
     } catch {}
@@ -2754,20 +2766,27 @@
     const name = $('#pickq').value.trim();
     if (!name || !CLONE_NAME.test(name)) return [];
     if (items.some(x => x.name.toLowerCase() === name.toLowerCase())) return [];
+    // a folder of that name that is here but hidden (✕) is offered as itself — starting a chat there puts it back — not
+    // as a clone gh would refuse: "destination already exists" (2026-10-03)
+    const here = folders.list.filter(f => f.name.toLowerCase() === name.toLowerCase());
+    if (here.length) return here.map(f => ({ key: f.cwd, name: f.name, cwd: f.cwd, cwds: [f.cwd], folder: true }));
     return folders.roots.filter(r => r.org).map(r => ({ clone: true, name, root: r.dir, org: r.org }));
   }
   // The clone itself, then the same flow as any folder: its chats (none, freshly cloned) and ＋ a new one, so the
   // chat starts without another keystroke. The server answers only when git is done — a big repo takes a while — so
   // the box says what is happening, and the list holds the answer when it goes wrong.
+  // The answer acts on the picker only while it is still that clone's (2026-10-03: closed meanwhile, the next picker
+  // opened with a box that would not type, and the clone's chats step popped up over whatever was there minutes later).
   async function cloneAndStart({ name, root, org }) {
-    const q = $('#pickq'), was = q.placeholder;
-    q.value = ''; q.placeholder = `cloning ${org}/${name}…`; q.disabled = true;
+    const q = $('#pickq'), was = q.placeholder, run = ++pick.gen;
+    q.value = ''; q.placeholder = `cloning ${org}/${name}…`; q.disabled = true; pick.cloning = true;
     $('#picklist').innerHTML = `<div class="none">cloning ${esc(org)}/${esc(name)} into ${esc(homePath(root))} — a big repo takes a while…</div>`;
     let d;
     try { d = await api('POST', '/api/clone', { name, root }); } catch (e) { d = { error: e.message }; }
-    q.disabled = false; q.placeholder = was; q.focus();
+    if (d.cwd) loadFolders();
+    if (run !== pick.gen || !$('#pick').open) { note($('#shead'), d.cwd ? `Cloned ${org}/${name} — ⌥⌘N starts a chat there` : `Could not clone ${org}/${name}: ${d.error || 'the server said no'}`, !d.cwd); return; }
+    pick.cloning = false; q.disabled = false; q.placeholder = was; q.focus();
     if (!d.cwd) { $('#picklist').innerHTML = `<div class="none">could not clone ${esc(org)}/${esc(name)} — ${esc(d.error || 'the server said no')}</div>`; return; }
-    loadFolders();
     chatsStep({ key: d.cwd, name, cwds: [d.cwd] });
   }
   const pickHint = () => { const h = PICK_HINT[pick.mode]; $('#pickq').placeholder = typeof h === 'function' ? h(pick.ctx) : h; };
@@ -2777,7 +2796,7 @@
       if (inApp) post({ type: 'focus' });   // the key may have come from the pane: the box needs the board's keyboard
       dlg.showModal(); repostPane();        // the pane goes down while it is up, so the dialog is centred and on top
     }
-    pick.mode = mode; pick.ctx = ctx; pick.sel = 0;
+    pick.mode = mode; pick.ctx = ctx; pick.sel = 0; pick.gen++; pick.cloning = false; $('#pickq').disabled = false;
     if (mode === 'new') loadFolders();   // the org's folders, fresh: the rows join the list when the answer lands
     $('#pickq').value = ''; pickHint();
     pickRender(); $('#pickq').focus();
@@ -2787,6 +2806,7 @@
   /** `keep`: a redraw the server caused, not the keys — the selection stays on the chat it was on, wherever the list
    *  moved it; a chat that left gives its place to the one that slid up into it. */
   function pickRender(keep = false) {
+    if (pick.cloning) return;   // the box says what is happening until the clone answers
     const was = keep ? pick.list[pick.sel] : null;
     const q = $('#pickq').value.trim().toLowerCase();
     const mark = text => markHits(text, q);
@@ -2892,6 +2912,7 @@
     const r = e.target.closest('.pkrow'); if (r) pickChoose(+r.dataset.i);
   });
   $('#pick').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.close(); });   // a click on the backdrop
+  $('#pick').addEventListener('close', () => { pick.gen++; pick.cloning = false; $('#pickq').disabled = false; });   // a clone under way answers to a note
   // ⌥⌘ + a letter, from anywhere — the drawer included: capture phase, so its xterm never sees them; e.code,
   // because with ⌥ held e.key is a symbol ('ø' for O) on a Mac. One letter per place the open chat lives: T a
   // fresh zsh in its folder (the pane's zsh tab — a holder like claude's), E the editor — VS Code Web in the pane, the
@@ -2940,7 +2961,7 @@
   window.peixPane = (visible, left) => { state.paneVisible = !!visible; state.paneLeft = Number(left) || 0; };
   // …and whether the window fills the screen (⌃⌘F in the app) and, on a screen with a camera housing, where that is —
   // the strip's height and the x range the housing covers, in this page's px — or null on a screen without one (layoutNotch).
-  window.peixFill = (on, notch) => { state.fill = !!on; state.notch = on && notch && notch.top > 0 ? notch : null; layoutNotch(); paintHeadSplit(); };
+  window.peixFill = (on, notch) => { state.fill = !!on; state.notch = on && notch && notch.top > 0 ? notch : null; layoutNotch(); fitHeadPrs(); paintHeadSplit(); };   // renderHead's order: the chips fold for the new geometry
   const noChat = () => note($('#shead'), 'Open a chat first');
   const focusBoard = () => { if (inApp) post({ type: 'focus' }); };   // the key may have come from the pane: the board needs the keyboard back
   function hotClaude() {
@@ -3229,6 +3250,7 @@
   const colorInput = $('#colorInput');
   let colorTimer = null, previewRaf = 0;
   const written = new Map();   // cwd → the last colour written, so a rest and the panel closing do not write twice
+  const colorWas = new Map();  // cwd → its colour before the picker moved it: what a refused write goes back to (2026-10-03: the refused colour stayed on the board)
   function note(anchor, text, err) {
     document.querySelectorAll('.note').forEach(n => n.remove());
     const r = anchor?.getBoundingClientRect?.(); if (!r) return;
@@ -3249,7 +3271,7 @@
     colorInput.style.left = r.left + 'px'; colorInput.style.top = r.bottom + 'px';
     colorInput.dataset.tint = prefs.simpleColors ? '1' : '';
     colorInput.dataset.cwd = sq.dataset.cwd; colorInput.value = prefs.simpleColors ? simpleTint() : ownColor(sq.dataset.cwd) || '#b9b9b3';
-    written.set(sq.dataset.cwd, colorInput.value);
+    written.set(sq.dataset.cwd, colorInput.value); colorWas.set(sq.dataset.cwd, state.peacock[sq.dataset.cwd] ?? null);
     try { colorInput.showPicker(); } catch { colorInput.click(); }
   }
   const setPeacock = async (cwd, hex) => {
@@ -3258,7 +3280,7 @@
     written.set(cwd, hex);
     let d;
     try { d = await api(hex ? 'PUT' : 'DELETE', '/api/peacock', { cwd, color: hex }); }
-    catch (e) { written.delete(cwd); note(sqFor(cwd), e.status === 404 ? 'Could not write the colour: the running server predates this page and has no route for it — scripts/launchd.sh restart' : `Could not write the colour: ${e.message}`, true); return; }
+    catch (e) { written.delete(cwd); if (colorWas.has(cwd)) previewColor(cwd, colorWas.get(cwd)); note(sqFor(cwd), e.status === 404 ? 'Could not write the colour: the running server predates this page and has no route for it — scripts/launchd.sh restart' : `Could not write the colour: ${e.message}`, true); return; }
     note(sqFor(cwd), `${hex ? 'Written to' : 'Removed from'} ${homePath(d.file)}${d.tracked ? ' — git tracks that file, so it shows in git status' : ''}`);
   };
   function previewColor(cwd, hex) {
@@ -3276,7 +3298,7 @@
     const sq = e.target.closest('.sq.pick'); if (!sq) return;
     e.stopPropagation(); e.preventDefault();
     if (e.altKey && prefs.simpleColors) setTint(null);
-    else if (e.altKey) { colorAt = '#shead'; previewColor(sq.dataset.cwd, null); setPeacock(sq.dataset.cwd, null); } else openColorPicker(sq);
+    else if (e.altKey) { const cwd = sq.dataset.cwd; colorAt = '#shead'; colorWas.set(cwd, state.peacock[cwd] ?? null); written.delete(cwd); previewColor(cwd, null); setPeacock(cwd, null); } else openColorPicker(sq);   // always asked: what was written last may have been set again elsewhere
   }, true);
   $('#sessions').addEventListener('click', e => {
     if (e.target.closest('#stitle .sx')) { selectProject(ALL); return; }
@@ -3302,14 +3324,18 @@
     $('#pdel').hidden = !p;
     dlg.showModal(); repostPane(); $('#pname').focus();
   }
+  let projectSaving = false;   // ⏎ twice, or a double click on Save, made the project twice
   async function saveProject() {
     const dlg = $('#pdlg'), id = dlg.dataset.id;
     const name = $('#pname').value.trim(); if (!name) { $('#pname').focus(); return; }
+    if (projectSaving) return;
     const cwds = [...$('#pfolders').querySelectorAll('input:checked')].map(i => i.value);
     cwds.push(...$('#pextra').value.split('\n').map(x => x.trim()).filter(Boolean));
     let d;
+    projectSaving = true;
     try { d = await api(id ? 'PUT' : 'POST', id ? `/api/projects/${id}` : '/api/projects', { name, cwds: [...new Set(cwds)] }); }
     catch (e) { $('#perr').textContent = e.message; return; }
+    finally { projectSaving = false; }
     dlg.close();
     if (d.project) selectProject('c:' + d.project.id);   // the `projects` event re-renders with it
   }
@@ -3521,7 +3547,7 @@
       '<div class="sep"></div>',
       `<button class="hmi" id="settingsBtn" title="The board's settings, its setup and its keys">${ICON.cog}<span>settings</span><span class="k">⌘,</span></button>`,
     ].join('');
-    if (menuHtml !== drawn.menu) { menu.innerHTML = drawn.menu = menuHtml; phaseAnims(); if (menu.open) placeMenu(); }   // the state dot's pulse, rebuilt with the menu
+    if (menuHtml !== drawn.menu) { menu.innerHTML = drawn.menu = menuHtml; fillAges(menu); phaseAnims(); if (menu.open) placeMenu(); }   // the state dot's pulse, rebuilt with the menu — and its age, which the markup leaves out
     if (state.prsFor !== s.id) { state.prsFor = s.id; state.prsAll = false; }   // "more" is per chat, not sticky
     const pl = $('#prlist'); pl.hidden = !prs.length || !prsOpen;   // the rows are there folded too — ⌥⌘G and the harness read them
     const prsHtml = prs.map((pr, i) => prRow(pr, i >= PR_ROWS && !state.prsAll)).join('')
@@ -3639,7 +3665,7 @@
   }
   function openMenu() {
     const s = state.sessions.get(state.current); if (s) renderHead(s);   // the rows read page state too (the editor's tab), which no SSE update redraws
-    const m = $('#hmenu'); m.show(); placeMenu(); repostPane();
+    const m = $('#hmenu'); m.show(); fillAges(m); placeMenu(); repostPane();   // the state dot's age: written here, not left to the 30 s tick
     if (m.contains(document.activeElement)) document.activeElement.blur();   // show() focuses the first row, which then wears a ring it did not earn
     $('#moreBtn')?.classList.add('on'); $('#moreBtn')?.setAttribute('aria-expanded', 'true');
   }
@@ -4887,7 +4913,7 @@
     es.addEventListener('pins', e => { state.pins = JSON.parse(e.data).pins || []; renderBoardSoon(); });
     es.addEventListener('hidden', e => { state.hidden = JSON.parse(e.data).hidden || []; renderBoard(); if ($('#pick').open) pickRender(); });
     es.addEventListener('notifications', e => { state.notifications = JSON.parse(e.data).on !== false; showNotify(); });
-    es.addEventListener('config', e => { state.config = JSON.parse(e.data); configChanged(); });
+    es.addEventListener('config', e => { const c = JSON.parse(e.data); if (JSON.stringify(c) === JSON.stringify(state.config)) return; state.config = c; configChanged(); });   // the echo of a save made here is no news
     es.addEventListener('terminal', e => {
       const t = JSON.parse(e.data);
       const term = termFor(t.id); if (!term) return;
