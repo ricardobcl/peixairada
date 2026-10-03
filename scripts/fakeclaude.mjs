@@ -77,7 +77,9 @@ function drawLive() {
   if (lastRows > r) out(at(r, 1) + '\n'.repeat(lastRows - r));
   const top = r - LIVE + 1, from = lastRows && lastRows < r ? Math.min(top, lastRows - LIVE + 1) : top;
   lastRows = r;
-  out(`\x1b[?25l${at(from, 1)}\x1b[J`);
+  // erased from the old region's top, drawn at the bottom: drawn from the old top (2026-10-03), the region sat mid-screen
+  // after a grow while the cursor went to the bottom rows — a key typed then landed in the transcript
+  out(`\x1b[?25l${at(from, 1)}\x1b[J${at(top, 1)}`);
   out(`\x1b[2m${rule()}\x1b[0m\n`);
   out(`\x1b[1m❯\x1b[0m ${input}\n`);
   out(`\x1b[2m${rule()}\x1b[0m\n`);

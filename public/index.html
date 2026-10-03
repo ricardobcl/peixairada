@@ -2892,7 +2892,9 @@
     if (e.ctrlKey || e.shiftKey || !e.metaKey) return;
     const mods = e.altKey ? 'altcmd' : 'cmd';
     if (!(mods === 'cmd' ? CMDKEYS : HOTKEYS)[e.code]) return;
-    e.preventDefault(); e.stopPropagation(); runHotkey(e.code, mods);
+    e.preventDefault(); e.stopPropagation();
+    if (e.repeat && !e.code.startsWith('Arrow')) return;   // a key held down is one press — the arrows walk on
+    runHotkey(e.code, mods);
   }, true);
   window.peixKey = runHotkey;
   // …and tells the page whether the pane is up and where its edge is (points = this view's CSS px) — the board
@@ -2980,6 +2982,7 @@
     if (fresh) {
       try { s.shell = (await api('POST', `/api/sessions/${s.id}/shell`, termSize())).terminal; }   // the SSE update says the same a moment later
       catch (e) { return note($('#shead'), e.message, true); }
+      if (state.current !== s.id) return;   // another chat by now: its tab waits on this one, not over that
     }
     if (fresh) openNewTab(s, 'shell'); else setTab(s, 'shell');
     syncTerm(s); focusBoard(); focusTerm();
@@ -3290,20 +3293,22 @@
   const post = m => window.webkit?.messageHandlers?.hub?.postMessage(m);
   const GH_PR = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/;
   const IN_PANE = /^https?:\/\//;   // every web page (2026-09-26; GitHub and the board's own before, the rest went to the browser)
-  const IDE_URL = /^http:\/\/127\.0\.0\.1:\d+\//;   // VS Code Web, served by the board
-  function openExternal(url) {
+  /** `ide`: the folder's editor, which only the editor's own row opens (2026-10-03; any http://127.0.0.1:<port>/ was
+   *  taken for it before — a dev server's link replaced the folder's editor). `s`: the chat it is for, the open one
+   *  unless said — an answer that comes after that chat was left records its tab there and shows nothing. */
+  function openExternal(url, { ide = false, s = state.sessions.get(state.current) } = {}) {
     if (!inApp) { window.open(url, '_blank', 'noopener'); return; }
-    const s = state.sessions.get(state.current);
     if (!IN_PANE.test(url) || !s) { post({ type: 'external', url }); return; }   // vscode://, mailto:… — the system's
     // A page of the chat, on a tab of its own in the strip (2026-09-20): web pages one per URL, in the order first
     // opened — a PR, a docs page, a dev server (2026-09-26; the strip's ↗ is the way out to the browser); the folder's
     // editor, one per folder. Remembered here so they come back with the chat; the shell keeps a web view per page and
     // shows the one the tab says (syncTerm → postPane). The key's `gh:` is the name every page tab kept from when
     // GitHub's were the only ones.
-    const gh = !IDE_URL.test(url);
+    const gh = !ide;
     let fresh = false;
     if (gh) { const l = state.paneGh.get(s.id) || []; fresh = !l.includes(url); if (fresh) l.push(url); state.paneGh.set(s.id, l); }
     else if (s.cwd) { fresh = state.paneIde.get(s.cwd) !== url; state.paneIde.set(s.cwd, url); }
+    if (s.id !== state.current) return;
     const k = (gh ? 'gh:' : 'ide:') + url;
     if (fresh) openNewTab(s, k); else setTab(s, k);   // a page opened again is the tab it already has
     syncTerm(s);
@@ -3424,7 +3429,11 @@
   // the chat as it is now. A rename edits the title in place, so it forces the next draw (editTitle).
   const drawn = { head: null, menu: null, prs: null };
   function renderHead(s) {
-    if (state.titleEdit === s.id) return;   // a rename in progress: leave the header alone until it ends
+    // The open chat's only (2026-10-03): a timer or an answer that came after the chat was left — the take-over's
+    // disarm, its spawn, the focus view's wait — drew its chat's header, menu and window title over the open one's.
+    if (!s || s.id !== state.current) return;
+    if (state.titleEdit === s.id && $('#shead .tedit')) return;   // a rename in progress: leave the header alone until it ends
+    state.titleEdit = null;   // …one whose box went with a header drawn for another chat is over
     $('#chat').classList.toggle('vsc', inVsCode(s));
     tintChat(repoColor(s.cwd));
     // One row: title · [dot+age] · buttons. No status word — the dot carries it in colour; what it cannot say is how
@@ -3484,7 +3493,7 @@
       try {
         const d = await api('POST', '/api/vscode-web');
         wb.querySelector('.lbl').textContent = 'VS Code Web';
-        menu.close(); openExternal(`${d.url}?folder=${encodeURIComponent(s.cwd)}`);
+        menu.close(); openExternal(`${d.url}?folder=${encodeURIComponent(s.cwd)}`, { ide: true, s });
       } catch (e) { wb.classList.add('err'); wb.title = e.message; wb.querySelector('.lbl').textContent = 'failed'; note(seen(wb), `VS Code Web: ${wb.title}`, true); }
       finally { wb.disabled = false; }
     };
@@ -3758,6 +3767,9 @@
   // bottom instead of pulling the scrollback back down, and the session stays stuck at the top of a black pane.
   // The fit addon does the resize itself, so it is what gets wrapped — it clears the renderer first, which a
   // bare resize would not.
+  // Like it, the caller writes nothing to the screen until `done` (toXt holds the socket's frames meanwhile). Unlike it,
+  // the cursor is read at the call, not behind the queue: a fit that waited a tick left the grid at its old size for
+  // the nudge and termSize to read, and an attach nudged the PTY to the wrong height (2026-10-03).
   function refitTerm(xt, rows, resize, done = () => {}) {
     const b = xt.buffer.active;
     const tail = rows > xt.rows && b.baseY > 0
@@ -3766,17 +3778,28 @@
     if (!tail) { resize(); return void done(); }
     xt.write(`\x1b[${tail}B`, () => { resize(); xt.write(`\x1b[${tail}A`, done); });
   }
-  function fitTerm(tm) {
-    if (!tm) { for (const t of terms) fitTerm(t); return; }
+  /** What reaches a drawer's screen, in order — held while a refit runs (see refitTerm). */
+  const toXt = (tm, f) => { if (tm.refits) tm.held.push(f); else f(); };
+  function fitTerm(tm, now = false) {
+    if (!tm) { for (const t of terms) fitTerm(t, now); return; }
     if (!tm.xt || $(tm.el.term).hidden) return;
     let d; try { d = tm.fit.proposeDimensions(); } catch { return; }
     if (!d || !(d.cols > 1) || !(d.rows > 1)) return;
-    if (d.cols !== tm.xt.cols || d.rows !== tm.xt.rows) refitTerm(tm.xt, d.rows, () => { try { tm.fit.fit(); } catch {} });
-    if (prefs.termSize?.cols !== d.cols || prefs.termSize?.rows !== d.rows) { prefs.termSize = { cols: d.cols, rows: d.rows }; savePrefs(); }   // what a drawer started before any xterm exists asks for
-    // Only a size that moved goes to the PTY (2026-09-27): the holder resizes it unchecked, and the body's observer
-    // fires on every frame of a splitter drag — each send was a SIGWINCH and a whole Claude Code repaint. `sent` is
-    // this attachment's: a new socket starts over (attachTerm), so the holder always hears the first size.
-    if (tm.ws?.readyState === 1 && (tm.sent?.cols !== d.cols || tm.sent?.rows !== d.rows)) { tm.sent = { cols: d.cols, rows: d.rows }; tm.ws.send(JSON.stringify({ t: 'resize', cols: d.cols, rows: d.rows })); }
+    if (d.cols !== tm.xt.cols || d.rows !== tm.xt.rows) {
+      tm.refits = (tm.refits || 0) + 1; tm.held ||= [];
+      refitTerm(tm.xt, d.rows, () => { try { tm.fit.fit(); } catch {} }, () => { if (--tm.refits === 0) for (const f of tm.held.splice(0)) f(); });
+    }
+    // The page's grid follows at once; the PTY hears the size once it has stopped moving, 120 ms later — or at once,
+    // `now`, when a socket has just opened (2026-10-03: a splitter drag sent one resize per column it crossed, each a
+    // SIGWINCH and a whole Claude Code repaint; and the prefs were written on every one).
+    clearTimeout(tm.sizeTimer);
+    const send = () => {
+      if (prefs.termSize?.cols !== d.cols || prefs.termSize?.rows !== d.rows) { prefs.termSize = { cols: d.cols, rows: d.rows }; savePrefs(); }   // what a drawer started before any xterm exists asks for
+      // Only a size that moved goes to the PTY (2026-09-27): the holder resizes it unchecked. `sent` is this
+      // attachment's: a new socket starts over (attachTerm), so the holder always hears the first size.
+      if (tm.ws?.readyState === 1 && (tm.sent?.cols !== d.cols || tm.sent?.rows !== d.rows)) { tm.sent = { cols: d.cols, rows: d.rows }; tm.ws.send(JSON.stringify({ t: 'resize', cols: d.cols, rows: d.rows })); }
+    };
+    if (now) send(); else tm.sizeTimer = setTimeout(send, 120);
   }
   // The media query is for the scale of the moment, so it is re-armed after each change; xterm listens to the
   // same change and re-measures in its handler, and the refit must run after that — hence the timeout.
@@ -3835,25 +3858,38 @@
   function showDrawer(tm, on) { $(tm.el.term).hidden = !on; requestAnimationFrame(() => fitTerm(tm)); }
   function attachTerm(tm, t) {
     detachTerm(tm);
-    ensureXterm(tm); tm.xt.reset();
-    Object.assign(tm, { id: t.id, sessionId: t.sessionId, cwd: t.cwd, kind: t.shell ? 'shell' : 'claude', exited: t.exited, sent: null });
+    ensureXterm(tm); tm.xt.reset(); tm.held = [];   // what the last socket had waiting behind a refit is that drawer's
+    Object.assign(tm, { id: t.id, sessionId: t.sessionId, cwd: t.cwd, kind: t.shell ? 'shell' : 'claude', exited: t.exited, sent: null, lost: false });
     drawer.err = null;
     showDrawer(tm, true);
     const ws = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`);
     ws.binaryType = 'arraybuffer'; tm.ws = ws;
-    ws.onopen = () => { fitTerm(tm); nudgeTerm(tm); if (tm.g === focusG) tm.xt.focus(); readFocusFromScreen(tm); };
+    ws.onopen = () => { tm.retry = 0; fitTerm(tm, true); nudgeTerm(tm); if (tm.g === focusG) tm.xt.focus(); readFocusFromScreen(tm); };
     ws.onmessage = e => {
-      if (typeof e.data !== 'string') return tm.xt.write(new Uint8Array(e.data));
+      if (tm.ws !== ws) return;
+      if (typeof e.data !== 'string') { const data = new Uint8Array(e.data); return toXt(tm, () => tm.xt.write(data)); }
       const m = JSON.parse(e.data);
       if (m.t === 'exit') termEnded(tm, m.code);
-      else if (m.t === 'clear') tm.xt.write('', () => tm.xt.clear());   // after what is already queued, or it repaints over the clear (see termhold)
+      else if (m.t === 'clear') toXt(tm, () => tm.xt.write('', () => tm.xt.clear()));   // after what is already queued, or it repaints over the clear (see termhold)
     };
-    ws.onclose = () => { if (tm.ws === ws) tm.ws = null; };
+    // The socket dropped with the drawer still running — a server restart, a holder adopted again — or never opened:
+    // the drawer is `lost`, and the open chat is synced again a moment later, which attaches anew (2026-10-03: the
+    // last screen stayed up, every key went nowhere, and only a reload brought it back). Backing off to 5 s while the
+    // server is down; an exit or another chat ends it (attachTerm and detachTerm clear `lost`).
+    ws.onclose = () => {
+      if (tm.ws !== ws) return;
+      tm.ws = null;
+      if (tm.exited !== null || !tm.id) return;
+      tm.lost = true; tm.retry = (tm.retry || 0) + 1;
+      clearTimeout(tm.retryTimer);
+      tm.retryTimer = setTimeout(() => { const s = state.sessions.get(state.current); if (tm.lost && s) syncTerm(s); }, Math.min(5000, 250 * 2 ** tm.retry));
+    };
   }
   function detachTerm(tm) {
     const ws = tm.ws; tm.ws = null;
     if (ws) { ws.onclose = null; ws.close(); }
-    Object.assign(tm, { id: null, sessionId: null, cwd: null, kind: null, exited: null, sent: null });
+    clearTimeout(tm.retryTimer);
+    Object.assign(tm, { id: null, sessionId: null, cwd: null, kind: null, exited: null, sent: null, lost: false });
   }
   // The process ended: the drawer goes and the transcript is the pane again (a stale chat now — the composer shows).
   // A new chat that died before it registered says so where its transcript would be.
@@ -3962,7 +3998,7 @@
     for (const tm of terms) {
       const k = p[tm.g];
       const want = !s || !k ? null : k === 'shell' ? s.shell : k === 'chat' && termLive(s) ? s.terminal : null;
-      if (want) { if (tm.id !== want.id) attachTerm(tm, want); }
+      if (want) { if (tm.id !== want.id || tm.lost) attachTerm(tm, want); }
       else if (tm.id) { detachTerm(tm); showDrawer(tm, false); }
     }
     placeLog(s, p);
@@ -4280,21 +4316,33 @@
     const tb = $('#termBtn'); if (tb) { tb.disabled = true; const l = tb.querySelector('.lbl'); if (l) l.textContent = 'ending…'; }
     let d = null;
     try { d = await api('POST', `/api/sessions/${s.id}/takeover`, termSize()); } catch (e) { drawer.err = e.message; }
-    if (d) attachTerm(curTerm(), d.terminal);
+    if (d) showTerminal(s, d.terminal);
     renderHead(state.sessions.get(s.id) || s);
   }
   async function openTerminalFor(s) {
     if (termLive(s)) { syncTerm(s); renderHead(s); return; }
-    try { attachTerm(curTerm(), (await api('POST', `/api/sessions/${s.id}/terminal`, termSize())).terminal); } catch (e) { drawer.err = e.message; }
+    try { showTerminal(s, (await api('POST', `/api/sessions/${s.id}/terminal`, termSize())).terminal); } catch (e) { drawer.err = e.message; }
     renderHead(s);
+  }
+  /** A drawer the server just started for `s`, attached in the half that holds its chat tab — if `s` is still the open
+   *  chat (2026-10-03: attached into whatever half had the keys, under whichever chat was open by then). Otherwise the
+   *  chat's summary carries it, and opening the chat again shows it. */
+  function showTerminal(s, t) {
+    const cur = state.sessions.get(s.id) || s; cur.terminal = t;
+    if (state.current === s.id) syncTerm(cur);
   }
   // The >_ button and ⌥⌘C: the chat's claude session — the drawer it runs in, started if need be, or — live
   // elsewhere — arm and, pressed again, take over. The terminal takes the keyboard at the end: attachTerm does that
   // when its socket opens, this covers one that was already showing (⌥⌘C as "put me in the terminal").
+  const termAsking = new Set();   // the chats whose drawer is being asked for: a second press meanwhile is the same press
   async function termAction(s) {
+    if (termAsking.has(s.id)) return;
     drawer.err = null; showChat(s);
-    if (takeable(s)) await (drawer.arm === s.id ? takeOver(s) : armTakeOver(s));
-    else await openTerminalFor(s);
+    termAsking.add(s.id);
+    try {
+      if (takeable(s)) await (drawer.arm === s.id ? takeOver(s) : armTakeOver(s));
+      else await openTerminalFor(s);
+    } finally { termAsking.delete(s.id); }
     focusTerm();
   }
   // A new chat in a folder: `claude` there — unless the folder's Taskfile launches claude itself (oracle's `task
@@ -4352,7 +4400,7 @@
     applyChatZoom(); savePrefs(); e.preventDefault();
     return true;
   }
-  document.addEventListener('keydown', e => { if (!e.target.closest?.('#termBody')) chatZoomKey(e); });
+  document.addEventListener('keydown', e => { if (!e.target.closest?.('.tbody')) chatZoomKey(e); });   // either half's drawer did it already
   applyChatZoom();
 
   // ---- composer: reply into a stale chat -----------------------------------------------
@@ -4383,12 +4431,16 @@
   // the drawer's claude reads the Mac clipboard itself on ⌃V (verified: `[Image #1]` on the prompt line), so
   // that key is sent for it; in a browser elsewhere the clipboard is that machine's, so the image is uploaded.
   const atMention = p => '@' + p.replace(/ /g, '\\ ');
+  const shellWord = p => `'${p.replace(/'/g, `'\\''`)}'`;
   function attachPaths(paths) {
     if (!paths.length) return false;
     const text = paths.map(atMention).join(' ') + ' ';
     const s = state.sessions.get(state.current);
-    const tm = terms.find(t => t.id && t.xt && t.exited === null && t.sessionId === state.current);
-    if (tm) { focusGroup(tm.g); termSend(tm, text); tm.xt.focus(); return true; }
+    // the drawer in the half with the keys, else the claude one: a zsh holder carries the chat's id too, and a drop
+    // on the zsh tab typed an @-mention into the shell (2026-10-03) — a shell gets the path quoted as a shell word
+    const live = terms.filter(t => t.id && t.xt && t.exited === null && t.sessionId === state.current);
+    const tm = live.find(t => t.g === focusG) || live.find(t => t.kind === 'claude') || live[0];
+    if (tm) { focusGroup(tm.g); termSend(tm, tm.kind === 'shell' ? paths.map(shellWord).join(' ') + ' ' : text); tm.xt.focus(); return true; }
     if (!$('#composer').hidden) {
       const ta = $('#composeText'), a = ta.selectionStart ?? ta.value.length, b = ta.selectionEnd ?? a;
       ta.value = ta.value.slice(0, a) + text + ta.value.slice(b); ta.selectionStart = ta.selectionEnd = a + text.length;
@@ -4448,16 +4500,17 @@
       // on success the registry changes and the SSE update re-renders the head, bar included
     };
   }
+  let replySending = false;   // a quick second ⏎ sent the same text again, and came back a 409 shown as an error
   async function sendReply() {
     const id = state.current, ta = $('#composeText'), hint = $('#composeHint'), text = ta.value.trim();
-    if (!id || !text) return;
-    $('#composeSend').disabled = true;
+    if (!id || !text || replySending) return;
+    replySending = true; $('#composeSend').disabled = true;
     try {
       await api('POST', `/api/sessions/${id}/reply`, { text });
-      ta.value = '';   // the prompt comes back through the transcript like any other line
+      if (state.current === id && ta.value.trim() === text) ta.value = '';   // the prompt comes back through the transcript like any other line; a draft typed since — another chat's — stays
     } catch (e) {
       hint.className = 'hint err'; hint.textContent = e.message; $('#composeSend').disabled = false;
-    }
+    } finally { replySending = false; }
   }
   $('#composeSend').onclick = sendReply;
   $('#composeText').addEventListener('input', () => {
