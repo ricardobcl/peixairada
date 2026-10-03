@@ -28,7 +28,10 @@ NODE="$(cd "$(dirname "$NODE")" && pwd -P)/$(basename "$NODE")"   # launchd has 
 # The CLIs the server shells out to — claude, gh, task, code — are wherever this shell finds them (Homebrew, mise or
 # asdf shims, ~/.local/bin), so the agent gets this PATH, then the system's: a fixed Homebrew-only PATH left a gh
 # installed by mise unfound, and the PR states silently off. Absolute entries only, once each, escaped for the plist.
-AGENT_PATH=$(printf '%s' "$PATH:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin" | awk -v RS=: -v ORS=: '/^\// && !seen[$0]++' | sed -e 's/:$//' -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
+# Every value in the plist is escaped for XML (2026-10-03: the PATH only before — a folder with an & in its name left
+# a plist launchd refused, after the old agent had already been booted out).
+xml() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
+AGENT_PATH=$(xml "$(printf '%s' "$PATH:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin" | awk -v RS=: -v ORS=: '/^\// && !seen[$0]++' | sed -e 's/:$//')")
 
 plist() {
   cat <<PLIST
@@ -38,18 +41,18 @@ plist() {
 <dict>
   <key>Label</key><string>$LABEL</string>
   <key>ProgramArguments</key>
-  <array><string>$NODE</string><string>$DIR/server.mjs</string></array>
-  <key>WorkingDirectory</key><string>$DIR</string>
+  <array><string>$(xml "$NODE")</string><string>$(xml "$DIR/server.mjs")</string></array>
+  <key>WorkingDirectory</key><string>$(xml "$DIR")</string>
   <key>EnvironmentVariables</key>
   <dict>
-    <key>PORT</key><string>$PORT</string>
-    <key>NOTIFY</key><string>$NOTIFY</string>
+    <key>PORT</key><string>$(xml "$PORT")</string>
+    <key>NOTIFY</key><string>$(xml "$NOTIFY")</string>
     <key>PATH</key><string>$AGENT_PATH</string>
   </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
-  <key>StandardOutPath</key><string>$LOG</string>
-  <key>StandardErrorPath</key><string>$LOG</string>
+  <key>StandardOutPath</key><string>$(xml "$LOG")</string>
+  <key>StandardErrorPath</key><string>$(xml "$LOG")</string>
 </dict>
 </plist>
 PLIST
@@ -72,18 +75,20 @@ esac
 case "${1:-}" in
   install)
     mkdir -p "$(dirname "$PLIST")" "$(dirname "$LOG")"
+    # the new plist checked before the old agent goes: a plist launchd refuses must not leave no agent at all
+    plist > "$PLIST.new" && plutil -lint "$PLIST.new" >/dev/null || { echo "the plist does not lint — the agent is left as it was: $PLIST.new" >&2; exit 1; }
     launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
-    plist > "$PLIST"
+    mv "$PLIST.new" "$PLIST"
     launchctl bootstrap "gui/$(id -u)" "$PLIST"
     echo "installed $LABEL → http://127.0.0.1:$PORT   (log: $LOG, notify=$NOTIFY)"
     # The app's own server holds the port until the app quits; the agent's waits for it (server.mjs retries
     # a busy port). Hand over: quit the app, let the agent bind, open the app again — it adopts what answers.
     if pgrep -xq peixAIrada; then
-      echo "› peixAIrada is running on its own server: quitting it so the agent takes the port (every drawer ends)"
+      echo "› peixAIrada may be running on its own server: quitting it so the agent takes the port (the drawers stay — each has its holder)"
       osascript -e 'quit app "peixAIrada"' 2>/dev/null || true
       i=0; while pgrep -xq peixAIrada && [ $i -lt 20 ]; do sleep 1; i=$((i+1)); done
-      i=0; while ! curl -sf -o /dev/null "http://127.0.0.1:$PORT/api/sessions" && [ $i -lt 30 ]; do sleep 1; i=$((i+1)); done
-      if curl -sf -o /dev/null "http://127.0.0.1:$PORT/api/sessions"; then open -a peixAIrada && echo "› agent answering; peixAIrada reopened and adopts it"
+      i=0; while ! curl -sf -o /dev/null "http://127.0.0.1:$PORT/api/projects" && [ $i -lt 30 ]; do sleep 1; i=$((i+1)); done
+      if curl -sf -o /dev/null "http://127.0.0.1:$PORT/api/projects"; then open -a peixAIrada && echo "› agent answering; peixAIrada reopened and adopts it"
       else echo "› the agent is not answering on $PORT yet — see $LOG; open the app once it does" >&2; fi
     fi;;
   restart)

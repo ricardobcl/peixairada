@@ -7,6 +7,7 @@
 set -eu
 DIR=$(cd "$(dirname "$0")" && pwd -P)
 ROOT=$(cd "$DIR/.." && pwd -P)
+command -v node >/dev/null || { echo "node not found on PATH — the one that ran npm install is bundled" >&2; exit 1; }
 VERSION=$(node -p "require('$ROOT/package.json').version")   # the one version, package.json's — the About box shows it
 BUILD="$DIR/build"
 APP="$BUILD/peixAIrada.app"
@@ -17,7 +18,7 @@ MIN_OS=13.0
 TARGET="$(uname -m)-apple-macosx$MIN_OS"
 
 case "${1:-build}" in
-  clean) rm -rf "$BUILD" "$DIR/icon/makeicon" "$DIR/icon/peixAIrada.iconset" "$DIR/icon/peixAIrada.icns"; echo "cleaned"; exit 0;;
+  clean) rm -rf "$BUILD" "$DIR/icon/makeicon" "$DIR/icon/peixAIrada.iconset" "$DIR/icon/peixAIrada.icns" "$DIR"/icon/preview-*.png; echo "cleaned"; exit 0;;
   build|install) ;;
   *) sed -n '2,6p' "$0"; exit 1;;
 esac
@@ -109,12 +110,15 @@ fi
 if [ "$ID" = - ]; then echo "› sign (ad-hoc — privacy grants will not survive the next install)"
 else echo "› sign ($(printf '%s\n' "$IDS" | grep -F "$ID" | sed 's/.*"\(.*\)".*/\1/'))"; fi
 codesign --force --deep -s "$ID" "$APP"
-codesign --verify --deep "$APP" && echo "  signature OK"
+# not `verify && echo`: set -e lets the left side of an && fail, and an app that does not verify went on to be installed
+codesign --verify --deep "$APP" || { echo "the signature does not verify — not installing" >&2; exit 1; }
+echo "  signature OK"
 
 if [ "${1:-build}" = install ]; then
   echo "› install"
   osascript -e 'quit app "peixAIrada"' 2>/dev/null || true
   for _ in 1 2 3 4 5 6 7 8 9 10; do pgrep -xq peixAIrada || break; sleep 0.5; done   # the copy must not land on a running app (a fixed second did not always cover the quit)
+  if pgrep -xq peixAIrada; then echo "peixAIrada is still running after 5 s — quit it and run this again (nothing was replaced)" >&2; exit 1; fi
   rm -rf /Applications/peixAIrada.app
   cp -R "$APP" /Applications/
   # notifications are tied to the bundle's identity, so register the installed copy explicitly
