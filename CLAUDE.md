@@ -321,13 +321,17 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   move*), the newest move's `#n` and reason, `+n PRs`; **the chat header says it too** (`headMove`, `.hmove`, just
   before the PR chips), and the PR row in `.why`. The chat also ranks by the move (see the order below).
 * **The card's PR chips end its top row, stacked** (`cardPrs`, `.top .tprs`, 2026-09-28; a stack since 2026-10-04):
-  three in the chat's order — every one at your move among them — and a dashed `+n` for the rest, the first on top at
-  the row's end, each one under it 5 px further left, a sliver of its colour showing; **the pointer on the stack fans
-  them out** side by side, and the row makes room. CSS only: every chip in the grid's last column, the widest chip's
-  width, moved by a transform (`--i`, its depth); the empty columns before it (`--under`) are `0fr` stacked and `1fr`
-  fanned, so the grid's own width follows the fan, on the transform's curve. `overflow: clip`, never hidden (a scroll
-  container's least width is 0, and a tight row squeezed the stack before the folder's name).
-  → `scripts/scenarios/card-pr-stack.mjs`. **Before them, the faces** (`cardFaces`, `.top .faces`, 2026-09-29):
+  every PR the chat mentions, the first on top at the row's end and three under it 5 px further left each, a sliver
+  of their colour showing (the first four in the chat's order, every one at your move among them), the rest under the
+  third; **the pointer on the stack fans them all out** side by side, the row makes room, and **a fan wider than the
+  row's free room scrolls** — a sideways swipe, or a wheel turned over it (`fanWheel`, its own non-passive listener,
+  added on `pointerover`; down is deeper, leftwards); the pointer gone, it scrolls back as it closes. CSS only: the
+  grid runs right to left (what overflows it does on the left, where a scroll container reaches), every chip in its
+  first column, the widest chip's width and a 5 px margin, moved by a transform (`--d` its depth stacked, `--i` its
+  place fanned); the empty columns after it (`--under`, one per sliver) are `0fr` stacked and `--span` fanned, the
+  gaps going to 0, so the grid's own width follows the fan on the transform's curve. The box is `flex: 999 0 0`
+  between `min-content` (the stack) and `max-content` (the fan): it takes the row's free room and never the folder's
+  name. → `scripts/scenarios/card-pr-stack.mjs`. **Before them, the faces** (`cardFaces`, `.top .faces`, 2026-09-29):
   who else had a hand in the chat's PRs, merged across them, newest first — three GitHub avatars overlapping (an
   initial when there is no `avatar`) and `+n`; the tooltip says what each did, PR by PR. The images come from GitHub's
   avatar host; the tests hand the fake gh `data:` faces so nothing is fetched.

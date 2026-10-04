@@ -34,8 +34,8 @@ It reads what Claude Code already writes to `~/.claude` — no plugin, no privat
 - 🖥️ **Claude in a drawer** — resume any chat in the real Claude Code terminal, inside the board. Drawers survive
   restarts; chats running in iTerm or VS Code can be taken over.
 - 🔔 **Alerts** — a notification when a chat finishes or needs you; a Dock badge and menu-bar list in the app.
-- 🐙 **PRs** — chips in GitHub's colours, stacked on a card and fanned out under the pointer; a chat with an open PR
-  is named after it. A PR you reviewed or wrote fills in, notifies you and brings its ticked chat back when it's your
+- 🐙 **PRs** — chips in GitHub's colours, stacked on a card and fanned out under the pointer (scroll them when they're
+  more than fit); a chat with an open PR is named after it. A PR you reviewed or wrote fills in, notifies you and brings its ticked chat back when it's your
   move again — a push, a reply, a review.
 - 🎨 **Projects** — folders in their [Peacock](https://marketplace.visualstudio.com/items?itemName=johnpapa.vscode-peacock)
   colour, or named sets of folders.

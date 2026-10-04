@@ -45,6 +45,44 @@ ones below, by drifting to the left".
   and sliver, which numbers show, the ✓ moved by what the fan took, a click on the third chip, the stack back, two of
   one colour, a lone chip, the fan at once under reduced motion.
 
+### Later the same day — the fan scrolls, and holds every PR
+
+Ricardo: "when hovering and it's expanded, allow to scroll the list of PRs".
+
+* **Every PR is in the stack now**, the `+n` gone: what it hid is what the scroll is for. At rest the stack looks as
+  it did — the top chip and three slivers (the first four in the chat's order, every one at your move among them) —
+  and the rest lie under the third sliver, so a chat on eight PRs is no wider than one on four.
+* **The fan takes the row's free room and scrolls past it**, rather than push the folder's name or run off the card:
+  the box is `flex: 999 0 0` — a basis of nothing and all the grow, so it takes the free room before the spacer does —
+  between `min-width: min-content` (the stack, so a tight row still takes the name down first) and
+  `max-width: max-content` (the fan, so the spacer gets the rest). Because it is always so, the box's width is
+  `min(the fan as it slides, the room)` coming and going: with the old `flex: 0 1 auto` at rest, the box would have
+  jumped to the whole fan's width the moment the pointer left. `overflow: clip` gave way to the scroll container;
+  `min-content` keeps its promise (a scroll container's own least width is 0).
+* **The grid runs right to left**: a scroll container reaches what overflows it at its end, and an LTR box's end is
+  the right — the fan grows left. With `direction: rtl` the chips' column is the first, on the right, the spacers
+  follow to the left, the scroll starts at the top chip, and `scrollLeft` runs negative into the stack. The chips set
+  `direction: ltr` back. What scrolls is the chips' transformed boxes: once the box is narrower than the fan, the
+  flexible spacers shrink to fit it, and the transforms carry the chips past.
+* **The slivers stay three with any number under them**, so the spacers can no longer be one per chip: there is one
+  per sliver (`--under`), `0fr` stacked with the 5 px gaps, and fanned each `--span` chips wide (`(n − 1) / under`,
+  in fr, from `cardPrs`) with the gap at 0 — the 5 px between fanned chips is a margin on each chip instead, which
+  makes the column the chip and its margin (and puts 5 px past the deepest sliver, which `margin-left: -5px` on the
+  box lays under the row's gap). Transform and track still move together: the box's edge is the deepest chip's, 5 px
+  out, all the way.
+* **A wheel turned over the fan scrolls it** (`fanWheel`): a trackpad's sideways swipe scrolls it natively; a vertical
+  turn would have scrolled the list, carrying the card from under the pointer and closing the fan. Down is deeper,
+  leftwards. Only while the fan overflows, so a wheel over a stack at rest is still the list's. The listener is the
+  stack's own, added on the first `pointerover` (a rebuilt card is a new node and gets one the same way): a
+  non-passive wheel listener on `#slist` would make every scroll of the list wait on the page.
+  `overscroll-behavior-x: contain` keeps a swipe past its end from turning into the browser's back gesture.
+* **The pointer gone, the fan scrolls back** (smooth, or at once under reduced motion) while it closes: left scrolled,
+  the shrinking scroll range would pin the view to the deepest chip, and the stack close round it backwards.
+* Probed in WebKit on the board: the same rects at rest and fanned, the box the free room (224 of 355 px), the
+  folder's name untouched, and the page's own wheel handler taking the fan to `scrollLeft` −131, the deepest chip at
+  the box's edge. The scenario now runs on eight PRs: at rest, fanned, wheeled to the end and back, a sideways swipe,
+  a click on the deepest, and back at the start once the pointer leaves.
+
 ## Decisions of 2026-10-03, night — the menu bar left out beside the notch
 
 Ricardo, back on the MacBook: "seems like the menu bar when the screen has a notch, is not disapearing anymore when

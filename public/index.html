@@ -679,18 +679,24 @@
      state worth a word. Entrypoint, session name and branch live in the chat header. */
   .card .state { font-size: 11px; font-weight: 600; margin-top: 4px; }
   /* the PRs it mentions: number and GitHub's state colour, nothing more; a click opens that PR. Last in the top row
-     (cardPrs), and a stack since 2026-10-04: the first on top at the row's end, each one under it 5 px further left, so
-     a sliver of its colour shows; the pointer on the stack fans them out side by side, and the row makes room.
-     Every chip is in the grid's last column and that column's width — the widest chip's —, moved by a transform: 5 px
-     a step stacked (--i, its depth), its own width and the gap fanned. The columns before it are empty, one per chip
-     under the top one (--under): 0fr stacked, nothing but their gaps, which the slivers fill; 1fr fanned, each the
-     chips' width — so the grid's own width follows the fan, and the faces and the ✓ slide with it. The two
-     transitions share their curve, so the stack's edge and its last chip move together. A lone chip has no --under:
-     the template is invalid, the grid none, the chip its own width. `overflow: clip`, not hidden: a scroll
-     container's least width is 0, this one's is the stack's, so a tight row takes the folder's name down first. */
-  .card .top .tprs { flex: 0 1 auto; display: grid; grid-template-columns: repeat(var(--under), 0fr) 1fr; column-gap: 5px; overflow: clip; transition: grid-template-columns .22s cubic-bezier(.2, .7, .2, 1); }
-  .card .top .tprs:hover { grid-template-columns: repeat(var(--under), 1fr) 1fr; }
-  .card .top .tprs > * { grid-area: 1 / -2; z-index: calc(9 - var(--i, 0)); text-align: center; white-space: nowrap; transform: translateX(calc(var(--i, 0) * -5px)); }
+     (cardPrs), and a stack since 2026-10-04: the first on top at the row's end, three under it 5 px further left
+     each, so a sliver of their colour shows, and every other one under the third; the pointer on the stack fans them
+     all out side by side, the row makes room, and past the room the fan scrolls (fanWheel).
+     Every chip is in the grid's first column — the right one: the grid runs right to left, so what overflows it does
+     on the left, where a scroll container can reach — and that column's width, the widest chip's and the 5 px margin
+     that spaces the fan out; a transform places each, 5 px a step of depth stacked (--d) and its own width and the
+     margin a step of its place fanned (--i). The columns after it are empty, one per sliver (--under): 0fr stacked,
+     nothing but their gaps, which the slivers fill; --span fanned, that many chips' width each, the gaps gone — so the
+     grid's own width follows the fan, on the same curve, and the faces and the ✓ slide with it. Its box takes what
+     the row has free (a basis of 0 and all the grow, up to its content), never less than the stack, so a tight row
+     takes the folder's name down first and a fan wider than the row scrolls rather than push it. The margin's 5 px
+     past the deepest sliver go under the row's gap. A lone chip has no --under: the template is invalid, the grid
+     none, the chip its own width. */
+  .card .top .tprs { flex: 999 0 0; min-width: min-content; max-width: max-content; margin-left: -5px; display: grid; direction: rtl; grid-template-columns: 1fr repeat(var(--under), 0fr); column-gap: 5px;
+    overflow-x: auto; scrollbar-width: none; transition: grid-template-columns .22s cubic-bezier(.2, .7, .2, 1), column-gap .22s cubic-bezier(.2, .7, .2, 1); }
+  .card .top .tprs::-webkit-scrollbar { display: none; }
+  .card .top .tprs:hover { grid-template-columns: 1fr repeat(var(--under), var(--span)); column-gap: 0; }
+  .card .top .tprs > * { grid-area: 1 / 1; direction: ltr; margin-left: 5px; z-index: calc(999 - var(--i, 0)); text-align: center; white-space: nowrap; transform: translateX(calc(var(--d, 0) * -5px)); }
   .card .top .tprs:hover > * { transform: translateX(calc(var(--i, 0) * (-100% - 5px))); }
   /* #slist: the small controls' one hover ease (below) is an :is() with ids in it, so it weighs an id. */
   #slist .card .top .tprs > * { transition: transform .22s cubic-bezier(.2, .7, .2, 1), clip-path 0s .22s, color .12s, border-color .12s, background-color .12s, box-shadow .12s; }
@@ -718,7 +724,6 @@
   #people.on button:not(.on) { opacity: .35; }
   #people.on button:not(.on):hover { opacity: .8; }
   #people button.on { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent); }
-  .card .cpr.more { color: var(--muted); border-style: dashed; }
   /* a PR as a chip — the card's, and the chat header's (.hpr) since 2026-09-24 */
   :is(.card .cpr, .shead .hpr) { font-size: 10.5px; font-weight: 600; line-height: 16px; border: 1px solid transparent; border-radius: 4px; padding: 0 5px; color: var(--muted); background: var(--ctl); }
   :is(.card .cpr, .shead .hpr)[data-state="open"] { --prc: var(--pr-open); }
@@ -1251,6 +1256,7 @@
   :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
   #slist, #log, #picklist, #pfolders, #prlist, .gterm .tbody, .pop { overscroll-behavior: contain; }
+  .card .top .tprs { overscroll-behavior-x: contain; }   /* sideways only: a wheel down a stack at rest is the list's */
 
   /* ---- reduced motion: the board says the same, still ---- */
   /* (2026-09-27, night) The spinner and the timeline honoured it; the ring, the blink, the pulse and the list's moves did
@@ -1280,8 +1286,8 @@
     .sq.pick, .shead h2 .sq { transition: opacity .12s; }
     #people button:hover, .pop .ssw:hover { transform: none; }
     .pop .opt input::after, #tline .tl-thumb { transition: none; }
-    .card .top .tprs { transition: none; }
-    #slist .card .top .tprs > * { transition: color .12s, border-color .12s, background-color .12s, box-shadow .12s; }   /* the stack fans at once */
+    .card .top .tprs { transition: none; }   /* the stack fans at once */
+    #slist .card .top .tprs > * { transition: color .12s, border-color .12s, background-color .12s, box-shadow .12s; }
   }
 
   /* ---- syntax highlighting (highlight.js class names, our colours) ---- */
@@ -2600,11 +2606,12 @@
     const prs = movedPrs(s); if (!prs.length) return '';
     return `<span class="hmove" title="${esc(moveTip(prs))}"><b class="ymove">${ICON.pr}your move</b><span class="q">${esc(prs[0].label)} · ${esc(prs[0].turn.why)}</span>${prs.length > 1 ? `<span class="n">+${prs.length - 1}</span>` : ''}</span>`;
   }
-  /** The card's PR chips, last in its top row — the F's place, the F left of them (2026-09-28) —: three in the chat's
-   *  order, every one at your move among them, then +n for the rest, its tooltip their labels. A stack since
-   *  2026-10-04, the first on top, fanned out under the pointer (the CSS): `--i` is how deep a chip lies, `--under`
-   *  how many lie under the top one. */
-  const CARD_PRS = 3;
+  /** The card's PR chips, last in its top row — the F's place, the F left of them (2026-09-28) —: every PR the chat
+   *  mentions, a stack since 2026-10-04 (the CSS). The top one and the three slivers under it are the first four in the
+   *  chat's order, every one at your move among them, and the rest follow in that order under the third; the pointer
+   *  on the stack fans them all out. `--i` is a chip's place in the fan, `--d` its depth in the stack, `--under` the
+   *  slivers, `--span` how many chips' width each sliver's column is fanned. */
+  const STACK_SLIVERS = 3;
   /** Who else has had a hand in the chat's PRs — each PR's author, reviewers, commenters and pushers, the server's
    *  `people`, you left out — as GitHub's faces, the newest first: three, and a count for the rest (2026-09-29). The
    *  tooltip says what each did, PR by PR. */
@@ -2628,11 +2635,10 @@
   }
   function cardPrs(s) {
     const prs = s.prs || []; if (!prs.length) return '';
-    const keep = new Set([...prs.filter(p => p.turn?.you), ...prs].slice(0, CARD_PRS)), shown = prs.filter(p => keep.has(p)), rest = prs.filter(p => !keep.has(p));
-    const depth = i => i ? ` style="--i:${i}"` : '';
-    const chips = shown.map((pr, i) => `<a class="cpr"${depth(i)} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}${pr.turn ? '\n' + turnTip(pr) : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`);
-    if (rest.length) chips.push(`<span class="cpr more"${depth(chips.length)} title="${esc(rest.map(p => `${p.label}${p.state ? ` (${p.state})` : ''}${p.title ? ` — ${p.title}` : ''}`).join('\n'))}">+${rest.length}</span>`);
-    return `<span class="tprs"${chips.length > 1 ? ` style="--under:${chips.length - 1}"` : ''}>${chips.join('')}</span>`;
+    const top = new Set([...prs.filter(p => p.turn?.you), ...prs].slice(0, STACK_SLIVERS + 1));
+    const all = [...prs.filter(p => top.has(p)), ...prs.filter(p => !top.has(p))], under = Math.min(all.length - 1, STACK_SLIVERS);
+    const chips = all.map((pr, i) => `<a class="cpr"${i ? ` style="--i:${i};--d:${Math.min(i, under)}"` : ''} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}${pr.turn ? '\n' + turnTip(pr) : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`);
+    return `<span class="tprs"${under ? ` style="--under:${under};--span:${+((all.length - 1) / under).toFixed(3)}fr"` : ''}>${chips.join('')}</span>`;
   }
   function cardHtml(s, p, q = '') {
     const color = repoColor(s.cwd), un = state.unread.get(s.id) || 0;
@@ -3330,6 +3336,22 @@
     if (e.altKey && prefs.simpleColors) setTint(null);
     else if (e.altKey) { const cwd = sq.dataset.cwd; colorAt = '#shead'; colorWas.set(cwd, state.peacock[cwd] ?? null); written.delete(cwd); previewColor(cwd, null); setPeacock(cwd, null); } else openColorPicker(sq);   // always asked: what was written last may have been set again elsewhere
   }, true);
+  // A fanned stack of PRs wider than its row scrolls (2026-10-04): a sideways swipe by itself, and a wheel turned over
+  // it too — down is deeper into the stack, leftwards — rather than the list under it, which would carry the card from
+  // under the pointer and close the fan. Its own listeners, added as the pointer comes (a card's node is new whenever
+  // its markup changes): a wheel listener on the list could not be passive, and every scroll of it would wait on the
+  // page. The pointer gone, the fan is back at its start as it closes.
+  const fanWheel = e => {
+    const t = e.currentTarget;
+    if (t.scrollWidth <= t.clientWidth || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+    e.preventDefault();
+    t.scrollLeft -= e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? t.clientWidth : 1);
+  };
+  const fanLeave = e => e.currentTarget.scrollTo({ left: 0, behavior: REDUCED.matches ? 'auto' : 'smooth' });
+  $('#slist').addEventListener('pointerover', e => {
+    const t = e.target.closest('.card .tprs'); if (!t || t._fan) return;
+    t._fan = true; t.addEventListener('wheel', fanWheel, { passive: false }); t.addEventListener('pointerleave', fanLeave);
+  });
   $('#sessions').addEventListener('click', e => {
     if (e.target.closest('#stitle .sx')) { selectProject(ALL); return; }
     if (e.target.closest('#stitle')) { pickOpen('project'); return; }
