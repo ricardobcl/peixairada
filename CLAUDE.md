@@ -320,9 +320,14 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   after the question's, at every size, not on a ticked card): a tag filled in the accent (`.ymove`: `ICON.pr`, *your
   move*), the newest move's `#n` and reason, `+n PRs`; **the chat header says it too** (`headMove`, `.hmove`, just
   before the PR chips), and the PR row in `.why`. The chat also ranks by the move (see the order below).
-* **The card's PR chips end its top row** (`cardPrs`, `.top .tprs`, 2026-09-28): after the ✓ and the F, three in the
-  chat's order — every one at your move among them — and a dashed `+n` for the rest; a chip past the row's room wraps
-  onto an 18 px line's hidden second line, whole. **Before them, the faces** (`cardFaces`, `.top .faces`, 2026-09-29):
+* **The card's PR chips end its top row, stacked** (`cardPrs`, `.top .tprs`, 2026-09-28; a stack since 2026-10-04):
+  three in the chat's order — every one at your move among them — and a dashed `+n` for the rest, the first on top at
+  the row's end, each one under it 5 px further left, a sliver of its colour showing; **the pointer on the stack fans
+  them out** side by side, and the row makes room. CSS only: every chip in the grid's last column, the widest chip's
+  width, moved by a transform (`--i`, its depth); the empty columns before it (`--under`) are `0fr` stacked and `1fr`
+  fanned, so the grid's own width follows the fan, on the transform's curve. `overflow: clip`, never hidden (a scroll
+  container's least width is 0, and a tight row squeezed the stack before the folder's name).
+  → `scripts/scenarios/card-pr-stack.mjs`. **Before them, the faces** (`cardFaces`, `.top .faces`, 2026-09-29):
   who else had a hand in the chat's PRs, merged across them, newest first — three GitHub avatars overlapping (an
   initial when there is no `avatar`) and `+n`; the tooltip says what each did, PR by PR. The images come from GitHub's
   avatar host; the tests hand the fake gh `data:` faces so nothing is fetched.
@@ -781,6 +786,9 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   first; keep it so when adding to them.
 * `projIcon(name)` marks ⌥⌘O's project wherever its name is written, before the name; `projAbbr` is the folded list's
   squares. Both, and a folder's colour, read the setup by the shown name (`projCfg`) — never a map in the code.
+* **The small controls' hover ease is an `:is()` with ids in it, so it weighs an id** (2026-10-04): a `transition` of
+  its own on a `.cpr`, `.btn`, `.act`… needs an id in its selector (`#slist .card .top .tprs > *`), or it is the
+  ease's, silently — settled rects never show it; ask `getAnimations()` at the move.
 * **Never name a modifier class after something the page also selects by**: the walkers take `#slist > .card`; the
   usage's messages wear `.unote`, since `.note` is `note()`'s fixed-position popup.
 * No in-page toasts: alerts are the badge plus a system notification; the app sets `NOTIFY=off` on its own server.
@@ -830,10 +838,10 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   scroll-driven ones, which run as long as the list can scroll — and for a pending draw. `ctx`: `evaluate`, `waitFor`, `send`, `reload`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
-  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The forty-two in
+  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The forty-three in
   `scripts/scenarios/` are the regression checks for the drawer, the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
-  marks, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, a PR's turn, the chat's links,
+  marks and the PR stack, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, a PR's turn, the chat's links,
   the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported

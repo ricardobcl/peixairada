@@ -2,8 +2,48 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-03. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-04. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-04 — the card's PRs as a stack
+
+Ricardo: "on the cards, the list of PRs should be stack and only expand on hover. the stack should reveal a bit of the
+ones below, by drifting to the left".
+
+* **A stack at rest**: the same chips — three, every one at your move among them, and the `+n` — the first on top at
+  the row's end, each one under it 5 px further left, so a sliver of its colour shows. A 1 px edge in the panel's
+  colour on the left of each chip over another (as the faces are ringed) keeps two of one state two. The ones under
+  have no number and are clipped to the sliver and the radius: a chip GitHub has not answered for is a 7 % wash, and
+  three of those stacked were three numbers through one another and a top chip in three shades.
+* **The pointer on the stack fans it out** — the stack, not the card: under the card's hover every card the pointer
+  crossed would fan and move its row. Side by side, 5 px apart, the top chip where it was; the row makes room, the
+  faces and the ✓ sliding left (the fan does not lie over them). The pointer gone, it closes; a click on a fanned chip
+  opens that PR, as before.
+* **CSS only, nothing measured**: every chip sits in the grid's last column, so all take the widest chip's width, and
+  a transform places each — `-5px` a step of depth stacked, `-(its own width + 5px)` a step fanned: a translate's
+  percentage is the element's own width, the one length CSS lends without a measure, and equal widths make it the
+  step. The columns before it are empty, one per chip under the top one (`--under`): `0fr` stacked — only their gaps,
+  which the slivers fill — and `1fr` fanned, where an empty flexible column takes the fr's size, the widest chip's. So
+  the grid's own width follows the fan, and the row with it. `grid-template-columns` interpolates `0fr` ↔ `1fr` (the
+  accordion trick) and the two transitions share their curve, so the stack's edge and its last chip move together —
+  in WebKit a frame apart at most (read mid-way on the board: 4 px of 151). **Equal widths are the price**: a `#12`
+  beside a `#12345` is as wide as it, the `+n` as wide as a PR; in one repo the numbers are mostly one length.
+* **The chips' transition was silently not theirs**: the small controls' one hover ease (2026-09-27, night) is
+  `:is(.btn, …, .cpr, …, #usage button, #stitle)`, and an `:is()` weighs its heaviest argument — an id. The stack's
+  `.card .top .tprs > *` lost to it in both engines: the fan jumped open while the box beside it eased, and the first
+  scenario passed, reading only the settled rects. Its transition rules now carry `#slist`, and the scenario asks
+  for the running slides at the move. A line in CLAUDE.md's *Invariants that bit us*.
+* **`overflow: clip`, not hidden**: hidden makes the box a scroll container, whose least width is 0, and a tight row
+  (a long folder name on ALL) squeezed the stack with the name — the top chip lost its corners while the name still had
+  letters. Clipped, the stack's least width is its own and the name ellipsizes first; a fan with no room loses the
+  chips at its far left. The 2026-09-28 wrap (a chip past the row's room on a hidden second line) went with it.
+* **Probed in both engines**: a static page of the CSS in headless Chrome and in a `WKWebView` (a Swift probe of the
+  session) gave the same rects at rest, fanned and mid-way, a lone chip and a tight row included; then the board itself
+  in the probe, at rest and fanned (WebKit's hover does not follow a synthesized move, so the page's own `:hover` rules
+  were copied onto a class) — which is how the transition above was found.
+* → `scripts/scenarios/card-pr-stack.mjs`: the geometry at rest and fanned, what the pointer finds at each chip's middle
+  and sliver, which numbers show, the ✓ moved by what the fan took, a click on the third chip, the stack back, two of
+  one colour, a lone chip, the fan at once under reduced motion.
 
 ## Decisions of 2026-10-03, night — the menu bar left out beside the notch
 

@@ -679,9 +679,28 @@
      state worth a word. Entrypoint, session name and branch live in the chat header. */
   .card .state { font-size: 11px; font-weight: 600; margin-top: 4px; }
   /* the PRs it mentions: number and GitHub's state colour, nothing more; a click opens that PR. Last in the top row
-     (cardPrs): a chip past the row's room wraps onto a line nobody sees, whole, rather than half-clipped. */
-  .card .top .tprs { flex: 0 1 auto; min-width: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; height: 18px; overflow: hidden; }
-  .card .top .tprs > * { flex: none; }
+     (cardPrs), and a stack since 2026-10-04: the first on top at the row's end, each one under it 5 px further left, so
+     a sliver of its colour shows; the pointer on the stack fans them out side by side, and the row makes room.
+     Every chip is in the grid's last column and that column's width — the widest chip's —, moved by a transform: 5 px
+     a step stacked (--i, its depth), its own width and the gap fanned. The columns before it are empty, one per chip
+     under the top one (--under): 0fr stacked, nothing but their gaps, which the slivers fill; 1fr fanned, each the
+     chips' width — so the grid's own width follows the fan, and the faces and the ✓ slide with it. The two
+     transitions share their curve, so the stack's edge and its last chip move together. A lone chip has no --under:
+     the template is invalid, the grid none, the chip its own width. `overflow: clip`, not hidden: a scroll
+     container's least width is 0, this one's is the stack's, so a tight row takes the folder's name down first. */
+  .card .top .tprs { flex: 0 1 auto; display: grid; grid-template-columns: repeat(var(--under), 0fr) 1fr; column-gap: 5px; overflow: clip; transition: grid-template-columns .22s cubic-bezier(.2, .7, .2, 1); }
+  .card .top .tprs:hover { grid-template-columns: repeat(var(--under), 1fr) 1fr; }
+  .card .top .tprs > * { grid-area: 1 / -2; z-index: calc(9 - var(--i, 0)); text-align: center; white-space: nowrap; transform: translateX(calc(var(--i, 0) * -5px)); }
+  .card .top .tprs:hover > * { transform: translateX(calc(var(--i, 0) * (-100% - 5px))); }
+  /* #slist: the small controls' one hover ease (below) is an :is() with ids in it, so it weighs an id. */
+  #slist .card .top .tprs > * { transition: transform .22s cubic-bezier(.2, .7, .2, 1), clip-path 0s .22s, color .12s, border-color .12s, background-color .12s, box-shadow .12s; }
+  #slist .card .top .tprs:hover > * { transition-delay: 0s; }
+  /* Stacked, a chip over another has an edge of the panel's colour on its left, as the faces are ringed; one under
+     another shows its sliver and no number (a chip still in outline is see-through), and is clipped to the sliver
+     and its radius for the same reason — not until it has slid back under, and no longer from the moment it fans. */
+  .card .top .tprs:not(:hover) > :not(:last-child) { box-shadow: -1px 0 0 var(--panel); }
+  .card .top .tprs > :not(:first-child) { clip-path: inset(0 0 0 -2px); }
+  .card .top .tprs:not(:hover) > :not(:first-child) { color: transparent; clip-path: inset(0 calc(100% - 9px) 0 -2px); }
   /* The people in the chat's PRs, before the chips (cardFaces, 2026-09-29): GitHub's faces, overlapping a little as a
      facepile does, each ringed in the panel's colour so the overlap reads; one without a face is its initial. */
   .card .top .faces { display: inline-flex; align-items: center; flex: none; padding-left: 4px; }
@@ -1261,6 +1280,8 @@
     .sq.pick, .shead h2 .sq { transition: opacity .12s; }
     #people button:hover, .pop .ssw:hover { transform: none; }
     .pop .opt input::after, #tline .tl-thumb { transition: none; }
+    .card .top .tprs { transition: none; }
+    #slist .card .top .tprs > * { transition: color .12s, border-color .12s, background-color .12s, box-shadow .12s; }   /* the stack fans at once */
   }
 
   /* ---- syntax highlighting (highlight.js class names, our colours) ---- */
@@ -2580,8 +2601,9 @@
     return `<span class="hmove" title="${esc(moveTip(prs))}"><b class="ymove">${ICON.pr}your move</b><span class="q">${esc(prs[0].label)} · ${esc(prs[0].turn.why)}</span>${prs.length > 1 ? `<span class="n">+${prs.length - 1}</span>` : ''}</span>`;
   }
   /** The card's PR chips, last in its top row — the F's place, the F left of them (2026-09-28) —: three in the chat's
-   *  order, every one at your move among them, then +n for the rest, its tooltip their labels. Where the row has not
-   *  the room for them, the ones past it wrap out of sight. */
+   *  order, every one at your move among them, then +n for the rest, its tooltip their labels. A stack since
+   *  2026-10-04, the first on top, fanned out under the pointer (the CSS): `--i` is how deep a chip lies, `--under`
+   *  how many lie under the top one. */
   const CARD_PRS = 3;
   /** Who else has had a hand in the chat's PRs — each PR's author, reviewers, commenters and pushers, the server's
    *  `people`, you left out — as GitHub's faces, the newest first: three, and a count for the rest (2026-09-29). The
@@ -2607,8 +2629,10 @@
   function cardPrs(s) {
     const prs = s.prs || []; if (!prs.length) return '';
     const keep = new Set([...prs.filter(p => p.turn?.you), ...prs].slice(0, CARD_PRS)), shown = prs.filter(p => keep.has(p)), rest = prs.filter(p => !keep.has(p));
-    return `<span class="tprs">${shown.map(pr => `<a class="cpr" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}${pr.turn ? '\n' + turnTip(pr) : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`).join('')}${
-      rest.length ? `<span class="cpr more" title="${esc(rest.map(p => `${p.label}${p.state ? ` (${p.state})` : ''}${p.title ? ` — ${p.title}` : ''}`).join('\n'))}">+${rest.length}</span>` : ''}</span>`;
+    const depth = i => i ? ` style="--i:${i}"` : '';
+    const chips = shown.map((pr, i) => `<a class="cpr"${depth(i)} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}${pr.turn ? '\n' + turnTip(pr) : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`);
+    if (rest.length) chips.push(`<span class="cpr more"${depth(chips.length)} title="${esc(rest.map(p => `${p.label}${p.state ? ` (${p.state})` : ''}${p.title ? ` — ${p.title}` : ''}`).join('\n'))}">+${rest.length}</span>`);
+    return `<span class="tprs"${chips.length > 1 ? ` style="--under:${chips.length - 1}"` : ''}>${chips.join('')}</span>`;
   }
   function cardHtml(s, p, q = '') {
     const color = repoColor(s.cwd), un = state.unread.get(s.id) || 0;
