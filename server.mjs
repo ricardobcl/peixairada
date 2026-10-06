@@ -15,6 +15,7 @@
 //      · attachments: a file dropped on the board from a browser
 //  Transcript parsing
 //      · PRs mentioned in the chat
+//      · …and the short ways of naming one (2026-10-06)
 //      · …and whether they are open, merged or closed
 //      · …and whose move it is
 //  Sub-agents: <slug>/<id>/subagents/agent-*.jsonl — one at work keeps the chat clauding
@@ -333,7 +334,29 @@ const peacockColors = () => Object.fromEntries([...peacock].map(([c, v]) => [c, 
 const repos = new Map();   // cwd -> { url, at }
 const REPO_TTL_MS = 60 * 60_000;
 // `git@github.com-work:` too — an SSH host alias, the usual way to keep two GitHub accounts apart
-const ghRepoUrl = remote => { const m = /github\.com(?:-[\w.-]+)?[:/]([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?\s*$/.exec(String(remote)); return m ? `https://github.com/${m[1]}/${m[2]}` : null; };
+const GH_REMOTE = /github\.com(?:-[\w.-]+)?[:/]([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?\s*$/;
+const ghRepoUrl = remote => { const m = GH_REMOTE.exec(String(remote)); return m ? `https://github.com/${m[1]}/${m[2]}` : null; };
+/** The same repository as `{owner, name}`, read from the checkout's git config rather than asked of git — a chat's `#12`
+ *  is resolved as its line is read, the boot's included (2026-10-06). A worktree's `.git` is a file naming its own git
+ *  dir, whose `commondir` is the repo's. Kept an hour, as `repos` is; null for no checkout or an origin not on GitHub. */
+const checkouts = new Map();   // cwd -> { at, repo }
+function ghRepoOf(cwd, now = Date.now()) {
+  if (!cwd) return null;
+  const hit = checkouts.get(cwd); if (hit && now - hit.at < REPO_TTL_MS) return hit.repo;
+  let repo = null;
+  const top = checkoutOf(cwd);
+  if (top) try {
+    let git = join(top, '.git');
+    if (!statSync(git).isDirectory()) {
+      git = resolve(top, /^gitdir:\s*(.+)$/m.exec(readFileSync(git, 'utf8'))[1].trim());
+      try { git = resolve(git, readFileSync(join(git, 'commondir'), 'utf8').trim()); } catch {}
+    }
+    const m = GH_REMOTE.exec(/\[remote "origin"\][^[]*?url\s*=\s*(\S+)/.exec(readFileSync(join(git, 'config'), 'utf8'))?.[1] || '');
+    if (m) repo = { owner: m[1], name: m[2] };
+  } catch {}
+  checkouts.set(cwd, { at: now, repo });
+  return repo;
+}
 const repoUrls = () => Object.fromEntries([...repos].filter(([, v]) => v.url).map(([c, v]) => [c, v.url]));
 function pollRepos() {
   const want = peacockCwds(); let changed = false;
@@ -534,7 +557,7 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     // branch, standup. A title the user typed still wins over both.
     title: titles[s.id] || s.customTitle || prT || s.title || s.lastPrompt || (!s.lastActivity && s.alive ? '(no messages yet)' : '(untitled)'),
     aiTitle: s.title, customTitle: s.customTitle, prTitle: prT, boardTitle: titles[s.id] || null,
-    lastPrompt: s.lastPrompt, lastReply: s.lastReply, prs: s.prs,
+    lastPrompt: s.lastPrompt, lastReply: s.lastReply, prs: s.prs.filter(shownPr),
     // A live process with no transcript yet is an empty, idle panel (e.g. restored by VS Code, never prompted).
     // Not alive = the Claude process is gone: 'stale'. Resuming the chat registers a new pid and it comes back.
     status,
@@ -612,23 +635,27 @@ const MAX_PRS = 40;
 /**
  * Record one sighting: `by` is who said it ('user' / 'claude'), or null for a `pr-link` line — Claude
  * Code writes several of those per PR, so they order the list and date it but do not count as mentions.
- * Most recently mentioned first, so the header leads with the PR in play now.
+ * Most recently mentioned first, so the header leads with the PR in play now. `ref` is how a short reference named it
+ * (`bare`, a `#12`; `repo`, with its repo — see below); a URL or a pr-link line has none, and makes the PR the chat's
+ * whatever GitHub says.
  */
 /** A PR's one spelling: GitHub's owner and repo names are any case, so `Acme/Widgets` and `acme/widgets` were two PRs —
  *  two chips, two turns, two alerts for one move (2026-10-03). The label keeps the case first seen. */
 const prKey = (owner, repo, n) => `https://github.com/${owner.toLowerCase()}/${repo.toLowerCase()}/pull/${n}`;
-function notePr(s, url, ts, by) {
+function notePr(s, url, ts, by, ref = null) {
   const m = PR_ONE.exec(url);
-  if (!m && !/^https?:\/\//i.test(url)) return;   // a pr-link that is no web address is nothing to put in an href
+  if (!m && (ref || !/^https?:\/\//i.test(url))) return;   // a pr-link that is no web address is nothing to put in an href
   const clean = m ? prKey(m[1], m[2], m[3]) : url;
+  if (ref && noPr.has(clean)) return;
   const at = s.prs.findIndex(p => p.url === clean);
   const pr = at >= 0 ? s.prs.splice(at, 1)[0] : {
     url: clean, repo: m ? m[2] : null, number: m ? Number(m[3]) : null,
     // The owner rarely disambiguates and eats half the width of the chip; the URL is in the tooltip.
     label: m ? `${m[2]}#${m[3]}` : clean.replace(/^https?:\/\/(www\.)?github\.com\//, ''),
-    count: 0, by: null, firstAt: ts,
+    count: 0, by: null, firstAt: ts, ref,
     state: prStatus.get(clean)?.state ?? null, title: prStatus.get(clean)?.title ?? null, turn: prStatus.get(clean)?.turn ?? null, people: prStatus.get(clean)?.people ?? null
   };
+  if (!ref) pr.ref = null; else if (ref === 'repo' && pr.ref) pr.ref = 'repo';
   if (by) { pr.count++; pr.by = by; }
   pr.lastAt = ts || pr.lastAt || null;
   s.prs.unshift(pr);
@@ -636,13 +663,102 @@ function notePr(s, url, ts, by) {
   if (!indexing) queuePr(clean);   // at boot this would ask GitHub about every PR in every transcript
 }
 
-/** Scan one message. Repeats inside the same message count once. */
+/** Scan one message, in the order it says things. A PR said twice in it counts once, where first said, and as the
+ *  fullest of the ways it was said: a URL, then a short reference with its repo, then a bare `#12`. */
+const SAID_AS = { bare: 1, repo: 2 };
 function notePrs(s, text, ts, by) {
-  if (!text || !text.includes('/pull/')) return;
-  const seen = new Set();
-  for (const m of String(text).matchAll(PR_RE)) {
-    const key = prKey(m[1], m[2], m[3]);
-    if (!seen.has(key)) { seen.add(key); notePr(s, m[0], ts, by); }
+  if (!text) return;
+  text = String(text);
+  const said = new Map();
+  const urls = text.includes('/pull/') ? [...text.matchAll(PR_RE)].map(m => ({ at: m.index, url: m[0], key: prKey(m[1], m[2], m[3]), ref: null })) : [];
+  for (const r of [...urls, ...text.includes('#') ? refsIn(s, text) : []].sort((a, b) => a.at - b.at)) {
+    const f = said.get(r.key);
+    if (!f) said.set(r.key, r); else if ((SAID_AS[r.ref] ?? 3) > (SAID_AS[f.ref] ?? 3)) Object.assign(f, { url: r.url, ref: r.ref });
+  }
+  for (const r of said.values()) notePr(s, r.url, ts, by, r.ref);
+}
+
+// ---- …and the short ways of naming one (2026-10-06) ----------------------------------------------------------------
+// `#12` is the chat's own repo's PR; `widgets#12` the setup's org's — the root's holding a checkout of that name, else
+// the root's the chat's folder is under, else the one root's with an org — or the chat's own repo, by its name;
+// `acme/widgets#12` as written. So is `widgets #12`, Claude's own way of writing it, when `widgets` is the chat's repo
+// or a checkout under a root; and a list after any of them (`widgets #12, #14 and #15`) is that repo's too. A short
+// reference is no PR until GitHub says so: it stays off the chat (`shownPr`) until the call that asks for its state
+// finds a PR there, and is let go when GitHub has none (`forgetRef`: an issue's number, a repo that is not there). A
+// bare `#12` names something current as well: one that comes to a PR merged or closed long before it was said is a
+// review's numbered point, not the chat's PR — its own repo's #3 is years old (REF_AGE_MS) —, and no short reference
+// to such a PR titles the card (`pastRef`). Code is not prose — GitHub links no `#12` in it, and `#333` is a colour
+// there — and neither is a link's text, whose URL says which PR.
+const REF_RE = /(?:(?<![\w/.&#-])(?:([A-Za-z0-9][\w-]*)\/)?([A-Za-z0-9][\w.-]*)|(?<![\w&#]))#([1-9]\d{0,5})(?![\w-])/g;
+const NOT_PROSE = /```[\s\S]*?(?:```|$)|`[^`\n]*`|\[[^\]\n]*\]\([^)\s]*\)|https?:\/\/\S+/g;
+const NOT_REPO = /^(?:prs?|pulls?|issues?)$/i;                        // `PR#12` is the chat's own #12
+const NAME_BEFORE = /([A-Za-z0-9][\w.-]*)[*_]*[ \t]+(?:PRs?[ \t]+)?$/i;   // `widgets #12`, `**widgets** PR #12`
+const LIST_GAP = /^(?:[ \t*_,/&]|\band\b|\bor\b)*$/;               // `#12, #14 and #15`, `#12/#14` — on one line
+const REF_AGE_MS = 90 * 24 * 60 * 60_000;
+const noPr = new Set();   // where GitHub had no PR: not taken up again from a short reference until a restart
+const sameName = (a, b) => a.toLowerCase() === b.toLowerCase();
+
+/** The org a repo named alone is under, from a chat in `cwd`: the root's the folder is in, else the one root's with an org. */
+function orgFor(cwd) {
+  const roots = boardConfig().roots.filter(r => r.org);
+  return (roots.find(r => cwd && (cwd === r.dir || cwd.startsWith(r.dir + '/'))) || (roots.length === 1 ? roots[0] : null))?.org || null;
+}
+/** A checkout under a root by its name, any case: `{name, org}`, the name as the folder spells it. */
+const rootNames = new WeakMap();   // foldersIn's list (kept while the root's mtime is) -> its checkouts by lower-case name
+function checkoutNamed(name) {
+  for (const r of boardConfig().roots) {
+    const list = foldersIn(r.dir);
+    let by = rootNames.get(list);
+    if (!by) rootNames.set(list, by = new Map(list.filter(f => f.git).map(f => [f.name.toLowerCase(), f.name])));
+    const hit = by.get(name.toLowerCase()); if (hit) return { name: hit, org: r.org };
+  }
+  return null;
+}
+
+/** Every short reference in one message, each as the PR it comes to from this chat and where it stands in the text. */
+function refsIn(s, text) {
+  // what is not prose blanked out, every character where it was: a newline breaks a list and parts a name from its #
+  const prose = text.replace(NOT_PROSE, c => c[0] !== '`' || c[1] === '`' ? '\n'.repeat(c.length) : ` ${c.slice(1, -1).replace(/#/g, ' ')} `);
+  const cwd = s.live?.cwd || s.cwd, own = ghRepoOf(cwd), out = [];
+  const repoOf = (owner, name) => {
+    if (owner) return { owner, name };
+    if (!name || (own && sameName(own.name, name))) return own;
+    const c = checkoutNamed(name), org = c?.org || orgFor(cwd) || own?.owner;
+    return org ? { owner: org, name: c?.name || name } : null;
+  };
+  let prev = null;   // the reference before, and where it ended
+  for (const m of prose.matchAll(REF_RE)) {
+    let [, owner, name] = m, kind = 'repo';
+    if (!owner && name && NOT_REPO.test(name)) name = undefined;
+    if (!name) {
+      const w = NAME_BEFORE.exec(prose.slice(Math.max(0, m.index - 80), m.index))?.[1];
+      if (w && ((own && sameName(own.name, w)) || checkoutNamed(w))) name = w;
+      else if (prev && LIST_GAP.test(prose.slice(prev.end, m.index))) ({ owner, name, kind } = prev);
+      else kind = 'bare';
+    }
+    prev = { owner, name, kind, end: m.index + m[0].length };
+    const r = repoOf(owner, name);
+    if (r) out.push({ at: m.index, url: `https://github.com/${r.owner}/${r.name}/pull/${m[3]}`, key: prKey(r.owner, r.name, m[3]), ref: kind });
+  }
+  return out;
+}
+
+/** A short reference to a PR merged or closed, and opened over REF_AGE_MS before it was said: a reference to the past,
+ *  never the chat's own work — a bare one is not shown, and none titles the card. */
+function pastRef(p) {
+  if (!p.ref || p.state === 'open' || p.state === 'draft') return false;
+  const made = Date.parse(prStatus.get(p.url)?.created);
+  return !!made && made < (Date.parse(p.firstAt) || Date.now()) - REF_AGE_MS;
+}
+/** Whether the chat shows a PR: one said in full always; a short reference once GitHub has found a PR there. */
+const shownPr = p => !p.ref || (!!p.state && (p.ref === 'repo' || !pastRef(p)));
+
+/** GitHub has no PR there: every chat that had it only from a short reference lets it go, and none takes it up again. */
+function forgetRef(url) {
+  noPr.add(url);
+  for (const s of sessions.values()) {
+    const at = s.prs.findIndex(p => p.url === url && p.ref);
+    if (at >= 0) { s.prs.splice(at, 1); schedulePush(s); }
   }
 }
 
@@ -654,7 +770,7 @@ function notePrs(s, text, ts, by) {
  * arrive from `gh` with the state, so this is null until that lands.
  */
 function prTitle(s) {
-  const titled = s.prs.filter(p => p.title);
+  const titled = s.prs.filter(p => p.title && shownPr(p) && !pastRef(p));
   if (!titled.length) return null;
   const open = titled.filter(p => p.state === 'open' || p.state === 'draft');
   return (open.length ? open : titled)
@@ -742,14 +858,14 @@ function queueSessionPrs(s) { for (const pr of s.prs) queuePr(pr.url); }
 /** What GitHub said of one PR: `found` is prTurn's answer, undefined for a PR it would not show us — `missing`, whose
  *  state and title are what was known before (2026-10-03: they were wiped, and the card's title fell back to Claude's
  *  over an SSO prompt or one field GitHub would not resolve), asked again an hour later. */
-function setPrInfo(url, state, title, found, now = Date.now(), people, missing = false) {
+function setPrInfo(url, state, title, found, now = Date.now(), people, missing = false, created = null) {
   const chats = [...sessions.values()].filter(s => s.prs.some(p => p.url === url));
   const ticked = chats.filter(isDone);
   const { turn, moved, from } = moveTurn(url, found, now);
   const known = prStatus.get(url);
   if (people === undefined) people = known?.people ?? null;   // a PR we could not see: who we knew of stands
   if (missing) { state = known?.state ?? null; title = known?.title ?? null; }
-  prStatus.set(url, { state, title, turn, people, checkedAt: now, missing });
+  prStatus.set(url, { state, title, turn, people, checkedAt: now, missing, created: created ?? known?.created ?? null });   // created: shownPr's
   const same = JSON.stringify(turn), faces = JSON.stringify(people);
   for (const s of chats) {
     const pr = s.prs.find(p => p.url === url);
@@ -777,9 +893,10 @@ function drainPrQueue() {
   prBusy = true; prAsking = new Set(batch);
   execFile(bin, ['api', 'graphql', '-f', `query={viewer { login } ${parts.join(' ')}}`], { timeout: 30_000, maxBuffer: 8e6 }, (err, stdout, stderr) => {
     prBusy = false; prAsking = new Set();
-    // A PR we cannot resolve fails its own alias only: gh exits non-zero but still prints the rest.
-    let data = null;
-    try { data = JSON.parse(stdout || '{}').data; } catch {}
+    // A PR we cannot resolve fails its own alias only: gh exits non-zero but still prints the rest. NOT_FOUND is
+    // GitHub having nothing there for us (no such PR — an issue's number —, no such repo, or none we may see).
+    let data = null, none = new Set();
+    try { const body = JSON.parse(stdout || '{}'); data = body.data; none = new Set((body.errors || []).filter(e => e.type === 'NOT_FOUND').map(e => e.path?.[0])); } catch {}
     if (!data) {
       // Nothing learned — offline, rate-limited, a timeout. What the cards show stands (until 2026-09-28 every PR in
       // the batch lost its state and title), the rest of the queue is dropped, and the polls back off.
@@ -797,7 +914,8 @@ function drainPrQueue() {
         : pr.state === 'MERGED' ? 'merged'
         : pr.state === 'CLOSED' ? 'closed'
         : pr.isDraft ? 'draft' : 'open';
-      setPrInfo(url, state, pr?.title || null, pr && me ? prTurn(pr, me) : undefined, Date.now(), pr ? prPeople(pr, me) : undefined, !pr);
+      if (!pr && none.has(`p${i}`)) forgetRef(url);
+      setPrInfo(url, state, pr?.title || null, pr && me ? prTurn(pr, me) : undefined, Date.now(), pr ? prPeople(pr, me) : undefined, !pr, pr?.createdAt);
     });
     if (turnsDirty) { turnsDirty = false; pruneTurns(); saveState(); }
     if (prQueue.size) drainPrQueue();
@@ -2407,7 +2525,7 @@ server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTe
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { fold, newSession, summary, agentRunning, notePr, notePrs, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { fold, newSession, summary, agentRunning, notePr, notePrs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {

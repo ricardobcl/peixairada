@@ -2,8 +2,50 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-04. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-06. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-06 — a PR named short
+
+Ricardo (the org and its repos as stand-ins): "PR scraping should also work with "#1234" and we should check if the PR
+exist for the current project and if so, present it as normal. also "widgets#1234" and "gadgets#1234" should also
+work, assuming github.com/acme".
+
+* **Four spellings, each resolved as its line is read** (`refsIn`): `#12` is the chat's own repo's; `widgets#12` the
+  org of the root holding a checkout of that name — else of the root the chat's folder is under, else the one root
+  with an org, else the chat's own owner — or the chat's own repo when that is its name; `acme/widgets#12` as written; and `widgets #12`, with a space, when `widgets`
+  is the chat's repo or a checkout under a root, a list after it on the same line (`widgets #12, #14 and #15`,
+  `#12/#14`) being that repo's too. The space is how Claude writes it: in two weeks of this Mac's transcripts a repo, a
+  space and `#n` came as often as without the space, and read as a bare `#n` it was the chat's own repo's — which, in a
+  repo of thousands of PRs, GitHub confirms. `PR#12` is no repo called PR.
+* **The chat's repo is read from its checkout** (`ghRepoOf`: the origin in `.git/config`, a worktree's `gitdir:` and
+  its `commondir` followed — this Mac's worktrees live beside their repo), not taken from `repos`: that asks git, six
+  folders a poll, and the boot has read every transcript before the first answer. Kept an hour, as `repos` is.
+* **A short reference is no PR until GitHub says so**: it rides the batched call every PR does, is left out of the
+  summary and of the card's title until a state comes back (`shownPr`), and a NOT_FOUND on its alias — an issue's
+  number, a repo that is not there or not ours to see — lets it go from every chat that had it only so (`forgetRef`),
+  and it is not taken up again until a restart (`noPr`). A URL or a pr-link line makes a PR the chat's whatever GitHub
+  says, as before; one PR said both ways in a message counts once, where first said, as the fuller. A message is now
+  read in the order it says things (the URLs were read before the rest).
+* **A bare `#n` names something current** (`REF_AGE_MS`, 90 days): one GitHub finds merged or closed, and opened more
+  than that before it was said, is not shown. A review report numbers its points `#1`…`#8`, and the chat's own repo has
+  a PR #3 from years ago — the dry run over two weeks of transcripts turned up a #1 and a #6 of that kind, and would
+  have titled cards with them. Named with its repo a reference is meant, and shown whatever its age (the request's own
+  `widgets#1234`) — but no such past PR titles the card (`pastRef`): this very chat's two examples are a merged PR of
+  2015 and a closed one of 2021, and the oldest titled PR names a chat with none open. Open or draft, a bare one is
+  shown however old.
+* **Code is not prose**: no `#12` inside a fence or backticks (GitHub links none there, and `#333` is a colour), nor
+  in a link's text (its URL says which PR) or a URL's fragment; `&#12;`, `#0a0` and a leading zero are no numbers. A
+  repo's name in backticks still names the repo after it.
+* **The fake gh answers NOT_FOUND** for a PR its file does not name — `errors` and a non-zero exit, as gh does; only
+  `null` before.
+* **The cost**: every short reference in the transcripts' tails is asked about once at boot, in the same batches of
+  forty; reading two weeks of whole transcripts (5 136 messages, 7.4 M characters) took 83 ms more than the URLs alone.
+* **Left**: a `#12` in the transcript is still text, not a link — the answer comes after the line is drawn; a chat in a
+  submodule resolves to the repo holding it (`checkoutOf`'s rule), and a fork's `#12` is the fork's.
+* → `test/pr-refs.test.mjs` (the spellings, the checkout read, what is not prose, shown or not, let go);
+  `scripts/scenarios/pr-refs.mjs` (the card's stack and the header's rows hold exactly what was meant, the card titled
+  by the open one, a `#20` said live coming on).
 
 ## Decisions of 2026-10-04 — the card's PRs as a stack
 
