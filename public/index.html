@@ -279,10 +279,10 @@
   #splitter:hover, #gsplit:hover { transition-delay: .3s; }
   #splitter.drag, #gsplit.drag { transition: none; }
   #chat { --repo: initial; flex: 1; min-width: 320px; display: grid; grid-template-rows: auto auto auto 1fr auto; grid-template-columns: minmax(0, 1fr); min-height: 0; }
-  /* Placed by hand: #prlist, #rival and #composer hide with display:none, which takes them out of auto-placement
+  /* Placed by hand: #prlist, #rival and #resume hide with display:none, which takes them out of auto-placement
      and slid the body into an auto row — a gap under it on a short chat, the drawer pushed off the bottom
      on a long one. Everything below the header is #groups now, so there is one row to place, not three. */
-  #shead { grid-row: 1; } #prlist { grid-row: 2; } #rival { grid-row: 3; } #groups { grid-row: 4; } #composer { grid-row: 5; }
+  #shead { grid-row: 1; } #prlist { grid-row: 2; } #rival { grid-row: 3; } #groups { grid-row: 4; } #resume { grid-row: 5; }
   /* The app filling the screen, camera housing included (2026-09-27, ⌃⌘F): peixFill says where the housing is, in this
      page's px, and the strip either side of it is the top row's to use. The chat list's head stays put while the list
      ends short of the housing, and the chat header keeps its title left of the housing and its chips right of it — a
@@ -957,18 +957,28 @@
   #shead h2 .t { cursor: text; }
   #shead h2 input.tedit { font: inherit; font-weight: inherit; width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid var(--accent); border-radius: 6px; padding: 0 6px; background: var(--bg); color: var(--ink); }
   #shead h2 input.tedit:focus { outline: none; }
-  /* ---- composer (stale chats only) ---- */
-  #composer { border-top: 1px solid var(--line); background: var(--panel); padding: 8px 10px; display: grid; gap: 6px; }
-  #composer[hidden] { display: none; }   /* display:grid above would otherwise beat the UA [hidden] rule */
-  #composer textarea { font: inherit; font-size: 13px; resize: vertical; min-height: 44px; max-height: 40vh; padding: 8px 10px;
-    border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); width: 100%; }
-  #composer textarea:focus { outline: none; border-color: var(--accent); }
-  #composer textarea:disabled { opacity: .6; }
-  .composer-foot { display: flex; align-items: center; gap: 10px; }
-  .composer-foot .hint { font-size: 11px; color: var(--muted); flex: 1; min-width: 0; }
-  .composer-foot .hint.err { color: var(--needs); }
-  .composer-foot .hint code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-  #composeSend:disabled { opacity: .5; cursor: default; }
+  /* ---- resume: a chat whose claude has ended (2026-10-07) ---- */
+  /* Where the reply box was: the column shows a transcript and nothing more, and the way back into the chat is one
+     button, in the accent. Counting down to the auto-resume, a line runs along the bar's top edge — a transform, kept on
+     the countdown's own clock (renderResume sets its time) — and the button counts the seconds. */
+  #resume { position: relative; border-top: 1px solid var(--line); background: var(--panel); padding: 10px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; font-size: 12px; line-height: 1.4; }
+  #resume[hidden] { display: none; }   /* display:flex above would otherwise beat the UA [hidden] rule */
+  #resume .ric { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--ctl); color: var(--muted); }
+  #resume .ric .ic { width: 14px; height: 14px; fill: currentColor; }
+  #resume .t { flex: 1 1 260px; min-width: 0; display: grid; gap: 1px; }
+  #resume .t b { font-size: 13px; color: var(--ink); }
+  #resume .t span { color: var(--muted); }
+  #resume .t code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; white-space: nowrap; }
+  #resume.err .ric, #resume.err .t b { color: var(--needs); }
+  #resume .btn { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; }
+  #resume .rgo { background: var(--accent); color: var(--bg); font-weight: 600; }
+  #resume .rgo:hover { background: color-mix(in srgb, var(--accent) 85%, var(--ink)); }
+  #resume .rgo .ic { width: 10px; height: 10px; fill: currentColor; }
+  #resume .rgo .k { font-weight: 400; opacity: .7; font-size: 11px; }
+  #resume .rgo:disabled { opacity: .6; cursor: default; }
+  #resume::before { content: ''; position: absolute; left: 0; right: 0; top: -1px; height: 2px; background: var(--accent); transform: scaleX(0); transform-origin: left; pointer-events: none; }
+  #resume.counting::before { animation: rfill var(--resume-ms, 5s) linear forwards; }
+  @keyframes rfill { to { transform: none; } }
   /* ---- terminal drawer: the real claude, in a PTY on the server ---- */
   /* One explicit column of minmax(0, 1fr): the implicit `auto` column took the xterm screen's pixel width as its
      minimum, so the drawer's body stayed as wide as the terminal had last been and fit() measured that instead of
@@ -1251,7 +1261,7 @@
   .card .title, .card .snip, .msg .text, .presence, .prrow .t { text-wrap: pretty; }
   .empty, .gempty, dialog p.help, #slist .none, #picklist .none, .pop .opt span { text-wrap: balance; }
   .card .title { overflow-wrap: break-word; hyphens: auto; }
-  .badge, .chip, :is(.card .cpr, .shead .hpr), .pkrow .num, #counts, .fchip .n, .sedge b, .tl-lab, .prrow .num, .pop .keys kbd, .lognew b { font-variant-numeric: tabular-nums; }
+  .badge, .chip, :is(.card .cpr, .shead .hpr), .pkrow .num, #counts, .fchip .n, .sedge b, .tl-lab, .prrow .num, .pop .keys kbd, .lognew b, #resume .n { font-variant-numeric: tabular-nums; }
   ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
   :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
@@ -1287,6 +1297,7 @@
     #people button:hover, .pop .ssw:hover { transform: none; }
     .pop .opt input::after, #tline .tl-thumb { transition: none; }
     .card .top .tprs { transition: none; }   /* the stack fans at once */
+    #resume.counting::before { animation: none; }   /* no line runs: the button counts the seconds alone */
     #slist .card .top .tprs > * { transition: color .12s, border-color .12s, background-color .12s, box-shadow .12s; }
   }
 
@@ -1341,13 +1352,7 @@
         </div>
       </div>
     </div>
-    <div id="composer" hidden>
-      <textarea id="composeText" rows="2" placeholder="Reply here — resumes this chat with `claude --resume`"></textarea>
-      <div class="composer-foot">
-        <span class="hint" id="composeHint"></span>
-        <button class="btn" id="composeSend">Send</button>
-      </div>
-    </div>
+    <div id="resume" hidden></div>
   </section>
 </main>
 <div id="trail" aria-hidden="true" hidden></div>
@@ -1365,6 +1370,7 @@
       <span class="stops"><span data-v="0" title="your last prompt and Claude's last reply, as always">large</span><span data-v="1" title="only the last word — yours or Claude's, whichever came last">medium</span><span data-v="2" title="neither: the title, its chips and its PRs">compact</span></span>
     </div>
     <label class="opt sub" id="evenRow" title="Compact cards all the same height: the title on one line and the your-move line under it, held empty on a card without one; the question is left to the card's blinking red edge" hidden><input type="checkbox" id="cardsEven"><span><b>same height</b> — every compact card a title line and a your-move line tall</span></label>
+    <label class="opt" title="On, a chat whose claude has ended — one you open from the list, a picker, a key or a link — runs claude --resume in a terminal here 5 s after it opens, unless you press Not now or Esc, or move on. A chat ticked done, and the one the page opens on a reload, wait for the Resume button"><input type="checkbox" id="autoResume" checked><span><b>auto-resume</b> — a chat whose claude has ended resumes 5 s after you open it; off, it waits for the Resume button</span></label>
     <label class="opt" title="On, ⌥ with a letter is Meta in the terminal, as iTerm's Esc+ — ⌥B ⌥F move a word, ⌥⌫ deletes one; ⌥ with a digit or a sign still types what the keyboard makes. Off, ⌥ types whatever your layout composes (⌥L is @ on a German one)"><input type="checkbox" id="optMeta" checked><span><b>⌥ is Meta</b> in the terminal — off, ⌥ types what your keyboard composes</span></label>
     <div id="hidden" class="hid"></div>
   </div>
@@ -1444,7 +1450,7 @@
 //   css · chat pane
 //   css · The chat's PRs, one per row under the header: state, repo#n, the whole title.
 //   css · a second claude on this chat: VS Code opened a chat that runs here (see renderRival)
-//   css · composer (stale chats only)
+//   css · resume: a chat whose claude has ended (2026-10-07)
 //   css · terminal drawer: the real claude, in a PTY on the server
 //   css · project editor
 //   css · the small print: wrapping, figures, selection, focus, overscroll
@@ -1473,7 +1479,7 @@
 //   js  · chat header
 //   js  · terminal drawer: the real claude in a PTY on the server, attached over a WebSocket
 //   js  · the two halves: ⌘1 and ⌘2
-//   js  · composer: reply into a stale chat
+//   js  · resume: a chat whose claude has ended
 //   js  · attachments: files dropped on the board, images pasted
 //   js  · a second claude on this chat
 //   js  · transcript rendering
@@ -1483,7 +1489,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0 };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -1621,12 +1627,14 @@
   // (2026-09-20). A <dialog>'s own Esc does not
   // count as handled, hence closing it here, in the capture phase, before anything else sees the key. With nothing to
   // close the key is not touched: the filter boxes and the rename box have their own Esc, and full screen keeps its.
+  // A countdown to a chat's resume is something to close too (2026-10-07), outside a terminal.
   // With the pane up the shell swallows Esc before the page and calls hotEscape() instead.
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape' || e.metaKey || e.ctrlKey || e.altKey) return;
     let took = false;
     const dlg = document.querySelector('dialog[open]');
     if (dlg) { dlg.close(); took = true; }
+    else if (!e.target.closest?.('.tbody') && stopResume()) took = true;   // the countdown to a resume, stopped (a terminal keeps its Esc)
     if (!took) return;
     e.preventDefault(); e.stopPropagation();
   }, true);
@@ -1666,7 +1674,7 @@
     const own = s.aiTitle || s.lastPrompt;
     return `${pr ? pr.label + ' — ' : ''}${s.prTitle}${own ? `\n\nChat: ${own}` : ''}`;
   }
-  const statusLabel = { working: 'clauding…', idle: 'ready — your turn', 'needs-input': 'ready — asking you', stale: 'ready — no process; write to it to resume', unknown: '' };
+  const statusLabel = { working: 'clauding…', idle: 'ready — your turn', 'needs-input': 'ready — asking you', stale: 'ready — its claude has ended; resume it to carry on', unknown: '' };
   // Inline SVG, not emoji: these sit at ~11px inside muted snippet text, where emoji come with their
   // own colours and weight and stop reading as part of the sentence. `currentColor` keeps them typographic.
   const ICON = {
@@ -1675,6 +1683,7 @@
     you: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 8.2a3.1 3.1 0 1 0 0-6.2 3.1 3.1 0 0 0 0 6.2Zm0 1.4c-3.1 0-5.6 1.7-5.6 3.8V14h11.2v-.6c0-2.1-2.5-3.8-5.6-3.8Z"/></svg>',
     claude: '<svg class="ic burst" viewBox="0 0 24 24" aria-hidden="true"><path d="M11.22 9.10L12.00 0.50L12.78 9.10ZM13.08 9.20L18.76 2.70L14.33 10.11ZM14.52 10.37L22.94 8.45L15.00 11.84ZM15.00 12.16L22.94 15.55L14.52 13.63ZM14.33 13.89L18.76 21.30L13.08 14.80ZM12.78 14.90L12.00 23.50L11.22 14.90ZM10.92 14.80L5.24 21.30L9.67 13.89ZM9.48 13.63L1.06 15.55L9.00 12.16ZM9.00 11.84L1.06 8.45L9.48 10.37ZM9.67 10.11L5.24 2.70L10.92 9.20ZM9.20 12a2.80 2.80 0 1 0 5.60 0a2.80 2.80 0 1 0 -5.60 0Z"/></svg>',
     term: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.6 3.1 6.4 8l-4.8 4.9 1.1 1.1L8.6 8 2.7 2ZM8 12.6h6.4v1.5H8Z"/></svg>',
+    play: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.8v12.4L14 8Z"/></svg>',   // the resume bar's button
     view: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 3.6a4.4 4.4 0 1 1 0 8.8 4.4 4.4 0 0 1 0-8.8Zm0 1.5a2.9 2.9 0 1 0 0 5.8 2.9 2.9 0 0 0 0-5.8Z"/><path d="M6.6 8a1.4 1.4 0 1 0 2.8 0 1.4 1.4 0 0 0-2.8 0ZM7.25 0h1.5v2.4h-1.5Zm0 13.6h1.5V16h-1.5ZM0 7.25h2.4v1.5H0Zm13.6 0H16v1.5h-2.4Z"/></svg>',
     more: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="3" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="13" cy="8" r="1.5"/></svg>',
     // a radar: something of this chat's is still running and will report back (monitors, background commands)
@@ -1858,7 +1867,7 @@
   const byWord = (a, b) => { const x = wordAt(a), y = wordAt(b); return x < y ? 1 : x > y ? -1 : 0; };   // ISO strings: no collation needed
   const timeTip = s => !s.lastActivity ? (s.startedAt ? `started ${rel(s.startedAt)} ago · no messages yet` : '') : `last activity ${rel(s.lastActivity)} ago${s.lastUserAt ? ` · you last wrote ${rel(s.lastUserAt)} ago` : ''}${s.lastReplyAt ? ` · Claude last replied ${rel(s.lastReplyAt)} ago` : ''}${movedAt(s) ? ` · a PR came round to you ${rel(movedAt(s))} ago` : ''}`;
   // Three states since 2026-09-20, and done is *only* the tick (asked later that day; the first cut folded
-  // stale into done): a chat with no live process is ready — write to it and it resumes. The dot still says
+  // stale into done): a chat with no live process is ready — resume it and it carries on. The dot still says
   // stale in grey and the card is dimmed a touch, so you know a resume is coming before you click. Clauding
   // is working; ready is everything else, a pending question included (the card still says *asking you*).
   // The server keeps the finer statuses for notifications and the app's badge.
@@ -3026,6 +3035,7 @@
   // Split, the chat is in the left half and the keys go there; the page beside it stays up (showChat).
   function hotEscape() {
     const dlg = document.querySelector('dialog[open]'); if (dlg) { dlg.close(); return true; }
+    if (stopResume()) return true;   // the countdown to a resume, before the page goes
     const s = state.sessions.get(state.current); if (!s || !isPaneTab(tabOf(s))) return false;
     showChat(s); syncTerm(s); focusBoard(); return true;
   }
@@ -3608,7 +3618,7 @@
     const pm = pl.querySelector('#prMore'); if (pm) pm.onclick = () => { state.prsAll = !state.prsAll; renderHead(s); };   // onclick, not a listener per draw
     const pt = $('#prToggle'); if (pt) pt.onclick = () => { prefs.prsOpen = !prefs.prsOpen; savePrefs(); renderHead(s); };
     if (headNew) { layoutNotch(); fitHeadPrs(); paintHeadSplit(); postChat(s); if (menu.open) { $('#moreBtn').classList.add('on'); $('#moreBtn').setAttribute('aria-expanded', 'true'); } }   // the menu's state is not the markup's: opening it redrew the whole header
-    renderComposer(s); renderRival(s);
+    renderResume(s); renderRival(s);
     $('#detailsBtn').onclick = () => { prefs.headDetails = !prefs.headDetails; savePrefs(); renderHead(s); };
     const wb = $('#webBtn');
     if (wb) wb.onclick = async () => {
@@ -3939,7 +3949,8 @@
       split: splitNow(), stacked: stackNow(), focusG, halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
       strips: state.sessions.has(state.current) ? [0, 1].map(g => keysIn(state.sessions.get(state.current), g)) : [[], []],
       timeline: { k: tl.k, want: tl.want, press: !!tl.press, shown: $('#sessions').classList.contains('tlshow'), runs: tl.runs.map(r => ({ g: r.g, day: r.day, n: r.n, i: r.i })) },
-      termId: curTerm().id, termSession: curTerm().sessionId, termExited: curTerm().exited }),
+      termId: curTerm().id, termSession: curTerm().sessionId, termExited: curTerm().exited,
+      resume: autoResume.id ? { id: autoResume.id, left: Math.max(0, Math.round(autoResume.at - performance.now())) } : null }),
     session: id => { const s = state.sessions.get(id || state.current); return s ? structuredClone(s) : null; },
     motion: () => MOTION.map(m => ({ ...m })),
     trail: () => ({ on: !!trail.sig, loop: trail.loop.map(p => [...p]), L: trail.L, v: trail.v, blobs: trail.blobs.length }),   // the open chat's light past its card (drawTrail)   // the list's last moves: {id, kind: flip | enter | leave, at}
@@ -4014,7 +4025,8 @@
     clearTimeout(tm.retryTimer);
     Object.assign(tm, { id: null, sessionId: null, cwd: null, kind: null, exited: null, sent: null, lost: false });
   }
-  // The process ended: the drawer goes and the transcript is the pane again (a stale chat now — the composer shows).
+  // The process ended: the drawer goes and the transcript is the pane again (a stale chat now — the resume bar shows,
+  // and waits for its button: the claude was ended, here or by itself, not left).
   // A new chat that died before it registered says so where its transcript would be.
   function termEnded(tm, code) {
     const wasNew = !tm.sessionId && !state.current;
@@ -4459,15 +4471,17 @@
   // elsewhere — arm and, pressed again, take over. The terminal takes the keyboard at the end: attachTerm does that
   // when its socket opens, this covers one that was already showing (⌥⌘C as "put me in the terminal").
   const termAsking = new Set();   // the chats whose drawer is being asked for: a second press meanwhile is the same press
-  async function termAction(s) {
+  // `stay` is the auto-resume's (2026-10-07): the drawer starts where the chat tab is, and the tab on show and the keys stay.
+  async function termAction(s, { stay = false } = {}) {
     if (termAsking.has(s.id)) return;
-    drawer.err = null; showChat(s);
-    termAsking.add(s.id);
+    stopResume(); drawer.err = null; if (!stay) showChat(s);
+    termAsking.add(s.id); renderResume(s);
     try {
       if (takeable(s)) await (drawer.arm === s.id ? takeOver(s) : armTakeOver(s));
       else await openTerminalFor(s);
     } finally { termAsking.delete(s.id); }
-    focusTerm();
+    renderResume(state.sessions.get(s.id) || s);
+    if (!stay) focusTerm();
   }
   // A new chat in a folder: `claude` there — unless the folder's Taskfile launches claude itself (oracle's `task
   // production-workload` and friends set a cluster's environment first, 2026-09-20), in which case the environment is
@@ -4491,7 +4505,7 @@
     const menu = $('#hmenu'); if (menu.open) menu.close();
     $('#prlist').hidden = true; $('#chat').classList.remove('vsc'); tintChat(color);
     $('#shead').innerHTML = head; $('#log').innerHTML = log; drawn.head = drawn.menu = drawn.prs = null; postChat(null);
-    layoutNotch(); paintHeadSplit(); renderComposer(null);
+    layoutNotch(); paintHeadSplit(); renderResume(null);
   }
   // A new chat has no session until claude registers; the server ties the two by pid and says so
   // over SSE, at which point the pane switches to it. `task` names a launcher of the folder's Taskfile (newChatIn).
@@ -4527,29 +4541,68 @@
   document.addEventListener('keydown', e => { if (!e.target.closest?.('.tbody')) chatZoomKey(e); });   // either half's drawer did it already
   applyChatZoom();
 
-  // ---- composer: reply into a stale chat -----------------------------------------------
-  // Stale only. The server refuses a live chat (resuming it would put a second writer on its
-  // transcript), so the box hides rather than offering something guaranteed to 409. Never touches
-  // the textarea's value — this re-runs on every SSE update, and you may be mid-sentence.
-  function renderComposer(s) {
-    const box = $('#composer'), ta = $('#composeText'), btn = $('#composeSend'), hint = $('#composeHint');
-    // …and not under a terminal on the same chat: that is the reply box now, and a `-p` reply racing it
-    // would be the second writer the server refuses anyway once claude has registered.
-    if (!s || s.alive || !s.file || termLive(s) || terms.some(tm => tm.id && tm.sessionId === s.id && tm.exited === null)) { box.hidden = true; return; }
-    box.hidden = false;
-    const busy = !!s.replying;
-    ta.disabled = busy;
-    btn.disabled = busy || !ta.value.trim();
-    btn.textContent = busy ? 'Sending…' : 'Send';
-    if (busy) { hint.className = 'hint'; hint.textContent = `resuming — ${s.replying.snippet}`; }
-    else if (s.replyError) { hint.className = 'hint err'; hint.textContent = s.replyError; }
-    // A chat last continued in VS Code can be written to from here (2026-09-20): the one thing to know is
-    // that the tab there, if it is still open, will not show the turn.
-    else { hint.className = 'hint'; hint.innerHTML = `${inVsCode(s) ? '<b>Last continued in VS Code</b> — a reply from here makes it a CLI chat; the tab there will not follow · ' : ''}One-shot reply with <code>claude --resume -p</code> · ⏎ send, ⇧⏎ newline · or open the terminal above`; }
+  // ---- resume: a chat whose claude has ended ----------------------------------------------
+  // A chat with no process is its transcript and nothing more (2026-10-07; a box under it sent a one-shot
+  // `claude --resume -p` reply before, and read as if the chat were still there). The bar under the column says so,
+  // and its button is >_'s: `claude --resume` in a drawer here. Not under a terminal on the same chat — that drawer is
+  // the chat — nor on one live elsewhere, whose take-over is >_'s, armed twice. Opened from the list, a picker, a key
+  // or a link, the chat resumes by itself AUTO_RESUME_MS later (`prefs.autoResume`, the settings' switch): Not now,
+  // Esc, another chat or the switch stop it, and a dialog up holds it until it closes. A chat ticked done, one whose
+  // claude ends while it is open, and the one a reload opens wait for the button.
+  const AUTO_RESUME_MS = 5000;
+  const autoResume = { id: null, at: 0, timer: null, tick: null };   // the countdown: its chat, when it fires (performance.now())
+  const resumable = s => !!(s && !s.alive && s.file && !termLive(s) && !terms.some(tm => tm.id && tm.sessionId === s.id && tm.exited === null));
+  $('#resume').style.setProperty('--resume-ms', AUTO_RESUME_MS + 'ms');
+  function armResume(s) {
+    stopResume();
+    if (prefs.autoResume === false || !resumable(s) || s.done || !s.cwd) return;
+    Object.assign(autoResume, { id: s.id, at: performance.now() + AUTO_RESUME_MS, timer: setTimeout(fireResume, AUTO_RESUME_MS), tick: setInterval(countResume, 200) });
   }
+  /** The countdown, stopped — whether there was one (Esc takes the key only then). */
+  function stopResume() {
+    if (!autoResume.id) return false;
+    clearTimeout(autoResume.timer); clearInterval(autoResume.tick);
+    const s = state.sessions.get(autoResume.id); autoResume.id = null;
+    if (s) renderResume(s);
+    return true;
+  }
+  function fireResume() {
+    const s = state.sessions.get(autoResume.id);
+    if (!s || s.id !== state.current || !resumable(s) || s.done) return stopResume();
+    if (document.querySelector('dialog[open]')) { autoResume.timer = setTimeout(fireResume, 250); return; }   // a picker, the settings: once it closes
+    clearInterval(autoResume.tick); autoResume.id = null;
+    termAction(s, { stay: true });   // the tab it is on stays, and so do the keys
+  }
+  function countResume() { const n = $('#resume .n'); if (n) n.textContent = Math.max(1, Math.ceil((autoResume.at - performance.now()) / 1000)); }
+  function renderResume(s) {
+    if (s && s.id !== state.current) return;   // the open chat's only, as its header
+    const box = $('#resume');
+    if (!resumable(s)) { box.hidden = true; if (autoResume.id) stopResume(); return; }
+    if (autoResume.id === s.id && s.done) { stopResume(); return; }   // ticked done while it counted (stopResume draws it)
+    const going = termAsking.has(s.id), counting = autoResume.id === s.id, err = drawer.err;
+    box.hidden = false;
+    box.classList.toggle('err', !!err); box.classList.toggle('counting', counting);
+    // A chat last continued in VS Code is resumed here as any other (2026-09-20): the one thing to know is that the
+    // tab there, if it is still open, will not follow it.
+    setHtml(box, `<span class="ric">${ICON.term}</span>
+      <span class="t"><b>${err ? 'Could not resume this chat' : 'This chat’s claude has ended'}</b><span>${err ? esc(err)
+        : !s.cwd ? 'What you see is its transcript — and with no folder known for it, it cannot be resumed from here.'
+        : `What you see is its transcript.${inVsCode(s) ? ' It was last continued in VS Code: resumed here it is a CLI chat, and the tab there will not follow it.' : ''} Resume runs <code>claude --resume</code> on it, in a terminal here.`}</span></span>
+      ${counting ? '<button class="btn" id="resumeNo" title="Stay on the transcript — Resume waits for you · esc">Not now</button>' : ''}
+      ${s.cwd ? `<button class="btn rgo" id="resumeGo"${going ? ' disabled' : ''} title="${counting ? 'Resume now — ' : ''}claude --resume on this chat, in a terminal here · ⌥⌘C">${ICON.play}${going ? 'resuming…' : counting ? 'Resume in <span class="n"></span>' : 'Resume'}<span class="k">⌥⌘C</span></button>` : ''}`);
+    if (counting) {
+      countResume();
+      // the line along the top on the countdown's clock: a new chat's countdown, with the class never off, ran on from where the last one was
+      for (const a of box.getAnimations({ subtree: true })) if (a.animationName === 'rfill') a.currentTime = Math.max(0, AUTO_RESUME_MS - (autoResume.at - performance.now()));
+    }
+    const go = box.querySelector('#resumeGo'); if (go) go.onclick = () => termAction(state.sessions.get(s.id) || s);
+    const no = box.querySelector('#resumeNo'); if (no) no.onclick = stopResume;
+  }
+  $('#autoResume').checked = prefs.autoResume !== false;
+  $('#autoResume').addEventListener('change', e => { prefs.autoResume = e.target.checked; savePrefs(); if (!prefs.autoResume) stopResume(); });
   // ---- attachments: files dropped on the board, images pasted --------------------------------
   // What claude wants is a path: an @-mention (`@dir/file`, a space escaped as `\ ` — how the CLI itself writes
-  // one) typed into the drawer's prompt, or into the reply box on a stale chat. In the Mac app the shell sees the
+  // one) typed into the drawer's prompt. In the Mac app the shell sees the
   // pasteboard and calls peixDrop with the real paths (WebKit never sees the drag); a plain browser only gets the
   // bytes, so the page uploads them (PUT /api/attach) and gets a path back. Images pasted with ⌘V: in the app
   // the drawer's claude reads the Mac clipboard itself on ⌃V (verified: `[Image #1]` on the prompt line), so
@@ -4565,12 +4618,7 @@
     const live = terms.filter(t => t.id && t.xt && t.exited === null && t.sessionId === state.current);
     const tm = live.find(t => t.g === focusG) || live.find(t => t.kind === 'claude') || live[0];
     if (tm) { focusGroup(tm.g); termSend(tm, tm.kind === 'shell' ? paths.map(shellWord).join(' ') + ' ' : text); tm.xt.focus(); return true; }
-    if (!$('#composer').hidden) {
-      const ta = $('#composeText'), a = ta.selectionStart ?? ta.value.length, b = ta.selectionEnd ?? a;
-      ta.value = ta.value.slice(0, a) + text + ta.value.slice(b); ta.selectionStart = ta.selectionEnd = a + text.length;
-      ta.dispatchEvent(new Event('input')); ta.focus(); return true;
-    }
-    note($('#shead'), !s ? 'Pick a chat first, then drop the file' : s.alive ? 'Nowhere to put it: open the terminal on this chat (>_) first, then drop again' : 'Nowhere to put it on this chat', true);
+    note($('#shead'), !s ? 'Pick a chat first, then drop the file' : s.alive ? 'Nowhere to put it: open the terminal on this chat (>_) first, then drop again' : resumable(s) ? 'Nowhere to put it: resume the chat first, then drop again' : 'Nowhere to put it on this chat', true);
     return false;
   }
   async function uploadFiles(files) {
@@ -4596,7 +4644,6 @@
     e.preventDefault(); e.stopPropagation();
     if (inApp) termSend(tm, '\x16'); else uploadFiles(files).then(attachPaths);
   }, true);
-  $('#composeText').addEventListener('paste', e => { const files = pastedFiles(e); if (!files.length) return; e.preventDefault(); uploadFiles(files).then(attachPaths); });
   // ---- a second claude on this chat --------------------------------------------------------
   // VS Code launches a claude whenever a tab opens a chat, without looking for one that already runs — so a
   // chat taken over here comes back under VS Code the moment it is opened there again (and VS Code mounts
@@ -4625,26 +4672,6 @@
       catch (e) { rivalEnding = null; renderRival(state.sessions.get(s.id) || s); const b = $('#rivalEnd'); if (b) { b.textContent = 'failed'; b.title = e.message; box._drawn = null; } }
     };
   }
-  let replySending = false;   // a quick second ⏎ sent the same text again, and came back a 409 shown as an error
-  async function sendReply() {
-    const id = state.current, ta = $('#composeText'), hint = $('#composeHint'), text = ta.value.trim();
-    if (!id || !text || replySending) return;
-    replySending = true; $('#composeSend').disabled = true;
-    try {
-      await api('POST', `/api/sessions/${id}/reply`, { text });
-      if (state.current === id && ta.value.trim() === text) ta.value = '';   // the prompt comes back through the transcript like any other line; a draft typed since — another chat's — stays
-    } catch (e) {
-      hint.className = 'hint err'; hint.textContent = e.message; $('#composeSend').disabled = false;
-    } finally { replySending = false; }
-  }
-  $('#composeSend').onclick = sendReply;
-  $('#composeText').addEventListener('input', () => {
-    const s = state.sessions.get(state.current);
-    $('#composeSend').disabled = !!s?.replying || !$('#composeText').value.trim();
-  });
-  $('#composeText').addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendReply(); }
-  });
 
   // ---- transcript rendering ----------------------------------------------------------
   // Fallback renderer (fenced code, inline code, bold) if the vendored libs failed to load.
@@ -4827,7 +4854,9 @@
     if (stick) log.scrollTop = log.scrollHeight;
   }
 
-  async function openSession(id) {
+  // `auto`: whether a chat whose claude has ended counts down to its resume (armResume) — not for the one a load opens.
+  async function openSession(id, { auto = true } = {}) {
+    if (id !== state.current) drawer.err = null;   // a failure to start a drawer is the chat's it happened on (2026-10-07)
     state.current = id; state.unread.delete(id); hidePr();
     // the address names the open chat at once (2026-10-02; after the fetch before, so a chat left before its answer
     // came put its id back over the next one's, and a link to that one was then no change of hash)
@@ -4836,6 +4865,7 @@
     // a deep link or a notification can point at a chat outside the selected project — switch to its folder
     if (s0 && !inProject(s0, projectStub(prefs.project))) { prefs.project = s0.cwd || '?'; savePrefs(); }
     renderBoard();
+    if (auto) armResume(s0); else stopResume();
     if (s0) renderHead(s0);
     if (s0) syncTerm(s0);   // the tab it was on comes back at once — a page in the pane, its zsh; the drawer after the fetch (a chat not yet in the snapshot keeps what is attached until then)
     awaitEntries(id);
@@ -4845,7 +4875,9 @@
     // another chat opened while this one's answer was on its way (⌥⌘↓ ⌥⌘↑ in quick succession): the answer is stale
     // (2026-10-02) — it drew this chat's transcript under the other's header
     if (state.current !== id) return;
-    const s1 = takeSession(id, data, seen); takeEntries(id, data); renderHead(s1); renderLog(); syncTerm(s1);
+    const s1 = takeSession(id, data, seen); takeEntries(id, data);
+    if (!s0 && auto) armResume(s1);
+    renderHead(s1); renderLog(); syncTerm(s1);
     // A chat the snapshot did not have yet — the drawer's new one, told of over the `terminal` event before its own
     // `session` push — gets its card, and the project switch above, from the answer.
     if (!s0) { if (!inProject(data.session, projectStub(prefs.project))) { prefs.project = data.session.cwd || '?'; savePrefs(); } renderBoard(); }
@@ -4942,7 +4974,7 @@
       state.serverNotify = d.notify === 'native';   // the server posts its own banners: the app must not double them
       renderBoard(); welcomeSync();
       const want = location.hash.slice(1);
-      if (want && !state.current && state.sessions.has(want)) openSession(want);
+      if (want && !state.current && state.sessions.has(want)) openSession(want, { auto: false });   // a reload resumes nothing by itself
       // A snapshot with a chat already open is a reconnect — the server restarted, the stream dropped — and the entries
       // pushed while the stream was down never came (2026-09-27): fetch the open chat again, in place. Not openSession,
       // which would close the PR in the pane and scroll the list.

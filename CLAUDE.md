@@ -98,7 +98,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   and so is every spawn's (`code serve-web`): nothing the server starts or accepts may emit one unheard.
 * **A chat re-read is silent and keeps what the transcript cannot say** (`indexFile` on a chat the board holds —
   opening one longer than `TAIL_BYTES`, a truncated file): `s.silent` stops `queueNotify` for the re-read (every reply
-  in it was alerted once), `live`/`rivals`/`alive`/`startedAt`/`openedAt`/`agentsRunning`/`replying`/`replyError` carry over, a
+  in it was alerted once), `live`/`rivals`/`alive`/`startedAt`/`openedAt`/`agentsRunning` carry over, a
   tail re-read keeps `prev.tasks`, and the replaced object's timers are cleared. A registry-made placeholder (no file
   yet) is **not** silent: its first reply is news. → `test/reindex.test.mjs`.
 * **`summary()` reads only.** `pruneTasks` (the poll) deletes expired tasks; `sortedSummaries` builds one
@@ -451,7 +451,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, PR
   turns; `STATE_FILE` overrides) and the user's `~/.config/peixairada/config.json` (the setup, below), both shared by
   the app and every browser; the browser's `localStorage` `peixairada-prefs`
-  (selected project, filters, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the person the list is narrowed to, ⌥ as Meta, drawer open/height — the keys are the `prefs` literal,
+  (selected project, filters, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the person the list is narrowed to, ⌥ as Meta, auto-resume, drawer open/height — the keys are the `prefs` literal,
   and old ones are deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it
   renders reads its state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
 * **The setup is the user's file, and nothing about one Mac is written in the code** (2026-09-28; the file since
@@ -580,7 +580,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   menu's last row) and, with no chat open, the empty header's own ··· (`#noChatMore`, delegated — `leaveChat` rewrites
   the header). A head (the name, the counts, × `#settingsClose`), a segmented control (`.stabs`) over three panes
   (`.spane`): **Board** — the notifications switch (`#notifyOn`), the rings' step (`#ringsInStep`), the cards' size
-  (`.dens`), ⌥ as Meta (`#optMeta`), what is hidden (`#hidden`) — no date format (DD-MM-YYYY, `fmtDate`); **Setup** — the server's (`#setup`); **Keys** — the list (`.keys`). The class
+  (`.dens`), auto-resume (`#autoResume`), ⌥ as Meta (`#optMeta`), what is hidden (`#hidden`) — no date format (DD-MM-YYYY, `fmtDate`); **Setup** — the server's (`#setup`); **Keys** — the list (`.keys`). The class
   is still `pop`, so every row keeps its `.pop …` rule. Esc, the backdrop, ×, ⌘, or ⌘W close it; its `close` drops a
   setup row half typed. **It is modal**: the pane is down while it is up (`postPane`), and the ⌥⌘ / ⌘ keys are swallowed
   under it — close it first (the scenarios do). The fish is the SSE light and, clicked, **the About box** (`#about`, a modal dialog:
@@ -763,8 +763,18 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
 * **Take-over**: a chat live in iTerm or VS Code can be resumed here — SIGTERM the other processes, wait, spawn.
   Nothing respawns a CLI claude, and VS Code's extension never respawns one that died. The tab in VS Code goes dead
   and does not follow. → Findings: *VS Code chats can be taken over*.
-* **Live chats are never written to** from the board (a second writer on one transcript); stale ones get
-  `claude --resume -p` for a one-shot reply, or a drawer.
+* **Live chats are never written to** from the board (a second writer on one transcript); stale ones are resumed in
+  a drawer.
+* **A chat whose claude has ended is its transcript, with the resume bar under it** (2026-10-07; a one-shot
+  `claude --resume -p` reply box before, gone with its route): `#resume`, the chat column's row 5, drawn by
+  `renderResume` from `renderHead` while `resumable(s)` — no process, a file, no drawer on the chat; Resume is
+  `termAction` (>_'s path, ⌥⌘C). **Opening such a chat counts down to its resume** (`armResume` from `openSession`,
+  `AUTO_RESUME_MS`; `prefs.autoResume`, the settings' *auto-resume*): the button counts, a line runs along the bar's top
+  (`rfill`, its time set from the countdown's), and `termAction(s, { stay: true })` keeps the tab and the keys. Not
+  now, Esc outside a terminal, another chat and the switch stop it (`stopResume`); a dialog up holds it. A done chat,
+  one whose claude ends while open, and the one a load opens (`openSession(id, { auto: false })`) wait for the button.
+  **The harness has it off**: `launchChrome` writes `autoResume: false` into the prefs of every page it drives unless
+  set — `verify --hash` drives the live board. `peix.state().resume`. → `scripts/scenarios/resume-bar.mjs`.
 
 ## Invariants that bit us — one line each, the story in Findings
 
@@ -842,11 +852,11 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   scroll-driven ones, which run as long as the list can scroll — and for a pending draw. `ctx`: `evaluate`, `waitFor`, `send`, `reload`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
-  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The forty-four in
+  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The forty-five in
   `scripts/scenarios/` are the regression checks for the drawer, the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
   marks and the PR stack, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, a PR's turn, the chat's links,
-  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short.
+  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short, the resume bar.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.

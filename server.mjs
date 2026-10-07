@@ -494,8 +494,7 @@ function newSession(id, file) {
     entries: [], entryCount: 0, loaded: false,
     offset: 0, partial: '', dec: null, reading: false, truncatedHead: false,   // where the tail reads from, its unfinished line and character (indexFile)
     agentsRunning: 0, ask: null, tasks: null, taskCalls: null,   // sub-agents at work (scanAgents); the question a tool asked; background tasks and the calls that started them
-    pendingNotify: null, notifyTimer: null, pushTimer: null, newEntries: [],
-    replying: null, replyError: null
+    pendingNotify: null, notifyTimer: null, pushTimer: null, newEntries: []
   };
 }
 
@@ -572,8 +571,7 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     env: envs[s.id] || mine.term?.task || null,   // the launcher it was started with (⌥⌘O groups oracle's chats by it)
     // the other live processes on this chat, and who wrote its last turn — the page's "VS Code too" warning
     rivals: s.rivals, tailEntrypoint: s.entrypoint, tailEntrypointAt: s.entrypointAt,
-    done: isDone(s), doneAt: doneMarks[s.id] || null,
-    replying: s.replying, replyError: s.replyError
+    done: isDone(s), doneAt: doneMarks[s.id] || null
   };
 }
 
@@ -1206,7 +1204,7 @@ function readLines(fd, start, end, onLine, dec = new StringDecoder('utf8')) {
 
 /**
  * Read the tail (or all) of a transcript and rebuild the session from it. A chat the board already holds keeps what
- * the transcript cannot say — its process, its sub-agents, a reply under way — and its timers are stopped, so
+ * the transcript cannot say — its process, its sub-agents — and its timers are stopped, so
  * nothing fires later for the object that was replaced (a push 80 ms old carried a stale summary). It is re-read
  * *in silence*: every reply in it was alerted about once already (2026-09-27 — opening any chat longer than
  * TAIL_BYTES fired "Claude replied" for its last, old reply, since the full re-read folds every line with `indexing`
@@ -1219,7 +1217,7 @@ function indexFile(file, { full = false } = {}) {
   const prev = sessions.get(id);
   const s = newSession(id, file);
   if (prev) {
-    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'openedAt', 'agentsRunning', 'replying', 'replyError']) s[k] = prev[k];
+    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'openedAt', 'agentsRunning']) s[k] = prev[k];
     clearTimeout(prev.pushTimer); clearTimeout(prev.notifyTimer);
     s.silent = !!prev.file;
   }
@@ -1565,7 +1563,6 @@ const BIN_FALLBACKS = {
     '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code',
     '/Applications/Cursor.app/Contents/Resources/app/bin/code']
 };
-const REPLY_TIMEOUT_MS = Number(process.env.REPLY_TIMEOUT_MS || 10 * 60_000);
 const binCache = new Map();
 
 /** `<NAME>_BIN` in the environment (CLAUDE_BIN, GH_BIN) overrides the search. A file that can be run, not just a path
@@ -1700,42 +1697,6 @@ async function ensureVsWeb() {
   return { code: 504, error: `code serve-web did not answer on ${VSWEB_PORT} within 60 s` };
 }
 
-// `claude --resume <id> -p <text>` reuses the session id, so Claude appends to the *same* transcript
-// and the reply arrives through the watcher like any other line — nothing downstream special-cases it.
-// Resuming also registers a new pid, so the card walks Stale → Clauding → Ready on its own.
-//
-// Stale only, and deliberately: a live session already has a process writing that file, and a second
-// writer racing it is how a transcript gets mangled.
-//
-// The text is passed as an argv element to execFile — no shell — so quotes, newlines and $(…) in a
-// reply are inert.
-function replyToStale(s, text) {
-  const bin = claudeBin();
-  if (!bin) return { code: 503, error: 'claude binary not found — set CLAUDE_BIN to its path' };
-  const cwd = s.live?.cwd || s.cwd;
-  if (!cwd) return { code: 400, error: 'no cwd known for this session' };
-  if (!existsSync(cwd)) return { code: 409, error: `cwd no longer exists: ${cwd}` };
-  if (s.replying) return { code: 409, error: 'a reply is already running for this chat' };
-
-  s.replying = { snippet: snippet(text, 140), startedAt: new Date().toISOString() };
-  s.replyError = null;
-  schedulePush(s);
-
-  // Not awaited: a resumed turn runs for as long as it needs. The board already tails the transcript,
-  // so the prompt and the answer show up on their own. This only tracks the process, so the UI can
-  // say "sending" and surface a failure that never reaches the transcript at all.
-  execFile(bin, ['--resume', s.id, '-p', text], { cwd, env: cleanEnv(), timeout: REPLY_TIMEOUT_MS, maxBuffer: 16e6 }, (err, _stdout, stderr) => {
-    // the chat as it is now: a re-read during the reply replaced the object and carried `replying` over, and clearing
-    // the old one's left the new one's set — every later reply refused as "already running" (2026-10-03)
-    const cur = sessions.get(s.id) ?? s;
-    cur.replying = null;
-    cur.replyError = err ? (String(stderr || err.message).trim().split('\n').pop() || String(err)).slice(0, 300) : null;
-    if (cur.replyError) console.error(`[peixairada] reply to ${s.id} failed:`, cur.replyError);
-    schedulePush(cur);
-  });
-  return { code: 202, ok: true };
-}
-
 // ---------------------------------------------------------------------------------------------
 // Terminals: a real `claude` in a PTY, attached to from the page over a WebSocket
 // ---------------------------------------------------------------------------------------------
@@ -1788,8 +1749,7 @@ function termSummary(t) {
 // The server's own environment minus anything that says "you are inside a Claude session" — under
 // `npm start` from a Claude shell that is exactly what it says, and the CLI refuses to nest. Only the nesting markers
 // go: CLAUDECODE and CLAUDE_CODE_*. CLAUDE_DIR is this project's own (a fixture in tests — the fake claude reads it)
-// and CLAUDE_BIN the override the server already resolved; neither means anything to the CLI. A reply's `claude -p`
-// gets this too (2026-10-03; the raw environment before).
+// and CLAUDE_BIN the override the server already resolved; neither means anything to the CLI.
 const cleanEnv = () => Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^CLAUDECODE$|^CLAUDE_CODE_/.test(k)));
 function termEnv() {
   const env = cleanEnv();
@@ -2318,16 +2278,6 @@ const server = createServer(async (req, res) => {
       if (have && have.exited === null) return json(res, 200, { terminal: termSummary(have) });
       const r = await spawnOnce(`${s.id}:shell`, async () => { const body = await jsonBody(req); return spawnTerm({ cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows, shell: true }); });
       return json(res, r.code, r);
-    }
-    if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/reply$/))) {
-      const s = sessions.get(m[1]);
-      if (!s) return json(res, 404, { error: 'unknown session' });
-      const body = await jsonBody(req);
-      const text = typeof body.text === 'string' ? body.text.trim() : '';
-      if (!text) return json(res, 400, { error: 'expected {text}' });
-      if (s.alive) return json(res, 409, { error: 'chat is live — resuming it would put a second writer on its transcript' });
-      const r = replyToStale(s, text);
-      return json(res, r.code, r.ok ? { ok: true, status: 'running' } : { error: r.error });
     }
     if (req.method === 'PUT' && p === '/api/pins') {   // the pinned projects, in order — the whole list each time; folder cwds and c:<id>
       const body = await jsonBody(req);

@@ -31,8 +31,9 @@ It reads what Claude Code already writes to `~/.claude` — no plugin, no privat
 - 🚦 **Sorted by who owes whom** — asking you first, then working, then ready. *Done* is a tick you give.
 - 💡 **The card's edge tells you why it's busy** — Claude working, sub-agents out, a monitor watching, or a question
   waiting (the red one, question on the card).
-- 🖥️ **Claude in a drawer** — resume any chat in the real Claude Code terminal, inside the board. Drawers survive
-  restarts; chats running in iTerm or VS Code can be taken over.
+- 🖥️ **Claude in a drawer** — resume any chat in the real Claude Code terminal, inside the board: a chat whose Claude
+  has ended says so, and resumes 5 s after you open it (or on a click, if you'd rather). Drawers survive restarts;
+  chats running in iTerm or VS Code can be taken over.
 - 🔔 **Alerts** — a notification when a chat finishes or needs you; a Dock badge and menu-bar list in the app.
 - 🐙 **PRs** — chips in GitHub's colours, stacked on a card and fanned out under the pointer (scroll them when they're
   more than fit); a chat with an open PR is named after it. A PR you reviewed or wrote fills in, notifies you and brings its ticked chat back when it's your

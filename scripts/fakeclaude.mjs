@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // A stand-in for `claude` in tests: the shapes of the real thing that the board depends on, none of the cost.
-//   fakeclaude.mjs [--resume <id>] [-p <text>]      (what the server passes: --resume, or -p for a one-shot reply)
+//   fakeclaude.mjs [--resume <id>]      (what the server passes)
 // It registers in $CLAUDE_DIR/sessions/<pid>.json like the CLI, appends user/assistant lines to the chat's
 // transcript under $CLAUDE_DIR/projects/<slug>/<id>.jsonl, and draws a TUI the way Claude Code does: the
 // transcript scrolls above, a live region sits at the bottom (rule · prompt · rule · three status lines), the
@@ -23,7 +23,6 @@ if (!CLAUDE_DIR || underReal(CLAUDE_DIR)) { console.error('fakeclaude: CLAUDE_DI
 const args = process.argv.slice(2);
 const arg = f => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : null; };
 let sessionId = arg('--resume') || randomUUID();
-const oneShot = arg('-p');
 const cwd = process.cwd();
 const slug = cwd.replace(/[/.]/g, '-');
 const projDir = join(CLAUDE_DIR, 'projects', slug); let file = join(projDir, `${sessionId}.jsonl`);
@@ -43,10 +42,6 @@ function assistantLine(text, stop = 'end_turn') {
   parent = uuid;
 }
 const reply = text => `You said: ${text}\n\nThis is the fake claude — one paragraph, one code fence, done.\n\n\`\`\`sh\necho ${JSON.stringify(text)}\n\`\`\``;
-
-if (oneShot !== null) {   // `claude --resume <id> -p <text>`: append the turn, print the answer, exit
-  userLine(oneShot); const r = reply(oneShot); assistantLine(r); process.stdout.write(r + '\n'); process.exit(0);
-}
 
 // ---- interactive ----
 // The registry file, rewritten on each change of state as the real one does: busy for a turn, idle between them.

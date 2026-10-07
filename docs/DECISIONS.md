@@ -2,8 +2,42 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-06. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-07. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-07 — a chat whose claude has ended says so, and resumes itself
+
+Ricardo: "seems like it's confusing to enter a old chat and not have the live claude session. instead of a text input
+below to write and resume, make it more obvious (via a button) that you can resume the claude session and the current
+chat is just render of that dead session. also, auto-resume after 5 seconds (had a toggle to turn this part off in
+settings)".
+
+* **The reply box is gone, and its route with it**: the box under a stale chat sent a one-shot `claude --resume -p`,
+  and read as if the chat were still there to answer. With nothing on the page to call it, `POST /api/sessions/:id/reply`,
+  `replyToStale`, `replying`/`replyError` on the summary, `REPLY_TIMEOUT_MS` and the fake claude's `-p` went too.
+* **The resume bar** (`#resume`, `renderResume`, where the box was): *This chat's claude has ended* — what you see is
+  its transcript — and one button in the accent, Resume, which is >_'s path (`termAction`, ⌥⌘C). Shown on the same rule
+  the box had (`resumable`: no process, a file, no drawer on the chat); a chat last continued in VS Code says the tab
+  there will not follow; a failure to start the drawer is said on the bar, in red.
+* **Opening such a chat resumes it 5 s later** (`armResume` from `openSession`; the settings' *auto-resume*, on by
+  default, `prefs.autoResume`): the button counts the seconds and a line runs along the bar's top; *Not now*, Esc (not
+  inside a terminal), opening another chat or the switch off stop it; a dialog up holds it until it closes — a picker
+  opened from that chat may well lead elsewhere. It starts the drawer where the chat tab is and leaves the tab on show
+  and the keys where they were (`termAction(s, { stay: true })`): a GitHub page of the chat in front stays in front.
+* **What does not count down**: a chat ticked done (browsing the done cards would start a claude on each); one whose
+  claude ended while it was open (you, Done or `/exit` ended it, and 5 s later it was back); and the chat a load opens
+  — a reload, the app rebuilt, the board started — which nobody chose just then (`openSession(id, { auto: false })`).
+  Each of those has the button.
+* **`drawer.err` is the chat's**: opening another chat clears it. A failed drawer said *failed* on every chat's >_,
+  and would have said *Could not resume* on every ended chat's bar, until the next try.
+* **The harness keeps it off**: `launchChrome` writes `autoResume: false` into the prefs of every page it drives,
+  unless a page set it — `verify --hash` drives the live board, and 5 s on an ended chat started a real
+  `claude --resume`; the scenarios open fixture chats and look at them for longer than that.
+* **Left**: a file dropped on an ended chat is no longer typed anywhere (the box took its path) — the note says to
+  resume first.
+* → `scripts/scenarios/resume-bar.mjs`, new: the bar and no box, Resume, the bar back without a countdown when the
+  drawer ends, the countdown (the seconds, the line) and the resume ~5 s on on the same tab, Not now, Esc, another chat,
+  the switch, a done chat, a reload.
 
 ## Decisions of 2026-10-06 — a PR named short
 
