@@ -506,7 +506,7 @@ function newSession(id, file) {
     slug: file ? basename(dirname(file)) : null,
     cwd: null, gitBranch: null, model: null,
     title: null, customTitle: null, lastPrompt: null, lastReply: null, prs: [], tickets: [], ticketBranch: null,
-    status: 'unknown', statusSince: null, lastActivity: null, lastUserAt: null, lastReplyAt: null,
+    status: 'unknown', statusSince: null, lastActivity: null, lastUserAt: null, lastReplyAt: null, turnStart: null,
     startedAt: null,   // when a chat with no transcript yet came to be (loadRegistry) — the card's time and place until a first word lands
     openedAt: null,    // when a page last opened the chat (ms): its PRs are polled as if it had just been touched (prEvery)
     live: null, alive: false, entrypoint: null, entrypointAt: null,   // last 'entrypoint' a user/assistant line carried ('claude-vscode' | 'cli'), and when
@@ -1322,6 +1322,7 @@ function fold(s, line) {
       if (raw.startsWith('[Request interrupted')) {
         pushEntry(s, { role: 'user', kind: 'interrupt', text: raw, ts });
         s.lastActivity = ts; s.lastUserAt = ts;   // Escape is you acting on the chat too
+        s.turnStart = null;
         setStatus(s, 'idle', ts);
         return true;
       }
@@ -1334,6 +1335,7 @@ function fold(s, line) {
       pushEntry(s, { role: 'user', kind: 'text', text, ts, uuid: line.uuid });
       notePrs(s, text, ts, 'user'); noteTickets(s, text, ts, 'user');
       s.lastPrompt = snippet(text, 200);
+      if (!s.turnStart || s.status !== 'working') s.turnStart = ts;   // a prompt starts the turn; one typed mid-turn is part of it
       s.lastActivity = ts; s.lastUserAt = ts;
       setStatus(s, 'working', ts);
       return true;
@@ -1345,9 +1347,10 @@ function fold(s, line) {
       const m = line.message || {};
       const blocks = Array.isArray(m.content) ? m.content : [];
       if (m.model && m.model !== '<synthetic>') s.model = m.model;   // an API error's line, not what the chat runs on
-      let needsInput = false;
+      let needsInput = false, said = null;
+      s.turnStart ??= ts;   // a turn no word of yours began — a task's notice woke it — starts at its first line
       for (const b of blocks) {
-        if (b.type === 'text' && b.text?.trim()) { pushEntry(s, { role: 'assistant', kind: 'text', text: b.text, ts, msgId: m.id }); notePrs(s, b.text, ts, 'claude'); noteTickets(s, b.text, ts, 'claude'); }
+        if (b.type === 'text' && b.text?.trim()) { pushEntry(s, said = { role: 'assistant', kind: 'text', text: b.text, ts, msgId: m.id }); notePrs(s, b.text, ts, 'claude'); noteTickets(s, b.text, ts, 'claude'); }
         else if (b.type === 'tool_use') {
           pushEntry(s, { role: 'assistant', kind: 'tool_use', name: b.name, text: summarizeToolInput(b.name, b.input), toolUseId: b.id, ts });
           if (NEEDS_INPUT_TOOLS.has(b.name)) { needsInput = true; s.ask = { tool: b.name, text: summarizeToolInput(b.name, b.input), options: b.input?.questions?.[0]?.options?.length || 0 }; }
@@ -1361,6 +1364,10 @@ function fold(s, line) {
       if (TURN_ENDS.has(m.stop_reason) && !(m.stop_reason === 'max_tokens' && blocks.some(b => b.type === 'tool_use'))) {
         const text = textOf(blocks).trim();
         if (text) { s.lastReply = snippet(text, 300); s.lastReplyAt = ts; }
+        // the reply that ends the turn, and how long since your last word it took — the transcript's footer under it
+        // (2026-10-08); pushed in this same tick, so the page gets it marked
+        if (said) { said.turnEnd = true; const ms = Date.parse(ts) - Date.parse(s.turnStart); if (ms > 0) said.worked = ms; }
+        s.turnStart = null;
         setStatus(s, 'idle', ts);
         if (!s.agentsRunning) queueNotify(s, 'reply');   // a turn that ends with agents still at work is not the reply yet
       } else if (needsInput) {

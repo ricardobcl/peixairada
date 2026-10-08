@@ -635,7 +635,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   **Since 2026-09-27 (night) also `{type: 'chat', project, title, cwd}`** from `renderHead` (a new header) and
   `leaveChat` (`postChat`): the window's title and its `representedURL`; and a `state` with a chat that was not asking
   before, while the app is in the back, bounces the Dock once (`requestUserAttention`).
-* **The page owns the tabs**: each half's strip lists `chat` (`claude` while the session runs here), `shell` while a
+* **The page owns the tabs**: each half's strip lists — each tab with its mark before its name (2026-10-08: Claude's
+  burst, the prompt, a PR's or a globe, VS Code's) — `chat` (`claude` while the session runs here), `shell` while a
   zsh lives, `gh:<url>` per web page the chat opened (any page; the strip's ↗ is the way out to the browser) and
   `ide:<url>` for its folder's editor — `tabKeys()` from `state.paneGh` (per chat) and `state.paneIde` (per folder);
   `tabs` holds each chat's `[left, right]`, read back through `placeOf()`. `syncTerm()` keeps both bodies right and
@@ -699,6 +700,12 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
 * **Placement is derived**: `tabs` holds `[left, right]` per chat and `placeOf(s)` reads it against `keysIn` *now* —
   a key that is gone falls away. `tabOf(s)` is the focused half's. A half with nothing says what would fill it
   (`.gempty`) and its strip takes a drop (`.pdrop`).
+* **The transcript reads as a conversation** (2026-10-08, from the agent apps): your words are a bubble on the right,
+  as wide as they are (`.msg.user`); Claude's run the width under **one who-line a turn** — a text after another of
+  the same turn is `.cont` (`logView.lastWho`, reset by a turn's end, an interrupt, a compaction); and **the reply that
+  ends a turn has a footer**: *copy* (every text of the turn, as markdown — `.tcopy`, found by `data-ts`) and *worked
+  for 12m 4s* — the server marks that entry `turnEnd` and `worked` (`s.turnStart`: your prompt, else a turn's first
+  line when a task's notice woke it). → `scripts/scenarios/transcript-turns.mjs` (the tabs' marks too).
 * **The transcript moves, it does not multiply**: `placeLog()` reparents `#log` into the half holding the chat tab
   (scroll position carried by hand) and hides it under a live drawer; with no half showing it, it is parked in the
   left one, hidden. **The transcript is appended to, not rebuilt** (2026-09-27): `renderLog` keeps `logView` (the
@@ -881,11 +888,11 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   scroll-driven ones, which run as long as the list can scroll — and for a pending draw. `ctx`: `evaluate`, `waitFor`, `send`, `reload`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
-  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The forty-five in
+  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The forty-eight in
   `scripts/scenarios/` are the regression checks for the drawer, the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
   marks and the PR stack, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, a PR's turn, the chat's links,
-  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short, the resume bar.
+  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short, the resume bar, keeping the Mac awake, Jira tickets, the transcript's turns.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.

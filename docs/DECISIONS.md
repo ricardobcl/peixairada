@@ -93,6 +93,35 @@ be on the "..." for now, but if active it whould be a perm sign probaby on TOP R
 * **Every test server runs fakes** (`scripts/fakecaffeinate.mjs`, `scripts/fakepmset.mjs`, `AWAKE_ADMIN=none`): no test
   holds this Mac awake or puts up a dialog. → `test/awake.test.mjs`, `scripts/scenarios/keep-awake.mjs`, both new.
 
+### Ideas from two apps of the same kind
+
+Ricardo: "we have similar apps out there: https://paseo.sh/ https://www.onorca.dev/ so borrow design ideas to
+beautify this app".
+
+Both sites were looked at in headless Chrome (their app mockups at 1.5×). What they share: a dark neutral ground,
+Geist or Inter, thin edges, rounded panels; a tab strip where each tab wears its agent's or its kind's mark (Codex,
+Claude Code, `npm run dev` with a prompt, a URL with a globe); a prompt drawn as a right-aligned bubble and the reply
+as plain text under no label, each reply closed by a quiet row — copy, fork, *Worked for 31m 46s* — and chips under
+the last one (*6/6 tasks · 3 subagents · +1.9k −684*); a sidebar grouped *Ready to review · Working · Done*, each row
+a title, an age, and a second line with its PR and *✓ passed*; Orca's sub-agents listed under their task with a
+spinner or a tick, and its status bar of usage bars (*58% 5h · 41% wk*). What came over, each small and in the
+board's own idiom:
+
+* **Marks on the tabs**: Claude's burst on the chat's tab (in the accent), the prompt on the shell's, a PR's mark or a
+  globe on a page's, VS Code's on the editor's.
+* **A prompt is a bubble on the right**, as wide as its words — the full-width block with the accent down its left
+  edge goes; a hairline of the accent stays round it.
+* **One who-line a turn**: Claude's second and later words in a turn drop their *Claude 8:16 PM* (the time stays on
+  hover) — a long turn read as a column of labels.
+* **The turn's footer**: under the reply that ends a turn, *copy* (the whole turn's words, as markdown) and *worked
+  for 12m 4s* — measured on the server from your prompt (or the first line of a turn a task's notice woke) to that
+  reply, since only the transcript's times can say it.
+* **Not taken**: their typefaces (the board ships no fonts and the system's reads as well), rounded cards (square on
+  purpose, 2026-09-27), the grouped sidebar (the board's clauding/ready divider and day lines say the same in less
+  room), CI checks on a PR (*✓ passed* — a fair next step: `statusCheckRollup` on the call already made), the
+  sub-agents' list under a card (their descriptions are in the main transcript's tool calls — a tooltip's worth), and
+  a diff count per chat (git per folder on every poll).
+
 ## Decisions of 2026-10-07 — a chat whose claude has ended says so, and resumes itself
 
 Ricardo: "seems like it's confusing to enter a old chat and not have the live claude session. instead of a text input

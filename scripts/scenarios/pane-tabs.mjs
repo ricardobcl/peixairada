@@ -23,7 +23,7 @@ export default async function (ctx) {
   // the board is acting on; `strips()` is both, left then right.
   const STRIP = `(window.peix.state().focusG ? '#ptabsB' : '#ptabs')`;
   const strips = () => ctx.evaluate(`JSON.stringify(['#ptabs', '#ptabsB'].map(id => [...document.querySelectorAll(id + ' .ptab')].map(b => b.dataset.tab.split(':')[0])))`).then(JSON.parse);
-  const tabsNow = () => ctx.evaluate(`JSON.stringify([...document.querySelector(${STRIP}).querySelectorAll('.ptab')].map(b => ({ k: b.dataset.tab, on: b.classList.contains('on'), label: b.firstChild.textContent })))`).then(JSON.parse);
+  const tabsNow = () => ctx.evaluate(`JSON.stringify([...document.querySelector(${STRIP}).querySelectorAll('.ptab')].map(b => ({ k: b.dataset.tab, on: b.classList.contains('on'), label: [...b.childNodes].find(n => n.nodeType === 3)?.textContent })))`).then(JSON.parse);
   const lastPane = () => ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'pane').pop() || null)`).then(JSON.parse);
   const onTab = () => ctx.evaluate(`document.querySelector(${STRIP}).hidden ? 'hidden' : window.peix.state().tab`);
   const lone = () => ctx.evaluate(`JSON.stringify(['#ptabs', '#ptabsB'].map(id => document.querySelector(id).classList.contains('lone')))`).then(JSON.parse);

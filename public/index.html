@@ -1031,6 +1031,8 @@
   .ptabs.lone { padding: 0; height: 2px; border: 0; background: var(--line); overflow: hidden; }
   .ptab { flex: none; font: inherit; font-size: 11.5px; padding: 2px 9px; border: 1px solid transparent; border-radius: 6px; background: var(--ctl); color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
   .ptab:hover { color: var(--ink); background: var(--ctl-hi); }
+  .ptab .ic { width: 12px; height: 12px; flex: none; fill: currentColor; margin-left: -2px; opacity: .8; }
+  .ptab .ic.burst { fill: var(--accent); opacity: 1; }
   .ptab.on { color: var(--ink); background: color-mix(in srgb, var(--accent) 22%, transparent); }
   .ptabs .pdrop { color: var(--muted); font-style: italic; padding: 2px 4px; }
   /* A tab on its way to the other half (2026-09-25): it stays in its strip, faded, while a copy follows the pointer,
@@ -1062,7 +1064,20 @@
   /* The chat is prose, so it gets prose spacing: a taller line box than the dense lists beside it
      and a clear gap between turns. Everything below is tuned against that 1.62. */
   .msg { margin: 0 0 18px; }
-  .msg.user .bubble { background: var(--user-bg); border-radius: 10px; padding: 11px 15px; border-left: 3px solid var(--accent); }
+  /* Your words on the right, a bubble as wide as they are (2026-10-08, as the agent apps draw a prompt — a full-width
+     block with the accent down its left edge before): Claude's run the width, under one who-line a turn */
+  .msg.user { display: flex; flex-direction: column; align-items: flex-end; }
+  .msg.user .who { margin: 0 4px 5px 0; }
+  .msg.user .bubble { max-width: min(82%, 760px); min-width: 0; background: var(--user-bg); border-radius: 14px 14px 4px 14px; padding: 9px 15px;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .msg.assistant.cont { margin-top: -6px; }
+  .msg.assistant.cont .who { display: none; }   /* the turn's second word on: the who-line said it once */
+  /* under the reply that ends a turn (2026-10-08): copy the turn's words, and how long it worked */
+  .msg .turnfoot { display: flex; align-items: center; gap: 10px; margin: 4px 0 0 2px; font-size: 11px; color: var(--muted); }
+  .msg .turnfoot .tcopy { display: inline-flex; align-items: center; gap: 4px; padding: 2px 5px; margin-left: -5px; border: 0; border-radius: 5px; background: none; font: inherit; color: inherit; cursor: pointer; }
+  .msg .turnfoot .tcopy .ic { width: 13px; height: 13px; fill: currentColor; }
+  .msg .turnfoot .tcopy:hover { color: var(--ink); background: var(--ctl); }
+  .msg .turnfoot .tcopy.did { color: var(--idle); }
   .msg.assistant .bubble { padding: 4px 2px; }
   .msg .who { font-size: 11px; color: var(--muted); margin: 0 0 5px 2px; display: flex; gap: 8px; }
   .msg .text { white-space: pre-wrap; word-break: break-word; line-height: 1.62; }
@@ -1722,6 +1737,8 @@
     play: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.8v12.4L14 8Z"/></svg>',   // the resume bar's button
     view: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 3.6a4.4 4.4 0 1 1 0 8.8 4.4 4.4 0 0 1 0-8.8Zm0 1.5a2.9 2.9 0 1 0 0 5.8 2.9 2.9 0 0 0 0-5.8Z"/><path d="M6.6 8a1.4 1.4 0 1 0 2.8 0 1.4 1.4 0 0 0-2.8 0ZM7.25 0h1.5v2.4h-1.5Zm0 13.6h1.5V16h-1.5ZM0 7.25h2.4v1.5H0Zm13.6 0H16v1.5h-2.4Z"/></svg>',
     more: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="3" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="13" cy="8" r="1.5"/></svg>',
+    globe: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1Zm-1.9 1.9A5.5 5.5 0 0 0 2.55 7.25H5a11 11 0 0 1 1.1-4.35Zm3.8 0A11 11 0 0 1 11 7.25h2.45A5.5 5.5 0 0 0 9.9 2.9ZM9.5 7.25A9.6 9.6 0 0 0 8 2.6a9.6 9.6 0 0 0-1.5 4.65Zm-3 1.5A9.6 9.6 0 0 0 8 13.4a9.6 9.6 0 0 0 1.5-4.65Zm-1.5 0H2.55a5.5 5.5 0 0 0 3.55 4.35A11 11 0 0 1 5 8.75Zm6 0a11 11 0 0 1-1.1 4.35 5.5 5.5 0 0 0 3.55-4.35Z"/></svg>',   // a web page's tab
+    copy: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M5 1.5h7.5A1.5 1.5 0 0 1 14 3v8.5a1.5 1.5 0 0 1-1.5 1.5H11v1.5A1.5 1.5 0 0 1 9.5 16h-6A1.5 1.5 0 0 1 2 14.5v-8A1.5 1.5 0 0 1 3.5 5H3.5V3A1.5 1.5 0 0 1 5 1.5Zm.5 1.5v2h4A1.5 1.5 0 0 1 11 6.5v5h1.5V3Zm-2 3.5v8h6v-8Z"/></svg>',   // the turn's footer
     // a Jira ticket (2026-10-08): a ticket stub — the Setup's Jira rows
     ticket: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M1.5 3.5h13v3a1.5 1.5 0 0 0 0 3v3h-13v-3a1.5 1.5 0 0 0 0-3Zm1.5 1.5v.9a3 3 0 0 1 0 4.2V11h10v-.9a3 3 0 0 1 0-4.2V5Zm6 0h1.2v6H9Z"/></svg>',
     key: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M5.5 4a3.5 3.5 0 1 1-.01 7A3.5 3.5 0 0 1 5.5 4Zm0 1.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM8.6 6.8H15v1.5h-1.3V10h-1.5V8.3H11V10H9.5V8.3h-.9Z"/></svg>',
@@ -3552,6 +3569,17 @@
     b.textContent = ok ? 'copied' : 'failed'; b.classList.toggle('did', ok);
     clearTimeout(b.timer); b.timer = setTimeout(() => { b.textContent = 'copy'; b.classList.remove('did'); }, 1200);
   });
+  // The turn's footer (2026-10-08): copy what Claude said since your last word — every text of the turn, as written
+  // (markdown), a blank line between — and the same "copied" on the button.
+  $('#log').addEventListener('click', async e => {
+    const b = e.target.closest('.turnfoot .tcopy'); if (!b) return;
+    const all = state.entries, end = all.findIndex(x => x.turnEnd && x.ts === b.dataset.ts); if (end < 0) return;
+    let from = end; while (from > 0 && !(all[from - 1].role === 'user' && all[from - 1].kind === 'text')) from--;
+    const text = all.slice(from, end + 1).filter(x => x.role === 'assistant' && x.kind === 'text').map(x => x.text.trim()).join('\n\n');
+    let ok = false; try { await navigator.clipboard.writeText(text); ok = true; } catch {}
+    const w = b.querySelector('span'); w.textContent = ok ? 'copied' : 'failed'; b.classList.toggle('did', ok);
+    clearTimeout(b.timer); b.timer = setTimeout(() => { w.textContent = 'copy'; b.classList.remove('did'); }, 1200);
+  });
   $('#chat').addEventListener('click', e => {
     const a = e.target.closest('a[href]'); if (!a) return;
     const href = a.getAttribute('href') || '';
@@ -4273,15 +4301,17 @@
       el.classList.toggle('lone', lone);
       if (el.hidden || lone || (g === 1 && !two)) { setHtml(el, ''); continue; }   // nothing drawn, nothing left over to be found
       const tip = two ? ' · drag it to the other half to move it there' : '';
-      const tab = (k, label, title, x) => `<button class="ptab${cur === k ? ' on' : ''}${isPaneTab(k) ? ' pane' : ''}" data-tab="${esc(k)}" title="${esc(title + tip)}">${esc(label)}${x ? `<span class="x" title="${esc(x)}">×</span>` : ''}</button>`;
+      // each tab with its mark before its name (2026-10-08, as the agent apps' strips have them): Claude's burst, the
+      // shell's prompt, a PR's or a page's, VS Code's
+      const tab = (k, label, title, x, icon = '') => `<button class="ptab${cur === k ? ' on' : ''}${isPaneTab(k) ? ' pane' : ''}" data-tab="${esc(k)}" title="${esc(title + tip)}">${icon}${esc(label)}${x ? `<span class="x" title="${esc(x)}">×</span>` : ''}</button>`;
       const navs = (isPaneTab(cur) ? '<button class="nav" data-nav="back" title="Back">‹</button><button class="nav" data-nav="forward" title="Forward">›</button><button class="nav" data-nav="reload" title="Reload">↻</button><button class="nav" data-nav="external" title="Open this page in your browser">↗</button>' : '')
         + (two ? `<button class="nav gturn" title="${stackNow() ? 'The halves side by side · ⌘1 ⌘2' : 'The halves one over the other · ⌥⌘1 ⌥⌘2'}">${stackNow() ? '◫' : '⊟'}</button>` : '')
         + (two ? '<button class="nav gclose" title="Close this half — the other one becomes the whole column · ⌘W">⨯</button>' : '');
       setHtml(el, keys.map(k =>
-        k === 'chat' ? tab(k, termLive(s) ? 'claude' : 'chat', `${termLive(s) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C`)
-        : k === 'shell' ? tab(k, shName(), `A ${shName()} in ${s.cwd || 'its folder'} · ⌥⌘T`, 'End this shell')
-        : k.startsWith('gh:') ? tab(k, paneLabel(k), GH_PR.test(k.slice(3)) ? `${k.slice(3)} · ⌥⌘G` : k.slice(3), 'Close this page')
-        : tab(k, 'VS Code', `${s.cwd} in VS Code Web · ⌥⌘E`, 'Close the editor')).join('')
+        k === 'chat' ? tab(k, termLive(s) ? 'claude' : 'chat', `${termLive(s) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C`, '', ICON.claude)
+        : k === 'shell' ? tab(k, shName(), `A ${shName()} in ${s.cwd || 'its folder'} · ⌥⌘T`, 'End this shell', ICON.term)
+        : k.startsWith('gh:') ? tab(k, paneLabel(k), GH_PR.test(k.slice(3)) ? `${k.slice(3)} · ⌥⌘G` : k.slice(3), 'Close this page', GH_PR.test(k.slice(3)) ? ICON.pr : ICON.globe)
+        : tab(k, 'VS Code', `${s.cwd} in VS Code Web · ⌥⌘E`, 'Close the editor', ICON.vscode)).join('')
         + (two && !keys.length ? '<span class="pdrop">drop a tab here</span>' : '')
         + (isPaneTab(cur) ? `<span class="purl" data-key="${esc(cur)}" data-url="${esc(paneUrl(cur))}" title="${esc(paneUrl(cur))} — click to copy">${esc(bareUrl(paneUrl(cur)))}</span>` : '')
         + (navs ? `<span class="navs">${navs}</span>` : ''));
@@ -4888,10 +4918,14 @@
     }
     return { html: tpl.innerHTML, cls: 'md' };
   }
-  function entryHtml(e) {
+  /** How long a turn worked, as the footer says it: 12s, 4m 12s, 1h 05m. */
+  const workedFor = ms => { const s = Math.round(ms / 1000); return s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${Math.floor(s / 3600)}h ${String(Math.floor(s % 3600 / 60)).padStart(2, '0')}m`; };
+  /** `cont`: a word of Claude's after another in the same turn — no who-line again (2026-10-08). */
+  function entryHtml(e, cont = false) {
     if (e.kind === 'text') {
-      const r = md(e.text, state.sessions.get(state.current)?.cwd);
-      return `<div class="msg ${e.role}"><div class="who"><span>${e.role === 'user' ? 'You' : 'Claude'}</span><span>${e.ts ? new Date(e.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''}</span></div><div class="bubble"><div class="text ${r.cls}">${r.html}</div></div></div>`;
+      const r = md(e.text, state.sessions.get(state.current)?.cwd), at = e.ts ? new Date(e.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+      const foot = e.turnEnd && e.role === 'assistant' ? `<div class="turnfoot"><button class="tcopy" type="button" data-ts="${esc(e.ts || '')}" title="Copy what Claude said this turn">${ICON.copy}<span>copy</span></button>${e.worked ? `<span class="worked" title="from your last word to this reply">worked for ${workedFor(e.worked)}</span>` : ''}</div>` : '';
+      return `<div class="msg ${e.role}${cont ? ' cont' : ''}"${cont && at ? ` title="${at}"` : ''}><div class="who"><span>${e.role === 'user' ? 'You' : 'Claude'}</span><span>${at}</span></div><div class="bubble"><div class="text ${r.cls}">${r.html}</div></div>${foot}</div>`;
     }
     if (e.kind === 'tool_use') return `<div class="tool"><b>${esc(e.name)}</b><span>${esc(e.text)}</span></div>`;
     if (e.kind === 'tool_result') return `<div class="tool ${e.isError ? 'err' : ''}"><span>↳</span><span>${esc(e.text || '(no output)')}</span></div>`;
@@ -4921,7 +4955,7 @@
     // The same chat drawn again (a reconnect's fetch) keeps your place in it, and lights no pill for what you had read
     // (2026-10-03: thrown to the top, and "37 new replies" for the whole transcript).
     const keep = resetting && log.dataset.sid === (state.current || '') && !stick ? log.scrollHeight - log.scrollTop : null;
-    if (resetting) { log.innerHTML = ''; log.dataset.sid = state.current || ''; Object.assign(logView, { arr: state.entries, n: 0, run: [], group: null, drawnRun: 0, fresh: 0, dayKey: new Date().toDateString() }); }
+    if (resetting) { log.innerHTML = ''; log.dataset.sid = state.current || ''; Object.assign(logView, { arr: state.entries, n: 0, run: [], group: null, drawnRun: 0, fresh: 0, dayKey: new Date().toDateString(), lastWho: null }); }
     // What comes while you read fades in (`.in`); the first fill stands still. New nodes go before the log's tail —
     // the presence line and the new-reply pill, which stay last.
     const live = logView.n > 0 && !log.hidden && !REDUCED.matches, arrived = state.entries.length - logView.n;
@@ -4942,7 +4976,9 @@
       // date where the transcript goes to another day, "today" where it comes back — by the date itself (2026-10-03: by
       // its label, and a chat open across midnight had no line between yesterday's words and today's)
       if (e.kind === 'text' && e.ts) { const k = new Date(e.ts).toDateString(); if (k !== 'Invalid Date' && k !== logView.dayKey) { logView.dayKey = k; add(htmlNodes(`<div class="sysline day"><b>${dayOf(e.ts)}</b></div>`, cwd)); } }
-      add(htmlNodes(entryHtml(e), cwd));
+      const cont = e.kind === 'text' && e.role === 'assistant' && logView.lastWho === 'assistant';
+      add(htmlNodes(entryHtml(e, cont), cwd));
+      if (e.kind === 'text') logView.lastWho = e.turnEnd ? null : e.role; else if (e.kind === 'interrupt' || e.kind === 'compact') logView.lastWho = null;   // a turn's end: the next word is a new turn's
       if (e.kind === 'text' && e.role === 'assistant') replies++;
     }
     group();
