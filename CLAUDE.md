@@ -57,6 +57,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `scripts/launchd.sh` | The server as a login agent; `restart [--after N]` |
 | `scripts/verify.mjs`, `scripts/scenario.mjs`, `scripts/scenarios/` | The browser harness (see Verifying) |
 | `scripts/fakeclaude.mjs`, `scripts/fixture.mjs` | A stand-in CLI for tests; a `~/.claude` look-alike |
+| `scripts/fakepmset.mjs`, `scripts/fakecaffeinate.mjs` | `pmset` (its SleepDisabled in `FAKE_PMSET_FILE`; `FAKE_PMSET_FAIL` fails a set) and `caffeinate -i -w` (lives until its pid goes; `FAKE_CAFFEINATE_PIDS` logs it) — every test server's (`PMSET_BIN`, `CAFFEINATE_BIN`, `AWAKE_ADMIN=none`) |
 | `scripts/fakegh.mjs`, `scripts/readme-shots.mjs` | `gh api graphql` answered from a file (`GH_BIN`, `FAKEGH_PRS`, `FAKEGH_VIEWER`; a PR's entry is handed back whole, so it can carry the turn's fields; one it does not name is a NOT_FOUND, as GitHub's); the README's screenshots from a made-up board → `docs/shots/` — never shoot the real one |
 | `scripts/check.sh`, `scripts/check-page.mjs`, `scripts/map.mjs` | Static checks; the section maps |
 | `test/` | `node:test` files (`npm test`) |
@@ -118,6 +119,14 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   `gen` (which reading of the file — `newSession` numbers each object) and `upto` (`entryCount`: the entries end
   there), and the page keeps only what is past what it holds; another `gen` or a gap is a fetch. See *The transcript*.
 * **The holder socket is `setEncoding('utf8')` on both ends** — a glyph split across chunks decodes whole.
+* **Keeping the Mac awake is two switches, and only one is the board's** (2026-10-08, `keepAwake`, `setLid`,
+  `/api/awake`, an `awake` event, `awake` in the snapshot): *awake* is a `caffeinate -i -w <the server's pid>` the
+  server holds while `awake` is on in the state file — started again at boot, gone by itself when the server goes, and
+  a caffeinate that ends on its own turns the switch off rather than leave the mark lying; *lid closed* is
+  `pmset -a disablesleep 1|0` through osascript's administrator dialog (a password each turn; a cancel is a 409,
+  `cancelled`, said nowhere), **the system's setting, never kept here**: `readLid` reads `pmset -g`'s SleepDisabled on
+  every registry poll, whoever set it. The one thing the board changes outside its own files besides a Peacock colour
+  and a clone. → `test/awake.test.mjs`.
 * **Every CLI the server shells out to goes through `findBin()`** — `git` too — the app's server has a bare PATH;
   `<NAME>_BIN` overrides. A file it can run, not any path that exists; none found is looked for again a minute later
   (2026-10-03). The login agent's PATH is the installing shell's, then the system's (`launchd.sh`, 2026-10-01). The two
@@ -307,7 +316,11 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   menu. `#hmenu` is a **non-modal `<dialog>`**, static in the markup: `postPane` lowers the pane while it is up, Esc
   closes it, `runHotkey` closes it rather than let it swallow the key. Toggles leave it up (the click-outside test goes
   by `composedPath()`); actions that go somewhere close it. **`>_` comes back into the row while armed or failed**, and
-  a note about a folded button is anchored at ··· (`seen()`). → `scripts/scenarios/head-menu.mjs`.
+  a note about a folded button is anchored at ··· (`seen()`). → `scripts/scenarios/head-menu.mjs`. **Two rows keep the
+  Mac awake** (`#awakeBtn`, `#lidBtn`, before *settings*), and while either holds **`#awakeMark`** — a cup, or a laptop
+  for the lid, in the spend's amber or the needs' red — stands before ··· in whichever header is up, a chat's or the
+  empty one (`drawAwake()` after every header drawn anew and on the snapshot; not in `drawn.head`'s markup); a click on
+  it turns both off. → `scripts/scenarios/keep-awake.mjs`.
 * **The chat's PRs are chips in the header row, folded**: `#prToggle`, one button of the cards' chips (`.hpr` shares
   `.cpr`'s rule; `fitHeadPrs()` measures every width once and folds the last chips into `+n` only while the row would
   leave the title less than its repo name plus `TITLE_ROOM` (`TITLE_MIN` is the h2's flex-basis) — on every new header
@@ -874,7 +887,8 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
 * **Every test server gets a fast clock, an empty org directory, and nothing of this Mac's** (`lib/testserver.mjs`):
   `REGISTRY_POLL_MS` 1200, `TASK_GRACE_MS` 400 and `CONFIG_POLL_MS` 200; an `ORG_DIR` of its own under the state dir —
   which also keeps the first run's welcome away; an empty `CLAUDE_DIR` of its own unless given a fixture; the fake gh
-  (`GH_BIN`, no PR file: GitHub shows nothing); a `ZDOTDIR` with no rc files for its drawers' zsh; and no inherited
+  (`GH_BIN`, no PR file: GitHub shows nothing); fake `caffeinate` and `pmset`, run without a password dialog
+  (`AWAKE_ADMIN=none`); a `ZDOTDIR` with no rc files for its drawers' zsh; and no inherited
   `CONFIG_FILE`, `TERMS_DIR` or XDG dirs. Its config file is beside its `STATE_FILE`, never the real one. Up is its own
   `listening` line. `meta.env` is spread last. `waitFor(fn, {timeout, what})`, `srv.post(path, body)` and `tmpDir()`
   (a temp dir that goes with the process) are the tests' polls, POSTs and dirs.

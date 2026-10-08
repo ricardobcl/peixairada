@@ -876,6 +876,12 @@
   .shead .hmore .ic { width: 16px; height: 16px; fill: currentColor; }
   .shead .hmore:hover, .shead .hmore.on { color: var(--ink); background: var(--inline-bg); }
   #chat.tinted .shead .hmore { color: color-mix(in srgb, var(--rink) 78%, transparent); }
+  /* the Mac kept awake (2026-10-08): a pill before ···, the spend's amber; red-tinged when not even the lid sleeps it */
+  .shead .awake { --aw: var(--spend); flex: none; display: inline-flex; align-items: center; gap: 5px; height: 22px; margin: -2px 0; padding: 0 9px 0 7px; border: 1px solid transparent; border-radius: 11px;
+    background: color-mix(in srgb, var(--aw) 20%, transparent); color: var(--aw); font: inherit; font-size: 11px; font-weight: 700; letter-spacing: .2px; cursor: pointer; }
+  .shead .awake.lid { --aw: var(--needs); }
+  .shead .awake .ic { width: 14px; height: 14px; fill: currentColor; }
+  .shead .awake:hover { background: color-mix(in srgb, var(--aw) 32%, transparent); }
   #chat.tinted .shead .hmore:hover, #chat.tinted .shead .hmore.on { color: var(--rink); background: color-mix(in srgb, var(--rink) 16%, transparent); }
   /* The menu: a non-modal <dialog>, so the pane goes down while it is up (postPane sends no page with a dialog
      open) and Esc closes it the way it closes every other; right-aligned under ···, one row per action — its mark,
@@ -1487,6 +1493,7 @@
 //   js  · chat header
 //   js  · terminal drawer: the real claude in a PTY on the server, attached over a WebSocket
 //   js  · the two halves: ⌘1 and ⌘2
+//   js  · keeping the Mac awake (2026-10-08)
 //   js  · resume: a chat whose claude has ended
 //   js  · attachments: files dropped on the board, images pasted
 //   js  · a second claude on this chat
@@ -1496,7 +1503,7 @@
 // Map ▴
 (() => {
   const $ = s => document.querySelector(s);
-  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0 };
+  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false }, lidAsking: false };
   const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
@@ -1694,6 +1701,9 @@
     play: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.8v12.4L14 8Z"/></svg>',   // the resume bar's button
     view: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 3.6a4.4 4.4 0 1 1 0 8.8 4.4 4.4 0 0 1 0-8.8Zm0 1.5a2.9 2.9 0 1 0 0 5.8 2.9 2.9 0 0 0 0-5.8Z"/><path d="M6.6 8a1.4 1.4 0 1 0 2.8 0 1.4 1.4 0 0 0-2.8 0ZM7.25 0h1.5v2.4h-1.5Zm0 13.6h1.5V16h-1.5ZM0 7.25h2.4v1.5H0Zm13.6 0H16v1.5h-2.4Z"/></svg>',
     more: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="3" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="13" cy="8" r="1.5"/></svg>',
+    // keeping the Mac awake (2026-10-08): a cup for idle sleep held off, an open laptop for no sleep even with the lid shut
+    cup: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" d="M2.6 6h8.6v3.4a3.4 3.4 0 0 1-3.4 3.4H6a3.4 3.4 0 0 1-3.4-3.4ZM11.2 7.2h.9a1.6 1.6 0 0 1 0 3.2h-1.1"/><path fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" d="M5.3 1.6c-.5.6.5 1.2 0 2.2M8.3 1.6c-.5.6.5 1.2 0 2.2M1.8 14.6h10.4"/></svg>',
+    lid: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" d="M3.2 3.2h9.6v7H3.2Z"/><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M1.2 12.8h13.6"/><path d="M6.6 5.6 9.8 6.7 6.6 7.8Z"/></svg>',
     // a radar: something of this chat's is still running and will report back (monitors, background commands)
     watch: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 6.4a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2Z"/><path fill-rule="evenodd" d="M8 3.2A4.8 4.8 0 0 1 12.8 8h-1.5A3.3 3.3 0 0 0 8 4.7Zm0-3.2A8 8 0 0 1 16 8h-1.5A6.5 6.5 0 0 0 8 1.5Z"/></svg>',
     // a speech bubble: Claude has asked you something and is waiting on the answer
@@ -3608,7 +3618,7 @@
         ${s.live ? `<span class="chip">${entryLabel(s)}</span>` : ''}${s.live?.name ? `<span class="chip" title="session name">${esc(s.live.name)}</span>` : ''}${
           s.model ? `<span class="chip">${esc(s.model)}</span>` : ''}${s.live?.pid ? `<span class="chip">pid ${s.live.pid}</span>` : ''}
       </div>`;
-    const headNew = headHtml !== drawn.head; if (headNew) $('#shead').innerHTML = drawn.head = headHtml;
+    const headNew = headHtml !== drawn.head; if (headNew) { $('#shead').innerHTML = drawn.head = headHtml; drawAwake(); }
     // The menu, one row per action: its mark, what it does, and its state or key on the right. The ids are the
     // buttons' own from when they sat in the row — the hotkeys and the harness reach them by those.
     const menuHtml = [
@@ -3621,6 +3631,9 @@
       inVsCode(s) ? `<div class="hmi info" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it; ${s.alive ? 'the claude session row takes it over' : 'continue it here or there'}">${ICON.vscode}<span>VS Code's chat</span><span></span></div>` : '',
       '<div class="sep"></div>',
       `<button class="hmi${prefs.headDetails ? ' on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}" title="${esc(statusLabel[s.status] || s.status)} · click to ${prefs.headDetails ? 'hide' : 'show'} path, branch and session details under the title"><span class="dot ${s.status}"></span><span>${esc((statusLabel[s.status] || s.status || '').split(' — ')[0])}${s.statusSince ? ` · <span data-at="${esc(s.statusSince)}"></span>` : ''}</span><span class="k">${prefs.headDetails ? 'hide' : 'show'} path</span></button>`,
+      '<div class="sep"></div>',
+      `<button class="hmi${state.awake.awake ? ' on' : ''}" id="awakeBtn" aria-pressed="${!!state.awake.awake}" title="Hold this Mac's idle sleep off while the board runs — the display may still sleep, and closing the lid still sleeps it">${ICON.cup}<span>keep the Mac awake</span><span class="k">${state.awake.awake ? 'on' : 'off'}</span></button>`,
+      `<button class="hmi${state.awake.lid ? ' on' : ''}" id="lidBtn" aria-pressed="${!!state.awake.lid}" title="No sleep at all, not even with the lid closed (pmset disablesleep) — the system asks for your password each time; mind the battery in a bag">${ICON.lid}<span>…with the lid closed too</span><span class="k">${state.lidAsking ? 'password…' : state.awake.lid ? 'on' : 'off'}</span></button>`,
       '<div class="sep"></div>',
       `<button class="hmi" id="settingsBtn" title="The board's settings, its setup and its keys">${ICON.cog}<span>settings</span><span class="k">⌘,</span></button>`,
     ].join('');
@@ -3649,6 +3662,8 @@
     const sb = $('#shellEndBtn'); if (sb) sb.onclick = () => { menu.close(); dropTab(s, 'shell'); };
     const ib = $('#ideCloseBtn'); if (ib) ib.onclick = () => { menu.close(); if (ideKey(s)) dropTab(s, ideKey(s)); };
     $('#settingsBtn').onclick = () => settingsOpen(true);
+    $('#awakeBtn').onclick = () => setAwake({ awake: !state.awake.awake }, $('#moreBtn'));   // toggles: the menu stays up
+    $('#lidBtn').onclick = () => { if (!state.lidAsking) setAwake({ lid: !state.awake.lid }, $('#moreBtn')); };
     $('#moreBtn').onclick = e => { e.stopPropagation(); if (menu.open) menu.close(); else openMenu(); };
     const vb = $('#viewBtn'); if (vb) vb.onclick = () => toggleFocusView(s);
     $('#shead .repo').onclick = () => { if (s.cwd) selectProject(prefs.project === s.cwd ? ALL : s.cwd); };   // a toggle (2026-10-08)
@@ -4515,11 +4530,45 @@
   // Also the way off an open chat that has left the board — an empty one ticked done (visible()): nothing in it to
   // read or resume. The header is written here, so `drawn` starts over.
   const NO_CHAT = { head: $('#shead').innerHTML, log: $('#log').innerHTML };
+  // ---- keeping the Mac awake (2026-10-08) ----------------------------------------------------------------------------
+  // Two rows of the chat header's ··· (the server holds the assertion, and asks pmset for the lid), and while either is
+  // on a mark at the header's right end, before ··· — in every header, a chat's or none's, so it is always in sight: a
+  // cup for idle sleep held off, a laptop when the Mac does not sleep even with its lid shut (the system's setting,
+  // whoever set it — mind the battery in a bag). A click on the mark lets the Mac sleep again: the cup at once, the lid
+  // after the password dialog the system puts up for it.
+  const awakeTip = () => state.awake.lid
+    ? 'This Mac does not sleep, not even with its lid closed (pmset disablesleep) — mind the battery and the heat in a bag. Click to let it sleep again (asks for your password)'
+    : 'Keeping this Mac awake while the board runs: idle sleep is held off (the display may still sleep, and closing the lid still sleeps it). Click to let it sleep';
+  const awakeHtml = () => !state.awake.awake && !state.awake.lid ? ''
+    : `<button class="awake${state.awake.lid ? ' lid' : ''}" id="awakeMark" title="${esc(awakeTip())}">${state.awake.lid ? ICON.lid : ICON.cup}<span>awake</span></button>`;
+  /** The mark into the header that is up, before its ···; again after every header drawn anew (renderHead, leaveChat). */
+  function drawAwake() {
+    const head = $('#shead'), html = awakeHtml(), had = head.querySelector('#awakeMark');
+    if ((had?._html || '') === html) return false;
+    had?.remove();
+    if (html) { const more = head.querySelector(':scope > .hmore'); if (more) more.insertAdjacentHTML('beforebegin', html); else head.insertAdjacentHTML('beforeend', html); head.querySelector('#awakeMark')._html = html; }
+    return true;
+  }
+  function awakeChanged() {
+    const s = state.sessions.get(state.current);
+    if (s) renderHead(s);
+    if (drawAwake() && s) { fitHeadPrs(); paintHeadSplit(); }
+  }
+  async function setAwake(body, at) {
+    if ('lid' in body) { state.lidAsking = true; awakeChanged(); }
+    try { const d = await api('PUT', '/api/awake', body); state.awake = { awake: d.awake, lid: d.lid }; }
+    catch (e) { if (e.body && 'awake' in e.body) state.awake = { awake: e.body.awake, lid: e.body.lid }; if (e.message !== 'cancelled') note(at || $('#shead'), `Could not ${'lid' in body ? 'change the lid\'s setting' : 'keep the Mac awake'}: ${e.message}`, true); }
+    finally { state.lidAsking = false; awakeChanged(); }
+  }
+  $('#shead').addEventListener('click', e => {
+    const m = e.target.closest('#awakeMark'); if (!m) return;
+    setAwake({ awake: false, ...state.awake.lid && { lid: false } }, m);
+  });
   function leaveChat(head = NO_CHAT.head, log = NO_CHAT.log, color = null) {
     state.current = null; state.entries = []; Object.assign(logOf, { id: null, gen: null, upto: null, waiting: false, pending: [] }); history.replaceState(null, '', location.pathname); hidePr(); syncTerm(null);
     const menu = $('#hmenu'); if (menu.open) menu.close();
     $('#prlist').hidden = true; $('#chat').classList.remove('vsc'); tintChat(color);
-    $('#shead').innerHTML = head; $('#log').innerHTML = log; drawn.head = drawn.menu = drawn.prs = null; postChat(null);
+    $('#shead').innerHTML = head; drawAwake(); $('#log').innerHTML = log; drawn.head = drawn.menu = drawn.prs = null; postChat(null);
     layoutNotch(); paintHeadSplit(); renderResume(null);
   }
   // A new chat has no session until claude registers; the server ties the two by pid and says so
@@ -4986,6 +5035,7 @@
       if (d.config) state.config = d.config;
       renderSetup();
       state.notifications = d.notifications !== false; showNotify();
+      if (d.awake) { state.awake = d.awake; drawAwake(); }   // the empty header's mark; a chat's header draws its own
       state.serverNotify = d.notify === 'native';   // the server posts its own banners: the app must not double them
       renderBoard(); welcomeSync();
       const want = location.hash.slice(1);
@@ -5012,6 +5062,7 @@
     es.addEventListener('pins', e => { state.pins = JSON.parse(e.data).pins || []; renderBoardSoon(); });
     es.addEventListener('hidden', e => { state.hidden = JSON.parse(e.data).hidden || []; renderBoard(); if ($('#pick').open) pickRender(); });
     es.addEventListener('notifications', e => { state.notifications = JSON.parse(e.data).on !== false; showNotify(); });
+    es.addEventListener('awake', e => { state.awake = JSON.parse(e.data); awakeChanged(); });
     es.addEventListener('config', e => { const c = JSON.parse(e.data); if (JSON.stringify(c) === JSON.stringify(state.config)) return; state.config = c; configChanged(); });   // the echo of a save made here is no news
     es.addEventListener('terminal', e => {
       const t = JSON.parse(e.data);

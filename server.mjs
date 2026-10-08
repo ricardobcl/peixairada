@@ -24,6 +24,7 @@
 //  Notifications + SSE fan-out
 //  Replying into a session
 //      · Claude plan usage, for the chat list's footer: the numbers `/usage` shows in the CLI
+//      · keeping the Mac awake: an idle-sleep assertion, and the lid's own setting (2026-10-08)
 //  VS Code Web: the editor UI served by `code serve-web`, for the pane beside the board
 //  Terminals: a real `claude` in a PTY, attached to from the page over a WebSocket
 //      · the holder protocol: newline-delimited JSON over the holder's socket (see lib/termhold.mjs)
@@ -133,6 +134,9 @@ let setup = {};
 // (2026-09-28). A PR come round to you un-ticks the chats that mention it (isDone), weighed by `at` — kept here so a
 // restart does not hand a move the board had already shown back to GitHub's own clock (moveTurn).
 let prTurns = {};
+// Keep the Mac awake — the chat header menu's switch (2026-10-08): a `caffeinate -i` of the server's own while it is
+// on, and on again after a restart. The lid's setting is the system's and is read from it, never kept here (keepAwake).
+let awakeOn = false;
 
 // One-time move from the old ~/.peixairada location. Same filesystem, so the rename is atomic; the
 // empty directory is left behind rather than removing something we did not create.
@@ -160,6 +164,7 @@ try {
   notificationsOn = st.notifications !== false;
   setup = st.config;   // from before CONFIG_FILE — cleaned and moved there below, once what does it is defined
   prTurns = st.prTurns && typeof st.prTurns === 'object' ? st.prTurns : {};
+  awakeOn = st.awake === true;
 } catch (e) {
   if (e.code !== 'ENOENT') {
     const bad = `${stateFrom}.bad-${Date.now()}`;
@@ -173,7 +178,7 @@ function saveState() {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-    writeFileSync(tmp, JSON.stringify({ done: doneMarks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns }, null, 1));
+    writeFileSync(tmp, JSON.stringify({ done: doneMarks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, awake: awakeOn }, null, 1));
     renameSync(tmp, STATE_FILE);
   } catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
@@ -1675,6 +1680,64 @@ async function askUsage() {
 }
 function codeBin() { return findBin('code', 'VS Code Web is disabled'); }
 
+// ---- keeping the Mac awake: an idle-sleep assertion, and the lid's own setting (2026-10-08) -------------------------
+// Two rows of the chat header menu, and a mark at the window's top right while either holds. *Awake* is a
+// `caffeinate -i -w <this pid>` the server keeps running while the switch is on: idle sleep held off, the display free
+// to sleep, and caffeinate gone by itself when the server goes (-w) — the switch is in the state file, so a restart
+// starts it again. Closing the lid still sleeps the Mac; *lid closed* is `pmset -a disablesleep 1`, which root alone may
+// set: each turn asks for an administrator's password (osascript's own dialog), and the setting is the system's — it
+// outlives the server and a reboot, so it is read back (`pmset -g`: SleepDisabled) on every poll rather than
+// remembered, and the mark says it whoever set it. Tests: CAFFEINATE_BIN and PMSET_BIN are the fakes, and AWAKE_ADMIN=none
+// runs pmset as it is.
+let caffeinate = null;      // the child holding the assertion
+let lidOff = false;         // SleepDisabled, as pmset last said
+let lidAsking = null;       // a password dialog up: the next turn waits for it
+const awakeState = () => ({ awake: awakeOn && !!caffeinate, lid: lidOff });
+const sayAwake = () => broadcast('awake', awakeState());
+/** The switch: on starts caffeinate (once), off ends it. Answers the state, or throws when caffeinate cannot run. */
+function keepAwake(on) {
+  awakeOn = on; saveState();
+  if (on && !caffeinate) {
+    const bin = findBin('caffeinate', 'the Mac cannot be kept awake');
+    if (!bin) { awakeOn = false; saveState(); throw new Error('caffeinate not found'); }
+    const p = spawn(bin, ['-i', '-w', String(process.pid)], { stdio: 'ignore' });
+    caffeinate = p;
+    p.once('error', e => console.error('[peixairada] caffeinate:', e.message));
+    // ended by someone else, or failed to start: the switch is off — the mark goes rather than claim what is not so
+    p.once('exit', () => { if (caffeinate !== p) return; caffeinate = null; awakeOn = false; saveState(); console.error('[peixairada] caffeinate ended on its own — the Mac may sleep again'); sayAwake(); });
+    console.log('[peixairada] keeping the Mac awake (caffeinate -i)');
+  } else if (!on && caffeinate) {
+    const p = caffeinate; caffeinate = null; p.kill();
+    console.log('[peixairada] the Mac may sleep again');
+  }
+  sayAwake();
+  return awakeState();
+}
+/** pmset's word on the lid: SleepDisabled 1 is no sleep at all, lid shut or not. A failure to ask leaves it as it was. */
+async function readLid() {
+  const bin = findBin('pmset', 'the lid\'s setting goes unread'); if (!bin) return lidOff;
+  try {
+    const { stdout } = await execFileP(bin, ['-g'], { timeout: 5000 });
+    const now = /^\s*SleepDisabled\s+1\b/m.test(stdout);
+    if (now !== lidOff) { lidOff = now; sayAwake(); }
+  } catch (e) { console.error('[peixairada] pmset -g:', String(e.message || e).split('\n')[0]); }
+  return lidOff;
+}
+/** Sleep with the lid shut, or not: an administrator's password each time (osascript), then pmset read back. */
+async function setLid(on) {
+  if (lidAsking) await lidAsking.catch(() => {});
+  const bin = findBin('pmset', 'the lid\'s setting cannot be changed'); if (!bin) throw new Error('pmset not found');
+  const args = ['-a', 'disablesleep', on ? '1' : '0'];
+  const q = t => `"${t.replace(/[\\"]/g, '\\$&')}"`;
+  lidAsking = process.env.AWAKE_ADMIN === 'none' ? execFileP(bin, args, { timeout: 10_000 })
+    : execFileP('/usr/bin/osascript', ['-e', `do shell script quoted form of ${q(bin)} & ${q(' ' + args.join(' '))} with prompt ${q(on ? 'peixAIrada wants to keep this Mac awake with its lid closed.' : 'peixAIrada wants to let this Mac sleep again when its lid closes.')} with administrator privileges`], { timeout: 5 * 60_000 });
+  try { await lidAsking; }
+  catch (e) { throw new Error(/-128|cancel/i.test(String(e.stderr || e.message)) ? 'cancelled' : String(e.stderr || e.message).trim().split('\n')[0]); }
+  finally { lidAsking = null; await readLid(); }
+  console.log(`[peixairada] sleep with the lid closed: ${lidOff ? 'off — the Mac stays awake' : 'on again'}`);
+  return awakeState();
+}
+
 // ---------------------------------------------------------------------------------------------
 // VS Code Web: the editor UI served by `code serve-web`, for the pane beside the board
 // ---------------------------------------------------------------------------------------------
@@ -2323,6 +2386,16 @@ const server = createServer(async (req, res) => {
       saveState(); broadcast('notifications', { on: notificationsOn });
       return json(res, 200, { ok: true, on: notificationsOn });
     }
+    if (req.method === 'GET' && p === '/api/awake') { await readLid(); return json(res, 200, awakeState()); }
+    if (req.method === 'PUT' && p === '/api/awake') {   // the menu's two switches: {awake} holds idle sleep off, {lid} sleep with the lid shut (a password)
+      const body = await jsonBody(req);
+      if (typeof body.awake !== 'boolean' && typeof body.lid !== 'boolean') return json(res, 400, { error: 'expected {awake: true|false} or {lid: true|false}' });
+      try {
+        if (typeof body.awake === 'boolean') keepAwake(body.awake);
+        if (typeof body.lid === 'boolean') await setLid(body.lid);
+      } catch (e) { return json(res, e.message === 'cancelled' ? 409 : 500, { error: e.message, ...awakeState() }); }
+      return json(res, 200, { ok: true, ...awakeState() });
+    }
     if ((req.method === 'PUT' || req.method === 'DELETE') && p === '/api/peacock') {   // the board sets a folder's Peacock colour
       const body = await jsonBody(req);
       const cwd = typeof body.cwd === 'string' ? body.cwd.replace(/\/+$/, '') : '';
@@ -2478,7 +2551,7 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
     if (req.method === 'GET' && p === '/events') {
-      const snap = JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), about: aboutInfo() });
+      const snap = JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), about: aboutInfo(), awake: awakeState() });
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
       res.write(`event: snapshot\ndata: ${snap}\n\n`);
       sseClients.add(res);
@@ -2524,6 +2597,8 @@ indexing = false;
 // Statuses alone could wait for a chat to be opened; titles cannot — they head every card, so the whole
 // board needs them up front. Batched 40 to a GraphQL call, in the background, the recent chats' first.
 sweepPrs();
+if (awakeOn) try { keepAwake(true); } catch (e) { console.error(`[peixairada] could not keep the Mac awake: ${e.message}`); }   // the switch outlives a restart
+readLid();
 pollPeacock();
 setInterval(pollPeacock, PEACOCK_POLL_MS);
 pollRepos();
@@ -2541,6 +2616,7 @@ setInterval(() => {
   sweepTasks();
   sweepDrawers();
   sweepPrs();
+  readLid();   // the lid's setting is the system's: whoever changes it, the mark follows
 }, REGISTRY_POLL_MS);
 console.log(`[peixairada] indexed ${sessions.size} sessions (${[...sessions.values()].filter(s => s.alive).length} alive) from ${CLAUDE_DIR} in ${Date.now() - t0}ms`);
 

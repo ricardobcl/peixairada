@@ -22,7 +22,7 @@ export default async function (ctx) {
   out.menu = await ctx.evaluate(`JSON.stringify({ ids: [...document.querySelectorAll('#hmenu button')].map(b => b.id),
     right: Math.round(document.querySelector('#moreBtn').getBoundingClientRect().right - document.querySelector('#hmenu').getBoundingClientRect().right),
     below: Math.round(document.querySelector('#hmenu').getBoundingClientRect().top - document.querySelector('#moreBtn').getBoundingClientRect().bottom) })`).then(JSON.parse);
-  ctx.assert.deepEqual(out.menu.ids, ['termBtn', 'webBtn', 'detailsBtn', 'settingsBtn'], 'the actions, by their own ids — the settings last, no { } since long code is always folded (2026-09-28), no open in VS Code (2026-09-29)');
+  ctx.assert.deepEqual(out.menu.ids, ['termBtn', 'webBtn', 'detailsBtn', 'awakeBtn', 'lidBtn', 'settingsBtn'], 'the actions, by their own ids — keeping the Mac awake (2026-10-08), the settings last, no { } since long code is always folded (2026-09-28), no open in VS Code (2026-09-29)');
   ctx.assert.ok(Math.abs(out.menu.right) <= 1 && out.menu.below === 4, 'right-aligned, just under ···');
   await ctx.shot('2-menu', { x: 1100, y: 0, width: 600, height: 300 });
 

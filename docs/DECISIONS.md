@@ -7,9 +7,14 @@ by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-1
 
 ## Decisions of 2026-10-08 — five asks in one message
 
+Jira tickets as PRs are, the usage of a plan capped in money, the project's row, keeping the Mac awake, and ideas from
+two apps of the same kind — one message, each its own commit, in the order they landed.
+
+### The project's own row, its toggle in the header
+
 Ricardo: "when filtering a project, the search on the bottom is to condensed to see, it should be expanded so it's
 visible the project name and the X. also, clicking again on the project name up top on the chat header, should toggle
-this filter" — one of five asks in one message (the others below, as they landed).
+this filter".
 
 * **The project in view is a row of its own** (`#stitle`, `#sessions`' grid row 3, the list's whole width, over the
   fish, the magnifier, the chips and the usage — which are row 4 now): its name, ellipsed only when it is longer than
@@ -38,6 +43,28 @@ month $ cap, doesn't seem to work".
   counted in dollars, keeps its label and amounts. In the panel the row says `$271 of $500` under its bar, and a
   month's tick is the calendar month before its reset.
 * → `test/usage.test.mjs`, new; the money step in `scripts/scenarios/usage-bar.mjs`.
+
+### Keeping the Mac awake, with its lid closed too
+
+Ricardo: "we shuold have a button to 1) avoid sleep the mac, 2) avoid sleeping when the lid in closed. the buttons can
+be on the "..." for now, but if active it whould be a perm sign probaby on TOP RIGHT".
+
+* **Two rows in the chat header's ···**, before *settings*: *keep the Mac awake* and *…with the lid closed too*, each
+  saying on or off; they toggle and leave the menu up.
+* **Awake is `caffeinate -i`, held by the server** (`keepAwake`): idle sleep off while it runs — the display may still
+  sleep, which costs agents nothing — `-w` on the server's own pid, so it can never outlive the board by accident. The
+  switch is the board's (`awake` in the state file), so a restart starts it again. The server and not the app: the
+  board is also a browser page, and the server is the process that is up while chats run.
+* **The lid is `pmset -a disablesleep 1`** (`setLid`): nothing short of root keeps a Mac awake with its lid shut — an
+  IOKit assertion does not — so each turn asks for an administrator's password through osascript's own dialog (no
+  helper installed, no sudoers line). It is **the system's setting**: it survives the server and a reboot, so the
+  board reads it back from `pmset -g` on every poll instead of remembering it, and shows it whoever set it. Not done:
+  turning it off by itself on a low battery (that would need the password with nobody there).
+* **The mark, top right** (`#awakeMark`): a pill before ··· in every header — a chat's or the empty one — a cup in the
+  spend's amber while only idle sleep is held off, a laptop in red when not even the lid sleeps the Mac (the bag-and-
+  battery warning). A click lets the Mac sleep again: the cup at once, the lid after the password.
+* **Every test server runs fakes** (`scripts/fakecaffeinate.mjs`, `scripts/fakepmset.mjs`, `AWAKE_ADMIN=none`): no test
+  holds this Mac awake or puts up a dialog. → `test/awake.test.mjs`, `scripts/scenarios/keep-awake.mjs`, both new.
 
 ## Decisions of 2026-10-07 — a chat whose claude has ended says so, and resumes itself
 
