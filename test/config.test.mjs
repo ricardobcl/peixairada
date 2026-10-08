@@ -21,7 +21,7 @@ test('the setup: defaults, refusals, partial PUTs, the roots behind the folders 
   const srv = await startTestServer({ env: { HOME: home } });
   try {
     const first = await srv.api('api/config');
-    assert.deepEqual(first.body, { roots: [{ dir: join(srv.dir, 'org'), org: '' }], quick: null, projects: {}, file: join(srv.dir, 'config.json'), error: null, ask: false },
+    assert.deepEqual(first.body, { roots: [{ dir: join(srv.dir, 'org'), org: '' }], quick: null, projects: {}, jira: null, file: join(srv.dir, 'config.json'), error: null, ask: false },
       'nothing set: the environment\'s root (the test server\'s ORG_DIR), no org, no ⌥⌘O, no names — beside the test\'s own state file, and nothing to ask');
 
     for (const [body, why] of [
@@ -38,7 +38,7 @@ test('the setup: defaults, refusals, partial PUTs, the roots behind the folders 
     assert.equal(set.status, 200);
     assert.deepEqual({ ...set.body.config, file: undefined, error: undefined, ask: undefined }, {
       roots: [{ dir: join(home, 'code', 'acme'), org: 'acme' }, { dir: join(home, 'code', 'other'), org: '' }],
-      quick: 'api', projects: { api: { abbr: 'API', color: '#aabbcc' } }, file: undefined, error: undefined, ask: undefined,
+      quick: 'api', projects: { api: { abbr: 'API', color: '#aabbcc' } }, jira: null, file: undefined, error: undefined, ask: undefined,
     }, '~ expanded, the trailing slash and the second spelling of a root gone, a colour lowercased, an empty project dropped');
 
     const partial = await put(srv, { quick: null });

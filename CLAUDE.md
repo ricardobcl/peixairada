@@ -57,6 +57,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `scripts/launchd.sh` | The server as a login agent; `restart [--after N]` |
 | `scripts/verify.mjs`, `scripts/scenario.mjs`, `scripts/scenarios/` | The browser harness (see Verifying) |
 | `scripts/fakeclaude.mjs`, `scripts/fixture.mjs` | A stand-in CLI for tests; a `~/.claude` look-alike |
+| `scripts/fakejira.mjs` | Jira Cloud's three calls (projects, `myself`, `bulkfetch`) on a loopback port, from a list — `startFakeJira`, for the tests and scenarios |
 | `scripts/fakepmset.mjs`, `scripts/fakecaffeinate.mjs` | `pmset` (its SleepDisabled in `FAKE_PMSET_FILE`; `FAKE_PMSET_FAIL` fails a set) and `caffeinate -i -w` (lives until its pid goes; `FAKE_CAFFEINATE_PIDS` logs it) — every test server's (`PMSET_BIN`, `CAFFEINATE_BIN`, `AWAKE_ADMIN=none`) |
 | `scripts/fakegh.mjs`, `scripts/readme-shots.mjs` | `gh api graphql` answered from a file (`GH_BIN`, `FAKEGH_PRS`, `FAKEGH_VIEWER`; a PR's entry is handed back whole, so it can carry the turn's fields; one it does not name is a NOT_FOUND, as GitHub's); the README's screenshots from a made-up board → `docs/shots/` — never shoot the real one |
 | `scripts/check.sh`, `scripts/check-page.mjs`, `scripts/map.mjs` | Static checks; the section maps |
@@ -75,6 +76,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | Titles | board title (state file) › `custom-title` › the oldest still-open PR › `ai-title` › last prompt — `summary()`, `prTitle()` |
 | Model | `message.model` on assistant lines, the last one wins, `<synthetic>` skipped — `s.model`; the card wears an F for Fable (`onFable`) |
 | PRs mentioned | `pr-link` lines, GitHub pull URLs *and short references* in user/assistant text, in the order said; most recently mentioned first; `gh api graphql` batched for state, title and whose move it is (one of the two network calls), polled by the chat's recency and the PR's own — see *The server*. **A short reference** (2026-10-06, `refsIn`): `#12` the chat's own repo (its checkout's `.git/config`, `ghRepoOf` — a worktree's followed), `widgets#12` the org of the root holding that checkout (else the chat's root's, else the one root's), `acme/widgets#12`, `widgets #12` when widgets is a checkout under a root, and a list after one on its line; none in code, a link's text or a URL. **It is on the chat only once GitHub finds a PR there** (`shownPr` filters the summary and `prTitle`) — a bare one not when that PR was merged or closed and opened over `REF_AGE_MS` before it was said (a review's numbered points), and no such past one titles the card (`pastRef`) — and a NOT_FOUND lets it go (`forgetRef`, `noPr`). → `test/pr-refs.test.mjs` |
+| Jira tickets named | `KEY-123` in user/assistant prose (inline code counts, fenced code not), `…/browse/KEY-123` links, and the chat's `gitBranch` (`feature/key-123-…`) — `ticketsIn`, `noteTickets`, `noteBranchTicket` → `s.tickets`. **A bare key is asked about only when its project is one of the site's** (`jiraProjects`, `/rest/api/3/project/search`, hourly) and **shown only once Jira answered for it** (`shownTickets`; the branch's first); none Jira has is let go (`noTicket`). `POST /rest/api/3/issue/bulkfetch` (≤ 100 a call; `myself` for whose) with Basic auth: setup.jira `{site, email}` and a token from `JIRA_API_TOKEN`, else the keychain item *peixAIrada Jira* (account the email) written by `security -i` from its stdin; polled by `prEvery` like PRs, a done one an hour apart; a failure as a whole pauses, 1 min doubling to 30 (2026-10-08). → `test/jira.test.mjs` |
 | Plan usage (the chat list's footer) | `GET https://api.anthropic.com/api/oauth/usage` with Claude Code's own OAuth bearer from the keychain item *Claude Code-credentials*; `USAGE=off` disables; the token never reaches the page. **A cap in money** (2026-10-08, an enterprise seat's): `limits[]` rows of `kind: 'spend'` (`group` daily · weekly · monthly) and `extra_usage`'s cents → windows with `used`, `limit`, `currency` (`usageWindows`, → `test/usage.test.mjs`). → Findings: *plan usage* |
 | Permission prompts | the registry's `waiting` (above) — they never reach the transcript |
 | Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login shell (mise's PATH; `RUN_SHELL` — the user's zsh or bash, else `/bin/zsh`); it registers like any CLI run; a new chat is tied to its session by pid. **A folder whose Taskfile launches claude** (a task whose description mentions Claude) starts new chats as `task <name>` instead: `GET /api/launchers?cwd=` lists them (`task --list --json`, cached by the file's mtime, `TASK_BIN` overrides), `POST /api/terminals {cwd, task}` checks the name; claude is then a *descendant* of the PTY's pid, found through `ps` (`linkTermToRegistry`, `t.claudePid`), which is also where the launcher's name is written down for good (`noteEnv` → `envs` in the state file → `s.env`, what ⌥⌘O scopes by). A resume never goes through task. **`/clear` (or `/resume`) in the drawer** gives that pid a new session id and `linkTermToRegistry` moves the holder to it and pushes **both** chats; the page follows the holder (`terminal` event → `openSession`), the old chat is a stale card |
@@ -129,9 +131,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   and a clone. → `test/awake.test.mjs`.
 * **Every CLI the server shells out to goes through `findBin()`** — `git` too — the app's server has a bare PATH;
   `<NAME>_BIN` overrides. A file it can run, not any path that exists; none found is looked for again a minute later
-  (2026-10-03). The login agent's PATH is the installing shell's, then the system's (`launchd.sh`, 2026-10-01). The two
-  network calls are `gh` (PR state and title) and the usage endpoint — one usage question at a time, its answer kept a
-  minute, a failure half a minute (`planUsage`).
+  (2026-10-03). The login agent's PATH is the installing shell's, then the system's (`launchd.sh`, 2026-10-01). The
+  network calls are `gh` (PR state and title), the usage endpoint — one usage question at a time, its answer kept a
+  minute, a failure half a minute (`planUsage`) — and, once the setup names a site, Jira (`jiraAsk`; its token never
+  reaches the page, nor the setup file — `GET /api/jira` says only where it is: `env` · `keychain` · `file`).
 * **A PR is polled by how recently its chat was touched** (2026-09-28): `sweepPrs` on the registry poll queues what
   `duePrs` says — a PR never asked about (so boot asks every one, the recent chats' first), else by `PR_POLL`: every
   minute for a chat touched within the hour, 5 min within the day, 30 within three days, **never after**. Touched is
@@ -321,6 +324,14 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   for the lid, in the spend's amber or the needs' red — stands before ··· in whichever header is up, a chat's or the
   empty one (`drawAwake()` after every header drawn anew and on the snapshot; not in `drawn.head`'s markup); a click on
   it turns both off. → `scripts/scenarios/keep-awake.mjs`.
+* **A chat's Jira tickets are chips as its PRs are** (2026-10-08): on the card, `cardTickets` — the first (the branch's,
+  else the last named) as `.ctk`, solid in its status category's colour (`--tk-todo` · `--tk-doing` · `--tk-done`,
+  `data-cat`), then `+n`, before the faces; a click opens the chat and the ticket in the pane. In the header they are
+  `.hpr.tk` inside `#prToggle`, after the PRs (so `fitHeadPrs` folds them first), and `.prrow.tk` rows under the PRs'
+  in `#prlist` (status · key · summary · whose). The settings' Setup has a Jira section (`jiraSetup`: the site and
+  email into the setup file, the token box write-only into the keychain via `PUT /api/jira/token`, a line from
+  `GET /api/jira` — who Jira says you are, or what went wrong; jira-cli's server and login offered while empty).
+  → `scripts/scenarios/jira-tickets.mjs`.
 * **The chat's PRs are chips in the header row, folded**: `#prToggle`, one button of the cards' chips (`.hpr` shares
   `.cpr`'s rule; `fitHeadPrs()` measures every width once and folds the last chips into `+n` only while the row would
   leave the title less than its repo name plus `TITLE_ROOM` (`TITLE_MIN` is the h2's flex-basis) — on every new header
@@ -479,7 +490,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   on a hand edit** (`reloadConfig`, a stat every `CONFIG_POLL_MS` against `configStamp`, the board's own record — a
   `fs.watchFile` missed a file made and gone between two looks); one that does not parse is `error` on the config,
   the board keeps what it had, and a PUT is refused (409) rather than write over it. It holds `roots` (`[{dir, org}]`: the folders of repos ⌥⌘N lists, the org ＋ clone asks), `quick` (⌥⌘O's project, which
-  wears the crystal ball) and `projects` (`{name: {abbr, color}}`, by shown name). `cleanSetup` shapes it (strict for a
+  wears the crystal ball), `projects` (`{name: {abbr, color}}`, by shown name) and `jira` (`{site, email}`: the site
+  an origin — `jiraSite`, http only on loopback —, null for none; 2026-10-08). `cleanSetup` shapes it (strict for a
   PUT: says what is wrong, asks that a root exists); a key never set is the default at read time (`boardConfig()`: the
   roots from `ORG_DIR` / `ORG` when either is in the environment, else none). `GET/PUT /api/config` — a PUT replaces
   the keys it gives —, a `config` event, `config` in the snapshot; the page's `state.config`, `configChanged()`; the
@@ -888,7 +900,8 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   `REGISTRY_POLL_MS` 1200, `TASK_GRACE_MS` 400 and `CONFIG_POLL_MS` 200; an `ORG_DIR` of its own under the state dir —
   which also keeps the first run's welcome away; an empty `CLAUDE_DIR` of its own unless given a fixture; the fake gh
   (`GH_BIN`, no PR file: GitHub shows nothing); fake `caffeinate` and `pmset`, run without a password dialog
-  (`AWAKE_ADMIN=none`); a `ZDOTDIR` with no rc files for its drawers' zsh; and no inherited
+  (`AWAKE_ADMIN=none`); Jira's token in a file of its own (`JIRA_TOKEN_FILE`), no jira-cli config and no inherited
+  `JIRA_API_TOKEN`; a `ZDOTDIR` with no rc files for its drawers' zsh; and no inherited
   `CONFIG_FILE`, `TERMS_DIR` or XDG dirs. Its config file is beside its `STATE_FILE`, never the real one. Up is its own
   `listening` line. `meta.env` is spread last. `waitFor(fn, {timeout, what})`, `srv.post(path, body)` and `tmpDir()`
   (a temp dir that goes with the process) are the tests' polls, POSTs and dirs.

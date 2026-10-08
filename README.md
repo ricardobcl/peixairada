@@ -38,12 +38,15 @@ It reads what Claude Code already writes to `~/.claude` — no plugin, no privat
 - 🐙 **PRs** — chips in GitHub's colours, stacked on a card and fanned out under the pointer (scroll them when they're
   more than fit); a chat with an open PR is named after it. A PR you reviewed or wrote fills in, notifies you and brings its ticked chat back when it's your
   move again — a push, a reply, a review.
+- 🎫 **Jira tickets** — a ticket a chat names (`ACME-12`, a link, its branch) wears its status on the card and in the
+  header, beside its PRs. Set your site, email and an API token in Setup.
 - 🎨 **Projects** — folders in their [Peacock](https://marketplace.visualstudio.com/items?itemName=johnpapa.vscode-peacock)
   colour, or named sets of folders.
 - 🌑 **Simple colours** — a quieter board: every project in black (or one colour you pick), the states in grey; PRs
   and faces keep their colours, and the accent is left for what needs you.
 - 🪟 **Tabs and splits** — a shell, VS Code Web and GitHub pages beside the chat.
-- 📊 **Plan usage** — your session and weekly limits, always in view.
+- 📊 **Plan usage** — your session and weekly limits, or your plan's monthly spend cap, always in view.
+- ☕ **Keep the Mac awake** — from ···, with the lid closed too (asks for your password); a mark top right while it holds.
 
 <table>
   <tr>
@@ -97,7 +100,8 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
 
 - **Board** — notifications, simple colours (every project in black, or one colour you pick, the states in grey, for a quieter board), card size, ⌥ as Meta.
 - **Setup** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
-  project ⌥⌘O starts a chat in, and a short name and a colour where Peacock has none, per project.
+  project ⌥⌘O starts a chat in, a short name and a colour where Peacock has none, per project, and your Jira site,
+  email and API token (the token goes to your keychain, never into the file).
 
 The setup is a file of yours, `~/.config/peixairada/config.json` (`$XDG_CONFIG_HOME` moves it) — edit it by hand or
 keep it with your dotfiles; the board picks up a change within seconds:
@@ -106,7 +110,8 @@ keep it with your dotfiles; the board picks up a change within seconds:
 {
   "roots": [{ "dir": "~/code", "org": "my-org" }],
   "quick": "my-service",
-  "projects": { "my-service": { "abbr": "SVC", "color": "#2f7fd8" } }
+  "projects": { "my-service": { "abbr": "SVC", "color": "#2f7fd8" } },
+  "jira": { "site": "https://my-org.atlassian.net", "email": "me@my-org.com" }
 }
 ```
 
@@ -120,6 +125,7 @@ What the board records as you use it — done ticks, titles, pins — stays in `
 | `PORT` | `7331` | the board's port |
 | `NOTIFY` | `native` (`off` with the app) | who posts notifications |
 | `USAGE` | on | `off` hides the plan usage |
+| `JIRA_API_TOKEN` | the keychain's | the Jira token, if you'd rather not keep it in the keychain |
 | `DRAWER_IDLE_MS` | 24 h | an unwatched idle drawer ends itself; `0` never |
 | `CLAUDE_BIN` `GH_BIN` `CODE_BIN` `TASK_BIN` | from `PATH` | where the CLIs are |
 | `CLAUDE_DIR` · `STATE_FILE` | `~/.claude` · `~/Library/Application Support/peixAIrada/state.json` | what it reads · keeps |
@@ -149,7 +155,7 @@ Settings › Keys lists the rest.
 ## 🔒 Good to know
 
 - Transcripts hold everything Claude read. The server listens on `127.0.0.1` only, with no login — keep it that way.
-- Only `gh` (PR states, clones) and the plan-usage call leave your machine.
+- Only `gh` (PR states, clones), the plan-usage call and Jira (once you set it up) leave your machine.
 - A chat running elsewhere is never written to: take it over, or continue it where it is.
 
 ## 🛠 Hacking

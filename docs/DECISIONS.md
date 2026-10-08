@@ -44,6 +44,33 @@ month $ cap, doesn't seem to work".
   month's tick is the calendar month before its reset.
 * → `test/usage.test.mjs`, new; the money step in `scripts/scenarios/usage-bar.mjs`.
 
+### Jira tickets, as PRs are
+
+Ricardo: "can we do for jira tickets and we did for GH PRs?"
+
+* **What names a ticket** (`ticketsIn`): `KEY-123` in a prompt or a reply — in inline code too, since Claude writes
+  keys that way, but not in a fenced block (a log) nor glued to a word (`x-ACME-1`, `ACME-2b`) —, a `…/browse/KEY-123`
+  link, and the chat's git branch (`feature/acme-31-…`, any case). A bare key could be anything — UTF-8, SHA-256,
+  GPT-4 — so it is asked about only when its project is one of the site's (the project list, asked hourly), and no
+  ticket shows until Jira has answered for it; a key Jira has no issue for is let go.
+* **What Jira says** — summary, status (its name and its category: to do · in progress · done), type, assignee, and
+  whether that is you (`myself`) — comes from one `bulkfetch` call per hundred keys, polled by how recently the chat
+  was touched, as its PRs are (a done ticket an hour apart: it can be reopened). Jira Cloud only; a Server/DC site has
+  no bulkfetch.
+* **Where it shows**: the card wears the first ticket (the branch's, else the last named) as a chip in its category's
+  colour — Jira's own grey, blue and green, which simple colours leave alone as they leave the PRs' — and `+n`; the
+  chat header has every ticket among its PR chips, after them, and a row each under the PRs' (status · key · summary
+  · *yours* or whose). A click on a chip or a row opens the ticket in the pane. Not done: a ticket's summary as the
+  card's title (a PR's title is one), nor a ticket's *your move* — what would come round to you on a ticket is not as
+  plain as on a PR.
+* **The token**: a site and an email in the setup file (Setup → Jira, or by hand); the API token in the keychain —
+  item *peixAIrada Jira*, written by `security -i` reading its command from stdin, so the token is in no process's
+  arguments — or `JIRA_API_TOKEN` in the server's environment (jira-cli's own variable). It goes into Jira's requests
+  and nowhere else: the page is told only where it is kept. jira-cli's own config, when there is one, is offered in
+  the empty boxes (this Mac's has a site and a login, and no token the board could use).
+* → `test/jira.test.mjs`, `scripts/scenarios/jira-tickets.mjs`, `scripts/fakejira.mjs`, all new; test servers keep
+  the token in a file of their own (`JIRA_TOKEN_FILE`) and see no jira-cli config.
+
 ### Keeping the Mac awake, with its lid closed too
 
 Ricardo: "we shuold have a button to 1) avoid sleep the mac, 2) avoid sleeping when the lid in closed. the buttons can

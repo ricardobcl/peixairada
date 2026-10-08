@@ -16,6 +16,7 @@
     --code-ink: #a8442a; --inline-bg: rgba(0, 0, 0, .055);
     --you: #2f8b7c; --snip-claude: #45443f; --vscode: #0066b8;
     --pr-open: #2f9e5b; --pr-merged: #8250df; --pr-closed: #d64545; --pr-draft: #8b8b85;
+    --tk-todo: #758195; --tk-doing: #1d6fd8; --tk-done: #22a06b;   /* a Jira ticket's status category (2026-10-08), Jira's own blue and green */
     --term-bg: #f4f3ee; --term-sel: rgba(201, 100, 66, .28);   /* the accent, as ::selection is */
     --nocolor: #b9b9b3;   /* light gray: a project without a Peacock colour, wherever a colour is needed (the tab, the swatch, the card's edge and wash) */
     /* Syntax colours, one set per theme — the whole highlight.js palette hangs off these eight. */
@@ -29,6 +30,7 @@
     --code-ink: #e0a284; --inline-bg: rgba(255, 255, 255, .075);
     --you: #4fb8a8; --snip-claude: #c9c7bd; --vscode: #4aa5f0; --nocolor: #66665f; --watch: #45c8c8; --spend: #f28a3c; --prg: 44%;
     --pr-open: #3fb950; --pr-merged: #a371f7; --pr-closed: #f85149; --pr-draft: #8b8b85;
+    --tk-todo: #8c9bab; --tk-doing: #579dff; --tk-done: #4bce97;
     --term-bg: #111110; --term-sel: rgba(224, 138, 104, .32);
     --hl-com: #7c7c74; --hl-key: #c678dd; --hl-str: #98c379; --hl-num: #d19a66;
     --hl-fn: #61afef; --hl-cls: #e5c07b; --hl-var: #e06c75; --hl-meta: #8fa6c4;
@@ -150,13 +152,18 @@
   .pop .srow.proj + .srow::before { left: 64px; }
   .pop .srow.padd { grid-template-columns: 22px minmax(0, 1fr); }
   .pop .srow.quick { grid-template-columns: auto auto minmax(0, 1fr); gap: 10px; }
+  .pop .srow.jsite { grid-template-columns: 22px minmax(0, 1.25fr) minmax(0, 1fr) 0; }
+  .pop .srow.jtok { grid-template-columns: 22px minmax(0, 1fr) 22px; }
+  .pop .setup .sfoot.sjst { margin-top: 8px; }
+  .pop .setup .sfoot .serr { color: var(--needs); }
   .pop .srow .sic { display: grid; place-items: center; color: var(--muted); font-size: 14px; }
   .pop .srow .sic .ic { width: 16px; height: 16px; fill: currentColor; }
   .pop .srow.add .sic, .pop .srow.padd .sic { color: var(--accent); }
   .pop .srow.padd { padding-left: 22px; }   /* its ＋ under the squares' middle */
-  .pop .setup input[type=text] { font: inherit; font-size: 12.5px; min-width: 0; height: 28px; padding: 0 8px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--ink); }
-  .pop .setup input[type=text]:hover { background: var(--ctl); }
-  .pop .setup input[type=text]:focus { outline: none; background: var(--panel); border-color: var(--accent); }
+  .pop .setup :is(input[type=text], input[type=password]) { font: inherit; font-size: 12.5px; min-width: 0; height: 28px; padding: 0 8px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--ink); }
+  .pop .setup :is(input[type=text], input[type=password]):hover { background: var(--ctl); }
+  .pop .setup :is(input[type=text], input[type=password]):focus { outline: none; background: var(--panel); border-color: var(--accent); }
+  .pop .setup input:disabled { opacity: .5; pointer-events: none; }
   .pop .setup input::placeholder { color: var(--muted); opacity: .85; }
   /* the org: github.com/ and the name, one pill */
   .pop .sorgw { display: inline-flex; align-items: center; height: 28px; padding-left: 9px; border: 1px solid transparent; border-radius: 7px; background: var(--ctl); font-size: 11.5px; color: var(--muted); cursor: text; }
@@ -740,6 +747,19 @@
      card's line and the header say by name. */
   :is(.card .cpr, .shead .hpr):is([data-state="open"], [data-state="merged"], [data-state="closed"], [data-state="draft"]) { background: var(--prc); border-color: var(--prc); color: var(--bg); }
   .card .cpr:hover { filter: brightness(1.12); }
+  /* a Jira ticket as a chip (2026-10-08): the PR chip's shape, in its status category's colour — the card's first
+     ticket (the branch's, else the last named), then a count; in the header among the PRs, last, so they fold first */
+  .card .top .ttks { flex: none; display: inline-flex; align-items: center; gap: 3px; padding-left: 4px; }
+  .card .ctk { font-size: 10.5px; font-weight: 600; line-height: 16px; border: 1px solid transparent; border-radius: 4px; padding: 0 5px; white-space: nowrap; cursor: pointer; }
+  .card .ctk:hover { filter: brightness(1.12); }
+  .card .ttks .more { font-size: 10px; font-weight: 600; color: var(--muted); }
+  :is(.card .ctk, .shead .hpr.tk, .prrow.tk)[data-cat="todo"] { --prc: var(--tk-todo); }
+  :is(.card .ctk, .shead .hpr.tk, .prrow.tk)[data-cat="doing"] { --prc: var(--tk-doing); }
+  :is(.card .ctk, .shead .hpr.tk, .prrow.tk)[data-cat="done"] { --prc: var(--tk-done); }
+  :is(.card .ctk, .shead .hpr.tk)[data-cat] { background: var(--prc); border-color: var(--prc); color: var(--bg); }
+  .prrow.tk .st { width: 86px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--prc); }
+  .prrow.tk .who { flex: none; color: var(--muted); font-size: 11px; }
+  .prrow.tk .who.me { color: var(--accent); font-weight: 600; }
   :is(.card, .presence) .state.needs-input { color: var(--needs); display: flex; align-items: baseline; gap: 5px; }
   :is(.card, .presence) .state.needs-input .ic { width: 11px; height: 11px; flex: none; align-self: center; }
   :is(.card, .presence) .state.needs-input .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -1569,6 +1589,7 @@
     if ($('#hmenu').open) $('#hmenu').close();
     if (inApp) post({ type: 'focus' });   // from the pane's keys, the board needs the keyboard back
     dlg.showModal(); dlg.focus(); repostPane();   // the dialog itself takes the focus, not × wearing its ring
+    loadJira();
   };
   const settingsToggle = () => settingsOpen(!$('#settings').open);
   $('#settings').addEventListener('close', () => { if (setupUi.pending.size) { setupUi.pending.clear(); renderSetup(); } repostPane(); });
@@ -1701,6 +1722,9 @@
     play: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.8v12.4L14 8Z"/></svg>',   // the resume bar's button
     view: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 3.6a4.4 4.4 0 1 1 0 8.8 4.4 4.4 0 0 1 0-8.8Zm0 1.5a2.9 2.9 0 1 0 0 5.8 2.9 2.9 0 0 0 0-5.8Z"/><path d="M6.6 8a1.4 1.4 0 1 0 2.8 0 1.4 1.4 0 0 0-2.8 0ZM7.25 0h1.5v2.4h-1.5Zm0 13.6h1.5V16h-1.5ZM0 7.25h2.4v1.5H0Zm13.6 0H16v1.5h-2.4Z"/></svg>',
     more: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="3" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="13" cy="8" r="1.5"/></svg>',
+    // a Jira ticket (2026-10-08): a ticket stub — the Setup's Jira rows
+    ticket: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M1.5 3.5h13v3a1.5 1.5 0 0 0 0 3v3h-13v-3a1.5 1.5 0 0 0 0-3Zm1.5 1.5v.9a3 3 0 0 1 0 4.2V11h10v-.9a3 3 0 0 1 0-4.2V5Zm6 0h1.2v6H9Z"/></svg>',
+    key: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M5.5 4a3.5 3.5 0 1 1-.01 7A3.5 3.5 0 0 1 5.5 4Zm0 1.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM8.6 6.8H15v1.5h-1.3V10h-1.5V8.3H11V10H9.5V8.3h-.9Z"/></svg>',
     // keeping the Mac awake (2026-10-08): a cup for idle sleep held off, an open laptop for no sleep even with the lid shut
     cup: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" d="M2.6 6h8.6v3.4a3.4 3.4 0 0 1-3.4 3.4H6a3.4 3.4 0 0 1-3.4-3.4ZM11.2 7.2h.9a1.6 1.6 0 0 1 0 3.2h-1.1"/><path fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" d="M5.3 1.6c-.5.6.5 1.2 0 2.2M8.3 1.6c-.5.6.5 1.2 0 2.2M1.8 14.6h10.4"/></svg>',
     lid: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" d="M3.2 3.2h9.6v7H3.2Z"/><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M1.2 12.8h13.6"/><path d="M6.6 5.6 9.8 6.7 6.6 7.8Z"/></svg>',
@@ -2674,6 +2698,13 @@
     const chips = all.map((pr, i) => `<a class="cpr"${i ? ` style="--i:${i};--d:${Math.min(i, under)}"` : ''} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}${pr.turn ? '\n' + turnTip(pr) : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`);
     return `<span class="tprs"${under ? ` style="--under:${under};--span:${+((all.length - 1) / under).toFixed(3)}fr"` : ''}>${chips.join('')}</span>`;
   }
+  /** The card's Jira tickets (2026-10-08): the first — the branch's, else the last one named — as a chip in its status
+   *  category's colour, and how many more; the tooltip lists them all. */
+  const ticketTip = t => `${t.key} — ${t.summary}\n${t.status}${t.type ? ` · ${t.type}` : ''}${t.assignee ? ` · ${t.assignee.me ? 'yours' : t.assignee.name}` : ' · unassigned'}${t.branch ? '\nthe chat\'s branch' : ''}`;
+  function cardTickets(s) {
+    const t = s.tickets || []; if (!t.length) return '';
+    return `<span class="ttks"><a class="ctk" data-cat="${esc(t[0].cat)}" data-url="${esc(t[0].url)}" title="${esc(t.map(ticketTip).join('\n\n'))}">${esc(t[0].key)}</a>${t.length > 1 ? `<span class="more" title="${esc(t.slice(1).map(ticketTip).join('\n\n'))}">+${t.length - 1}</span>` : ''}</span>`;
+  }
   function cardHtml(s, p, q = '') {
     const color = repoColor(s.cwd), un = state.unread.get(s.id) || 0;
     const showReply = s.lastReply && s.status !== 'working';
@@ -2695,7 +2726,7 @@
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip">${entryLabel(s)}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
-      <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${act}${cardFaces(s)}${cardPrs(s)}</div>
+      <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${act}${cardTickets(s)}${cardFaces(s)}${cardPrs(s)}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge">${un}</span>` : ''}</div>
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${esc(s.lastReply)}</div>` : ''}
@@ -3151,7 +3182,10 @@
   // above it are this browser's. A box is written on change, a colour as the panel rests; what the server refuses is
   // said beside it and the row put back. The markup is drawn only when it changed, and never under a box that has the
   // keyboard: that waits for the focus to leave the section.
-  const setupUi = { drawn: '', stale: false, pending: new Set(), colors: new Map(), colorTimer: null, raf: 0 };
+  const setupUi = { drawn: '', stale: false, pending: new Set(), colors: new Map(), colorTimer: null, raf: 0, jira: null };
+  /** What the server says of Jira (2026-10-08): the site, where the token is, who you are there, what went wrong — asked
+   *  as the settings open and after every change to it. */
+  async function loadJira() { try { setupUi.jira = await api('GET', '/api/jira'); } catch { setupUi.jira = null; } renderSetup(); }
   const cfgProjects = () => state.config.projects || {};
   const setupNames = () => [...new Set(projectList().filter(p => p.key !== ALL).map(p => p.name))].sort((a, b) => a.localeCompare(b));
   /** A project's square in the setup, as the rail draws it: its colour — Peacock's, else the setup's — and the ink
@@ -3184,6 +3218,7 @@
       + `<label class="srow quick"><kbd>⌥⌘O</kbd><span>starts a chat in</span><span class="ssel">${c.quick ? projIcon(c.quick) : ''}<select id="quickSel" title="The project ⌥⌘O starts a chat in — on its environments first, when its Taskfile launches claude"><option value="">nothing — ⌥⌘N does it all</option>${quick.map(n => `<option${n === c.quick ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></span></label></div></section>`
       + `<section class="sg">${head('Projects', 'A short name for the folded list (⌥⌘B), and a colour where Peacock gives none.')}<div class="slist">${names.map(projRow).join('')}`
       + `<div class="srow padd"><span class="sic">＋</span><select class="sadd" title="Give a project a short name or a colour"><option value="">Add a project…</option>${all.filter(n => !names.includes(n)).map(n => `<option>${esc(n)}</option>`).join('')}</select></div></div></section>`
+      + jiraSetup(c.jira, setupUi.jira)
       + (c.error ? `<p class="sfoot serr">${esc(c.error)} — the board keeps what it had and writes nothing over it until the file reads.</p>` : '')
       + `<p class="sfoot">${c.file ? `In <code>${esc(homePath(c.file))}</code>, yours to edit by hand too — ` : 'Kept by the server — '}the app and every browser on this Mac share it.</p>`;
     $('#quickKey').textContent = c.quick ? `${c.quick} — a new chat there: its environments first, when its Taskfile launches claude, then their open chats` : 'a new chat in the project the setup names — none yet';
@@ -3193,9 +3228,24 @@
     if (!force && box.contains(document.activeElement)) { setupUi.stale = true; return; }
     box.innerHTML = setupUi.drawn = html; setupUi.stale = false;
   }
+  /** The Setup's Jira section (2026-10-08): the site and your login (the setup file's), the token (the keychain's — the
+   *  box is write-only, and says where one is kept), and a line on how it went. */
+  function jiraSetup(j, info) {
+    const text = 'type="text" spellcheck="false" autocomplete="off"', sug = info?.suggest || {};
+    const tok = info?.token, from = { env: 'JIRA_API_TOKEN in the server\'s environment', keychain: 'a token in your keychain', file: 'a token in the board\'s file' }[tok];
+    const line = !j ? (sug.site ? `jira-cli's ${esc(sug.site)} is offered above — your email, then a token.` : 'A site and your email, then an API token.')
+      : info?.error ? `<span class="serr">${esc(info.error)}</span>`
+      : info?.me ? `Signed in as <b>${esc(info.me)}</b>${info.tickets ? ` · ${info.tickets} ticket${info.tickets === 1 ? '' : 's'} known` : ''}.` : 'Asking Jira…';
+    return `<section class="sg jira">${'<div class="sgh"><b>Jira</b><span>Tickets a chat names — ACME-12, a link to one, its branch — wear their status on its card and in its header, as its PRs do.</span></div>'}<div class="slist">`
+      + `<div class="srow jsite"><span class="sic">${ICON.ticket}</span><input ${text} class="sjsite" value="${esc(j?.site || '')}" placeholder="${esc(sug.site || 'https://acme.atlassian.net')}" title="Your Jira Cloud site"><input ${text} class="sjmail" value="${esc(j?.email || '')}" placeholder="${esc(sug.email || 'you@acme.com')}" title="The email you sign in to Jira with"><span></span></div>`
+      + `<div class="srow jtok"><span class="sic">${ICON.key}</span><input type="password" class="sjtok" autocomplete="off" spellcheck="false"${j ? '' : ' disabled'} placeholder="${tok ? `${esc(from)} — paste another to replace it` : 'API token — id.atlassian.com → Security → API tokens'}" title="Kept in your keychain, never in the setup file; the page never sees it again">`
+      + `${tok === 'keychain' || tok === 'file' ? '<button class="sdel sjforget" title="Forget the token" aria-label="Forget the token">×</button>' : '<span></span>'}</div></div>`
+      + `<p class="sfoot sjst">${line}</p></section>`;
+  }
   /** The setup changed — here or anywhere: everything it paints follows. */
   function configChanged() {
     renderSetup(); renderBoard(); loadFolders(); welcomeSync();
+    if ($('#settings').open) loadJira();
     const s = state.sessions.get(state.current); if (s) renderHead(s);
   }
   async function putConfig(part, anchor) {
@@ -3215,9 +3265,24 @@
   {
     const box = $('#setup');
     box.addEventListener('focusout', e => { if (setupUi.stale && !box.contains(e.relatedTarget)) renderSetup(); });
+    box.addEventListener('click', e => {
+      const f = e.target.closest('.sjforget'); if (!f) return;
+      api('DELETE', '/api/jira/token').then(d => { setupUi.jira = d; renderSetup(true); }, err => note(f, `Not forgotten: ${err.message}`, true));
+    });
+    box.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('.sjtok, .sjsite, .sjmail')) e.target.dispatchEvent(new Event('change', { bubbles: true })); });
     box.addEventListener('change', e => {
       const t = e.target, row = t.closest('.srow');
       if (t.id === 'quickSel') return putConfig({ quick: t.value || null }, t);
+      if (t.classList.contains('sjsite') || t.classList.contains('sjmail')) {   // both, or neither: a site with no login is no setup
+        const site = box.querySelector('.sjsite').value.trim(), email = box.querySelector('.sjmail').value.trim();
+        if (!!site !== !!email) return;
+        return putConfig({ jira: site ? { site, email } : null }, t);
+      }
+      if (t.classList.contains('sjtok')) {
+        const token = t.value.trim(); if (!token) return;
+        t.value = ''; t.blur();
+        return api('PUT', '/api/jira/token', { token }).then(d => { setupUi.jira = d; renderSetup(true); }, e => note(t, `Not saved: ${e.message}`, true));
+      }
       if (t.classList.contains('sadd')) { if (!t.value) return; setupUi.pending.add(t.value); const n = t.value; renderSetup(true); box.querySelector(`.srow.proj[data-name="${CSS.escape(n)}"] .sab`)?.focus(); return; }
       if (row?.classList.contains('root')) { if (row.classList.contains('add') && !row.querySelector('.sdir').value.trim()) return; return putConfig({ roots: rootsInBox() }, t); }
       if (row?.classList.contains('proj')) {
@@ -3394,6 +3459,8 @@
     const card = e.target.closest('.card'); if (!card) return;
     const cpr = e.target.closest('.cpr');
     if (cpr) { e.stopPropagation(); openSession(card.dataset.id); showPr(cpr.dataset.url); return; }   // that chat, with that PR open
+    const ctk = e.target.closest('.ctk');
+    if (ctk) { e.stopPropagation(); openSession(card.dataset.id); openExternal(ctk.dataset.url, { s: state.sessions.get(card.dataset.id) }); return; }   // …or that ticket
     const act = e.target.closest('.act');
     if (act) { e.stopPropagation(); tickDone(card.dataset.id, act.dataset.act === 'done', card); return; }
     openSession(card.dataset.id);
@@ -3571,6 +3638,8 @@
   const PR_ROWS = 6;   // a chat that lists PRs mentions dozens; the block shows this many and folds the rest behind "more"
   const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" href="${/^https:\/\//.test(pr.url) ? esc(pr.url) : '#'}" target="_blank" rel="noopener"
       title="${esc(`${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}${pr.turn ? `\n${turnTip(pr)}` : ''}`)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span>${pr.turn?.you ? `<span class="why">your move · ${esc(pr.turn.why)}</span>` : ''}<span class="meta">${rel(pr.lastAt)}</span></a>`;
+  /** A ticket's row under the header, after the PRs' (2026-10-08): its status, key, summary, and whose it is. */
+  const ticketRow = (t, hide) => `<a class="prrow tk"${hide ? ' hidden' : ''} data-cat="${esc(t.cat)}" href="${/^https?:\/\//.test(t.url) ? esc(t.url) : '#'}" target="_blank" rel="noopener" title="${esc(`${t.url}\n${ticketTip(t)}`)}"><span class="st">${esc(t.status || t.cat)}</span><span class="num">${esc(t.key)}</span><span class="t">${esc(t.summary || t.key)}</span><span class="who${t.assignee?.me ? ' me' : ''}">${t.assignee ? esc(t.assignee.me ? 'yours' : t.assignee.name) : 'unassigned'}</span></a>`;
   // Claude Code's own /focus — "just your prompt, summary, and response", every step in between hidden — on the
   // session running in the drawer (2026-09-20). It is the running CLI's state, not the board's: there is no key and no
   // API for it, so the button types the command into our own holder and reads the line the session prints back — what
@@ -3605,10 +3674,11 @@
     const loud = armed || !!drawer.err;   // >_ with something to say stays in the row, where it is seen
     const termBtn = cls => `<button class="${cls}${drawer.err ? ' err' : termLive(s) && termFor(s.terminal.id) ? ' on' : take ? (armed ? ' take arm' : ' take') : ''}" id="termBtn" title="${esc(termTip(s))}" aria-label="Terminal"${!termLive(s) && s.alive && !take ? ' disabled' : ''}>${ICON.term}`;
     const termWord = drawer.err ? 'failed' : take ? (armed ? (s.status === 'working' ? 'sure? mid-reply' : inVsCode(s) ? 'sure? ends VS Code’s' : 'sure?') : 'take over') : termLive(s) ? 'claude session' : 'claude here';
-    const prs = s.prs || [], prsOpen = !!prefs.prsOpen;
-    const hprs = !prs.length ? '' : `<button class="hprs${prsOpen ? ' on' : ''}" id="prToggle" aria-expanded="${prsOpen}" title="${prs.length} PR${prs.length === 1 ? '' : 's'} in this chat — click to ${prsOpen ? 'fold the list' : 'list them, one per row'} · ⌥⌘G opens one">${
+    const prs = s.prs || [], tks = s.tickets || [], prsOpen = !!prefs.prsOpen;
+    const said = [prs.length ? `${prs.length} PR${prs.length === 1 ? '' : 's'}` : '', tks.length ? `${tks.length} ticket${tks.length === 1 ? '' : 's'}` : ''].filter(Boolean).join(' and ');
+    const hprs = !prs.length && !tks.length ? '' : `<button class="hprs${prsOpen ? ' on' : ''}" id="prToggle" aria-expanded="${prsOpen}" title="${said} in this chat — click to ${prsOpen ? 'fold the list' : 'list them, one per row'}${prs.length ? ' · ⌥⌘G opens a PR' : ''}">${
       prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}${pr.turn ? `\n${turnTip(pr)}` : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</span>`).join('')
-    }<span class="hpr more" hidden></span></button>`;
+    }${tks.map(t => `<span class="hpr tk" data-cat="${esc(t.cat)}" title="${esc(ticketTip(t))}">${esc(t.key)}</span>`).join('')}<span class="hpr more" hidden></span></button>`;
     const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo${s.cwd && prefs.project === s.cwd ? ' on' : ''}" title="${s.cwd && prefs.project === s.cwd ? 'Every project again (ALL)' : 'Show this folder\'s chats — click again for every project'}">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
       ${headMove(s)}${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
@@ -3639,9 +3709,10 @@
     ].join('');
     if (menuHtml !== drawn.menu) { menu.innerHTML = drawn.menu = menuHtml; fillAges(menu); phaseAnims(); if (menu.open) placeMenu(); }   // the state dot's pulse, rebuilt with the menu — and its age, which the markup leaves out
     if (state.prsFor !== s.id) { state.prsFor = s.id; state.prsAll = false; }   // "more" is per chat, not sticky
-    const pl = $('#prlist'); pl.hidden = !prs.length || !prsOpen;   // the rows are there folded too — ⌥⌘G and the harness read them
-    const prsHtml = prs.map((pr, i) => prRow(pr, i >= PR_ROWS && !state.prsAll)).join('')
-      + (prs.length > PR_ROWS ? `<button class="more" id="prMore">${state.prsAll ? 'fewer' : `… ${prs.length - PR_ROWS} more`}</button>` : '');
+    const pl = $('#prlist'); pl.hidden = (!prs.length && !tks.length) || !prsOpen;   // the rows are there folded too — ⌥⌘G and the harness read them
+    const rows = [...prs.map(pr => hide => prRow(pr, hide)), ...tks.map(t => hide => ticketRow(t, hide))];
+    const prsHtml = rows.map((row, i) => row(i >= PR_ROWS && !state.prsAll)).join('')
+      + (rows.length > PR_ROWS ? `<button class="more" id="prMore">${state.prsAll ? 'fewer' : `… ${rows.length - PR_ROWS} more`}</button>` : '');
     if (prsHtml !== drawn.prs) pl.innerHTML = drawn.prs = prsHtml;
     const pm = pl.querySelector('#prMore'); if (pm) pm.onclick = () => { state.prsAll = !state.prsAll; renderHead(s); };   // onclick, not a listener per draw
     const pt = $('#prToggle'); if (pt) pt.onclick = () => { prefs.prsOpen = !prefs.prsOpen; savePrefs(); renderHead(s); };
