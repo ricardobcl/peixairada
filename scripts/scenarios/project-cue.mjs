@@ -1,6 +1,7 @@
 // The board without its projects column (2026-09-24). What this checks: there is
 // no column; the fish heads the chat list (and, clicked, is the About box, 2026-09-27); the list's head names the
-// project and is the way to another — a click is ⌥⌘P's picker, × goes back to ALL, which shows nothing at all and
+// project — on a row of its own over the controls since 2026-10-08, and the chat header's folder name toggles it — and
+// is the way to another — a click is ⌥⌘P's picker, × goes back to ALL, which shows nothing at all and
 // no colour square since 2026-09-27 —, open list or rail; the two things only the column's rows did
 // are in the picker (✎ on a named project, ＋ new project last); and the cog still owns the window's bottom left
 // pixel, from the list's foot, with the popover opening beside its cell.
@@ -68,6 +69,11 @@ export default async function (ctx) {
   ctx.assert.ok(out.proj.text.startsWith(folder) && !out.proj.hidden, 'the head names the project chosen');
   ctx.assert.equal(out.proj.x, true, '…with × beside it');
   ctx.assert.equal(out.proj.sq, false, '…and no colour square: the chat header\'s is the picker (2026-09-27)');
+  // A row of its own over the controls (2026-10-08): the whole list's width, the name whole and × in sight — squeezed
+  // into the controls' row before, a list at its usual width showed × alone
+  out.projRow = await ctx.evaluate(`JSON.stringify((() => { const r = q => document.querySelector(q).getBoundingClientRect(), t = document.querySelector('#stitle .t'), row = r('#stitle'), shd = r('#shd'), list = r('#sessions'), x = r('#stitle .sx');
+    return { full: Math.round(list.right - list.left - 4 - row.width), above: Math.round(shd.top - row.bottom), whole: t.scrollWidth <= t.clientWidth, x: x.width > 0 && x.right <= row.right, foot: Math.round(r('#sfoot').top - shd.top) }; })())`).then(JSON.parse);
+  ctx.assert.deepEqual(out.projRow, { full: 0, above: 0, whole: true, x: true, foot: 0 }, `the project's row: full width, over the controls, the name whole, × in it: ${JSON.stringify(out.projRow)}`);
   await ctx.evaluate(`document.querySelector('#stitle .t').click()`);
   ctx.assert.equal(await pickOpen(), true, 'a click on the name opens the picker');
   await closePick();
@@ -124,6 +130,13 @@ export default async function (ctx) {
   await ctx.cmd('Comma');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#settings').open`), false, '⌘, toggles them');
   await ctx.evaluate(`document.querySelector('#stitle .sx').click()`);
+  // The chat header's folder name is the filter's toggle (2026-10-08): a click shows that folder's chats, the next ALL
+  const chatCwd = await ctx.evaluate(`window.peix.session(window.peix.state().current).cwd`);
+  await ctx.evaluate(`document.querySelector('#shead .repo').click()`);
+  out.toggle = [await ctx.evaluate(`window.peix.prefs().project`), await ctx.evaluate(`document.querySelector('#shead .repo').classList.contains('on')`), await ctx.evaluate(`!document.querySelector('#stitle').hidden`)];
+  ctx.assert.deepEqual(out.toggle, [chatCwd, true, true], 'the header\'s folder name filters the list to it, and says so');
+  await ctx.evaluate(`document.querySelector('#shead .repo').click()`);
+  ctx.assert.deepEqual([await ctx.evaluate(`window.peix.prefs().project`), await ctx.evaluate(`document.querySelector('#shead .repo').classList.contains('on')`)], ['all', false], '…and again lets go: ALL');
 
   // The fish, clicked, is the About box (2026-09-27): modal, centred, saying the package's version and what the
   // board touches; Esc closes it

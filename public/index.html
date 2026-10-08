@@ -212,7 +212,7 @@
   #sessions { border-left: 4px solid var(--repo, var(--nocolor)); }
   #sessions .colhead { background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); }
   /* 300 px at the narrowest (260 until the head became one row: below 300 the project's name had no room left) */
-  #sessions { width: 380px; min-width: 300px; max-width: 60vw; flex: none; display: grid; grid-template-rows: minmax(0, 1fr) auto auto; min-height: 0; container-type: inline-size; }
+  #sessions { width: 380px; min-width: 300px; max-width: 60vw; flex: none; display: grid; grid-template-rows: minmax(0, 1fr) auto auto auto; min-height: 0; container-type: inline-size; }
   /* Placed by hand, like the chat column's rows: a hidden block leaves auto-placement and slides the rest up a row —
      the list into the `auto` row, sized to its cards instead of the column. */
   /* One column: the timeline (#tline) lies over the list's left edge, out of sight until called (2026-09-28; a column
@@ -227,11 +227,14 @@
   main:not(.scompact) #sessions { grid-template-columns: minmax(0, 1fr) auto; }
   /* The people row between the cards and the row (2026-09-29, renderPeople): the row and the usage one down; none on the rail. */
   #people { grid-row: 2; grid-column: 1 / -1; }
-  main:not(.scompact) #shd { grid-row: 3; }
+  /* The project in view, a row of its own over the controls (2026-10-08; squeezed into their row before, where a list at
+     its usual width left the name no room at all — only × showed): the name and ×, the whole width. */
+  #stitle { grid-row: 3; grid-column: 1 / -1; }
+  main:not(.scompact) #shd { grid-row: 4; }
   main.scompact #people { display: none; }
-  main:not(.scompact) #sfoot { grid-row: 3; grid-column: 2; background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); align-items: center; gap: 2px; padding: 0 10px 0 0; position: relative; }
+  main:not(.scompact) #sfoot { grid-row: 4; grid-column: 2; background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); align-items: center; gap: 2px; padding: 0 10px 0 0; position: relative; }
   main:not(.scompact) #shd { padding-right: 4px; overflow: hidden; }   /* a list at its narrowest clips the chips rather than run them under the usage */
-  main.scompact #sfoot { grid-row: 2; } main.scompact #shd { grid-row: 3; }
+  main.scompact #sfoot { grid-row: 2; } main.scompact #shd { grid-row: 3; } main.scompact #stitle { grid-row: 4; }
   /* the cards start under the camera's strip when the list is under the housing (the head used to pad down instead) */
   main.notch #sessions.npad #slist { padding-top: var(--notch-top, 0px); }
   main.notch #sessions.npad .sedge.up { padding-top: calc(5px + var(--notch-top, 0px)); }
@@ -243,7 +246,8 @@
   main.scompact #sessions { width: 58px; min-width: 0; }
   main.scompact #shd #filters, main.scompact #stitle > :not(.ab), main.scompact #splitter { display: none; }
   main.scompact #stitle .ab { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .4px; color: var(--ink); }
-  main.scompact #stitle { flex: none; margin: 0; padding: 5px; }
+  main.scompact #stitle { justify-content: center; padding: 5px 0 13px; border-top: 0; background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); }
+  main.scompact #stitle:hover { background: color-mix(in srgb, var(--repo, var(--nocolor)) 26%, var(--panel)); }
   main.scompact #shd { flex-direction: column; padding: 8px 0; gap: 8px; min-height: 0; }
   main.scompact #slist { padding: 7px 6px 10px; gap: 6px; }
   main.scompact #slist > .card { padding: 0; min-height: 36px; display: grid; place-items: center;
@@ -336,15 +340,16 @@
      list's head is the cue: the project's colour square and its name — a click there is ⌥⌘P's picker — and × to
      go back to ALL, which is the one project without one. The list's left edge and the head's tint are the
      project's colour, ALL's black. */
-  #stitle { flex: 0 1 auto; cursor: pointer; border-radius: 6px; margin: -4px 0 -4px -6px; padding: 4px 6px; }   /* as wide as the name: the magnifier's field takes the rest */
-  #stitle[hidden] { display: none; }   /* on ALL; `.colhead .t` is a flex box, which beats the attribute's own display */
-  #stitle:hover { background: color-mix(in srgb, var(--repo, var(--nocolor)) 26%, transparent); }
-  #stitle > .t { flex: 0 1 auto; display: block; }   /* only as wide as the name, so × sits right after it; a block, so a long one ends in … */
+  #stitle { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 8px 6px 12px; cursor: pointer; border-top: 1px solid var(--line);
+    background: color-mix(in srgb, var(--repo, var(--nocolor)) 30%, var(--panel)); color: var(--ink); font-size: 13px; font-weight: 800; white-space: nowrap; }
+  #stitle[hidden] { display: none; }   /* on ALL; a flex box beats the attribute's own display */
+  #stitle:hover { background: color-mix(in srgb, var(--repo, var(--nocolor)) 40%, var(--panel)); }
+  #stitle > .t { flex: 0 1 auto; min-width: 0; display: block; overflow: hidden; text-overflow: ellipsis; }   /* a block, so a long name ends in … */
   #stitle .ab { display: none; }   /* the short name, for the rail */
-  #stitle .sx { flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 13px; font-weight: 400; line-height: 1; color: var(--muted); }
+  #stitle .sx { flex: none; margin-left: auto; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font-size: 15px; font-weight: 400; line-height: 1; color: var(--muted); }
   #stitle .sx:hover { color: var(--ink); background: var(--inline-bg); }
-  /* One row atop the list (2026-09-24): the fish, the project, the filters — the
-     magnifier and the three state chips —, ＋ and «. The project's name is what gives way when the row is short. */
+  /* One row under the list (2026-09-24, atop it then): the fish, the filters — the magnifier and the three state
+     chips —, the usage. The project's name has the row above since 2026-10-08. */
   #shd { gap: 5px; padding: 7px 10px; }
   #shd .brand, #shd .brand .logo { width: 24px; height: 24px; }
   #shd .btn.icon { padding: 3px 5px; }
@@ -843,6 +848,7 @@
      truncation instead, and only past 60% does the repo start to ellipsise too. */
   .shead h2 .repo { font-weight: 800; flex: 0 0 auto; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
   .shead h2 .repo:hover { text-decoration: underline; text-decoration-style: dotted; }
+  .shead h2 .repo.on { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }   /* the list shows this folder alone: a click lets go */
   .shead h2 .t { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   /* a bar between the project and the title (2026-09-26): the header's
      ink, which inkOn picks by the colour's brightness, the whole height of the header. The span only holds the
@@ -1322,13 +1328,14 @@
 <body>
 <main id="main">
   <section id="sessions">
-    <div class="colhead" id="shd"><span class="brand" id="brandBtn" title="About peixAIrada" role="button"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g><g fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="stitle" class="t"></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" autocomplete="off" spellcheck="false" hidden><span id="fchips"></span></span></div>
+    <div class="colhead" id="shd"><span class="brand" id="brandBtn" title="About peixAIrada" role="button"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g><g fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" autocomplete="off" spellcheck="false" hidden><span id="fchips"></span></span></div>
     <div id="tline" aria-label="The list's days — point to read them, drag to scroll, click one to go there"><div class="tl-catch"></div><div class="tl-thumb"></div><div class="tl-labs"></div></div>
     <div id="slist"></div>
     <div class="tl-glass"></div>
     <div class="sedge up" id="sup"><button data-dir="-1"></button></div>
     <div class="sedge down" id="sdown"><button data-dir="1"></button></div>
     <div id="people" hidden></div>
+    <div id="stitle" hidden></div>
     <div id="sfoot"><div id="usage"></div></div>
   </section>
   <div id="splitter" title="Drag to resize"></div>
@@ -2678,7 +2685,7 @@
       <span class="abbr" title="${esc(`${s.project} · ${s.title}`)}">${esc(projAbbr(s.project))}</span>
     </div>`;
   }
-  function selectProject(key) { prefs.project = key; savePrefs(); renderBoard(); }
+  function selectProject(key) { prefs.project = key; savePrefs(); renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); }   // the header's folder name is the toggle's other end
   // ---- ⌥⌘P: the project picker. The board's projects, pinned first; the box filters by name. ----
   // ⌥⌘G puts the chat's PRs in the same dialog (state · repo#n · title · age, as #prlist lays them out)
   // when it mentions more than one; the box filters by number and title, ⏎ opens the PR as a row click would.
@@ -3584,7 +3591,7 @@
     const hprs = !prs.length ? '' : `<button class="hprs${prsOpen ? ' on' : ''}" id="prToggle" aria-expanded="${prsOpen}" title="${prs.length} PR${prs.length === 1 ? '' : 's'} in this chat — click to ${prsOpen ? 'fold the list' : 'list them, one per row'} · ⌥⌘G opens one">${
       prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}${pr.turn ? `\n${turnTip(pr)}` : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</span>`).join('')
     }<span class="hpr more" hidden></span></button>`;
-    const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo" title="Show this folder's chats">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
+    const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo${s.cwd && prefs.project === s.cwd ? ' on' : ''}" title="${s.cwd && prefs.project === s.cwd ? 'Every project again (ALL)' : 'Show this folder\'s chats — click again for every project'}">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
       ${headMove(s)}${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
       <button class="hmore" id="moreBtn" aria-haspopup="menu" aria-expanded="false" title="This chat: the claude session, VS Code, focus view, code folding, path and branch — and the settings">${ICON.more}</button>
@@ -3636,7 +3643,7 @@
     $('#settingsBtn').onclick = () => settingsOpen(true);
     $('#moreBtn').onclick = e => { e.stopPropagation(); if (menu.open) menu.close(); else openMenu(); };
     const vb = $('#viewBtn'); if (vb) vb.onclick = () => toggleFocusView(s);
-    $('#shead .repo').onclick = () => { if (s.cwd) selectProject(s.cwd); };
+    $('#shead .repo').onclick = () => { if (s.cwd) selectProject(prefs.project === s.cwd ? ALL : s.cwd); };   // a toggle (2026-10-08)
     $('#shead h2 .t').ondblclick = () => editTitle(s);
   }
   // The header's PR chips take whatever the row has (2026-09-24): all

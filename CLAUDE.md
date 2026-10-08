@@ -149,17 +149,20 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
 
 ## The board
 
-* **Two columns**: the selected project's chats → the chat. **The chat list's row — at its foot since 2026-09-28,
-  under the cards (`#sessions` rows: the list `minmax(0, 1fr)`, then the row) — is the project filter's whole cue** — the fish (the SSE light), then `#stitle`: the project's name (nothing at all on ALL, `hidden`), a click being
-  ⌥⌘P's picker, and × back to ALL; the list's edge and the row's tint are the project's colour. **It is one row, the
-  foot included** (2026-09-28): `#filters` — the magnifier, an icon at rest (`#qBtn`); open, the left cap of
+* **Two columns**: the selected project's chats → the chat. **The chat list's foot — under the cards since
+  2026-09-28 (`#sessions` rows: the list `minmax(0, 1fr)`, the people, the project, the controls) — is the project
+  filter's whole cue**: **`#stitle`, a row of its own over the controls** (2026-10-08, grid row 3, the whole width; in
+  the controls' row before, where a list at its usual width showed its × alone) — the project's name (nothing at all
+  on ALL, `hidden`), a click being ⌥⌘P's picker, and × at the row's end back to ALL; **the chat header's folder name
+  toggles it** (that folder, then ALL; `.repo.on` while it is the filter). The list's edge and the rows' tint are
+  the project's colour. **The controls are one row, the usage included** (2026-09-28): the fish (the SSE light), `#filters` — the magnifier, an icon at rest (`#qBtn`); open, the left cap of
   `#q` (`width: 0; flex: 1 1 0`), which takes the row's spare room and the rings' (hidden while it is open, `:has`) —
   the state chips (a dot and a count; the word from 600 px of list, the count gone under 340; `#sessions` is a size
   container) — no ＋ since 2026-09-28: ⌥⌘N, which opens on the project in view (⏎ ⏎ is a new chat there); then **`#sfoot`, in
   the head's grid row as a column of its own** (`main:not(.scompact)`): the usage. No cog: the settings are ⌘, and ···. **No « / »**: ⌥⌘B
-  folds and unfolds. The name gives way, hence the list's 300 px minimum (and the row clips rather than run the chips
-  under the usage). On the rail the fish and, for a project, `projAbbr` (`.ab`) as the picker's handle keep the bottom
-  corner, the usage's rings over them. Filled at the notch with the list under the housing, the cards start under the
+  folds and unfolds. The row clips rather than run the chips under the usage. On the rail the fish and, under it for a
+  project, `projAbbr` (`.ab`, `#stitle`'s grid row 4 there) as the picker's handle keep the bottom corner, the usage's
+  rings over them. Filled at the notch with the list under the housing, the cards start under the
   strip (`.npad` on `#slist` and the top pill); **elsewhere the first card is flush with the top** (no top padding,
   2026-09-29), level with the project box atop the chat. ⌥⌘P's rows carry
   ✎ on a named project and ＋ new project, last and never filtered out. → `scripts/scenarios/project-cue.mjs`. A chat

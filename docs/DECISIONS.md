@@ -2,8 +2,23 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-07. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-08. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-08 — the project's own row, its toggle in the header
+
+Ricardo: "when filtering a project, the search on the bottom is to condensed to see, it should be expanded so it's
+visible the project name and the X. also, clicking again on the project name up top on the chat header, should toggle
+this filter" — one of five asks in one message (the others below, as they landed).
+
+* **The project in view is a row of its own** (`#stitle`, `#sessions`' grid row 3, the list's whole width, over the
+  fish, the magnifier, the chips and the usage — which are row 4 now): its name, ellipsed only when it is longer than
+  the list, and × at the row's end. It shared the controls' row since 2026-09-24 and was what gave way there; at 380 px
+  the chips and the usage took everything and the name showed nothing but its ×. The row's tint is the project's
+  colour, a shade deeper than the controls'. On the rail it is the short name under the fish, as before (row 4 there).
+* **The chat header's folder name is the filter's toggle**: a click shows that folder's chats (as it did), a second
+  goes back to ALL; underlined while it is the filter in view (`.repo.on`). `selectProject` redraws the header for it.
+* → `scripts/scenarios/project-cue.mjs`: the row's width, place and whole name; the toggle both ways.
 
 ## Decisions of 2026-10-07 — a chat whose claude has ended says so, and resumes itself
 
