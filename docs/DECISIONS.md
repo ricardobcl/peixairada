@@ -15,6 +15,13 @@ too busy to add more info".
   cup in amber saying *awake*. The menu keeps one row, *awake with the lid closed* (it takes a password). While the lid
   holds, the button is the red laptop, and its click turns the lid's setting off — idle sleep stays held if it was.
 
+* **CI on a PR, in the chat header only**: the same GraphQL call asks the head commit's `statusCheckRollup` — its state
+  alone, about a point of GitHub's budget for forty PRs, nothing per check — and an open or draft PR's chip in the
+  header gets a round badge after its number: a tick in green, a cross in red (the chip ringed in red too, to be seen
+  from across the room), or a ring turning in amber while the checks run; its row under the header says *passed ·
+  failing · running*. The cards say nothing of it. It moves at the PR's own pace (a minute for a chat touched within
+  the hour). Not done: which check failed (the PR's page, a click away, says), nor an alert when one fails.
+
 ## Decisions of 2026-10-08 — five asks in one message
 
 Jira tickets as PRs are, the usage of a plan capped in money, the project's row, keeping the Mac awake, and ideas from

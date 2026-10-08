@@ -7,7 +7,7 @@ import { tmpDir } from '../lib/testserver.mjs';
 
 const tmp = tmpDir('peix-test-');
 process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
-const { prTurn, prPeople, setPrInfo, isDone, doneMarks, newSession, notePr, sessions, prStatus } = await import('../server.mjs');
+const { prTurn, prPeople, setPrInfo, isDone, doneMarks, newSession, notePr, sessions, prStatus, prChecks } = await import('../server.mjs');
 
 const t = h => new Date(Date.UTC(2026, 8, 28, h)).toISOString().replace('.000', '');   // GitHub writes no milliseconds
 const user = login => ({ login, __typename: 'User' });
@@ -177,4 +177,10 @@ test('one PR whatever the case of its owner and repo', () => {
   assert.equal(s.prs.length, 1); assert.equal(s.prs[0].count, 2); assert.equal(s.prs[0].label, 'Widgets#12', 'the case first seen');
   notePr(s, 'javascript:alert(1)', t(11), null);
   assert.equal(s.prs.length, 1, 'a pr-link that is no web address is not kept');
+});
+
+test('prChecks: the head commit\'s rollup as the header says it (2026-10-09)', () => {
+  const at = state => ({ commits: { nodes: [{ commit: { statusCheckRollup: state ? { state } : null } }] } });
+  assert.deepEqual(['SUCCESS', 'FAILURE', 'ERROR', 'PENDING', 'EXPECTED', null].map(s => prChecks(at(s))), ['pass', 'fail', 'fail', 'pending', 'pending', null]);
+  assert.equal(prChecks({}), null, 'a PR asked without the field'); assert.equal(prChecks(null), null);
 });

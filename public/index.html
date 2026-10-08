@@ -967,6 +967,17 @@
     background: linear-gradient(160deg, color-mix(in srgb, var(--prc, var(--muted)) var(--prg), var(--panel)), color-mix(in srgb, var(--prc, var(--muted)) 7%, var(--panel)) 80%); }
   .shead .hprs:hover, .shead .hprs.on { background: var(--ctl); }
   .shead .hpr.more { color: var(--muted); border-style: dashed; }
+  /* CI on the PR's head (2026-10-09): a round badge after its number, in the page's ground with the outcome's colour —
+     a tick, a cross, or a ring turning while the checks run */
+  :is(.shead .hpr, .prrow) .ck { --ckc: var(--pr-open); display: inline-grid; place-items: center; width: 13px; height: 13px; flex: none; margin: 0 -3px 0 4px; border-radius: 50%; background: var(--bg); vertical-align: -2px; }
+  :is(.shead .hpr, .prrow) .ck[data-checks="fail"] { --ckc: var(--pr-closed); }
+  :is(.shead .hpr, .prrow) .ck[data-checks="pending"] { --ckc: var(--working); }
+  :is(.shead .hpr, .prrow) .ck svg { width: 11px; height: 11px; fill: none; stroke: var(--ckc); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  :is(.shead .hpr, .prrow) .ck[data-checks="pending"] svg { stroke-width: 2; stroke-dasharray: 18 11; animation: ring 1.1s linear infinite; }
+  .shead .hpr[data-checks="fail"] { box-shadow: 0 0 0 1.5px var(--pr-closed); }   /* a failing PR is seen from across the room */
+  .prrow .ckw { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
+  .prrow .ckw .ck { margin: 0; }
+  .prrow .ckw[data-checks="fail"] { color: var(--pr-closed); font-weight: 600; }
   #chat.tinted .shead .hprs { color: color-mix(in srgb, var(--rink) 78%, transparent); }
   #chat.tinted .shead .hprs:hover, #chat.tinted .shead .hprs.on { background: color-mix(in srgb, var(--rink) 12%, transparent); }
   /* ---- The chat's PRs, one per row under the header: state, repo#n, the whole title. ---- */
@@ -1341,6 +1352,7 @@
     .card.landed { animation: none; }
     .dot.working, .dot.needs-input { animation: none; }
     .pix, .pix svg { animation: none; }
+    .ck[data-checks="pending"] svg { animation: none; stroke-dasharray: none; }   /* CI running: a still ring */
     #log > .in { animation: none; }
     dialog, dialog:not([open]), .pop, .pop[hidden], .note, .note.out { transform: none; }
     @starting-style { dialog[open], .pop:not([hidden]), .note { transform: none; } }
@@ -3669,8 +3681,14 @@
   const turnOf = pr => pr.turn ? (pr.turn.you ? 'you' : 'them') : '';
   const turnTip = pr => !pr.turn ? '' : pr.turn.you ? `your move — ${pr.turn.why}` : pr.turn.why;
   const PR_ROWS = 6;   // a chat that lists PRs mentions dozens; the block shows this many and folds the rest behind "more"
+  // A PR's CI on its head commit (2026-10-09, the chat header only — the cards have enough to say): GitHub's rollup of
+  // its checks, a badge on the header's chip and a word on its row; none for a PR merged or closed.
+  const prCk = pr => pr.checks && (pr.state === 'open' || pr.state === 'draft') ? pr.checks : null;
+  const CK_TIP = { pass: 'checks passed', fail: 'checks failing', pending: 'checks running' };
+  const CK_ICON = { pass: '<path d="M3.6 8.3 6.6 11.2 12.4 4.9" />', fail: '<path d="M4.8 4.8 11.2 11.2M11.2 4.8 4.8 11.2" />', pending: '<circle cx="8" cy="8" r="4.6" />' };
+  const ckHtml = pr => { const c = prCk(pr); return c ? `<i class="ck" data-checks="${c}"><svg viewBox="0 0 16 16" aria-hidden="true">${CK_ICON[c]}</svg></i>` : ''; };
   const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" href="${/^https:\/\//.test(pr.url) ? esc(pr.url) : '#'}" target="_blank" rel="noopener"
-      title="${esc(`${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}${pr.turn ? `\n${turnTip(pr)}` : ''}`)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span>${pr.turn?.you ? `<span class="why">your move · ${esc(pr.turn.why)}</span>` : ''}<span class="meta">${rel(pr.lastAt)}</span></a>`;
+      title="${esc(`${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}${pr.turn ? `\n${turnTip(pr)}` : ''}`)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span>${pr.turn?.you ? `<span class="why">your move · ${esc(pr.turn.why)}</span>` : ''}${prCk(pr) ? `<span class="ckw" data-checks="${prCk(pr)}">${ckHtml(pr)}${{ pass: 'passed', fail: 'failing', pending: 'running' }[prCk(pr)]}</span>` : ''}<span class="meta">${rel(pr.lastAt)}</span></a>`;
   /** A ticket's row under the header, after the PRs' (2026-10-08): its status, key, summary, and whose it is. */
   const ticketRow = (t, hide) => `<a class="prrow tk"${hide ? ' hidden' : ''} data-cat="${esc(t.cat)}" href="${/^https?:\/\//.test(t.url) ? esc(t.url) : '#'}" target="_blank" rel="noopener" title="${esc(`${t.url}\n${ticketTip(t)}`)}"><span class="st">${esc(t.status || t.cat)}</span><span class="num">${esc(t.key)}</span><span class="t">${esc(t.summary || t.key)}</span><span class="who${t.assignee?.me ? ' me' : ''}">${t.assignee ? esc(t.assignee.me ? 'yours' : t.assignee.name) : 'unassigned'}</span></a>`;
   // Claude Code's own /focus — "just your prompt, summary, and response", every step in between hidden — on the
@@ -3710,7 +3728,7 @@
     const prs = s.prs || [], tks = s.tickets || [], prsOpen = !!prefs.prsOpen;
     const said = [prs.length ? `${prs.length} PR${prs.length === 1 ? '' : 's'}` : '', tks.length ? `${tks.length} ticket${tks.length === 1 ? '' : 's'}` : ''].filter(Boolean).join(' and ');
     const hprs = !prs.length && !tks.length ? '' : `<button class="hprs${prsOpen ? ' on' : ''}" id="prToggle" aria-expanded="${prsOpen}" title="${said} in this chat — click to ${prsOpen ? 'fold the list' : 'list them, one per row'}${prs.length ? ' · ⌥⌘G opens a PR' : ''}">${
-      prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}${pr.turn ? `\n${turnTip(pr)}` : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</span>`).join('')
+      prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}"${prCk(pr) ? ` data-checks="${prCk(pr)}"` : ''} title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}${prCk(pr) ? `\n${CK_TIP[prCk(pr)]}` : ''}${pr.turn ? `\n${turnTip(pr)}` : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}${ckHtml(pr)}</span>`).join('')
     }${tks.map(t => `<span class="hpr tk" data-cat="${esc(t.cat)}" title="${esc(ticketTip(t))}">${esc(t.key)}</span>`).join('')}<span class="hpr more" hidden></span></button>`;
     const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo${s.cwd && prefs.project === s.cwd ? ' on' : ''}" title="${s.cwd && prefs.project === s.cwd ? 'Every project again (ALL)' : 'Show this folder\'s chats — click again for every project'}">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
       ${headMove(s)}${hprs}${taskChip(s)}

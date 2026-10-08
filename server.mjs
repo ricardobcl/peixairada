@@ -671,7 +671,7 @@ function notePr(s, url, ts, by, ref = null) {
     // The owner rarely disambiguates and eats half the width of the chip; the URL is in the tooltip.
     label: m ? `${m[2]}#${m[3]}` : clean.replace(/^https?:\/\/(www\.)?github\.com\//, ''),
     count: 0, by: null, firstAt: ts, ref,
-    state: prStatus.get(clean)?.state ?? null, title: prStatus.get(clean)?.title ?? null, turn: prStatus.get(clean)?.turn ?? null, people: prStatus.get(clean)?.people ?? null
+    state: prStatus.get(clean)?.state ?? null, title: prStatus.get(clean)?.title ?? null, turn: prStatus.get(clean)?.turn ?? null, people: prStatus.get(clean)?.people ?? null, checks: prStatus.get(clean)?.checks ?? null
   };
   if (!ref) pr.ref = null; else if (ref === 'repo' && pr.ref) pr.ref = 'repo';
   if (by) { pr.count++; pr.by = by; }
@@ -876,18 +876,18 @@ function queueSessionPrs(s) { for (const pr of s.prs) queuePr(pr.url); }
 /** What GitHub said of one PR: `found` is prTurn's answer, undefined for a PR it would not show us — `missing`, whose
  *  state and title are what was known before (2026-10-03: they were wiped, and the card's title fell back to Claude's
  *  over an SSO prompt or one field GitHub would not resolve), asked again an hour later. */
-function setPrInfo(url, state, title, found, now = Date.now(), people, missing = false, created = null) {
+function setPrInfo(url, state, title, found, now = Date.now(), people, missing = false, created = null, checks = null) {
   const chats = [...sessions.values()].filter(s => s.prs.some(p => p.url === url));
   const ticked = chats.filter(isDone);
   const { turn, moved, from } = moveTurn(url, found, now);
   const known = prStatus.get(url);
   if (people === undefined) people = known?.people ?? null;   // a PR we could not see: who we knew of stands
-  if (missing) { state = known?.state ?? null; title = known?.title ?? null; }
-  prStatus.set(url, { state, title, turn, people, checkedAt: now, missing, created: created ?? known?.created ?? null });   // created: shownPr's
+  if (missing) { state = known?.state ?? null; title = known?.title ?? null; checks = known?.checks ?? null; }
+  prStatus.set(url, { state, title, turn, people, checks, checkedAt: now, missing, created: created ?? known?.created ?? null });   // created: shownPr's
   const same = JSON.stringify(turn), faces = JSON.stringify(people);
   for (const s of chats) {
     const pr = s.prs.find(p => p.url === url);
-    if (pr.state !== state || pr.title !== title || JSON.stringify(pr.turn ?? null) !== same || JSON.stringify(pr.people ?? null) !== faces) { pr.state = state; pr.title = title; pr.turn = turn; pr.people = people; schedulePush(s); }
+    if (pr.state !== state || pr.title !== title || pr.checks !== checks || JSON.stringify(pr.turn ?? null) !== same || JSON.stringify(pr.people ?? null) !== faces) { pr.state = state; pr.title = title; pr.turn = turn; pr.people = people; pr.checks = checks; schedulePush(s); }
   }
   // Said once, as the ball comes back to you — or when a chat you had ticked comes back with it.
   if (moved && (from === 'them' || ticked.some(s => !isDone(s)))) notifyPr(url, turn, chats);
@@ -933,7 +933,7 @@ function drainPrQueue() {
         : pr.state === 'CLOSED' ? 'closed'
         : pr.isDraft ? 'draft' : 'open';
       if (!pr && none.has(`p${i}`)) forgetRef(url);
-      setPrInfo(url, state, pr?.title || null, pr && me ? prTurn(pr, me) : undefined, Date.now(), pr ? prPeople(pr, me) : undefined, !pr, pr?.createdAt);
+      setPrInfo(url, state, pr?.title || null, pr && me ? prTurn(pr, me) : undefined, Date.now(), pr ? prPeople(pr, me) : undefined, !pr, pr?.createdAt, prChecks(pr));
     });
     if (turnsDirty) { turnsDirty = false; pruneTurns(); saveState(); }
     if (prQueue.size) drainPrQueue();
@@ -953,7 +953,11 @@ const PR_FIELDS = `title state isDraft createdAt headRefOid author { ${WHO} }`
   + ` comments(last: 20) { nodes { author { ${WHO} } createdAt } }`
   + ' pushes: timelineItems(last: 5, itemTypes: [PULL_REQUEST_COMMIT, HEAD_REF_FORCE_PUSHED_EVENT]) { nodes { __typename'
   + ` ... on HeadRefForcePushedEvent { createdAt actor { ${WHO} } } ... on PullRequestCommit { commit { committedDate author { user { login avatarUrl(size: 48) } } } } } }`
-  + ' asks: timelineItems(last: 10, itemTypes: [REVIEW_REQUESTED_EVENT]) { nodes { ... on ReviewRequestedEvent { createdAt requestedReviewer { ... on User { login } } } } }';
+  + ' asks: timelineItems(last: 10, itemTypes: [REVIEW_REQUESTED_EVENT]) { nodes { ... on ReviewRequestedEvent { createdAt requestedReviewer { ... on User { login } } } } }'
+  + ' commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }';   // CI on the head (2026-10-09): the rollup alone, a point's worth
+/** The head commit's checks as the chat header says them: pass · fail · pending, or null for none (2026-10-09). */
+const CHECKS = { SUCCESS: 'pass', FAILURE: 'fail', ERROR: 'fail', PENDING: 'pending', EXPECTED: 'pending' };
+const prChecks = pr => CHECKS[pr?.commits?.nodes?.[0]?.commit?.statusCheckRollup?.state] ?? null;
 let turnsDirty = false;
 
 const isBot = a => !a?.login || a.__typename === 'Bot' || /\[bot\]$/.test(a.login);
@@ -2786,7 +2790,7 @@ server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTe
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { fold, newSession, summary, agentRunning, usageWindows, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {

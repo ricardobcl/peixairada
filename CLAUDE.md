@@ -326,6 +326,11 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   password); while it holds the button is a laptop in the needs' red and its click lets the lid sleep the Mac again.
   In whichever header is up, a chat's or the empty one (`drawAwake()` after every header drawn anew and on the
   snapshot; not in `drawn.head`'s markup). → `scripts/scenarios/keep-awake.mjs`.
+* **A PR's CI is said in the chat header only** (2026-10-09; the cards have enough): `commits(last: 1) { … statusCheckRollup
+  { state } }` in `PR_FIELDS` → `prChecks` → `checks` (pass · fail · pending) on each PR; `.hpr` wears `.ck` — a round
+  badge after its number in the page's ground, a tick, a cross, or a ring turning (`ring`, stilled under reduced
+  motion) — and a failing chip a red ring; the row says *passed · failing · running*. Only for open and draft PRs.
+  → `scripts/scenarios/pr-checks.mjs`.
 * **A chat's Jira tickets are chips as its PRs are** (2026-10-08): on the card, `cardTickets` — the first (the branch's,
   else the last named) as `.ctk`, solid in its status category's colour (`--tk-todo` · `--tk-doing` · `--tk-done`,
   `data-cat`), then `+n`, before the faces; a click opens the chat and the ticket in the pane. In the header they are
@@ -890,11 +895,11 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   scroll-driven ones, which run as long as the list can scroll — and for a pending draw. `ctx`: `evaluate`, `waitFor`, `send`, `reload`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
-  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The forty-eight in
+  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The forty-nine in
   `scripts/scenarios/` are the regression checks for the drawer, the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
   marks and the PR stack, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, a PR's turn, the chat's links,
-  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short, the resume bar, keeping the Mac awake, Jira tickets, the transcript's turns.
+  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short, the resume bar, keeping the Mac awake, Jira tickets, the transcript's turns, a PR's CI.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.
