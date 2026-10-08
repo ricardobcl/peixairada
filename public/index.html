@@ -902,6 +902,11 @@
   .shead .awake.lid { --aw: var(--needs); }
   .shead .awake .ic { width: 14px; height: 14px; fill: currentColor; }
   .shead .awake:hover { background: color-mix(in srgb, var(--aw) 32%, transparent); }
+  /* off (2026-10-09): the cup alone, muted, as ··· is — always there to be switched on */
+  .shead .awake.off { padding: 0 5px; background: none; color: var(--muted); }
+  .shead .awake.off .ic { width: 15px; height: 15px; }
+  .shead .awake.off:hover { color: var(--ink); background: var(--inline-bg); }
+  #chat.tinted .shead .awake.off { color: color-mix(in srgb, var(--rink) 78%, transparent); }
   #chat.tinted .shead .hmore:hover, #chat.tinted .shead .hmore.on { color: var(--rink); background: color-mix(in srgb, var(--rink) 16%, transparent); }
   /* The menu: a non-modal <dialog>, so the pane goes down while it is up (postPane sends no page with a dialog
      open) and Esc closes it the way it closes every other; right-aligned under ···, one row per action — its mark,
@@ -3730,8 +3735,7 @@
       '<div class="sep"></div>',
       `<button class="hmi${prefs.headDetails ? ' on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}" title="${esc(statusLabel[s.status] || s.status)} · click to ${prefs.headDetails ? 'hide' : 'show'} path, branch and session details under the title"><span class="dot ${s.status}"></span><span>${esc((statusLabel[s.status] || s.status || '').split(' — ')[0])}${s.statusSince ? ` · <span data-at="${esc(s.statusSince)}"></span>` : ''}</span><span class="k">${prefs.headDetails ? 'hide' : 'show'} path</span></button>`,
       '<div class="sep"></div>',
-      `<button class="hmi${state.awake.awake ? ' on' : ''}" id="awakeBtn" aria-pressed="${!!state.awake.awake}" title="Hold this Mac's idle sleep off while the board runs — the display may still sleep, and closing the lid still sleeps it">${ICON.cup}<span>keep the Mac awake</span><span class="k">${state.awake.awake ? 'on' : 'off'}</span></button>`,
-      `<button class="hmi${state.awake.lid ? ' on' : ''}" id="lidBtn" aria-pressed="${!!state.awake.lid}" title="No sleep at all, not even with the lid closed (pmset disablesleep) — the system asks for your password each time; mind the battery in a bag">${ICON.lid}<span>…with the lid closed too</span><span class="k">${state.lidAsking ? 'password…' : state.awake.lid ? 'on' : 'off'}</span></button>`,
+      `<button class="hmi${state.awake.lid ? ' on' : ''}" id="lidBtn" aria-pressed="${!!state.awake.lid}" title="No sleep at all, not even with the lid closed (pmset disablesleep) — the system asks for your password each time; mind the battery in a bag">${ICON.lid}<span>awake with the lid closed</span><span class="k">${state.lidAsking ? 'password…' : state.awake.lid ? 'on' : 'off'}</span></button>`,
       '<div class="sep"></div>',
       `<button class="hmi" id="settingsBtn" title="The board's settings, its setup and its keys">${ICON.cog}<span>settings</span><span class="k">⌘,</span></button>`,
     ].join('');
@@ -3761,8 +3765,7 @@
     const sb = $('#shellEndBtn'); if (sb) sb.onclick = () => { menu.close(); dropTab(s, 'shell'); };
     const ib = $('#ideCloseBtn'); if (ib) ib.onclick = () => { menu.close(); if (ideKey(s)) dropTab(s, ideKey(s)); };
     $('#settingsBtn').onclick = () => settingsOpen(true);
-    $('#awakeBtn').onclick = () => setAwake({ awake: !state.awake.awake }, $('#moreBtn'));   // toggles: the menu stays up
-    $('#lidBtn').onclick = () => { if (!state.lidAsking) setAwake({ lid: !state.awake.lid }, $('#moreBtn')); };
+    $('#lidBtn').onclick = () => { if (!state.lidAsking) setAwake({ lid: !state.awake.lid }, $('#moreBtn')); };   // a toggle: the menu stays up
     $('#moreBtn').onclick = e => { e.stopPropagation(); if (menu.open) menu.close(); else openMenu(); };
     const vb = $('#viewBtn'); if (vb) vb.onclick = () => toggleFocusView(s);
     $('#shead .repo').onclick = () => { if (s.cwd) selectProject(prefs.project === s.cwd ? ALL : s.cwd); };   // a toggle (2026-10-08)
@@ -4632,22 +4635,23 @@
   // read or resume. The header is written here, so `drawn` starts over.
   const NO_CHAT = { head: $('#shead').innerHTML, log: $('#log').innerHTML };
   // ---- keeping the Mac awake (2026-10-08) ----------------------------------------------------------------------------
-  // Two rows of the chat header's ··· (the server holds the assertion, and asks pmset for the lid), and while either is
-  // on a mark at the header's right end, before ··· — in every header, a chat's or none's, so it is always in sight: a
-  // cup for idle sleep held off, a laptop when the Mac does not sleep even with its lid shut (the system's setting,
-  // whoever set it — mind the battery in a bag). A click on the mark lets the Mac sleep again: the cup at once, the lid
-  // after the password dialog the system puts up for it.
+  // A button at the header's right end, before ··· — in every header, a chat's or none's, on or off (2026-10-09; a mark
+  // shown only while on before, the switch a row of ···): a muted cup while the Mac may sleep, the cup in amber saying
+  // *awake* while the server holds idle sleep off; a click switches it. The lid's setting stays a row of ··· (it takes
+  // a password); while it holds — the system's, whoever set it — the button is a laptop in red, and its click lets the
+  // lid sleep the Mac again, after the password dialog.
   const awakeTip = () => state.awake.lid
-    ? 'This Mac does not sleep, not even with its lid closed (pmset disablesleep) — mind the battery and the heat in a bag. Click to let it sleep again (asks for your password)'
-    : 'Keeping this Mac awake while the board runs: idle sleep is held off (the display may still sleep, and closing the lid still sleeps it). Click to let it sleep';
-  const awakeHtml = () => !state.awake.awake && !state.awake.lid ? ''
-    : `<button class="awake${state.awake.lid ? ' lid' : ''}" id="awakeMark" title="${esc(awakeTip())}">${state.awake.lid ? ICON.lid : ICON.cup}<span>awake</span></button>`;
-  /** The mark into the header that is up, before its ···; again after every header drawn anew (renderHead, leaveChat). */
+    ? 'This Mac does not sleep, not even with its lid closed (pmset disablesleep) — mind the battery and the heat in a bag. Click to let it sleep with the lid shut again (asks for your password)'
+    : state.awake.awake ? 'Keeping this Mac awake while the board runs: idle sleep is held off (the display may still sleep, and closing the lid still sleeps it). Click to let it sleep'
+    : 'Keep this Mac awake while the board runs — idle sleep held off; the display may still sleep. With the lid closed too: ···';
+  const awakeHtml = () => `<button class="awake${state.awake.lid ? ' lid' : state.awake.awake ? '' : ' off'}" id="awakeBtn" aria-pressed="${!!(state.awake.awake || state.awake.lid)}" title="${esc(awakeTip())}">${state.awake.lid ? ICON.lid : ICON.cup}${state.awake.awake || state.awake.lid ? '<span>awake</span>' : ''}</button>`;
+  /** The button into the header that is up, before its ···; again after every header drawn anew (renderHead, leaveChat). */
   function drawAwake() {
-    const head = $('#shead'), html = awakeHtml(), had = head.querySelector('#awakeMark');
+    const head = $('#shead'), html = awakeHtml(), had = head.querySelector('#awakeBtn');
     if ((had?._html || '') === html) return false;
     had?.remove();
-    if (html) { const more = head.querySelector(':scope > .hmore'); if (more) more.insertAdjacentHTML('beforebegin', html); else head.insertAdjacentHTML('beforeend', html); head.querySelector('#awakeMark')._html = html; }
+    const more = head.querySelector(':scope > .hmore'); if (more) more.insertAdjacentHTML('beforebegin', html); else head.insertAdjacentHTML('beforeend', html);
+    head.querySelector('#awakeBtn')._html = html;
     return true;
   }
   function awakeChanged() {
@@ -4662,8 +4666,9 @@
     finally { state.lidAsking = false; awakeChanged(); }
   }
   $('#shead').addEventListener('click', e => {
-    const m = e.target.closest('#awakeMark'); if (!m) return;
-    setAwake({ awake: false, ...state.awake.lid && { lid: false } }, m);
+    const m = e.target.closest('#awakeBtn'); if (!m) return;
+    if (state.awake.lid) { if (!state.lidAsking) setAwake({ lid: false }, m); }
+    else setAwake({ awake: !state.awake.awake }, m);
   });
   function leaveChat(head = NO_CHAT.head, log = NO_CHAT.log, color = null) {
     state.current = null; state.entries = []; Object.assign(logOf, { id: null, gen: null, upto: null, waiting: false, pending: [] }); history.replaceState(null, '', location.pathname); hidePr(); syncTerm(null);

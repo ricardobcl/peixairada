@@ -319,11 +319,13 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   menu. `#hmenu` is a **non-modal `<dialog>`**, static in the markup: `postPane` lowers the pane while it is up, Esc
   closes it, `runHotkey` closes it rather than let it swallow the key. Toggles leave it up (the click-outside test goes
   by `composedPath()`); actions that go somewhere close it. **`>_` comes back into the row while armed or failed**, and
-  a note about a folded button is anchored at ··· (`seen()`). → `scripts/scenarios/head-menu.mjs`. **Two rows keep the
-  Mac awake** (`#awakeBtn`, `#lidBtn`, before *settings*), and while either holds **`#awakeMark`** — a cup, or a laptop
-  for the lid, in the spend's amber or the needs' red — stands before ··· in whichever header is up, a chat's or the
-  empty one (`drawAwake()` after every header drawn anew and on the snapshot; not in `drawn.head`'s markup); a click on
-  it turns both off. → `scripts/scenarios/keep-awake.mjs`.
+  a note about a folded button is anchored at ··· (`seen()`). → `scripts/scenarios/head-menu.mjs`. **Keeping the Mac
+  awake is a button in the row, always** (`#awakeBtn`, before ···, 2026-10-09 — a row of the menu and a mark shown only
+  while on, the day before): a muted cup while the Mac may sleep, the cup in the spend's amber saying *awake* while the
+  server holds idle sleep off; a click switches it. *Awake with the lid closed* stays a row of the menu (`#lidBtn`, a
+  password); while it holds the button is a laptop in the needs' red and its click lets the lid sleep the Mac again.
+  In whichever header is up, a chat's or the empty one (`drawAwake()` after every header drawn anew and on the
+  snapshot; not in `drawn.head`'s markup). → `scripts/scenarios/keep-awake.mjs`.
 * **A chat's Jira tickets are chips as its PRs are** (2026-10-08): on the card, `cardTickets` — the first (the branch's,
   else the last named) as `.ctk`, solid in its status category's colour (`--tk-todo` · `--tk-doing` · `--tk-done`,
   `data-cat`), then `+n`, before the faces; a click opens the chat and the ticket in the pane. In the header they are

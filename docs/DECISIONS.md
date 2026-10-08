@@ -2,8 +2,18 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-08. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-09 — awake always in sight, CI on the header, design ideas drafted
+
+Ricardo, on the day before's five: "make the normal awake button always visible, on or off - the close lid with sudo,
+leave it in "..."" and "having the CI status is a nice touch (but only on the chat top header, the cards are already
+too busy to add more info".
+
+* **Awake is a button in the header row, on or off** (`#awakeBtn`, before ···): off, a muted cup, as ··· is; on, the
+  cup in amber saying *awake*. The menu keeps one row, *awake with the lid closed* (it takes a password). While the lid
+  holds, the button is the red laptop, and its click turns the lid's setting off — idle sleep stays held if it was.
 
 ## Decisions of 2026-10-08 — five asks in one message
 

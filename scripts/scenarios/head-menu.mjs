@@ -12,7 +12,7 @@ export default async function (ctx) {
 
   out.row = await ctx.evaluate(`JSON.stringify({ buttons: [...document.querySelectorAll('#shead > button')].map(b => b.id),
     more: (b => ({ border: getComputedStyle(b).borderTopWidth, last: b === [...document.querySelectorAll('#shead > :not(.details)')].pop() }))(document.querySelector('#moreBtn')) })`).then(JSON.parse);
-  ctx.assert.deepEqual(out.row.buttons, ['prToggle', 'moreBtn'], 'the PRs and ··· are the only buttons in the row');
+  ctx.assert.deepEqual(out.row.buttons, ['prToggle', 'awakeBtn', 'moreBtn'], 'the PRs, keeping the Mac awake (2026-10-09) and ··· are the only buttons in the row');
   ctx.assert.deepEqual(out.row.more, { border: '0px', last: true }, '··· is borderless, and last');
   await ctx.shot('1-row', { x: 380, y: 0, width: 1320, height: 60 });
 
@@ -22,7 +22,7 @@ export default async function (ctx) {
   out.menu = await ctx.evaluate(`JSON.stringify({ ids: [...document.querySelectorAll('#hmenu button')].map(b => b.id),
     right: Math.round(document.querySelector('#moreBtn').getBoundingClientRect().right - document.querySelector('#hmenu').getBoundingClientRect().right),
     below: Math.round(document.querySelector('#hmenu').getBoundingClientRect().top - document.querySelector('#moreBtn').getBoundingClientRect().bottom) })`).then(JSON.parse);
-  ctx.assert.deepEqual(out.menu.ids, ['termBtn', 'webBtn', 'detailsBtn', 'awakeBtn', 'lidBtn', 'settingsBtn'], 'the actions, by their own ids — keeping the Mac awake (2026-10-08), the settings last, no { } since long code is always folded (2026-09-28), no open in VS Code (2026-09-29)');
+  ctx.assert.deepEqual(out.menu.ids, ['termBtn', 'webBtn', 'detailsBtn', 'lidBtn', 'settingsBtn'], 'the actions, by their own ids — awake with the lid closed (2026-10-08), the settings last, no { } since long code is always folded (2026-09-28), no open in VS Code (2026-09-29)');
   ctx.assert.ok(Math.abs(out.menu.right) <= 1 && out.menu.below === 4, 'right-aligned, just under ···');
   await ctx.shot('2-menu', { x: 1100, y: 0, width: 600, height: 300 });
 
