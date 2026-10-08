@@ -5,7 +5,7 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-08. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
-## Decisions of 2026-10-08 — the project's own row, its toggle in the header
+## Decisions of 2026-10-08 — five asks in one message
 
 Ricardo: "when filtering a project, the search on the bottom is to condensed to see, it should be expanded so it's
 visible the project name and the X. also, clicking again on the project name up top on the chat header, should toggle
@@ -19,6 +19,25 @@ this filter" — one of five asks in one message (the others below, as they land
 * **The chat header's folder name is the filter's toggle**: a click shows that folder's chats (as it did), a second
   goes back to ALL; underlined while it is the filter in view (`.repo.on`). `selectProject` redraws the header for it.
 * → `scripts/scenarios/project-cue.mjs`: the row's width, place and whole name; the toggle both ways.
+
+### The usage of a plan capped in money
+
+Ricardo: "the token usage works for max subscriptions and so on, but for enterprise plans where you just have a hard
+month $ cap, doesn't seem to work".
+
+* **What such a plan answers**, read off the 2.1.295 binary (the CLI's usage schema, and the guide it carries for a
+  gateway that serves the same endpoint): no rolling windows, but `extra_usage` — `{is_enabled, monthly_limit,
+  used_credits, utilization, currency}`, the amounts in cents — and a `limits[]` row per cap, `{kind: 'spend', group:
+  'daily' | 'weekly' | 'monthly', percent, resets_at, is_active}`, the dollars belonging to the active row. The board
+  read neither: a spend row has no model to name it and was skipped, so the foot said *nothing reported for this
+  account* (or, with extra usage over 0 %, a stray "E" with no reset). Not measured on a real enterprise seat — this
+  Mac's account is a Max plan.
+* **`usageWindows` makes a spend row a window** — `spend · this month` (the CLI's *today · this week · this month*),
+  `$` its tag — carrying `used`, `limit` (whole units) and `currency` when the dollars are its own; `extra_usage` with no
+  spend row to hang on is a window of its own, `extra usage · this month` (no reset is given); `wattle_ember`, a grant
+  counted in dollars, keeps its label and amounts. In the panel the row says `$271 of $500` under its bar, and a
+  month's tick is the calendar month before its reset.
+* → `test/usage.test.mjs`, new; the money step in `scripts/scenarios/usage-bar.mjs`.
 
 ## Decisions of 2026-10-07 — a chat whose claude has ended says so, and resumes itself
 

@@ -1,7 +1,8 @@
 // The plan usage (2026-09-24 a footer of its own; since 2026-09-28 the right end of the list's one row, now under the
 // list): "5H 42%  1W 75%  F 95%" in the row, a tag per window, and over it, on hover or pinned by a click, a row per
 // window with its bar, the tick of the
-// window's clock, the percent and the time to reset; on the rail (⌥⌘B) the rings stacked, bigger, at its foot. What this
+// window's clock, the percent and the time to reset — and for a cap in money (2026-10-08) what is spent of it; on the rail
+// (⌥⌘B) the rings stacked, bigger, at its foot. What this
 // checks is the page's half against a faked /api/usage (the test server runs with USAGE=off, which is the first thing
 // checked: the bar is not there at all): the rings in the row, the rows and their colours, the ticks only where a
 // window's length is known, the panel on hover and pinned, the rail, and a failure — the last numbers kept, dimmed,
@@ -17,6 +18,10 @@ const STUB = `(() => {
     if (!String(u).includes('/api/usage')) return real(u, o);
     __usage.calls++;
     if (sessionStorage.getItem('usageMode') === 'fail') return answer({ error: 'keychain access refused (allow \`security\` when asked)' }, 503);
+    // an enterprise seat capped in money (2026-10-08): the server's spend window, its dollars in whole units
+    if (sessionStorage.getItem('usageMode') === 'cap') return answer({ windows: [
+      { key: 'spend:monthly', label: 'spend · this month', percent: 54, resetsAt: soon(24 * 15), period: 'monthly', used: 271.4, limit: 500, currency: 'USD' },
+    ], other: [], fetchedAt: new Date().toISOString() });
     return answer({ windows: [
       { key: 'five_hour', label: 'session · 5 h', percent: 42, resetsAt: soon(2.5) },
       { key: 'seven_day', label: 'week · all models', percent: 75, resetsAt: soon(84) },
@@ -102,6 +107,22 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.evaluate(`(() => { const t = [...document.querySelectorAll('#usage .uchip')].map(c => c.getBoundingClientRect().top); return t.every((y, i) => !i || y > t[i - 1]); })()`), true, 'stacked');
   await ctx.shot('3-rail', { x: 0, y: 600, width: 300, height: 400 });
   await ctx.key('KeyB');
+
+  // A cap in money (2026-10-08): "$ 54%" in the row, and over it the amounts under the bar, the month's clock ticked
+  await ctx.evaluate(`sessionStorage.setItem('usageMode', 'cap')`);
+  await ctx.reload(); await board();
+  await ctx.waitFor(`document.querySelector('#usage .uchip .uk')?.textContent === '$'`, { what: 'the cap in the row' });
+  out.cap = await bar(ctx);
+  ctx.assert.deepEqual(out.cap.chips.map(c => c.text), ['$ 54%'], 'the cap in words, its tag a $');
+  ctx.assert.deepEqual(out.cap.rows.map(r => [r.label, r.pct]), [['spend · this month', '54%']]);
+  ctx.assert.ok(out.cap.rows[0].tick > 40 && out.cap.rows[0].tick < 60, `the month's clock about half way: ${out.cap.rows[0].tick}`);
+  out.capMoney = await ctx.evaluate(`document.querySelector('#usage .urow .umoney')?.textContent`);
+  ctx.assert.equal(out.capMoney, "$271 of $500", "what is spent of it, in its currency — whole units from 100 up");
+  await ctx.evaluate(`document.querySelector('#usage .uline').click()`);
+  await ctx.shot('3b-cap', await ctx.evaluate(`(r => ({ x: 0, y: Math.max(0, r.top - 140), width: 520, height: 200 }))(document.querySelector('#shd').getBoundingClientRect())`));
+  await ctx.evaluate(`document.querySelector('#slist').click(); sessionStorage.removeItem('usageMode')`);
+  await ctx.reload(); await board();
+  await ctx.waitFor(`document.querySelectorAll('#usage .urow').length === 4`, { what: 'the four windows back' });
 
   // A failure once there are numbers: kept, dimmed, the error on hover. Two minutes on and back into view is due.
   await ctx.evaluate(`sessionStorage.setItem('usageMode', 'fail'); { const real = Date.now; Date.now = () => real() + 3 * 60e3; } document.dispatchEvent(new Event('visibilitychange'))`);

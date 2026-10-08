@@ -1611,20 +1611,43 @@ async function oauthToken() {
 // The CLI draws the known windows and adds "Current week (<model>)" from the weekly_scoped rows behind an
 // allowlist; here every scoped row shows — a per-model allowance (Fable's) is exactly what you want apart.
 // Codename buckets show only once they are non-zero; the zero ones come back under `other`.
+// A plan capped in money (2026-10-08, read off the 2.1.295 binary — an enterprise seat with a monthly $ cap had no
+// rolling windows at all, and the bar said nothing): `extra_usage` {is_enabled, monthly_limit, used_credits — cents of
+// `currency` —, utilization 0–100} and one limits[] row per cap, {kind: 'spend', group: 'monthly' | …, percent,
+// resets_at, is_active}, the dollars belonging to the row `is_active`; `wattle_ember` is a grant counted in dollars
+// ({label, limit_dollars, used_dollars, utilization, resets_at}). A window with money carries `used`, `limit` (whole
+// units) and `currency`.
+const SPEND_PERIOD = { daily: 'today', weekly: 'this week', monthly: 'this month' };   // the CLI's own words
 function usageWindows(d) {
   const windows = [], other = [];
-  const add = (key, label, percent, resetsAt) => { if (typeof percent === 'number' && !windows.some(x => x.key === key)) windows.push({ key, label, percent: Math.round(percent), resetsAt: resetsAt || null }); };
+  const add = (key, label, percent, resetsAt, more) => { if (typeof percent === 'number' && !windows.some(x => x.key === key)) windows.push({ key, label, percent: Math.round(percent), resetsAt: resetsAt || null, ...more }); };
   const named = { five_hour: 'session · 5 h', seven_day: 'week · all models', seven_day_opus: 'week · Opus', seven_day_sonnet: 'week · Sonnet' };
   const buckets = { cinder_cove: 'Claude Code & Cowork credit' };
+  const ex = d.extra_usage && typeof d.extra_usage === 'object' ? d.extra_usage : null;
+  const cents = n => typeof n === 'number' && Number.isFinite(n) ? n / 100 : null;
+  const money = ex && typeof ex.monthly_limit === 'number' ? { used: cents(ex.used_credits) ?? 0, limit: cents(ex.monthly_limit), currency: String(ex.currency || 'USD').toUpperCase() } : null;
+  let spent = false;   // the dollars are on a spend row already
   for (const [k, label] of Object.entries(named)) if (d[k] && typeof d[k] === 'object') add(k, label, d[k].utilization, d[k].resets_at);
   for (const row of Array.isArray(d.limits) ? d.limits : []) {
     if (!row || typeof row !== 'object' || typeof row.percent !== 'number') continue;
+    if (row.kind === 'spend') {
+      const group = String(row.group || 'monthly'), mine = money && (row.is_active || d.limits.filter(r => r?.kind === 'spend').length === 1);
+      add(`spend:${group}`, `spend · ${SPEND_PERIOD[group] || group.replace(/_/g, ' ')}`, row.percent, row.resets_at, { period: group, ...mine && money });
+      if (mine) spent = true;
+      continue;
+    }
     const who = row.scope?.model?.display_name || row.scope?.surface?.display_name || row.scope?.display_name || row.label;
     if (!who || row.kind === 'session' || row.kind === 'weekly_all') continue;   // those are the windows above
     add(`limits:${row.kind}:${who}`, `${row.kind === 'weekly_scoped' ? 'week' : String(row.kind).replace(/_/g, ' ')} · ${who}`, row.percent, row.resets_at);
   }
+  // Extra usage switched on, and no spend row to hang it on: its own window, the month's (the field's name; no reset given)
+  if (money && !spent && ex.is_enabled !== false && money.limit > 0) add('extra_usage', 'extra usage · this month', typeof ex.utilization === 'number' ? ex.utilization : money.used / money.limit * 100, null, { period: 'monthly', ...money });
+  const we = d.wattle_ember;
+  if (we && typeof we === 'object' && typeof we.utilization === 'number' && (we.utilization > 0 || typeof we.limit_dollars === 'number'))
+    add('wattle_ember', typeof we.label === 'string' && we.label.trim() ? we.label.trim() : 'credit', we.utilization, we.resets_at,
+      typeof we.limit_dollars === 'number' ? { used: typeof we.used_dollars === 'number' ? we.used_dollars : null, limit: we.limit_dollars, currency: 'USD' } : {});
   for (const [k, w] of Object.entries(d)) {
-    if (k in named || k === 'limits' || !w || typeof w !== 'object' || typeof w.utilization !== 'number') continue;
+    if (k in named || k === 'limits' || k === 'extra_usage' || k === 'wattle_ember' || !w || typeof w !== 'object' || typeof w.utilization !== 'number') continue;
     if (w.utilization > 0) add(k, buckets[k] || k.replace(/_/g, ' '), w.utilization, w.resets_at); else other.push(k);
   }
   return { windows, other };
@@ -2475,7 +2498,7 @@ server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTe
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { fold, newSession, summary, agentRunning, notePr, notePrs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { fold, newSession, summary, agentRunning, usageWindows, notePr, notePrs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {

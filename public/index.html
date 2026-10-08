@@ -820,6 +820,7 @@
   #usage .ubar b { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ink); opacity: .4; }
   #usage .up { font-weight: 700; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
   #usage .ur { text-align: right; font-size: 10.5px; font-variant-numeric: tabular-nums; }
+  #usage .umoney { grid-column: 1 / -1; margin-top: -3px; font-size: 10.5px; font-variant-numeric: tabular-nums; }   /* a cap in money: what is spent of it, under its bar */
   #usage .unote { line-height: 1.35; white-space: normal; text-align: left; }   /* not `.note`: that is note()'s popup — position: fixed, and note() removes every one */
   /* folded, the rings 20 px apart where the list has the room (12 until 2026-09-27 — the open rows had had the same ask
      the day before); under 350 px of list 20 would push the chevron, then a ring, onto a second line, so there they
@@ -1787,17 +1788,24 @@
   const USAGE_EVERY_MS = 120e3;
   const usage = { data: null, err: '', off: false, at: 0, fails: 0, busy: false, html: '' };
   // Each window's tag (2026-09-28): the window's length, or a model's initial for its own week (F for Fable), CR for a
-  // credit grant.
+  // credit grant — and $ for a cap counted in money (2026-10-08: a plan's monthly spend cap, extra usage).
   const USAGE_SHORT = { five_hour: '5H', seven_day: '1W', seven_day_opus: 'O', seven_day_sonnet: 'S', cinder_cove: 'CR' };
-  const uShort = w => USAGE_SHORT[w.key] || (String(w.label).split(' · ').pop().trim()[0] || '?').toUpperCase();
+  const uShort = w => USAGE_SHORT[w.key] || (w.limit != null ? '$' : (String(w.label).split(' · ').pop().trim()[0] || '?').toUpperCase());
+  /** An amount in the window's currency — whole units from 100 up, cents under. */
+  const uMoney = (n, cur = 'USD') => { try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: cur, maximumFractionDigits: n >= 100 ? 0 : 2 }).format(n); } catch { return `${n} ${cur}`; } };
+  const uSpent = w => w.limit != null ? `${w.used != null ? `${uMoney(w.used, w.currency)} of ` : ''}${uMoney(w.limit, w.currency)}` : '';
+  // a credit grant runs out rather than resets — and says no time; a cap in money says its amounts whether or not
+  const uGrant = w => !w.resetsAt && w.limit == null;
   // Orange for what is spent, red once a window is nearly gone (2026-09-24 — it was green, amber from 70 %, red from 90
   // %; amber under orange would have read as a step down).
   const uColor = p => p >= 90 ? 'var(--needs)' : 'var(--spend)';
-  // How far through its window the clock is, 0–1 — for the windows whose length is known; a credit grant has none.
-  const uSpan = k => k === 'five_hour' ? 5 * 3600e3 : /^seven_day|^limits:weekly/.test(k) ? 7 * 86400e3 : 0;
-  const uPace = w => { const len = uSpan(w.key), end = w.resetsAt ? new Date(w.resetsAt).getTime() : 0; if (!len || !end) return null; const f = 1 - (end - Date.now()) / len; return f >= 0 && f <= 1 ? f : null; };
+  // How far through its window the clock is, 0–1 — for the windows whose length is known; a credit grant has none. A
+  // month is the calendar month before its reset.
+  const uSpan = (k, w = {}) => k === 'five_hour' ? 5 * 3600e3 : /^seven_day|^limits:weekly/.test(k) || w.period === 'weekly' ? 7 * 86400e3 : w.period === 'daily' ? 86400e3
+    : w.period === 'monthly' && w.resetsAt ? (t => t - new Date(t).setUTCMonth(new Date(t).getUTCMonth() - 1))(new Date(w.resetsAt).getTime()) : 0;
+  const uPace = w => { const len = uSpan(w.key, w), end = w.resetsAt ? new Date(w.resetsAt).getTime() : 0; if (!len || !end) return null; const f = 1 - (end - Date.now()) / len; return f >= 0 && f <= 1 ? f : null; };
   const untilReset = iso => { if (!iso) return ''; const m = Math.max(0, Math.round((new Date(iso) - Date.now()) / 60000)); return m >= 1440 ? `${Math.floor(m / 1440)}d ${Math.floor(m % 1440 / 60)}h` : m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`; };
-  const uTip = w => { const f = uPace(w); return `${w.label}: ${w.percent}% used${f != null ? ` · ${Math.round(f * 100)}% of the window gone` : ''}${w.resetsAt ? ` · resets ${new Date(w.resetsAt).toLocaleString()}` : ''}`; };
+  const uTip = w => { const f = uPace(w); return `${w.label}: ${w.percent}% used${w.limit != null ? ` — ${uSpent(w)}` : ''}${f != null ? ` · ${Math.round(f * 100)}% of the window gone` : ''}${w.resetsAt ? ` · resets ${new Date(w.resetsAt).toLocaleString()}` : ''}`; };
   const CHEV = '<svg class="uchev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>';
   function renderUsage() {
     const box = $('#usage'), d = usage.data, ws = d?.windows || [];
@@ -1805,8 +1813,8 @@
     box.classList.toggle('stale', !!(d && usage.err));
     const note = !d ? usage.err || 'asking…' : !ws.length ? 'nothing reported for this account' : '';   // under the heading; the line says what it is about
     const said = d ? ` · as of ${new Date(d.fetchedAt).toLocaleTimeString()}${usage.err ? ` — since then: ${usage.err}` : ''}` : '';
-    const chips = ws.map(w => `<span class="uchip${w.resetsAt ? '' : ' grant'}" title="${esc(uTip(w))}" style="--u:${uColor(w.percent)}"><i class="uring" style="--p:${Math.min(100, w.percent)}"></i><span class="uk">${esc(uShort(w))}</span><b>${w.percent}%</b></span>`).join('');
-    const rows = ws.map(w => { const f = uPace(w); return `<div class="urow" title="${esc(uTip(w))}"><span class="ul">${esc(w.label)}</span><span class="ubar"><i style="width:${Math.min(100, w.percent)}%;--u:${uColor(w.percent)}"></i>${f != null ? `<b style="left:${(f * 100).toFixed(1)}%"></b>` : ''}</span><span class="up">${w.percent}%</span><span class="ur">${untilReset(w.resetsAt)}</span></div>`; }).join('');
+    const chips = ws.map(w => `<span class="uchip${uGrant(w) ? ' grant' : ''}" title="${esc(uTip(w))}" style="--u:${uColor(w.percent)}"><i class="uring" style="--p:${Math.min(100, w.percent)}"></i><span class="uk">${esc(uShort(w))}</span><b>${w.percent}%</b></span>`).join('');
+    const rows = ws.map(w => { const f = uPace(w); return `<div class="urow" title="${esc(uTip(w))}"><span class="ul">${esc(w.label)}</span><span class="ubar"><i style="width:${Math.min(100, w.percent)}%;--u:${uColor(w.percent)}"></i>${f != null ? `<b style="left:${(f * 100).toFixed(1)}%"></b>` : ''}</span><span class="up">${w.percent}%</span><span class="ur">${untilReset(w.resetsAt)}</span>${w.limit != null ? `<span class="umoney">${esc(uSpent(w))}</span>` : ''}</div>`; }).join('');
     const html = `<button class="uline" title="Claude plan usage${esc(said)}${note ? `: ${esc(note)}` : ''} — point to see it, click to keep it open">${note ? `<span class="unote">usage: ${esc(note)}</span>` : chips}${CHEV}</button>`
       + `<div class="uopen"><button class="uhd" title="Claude plan usage${esc(said)} — click to close"><span>plan usage</span>${CHEV}</button>${note ? `<span class="unote">${esc(note)}</span>` : `<div class="urows">${rows}</div>`}</div>`;
     if (html !== usage.html) box.innerHTML = usage.html = html;   // the 30 s tick mostly changes nothing — keep a tooltip that is up
