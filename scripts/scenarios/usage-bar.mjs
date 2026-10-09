@@ -11,6 +11,7 @@ export const meta = { server: true, fixture: 'auto' };
 
 // /api/usage answered by the page itself. The mode lives in sessionStorage so a reload can start in it.
 const STUB = `(() => {
+  try { const k = 'peixairada-prefs', p = JSON.parse(localStorage.getItem(k) || '{}'); p.statusBar = false; localStorage.setItem(k, JSON.stringify(p)); } catch {}   // the list's foot's usage: with the status bar on it is the bar's (status-bar.mjs)
   const real = window.fetch, soon = h => new Date(Date.now() + h * 3600e3).toISOString();
   window.__usage = { calls: 0 };
   const answer = (body, status = 200) => Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }));

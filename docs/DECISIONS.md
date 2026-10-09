@@ -33,6 +33,13 @@ edge (M5)".
   rounded bar inset from the column's edges, an edge of the project's colour and a shadow under it; the PR rows under
   it inset alike. Only the header, not the study's reading column or tool timeline. With it, the open chat's light
   runs round the card and up the splitter but not round the header's box, which no longer touches the splitter.
+* **F · the status bar** (on by default; Settings → Board → *status bar*): a strip at the window's foot — connected or
+  not, the chats live · clauding · asking, the drawers · shells · monitors, the plan usage as small meters (moved out of
+  the list's foot; a click shows its rows) and the Mac kept awake. *Also*, off by default: **CPU** (every core's busy
+  share since the last look), **memory** (used of total, counted as Activity Monitor does — app memory, wired and
+  compressed from vm_stat; total less free would count the file cache as used and read 95 % on any Mac) and **Claude's
+  memory** (the resident size of the live claude processes, their children aside), asked of the server every 3 s while
+  the bar shows them. Each a meter: a word, a 40 px bar, the figure.
 * **M5 · the edge light, a switch** (Settings → Board → *edge light*, off by default): a clauding card's light runs
   down its lit edge instead of round the card — one light per sub-agent, a monitor's slowly in its colour — with a
   soft glow off the edge. The ring stays the default; with the edge light the open chat's light no longer runs on

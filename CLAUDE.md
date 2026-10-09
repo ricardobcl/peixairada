@@ -484,7 +484,17 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   edge (`TL_CATCH`) and, while the days are out, as far right as a label has reached plus 28 px (`tl.reach`). A press
   there on no label is a press on the label ringed `.near`; a press on the thumb *as drawn* holds it where grabbed.
   → `scripts/scenarios/timeline.mjs`.
-* **The plan usage is words at the row's end**: `#usage` in `#sfoot` — `5H 42%  1W 75%  F 95%`, a tag per limit
+* **The status bar is the machine at the window's foot** (2026-10-09, the studies' F — Orca's; `#sbar`, `renderBar`,
+  `body`'s grid row 2; on by default, Settings → Board → *status bar*, `prefs.statusBar` → `<html data-sbar>`): the
+  connection (the stream's open and error, `bar.conn`), the chats live · clauding · asking, the drawers · shells ·
+  monitors, then on the right what the settings add (`prefs.sbStats`: CPU, memory, Claude's memory — `GET
+  /api/stats?want=cpu,mem,claude`, every 3 s while shown and visible, `machineStats` on the server: the cores' busy share
+  since the last ask, vm_stat's used as Activity Monitor counts it, `ps` over the registry's live claude pids), **the
+  plan usage as meters** — with the bar on, the list's foot has none (`:root[data-sbar] #usage`) — whose click lifts its
+  rows in a panel (`usageRows`, shared with `#usage`; a click elsewhere, by `composedPath()`, puts it away), and the
+  Mac kept awake (a click lets it sleep). Drawn by markup (`setHtml`) from `renderBoard`, the usage, the awake state,
+  the stream and each stats answer. → `scripts/scenarios/status-bar.mjs`, the stats in `test/awake.test.mjs`.
+* **The plan usage is words at the row's end** (with the status bar off; the bar's otherwise): `#usage` in `#sfoot` — `5H 42%  1W 75%  F 95%`, a tag per limit
   (`uShort`: 5H, 1W, a model's initial for its own week, CR for a credit grant — which stays out of the row, `.grant`
   (`uGrant`: no reset and no money) —, $ for a cap in money, whose row over it adds what is spent of what, `.umoney`)
   set in the rounded face, heavy, on a wash of `--u` (the window's colour, on the chip), the percent beside it.
@@ -500,7 +510,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, PR
   turns; `STATE_FILE` overrides) and the user's `~/.config/peixairada/config.json` (the setup, below), both shared by
   the app and every browser; the browser's `localStorage` `peixairada-prefs`
-  (selected project, filters, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the person the list is narrowed to, ⌥ as Meta, auto-resume, drawer open/height — the keys are the `prefs` literal,
+  (selected project, filters, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the person the list is narrowed to, ⌥ as Meta, auto-resume, the edge light, the floating header, the status bar and what it adds, drawer open/height — the keys are the `prefs` literal,
   and old ones are deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it
   renders reads its state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
 * **The setup is the user's file, and nothing about one Mac is written in the code** (2026-09-28; the file since
@@ -629,7 +639,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   in the app the app menu's *Settings…*, which asks `peixKey` as ⌘W does), the chat header's ··· (`#settingsBtn`, the
   menu's last row) and, with no chat open, the empty header's own ··· (`#noChatMore`, delegated — `leaveChat` rewrites
   the header). A head (the name, the counts, × `#settingsClose`), a segmented control (`.stabs`) over three panes
-  (`.spane`): **Board** — the notifications switch (`#notifyOn`), the rings' step (`#ringsInStep`), the edge light (`#edgeLight`), the floating header (`#headFloat`), the cards' size
+  (`.spane`): **Board** — the notifications switch (`#notifyOn`), the rings' step (`#ringsInStep`), the edge light (`#edgeLight`), the floating header (`#headFloat`), the status bar (`#sbarOn`) and what it adds (`#sbarStats`), the cards' size
   (`.dens`), auto-resume (`#autoResume`), ⌥ as Meta (`#optMeta`), what is hidden (`#hidden`) — no date format (DD-MM-YYYY, `fmtDate`); **Setup** — the server's (`#setup`); **Keys** — the list (`.keys`). The class
   is still `pop`, so every row keeps its `.pop …` rule. Esc, the backdrop, ×, ⌘, or ⌘W close it; its `close` drops a
   setup row half typed. **It is modal**: the pane is down while it is up (`postPane`), and the ⌥⌘ / ⌘ keys are swallowed
@@ -909,11 +919,11 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   scroll-driven ones, which run as long as the list can scroll — and for a pending draw. `ctx`: `evaluate`, `waitFor`, `send`, `reload`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
-  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The fifty in
+  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The fifty-one in
   `scripts/scenarios/` are the regression checks for the drawer, the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
   marks and the PR stack, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, a PR's turn, the chat's links,
-  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short, the resume bar, keeping the Mac awake, Jira tickets, the transcript's turns, a PR's CI, the floating header.
+  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short, the resume bar, keeping the Mac awake, Jira tickets, the transcript's turns, a PR's CI, the floating header, the status bar.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.

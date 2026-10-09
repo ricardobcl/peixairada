@@ -55,3 +55,15 @@ test('lid: pmset disablesleep, read back — whoever set it — and a failure sa
     assert.deepEqual([fail.status, fail.body.error, fail.body.lid], [500, 'pmset: must be run as root', false]);
   } finally { await srv.stop(); }
 });
+
+test('stats: CPU, memory and the claudes\' memory, each only when asked (2026-10-09, the status bar)', { timeout: 20_000 }, async () => {
+  const srv = await startTestServer();
+  try {
+    assert.deepEqual((await srv.api('api/stats')).body, {}, 'nothing asked, nothing said');
+    const all = (await srv.api('api/stats?want=cpu,mem,claude')).body;
+    assert.ok(Number.isInteger(all.cpu) && all.cpu >= 0 && all.cpu <= 100, `a share of the cores: ${all.cpu}`);
+    assert.ok(all.mem.used > 0 && all.mem.used <= all.mem.total, `used of total: ${JSON.stringify(all.mem)}`);
+    assert.deepEqual(all.claude, { rss: 0, n: 0 }, 'no live claude in an empty ~/.claude');
+    assert.deepEqual(Object.keys((await srv.api('api/stats?want=mem')).body), ['mem']);
+  } finally { await srv.stop(); }
+});

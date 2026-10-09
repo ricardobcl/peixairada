@@ -31,7 +31,8 @@ export default async function (ctx) {
   out.row = await ctx.evaluate(`JSON.stringify((() => { const h = document.querySelector('#shd'), r = h.getBoundingClientRect(), f = document.querySelector('#sfoot').getBoundingClientRect();
     return { inHead: ['#qBtn', '#fchips'].every(q => h.contains(document.querySelector(q))), fold: !!document.querySelector('#sessPinBtn'), plus: !!document.querySelector('#newChatBtn'), h: Math.round(r.height),
       foot: [Math.round(f.top), Math.round(f.height), Math.round(f.left - r.right)], head: [Math.round(r.top), Math.round(r.height)],
-      under: Math.round(r.top - document.querySelector('#slist').getBoundingClientRect().bottom), bottom: Math.round(innerHeight - r.bottom),
+      under: Math.round(r.top - document.querySelector('#slist').getBoundingClientRect().bottom), bottom: Math.round(document.querySelector('#main').getBoundingClientRect().bottom - r.bottom),   // the board's foot: the status bar is under it (2026-10-09)
+     
       chips: [...document.querySelectorAll('#fchips .fchip')].map(c => c.className.replace(/\s+/g, ' ').trim()) }; })())`).then(JSON.parse);
   ctx.assert.equal(out.row.inHead, true, 'the magnifier and the chips are in the head');
   ctx.assert.equal(out.row.plus, false, 'no ＋ — ⌥⌘N (2026-09-28)');

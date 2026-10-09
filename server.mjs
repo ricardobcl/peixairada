@@ -45,7 +45,7 @@ import {
 } from 'node:fs';
 import { connect as netConnect } from 'node:net';
 import { basename, dirname, join, resolve } from 'node:path';
-import { homedir, userInfo } from 'node:os';
+import { cpus, freemem, homedir, totalmem, userInfo } from 'node:os';
 import { StringDecoder } from 'node:string_decoder';
 import { execFile, execFileSync, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -1888,6 +1888,46 @@ async function askUsage() {
 }
 function codeBin() { return findBin('code', 'VS Code Web is disabled'); }
 
+// ---- the machine, for the status bar: CPU, memory, and what the claudes hold (2026-10-09) ---------------------------
+// Each optional in the page's status bar, each asked only while shown. CPU is the share of every core's time spent busy
+// since the last ask (the first sample is taken at boot); memory is used of total — on macOS what Activity Monitor calls
+// Memory Used (app memory, wired, compressed: vm_stat's anonymous less purgeable, wired, occupied by the compressor), not
+// total less free, which counts the file cache as used; the claudes' is the resident size of every live claude process
+// the registry names (`ps`), their children aside.
+let cpuLast = null;
+function cpuBusy() {
+  const t = cpus().reduce((a, c) => { const x = c.times; a.idle += x.idle; a.all += x.user + x.nice + x.sys + x.idle + x.irq; return a; }, { idle: 0, all: 0 });
+  const last = cpuLast; cpuLast = t;
+  return last && t.all > last.all ? Math.max(0, Math.min(100, Math.round(100 * (1 - (t.idle - last.idle) / (t.all - last.all))))) : null;
+}
+async function memUsed() {
+  const total = totalmem();
+  if (process.platform === 'darwin') try {
+    const out = (await execFileP('/usr/bin/vm_stat', [], { timeout: 3000 })).stdout;
+    const page = Number(/page size of (\d+)/.exec(out)?.[1]) || 16384, n = k => Number(new RegExp(`${k}:\\s+(\\d+)`).exec(out)?.[1]) || 0;
+    const used = (n('Anonymous pages') - n('Pages purgeable') + n('Pages wired down') + n('Pages occupied by compressor')) * page;
+    if (used > 0 && used <= total) return { used, total };
+  } catch {}
+  return { used: total - freemem(), total };
+}
+async function claudeMem() {
+  const pids = [...new Set([...sessions.values()].filter(s => s.alive).flatMap(s => [s.live, ...s.rivals]).map(p => p?.pid).filter(Number.isInteger))];
+  const ps = pids.length && findBin('ps', 'the claudes\' memory goes unsaid');
+  if (!ps) return { rss: 0, n: 0 };
+  try {
+    const out = (await execFileP(ps, ['-o', 'rss=', '-p', pids.join(',')], { timeout: 3000 })).stdout.trim().split(/\s+/).map(Number).filter(Number.isFinite);
+    return { rss: out.reduce((a, b) => a + b, 0) * 1024, n: out.length };
+  } catch (e) { return e.code === 1 ? { rss: 0, n: 0 } : { rss: null, n: pids.length }; }   // 1: none of them alive any more
+}
+/** What the status bar asks for: `want` is a set of cpu · mem · claude. */
+async function machineStats(want) {
+  const out = {};
+  if (want.has('cpu')) out.cpu = cpuBusy();
+  if (want.has('mem')) out.mem = await memUsed();
+  if (want.has('claude')) out.claude = await claudeMem();
+  return out;
+}
+
 // ---- keeping the Mac awake: an idle-sleep assertion, and the lid's own setting (2026-10-08) -------------------------
 // Two rows of the chat header menu, and a mark at the window's top right while either holds. *Awake* is a
 // `caffeinate -i -w <this pid>` the server keeps running while the switch is on: idle sleep held off, the display free
@@ -2595,6 +2635,7 @@ const server = createServer(async (req, res) => {
       saveState(); broadcast('notifications', { on: notificationsOn });
       return json(res, 200, { ok: true, on: notificationsOn });
     }
+    if (req.method === 'GET' && p === '/api/stats') return json(res, 200, await machineStats(new Set((url.searchParams.get('want') || '').split(',').filter(Boolean))));
     if (req.method === 'GET' && p === '/api/awake') { await readLid(); return json(res, 200, awakeState()); }
     if (req.method === 'PUT' && p === '/api/awake') {   // the menu's two switches: {awake} holds idle sleep off, {lid} sleep with the lid shut (a password)
       const body = await jsonBody(req);
@@ -2819,6 +2860,7 @@ sweepPrs();
 sweepTickets();
 if (awakeOn) try { keepAwake(true); } catch (e) { console.error(`[peixairada] could not keep the Mac awake: ${e.message}`); }   // the switch outlives a restart
 readLid();
+cpuBusy();   // the first sample: the status bar's first ask has a share to give
 pollPeacock();
 setInterval(pollPeacock, PEACOCK_POLL_MS);
 pollRepos();

@@ -60,7 +60,7 @@
      root, and the two places that borrow the dark theme's ink, so it follows a black card and the header's black. A new
      rule that sets --ink sets these two beside it. */
   :root, .card.black:is(:hover, .active, .qsel), .shead > :not(h2, .details) { --ctl: color-mix(in srgb, var(--ink) 7%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 13%, transparent); }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; height: 100vh; display: grid; grid-template-rows: 1fr; overflow: hidden; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; height: 100vh; display: grid; grid-template-rows: minmax(0, 1fr) auto; overflow: hidden; }   /* the board, then the status bar */
 
   /* ---- header ---- */
   .btn { font: inherit; font-size: 12px; padding: 5px 10px; border: 1px solid transparent; background: var(--ctl); color: var(--ink); border-radius: 6px; cursor: pointer; white-space: nowrap; }
@@ -868,18 +868,38 @@
   main:not(.scompact) #usage:hover .uopen { visibility: visible; opacity: 1; transition: opacity .12s .25s, visibility 0s .25s; }
   main:not(.scompact) #usage.pin .uopen { visibility: visible; opacity: 1; transition: opacity .12s, visibility 0s; }
   main:not(.scompact) #usage .uhd .uchev { transform: rotate(180deg); }
-  #usage .uhd { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 7px; }
+  :is(#usage, #sbar) .uhd { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 7px; }
   /* one grid for every row, so the bars start and the numbers end in one line whatever the names' lengths; the rows
      9 px apart (5 until 2026-09-26) */
-  #usage .urows { display: grid; grid-template-columns: auto minmax(36px, 1fr) auto auto; gap: 9px 9px; }
-  #usage .urow { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; white-space: nowrap; }
-  #usage .ul { overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
-  #usage .ubar { position: relative; height: 5px; border-radius: 3px; background: var(--utrack); }
-  #usage .ubar i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: linear-gradient(90deg, color-mix(in srgb, var(--u) 50%, transparent), var(--u)); }
-  #usage .ubar b { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ink); opacity: .4; }
-  #usage .up { font-weight: 700; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
-  #usage .ur { text-align: right; font-size: 10.5px; font-variant-numeric: tabular-nums; }
-  #usage .umoney { grid-column: 1 / -1; margin-top: -3px; font-size: 10.5px; font-variant-numeric: tabular-nums; }   /* a cap in money: what is spent of it, under its bar */
+  :is(#usage, #sbar) .urows { display: grid; grid-template-columns: auto minmax(36px, 1fr) auto auto; gap: 9px 9px; }
+  :is(#usage, #sbar) .urow { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; white-space: nowrap; }
+  :is(#usage, #sbar) .ul { overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+  :is(#usage, #sbar) .ubar { position: relative; height: 5px; border-radius: 3px; background: var(--utrack); }
+  :is(#usage, #sbar) .ubar i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: linear-gradient(90deg, color-mix(in srgb, var(--u) 50%, transparent), var(--u)); }
+  :is(#usage, #sbar) .ubar b { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ink); opacity: .4; }
+  :is(#usage, #sbar) .up { font-weight: 700; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+  :is(#usage, #sbar) .ur { text-align: right; font-size: 10.5px; font-variant-numeric: tabular-nums; }
+  /* ---- the status bar (2026-10-09, the studies' F — Orca's): the machine at the window's foot, segments parted by
+     hairlines; its meters a word, a 40 px bar and the figure; the plan usage a button whose panel of rows rises over
+     the board, the list's foot then without its own (data-sbar) ---- */
+  #sbar { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); display: flex; align-items: stretch; height: 26px; min-width: 0; padding: 0 2px; position: relative; z-index: 20; font-size: 11px; color: var(--muted);
+    background: var(--panel); border-top: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #sbar { background: #0f0f0e; } }
+  #sbar[hidden] { display: none; }
+  #sbar .seg { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 0 11px; border: 0; border-right: 1px solid var(--line); background: none; font: inherit; color: inherit; }
+  #sbar .grow { flex: 1; min-width: 0; }
+  #sbar .grow ~ .seg { border-right: 0; border-left: 1px solid var(--line); }
+  #sbar button.seg { cursor: pointer; } #sbar button.seg:is(:hover, .on) { background: var(--ctl); color: var(--ink); }
+  #sbar .conn i { width: 7px; height: 7px; border-radius: 50%; background: var(--idle); box-shadow: 0 0 5px var(--idle); }
+  #sbar .conn i.off { background: var(--needs); box-shadow: none; }
+  #sbar .w { color: var(--working); font-weight: 600; } #sbar em { font-style: normal; color: var(--needs); font-weight: 650; }
+  #sbar .m { display: inline-flex; align-items: center; gap: 5px; } #sbar .m + .m { margin-left: 11px; } #sbar .m b { color: var(--ink); font-weight: 650; }
+  #sbar .m i { display: block; flex: none; width: 40px; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--u, var(--spend)) var(--p), var(--utrack) var(--p)); }
+  #sbar .us.stale { opacity: .55; } #sbar .us .unote { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+  #sbar .aw { color: var(--spend); font-weight: 650; } #sbar .aw.lid { color: var(--needs); } #sbar .aw .ic { width: 13px; height: 13px; }
+  #sbar .sbpanel { position: absolute; bottom: calc(100% + 6px); right: 8px; width: 300px; box-sizing: border-box; padding: 10px 12px 12px; border-radius: 10px; background: var(--panel); box-shadow: 0 10px 34px rgba(0, 0, 0, .25); color: var(--muted); font-size: 12px; white-space: normal; }
+  :root[data-sbar] #usage { display: none; }
+  :is(#usage, #sbar) .umoney { grid-column: 1 / -1; margin-top: -3px; font-size: 10.5px; font-variant-numeric: tabular-nums; }   /* a cap in money: what is spent of it, under its bar */
   #usage .unote { line-height: 1.35; white-space: normal; text-align: left; }   /* not `.note`: that is note()'s popup — position: fixed, and note() removes every one */
   /* folded, the rings 20 px apart where the list has the room (12 until 2026-09-27 — the open rows had had the same ask
      the day before); under 350 px of list 20 would push the chevron, then a ring, onto a second line, so there they
@@ -1471,6 +1491,7 @@
     <div id="resume" hidden></div>
   </section>
 </main>
+<footer id="sbar" hidden></footer>
 <div id="trail" aria-hidden="true" hidden></div>
 <dialog id="settings" class="pop" aria-label="Settings" tabindex="-1">
   <div class="shd2"><h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4><button class="sclose" id="settingsClose" title="Close · esc" aria-label="Close">×</button></div>
@@ -1481,6 +1502,8 @@
     <label class="opt sub" id="tintRow" hidden><span class="ssw" id="tintSw"><input type="color" id="simpleTint" value="#000000" aria-label="The one colour every project wears"></span><span><b>one colour</b> for every project, black until you pick one — the chat header's square picks it too · ⌥-click back to black</span></label>
     <label class="opt" title="On, every clauding card's light stands at the same angle — the blinks and the dots too; off, each card runs at its own. Either way a card rebuilt by an update carries on where it was"><input type="checkbox" id="ringsInStep" checked><span><b>rings in step</b> — every card's light at the same angle; off, each at its own</span></label>
     <label class="opt" title="On, a clauding card's light runs down its coloured edge, one light per sub-agent, and a monitor's slowly; off, round the whole card — the ring. The open chat's light runs on past its card only with the ring"><input type="checkbox" id="edgeLight"><span><b>edge light</b> — a clauding card's light runs down its coloured edge; off, round the card</span></label>
+    <label class="opt" title="On, a strip at the window's foot says what the machine is doing — the connection, the chats clauding and asking, the drawers and shells and monitors, the plan usage and whether the Mac is kept awake; the list's foot keeps only its filters"><input type="checkbox" id="sbarOn" checked><span><b>status bar</b> — the chats, the drawers and the plan usage at the window's foot</span></label>
+    <div class="opt sub sbstats" id="sbarStats" title="What else the status bar says — asked of the Mac every 3 s while shown"><span><b>also</b></span><label><input type="checkbox" data-stat="cpu"> CPU</label><label><input type="checkbox" data-stat="mem"> memory</label><label><input type="checkbox" data-stat="claude"> Claude's memory</label></div>
     <label class="opt" title="On, the chat header is a bar inset from the window's edges, rounded and shadowed; off, it runs edge to edge as before"><input type="checkbox" id="headFloat"><span><b>floating header</b> — the chat header as a rounded bar inset from the edges</span></label>
     <div class="dens" title="How much of each chat its card carries — a question waiting on you shows at every size">
       <b>cards</b><input type="range" id="cardsSize" min="0" max="2" step="1" value="0" list="cardsStops" aria-label="Card size">
@@ -1608,7 +1631,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false }, lidAsking: false };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, statusBar: true, sbStats: [] };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -1897,6 +1920,65 @@
   }
   const STALE_MAX_AGE_MS = 30 * 86400e3; // Claude Code deletes transcripts after 30 idle days by default; mirror that
 
+  // ---- the status bar: the machine at the window's foot (2026-10-09) ------------------------------------------------
+  // The studies' F (Orca's): the connection, the chats live · clauding · asking, the drawers · shells · monitors, and on
+  // the right what the settings add — CPU, memory, Claude's memory, asked of the server every 3 s while shown —, the
+  // plan usage as small meters (a click: its rows in a panel over the board) and the Mac kept awake. On by default; the
+  // settings' switch hides it, and the list's foot gets its usage back. Drawn when its markup changes (setHtml), from
+  // renderBoard, the usage, the awake state, the stream's open and error, and each stats answer.
+  const bar = { stats: {}, conn: true, open: false, busy: false };
+  const fmtBytes = b => b >= 2 ** 30 ? `${(b / 2 ** 30).toFixed(1)} GB` : `${Math.round(b / 2 ** 20)} MB`;
+  const sbMeter = (label, pct, text, color, tip = `${label}: ${text}`) => `<span class="m" title="${esc(tip)}">${esc(label)}<i style="--p:${Math.max(0, Math.min(100, pct)).toFixed(1)}%;--u:${color}"></i><b>${esc(text)}</b></span>`;
+  function renderBar() {
+    const el = $('#sbar'); if (!el || el.hidden || !state.snapshots) return;
+    const all = [...state.sessions.values()], n = f => all.filter(f).length, plural = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`;
+    const work = n(s => s.alive && s.status === 'working'), ask = n(s => asking(s));
+    const drawers = n(s => s.terminal && s.terminal.exited === null), shells = n(s => s.shell && s.shell.exited === null);
+    const mons = all.reduce((a, s) => a + (s.alive ? (s.tasks || []).length : 0), 0);
+    const parts = [`<span class="seg conn" title="${bar.conn ? 'Connected to the board\'s server' : 'The server is not answering — reconnecting'}"><i class="${bar.conn ? 'ok' : 'off'}"></i>${bar.conn ? 'connected' : 'reconnecting…'}</span>`,
+      `<span class="seg" title="claudes running · Claude at work · waiting on your answer">${plural(n(s => s.alive), 'live chat')} · <span class="w">${work} clauding</span>${ask ? ` · <em>${ask} asking</em>` : ''}</span>`];
+    const busy = [drawers && plural(drawers, 'drawer'), shells && plural(shells, 'shell'), mons && plural(mons, 'monitor')].filter(Boolean);
+    if (busy.length) parts.push(`<span class="seg" title="claude sessions in drawers here · shells · monitors and background commands running">${busy.join(' · ')}</span>`);
+    parts.push('<span class="grow"></span>');
+    const st = bar.stats, want = prefs.sbStats || [], stat = [];
+    if (want.includes('cpu')) stat.push(sbMeter('CPU', st.cpu ?? 0, st.cpu == null ? '…' : `${st.cpu}%`, st.cpu >= 90 ? 'var(--needs)' : 'var(--watch)', 'every core\'s time spent busy, the last 3 s'));
+    if (want.includes('mem')) stat.push(st.mem ? sbMeter('memory', st.mem.used / st.mem.total * 100, `${fmtBytes(st.mem.used)} / ${fmtBytes(st.mem.total)}`, st.mem.used / st.mem.total >= .9 ? 'var(--needs)' : 'var(--watch)', 'memory used, as Activity Monitor counts it, of all there is') : sbMeter('memory', 0, '…', 'var(--watch)'));
+    if (want.includes('claude')) stat.push(`<span class="m" title="what the live claude processes hold in memory (their children aside)">claude <b>${st.claude?.rss != null ? fmtBytes(st.claude.rss) : '…'}</b>${st.claude?.n ? ` · ${st.claude.n}` : ''}</span>`);
+    if (stat.length) parts.push(`<span class="seg">${stat.join('')}</span>`);
+    if (!usage.off) {
+      const ws = (usage.data?.windows || []).filter(w => !uGrant(w));
+      parts.push(`<button class="seg us${bar.open ? ' on' : ''}${usage.err && usage.data ? ' stale' : ''}" title="Claude plan usage${usage.err ? ` — ${esc(usage.err)}` : ''} — click for the rows">${ws.length ? ws.map(w => sbMeter(uShort(w), w.percent, `${w.percent}%`, uColor(w.percent), uTip(w))).join('') : `<span class="unote">usage: ${esc(usage.err || (usage.data ? 'nothing reported' : 'asking…'))}</span>`}</button>`);
+    }
+    if (state.awake.awake || state.awake.lid) parts.push(`<button class="seg aw${state.awake.lid ? ' lid' : ''}" title="${esc(awakeTip())}">${state.awake.lid ? ICON.lid : ICON.cup}awake</button>`);
+    const rows = usage.data?.windows || [];
+    setHtml(el, parts.join('') + (bar.open && rows.length ? `<div class="sbpanel"><div class="uhd">plan usage</div><div class="urows">${usageRows(rows)}</div></div>` : ''));
+  }
+  async function loadStats() {
+    const want = prefs.sbStats || [];
+    if (!want.length || bar.busy || $('#sbar').hidden || document.hidden) return;
+    bar.busy = true;
+    try { bar.stats = await api('GET', `/api/stats?want=${want.join(',')}`); } catch { bar.stats = {}; }
+    bar.busy = false; renderBar();
+  }
+  setInterval(loadStats, 3000);
+  function applyBar() {
+    const on = prefs.statusBar !== false;
+    document.documentElement.toggleAttribute('data-sbar', on); $('#sbar').hidden = !on; $('#sbarStats').hidden = !on;
+    renderBar(); loadStats();
+  }
+  $('#sbar').addEventListener('click', e => {
+    if (e.target.closest('.us')) { bar.open = !bar.open; renderBar(); return; }
+    if (e.target.closest('.aw')) { if (state.awake.lid) { if (!state.lidAsking) setAwake({ lid: false }, e.target.closest('.aw')); } else setAwake({ awake: false }, e.target.closest('.aw')); }
+  });
+  document.addEventListener('click', e => { if (bar.open && !e.composedPath().includes($('#sbar'))) { bar.open = false; renderBar(); } });   // the path: the button clicked is drawn anew under the click
+  $('#sbarOn').checked = prefs.statusBar !== false;
+  $('#sbarOn').addEventListener('change', e => { prefs.statusBar = e.target.checked; savePrefs(); applyBar(); repostPane(); });
+  for (const c of $('#sbarStats').querySelectorAll('input')) {
+    c.checked = (prefs.sbStats || []).includes(c.dataset.stat);
+    c.addEventListener('change', () => { prefs.sbStats = [...$('#sbarStats').querySelectorAll('input:checked')].map(x => x.dataset.stat); savePrefs(); bar.stats = {}; renderBar(); loadStats(); });
+  }
+  applyBar();
+
   // ---- plan usage: the chat list's footer ----------------------------------------------
   // What `/usage` shows, always in view under the chat list (2026-09-24). Asked for on load, every
   // USAGE_EVERY_MS while the page is in view — the server caches the answer for a minute, so any number of pages
@@ -1927,6 +2009,9 @@
   const untilReset = iso => { if (!iso) return ''; const m = Math.max(0, Math.round((new Date(iso) - Date.now()) / 60000)); return m >= 1440 ? `${Math.floor(m / 1440)}d ${Math.floor(m % 1440 / 60)}h` : m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`; };
   const uTip = w => { const f = uPace(w); return `${w.label}: ${w.percent}% used${w.limit != null ? ` — ${uSpent(w)}` : ''}${f != null ? ` · ${Math.round(f * 100)}% of the window gone` : ''}${w.resetsAt ? ` · resets ${new Date(w.resetsAt).toLocaleString()}` : ''}`; };
   const CHEV = '<svg class="uchev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>';
+  /** A row per window — name, bar with its clock's tick, percent, time to reset, and money for a cap in it — the panel
+   *  over the list's foot and the status bar's alike. */
+  const usageRows = ws => ws.map(w => { const f = uPace(w); return `<div class="urow" title="${esc(uTip(w))}"><span class="ul">${esc(w.label)}</span><span class="ubar"><i style="width:${Math.min(100, w.percent)}%;--u:${uColor(w.percent)}"></i>${f != null ? `<b style="left:${(f * 100).toFixed(1)}%"></b>` : ''}</span><span class="up">${w.percent}%</span><span class="ur">${untilReset(w.resetsAt)}</span>${w.limit != null ? `<span class="umoney">${esc(uSpent(w))}</span>` : ''}</div>`; }).join('');
   function renderUsage() {
     const box = $('#usage'), d = usage.data, ws = d?.windows || [];
     box.hidden = usage.off;
@@ -1934,10 +2019,11 @@
     const note = !d ? usage.err || 'asking…' : !ws.length ? 'nothing reported for this account' : '';   // under the heading; the line says what it is about
     const said = d ? ` · as of ${new Date(d.fetchedAt).toLocaleTimeString()}${usage.err ? ` — since then: ${usage.err}` : ''}` : '';
     const chips = ws.map(w => `<span class="uchip${uGrant(w) ? ' grant' : ''}" title="${esc(uTip(w))}" style="--u:${uColor(w.percent)}"><i class="uring" style="--p:${Math.min(100, w.percent)}"></i><span class="uk">${esc(uShort(w))}</span><b>${w.percent}%</b></span>`).join('');
-    const rows = ws.map(w => { const f = uPace(w); return `<div class="urow" title="${esc(uTip(w))}"><span class="ul">${esc(w.label)}</span><span class="ubar"><i style="width:${Math.min(100, w.percent)}%;--u:${uColor(w.percent)}"></i>${f != null ? `<b style="left:${(f * 100).toFixed(1)}%"></b>` : ''}</span><span class="up">${w.percent}%</span><span class="ur">${untilReset(w.resetsAt)}</span>${w.limit != null ? `<span class="umoney">${esc(uSpent(w))}</span>` : ''}</div>`; }).join('');
+    const rows = usageRows(ws);
     const html = `<button class="uline" title="Claude plan usage${esc(said)}${note ? `: ${esc(note)}` : ''} — point to see it, click to keep it open">${note ? `<span class="unote">usage: ${esc(note)}</span>` : chips}${CHEV}</button>`
       + `<div class="uopen"><button class="uhd" title="Claude plan usage${esc(said)} — click to close"><span>plan usage</span>${CHEV}</button>${note ? `<span class="unote">${esc(note)}</span>` : `<div class="urows">${rows}</div>`}</div>`;
     if (html !== usage.html) box.innerHTML = usage.html = html;   // the 30 s tick mostly changes nothing — keep a tooltip that is up
+    renderBar();
   }
   async function loadUsage() {
     if (usage.busy) return; usage.busy = true;
@@ -2084,6 +2170,7 @@
     const total = [...state.unread.values()].reduce((a, b) => a + b, 0);
     document.title = (total ? `(${total}) ` : '') + 'peixAIrada';
     if (inApp) postState();
+    renderBar();
   }
   // The app's badge and status menu, from the board's own state (2026-09-27): the shell's bridge used to open a second
   // SSE stream and keep its own copy of every session for four counts, three of which it only logged. What it needs is
@@ -4743,6 +4830,7 @@
     return true;
   }
   function awakeChanged() {
+    renderBar();
     const s = state.sessions.get(state.current);
     if (s) renderHead(s);
     if (drawAwake() && s) { fitHeadPrs(); paintHeadSplit(); }
@@ -5225,8 +5313,8 @@
   }
   function connect() {
     const es = new EventSource('/events');
-    es.onopen = () => $('#brandBtn').classList.remove('off');
-    es.onerror = () => { $('#brandBtn').classList.add('off'); };
+    es.onopen = () => { $('#brandBtn').classList.remove('off'); bar.conn = true; renderBar(); };
+    es.onerror = () => { $('#brandBtn').classList.add('off'); bar.conn = false; renderBar(); };
     es.addEventListener('snapshot', e => {
       const d = JSON.parse(e.data); state.snapshots++;   // the harness waits on the count: a reloaded page has its board
       state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.peacock = d.peacock || {}; state.repos = d.repos || {};
