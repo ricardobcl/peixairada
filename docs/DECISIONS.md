@@ -5,6 +5,23 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-09, late night, later still — the glow follows the pointer
+
+Ricardo: "there's this amazin effect that I saw in other apps, where when hovering on a card, the glow follows the
+mouse".
+
+* **A round light of the card's colour sits under the pointer** while it is on a card, and moves with it — a third
+  background layer, between the edge and the glow, at the pointer's place in the card (`--mx`, `--my`, written once a
+  frame by the page). It fades in as the pointer arrives and out where it stood as it leaves. In the dark it is the
+  colour lifted a third of the way to white: a dark project's colour (a forest green) was barely there as itself.
+* **Hover is that light**: the edge's glow stays as it is at rest rather than spreading across the card — the light
+  moving is the hover. The open card and the magnifier's mark keep their glow, and wear the light too.
+* **On by default, with a switch** (Settings → Board → *light under the pointer*) to compare with hover's glow spread
+  from the edge, which is what off gives.
+* **Cheap**: one card's rect read and two properties written per frame while the pointer moves over the list; the
+  properties are registered not to inherit, so only that card restyles. A card redrawn under a still pointer, or
+  another brought under it by a scroll, is placed again from the last position.
+
 ## Decisions of 2026-10-09, late night, later — the cards' glow, stronger
 
 Ricardo: "the edger color fade on cards is a bit weak for my task. make it more obvious and more \"contrasty\"".

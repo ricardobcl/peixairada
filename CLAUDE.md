@@ -216,6 +216,14 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   project's name is in its colour, towards what reads on the panel (`oklch(from …)`, lighter in the dark). The
   outline is `1px solid transparent` at rest for the same reason. `#splitter` and `#gsplit` light after a 300 ms
   `transition-delay` on hover, none on `.drag`; the small controls share one 120 ms hover transition.
+* **Under the pointer a card's glow follows it** (2026-10-09, late night; Settings → Board → *light under the pointer*,
+  `prefs.cardSpot`, on → `<html data-spot>`): a `radial-gradient` layer between the edge and the glow, at `--mx` /
+  `--my`, `--spot` strong in `--spotc` (the colour, lifted towards white in the dark) — registered, not inheriting, so
+  a move restyles that card alone; `--spot` is 0 % at rest (transparent) and eases in and out with the pointer, which
+  leaves the light where it stood. `spotSoon` writes the place on the card that is `:hover`, once a frame, from the
+  list's `pointermove`, its scroll and after `renderSessionList` (a card redrawn under a still pointer is a new node).
+  With it on, hover keeps the rest glow (`.active` and `.qsel` keep theirs); off, hover spreads it as before. Not on
+  the rail. → `scripts/scenarios/card-spot.mjs`.
 * **Dialogs, `.pop` and `.note` ease in and out with `@starting-style`** (2026-09-27, night), `display` and `overlay`
   held by `allow-discrete` until the exit ends — so a closed dialog is still `display: block` for 140 ms while its
   `open` attribute is already off (read `open`, never `display`, to know). `note()` fades its popup out (`.out`) before
@@ -520,7 +528,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, PR
   turns; `STATE_FILE` overrides) and the user's `~/.config/peixairada/config.json` (the setup, below), both shared by
   the app and every browser; the browser's `localStorage` `peixairada-prefs`
-  (selected project, filters, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the person the list is narrowed to, ⌥ as Meta, auto-resume, the edge light, the floating header, the status bar and what it adds, the faces folded, drawer open/height — the keys are the `prefs` literal,
+  (selected project, filters, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the person the list is narrowed to, ⌥ as Meta, auto-resume, the edge light, the light under the pointer, the floating header, the status bar and what it adds, the faces folded, drawer open/height — the keys are the `prefs` literal,
   and old ones are deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it
   renders reads its state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
 * **The setup is the user's file, and nothing about one Mac is written in the code** (2026-09-28; the file since
@@ -649,7 +657,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   in the app the app menu's *Settings…*, which asks `peixKey` as ⌘W does), the chat header's ··· (`#settingsBtn`, the
   menu's last row) and, with no chat open, the empty header's own ··· (`#noChatMore`, delegated — `leaveChat` rewrites
   the header). A head (the name, the counts, × `#settingsClose`), a segmented control (`.stabs`) over three panes
-  (`.spane`): **Board** — the notifications switch (`#notifyOn`), the rings' step (`#ringsInStep`), the edge light (`#edgeLight`), the floating header (`#headFloat`), the status bar (`#sbarOn`) and what it adds (`#sbarStats`), the cards' size
+  (`.spane`): **Board** — the notifications switch (`#notifyOn`), the rings' step (`#ringsInStep`), the edge light (`#edgeLight`), the light under the pointer (`#cardSpot`), the floating header (`#headFloat`), the status bar (`#sbarOn`) and what it adds (`#sbarStats`), the cards' size
   (`.dens`), auto-resume (`#autoResume`), ⌥ as Meta (`#optMeta`), what is hidden (`#hidden`) — no date format (DD-MM-YYYY, `fmtDate`); **Setup** — the server's (`#setup`); **Keys** — the list (`.keys`). The class
   is still `pop`, so every row keeps its `.pop …` rule. Esc, the backdrop, ×, ⌘, or ⌘W close it; its `close` drops a
   setup row half typed. **It is modal**: the pane is down while it is up (`postPane`), and the ⌥⌘ / ⌘ keys are swallowed
@@ -930,11 +938,11 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   scroll-driven ones, which run as long as the list can scroll — and for a pending draw. `ctx`: `evaluate`, `waitFor`, `send`, `reload`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
-  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The fifty-one in
+  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The fifty-two in
   `scripts/scenarios/` are the regression checks for the drawer, the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
   marks and the PR stack, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, a PR's turn, the chat's links,
-  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short, the resume bar, keeping the Mac awake, Jira tickets, the transcript's turns, a PR's CI, the floating header, the status bar.
+  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short, the resume bar, keeping the Mac awake, Jira tickets, the transcript's turns, a PR's CI, the floating header, the status bar, the light under the pointer.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.

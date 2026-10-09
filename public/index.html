@@ -524,6 +524,14 @@
   @property --slope { syntax: '<percentage>'; inherits: false; initial-value: 8%; }
   @property --reach { syntax: '<percentage>'; inherits: false; initial-value: 24%; }
   @property --fall { syntax: '<number>'; inherits: false; initial-value: .5; }
+  /* The glow under the pointer (2026-10-09, prefs.cardSpot — <html data-spot>): a round light of the colour between the
+     edge and the glow, at --mx / --my — where the pointer is in the card, written by the script once a frame — --spot
+     strong; 0 % at rest, so it is transparent and the card is as it was, and it fades in and out with the pointer (the
+     .card transition). Registered not inheriting, so a move restyles the card alone; the ring's ::after cover takes the
+     card's background as computed, the light included. */
+  @property --spot { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+  @property --mx { syntax: '<length-percentage>'; inherits: false; initial-value: 50%; }
+  @property --my { syntax: '<length-percentage>'; inherits: false; initial-value: 50%; }
   /* Ink cards (2026-10-09, from the design studies — B; a wash of the colour over the whole card before): the card is
      the panel, the project's colour a 3 px lit edge on its left and a glow of it bleeding in from there — --tint how
      strong the glow starts, --reach how far it runs before it is the panel. Hover, the open card and the magnifier's
@@ -533,11 +541,19 @@
      dark panel): half the colour at the edge, over three fifths of the card, and a colour hint at --fall of the reach
      (a third), so it drops steeply off the edge and tails out — a glow, not a wash. The open card falls evenly (.5),
      or its middle sank darker than both its ends, the edge and the splitter's colour. */
-  .card { --edge: var(--repo, var(--nocolor)); --tint: 50%; --reach: 60%; --fall: .35;
-    background: linear-gradient(to right, var(--edge) 3px, transparent 3px), linear-gradient(90deg, color-mix(in srgb, var(--repo, var(--nocolor)) var(--tint), var(--panel)), calc(var(--reach) * var(--fall)), var(--panel) var(--reach)); background-origin: border-box;
+  .card { --edge: var(--repo, var(--nocolor)); --tint: 50%; --reach: 60%; --fall: .35; --spotr: 190px; --spotc: var(--repo, var(--nocolor));
+    background: linear-gradient(to right, var(--edge) 3px, transparent 3px), radial-gradient(circle var(--spotr) at var(--mx) var(--my), color-mix(in srgb, var(--spotc) var(--spot), transparent), transparent), linear-gradient(90deg, color-mix(in srgb, var(--repo, var(--nocolor)) var(--tint), var(--panel)), calc(var(--reach) * var(--fall)), var(--panel) var(--reach)); background-origin: border-box;
     outline: 1px solid transparent; outline-offset: 0;
-    transition: --tint .2s, --reach .2s, --fall .2s, border-color .2s, outline-color .2s, outline-width .2s, outline-offset .2s, opacity .2s; }
+    transition: --tint .2s, --reach .2s, --fall .2s, --spot .3s, border-color .2s, outline-color .2s, outline-width .2s, outline-offset .2s, opacity .2s; }
   .card:hover { transition-duration: .1s; }
+  /* With the light under the pointer, hover is that light — the edge's glow stays as it is at rest (it grew across the
+     card before, and still does with the switch off); the open card and the magnifier's mark keep theirs. Not on the
+     rail's squares, too small for it. */
+  :root[data-spot] main:not(.scompact) .card:hover { --spot: 55%; }
+  :root[data-spot] .card:hover:not(.active, .qsel) { --tint: 50%; --reach: 60%; }
+  /* in the dark a light is lighter than its colour: a dark project's (a navy, a forest green) was barely there */
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card { --spotc: oklch(from var(--repo, var(--nocolor)) calc(l + (1 - l) * .3) c h); } }
+  :root[data-theme="dark"] .card { --spotc: oklch(from var(--repo, var(--nocolor)) calc(l + (1 - l) * .3) c h); }
   /* a project painted in the board's black: a grey edge, where black on the dark panel would be none */
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card.black { --edge: #77776f; } }
   :root[data-theme="dark"] .card.black { --edge: #77776f; }
@@ -653,7 +669,7 @@
     /* …seamlessly (2026-09-29): the card's tint rises to the full colour over its last 44 px, so it meets the bar
        in the bar's own colour — the card's wash under it, as .card draws it. */
     background-image: linear-gradient(to right, transparent calc(100% - 44px), var(--repo, var(--nocolor))),
-      linear-gradient(to right, var(--edge) 3px, transparent 3px), linear-gradient(90deg, color-mix(in srgb, var(--repo, var(--nocolor)) var(--tint), var(--panel)), calc(var(--reach) * var(--fall)), var(--panel) var(--reach)); }
+      linear-gradient(to right, var(--edge) 3px, transparent 3px), radial-gradient(circle var(--spotr) at var(--mx) var(--my), color-mix(in srgb, var(--spotc) var(--spot), transparent), transparent), linear-gradient(90deg, color-mix(in srgb, var(--repo, var(--nocolor)) var(--tint), var(--panel)), calc(var(--reach) * var(--fall)), var(--panel) var(--reach)); }
   /* A card in the board's own black (a project the setup paints #000000): 65 % of black over a light panel is a mid-grey
      nothing reads on, so the tint is the colour itself and the card borrows the dark theme's inks — they inherit,
      so title, snips, times and the two speaker marks follow in one rule. In the dark theme they are what they were. */
@@ -1529,6 +1545,7 @@
     <label class="opt sub" id="tintRow" hidden><span class="ssw" id="tintSw"><input type="color" id="simpleTint" value="#000000" aria-label="The one colour every project wears"></span><span><b>one colour</b> for every project, black until you pick one — the chat header's square picks it too · ⌥-click back to black</span></label>
     <label class="opt" title="On, every clauding card's light stands at the same angle — the blinks and the dots too; off, each card runs at its own. Either way a card rebuilt by an update carries on where it was"><input type="checkbox" id="ringsInStep" checked><span><b>rings in step</b> — every card's light at the same angle; off, each at its own</span></label>
     <label class="opt" title="On, a clauding card's light runs down its coloured edge, one light per sub-agent, and a monitor's slowly; off, round the whole card — the ring. The open chat's light runs on past its card only with the ring"><input type="checkbox" id="edgeLight"><span><b>edge light</b> — a clauding card's light runs down its coloured edge; off, round the card</span></label>
+    <label class="opt" title="On, a round light of the card's colour follows the pointer over the card it is on, and the edge's glow stays as it is; off, hover spreads the edge's glow across the card"><input type="checkbox" id="cardSpot" checked><span><b>light under the pointer</b> — a hovered card's glow follows the pointer; off, it spreads from the edge</span></label>
     <label class="opt" title="On, a strip at the window's foot says what the machine is doing — the connection, the chats clauding and asking, the drawers and shells and monitors, the plan usage and whether the Mac is kept awake; the list's foot keeps only its filters"><input type="checkbox" id="sbarOn" checked><span><b>status bar</b> — the search, the chats, the faces, the plan usage and keeping the Mac awake at the window's foot; off, they go back under the list and into the chat header</span></label>
     <div class="opt sub sbstats" id="sbarStats" title="What else the status bar says — asked of the Mac every 3 s while shown"><span><b>also</b></span><label><input type="checkbox" data-stat="cpu"> CPU</label><label><input type="checkbox" data-stat="mem"> memory</label><label><input type="checkbox" data-stat="claude"> Claude's memory</label></div>
     <label class="opt" title="On, the chat header is a bar inset from the window's edges, rounded and shadowed; off, it runs edge to edge as before"><input type="checkbox" id="headFloat"><span><b>floating header</b> — the chat header as a rounded bar inset from the edges</span></label>
@@ -1659,7 +1676,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false }, lidAsking: false };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, statusBar: true, sbStats: [], peopleFold: false };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, statusBar: true, sbStats: [], peopleFold: false, cardSpot: true };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -2373,6 +2390,7 @@
     phaseAnims();
     markQsel();
     listChanged();
+    spotSoon();
   }
   // The cards are reconciled, not rebuilt (2026-09-27): every SSE update set the list's innerHTML — every card parsed
   // again, six inline SVGs each, 183 of them under ALL, the one under the pointer detached — for a change on one. A
@@ -2519,6 +2537,11 @@
   // The floating header (2026-10-09, the studies' E): a switch, to compare with the plain one in use.
   const applyHead = () => { if (prefs.headFloat) document.documentElement.dataset.head = 'float'; else delete document.documentElement.dataset.head; };
   applyHead();
+  // The glow under the pointer (2026-10-09): on by default, the switch to compare with hover's glow spread from the edge.
+  const applySpot = () => { if (prefs.cardSpot) document.documentElement.dataset.spot = ''; else delete document.documentElement.dataset.spot; };
+  applySpot();
+  $('#cardSpot').checked = !!prefs.cardSpot;
+  $('#cardSpot').addEventListener('change', e => { prefs.cardSpot = e.target.checked; savePrefs(); applySpot(); });
   $('#headFloat').checked = !!prefs.headFloat;
   $('#headFloat').addEventListener('change', e => { prefs.headFloat = e.target.checked; savePrefs(); applyHead(); layoutNotch(); fitHeadPrs(); paintHeadSplit(); listChanged(); });
   $('#edgeLight').checked = !!prefs.edgeLight;
@@ -2696,6 +2719,22 @@
     });
   }
   $('#slist').addEventListener('scroll', () => listChanged(), { passive: true });
+  // The glow under the pointer (2026-10-09, prefs.cardSpot): the hovered card's --mx / --my, the pointer's place in it,
+  // read and written once a frame. A scroll moves another card under a still pointer, and a card redrawn under it is a
+  // new node with none, so both ask again (the scroll here, renderSessionList). A function, and its state on it: the
+  // list renders before this line has run.
+  function spotSoon(e) {
+    if (e?.clientX != null) { spotSoon.x = e.clientX; spotSoon.y = e.clientY; }
+    if (!prefs.cardSpot || spotSoon.raf || spotSoon.x == null) return;
+    spotSoon.raf = requestAnimationFrame(() => {
+      spotSoon.raf = 0;
+      const c = document.querySelector('#slist > .card:hover'); if (!c) return;
+      const r = c.getBoundingClientRect();
+      c.style.setProperty('--mx', `${Math.round(spotSoon.x - r.left)}px`); c.style.setProperty('--my', `${Math.round(spotSoon.y - r.top)}px`);
+    });
+  }
+  $('#slist').addEventListener('pointermove', spotSoon, { passive: true });
+  $('#slist').addEventListener('scroll', () => spotSoon(), { passive: true });
   new ResizeObserver(() => listChanged()).observe($('#slist'));
   for (const el of document.querySelectorAll('.sedge')) el.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
