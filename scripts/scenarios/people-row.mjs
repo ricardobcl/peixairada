@@ -34,14 +34,14 @@ export default async function (ctx) {
   const names = Object.fromEntries(chats.map((c, i) => [c.id, ['On one', 'On two', 'On none'][i]]));
   const titles = () => ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#slist > .card')].map(c => c.dataset.id))`).then(JSON.parse).then(ids => ids.map(id => names[id]).filter(Boolean));
   const row = () => ctx.evaluate(`JSON.stringify({ hidden: document.querySelector('#people').hidden, on: document.querySelector('#people').classList.contains('on'),
-    faces: [...document.querySelectorAll('#people button')].map(b => b.dataset.login + (b.classList.contains('on') ? '*' : '')), ready: +document.querySelector('#fchips .fchip.ready .n').textContent })`).then(JSON.parse);
+    faces: [...document.querySelectorAll('#people button[data-login]')].map(b => b.dataset.login + (b.classList.contains('on') ? '*' : '')), ready: +document.querySelector('#fchips .fchip.ready .n').textContent })`).then(JSON.parse);
   const click = async login => { await ctx.evaluate(`document.querySelector('#people button[data-login="${login}"]').click()`); await ctx.sleep(100); await ctx.settle(); };
 
   // narrowed to the folder, so the fixture's own chats (and their PRs) stay out of it
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 5`, { what: 'the three chats and the fixture\'s two' });
   await ctx.key('KeyP');
   await ctx.evaluate(`(() => { const q = document.querySelector('#pickq'); q.value = 'people-repo'; q.dispatchEvent(new Event('input', { bubbles: true })); q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); })()`);
-  await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 3 && document.querySelectorAll('#people button').length === 3`, { what: 'the folder\'s chats, and the faces from their PRs', timeout: 10_000 });
+  await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 3 && document.querySelectorAll('#people button[data-login]').length === 3`, { what: 'the folder\'s chats, and the faces from their PRs', timeout: 10_000 });
   await ctx.settle();
   out.all = { ...(await row()), titles: await titles() };
   ctx.assert.deepEqual(out.all.faces, ['eva', 'rui', 'ana'], 'everyone in the view\'s PRs, you left out, the newest first');
@@ -56,6 +56,18 @@ export default async function (ctx) {
   out.rui = { ...(await row()), titles: await titles() };
   ctx.assert.deepEqual(out.rui, { hidden: false, on: true, faces: ['eva', 'rui*', 'ana'], ready: 2, titles: ['On one', 'On two'] }, 'rui is in both PRs: those two chats, counted');
   await ctx.shot('rui', { x: 0, y: 500, width: 400, height: 500 });
+
+  // GitHub's mark heads them, and folds them (2026-10-09): the count instead of the faces, but for the one the list is
+  // narrowed to — the filter stays in sight; a pref; the mark again unfolds
+  const fold = () => ctx.evaluate(`JSON.stringify((g => ({ github: !!g?.querySelector('svg path[d^="M8 0C3.58"]'), count: g?.querySelector('b')?.textContent || null, expanded: g?.getAttribute('aria-expanded') }))(document.querySelector('#people .pgh')))`).then(JSON.parse);
+  ctx.assert.deepEqual(await fold(), { github: true, count: null, expanded: 'true' }, 'GitHub\'s mark first, unfolded');
+  await ctx.evaluate(`document.querySelector('#people .pgh').click()`); await ctx.settle();
+  out.folded = { ...(await row()), ...(await fold()), titles: await titles() };
+  ctx.assert.deepEqual([out.folded.faces, out.folded.count, out.folded.expanded, out.folded.titles], [['rui*'], '3', 'false', ['On one', 'On two']], `folded: the count, rui's face alone, still narrowed: ${JSON.stringify(out.folded)}`);
+  ctx.assert.equal(await ctx.peix('prefs().peopleFold'), true, 'and it is a pref');
+  await ctx.shot('folded', { x: 0, y: 500, width: 400, height: 500 });
+  await ctx.evaluate(`document.querySelector('#people .pgh').click()`); await ctx.settle();
+  ctx.assert.deepEqual((await row()).faces, ['eva', 'rui*', 'ana'], 'the mark again: every face back');
 
   await click('ana');
   out.ana = { ...(await row()), titles: await titles() };

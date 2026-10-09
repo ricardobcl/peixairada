@@ -5,6 +5,16 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-09, late night — the faces fold behind GitHub's mark
+
+Ricardo: "so many faces is a bit distracting - allow to collapse the GH avatars, and use a GH icon instead of git icon
+the currently exists on the left of avatars".
+
+* **GitHub's mark heads the faces** (the octicon; the PR mark before) **and is their fold** (`prefs.peopleFold`, kept
+  across reloads): folded, the mark and how many people there are; the one person the list is narrowed to keeps their
+  face, ringed, so the filter never hides behind the fold. In the status bar and in the list's row alike.
+  → the fold's step in `scripts/scenarios/people-row.mjs`.
+
 ## Decisions of 2026-10-09, night — the status bar takes the list's foot, and the lid asks for Touch ID
 
 Ricardo: "the GH user avatars can also go the the new lower footer in the middle", "we can add the search icon to the

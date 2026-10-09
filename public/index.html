@@ -769,6 +769,12 @@
   #people { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 6px 10px; border-top: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
   #people[hidden] { display: none; }
   #people > .ic { flex: none; width: 13px; height: 13px; fill: var(--muted); margin-right: 2px; }
+  /* GitHub's mark, the fold's button (2026-10-09): the count beside it while folded */
+  #people button.pgh { width: auto; height: 22px; display: inline-flex; align-items: center; gap: 4px; padding: 0 5px; margin-right: 2px; border-radius: 11px; color: var(--muted); font: inherit; font-size: 11px; }
+  #people button.pgh:hover { transform: none; color: var(--ink); background: var(--ctl); }
+  #people button.pgh .ic { width: 14px; height: 14px; fill: currentColor; }
+  #people button.pgh b { font-weight: 650; color: var(--ink); font-variant-numeric: tabular-nums; }
+  #people.on button.pgh:not(.on) { opacity: 1; }   /* the fold's button is not a face to dim */
   #people button { flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; transition: opacity .12s, transform .12s, box-shadow .12s; }
   #people button:hover { transform: scale(1.12); }
   #people :is(img, .face) { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--ctl-hi); font-size: 11px; font-weight: 700; color: var(--ink); text-transform: uppercase; }
@@ -896,8 +902,8 @@
   #sbar .fchip .lb { display: inline; }   /* room for the words, which the list's foot gave from 600 px of list */
   #sbPeople { flex: 1 1 auto; min-width: 0; display: flex; justify-content: center; align-items: center; }
   #sbar #people { padding: 0 8px; border: 0; gap: 4px; max-width: 100%; }
-  #sbar #people :is(button, img, .face) { width: 18px; height: 18px; font-size: 9.5px; }
-  #sbar #people > .ic { width: 12px; height: 12px; }
+  #sbar #people :is(button:not(.pgh), img, .face) { width: 18px; height: 18px; font-size: 9.5px; }
+  #sbar #people button.pgh { height: 20px; }
   #sbRight .seg { border-right: 0; border-left: 1px solid var(--line); }
   #sbar button.seg { cursor: pointer; } #sbar button.seg:is(:hover, .on) { background: var(--ctl); color: var(--ink); }
   #sbar .conn i { width: 7px; height: 7px; border-radius: 50%; background: var(--idle); box-shadow: 0 0 5px var(--idle); }
@@ -1647,7 +1653,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false }, lidAsking: false };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, statusBar: true, sbStats: [] };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, statusBar: true, sbStats: [], peopleFold: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -1847,6 +1853,8 @@
     play: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.8v12.4L14 8Z"/></svg>',   // the resume bar's button
     view: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 3.6a4.4 4.4 0 1 1 0 8.8 4.4 4.4 0 0 1 0-8.8Zm0 1.5a2.9 2.9 0 1 0 0 5.8 2.9 2.9 0 0 0 0-5.8Z"/><path d="M6.6 8a1.4 1.4 0 1 0 2.8 0 1.4 1.4 0 0 0-2.8 0ZM7.25 0h1.5v2.4h-1.5Zm0 13.6h1.5V16h-1.5ZM0 7.25h2.4v1.5H0Zm13.6 0H16v1.5h-2.4Z"/></svg>',
     more: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="3" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="13" cy="8" r="1.5"/></svg>',
+    // GitHub's mark (the octicon), heading the faces of the people on the chats' PRs (2026-10-09; the PR mark before)
+    github: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>',
     globe: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1Zm-1.9 1.9A5.5 5.5 0 0 0 2.55 7.25H5a11 11 0 0 1 1.1-4.35Zm3.8 0A11 11 0 0 1 11 7.25h2.45A5.5 5.5 0 0 0 9.9 2.9ZM9.5 7.25A9.6 9.6 0 0 0 8 2.6a9.6 9.6 0 0 0-1.5 4.65Zm-3 1.5A9.6 9.6 0 0 0 8 13.4a9.6 9.6 0 0 0 1.5-4.65Zm-1.5 0H2.55a5.5 5.5 0 0 0 3.55 4.35A11 11 0 0 1 5 8.75Zm6 0a11 11 0 0 1-1.1 4.35 5.5 5.5 0 0 0 3.55-4.35Z"/></svg>',   // a web page's tab
     copy: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M5 1.5h7.5A1.5 1.5 0 0 1 14 3v8.5a1.5 1.5 0 0 1-1.5 1.5H11v1.5A1.5 1.5 0 0 1 9.5 16h-6A1.5 1.5 0 0 1 2 14.5v-8A1.5 1.5 0 0 1 3.5 5H3.5V3A1.5 1.5 0 0 1 5 1.5Zm.5 1.5v2h4A1.5 1.5 0 0 1 11 6.5v5h1.5V3Zm-2 3.5v8h6v-8Z"/></svg>',   // the turn's footer
     // a Jira ticket (2026-10-08): a ticket stub — the Setup's Jira rows
@@ -2300,7 +2308,11 @@
     // until gh answers, and the person you had narrowed to was cleared — and saved cleared — on the first snapshot.
     const known = chats.every(s => (s.prs || []).every(pr => pr.people != null));
     if (prefs.person && known && !people.some(x => x.login === prefs.person)) { prefs.person = null; savePrefs(); }
-    const html = !people.length ? '' : ICON.pr + people.map(x => { const on = x.login === prefs.person;
+    // Folded (2026-10-09, prefs.peopleFold — "so many faces is a bit distracting"): GitHub's mark and how many there are;
+    // the person the list is narrowed to keeps their face, so the filter stays in sight. The mark is the fold's button.
+    const fold = !!prefs.peopleFold;
+    const head = `<button type="button" class="pgh${fold ? ' fold' : ''}" aria-expanded="${!fold}" title="${people.length} ${people.length === 1 ? 'person' : 'people'} on the PRs of the chats in view — click to ${fold ? 'show' : 'fold'} their faces">${ICON.github}${fold ? `<b>${people.length}</b>` : ''}</button>`;
+    const html = !people.length ? '' : head + people.filter(x => !fold || x.login === prefs.person).map(x => { const on = x.login === prefs.person;
       return `<button type="button" data-login="${esc(x.login)}"${on ? ' class="on"' : ''} title="${esc(`${x.login} — ${[...x.did].join(', ')} · in ${x.chats.size} chat${x.chats.size === 1 ? '' : 's'} — click to ${on ? 'show every chat again' : 'show only those'}`)}">${faceHtml(x)}</button>`; }).join('');
     if (html !== peopleDrawn) { box.innerHTML = peopleDrawn = html; box.hidden = !html; }   // drawn only when it changed: the faces are images
     const here = !!prefs.person && people.some(x => x.login === prefs.person);
@@ -2308,6 +2320,7 @@
     return here;   // narrowed to them only while they are in view: until the faces come back, every chat shows
   }
   $('#people').addEventListener('click', e => {
+    if (e.target.closest('.pgh')) { prefs.peopleFold = !prefs.peopleFold; savePrefs(); renderBoard(); return; }
     const b = e.target.closest('button[data-login]'); if (!b) return;
     prefs.person = prefs.person === b.dataset.login ? null : b.dataset.login; savePrefs(); renderBoard();
   });

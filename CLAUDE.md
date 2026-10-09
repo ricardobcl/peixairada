@@ -385,7 +385,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   avatar host; the tests hand the fake gh `data:` faces so nothing is fetched.
 * **The people row: everyone in the PRs of the chats in view, under the cards** (`#people`, `renderPeople`,
   2026-09-29): the project's chats in the states the chips show give their PRs' `people`, merged by login, newest
-  first (`peopleOf`), a face a button behind `ICON.pr`. A click is `prefs.person`: the list, its counts and its
+  first (`peopleOf`), a face a button behind GitHub's mark (`ICON.github`, 2026-10-09; the PR mark before), **which folds
+  them** (`.pgh`, `prefs.peopleFold`): folded, the mark and how many, and only the face the list is narrowed to. A click is `prefs.person`: the list, its counts and its
   timeline narrow to the chats whose PRs have that person (`hasPerson`, applied with the query in
   `renderSessionList`), the face ringed in the accent and the others dimmed; the same face again, or the person
   leaving the view, lets go. Grid row 2 of `#sessions`, the list's row and the usage in row 3; `display: none` on the
@@ -517,7 +518,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, PR
   turns; `STATE_FILE` overrides) and the user's `~/.config/peixairada/config.json` (the setup, below), both shared by
   the app and every browser; the browser's `localStorage` `peixairada-prefs`
-  (selected project, filters, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the person the list is narrowed to, ⌥ as Meta, auto-resume, the edge light, the floating header, the status bar and what it adds, drawer open/height — the keys are the `prefs` literal,
+  (selected project, filters, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the person the list is narrowed to, ⌥ as Meta, auto-resume, the edge light, the floating header, the status bar and what it adds, the faces folded, drawer open/height — the keys are the `prefs` literal,
   and old ones are deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it
   renders reads its state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
 * **The setup is the user's file, and nothing about one Mac is written in the code** (2026-09-28; the file since
