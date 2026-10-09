@@ -5,6 +5,25 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-09, afternoon — the cup says when it has nothing to hold off
+
+Ricardo: "on the awake button, I assume that claude stop working when the mac goes to sleep - it's true right? when it
+goes to sleep should be another config on the system (maybe it doesn't go when it's power connected?)" — and, to a
+muted cup on a charger set never to sleep, "yes".
+
+* **What was found**: asleep, every process is frozen, Claude Code with them, and the API's connection drops. But
+  Claude Code (2.1.295) already holds a `caffeinate -i -t 300` of its own while a chat is busy, renewed every 4 min and
+  let go 30 s after — so the cup is for what is not busy: a chat waiting on you, a monitor or a background command after
+  the turn. And macOS has the setting Ricardo guessed: *Prevent automatic sleeping on power adapter when the display is off*
+  (Battery › Options) — on on Ricardo's Mac (`pmset` AC `sleep 0`; battery `sleep 1`, the display at 5 min). The lid sleeps a
+  Mac whatever either says, short of an external display; hence the lid's switch.
+* **The cup is muted while there is nothing to hold off**: the server reads, on the poll that reads the lid, the idle
+  sleep in use on the power drawn from (`pmset -g`'s `sleep` under *Currently in use*) and that power (`pmset -g ps`).
+  `sleep 0`, or the lid's setting holding, mutes the cup on or off and its tooltip says why — on a charger, that it holds
+  on battery. On, it keeps its caffeinate: unplugged, it is amber again within a poll.
+* **Seen on the way**: a bare `caffeinate` from a shell, running since 2 Oct with no end, held that Mac awake on battery
+  too, whatever the cup said; left for Ricardo to end. Two earlier quotes here named the company — now `[acme]`.
+
 ## Decisions of 2026-10-09, morning, later — CPU and memory on by default
 
 Ricardo: "make the ram/cpu on by default".
@@ -33,7 +52,7 @@ shortcuts)?"
 
 ## Decisions of 2026-10-09, towards morning, later — a black project's ground stays black
 
-Ricardo: "I want the backgroun to still be black for black projects (like uphold), unless we are hovering and for the
+Ricardo: "I want the backgroun to still be black for black projects (like [acme]), unless we are hovering and for the
 border lines, so it contrasts with the background".
 
 * **On a black project's card the glow is black again; the lines are the grey**: the glow's colour is a variable of
@@ -45,7 +64,7 @@ border lines, so it contrasts with the background".
 
 ## Decisions of 2026-10-09, towards morning — a dark project's colour, lifted where it shows
 
-Ricardo: "some project colors (like uphold) are black or tooo dark to have contrast with the background. what should
+Ricardo: "some project colors (like [acme]) are black or tooo dark to have contrast with the background. what should
 we do? us a lighter glow/effect for those cases?"
 
 * **Yes, lighter — by lightness alone, for every colour, in CSS**: the card's lit colour (`--lift`) is the project's

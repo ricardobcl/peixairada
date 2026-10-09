@@ -1935,12 +1935,16 @@ async function machineStats(want) {
 // starts it again. Closing the lid still sleeps the Mac; *lid closed* is `pmset -a disablesleep 1`, which root alone may
 // set: each turn goes through sudo — Touch ID where it takes it — else osascript's administrator dialog (a password).
 // The setting is the system's — it outlives the server and a reboot — so it is read back (`pmset -g`: SleepDisabled) on
-// every poll rather than remembered, and shown whoever set it. Tests: CAFFEINATE_BIN and PMSET_BIN are the fakes, and
-// AWAKE_ADMIN=none runs pmset as it is.
+// every poll rather than remembered, and shown whoever set it. So are the idle sleep the Mac is set to on the power it
+// draws from now (`sleep`, in minutes, 0 for never) and that power (`pmset -g ps`) (2026-10-09): on a charger set never
+// to sleep, the cup has nothing to hold off, and the page says so. Tests: CAFFEINATE_BIN and PMSET_BIN are the fakes,
+// and AWAKE_ADMIN=none runs pmset as it is.
 let caffeinate = null;      // the child holding the assertion
 let lidOff = false;         // SleepDisabled, as pmset last said
+let idleSleep = null;       // the minutes idle before the Mac sleeps on the power it draws from now, 0 never; null unread
+let powerSrc = null;        // 'ac' · 'battery' · 'ups', as pmset last said; null unread
 let lidAsking = null;       // Touch ID or a password dialog up: the next turn waits for it
-const awakeState = () => ({ awake: awakeOn && !!caffeinate, lid: lidOff });
+const awakeState = () => ({ awake: awakeOn && !!caffeinate, lid: lidOff, idleSleep, power: powerSrc });
 const sayAwake = () => broadcast('awake', awakeState());
 /** The switch: on starts caffeinate (once), off ends it. Answers the state, or throws when caffeinate cannot run. */
 function keepAwake(on) {
@@ -1961,15 +1965,21 @@ function keepAwake(on) {
   sayAwake();
   return awakeState();
 }
-/** pmset's word on the lid: SleepDisabled 1 is no sleep at all, lid shut or not. A failure to ask leaves it as it was. */
-async function readLid() {
-  const bin = findBin('pmset', 'the lid\'s setting goes unread'); if (!bin) return lidOff;
-  try {
-    const { stdout } = await execFileP(bin, ['-g'], { timeout: 5000 });
-    const now = /^\s*SleepDisabled\s+1\b/m.test(stdout);
-    if (now !== lidOff) { lidOff = now; sayAwake(); }
-  } catch (e) { console.error('[peixairada] pmset -g:', String(e.message || e).split('\n')[0]); }
-  return lidOff;
+/** pmset's word on sleep: SleepDisabled 1 is no sleep at all, lid shut or not; `sleep` under *Currently in use* the
+ *  idle minutes on the power drawn from now (the setting — the assertions holding it off follow it in brackets); and
+ *  `-g ps` that power. A failure to ask leaves each as it was. */
+async function readPower() {
+  const bin = findBin('pmset', 'the Mac\'s sleep settings go unread'); if (!bin) return;
+  const ask = args => execFileP(bin, args, { timeout: 5000 }).then(r => r.stdout, e => { console.error(`[peixairada] pmset ${args.join(' ')}:`, String(e.message || e).split('\n')[0]); return null; });
+  const [g, ps] = await Promise.all([ask(['-g']), ask(['-g', 'ps'])]);
+  const was = JSON.stringify([lidOff, idleSleep, powerSrc]);
+  if (g != null) {
+    lidOff = /^\s*SleepDisabled\s+1\b/m.test(g);
+    const m = /^\s*sleep\s+(\d+)/m.exec(g.slice(g.indexOf('Currently in use')));
+    idleSleep = m ? Number(m[1]) : null;
+  }
+  if (ps != null) powerSrc = ({ AC: 'ac', Battery: 'battery', UPS: 'ups' })[/Now drawing from '(\w+) Power'/.exec(ps)?.[1]] ?? null;
+  if (JSON.stringify([lidOff, idleSleep, powerSrc]) !== was) sayAwake();
 }
 /** Sleep with the lid shut, or not, as root: through `sudo` first — Touch ID where sudo takes it (pam_tid in
  *  /etc/pam.d/sudo_local), or a sudoers rule that asks nothing — and, when sudo cannot do it without a terminal to type a
@@ -1987,7 +1997,7 @@ async function setLid(on) {
     : viaSudo().catch(e => { console.log(`[peixairada] sudo pmset did not go through (${String(e.stderr || e.message).trim().split('\n')[0]}) — asking with the dialog`); return viaDialog(); });
   try { await lidAsking; }
   catch (e) { throw new Error(/-128|cancel/i.test(String(e.stderr || e.message)) ? 'cancelled' : String(e.stderr || e.message).trim().split('\n')[0]); }
-  finally { lidAsking = null; await readLid(); }
+  finally { lidAsking = null; await readPower(); }
   console.log(`[peixairada] sleep with the lid closed: ${lidOff ? 'off — the Mac stays awake' : 'on again'}`);
   return awakeState();
 }
@@ -2642,7 +2652,7 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true, on: notificationsOn });
     }
     if (req.method === 'GET' && p === '/api/stats') return json(res, 200, await machineStats(new Set((url.searchParams.get('want') || '').split(',').filter(Boolean))));
-    if (req.method === 'GET' && p === '/api/awake') { await readLid(); return json(res, 200, awakeState()); }
+    if (req.method === 'GET' && p === '/api/awake') { await readPower(); return json(res, 200, awakeState()); }
     if (req.method === 'PUT' && p === '/api/awake') {   // the menu's two switches: {awake} holds idle sleep off, {lid} sleep with the lid shut (a password)
       const body = await jsonBody(req);
       if (typeof body.awake !== 'boolean' && typeof body.lid !== 'boolean') return json(res, 400, { error: 'expected {awake: true|false} or {lid: true|false}' });
@@ -2865,7 +2875,7 @@ indexing = false;
 sweepPrs();
 sweepTickets();
 if (awakeOn) try { keepAwake(true); } catch (e) { console.error(`[peixairada] could not keep the Mac awake: ${e.message}`); }   // the switch outlives a restart
-readLid();
+readPower();
 cpuBusy();   // the first sample: the status bar's first ask has a share to give
 pollPeacock();
 setInterval(pollPeacock, PEACOCK_POLL_MS);
@@ -2885,7 +2895,7 @@ setInterval(() => {
   sweepDrawers();
   sweepPrs();
   sweepTickets();
-  readLid();   // the lid's setting is the system's: whoever changes it, the mark follows
+  readPower();   // the lid's setting and idle sleep are the system's: whoever changes them, or the charger, the marks follow
 }, REGISTRY_POLL_MS);
 console.log(`[peixairada] indexed ${sessions.size} sessions (${[...sessions.values()].filter(s => s.alive).length} alive) from ${CLAUDE_DIR} in ${Date.now() - t0}ms`);
 

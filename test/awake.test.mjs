@@ -1,6 +1,7 @@
 // Keeping the Mac awake (2026-10-08): the switch holds a caffeinate of the server's own while it is on — and again after
-// a restart —, and the lid's setting is pmset's, set through it and read back from it. A throwaway server with the fakes
-// every test server gets (scripts/fakecaffeinate.mjs, scripts/fakepmset.mjs, AWAKE_ADMIN=none).
+// a restart —, and the lid's setting is pmset's, set through it and read back from it; so are the idle sleep in use and
+// the power drawn from (2026-10-09). A throwaway server with the fakes every test server gets (scripts/fakecaffeinate.mjs,
+// scripts/fakepmset.mjs, AWAKE_ADMIN=none).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -13,7 +14,7 @@ test('awake: a caffeinate while the switch is on, on again after a restart, gone
   const srv = await startTestServer({ env: { FAKE_CAFFEINATE_PIDS: '' } });
   const pids = join(srv.dir, 'caffeinate.pids'); srv.env.FAKE_CAFFEINATE_PIDS = pids;   // read by the next launch: restart() below
   try {
-    assert.deepEqual((await srv.api('api/awake')).body, { awake: false, lid: false }, 'off to begin with');
+    assert.deepEqual((await srv.api('api/awake')).body, { awake: false, lid: false, idleSleep: 1, power: 'battery' }, 'off to begin with, on the fake\'s battery');
     await srv.restart();   // now with FAKE_CAFFEINATE_PIDS set
     const on = await put(srv, { awake: true });
     assert.deepEqual([on.status, on.body.awake], [200, true]);
@@ -53,6 +54,18 @@ test('lid: pmset disablesleep, read back — whoever set it — and a failure sa
     await srv.restart();
     const fail = await put(srv, { lid: true });
     assert.deepEqual([fail.status, fail.body.error, fail.body.lid], [500, 'pmset: must be run as root', false]);
+  } finally { await srv.stop(); }
+});
+
+test('power: the idle sleep the Mac is set to on the power it draws from, and that power, as pmset says', { timeout: 20_000 }, async () => {
+  const srv = await startTestServer();
+  const power = async () => (({ idleSleep, power }) => ({ idleSleep, power }))((await srv.api('api/awake')).body);
+  try {
+    assert.deepEqual(await power(), { idleSleep: 1, power: 'battery' }, 'on battery, asleep a minute after the display');
+    writeFileSync(join(srv.dir, 'pmset-power'), 'ac 0');   // the charger in, set never to sleep on it
+    assert.deepEqual(await power(), { idleSleep: 0, power: 'ac' });
+    writeFileSync(join(srv.dir, 'pmset-power'), 'ac 10');
+    assert.deepEqual(await power(), { idleSleep: 10, power: 'ac' }, 'a charger that still sleeps');
   } finally { await srv.stop(); }
 });
 

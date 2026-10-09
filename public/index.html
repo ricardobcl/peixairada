@@ -950,6 +950,7 @@
   /* keeping the Mac awake: the cup in amber, the laptop in red while each holds; a muted mark while off */
   #sbar .aw { color: var(--spend); font-weight: 650; } #sbar .lidb { color: var(--needs); font-weight: 650; }
   #sbar :is(.aw, .lidb) .ic { width: 14px; height: 14px; } #sbar :is(.aw, .lidb).off { color: var(--muted); padding: 0 9px; }
+  #sbar .aw.moot { color: var(--muted); font-weight: inherit; }   /* nothing to hold off (2026-10-09): on, muted all the same */
   #sbar .conn { cursor: pointer; }
   #sbar .sbpanel { position: absolute; bottom: calc(100% + 6px); right: 8px; width: 300px; box-sizing: border-box; padding: 10px 12px 12px; border-radius: 10px; background: var(--panel); box-shadow: 0 10px 34px rgba(0, 0, 0, .25); color: var(--muted); font-size: 12px; white-space: normal; }
   :root[data-sbar] #usage { display: none; }
@@ -1023,6 +1024,10 @@
   .shead .awake.off .ic { width: 15px; height: 15px; }
   .shead .awake.off:hover { color: var(--ink); background: var(--inline-bg); }
   #chat.tinted .shead .awake.off { color: color-mix(in srgb, var(--rink) 78%, transparent); }
+  /* on with nothing to hold off (2026-10-09: set never to sleep on this power): a plain fill, muted, as a control at rest */
+  .shead .awake.moot:not(.off) { background: var(--ctl); color: var(--muted); font-weight: 600; }
+  .shead .awake.moot:not(.off):hover { background: var(--ctl-hi); color: var(--ink); }
+  #chat.tinted .shead .awake.moot:not(.off) { color: color-mix(in srgb, var(--rink) 78%, transparent); }
   #chat.tinted .shead .hmore:hover, #chat.tinted .shead .hmore.on { color: var(--rink); background: color-mix(in srgb, var(--rink) 16%, transparent); }
   /* The menu: a non-modal <dialog>, so the pane goes down while it is up (postPane sends no page with a dialog
      open) and Esc closes it the way it closes every other; right-aligned under ···, one row per action — its mark,
@@ -1690,7 +1695,7 @@
 // Map ▴
 (() => {
   const $ = s => document.querySelector(s);
-  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false }, lidAsking: false };
+  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false };
   const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, statusBar: true, barStats: ['cpu', 'mem'], peopleFold: false, cardSpot: true };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
@@ -2015,9 +2020,10 @@
       const ws = (usage.data?.windows || []).filter(w => !uGrant(w));
       right.push(`<button class="seg us${bar.open ? ' on' : ''}${usage.err && usage.data ? ' stale' : ''}" title="Claude plan usage${usage.err ? ` — ${esc(usage.err)}` : ''} — click for the rows">${ws.length ? ws.map(w => sbMeter(uShort(w), w.percent, `${w.percent}%`, uColor(w.percent), uTip(w))).join('') : `<span class="unote">usage: ${esc(usage.err || (usage.data ? 'nothing reported' : 'asking…'))}</span>`}</button>`);
     }
-    // keeping the Mac awake, both switches, always here (2026-10-09): a muted mark while off
+    // keeping the Mac awake, both switches, always here (2026-10-09): a muted mark while off, and a muted cup while there
+    // is nothing for it to hold off (cupMoot)
     const aw = state.awake;
-    right.push(`<button class="seg aw${aw.awake ? '' : ' off'}" id="sbAwake" aria-pressed="${!!aw.awake}" title="${esc(aw.awake ? 'Keeping this Mac awake while the board runs: idle sleep is held off (the display may still sleep, and closing the lid still sleeps it). Click to let it sleep' : 'Keep this Mac awake while the board runs — idle sleep held off; the display may still sleep')}">${ICON.cup}${aw.awake ? '<span>awake</span>' : ''}</button>`,
+    right.push(`<button class="seg aw${aw.awake ? '' : ' off'}${cupMoot(aw) ? ' moot' : ''}" id="sbAwake" aria-pressed="${!!aw.awake}" title="${esc(cupTip(aw))}">${ICON.cup}${aw.awake ? '<span>awake</span>' : ''}</button>`,
       `<button class="seg lidb${aw.lid ? '' : ' off'}" id="sbLid" aria-pressed="${!!aw.lid}" title="${esc(aw.lid ? 'This Mac does not sleep, not even with its lid closed (pmset disablesleep) — mind the battery and the heat in a bag. Click to let it sleep with the lid shut again (Touch ID or your password)' : 'Keep this Mac awake with its lid closed too (pmset disablesleep) — Touch ID or your password each time; mind the battery in a bag')}">${ICON.lid}${state.lidAsking ? '<span>Touch ID…</span>' : aw.lid ? '<span>lid closed</span>' : ''}</button>`);
     const rows = usage.data?.windows || [];
     setHtml($('#sbLeft'), left.join(''));
@@ -4933,9 +4939,22 @@
   // lid sleep the Mac again, after the password dialog.
   const awakeTip = () => state.awake.lid
     ? 'This Mac does not sleep, not even with its lid closed (pmset disablesleep) — mind the battery and the heat in a bag. Click to let it sleep with the lid shut again (asks for your password)'
-    : state.awake.awake ? 'Keeping this Mac awake while the board runs: idle sleep is held off (the display may still sleep, and closing the lid still sleeps it). Click to let it sleep'
-    : 'Keep this Mac awake while the board runs — idle sleep held off; the display may still sleep. With the lid closed too: ···';
-  const awakeHtml = () => prefs.statusBar !== false ? '' : `<button class="awake${state.awake.lid ? ' lid' : state.awake.awake ? '' : ' off'}" id="awakeBtn" aria-pressed="${!!(state.awake.awake || state.awake.lid)}" title="${esc(awakeTip())}">${state.awake.lid ? ICON.lid : ICON.cup}${state.awake.awake || state.awake.lid ? '<span>awake</span>' : ''}</button>`;
+    : cupTip(state.awake, '. With the lid closed too: ···');
+  const awakeHtml = () => prefs.statusBar !== false ? '' : `<button class="awake${state.awake.lid ? ' lid' : state.awake.awake ? '' : ' off'}${!state.awake.lid && cupMoot(state.awake) ? ' moot' : ''}" id="awakeBtn" aria-pressed="${!!(state.awake.awake || state.awake.lid)}" title="${esc(awakeTip())}">${state.awake.lid ? ICON.lid : ICON.cup}${state.awake.awake || state.awake.lid ? '<span>awake</span>' : ''}</button>`;
+  /** The cup with nothing to hold off (2026-10-09): the Mac set never to sleep on its own on the power it draws from now
+   *  (pmset's `sleep` 0 — on a charger, as System Settings › Battery › Options has it), or the lid's setting keeping it
+   *  from sleeping at all. Then it is muted, on or off — on, it still holds idle sleep off the moment that changes. */
+  function cupMoot(a) { return a.lid ? 'lid' : a.idleSleep === 0 ? 'set' : ''; }
+  function cupTip(a, more = '') {
+    const moot = cupMoot(a), ac = a.power === 'ac';
+    if (!moot) return a.awake ? 'Keeping this Mac awake while the board runs: idle sleep is held off (the display may still sleep, and closing the lid still sleeps it). Click to let it sleep'
+      : `Keep this Mac awake while the board runs — idle sleep held off; the display may still sleep${more}`;
+    const why = moot === 'lid' ? 'The lid\'s setting keeps this Mac from sleeping at all, so there is nothing for this to hold off'
+      : `${ac ? 'On power, this Mac' : 'This Mac'} is set never to sleep on its own${ac ? ' (System Settings › Battery › Options; Energy on a desktop)' : ''}, so there is nothing to hold off now — closing the lid still sleeps it`;
+    const when = moot === 'lid' ? 'once the lid\'s setting lets go' : ac ? 'on battery' : 'should that change';
+    return `${why}. ${a.awake ? `On: it holds idle sleep off ${when}. Click to turn it off` : `Switch it on to hold idle sleep off ${when}`}`;
+  }
+  const awakeOf = d => ({ awake: !!d.awake, lid: !!d.lid, idleSleep: d.idleSleep ?? null, power: d.power ?? null });
   /** The button into the header that is up, before its ···; again after every header drawn anew (renderHead, leaveChat).
    *  None while the status bar is on (2026-10-09): both switches are the bar's. */
   function drawAwake() {
@@ -4955,8 +4974,8 @@
   }
   async function setAwake(body, at) {
     if ('lid' in body) { state.lidAsking = true; awakeChanged(); }
-    try { const d = await api('PUT', '/api/awake', body); state.awake = { awake: d.awake, lid: d.lid }; }
-    catch (e) { if (e.body && 'awake' in e.body) state.awake = { awake: e.body.awake, lid: e.body.lid }; if (e.message !== 'cancelled') note(at || $('#shead'), `Could not ${'lid' in body ? 'change the lid\'s setting' : 'keep the Mac awake'}: ${e.message}`, true); }
+    try { state.awake = awakeOf(await api('PUT', '/api/awake', body)); }
+    catch (e) { if (e.body && 'awake' in e.body) state.awake = awakeOf(e.body); if (e.message !== 'cancelled') note(at || $('#shead'), `Could not ${'lid' in body ? 'change the lid\'s setting' : 'keep the Mac awake'}: ${e.message}`, true); }
     finally { state.lidAsking = false; awakeChanged(); }
   }
   $('#shead').addEventListener('click', e => {
@@ -5441,7 +5460,7 @@
       if (d.config) state.config = d.config;
       renderSetup();
       state.notifications = d.notifications !== false; showNotify();
-      if (d.awake) { state.awake = d.awake; drawAwake(); }   // the empty header's mark; a chat's header draws its own
+      if (d.awake) { state.awake = awakeOf(d.awake); drawAwake(); }   // the empty header's mark; a chat's header draws its own
       state.serverNotify = d.notify === 'native';   // the server posts its own banners: the app must not double them
       renderBoard(); welcomeSync();
       const want = location.hash.slice(1);
@@ -5468,7 +5487,7 @@
     es.addEventListener('pins', e => { state.pins = JSON.parse(e.data).pins || []; renderBoardSoon(); });
     es.addEventListener('hidden', e => { state.hidden = JSON.parse(e.data).hidden || []; renderBoard(); if ($('#pick').open) pickRender(); });
     es.addEventListener('notifications', e => { state.notifications = JSON.parse(e.data).on !== false; showNotify(); });
-    es.addEventListener('awake', e => { state.awake = JSON.parse(e.data); awakeChanged(); });
+    es.addEventListener('awake', e => { state.awake = awakeOf(JSON.parse(e.data)); awakeChanged(); });
     es.addEventListener('config', e => { const c = JSON.parse(e.data); if (JSON.stringify(c) === JSON.stringify(state.config)) return; state.config = c; configChanged(); });   // the echo of a save made here is no news
     es.addEventListener('terminal', e => {
       const t = JSON.parse(e.data);

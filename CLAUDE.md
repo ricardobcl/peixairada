@@ -128,9 +128,14 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   `pmset -a disablesleep 1|0` as root — **through `sudo` first** (2026-10-09: Touch ID where `/etc/pam.d/sudo_local`
   has pam_tid, as on Ricardo's Mac, or a NOPASSWD rule; no terminal, so a password sudo cannot read is a quick failure),
   **then osascript's administrator dialog** (a password; a cancel is a 409, `cancelled`, said nowhere; `AWAKE_ADMIN`:
-  `sudo` the default, `osascript` the dialog alone, `none` the tests' plain call) — **the system's setting, never kept here**: `readLid` reads `pmset -g`'s SleepDisabled on
+  `sudo` the default, `osascript` the dialog alone, `none` the tests' plain call) — **the system's setting, never kept here**: `readPower` reads `pmset -g`'s SleepDisabled on
   every registry poll, whoever set it. The one thing the board changes outside its own files besides a Peacock colour
-  and a clone. → `test/awake.test.mjs`.
+  and a clone. **The same poll reads the idle sleep in use and the power drawn from** (2026-10-09: `sleep` under
+  *Currently in use*, minutes, 0 never — the setting, the assertions only bracketed after it — and `pmset -g ps`;
+  `idleSleep`, `power` on `awake`): **the cup is muted while it has nothing to hold off** (`cupMoot`: that `sleep` is 0,
+  as on a charger set never to sleep, or the lid's setting holds), on or off, its tooltip saying why (`cupTip`); on, it
+  still holds the moment that changes. The fake's power is `FAKE_PMSET_POWER` (`ac 0`, `battery 1` by default).
+  → `test/awake.test.mjs`, the moot step of `scripts/scenarios/keep-awake.mjs`.
 * **Every CLI the server shells out to goes through `findBin()`** — `git` too — the app's server has a bare PATH;
   `<NAME>_BIN` overrides. A file it can run, not any path that exists; none found is looked for again a minute later
   (2026-10-03). The login agent's PATH is the installing shell's, then the system's (`launchd.sh`, 2026-10-01). The
@@ -515,7 +520,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   since the last ask, vm_stat's used as Activity Monitor counts it, `ps` over the registry's live claude pids), **the
   plan usage as meters** — with the bar on, the list's foot has none (`:root[data-sbar] #usage`) — whose click lifts its
   rows in a panel (`usageRows`, shared with `#usage`; a click elsewhere, by `composedPath()`, puts it away), and **both
-  awake switches** (`#sbAwake` the cup, amber while on; `#sbLid` the laptop, red while on, *Touch ID…* while sudo asks;
+  awake switches** (`#sbAwake` the cup, amber while on, muted while it has nothing to hold off; `#sbLid` the laptop, red while on, *Touch ID…* while sudo asks;
   muted marks while off). **The list's foot row goes** — the fish, the search, the chips, the usage (`:root[data-sbar]
   :is(#shd, #sfoot)`) — on the rail too; the bar off, `dockBar(false)` puts `#filters` and `#people` back. The slots
   `#sbLeft`/`#sbRight` are drawn by markup (`setHtml`) from `renderBoard`, the usage, the awake state, the stream and
