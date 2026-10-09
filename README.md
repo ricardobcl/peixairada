@@ -46,9 +46,9 @@ It reads what Claude Code already writes to `~/.claude` — no plugin, no privat
 - 🌑 **Simple colours** — a quieter board: every project in black (or one colour you pick), the states in grey; PRs
   and faces keep their colours, and the accent is left for what needs you.
 - 🪟 **Tabs and splits** — a shell, VS Code Web and GitHub pages beside the chat.
-- 📊 **A status bar** — connected, live and clauding chats, drawers, your plan's limits (or its monthly spend cap), and
-  optionally CPU and memory, along the window's foot.
-- ☕ **Keep the Mac awake** — from ···, with the lid closed too (asks for your password); a mark top right while it holds.
+- 📊 **A status bar** — along the window's foot: the search and the state filters, connected and live chats, drawers,
+  the faces on your PRs, your plan's limits (or its monthly spend cap), keeping the Mac awake (with the lid closed too,
+  by Touch ID where sudo takes it), and optionally CPU and memory.
 
 <table>
   <tr>
