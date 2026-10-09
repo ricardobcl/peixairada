@@ -952,6 +952,8 @@
   #sbar :is(.aw, .lidb) .ic { width: 14px; height: 14px; } #sbar :is(.aw, .lidb).off { color: var(--muted); padding: 0 9px; }
   #sbar .aw.moot { color: var(--muted); font-weight: inherit; }   /* nothing to hold off (2026-10-09): on, muted all the same */
   #sbar .conn { cursor: pointer; }
+  #sbar .cl { color: var(--accent); font-variant-numeric: tabular-nums; } #sbar .cl .ic { width: 13px; height: 13px; fill: currentColor; } #sbar .cl b { color: var(--ink); font-weight: 650; }
+  #sbar .cl i { display: block; flex: none; width: 40px; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--accent) calc(var(--p, 0) * 100%), var(--utrack) 0); }
   #sbar .sbpanel { position: absolute; bottom: calc(100% + 6px); right: 8px; width: 300px; box-sizing: border-box; padding: 10px 12px 12px; border-radius: 10px; background: var(--panel); box-shadow: 0 10px 34px rgba(0, 0, 0, .25); color: var(--muted); font-size: 12px; white-space: normal; }
   :root[data-sbar] #usage { display: none; }
   /* the list's foot row — the fish, the search and the chips, the usage — goes while the bar is on (2026-10-09): what it
@@ -1157,6 +1159,16 @@
   #resume::before { content: ''; position: absolute; left: 0; right: 0; top: -1px; height: 2px; background: var(--accent); transform: scaleX(0); transform-origin: left; pointer-events: none; }
   #resume.counting::before { animation: rfill var(--resume-ms, 5s) linear forwards; }
   @keyframes rfill { to { transform: none; } }
+  /* the chat's folder cloned first (2026-10-09): the line along the top is git's progress, a ring turns round the mark */
+  #resume.cloning::before { transform: scaleX(var(--clone-p, 0)); transition: transform .3s ease-out; }
+  #resume.cloning .ric { position: relative; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  #resume.cloning .ric::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid transparent; border-top-color: var(--accent); animation: ring 1s linear infinite; }
+  #resume .cp { color: var(--ink); font-variant-numeric: tabular-nums; }
+  /* a clone said where it was asked for — a new chat's column, the picker's line: its progress, the bar under it */
+  .clonebox { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); overflow-wrap: anywhere; }
+  .clonebox .cp { display: block; margin-top: 6px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .clonebox .cbar { display: block; width: min(320px, 100%); height: 3px; margin: 10px auto 0; border-radius: 2px; background: var(--utrack); overflow: hidden; }
+  .clonebox .cbar::after { content: ''; display: block; height: 100%; background: var(--accent); transform: scaleX(var(--p, 0)); transform-origin: left; transition: transform .3s ease-out; }
   /* ---- terminal drawer: the real claude, in a PTY on the server ---- */
   /* One explicit column of minmax(0, 1fr): the implicit `auto` column took the xterm screen's pixel width as its
      minimum, so the drawer's body stayed as wide as the terminal had last been and fit() measured that instead of
@@ -1495,6 +1507,7 @@
     .pop .opt input::after, #tline .tl-thumb { transition: none; }
     .card .top .tprs { transition: none; }   /* the stack fans at once */
     #resume.counting::before { animation: none; }   /* no line runs: the button counts the seconds alone */
+    #resume.cloning .ric::after { animation: none; }   /* cloning: the ring still, the line along the top and the percent say it */
     #slist .card .top .tprs > * { transition: color .12s, border-color .12s, background-color .12s, box-shadow .12s; }
   }
 
@@ -1685,6 +1698,7 @@
 //   js  · chat header
 //   js  · terminal drawer: the real claude in a PTY on the server, attached over a WebSocket
 //   js  · the two halves: ⌘1 and ⌘2
+//   js  · a chat's folder not checked out: cloned first (2026-10-09)
 //   js  · keeping the Mac awake (2026-10-08)
 //   js  · resume: a chat whose claude has ended
 //   js  · attachments: files dropped on the board, images pasted
@@ -1695,7 +1709,7 @@
 // Map ▴
 (() => {
   const $ = s => document.querySelector(s);
-  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false };
+  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map() };
   const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, statusBar: true, barStats: ['cpu', 'mem'], peopleFold: false, cardSpot: true };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
@@ -1897,6 +1911,8 @@
     claude: '<svg class="ic burst" viewBox="0 0 24 24" aria-hidden="true"><path d="M11.22 9.10L12.00 0.50L12.78 9.10ZM13.08 9.20L18.76 2.70L14.33 10.11ZM14.52 10.37L22.94 8.45L15.00 11.84ZM15.00 12.16L22.94 15.55L14.52 13.63ZM14.33 13.89L18.76 21.30L13.08 14.80ZM12.78 14.90L12.00 23.50L11.22 14.90ZM10.92 14.80L5.24 21.30L9.67 13.89ZM9.48 13.63L1.06 15.55L9.00 12.16ZM9.00 11.84L1.06 8.45L9.48 10.37ZM9.67 10.11L5.24 2.70L10.92 9.20ZM9.20 12a2.80 2.80 0 1 0 5.60 0a2.80 2.80 0 1 0 -5.60 0Z"/></svg>',
     term: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.6 3.1 6.4 8l-4.8 4.9 1.1 1.1L8.6 8 2.7 2ZM8 12.6h6.4v1.5H8Z"/></svg>',
     play: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 1.8v12.4L14 8Z"/></svg>',   // the resume bar's button
+    // an arrow down into a tray: a repo being cloned (2026-10-09)
+    download: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M7.25 1.5h1.5v7.4l2.5-2.5 1.06 1.06L8 11.77 3.69 7.46 4.75 6.4l2.5 2.5Z"/><path d="M1.5 10.5H3v2.5h10v-2.5h1.5v4h-13Z"/></svg>',
     view: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 3.6a4.4 4.4 0 1 1 0 8.8 4.4 4.4 0 0 1 0-8.8Zm0 1.5a2.9 2.9 0 1 0 0 5.8 2.9 2.9 0 0 0 0-5.8Z"/><path d="M6.6 8a1.4 1.4 0 1 0 2.8 0 1.4 1.4 0 0 0-2.8 0ZM7.25 0h1.5v2.4h-1.5Zm0 13.6h1.5V16h-1.5ZM0 7.25h2.4v1.5H0Zm13.6 0H16v1.5h-2.4Z"/></svg>',
     more: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="3" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="13" cy="8" r="1.5"/></svg>',
     // GitHub's mark (the octicon), heading the faces of the people on the chats' PRs (2026-10-09; the PR mark before)
@@ -2011,6 +2027,7 @@
       `<span class="seg" title="claudes running here and elsewhere${ask ? ' · waiting on your answer' : ''}">${n(s => s.alive)} live${ask ? ` · <em>${ask} asking</em>` : ''}</span>`];
     const busy = [drawers && plural(drawers, 'drawer'), shells && plural(shells, 'shell'), mons && plural(mons, 'monitor')].filter(Boolean);
     if (busy.length) left.push(`<span class="seg" title="claude sessions in drawers here · shells · monitors and background commands running">${busy.join(' · ')}</span>`);
+    for (const c of state.clones.values()) left.push(`<span class="seg cl" title="gh repo clone ${esc(c.ref)} into ${esc(homePath(c.dir))} — ${esc(cloneSays(c))}">${ICON.download}cloning <b>${esc(c.ref)}</b><i style="--p:${(c.percent || 0) / 100}"></i>${c.percent || 0}%</span>`);
     const st = bar.stats, want = prefs.barStats || [], stat = [], right = [];
     if (want.includes('cpu')) stat.push(sbMeter('CPU', st.cpu ?? 0, st.cpu == null ? '…' : `${st.cpu}%`, st.cpu >= 90 ? 'var(--needs)' : 'var(--watch)', 'every core\'s time spent busy, the last 3 s'));
     if (want.includes('mem')) stat.push(st.mem ? sbMeter('memory', st.mem.used / st.mem.total * 100, `${fmtBytes(st.mem.used)} / ${fmtBytes(st.mem.total)}`, st.mem.used / st.mem.total >= .9 ? 'var(--needs)' : 'var(--watch)', 'memory used, as Activity Monitor counts it, of all there is') : sbMeter('memory', 0, '…', 'var(--watch)'));
@@ -3187,7 +3204,9 @@
   async function cloneAndStart({ name, root, org }) {
     const q = $('#pickq'), was = q.placeholder, run = ++pick.gen;
     q.value = ''; q.placeholder = `cloning ${org}/${name}…`; q.disabled = true; pick.cloning = true;
-    $('#picklist').innerHTML = `<div class="none">cloning ${esc(org)}/${esc(name)} into ${esc(homePath(root))} — a big repo takes a while…</div>`;
+    const dir = `${root}/${name}`; if (!state.clones.has(dir)) state.clones.set(dir, { ref: `${org}/${name}`, dir, phase: null, percent: 0 });
+    $('#picklist').innerHTML = `<div class="none clonebox" data-dir="${esc(dir)}">cloning ${esc(org)}/${esc(name)} into ${esc(homePath(root))} — a big repo takes a while…<span class="cp"></span><i class="cbar"></i></div>`;
+    cloneShown();
     let d;
     try { d = await api('POST', '/api/clone', { name, root }); } catch (e) { d = { error: e.message }; }
     if (d.cwd) loadFolders();
@@ -3447,7 +3466,7 @@
     if (!s.cwd) return note($('#shead'), 'No folder known for this chat', true);
     const fresh = !shellLive(s);   // the first press opens a tab; the next ones only show it
     if (fresh) {
-      try { s.shell = (await api('POST', `/api/sessions/${s.id}/shell`, termSize())).terminal; }   // the SSE update says the same a moment later
+      try { s.shell = (await withCheckout(`shell:${s.id}`, () => api('POST', `/api/sessions/${s.id}/shell`, termSize()), c => note($('#shead'), `Its folder is not checked out — cloning ${c.ref} first, then the ${shName()}`))).terminal; }   // the SSE update says the same a moment later
       catch (e) { return note($('#shead'), e.message, true); }
       if (state.current !== s.id) return;   // another chat by now: its tab waits on this one, not over that
     }
@@ -4886,9 +4905,47 @@
     if (d) showTerminal(s, d.terminal);
     renderHead(state.sessions.get(s.id) || s);
   }
+  // ---- a chat's folder not checked out: cloned first (2026-10-09) ----------------------------------------------------
+  // A spawn the server refuses for a folder that is not there names the repo that would bring it back (`clone`: under
+  // one of the setup's roots with an org, `<root>/<name>` is `<org>/<name>`), and the page clones it — /api/clone, gh —
+  // then asks again. The server's `clone` events carry git's own progress (state.clones, by the folder cloned into):
+  // the resume bar, a new chat's column, the picker's line and the status bar draw it. `cloneWaits` says who waits on
+  // which: a chat's id for its resume, `shell:<id>` for its ⌥⌘T, `new:<cwd>` for a new chat.
+  const cloneWaits = new Map();   // key → the server's `clone`: { name, root, org, ref, dir }
+  const cloneSays = c => c.phase ? `${c.phase.toLowerCase()} · ${c.percent || 0}%` : 'asking GitHub…';
+  async function withCheckout(key, spawn, onClone) {
+    try { return await spawn(); }
+    catch (e) {
+      const c = e.body?.clone; if (!c) throw e;
+      cloneWaits.set(key, c);
+      if (!state.clones.has(c.dir)) state.clones.set(c.dir, { ref: c.ref, dir: c.dir, phase: null, percent: 0 });
+      onClone?.(c); cloneShown();
+      try { await api('POST', '/api/clone', { name: c.name, root: c.root }); }
+      catch (ce) { throw new Error(`Could not clone ${c.ref}: ${ce.message}`); }
+      finally { cloneWaits.delete(key); cloneShown(); }
+      return spawn();
+    }
+  }
+  /** Every place a clone under way is drawn, drawn again: the open chat's resume bar, the boxes naming a folder being
+   *  cloned (a new chat's column, the picker's line), the status bar. */
+  function cloneShown() {
+    renderResume(state.sessions.get(state.current) || null);
+    for (const el of document.querySelectorAll('.clonebox[data-dir]')) {
+      const c = state.clones.get(el.dataset.dir); if (!c) continue;
+      el.style.setProperty('--p', (c.percent || 0) / 100);
+      const t = el.querySelector('.cp'); if (t) t.textContent = cloneSays(c);
+    }
+    renderBar();
+  }
+  function cloneEvent(c) {
+    if (!c.done) { state.clones.set(c.dir, c); return cloneShown(); }
+    state.clones.delete(c.dir);
+    if (!c.error) for (const s of state.sessions.values()) if (s.folderMissing && s.cwd && (s.cwd === c.dir || s.cwd.startsWith(c.dir + '/'))) { delete s.folderMissing; delete s.cloneRef; }   // there now
+    cloneShown();
+  }
   async function openTerminalFor(s) {
     if (termLive(s)) { syncTerm(s); renderHead(s); return; }
-    try { showTerminal(s, (await api('POST', `/api/sessions/${s.id}/terminal`, termSize())).terminal); } catch (e) { drawer.err = e.message; }
+    try { showTerminal(s, (await withCheckout(s.id, () => api('POST', `/api/sessions/${s.id}/terminal`, termSize()))).terminal); } catch (e) { drawer.err = e.message; }
     renderHead(s);
   }
   /** A drawer the server just started for `s`, attached in the half that holds its chat tab — if `s` is still the open
@@ -4994,9 +5051,17 @@
   // over SSE, at which point the pane switches to it. `task` names a launcher of the folder's Taskfile (newChatIn).
   async function newChat(cwd, task = null) {
     if (isHidden(cwd)) showProject(cwd);   // working in a folder again is the plainest way of saying it belongs on the board
-    let d;
-    try { d = await api('POST', '/api/terminals', { cwd, task, ...termSize() }); }
-    catch (e) { $('#log').innerHTML = `<div class="empty">Could not start a chat: ${esc(e.message)}</div>`; return; }
+    let d, box = null;   // box: the column saying a clone is under way, while it is still on show
+    try {
+      d = await withCheckout(`new:${cwd}`, () => api('POST', '/api/terminals', { cwd, task, ...termSize() }), c => {
+        leaveChat(`<h2><span class="repo">${esc(folderName(cwd))}</span><span class="sep"></span><span class="t">cloning ${esc(c.ref)}…</span></h2>`,
+          `<div class="empty clonebox" data-dir="${esc(c.dir)}"><b>Cloning ${esc(c.ref)}</b> into ${esc(homePath(c.dir))}: the folder is not checked out yet, and the chat starts once it is.<span class="cp"></span><i class="cbar"></i></div>`, repoColor(cwd));
+        box = $('#log .clonebox');
+      });
+    }
+    catch (e) { if (!box || box.isConnected) $('#log').innerHTML = `<div class="empty">Could not start a chat: ${esc(e.message)}</div>`; else note($('#shead'), `Could not start a chat in ${folderName(cwd)}: ${e.message}`, true); return; }
+    // cloned while another chat was opened: the new one is on the list, and the open chat keeps its column and its drawer
+    if (box && !box.isConnected) { note($('#shead'), `Cloned — the new chat in ${folderName(cwd)} is on the list`); renderBoard(); return; }
     leaveChat(`<h2><span class="repo">${esc(folderName(cwd))}</span><span class="sep"></span><span class="t">new chat${task ? ` · task ${esc(task)}` : ''}</span></h2>`,
       '<div class="empty">Say something in the terminal below — the transcript shows up here once Claude has written it.</div>', repoColor(cwd));
     if (!inProject({ cwd }, projectStub(prefs.project))) prefs.project = cwd;   // so the new chat lands in view
@@ -5038,7 +5103,7 @@
   $('#resume').style.setProperty('--resume-ms', AUTO_RESUME_MS + 'ms');
   function armResume(s) {
     stopResume();
-    if (prefs.autoResume === false || !resumable(s) || s.done || !s.cwd) return;
+    if (prefs.autoResume === false || !resumable(s) || s.done || !s.cwd || (s.folderMissing && !s.cloneRef)) return;   // a folder no clone brings back: the resume would only fail
     Object.assign(autoResume, { id: s.id, at: performance.now() + AUTO_RESUME_MS, timer: setTimeout(fireResume, AUTO_RESUME_MS), tick: setInterval(countResume, 200) });
   }
   /** The countdown, stopped — whether there was one (Esc takes the key only then). */
@@ -5063,16 +5128,28 @@
     if (!resumable(s)) { box.hidden = true; if (autoResume.id) stopResume(); return; }
     if (autoResume.id === s.id && s.done) { stopResume(); return; }   // ticked done while it counted (stopResume draws it)
     const going = termAsking.has(s.id), counting = autoResume.id === s.id, err = drawer.err;
+    // cloning its folder first (2026-10-09), or about to: `folderMissing` and `cloneRef` are the server's, on the summary
+    const w = cloneWaits.get(s.id), cl = w && (state.clones.get(w.dir) || { phase: null, percent: 0 });
+    const where = `<code>${esc(homePath(s.cwd || ''))}</code>`, label = s.folderMissing && s.cloneRef ? 'Clone and resume' : 'Resume';
     box.hidden = false;
-    box.classList.toggle('err', !!err); box.classList.toggle('counting', counting);
+    box.classList.toggle('err', !!err); box.classList.toggle('counting', counting); box.classList.toggle('cloning', !!w);
+    if (w) box.style.setProperty('--clone-p', (cl.percent || 0) / 100);
+    if (w) {
+      setHtml(box, `<span class="ric">${ICON.download}</span>
+        <span class="t"><b>Cloning ${esc(w.ref)}</b><span>This chat’s folder, ${where}, is not checked out: cloning it into <code>${esc(homePath(w.dir))}</code>, then resuming. <span class="cp">${esc(cloneSays(cl))}</span></span></span>
+        <button class="btn rgo" id="resumeGo" disabled>${ICON.download}cloning… ${cl.percent || 0}%</button>`);
+      return;
+    }
     // A chat last continued in VS Code is resumed here as any other (2026-09-20): the one thing to know is that the
     // tab there, if it is still open, will not follow it.
     setHtml(box, `<span class="ric">${ICON.term}</span>
       <span class="t"><b>${err ? 'Could not resume this chat' : 'This chat’s claude has ended'}</b><span>${err ? esc(err)
         : !s.cwd ? 'What you see is its transcript — and with no folder known for it, it cannot be resumed from here.'
+        : s.folderMissing && s.cloneRef ? `What you see is its transcript. Its folder, ${where}, is not checked out: Resume clones <b>${esc(s.cloneRef)}</b> there first, then runs <code>claude --resume</code> on it, in a terminal here.`
+        : s.folderMissing ? `What you see is its transcript. Its folder, ${where}, is not there, and no folder of repos with an org holds it to clone it from — put it back, then resume.`
         : `What you see is its transcript.${inVsCode(s) ? ' It was last continued in VS Code: resumed here it is a CLI chat, and the tab there will not follow it.' : ''} Resume runs <code>claude --resume</code> on it, in a terminal here.`}</span></span>
       ${counting ? '<button class="btn" id="resumeNo" title="Stay on the transcript — Resume waits for you · esc">Not now</button>' : ''}
-      ${s.cwd ? `<button class="btn rgo" id="resumeGo"${going ? ' disabled' : ''} title="${counting ? 'Resume now — ' : ''}claude --resume on this chat, in a terminal here · ⌥⌘C">${ICON.play}${going ? 'resuming…' : counting ? 'Resume in <span class="n"></span>' : 'Resume'}<span class="k">⌥⌘C</span></button>` : ''}`);
+      ${s.cwd ? `<button class="btn rgo" id="resumeGo"${going ? ' disabled' : ''} title="${counting ? `${label} now — ` : ''}${s.folderMissing && s.cloneRef ? `gh repo clone ${esc(s.cloneRef)}, then ` : ''}claude --resume on this chat, in a terminal here · ⌥⌘C">${s.folderMissing && s.cloneRef ? ICON.download : ICON.play}${going ? 'resuming…' : counting ? `${label} in <span class="n"></span>` : label}<span class="k">⌥⌘C</span></button>` : ''}`);
     if (counting) {
       countResume();
       // the line along the top on the countdown's clock: a new chat's countdown, with the class never off, ran on from where the last one was
@@ -5461,6 +5538,7 @@
       renderSetup();
       state.notifications = d.notifications !== false; showNotify();
       if (d.awake) { state.awake = awakeOf(d.awake); drawAwake(); }   // the empty header's mark; a chat's header draws its own
+      state.clones = new Map((d.clones || []).map(c => [c.dir, c]));   // the clones under way, a reload in the middle of one
       state.serverNotify = d.notify === 'native';   // the server posts its own banners: the app must not double them
       renderBoard(); welcomeSync();
       const want = location.hash.slice(1);
@@ -5488,6 +5566,7 @@
     es.addEventListener('hidden', e => { state.hidden = JSON.parse(e.data).hidden || []; renderBoard(); if ($('#pick').open) pickRender(); });
     es.addEventListener('notifications', e => { state.notifications = JSON.parse(e.data).on !== false; showNotify(); });
     es.addEventListener('awake', e => { state.awake = awakeOf(JSON.parse(e.data)); awakeChanged(); });
+    es.addEventListener('clone', e => cloneEvent(JSON.parse(e.data)));
     es.addEventListener('config', e => { const c = JSON.parse(e.data); if (JSON.stringify(c) === JSON.stringify(state.config)) return; state.config = c; configChanged(); });   // the echo of a save made here is no news
     es.addEventListener('terminal', e => {
       const t = JSON.parse(e.data);

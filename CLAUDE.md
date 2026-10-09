@@ -59,7 +59,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `scripts/fakeclaude.mjs`, `scripts/fixture.mjs` | A stand-in CLI for tests; a `~/.claude` look-alike |
 | `scripts/fakejira.mjs` | Jira Cloud's three calls (projects, `myself`, `bulkfetch`) on a loopback port, from a list — `startFakeJira`, for the tests and scenarios |
 | `scripts/fakepmset.mjs`, `scripts/fakecaffeinate.mjs` | `pmset` (its SleepDisabled in `FAKE_PMSET_FILE`; `FAKE_PMSET_FAIL` fails a set) and `caffeinate -i -w` (lives until its pid goes; `FAKE_CAFFEINATE_PIDS` logs it) — every test server's (`PMSET_BIN`, `CAFFEINATE_BIN`, `AWAKE_ADMIN=none`) |
-| `scripts/fakegh.mjs`, `scripts/readme-shots.mjs` | `gh api graphql` answered from a file (`GH_BIN`, `FAKEGH_PRS`, `FAKEGH_VIEWER`; a PR's entry is handed back whole, so it can carry the turn's fields; one it does not name is a NOT_FOUND, as GitHub's); the README's screenshots from a made-up board → `docs/shots/` — never shoot the real one |
+| `scripts/fakegh.mjs`, `scripts/readme-shots.mjs` | `gh api graphql` answered from a file (`GH_BIN`, `FAKEGH_PRS`, `FAKEGH_VIEWER`; a PR's entry is handed back whole, so it can carry the turn's fields; one it does not name is a NOT_FOUND, as GitHub's), and `gh repo clone` without the network (git's progress over `FAKEGH_CLONE_MS`, a `.git/config`; a repo named `no-such-…` is GitHub's error); the README's screenshots from a made-up board → `docs/shots/` — never shoot the real one |
 | `scripts/check.sh`, `scripts/check-page.mjs`, `scripts/map.mjs` | Static checks; the section maps |
 | `test/` | `node:test` files (`npm test`) |
 
@@ -665,7 +665,24 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   `root` and `org`), cached by each root's mtime; `POST /api/clone {name, root}` runs `gh repo clone <org>/<name>` into
   that root (no `root`: the one root with an org, if only one) — **with the welcome's *make it* (an empty folder of
   repos under the home), the only thing the board writes outside its own state and config** — and `cloneAndStart()` carries on into the same flow. A long path belongs beside the name (`.cur`),
-  never in the row's `auto` column. → `scripts/scenarios/new-project.mjs`.
+  never in the row's `auto` column. → `scripts/scenarios/new-project.mjs`. **A clone is one per folder and says how
+  far it is** (2026-10-09): `clones`, by the folder cloned into — a second ask joins the one under way (git makes the
+  folder at once, and it was "already there" to a second ask), and a spawn in it is refused until it is done
+  (`cloneUnder`); `gh repo clone … -- --progress` (git writes no progress into a pipe otherwise), its phases weighted
+  into one percent (`CLONE_PHASES`) and broadcast as `clone` events (`clones` in the snapshot too); a failure removes
+  what git left. → `test/folders.test.mjs`.
+* **A chat's folder not checked out is cloned before the chat starts** (2026-10-09): `spawnTerm` refuses a folder that
+  is not there (or is being cloned) with `clone` — **`cloneFor(cwd)`: under one of the setup's roots with an org,
+  `<root>/<name>[/…]` is `<org>/<name>`**, null for a folder under no such root or inside a repo folder that is there
+  (a worktree since removed) — and an error that says which. The page's `withCheckout(key, spawn)` clones it through
+  `/api/clone` and asks again, for a resume (`openTerminalFor`), ⌥⌘T and a new chat (`newChat`). **What it draws**
+  (`cloneShown`, from `state.clones`): the resume bar is the clone — its title, git's phase and percent, the line along
+  its top as the progress (`.cloning`, `--clone-p`), a ring turning round the mark; a new chat's column is a
+  `.clonebox` (and the picker's clone line is one too); the status bar has a `.cl` segment per clone. A new chat
+  cloned while another chat was opened does not take the column back: it is a card. **Before the resume**, the summary
+  of a chat with no claude says `folderMissing` and `cloneRef` (not `gone` — the card's class for no process), so the
+  bar says what Resume will do and the button is *Clone and resume*; with no `cloneRef` the auto-resume does not arm.
+  → `scripts/scenarios/clone-folder.mjs`.
 * **The settings are one modal dialog** (`#settings`, 2026-09-28; the cog's popover before): **⌘,** (`CMDKEYS.Comma`,
   in the app the app menu's *Settings…*, which asks `peixKey` as ⌘W does), the chat header's ··· (`#settingsBtn`, the
   menu's last row) and, with no chat open, the empty header's own ··· (`#noChatMore`, delegated — `leaveChat` rewrites
@@ -957,11 +974,11 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   scroll-driven ones, which run as long as the list can scroll — and for a pending draw. `ctx`: `evaluate`, `waitFor`, `send`, `reload`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
-  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The fifty-three in
+  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The fifty-four in
   `scripts/scenarios/` are the regression checks for the drawer, the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
   marks and the PR stack, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, a PR's turn, the chat's links,
-  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short, the resume bar, keeping the Mac awake, Jira tickets, the transcript's turns, a PR's CI, the floating header, the status bar, the light under the pointer, the Mac's line-editing keys in the drawer.
+  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short, the resume bar, keeping the Mac awake, Jira tickets, the transcript's turns, a PR's CI, the floating header, the status bar, the light under the pointer, the Mac's line-editing keys in the drawer, a chat's folder cloned before it resumes.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.

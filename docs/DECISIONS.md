@@ -5,6 +5,28 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-09, afternoon, later — a chat's folder not checked out is cloned first
+
+Ricardo: "make sure that when opening a chat in a project that's not checked out, we download it and provide visual
+feedback while it's happening".
+
+* **Before**: resuming a chat whose folder was gone failed with `cwd no longer exists`, and so did a new chat in a
+  project whose folder was — the auto-resume ran into it on every opening. The only clone was ⌥⌘N's ＋ clone row, with
+  a line of text and no progress.
+* **Which repo**: the folder's place under one of the setup's roots with an org — `<root>/<name>[/…]` is
+  `<org>/<name>`, cloned to `<root>/<name>`. A folder under no such root, or inside a repo that is there (a worktree
+  since removed), is said to be beyond a clone, in words that say which. The transcript names no remote, and a PR's
+  repo could be a fork; the root is what ⌥⌘N's clone row already trusts.
+* **Where it happens**: the server refuses the spawn with the repo (`clone`), and the page clones it through the
+  existing `/api/clone` and asks again — for a resume, ⌥⌘T and a new chat alike. The server keeps one clone per folder
+  (a second ask joins it; a spawn waits for it) — before, a second ask mid-clone was told the folder was there.
+* **The feedback is git's own progress**: `--progress` through gh, its phases weighted into one percent, as `clone`
+  events. The resume bar becomes the clone (the line along its top is the progress), a new chat's column says it, and
+  the status bar has a segment while any clone runs — the picker's clone line too. Before the resume, the bar already
+  says the folder is not checked out and the button reads *Clone and resume*.
+* **On the way**: `new-chat-card` read the ready count 300 ms after the first prompt, while the fake was still
+  replying (seven 60 ms lines) — it now waits for the reply to land; it had been passing on the page's lag.
+
 ## Decisions of 2026-10-09, afternoon — the cup says when it has nothing to hold off
 
 Ricardo: "on the awake button, I assume that claude stop working when the mac goes to sleep - it's true right? when it

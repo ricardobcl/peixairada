@@ -44,7 +44,7 @@ import {
   accessSync, chmodSync, closeSync, constants as fsc, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, renameSync, rmSync, statSync, unlinkSync, watch, writeFileSync
 } from 'node:fs';
 import { connect as netConnect } from 'node:net';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { cpus, freemem, homedir, totalmem, userInfo } from 'node:os';
 import { StringDecoder } from 'node:string_decoder';
 import { execFile, execFileSync, spawn } from 'node:child_process';
@@ -591,7 +591,10 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     env: envs[s.id] || mine.term?.task || null,   // the launcher it was started with (⌥⌘O groups oracle's chats by it)
     // the other live processes on this chat, and who wrote its last turn — the page's "VS Code too" warning
     rivals: s.rivals, tailEntrypoint: s.entrypoint, tailEntrypointAt: s.entrypointAt,
-    done: isDone(s), doneAt: doneMarks[s.id] || null
+    done: isDone(s), doneAt: doneMarks[s.id] || null,
+    // its folder not there, and the repo a clone would bring it back from (2026-10-09; the resume bar says so before
+    // the resume clones it) — asked of a chat with no claude only: one running has its folder
+    ...(!s.alive && s.cwd && !existsSync(s.cwd) ? { folderMissing: true, cloneRef: cloneFor(s.cwd)?.ref || null } : {})
   };
 }
 
@@ -2302,6 +2305,40 @@ function suggestRoots() {
 /** Every root's folders, a root at a time, each saying which root and org it is of. */
 const rootFolders = () => boardConfig().roots.flatMap(r => foldersIn(r.dir).map(f => ({ ...f, root: r.dir, org: r.org })));
 
+/** The repo a chat's folder was a checkout of, when that folder is not there (2026-10-09): under one of the setup's roots
+ *  with an org, the folder right under the root names it — `<root>/<name>[/…]` is `<org>/<name>`, cloned to
+ *  `<root>/<name>`. Null for a folder that is there, one under no such root, and one inside a repo folder that is there
+ *  (a worktree since removed, a folder since deleted: no clone brings those back). A clone under way counts as not there. */
+function cloneFor(cwd) {
+  if (!cwd || (existsSync(cwd) && !cloneUnder(cwd))) return null;
+  for (const r of boardConfig().roots) {
+    const rel = r.org ? relative(r.dir, cwd) : '';
+    if (!rel || rel.startsWith('..') || isAbsolute(rel)) continue;
+    const name = rel.split(sep)[0], dir = join(r.dir, name);
+    if (!REPO_NAME.test(name) || (existsSync(dir) && !clones.has(dir))) return null;
+    return { name, root: r.dir, org: r.org, ref: `${r.org}/${name}`, dir };
+  }
+  return null;
+}
+// The clones under way, by the folder each is cloning into (2026-10-09): a second ask for one joins it — the folder is
+// there from git's first moment, and was "already there" to a second ask, which started claude in half a checkout —
+// and git's own progress (`--progress`: it writes none into a pipe otherwise) goes out as `clone` events, the page's
+// bar. The phases are weighted into one number: receiving the objects is most of a clone.
+const clones = new Map();   // dir → { ref, dir, phase, percent, at, waiters }
+const cloneUnder = cwd => [...clones.keys()].some(d => cwd === d || cwd.startsWith(d + sep));
+const CLONE_PHASES = { 'Receiving objects': [0, 80], 'Resolving deltas': [80, 95], 'Updating files': [95, 100] };
+const cloneState = c => ({ ref: c.ref, dir: c.dir, phase: c.phase, percent: c.percent });
+function cloneProgress(c, chunk) {
+  let moved = false;
+  for (const line of chunk.split(/[\r\n]+/)) {
+    const m = /^(?:remote: )?([A-Z][a-z]+(?: [a-z]+)?):\s+(\d+)%/.exec(line.trim()); if (!m) continue;
+    const [lo, hi] = CLONE_PHASES[m[1]] || [c.percent, c.percent];
+    const pct = Math.round(lo + (hi - lo) * Number(m[2]) / 100);
+    if (m[1] !== c.phase || pct !== c.percent) { c.phase = m[1]; c.percent = Math.max(c.percent, pct); moved = true; }
+  }
+  if (moved && Date.now() - c.at >= 150) { c.at = Date.now(); broadcast('clone', cloneState(c)); }
+}
+
 /** `gh repo clone <org>/<name>` into a root — gh because it is already how the board asks GitHub about PRs, it knows
  *  the account's protocol, and it says plainly when there is no such repo. `rootDir` names the root; without it, the
  *  one root with an org, if there is only one. A folder that is already there is handed back as it is (the page
@@ -2313,20 +2350,29 @@ function cloneRepo(name, rootDir, done) {
   const root = rootDir ? roots.find(r => r.dir === rootDir) : roots.length === 1 ? roots[0] : null;
   if (!root) return done({ code: 400, error: rootDir ? `${rootDir} is not a folder of repos with an org — Settings › Setup sets them` : roots.length ? 'which folder of repos? more than one has an org' : 'no folder of repos has an org to clone from — Settings › Setup sets them' });
   const cwd = join(root.dir, name), ref = `${root.org}/${name}`;
+  const under = clones.get(cwd); if (under) { under.waiters.push(done); return; }   // one under way: its answer is this one's too
   if (existsSync(cwd)) return done({ code: 200, cwd, cloned: false });
   const bin = findBin('gh', 'cloning from the board is disabled');
   if (!bin) return done({ code: 503, error: 'gh not found — set GH_BIN to its path, or clone it by hand' });
   try { mkdirSync(root.dir, { recursive: true }); } catch (e) { return done({ code: 500, error: `${root.dir}: ${e.message}` }); }
   console.log(`[peixairada] clone ${ref} → ${cwd}`);
-  execFile(bin, ['repo', 'clone', ref, cwd], { cwd: root.dir, env: termEnv(), timeout: CLONE_MS, maxBuffer: 4e6 }, (err, _out, stderr) => {
-    folderCache.delete(root.dir);
-    if (!err) { console.log(`[peixairada] cloned ${ref}`); return done({ code: 200, cwd, cloned: true }); }
-    try { if (existsSync(cwd) && !readdirSync(cwd).length) rmSync(cwd, { recursive: true }); } catch {}
+  const c = { ref, dir: cwd, phase: null, percent: 0, at: 0, waiters: [done] };
+  clones.set(cwd, c); broadcast('clone', cloneState(c));
+  const finish = r => {
+    clones.delete(cwd); folderCache.delete(root.dir);
+    broadcast('clone', { ...cloneState(c), ...(r.error ? { error: r.error } : { percent: 100 }), done: true });
+    for (const w of c.waiters) w(r);
+  };
+  const child = execFile(bin, ['repo', 'clone', ref, cwd, '--', '--progress'], { cwd: root.dir, env: termEnv(), timeout: CLONE_MS, maxBuffer: 16e6 }, (err, _out, stderr) => {
+    if (!err) { console.log(`[peixairada] cloned ${ref}`); return finish({ code: 200, cwd, cloned: true }); }
+    try { if (existsSync(cwd)) rmSync(cwd, { recursive: true, force: true }); } catch {}   // half a checkout is no checkout: the next try clones again
     // execFile's callback error carries no output of its own: gh says why on stderr ("could not find any repository…").
-    const why = String(stderr || err.message).trim().split('\n').filter(Boolean).pop() || 'clone failed';
+    const why = String(stderr || err.message).split(/[\r\n]+/).map(l => l.trim()).filter(l => l && !/^(?:remote: )?[A-Z][a-z]+(?: [a-z]+)?:\s+\d+%/.test(l)).pop() || 'clone failed';
     console.error(`[peixairada] clone ${ref}: ${why}`);
-    done({ code: 502, error: why });
+    finish({ code: 502, error: why });
   });
+  child.stderr?.setEncoding('utf8');
+  child.stderr?.on('data', chunk => cloneProgress(c, chunk));
 }
 
 // The shell a drawer runs claude through, and the one a shell tab (⌥⌘T) is (2026-09-28; /bin/zsh for both before): the
@@ -2349,7 +2395,13 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
   const bin = shell ? LOGIN_SHELL : task ? findBin('task', 'Taskfile launchers are disabled') : claudeBin();   // a shell holder runs the shell itself (see termhold.mjs); the chat's is claude, or its launcher
   if (!bin) return { code: 503, error: task ? 'task binary not found — set TASK_BIN to its path' : 'claude binary not found — set CLAUDE_BIN to its path' };
   if (!cwd) return { code: 400, error: 'no cwd known for this chat' };
-  if (!existsSync(cwd)) return { code: 409, error: `cwd no longer exists: ${cwd}` };
+  // not there — or being cloned: the page clones it (`clone`, the repo it was a checkout of) and asks again (2026-10-09)
+  if (!existsSync(cwd) || cloneUnder(cwd)) {
+    const clone = cloneFor(cwd);
+    return { code: 409, missing: cwd, clone, error: clone ? `${tildePath(cwd)} is not checked out — ${clone.ref} clones it`
+      : boardConfig().roots.some(r => r.org && (cwd + sep).startsWith(r.dir + sep)) ? `${tildePath(cwd)} is not there — its repo is checked out, but not this folder in it (a worktree since removed?)`
+      : `${tildePath(cwd)} is not there, and no folder of repos with an org holds it to clone it from (Settings › Setup)` };
+  }
   const args = task ? [task] : shell || !sessionId ? [] : ['--resume', sessionId];
   const id = `t${++termSeq}-${Date.now().toString(36)}`;
   try { mkdirSync(TERMS_DIR, { recursive: true }); } catch {}
@@ -2827,7 +2879,7 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
     if (req.method === 'GET' && p === '/events') {
-      const snap = JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), about: aboutInfo(), awake: awakeState() });
+      const snap = JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), about: aboutInfo(), awake: awakeState(), clones: [...clones.values()].map(cloneState) });
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
       res.write(`event: snapshot\ndata: ${snap}\n\n`);
       sseClients.add(res);

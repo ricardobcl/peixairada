@@ -5,9 +5,9 @@
 // the page can carry on into the new-chat flow with it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { startTestServer, tmpDir } from '../lib/testserver.mjs';
+import { sleep, startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 
 test('the org folders are listed, and a clone is refused a name that is not one', { timeout: 60_000 }, async () => {
   const root = tmpDir('peix-org-');
@@ -35,6 +35,59 @@ test('the org folders are listed, and a clone is refused a name that is not one'
     const again = await srv.api('api/folders');
     assert.deepEqual(again.body.folders.map(f => f.name), ['ledger-service', 'oracle', 'wallet-api'], 'a folder that appeared is listed on the next ask');
   } finally {
+    await srv.stop();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// A chat's folder that is not there (2026-10-09): the spawn says which repo would bring it back — the root's org and the
+// folder's first name under the root —, a clone says how far it is over `clone` events, a second ask joins the one
+// under way (and a spawn in its folder waits for it), and a clone that fails leaves no folder behind. The fake gh
+// clones without the network (scripts/fakegh.mjs); a repo named no-such-… is one GitHub has not got.
+test('a folder not there: the repo that clones it, a clone joined, its progress, and a failure that leaves nothing', { timeout: 60_000 }, async () => {
+  const root = tmpDir('peix-org-');
+  mkdirSync(join(root, 'ledger', '.git'), { recursive: true });
+  const srv = await startTestServer({ fake: true, env: { ORG_DIR: root, ORG: 'acme', FAKEGH_CLONE_MS: '1500' } });
+  const events = [], ctl = new AbortController();
+  try {
+    // the stream, read as it comes: every `clone` event
+    const res = await fetch(`${srv.url}events`, { signal: ctl.signal });
+    (async () => { const dec = new TextDecoder(); let buf = ''; for await (const b of res.body) { buf += dec.decode(b, { stream: true }); let i; while ((i = buf.indexOf('\n\n')) >= 0) { const msg = buf.slice(0, i); buf = buf.slice(i + 2); if (/^event: clone$/m.test(msg)) events.push(JSON.parse(msg.match(/^data: (.*)$/m)[1])); } } })().catch(() => {});
+
+    const spawn = cwd => srv.post('api/terminals', { cwd });
+    const gone = await spawn(join(root, 'widgets', 'packages', 'api'));
+    assert.equal(gone.status, 409);
+    assert.deepEqual(gone.body.clone, { name: 'widgets', root, org: 'acme', ref: 'acme/widgets', dir: join(root, 'widgets') }, 'a folder inside the repo: the repo clones it');
+    assert.match(gone.body.error, /is not checked out — acme\/widgets clones it$/);
+    const inside = await spawn(join(root, 'ledger', '.claude', 'worktrees', 'gone'));
+    assert.deepEqual([inside.status, inside.body.clone], [409, null], 'its repo is there: no clone brings back a worktree');
+    assert.match(inside.body.error, /its repo is checked out, but not this folder in it/);
+    const elsewhere = await spawn(join(tmpDir('peix-x-'), 'nowhere'));
+    assert.deepEqual([elsewhere.status, elsewhere.body.clone], [409, null]);
+    assert.match(elsewhere.body.error, /no folder of repos with an org holds it/);
+
+    const [a, b] = [srv.post('api/clone', { name: 'widgets' }), (async () => { await sleep(300); return srv.post('api/clone', { name: 'widgets' }); })()];
+    await sleep(500);
+    const meanwhile = await spawn(join(root, 'widgets'));
+    assert.deepEqual([meanwhile.status, meanwhile.body.clone?.ref], [409, 'acme/widgets'], 'the folder is there from git\'s first moment, and still not a checkout: the spawn waits on the clone');
+    const [ra, rb] = await Promise.all([a, b]);
+    assert.deepEqual([ra.status, ra.body, rb.status, rb.body], [200, { cwd: join(root, 'widgets'), cloned: true }, 200, { cwd: join(root, 'widgets'), cloned: true }], 'the second ask joined the first, one clone');
+    assert.ok(existsSync(join(root, 'widgets', '.git', 'config')), 'cloned');
+    await waitFor(() => events.some(e => e.done), { what: 'the clone\'s last event' });
+    const mine = events.filter(e => e.ref === 'acme/widgets');
+    assert.equal(mine.filter(e => e.done).length, 1, 'one clone, one end');
+    assert.deepEqual(mine.at(-1), { ref: 'acme/widgets', dir: join(root, 'widgets'), phase: 'Resolving deltas', percent: 100, done: true });
+    const pcts = mine.filter(e => !e.done).map(e => e.percent);
+    assert.ok(pcts.length >= 3 && pcts.every((p, i) => !i || p >= pcts[i - 1]) && pcts.some(p => p > 0 && p < 100), `how far, as it goes: ${pcts}`);
+    assert.ok(mine.some(e => e.phase === 'Receiving objects'), 'git\'s own phases');
+
+    const no = await srv.post('api/clone', { name: 'no-such-repo' });
+    assert.equal(no.status, 502);
+    assert.match(no.body.error, /Could not resolve to a Repository with the name 'acme\/no-such-repo'/, 'gh\'s own words, not git\'s progress');
+    assert.ok(!existsSync(join(root, 'no-such-repo')), 'nothing left behind');
+    await waitFor(() => events.some(e => e.ref === 'acme/no-such-repo' && e.done && e.error), { what: 'the failure said on the stream' });
+  } finally {
+    ctl.abort();
     await srv.stop();
     rmSync(root, { recursive: true, force: true });
   }

@@ -33,8 +33,9 @@ It reads what Claude Code already writes to `~/.claude` — no plugin, no privat
   (or down the edge, if you'd rather) while Claude works, one per sub-agent, slower for a monitor; a question pings out
   in red.
 - 🖥️ **Claude in a drawer** — resume any chat in the real Claude Code terminal, inside the board: a chat whose Claude
-  has ended says so, and resumes 5 s after you open it (or on a click, if you'd rather). Drawers survive restarts;
-  chats running in iTerm or VS Code can be taken over.
+  has ended says so, and resumes 5 s after you open it (or on a click, if you'd rather) — cloning its repo first, with
+  the progress showing, when its folder isn't checked out. Drawers survive restarts; chats running in iTerm or VS Code
+  can be taken over.
 - 🔔 **Alerts** — a notification when a chat finishes or needs you; a Dock badge and menu-bar list in the app.
 - 🐙 **PRs** — chips in GitHub's colours, stacked on a card and fanned out under the pointer (scroll them when they're
   more than fit); a chat with an open PR is named after it. A PR you reviewed or wrote fills in, notifies you and brings its ticked chat back when it's your

@@ -72,7 +72,10 @@ export default async function (ctx) {
   ctx.assert.ok(out.after.file && out.after.lastActivity, 'the transcript exists now');
   ctx.assert.equal(out.after.startedAt, out.session.startedAt, 'the start is carried over the transcript arriving');
 
-  // A second empty chat, ticked done before a word: the card goes at once, and the drawer with it.
+  // A second empty chat, ticked done before a word: the card goes at once, and the drawer with it. The count is read
+  // once the first chat's reply has landed (2026-10-09): the fake takes seven 60 ms lines over it, and read while it
+  // was still clauding the count was one short of what it came back to.
+  await ctx.waitFor(`window.peix.session(${JSON.stringify(id)})?.status === 'idle' && document.querySelector('#fchips .fchip.working .n')?.textContent === '0'`, { what: 'the first chat\'s reply landed', timeout: 10_000 });
   const ready2 = Number(await ctx.evaluate(`document.querySelector('#fchips .fchip.ready .n').textContent`));
   await newChat();
   await ctx.waitFor(`(s => s.current && !${JSON.stringify([...known, id])}.includes(s.current) && s.termSession === s.current)(window.peix.state())`, { what: 'the board on a second new chat', timeout: 20_000 });

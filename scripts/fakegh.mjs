@@ -6,19 +6,46 @@
 // headRefOid, viewerLatestReview, reviews, comments, pushes, asks, reviewRequests: server.mjs's PR_FIELDS) — and
 // `viewer` is FAKEGH_VIEWER, else `me`. The file is read on every call, so a test moves a PR by rewriting it.
 // A PR the file does not name is one GitHub has not got: null, a NOT_FOUND in `errors` and a non-zero exit, as the real
-// call answers it (2026-10-06: the board lets a short reference go on that). Anything else asked of it (a clone) fails,
-// loudly.
-import { readFileSync } from 'node:fs';
+// call answers it (2026-10-06: the board lets a short reference go on that).
+//   `repo clone <owner/name> <dir> [-- --progress]` (2026-10-09): no network — the folder made at once, as git makes it,
+// git's progress on stderr over FAKEGH_CLONE_MS (1200 by default), then a `.git/config` naming the origin and a README.
+// A repo named `no-such-…` is one GitHub has not got: gh's error, a non-zero exit, and the folder gone again.
+// Anything else asked of it fails, loudly.
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 const [cmd, sub, flag, arg] = process.argv.slice(2);
-if (cmd !== 'api' || sub !== 'graphql' || flag !== '-f' || !arg?.startsWith('query=')) { console.error(`fakegh: only \`api graphql -f query=…\` is faked, not: ${process.argv.slice(2).join(' ')}`); process.exit(2); }
-let prs = {};
-try { prs = JSON.parse(readFileSync(process.env.FAKEGH_PRS, 'utf8')); } catch {}
-const data = { viewer: { login: process.env.FAKEGH_VIEWER || 'me' } }, errors = [];
-for (const m of arg.matchAll(/(p\d+): repository\(owner: "([^"]+)", name: "([^"]+)"\) \{ pullRequest\(number: (\d+)\)/g)) {
-  const pr = prs[`${m[2]}/${m[3]}#${m[4]}`];
-  data[m[1]] = pr ? { pullRequest: { ...pr, isDraft: !!pr.isDraft } } : null;
-  if (!pr) errors.push({ type: 'NOT_FOUND', path: [m[1], 'pullRequest'], message: `Could not resolve to a PullRequest with the number of ${m[4]}.` });
+if (cmd === 'repo' && sub === 'clone') {
+  const [ref, dir] = [flag, arg];
+  if (!/^[\w.-]+\/[\w.-]+$/.test(ref || '') || !dir) { console.error(`fakegh: repo clone <owner/name> <dir>, not: ${process.argv.slice(2).join(' ')}`); process.exit(2); }
+  const progress = process.argv.includes('--progress'), ms = Number(process.env.FAKEGH_CLONE_MS ?? 1200), steps = 10;
+  mkdirSync(dir, { recursive: true });
+  process.stderr.write(`Cloning into '${dir}'...\n`);
+  if (ref.split('/')[1].startsWith('no-such-')) {
+    setTimeout(() => { rmSync(dir, { recursive: true, force: true }); console.error(`GraphQL: Could not resolve to a Repository with the name '${ref}'. (repository)`); process.exit(1); }, ms / 4);
+  } else {
+    let i = 0;
+    const tick = setInterval(() => {
+      i++;
+      if (progress) process.stderr.write(i <= 7 ? `Receiving objects: ${String(Math.round(i / 7 * 100)).padStart(3)}% (${i * 10}/70)\r` : `Resolving deltas: ${String(Math.round((i - 7) / 3 * 100)).padStart(3)}% (${i - 7}/3)\r`);
+      if (i < steps) return;
+      clearInterval(tick);
+      mkdirSync(join(dir, '.git'), { recursive: true });
+      writeFileSync(join(dir, '.git', 'config'), `[remote "origin"]\n\turl = https://github.com/${ref}.git\n`);
+      writeFileSync(join(dir, 'README.md'), `# ${ref}\n`);
+      if (progress) process.stderr.write('Resolving deltas: 100% (3/3), done.\n');
+    }, ms / steps);
+  }
+} else {
+  if (cmd !== 'api' || sub !== 'graphql' || flag !== '-f' || !arg?.startsWith('query=')) { console.error(`fakegh: only \`api graphql -f query=…\` is faked, not: ${process.argv.slice(2).join(' ')}`); process.exit(2); }
+  let prs = {};
+  try { prs = JSON.parse(readFileSync(process.env.FAKEGH_PRS, 'utf8')); } catch {}
+  const data = { viewer: { login: process.env.FAKEGH_VIEWER || 'me' } }, errors = [];
+  for (const m of arg.matchAll(/(p\d+): repository\(owner: "([^"]+)", name: "([^"]+)"\) \{ pullRequest\(number: (\d+)\)/g)) {
+    const pr = prs[`${m[2]}/${m[3]}#${m[4]}`];
+    data[m[1]] = pr ? { pullRequest: { ...pr, isDraft: !!pr.isDraft } } : null;
+    if (!pr) errors.push({ type: 'NOT_FOUND', path: [m[1], 'pullRequest'], message: `Could not resolve to a PullRequest with the number of ${m[4]}.` });
+  }
+  process.stdout.write(JSON.stringify(errors.length ? { data, errors } : { data }) + '\n');
+  if (errors.length) { console.error(errors.map(e => `gh: ${e.message}`).join('\n')); process.exitCode = 1; }
 }
-process.stdout.write(JSON.stringify(errors.length ? { data, errors } : { data }) + '\n');
-if (errors.length) { console.error(errors.map(e => `gh: ${e.message}`).join('\n')); process.exitCode = 1; }
