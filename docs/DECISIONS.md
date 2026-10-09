@@ -5,6 +5,18 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-09, late night, later — the cards' glow, stronger
+
+Ricardo: "the edger color fade on cards is a bit weak for my task. make it more obvious and more \"contrasty\"".
+
+* **The ink card's glow is twice as strong and reaches further**: at rest half the project's colour at the edge
+  (`--tint` 50 %, 22 % before) over three fifths of the card (`--reach` 60 %, a quarter before); hover and the
+  magnifier's mark 60 % over nine tenths (34 % over three quarters); the open card 65 % across (40 %).
+* **It falls steeply, then tails out**: a colour hint at `--fall` of the reach — a third at rest — so the colour stays
+  bright beside the edge and is gone well before the text's middle; an even fall read as a wash. The open card keeps
+  an even fall (.5): with the steep one its middle sank darker than both its ends, the edge and the splitter's colour.
+  `--fall` is a registered number, so it eases with the other two.
+
 ## Decisions of 2026-10-09, late night — the faces fold behind GitHub's mark
 
 Ricardo: "so many faces is a bit distracting - allow to collapse the GH avatars, and use a GH icon instead of git icon

@@ -208,9 +208,11 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   `@keyframes wash`, `animation-delay: inherit`; not on a card still watching, whose `::before` is the ring's); the badge pops from `onAlert`. Neither is in `PHASED`.
 * **A card's glow is `--tint` and `--reach`, registered percentages** (2026-09-27, night; ink cards since 2026-10-09):
   the card is the panel, its colour a lit 3 px edge on the left (`--edge`, a first `background` layer) and a glow of it
-  from there — `--tint` how strong it starts, `--reach` how far it runs before it is the panel. Hover, `.active` and
-  `.qsel` set the numbers, never a `background`, and the change eases (`transition` on `.card`, shortened under
-  `:hover`; the `::after` cover inherits and follows). A new card state that wants a glow sets the two variables. The
+  from there — `--tint` how strong it starts, `--reach` how far it runs before it is the panel, `--fall` (a registered
+  number, 2026-10-09, late night) where in that run it is half gone: .35 at rest, so it drops steeply off the edge;
+  .5, an even fade, on the open card. Hover, `.active` and `.qsel` set the numbers, never a `background`, and the
+  change eases (`transition` on `.card`, shortened under `:hover`; the `::after` cover inherits and follows). A new
+  card state that wants a glow sets the variables. The
   project's name is in its colour, towards what reads on the panel (`oklch(from …)`, lighter in the dark). The
   outline is `1px solid transparent` at rest for the same reason. `#splitter` and `#gsplit` light after a 300 ms
   `transition-delay` on hover, none on `.drag`; the small controls share one 120 ms hover transition.

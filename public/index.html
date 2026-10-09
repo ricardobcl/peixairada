@@ -523,15 +523,20 @@
   @property --tint { syntax: '<percentage>'; inherits: false; initial-value: 37%; }
   @property --slope { syntax: '<percentage>'; inherits: false; initial-value: 8%; }
   @property --reach { syntax: '<percentage>'; inherits: false; initial-value: 24%; }
+  @property --fall { syntax: '<number>'; inherits: false; initial-value: .5; }
   /* Ink cards (2026-10-09, from the design studies — B; a wash of the colour over the whole card before): the card is
      the panel, the project's colour a 3 px lit edge on its left and a glow of it bleeding in from there — --tint how
      strong the glow starts, --reach how far it runs before it is the panel. Hover, the open card and the magnifier's
      mark raise both, and the change eases (registered). The colour is the edge, the project's name and the glow; the
-     list no longer reads as blocks of colour, so the states — the ring, the red, the lanes — carry it. */
-  .card { --edge: var(--repo, var(--nocolor)); --tint: 22%; --reach: 24%;
-    background: linear-gradient(to right, var(--edge) 3px, transparent 3px), linear-gradient(90deg, color-mix(in srgb, var(--repo, var(--nocolor)) var(--tint), var(--panel)), var(--panel) var(--reach)); background-origin: border-box;
+     list no longer reads as blocks of colour, so the states — the ring, the red, the lanes — carry it.
+     Stronger since 2026-10-09, late night (22 % over a quarter of the card, falling evenly, read as no glow at all on the
+     dark panel): half the colour at the edge, over three fifths of the card, and a colour hint at --fall of the reach
+     (a third), so it drops steeply off the edge and tails out — a glow, not a wash. The open card falls evenly (.5),
+     or its middle sank darker than both its ends, the edge and the splitter's colour. */
+  .card { --edge: var(--repo, var(--nocolor)); --tint: 50%; --reach: 60%; --fall: .35;
+    background: linear-gradient(to right, var(--edge) 3px, transparent 3px), linear-gradient(90deg, color-mix(in srgb, var(--repo, var(--nocolor)) var(--tint), var(--panel)), calc(var(--reach) * var(--fall)), var(--panel) var(--reach)); background-origin: border-box;
     outline: 1px solid transparent; outline-offset: 0;
-    transition: --tint .2s, --reach .2s, border-color .2s, outline-color .2s, outline-width .2s, outline-offset .2s, opacity .2s; }
+    transition: --tint .2s, --reach .2s, --fall .2s, border-color .2s, outline-color .2s, outline-width .2s, outline-offset .2s, opacity .2s; }
   .card:hover { transition-duration: .1s; }
   /* a project painted in the board's black: a grey edge, where black on the dark panel would be none */
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card.black { --edge: #77776f; } }
@@ -628,7 +633,7 @@
   /* Hover and the open chat enhance the card's own colour, never the accent (2026-09-20): hover is the open card's
      solid tint (65 % of the colour since 2026-09-26, 55 % before — a step above the brighter wash) under the full
      colour with a soft 1px halo outside; the open card adds a 2px ring of it over its border — a three-pixel edge. */
-  .card:hover { border-color: var(--repo, var(--nocolor)); outline-color: color-mix(in srgb, var(--repo, var(--nocolor)) 45%, transparent); --tint: 34%; --reach: 75%; }
+  .card:hover { border-color: var(--repo, var(--nocolor)); outline-color: color-mix(in srgb, var(--repo, var(--nocolor)) 45%, transparent); --tint: 60%; --reach: 90%; }
   .chip.vsc { color: var(--vscode); background: color-mix(in srgb, var(--vscode) 16%, transparent); }
   /* The environment a chat was started in (`task production-workload`…, 2026-09-21): beside the folder on the card,
      in the project's own colour, because it is a fact about *where* the chat runs — not about its process, which is
@@ -640,7 +645,7 @@
   .card.black .top .chip.env, .card.active .top .chip.env, .card:hover .top .chip.env { color: inherit; opacity: .8; }
   /* the open chat: a solid tint of its colour under a ring of it (2026-09-20); every other card keeps the gradient
      wash */
-  .card.active { border-color: var(--repo, var(--nocolor)); outline: 2px solid var(--repo, var(--nocolor)); outline-offset: -1px; --tint: 40%; --reach: 100%; }
+  .card.active { border-color: var(--repo, var(--nocolor)); outline: 2px solid var(--repo, var(--nocolor)); outline-offset: -1px; --tint: 65%; --reach: 100%; --fall: .5; }
   /* …and it bleeds into the splitter (2026-09-26): over the list's
      padding to the column's edge, against the bar in the same colour (#splitter, --openc). Not on the rail of squares,
      which has no splitter. */
@@ -648,7 +653,7 @@
     /* …seamlessly (2026-09-29): the card's tint rises to the full colour over its last 44 px, so it meets the bar
        in the bar's own colour — the card's wash under it, as .card draws it. */
     background-image: linear-gradient(to right, transparent calc(100% - 44px), var(--repo, var(--nocolor))),
-      linear-gradient(to right, var(--edge) 3px, transparent 3px), linear-gradient(90deg, color-mix(in srgb, var(--repo, var(--nocolor)) var(--tint), var(--panel)), var(--panel) var(--reach)); }
+      linear-gradient(to right, var(--edge) 3px, transparent 3px), linear-gradient(90deg, color-mix(in srgb, var(--repo, var(--nocolor)) var(--tint), var(--panel)), calc(var(--reach) * var(--fall)), var(--panel) var(--reach)); }
   /* A card in the board's own black (a project the setup paints #000000): 65 % of black over a light panel is a mid-grey
      nothing reads on, so the tint is the colour itself and the card borrows the dark theme's inks — they inherit,
      so title, snips, times and the two speaker marks follow in one rule. In the dark theme they are what they were. */
@@ -683,7 +688,7 @@
   .card :is(.title, .repo) b { font-weight: 700; color: var(--accent); text-decoration: underline 1.5px; text-underline-offset: 2px; }
   .card:is(.active, :hover, .qsel) :is(.title, .repo) b { color: inherit; }   /* the solid tint: the card's own ink */
   /* ↑↓ in the magnifier's box walk the cards it ranked; ⏎ opens this one. The hover's look, with no halo. */
-  .card.qsel { border-color: var(--repo, var(--nocolor)); --tint: 34%; --reach: 75%; }
+  .card.qsel { border-color: var(--repo, var(--nocolor)); --tint: 60%; --reach: 90%; }
   .card .grow { flex: 1; }
   /* The card's age (2026-09-27, later; top left under the pointer only for an afternoon, the title row's end before):
      in the top row after the spacer, before the ✓ / ↩ and the F, 10 px — the tooltip says when you last wrote and when
@@ -1623,6 +1628,7 @@
 //   js  · header controls
 //   js  · sessions column width
 //   js  · helpers
+//   js  · the status bar: the machine at the window's foot (2026-10-09)
 //   js  · plan usage: the chat list's footer
 //   js  · projects
 //   js  · render: both lists
