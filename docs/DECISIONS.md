@@ -23,6 +23,9 @@ edge (M5)".
   count at the right end; Claude's pixel mark, which stood alone between the clauding and the ready cards, is the
   Clauding head's now. Not sticky (the study's were): pinned heads fought the list's top pill and the timeline. None
   under a query, which ranks by the match; none on the rail. The day lines stay, inside the lanes.
+* **M2 · Sonar**: a question no longer blinks the border on and off; the border is red and pings leave it — two
+  outlines of it, half a beat apart, growing out from the card and fading (transform and opacity, phased like the
+  ring). Still, under reduced motion: the red border and its glow.
 * **M5 · the edge light, a switch** (Settings → Board → *edge light*, off by default): a clauding card's light runs
   down its lit edge instead of round the card — one light per sub-agent, a monitor's slowly in its colour — with a
   soft glow off the edge. The ring stays the default; with the edge light the open chat's light no longer runs on

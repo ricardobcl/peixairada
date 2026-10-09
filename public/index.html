@@ -585,10 +585,14 @@
      which had the work light running at the monitor's sixth of the speed. */
   .card.working { --lit: var(--glow); --seg: calc(100% / var(--lights, 1)); --spins: 1.4s; --track: color-mix(in srgb, var(--repo, var(--nocolor)) 85%, var(--line)); }
   /* A question is the one state that is *stopped*, so it gets the one signal that is not motion around the edge
-     (2026-09-22): no ring at all, the border itself blinking on and off in red. Two hard states, not a
-     fade — a fade reads as another kind of running. */
-  .card.asking { --lit: var(--needs); --seg: 100%; animation: blink 1.2s steps(2, jump-none) infinite; }
-  .card.asking::before, .card.asking::after { content: none; }
+     (2026-09-22): no ring at all. Its border is red, and since 2026-10-09 (the studies' M2, Sonar; the border blinking
+     on and off before) pings leave it: two outlines of it, half a beat apart, growing out from the card and fading —
+     a transform and an opacity, the compositor's; the card lets them out (overflow: visible — it has no ring to clip). */
+  .card.asking { --lit: var(--needs); --seg: 100%; border-color: var(--needs); overflow: visible; }
+  .card.asking::before, .card.asking::after { content: ''; position: absolute; z-index: -1; inset: -2px; width: auto; height: auto; margin: 0; aspect-ratio: auto; background: none;
+    border: 2px solid var(--needs); pointer-events: none; animation: sonar 1.8s cubic-bezier(.2, .6, .3, 1) infinite; }
+  .card.asking::after { animation-delay: -.9s; }
+  @keyframes sonar { from { transform: scale(1); opacity: .7; } to { transform: scale(1.035, 1.16); opacity: 0; } }
   @keyframes ring { to { transform: rotate(360deg); } }
   /* The edge light (2026-10-09, prefs.edgeLight — <html data-light="edge">): the same readings — --lit, one light per
      sub-agent (--seg), --spins — running down the card's lit 3 px edge instead of round it. The card keeps its border
@@ -597,17 +601,13 @@
      moves it down by a card's height — a transform, so the compositor's. The ::after cover has nothing to cover. */
   :root[data-light="edge"] .card:is(.working, .watching):not(.asking) { border-width: 2px 2px 2px 0; padding: 8px 10px 7px 12px; border-color: transparent;
     box-shadow: -8px 0 22px -10px var(--lit), 0 0 0 1px color-mix(in srgb, var(--lit) 22%, transparent); }
-  :root[data-light="edge"] .card:is(.working, .watching)::after { content: none; }
-  :root[data-light="edge"] .card:is(.working, .watching)::before { left: 0; top: 0; width: 3px; height: 200%; margin: 0; aspect-ratio: auto; filter: drop-shadow(0 0 3px var(--lit));
+  :root[data-light="edge"] .card:is(.working, .watching):not(.asking)::after { content: none; }
+  :root[data-light="edge"] .card:is(.working, .watching):not(.asking)::before { left: 0; top: 0; width: 3px; height: 200%; margin: 0; aspect-ratio: auto; filter: drop-shadow(0 0 3px var(--lit));
     background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(50% / var(--lights, 1) * .25), var(--lit) calc(50% / var(--lights, 1) * .5), transparent calc(50% / var(--lights, 1) * .75), transparent calc(50% / var(--lights, 1)));
     animation-name: edge; }
   :root[data-light="edge"] .card.watching:not(.working)::before { --lights: 1; }
   :root[data-light="edge"] .card:is(.working, .watching):is(:hover, .active, .qsel) { border-color: var(--repo, var(--nocolor)); }
   @keyframes edge { from { transform: translateY(-50%); } to { transform: none; } }
-  @keyframes blink {
-    from { border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
-    to { border-color: color-mix(in srgb, var(--needs) 28%, var(--line)); box-shadow: none; }
-  }
   /* The reply landed (2026-09-27, night): the moment a card stops clauding — the ring gone, the one event the board is
      watched for all day — its edge flares in the card's own light and settles to the plain edge over LANDED_MS, once.
      drawCards sets the class from landedAt, with a negative delay, so a card rebuilt mid-flare carries on where it was;
@@ -1381,7 +1381,8 @@
     .card.working::before, .card.watching::before { animation: none; background: var(--lit); }
     :root[data-light="edge"] .card:is(.working, .watching)::before { height: 100%; filter: none; }   /* the edge steady in the light, as the ring's band is */
     #trail { background: var(--lit); }   /* no comet under it (drawTrail makes none): the band steady in the light's colour */
-    .card.asking { animation: none; border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
+    .card.asking { border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
+    .card.asking::before, .card.asking::after { animation: none; opacity: 0; }   /* no pings: the red border and its glow */
     .card.landed { animation: none; }
     .dot.working, .dot.needs-input { animation: none; }
     .pix, .pix svg { animation: none; }
@@ -2344,7 +2345,7 @@
   // card's animations start from a time of its own, hashed from the chat's id — as steady across renders as 0, only not
   // shared. The header's dot and the divider have no card and stay at 0. Flipping the switch re-phases what is running,
   // so the change shows at once.
-  const PHASED = new Set(['ring', 'edge', 'blink', 'pulse', 'pix', 'pixhop']);
+  const PHASED = new Set(['ring', 'edge', 'sonar', 'pulse', 'pix', 'pixhop']);
   const phaseOf = a => { if (prefs.ringsInStep !== false) return 0; const id = a.effect?.target?.closest?.('.card')?.dataset.id || ''; let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0; return -(h % 60000); };
   // Once a frame, before it paints: the list and the header both ask after a render, and getAnimations() flushes style
   // each time. `now` is the switch's: the change shows at once, and reads at once.

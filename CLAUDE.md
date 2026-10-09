@@ -235,8 +235,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   none }`, which out-specifies it — and `overscroll-behavior: contain` on every scroller. A new number, list or control
   joins those lists rather than getting a rule of its own.
 * **Every animation has its line in the reduced-motion block** (2026-09-27, night): the one
-  `@media (prefers-reduced-motion: reduce)` at the end of the CSS stills the ring (a flat edge in `--lit`), the blink
-  (a steady red border), the pulse, the spinner, the flare and every transform; `drawCards` reads `REDUCED` and puts
+  `@media (prefers-reduced-motion: reduce)` at the end of the CSS stills the ring (a flat edge in `--lit`), the
+  question's pings (a steady red border and its glow), the pulse, the spinner, the flare and every transform; `drawCards` reads `REDUCED` and puts
   cards in place. A new animation adds a line there, and to `scripts/scenarios/reduced-motion.mjs` if it is a state's.
 * **The card's edge is one ring with four readings** — or, with the settings' *edge light* (`prefs.edgeLight` →
   `<html data-light="edge">`, 2026-10-09), the same readings running down the card's lit left edge: a strip twice the
@@ -247,14 +247,16 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   **lifted towards white** (`--glow`, 2026-10-02: OKLCH, 85 % of the way to white, hue and chroma kept — the colour
   itself went round a navy unseen; the landing flare is the same light); **watching** (`s.tasks`) is one light in
   `--watch`, slowly, and can sit on a *ready* card; **asking** (`needs-input` while alive) has **no ring**: the card's
-  own border blinks red (`@keyframes blink`, two hard states), with the question and its answer count on the card
+  border is red and **pings leave it** (2026-10-09, `@keyframes sonar`; it blinked before) — its `::before` and `::after`
+  as two outlines half a beat apart, scaled out and faded, the card `overflow: visible` to let them out — with the
+  question and its answer count on the card
   (`askHtml`). The three CSS rules are in priority order — work beats a monitor, a question beats both — **and each
   sets every variable**. The chips beside the title say the numbers (`N agents`, `monitor`). **The ring is a conic
   gradient on a square `::before` turned by a `transform`, under an `::after` cover in the card's background 2 px in,
   on the edge itself** (2026-09-29): a card with a ring has no border — its padding takes the 2 px, so nothing inside
   moves — and the band's unlit part is the border's colour (`--track`); the card's overflow clips at its padding box,
   so with a border the light ran inside it. The compositor's kind of motion — and `phaseAnims()` (once a frame, before
-  it paints; `phaseAnims(true)` at once, the cog's switch) puts every `ring`, `blink`, `pulse`, `pix` and `pixhop` at
+  it paints; `phaseAnims(true)` at once, the cog's switch) puts every `ring`, `edge`, `sonar`, `pulse`, `pix` and `pixhop` at
   start time 0 on the document clock, or, with *rings in step* off (`prefs.ringsInStep`), at a time hashed from the
   chat's id. → `scripts/scenarios/card-signals.mjs`.
 * **The open chat's light runs past its card** (2026-09-29): while it is clauding or watching, the open card, the
@@ -387,7 +389,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   `#sessions[data-cards]`, so the slider re-renders nothing. The question line (`askHtml`) shows at every size —
   **unless compact's own switch, *same height*, is on** (`#cardsEven` under the slider, shown only at compact;
   `prefs.cardsEven` → `#sessions[data-even]`, 2026-09-29): the title on one line, the question left to the card's
-  blinking edge, and the *your move* line kept — a card without one shows `.moveslot` instead, an invisible line of
+  red edge and its pings, and the *your move* line kept — a card without one shows `.moveslot` instead, an invisible line of
   the same metrics (in the markup always, `display: none` elsewhere; not `.prmove`, which the harness reads the real
   line by) — so every card is the top row, one title line and that row.
   → `scripts/scenarios/card-sizes.mjs`.

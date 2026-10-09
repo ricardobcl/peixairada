@@ -114,10 +114,12 @@ export default async function (ctx) {
     ctx.assert.deepEqual(card('Waiting on you').cls, ['asking', 'needs-input'], 'the question stops the card');
     ctx.assert.deepEqual(card('Blocked on a prompt').cls, ['asking', 'needs-input'], 'and so does a permission prompt');
     ctx.assert.match(card('Blocked on a prompt').state, /^asking you — permission prompt$/, '…saying what it waits on');
-    // …and it is the border blinking, not a light running round the edge (2026-09-22)
-    const ask = await ctx.evaluate(`JSON.stringify((c => ({ anim: getComputedStyle(c).animationName, ring: getComputedStyle(c, '::before').content }))([...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Waiting on you')))`).then(JSON.parse);
-    ctx.assert.equal(ask.anim, 'blink', 'the card itself blinks');
-    ctx.assert.equal(ask.ring, 'none', 'and there is no ring on it');
+    // …and it is pings leaving its red border, not a light running round the edge (2026-10-09, sonar; the border
+    // blinking from 2026-09-22)
+    const ask = await ctx.evaluate(`JSON.stringify((c => ({ border: getComputedStyle(c).borderTopColor, pings: [getComputedStyle(c, '::before').animationName, getComputedStyle(c, '::after').animationName],
+      overflow: getComputedStyle(c).overflow }))([...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Waiting on you')))`).then(JSON.parse);
+    ctx.assert.deepEqual(ask.pings, ['sonar', 'sonar'], `two pings leave the card: ${JSON.stringify(ask)}`);
+    ctx.assert.equal(ask.overflow, 'visible', 'and the card lets them out');
     // ⌥⌘B folds the list to a rail: one square per chat, the project's short name on it, the edge still saying
     // what is clauding, how many agents are out, what is watching and what is asking (2026-09-22)
     await ctx.key('KeyB');

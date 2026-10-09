@@ -16,7 +16,7 @@ const read = ctx => ctx.evaluate(`JSON.stringify((() => {
   return {
     matches: matchMedia('(prefers-reduced-motion: reduce)').matches,
     ring: anim(w, '::before'), ringBg: w ? getComputedStyle(w, '::before').backgroundImage : null,
-    blink: anim(a), border: a ? getComputedStyle(a).borderTopColor : null,
+    blink: anim(a, '::before'), border: a ? getComputedStyle(a).borderTopColor : null,
     pix: anim(pix), dialog: getComputedStyle(document.querySelector('#pick')).transform,
   };
 })())`).then(JSON.parse);
@@ -39,7 +39,7 @@ export default async function (ctx) {
     out.full = await read(ctx);
     ctx.assert.equal(out.full.matches, false, 'no reduced motion to start with');
     ctx.assert.equal(out.full.ring, 'ring', 'the clauding card runs its ring');
-    ctx.assert.equal(out.full.blink, 'blink', 'the asking card blinks');
+    ctx.assert.equal(out.full.blink, 'sonar', 'the asking card pings (2026-10-09; it blinked before)');
     ctx.assert.equal(out.full.pix, 'pix', 'the spinner steps its frames');
 
     // reduced: the same readings, still
@@ -48,7 +48,7 @@ export default async function (ctx) {
     out.reduced = await read(ctx);
     ctx.assert.equal(out.reduced.ring, 'none', 'the ring stands still');
     ctx.assert.equal(out.reduced.ringBg, 'none', "…as a steady edge in the light's colour, not a turning gradient");
-    ctx.assert.equal(out.reduced.blink, 'none', 'the question stops blinking');
+    ctx.assert.equal(out.reduced.blink, 'none', 'the question stops pinging');
     ctx.assert.match(out.reduced.border, /^rgb\(214, 69, 69\)|^rgb\(248, 81, 73\)/, 'and holds the red border');
     ctx.assert.equal(out.reduced.pix, 'none', 'the spinner holds its frame');
     ctx.assert.equal(out.reduced.dialog, 'none', 'a closed dialog has no offset to rise from');
@@ -68,7 +68,7 @@ export default async function (ctx) {
     await ctx.waitFor(`!matchMedia('(prefers-reduced-motion: reduce)').matches`, { what: 'the page back to full motion' });
     out.back = await read(ctx);
     ctx.assert.equal(out.back.ring, 'ring', 'the ring turns again');
-    ctx.assert.equal(out.back.blink, 'blink', 'and the question blinks');
+    ctx.assert.equal(out.back.blink, 'sonar', 'and the question pings');
   } finally { for (const s of sleeps) s.kill(); }
   return out;
 }
