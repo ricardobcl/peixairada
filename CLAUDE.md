@@ -965,6 +965,10 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
 
 ## Deliberately not done
 
+* **Riso, a light theme in two inks — later, not never** (2026-10-09, the design studies' G): the intention, the
+  palette, the shapes and a screenshot are in `docs/studies/` (`README.md`, `riso.css`, `riso-light.jpg`). When it is
+  built it is a theme to pick, beside simple colours.
+
 * **The title bar as one surface with the head row** (2026-09-27, night): WebKit insets the page by the bar on its
   own, so in a window the bar is the system's strip above the page; making it transparent puts the traffic lights and
   the title on the head row's fish and search box, and leaves nothing to drag the window by. The page would have to

@@ -1,0 +1,18 @@
+/* Riso — a light theme printed in two inks: the design study of 2026-10-09 (docs/studies/README.md), as it was laid
+   over the board for its screenshot. Not wired into the page: paste it into a <style> to try it (see the README). */
+:root { --bg: #f3f1ea; --panel: #fbfaf5; --ink: #1d2a5c; --muted: #6a6f8c; --line: #d9d5ca; --accent: #ff4f8b; --needs: #ff3d6e; --working: #2f5bff; --idle: #00a37a; --spend: #ff4f8b;
+  --user-bg: #eeebe2; --tool-bg: #efece4; --snip-claude: #2e3a6b; --you: #2f5bff; --code-bg: #efece4; --code-line: #ddd8cc; --code-ink: #c2185b; --inline-bg: rgba(29,42,92,.07); --ctl: rgba(29,42,92,.07); --ctl-hi: rgba(29,42,92,.12); }
+#slist { gap: 10px !important; padding-top: 4px !important; }
+#slist > .card { --dots: color-mix(in srgb, var(--repo, #8d8d8d) 62%, transparent); border: 1.5px solid var(--ink) !important; outline: 0 !important;
+  background-color: #fbfaf5 !important; background-image: linear-gradient(100deg, #fbfaf5 66%, rgba(251,250,245,.55) 84%, rgba(251,250,245,0) 100%), radial-gradient(var(--dots) 1.1px, transparent 1.45px) !important; background-size: 100% 100%, 6px 6px !important; background-repeat: no-repeat, repeat !important; }
+#slist > .card .top .repo { color: var(--ink) !important; text-transform: uppercase; letter-spacing: 1.2px; font-size: 10px; font-weight: 800; }
+#slist > .card .title { font-family: "Avenir Next Condensed", "Arial Narrow", sans-serif; font-weight: 700; font-size: 16px; line-height: 1.2; color: var(--ink); text-shadow: 1.2px 1px 0 color-mix(in srgb, var(--accent) 40%, transparent); }
+#slist > .card.active { box-shadow: 5px 5px 0 var(--ink) !important; transform: translate(-2px, -2px); }
+#slist > .card.working { border-color: var(--working) !important; box-shadow: 4px 4px 0 var(--accent) !important; padding: 8px 10px 7px !important; border-width: 1.5px !important; }
+#slist > .card.working::before, #slist > .card.working::after { content: none !important; }
+#slist > .card.asking { border-color: var(--needs) !important; box-shadow: 4px 4px 0 var(--needs) !important; animation: none !important; }
+.shead::after { background: var(--ink) !important; }
+#splitter { background: var(--ink) !important; }
+.msg.user .bubble { background: var(--panel) !important; box-shadow: 3px 3px 0 var(--accent), inset 0 0 0 1.5px var(--ink) !important; border-radius: 4px !important; }
+#log { background: radial-gradient(rgba(29,42,92,.05) 1px, transparent 1.4px) 0 0 / 5px 5px !important; }
+.cpr, .hpr { border-radius: 2px !important; }

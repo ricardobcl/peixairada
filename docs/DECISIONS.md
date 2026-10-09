@@ -40,6 +40,10 @@ edge (M5)".
   compressed from vm_stat; total less free would count the file cache as used and read 95 % on any Mac) and **Claude's
   memory** (the resident size of the live claude processes, their children aside), asked of the server every 3 s while
   the bar shows them. Each a meter: a word, a 40 px bar, the figure.
+* **G · Riso, kept for later**: the study's intention, palette, shapes, CSS and screenshot are in `docs/studies/` —
+  a light theme printed in two inks (navy and fluorescent pink on off-white), halftone cards, condensed titles with a
+  misregistration, hard offset shadows. What is left to decide is listed there. A, D and the motions M1 and M4 were
+  not picked.
 * **M5 · the edge light, a switch** (Settings → Board → *edge light*, off by default): a clauding card's light runs
   down its lit edge instead of round the card — one light per sub-agent, a monitor's slowly in its colour — with a
   soft glow off the edge. The ring stays the default; with the edge light the open chat's light no longer runs on
