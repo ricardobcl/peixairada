@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { makeFixture, toolLines } from '../fixture.mjs';
 
-export const meta = { server: true, fixture: 'auto' };
+export const meta = { server: true, fixture: 'auto', prefs: { statusBar: false } };   // the rail's geometry as it was measured, the list's foot row included
 
 // What the pills say, and what the cards' rectangles say they should: a card is out of sight above when its middle is
 // above the list's visible top, below when under its visible bottom.

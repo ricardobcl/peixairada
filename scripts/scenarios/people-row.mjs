@@ -21,7 +21,7 @@ writeFileSync(file, JSON.stringify({
     pushes: { nodes: [{ __typename: 'HeadRefForcePushedEvent', createdAt: ago(5), actor: eva }] }, asks: { nodes: [] }, reviewRequests: { nodes: [] } }
 }));
 
-export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, FAKEGH_VIEWER: 'me' } };
+export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, FAKEGH_VIEWER: 'me' }, prefs: { statusBar: false } };   // the faces' row under the list: with the status bar on (the default since 2026-10-09) they are in the bar — status-bar.mjs
 
 export default async function (ctx) {
   const out = {}, cwd = join(tmpdir(), 'peix-people', 'people-repo'), now = Date.now();
@@ -69,5 +69,17 @@ export default async function (ctx) {
   await ctx.key('KeyB'); await ctx.settle();
   ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#people')).display`), 'none', 'no row on the rail');
   await ctx.key('KeyB');
+
+  // the status bar on (2026-10-09): the faces are its middle, and still narrow the list
+  await ctx.evaluate(`document.querySelector('#sbarOn').click()`);
+  await ctx.settle();
+  out.docked = await ctx.evaluate(`JSON.stringify((p => { const r = p.getBoundingClientRect(), b = document.querySelector('#sbar').getBoundingClientRect(); return { inBar: p.parentElement.id, mid: Math.abs((r.left + r.right) / 2 - (b.left + b.right) / 2) < b.width / 4, faces: p.querySelectorAll('button[data-login]').length }; })(document.querySelector('#people')))`).then(JSON.parse);
+  ctx.assert.deepEqual([out.docked.inBar, out.docked.mid, out.docked.faces], ['sbPeople', true, 3], `in the bar's middle: ${JSON.stringify(out.docked)}`);
+  await click('ana');
+  ctx.assert.deepEqual(await titles(), ['On one'], 'a face there narrows the list as ever');
+  await click('ana');
+  await ctx.shot('docked', { x: 0, y: 880, width: 1700, height: 120 });
+  await ctx.evaluate(`document.querySelector('#sbarOn').click()`);
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#people').parentElement.id`), 'sessions', 'the bar off: back under the list');
   return out;
 }

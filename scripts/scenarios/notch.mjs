@@ -8,7 +8,7 @@
 // on, and a title that does not fit left of the housing goes right of it — a short one stays left.
 import { makeFixture } from '../fixture.mjs';
 
-export const meta = { server: true, fixture: 'auto' };
+export const meta = { server: true, fixture: 'auto', prefs: { statusBar: false } };   // the fish at the list's foot: with the status bar on (the default since 2026-10-09) the row is gone
 const NOTCH = { top: 32, left: 771.5, right: 956.5 };
 
 export default async function (ctx) {

@@ -360,13 +360,13 @@
   #shd { gap: 5px; padding: 7px 10px; }
   #shd .brand, #shd .brand .logo { width: 24px; height: 24px; }
   #shd .btn.icon { padding: 3px 5px; }
-  #shd #filters { display: flex; align-items: center; gap: 3px; flex: 1 1 auto; text-transform: none; letter-spacing: 0; font-weight: 400; }
+  :is(#shd, #sbar) #filters { display: flex; align-items: center; gap: 3px; flex: 1 1 auto; text-transform: none; letter-spacing: 0; font-weight: 400; }
   /* The magnifier is a field as wide as the row leaves it (2026-09-27; an icon-sized pill until then, and the box took
      the chips' place while it was open): at rest a pill from the fish — or the project's name — to the first chip, the
      icon at its left end; open, the icon is the field's left cap and the box runs on to the chips, which stay. */
-  #shd .fsearch { flex: none; height: 20px; }   /* small again since 2026-09-28: the row has the foot's rings and cog to hold now */
-  #shd #filters.searching .fsearch { flex: none; min-width: 0; color: var(--accent); border-color: var(--accent); background: var(--bg); border-right: 0; border-radius: 12px 0 0 12px; padding-right: 3px; }
-  #shd .fq { flex: 1 1 0; width: 0; height: 20px; margin-left: -3px; border-left: 0; border-radius: 0 12px 12px 0; padding-left: 3px; }   /* width 0: a box's own width is what it asks of the row, and it would push ＋ out; open, it takes the room the chips leave */
+  :is(#shd, #sbar) .fsearch { flex: none; height: 20px; }   /* small again since 2026-09-28: the row has the foot's rings and cog to hold now */
+  :is(#shd, #sbar) #filters.searching .fsearch { flex: none; min-width: 0; color: var(--accent); border-color: var(--accent); background: var(--bg); border-right: 0; border-radius: 12px 0 0 12px; padding-right: 3px; }
+  :is(#shd, #sbar) .fq { flex: 1 1 0; width: 0; height: 20px; margin-left: -3px; border-left: 0; border-radius: 0 12px 12px 0; padding-left: 3px; }   /* width 0: a box's own width is what it asks of the row, and it would push ＋ out; open, it takes the room the chips leave */
   /* the filter boxes: a magnifier in the row, the box itself only while it is open or has text */
   .fsearch { font: inherit; border: 1px solid transparent; background: var(--ctl); color: var(--muted); border-radius: 12px; padding: 2px 7px; cursor: pointer; display: inline-flex; align-items: center; flex: none; }
   .fsearch .ic { width: 12px; height: 12px; fill: currentColor; }
@@ -887,8 +887,18 @@
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #sbar { background: #0f0f0e; } }
   #sbar[hidden] { display: none; }
   #sbar .seg { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 0 11px; border: 0; border-right: 1px solid var(--line); background: none; font: inherit; color: inherit; }
-  #sbar .grow { flex: 1; min-width: 0; }
-  #sbar .grow ~ .seg { border-right: 0; border-left: 1px solid var(--line); }
+  /* its slots (2026-10-09): the search and the state chips (#filters, moved in), the left's segments, the faces (#people,
+     moved in) in the middle, the right's segments — the two moved in are nodes the bar's redraws never touch */
+  #sbFind, #sbLeft, #sbRight { display: flex; align-items: stretch; flex: none; min-width: 0; }
+  #sbFind { padding: 0 8px; border-right: 1px solid var(--line); }
+  #sbFind #filters { flex: none; gap: 4px; }
+  #sbar .fq { flex: none; width: 210px; }
+  #sbar .fchip .lb { display: inline; }   /* room for the words, which the list's foot gave from 600 px of list */
+  #sbPeople { flex: 1 1 auto; min-width: 0; display: flex; justify-content: center; align-items: center; }
+  #sbar #people { padding: 0 8px; border: 0; gap: 4px; max-width: 100%; }
+  #sbar #people :is(button, img, .face) { width: 18px; height: 18px; font-size: 9.5px; }
+  #sbar #people > .ic { width: 12px; height: 12px; }
+  #sbRight .seg { border-right: 0; border-left: 1px solid var(--line); }
   #sbar button.seg { cursor: pointer; } #sbar button.seg:is(:hover, .on) { background: var(--ctl); color: var(--ink); }
   #sbar .conn i { width: 7px; height: 7px; border-radius: 50%; background: var(--idle); box-shadow: 0 0 5px var(--idle); }
   #sbar .conn i.off { background: var(--needs); box-shadow: none; }
@@ -896,9 +906,15 @@
   #sbar .m { display: inline-flex; align-items: center; gap: 5px; } #sbar .m + .m { margin-left: 11px; } #sbar .m b { color: var(--ink); font-weight: 650; }
   #sbar .m i { display: block; flex: none; width: 40px; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--u, var(--spend)) var(--p), var(--utrack) var(--p)); }
   #sbar .us.stale { opacity: .55; } #sbar .us .unote { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
-  #sbar .aw { color: var(--spend); font-weight: 650; } #sbar .aw.lid { color: var(--needs); } #sbar .aw .ic { width: 13px; height: 13px; }
+  /* keeping the Mac awake: the cup in amber, the laptop in red while each holds; a muted mark while off */
+  #sbar .aw { color: var(--spend); font-weight: 650; } #sbar .lidb { color: var(--needs); font-weight: 650; }
+  #sbar :is(.aw, .lidb) .ic { width: 14px; height: 14px; } #sbar :is(.aw, .lidb).off { color: var(--muted); padding: 0 9px; }
+  #sbar .conn { cursor: pointer; }
   #sbar .sbpanel { position: absolute; bottom: calc(100% + 6px); right: 8px; width: 300px; box-sizing: border-box; padding: 10px 12px 12px; border-radius: 10px; background: var(--panel); box-shadow: 0 10px 34px rgba(0, 0, 0, .25); color: var(--muted); font-size: 12px; white-space: normal; }
   :root[data-sbar] #usage { display: none; }
+  /* the list's foot row — the fish, the search and the chips, the usage — goes while the bar is on (2026-10-09): what it
+     held is the bar's; on the rail too, which keeps the project's short name (#stitle) */
+  :root[data-sbar] :is(#shd, #sfoot) { display: none; }
   :is(#usage, #sbar) .umoney { grid-column: 1 / -1; margin-top: -3px; font-size: 10.5px; font-variant-numeric: tabular-nums; }   /* a cap in money: what is spent of it, under its bar */
   #usage .unote { line-height: 1.35; white-space: normal; text-align: left; }   /* not `.note`: that is note()'s popup — position: fixed, and note() removes every one */
   /* folded, the rings 20 px apart where the list has the room (12 until 2026-09-27 — the open rows had had the same ask
@@ -1491,7 +1507,7 @@
     <div id="resume" hidden></div>
   </section>
 </main>
-<footer id="sbar" hidden></footer>
+<footer id="sbar" hidden><div id="sbFind"></div><div id="sbLeft"></div><div id="sbPeople"></div><div id="sbRight"></div></footer>
 <div id="trail" aria-hidden="true" hidden></div>
 <dialog id="settings" class="pop" aria-label="Settings" tabindex="-1">
   <div class="shd2"><h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4><button class="sclose" id="settingsClose" title="Close · esc" aria-label="Close">×</button></div>
@@ -1502,7 +1518,7 @@
     <label class="opt sub" id="tintRow" hidden><span class="ssw" id="tintSw"><input type="color" id="simpleTint" value="#000000" aria-label="The one colour every project wears"></span><span><b>one colour</b> for every project, black until you pick one — the chat header's square picks it too · ⌥-click back to black</span></label>
     <label class="opt" title="On, every clauding card's light stands at the same angle — the blinks and the dots too; off, each card runs at its own. Either way a card rebuilt by an update carries on where it was"><input type="checkbox" id="ringsInStep" checked><span><b>rings in step</b> — every card's light at the same angle; off, each at its own</span></label>
     <label class="opt" title="On, a clauding card's light runs down its coloured edge, one light per sub-agent, and a monitor's slowly; off, round the whole card — the ring. The open chat's light runs on past its card only with the ring"><input type="checkbox" id="edgeLight"><span><b>edge light</b> — a clauding card's light runs down its coloured edge; off, round the card</span></label>
-    <label class="opt" title="On, a strip at the window's foot says what the machine is doing — the connection, the chats clauding and asking, the drawers and shells and monitors, the plan usage and whether the Mac is kept awake; the list's foot keeps only its filters"><input type="checkbox" id="sbarOn" checked><span><b>status bar</b> — the chats, the drawers and the plan usage at the window's foot</span></label>
+    <label class="opt" title="On, a strip at the window's foot says what the machine is doing — the connection, the chats clauding and asking, the drawers and shells and monitors, the plan usage and whether the Mac is kept awake; the list's foot keeps only its filters"><input type="checkbox" id="sbarOn" checked><span><b>status bar</b> — the search, the chats, the faces, the plan usage and keeping the Mac awake at the window's foot; off, they go back under the list and into the chat header</span></label>
     <div class="opt sub sbstats" id="sbarStats" title="What else the status bar says — asked of the Mac every 3 s while shown"><span><b>also</b></span><label><input type="checkbox" data-stat="cpu"> CPU</label><label><input type="checkbox" data-stat="mem"> memory</label><label><input type="checkbox" data-stat="claude"> Claude's memory</label></div>
     <label class="opt" title="On, the chat header is a bar inset from the window's edges, rounded and shadowed; off, it runs edge to edge as before"><input type="checkbox" id="headFloat"><span><b>floating header</b> — the chat header as a rounded bar inset from the edges</span></label>
     <div class="dens" title="How much of each chat its card carries — a question waiting on you shows at every size">
@@ -1674,6 +1690,8 @@
     return on ? cards[qsel.i] || null : null;
   }
   const qShow = on => { const inp = $('#q'); inp.hidden = !on; $('#filters').classList.toggle('searching', on); if (on) { inp.focus(); inp.select(); } };
+  // the state chips, on #filters itself: it moves between the list's foot and the status bar (dockBar)
+  $('#filters').addEventListener('click', e => { const f = e.target.closest('.fchip'); if (!f) return; const k = f.dataset.f; prefs.filters = FILTERS.map(x => x[0]).filter(x => x === k ? !filterOn(k) : filterOn(x)); savePrefs(); renderBoard(); });
   {
     const btn = $('#qBtn'), inp = $('#q');
     btn.onclick = () => qShow(inp.hidden);
@@ -1932,26 +1950,29 @@
   function renderBar() {
     const el = $('#sbar'); if (!el || el.hidden || !state.snapshots) return;
     const all = [...state.sessions.values()], n = f => all.filter(f).length, plural = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`;
-    const work = n(s => s.alive && s.status === 'working'), ask = n(s => asking(s));
+    const ask = n(s => asking(s));
     const drawers = n(s => s.terminal && s.terminal.exited === null), shells = n(s => s.shell && s.shell.exited === null);
     const mons = all.reduce((a, s) => a + (s.alive ? (s.tasks || []).length : 0), 0);
-    const parts = [`<span class="seg conn" title="${bar.conn ? 'Connected to the board\'s server' : 'The server is not answering — reconnecting'}"><i class="${bar.conn ? 'ok' : 'off'}"></i>${bar.conn ? 'connected' : 'reconnecting…'}</span>`,
-      `<span class="seg" title="claudes running · Claude at work · waiting on your answer">${plural(n(s => s.alive), 'live chat')} · <span class="w">${work} clauding</span>${ask ? ` · <em>${ask} asking</em>` : ''}</span>`];
+    const left = [`<button class="seg conn" title="${bar.conn ? 'Connected to the board\'s server' : 'The server is not answering — reconnecting'} — click for the About box"><i class="${bar.conn ? 'ok' : 'off'}"></i>${bar.conn ? 'connected' : 'reconnecting…'}</button>`,
+      `<span class="seg" title="claudes running here and elsewhere${ask ? ' · waiting on your answer' : ''}">${n(s => s.alive)} live${ask ? ` · <em>${ask} asking</em>` : ''}</span>`];
     const busy = [drawers && plural(drawers, 'drawer'), shells && plural(shells, 'shell'), mons && plural(mons, 'monitor')].filter(Boolean);
-    if (busy.length) parts.push(`<span class="seg" title="claude sessions in drawers here · shells · monitors and background commands running">${busy.join(' · ')}</span>`);
-    parts.push('<span class="grow"></span>');
-    const st = bar.stats, want = prefs.sbStats || [], stat = [];
+    if (busy.length) left.push(`<span class="seg" title="claude sessions in drawers here · shells · monitors and background commands running">${busy.join(' · ')}</span>`);
+    const st = bar.stats, want = prefs.sbStats || [], stat = [], right = [];
     if (want.includes('cpu')) stat.push(sbMeter('CPU', st.cpu ?? 0, st.cpu == null ? '…' : `${st.cpu}%`, st.cpu >= 90 ? 'var(--needs)' : 'var(--watch)', 'every core\'s time spent busy, the last 3 s'));
     if (want.includes('mem')) stat.push(st.mem ? sbMeter('memory', st.mem.used / st.mem.total * 100, `${fmtBytes(st.mem.used)} / ${fmtBytes(st.mem.total)}`, st.mem.used / st.mem.total >= .9 ? 'var(--needs)' : 'var(--watch)', 'memory used, as Activity Monitor counts it, of all there is') : sbMeter('memory', 0, '…', 'var(--watch)'));
     if (want.includes('claude')) stat.push(`<span class="m" title="what the live claude processes hold in memory (their children aside)">claude <b>${st.claude?.rss != null ? fmtBytes(st.claude.rss) : '…'}</b>${st.claude?.n ? ` · ${st.claude.n}` : ''}</span>`);
-    if (stat.length) parts.push(`<span class="seg">${stat.join('')}</span>`);
+    if (stat.length) right.push(`<span class="seg">${stat.join('')}</span>`);
     if (!usage.off) {
       const ws = (usage.data?.windows || []).filter(w => !uGrant(w));
-      parts.push(`<button class="seg us${bar.open ? ' on' : ''}${usage.err && usage.data ? ' stale' : ''}" title="Claude plan usage${usage.err ? ` — ${esc(usage.err)}` : ''} — click for the rows">${ws.length ? ws.map(w => sbMeter(uShort(w), w.percent, `${w.percent}%`, uColor(w.percent), uTip(w))).join('') : `<span class="unote">usage: ${esc(usage.err || (usage.data ? 'nothing reported' : 'asking…'))}</span>`}</button>`);
+      right.push(`<button class="seg us${bar.open ? ' on' : ''}${usage.err && usage.data ? ' stale' : ''}" title="Claude plan usage${usage.err ? ` — ${esc(usage.err)}` : ''} — click for the rows">${ws.length ? ws.map(w => sbMeter(uShort(w), w.percent, `${w.percent}%`, uColor(w.percent), uTip(w))).join('') : `<span class="unote">usage: ${esc(usage.err || (usage.data ? 'nothing reported' : 'asking…'))}</span>`}</button>`);
     }
-    if (state.awake.awake || state.awake.lid) parts.push(`<button class="seg aw${state.awake.lid ? ' lid' : ''}" title="${esc(awakeTip())}">${state.awake.lid ? ICON.lid : ICON.cup}awake</button>`);
+    // keeping the Mac awake, both switches, always here (2026-10-09): a muted mark while off
+    const aw = state.awake;
+    right.push(`<button class="seg aw${aw.awake ? '' : ' off'}" id="sbAwake" aria-pressed="${!!aw.awake}" title="${esc(aw.awake ? 'Keeping this Mac awake while the board runs: idle sleep is held off (the display may still sleep, and closing the lid still sleeps it). Click to let it sleep' : 'Keep this Mac awake while the board runs — idle sleep held off; the display may still sleep')}">${ICON.cup}${aw.awake ? '<span>awake</span>' : ''}</button>`,
+      `<button class="seg lidb${aw.lid ? '' : ' off'}" id="sbLid" aria-pressed="${!!aw.lid}" title="${esc(aw.lid ? 'This Mac does not sleep, not even with its lid closed (pmset disablesleep) — mind the battery and the heat in a bag. Click to let it sleep with the lid shut again (Touch ID or your password)' : 'Keep this Mac awake with its lid closed too (pmset disablesleep) — Touch ID or your password each time; mind the battery in a bag')}">${ICON.lid}${state.lidAsking ? '<span>Touch ID…</span>' : aw.lid ? '<span>lid closed</span>' : ''}</button>`);
     const rows = usage.data?.windows || [];
-    setHtml(el, parts.join('') + (bar.open && rows.length ? `<div class="sbpanel"><div class="uhd">plan usage</div><div class="urows">${usageRows(rows)}</div></div>` : ''));
+    setHtml($('#sbLeft'), left.join(''));
+    setHtml($('#sbRight'), right.join('') + (bar.open && rows.length ? `<div class="sbpanel"><div class="uhd">plan usage</div><div class="urows">${usageRows(rows)}</div></div>` : ''));
   }
   async function loadStats() {
     const want = prefs.sbStats || [];
@@ -1961,14 +1982,26 @@
     bar.busy = false; renderBar();
   }
   setInterval(loadStats, 3000);
+  // The search and the state chips (#filters) and the faces (#people) move into the bar while it is on (2026-10-09) —
+  // the nodes themselves, their handlers with them — and the list's foot row (#shd: the fish, the search, the chips,
+  // the usage) goes; off, they go back where they were.
+  function dockBar(on) {
+    const f = $('#filters'), p = $('#people');
+    if (on) { $('#sbFind').append(f); $('#sbPeople').append(p); }
+    else { $('#shd').append(f); $('#sessions').insertBefore(p, $('#stitle')); }
+  }
   function applyBar() {
     const on = prefs.statusBar !== false;
     document.documentElement.toggleAttribute('data-sbar', on); $('#sbar').hidden = !on; $('#sbarStats').hidden = !on;
+    dockBar(on);
     renderBar(); loadStats();
+    if (typeof awakeChanged === 'function' && state.snapshots) awakeChanged();   // the header's cup and the menu's lid row: theirs only with the bar off
   }
   $('#sbar').addEventListener('click', e => {
     if (e.target.closest('.us')) { bar.open = !bar.open; renderBar(); return; }
-    if (e.target.closest('.aw')) { if (state.awake.lid) { if (!state.lidAsking) setAwake({ lid: false }, e.target.closest('.aw')); } else setAwake({ awake: false }, e.target.closest('.aw')); }
+    if (e.target.closest('.conn')) { aboutOpen(); return; }
+    const aw = e.target.closest('#sbAwake'); if (aw) { setAwake({ awake: !state.awake.awake }, aw); return; }
+    const lid = e.target.closest('#sbLid'); if (lid && !state.lidAsking) setAwake({ lid: !state.awake.lid }, lid);
   });
   document.addEventListener('click', e => { if (bar.open && !e.composedPath().includes($('#sbar'))) { bar.open = false; renderBar(); } });   // the path: the button clicked is drawn anew under the click
   $('#sbarOn').checked = prefs.statusBar !== false;
@@ -3646,7 +3679,6 @@
   $('#sessions').addEventListener('click', e => {
     if (e.target.closest('#stitle .sx')) { selectProject(ALL); return; }
     if (e.target.closest('#stitle')) { pickOpen('project'); return; }
-    const f = e.target.closest('.fchip'); if (f) { const k = f.dataset.f; prefs.filters = FILTERS.map(x => x[0]).filter(x => x === k ? !filterOn(k) : filterOn(x)); savePrefs(); renderBoard(); return; }
     const card = e.target.closest('.card'); if (!card) return;
     const cpr = e.target.closest('.cpr');
     if (cpr) { e.stopPropagation(); openSession(card.dataset.id); showPr(cpr.dataset.url); return; }   // that chat, with that PR open
@@ -3910,7 +3942,7 @@
       '<div class="sep"></div>',
       `<button class="hmi${prefs.headDetails ? ' on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}" title="${esc(statusLabel[s.status] || s.status)} · click to ${prefs.headDetails ? 'hide' : 'show'} path, branch and session details under the title"><span class="dot ${s.status}"></span><span>${esc((statusLabel[s.status] || s.status || '').split(' — ')[0])}${s.statusSince ? ` · <span data-at="${esc(s.statusSince)}"></span>` : ''}</span><span class="k">${prefs.headDetails ? 'hide' : 'show'} path</span></button>`,
       '<div class="sep"></div>',
-      `<button class="hmi${state.awake.lid ? ' on' : ''}" id="lidBtn" aria-pressed="${!!state.awake.lid}" title="No sleep at all, not even with the lid closed (pmset disablesleep) — the system asks for your password each time; mind the battery in a bag">${ICON.lid}<span>awake with the lid closed</span><span class="k">${state.lidAsking ? 'password…' : state.awake.lid ? 'on' : 'off'}</span></button>`,
+      prefs.statusBar !== false ? '' : `<button class="hmi${state.awake.lid ? ' on' : ''}" id="lidBtn" aria-pressed="${!!state.awake.lid}" title="No sleep at all, not even with the lid closed (pmset disablesleep) — the system asks for your password each time; mind the battery in a bag">${ICON.lid}<span>awake with the lid closed</span><span class="k">${state.lidAsking ? 'password…' : state.awake.lid ? 'on' : 'off'}</span></button>`,
       '<div class="sep"></div>',
       `<button class="hmi" id="settingsBtn" title="The board's settings, its setup and its keys">${ICON.cog}<span>settings</span><span class="k">⌘,</span></button>`,
     ].join('');
@@ -3940,7 +3972,7 @@
     const sb = $('#shellEndBtn'); if (sb) sb.onclick = () => { menu.close(); dropTab(s, 'shell'); };
     const ib = $('#ideCloseBtn'); if (ib) ib.onclick = () => { menu.close(); if (ideKey(s)) dropTab(s, ideKey(s)); };
     $('#settingsBtn').onclick = () => settingsOpen(true);
-    $('#lidBtn').onclick = () => { if (!state.lidAsking) setAwake({ lid: !state.awake.lid }, $('#moreBtn')); };   // a toggle: the menu stays up
+    const lb = $('#lidBtn'); if (lb) lb.onclick = () => { if (!state.lidAsking) setAwake({ lid: !state.awake.lid }, $('#moreBtn')); };   // a toggle: the menu stays up — the status bar's while it is on
     $('#moreBtn').onclick = e => { e.stopPropagation(); if (menu.open) menu.close(); else openMenu(); };
     const vb = $('#viewBtn'); if (vb) vb.onclick = () => toggleFocusView(s);
     $('#shead .repo').onclick = () => { if (s.cwd) selectProject(prefs.project === s.cwd ? ALL : s.cwd); };   // a toggle (2026-10-08)
@@ -4819,12 +4851,14 @@
     ? 'This Mac does not sleep, not even with its lid closed (pmset disablesleep) — mind the battery and the heat in a bag. Click to let it sleep with the lid shut again (asks for your password)'
     : state.awake.awake ? 'Keeping this Mac awake while the board runs: idle sleep is held off (the display may still sleep, and closing the lid still sleeps it). Click to let it sleep'
     : 'Keep this Mac awake while the board runs — idle sleep held off; the display may still sleep. With the lid closed too: ···';
-  const awakeHtml = () => `<button class="awake${state.awake.lid ? ' lid' : state.awake.awake ? '' : ' off'}" id="awakeBtn" aria-pressed="${!!(state.awake.awake || state.awake.lid)}" title="${esc(awakeTip())}">${state.awake.lid ? ICON.lid : ICON.cup}${state.awake.awake || state.awake.lid ? '<span>awake</span>' : ''}</button>`;
-  /** The button into the header that is up, before its ···; again after every header drawn anew (renderHead, leaveChat). */
+  const awakeHtml = () => prefs.statusBar !== false ? '' : `<button class="awake${state.awake.lid ? ' lid' : state.awake.awake ? '' : ' off'}" id="awakeBtn" aria-pressed="${!!(state.awake.awake || state.awake.lid)}" title="${esc(awakeTip())}">${state.awake.lid ? ICON.lid : ICON.cup}${state.awake.awake || state.awake.lid ? '<span>awake</span>' : ''}</button>`;
+  /** The button into the header that is up, before its ···; again after every header drawn anew (renderHead, leaveChat).
+   *  None while the status bar is on (2026-10-09): both switches are the bar's. */
   function drawAwake() {
     const head = $('#shead'), html = awakeHtml(), had = head.querySelector('#awakeBtn');
     if ((had?._html || '') === html) return false;
     had?.remove();
+    if (!html) return true;
     const more = head.querySelector(':scope > .hmore'); if (more) more.insertAdjacentHTML('beforebegin', html); else head.insertAdjacentHTML('beforeend', html);
     head.querySelector('#awakeBtn')._html = html;
     return true;

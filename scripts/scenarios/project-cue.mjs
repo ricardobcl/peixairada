@@ -7,7 +7,7 @@
 // pixel, from the list's foot, with the popover opening beside its cell.
 import { readFileSync } from 'node:fs';
 
-export const meta = { server: true, fixture: 'auto' };
+export const meta = { server: true, fixture: 'auto', prefs: { statusBar: false } };   // the list's foot row is what this is about: with the status bar on (the default since 2026-10-09) it is the bar's
 
 export default async function (ctx) {
   const out = {};

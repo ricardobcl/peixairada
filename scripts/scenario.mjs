@@ -61,7 +61,7 @@ try {   // a server or a Chrome that does not come up: what did come up is ended
     boardUrl = server.url;
     log(`server ${server.url} (state ${server.dir}${meta.fake ? ', fake claude' : ''})`);
   }
-  cdp = await launchChrome({ dark: !!process.env.DARK });
+  cdp = await launchChrome({ dark: !!process.env.DARK, prefs: meta.prefs || {} });
   cleanups.push(() => cdp.close());
   await openBoard(cdp, boardUrl, { hash: hash || null });
 } catch (e) {

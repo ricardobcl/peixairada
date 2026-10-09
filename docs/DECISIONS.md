@@ -5,6 +5,33 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-09, night — the status bar takes the list's foot, and the lid asks for Touch ID
+
+Ricardo: "the GH user avatars can also go the the new lower footer in the middle", "we can add the search icon to the
+bottom footer also, far left", "the app icon row can be removed", "awake button is repeated up top now, remove it from
+the header", "now that we have more space on new footer, put there the other option to close sleeping when closing the
+lid (also can we use touch-id instead of pass for sudo?)".
+
+* **The bar holds what the list's foot row held**: the search and the state chips far left (the very nodes, moved in,
+  with their handlers), the faces in its middle, and the row with the fish, the search, the chips and the usage goes —
+  on the rail too. The fish's two jobs: the connection is the bar's first segment, and a click on it is the About box.
+  The live count stays in the bar (the chips count the project in view; live counts every claude) with the asking
+  ones in red; "clauding" left it, the chips say it.
+* **Both awake switches are the bar's**, always there: the cup (amber while on) and the laptop (red while on, *Touch
+  ID…* while sudo asks), muted marks while off. The chat header's cup and the ··· row for the lid show only with the
+  bar off, so neither is ever lost.
+* **Touch ID for the lid**: the board runs `sudo pmset -a disablesleep …` first. This Mac's `/etc/pam.d/sudo_local`
+  already has `auth sufficient pam_tid.so`, so sudo asks for a fingerprint — from the server, a launchd agent in the
+  user's session, with no terminal: if Touch ID is cancelled, sudo cannot read a password and fails at once, and the
+  board falls back to osascript's administrator dialog (the password). On a Mac without pam_tid it is the dialog, as
+  before; a sudoers NOPASSWD rule for that one command would make it ask nothing. Not tried live here: it puts a
+  prompt on the screen.
+* **The scenarios can start from prefs** (`meta.prefs`, passed to `launchChrome`): project-cue, people-row, notch and
+  list-ends run with the bar off — they are about the list's foot as it was — and status-bar, people-row and
+  keep-awake check the docked bar.
+* **timeline.mjs flakes under load**: its thumb's width and its labels' fade are read on the clock, and with the
+  machine's load average near 5 it failed two runs in three — the same on the commit before these changes.
+
 ## Decisions of 2026-10-09, later — the studies picked: ink cards, lanes, the edge light, sonar, the landing wash, a floating header to try, the status bar; Riso for later
 
 Ricardo, on the studies page (seven screens A–G, five motions M1–M5): "B and C are pretty, so do it", "E's header that

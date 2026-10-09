@@ -335,12 +335,11 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   closes it, `runHotkey` closes it rather than let it swallow the key. Toggles leave it up (the click-outside test goes
   by `composedPath()`); actions that go somewhere close it. **`>_` comes back into the row while armed or failed**, and
   a note about a folded button is anchored at ··· (`seen()`). → `scripts/scenarios/head-menu.mjs`. **Keeping the Mac
-  awake is a button in the row, always** (`#awakeBtn`, before ···, 2026-10-09 — a row of the menu and a mark shown only
-  while on, the day before): a muted cup while the Mac may sleep, the cup in the spend's amber saying *awake* while the
-  server holds idle sleep off; a click switches it. *Awake with the lid closed* stays a row of the menu (`#lidBtn`, a
-  password); while it holds the button is a laptop in the needs' red and its click lets the lid sleep the Mac again.
-  In whichever header is up, a chat's or the empty one (`drawAwake()` after every header drawn anew and on the
-  snapshot; not in `drawn.head`'s markup). → `scripts/scenarios/keep-awake.mjs`.
+  awake is the status bar's** (2026-10-09, later — `#sbAwake`, `#sbLid`, see the bar); **with the bar off** it is a
+  button in the header row (`#awakeBtn`, before ···: a muted cup off, the cup in amber saying *awake* on, the laptop in
+  red while the lid's setting holds — its click then turns that off) and a row of ··· (`#lidBtn`). The header's is drawn
+  into whichever header is up, a chat's or the empty one (`drawAwake()` after every header drawn anew and on the
+  snapshot; not in `drawn.head`'s markup), and none while the bar is on. → `scripts/scenarios/keep-awake.mjs`.
 * **A PR's CI is said in the chat header only** (2026-10-09; the cards have enough): `commits(last: 1) { … statusCheckRollup
   { state } }` in `PR_FIELDS` → `prChecks` → `checks` (pass · fail · pending) on each PR; `.hpr` wears `.ck` — a round
   badge after its number in the page's ground, a tick, a cross, or a ring turning (`ring`, stilled under reduced
@@ -487,15 +486,21 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   there on no label is a press on the label ringed `.near`; a press on the thumb *as drawn* holds it where grabbed.
   → `scripts/scenarios/timeline.mjs`.
 * **The status bar is the machine at the window's foot** (2026-10-09, the studies' F — Orca's; `#sbar`, `renderBar`,
-  `body`'s grid row 2; on by default, Settings → Board → *status bar*, `prefs.statusBar` → `<html data-sbar>`): the
-  connection (the stream's open and error, `bar.conn`), the chats live · clauding · asking, the drawers · shells ·
-  monitors, then on the right what the settings add (`prefs.sbStats`: CPU, memory, Claude's memory — `GET
+  `body`'s grid row 2; on by default, Settings → Board → *status bar*, `prefs.statusBar` → `<html data-sbar>`). **Four
+  slots** (2026-10-09, later): `#sbFind` far left — **the search and the state chips, `#filters` itself moved in**
+  (`dockBar`, its handlers with it; the chips' click is on `#filters`) —, `#sbLeft` — the connection (the stream's open
+  and error, `bar.conn`; a click is the About box, the fish's whose row went), the live chats and how many are asking,
+  the drawers · shells · monitors —, `#sbPeople` in the middle — **the faces, `#people` moved in** — and `#sbRight`:
+  what the settings add (`prefs.sbStats`: CPU, memory, Claude's memory — `GET
   /api/stats?want=cpu,mem,claude`, every 3 s while shown and visible, `machineStats` on the server: the cores' busy share
   since the last ask, vm_stat's used as Activity Monitor counts it, `ps` over the registry's live claude pids), **the
   plan usage as meters** — with the bar on, the list's foot has none (`:root[data-sbar] #usage`) — whose click lifts its
-  rows in a panel (`usageRows`, shared with `#usage`; a click elsewhere, by `composedPath()`, puts it away), and the
-  Mac kept awake (a click lets it sleep). Drawn by markup (`setHtml`) from `renderBoard`, the usage, the awake state,
-  the stream and each stats answer. → `scripts/scenarios/status-bar.mjs`, the stats in `test/awake.test.mjs`.
+  rows in a panel (`usageRows`, shared with `#usage`; a click elsewhere, by `composedPath()`, puts it away), and **both
+  awake switches** (`#sbAwake` the cup, amber while on; `#sbLid` the laptop, red while on, *Touch ID…* while sudo asks;
+  muted marks while off). **The list's foot row goes** — the fish, the search, the chips, the usage (`:root[data-sbar]
+  :is(#shd, #sfoot)`) — on the rail too; the bar off, `dockBar(false)` puts `#filters` and `#people` back. The slots
+  `#sbLeft`/`#sbRight` are drawn by markup (`setHtml`) from `renderBoard`, the usage, the awake state, the stream and
+  each stats answer; the two moved-in nodes are never redrawn by the bar. → `scripts/scenarios/status-bar.mjs`, the stats in `test/awake.test.mjs`.
 * **The plan usage is words at the row's end** (with the status bar off; the bar's otherwise): `#usage` in `#sfoot` — `5H 42%  1W 75%  F 95%`, a tag per limit
   (`uShort`: 5H, 1W, a model's initial for its own week, CR for a credit grant — which stays out of the row, `.grant`
   (`uGrant`: no reset and no money) —, $ for a cap in money, whose row over it adds what is spent of what, `.umoney`)
@@ -907,7 +912,8 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   `--shot file.png` saves a screenshot after, `DARK=1`, `URL=http://127.0.0.1:<port>/`. `--dump-dom` is useless here
   (fires before the SSE snapshot); drive Chrome over CDP — `lib/cdp.mjs`.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports
-  `meta` (`server`, `fake`, `fixture`) and a default `async (ctx) => result`; the runner starts a throwaway server
+  `meta` (`server`, `fake`, `fixture`, `env`, and `prefs` — what the page starts from, 2026-10-09: `{ statusBar: false }`
+  for a scenario about the list's foot) and a default `async (ctx) => result`; the runner starts a throwaway server
   on a free port with its own state dir (`lib/testserver.mjs`), builds the fixture (`scripts/fixture.mjs`), runs the
   fake claude when asked, launches Chrome with **focus emulation on**, and ends terminals, holders, Chrome, the fixture
   and temp dirs on exit — after a failed setup too, on SIGTERM, SIGHUP and a stray error too, never waiting on cleanup
