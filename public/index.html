@@ -580,6 +580,20 @@
   .card.asking { --lit: var(--needs); --seg: 100%; animation: blink 1.2s steps(2, jump-none) infinite; }
   .card.asking::before, .card.asking::after { content: none; }
   @keyframes ring { to { transform: rotate(360deg); } }
+  /* The edge light (2026-10-09, prefs.edgeLight — <html data-light="edge">): the same readings — --lit, one light per
+     sub-agent (--seg), --spins — running down the card's lit 3 px edge instead of round it. The card keeps its border
+     but on the left (no band for a ring; the overflow clips at the padding box, and the edge is to be in it — its
+     padding takes the 2 px), the strip is twice the card's height with a light every card-height ÷ lights, and one turn
+     moves it down by a card's height — a transform, so the compositor's. The ::after cover has nothing to cover. */
+  :root[data-light="edge"] .card:is(.working, .watching):not(.asking) { border-width: 2px 2px 2px 0; padding: 8px 10px 7px 12px; border-color: transparent;
+    box-shadow: -8px 0 22px -10px var(--lit), 0 0 0 1px color-mix(in srgb, var(--lit) 22%, transparent); }
+  :root[data-light="edge"] .card:is(.working, .watching)::after { content: none; }
+  :root[data-light="edge"] .card:is(.working, .watching)::before { left: 0; top: 0; width: 3px; height: 200%; margin: 0; aspect-ratio: auto; filter: drop-shadow(0 0 3px var(--lit));
+    background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(50% / var(--lights, 1) * .25), var(--lit) calc(50% / var(--lights, 1) * .5), transparent calc(50% / var(--lights, 1) * .75), transparent calc(50% / var(--lights, 1)));
+    animation-name: edge; }
+  :root[data-light="edge"] .card.watching:not(.working)::before { --lights: 1; }
+  :root[data-light="edge"] .card:is(.working, .watching):is(:hover, .active, .qsel) { border-color: var(--repo, var(--nocolor)); }
+  @keyframes edge { from { transform: translateY(-50%); } to { transform: none; } }
   @keyframes blink {
     from { border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
     to { border-color: color-mix(in srgb, var(--needs) 28%, var(--line)); box-shadow: none; }
@@ -1355,6 +1369,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .card.working::before, .card.watching::before { animation: none; background: var(--lit); }
+    :root[data-light="edge"] .card:is(.working, .watching)::before { height: 100%; filter: none; }   /* the edge steady in the light, as the ring's band is */
     #trail { background: var(--lit); }   /* no comet under it (drawTrail makes none): the band steady in the light's colour */
     .card.asking { animation: none; border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
     .card.landed { animation: none; }
@@ -1438,6 +1453,7 @@
     <label class="opt" title="On, every project wears one colour — black, or the one picked under this switch — instead of its own (Peacock's and the setup's stay set, for VS Code and for when this is off), and no state or code has a colour of its own — a PR's chip and the people's faces keep theirs; the accent is left for what wants you — a question, your move, an unread count"><input type="checkbox" id="simpleColors"><span><b>simple colours</b> — every project in one colour, the states in greys; off, each project in its own</span></label>
     <label class="opt sub" id="tintRow" hidden><span class="ssw" id="tintSw"><input type="color" id="simpleTint" value="#000000" aria-label="The one colour every project wears"></span><span><b>one colour</b> for every project, black until you pick one — the chat header's square picks it too · ⌥-click back to black</span></label>
     <label class="opt" title="On, every clauding card's light stands at the same angle — the blinks and the dots too; off, each card runs at its own. Either way a card rebuilt by an update carries on where it was"><input type="checkbox" id="ringsInStep" checked><span><b>rings in step</b> — every card's light at the same angle; off, each at its own</span></label>
+    <label class="opt" title="On, a clauding card's light runs down its coloured edge, one light per sub-agent, and a monitor's slowly; off, round the whole card — the ring. The open chat's light runs on past its card only with the ring"><input type="checkbox" id="edgeLight"><span><b>edge light</b> — a clauding card's light runs down its coloured edge; off, round the card</span></label>
     <div class="dens" title="How much of each chat its card carries — a question waiting on you shows at every size">
       <b>cards</b><input type="range" id="cardsSize" min="0" max="2" step="1" value="0" list="cardsStops" aria-label="Card size">
       <datalist id="cardsStops"><option value="0"></option><option value="1"></option><option value="2"></option></datalist>
@@ -1564,7 +1580,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false }, lidAsking: false };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -2311,7 +2327,7 @@
   // card's animations start from a time of its own, hashed from the chat's id — as steady across renders as 0, only not
   // shared. The header's dot and the divider have no card and stay at 0. Flipping the switch re-phases what is running,
   // so the change shows at once.
-  const PHASED = new Set(['ring', 'blink', 'pulse', 'pix', 'pixhop']);
+  const PHASED = new Set(['ring', 'edge', 'blink', 'pulse', 'pix', 'pixhop']);
   const phaseOf = a => { if (prefs.ringsInStep !== false) return 0; const id = a.effect?.target?.closest?.('.card')?.dataset.id || ''; let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0; return -(h % 60000); };
   // Once a frame, before it paints: the list and the header both ask after a render, and getAnimations() flushes style
   // each time. `now` is the switch's: the change shows at once, and reads at once.
@@ -2321,6 +2337,13 @@
     if (phaseAnims.queued) return; phaseAnims.queued = true;
     requestAnimationFrame(run);
   }
+  // Where a clauding card's light runs (2026-10-09, the studies' M5): round the card — the ring, as always — or down its
+  // lit edge, the ink card's own colour. <html data-light="edge"> picks it in CSS; the open chat's light past its card
+  // (trailGeom) is the ring's alone.
+  const applyLight = () => { if (prefs.edgeLight) document.documentElement.dataset.light = 'edge'; else delete document.documentElement.dataset.light; };
+  applyLight();
+  $('#edgeLight').checked = !!prefs.edgeLight;
+  $('#edgeLight').addEventListener('change', e => { prefs.edgeLight = e.target.checked; savePrefs(); applyLight(); listChanged(); phaseAnims(true); });
   $('#ringsInStep').checked = prefs.ringsInStep !== false;
   $('#ringsInStep').addEventListener('change', e => { prefs.ringsInStep = e.target.checked; savePrefs(); phaseAnims(true); });
   // ---- the list's ends: how many cards are out of sight ---------------------------------
@@ -2462,7 +2485,7 @@
    *  open and the list is not the rail. The card's own light — its colour, its pace, how many — when it is in the list. */
   function trailGeom(open) {
     const s = state.sessions.get(state.current), head = $('#shead');
-    if (!s || s.done || asking(s) || !(s.status === 'working' || watching(s)) || $('#main').classList.contains('scompact') || !head.querySelector('h2 .sep')) return null;
+    if (!s || s.done || asking(s) || !(s.status === 'working' || watching(s)) || prefs.edgeLight || $('#main').classList.contains('scompact') || !head.querySelector('h2 .sep')) return null;
     const hr = head.getBoundingClientRect(), hs = parseFloat(head.style.getPropertyValue('--hsplit')), hrow = head.style.getPropertyValue('--hrow');
     const work = s.status === 'working', card = open?.el.getBoundingClientRect();
     return { card, box: hs > 0 ? { l: hr.left, t: hr.top, r: hr.left + hs, b: hr.top + (hrow.endsWith('px') ? parseFloat(hrow) : hr.height) } : null,

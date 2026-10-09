@@ -243,6 +243,19 @@ export default async function (ctx) {
     await ctx.sleep(1200);   // past the alert's debounce
     out.alertsAfter = await ctx.evaluate(`window.__alerts.filter(a => a.title === 'Normal work').map(a => a.kind)`);
     ctx.assert.deepEqual(out.alertsAfter, ['needs-input'], 'and no second alert for a question whose line arrived with its answer');
+
+    // ---- the ink card's lit edge (2026-10-09), and the edge light: the ring's readings down that edge ----
+    const look = t => ctx.evaluate(`JSON.stringify((c => ({ bg: getComputedStyle(c).backgroundImage.slice(0, 40), anim: getComputedStyle(c, '::before').animationName, w: getComputedStyle(c, '::before').width,
+      lights: c.style.getPropertyValue('--lights') || '1' }))([...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title')?.textContent === ${JSON.stringify(t)})))`).then(JSON.parse);
+    out.ring = await look('Normal work');
+    ctx.assert.ok(out.ring.bg.startsWith('linear-gradient(to right') && out.ring.anim === 'ring', `the lit edge first, the ring round: ${JSON.stringify(out.ring)}`);
+    await ctx.evaluate(`document.querySelector('#edgeLight').click()`);
+    await ctx.waitFor(`document.documentElement.dataset.light === 'edge'`, { what: 'the edge light on' });
+    out.edge = [await look('Normal work'), await look('Three agents out')];
+    ctx.assert.deepEqual(out.edge.map(e => [e.anim, e.w, e.lights]), [['edge', '3px', '1'], ['edge', '3px', '3']], `down the edge, a light per agent: ${JSON.stringify(out.edge)}`);
+    await ctx.shot('card-signals-edge', { x: 0, y: 0, width: 400, height: 700 });
+    await ctx.evaluate(`document.querySelector('#edgeLight').click()`);
+    ctx.assert.equal((await look('Normal work')).anim, 'ring', 'off: the ring again');
     return out;
   } finally {
     for (const p of [...sleeps, holder]) { try { p.kill(); } catch {} }

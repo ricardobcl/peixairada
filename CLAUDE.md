@@ -238,7 +238,11 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   `@media (prefers-reduced-motion: reduce)` at the end of the CSS stills the ring (a flat edge in `--lit`), the blink
   (a steady red border), the pulse, the spinner, the flare and every transform; `drawCards` reads `REDUCED` and puts
   cards in place. A new animation adds a line there, and to `scripts/scenarios/reduced-motion.mjs` if it is a state's.
-* **The card's edge is one ring with four readings**: `--lit` is what runs in it, `--seg` how much of the edge one
+* **The card's edge is one ring with four readings** — or, with the settings' *edge light* (`prefs.edgeLight` →
+  `<html data-light="edge">`, 2026-10-09), the same readings running down the card's lit left edge: a strip twice the
+  card's height, a light every card-height ÷ lights, turned by a `transform` (`@keyframes edge`, phased like `ring`);
+  the card keeps its border but on the left, its padding taking the 2 px (the overflow clips at the padding box), and
+  the open chat's light runs on past its card only with the ring (`trailGeom`; → the last step of `card-signals.mjs`). Either way: `--lit` is what runs in it, `--seg` how much of the edge one
   light owns (`100% / --lights`, one light per sub-agent), `--spins` how fast. Clauding is the project's colour
   **lifted towards white** (`--glow`, 2026-10-02: OKLCH, 85 % of the way to white, hue and chroma kept — the colour
   itself went round a navy unseen; the landing flare is the same light); **watching** (`s.tasks`) is one light in
@@ -616,7 +620,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   in the app the app menu's *Settings…*, which asks `peixKey` as ⌘W does), the chat header's ··· (`#settingsBtn`, the
   menu's last row) and, with no chat open, the empty header's own ··· (`#noChatMore`, delegated — `leaveChat` rewrites
   the header). A head (the name, the counts, × `#settingsClose`), a segmented control (`.stabs`) over three panes
-  (`.spane`): **Board** — the notifications switch (`#notifyOn`), the rings' step (`#ringsInStep`), the cards' size
+  (`.spane`): **Board** — the notifications switch (`#notifyOn`), the rings' step (`#ringsInStep`), the edge light (`#edgeLight`), the cards' size
   (`.dens`), auto-resume (`#autoResume`), ⌥ as Meta (`#optMeta`), what is hidden (`#hidden`) — no date format (DD-MM-YYYY, `fmtDate`); **Setup** — the server's (`#setup`); **Keys** — the list (`.keys`). The class
   is still `pop`, so every row keeps its `.pop …` rule. Esc, the backdrop, ×, ⌘, or ⌘W close it; its `close` drops a
   setup row half typed. **It is modal**: the pane is down while it is up (`postPane`), and the ⌥⌘ / ⌘ keys are swallowed

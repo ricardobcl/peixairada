@@ -19,6 +19,10 @@ edge (M5)".
   the open card glow across; the open card still bleeds into the splitter. A project in the board's black wears a grey
   edge in the dark. The grey ground under a list of near-black cards (`#sessions.onblack`) went: every card is the
   panel now. The rail's squares keep their solid tint — there it is the only cue.
+* **M5 · the edge light, a switch** (Settings → Board → *edge light*, off by default): a clauding card's light runs
+  down its lit edge instead of round the card — one light per sub-agent, a monitor's slowly in its colour — with a
+  soft glow off the edge. The ring stays the default; with the edge light the open chat's light no longer runs on
+  past its card round the splitter and the header's box (that comet is the ring's).
 
 ## Decisions of 2026-10-09 — awake always in sight, CI on the header, design ideas drafted
 
