@@ -1021,6 +1021,14 @@
   #chat.tinted .shead .hprs:hover, #chat.tinted .shead .hprs.on { background: color-mix(in srgb, var(--rink) 12%, transparent); }
   /* ---- The chat's PRs, one per row under the header: state, repo#n, the whole title. ---- */
   #prlist { border-bottom: 1px solid var(--line); background: var(--panel); padding: 4px 12px 5px; display: grid; gap: 1px; min-width: 0; }
+  /* The floating header (2026-10-09, the studies' E — prefs.headFloat, <html data-head="float">, to try beside the
+     plain one): the chat header a bar inset from the window's edges, rounded, an edge of the project's colour and a
+     shadow under it; the PR rows under it take the same insets. The open chat's light no longer runs round its box
+     (trailGeom): the box does not touch the splitter. */
+  :root[data-head="float"] #shead { margin: 10px 14px 4px; border: 1px solid color-mix(in srgb, var(--repo, var(--line)) 45%, var(--line)); border-radius: 14px; overflow: hidden;
+    box-shadow: 0 10px 30px -8px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255, 255, 255, .06); }
+  :root[data-head="float"] #prlist { margin: 0 14px 4px; border: 1px solid var(--line); border-radius: 10px; }
+  @media (prefers-color-scheme: dark) { :root[data-head="float"]:not([data-theme="light"]) #shead { box-shadow: 0 12px 34px -6px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .06); } }
   #prlist[hidden] { display: none; }
   .prrow { display: flex; align-items: baseline; gap: 9px; min-width: 0; padding: 2px 0; font-size: 12px; color: var(--ink); text-decoration: none; }
   .prrow .st { flex: none; width: 52px; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: .5px; color: var(--muted); }
@@ -1473,6 +1481,7 @@
     <label class="opt sub" id="tintRow" hidden><span class="ssw" id="tintSw"><input type="color" id="simpleTint" value="#000000" aria-label="The one colour every project wears"></span><span><b>one colour</b> for every project, black until you pick one — the chat header's square picks it too · ⌥-click back to black</span></label>
     <label class="opt" title="On, every clauding card's light stands at the same angle — the blinks and the dots too; off, each card runs at its own. Either way a card rebuilt by an update carries on where it was"><input type="checkbox" id="ringsInStep" checked><span><b>rings in step</b> — every card's light at the same angle; off, each at its own</span></label>
     <label class="opt" title="On, a clauding card's light runs down its coloured edge, one light per sub-agent, and a monitor's slowly; off, round the whole card — the ring. The open chat's light runs on past its card only with the ring"><input type="checkbox" id="edgeLight"><span><b>edge light</b> — a clauding card's light runs down its coloured edge; off, round the card</span></label>
+    <label class="opt" title="On, the chat header is a bar inset from the window's edges, rounded and shadowed; off, it runs edge to edge as before"><input type="checkbox" id="headFloat"><span><b>floating header</b> — the chat header as a rounded bar inset from the edges</span></label>
     <div class="dens" title="How much of each chat its card carries — a question waiting on you shows at every size">
       <b>cards</b><input type="range" id="cardsSize" min="0" max="2" step="1" value="0" list="cardsStops" aria-label="Card size">
       <datalist id="cardsStops"><option value="0"></option><option value="1"></option><option value="2"></option></datalist>
@@ -1599,7 +1608,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false }, lidAsking: false };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -2368,6 +2377,11 @@
   // (trailGeom) is the ring's alone.
   const applyLight = () => { if (prefs.edgeLight) document.documentElement.dataset.light = 'edge'; else delete document.documentElement.dataset.light; };
   applyLight();
+  // The floating header (2026-10-09, the studies' E): a switch, to compare with the plain one in use.
+  const applyHead = () => { if (prefs.headFloat) document.documentElement.dataset.head = 'float'; else delete document.documentElement.dataset.head; };
+  applyHead();
+  $('#headFloat').checked = !!prefs.headFloat;
+  $('#headFloat').addEventListener('change', e => { prefs.headFloat = e.target.checked; savePrefs(); applyHead(); layoutNotch(); fitHeadPrs(); paintHeadSplit(); listChanged(); });
   $('#edgeLight').checked = !!prefs.edgeLight;
   $('#edgeLight').addEventListener('change', e => { prefs.edgeLight = e.target.checked; savePrefs(); applyLight(); listChanged(); phaseAnims(true); });
   $('#ringsInStep').checked = prefs.ringsInStep !== false;
@@ -2514,7 +2528,7 @@
     if (!s || s.done || asking(s) || !(s.status === 'working' || watching(s)) || prefs.edgeLight || $('#main').classList.contains('scompact') || !head.querySelector('h2 .sep')) return null;
     const hr = head.getBoundingClientRect(), hs = parseFloat(head.style.getPropertyValue('--hsplit')), hrow = head.style.getPropertyValue('--hrow');
     const work = s.status === 'working', card = open?.el.getBoundingClientRect();
-    return { card, box: hs > 0 ? { l: hr.left, t: hr.top, r: hr.left + hs, b: hr.top + (hrow.endsWith('px') ? parseFloat(hrow) : hr.height) } : null,
+    return { card, box: hs > 0 && !prefs.headFloat ? { l: hr.left, t: hr.top, r: hr.left + hs, b: hr.top + (hrow.endsWith('px') ? parseFloat(hrow) : hr.height) } : null,
       // the shape is the project's colour through and through, and the light on it is white (2026-10-02) — the lightest
       // thing on every colour; it was the header's ink until then, near-black on a light colour: a shadow going round,
       // not a light. A monitor's is its own colour

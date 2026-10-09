@@ -29,6 +29,10 @@ edge (M5)".
 * **M3 · the landing wash**: when a reply lands, besides the edge's flare, a wash of the card's light spreads from the
   ✓ corner over the card and fades (1.1 s, a scaled blob under the content). Not on a card still watching something
   (its pseudo-elements are the ring's); none under reduced motion.
+* **E · the floating header, a switch** (Settings → Board → *floating header*, off by default): the chat header as a
+  rounded bar inset from the column's edges, an edge of the project's colour and a shadow under it; the PR rows under
+  it inset alike. Only the header, not the study's reading column or tool timeline. With it, the open chat's light
+  runs round the card and up the splitter but not round the header's box, which no longer touches the splitter.
 * **M5 · the edge light, a switch** (Settings → Board → *edge light*, off by default): a clauding card's light runs
   down its lit edge instead of round the card — one light per sub-agent, a monitor's slowly in its colour — with a
   soft glow off the edge. The ring stays the default; with the edge light the open chat's light no longer runs on
