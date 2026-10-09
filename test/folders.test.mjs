@@ -13,15 +13,18 @@ test('the org folders are listed, and a clone is refused a name that is not one'
   const root = tmpDir('peix-org-');
   mkdirSync(join(root, 'wallet-api', '.git'), { recursive: true });
   mkdirSync(join(root, 'oracle'), { recursive: true });
+  mkdirSync(join(root, 'wallet-api-fix'), { recursive: true });   // `git worktree add ../wallet-api-fix`: a .git file
+  writeFileSync(join(root, 'wallet-api-fix', '.git'), `gitdir: ${join(root, 'wallet-api', '.git', 'worktrees', 'wallet-api-fix')}\n`);
   mkdirSync(join(root, '.hidden'), { recursive: true });
   writeFileSync(join(root, 'notes.txt'), 'not a folder');
   const srv = await startTestServer({ env: { ORG_DIR: root, ORG: 'acme' } });
   try {
     const list = await srv.api('api/folders');
     assert.deepEqual(list.body.roots, [{ dir: root, org: 'acme' }]);
-    assert.deepEqual(list.body.folders.map(f => f.name), ['oracle', 'wallet-api'], 'directories only, by name — a file and a dotfolder are not folders here');
-    assert.deepEqual(list.body.folders.map(f => f.git), [false, true], 'a .git says which one is a clone already');
-    assert.deepEqual(list.body.folders.map(f => [f.root, f.org]), [[root, 'acme'], [root, 'acme']], 'each says which root and org it is of');
+    assert.deepEqual(list.body.folders.map(f => f.name), ['oracle', 'wallet-api', 'wallet-api-fix'], 'directories only, by name — a file and a dotfolder are not folders here');
+    assert.deepEqual(list.body.folders.map(f => f.git), [false, true, true], 'a .git says which one is a clone already');
+    assert.deepEqual(list.body.folders.map(f => !!f.worktree), [false, false, true], 'and a .git file naming worktrees/ that it is a worktree (2026-10-09)');
+    assert.deepEqual(list.body.folders.map(f => [f.root, f.org]), [[root, 'acme'], [root, 'acme'], [root, 'acme']], 'each says which root and org it is of');
 
     for (const name of ['../escape', 'has space', '', 'a/b']) {
       const bad = await srv.post('api/clone', { name });
@@ -33,7 +36,7 @@ test('the org folders are listed, and a clone is refused a name that is not one'
 
     mkdirSync(join(root, 'ledger-service'), { recursive: true });   // the listing is cached by the directory's mtime
     const again = await srv.api('api/folders');
-    assert.deepEqual(again.body.folders.map(f => f.name), ['ledger-service', 'oracle', 'wallet-api'], 'a folder that appeared is listed on the next ask');
+    assert.deepEqual(again.body.folders.map(f => f.name), ['ledger-service', 'oracle', 'wallet-api', 'wallet-api-fix'], 'a folder that appeared is listed on the next ask');
   } finally {
     await srv.stop();
     rmSync(root, { recursive: true, force: true });

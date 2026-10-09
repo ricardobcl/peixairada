@@ -2242,8 +2242,13 @@ const CLONE_MS = Number(process.env.CLONE_MS || 10 * 60_000);   // a big repo ov
 const isDir = p => { try { return statSync(p).isDirectory(); } catch { return false; } };
 const folderCache = new Map();   // root dir -> { mtime, folders }
 
-/** Every folder directly under a root, by name. Cached by the directory's own mtime — a clone or a `git clone` by
- *  hand moves it, and the picker asks on every opening. */
+/** A worktree of a repo checked out beside it (2026-10-09): its .git is a file naming `<repo>/.git/worktrees/<name>`.
+ *  A root of `git worktree add ../<repo>-<branch>` holds more of them than repos, and none is a project to start in. */
+function isWorktree(cwd) {
+  try { return /^gitdir:.*[/\\]worktrees[/\\]/m.test(readFileSync(join(cwd, '.git'), 'utf8')); } catch { return false; }   // a directory: EISDIR
+}
+/** Every folder directly under a root, by name, `worktree` on one that is. Cached by the directory's own mtime — a
+ *  clone or a `git clone` by hand moves it, and the picker asks on every opening. */
 function foldersIn(root) {
   let mtime; try { mtime = statSync(root).mtimeMs; } catch { return []; }
   const hit = folderCache.get(root); if (hit?.mtime === mtime) return hit.folders;
@@ -2252,7 +2257,7 @@ function foldersIn(root) {
     folders = readdirSync(root, { withFileTypes: true })
       .filter(d => !d.name.startsWith('.') && (d.isDirectory() || (d.isSymbolicLink() && isDir(join(root, d.name)))))
       .map(d => ({ name: d.name, cwd: join(root, d.name) }))
-      .map(f => ({ ...f, git: existsSync(join(f.cwd, '.git')) }))
+      .map(f => ({ ...f, git: existsSync(join(f.cwd, '.git')), ...(isWorktree(f.cwd) ? { worktree: true } : {}) }))
       .sort((a, b) => a.name.localeCompare(b.name));
   } catch (e) { console.error(`[peixairada] ${root}: ${e.message}`); }
   folderCache.set(root, { mtime, folders });

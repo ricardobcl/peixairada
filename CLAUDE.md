@@ -664,7 +664,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   an org (`cloneRows()`, never filtered out). `GET /api/folders` lists them (`{roots, folders}`, each folder with its
   `root` and `org`), cached by each root's mtime; `POST /api/clone {name, root}` runs `gh repo clone <org>/<name>` into
   that root (no `root`: the one root with an org, if only one) — **with the welcome's *make it* (an empty folder of
-  repos under the home), the only thing the board writes outside its own state and config** — and `cloneAndStart()` carries on into the same flow. A long path belongs beside the name (`.cur`),
+  repos under the home), the only thing the board writes outside its own state and config** — and `cloneAndStart()` carries on into the same flow.
+  **A worktree is not offered** (2026-10-09, evening): a folder whose `.git` is a file naming `…/worktrees/…` is
+  `worktree` in the listing (`isWorktree`) and `freeFolders` skips it — one a chat ran in is a project anyway, and
+  typed by its whole name it is offered as itself (`cloneRows`). A long path belongs beside the name (`.cur`),
   never in the row's `auto` column. → `scripts/scenarios/new-project.mjs`. **A clone is one per folder and says how
   far it is** (2026-10-09): `clones`, by the folder cloned into — a second ask joins the one under way (git makes the
   folder at once, and it was "already there" to a second ask), and a spawn in it is refused until it is done

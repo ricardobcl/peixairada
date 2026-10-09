@@ -3178,10 +3178,11 @@
     } catch {}
   }
   /** The folders that are not already a project on the board — matched by the exact folder, so a repo whose chats all
-   *  live in a subfolder of it is still offered at its root, which is a different place to start. */
+   *  live in a subfolder of it is still offered at its root, which is a different place to start. Not a worktree
+   *  (2026-10-09): one with a chat is a project already, and the rest are offered only by their whole name (cloneRows). */
   const freeFolders = () => {
     const taken = new Set(projectList().flatMap(p => p.cwds));
-    return folders.list.filter(f => !taken.has(f.cwd) && !isHidden(f.cwd)).map(f => ({ key: f.cwd, name: f.name, cwd: f.cwd, cwds: [f.cwd], folder: true }));
+    return folders.list.filter(f => !f.worktree && !taken.has(f.cwd) && !isHidden(f.cwd)).map(f => ({ key: f.cwd, name: f.name, cwd: f.cwd, cwds: [f.cwd], folder: true }));
   };
   const CLONE_NAME = /^[A-Za-z0-9][\w.-]*$/;   // the server's own rule for a name it will clone — no row it would refuse
   /** ＋ clone, last and never filtered out: a name that is no folder here is a repo of an org you have not cloned — a

@@ -5,6 +5,19 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-09, evening — no worktrees in ⌥⌘N's folders
+
+Ricardo: "is there any way to not include folders for worktrees on the new project (hotkey N) menu?"
+
+* **Why**: `git worktree add ../<repo>-<branch>` puts each worktree beside its repo, right under the root — on this
+  Mac 131 of the root's 204 folders were worktrees, and all but one had no chat. The project step listed every one.
+* **What a worktree is here**: a folder whose `.git` is a file naming `…/worktrees/…` (`isWorktree`; a submodule's
+  names `modules/`). The server marks it `worktree` in `/api/folders` (`foldersIn`, under the same mtime cache), and
+  `freeFolders` leaves it out.
+* **Not gone**: a worktree a chat ran in is a project of the board's and stays in the step, and one typed by its whole
+  name is offered as itself (`cloneRows`' folder that is here), as a hidden folder is — never as a clone gh would
+  refuse. No switch: nobody starts a chat in a worktree with no chat in it, and the name still reaches one.
+
 ## Decisions of 2026-10-09, afternoon, later — a chat's folder not checked out is cloned first
 
 Ricardo: "make sure that when opening a chat in a project that's not checked out, we download it and provide visual

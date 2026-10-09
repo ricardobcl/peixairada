@@ -1,9 +1,9 @@
 // ⌥⌘N's project step since 2026-09-21: the board's own projects, then every folder under the org's directory that
-// is on none of them, then ＋ clone <org>/<name> for a name that is neither — the way a repo you have never opened
-// here becomes a chat. The clone itself is `gh repo clone` over the network, so the POST is stubbed; what this
-// checks is the rows that are offered, and that choosing either of the new ones carries on into the new-chat flow
-// in the right folder.
-import { mkdirSync } from 'node:fs';
+// is on none of them — a worktree aside (2026-10-09), unless typed by its whole name —, then ＋ clone <org>/<name> for
+// a name that is neither — the way a repo you have never opened here becomes a chat. The clone itself is
+// `gh repo clone` over the network, so the POST is stubbed; what this checks is the rows that are offered, and that
+// choosing either of the new ones carries on into the new-chat flow in the right folder.
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpDir } from '../../lib/testserver.mjs';
 
@@ -11,6 +11,8 @@ import { tmpDir } from '../../lib/testserver.mjs';
 // the scenario body, and the server sees them from its first answer.
 const ORG_DIR = tmpDir('peix-org-');
 for (const f of ['alpha-service', 'ledger-service', 'wallet-api']) mkdirSync(join(ORG_DIR, f, '.git'), { recursive: true });
+mkdirSync(join(ORG_DIR, 'wallet-api-fix'));   // `git worktree add ../wallet-api-fix`: a .git file naming the repo's worktrees/
+writeFileSync(join(ORG_DIR, 'wallet-api-fix', '.git'), `gitdir: ${join(ORG_DIR, 'wallet-api', '.git', 'worktrees', 'wallet-api-fix')}\n`);
 export const meta = { server: true, fixture: 'auto', env: { ORG_DIR, ORG: 'acme' } };
 
 const type = (ctx, text) => ctx.fill('#pickq', text);
@@ -40,7 +42,7 @@ export default async function (ctx) {
   ctx.assert.ok(out.hint.includes(`a folder in ${ORG_DIR}`) && out.hint.includes('clone from acme'), `the box says what the step now takes, the directory named: ${out.hint}`);
   const kinds = out.rows.map(r => r.kind);
   ctx.assert.deepEqual([...new Set(kinds)], ['project', 'folder'], "the board's projects first, the org's folders after them");
-  ctx.assert.deepEqual(out.rows.filter(r => r.kind === 'folder').map(r => r.name), ['alpha-service', 'ledger-service', 'wallet-api']);
+  ctx.assert.deepEqual(out.rows.filter(r => r.kind === 'folder').map(r => r.name), ['alpha-service', 'ledger-service', 'wallet-api'], 'the worktree beside wallet-api is not offered');
   ctx.assert.ok(out.rows.find(r => r.name === 'alpha-service').path.startsWith('/'), 'a folder row shows where it is');
 
   // ---- typing ranks them with everything else, and a name that is none of them offers the clone ----
@@ -50,6 +52,11 @@ export default async function (ctx) {
   ctx.assert.ok(out.ledger[0].sel, '…and is the selection');
   await type(ctx, 'alpha-service');
   ctx.assert.equal((await rows(ctx)).filter(r => r.kind === 'clone').length, 0, 'a name that is a folder here is not offered as a clone');
+  await type(ctx, 'wallet-api-');
+  ctx.assert.ok(!(await rows(ctx)).some(r => r.name === 'wallet-api-fix'), 'a worktree is not found by part of its name');
+  await type(ctx, 'wallet-api-fix');
+  out.worktree = await rows(ctx);
+  ctx.assert.deepEqual(out.worktree.map(r => [r.kind, r.name]), [['folder', 'wallet-api-fix']], 'by its whole name it is offered as itself, not as a clone');
 
   await type(ctx, 'brand-new-thing');
   out.clone = await rows(ctx);
