@@ -125,8 +125,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   `/api/awake`, an `awake` event, `awake` in the snapshot): *awake* is a `caffeinate -i -w <the server's pid>` the
   server holds while `awake` is on in the state file — started again at boot, gone by itself when the server goes, and
   a caffeinate that ends on its own turns the switch off rather than leave the mark lying; *lid closed* is
-  `pmset -a disablesleep 1|0` through osascript's administrator dialog (a password each turn; a cancel is a 409,
-  `cancelled`, said nowhere), **the system's setting, never kept here**: `readLid` reads `pmset -g`'s SleepDisabled on
+  `pmset -a disablesleep 1|0` as root — **through `sudo` first** (2026-10-09: Touch ID where `/etc/pam.d/sudo_local`
+  has pam_tid, as on Ricardo's Mac, or a NOPASSWD rule; no terminal, so a password sudo cannot read is a quick failure),
+  **then osascript's administrator dialog** (a password; a cancel is a 409, `cancelled`, said nowhere; `AWAKE_ADMIN`:
+  `sudo` the default, `osascript` the dialog alone, `none` the tests' plain call) — **the system's setting, never kept here**: `readLid` reads `pmset -g`'s SleepDisabled on
   every registry poll, whoever set it. The one thing the board changes outside its own files besides a Peacock colour
   and a clone. → `test/awake.test.mjs`.
 * **Every CLI the server shells out to goes through `findBin()`** — `git` too — the app's server has a bare PATH;

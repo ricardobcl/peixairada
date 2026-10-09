@@ -1929,17 +1929,17 @@ async function machineStats(want) {
 }
 
 // ---- keeping the Mac awake: an idle-sleep assertion, and the lid's own setting (2026-10-08) -------------------------
-// Two rows of the chat header menu, and a mark at the window's top right while either holds. *Awake* is a
+// Two buttons of the status bar (2026-10-09; the chat header's and its menu's when the bar is off). *Awake* is a
 // `caffeinate -i -w <this pid>` the server keeps running while the switch is on: idle sleep held off, the display free
 // to sleep, and caffeinate gone by itself when the server goes (-w) — the switch is in the state file, so a restart
 // starts it again. Closing the lid still sleeps the Mac; *lid closed* is `pmset -a disablesleep 1`, which root alone may
-// set: each turn asks for an administrator's password (osascript's own dialog), and the setting is the system's — it
-// outlives the server and a reboot, so it is read back (`pmset -g`: SleepDisabled) on every poll rather than
-// remembered, and the mark says it whoever set it. Tests: CAFFEINATE_BIN and PMSET_BIN are the fakes, and AWAKE_ADMIN=none
-// runs pmset as it is.
+// set: each turn goes through sudo — Touch ID where it takes it — else osascript's administrator dialog (a password).
+// The setting is the system's — it outlives the server and a reboot — so it is read back (`pmset -g`: SleepDisabled) on
+// every poll rather than remembered, and shown whoever set it. Tests: CAFFEINATE_BIN and PMSET_BIN are the fakes, and
+// AWAKE_ADMIN=none runs pmset as it is.
 let caffeinate = null;      // the child holding the assertion
 let lidOff = false;         // SleepDisabled, as pmset last said
-let lidAsking = null;       // a password dialog up: the next turn waits for it
+let lidAsking = null;       // Touch ID or a password dialog up: the next turn waits for it
 const awakeState = () => ({ awake: awakeOn && !!caffeinate, lid: lidOff });
 const sayAwake = () => broadcast('awake', awakeState());
 /** The switch: on starts caffeinate (once), off ends it. Answers the state, or throws when caffeinate cannot run. */
@@ -1971,14 +1971,20 @@ async function readLid() {
   } catch (e) { console.error('[peixairada] pmset -g:', String(e.message || e).split('\n')[0]); }
   return lidOff;
 }
-/** Sleep with the lid shut, or not: an administrator's password each time (osascript), then pmset read back. */
+/** Sleep with the lid shut, or not, as root: through `sudo` first — Touch ID where sudo takes it (pam_tid in
+ *  /etc/pam.d/sudo_local), or a sudoers rule that asks nothing — and, when sudo cannot do it without a terminal to type a
+ *  password in, through osascript's administrator dialog (2026-10-09; the dialog alone the day before). Then pmset read back. */
 async function setLid(on) {
   if (lidAsking) await lidAsking.catch(() => {});
   const bin = findBin('pmset', 'the lid\'s setting cannot be changed'); if (!bin) throw new Error('pmset not found');
   const args = ['-a', 'disablesleep', on ? '1' : '0'];
   const q = t => `"${t.replace(/[\\"]/g, '\\$&')}"`;
-  lidAsking = process.env.AWAKE_ADMIN === 'none' ? execFileP(bin, args, { timeout: 10_000 })
-    : execFileP('/usr/bin/osascript', ['-e', `do shell script quoted form of ${q(bin)} & ${q(' ' + args.join(' '))} with prompt ${q(on ? 'peixAIrada wants to keep this Mac awake with its lid closed.' : 'peixAIrada wants to let this Mac sleep again when its lid closes.')} with administrator privileges`], { timeout: 5 * 60_000 });
+  const viaDialog = () => execFileP('/usr/bin/osascript', ['-e', `do shell script quoted form of ${q(bin)} & ${q(' ' + args.join(' '))} with prompt ${q(on ? 'peixAIrada wants to keep this Mac awake with its lid closed.' : 'peixAIrada wants to let this Mac sleep again when its lid closes.')} with administrator privileges`], { timeout: 5 * 60_000 });
+  // no terminal: sudo's stdin is nothing, so a password it cannot get is a quick failure, not a wait
+  const viaSudo = () => new Promise((res, rej) => execFile('/usr/bin/sudo', [bin, ...args], { timeout: 90_000, env: { ...process.env, SUDO_ASKPASS: '' } }, (err, so, se) => err ? rej(Object.assign(err, { stderr: se })) : res()).stdin?.end());
+  const mode = process.env.AWAKE_ADMIN || 'sudo';
+  lidAsking = mode === 'none' ? execFileP(bin, args, { timeout: 10_000 }) : mode === 'osascript' ? viaDialog()
+    : viaSudo().catch(e => { console.log(`[peixairada] sudo pmset did not go through (${String(e.stderr || e.message).trim().split('\n')[0]}) — asking with the dialog`); return viaDialog(); });
   try { await lidAsking; }
   catch (e) { throw new Error(/-128|cancel/i.test(String(e.stderr || e.message)) ? 'cancelled' : String(e.stderr || e.message).trim().split('\n')[0]); }
   finally { lidAsking = null; await readLid(); }
