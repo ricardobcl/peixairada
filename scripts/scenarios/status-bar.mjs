@@ -1,8 +1,8 @@
 // The status bar (2026-10-09, the design studies' F — Orca's): the machine at the window's foot. What this checks: it is
 // there by default, under the board, saying the connection and the chats; the search and the state chips move into it,
 // far left, and work from there, while the list's foot row (the fish, the search, the chips, the usage) goes; the plan
-// usage is its meters and a click shows its rows; the connection opens the About box; the settings add CPU, memory and
-// Claude's memory, asked of the server; the switch off hides it and gives the list's foot its row back. The faces in its
+// usage is its meters and a click shows its rows; the connection opens the About box; CPU and memory are in it from the
+// start and the settings add Claude's memory, asked of the server; the switch off hides it and gives the list's foot its row back. The faces in its
 // middle are people-row.mjs's, keeping the Mac awake keep-awake.mjs's.
 export const meta = { server: true, fixture: 'auto' };
 
@@ -52,10 +52,12 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#slist').click()`);
   ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#sbar .sbpanel')`), false, 'a click elsewhere puts them away');
 
-  // CPU, memory, Claude's memory: the settings' boxes, the server's numbers
-  await ctx.evaluate(`for (const k of ['cpu', 'mem', 'claude']) document.querySelector('#sbarStats [data-stat="' + k + '"]').click()`);
+  // CPU and memory from the start (2026-10-09), Claude's memory a box in the settings away: the server's numbers
+  ctx.assert.deepEqual(await ctx.peix('prefs().barStats'), ['cpu', 'mem'], 'CPU and memory on by default');
+  await ctx.waitFor(`/CPU\\s*\\d+%/.test(document.querySelector('#sbar').textContent) && /memory\\s*[\\d.]+ (GB|MB) \\/ [\\d.]+ GB/.test(document.querySelector('#sbar').textContent)`, { timeout: 8000, what: 'CPU and memory in the bar' });
+  await ctx.evaluate(`document.querySelector('#sbarStats [data-stat="claude"]').click()`);
   await ctx.waitFor(`/CPU\\s*\\d+%/.test(document.querySelector('#sbar').textContent) && /memory\\s*[\\d.]+ (GB|MB) \\/ [\\d.]+ GB/.test(document.querySelector('#sbar').textContent) && /claude\\s*\\d+ MB/.test(document.querySelector('#sbar').textContent)`, { timeout: 8000, what: 'the machine numbers' });
-  ctx.assert.deepEqual(await ctx.peix('prefs().sbStats'), ['cpu', 'mem', 'claude']);
+  ctx.assert.deepEqual(await ctx.peix('prefs().barStats'), ['cpu', 'mem', 'claude']);
 
   // the Mac kept awake says so here too (its own buttons: keep-awake.mjs), and a click there lets it sleep
   await ctx.server.api('api/awake', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ awake: true }) });

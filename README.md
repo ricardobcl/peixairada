@@ -48,7 +48,7 @@ It reads what Claude Code already writes to `~/.claude` — no plugin, no privat
 - 🪟 **Tabs and splits** — a shell, VS Code Web and GitHub pages beside the chat.
 - 📊 **A status bar** — along the window's foot: the search and the state filters, connected and live chats, drawers,
   the faces on your PRs, your plan's limits (or its monthly spend cap), keeping the Mac awake (with the lid closed too,
-  by Touch ID where sudo takes it), and optionally CPU and memory.
+  by Touch ID where sudo takes it), CPU and memory, and optionally what Claude's processes hold.
 
 <table>
   <tr>

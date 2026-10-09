@@ -1691,7 +1691,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false }, lidAsking: false };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, statusBar: true, sbStats: [], peopleFold: false, cardSpot: true };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, statusBar: true, barStats: ['cpu', 'mem'], peopleFold: false, cardSpot: true };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -1703,6 +1703,9 @@
   // the one-of-four filter (before 2026-09-20) becomes the set of states shown; 'all' was every state
   if ('filter' in prefs) { prefs.filters = prefs.filter === 'all' ? ['ready', 'working', 'done'] : [prefs.filter]; delete prefs.filter; }
   if (!Array.isArray(prefs.filters)) prefs.filters = ['ready', 'working', 'done'];
+  // what the status bar adds (sbStats, none by default until 2026-10-09, then CPU and memory as barStats): a pick carries
+  // over; the empty default every saved prefs held does not, or nobody would see the new one
+  if ('sbStats' in prefs) { if (Array.isArray(prefs.sbStats) && prefs.sbStats.length) prefs.barStats = prefs.sbStats; delete prefs.sbStats; }
   const savePrefs = () => { try { localStorage.setItem('peixairada-prefs', JSON.stringify(prefs)); } catch {} };
   /** One way to ask the server (2026-09-27; thirteen copies of the fetch, the header and the JSON.stringify before):
    *  JSON in, JSON out, and a throw with the server's own words — its `error`, else the status — when it says no. */
@@ -2003,7 +2006,7 @@
       `<span class="seg" title="claudes running here and elsewhere${ask ? ' · waiting on your answer' : ''}">${n(s => s.alive)} live${ask ? ` · <em>${ask} asking</em>` : ''}</span>`];
     const busy = [drawers && plural(drawers, 'drawer'), shells && plural(shells, 'shell'), mons && plural(mons, 'monitor')].filter(Boolean);
     if (busy.length) left.push(`<span class="seg" title="claude sessions in drawers here · shells · monitors and background commands running">${busy.join(' · ')}</span>`);
-    const st = bar.stats, want = prefs.sbStats || [], stat = [], right = [];
+    const st = bar.stats, want = prefs.barStats || [], stat = [], right = [];
     if (want.includes('cpu')) stat.push(sbMeter('CPU', st.cpu ?? 0, st.cpu == null ? '…' : `${st.cpu}%`, st.cpu >= 90 ? 'var(--needs)' : 'var(--watch)', 'every core\'s time spent busy, the last 3 s'));
     if (want.includes('mem')) stat.push(st.mem ? sbMeter('memory', st.mem.used / st.mem.total * 100, `${fmtBytes(st.mem.used)} / ${fmtBytes(st.mem.total)}`, st.mem.used / st.mem.total >= .9 ? 'var(--needs)' : 'var(--watch)', 'memory used, as Activity Monitor counts it, of all there is') : sbMeter('memory', 0, '…', 'var(--watch)'));
     if (want.includes('claude')) stat.push(`<span class="m" title="what the live claude processes hold in memory (their children aside)">claude <b>${st.claude?.rss != null ? fmtBytes(st.claude.rss) : '…'}</b>${st.claude?.n ? ` · ${st.claude.n}` : ''}</span>`);
@@ -2021,7 +2024,7 @@
     setHtml($('#sbRight'), right.join('') + (bar.open && rows.length ? `<div class="sbpanel"><div class="uhd">plan usage</div><div class="urows">${usageRows(rows)}</div></div>` : ''));
   }
   async function loadStats() {
-    const want = prefs.sbStats || [];
+    const want = prefs.barStats || [];
     if (!want.length || bar.busy || $('#sbar').hidden || document.hidden) return;
     bar.busy = true;
     try { bar.stats = await api('GET', `/api/stats?want=${want.join(',')}`); } catch { bar.stats = {}; }
@@ -2053,8 +2056,8 @@
   $('#sbarOn').checked = prefs.statusBar !== false;
   $('#sbarOn').addEventListener('change', e => { prefs.statusBar = e.target.checked; savePrefs(); applyBar(); repostPane(); });
   for (const c of $('#sbarStats').querySelectorAll('input')) {
-    c.checked = (prefs.sbStats || []).includes(c.dataset.stat);
-    c.addEventListener('change', () => { prefs.sbStats = [...$('#sbarStats').querySelectorAll('input:checked')].map(x => x.dataset.stat); savePrefs(); bar.stats = {}; renderBar(); loadStats(); });
+    c.checked = (prefs.barStats || []).includes(c.dataset.stat);
+    c.addEventListener('change', () => { prefs.barStats = [...$('#sbarStats').querySelectorAll('input:checked')].map(x => x.dataset.stat); savePrefs(); bar.stats = {}; renderBar(); loadStats(); });
   }
   applyBar();
 

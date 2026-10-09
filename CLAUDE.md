@@ -509,7 +509,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   (`dockBar`, its handlers with it; the chips' click is on `#filters`) —, `#sbLeft` — the connection (the stream's open
   and error, `bar.conn`; a click is the About box, the fish's whose row went), the live chats and how many are asking,
   the drawers · shells · monitors —, `#sbPeople` in the middle — **the faces, `#people` moved in** — and `#sbRight`:
-  what the settings add (`prefs.sbStats`: CPU, memory, Claude's memory — `GET
+  the machine (`prefs.barStats`: CPU and memory by default since 2026-10-09 — `sbStats`, none, before; a pick there
+  carries over —, Claude's memory a box in the settings — `GET
   /api/stats?want=cpu,mem,claude`, every 3 s while shown and visible, `machineStats` on the server: the cores' busy share
   since the last ask, vm_stat's used as Activity Monitor counts it, `ps` over the registry's live claude pids), **the
   plan usage as meters** — with the bar on, the list's foot has none (`:root[data-sbar] #usage`) — whose click lifts its

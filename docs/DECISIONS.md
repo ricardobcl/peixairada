@@ -5,6 +5,14 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-09, morning, later — CPU and memory on by default
+
+Ricardo: "make the ram/cpu on by default".
+
+* **The status bar shows CPU and memory from the start**; Claude's memory stays a box in Settings → Board. The pref is
+  `barStats` now (`sbStats` before): every saved prefs held the old empty default, which would have outlived a new
+  one, so the old key is dropped on load — and carried over only where something had been picked.
+
 ## Decisions of 2026-10-09, morning — the Mac's line-editing keys in the drawer
 
 Ricardo: "the \"cmd + arrows\" on a normal chat like iterm, goes to the begining and end of the line, but doesn't
