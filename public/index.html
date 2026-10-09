@@ -1598,6 +1598,7 @@
     <kbd>⌘+ ⌘−</kbd><span>chat and terminal size</span>
     <kbd>⌘K</kbd><span>clear the terminal — the scrollback goes on the holder too, so it stays clear</span>
     <kbd>⇧⏎</kbd><span>newline in the terminal's prompt</span>
+    <kbd>⌘← ⌘→</kbd><span>the start / end of the terminal's line, as in iTerm · ⌥← ⌥→ a word · ⌘⌫ ⌘⌦ delete to the start / end · ⌥⌫ ⌥⌦ a word — in claude and in the shell</span>
     <kbd>esc</kbd><span>closes a picker or popover · back to the chat from a page's tab · never leaves full screen while one is up</span>
     <kbd>⌘R · ⇧⌘R</kbd><span>reload — the page in the pane while one is up, else the board · restart the server, in the app</span>
     <kbd>⌘F · ⌘G</kbd><span>find on the page in the pane, as in a browser — ⏎ ⇧⏎ or ⌘G ⇧⌘G step the matches, esc closes the bar, in the app</span>
@@ -4269,6 +4270,13 @@
     note(at(), 'Sent /focus — the session said nothing back; the drawer shows what happened', true);
   }
   const ALT_COMPOSES = /^(Digit\d|Minus|Equal|Bracket(Left|Right)|Backslash|Semicolon|Quote|Comma|Period|Slash|Backquote|Intl(Backslash|Ro|Yen))$/;
+  // The Mac's own line-editing keys (2026-10-09), sent as iTerm's Natural Text Editing preset sends them: xterm sends
+  // nothing at all for ⌘ with an arrow (it leaves those to the browser) and a plain DEL for ⌘⌫, and ⌥⌦ goes out as a
+  // modified Delete, which Claude Code reads as delete to the line's end. Control codes, so the zsh tab reads them as
+  // Claude Code does: ⌃A / ⌃E the line's start and end, ⌃U / ⌃K delete to them, ESC d the word ahead. ⌥← ⌥→ (ESC b /
+  // ESC f) and ⌥⌫ (ESC DEL) xterm already sends. ⇧ held, or ⌃, or ⌘ and ⌥ together (⌥⌘← is a tab), is not one of them.
+  const MAC_EDIT = { 'cmd:ArrowLeft': '\x01', 'cmd:ArrowRight': '\x05', 'cmd:Backspace': '\x15', 'cmd:Delete': '\x0b', 'alt:Delete': '\x1bd' };
+  const macEdit = e => e.ctrlKey || e.shiftKey || e.metaKey === e.altKey ? undefined : MAC_EDIT[`${e.metaKey ? 'cmd' : 'alt'}:${e.key}`];
   function ensureXterm(tm) {
     if (tm.xt) return;
     tm.xt = new Terminal({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: termFontSize(), lineHeight: 1.1, cursorBlink: true, scrollback: 5000, theme: xtTheme(), macOptionIsMeta: prefs.optMeta !== false });
@@ -4286,6 +4294,7 @@
       if (e.key === 'Enter' && e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); if (e.type === 'keydown') termSend(tm, '\x1b\r'); return false; }
       if (prefs.optMeta !== false && ALT_COMPOSES.test(e.code) && e.altKey && !e.ctrlKey && !e.metaKey && e.key.length === 1) { e.preventDefault(); if (e.type === 'keydown') termSend(tm, e.key); return false; }
       if (e.code === 'KeyK' && e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) { e.preventDefault(); if (e.type === 'keydown') clearTerm(tm); return false; }
+      const edit = macEdit(e); if (edit) { e.preventDefault(); if (e.type === 'keydown') termSend(tm, edit); return false; }
       return !(e.type === 'keydown' && chatZoomKey(e));
     });
     tm.fit = new FitAddon.FitAddon(); tm.xt.loadAddon(tm.fit);

@@ -5,6 +5,24 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-09, morning — the Mac's line-editing keys in the drawer
+
+Ricardo: "the \"cmd + arrows\" on a normal chat like iterm, goes to the begining and end of the line, but doesn't
+work here. can we fix it? and are the more common key combos that we should support (flag if it clashed with current
+shortcuts)?"
+
+* **Why it did nothing**: xterm.js sends nothing for ⌘ with an arrow — it leaves those to the browser, where ⌘← is
+  history back — and a plain DEL for ⌘⌫.
+* **iTerm's Natural Text Editing preset, as control codes**: ⌘← ⌘→ ⌃A ⌃E, ⌘⌫ ⌃U, ⌘⌦ (fn⌘⌫) ⌃K, ⌥⌦ ESC d. Claude
+  Code's prompt reads all five (its own ctrl and meta maps: line start and end, delete to them, the word ahead), and so
+  does zsh's emacs keymap, so the ⌥⌘T shell gets them too — rather than the CSI sequences with the super modifier,
+  which Claude Code also reads but zsh does not. ⌥← ⌥→ ⌥⌫ already worked (xterm's ESC b, ESC f, ESC DEL).
+* **No clash**: plain ⌘← ⌘→ ⌘⌫ are bound nowhere on the board or in the app's menus; ⌥⌘← ⌥⌘→ (the tabs) are left alone,
+  as is any chord with ⇧ or ⌃.
+* **Flagged, not done**: ⌘Z as Claude Code's undo (⌃_) — the app's Edit menu owns ⌘Z, so the page never sees it; it
+  would go the way ⌘W does (the menu asks the board first). ⌘↑ ⌘↓ (the scrollback's top and bottom in iTerm) — Claude
+  Code's full-screen view keeps its own scroll, so there is little for them to do.
+
 ## Decisions of 2026-10-09, towards morning, later — a black project's ground stays black
 
 Ricardo: "I want the backgroun to still be black for black projects (like uphold), unless we are hovering and for the

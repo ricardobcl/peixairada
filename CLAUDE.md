@@ -832,6 +832,12 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   server restart stay clear. A nudge follows. ⌃L is still the shell's own.
 * **Shift+Enter is a newline**: the drawer sends `ESC CR` itself and swallows the keypress. `macOptionIsMeta` is the
   cog's *⌥ is Meta* (`prefs.optMeta`, on by default; a switch sets it on every live xterm). → Findings: *Shift+Enter*.
+* **The Mac's line-editing keys are iTerm's Natural Text Editing** (2026-10-09, `MAC_EDIT` / `macEdit` in the drawer's
+  key handler): ⌘← ⌘→ send ⌃A ⌃E, ⌘⌫ ⌃U, ⌘⌦ ⌃K, ⌥⌦ ESC d — control codes, which Claude Code's prompt and zsh both
+  read; xterm sends nothing for ⌘ with an arrow, a plain DEL for ⌘⌫, and a modified Delete for ⌥⌦ (Claude Code: to the
+  line's end). ⌥← ⌥→ ⌥⌫ are xterm's own (ESC b, ESC f, ESC DEL). ⇧, ⌃, or ⌘ with ⌥ (the board's ⌥⌘←→) is none of them.
+  ⌘Z is the app's Edit menu (the page never sees it) — Claude Code's undo, ⌃_, is not mapped.
+  → `scripts/scenarios/drawer-mackeys.mjs`.
 * **⌥ over a digit or a punctuation key types what macOS composed**: with ⌥ as Meta, the handler sends `e.key` for the
   codes in `ALT_COMPOSES`, and leaves ⌥+letter to Meta; off, xterm composes them all. → Findings: *⌥ is a compose key too*.
 * **The chat header menu's ◎ row types `/focus`** into that chat's holder — Claude Code's focus view, which has no key
@@ -945,11 +951,11 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   scroll-driven ones, which run as long as the list can scroll — and for a pending draw. `ctx`: `evaluate`, `waitFor`, `send`, `reload`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
-  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The fifty-two in
+  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The fifty-three in
   `scripts/scenarios/` are the regression checks for the drawer, the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
   marks and the PR stack, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, a PR's turn, the chat's links,
-  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short, the resume bar, keeping the Mac awake, Jira tickets, the transcript's turns, a PR's CI, the floating header, the status bar, the light under the pointer.
+  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short, the resume bar, keeping the Mac awake, Jira tickets, the transcript's turns, a PR's CI, the floating header, the status bar, the light under the pointer, the Mac's line-editing keys in the drawer.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.
