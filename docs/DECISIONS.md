@@ -5,6 +5,21 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-09, later — the studies picked: ink cards, lanes, the edge light, sonar, the landing wash, a floating header to try, the status bar; Riso for later
+
+Ricardo, on the studies page (seven screens A–G, five motions M1–M5): "B and C are pretty, so do it", "E's header that
+floats seems pretty, but I need to test it so make it a toggle with the current one and the new one", "F is amazing
+and we could support other stuff optionally like RAM usage and cpu stats", "G definetely a theme we should persue at a
+later stage (save the intention and screenshot/data to support future development)", "do M2, M3", "M5 could be
+interesting with B's change, but I would need to see it live - so make it a toggle between today's ring and charging
+edge (M5)".
+
+* **B · Ink cards**: the card is the panel; its project's colour a lit 3 px edge on the left and a glow of it from
+  there (`--tint`, `--reach`), the project's name in its colour (lighter in the dark, darker in the light). Hover and
+  the open card glow across; the open card still bleeds into the splitter. A project in the board's black wears a grey
+  edge in the dark. The grey ground under a list of near-black cards (`#sessions.onblack`) went: every card is the
+  panel now. The rail's squares keep their solid tint — there it is the only cue.
+
 ## Decisions of 2026-10-09 — awake always in sight, CI on the header, design ideas drafted
 
 Ricardo, on the day before's five: "make the normal awake button always visible, on or off - the close lid with sudo,

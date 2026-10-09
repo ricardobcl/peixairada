@@ -172,13 +172,14 @@ export default async function (ctx) {
     out.reload = await look();
     ctx.assert.deepEqual([out.reload.colors, out.reload.all, out.reload.tinted], ['simple', [TINT2], true], 'simple, in the one colour, after a reload');
 
-    // 6 · black as the one colour: what was black beside it is grey, in both themes; an open black card's ink is light
+    // 6 · black as the one colour: what was black beside it is grey, in both themes (the list's ground stays: the ink cards
+    // are the panel whatever their colour, 2026-10-09 — a grey ground and a light ink on the open black card before)
     const scheme = dark => ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: dark ? 'dark' : 'light' }] });
-    const frame = () => ctx.evaluate(`JSON.stringify({ dark: document.querySelector('#main').classList.contains('darkchat'), onblack: document.querySelector('#sessions').classList.contains('onblack'),
+    const frame = () => ctx.evaluate(`JSON.stringify({ dark: document.querySelector('#main').classList.contains('darkchat'), 
       head: getComputedStyle(document.querySelector('.shead'), '::after').backgroundColor, split: getComputedStyle(document.querySelector('#splitter'), '::after').backgroundColor,
       ground: getComputedStyle(document.querySelector('#sessions')).backgroundColor, ink: getComputedStyle(document.querySelector('#slist > .card.active .repo')).color })`).then(JSON.parse);
     out.mid = await frame();
-    ctx.assert.deepEqual([out.mid.dark, out.mid.onblack, out.mid.head], [false, false, 'rgb(0, 0, 0)'], `a colour that is not black leaves the black alone: ${JSON.stringify(out.mid)}`);
+    ctx.assert.deepEqual([out.mid.dark, out.mid.head], [false, 'rgb(0, 0, 0)'], `a colour that is not black leaves the black alone: ${JSON.stringify(out.mid)}`);
     await ctx.evaluate(`document.querySelector('#tintRow').dispatchEvent(new MouseEvent('click', { altKey: true, bubbles: true, cancelable: true }))`);   // ⌥-click: the default, black
     await ctx.waitFor(`document.querySelector('#main').classList.contains('darkchat')`, { what: 'the open chat in black' });
     await ctx.settle();
@@ -186,10 +187,10 @@ export default async function (ctx) {
       await scheme(dark); await ctx.sleep(100);
       out[dark ? 'blackDark' : 'blackLight'] = await frame();
     }
-    ctx.assert.deepEqual([out.blackDark.head, out.blackDark.split, out.blackDark.onblack, out.blackDark.ground], ['rgb(74, 74, 69)', 'rgb(74, 74, 69)', true, 'rgb(46, 46, 43)'],
-      `dark: the header right of the project, the splitter under the card and the ground behind the cards are grey: ${JSON.stringify(out.blackDark)}`);
-    ctx.assert.deepEqual([out.blackLight.head, out.blackLight.split, out.blackLight.ground, out.blackLight.ink], ['rgb(74, 74, 69)', 'rgb(74, 74, 69)', 'rgba(0, 0, 0, 0)', 'rgb(232, 230, 223)'],
-      `light: the same greys, the light ground as it was, the open card's name in a light ink: ${JSON.stringify(out.blackLight)}`);
+    ctx.assert.deepEqual([out.blackDark.head, out.blackDark.split, out.blackDark.ground], ['rgb(74, 74, 69)', 'rgb(74, 74, 69)', 'rgba(0, 0, 0, 0)'],
+      `dark: the header right of the project and the splitter under the card are grey, the list's ground as it was: ${JSON.stringify(out.blackDark)}`);
+    ctx.assert.deepEqual([out.blackLight.head, out.blackLight.split, out.blackLight.ground, out.blackLight.ink], ['rgb(74, 74, 69)', 'rgb(74, 74, 69)', 'rgba(0, 0, 0, 0)', 'rgb(28, 28, 26)'],
+      `light: the same greys, the light ground as it was, the open black card's name in the page's ink: ${JSON.stringify(out.blackLight)}`);
     await ctx.shot('black');
     await scheme(true);
 
@@ -197,7 +198,7 @@ export default async function (ctx) {
     await setSimple(false);
     out.back = await look();
     ctx.assert.deepEqual([out.back.colors, out.back.repo, out.back.list, out.back.tinted], ['full', [COLOR, COLOR], '#000000', true], 'the colours are back');
-    ctx.assert.deepEqual(Object.values(await frame()).slice(0, 2), [false, false], 'and the black beside them is black again');
+    ctx.assert.deepEqual((f => [f.dark, f.head])(await frame()), [false, 'rgb(0, 0, 0)'], 'and the black beside them is black again');
     ctx.assert.ok(out.back.card > 40 && out.back.pr > 40, `in colour again: ${JSON.stringify(out.back)}`);
     return out;
   } finally {

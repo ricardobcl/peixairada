@@ -203,10 +203,12 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   **The reply landed** is the `landed` class: the `session` handler notes `working` → `idle` in `landedAt`, and
   `flareLanded()` (from `drawCards`) sets the class with a negative `animation-delay` for `LANDED_MS`, so a rebuilt card
   carries the flare on; the badge pops from `onAlert`. Neither is in `PHASED`.
-* **A card's tint is `--tint` and `--slope`, registered percentages** (2026-09-27, night): the gradient is built from
-  them (`calc(--tint + --slope)` at the top left, `--tint` at the bottom right) so hover, `.active`, `.qsel` and
-  `.card.black` set the numbers, never a `background`, and the change eases (`transition` on `.card`, shortened under
-  `:hover`; the `::after` cover inherits and follows). A new card state that wants a tint sets the two variables. The
+* **A card's glow is `--tint` and `--reach`, registered percentages** (2026-09-27, night; ink cards since 2026-10-09):
+  the card is the panel, its colour a lit 3 px edge on the left (`--edge`, a first `background` layer) and a glow of it
+  from there — `--tint` how strong it starts, `--reach` how far it runs before it is the panel. Hover, `.active` and
+  `.qsel` set the numbers, never a `background`, and the change eases (`transition` on `.card`, shortened under
+  `:hover`; the `::after` cover inherits and follows). A new card state that wants a glow sets the two variables. The
+  project's name is in its colour, towards what reads on the panel (`oklch(from …)`, lighter in the dark). The
   outline is `1px solid transparent` at rest for the same reason. `#splitter` and `#gsplit` light after a 300 ms
   `transition-delay` on hover, none on `.drag`; the small controls share one 120 ms hover transition.
 * **Dialogs, `.pop` and `.note` ease in and out with `@starting-style`** (2026-09-27, night), `display` and `overlay`
@@ -306,9 +308,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   housing is inside the black.
 * **A colour as dark as that black turns the black grey** (2026-10-01; `nearBlack`, Peacock's brightness under 40):
   the open chat's (`tintChat` → `main.darkchat`) makes the header's `::after` and the splitter's `::after`/`::before`
-  `#4a4a45`, and a list whose cards are all that dark gets, in the dark theme, a grey ground (`renderSessionList` →
-  `#sessions.onblack`, `--bg: #2e2e2b`). Simple colours' black, or a project painted `#000000`. An open or hovered
-  black card's own ink is the borrowed light one (`color: var(--ink)` on `.card.black.active`).
+  `#4a4a45`. Simple colours' black, or a project painted `#000000`. A black card's edge is grey in the dark theme
+  (`--edge`), its name the page's ink; no grey ground under a list of them since the ink cards (2026-10-09).
 * **The chat header is drawn only when it changed** (2026-09-27): `renderHead` compares the header's, the menu's and
   the PR rows' markup with `drawn` and sets innerHTML only when different, then `layoutNotch(); fitHeadPrs()` only for
   a new header; the handlers are still bound on every call (they close over `s`). Anything that edits the header in
@@ -393,15 +394,15 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   `opacity` 0 → .8 on `.card:hover`, keeping its room, so nothing moves. Every card has the top row, 18 px at least.
   The tooltip (last activity · you last wrote · Claude last replied) is on it. → `scripts/scenarios/card-marks.mjs`.
 * **Cards are square**: `.card` and the ring its `::before` draws at `border-radius: 0`. The PR chips keep their 4 px.
-* **The open chat's card and a hovered one are a solid tint** of its colour (`.card.active`, `.card:hover`, 65 %), the
-  rest a wash (45 % to 37 %) **with no edge** (transparent since 2026-09-28, the wash running under it:
-  `background-origin: border-box`): only the clauding card, the hovered one and the open one wear the colour on their
-  border. A black card's wash stays lighter (28 % to 20 %). **ALL** (`key: 'all'`) is black in both
+* **The open chat's card and a hovered one glow across** (`.card.active` 40 % to the far edge, `.card:hover` 34 % over
+  three quarters), the rest a glow of 22 % over their first quarter, **with no edge but the lit left one** (transparent
+  since 2026-09-28, the background running under it: `background-origin: border-box`): only the clauding card, the
+  hovered one and the open one wear the colour round their border. **ALL** (`key: 'all'`) is black in both
   themes — `BLACK`, through `projColor()` — and so is a folder the setup paints `#000000`. A card in that black is
-  `.card.black`: its solid tint is the black itself and it borrows the dark theme's inks; `--ring` turns its clauding
-  light white wherever the card under it is dark. **The open card bleeds into the splitter**: `main:not(.scompact)
-  #slist > .card.active` runs to the column's edge, its tint rising to the full colour over its last 44 px so it
-  meets the bar seamlessly (a second `background-image` layer over the wash, 2026-09-29), and `#splitter` is `--open`
+  `.card.black`; `--ring` turns its clauding light white wherever the card under it is dark. **The open card bleeds
+  into the splitter**: `main:not(.scompact) #slist > .card.active` runs to the column's edge, its glow rising to the
+  full colour over its last 44 px so it meets the bar seamlessly (a `background-image` layer over the edge and the
+  glow, 2026-09-29), and `#splitter` is `--open`
   on `main` (set by `tintChat`); the bar ends at the card's edge as drawn — its rect, plus the outline's pixel
   (`splitEnd`). **The splitter wears it only down to the open card**
   (2026-09-28): black under it (`#splitter::after` from `--split`); the open card out of sight below, the colour runs
