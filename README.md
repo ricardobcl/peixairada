@@ -28,9 +28,10 @@ It reads what Claude Code already writes to `~/.claude` — no plugin, no privat
 
 ## ✨ Features
 
-- 🚦 **Sorted by who owes whom** — asking you first, then working, then ready. *Done* is a tick you give.
-- 💡 **The card's edge tells you why it's busy** — Claude working, sub-agents out, a monitor watching, or a question
-  waiting (the red one, question on the card).
+- 🚦 **Sorted by who owes whom** — in lanes: asking you first, then clauding, then ready. *Done* is a tick you give.
+- 💡 **The card's edge tells you why it's busy** — each card a lit edge in its project's colour; a light runs round it
+  (or down the edge, if you'd rather) while Claude works, one per sub-agent, slower for a monitor; a question pings out
+  in red.
 - 🖥️ **Claude in a drawer** — resume any chat in the real Claude Code terminal, inside the board: a chat whose Claude
   has ended says so, and resumes 5 s after you open it (or on a click, if you'd rather). Drawers survive restarts;
   chats running in iTerm or VS Code can be taken over.
@@ -45,7 +46,8 @@ It reads what Claude Code already writes to `~/.claude` — no plugin, no privat
 - 🌑 **Simple colours** — a quieter board: every project in black (or one colour you pick), the states in grey; PRs
   and faces keep their colours, and the accent is left for what needs you.
 - 🪟 **Tabs and splits** — a shell, VS Code Web and GitHub pages beside the chat.
-- 📊 **Plan usage** — your session and weekly limits, or your plan's monthly spend cap, always in view.
+- 📊 **A status bar** — connected, live and clauding chats, drawers, your plan's limits (or its monthly spend cap), and
+  optionally CPU and memory, along the window's foot.
 - ☕ **Keep the Mac awake** — from ···, with the lid closed too (asks for your password); a mark top right while it holds.
 
 <table>
@@ -98,7 +100,7 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
 
 **Settings** — ⌘, or ··· in the chat's header:
 
-- **Board** — notifications, simple colours (every project in black, or one colour you pick, the states in grey, for a quieter board), card size, ⌥ as Meta.
+- **Board** — notifications, simple colours (every project in black, or one colour you pick, the states in grey, for a quieter board), the edge light, the status bar and what it shows, a floating header, card size, ⌥ as Meta.
 - **Setup** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
   project ⌥⌘O starts a chat in, a short name and a colour where Peacock has none, per project, and your Jira site,
   email and API token (the token goes to your keychain, never into the file).
