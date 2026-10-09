@@ -431,10 +431,11 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   group **by the last word, yours or Claude's** (`wordAt`: the newer of `lastUserAt` and `lastReplyAt`; a tool call
   is not a word — **a PR come round to you is**, at its `turn.movedAt`: `movedAt(s)`, in both copies), newest first; a project ranks by its newest chat. The filters and every count go by `bucket()`,
   where an asking chat is a ready one — only the order knows the difference, in the list and in ⌥⌘K. **The lines
-  between the cards** (`.gsep`): between the clauding cards and the ready ones, **Claude's mark in pixels**, alone and
-  centred — `DIVIDER`, a 9 × 9 window on a strip of frames drawn from `PIX_SHEET` (`#` a pixel of 2 px), `pix`
-  sliding it a frame at a time (`steps(1, end)`), `pixhop` lifting it on the burst; both transforms, 2.4 s, phased by
-  `phaseAnims()` — and a still line **under every run of cards from one day** (`dayHtml()`): the day centred — `today`,
+  between the cards** (`.gsep`): **a lane's head over each group** (2026-10-09, `laneHtml`, `.gsep.lane.<group>`; one
+  divider between the clauding and the ready cards before) — its mark, its name (`.ln`: *Asking you · Clauding · Ready
+  · Done*) and its count at the right end, none under a query; the Clauding head's mark is **Claude's in pixels**, a
+  9 × 9 window on a strip of frames drawn from `PIX_SHEET` (`#` a pixel of 2 px), `pix` sliding it a frame at a time
+  (`steps(1, end)`), `pixhop` lifting it on the burst; both transforms, 2.4 s, phased by `phaseAnims()` — and a still line **under every run of cards from one day** (`dayHtml()`): the day centred — `today`,
   else `DD-MM-YYYY` (`dayName()`, by `wordAt`). A day's line closes the cards *above* it, so the oldest day gets one at
   the bottom; the list is grouped first, so a day can come back and each run gets its own line.
   → `scripts/scenarios/day-separator.mjs`.

@@ -95,7 +95,7 @@ export default async function (ctx) {
     ctx.assert.equal(out.moved.move, '#12 · pushed since your review', 'the card says whose move and why…');
     ctx.assert.equal(await ctx.evaluate(`${card}.querySelector('.state.prmove .ymove').textContent`), 'your move', '…after the tag');
     ctx.assert.equal(out.moved.rank, 0, 'the move is the chat\'s newest word: it tops the list');
-    ctx.assert.equal(await ctx.evaluate(`${card}.previousElementSibling?.matches('.gsep') ? null : 'first'`), 'first', 'nothing above it');
+    ctx.assert.equal(await ctx.evaluate(`${card}.previousElementSibling?.matches('.gsep.lane:first-child') ? 'first' : null`), 'first', 'nothing above it but its lane\'s head (2026-10-09)');
     out.compact = await ctx.evaluate(`(() => { const l = document.querySelector('#sessions'), was = l.dataset.cards; l.dataset.cards = 'compact';
       const shown = !!${card}.querySelector('.state.prmove').getClientRects().length; l.dataset.cards = was; return shown; })()`);
     ctx.assert.equal(out.compact, true, 'the line shows on a compact card too');

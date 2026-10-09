@@ -11,7 +11,7 @@ export const meta = { server: true, fixture: 'auto' };
 
 const reduce = (ctx, on) => ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: on ? 'reduce' : '' }] });
 const read = ctx => ctx.evaluate(`JSON.stringify((() => {
-  const w = document.querySelector('#slist > .card.working'), a = document.querySelector('#slist > .card.asking'), pix = document.querySelector('.gsep.claude .pix svg');
+  const w = document.querySelector('#slist > .card.working'), a = document.querySelector('#slist > .card.asking'), pix = document.querySelector('.gsep.lane.working .pix svg');
   const anim = (el, pseudo) => el ? getComputedStyle(el, pseudo).animationName : null;
   return {
     matches: matchMedia('(prefers-reduced-motion: reduce)').matches,

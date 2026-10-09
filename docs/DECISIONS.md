@@ -19,6 +19,10 @@ edge (M5)".
   the open card glow across; the open card still bleeds into the splitter. A project in the board's black wears a grey
   edge in the dark. The grey ground under a list of near-black cards (`#sessions.onblack`) went: every card is the
   panel now. The rail's squares keep their solid tint — there it is the only cue.
+* **C · Lanes**: a head over each group the list ranks by — *Asking you · Clauding · Ready · Done* — its mark and its
+  count at the right end; Claude's pixel mark, which stood alone between the clauding and the ready cards, is the
+  Clauding head's now. Not sticky (the study's were): pinned heads fought the list's top pill and the timeline. None
+  under a query, which ranks by the match; none on the rail. The day lines stay, inside the lanes.
 * **M5 · the edge light, a switch** (Settings → Board → *edge light*, off by default): a clauding card's light runs
   down its lit edge instead of round the card — one light per sub-agent, a monitor's slowly in its colour — with a
   soft glow off the edge. The ring stays the default; with the edge light the open chat's light no longer runs on

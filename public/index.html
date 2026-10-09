@@ -426,7 +426,17 @@
      2.4 s long, so phaseAnims() putting both at 0 keeps the hop on the burst. A frame is 18 px of strip; a keyframe
      starts on a frame's boundary, k / 24 of the cycle. */
   .gsep { margin: 2px 10px; font: 600 11px/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: color-mix(in srgb, var(--muted) 80%, transparent); white-space: nowrap; overflow: hidden; user-select: none; }
-  .gsep.claude { display: flex; align-items: center; justify-content: center; margin: 4px 10px; overflow: visible; }
+  /* A lane's head (2026-10-09): its mark, its name in small caps, its count at the right end — the first thing in the
+     list, so the list's top keeps its padding over it; the mark is a dot in the state's colour (asking ringed, ready
+     hollow), and Claude's in pixels for the clauding. */
+  .gsep.lane { display: flex; align-items: center; gap: 8px; margin: 10px 2px 1px 4px; font: 750 10.5px/18px -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); overflow: visible; }
+  .gsep.lane:first-child { margin-top: 4px; }
+  .gsep.lane > i { width: 10px; height: 10px; flex: none; margin: 0 4px; border-radius: 50%; box-sizing: border-box; }
+  .gsep.lane b { margin-left: auto; padding: 0 7px; border-radius: 9px; background: var(--ctl-hi); color: var(--ink); font-size: 10.5px; font-weight: 700; letter-spacing: 0; line-height: 16px; }
+  .gsep.lane.asking { color: var(--needs); } .gsep.lane.asking > i { background: var(--needs); box-shadow: 0 0 0 3px color-mix(in srgb, var(--needs) 25%, transparent); }
+  .gsep.lane.working { color: color-mix(in srgb, var(--working) 80%, var(--ink)); }
+  .gsep.lane.ready > i { border: 2px solid var(--idle); background: radial-gradient(var(--idle) 30%, transparent 36%); }
+  .gsep.lane.done > i { background: var(--ended); }
   .pix { flex: none; width: 18px; height: 18px; overflow: hidden; animation: pixhop 2.4s steps(1, end) infinite; }
   .pix svg { display: block; width: 144px; height: 18px; fill: var(--accent); transform: translateX(-90px); animation: pix 2.4s steps(1, end) infinite; }
   @keyframes pix {   /* the frames: 0 · 1 + 2 ◆ 3 ✳ 4 ✶ 5 ✽ (full) 6 and 7 the twinkle, long axes then long diagonals */
@@ -2070,11 +2080,13 @@
     post({ type: 'state', needs });
   }
   function knownFolders() { return [...new Set([...state.sessions.values()].map(s => s.cwd).filter(Boolean))].sort(); }
-  // Between the clauding cards and the ready ones: Claude's mark in pixels, alone (2026-09-27; a school of ><> from
+  // Claude's mark in pixels (2026-09-27; a school of ><> from
   // 2026-09-20 to then — one node kept across renders, so innerHTML did not hand it a new animation every few seconds;
   // phaseAnims() does that for the mark now, so it is plain markup — then the smooth starburst for an evening). The
   // sheet below is the strip itself, frame beside frame, 9 × 9 each: one path, a run of # per subpath, drawn once;
-  // CSS shows one frame at a time (`pix`, `pixhop`, the numbers there are these frames').
+  // CSS shows one frame at a time (`pix`, `pixhop`, the numbers there are these frames'). It stood alone between the
+  // clauding cards and the ready ones until 2026-10-09; since, it is the Clauding lane's mark (laneHtml), and the
+  // transcript's presence line's.
   const PIX_SHEET = [
     // 0 ·      1 +       2 ◆       3 ✳       4 ✶       5 ✽       6 twinkle 7 twinkle
     '......... ......... ......... ......... ......... #...#...# ....#.... #.......#',
@@ -2089,7 +2101,11 @@
   ].map(row => row.replace(/ /g, ''));
   const PIX = `<span class="pix"><svg viewBox="0 0 ${PIX_SHEET[0].length} 9" shape-rendering="crispEdges" aria-hidden="true"><path d="${
     PIX_SHEET.flatMap((row, y) => [...row.matchAll(/#+/g)].map(m => `M${m.index} ${y}h${m[0].length}v1h-${m[0].length}z`)).join('')}"/></svg></span>`;
-  const DIVIDER = `<div class="gsep claude" title="clauding above, ready below">${PIX}</div>`;
+  // Lanes (2026-10-09, the studies' C — Paseo's grouped sidebar; one divider between the clauding and the ready cards
+  // before): a head over each group the list ranks by — Asking you · Clauding · Ready · Done — with its mark and how
+  // many cards it holds. Claude's mark in pixels is the Clauding head's. Under a query, which ranks by the match, none.
+  const LANES = { asking: ['Asking you', 'chats waiting on your answer'], working: ['Clauding', 'Claude at work'], ready: ['Ready', 'your move — ready for you'], done: ['Done', 'ticked done'] };
+  const laneHtml = (g, n) => `<div class="gsep lane ${g}" title="${n} ${LANES[g][1]}">${g === 'working' ? PIX : '<i></i>'}<span class="ln">${LANES[g][0]}</span><b>${n}</b></div>`;
   // A line under each day's cards, naming the day they are from (2026-09-23). The day is your last
   // touch, like the order. A line closes the run of cards *above* it, so the oldest day in the list gets one too, at
   // the bottom; the list is grouped first, so the done cards can bring a day back after older ready ones, and each run
@@ -2184,10 +2200,11 @@
     // No ＋ since 2026-09-28: ⌥⌘N, which opens on
     // the project in view.
     setHtml($('#fchips'), FILTERS.map(([k, label]) => `<button class="fchip ${k} ${filterOn(k) ? 'on' : ''}" data-f="${k}" title="${counts[k] || 'no'} ${label} — click to ${filterOn(k) ? 'hide' : 'show'} them"><i></i><span class="lb">${label}</span><span class="n">${counts[k] || 0}</span></button>`).join(''));
-    const b = shown.map(rankOf);   // the divider stands once, under the last clauding card when a ready one follows
+    const b = shown.map(rankOf);   // a lane's head over the first card of each group (laneHtml)
     // …and a day's line under every run of cards from one day: the card whose next one is from another day, or none.
-    const days = shown.map(dayName);
-    const dividerBefore = i => !q && i && b[i] === 'ready' && b[i - 1] === 'working' ? DIVIDER : '';
+    const days = shown.map(dayName), inLane = {};
+    for (const g of b) inLane[g] = (inLane[g] || 0) + 1;
+    const dividerBefore = i => !q && b[i] !== b[i - 1] ? laneHtml(b[i], inLane[b[i]]) : '';
     // the timeline's runs: the cards of one day *and* one state group in a row — none while a query orders the list
     tl.runs = [];
     if (!q) shown.forEach((s, i) => { const r = tl.runs[tl.runs.length - 1]; if (r && r.g === b[i] && r.day === days[i]) r.n++; else tl.runs.push({ g: b[i], day: days[i], at: wordAt(s), i, n: 1 }); });

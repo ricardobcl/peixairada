@@ -125,7 +125,7 @@ export default async function (ctx) {
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: out.at.rect.right + 30, y: (near.top + near.bottom) / 2, button: 'left', buttons: 0, clickCount: 1 });
   const want = await ctx.evaluate(`Math.min(document.querySelector('#slist').scrollHeight - document.querySelector('#slist').clientHeight, [...document.querySelectorAll('#slist > .card')][window.peix.state().timeline.runs[2].i].offsetTop - 30)`);
   await ctx.waitFor(`Math.abs(document.querySelector('#slist').scrollTop - ${want}) < 2`, { what: 'the list at the ten-days-back run' });
-  out.clicked = await ctx.evaluate(`document.querySelector('#slist > .card:nth-child(1)') && [...document.querySelectorAll('#slist > .card')].find(c => c.getBoundingClientRect().top >= document.querySelector('#slist').getBoundingClientRect().top + 8)?.querySelector('.title').textContent`);
+  out.clicked = await ctx.evaluate(`document.querySelector('#slist > .card') && [...document.querySelectorAll('#slist > .card')].find(c => c.getBoundingClientRect().top >= document.querySelector('#slist').getBoundingClientRect().top + 8)?.querySelector('.title').textContent`);
   ctx.assert.match(out.clicked, /^Ten days back/, 'the first card fully in view is that day\'s');
 
   // a drag on the thumb: the list follows the pointer, to scale

@@ -185,13 +185,13 @@ export default async function (ctx) {
     ctx.assert.ok(Object.values(await starts()).every(t => t === 0), 'on again, every ring in step');
 
     // ---- and it leads the list: a question costs you a second and unblocks a turn (2026-09-21) ----
-    out.order = await ctx.evaluate(`[...document.querySelectorAll('#slist > *')].map(e => e.classList.contains('gsep') ? 'divider' : e.querySelector('.title')?.textContent)`);
-    ctx.assert.deepEqual(out.order.slice(0, 8), ['Blocked on a prompt', 'Waiting on you', 'Normal work', 'Three agents out', 'Both at once', 'A real background job', 'divider', 'Watching CI'],
-      'the questions first, then the clauding chats by your last touch, then the divider, then the ready ones');
-    // The divider is Claude's mark alone and in pixels, its frames and its hop on the document clock (2026-09-27; a
-    // school of fish before, then the smooth starburst between two hairlines for an evening)
-    out.divider = await ctx.evaluate(`JSON.stringify((d => ({ svg: !!d.querySelector('.pix svg'), lines: d.querySelectorAll('i').length, anims: d.getAnimations({ subtree: true }).map(a => a.animationName + '@' + a.startTime).sort() }))(document.querySelector('#slist .gsep.claude')))`).then(JSON.parse);
-    ctx.assert.deepEqual(out.divider, { svg: true, lines: 0, anims: ['pix@0', 'pixhop@0'] }, "the divider is Claude's mark alone, in pixels, its frames and hop on the document clock");
+    out.order = await ctx.evaluate(`[...document.querySelectorAll('#slist > *')].map(e => e.classList.contains('lane') ? 'lane:' + e.querySelector('.ln').textContent + ' ' + e.querySelector('b').textContent : e.classList.contains('gsep') ? 'line' : e.querySelector('.title')?.textContent)`);
+    ctx.assert.deepEqual(out.order.slice(0, 10), ['lane:Asking you 2', 'Blocked on a prompt', 'Waiting on you', 'lane:Clauding 4', 'Normal work', 'Three agents out', 'Both at once', 'A real background job', 'lane:Ready 3', 'Watching CI'],
+      'the questions first, then the clauding chats by your last touch, then the ready ones — each group under its lane\'s head and count (2026-10-09; one divider before)');
+    // Claude's mark in pixels heads the clauding lane, its frames and its hop on the document clock (2026-09-27 as the
+    // divider between the clauding and the ready cards; a school of fish before, then the smooth starburst for an evening)
+    out.divider = await ctx.evaluate(`JSON.stringify((d => ({ svg: !!d.querySelector('.pix svg'), dots: d.querySelectorAll('i').length, anims: d.getAnimations({ subtree: true }).map(a => a.animationName + '@' + a.startTime).sort() }))(document.querySelector('#slist .gsep.lane.working')))`).then(JSON.parse);
+    ctx.assert.deepEqual(out.divider, { svg: true, dots: 0, anims: ['pix@0', 'pixhop@0'] }, "the clauding lane's mark is Claude's, in pixels, its frames and hop on the document clock");
     await ctx.key('KeyK');   // the chat picker goes by the same rank
     await ctx.waitFor(`document.querySelector('#pick').open && document.querySelectorAll('#picklist .pkrow').length > 3`, { what: 'the chat picker' });
     out.picker = await ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow')].slice(0, 3).map(r => r.querySelector('.n').textContent.replace('current', '') + ' / ' + r.querySelector('.st').textContent)`);

@@ -56,8 +56,9 @@ export default async function (ctx) {
     const hsplit = await ctx.evaluate(`parseFloat(document.querySelector('#shead').style.getPropertyValue('--hsplit'))`);
     const b = bounds(out.open.loop);
     ctx.assert.ok(near(b.l, card.l) && near(b.t, sp.t) && near(b.r, head.l + hsplit), `the shape runs from the card's left to the box's right, from the top: ${JSON.stringify({ b, card, sp, head, hsplit })}`);
-    // the first card is flush with the top since 2026-09-29, so the card, the splitter and the box share the top edge
-    ctx.assert.ok(near(card.t, sp.t) && out.open.loop.some(p => near(p[0], sp.r) && near(p[1], card.b)), 'one top edge for the three, and down the splitter to the card\'s bottom');
+    // the splitter and the box share the top edge; the card stands under its lane's head (2026-10-09; flush with the top
+    // from 2026-09-29), and the shape runs down the splitter to its bottom
+    ctx.assert.ok(near(head.t, sp.t) && card.t > sp.t && out.open.loop.some(p => near(p[0], sp.r) && near(p[1], card.b)), 'one top edge for the splitter and the box, and down the splitter to the card\'s bottom');
     ctx.assert.ok(out.open.blobs >= 2, `a comet of lights: ${out.open.blobs}`);
     out.page = await ctx.evaluate(`JSON.stringify({ main: document.querySelector('#main').classList.contains('trail'), cardRing: getComputedStyle(document.querySelector('#slist > .card.active'), '::before').content,
       clip: getComputedStyle(document.querySelector('#trail')).clipPath.slice(0, 13), props: [...new Set(document.querySelector('#trail').getAnimations({ subtree: true }).flatMap(a => a.effect.getKeyframes().flatMap(k => Object.keys(k).filter(x => !['offset', 'computedOffset', 'easing', 'composite'].includes(x)))))] })`).then(JSON.parse);

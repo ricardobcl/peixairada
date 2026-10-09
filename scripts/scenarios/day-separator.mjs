@@ -18,6 +18,7 @@ export const meta = { server: true, fixture: 'auto' };
 // how many animations run anywhere on it.
 const strip = ctx => ctx.evaluate(`JSON.stringify([...document.querySelector('#slist').children].map(el => {
   if (!el.classList.contains('gsep')) return { card: el.querySelector('.title')?.textContent || '' };
+  if (el.classList.contains('lane')) return { lane: [...el.classList].find(c => !['gsep', 'lane'].includes(c)) };   // a group's head (2026-10-09)
   const b = el.querySelector('b'), r = el.getBoundingClientRect(), br = b?.getBoundingClientRect();
   const side = box => { const r = box.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), text: box.textContent }; };
   return { sep: el.classList.contains('day') ? 'day' : 'divider', day: b?.textContent || '', off: br ? Math.round((br.left + br.width / 2) - (r.left + r.width / 2)) : null,
@@ -54,7 +55,7 @@ export default async function (ctx) {
   out.all = await strip(ctx);
   await ctx.shot('day-lines');
   const expect = [
-    { card: 'a minute ago' }, { card: 'this morning' }, { sep: 'day', day: 'today' },
+    { lane: 'ready' }, { card: 'a minute ago' }, { card: 'this morning' }, { sep: 'day', day: 'today' },
     { card: 'two days back, later' }, { card: 'two days back' }, { sep: 'day', day: ddmmyyyy(d2) },
     { card: 'three days back' }, { sep: 'day', day: ddmmyyyy(d3) },
   ];
@@ -72,14 +73,14 @@ export default async function (ctx) {
   for (let i = 0; i < 70 && !(await tick()).body.done; i++) await ctx.sleep(1000);
   await ctx.waitFor(`[...document.querySelectorAll('#slist > .card')].pop()?.querySelector('.title')?.textContent === 'a minute ago'`, { what: 'the done card at the bottom' });
   await ctx.settle();
-  out.done = (await strip(ctx)).map(x => x.sep ? x.day : x.card);
-  ctx.assert.deepEqual(out.done, ['this morning', 'today', 'two days back, later', 'two days back', ddmmyyyy(d2), 'three days back', ddmmyyyy(d3), 'a minute ago', 'today'], 'today twice, each run under its own line');
+  out.done = (await strip(ctx)).map(x => x.lane ? `[${x.lane}]` : x.sep ? x.day : x.card);
+  ctx.assert.deepEqual(out.done, ['[ready]', 'this morning', 'today', 'two days back, later', 'two days back', ddmmyyyy(d2), 'three days back', ddmmyyyy(d3), '[done]', 'a minute ago', 'today'], 'today twice, each run under its own line — the done one in its lane');
 
   // Only the done card in view — the ready chip off: still one line, under it, saying so
   await ctx.evaluate(`document.querySelector('#fchips .fchip.ready').click()`);
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 1`, { what: 'the done card alone' });
   await ctx.settle();   // the ready cards fold out first; strip reads every child of the list
-  out.filtered = (await strip(ctx)).map(x => x.sep ? x.day : x.card);
-  ctx.assert.deepEqual(out.filtered, ['a minute ago', 'today'], 'the day closes under its only card');
+  out.filtered = (await strip(ctx)).map(x => x.lane ? `[${x.lane}]` : x.sep ? x.day : x.card);
+  ctx.assert.deepEqual(out.filtered, ['[done]', 'a minute ago', 'today'], 'the day closes under its only card');
   return out;
 }
