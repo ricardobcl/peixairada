@@ -177,7 +177,8 @@ export default async function (ctx) {
     const scheme = dark => ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: dark ? 'dark' : 'light' }] });
     const frame = () => ctx.evaluate(`JSON.stringify({ dark: document.querySelector('#main').classList.contains('darkchat'), 
       head: getComputedStyle(document.querySelector('.shead'), '::after').backgroundColor, split: getComputedStyle(document.querySelector('#splitter'), '::after').backgroundColor,
-      ground: getComputedStyle(document.querySelector('#sessions')).backgroundColor, ink: getComputedStyle(document.querySelector('#slist > .card.active .repo')).color })`).then(JSON.parse);
+      ground: getComputedStyle(document.querySelector('#sessions')).backgroundColor, ink: getComputedStyle(document.querySelector('#slist > .card.active .repo')).color,
+      lift: (c => { const p = document.createElement('i'); p.style.color = 'var(--lift)'; c.append(p); const v = getComputedStyle(p).color; p.remove(); return v; })(document.querySelector('#slist > .card.active')) })`).then(JSON.parse);
     out.mid = await frame();
     ctx.assert.deepEqual([out.mid.dark, out.mid.head], [false, 'rgb(0, 0, 0)'], `a colour that is not black leaves the black alone: ${JSON.stringify(out.mid)}`);
     await ctx.evaluate(`document.querySelector('#tintRow').dispatchEvent(new MouseEvent('click', { altKey: true, bubbles: true, cancelable: true }))`);   // ⌥-click: the default, black
@@ -191,6 +192,9 @@ export default async function (ctx) {
       `dark: the header right of the project and the splitter under the card are grey, the list's ground as it was: ${JSON.stringify(out.blackDark)}`);
     ctx.assert.deepEqual([out.blackLight.head, out.blackLight.split, out.blackLight.ground, out.blackLight.ink], ['rgb(74, 74, 69)', 'rgb(74, 74, 69)', 'rgba(0, 0, 0, 0)', 'rgb(28, 28, 26)'],
       `light: the same greys, the light ground as it was, the open black card's name in the page's ink: ${JSON.stringify(out.blackLight)}`);
+    // the card's edge, glow and border wear the colour as it reads on the panel (2026-10-09, late night): in the dark a
+    // black is a grey there, its lightness held at .62; on the light panel it is black as set
+    ctx.assert.deepEqual([out.blackDark.lift, out.blackLight.lift], ['oklch(0.62 0 0)', 'oklch(0 0 0)'], `the black card's lit colour: ${JSON.stringify([out.blackDark, out.blackLight])}`);
     await ctx.shot('black');
     await scheme(true);
 

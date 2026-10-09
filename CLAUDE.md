@@ -332,8 +332,13 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   housing is inside the black.
 * **A colour as dark as that black turns the black grey** (2026-10-01; `nearBlack`, Peacock's brightness under 40):
   the open chat's (`tintChat` → `main.darkchat`) makes the header's `::after` and the splitter's `::after`/`::before`
-  `#4a4a45`. Simple colours' black, or a project painted `#000000`. A black card's edge is grey in the dark theme
-  (`--edge`), its name the page's ink; no grey ground under a list of them since the ink cards (2026-10-09).
+  `#4a4a45`. Simple colours' black, or a project painted `#000000`. No grey ground under a list of black cards since
+  the ink cards (2026-10-09). **On a card, a colour too dark (or too light) for the panel is held where it shows**
+  (2026-10-09, late night): `--lift` is `oklch(from <the colour> max(l, .62) c h)` in the dark, `min(l, .72)` in the
+  light — hue and chroma kept, a black a grey — and the edge, the glow, the light under the pointer, the hovered, open
+  and clauding border and the ring's track wear it; the project's name in the dark is lifted from the same floor.
+  `--repo` stays the colour as set for the rail's squares, the header, the splitter and the open card's bleed into it.
+  → the black step of `scripts/scenarios/simple-colors.mjs`.
 * **The chat header is drawn only when it changed** (2026-09-27): `renderHead` compares the header's, the menu's and
   the PR rows' markup with `drawn` and sets innerHTML only when different, then `layoutNotch(); fitHeadPrs()` only for
   a new header; the handlers are still bound on every call (they close over `s`). Anything that edits the header in

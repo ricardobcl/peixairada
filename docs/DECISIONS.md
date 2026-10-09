@@ -5,6 +5,26 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-09, towards morning — a dark project's colour, lifted where it shows
+
+Ricardo: "some project colors (like uphold) are black or tooo dark to have contrast with the background. what should
+we do? us a lighter glow/effect for those cases?"
+
+* **Yes, lighter — by lightness alone, for every colour, in CSS**: the card's lit colour (`--lift`) is the project's
+  colour with its OKLCH lightness held at .62 or above in the dark theme — hue and chroma kept, so a navy is a mid blue,
+  a maroon a rose, a black a neutral grey — and at .72 or below in the light, where a yellow or a cyan was the same
+  problem the other way round. A colour already in range is untouched. The edge, the glow, the light under the pointer,
+  the border of a hovered, open or clauding card and the ring's track wear it.
+* **Rather than a list of dark colours, or a second look for them**: a threshold on brightness (`nearBlack`, as the
+  header does) would switch looks at an arbitrary line — one shade either side of it worlds apart; clamping the
+  lightness is continuous, and needs nothing from the script. The black card's grey edge of its own (`#77776f`) went
+  into it.
+* **The name follows**: in the dark it is lifted from the same floor — a black's name, a grey of .45, sank into its
+  grey glow. In the light it was already held dark enough.
+* **The colour as set stays everywhere else**: the rail's squares, the chat header, the splitter, and the open card's
+  last 44 px running into the splitter wear `--repo` — that black is what the header's and splitter's greys were made
+  to stand beside.
+
 ## Decisions of 2026-10-09, late night, later still — the glow follows the pointer
 
 Ricardo: "there's this amazin effect that I saw in other apps, where when hovering on a card, the glow follows the
