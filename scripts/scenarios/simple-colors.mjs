@@ -178,7 +178,8 @@ export default async function (ctx) {
     const frame = () => ctx.evaluate(`JSON.stringify({ dark: document.querySelector('#main').classList.contains('darkchat'), 
       head: getComputedStyle(document.querySelector('.shead'), '::after').backgroundColor, split: getComputedStyle(document.querySelector('#splitter'), '::after').backgroundColor,
       ground: getComputedStyle(document.querySelector('#sessions')).backgroundColor, ink: getComputedStyle(document.querySelector('#slist > .card.active .repo')).color,
-      lift: (c => { const p = document.createElement('i'); p.style.color = 'var(--lift)'; c.append(p); const v = getComputedStyle(p).color; p.remove(); return v; })(document.querySelector('#slist > .card.active')) })`).then(JSON.parse);
+      lift: (c => { const p = document.createElement('i'); p.style.color = 'var(--lift)'; c.append(p); const v = getComputedStyle(p).color; p.remove(); return v; })(document.querySelector('#slist > .card.active')),
+      wash: getComputedStyle(document.querySelector('#slist > .card.active')).getPropertyValue('--wash') })`).then(JSON.parse);
     out.mid = await frame();
     ctx.assert.deepEqual([out.mid.dark, out.mid.head], [false, 'rgb(0, 0, 0)'], `a colour that is not black leaves the black alone: ${JSON.stringify(out.mid)}`);
     await ctx.evaluate(`document.querySelector('#tintRow').dispatchEvent(new MouseEvent('click', { altKey: true, bubbles: true, cancelable: true }))`);   // ⌥-click: the default, black
@@ -195,6 +196,13 @@ export default async function (ctx) {
     // the card's edge, glow and border wear the colour as it reads on the panel (2026-10-09, late night): in the dark a
     // black is a grey there, its lightness held at .62; on the light panel it is black as set
     ctx.assert.deepEqual([out.blackDark.lift, out.blackLight.lift], ['oklch(0.62 0 0)', 'oklch(0 0 0)'], `the black card's lit colour: ${JSON.stringify([out.blackDark, out.blackLight])}`);
+    // …its ground black all the same (towards morning), but under the pointer, which lights it in that grey
+    ctx.assert.equal(out.blackDark.wash, 'rgb(0, 0, 0)', 'the open black card\'s glow is its black');
+    await scheme(true);
+    const open = await ctx.evaluate(`JSON.stringify((b => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 }))(document.querySelector('#slist > .card.active').getBoundingClientRect()))`).then(JSON.parse);
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: open.x, y: open.y });
+    await ctx.waitFor(`getComputedStyle(document.querySelector('#slist > .card.active')).getPropertyValue('--wash') === 'oklch(0.62 0 0)'`, { what: 'the black card lit in grey under the pointer' });
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1000, y: 500 });
     await ctx.shot('black');
     await scheme(true);
 

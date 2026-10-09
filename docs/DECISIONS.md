@@ -5,6 +5,18 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-09, towards morning, later — a black project's ground stays black
+
+Ricardo: "I want the backgroun to still be black for black projects (like uphold), unless we are hovering and for the
+border lines, so it contrasts with the background".
+
+* **On a black project's card the glow is black again; the lines are the grey**: the glow's colour is a variable of
+  its own (`--wash`), the lifted colour on every card and the black itself on a black one — so its edge, its border
+  and the ring's track show against the panel while its ground is black, as the project is. The open card too.
+* **Under the pointer, and under the magnifier's mark, the ground lights in the grey**, with the light under the
+  pointer; `--wash` is a registered colour, so it eases there and back.
+* **Black only** — the projects painted `#000000` (`.card.black`); a navy or a maroon keeps its lifted glow.
+
 ## Decisions of 2026-10-09, towards morning — a dark project's colour, lifted where it shows
 
 Ricardo: "some project colors (like uphold) are black or tooo dark to have contrast with the background. what should

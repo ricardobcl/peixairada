@@ -541,10 +541,10 @@
      dark panel): half the colour at the edge, over three fifths of the card, and a colour hint at --fall of the reach
      (a third), so it drops steeply off the edge and tails out — a glow, not a wash. The open card falls evenly (.5),
      or its middle sank darker than both its ends, the edge and the splitter's colour. */
-  .card { --edge: var(--lift); --tint: 50%; --reach: 60%; --fall: .35; --spotr: 190px; --spotc: var(--lift);
-    background: linear-gradient(to right, var(--edge) 3px, transparent 3px), radial-gradient(circle var(--spotr) at var(--mx) var(--my), color-mix(in srgb, var(--spotc) var(--spot), transparent), transparent), linear-gradient(90deg, color-mix(in srgb, var(--lift) var(--tint), var(--panel)), calc(var(--reach) * var(--fall)), var(--panel) var(--reach)); background-origin: border-box;
+  .card { --edge: var(--lift); --wash: var(--lift); --tint: 50%; --reach: 60%; --fall: .35; --spotr: 190px; --spotc: var(--lift);
+    background: linear-gradient(to right, var(--edge) 3px, transparent 3px), radial-gradient(circle var(--spotr) at var(--mx) var(--my), color-mix(in srgb, var(--spotc) var(--spot), transparent), transparent), linear-gradient(90deg, color-mix(in srgb, var(--wash) var(--tint), var(--panel)), calc(var(--reach) * var(--fall)), var(--panel) var(--reach)); background-origin: border-box;
     outline: 1px solid transparent; outline-offset: 0;
-    transition: --tint .2s, --reach .2s, --fall .2s, --spot .3s, border-color .2s, outline-color .2s, outline-width .2s, outline-offset .2s, opacity .2s; }
+    transition: --tint .2s, --reach .2s, --fall .2s, --wash .2s, --spot .3s, border-color .2s, outline-color .2s, outline-width .2s, outline-offset .2s, opacity .2s; }
   .card:hover { transition-duration: .1s; }
   /* With the light under the pointer, hover is that light — the edge's glow stays as it is at rest (it grew across the
      card before, and still does with the switch off); the open card and the magnifier's mark keep theirs. Not on the
@@ -561,6 +561,12 @@
   .card { --lift: oklch(from var(--repo, var(--nocolor)) min(l, .72) c h); }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card { --lift: oklch(from var(--repo, var(--nocolor)) max(l, .62) c h); } }
   :root[data-theme="dark"] .card { --lift: oklch(from var(--repo, var(--nocolor)) max(l, .62) c h); }
+  /* …but a black project's glow is its black (2026-10-09, towards morning): --wash, the glow's colour, is --lift on every
+     other card and the black itself on a black one — its lines (the edge, the border, the ring's track) the grey that
+     shows, its ground black, the open card's too. The pointer on it, or the magnifier's mark, lights the ground in the
+     grey; registered, so it eases there and back. */
+  @property --wash { syntax: '<color>'; inherits: false; initial-value: transparent; }
+  .card.black:not(:hover, .qsel) { --wash: var(--repo); }
   /* in the dark a light is lighter than its colour: a dark project's (a forest green) was barely there */
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card { --spotc: oklch(from var(--lift) calc(l + (1 - l) * .3) c h); } }
   :root[data-theme="dark"] .card { --spotc: oklch(from var(--lift) calc(l + (1 - l) * .3) c h); }
@@ -677,7 +683,7 @@
     /* …seamlessly (2026-09-29): the card's tint rises to the full colour over its last 44 px, so it meets the bar
        in the bar's own colour — the card's wash under it, as .card draws it. */
     background-image: linear-gradient(to right, transparent calc(100% - 44px), var(--repo, var(--nocolor))),
-      linear-gradient(to right, var(--edge) 3px, transparent 3px), radial-gradient(circle var(--spotr) at var(--mx) var(--my), color-mix(in srgb, var(--spotc) var(--spot), transparent), transparent), linear-gradient(90deg, color-mix(in srgb, var(--lift) var(--tint), var(--panel)), calc(var(--reach) * var(--fall)), var(--panel) var(--reach)); }
+      linear-gradient(to right, var(--edge) 3px, transparent 3px), radial-gradient(circle var(--spotr) at var(--mx) var(--my), color-mix(in srgb, var(--spotc) var(--spot), transparent), transparent), linear-gradient(90deg, color-mix(in srgb, var(--wash) var(--tint), var(--panel)), calc(var(--reach) * var(--fall)), var(--panel) var(--reach)); }
   /* A card in the board's own black (a project the setup paints #000000): 65 % of black over a light panel is a mid-grey
      nothing reads on, so the tint is the colour itself and the card borrows the dark theme's inks — they inherit,
      so title, snips, times and the two speaker marks follow in one rule. In the dark theme they are what they were. */

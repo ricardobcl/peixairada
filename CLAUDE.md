@@ -337,6 +337,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   (2026-10-09, late night): `--lift` is `oklch(from <the colour> max(l, .62) c h)` in the dark, `min(l, .72)` in the
   light — hue and chroma kept, a black a grey — and the edge, the glow, the light under the pointer, the hovered, open
   and clauding border and the ring's track wear it; the project's name in the dark is lifted from the same floor.
+  **A black project's ground stays black** (towards morning): the glow's colour is `--wash` (a registered colour,
+  eased) — `--lift` on every card but `.card.black:not(:hover, .qsel)`, where it is the black; its lines are the grey.
   `--repo` stays the colour as set for the rail's squares, the header, the splitter and the open card's bleed into it.
   → the black step of `scripts/scenarios/simple-colors.mjs`.
 * **The chat header is drawn only when it changed** (2026-09-27): `renderHead` compares the header's, the menu's and
