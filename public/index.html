@@ -617,7 +617,14 @@
   @keyframes landed {
     from { border-color: var(--glow); box-shadow: 0 0 0 1px color-mix(in srgb, var(--glow) 60%, transparent), 0 0 22px color-mix(in srgb, var(--glow) 45%, transparent); }
   }
-  .card.landed { animation: landed .6s ease-out both; }
+  .card.landed { animation: landed 1.1s ease-out both; }
+  /* …and a wash of that light spreads from the ✓ corner over the card, once (2026-10-09, the studies' M3): a round
+     blob at the top right corner scaled out and faded — the compositor's — under the card's content, clipped by it.
+     Not on a card still watching something: its ::before is the ring's. The delay is the card's own (inherit), so a
+     card rebuilt mid-landing carries the wash on as it carries the flare. */
+  .card.landed:not(.watching)::before { content: ''; position: absolute; z-index: -1; right: -48px; top: -48px; width: 96px; height: 96px; border-radius: 50%; pointer-events: none;
+    background: radial-gradient(closest-side, color-mix(in srgb, var(--glow) 80%, transparent), transparent); animation: wash 1.1s ease-out both; animation-delay: inherit; }
+  @keyframes wash { from { transform: scale(0); opacity: 1; } 40% { transform: scale(5); opacity: .55; } to { transform: scale(7.5); opacity: 0; } }
   /* Hover and the open chat enhance the card's own colour, never the accent (2026-09-20): hover is the open card's
      solid tint (65 % of the colour since 2026-09-26, 55 % before — a step above the brighter wash) under the full
      colour with a soft 1px halo outside; the open card adds a 2px ring of it over its border — a three-pixel edge. */
@@ -1384,6 +1391,7 @@
     .card.asking { border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
     .card.asking::before, .card.asking::after { animation: none; opacity: 0; }   /* no pings: the red border and its glow */
     .card.landed { animation: none; }
+    .card.landed::before { animation: none; content: none; }   /* no wash */
     .dot.working, .dot.needs-input { animation: none; }
     .pix, .pix svg { animation: none; }
     .ck[data-checks="pending"] svg { animation: none; stroke-dasharray: none; }   /* CI running: a still ring */
@@ -2242,7 +2250,7 @@
   const follow = a => { sliding.add(a); const end = () => { sliding.delete(a); listChanged(); }; a.addEventListener('finish', end); a.addEventListener('cancel', end); listChanged(); return a; };
   // The reply landed: a chat that goes from clauding to ready flares its card's edge once (the `landed` animation,
   // LANDED_MS) — marked by the session handler, applied here with a negative delay so a rebuild mid-flare carries on.
-  const LANDED_MS = 600, landedAt = new Map();   // chat id → when it landed
+  const LANDED_MS = 1100, landedAt = new Map();   // chat id → when it landed (the flare and the wash: 1.1 s, 2026-10-09)
   function flareLanded() {
     const t = performance.now();
     for (const [id, at] of landedAt) {

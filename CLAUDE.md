@@ -201,8 +201,9 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   Each animation carries its kind in `id`; `window.peix.motion()` is the log of the last moves.
   → `scripts/scenarios/list-motion.mjs`.
   **The reply landed** is the `landed` class: the `session` handler notes `working` → `idle` in `landedAt`, and
-  `flareLanded()` (from `drawCards`) sets the class with a negative `animation-delay` for `LANDED_MS`, so a rebuilt card
-  carries the flare on; the badge pops from `onAlert`. Neither is in `PHASED`.
+  `flareLanded()` (from `drawCards`) sets the class with a negative `animation-delay` for `LANDED_MS` (1.1 s), so a
+  rebuilt card carries the flare on — the edge's flare, and since 2026-10-09 **a wash from the ✓ corner** (`::before`,
+  `@keyframes wash`, `animation-delay: inherit`; not on a card still watching, whose `::before` is the ring's); the badge pops from `onAlert`. Neither is in `PHASED`.
 * **A card's glow is `--tint` and `--reach`, registered percentages** (2026-09-27, night; ink cards since 2026-10-09):
   the card is the panel, its colour a lit 3 px edge on the left (`--edge`, a first `background` layer) and a glow of it
   from there — `--tint` how strong it starts, `--reach` how far it runs before it is the panel. Hover, `.active` and

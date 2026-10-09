@@ -85,10 +85,11 @@ export default async function (ctx) {
     n0 = (await motion(ctx)).length;
     appendFileSync(landing.file, replyLines({ id: landing.id, cwd, text: 'Built.', at: new Date() }).map(l => JSON.stringify(l)).join('\n') + '\n');
     await ctx.waitFor(`window.peix.motion().slice(${n0}).some(m => m.id === ${JSON.stringify(landing.id)} && m.kind === 'landed')`, { what: 'the reply landing', every: 40, timeout: 6000 });
-    out.landed = await ctx.evaluate(`JSON.stringify((c => ({ cls: [...c.classList].filter(x => ['working', 'idle', 'landed'].includes(x)), anim: getComputedStyle(c).animationName, delay: c.style.animationDelay }))(document.querySelector('#slist > .card[data-id=${JSON.stringify(landing.id)}]')))`).then(JSON.parse);
+    out.landed = await ctx.evaluate(`JSON.stringify((c => ({ cls: [...c.classList].filter(x => ['working', 'idle', 'landed'].includes(x)), anim: getComputedStyle(c).animationName, delay: c.style.animationDelay, wash: getComputedStyle(c, '::before').animationName }))(document.querySelector('#slist > .card[data-id=${JSON.stringify(landing.id)}]')))`).then(JSON.parse);
     if (out.landed.cls.includes('landed')) {   // caught in the flare: the card's own animation, started where the landing was
       ctx.assert.equal(out.landed.anim, 'landed', 'the flare is the landed animation');
       ctx.assert.match(out.landed.delay, /^-\d+ms$/, 'run from where the landing was, not from its start');
+      ctx.assert.equal(out.landed.wash, 'wash', 'and a wash spreads from the ✓ corner with it (2026-10-09)');
       await ctx.shot('landed');
     }
     ctx.assert.ok(!out.landed.cls.includes('working'), 'and the chat is ready');
