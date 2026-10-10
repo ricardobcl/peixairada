@@ -10,7 +10,9 @@ export default async function (ctx) {
   await ctx.openChat(two.id);
   await ctx.waitFor(`!!document.querySelector('#moreBtn')`, { what: 'the header' });
 
-  out.row = await ctx.evaluate(`JSON.stringify({ buttons: [...document.querySelectorAll('#shead > button')].map(b => b.id),
+  // the +n −n of the chat's folder (2026-10-10) shows when it has changes — the fixture's folder is this checkout's, so
+  // whether it does is the working tree's; it is not one of the buttons in question
+  out.row = await ctx.evaluate(`JSON.stringify({ buttons: [...document.querySelectorAll('#shead > button:not(#diffBtn)')].map(b => b.id),
     more: (b => ({ border: getComputedStyle(b).borderTopWidth, last: b === [...document.querySelectorAll('#shead > :not(.details)')].pop() }))(document.querySelector('#moreBtn')) })`).then(JSON.parse);
   ctx.assert.deepEqual(out.row.buttons, ['prToggle', 'moreBtn'], 'the PRs and ··· are the only buttons in the row (keeping the Mac awake is the status bar\'s, 2026-10-09)');
   ctx.assert.deepEqual(out.row.more, { border: '0px', last: true }, '··· is borderless, and last');
@@ -22,7 +24,7 @@ export default async function (ctx) {
   out.menu = await ctx.evaluate(`JSON.stringify({ ids: [...document.querySelectorAll('#hmenu button')].map(b => b.id),
     right: Math.round(document.querySelector('#moreBtn').getBoundingClientRect().right - document.querySelector('#hmenu').getBoundingClientRect().right),
     below: Math.round(document.querySelector('#hmenu').getBoundingClientRect().top - document.querySelector('#moreBtn').getBoundingClientRect().bottom) })`).then(JSON.parse);
-  ctx.assert.deepEqual(out.menu.ids, ['termBtn', 'webBtn', 'detailsBtn', 'settingsBtn'], 'the actions, by their own ids — the lid\'s row is the status bar\'s while it is on (2026-10-09), the settings last, no { } since long code is always folded (2026-09-28), no open in VS Code (2026-09-29)');
+  ctx.assert.deepEqual(out.menu.ids, ['termBtn', 'chgBtn', 'webBtn', 'detailsBtn', 'settingsBtn'], 'the actions, by their own ids — the changes (2026-10-10), the lid\'s row is the status bar\'s while it is on (2026-10-09), the settings last, no { } since long code is always folded (2026-09-28), no open in VS Code (2026-09-29)');
   ctx.assert.ok(Math.abs(out.menu.right) <= 1 && out.menu.below === 4, 'right-aligned, just under ···');
   await ctx.shot('2-menu', { x: 1100, y: 0, width: 600, height: 300 });
 

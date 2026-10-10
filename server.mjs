@@ -1346,7 +1346,7 @@ function fold(s, line) {
       pushEntry(s, { role: 'user', kind: 'text', text, ts, uuid: line.uuid });
       notePrs(s, text, ts, 'user'); noteTickets(s, text, ts, 'user');
       s.lastPrompt = snippet(text, 200);
-      if (!s.turnStart || s.status !== 'working') s.turnStart = ts;   // a prompt starts the turn; one typed mid-turn is part of it
+      if (!s.turnStart || s.status !== 'working') { s.turnStart = ts; s.turnFiles = new Set(); }   // a prompt starts the turn; one typed mid-turn is part of it — and the files it edits (the changes tab's `turn`)
       s.lastActivity = ts; s.lastUserAt = ts;
       setStatus(s, 'working', ts);
       return true;
@@ -1364,6 +1364,7 @@ function fold(s, line) {
         if (b.type === 'text' && b.text?.trim()) { pushEntry(s, said = { role: 'assistant', kind: 'text', text: b.text, ts, msgId: m.id }); notePrs(s, b.text, ts, 'claude'); noteTickets(s, b.text, ts, 'claude'); }
         else if (b.type === 'tool_use') {
           pushEntry(s, { role: 'assistant', kind: 'tool_use', name: b.name, text: summarizeToolInput(b.name, b.input), toolUseId: b.id, ts });
+          if (EDIT_TOOLS.has(b.name) && (b.input?.file_path || b.input?.notebook_path)) (s.turnFiles ||= new Set()).add(b.input.file_path || b.input.notebook_path);
           if (NEEDS_INPUT_TOOLS.has(b.name)) { needsInput = true; s.ask = { tool: b.name, text: summarizeToolInput(b.name, b.input), options: b.input?.questions?.[0]?.options?.length || 0 }; }
           if (b.name === 'Monitor' || (b.name === 'Bash' && b.input?.run_in_background)) noteTaskCall(s, b);
           if (b.name === 'TaskStop' && s.tasks?.size) { const j = JSON.stringify(b.input || ''); for (const id of [...s.tasks.keys()]) if (j.includes(id)) s.tasks.delete(id); }
@@ -2030,6 +2031,108 @@ async function setLid(on) {
   finally { lidAsking = null; await readPower(); }
   console.log(`[peixairada] sleep with the lid closed: ${lidOff ? 'off — the Mac stays awake' : 'on again'}`);
   return awakeState();
+}
+
+// ---- what a chat changed: its folder's diff, for the changes tab (2026-10-10) ------------------------------------------
+// Conductor's and Crystal's review pane, read from git in the chat's folder when the page asks — nothing is polled and
+// nothing is written. Three scopes: `uncommitted` (the working tree, untracked files too, against HEAD), `branch` (the
+// same against where the branch left its base — origin's default branch), and `turn`: the uncommitted diff of the files
+// the chat's last turn edited (`s.turnFiles`, from its Edit / Write tool calls — a file already dirty before the turn
+// shows whole, which a snapshot per prompt would have avoided at the cost of writing objects into the repo).
+const CHANGES_MAX = Number(process.env.CHANGES_MAX || 600_000);   // the patch's characters the page gets, at most
+const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
+const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
+/** `git diff --numstat` → {path: {add, del, binary}}; a binary file says - - */
+function parseNumstat(text) {
+  const out = {};
+  for (const l of String(text).split('\n')) { const m = /^(-|\d+)\t(-|\d+)\t(.+)$/.exec(l); if (m) out[m[3]] = { add: m[1] === '-' ? 0 : +m[1], del: m[2] === '-' ? 0 : +m[2], binary: m[1] === '-' }; }
+  return out;
+}
+/** `git diff --name-status` → {path: 'M' | 'A' | 'D' | …} */
+function parseNameStatus(text) {
+  const out = {};
+  for (const l of String(text).split('\n')) { const m = /^([A-Z])\d*\t(.+)$/.exec(l); if (m) out[m[2]] = m[1]; }
+  return out;
+}
+/** A patch cut at each file's `diff --git` line: [{path, text}], the path the b/ side's. */
+function splitPatch(text) {
+  const out = [];
+  for (const part of String(text).split(/^(?=diff --git )/m)) {
+    const m = /^diff --git a\/.+? b\/(.+)$/m.exec(part); if (m) out.push({ path: m[1], text: part });
+  }
+  return out;
+}
+/** An untracked file as git would show it added: every line a +, up to `max` of them. */
+function addedPatch(path, body, max = 400) {
+  const lines = body.replace(/\n$/, '').split('\n'), shown = lines.slice(0, max);
+  return `diff --git a/${path} b/${path}\nnew file\n--- /dev/null\n+++ b/${path}\n@@ -0,0 +1,${shown.length} @@\n${shown.map(l => '+' + l).join('\n')}\n${lines.length > max ? `\\ ${lines.length - max} more lines\n` : ''}`;
+}
+const gitOut = async (cwd, args, opts = {}) => {
+  const bin = findBin('git', 'a chat\'s changes go unread'); if (!bin) throw new Error('git is not installed');
+  const { stdout } = await execFileP(bin, ['-C', cwd, ...args], { timeout: 20_000, maxBuffer: 32e6, ...opts });
+  return stdout;
+};
+const gitOr = (cwd, args, dflt = null) => gitOut(cwd, args).then(o => o.trim(), () => dflt);
+/** The changes of a chat's folder in one scope — or `{stat}` alone (the header's chip): the counts, no patch. */
+async function changesOf(s, scope = 'uncommitted', statOnly = false) {
+  const cwd = s.live?.cwd || s.cwd;
+  if (!cwd || !existsSync(cwd)) return { error: 'its folder is not there' };
+  const root = await gitOr(cwd, ['rev-parse', '--show-toplevel']);
+  if (!root) return { error: 'its folder is not in a git repository' };
+  const head = await gitOr(root, ['rev-parse', '--verify', '--quiet', 'HEAD']);
+  const branch = head ? await gitOr(root, ['rev-parse', '--abbrev-ref', 'HEAD'], 'HEAD') : await gitOr(root, ['symbolic-ref', '--short', 'HEAD'], 'HEAD');
+  let base = null, from = head || EMPTY_TREE;
+  if (scope === 'branch' && head) {
+    base = await gitOr(root, ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD']);
+    for (const b of base ? [] : ['origin/main', 'origin/master', 'main', 'master']) if (b !== branch && await gitOr(root, ['rev-parse', '--verify', '--quiet', b])) { base = b; break; }
+    const mb = base && await gitOr(root, ['merge-base', 'HEAD', base]);
+    if (mb) from = mb; else base = null;
+  }
+  let paths = [];
+  if (scope === 'turn') {
+    // git names the root by its real path (/private/var/… for a /var/… folder): the files are made real to match
+    const real = f => { try { return realpathSync(f); } catch { try { return join(realpathSync(dirname(f)), basename(f)); } catch { return f; } } };
+    paths = [...(s.turnFiles || [])].map(f => relative(root, real(resolve(cwd, f)))).filter(f => f && !f.startsWith('..') && !isAbsolute(f));
+    if (!paths.length) return { cwd, root, branch, scope, base, upstream: null, files: [], add: 0, del: 0, patch: '', truncated: false, note: 'nothing edited in its last turn' };
+  }
+  const only = paths.length ? ['--', ...paths] : [];
+  const [num, names, untracked] = await Promise.all([
+    gitOut(root, ['diff', '--numstat', '--no-renames', from, ...only]),
+    gitOut(root, ['diff', '--name-status', '--no-renames', from, ...only]),
+    gitOut(root, ['ls-files', '--others', '--exclude-standard', ...only]),
+  ]);
+  const stat = parseNumstat(num), status = parseNameStatus(names);
+  const files = Object.entries(stat).map(([path, n]) => ({ path, status: status[path] || 'M', ...n }));
+  const bodies = new Map();
+  for (const path of untracked.split('\n').filter(Boolean).slice(0, 200)) {
+    let body = ''; try { const f = join(root, path); if (statSync(f).size < 1e6) body = readFileSync(f, 'utf8'); } catch {}
+    const binary = body.includes('\0');
+    bodies.set(path, binary ? '' : body);
+    files.push({ path, status: 'A', add: binary || !body ? 0 : body.replace(/\n$/, '').split('\n').length, del: 0, binary, untracked: true });
+  }
+  files.sort((a, b) => a.path.localeCompare(b.path));
+  const add = files.reduce((n, f) => n + f.add, 0), del = files.reduce((n, f) => n + f.del, 0);
+  if (statOnly) return { root, branch, add, del, files: files.length };
+  const upName = head && await gitOr(root, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']);
+  const counts = upName && (await gitOr(root, ['rev-list', '--left-right', '--count', '@{u}...HEAD'], '')).split(/\s+/).map(Number);
+  const upstream = upName ? { name: upName, behind: counts?.[0] || 0, ahead: counts?.[1] || 0 } : null;
+  let patch = await gitOut(root, ['diff', '--no-renames', '--no-color', '--no-ext-diff', '-U3', from, ...only]);
+  for (const [path, body] of bodies) if (body) patch += addedPatch(path, body);
+  let truncated = false;
+  if (patch.length > CHANGES_MAX) {   // whole files, as many as fit
+    let kept = ''; for (const c of splitPatch(patch)) { if (kept.length + c.text.length > CHANGES_MAX) { truncated = true; break; } kept += c.text; }
+    patch = kept;
+  }
+  return { cwd, root, branch, base, scope, upstream, files, add, del, patch, truncated };
+}
+// The header's chip asks often (each open, each turn's end): the counts are kept a few seconds per folder.
+const changeStats = new Map();
+async function changeStat(s) {
+  const key = s.live?.cwd || s.cwd, hit = changeStats.get(key);
+  if (hit && Date.now() - hit.at < 4000) return hit.v;
+  const v = await changesOf(s, 'uncommitted', true).catch(e => ({ error: e.message }));
+  changeStats.set(key, { at: Date.now(), v });
+  return v;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -2704,6 +2807,14 @@ const server = createServer(async (req, res) => {
       for (const t of cur.tickets) if (ticketWanted(t.key) && Date.now() >= jiraPauseUntil) queueTicket(t.key);   // …and its tickets
       return json(res, 200, { session: summary(cur), entries: cur.entries, gen: cur.gen, upto: cur.entryCount });   // the entries end at upto
     }
+    // the changes tab (2026-10-10): the chat's folder's diff in a scope, or ?stat=1 for the header's counts
+    if (req.method === 'GET' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/changes$/))) {
+      const s = sessions.get(m[1]);
+      if (!s) return json(res, 404, { error: 'unknown session' });
+      const scope = ['uncommitted', 'branch', 'turn'].includes(url.searchParams.get('scope')) ? url.searchParams.get('scope') : 'uncommitted';
+      try { const r = url.searchParams.get('stat') ? await changeStat(s) : await changesOf(s, scope); return json(res, r.error ? 409 : 200, r); }
+      catch (e) { return json(res, 500, { error: String(e.stderr || e.message).trim().split('\n')[0] }); }
+    }
     // ⌥⌘T: a zsh in the chat's folder, in the pane's zsh tab — a holder like the claude one (`zsh -l -i` in the PTY),
     // one per chat, alive until `exit` or a DELETE. The inline "new tab in iTerm" (2026-09-20).
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/shell$/))) {
@@ -2931,7 +3042,7 @@ server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTe
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {

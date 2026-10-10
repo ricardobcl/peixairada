@@ -1333,6 +1333,58 @@
   .lognew button b { font-weight: 600; }
   .empty { color: var(--muted); text-align: center; margin-top: 30vh; padding: 0 20px; }
 
+  /* ---- the changes tab: what this chat changed in its folder (2026-10-10) ---- */
+  #chg { grid-row: 1; grid-column: 1; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); background: var(--panel); font-size: 12.5px; }
+  #chg[hidden] { display: none; }
+  #chg .cbar { display: grid; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  #chg .r1, #chg .r2 { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  #chg .br { display: inline-flex; align-items: center; gap: 6px; font: 600 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); white-space: nowrap; }
+  #chg .br .ic { width: 14px; height: 14px; fill: var(--muted); }
+  #chg .br.base { color: var(--muted); } #chg .arrow { color: var(--muted); }
+  #chg .up { color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  #chg .acts { margin-left: auto; display: flex; gap: 6px; flex: none; }
+  #chg .cbtn { font: inherit; font-size: 12px; font-weight: 600; padding: 3px 10px; border: 1px solid transparent; border-radius: 6px; background: var(--ctl); color: var(--ink); cursor: pointer; white-space: nowrap; }
+  #chg .cbtn:hover { background: var(--ctl-hi); }
+  #chg .cbtn.pr { background: color-mix(in srgb, var(--pr-open) 22%, transparent); color: var(--pr-open); }
+  #chg .cbtn.pri { background: var(--accent); color: var(--bg); }
+  #chg .cseg { display: inline-flex; padding: 2px; border-radius: 7px; background: var(--ctl); flex: none; }
+  #chg .cseg button { font: inherit; font-size: 11.5px; padding: 2px 10px; border: 0; border-radius: 5px; background: none; color: var(--muted); cursor: pointer; }
+  #chg .cseg button.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .3); }
+  #chg .sum { color: var(--muted); white-space: nowrap; } #chg .r2 .cbtn { margin-left: auto; }
+  #chg .a { color: var(--pr-open); } #chg .d { color: var(--pr-closed); }
+  #chg .sum .a, #chg .sum .d, #chg em .a, #chg em .d { font: 600 11.5px ui-monospace, monospace; }
+  #chg .cbody { display: grid; grid-template-columns: minmax(150px, 230px) minmax(0, 1fr); min-height: 0; }
+  #chg .cfiles { overflow-y: auto; border-right: 1px solid var(--line); padding: 6px 0; display: grid; align-content: start; }
+  #chg .cf { display: flex; align-items: center; gap: 7px; padding: 4px 12px; border: 0; background: none; font: inherit; color: var(--ink); text-align: left; cursor: pointer; min-width: 0; }
+  #chg .cf:hover { background: var(--ctl); } #chg .cf.on { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: inset 2px 0 var(--accent); }
+  #chg .cf b { font: 700 10px ui-monospace, monospace; color: var(--working); width: 10px; flex: none; } #chg .cf b.a { color: var(--pr-open); } #chg .cf b.d { color: var(--pr-closed); }
+  #chg .cf .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; min-width: 0; flex: 1; }
+  #chg .cf .nm .dir { color: var(--muted); }
+  #chg .cf em { font-style: normal; flex: none; }
+  #chg .cdiff { overflow: auto; font: 12px/19px ui-monospace, SFMono-Regular, Menlo, monospace; }
+  #chg .fh { position: sticky; top: 0; z-index: 1; display: flex; gap: 8px; padding: 6px 12px; border-bottom: 1px solid var(--line); background: var(--bg); font-weight: 600; color: var(--ink); }
+  #chg .fh em { margin-left: auto; font-style: normal; }
+  #chg .dl { position: relative; display: grid; grid-template-columns: 40px 40px 18px minmax(0, 1fr); white-space: pre; color: var(--ink); min-width: max-content; }
+  #chg .dl .na, #chg .dl .nb { text-align: right; padding-right: 8px; color: var(--muted); opacity: .7; font-size: 11px; user-select: none; }
+  #chg .dl .sg { position: relative; color: var(--muted); user-select: none; }
+  #chg .dl code { font: inherit; padding-right: 16px; }
+  #chg .dl.add { background: color-mix(in srgb, var(--pr-open) 14%, transparent); } #chg .dl.add .sg, #chg .dl.add .nb { color: var(--pr-open); opacity: 1; }
+  #chg .dl.del { background: color-mix(in srgb, var(--pr-closed) 14%, transparent); } #chg .dl.del .sg, #chg .dl.del .na { color: var(--pr-closed); opacity: 1; }
+  #chg .dl.hunk { background: color-mix(in srgb, var(--hl-fn) 10%, transparent); } #chg .dl.hunk code { color: var(--hl-meta); }
+  #chg .dl.meta code { color: var(--muted); font-style: italic; }
+  #chg .dlp { position: absolute; left: -2px; top: 1px; width: 17px; height: 17px; padding: 0; border: 0; border-radius: 4px; background: var(--accent); color: var(--bg); font: 700 12px/17px -apple-system, sans-serif; cursor: pointer; opacity: 0; }
+  #chg .dl:hover .dlp { opacity: 1; }
+  #chg .lnote { display: grid; gap: 8px; margin: 4px 14px 8px 98px; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--accent); background: var(--bg); font: 12.5px/1.45 -apple-system, BlinkMacSystemFont, sans-serif; color: var(--ink); max-width: 640px; }
+  #chg .lnote .who { font-size: 11px; color: var(--muted); }
+  #chg .lnote textarea { font: inherit; resize: vertical; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: inherit; outline: none; }
+  #chg .lnote textarea:focus { border-color: var(--accent); }
+  #chg .lnote .row { display: flex; gap: 6px; justify-content: flex-end; }
+  #chg .cempty { padding: 40px 20px; color: var(--muted); text-align: center; } #chg .cempty.sm { padding: 10px 16px; text-align: left; }
+  /* the header's +n −n (2026-10-10), the drawn black's inks, before the your-move tag and the PR chips */
+  .shead .hdiff { display: inline-flex; gap: 5px; align-items: center; flex: none; height: 20px; padding: 0 7px; border: 1px solid transparent; border-radius: 4px; background: var(--ctl); font: 600 11.5px ui-monospace, monospace; cursor: pointer; }
+  .shead .hdiff:hover { background: var(--ctl-hi); }
+  .shead .hdiff .a { color: var(--pr-open); } .shead .hdiff .d { color: var(--pr-closed); }
+
   /* ---- project editor ---- */
   dialog { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); padding: 16px 18px; width: min(600px, 92vw); }
   dialog::backdrop { background: rgba(0, 0, 0, .35); }
@@ -1618,6 +1670,7 @@
       <div class="grp on" id="grp">
         <div class="ptabs" id="ptabs" hidden></div>
         <div class="gbody" id="gbody">
+          <div id="chg" hidden></div>
           <div id="log"><div class="empty">Pick a chat on the left — ⌥⌘K finds one anywhere, ⌥⌘P picks a project.</div></div>
           <div class="gterm" id="term" hidden><div class="tbody" id="termBody"></div></div>
         </div>
@@ -1791,7 +1844,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map() };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, statusBar: true, barStats: ['cpu', 'mem'], peopleFold: false, cardSpot: true, skinDark: null, skinLight: null, skinExact: false };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, statusBar: true, barStats: ['cpu', 'mem'], peopleFold: false, cardSpot: true, changesScope: 'turn', skinDark: null, skinLight: null, skinExact: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -2179,6 +2232,10 @@
     // a folder (Primer's file-directory-fill, MIT): a folder of repos, in the setup
     folder: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 1A1.75 1.75 0 0 0 0 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0 0 16 13.25v-8.5A1.75 1.75 0 0 0 14.25 3H7.5a.25.25 0 0 1-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1H1.75Z"/></svg>',
     pin: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 1.5l4.5 4.5-1.6.6-2.5 2.5-.4 3.2-1.3 1.3-2.8-2.8-3.8 3.8-.7-.7 3.8-3.8-2.8-2.8 1.3-1.3 3.2-.4 2.5-2.5Z"/></svg>',
+    // ± in a square: a chat's changes, its diff (2026-10-10)
+    diff: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M7.25 2.5h1.5v2.25H11v1.5H8.75V8.5h-1.5V6.25H5v-1.5h2.25ZM5 10.5h6V12H5Z"/><path fill-rule="evenodd" d="M2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11A1.5 1.5 0 0 1 2.5 1Zm0 1.5v11h11v-11Z"/></svg>',
+    // a branch (Primer's git-branch, MIT): the changes tab's branch
+    branch: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 3.25a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.493 2.493 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25Zm-6 0a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Zm8.25-.75a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM4.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"/></svg>',
     vscode: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>'
   };
   $('#noChatMore').innerHTML = ICON.more;
@@ -2524,7 +2581,8 @@
   // The open chat, for the window (2026-09-27, night): its project, title and folder go to the shell whenever the
   // header is drawn anew, and nothing when the column is empty — the window's title (⌘Tab, Mission Control, the
   // Window menu) and its represented folder (the title bar's proxy icon and ⌘-click path) follow.
-  const postChat = s => { if (inApp) post({ type: 'chat', project: s?.project || '', title: s?.title || '', cwd: s?.cwd || '' }); };
+  // only what changed (2026-10-10): a header drawn anew for another reason — the +n −n coming in — names the same window
+  const postChat = s => { if (!inApp) return; const m = { type: 'chat', project: s?.project || '', title: s?.title || '', cwd: s?.cwd || '' }, sig = JSON.stringify(m); if (sig === postChat.last) return; postChat.last = sig; post(m); };
   function postState() {
     const needs = [...state.sessions.values()].filter(s => s.alive && s.status === 'needs-input').map(s => ({ id: s.id, project: s.project, title: s.title }));
     const sig = JSON.stringify(needs); if (sig === postState.last) return; postState.last = sig;
@@ -3728,7 +3786,7 @@
   // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyW: hotCloseTab, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyW: hotCloseTab, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiff, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -4377,6 +4435,7 @@
     state.titleEdit = null;   // …one whose box went with a header drawn for another chat is over
     $('#chat').classList.toggle('vsc', inVsCode(s));
     tintChat(repoColor(s.cwd));
+    wantDiffStat(s);   // the +n −n chip (2026-10-10): asked a few seconds apart at most
     // One row: title · [dot+age] · buttons. No status word — the dot carries it in colour; what it cannot say is how
     // long ago. The dot and its age *are* the details button (2026-09-20 — the dot, the age and a ··· were three things
     // for one fold): a click shows path, branch and session details under the row. The chat's PRs are chips in the row,
@@ -4394,7 +4453,7 @@
       prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}"${prCk(pr) ? ` data-checks="${prCk(pr)}"` : ''} title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}${prCk(pr) ? `\n${CK_TIP[prCk(pr)]}` : ''}${pr.turn ? `\n${turnTip(pr)}` : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}${ckHtml(pr)}</span>`).join('')
     }${tks.map(t => `<span class="hpr tk" data-cat="${esc(t.cat)}" title="${esc(ticketTip(t))}">${esc(t.key)}</span>`).join('')}<span class="hpr more" hidden></span></button>`;
     const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo${s.cwd && prefs.project === s.cwd ? ' on' : ''}" title="${s.cwd && prefs.project === s.cwd ? 'Every project again (ALL)' : 'Show this folder\'s chats — click again for every project'}">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
-      ${headMove(s)}${hprs}${taskChip(s)}
+      ${diffChip(s)}${headMove(s)}${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
       <button class="hmore" id="moreBtn" aria-haspopup="menu" aria-expanded="false" title="This chat: the claude session, VS Code, focus view, code folding, path and branch — and the settings">${ICON.more}</button>
       <div class="details"${prefs.headDetails ? '' : ' hidden'}>
@@ -4408,6 +4467,7 @@
     const menuHtml = [
       s.cwd && !loud ? `${termBtn('hmi')}<span class="lbl">${termWord}</span><span class="k">⌥⌘C</span></button>` : '',
       termLive(s) ? `<button class="hmi${focusOn(s.id) ? ' on' : ''}" id="viewBtn" aria-pressed="${focusOn(s.id)}" title="${esc(viewTip(s))}">${ICON.view}<span>focus view</span><span class="k">${focusOn(s.id) ? 'on' : 'off'}</span></button>` : '',
+      s.cwd ? `<button class="hmi" id="chgBtn" title="What this chat changed in its folder — the diff, by turn, uncommitted or the branch">${ICON.diff}<span class="lbl">changes</span><span class="k">⌥⌘D</span></button>` : '',
       s.cwd ? `<button class="hmi" id="webBtn" title="${WEB_TIP}">${ICON.vscode}<span class="lbl">VS Code Web</span><span class="k">⌥⌘E</span></button>` : '',
       // what a tab's × does, for the tabs that lose their strip alone in a half (2026-09-28) — ⌥⌘W with the keys in it
       shellLive(s) ? `<button class="hmi" id="shellEndBtn" title="End this chat's ${shName()} and close its tab — exit in it does the same · ⌥⌘W with the keys in it"><span class="gl">×</span><span>end the ${shName()}</span><span class="k"></span></button>` : '',
@@ -4443,6 +4503,7 @@
       finally { wb.disabled = false; }
     };
     const tb = $('#termBtn'); if (tb) tb.onclick = () => { menu.close(); termAction(s); };
+    const cb = $('#chgBtn'); if (cb) cb.onclick = () => { menu.close(); hotDiff(); };
     const sb = $('#shellEndBtn'); if (sb) sb.onclick = () => { menu.close(); dropTab(s, 'shell'); };
     const ib = $('#ideCloseBtn'); if (ib) ib.onclick = () => { menu.close(); if (ideKey(s)) dropTab(s, ideKey(s)); };
     $('#settingsBtn').onclick = () => settingsOpen(true);
@@ -4895,7 +4956,7 @@
   };
   const ideKey = s => inApp && s?.cwd && state.paneIde.get(s.cwd) ? 'ide:' + state.paneIde.get(s.cwd) : null;
   const paneKeys = s => !inApp || !s ? [] : [...(state.paneGh.get(s.id) || []).map(u => 'gh:' + u), ...(ideKey(s) ? [ideKey(s)] : [])];
-  const tabKeys = s => ['chat', ...(shellLive(s) ? ['shell'] : []), ...paneKeys(s)];
+  const tabKeys = s => ['chat', ...(shellLive(s) ? ['shell'] : []), ...(s && changesOpen.has(s.id) ? ['changes'] : []), ...paneKeys(s)];
   const tabOf = s => placeOf(s)[focusG];
   /** A tab put on show, in the half whose strip lists it — the one there is, unsplit — and the keys go with it.
       There is one transcript, one xterm per half and one web view per page, so a tab lives in exactly one half;
@@ -4958,7 +5019,7 @@
       if (want) { if (tm.id !== want.id || tm.lost) attachTerm(tm, want); }
       else if (tm.id) { detachTerm(tm); showDrawer(tm, false); }
     }
-    placeLog(s, p);
+    placeLog(s, p); placeChanges(s, p);
     renderTabs(s, p); postPane(s, p);
   }
   // There is one transcript and it goes to whichever half holds the chat tab — moved, not copied, so the renderer
@@ -5003,6 +5064,7 @@
       setHtml(el, keys.map(k =>
         k === 'chat' ? tab(k, termLive(s) ? 'claude' : 'chat', `${termLive(s) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C`, '', ICON.claude)
         : k === 'shell' ? tab(k, shName(), `A ${shName()} in ${s.cwd || 'its folder'} · ⌥⌘T`, 'End this shell', ICON.term)
+        : k === 'changes' ? tab(k, 'changes', `What this chat changed in ${s.cwd || 'its folder'} · ⌥⌘D`, 'Close the changes', ICON.diff)
         : k.startsWith('gh:') ? tab(k, paneLabel(k), GH_PR.test(k.slice(3)) ? `${k.slice(3)} · ⌥⌘G` : k.slice(3), 'Close this page', GH_PR.test(k.slice(3)) ? ICON.pr : ICON.globe)
         : tab(k, 'VS Code', `${s.cwd} in VS Code Web · ⌥⌘E`, 'Close the editor', ICON.vscode)).join('')
         + (two && !keys.length ? '<span class="pdrop">drop a tab here</span>' : '')
@@ -5221,7 +5283,8 @@
   // lingers in the shell until it needs the room — and the chat tab takes its place.
   function closeTab(s, k) {
     if (k === 'shell') { if (s.shell) api('DELETE', `/api/terminals/${s.shell.id}`).catch(e => note(seen($('#ptabs')), `Could not end the zsh: ${e.message}`, true)); return; }
-    if (k.startsWith('gh:')) state.paneGh.set(s.id, (state.paneGh.get(s.id) || []).filter(u => 'gh:' + u !== k));
+    if (k === 'changes') changesOpen.delete(s.id);
+    else if (k.startsWith('gh:')) state.paneGh.set(s.id, (state.paneGh.get(s.id) || []).filter(u => 'gh:' + u !== k));
     else if (s.cwd) state.paneIde.delete(s.cwd);
     const p = placeOf(s);
     if (p.includes(k)) tabs.set(s.id, p.map(x => x === k ? null : x));   // placeOf fills the gap from what that half has left
@@ -5279,6 +5342,143 @@
     if (d) showTerminal(s, d.terminal);
     renderHead(state.sessions.get(s.id) || s);
   }
+  // ---- the changes tab: what this chat changed in its folder (2026-10-10) -------------------------------------------
+  // Conductor's review pane, as a tab beside claude and the zsh (⌥⌘D, the header's +n −n): the branch, how far from its
+  // upstream, the files with their counts and the diff, in the theme's syntax colours — scoped to the last turn's edits,
+  // the uncommitted tree or the branch against its base (GET …/changes, git on the server when asked; nothing polled).
+  // Commit… and Push type the command into the chat's zsh, unrun; a note on a line is a prompt typed into its claude.
+  // One element, moved into the half that shows the tab as the transcript is (placeChanges).
+  const changesOpen = new Set();   // chats with the tab, while the page lives
+  const changes = { id: null, scope: prefs.changesScope || 'turn', data: null, at: 0, upto: null, asking: 0, note: null };
+  const diffStats = new Map();     // chat id → { add, del, files, at } — the header's chip; asked every few seconds at most
+  const DIFF_LANG = { js: 'javascript', mjs: 'javascript', cjs: 'javascript', jsx: 'javascript', ts: 'typescript', tsx: 'typescript', css: 'css', scss: 'scss', html: 'xml', xml: 'xml', svg: 'xml', md: 'markdown', json: 'json', py: 'python', go: 'go', rb: 'ruby', rs: 'rust', swift: 'swift', sh: 'bash', zsh: 'bash', yml: 'yaml', yaml: 'yaml', sql: 'sql', java: 'java', kt: 'kotlin', c: 'c', h: 'c', cpp: 'cpp', php: 'php' };
+  function wantDiffStat(s) {
+    const d = diffStats.get(s.id);
+    if (!s.cwd || (d && (d.asking || Date.now() - d.at < 5000))) return;
+    diffStats.set(s.id, { ...d, asking: true, at: d?.at || 0 });
+    api('GET', `/api/sessions/${s.id}/changes?stat=1`).then(r => ({ add: r.add, del: r.del, files: r.files }), () => ({ add: 0, del: 0, files: 0 }))
+      .then(v => { const was = diffStats.get(s.id); diffStats.set(s.id, { ...v, at: Date.now() }); if (was?.add !== v.add || was?.del !== v.del) renderHead(state.sessions.get(s.id)); });
+  }
+  const diffChip = s => { const d = diffStats.get(s.id); return d && (d.add || d.del) ? `<button class="hdiff" id="diffBtn" title="${d.files} file${d.files === 1 ? '' : 's'} changed in its folder, not committed — click or ⌥⌘D for the diff"><span class="a">+${d.add}</span><span class="d">−${d.del}</span></button>` : ''; };
+  $('#shead').addEventListener('click', e => { if (e.target.closest('#diffBtn')) hotDiff(); });
+  function hotDiff() {
+    const s = state.sessions.get(state.current); if (!s) return noChat();
+    if (!s.cwd) return note($('#shead'), 'No folder known for this chat', true);
+    if (!changesOpen.has(s.id)) { changesOpen.add(s.id); openNewTab(s, 'changes'); } else setTab(s, 'changes');
+    changes.at = 0; syncTerm(s); focusBoard();
+  }
+  /** The element into the half that shows the tab, and fresh when the chat has moved on since it was read. */
+  function placeChanges(s, p) {
+    const el = $('#chg'), g = s ? p.indexOf('changes') : -1;
+    if (g < 0) { el.hidden = true; return; }
+    const host = $(GEL[g].body); if (el.parentElement !== host) host.insertBefore(el, host.firstChild);
+    el.hidden = false;
+    if (changes.id !== s.id || !changes.at || (changes.upto !== s.lastActivity && Date.now() - changes.at > 1500)) loadChanges(s);
+  }
+  async function loadChanges(s) {
+    const n = ++changes.asking, scope = changes.scope;
+    if (changes.id !== s.id) { changes.id = s.id; changes.data = null; changes.note = null; renderChanges(s); }
+    changes.at = Date.now(); changes.upto = s.lastActivity;
+    let d; try { d = await api('GET', `/api/sessions/${s.id}/changes?scope=${scope}`); } catch (e) { d = { error: e.message }; }
+    if (n !== changes.asking || state.current !== s.id) return;
+    changes.data = d;
+    if (!d.error && scope === 'uncommitted') { diffStats.set(s.id, { add: d.add, del: d.del, files: d.files.length, at: Date.now() }); renderHead(s); }
+    renderChanges(s);
+  }
+  /** A patch's lines with their numbers on both sides, from its hunks' heads. */
+  function diffLines(text) {
+    const out = []; let a = 0, b = 0, inHunk = false;
+    for (const l of text.replace(/\n$/, '').split('\n')) {
+      const h = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)$/.exec(l);
+      if (h) { a = +h[1]; b = +h[2]; inHunk = true; out.push({ t: 'hunk', text: l }); continue; }
+      if (!inHunk) continue;   // the file's own head: diff --git, index, ---, +++
+      if (l.startsWith('+')) out.push({ t: 'add', b: b++, text: l.slice(1) });
+      else if (l.startsWith('-')) out.push({ t: 'del', a: a++, text: l.slice(1) });
+      else if (l.startsWith('\\')) out.push({ t: 'meta', text: l.slice(2) });
+      else out.push({ t: 'ctx', a: a++, b: b++, text: l.slice(1) });
+    }
+    return out;
+  }
+  const hlLine = (text, lang) => { try { return lang ? hljs.highlight(text, { language: lang, ignoreIllegals: true }).value : esc(text); } catch { return esc(text); } };
+  function renderChanges(s) {
+    const el = $('#chg'), d = changes.data, sc = changes.scope;
+    const seg = `<span class="cseg">${[['turn', 'this turn'], ['uncommitted', 'uncommitted'], ['branch', 'branch vs base']].map(([k, w]) => `<button data-scope="${k}" class="${sc === k ? 'on' : ''}">${w}</button>`).join('')}</span>`;
+    if (!d || d.error) { el.innerHTML = `<div class="cbar"><div class="r2">${seg}<button class="cbtn" data-act="reload" title="Read it again">↻</button></div></div><div class="cempty">${d ? esc(d.error) : 'reading git…'}</div>`; return; }
+    const up = d.upstream ? `${d.upstream.ahead ? `↑${d.upstream.ahead}` : ''}${d.upstream.behind ? ` ↓${d.upstream.behind}` : ''}${!d.upstream.ahead && !d.upstream.behind ? 'up to date' : ''} · ${esc(d.upstream.name)}` : 'no upstream';
+    const pr = (s.prs || []).find(p => p.state === 'open' || p.state === 'draft') || null;
+    const chunks = new Map(splitDiff(d.patch).map(c => [c.path, c.text]));
+    const files = d.files.map(f => `<button class="cf${f.path === changes.sel ? ' on' : ''}" data-path="${esc(f.path)}" title="${esc(f.path)}"><b class="${f.status === 'A' ? 'a' : f.status === 'D' ? 'd' : ''}">${esc(f.status)}</b><span class="nm"><span class="dir">${esc(f.path.replace(/[^/]*$/, ''))}</span>${esc(f.path.split('/').pop())}</span><em>${f.binary ? 'bin' : `<span class="a">+${f.add}</span> <span class="d">−${f.del}</span>`}</em></button>`).join('');
+    const body = d.files.map(f => {
+      const lang = DIFF_LANG[(f.path.split('.').pop() || '').toLowerCase()];
+      const ls = diffLines(chunks.get(f.path) || '');
+      return `<section class="cfile" data-path="${esc(f.path)}"><div class="fh">${esc(f.path)}<em><span class="a">+${f.add}</span> <span class="d">−${f.del}</span></em></div>${
+        f.binary ? '<div class="cempty sm">a binary file</div>' : !ls.length ? '<div class="cempty sm">no lines to show</div>'
+        : ls.map(x => x.t === 'hunk' ? `<div class="dl hunk"><span class="na"></span><span class="nb"></span><span class="sg"></span><code>${esc(x.text)}</code></div>`
+          : `<div class="dl ${x.t}" data-line="${x.b ?? x.a ?? ''}"><span class="na">${x.a ?? ''}</span><span class="nb">${x.b ?? ''}</span><span class="sg">${x.t === 'add' ? '+' : x.t === 'del' ? '−' : ''}${x.t !== 'meta' ? '<button class="dlp" title="A note on this line — typed into its claude as a prompt">+</button>' : ''}</span><code>${x.t === 'meta' ? esc(x.text) : hlLine(x.text, lang)}</code></div>`).join('')}</section>`;
+    }).join('');
+    el.innerHTML = `<div class="cbar">
+      <div class="r1"><span class="br">${ICON.branch}${esc(d.branch)}</span>${d.base ? `<span class="arrow">→</span><span class="br base">${esc(d.base)}</span>` : ''}<span class="up">${up}</span>
+        <span class="acts"><button class="cbtn" data-act="commit" title="Types git commit -v into this chat's ${shName()}, not run — ⏎ there runs it">Commit…</button><button class="cbtn" data-act="push" title="Types git push into this chat's ${shName()}, not run">Push</button>${pr ? `<button class="cbtn pr" data-act="pr" title="${esc(pr.url)}">${esc(pr.label.replace(/^.*?#/, '#'))} ↗</button>` : `<button class="cbtn" data-act="newpr" title="Types gh pr create --fill into this chat's ${shName()}, not run">PR…</button>`}</span></div>
+      <div class="r2">${seg}<span class="sum"><span class="a">+${d.add}</span> <span class="d">−${d.del}</span> in ${d.files.length} file${d.files.length === 1 ? '' : 's'}</span><button class="cbtn" data-act="reload" title="Read it again">↻</button></div></div>
+      ${d.files.length ? `<div class="cbody"><div class="cfiles">${files}</div><div class="cdiff">${body}${d.truncated ? '<div class="cempty sm">…the rest is too long to show here — the zsh has it whole</div>' : ''}</div></div>`
+        : `<div class="cempty">${esc(d.note || (sc === 'branch' ? 'nothing different from its base' : 'nothing changed — the tree is clean'))}</div>`}`;
+    if (changes.sel) el.querySelector(`.cfile[data-path="${CSS.escape(changes.sel)}"]`)?.scrollIntoView({ block: 'start' });
+  }
+  /** git's patch cut at each file: [{path, text}] (the server's splitPatch, kept by hand). */
+  const splitDiff = text => String(text || '').split(/^(?=diff --git )/m).map(t => ({ path: /^diff --git a\/.+? b\/(.+)$/m.exec(t)?.[1], text: t })).filter(c => c.path);
+  /** What the claude drawer of this chat is, attached on this page — or null. */
+  const claudeTm = s => { const tm = termLive(s) ? termFor(s.terminal.id) : null; return tm?.ws?.readyState === 1 ? tm : null; };
+  async function copyText(text) { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } }
+  /** A prompt into the chat's claude, as typed: newlines as Claude Code's own (ESC CR), then ⏎. */
+  async function sendToClaude(s, text, at) {
+    const tm = claudeTm(s);
+    if (!tm) { const ok = await copyText(text); return note(at, `No claude of this chat in a drawer here${ok ? ' — the note is copied' : ''} · ⌥⌘C starts one`, true); }
+    termSend(tm, text.replace(/\r?\n/g, '\x1b\r')); setTimeout(() => termSend(tm, '\r'), 60);
+    note(at, 'Sent to Claude');
+  }
+  /** A command typed into the chat's zsh, unrun: the tab opened or shown, then the text once its socket is up. */
+  async function typeInShell(s, cmd, at) {
+    await hotShell();
+    for (let i = 0; i < 60; i++) {
+      const sh = state.sessions.get(s.id)?.shell || s.shell, tm = sh && termFor(sh.id);
+      if (tm?.ws?.readyState === 1) { await new Promise(r => setTimeout(r, 350)); termSend(tm, cmd); focusTerm(); return; }
+      await new Promise(r => setTimeout(r, 100));
+    }
+    note(at, `The ${shName()} did not come up — ⌥⌘T`, true);
+  }
+  $('#chg').addEventListener('click', e => {
+    const s = state.sessions.get(state.current); if (!s) return;
+    const sc = e.target.closest('[data-scope]');
+    if (sc) { changes.scope = prefs.changesScope = sc.dataset.scope; savePrefs(); changes.sel = null; return loadChanges(s); }
+    const act = e.target.closest('[data-act]')?.dataset.act;
+    if (act === 'reload') return loadChanges(s);
+    if (act === 'commit') return typeInShell(s, 'git commit -v', e.target);
+    if (act === 'push') return typeInShell(s, 'git push', e.target);
+    if (act === 'newpr') return typeInShell(s, 'gh pr create --fill', e.target);
+    if (act === 'pr') { const pr = (s.prs || []).find(p => p.state === 'open' || p.state === 'draft'); if (pr) showPr(pr.url); return; }
+    const f = e.target.closest('.cf');
+    if (f) { changes.sel = f.dataset.path; $('#chg').querySelectorAll('.cf').forEach(b => b.classList.toggle('on', b === f)); $('#chg').querySelector(`.cfile[data-path="${CSS.escape(f.dataset.path)}"]`)?.scrollIntoView({ block: 'start', behavior: 'instant' }); return; }
+    const plus = e.target.closest('.dlp');
+    if (plus) {   // a note on this line: a box under it, ⌘⏎ sends
+      $('#chg .lnote')?.remove();
+      const line = plus.closest('.dl'), path = line.closest('.cfile').dataset.path, n = line.dataset.line;
+      line.insertAdjacentHTML('afterend', `<div class="lnote" data-path="${esc(path)}" data-line="${esc(n)}"><span class="who">a note on ${esc(path)}:${esc(n)} — typed into its claude as a prompt</span><textarea rows="2" placeholder="Ask or tell Claude about this line…"></textarea><span class="row"><button class="cbtn" data-note="cancel">Cancel</button><button class="cbtn pri" data-note="send">Send to Claude ⌘⏎</button></span></div>`);
+      $('#chg .lnote textarea').focus(); return;
+    }
+    const nb = e.target.closest('[data-note]');
+    if (nb) { const box = nb.closest('.lnote'); if (nb.dataset.note === 'send') sendNote(s, box); else box.remove(); }
+  });
+  function sendNote(s, box) {
+    const text = box.querySelector('textarea').value.trim(); if (!text) return;
+    sendToClaude(s, `${box.dataset.path}:${box.dataset.line} — ${text}`, box.querySelector('[data-note="send"]'));
+    box.remove();
+  }
+  $('#chg').addEventListener('keydown', e => {
+    const box = e.target.closest('.lnote'); if (!box) return;
+    if (e.key === 'Enter' && e.metaKey) { e.preventDefault(); const s = state.sessions.get(state.current); if (s) sendNote(s, box); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); box.remove(); }
+  });
+
   // ---- a chat's folder not checked out: cloned first (2026-10-09) ----------------------------------------------------
   // A spawn the server refuses for a folder that is not there names the repo that would bring it back (`clone`: under
   // one of the setup's roots with an org, `<root>/<name>` is `<org>/<name>`), and the page clones it — /api/clone, gh —
@@ -5906,7 +6106,7 @@
     es.addEventListener('snapshot', e => {
       const d = JSON.parse(e.data); state.snapshots++;   // the harness waits on the count: a reloaded page has its board
       state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.peacock = d.peacock || {}; state.repos = d.repos || {};
-      for (const m of [tabs, homes, splits, autoSplit, stacked, focusView, state.unread, state.paneGh]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);   // a chat gone from the board takes its page state with it
+      for (const m of [tabs, homes, splits, autoSplit, stacked, focusView, state.unread, state.paneGh, changesOpen, diffStats]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);   // a chat gone from the board takes its page state with it
       state.about = d.about || {};
       if (d.config) state.config = d.config;
       renderSetup();

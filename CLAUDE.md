@@ -598,7 +598,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   go; on the chat's own tab a `note()`), P the project picker, K the chat picker (`chat` mode: every ready or clauding chat, the list's order,
   searched by `chatFields()`; ⏎ is `openSession`), **F the chat list's own box** (`hotFind()` → `qShow(true)`), **B the chat list
   folded to a rail and back** (`toggleSessions`; plain ⌘B until 2026-10-02 — VS Code Web keeps its ⌘B, gives up its
-  ⌥⌘B), **Y the themes** (`themesOpen`, 2026-10-10), **L the launcher** (`pickOpen('launch')`, 2026-10-10), N a
+  ⌥⌘B), **Y the themes** (`themesOpen`, 2026-10-10), **L the launcher** (`pickOpen('launch')`, 2026-10-10), **D the chat's changes** (`hotDiff`, 2026-10-10), N a
   chat as steps of the one dialog (`new` → `chats` → `folder` when the project spans several → `env` when
   `newChatIn()` finds launchers), **O the same with the project answered and the environment brought forward**
   (`hotOracle()` → `newChatIn(cwd, 'chats')` on the project the setup names, `state.config.quick`; none named, or
@@ -801,6 +801,17 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
 * **Placement is derived**: `tabs` holds `[left, right]` per chat and `placeOf(s)` reads it against `keysIn` *now* —
   a key that is gone falls away. `tabOf(s)` is the focused half's. A half with nothing says what would fill it
   (`.gempty`) and its strip takes a drop (`.pdrop`).
+* **The changes tab is git in the chat's folder, read when asked** (2026-10-10; ⌥⌘D, the header's `+n −n` chip
+  `#diffBtn`, the ··· row `#chgBtn`): a tab `changes` beside claude and the zsh while the chat is in `changesOpen`, one
+  element `#chg` moved into the half that shows it (`placeChanges`, from `syncTerm`, as `placeLog` moves the
+  transcript), opened by `openNewTab` like any new tab. `GET /api/sessions/:id/changes?scope=` — `uncommitted` (the
+  tree against HEAD, untracked files as added), `branch` (against the merge base with origin's default branch), `turn`
+  (the uncommitted diff of the files the last turn's Edit / Write calls named, `s.turnFiles`, reset by a prompt that
+  starts a turn) — and `?stat=1` for the chip's counts, kept 4 s per folder (`changeStat`); `prefs.changesScope`
+  remembers the scope. Re-read when the chat has moved on (`upto` against `lastActivity`) or by ↻; nothing is polled.
+  **Commit…, Push and PR… type the command into the chat's zsh, unrun** (`typeInShell`); **a note on a line is a
+  prompt typed into the chat's claude** when it is in a drawer here (`sendToClaude`), copied otherwise. Diff lines are
+  highlight.js per line by extension (`DIFF_LANG`). → `test/changes.test.mjs`, `scripts/scenarios/changes-tab.mjs`.
 * **The transcript reads as a conversation** (2026-10-08, from the agent apps): your words are a bubble on the right,
   as wide as they are (`.msg.user`); Claude's run the width under **one who-line a turn** — a text after another of
   the same turn is `.cont` (`logView.lastWho`, reset by a turn's end, an interrupt, a compaction); and **the reply that

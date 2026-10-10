@@ -23,6 +23,13 @@ J (workspaces in the status bar) and K (the btop frames) were not picked.
   could name. The sheet is the settings' Keys list (one list to keep), and the launcher has a Keys row. Its switches
   click the settings' checkboxes rather than set prefs, so each runs its own handler (the status bar's dock, the
   server's notifications). Not done: the launcher does not take ⌥⌘K, ⌥⌘P and ⌥⌘N in — they are its menu's rows.
+* **P · changes** (⌥⌘D, the header's `+n −n`): git in the chat's folder when the tab or the chip asks — never on the
+  poll (the first studies had turned a diff count per chat down for that cost). **"This turn" is the files the turn's
+  Edit / Write calls named, diffed against HEAD** — not a snapshot taken at each prompt, which would have meant
+  `git stash create` writing objects into the user's repo on every prompt; a file that was dirty before the turn shows
+  whole, and the tab says which scope it is in. **Commit…, Push and PR… type their command into the chat's zsh and
+  leave ⏎ to you** — the board runs nothing that leaves the Mac. A note on a diff line is typed into the chat's claude
+  in its drawer as `path:line — note` and sent; with no drawer here it is copied.
 
 ## Decisions of 2026-10-10 — /clear ticks the chat it left
 
