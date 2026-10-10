@@ -37,6 +37,32 @@ J (workspaces in the status bar) and K (the btop frames) were not picked.
   answer. Every other chat is its tail, which the server now keeps for every chat (16 items, the cost of a list each),
   and a monitor its last event. Sub-agents show as their Agent calls in the tail and a count; their own transcripts are
   not read for it.
+* **I · tiles** (a switch, off by default — a layout to live with before it is the board's): the stack holds the
+  list's asking and clauding chats, three at most. **A tile watches; it does not take the keys**: a drawer tile is the
+  chat's screen read-only at its own size, and a click makes the chat the master, where it is typed in. An interactive
+  tile would have resized each chat's PTY to the tile, and every promotion back — Claude Code repainting narrow, then
+  wide — as the study's own cost said. The gaps, the wallpaper and the borders are part of the switch. **The border is
+  the project's colour, not Omarchy's cyan-to-green gradient** (Ricardo, once he had tried it: *"can we make the border
+  tile the same color of the project? if black, make it light gray"*): every panel wears its own — faint, and whole on
+  the panel the keys are in — so the colour says whose chat it is, as the cards' edges do; a black one (`nearBlack`,
+  the board's own rule) is the grey that reads on the ground, light in the dark. Then (*"should the background hue be
+  the same as the project selected? also, the tile on the left for cards should have the same project color if in
+  focus"*): the wallpaper is in the open chat's hue rather than the theme's accent and watch colours, and the list on
+  ALL — which is no project, so its black was a grey border — wears the open chat's colour; a list narrowed to a
+  project keeps that project's. And at the notch (*"can you add the tile border around the mac notch (if present of
+  course)?"*): the panel under the housing is cut round it the tiles' gap away and its border follows the cut, so the
+  housing reads as one more window in the layout rather than something laid over the panel's edge — its lower corners
+  round, concentric with the housing's (*"round the lower corners of tile around the notch to match it's shape"*; the
+  system gives the housing's rectangle, not its radius, so 9 px is by eye); the header's title and chips keep 20 px from
+  the housing with tiles (10 without), clear of the border. Then the screen's own corners (*"also round a bit the top
+  right and left edge of tiles to match the macbook pro screen (don't do it on external monitors)"*): the tiles in the
+  two top corners round, concentric with the screen's (its radius by eye, the tile's 10 px, the gap less). The housing
+  is the test for a MacBook's own screen — the shell sends one only for a screen with a camera housing, so an external
+  display, filled or not, keeps square tiles. The bottom corners stay square: the ask was the top two. The cut's top
+  as well (*"the upper corners of the tile in the notch also, I didn't notice that the notch is rounder top and
+  bottom"*): the screen flares into the housing where they meet, so the panel's two corners beside the cut's top round,
+  9 px — the housing's own radius, since 8 px below the screen's edge they cannot be concentric with its flare.
+  A clip-path rather than a shape drawn over the panel, so the gap shows the wallpaper as the other gaps do.
 
 ## Decisions of 2026-10-10 — /clear ticks the chat it left
 

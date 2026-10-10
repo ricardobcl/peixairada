@@ -1385,6 +1385,47 @@
   .shead .hdiff:hover { background: var(--ctl-hi); }
   .shead .hdiff .a { color: var(--pr-open); } .shead .hdiff .d { color: var(--pr-closed); }
 
+  /* ---- tiles (2026-10-10): Hyprland's master and stack — gaps over a wallpaper, square edges, each panel's border its
+     project's colour (--tile-edge, set by tintChat, tileTints and renderStack: a black one --tile-grey; the list's on
+     ALL the open chat's), faint, and whole on the panel the keys are in ---- */
+  :root { --tile-line: color-mix(in srgb, var(--ink) 16%, var(--bg)); --tile-grey: color-mix(in srgb, var(--ink) 74%, var(--bg)); }
+  /* the wallpaper in the hue of the project in view — the open chat's, else the list's, else the theme's accent (tileTints);
+     registered, so a change of chat eases it, and not inherited: the body alone reads it */
+  @property --wallc { syntax: '<color>'; inherits: false; initial-value: transparent; }
+  body { --wallc: var(--accent); transition: --wallc .25s; }
+  body:has(main.tiles) { background: radial-gradient(110% 80% at 88% 6%, color-mix(in srgb, var(--wallc) 34%, var(--bg)), transparent 58%), radial-gradient(90% 70% at 8% 96%, color-mix(in srgb, var(--wallc) 20%, var(--bg)), transparent 62%), var(--bg); }
+  main.tiles { padding: 8px 8px 0; }
+  main.tiles #splitter { width: 8px; background: transparent; }
+  main.tiles #splitter::before, main.tiles #splitter::after { display: none; }
+  main.tiles ~ #trail { display: none !important; }
+  main.tiles :is(#sessions, #chat) { border: 2px solid color-mix(in srgb, var(--tile-edge, var(--nocolor)) 30%, var(--tile-line)); background: var(--bg); }
+  main.tiles:not(.scompact) #slist > .card.active { margin-right: 0; }
+  main.tiles .kf:is(#sessions, #chat, .stile) { border-color: var(--tile-edge, var(--nocolor)); }
+  /* at the notch, the panel the housing reaches cut round it and its border round the cut (tileNotch) */
+  main.tiles :is(#sessions, #chat, .stile).ncutp { position: relative; }
+  .ncut { position: absolute; z-index: 6; pointer-events: none; border: 2px solid; border-top: 0; border-color: inherit; }
+  .ncap { position: absolute; z-index: 6; pointer-events: none; border: 0 solid; border-color: inherit; }
+  .ncap.l { border-top-width: 2px; border-right-width: 2px; } .ncap.r { border-top-width: 2px; border-left-width: 2px; }
+  main.tiles.notch #sessions.npad #slist { padding-top: calc(var(--notch-top, 0px) + 6px); }
+  /* …and on that screen — a housing says it is a MacBook's own, never an external display — the tiles in its two top
+     corners round as the screen's corners are, concentric with them the gap in (the screen's radius by eye, 18 px:
+     the tile's is that less the gap). Clipped, so a header's black does not square the corner off again. */
+  main.tiles.notch { --screen-r: 10px; }
+  main.tiles.notch > #sessions { border-top-left-radius: var(--screen-r); overflow: hidden; }
+  main.tiles.notch:not(:has(> #stack:not([hidden]))) > #chat, main.tiles.notch > #stack:not([hidden]) > .stile:first-child { border-top-right-radius: var(--screen-r); overflow: hidden; }
+  #stack { display: none; }
+  main.tiles #stack:not([hidden]) { flex: 0 0 clamp(300px, 30vw, 520px); margin-left: 8px; display: grid; grid-auto-rows: minmax(0, 1fr); gap: 8px; min-height: 0; min-width: 0; }
+  .stile { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; min-width: 0; border: 2px solid color-mix(in srgb, var(--tile-edge, var(--nocolor)) 30%, var(--tile-line)); background: var(--bg); cursor: pointer; }
+  .stile header { display: flex; align-items: center; gap: 8px; min-width: 0; height: 26px; padding: 0 10px; border-bottom: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+  .stile header b { flex: none; font-size: 10px; letter-spacing: .7px; text-transform: uppercase; color: oklch(from var(--repo, var(--muted)) max(l, .66) c h); }
+  .stile header .tt { color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .stile header em { margin-left: auto; flex: none; font-style: normal; font-weight: 600; color: var(--working); }
+  .stile.ask header em { color: var(--needs); }
+  .stile.ask:not(.kf) { border-color: var(--needs); box-shadow: 0 0 0 1px var(--needs), 0 0 22px -4px var(--needs); }
+  .stile .sbody { position: relative; overflow: hidden; display: grid; align-content: end; gap: 3px; padding: 8px 10px; background: var(--term-bg); font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--snip-claude); min-height: 0; }
+  .stile .sbody.live { display: block; padding: 0; }
+  main.tiles + #sbar, main.tiles ~ #sbar { margin: 8px; border: 2px solid var(--tile-line); }
+
   /* ---- ⌥⌘A, the overview (2026-10-10): the board blurred, every live chat a tile in its column ---- */
   #ov { width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; padding: 18px 22px 20px; border: 0; border-radius: 0; background: color-mix(in srgb, var(--bg) 62%, transparent); backdrop-filter: blur(14px) saturate(.85); outline: none; display: none; }
   #ov[open] { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 16px; }
@@ -1744,6 +1785,7 @@
     </div>
     <div id="resume" hidden></div>
   </section>
+  <section id="stack" hidden aria-label="The chats asking or clauding"></section>
 </main>
 <footer id="sbar" hidden><div id="sbFind"></div><div id="sbLeft"></div><div id="sbPeople"></div><div id="sbRight"></div></footer>
 <div id="trail" aria-hidden="true" hidden></div>
@@ -1761,6 +1803,7 @@
     <label class="opt" title="On, a round light of the card's colour follows the pointer over the card it is on, and the edge's glow stays as it is; off, hover spreads the edge's glow across the card"><input type="checkbox" id="cardSpot" checked><span><b>light under the pointer</b> — a hovered card's glow follows the pointer; off, it spreads from the edge</span></label>
     <label class="opt" title="On, a strip at the window's foot says what the machine is doing — the connection, the chats clauding and asking, the drawers and shells and monitors, the plan usage and whether the Mac is kept awake; the list's foot keeps only its filters"><input type="checkbox" id="sbarOn" checked><span><b>status bar</b> — the search, the chats, the faces, the plan usage and keeping the Mac awake at the window's foot; off, they go back under the list and into the chat header</span></label>
     <div class="opt sub sbstats" id="sbarStats" title="What else the status bar says — asked of the Mac every 3 s while shown"><span><b>also</b></span><label><input type="checkbox" data-stat="cpu"> CPU</label><label><input type="checkbox" data-stat="mem"> memory</label><label><input type="checkbox" data-stat="claude"> Claude's memory</label></div>
+    <label class="opt" title="On, beside the open chat up to three tiles of the chats of the list that are asking or clauding — each its drawer drawn small, or its last tool calls — a click makes one the chat; the panels are tiles, Hyprland's way: gaps over a wallpaper, each bordered in its project's colour, whole on the one the keys are in"><input type="checkbox" id="tilesOn"><span><b>tiles</b> — the chats asking or clauding stacked beside the open one, as Hyprland tiles windows</span></label>
     <label class="opt" title="On, the chat header is a bar inset from the window's edges, rounded and shadowed; off, it runs edge to edge as before"><input type="checkbox" id="headFloat"><span><b>floating header</b> — the chat header as a rounded bar inset from the edges</span></label>
     <div class="dens" title="How much of each chat its card carries — a question waiting on you shows at every size">
       <b>cards</b><input type="range" id="cardsSize" min="0" max="2" step="1" value="0" list="cardsStops" aria-label="Card size">
@@ -1909,7 +1952,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map() };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, statusBar: true, barStats: ['cpu', 'mem'], peopleFold: false, cardSpot: true, changesScope: 'turn', skinDark: null, skinLight: null, skinExact: false };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, statusBar: true, barStats: ['cpu', 'mem'], peopleFold: false, cardSpot: true, tiles: false, changesScope: 'turn', skinDark: null, skinLight: null, skinExact: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -2154,7 +2197,7 @@
     $('#skinExact').checked = !!prefs.skinExact;
   }
   applySkin();
-  const reskin = () => { applySkin(); for (const tm of terms) if (tm.xt) tm.xt.options.theme = xtTheme(); redrawColors(); };
+  const reskin = () => { applySkin(); for (const tm of [...terms, ...stackMinis.values(), ...ov.minis.values()]) if (tm.xt) tm.xt.options.theme = xtTheme(); redrawColors(); };
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', reskin);
   $('#skinExact').addEventListener('change', e => { prefs.skinExact = e.target.checked; savePrefs(); reskin(); });
   $('#themeBtn').addEventListener('click', () => { settingsOpen(false); themesOpen(); });
@@ -2338,11 +2381,14 @@
   // right of the project and the splitter under the open card (main.darkchat) — turns grey. (The dark theme's ground
   // behind a list of such cards did too, until the ink cards of 2026-10-09 made every card the panel.)
   const nearBlack = color => { const b = brightness(color); return b !== null && b < 40; };
+  // A tile's border with tiles on (2026-10-10): its project's colour, a black one the grey that reads on the ground
+  const tileEdge = color => !color ? 'var(--nocolor)' : nearBlack(color) ? 'var(--tile-grey)' : color;
   // The chat pane in a project's colour: --repo for the header and the transcript's wash, --rink for what reads
   // on the header, --hveil and --hveil2 the veils its gradient ends in, across and down (away from the ink: black
   // under white ink, white under dark), .tinted while there is one (CSS cannot ask whether --repo is set).
   const tintChat = color => {
     const c = $('#chat'); c.classList.toggle('tinted', !!color); $('#main').classList.toggle('darkchat', nearBlack(color));
+    c.style.setProperty('--tile-edge', tileEdge(color));
     // the splitter: the chat's colour, the grey of none, the panel until a chat is open — registered (main's rule), so the change eases
     $('#main').style.setProperty('--openc', color || 'var(--nocolor)');
     c.style.setProperty('--hbg', color || 'var(--nocolor)');   // the header's ground and the transcript's wash, eased
@@ -2350,7 +2396,17 @@
       const ink = inkOn(color), veil = a => ink === '#ffffff' ? `rgb(0 0 0 / ${a})` : `rgb(255 255 255 / ${a + .08})`;
       c.style.setProperty('--repo', color); c.style.setProperty('--rink', ink); c.style.setProperty('--hveil', veil(.26)); c.style.setProperty('--hveil2', veil(.16));
     } else for (const p of ['--repo', '--rink', '--hveil', '--hveil2']) c.style.removeProperty(p);
+    tintChat.color = color; tileTints();
   };
+  // The tiles' two colours that are not a panel's own (2026-10-10): the list's border is its project's colour — on ALL,
+  // which is no project's, the chat column's — and the wallpaper's hue is the chat column's colour, else the list's
+  // project's, else the theme's accent. From renderSessionList (the project) and tintChat (the chat).
+  function tileTints(p = tileTints.p) {
+    if (!p) return; tileTints.p = p;
+    const chat = tintChat.color, own = p.key === ALL ? null : projColor(p), wall = chat || own;
+    $('#sessions').style.setProperty('--tile-edge', tileEdge(p.key === ALL ? chat || projColor(p) : own));
+    document.body.style.setProperty('--wallc', wall ? tileEdge(wall) : 'var(--accent)');
+  }
   const folderName = cwd => cwd ? cwd.split('/').filter(Boolean).pop() || cwd : '(no folder)';
   // What the cog's setup says of a project, by the name the board shows — so a worktree or a second checkout of it is
   // the same: a short name, a colour. Written into this file for one Mac until 2026-09-28 (PROJECT_ABBR, PROJECT_COLORS).
@@ -2628,6 +2684,7 @@
     renderBoardSoon.raf = requestAnimationFrame(run); renderBoardSoon.t = setTimeout(run, 100);
   }
   function renderBoard() {
+    stackSoon();   // the tiles beside the chat (2026-10-10), drawn in the frame after the list
     cancelAnimationFrame(renderBoardSoon.raf); clearTimeout(renderBoardSoon.t); renderBoardSoon.t = 0;
     const every = projectList();
     if (!every.some(p => p.key === prefs.project)) prefs.project = ALL;
@@ -2754,6 +2811,7 @@
   });
   function renderSessionList(p) {
     const pc = projColor(p); if (pc) $('#sessions').style.setProperty('--repo', pc); else $('#sessions').style.removeProperty('--repo');
+    tileTints(p);
     // The magnifier matches the way ⌥⌘K does (2026-09-25): any letters
     // in order, each word within one of the chat's fields, and the best match leads — so with something typed the list
     // is in the match's order, not the board's, and the lines that say where a state or a day ends are left out.
@@ -3092,7 +3150,7 @@
    *  open and the list is not the rail. The card's own light — its colour, its pace, how many — when it is in the list. */
   function trailGeom(open) {
     const s = state.sessions.get(state.current), head = $('#shead');
-    if (!s || s.done || asking(s) || !(s.status === 'working' || watching(s)) || prefs.edgeLight || $('#main').classList.contains('scompact') || !head.querySelector('h2 .sep')) return null;
+    if (!s || s.done || asking(s) || !(s.status === 'working' || watching(s)) || prefs.edgeLight || prefs.tiles || $('#main').classList.contains('scompact') || !head.querySelector('h2 .sep')) return null;   // tiles (2026-10-10): the gap is no splitter to run up
     const hr = head.getBoundingClientRect(), hs = parseFloat(head.style.getPropertyValue('--hsplit')), hrow = head.style.getPropertyValue('--hrow');
     const work = s.status === 'working', card = open?.el.getBoundingClientRect();
     return { card, box: hs > 0 && !prefs.headFloat ? { l: hr.left, t: hr.top, r: hr.left + hs, b: hr.top + (hrow.endsWith('px') ? parseFloat(hrow) : hr.height) } : null,
@@ -3721,7 +3779,7 @@
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
   const SWITCHES = [['notifyOn', 'Notifications'], ['simpleColors', 'Simple colours'], ['skinExact', 'Exact project colours under a theme'], ['ringsInStep', 'Rings in step'],
-    ['edgeLight', 'Edge light'], ['cardSpot', 'Light under the pointer'], ['sbarOn', 'Status bar'], ['headFloat', 'Floating header'], ['autoResume', 'Auto-resume'], ['optMeta', '⌥ is Meta in the terminal']];
+    ['edgeLight', 'Edge light'], ['cardSpot', 'Light under the pointer'], ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['headFloat', 'Floating header'], ['autoResume', 'Auto-resume'], ['optMeta', '⌥ is Meta in the terminal']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
     { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },
@@ -4593,9 +4651,12 @@
   // header draw and every change of its size, since a resize moves the hole; nothing else on the page knows about the
   // fill.
   const NOTCH_PAD = 10, NOTCH_TITLE = 220, NOTCH_TAIL = 120;
+  // with tiles the housing has a border round it, the tiles' gap away (tileNotch): the row keeps clear of that too
+  const notchPad = () => prefs.tiles ? NOTCH_PAD + 10 : NOTCH_PAD;
   function layoutNotch() {
     const n = state.notch, main = $('#main'), list = $('#sessions'), chat = $('#chat'), head = $('#shead'), h2 = head.querySelector('h2');
     if (!n && !main.classList.contains('notch')) return;   // no housing, and nothing laid around one to undo
+    const NP = notchPad();
     // every read, then every write (2026-09-27): a read after a write is a layout each
     const lr = n ? list.getBoundingClientRect().right : 0, hr = n ? head.getBoundingClientRect() : null;
     const gap = n && h2 ? parseFloat(getComputedStyle(head).columnGap) || 0 : 0, x = n && h2 ? h2.getBoundingClientRect().left : 0;
@@ -4605,16 +4666,17 @@
     const t = h2?.querySelector('.t'), sep = h2?.querySelector('.sep');
     const tx = hole && t && sep ? sep.getBoundingClientRect().right + (parseFloat(getComputedStyle(h2).columnGap) || 0) : 0;
     const tw = tx ? (r => (r.selectNodeContents(t), r.getBoundingClientRect().width))(document.createRange()) : 0;   // the text's own width: scrollWidth is never under the box's
-    const tright = hole && !!tx && tx + tw > n.left - NOTCH_PAD;
+    const tright = hole && !!tx && tx + tw > n.left - NP;
     main.classList.toggle('notch', !!n);
     main.style.setProperty('--notch-top', `${n ? n.top : 0}px`);
-    list.classList.toggle('npad', !!n && lr > n.left - NOTCH_PAD);
-    if (hole && !tright) { const w = n.left - NOTCH_PAD - x; h2.style.flex = `0 0 ${w}px`; h2.style.marginRight = `${n.right + NOTCH_PAD - x - w - gap}px`; }
+    list.classList.toggle('npad', !!n && lr > n.left - NP);
+    if (hole && !tright) { const w = n.left - NP - x; h2.style.flex = `0 0 ${w}px`; h2.style.marginRight = `${n.right + NP - x - w - gap}px`; }
     else if (h2) { h2.style.flex = ''; h2.style.marginRight = ''; }
-    if (t) t.style.marginLeft = tright ? `${n.right + NOTCH_PAD - tx}px` : '';
+    if (t) t.style.marginLeft = tright ? `${n.right + NP - tx}px` : '';
     head.classList.toggle('hole', hole);
     head.classList.toggle('tright', tright);
-    chat.classList.toggle('npad', !!n && !hole && hr.left < n.right + NOTCH_PAD);
+    chat.classList.toggle('npad', !!n && !hole && hr.left < n.right + NP);
+    tileNotch();
   }
   /** Where the header's black starts (after the project's name, at the separator's right edge) and how far down it goes
    *  (the first row: the details under it keep the header's ground) — read once the row is laid out: after the notch
@@ -4637,7 +4699,7 @@
     // was a layout each): the button is its frame plus the chips shown, a gap between each, plus +n when any are hidden.
     const cs = getComputedStyle(head), gap = parseFloat(cs.columnGap) || 0, h2 = head.querySelector('h2');
     const row = [...head.children].filter(el => el.tagName !== 'H2' && el !== t && !el.classList.contains('details') && el.getClientRects().length);
-    const title = head.classList.contains('tright') && state.notch ? state.notch.right + NOTCH_PAD - h2.getBoundingClientRect().left + TITLE_ROOM   // the title past the housing: the jump, then its room
+    const title = head.classList.contains('tright') && state.notch ? state.notch.right + notchPad() - h2.getBoundingClientRect().left + TITLE_ROOM   // the title past the housing: the jump, then its room
       : head.classList.contains('hole') ? h2.getBoundingClientRect().width + (parseFloat(h2.style.marginRight) || 0)   // the hole: the title's width is set, and the housing beside it is spent
       : Math.max(TITLE_MIN, (head.querySelector('h2 .repo')?.offsetWidth || 0) + TITLE_ROOM);
     const room = head.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - title
@@ -5575,7 +5637,7 @@
     let m = reg.get(t.id);
     if (!m) {
       const el = document.createElement('div'); el.className = 'mini';
-      const xt = new Terminal({ cols: t.cols || 120, rows: t.rows || 30, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 10, lineHeight: 1.1, scrollback: 0, cursorBlink: false, disableStdin: true, theme: xtTheme() });
+      const xt = new Terminal({ cols: t.cols || 120, rows: t.rows || 30, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, lineHeight: 1.1, scrollback: 0, cursorBlink: false, disableStdin: true, theme: xtTheme() });
       xt.open(el);
       const ws = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`); ws.binaryType = 'arraybuffer';
       ws.onmessage = e => { if (typeof e.data !== 'string') xt.write(new Uint8Array(e.data)); else if (JSON.parse(e.data).t === 'clear') xt.write('', () => xt.clear()); };
@@ -5585,7 +5647,7 @@
     if (t.cols && t.rows && (t.cols !== m.cols || t.rows !== m.rows)) { m.xt.resize(t.cols, t.rows); m.cols = t.cols; m.rows = t.rows; }
     if (m.el.parentElement !== host) host.append(m.el);
     m.used = true;
-    requestAnimationFrame(() => { const sc = m.el.querySelector('.xterm-screen'), w = sc?.offsetWidth, hw = host.clientWidth; if (w && hw) m.el.style.transform = `scale(${Math.max(.62, Math.min(1, hw / w))})`; });
+    requestAnimationFrame(() => { const sc = m.el.querySelector('.xterm-screen'), w = sc?.offsetWidth, hw = host.clientWidth; if (w && hw) m.el.style.transform = `scale(${Math.max(.7, Math.min(1, hw / w))})`; });
     return m;
   }
   /** The minis a redraw did not use: their sockets closed, their xterms gone. All of them with `all`. */
@@ -5593,6 +5655,101 @@
     for (const [id, m] of reg) { if (!all && m.used) { m.used = false; continue; } m.ws.onmessage = null; m.ws.close(); m.xt.dispose(); m.el.remove(); reg.delete(id); }
   }
   const drawerOf = s => s.terminal && s.terminal.exited === null && !s.terminal.shell ? s.terminal : null;
+
+  // ---- tiles: the chats that want an eye, stacked beside the open one (2026-10-10) -----------------------------------
+  // Hyprland's master and stack, Settings → Board → tiles (prefs.tiles): the open chat is the master; beside it, up to
+  // three live chats of the list as it stands that are asking or clauding, asking first — each a live tile (its drawer
+  // drawn small, else its tail). A click on one makes it the master. Its look is Hyprland's: gaps over a wallpaper of
+  // the theme's colours, square edges, each panel's border its project's colour (`tileEdge`, a black one grey) — faint,
+  // and whole on the panel the keys are in (`.kf`) — a tile that asks ringed red. Drawn with the board (stackSoon, from
+  // renderBoard) and kept by chat (a tile's drawer is not re-attached).
+  var stackOn = false;   // var, not let: renderBoard is older than this block and asks before it has run
+  const STACK_MAX = 3, stackMinis = new Map(), stackTiles = new Map();
+  let stackRaf = 0, stackTimer = 0;
+  function stackSoon() { if (stackOn && !stackRaf) stackRaf = requestAnimationFrame(renderStack); }
+  function applyTiles() {
+    $('#main').classList.toggle('tiles', !!prefs.tiles); $('#tilesOn').checked = !!prefs.tiles;
+    stackOn = !!prefs.tiles;
+    if (!stackOn) { $('#stack').hidden = true; sweepMinis(stackMinis, true); stackTiles.clear(); $('#stack').innerHTML = ''; clearInterval(stackTimer); stackTimer = 0; }
+    else renderStack();
+    requestAnimationFrame(() => { fitTerm(); listChanged(); repostPane(); layoutNotch(); fitHeadPrs(); });
+  }
+  function stackChats() {
+    const ids = [...document.querySelectorAll('#slist > .card')].map(c => c.dataset.id);
+    return ids.map(id => state.sessions.get(id)).filter(s => s && s.id !== state.current && s.alive && !s.done && (asking(s) || bucket(s) === 'working')).slice(0, STACK_MAX);
+  }
+  function renderStack() {
+    stackRaf = 0;
+    const el = $('#stack'), list = stackChats();
+    el.hidden = !list.length;
+    for (const [id, t] of stackTiles) if (!list.some(s => s.id === id)) { t.remove(); stackTiles.delete(id); }
+    list.forEach((s, i) => {
+      let t = stackTiles.get(s.id);
+      if (!t) { t = document.createElement('article'); t.className = 'stile'; t.dataset.id = s.id; t.innerHTML = '<header></header><div class="sbody"></div>'; stackTiles.set(s.id, t); }
+      if (el.children[i] !== t) el.insertBefore(t, el.children[i] || null);
+      t.className = `stile ${asking(s) ? 'ask' : 'work'}${t.classList.contains('kf') ? ' kf' : ''}`;
+      const color = repoColor(s.cwd); t.style.cssText = `${repoStyle(color)};--tile-edge:${tileEdge(color)}`;
+      setHtml(t.querySelector('header'), `<b>${projIcon(s.project)}${esc(s.project)}</b><span class="tt">${esc(s.title)}</span><em>${asking(s) ? `● asking you ${rel(s.statusSince)}` : `✻ clauding${s.agents ? ` · ${s.agents} agents` : ''}`}</em>`);
+      const d = drawerOf(s), body = t.querySelector('.sbody');
+      body.classList.toggle('live', !!d);
+      if (d) { if (body.dataset.term !== d.id) { body.innerHTML = ''; body.dataset.term = d.id; } mountMini(stackMinis, body, d); }
+      else { delete body.dataset.term; setHtml(body, tailHtml(tails.get(s.id), 14, s.cwd)); }
+    });
+    sweepMinis(stackMinis); tileNotch();
+    // the tails of the tiles with no drawer here, asked again every few seconds while there are any
+    const want = list.filter(s => !drawerOf(s)).map(s => s.id);
+    if (want.length && !stackTimer) { const tick = () => { const ids = stackChats().filter(s => !drawerOf(s)).map(s => s.id); if (ids.length) loadTails(ids, stackSoon); else { clearInterval(stackTimer); stackTimer = 0; } }; tick(); stackTimer = setInterval(tick, 2500); }
+  }
+  $('#stack').addEventListener('click', e => { const t = e.target.closest('.stile'); if (t) openSession(t.dataset.id); });
+  $('#tilesOn').addEventListener('change', e => { prefs.tiles = e.target.checked; savePrefs(); applyTiles(); });
+  // the panel the keys are in wears the border: the list, the chat, or a tile (a pointer press or a focus inside it)
+  const markKf = e => {
+    if (!stackOn) return;
+    const p = e.target.closest?.('#sessions, #chat, .stile'); if (!p) return;
+    for (const x of document.querySelectorAll('main.tiles .kf')) if (x !== p) x.classList.remove('kf');
+    p.classList.add('kf');
+  };
+  document.addEventListener('pointerdown', markKf, true); document.addEventListener('focusin', markKf, true);
+  // At the notch (2026-10-10): a panel the camera housing reaches is cut round it, the tiles' gap away — the panel's
+  // clip-path the hole, so the wallpaper shows in the gap — and its border runs round the cut (.ncut: the left, bottom
+  // and right sides, the panel's own colour by `inherit`), as if the housing were a window of its own. Its lower corners
+  // are round, concentric with the housing's (HOUSING_R, the radius of a MacBook's, by eye), and so are the panel's two
+  // corners beside its top, as the screen flares into the housing there (.ncap, a quarter of border each; the flare's
+  // radius taken as the housing's own — 8 px of gap below the screen's edge, they cannot be concentric). From
+  // layoutNotch (the fill, every header drawn or resized) and renderStack.
+  function tileNotch() {
+    const GAP = 8, BW = 2, M = 60, HOUSING_R = 9, n = stackOn ? state.notch : null;
+    const panels = [$('#sessions'), $('#chat'), ...document.querySelectorAll('#stack .stile')];
+    if (!n && !panels.some(p => p.classList.contains('ncutp'))) return;
+    const rects = panels.map(p => p.getBoundingClientRect());   // every read, then every write
+    panels.forEach((p, i) => {
+      const r = rects[i], cut = !!n && r.width > 0 && r.top < n.top + GAP && r.left < n.right + GAP && r.right > n.left - GAP;
+      let c = p.querySelector(':scope > .ncut');
+      if (!cut) { if (p.classList.contains('ncutp')) { p.classList.remove('ncutp'); p.style.clipPath = ''; for (const x of p.querySelectorAll(':scope > :is(.ncut, .ncap)')) x.remove(); } return; }
+      // in the panel's border box: the hole from the housing's left less the gap to its right plus it, down to its bottom
+      // plus it; a side past the panel's edge has no border of its own (the hole runs off that edge)
+      const x1 = n.left - GAP - r.left, x2 = n.right + GAP - r.left, y2 = n.top + GAP - r.top, L = x1 > 0, R = x2 < r.width;
+      const a = L ? x1 : -M, b = R ? x2 : r.width + M, k = Math.min(HOUSING_R + GAP, (b - a) / 2, y2);   // the cut's lower corners
+      const t = Math.max(0, Math.min(HOUSING_R, y2 - k));   // the panel's corners beside the cut's top
+      const hole = `${L ? `M${a - t} ${-M}V0A${t} ${t} 0 0 1 ${a} ${t}` : `M${a} ${-M}`}V${y2 - k}A${k} ${k} 0 0 0 ${a + k} ${y2}H${b - k}A${k} ${k} 0 0 0 ${b} ${y2 - k}${R ? `V${t}A${t} ${t} 0 0 1 ${b + t} 0` : ''}V${-M}Z`;
+      p.classList.add('ncutp');
+      p.style.clipPath = `path(evenodd, 'M${-M} ${-M}H${r.width + M}V${r.height + M}H${-M}Z ${hole}')`;
+      if (!c) { c = document.createElement('i'); c.className = 'ncut'; p.append(c); }
+      const left = L ? x1 - BW : 0, right = R ? x2 + BW : r.width;   // the ring's outer edges, in the border box
+      Object.assign(c.style, { left: `${left - BW}px`, top: `${-BW}px`, width: `${right - left}px`, height: `${y2 + BW}px`,
+        borderLeftWidth: L ? `${BW}px` : '0', borderRightWidth: R ? `${BW}px` : '0',
+        borderBottomLeftRadius: L ? `${k + BW}px` : '0', borderBottomRightRadius: R ? `${k + BW}px` : '0' });   // the inner edge's radius is the cut's
+      // the border round the panel's two corners at the top of the cut: a quarter of a ring each, the clip's own curve outside
+      for (const [side, on, x] of [['l', L, x1 - t], ['r', R, x2]]) {
+        let q = p.querySelector(`:scope > .ncap.${side}`);
+        if (!on || !t) { q?.remove(); continue; }
+        if (!q) { q = document.createElement('i'); q.className = `ncap ${side}`; p.append(q); }
+        Object.assign(q.style, { left: `${x - BW}px`, top: `${-BW}px`, width: `${t}px`, height: `${t}px`, [side === 'l' ? 'borderTopRightRadius' : 'borderTopLeftRadius']: `${t}px` });
+      }
+    });
+  }
+  applyTiles();
+  if (!document.querySelector('main.tiles .kf')) $('#chat').classList.add('kf');
 
   // ---- ⌥⌘A: the overview, every live agent at once (2026-10-10) ------------------------------------------------------
   // Hyprland's overview and a kanban's columns: Asking you · Clauding · Watching · Ready, unread — every project, each

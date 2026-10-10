@@ -361,7 +361,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   replies — every project, done chats never; a tile per chat, numbered in reading order (1–9 and ⏎ open, the arrows
   move), drawn again on its chats' `session` events (`ovSoon`). **A tile is a live tile** (shared with the stack, see
   *The chat column's two halves*): the chat's drawer here as a read-only xterm (`mountMini` — it never sends a resize,
-  so the PTY keeps the size the chat's own view gave it; scaled to the tile down to .62, cropped past that, the bottom
+  so the PTY keeps the size the chat's own view gave it; scaled to the tile down to .7, cropped past that, the bottom
   left in view), else its tail (`tailHtml` over `GET /api/tails?ids=`, polled every 2 s while up). The server keeps
   that tail for every chat, open or not (`noteRecent`, `s.recent`, the last 16 tool calls, results and words); a
   monitor's last event is `last` on its task; a question's answers are `ask.labels` — **known only once the
@@ -563,7 +563,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, PR
   turns; `STATE_FILE` overrides) and the user's `~/.config/peixairada/config.json` (the setup, below), both shared by
   the app and every browser; the browser's `localStorage` `peixairada-prefs`
-  (selected project, filters, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the theme for each appearance, the person the list is narrowed to, ⌥ as Meta, auto-resume, the edge light, the light under the pointer, the floating header, the status bar and what it adds, the faces folded, drawer open/height — the keys are the `prefs` literal,
+  (selected project, filters, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the theme for each appearance, the tiles, the changes tab's scope, the person the list is narrowed to, ⌥ as Meta, auto-resume, the edge light, the light under the pointer, the floating header, the status bar and what it adds, the faces folded, drawer open/height — the keys are the `prefs` literal,
   and old ones are deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it
   renders reads its state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
 * **The setup is the user's file, and nothing about one Mac is written in the code** (2026-09-28; the file since
@@ -792,6 +792,30 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   arithmetic), the divider 6 px tall and dragged by y; the second strip's ◫ / ⊟ (`.gturn`) turns it too. The app
   forwards ⌥⌘1 / ⌥⌘2 by key code (18, 19). **A zsh ended by its × lingers on the summary with `exited` set** — a wait
   for the tab to go is a wait on that. → `scripts/scenarios/split-stacked.mjs`.
+* **Tiles: the chats that want an eye, stacked beside the open one** (2026-10-10; Settings → Board → *tiles*,
+  `prefs.tiles` → `main.tiles`, off by default): `#stack`, a third column after `#chat` — up to three chats of the list
+  as it stands that are alive and asking or clauding, never the open one (`stackChats`), each a live tile (`mountMini`
+  into its own registry, `stackMinis`, else `tailHtml`, the tails asked every 2.5 s while any tile needs them); a click
+  makes one the chat. Kept by chat (`stackTiles`), drawn in the frame after the board (`stackSoon` from `renderBoard`
+  — `stackOn` is a `var`, as `renderBoard` runs before the block has). Hyprland's look rides on the class: gaps
+  (`main`'s padding, the splitter an 8 px gap), square panels, **each panel's border its project's colour**
+  (`--tile-edge`: `tileEdge` from `tintChat`, `tileTints` and `renderStack`; a near-black one `--tile-grey`, the grey
+  that reads on the ground; none `--nocolor`) — 30 % of it into `--tile-line`, and **whole on the panel the keys are in**
+  (`.kf`, from a press or a focus inside it: the list, the chat or a tile; Omarchy's gradient border until the same
+  evening). **The list on ALL, no project's, wears the open chat's colour**, and **the wallpaper is in that hue**
+  (`--wallc` on the body, registered and eased: the chat column's colour, else the list's project's, else the accent —
+  `tileTints`, from `renderSessionList` and `tintChat`). **At the notch a panel the housing reaches is cut round it**,
+  the gap away, its border running round the cut (`tileNotch`, from `layoutNotch` and `renderStack`: the panel's
+  `clip-path` is the hole, `.ncut` the border's three sides, its colour the panel's by `border-color: inherit`; the lower
+  corners round, concentric with the housing's — `HOUSING_R`, 9 px by eye, the system does not say it — and the panel's
+  corners beside its top round too, where the screen flares into the housing: `.ncap`, a quarter ring each), and the row
+  keeps `notchPad()` clear of it — 20 px with tiles, `NOTCH_PAD` without. **On that screen the tiles in its two top
+  corners round as the screen's do** (`main.tiles.notch`, `--screen-r` 10 px — the screen's radius by eye less the gap;
+  the list's top left, and the first tile of the stack's top right, or the chat's without one; `overflow: hidden`, so
+  the header's black does not square it off): a housing is what says the screen is a MacBook's own, so a fill on an
+  external display (`peixFill` with no notch) keeps them square.
+  The open chat's light past its card does not run with tiles (`trailGeom`). → `scripts/scenarios/tiles.mjs` (the
+  fake claude's `slow <s>` prompt keeps a turn going).
 * **A tab that is new opens in the second half, and splits the column the first time** (`openNewTab()` — a zsh, a
   GitHub page, the editor). **Claude keeps the first half**: every split puts the chat on the left (`splitChat()`,
   ⌘2's path too), a new tab goes into the half the chat is *not* in, and Esc, ⌥⌘C and the ◎ row take the keys to the

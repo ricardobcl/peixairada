@@ -102,6 +102,8 @@ async function turn(text) {
   const r = reply(text);
   const chunks = r.split('\n');
   const acc = [];
+  // `slow <s>` keeps the turn going that many seconds — a chat that stays clauding, for the tiles' and the overview's tests
+  const slow = /^slow (\d+)/.exec(text); if (slow) { say(['\x1b[2m✻ Working slowly…\x1b[0m']); await new Promise(res => setTimeout(res, Math.min(600, +slow[1]) * 1000)); }
   for (const c of chunks) { acc.push(c); say(['\x1b[2m● fake is thinking…\x1b[0m', ...acc]); await new Promise(res => setTimeout(res, 60)); }
   assistantLine(r);
   register('idle');
