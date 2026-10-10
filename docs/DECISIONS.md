@@ -5,6 +5,20 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
+
+Ricardo, on the second studies page (eight screens H–P from Omarchy and the agent managers): "do H, I, L, N, O and P".
+J (workspaces in the status bar) and K (the btop frames) were not picked.
+
+* **H · themes** (⌥⌘Y): Omarchy's twelve — Tokyo Night, Catppuccin, Gruvbox, Everforest, Kanagawa, Rosé Pine, Nord,
+  Matte Black, Osaka Jade, Ristretto, Catppuccin Latte, Flexoki Light — each the board's tokens, the header's black,
+  the status bar's ground and the drawer's sixteen colours. **A slot per appearance**, as Ghostty's `dark:…,light:…`:
+  the page's dark rules hang off `prefers-color-scheme`, which a page cannot set, so a dark theme picked while macOS is
+  light is kept for the dark and says it cannot show now. (Forcing an appearance would have meant the app setting its
+  web view's `NSAppearance` and a browser never could — two boards that disagree.) A project keeps its hue: its
+  Peacock colour moves to the nearest of the theme's own (by the hue's angle; greys and blacks stay), a switch keeps
+  them exact. Riso (G, `docs/studies/`) is not among them yet: it is shapes as much as colours.
+
 ## Decisions of 2026-10-10 — /clear ticks the chat it left
 
 Ricardo: "when I do "/clear" on a chat, we correctly open a new one, but the old one is not marked as Done".

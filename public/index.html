@@ -277,8 +277,8 @@
      Where the engine has no scroll timelines (.scrolls absent), drawSplit writes the on-screen place on every scroll. */
   main { timeline-scope: --slist; }
   #slist { scroll-timeline: --slist y; }
-  #splitter::after { content: ''; position: absolute; left: 0; right: 0; top: var(--split, 100%); height: 400vh; background: #000; pointer-events: none; }
-  #splitter::before { content: ''; position: absolute; left: 0; right: 0; top: var(--sfoot, 100%); bottom: 0; z-index: 1; background: #000; pointer-events: none; }
+  #splitter::after { content: ''; position: absolute; left: 0; right: 0; top: var(--split, 100%); height: 400vh; background: var(--crust, #000); pointer-events: none; }
+  #splitter::before { content: ''; position: absolute; left: 0; right: 0; top: var(--sfoot, 100%); bottom: 0; z-index: 1; background: var(--crust, #000); pointer-events: none; }
   #splitter.scrolls::after { animation: split-scroll linear both; animation-timeline: --slist; }
   @keyframes split-scroll { to { transform: translateY(calc(0px - var(--smax, 0px))); } }
   #splitter:is(:hover, .drag)::after, #splitter:is(:hover, .drag)::before { opacity: 0; transition: opacity 0s .3s; }
@@ -924,8 +924,8 @@
      hairlines; its meters a word, a 40 px bar and the figure; the plan usage a button whose panel of rows rises over
      the board, the list's foot then without its own (data-sbar) ---- */
   #sbar { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); display: flex; align-items: stretch; height: 26px; min-width: 0; padding: 0 2px; position: relative; z-index: 20; font-size: 11px; color: var(--muted);
-    background: var(--panel); border-top: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #sbar { background: #0f0f0e; } }
+    background: var(--bar, var(--panel)); border-top: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #sbar { background: var(--bar, #0f0f0e); } }
   #sbar[hidden] { display: none; }
   #sbar .seg { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 0 11px; border: 0; border-right: 1px solid var(--line); background: none; font: inherit; color: inherit; }
   /* its slots (2026-10-09): the search and the state chips (#filters, moved in), the left's segments, the faces (#people,
@@ -1065,13 +1065,14 @@
      the details under it keep the header's ground), both set by paintHeadSplit; the title and what follows it borrow
      the dark theme's inks, as a black card does. */
   .shead { isolation: isolate; }
-  .shead::after { content: ''; position: absolute; top: 0; right: 0; left: var(--hsplit, 100%); height: var(--hrow, 100%); background: #000; z-index: -1; pointer-events: none; }
+  .shead::after { content: ''; position: absolute; top: 0; right: 0; left: var(--hsplit, 100%); height: var(--hrow, 100%); background: var(--crust, #000); z-index: -1; pointer-events: none; }
   /* (2026-10-01) The open chat's colour as dark as that black (nearBlack, tintChat): the black beside it — here, and
      the splitter under the open card — is a grey, so the project's box and the card still stand out of it. */
   main.darkchat .shead::after, main.darkchat #splitter::after, main.darkchat #splitter::before { background: #4a4a45; }
-  .shead > :not(h2, .details) { --ink: #e8e6df; --muted: #9a998f; --line: #2c2c29; --rink: #e8e6df; --panel: #1c1c1a; --inline-bg: rgba(255, 255, 255, .075); }
+  /* a theme (2026-10-10) paints this black in its own darkest, --crust, and its inks are the theme's (--hd-*) */
+  .shead > :not(h2, .details) { --ink: var(--hd-ink, #e8e6df); --muted: var(--hd-muted, #9a998f); --line: var(--hd-line, #2c2c29); --rink: var(--hd-ink, #e8e6df); --panel: var(--hd-panel, #1c1c1a); --inline-bg: var(--hd-inline, rgba(255, 255, 255, .075)); }
   :where(.shead > :not(h2, .details)) { color: var(--ink); }   /* for what inherits its ink; a control's own rule still wins */
-  .shead h2 .t { color: #e8e6df; }
+  .shead h2 .t { color: var(--hd-ink, #e8e6df); }
   #chat.tinted .shead :is(.status, .path, .chip, a) { color: color-mix(in srgb, var(--rink) 78%, transparent); }
   #chat.tinted .shead .btn, #chat.tinted .shead .btn:disabled { color: color-mix(in srgb, var(--rink) 78%, transparent); }
   #chat.tinted .shead .btn:hover { color: var(--rink); }
@@ -1351,6 +1352,35 @@
   @starting-style { #hmenu[open] { transform: none; } }
   /* ⌥⌘P: the project picker, VS Code's open-recent way — a box on top, rows under it, ↑↓ and ⏎. ⌥⌘G fills it with the chat's PRs, ⌥⌘O with oracle's environments. */
   #pick { padding: 8px; width: min(520px, 92vw); margin-top: 10vh; }
+  /* ⌥⌘Y, the themes (2026-10-10): a grid of tiles, each the board drawn small in the theme's colours — the list's
+     cards with their edges, the header's project and black, a transcript, the palette along the foot. */
+  #themes { padding: 12px; width: min(980px, 94vw); margin-top: 8vh; }
+  #themes .thin input { width: 100%; box-sizing: border-box; font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: inherit; outline: none; }
+  #themes .thin input:focus { border-color: var(--accent); }
+  #themegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 12px; max-height: 64vh; overflow-y: auto; padding: 3px; }
+  #themegrid .tt { padding: 0; border: 0; background: none; text-align: left; font: inherit; color: var(--ink); cursor: pointer; min-width: 0; }
+  #themegrid .tshot { position: relative; display: grid; grid-template-columns: 38% 1fr; height: 104px; background: var(--tbg); border-radius: 7px; overflow: hidden; outline: 1px solid color-mix(in srgb, var(--ink) 10%, transparent); }
+  #themegrid .tt.sel .tshot { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #themegrid .tt:hover:not(.sel) .tshot { outline-color: color-mix(in srgb, var(--ink) 30%, transparent); }
+  #themegrid .ml { display: grid; align-content: start; gap: 4px; padding: 6px 5px; }
+  #themegrid .mc { display: grid; gap: 3px; height: 17px; padding: 4px 5px; background: linear-gradient(90deg, color-mix(in srgb, var(--c) 34%, var(--tpn)), var(--tpn) 70%); border-left: 2px solid var(--c); }
+  #themegrid .mc.ask { outline: 1px solid var(--tnd); }
+  #themegrid .mc u { display: block; height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--tink) 55%, transparent); }
+  #themegrid .mc u + u { background: color-mix(in srgb, var(--tmu) 60%, transparent); }
+  #themegrid .mr { display: grid; grid-template-rows: 13px 1fr; background: var(--tpn); }
+  #themegrid .mh { display: flex; background: var(--tcr); } #themegrid .mh b { width: 34%; background: var(--thd); }
+  #themegrid .mt { display: grid; align-content: start; gap: 6px; padding: 8px; }
+  #themegrid .mt u { display: block; height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--tink) 45%, transparent); }
+  #themegrid .mt u.code { height: 16px; border-radius: 3px; background: var(--tcr); }
+  #themegrid .mt s { justify-self: end; width: 40%; height: 8px; border-radius: 5px; background: color-mix(in srgb, var(--tink) 14%, var(--tpn)); }
+  #themegrid .sw { position: absolute; left: 38%; right: 0; bottom: 0; height: 4px; display: flex; } #themegrid .sw i { flex: 1; }
+  #themegrid .nm { display: flex; align-items: baseline; gap: 7px; margin-top: 7px; font-size: 12.5px; font-weight: 600; }
+  #themegrid .nm em { font-style: normal; font-weight: 500; font-size: 11px; color: var(--accent); }
+  #themegrid .nm small { margin-left: auto; font-size: 11px; font-weight: 500; color: var(--muted); }
+  #themegrid .none { color: var(--muted); padding: 8px; }
+  #themes .thfoot { display: flex; gap: 12px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
+  #themes .thfoot #themenote { color: var(--ink); }
+  #themes .thfoot .spacer { flex: 1; }
   /* About (2026-09-27): a modal
      dialog, centred by the browser, the pane down under it like under any dialog; Esc or a click on the backdrop
      closes it. Its facts come with the snapshot (state.about). */
@@ -1575,6 +1605,8 @@
     <label class="opt" title="Off, nothing posts a banner — not the app, not a browser tab, not the server — and the unread counts on the cards and the Dock go on as before"><input type="checkbox" id="notifyOn" checked><span><b>notifications</b> — a banner when Claude finishes or asks you something, while the board is not in front</span></label>
     <label class="opt" title="On, every project wears one colour — black, or the one picked under this switch — instead of its own (Peacock's and the setup's stay set, for VS Code and for when this is off), and no state or code has a colour of its own — a PR's chip and the people's faces keep theirs; the accent is left for what wants you — a question, your move, an unread count"><input type="checkbox" id="simpleColors"><span><b>simple colours</b> — every project in one colour, the states in greys; off, each project in its own</span></label>
     <label class="opt sub" id="tintRow" hidden><span class="ssw" id="tintSw"><input type="color" id="simpleTint" value="#000000" aria-label="The one colour every project wears"></span><span><b>one colour</b> for every project, black until you pick one — the chat header's square picks it too · ⌥-click back to black</span></label>
+    <div class="opt" title="A theme is every surface at once — the cards, the transcript, the code, the drawer's colours, the header's black and the status bar. A dark one is worn while macOS is dark, a light one while it is light"><span><b>theme</b> — <span id="themeNames"></span> <button class="btn" id="themeBtn">choose… ⌥⌘Y</button></span></div>
+    <label class="opt sub" title="Off, under a theme each project's Peacock colour moves to the nearest of the theme's own hues; on, it is worn as set"><input type="checkbox" id="skinExact"><span><b>exact project colours</b> under a theme — off, each moves to the theme's nearest hue</span></label>
     <label class="opt" title="On, every clauding card's light stands at the same angle — the blinks and the dots too; off, each card runs at its own. Either way a card rebuilt by an update carries on where it was"><input type="checkbox" id="ringsInStep" checked><span><b>rings in step</b> — every card's light at the same angle; off, each at its own</span></label>
     <label class="opt" title="On, a clauding card's light runs down its coloured edge, one light per sub-agent, and a monitor's slowly; off, round the whole card — the ring. The open chat's light runs on past its card only with the ring"><input type="checkbox" id="edgeLight"><span><b>edge light</b> — a clauding card's light runs down its coloured edge; off, round the card</span></label>
     <label class="opt" title="On, a round light of the card's colour follows the pointer over the card it is on, and the edge's glow stays as it is; off, hover spreads the edge's glow across the card"><input type="checkbox" id="cardSpot" checked><span><b>light under the pointer</b> — a hovered card's glow follows the pointer; off, it spreads from the edge</span></label>
@@ -1604,6 +1636,7 @@
     <kbd>⌥⌘F</kbd><span>the chat list's own filter, fuzzy the same way — the best match leads · ↑↓ walk the cards · ⏎ opens one · esc clears it</span>
     <kbd>⌥⌘N</kbd><span id="newKey">a chat — the project in view first, ⏎ ⏎ a new one there · or a project, a folder of your repos, or ＋ clone one · then its open chats or ＋ a new one · ✕ takes a row off the board</span>
     <kbd>⌥⌘B</kbd><span>fold the chat list into a rail, and back</span>
+    <kbd>⌥⌘Y</kbd><span>theme — Omarchy's twelve and the board's own, the board behind follows the arrows · ⏎ keeps it for its appearance, dark or light · esc puts back what was worn</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
     <kbd>⌥⌘←→</kbd><span>the tab to the left / right: chat, shell, GitHub pages, VS Code — split, across both halves' strips · drag a tab onto the other half to move it there</span>
     <kbd>⌥⌘W</kbd><span>close the tab the keys are in: the shell ends, a page or VS Code Web goes — the ··· menu too · split, a half with one tab shows no strip</span>
@@ -1636,6 +1669,11 @@
   </div>
   <p class="werr" id="werr"></p>
   <div class="dfoot"><span class="wwhere" id="wwhere"></span><span class="spacer"></span><button class="btn" id="wskip" title="Ask no more — Settings (⌘,) › Setup adds a folder whenever you like">Skip</button><button class="btn wok" id="wok">Use this folder</button></div>
+</dialog>
+<dialog id="themes" aria-label="Theme">
+  <div class="thin"><input type="text" id="themeq" placeholder="Theme — type to filter · ←↑↓→ the board follows · ⏎ keeps it · esc" autocomplete="off" spellcheck="false"></div>
+  <div id="themegrid"></div>
+  <div class="thfoot"><span id="themenote"></span><span class="spacer"></span><span>a dark theme is worn while macOS is dark, a light one while it is light</span></div>
 </dialog>
 <dialog id="pick">
   <input type="text" id="pickq" placeholder="Project — type to filter · ↑↓ · ⏎ opens · esc" autocomplete="off" spellcheck="false">
@@ -1710,7 +1748,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map() };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, statusBar: true, barStats: ['cpu', 'mem'], peopleFold: false, cardSpot: true };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, statusBar: true, barStats: ['cpu', 'mem'], peopleFold: false, cardSpot: true, skinDark: null, skinLight: null, skinExact: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -1848,6 +1886,166 @@
   $('#simpleColors').addEventListener('change', e => { prefs.simpleColors = e.target.checked; savePrefs(); applyColors(); redrawColors(); });
   $('#simpleTint').addEventListener('input', e => setTint(e.target.value));
   $('#tintRow').addEventListener('click', e => { if (e.altKey) { e.preventDefault(); setTint(null); } });
+  // ---- themes: one keystroke re-skins the board (2026-10-10) ----------------------------------------------
+  // Omarchy's way: a theme is every surface at once — the cards, the transcript, the code, the drawer's sixteen colours,
+  // the header's black and the status bar — picked from a grid that the board behind follows (⌥⌘Y). Omarchy's twelve.
+  // A theme is light or dark, and the page cannot pick its own appearance (the dark rules hang off the system's), so
+  // there are two slots, as Ghostty's `theme = dark:…,light:…`: a dark theme is worn while macOS is dark, a light one
+  // while it is light, and none is the board's own (prefs.skinDark, prefs.skinLight). A project keeps its hue — its
+  // Peacock colour moves to the theme's nearest (skinColor) — unless prefs.skinExact keeps it as set. `crust` is the
+  // theme's darkest (lightest, in a light one): the header's black, the splitter's, the status bar's ground.
+  const SKINS = {
+    'tokyo-night': { name: 'Tokyo Night', dark: true, bg: '#1a1b26', panel: '#1f2335', raise: '#24283b', crust: '#16161e', ink: '#c0caf5', muted: '#8790bd', line: '#292e42', accent: '#7aa2f7',
+      working: '#e0af68', idle: '#9ece6a', needs: '#f7768e', watch: '#7dcfff', spend: '#ff9e64', code: '#16161e',
+      hl: ['#565f89', '#bb9af7', '#9ece6a', '#ff9e64', '#7aa2f7', '#e0af68', '#f7768e', '#7dcfff'], proj: ['#7aa2f7', '#bb9af7', '#9ece6a', '#ff9e64', '#f7768e', '#7dcfff', '#e0af68', '#73daca'],
+      ansi: ['#15161e', '#f7768e', '#9ece6a', '#e0af68', '#7aa2f7', '#bb9af7', '#7dcfff', '#a9b1d6', '#414868', '#f7768e', '#9ece6a', '#e0af68', '#7aa2f7', '#bb9af7', '#7dcfff', '#c0caf5'] },
+    catppuccin: { name: 'Catppuccin', dark: true, bg: '#1e1e2e', panel: '#24273a', raise: '#313244', crust: '#11111b', ink: '#cdd6f4', muted: '#9399b2', line: '#313244', accent: '#cba6f7',
+      working: '#f9e2af', idle: '#a6e3a1', needs: '#f38ba8', watch: '#94e2d5', spend: '#fab387', code: '#181825',
+      hl: ['#6c7086', '#cba6f7', '#a6e3a1', '#fab387', '#89b4fa', '#f9e2af', '#f38ba8', '#94e2d5'], proj: ['#89b4fa', '#cba6f7', '#a6e3a1', '#fab387', '#f38ba8', '#94e2d5', '#f9e2af', '#f5c2e7'],
+      ansi: ['#45475a', '#f38ba8', '#a6e3a1', '#f9e2af', '#89b4fa', '#f5c2e7', '#94e2d5', '#bac2de', '#585b70', '#f38ba8', '#a6e3a1', '#f9e2af', '#89b4fa', '#f5c2e7', '#94e2d5', '#a6adc8'] },
+    gruvbox: { name: 'Gruvbox', dark: true, bg: '#282828', panel: '#32302f', raise: '#3c3836', crust: '#1d2021', ink: '#ebdbb2', muted: '#a89984', line: '#45403d', accent: '#fe8019',
+      working: '#fabd2f', idle: '#b8bb26', needs: '#fb4934', watch: '#8ec07c', spend: '#fe8019', code: '#1d2021',
+      hl: ['#928374', '#fb4934', '#b8bb26', '#d3869b', '#83a598', '#fabd2f', '#fe8019', '#8ec07c'], proj: ['#83a598', '#d3869b', '#b8bb26', '#fe8019', '#fb4934', '#8ec07c', '#fabd2f'],
+      ansi: ['#282828', '#cc241d', '#98971a', '#d79921', '#458588', '#b16286', '#689d6a', '#a89984', '#928374', '#fb4934', '#b8bb26', '#fabd2f', '#83a598', '#d3869b', '#8ec07c', '#ebdbb2'] },
+    everforest: { name: 'Everforest', dark: true, bg: '#2d353b', panel: '#343f44', raise: '#3d484d', crust: '#232a2e', ink: '#d3c6aa', muted: '#859289', line: '#475258', accent: '#a7c080',
+      working: '#dbbc7f', idle: '#a7c080', needs: '#e67e80', watch: '#83c092', spend: '#e69875', code: '#232a2e',
+      hl: ['#859289', '#e67e80', '#a7c080', '#d699b6', '#7fbbb3', '#dbbc7f', '#e69875', '#83c092'], proj: ['#7fbbb3', '#d699b6', '#a7c080', '#e69875', '#e67e80', '#83c092', '#dbbc7f'],
+      ansi: ['#475258', '#e67e80', '#a7c080', '#dbbc7f', '#7fbbb3', '#d699b6', '#83c092', '#d3c6aa', '#859289', '#e67e80', '#a7c080', '#dbbc7f', '#7fbbb3', '#d699b6', '#83c092', '#d3c6aa'] },
+    kanagawa: { name: 'Kanagawa', dark: true, bg: '#1f1f28', panel: '#2a2a37', raise: '#363646', crust: '#16161d', ink: '#dcd7ba', muted: '#727169', line: '#363646', accent: '#7e9cd8',
+      working: '#e6c384', idle: '#98bb6c', needs: '#ff5d62', watch: '#7fb4ca', spend: '#ffa066', code: '#16161d',
+      hl: ['#727169', '#957fb8', '#98bb6c', '#d27e99', '#7e9cd8', '#e6c384', '#ffa066', '#7aa89f'], proj: ['#7e9cd8', '#957fb8', '#98bb6c', '#ffa066', '#ff5d62', '#7aa89f', '#e6c384', '#d27e99'],
+      ansi: ['#16161d', '#c34043', '#76946a', '#c0a36e', '#7e9cd8', '#957fb8', '#6a9589', '#c8c093', '#727169', '#e82424', '#98bb6c', '#e6c384', '#7fb4ca', '#938aa9', '#7aa89f', '#dcd7ba'] },
+    'rose-pine': { name: 'Rosé Pine', dark: true, bg: '#191724', panel: '#1f1d2e', raise: '#26233a', crust: '#13111d', ink: '#e0def4', muted: '#908caa', line: '#26233a', accent: '#ebbcba',
+      working: '#f6c177', idle: '#9ccfd8', needs: '#eb6f92', watch: '#31748f', spend: '#f6c177', code: '#13111d',
+      hl: ['#6e6a86', '#c4a7e7', '#f6c177', '#ebbcba', '#9ccfd8', '#f6c177', '#eb6f92', '#31748f'], proj: ['#9ccfd8', '#c4a7e7', '#31748f', '#f6c177', '#eb6f92', '#ebbcba'],
+      ansi: ['#26233a', '#eb6f92', '#31748f', '#f6c177', '#9ccfd8', '#c4a7e7', '#ebbcba', '#e0def4', '#6e6a86', '#eb6f92', '#31748f', '#f6c177', '#9ccfd8', '#c4a7e7', '#ebbcba', '#e0def4'] },
+    nord: { name: 'Nord', dark: true, bg: '#2e3440', panel: '#3b4252', raise: '#434c5e', crust: '#242933', ink: '#eceff4', muted: '#9aa3b5', line: '#434c5e', accent: '#88c0d0',
+      working: '#ebcb8b', idle: '#a3be8c', needs: '#bf616a', watch: '#8fbcbb', spend: '#d08770', code: '#242933',
+      hl: ['#616e88', '#81a1c1', '#a3be8c', '#b48ead', '#88c0d0', '#ebcb8b', '#d08770', '#8fbcbb'], proj: ['#81a1c1', '#b48ead', '#a3be8c', '#d08770', '#bf616a', '#88c0d0', '#ebcb8b'],
+      ansi: ['#3b4252', '#bf616a', '#a3be8c', '#ebcb8b', '#81a1c1', '#b48ead', '#88c0d0', '#e5e9f0', '#4c566a', '#bf616a', '#a3be8c', '#ebcb8b', '#81a1c1', '#b48ead', '#8fbcbb', '#eceff4'] },
+    'matte-black': { name: 'Matte Black', dark: true, bg: '#121212', panel: '#181818', raise: '#202020', crust: '#0b0b0b', ink: '#eaeaea', muted: '#8a8a8d', line: '#262626', accent: '#f59e0b',
+      working: '#f59e0b', idle: '#bebebe', needs: '#d35f5f', watch: '#8a8a8d', spend: '#f59e0b', code: '#0b0b0b',
+      hl: ['#5c5c5c', '#f59e0b', '#bebebe', '#e68e0d', '#d0d0d0', '#f59e0b', '#d35f5f', '#9a9a9a'], proj: ['#8a8a8d', '#bebebe', '#e68e0d', '#d35f5f', '#f59e0b', '#666666'],
+      ansi: ['#333333', '#d35f5f', '#bebebe', '#f59e0b', '#8a8a8d', '#e68e0d', '#a0a0a0', '#bebebe', '#5c5c5c', '#d35f5f', '#eaeaea', '#ffc107', '#bebebe', '#f59e0b', '#d0d0d0', '#ffffff'] },
+    'osaka-jade': { name: 'Osaka Jade', dark: true, bg: '#111c18', panel: '#16241f', raise: '#1d2f28', crust: '#0b1310', ink: '#c1c497', muted: '#7d8a74', line: '#23372f', accent: '#2dd5b7',
+      working: '#e5c736', idle: '#549e6a', needs: '#ff5345', watch: '#2dd5b7', spend: '#e5c736', code: '#0b1310',
+      hl: ['#53685b', '#d2689c', '#549e6a', '#e5c736', '#509475', '#acd4cf', '#ff5345', '#2dd5b7'], proj: ['#509475', '#d2689c', '#549e6a', '#e5c736', '#ff5345', '#2dd5b7', '#acd4cf'],
+      ansi: ['#23372b', '#ff5345', '#549e6a', '#e5c736', '#509475', '#d2689c', '#2dd5b7', '#c1c497', '#53685b', '#db9f9c', '#63b07a', '#e5c736', '#acd4cf', '#75bbb3', '#8cd3cb', '#f6f5dd'] },
+    ristretto: { name: 'Ristretto', dark: true, bg: '#2c2525', panel: '#352d2d', raise: '#403838', crust: '#211c1c', ink: '#e6d9db', muted: '#948a8b', line: '#403838', accent: '#f38d70',
+      working: '#f9cc6c', idle: '#adda78', needs: '#fd6883', watch: '#85dacc', spend: '#f38d70', code: '#211c1c',
+      hl: ['#72696a', '#fd6883', '#f9cc6c', '#a8a9eb', '#adda78', '#f9cc6c', '#f38d70', '#85dacc'], proj: ['#a8a9eb', '#85dacc', '#adda78', '#f38d70', '#fd6883', '#f9cc6c'],
+      ansi: ['#2c2525', '#fd6883', '#adda78', '#f9cc6c', '#f38d70', '#a8a9eb', '#85dacc', '#e6d9db', '#72696a', '#fd6883', '#adda78', '#f9cc6c', '#f38d70', '#a8a9eb', '#85dacc', '#fff1f3'] },
+    'catppuccin-latte': { name: 'Catppuccin Latte', dark: false, bg: '#eff1f5', panel: '#ffffff', raise: '#e6e9ef', crust: '#dce0e8', ink: '#4c4f69', muted: '#6c6f85', line: '#ccd0da', accent: '#8839ef',
+      working: '#df8e1d', idle: '#40a02b', needs: '#d20f39', watch: '#179299', spend: '#fe640b', code: '#e6e9ef',
+      hl: ['#9ca0b0', '#8839ef', '#40a02b', '#fe640b', '#1e66f5', '#df8e1d', '#d20f39', '#179299'], proj: ['#1e66f5', '#8839ef', '#40a02b', '#fe640b', '#d20f39', '#179299', '#df8e1d'],
+      ansi: ['#5c5f77', '#d20f39', '#40a02b', '#df8e1d', '#1e66f5', '#ea76cb', '#179299', '#acb0be', '#6c6f85', '#d20f39', '#40a02b', '#df8e1d', '#1e66f5', '#ea76cb', '#179299', '#bcc0cc'] },
+    'flexoki-light': { name: 'Flexoki Light', dark: false, bg: '#fffcf0', panel: '#ffffff', raise: '#f2f0e5', crust: '#e6e4d9', ink: '#100f0f', muted: '#6f6e69', line: '#e6e4d9', accent: '#205ea6',
+      working: '#ad8301', idle: '#66800b', needs: '#af3029', watch: '#24837b', spend: '#bc5215', code: '#f2f0e5',
+      hl: ['#b7b5ac', '#5e409d', '#66800b', '#bc5215', '#205ea6', '#ad8301', '#af3029', '#24837b'], proj: ['#205ea6', '#5e409d', '#66800b', '#bc5215', '#af3029', '#24837b', '#ad8301', '#a02f6f'],
+      ansi: ['#100f0f', '#af3029', '#66800b', '#ad8301', '#205ea6', '#a02f6f', '#24837b', '#6f6e69', '#575653', '#d14d41', '#879a39', '#d0a215', '#4385be', '#ce5d97', '#3aa99f', '#b7b5ac'] },
+  };
+  // the board's own, as a tile in the picker draws them (the tokens themselves are :root's)
+  const OWN_SKINS = {
+    dark: { name: 'peixAIrada', dark: true, bg: '#141413', panel: '#1c1c1a', crust: '#000000', ink: '#e8e6df', muted: '#9a998f', line: '#2c2c29', accent: '#e08a68', working: '#d9a82a', idle: '#2f9e5b', needs: '#d64545', watch: '#45c8c8', proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'] },
+    light: { name: 'peixAIrada', dark: false, bg: '#f6f6f4', panel: '#ffffff', crust: '#000000', ink: '#1c1c1a', muted: '#6b6b66', line: '#e5e5e0', accent: '#c96442', working: '#d9a82a', idle: '#2f9e5b', needs: '#d64545', watch: '#0e8a8a', proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'] },
+  };
+  const ANSI = ['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white', 'brightBlack', 'brightRed', 'brightGreen', 'brightYellow', 'brightBlue', 'brightMagenta', 'brightCyan', 'brightWhite'];
+  // Each theme a block of tokens under its own data-skin, inside its own appearance's media query: worn only in that
+  // appearance, whatever the slot says. Three classes deep, so it wins over :root and the dark block's two; the states
+  // and the syntax only outside simple colours, whose greys win where it is on.
+  const skinCss = (k, t) => {
+    const [com, key, str, num, fn, cls, vr, meta] = t.hl, at = `:root:root[data-skin="${k}"]`;
+    return `@media (prefers-color-scheme: ${t.dark ? 'dark' : 'light'}) {
+  ${at} { --bg: ${t.bg}; --panel: ${t.panel}; --ink: ${t.ink}; --muted: ${t.muted}; --line: ${t.line}; --accent: ${t.accent}; --unread: ${t.accent}; --ended: color-mix(in srgb, ${t.muted} 70%, ${t.bg});
+    --user-bg: ${t.raise}; --tool-bg: color-mix(in srgb, ${t.raise} 60%, ${t.panel}); --code-bg: ${t.code}; --code-line: ${t.line}; --inline-bg: color-mix(in srgb, ${t.ink} 8%, transparent);
+    --snip-claude: color-mix(in srgb, ${t.ink} 82%, ${t.panel}); --nocolor: ${t.muted}; --term-bg: ${t.code}; --term-sel: color-mix(in srgb, ${t.accent} 30%, transparent);
+    --crust: ${t.crust}; --bar: ${t.crust}; --hd-ink: ${t.ink}; --hd-muted: ${t.muted}; --hd-line: ${t.line}; --hd-panel: ${t.panel}; --hd-inline: color-mix(in srgb, ${t.ink} 8%, transparent); }
+  ${at}:not([data-colors="simple"]) { --working: ${t.working}; --idle: ${t.idle}; --needs: ${t.needs}; --watch: ${t.watch}; --spend: ${t.spend}; --you: ${t.watch}; --code-ink: ${num};
+    --hl-com: ${com}; --hl-key: ${key}; --hl-str: ${str}; --hl-num: ${num}; --hl-fn: ${fn}; --hl-cls: ${cls}; --hl-var: ${vr}; --hl-meta: ${meta}; }
+}`;
+  };
+  document.head.append(Object.assign(document.createElement('style'), { id: 'skins', textContent: Object.entries(SKINS).map(([k, t]) => skinCss(k, t)).join('\n') }));
+  const darkNow = () => matchMedia('(prefers-color-scheme: dark)').matches;
+  let skinPreview;   // what the picker shows while it is up: a key, null for the board's own, undefined when it is down
+  /** The theme worn now: the picker's preview, else the slot of the appearance in use — and only one of that appearance. */
+  const skinOn = () => { const k = skinPreview !== undefined ? skinPreview : darkNow() ? prefs.skinDark : prefs.skinLight; return SKINS[k] && SKINS[k].dark === darkNow() ? k : null; };
+  const skinName = k => SKINS[k]?.name || 'the board’s own';
+  // A project's colour under a theme: the nearest of the theme's own hues, by the hue's angle; a grey, a black, a white
+  // and a colour the theme has no match for stay as set.
+  const hueOf = hex => {
+    const m = /^#([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return null;
+    const n = parseInt(m[1], 16), [r, g, b] = [n >> 16 & 255, n >> 8 & 255, n & 255].map(v => v / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    if (!d || d / (1 - Math.abs(mx + mn - 1)) < .15) return null;
+    const x = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return (x * 60 + 360) % 360;
+  };
+  function skinColor(c) {
+    const k = skinOn(), h = hueOf(c); if (!k || prefs.skinExact || h === null) return c;
+    let best = c, bd = 1e9;
+    for (const p of SKINS[k].proj) { const q = hueOf(p); if (q === null) continue; const d = Math.min(Math.abs(h - q), 360 - Math.abs(h - q)); if (d < bd) { bd = d; best = p; } }
+    return best;
+  }
+  /** The theme on the root, and its name in the settings. The terminals and the board's colours follow (reskin). */
+  function applySkin() {
+    const k = skinOn();
+    if (k) document.documentElement.dataset.skin = k; else delete document.documentElement.dataset.skin;
+    $('#themeNames').innerHTML = `<b>${skinName(prefs.skinDark)}</b> while dark · <b>${skinName(prefs.skinLight)}</b> while light`;   // the table's own names: nothing to escape (and esc is declared further down)
+    $('#skinExact').checked = !!prefs.skinExact;
+  }
+  applySkin();
+  const reskin = () => { applySkin(); for (const tm of terms) if (tm.xt) tm.xt.options.theme = xtTheme(); redrawColors(); };
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', reskin);
+  $('#skinExact').addEventListener('change', e => { prefs.skinExact = e.target.checked; savePrefs(); reskin(); });
+  $('#themeBtn').addEventListener('click', () => { settingsOpen(false); themesOpen(); });
+  // ⌥⌘Y: the grid. The arrows move and the board behind follows (a theme of the other appearance cannot show: it says
+  // so); ⏎ or a click keeps one in its appearance's slot; Esc, or a click on the backdrop, puts back what was worn.
+  const themePick = { list: [], sel: 0, kept: false };
+  const miniSkin = (k, t, i) => {
+    const p = t.proj, card = (c, w1, w2, ask) => `<i class="mc${ask ? ' ask' : ''}" style="--c:${c}"><u style="width:${w1}%"></u><u style="width:${w2}%"></u></i>`;
+    const slot = t.dark ? prefs.skinDark : prefs.skinLight, worn = (SKINS[slot] ? slot : t.dark ? 'own-dark' : 'own-light') === k;
+    return `<button class="tt${i === themePick.sel ? ' sel' : ''}" data-i="${i}" style="--tbg:${t.bg};--tpn:${t.panel};--tcr:${t.crust};--tink:${t.ink};--tmu:${t.muted};--tnd:${t.needs};--thd:${p[0]}">
+      <span class="tshot"><span class="ml">${card(t.needs, 70, 45, 1)}${card(p[1], 80, 55)}${card(p[0], 60, 70)}${card(p[2], 75, 40)}</span>
+        <span class="mr"><span class="mh"><b></b></span><span class="mt"><u style="width:82%"></u><u style="width:64%"></u><u class="code" style="width:90%"></u><u style="width:48%"></u><s></s></span></span>
+        <span class="sw">${[t.needs, t.working, t.idle, t.watch, t.accent, ...p.slice(0, 3)].map(c => `<i style="background:${c}"></i>`).join('')}</span></span>
+      <span class="nm">${esc(t.name)}${worn ? '<em>worn</em>' : ''}<small>${t.dark ? 'dark' : 'light'}</small></span></button>`;
+  };
+  function themesRender() {
+    const q = $('#themeq').value.trim().toLowerCase();
+    const all = [['own-dark', OWN_SKINS.dark], ...Object.entries(SKINS).filter(([, t]) => t.dark), ['own-light', OWN_SKINS.light], ...Object.entries(SKINS).filter(([, t]) => !t.dark)];
+    themePick.list = all.filter(([, t]) => !q || fuzzy([t.name, t.dark ? 'dark' : 'light'], q));
+    themePick.sel = Math.max(0, Math.min(themePick.sel, themePick.list.length - 1));
+    $('#themegrid').innerHTML = themePick.list.map(([k, t], i) => miniSkin(k, t, i)).join('') || '<div class="none">no theme matches</div>';
+    const [k, t] = themePick.list[themePick.sel] || [];
+    if (!t) return;
+    skinPreview = k.startsWith('own-') ? null : k;
+    $('#themenote').textContent = t.dark === darkNow() ? `${t.name} — ⏎ wears it while macOS is ${t.dark ? 'dark' : 'light'}` : `${t.name} is a ${t.dark ? 'dark' : 'light'} theme: ⏎ keeps it for when macOS is ${t.dark ? 'dark' : 'light'} — it cannot show now`;
+    $('#themegrid .tt.sel')?.scrollIntoView({ block: 'nearest' });
+    reskin();
+  }
+  function themesOpen() {
+    const dlg = $('#themes'); if (dlg.open) return;
+    if (inApp) post({ type: 'focus' });
+    themePick.kept = false; $('#themeq').value = '';
+    const k = darkNow() ? prefs.skinDark : prefs.skinLight;
+    const all = [['own-dark'], ...Object.keys(SKINS).filter(x => SKINS[x].dark).map(x => [x]), ['own-light'], ...Object.keys(SKINS).filter(x => !SKINS[x].dark).map(x => [x])];
+    themePick.sel = Math.max(0, all.findIndex(([x]) => x === (SKINS[k] ? k : darkNow() ? 'own-dark' : 'own-light')));
+    dlg.showModal(); repostPane(); themesRender(); $('#themeq').focus();
+  }
+  function themeKeep(i = themePick.sel) {
+    const [k, t] = themePick.list[i] || []; if (!t) return;
+    const v = k.startsWith('own-') ? null : k;
+    if (t.dark) prefs.skinDark = v; else prefs.skinLight = v;
+    savePrefs(); themePick.kept = true; skinPreview = undefined; applySkin(); $('#themes').close();   // the close event comes a task later
+  }
+  $('#themes').addEventListener('close', () => { skinPreview = undefined; reskin(); });
+  $('#themes').addEventListener('click', e => { if (e.target === e.currentTarget) return e.currentTarget.close(); const b = e.target.closest('.tt'); if (b) themeKeep(+b.dataset.i); });
+  $('#themeq').addEventListener('input', () => { themePick.sel = 0; themesRender(); });
+  $('#themeq').addEventListener('keydown', e => {
+    const cols = Math.max(1, Math.round($('#themegrid').clientWidth / ($('#themegrid .tt')?.offsetWidth || 1)));
+    const step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: cols, ArrowUp: -cols }[e.key];
+    if (step) { e.preventDefault(); themePick.sel = Math.max(0, Math.min(themePick.list.length - 1, themePick.sel + step)); themesRender(); }
+    else if (e.key === 'Enter') { e.preventDefault(); themeKeep(); }
+  });
   // Esc on the page itself: a dialog (the picker, the project editor) or the settings popover closes,
   // and the key is *taken* — preventDefault, so WebKit reports it handled. An Esc the page leaves alone climbs to the
   // app's window, which in full screen takes it to leave full screen: the picker closed and the window shrank with it
@@ -1958,7 +2156,7 @@
   // What the board paints with: under simple colours (prefs.simpleColors) every project, ALL included, wears the one
   // colour picked for it — black until one is (simpleTint). The setup still reads ownColor, and so does the header's
   // square outside simple colours: they are where a project's colour is set, so they show it.
-  const repoColor = cwds => prefs.simpleColors ? simpleTint() : ownColor(cwds);
+  const repoColor = cwds => prefs.simpleColors ? simpleTint() : skinColor(ownColor(cwds));   // a theme moves it to its own hue (2026-10-10)
   const projColor = p => prefs.simpleColors ? simpleTint() : p.key === ALL ? BLACK : repoColor(p.cwds);
   const repoStyle = color => color ? `--repo:${color}` : '';
   // The ink that reads on a colour: near-black on a light one, white on a dark one — Peacock's own rule (tinycolor's
@@ -3356,7 +3554,7 @@
   // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyW: hotCloseTab, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyW: hotCloseTab, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -4237,7 +4435,8 @@
   const focusTerm = () => { const tm = curTerm(); if (tm.xt && tm.id) tm.xt.focus(); };
   function xtTheme() {
     const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
-    return { background: v('--term-bg'), foreground: v('--ink'), cursor: v('--accent'), cursorAccent: v('--term-bg'), selectionBackground: v('--term-sel') };
+    const ansi = SKINS[skinOn()]?.ansi;   // a theme's sixteen colours (2026-10-10); none, xterm's own
+    return { background: v('--term-bg'), foreground: v('--ink'), cursor: v('--accent'), cursorAccent: v('--term-bg'), selectionBackground: v('--term-sel'), ...(ansi ? Object.fromEntries(ANSI.map((n, i) => [n, ansi[i]])) : {}) };
   }
   const termSend = (tm, d) => { if (tm.ws?.readyState === 1 && tm.exited === null) tm.ws.send(JSON.stringify({ t: 'in', d })); };
   // ⌘K clears the terminal, as Terminal.app and iTerm do — a key xterm.js does not ship and zsh cannot bind

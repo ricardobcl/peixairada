@@ -313,6 +313,16 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   chips' `--pr-*`, GitHub's faces, `--you` — the theme is the projects' and the states'. **The setup's
   squares read `ownColor`**, and so does the header's square outside simple colours — the colour as set. A new colour on the board reads a token or
   `repoColor`, never a hex or `ownColor` of its own, or it shows through. → `scripts/scenarios/simple-colors.mjs`.
+* **A theme is every surface at once, worn by appearance** (2026-10-10; ⌥⌘Y, `SKINS`, `skinCss`, `applySkin`): Omarchy's
+  twelve, each a block of tokens under `:root:root[data-skin=…]` inside its own appearance's media query — three
+  classes deep, so it beats `:root` and the dark block; its states and syntax only outside simple colours. **Two slots,
+  `prefs.skinDark` / `prefs.skinLight`**: the page cannot choose its appearance, so a dark theme is worn only while the
+  system is dark (`skinOn`). The blacks the CSS spelled out read `--crust` (the header's right, the splitter), `--bar`
+  (the status bar) and `--hd-*` (the header's borrowed inks), each with the old value as its fallback. A project's
+  colour moves to the theme's nearest hue (`skinColor`, in `repoColor`; `prefs.skinExact` keeps it as set) and the
+  drawer's sixteen colours are the theme's (`xtTheme`, `ANSI`). The grid previews as the arrows move (`skinPreview`),
+  Esc puts back what was worn, ⏎ keeps it in its appearance's slot. A colour on the board that reads no token is one
+  no theme reaches. → `scripts/scenarios/themes.mjs`.
 * **The floating header is a switch, to try** (2026-10-09, the studies' E; Settings → Board → *floating header*,
   `prefs.headFloat` → `<html data-head="float">`): `#shead` a rounded bar inset 14 px from the column's sides and 10 px
   from its top, an edge of the project's colour and a shadow; `#prlist` inset alike. With it the open chat's light
@@ -541,7 +551,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, PR
   turns; `STATE_FILE` overrides) and the user's `~/.config/peixairada/config.json` (the setup, below), both shared by
   the app and every browser; the browser's `localStorage` `peixairada-prefs`
-  (selected project, filters, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the person the list is narrowed to, ⌥ as Meta, auto-resume, the edge light, the light under the pointer, the floating header, the status bar and what it adds, the faces folded, drawer open/height — the keys are the `prefs` literal,
+  (selected project, filters, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the theme for each appearance, the person the list is narrowed to, ⌥ as Meta, auto-resume, the edge light, the light under the pointer, the floating header, the status bar and what it adds, the faces folded, drawer open/height — the keys are the `prefs` literal,
   and old ones are deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it
   renders reads its state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
 * **The setup is the user's file, and nothing about one Mac is written in the code** (2026-09-28; the file since
@@ -588,7 +598,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   go; on the chat's own tab a `note()`), P the project picker, K the chat picker (`chat` mode: every ready or clauding chat, the list's order,
   searched by `chatFields()`; ⏎ is `openSession`), **F the chat list's own box** (`hotFind()` → `qShow(true)`), **B the chat list
   folded to a rail and back** (`toggleSessions`; plain ⌘B until 2026-10-02 — VS Code Web keeps its ⌘B, gives up its
-  ⌥⌘B), N a
+  ⌥⌘B), **Y the themes** (`themesOpen`, 2026-10-10), N a
   chat as steps of the one dialog (`new` → `chats` → `folder` when the project spans several → `env` when
   `newChatIn()` finds launchers), **O the same with the project answered and the environment brought forward**
   (`hotOracle()` → `newChatIn(cwd, 'chats')` on the project the setup names, `state.config.quick`; none named, or
