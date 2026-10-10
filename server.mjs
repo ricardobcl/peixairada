@@ -25,6 +25,7 @@
 //  Notifications + SSE fan-out
 //  Replying into a session
 //      · Claude plan usage, for the chat list's footer: the numbers `/usage` shows in the CLI
+//      · the machine, for the status bar: CPU, memory, and what the claudes hold (2026-10-09)
 //      · keeping the Mac awake: an idle-sleep assertion, and the lid's own setting (2026-10-08)
 //  VS Code Web: the editor UI served by `code serve-web`, for the pane beside the board
 //  Terminals: a real `claude` in a PTY, attached to from the page over a WebSocket
@@ -507,6 +508,7 @@ function newSession(id, file) {
     cwd: null, gitBranch: null, model: null,
     title: null, customTitle: null, lastPrompt: null, lastReply: null, prs: [], tickets: [], ticketBranch: null,
     status: 'unknown', statusSince: null, lastActivity: null, lastUserAt: null, lastReplyAt: null, turnStart: null,
+    clearedAt: null,   // the time of the /clear this transcript begins with, if it does (tickCleared)
     startedAt: null,   // when a chat with no transcript yet came to be (loadRegistry) — the card's time and place until a first word lands
     openedAt: null,    // when a page last opened the chat (ms): its PRs are polled as if it had just been touched (prEvery)
     live: null, alive: false, entrypoint: null, entrypointAt: null,   // last 'entrypoint' a user/assistant line carried ('claude-vscode' | 'cli'), and when
@@ -603,6 +605,7 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
 // ---------------------------------------------------------------------------------------------
 
 const SYNTHETIC_RE = /^\s*<(local-command|command-name|command-message|command-args|bash-input|bash-stdout|bash-stderr|user-memory-input|system-reminder|task-notification)\b/;
+const CLEAR_RE = /^\s*<command-name>\/(clear|reset|new)<\/command-name>/;   // the head of a transcript /clear began
 const STRIP_RE = /<(system-reminder|ide_selection|ide_opened_file)>[\s\S]*?<\/\1>/g;
 
 function textOf(content) {
@@ -1338,6 +1341,7 @@ function fold(s, line) {
       const text = cleanPrompt(raw);
       if (!text) return false;
       if (TASK_NOTE_RE.test(text)) return noteTaskEvent(s, text, ts);   // a monitor's event, or the end of one
+      if (CLEAR_RE.test(text)) { s.clearedAt = ts; tickCleared(s); }   // a chat born of /clear: the one it left is done
       if (SYNTHETIC_RE.test(text)) return false;
       pushEntry(s, { role: 'user', kind: 'text', text, ts, uuid: line.uuid });
       notePrs(s, text, ts, 'user'); noteTickets(s, text, ts, 'user');
@@ -1666,8 +1670,27 @@ function applyLiveness(s) {
   return wasAlive !== s.alive;
 }
 
+// /clear is the chat finished (2026-10-10): the same claude goes on under a new id, in a transcript of its own, and the
+// chat it left is ticked done as a ✓ would — nothing is ended, the process is the new chat's now. Known by two things,
+// which can come in either order: the process (pid and start) turning up under another chat (loadRegistry), and that
+// chat's transcript beginning with the command (`clearedAt`, fold) at or after the old chat's last word — so a /resume
+// into another chat, even one a /clear once began, and a fork leave the chat they left as it was.
+const clearedFrom = new Map();   // a chat a process moved to -> the chat it left, until the move is judged
+function tickCleared(s) {
+  const was = sessions.get(clearedFrom.get(s.id));
+  if (!was || !s.clearedAt) return;   // not moved to, or its transcript not read yet: the other half calls again
+  clearedFrom.delete(s.id);
+  if (isDone(was) || (was.lastActivity && s.clearedAt < was.lastActivity)) return;
+  doneMarks[was.id] = new Date().toISOString();
+  console.log(`[peixairada] chat ${was.id}: cleared into ${s.id} — done`);
+  saveState(); schedulePush(was);
+}
+
 function loadRegistry() {
   if (!existsSync(SESSIONS_DIR)) return;
+  // which chat each process was on at the last look, to see one move (/clear, /resume)
+  const held = new Map();
+  for (const s of sessions.values()) if (s.live) for (const l of [s.live, ...s.rivals]) held.set(`${l.pid}:${l.procStart}`, s);
   const found = new Map();   // sessionId -> its registry entries, one per pid
   for (const name of readdirSync(SESSIONS_DIR)) {
     if (!name.endsWith('.json')) continue;
@@ -1682,7 +1705,11 @@ function loadRegistry() {
   for (const [id, lives] of found) {
     let s = sessions.get(id);
     if (!s) { s = newSession(id, null); sessions.set(id, s); }
-    for (const l of lives) linkTermToRegistry(l.pid, s, ppids);   // a new chat's terminal learns its session id here
+    for (const l of lives) {
+      linkTermToRegistry(l.pid, s, ppids);   // a new chat's terminal learns its session id here
+      const was = held.get(`${l.pid}:${l.procStart}`);
+      if (was && was !== s && pidAlive(l.pid)) { clearedFrom.set(s.id, was.id); tickCleared(s); }
+    }
     // Several processes can hold one chat: VS Code mounts a chat twice on its own, or reopens one that was
     // taken over here. The chat's process is the drawer's own when there is one, else the newest live one
     // that is not VS Code's (the one you are driving), else the newest live one, else whatever is left (a

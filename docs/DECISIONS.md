@@ -5,6 +5,24 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-10 — /clear ticks the chat it left
+
+Ricardo: "when I do "/clear" on a chat, we correctly open a new one, but the old one is not marked as Done".
+
+* **What /clear is to the board**: the same claude under a new session id, in a fresh transcript whose head is the
+  command (a caveat, `<command-name>/clear</command-name>`, its empty output — the real ones and the fake's alike). The
+  new transcript names no old session, so the link is the process: its pid and `procStart` were on one chat at the
+  last look of the registry and are on another now (`held` in `loadRegistry` → `clearedFrom`).
+* **Only a /clear**: a process also moves on an in-app /resume (into a chat with history) and a fork. So the old chat is
+  ticked only once the new one's transcript begins with the command (`clearedAt`), and that command is at or after the
+  old chat's last word — a /resume into a chat that a /clear began a day ago is not one. The registry and the transcript
+  land in either order (the fake writes the file first; the test writes both orders); whichever comes second ticks.
+* **A tick as the ✓ makes, without its ending**: `doneMarks` and the state file, so the card goes to the Done lane and a
+  word in the old chat, or a PR come round to you, brings it back as any tick. The done route also ends the chat's
+  processes; here the process is the new chat's, so nothing is signalled.
+* **Any claude**: a /clear in iTerm ticks too — the registry is every claude's. A /clear the server was down for is not
+  seen (the move is between two looks).
+
 ## Decisions of 2026-10-09, evening — no worktrees in ⌥⌘N's folders
 
 Ricardo: "is there any way to not include folders for worktrees on the new project (hotkey N) menu?"

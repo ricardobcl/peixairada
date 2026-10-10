@@ -1,9 +1,10 @@
 // /clear in the drawer (2026-09-20): Claude Code keeps the process and takes a new session id — the registry file
 // says so — and the board must follow: the server re-links the holder to the new chat, the page opens it with the
-// drawer still attached, and the old chat is a stale card. Runs the fake claude, whose /clear does what the real one does.
+// drawer still attached, and the old chat is a stale card — ticked done since 2026-10-10, in the Done lane. Runs the fake
+// claude, whose /clear does what the real one does.
 export const meta = { server: true, fake: true, fixture: 'auto' };
 export default async function (ctx) {
-  const chat = ctx.fixture.chats[1];
+  const out = {}, chat = ctx.fixture.chats[1];
   await ctx.openChat(chat.id);
   await ctx.key('KeyC'); await ctx.waitPrompt();
   const before = await ctx.peix('state()');
@@ -32,9 +33,16 @@ export default async function (ctx) {
   // the new chat and nobody else, so the old card kept a drawer that had moved on (fixed 2026-09-22).
   await ctx.waitFor(`(s => s && !s.terminal && !s.alive)(window.peix.session(${JSON.stringify(chat.id)}))`,
     { what: 'the old chat a stale card now, without a drawer', timeout: 20_000 });
+  // …and done (2026-10-10): /clear is the chat finished — its card in the Done lane, the chat itself untouched
+  await ctx.waitFor(`window.peix.session(${JSON.stringify(chat.id)})?.done === true`, { what: 'the chat /clear left, ticked done', timeout: 10_000 });
+  await ctx.settle();
+  out.oldCard = await ctx.evaluate(`(() => { const kids = [...document.querySelectorAll('#slist > *')], i = kids.findIndex(k => k.dataset?.id === ${JSON.stringify(chat.id)}), lane = kids.slice(0, i).reverse().find(k => k.classList.contains('lane'));
+    return JSON.stringify({ done: kids[i]?.classList.contains('done'), lane: lane?.querySelector('.ln')?.textContent }); })()`).then(JSON.parse);
+  ctx.assert.deepEqual(out.oldCard, { done: true, lane: 'Done' }, 'the old card is a done one, under the Done lane');
+  await ctx.shot('old-done', { x: 0, y: 0, width: 440, height: 600 });
   const terms = await ctx.server.terminals();
   ctx.assert.equal(terms.filter(t => !t.shell && t.exited === null).length, 1, 'one claude process, not a second resume');
   ctx.assert.equal(terms.find(t => !t.shell).sessionId, after.current, "the holder is the new chat's");
   await ctx.shot('cleared', { x: 430, y: 0, width: 1270, height: 600 });
-  return { from: chat.id, to: after.current, term: after.termId };
+  return { ...out, from: chat.id, to: after.current, term: after.termId };
 }
