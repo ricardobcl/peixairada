@@ -18,6 +18,11 @@ J (workspaces in the status bar) and K (the btop frames) were not picked.
   web view's `NSAppearance` and a browser never could — two boards that disagree.) A project keeps its hue: its
   Peacock colour moves to the nearest of the theme's own (by the hue's angle; greys and blacks stay), a switch keeps
   them exact. Riso (G, `docs/studies/`) is not among them yet: it is shapes as much as colours.
+* **N · the launcher and the keys** (⌥⌘L, `?`): the study's ⌥⌘/ for the sheet is `?` instead — the board's keys go by
+  `e.code`, and on a Portuguese layout the key in the US slash's place types `-`, so ⌥⌘/ would have been a key no label
+  could name. The sheet is the settings' Keys list (one list to keep), and the launcher has a Keys row. Its switches
+  click the settings' checkboxes rather than set prefs, so each runs its own handler (the status bar's dock, the
+  server's notifications). Not done: the launcher does not take ⌥⌘K, ⌥⌘P and ⌥⌘N in — they are its menu's rows.
 
 ## Decisions of 2026-10-10 — /clear ticks the chat it left
 

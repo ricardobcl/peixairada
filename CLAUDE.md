@@ -598,7 +598,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   go; on the chat's own tab a `note()`), P the project picker, K the chat picker (`chat` mode: every ready or clauding chat, the list's order,
   searched by `chatFields()`; ⏎ is `openSession`), **F the chat list's own box** (`hotFind()` → `qShow(true)`), **B the chat list
   folded to a rail and back** (`toggleSessions`; plain ⌘B until 2026-10-02 — VS Code Web keeps its ⌘B, gives up its
-  ⌥⌘B), **Y the themes** (`themesOpen`, 2026-10-10), N a
+  ⌥⌘B), **Y the themes** (`themesOpen`, 2026-10-10), **L the launcher** (`pickOpen('launch')`, 2026-10-10), N a
   chat as steps of the one dialog (`new` → `chats` → `folder` when the project spans several → `env` when
   `newChatIn()` finds launchers), **O the same with the project answered and the environment brought forward**
   (`hotOracle()` → `newChatIn(cwd, 'chats')` on the project the setup names, `state.config.quick`; none named, or
@@ -658,6 +658,15 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   lines**. The title and the folder name are bolded (`markHits`). ↑↓ in the box walk a `.qsel` card, ⏎ opens it and
   keeps the query; the mark shows only while the box has the keyboard (`markQsel()`, on every render). Done chats, the
   project in view and the state chips still apply. → `scripts/scenarios/chat-filter.mjs`.
+* **⌥⌘L is the launcher, one box for everything** (2026-10-10; Walker and the Omarchy menu): `#pick` in mode `launch` —
+  `launchRows` gives each section's best (chats, projects, PRs across every chat `allPrs`, tickets `allTickets`,
+  `actionRows`, `toggleRows`), six each, all of them under a prefix (`>` actions and switches, `#` PRs, `@` projects,
+  `!` tickets); a section's first row carries its head (`.pkhd`, not a `.pkrow`). Empty, it is the menu
+  (`LAUNCH_MENU`): → or ⏎ goes into a row with › — the other pickers, opened with `ctx.back`, and two modes of its own,
+  `toggle` and `prs` — and ← or ⌫ on an empty box comes back. **A switch is the settings' own checkbox, clicked**
+  (`SWITCHES`), so its handler is the one that runs; ⏎ flips and the menu stays. **`?` is the sheet of every key**
+  (`keysOpen`, `#keysheet`), outside a box or a terminal: the settings' Keys pane is its source, its box narrows by
+  words. → `scripts/scenarios/launcher.mjs`.
 * **The last step of the new-chat flow is a list of chats**: the `chats` step is the scope's ready and clauding chats
   by `byWord` under a ＋ *new chat* row that carries on with the flow — `scopeChats()` / `chatsStep()` /
   `newFromChats()`; **it shows even when the scope has none**: ＋ alone, so ⏎ starts a chat and esc walks away. ⌥⌘N

@@ -1381,6 +1381,43 @@
   #themes .thfoot { display: flex; gap: 12px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
   #themes .thfoot #themenote { color: var(--ink); }
   #themes .thfoot .spacer { flex: 1; }
+  /* ⌥⌘L, the launcher (2026-10-10): the pickers' rows with a mark in front and a section's head over its first */
+  .pkhd { padding: 8px 8px 3px; font-size: 10.5px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted); }
+  .pkrow.lx { grid-template-columns: 22px minmax(0, 1fr) auto auto; }
+  .pkrow.lx .g { display: grid; place-items: center; min-width: 0; color: var(--muted); font-size: 13px; }
+  .pkrow.lx .g .ic { width: 14px; height: 14px; fill: currentColor; }
+  .pkrow.lx.sel .g { color: var(--accent); }
+  .pkrow.lx .num { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+  .pkrow.lx .num kbd { font: 600 10.5px ui-monospace, monospace; padding: 1px 5px; border-radius: 4px; background: var(--ctl); color: var(--ink); }
+  .pkrow.lx .t { color: var(--muted); font-size: 12px; min-width: 14px; text-align: right; }
+  .pkrow.lx .st { font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
+  .pkrow.lx .st[data-state="asking"] { color: var(--needs); } .pkrow.lx .st[data-state="clauding"] { color: var(--working); } .pkrow.lx .st[data-state="ready"] { color: var(--idle); }
+  .pkrow.lx .ac { font: 700 12px ui-monospace, monospace; color: var(--accent); }
+  .pkrow.lx .lpr { font: 700 10.5px/15px -apple-system, sans-serif; padding: 0 4px; border-radius: 4px; color: var(--bg); background: var(--pr-open); }
+  .pkrow.lx .lpr[data-state="merged"] { background: var(--pr-merged); } .pkrow.lx .lpr[data-state="closed"] { background: var(--pr-closed); } .pkrow.lx .lpr[data-state="draft"] { background: var(--pr-draft); } .pkrow.lx .lpr[data-state=""] { background: var(--muted); }
+  .pkrow.lx.pr, .pkrow.lx.ticket { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+  .pkrow.lx .ltk { font: 700 10.5px/15px -apple-system, sans-serif; padding: 0 4px; border-radius: 4px; color: #fff; background: var(--tk-todo); }
+  .pkrow.lx .ltk[data-cat="doing"] { background: var(--tk-doing); } .pkrow.lx .ltk[data-cat="done"] { background: var(--tk-done); }
+  .pkrow.lx .ymove { font-size: 10.5px; color: var(--accent); }
+  .lsw { display: inline-block; position: relative; width: 26px; height: 15px; border-radius: 8px; background: var(--ctl-hi); vertical-align: middle; }
+  .lsw i { position: absolute; left: 2px; top: 2px; width: 11px; height: 11px; border-radius: 50%; background: var(--muted); transition: left .12s; }
+  .lsw.on { background: var(--accent); } .lsw.on i { left: 13px; background: #fff; }
+  /* ?, every key on a sheet (2026-10-10): the settings' Keys, two columns, a box that narrows them */
+  #keysheet { width: min(1100px, 94vw); max-height: 88vh; padding: 16px 20px; margin-top: 5vh; display: none; }
+  #keysheet[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 12px; }
+  #keysheet .kshd { display: flex; align-items: center; gap: 14px; }
+  #keysheet .kshd h3 { margin: 0; font-size: 18px; }
+  #keysheet .kshd input { flex: 0 1 340px; font: inherit; font-size: 13.5px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: inherit; outline: none; }
+  #keysheet .kshd input:focus { border-color: var(--accent); }
+  #keysheet .kswhere { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+  #keysheet kbd { font: 600 11px ui-monospace, monospace; padding: 1px 5px; border-radius: 4px; background: var(--ctl-hi); color: var(--ink); white-space: nowrap; }
+  #ksbody { overflow-y: auto; columns: 2; column-gap: 32px; }
+  #ksbody .kr { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); break-inside: avoid; font-size: 12.5px; color: var(--muted); }
+  #ksbody .kr[hidden] { display: none; }
+  #ksbody .kr kbd { justify-self: start; }
+  #ksbody .kr em { font-style: normal; color: var(--ink); font-weight: 600; }
+  #keysheet .none { margin: 0; color: var(--muted); }
+  @media (max-width: 760px) { #ksbody { columns: 1; } }
   /* About (2026-09-27): a modal
      dialog, centred by the browser, the pane down under it like under any dialog; Esc or a click on the backdrop
      closes it. Its facts come with the snapshot (state.about). */
@@ -1636,6 +1673,8 @@
     <kbd>⌥⌘F</kbd><span>the chat list's own filter, fuzzy the same way — the best match leads · ↑↓ walk the cards · ⏎ opens one · esc clears it</span>
     <kbd>⌥⌘N</kbd><span id="newKey">a chat — the project in view first, ⏎ ⏎ a new one there · or a project, a folder of your repos, or ＋ clone one · then its open chats or ＋ a new one · ✕ takes a row off the board</span>
     <kbd>⌥⌘B</kbd><span>fold the chat list into a rail, and back</span>
+    <kbd>⌥⌘L</kbd><span>the launcher — every chat, project, PR, ticket, action and switch in one box: <em>&gt;</em> the actions and switches, <em>#</em> the PRs, <em>@</em> the projects, <em>!</em> the tickets · empty, a menu: → into a row, ← back · Toggle flips the settings' switches</span>
+    <kbd>?</kbd><span>this list, on a sheet of its own, searchable — outside a box or a terminal</span>
     <kbd>⌥⌘Y</kbd><span>theme — Omarchy's twelve and the board's own, the board behind follows the arrows · ⏎ keeps it for its appearance, dark or light · esc puts back what was worn</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
     <kbd>⌥⌘←→</kbd><span>the tab to the left / right: chat, shell, GitHub pages, VS Code — split, across both halves' strips · drag a tab onto the other half to move it there</span>
@@ -1674,6 +1713,10 @@
   <div class="thin"><input type="text" id="themeq" placeholder="Theme — type to filter · ←↑↓→ the board follows · ⏎ keeps it · esc" autocomplete="off" spellcheck="false"></div>
   <div id="themegrid"></div>
   <div class="thfoot"><span id="themenote"></span><span class="spacer"></span><span>a dark theme is worn while macOS is dark, a light one while it is light</span></div>
+</dialog>
+<dialog id="keysheet" aria-label="Every key">
+  <div class="kshd"><h3>Keys</h3><input type="text" id="ksq" placeholder="a key, or what it does…" autocomplete="off" spellcheck="false"><span class="kswhere"><kbd>?</kbd> outside a box or a terminal · <kbd>⌥⌘L</kbd> › Keys · esc</span></div>
+  <div id="ksbody"></div><p class="none" id="ksnone" hidden>no key matches</p>
 </dialog>
 <dialog id="pick">
   <input type="text" id="pickq" placeholder="Project — type to filter · ↑↓ · ⏎ opens · esc" autocomplete="off" spellcheck="false">
@@ -3353,8 +3396,10 @@
     env: ctx => ctx.then === 'chats' ? `${folderName(ctx.cwd)} — which environment? its open chats, and a new one · ↑↓ · ⏎ · esc`
       : `New chat in ${folderName(ctx.cwd)} — which environment? task <env> from the folder's Taskfile · ↑↓ · ⏎ starts it · esc`,
     chats: ctx => `${ctx.name}${ctx.env ? ` · task ${ctx.env}` : ''} — an open chat, or ＋ a new one · type to filter · ↑↓ · ⏎ · esc`,
+    launch: 'Anything — chats, projects, PRs, tickets, actions · > actions  # PRs  @ projects  ! tickets · → into a menu · ⏎ · esc',
+    toggle: 'Switches — ⏎ flips one, the menu stays · ← back · esc', prs: "Pull requests — every chat's · ⏎ opens the chat and the PR · ← back · esc",
   };
-  const PICK_NOUN = { pr: 'PR', chat: 'chat', chats: 'chat', folder: 'folder', env: 'environment' };   // for "no … matches"; the rest are projects
+  const PICK_NOUN = { pr: 'PR', prs: 'PR', chat: 'chat', chats: 'chat', folder: 'folder', env: 'environment', launch: 'thing', toggle: 'switch' };   // for "no … matches"; the rest are projects
   const homePath = f => f.replace(/^\/Users\/[^/]+(?=\/|$)/, '~');
   const chatState = s => bucket(s) === 'working' ? 'clauding' : asking(s) ? 'asking' : 'ready';
   // ---- the roots' folders, and cloning one that is not here yet (2026-09-21) --------------------
@@ -3414,7 +3459,7 @@
     if (!d.cwd) { $('#picklist').innerHTML = `<div class="none">could not clone ${esc(org)}/${esc(name)} — ${esc(d.error || 'the server said no')}</div>`; return; }
     chatsStep({ key: d.cwd, name, cwds: [d.cwd] });
   }
-  const pickHint = () => { const h = PICK_HINT[pick.mode]; $('#pickq').placeholder = typeof h === 'function' ? h(pick.ctx) : h; };
+  const pickHint = () => { const h = PICK_HINT[pick.mode], t = typeof h === 'function' ? h(pick.ctx) : h; $('#pickq').placeholder = pick.ctx.back && !/← back/.test(t) ? t.replace(/ · esc$/, ' · ← back · esc') : t; };
   function pickOpen(mode = 'project', ctx = {}) {
     const dlg = $('#pick');
     if (!dlg.open) {   // a step of the new-chat flow re-fills the open dialog; a hotkey never gets here with one up
@@ -3440,7 +3485,11 @@
     const hunt = (items, fields) => { if (!q) return items; const hits = []; items.forEach((x, i) => { const m = fuzzy(fields(x), q); if (m) hits.push([m.score, i, x]); }); return hits.sort((a, b) => b[0] - a[0] || a[1] - b[1]).map(h => h[2]); };
     const sel = i => i === pick.sel ? ' sel' : '';
     let row;   // each mode fills pick.list and says how a row of it is drawn; the selection is clamped once, below
-    if (pick.mode === 'pr') {
+    if (pick.mode === 'launch' || pick.mode === 'toggle' || pick.mode === 'prs') {   // ⌥⌘L (2026-10-10): the launcher, its switches, every chat's PRs
+      const raw = $('#pickq').value, lq = raw.replace(/^[>#@!]/, '').trim().toLowerCase();
+      pick.list = pick.mode === 'launch' ? launchRows(raw) : pick.mode === 'toggle' ? hunt(toggleRows(), t => [t.name]) : hunt(allPrs(), pr => [pr.label, pr.title || '', pr.chat || '']).map(pr => ({ kind: 'pr', id: 'pr:' + pr.url, pr }));
+      row = (x, i) => launchRow(x, i, sel, text => markHits(text, lq));
+    } else if (pick.mode === 'pr') {
       pick.list = hunt(state.sessions.get(state.current)?.prs || [], pr => [pr.label, pr.title || '']);
       row = (pr, i) => `<div class="pkrow pr${sel(i)}" data-i="${i}" data-state="${esc(pr.state || '')}" title="${esc(pr.url)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${mark(pr.label)}</span><span class="n${pr.title ? '' : ' pending'}">${pr.title ? mark(pr.title) : 'title on its way from gh…'}${pr.url === shownPr.url ? '<span class="cur">current</span>' : ''}</span><span class="t" data-at="${esc(pr.lastAt || '')}"></span></div>`;
     } else if (pick.mode === 'chat') {
@@ -3490,7 +3539,9 @@
     $('#picklist .pkrow.sel')?.scrollIntoView({ block: 'nearest' });
   }
   function pickChoose(i) {
-    const x = pick.list[i], dlg = $('#pick'); if (!x) { dlg.close(); return; }
+    const x = pick.list[i], dlg = $('#pick');
+    if (['launch', 'toggle', 'prs'].includes(pick.mode)) return launchChoose(x);
+    if (!x) { dlg.close(); return; }
     if (pick.mode === 'pr') { dlg.close(); showPr(x.url); }
     else if (pick.mode === 'chat') { dlg.close(); openSession(x.id); }
     else if (pick.mode === 'new') {   // a project's, or a folder's, open chats with ＋ a new one — or the clone first
@@ -3524,6 +3575,9 @@
     if (e.key === 'ArrowDown') { e.preventDefault(); pick.sel++; pickRender(); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); pick.sel--; pickRender(); }
     else if (e.key === 'Enter') { e.preventDefault(); pickChoose(pick.sel); }
+    // the launcher's menus (2026-10-10): → into a row with ›, ← or ⌫ on an empty box back out to where it came from
+    else if (e.key === 'ArrowRight' && pick.mode === 'launch' && !$('#pickq').value && pick.list[pick.sel]?.kind === 'menu' && !pick.list[pick.sel].leaf) { e.preventDefault(); pickChoose(pick.sel); }
+    else if ((e.key === 'ArrowLeft' || e.key === 'Backspace') && !$('#pickq').value && pick.ctx.back) { e.preventDefault(); pickOpen(pick.ctx.back); }
   });
   $('#picklist').addEventListener('click', e => {
     const x = e.target.closest('.pkx');   // ✕: the row goes off the board, the picker stays where it is
@@ -3538,6 +3592,126 @@
   });
   $('#pick').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.close(); });   // a click on the backdrop
   $('#pick').addEventListener('close', () => { pick.gen++; pick.cloning = false; $('#pickq').disabled = false; });   // a clone under way answers to a note
+  // ---- ⌥⌘L: the launcher, and the sheet of every key (2026-10-10) -------------------------------------------
+  // Walker and the Omarchy menu: one box for every chat, project, PR, ticket, action and switch, fuzzy, in sections —
+  // `>` narrows it to the actions and switches, `#` to the PRs, `@` to the projects, `!` to the tickets. Empty, it is a
+  // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
+  // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
+  const SWITCHES = [['notifyOn', 'Notifications'], ['simpleColors', 'Simple colours'], ['skinExact', 'Exact project colours under a theme'], ['ringsInStep', 'Rings in step'],
+    ['edgeLight', 'Edge light'], ['cardSpot', 'Light under the pointer'], ['sbarOn', 'Status bar'], ['headFloat', 'Floating header'], ['autoResume', 'Auto-resume'], ['optMeta', '⌥ is Meta in the terminal']];
+  const toggleRows = () => [
+    { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
+    { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },
+    ...SWITCHES.map(([el, name]) => ({ kind: 'toggle', id: 'tg:' + el, name, on: () => $('#' + el).checked, flip: () => $('#' + el).click() })),
+  ];
+  /** What ⏎ does with the dialog: `stay` re-fills it (another picker), else it closes first and the action runs. */
+  const actionRows = () => {
+    const s = state.sessions.get(state.current), of = s ? ` — ${s.title}` : '';
+    return [
+      { name: 'New chat', hint: '⌥⌘N', fn: () => pickOpen('new'), stay: true },
+      { name: 'Filter the chat list', hint: '⌥⌘F', fn: hotFind },
+      { name: prefs.sessionsCompact ? 'Unfold the chat list' : 'Fold the chat list to a rail', hint: '⌥⌘B', fn: toggleSessions },
+      { name: 'Choose a theme', hint: '⌥⌘Y', fn: themesOpen },
+      { name: 'Settings', hint: '⌘,', fn: () => settingsOpen(true) },
+      { name: 'Every key', hint: '?', fn: keysOpen },
+      { name: 'About peixAIrada', fn: aboutOpen },
+      ...(!s ? [] : [
+        { name: 'Its claude, in a drawer', sub: of, hint: '⌥⌘C', fn: hotClaude },
+        { name: `A ${shName()} in its folder`, sub: of, hint: '⌥⌘T', fn: hotShell },
+        ...(s.prs?.length ? [{ name: 'Its PR on GitHub', sub: of, hint: '⌥⌘G', fn: hotGh }] : []),
+        ...(inApp ? [{ name: 'Its folder in VS Code Web', sub: of, hint: '⌥⌘E', fn: hotVsCode }] : []),
+        ...(canTick(s) ? [{ name: 'Tick it done', sub: of, fn: () => tickDone(s.id, true, $('#shead')) }] : []),
+        ...(s.cwd ? [{ name: 'Copy its folder’s path', sub: ` — ${homePath(s.cwd)}`, fn: () => navigator.clipboard?.writeText(s.cwd).then(() => note($('#shead'), 'Path copied'), () => {}) }] : []),
+      ]),
+    ].map(a => ({ kind: 'action', id: 'ac:' + a.name, ...a }));
+  };
+  const LAUNCH_MENU = () => {
+    const yours = allPrs().filter(pr => pr.turn?.you).length;
+    return [
+      { name: 'Chats', hint: '⌥⌘K', icon: ICON.ask, go: () => pickOpen('chat', { back: 'launch' }) },
+      { name: 'Projects', hint: '⌥⌘P', icon: ICON.folder, go: () => pickOpen('project', { back: 'launch' }) },
+      { name: 'New chat', hint: '⌥⌘N', icon: '＋', go: () => pickOpen('new', { back: 'launch' }) },
+      { name: 'Pull requests', hint: yours ? `${yours} at your move` : 'every chat’s', icon: ICON.pr, go: () => pickOpen('prs', { back: 'launch' }) },
+      { name: 'Toggle', hint: 'every switch', icon: '⏻', go: () => pickOpen('toggle', { back: 'launch' }) },
+      { name: 'Theme', hint: '⌥⌘Y', icon: '◐', go: themesOpen, leaf: true },
+      { name: 'Settings', hint: '⌘,', icon: ICON.cog, go: () => settingsOpen(true), leaf: true },
+      { name: 'Keys', hint: '?', icon: ICON.key, go: keysOpen, leaf: true },
+      { name: 'About peixAIrada', icon: '·', go: aboutOpen, leaf: true },
+    ].map(m => ({ kind: 'menu', id: 'mn:' + m.name, ...m }));
+  };
+  /** Every chat's PRs, one row each — the most recent chat to mention it is where it opens. */
+  function allPrs() {
+    const seen = new Map();
+    for (const s of [...state.sessions.values()].filter(visible).sort(byWord)) for (const pr of s.prs || []) if (!seen.has(pr.url)) seen.set(pr.url, { ...pr, chatId: s.id, chat: s.title });
+    return [...seen.values()];
+  }
+  function allTickets() {
+    const seen = new Map();
+    for (const s of [...state.sessions.values()].filter(visible).sort(byWord)) for (const t of s.tickets || []) if (!seen.has(t.key)) seen.set(t.key, { ...t, chatId: s.id, chat: s.title });
+    return [...seen.values()];
+  }
+  const LAUNCH_SECTIONS = { chat: 'Chats', project: 'Projects', pr: 'Pull requests', ticket: 'Tickets', action: 'Actions', toggle: 'Switches', menu: '' };
+  /** The launcher's rows for a query (none: the menu): each section's best matches, best first, at most six — all of
+   *  them under a prefix. */
+  function launchRows(raw) {
+    const pre = /^[>#@!]/.exec(raw)?.[0] || '', q = raw.slice(pre.length).trim().toLowerCase();
+    if (!raw.trim()) return LAUNCH_MENU();
+    const best = (items, fields) => { const hits = []; items.forEach((x, i) => { const m = q ? fuzzy(fields(x), q) : { score: 0 }; if (m) hits.push([m.score, i, x]); }); return hits.sort((a, b) => b[0] - a[0] || a[1] - b[1]).map(h => h[2]).slice(0, pre ? 400 : 6); };
+    const want = k => !pre || { '>': ['action', 'toggle'], '#': ['pr'], '@': ['project'], '!': ['ticket'] }[pre].includes(k);
+    const chats = !want('chat') ? [] : best([...state.sessions.values()].filter(visible).sort((a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byWord(a, b)), chatFields).map(s => ({ kind: 'chat', id: s.id, s }));
+    const projects = !want('project') ? [] : best(projectList(), p => [p.name]).map(p => ({ kind: 'project', id: 'pj:' + p.key, p }));
+    const prs = !want('pr') ? [] : best(allPrs(), pr => [pr.label, pr.title || '', pr.chat || '']).map(pr => ({ kind: 'pr', id: 'pr:' + pr.url, pr }));
+    const tickets = !want('ticket') ? [] : best(allTickets(), t => [t.key, t.summary || '', t.chat || '']).map(t => ({ kind: 'ticket', id: 'tk:' + t.key, t }));
+    const actions = !want('action') ? [] : best(actionRows(), a => [a.name, a.sub || '']);
+    const toggles = !want('toggle') ? [] : best(toggleRows(), t => [t.name]);
+    return [...chats, ...projects, ...prs, ...tickets, ...actions, ...toggles];
+  }
+  const swHtml = on => `<span class="lsw${on ? ' on' : ''}"><i></i></span>`;
+  /** One launcher row; a section's first carries its head. */
+  function launchRow(x, i, sel, mark) {
+    const head = pick.mode === 'launch' && LAUNCH_SECTIONS[x.kind] && pick.list[i - 1]?.kind !== x.kind ? `<div class="pkhd">${LAUNCH_SECTIONS[x.kind]}</div>` : '';
+    const r = (cls, g, n, num, t, style = '') => `${head}<div class="pkrow lx ${cls}${sel(i)}" data-i="${i}"${style}><span class="g">${g}</span><span class="n">${n}</span><span class="num">${num}</span><span class="t">${t}</span></div>`;
+    if (x.kind === 'chat') { const s = x.s; return r('chat', '<span class="sq"></span>', `${mark(s.title)}${s.id === state.current ? '<span class="cur">current</span>' : ''}`, `${projIcon(s.project)}${mark(s.project)}`, `<span class="st" data-state="${chatState(s)}">${s.done ? 'done' : chatState(s)}</span>`, ` style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"`); }
+    if (x.kind === 'project') return r('project', '<span class="sq"></span>', `${projIcon(x.p.name)}${mark(x.p.name)}${x.p.key === prefs.project ? '<span class="cur">current</span>' : ''}`, '', '', ` style="${repoStyle(projColor(x.p))}"`);
+    if (x.kind === 'pr') { const pr = x.pr; return r('pr', `<span class="lpr" data-state="${esc(pr.state || '')}">${esc(pr.label.replace(/^.*?#/, '#'))}</span>`, `${pr.title ? mark(pr.title) : esc(pr.label)}<span class="cur">${esc(pr.label.replace(/#\d+$/, ''))}</span>`, pr.turn?.you ? '<b class="ymove">your move</b>' : esc(pr.chat || ''), `<span class="st">${esc((pr.state || '').toLowerCase())}</span>`, ` title="${esc(pr.url)}"`); }
+    if (x.kind === 'ticket') { const t = x.t; return r('ticket', `<span class="ltk" data-cat="${esc(t.cat)}">${esc(t.key)}</span>`, mark(t.summary || t.key), esc(t.chat || ''), `<span class="st">${esc((t.status || '').toLowerCase())}</span>`, ` title="${esc(t.url)}"`); }
+    if (x.kind === 'action') return r('action', '<span class="ac">&gt;</span>', `${mark(x.name)}${x.sub ? `<span class="cur">${esc(x.sub)}</span>` : ''}`, x.hint ? `<kbd>${esc(x.hint)}</kbd>` : '', '');
+    if (x.kind === 'toggle') return r('toggle', '<span class="ac">⏻</span>', mark(x.name), x.hint ? esc(x.hint) : '', swHtml(x.on()));
+    return r('menu', x.icon || '', mark(x.name), x.hint ? `<kbd>${esc(x.hint)}</kbd>` : '', x.leaf ? '' : '›');   // a menu row
+  }
+  function launchChoose(x) {
+    const dlg = $('#pick'); if (!x) return dlg.close();
+    if (x.kind === 'toggle') return void Promise.resolve(x.flip()).finally(() => { if (dlg.open) pickRender(true); });
+    if (x.kind === 'menu') { if (x.leaf) dlg.close(); return x.go(); }
+    if (x.kind === 'action' && x.stay) return x.fn();
+    dlg.close();
+    if (x.kind === 'chat') return openSession(x.id);
+    if (x.kind === 'project') return selectProject(x.p.key);
+    if (x.kind === 'pr') return openSession(x.pr.chatId).then(() => showPr(x.pr.url));
+    if (x.kind === 'ticket') return openSession(x.t.chatId).then(() => openExternal(x.t.url, { s: state.sessions.get(x.t.chatId) }));
+    if (x.kind === 'action') return x.fn();
+  }
+  // ?: the sheet of every key — Omarchy's Super+K — from anywhere but a box or a terminal, or the launcher's Keys. The
+  // settings' Keys pane is its source, so the list is kept in one place; the box narrows it.
+  function keysOpen() {
+    const dlg = $('#keysheet'); if (dlg.open) return;
+    if (inApp) post({ type: 'focus' });
+    $('#ksbody').innerHTML = [...$('#settings .keys').children].filter(n => n.tagName === 'KBD').map(k => `<div class="kr"><kbd>${k.innerHTML}</kbd><span>${k.nextElementSibling?.innerHTML || ''}</span></div>`).join('');
+    $('#ksq').value = ''; ksFilter();
+    dlg.showModal(); repostPane(); $('#ksq').focus();
+  }
+  function ksFilter() {
+    const words = $('#ksq').value.trim().toLowerCase().split(/\s+/).filter(Boolean); let n = 0;   // every word somewhere in the row: a sheet this long matches anything fuzzily
+    for (const r of $('#ksbody').children) { const t = r.textContent.toLowerCase(), on = words.every(w => t.includes(w)); r.hidden = !on; n += on; }
+    $('#ksnone').hidden = !!n;
+  }
+  $('#ksq').addEventListener('input', ksFilter);
+  $('#keysheet').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.close(); });
+  document.addEventListener('keydown', e => {
+    if (e.key !== '?' || e.metaKey || e.ctrlKey || e.altKey || document.querySelector('dialog[open]')) return;
+    if (e.target.closest?.('input, textarea, select, [contenteditable], .tbody')) return;
+    e.preventDefault(); keysOpen();
+  });
   // ⌥⌘ + a letter, from anywhere — the drawer included: capture phase, so its xterm never sees them; e.code,
   // because with ⌥ held e.key is a symbol ('ø' for O) on a Mac. One letter per place the open chat lives: T a
   // fresh zsh in its folder (the pane's zsh tab — a holder like claude's), E the editor — VS Code Web in the pane, the
@@ -3554,7 +3728,7 @@
   // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyW: hotCloseTab, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyW: hotCloseTab, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
