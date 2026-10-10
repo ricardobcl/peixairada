@@ -46,7 +46,15 @@ It reads what Claude Code already writes to `~/.claude` — no plugin, no privat
   colour, or named sets of folders.
 - 🌑 **Simple colours** — a quieter board: every project in black (or one colour you pick), the states in grey; PRs
   and faces keep their colours, and the accent is left for what needs you.
-- 🪟 **Tabs and splits** — a shell, VS Code Web and GitHub pages beside the chat.
+- 🪟 **Tabs and splits** — a shell, VS Code Web and GitHub pages beside the chat — and the chat's **changes**: its last
+  turn's edits, the uncommitted tree or the branch, as a diff; Commit… and Push type into its shell, and a note on a
+  line goes to Claude.
+- 🗺️ **Every agent at once** — ⌥⌘A lays out every live chat by what it wants (asking, clauding, watching, unread),
+  each showing what it is doing right now; the *tiles* switch keeps the busy ones stacked beside the open chat.
+- 🏠 **Home** — with no chat open: the board at a glance and your day, every chat's turns and how long each waited on
+  you.
+- 🎨 **Themes** — Omarchy's twelve (Tokyo Night, Catppuccin, Gruvbox, Nord, Rosé Pine…), one for dark and one for
+  light; your projects keep their hue in the theme's shades.
 - 📊 **A status bar** — along the window's foot: the search and the state filters, connected and live chats, drawers,
   the faces on your PRs, your plan's limits (or its monthly spend cap), keeping the Mac awake (with the lid closed too,
   by Touch ID where sudo takes it; greyed out when the Mac wouldn't sleep anyway, as on a charger set never to), CPU and memory, and optionally what Claude's processes hold.
@@ -101,7 +109,7 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
 
 **Settings** — ⌘, or ··· in the chat's header:
 
-- **Board** — notifications, simple colours (every project in black, or one colour you pick, the states in grey, for a quieter board), the edge light, the status bar and what it shows, a floating header, card size, ⌥ as Meta.
+- **Board** — notifications, the theme, simple colours (every project in black, or one colour you pick, the states in grey, for a quieter board), the edge light, the status bar and what it shows, tiles, a floating header, card size, ⌥ as Meta.
 - **Setup** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
   project ⌥⌘O starts a chat in, a short name and a colour where Peacock has none, per project, and your Jira site,
   email and API token (the token goes to your keychain, never into the file).
@@ -150,8 +158,11 @@ The login agent takes `PORT`, `NOTIFY` and your `PATH` at `scripts/launchd.sh in
 | ⌥⌘T · ⌥⌘E · ⌥⌘G | a shell · VS Code Web · the PR |
 | ⌘2 · ⌘W | split · close a half |
 | ⌥⌘B | fold the list |
+| ⌥⌘L | the launcher: chats, projects, PRs, tickets, actions, switches |
+| ⌥⌘A · ⌥⌘D · ⌥⌘0 | every agent at once · this chat's changes · home |
+| ⌥⌘Y | the theme |
 
-Settings › Keys lists the rest.
+`?` (or Settings › Keys) lists the rest.
 
 <p align="center"><img src="docs/shots/picker-dark.png" alt="⌥⌘K, the chat picker" width="620"></p>
 
