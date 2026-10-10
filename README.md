@@ -50,7 +50,8 @@ It reads what Claude Code already writes to `~/.claude` — no plugin, no privat
   turn's edits, the uncommitted tree or the branch, as a diff; Commit… and Push type into its shell, and a note on a
   line goes to Claude.
 - 🗺️ **Every agent at once** — ⌥⌘A lays out every live chat by what it wants (asking, clauding, watching, unread),
-  each showing what it is doing right now; the *tiles* switch keeps the busy ones stacked beside the open chat.
+  each showing what it is doing right now; the *tiles* switch lays the board out as Hyprland does, and ⌥⌘S stacks the
+  busy chats beside the open one.
 - 🏠 **Home** — with no chat open: the board at a glance and your day, every chat's turns and how long each waited on
   you.
 - 🎨 **Themes** — Omarchy's twelve (Tokyo Night, Catppuccin, Gruvbox, Nord, Rosé Pine…), one for dark and one for
@@ -160,6 +161,7 @@ The login agent takes `PORT`, `NOTIFY` and your `PATH` at `scripts/launchd.sh in
 | ⌥⌘B | fold the list |
 | ⌥⌘L | the launcher: chats, projects, PRs, tickets, actions, switches |
 | ⌥⌘A · ⌥⌘D · ⌥⌘0 | every agent at once · this chat's changes · home |
+| ⌥⌘S | the busy chats stacked beside the open one (tiles) |
 | ⌥⌘Y | the theme |
 
 `?` (or Settings › Keys) lists the rest.

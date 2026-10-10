@@ -5,7 +5,8 @@
 // screen's top corners round (not on a display without a housing); beside the open chat the stack holds the list's
 // asking and clauding chats, asking first, never the open one: the one in a drawer as its screen drawn small (the prompt
 // typed there in it), the other as its tail (the command running); the border follows a press into the list; a click on
-// a tile makes it the chat and the one left joins the stack; off, the stack and the gaps go.
+// a tile makes it the chat and the one left joins the stack. The stack is a switch of its own and ⌥⌘S, off to begin with
+// (tiles are the look alone), and the × on its first tile hides it; off, the stack and the gaps go.
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { makeFixture, toolLines } from '../fixture.mjs';
@@ -37,10 +38,16 @@ export default async function (ctx) {
     await ctx.type('slow 60');
     await ctx.waitFor(`window.peix.session('${slow.id}')?.status === 'working'`, { what: 'the drawer clauding', timeout: 15000 });
 
-    // tiles on, the asking chat open: the stack is the drawer's chat and the clauding one
+    // tiles on, the asking chat open: the look alone at first — no stack; ⌥⌘S brings it, the drawer's chat and the
+    // clauding one
     await ctx.evaluate(`document.querySelector('#tilesOn').click()`);
     await ctx.openChat(ask.id);
-    await ctx.waitFor(`document.querySelector('#main').classList.contains('tiles') && document.querySelectorAll('#stack .stile').length === 2`, { what: 'the stack', timeout: 10000 });
+    await ctx.waitFor(`document.querySelector('#main').classList.contains('tiles')`, { what: 'tiles on' });
+    await ctx.sleep(300);
+    ctx.assert.ok(await ctx.evaluate(`document.querySelector('#stack').hidden && !document.querySelector('#stack .stile') && !document.querySelector('#tileStackRow').hidden`), 'tiles alone: no stack, its switch under tiles’');
+    await ctx.settle(); await ctx.shot('tiles-alone');
+    await ctx.key('KeyS');
+    await ctx.waitFor(`document.querySelectorAll('#stack .stile').length === 2 && document.querySelector('#tileStackOn').checked`, { what: 'the stack, by ⌥⌘S', timeout: 10000 });
     out.stack = await ctx.evaluate(`[...document.querySelectorAll('#stack .stile')].map(t => t.dataset.id)`);
     ctx.assert.ok(!out.stack.includes(ask.id), 'never the open chat');
     ctx.assert.deepEqual([...out.stack].sort(), [slow.id, work.id].sort());
@@ -100,9 +107,17 @@ export default async function (ctx) {
     await ctx.waitFor(`window.peix.state().current === '${work.id}' && document.querySelector('#stack .stile')?.dataset.id === '${ask.id}'`, { what: 'the tile as the chat, the asking one first in the stack', timeout: 10000 });
     ctx.assert.ok(await ctx.evaluate(`document.querySelector('#stack .stile[data-id="${ask.id}"]').classList.contains('ask')`), 'the asking tile rings red');
 
-    // off: no stack, no gaps
+    // the × on the first tile, and only there, saying the key: the stack goes, the tiles stay, the border back on the
+    // chat; then tiles off: no gaps either — and ⌥⌘S with tiles off brings both
+    ctx.assert.deepEqual(await ctx.evaluate(`[...document.querySelectorAll('#stack .stile')].map(t => !!t.querySelector('header .sclose'))`), [true, false], 'the × on the first tile only');
+    ctx.assert.match(await ctx.evaluate(`document.querySelector('#stack .sclose').title`), /⌥⌘S/, 'its title says the key');
+    await ctx.evaluate(`(b => { b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); b.click(); })(document.querySelector('#stack .sclose'))`);
+    await ctx.waitFor(`document.querySelector('#stack').hidden && !document.querySelector('#stack .stile') && document.querySelector('#main').classList.contains('tiles')`, { what: 'the stack gone, the tiles kept' });
+    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#main .kf')?.id`), 'chat', 'the border back on the chat');
     await ctx.evaluate(`document.querySelector('#tilesOn').click()`);
-    await ctx.waitFor(`!document.querySelector('#main').classList.contains('tiles') && document.querySelector('#stack').hidden`, { what: 'tiles off' });
+    await ctx.waitFor(`!document.querySelector('#main').classList.contains('tiles') && document.querySelector('#stack').hidden && document.querySelector('#tileStackRow').hidden`, { what: 'tiles off' });
+    await ctx.key('KeyS');
+    await ctx.waitFor(`document.querySelector('#main').classList.contains('tiles') && document.querySelectorAll('#stack .stile').length > 0`, { what: 'tiles and the stack, by ⌥⌘S', timeout: 10000 });
     return out;
   } finally { for (const s of sleeps) try { s.kill(); } catch {} }
 }

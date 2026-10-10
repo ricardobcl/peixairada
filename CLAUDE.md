@@ -575,7 +575,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, PR
   turns; `STATE_FILE` overrides) and the user's `~/.config/peixairada/config.json` (the setup, below), both shared by
   the app and every browser; the browser's `localStorage` `peixairada-prefs`
-  (selected project, filters, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the theme for each appearance, the tiles, the changes tab's scope, the person the list is narrowed to, ⌥ as Meta, auto-resume, the edge light, the light under the pointer, the floating header, the status bar and what it adds, the faces folded, drawer open/height — the keys are the `prefs` literal,
+  (selected project, filters, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the theme for each appearance, the tiles and their stack, the changes tab's scope, the person the list is narrowed to, ⌥ as Meta, auto-resume, the edge light, the light under the pointer, the floating header, the status bar and what it adds, the faces folded, drawer open/height — the keys are the `prefs` literal,
   and old ones are deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it
   renders reads its state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
 * **The setup is the user's file, and nothing about one Mac is written in the code** (2026-09-28; the file since
@@ -622,7 +622,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   go; on the chat's own tab a `note()`), P the project picker, K the chat picker (`chat` mode: every ready or clauding chat, the list's order,
   searched by `chatFields()`; ⏎ is `openSession`), **F the chat list's own box** (`hotFind()` → `qShow(true)`), **B the chat list
   folded to a rail and back** (`toggleSessions`; plain ⌘B until 2026-10-02 — VS Code Web keeps its ⌘B, gives up its
-  ⌥⌘B), **Y the themes** (`themesOpen`, 2026-10-10), **L the launcher** (`pickOpen('launch')`, 2026-10-10), **D the chat's changes** (`hotDiff`, 2026-10-10), **A the overview** (`ovOpen`, 2026-10-10), **0 home** (`hotHome`: no chat open, 2026-10-10), N a
+  ⌥⌘B), **Y the themes** (`themesOpen`, 2026-10-10), **L the launcher** (`pickOpen('launch')`, 2026-10-10), **D the chat's changes** (`hotDiff`, 2026-10-10), **A the overview** (`ovOpen`, 2026-10-10), **S the tiles' stack** (`hotStack`, 2026-10-10 — not in `boardKeys`: from a page in the pane ⌥⌘S stays VS Code Web's Save All), **0 home** (`hotHome`: no chat open, 2026-10-10), N a
   chat as steps of the one dialog (`new` → `chats` → `folder` when the project spans several → `env` when
   `newChatIn()` finds launchers), **O the same with the project answered and the environment brought forward**
   (`hotOracle()` → `newChatIn(cwd, 'chats')` on the project the setup names, `state.config.quick`; none named, or
@@ -805,11 +805,14 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   forwards ⌥⌘1 / ⌥⌘2 by key code (18, 19). **A zsh ended by its × lingers on the summary with `exited` set** — a wait
   for the tab to go is a wait on that. → `scripts/scenarios/split-stacked.mjs`.
 * **Tiles: the chats that want an eye, stacked beside the open one** (2026-10-10; Settings → Board → *tiles*,
-  `prefs.tiles` → `main.tiles`, off by default): `#stack`, a third column after `#chat` — up to three chats of the list
+  `prefs.tiles` → `main.tiles`, off by default): **the look, and a stack that is a switch of its own** — *the stack*
+  under it (`#tileStackOn`, `prefs.tileStack`, off by default) and **⌥⌘S** (`hotStack`, Omarchy's scratchpad key; with
+  tiles off it turns both on), and the × at the first tile's top left (`.sclose`, its title the key) hides it. `tilesOn` is the look (the border's `.kf`, the notch), `stackOn` the column. The stack is
+  `#stack`, a third column after `#chat` — up to three chats of the list
   as it stands that are alive and asking or clauding, never the open one (`stackChats`), each a live tile (`mountMini`
   into its own registry, `stackMinis`, else `tailHtml`, the tails asked every 2.5 s while any tile needs them); a click
   makes one the chat. Kept by chat (`stackTiles`), drawn in the frame after the board (`stackSoon` from `renderBoard`
-  — `stackOn` is a `var`, as `renderBoard` runs before the block has). Hyprland's look rides on the class: gaps
+  — `tilesOn` and `stackOn` are `var`s, as `renderBoard` runs before the block has). Hyprland's look rides on the class: gaps
   (`main`'s padding, the splitter an 8 px gap), square panels, **each panel's border its project's colour**
   (`--tile-edge`: `tileEdge` from `tintChat`, `tileTints` and `renderStack`; a near-black one `--tile-grey`, the grey
   that reads on the ground; none `--nocolor`) — 30 % of it into `--tile-line`, and **whole on the panel the keys are in**

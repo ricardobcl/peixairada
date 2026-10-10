@@ -61,7 +61,18 @@ J (workspaces in the status bar) and K (the btop frames) were not picked.
   display, filled or not, keeps square tiles. The bottom corners stay square: the ask was the top two. The cut's top
   as well (*"the upper corners of the tile in the notch also, I didn't notice that the notch is rounder top and
   bottom"*): the screen flares into the housing where they meet, so the panel's two corners beside the cut's top round,
-  9 px — the housing's own radius, since 8 px below the screen's edge they cannot be concentric with its flare.
+  9 px — the housing's own radius, since 8 px below the screen's edge they cannot be concentric with its flare. **The stack
+  became a toggle** (*"I like the tiles UI, but have the 3 tile mandatory for running sessions is a bit much, we should
+  be able to toggle it"*): tiles are the look — gaps, borders, wallpaper, the notch — and the stack a switch under it,
+  off to begin with, and ⌥⌘S. Omarchy tiles by itself and makes everything else a toggle on SUPER: S the scratchpad (a
+  hidden workspace shown and hidden over the rest), T floating, F full screen, J the split's direction, L the layout,
+  SHIFT+BACKSPACE the gaps, the arrows the focus. The stack is closest to the scratchpad — windows kept out of the way
+  and called in — so it took S. **⌥⌘S is not forwarded from the app's pane** (`boardKeys` leaves it out): there it is
+  VS Code Web's Save All, which the board had no cause to take; from the board itself it works anywhere, the drawer
+  included. With tiles off ⌥⌘S turns both on, as the stack is theirs. **And an × on it** (*"when the 3rd tile is open,
+  we should have a small button (e.g top left of the tile) to close it (so it a bit more obvious that it can be hidden).
+  also, hovering that button should say the shorcut"*): one ×, at the first tile's top left, for the whole stack — a ×
+  on each tile would read as closing that chat — and its title says ⌥⌘S brings it back.
   A clip-path rather than a shape drawn over the panel, so the gap shows the wallpaper as the other gaps do.
 * **L · home** (⌥⌘0, and the column whenever no chat is open): the study's "a click on the fish" became a key — the
   fish is the About box's, and with the status bar on it is not shown. The day is read from the transcript's own

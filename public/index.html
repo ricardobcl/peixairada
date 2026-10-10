@@ -1455,6 +1455,9 @@
   main.tiles #stack:not([hidden]) { flex: 0 0 clamp(300px, 30vw, 520px); margin-left: 8px; display: grid; grid-auto-rows: minmax(0, 1fr); gap: 8px; min-height: 0; min-width: 0; }
   .stile { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; min-width: 0; border: 2px solid color-mix(in srgb, var(--tile-edge, var(--nocolor)) 30%, var(--tile-line)); background: var(--bg); cursor: pointer; }
   .stile header { display: flex; align-items: center; gap: 8px; min-width: 0; height: 26px; padding: 0 10px; border-bottom: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+  /* the stack's own ×, at the first tile's top left: the stack can go, and its title says the key that brings it back */
+  .stile header .sclose { flex: none; display: grid; place-items: center; width: 18px; height: 18px; margin-left: -5px; padding: 0; border: 1px solid transparent; border-radius: 4px; background: var(--ctl); color: var(--muted); font: 14px/1 system-ui, sans-serif; cursor: pointer; }
+  .stile header .sclose:hover { background: var(--ctl-hi); color: var(--ink); }
   .stile header b { flex: none; font-size: 10px; letter-spacing: .7px; text-transform: uppercase; color: oklch(from var(--repo, var(--muted)) max(l, .66) c h); }
   .stile header .tt { color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .stile header em { margin-left: auto; flex: none; font-style: normal; font-weight: 600; color: var(--working); }
@@ -1841,7 +1844,8 @@
     <label class="opt" title="On, a round light of the card's colour follows the pointer over the card it is on, and the edge's glow stays as it is; off, hover spreads the edge's glow across the card"><input type="checkbox" id="cardSpot" checked><span><b>light under the pointer</b> — a hovered card's glow follows the pointer; off, it spreads from the edge</span></label>
     <label class="opt" title="On, a strip at the window's foot says what the machine is doing — the connection, the chats clauding and asking, the drawers and shells and monitors, the plan usage and whether the Mac is kept awake; the list's foot keeps only its filters"><input type="checkbox" id="sbarOn" checked><span><b>status bar</b> — the search, the chats, the faces, the plan usage and keeping the Mac awake at the window's foot; off, they go back under the list and into the chat header</span></label>
     <div class="opt sub sbstats" id="sbarStats" title="What else the status bar says — asked of the Mac every 3 s while shown"><span><b>also</b></span><label><input type="checkbox" data-stat="cpu"> CPU</label><label><input type="checkbox" data-stat="mem"> memory</label><label><input type="checkbox" data-stat="claude"> Claude's memory</label></div>
-    <label class="opt" title="On, beside the open chat up to three tiles of the chats of the list that are asking or clauding — each its drawer drawn small, or its last tool calls — a click makes one the chat; the panels are tiles, Hyprland's way: gaps over a wallpaper, each bordered in its project's colour, whole on the one the keys are in"><input type="checkbox" id="tilesOn"><span><b>tiles</b> — the chats asking or clauding stacked beside the open one, as Hyprland tiles windows</span></label>
+    <label class="opt" title="On, the panels are tiles, Hyprland's way: gaps over a wallpaper, each bordered in its project's colour, whole on the one the keys are in — and, with the stack, beside the open chat up to three tiles of the chats of the list that are asking or clauding, each its drawer drawn small or its last tool calls, a click making one the chat"><input type="checkbox" id="tilesOn"><span><b>tiles</b> — the chats asking or clauding stacked beside the open one, as Hyprland tiles windows</span></label>
+    <label class="opt sub" id="tileStackRow" title="The third column: up to three tiles of the chats asking or clauding, beside the open one — off, tiles are the look alone (⌥⌘S puts it in and out of view)"><input type="checkbox" id="tileStackOn"><span><b>the stack</b> — the chats asking or clauding beside the open one · ⌥⌘S</span></label>
     <label class="opt" title="On, the chat header is a bar inset from the window's edges, rounded and shadowed; off, it runs edge to edge as before"><input type="checkbox" id="headFloat"><span><b>floating header</b> — the chat header as a rounded bar inset from the edges</span></label>
     <div class="dens" title="How much of each chat its card carries — a question waiting on you shows at every size">
       <b>cards</b><input type="range" id="cardsSize" min="0" max="2" step="1" value="0" list="cardsStops" aria-label="Card size">
@@ -1870,6 +1874,7 @@
     <kbd>?</kbd><span>this list, on a sheet of its own, searchable — outside a box or a terminal</span>
     <kbd>⌥⌘0</kbd><span>home: no chat open — the board's facts and the day, every chat a row of when it clauded and when it waited on you · a row opens its chat</span>
     <kbd>⌥⌘A</kbd><span>every live agent at once — Asking you · Clauding · Watching · Ready, unread — each with what it is doing now: its drawer's screen when it runs here, else its last tool calls · 1–9 opens one · a question's answer types its digit into the chat's drawer</span>
+    <kbd>⌥⌘S</kbd><span>tiles' stack in and out of view — the chats asking or clauding beside the open one (Omarchy's scratchpad key) · with tiles off, tiles and the stack together · not from a page in the pane, where it is VS Code's Save All</span>
     <kbd>⌥⌘D</kbd><span>what this chat changed in its folder, on a tab — its last turn's edits, the uncommitted tree or the branch against its base · Commit… and Push type into its zsh · + on a line sends Claude a note · the header's +n −n too</span>
     <kbd>⌥⌘Y</kbd><span>theme — Omarchy's twelve and the board's own, the board behind follows the arrows · ⏎ keeps it for its appearance, dark or light · esc puts back what was worn</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
@@ -1991,7 +1996,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map() };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, statusBar: true, barStats: ['cpu', 'mem'], peopleFold: false, cardSpot: true, tiles: false, changesScope: 'turn', skinDark: null, skinLight: null, skinExact: false };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, statusBar: true, barStats: ['cpu', 'mem'], peopleFold: false, cardSpot: true, tiles: false, tileStack: false, changesScope: 'turn', skinDark: null, skinLight: null, skinExact: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -3818,7 +3823,7 @@
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
   const SWITCHES = [['notifyOn', 'Notifications'], ['simpleColors', 'Simple colours'], ['skinExact', 'Exact project colours under a theme'], ['ringsInStep', 'Rings in step'],
-    ['edgeLight', 'Edge light'], ['cardSpot', 'Light under the pointer'], ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['headFloat', 'Floating header'], ['autoResume', 'Auto-resume'], ['optMeta', '⌥ is Meta in the terminal']];
+    ['edgeLight', 'Edge light'], ['cardSpot', 'Light under the pointer'], ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['tileStackOn', 'Tiles: the stack'], ['headFloat', 'Floating header'], ['autoResume', 'Auto-resume'], ['optMeta', '⌥ is Meta in the terminal']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
     { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },
@@ -3952,7 +3957,7 @@
   // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyW: hotCloseTab, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiff, KeyA: ovOpen, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyW: hotCloseTab, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiff, KeyA: ovOpen, KeyS: hotStack, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -5700,21 +5705,24 @@
   const drawerOf = s => s.terminal && s.terminal.exited === null && !s.terminal.shell ? s.terminal : null;
 
   // ---- tiles: the chats that want an eye, stacked beside the open one (2026-10-10) -----------------------------------
-  // Hyprland's master and stack, Settings → Board → tiles (prefs.tiles): the open chat is the master; beside it, up to
-  // three live chats of the list as it stands that are asking or clauding, asking first — each a live tile (its drawer
-  // drawn small, else its tail). A click on one makes it the master. Its look is Hyprland's: gaps over a wallpaper of
+  // Hyprland's master and stack, Settings → Board → tiles (prefs.tiles): the open chat is the master; with the stack
+  // (prefs.tileStack, ⌥⌘S — off to begin with, the look alone) beside it up to three live chats of the list as it stands
+  // that are asking or clauding, asking first — each a live tile (its drawer drawn small, else its tail). A click on one
+  // makes it the master. Its look is Hyprland's: gaps over a wallpaper of
   // the theme's colours, square edges, each panel's border its project's colour (`tileEdge`, a black one grey) — faint,
   // and whole on the panel the keys are in (`.kf`) — a tile that asks ringed red. Drawn with the board (stackSoon, from
   // renderBoard) and kept by chat (a tile's drawer is not re-attached).
-  var stackOn = false;   // var, not let: renderBoard is older than this block and asks before it has run
+  var tilesOn = false, stackOn = false;   // var, not let: renderBoard is older than this block and asks before it has run
   const STACK_MAX = 3, stackMinis = new Map(), stackTiles = new Map();
   let stackRaf = 0, stackTimer = 0;
   function stackSoon() { if (stackOn && !stackRaf) stackRaf = requestAnimationFrame(renderStack); }
   function applyTiles() {
     $('#main').classList.toggle('tiles', !!prefs.tiles); $('#tilesOn').checked = !!prefs.tiles;
-    stackOn = !!prefs.tiles;
+    $('#tileStackOn').checked = !!prefs.tileStack; $('#tileStackRow').hidden = !prefs.tiles;
+    tilesOn = !!prefs.tiles; stackOn = tilesOn && !!prefs.tileStack;
     if (!stackOn) { $('#stack').hidden = true; sweepMinis(stackMinis, true); stackTiles.clear(); $('#stack').innerHTML = ''; clearInterval(stackTimer); stackTimer = 0; }
     else renderStack();
+    if (tilesOn && !document.querySelector('#main .kf')) $('#chat').classList.add('kf');   // the chat, at first and when a tile that had it went with the stack
     requestAnimationFrame(() => { fitTerm(); listChanged(); repostPane(); layoutNotch(); fitHeadPrs(); });
   }
   function stackChats() {
@@ -5732,7 +5740,7 @@
       if (el.children[i] !== t) el.insertBefore(t, el.children[i] || null);
       t.className = `stile ${asking(s) ? 'ask' : 'work'}${t.classList.contains('kf') ? ' kf' : ''}`;
       const color = repoColor(s.cwd); t.style.cssText = `${repoStyle(color)};--tile-edge:${tileEdge(color)}`;
-      setHtml(t.querySelector('header'), `<b>${projIcon(s.project)}${esc(s.project)}</b><span class="tt">${esc(s.title)}</span><em>${asking(s) ? `● asking you ${rel(s.statusSince)}` : `✻ clauding${s.agents ? ` · ${s.agents} agents` : ''}`}</em>`);
+      setHtml(t.querySelector('header'), `${i ? '' : '<button class="sclose" title="Hide the stack — ⌥⌘S brings it back" aria-label="Hide the stack">×</button>'}<b>${projIcon(s.project)}${esc(s.project)}</b><span class="tt">${esc(s.title)}</span><em>${asking(s) ? `● asking you ${rel(s.statusSince)}` : `✻ clauding${s.agents ? ` · ${s.agents} agents` : ''}`}</em>`);
       const d = drawerOf(s), body = t.querySelector('.sbody');
       body.classList.toggle('live', !!d);
       if (d) { if (body.dataset.term !== d.id) { body.innerHTML = ''; body.dataset.term = d.id; } mountMini(stackMinis, body, d); }
@@ -5743,11 +5751,21 @@
     const want = list.filter(s => !drawerOf(s)).map(s => s.id);
     if (want.length && !stackTimer) { const tick = () => { const ids = stackChats().filter(s => !drawerOf(s)).map(s => s.id); if (ids.length) loadTails(ids, stackSoon); else { clearInterval(stackTimer); stackTimer = 0; } }; tick(); stackTimer = setInterval(tick, 2500); }
   }
-  $('#stack').addEventListener('click', e => { const t = e.target.closest('.stile'); if (t) openSession(t.dataset.id); });
+  $('#stack').addEventListener('click', e => {
+    if (e.target.closest('.sclose')) return hotStack();   // the × on the first tile: the stack out of view, as ⌥⌘S
+    const t = e.target.closest('.stile'); if (t) openSession(t.dataset.id);
+  });
   $('#tilesOn').addEventListener('change', e => { prefs.tiles = e.target.checked; savePrefs(); applyTiles(); });
+  $('#tileStackOn').addEventListener('change', e => { prefs.tileStack = e.target.checked; if (prefs.tileStack) prefs.tiles = true; savePrefs(); applyTiles(); });   // the launcher's row, with tiles off: the stack is theirs
+  /** ⌥⌘S (2026-10-10): the stack in and out of view, as Omarchy's SUPER+S does its scratchpad — with tiles off, tiles on
+   *  and the stack with them, since the stack is theirs. Not forwarded from the app's pane: VS Code Web's Save All. */
+  function hotStack() {
+    if (prefs.tiles) prefs.tileStack = !prefs.tileStack; else prefs.tiles = prefs.tileStack = true;
+    savePrefs(); applyTiles();
+  }
   // the panel the keys are in wears the border: the list, the chat, or a tile (a pointer press or a focus inside it)
   const markKf = e => {
-    if (!stackOn) return;
+    if (!tilesOn) return;
     const p = e.target.closest?.('#sessions, #chat, .stile'); if (!p) return;
     for (const x of document.querySelectorAll('main.tiles .kf')) if (x !== p) x.classList.remove('kf');
     p.classList.add('kf');
@@ -5761,7 +5779,7 @@
   // radius taken as the housing's own — 8 px of gap below the screen's edge, they cannot be concentric). From
   // layoutNotch (the fill, every header drawn or resized) and renderStack.
   function tileNotch() {
-    const GAP = 8, BW = 2, M = 60, HOUSING_R = 9, n = stackOn ? state.notch : null;
+    const GAP = 8, BW = 2, M = 60, HOUSING_R = 9, n = tilesOn ? state.notch : null;
     const panels = [$('#sessions'), $('#chat'), ...document.querySelectorAll('#stack .stile')];
     if (!n && !panels.some(p => p.classList.contains('ncutp'))) return;
     const rects = panels.map(p => p.getBoundingClientRect());   // every read, then every write
@@ -5792,7 +5810,6 @@
     });
   }
   applyTiles();
-  if (!document.querySelector('main.tiles .kf')) $('#chat').classList.add('kf');
 
   // ---- ⌥⌘A: the overview, every live agent at once (2026-10-10) ------------------------------------------------------
   // Hyprland's overview and a kanban's columns: Asking you · Clauding · Watching · Ready, unread — every project, each
