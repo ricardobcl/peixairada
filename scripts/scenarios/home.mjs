@@ -1,0 +1,45 @@
+// Home (2026-10-10). Three chats from today: one asked a question that waited on you a quarter of an hour, one a plain
+// turn, one clauding now. What this checks: with no chat open the column is the home — the fish and the board's facts,
+// and the day: a row per chat with its turns, the question hatched as a wait, the clauding one running to now, and the
+// sum (one question, the longest wait its chat's); a row opens its chat, and ⌥⌘0 comes back home from it.
+import { spawn } from 'node:child_process';
+import { makeFixture, replyLines, toolLines } from '../fixture.mjs';
+
+export const meta = { server: true, fixture: 'auto' };
+
+export default async function (ctx) {
+  const now = Date.now(), cwd = ctx.fixture.chats[0]?.cwd || process.cwd(), out = {};
+  const sleeper = spawn('sleep', ['300'], { stdio: 'ignore' });
+  const ago = m => new Date(now - m * 60_000);
+  try {
+    const { chats } = makeFixture(ctx.fixture.dir, [
+      { cwd, title: 'Queue the webhooks', prompt: 'move webhooks off the request path', reply: 'One question first.', at: ago(60),
+        lines: id => [...toolLines({ id, cwd, name: 'AskUserQuestion', at: ago(55), result: 'SQS', input: { questions: [{ question: 'Which queue?', header: 'Queue', options: [{ label: 'SQS' }, { label: 'Redis' }] }] } }).map((l, i) => i ? { ...l, timestamp: ago(40).toISOString() } : l),
+          ...replyLines({ id, cwd, text: 'SQS it is — done.', at: ago(35) })] },
+      { cwd, title: 'Fix the flaky test', prompt: 'the refunds test flakes', reply: 'Each test has its own clock now.', at: ago(30) },
+      { cwd, title: 'Retry declined payments', prompt: 'retry declined cards', reply: 'Reading the client.', at: ago(10), live: { pid: sleeper.pid, startedAt: now - 3600_000 },
+        lines: id => toolLines({ id, cwd, name: 'Bash', input: { command: 'npm test', description: 'Run the tests' }, at: ago(2) }) },
+    ]);
+    const [asked, plain, busy] = chats;
+    await ctx.waitFor(`window.peix.session('${busy.id}')?.status === 'working'`, { what: 'the clauding chat', timeout: 15000 });
+    await ctx.reload();   // the home is drawn once the day is in: a page that loaded before the chats were made has no rows for them
+    await ctx.waitFor(`document.querySelectorAll('#home .hrow').length >= 3`, { what: 'the day’s rows', timeout: 15000 });
+    ctx.assert.match(await ctx.evaluate(`document.querySelector('#home .hkv').textContent`), /Chats.*1 live.*1 clauding.*Today.*Claude worked/s);
+    const row = id => `[...document.querySelectorAll('#home .hrow')].findIndex(r => r.dataset.id === '${id}')`;
+    const track = id => `document.querySelectorAll('#home .htrack')[${row(id)}]`;
+    ctx.assert.ok(await ctx.evaluate(`!!${track(asked.id)}.querySelector('i.a') && !!${track(asked.id)}.querySelector('i.w')`), 'the question as a wait inside its turn');
+    ctx.assert.ok(await ctx.evaluate(`!!${track(busy.id)}.querySelector('i.w.now')`), 'the clauding one runs to now');
+    ctx.assert.equal(await ctx.evaluate(`${row(busy.id)}`), 0, 'the most recent first');
+    out.sum = await ctx.evaluate(`document.querySelector('#home .hsum').textContent`);
+    ctx.assert.match(out.sum, /1 question today, answered in 15m on the median/);
+    ctx.assert.match(out.sum, /the longest wait: 15m/);
+    await ctx.settle(); await ctx.shot('home');
+
+    // a row opens its chat; ⌥⌘0 comes back
+    await ctx.evaluate(`document.querySelectorAll('#home .hrow')[${await ctx.evaluate(row(plain.id))}].click()`);
+    await ctx.waitFor(`window.peix.state().current === '${plain.id}' && !document.querySelector('#home')`, { what: 'the row’s chat open' });
+    await ctx.key('Digit0');
+    await ctx.waitFor(`!window.peix.state().current && document.querySelectorAll('#home .hrow').length >= 3`, { what: 'home again' });
+    return out;
+  } finally { try { sleeper.kill(); } catch {} }
+}

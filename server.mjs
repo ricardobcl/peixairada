@@ -46,7 +46,7 @@ import {
 } from 'node:fs';
 import { connect as netConnect } from 'node:net';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { cpus, freemem, homedir, totalmem, userInfo } from 'node:os';
+import { cpus, freemem, homedir, hostname, totalmem, userInfo } from 'node:os';
 import { StringDecoder } from 'node:string_decoder';
 import { execFile, execFileSync, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -68,7 +68,7 @@ const SESSIONS_DIR = join(CLAUDE_DIR, 'sessions');
 const PORT = Number(process.env.PORT || 7331);
 // The About box's facts (2026-09-27): the package's version, this process, and where the board reads and writes.
 const PKG = (() => { try { return JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')); } catch { return {}; } })();
-const aboutInfo = () => ({ version: PKG.version || 'dev', node: process.version, pid: process.pid, port: PORT, claudeDir: CLAUDE_DIR, stateFile: STATE_FILE, configFile: CONFIG_FILE, since: SINCE, shell: basename(LOGIN_SHELL) });
+const aboutInfo = () => ({ version: PKG.version || 'dev', node: process.version, pid: process.pid, port: PORT, claudeDir: CLAUDE_DIR, stateFile: STATE_FILE, configFile: CONFIG_FILE, since: SINCE, shell: basename(LOGIN_SHELL), user: userInfo().username, host: hostname().replace(/\.local$/, '') });
 const SINCE = Date.now();
 const HOST = process.env.HOST || '127.0.0.1';
 const NOTIFY = process.env.NOTIFY || 'native'; // native | off
@@ -1332,7 +1332,10 @@ function fold(s, line) {
       const blocks = Array.isArray(content) ? content : null;
       const toolResults = blocks ? blocks.filter(b => b?.type === 'tool_result') : [];
       if (toolResults.length) {
-        for (const b of toolResults) { startTask(s, b, ts); pushEntry(s, { role: 'user', kind: 'tool_result', toolUseId: b.tool_use_id, isError: !!b.is_error, text: toolResultSnippet(b), ts }); }
+        for (const b of toolResults) {
+          startTask(s, b, ts); pushEntry(s, { role: 'user', kind: 'tool_result', toolUseId: b.tool_use_id, isError: !!b.is_error, text: toolResultSnippet(b), ts });
+          if (s.askOpen?.id === b.tool_use_id) { noteSpan(s, 'a', s.askOpen.from, ts); s.askOpen = null; }   // a question and its answer: the time it waited on you
+        }
         s.lastActivity = ts;
         if (s.status === 'needs-input') {   // question answered — that was you
           s.lastUserAt = ts; setStatus(s, 'working', ts);
@@ -1345,6 +1348,7 @@ function fold(s, line) {
       if (raw.startsWith('[Request interrupted')) {
         pushEntry(s, { role: 'user', kind: 'interrupt', text: raw, ts });
         s.lastActivity = ts; s.lastUserAt = ts;   // Escape is you acting on the chat too
+        noteSpan(s, 'w', s.turnStart, ts); s.askOpen = null;
         s.turnStart = null;
         setStatus(s, 'idle', ts);
         return true;
@@ -1378,7 +1382,7 @@ function fold(s, line) {
         else if (b.type === 'tool_use') {
           pushEntry(s, { role: 'assistant', kind: 'tool_use', name: b.name, text: summarizeToolInput(b.name, b.input), toolUseId: b.id, ts });
           if (EDIT_TOOLS.has(b.name) && (b.input?.file_path || b.input?.notebook_path)) (s.turnFiles ||= new Set()).add(b.input.file_path || b.input.notebook_path);
-          if (NEEDS_INPUT_TOOLS.has(b.name)) { needsInput = true; s.ask = { tool: b.name, text: summarizeToolInput(b.name, b.input), options: b.input?.questions?.[0]?.options?.length || 0, labels: (b.input?.questions?.[0]?.options || []).slice(0, 9).map(o => snippet(o?.label, 40)) }; }
+          if (NEEDS_INPUT_TOOLS.has(b.name)) { s.askOpen = { id: b.id, from: ts }; needsInput = true; s.ask = { tool: b.name, text: summarizeToolInput(b.name, b.input), options: b.input?.questions?.[0]?.options?.length || 0, labels: (b.input?.questions?.[0]?.options || []).slice(0, 9).map(o => snippet(o?.label, 40)) }; }
           if (b.name === 'Monitor' || (b.name === 'Bash' && b.input?.run_in_background)) noteTaskCall(s, b);
           if (b.name === 'TaskStop' && s.tasks?.size) { const j = JSON.stringify(b.input || ''); for (const id of [...s.tasks.keys()]) if (j.includes(id)) s.tasks.delete(id); }
         }
@@ -1392,6 +1396,7 @@ function fold(s, line) {
         // the reply that ends the turn, and how long since your last word it took — the transcript's footer under it
         // (2026-10-08); pushed in this same tick, so the page gets it marked
         if (said) { said.turnEnd = true; const ms = Date.parse(ts) - Date.parse(s.turnStart); if (ms > 0) said.worked = ms; }
+        noteSpan(s, 'w', s.turnStart, ts);   // the day's timeline (2026-10-10): the turn, prompt to reply
         s.turnStart = null;
         setStatus(s, 'idle', ts);
         if (!s.agentsRunning) queueNotify(s, 'reply');   // a turn that ends with agents still at work is not the reply yet
@@ -1633,7 +1638,7 @@ function noteTaskEvent(s, text, ts) {
   const id = /<task-id>([^<]+)<\/task-id>/.exec(text)?.[1];
   const t = id && s.tasks?.get(id);
   if (!t) return false;
-  if (/<status>/.test(text)) { s.tasks.delete(id); return true; }
+  if (/<status>/.test(text)) { noteSpan(s, 'm', t.at, ts); s.tasks.delete(id); return true; }
   t.events++; t.lastEventAt = ts;
   t.last = snippet(/<event>([\s\S]*?)<\/event>/.exec(text)?.[1] || /<summary>([\s\S]*?)<\/summary>/.exec(text)?.[1] || '', 100);   // what it said last — the overview's tile
   return true;
@@ -2045,6 +2050,48 @@ async function setLid(on) {
   finally { lidAsking = null; await readPower(); }
   console.log(`[peixairada] sleep with the lid closed: ${lidOff ? 'off — the Mac stays awake' : 'on again'}`);
   return awakeState();
+}
+
+// ---- the day: when each chat clauded, waited on you, watched (2026-10-10) ---------------------------------------------
+// The home's timeline. Spans from the transcript as it is folded: a turn from its first line to the reply that ends it
+// (or the interrupt), a question from its asking to its answer (both written at the answer, with their own times), a
+// monitor from its start to its end. A day and a half of them a chat, the oldest dropped; what is still going is
+// added at the asking (dayOf), from the registry for a question the transcript does not have yet.
+const DAY_KEEP_MS = 36 * 3600_000;
+function noteSpan(s, k, from, to) {
+  if (!from || !to || Date.parse(to) <= Date.parse(from)) return;
+  const spans = (s.day ||= []); spans.push({ k, from, to });
+  const cut = Date.parse(to) - DAY_KEEP_MS; while (spans.length && (Date.parse(spans[0].to) < cut || spans.length > 400)) spans.shift();
+}
+/** Of a list of spans, the time they cover between a and b — overlaps once. */
+function covered(spans, a, b) {
+  const xs = spans.map(x => [Math.max(a, Date.parse(x.from)), Math.min(b, x.to ? Date.parse(x.to) : b)]).filter(([x, y]) => y > x).sort((p, q) => p[0] - q[0]);
+  let n = 0, end = -Infinity;
+  for (const [x, y] of xs) { if (y <= end) continue; n += y - Math.max(x, end); end = y; }
+  return n;
+}
+/** Every chat's day since `since` (ms): its spans, what it worked (turns, less the time they waited on you), what it
+ *  waited, how many questions; and the board's totals — the median answer and the longest wait among them. */
+function dayOf(list, since, now = Date.now()) {
+  const chats = [], waits = [];
+  for (const s of list) {
+    const spans = [...(s.day || [])];
+    const st = statusOf(s);
+    if (s.turnStart && st === 'working') spans.push({ k: 'w', from: s.turnStart, to: null });
+    if (st === 'needs-input') spans.push({ k: 'a', from: s.askOpen?.from || (s.live?.statusAt ? new Date(s.live.statusAt).toISOString() : s.statusSince), to: null });
+    for (const t of s.alive ? s.tasks?.values() || [] : []) spans.push({ k: 'm', from: t.at, to: null });
+    const mine = spans.filter(x => x.from && (x.to ? Date.parse(x.to) : now) > since);
+    if (!mine.length) continue;
+    const asks = mine.filter(x => x.k === 'a'), work = mine.filter(x => x.k === 'w');
+    const worked = Math.max(0, covered(work, since, now) - covered(asks, since, now));
+    for (const a of asks) waits.push({ ms: (a.to ? Date.parse(a.to) : now) - Date.parse(a.from), id: s.id, at: a.from, open: !a.to });
+    const sm = summary(s);
+    chats.push({ id: s.id, title: sm.title, project: sm.project, cwd: sm.cwd, status: st, spans: mine, worked, waited: covered(asks, since, now), questions: asks.length, last: mine.reduce((m, x) => Math.max(m, x.to ? Date.parse(x.to) : now), 0) });
+  }
+  chats.sort((a, b) => b.last - a.last);
+  const ms = waits.map(w => w.ms).sort((a, b) => a - b), longest = waits.reduce((m, w) => !m || w.ms > m.ms ? w : m, null);
+  return { since, now, chats, totals: { worked: chats.reduce((n, c) => n + c.worked, 0), waited: chats.reduce((n, c) => n + c.waited, 0), questions: waits.length,
+    median: ms.length ? ms[ms.length >> 1] : null, longest } };
 }
 
 // ---- what a chat changed: its folder's diff, for the changes tab (2026-10-10) ------------------------------------------
@@ -2821,6 +2868,11 @@ const server = createServer(async (req, res) => {
       for (const t of cur.tickets) if (ticketWanted(t.key) && Date.now() >= jiraPauseUntil) queueTicket(t.key);   // …and its tickets
       return json(res, 200, { session: summary(cur), entries: cur.entries, gen: cur.gen, upto: cur.entryCount });   // the entries end at upto
     }
+    // the home's day (2026-10-10): every chat's spans since the page's midnight
+    if (req.method === 'GET' && p === '/api/today') {
+      const since = Number(url.searchParams.get('since')) || new Date().setHours(0, 0, 0, 0);
+      return json(res, 200, dayOf([...sessions.values()], since));
+    }
     // the overview's and the stack's tiles (2026-10-10): the last few things each of these chats did
     if (req.method === 'GET' && p === '/api/tails') {
       const ids = (url.searchParams.get('ids') || '').split(',').filter(Boolean).slice(0, 40);
@@ -3061,7 +3113,7 @@ server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTe
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {

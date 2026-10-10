@@ -356,6 +356,18 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   eased) — `--lift` on every card but `.card.black:not(:hover, .qsel)`, where it is the black; its lines are the grey.
   `--repo` stays the colour as set for the rail's squares, the header, the splitter and the open card's bleed into it.
   → the black step of `scripts/scenarios/simple-colors.mjs`.
+* **With no chat open the column is home** (2026-10-10; `showHome`, from `leaveChat` when its log is `NO_CHAT.log` and
+  from a snapshot with nothing to open; ⌥⌘0 from anywhere): fastfetch's block — a pixel fish (`FISH`) in the accent,
+  the board's facts in key: value lines (`about.user`, `about.host` from the server; chats, agents, PRs, the plan, the
+  Mac from the status bar's stats, the theme) and the palette's blocks — then **the day**: `GET /api/today?since=<the
+  page's midnight>` (`dayOf`), a row per chat that did anything since, most recent first, its turns in its colour, its
+  questions hatched red (`a`), its monitors a thin line (`m`), what is still going drawn to now; the sum is the
+  questions, the median answer, the longest wait. **The spans come from the transcript as it is folded** (`noteSpan`,
+  `s.day`, a day and a half kept): a turn from its first line to the reply that ends it or the interrupt, a question
+  from its asking to its answer (both lines carry their own times, though written together), a monitor from its start
+  to its end; worked is the turns less the waits inside them. A question still open comes from the registry
+  (`live.statusAt`). Drawn again on session events (`homeSoon`), the day asked again each minute and when a turn
+  lands. → `test/today.test.mjs`, `scripts/scenarios/home.mjs`.
 * **⌥⌘A is the overview, every live agent at once** (2026-10-10; `#ov`, a modal `<dialog>` over the whole window, the
   board blurred under it): `ovColumns` — Asking you, Clauding, Watching (a live chat's tasks), Ready with unread
   replies — every project, done chats never; a tile per chat, numbered in reading order (1–9 and ⏎ open, the arrows
@@ -610,7 +622,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   go; on the chat's own tab a `note()`), P the project picker, K the chat picker (`chat` mode: every ready or clauding chat, the list's order,
   searched by `chatFields()`; ⏎ is `openSession`), **F the chat list's own box** (`hotFind()` → `qShow(true)`), **B the chat list
   folded to a rail and back** (`toggleSessions`; plain ⌘B until 2026-10-02 — VS Code Web keeps its ⌘B, gives up its
-  ⌥⌘B), **Y the themes** (`themesOpen`, 2026-10-10), **L the launcher** (`pickOpen('launch')`, 2026-10-10), **D the chat's changes** (`hotDiff`, 2026-10-10), **A the overview** (`ovOpen`, 2026-10-10), N a
+  ⌥⌘B), **Y the themes** (`themesOpen`, 2026-10-10), **L the launcher** (`pickOpen('launch')`, 2026-10-10), **D the chat's changes** (`hotDiff`, 2026-10-10), **A the overview** (`ovOpen`, 2026-10-10), **0 home** (`hotHome`: no chat open, 2026-10-10), N a
   chat as steps of the one dialog (`new` → `chats` → `folder` when the project spans several → `env` when
   `newChatIn()` finds launchers), **O the same with the project answered and the environment brought forward**
   (`hotOracle()` → `newChatIn(cwd, 'chats')` on the project the setup names, `state.config.quick`; none named, or
@@ -1043,18 +1055,20 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   scroll-driven ones, which run as long as the list can scroll — and for a pending draw. `ctx`: `evaluate`, `waitFor`, `send`, `reload`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
-  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The fifty-four in
+  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The sixty in
   `scripts/scenarios/` are the regression checks for the drawer, the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
   marks and the PR stack, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, a PR's turn, the chat's links,
-  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short, the resume bar, keeping the Mac awake, Jira tickets, the transcript's turns, a PR's CI, the floating header, the status bar, the light under the pointer, the Mac's line-editing keys in the drawer, a chat's folder cloned before it resumes.
+  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short, the resume bar, keeping the Mac awake, Jira tickets, the transcript's turns, a PR's CI, the floating header, the status bar, the light under the pointer, the Mac's line-editing keys in the drawer, a chat's folder cloned before it resumes, the themes, the launcher and the keys sheet, the changes tab, the overview, the tiles, the home.
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.
 * **Not just after local midnight**: the fixtures are minutes to hours old, so a run then puts a day line between
   them — `card-signals` sees a divider too many (its first quarter hour), `transcript-live` a second node fading in
-  (until 02:00: its long chat is two hours old), and `readme-shots.mjs` draws a `DD-MM-YYYY` line into the README's
-  board. They fail the same on older commits; wait.
+  (until 02:00: its long chat is two hours old), `home` fewer rows than its chats (until 01:00: the day starts at
+  midnight and its oldest chat is an hour old), and `readme-shots.mjs` draws a `DD-MM-YYYY` line into the README's
+  board. They fail the same on older commits; wait — or run them with `TZ=` a zone where it is morning, which Chrome
+  and the page follow.
 * **The auto fixture's second folder is the temp dir's real path** (`realpathSync(tmpdir())`): a fake claude started
   there registers `/private/var/…`. **Its two chats are a second apart** (`defaultFixture`), so the board's order
   between them is never the readdir's.

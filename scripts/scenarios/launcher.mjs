@@ -27,9 +27,9 @@ export default async function (ctx) {
 
   // ⌥⌘L: the menu
   await ctx.key('KeyL');
-  await ctx.waitFor(`document.querySelector('#pick').open && document.querySelectorAll('#picklist .pkrow.menu').length === 9`, { what: 'the launcher’s menu' });
+  await ctx.waitFor(`document.querySelector('#pick').open && document.querySelectorAll('#picklist .pkrow.menu').length === 11`, { what: 'the launcher’s menu' });
   const menu = await rows();
-  ctx.assert.deepEqual(menu.map(r => r.text), ['Chats', 'Projects', 'New chat', 'Pull requests', 'Toggle', 'Theme', 'Settings', 'Keys', 'About peixAIrada']);
+  ctx.assert.deepEqual(menu.map(r => r.text), ['Chats', 'Projects', 'New chat', 'Pull requests', 'Toggle', 'Theme', 'Settings', 'Keys', 'Home', 'Overview', 'About peixAIrada']);
   await ctx.settle(); await ctx.shot('menu');
 
   // a query finds a chat in its section; ⏎ opens it
@@ -65,7 +65,7 @@ export default async function (ctx) {
   await key('Enter');
   await ctx.waitFor(`window.peix.prefs().edgeLight === false`, { what: 'and off again' });
   await key('ArrowLeft');
-  await ctx.waitFor(`document.querySelectorAll('#picklist .pkrow.menu').length === 9`, { what: 'back on the menu' });
+  await ctx.waitFor(`document.querySelectorAll('#picklist .pkrow.menu').length === 11`, { what: 'back on the menu' });
 
   // # the PR by its number
   await ctx.fill('#pickq', '#57');

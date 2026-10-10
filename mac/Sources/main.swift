@@ -643,7 +643,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   // the chat above or below, ← → for the tab beside, 1 and 2 for the top and bottom halves of a stacked chat column
   // (2026-09-27; by key code, since ⌥ composes a symbol over a digit on a Portuguese layout), W to close the tab the
   // keys are in (2026-09-28 — VS Code Web's own ⌥⌘W, whole word in its find, is given up for it), B to fold the chat
-  // list (⌘B until 2026-10-02; VS Code Web's ⌥⌘B, its secondary side bar, is given up for it), Y the themes, L the launcher, D a chat's changes and A the overview (2026-10-10);
+  // list (⌘B until 2026-10-02; VS Code Web's ⌥⌘B, its secondary side bar, is given up for it), Y the themes, L the launcher, D a chat's changes, A the overview and 0 the home (2026-10-10);
   // and ⌘ + one of the
   // layout keys (CMDKEYS there): 0, 1 and 2 for the halves of the chat column. Pressed while the pane has the keyboard: its web views are not the board's, so the page
   // would never hear it. Forwarded through peixKey as the page's e.code and which map it belongs to; the page asks
@@ -660,6 +660,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       if e.keyCode == 124 { return ("ArrowRight", "altcmd") }
       if e.keyCode == 18 { return ("Digit1", "altcmd") }
       if e.keyCode == 19 { return ("Digit2", "altcmd") }
+      if e.keyCode == 29 { return ("Digit0", "altcmd") }   // ⌥⌘0, the home (2026-10-10)
       if let ch = ch, boardKeys.contains(ch) { return ("Key" + ch.uppercased(), "altcmd") }
     }
     if held == [.command], let ch = ch, cmdKeys.contains(ch) { return ((ch.first!.isNumber ? "Digit" : "Key") + ch.uppercased(), "cmd") }

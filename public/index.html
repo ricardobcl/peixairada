@@ -1385,6 +1385,44 @@
   .shead .hdiff:hover { background: var(--ctl-hi); }
   .shead .hdiff .a { color: var(--pr-open); } .shead .hdiff .d { color: var(--pr-closed); }
 
+  /* ---- home (2026-10-10): the column with no chat open — fastfetch's block, then the day ---- */
+  .home { display: grid; align-content: start; gap: 30px; max-width: 1180px; margin: 0 auto; padding: 34px 36px 40px; }
+  .home .hff { display: flex; gap: 40px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  .home .hfish { display: grid; grid-template-columns: repeat(26, 8px); grid-auto-rows: 8px; gap: 1px; flex: none; }
+  .home .hfish i.b { background: var(--accent); } .home .hfish i.s { background: color-mix(in srgb, var(--accent) 68%, #000); }
+  .home .hfish i.e { background: var(--bg); box-shadow: inset 0 0 0 2px var(--accent); }
+  .home .hkv { font: 13px/1.75 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); min-width: 0; }
+  .home .hkv .hh { font-weight: 700; } .home .hkv .hh span { color: var(--accent); }
+  .home .hkv .hrule { width: 24ch; border-top: 1px solid var(--muted); margin: 4px 0 6px; }
+  .home .hkv > div:not(.hh, .hrule, .hblocks) { display: flex; gap: 0; }
+  .home .hkv > div > b { flex: none; width: 9ch; color: var(--accent); font-weight: 700; }
+  .home .hkv em { font-style: normal; color: var(--needs); font-weight: 600; } .home .hkv u { text-decoration: none; color: var(--working); } .home .hkv s { text-decoration: none; color: var(--muted); }
+  .home .hkv strong { font-weight: 700; }
+  .home .hblocks { display: flex; margin-top: 10px; } .home .hblocks i { width: 24px; height: 13px; }
+  .home .hday h3 { margin: 0 0 12px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; font-size: 12px; letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .home .hday h3 b { color: var(--ink); letter-spacing: .2px; text-transform: none; font-size: 15px; }
+  .home .hday .lg { margin-left: auto; display: flex; gap: 14px; letter-spacing: 0; text-transform: none; font-size: 11.5px; font-weight: 500; }
+  .home .hday .lg i { display: inline-block; width: 18px; height: 8px; margin-right: 6px; vertical-align: 0; }
+  .home .lg i.w { background: var(--muted); } .home .lg i.m { height: 3px; vertical-align: 2px; background: var(--watch); }
+  .home :is(.lg, .htrack) i.a { background: repeating-linear-gradient(135deg, var(--needs) 0 3px, color-mix(in srgb, var(--needs) 35%, transparent) 3px 6px); }
+  .home .hgrid { display: grid; grid-template-columns: minmax(0, 280px) minmax(0, 1fr) auto; row-gap: 6px; column-gap: 14px; align-items: center; font-size: 12px; }
+  .home .hrow { display: flex; gap: 8px; align-items: baseline; min-width: 0; padding: 2px 0; border: 0; background: none; font: inherit; color: var(--ink); text-align: left; cursor: pointer; white-space: nowrap; }
+  .home .hrow:hover span { text-decoration: underline; }
+  .home .hrow b { flex: none; font-size: 10px; letter-spacing: .7px; text-transform: uppercase; color: oklch(from var(--repo, var(--muted)) max(l, .62) c h); }
+  .home .hrow span { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .home .htrack { position: relative; height: 16px; background: repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px var(--step)); }
+  .home .htrack i { position: absolute; top: 3px; height: 10px; min-width: 2px; }
+  .home .htrack i.w { background: var(--repo, var(--nocolor)); } .home .htrack i.a { top: 1px; height: 14px; }
+  .home .htrack i.m { top: 7px; height: 3px; background: var(--watch); }
+  .home .htrack i.now { box-shadow: 2px 0 0 var(--ink); }
+  .home .hnow { position: absolute; top: -5px; bottom: -5px; width: 2px; background: var(--accent); }
+  .home .htot { font: 11.5px ui-monospace, monospace; color: var(--muted); white-space: nowrap; } .home .htot em { font-style: normal; color: var(--needs); }
+  .home .haxis { position: relative; height: 14px; font: 10.5px ui-monospace, monospace; color: var(--muted); }
+  .home .haxis span { position: absolute; transform: translateX(-50%); }
+  .home .hsum { margin-top: 14px; padding: 10px 14px; border-radius: 8px; background: color-mix(in srgb, var(--ink) 5%, transparent); font-size: 12.5px; color: var(--muted); display: flex; gap: 22px; flex-wrap: wrap; }
+  .home .hsum b { color: var(--ink); } .home .hsum em { font-style: normal; color: var(--needs); font-weight: 700; } .home .hsum .r { margin-left: auto; }
+  .home .hnone { color: var(--muted); padding: 6px 0; }
+
   /* ---- tiles (2026-10-10): Hyprland's master and stack — gaps over a wallpaper, square edges, each panel's border its
      project's colour (--tile-edge, set by tintChat, tileTints and renderStack: a black one --tile-grey; the list's on
      ALL the open chat's), faint, and whole on the panel the keys are in ---- */
@@ -1830,6 +1868,7 @@
     <kbd>⌥⌘B</kbd><span>fold the chat list into a rail, and back</span>
     <kbd>⌥⌘L</kbd><span>the launcher — every chat, project, PR, ticket, action and switch in one box: <em>&gt;</em> the actions and switches, <em>#</em> the PRs, <em>@</em> the projects, <em>!</em> the tickets · empty, a menu: → into a row, ← back · Toggle flips the settings' switches</span>
     <kbd>?</kbd><span>this list, on a sheet of its own, searchable — outside a box or a terminal</span>
+    <kbd>⌥⌘0</kbd><span>home: no chat open — the board's facts and the day, every chat a row of when it clauded and when it waited on you · a row opens its chat</span>
     <kbd>⌥⌘A</kbd><span>every live agent at once — Asking you · Clauding · Watching · Ready, unread — each with what it is doing now: its drawer's screen when it runs here, else its last tool calls · 1–9 opens one · a question's answer types its digit into the chat's drawer</span>
     <kbd>⌥⌘D</kbd><span>what this chat changed in its folder, on a tab — its last turn's edits, the uncommitted tree or the branch against its base · Commit… and Push type into its zsh · + on a line sends Claude a note · the header's +n −n too</span>
     <kbd>⌥⌘Y</kbd><span>theme — Omarchy's twelve and the board's own, the board behind follows the arrows · ⏎ keeps it for its appearance, dark or light · esc puts back what was worn</span>
@@ -2470,7 +2509,7 @@
     if (!want.length || bar.busy || $('#sbar').hidden || document.hidden) return;
     bar.busy = true;
     try { bar.stats = await api('GET', `/api/stats?want=${want.join(',')}`); } catch { bar.stats = {}; }
-    bar.busy = false; renderBar();
+    bar.busy = false; renderBar(); homeSoon();   // the home's Mac line (2026-10-10) — after an await, so the block below has run
   }
   setInterval(loadStats, 3000);
   // The search and the state chips (#filters) and the faces (#people) move into the bar while it is on (2026-10-09) —
@@ -3795,6 +3834,8 @@
       { name: 'Choose a theme', hint: '⌥⌘Y', fn: themesOpen },
       { name: 'Settings', hint: '⌘,', fn: () => settingsOpen(true) },
       { name: 'Every key', hint: '?', fn: keysOpen },
+      { name: 'Every live agent at once', hint: '⌥⌘A', fn: ovOpen },
+      { name: 'Home — the day', hint: '⌥⌘0', fn: hotHome },
       { name: 'About peixAIrada', fn: aboutOpen },
       ...(!s ? [] : [
         { name: 'Its claude, in a drawer', sub: of, hint: '⌥⌘C', fn: hotClaude },
@@ -3817,6 +3858,8 @@
       { name: 'Theme', hint: '⌥⌘Y', icon: '◐', go: themesOpen, leaf: true },
       { name: 'Settings', hint: '⌘,', icon: ICON.cog, go: () => settingsOpen(true), leaf: true },
       { name: 'Keys', hint: '?', icon: ICON.key, go: keysOpen, leaf: true },
+      { name: 'Home', hint: '⌥⌘0', icon: '⌂', go: hotHome, leaf: true },
+      { name: 'Overview', hint: '⌥⌘A', icon: '▦', go: ovOpen, leaf: true },
       { name: 'About peixAIrada', icon: '·', go: aboutOpen, leaf: true },
     ].map(m => ({ kind: 'menu', id: 'mn:' + m.name, ...m }));
   };
@@ -3909,7 +3952,7 @@
   // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyW: hotCloseTab, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiff, KeyA: ovOpen, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyW: hotCloseTab, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiff, KeyA: ovOpen, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -5824,6 +5867,70 @@
     note($('#shead'), 'Its drawer did not come up — answer it in the chat', true);
   }
 
+  // ---- home: the chat column with no chat open (2026-10-10) ---------------------------------------------------------
+  // fastfetch's block and btop's honesty: a pixel fish beside the board's facts in key: value lines and the palette's
+  // blocks; under them the day — every chat a row from the morning to now, clauding in its colour, waiting on you
+  // hatched red, a monitor a thin line — and the sum: how many questions, how fast you answered, the longest wait.
+  // Shown wherever the column would say "Pick a chat" (showHome, from leaveChat and the snapshot), ⌥⌘0 from anywhere;
+  // the day is asked of the server (GET /api/today) on showing, every minute and when a turn lands, the rest is drawn
+  // from what the page holds.
+  const home = { day: null, asking: false, timer: 0, soon: 0 };
+  const FISH = ['..........######..........', '.......############.....##', '.....################..###', '...####=####=####=####.###', '..##o##=####=####=#######.',
+    '.###=##=####=####=######..', '..######=####=####=######.', '...#####=####=####=###.###', '.....################..###', '.......############.....##', '..........######..........'];
+  const FISH_PX = FISH.map(r => [...r].map(c => `<i${c === '#' ? ' class="b"' : c === '=' ? ' class="s"' : c === 'o' ? ' class="e"' : ''}></i>`).join('')).join('');
+  const dur = ms => { const m = Math.round((ms || 0) / 60_000); return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`; };
+  function showHome() {
+    if (state.current) return;
+    if (!$('#log .home')) $('#log').innerHTML = '<div class="home" id="home"></div>';
+    drawHome(); loadDay();
+    if (!home.timer) home.timer = setInterval(() => { if (!state.current && $('#home')) loadDay(); else { clearInterval(home.timer); home.timer = 0; } }, 60_000);
+  }
+  async function loadDay() {
+    if (home.asking) return; home.asking = true;
+    try { home.day = await api('GET', `/api/today?since=${new Date().setHours(0, 0, 0, 0)}`); } catch {} finally { home.asking = false; }
+    drawHome();
+  }
+  const homeSoon = (fetch = false) => { if (state.current || !$('#home')) return; if (fetch) loadDay(); if (!home.soon) home.soon = setTimeout(() => { home.soon = 0; drawHome(); }, 300); };
+  function hotHome() { if (state.current) leaveChat(); else showHome(); focusBoard(); }
+  function drawHome() {
+    const el = $('#home'); if (!el || state.current) return;
+    const a = state.about || {}, all = [...state.sessions.values()].filter(visible), alive = all.filter(s => s.alive), d = home.day;
+    const prs = allPrs(), open = prs.filter(p => p.state === 'open' || p.state === 'draft');
+    const tasks = alive.reduce((n, s) => n + (s.tasks?.length || 0), 0), agents = alive.reduce((n, s) => n + (s.agents || 0), 0), drawers = all.filter(termLive).length;
+    const win = usage.data?.windows || [];
+    const kv = (k, v) => `<div><b>${k}</b><span>${v}</span></div>`, sep = '<s>·</s>';
+    const facts = [
+      kv('Board', `${esc(a.version || '?')} ${sep} up ${a.since ? dur(Date.now() - a.since) : '?'}${inApp ? ` ${sep} the app` : ''}`),
+      kv('Chats', `${all.filter(s => !s.done).length} ${sep} ${alive.length} live ${sep} <em>${alive.filter(asking).length} asking you</em> ${sep} <u>${all.filter(s => bucket(s) === 'working').length} clauding</u>`),
+      kv('Agents', `${agents} at work ${sep} ${tasks} watching ${sep} ${drawers} in a drawer here`),
+      kv('Today', d ? `Claude worked <strong>${dur(d.totals.worked)}</strong> ${sep} waited on you <em>${dur(d.totals.waited)}</em>` : '…'),
+      kv('PRs', `${open.length} open ${sep} <em>${prs.filter(p => p.turn?.you).length} at your move</em> ${sep} ${open.filter(p => p.checks === 'pending').length} CI running`),
+      win.length ? kv('Plan', win.filter(w => !w.grant).slice(0, 4).map(w => `${esc(uShort(w))} ${Math.round(w.percent)}%`).join(` ${sep} `)) : '',
+      kv('Mac', `${bar.stats.cpu != null ? `CPU ${bar.stats.cpu}% ${sep} ` : ''}${bar.stats.mem ? `${(bar.stats.mem.used / 2 ** 30).toFixed(1)} / ${Math.round(bar.stats.mem.total / 2 ** 30)} GB ${sep} ` : ''}${state.awake.awake ? 'kept awake' : 'sleeps as set'}`),
+      kv('Theme', esc(skinName(skinOn()))),
+    ].join('');
+    // the day: from the morning (8:00, or the first span's hour if earlier) to the hour after now
+    const now = Date.now(), mid = new Date().setHours(0, 0, 0, 0), rows = (d?.chats || []).slice(0, 12);
+    const first = Math.min(mid + 8 * 3600_000, ...rows.flatMap(c => c.spans.map(x => Date.parse(x.from))));
+    const t0 = Math.max(mid, new Date(first).setMinutes(0, 0, 0)), t1 = new Date(now + 3600_000).setMinutes(0, 0, 0), span = t1 - t0 || 1;
+    const at = t => `${((Math.max(t0, Math.min(t1, t)) - t0) / span * 100).toFixed(2)}%`;
+    const hours = []; for (let h = t0; h <= t1; h += 3600_000) hours.push(h);
+    const step = Math.ceil(hours.length / 12);
+    const day = !d ? '<div class="hnone">reading the day…</div>' : !rows.length ? '<div class="hnone">nothing yet today</div>' : `
+      <div class="hgrid">
+        <span></span><div class="haxis">${hours.map((h, i) => i % step ? '' : `<span style="left:${at(h)}">${new Date(h).getHours().toString().padStart(2, '0')}:00</span>`).join('')}</div><span></span>
+        ${rows.map(c => `<button class="hrow" data-id="${esc(c.id)}" style="${repoStyle(repoColor(c.cwd))}" title="${esc(c.project)} · ${esc(c.title)} — open it"><b>${projIcon(c.project)}${esc(c.project)}</b><span>${esc(c.title)}</span></button>
+          <div class="htrack" style="${repoStyle(repoColor(c.cwd))};--step:calc(100% / ${hours.length - 1})">${c.spans.map(x => `<i class="${x.k}${x.to ? '' : ' now'}" style="left:${at(Date.parse(x.from))};width:calc(${at(x.to ? Date.parse(x.to) : now)} - ${at(Date.parse(x.from))})"></i>`).join('')}<span class="hnow" style="left:${at(now)}"></span></div>
+          <span class="htot">${dur(c.worked)}${c.waited ? ` <em>· ${dur(c.waited)}</em>` : ''}</span>`).join('')}
+      </div>
+      <div class="hsum"><span><b>${d.totals.questions} question${d.totals.questions === 1 ? '' : 's'}</b> today${d.totals.median != null ? `, answered in <b>${dur(d.totals.median)}</b> on the median` : ''}</span>${d.totals.longest ? `<span>the longest wait: <em>${dur(d.totals.longest.ms)}</em> — ${esc(state.sessions.get(d.totals.longest.id)?.project || 'a chat')} at ${new Date(d.totals.longest.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}${d.totals.longest.open ? ', and still waiting' : ''}</span>` : ''}<span class="r">⌥⌘0 here from anywhere · a row opens its chat</span></div>`;
+    setHtml(el, `<div class="hff"><div class="hfish" aria-hidden="true">${FISH_PX}</div><div class="hkv">
+        <div class="hh">${esc(a.user || 'you')}<span>@</span>${esc(a.host || 'peixairada')}</div><div class="hrule"></div>${facts}
+        <div class="hblocks">${['--needs', '--working', '--idle', '--watch', '--accent', '--spend', '--you', '--ink'].map(v => `<i style="background:var(${v})"></i>`).join('')}</div></div></div>
+      <div class="hday"><h3><b>Today</b><span>every chat, ${new Date(t0).getHours().toString().padStart(2, '0')}:00 to now</span><span class="lg"><span><i class="w"></i>clauding</span><span><i class="a"></i>waiting on you</span><span><i class="m"></i>watching</span></span></h3>${day}</div>`);
+  }
+  $('#log').addEventListener('click', e => { const r = e.target.closest('.home .hrow'); if (r) openSession(r.dataset.id); });
+
   // ---- a chat's folder not checked out: cloned first (2026-10-09) ----------------------------------------------------
   // A spawn the server refuses for a folder that is not there names the repo that would bring it back (`clone`: under
   // one of the setup's roots with an org, `<root>/<name>` is `<org>/<name>`), and the page clones it — /api/clone, gh —
@@ -5965,6 +6072,7 @@
     $('#prlist').hidden = true; $('#chat').classList.remove('vsc'); tintChat(color);
     $('#shead').innerHTML = head; drawAwake(); $('#log').innerHTML = log; drawn.head = drawn.menu = drawn.prs = null; postChat(null);
     layoutNotch(); paintHeadSplit(); renderResume(null);
+    if (log === NO_CHAT.log) showHome();   // nothing open: the home (2026-10-10)
   }
   // A new chat has no session until claude registers; the server ties the two by pid and says so
   // over SSE, at which point the pane switches to it. `task` names a launcher of the folder's Taskfile (newChatIn).
@@ -6462,6 +6570,7 @@
       renderBoard(); welcomeSync();
       const want = location.hash.slice(1);
       if (want && !state.current && state.sessions.has(want)) openSession(want, { auto: false });   // a reload resumes nothing by itself
+      else if (!state.current) showHome();   // nothing to open: the home (2026-10-10)
       // A snapshot with a chat already open is a reconnect — the server restarted, the stream dropped — and the entries
       // pushed while the stream was down never came (2026-09-27): fetch the open chat again, in place. Not openSession,
       // which would close the PR in the pane and scroll the list.
@@ -6474,6 +6583,7 @@
       if (s.id === state.current && !visible(s) && s.done) leaveChat();   // an empty chat ticked done: its card is gone, and so is the chat
       if (landed) renderBoard(); else renderBoardSoon();   // a landing is drawn as it is said, flare and all
       ovSoon();   // the overview (⌥⌘A, 2026-10-10) follows its chats while it is up
+      homeSoon(landed);   // …and the home its facts, the day again when a turn lands
       if (s.id === state.current) { renderHead(s); syncTerm(s); renderPresence(); }
       // The chats step follows its chats — one ticked there leaves, one that stopped clauding says ready.
       if ($('#pick').open && pick.mode === 'chats' && (pick.list.some(x => x.id === s.id) || scopeChats(pick.ctx).some(x => x.id === s.id))) pickRender(true);

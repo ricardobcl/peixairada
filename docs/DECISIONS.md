@@ -63,6 +63,12 @@ J (workspaces in the status bar) and K (the btop frames) were not picked.
   bottom"*): the screen flares into the housing where they meet, so the panel's two corners beside the cut's top round,
   9 px — the housing's own radius, since 8 px below the screen's edge they cannot be concentric with its flare.
   A clip-path rather than a shape drawn over the panel, so the gap shows the wallpaper as the other gaps do.
+* **L · home** (⌥⌘0, and the column whenever no chat is open): the study's "a click on the fish" became a key — the
+  fish is the About box's, and with the status bar on it is not shown. The day is read from the transcript's own
+  times as each line is folded, so a server restarted at noon still has the morning (the boot's tail read is 512 KB a
+  chat; a chat that wrote more than that today loses its earliest spans). A question's wait is its asking line's time
+  to its answer's — both lines arrive together, at the answer, but each carries its own time — and a question still
+  open is timed from the registry. Permission prompts never reach the transcript, so they are not waits here.
 
 ## Decisions of 2026-10-10 — /clear ticks the chat it left
 
