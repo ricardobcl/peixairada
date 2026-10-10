@@ -1385,6 +1385,65 @@
   .shead .hdiff:hover { background: var(--ctl-hi); }
   .shead .hdiff .a { color: var(--pr-open); } .shead .hdiff .d { color: var(--pr-closed); }
 
+  /* ---- ⌥⌘A, the overview (2026-10-10): the board blurred, every live chat a tile in its column ---- */
+  #ov { width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; padding: 18px 22px 20px; border: 0; border-radius: 0; background: color-mix(in srgb, var(--bg) 62%, transparent); backdrop-filter: blur(14px) saturate(.85); outline: none; display: none; }
+  #ov[open] { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 16px; }
+  #ov::backdrop { background: transparent; }
+  #ov .ovtop { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 13px; }
+  #ov .ovtop h1 { margin: 0; font-size: 17px; color: var(--ink); }
+  #ov .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  #ov .chips span { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 10px; background: var(--ctl); color: var(--ink); font-weight: 600; font-size: 12px; }
+  #ov .chips i, #ov .oc h2 i { width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--muted)); }
+  #ov .ask { --c: var(--needs); } #ov .work { --c: var(--working); } #ov .watch { --c: var(--watch); } #ov .ready { --c: var(--idle); }
+  #ov .keys { margin-left: auto; display: flex; gap: 14px; align-items: center; font-size: 12px; }
+  #ov kbd { font: 600 11px ui-monospace, monospace; color: var(--ink); background: var(--ctl-hi); padding: 1px 5px; border-radius: 4px; margin-right: 4px; }
+  #ov .ovclose { font: inherit; font-size: 18px; line-height: 1; padding: 2px 8px; border: 0; border-radius: 6px; background: var(--ctl); color: var(--muted); cursor: pointer; }
+  #ov .ovcols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; min-height: 0; }
+  #ov .oc { display: grid; align-content: start; gap: 12px; min-width: 0; overflow-y: auto; padding: 2px; }
+  #ov .oc h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--c); }
+  #ov .oc h2 b { margin-left: auto; font-size: 11px; color: var(--ink); background: var(--ctl); padding: 1px 7px; border-radius: 8px; }
+  #ov .none { color: var(--muted); font-size: 12px; padding: 4px 2px; }
+  #ov .ot { position: relative; display: grid; gap: 7px; padding: 10px 12px 11px 15px; background: var(--panel); border: 1px solid var(--line); box-shadow: inset 3px 0 var(--repo, var(--nocolor)), 0 18px 40px -22px rgb(0 0 0 / .6); cursor: pointer; min-width: 0; }
+  #ov .ot:hover, #ov .ot.sel { border-color: color-mix(in srgb, var(--accent) 70%, transparent); }
+  #ov .ot.ask { border-color: var(--needs); box-shadow: inset 3px 0 var(--repo, var(--nocolor)), 0 0 0 1px var(--needs), 0 0 26px -6px var(--needs); }
+  #ov .ot header { display: flex; align-items: center; gap: 8px; font-size: 10.5px; letter-spacing: .8px; text-transform: uppercase; min-width: 0; }
+  #ov .ot header b { color: oklch(from var(--repo, var(--muted)) max(l, .66) c h); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #ov .ot header kbd { margin: 0; display: grid; place-items: center; min-width: 17px; height: 17px; background: var(--ink); color: var(--bg); font-weight: 800; }
+  #ov .ot .age { margin-left: auto; display: flex; gap: 6px; align-items: center; color: var(--muted); letter-spacing: 0; text-transform: none; font-size: 11px; white-space: nowrap; }
+  #ov .ot .wait { color: var(--needs); font-weight: 600; }
+  #ov .ot .un { display: inline-grid; place-items: center; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--unread); color: var(--bg); font-size: 10px; }
+  #ov .ot h3 { margin: 0; font-size: 14px; line-height: 1.3; color: var(--ink); }
+  #ov .obody { display: grid; gap: 3px; padding: 7px 9px; background: var(--term-bg); font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--snip-claude); min-width: 0; overflow: hidden; }
+  #ov .obody.live { position: relative; display: block; height: 190px; padding: 0; }
+  :is(#ov, #stack) .mini { position: absolute; left: 6px; bottom: 4px; transform-origin: bottom left; pointer-events: none; }
+  :is(#ov, #stack) .mini .xterm-viewport { overflow: hidden !important; }
+  :is(#ov, #stack) .tl { display: flex; gap: 7px; align-items: baseline; white-space: nowrap; overflow: hidden; min-width: 0; }
+  :is(#ov, #stack) .tl i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--idle); transform: translateY(-1px); }
+  :is(#ov, #stack) .tl.run i { background: var(--working); box-shadow: 0 0 0 3px color-mix(in srgb, var(--working) 25%, transparent); }
+  :is(#ov, #stack) .tl.err i { background: var(--needs); } :is(#ov, #stack) .tl.watch i { background: var(--watch); }
+  :is(#ov, #stack) .tl b { color: var(--ink); font-weight: 600; }
+  :is(#ov, #stack) .tl span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  :is(#ov, #stack) .tl em { margin-left: auto; font-style: normal; color: var(--muted); padding-left: 8px; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
+  :is(#ov, #stack) .tl.run em { color: var(--working); }
+  :is(#ov, #stack) .say { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 12px; color: var(--ink); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  :is(#ov, #stack) .say.none { color: var(--muted); }
+  :is(#ov, #stack) .you { color: var(--you); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #ov .ot > .tl { font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  #ov .ag { font-size: 12px; color: var(--working); font-weight: 600; }
+  #ov .q { font-size: 13px; color: var(--ink); font-weight: 600; }
+  #ov .ans { display: flex; flex-wrap: wrap; gap: 6px; }
+  #ov .ans button { font: inherit; font-size: 12px; padding: 4px 9px; border: 0; border-radius: 5px; background: var(--ctl); color: var(--ink); cursor: pointer; }
+  #ov .ans button:hover:not(:disabled) { background: color-mix(in srgb, var(--needs) 24%, transparent); }
+  #ov .ans button:disabled { opacity: .6; cursor: default; }
+  #ov .ans b { font: 700 11px ui-monospace, monospace; color: var(--needs); margin-right: 6px; }
+  #ov .ot footer { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted); min-width: 0; }
+  #ov .ot footer .br { font-family: ui-monospace, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  #ov .ot footer .a { color: var(--pr-open); font-family: ui-monospace, monospace; } #ov .ot footer .d { color: var(--pr-closed); font-family: ui-monospace, monospace; }
+  #ov .ot footer .r { margin-left: auto; white-space: nowrap; }
+  #ov .opr { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; border-radius: 4px; font: 700 11px/16px -apple-system, sans-serif; color: var(--bg); background: var(--pr-open); }
+  #ov .opr[data-state="draft"] { background: var(--pr-draft); }
+  #ov .opr .ck { width: 11px; height: 11px; } #ov .opr .ck svg { width: 11px; height: 11px; fill: currentColor; }
+
   /* ---- project editor ---- */
   dialog { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); padding: 16px 18px; width: min(600px, 92vw); }
   dialog::backdrop { background: rgba(0, 0, 0, .35); }
@@ -1728,6 +1787,8 @@
     <kbd>⌥⌘B</kbd><span>fold the chat list into a rail, and back</span>
     <kbd>⌥⌘L</kbd><span>the launcher — every chat, project, PR, ticket, action and switch in one box: <em>&gt;</em> the actions and switches, <em>#</em> the PRs, <em>@</em> the projects, <em>!</em> the tickets · empty, a menu: → into a row, ← back · Toggle flips the settings' switches</span>
     <kbd>?</kbd><span>this list, on a sheet of its own, searchable — outside a box or a terminal</span>
+    <kbd>⌥⌘A</kbd><span>every live agent at once — Asking you · Clauding · Watching · Ready, unread — each with what it is doing now: its drawer's screen when it runs here, else its last tool calls · 1–9 opens one · a question's answer types its digit into the chat's drawer</span>
+    <kbd>⌥⌘D</kbd><span>what this chat changed in its folder, on a tab — its last turn's edits, the uncommitted tree or the branch against its base · Commit… and Push type into its zsh · + on a line sends Claude a note · the header's +n −n too</span>
     <kbd>⌥⌘Y</kbd><span>theme — Omarchy's twelve and the board's own, the board behind follows the arrows · ⏎ keeps it for its appearance, dark or light · esc puts back what was worn</span>
     <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
     <kbd>⌥⌘←→</kbd><span>the tab to the left / right: chat, shell, GitHub pages, VS Code — split, across both halves' strips · drag a tab onto the other half to move it there</span>
@@ -1766,6 +1827,10 @@
   <div class="thin"><input type="text" id="themeq" placeholder="Theme — type to filter · ←↑↓→ the board follows · ⏎ keeps it · esc" autocomplete="off" spellcheck="false"></div>
   <div id="themegrid"></div>
   <div class="thfoot"><span id="themenote"></span><span class="spacer"></span><span>a dark theme is worn while macOS is dark, a light one while it is light</span></div>
+</dialog>
+<dialog id="ov" aria-label="Every live agent" tabindex="-1">
+  <div class="ovtop"><h1>All agents</h1><div class="chips" id="ovchips"></div><div class="keys"><span><kbd>1–9</kbd>open</span><span><kbd>←↑↓→</kbd><kbd>⏎</kbd></span><span><kbd>esc</kbd>back</span><button class="ovclose" title="Close · esc">×</button></div></div>
+  <div class="ovcols" id="ovcols"></div>
 </dialog>
 <dialog id="keysheet" aria-label="Every key">
   <div class="kshd"><h3>Keys</h3><input type="text" id="ksq" placeholder="a key, or what it does…" autocomplete="off" spellcheck="false"><span class="kswhere"><kbd>?</kbd> outside a box or a terminal · <kbd>⌥⌘L</kbd> › Keys · esc</span></div>
@@ -3786,7 +3851,7 @@
   // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyW: hotCloseTab, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiff, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyW: hotCloseTab, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiff, KeyA: ovOpen, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -5357,7 +5422,7 @@
     if (!s.cwd || (d && (d.asking || Date.now() - d.at < 5000))) return;
     diffStats.set(s.id, { ...d, asking: true, at: d?.at || 0 });
     api('GET', `/api/sessions/${s.id}/changes?stat=1`).then(r => ({ add: r.add, del: r.del, files: r.files }), () => ({ add: 0, del: 0, files: 0 }))
-      .then(v => { const was = diffStats.get(s.id); diffStats.set(s.id, { ...v, at: Date.now() }); if (was?.add !== v.add || was?.del !== v.del) renderHead(state.sessions.get(s.id)); });
+      .then(v => { const was = diffStats.get(s.id); diffStats.set(s.id, { ...v, at: Date.now() }); if (was?.add !== v.add || was?.del !== v.del) { renderHead(state.sessions.get(s.id)); ovSoon(); } });
   }
   const diffChip = s => { const d = diffStats.get(s.id); return d && (d.add || d.del) ? `<button class="hdiff" id="diffBtn" title="${d.files} file${d.files === 1 ? '' : 's'} changed in its folder, not committed — click or ⌥⌘D for the diff"><span class="a">+${d.add}</span><span class="d">−${d.del}</span></button>` : ''; };
   $('#shead').addEventListener('click', e => { if (e.target.closest('#diffBtn')) hotDiff(); });
@@ -5478,6 +5543,129 @@
     if (e.key === 'Enter' && e.metaKey) { e.preventDefault(); const s = state.sessions.get(state.current); if (s) sendNote(s, box); }
     else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); box.remove(); }
   });
+
+  // ---- live tiles: a chat drawn small — its drawer's screen, or the last few things it did (2026-10-10) --------------
+  // What the overview (⌥⌘A) and the stack beside the chat (the tiles switch) show of a chat that is not the open one.
+  // A chat in a drawer here is its screen: an xterm of its own, attached read-only — it never sends a resize, so the
+  // PTY keeps the size the chat's own view gave it — at that size, scaled down to the tile within reason and cropped
+  // past that, the bottom left (Claude Code's prompt and a question's box) in view. Any other is its tail: the server's
+  // last few tool calls with their results, and its words (GET /api/tails).
+  const tails = new Map();   // chat id → the recent items the server keeps
+  let tailsAsking = false;
+  async function loadTails(ids, then) {
+    if (!ids.length || tailsAsking) return; tailsAsking = true;
+    try { const d = await api('GET', `/api/tails?ids=${ids.map(encodeURIComponent).join(',')}`); for (const [id, items] of Object.entries(d.tails || {})) tails.set(id, items); then?.(); }
+    catch {} finally { tailsAsking = false; }
+  }
+  const firstLine = t => String(t || '').split('\n')[0].slice(0, 60);
+  /** The tail as rows: each tool call with its result's first line (none yet: it is running), Claude's words, yours. */
+  function tailHtml(items = [], n = 8, cwd = '') {
+    const res = new Map(items.filter(x => x.kind === 'tool_result').map(x => [x.toolUseId, x])), rows = [];
+    const short = t => cwd ? String(t || '').split(cwd + '/').join('') : t;   // a path in the chat's folder, from there
+    for (const x of items) {
+      if (x.kind === 'tool_use' && (x.name === 'AskUserQuestion' || x.name === 'ExitPlanMode')) continue;   // the question is the tile's own line
+      if (x.kind === 'tool_use') { const r = res.get(x.toolUseId); rows.push(`<div class="tl ${r ? (r.isError ? 'err' : 'ok') : 'run'}"><i></i><b>${esc(x.name)}</b><span>${esc(short(x.text))}</span><em>${r ? esc(firstLine(short(r.text))) : '…'}</em></div>`); }
+      else if (x.kind === 'text') rows.push(x.role === 'assistant' ? `<div class="say">${esc(x.text)}</div>` : `<div class="you">${esc(x.text)}</div>`);
+      else if (x.kind === 'interrupt') rows.push('<div class="you">— interrupted</div>');
+    }
+    return rows.slice(-n).join('') || '<div class="say none">nothing yet</div>';
+  }
+  /** A drawer drawn small in `host`, one per terminal and surface (`reg`), kept across redraws — a redraw moves it in. */
+  function mountMini(reg, host, t) {
+    let m = reg.get(t.id);
+    if (!m) {
+      const el = document.createElement('div'); el.className = 'mini';
+      const xt = new Terminal({ cols: t.cols || 120, rows: t.rows || 30, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 10, lineHeight: 1.1, scrollback: 0, cursorBlink: false, disableStdin: true, theme: xtTheme() });
+      xt.open(el);
+      const ws = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`); ws.binaryType = 'arraybuffer';
+      ws.onmessage = e => { if (typeof e.data !== 'string') xt.write(new Uint8Array(e.data)); else if (JSON.parse(e.data).t === 'clear') xt.write('', () => xt.clear()); };
+      m = { xt, ws, el, cols: xt.cols, rows: xt.rows };
+      reg.set(t.id, m);
+    }
+    if (t.cols && t.rows && (t.cols !== m.cols || t.rows !== m.rows)) { m.xt.resize(t.cols, t.rows); m.cols = t.cols; m.rows = t.rows; }
+    if (m.el.parentElement !== host) host.append(m.el);
+    m.used = true;
+    requestAnimationFrame(() => { const sc = m.el.querySelector('.xterm-screen'), w = sc?.offsetWidth, hw = host.clientWidth; if (w && hw) m.el.style.transform = `scale(${Math.max(.62, Math.min(1, hw / w))})`; });
+    return m;
+  }
+  /** The minis a redraw did not use: their sockets closed, their xterms gone. All of them with `all`. */
+  function sweepMinis(reg, all = false) {
+    for (const [id, m] of reg) { if (!all && m.used) { m.used = false; continue; } m.ws.onmessage = null; m.ws.close(); m.xt.dispose(); m.el.remove(); reg.delete(id); }
+  }
+  const drawerOf = s => s.terminal && s.terminal.exited === null && !s.terminal.shell ? s.terminal : null;
+
+  // ---- ⌥⌘A: the overview, every live agent at once (2026-10-10) ------------------------------------------------------
+  // Hyprland's overview and a kanban's columns: Asking you · Clauding · Watching · Ready, unread — every project, each
+  // chat a tile with what it is doing now, its branch, the size of its uncommitted change, its PR and CI. A digit opens
+  // the tile it is on (1–9, in reading order), the arrows and ⏎ too, Esc closes. A question the transcript has words
+  // for shows its answers; with the chat in a drawer here a click on one opens it and types that answer's digit.
+  const ov = { sel: 0, list: [], minis: new Map(), timer: 0, raf: 0 };
+  function ovColumns() {
+    const live = [...state.sessions.values()].filter(s => visible(s) && !s.done).sort(byWord), used = new Set();
+    const take = f => live.filter(s => !used.has(s.id) && f(s)).map(s => (used.add(s.id), s));
+    return [
+      ['ask', 'Asking you', take(s => asking(s))],
+      ['work', 'Clauding', take(s => bucket(s) === 'working')],
+      ['watch', 'Watching', take(s => s.alive && watching(s))],
+      ['ready', 'Ready, unread', take(s => (state.unread.get(s.id) || 0) > 0)],
+    ];
+  }
+  function ovTile(s, n, sel) {
+    const d = drawerOf(s), st = diffStats.get(s.id), pr = (s.prs || []).find(p => p.state === 'open' || p.state === 'draft');
+    const age = asking(s) ? `<span class="wait">waiting on you ${rel(s.statusSince)}</span>` : `<span>${rel(wordAt(s))}</span>${(state.unread.get(s.id) || 0) ? `<b class="un">${state.unread.get(s.id)}</b>` : ''}`;
+    const ask = asking(s) && s.ask ? `<div class="q">${esc(s.ask.text || `waiting for ${s.ask.waitingFor || 'you'}`)}</div>${s.ask.labels?.length ? `<div class="ans">${s.ask.labels.map((l, i) => `<button data-ans="${i + 1}"${d ? '' : ' disabled'} title="${d ? `Opens the chat and types ${i + 1} into its drawer` : 'Not in a drawer here — answer it where it runs'}"><b>${i + 1}</b>${esc(l)}</button>`).join('')}</div>` : ''}` : '';
+    const tasks = (s.tasks || []).map(t => `<div class="tl watch"><i></i><b>${t.kind === 'monitor' ? 'Monitor' : 'Bash'}</b><span>${esc(t.what)}</span><em>${esc(t.last || `${t.events} events`)}</em></div>`).join('');
+    const agents = s.agents ? `<div class="ag">${s.agents} agent${s.agents === 1 ? '' : 's'} at work</div>` : '';
+    return `<article class="ot ${asking(s) ? 'ask' : bucket(s) === 'working' ? 'work' : ''}${sel ? ' sel' : ''}" data-id="${esc(s.id)}" style="${repoStyle(repoColor(s.cwd))}">
+      <header>${n <= 9 ? `<kbd>${n}</kbd>` : ''}<b>${projIcon(s.project)}${esc(s.project)}</b><span class="age">${age}</span></header>
+      <h3>${esc(s.title)}</h3>
+      <div class="obody${d ? ' live' : ''}" data-term="${d ? esc(d.id) : ''}">${d ? '' : tailHtml(tails.get(s.id), 7, s.cwd)}</div>
+      ${tasks}${agents}${ask}
+      <footer>${pr ? `<span class="opr" data-state="${esc(pr.state)}">${esc(pr.label.replace(/^.*?#/, '#'))}${ckHtml(pr)}</span>` : ''}${s.gitBranch && s.gitBranch !== 'HEAD' ? `<span class="br">${esc(s.gitBranch)}</span>` : ''}${st && (st.add || st.del) ? `<span class="a">+${st.add}</span><span class="d">−${st.del}</span>` : ''}<span class="r">${d ? 'in a drawer here' : s.alive ? entryLabel(s) : 'ended'}</span></footer>
+    </article>`;
+  }
+  function renderOverview() {
+    ov.raf = 0;
+    const dlg = $('#ov'); if (!dlg.open) return;
+    const cols = ovColumns(); ov.list = cols.flatMap(c => c[2]);
+    ov.sel = Math.max(0, Math.min(ov.sel, ov.list.length - 1));
+    let n = 0;
+    const count = k => cols.find(c => c[0] === k)[2].length;
+    $('#ovchips').innerHTML = [['ask', 'asking you'], ['work', 'clauding'], ['watch', 'watching'], ['ready', 'ready, unread']].map(([k, w]) => `<span class="${k}"><i></i>${count(k)} ${w}</span>`).join('');
+    $('#ovcols').innerHTML = cols.map(([k, name, list]) => `<section class="oc ${k}"><h2><i></i><span>${name}</span><b>${list.length}</b></h2>${list.map(s => ovTile(s, ++n, n - 1 === ov.sel)).join('') || '<div class="none">none</div>'}</section>`).join('');
+    for (const host of $('#ovcols').querySelectorAll('.obody.live')) { const s = state.sessions.get(host.closest('.ot').dataset.id), d = s && drawerOf(s); if (d) mountMini(ov.minis, host, d); }
+    sweepMinis(ov.minis);
+    for (const s of ov.list) wantDiffStat(s);
+  }
+  const ovSoon = () => { if ($('#ov').open && !ov.raf) ov.raf = requestAnimationFrame(renderOverview); };
+  function ovOpen() {
+    const dlg = $('#ov'); if (dlg.open) return dlg.close();
+    if (inApp) post({ type: 'focus' });
+    ov.sel = 0; dlg.showModal(); repostPane(); renderOverview(); dlg.focus();
+    const tick = () => loadTails(ov.list.filter(s => !drawerOf(s)).map(s => s.id), ovSoon);
+    tick(); ov.timer = setInterval(tick, 2000);
+  }
+  $('#ov').addEventListener('close', () => { clearInterval(ov.timer); sweepMinis(ov.minis, true); });
+  $('#ov').addEventListener('click', e => {
+    if (e.target === e.currentTarget || e.target.closest('.ovclose')) return $('#ov').close();
+    const ans = e.target.closest('[data-ans]'), tile = e.target.closest('.ot'); if (!tile) return;
+    const s = state.sessions.get(tile.dataset.id); if (!s) return;
+    $('#ov').close();
+    if (ans) answerInDrawer(s, ans.dataset.ans); else openSession(s.id);
+  });
+  $('#ov').addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const i = /^[1-9]$/.test(e.key) ? +e.key - 1 : e.key === 'Enter' ? ov.sel : -1;
+    if (i >= 0) { e.preventDefault(); const s = ov.list[i]; if (s) { $('#ov').close(); openSession(s.id); } return; }
+    const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
+    if (step) { e.preventDefault(); ov.sel = Math.max(0, Math.min(ov.list.length - 1, ov.sel + step)); renderOverview(); $('#ovcols .ot.sel')?.scrollIntoView({ block: 'nearest' }); }
+  });
+  /** An answer from the overview: the chat opened, and once its drawer is attached, the answer's digit typed into it. */
+  async function answerInDrawer(s, digit) {
+    await openSession(s.id);
+    for (let i = 0; i < 60; i++) { const tm = claudeTm(s); if (tm) { focusTerm(); termSend(tm, String(digit)); return; } await new Promise(r => setTimeout(r, 100)); }
+    note($('#shead'), 'Its drawer did not come up — answer it in the chat', true);
+  }
 
   // ---- a chat's folder not checked out: cloned first (2026-10-09) ----------------------------------------------------
   // A spawn the server refuses for a folder that is not there names the repo that would bring it back (`clone`: under
@@ -6128,6 +6316,7 @@
       if (landed) { landedAt.set(s.id, performance.now()); noteMotion(s.id, 'landed'); }   // the reply landed: the card flares once (flareLanded)
       if (s.id === state.current && !visible(s) && s.done) leaveChat();   // an empty chat ticked done: its card is gone, and so is the chat
       if (landed) renderBoard(); else renderBoardSoon();   // a landing is drawn as it is said, flare and all
+      ovSoon();   // the overview (⌥⌘A, 2026-10-10) follows its chats while it is up
       if (s.id === state.current) { renderHead(s); syncTerm(s); renderPresence(); }
       // The chats step follows its chats — one ticked there leaves, one that stopped clauding says ready.
       if ($('#pick').open && pick.mode === 'chats' && (pick.list.some(x => x.id === s.id) || scopeChats(pick.ctx).some(x => x.id === s.id))) pickRender(true);

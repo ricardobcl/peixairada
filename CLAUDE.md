@@ -356,6 +356,18 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   eased) — `--lift` on every card but `.card.black:not(:hover, .qsel)`, where it is the black; its lines are the grey.
   `--repo` stays the colour as set for the rail's squares, the header, the splitter and the open card's bleed into it.
   → the black step of `scripts/scenarios/simple-colors.mjs`.
+* **⌥⌘A is the overview, every live agent at once** (2026-10-10; `#ov`, a modal `<dialog>` over the whole window, the
+  board blurred under it): `ovColumns` — Asking you, Clauding, Watching (a live chat's tasks), Ready with unread
+  replies — every project, done chats never; a tile per chat, numbered in reading order (1–9 and ⏎ open, the arrows
+  move), drawn again on its chats' `session` events (`ovSoon`). **A tile is a live tile** (shared with the stack, see
+  *The chat column's two halves*): the chat's drawer here as a read-only xterm (`mountMini` — it never sends a resize,
+  so the PTY keeps the size the chat's own view gave it; scaled to the tile down to .62, cropped past that, the bottom
+  left in view), else its tail (`tailHtml` over `GET /api/tails?ids=`, polled every 2 s while up). The server keeps
+  that tail for every chat, open or not (`noteRecent`, `s.recent`, the last 16 tool calls, results and words); a
+  monitor's last event is `last` on its task; a question's answers are `ask.labels` — **known only once the
+  transcript has the question, which is written with its answer** (see *How it reads*): a live question usually shows
+  as the drawer's own screen. An answer clicked opens the chat and types its digit into the drawer (`answerInDrawer`).
+  → `scripts/scenarios/overview.mjs`.
 * **The chat header is drawn only when it changed** (2026-09-27): `renderHead` compares the header's, the menu's and
   the PR rows' markup with `drawn` and sets innerHTML only when different, then `layoutNotch(); fitHeadPrs()` only for
   a new header; the handlers are still bound on every call (they close over `s`). Anything that edits the header in
@@ -598,7 +610,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   go; on the chat's own tab a `note()`), P the project picker, K the chat picker (`chat` mode: every ready or clauding chat, the list's order,
   searched by `chatFields()`; ⏎ is `openSession`), **F the chat list's own box** (`hotFind()` → `qShow(true)`), **B the chat list
   folded to a rail and back** (`toggleSessions`; plain ⌘B until 2026-10-02 — VS Code Web keeps its ⌘B, gives up its
-  ⌥⌘B), **Y the themes** (`themesOpen`, 2026-10-10), **L the launcher** (`pickOpen('launch')`, 2026-10-10), **D the chat's changes** (`hotDiff`, 2026-10-10), N a
+  ⌥⌘B), **Y the themes** (`themesOpen`, 2026-10-10), **L the launcher** (`pickOpen('launch')`, 2026-10-10), **D the chat's changes** (`hotDiff`, 2026-10-10), **A the overview** (`ovOpen`, 2026-10-10), N a
   chat as steps of the one dialog (`new` → `chats` → `folder` when the project spans several → `env` when
   `newChatIn()` finds launchers), **O the same with the project answered and the environment brought forward**
   (`hotOracle()` → `newChatIn(cwd, 'chats')` on the project the setup names, `state.config.quick`; none named, or

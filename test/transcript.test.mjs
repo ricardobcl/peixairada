@@ -130,7 +130,7 @@ test('the question on the card is the one still waiting for an answer', () => {
   s.alive = true; s.live = { pid: 1, startedAt: Date.now() - 600_000 };
   fold(s, user('set up the database'));
   fold(s, assistant([{ type: 'tool_use', name: 'AskUserQuestion', id: 'tq', input: { questions: [{ question: 'Which database?', options: [{ label: 'Postgres' }, { label: 'MySQL' }] }] } }], 'tool_use', 1));
-  assert.deepEqual(summary(s).ask, { tool: 'AskUserQuestion', text: 'Which database?', options: 2 });
+  assert.deepEqual(summary(s).ask, { tool: 'AskUserQuestion', text: 'Which database?', options: 2, labels: ['Postgres', 'MySQL'] });
   fold(s, { type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'tq', content: 'Postgres' }] }, timestamp: ts(2), cwd: '/tmp/repo' });
   assert.equal(summary(s).ask, null, 'answered: the card has nothing to ask you');
   assert.equal(s.status, 'working');
@@ -163,7 +163,7 @@ test('the registry is the word on asking when it says anything; the transcript i
   fold(s, assistant([{ type: 'tool_use', name: 'AskUserQuestion', id: 'tq', input: { questions: [{ question: 'Which database?', options: [{ label: 'Postgres' }, { label: 'MySQL' }] }] } }], 'tool_use', 1));
   assert.equal(summary(s).status, 'needs-input', 'a claude that reports no status: the pending question in the transcript is the word');
   s.live = { ...s.live, status: 'waiting', waitingFor: 'permission prompt' };
-  assert.deepEqual(summary(s).ask, { tool: 'AskUserQuestion', text: 'Which database?', options: 2 }, 'both agree: the transcript has the question itself');
+  assert.deepEqual(summary(s).ask, { tool: 'AskUserQuestion', text: 'Which database?', options: 2, labels: ['Postgres', 'MySQL'] }, 'both agree: the transcript has the question itself');
   s.live = { ...s.live, status: 'busy', waitingFor: undefined };
   assert.equal(summary(s).status, 'working', 'the process says it is past the question: it is');
   s.live = { ...s.live, status: 'idle' };

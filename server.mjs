@@ -632,6 +632,7 @@ function summarizeToolInput(name, input = {}) {
       case 'Read': case 'Edit': case 'Write': case 'NotebookEdit': return input.file_path || '';
       case 'Grep': case 'Glob': return `${input.pattern || ''}${input.path ? '  in ' + input.path : ''}`;
       case 'Agent': return input.description || snippet(input.prompt, 100);
+      case 'Monitor': return input.description || (input.command || '').split('\n')[0];
       case 'WebFetch': return input.url || '';
       case 'WebSearch': return input.query || '';
       case 'AskUserQuestion': return input.questions?.[0]?.question || '';
@@ -1283,8 +1284,20 @@ function setStatus(s, status, ts) {
   }
 }
 
+/** The last few things a chat did, kept for every chat, open or not (2026-10-10): what the overview's and the stack's
+ *  tiles show of one with no drawer here — its tool calls with their results, its words — short. */
+const RECENT_MAX = 16;
+function noteRecent(s, e) {
+  if (!['tool_use', 'tool_result', 'text', 'interrupt'].includes(e.kind)) return;
+  const r = { role: e.role, kind: e.kind, ts: e.ts, text: snippet(e.text, e.kind === 'tool_result' ? 120 : 220) };
+  if (e.name) r.name = e.name; if (e.toolUseId) r.toolUseId = e.toolUseId; if (e.isError) r.isError = true;
+  (s.recent ||= []).push(r);
+  if (s.recent.length > RECENT_MAX) s.recent.splice(0, s.recent.length - RECENT_MAX);
+}
+
 function pushEntry(s, entry) {
   s.entryCount++;
+  noteRecent(s, entry);
   if (!s.loaded) return;
   s.entries.push(entry);
   if (s.entries.length > MAX_ENTRIES) s.entries.splice(0, s.entries.length - MAX_ENTRIES);
@@ -1365,7 +1378,7 @@ function fold(s, line) {
         else if (b.type === 'tool_use') {
           pushEntry(s, { role: 'assistant', kind: 'tool_use', name: b.name, text: summarizeToolInput(b.name, b.input), toolUseId: b.id, ts });
           if (EDIT_TOOLS.has(b.name) && (b.input?.file_path || b.input?.notebook_path)) (s.turnFiles ||= new Set()).add(b.input.file_path || b.input.notebook_path);
-          if (NEEDS_INPUT_TOOLS.has(b.name)) { needsInput = true; s.ask = { tool: b.name, text: summarizeToolInput(b.name, b.input), options: b.input?.questions?.[0]?.options?.length || 0 }; }
+          if (NEEDS_INPUT_TOOLS.has(b.name)) { needsInput = true; s.ask = { tool: b.name, text: summarizeToolInput(b.name, b.input), options: b.input?.questions?.[0]?.options?.length || 0, labels: (b.input?.questions?.[0]?.options || []).slice(0, 9).map(o => snippet(o?.label, 40)) }; }
           if (b.name === 'Monitor' || (b.name === 'Bash' && b.input?.run_in_background)) noteTaskCall(s, b);
           if (b.name === 'TaskStop' && s.tasks?.size) { const j = JSON.stringify(b.input || ''); for (const id of [...s.tasks.keys()]) if (j.includes(id)) s.tasks.delete(id); }
         }
@@ -1622,6 +1635,7 @@ function noteTaskEvent(s, text, ts) {
   if (!t) return false;
   if (/<status>/.test(text)) { s.tasks.delete(id); return true; }
   t.events++; t.lastEventAt = ts;
+  t.last = snippet(/<event>([\s\S]*?)<\/event>/.exec(text)?.[1] || /<summary>([\s\S]*?)<\/summary>/.exec(text)?.[1] || '', 100);   // what it said last — the overview's tile
   return true;
 }
 /** A task from before this claude started (it died with the last one), past TASK_MAX_MS, or past its own expiry. */
@@ -1632,7 +1646,7 @@ const taskExpired = (s, t, now = Date.now()) => { const at = Date.parse(t.at) ||
 function runningTasks(s) {
   if (!s.alive || !s.tasks?.size) return [];
   const now = Date.now(), out = [];
-  for (const [id, t] of s.tasks) if (!taskExpired(s, t, now)) out.push({ id, kind: t.kind, what: t.what, at: t.at, until: t.until ? new Date(t.until).toISOString() : null, events: t.events, lastEventAt: t.lastEventAt || null });
+  for (const [id, t] of s.tasks) if (!taskExpired(s, t, now)) out.push({ id, kind: t.kind, what: t.what, at: t.at, until: t.until ? new Date(t.until).toISOString() : null, events: t.events, lastEventAt: t.lastEventAt || null, last: t.last || null });
   return out;
 }
 /** The pruning: a dead claude takes its tasks with it, an expired one goes. True when any went. */
@@ -2806,6 +2820,11 @@ const server = createServer(async (req, res) => {
       queueSessionPrs(cur);   // opening a chat refreshes its PR statuses and keeps them polled; the SSE push carries them in
       for (const t of cur.tickets) if (ticketWanted(t.key) && Date.now() >= jiraPauseUntil) queueTicket(t.key);   // …and its tickets
       return json(res, 200, { session: summary(cur), entries: cur.entries, gen: cur.gen, upto: cur.entryCount });   // the entries end at upto
+    }
+    // the overview's and the stack's tiles (2026-10-10): the last few things each of these chats did
+    if (req.method === 'GET' && p === '/api/tails') {
+      const ids = (url.searchParams.get('ids') || '').split(',').filter(Boolean).slice(0, 40);
+      return json(res, 200, { tails: Object.fromEntries(ids.map(id => [id, sessions.get(id)?.recent || []])) });
     }
     // the changes tab (2026-10-10): the chat's folder's diff in a scope, or ?stat=1 for the header's counts
     if (req.method === 'GET' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/changes$/))) {

@@ -30,6 +30,13 @@ J (workspaces in the status bar) and K (the btop frames) were not picked.
   whole, and the tab says which scope it is in. **Commit…, Push and PR… type their command into the chat's zsh and
   leave ⏎ to you** — the board runs nothing that leaves the Mac. A note on a diff line is typed into the chat's claude
   in its drawer as `path:line — note` and sent; with no drawer here it is copied.
+* **O · the overview** (⌥⌘A): columns by what the chat wants — asking, clauding, watching, ready with unread words — not
+  a kanban to drag (the states are Claude's, not a plan's). A tile shows a chat in a drawer here as its drawer's own
+  screen, read-only and at the PTY's size (a resize would make Claude Code repaint narrow, and its own view resize it
+  back): the study's question with its answers is mostly that screen, since the transcript writes a question with its
+  answer. Every other chat is its tail, which the server now keeps for every chat (16 items, the cost of a list each),
+  and a monitor its last event. Sub-agents show as their Agent calls in the tail and a count; their own transcripts are
+  not read for it.
 
 ## Decisions of 2026-10-10 — /clear ticks the chat it left
 
