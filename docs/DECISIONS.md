@@ -78,6 +78,8 @@ the order they landed.
   there is something to know — last used in VS Code (resuming moves it here; the tab there will not follow), a folder to
   clone first, a folder gone, no folder known, a failure. *What you see is its transcript … Resume runs claude --resume
   on it, in a terminal here* went: the button's tooltip says what it runs.
+* **C5 — the editor's tab is its folder**: VS Code Web's address read `127.0.0.1:7332/?folder=%2FUsers%2F…`; in front
+  its tab says *VS Code · storefront* (the URL's `folder`), the URL in the tooltip, and a click still copies it.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

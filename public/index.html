@@ -6051,12 +6051,16 @@ const toolName = n => {
   const bareUrl = u => u.replace(/^https?:\/\//, '');
   /** An address as the strip shows it: no scheme, the host quieter than the rest (2026-10-11). */
   const urlHtml = u => { const b = bareUrl(u), i = b.indexOf('/'); return i < 0 ? `<span class="h">${esc(b)}</span>` : `<span class="h">${esc(b.slice(0, i + 1))}</span>${esc(b.slice(i + 1))}`; };
+  // The editor's address is its folder (2026-10-12): VS Code Web's is 127.0.0.1:7332/?folder=%2FUsers%2F… — it says
+  // VS Code · storefront, the URL in its tooltip, and a click still copies the URL.
+  const ideName = u => { try { const f = new URL(u).searchParams.get('folder'); return f ? f.replace(/\/+$/, '').split('/').pop() : ''; } catch { return ''; } };
+  const addrHtml = (k, u) => k.startsWith('ide:') && ideName(u) ? `<span class="h">VS Code · </span>${esc(ideName(u))}` : urlHtml(u);
   const paneUrl = k => paneUrls.get(k) || k.slice(k.indexOf(':') + 1);
   window.peixPaneUrl = (key, url) => {
     if (!url) return;
     paneUrls.set(key, url);
     for (const el of document.querySelectorAll('.purl')) {
-      if (el.dataset.key === key) { el.dataset.url = url; el.innerHTML = urlHtml(url); el.title = url + ' — click to copy'; el.closest('.ptabs')._drawn = null; }
+      if (el.dataset.key === key) { el.dataset.url = url; el.innerHTML = addrHtml(key, url); el.title = url + ' — click to copy'; el.closest('.ptabs')._drawn = null; }
     }
   };
   const ideKey = s => inApp && s?.cwd && state.paneIde.get(s.cwd) ? 'ide:' + state.paneIde.get(s.cwd) : null;
@@ -6166,7 +6170,7 @@ const toolName = n => {
       // page in front its own address, with ‹ › ↻ ↗ in it (Q5) — a div, since it holds buttons
       const tab = (k, label, title, x, icon = '') => {
         const close = x ? `<span class="x" title="${esc(x)}">${ICON.close}</span>` : '';
-        if (cur === k && isPaneTab(k)) return `<div class="ptab on pane addr" data-tab="${esc(k)}" title="${esc(title + tip)}">${icon}<span class="purl" data-key="${esc(k)}" data-url="${esc(paneUrl(k))}" title="${esc(paneUrl(k))} — click to copy">${urlHtml(paneUrl(k))}</span><span class="navs">`
+        if (cur === k && isPaneTab(k)) return `<div class="ptab on pane addr" data-tab="${esc(k)}" title="${esc(title + tip)}">${icon}<span class="purl" data-key="${esc(k)}" data-url="${esc(paneUrl(k))}" title="${esc(paneUrl(k))} — click to copy">${addrHtml(k, paneUrl(k))}</span><span class="navs">`
           + `<button class="nav" data-nav="back" title="Back">${ICON.back}</button><button class="nav" data-nav="forward" title="Forward">${ICON.forward}</button><button class="nav" data-nav="reload" title="Reload">${ICON.reload}</button><button class="nav" data-nav="external" title="Open this page in your browser">${ICON.external}</button></span>${close}</div>`;
         return `<button class="ptab${cur === k ? ' on' : ''}${isPaneTab(k) ? ' pane' : ''}" data-tab="${esc(k)}" title="${esc(title + tip)}">${icon}${esc(label)}${close}</button>`;
       };

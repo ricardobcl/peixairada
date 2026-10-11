@@ -96,7 +96,7 @@ export default async function (ctx) {
   await ctx.key('KeyE'); await ctx.waitFor(`(document.querySelector('#ptabsB .ptab.on')?.dataset.tab || '').startsWith('ide:')`, { what: 'the editor tab on' });
   ctx.assert.equal((await ctx.peix('state().halves'))[0], 'chat', 'claude kept the left half');
   out.ide = { tabs: await tabsNow(), pane: await lastPane() };
-  ctx.assert.equal(out.ide.tabs.length, 3); ctx.assert.match(out.ide.tabs[2].label, /^@127\.0\.0\.1:1\/\?folder=/, 'the editor in front: its address'); ctx.assert.match(out.ide.pane.show, /^ide:http:\/\/127\.0\.0\.1:1\/\?folder=/);
+  ctx.assert.equal(out.ide.tabs.length, 3); ctx.assert.match(out.ide.tabs[2].label, /^@VS Code · \S+$/, 'the editor in front: VS Code and its folder, not its address (2026-10-12)'); ctx.assert.match(await ctx.evaluate(`document.querySelector('#ptabsB .ptab.on.addr .purl').title`), /^http:\/\/127\.0\.0\.1:1\/\?folder=/, '…the address in its tooltip'); ctx.assert.match(out.ide.pane.show, /^ide:http:\/\/127\.0\.0\.1:1\/\?folder=/);
   // ⌥⌘T: a zsh — five tabs, the zsh second; the pane goes under it
   await ctx.key('KeyT'); await ctx.waitFor(`document.querySelector('#ptabsB .ptab.on')?.dataset.tab === 'shell'`, { what: 'the zsh tab on', timeout: 20_000 });
   out.five = await strips(); ctx.assert.deepEqual(out.five, [[], ['shell', 'gh', 'gh', 'ide']], 'five tabs: claude on the left, alone and so with no strip, the rest on the right');

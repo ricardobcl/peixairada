@@ -1040,7 +1040,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   under the pointer**; short of room (`.ptabs` is a size container, under 640 px) the tabs behind the one in front fold
   to their marks, the name in the tooltip — and lose the × (a mark alone is chosen, never closed: ⌥⌘W). **The page in
   front is its own address** (Q5): its tab is a `div.ptab.addr` (it holds buttons) — the mark, `.purl` (no scheme, the
-  host `.h` quieter: `urlHtml`, which `peixPaneUrl` draws too) and `.navs` inside, a click on the address still copying
+  host `.h` quieter: `urlHtml`, which `peixPaneUrl` draws too; the editor's is *VS Code · its folder*, `addrHtml`,
+  2026-10-12) and `.navs` inside, a click on the address still copying
   it; a page behind wears its name. **The half's ◫/⊟ and ⨯ are behind ⋯** (`.gmore` → `.gopen` on the strip, folded
   again when the pointer leaves it; `.click()` on `.gturn` / `.gclose` works folded). The tab drag ignores a press on
   the address or its buttons. **With tiles, split, each half is a tile of its own** (Q7): 8 px round and between them
