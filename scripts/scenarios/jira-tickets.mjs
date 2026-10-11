@@ -1,7 +1,8 @@
 // Jira tickets as PRs are (2026-10-08). Jira is the fake (scripts/fakejira.mjs), its token in the server's environment;
 // a chat names ACME-12 (in progress, yours), OPS-7 (done) and UTF-8 (no project of the site's). What this checks: the
-// Setup's Jira section takes the site and the login and says who you are; the card wears the first ticket in its
-// status's colour and a count; the chat header has them among its chips, and its rows under it; nothing of UTF-8.
+// Setup's Jira section takes the site and the login and says who you are; the card wears its tickets in their
+// status's colours as a stack, as its PRs are (2026-10-11; the first and a count before), fanned under the pointer;
+// the chat header has them among its chips, and its rows under it; nothing of UTF-8.
 import { startFakeJira } from '../fakejira.mjs';
 import { makeFixture } from '../fixture.mjs';
 
@@ -38,11 +39,22 @@ export default async function (ctx) {
     await ctx.shot('1-setup', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(document.querySelector('#settings').getBoundingClientRect())`));
     await ctx.evaluate(`document.querySelector('#settingsClose').click()`);
 
-    // The card: the first ticket in its status's colour, and +1
-    await ctx.waitFor(`${card}?.querySelector('.ctk')?.dataset.cat === 'doing'`, { timeout: 10_000, what: 'the ticket on the card' });
-    out.card = await ctx.evaluate(`JSON.stringify((t => ({ key: t.textContent, cat: t.dataset.cat, url: t.dataset.url, more: ${card}.querySelector('.ttks .more')?.textContent, bg: getComputedStyle(t).backgroundColor, tip: t.title }))(${card}.querySelector('.ctk')))`).then(JSON.parse);
-    ctx.assert.deepEqual([out.card.key, out.card.more, out.card.url], ['ACME-12', '+1', `${jira.url}/browse/ACME-12`]);
-    ctx.assert.match(out.card.tip, /Fees for the new market[\s\S]*In Progress[\s\S]*yours[\s\S]*OPS-7/, 'the tooltip lists them');
+    // The card: a stack of its tickets, the branch's or the last named on top in its status's colour, no count
+    await ctx.waitFor(`${card}?.querySelector('.ctk')?.dataset.cat === 'doing' && ${card}.querySelectorAll('.ctk').length === 2`, { timeout: 10_000, what: 'the tickets on the card' });
+    out.card = await ctx.evaluate(`JSON.stringify((t => ({ key: t.textContent, cat: t.dataset.cat, url: t.dataset.url, keys: [...t.parentElement.children].map(x => x.textContent), stack: t.parentElement.className, more: !!${card}.querySelector('.more'), bg: getComputedStyle(t).backgroundColor, tip: t.title }))(${card}.querySelector('.ctk')))`).then(JSON.parse);
+    ctx.assert.deepEqual([out.card.key, out.card.keys, out.card.stack, out.card.more, out.card.url], ['ACME-12', ['ACME-12', 'OPS-7'], 'tprs ttks', false, `${jira.url}/browse/ACME-12`]);
+    ctx.assert.match(out.card.tip, /Fees for the new market[\s\S]*In Progress[\s\S]*yours/, 'the top one\'s tooltip is its own');
+    const fan = () => ctx.evaluate(`JSON.stringify([...${card}.querySelectorAll('.ctk')].map(t => { const r = t.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right), getComputedStyle(t).color]; }))`).then(JSON.parse);
+    await ctx.settle();
+    out.stacked = await fan();
+    ctx.assert.ok(out.stacked[1][0] < out.stacked[0][0] && out.stacked[1][1] > out.stacked[0][0], `stacked: OPS-7 under ACME-12, a sliver of it showing — ${JSON.stringify(out.stacked)}`);
+    const at = await ctx.evaluate(`(r => ({ x: r.right - 8, y: r.top + r.height / 2 }))(${card}.querySelector('.ctk').getBoundingClientRect())`);
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y });
+    await ctx.sleep(450); await ctx.settle();
+    out.fanned = await fan();
+    ctx.assert.ok(out.fanned[1][1] <= out.fanned[0][0] + 1, `fanned under the pointer, side by side — ${JSON.stringify(out.fanned)}`);
+    await ctx.shot('2-card-fanned', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(${card}.getBoundingClientRect())`));
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 900 });
     ctx.assert.notEqual(out.card.bg, 'rgba(0, 0, 0, 0)', 'solid, in its colour');
     await ctx.settle();
     await ctx.shot('2-card', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(${card}.getBoundingClientRect())`));

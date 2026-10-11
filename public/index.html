@@ -785,7 +785,7 @@
   /* (no grey ground under a list of near-black cards since 2026-10-09: the ink cards are the panel, whatever their colour) */
   .card.done { opacity: .55; }
   /* done for good (2026-10-11): its PRs no longer count here, and their chips say so in grey */
-  .card.forgood .tprs { filter: grayscale(1); }
+  .card.forgood .tprs:not(.ttks) { filter: grayscale(1); }
   .card.gone { opacity: .8; }   /* no live process: still ready, but a resume is coming */
   #slist > .leaving { pointer-events: none; overflow: hidden; }   /* a card on its way out, wrapped (leaveCard): it folds shut where it stood and takes no click; `#slist > .card` never sees it */
   .card .top { display: flex; align-items: center; gap: 7px; min-width: 0; min-height: 18px; margin-bottom: 2px; }
@@ -927,12 +927,11 @@
      card's line and the header say by name. */
   :is(.card .cpr, .shead .hpr):is([data-state="open"], [data-state="merged"], [data-state="closed"], [data-state="draft"]) { background: var(--prc); border-color: var(--prc); color: var(--bg); }
   .card .cpr:hover { filter: brightness(1.12); }
-  /* a Jira ticket as a chip (2026-10-08): the PR chip's shape, in its status category's colour — the card's first
-     ticket (the branch's, else the last named), then a count; in the header among the PRs, last, so they fold first */
-  .card .top .ttks { flex: none; display: inline-flex; align-items: center; gap: 3px; padding-left: 4px; }
+  /* a Jira ticket as a chip (2026-10-08): the PR chip's shape, in its status category's colour — on the card a stack of
+     its own as the PRs are (.tprs.ttks, 2026-10-11; the first ticket and a count before), the branch's, else the last
+     named, on top; in the header among the PRs, last, so they fold first */
   .card .ctk { font-size: 10.5px; font-weight: 600; line-height: 16px; border: 1px solid transparent; border-radius: 4px; padding: 0 5px; white-space: nowrap; cursor: pointer; }
   .card .ctk:hover { filter: brightness(1.12); }
-  .card .ttks .more { font-size: 10px; font-weight: 600; color: var(--muted); }
   :is(.card .ctk, .shead .hpr.tk, .prrow.tk)[data-cat="todo"] { --prc: var(--tk-todo); }
   :is(.card .ctk, .shead .hpr.tk, .prrow.tk)[data-cat="doing"] { --prc: var(--tk-doing); }
   :is(.card .ctk, .shead .hpr.tk, .prrow.tk)[data-cat="done"] { --prc: var(--tk-done); }
@@ -3899,6 +3898,12 @@
    *  on the stack fans them all out. `--i` is a chip's place in the fan, `--d` its depth in the stack, `--under` the
    *  slivers, `--span` how many chips' width each sliver's column is fanned. */
   const STACK_SLIVERS = 3;
+  /** A stack of the card's chips — its PRs, and since 2026-10-11 its Jira tickets, each a stack of its own: the first
+   *  on top, the others under it, `chip(item, style)` drawing one. */
+  function chipStack(items, chip, cls = '') {
+    const under = Math.min(items.length - 1, STACK_SLIVERS);
+    return `<span class="tprs${cls}"${under ? ` style="--under:${under};--span:${+((items.length - 1) / under).toFixed(3)}fr"` : ''}>${items.map((x, i) => chip(x, i ? ` style="--i:${i};--d:${Math.min(i, under)}"` : '')).join('')}</span>`;
+  }
   /** Who else has had a hand in the chat's PRs — each PR's author, reviewers, commenters and pushers, the server's
    *  `people`, you left out — as GitHub's faces, the newest first (2026-09-29): a pile since 2026-10-11, late
    *  afternoon, the pointer spreading it, and no count — the first CARD_FACES. The tooltip says what each did, PR by PR. */
@@ -3922,16 +3927,14 @@
   function cardPrs(s) {
     const prs = s.prs || []; if (!prs.length) return '';
     const top = new Set([...prs.filter(p => p.turn?.you), ...prs].slice(0, STACK_SLIVERS + 1));
-    const all = [...prs.filter(p => top.has(p)), ...prs.filter(p => !top.has(p))], under = Math.min(all.length - 1, STACK_SLIVERS);
-    const chips = all.map((pr, i) => `<a class="cpr"${i ? ` style="--i:${i};--d:${Math.min(i, under)}"` : ''} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}${pr.turn ? '\n' + turnTip(pr) : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`);
-    return `<span class="tprs"${under ? ` style="--under:${under};--span:${+((all.length - 1) / under).toFixed(3)}fr"` : ''}>${chips.join('')}</span>`;
+    return chipStack([...prs.filter(p => top.has(p)), ...prs.filter(p => !top.has(p))], (pr, style) => `<a class="cpr"${style} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" title="${esc(`${pr.title ? pr.title + '\n' : ''}${pr.url}${pr.state ? '\n' + pr.state : ''}${pr.turn ? '\n' + turnTip(pr) : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}</a>`);
   }
-  /** The card's Jira tickets (2026-10-08): the first — the branch's, else the last one named — as a chip in its status
-   *  category's colour, and how many more; the tooltip lists them all. */
+  /** The card's Jira tickets (2026-10-08): chips in their status category's colour, the first — the branch's, else the
+   *  last one named — on top; a stack as the PRs are since 2026-10-11 (a chip and a count before). */
   const ticketTip = t => `${t.key} — ${t.summary}\n${t.status}${t.type ? ` · ${t.type}` : ''}${t.assignee ? ` · ${t.assignee.me ? 'yours' : t.assignee.name}` : ' · unassigned'}${t.branch ? '\nthe chat\'s branch' : ''}`;
   function cardTickets(s) {
     const t = s.tickets || []; if (!t.length) return '';
-    return `<span class="ttks"><a class="ctk" data-cat="${esc(t[0].cat)}" data-url="${esc(t[0].url)}" title="${esc(t.map(ticketTip).join('\n\n'))}">${esc(t[0].key)}</a>${t.length > 1 ? `<span class="more" title="${esc(t.slice(1).map(ticketTip).join('\n\n'))}">+${t.length - 1}</span>` : ''}</span>`;
+    return chipStack(t, (k, style) => `<a class="ctk"${style} data-cat="${esc(k.cat)}" data-url="${esc(k.url)}" title="${esc(ticketTip(k))}">${esc(k.key)}</a>`, ' ttks');
   }
   function cardHtml(s, p, q = '') {
     const color = repoColor(s.cwd), un = state.unread.get(s.id) || 0;

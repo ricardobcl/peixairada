@@ -470,9 +470,9 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   property); open → merged sweeps a sheen across (`.sheen`). A first sight plays nothing; `ci:pass`, `ci:fail` and
   `merged` in `motion()`.
   → `scripts/scenarios/pr-checks.mjs`.
-* **A chat's Jira tickets are chips as its PRs are** (2026-10-08): on the card, `cardTickets` — the first (the branch's,
-  else the last named) as `.ctk`, solid in its status category's colour (`--tk-todo` · `--tk-doing` · `--tk-done`,
-  `data-cat`), then `+n`, before the faces; a click opens the chat and the ticket in the pane. In the header they are
+* **A chat's Jira tickets are chips as its PRs are** (2026-10-08): on the card, `cardTickets` — a stack as the PRs' (`chipStack`,
+  `.tprs.ttks`, 2026-10-11; the first and `+n` before), the first (the branch's, else the last named) on top, each `.ctk`
+  solid in its status category's colour (`--tk-todo` · `--tk-doing` · `--tk-done`, `data-cat`), before the faces; a click opens the chat and the ticket in the pane. In the header they are
   `.hpr.tk` inside `#prToggle`, after the PRs (so `fitHeadPrs` folds them first), and `.prrow.tk` rows under the PRs'
   in `#prlist` (status · key · summary · whose). The settings' Setup has a Jira section (`jiraSetup`: the site and
   email into the setup file, the token box write-only into the keychain via `PUT /api/jira/token`, a line from
@@ -499,7 +499,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   arrives** (2026-10-11, `moveMoments` in the after-draw pass): a *your move* tag on a card or a header (`#shead`
   carries `data-sid`) that the last pass did not have, where that card or header was already shown, slides in on the
   spring and nudges once; `move` in `motion()`.
-* **The card's PR chips end its top row, stacked** (`cardPrs`, `.top .tprs`, 2026-09-28; a stack since 2026-10-04):
+* **The card's PR chips end its top row, stacked** (`cardPrs` → `chipStack`, `.top .tprs`, 2026-09-28; a stack since 2026-10-04):
   every PR the chat mentions, the first on top at the row's end and three under it 5 px further left each, a sliver
   of their colour showing (the first four in the chat's order, every one at your move among them), the rest under the
   third; **the pointer on the stack fans them all out** side by side, the row makes room, and **a fan wider than the
