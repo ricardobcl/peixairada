@@ -970,10 +970,22 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   over the strip, the new `.on` tab `.slid` — plain — until it lands), a new tab grows in from nothing, a closed one
   folds where it stood as a stand-in `.ptabgone` — never a `.ptab`, so what counts the tabs counts the real ones. A
   strip coming out of hiding just appears. `tabslide`, `tabgrow`, `tabfold` in `motion()`.
+* **The strip is one family of controls** (2026-10-11, evening — the Round IV studies' Q1, Q5 and Q7): every tab,
+  nav button and field 26 px with a 6 px radius (the header's PR chips and `+n −n` too), no fill at rest and `--ctl`
+  under the pointer; **the tab in front and the rule of the half with the keys in `--tablit`** — the chat's colour
+  lifted to read on the panel, as a card's `--lift`, set on `#chat` — never the accent; the glyphs drawn (`ICON.back`,
+  `forward`, `reload`, `external`, `side`, `over`, `close`: strokes, `.ic.st`). **A tab's × is drawn over its mark,
+  under the pointer**; short of room (`.ptabs` is a size container, under 640 px) the tabs behind the one in front fold
+  to their marks, the name in the tooltip — and lose the × (a mark alone is chosen, never closed: ⌥⌘W). **The page in
+  front is its own address** (Q5): its tab is a `div.ptab.addr` (it holds buttons) — the mark, `.purl` (no scheme, the
+  host `.h` quieter: `urlHtml`, which `peixPaneUrl` draws too) and `.navs` inside, a click on the address still copying
+  it; a page behind wears its name. **The half's ◫/⊟ and ⨯ are behind ⋯** (`.gmore` → `.gopen` on the strip, folded
+  again when the pointer leaves it; `.click()` on `.gturn` / `.gclose` works folded). The tab drag ignores a press on
+  the address or its buttons. → the address steps of `pane-tabs.mjs`, the strip's step of `split-halves.mjs`.
 * **A half whose one tab is not a web page has no strip** (2026-09-28): split, claude, the zsh or the editor alone in
   a half makes its strip `.lone` — emptied, a 2 px rule, the accent under the keys and the line elsewhere, **the same
   height either way**, so moving the keys resizes no terminal. A web page alone keeps its strip (the address, ‹ › ↻ ↗),
-  an empty half keeps its (the drop, ⊟, ⨯), and a half of two tabs is a strip as ever. What the lone tab's × did is
+  an empty half keeps its (the drop, ⋯), and a half of two tabs is a strip as ever. What the lone tab's × did is
   ⌥⌘W's and the header menu's (*end the zsh*, *close VS Code Web*; `dropTab()` — the keys go back to the chat when the
   half empties); ⌘W / ⌘0 close the half and the keys turn it; a lone tab cannot be dragged. Unsplit, the strip hides
   under two tabs as it always did. → `scripts/scenarios/split-halves.mjs`, `split-stacked.mjs`, `pane-tabs.mjs`.

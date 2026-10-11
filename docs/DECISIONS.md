@@ -5,7 +5,7 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
-## Decisions of 2026-10-11, night — tiles and the floating header by default
+## Decisions of 2026-10-11, night — the tile's tabs, one family; tiles and the floating header by default
 
 Ricardo, on the Round IV studies (the chat tile's tabs — a contact sheet, seven directions): "let's go with Q1, Q5 and
 Q7 for now, but the artifact should render with tiles and floating header, which should be default".
@@ -15,6 +15,19 @@ Q7 for now, but the artifact should render with tiles and floating header, which
   on — a profile that has saved prefs keeps what it has. The harness starts its pages with both off, as it does
   auto-resume and the folded lanes: most scenarios measure the plain column, and the ones about tiles, the header
   and the notch turn them on. The study sheet was shot again with both on.
+* **Q1 · the strip is one family of controls.** What the inventory found: the tab in front in the accent while
+  everything else selected wore the project's colour; tabs, nav buttons and the header's chips 20 to 22 px with radii
+  from 4 to 9; the nav glyphs text beside drawn marks; a × always on every tab. Now every tab, nav button and field is
+  26 px with a 6 px radius, the header's PR chips and `+n −n` with them; no fill at rest; the tab in front and the
+  rule of the half with the keys in the chat's colour lifted to read on the panel (as a card's edge is), never the
+  accent — that is the board calling you; the glyphs are drawn; a tab's × is its mark's place under the pointer; and a
+  strip short of room folds the tabs behind the one in front to their marks (and drops their ×: a mark alone is
+  chosen by a click, never closed by one).
+* **Q5 · the page in front is its own address.** Its tab grows into the field — the mark, the address (the host
+  quieter than the path), ‹ › ↻ ↗ inside it — where the address was a squeezed text after the tabs ("github.com/" in a
+  half). The half's ◫ and ⨯ went behind a ⋯ at the strip's end, which puts them out until the pointer leaves.
+* **Not built**: Q2 (underlined tabs, a strip of one), Q3 (a segmented control), Q4 (islands), Q6 (a rail of marks) —
+  on the sheet for reference. Settings' segmented control and the changes tab's scope are not yet in the family.
 
 ## Decisions of 2026-10-11, evening, later — a card counts nothing
 

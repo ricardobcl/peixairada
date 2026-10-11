@@ -3,8 +3,9 @@
 // the keys were not in, and ⌘0 leaves the one they are in (with nothing split it is the chat's size again). Since
 // 2026-09-25 a split always puts claude in the left half, whatever the column was showing. Since 2026-09-28 a half
 // whose one tab is not a web page has no strip — a 2 px rule, the accent under the keys, the same height either way —
-// and ⌥⌘W closes the tab the keys are in; an empty half keeps its strip (the drop, ⊟, ⨯). A tab dragged across is
-// pane-tabs.mjs's: a page gives a half the second tab a drag starts from.
+// and ⌥⌘W closes the tab the keys are in; an empty half keeps its strip (the drop, and ⋯ for ⊟ ⨯). A tab dragged across
+// is pane-tabs.mjs's: a page gives a half the second tab a drag starts from. The strip's family (2026-10-11, the studies'
+// Q1/Q5/Q7): its controls 26 px, radius 6; the half's ⊟ ⨯ out beside ⋯ on a click, folded as the pointer leaves.
 export const meta = { server: true, fake: true, fixture: 'auto' };
 
 const halves = ctx => ctx.peix('state().halves');
@@ -35,6 +36,13 @@ export default async function (ctx) {
   ctx.assert.equal(e[0].h, 2, 'the rule is 2 px');
   ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#ptabsB .pdrop') && !!document.querySelector('#ptabsB .gclose') && !!document.querySelector('#ptabsB .gturn')`), true, 'the empty strip: the drop, ⊟ and ⨯');
   await ctx.shot('empty');
+  const family = () => ctx.evaluate(`JSON.stringify((d => ({ h: Math.round(d.getBoundingClientRect().height), r: getComputedStyle(d).borderTopLeftRadius,
+    more: Math.round(document.querySelector('#ptabsB .gmore').getBoundingClientRect().height), shut: !document.querySelector('#ptabsB .gclose').getClientRects().length }))(document.querySelector('#ptabsB .pdrop')))`).then(JSON.parse);
+  ctx.assert.deepEqual(await family(), { h: 26, r: '6px', more: 26, shut: true }, 'the strip\'s family: 26 px, radius 6 — ⊟ ⨯ behind ⋯');
+  await ctx.evaluate(`document.querySelector('#ptabsB .gmore').click()`);
+  ctx.assert.equal((await family()).shut, false, '⋯ puts them out');
+  await ctx.evaluate(`document.querySelector('#ptabsB').dispatchEvent(new PointerEvent('pointerleave'))`);
+  ctx.assert.equal((await family()).shut, true, '…and the pointer leaving the strip folds them');
 
   // ⌥⌘T opens the zsh in the half the keys are in: two live terminals, side by side, and no strip over either
   await ctx.key('KeyT');

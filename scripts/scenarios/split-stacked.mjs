@@ -9,7 +9,7 @@ export const meta = { server: true, fake: true, fixture: 'auto' };
 
 const halves = ctx => ctx.peix('state().halves');
 const rects = ctx => ctx.evaluate(`JSON.stringify(Object.fromEntries(['#grp', '#grpB', '#gsplit', '#groups'].map(id => { const r = document.querySelector(id).getBoundingClientRect(); return [id.slice(1), { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }]; })))`).then(JSON.parse);
-const layout = ctx => ctx.evaluate(`JSON.stringify({ stack: document.querySelector('#groups').classList.contains('stack'), dir: getComputedStyle(document.querySelector('#groups')).flexDirection, cursor: getComputedStyle(document.querySelector('#gsplit')).cursor, turn: document.querySelector('#ptabsB .gturn')?.textContent || null })`).then(JSON.parse);
+const layout = ctx => ctx.evaluate(`JSON.stringify({ stack: document.querySelector('#groups').classList.contains('stack'), dir: getComputedStyle(document.querySelector('#groups')).flexDirection, cursor: getComputedStyle(document.querySelector('#gsplit')).cursor, turn: document.querySelector('#ptabsB .gturn')?.dataset.to || null })`).then(JSON.parse);
 const ids = ctx => Promise.all([0, 1].map(g => ctx.peix(`term(${g}).id`)));
 const fits = async ctx => { for (const g of [0, 1]) { const d = await ctx.peix(`term(${g})`); ctx.assert.ok(d.screen.w <= d.body.w + 0.5 && d.screen.h <= d.body.h + 0.5, `half ${g}: the screen (${d.screen.w}×${d.screen.h}) fits the body (${d.body.w}×${d.body.h})`); } };
 
@@ -28,12 +28,12 @@ export default async function (ctx) {
   ctx.assert.ok(r.grpB.y >= r.grp.y + r.grp.h, `the second half (y ${r.grpB.y}) is under the first (ends ${r.grp.y + r.grp.h})`);
   ctx.assert.ok(Math.abs(r.grp.w - r.groups.w) <= 1 && Math.abs(r.grpB.w - r.groups.w) <= 1, 'both halves are as wide as the column');
   ctx.assert.ok(r.gsplit.h === 6 && Math.abs(r.gsplit.w - r.groups.w) <= 1, `the divider is 6 px tall across the column (${r.gsplit.w}×${r.gsplit.h})`);
-  ctx.assert.equal(l.turn, '◫', 'the empty half\'s strip offers the side-by-side layout');
+  ctx.assert.equal(l.turn, 'side', 'the empty half\'s strip offers the side-by-side layout (◫)');
   await ctx.shot('stacked-empty');
   // …and turns it: side by side, then stacked again
   await ctx.evaluate(`document.querySelector('#ptabsB .gturn').click()`);
   await ctx.waitFor(`window.peix.state().stacked === false`, { what: 'the button turned it side by side' });
-  ctx.assert.equal((await layout(ctx)).turn, '⊟', 'and now offers the stack');
+  ctx.assert.equal((await layout(ctx)).turn, 'over', 'and now offers the stack (⊟)');
   await ctx.evaluate(`document.querySelector('#ptabsB .gturn').click()`);
   await ctx.waitFor(`window.peix.state().stacked === true`, { what: 'the button stacked it again' });
 

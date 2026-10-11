@@ -375,9 +375,9 @@
      nothing else moves. */
   #groups.stack { flex-direction: column; }
   #groups.stack > #gsplit { width: auto; height: 6px; cursor: row-resize; border-left: 0; border-right: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-  /* Which half the keys are in: a 2 px accent rule under its tabs (inset, so nothing moves by a pixel when it
-     lights up). Only worth saying when there are two halves. */
-  main.split .grp.on > .ptabs { box-shadow: inset 0 -2px 0 var(--accent); }
+  /* Which half the keys are in: a 2 px rule under its tabs (inset, so nothing moves by a pixel when it lights up), in
+     the chat's colour since 2026-10-11 (--tablit; the accent before). Only worth saying when there are two halves. */
+  main.split .grp.on > .ptabs { box-shadow: inset 0 -2px 0 var(--tablit); }
   .gempty { color: var(--muted); text-align: center; align-self: center; padding: 0 20px; font-size: 12.5px; line-height: 1.8; }
   /* A VS Code chat: read here, continued there. The whole pane says so — an outline, so nothing moves. */
   /* The pane is washed in the project's colour — none for a folder without one (transparent mixed with
@@ -976,7 +976,7 @@
   :root[data-alt] .card:hover .act:hover:has(.fx) { opacity: 1; color: #fff; background: var(--needs); }
   .act.tk.fg { color: #fff; background: var(--needs); }
   /* Every small control eases its hover (2026-09-27, night): the ink, the edge and the wash, 120 ms — the one rule. */
-  :is(.btn, .ptab, .hmi, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
+  :is(.btn, .ptab, .hmi, .hmore, .hprs, .nav, .gmore, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
   /* …and dips to 97 % while pressed (2026-10-11), springing back on release; a row of a menu or the project's line
      does not — a whole row shrinking reads as a glitch, not a press. */
   :is(.btn, .ptab, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, .gsep.lane[data-lane]):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
@@ -1210,7 +1210,7 @@
   .shead .hprs { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 1px 4px; margin: -3px 0; border: 1px solid transparent; border-radius: 7px; background: none; font: inherit; color: var(--muted); cursor: pointer; }
   /* taller than the cards', to be seen (2026-09-24); the edge was 2 px until the wash below made that its job
      ("we can go back on the extra thick border"), and keeps the stronger colour */
-  .shead .hpr { font-size: 11.5px; line-height: 20px; padding: 0 7px; border-radius: 5px;
+  .shead .hpr { font-size: 11.5px; line-height: 24px; padding: 0 7px; border-radius: 6px;   /* the tile's controls' 26 px (2026-10-11, Q1; 22 before) */
     /* …on a wash of their own colour, deeper at the top left (the same evening: "a bit of background gradient, to make
        it prettier") — since 2026-09-28 only a chip whose state is not known yet: the rest are solid (above) */
     background: linear-gradient(160deg, color-mix(in srgb, var(--prc, var(--muted)) var(--prg), var(--panel)), color-mix(in srgb, var(--prc, var(--muted)) 7%, var(--panel)) 80%); }
@@ -1345,25 +1345,49 @@
      opened and [VS Code ×] for its folder's editor — the pages the app's pane shows, a native view over the column
      below this strip. Shown only while there is more than the chat; with a page's tab on, ‹ › ↻ ↗ at the right
      drive its view through the shell. */
-  .ptabs { display: flex; gap: 4px; padding: 4px 10px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 11.5px; align-items: center; }
+  /* One family of controls (2026-10-11, the studies' Q1): every tab, nav button and field in the strip 26 px high with
+     a 6 px radius, the header's chips with them; no fill at rest, --ctl under the pointer; the tab in front, and the
+     rule of the half with the keys, in the chat's colour lifted to read on the panel (--tablit, as a card's --lift) —
+     never the accent, which is the board's call to you; the glyphs drawn (ICON's strokes). */
+  #chat { --tablit: oklch(from var(--repo, var(--accent)) min(l, .58) c h); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #chat { --tablit: oklch(from var(--repo, var(--accent)) max(l, .66) c h); } }
+  :root[data-theme="dark"] #chat { --tablit: oklch(from var(--repo, var(--accent)) max(l, .66) c h); }
+  .ptabs { display: flex; gap: 4px; height: 38px; padding: 0 8px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 12px; align-items: center; container-type: inline-size; }
   .ptabs[hidden] { display: none; }
   /* A half holding one tab has nothing to choose between (2026-09-28): split, its strip is a 2 px rule,
      the accent under the keys (the .on rule above fills it) and the line elsewhere — the same height either way, so
      moving the keys never resizes a terminal. A web page keeps its strip, for the address and ‹ › ↻ ↗; so does an empty
      half, where a tab is dropped. */
   .ptabs.lone { padding: 0; height: 2px; border: 0; background: var(--line); overflow: hidden; }
-  .ptab, .ptabgone { flex: none; font: inherit; font-size: 11.5px; padding: 2px 9px; border: 1px solid transparent; border-radius: 6px; background: var(--ctl); color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-  .ptab:hover { color: var(--ink); background: var(--ctl-hi); }
-  .ptab .ic { width: 12px; height: 12px; flex: none; fill: currentColor; margin-left: -2px; opacity: .8; }
-  .ptab .ic.burst { fill: var(--accent); opacity: 1; }
-  .ptab.on { color: var(--ink); background: color-mix(in srgb, var(--accent) 22%, transparent); }
+  .ptab, .ptabgone { position: relative; flex: none; font: inherit; font-size: 12px; font-weight: 500; height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+  .ptab:hover { color: var(--ink); background: var(--ctl); }
+  .ptab > .ic { width: 13px; height: 13px; flex: none; fill: currentColor; opacity: .75; }
+  .ptab > .ic.burst { fill: var(--accent); opacity: 1; }
+  .ptab.on { color: var(--ink); background: color-mix(in srgb, var(--tablit) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tablit) 42%, transparent); }
+  .ptab.on > .ic:not(.burst) { fill: var(--tablit); opacity: 1; }
+  /* A tab's × is its mark's place under the pointer, not a glyph at its end; a strip short of room folds the tabs
+     behind the one in front to their marks, the name in the tooltip. */
+  .ptab > .x { position: absolute; left: 9px; top: 50%; translate: 0 -50%; width: 15px; height: 15px; display: grid; place-items: center; border-radius: 4px; opacity: 0; color: var(--ink); }
+  .ptab:hover > .x { opacity: 1; background: var(--ctl-hi); }
+  .ptab:hover:has(> .x) > .ic { opacity: 0; }
+  .ptab > .x:hover { color: var(--needs); }
+  @container (max-width: 640px) { .ptab:not(.on) { font-size: 0; gap: 0; padding-inline: 6px; } .ptab:not(.on) > .x { display: none; } .ptab:not(.on):hover > .ic { opacity: .75; } }   /* a tab that is its mark alone is chosen by it, never closed: ⌥⌘W */
+  .ptabs .ic.st { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .ptab > .x .ic.st { width: 11px; height: 11px; stroke-width: 1.8; }
+  /* The page in front is its own address (2026-10-11, the studies' Q5): its tab grows into a field — the mark, where it
+     is (the host quieter than the path), and ‹ › ↻ ↗ inside it at its end. */
+  .ptab.addr { flex: 1 1 auto; min-width: 0; max-width: 560px; padding: 0 3px 0 10px; background: var(--ctl-hi); cursor: default; }
+  .ptab.addr .purl { flex: 1 1 auto; min-width: 0; margin: 0; color: var(--ink); text-align: left; }
+  .ptab.addr .purl .h { color: var(--muted); }
+  .ptab.addr .navs { margin: 0; flex: none; }
+  .ptab.addr .nav { width: 22px; height: 22px; border-radius: 5px; }
   /* the highlight on its way (tabMotion): a pill of the on tab's tint sliding over the strip; the tab it goes to plain
      until it lands; a closed tab's stand-in folding */
   .ptabs { position: relative; }
-  .ptabpill { position: absolute; left: 0; top: 4px; bottom: 4px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 22%, transparent); pointer-events: none; }
-  .ptab.on.slid { background: var(--ctl); }
+  .ptabpill { position: absolute; left: 0; top: 6px; height: 26px; border-radius: 6px; background: color-mix(in srgb, var(--tablit) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tablit) 42%, transparent); pointer-events: none; }
+  .ptab.on.slid { background: transparent; box-shadow: none; }
   .ptabgone { overflow: hidden; white-space: nowrap; pointer-events: none; }
-  .ptabs .pdrop { color: var(--muted); font-style: italic; padding: 2px 4px; }
+  .ptabs .pdrop { height: 26px; line-height: 24px; padding: 0 10px; border: 1px dashed var(--line); border-radius: 6px; color: var(--muted); }
   /* A tab on its way to the other half (2026-09-25): it stays in its strip, faded, while a copy follows the pointer,
      and the half under the pointer lights its strip — the one place the drop is always visible, the app's pane
      being a native view over the body. */
@@ -1372,18 +1396,22 @@
   body.tabdrag, body.tabdrag * { cursor: grabbing !important; user-select: none; }
   .grp.drop > .ptabs { background: color-mix(in srgb, var(--accent) 16%, var(--panel)); box-shadow: inset 0 0 0 1px var(--accent); }
   .grp.drop > .gbody { outline: 2px dashed var(--accent); outline-offset: -4px; }
-  .ptabs .nav.gclose { color: var(--muted); font-size: 12px; }
-  .ptabs .nav.gturn { font-size: 12px; }
-  .ptabs .nav.gclose:hover { color: var(--needs); border-color: var(--needs); }
-  .ptab .x { opacity: .5; font-size: 12px; line-height: 1; } .ptab .x:hover { opacity: 1; color: var(--needs); }
+  .ptabs .nav.gclose:hover { color: var(--needs); }
+  /* …and the half's ◫ ⨯ behind a ⋯ at the strip's end (Q5): a click puts them out beside it, the pointer leaving the
+     strip folds them again (.gopen) */
+  .ptabs .gmore { margin-left: auto; }
+  .ptabs .gacts { display: none; gap: 2px; }
+  .ptabs.gopen .gacts { display: flex; }
+  .ptabs.gopen .gmore { color: var(--ink); background: var(--ctl); }
   /* The address of the page on top (2026-09-21): without its scheme so the tail fits, selectable by hand, and a
      click anywhere on it copies the whole URL. It takes whatever room is left between the tabs and ‹ › ↻ ↗. */
-  .ptabs .purl { flex: 1 1 auto; min-width: 0; margin-left: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  .ptabs .purl { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     color: var(--muted); cursor: pointer; user-select: text; }
   .ptabs .purl:hover { color: var(--ink); }
-  .ptabs .navs { margin-left: auto; display: flex; gap: 2px; }
-  .ptabs .nav { font: inherit; font-size: 13px; line-height: 1; padding: 2px 6px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; }
-  .ptabs .nav:hover { color: var(--ink); background: var(--ctl); }
+  .ptabs .navs { display: flex; gap: 2px; }
+  .ptabs :is(.nav, .gmore) { flex: none; width: 26px; height: 26px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
+  .ptabs :is(.nav, .gmore):hover { color: var(--ink); background: var(--ctl); }
+  .ptabs .gmore .ic { width: 14px; height: 14px; fill: currentColor; }
   /* content-box on purpose: the fit addon reads getComputedStyle(parent).height/width and subtracts only the
      terminal element's own padding — under the page's border-box rule that is the padded size, one row or column too
      many when the remainder is short, and the bottom row (or last column) clipped by up to the padding (measured: 51
@@ -1559,7 +1587,7 @@
   #chg .lnote .row { display: flex; gap: 6px; justify-content: flex-end; }
   #chg .cempty { padding: 40px 20px; color: var(--muted); text-align: center; } #chg .cempty.sm { padding: 10px 16px; text-align: left; }
   /* the header's +n −n (2026-10-10), the drawn black's inks, before the your-move tag and the PR chips */
-  .shead .hdiff { display: inline-flex; gap: 5px; align-items: center; flex: none; height: 20px; padding: 0 7px; border: 1px solid transparent; border-radius: 4px; background: var(--ctl); font: 600 11.5px ui-monospace, monospace; cursor: pointer; }
+  .shead .hdiff { display: inline-flex; gap: 5px; align-items: center; flex: none; height: 26px; padding: 0 8px; border: 1px solid transparent; border-radius: 6px; background: var(--ctl); font: 600 11.5px ui-monospace, monospace; cursor: pointer; }
   .shead .hdiff:hover { background: var(--ctl-hi); }
   .shead .hdiff .a { color: var(--pr-open); } .shead .hdiff .d { color: var(--pr-closed); }
 
@@ -2591,6 +2619,14 @@
   // Inline SVG, not emoji: these sit at ~11px inside muted snippet text, where emoji come with their
   // own colours and weight and stop reading as part of the sentence. `currentColor` keeps them typographic.
   const ICON = {
+    // the tab strip's glyphs, drawn (2026-10-11, the studies' Q1; ‹ › ↻ ↗ ◫ ⊟ ⨯ × in text before): strokes, .st
+    back: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5 5.5 8 10 12.5"/></svg>',
+    forward: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5"/></svg>',
+    reload: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M12.6 6.4A4.9 4.9 0 1 0 12.9 9.6"/><path d="M13 3v3.5H9.5"/></svg>',
+    external: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 3.5h6v6M12.5 3.5 4 12"/></svg>',
+    side: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M8 2.5v11"/></svg>',
+    over: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M2.5 8h11"/></svg>',
+    close: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5 11.5 11.5M11.5 4.5 4.5 11.5"/></svg>',
     // the card's ✓ (2026-10-11; the text glyph before): a stroke, so a tick can draw it
     tick: '<svg class="ic tk" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.4 8.5 6.5 11.5 12.6 4.8"/></svg>',
     // done for good's ✕ (2026-10-11): a stroke like the ✓, which it stands in for while ⌥ is held over it
@@ -5739,12 +5775,14 @@
   // message, which is what gives it back after a board reload.
   const paneUrls = new Map();
   const bareUrl = u => u.replace(/^https?:\/\//, '');
+  /** An address as the strip shows it: no scheme, the host quieter than the rest (2026-10-11). */
+  const urlHtml = u => { const b = bareUrl(u), i = b.indexOf('/'); return i < 0 ? `<span class="h">${esc(b)}</span>` : `<span class="h">${esc(b.slice(0, i + 1))}</span>${esc(b.slice(i + 1))}`; };
   const paneUrl = k => paneUrls.get(k) || k.slice(k.indexOf(':') + 1);
   window.peixPaneUrl = (key, url) => {
     if (!url) return;
     paneUrls.set(key, url);
     for (const el of document.querySelectorAll('.purl')) {
-      if (el.dataset.key === key) { el.dataset.url = url; el.textContent = bareUrl(url); el.title = url + ' — click to copy'; el.closest('.ptabs')._drawn = null; }
+      if (el.dataset.key === key) { el.dataset.url = url; el.innerHTML = urlHtml(url); el.title = url + ' — click to copy'; el.closest('.ptabs')._drawn = null; }
     }
   };
   const ideKey = s => inApp && s?.cwd && state.paneIde.get(s.cwd) ? 'ide:' + state.paneIde.get(s.cwd) : null;
@@ -5850,11 +5888,18 @@
       if (el.hidden || lone || (g === 1 && !two)) { setHtml(el, ''); continue; }   // nothing drawn, nothing left over to be found
       const tip = two ? ' · drag it to the other half to move it there' : '';
       // each tab with its mark before its name (2026-10-08, as the agent apps' strips have them): Claude's burst, the
-      // shell's prompt, a PR's or a page's, VS Code's
-      const tab = (k, label, title, x, icon = '') => `<button class="ptab${cur === k ? ' on' : ''}${isPaneTab(k) ? ' pane' : ''}" data-tab="${esc(k)}" title="${esc(title + tip)}">${icon}${esc(label)}${x ? `<span class="x" title="${esc(x)}">×</span>` : ''}</button>`;
-      const navs = (isPaneTab(cur) ? '<button class="nav" data-nav="back" title="Back">‹</button><button class="nav" data-nav="forward" title="Forward">›</button><button class="nav" data-nav="reload" title="Reload">↻</button><button class="nav" data-nav="external" title="Open this page in your browser">↗</button>' : '')
-        + (two ? `<button class="nav gturn" title="${stackNow() ? 'The halves side by side · ⌘1 ⌘2' : 'The halves one over the other · ⌥⌘1 ⌥⌘2'}">${stackNow() ? '◫' : '⊟'}</button>` : '')
-        + (two ? '<button class="nav gclose" title="Close this half — the other one becomes the whole column · ⌘W">⨯</button>' : '');
+      // shell's prompt, a PR's or a page's, VS Code's; its × drawn over the mark, under the pointer (2026-10-11, Q1); the
+      // page in front its own address, with ‹ › ↻ ↗ in it (Q5) — a div, since it holds buttons
+      const tab = (k, label, title, x, icon = '') => {
+        const close = x ? `<span class="x" title="${esc(x)}">${ICON.close}</span>` : '';
+        if (cur === k && isPaneTab(k)) return `<div class="ptab on pane addr" data-tab="${esc(k)}" title="${esc(title + tip)}">${icon}<span class="purl" data-key="${esc(k)}" data-url="${esc(paneUrl(k))}" title="${esc(paneUrl(k))} — click to copy">${urlHtml(paneUrl(k))}</span><span class="navs">`
+          + `<button class="nav" data-nav="back" title="Back">${ICON.back}</button><button class="nav" data-nav="forward" title="Forward">${ICON.forward}</button><button class="nav" data-nav="reload" title="Reload">${ICON.reload}</button><button class="nav" data-nav="external" title="Open this page in your browser">${ICON.external}</button></span>${close}</div>`;
+        return `<button class="ptab${cur === k ? ' on' : ''}${isPaneTab(k) ? ' pane' : ''}" data-tab="${esc(k)}" title="${esc(title + tip)}">${icon}${esc(label)}${close}</button>`;
+      };
+      // the half's own, ◫ (or ⊟) and ⨯, behind a ⋯ at the strip's end (Q5)
+      const half = two ? `<button class="gmore" title="This half: turn the split, close it">${ICON.more}</button><span class="gacts">`
+        + `<button class="nav gturn" data-to="${stackNow() ? 'side' : 'over'}" title="${stackNow() ? 'The halves side by side · ⌘1 ⌘2' : 'The halves one over the other · ⌥⌘1 ⌥⌘2'}">${stackNow() ? ICON.side : ICON.over}</button>`
+        + `<button class="nav gclose" title="Close this half — the other one becomes the whole column · ⌘W">${ICON.close}</button></span>` : '';
       const html = keys.map(k =>
         k === 'chat' ? tab(k, termLive(s) ? 'claude' : 'chat', `${termLive(s) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C`, '', ICON.claude)
         : k === 'shell' ? tab(k, shName(), `A ${shName()} in ${s.cwd || 'its folder'} · ⌥⌘T`, 'End this shell', ICON.term)
@@ -5862,8 +5907,7 @@
         : k.startsWith('gh:') ? tab(k, paneLabel(k), GH_PR.test(k.slice(3)) ? `${k.slice(3)} · ⌥⌘G` : k.slice(3), 'Close this page', GH_PR.test(k.slice(3)) ? ICON.pr : ICON.globe)
         : tab(k, 'VS Code', `${s.cwd} in VS Code Web · ⌥⌘E`, 'Close the editor', ICON.vscode)).join('')
         + (two && !keys.length ? '<span class="pdrop">drop a tab here</span>' : '')
-        + (isPaneTab(cur) ? `<span class="purl" data-key="${esc(cur)}" data-url="${esc(paneUrl(cur))}" title="${esc(paneUrl(cur))} — click to copy">${esc(bareUrl(paneUrl(cur)))}</span>` : '')
-        + (navs ? `<span class="navs">${navs}</span>` : '');
+        + half;
       // the strip moves (2026-10-11): what it held is read before it is drawn anew, for tabMotion — only when it will be
       const prev = el._drawn !== html && el._sid === s?.id && !REDUCED.matches ? [...el.querySelectorAll('.ptab[data-tab]')].map(b => ({ k: b.dataset.tab, l: b.offsetLeft, w: b.offsetWidth, on: b.classList.contains('on'), html: b.innerHTML })) : null;
       if (setHtml(el, html) && prev?.length) tabMotion(el, prev);   // a strip coming out of hiding just appears
@@ -5886,7 +5930,7 @@
       if (has.has(p.k)) return;
       const after = prev.slice(i + 1).map(q => now.find(b => b.dataset.tab === q.k)).find(Boolean);
       const g = html2el(`<span class="ptabgone" aria-hidden="true">${p.html}</span>`); g.querySelector('.x')?.remove();
-      el.insertBefore(g, after || el.querySelector('.purl, .navs, .pdrop'));
+      el.insertBefore(g, after || el.querySelector('.pdrop, .gmore'));
       g.animate([{ width: p.w + 'px', opacity: 1 }, { width: '0px', paddingLeft: '0px', paddingRight: '0px', marginLeft: '-4px', opacity: 0 }], { duration: 180, easing: EASE_OUT, fill: 'forwards', id: 'tabfold' }).onfinish = () => g.remove();
       noteMotion(p.k, 'tabfold');
     });
@@ -5929,6 +5973,7 @@
   $('#groups').addEventListener('click', e => {
     const strip = e.target.closest('.ptabs'); if (!strip) return;
     const g = strip.id === 'ptabsB' ? 1 : 0;
+    if (e.target.closest('.gmore')) return void strip.classList.toggle('gopen');
     if (e.target.closest('.gclose')) return closeHalf(g);
     const s = state.sessions.get(state.current); if (!s) return;
     if (e.target.closest('.gturn')) return stackSplit(s, !stacked.has(s.id));
@@ -5939,6 +5984,7 @@
     if (e.target.closest('.x')) return closeTab(s, k);
     openTab(s, k);
   });
+  for (const id of ['#ptabs', '#ptabsB']) $(id).addEventListener('pointerleave', e => e.currentTarget.classList.remove('gopen'));   // ⋯'s ◫ ⨯ fold again
   // A click anywhere in a half is being in it — the keys follow the pointer, as they do between editor groups.
   // Not the strips: their own click already says which half, and re-rendering them under a mousedown would take
   // the button out from under the click that followed it.
@@ -5965,7 +6011,7 @@
       drag = null;
     };
     $('#groups').addEventListener('pointerdown', e => {
-      const b = e.target.closest('.ptab'); if (!b || e.button !== 0 || e.target.closest('.x')) return;
+      const b = e.target.closest('.ptab'); if (!b || e.button !== 0 || e.target.closest('.x, .nav, .purl')) return;   // the address and its buttons are not the tab's handle
       if (!splitNow()) return;
       drag = { k: b.dataset.tab, from: b.closest('.ptabs').id === 'ptabsB' ? 1 : 0, x: e.clientX, y: e.clientY, b, ghost: null };
     });
