@@ -7,7 +7,8 @@
 // night: "just replied … left a comment and still says your move"). And the card itself (the chip was all): a line
 // under the card — a *your move* tag, the PR and why — at every card size, the PR chips last in the top row, where the
 // F would be, solid whatever their turn, the reason in the chat header too, and the chat ranked by the move — above a
-// newer chat, under today's line.
+// newer chat, under today's line. And done for good (2026-10-11): ⌥-click on the ✓ forgets the chat's PRs — a push is
+// nothing to it, the PR is not asked about for it — until ↩.
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -160,6 +161,47 @@ export default async function (ctx) {
     ctx.assert.equal(out.back.rank, 1, 'the chat falls back to where its own words put it');
     ctx.assert.equal(await ctx.evaluate(`window.__alerts.length`), 0, 'and no alert for it');
     ctx.assert.ok(moved, 'the move had a time');
+
+    // done for good (2026-10-11): ⌥-click on the ✓ — the chat's PRs are forgotten while that tick stands: ana pushes
+    // again and nothing comes of it, nor is the PR asked about for it; ↩ counts them again, and the push is a move
+    await ctx.settle();
+    ctx.assert.match(await ctx.evaluate(`${card}.querySelector('.act[data-act="done"]').title`), /⌥-click: done for good/, 'the ✓ says so');
+    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#hmenu #forGoodBtn')?.textContent`), 'done for good⌥-click ✓', 'and ··· has it as a row');
+    // ⌥ held over it, the ✓ is done for good's ✕, in red; let go, the ✓ again — then a real ⌥-click
+    const tk = await ctx.evaluate(`(r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))(${card}.querySelector('.act[data-act="done"]').getBoundingClientRect())`);
+    const shows = () => ctx.evaluate(`JSON.stringify((b => ({ alt: document.documentElement.hasAttribute('data-alt'), tick: getComputedStyle(b.querySelector('.tk:not(.fx)')).display,
+      x: getComputedStyle(b.querySelector('.fx')).display, color: getComputedStyle(b).color, red: getComputedStyle(document.documentElement).getPropertyValue('--needs').trim() }))(${card}.querySelector('.act[data-act="done"]')))`).then(JSON.parse);
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: tk.x, y: tk.y, modifiers: 1 });
+    await ctx.settle();
+    out.altHover = await shows();
+    ctx.assert.deepEqual([out.altHover.alt, out.altHover.tick, out.altHover.x], [true, 'none', 'block'], `⌥ over the ✓ shows the ✕: ${JSON.stringify(out.altHover)}`);
+    await ctx.shot('3-alt-hover', await list());
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: tk.x, y: tk.y + 1, modifiers: 0 });
+    out.plainHover = await shows();
+    ctx.assert.deepEqual([out.plainHover.alt, out.plainHover.tick, out.plainHover.x], [false, 'block', 'none'], 'let go, the ✓');
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: tk.x, y: tk.y, button: 'left', clickCount: 1, modifiers: 1 });
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: tk.x, y: tk.y, button: 'left', clickCount: 1, modifiers: 1 });
+    ctx.assert.equal(await ctx.evaluate(`${card}?.querySelector('.act.tk.fg') ? 'fg' : null`), 'fg', 'the ✕ is what fills');
+    await ctx.waitFor(`window.peix.session('${two.id}').forGood === true && window.peix.session('${two.id}').done === true`, { what: 'the chat done for good' });
+    await ctx.settle();
+    out.forGood = await ctx.evaluate(`JSON.stringify({ cls: ${card}.className, undo: ${card}.querySelector('.act[data-act="reopen"]').title, filter: getComputedStyle(${card}.querySelector('.tprs')).filter })`).then(JSON.parse);
+    ctx.assert.match(out.forGood.cls, /\bdone forgood\b/);
+    ctx.assert.match(out.forGood.undo, /^Done for good/, '↩ says it');
+    ctx.assert.equal(out.forGood.filter, 'grayscale(1)', 'its PR chips in grey');
+    await ctx.shot('4-for-good', await list());
+    write({ headRefOid: 'C', pushes: { nodes: [commit(ago(120), 'ana'), commit(ago(0), 'ana')] }, comments: { nodes: [{ author: user('me'), createdAt: ago(1) }] } });
+    await ctx.sleep(3000);   // the watch is half a second: asked for anyone, it would have seen the push by now
+    out.forgotten = await look();
+    ctx.assert.equal(out.forgotten.done, true, 'the push brings nothing back');
+    ctx.assert.equal(out.forgotten.turn12, 'them', 'nor is the PR asked about');
+    ctx.assert.equal(await ctx.evaluate(`window.__alerts.length`), 0, 'no alert');
+    await ctx.evaluate(`${card}.querySelector('.act[data-act="reopen"]').click()`);
+    await ctx.waitFor(`window.peix.session('${two.id}').done === false && ${chip(12)}?.dataset.turn === 'you'`, { timeout: 10_000, what: 'unticked, the PR asked about again and at your move' });
+    await ctx.settle();
+    out.unforgot = await look();
+    ctx.assert.equal(out.unforgot.move, '#12 · pushed since your review', 'the card says the move');
+    ctx.assert.equal(out.unforgot.rank, 0, 'and ranks by it');
+    ctx.assert.equal(await ctx.evaluate(`window.peix.session('${two.id}').forGood`), false);
     return out;
   } finally {
     rmSync(dir, { recursive: true, force: true });

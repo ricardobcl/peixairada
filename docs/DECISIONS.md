@@ -5,6 +5,33 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-11, late morning — done for good
+
+Ricardo: "why do I have 4 [one service's] chats always poping up on my feed? right now their are after this chat. are
+the PRs associated really having new events? if so, we should have a way to permanently say: done, forgot about this
+and PR events".
+
+* **They were real moves, four chats deep**: four chats in that service's folder had reviewed a colleague's stack of
+  single-commit PRs — five to seventeen PRs named a chat. The author amends and force-pushes them: the base of the
+  stack four times in five days since the review, the last that morning with real changes (three files' patches
+  differ). Each new head is *pushed since your review*, a move, and a move un-ticks every chat that names the PR and
+  ranks it by the move's time — three of the four had been ticked two days before, and all four rose under the chat
+  in front, together, at every push.
+* **Done for good, per chat**: ⌥-click on the card's ✓, *done for good* in ··· (a chat with PRs only), or the
+  launcher's action. While that tick stands the chat's PRs are forgotten: a move un-ticks nothing, ranks nothing,
+  alerts nothing, and the PR is not asked about for it — a PR that only such chats name is not polled at all. Per chat,
+  as asked, not per PR: the same PR still counts in a chat where its review is going on, and a PR-wide mute would
+  silence that too. The chips stay, in grey; opened, the header still says whose move the PR is at — that is the PR's.
+* **⌥ turns the ✓ into an ✕** (Ricardo, next: "when clicking on option and hovering, the icon should change form the
+  current "done" to an X for delete"): held over the ✓ of a chat with PRs, white on red — what the click will do,
+  before it is done; let go, the ✓ again. The ✕ is what fills and draws when clicked, and ··· *done for good* wears it.
+  ⌥ is read off the keys and off the pointer's own events, since in the app a key pressed with a page of the pane in
+  front never reaches the board. A chat with no PRs keeps its ✓: for it, done for good is done.
+* **It ends with its tick**: the mark is the done mark it came with, so a word in the chat (back at work in it), ↩, or
+  a tick of another kind (a plain ✓, a /clear's) is a plain chat again. Nothing to forget by hand.
+* **Not done: telling a rebase from a change.** A force-push that only rebases is a move all the same; telling them
+  apart wants each push's patch, a call per PR per push. This morning's push changed code, so it would not have helped.
+
 ## Decisions of 2026-10-11, later — the status bar trimmed, lanes that fold, the live notch taken out
 
 Ricardo, having lived with the morning's list: "status bar: add a clock at far right · remove "X live", "X drawers .

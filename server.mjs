@@ -106,6 +106,10 @@ let indexing = true; // suppress notifications while doing the initial scan
 // "Done" marks: sessionId -> ISO time it was marked. A mark only counts while nothing newer has
 // happened in the session, so a new prompt/reply automatically pulls the card back onto the board.
 let doneMarks = {};
+// Done for good (2026-10-11): sessionId -> the done mark it came with. While that tick stands the chat's PRs are
+// forgotten — a move on one neither un-ticks it, ranks it, alerts on it nor has it asked about (`forgotten`). A tick of
+// any other kind, a word in the chat or ↩ ends it.
+let forGoodMarks = {};
 // Custom projects: id -> { id, name, cwds, createdAt }. A name over one or more folders — multi-repo
 // work, an investigation. Folders themselves need no record: they come from the sessions' cwds.
 let projects = {};
@@ -158,6 +162,7 @@ const stateFrom = existsSync(STATE_FILE) || process.env.STATE_FILE ? STATE_FILE 
 try {
   const st = JSON.parse(readFileSync(stateFrom, 'utf8'));
   doneMarks = st.done || {};   // files from before 2026-09-19 also carry a `pins` key — ignored, gone on the next save
+  forGoodMarks = st.forGood && typeof st.forGood === 'object' ? st.forGood : {};
   projects = st.projects || {};
   titles = st.titles || {};
   pinned = Array.isArray(st.pinned) ? st.pinned.filter(k => typeof k === 'string') : [];
@@ -180,16 +185,20 @@ function saveState() {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-    writeFileSync(tmp, JSON.stringify({ done: doneMarks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, awake: awakeOn }, null, 1));
+    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, awake: awakeOn }, null, 1));
     renameSync(tmp, STATE_FILE);
   } catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
 // A tick lasts until something newer happens in the chat — or on one of its PRs, once that PR has come round to you
-// (a push since your review, a reply, a review on yours: prTurn), which is what a tick after a review waits for.
+// (a push since your review, a reply, a review on yours: prTurn), which is what a tick after a review waits for. Not
+// a tick for good: its PRs are forgotten.
+const forGood = s => !!doneMarks[s.id] && forGoodMarks[s.id] === doneMarks[s.id];
 const isDone = s => {
   const at = doneMarks[s.id];
-  return !!at && at >= (s.lastActivity || '') && s.prs.every(p => !p.turn?.you || at >= p.turn.movedAt);
+  return !!at && at >= (s.lastActivity || '') && (forGood(s) || s.prs.every(p => !p.turn?.you || at >= p.turn.movedAt));
 };
+/** Done for good, and still done: its PRs move nothing of the chat's. */
+const forgotten = s => forGood(s) && isDone(s);
 
 // ---- the board's setup: CONFIG_FILE, the settings' Setup ------------------------------------------------------------
 // What had been written into this file and the page for one Mac — the directory the repos live in and the GitHub org
@@ -594,7 +603,7 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     env: envs[s.id] || mine.term?.task || null,   // the launcher it was started with (⌥⌘O groups oracle's chats by it)
     // the other live processes on this chat, and who wrote its last turn — the page's "VS Code too" warning
     rivals: s.rivals, tailEntrypoint: s.entrypoint, tailEntrypointAt: s.entrypointAt,
-    done: isDone(s), doneAt: doneMarks[s.id] || null,
+    done: isDone(s), doneAt: doneMarks[s.id] || null, forGood: forgotten(s),
     // its folder not there, and the repo a clone would bring it back from (2026-10-09; the resume bar says so before
     // the resume clones it) — asked of a chat with no claude only: one running has its folder
     ...(!s.alive && s.cwd && !existsSync(s.cwd) ? { folderMissing: true, cloneRef: cloneFor(s.cwd)?.ref || null } : {})
@@ -859,7 +868,7 @@ function prWatch(url, now = Date.now()) {
  */
 function duePrs(list, now = Date.now()) {
   const every = new Map();   // url -> the shortest interval a chat mentioning it asks for
-  for (const s of [...list].sort((a, b) => touchedAt(b) - touchedAt(a))) {
+  for (const s of [...list].filter(s => !forgotten(s)).sort((a, b) => touchedAt(b) - touchedAt(a))) {   // a chat done for good asks nothing
     const ms = prEvery(s, now);
     for (const pr of s.prs) if (!(every.get(pr.url) <= ms)) every.set(pr.url, ms);
   }
@@ -897,8 +906,9 @@ function setPrInfo(url, state, title, found, now = Date.now(), people, missing =
     const pr = s.prs.find(p => p.url === url);
     if (pr.state !== state || pr.title !== title || pr.checks !== checks || JSON.stringify(pr.turn ?? null) !== same || JSON.stringify(pr.people ?? null) !== faces) { pr.state = state; pr.title = title; pr.turn = turn; pr.people = people; pr.checks = checks; schedulePush(s); }
   }
-  // Said once, as the ball comes back to you — or when a chat you had ticked comes back with it.
-  if (moved && (from === 'them' || ticked.some(s => !isDone(s)))) notifyPr(url, turn, chats);
+  // Said once, as the ball comes back to you — or when a chat you had ticked comes back with it; never on a chat done
+  // for good, and not at all when every chat that mentions it is.
+  if (moved && (from === 'them' || ticked.some(s => !isDone(s)))) notifyPr(url, turn, chats.filter(s => !forgotten(s)));
 }
 
 function drainPrQueue() {
@@ -2835,9 +2845,9 @@ const BODY_MAX = 1e6;
 const jsonBody = req => readRaw(req, BODY_MAX).then(b => { const v = JSON.parse(b.toString('utf8') || '{}'); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; }).catch(() => ({}));
 
 /** Newest first by the chat's last word — yours or Claude's reply, whichever came later, or a PR come round to you (its
- *  turn's movedAt) — the board's own order (`byWord` in index.html). Over summaries. */
+ *  turn's movedAt; not on a chat done for good) — the board's own order (`byWord` in index.html). Over summaries. */
 const wordAt = s => {
-  const u = String(s.lastUserAt || ''), r = String(s.lastReplyAt || ''), m = s.prs.reduce((a, p) => (p.turn?.you && p.turn.movedAt > a ? p.turn.movedAt : a), '');
+  const u = String(s.lastUserAt || ''), r = String(s.lastReplyAt || ''), m = s.forGood ? '' : s.prs.reduce((a, p) => (p.turn?.you && p.turn.movedAt > a ? p.turn.movedAt : a), '');
   const w = (u > r ? u : r) || String(s.lastActivity || '') || String(s.startedAt || '');   // an empty chat: its start (the page's copy agrees)
   return m > w ? m : w;
 };
@@ -2976,15 +2986,17 @@ const server = createServer(async (req, res) => {
       const body = await jsonBody(req);
       const done = body.done !== false;
       if (done) {
-        doneMarks[s.id] = new Date().toISOString();
+        const at = doneMarks[s.id] = new Date().toISOString();
+        if (body.forGood === true) forGoodMarks[s.id] = at; else delete forGoodMarks[s.id];   // done for good (2026-10-11)
         // Done means done: the claude behind it stops too (2026-09-20) — the drawer's, and one live elsewhere (SIGTERM,
         // as closing that terminal would; a VS Code tab goes dead). Not awaited: the registry notices on its own.
         for (const t of terms.values()) if (t.sessionId === s.id && t.exited === null) killTerm(t);
         if (s.alive && s.live?.pid) for (const p of [s.live, ...(s.rivals || [])]) endClaude(p).then(() => loadRegistry());
-      } else delete doneMarks[s.id];
+      } else { delete doneMarks[s.id]; delete forGoodMarks[s.id]; }
       for (const id of Object.keys(doneMarks)) if (!sessions.has(id)) delete doneMarks[id]; // prune forgotten sessions
+      for (const id of Object.keys(forGoodMarks)) if (forGoodMarks[id] !== doneMarks[id]) delete forGoodMarks[id];   // and ticks since replaced
       saveState(); schedulePush(s);
-      return json(res, 200, { ok: true, done: isDone(s) });
+      return json(res, 200, { ok: true, done: isDone(s), forGood: forgotten(s) });
     }
     if (req.method === 'GET' && p === '/api/projects') return json(res, 200, { projects: projectList() });
     if (req.method === 'POST' && p === '/api/projects') {
@@ -3126,7 +3138,7 @@ server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTe
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {

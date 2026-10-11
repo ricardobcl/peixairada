@@ -7,7 +7,7 @@ import { tmpDir } from '../lib/testserver.mjs';
 
 const tmp = tmpDir('peix-test-');
 process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
-const { prTurn, prPeople, setPrInfo, isDone, doneMarks, newSession, notePr, sessions, prStatus, prChecks } = await import('../server.mjs');
+const { prTurn, prPeople, setPrInfo, isDone, doneMarks, forGoodMarks, newSession, notePr, sessions, prStatus, prChecks, summary, duePrs } = await import('../server.mjs');
 
 const t = h => new Date(Date.UTC(2026, 8, 28, h)).toISOString().replace('.000', '');   // GitHub writes no milliseconds
 const user = login => ({ login, __typename: 'User' });
@@ -89,6 +89,25 @@ test('a move un-ticks the chats that mention the PR, weighed by when the board l
   tick(16); setPrInfo(url, 'merged', 'PR', null, at(17));
   assert.equal(s.prs[0].turn, null, 'merged: no turn');
   assert.equal(isDone(s), true);
+});
+
+test('done for good: a move un-ticks nothing, ranks nothing and asks nothing — while that tick stands', () => {
+  const url = 'https://github.com/acme/r/pull/10', at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+  const s = newSession('good', '/x/good.jsonl'), other = newSession('other', '/x/other.jsonl');
+  for (const c of [s, other]) { c.lastActivity = new Date(at(10)).toISOString(); notePr(c, url, c.lastActivity, 'user'); sessions.set(c.id, c); }
+  setPrInfo(url, 'open', 'PR', prTurn(pr(), 'me'), at(11));
+  doneMarks[s.id] = forGoodMarks[s.id] = new Date(at(11, 30)).toISOString();
+  ctxIs(true);
+  setPrInfo(url, 'open', 'PR', prTurn(pr({ headRefOid: 'B', pushes: { nodes: [commit(9, 'ana'), commit(12, 'ana')] } }), 'me'), at(13));
+  assert.equal(s.prs[0].turn.you, true, 'the PR is at your move all the same');
+  ctxIs(true, 'the push leaves it done');
+  assert.deepEqual(duePrs([s], at(14)), [], 'and its PRs are asked about for no one');
+  assert.deepEqual(duePrs([s, other], at(14)), [url], '…but for a chat that still counts them, at its pace');
+  doneMarks[s.id] = new Date(at(14)).toISOString();
+  assert.equal(summary(s).forGood, false, 'a plain tick since is a plain tick');
+  doneMarks[s.id] = forGoodMarks[s.id]; s.lastActivity = new Date(at(15)).toISOString();
+  assert.deepEqual([isDone(s), summary(s).forGood], [false, false], 'a word in the chat ends it, as it ends the tick');
+  function ctxIs(done, why) { assert.deepEqual([isDone(s), summary(s).forGood, summary(s).done], [done, done, done], why); }
 });
 
 test('a PR the board has never looked at moves at GitHub\'s time for it, and one it cannot see keeps its record', () => {

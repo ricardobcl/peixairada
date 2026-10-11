@@ -159,7 +159,14 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   `kind: 'pr'` with a `heading`, to the chat touched last (`notifyPr`) — on the way from `them`, or when a ticked chat
   comes back. `movedAt` is `prTurns` in the state file (`moveTurn`): GitHub's time for a PR's first look, the board's
   clock for every change after, so a restart moves nothing. **The PR is watched by its own newest event as well**
-  (`PR_WATCH`: 2 min within two days, 10 within two weeks; `PR_WATCH_MS`), however quiet its chat.
+  (`PR_WATCH`: 2 min within two days, 10 within two weeks; `PR_WATCH_MS`), however quiet its chat. **Not a chat ticked
+  done for good** (2026-10-11: ⌥-click on the card's ✓, ··· *done for good* on a chat with PRs, the launcher;
+  `forGoodMarks` → `forGood` in the state file, the done mark it came with, so it holds while that tick does — a word
+  in the chat, another tick or ↩ ends it): `forgotten(s)` — its PRs neither un-tick it, rank it (`wordAt`, the page's
+  `movedAt`), alert on it nor are asked about for it (`duePrs`); `forGood` on the summary, its chips grey. **⌥ held
+  over the ✓ of a chat with PRs shows its ✕**, white on red, and the ✕ is what draws when clicked (`ICON.forget` beside
+  the tick in the markup, `<html data-alt>` from `altHeld` — the keys and the pointer's own `altKey`, since in the app a
+  key pressed with the pane in front never reaches the page; `.fg`).
   → `test/pr-turn.test.mjs`, `scripts/scenarios/pr-turn.mjs`.
 * **A PR knows who had a hand in it** (2026-09-29): every person in `PR_FIELDS` comes with `avatarUrl(size: 48)`
   (`WHO`; a scalar, no cost), and `prPeople` — pure — gives the author, reviewers (not pending), commenters and pushers,
@@ -655,8 +662,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   has passed, and on the way back to a hidden page, **backing off on failures**; a failure keeps the last numbers,
   `.stale`. The server's `USAGE=off` answers `off: true` and the bar hides — every test server.
   → `scripts/scenarios/usage-bar.mjs`.
-* **State lives in four places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done ticks,
-  named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, PR
+* **State lives in four places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done ticks
+  and which are for good, named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, PR
   turns; `STATE_FILE` overrides) and the user's `~/.config/peixairada/config.json` (the setup, below), both shared by
   the app and every browser; the browser's `localStorage` `peixairada-prefs`
   (selected project, the lanes folded, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the theme for each appearance, the tiles and their stack, the changes tab's scope, the person the list is narrowed to, ⌥ as Meta, auto-resume, the edge light, the light under the pointer, the floating header, sounds, the status bar and what it adds, the faces folded, drawer open/height — the keys are the `prefs` literal,

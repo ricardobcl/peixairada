@@ -783,6 +783,8 @@
      them is a grey, so the cards still stand out of it. The light theme's ground is light enough as it is. */
   /* (no grey ground under a list of near-black cards since 2026-10-09: the ink cards are the panel, whatever their colour) */
   .card.done { opacity: .55; }
+  /* done for good (2026-10-11): its PRs no longer count here, and their chips say so in grey */
+  .card.forgood .tprs { filter: grayscale(1); }
   .card.gone { opacity: .8; }   /* no live process: still ready, but a resume is coming */
   #slist > .leaving { pointer-events: none; overflow: hidden; }   /* a card on its way out, wrapped (leaveCard): it folds shut where it stood and takes no click; `#slist > .card` never sees it */
   .card .top { display: flex; align-items: center; gap: 7px; min-width: 0; min-height: 18px; margin-bottom: 2px; }
@@ -960,6 +962,13 @@
   .act.tk { opacity: 1; color: #fff; background: var(--idle); }
   .act.tk .tk path { stroke-dasharray: 14; animation: tkdraw .2s ease-out both; }
   @keyframes tkdraw { from { stroke-dashoffset: 14; } to { stroke-dashoffset: 0; } }
+  /* ⌥ held over the ✓ of a chat with PRs (2026-10-11): done for good's ✕, white on red — and the ✕ is what draws when
+     ⌥-clicked (.fg, tickDone). <html data-alt> is ⌥ held, off the keys and the pointer's own events (altHeld). */
+  .act .fx { display: none; }
+  :root[data-alt] .act:hover .fx, .act.fg .fx { display: block; }
+  :root[data-alt] .act:hover:has(.fx) .tk:not(.fx), .act.fg .tk:not(.fx) { display: none; }
+  :root[data-alt] .card:hover .act:hover:has(.fx) { opacity: 1; color: #fff; background: var(--needs); }
+  .act.tk.fg { color: #fff; background: var(--needs); }
   /* Every small control eases its hover (2026-09-27, night): the ink, the edge and the wash, 120 ms — the one rule. */
   :is(.btn, .ptab, .hmi, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
   /* …and dips to 97 % while pressed (2026-10-11), springing back on release; a row of a menu or the project's line
@@ -1148,6 +1157,7 @@
   #hmenu .hmi:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 12%, transparent); }
   #hmenu .hmi:disabled { opacity: .45; cursor: default; }
   #hmenu .hmi .ic { width: 15px; height: 15px; fill: currentColor; justify-self: center; }
+  #hmenu .hmi .ic.tk { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }   /* done for good's ✓, a stroke as on the card */
   #hmenu .hmi .dot { justify-self: center; }
   #hmenu .hmi .gl { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; font-weight: 700; letter-spacing: -1px; justify-self: center; }
   #hmenu .hmi .k { font-size: 11px; color: var(--muted); }
@@ -2533,6 +2543,8 @@
   const ICON = {
     // the card's ✓ (2026-10-11; the text glyph before): a stroke, so a tick can draw it
     tick: '<svg class="ic tk" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.4 8.5 6.5 11.5 12.6 4.8"/></svg>',
+    // done for good's ✕ (2026-10-11): a stroke like the ✓, which it stands in for while ⌥ is held over it
+    forget: '<svg class="ic tk fx" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.6 4.6 11.4 11.4M11.4 4.6 4.6 11.4"/></svg>',
     // a crystal ball: the oracle project's mark (see PROJECT_ICONS)
     oracle: '<svg class="ic pic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 1.5a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm-2 2a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2Z"/><path d="M4.6 12.3h6.8l1.3 2.2H3.3Z"/></svg>',
     you: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 8.2a3.1 3.1 0 1 0 0-6.2 3.1 3.1 0 0 0 0 6.2Zm0 1.4c-3.1 0-5.6 1.7-5.6 3.8V14h11.2v-.6c0-2.1-2.5-3.8-5.6-3.8Z"/></svg>',
@@ -2967,7 +2979,8 @@
   // transcript) falls back to its last activity, not the bottom.
   // A PR come round to you is a word too (2026-09-28): the chat rises to the top of its group, under today's line, from
   // when the board learnt of the move (the server's turn.movedAt) — the server's copy agrees.
-  const movedAt = s => (s.prs || []).reduce((m, p) => (p.turn?.you && p.turn.movedAt > m ? p.turn.movedAt : m), '');
+  // Not on a chat done for good (2026-10-11): its PRs are forgotten.
+  const movedAt = s => s.forGood ? '' : (s.prs || []).reduce((m, p) => (p.turn?.you && p.turn.movedAt > m ? p.turn.movedAt : m), '');
   // Kept per summary (a new object with every update): the sort asked it twice a comparison, a thousand times a render.
   const words = new WeakMap();
   const wordAt = s => { let w = words.get(s); if (w === undefined) { const u = String(s.lastUserAt || ''), r = String(s.lastReplyAt || ''), m = movedAt(s); w = (u > r ? u : r) || String(s.lastActivity || '') || String(s.startedAt || ''); if (m > w) w = m; words.set(s, w); } return w; };   // an empty chat: its start
@@ -3876,8 +3889,9 @@
     // after your last touch — a prompt, an answer, an Escape; before that it is the previous turn's, and yours leads.
     const replyLast = showReply && String(s.lastReplyAt || '') >= String(s.lastUserAt || '');
     const older = who => s.lastPrompt && showReply && (who === 'you') === replyLast ? ' older' : '';
-    const act = s.done ? `<button class="act" data-act="reopen" title="Untick — bring it back">↩</button>`
-      : canTick(s) ? `<button class="act" data-act="done" title="Tick as done (persisted; comes back on new activity)">${ICON.tick}</button>` : '';
+    // ⌥-click is done for good (2026-10-11): the chat's PRs are forgotten — a move on one no longer brings it back
+    const act = s.done ? `<button class="act" data-act="reopen" title="${s.forGood ? 'Done for good — its PRs no longer bring it back. Untick to bring it back' : 'Untick — bring it back'}">↩</button>`
+      : canTick(s) ? `<button class="act" data-act="done" title="${s.prs?.length ? 'Tick as done — it comes back on new activity, or when one of its PRs comes round to you. ⌥-click: done for good, its PRs forgotten' : 'Tick as done (persisted; comes back on new activity)'}">${ICON.tick}${s.prs?.length ? ICON.forget : ''}</button>` : '';
     // The ✓ / ↩ and the PR chips end the top row — the project name's height; the F for Fable (2026-09-27) and the
     // age stand beside the title since 2026-09-28, where there is more room.
     const fable = onFable(s) ? `<span class="fable" title="on Fable — ${esc(s.model)}, the model Claude last answered with">${ICON.fable}</span>` : '';
@@ -3889,7 +3903,7 @@
     const where = !s.alive || inVsCode(s) ? ''
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip">${entryLabel(s)}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : '');
-    return `<div class="card ${s.status} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
+    return `<div class="card ${s.status} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
       <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${act}${cardTickets(s)}${cardFaces(s)}${cardPrs(s)}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${rn('ag:' + s.id, s.agents)} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${liveSlot(s)}
@@ -4257,6 +4271,7 @@
         ...(s.prs?.length ? [{ name: 'Its PR on GitHub', sub: of, hint: '⌥⌘G', fn: hotGh }] : []),
         ...(inApp ? [{ name: 'Its folder in VS Code Web', sub: of, hint: '⌥⌘E', fn: hotVsCode }] : []),
         ...(canTick(s) ? [{ name: 'Tick it done', sub: of, fn: () => tickDone(s.id, true, $('#shead')) }] : []),
+        ...(canTick(s) && s.prs?.length && !s.forGood ? [{ name: 'Done for good — its PRs forgotten', sub: of, fn: () => tickDone(s.id, true, $('#shead'), null, true) }] : []),
         ...(s.cwd ? [{ name: 'Copy its folder’s path', sub: ` — ${homePath(s.cwd)}`, fn: () => navigator.clipboard?.writeText(s.cwd).then(() => note($('#shead'), 'Path copied'), () => {}) }] : []),
       ]),
     ].map(a => ({ kind: 'action', id: 'ac:' + a.name, ...a }));
@@ -4454,18 +4469,27 @@
   // A tick is felt (2026-10-11, Things' checkbox): the ✓ fills and draws its stroke where it was clicked, and the
   // server is told once it has (TICK_MS) — its answer redraws the card, as done or gone, which would take the mark with it.
   const TICK_MS = 230;
-  function tickDone(id, done, anchor, mark = null) {
+  // Done for good (2026-10-11; ⌥-click on the ✓, ··· and the launcher): the server forgets the chat's PRs while the tick stands.
+  function tickDone(id, done, anchor, mark = null, forGood = false) {
     const go = () => {
       if (done && id === state.current) moveOn(id);
-      api('POST', `/api/sessions/${id}/done`, { done })   // the card the click was on is redrawn by the move
+      api('POST', `/api/sessions/${id}/done`, forGood && done ? { done, forGood } : { done })   // the card the click was on is redrawn by the move
         .catch(err => note(anchor.isConnected ? anchor : document.querySelector(`#slist > .card[data-id="${id}"]`), `Could not tick it: ${err.message}`, true));
     };
     if (!done || !mark || REDUCED.matches) return go();
     if (mark.classList.contains('tk')) return;   // a second click while it draws
     mark.classList.add('tk'); noteMotion(id, 'tick'); lastTickAt = performance.now();
+    if (forGood && mark.querySelector('.fx')) mark.classList.add('fg');   // the ✕ fills and draws instead
     mark.animate([{ scale: .7 }, { scale: 1 }], { duration: 360, easing: SPRING, id: 'tick' });
     setTimeout(go, TICK_MS);   // the open chat moves on with it: a move first would redraw the card, the mark with it
   }
+  // ⌥ held (2026-10-11): the card's ✓ shows done for good's ✕ under the pointer. Off the keys, and off the pointer's own
+  // events too — in the app a key pressed with a page of the pane in front never reaches this one.
+  const altHeld = on => { if (on !== document.documentElement.hasAttribute('data-alt')) document.documentElement.toggleAttribute('data-alt', on); };
+  addEventListener('keydown', e => { if (e.key === 'Alt') altHeld(true); }, true);
+  addEventListener('keyup', e => { if (e.key === 'Alt') altHeld(false); }, true);
+  addEventListener('pointermove', e => altHeld(e.altKey), { capture: true, passive: true });
+  addEventListener('blur', () => altHeld(false));
   function moveOn(id) {
     const cards = [...document.querySelectorAll('#slist > .card')], i = cards.findIndex(c => c.dataset.id === id);
     const open = c => !c.classList.contains('done');
@@ -4817,7 +4841,7 @@
     const ctk = e.target.closest('.ctk');
     if (ctk) { e.stopPropagation(); openSession(card.dataset.id); openExternal(ctk.dataset.url, { s: state.sessions.get(card.dataset.id) }); return; }   // …or that ticket
     const act = e.target.closest('.act');
-    if (act) { e.stopPropagation(); tickDone(card.dataset.id, act.dataset.act === 'done', card, act); return; }
+    if (act) { e.stopPropagation(); tickDone(card.dataset.id, act.dataset.act === 'done', card, act, e.altKey); return; }
     const from = card.dataset.id !== state.current && flyFrom(card);
     openSession(card.dataset.id);
     if (from) flyTitle(from);
@@ -5075,6 +5099,7 @@
       shellLive(s) ? `<button class="hmi" id="shellEndBtn" title="End this chat's ${shName()} and close its tab — exit in it does the same · ⌥⌘W with the keys in it"><span class="gl">×</span><span>end the ${shName()}</span><span class="k"></span></button>` : '',
       ideKey(s) ? `<button class="hmi" id="ideCloseBtn" title="Close VS Code Web's tab — ⌥⌘E opens it again · ⌥⌘W with the keys in it"><span class="gl">×</span><span>close VS Code Web</span><span class="k"></span></button>` : '',
       inVsCode(s) ? `<div class="hmi info" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it; ${s.alive ? 'the claude session row takes it over' : 'continue it here or there'}">${ICON.vscode}<span>VS Code's chat</span><span></span></div>` : '',
+      canTick(s) && s.prs?.length && !s.forGood ? `<button class="hmi" id="forGoodBtn" title="Tick it done and forget its PRs: a push, a review or a reply on one no longer brings it back, moves it up or alerts you — a word in it, or ↩, ends that">${ICON.forget}<span>done for good</span><span class="k">⌥-click ✓</span></button>` : '',
       '<div class="sep"></div>',
       `<button class="hmi${prefs.headDetails ? ' on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}" title="${esc(statusLabel[s.status] || s.status)} · click to ${prefs.headDetails ? 'hide' : 'show'} path, branch and session details under the title"><span class="dot ${s.status}"></span><span>${esc((statusLabel[s.status] || s.status || '').split(' — ')[0])}${s.statusSince ? ` · <span data-at="${esc(s.statusSince)}"></span>` : ''}</span><span class="k">${prefs.headDetails ? 'hide' : 'show'} path</span></button>`,
       '<div class="sep"></div>',
@@ -5108,6 +5133,7 @@
     const cb = $('#chgBtn'); if (cb) cb.onclick = () => { menu.close(); hotDiff(); };
     const sb = $('#shellEndBtn'); if (sb) sb.onclick = () => { menu.close(); dropTab(s, 'shell'); };
     const ib = $('#ideCloseBtn'); if (ib) ib.onclick = () => { menu.close(); if (ideKey(s)) dropTab(s, ideKey(s)); };
+    const fg = $('#forGoodBtn'); if (fg) fg.onclick = () => { menu.close(); tickDone(s.id, true, $('#shead'), null, true); };
     $('#settingsBtn').onclick = () => settingsOpen(true);
     const lb = $('#lidBtn'); if (lb) lb.onclick = () => { if (!state.lidAsking) setAwake({ lid: !state.awake.lid }, $('#moreBtn')); };   // a toggle: the menu stays up — the status bar's while it is on
     $('#moreBtn').onclick = e => { e.stopPropagation(); if (menu.open) menu.close(); else openMenu(); };
