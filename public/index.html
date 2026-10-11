@@ -222,6 +222,7 @@
   @keyframes bob { 0%, 100% { transform: none; } 50% { transform: translateY(-1.5px) rotate(-6deg); } }
   /* in the bar the fish is the connection's light, as the dot it replaced was: no square, the fish in the ready green */
   #sbar .conn .logo { width: 15px; height: 15px; flex: none; }
+  #sbar .clock { border-right: 0; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
   /* the fish swimming at the agents' pace (swimAt): a lane between the counts and the faces */
   #sbSwim { position: relative; flex: none; width: 64px; overflow: hidden; cursor: pointer; border-right: 1px solid var(--line); }
   #sbSwim .swimmer { position: absolute; left: 0; top: calc(50% - 5.5px); }
@@ -2797,6 +2798,10 @@
     const aw = state.awake;
     right.push(`<button class="seg aw${aw.awake ? '' : ' off'}${cupMoot(aw) ? ' moot' : ''}" id="sbAwake" aria-pressed="${!!aw.awake}" title="${esc(cupTip(aw))}">${ICON.cup}${aw.awake ? '<span>awake</span>' : ''}</button>`,
       `<button class="seg lidb${aw.lid ? '' : ' off'}" id="sbLid" aria-pressed="${!!aw.lid}" title="${esc(aw.lid ? 'This Mac does not sleep, not even with its lid closed (pmset disablesleep) — mind the battery and the heat in a bag. Click to let it sleep with the lid shut again (Touch ID or your password)' : 'Keep this Mac awake with its lid closed too (pmset disablesleep) — Touch ID or your password each time; mind the battery in a bag')}">${ICON.lid}${state.lidAsking ? '<span>Touch ID…</span>' : aw.lid ? '<span>lid closed</span>' : ''}</button>`);
+    // the clock, far right (2026-10-11, later): the time as the transcript's who-lines say it, the day in its tooltip —
+    // the menu bar's is hidden in the fill. Drawn again on the minute (clockTick).
+    const now = new Date();
+    right.push(`<span class="seg clock" title="${esc(now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))}">${esc(now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))}</span>`);
     const rows = usage.data?.windows || [];
     setHtml($('#sbLeft'), left.join(''));
     swimAt(all.reduce((a, s) => a + (s.alive && s.status === 'working' ? 1 + (s.agents || 0) : 0), 0));
@@ -2811,6 +2816,7 @@
     bar.busy = false; renderBar(); homeSoon();   // the home's Mac line (2026-10-10) — after an await, so the block below has run
   }
   setInterval(loadStats, 3000);
+  (function clockTick() { renderBar(); setTimeout(clockTick, 60_000 - Date.now() % 60_000 + 50); })();   // on the minute, the bar's clock
   // The search and the state chips (#filters) and the faces (#people) move into the bar while it is on (2026-10-09) —
   // the nodes themselves, their handlers with them — and the list's foot row (#shd: the fish, the search, the chips,
   // the usage) goes; off, they go back where they were.

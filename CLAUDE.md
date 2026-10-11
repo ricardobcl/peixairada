@@ -626,7 +626,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   plan usage as meters** — with the bar on, the list's foot has none (`:root[data-sbar] #usage`) — whose click lifts its
   rows in a panel (`usageRows`, shared with `#usage`; a click elsewhere, by `composedPath()`, puts it away), and **both
   awake switches** (`#sbAwake` the cup, amber while on, muted while it has nothing to hold off; `#sbLid` the laptop, red while on, *Touch ID…* while sudo asks;
-  muted marks while off). **The list's foot row goes** — the fish, the search, the chips, the usage (`:root[data-sbar]
+  muted marks while off), and **the clock, last** (2026-10-11, later: `.clock`, the time as the who-lines say it, the day
+  in its tooltip; `clockTick` draws the bar again on the minute). **The list's foot row goes** — the fish, the search, the chips, the usage (`:root[data-sbar]
   :is(#shd, #sfoot)`) — on the rail too; the bar off, `dockBar(false)` puts `#filters` and `#people` back. The slots
   `#sbLeft`/`#sbRight` are drawn by markup (`setHtml`) from `renderBoard`, the usage, the awake state, the stream and
   each stats answer; the two moved-in nodes are never redrawn by the bar. → `scripts/scenarios/status-bar.mjs`, the stats in `test/awake.test.mjs`.

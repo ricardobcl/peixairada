@@ -19,6 +19,9 @@ anything and it does't look pretty with the floating chat bar".
   nothing the list and the status bar's fish do not.
 * **The status bar, trimmed**: the live chats' count and the drawers and shells went; how many chats are asking you
   (red) and how many monitors run stay, each only while there is one — what may want you, not what is merely open.
+* **A clock, far right**: in the fill the menu bar is hidden, and its clock with it; the status bar's last segment is
+  the time now, written as the transcript's who-lines write it (the locale's), the whole date in its tooltip, drawn
+  again on the minute.
 
 ## Decisions of 2026-10-11 — the third studies built: twenty-eight small motions
 
