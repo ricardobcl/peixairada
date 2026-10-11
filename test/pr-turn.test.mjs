@@ -7,7 +7,7 @@ import { tmpDir } from '../lib/testserver.mjs';
 
 const tmp = tmpDir('peix-test-');
 process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
-const { prTurn, prPeople, setPrInfo, isDone, doneMarks, forGoodMarks, newSession, notePr, sessions, prStatus, prChecks, summary, duePrs } = await import('../server.mjs');
+const { prTurn, prPeople, setPrInfo, isDone, doneMarks, forGoodMarks, newSession, notePr, unlinkPr, unlinked, sessions, prStatus, prChecks, summary, duePrs } = await import('../server.mjs');
 
 const t = h => new Date(Date.UTC(2026, 8, 28, h)).toISOString().replace('.000', '');   // GitHub writes no milliseconds
 const user = login => ({ login, __typename: 'User' });
@@ -108,6 +108,30 @@ test('done for good: a move un-ticks nothing, ranks nothing and asks nothing —
   doneMarks[s.id] = forGoodMarks[s.id]; s.lastActivity = new Date(at(15)).toISOString();
   assert.deepEqual([isDone(s), summary(s).forGood], [false, false], 'a word in the chat ends it, as it ends the tick');
   function ctxIs(done, why) { assert.deepEqual([isDone(s), summary(s).forGood, summary(s).done], [done, done, done], why); }
+});
+
+test('a PR taken off a chat stays off — its lines, a re-read, a move on it — until a word of yours names it again', () => {
+  const a = 'https://github.com/acme/r/pull/20', b = 'https://github.com/acme/r/pull/21', at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+  const s = newSession('unlink', '/x/unlink.jsonl'); sessions.set(s.id, s);
+  notePr(s, a, t(9), 'user'); notePr(s, b, t(9), 'claude');
+  assert.equal(unlinkPr(s, b), true);
+  assert.equal(unlinkPr(s, b), false, 'one not on the chat is nothing to take off');
+  assert.deepEqual(s.prs.map(p => p.url), [a]);
+  assert.ok(unlinked[s.id][b], 'kept in the state file\'s map');
+  unlinked[s.id][b] = t(12);   // taken off at noon
+  notePr(s, b, t(13), 'claude'); notePr(s, b, t(13), null);
+  assert.deepEqual(s.prs.map(p => p.url), [a], 'Claude naming it again, or a pr-link line, does not bring it back');
+  const r = newSession('unlink', '/x/unlink.jsonl');   // the chat read again from its first line
+  for (const [h, by, url] of [[9, 'user', a], [9, 'claude', b], [11, 'user', b], [13, 'claude', b]]) notePr(r, url, t(h), by);
+  assert.deepEqual(r.prs.map(p => p.url), [a], '…nor your words before you took it off, read again');
+  s.lastActivity = t(13); doneMarks[s.id] = t(14);
+  setPrInfo(b, 'open', 'PR', prTurn(pr({ comments: { nodes: [{ author: user('ana'), createdAt: t(15) }] } }), 'me'), at(15));
+  assert.equal(isDone(s), true, 'a move on it un-ticks the chat no more');
+  assert.deepEqual(duePrs([s], at(16)), [a], 'and it is not asked about for the chat — the other is, at its pace');
+  notePr(s, b, t(16), 'user');
+  assert.deepEqual(s.prs.map(p => p.url), [b, a], 'a word of yours after brings it back');
+  notePr(s, b, t(17), 'claude');
+  assert.equal(s.prs[0].count, 2, '…and Claude\'s count again from there');
 });
 
 test('a PR the board has never looked at moves at GitHub\'s time for it, and one it cannot see keeps its record', () => {

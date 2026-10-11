@@ -5,6 +5,23 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-11, midday — a PR taken off a chat
+
+Ricardo: "if I click on option and hover on a PR on the top bar in the chat, an X should appear to de-associated the PR
+with the chat".
+
+* **⌥ over a PR in the chat header shows an ✕**: on its chip, white on red, the chip keeping its size (the number goes
+  clear under the mark) — the done-for-good ✕'s look, what the click will do before it is done. Its row under the
+  header does the same on its number, which reaches the PRs folded behind `+n`. ⌥-click takes the PR off the chat; the
+  chip folds out and the header is drawn without it. A plain click is what it was.
+* **Off that chat, not off the board**: gone from its chips, its rows and its card's stack; it no longer titles the
+  card, un-ticks it, ranks it, alerts on it or is asked about for it. A chat that still names it keeps it — a PR
+  mentioned in passing in one chat is the work in another.
+* **Kept off as the chat goes on**: Claude naming it again, a `pr-link` line, the chat read afresh after a restart —
+  none brings it back. **A word of yours naming it does**: the way back, with no list of what was taken off to keep;
+  Claude names the other PRs in passing all the time, and you name the one you mean.
+* **Not done: tickets.** A Jira ticket a chat names stays on it — not asked for.
+
 ## Decisions of 2026-10-11, late morning — done for good; the header floats
 
 Ricardo: "why do I have 4 [one service's] chats always poping up on my feed? right now their are after this chat. are

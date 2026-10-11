@@ -1225,6 +1225,14 @@
   :is(.shead .hpr, #slist .cpr).sheen::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 60%; pointer-events: none; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .6), transparent); animation: sheen .6s ease-in-out .1s both; }
   @keyframes sheen { from { transform: translateX(-120%) skewX(-18deg); } to { transform: translateX(260%) skewX(-18deg); } }
   .shead .hpr[data-checks="fail"] { box-shadow: 0 0 0 1.5px var(--pr-closed); }   /* a failing PR is seen from across the room */
+  /* ⌥ held over a PR's chip, or its row under the header (2026-10-11): an ✕, white on red, over its number — ⌥-click
+     takes the PR off the chat (unlinkPr). Nothing moves: the number goes clear under it, the row's pads by a shadow. */
+  :root[data-alt] :is(.shead .hpr[data-url]:hover, .prrow[data-url]:hover .num) { position: relative; color: transparent; background: var(--needs); border-color: var(--needs); box-shadow: 0 0 0 var(--xpad, 0) var(--needs); cursor: pointer; }
+  :root[data-alt] .prrow[data-url]:hover .num { --xpad: 3px; border-radius: 3px; }
+  :root[data-alt] .shead .hpr[data-url]:hover .ck { visibility: hidden; }
+  :root[data-alt] :is(.shead .hpr[data-url]:hover, .prrow[data-url]:hover .num)::before { content: ''; position: absolute; inset: 0; background: #fff;
+    -webkit-mask: var(--xmask) center / 18px no-repeat; mask: var(--xmask) center / 18px no-repeat; }
+  :root { --xmask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.6 4.6 11.4 11.4M11.4 4.6 4.6 11.4' fill='none' stroke='%23000' stroke-width='1.9' stroke-linecap='round'/%3E%3C/svg%3E"); }
   .prrow .ckw { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
   .prrow .ckw .ck { margin: 0; }
   .prrow .ckw[data-checks="fail"] { color: var(--pr-closed); font-weight: 600; }
@@ -2141,12 +2149,16 @@
 //   css · a second claude on this chat: VS Code opened a chat that runs here (see renderRival)
 //   css · resume: a chat whose claude has ended (2026-10-07)
 //   css · terminal drawer: the real claude, in a PTY on the server
+//   css · the changes tab: what this chat changed in its folder (2026-10-10)
+//   css · home (2026-10-10): the column with no chat open — fastfetch's block, then the day
+//   css · ⌥⌘A, the overview (2026-10-10): the board blurred, every live chat a tile in its column
 //   css · project editor
 //   css · the small print: wrapping, figures, selection, focus, overscroll
 //   css · reduced motion: the board says the same, still
 //   css · simple colours: what the tokens cannot reach
 //   css · syntax highlighting (highlight.js class names, our colours)
 //   js  · header controls
+//   js  · themes: one keystroke re-skins the board (2026-10-10)
 //   js  · sessions column width
 //   js  · helpers
 //   js  · the status bar: the machine at the window's foot (2026-10-09)
@@ -2160,6 +2172,7 @@
 //   js  · ⌥⌘P: the project picker. The board's projects, pinned first; the box filters by name.
 //   js  · the pickers' matcher: fuzzy since 2026-09-21
 //   js  · the roots' folders, and cloning one that is not here yet (2026-09-21)
+//   js  · ⌥⌘L: the launcher, and the sheet of every key (2026-10-10)
 //   js  · the setup: the cog's second half (2026-09-28)
 //   js  · the first run: where the repos live (2026-10-01)
 //   js  · the colour picker
@@ -2169,6 +2182,11 @@
 //   js  · chat header
 //   js  · terminal drawer: the real claude in a PTY on the server, attached over a WebSocket
 //   js  · the two halves: ⌘1 and ⌘2
+//   js  · the changes tab: what this chat changed in its folder (2026-10-10)
+//   js  · live tiles: a chat drawn small — its drawer's screen, or the last few things it did (2026-10-10)
+//   js  · tiles: the chats that want an eye, stacked beside the open one (2026-10-10)
+//   js  · ⌥⌘A: the overview, every live agent at once (2026-10-10)
+//   js  · home: the chat column with no chat open (2026-10-10)
 //   js  · a chat's folder not checked out: cloned first (2026-10-09)
 //   js  · keeping the Mac awake (2026-10-08)
 //   js  · resume: a chat whose claude has ended
@@ -5059,8 +5077,9 @@
   const CK_TIP = { pass: 'checks passed', fail: 'checks failing', pending: 'checks running' };
   const CK_ICON = { pass: '<path d="M3.6 8.3 6.6 11.2 12.4 4.9" />', fail: '<path d="M4.8 4.8 11.2 11.2M11.2 4.8 4.8 11.2" />', pending: '<circle cx="8" cy="8" r="4.6" />' };
   const ckHtml = pr => { const c = prCk(pr); return c ? `<i class="ck" data-checks="${c}"><svg viewBox="0 0 16 16" aria-hidden="true">${CK_ICON[c]}</svg></i>` : ''; };
-  const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" href="${/^https:\/\//.test(pr.url) ? esc(pr.url) : '#'}" target="_blank" rel="noopener"
-      title="${esc(`${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}${pr.turn ? `\n${turnTip(pr)}` : ''}`)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span>${pr.turn?.you ? `<span class="why">your move · ${esc(pr.turn.why)}</span>` : ''}${prCk(pr) ? `<span class="ckw" data-checks="${prCk(pr)}">${ckHtml(pr)}${{ pass: 'passed', fail: 'failing', pending: 'running' }[prCk(pr)]}</span>` : ''}<span class="meta">${rel(pr.lastAt)}</span></a>`;
+  const UNLINK_TIP = '⌥-click: take it off this chat — naming it again yourself brings it back';
+  const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" href="${/^https:\/\//.test(pr.url) ? esc(pr.url) : '#'}" target="_blank" rel="noopener"
+      title="${esc(`${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}${pr.turn ? `\n${turnTip(pr)}` : ''}\n${UNLINK_TIP}`)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span>${pr.turn?.you ? `<span class="why">your move · ${esc(pr.turn.why)}</span>` : ''}${prCk(pr) ? `<span class="ckw" data-checks="${prCk(pr)}">${ckHtml(pr)}${{ pass: 'passed', fail: 'failing', pending: 'running' }[prCk(pr)]}</span>` : ''}<span class="meta">${rel(pr.lastAt)}</span></a>`;
   /** A ticket's row under the header, after the PRs' (2026-10-08): its status, key, summary, and whose it is. */
   const ticketRow = (t, hide) => `<a class="prrow tk"${hide ? ' hidden' : ''} data-cat="${esc(t.cat)}" href="${/^https?:\/\//.test(t.url) ? esc(t.url) : '#'}" target="_blank" rel="noopener" title="${esc(`${t.url}\n${ticketTip(t)}`)}"><span class="st">${esc(t.status || t.cat)}</span><span class="num">${esc(t.key)}</span><span class="t">${esc(t.summary || t.key)}</span><span class="who${t.assignee?.me ? ' me' : ''}">${t.assignee ? esc(t.assignee.me ? 'yours' : t.assignee.name) : 'unassigned'}</span></a>`;
   // Claude Code's own /focus — "just your prompt, summary, and response", every step in between hidden — on the
@@ -5101,7 +5120,7 @@
     const prs = s.prs || [], tks = s.tickets || [], prsOpen = !!prefs.prsOpen;
     const said = [prs.length ? `${prs.length} PR${prs.length === 1 ? '' : 's'}` : '', tks.length ? `${tks.length} ticket${tks.length === 1 ? '' : 's'}` : ''].filter(Boolean).join(' and ');
     const hprs = !prs.length && !tks.length ? '' : `<button class="hprs${prsOpen ? ' on' : ''}" id="prToggle" aria-expanded="${prsOpen}" title="${said} in this chat — click to ${prsOpen ? 'fold the list' : 'list them, one per row'}${prs.length ? ' · ⌥⌘G opens a PR' : ''}">${
-      prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}"${prCk(pr) ? ` data-checks="${prCk(pr)}"` : ''} title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}${prCk(pr) ? `\n${CK_TIP[prCk(pr)]}` : ''}${pr.turn ? `\n${turnTip(pr)}` : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}${ckHtml(pr)}</span>`).join('')
+      prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}"${prCk(pr) ? ` data-checks="${prCk(pr)}"` : ''} title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}${prCk(pr) ? `\n${CK_TIP[prCk(pr)]}` : ''}${pr.turn ? `\n${turnTip(pr)}` : ''}\n${UNLINK_TIP}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}${ckHtml(pr)}</span>`).join('')
     }${tks.map(t => `<span class="hpr tk" data-cat="${esc(t.cat)}" title="${esc(ticketTip(t))}">${esc(t.key)}</span>`).join('')}<span class="hpr more" hidden></span></button>`;
     const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo${s.cwd && prefs.project === s.cwd ? ' on' : ''}" title="${s.cwd && prefs.project === s.cwd ? 'Every project again (ALL)' : 'Show this folder\'s chats — click again for every project'}">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
       ${diffChip(s)}${headMove(s)}${hprs}${taskChip(s)}
@@ -5140,7 +5159,10 @@
       + (rows.length > PR_ROWS ? `<button class="more" id="prMore">${state.prsAll ? 'fewer' : `… ${rows.length - PR_ROWS} more`}</button>` : '');
     if (prsHtml !== drawn.prs) pl.innerHTML = drawn.prs = prsHtml;
     const pm = pl.querySelector('#prMore'); if (pm) pm.onclick = () => { state.prsAll = !state.prsAll; renderHead(s); };   // onclick, not a listener per draw
-    const pt = $('#prToggle'); if (pt) pt.onclick = () => { prefs.prsOpen = !prefs.prsOpen; savePrefs(); renderHead(s); };
+    const pt = $('#prToggle'); if (pt) pt.onclick = e => {
+      const c = e.altKey && e.target.closest('.hpr[data-url]'); if (c) return unlinkPr(s, c);   // ⌥ on a chip: that PR off the chat
+      prefs.prsOpen = !prefs.prsOpen; savePrefs(); renderHead(s);
+    };
     if (headNew) { layoutNotch(); fitHeadPrs(); paintHeadSplit(); postChat(s); if (menu.open) { $('#moreBtn').classList.add('on'); $('#moreBtn').setAttribute('aria-expanded', 'true'); } }   // the menu's state is not the markup's: opening it redrew the whole header
     renderResume(s); renderRival(s);
     $('#detailsBtn').onclick = () => { prefs.headDetails = !prefs.headDetails; savePrefs(); renderHead(s); };
@@ -5265,6 +5287,25 @@
     head.style.setProperty('--hrow', d ? `${Math.round(d.getBoundingClientRect().top - hr.top - 3)}px` : '100%');
     listChanged();   // the open chat's light runs round the box this paints (drawTrail)
   }
+  // A PR taken off the chat (2026-10-11): ⌥-click on its chip in the header or its row under it — one the chat only
+  // mentioned in passing. The chip or row folds out where it stands, then the server is told (UNLINK_MS: its answer
+  // redraws the header without it, which would take the fold with it); it keeps the PR off the chat for good, but for
+  // a word of yours naming it again.
+  const UNLINK_MS = 180;
+  function unlinkPr(s, el) {
+    const url = el.dataset.url; if (!url || el.dataset.going) return;
+    el.dataset.going = '1'; noteMotion(s.id, 'unlink');
+    const fold = REDUCED.matches ? null : el.animate([{ opacity: 1, scale: 1 }, { opacity: 0, scale: .6 }], { duration: UNLINK_MS, easing: EASE_OUT, fill: 'forwards', id: 'unlink' });
+    setTimeout(() => api('POST', `/api/sessions/${s.id}/unlink`, { url }).catch(err => {
+      fold?.cancel(); delete el.dataset.going;
+      note(seen(el.isConnected ? el : $('#prToggle')), `Could not take it off: ${err.message}`, true);
+    }), fold ? UNLINK_MS : 0);
+  }
+  $('#prlist').addEventListener('click', e => {   // before #chat's link handler, which would open the PR
+    const r = e.altKey && e.target.closest('.prrow[data-url]'); if (!r) return;
+    e.preventDefault(); e.stopPropagation();
+    const s = state.sessions.get(state.current); if (s) unlinkPr(s, r);
+  }, true);
   const TITLE_MIN = 170;   // the title's own flex-basis (.shead h2), below which the row wraps
   function fitHeadPrs() {
     const head = $('#shead'), t = $('#prToggle'); if (!t) return;

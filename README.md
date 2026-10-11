@@ -40,7 +40,8 @@ It reads what Claude Code already writes to `~/.claude` — no plugin, no privat
 - 🔔 **Alerts** — a notification when a chat finishes or needs you; a Dock badge and menu-bar list in the app.
 - 🐙 **PRs** — chips in GitHub's colours, stacked on a card and fanned out under the pointer (scroll them when they're
   more than fit); a chat with an open PR is named after it. A PR you reviewed or wrote fills in, notifies you and brings its ticked chat back when it's your
-  move again — a push, a reply, a review. ⌥-click the ✓ to tick a chat done for good: its PRs won't bring it back.
+  move again — a push, a reply, a review. ⌥-click the ✓ to tick a chat done for good: its PRs won't bring it back. ⌥-click a PR in the chat's
+  header to take it off that chat — until you name it there yourself.
 - 🎫 **Jira tickets** — a ticket a chat names (`ACME-12`, a link, its branch) wears its status on the card and in the
   header, beside its PRs. Set your site, email and an API token in Setup.
 - 🎨 **Projects** — folders in their [Peacock](https://marketplace.visualstudio.com/items?itemName=johnpapa.vscode-peacock)

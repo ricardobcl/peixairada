@@ -27,6 +27,8 @@
 //      · Claude plan usage, for the chat list's footer: the numbers `/usage` shows in the CLI
 //      · the machine, for the status bar: CPU, memory, and what the claudes hold (2026-10-09)
 //      · keeping the Mac awake: an idle-sleep assertion, and the lid's own setting (2026-10-08)
+//      · the day: when each chat clauded, waited on you, watched (2026-10-10)
+//      · what a chat changed: its folder's diff, for the changes tab (2026-10-10)
 //  VS Code Web: the editor UI served by `code serve-web`, for the pane beside the board
 //  Terminals: a real `claude` in a PTY, attached to from the page over a WebSocket
 //      · the holder protocol: newline-delimited JSON over the holder's socket (see lib/termhold.mjs)
@@ -110,6 +112,10 @@ let doneMarks = {};
 // forgotten — a move on one neither un-ticks it, ranks it, alerts on it nor has it asked about (`forgotten`). A tick of
 // any other kind, a word in the chat or ↩ ends it.
 let forGoodMarks = {};
+// PRs taken off a chat (2026-10-11): sessionId -> { PR url: when }. ⌥-click on its chip in the header, or its row: a PR
+// the chat only mentioned in passing — a review's other PR, the one it follows — leaves the chat, and its lines do not
+// bring it back, a re-read included (notePr); a word of yours naming it after does.
+let unlinked = {};
 // Custom projects: id -> { id, name, cwds, createdAt }. A name over one or more folders — multi-repo
 // work, an investigation. Folders themselves need no record: they come from the sessions' cwds.
 let projects = {};
@@ -163,6 +169,7 @@ try {
   const st = JSON.parse(readFileSync(stateFrom, 'utf8'));
   doneMarks = st.done || {};   // files from before 2026-09-19 also carry a `pins` key — ignored, gone on the next save
   forGoodMarks = st.forGood && typeof st.forGood === 'object' ? st.forGood : {};
+  unlinked = st.unlinked && typeof st.unlinked === 'object' ? st.unlinked : {};
   projects = st.projects || {};
   titles = st.titles || {};
   pinned = Array.isArray(st.pinned) ? st.pinned.filter(k => typeof k === 'string') : [];
@@ -185,7 +192,7 @@ function saveState() {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, awake: awakeOn }, null, 1));
+    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, awake: awakeOn }, null, 1));
     renameSync(tmp, STATE_FILE);
   } catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
@@ -682,7 +689,8 @@ function notePr(s, url, ts, by, ref = null) {
   if (!m && (ref || !/^https?:\/\//i.test(url))) return;   // a pr-link that is no web address is nothing to put in an href
   const clean = m ? prKey(m[1], m[2], m[3]) : url;
   if (ref && noPr.has(clean)) return;
-  const at = s.prs.findIndex(p => p.url === clean);
+  const at = s.prs.findIndex(p => p.url === clean), off = unlinked[s.id]?.[clean];
+  if (off && at < 0 && !(by === 'user' && ts > off)) return;   // taken off the chat, and not named by you since
   const pr = at >= 0 ? s.prs.splice(at, 1)[0] : {
     url: clean, repo: m ? m[2] : null, number: m ? Number(m[3]) : null,
     // The owner rarely disambiguates and eats half the width of the chip; the URL is in the tooltip.
@@ -696,6 +704,15 @@ function notePr(s, url, ts, by, ref = null) {
   s.prs.unshift(pr);
   if (s.prs.length > MAX_PRS) s.prs.length = MAX_PRS;
   if (!indexing) queuePr(clean);   // at boot this would ask GitHub about every PR in every transcript
+}
+
+/** Take a PR off a chat (2026-10-11): gone from its chips, its title, its turn and its polls, and kept off (`unlinked`). */
+function unlinkPr(s, url) {
+  const at = s.prs.findIndex(p => p.url === url);
+  if (at < 0) return false;
+  s.prs.splice(at, 1);
+  (unlinked[s.id] ||= {})[url] = new Date().toISOString();
+  return true;
 }
 
 /** Scan one message, in the order it says things. A PR said twice in it counts once, where first said, and as the
@@ -2998,6 +3015,15 @@ const server = createServer(async (req, res) => {
       saveState(); schedulePush(s);
       return json(res, 200, { ok: true, done: isDone(s), forGood: forgotten(s) });
     }
+    if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/unlink$/))) {   // a PR taken off the chat (2026-10-11): { url }
+      const s = sessions.get(m[1]);
+      if (!s) return json(res, 404, { error: 'unknown session' });
+      const body = await jsonBody(req);
+      if (!unlinkPr(s, String(body.url || ''))) return json(res, 404, { error: 'not one of this chat\'s PRs' });
+      for (const id of Object.keys(unlinked)) if (!sessions.has(id)) delete unlinked[id];
+      saveState(); schedulePush(s);
+      return json(res, 200, { ok: true, prs: s.prs.filter(shownPr).length });
+    }
     if (req.method === 'GET' && p === '/api/projects') return json(res, 200, { projects: projectList() });
     if (req.method === 'POST' && p === '/api/projects') {
       const body = await jsonBody(req);
@@ -3138,7 +3164,7 @@ server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTe
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
