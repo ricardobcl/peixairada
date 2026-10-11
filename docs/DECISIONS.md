@@ -114,6 +114,11 @@ the order they landed.
   worst between frames in WebKit — only while home is on screen and the page in view; one still frame, the fish at the
   top of its leap, under reduced motion. The canvas outlives home's draws (the facts are redrawn every few seconds),
   which now go into boxes of their own.
+* **W2 — the stale words**: the tiles switch's label (it described the stack: *the panels as tiles, Hyprland's way*
+  now), the status bar's label and tooltip (they listed the chats, the drawers and the shells, gone from the bar), the
+  same-height tooltip (*blinking* — the card pings), ···'s tooltip (code folding, gone since 2026-09-28), and the empty
+  column's *Pick a chat on the left* hint, which home always replaced: the element stays, the sentinel `leaveChat`
+  knows home by, with nothing in it. The lane heads' tooltips were T1's.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 
