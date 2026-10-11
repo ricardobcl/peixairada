@@ -590,7 +590,10 @@
      every click through; only the pill takes one. A dot on it when a card out there is asking you or clauding. */
   .sedge { grid-row: 1; grid-column: 1 / -1; z-index: 4; pointer-events: none; display: flex; justify-content: center; height: 30px; opacity: 0; transition: opacity .15s; }
   .sedge.up { align-self: start; align-items: flex-start; padding-top: 5px; background: linear-gradient(var(--bg) 25%, transparent); }
-  .sedge.down { align-self: end; align-items: flex-end; padding-bottom: 5px; background: linear-gradient(transparent, var(--bg) 75%); }
+  /* the lower one at the right, on a shorter fog (2026-10-12): centred, it sat on the last card's your-move line — the
+     line that card most had to say, and left-aligned, so the right is where a card's last line is most often empty */
+  .sedge.down { align-self: end; align-items: flex-end; justify-content: flex-end; height: 24px; padding: 0 14px 4px 0; background: linear-gradient(transparent, var(--bg) 80%); }
+  main.scompact .sedge.down { justify-content: center; padding-right: 0; }   /* the rail: no room to one side */
   .sedge.on { opacity: 1; }
   :is(.sedge, .lognew) button { pointer-events: auto; font: inherit; font-size: 11px; line-height: 16px; color: var(--muted); background: color-mix(in srgb, var(--ink) 9%, var(--panel)); border: 1px solid transparent; border-radius: 10px; padding: 1px 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); white-space: nowrap; }
   .sedge:not(.on) button { pointer-events: none; }

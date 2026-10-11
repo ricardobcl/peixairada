@@ -665,7 +665,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   pixel, its tail still), what is empty in a word and the way to fill it (a query: Esc; ⌥⌘N) — a bubble from
   its mouth now and then, from the bar's own interval. None of it on the rail but the words.
 * **The list's two ends count the cards out of sight**: `#sup` / `#sdown` (`.sedge`), over the list's grid cell (so
-  `#slist` has a definite `grid-column`), a pill on a fog of `--bg`; a card is out of sight when its *middle* is past
+  `#slist` has a definite `grid-column`), a pill on a fog of `--bg` — the lower one at the right (2026-10-12; centred it
+  sat on the last card's your-move line), centred on the rail; a card is out of sight when its *middle* is past
   the edge (`drawEdges`, by `offsetTop`, hence `#slist { position: relative }`). A dot: red when one out there is
   asking, amber when clauding. A click scrolls a screenful. Redrawn on scroll, after every render, on the list's
   `ResizeObserver` and from `applyCards`. An end that is off keeps its words while it fades.

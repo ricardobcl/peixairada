@@ -55,6 +55,10 @@ the order they landed.
 * **L3 — a chat running elsewhere wears a terminal's mark**, not *CLI*: its tooltip says where (a terminal outside the
   board, or outside it) and that ⌥⌘C takes it over here. A drawer here still says nothing; VS Code's own chat still
   nothing on the card; *VS Code too* still a chip.
+* **L5 — the lower end's pill at the right**, on a fog 24 px tall (30 before): centred, it sat on the last card's *your
+  move* line, which is left-aligned — the right of a card's last line is where it is most often empty. The upper one
+  stays centred (a card's top row ends in its ✓ and chips); on the rail, both centred. At the list's end the pill and
+  its fog are gone, so no padding was needed.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 
