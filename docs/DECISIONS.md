@@ -34,6 +34,14 @@ anything and it does't look pretty with the floating chat bar".
   open a lane by. A filter saved from before is dropped on load, since nothing could bring back a state it hid; the
   harness opens every lane, as most scenarios tick a chat and look for its card, and `lanes.mjs` asks for the
   board's own default.
+* **The faces folded away, the fish takes the room** (Ricardo, next: "the git users should just shrink when compacted
+  (which should be the default) - let the fish occupy all the empty space", and, after a first cut kept every face at
+  14 px in an overlapping stack: "when I said shink, I mean folding, aka don't see anything"): folded is the default,
+  and folded is GitHub's mark alone — the count the 2026-10-09 fold showed beside it went too; the mark unfolds them.
+  The one face kept is the person the list is narrowed to, as before: a filter nothing on screen owns up to would be a
+  list that lies. The faces fade and shrink away rather than vanish (`display` held by `allow-discrete`). It is a new
+  pref (`peopleCompact`); the old fold's is dropped on load, since everyone had it saved as off. The fish's lane is the bar's free room rather than 64 px, the faces after it: it swims the whole width at the speed
+  it had, and keeps its place when the window's width moves.
 
 ## Decisions of 2026-10-11 — the third studies built: twenty-eight small motions
 

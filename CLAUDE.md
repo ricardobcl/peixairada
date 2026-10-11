@@ -491,7 +491,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
 * **The people row: everyone in the PRs of the chats in view, under the cards** (`#people`, `renderPeople`,
   2026-09-29): the project's chats in the lanes open give their PRs' `people`, merged by login, newest
   first (`peopleOf`), a face a button behind GitHub's mark (`ICON.github`, 2026-10-09; the PR mark before), **which folds
-  them** (`.pgh`, `prefs.peopleFold`): folded, the mark and how many, and only the face the list is narrowed to. A click is `prefs.person`: the list, its counts and its
+  them away** (`.pgh`, `prefs.peopleCompact`, on by default — 2026-10-11, later; off by default and a count beside the
+  mark from 2026-10-09): folded, the mark alone, but for the face the list is narrowed to; the state is
+  `#people.compact` and the mark's words are set after the draw, not in the markup, so a fold keeps the nodes and the
+  faces fade out (`allow-discrete`). A click is `prefs.person`: the list, its counts and its
   timeline narrow to the chats whose PRs have that person (`hasPerson`, applied with the query in
   `renderSessionList`), the face ringed in the accent and the others dimmed; the same face again, or the person
   leaving the view, lets go. Grid row 2 of `#sessions`, the list's row and the usage in row 3; `display: none` on the
@@ -620,7 +623,9 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   monitors, each only while there is one (the live chats and the drawers and shells went 2026-10-11, later) —, **`#sbSwim`, the pixel fish swimming at the pace of what is at work** (2026-10-11, RunCat's cat;
   `swimAt(n)` from `renderBar`, n the clauding chats and their agents: one `swim` animation whose rate
   `updatePlaybackRate` changes in place, paused where it is at 0 — `.rest`, a bubble now and then — its tail wagging; a
-  lane of its own, outside the redrawn slots, the fish an SVG of `FISH`; a click is ⌥⌘A), `#sbPeople` in the middle —
+  lane of its own, outside the redrawn slots, **the bar's free room** since 2026-10-11, later (64 px before: `flex: 1`;
+  `swimFrames`/`swimMs` follow its width at the same speed in pixels, its place kept, a `ResizeObserver` on it), the fish
+  an SVG of `FISH`; a click is ⌥⌘A), `#sbPeople` after it —
   **the faces, `#people` moved in** — and `#sbRight`:
   the machine (`prefs.barStats`: CPU and memory by default since 2026-10-09 — `sbStats`, none, before; a pick there
   carries over —, Claude's memory a box in the settings — `GET

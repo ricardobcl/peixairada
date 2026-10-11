@@ -224,7 +224,7 @@
   #sbar .conn .logo { width: 15px; height: 15px; flex: none; }
   #sbar .clock { border-right: 0; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
   /* the fish swimming at the agents' pace (swimAt): a lane between the counts and the faces */
-  #sbSwim { position: relative; flex: none; width: 64px; overflow: hidden; cursor: pointer; border-right: 1px solid var(--line); }
+  #sbSwim { position: relative; flex: 1 1 auto; min-width: 64px; overflow: hidden; cursor: pointer; border-right: 1px solid var(--line); }   /* the bar's free room (2026-10-11, later; 64 px before) */
   #sbSwim .swimmer { position: absolute; left: 0; top: calc(50% - 5.5px); }
   #sbSwim .b { fill: var(--accent); } #sbSwim .s { fill: color-mix(in srgb, var(--accent) 60%, #000); } #sbSwim .e { fill: var(--bar, var(--panel)); }
   #sbSwim .ft { transform-box: fill-box; transform-origin: 0 50%; animation: wag var(--wag, .3s) ease-in-out infinite alternate; }
@@ -903,7 +903,6 @@
   #people button.pgh { width: auto; height: 22px; display: inline-flex; align-items: center; gap: 4px; padding: 0 5px; margin-right: 2px; border-radius: 11px; color: var(--muted); font: inherit; font-size: 11px; }
   #people button.pgh:hover { transform: none; color: var(--ink); background: var(--ctl); }
   #people button.pgh .ic { width: 14px; height: 14px; fill: currentColor; }
-  #people button.pgh b { font-weight: 650; color: var(--ink); font-variant-numeric: tabular-nums; }
   #people.on button.pgh:not(.on) { opacity: 1; }   /* the fold's button is not a face to dim */
   #people button { flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; transition: opacity .12s, transform .12s, box-shadow .12s; }
   #people button:hover { transform: scale(1.12); }
@@ -1038,9 +1037,14 @@
   #sbFind { padding: 0 8px; border-right: 1px solid var(--line); }
   #sbFind #filters { flex: none; gap: 4px; }
   #sbar .fq { flex: none; width: 210px; }
-  #sbPeople { flex: 1 1 auto; min-width: 0; display: flex; justify-content: center; align-items: center; }
+  #sbPeople { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; }
   #sbar #people { padding: 0 8px; border: 0; gap: 4px; max-width: 100%; }
   #sbar #people :is(button:not(.pgh), img, .face) { width: 18px; height: 18px; font-size: 9.5px; }
+  /* folded (prefs.peopleCompact, the default — 2026-10-11, later): GitHub's mark alone, but for the face the list is
+     narrowed to; the faces fade and shrink away and back, display held by allow-discrete until the fade is over */
+  #people button:not(.pgh) { transition: opacity .15s var(--ease-out), scale .15s var(--ease-out), display .15s allow-discrete, transform .12s, box-shadow .12s; }
+  #people.compact button:not(.pgh, .on) { display: none; opacity: 0; scale: .4; }
+  @starting-style { #people button:not(.pgh) { opacity: 0; scale: .4; } }
   #sbar #people button.pgh { height: 20px; }
   #sbRight .seg { border-right: 0; border-left: 1px solid var(--line); }
   #sbar button.seg { cursor: pointer; } #sbar button.seg:is(:hover, .on) { background: var(--ctl); color: var(--ink); }
@@ -1904,6 +1908,7 @@
     :is(.toolgroup, .codefold)::details-content, :is(.toolgroup, .codefold):not([open])::details-content { transform: none; transition-duration: 0s; }
     .sq.pick, .shead h2 .sq { transition: opacity .12s; }
     #people button:hover, .pop .ssw:hover { transform: none; }
+    #people button:not(.pgh) { transition: opacity .12s, box-shadow .12s; }   /* the faces fold at once, and come back fading */
     .pop .opt input::after, #tline .tl-thumb { transition: none; }
     .card .top .tprs { transition: none; }   /* the stack fans at once */
     #resume.counting::before { animation: none; }   /* no line runs: the button counts the seconds alone */
@@ -2140,7 +2145,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map() };
-  const prefs = { project: 'all', lanesShut: ['done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleFold: false, cardSpot: true, tiles: false, tileStack: false, changesScope: 'turn', skinDark: null, skinLight: null, skinExact: false };
+  const prefs = { project: 'all', lanesShut: ['done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: false, tileStack: false, changesScope: 'turn', skinDark: null, skinLight: null, skinExact: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -2153,6 +2158,7 @@
   // the state chips went (2026-10-11, later) — the lanes fold instead (lanesShut, Done shut to begin with); a filter
   // saved before is dropped, or a state switched off then would be hidden with nothing left to bring it back
   delete prefs.filter; delete prefs.filters;
+  delete prefs.peopleFold;   // the faces folded to a count (2026-10-09, off by default) became peopleCompact (2026-10-11, later): folded by default
   if (!Array.isArray(prefs.lanesShut)) prefs.lanesShut = ['done'];
   // what the status bar adds (sbStats, none by default until 2026-10-09, then CPU and memory as barStats): a pick carries
   // over; the empty default every saved prefs held does not, or nobody would see the new one
@@ -2744,7 +2750,15 @@
   // nothing is at work, the fish then resting with a bubble now and then. A click is the overview.
   const fishRuns = (from, to, ch) => FISH.flatMap((r, y) => [...r.slice(from, to).matchAll(new RegExp(`[${ch}]+`, 'g'))].map(m => `M${m.index + from} ${y}h${m[0].length}v1h-${m[0].length}z`)).join('');
   const SWIM_FISH = `<svg class="swimmer" viewBox="0 0 26 11" width="26" height="11" shape-rendering="crispEdges" aria-hidden="true"><g class="fb"><path class="b" d="${fishRuns(0, 21, '#')}"/><path class="s" d="${fishRuns(0, 21, '=')}"/><path class="e" d="${fishRuns(0, 21, 'o')}"/></g><g class="ft"><path class="b" d="${fishRuns(21, 26, '#')}"/></g></svg>`;
-  const swim = { n: -1, anim: null, bubbles: 0 };
+  const swim = { n: -1, anim: null, bubbles: 0, w: 0 };
+  // The lane is the bar's free room (2026-10-11, later), so its width moves: the swim's path is the lane's width and its
+  // length keeps the fish's speed in pixels (6 s for the 64 px lane it had), and a new width keeps where the fish was.
+  const swimFrames = w => [{ transform: `translateX(${w}px)` }, { transform: 'translateX(-28px)' }], swimMs = w => 6000 * (w + 28) / 92;
+  new ResizeObserver(() => {
+    const lane = $('#sbSwim'), a = swim.anim, w = lane.clientWidth; if (!a || !w || w === swim.w) return;
+    const at = (a.currentTime % swimMs(swim.w)) / swimMs(swim.w); swim.w = w;
+    a.effect.setKeyframes(swimFrames(w)); a.effect.updateTiming({ duration: swimMs(w) }); a.currentTime = at * swimMs(w);
+  }).observe($('#sbSwim'));
   function swimAt(n) {
     const lane = $('#sbSwim'); if (!lane) return;
     if (!lane.firstChild) { lane.innerHTML = SWIM_FISH; lane.addEventListener('click', () => ovOpen()); }
@@ -2753,7 +2767,7 @@
     const f = lane.firstChild, w = lane.clientWidth || 64;
     lane.classList.toggle('rest', !n); lane.style.setProperty('--wag', n ? `${Math.max(.14, .5 / Math.sqrt(n))}s` : '1.6s');
     if (REDUCED.matches) return;
-    if (!swim.anim) { swim.anim = f.animate([{ transform: `translateX(${w}px)` }, { transform: 'translateX(-28px)' }], { duration: 6000, iterations: Infinity, id: 'swim' }); swim.anim.currentTime = 6000 * (w + 26) / 2 / (w + 28); }   // from the lane's middle
+    if (!swim.anim) { swim.anim = f.animate(swimFrames(w), { duration: swimMs(w), iterations: Infinity, id: 'swim' }); swim.anim.currentTime = swimMs(w) * (w + 26) / 2 / (w + 28); swim.w = w; }   // from the lane's middle
     if (!n) { swim.anim.pause(); return; }
     swim.anim.updatePlaybackRate([0, 1, 1.35, 1.9, 2.3][Math.min(n, 4)] + Math.max(0, n - 4) * .45);
     swim.anim.play(); noteMotion(null, 'swim', n);
@@ -3155,19 +3169,24 @@
     // until gh answers, and the person you had narrowed to was cleared — and saved cleared — on the first snapshot.
     const known = chats.every(s => (s.prs || []).every(pr => pr.people != null));
     if (prefs.person && known && !people.some(x => x.login === prefs.person)) { prefs.person = null; savePrefs(); }
-    // Folded (2026-10-09, prefs.peopleFold — "so many faces is a bit distracting"): GitHub's mark and how many there are;
-    // the person the list is narrowed to keeps their face, so the filter stays in sight. The mark is the fold's button.
-    const fold = !!prefs.peopleFold;
-    const head = `<button type="button" class="pgh${fold ? ' fold' : ''}" aria-expanded="${!fold}" title="${people.length} ${people.length === 1 ? 'person' : 'people'} on the PRs of the chats in view — click to ${fold ? 'show' : 'fold'} their faces">${ICON.github}${fold ? `<b>${people.length}</b>` : ''}</button>`;
-    const html = !people.length ? '' : head + people.filter(x => !fold || x.login === prefs.person).map(x => { const on = x.login === prefs.person;
+    // Folded by default (2026-10-11, later; off by default, and a count beside the mark, from 2026-10-09 — "so many faces
+    // is a bit distracting"): GitHub's mark alone, which unfolds them; the person
+    // the list is narrowed to keeps their face, so the filter stays in sight. The fold is the box's class, and the
+    // mark's words are set after the draw, so a fold keeps the nodes and the faces fade away rather than vanish.
+    const compact = prefs.peopleCompact !== false;
+    const head = `<button type="button" class="pgh">${ICON.github}</button>`;
+    const html = !people.length ? '' : head + people.map(x => { const on = x.login === prefs.person;
       return `<button type="button" data-login="${esc(x.login)}"${on ? ' class="on"' : ''} title="${esc(`${x.login} — ${[...x.did].join(', ')} · in ${x.chats.size} chat${x.chats.size === 1 ? '' : 's'} — click to ${on ? 'show every chat again' : 'show only those'}`)}">${faceHtml(x)}</button>`; }).join('');
     if (html !== peopleDrawn) { box.innerHTML = peopleDrawn = html; box.hidden = !html; }   // drawn only when it changed: the faces are images
+    box.classList.toggle('compact', compact);
+    const mark = box.querySelector('.pgh');
+    if (mark) { mark.setAttribute('aria-expanded', String(!compact)); mark.title = `${people.length} ${people.length === 1 ? 'person' : 'people'} on the PRs of the chats in view — click to ${compact ? 'show' : 'fold'} their faces`; }
     const here = !!prefs.person && people.some(x => x.login === prefs.person);
     box.classList.toggle('on', here);
     return here;   // narrowed to them only while they are in view: until the faces come back, every chat shows
   }
   $('#people').addEventListener('click', e => {
-    if (e.target.closest('.pgh')) { prefs.peopleFold = !prefs.peopleFold; savePrefs(); renderBoard(); return; }
+    if (e.target.closest('.pgh')) { prefs.peopleCompact = prefs.peopleCompact === false; savePrefs(); renderBoard(); return; }
     const b = e.target.closest('button[data-login]'); if (!b) return;
     prefs.person = prefs.person === b.dataset.login ? null : b.dataset.login; savePrefs(); renderBoard();
   });
