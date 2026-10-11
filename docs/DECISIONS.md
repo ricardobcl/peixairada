@@ -5,6 +5,23 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-11, evening — a drawer switched to does not jump
+
+Ricardo: "when switching chats, the claude chat seeems to start higher than it shuold then it quickly goes back down a
+bit to the right place. Visually distracting".
+
+* **It was the nudge.** Every attach — every chat switched to with its claude in a drawer — resizes the PTY a row
+  short and back 150 ms later, so Claude Code repaints over the snapshot (2026-09-20, against replays cut mid-paint;
+  kept since as belt and braces). Claude Code pins its prompt to the bottom of the size it is told, so for those
+  150 ms the whole screen sat a row high in a page one row taller: measured per frame on the fake claude, the last line
+  on row 56 from the first frame to 160–210 ms, then on 57.
+* **The repaint stays, unseen**: the nudge now starts on the socket's first frame — the holder's snapshot, which is
+  where the screen belongs — and the page holds what follows (as it does behind a refit) until the true size's
+  repaint has come: 60 ms with nothing, 600 ms at most. Both repaints are then written at once and only the second is
+  painted. Measured again: the last line on its row from the first frame. Keys typed in those few hundred ms echo when
+  it lets go. Dropping the nudge was the other way; the snapshot has been exact since 2026-10-03, but the repaint
+  costs nothing now that it is not seen.
+
 ## Decisions of 2026-10-11, late afternoon — the header meets the tile's line; a ring without an edge
 
 Ricardo: "on "It bends around the notch" it should meet with the tile border, not go below it. my point was to not go

@@ -5636,11 +5636,24 @@
   // socket replays before it reads anything from us, so the order on the wire is replay, then the repaint.
   // Two steps with a pause: a resize handler that debounces and compares sizes would see the same size twice
   // if both arrived together, and repaint nothing. The second send re-reads the size, in case the layout moved.
+  // The row-short repaint is never shown (2026-10-11, late afternoon): a chat switched to drew its drawer a row high
+  // for 150 ms, then dropped it — Claude Code pins its prompt to the bottom of the size it is told. The nudge starts
+  // once the snapshot is on screen (its first frame, attachTerm), and what the socket brings from then until the true
+  // size's repaint has come — NUDGE_QUIET_MS with nothing, NUDGE_MAX_MS at most — is held (toXt) and written at once,
+  // so the xterm parses both repaints together and paints the second.
+  const NUDGE_QUIET_MS = 60, NUDGE_MAX_MS = 600;
   function nudgeTerm(tm) {
     if (!tm.xt || tm.ws?.readyState !== 1) return;
     const ws = tm.ws, { cols, rows } = tm.xt;
+    tm.refits = (tm.refits || 0) + 1; tm.held ||= [];
+    let poll = 0, back = 0, done = false;
+    const release = () => { if (done) return; done = true; clearInterval(poll); if (--tm.refits === 0) for (const f of tm.held.splice(0)) f(); };
     ws.send(JSON.stringify({ t: 'resize', cols, rows: Math.max(5, rows - 1) }));
-    setTimeout(() => { if (tm.ws === ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'resize', cols: tm.xt.cols, rows: tm.xt.rows })); }, 150);
+    setTimeout(() => {
+      if (tm.ws !== ws || ws.readyState !== 1) return release();
+      ws.send(JSON.stringify({ t: 'resize', cols: tm.xt.cols, rows: tm.xt.rows })); back = performance.now();
+      poll = setInterval(() => { const now = performance.now(); if (now - back > NUDGE_MAX_MS || (now - back > 80 && now - (tm.outAt || 0) > NUDGE_QUIET_MS)) release(); }, 20);
+    }, 150);
   }
   // The drawer is its half's whole body whenever it shows — the transcript hides under it (placeLog).
   function showDrawer(tm, on) { $(tm.el.term).hidden = !on; requestAnimationFrame(() => fitTerm(tm)); }
@@ -5652,10 +5665,14 @@
     showDrawer(tm, true);
     const ws = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`);
     ws.binaryType = 'arraybuffer'; tm.ws = ws;
-    ws.onopen = () => { tm.retry = 0; fitTerm(tm, true); nudgeTerm(tm); if (tm.g === focusG) tm.xt.focus(); readFocusFromScreen(tm); };
+    ws.onopen = () => { tm.retry = 0; tm.snapped = false; fitTerm(tm, true); if (tm.g === focusG) tm.xt.focus(); readFocusFromScreen(tm); };
     ws.onmessage = e => {
       if (tm.ws !== ws) return;
-      if (typeof e.data !== 'string') { const data = new Uint8Array(e.data); return toXt(tm, () => tm.xt.write(data)); }
+      if (typeof e.data !== 'string') {
+        const data = new Uint8Array(e.data); tm.outAt = performance.now(); toXt(tm, () => tm.xt.write(data));
+        if (!tm.snapped) { tm.snapped = true; nudgeTerm(tm); }   // the screen as the holder has it is up: the repaint, unseen, behind it
+        return;
+      }
       const m = JSON.parse(e.data);
       if (m.t === 'exit') termEnded(tm, m.code);
       else if (m.t === 'clear') toXt(tm, () => tm.xt.write('', () => tm.xt.clear()));   // after what is already queued, or it repaints over the clear (see termhold)
