@@ -72,6 +72,10 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   to a soft band, slides one way while the bright copy inside it slides the other by the same amount, so the copy
   stays over the word and only the band moves. Percentages of the word's own width, so nothing is measured; the copy
   is the window's `::before` from an attribute, so the word is in the text once and the scenarios read it as before.
+* **12 · fish verbs**: Claude Code's spinner changes its verb as it works; the board's presence line now does too, from
+  a fish market — trawling, filleting, netting, haggling (a *peixeirada* is a fishwives' quarrel), gutting, brining…
+  — every few seconds, rolled up and in, still shimmering. English, as the board's words are. In place rather than in
+  the markup, so the line is not rebuilt each time and a check that reads it as it appears still reads *clauding…*.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 

@@ -45,6 +45,11 @@ export default async function (ctx) {
     // …and a light runs across the word (2026-10-11): a window and its copy, moving opposite ways by transform
     out.shimmer = await ctx.evaluate(`(w => w && [getComputedStyle(w).animationName, getComputedStyle(w, '::before').animationName, getComputedStyle(w, '::before').content])(document.querySelector('#log > .presence .shim > .sw'))`);
     ctx.assert.deepEqual(out.shimmer, ['shimw', 'shimi', '"clauding…"'], 'the word shimmers, said once');
+    // …and turns, every few seconds, into a fish market's (2026-10-11)
+    await ctx.waitFor(`!/^clauding…$/.test(document.querySelector('#log > .presence .verb')?.textContent || 'clauding…')`, { what: 'the next verb', timeout: 6000 });
+    await ctx.settle();
+    out.verb = await ctx.evaluate(`document.querySelector('#log > .presence .verb').textContent`);
+    ctx.assert.match(out.verb, /^(trawling|filleting|netting|haggling|gutting|brining|scaling|deboning|reeling in|casting|salting|shoaling|smoking)…$/, 'a fish verb, alone in its cell');
     await ctx.shot('clauding');
 
     // the reply lands: the presence goes, the reply is the last thing

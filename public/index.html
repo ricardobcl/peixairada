@@ -447,6 +447,8 @@
      and the copy in it move by the same 68 % of that width in opposite directions — the band sweeps the word, the copy
      stays over it. Phased with the rings (phaseAnims). */
   .shim { position: relative; display: inline-block; }
+  .presence .verb { display: inline-grid; overflow: hidden; vertical-align: bottom; }   /* the fish verbs swap in one cell */
+  .presence .verb > .vw { grid-area: 1 / 1; white-space: nowrap; }
   .shim > .sw { position: absolute; inset: 0; overflow: hidden; pointer-events: none;
     -webkit-mask-image: linear-gradient(90deg, transparent 30%, #000 50%, transparent 70%); mask-image: linear-gradient(90deg, transparent 30%, #000 50%, transparent 70%);
     animation: shimw 2.4s ease-in-out infinite; }
@@ -6676,9 +6678,23 @@
   // there is one; while it is asking, the question in the card's red. Kept the last thing in the log, gone when the
   // chat is neither; called from renderLog and from the session event, which is where the state flips. phaseAnims puts
   // the mark in step with the divider's.
+  // Fish verbs (2026-10-11, Claude Code's spinner verbs): while the presence line says the chat is clauding, its word
+  // changes every VERB_MS to one of a fish market's — rolled up and in, shimmering like the first — in place, so the
+  // line's markup, and every check that reads it as it comes, still start at *clauding…*.
+  const VERBS = ['trawling…', 'filleting…', 'netting…', 'haggling…', 'gutting…', 'brining…', 'scaling…', 'deboning…', 'reeling in…', 'casting…', 'salting…', 'shoaling…', 'smoking…', 'clauding…'];
+  const VERB_MS = 3200;
+  let verbAt = 0;
+  setInterval(() => {
+    const box = !document.hidden && document.querySelector('#log > .presence .verb'); if (!box) return;
+    const old = box.lastElementChild, nu = html2el(`<span class="vw">${shim(VERBS[verbAt++ % VERBS.length])}</span>`);
+    box.append(nu); phaseAnims();
+    if (REDUCED.matches || !old) { old?.remove(); return; }
+    old.animate([{ transform: 'none', opacity: 1 }, { transform: 'translateY(-90%)', opacity: 0 }], { duration: 220, easing: EASE_OUT, fill: 'forwards', id: 'verb' }).onfinish = () => old.remove();
+    nu.animate([{ transform: 'translateY(90%)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 340, easing: SPRING, id: 'verb' });
+  }, VERB_MS);
   function renderPresence() {
     const log = $('#log'), s = state.sessions.get(state.current);
-    const html = !s ? '' : s.status === 'working' ? `<div class="presence" title="Claude is working on a reply">${PIX}<span class="w">${shim('clauding…')}${s.agents ? ` <em>· ${s.agents} agent${s.agents === 1 ? '' : 's'} at work</em>` : ''}</span></div>`
+    const html = !s ? '' : s.status === 'working' ? `<div class="presence" title="Claude is working on a reply">${PIX}<span class="w"><span class="verb"><span class="vw">${shim('clauding…')}</span></span>${s.agents ? ` <em>· ${s.agents} agent${s.agents === 1 ? '' : 's'} at work</em>` : ''}</span></div>`
       : asking(s) ? `<div class="presence ask">${askHtml(s)}</div>` : '';
     let el = log.querySelector(':scope > .presence');
     if (!html) { el?.remove(); return; }

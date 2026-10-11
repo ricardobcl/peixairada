@@ -920,7 +920,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   `renderPresence()` — from `renderLog` and the `session` event — keeps `.presence` last while the open chat is
   clauding (the `.pix` sprite and the word, **which shimmers** — `shim()`, as the Clauding lane's name does: a window
   the word's width, masked to a soft band, and its `::before` copy from `data-t` moving opposite ways by transform, so
-  the text is in the DOM once; `shimw`/`shimi`, phased) or asking (`askHtml`), and removes it otherwise, **and after it the
+  the text is in the DOM once; `shimw`/`shimi`, phased; **and every `VERB_MS` its word becomes a fish market's** —
+  `VERBS`, rolled in place in `.verb`, the markup still saying *clauding…*) or asking (`askHtml`), and removes it otherwise, **and after it the
   new-reply pill** (`.lognew`, `logNew()`, made on first need): `renderLog` inserts new nodes before that tail, marks
   them `.in` (the fade; never on the first fill) and, when the log is not at its end, lights the pill; the log's scroll
   listener puts it away at the end. Anything else that appends to the log has to go before the tail, and a check for
