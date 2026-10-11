@@ -1130,6 +1130,13 @@
   :is(.shead .hpr, .prrow) .ck[data-checks="pending"] { --ckc: var(--working); }
   :is(.shead .hpr, .prrow) .ck svg { width: 11px; height: 11px; fill: none; stroke: var(--ckc); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
   :is(.shead .hpr, .prrow) .ck[data-checks="pending"] svg { stroke-width: 2; stroke-dasharray: 18 11; animation: ring 1.1s linear infinite; }
+  /* …and the answer coming in (prMoments, 2026-10-11): the tick or the cross stroked in, once */
+  .shead .hpr .ck.now path { stroke-dasharray: 16; animation: ckdraw .26s ease-out .08s both; }
+  @keyframes ckdraw { from { stroke-dashoffset: 16; } to { stroke-dashoffset: 0; } }
+  /* A PR merged, seen (prMoments): a sheen sweeps across its chip as it turns, once — a strip moved by a transform. */
+  :is(.shead .hpr, #slist .cpr).sheen { position: relative; overflow: hidden; }
+  :is(.shead .hpr, #slist .cpr).sheen::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 60%; pointer-events: none; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .6), transparent); animation: sheen .6s ease-in-out .1s both; }
+  @keyframes sheen { from { transform: translateX(-120%) skewX(-18deg); } to { transform: translateX(260%) skewX(-18deg); } }
   .shead .hpr[data-checks="fail"] { box-shadow: 0 0 0 1.5px var(--pr-closed); }   /* a failing PR is seen from across the room */
   .prrow .ckw { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
   .prrow .ckw .ck { margin: 0; }
@@ -1796,6 +1803,7 @@
     .dot.working, .dot.needs-input { animation: none; }
     .pix, .pix svg { animation: none; }
     .ck[data-checks="pending"] svg { animation: none; stroke-dasharray: none; }   /* CI running: a still ring */
+    .shead .hpr .ck.now path, :is(.shead .hpr, #slist .cpr).sheen::after { animation: none; }   /* an answer, a merge: there, not drawn */
     #log > .in { animation: none; }
     dialog, dialog:not([open]), .pop, .pop[hidden], .note, .note.out { transform: none; }
     @starting-style { dialog[open], .pop:not([hidden]), .note { transform: none; } }
@@ -2523,7 +2531,30 @@
   // has landed. A key's first value, a value that is not digits, and reduced motion just show the number.
   const rolled = new Map(), ROLL_MS = 550;
   const rn = (key, v) => `<span class="rn" data-rk="${esc(key)}">${v}</span>`;
-  function rollSoon() { if (!rollSoon.f) rollSoon.f = requestAnimationFrame(() => { rollSoon.f = 0; rollIn(); }); }
+  function rollSoon() { if (!rollSoon.f) rollSoon.f = requestAnimationFrame(() => { rollSoon.f = 0; rollIn(); prMoments(); }); }
+  // A PR's change, seen (2026-10-11), in the same pass: a chip whose CI went from running to an answer draws it — the
+  // tick or the cross stroked in, the badge popping, and a failure shaking its chip as a wrong password does — and a
+  // chip gone from open to merged sweeps a sheen across as it turns purple. Each chip is keyed by its PR and where it
+  // stands (the header, a card), against what that key showed last; a first sight plays nothing.
+  const prShown = new Map();
+  function prMoments() {
+    for (const el of document.querySelectorAll(':is(.shead .hpr, #slist .cpr)[data-url]:not(.pm)')) {
+      el.classList.add('pm');
+      const key = `${el.closest('.card')?.dataset.id || 'head'}|${el.dataset.url}`, now = { st: el.dataset.state || '', ck: el.dataset.checks || '' }, was = prShown.get(key);
+      prShown.set(key, now);
+      if (!was || REDUCED.matches) continue;
+      if (was.ck === 'pending' && (now.ck === 'pass' || now.ck === 'fail')) {
+        const ck = el.querySelector('.ck'); ck?.classList.add('now');
+        ck?.animate([{ scale: .6 }, { scale: 1 }], { duration: 420, easing: SPRING, id: 'ci' });
+        if (now.ck === 'fail') el.animate([{ translate: '0' }, { translate: '-3px' }, { translate: '3px' }, { translate: '-2px' }, { translate: '1px' }, { translate: '0' }], { duration: 340, delay: 160, easing: 'ease-out', id: 'ci' });
+        noteMotion(el.dataset.url, 'ci:' + now.ck);
+      }
+      if (was.st !== 'merged' && now.st === 'merged') {
+        el.classList.add('sheen'); setTimeout(() => el.classList.remove('sheen'), 700);
+        noteMotion(el.dataset.url, 'merged');
+      }
+    }
+  }
   function rollIn() {
     const go = [];
     for (const el of document.querySelectorAll('.rn[data-rk]:not(.rk)')) {
@@ -4742,7 +4773,7 @@
     const prs = s.prs || [], tks = s.tickets || [], prsOpen = !!prefs.prsOpen;
     const said = [prs.length ? `${prs.length} PR${prs.length === 1 ? '' : 's'}` : '', tks.length ? `${tks.length} ticket${tks.length === 1 ? '' : 's'}` : ''].filter(Boolean).join(' and ');
     const hprs = !prs.length && !tks.length ? '' : `<button class="hprs${prsOpen ? ' on' : ''}" id="prToggle" aria-expanded="${prsOpen}" title="${said} in this chat — click to ${prsOpen ? 'fold the list' : 'list them, one per row'}${prs.length ? ' · ⌥⌘G opens a PR' : ''}">${
-      prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}"${prCk(pr) ? ` data-checks="${prCk(pr)}"` : ''} title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}${prCk(pr) ? `\n${CK_TIP[prCk(pr)]}` : ''}${pr.turn ? `\n${turnTip(pr)}` : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}${ckHtml(pr)}</span>`).join('')
+      prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}"${prCk(pr) ? ` data-checks="${prCk(pr)}"` : ''} title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}${prCk(pr) ? `\n${CK_TIP[prCk(pr)]}` : ''}${pr.turn ? `\n${turnTip(pr)}` : ''}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}${ckHtml(pr)}</span>`).join('')
     }${tks.map(t => `<span class="hpr tk" data-cat="${esc(t.cat)}" title="${esc(ticketTip(t))}">${esc(t.key)}</span>`).join('')}<span class="hpr more" hidden></span></button>`;
     const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo${s.cwd && prefs.project === s.cwd ? ' on' : ''}" title="${s.cwd && prefs.project === s.cwd ? 'Every project again (ALL)' : 'Show this folder\'s chats — click again for every project'}">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${esc(s.title)}</span></h2>
       ${diffChip(s)}${headMove(s)}${hprs}${taskChip(s)}

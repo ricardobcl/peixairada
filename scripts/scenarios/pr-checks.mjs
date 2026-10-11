@@ -38,5 +38,15 @@ export default async function (ctx) {
   await ctx.settle();
   await ctx.shot('2-running', { x: 900, y: 0, width: 800, height: 110 });
   await ctx.evaluate(`document.querySelector('#prToggle').click()`);
+
+  // the answer coming in (2026-10-11): running → passed draws the tick and pops the badge; and #12 merged sweeps a
+  // sheen across its chip — on the header's and on the card's
+  const url13 = 'https://github.com/acme/repo-a/pull/13', url12 = 'https://github.com/acme/repo-a/pull/12';
+  writeFileSync(file, JSON.stringify({ 'acme/repo-a#12': { state: 'MERGED', title: 'The base', ...rollup('SUCCESS') }, 'acme/repo-a#13': { state: 'OPEN', title: 'The follow-up', ...rollup('SUCCESS') } }));
+  await ctx.openChat(plain.id); await ctx.sleep(400); await ctx.openChat(two.id);
+  await ctx.waitFor(`window.peix.motion().some(m => m.kind === 'ci:pass' && m.id === ${JSON.stringify(url13)})`, { timeout: 10_000, what: '#13\'s tick drawn' });
+  await ctx.waitFor(`window.peix.motion().filter(m => m.kind === 'merged' && m.id === ${JSON.stringify(url12)}).length >= 2`, { timeout: 10_000, what: '#12\'s sheen, on the header and the card' });
+  out.moments = await ctx.evaluate(`window.peix.motion().filter(m => m.kind.startsWith('ci:') || m.kind === 'merged').map(m => m.kind + ' ' + m.id.split('/').pop())`);
+  ctx.assert.ok(!out.moments.includes('ci:pass 12'), 'a chip that was not running draws nothing');
   return out;
 }

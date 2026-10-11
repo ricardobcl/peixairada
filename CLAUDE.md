@@ -416,7 +416,12 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
 * **A PR's CI is said in the chat header only** (2026-10-09; the cards have enough): `commits(last: 1) { … statusCheckRollup
   { state } }` in `PR_FIELDS` → `prChecks` → `checks` (pass · fail · pending) on each PR; `.hpr` wears `.ck` — a round
   badge after its number in the page's ground, a tick, a cross, or a ring turning (`ring`, stilled under reduced
-  motion) — and a failing chip a red ring; the row says *passed · failing · running*. Only for open and draft PRs.
+  motion) — and a failing chip a red ring; the row says *passed · failing · running*. Only for open and draft PRs. **A
+  change is seen** (2026-10-11, `prMoments`, in `rollSoon`'s pass): each `.hpr` and card `.cpr` (both carry
+  `data-url`), keyed by where it stands and its PR (`prShown`), against what it showed last — running → passed or
+  failing strokes the mark in (`.ck.now`, `ckdraw`) and pops the badge, a failure shaking its chip (the `translate`
+  property); open → merged sweeps a sheen across (`.sheen`). A first sight plays nothing; `ci:pass`, `ci:fail` and
+  `merged` in `motion()`.
   → `scripts/scenarios/pr-checks.mjs`.
 * **A chat's Jira tickets are chips as its PRs are** (2026-10-08): on the card, `cardTickets` — the first (the branch's,
   else the last named) as `.ctk`, solid in its status category's colour (`--tk-todo` · `--tk-doing` · `--tk-done`,

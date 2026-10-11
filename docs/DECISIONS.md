@@ -48,6 +48,12 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   to the card's edge, half a second, while the ring of what Claude does next fades in under it. An outline's offset
   rather than a transform, because the card's two pseudo-elements are taken by the ring and its cover; a one-off on one
   card. Marked and replayed like the landing (`heardAt`, a negative delay), so a card rebuilt mid-way carries on.
+* **7 · CI resolves, a PR merges**: the badge swapped its ring for a tick or a cross between two draws. Now an answer
+  is drawn in where it lands, the badge pops on the spring, and a failure shakes its chip the way macOS shakes a wrong
+  password — the one motion on the board that means *no*. A merge sweeps a sheen across the chip, on the header and on
+  the card, as it turns purple. Both chips are redrawn by markup, so the moment is found after the draw by comparing each
+  chip with what it showed last under its key (the PR and where it stands); a chat opened for the first time plays
+  nothing, and neither does a PR that was never running.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 
