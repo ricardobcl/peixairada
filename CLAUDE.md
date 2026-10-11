@@ -432,7 +432,9 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   `.sep`'s x (a 2 px span; the bar it drew went on 2026-09-28) — the same `.sq.pick`, inked only while the pointer is
   in the header; `colorAt` remembers which header the picker was opened from, so `note` pops up by the square. The
   h2's gap is 12 px, the header's padding.
-* **Only the project's name is on the project's colour; the rest of the header is black** (2026-09-28):
+* **Only the project's name is on the project's colour; the rest of the header is black** (2026-09-28) — **but in
+  the board's own light theme off the notch, the panel** (2026-10-12: `--crust` and the `--hd-*` inks set to the light
+  ones on `main:not(.notch)`, the splitter's black with them; at the notch it is the housing's colour and stays):
   `.shead::after` from `--hsplit` (the `.sep`'s right edge) down `--hrow` (the first row; open details keep the
   header's ground), set by `paintHeadSplit()` after `layoutNotch(); fitHeadPrs()` and on `peixFill`; `.shead`
   isolates so the paint sits under the row. The title (`.shead h2 .t`) and everything right of the h2 borrow the dark

@@ -191,8 +191,9 @@ export default async function (ctx) {
     }
     ctx.assert.deepEqual([out.blackDark.head, out.blackDark.split, out.blackDark.ground], ['rgb(74, 74, 69)', 'rgb(74, 74, 69)', 'rgba(0, 0, 0, 0)'],
       `dark: the header right of the project and the splitter under the card are grey, the list's ground as it was: ${JSON.stringify(out.blackDark)}`);
-    ctx.assert.deepEqual([out.blackLight.head, out.blackLight.split, out.blackLight.ground, out.blackLight.ink], ['rgb(74, 74, 69)', 'rgb(74, 74, 69)', 'rgba(0, 0, 0, 0)', 'rgb(28, 28, 26)'],
-      `light: the same greys, the light ground as it was, the open black card's name in the page's ink: ${JSON.stringify(out.blackLight)}`);
+    // in the light the header's black and the splitter's are the panel since 2026-10-12 (off the notch): no grey to need
+    ctx.assert.deepEqual([out.blackLight.head, out.blackLight.split, out.blackLight.ground, out.blackLight.ink], ['rgb(255, 255, 255)', 'rgb(255, 255, 255)', 'rgba(0, 0, 0, 0)', 'rgb(28, 28, 26)'],
+      `light: the header right of the project and the splitter the panel, the light ground as it was, the open black card's name in the page's ink: ${JSON.stringify(out.blackLight)}`);
     // the card's edge, glow and border wear the colour as it reads on the panel (2026-10-09, late night): in the dark a
     // black is a grey there, its lightness held at .62; on the light panel it is black as set
     ctx.assert.deepEqual([out.blackDark.lift, out.blackLight.lift], ['oklch(0.62 0 0)', 'oklch(0 0 0)'], `the black card's lit colour: ${JSON.stringify([out.blackDark, out.blackLight])}`);

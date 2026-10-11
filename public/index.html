@@ -1250,6 +1250,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* (2026-10-01) The open chat's colour as dark as that black (nearBlack, tintChat): the black beside it — here, and
      the splitter under the open card — is a grey, so the project's box and the card still stand out of it. */
   main.darkchat .shead::after, main.darkchat #splitter::after, main.darkchat #splitter::before { background: #4a4a45; }
+  /* In the board's own light theme the black follows the appearance (2026-10-12): it was the heaviest thing on a light
+     page, pulling the eye off the transcript, and a light theme's header (Latte's) showed a light one reads. The panel
+     and the light inks then, the splitter's black too — but at the notch, where the black is the camera housing's
+     colour and the header's right is the housing's own, it stays. A theme sets its own (below). */
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]):not([data-skin]) main:not(.notch) { --crust: var(--panel); --hd-ink: var(--ink); --hd-muted: var(--muted); --hd-line: var(--line); --hd-panel: var(--panel); --hd-inline: var(--inline-bg); }
+    :root:not([data-theme="dark"]):not([data-skin]) main.darkchat:not(.notch) .shead::after, :root:not([data-theme="dark"]):not([data-skin]) main.darkchat:not(.notch) #splitter::after, :root:not([data-theme="dark"]):not([data-skin]) main.darkchat:not(.notch) #splitter::before { background: var(--crust); } }
+  :root[data-theme="light"]:not([data-skin]) main:not(.notch) { --crust: var(--panel); --hd-ink: var(--ink); --hd-muted: var(--muted); --hd-line: var(--line); --hd-panel: var(--panel); --hd-inline: var(--inline-bg); }
   /* a theme (2026-10-10) paints this black in its own darkest, --crust, and its inks are the theme's (--hd-*) */
   .shead > :not(h2, .details) { --ink: var(--hd-ink, #e8e6df); --muted: var(--hd-muted, #9a998f); --line: var(--hd-line, #2c2c29); --rink: var(--hd-ink, #e8e6df); --panel: var(--hd-panel, #1c1c1a); --inline-bg: var(--hd-inline, rgba(255, 255, 255, .075)); }
   :where(.shead > :not(h2, .details)) { color: var(--ink); }   /* for what inherits its ink; a control's own rule still wins */

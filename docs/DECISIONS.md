@@ -80,6 +80,11 @@ the order they landed.
   on it, in a terminal here* went: the button's tooltip says what it runs.
 * **C5 — the editor's tab is its folder**: VS Code Web's address read `127.0.0.1:7332/?folder=%2FUsers%2F…`; in front
   its tab says *VS Code · storefront* (the URL's `folder`), the URL in the tooltip, and a click still copies it.
+* **C6 — in the light theme the header is light**: the black right of the project's name was the heaviest thing on a
+  light page, and Latte's header showed a light one reads. In the board's own light theme the black (`--crust`) is the
+  panel and the header's borrowed inks (`--hd-*`) are the light ones — the splitter's black with them — **but not at
+  the notch**, where the black is the camera housing's colour and the header's right is the housing's own. A theme
+  still sets its own; a near-black project's grey (`darkchat`) is not needed on a light panel.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 
