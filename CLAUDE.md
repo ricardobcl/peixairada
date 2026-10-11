@@ -467,8 +467,9 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   (`live.statusAt`). Drawn again on session events (`homeSoon`), the day asked again each minute and when a turn
   lands. → `test/today.test.mjs`, `scripts/scenarios/home.mjs`.
 * **⌥⌘A is the overview, every live agent at once** (2026-10-10; `#ov`, a modal `<dialog>` over the whole window, the
-  board blurred under it): `ovColumns` — Asking you, Clauding, Watching (a live chat's tasks), Ready with unread
-  replies — every project, done chats never; a tile per chat, numbered in reading order (1–9 and ⏎ open, the arrows
+  board blurred under it): `ovColumns` — Asking you, Clauding, Watching (a live chat's tasks), New replies — every
+  project, done chats never; an empty column is its head alone, narrow (`.oc.nil`; `.empty` is the log's message), the
+  full ones sharing the width (2026-10-12); a tile per chat, numbered in reading order (1–9 and ⏎ open, the arrows
   move; **a click on nothing closes it** — not a tile or a control, pressed and let go there, `ovNothing`, 2026-10-11,
   late night), drawn again on its chats' `session` events (`ovSoon`). **A tile is a live tile** (shared with the stack, see
   *The chat column's two halves*): the chat's drawer here as a read-only xterm (`mountMini` — it never sends a resize,

@@ -1765,6 +1765,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #ov .ovclose { font: inherit; font-size: 18px; line-height: 1; padding: 2px 8px; border: 0; border-radius: 6px; background: var(--ctl); color: var(--muted); cursor: pointer; }
   #ov .ovcols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; min-height: 0; }
   #ov .oc { display: grid; align-content: start; gap: 12px; min-width: 0; overflow-y: auto; padding: 2px; }
+  #ov .oc.nil { min-width: 120px; opacity: .55; }   /* its head and its 0, nothing under (2026-10-12; "none" under it before) */
   #ov .oc h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--c); }
   #ov .oc h2 b { margin-left: auto; font-size: 11px; color: var(--ink); background: var(--ctl); padding: 1px 7px; border-radius: 8px; }
   #ov .none { color: var(--muted); font-size: 12px; padding: 4px 2px; }
@@ -6845,7 +6846,10 @@ const toolName = n => {
     let n = 0;
     const count = k => cols.find(c => c[0] === k)[2].length;
     $('#ovchips').innerHTML = [['ask', 'asking you'], ['work', 'clauding'], ['watch', 'watching'], ['ready', 'new replies']].map(([k, w]) => `<span class="${k}"><i></i>${count(k)} ${w}</span>`).join('');
-    $('#ovcols').innerHTML = cols.map(([k, name, list]) => `<section class="oc ${k}"><h2><i></i><span>${name}</span><b>${list.length}</b></h2>${list.map(s => ovTile(s, ++n, n - 1 === ov.sel)).join('') || '<div class="none">none</div>'}</section>`).join('');
+    // an empty column is its head alone, narrow, and the full ones share the width (2026-10-12): four equal columns
+    // put the board's two live chats in a quarter of the screen beside three saying "none"
+    $('#ovcols').style.gridTemplateColumns = cols.map(([, , list]) => list.length ? 'minmax(0, 1fr)' : 'minmax(0, max-content)').join(' ');
+    $('#ovcols').innerHTML = cols.map(([k, name, list]) => `<section class="oc ${k}${list.length ? '' : ' nil'}"><h2><i></i><span>${name}</span><b>${list.length}</b></h2>${list.map(s => ovTile(s, ++n, n - 1 === ov.sel)).join('')}</section>`).join('');
     for (const host of $('#ovcols').querySelectorAll('.obody.live')) { const s = state.sessions.get(host.closest('.ot').dataset.id), d = s && drawerOf(s); if (d) mountMini(ov.minis, host, d); }
     sweepMinis(ov.minis);
     for (const s of ov.list) wantDiffStat(s);

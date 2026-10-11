@@ -85,6 +85,9 @@ the order they landed.
   panel and the header's borrowed inks (`--hd-*`) are the light ones — the splitter's black with them — **but not at
   the notch**, where the black is the camera housing's colour and the header's right is the housing's own. A theme
   still sets its own; a near-black project's grey (`darkchat`) is not needed on a light panel.
+* **V1 — the overview's empty columns step aside**: on the live board three of its four equal columns said *none* and
+  both live chats sat in a quarter of the screen. An empty column is its head and its 0, narrow and dimmed; the full
+  ones share the width. (The class is `.nil`: `.empty`, the first try, is the log's own message, 30vh down.)
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 
