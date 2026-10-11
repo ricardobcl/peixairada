@@ -914,7 +914,9 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   in the app the app menu's *Settings…*, which asks `peixKey` as ⌘W does), the chat header's ··· (`#settingsBtn`, the
   menu's last row) and, with no chat open, the empty header's own ··· (`#noChatMore`, delegated — `leaveChat` rewrites
   the header). A head (the name, the counts, × `#settingsClose`), a segmented control (`.stabs`) over three panes
-  (`.spane`): **Board** — the notifications switch (`#notifyOn`), the rings' step (`#ringsInStep`), the edge light (`#edgeLight`), the light under the pointer (`#cardSpot`), the floating header (`#headFloat`), sounds (`#soundsOn`), the status bar (`#sbarOn`) and what it adds (`#sbarStats`), the cards' size
+  (`.spane`): **Board** — in sections since 2026-10-12 (`h4.shd`: *Alerts · Chats · Look · Terminal*, and *Lights and
+  motion* folded, `details.sadv` — the rings' step, the card light as a choice of *ring* or *edge*, `.lightpick` over the
+  hidden `#edgeLight`, and the light under the pointer): the notifications switch (`#notifyOn`), the rings' step (`#ringsInStep`), the edge light (`#edgeLight`), the light under the pointer (`#cardSpot`), the floating header (`#headFloat`), sounds (`#soundsOn`), the status bar (`#sbarOn`) and what it adds (`#sbarStats`), the cards' size
   (`.dens`), auto-resume (`#autoResume`), ⌥ as Meta (`#optMeta`), what is hidden (`#hidden`) — no date format (DD-MM-YYYY, `fmtDate`); **Setup** — the server's (`#setup`); **Keys** — the list (`.keys`). The class
   is still `pop`, so every row keeps its `.pop …` rule. Esc, the backdrop, ×, ⌘, or ⌘W close it; its `close` drops a
   setup row half typed. **It is modal**: the pane is down while it is up (`postPane`), and the ⌥⌘ / ⌘ keys are swallowed

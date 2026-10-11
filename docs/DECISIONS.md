@@ -148,6 +148,11 @@ the order they landed.
   (`peixReply`: the drawer over the page's socket to it when the chat is open, else one opened for the reply and closed,
   which sends no size; `peixDone`: the card's own tick, where the card offers one); the snooze is the same banner again
   fifteen minutes later. A question's answers are not buttons: the transcript has them only once answered.
+* **W1 — the Board settings in sections**: one flat list of fifteen switches and more, behaviour mixed in with looks.
+  *Alerts* (notifications, sounds), *Chats* (the cards' size, by lane, same height, auto-resume), *Look* (simple colours,
+  the theme, tiles and theirs, the floating header, the status bar and its stats), *Terminal* (⌥ as Meta) — and
+  *Lights and motion*, folded: the rings in step, the light under the pointer, and the edge light as **a choice, card
+  light *ring* or *edge*** (its checkbox stays, hidden, so the launcher's Toggle row still flips it). Every id kept.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 
