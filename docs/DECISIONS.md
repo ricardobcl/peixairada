@@ -61,6 +61,11 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   in the code face under the title — and each event rolls in from below while the watching light blips once, a heart
   monitor's beat. The line is an empty slot in the markup and filled after the render: an event in the text would have
   changed the card's markup, and so its node, at every event of a chatty monitor. Not at compact, not on the rail.
+* **10 · located** (Rauno Freiberg's *shake the pointer to find it*): opened from a picker, the launcher, a notification,
+  the overview or the home, a chat's card is scrolled to and flashed — a band of its own light sweeping across it once —
+  so the eye learns where the chat lives in the list. Not when the card itself was clicked (you are looking at it) nor
+  on ⌥⌘↑↓, which walks the list a card at a time and would flash on every press. The scroll stays a jump: a key's move
+  is instant on the board, and the flash is what draws the eye.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 

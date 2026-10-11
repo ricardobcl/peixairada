@@ -535,6 +535,11 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   something else in view, a still lane head says so where the Ready lane goes (before the done cards) — the pixel mark
   at rest, in the ready green; reached from a ✓ within 3 s (`lastTickAt`) its mark hops and throws pixel sparks, once.
   None under a query. → `scripts/scenarios/day-separator.mjs`, the caught-up section of `small-motions.mjs`.
+* **A chat opened from elsewhere is located** (2026-10-11, `openSession(id, { locate: true })`, `locateCard`): from
+  ⌥⌘K and the chats step, the launcher, a notification, the address (a deep link, the app's notifications), the
+  overview, a tile and the home, its card is scrolled to and a band of its light sweeps across it once (`.card > .loc`,
+  its own box: the pseudo-elements are the ring's); `locate` in `motion()`. A click on the card, ⌥⌘↑↓ and a tick's move
+  do not.
 * **Ticking the open chat moves on** (2026-09-30): `tickDone` — the card's ✓ and ↩, the chats step's ✓ — opens the
   card below it in the list as shown, else the one above, stepping over done cards; a chat ticked while another is
   open moves nothing. The move is made **at the click**, not on the server's answer (an empty chat's `session` event

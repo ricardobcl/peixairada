@@ -682,6 +682,10 @@
      card rebuilt mid-landing carries the wash on as it carries the flare. */
   .card.landed:not(.watching)::before { content: ''; position: absolute; z-index: -1; right: -48px; top: -48px; width: 96px; height: 96px; border-radius: 50%; pointer-events: none;
     background: radial-gradient(closest-side, color-mix(in srgb, var(--glow) 80%, transparent), transparent); animation: wash 1.1s ease-out both; animation-delay: inherit; }
+  /* Located (locateCard, 2026-10-11): a band of the card's light sweeping across it, once — its own box, so the card's
+     two pseudo-elements stay the ring's and its cover's, and so an asking card's let-out pings are not clipped. */
+  .card > .loc { position: absolute; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
+  .card > .loc i { position: absolute; inset: 0 auto 0 0; width: 45%; background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--glow) 45%, transparent), transparent); }
   @keyframes wash { from { transform: scale(0); opacity: 1; } 40% { transform: scale(5); opacity: .55; } to { transform: scale(7.5); opacity: 0; } }
   /* Hover and the open chat enhance the card's own colour, never the accent (2026-09-20): hover is the open card's
      solid tint (65 % of the colour since 2026-09-26, 55 % before — a step above the brighter wash) under the full
@@ -3963,11 +3967,11 @@
     if (['launch', 'toggle', 'prs'].includes(pick.mode)) return launchChoose(x);
     if (!x) { dlg.close(); return; }
     if (pick.mode === 'pr') { dlg.close(); showPr(x.url); }
-    else if (pick.mode === 'chat') { dlg.close(); openSession(x.id); }
+    else if (pick.mode === 'chat') { dlg.close(); openSession(x.id, { locate: true }); }
     else if (pick.mode === 'new') {   // a project's, or a folder's, open chats with ＋ a new one — or the clone first
       if (x.clone) cloneAndStart(x); else chatsStep({ key: x.key, name: x.name, cwds: x.cwds });
     }
-    else if (pick.mode === 'chats') { if (x.isNew) newFromChats(pick.ctx); else { dlg.close(); openSession(x.id); } }
+    else if (pick.mode === 'chats') { if (x.isNew) newFromChats(pick.ctx); else { dlg.close(); openSession(x.id, { locate: true }); } }
     else if (pick.mode === 'folder') newChatIn(x.cwd, pick.ctx.then);
     else if (pick.mode === 'env') {   // from ⌥⌘O the environment scopes the chats step; from ⌥⌘N it was the last thing asked
       if (pick.ctx.then === 'chats') chatsStep({ key: pick.ctx.cwd, name: folderName(pick.ctx.cwd), cwds: [pick.ctx.cwd], env: x.name });
@@ -4109,10 +4113,10 @@
     if (x.kind === 'menu') { if (x.leaf) dlg.close(); return x.go(); }
     if (x.kind === 'action' && x.stay) return x.fn();
     dlg.close();
-    if (x.kind === 'chat') return openSession(x.id);
+    if (x.kind === 'chat') return openSession(x.id, { locate: true });
     if (x.kind === 'project') return selectProject(x.p.key);
-    if (x.kind === 'pr') return openSession(x.pr.chatId).then(() => showPr(x.pr.url));
-    if (x.kind === 'ticket') return openSession(x.t.chatId).then(() => openExternal(x.t.url, { s: state.sessions.get(x.t.chatId) }));
+    if (x.kind === 'pr') return openSession(x.pr.chatId, { locate: true }).then(() => showPr(x.pr.url));
+    if (x.kind === 'ticket') return openSession(x.t.chatId, { locate: true }).then(() => openExternal(x.t.url, { s: state.sessions.get(x.t.chatId) }));
     if (x.kind === 'action') return x.fn();
   }
   // ?: the sheet of every key — Omarchy's Super+K — from anywhere but a box or a terminal, or the launcher's Keys. The
@@ -5959,7 +5963,7 @@
   }
   $('#stack').addEventListener('click', e => {
     if (e.target.closest('.sclose')) return hotStack();   // the × on the first tile: the stack out of view, as ⌥⌘S
-    const t = e.target.closest('.stile'); if (t) openSession(t.dataset.id);
+    const t = e.target.closest('.stile'); if (t) openSession(t.dataset.id, { locate: true });
   });
   $('#tilesOn').addEventListener('change', e => { prefs.tiles = e.target.checked; savePrefs(); applyTiles(); });
   $('#tileStackOn').addEventListener('change', e => { prefs.tileStack = e.target.checked; if (prefs.tileStack) prefs.tiles = true; savePrefs(); applyTiles(); });   // the launcher's row, with tiles off: the stack is theirs
@@ -6074,12 +6078,12 @@
     const ans = e.target.closest('[data-ans]'), tile = e.target.closest('.ot'); if (!tile) return;
     const s = state.sessions.get(tile.dataset.id); if (!s) return;
     $('#ov').close();
-    if (ans) answerInDrawer(s, ans.dataset.ans); else openSession(s.id);
+    if (ans) answerInDrawer(s, ans.dataset.ans); else openSession(s.id, { locate: true });
   });
   $('#ov').addEventListener('keydown', e => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const i = /^[1-9]$/.test(e.key) ? +e.key - 1 : e.key === 'Enter' ? ov.sel : -1;
-    if (i >= 0) { e.preventDefault(); const s = ov.list[i]; if (s) { $('#ov').close(); openSession(s.id); } return; }
+    if (i >= 0) { e.preventDefault(); const s = ov.list[i]; if (s) { $('#ov').close(); openSession(s.id, { locate: true }); } return; }
     const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
     if (step) { e.preventDefault(); ov.sel = Math.max(0, Math.min(ov.list.length - 1, ov.sel + step)); renderOverview(); $('#ovcols .ot.sel')?.scrollIntoView({ block: 'nearest' }); }
   });
@@ -6152,7 +6156,7 @@
         <div class="hblocks">${['--needs', '--working', '--idle', '--watch', '--accent', '--spend', '--you', '--ink'].map(v => `<i style="background:var(${v})"></i>`).join('')}</div></div></div>
       <div class="hday"><h3><b>Today</b><span>every chat, ${new Date(t0).getHours().toString().padStart(2, '0')}:00 to now</span><span class="lg"><span><i class="w"></i>clauding</span><span><i class="a"></i>waiting on you</span><span><i class="m"></i>watching</span></span></h3>${day}</div>`);
   }
-  $('#log').addEventListener('click', e => { const r = e.target.closest('.home .hrow'); if (r) openSession(r.dataset.id); });
+  $('#log').addEventListener('click', e => { const r = e.target.closest('.home .hrow'); if (r) openSession(r.dataset.id, { locate: true }); });
 
   // ---- a chat's folder not checked out: cloned first (2026-10-09) ----------------------------------------------------
   // A spawn the server refuses for a folder that is not there names the repo that would bring it back (`clone`: under
@@ -6671,7 +6675,15 @@
   }
 
   // `auto`: whether a chat whose claude has ended counts down to its resume (armResume) — not for the one a load opens.
-  async function openSession(id, { auto = true } = {}) {
+  // Located (2026-10-11): a chat opened from somewhere other than its card — ⌥⌘K, the launcher, a notification, the
+  // overview, a tile, the home — flashes its card once, a light sweeping across it, so the eye finds where it lives.
+  function locateCard(id) {
+    const c = document.querySelector(`#slist > .card[data-id="${CSS.escape(id)}"]`); if (!c || REDUCED.matches || prefs.sessionsCompact) return;
+    c.querySelector(':scope > .loc')?.remove();
+    const l = html2el('<span class="loc" aria-hidden="true"><i></i></span>'); c.append(l); noteMotion(id, 'locate');
+    l.firstChild.animate([{ transform: 'translateX(-100%)' }, { transform: 'translateX(250%)' }], { duration: 650, easing: 'cubic-bezier(.4, 0, .2, 1)', id: 'locate' }).onfinish = () => l.remove();
+  }
+  async function openSession(id, { auto = true, locate = false } = {}) {
     if (id !== state.current) drawer.err = null;   // a failure to start a drawer is the chat's it happened on (2026-10-07)
     state.current = id; state.unread.delete(id); hidePr();
     // the address names the open chat at once (2026-10-02; after the fetch before, so a chat left before its answer
@@ -6681,6 +6693,7 @@
     // a deep link or a notification can point at a chat outside the selected project — switch to its folder
     if (s0 && !inProject(s0, projectStub(prefs.project))) { prefs.project = s0.cwd || '?'; savePrefs(); }
     renderBoard();
+    if (locate && s0) { document.querySelector(`#slist > .card[data-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' }); locateCard(id); }
     if (auto) armResume(s0); else stopResume();
     if (s0) renderHead(s0);
     if (s0) syncTerm(s0);   // the tab it was on comes back at once — a page in the pane, its zsh; the drawer after the fetch (a chat not yet in the snapshot keeps what is attached until then)
@@ -6715,7 +6728,7 @@
     if (a.quiet) return;   // notifications off (the cog): the unread count above, nothing else
     if ('Notification' in window && Notification.permission === 'granted' && !viewing) {
       const n = new Notification(a.heading || `${a.kind === 'reply' ? 'Claude replied' : 'Claude needs input'} · ${a.project}`, { body: `${a.title}\n${a.snippet || ''}`, tag: a.sessionId || 'test' });
-      n.onclick = () => { window.focus(); if (a.sessionId) openSession(a.sessionId); n.close(); };
+      n.onclick = () => { window.focus(); if (a.sessionId) openSession(a.sessionId, { locate: true }); n.close(); };
     }
   }
 
@@ -6844,7 +6857,7 @@
   // deep link: /#<session-id> opens that chat — also how the native app's notifications jump here
   window.addEventListener('hashchange', () => {
     const id = location.hash.slice(1);
-    if (id && id !== state.current && state.sessions.has(id)) openSession(id);
+    if (id && id !== state.current && state.sessions.has(id)) openSession(id, { locate: true });
   });
 })();
 </script>

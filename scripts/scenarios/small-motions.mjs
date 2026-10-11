@@ -86,10 +86,24 @@ export default async function (ctx) {
   ctx.assert.ok(out.zero.sparks > 0, 'and throws its sparks');
   ctx.assert.match(out.zero.next, /lane done/, 'over the done cards, where the Ready lane goes');
   ctx.assert.equal(out.zero.ready, false, 'no Ready lane');
-  await ctx.settle();
-  ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('.spark').length`), 0, 'the sparks are gone');
+  // the sparks go on their animations' finish, an event a page out of sight hears late
+  await ctx.waitFor(`document.querySelectorAll('.spark').length === 0`, { what: 'the sparks gone', timeout: 4000 });
   for (const c of [one, two]) await ctx.server.post(`api/sessions/${c.id}/done`, { done: false });
   await ctx.waitFor(`document.querySelector('.gsep.lane.ready b')?.textContent === '2' && !document.querySelector('.gsep.lane.zero')`, { what: 'both ready again, the head gone' });
   await ctx.settle();
+
+  // ---- 10 · located: a chat opened from ⌥⌘K flashes its card once (the harness's openChat goes by the address, a
+  // deep link's way, which locates too) ----
+  await ctx.openChat(one.id); await ctx.settle();
+  const m0 = await ctx.evaluate(`window.peix.motion().length`);
+  await ctx.key('KeyK');
+  await ctx.waitFor(`document.querySelector('#pick').open`, { what: 'the chat picker' });
+  await ctx.fill('#pickq', 'plain');
+  await ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }))`);
+  await ctx.waitFor(`window.peix.motion().slice(${m0}).some(m => m.kind === 'locate')`, { what: 'the card located' });
+  out.located = await ctx.evaluate(`({ current: window.peix.state().current, ids: window.peix.motion().slice(${m0}).filter(m => m.kind === 'locate').map(m => m.id), sweep: !!document.querySelector('#slist > .card > .loc') })`);
+  ctx.assert.equal(out.located.ids.length, 1, 'one flash');
+  ctx.assert.equal(out.located.ids[0], out.located.current, 'on the chat it opened');
+  await ctx.waitFor(`document.querySelectorAll('#slist .loc').length === 0`, { what: 'the sweep gone', timeout: 4000 });
   return out;
 }
