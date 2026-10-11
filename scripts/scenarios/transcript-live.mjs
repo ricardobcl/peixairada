@@ -64,6 +64,9 @@ export default async function (ctx) {
     await ctx.waitFor(`!document.querySelector('#log > .presence') && /Built, all green/.test(document.querySelector('#log').lastElementChild?.textContent || '')`, { what: 'the presence gone and the reply last', timeout: 6000 });
     out.landed = await ctx.evaluate(`document.querySelector('#log').lastElementChild.className`);
     ctx.assert.match(out.landed, /\bmsg\b.*\bassistant\b/, 'the reply closes the log');
+    // …and, landing with the log at its end, came up part by part out of a blur (2026-10-11)
+    out.reveal = await ctx.evaluate(`window.peix.motion().filter(m => m.kind === 'reveal').map(m => m.dy)`);
+    ctx.assert.ok(out.reveal.length >= 1 && out.reveal.at(-1) >= 1, `its parts revealed: ${JSON.stringify(out.reveal)}`);
 
     // asking: the question in the card's red, from the registry's word
     await ctx.openChat(asking.id);

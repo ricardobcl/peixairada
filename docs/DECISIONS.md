@@ -86,6 +86,10 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   until its result comes, then a dot, or a red cross for an error — and a folded run of calls turns on its summary, so
   the open chat's foot says *working on this one* without opening the run. A call whose chat is no longer at work (an
   interrupt, a claude that ended) keeps a still ring: motion means running.
+* **15 · a reply landing**: the agent apps stream their text; the board cannot — a reply is one transcript line, there
+  whole. It can still arrive the way a streamed one reads: when it lands while you are at the end of the log, its
+  paragraphs, code and lists come up one after another, 45 ms apart, out of a slight blur. Scrolled up, it fades in as
+  before and lights the pill: nobody is watching it arrive.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 

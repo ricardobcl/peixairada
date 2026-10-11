@@ -6629,6 +6629,13 @@
   // <details> was drawn again on every push before, a turn's worth of rows parsed and linkified per push), its open
   // state kept. Another chat, or another list (a fetch hands the page a new array), starts the log over.
   const logView = { arr: null, n: 0, run: [], group: null, drawnRun: 0 };
+  const REVEAL_GAP = 45;
+  function reveal(msg) {
+    const parts = [...msg.querySelectorAll('.text > *, .turnfoot')].slice(0, 12);
+    noteMotion(state.current, 'reveal', parts.length);
+    parts.forEach((p, i) => p.animate([{ opacity: 0, filter: 'blur(3px)', transform: 'translateY(4px)' }, { opacity: 1, filter: 'blur(0)', transform: 'none' }],
+      { duration: 260, delay: 40 + i * REVEAL_GAP, easing: EASE_OUT, fill: 'backwards', id: 'reveal' }));
+  }
   // A tool call's state, at its row's start (2026-10-11, GitHub Actions' steps): turning while its result has not come
   // (still while the chat is not at work — #log.working, renderPresence), a dot once it has, a red cross for an error.
   // `toolRes`: every result the open chat's entries hold, by the call it answers; a result arriving for a row already
@@ -6655,7 +6662,15 @@
     const live = logView.n > 0 && !log.hidden && !REDUCED.matches, arrived = state.entries.length - logView.n;
     let replies = 0;
     const tail = log.querySelector(':scope > .presence, :scope > .lognew');   // once: per entry, it was a query over the whole log
-    const add = frag => { if (live) for (const c of frag.children) c.classList.add('in'); if (tail) log.insertBefore(frag, tail); else log.append(frag); };
+    // …and a reply of Claude's that lands while you are at the end comes up part by part out of a slight blur (2026-10-11,
+    // the agent apps' streaming text — the transcript has no stream, a reply arrives whole): its paragraphs, code and
+    // lists, REVEAL_GAP apart, instead of the whole message fading in at once.
+    const add = frag => {
+      const kids = live ? [...frag.children] : [];
+      for (const c of kids) if (!(stick && c.matches('.msg.assistant'))) c.classList.add('in');
+      if (tail) log.insertBefore(frag, tail); else log.append(frag);
+      if (stick) for (const c of kids) if (c.matches('.msg.assistant')) reveal(c);
+    };
     const group = () => {   // the trailing run of tool calls: its <details> made, or its new rows added and its summary redone
       const run = logView.run;
       if (!run.length || logView.drawnRun === run.length) return;
