@@ -88,6 +88,12 @@ the order they landed.
 * **V1 — the overview's empty columns step aside**: on the live board three of its four equal columns said *none* and
   both live chats sat in a quarter of the screen. An empty column is its head and its 0, narrow and dimmed; the full
   ones share the width. (The class is `.nil`: `.empty`, the first try, is the log's own message, 30vh down.)
+* **V2 — the small terminals show the work**: a tile keeps the bottom of a drawer's screen in view, and the bottom of
+  Claude Code's is its prompt box, its status line (tokens, cost, the model) and the agents' list. From the upper of
+  the prompt box's two rules of ─ (the last two near the bottom) down, the screen is moved below the tile's edge, so the
+  work and the spinner sit at its foot; re-read a quarter second after the screen changes. Not on a chat asking you:
+  the choices are where the prompt box was. **A stack tile's tail starts under its head** — it sat at the foot over
+  two-thirds of empty black — unless it is longer than the tile, when its newest rows are the ones kept.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

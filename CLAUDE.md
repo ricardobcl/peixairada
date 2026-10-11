@@ -474,7 +474,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   late night), drawn again on its chats' `session` events (`ovSoon`). **A tile is a live tile** (shared with the stack, see
   *The chat column's two halves*): the chat's drawer here as a read-only xterm (`mountMini` — it never sends a resize,
   so the PTY keeps the size the chat's own view gave it; scaled to the tile down to .7, cropped past that, the bottom
-  left in view), else its tail (`tailHtml` over `GET /api/tails?ids=`, polled every 2 s while up). The server keeps
+  left in view — **Claude Code's footer below the edge** (2026-10-12, `footRows`, `placeMini`: from the upper of the
+  prompt box's two rules of ─ down; not on a chat asking you, whose choices are there)), else its tail (`tailHtml` over `GET /api/tails?ids=`, polled every 2 s while up). The server keeps
   that tail for every chat, open or not (`noteRecent`, `s.recent`, the last 16 tool calls, results and words); a
   monitor's last event is `last` on its task; a question's answers are `ask.labels` — **known only once the
   transcript has the question, which is written with its answer** (see *How it reads*): a live question usually shows

@@ -1746,7 +1746,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .stile header em { margin-left: auto; flex: none; font-style: normal; font-weight: 600; color: var(--working); }
   .stile.ask header em { color: var(--needs); }
   .stile.ask:not(.kf) { border-color: var(--needs); box-shadow: 0 0 0 1px var(--needs), 0 0 22px -4px var(--needs); }
-  .stile .sbody { position: relative; overflow: hidden; display: grid; align-content: end; gap: 3px; padding: 8px 10px; background: var(--term-bg); font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--snip-claude); min-height: 0; }
+  .stile .sbody { position: relative; overflow: hidden; display: grid; align-content: start; gap: 3px; padding: 8px 10px; background: var(--term-bg); font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--snip-claude); min-height: 0; }
+  .stile .sbody.over { align-content: end; }   /* its tail under the tile's head, unless longer than the tile: then its newest rows (2026-10-12; always at the foot before) */
   .stile .sbody.live { display: block; padding: 0; }
   main.tiles + #sbar, main.tiles ~ #sbar { margin: 8px; border: 2px solid var(--tile-line); }
 
@@ -6667,23 +6668,42 @@ const toolName = n => {
     return rows.slice(-n).join('') || '<div class="say none">nothing yet</div>';
   }
   /** A drawer drawn small in `host`, one per terminal and surface (`reg`), kept across redraws — a redraw moves it in. */
-  function mountMini(reg, host, t) {
+  function mountMini(reg, host, t, crop = true) {
     let m = reg.get(t.id);
     if (!m) {
       const el = document.createElement('div'); el.className = 'mini';
       const xt = new Terminal({ cols: t.cols || 120, rows: t.rows || 30, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, lineHeight: 1.1, scrollback: 0, cursorBlink: false, disableStdin: true, theme: xtTheme() });
       xt.open(el);
       const ws = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`); ws.binaryType = 'arraybuffer';
-      ws.onmessage = e => { if (typeof e.data !== 'string') xt.write(new Uint8Array(e.data)); else if (JSON.parse(e.data).t === 'clear') xt.write('', () => xt.clear()); };
-      m = { xt, ws, el, cols: xt.cols, rows: xt.rows };
+      ws.onmessage = e => { if (typeof e.data !== 'string') xt.write(new Uint8Array(e.data), () => cropSoon(m)); else if (JSON.parse(e.data).t === 'clear') xt.write('', () => xt.clear()); };
+      m = { xt, ws, el, cols: xt.cols, rows: xt.rows, scale: 1, foot: 0 };
       reg.set(t.id, m);
     }
     if (t.cols && t.rows && (t.cols !== m.cols || t.rows !== m.rows)) { m.xt.resize(t.cols, t.rows); m.cols = t.cols; m.rows = t.rows; }
     if (m.el.parentElement !== host) host.append(m.el);
-    m.used = true;
-    requestAnimationFrame(() => { const sc = m.el.querySelector('.xterm-screen'), w = sc?.offsetWidth, hw = host.clientWidth; if (w && hw) m.el.style.transform = `scale(${Math.max(.7, Math.min(1, hw / w))})`; });
+    m.used = true; m.crop = crop;
+    requestAnimationFrame(() => { const sc = m.el.querySelector('.xterm-screen'), w = sc?.offsetWidth, hw = host.clientWidth; if (w && hw) m.scale = Math.max(.7, Math.min(1, hw / w)); placeMini(m); });
     return m;
   }
+  // Claude Code's own footer is out of the tile (2026-10-12): the tile keeps the bottom of the screen in view, and the
+  // bottom of Claude Code's is its prompt box, its status line (tokens, cost, the model) and the agents' list — what a
+  // glance at a tile does not want. The prompt box is the last two rules of ─ near the bottom; from the upper one down
+  // the screen is moved below the tile's edge, so what is over it — the work, the spinner — sits at the bottom. Not on
+  // a chat asking you, whose choices are where the prompt box was; no two rules, nothing moved.
+  function footRows(xt) {
+    const b = xt.buffer.active, rules = [];
+    for (let y = xt.rows - 1; y >= Math.max(0, xt.rows - 30) && rules.length < 2; y--) {
+      const l = b.getLine(b.viewportY + y)?.translateToString(true).trim() || '';
+      if (l.length >= xt.cols * .5 && /^─+$/.test(l)) rules.push(y);
+    }
+    return rules.length === 2 ? xt.rows - rules[1] : 0;
+  }
+  function placeMini(m) {
+    m.foot = m.crop ? footRows(m.xt) : 0;
+    const rh = (m.el.querySelector('.xterm-screen')?.offsetHeight || 0) / m.xt.rows;
+    m.el.style.transform = `translateY(${Math.round(m.foot * rh * m.scale)}px) scale(${m.scale})`;
+  }
+  const cropSoon = m => { if (m.cropT) return; m.cropT = setTimeout(() => { m.cropT = 0; if (m.el.isConnected) placeMini(m); }, 250); };
   /** The minis a redraw did not use: their sockets closed, their xterms gone. All of them with `all`. */
   function sweepMinis(reg, all = false) {
     for (const [id, m] of reg) { if (!all && m.used) { m.used = false; continue; } m.ws.onmessage = null; m.ws.close(); m.xt.dispose(); m.el.remove(); reg.delete(id); }
@@ -6730,8 +6750,9 @@ const toolName = n => {
       setHtml(t.querySelector('header'), `${i ? '' : '<button class="sclose" title="Hide the stack — ⌥⌘S brings it back" aria-label="Hide the stack">×</button>'}<b>${projIcon(s.project)}${esc(s.project)}</b><span class="tt">${ticks(esc(s.title))}</span><em>${asking(s) ? `● asking you ${rel(s.statusSince)}` : `✻ clauding${s.agents ? ` · ${s.agents} agents` : ''}`}</em>`);
       const d = drawerOf(s), body = t.querySelector('.sbody');
       body.classList.toggle('live', !!d);
-      if (d) { if (body.dataset.term !== d.id) { body.innerHTML = ''; body.dataset.term = d.id; } mountMini(stackMinis, body, d); }
+      if (d) { if (body.dataset.term !== d.id) { body.innerHTML = ''; body.dataset.term = d.id; } mountMini(stackMinis, body, d, !asking(s)); }
       else { delete body.dataset.term; setHtml(body, tailHtml(tails.get(s.id), 14, s.cwd)); }
+      body.classList.toggle('over', !d && body.scrollHeight > body.clientHeight + 1);   // a tail longer than its tile keeps its newest rows (2026-10-12)
     });
     sweepMinis(stackMinis); tileNotch();
     // the tails of the tiles with no drawer here, asked again every few seconds while there are any
@@ -6850,7 +6871,7 @@ const toolName = n => {
     // put the board's two live chats in a quarter of the screen beside three saying "none"
     $('#ovcols').style.gridTemplateColumns = cols.map(([, , list]) => list.length ? 'minmax(0, 1fr)' : 'minmax(0, max-content)').join(' ');
     $('#ovcols').innerHTML = cols.map(([k, name, list]) => `<section class="oc ${k}${list.length ? '' : ' nil'}"><h2><i></i><span>${name}</span><b>${list.length}</b></h2>${list.map(s => ovTile(s, ++n, n - 1 === ov.sel)).join('')}</section>`).join('');
-    for (const host of $('#ovcols').querySelectorAll('.obody.live')) { const s = state.sessions.get(host.closest('.ot').dataset.id), d = s && drawerOf(s); if (d) mountMini(ov.minis, host, d); }
+    for (const host of $('#ovcols').querySelectorAll('.obody.live')) { const s = state.sessions.get(host.closest('.ot').dataset.id), d = s && drawerOf(s); if (d) mountMini(ov.minis, host, d, !asking(s)); }
     sweepMinis(ov.minis);
     for (const s of ov.list) wantDiffStat(s);
   }
