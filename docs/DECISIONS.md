@@ -5,10 +5,11 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
-## Decisions of 2026-10-11, late afternoon — the header meets the tile's line
+## Decisions of 2026-10-11, late afternoon — the header meets the tile's line; a ring without an edge
 
 Ricardo: "on "It bends around the notch" it should meet with the tile border, not go below it. my point was to not go
-straight and bend a little to meet the tragetory of the tile line".
+straight and bend a little to meet the tragetory of the tile line"; "the chat border should only be on on the active
+chat. clauding chats should just have the glow around border animation (a bit more glowing maybe)".
 
 * **The floating header bends into the tile's line.** It dipped round the housing as a second line 5 px under the
   tile's own, two parallel curves. With tiles the dip is now that line: the header's top edge bends down into it — a
@@ -16,6 +17,11 @@ straight and bend a little to meet the tragetory of the tile line".
   below the tile's top, its rounded corner) — and follows it round, a pixel under its outer edge so no seam of the
   wallpaper shows between them. The header's own border is only the two bends; the tile's line draws the rest.
   Without tiles there is no line to meet, and the dip stays a few pixels clear of the housing.
+* **Only the open card has an edge.** A clauding card's ring ran on a track of its colour round the whole card, a 1 px
+  line of the light outside it: a border. Now its light runs on nothing — the track transparent, the light's tail
+  shorter, so it reads as a light going round and not a line — with a stronger glow round the card. The open card
+  keeps its edge and the light runs on it; a monitor's ring was already trackless and loses its line too; a question
+  keeps its red line and pings. Under reduced motion the steady band stays: it is the only sign of work left there.
 
 ## Decisions of 2026-10-11, afternoon — the header's row holds; quieter cards
 

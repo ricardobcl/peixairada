@@ -312,8 +312,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   sets every variable**. The chips beside the title say the numbers (`N agents`, `monitor`). **The ring is a conic
   gradient on a square `::before` turned by a `transform`, under an `::after` cover in the card's background 2 px in,
   on the edge itself** (2026-09-29): a card with a ring has no border — its padding takes the 2 px, so nothing inside
-  moves — and the band's unlit part is the border's colour (`--track`); the card's overflow clips at its padding box,
-  so with a border the light ran inside it. The compositor's kind of motion — and `phaseAnims()` (once a frame, before
+  moves — and the band's unlit part is `--track`, the border's colour **on the open card only**: elsewhere it is
+  transparent, the light running on nothing with a glow round the card (`box-shadow`, no 1 px line; `--tail` shortens
+  the light) — the colour round the edge is the open card's alone (2026-10-11, afternoon; a question keeps its red);
+  the card's overflow clips at its padding box, so with a border the light ran inside it. The compositor's kind of motion — and `phaseAnims()` (once a frame, before
   it paints; `phaseAnims(true)` at once, the cog's switch) puts every `ring`, `edge`, `sonar`, `pulse`, `pix` and `pixhop` at
   start time 0 on the document clock, or, with *rings in step* off (`prefs.ringsInStep`), at a time hashed from the
   chat's id. → `scripts/scenarios/card-signals.mjs`.

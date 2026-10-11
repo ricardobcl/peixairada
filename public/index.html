@@ -575,11 +575,11 @@
   /* --repo is reset here on purpose: custom properties inherit, and the chat list sets its own for its edge (the
      black on ALL) — without the reset every colourless card wore that. The card's inline --repo still wins. */
   .card { --repo: initial; background: var(--panel); border: 2px solid transparent; border-radius: 0; padding: 8px 10px 7px;   /* square since 2026-09-26; 10 px before */ cursor: pointer; min-width: 0; overflow: hidden; position: relative; isolation: isolate; }
-  /* Ready and done cards wear the plain edge (2026-09-20); the colour comes round the whole edge on the clauding card,
-     under its ring, on hover and on the open card. The plain edge is no edge at all since 2026-09-28 — transparent,
-     the background running under it (background-origin, below), so an edge that comes eases in from the card's own
-     colour —, but for the lit 3 px on the left (ink cards, below). */
-  .card.working { border-color: color-mix(in srgb, var(--lift) 85%, var(--line)); }
+  /* Ready and done cards wear the plain edge (2026-09-20); the colour comes round the whole edge on the open card only
+     (2026-10-11, afternoon — on the clauding card under its ring and on hover too before; a ring is its light and a
+     glow). The plain edge is no edge at all since 2026-09-28 — transparent, the background running under it
+     (background-origin, below), so an edge that comes eases in from the card's own colour —, but for the lit 3 px on
+     the left (ink cards, below). */
   /* The glow eases (2026-09-27, night, for the wash it was then): registered percentages that the hover and the open
      card raise, so the gradient transitions (a gradient cannot go to a flat colour, and two gradients only when nothing
      but their colours differ). In fast, out slower: the destination's transition is the one that runs, so .card:hover
@@ -662,7 +662,10 @@
      Every card is rebuilt on every SSE update and a CSS animation starts over on a new node, so phaseAnims() (in the
      script) puts every ring at start time 0 on the document clock after each render: the new light is where the old
      one was. */
-  .card.working, .card.watching, .card.asking { box-shadow: 0 0 0 1px color-mix(in srgb, var(--lit) 45%, transparent), 0 0 18px color-mix(in srgb, var(--lit) 35%, transparent); }
+  /* A ring is the light and a glow round it, no edge (2026-10-11, afternoon; a 1 px line of it and its track in the
+     colour before): the colour round the border is the open card's alone. A question keeps its red line. */
+  .card.working, .card.watching { box-shadow: 0 0 24px -2px color-mix(in srgb, var(--lit) 50%, transparent); }
+  .card.asking { box-shadow: 0 0 0 1px color-mix(in srgb, var(--lit) 45%, transparent), 0 0 18px color-mix(in srgb, var(--lit) 35%, transparent); }
   /* On the border, not inside it (2026-09-29): the card's overflow clips at its padding box, so the light ran 3 px
      inside the 2 px edge. A card with a ring has no border — its padding takes the 2 px, so nothing inside moves — and
      the cover stands 2 px in: the band the light runs in is where the border was, and what it runs on is the border's
@@ -675,7 +678,7 @@
   #trail i { position: absolute; left: 0; top: 0; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; background: radial-gradient(closest-side, var(--lit) 30%, transparent); will-change: transform; }
   main.trail #slist > .card.active::before, main.trail #slist > .card.active::after { content: none; }
   .card.working::before, .card.watching::before { content: ''; position: absolute; z-index: -1; left: 50%; top: 50%; width: 160%; aspect-ratio: 1; margin: -80% 0 0 -80%; pointer-events: none;
-    background: repeating-conic-gradient(var(--track) 0 calc(var(--seg) * .45), var(--lit) calc(var(--seg) * .92), var(--track) var(--seg));
+    background: repeating-conic-gradient(var(--track) 0 calc(var(--seg) * var(--tail, .45)), var(--lit) calc(var(--seg) * .92), var(--track) var(--seg));
     animation: ring var(--spins, 1.4s) linear infinite; }
   .card.working::after, .card.watching::after { content: ''; position: absolute; z-index: -1; inset: 2px; background: inherit; pointer-events: none; }
   .card.watching { --lit: var(--watch); --seg: 100%; --spins: 6s; --track: transparent; }
@@ -686,7 +689,8 @@
   /* Every variable of the ring is set in every rule: a card can be two of these at once (clauding *and* watching is
      the ordinary case for a chat running a monitor), and what the later rule leaves unsaid the earlier one keeps —
      which had the work light running at the monitor's sixth of the speed. */
-  .card.working { --lit: var(--glow); --seg: calc(100% / var(--lights, 1)); --spins: 1.4s; --track: color-mix(in srgb, var(--lift) 85%, var(--line)); }
+  .card.working { --lit: var(--glow); --seg: calc(100% / var(--lights, 1)); --spins: 1.4s; --track: transparent; --tail: .62; }
+  .card.working.active { --track: color-mix(in srgb, var(--lift) 85%, var(--line)); --tail: .45; }   /* the open card's edge, the light running on it */
   /* A question is the one state that is *stopped*, so it gets the one signal that is not motion around the edge
      (2026-09-22): no ring at all. Its border is red, and since 2026-10-09 (the studies' M2, Sonar; the border blinking
      on and off before) pings leave it: two outlines of it, half a beat apart, growing out from the card and fading —
@@ -710,7 +714,7 @@
      padding takes the 2 px), the strip is twice the card's height with a light every card-height ÷ lights, and one turn
      moves it down by a card's height — a transform, so the compositor's. The ::after cover has nothing to cover. */
   :root[data-light="edge"] .card:is(.working, .watching):not(.asking) { border-width: 2px 2px 2px 0; padding: 8px 10px 7px 12px; border-color: transparent;
-    box-shadow: -8px 0 22px -10px var(--lit), 0 0 0 1px color-mix(in srgb, var(--lit) 22%, transparent); }
+    box-shadow: -8px 0 22px -10px var(--lit), 0 0 24px -4px color-mix(in srgb, var(--lit) 35%, transparent); }
   :root[data-light="edge"] .card:is(.working, .watching):not(.asking)::after { content: none; }
   :root[data-light="edge"] .card:is(.working, .watching):not(.asking)::before { left: 0; top: 0; width: 3px; height: 200%; margin: 0; aspect-ratio: auto; filter: drop-shadow(0 0 3px var(--lit));
     background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(50% / var(--lights, 1) * .25), var(--lit) calc(50% / var(--lights, 1) * .5), transparent calc(50% / var(--lights, 1) * .75), transparent calc(50% / var(--lights, 1)));

@@ -25,6 +25,8 @@ const cards = ctx => ctx.evaluate(`[...document.querySelectorAll('#slist .card')
   state: c.querySelector('.state')?.textContent.trim() || '',
   lit: getComputedStyle(c).getPropertyValue('--lit').trim(),
   spins: getComputedStyle(c).getPropertyValue('--spins').trim(),
+  track: getComputedStyle(c).getPropertyValue('--track').trim(), active: c.classList.contains('active'),
+  ring: / 0px 0px 0px 1px|^[^,]*0px 0px 0px 1px/.test(getComputedStyle(c).boxShadow),
 }))`);
 
 export default async function (ctx) {
@@ -107,6 +109,9 @@ export default async function (ctx) {
     const card = t => out.cards.find(c => c.title === t);
     ctx.assert.deepEqual(card('Normal work').cls, ['working'], 'plain work: the clauding ring, nothing else');
     ctx.assert.equal(card('Normal work').lights, '', '…one light (the default)');
+    // no edge on a ring but the open card's (2026-10-11, afternoon): its light runs on nothing, a glow round it
+    ctx.assert.deepEqual([card('Normal work').active, card('Normal work').track, card('Normal work').ring], [false, 'transparent', false], 'a clauding card that is not open: no track, no line round it');
+    ctx.assert.equal(card('Blocked on a prompt').ring, true, 'a question keeps its red line');
     ctx.assert.deepEqual(card('Watching CI').cls, ['idle', 'watching'], 'a ready card that is still watching something');
     ctx.assert.deepEqual(card('Watching CI').chips, ['monitor · CI checks on PR #382'], '…and says what is running, not merely that something is');
     ctx.assert.equal(card('Three agents out').lights, '3', 'one light per sub-agent');
