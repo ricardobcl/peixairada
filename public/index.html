@@ -950,7 +950,6 @@
   .card .state.prmove { color: var(--ink); display: flex; align-items: baseline; gap: 6px; }
   .card .state.moveslot { align-items: baseline; gap: 6px; }   /* the line's own metrics, for the place it holds */
   .card .state:is(.prmove, .moveslot) .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-  .card .state.prmove .opts { color: var(--muted); font-weight: 500; flex: none; }
   /* It never wraps the row (2026-10-11, afternoon: ··· went to a second line beside the housing): a flex basis of 0,
      growing into the room the row leaves up to its own width — the reason ellipsized —, and no narrower than the tag and
      the count (--hmin, fitHeadPrs, which folds the PR chips to leave that much; min-content is the whole reason). */
@@ -3883,7 +3882,7 @@
    *  reason, the others counted; none on a ticked card (the tick after the move is "seen"). */
   function moveHtml(s) {
     const prs = movedPrs(s); if (!prs.length || s.done) return '';
-    return `<div class="state prmove" title="${esc(moveTip(prs))}"><b class="ymove">${ICON.pr}your move</b><span class="q">${esc(prs[0].label.replace(/^.*?#/, '#'))} · ${esc(prs[0].turn.why)}</span>${prs.length > 1 ? `<span class="opts">+${prs.length - 1} PR${prs.length > 2 ? 's' : ''}</span>` : ''}</div>`;
+    return `<div class="state prmove" title="${esc(moveTip(prs))}"><b class="ymove">${ICON.pr}your move</b><span class="q">${esc(prs[0].label.replace(/^.*?#/, '#'))} · ${esc(prs[0].turn.why)}</span></div>`;   // the others in its tooltip: a card counts nothing (2026-10-11)
   }
   /** A card with no move holds the line's place when compact's same height is on (.moveslot, hidden everywhere else). */
   const MOVE_SLOT = `<div class="state moveslot" aria-hidden="true"><b class="ymove">${ICON.pr}your move</b><span class="q">#0</span></div>`;   // the tag and a word: the real line's metrics

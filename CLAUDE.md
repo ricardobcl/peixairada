@@ -494,7 +494,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
 * **A PR at your move is said by name, not by its chip**: `data-turn` (`turnOf(pr)`: `you` · `them` · empty) on
   `.cpr`, `.hpr` and `.prrow` and the tooltips (`turnTip`), but no look of its own. **The card has a line** (`moveHtml`,
   after the question's, at every size, not on a ticked card): a tag filled in the accent (`.ymove`: `ICON.pr`, *your
-  move*), the newest move's `#n` and reason, `+n PRs`; **the chat header says it too** (`headMove`, `.hmove`, just
+  move*), the newest move's `#n` and reason (the others in its tooltip: **a card counts nothing**,
+  2026-10-11 — no `+n` for faces, PRs or tickets); **the chat header says it too** (`headMove`, `.hmove`, just
   before the PR chips), and the PR row in `.why`. The chat also ranks by the move (see the order below). **The tag
   arrives** (2026-10-11, `moveMoments` in the after-draw pass): a *your move* tag on a card or a header (`#shead`
   carries `data-sid`) that the last pass did not have, where that card or header was already shown, slides in on the

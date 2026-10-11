@@ -5,7 +5,7 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
-## Decisions of 2026-10-11, evening, later — the faces a pile, the tickets a stack
+## Decisions of 2026-10-11, evening, later — a card counts nothing
 
 Ricardo: "the user avatars on cards should be a LOT more compact on top of each other and then reveal more on hover.
 remove the "+1" etc. on the cards, for users, PRs or JIRA. Jira should also stake like PRs on cards".
@@ -14,6 +14,9 @@ remove the "+1" etc. on the cards, for users, PRs or JIRA. Jira should also stak
   round: the newest on top at the right end, by the chips, each other one under the one before with 4 px of it
   showing — six faces take 36 px where three and a count took about 55. The pointer on the pile spreads them side by
   side, each whole, on the spring; each face keeps its tooltip.
+* **No counts on a card.** The faces' `+n` went with the pile; the tickets' with their stack; the *your move* line's
+  `+n PRs` too — the line names the newest move and its tooltip the rest, and the stack under the pointer shows every
+  PR. The chat header keeps its `+n`: there the chips fold for room, and the count says what folded.
 * **Tickets stack as PRs do.** The first ticket and a count became a stack of every ticket, the PRs' own (`chipStack`,
   shared): the branch's or the last named on top, three slivers under it in their status colours, fanned under the
   pointer and scrolled past the row's room, a click on one opening it. Not greyed with the PRs on a chat done for good.
