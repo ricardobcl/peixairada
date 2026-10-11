@@ -50,27 +50,32 @@ GitHub and VS Code open in the chat in the Mac app; in a browser they open in a 
 
 ## ✨ Features
 
-- 🚦 **Sorted by who owes whom** — in lanes: asking you first, then clauding, then ready. *Done* is a tick you give, and
-  its lane starts folded; a click on any lane's head folds or opens it.
+- 🚦 **Sorted by who owes whom** — in lanes: asking you, your move (a PR waits on you), clauding, new replies (Claude
+  answered since you last looked), ready, and idle (untouched for more than four days). *Done* is a tick you give;
+  Idle and Done start folded, and a click on any lane's head folds or opens it. Cards are compact unless you'd rather
+  — or large only in the lanes that want you.
 - 💡 **The card's edge tells you why it's busy** — each card a lit edge in its project's colour; a light runs round it
   (or down the edge, if you'd rather) while Claude works, one per sub-agent, slower for a monitor; a question pings out
   in red.
-- 🔔 **Alerts** — a notification when a chat finishes or needs you; a Dock badge and menu-bar list in the app.
+- 🔔 **Alerts** — a notification when a chat finishes or needs you, answered where it shows in the app: *Reply…*
+  (straight into the chat's Claude, when its drawer runs here), *Done*, or *In 15 minutes*. The Dock badge and the
+  menu bar count the chats asking you and those with a new reply; the menu lists them, your PRs' moves and what is
+  clauding.
 - 🐙 **PRs** — chips in GitHub's colours, stacked on a card and fanned out under the pointer (scroll them when they're
   more than fit); a chat with an open PR is named after it. A PR you reviewed or wrote fills in, notifies you and brings its ticked chat back when it's your
-  move again — a push, a reply, a review. ⌥-click the ✓ to tick a chat done for good: its PRs won't bring it back. ⌥-click a PR in the chat's
-  header to take it off that chat — until you name it there yourself.
+  move again — a push, a reply, a review. ⌥-click the ✓ to tick a chat done for good: its PRs won't bring it back. Take a PR
+  off a chat from its chip's right-click menu (or ⌥-click) — until you name it there yourself.
 - 🎫 **Jira tickets** — a ticket a chat names (`ACME-12`, a link, its branch) wears its status on the card and in the
   header, beside its PRs. Set your site, email and an API token in Setup.
 - 🎨 **Projects** — folders in their [Peacock](https://marketplace.visualstudio.com/items?itemName=johnpapa.vscode-peacock)
   colour, or named sets of folders.
 - 🌑 **Simple colours** — a quieter board: every project in black (or one colour you pick), the states in grey; PRs
   and faces keep their colours, and the accent is left for what needs you.
-- 🗺️ **Every agent at once** — ⌥⌘A lays out every live chat by what it wants (asking, clauding, watching, unread),
+- 🗺️ **Every agent at once** — ⌥⌘A lays out every live chat by what it wants (asking, clauding, watching, new replies),
   each showing what it is doing right now; the *tiles* switch lays the board out as Hyprland does, and ⌥⌘S stacks the
   busy chats beside the open one.
-- 🏠 **Home** — with no chat open: the board at a glance and your day, every chat's turns and how long each waited on
-  you.
+- 🏠 **Home** — with no chat open: an ASCII sunset at sea with our fish leaping across the sun (click it), the board at
+  a glance — each count a way to what it counts — and your day, every chat's turns and how long each waited on you.
 - 🎨 **Themes** — Omarchy's twelve (Tokyo Night, Catppuccin, Gruvbox, Nord, Rosé Pine…), one for dark and one for
   light; your projects keep their hue in the theme's shades.
 - 🐟 **It moves when something happens** — counts roll to their new value, a ✓ draws itself, an answered question's
@@ -173,10 +178,12 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
 
 **Settings** — ⌘, or ··· in the chat's header:
 
-- **Board** — notifications, sounds, the theme, simple colours (every project in black, or one colour you pick, the
-  states in grey, for a quieter board), tiles and their stack and glow, the floating header (tiles and the header on to
-  begin with), the edge light and the light under the pointer, rings in step, the status bar and what it shows, card
-  size, auto-resume, ⌥ as Meta.
+- **Board** — *Alerts*: notifications, sounds · *Chats*: card size (compact, or large only where a chat wants you),
+  auto-resume · *Look*: text size (the whole board, in the app), simple colours (every project in black, or one colour
+  you pick, the states in grey), the theme, tiles and their stack and glow, the floating header (tiles and the header
+  on to begin with), the status bar and what it shows · *Terminal*: ⌥ as Meta, a screen reader in the drawer · and,
+  folded, *Lights and motion*: the card light (round the card or down its edge), rings in step, the light under the
+  pointer.
 - **Setup** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
   project ⌥⌘O starts a chat in, a short name and a colour where Peacock has none, per project, and your Jira site,
   email and API token (the token goes to your keychain, never into the file).
@@ -227,11 +234,13 @@ The login agent takes `PORT`, `NOTIFY` and your `PATH` at `scripts/launchd.sh in
 | ⌘2 · ⌘W | split · close a half |
 | ⌥⌘B | fold the list |
 | ⌥⌘L | the launcher: chats, projects, PRs, tickets, actions, switches |
-| ⌥⌘A · ⌥⌘D · ⌥⌘0 | every agent at once · this chat's changes · home |
+| ⌥⌘A · ⌥⌘D · ⌥⌘0 | the overview: every live chat at once · this chat's changes · home |
 | ⌥⌘S | the busy chats stacked beside the open one (tiles) |
 | ⌥⌘Y | the theme |
 
-`?` (or Settings › Keys) lists the rest.
+`?` (or Settings › Keys) lists the rest, grouped. A right-click on a card, a PR chip or a project's colour square has
+what ⌥-click and a double-click do — rename, tick done, take a PR off, let go of a colour — and the launcher has the
+same for the open chat.
 
 <p align="center"><img src="docs/shots/launcher-dark.webp" alt="⌥⌘L, the launcher: chats, projects, a new chat, PRs, every switch, the theme, settings, keys" width="560"></p>
 
@@ -248,5 +257,8 @@ The login agent takes `PORT`, `NOTIFY` and your `PATH` at `scripts/launchd.sh in
 screenshots from a made-up board (VS Code Web's wants the `code` CLI). The browser checks drive Google Chrome (`CHROME`
 points at another); `npm run webkit` runs the board in WebKit, the app's engine.
 [CLAUDE.md](CLAUDE.md) holds the working notes, [docs/DECISIONS.md](docs/DECISIONS.md) the why.
+
+Home's sunset is [*ocean sunset*](https://ascii.rest/ocean-sunset/) by [bas3line](https://github.com/bas3line/ascii)
+(MIT), ported as it stands; the leaping fish is ours.
 
 <div align="center"><br><sub>🐟 A <i>peixarada</i> is a Portuguese fish feast — more than anyone planned for.</sub></div>
