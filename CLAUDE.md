@@ -233,6 +233,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   `linear()` curves of a damped oscillator — and `--t-hover`, the small controls' ease; the script's `EASE_OUT`,
   `SPRING`, `SPRING_SOFT` read them (`cssToken`). Something that settles eases out, something that arrives springs (the
   badge's pop, the PR fan). A new motion takes one of them, never a cubic-bezier of its own.
+* **A press dips** (2026-10-11): `:active` scales a card to 99 % — not while the press is on a control inside it
+  (`:has`), which dips itself — and the small controls to 97 %, by the `scale` property (the FLIP's `transform` and
+  the ring's stay theirs), springing back on release. A menu row or a whole line does not. → `small-motions.mjs`, the
+  scenario of the 2026-10-11 motions, one section each.
 * **Dialogs, `.pop` and `.note` ease in and out with `@starting-style`** (2026-09-27, night), `display` and `overlay`
   held by `allow-discrete` until the exit ends — so a closed dialog is still `display: block` for 140 ms while its
   `open` attribute is already off (read `open`, never `display`, to know). `note()` fades its popup out (`.out`) before

@@ -20,6 +20,11 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   2023 — so no library and no JS physics: the oscillator is sampled once, by hand, into the stylesheet. The snappy one
   overshoots by 9 %, the soft one by 1 %. The badge's pop is the spring now (a hand-made 1.15 keyframe before), and the
   PR stack's fan, its grid columns and its chips on the same curve, as the fan's own rule asks.
+* **2 · a press dips**: the board answered a click only once it was over. Held, a card is 99 % and a button, chip or
+  tab 97 % (Emil Kowalski's numbers), back on the spring when let go. The `scale` property rather than `transform`, so
+  nothing that already moves by a transform — the list's FLIP, a stacked PR chip — is overwritten; and a card does not
+  dip under a press on its own ✓ or chip (`:has(:active)`), or both would. Menu rows and the project's line are left
+  out: a whole row shrinking reads as a glitch. The scenario lets go off the target, so a press is not a click.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 

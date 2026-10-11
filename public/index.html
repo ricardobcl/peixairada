@@ -550,8 +550,12 @@
   .card { --edge: var(--lift); --wash: var(--lift); --tint: 50%; --reach: 60%; --fall: .35; --spotr: 190px; --spotc: var(--lift);
     background: linear-gradient(to right, var(--edge) 3px, transparent 3px), radial-gradient(circle var(--spotr) at var(--mx) var(--my), color-mix(in srgb, var(--spotc) var(--spot), transparent), transparent), linear-gradient(90deg, color-mix(in srgb, var(--wash) var(--tint), var(--panel)), calc(var(--reach) * var(--fall)), var(--panel) var(--reach)); background-origin: border-box;
     outline: 1px solid transparent; outline-offset: 0;
-    transition: --tint .2s, --reach .2s, --fall .2s, --wash .2s, --spot .3s, border-color .2s, outline-color .2s, outline-width .2s, outline-offset .2s, opacity .2s; }
-  .card:hover { transition-duration: .1s; }
+    transition: --tint .2s, --reach .2s, --fall .2s, --wash .2s, --spot .3s, border-color .2s, outline-color .2s, outline-width .2s, outline-offset .2s, opacity .2s, scale .3s var(--spring); }
+  .card:hover { transition-duration: .1s, .1s, .1s, .1s, .1s, .1s, .1s, .1s, .1s, .1s, .3s; }
+  /* A press is felt (2026-10-11): the card dips to 99 % while held and springs back — the scale property, so the
+     FLIP's transform and the ring's are left alone — but not while the press is on a control inside it, which dips
+     itself. */
+  .card:active:not(:has(:is(button, a, .cpr, .ctk, .face):active)) { scale: .99; transition-duration: .06s; transition-timing-function: ease-out; }
   /* With the light under the pointer, hover is that light — the edge's glow stays as it is at rest (it grew across the
      card before, and still does with the switch off); the open card and the magnifier's mark keep theirs. Not on the
      rail's squares, too small for it. */
@@ -791,7 +795,7 @@
   .card .top .tprs > * { grid-area: 1 / 1; direction: ltr; margin-left: 5px; z-index: calc(999 - var(--i, 0)); text-align: center; white-space: nowrap; transform: translateX(calc(var(--d, 0) * -5px)); }
   .card .top .tprs:hover > * { transform: translateX(calc(var(--i, 0) * (-100% - 5px))); }
   /* #slist: the small controls' one hover ease (below) is an :is() with ids in it, so it weighs an id. */
-  #slist .card .top .tprs > * { transition: transform .3s var(--spring), clip-path 0s .3s, color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), box-shadow var(--t-hover); }
+  #slist .card .top .tprs > * { transition: transform .3s var(--spring), clip-path 0s .3s, color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), box-shadow var(--t-hover), scale .25s var(--spring); }
   #slist .card .top .tprs:hover > * { transition-delay: 0s; }
   /* Stacked, a chip over another has an edge of the panel's colour on its left, as the faces are ringed; one under
      another shows its sliver and no number (a chip still in outline is see-through), and is clipped to the sliver
@@ -867,7 +871,10 @@
     color: var(--ink); cursor: pointer; flex: none; opacity: 0; display: inline-grid; place-items: center; transition: opacity .12s; }
   .card:hover .act, .act:focus-visible { opacity: .7; }
   /* Every small control eases its hover (2026-09-27, night): the ink, the edge and the wash, 120 ms — the one rule. */
-  :is(.btn, .fchip, .ptab, .hmi, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover); }
+  :is(.btn, .fchip, .ptab, .hmi, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
+  /* …and dips to 97 % while pressed (2026-10-11), springing back on release; a row of a menu or the project's line
+     does not — a whole row shrinking reads as a glitch, not a press. */
+  :is(.btn, .fchip, .ptab, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
   .act:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .dot.working { background: var(--working); animation: pulse 1.4s ease-in-out infinite; }
@@ -1775,6 +1782,7 @@
     #resume.counting::before { animation: none; }   /* no line runs: the button counts the seconds alone */
     #resume.cloning .ric::after { animation: none; }   /* cloning: the ring still, the line along the top and the percent say it */
     #slist .card .top .tprs > * { transition: color .12s, border-color .12s, background-color .12s, box-shadow .12s; }
+    .card:active, :is(.btn, .fchip, .ptab, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button):active { scale: none; }   /* a press does not dip */
   }
 
   /* ---- syntax highlighting (highlight.js class names, our colours) ---- */
