@@ -117,7 +117,7 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
 
 **Settings** — ⌘, or ··· in the chat's header:
 
-- **Board** — notifications, the theme, simple colours (every project in black, or one colour you pick, the states in grey, for a quieter board), the edge light, the status bar and what it shows, tiles, a floating header, card size, ⌥ as Meta.
+- **Board** — notifications, the theme, simple colours (every project in black, or one colour you pick, the states in grey, for a quieter board), the edge light, the status bar and what it shows, tiles and the floating header (both on to begin with), card size, ⌥ as Meta.
 - **Setup** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
   project ⌥⌘O starts a chat in, a short name and a colour where Peacock has none, per project, and your Jira site,
   email and API token (the token goes to your keychain, never into the file).

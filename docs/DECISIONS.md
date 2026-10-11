@@ -5,6 +5,17 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-11, night — tiles and the floating header by default
+
+Ricardo, on the Round IV studies (the chat tile's tabs — a contact sheet, seven directions): "let's go with Q1, Q5 and
+Q7 for now, but the artifact should render with tiles and floating header, which should be default".
+
+* **Tiles and the floating header are the defaults.** Both were switches to try (2026-10-09, 2026-10-10); they are the
+  look Ricardo lives in, and the studies judged on the plain column judged the wrong board. The prefs' defaults are
+  on — a profile that has saved prefs keeps what it has. The harness starts its pages with both off, as it does
+  auto-resume and the folded lanes: most scenarios measure the plain column, and the ones about tiles, the header
+  and the notch turn them on. The study sheet was shot again with both on.
+
 ## Decisions of 2026-10-11, evening, later — a card counts nothing
 
 Ricardo: "the user avatars on cards should be a LOT more compact on top of each other and then reveal more on hover.

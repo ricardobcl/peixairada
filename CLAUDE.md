@@ -369,8 +369,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   colours switch does it from the switch. ⏎, a key, keeps what the arrows were already showing: nothing to reveal.
   `look` in `motion()`. A colour on the board that reads no token is one
   no theme reaches. → `scripts/scenarios/themes.mjs`.
-* **The floating header is a switch, to try** (2026-10-09, the studies' E; Settings → Board → *floating header*,
-  `prefs.headFloat` → `<html data-head="float">`): `#shead` a rounded bar inset 14 px from the column's sides and 10 px
+* **The floating header is a switch, on by default** (2026-10-09, the studies' E, to try; the default since 2026-10-11,
+  evening; Settings → Board → *floating header*, `prefs.headFloat` → `<html data-head="float">`): `#shead` a rounded bar inset 14 px from the column's sides and 10 px
   from its top, an edge of the project's colour and a shadow; `#prlist` inset alike. With it the open chat's light
   does not run round the header's box (`trailGeom`'s `box` is null — it no longer touches the splitter). **It floats
   over the chat** (2026-10-11, late morning): `#groups` spans the header's rows (`grid-row: 1 / 5`, and every row of
@@ -927,7 +927,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   forwards ⌥⌘1 / ⌥⌘2 by key code (18, 19). **A zsh ended by its × lingers on the summary with `exited` set** — a wait
   for the tab to go is a wait on that. → `scripts/scenarios/split-stacked.mjs`.
 * **Tiles: the chats that want an eye, stacked beside the open one** (2026-10-10; Settings → Board → *tiles*,
-  `prefs.tiles` → `main.tiles`, off by default): **the look, and a stack that is a switch of its own** — *the stack*
+  `prefs.tiles` → `main.tiles`, on by default since 2026-10-11, evening): **the look, and a stack that is a switch of its own** — *the stack*
   under it (`#tileStackOn`, `prefs.tileStack`, off by default) and **⌥⌘S** (`hotStack`, Omarchy's scratchpad key; with
   tiles off it turns both on), and the × at the first tile's top left (`.sclose`, its title the key) hides it. `tilesOn` is the look (the border's `.kf`, the notch), `stackOn` the column. The stack is
   `#stack`, a third column after `#chat` — up to three chats of the list
@@ -1188,7 +1188,9 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   (fires before the SSE snapshot); drive Chrome over CDP — `lib/cdp.mjs`.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports
   `meta` (`server`, `fake`, `fixture`, `env`, and `prefs` — what the page starts from, 2026-10-09: `{ statusBar: false }`
-  for a scenario about the list's foot) and a default `async (ctx) => result`; the runner starts a throwaway server
+  for a scenario about the list's foot; **without it a page starts with every lane open and neither tiles nor the
+  floating header**, the board's defaults since 2026-10-11 — the scenarios measure the plain column, and the ones about
+  those two turn them on) and a default `async (ctx) => result`; the runner starts a throwaway server
   on a free port with its own state dir (`lib/testserver.mjs`), builds the fixture (`scripts/fixture.mjs`), runs the
   fake claude when asked, launches Chrome with **focus emulation on**, and ends terminals, holders, Chrome, the fixture
   and temp dirs on exit — after a failed setup too, on SIGTERM, SIGHUP and a stray error too, never waiting on cleanup
