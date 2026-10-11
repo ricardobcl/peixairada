@@ -56,6 +56,11 @@ It reads what Claude Code already writes to `~/.claude` — no plugin, no privat
   you.
 - 🎨 **Themes** — Omarchy's twelve (Tokyo Night, Catppuccin, Gruvbox, Nord, Rosé Pine…), one for dark and one for
   light; your projects keep their hue in the theme's shades.
+- 🐟 **It moves when something happens** — counts roll to their new value, a ✓ draws itself, an answered question's
+  ring closes in, a PR's CI is drawn in as it lands; a clauding card names the tool it is running, a monitor's card
+  its newest event; a pixel fish in the status bar swims at the pace of the agents at work, and floats belly-up while
+  the board has lost its server. In the app the trackpad bumps as a divider snaps; sounds, if you switch them on. All of it stills under the system's
+  *reduce motion*.
 - 📊 **A status bar** — along the window's foot: the search and the state filters, connected and live chats, drawers,
   the faces on your PRs, your plan's limits (or its monthly spend cap), keeping the Mac awake (with the lid closed too,
   by Touch ID where sudo takes it; greyed out when the Mac wouldn't sleep anyway, as on a charger set never to), CPU and memory, and optionally what Claude's processes hold.
