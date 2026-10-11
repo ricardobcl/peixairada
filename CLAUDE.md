@@ -297,6 +297,9 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   speckles at 7 %): the chat header's, the transcript's wash (`#log`) and the tiles' wallpaper, its first background
   layer — where a dark gradient across a wide box bands into steps. Not the cards (narrow, and their first layer is the
   lit edge, which the harness reads). A new wide gradient takes it the same way.
+* **Tabs say which is in front** (2026-10-12): the settings' `.stabs` and each half's strip are `tablist`s, their tabs
+  `aria-selected` (the settings' with `tabpanel`s and ← →); the overview's and the stack's small terminals are `inert`;
+  `prefs.termReader` is xterm's `screenReaderMode` for every drawer.
 * **What colour or motion says, words say too, out of sight** (2026-10-12, `.vh`): a card starts with its lane's name
   (and *watching*, *N agents at work*), a CI badge with *CI passed · failing · running* (`ckHtml(pr, said)`: not where
   a row says it), a tool row's mark is `role=img` with its state, the unread badge has its label.

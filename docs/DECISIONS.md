@@ -180,6 +180,13 @@ the order they landed.
   its lane's name — and *watching*, *N agents at work* — in `.vh` (clipped, read; the rolling counts' `.rv` pattern);
   a CI badge says *CI passed · failing · running* (not in a PR row, which says it already); a tool row's mark is an
   image named *running · done · failed*; the unread badge is labelled *N unread*.
+* **A4 — tabs that say which is in front, a menu that keeps its focus, a terminal a reader can follow**: the settings'
+  tabs carry `aria-selected`, their panels are `tabpanel`s, and ← → walk them; each half's strip is a `tablist`, its
+  tabs `aria-selected` (the page in front, a `div` with buttons in it, is a focusable tab too); ··· says it opens a
+  dialog and keeps the focus `show()` gives its first row (it blurred it, which left a keyboard nowhere —
+  `:focus-visible` draws no ring for a pointer's open); *screen reader* under Terminal turns on xterm's
+  `screenReaderMode` in every drawer (`prefs.termReader`, off); and the small terminals of the overview and the stack
+  are `inert`, so their helper text areas are out of the tab order.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

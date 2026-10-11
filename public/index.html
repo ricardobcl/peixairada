@@ -2143,7 +2143,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <div id="rival" hidden></div>
     <div id="groups">
       <div class="grp on" id="grp">
-        <div class="ptabs" id="ptabs" hidden></div>
+        <div class="ptabs" id="ptabs" role="tablist" aria-label="This chat's tabs" hidden></div>
         <div class="gbody" id="gbody">
           <div id="chg" hidden></div>
           <div id="log"><div class="empty"></div></div>
@@ -2152,7 +2152,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       </div>
       <div id="gsplit" title="Drag to resize the two halves" hidden></div>
       <div class="grp" id="grpB" hidden>
-        <div class="ptabs" id="ptabsB"></div>
+        <div class="ptabs" id="ptabsB" role="tablist" aria-label="The second half's tabs"></div>
         <div class="gbody" id="gbodyB">
           <div class="gterm" id="termB" hidden><div class="tbody" id="termBodyB"></div></div>
         </div>
@@ -2166,8 +2166,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 <div id="trail" aria-hidden="true" hidden></div>
 <dialog id="settings" class="pop" aria-label="Settings" tabindex="-1">
   <div class="shd2"><h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4><button class="sclose" id="settingsClose" title="Close · esc" aria-label="Close">×</button></div>
-  <nav class="stabs" role="tablist"><button role="tab" data-tab="board" class="on">Board</button><button role="tab" data-tab="setup">Setup</button><button role="tab" data-tab="keys">Keys</button></nav>
-  <div class="spane scol" data-tab="board">
+  <nav class="stabs" role="tablist" aria-label="Settings"><button role="tab" data-tab="board" class="on" aria-selected="true" aria-controls="spBoard" id="stBoard">Board</button><button role="tab" data-tab="setup" aria-selected="false" aria-controls="spSetup" id="stSetup" tabindex="-1">Setup</button><button role="tab" data-tab="keys" aria-selected="false" aria-controls="spKeys" id="stKeys" tabindex="-1">Keys</button></nav>
+  <div class="spane scol" data-tab="board" role="tabpanel" id="spBoard" aria-labelledby="stBoard">
     <h4 class="shd">Alerts</h4>
     <label class="opt" title="Off, nothing posts a banner — not the app, not a browser tab, not the server — and the unread counts on the cards and the Dock go on as before"><input type="checkbox" id="notifyOn" checked><span><b>notifications</b> — a banner when Claude finishes or asks you something, while the board is not in front</span></label>
     <label class="opt" title="A soft tick when a reply lands, two notes when a chat asks you — only while the board is the window in front (behind it, the system's notification has its own sound)"><input type="checkbox" id="soundsOn"><span><b>sounds</b> — a tick for a reply, two notes for a question, while the board is in front</span></label>
@@ -2193,6 +2193,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <div class="opt sub sbstats" id="sbarStats" title="What else the status bar says — asked of the Mac every 3 s while shown"><span><b>also</b></span><label><input type="checkbox" data-stat="cpu"> CPU</label><label><input type="checkbox" data-stat="mem"> memory</label><label><input type="checkbox" data-stat="claude"> Claude's memory</label></div>
     <h4 class="shd">Terminal</h4>
     <label class="opt" title="On, ⌥ with a letter is Meta in the terminal, as iTerm's Esc+ — ⌥B ⌥F move a word, ⌥⌫ deletes one; ⌥ with a digit or a sign still types what the keyboard makes. Off, ⌥ types whatever your layout composes (⌥L is @ on a German one)"><input type="checkbox" id="optMeta" checked><span><b>⌥ is Meta</b> in the terminal — off, ⌥ types what your keyboard composes</span></label>
+    <label class="opt" title="xterm's screen-reader mode: the drawer's lines kept in a live region VoiceOver follows — a little slower to draw"><input type="checkbox" id="termReader"><span><b>screen reader</b> in the drawer — its lines read out as they come</span></label>
     <details class="sadv"><summary><h4 class="shd">Lights and motion</h4><span>the clauding light, its pace, the glow under the pointer</span></summary>
     <div class="opt lightpick" title="Where a clauding card's light runs: round the whole card (the ring), or down its coloured edge — one light per sub-agent either way, a monitor's slowly. The open chat's light runs on past its card only with the ring"><input type="checkbox" id="edgeLight" hidden><span><b>card light</b> — round the card or down its edge</span><span class="sseg" role="radiogroup" aria-label="Card light"><button type="button" role="radio" data-light="ring">ring</button><button type="button" role="radio" data-light="edge">edge</button></span></div>
     <label class="opt" title="On, every clauding card's light stands at the same angle — the blinks and the dots too; off, each card runs at its own. Either way a card rebuilt by an update carries on where it was"><input type="checkbox" id="ringsInStep" checked><span><b>rings in step</b> — every card's light at the same angle; off, each at its own</span></label>
@@ -2200,8 +2201,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     </details>
     <div id="hidden" class="hid"></div>
   </div>
-  <div class="spane" data-tab="setup" hidden><div id="setup" class="setup"></div></div>
-  <div class="spane" data-tab="keys" hidden><div class="keys" title="From anywhere on the board, the terminal included"></div></div>
+  <div class="spane" data-tab="setup" hidden role="tabpanel" id="spSetup" aria-labelledby="stSetup"><div id="setup" class="setup"></div></div>
+  <div class="spane" data-tab="keys" hidden role="tabpanel" id="spKeys" aria-labelledby="stKeys"><div class="keys" title="From anywhere on the board, the terminal included"></div></div>
 </dialog>
 <dialog id="hmenu" aria-label="This chat's actions"></dialog>
 <dialog id="ctxm" aria-label="Actions"></dialog>
@@ -2315,7 +2316,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map() };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', skinDark: null, skinLight: null, skinExact: false };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, termReader: false, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', skinDark: null, skinLight: null, skinExact: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -2401,8 +2402,14 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   $('#settingsClose').onclick = () => settingsOpen(false);
   $('#settings .stabs').addEventListener('click', e => {
     const b = e.target.closest('[data-tab]'); if (!b) return;
-    document.querySelectorAll('#settings .stabs [data-tab]').forEach(x => x.classList.toggle('on', x === b));
+    document.querySelectorAll('#settings .stabs [data-tab]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', String(x === b)); x.tabIndex = x === b ? 0 : -1; });
     document.querySelectorAll('#settings .spane').forEach(x => { x.hidden = x.dataset.tab !== b.dataset.tab; });
+  });
+  // ← → between the tabs, as a tab list is walked (2026-10-12)
+  $('#settings .stabs').addEventListener('keydown', e => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return; e.preventDefault();
+    const bs = [...$('#settings .stabs').querySelectorAll('[data-tab]')], i = bs.indexOf(document.activeElement), n = bs[(i + (e.key === 'ArrowRight' ? 1 : bs.length - 1)) % bs.length];
+    n.click(); n.focus();
   });
   // no chat open: the header's ··· is the settings alone (delegated — leaveChat writes the header anew; its icon is
   // drawn where ICON is defined, before leaveChat keeps the header)
@@ -5135,6 +5142,9 @@ const toolName = n => {
   // written were beside it for a day.
   $('#optMeta').checked = prefs.optMeta !== false;
   $('#optMeta').addEventListener('change', e => { prefs.optMeta = e.target.checked; savePrefs(); for (const tm of terms) if (tm.xt) tm.xt.options.macOptionIsMeta = prefs.optMeta; });
+  // xterm's screen-reader mode (2026-10-12, off): the drawer's lines kept in a live region a reader follows
+  $('#termReader').checked = !!prefs.termReader;
+  $('#termReader').addEventListener('change', e => { prefs.termReader = e.target.checked; savePrefs(); for (const tm of terms) if (tm.xt) tm.xt.options.screenReaderMode = prefs.termReader; });
   // ---- the colour picker ------------------------------------------------------------------
   // One real <input type=color> for the page (#colorInput): the squares are re-rendered on every update, so the
   // control is moved under the square that was clicked and opened from there — the panel stays wired to it
@@ -5472,7 +5482,7 @@ const toolName = n => {
     const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo${s.cwd && prefs.project === s.cwd ? ' on' : ''}" title="${s.cwd && prefs.project === s.cwd ? 'Every project again (ALL)' : 'Show this folder\'s chats — click again for every project'}">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${ticks(esc(s.title))}</span></h2>
       ${diffChip(s)}${headMove(s)}${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
-      <button class="hmore" id="moreBtn" aria-haspopup="menu" aria-expanded="false" title="This chat: Claude in its drawer, a shell, VS Code Web, its changes, focus view, path and branch — and the settings">${ICON.more}</button>
+      <button class="hmore" id="moreBtn" aria-haspopup="dialog" aria-expanded="false" title="This chat: Claude in its drawer, a shell, VS Code Web, its changes, focus view, path and branch — and the settings">${ICON.more}</button>
       <div class="details"${prefs.headDetails ? '' : ' hidden'}>
         <span class="path">${esc(s.cwd || '')}${s.gitBranch && s.gitBranch !== 'HEAD' ? ' @ ' + esc(s.gitBranch) : ''}</span>
         ${s.live ? `<span class="chip">${entryLabel(s)}</span>` : ''}${s.live?.name ? `<span class="chip" title="session name">${esc(s.live.name)}</span>` : ''}${
@@ -5789,7 +5799,8 @@ const toolName = n => {
   function openMenu() {
     const s = state.sessions.get(state.current); if (s) renderHead(s);   // the rows read page state too (the editor's tab), which no SSE update redraws
     const m = $('#hmenu'); m.show(); fillAges(m); placeMenu(); repostPane();   // the state dot's age: written here, not left to the 30 s tick
-    if (m.contains(document.activeElement)) document.activeElement.blur();   // show() focuses the first row, which then wears a ring it did not earn
+    // show() focuses the first row: kept (2026-10-12; blurred before, which left a keyboard nowhere) — :focus-visible
+    // draws no ring for a pointer's open
     $('#moreBtn')?.classList.add('on'); $('#moreBtn')?.setAttribute('aria-expanded', 'true');
   }
   $('#hmenu').addEventListener('close', () => {
@@ -5929,7 +5940,7 @@ const toolName = n => {
   const macEdit = e => e.ctrlKey || e.shiftKey || e.metaKey === e.altKey ? undefined : MAC_EDIT[`${e.metaKey ? 'cmd' : 'alt'}:${e.key}`];
   function ensureXterm(tm) {
     if (tm.xt) return;
-    tm.xt = new Terminal({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: termFontSize(), lineHeight: 1.1, cursorBlink: true, scrollback: 5000, theme: xtTheme(), macOptionIsMeta: prefs.optMeta !== false });
+    tm.xt = new Terminal({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: termFontSize(), lineHeight: 1.1, cursorBlink: true, scrollback: 5000, theme: xtTheme(), macOptionIsMeta: prefs.optMeta !== false, screenReaderMode: !!prefs.termReader });
     // ⌘+ / ⌘- / ⌘0 are the chat's size, not keys for claude; handled here, and the document handler skips them.
     // Shift+Enter: xterm.js sends the same \r as Enter, which submits the prompt. Claude reads ESC CR
     // (Option+Enter) as a newline — it is what its own /terminal-setup binds Shift+Enter to in VS Code's
@@ -6306,9 +6317,9 @@ const toolName = n => {
       // page in front its own address, with ‹ › ↻ ↗ in it (Q5) — a div, since it holds buttons
       const tab = (k, label, title, x, icon = '') => {
         const close = x ? `<span class="x" title="${esc(x)}">${ICON.close}</span>` : '';
-        if (cur === k && isPaneTab(k)) return `<div class="ptab on pane addr" data-tab="${esc(k)}" title="${esc(title + tip)}">${icon}<span class="purl" data-key="${esc(k)}" data-url="${esc(paneUrl(k))}" title="${esc(paneUrl(k))} — click to copy">${addrHtml(k, paneUrl(k))}</span><span class="navs">`
+        if (cur === k && isPaneTab(k)) return `<div class="ptab on pane addr" role="tab" aria-selected="true" tabindex="0" data-tab="${esc(k)}" title="${esc(title + tip)}">${icon}<span class="purl" data-key="${esc(k)}" data-url="${esc(paneUrl(k))}" title="${esc(paneUrl(k))} — click to copy">${addrHtml(k, paneUrl(k))}</span><span class="navs">`
           + `<button class="nav" data-nav="back" title="Back">${ICON.back}</button><button class="nav" data-nav="forward" title="Forward">${ICON.forward}</button><button class="nav" data-nav="reload" title="Reload">${ICON.reload}</button><button class="nav" data-nav="external" title="Open this page in your browser">${ICON.external}</button></span>${close}</div>`;
-        return `<button class="ptab${cur === k ? ' on' : ''}${isPaneTab(k) ? ' pane' : ''}" data-tab="${esc(k)}" title="${esc(title + tip)}">${icon}${esc(label)}${close}</button>`;
+        return `<button class="ptab${cur === k ? ' on' : ''}${isPaneTab(k) ? ' pane' : ''}" role="tab" aria-selected="${cur === k}" data-tab="${esc(k)}" title="${esc(title + tip)}">${icon}${esc(label)}${close}</button>`;
       };
       // the half's own, ◫ (or ⊟) and ⨯, behind a ⋯ at the strip's end (Q5)
       const half = two ? `<button class="gmore" title="This half: turn the split, close it">${ICON.more}</button><span class="gacts">`
@@ -6798,7 +6809,7 @@ const toolName = n => {
   function mountMini(reg, host, t, crop = true) {
     let m = reg.get(t.id);
     if (!m) {
-      const el = document.createElement('div'); el.className = 'mini';
+      const el = document.createElement('div'); el.className = 'mini'; el.inert = true;   // a picture: its helper textarea out of the tab order (2026-10-12)
       const xt = new Terminal({ cols: t.cols || 120, rows: t.rows || 30, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, lineHeight: 1.1, scrollback: 0, cursorBlink: false, disableStdin: true, theme: xtTheme() });
       xt.open(el);
       const ws = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`); ws.binaryType = 'arraybuffer';
