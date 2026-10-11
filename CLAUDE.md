@@ -866,6 +866,12 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   lines**. The title and the folder name are bolded (`markHits`). ↑↓ in the box walk a `.qsel` card, ⏎ opens it and
   keeps the query; the mark shows only while the box has the keyboard (`markQsel()`, on every render). The project in
   view still applies; a folded lane does not — a query shows every match. → `scripts/scenarios/chat-filter.mjs`.
+* **A right-click is a menu where ⌥-click, a double-click or a drag did alone** (2026-10-12, `#ctxm`, `ctxRows`): on a
+  card — Open, Rename…, Done / Done for good / Back on the board, Take #n off this chat for each PR, Copy its link; on a
+  PR chip (card, header, row) — Open the PR, Take it off this chat; on the colour square — Pick a colour…, Let go of the
+  colour. Not in a box, a terminal or the transcript's words (the system's menu there). The launcher has the open
+  chat's rows too (Rename it, Take #n off it, Move this tab to the other half, Let go of its project's colour).
+  → `scripts/scenarios/context-menu.mjs`.
 * **⌥⌘L is the launcher, one box for everything** (2026-10-10; Walker and the Omarchy menu): `#pick` in mode `launch` —
   `launchRows` gives each section's best (chats, projects, PRs across every chat `allPrs`, tickets `allTickets`,
   `actionRows`, `toggleRows`), six each, all of them under a prefix (`>` actions and switches, `#` PRs, `@` projects,
@@ -1325,11 +1331,11 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   scroll-driven ones, which run as long as the list can scroll — and for a pending draw. `ctx`: `evaluate`, `waitFor`, `send`, `reload`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
-  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The sixty-five in
+  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The sixty-six in
   `scripts/scenarios/` are the regression checks for the drawer (a chat switched to with it open, and a new one under the floating header, too), the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
   marks and the PR stack, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, a PR's turn, the chat's links,
-  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short, the resume bar, keeping the Mac awake, Jira tickets, the transcript's turns, a PR's CI, the floating header, the status bar, the light under the pointer, the Mac's line-editing keys in the drawer, a chat's folder cloned before it resumes, the themes, the launcher and the keys sheet, the changes tab, the overview, the tiles, the home, the lanes that fold, a notification answered where it shows, and the small motions of 2026-10-11 (`small-motions.mjs`, one section each, for those no other scenario had a place for).
+  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short, the resume bar, keeping the Mac awake, Jira tickets, the transcript's turns, a PR's CI, the floating header, the status bar, the light under the pointer, the Mac's line-editing keys in the drawer, a chat's folder cloned before it resumes, the themes, the launcher and the keys sheet, the changes tab, the overview, the tiles, the home, the lanes that fold, a notification answered where it shows, the right-click menu, and the small motions of 2026-10-11 (`small-motions.mjs`, one section each, for those no other scenario had a place for).
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.

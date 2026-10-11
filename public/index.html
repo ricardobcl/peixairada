@@ -1218,6 +1218,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #hmenu .hmi { display: grid; grid-template-columns: 18px 1fr auto; gap: 9px; align-items: center; width: 100%; padding: 6px 8px; border: 0; border-radius: 6px; background: none; font: inherit; font-size: 12.5px; color: var(--ink); text-align: left; cursor: pointer; }
   #hmenu .hmi:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 12%, transparent); }
   #hmenu .hmi:disabled { opacity: .45; cursor: default; }
+  /* the right-click menu (2026-10-12): ···'s rows, at the pointer */
+  #ctxm { position: fixed; inset: auto; margin: 0; z-index: 46; min-width: 220px; max-width: 320px; padding: 5px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, .22); }
+  #ctxm button { display: block; width: 100%; text-align: left; padding: 6px 9px; border: 0; border-radius: 6px; background: none; font: inherit; font-size: 12.5px; color: var(--ink); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #ctxm button:hover, #ctxm button:focus-visible { background: color-mix(in srgb, var(--accent) 12%, transparent); outline: none; }
+  #ctxm button.warn { color: var(--needs); } #ctxm hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
   #hmenu .hmi .ic { width: 15px; height: 15px; fill: currentColor; justify-self: center; }
   #hmenu .hmi .ic.tk { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }   /* done for good's ✓, a stroke as on the card */
   #hmenu .hmi .dot { justify-self: center; }
@@ -2198,6 +2203,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   <div class="spane" data-tab="keys" hidden><div class="keys" title="From anywhere on the board, the terminal included"></div></div>
 </dialog>
 <dialog id="hmenu" aria-label="This chat's actions"></dialog>
+<dialog id="ctxm" aria-label="Actions"></dialog>
 <dialog id="about" aria-label="About peixAIrada"></dialog>
 <dialog id="welcome" aria-label="Where your repositories live">
   <span class="wlogo" aria-hidden="true"></span>
@@ -4587,16 +4593,21 @@ const toolName = n => {
       { name: 'Choose a theme', hint: '⌥⌘Y', fn: themesOpen },
       { name: 'Settings', hint: '⌘,', fn: () => settingsOpen(true) },
       { name: 'Every key', hint: '?', fn: keysOpen },
-      { name: 'Every live agent at once', hint: '⌥⌘A', fn: ovOpen },
+      { name: 'The overview — every live chat', hint: '⌥⌘A', fn: ovOpen },
       { name: 'Home — the day', hint: '⌥⌘0', fn: hotHome },
       { name: 'About peixAIrada', fn: aboutOpen },
       ...(!s ? [] : [
-        { name: 'Its claude, in a drawer', sub: of, hint: '⌥⌘C', fn: hotClaude },
+        { name: 'Its Claude, in its drawer', sub: of, hint: '⌥⌘C', fn: hotClaude },
         { name: `A ${shName()} in its folder`, sub: of, hint: '⌥⌘T', fn: hotShell },
         ...(s.prs?.length ? [{ name: 'Its PR on GitHub', sub: of, hint: '⌥⌘G', fn: hotGh }] : []),
         ...(inApp ? [{ name: 'Its folder in VS Code Web', sub: of, hint: '⌥⌘E', fn: hotVsCode }] : []),
         ...(canTick(s) ? [{ name: 'Tick it done', sub: of, fn: () => tickDone(s.id, true, $('#shead')) }] : []),
         ...(canTick(s) && s.prs?.length && !s.forGood ? [{ name: 'Done for good — its PRs forgotten', sub: of, fn: () => tickDone(s.id, true, $('#shead'), null, true) }] : []),
+        // what was the pointer's alone (2026-10-12): a rename, a PR taken off, a tab moved across, a colour let go
+        { name: 'Rename it', sub: of, fn: () => editTitle(s) },
+        ...(s.prs || []).filter(shownHere).map(pr => ({ name: `Take ${pr.label.replace(/^.*?#/, '#')} off it`, sub: ` — ${pr.title || pr.label}`, fn: () => unlinkUrl(s, pr.url) })),
+        ...(isSplit(s) ? [{ name: 'Move this tab to the other half', sub: of, fn: () => moveFocused(s) }] : []),
+        ...(s.cwd && state.peacock[s.cwd] ? [{ name: 'Let go of its project’s colour', sub: ` — ${s.project}`, fn: () => clearColor(s.cwd) }] : []),
         ...(s.cwd ? [{ name: 'Copy its folder’s path', sub: ` — ${homePath(s.cwd)}`, fn: () => navigator.clipboard?.writeText(s.cwd).then(() => note($('#shead'), 'Path copied'), () => {}) }] : []),
       ]),
     ].map(a => ({ kind: 'action', id: 'ac:' + a.name, ...a }));
@@ -5660,6 +5671,49 @@ const toolName = n => {
   // redraws the header without it, which would take the fold with it); it keeps the PR off the chat for good, but for
   // a word of yours naming it again.
   const UNLINK_MS = 180;
+  // ---- a right-click menu (2026-10-12) -----------------------------------------------------------------------------
+  // What ⌥-click, a double-click or a drag did alone: on a card — open, rename, tick or tick for good, take one of its
+  // PRs off, copy its link; on a PR chip — open it, take it off the chat; on the colour square — let go of the colour.
+  // The same rows are the launcher's (actionRows), for the keyboard.
+  const shownHere = pr => !!pr?.url;
+  const unlinkUrl = (s, url) => { const el = document.querySelector(`#shead .hpr[data-url="${CSS.escape(url)}"], #prlist .prrow[data-url="${CSS.escape(url)}"]`); if (el) return unlinkPr(s, el); api('POST', `/api/sessions/${s.id}/unlink`, { url }).catch(err => note($('#shead'), `Could not take it off: ${err.message}`, true)); };
+  const moveFocused = s => { const k = tabOf(s); if (k && k !== 'chat') moveTab(s, k, placeOf(s)[0] === k ? 1 : 0); else note($('#shead'), 'The chat stays in its half — pick a tab to move', true); };
+  const clearColor = cwd => { colorAt = '#shead'; colorWas.set(cwd, state.peacock[cwd] ?? null); written.delete(cwd); previewColor(cwd, null); setPeacock(cwd, null); };
+  function ctxRows(e) {
+    const card = e.target.closest('#slist > .card'), chip = e.target.closest('.cpr[data-url], .hpr[data-url], .prrow[data-url]'), sq = e.target.closest('.sq.pick[data-cwd]');
+    if (chip) {
+      const s = state.sessions.get(card?.dataset.id || state.current), url = chip.dataset.url; if (!s || !url) return null;
+      return [{ t: 'Open the PR', fn: () => openExternal(url, { s }) }, { t: 'Take it off this chat', warn: true, fn: () => unlinkUrl(s, url) }];
+    }
+    if (sq) return state.peacock[sq.dataset.cwd] ? [{ t: 'Pick a colour…', fn: () => sq.click() }, { t: 'Let go of the colour', fn: () => clearColor(sq.dataset.cwd) }] : [{ t: 'Pick a colour…', fn: () => sq.click() }];
+    if (!card) return null;
+    const s = state.sessions.get(card.dataset.id); if (!s) return null;
+    return [
+      { t: 'Open', fn: () => openSession(s.id) },
+      { t: 'Rename…', fn: async () => { await openSession(s.id); editTitle(state.sessions.get(s.id) || s); } },
+      ...(s.done ? [{ t: 'Back on the board (↩)', fn: () => tickDone(s.id, false, card) }]
+        : canTick(s) ? [{ t: 'Done', fn: () => tickDone(s.id, true, card) }, ...(s.prs?.length && !s.forGood ? [{ t: 'Done for good — its PRs forgotten', fn: () => tickDone(s.id, true, card, null, true) }] : [])] : []),
+      ...((s.prs || []).length ? [{ hr: true }, ...(s.prs || []).slice(0, 6).map(pr => ({ t: `Take ${pr.label.replace(/^.*?#/, '#')} off this chat`, fn: () => unlinkUrl(s, pr.url) }))] : []),
+      { hr: true }, { t: 'Copy its link', fn: () => copyText(`${location.origin}/#${s.id}`).then(ok => note(card, ok ? 'Link copied' : 'Could not copy it', !ok)) },
+    ];
+  }
+  document.addEventListener('contextmenu', e => {
+    if (e.target.closest('input, textarea, .tbody, #log .text, #log pre')) return;   // a box, a terminal, the words: the system's menu
+    const rows = ctxRows(e); if (!rows) return;
+    e.preventDefault();
+    const m = $('#ctxm'); m.innerHTML = rows.map((r, i) => r.hr ? '<hr>' : `<button type="button" data-i="${i}"${r.warn ? ' class="warn"' : ''}>${esc(r.t)}</button>`).join('');
+    m._rows = rows; if (!m.open) m.show();
+    const w = m.offsetWidth, h = m.offsetHeight;
+    m.style.left = `${Math.min(e.clientX, innerWidth - w - 8)}px`; m.style.top = `${Math.min(e.clientY, innerHeight - h - 8)}px`;
+    m.querySelector('button')?.focus({ preventScroll: true }); repostPane();
+  });
+  $('#ctxm').addEventListener('click', e => { const b = e.target.closest('button[data-i]'); if (!b) return; const r = $('#ctxm')._rows[+b.dataset.i]; $('#ctxm').close(); r?.fn?.(); });
+  $('#ctxm').addEventListener('keydown', e => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return; e.preventDefault();
+    const bs = [...$('#ctxm').querySelectorAll('button')], i = bs.indexOf(document.activeElement); bs[(i + (e.key === 'ArrowDown' ? 1 : bs.length - 1)) % bs.length]?.focus();
+  });
+  document.addEventListener('pointerdown', e => { if ($('#ctxm').open && !e.composedPath().includes($('#ctxm'))) $('#ctxm').close(); }, true);
+  $('#ctxm').addEventListener('close', () => repostPane());   // an arrow: repostPane is a const further down
   function unlinkPr(s, el) {
     const url = el.dataset.url; if (!url || el.dataset.going) return;
     el.dataset.going = '1'; noteMotion(s.id, 'unlink');

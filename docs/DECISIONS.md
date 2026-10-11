@@ -159,6 +159,14 @@ the order they landed.
   maps — and the Keys pane and the sheet are drawn from it; ⌥⌘O's row says *a new chat in oracle*, not *oracle —
   oracle — a new chat there…*. `npm run check` holds HOTKEYS, CMDKEYS and the app's `boardKeys` to it. The sheet's
   filter hides a group's head with its rows.
+* **W7 — a right-click is a menu**: taking a PR off a chat and letting go of a colour were ⌥-click alone, a rename a
+  double-click, a tab moved across a drag. On a card the menu has Open, Rename…, Done (or Done for good, or Back on
+  the board), Take #n off this chat for each PR and Copy its link; on a PR chip, Open the PR and Take it off this chat;
+  on the colour square, Pick a colour… and Let go of the colour. ↑↓ walk it, a click elsewhere puts it away; in a box,
+  a terminal or the transcript's words the system's own menu stays. **The keyboard's way is the launcher**: the open
+  chat's rows now include Rename it, Take #n off it, Move this tab to the other half and Let go of its project's colour.
+  (The menu's first build put a `const` from further down straight into a listener — the page stopped at load until
+  the next save. `check-page.mjs` compiles; a load is what finds that.)
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 
