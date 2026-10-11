@@ -5367,11 +5367,13 @@ const toolName = n => {
     const loud = armed || !!drawer.err;   // >_ with something to say stays in the row, where it is seen
     const termBtn = cls => `<button class="${cls}${drawer.err ? ' err' : termLive(s) && termFor(s.terminal.id) ? ' on' : take ? (armed ? ' take arm' : ' take') : ''}" id="termBtn" title="${esc(termTip(s))}" aria-label="Terminal"${!termLive(s) && s.alive && !take ? ' disabled' : ''}>${ICON.term}`;
     const termWord = drawer.err ? 'failed' : take ? (armed ? (s.status === 'working' ? 'sure? mid-reply' : inVsCode(s) ? 'sure? ends VS Code’s' : 'sure?') : 'take over') : termLive(s) ? 'claude session' : 'claude here';
-    const prs = s.prs || [], tks = s.tickets || [], prsOpen = !!prefs.prsOpen;
+    // the PRs at your move lead the chips, the newest move first — the one the move's line names (2026-10-12): the row
+    // shows two at most, and those are the ones it must
+    const prs = [...(s.prs || [])].sort((a, b) => (turnOf(b) === 'you') - (turnOf(a) === 'you') || (turnOf(a) === 'you' ? String(b.turn.movedAt || '').localeCompare(String(a.turn.movedAt || '')) : 0)), tks = s.tickets || [], prsOpen = !!prefs.prsOpen;
     const said = [prs.length ? `${prs.length} PR${prs.length === 1 ? '' : 's'}` : '', tks.length ? `${tks.length} ticket${tks.length === 1 ? '' : 's'}` : ''].filter(Boolean).join(' and ');
     const hprs = !prs.length && !tks.length ? '' : `<button class="hprs${prsOpen ? ' on' : ''}" id="prToggle" aria-expanded="${prsOpen}" title="${said} in this chat — click to ${prsOpen ? 'fold the list' : 'list them, one per row'}${prs.length ? ' · ⌥⌘G opens a PR' : ''}">${
       prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}"${prCk(pr) ? ` data-checks="${prCk(pr)}"` : ''} title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}${prCk(pr) ? `\n${CK_TIP[prCk(pr)]}` : ''}${pr.turn ? `\n${turnTip(pr)}` : ''}\n${UNLINK_TIP}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}${ckHtml(pr)}</span>`).join('')
-    }${tks.map(t => `<span class="hpr tk" data-cat="${esc(t.cat)}" title="${esc(ticketTip(t))}">${esc(t.key)}</span>`).join('')}<span class="hpr more" hidden></span></button>`;
+    }${tks.map(t => `<span class="hpr tk" data-cat="${esc(t.cat)}" title="${esc(ticketTip(t))}">${esc(t.key)}</span>`).join('')}<span class="hpr more" data-said="${esc(said.replace(' and ', ' · '))}" hidden></span><span class="hpr more short" hidden></span></button>`;
     const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo${s.cwd && prefs.project === s.cwd ? ' on' : ''}" title="${s.cwd && prefs.project === s.cwd ? 'Every project again (ALL)' : 'Show this folder\'s chats — click again for every project'}">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${ticks(esc(s.title))}</span></h2>
       ${diffChip(s)}${headMove(s)}${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
@@ -5590,11 +5592,15 @@ const toolName = n => {
     const s = state.sessions.get(state.current); if (s) unlinkPr(s, r);
   }, true);
   const TITLE_MIN = 170;   // the title's own flex-basis (.shead h2), below which the row wraps
+  const TITLE_SHARE = .4, CHIPS_MAX = 2;   // the title keeps 40 % of the row at least, and the row two chips (2026-10-12)
   function fitHeadPrs() {
     const head = $('#shead'), t = $('#prToggle'); if (!t) return;
-    const chips = [...t.querySelectorAll('.hpr:not(.more)')], more = t.querySelector('.hpr.more');
+    const chips = [...t.querySelectorAll('.hpr:not(.more)')], more = t.querySelector('.hpr.more:not(.short)'), short = t.querySelector('.hpr.more.short');
     for (const c of chips) c.hidden = false;
-    more.hidden = false; more.textContent = `+${chips.length}`;   // shown for the measure, at its widest
+    // the whole count, not the folded one (2026-10-12): it opens the list of them all — and +n where even one chip and
+    // the whole count leave the title short of its room, both measured in the one layout
+    more.hidden = false; more.textContent = `${more.dataset.said || `+${chips.length}`} ▾`;
+    short.hidden = false; short.textContent = `+${chips.length} ▾`;
     for (const el of head.querySelectorAll(':scope > .hfold')) el.classList.remove('hfold');   // and what the last fit put away
     // Every width in one layout, then the arithmetic (2026-09-27; hiding a chip and measuring the row again, per chip,
     // was a layout each): the button is its frame plus the chips shown, a gap between each, plus +n when any are hidden.
@@ -5606,22 +5612,27 @@ const toolName = n => {
     const title = head.classList.contains('tright') && state.notch ? state.notch.right + notchPad() - h2.getBoundingClientRect().left + TITLE_ROOM   // the title past the housing: the jump, then its room
       : head.classList.contains('tunder') && state.notch ? Math.max(state.notch.right + notchPad() - h2.getBoundingClientRect().left, (head.querySelector('h2 .repo')?.offsetWidth || 0) + TITLE_ROOM)   // under it: on to its far side, the title shown left of it and under it
       : head.classList.contains('hole') ? h2.getBoundingClientRect().width + (parseFloat(h2.style.marginRight) || 0)   // the hole: the title's width is set, and the housing beside it is spent
-      : Math.max(TITLE_MIN, (head.querySelector('h2 .repo')?.offsetWidth || 0) + TITLE_ROOM);
+      : Math.max(TITLE_MIN, (head.querySelector('h2 .repo')?.offsetWidth || 0) + TITLE_ROOM, (head.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) * TITLE_SHARE);
     let room = head.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - title
       - row.reduce((w, el) => w + least(el), 0) - gap * (row.length + 1);
-    const cw = chips.map(c => c.getBoundingClientRect().width), mw = more.getBoundingClientRect().width, tg = parseFloat(getComputedStyle(t).columnGap) || 0;
-    const all = t.getBoundingClientRect().width, frame = all - cw.reduce((a, b) => a + b, 0) - mw - tg * chips.length;
-    let shown = chips.length, width = all - mw - tg;   // every chip, no +n
-    while (shown > 1 && width > room) { shown--; width = frame + cw.slice(0, shown).reduce((a, b) => a + b, 0) + tg * shown + mw; }
+    const cw = chips.map(c => c.getBoundingClientRect().width), mw = more.getBoundingClientRect().width, sw = short.getBoundingClientRect().width, tg = parseFloat(getComputedStyle(t).columnGap) || 0;
+    const all = t.getBoundingClientRect().width, frame = all - cw.reduce((a, b) => a + b, 0) - mw - sw - tg * (chips.length + 1);
+    // two chips at most (2026-10-12; as many as fitted before — eleven took the title down to fifteen letters), the rest
+    // behind the whole count, which opens the list
+    const wide = (n, m) => frame + cw.slice(0, n).reduce((a, b) => a + b, 0) + (n === chips.length ? tg * (n - 1) : tg * n + m);
+    let shown = Math.min(chips.length, CHIPS_MAX), width = wide(shown, mw), terse = false;
+    while (shown > 1 && width > room) { shown--; width = wide(shown, mw); }
+    if (width > room && shown < chips.length) { terse = true; width = wide(shown, sw); }
     // Down to one chip and the row still too full (2026-10-11): the move's line goes, then the changes' count — the card
     // says the one, ··· has the other — so the row stays one line, ··· on it, whatever the column's width.
     const off = [];
     for (const el of [mv, head.querySelector('#diffBtn')]) if (el && row.includes(el) && width > room) { room += least(el) + gap; off.push(el); }
     for (const el of off) el.classList.add('hfold');
     for (let i = shown; i < chips.length; i++) chips[i].hidden = true;
-    more.hidden = shown === chips.length;
+    more.hidden = shown === chips.length || terse; short.hidden = shown === chips.length || !terse;
     if (mv) mv.style.setProperty('--hmin', `${Math.ceil(mvMin)}px`);
-    if (!more.hidden) { more.textContent = `+${chips.length - shown}`; more.title = chips.slice(shown).map(c => c.title).join('\n'); }
+    const left = shown === chips.length ? null : terse ? short : more;
+    if (left) { if (terse) short.textContent = `+${chips.length - shown} ▾`; left.title = `${chips.length - shown} more:\n` + chips.slice(shown).map(c => c.title.split('\n')[0]).join('\n'); }
   }
   // The header's size changed: its width moves the fold (a height alone — a chip fold, the details — does not, and a
   // fold that changes the height would otherwise run this again); under the housing every change moves the hole.

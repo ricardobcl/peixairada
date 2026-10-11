@@ -516,8 +516,11 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   `GET /api/jira` — who Jira says you are, or what went wrong; jira-cli's server and login offered while empty).
   → `scripts/scenarios/jira-tickets.mjs`.
 * **The chat's PRs are chips in the header row, folded**: `#prToggle`, one button of the cards' chips (`.hpr` shares
-  `.cpr`'s rule; `fitHeadPrs()` measures every width once and folds the last chips into `+n` only while the row would
-  leave the title less than its repo name plus `TITLE_ROOM` (`TITLE_MIN` is the h2's flex-basis) — on every new header
+  `.cpr`'s rule; `fitHeadPrs()` measures every width once and shows **two chips at most** (2026-10-12, `CHIPS_MAX`; the PRs at
+  your move first, the newest move first), the rest behind **the whole count** — *13 PRs · 3 tickets ▾*, which opens
+  the list — or `+n ▾` where that is too wide beside one chip; fewer while the row would leave the title less than
+  the largest of its repo name plus `TITLE_ROOM` and **40 % of the row** (`TITLE_SHARE`; `TITLE_MIN` is the h2's
+  flex-basis) — on every new header
   draw and on the header's `ResizeObserver`, which runs only when the width moved or under the housing;
   → `scripts/scenarios/header-prs-fit.mjs`). **The row never wraps** (2026-10-11, afternoon): the move's line and a
   task's chip are `flex: 1 1 0` up to `max-content` — they grow into what is left and count at their least (the move's

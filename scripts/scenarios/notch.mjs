@@ -37,7 +37,7 @@ export default async function (ctx) {
       headPad: parseFloat(getComputedStyle(head).paddingTop), h2Right: Math.round(h2.getBoundingClientRect().right), h2Flex: h2.style.flex,
       afterLeft: after ? Math.round(after.getBoundingClientRect().left) : null, afterTop: after ? Math.round(after.getBoundingClientRect().top) : null,
       underHousing: parts.filter(under).map(el => el.textContent.trim().slice(0, 30)),
-      chips: [...head.querySelectorAll('#prToggle .hpr:not(.more)')].filter(c => !c.hidden).length, more: head.querySelector('.hpr.more')?.hidden === false,
+      chips: [...head.querySelectorAll('#prToggle .hpr:not(.more)')].filter(c => !c.hidden).length, more: [...head.querySelectorAll('.hpr.more')].some(m => !m.hidden),
       title: h2.querySelector('.t')?.getBoundingClientRect().width | 0, tright: head.classList.contains('tright'),
       tLeft: Math.round(h2.querySelector('.t').getBoundingClientRect().left), tRight: Math.round(h2.querySelector('.t').getBoundingClientRect().right),
       repoRight: Math.round(h2.querySelector('.repo').getBoundingClientRect().right), sepRight: Math.round(h2.querySelector('.sep').getBoundingClientRect().right),
@@ -62,7 +62,7 @@ export default async function (ctx) {
   ctx.assert.equal(out.on.split, out.on.sepRight, `the header is black from the project's name on, the housing inside it (${out.on.split})`);
   ctx.assert.deepEqual([out.on.underHousing, out.on.oneLine], [[], true], 'nothing of the row under the housing, and the row is one line');
   ctx.assert.ok(out.on.title > 150, `the title keeps room (${out.on.title} px)`);
-  ctx.assert.equal(out.on.chips, 6, 'the six chips fit right of the housing');
+  ctx.assert.deepEqual([out.on.chips, out.on.more], [2, true], 'two of the six chips right of the housing, and the count (two at most since 2026-10-12)');
   await ctx.shot('1-filled', { x: 0, y: 0, width: 1728, height: 60 });
 
   // The list dragged under the housing: its cards start under the strip, and the header — no room for a title left of

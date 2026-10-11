@@ -64,6 +64,12 @@ the order they landed.
   has no ring or red edge to say it — and an idle or done square dimmed; and **the lanes fold there too** (they did not,
   and the rail showed every done chat): a lane's head on the rail is its mark and its count, a click folding or opening
   it as in the list. Two chats of one project are still alike but for those marks; the tooltip names each.
+* **T3 — the chat header keeps its title**: a chat with thirteen PRs had its title cut to *Sync user accou* by eleven
+  chips. **Two chips at most**, the PRs at your move first, the newest move first (the one the move's line names);
+  the rest behind **the whole count** — *13 PRs · 3 tickets ▾*, which is the toggle of the list of them all — or `+n ▾`
+  where even that is too wide beside one chip; and the title keeps **40 % of the row** at least, beside the old floor
+  (its repo name and `TITLE_ROOM`). Both counts are in the markup and measured in the one layout. The notch keeps two
+  chips right of the housing (six before).
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 
