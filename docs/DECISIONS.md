@@ -50,6 +50,9 @@ anything and it does't look pretty with the floating chat bar".
     wallpaper showing in a band round it, and the header's row kept 20 px clear. The hole is the housing's own shape
     now — its lower corners the housing's radius, the border's 2 px round them concentric — and the row keeps 12 px
     clear, so the header (floating or not) has 8 px more either side of it.
+  * **GitHub's mark before the fish**: the faces sat after the fish's lane, so folding them moved the mark the width
+    of the faces. The mark and its faces come before the lane now, after the left's segments: the faces open to the
+    mark's right and the fish's lane gives way, and the mark stays where the hand left it.
 
 ## Decisions of 2026-10-11 — the third studies built: twenty-eight small motions
 

@@ -223,8 +223,8 @@
   /* in the bar the fish is the connection's light, as the dot it replaced was: no square, the fish in the ready green */
   #sbar .conn .logo { width: 15px; height: 15px; flex: none; }
   #sbar .clock { border-right: 0; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
-  /* the fish swimming at the agents' pace (swimAt): a lane between the counts and the faces */
-  #sbSwim { position: relative; flex: 1 1 auto; min-width: 64px; overflow: hidden; cursor: pointer; border-right: 1px solid var(--line); }   /* the bar's free room (2026-10-11, later; 64 px before) */
+  /* the fish swimming at the agents' pace (swimAt): a lane between the faces and the machine's numbers */
+  #sbSwim { position: relative; flex: 1 1 auto; min-width: 64px; overflow: hidden; cursor: pointer; }   /* the bar's free room (2026-10-11, later; 64 px before) */
   #sbSwim .swimmer { position: absolute; left: 0; top: calc(50% - 5.5px); }
   #sbSwim .b { fill: var(--accent); } #sbSwim .s { fill: color-mix(in srgb, var(--accent) 60%, #000); } #sbSwim .e { fill: var(--bar, var(--panel)); }
   #sbSwim .ft { transform-box: fill-box; transform-origin: 0 50%; animation: wag var(--wag, .3s) ease-in-out infinite alternate; }
@@ -1038,6 +1038,7 @@
   #sbFind #filters { flex: none; gap: 4px; }
   #sbar .fq { flex: none; width: 210px; }
   #sbPeople { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; }
+  #sbPeople:has(> #people:not([hidden])) { border-right: 1px solid var(--line); }   /* GitHub's mark and the faces before the fish (2026-10-11, later): the mark stays put as they fold */
   #sbar #people { padding: 0 8px; border: 0; gap: 4px; max-width: 100%; }
   #sbar #people :is(button:not(.pgh), img, .face) { width: 18px; height: 18px; font-size: 9.5px; }
   /* folded (prefs.peopleCompact, the default — 2026-10-11, later): GitHub's mark alone, but for the face the list is
@@ -1976,7 +1977,7 @@
   </section>
   <section id="stack" hidden aria-label="The chats asking or clauding"></section>
 </main>
-<footer id="sbar" hidden><div id="sbFind"></div><div id="sbLeft"></div><div id="sbSwim" role="button" aria-label="Every agent at work (⌥⌘A)"></div><div id="sbPeople"></div><div id="sbRight"></div></footer>
+<footer id="sbar" hidden><div id="sbFind"></div><div id="sbLeft"></div><div id="sbPeople"></div><div id="sbSwim" role="button" aria-label="Every agent at work (⌥⌘A)"></div><div id="sbRight"></div></footer>
 <div id="trail" aria-hidden="true" hidden></div>
 <dialog id="settings" class="pop" aria-label="Settings" tabindex="-1">
   <div class="shd2"><h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4><button class="sclose" id="settingsClose" title="Close · esc" aria-label="Close">×</button></div>

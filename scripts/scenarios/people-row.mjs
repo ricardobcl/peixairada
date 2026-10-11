@@ -94,22 +94,23 @@ export default async function (ctx) {
   await ctx.key('KeyB');
 
   // the status bar on (2026-10-09): the faces are in it, and still narrow the list — since 2026-10-11, later, after the
-  // fish's lane, which takes the bar's free room, and before the machine's numbers
+  // left's segments and before the fish's lane, which takes the bar's free room
   await ctx.evaluate(`document.querySelector('#sbarOn').click()`);
   await ctx.settle();
-  out.docked = await ctx.evaluate(`JSON.stringify((p => { const r = p.getBoundingClientRect(), f = document.querySelector('#sbSwim').getBoundingClientRect(), m = document.querySelector('#sbRight').getBoundingClientRect(); return { inBar: p.parentElement.id, placed: r.left >= f.right - 1 && r.right <= m.left + 1 && f.width > 200, faces: p.querySelectorAll('button[data-login]').length }; })(document.querySelector('#people')))`).then(JSON.parse);
-  ctx.assert.deepEqual([out.docked.inBar, out.docked.placed, out.docked.faces], ['sbPeople', true, 3], `after the fish's wide lane: ${JSON.stringify(out.docked)}`);
+  out.docked = await ctx.evaluate(`JSON.stringify((p => { const r = p.getBoundingClientRect(), f = document.querySelector('#sbSwim').getBoundingClientRect(), l = document.querySelector('#sbLeft').getBoundingClientRect(); return { inBar: p.parentElement.id, placed: r.left >= l.right - 1 && r.right <= f.left + 1 && f.width > 200, faces: p.querySelectorAll('button[data-login]').length }; })(document.querySelector('#people')))`).then(JSON.parse);
+  ctx.assert.deepEqual([out.docked.inBar, out.docked.placed, out.docked.faces], ['sbPeople', true, 3], `before the fish's wide lane: ${JSON.stringify(out.docked)}`);
   await click('ana');
   ctx.assert.deepEqual(await titles(), ['On one'], 'a face there narrows the list as ever');
   await click('ana');
   await ctx.shot('docked', { x: 0, y: 880, width: 1700, height: 120 });
-  // folded there, the faces' room is the fish's: the lane grows by it, the mark alone after it
-  const lane = () => ctx.evaluate(`Math.round(document.querySelector('#sbSwim').getBoundingClientRect().width)`);
-  const wide = await lane();
+  // folded there, the faces' room is the fish's: the lane grows by it, the mark alone before it — and the mark stays put
+  const lane = () => ctx.evaluate(`Math.round(document.querySelector('#sbSwim').getBoundingClientRect().width)`), at = () => ctx.evaluate(`Math.round(document.querySelector('#people .pgh').getBoundingClientRect().left)`);
+  const wide = await lane(), was = await at();
   await mark();
-  out.barFolded = { ...(await fold()), lane: [wide, await lane()], people: await ctx.evaluate(`Math.round(document.querySelector('#sbPeople').getBoundingClientRect().width)`) };
+  out.barFolded = { ...(await fold()), lane: [wide, await lane()], mark: [was, await at()], people: await ctx.evaluate(`Math.round(document.querySelector('#sbPeople').getBoundingClientRect().width)`) };
   ctx.assert.deepEqual([out.barFolded.folded, out.barFolded.shown], [true, []], 'folded in the bar: no face');
   ctx.assert.ok(out.barFolded.lane[1] >= out.barFolded.lane[0] + 3 * 18 && out.barFolded.people < 50, `the fish takes the faces' room: ${JSON.stringify(out.barFolded)}`);
+  ctx.assert.equal(out.barFolded.mark[1], out.barFolded.mark[0], 'GitHub\'s mark where it was');
   await ctx.shot('docked-folded', { x: 0, y: 880, width: 1700, height: 120 });
   await ctx.evaluate(`document.querySelector('#sbarOn').click()`);
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#people').parentElement.id`), 'sessions', 'the bar off: back under the list');
