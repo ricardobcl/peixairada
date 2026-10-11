@@ -9,7 +9,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeFixture } from '../fixture.mjs';
 
-export const meta = { server: true, fixture: 'auto' };
+// Compact is the board's default since 2026-10-12 (large before; the harness starts on large, so no `cards` here means
+// the board's own), and a switch under the slider sizes the cards by lane: the ones that want you large, the rest at
+// the slider's size.
+export const meta = { server: true, fixture: 'auto', prefs: { cards: null } };
 
 // Per card: which words show (display, not markup — the markup always holds both), the question line, the height.
 const cards = ctx => ctx.evaluate(`JSON.stringify(Object.fromEntries([...document.querySelectorAll('#slist > .card')].map(c => [c.querySelector('.title').textContent, {
@@ -38,7 +41,10 @@ export default async function (ctx) {
     await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 6`, { what: 'the four chats and the fixture\'s two' });
     await ctx.waitFor(`!!document.querySelector('#slist > .card.asking')`, { what: 'the asking card' });
 
-    // large, the default: both words everywhere
+    // compact, the board's own default
+    ctx.assert.deepEqual(await slider(ctx), { v: '2', list: 'compact', on: 'compact' }, 'compact to begin with');
+    // large, from the slider: both words everywhere
+    await ctx.evaluate(`(() => { const r = document.querySelector('#cardsSize'); r.value = '0'; r.dispatchEvent(new Event('input', { bubbles: true })); })()`);
     out.large = { slider: await slider(ctx), cards: await cards(ctx) };
     ctx.assert.deepEqual(out.large.slider, { v: '0', list: 'large', on: 'large' });
     ctx.assert.deepEqual(out.large.cards['Claude spoke last'].words, ['you: is the build green?', 'claude: green on every job']);
@@ -67,6 +73,16 @@ export default async function (ctx) {
     }
     await ctx.shot('compact', { x: 0, y: 0, width: 420, height: 640 });
     ctx.assert.equal((await ctx.peix('prefs()')).cards, 'compact');
+
+    // by lane (2026-10-12): the asking card large — both its words — and the ready ones still compact
+    await ctx.evaluate(`document.querySelector('#cardsByLane').click()`); await ctx.settle();
+    out.byLane = { attr: await ctx.evaluate(`document.querySelector('#sessions').hasAttribute('data-bylane')`), cards: await cards(ctx) };
+    ctx.assert.equal(out.byLane.attr, true);
+    ctx.assert.deepEqual(out.byLane.cards['Asking you'].words, ['you: clean the old branches', 'claude: on it'], 'the chat asking you, large');
+    ctx.assert.deepEqual(out.byLane.cards['Claude spoke last'].words, [], 'a ready one at the slider\'s size');
+    await ctx.shot('by-lane', { x: 0, y: 0, width: 420, height: 640 });
+    await ctx.evaluate(`document.querySelector('#cardsByLane').click()`); await ctx.settle();
+    ctx.assert.deepEqual((await cards(ctx))['Asking you'].words, [], 'off, the asking card compact again');
 
     // compact's own switch (2026-09-29):
     // shown under compact only; on, the title is one line and nothing hangs under it, so every card is one height

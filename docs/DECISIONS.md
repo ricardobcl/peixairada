@@ -46,6 +46,12 @@ the order they landed.
   (the harness) keeps it. A clauding chat stays Clauding whatever its PRs say. *All caught up* now means no question,
   no PR at your move, no new reply and nothing ready. The overview's fourth column is *New replies* (the server's, or
   the page's unread count while it has one).
+* **L1 — compact by default, and cards by lane, a switch**: compact (the title, its chips, the question and your
+  move) is the default; a board saved on large — the old default, saved with every pref — moves to compact once
+  (`cardsMoved`), medium stays. *By lane*, under the slider and off: a card in a lane that wants you — asking, your
+  move, clauding, new replies — is large whatever the slider says, the rest at its size; a class on the card
+  (`.roomy`, from its rank) and an attribute on the list, so the switch, like the slider, redraws nothing. The harness
+  starts its pages on large (the scenarios read the cards' words); `card-sizes.mjs` asks for the board's own.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

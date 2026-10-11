@@ -872,6 +872,9 @@
   .card .state.live { perspective: 160px; }
   .card .state.live b { flex: none; font: 600 11px/16px -apple-system, BlinkMacSystemFont, sans-serif; color: var(--ink); }
   #sessions[data-cards="compact"] .card .state.live { display: none; }
+  /* …unless cards go by lane (2026-10-12, data-bylane, prefs.cardsByLane): a card in a lane that wants you is large. */
+  #sessions[data-bylane] .card.roomy .snip { display: -webkit-box; }
+  #sessions[data-bylane] .card.roomy .state.live:not(:empty) { display: grid; }
   #sessions[data-even] .card .title { -webkit-line-clamp: 1; }
   #sessions[data-even] .card .state.needs-input { display: none; }
   #sessions[data-even] .card .state.moveslot { display: flex; visibility: hidden; }
@@ -2125,10 +2128,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <label class="opt" title="On, the chat header is a bar inset from the window's edges, rounded and shadowed; off, it runs edge to edge as before"><input type="checkbox" id="headFloat"><span><b>floating header</b> — the chat header as a rounded bar inset from the edges</span></label>
     <label class="opt" title="A soft tick when a reply lands, two notes when a chat asks you — only while the board is the window in front (behind it, the system's notification has its own sound)"><input type="checkbox" id="soundsOn"><span><b>sounds</b> — a tick for a reply, two notes for a question, while the board is in front</span></label>
     <div class="dens" title="How much of each chat its card carries — a question waiting on you shows at every size">
-      <b>cards</b><input type="range" id="cardsSize" min="0" max="2" step="1" value="0" list="cardsStops" aria-label="Card size">
+      <b>cards</b><input type="range" id="cardsSize" min="0" max="2" step="1" value="2" list="cardsStops" aria-label="Card size">
       <datalist id="cardsStops"><option value="0"></option><option value="1"></option><option value="2"></option></datalist>
       <span class="stops"><span data-v="0" title="your last prompt and Claude's last reply, as always">large</span><span data-v="1" title="only the last word — yours or Claude's, whichever came last">medium</span><span data-v="2" title="neither: the title, its chips and its PRs">compact</span></span>
     </div>
+    <label class="opt sub" title="On, a chat asking you, one with a PR at your move, one Claude is at work in and one with a new reply have large cards whatever the size above — the rest are at that size"><input type="checkbox" id="cardsByLane"><span><b>by lane</b> — large where a chat wants you, the size above for the rest</span></label>
     <label class="opt sub" id="evenRow" title="Compact cards all the same height: the title on one line and the your-move line under it, held empty on a card without one; the question is left to the card's blinking red edge" hidden><input type="checkbox" id="cardsEven"><span><b>same height</b> — every compact card a title line and a your-move line tall</span></label>
     <label class="opt" title="On, a chat whose claude has ended — one you open from the list, a picker, a key or a link — runs claude --resume in a terminal here 5 s after it opens, unless you press Not now or Esc, or move on. A chat ticked done, and the one the page opens on a reload, wait for the Resume button"><input type="checkbox" id="autoResume" checked><span><b>auto-resume</b> — a chat whose claude has ended resumes 5 s after you open it; off, it waits for the Resume button</span></label>
     <label class="opt" title="On, ⌥ with a letter is Meta in the terminal, as iTerm's Esc+ — ⌥B ⌥F move a word, ⌥⌫ deletes one; ⌥ with a digit or a sign still types what the keyboard makes. Off, ⌥ types whatever your layout composes (⌥L is @ on a German one)"><input type="checkbox" id="optMeta" checked><span><b>⌥ is Meta</b> in the terminal — off, ⌥ types what your keyboard composes</span></label>
@@ -2283,8 +2287,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map() };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', skinDark: null, skinLight: null, skinExact: false };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', skinDark: null, skinLight: null, skinExact: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
+  // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
+  // once; one that chose medium keeps it.
+  if (!prefs.cardsMoved) { if (prefs.cards === 'large') prefs.cards = 'compact'; prefs.cardsMoved = true; }
   // Idle folds to begin with (2026-10-12) — and once on a board saved with Done alone folded, the default it had; one
   // that opened Done (the harness opens every lane) keeps what it chose.
   if (!prefs.lanesIdle) { if (Array.isArray(prefs.lanesShut) && prefs.lanesShut.includes('done') && !prefs.lanesShut.includes('idle')) prefs.lanesShut.push('idle'); prefs.lanesIdle = true; }
@@ -2389,16 +2396,21 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // either: it stays at every size, the one line on a card that asks you to act.
   const CARD_SIZES = ['large', 'medium', 'compact'];
   function applyCards() {
-    if (!CARD_SIZES.includes(prefs.cards)) prefs.cards = 'large';
+    if (!CARD_SIZES.includes(prefs.cards)) prefs.cards = 'compact';
     const v = CARD_SIZES.indexOf(prefs.cards);
     $('#sessions').dataset.cards = prefs.cards;
+    $('#sessions').toggleAttribute('data-bylane', !!prefs.cardsByLane); $('#cardsByLane').checked = !!prefs.cardsByLane;
     $('#sessions').toggleAttribute('data-even', prefs.cards === 'compact' && !!prefs.cardsEven);   // compact's own switch
     $('#evenRow').hidden = prefs.cards !== 'compact'; $('#cardsEven').checked = !!prefs.cardsEven;
     $('#cardsSize').value = v;
     document.querySelectorAll('#settings .dens .stops span').forEach(x => x.classList.toggle('on', +x.dataset.v === v));
     listChanged();   // the cards changed height under the same scroll position
   }
-  const setCards = v => { prefs.cards = CARD_SIZES[v] || 'large'; savePrefs(); applyCards(); };
+  const setCards = v => { prefs.cards = CARD_SIZES[v] || 'compact'; savePrefs(); applyCards(); };
+  // …and by lane (2026-10-12, a switch, off): the lanes that want you — a question, a PR at your move, Claude at work, a
+  // new reply — large whatever the slider says, the rest at its size. cardHtml marks those cards .roomy; the list's
+  // data-bylane lets the mark count, so the switch, like the slider, re-renders nothing.
+  $('#cardsByLane').addEventListener('change', e => { prefs.cardsByLane = e.target.checked; savePrefs(); applyCards(); });
   $('#cardsSize').addEventListener('input', e => setCards(+e.target.value));
   $('#cardsEven').addEventListener('change', e => { prefs.cardsEven = e.target.checked; savePrefs(); applyCards(); });
   $('#settings .dens .stops').addEventListener('click', e => { const x = e.target.closest('[data-v]'); if (x) setCards(+x.dataset.v); });
@@ -3238,6 +3250,7 @@ const toolName = n => {
   // begin with. A clauding chat stays Clauding whatever its PRs say: nothing is asked of you while it works.
   const RANK = { asking: 0, move: 1, working: 2, replied: 3, ready: 4, idle: 5, done: 6 };
   const IDLE_DAYS = 3;   // the days before today a chat stays Ready
+  const ROOMY = new Set(['asking', 'move', 'working', 'replied']);   // the lanes a card is large in, cards by lane on
   const yourMove = s => !s.forGood && (s.prs || []).some(p => p.turn?.you && (p.state === 'open' || p.state === 'draft' || !p.state));
   const replied = s => !!s.seenAt && !!s.lastReplyAt && s.lastReplyAt >= (s.lastUserAt || '') && s.lastReplyAt > s.seenAt;
   const idleSince = () => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - IDLE_DAYS); return d.toISOString(); };
@@ -4163,7 +4176,7 @@ const toolName = n => {
     const where = !s.alive || inVsCode(s) ? ''
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip">${entryLabel(s)}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : '');
-    return `<div class="card ${s.status} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
+    return `<div class="card ${s.status} ${ROOMY.has(rankOf(s)) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
       <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${act}${cardTickets(s)}${cardFaces(s)}${cardPrs(s)}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${ticks(markHits(s.title, q))}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${rn('ag:' + s.id, s.agents)} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${liveSlot(s)}

@@ -564,7 +564,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   leaving the view, lets go. Grid row 2 of `#sessions`, the list's row and the usage in row 3; `display: none` on the
   rail. Drawn only when its markup changed (`peopleDrawn`). → `scripts/scenarios/people-row.mjs`.
 * **A card comes in three sizes, the cog's slider** (`#cardsSize`, `prefs.cards`): *large* — your last prompt and
-  Claude's last reply —, *medium* the last word only, *compact* neither. `cardHtml` always writes both `.snip`s and
+  Claude's last reply —, *medium* the last word only, *compact* neither — **compact the default** (2026-10-12; a board
+  saved on large, the old default, moved once, `cardsMoved`). **By lane** (`#cardsByLane`, `prefs.cardsByLane`, off): a
+  card in a lane that wants you (`ROOMY`: asking, your move, clauding, new replies) is `.roomy` and, with the list's
+  `data-bylane`, large whatever the slider says. `cardHtml` always writes both `.snip`s and
   marks the older one `.older` (Claude's reply is the last word when `lastReplyAt ≥ lastUserAt`); CSS hides by
   `#sessions[data-cards]`, so the slider re-renders nothing. The question line (`askHtml`) shows at every size —
   **unless compact's own switch, *same height*, is on** (`#cardsEven` under the slider, shown only at compact;
@@ -1271,7 +1274,7 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   it too, and it says so.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports
   `meta` (`server`, `fake`, `fixture`, `env`, and `prefs` — what the page starts from, 2026-10-09: `{ statusBar: false }`
-  for a scenario about the list's foot; **without it a page starts with every lane open and neither tiles nor the
+  for a scenario about the list's foot; **without it a page starts with every lane open, large cards, and neither tiles nor the
   floating header**, the board's defaults since 2026-10-11 — the scenarios measure the plain column, and the ones about
   those two turn them on) and a default `async (ctx) => result`; the runner starts a throwaway server
   on a free port with its own state dir (`lib/testserver.mjs`), builds the fixture (`scripts/fixture.mjs`), runs the
