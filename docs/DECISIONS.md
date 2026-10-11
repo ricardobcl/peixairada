@@ -97,6 +97,9 @@ the order they landed.
 * **V3 — a zero says nothing in colour**: home wrote *0 asking you*, *0 at your move* and *waited on you 0m* in red,
   and the overview's chips a red dot by *0 asking you* — an alarm for nothing. A count is red or amber only when there
   is one; the overview's chip of a zero is muted, its dot grey.
+* **V4 — home's day starts with the day's work**: from 8:00 (or earlier), an evening's work was a sliver at the right
+  of a fourteen-hour axis. It starts at the hour half an hour before the first span, still not before midnight, and
+  runs to the hour after now.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

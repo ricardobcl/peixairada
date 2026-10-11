@@ -6976,10 +6976,11 @@ const toolName = n => {
       kv('Mac', `${bar.stats.cpu != null ? `CPU ${bar.stats.cpu}% ${sep} ` : ''}${bar.stats.mem ? `${(bar.stats.mem.used / 2 ** 30).toFixed(1)} / ${Math.round(bar.stats.mem.total / 2 ** 30)} GB ${sep} ` : ''}${state.awake.awake ? 'kept awake' : 'sleeps as set'}`),
       kv('Theme', esc(skinName(skinOn()))),
     ].join('');
-    // the day: from the morning (8:00, or the first span's hour if earlier) to the hour after now
+    // the day: from the hour of its first span, half an hour before it (2026-10-12; from 8:00 before, which left an
+    // evening's work a sliver at the right of a fourteen-hour axis), to the hour after now
     const now = Date.now(), mid = new Date().setHours(0, 0, 0, 0), rows = (d?.chats || []).slice(0, 12);
-    const first = Math.min(mid + 8 * 3600_000, ...rows.flatMap(c => c.spans.map(x => Date.parse(x.from))));
-    const t0 = Math.max(mid, new Date(first).setMinutes(0, 0, 0)), t1 = new Date(now + 3600_000).setMinutes(0, 0, 0), span = t1 - t0 || 1;
+    const first = Math.min(now, ...rows.flatMap(c => c.spans.map(x => Date.parse(x.from))).filter(x => x > 0));
+    const t0 = Math.max(mid, new Date(first - 1800_000).setMinutes(0, 0, 0)), t1 = new Date(now + 3600_000).setMinutes(0, 0, 0), span = t1 - t0 || 1;
     const at = t => `${((Math.max(t0, Math.min(t1, t)) - t0) / span * 100).toFixed(2)}%`;
     const hours = []; for (let h = t0; h <= t1; h += 3600_000) hours.push(h);
     const step = Math.ceil(hours.length / 12);

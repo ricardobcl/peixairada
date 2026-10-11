@@ -458,7 +458,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   from a snapshot with nothing to open; ⌥⌘0 from anywhere): fastfetch's block — a pixel fish (`FISH`) in the accent,
   the board's facts in key: value lines (`about.user`, `about.host` from the server; chats, agents, PRs, the plan, the
   Mac from the status bar's stats, the theme) and the palette's blocks — then **the day**: `GET /api/today?since=<the
-  page's midnight>` (`dayOf`), a row per chat that did anything since, most recent first, its turns in its colour, its
+  page's midnight>` (`dayOf`), a row per chat that did anything since, most recent first, on an axis from the hour half
+  an hour before the first span to the hour after now (2026-10-12; from 8:00 before), its turns in its colour, its
   questions hatched red (`a`), its monitors a thin line (`m`), what is still going drawn to now; the sum is the
   questions, the median answer, the longest wait. **The spans come from the transcript as it is folded** (`noteSpan`,
   `s.day`, a day and a half kept): a turn from its first line to the reply that ends it or the interrupt, a question
