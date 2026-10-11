@@ -1950,6 +1950,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #pick input { width: 100%; box-sizing: border-box; font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: inherit; outline: none; }
   #pick input:focus { border-color: var(--accent); }
   #picklist { margin-top: 6px; max-height: 50vh; overflow-y: auto; display: grid; gap: 1px; }
+  #pickfoot { margin: 6px 4px 0; padding-top: 6px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+  #pickfoot kbd { font: 600 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); background: var(--ctl); border-radius: 4px; padding: 2px 5px; margin-left: 4px; } #pickfoot s { text-decoration: none; opacity: .6; }
   .pkrow { display: grid; grid-template-columns: auto 1fr auto auto; gap: 9px; align-items: center; padding: 6px 8px; border-radius: 7px; cursor: pointer; min-width: 0; }
   .pkrow .sq { width: 10px; height: 10px; border-radius: 3px; background: var(--repo, var(--nocolor)); }
   .pkrow .n { font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
@@ -2104,7 +2106,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 <div id="wall" aria-hidden="true"><i></i></div>
 <main id="main">
   <section id="sessions">
-    <div class="colhead" id="shd"><span class="brand" id="brandBtn" title="About peixAIrada" role="button"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g class="fishg"><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g></g><g class="stars" fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" autocomplete="off" spellcheck="false" hidden></span></div>
+    <div class="colhead" id="shd"><span class="brand" id="brandBtn" title="About peixAIrada" role="button"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g class="fishg"><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g></g><g class="stars" fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="this project’s chats, done too — title, branch, prompt…" autocomplete="off" spellcheck="false" hidden></span></div>
     <div id="tline" aria-label="The list's days — point to read them, drag to scroll, click one to go there"><div class="tl-catch"></div><div class="tl-thumb"></div><div class="tl-labs"></div></div>
     <div id="slist"></div>
     <div class="tl-glass"></div>
@@ -2241,6 +2243,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 <dialog id="pick">
   <input type="text" id="pickq" placeholder="Project — type to filter · ↑↓ · ⏎ opens · esc" autocomplete="off" spellcheck="false">
   <div id="picklist"></div>
+  <div id="pickfoot" hidden></div>
 </dialog>
 <dialog id="pdlg">
   <h3 id="pdlgTitle">New project</h3>
@@ -4346,14 +4349,14 @@ const toolName = n => {
   const pick = { mode: 'project', ctx: {}, list: [], sel: 0, gen: 0, cloning: false };   // gen: which opening of the picker
   const PICK_HINT = {
     project: 'Project — type to filter · ↑↓ · ⏎ opens · esc', pr: 'Pull request — type to filter · ↑↓ · ⏎ opens · esc',
-    chat: 'Chat — ready or clauding, every project · type any letters in order · ↑↓ · ⏎ opens · esc',
+    chat: 'A chat — every project, asking, clauding or ready · any letters in order · ⏎ opens · esc',
     new: () => `New chat — a project${folders.roots.length ? `, a folder in ${folders.roots.map(r => homePath(r.dir)).join(' or ')}` : ''}${folders.roots.some(r => r.org) ? `, or a name to clone from ${folders.roots.filter(r => r.org).map(r => r.org).join(' or ')}` : ''} · ↑↓ · ⏎ · esc`,
     folder: ctx => `${ctx.then === 'chats' ? 'Which folder' : 'New chat — which folder'}? type to filter · ↑↓ · ⏎ · esc`,
     // named: ⌥⌘O never asked which folder. From ⌥⌘O the environment is a scope (its chats follow); from ⌥⌘N it is the last step.
     env: ctx => ctx.then === 'chats' ? `${folderName(ctx.cwd)} — which environment? its open chats, and a new one · ↑↓ · ⏎ · esc`
       : `New chat in ${folderName(ctx.cwd)} — which environment? task <env> from the folder's Taskfile · ↑↓ · ⏎ starts it · esc`,
     chats: ctx => `${ctx.name}${ctx.env ? ` · task ${ctx.env}` : ''} — an open chat, or ＋ a new one · type to filter · ↑↓ · ⏎ · esc`,
-    launch: 'Anything — chats, projects, PRs, tickets, actions · > actions  # PRs  @ projects  ! tickets · → into a menu · ⏎ · esc',
+    launch: 'Anything — chats, projects, PRs, tickets, actions · ⏎ · esc',
     toggle: 'Switches — ⏎ flips one, the menu stays · ← back · esc', prs: "Pull requests — every chat's · ⏎ opens the chat and the PR · ← back · esc",
   };
   const PICK_NOUN = { pr: 'PR', prs: 'PR', chat: 'chat', chats: 'chat', folder: 'folder', env: 'environment', launch: 'thing', toggle: 'switch' };   // for "no … matches"; the rest are projects
@@ -4416,7 +4419,13 @@ const toolName = n => {
     if (!d.cwd) { $('#picklist').innerHTML = `<div class="none">could not clone ${esc(org)}/${esc(name)} — ${esc(d.error || 'the server said no')}</div>`; return; }
     chatsStep({ key: d.cwd, name, cwds: [d.cwd] });
   }
-  const pickHint = () => { const h = PICK_HINT[pick.mode], t = typeof h === 'function' ? h(pick.ctx) : h; $('#pickq').placeholder = pick.ctx.back && !/← back/.test(t) ? t.replace(/ · esc$/, ' · ← back · esc') : t; };
+  // A box says what it searches (2026-10-12): the scope in the placeholder, and the launcher's prefixes in a line under
+  // its list, which a placeholder cut off at "@ proje".
+  const PICK_FOOT = { launch: '<kbd>&gt;</kbd> actions and switches <kbd>#</kbd> PRs <kbd>@</kbd> projects <kbd>!</kbd> tickets <s>·</s> <kbd>→</kbd> into a menu' };
+  const pickHint = () => {
+    const h = PICK_HINT[pick.mode], t = typeof h === 'function' ? h(pick.ctx) : h; $('#pickq').placeholder = pick.ctx.back && !/← back/.test(t) ? t.replace(/ · esc$/, ' · ← back · esc') : t;
+    const f = PICK_FOOT[pick.mode] || ''; $('#pickfoot').hidden = !f; if (f) $('#pickfoot').innerHTML = f;
+  };
   function pickOpen(mode = 'project', ctx = {}) {
     const dlg = $('#pick');
     if (!dlg.open) {   // a step of the new-chat flow re-fills the open dialog; a hotkey never gets here with one up

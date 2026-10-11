@@ -101,7 +101,7 @@ export default async function (ctx) {
   await ctx.openChat(two.id); await ctx.key('KeyK');
   out.chatPicker = { open: await ctx.evaluate(`document.querySelector('#pick').open`), rows: await ctx.evaluate(`document.querySelectorAll('#picklist .pkrow.chat').length`), placeholder: await ctx.evaluate(`document.querySelector('#pickq').placeholder`), current: await ctx.evaluate(`document.querySelector('#picklist .pkrow.chat:has(.cur) .n')?.textContent || null`), states: await ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow.chat .st')].map(e => e.textContent)`) };
   ctx.assert.equal(out.chatPicker.open, true); ctx.assert.equal(out.chatPicker.rows, 2, 'both fixture chats are ready');
-  ctx.assert.match(out.chatPicker.placeholder, /^Chat/); ctx.assert.match(out.chatPicker.current, /Two PRs/); ctx.assert.deepEqual(out.chatPicker.states, ['ready', 'ready']);
+  ctx.assert.match(out.chatPicker.placeholder, /^A chat — every project/); ctx.assert.match(out.chatPicker.current, /Two PRs/); ctx.assert.deepEqual(out.chatPicker.states, ['ready', 'ready']);
   await ctx.shot('chat-picker');
   await ctx.evaluate(`const q = document.querySelector('#pickq'); q.value = 'day is'; q.dispatchEvent(new Event('input', { bubbles: true }))`);   // the plain chat's prompt
   out.chatFilter = await ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow.chat .n')].map(e => e.textContent)`);

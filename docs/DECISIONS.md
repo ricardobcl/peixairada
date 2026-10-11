@@ -127,6 +127,11 @@ the order they landed.
   session*, *the pane*, *holder* in the Keys); and Claude has its capital in the words (`claude` stays in commands).
   Where a chat runs says *a drawer here*, *a terminal elsewhere*, *elsewhere*, *not running* — CLI, live and stale
   were the entrypoint's words.
+* **W5 — a box says what it searches**: five chat finders, five scopes. ⌥⌘K's placeholder says *every project,
+  asking, clauding or ready*; the list's own box (⌥⌘F) *this project's chats, done too*; the new-chat steps already
+  named theirs. **The launcher's prefixes went under its list** (`#pickfoot`, `PICK_FOOT`): its placeholder was cut off
+  at *@ proje*; it says *Anything — chats, projects, PRs, tickets, actions*, and a line under the rows has `>` `#` `@`
+  `!` and → into a menu.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 
