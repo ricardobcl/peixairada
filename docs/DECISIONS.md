@@ -53,6 +53,12 @@ anything and it does't look pretty with the floating chat bar".
   * **GitHub's mark before the fish**: the faces sat after the fish's lane, so folding them moved the mark the width
     of the faces. The mark and its faces come before the lane now, after the left's segments: the faces open to the
     mark's right and the fish's lane gives way, and the mark stays where the hand left it.
+  * **The fish never stops, and turns at the ends**: it rested where it stood while nothing was at work, and swam off
+    the left to come back on the right. It swims always now — at half the pace with nothing at work, still blowing a
+    bubble now and then (from whichever side its mouth is on) — and turns at either end, mirrored at once, as a pixel
+    sprite turns. One animation still, a length each way per iteration, so the rate and the lane's width change it in
+    place as before. RunCat's cat stops; this fish, asked, does not — the one thing on the board that moves with
+    nothing running, and the request is why.
 
 ## Decisions of 2026-10-11 — the third studies built: twenty-eight small motions
 

@@ -129,9 +129,21 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.motion().some(m => m.kind === 'fishback')`, { what: 'the fish flipped back', timeout: 15_000 });
   ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#sbar .conn .logo .fishg')).animationName`), 'bellyback', 'it flips over');
 
-  // ---- 21 · the fish in the status bar: nothing at work, it rests in its lane ----
-  out.swim = await ctx.evaluate(`(l => l && { rest: l.classList.contains('rest'), fish: !!l.querySelector('svg.swimmer .ft'), inLane: (r => r.left >= l.getBoundingClientRect().left - 1 && r.right <= l.getBoundingClientRect().right + 1)(l.querySelector('svg').getBoundingClientRect()) })(document.querySelector('#sbSwim'))`);
-  ctx.assert.deepEqual(out.swim, { rest: true, fish: true, inLane: true }, 'resting, in the lane');
+  // ---- 21 · the fish in the status bar: nothing at work, it still swims, at half the pace, back and forth in its lane
+  // (2026-10-11, later: it stopped before, and went off one side to come back on the other) ----
+  const fishAt = `(l => l && (a => ({ rest: l.classList.contains('rest'), fish: !!l.querySelector('svg.swimmer .ft'), running: a?.playState, rate: a?.playbackRate,
+    inLane: (r => r.left >= l.getBoundingClientRect().left - 1 && r.right <= l.getBoundingClientRect().right + 1)(l.querySelector('svg').getBoundingClientRect()) }))(document.getAnimations().find(a => a.id === 'swim')))(document.querySelector('#sbSwim'))`;
+  out.swim = await ctx.evaluate(fishAt);
+  ctx.assert.deepEqual(out.swim, { rest: true, fish: true, running: 'running', rate: .5, inLane: true }, `swimming slowly, in the lane: ${JSON.stringify(out.swim)}`);
+  // its path, sampled: from the right end to the left facing left, turned there, back to the right facing right — never
+  // outside the lane (the animation is moved by hand and put back)
+  out.path = await ctx.evaluate(`(() => { const a = document.getAnimations().find(a => a.id === 'swim'), l = document.querySelector('#sbSwim'), f = l.querySelector('svg'), d = a.effect.getTiming().duration, t0 = a.currentTime, lr = l.getBoundingClientRect(), at = [];
+    a.pause(); for (const k of [0, .25, .4999, .5001, .75, .9999]) { a.currentTime = d * k; const r = f.getBoundingClientRect(); at.push({ k, x: Math.round(r.left - lr.left), right: Math.round(lr.right - r.right), facing: new DOMMatrix(getComputedStyle(f).transform).a < 0 ? 'right' : 'left' }); }
+    a.currentTime = t0; a.play(); return at; })()`);
+  const [s0, s1, s2, s3, s4, s5] = out.path;
+  ctx.assert.ok(s0.right <= 3 && s2.x <= 3 && s3.x <= 3 && s5.right <= 3 && s1.x > s2.x && s4.x > s3.x, `end to end and back: ${JSON.stringify(out.path)}`);
+  ctx.assert.deepEqual(out.path.map(p => p.facing), ['left', 'left', 'left', 'right', 'right', 'right'], 'turning at the end');
+  ctx.assert.ok(out.path.every(p => p.x >= 0 && p.right >= 0), 'never outside the lane');
 
   // ---- 22 · an empty list is the fish, resting, and the way to fill it ----
   await ctx.fill('#q', 'zzqqxx');

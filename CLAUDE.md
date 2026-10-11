@@ -624,10 +624,12 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   **the faces, `#people` moved in**, before the fish since 2026-10-11, later, so GitHub's mark stays put as they fold —,
   **`#sbSwim`, the pixel fish swimming at the pace of what is at work** (2026-10-11, RunCat's cat;
   `swimAt(n)` from `renderBar`, n the clauding chats and their agents: one `swim` animation whose rate
-  `updatePlaybackRate` changes in place, paused where it is at 0 — `.rest`, a bubble now and then — its tail wagging; a
-  lane of its own, outside the redrawn slots, **the bar's free room** since 2026-10-11, later (64 px before: `flex: 1`;
-  `swimFrames`/`swimMs` follow its width at the same speed in pixels, its place kept, a `ResizeObserver` on it), the fish
-  an SVG of `FISH`; a click is ⌥⌘A) — and `#sbRight`:
+  `updatePlaybackRate` changes in place (`swimRate`), **never still** — at 0 half the pace, `.rest`, a bubble now and
+  then from its mouth (paused there until 2026-10-11, later) — **and back and forth**, mirrored at either end
+  (`swimFrames`: a length each way, the turn two keyframes at .5; `swimTurned` says which way it faces), its tail
+  wagging; a lane of its own, outside the redrawn slots, **the bar's free room** since 2026-10-11, later (64 px before:
+  `flex: 1`; `swimFrames`/`swimMs` follow its width at the same speed in pixels, its place kept, a `ResizeObserver` on
+  it), the fish an SVG of `FISH`; a click is ⌥⌘A) — and `#sbRight`:
   the machine (`prefs.barStats`: CPU and memory by default since 2026-10-09 — `sbStats`, none, before; a pick there
   carries over —, Claude's memory a box in the settings — `GET
   /api/stats?want=cpu,mem,claude`, every 3 s while shown and visible, `machineStats` on the server: the cores' busy share

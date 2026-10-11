@@ -59,7 +59,7 @@ It reads what Claude Code already writes to `~/.claude` — no plugin, no privat
   light; your projects keep their hue in the theme's shades.
 - 🐟 **It moves when something happens** — counts roll to their new value, a ✓ draws itself, an answered question's
   ring closes in, a PR's CI is drawn in as it lands; a clauding card names the tool it is running, a monitor's card
-  its newest event; a pixel fish in the status bar swims at the pace of the agents at work, and floats belly-up while
+  its newest event; a pixel fish in the status bar swims back and forth, faster the more agents are at work, and floats belly-up while
   the board has lost its server. In the app the trackpad bumps as a divider snaps; sounds, if you switch them on. All of it stills under the system's
   *reduce motion*.
 - 📊 **A status bar** — along the window's foot: the search, the connection, what asks you, the faces on your PRs,
