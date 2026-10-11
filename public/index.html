@@ -2168,7 +2168,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     </div>
     <label class="opt sub" title="On, a chat asking you, one with a PR at your move, one Claude is at work in and one with a new reply have large cards whatever the size above — the rest are at that size"><input type="checkbox" id="cardsByLane"><span><b>by lane</b> — large where a chat wants you, the size above for the rest</span></label>
     <label class="opt sub" id="evenRow" title="Compact cards all the same height: the title on one line and the your-move line under it, held empty on a card without one; the question is left to the card's red edge and its pings" hidden><input type="checkbox" id="cardsEven"><span><b>same height</b> — every compact card a title line and a your-move line tall</span></label>
-    <label class="opt" title="On, a chat whose claude has ended — one you open from the list, a picker, a key or a link — runs claude --resume in a terminal here 5 s after it opens, unless you press Not now or Esc, or move on. A chat ticked done, and the one the page opens on a reload, wait for the Resume button"><input type="checkbox" id="autoResume" checked><span><b>auto-resume</b> — a chat whose claude has ended resumes 5 s after you open it; off, it waits for the Resume button</span></label>
+    <label class="opt" title="On, a chat Claude isn’t running in — one you open from the list, a picker, a key or a link — runs claude --resume in a terminal here 5 s after it opens, unless you press Not now or Esc, or move on. A chat ticked done, and the one the page opens on a reload, wait for the Resume button"><input type="checkbox" id="autoResume" checked><span><b>auto-resume</b> — a chat whose claude has ended resumes 5 s after you open it; off, it waits for the Resume button</span></label>
     <label class="opt" title="On, ⌥ with a letter is Meta in the terminal, as iTerm's Esc+ — ⌥B ⌥F move a word, ⌥⌫ deletes one; ⌥ with a digit or a sign still types what the keyboard makes. Off, ⌥ types whatever your layout composes (⌥L is @ on a German one)"><input type="checkbox" id="optMeta" checked><span><b>⌥ is Meta</b> in the terminal — off, ⌥ types what your keyboard composes</span></label>
     <div id="hidden" class="hid"></div>
   </div>
@@ -2178,7 +2178,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <kbd>⌥⌘T</kbd><span>a shell in this folder, a tab beside the chat · again to show it</span>
     <kbd>⌥⌘E</kbd><span>edit: this folder in VS Code Web, on a tab</span>
     <kbd>⌥⌘G</kbd><span>its PR on GitHub, on a tab · the repo when it has none · a picker with several, every time</span>
-    <kbd>⌥⌘C</kbd><span>this chat's claude session — the pane while it runs here · starts or takes over one</span>
+    <kbd>⌥⌘C</kbd><span>this chat's Claude, in its drawer — starts it, or takes over one running elsewhere</span>
     <kbd>⌥⌘O</kbd><span id="quickKey">a new chat in the project the settings name — its environments first, when its Taskfile has some</span>
     <kbd>⌥⌘P</kbd><span>project picker — or a click on the project's name atop the chat list · ✎ edits a named one, ＋ makes one</span>
     <kbd>⌥⌘K</kbd><span>chat picker — every ready or clauding chat, fuzzy: <em>chk rtr</em> finds <em>checkout retry</em></span>
@@ -2188,7 +2188,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <kbd>⌥⌘L</kbd><span>the launcher — every chat, project, PR, ticket, action and switch in one box: <em>&gt;</em> the actions and switches, <em>#</em> the PRs, <em>@</em> the projects, <em>!</em> the tickets · empty, a menu: → into a row, ← back · Toggle flips the settings' switches</span>
     <kbd>?</kbd><span>this list, on a sheet of its own, searchable — outside a box or a terminal</span>
     <kbd>⌥⌘0</kbd><span>home: no chat open — the board's facts and the day, every chat a row of when it clauded and when it waited on you · a row opens its chat</span>
-    <kbd>⌥⌘A</kbd><span>every live agent at once — Asking you · Clauding · Watching · Ready, unread — each with what it is doing now: its drawer's screen when it runs here, else its last tool calls · 1–9 opens one · a question's answer types its digit into the chat's drawer</span>
+    <kbd>⌥⌘A</kbd><span>the overview: every live chat at once — Asking you · Clauding · Watching · New replies — each with what it is doing now: its drawer's screen when it runs here, else its last tool calls · 1–9 opens one · a question's answer types its digit into the chat's drawer</span>
     <kbd>⌥⌘S</kbd><span>tiles' stack in and out of view — the chats asking or clauding beside the open one (Omarchy's scratchpad key) · with tiles off, tiles and the stack together · not from a page in the pane, where it is VS Code's Save All</span>
     <kbd>⌥⌘D</kbd><span>what this chat changed in its folder, on a tab — its last turn's edits, the uncommitted tree or the branch against its base · Commit… and Push type into its zsh · + on a line sends Claude a note · the header's +n −n too</span>
     <kbd>⌥⌘Y</kbd><span>theme — Omarchy's twelve and the board's own, the board behind follows the arrows · ⏎ keeps it for its appearance, dark or light · esc puts back what was worn</span>
@@ -2202,7 +2202,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <kbd>⌘0</kbd><span>only this half: the other one closes and this tab is the column · with one half, the size back to normal</span>
     <kbd>⌃⌘F</kbd><span>full screen up to the notch, in the app — the green button too (⌥-click zooms): the strip beside the camera takes the list's head and the chat's title · remembered across launches</span>
     <kbd>⌘+ ⌘−</kbd><span>chat and terminal size</span>
-    <kbd>⌘K</kbd><span>clear the terminal — the scrollback goes on the holder too, so it stays clear</span>
+    <kbd>⌘K</kbd><span>clear the drawer — on the server's copy of its screen too, so it stays clear</span>
     <kbd>⇧⏎</kbd><span>newline in the terminal's prompt</span>
     <kbd>⌘← ⌘→</kbd><span>the start / end of the terminal's line, as in iTerm · ⌥← ⌥→ a word · ⌘⌫ ⌘⌦ delete to the start / end · ⌥⌫ ⌥⌦ a word — in claude and in the shell</span>
     <kbd>esc</kbd><span>closes a picker or popover · back to the chat from a page's tab · never leaves full screen while one is up</span>
@@ -2230,8 +2230,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   <div id="themegrid"></div>
   <div class="thfoot"><span id="themenote"></span><span class="spacer"></span><span>a dark theme is worn while macOS is dark, a light one while it is light</span></div>
 </dialog>
-<dialog id="ov" aria-label="Every live agent" tabindex="-1">
-  <div class="ovtop"><h1>All agents</h1><div class="chips" id="ovchips"></div><div class="keys"><span><kbd>1–9</kbd>open</span><span><kbd>←↑↓→</kbd><kbd>⏎</kbd></span><span><kbd>esc</kbd>back</span><button class="ovclose" title="Close · esc">×</button></div></div>
+<dialog id="ov" aria-label="Overview — every live chat" tabindex="-1">
+  <div class="ovtop"><h1>Overview</h1><div class="chips" id="ovchips"></div><div class="keys"><span><kbd>1–9</kbd>open</span><span><kbd>←↑↓→</kbd><kbd>⏎</kbd></span><span><kbd>esc</kbd>back</span><button class="ovclose" title="Close · esc">×</button></div></div>
   <div class="ovcols" id="ovcols"></div>
 </dialog>
 <dialog id="keysheet" aria-label="Every key">
@@ -2736,7 +2736,7 @@ const toolName = n => {
     const own = s.aiTitle || s.lastPrompt;
     return `${pr ? pr.label + ' — ' : ''}${s.prTitle}${own ? `\n\nChat: ${own}` : ''}`;
   }
-  const statusLabel = { working: 'clauding…', idle: 'ready — your turn', 'needs-input': 'ready — asking you', stale: 'ready — its claude has ended; resume it to carry on', unknown: '' };
+  const statusLabel = { working: 'clauding…', idle: 'ready', 'needs-input': 'asking you', stale: 'ready — Claude isn’t running; resume it to carry on', unknown: '' };   // one word per state (2026-10-12): *your move* is a PR's
   // Inline SVG, not emoji: these sit at ~11px inside muted snippet text, where emoji come with their
   // own colours and weight and stop reading as part of the sentence. `currentColor` keeps them typographic.
   const ICON = {
@@ -2792,7 +2792,7 @@ const toolName = n => {
     vscode: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>'
   };
   $('#noChatMore').innerHTML = ICON.more;
-  const entryLabel = s => s.terminal && s.terminal.exited === null ? 'terminal here' : s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : s.live?.entrypoint === 'cli' ? 'CLI' : s.alive ? 'live' : 'stale';
+  const entryLabel = s => s.terminal && s.terminal.exited === null ? 'a drawer here' : s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : s.live?.entrypoint === 'cli' ? 'a terminal elsewhere' : s.alive ? 'elsewhere' : 'not running';   // the words, not the entrypoint's (2026-10-12; CLI, live, stale before)
   // Lives in VS Code (the server's rule: the registry while it runs, else the transcript's last line).
   // Such a chat wears a blue border and can be taken over like a CLI chat (2026-09-20) — the cost is the
   // tab in VS Code, which goes dead and does not follow; every button and hint that offers it says so.
@@ -3080,15 +3080,15 @@ const toolName = n => {
     const ask = n(s => asking(s));
     const mons = all.reduce((a, s) => a + (s.alive ? (s.tasks || []).length : 0), 0);
     const left = [`<button class="seg conn${bar.conn ? '' : ' off'}${bar.back ? ' back' : ''}" title="${bar.conn ? 'Connected to the board\'s server' : 'The server is not answering — reconnecting'} — click for the About box">${FISH_LOGO()}${bar.conn ? 'connected' : 'reconnecting…'}</button>`,
-      // the live chats and the drawers and shells went (2026-10-11, later: Ricardo, "remove 'X live', 'X drawers · Y
-      // shells'"); what waits on you and what is watching stay, each only while there is one
-      ...(ask ? [`<span class="seg" title="chats waiting on your answer">${`<em>${rn('asking', ask)} asking</em>`}</span>`] : []),
-      ...(mons ? [`<span class="seg" title="monitors and background commands running">${plural(mons, 'monitor').replace(/^\d+/, d => rn('mons', d))}</span>`] : [])];
+      // the live chats and the drawers and shells went (2026-10-11, later); what waits on you and what is watching stay,
+      // each only while there is one — in the words the lanes use (2026-10-12: *asking*, *N monitors* before)
+      ...(ask ? [`<span class="seg" title="chats waiting on your answer">${`<em>${rn('asking', ask)} asking you</em>`}</span>`] : []),
+      ...(mons ? [`<span class="seg" title="monitors and background commands running">${rn('mons', mons)} watching</span>`] : [])];
     for (const c of state.clones.values()) left.push(`<span class="seg cl" title="gh repo clone ${esc(c.ref)} into ${esc(homePath(c.dir))} — ${esc(cloneSays(c))}">${ICON.download}cloning <b>${esc(c.ref)}</b><i style="--p:${(c.percent || 0) / 100}"></i>${c.percent || 0}%</span>`);
     const st = bar.stats, want = prefs.barStats || [], stat = [], right = [];
     if (want.includes('cpu')) stat.push(sbMeter('CPU', st.cpu ?? 0, st.cpu == null ? '…' : `${st.cpu}%`, st.cpu >= 90 ? 'var(--needs)' : 'var(--watch)', 'every core\'s time spent busy, the last 3 s', st.cpu == null ? null : `${rn('cpu', st.cpu)}%`));
     if (want.includes('mem')) { const pct = st.mem ? Math.round(st.mem.used / st.mem.total * 100) : null; stat.push(st.mem ? sbMeter('RAM', pct, `${pct}%`, pct >= 90 ? 'var(--needs)' : 'var(--watch)', `memory used, as Activity Monitor counts it: ${fmtBytes(st.mem.used)} of ${fmtBytes(st.mem.total)}`, `${rn('mem', pct)}%`) : sbMeter('RAM', 0, '…', 'var(--watch)')); }
-    if (want.includes('claude')) stat.push(`<span class="m" title="what the live claude processes hold in memory (their children aside)">claude <b>${st.claude?.rss != null ? fmtBytes(st.claude.rss) : '…'}</b>${st.claude?.n ? ` · ${st.claude.n}` : ''}</span>`);
+    if (want.includes('claude')) stat.push(`<span class="m" title="what the Claude processes running hold in memory (their children aside)">Claude <b>${st.claude?.rss != null ? fmtBytes(st.claude.rss) : '…'}</b>${st.claude?.n ? ` · ${st.claude.n}` : ''}</span>`);
     if (stat.length) right.push(`<span class="seg">${stat.join('')}</span>`);
     if (!usage.off) {
       const ws = (usage.data?.windows || []).filter(w => !uGrant(w));
@@ -4211,7 +4211,7 @@ const toolName = n => {
     // still says it (*VS Code's chat*).
     const where = !s.alive || inVsCode(s) ? ''
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip elsewhere" title="${s.live?.entrypoint === 'cli' ? 'Running in a terminal outside the board' : 'Running outside the board'} — ⌥⌘C takes it over here">${ICON.term}</span>`)
-        + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : '');
+        + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs Claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${ROOMY.has(rankOf(s)) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
       <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${act}${cardTickets(s)}${cardFaces(s)}${cardPrs(s)}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${ticks(markHits(s.title, q))}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${rn('ag:' + s.id, s.agents)} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge">${rn('un:' + s.id, un)}</span>` : ''}</div>
@@ -4895,7 +4895,7 @@ const toolName = n => {
       + roots.map(rootRow).join('')
       + `<div class="srow root add"><span class="sic">＋</span><input ${text} class="sdir" placeholder="Add a folder of repos — ~/code">${org('', 'org')}<span></span></div></div></section>`
       + `<section class="sg">${head('Quick chat', 'A new chat in one project, its environments first when its Taskfile launches claude.')}<div class="slist">`
-      + `<label class="srow quick"><kbd>⌥⌘O</kbd><span>starts a chat in</span><span class="ssel">${c.quick ? projIcon(c.quick) : ''}<select id="quickSel" title="The project ⌥⌘O starts a chat in — on its environments first, when its Taskfile launches claude"><option value="">nothing — ⌥⌘N does it all</option>${quick.map(n => `<option${n === c.quick ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></span></label></div></section>`
+      + `<label class="srow quick"><kbd>⌥⌘O</kbd><span>starts a chat in</span><span class="ssel">${c.quick ? projIcon(c.quick) : ''}<select id="quickSel" title="The project ⌥⌘O starts a chat in — on its environments first, when its Taskfile launches Claude"><option value="">nothing — ⌥⌘N does it all</option>${quick.map(n => `<option${n === c.quick ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></span></label></div></section>`
       + `<section class="sg">${head('Projects', 'A short name for the folded list (⌥⌘B), and a colour where Peacock gives none.')}<div class="slist">${names.map(projRow).join('')}`
       + `<div class="srow padd"><span class="sic">＋</span><select class="sadd" title="Give a project a short name or a colour"><option value="">Add a project…</option>${all.filter(n => !names.includes(n)).map(n => `<option>${esc(n)}</option>`).join('')}</select></div></div></section>`
       + jiraSetup(c.jira, setupUi.jira)
@@ -5382,7 +5382,7 @@ const toolName = n => {
     menu.dataset.id = s.id;
     const loud = armed || !!drawer.err;   // >_ with something to say stays in the row, where it is seen
     const termBtn = cls => `<button class="${cls}${drawer.err ? ' err' : termLive(s) && termFor(s.terminal.id) ? ' on' : take ? (armed ? ' take arm' : ' take') : ''}" id="termBtn" title="${esc(termTip(s))}" aria-label="Terminal"${!termLive(s) && s.alive && !take ? ' disabled' : ''}>${ICON.term}`;
-    const termWord = drawer.err ? 'failed' : take ? (armed ? (s.status === 'working' ? 'sure? mid-reply' : inVsCode(s) ? 'sure? ends VS Code’s' : 'sure?') : 'take over') : termLive(s) ? 'claude session' : 'claude here';
+    const termWord = drawer.err ? 'failed' : take ? (armed ? (s.status === 'working' ? 'sure? mid-reply' : inVsCode(s) ? 'sure? ends VS Code’s' : 'sure?') : 'take over') : termLive(s) ? 'Claude in its drawer' : 'Claude here';
     // the PRs at your move lead the chips, the newest move first — the one the move's line names (2026-10-12): the row
     // shows two at most, and those are the ones it must
     const prs = [...(s.prs || [])].sort((a, b) => (turnOf(b) === 'you') - (turnOf(a) === 'you') || (turnOf(a) === 'you' ? String(b.turn.movedAt || '').localeCompare(String(a.turn.movedAt || '')) : 0)), tks = s.tickets || [], prsOpen = !!prefs.prsOpen;
@@ -5410,7 +5410,7 @@ const toolName = n => {
       // what a tab's × does, for the tabs that lose their strip alone in a half (2026-09-28) — ⌥⌘W with the keys in it
       shellLive(s) ? `<button class="hmi" id="shellEndBtn" title="End this chat's ${shName()} and close its tab — exit in it does the same · ⌥⌘W with the keys in it"><span class="gl">×</span><span>end the ${shName()}</span><span class="k"></span></button>` : '',
       ideKey(s) ? `<button class="hmi" id="ideCloseBtn" title="Close VS Code Web's tab — ⌥⌘E opens it again · ⌥⌘W with the keys in it"><span class="gl">×</span><span>close VS Code Web</span><span class="k"></span></button>` : '',
-      inVsCode(s) ? `<div class="hmi info" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the claude behind it; ${s.alive ? 'the claude session row takes it over' : 'continue it here or there'}">${ICON.vscode}<span>VS Code's chat</span><span></span></div>` : '',
+      inVsCode(s) ? `<div class="hmi info" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the Claude behind it; ${s.alive ? 'the Claude here row takes it over' : 'continue it here or there'}">${ICON.vscode}<span>VS Code's chat</span><span></span></div>` : '',
       canTick(s) && s.prs?.length && !s.forGood ? `<button class="hmi" id="forGoodBtn" title="Tick it done and forget its PRs: a push, a review or a reply on one no longer brings it back, moves it up or alerts you — a word in it, or ↩, ends that">${ICON.forget}<span>done for good</span><span class="k">⌥-click ✓</span></button>` : '',
       '<div class="sep"></div>',
       `<button class="hmi${prefs.headDetails ? ' on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}" title="${esc(statusLabel[s.status] || s.status)} · click to ${prefs.headDetails ? 'hide' : 'show'} path, branch and session details under the title"><span class="dot ${s.status}"></span><span>${esc((statusLabel[s.status] || s.status || '').split(' — ')[0])}${s.statusSince ? ` · <span data-at="${esc(s.statusSince)}"></span>` : ''}</span><span class="k">${prefs.headDetails ? 'hide' : 'show'} path</span></button>`,
@@ -6581,7 +6581,7 @@ const toolName = n => {
       return `<section class="cfile" data-path="${esc(f.path)}"><div class="fh">${esc(f.path)}<em><span class="a">+${f.add}</span> <span class="d">−${f.del}</span></em></div>${
         f.binary ? '<div class="cempty sm">a binary file</div>' : !ls.length ? '<div class="cempty sm">no lines to show</div>'
         : ls.map(x => x.t === 'hunk' ? `<div class="dl hunk"><span class="na"></span><span class="nb"></span><span class="sg"></span><code>${esc(x.text)}</code></div>`
-          : `<div class="dl ${x.t}" data-line="${x.b ?? x.a ?? ''}"><span class="na">${x.a ?? ''}</span><span class="nb">${x.b ?? ''}</span><span class="sg">${x.t === 'add' ? '+' : x.t === 'del' ? '−' : ''}${x.t !== 'meta' ? '<button class="dlp" title="A note on this line — typed into its claude as a prompt">+</button>' : ''}</span><code>${x.t === 'meta' ? esc(x.text) : hlLine(x.text, lang)}</code></div>`).join('')}</section>`;
+          : `<div class="dl ${x.t}" data-line="${x.b ?? x.a ?? ''}"><span class="na">${x.a ?? ''}</span><span class="nb">${x.b ?? ''}</span><span class="sg">${x.t === 'add' ? '+' : x.t === 'del' ? '−' : ''}${x.t !== 'meta' ? '<button class="dlp" title="A note on this line — typed into its Claude as a prompt">+</button>' : ''}</span><code>${x.t === 'meta' ? esc(x.text) : hlLine(x.text, lang)}</code></div>`).join('')}</section>`;
     }).join('');
     el.innerHTML = `<div class="cbar">
       <div class="r1"><span class="br">${ICON.branch}${esc(d.branch)}</span>${d.base ? `<span class="arrow">→</span><span class="br base">${esc(d.base)}</span>` : ''}<span class="up">${up}</span>
@@ -8238,7 +8238,7 @@ const toolName = n => {
     if (inApp) post({ type: 'alert', kind: a.kind, heading: a.heading || '', project: a.project || '', title: a.title || '', snippet: a.snippet || '', sessionId: a.sessionId || '', serverNotify: !!state.serverNotify, quiet: !!a.quiet });   // the app posts the banner and counts the Dock's badge
     if (a.quiet) return;   // notifications off (the cog): the unread count above, nothing else
     if ('Notification' in window && Notification.permission === 'granted' && !viewing) {
-      const n = new Notification(a.heading || `${a.kind === 'reply' ? 'Claude replied' : 'Claude needs input'} · ${a.project}`, { body: `${a.title}\n${a.snippet || ''}`, tag: a.sessionId || 'test' });
+      const n = new Notification(a.heading || `${a.kind === 'reply' ? 'Claude replied' : 'Claude is asking you'} · ${a.project}`, { body: `${a.title}\n${a.snippet || ''}`, tag: a.sessionId || 'test' });
       n.onclick = () => { window.focus(); if (a.sessionId) openSession(a.sessionId, { locate: true }); n.close(); };
     }
   }

@@ -60,7 +60,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.pie, { w: 12, h: 12, round: '50%', bg: 'conic-gradient' }, 'a pie, not a bar');
   await ctx.waitFor(`/CPU\\s*\\d+%/.test(document.querySelector('#sbar').textContent) && /RAM\\s*\\d+%/.test(document.querySelector('#sbar').textContent)`, { timeout: 8000, what: 'CPU and memory in the bar' });
   await ctx.evaluate(`document.querySelector('#sbarStats [data-stat="claude"]').click()`);
-  await ctx.waitFor(`/CPU\\s*\\d+%/.test(document.querySelector('#sbar').textContent) && /RAM\\s*\\d+%/.test(document.querySelector('#sbar').textContent) && /claude\\s*\\d+ MB/.test(document.querySelector('#sbar').textContent)`, { timeout: 8000, what: 'the machine numbers' });
+  await ctx.waitFor(`/CPU\\s*\\d+%/.test(document.querySelector('#sbar').textContent) && /RAM\\s*\\d+%/.test(document.querySelector('#sbar').textContent) && /Claude\\s*\\d+ MB/.test(document.querySelector('#sbar').textContent)`, { timeout: 8000, what: 'the machine numbers' });
   ctx.assert.deepEqual(await ctx.peix('prefs().barStats'), ['cpu', 'mem', 'claude']);
 
   // the Mac kept awake says so here too (its own buttons: keep-awake.mjs), and a click there lets it sleep

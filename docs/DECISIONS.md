@@ -119,6 +119,14 @@ the order they landed.
   same-height tooltip (*blinking* — the card pings), ···'s tooltip (code folding, gone since 2026-09-28), and the empty
   column's *Pick a chat on the left* hint, which home always replaced: the element stays, the sentinel `leaveChat`
   knows home by, with nothing in it. The lane heads' tooltips were T1's.
+* **W3 — one word per state**: a chat waiting on your answer is *asking you* everywhere — the status bar (*asking*
+  before), a notification's heading (*Claude needs input*), the app's menu (*Needs your input*, *Nothing waiting on
+  you*); a monitor's state is *watching* in the bar too (*N monitors*; the card's chip still names the task, *monitor ·
+  …*); *your move* is a PR's alone (the status label said *ready — your turn*); the overview is *Overview*, not *All
+  agents* (a card's *N agents* are sub-agents); the terminal is *Claude in its drawer* or *Claude here* (*claude
+  session*, *the pane*, *holder* in the Keys); and Claude has its capital in the words (`claude` stays in commands).
+  Where a chat runs says *a drawer here*, *a terminal elsewhere*, *elsewhere*, *not running* — CLI, live and stale
+  were the entrypoint's words.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

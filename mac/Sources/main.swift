@@ -722,9 +722,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     menu.addItem(withTitle: "Show Board", action: #selector(showWindow(_:)), keyEquivalent: "").target = self
     menu.addItem(.separator())
     if needsInput.isEmpty {
-      menu.addItem(withTitle: "Nothing waiting on you", action: nil, keyEquivalent: "").isEnabled = false
+      menu.addItem(withTitle: "Nothing is asking you", action: nil, keyEquivalent: "").isEnabled = false
     } else {
-      menu.addItem(withTitle: "Needs your input", action: nil, keyEquivalent: "").isEnabled = false
+      menu.addItem(withTitle: "Asking you", action: nil, keyEquivalent: "").isEnabled = false
       for s in needsInput {
         let item = NSMenuItem(title: "  \(s["project"] ?? "")  ·  \(s["title"] ?? "")",
                               action: #selector(openFromMenu(_:)), keyEquivalent: "")
@@ -1120,7 +1120,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
   /// `heading` is the server's own when it has one (a PR come round to you: "Your move · repo#n"), else the kind's.
   private func notify(kind: String, heading given: String, project: String, title: String, snippet: String, sessionId: String) {
-    let heading = !given.isEmpty ? given : (kind == "reply" ? "Claude replied" : "Claude needs input") + (project.isEmpty ? "" : " · \(project)")
+    let heading = !given.isEmpty ? given : (kind == "reply" ? "Claude replied" : "Claude is asking you") + (project.isEmpty ? "" : " · \(project)")
     let body = [title, snippet].filter { !$0.isEmpty }.joined(separator: "\n")
     guard useUN else {
       logLine("notify: falling back to osascript (useUN=false)")

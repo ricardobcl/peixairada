@@ -1858,7 +1858,7 @@ function fireNotify(s) {
   const asked = sum.ask?.text || (sum.ask?.waitingFor ? `Waiting on you: ${sum.ask.waitingFor}` : 'Waiting for your input');
   const evt = { kind, sessionId: s.id, project: sum.project, title: sum.title, name: s.live?.name || null, cwd: s.cwd, snippet: kind === 'reply' ? sum.lastReply : asked, ts: new Date().toISOString(), quiet: !notificationsOn };
   broadcast('alert', evt);
-  if (notificationsOn) nativeNotify(kind === 'reply' ? `Claude replied · ${sum.project}` : `Claude needs input · ${sum.project}`, sum.title, evt.snippet || '');
+  if (notificationsOn) nativeNotify(kind === 'reply' ? `Claude replied · ${sum.project}` : `Claude is asking you · ${sum.project}`, sum.title, evt.snippet || '');
 }
 
 function schedulePush(s) {
