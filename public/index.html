@@ -2537,7 +2537,24 @@
   // chip gone from open to merged sweeps a sheen across as it turns purple. Each chip is keyed by its PR and where it
   // stands (the header, a card), against what that key showed last; a first sight plays nothing.
   const prShown = new Map();
+  // …and a PR come round to you (2026-10-11): the *your move* tag on a card, or the header's, that was not there the
+  // last pass slides in on the spring and nudges once. A card or a header seen for the first time plays nothing.
+  let moveSeen = new Set(), placeSeen = new Set();
+  function moveMoments() {
+    const moves = new Set(), places = new Set();
+    for (const el of document.querySelectorAll('#slist > .card[data-id], .shead[data-sid]')) places.add(el.dataset.id || 'h:' + el.dataset.sid);
+    for (const el of document.querySelectorAll('#slist > .card .prmove .ymove, .shead .hmove .ymove')) {
+      const place = el.closest('.card')?.dataset.id || 'h:' + el.closest('.shead')?.dataset.sid, key = place;
+      moves.add(key);
+      if (moveSeen.has(key) || !placeSeen.has(place) || REDUCED.matches || el.classList.contains('pm')) continue;
+      el.classList.add('pm'); noteMotion(place, 'move');
+      el.animate([{ translate: '-14px', opacity: 0 }, { translate: '0', opacity: 1 }], { duration: 460, easing: SPRING, id: 'move' });
+      el.animate([{ translate: '0' }, { translate: '3px' }, { translate: '-2px' }, { translate: '1px' }, { translate: '0' }], { duration: 420, delay: 520, easing: 'ease-in-out', composite: 'add', id: 'move' });
+    }
+    moveSeen = moves; placeSeen = places;
+  }
   function prMoments() {
+    moveMoments();
     for (const el of document.querySelectorAll(':is(.shead .hpr, #slist .cpr)[data-url]:not(.pm)')) {
       el.classList.add('pm');
       const key = `${el.closest('.card')?.dataset.id || 'head'}|${el.dataset.url}`, now = { st: el.dataset.state || '', ck: el.dataset.checks || '' }, was = prShown.get(key);
@@ -4784,7 +4801,7 @@
         ${s.live ? `<span class="chip">${entryLabel(s)}</span>` : ''}${s.live?.name ? `<span class="chip" title="session name">${esc(s.live.name)}</span>` : ''}${
           s.model ? `<span class="chip">${esc(s.model)}</span>` : ''}${s.live?.pid ? `<span class="chip">pid ${s.live.pid}</span>` : ''}
       </div>`;
-    const headNew = headHtml !== drawn.head; if (headNew) { $('#shead').innerHTML = drawn.head = headHtml; drawAwake(); rollSoon(); }
+    const headNew = headHtml !== drawn.head; if (headNew) { $('#shead').innerHTML = drawn.head = headHtml; $('#shead').dataset.sid = s.id; drawAwake(); rollSoon(); }
     // The menu, one row per action: its mark, what it does, and its state or key on the right. The ids are the
     // buttons' own from when they sat in the row — the hotkeys and the harness reach them by those.
     const menuHtml = [
@@ -6239,7 +6256,7 @@
     state.current = null; state.entries = []; Object.assign(logOf, { id: null, gen: null, upto: null, waiting: false, pending: [] }); history.replaceState(null, '', location.pathname); hidePr(); syncTerm(null);
     const menu = $('#hmenu'); if (menu.open) menu.close();
     $('#prlist').hidden = true; $('#chat').classList.remove('vsc'); tintChat(color);
-    $('#shead').innerHTML = head; drawAwake(); $('#log').innerHTML = log; drawn.head = drawn.menu = drawn.prs = null; postChat(null);
+    $('#shead').innerHTML = head; delete $('#shead').dataset.sid; drawAwake(); $('#log').innerHTML = log; drawn.head = drawn.menu = drawn.prs = null; postChat(null);
     layoutNotch(); paintHeadSplit(); renderResume(null);
     if (log === NO_CHAT.log) showHome();   // nothing open: the home (2026-10-10)
   }

@@ -94,6 +94,8 @@ export default async function (ctx) {
     ctx.assert.equal(out.moved.badge, '1', 'and the card counts it unread');
     ctx.assert.equal(out.moved.move, '#12 · pushed since your review', 'the card says whose move and why…');
     ctx.assert.equal(await ctx.evaluate(`${card}.querySelector('.state.prmove .ymove').textContent`), 'your move', '…after the tag');
+    // …which slid in as it came (2026-10-11): the card was there before, its tag was not
+    ctx.assert.ok(await ctx.evaluate(`window.peix.motion().some(m => m.kind === 'move' && m.id === '${two.id}')`), 'the tag slides in');
     ctx.assert.equal(out.moved.rank, 0, 'the move is the chat\'s newest word: it tops the list');
     ctx.assert.equal(await ctx.evaluate(`${card}.previousElementSibling?.matches('.gsep.lane:first-child') ? 'first' : null`), 'first', 'nothing above it but its lane\'s head (2026-10-09)');
     out.compact = await ctx.evaluate(`(() => { const l = document.querySelector('#sessions'), was = l.dataset.cards; l.dataset.cards = 'compact';

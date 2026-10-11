@@ -445,7 +445,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   `.cpr`, `.hpr` and `.prrow` and the tooltips (`turnTip`), but no look of its own. **The card has a line** (`moveHtml`,
   after the question's, at every size, not on a ticked card): a tag filled in the accent (`.ymove`: `ICON.pr`, *your
   move*), the newest move's `#n` and reason, `+n PRs`; **the chat header says it too** (`headMove`, `.hmove`, just
-  before the PR chips), and the PR row in `.why`. The chat also ranks by the move (see the order below).
+  before the PR chips), and the PR row in `.why`. The chat also ranks by the move (see the order below). **The tag
+  arrives** (2026-10-11, `moveMoments` in the after-draw pass): a *your move* tag on a card or a header (`#shead`
+  carries `data-sid`) that the last pass did not have, where that card or header was already shown, slides in on the
+  spring and nudges once; `move` in `motion()`.
 * **The card's PR chips end its top row, stacked** (`cardPrs`, `.top .tprs`, 2026-09-28; a stack since 2026-10-04):
   every PR the chat mentions, the first on top at the row's end and three under it 5 px further left each, a sliver
   of their colour showing (the first four in the chat's order, every one at your move among them), the rest under the

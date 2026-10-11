@@ -54,6 +54,9 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   the card, as it turns purple. Both chips are redrawn by markup, so the moment is found after the draw by comparing each
   chip with what it showed last under its key (the PR and where it stands); a chat opened for the first time plays
   nothing, and neither does a PR that was never running.
+* **8 · your move arrives**: the tag slides in from the left on the spring and nudges once — the board's way of
+  saying *this is new* without a toast. Found by presence (the tag there now, not the last pass, on a card or header
+  that was), so opening a chat that already waits on you, or a load, plays nothing.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 
