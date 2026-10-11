@@ -443,6 +443,12 @@
   .gsep.lane.working { color: color-mix(in srgb, var(--working) 80%, var(--ink)); }
   .gsep.lane.ready > i { border: 2px solid var(--idle); background: radial-gradient(var(--idle) 30%, transparent 36%); }
   .gsep.lane.done > i { background: var(--ended); }
+  /* All caught up (2026-10-11): the clauding mark at rest, in the ready green — and, reached by a tick, a hop and a few
+     pixel sparks (caughtUp), from where the mark is. */
+  .gsep.lane.zero { position: relative; color: var(--idle); }
+  .gsep.lane.zero .pix, .gsep.lane.zero .pix svg { animation: none; }
+  .gsep.lane.zero .pix svg { fill: var(--idle); }
+  .gsep.lane.zero .spark { position: absolute; width: 3px; height: 3px; pointer-events: none; }
   .pix { flex: none; width: 18px; height: 18px; overflow: hidden; animation: pixhop 2.4s steps(1, end) infinite; }
   .pix svg { display: block; width: 144px; height: 18px; fill: var(--accent); transform: translateX(-90px); animation: pix 2.4s steps(1, end) infinite; }
   @keyframes pix {   /* the frames: 0 · 1 + 2 ◆ 3 ✳ 4 ✶ 5 ✽ (full) 6 and 7 the twinkle, long axes then long diagonals */
@@ -2841,6 +2847,24 @@
   // many cards it holds. Claude's mark in pixels is the Clauding head's. Under a query, which ranks by the match, none.
   const LANES = { asking: ['Asking you', 'chats waiting on your answer'], working: ['Clauding', 'Claude at work'], ready: ['Ready', 'your move — ready for you'], done: ['Done', 'ticked done'] };
   const laneHtml = (g, n) => `<div class="gsep lane ${g}" title="${n} ${LANES[g][1]}">${g === 'working' ? PIX : '<i></i>'}<span class="ln">${LANES[g][0]}</span><b>${rn('lane:' + g, n)}</b></div>`;
+  // …and when no lane waits on you, a still one that says so (renderSessionList); its mark is the clauding head's at
+  // rest. Reached by a tick it earns a moment, once: the mark hops and throws a few sparks (caughtUp).
+  const ZERO_HTML = `<div class="gsep lane zero" title="Nothing waits on you — no chat ready and no question">${PIX}<span class="ln">All caught up</span></div>`;
+  let lastTickAt = 0, wasCaughtUp = null;
+  function caughtUp(now) {
+    const was = wasCaughtUp; wasCaughtUp = now;
+    if (!now || was !== false || performance.now() - lastTickAt > 3000 || REDUCED.matches) return;
+    const lane = document.querySelector('#slist > .gsep.lane.zero'), pix = lane?.querySelector('.pix'); if (!pix) return;
+    noteMotion(null, 'caughtup');
+    pix.animate([{ transform: 'none' }, { transform: 'translateY(-7px)', offset: .3 }, { transform: 'none', offset: .55 }, { transform: 'translateY(-2px)', offset: .75 }, { transform: 'none' }], { duration: 650, easing: 'ease-out', id: 'caughtup' });
+    const box = lane.getBoundingClientRect(), r = pix.getBoundingClientRect(), cx = r.left - box.left + r.width / 2, cy = r.top - box.top + r.height / 2;
+    const tones = ['var(--accent)', 'var(--idle)', 'var(--working)', 'var(--watch)'];
+    for (let k = 0; k < 12; k++) {
+      const sp = document.createElement('i'); sp.className = 'spark'; sp.style.cssText = `left: ${cx - 1.5}px; top: ${cy - 1.5}px; background: ${tones[k % tones.length]}`; lane.append(sp);
+      const a = k / 12 * Math.PI * 2 + Math.random() * .5, d = 16 + Math.random() * 18;
+      sp.animate([{ transform: 'none', opacity: 1 }, { transform: `translate(${Math.cos(a) * d}px, ${Math.sin(a) * d * .7}px) scale(.5)`, opacity: 0 }], { duration: 600 + Math.random() * 200, easing: 'cubic-bezier(.1, .7, .3, 1)', delay: 90, fill: 'both', id: 'spark' }).onfinish = () => sp.remove();
+    }
+  }
   // A line under each day's cards, naming the day they are from (2026-09-23). The day is your last
   // touch, like the order. A line closes the run of cards *above* it, so the oldest day in the list gets one too, at
   // the bottom; the list is grouped first, so the done cards can bring a day back after older ready ones, and each run
@@ -2950,10 +2974,15 @@
     tl.runs = [];
     if (!q) shown.forEach((s, i) => { const r = tl.runs[tl.runs.length - 1]; if (r && r.g === b[i] && r.day === days[i]) r.n++; else tl.runs.push({ g: b[i], day: days[i], at: wordAt(s), i, n: 1 }); });
     const dayAfter = i => !q && days[i] && days[i + 1] !== days[i] ? dayHtml(days[i]) : '';
+    // All caught up (2026-10-11): nothing in the project waits on you — no ready chat and no question — while the list
+    // still shows something (the clauding, the done): a still head where the Ready lane goes, before the done cards.
+    const zeroAt = q || counts.ready || !shown.length ? -1 : (i => i < 0 ? shown.length : i)(b.indexOf('done'));
     const items = [];
-    shown.forEach((s, i) => { const d = dividerBefore(i), a = dayAfter(i); if (d) items.push({ html: d }); items.push({ id: s.id, html: cardHtml(s, p, q) }); if (a) items.push({ html: a }); });
+    shown.forEach((s, i) => { const d = dividerBefore(i), a = dayAfter(i); if (i === zeroAt) items.push({ html: ZERO_HTML }); if (d) items.push({ html: d }); items.push({ id: s.id, html: cardHtml(s, p, q) }); if (a) items.push({ html: a }); });
+    if (zeroAt === shown.length) items.push({ html: ZERO_HTML });
     drawCards(items, `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — ⌥⌘N starts one'}</div>`);
     fillAges($('#slist'));
+    caughtUp(zeroAt >= 0);
     phaseAnims();
     markQsel();
     listChanged();
@@ -4116,7 +4145,7 @@
     };
     if (!done || !mark || REDUCED.matches) return go();
     if (mark.classList.contains('tk')) return;   // a second click while it draws
-    mark.classList.add('tk'); noteMotion(id, 'tick');
+    mark.classList.add('tk'); noteMotion(id, 'tick'); lastTickAt = performance.now();
     mark.animate([{ scale: .7 }, { scale: 1 }], { duration: 360, easing: SPRING, id: 'tick' });
     setTimeout(go, TICK_MS);   // the open chat moves on with it: a move first would redraw the card, the mark with it
   }

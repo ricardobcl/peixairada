@@ -72,5 +72,24 @@ export default async function (ctx) {
   await ctx.server.post(`api/sessions/${two.id}/done`, { done: false });
   await ctx.waitFor(`document.querySelector('.gsep.lane.ready b')?.textContent === '2'`, { what: 'both ready again' });
   await ctx.settle();
+
+  // ---- 5 · all caught up: tick the last ready chat and a still head says so where the Ready lane was, its mark hopping
+  // and throwing sparks once; a list that only ever had nothing ready gets the head without the moment ----
+  const tickIt = async id => { await ctx.evaluate(`document.querySelector('#slist > .card[data-id="${id}"] .act[data-act="done"]').click()`); await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${id}"]')?.classList.contains('done')`, { what: 'ticked' }); };
+  await tickIt(one.id);
+  out.zeroBefore = await ctx.evaluate(`!!document.querySelector('#slist > .gsep.lane.zero')`);
+  await tickIt(two.id);
+  await ctx.waitFor(`window.peix.motion().some(m => m.kind === 'caughtup')`, { what: 'the moment' });
+  out.zero = await ctx.evaluate(`(z => ({ text: z?.textContent, sparks: z?.querySelectorAll('.spark').length, next: z?.nextElementSibling?.className, ready: !!document.querySelector('.gsep.lane.ready') }))(document.querySelector('#slist > .gsep.lane.zero'))`);
+  ctx.assert.equal(out.zeroBefore, false, 'not while one is still ready');
+  ctx.assert.equal(out.zero.text, 'All caught up', 'the head says so');
+  ctx.assert.ok(out.zero.sparks > 0, 'and throws its sparks');
+  ctx.assert.match(out.zero.next, /lane done/, 'over the done cards, where the Ready lane goes');
+  ctx.assert.equal(out.zero.ready, false, 'no Ready lane');
+  await ctx.settle();
+  ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('.spark').length`), 0, 'the sparks are gone');
+  for (const c of [one, two]) await ctx.server.post(`api/sessions/${c.id}/done`, { done: false });
+  await ctx.waitFor(`document.querySelector('.gsep.lane.ready b')?.textContent === '2' && !document.querySelector('.gsep.lane.zero')`, { what: 'both ready again, the head gone' });
+  await ctx.settle();
   return out;
 }

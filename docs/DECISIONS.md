@@ -38,6 +38,11 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   the old node would go with it. The open chat's move to the next card waits as well, for the same reason (the move
   redraws the ticked card without its `.active`); it was made at the click so an empty chat's event could not leave the
   column first, and both still happen in that order.
+* **5 · all caught up**: the moment needed a place that is not a toast (the board has none), so it is a state first —
+  a lane head, *All caught up*, where the Ready lane would be, for as long as nothing in the project waits on you — and
+  a moment only when your tick made it so: the head's pixel mark hops and throws a dozen pixel sparks. A list that is
+  caught up because its last ready chat was ticked elsewhere, or that loads that way, shows the head still. The mark is
+  the clauding lane's sprite held at its full frame: still, since motion on the board means running.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 

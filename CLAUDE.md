@@ -519,7 +519,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   (`steps(1, end)`), `pixhop` lifting it on the burst; both transforms, 2.4 s, phased by `phaseAnims()` — and a still line **under every run of cards from one day** (`dayHtml()`): the day centred — `today`,
   else `DD-MM-YYYY` (`dayName()`, by `wordAt`). A day's line closes the cards *above* it, so the oldest day gets one at
   the bottom; the list is grouped first, so a day can come back and each run gets its own line.
-  → `scripts/scenarios/day-separator.mjs`.
+  **All caught up** (2026-10-11, `ZERO_HTML`, `caughtUp`): with no ready chat and no question in the project and
+  something else in view, a still lane head says so where the Ready lane goes (before the done cards) — the pixel mark
+  at rest, in the ready green; reached from a ✓ within 3 s (`lastTickAt`) its mark hops and throws pixel sparks, once.
+  None under a query. → `scripts/scenarios/day-separator.mjs`, the caught-up section of `small-motions.mjs`.
 * **Ticking the open chat moves on** (2026-09-30): `tickDone` — the card's ✓ and ↩, the chats step's ✓ — opens the
   card below it in the list as shown, else the one above, stepping over done cards; a chat ticked while another is
   open moves nothing. The move is made **at the click**, not on the server's answer (an empty chat's `session` event
