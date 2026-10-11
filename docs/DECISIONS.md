@@ -66,6 +66,12 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   so the eye learns where the chat lives in the list. Not when the card itself was clicked (you are looking at it) nor
   on ⌥⌘↑↓, which walks the list a card at a time and would flash on every press. The scroll stays a jump: a key's move
   is instant on the board, and the flash is what draws the eye.
+* **11 · the shimmer**: *clauding…* in the transcript's presence line and the Clauding lane's name carry a light
+  running across them, as Claude Code's own spinner word does. The agent apps do it with a gradient clipped to the text
+  and its position animated — a repaint every frame. Here it is two transforms: a window as wide as the word, masked
+  to a soft band, slides one way while the bright copy inside it slides the other by the same amount, so the copy
+  stays over the word and only the band moves. Percentages of the word's own width, so nothing is measured; the copy
+  is the window's `::before` from an attribute, so the word is in the text once and the scenarios read it as before.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 

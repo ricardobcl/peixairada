@@ -443,6 +443,16 @@
   .gsep.lane.working { color: color-mix(in srgb, var(--working) 80%, var(--ink)); }
   .gsep.lane.ready > i { border: 2px solid var(--idle); background: radial-gradient(var(--idle) 30%, transparent 36%); }
   .gsep.lane.done > i { background: var(--ended); }
+  /* The shimmer (shim(), 2026-10-11): the window is the word's own width, its mask a soft band in the middle, and it
+     and the copy in it move by the same 68 % of that width in opposite directions — the band sweeps the word, the copy
+     stays over it. Phased with the rings (phaseAnims). */
+  .shim { position: relative; display: inline-block; }
+  .shim > .sw { position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+    -webkit-mask-image: linear-gradient(90deg, transparent 30%, #000 50%, transparent 70%); mask-image: linear-gradient(90deg, transparent 30%, #000 50%, transparent 70%);
+    animation: shimw 2.4s ease-in-out infinite; }
+  .shim > .sw::before { content: attr(data-t); display: block; white-space: nowrap; color: var(--ink); animation: shimi 2.4s ease-in-out infinite; }
+  @keyframes shimw { 0% { transform: translateX(-70%); } 60%, 100% { transform: translateX(70%); } }
+  @keyframes shimi { 0% { transform: translateX(70%); } 60%, 100% { transform: translateX(-70%); } }
   /* All caught up (2026-10-11): the clauding mark at rest, in the ready green — and, reached by a tick, a hop and a few
      pixel sparks (caughtUp), from where the mark is. */
   .gsep.lane.zero { position: relative; color: var(--idle); }
@@ -1814,6 +1824,7 @@
     .card.landed::before { animation: none; content: none; }   /* no wash */
     .dot.working, .dot.needs-input { animation: none; }
     .pix, .pix svg { animation: none; }
+    .shim > .sw { display: none; }   /* no light runs across clauding */
     .ck[data-checks="pending"] svg { animation: none; stroke-dasharray: none; }   /* CI running: a still ring */
     .shead .hpr .ck.now path, :is(.shead .hpr, #slist .cpr).sheen::after { animation: none; }   /* an answer, a merge: there, not drawn */
     #log > .in { animation: none; }
@@ -2914,7 +2925,11 @@
   // before): a head over each group the list ranks by — Asking you · Clauding · Ready · Done — with its mark and how
   // many cards it holds. Claude's mark in pixels is the Clauding head's. Under a query, which ranks by the match, none.
   const LANES = { asking: ['Asking you', 'chats waiting on your answer'], working: ['Clauding', 'Claude at work'], ready: ['Ready', 'your move — ready for you'], done: ['Done', 'ticked done'] };
-  const laneHtml = (g, n) => `<div class="gsep lane ${g}" title="${n} ${LANES[g][1]}">${g === 'working' ? PIX : '<i></i>'}<span class="ln">${LANES[g][0]}</span><b>${rn('lane:' + g, n)}</b></div>`;
+  // A word that shimmers while Claude works (2026-10-11, Claude Code's own spinner): a light runs across it — a window
+  // as wide as the word, masked to a soft band, moving one way while the bright copy in it (its ::before, from
+  // data-t, so the text is said once) moves the other; both transforms, so nothing repaints.
+  const shim = t => `<span class="shim">${esc(t)}<span class="sw" data-t="${esc(t)}" aria-hidden="true"></span></span>`;
+  const laneHtml = (g, n) => `<div class="gsep lane ${g}" title="${n} ${LANES[g][1]}">${g === 'working' ? PIX : '<i></i>'}<span class="ln">${g === 'working' ? shim(LANES[g][0]) : LANES[g][0]}</span><b>${rn('lane:' + g, n)}</b></div>`;
   // …and when no lane waits on you, a still one that says so (renderSessionList); its mark is the clauding head's at
   // rest. Reached by a tick it earns a moment, once: the mark hops and throws a few sparks (caughtUp).
   const ZERO_HTML = `<div class="gsep lane zero" title="Nothing waits on you — no chat ready and no question">${PIX}<span class="ln">All caught up</span></div>`;
@@ -3196,7 +3211,7 @@
   // card's animations start from a time of its own, hashed from the chat's id — as steady across renders as 0, only not
   // shared. The header's dot and the divider have no card and stay at 0. Flipping the switch re-phases what is running,
   // so the change shows at once.
-  const PHASED = new Set(['ring', 'edge', 'sonar', 'pulse', 'pix', 'pixhop']);
+  const PHASED = new Set(['ring', 'edge', 'sonar', 'pulse', 'pix', 'pixhop', 'shimw', 'shimi']);
   const phaseOf = a => { if (prefs.ringsInStep !== false) return 0; const id = a.effect?.target?.closest?.('.card')?.dataset.id || ''; let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0; return -(h % 60000); };
   // Once a frame, before it paints: the list and the header both ask after a render, and getAnimations() flushes style
   // each time. `now` is the switch's: the change shows at once, and reads at once.
@@ -6663,7 +6678,7 @@
   // the mark in step with the divider's.
   function renderPresence() {
     const log = $('#log'), s = state.sessions.get(state.current);
-    const html = !s ? '' : s.status === 'working' ? `<div class="presence" title="Claude is working on a reply">${PIX}<span class="w">clauding…${s.agents ? ` <em>· ${s.agents} agent${s.agents === 1 ? '' : 's'} at work</em>` : ''}</span></div>`
+    const html = !s ? '' : s.status === 'working' ? `<div class="presence" title="Claude is working on a reply">${PIX}<span class="w">${shim('clauding…')}${s.agents ? ` <em>· ${s.agents} agent${s.agents === 1 ? '' : 's'} at work</em>` : ''}</span></div>`
       : asking(s) ? `<div class="presence ask">${askHtml(s)}</div>` : '';
     let el = log.querySelector(':scope > .presence');
     if (!html) { el?.remove(); return; }

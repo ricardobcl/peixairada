@@ -42,6 +42,9 @@ export default async function (ctx) {
     ctx.assert.match(out.working.text, /^clauding…$/, 'the word');
     ctx.assert.ok(out.working.pix && out.working.anim === 'pix', "Claude's mark, stepping its frames");
     ctx.assert.ok(out.working.last && !out.working.ask, 'last in the log, and not a question');
+    // …and a light runs across the word (2026-10-11): a window and its copy, moving opposite ways by transform
+    out.shimmer = await ctx.evaluate(`(w => w && [getComputedStyle(w).animationName, getComputedStyle(w, '::before').animationName, getComputedStyle(w, '::before').content])(document.querySelector('#log > .presence .shim > .sw'))`);
+    ctx.assert.deepEqual(out.shimmer, ['shimw', 'shimi', '"clauding…"'], 'the word shimmers, said once');
     await ctx.shot('clauding');
 
     // the reply lands: the presence goes, the reply is the last thing
