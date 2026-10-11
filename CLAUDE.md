@@ -266,6 +266,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   (the header lifted, `z-index: 3`), faded in over the log's first 24 px of scroll by a scroll-driven animation on
   `--log` (`#log`'s `scroll-timeline`, seen through `main`'s `timeline-scope`); without scroll timelines, `--shade` from
   the log's scroll listener (`SPLIT_SCROLLS`).
+* **A name too long fades rather than ends in …** (2026-10-11, `fadeOver`, `fadeSoon`): the header's title and a
+  page's address (`.purl`) at their right edge, a card's title at its last line's end, by a mask — only where `.over`
+  says it overflows (a mask on one that fits would fade its last letters). The header's and the strip's are read on
+  every draw; a card's once per node (`.ovr`), and every card's when the list's width moves.
 * **The broad gradients wear grain** (2026-10-11, `--grain` on `:root`: a 160 px tile of still SVG noise, white
   speckles at 7 %): the chat header's, the transcript's wash (`#log`) and the tiles' wallpaper, its first background
   layer — where a dark gradient across a wide box bands into steps. Not the cards (narrow, and their first layer is the

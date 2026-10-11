@@ -139,6 +139,11 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   chat header casts a soft shadow onto the transcript once it has scrolled from its top, and none at the top. A fade on
   the log's own scroll timeline, the compositor's like the splitter's black, so it is never a frame behind the scroll.
   The study's list-top shadow was left out: the list's top already has its end pill counting the cards out of sight.
+* **28 · fade, not …** (Arc's tabs): a name too long for its box fades out at its edge — the header's title, a page's
+  address in the strip, a card's title at the end of its third line. Only where it does overflow: the board reads which
+  ones do after a draw (a mask on a name that fits would fade its last letters). The card's three-line clamp still
+  writes its own ellipsis, which fades with the rest. The tabs' own names are never cut, so the study's tab example
+  is the address beside them.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 

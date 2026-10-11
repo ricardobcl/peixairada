@@ -162,5 +162,14 @@ export default async function (ctx) {
   const m25 = await ctx.evaluate(`window.peix.motion().length`);
   await ctx.server.post('api/test-notify', {});
   await ctx.waitFor(`window.peix.motion().slice(${m25}).some(m => m.kind === 'sound:reply')`, { what: 'the alert heard', timeout: 4000 });
+
+  // ---- 28 · fade, not …: a title too long for the card fades out at its last line's end; a short one is left alone ----
+  const long = 'A title long enough to run past three lines of a card in the list, so that its end has to go somewhere — and it fades rather than ending in an ellipsis, the way the tabs of a browser do it';
+  await ctx.server.api(`api/sessions/${two.id}/title`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: long }) });
+  await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${two.id}"] .title')?.textContent.startsWith('A title long')`, { what: 'the long title on its card' });
+  await ctx.evaluate(`document.querySelector('#sessions').style.width = '300px'`);   // a narrow list: the board keeps 120 characters of a title, three lines of a wide card
+  await ctx.sleep(200); await ctx.settle();
+  out.fade = await ctx.evaluate(`({ long: document.querySelector('#slist > .card[data-id="${two.id}"] .title').classList.contains('over'), short: document.querySelector('#slist > .card[data-id="${one.id}"] .title').classList.contains('over'), mask: getComputedStyle(document.querySelector('#slist > .card[data-id="${two.id}"] .title')).maskImage.slice(0, 15) })`);
+  ctx.assert.deepEqual([out.fade.long, out.fade.short], [true, false], 'the long one fades, the short one does not');
   return out;
 }
