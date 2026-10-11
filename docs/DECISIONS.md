@@ -94,6 +94,9 @@ the order they landed.
   work and the spinner sit at its foot; re-read a quarter second after the screen changes. Not on a chat asking you:
   the choices are where the prompt box was. **A stack tile's tail starts under its head** — it sat at the foot over
   two-thirds of empty black — unless it is longer than the tile, when its newest rows are the ones kept.
+* **V3 — a zero says nothing in colour**: home wrote *0 asking you*, *0 at your move* and *waited on you 0m* in red,
+  and the overview's chips a red dot by *0 asking you* — an alarm for nothing. A count is red or amber only when there
+  is one; the overview's chip of a zero is muted, its dot grey.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

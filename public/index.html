@@ -1760,6 +1760,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #ov .chips { display: flex; gap: 6px; flex-wrap: wrap; }
   #ov .chips span { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 10px; background: var(--ctl); color: var(--ink); font-weight: 600; font-size: 12px; }
   #ov .chips i, #ov .oc h2 i { width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--muted)); }
+  #ov .chips span.nil { color: var(--muted); font-weight: 500; } #ov .chips span.nil i { background: var(--muted); opacity: .5; }   /* a zero says nothing in colour (2026-10-12) */
   #ov .ask { --c: var(--needs); } #ov .work { --c: var(--working); } #ov .watch { --c: var(--watch); } #ov .ready { --c: var(--idle); }
   #ov .keys { margin-left: auto; display: flex; gap: 14px; align-items: center; font-size: 12px; }
   #ov kbd { font: 600 11px ui-monospace, monospace; color: var(--ink); background: var(--ctl-hi); padding: 1px 5px; border-radius: 4px; margin-right: 4px; }
@@ -6866,7 +6867,7 @@ const toolName = n => {
     ov.sel = Math.max(0, Math.min(ov.sel, ov.list.length - 1));
     let n = 0;
     const count = k => cols.find(c => c[0] === k)[2].length;
-    $('#ovchips').innerHTML = [['ask', 'asking you'], ['work', 'clauding'], ['watch', 'watching'], ['ready', 'new replies']].map(([k, w]) => `<span class="${k}"><i></i>${count(k)} ${w}</span>`).join('');
+    $('#ovchips').innerHTML = [['ask', 'asking you'], ['work', 'clauding'], ['watch', 'watching'], ['ready', 'new replies']].map(([k, w]) => `<span class="${k}${count(k) ? '' : ' nil'}"><i></i>${count(k)} ${w}</span>`).join('');
     // an empty column is its head alone, narrow, and the full ones share the width (2026-10-12): four equal columns
     // put the board's two live chats in a quarter of the screen beside three saying "none"
     $('#ovcols').style.gridTemplateColumns = cols.map(([, , list]) => list.length ? 'minmax(0, 1fr)' : 'minmax(0, max-content)').join(' ');
@@ -6963,12 +6964,14 @@ const toolName = n => {
     const tasks = alive.reduce((n, s) => n + (s.tasks?.length || 0), 0), agents = alive.reduce((n, s) => n + (s.agents || 0), 0), drawers = all.filter(termLive).length;
     const win = usage.data?.windows || [];
     const kv = (k, v) => `<div><b>${k}</b><span>${v}</span></div>`, sep = '<s>·</s>';
+    // a count in red or amber only when there is one (2026-10-12): "0 asking you" in red read as an alarm
+    const hot = (tag, n, html) => n ? `<${tag}>${html}</${tag}>` : html;
     const facts = [
       kv('Board', `${esc(a.version || '?')} ${sep} up ${a.since ? dur(Date.now() - a.since) : '?'}${inApp ? ` ${sep} the app` : ''}`),
-      kv('Chats', `${all.filter(s => !s.done).length} ${sep} ${alive.length} live ${sep} <em>${alive.filter(asking).length} asking you</em> ${sep} <u>${all.filter(s => bucket(s) === 'working').length} clauding</u>`),
+      kv('Chats', `${all.filter(s => !s.done).length} ${sep} ${alive.length} live ${sep} ${hot('em', alive.filter(asking).length, `${alive.filter(asking).length} asking you`)} ${sep} ${hot('u', all.filter(s => bucket(s) === 'working').length, `${all.filter(s => bucket(s) === 'working').length} clauding`)}`),
       kv('Agents', `${agents} at work ${sep} ${tasks} watching ${sep} ${drawers} in a drawer here`),
-      kv('Today', d ? `Claude worked <strong>${dur(d.totals.worked)}</strong> ${sep} waited on you <em>${dur(d.totals.waited)}</em>` : '…'),
-      kv('PRs', `${open.length} open ${sep} <em>${prs.filter(p => p.turn?.you).length} at your move</em> ${sep} ${open.filter(p => p.checks === 'pending').length} CI running`),
+      kv('Today', d ? `Claude worked <strong>${dur(d.totals.worked)}</strong> ${sep} waited on you ${hot('em', d.totals.waited, dur(d.totals.waited))}` : '…'),
+      kv('PRs', `${open.length} open ${sep} ${hot('em', prs.filter(p => p.turn?.you).length, `${prs.filter(p => p.turn?.you).length} at your move`)} ${sep} ${open.filter(p => p.checks === 'pending').length} CI running`),
       win.length ? kv('Plan', win.filter(w => !w.grant).slice(0, 4).map(w => `${esc(uShort(w))} ${Math.round(w.percent)}%`).join(` ${sep} `)) : '',
       kv('Mac', `${bar.stats.cpu != null ? `CPU ${bar.stats.cpu}% ${sep} ` : ''}${bar.stats.mem ? `${(bar.stats.mem.used / 2 ** 30).toFixed(1)} / ${Math.round(bar.stats.mem.total / 2 ** 30)} GB ${sep} ` : ''}${state.awake.awake ? 'kept awake' : 'sleeps as set'}`),
       kv('Theme', esc(skinName(skinOn()))),
