@@ -1,6 +1,7 @@
 #!/bin/sh
-# Static checks, ten seconds: every script parses, the page's inline script compiles, the shell scripts parse,
-# the Swift type-checks against the deployment target build.sh uses. `npm run check`. No network, no server.
+# Static checks, ten seconds: every script parses, the page's inline script compiles, the shell scripts parse, the
+# app's Swift type-checks against the deployment target build.sh uses, and the WebKit check's against this Mac.
+# `npm run check`. No network, no server.
 set -eu
 cd "$(dirname "$0")/.."
 echo "› node --check"
@@ -20,5 +21,6 @@ if command -v swiftc >/dev/null 2>&1; then
   MIN_OS=$(sed -n 's/^MIN_OS=\(.*\)$/\1/p' mac/build.sh)
   echo "› swiftc -typecheck (macOS $MIN_OS)"
   swiftc -typecheck -swift-version 5 -target "$(uname -m)-apple-macosx${MIN_OS:-13.0}" mac/Sources/main.swift
+  swiftc -typecheck -swift-version 5 scripts/webkit.swift
 else echo "› swiftc not found — the app is not type-checked here"; fi
 echo "ok"

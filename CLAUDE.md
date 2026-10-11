@@ -23,6 +23,7 @@ npm start                           # node server.mjs → http://127.0.0.1:7331,
 npm test                            # node:test over test/ — pure logic, and the drawers end to end (≈12 s)
 npm run check                       # static: every script parses, the page's script compiles, the vendored xterm = node_modules, shell, swiftc -typecheck (≈10 s)
 npm run verify -- "<js>"            # one expression on the live board in headless Chrome (see Verifying)
+npm run webkit -- "<body>"          # the same in WebKit, the app's engine; --shot is the compositor's own frame
 npm run scenario -- scripts/scenarios/<name>.mjs   # a multi-step browser check on its own server (see Verifying)
 npm run scenarios                   # all of them, one at a time, with a verdict (several minutes); `-- drawer` narrows it
 npm run map                         # rewrite the section maps at the top of server.mjs and index.html
@@ -56,6 +57,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `mac/icon/MakeIcon.swift`, `mac/build.sh` | The icon, drawn in CoreGraphics; compile + bundle + sign + install (the version is `package.json`'s) |
 | `scripts/launchd.sh` | The server as a login agent; `restart [--after N]` |
 | `scripts/verify.mjs`, `scripts/scenario.mjs`, `scripts/scenarios/` | The browser harness (see Verifying) |
+| `scripts/webkit.mjs`, `scripts/webkit.swift` | The live board in a `WKWebView` (the app's engine), the window captured as its compositor drew it — what Chrome cannot show |
 | `scripts/fakeclaude.mjs`, `scripts/fixture.mjs` | A stand-in CLI for tests (`FAKE_TUI=fullscreen`: drawn as Claude Code's `tui: fullscreen`, from the top); a `~/.claude` look-alike |
 | `scripts/fakejira.mjs` | Jira Cloud's three calls (projects, `myself`, `bulkfetch`) on a loopback port, from a list — `startFakeJira`, for the tests and scenarios |
 | `scripts/fakecode.mjs` | `code serve-web` for the VS Code Web test: a build asked for by name lands in `VSCODE_CLI_DATA_DIR` a moment later, with a 202; `FAKE_CODE_LOG` logs every request |
@@ -1198,8 +1200,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   app — hands a transform to the compositor, and a start set once it has (a frame after the node was made, or the
   switch's re-phase) reads back from the script but never reaches the screen; Chrome takes either, so the harness
   cannot see it. `phaseAnims` sets the current time, then the start (which resolves a pending one and makes it exact).
-  The proof was a `WKWebView` in a near-transparent window, captured with `CGWindowListCreateImage` — the compositor's
-  frame, not the script's word.
+  The proof is the compositor's frame, not the script's word: `npm run webkit` (see Verifying).
 * **A read after a write is a layout**: the list's frame (`listGeom`), `fitHeadPrs` and `layoutNotch` read everything
   first; keep it so when adding to them.
 * `projIcon(name)` marks ⌥⌘O's project wherever its name is written, before the name; `projAbbr` is the folded list's
@@ -1244,6 +1245,15 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
 * `npm run verify -- "<js>"` evaluates one expression on the live board; `--hash <id>` opens a chat first,
   `--shot file.png` saves a screenshot after, `DARK=1`, `URL=http://127.0.0.1:<port>/`. `--dump-dom` is useless here
   (fires before the SSE snapshot); drive Chrome over CDP — `lib/cdp.mjs`.
+* **What only the app shows is checked in WebKit** (2026-10-11, late night; `npm run webkit -- "<body>"`): the harness
+  is Chrome, and a bug of WebKit's passes every scenario — rings in step did. `scripts/webkit.mjs` compiles
+  `scripts/webkit.swift` on first use and runs an async body on the live board in a `WKWebView` (`frame`, `sleep`,
+  `until` at hand; `--hash`, `URL`, `SIZE`, `PREFS` — the app's defaults otherwise, auto-resume off); `--shot` saves the
+  window as **the compositor** drew it (`CGWindowListCreateImage` on its own window, no grant needed), and `--then`
+  runs a second body on that frame — `shot.px(x, y)`, `shot.where(test, rect)` (a count and a centroid), in sRGB and
+  CSS px. **The window is opaque and on screen by one pixel**, in a corner of the main screen: wholly off a screen,
+  WebKit hides the page and runs no frames; at 1 % opacity the colours came back in steps of 85. A locked screen hides
+  it too, and it says so.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports
   `meta` (`server`, `fake`, `fixture`, `env`, and `prefs` — what the page starts from, 2026-10-09: `{ statusBar: false }`
   for a scenario about the list's foot; **without it a page starts with every lane open and neither tiles nor the

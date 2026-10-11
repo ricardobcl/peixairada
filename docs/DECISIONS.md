@@ -5,6 +5,26 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-11, late night, later still — the WebKit check in the repo
+
+Ricardo, asked whether the check that found the rings' bug should join the harness: "continue".
+
+* **`npm run webkit`**: a body of script on the live board in a `WKWebView`, what it returns printed — `verify` in the
+  app's engine — and with `--shot` the window as WebKit's compositor drew it; `--then` runs a second body on that
+  frame (`shot.px`, `shot.where`), so what is measured in the drawn pixels is written in the page's language, not in
+  Swift. `scripts/webkit.swift` is compiled on first use into `node_modules/.cache`; `npm run check` type-checks it.
+* **One pixel on screen, not 1 % opacity.** The first check's window was at 1 % alpha, and its capture comes back
+  premultiplied by it — 3 of 255 — so every colour read back in steps of 85: a pure red light survived, a glow would
+  not have. Wholly off a screen, WebKit hides the page and runs no frames. Opaque, and placed so that one pixel is on
+  the main screen, in a corner no other screen touches, the page is visible, the frame whole and the colours exact
+  (drawn from the display's space into sRGB). The earlier entry's "its colours intact" was wrong.
+* **What it showed**: the rings' bug again on a page of two rings — a start set on a running ring left them drawn 65°
+  apart while the script read them equal; the current time and then the start put them together. And the wallpaper's
+  glow, not watched in WebKit before (the screen had locked): at rest at 88 % 6 %, part of the way 300 ms after a move,
+  under the pointer once the ease ends.
+* The board opened there starts from no prefs but auto-resume off (`PREFS` over them) — the app's defaults — in a
+  store of its own: nothing of the app's carries over, or back.
+
 ## Decisions of 2026-10-11, late night, after — rings in step in the app; a 24-hour clock; the title under the housing; the wallpaper's glow follows the pointer
 
 Ricardo: "the "rings in step" seems to not be working"; "I want 24H format in status bar"; "now that we have a
@@ -17,7 +37,7 @@ middle where the notch is, they do intersect? if they do, just try to lower a co
   the app's engine — a transform animation is the compositor's once it has run a frame, and a start set after that
   never reaches it: twelve rings made and phased at six moments (in the task that made them, a frame on, inside a
   frame, two frames on…) and captured from the window itself (`CGWindowListCreateImage` on a window at 1 % opacity,
-  its colours intact): every running ring stayed where it began, and one pending one too, while every one read 0. A
+  its colours coarse but a red light plain — see the entry after): every running ring stayed where it began, and one pending one too, while every one read 0. A
   card rebuilt within its frame was phased in time, which is why it mostly looked right; the switch, which re-phases
   running rings, moved none — what Ricardo saw.
 * **The current time first, then the start.** Setting `currentTime` reaches the compositor in both engines; it leaves a

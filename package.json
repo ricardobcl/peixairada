@@ -9,6 +9,7 @@
     "test": "node --test test/*.test.mjs",
     "check": "sh scripts/check.sh",
     "verify": "node scripts/verify.mjs",
+    "webkit": "node scripts/webkit.mjs",
     "scenario": "node scripts/scenario.mjs",
     "scenarios": "node scripts/scenarios.mjs",
     "postinstall": "chmod +x node_modules/node-pty/prebuilds/*/spawn-helper 2>/dev/null || true",
