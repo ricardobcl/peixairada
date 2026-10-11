@@ -131,6 +131,10 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   round, two rising notes for a question. Off by default: sound is the one thing on a Mac that reaches everyone in the
   room. Web Audio rather than files, so nothing is shipped; a page cannot start sound until it has been touched, so
   the context is made on the first press or key after the switch is on.
+* **26 · grain**: a dark gradient across a wide box — the transcript's wash, the header's veils, the tiles' wallpaper
+  — shows its steps on an 8-bit panel. A faint tile of still noise over them dithers the steps away, the trick the
+  well-made dark sites use; a few percent of white speckle, so it reads as texture, never as dirt. Static: nothing
+  moves, nothing is drawn again.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 

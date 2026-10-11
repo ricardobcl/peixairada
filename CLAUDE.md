@@ -262,6 +262,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   or agents chip) is a tint of that colour instead. `--ctl` is the ink at 7 %, **set on every element** (`*`), so it
   follows an `--ink` borrowed there (a black card, the header's black). Text boxes, dialogs and popovers keep their
   edges; a semantic edge (the red of a failure, the accent round an open box) stays.
+* **The broad gradients wear grain** (2026-10-11, `--grain` on `:root`: a 160 px tile of still SVG noise, white
+  speckles at 7 %): the chat header's, the transcript's wash (`#log`) and the tiles' wallpaper, its first background
+  layer — where a dark gradient across a wide box bands into steps. Not the cards (narrow, and their first layer is the
+  lit edge, which the harness reads). A new wide gradient takes it the same way.
 * **The small print is one CSS section** (2026-09-27, night, before the reduced-motion block): `text-wrap` for prose
   and centred texts, tabular figures for every count and age, `::selection` in the accent (and `--term-sel` to match),
   one `:where(…):focus-visible` ring — a text box that wants its border as its focus keeps its own `:focus { outline:
