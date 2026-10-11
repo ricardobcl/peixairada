@@ -86,8 +86,9 @@ export default async function (ctx) {
   await ctx.waitFor(`${cardOf(plain.id)}.style.getPropertyValue('--repo') !== '#cc3366'`, { what: 'the card back to what Peacock says' });
 
   // ---- this browser's: ⌥ in the terminal (the code's fold, always on, and the dates, day first, went on 2026-09-28) ----
-  out.days = await ctx.evaluate(`[...document.querySelectorAll('#slist .gsep.day b')].map(b => b.textContent).filter(t => t !== 'today')`);
-  ctx.assert.ok(out.days.length && out.days.every(d => /^\d\d-\d\d-\d{4}$/.test(d)), `the day lines day first: ${out.days}`);
+  // (the days named since 2026-10-12: Today, Yesterday, the weekday within the week, then DD-MM-YYYY)
+  out.days = await ctx.evaluate(`[...document.querySelectorAll('#slist .gsep.day b')].map(b => b.textContent)`);
+  ctx.assert.ok(out.days.length && out.days.every(d => /^(Today|Yesterday|[A-Z][a-z]+day|\d\d-\d\d-\d{4})$/.test(d)), `the day labels by name, else day first: ${out.days}`);
   ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#datesStops')`), false, 'no choice of how a date is written');
   await ctx.evaluate(`document.querySelector('#optMeta').click()`);
   out.prefs = await ctx.peix('prefs()').then(p => ({ foldCode: p.foldCode, foldBy: p.foldBy, optMeta: p.optMeta, dates: p.dates }));

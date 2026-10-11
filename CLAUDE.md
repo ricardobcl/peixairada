@@ -276,7 +276,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   tick (which also refreshes the open picker and menu). **A card's `.time` carries nothing at all** — `fillAges` sets
   its `data-at` and tooltip from the chat — so neither the clock nor a tool call (which moves `lastActivity`) changes a
   card's html: the node is kept, and the ring on it (`card-signals` relies on this; a *prompt* still rebuilds the card,
-  since its last word changes). `dayOf(ts)` is the one spelling of a day (`today` · `DD-MM-YYYY`), for
+  since its last word changes). `dayOf(ts)` is the one spelling of a day (`Today` · `Yesterday` · the weekday · `DD-MM-YYYY`), for
   the list's lines and the transcript's (`.sysline.day`, from `renderLog` where the day changes). The who-line's time is
   `toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })`.
 * **Controls wear a fill, never a grey edge** (2026-09-28): `.btn`, `.fsearch`, `.chip`, `.ptab`, the PR chips,
@@ -621,9 +621,9 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   as a ticked one does (`laneShut`; not on the rail, which draws no heads; the harness opens every lane unless a
   scenario's `prefs` say otherwise); `fold` and `unfold` in `motion()`. → `scripts/scenarios/lanes.mjs`; the Clauding head's mark is **Claude's in pixels**, a
   9 × 9 window on a strip of frames drawn from `PIX_SHEET` (`#` a pixel of 2 px), `pix` sliding it a frame at a time
-  (`steps(1, end)`), `pixhop` lifting it on the burst; both transforms, 2.4 s, phased by `phaseAnims()` — and a still line **under every run of cards from one day** (`dayHtml()`): the day centred — `today`,
-  else `DD-MM-YYYY` (`dayName()`, by `wordAt`). A day's line closes the cards *above* it, so the oldest day gets one at
-  the bottom; the list is grouped first, so a day can come back and each run gets its own line.
+  (`steps(1, end)`), `pixhop` lifting it on the burst; both transforms, 2.4 s, phased by `phaseAnims()` — and a still label **over every run of cards from one day in a lane** (`dayHtml()`, `dayBefore`; 2026-10-12, under
+  it before): the day at the left, a hairline after it — `dayOf` by `wordAt` (`dayName()`) — none in a lane whose cards
+  are all from today; the list is grouped first, so a day can come back and each run gets its own label.
   **All caught up** (2026-10-11, `ZERO_HTML`, `caughtUp`): with no ready chat and no question in the project and
   something else in view, a still lane head says so where the Ready lane goes (before the done cards) — the pixel mark
   at rest, in the ready green; reached from a ✓ within 3 s (`lastTickAt`) its mark hops and throws pixel sparks, once.

@@ -530,10 +530,11 @@
     100% { transform: translateX(-90px); }
   }
   @keyframes pixhop { 0% { transform: none; } 83.333% { transform: translateY(-2px); } 87.5% { transform: translateY(-4px); } 95.833% { transform: translateY(-2px); } 100% { transform: none; } }
-  /* A day's line (2026-09-23): its day alone, centred — "today", else DD-MM-YYYY (2026-09-27; still fish either side
-     before, two hairlines for an hour). */
-  .gsep.day { text-align: center; }
-  .gsep.day b { font-weight: 700; color: var(--muted); }
+  /* A day's label (2026-09-23): over its run since 2026-10-12, at the left with a hairline running on to the right —
+     Today, Yesterday, the weekday, else DD-MM-YYYY. Under its run, centred and alone, before. */
+  .gsep.day { display: flex; align-items: center; gap: 8px; text-align: left; }
+  .gsep.day b { font-weight: 700; color: var(--muted); flex: none; }
+  .gsep.day::after { content: ""; flex: 1; height: 1px; background: var(--line); }
   #slist .none { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 0; display: grid; justify-items: center; gap: 4px; }
   #slist .none b { color: var(--ink); font-weight: 600; font-size: 12.5px; }
   #slist .none .nfish { position: relative; margin-bottom: 6px; }
@@ -3362,9 +3363,13 @@ const toolName = n => {
   // How a date is written: DD-MM-YYYY, `short` without the year for the timeline's labels. The settings offered year
   // and month first for a day (2026-09-28), gone the same day.
   const fmtDate = (d, short) => `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}${short ? '' : `-${d.getFullYear()}`}`;
-  const dayOf = ts => {   // a timestamp's day, the way the list and the transcript both write it
+  // A timestamp's day, the way the list and the transcript both write it: Today, Yesterday, the weekday within the week
+  // (2026-10-12; `today`, else DD-MM-YYYY, before), then DD-MM-YYYY.
+  const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const dayOf = ts => {
     const d = new Date(ts); if (isNaN(d)) return '';
-    return new Date(d).setHours(0, 0, 0, 0) === new Date().setHours(0, 0, 0, 0) ? 'today' : fmtDate(d);
+    const back = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86_400_000);
+    return back === 0 ? 'Today' : back === 1 ? 'Yesterday' : back > 1 && back < 7 ? WEEKDAYS[d.getDay()] : fmtDate(d);
   };
   const dayName = s => dayOf(wordAt(s));
   // Ages are written after the render, not into the markup (2026-09-27, night): a card's age in its markup made the
@@ -3382,7 +3387,7 @@ const toolName = n => {
     }
     for (const el of root.querySelectorAll('[data-at]')) { const t = rel(el.dataset.at); if (el.textContent !== t) el.textContent = t; }
   }
-  const dayHtml = day => `<div class="gsep day" title="above: the chats you were in ${day === 'today' ? 'today' : 'on ' + day}"><b>${day}</b></div>`;
+  const dayHtml = day => `<div class="gsep day" title="below: the chats you were in ${/^(Today|Yesterday)$/.test(day) ? day.toLowerCase() : 'on ' + day}"><b>${day}</b></div>`;
   // ---- the people row: everyone in the PRs of the chats in view ---------------------------------------------------
   // (2026-09-29). The chats in view — the project's, in the states the
   // chips show — give their PRs' people (the server's prPeople: author, reviewers, commenters, pushers; you and bots
@@ -3459,13 +3464,16 @@ const toolName = n => {
     // No ＋ since 2026-09-28: ⌥⌘N, which opens on
     // the project in view.
     const b = shown.map(rankOf), every = ordered.map(rankOf);   // a lane's head over each group (laneHtml), folded or not
-    // …and a day's line under every run of cards from one day: the card whose next one is from another day, or none.
+    // …and a day's label over every run of cards from one day in a lane (2026-10-12; under it before, where it read as
+    // the next run's): the lane's first card, and every card whose day is not the one before it — none in a lane whose
+    // cards are all from today, where it says nothing the lane's head does not.
     const days = shown.map(dayName), inLane = {};
     for (const g of every) inLane[g] = (inLane[g] || 0) + 1;
     // the timeline's runs: the cards of one day *and* one state group in a row — none while a query orders the list
     tl.runs = [];
     if (!q) shown.forEach((s, i) => { const r = tl.runs[tl.runs.length - 1]; if (r && r.g === b[i] && r.day === days[i]) r.n++; else tl.runs.push({ g: b[i], day: days[i], at: wordAt(s), i, n: 1 }); });
-    const dayAfter = i => !q && days[i] && days[i + 1] !== days[i] ? dayHtml(days[i]) : '';
+    const allToday = {}; shown.forEach((s, i) => { allToday[b[i]] = allToday[b[i]] !== false && days[i] === 'Today'; });
+    const dayBefore = i => !q && days[i] && !allToday[b[i]] && (i === 0 || b[i - 1] !== b[i] || days[i - 1] !== days[i]) ? dayHtml(days[i]) : '';
     // All caught up (2026-10-11): nothing in the project waits on you — no ready chat and no question — while the list
     // still holds something (the clauding, the done): a still head where the Ready lane goes, before the done lane.
     const zero = !q && !counts.ready && ordered.length > 0;
@@ -3474,7 +3482,7 @@ const toolName = n => {
     else for (const g of new Set(every)) {   // the lanes present, in rank order: each its head, then its cards unless folded
       if (zero && g === 'done') items.push({ html: ZERO_HTML });
       items.push({ html: laneHtml(g, inLane[g], laneShut(g)) });
-      if (!laneShut(g)) shown.forEach((s, i) => { if (b[i] !== g) return; items.push({ id: s.id, html: cardHtml(s, p, q) }); const a = dayAfter(i); if (a) items.push({ html: a }); });
+      if (!laneShut(g)) shown.forEach((s, i) => { if (b[i] !== g) return; const a = dayBefore(i); if (a) items.push({ html: a }); items.push({ id: s.id, html: cardHtml(s, p, q) }); });
     }
     if (zero && !every.includes('done')) items.push({ html: ZERO_HTML });
     // An empty list (2026-10-11) is the home's fish, resting, over what is empty and the key that fills it — a bubble

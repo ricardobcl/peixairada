@@ -122,8 +122,8 @@ export default async function (ctx) {
     await ctx.openChat(days.id);
     await ctx.waitFor(`document.querySelectorAll('#log > .msg').length === 3`, { what: 'the two-day chat drawn' });
     out.days = await ctx.evaluate(`JSON.stringify([...document.querySelector('#log').children].map(c => c.classList.contains('day') ? 'day:' + c.textContent : c.className.split(' ')[0]))`).then(JSON.parse);
-    ctx.assert.match(out.days[0], /^day:\d\d-\d\d-\d{4}$/, 'the old day named at the top');
-    ctx.assert.deepEqual(out.days.slice(1), ['msg', 'msg', 'day:today', 'msg'], 'then its messages, "today" where the transcript comes back, and the new word');
+    ctx.assert.match(out.days[0], /^day:(Yesterday|[A-Z][a-z]+day|\d\d-\d\d-\d{4})$/, 'the old day named at the top');
+    ctx.assert.deepEqual(out.days.slice(1), ['msg', 'msg', 'day:Today', 'msg'], 'then its messages, "Today" where the transcript comes back, and the new word');
     await ctx.shot('days');
     out.age = await ctx.evaluate(`JSON.stringify((t => ({ at: t.dataset.at, text: t.textContent, tip: t.title }))(document.querySelector('#slist > .card[data-id=${JSON.stringify(days.id)}] .time')))`).then(JSON.parse);
     ctx.assert.match(out.age.at, /^\d{4}-/, 'the card carries when, not the words');

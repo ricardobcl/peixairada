@@ -28,6 +28,12 @@ the order they landed.
   end, the file name lost. Word by word: in the chat's folder a path is from there, under a home it starts at `~`, and
   one still over 34 characters is `…/` and its last two segments. The card's live line and the tiles; the transcript's
   rows keep the whole path, which is a link there.
+* **T5 — a day's label is over its cards** (`dayBefore`): under its run, *today* sat between a chat from a minute
+  ago and one from yesterday and read as yesterday's. Over the lane's first card and every card whose day is not the
+  one before, at the left with a hairline after it — none in a lane whose cards are all from today, where it says
+  nothing the lane's head does not. **The day by name** (`dayOf`): Today, Yesterday, the weekday within the week,
+  then DD-MM-YYYY — the transcript's day lines too. Not sticky: the list's top pill and the FLIP slides would have to
+  learn about it, for a label never far from its cards.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

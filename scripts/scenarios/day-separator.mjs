@@ -1,12 +1,12 @@
-// The day's lines in the chat list. The fish have swum between the clauding cards and the ready ones since
-// 2026-09-20; since 2026-09-22 a second school marked where the day turned over, and since 2026-09-23 there is one
-// such line under every day's run of cards, naming it in the middle — "today", else DD-MM-YYYY — alone (fish either
-// side that kept still until 2026-09-27, then two hairlines for an hour). A line closes the day *above* it, so the oldest
-// day in the list gets one too. What this
-// checks is the lines' places and names, that the day is centred with nothing beside it and nothing on it moves, and that a day the list
-// brings back (a done card from today, after older ready ones) gets a line of its own. The list is narrowed to the
+// The day's labels in the chat list. The fish have swum between the clauding cards and the ready ones since
+// 2026-09-20; since 2026-09-22 a second school marked where the day turned over, and from 2026-09-23 a line under
+// every day's run of cards named it in the middle. Since 2026-10-12 the label is *over* its run, at the left with a
+// hairline after it — under it, it read as the next run's — and names the day as a person would: Today, Yesterday,
+// the weekday within the week, else DD-MM-YYYY; a lane whose cards are all from today has none. What this checks is
+// the labels' places and names, that the day stands at the left with nothing on it moving, and that a day the list
+// brings back (a done card from today, after older ready ones) gets a label of its own. The list is narrowed to the
 // scenario's folder by the project picker, not the magnifier: a query orders the list by the match since 2026-09-25,
-// and leaves the lines out (scripts/scenarios/chat-filter.mjs).
+// and leaves the labels out (scripts/scenarios/chat-filter.mjs).
 import { makeFixture } from '../fixture.mjs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -21,11 +21,13 @@ const strip = ctx => ctx.evaluate(`JSON.stringify([...document.querySelector('#s
   if (el.classList.contains('lane')) return { lane: [...el.classList].find(c => !['gsep', 'lane'].includes(c)) };   // a group's head (2026-10-09)
   const b = el.querySelector('b'), r = el.getBoundingClientRect(), br = b?.getBoundingClientRect();
   const side = box => { const r = box.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), text: box.textContent }; };
-  return { sep: el.classList.contains('day') ? 'day' : 'divider', day: b?.textContent || '', off: br ? Math.round((br.left + br.width / 2) - (r.left + r.width / 2)) : null,
+  return { sep: el.classList.contains('day') ? 'day' : 'divider', day: b?.textContent || '', off: br ? Math.round(br.left - r.left) : null,
     sides: b ? [...el.querySelectorAll('i')].map(side) : null, anim: el.getAnimations({ subtree: true }).length };
 }))`).then(JSON.parse);
 const pad2 = n => String(n).padStart(2, '0');
 const ddmmyyyy = d => `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}-${d.getFullYear()}`;
+// the page's name for a day this many days back: the weekday within the week
+const named = (d, back) => back === 1 ? 'Yesterday' : back < 7 ? d.toLocaleDateString('en', { weekday: 'long' }) : ddmmyyyy(d);
 // ⌥⌘P, the folder's name, ⏎: the list is that project's
 const project = async (ctx, name) => {
   await ctx.key('KeyP');
@@ -55,13 +57,13 @@ export default async function (ctx) {
   out.all = await strip(ctx);
   await ctx.shot('day-lines');
   const expect = [
-    { lane: 'ready' }, { card: 'a minute ago' }, { card: 'this morning' }, { sep: 'day', day: 'today' },
-    { card: 'two days back, later' }, { card: 'two days back' }, { sep: 'day', day: ddmmyyyy(d2) },
-    { card: 'three days back' }, { sep: 'day', day: ddmmyyyy(d3) },
+    { lane: 'ready' }, { sep: 'day', day: 'Today' }, { card: 'a minute ago' }, { card: 'this morning' },
+    { sep: 'day', day: named(d2, 2) }, { card: 'two days back, later' }, { card: 'two days back' },
+    { sep: 'day', day: named(d3, 3) }, { card: 'three days back' },
   ];
-  ctx.assert.deepEqual(out.all.map(x => x.sep ? { sep: x.sep, day: x.day } : x), expect, 'a line under each day, naming it: today, then DD-MM-YYYY');
+  ctx.assert.deepEqual(out.all.map(x => x.sep ? { sep: x.sep, day: x.day } : x), expect, 'a label over each day, naming it: Today, then the weekday');
   for (const x of out.all.filter(x => x.sep)) {
-    ctx.assert.ok(Math.abs(x.off) <= 1, `${x.day} sits in the middle of its line (${x.off}px off)`);
+    ctx.assert.ok(Math.abs(x.off) <= 1, `${x.day} starts its line (${x.off}px in)`);
     ctx.assert.deepEqual(x.sides, [], `${x.day} stands alone on its line`);
     ctx.assert.equal(x.anim, 0, `and nothing on ${x.day}'s line moves`);
   }
@@ -74,13 +76,13 @@ export default async function (ctx) {
   await ctx.waitFor(`[...document.querySelectorAll('#slist > .card')].pop()?.querySelector('.title')?.textContent === 'a minute ago'`, { what: 'the done card at the bottom' });
   await ctx.settle();
   out.done = (await strip(ctx)).map(x => x.lane ? `[${x.lane}]` : x.sep ? x.day : x.card);
-  ctx.assert.deepEqual(out.done, ['[ready]', 'this morning', 'today', 'two days back, later', 'two days back', ddmmyyyy(d2), 'three days back', ddmmyyyy(d3), '[done]', 'a minute ago', 'today'], 'today twice, each run under its own line — the done one in its lane');
+  ctx.assert.deepEqual(out.done, ['[ready]', 'Today', 'this morning', named(d2, 2), 'two days back, later', 'two days back', named(d3, 3), 'three days back', '[done]', 'a minute ago'], 'today again in the done lane, which needs no label of its own — the done one in its lane');
 
   // Only the done card in view — the Ready lane folded (its chip off, before 2026-10-11): still one line, under it
   await ctx.evaluate(`document.querySelector('#slist > .gsep.lane[data-lane="ready"]').click()`);
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 1`, { what: 'the done card alone' });
   await ctx.settle();   // the ready cards fold out first; strip reads every child of the list
   out.filtered = (await strip(ctx)).map(x => x.lane ? `[${x.lane}]` : x.sep ? x.day : x.card);
-  ctx.assert.deepEqual(out.filtered, ['[ready]', '[done]', 'a minute ago', 'today'], 'the folded lane\'s head, and the day closes under the only card');
+  ctx.assert.deepEqual(out.filtered, ['[ready]', '[done]', 'a minute ago'], 'the folded lane\'s head, and no label over a lane of today alone');
   return out;
 }
