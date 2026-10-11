@@ -213,8 +213,16 @@ export default async function (ctx) {
     await ctx.waitFor(`window.peix.sessions().find(s => s.title === 'A real background job').tasks.length === 0`,
       { what: 'the command let go once its output file was closed', timeout: 20000 });
 
+    // ---- a monitor's event, on its card (2026-10-11): the live line says the newest, and a new one rolls in with a blip ----
+    const b = chat('Watching CI'), live = `[...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title')?.textContent === 'Watching CI')?.querySelector('.state.live')?.textContent`;
+    out.live = await ctx.evaluate(live);
+    ctx.assert.equal(out.live, 'Build: pass', 'the newest event on the card');
+    appendFileSync(b.file, JSON.stringify(taskNoteLine({ id: b.id, cwd, taskId: mon, summary: 'Monitor event: "CI checks on PR #382"', event: 'Tests: 212 passed' })) + '\n');
+    await ctx.waitFor(`window.peix.motion().some(m => m.kind === 'blip' && m.id === '${b.id}')`, { what: 'the light blipping for the event' });
+    await ctx.settle();
+    ctx.assert.equal(await ctx.evaluate(live), 'Tests: 212 passed', 'rolled in');
+
     // ---- the end of a monitor takes the chip away ----
-    const b = chat('Watching CI');
     writeFileSync(b.file, '', { flag: 'a' });
     appendFileSync(b.file, JSON.stringify(taskNoteLine({ id: b.id, cwd, taskId: mon, summary: 'Monitor "CI checks on PR #382" completed', status: 'completed' })) + '\n');
     await ctx.waitFor(`(window.peix.sessions().find(s => s.title === 'Watching CI')?.tasks || []).length === 0`, { what: 'the monitor gone when it reported its end' });

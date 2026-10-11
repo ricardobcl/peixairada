@@ -769,6 +769,14 @@
      place (.moveslot, always in the markup and shown only here; not .prmove, which the harness reads the real line by),
      so every card is the top row, one title line and that row. */
   .card .state.moveslot { display: none; }
+  /* The live line (fillLive, 2026-10-11): one line of what is happening now — a monitor's newest event — each new one
+     rolled in from below; the line's spans share one grid cell while they swap. Not at compact. */
+  .card .state.live { display: grid; margin-top: 4px; overflow: hidden; font: 11px/16px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
+  .card .state.live:empty { display: none; }
+  .card .state.live .ll { grid-area: 1 / 1; display: flex; align-items: center; gap: 5px; min-width: 0; white-space: nowrap; }
+  .card .state.live .ll > span { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .card .state.live .ic { width: 11px; height: 11px; flex: none; color: var(--watch); }
+  #sessions[data-cards="compact"] .card .state.live { display: none; }
   #sessions[data-even] .card .title { -webkit-line-clamp: 1; }
   #sessions[data-even] .card .state.needs-input { display: none; }
   #sessions[data-even] .card .state.moveslot { display: flex; visibility: hidden; }
@@ -3037,7 +3045,7 @@
     shown.forEach((s, i) => { const d = dividerBefore(i), a = dayAfter(i); if (i === zeroAt) items.push({ html: ZERO_HTML }); if (d) items.push({ html: d }); items.push({ id: s.id, html: cardHtml(s, p, q) }); if (a) items.push({ html: a }); });
     if (zeroAt === shown.length) items.push({ html: ZERO_HTML });
     drawCards(items, `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — ⌥⌘N starts one'}</div>`);
-    fillAges($('#slist'));
+    fillAges($('#slist')); fillLive($('#slist'));
     caughtUp(zeroAt >= 0);
     phaseAnims();
     markQsel();
@@ -3675,11 +3683,40 @@
     return `<div class="card ${s.status} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
       <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${act}${cardTickets(s)}${cardFaces(s)}${cardPrs(s)}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${rn('ag:' + s.id, s.agents)} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge">${rn('un:' + s.id, un)}</span>` : ''}</div>
+      ${liveSlot(s)}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${esc(s.lastReply)}</div>` : ''}
       ${asking(s) ? askHtml(s) : ''}${moveHtml(s) || MOVE_SLOT}
       <span class="abbr" title="${esc(`${s.project} · ${s.title}`)}">${esc(projAbbr(s.project))}</span>
     </div>`;
+  }
+  // The card's live line (2026-10-11): what is happening now, filled after the render (fillLive) — never in the markup,
+  // so a new event or a new tool call keeps the card's node, and the ring on it. A monitor's: its newest event, rolled
+  // in, the watching light blipping once per event.
+  const liveSlot = s => watching(s) && s.alive ? '<div class="state live"></div>' : '';
+  const liveSeen = new Map();   // chat id → { text, n }: what its line said last, and how many events
+  function liveOf(s) {
+    const ts = s.alive ? s.tasks || [] : [], n = ts.reduce((a, t) => a + (t.events || 0), 0);
+    const ev = ts.filter(t => t.last).sort((a, b) => String(b.lastEventAt || '').localeCompare(String(a.lastEventAt || '')))[0];
+    return { html: ev ? `${ICON.watch}<span>${esc(ev.last)}</span>` : '', n };
+  }
+  function fillLive(root) {
+    for (const el of root.querySelectorAll('.card .state.live')) {
+      const card = el.closest('.card'), id = card.dataset.id, s = state.sessions.get(id); if (!s) continue;
+      const v = liveOf(s), was = liveSeen.get(id); liveSeen.set(id, v);
+      if (el.dataset.html === v.html) continue;
+      const moved = was && was.html !== v.html && !REDUCED.matches;
+      if (moved && !el.childElementCount && was.html) el.innerHTML = `<span class="ll">${was.html}</span>`;   // a node made anew: from what the old one said
+      el.dataset.html = v.html;
+      if (!moved || !el.childElementCount) { el.innerHTML = v.html ? `<span class="ll">${v.html}</span>` : ''; continue; }
+      const old = el.lastElementChild, nu = html2el(`<span class="ll">${v.html}</span>`); el.append(nu);
+      old.animate([{ transform: 'none', opacity: 1 }, { transform: 'translateY(-100%)', opacity: 0 }], { duration: 220, easing: EASE_OUT, fill: 'forwards', id: 'live' }).onfinish = () => old.remove();
+      nu.animate([{ transform: 'translateY(100%)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 320, easing: SPRING, id: 'live' });
+      if (was && v.n > was.n) {   // an event: the watching light blips
+        noteMotion(id, 'blip');
+        card.animate([{ boxShadow: `0 0 0 0 transparent` }, { boxShadow: `0 0 0 1px ${cssToken('--watch')}, 0 0 16px ${cssToken('--watch')}`, offset: .2 }, { boxShadow: '0 0 0 0 transparent' }], { duration: 700, easing: 'ease-out', id: 'blip' });
+      }
+    }
   }
   function selectProject(key) { prefs.project = key; savePrefs(); renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); }   // the header's folder name is the toggle's other end
   // ---- ⌥⌘P: the project picker. The board's projects, pinned first; the box filters by name. ----

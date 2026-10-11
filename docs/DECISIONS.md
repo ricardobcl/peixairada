@@ -57,6 +57,10 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
 * **8 · your move arrives**: the tag slides in from the left on the spring and nudges once — the board's way of
   saying *this is new* without a toast. Found by presence (the tag there now, not the last pass, on a card or header
   that was), so opening a chat that already waits on you, or a load, plays nothing.
+* **9 · a monitor's event**: a watching card looked the same quiet or busy. It has a live line now — the newest event,
+  in the code face under the title — and each event rolls in from below while the watching light blips once, a heart
+  monitor's beat. The line is an empty slot in the markup and filled after the render: an event in the text would have
+  changed the card's markup, and so its node, at every event of a chatty monitor. Not at compact, not on the rail.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 
