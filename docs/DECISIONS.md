@@ -5,10 +5,11 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
-## Decisions of 2026-10-11, afternoon — the header's row holds
+## Decisions of 2026-10-11, afternoon — the header's row holds; quieter cards
 
 Ricardo, with a screenshot of the board filled at the notch, tiles and the floating header on: "seems like some times
-the "..." is wraping around and making 2 rows, which shouldn't happen".
+the "..." is wraping around and making 2 rows, which shouldn't happen"; "the card on hover should no highlight the
+borders".
 
 * **The header's row never wraps.** The header is a wrapping flex row (the details fold under it as a second line),
   and a line breaks on its items' basis sizes before anything shrinks: the *your move* line's was its whole reason (a
@@ -18,6 +19,8 @@ the "..." is wraping around and making 2 rows, which shouldn't happen".
   counts them at their least — the move's tag and its `+n` — when it folds the PR chips, and down to one chip with the
   row still too full puts the move's line away, then the `+n −n` (the card says the one, ··· has the other). The title
   keeps its 170 px; ··· is always on its line.
+* **Hover lights no border.** The hovered card's border and halo in its colour went; the glow still spreads under the
+  pointer. The colour round the edge is the open card's and the clauding one's alone.
 
 ## Decisions of 2026-10-11, midday — a PR taken off a chat
 

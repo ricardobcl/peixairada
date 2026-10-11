@@ -716,7 +716,7 @@
     background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(50% / var(--lights, 1) * .25), var(--lit) calc(50% / var(--lights, 1) * .5), transparent calc(50% / var(--lights, 1) * .75), transparent calc(50% / var(--lights, 1)));
     animation-name: edge; }
   :root[data-light="edge"] .card.watching:not(.working)::before { --lights: 1; }
-  :root[data-light="edge"] .card:is(.working, .watching):is(:hover, .active, .qsel) { border-color: var(--lift); }
+  :root[data-light="edge"] .card:is(.working, .watching):is(.active, .qsel) { border-color: var(--lift); }
   @keyframes edge { from { transform: translateY(-50%); } to { transform: none; } }
   /* The reply landed (2026-09-27, night): the moment a card stops clauding — the ring gone, the one event the board is
      watched for all day — its edge flares in the card's own light and settles to the plain edge over LANDED_MS, once.
@@ -745,10 +745,10 @@
   .card > .loc { position: absolute; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
   .card > .loc i { position: absolute; inset: 0 auto 0 0; width: 45%; background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--glow) 45%, transparent), transparent); }
   @keyframes wash { from { transform: scale(0); opacity: 1; } 40% { transform: scale(5); opacity: .55; } to { transform: scale(7.5); opacity: 0; } }
-  /* Hover and the open chat enhance the card's own colour, never the accent (2026-09-20): hover is the open card's
-     solid tint (65 % of the colour since 2026-09-26, 55 % before — a step above the brighter wash) under the full
-     colour with a soft 1px halo outside; the open card adds a 2px ring of it over its border — a three-pixel edge. */
-  .card:hover { border-color: var(--lift); outline-color: color-mix(in srgb, var(--lift) 45%, transparent); --tint: 60%; --reach: 90%; }
+  /* Hover and the open chat enhance the card's own colour, never the accent (2026-09-20): hover spreads the glow; the
+     open card adds a 2px ring of the colour over its border — a three-pixel edge. Hover lit the border too, with a
+     halo, until 2026-10-11, afternoon: the colour round the edge is the open and the clauding card's alone. */
+  .card:hover { --tint: 60%; --reach: 90%; }
   .chip.vsc { color: var(--vscode); background: color-mix(in srgb, var(--vscode) 16%, transparent); }
   /* The environment a chat was started in (`task production-workload`…, 2026-09-21): beside the folder on the card,
      in the project's own colour, because it is a fact about *where* the chat runs — not about its process, which is

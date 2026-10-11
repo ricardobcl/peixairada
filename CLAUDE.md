@@ -538,8 +538,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
 * **Cards are square**: `.card` and the ring its `::before` draws at `border-radius: 0`. The PR chips keep their 4 px.
 * **The open chat's card and a hovered one glow across** (`.card.active` 40 % to the far edge, `.card:hover` 34 % over
   three quarters), the rest a glow of 22 % over their first quarter, **with no edge but the lit left one** (transparent
-  since 2026-09-28, the background running under it: `background-origin: border-box`): only the clauding card, the
-  hovered one and the open one wear the colour round their border. **ALL** (`key: 'all'`) is black in both
+  since 2026-09-28, the background running under it: `background-origin: border-box`): only the clauding card and the
+  open one wear the colour round their border (the hovered one did until 2026-10-11, afternoon). **ALL** (`key: 'all'`) is black in both
   themes — `BLACK`, through `projColor()` — and so is a folder the setup paints `#000000`. A card in that black is
   `.card.black`; `--ring` turns its clauding light white wherever the card under it is dark. **The open card bleeds
   into the splitter**: `main:not(.scompact) #slist > .card.active` runs to the column's edge, its glow rising to the
