@@ -329,7 +329,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   the card's overflow clips at its padding box, so with a border the light ran inside it. The compositor's kind of motion — and `phaseAnims()` (once a frame, before
   it paints; `phaseAnims(true)` at once, the cog's switch) puts every `ring`, `edge`, `sonar`, `pulse`, `pix` and `pixhop` at
   start time 0 on the document clock, or, with *rings in step* off (`prefs.ringsInStep`), at a time hashed from the
-  chat's id. → `scripts/scenarios/card-signals.mjs`.
+  chat's id — **by its `currentTime` first, then its `startTime`** (2026-10-11, night; see the invariants: in the app the
+  switch moved no ring). → `scripts/scenarios/card-signals.mjs`.
 * **The open chat's light runs past its card** (2026-09-29): while it is clauding or watching, the open card, the
   splitter down to it (`splitEnd`) and the project's box atop the chat (`--hsplit` × `--hrow`) are one shape, and the
   light runs clockwise round that shape's edge — up the splitter, round the box, down and round the card. `#trail`, a
@@ -1182,6 +1183,12 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
 * **A CSS animation starts over on a rebuilt node, and only `transform` and `opacity` run off the main thread**: a
   card is rebuilt only when its markup changes now, but anything that moves on one is still phased to the document
   clock after the render (`phaseAnims()`) — and nothing continuous animates a custom property, a gradient or a colour.
+* **A running animation is moved by its `currentTime`, never its `startTime` alone** (2026-10-11, night): WebKit — the
+  app — hands a transform to the compositor, and a start set once it has (a frame after the node was made, or the
+  switch's re-phase) reads back from the script but never reaches the screen; Chrome takes either, so the harness
+  cannot see it. `phaseAnims` sets the current time, then the start (which resolves a pending one and makes it exact).
+  The proof was a `WKWebView` in a near-transparent window, captured with `CGWindowListCreateImage` — the compositor's
+  frame, not the script's word.
 * **A read after a write is a layout**: the list's frame (`listGeom`), `fitHeadPrs` and `layoutNotch` read everything
   first; keep it so when adding to them.
 * `projIcon(name)` marks ⌥⌘O's project wherever its name is written, before the name; `projAbbr` is the folded list's

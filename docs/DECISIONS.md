@@ -5,6 +5,23 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-11, late night, after — rings in step in the app
+
+Ricardo: "the "rings in step" seems to not be working".
+
+* **The switch worked in Chrome and nowhere else.** `phaseAnims` set each ring's `startTime` (0, or a time hashed from
+  the chat's id); the script read it back, the harness's Chrome drew it, and `card-signals` passed. In a `WKWebView` —
+  the app's engine — a transform animation is the compositor's once it has run a frame, and a start set after that
+  never reaches it: twelve rings made and phased at six moments (in the task that made them, a frame on, inside a
+  frame, two frames on…) and captured from the window itself (`CGWindowListCreateImage` on a window at 1 % opacity,
+  its colours intact): every running ring stayed where it began, and one pending one too, while every one read 0. A
+  card rebuilt within its frame was phased in time, which is why it mostly looked right; the switch, which re-phases
+  running rings, moved none — what Ricardo saw.
+* **The current time first, then the start.** Setting `currentTime` reaches the compositor in both engines; it leaves a
+  pending animation's start unresolved, so the start is set after it, which also makes Chrome's exact (it read
+  2e-13). The same twelve, and the live board's two clauding cards (one ring remade 700 ms late, then the switch off
+  and on), came out in step in WebKit; off, each at its own.
+
 ## Decisions of 2026-10-11, late night, last — the header's black fades in smoothly (Round V, S8)
 
 Ricardo, on the pixel dissolve an hour after it was built: "present me some alternatives to that project | title

@@ -3595,8 +3595,22 @@
   const phaseOf = a => { if (prefs.ringsInStep !== false) return 0; const id = a.effect?.target?.closest?.('.card')?.dataset.id || ''; let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0; return -(h % 60000); };
   // Once a frame, before it paints: the list and the header both ask after a render, and getAnimations() flushes style
   // each time. `now` is the switch's: the change shows at once, and reads at once.
+  // The phase is set as the current time that start would mean first, and the start after it (2026-10-11): WebKit — the
+  // app's — hands the transform to the compositor, and a startTime set once it has done so reads back from the script
+  // but never reaches the screen. Measured in a WKWebView, twelve rings made and phased at six moments (in the task that
+  // made them, a frame on, inside a frame…): the start alone left every running one where it began, and one pending one
+  // too — the switch moved no ring at all; the current time first moved every one. The start after it resolves a
+  // pending one (its current time leaves it unresolved) and makes a running one's exact (Chrome's was 2e-13 off).
+  // Chrome takes the start alone, so the harness never saw it.
   function phaseAnims(now = false) {
-    const run = () => { phaseAnims.queued = false; for (const a of document.getAnimations()) if (PHASED.has(a.animationName)) { const t = phaseOf(a); if (a.startTime !== t) a.startTime = t; } };
+    const run = () => {
+      phaseAnims.queued = false; const at = document.timeline.currentTime;
+      for (const a of document.getAnimations()) if (PHASED.has(a.animationName)) {
+        const t = phaseOf(a);
+        if (a.startTime === t && !a.pending) continue;
+        a.currentTime = at - t; if (a.startTime !== t) a.startTime = t;
+      }
+    };
     if (now) return run();
     if (phaseAnims.queued) return; phaseAnims.queued = true;
     requestAnimationFrame(run);
