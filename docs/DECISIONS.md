@@ -26,6 +26,9 @@ Q7 for now, but the artifact should render with tiles and floating header, which
 * **Q5 · the page in front is its own address.** Its tab grows into the field — the mark, the address (the host
   quieter than the path), ‹ › ↻ ↗ inside it — where the address was a squeezed text after the tabs ("github.com/" in a
   half). The half's ◫ and ⨯ went behind a ⋯ at the strip's end, which puts them out until the pointer leaves.
+* **Q7 · with tiles, each half is a tile.** Split, 8 px round and between the halves, each bordered as the tiles are and
+  whole on the half with the keys — so the rule under its strip and a lone half's 2 px rule have nothing left to say
+  and go. Under the floating header the halves start below it (the study found their borders running up behind it).
 * **Not built**: Q2 (underlined tabs, a strip of one), Q3 (a segmented control), Q4 (islands), Q6 (a rail of marks) —
   on the sheet for reference. Settings' segmented control and the changes tab's scope are not yet in the family.
 

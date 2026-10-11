@@ -378,6 +378,21 @@
   /* Which half the keys are in: a 2 px rule under its tabs (inset, so nothing moves by a pixel when it lights up), in
      the chat's colour since 2026-10-11 (--tablit; the accent before). Only worth saying when there are two halves. */
   main.split .grp.on > .ptabs { box-shadow: inset 0 -2px 0 var(--tablit); }
+  /* Each half a tile of its own (2026-10-11, the studies' Q7): with tiles and two halves, 8 px round and between them —
+     the divider is the gap — and each bordered as the tiles are, 30 % of the project's colour and whole on the half the
+     keys are in, so the rule under a strip has nothing left to say and a lone strip is nothing at all. */
+  main.tiles.split #groups { padding: 8px; }
+  main.tiles.split #gsplit { width: 8px; border: 0; background: transparent; }
+  main.tiles.split #groups.stack > #gsplit { width: auto; height: 8px; border: 0; }
+  main.tiles.split #gsplit:is(:hover, .drag) { background: color-mix(in srgb, var(--tile-edge, var(--nocolor)) 40%, transparent); }
+  main.tiles.split .grp:not([hidden]) { border: 2px solid color-mix(in srgb, var(--tile-edge, var(--nocolor)) 30%, var(--tile-line)); }
+  main.tiles.split .grp.on { border-color: var(--tile-edge, var(--nocolor)); }
+  main.tiles.split .grp.on > .ptabs { box-shadow: none; }
+  main.tiles.split .grp > .ptabs.lone { height: 0; }
+  /* …under the floating header, below it: the halves' tops are the tiles' own, not behind the bar */
+  :root[data-head="float"] main.tiles.split #groups { padding-top: calc(var(--float-h, 0px) + 4px); }
+  :root[data-head="float"] main.tiles.split #groups > .grp { padding-top: 0; }
+  :root[data-head="float"] main.tiles.split #groups > #gsplit { margin-top: 0; }
   .gempty { color: var(--muted); text-align: center; align-self: center; padding: 0 20px; font-size: 12.5px; line-height: 1.8; }
   /* A VS Code chat: read here, continued there. The whole pane says so — an outline, so nothing moves. */
   /* The pane is washed in the project's colour — none for a folder without one (transparent mixed with

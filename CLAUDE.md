@@ -981,7 +981,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   host `.h` quieter: `urlHtml`, which `peixPaneUrl` draws too) and `.navs` inside, a click on the address still copying
   it; a page behind wears its name. **The half's ◫/⊟ and ⨯ are behind ⋯** (`.gmore` → `.gopen` on the strip, folded
   again when the pointer leaves it; `.click()` on `.gturn` / `.gclose` works folded). The tab drag ignores a press on
-  the address or its buttons. → the address steps of `pane-tabs.mjs`, the strip's step of `split-halves.mjs`.
+  the address or its buttons. **With tiles, split, each half is a tile of its own** (Q7): 8 px round and between them
+  (`#gsplit` is the gap), each bordered as the tiles are — 30 % of `--tile-edge`, whole on the half with the keys — the
+  rule under a strip and a lone strip's 2 px gone; under the floating header the halves start below it (`#groups`
+  pads by `--float-h`, not the halves). → the address steps of `pane-tabs.mjs`, the strip's step of `split-halves.mjs`.
 * **A half whose one tab is not a web page has no strip** (2026-09-28): split, claude, the zsh or the editor alone in
   a half makes its strip `.lone` — emptied, a 2 px rule, the accent under the keys and the line elsewhere, **the same
   height either way**, so moving the keys resizes no terminal. A web page alone keeps its strip (the address, ‹ › ↻ ↗),

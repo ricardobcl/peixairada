@@ -5,7 +5,8 @@
 // whose one tab is not a web page has no strip — a 2 px rule, the accent under the keys, the same height either way —
 // and ⌥⌘W closes the tab the keys are in; an empty half keeps its strip (the drop, and ⋯ for ⊟ ⨯). A tab dragged across
 // is pane-tabs.mjs's: a page gives a half the second tab a drag starts from. The strip's family (2026-10-11, the studies'
-// Q1/Q5/Q7): its controls 26 px, radius 6; the half's ⊟ ⨯ out beside ⋯ on a click, folded as the pointer leaves.
+// Q1/Q5/Q7): its controls 26 px, radius 6; the half's ⊟ ⨯ out beside ⋯ on a click, folded as the pointer leaves; and
+// with tiles, each half a tile — 8 px apart, bordered, whole on the half with the keys, a lone strip nothing at all.
 export const meta = { server: true, fake: true, fixture: 'auto' };
 
 const halves = ctx => ctx.peix('state().halves');
@@ -43,6 +44,17 @@ export default async function (ctx) {
   ctx.assert.equal((await family()).shut, false, '⋯ puts them out');
   await ctx.evaluate(`document.querySelector('#ptabsB').dispatchEvent(new PointerEvent('pointerleave'))`);
   ctx.assert.equal((await family()).shut, true, '…and the pointer leaving the strip folds them');
+  // with tiles, each half a tile of its own
+  await ctx.evaluate(`document.querySelector('#tilesOn').click()`);
+  await ctx.waitFor(`document.querySelector('#main').classList.contains('tiles')`, { what: 'tiles' });
+  await ctx.settle();
+  const tiled = await ctx.evaluate(`JSON.stringify({ borders: ['#grp', '#grpB'].map(id => getComputedStyle(document.querySelector(id)).borderTopWidth), on: ['#grp', '#grpB'].map(id => getComputedStyle(document.querySelector(id)).borderTopColor),
+    gap: Math.round(document.querySelector('#gsplit').getBoundingClientRect().width), rule: Math.round(document.querySelector('#ptabs').getBoundingClientRect().height) })`).then(JSON.parse);
+  ctx.assert.deepEqual([tiled.borders, tiled.gap, tiled.rule], [['2px', '2px'], 8, 0], `tiles: each half bordered, 8 px between, the lone strip nothing — ${JSON.stringify(tiled)}`);
+  ctx.assert.notEqual(tiled.on[0], tiled.on[1], 'the half with the keys whole, the other faint');
+  await ctx.shot('tiled');
+  await ctx.evaluate(`document.querySelector('#tilesOn').click()`);
+  await ctx.waitFor(`!document.querySelector('#main').classList.contains('tiles')`, { what: 'tiles off' });
 
   // ⌥⌘T opens the zsh in the half the keys are in: two live terminals, side by side, and no strip over either
   await ctx.key('KeyT');
