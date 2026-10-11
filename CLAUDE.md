@@ -343,7 +343,11 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   (the status bar) and `--hd-*` (the header's borrowed inks), each with the old value as its fallback. A project's
   colour moves to the theme's nearest hue (`skinColor`, in `repoColor`; `prefs.skinExact` keeps it as set) and the
   drawer's sixteen colours are the theme's (`xtTheme`, `ANSI`). The grid previews as the arrows move (`skinPreview`),
-  Esc puts back what was worn, ⏎ keeps it in its appearance's slot. A colour on the board that reads no token is one
+  Esc puts back what was worn, ⏎ keeps it in its appearance's slot. **A tile clicked spreads its theme from there**
+  (2026-10-11, `revealFrom(pt, change)`, `centreOf`): the change inside `document.startViewTransition`, the new page's
+  snapshot clipped to a circle growing from the point (`::view-transition-new(root)`, no cross-fade); the simple
+  colours switch does it from the switch. ⏎, a key, keeps what the arrows were already showing: nothing to reveal.
+  `look` in `motion()`. A colour on the board that reads no token is one
   no theme reaches. → `scripts/scenarios/themes.mjs`.
 * **The floating header is a switch, to try** (2026-10-09, the studies' E; Settings → Board → *floating header*,
   `prefs.headFloat` → `<html data-head="float">`): `#shead` a rounded bar inset 14 px from the column's sides and 10 px

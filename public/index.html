@@ -696,6 +696,8 @@
     background: radial-gradient(closest-side, color-mix(in srgb, var(--glow) 80%, transparent), transparent); animation: wash 1.1s ease-out both; animation-delay: inherit; }
   /* Located (locateCard, 2026-10-11): a band of the card's light sweeping across it, once — its own box, so the card's
      two pseudo-elements stay the ring's and its cover's, and so an asking card's let-out pings are not clipped. */
+  /* the circle a new look spreads in (revealFrom): no cross-fade of the two pages, the new one clipped */
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
   .flytitle { position: fixed; z-index: 40; transform-origin: 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
   .card > .loc { position: absolute; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
   .card > .loc i { position: absolute; inset: 0 auto 0 0; width: 45%; background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--glow) 45%, transparent), transparent); }
@@ -2220,7 +2222,7 @@
     prefs.simpleColor = hex || null; savePrefs(); applyColors();
     if (!tintRaf) tintRaf = requestAnimationFrame(() => { tintRaf = 0; redrawColors(); });
   }
-  $('#simpleColors').addEventListener('change', e => { prefs.simpleColors = e.target.checked; savePrefs(); applyColors(); redrawColors(); });
+  $('#simpleColors').addEventListener('change', e => { const on = e.target.checked; revealFrom(centreOf(e.target), () => { prefs.simpleColors = on; savePrefs(); applyColors(); redrawColors(); }); });
   $('#simpleTint').addEventListener('input', e => setTint(e.target.value));
   $('#tintRow').addEventListener('click', e => { if (e.altKey) { e.preventDefault(); setTint(null); } });
   // ---- themes: one keystroke re-skins the board (2026-10-10) ----------------------------------------------
@@ -2303,6 +2305,19 @@
   };
   document.head.append(Object.assign(document.createElement('style'), { id: 'skins', textContent: Object.entries(SKINS).map(([k, t]) => skinCss(k, t)).join('\n') }));
   const darkNow = () => matchMedia('(prefers-color-scheme: dark)').matches;
+  // A new look spreads from where it was asked for (2026-10-11, Telegram's theme switch): the change made inside a view
+  // transition, the new page revealed in a circle growing from that point over the old one. No point — a key — or no
+  // view transitions, or reduced motion: the change at once.
+  const centreOf = el => { const r = el?.getBoundingClientRect(); return r && r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null; };
+  function revealFrom(pt, change) {
+    if (!pt || !document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return change();
+    const r = Math.hypot(Math.max(pt.x, innerWidth - pt.x), Math.max(pt.y, innerHeight - pt.y));
+    const vt = document.startViewTransition(change);
+    vt.ready.then(() => {
+      document.documentElement.animate({ clipPath: [`circle(0px at ${pt.x}px ${pt.y}px)`, `circle(${r}px at ${pt.x}px ${pt.y}px)`] }, { duration: 460, easing: 'cubic-bezier(.2, .7, .2, 1)', pseudoElement: '::view-transition-new(root)', id: 'reveal-look' });
+      noteMotion(null, 'look');
+    }).catch(() => {});
+  }
   let skinPreview;   // what the picker shows while it is up: a key, null for the board's own, undefined when it is down
   /** The theme worn now: the picker's preview, else the slot of the appearance in use — and only one of that appearance. */
   const skinOn = () => { const k = skinPreview !== undefined ? skinPreview : darkNow() ? prefs.skinDark : prefs.skinLight; return SKINS[k] && SKINS[k].dark === darkNow() ? k : null; };
@@ -2368,14 +2383,17 @@
     themePick.sel = Math.max(0, all.findIndex(([x]) => x === (SKINS[k] ? k : darkNow() ? 'own-dark' : 'own-light')));
     dlg.showModal(); repostPane(); themesRender(); $('#themeq').focus();
   }
-  function themeKeep(i = themePick.sel) {
+  // `from`: where the pick was made — a tile clicked — for the theme to spread from there in a circle (revealFrom); ⏎
+  // keeps what the arrows were already showing, so nothing is revealed.
+  function themeKeep(i = themePick.sel, from = null) {
     const [k, t] = themePick.list[i] || []; if (!t) return;
     const v = k.startsWith('own-') ? null : k;
     if (t.dark) prefs.skinDark = v; else prefs.skinLight = v;
-    savePrefs(); themePick.kept = true; skinPreview = undefined; applySkin(); $('#themes').close();   // the close event comes a task later
+    savePrefs(); themePick.kept = true;
+    revealFrom(i === themePick.sel ? null : from, () => { skinPreview = undefined; $('#themes').close(); reskin(); });   // the close event comes a task later
   }
   $('#themes').addEventListener('close', () => { skinPreview = undefined; reskin(); });
-  $('#themes').addEventListener('click', e => { if (e.target === e.currentTarget) return e.currentTarget.close(); const b = e.target.closest('.tt'); if (b) themeKeep(+b.dataset.i); });
+  $('#themes').addEventListener('click', e => { if (e.target === e.currentTarget) return e.currentTarget.close(); const b = e.target.closest('.tt'); if (b) themeKeep(+b.dataset.i, centreOf(b)); });
   $('#themeq').addEventListener('input', () => { themePick.sel = 0; themesRender(); });
   $('#themeq').addEventListener('keydown', e => {
     const cols = Math.max(1, Math.round($('#themegrid').clientWidth / ($('#themegrid .tt')?.offsetWidth || 1)));

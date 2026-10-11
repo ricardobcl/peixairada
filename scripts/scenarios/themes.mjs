@@ -88,5 +88,14 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${chat.id}"]')?.style.getPropertyValue('--repo') === '${BLUE}'`, { what: 'the exact blue' });
   await ctx.evaluate(`document.querySelector('#skinExact').click()`);
   await ctx.settle(); out.shot = await ctx.shot('gruvbox');
+
+  // a tile clicked spreads its theme in a circle from where it was (2026-10-11): a view transition, the new page clipped
+  await ctx.key('KeyY');
+  await ctx.waitFor(`document.querySelector('#themes').open`, { what: 'the grid, to click in' });
+  await ctx.settle();
+  const tp = await ctx.evaluate(`(b => (r => ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }))(b.getBoundingClientRect()))([...document.querySelectorAll('#themegrid .tt')].find(b => /Tokyo Night/.test(b.textContent)))`);
+  for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await ctx.send('Input.dispatchMouseEvent', { type, x: tp.x, y: tp.y, button: 'left', buttons: type === 'mousePressed' ? 1 : 0, clickCount: 1 });
+  await ctx.waitFor(`!document.querySelector('#themes').open && document.documentElement.dataset.skin === 'tokyo-night'`, { what: 'Tokyo Night kept by a click' });
+  await ctx.waitFor(`window.peix.motion().some(m => m.kind === 'look')`, { what: 'spread from the tile (the transition is ready a frame after its change)', timeout: 3000 });
   return out;
 }

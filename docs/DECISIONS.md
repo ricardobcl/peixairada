@@ -100,6 +100,11 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   and the tile you open grows into the chat column as the overview fades. That ghost is a popover: a closing modal
   dialog keeps its place in the top layer until its fade is over, and anything in the page would have grown under it.
   It is a key's mode, but not a key's move — the zoom is the way in and out, once each, not a step repeated.
+* **18 · a new look spreads** (Telegram's theme switch): the ⌥⌘Y grid already previews under the arrows, so ⏎ keeps
+  what is on screen and changes nothing to reveal — the study's "⏎ spreads it" was the wrong moment. The moment is a
+  tile *clicked*, which wears a theme the board was not showing: it spreads from that tile in a circle over the old
+  look. And the simple colours switch, from the switch. A view transition does the work — both engines have them — with
+  the default cross-fade turned off, so it is one page clipped over the other.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 
