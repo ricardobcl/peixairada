@@ -476,7 +476,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   `.cpr`'s rule; `fitHeadPrs()` measures every width once and folds the last chips into `+n` only while the row would
   leave the title less than its repo name plus `TITLE_ROOM` (`TITLE_MIN` is the h2's flex-basis) — on every new header
   draw and on the header's `ResizeObserver`, which runs only when the width moved or under the housing;
-  → `scripts/scenarios/header-prs-fit.mjs`), toggles `#prlist` under the header; `prefs.prsOpen`, the board's. The rows
+  → `scripts/scenarios/header-prs-fit.mjs`). **The row never wraps** (2026-10-11, afternoon): the move's line and a
+  task's chip are `flex: 1 1 0` up to `max-content` — they grow into what is left and count at their least (the move's
+  tag and count, `--hmin`), never breaking the line; down to one chip and still too full, the move's line and then the
+  `+n −n` are put away (`.hfold`), ··· always on the title's line (→ the narrow step of `pr-turn.mjs`). It toggles `#prlist` under the header; `prefs.prsOpen`, the board's. The rows
   are rendered folded too (`#prlist` hidden), so ⌥⌘G and the harness still read `#prlist .prrow`. The header's chips
   are 20 px tall. → `scripts/scenarios/header-prs.mjs`.
 * **Every PR chip GitHub has answered for is solid** (2026-09-28): `.cpr` and `.hpr` filled with `--prc`, its state's

@@ -5,6 +5,20 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-11, afternoon — the header's row holds
+
+Ricardo, with a screenshot of the board filled at the notch, tiles and the floating header on: "seems like some times
+the "..." is wraping around and making 2 rows, which shouldn't happen".
+
+* **The header's row never wraps.** The header is a wrapping flex row (the details fold under it as a second line),
+  and a line breaks on its items' basis sizes before anything shrinks: the *your move* line's was its whole reason (a
+  PR, *pushed since your review · 2 comments from …*, up to 45 % of the header), so beside the housing — the title
+  left of it, everything else in what is right of it — ··· went to a second line. The line now has a basis of 0 and
+  grows into what the row leaves, up to its own width, the reason ellipsized; a task's chip the same. `fitHeadPrs`
+  counts them at their least — the move's tag and its `+n` — when it folds the PR chips, and down to one chip with the
+  row still too full puts the move's line away, then the `+n −n` (the card says the one, ··· has the other). The title
+  keeps its 170 px; ··· is always on its line.
+
 ## Decisions of 2026-10-11, midday — a PR taken off a chat
 
 Ricardo: "if I click on option and hover on a PR on the top bar in the chat, an X should appear to de-associated the PR

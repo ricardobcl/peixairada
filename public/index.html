@@ -798,7 +798,7 @@
   .chip.watch .ic { width: 11px; height: 11px; flex: none; }
   /* On a card it shares the title's row, so it takes at most half of it and the title keeps the rest. */
   .card .trow .chip.watch { margin-top: 3px; max-width: 50%; }
-  .shead .chip.watch { max-width: 40%; flex: 0 1 auto; }
+  .shead .chip.watch { flex: 1 1 0; min-width: 64px; max-width: max-content; }   /* as the move's line: room left, never a second row */
   .card .repo { font-weight: 800; font-size: 13px; letter-spacing: .1px; flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* The letters the magnifier's query landed on (2026-09-25), as ⌥⌘K bolds them — underlined here as well, because
      a card is tinted in its project's colour and the accent alone does not read on every one of them. */
@@ -948,7 +948,11 @@
   .card .state.moveslot { align-items: baseline; gap: 6px; }   /* the line's own metrics, for the place it holds */
   .card .state:is(.prmove, .moveslot) .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .card .state.prmove .opts { color: var(--muted); font-weight: 500; flex: none; }
-  .shead .hmove { flex: 0 1 auto; max-width: 45%; min-width: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+  /* It never wraps the row (2026-10-11, afternoon: ··· went to a second line beside the housing): a flex basis of 0,
+     growing into the room the row leaves up to its own width — the reason ellipsized —, and no narrower than the tag and
+     the count (--hmin, fitHeadPrs, which folds the PR chips to leave that much; min-content is the whole reason). */
+  .shead .hmove { flex: 1 1 0; min-width: var(--hmin, 0px); max-width: max-content; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+  .shead > .hfold { display: none; }   /* put away by fitHeadPrs where the row has no room for it */
   .shead .hmove .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .shead .hmove .n { flex: none; opacity: .7; font-weight: 500; }
   /* Done/reopen: an icon at the end of the top row, not a bordered pill in a row of its own. Bigger, and only under
@@ -5312,21 +5316,31 @@
     const chips = [...t.querySelectorAll('.hpr:not(.more)')], more = t.querySelector('.hpr.more');
     for (const c of chips) c.hidden = false;
     more.hidden = false; more.textContent = `+${chips.length}`;   // shown for the measure, at its widest
+    for (const el of head.querySelectorAll(':scope > .hfold')) el.classList.remove('hfold');   // and what the last fit put away
     // Every width in one layout, then the arithmetic (2026-09-27; hiding a chip and measuring the row again, per chip,
     // was a layout each): the button is its frame plus the chips shown, a gap between each, plus +n when any are hidden.
     const cs = getComputedStyle(head), gap = parseFloat(cs.columnGap) || 0, h2 = head.querySelector('h2');
     const row = [...head.children].filter(el => el.tagName !== 'H2' && el !== t && !el.classList.contains('details') && el.getClientRects().length);
+    // what grows (the move's line, a task's chip: flex 1 1 0) counts at its least — it gives way before a chip folds
+    const mv = head.querySelector('.hmove'), mvMin = mv ? [...mv.children].reduce((w, c) => w + (c.classList.contains('q') ? 0 : c.getBoundingClientRect().width), 0) + (parseFloat(getComputedStyle(mv).columnGap) || 0) * (mv.children.length - 1) : 0;
+    const least = el => el === mv ? mvMin : getComputedStyle(el).flexGrow !== '0' ? parseFloat(getComputedStyle(el).minWidth) || 0 : el.getBoundingClientRect().width;
     const title = head.classList.contains('tright') && state.notch ? state.notch.right + notchPad() - h2.getBoundingClientRect().left + TITLE_ROOM   // the title past the housing: the jump, then its room
       : head.classList.contains('hole') ? h2.getBoundingClientRect().width + (parseFloat(h2.style.marginRight) || 0)   // the hole: the title's width is set, and the housing beside it is spent
       : Math.max(TITLE_MIN, (head.querySelector('h2 .repo')?.offsetWidth || 0) + TITLE_ROOM);
-    const room = head.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - title
-      - row.reduce((w, el) => w + el.getBoundingClientRect().width, 0) - gap * (row.length + 1);
+    let room = head.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - title
+      - row.reduce((w, el) => w + least(el), 0) - gap * (row.length + 1);
     const cw = chips.map(c => c.getBoundingClientRect().width), mw = more.getBoundingClientRect().width, tg = parseFloat(getComputedStyle(t).columnGap) || 0;
     const all = t.getBoundingClientRect().width, frame = all - cw.reduce((a, b) => a + b, 0) - mw - tg * chips.length;
     let shown = chips.length, width = all - mw - tg;   // every chip, no +n
     while (shown > 1 && width > room) { shown--; width = frame + cw.slice(0, shown).reduce((a, b) => a + b, 0) + tg * shown + mw; }
+    // Down to one chip and the row still too full (2026-10-11): the move's line goes, then the changes' count — the card
+    // says the one, ··· has the other — so the row stays one line, ··· on it, whatever the column's width.
+    const off = [];
+    for (const el of [mv, head.querySelector('#diffBtn')]) if (el && row.includes(el) && width > room) { room += least(el) + gap; off.push(el); }
+    for (const el of off) el.classList.add('hfold');
     for (let i = shown; i < chips.length; i++) chips[i].hidden = true;
     more.hidden = shown === chips.length;
+    if (mv) mv.style.setProperty('--hmin', `${Math.ceil(mvMin)}px`);
     if (!more.hidden) { more.textContent = `+${chips.length - shown}`; more.title = chips.slice(shown).map(c => c.title).join('\n'); }
   }
   // The header's size changed: its width moves the fold (a height alone — a chip fold, the details — does not, and a

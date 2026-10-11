@@ -133,6 +133,22 @@ export default async function (ctx) {
     ctx.assert.equal(out.head.bg, 'none', 'the header\'s chip is solid, not its wash');
     ctx.assert.equal(out.head.why, 'your move · pushed since your review');
     await ctx.shot('2-header', await ctx.evaluate(`(r => ({ x: r.left, y: 0, width: r.width, height: 110 }))(document.querySelector('#chat').getBoundingClientRect())`));
+    // a narrow column (2026-10-11, afternoon — ··· went to a second line beside the housing): the reason gives way
+    // — the line ellipsized, the tag whole —, narrower the line goes, and the row never wraps: ··· on the title's line
+    const listW = await ctx.evaluate(`document.querySelector('#sessions').style.width`);
+    for (const chatW of [640, 520, 430]) {
+      await ctx.evaluate(`Object.assign(document.querySelector('#sessions').style, { width: (innerWidth - ${chatW}) + 'px', maxWidth: 'none' })`); await ctx.sleep(300); await ctx.settle();
+      const row = await ctx.evaluate(`JSON.stringify((() => { const h = document.querySelector('#shead h2').getBoundingClientRect(), m = document.querySelector('#moreBtn').getBoundingClientRect(), q = document.querySelector('#shead .hmove .q');
+        return { chat: Math.round(document.querySelector('#chat').getBoundingClientRect().width), dy: Math.round(Math.abs((m.top + m.bottom) / 2 - (h.top + h.bottom) / 2)), clipped: q.scrollWidth > q.clientWidth,
+          tag: Math.round(document.querySelector('#shead .hmove .ymove').getBoundingClientRect().width), head: Math.round(document.querySelector('#shead').getBoundingClientRect().height) }; })())`).then(JSON.parse);
+      (out.narrow ||= []).push(row);
+      ctx.assert.ok(row.dy <= 3, `··· on the title's row in a ${row.chat} px column: ${JSON.stringify(row)}`);
+      ctx.assert.ok(row.tag >= 60 || row.tag === 0, `the tag whole, or the line put away: ${JSON.stringify(row)}`);
+    }
+    ctx.assert.deepEqual([out.narrow[0].tag >= 60, out.narrow[0].clipped], [true, true], 'first the reason gives way, the tag whole');
+    ctx.assert.equal(out.narrow.at(-1).tag, 0, 'narrower, the line goes');
+    await ctx.shot('2-header-narrow', await ctx.evaluate(`(r => ({ x: r.left, y: 0, width: r.width, height: 110 }))(document.querySelector('#chat').getBoundingClientRect())`));
+    await ctx.evaluate(`Object.assign(document.querySelector('#sessions').style, { width: ${JSON.stringify(listW)}, maxWidth: '' })`); await ctx.sleep(300);
 
     // ticked again, having seen it: it holds — and through a restart, where the board has to remember when it learnt
     await tick(true);
