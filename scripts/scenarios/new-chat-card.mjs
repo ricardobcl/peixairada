@@ -8,6 +8,7 @@
 // below it (2026-09-30, tick-next.mjs). Runs the fake claude.
 import { waitFor } from '../../lib/testserver.mjs';
 
+// (the ready count is every not-done lane's since 2026-10-12, when Ready was split: a fake's reply is a new one)
 export const meta = { server: true, fake: true, fixture: 'auto' };
 
 const cardOf = (ctx, id) => ctx.evaluate(`(() => { const cards = [...document.querySelectorAll('#slist > .card')]; const c = cards.find(c => c.dataset.id === ${JSON.stringify(id)});
@@ -32,7 +33,7 @@ export default async function (ctx) {
     await ctx.waitFor(`document.querySelector('#picklist .pkrow.sel')?.textContent.includes('new chat')`, { what: 'the chats step, ＋ new chat selected' });
     await enter();
   };
-  out.ready0 = Number(await ctx.evaluate(`(document.querySelector('#slist > .gsep.lane.ready b')?.textContent || 0)`));
+  out.ready0 = Number(await ctx.evaluate(`[...document.querySelectorAll('#slist > .gsep.lane:not(.done, .zero, .away) b')].reduce((n, b) => n + +b.textContent, 0)`));
 
   await newChat();
   await ctx.waitFor(`(s => s.current && !${JSON.stringify(known)}.includes(s.current) && s.termSession === s.current)(window.peix.state())`, { what: 'the board on the new chat, its drawer running it', timeout: 20_000 });
@@ -41,7 +42,7 @@ export default async function (ctx) {
   await ctx.waitFor(`!!document.querySelector('#slist > .card[data-id=${JSON.stringify(id)}]')`, { what: 'a card for the new chat', timeout: 5000 });
   out.fresh = await cardOf(ctx, id);
   out.session = await ctx.peix(`session(${JSON.stringify(id)})`).then(s => ({ title: s.title, startedAt: s.startedAt, lastActivity: s.lastActivity, alive: s.alive, status: s.status, file: s.file }));
-  out.ready1 = Number(await ctx.evaluate(`(document.querySelector('#slist > .gsep.lane.ready b')?.textContent || 0)`));
+  out.ready1 = Number(await ctx.evaluate(`[...document.querySelectorAll('#slist > .gsep.lane:not(.done, .zero, .away) b')].reduce((n, b) => n + +b.textContent, 0)`));
   await ctx.waitPrompt();
   await ctx.shot('fresh', { x: 0, y: 0, width: 1270, height: 600 });
   ctx.assert.ok(out.fresh, 'the new chat has a card before its first word');
@@ -76,7 +77,7 @@ export default async function (ctx) {
   // once the first chat's reply has landed (2026-10-09): the fake takes seven 60 ms lines over it, and read while it
   // was still clauding the count was one short of what it came back to.
   await ctx.waitFor(`window.peix.session(${JSON.stringify(id)})?.status === 'idle' && !document.querySelector('#slist > .gsep.lane.working')`, { what: 'the first chat\'s reply landed', timeout: 10_000 });
-  const ready2 = Number(await ctx.evaluate(`(document.querySelector('#slist > .gsep.lane.ready b')?.textContent || 0)`));
+  const ready2 = Number(await ctx.evaluate(`[...document.querySelectorAll('#slist > .gsep.lane:not(.done, .zero, .away) b')].reduce((n, b) => n + +b.textContent, 0)`));
   await newChat();
   await ctx.waitFor(`(s => s.current && !${JSON.stringify([...known, id])}.includes(s.current) && s.termSession === s.current)(window.peix.state())`, { what: 'the board on a second new chat', timeout: 20_000 });
   const id2 = (await ctx.peix('state()')).current;
@@ -86,7 +87,7 @@ export default async function (ctx) {
   await waitFor(async () => (await ctx.server.terminals()).every(t => t.sessionId !== id2 || t.exited !== null), { what: "the ticked chat's drawer ended", timeout: 10_000 });
   await ctx.waitFor(`(s => s && !s.alive && s.done)(window.peix.session(${JSON.stringify(id2)}))`, { what: 'its claude gone, the chat done', timeout: 10_000 });
   await ctx.sleep(300);
-  out.ticked = { card: await cardOf(ctx, id2), first: await cardOf(ctx, id), ready: Number(await ctx.evaluate(`(document.querySelector('#slist > .gsep.lane.ready b')?.textContent || 0)`)),
+  out.ticked = { card: await cardOf(ctx, id2), first: await cardOf(ctx, id), ready: Number(await ctx.evaluate(`[...document.querySelectorAll('#slist > .gsep.lane:not(.done, .zero, .away) b')].reduce((n, b) => n + +b.textContent, 0)`)),
     done: Number(await ctx.evaluate(`document.querySelector('#slist > .gsep.lane.done b')?.textContent || 0`)),
     column: JSON.parse(await ctx.evaluate(`JSON.stringify({ current: window.peix.state().current, hash: location.hash, head: document.querySelector('#shead').textContent, log: document.querySelector('#log').textContent, tinted: document.querySelector('#chat').classList.contains('tinted') })`)) };
   await ctx.shot('ticked', { x: 0, y: 0, width: 1270, height: 600 });

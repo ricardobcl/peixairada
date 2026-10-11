@@ -34,6 +34,18 @@ the order they landed.
   nothing the lane's head does not. **The day by name** (`dayOf`): Today, Yesterday, the weekday within the week,
   then DD-MM-YYYY — the transcript's day lines too. Not sticky: the list's top pill and the FLIP slides would have to
   learn about it, for a label never far from its cards.
+* **T1 — Ready, split three ways, and your move a lane** (`rankOf`): the board had 106 ready chats, 77 untouched for
+  a week, 13 of them with a PR waiting on you. The lanes are *Asking you · Your move · Clauding · New replies · Ready ·
+  Idle · Done*. **New replies is the server's**, not the page's unread count (which is the alerts a page saw while it
+  was open, and starts again at every reload): `seen` in the state file, when the board last showed each chat — the
+  page posts it on opening one, and when a reply lands in the one in front — and a reply after it is new. A chat never
+  shown counts from `seenSince`, the first boot that kept this, so the board did not wake to a hundred new replies.
+  Read in the browser or the app, a chat is read in both. **Ready is a chat whose last word is from today or the three
+  days before** — four calendar days, so Friday's chats are still Ready on a Monday — and **Idle** is older, folded to
+  begin with; a board saved with only Done folded gets Idle folded too, once (`lanesIdle`), one that opened every lane
+  (the harness) keeps it. A clauding chat stays Clauding whatever its PRs say. *All caught up* now means no question,
+  no PR at your move, no new reply and nothing ready. The overview's fourth column is *New replies* (the server's, or
+  the page's unread count while it has one).
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

@@ -609,15 +609,22 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   snapshot lacks renders the board from its fetch. **It has the ✓ like any idle chat, and ticked it is gone** — no dimmed done card, nothing to resume: `visible()`
   drops an empty chat once done, and the column moves on to the next card (`tickDone`) or, with none, leaves it
   (`leaveChat()`, from the `session` event; ＋ goes through the same function). → `scripts/scenarios/new-chat-card.mjs`, the card checks in `drawer-clear.mjs`.
-* **A chat waiting on your answer first, then clauding, then ready, done last** (`RANK` / `rankOf`), inside each
+* **A chat waiting on your answer first, then a PR at your move, clauding, new replies, ready, idle, done last**
+  (`RANK` / `rankOf`, 2026-10-12; asking · clauding · ready · done before): **Your move** a chat with a PR waiting on
+  you (`yourMove`, not done for good), **New replies** one whose last word is Claude's and came after the board last
+  showed it (`replied`: the summary's `seenAt` — the server's `seen` in the state file, `POST /api/sessions/:id/seen`
+  from `markSeen` on opening a chat and on a reply landing in the one in front; never shown, `seenSince`, the first
+  boot that kept it), **Ready** the rest whose last word is from today or the `IDLE_DAYS` (3) before, **Idle** older —
+  folded to begin with (and once, `lanesIdle`, on a board saved with Done alone folded). Membership: asking beats
+  clauding beats your move. → `test/seen.test.mjs`, `scripts/scenarios/lanes.mjs`. Inside each
   group **by the last word, yours or Claude's** (`wordAt`: the newer of `lastUserAt` and `lastReplyAt`; a tool call
   is not a word — **a PR come round to you is**, at its `turn.movedAt`: `movedAt(s)`, in both copies), newest first; a project ranks by its newest chat. Every count goes by `bucket()`,
   where an asking chat is a ready one — only the order knows the difference, in the list and in ⌥⌘K. **The lines
   between the cards** (`.gsep`): **a lane's head over each group** (2026-10-09, `laneHtml`, `.gsep.lane.<group>`; one
-  divider between the clauding and the ready cards before) — its mark, its name (`.ln`: *Asking you · Clauding · Ready
-  · Done*) and its count at the right end, none under a query — **and a toggle that folds its lane** (2026-10-11,
+  divider between the clauding and the ready cards before) — its mark, its name (`.ln`: *Asking you · Your move ·
+  Clauding · New replies · Ready · Idle · Done*) and its count at the right end, none under a query — **and a toggle that folds its lane** (2026-10-11,
   later; three state chips filtered the list before): `data-lane`, a click or ⏎/space (`foldLane`), `prefs.lanesShut`
-  — **Done folded to begin with** — the head dimmed with its chevron turned and its count kept, its cards folding away
+  — **Done and Idle folded to begin with** — the head dimmed with its chevron turned and its count kept, its cards folding away
   as a ticked one does (`laneShut`; not on the rail, which draws no heads; the harness opens every lane unless a
   scenario's `prefs` say otherwise); `fold` and `unfold` in `motion()`. → `scripts/scenarios/lanes.mjs`; the Clauding head's mark is **Claude's in pixels**, a
   9 × 9 window on a strip of frames drawn from `PIX_SHEET` (`#` a pixel of 2 px), `pix` sliding it a frame at a time
@@ -724,7 +731,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   has passed, and on the way back to a hidden page, **backing off on failures**; a failure keeps the last numbers,
   `.stale`. The server's `USAGE=off` answers `off: true` and the bar hides — every test server.
   → `scripts/scenarios/usage-bar.mjs`.
-* **State lives in four places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done ticks
+* **State lives in four places**: the server's `~/Library/Application Support/peixAIrada/state.json` (done ticks,
+  when the board last showed each chat
   and which are for good, the PRs taken off a chat, named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, PR
   turns; `STATE_FILE` overrides) and the user's `~/.config/peixairada/config.json` (the setup, below), both shared by
   the app and every browser; the browser's `localStorage` `peixairada-prefs`

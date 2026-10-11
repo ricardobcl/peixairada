@@ -116,6 +116,11 @@ let forGoodMarks = {};
 // the chat only mentioned in passing — a review's other PR, the one it follows — leaves the chat, and its lines do not
 // bring it back, a re-read included (notePr); a word of yours naming it after does.
 let unlinked = {};
+// When the board last showed a chat (2026-10-12): sessionId -> ISO time — the page says so when it opens one, and when a
+// reply lands on the chat it shows (POST /api/sessions/:id/seen). A reply after it is a new one: the list's New replies
+// lane. A chat never shown counts from `seenSince`, the moment the board first kept this, so nothing from before it is
+// new.
+let seen = {}, seenSince = null;
 // Custom projects: id -> { id, name, cwds, createdAt }. A name over one or more folders — multi-repo
 // work, an investigation. Folders themselves need no record: they come from the sessions' cwds.
 let projects = {};
@@ -170,6 +175,7 @@ try {
   doneMarks = st.done || {};   // files from before 2026-09-19 also carry a `pins` key — ignored, gone on the next save
   forGoodMarks = st.forGood && typeof st.forGood === 'object' ? st.forGood : {};
   unlinked = st.unlinked && typeof st.unlinked === 'object' ? st.unlinked : {};
+  seen = st.seen && typeof st.seen === 'object' ? st.seen : {}; seenSince = typeof st.seenSince === 'string' ? st.seenSince : null;
   projects = st.projects || {};
   titles = st.titles || {};
   pinned = Array.isArray(st.pinned) ? st.pinned.filter(k => typeof k === 'string') : [];
@@ -192,7 +198,7 @@ function saveState() {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, awake: awakeOn }, null, 1));
+    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, awake: awakeOn }, null, 1));
     renameSync(tmp, STATE_FILE);
   } catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
@@ -611,6 +617,7 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     // the other live processes on this chat, and who wrote its last turn — the page's "VS Code too" warning
     rivals: s.rivals, tailEntrypoint: s.entrypoint, tailEntrypointAt: s.entrypointAt,
     done: isDone(s), doneAt: doneMarks[s.id] || null, forGood: forgotten(s),
+    seenAt: seen[s.id] || seenSince,   // the board last showed it: a reply after is a new one (2026-10-12)
     // its folder not there, and the repo a clone would bring it back from (2026-10-09; the resume bar says so before
     // the resume clones it) — asked of a chat with no claude only: one running has its folder
     ...(!s.alive && s.cwd && !existsSync(s.cwd) ? { folderMissing: true, cloneRef: cloneFor(s.cwd)?.ref || null } : {})
@@ -3069,6 +3076,14 @@ const server = createServer(async (req, res) => {
       saveState(); schedulePush(s);
       return json(res, 200, { ok: true, done: isDone(s), forGood: forgotten(s) });
     }
+    if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/seen$/))) {   // the board showed the chat (2026-10-12)
+      const s = sessions.get(m[1]);
+      if (!s) return json(res, 404, { error: 'unknown session' });
+      seen[s.id] = new Date().toISOString();
+      for (const id of Object.keys(seen)) if (!sessions.has(id)) delete seen[id];
+      saveState(); schedulePush(s);
+      return json(res, 200, { ok: true, seenAt: seen[s.id] });
+    }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/unlink$/))) {   // a PR taken off the chat (2026-10-11): { url }
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
@@ -3236,6 +3251,7 @@ server.on('error', e => {
 await new Promise(res => server.listen(PORT, HOST, res));
 console.log(`[peixairada] listening on http://${HOST}:${PORT}  (notify=${NOTIFY}, terminals in ${TERMS_DIR})`);
 const t0 = Date.now();
+if (!seenSince) { seenSince = new Date().toISOString(); saveState(); }   // a reply before the board kept what it showed is no new one (2026-10-12)
 loadConfig();
 scanProjects();
 await adoptHolders();   // before the registry: a drawer's own process is what makes a chat's live process "mine"

@@ -35,7 +35,7 @@ export default async function (ctx) {
   const names = Object.fromEntries(chats.map((c, i) => [c.id, ['On one', 'On two', 'On none'][i]]));
   const titles = () => ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#slist > .card')].map(c => c.dataset.id))`).then(JSON.parse).then(ids => ids.map(id => names[id]).filter(Boolean));
   const row = () => ctx.evaluate(`JSON.stringify({ hidden: document.querySelector('#people').hidden, on: document.querySelector('#people').classList.contains('on'),
-    faces: [...document.querySelectorAll('#people button[data-login]')].map(b => b.dataset.login + (b.classList.contains('on') ? '*' : '')), ready: +(document.querySelector('#slist > .gsep.lane.ready b')?.textContent || 0) })`).then(JSON.parse);   // the Ready lane's count (the chip's until 2026-10-11, later)
+    faces: [...document.querySelectorAll('#people button[data-login]')].map(b => b.dataset.login + (b.classList.contains('on') ? '*' : '')), ready: [...document.querySelectorAll('#slist > .gsep.lane:not(.done, .zero) b')].reduce((n, b) => n + +b.textContent, 0) })`).then(JSON.parse);   // the not-done lanes' counts (the chip's until 2026-10-11, later; the Ready lane's alone until 2026-10-12, when a PR at your move went to a lane of its own)
   const click = async login => { await ctx.evaluate(`document.querySelector('#people button[data-login="${login}"]').click()`); await ctx.sleep(100); await ctx.settle(); };
 
   // narrowed to the folder, so the fixture's own chats (and their PRs) stay out of it
@@ -69,13 +69,13 @@ export default async function (ctx) {
   await click('rui');
   await ctx.waitFor(`window.peix.state().person === 'rui'`, { what: 'rui chosen' });
   out.rui = { ...(await row()), titles: await titles() };
-  ctx.assert.deepEqual(out.rui, { hidden: false, on: true, faces: ['eva', 'rui*', 'ana'], ready: 2, titles: ['On one', 'On two'] }, 'rui is in both PRs: those two chats, counted');
+  ctx.assert.deepEqual(out.rui, { hidden: false, on: true, faces: ['eva', 'rui*', 'ana'], ready: 2, titles: ['On two', 'On one'] }, 'rui is in both PRs: those two chats, counted — On two\'s PR at your move, its lane first');
   await ctx.shot('rui', { x: 0, y: 500, width: 400, height: 500 });
 
   // folded while narrowed: the face the list is narrowed to stays in sight, the list still narrowed; unfolded again
   await mark();
   out.narrowFolded = { ...(await fold()), titles: await titles() };
-  ctx.assert.deepEqual([out.narrowFolded.folded, out.narrowFolded.shown, out.narrowFolded.titles], [true, ['rui*'], ['On one', 'On two']], `folded, rui's face kept: ${JSON.stringify(out.narrowFolded)}`);
+  ctx.assert.deepEqual([out.narrowFolded.folded, out.narrowFolded.shown, out.narrowFolded.titles], [true, ['rui*'], ['On two', 'On one']], `folded, rui's face kept: ${JSON.stringify(out.narrowFolded)}`);
   await ctx.shot('folded-rui', { x: 0, y: 500, width: 400, height: 500 });
   await mark();
   ctx.assert.deepEqual((await fold()).shown, ['eva', 'rui*', 'ana'], 'the mark again: every face');

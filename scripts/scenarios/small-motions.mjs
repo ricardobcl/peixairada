@@ -32,9 +32,9 @@ export default async function (ctx) {
   // for a while, and a transition then stands at its start however long the press is held
   const held = sel => `(e => { e.getAnimations().forEach(a => { try { a.finish(); } catch {} }); return getComputedStyle(e).scale; })(document.querySelector(${JSON.stringify(sel)}))`;
   out.press = {
-    card: await press('#slist > .card:nth-of-type(2) .title', held('#slist > .card:nth-of-type(2)')),
+    card: await press('#slist > .card .title', held('#slist > .card')),
     chip: await press('#qBtn', held('#qBtn')),   // the magnifier (a state chip until 2026-10-11, later, when they went)
-    tick: await press('#slist > .card:nth-of-type(2) .top .act', `[${held('#slist > .card:nth-of-type(2)')}, ${held('#slist > .card:nth-of-type(2) .top .act')}]`),
+    tick: await press('#slist > .card .top .act', `[${held('#slist > .card')}, ${held('#slist > .card .top .act')}]`),
     after: await ctx.evaluate(held('#qBtn')),
   };
   ctx.assert.equal(out.press.card, '0.99', 'a card held down dips to 99 %');

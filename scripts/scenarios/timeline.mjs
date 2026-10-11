@@ -55,7 +55,7 @@ export default async function (ctx) {
 
   // the runs: a day and a state group in a row each — ready by your last touch, then the done ones
   out.at = await rail(ctx);
-  ctx.assert.deepEqual(out.at.runs.map(r => [r.g, r.n]), [['ready', 3], ['ready', 4], ['ready', 3], ['ready', 2], ['done', 2]], 'five runs: four days of ready chats, then the done ones');
+  ctx.assert.deepEqual(out.at.runs.map(r => [r.g, r.n]), [['ready', 3], ['ready', 4], ['idle', 3], ['idle', 2], ['done', 2]], 'five runs: two days of ready chats, two of idle ones (older than four days, 2026-10-12), then the done ones');
   ctx.assert.equal(out.at.labs.length, 5, 'a label for each run');
   for (const l of out.at.labs) ctx.assert.ok(Math.abs(l.at - l.want) < .006, `a label sits where its run begins in the list (${l.at.toFixed(3)} against ${l.want.toFixed(3)})`);
   ctx.assert.ok(out.at.thumb && Math.abs(out.at.thumb.at - out.at.thumb.want) < .004 && Math.abs(out.at.thumb.len - out.at.thumb.wantLen) < .004, 'the thumb is the window');
@@ -80,13 +80,14 @@ export default async function (ctx) {
   // pointed at, over the third run's tick: labels come out, that one nearest and largest, none overlapping
   await move(ctx, x, yOf(out.at, 2));
   await settled(ctx, 1);
+  await ctx.settle();   // the thumb's own widening, a .15 s transition the swell does not wait for (it read 7.2 of 8)
   out.hover = await rail(ctx);
   ctx.assert.equal(out.hover.thumb.width, 8, 'the thumb widens under the pointer');
   const shown = out.hover.labs.filter(l => l.on).sort((a, b) => a.top - b.top);
   ctx.assert.ok(shown.length >= 3, `several days out (${shown.length})`);
   const near = out.hover.labs.find(l => l.near);
   ctx.assert.equal(near?.run, 2, 'the one under the pointer is the nearest');
-  ctx.assert.equal(near.text, `${railDay(10)} · 3 ready`, 'a label says its day, how many and in which state');
+  ctx.assert.equal(near.text, `${railDay(10)} · 3 idle`, 'a label says its day, how many and in which state');
   ctx.assert.ok(shown.every(l => l.h <= near.h + .5) && shown.some(l => l.h < near.h - 2), 'the nearest is the largest, the others smaller');
   for (let i = 1; i < shown.length; i++) ctx.assert.ok(shown[i].top >= shown[i - 1].bottom - .5, 'no two labels overlap');
   ctx.assert.deepEqual(out.hover.labs.filter(l => l.on).map(l => l.run).sort(), [0, 1, 2, 3, 4].filter(i => out.hover.labs[i].on), 'labels keep their runs');
