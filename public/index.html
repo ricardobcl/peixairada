@@ -1146,16 +1146,16 @@
      the colour square — invisible at rest, so any room it took read as a gap — takes none: it sits on the bar, centred,
      out of the flow (positioned from .shead like the bar, at the span's own x). */
   /* The bar itself went on 2026-09-28; the span stays, the room between the name and the title and the colour square's
-     place — since 2026-10-11 (late night) the room the header's black dissolves in (--hfade-w, below), less 4 px a side. */
-  .shead { --hfade-w: 40px; --hfade-in: calc(var(--hfade-w) - 4px); }
-  .shead h2 .sep { flex: none; width: calc(var(--hfade-w) - 8px); align-self: stretch; }
+     place — since 2026-10-11 (late night) the room the header's black fades in (--hfade-w, below), less 8 px a side. */
+  .shead { --hfade-w: 48px; --hfade-in: calc(var(--hfade-w) - 8px); }
+  .shead h2 .sep { flex: none; width: calc(var(--hfade-w) - 16px); align-self: stretch; }
   /* The project's colour beside its name, and the picker for it (2026-09-22): the column's own
      square, in the header where you are already looking. It keeps its place in the row always and only inks
      itself while the pointer is in the header, so nothing moves under the pointer and the row stays as quiet as
      it was. On a tinted header the square is the header's own colour, so it is read by its border — the ink that
      reads on that tint, at a third. */
-  .shead h2 .sq { position: absolute; top: 50%; transform: translate(calc(-50% + var(--hfade-w) / 2 - 4px), -50%); width: 11px; height: 11px; border-radius: 3px; background: var(--repo, var(--nocolor)); border: 1px solid color-mix(in srgb, var(--rink, var(--muted)) 45%, transparent); opacity: 0; transition: opacity .12s, transform .12s; }
-  .shead h2 .sq.pick:hover { transform: translate(calc(-50% + var(--hfade-w) / 2 - 4px), -50%) scale(1.35); }   /* the picker's own scale, around the same centre */
+  .shead h2 .sq { position: absolute; top: 50%; transform: translate(calc(-50% + var(--hfade-w) / 2 - 8px), -50%); width: 11px; height: 11px; border-radius: 3px; background: var(--repo, var(--nocolor)); border: 1px solid color-mix(in srgb, var(--rink, var(--muted)) 45%, transparent); opacity: 0; transition: opacity .12s, transform .12s; }
+  .shead h2 .sq.pick:hover { transform: translate(calc(-50% + var(--hfade-w) / 2 - 8px), -50%) scale(1.35); }   /* the picker's own scale, around the same centre */
   .shead:hover h2 .sq, .shead h2 .sq:focus-visible { opacity: 1; }
   .shead .path { font-size: 12px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   /* Everything that was a button at the header's right lives under ··· (2026-09-24): the title, the PRs, a running
@@ -1214,12 +1214,12 @@
   /* Right of the project's name the header is black (2026-09-28): the camera housing's colour, so at the notch the
      housing is part of it. Painted by ::after from --hsplit (the separator's right edge) down to --hrow (the first row;
      the details under it keep the header's ground), both set by paintHeadSplit; the title and what follows it borrow
-     the dark theme's inks, as a black card does. It comes in over a pixel dissolve (2026-10-11, late night; a hard edge
-     before): the black's first --hfade-w is masked by HEAD_FADE, 4 px a pixel, from 4 px after the name to 4 px past
+     the dark theme's inks, as a black card does. It fades in (2026-10-11, late night; a hard edge before, a pixel dissolve
+     for an hour): the black's first --hfade-w is masked by a plain gradient, from 8 px after the name to 8 px past
      --hsplit, where the title's room starts — no --hsplit, no black, as before. */
   .shead { isolation: isolate; }
   .shead::after { content: ''; position: absolute; top: 0; right: 0; left: calc(var(--hsplit, calc(100% + var(--hfade-in))) - var(--hfade-in)); height: var(--hrow, 100%); background: var(--crust, #000); z-index: -1; pointer-events: none;
-    -webkit-mask: var(--hfade) 0 0 / var(--hfade-w) auto repeat-y, linear-gradient(#000 0 0) var(--hfade-w) 0 / 100% 100% no-repeat; mask: var(--hfade) 0 0 / var(--hfade-w) auto repeat-y, linear-gradient(#000 0 0) var(--hfade-w) 0 / 100% 100% no-repeat; }
+    -webkit-mask: linear-gradient(90deg, transparent, #000 var(--hfade-w)); mask: linear-gradient(90deg, transparent, #000 var(--hfade-w)); }
   /* (2026-10-01) The open chat's colour as dark as that black (nearBlack, tintChat): the black beside it — here, and
      the splitter under the open card — is a grey, so the project's box and the card still stand out of it. */
   main.darkchat .shead::after, main.darkchat #splitter::after, main.darkchat #splitter::before { background: #4a4a45; }
@@ -5430,14 +5430,6 @@
   new ResizeObserver(floatH).observe($('#shead'));
   new ResizeObserver(floatH).observe($('#prlist'));
   new ResizeObserver(floatH).observe($('#rival'));
-  // The header's black dissolves into the project's colour (2026-10-11, late night), the mask of .shead::after: # a black
-  // pixel of 4 px, each column a tenth further across with that much more of them — which ones blue noise (ranked by
-  // best-candidate sampling, the lowest of each column kept), so it reads as a dissolve, not a checkerboard or clumps.
-  // Sixteen rows, repeated down the header's first row; 40 px wide, the header's --hfade-w.
-  const HEAD_FADE = ['.#..##.###', '...#..#.##', '.....#.#.#', '....#.####', '...#.#####', '#...#.####', '..#..###.#', '.#.#.#..##',
-    '....#...#.', '..#.#.#.##', '.....#####', '...#######', '..###..###', '...#.#####', '..#..#.###', '......####'];
-  document.documentElement.style.setProperty('--hfade', `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='${HEAD_FADE[0].length * 4}' height='${HEAD_FADE.length * 4}' shape-rendering='crispEdges'><path d='${
-    HEAD_FADE.flatMap((r, y) => [...r.matchAll(/#+/g)].map(m => `M${m.index * 4} ${y * 4}h${m[0].length * 4}v4h-${m[0].length * 4}z`)).join('')}'/></svg>`)}")`);
   /** Where the header's black starts (after the project's name, at the separator's right edge) and how far down it goes
    *  (the first row: the details under it keep the header's ground) — read once the row is laid out: after the notch
    *  and the chips' fold. */

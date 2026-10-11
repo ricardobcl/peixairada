@@ -5,6 +5,19 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-11, late night, last — the header's black fades in smoothly (Round V, S8)
+
+Ricardo, on the pixel dissolve an hour after it was built: "present me some alternatives to that project | title
+separator - not sure I like this iteration"; on the sheet of ten (Round V: an arrow, a slant, a round cap, a pixel
+chevron, racing stripes, a halftone, a lit seam, a smooth fade, a badge, a breadcrumb): "Build S8".
+
+* **A plain gradient where the pixels were.** The black's first 48 px are masked from transparent to whole, from 8 px
+  after the project's name to 8 px past where the black used to begin; the separator's span keeps 32 px, so the title
+  sits where the dissolve had put it (30 px right of the hard edge). `HEAD_FADE` and its mask went.
+* **Built in a worktree** (`sep-smooth-fade`, from local `main`): another chat had the main checkout's `index.html`
+  open with work of its own, and the board's agent serves that checkout's `public/`; picked onto `main` once that chat
+  had committed.
+
 ## Decisions of 2026-10-11, late night, later — a new chat's drawer under the floating header; the overview closes on nothing
 
 Ricardo: "when opening a new chat the initial part is now covered by the floating top bar. can we the chat not as high
