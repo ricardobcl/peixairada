@@ -5,6 +5,22 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-11 — the third studies built: twenty-eight small motions
+
+Ricardo: "we need more animations, small design details, something to spice up the app. search the web for
+inspiration if you need, articles, popular well-designed apps, etc. come up with a list" — a list of twenty-eight
+(Emil Kowalski's and Rauno Freiberg's writing, NumberFlow, Things, RunCat, the Dynamic Island and the Mac's notch apps,
+Apple's haptics), then "create an artifact to visualize the ideas" — the third studies page, every idea a live sketch in
+the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each. The rules under all of it are the
+2026-09-27 pass's: motion means running or something just changed, a key's move stays instant, a one-off runs under
+300 ms on transform and opacity, and each has its line in the reduced-motion block.
+
+* **1 · springs**: the curves became tokens (`--ease-out`, `--spring`, `--spring-soft`, `--t-hover`) rather than a
+  cubic-bezier per rule. A spring in CSS is `linear()` with enough stops (40 here) — both engines have had it since
+  2023 — so no library and no JS physics: the oscillator is sampled once, by hand, into the stylesheet. The snappy one
+  overshoots by 9 %, the soft one by 1 %. The badge's pop is the spring now (a hand-made 1.15 keyframe before), and the
+  PR stack's fan, its grid columns and its chips on the same curve, as the fan's own rule asks.
+
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 
 Ricardo, on the second studies page (eight screens H–P from Omarchy and the agent managers): "do H, I, L, N, O and P".

@@ -229,6 +229,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   list's `pointermove`, its scroll and after `renderSessionList` (a card redrawn under a still pointer is a new node).
   With it on, hover keeps the rest glow (`.active` and `.qsel` keep theirs); off, hover spreads it as before. Not on
   the rail. → `scripts/scenarios/card-spot.mjs`.
+* **Motion is a handful of tokens** (2026-10-11): `--ease-out`, `--spring` and `--spring-soft` on `:root` — the springs
+  `linear()` curves of a damped oscillator — and `--t-hover`, the small controls' ease; the script's `EASE_OUT`,
+  `SPRING`, `SPRING_SOFT` read them (`cssToken`). Something that settles eases out, something that arrives springs (the
+  badge's pop, the PR fan). A new motion takes one of them, never a cubic-bezier of its own.
 * **Dialogs, `.pop` and `.note` ease in and out with `@starting-style`** (2026-09-27, night), `display` and `overlay`
   held by `allow-discrete` until the exit ends — so a closed dialog is still `display: block` for 140 ms while its
   `open` attribute is already off (read `open`, never `display`, to know). `note()` fades its popup out (`.out`) before
