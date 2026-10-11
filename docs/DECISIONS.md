@@ -25,6 +25,13 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   nothing that already moves by a transform — the list's FLIP, a stacked PR chip — is overwritten; and a card does not
   dip under a press on its own ✓ or chip (`:has(:active)`), or both would. Menu rows and the project's line are left
   out: a whole row shrinking reads as a glitch. The scenario lets go off the target, so a press is not a click.
+* **3 · counts roll** (NumberFlow's): the lanes', the chips', a card's unread and agents, the usage and the bar's
+  numbers slide digit by digit to the new value — an odometer, so 2 → 1 rolls down and 9 → 10 brings a new place in
+  from empty. The boxes are redrawn by markup and compared as strings (`setHtml`, the cards' and lines' reconcile), so
+  the roll cannot live in the markup: the markup keeps the plain number, the key remembers what it showed, and the
+  digits are dressed after the draw and undressed when they land. The strips' digits are CSS content and the number
+  stays in the text beside them, out of sight: the first cut put 0–9 in the text, and two scenarios read a count as
+  0123456789 mid-roll.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 

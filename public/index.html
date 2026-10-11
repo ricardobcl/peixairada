@@ -1729,6 +1729,12 @@
   .dfoot .err { color: var(--needs); font-size: 12px; }
   .dfoot .danger { color: var(--needs); }
 
+  /* A count that rolls (rollIn, 2026-10-11): while it rolls, each digit a window one line tall onto a strip of 0–9 —
+     a transform on the spring; plain text again once it has landed. */
+  .rn.rolling { position: relative; display: inline-flex; height: 1lh; overflow: hidden; vertical-align: bottom; }
+  .rn.rolling .rv { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }   /* the number, as text, out of sight */
+  .rn.rolling .rcol > span { display: block; transition: transform .55s var(--spring); }
+  .rn.rolling .rcol > span::before { content: "0\A 1\A 2\A 3\A 4\A 5\A 6\A 7\A 8\A 9"; white-space: pre; }
   /* ---- the small print: wrapping, figures, selection, focus, overscroll ---- */
   /* (2026-09-27, night) Prose wraps prettily and a short centred text balances; a title breaks at a word (with
      hyphens) rather than anywhere, a snippet keeps `anywhere` for its paths. Every count, age and number sits in
@@ -1782,6 +1788,7 @@
     #resume.counting::before { animation: none; }   /* no line runs: the button counts the seconds alone */
     #resume.cloning .ric::after { animation: none; }   /* cloning: the ring still, the line along the top and the percent say it */
     #slist .card .top .tprs > * { transition: color .12s, border-color .12s, background-color .12s, box-shadow .12s; }
+    .rn.rolling .rcol > span { transition: none; }   /* a count shows its number (rollIn rolls nothing then; this for a switch mid-roll) */
     .card:active, :is(.btn, .fchip, .ptab, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button):active { scale: none; }   /* a press does not dip */
   }
 
@@ -2485,6 +2492,35 @@
   }
   const STALE_MAX_AGE_MS = 30 * 86400e3; // Claude Code deletes transcripts after 30 idle days by default; mirror that
 
+  // Numbers that roll (2026-10-11, NumberFlow's): a count written as rn(key, n) is plain text in the markup — so
+  // setHtml and the reconciles compare what they always did — and, once the box holding it is drawn (rollSoon, from
+  // the board's, the bar's, the usage's and the header's draws), slides digit by digit from what that key showed last
+  // (rolled) to this, on the spring. The strips' digits are CSS's (a ::before), and the number itself stays as text
+  // beside them, hidden from sight, so whatever reads a count reads the number, mid-roll too; plain text again when it
+  // has landed. A key's first value, a value that is not digits, and reduced motion just show the number.
+  const rolled = new Map(), ROLL_MS = 550;
+  const rn = (key, v) => `<span class="rn" data-rk="${esc(key)}">${v}</span>`;
+  function rollSoon() { if (!rollSoon.f) rollSoon.f = requestAnimationFrame(() => { rollSoon.f = 0; rollIn(); }); }
+  function rollIn() {
+    const go = [];
+    for (const el of document.querySelectorAll('.rn[data-rk]:not(.rk)')) {
+      el.classList.add('rk');
+      const now = el.textContent, key = el.dataset.rk, was = rolled.get(key); rolled.set(key, now);
+      if (was == null || was === now || !/^\d+$/.test(now) || !/^\d+$/.test(was) || REDUCED.matches) continue;
+      const from = was.padStart(now.length, ' ').slice(-now.length);   // right-aligned: a new place rolls in from empty
+      el.classList.add('rolling');
+      el.innerHTML = `<span class="rv">${now}</span>` + [...now].map((d, i) => `<span class="rcol" aria-hidden="true"><span style="transform: translateY(${from[i] === ' ' ? 10 : -from[i] * 10}%)" data-to="${d}"></span></span>`).join('');
+      go.push([el, now]);
+    }
+    if (!go.length) return;
+    void document.body.offsetWidth;   // the strips stand at the old digits before they move
+    for (const [el, now] of go) {
+      for (const strip of el.querySelectorAll('.rcol > span')) strip.style.transform = `translateY(${-strip.dataset.to * 10}%)`;
+      noteMotion(el.dataset.rk, 'roll');
+      setTimeout(() => { if (el.isConnected) { el.textContent = now; el.classList.remove('rolling'); } }, ROLL_MS + 80);
+    }
+  }
+
   // ---- the status bar: the machine at the window's foot (2026-10-09) ------------------------------------------------
   // The studies' F (Orca's): the connection, the chats live · clauding · asking, the drawers · shells · monitors, and on
   // the right what the settings add — CPU, memory, Claude's memory, asked of the server every 3 s while shown —, the
@@ -2493,7 +2529,7 @@
   // renderBoard, the usage, the awake state, the stream's open and error, and each stats answer.
   const bar = { stats: {}, conn: true, open: false, busy: false };
   const fmtBytes = b => b >= 2 ** 30 ? `${(b / 2 ** 30).toFixed(1)} GB` : `${Math.round(b / 2 ** 20)} MB`;
-  const sbMeter = (label, pct, text, color, tip = `${label}: ${text}`) => `<span class="m" title="${esc(tip)}">${esc(label)}<i style="--p:${Math.max(0, Math.min(100, pct)).toFixed(1)}%;--u:${color}"></i><b>${esc(text)}</b></span>`;
+  const sbMeter = (label, pct, text, color, tip = `${label}: ${text}`, html = null) => `<span class="m" title="${esc(tip)}">${esc(label)}<i style="--p:${Math.max(0, Math.min(100, pct)).toFixed(1)}%;--u:${color}"></i><b>${html ?? esc(text)}</b></span>`;
   function renderBar() {
     const el = $('#sbar'); if (!el || el.hidden || !state.snapshots) return;
     const all = [...state.sessions.values()], n = f => all.filter(f).length, plural = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`;
@@ -2501,18 +2537,18 @@
     const drawers = n(s => s.terminal && s.terminal.exited === null), shells = n(s => s.shell && s.shell.exited === null);
     const mons = all.reduce((a, s) => a + (s.alive ? (s.tasks || []).length : 0), 0);
     const left = [`<button class="seg conn" title="${bar.conn ? 'Connected to the board\'s server' : 'The server is not answering — reconnecting'} — click for the About box"><i class="${bar.conn ? 'ok' : 'off'}"></i>${bar.conn ? 'connected' : 'reconnecting…'}</button>`,
-      `<span class="seg" title="claudes running here and elsewhere${ask ? ' · waiting on your answer' : ''}">${n(s => s.alive)} live${ask ? ` · <em>${ask} asking</em>` : ''}</span>`];
+      `<span class="seg" title="claudes running here and elsewhere${ask ? ' · waiting on your answer' : ''}">${rn('live', n(s => s.alive))} live${ask ? ` · <em>${rn('asking', ask)} asking</em>` : ''}</span>`];
     const busy = [drawers && plural(drawers, 'drawer'), shells && plural(shells, 'shell'), mons && plural(mons, 'monitor')].filter(Boolean);
     if (busy.length) left.push(`<span class="seg" title="claude sessions in drawers here · shells · monitors and background commands running">${busy.join(' · ')}</span>`);
     for (const c of state.clones.values()) left.push(`<span class="seg cl" title="gh repo clone ${esc(c.ref)} into ${esc(homePath(c.dir))} — ${esc(cloneSays(c))}">${ICON.download}cloning <b>${esc(c.ref)}</b><i style="--p:${(c.percent || 0) / 100}"></i>${c.percent || 0}%</span>`);
     const st = bar.stats, want = prefs.barStats || [], stat = [], right = [];
-    if (want.includes('cpu')) stat.push(sbMeter('CPU', st.cpu ?? 0, st.cpu == null ? '…' : `${st.cpu}%`, st.cpu >= 90 ? 'var(--needs)' : 'var(--watch)', 'every core\'s time spent busy, the last 3 s'));
+    if (want.includes('cpu')) stat.push(sbMeter('CPU', st.cpu ?? 0, st.cpu == null ? '…' : `${st.cpu}%`, st.cpu >= 90 ? 'var(--needs)' : 'var(--watch)', 'every core\'s time spent busy, the last 3 s', st.cpu == null ? null : `${rn('cpu', st.cpu)}%`));
     if (want.includes('mem')) stat.push(st.mem ? sbMeter('memory', st.mem.used / st.mem.total * 100, `${fmtBytes(st.mem.used)} / ${fmtBytes(st.mem.total)}`, st.mem.used / st.mem.total >= .9 ? 'var(--needs)' : 'var(--watch)', 'memory used, as Activity Monitor counts it, of all there is') : sbMeter('memory', 0, '…', 'var(--watch)'));
     if (want.includes('claude')) stat.push(`<span class="m" title="what the live claude processes hold in memory (their children aside)">claude <b>${st.claude?.rss != null ? fmtBytes(st.claude.rss) : '…'}</b>${st.claude?.n ? ` · ${st.claude.n}` : ''}</span>`);
     if (stat.length) right.push(`<span class="seg">${stat.join('')}</span>`);
     if (!usage.off) {
       const ws = (usage.data?.windows || []).filter(w => !uGrant(w));
-      right.push(`<button class="seg us${bar.open ? ' on' : ''}${usage.err && usage.data ? ' stale' : ''}" title="Claude plan usage${usage.err ? ` — ${esc(usage.err)}` : ''} — click for the rows">${ws.length ? ws.map(w => sbMeter(uShort(w), w.percent, `${w.percent}%`, uColor(w.percent), uTip(w))).join('') : `<span class="unote">usage: ${esc(usage.err || (usage.data ? 'nothing reported' : 'asking…'))}</span>`}</button>`);
+      right.push(`<button class="seg us${bar.open ? ' on' : ''}${usage.err && usage.data ? ' stale' : ''}" title="Claude plan usage${usage.err ? ` — ${esc(usage.err)}` : ''} — click for the rows">${ws.length ? ws.map(w => sbMeter(uShort(w), w.percent, `${w.percent}%`, uColor(w.percent), uTip(w), `${rn('bu:' + uShort(w), w.percent)}%`)).join('') : `<span class="unote">usage: ${esc(usage.err || (usage.data ? 'nothing reported' : 'asking…'))}</span>`}</button>`);
     }
     // keeping the Mac awake, both switches, always here (2026-10-09): a muted mark while off, and a muted cup while there
     // is nothing for it to hold off (cupMoot)
@@ -2522,6 +2558,7 @@
     const rows = usage.data?.windows || [];
     setHtml($('#sbLeft'), left.join(''));
     setHtml($('#sbRight'), right.join('') + (bar.open && rows.length ? `<div class="sbpanel"><div class="uhd">plan usage</div><div class="urows">${usageRows(rows)}</div></div>` : ''));
+    rollSoon();
   }
   async function loadStats() {
     const want = prefs.barStats || [];
@@ -2600,12 +2637,12 @@
     box.classList.toggle('stale', !!(d && usage.err));
     const note = !d ? usage.err || 'asking…' : !ws.length ? 'nothing reported for this account' : '';   // under the heading; the line says what it is about
     const said = d ? ` · as of ${new Date(d.fetchedAt).toLocaleTimeString()}${usage.err ? ` — since then: ${usage.err}` : ''}` : '';
-    const chips = ws.map(w => `<span class="uchip${uGrant(w) ? ' grant' : ''}" title="${esc(uTip(w))}" style="--u:${uColor(w.percent)}"><i class="uring" style="--p:${Math.min(100, w.percent)}"></i><span class="uk">${esc(uShort(w))}</span><b>${w.percent}%</b></span>`).join('');
+    const chips = ws.map(w => `<span class="uchip${uGrant(w) ? ' grant' : ''}" title="${esc(uTip(w))}" style="--u:${uColor(w.percent)}"><i class="uring" style="--p:${Math.min(100, w.percent)}"></i><span class="uk">${esc(uShort(w))}</span><b>${rn('u:' + uShort(w), w.percent)}%</b></span>`).join('');
     const rows = usageRows(ws);
     const html = `<button class="uline" title="Claude plan usage${esc(said)}${note ? `: ${esc(note)}` : ''} — point to see it, click to keep it open">${note ? `<span class="unote">usage: ${esc(note)}</span>` : chips}${CHEV}</button>`
       + `<div class="uopen"><button class="uhd" title="Claude plan usage${esc(said)} — click to close"><span>plan usage</span>${CHEV}</button>${note ? `<span class="unote">${esc(note)}</span>` : `<div class="urows">${rows}</div>`}</div>`;
     if (html !== usage.html) box.innerHTML = usage.html = html;   // the 30 s tick mostly changes nothing — keep a tooltip that is up
-    renderBar();
+    renderBar(); rollSoon();
   }
   async function loadUsage() {
     if (usage.busy) return; usage.busy = true;
@@ -2753,7 +2790,7 @@
     const total = [...state.unread.values()].reduce((a, b) => a + b, 0);
     document.title = (total ? `(${total}) ` : '') + 'peixAIrada';
     if (inApp) postState();
-    renderBar();
+    renderBar(); rollSoon();
   }
   // The app's badge and status menu, from the board's own state (2026-09-27): the shell's bridge used to open a second
   // SSE stream and keep its own copy of every session for four counts, three of which it only logged. What it needs is
@@ -2794,7 +2831,7 @@
   // before): a head over each group the list ranks by — Asking you · Clauding · Ready · Done — with its mark and how
   // many cards it holds. Claude's mark in pixels is the Clauding head's. Under a query, which ranks by the match, none.
   const LANES = { asking: ['Asking you', 'chats waiting on your answer'], working: ['Clauding', 'Claude at work'], ready: ['Ready', 'your move — ready for you'], done: ['Done', 'ticked done'] };
-  const laneHtml = (g, n) => `<div class="gsep lane ${g}" title="${n} ${LANES[g][1]}">${g === 'working' ? PIX : '<i></i>'}<span class="ln">${LANES[g][0]}</span><b>${n}</b></div>`;
+  const laneHtml = (g, n) => `<div class="gsep lane ${g}" title="${n} ${LANES[g][1]}">${g === 'working' ? PIX : '<i></i>'}<span class="ln">${LANES[g][0]}</span><b>${rn('lane:' + g, n)}</b></div>`;
   // A line under each day's cards, naming the day they are from (2026-09-23). The day is your last
   // touch, like the order. A line closes the run of cards *above* it, so the oldest day in the list gets one too, at
   // the bottom; the list is grouped first, so the done cards can bring a day back after older ready ones, and each run
@@ -2894,7 +2931,7 @@
     $('#stitle').title = p.key === ALL ? '' : `${p.custom ? `${p.name}: ${p.cwds.join(', ') || 'no folders yet'}` : p.key} — click or ⌥⌘P for another`;
     // No ＋ since 2026-09-28: ⌥⌘N, which opens on
     // the project in view.
-    setHtml($('#fchips'), FILTERS.map(([k, label]) => `<button class="fchip ${k} ${filterOn(k) ? 'on' : ''}" data-f="${k}" title="${counts[k] || 'no'} ${label} — click to ${filterOn(k) ? 'hide' : 'show'} them"><i></i><span class="lb">${label}</span><span class="n">${counts[k] || 0}</span></button>`).join(''));
+    setHtml($('#fchips'), FILTERS.map(([k, label]) => `<button class="fchip ${k} ${filterOn(k) ? 'on' : ''}" data-f="${k}" title="${counts[k] || 'no'} ${label} — click to ${filterOn(k) ? 'hide' : 'show'} them"><i></i><span class="lb">${label}</span><span class="n">${rn('chip:' + k, counts[k] || 0)}</span></button>`).join(''));
     const b = shown.map(rankOf);   // a lane's head over the first card of each group (laneHtml)
     // …and a day's line under every run of cards from one day: the card whose next one is from another day, or none.
     const days = shown.map(dayName), inLane = {};
@@ -2931,7 +2968,7 @@
   const cssToken = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const EASE_OUT = cssToken('--ease-out') || 'ease-out', SPRING = cssToken('--spring') || 'ease-out', SPRING_SOFT = cssToken('--spring-soft') || 'ease-out';
   const MOTION = [];   // the last moves the list made, {id, kind, at} — window.peix.motion(), so a check need not catch a 200 ms slide in the act
-  const noteMotion = (id, kind, dy = 0) => { MOTION.push({ id, kind, at: Math.round(performance.now()), dy }); if (MOTION.length > 64) MOTION.shift(); };
+  const noteMotion = (id, kind, dy = 0) => { MOTION.push({ id, kind, at: Math.round(performance.now()), dy }); if (MOTION.length > 1000) MOTION.shift(); };   // a check slices it from a length it read: kept long enough not to roll under it (64 until 2026-10-11, when the counts' rolls and the live lines came)
   const slide = (el, kind, frames, opts, dy = 0) => { noteMotion(el.dataset.id || null, kind, dy); return follow(el.animate(frames, { ...opts, id: kind })); };
   // The list's frame follows a slide (2026-10-02): it was drawn once after a render, from rects read while the cards had
   // only begun to move — so the splitter's colour and the open chat's light stood where the open card had been until the
@@ -3533,7 +3570,7 @@
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? 'done' : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
       <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${act}${cardTickets(s)}${cardFaces(s)}${cardPrs(s)}</div>
-      <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${s.agents} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge">${un}</span>` : ''}</div>
+      <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${markHits(s.title, q)}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${rn('ag:' + s.id, s.agents)} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${esc(s.lastPrompt)}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${esc(s.lastReply)}</div>` : ''}
       ${asking(s) ? askHtml(s) : ''}${moveHtml(s) || MOVE_SLOT}
@@ -4649,7 +4686,7 @@
         ${s.live ? `<span class="chip">${entryLabel(s)}</span>` : ''}${s.live?.name ? `<span class="chip" title="session name">${esc(s.live.name)}</span>` : ''}${
           s.model ? `<span class="chip">${esc(s.model)}</span>` : ''}${s.live?.pid ? `<span class="chip">pid ${s.live.pid}</span>` : ''}
       </div>`;
-    const headNew = headHtml !== drawn.head; if (headNew) { $('#shead').innerHTML = drawn.head = headHtml; drawAwake(); }
+    const headNew = headHtml !== drawn.head; if (headNew) { $('#shead').innerHTML = drawn.head = headHtml; drawAwake(); rollSoon(); }
     // The menu, one row per action: its mark, what it does, and its state or key on the right. The ids are the
     // buttons' own from when they sat in the row — the hotkeys and the harness reach them by those.
     const menuHtml = [
@@ -5551,7 +5588,7 @@
     api('GET', `/api/sessions/${s.id}/changes?stat=1`).then(r => ({ add: r.add, del: r.del, files: r.files }), () => ({ add: 0, del: 0, files: 0 }))
       .then(v => { const was = diffStats.get(s.id); diffStats.set(s.id, { ...v, at: Date.now() }); if (was?.add !== v.add || was?.del !== v.del) { renderHead(state.sessions.get(s.id)); ovSoon(); } });
   }
-  const diffChip = s => { const d = diffStats.get(s.id); return d && (d.add || d.del) ? `<button class="hdiff" id="diffBtn" title="${d.files} file${d.files === 1 ? '' : 's'} changed in its folder, not committed — click or ⌥⌘D for the diff"><span class="a">+${d.add}</span><span class="d">−${d.del}</span></button>` : ''; };
+  const diffChip = s => { const d = diffStats.get(s.id); return d && (d.add || d.del) ? `<button class="hdiff" id="diffBtn" title="${d.files} file${d.files === 1 ? '' : 's'} changed in its folder, not committed — click or ⌥⌘D for the diff"><span class="a">+${rn('add:' + s.id, d.add)}</span><span class="d">−${rn('del:' + s.id, d.del)}</span></button>` : ''; };
   $('#shead').addEventListener('click', e => { if (e.target.closest('#diffBtn')) hotDiff(); });
   function hotDiff() {
     const s = state.sessions.get(state.current); if (!s) return noChat();

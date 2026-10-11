@@ -41,5 +41,22 @@ export default async function (ctx) {
   ctx.assert.equal(out.press.chip, '0.97', 'a chip held down dips to 97 %');
   ctx.assert.deepEqual(out.press.tick, ['none', '0.97'], 'the ✓ dips, the card under it does not');
   ctx.assert.equal(out.press.after, 'none', 'and springs back on release');
+
+  // ---- 3 · a count rolls: tick a chat done and the Ready lane's count, the chips' and the Done count slide to their
+  // new value, then read as plain numbers again ----
+  const [one, two] = ctx.fixture.chats;
+  await ctx.server.post(`api/sessions/${two.id}/done`, { done: true });
+  await ctx.waitFor(`window.peix.motion().some(m => m.kind === 'roll' && m.id === 'lane:ready')`, { what: 'the Ready lane\'s count to roll' });
+  out.rolling = await ctx.evaluate(`[...document.querySelectorAll('.rn.rolling')].map(e => e.dataset.rk + ':' + e.querySelectorAll('.rcol').length)`);
+  ctx.assert.ok(out.rolling.some(r => r.startsWith('lane:ready:')), 'the lane\'s count is a strip of digits while it rolls');
+  await ctx.waitFor(`!document.querySelector('.rn.rolling')`, { what: 'the counts landed, plain text again' });
+  await ctx.settle();
+  out.rolled = await ctx.evaluate(`({ lane: document.querySelector('.gsep.lane.ready b')?.textContent, chips: [...document.querySelectorAll('.fchip .n')].map(n => n.textContent), left: document.querySelectorAll('.rn.rolling').length, rolls: window.peix.motion().filter(m => m.kind === 'roll').map(m => m.id) })`);
+  ctx.assert.equal(out.rolled.lane, '1', 'the Ready lane counts one, as text');
+  ctx.assert.equal(out.rolled.left, 0, 'nothing is left rolling');
+  ctx.assert.ok(out.rolled.rolls.includes('chip:ready') && out.rolled.rolls.includes('chip:done'), 'the chips rolled too');
+  await ctx.server.post(`api/sessions/${two.id}/done`, { done: false });
+  await ctx.waitFor(`document.querySelector('.gsep.lane.ready b')?.textContent === '2'`, { what: 'both ready again' });
+  await ctx.settle();
   return out;
 }

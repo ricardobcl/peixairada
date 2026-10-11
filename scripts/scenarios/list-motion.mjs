@@ -51,7 +51,7 @@ export default async function (ctx) {
   const slid = out.flip.motion.filter(m => m.kind === 'flip').map(m => m.id);
   ctx.assert.ok([chats[2].id, chats[3].id, chats[4].id].every(id => slid.includes(id)), `the cards below it slide up too (${slid.length} slid)`);
   ctx.assert.equal(out.flip.cards.at(-1).id, id2, 'the done card is last');
-  ctx.assert.equal(out.flip.motion.filter(m => m.kind !== 'flip').length, 0, 'a slide, nothing else');
+  ctx.assert.equal(out.flip.motion.filter(m => m.kind !== 'flip' && m.kind !== 'roll').length, 0, 'a slide, nothing else (the counts roll since 2026-10-11)');
   n0 = (await motion(ctx)).length;
 
   // a chat written into the fixture while the board is up: its card fades in

@@ -237,6 +237,13 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   (`:has`), which dips itself — and the small controls to 97 %, by the `scale` property (the FLIP's `transform` and
   the ring's stay theirs), springing back on release. A menu row or a whole line does not. → `small-motions.mjs`, the
   scenario of the 2026-10-11 motions, one section each.
+* **Counts roll** (2026-10-11, `rn(key, n)`, `rollIn`, `rollSoon`): a count is plain text in the markup, wrapped in
+  `.rn[data-rk]`; after a draw (the board's, the status bar's, the usage's, a new header) each one whose key showed
+  another number last (`rolled`) becomes a strip of 0–9 per digit (the digits a `::before`'s content), moved by a
+  transform on the spring, beside the number as text out of sight (`.rv`), and is put back to plain text `ROLL_MS`
+  later — so `setHtml` and the reconciles compare the same strings, and anything reading a count's `textContent`
+  reads the number, mid-roll too (it read 0123456789 for half a second before). In `motion()` as `roll`. The lanes, the state chips,
+  a card's unread badge and agents, the usage, CPU, the live and asking counts, the header's `+n −n`.
 * **Dialogs, `.pop` and `.note` ease in and out with `@starting-style`** (2026-09-27, night), `display` and `overlay`
   held by `allow-discrete` until the exit ends — so a closed dialog is still `display: block` for 140 ms while its
   `open` attribute is already off (read `open`, never `display`, to know). `note()` fades its popup out (`.out`) before
