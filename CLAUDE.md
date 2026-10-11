@@ -353,7 +353,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
 * **Folded (⌥⌘B), the chat list is a rail of squares**: one per chat, `projAbbr` (the setup's short name for the ones
   the rule, `abbrRule`, gets wrong) on a solid tint of its colour, and the card's own edge — clauding, the agents' count, a monitor and a
   question still read from the rail. Everything inside the card is `display: none` there; `.abbr` is the only child
-  left standing, and it carries the hover tooltip.
+  left standing, and it carries the hover tooltip — but for `.rdot` (2026-10-12): a dot at the square's corner for a
+  PR at your move (the accent's diamond) or a new reply (green), by the card's `data-rank`, and an idle or done square
+  dimmed; a short name of three letters or more is set smaller (`data-n`). **The lanes fold on the rail too**, their
+  heads there a mark and a count, a click on one still folding it.
 * **A project is a folder** (the registry's `cwd`, never the transcript's) **or a named set of folders** (state
   file); worktrees under a repo count as the repo. **Pinned projects** head the pickers (`state.pins`, a `pins`
   event; `PUT /api/pins`). Folder projects exist only through their sessions. **✕ on a row of ⌥⌘N hides a project**:

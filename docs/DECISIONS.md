@@ -59,6 +59,11 @@ the order they landed.
   move* line, which is left-aligned — the right of a card's last line is where it is most often empty. The upper one
   stays centred (a card's top row ends in its ✓ and chips); on the rail, both centred. At the list's end the pill and
   its fog are gone, so no padding was needed.
+* **L6 — the rail says more**: a short name of three letters or four set smaller, so *WAI* fits its square rather than
+  lose its end; a dot at a square's corner for a PR at your move (the accent's diamond) or a new reply (green) — what
+  has no ring or red edge to say it — and an idle or done square dimmed; and **the lanes fold there too** (they did not,
+  and the rail showed every done chat): a lane's head on the rail is its mark and its count, a click folding or opening
+  it as in the list. Two chats of one project are still alike but for those marks; the tooltip names each.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

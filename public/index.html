@@ -305,8 +305,22 @@
   main.scompact #slist > .card { padding: 0; min-height: 36px; display: grid; place-items: center;
     background: color-mix(in srgb, var(--repo, var(--nocolor)) 55%, var(--panel)); }
   main.scompact #slist > .card > * { display: none; }
-  main.scompact #slist > .card .abbr { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .4px; }
+  main.scompact #slist > .card .abbr { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .4px; max-width: 100%; overflow: hidden; }
+  /* (2026-10-12) a short name of three letters or four set smaller, so it fits its square rather than lose its end;
+     a dot where the chat wants you without a ring or a red edge to say it — a PR at your move, a new reply — and a
+     square that has waited longer than four days (Idle) or is done, dimmed */
+  main.scompact #slist > .card .abbr[data-n="3"] { font-size: 9.5px; letter-spacing: 0; }
+  main.scompact #slist > .card .abbr:is([data-n="4"], [data-n="5"]) { font-size: 8.5px; letter-spacing: -.2px; }
+  .card .rdot { display: none; }
+  main.scompact #slist > .card:is([data-rank="move"], [data-rank="replied"]) .rdot { display: block; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--idle); box-shadow: 0 0 0 1.5px var(--panel); }
+  main.scompact #slist > .card[data-rank="move"] .rdot { background: var(--accent); border-radius: 1px; transform: rotate(45deg); }
+  main.scompact #slist > .card:is([data-rank="idle"], [data-rank="done"]) { filter: saturate(.35) brightness(.8); }
   main.scompact #slist .gsep { display: none; }   /* no room for a line, or for Claude's mark, on a rail of squares */
+  /* …but a lane's head is its mark and its count (2026-10-12), so a folded lane can be opened from the rail */
+  main.scompact #slist .gsep.lane[data-lane] { display: flex; flex-direction: column; align-items: center; gap: 3px; margin: 4px 0 0; padding: 3px 0; letter-spacing: 0; }
+  main.scompact #slist .gsep.lane[data-lane] :is(.ln, .lc) { display: none; }
+  main.scompact #slist .gsep.lane[data-lane] b { margin: 0; }
+  main.scompact #slist .gsep.lane.shut { opacity: .7; }
   main.scompact #slist .none { padding: 14px 2px; font-size: 10px; }
   /* The bar between the list and the chat is the open chat's colour (2026-09-26): --openc on main (registered, so it eases; --openb, its edges, went on 2026-09-29), set with the chat's
      tint, so the open card, the bar and the chat's header are one stroke of it — see .card.active. */
@@ -3301,8 +3315,9 @@ const toolName = n => {
 
   // ---- render: both lists ------------------------------------------------------------
   // A lane folds (2026-10-11, later; three state chips filtered the list before): its head is a toggle, its cards hidden
-  // and its count kept — prefs.lanesShut, Done shut to begin with. Not on the rail, which draws no heads to open one by.
-  const laneShut = g => !prefs.sessionsCompact && (prefs.lanesShut || []).includes(g);
+  // and its count kept — prefs.lanesShut, Done and Idle shut to begin with. On the rail as well (2026-10-12; not before,
+  // when it drew no heads to open one by): there a head is its mark and its count, a click still folding it.
+  const laneShut = g => (prefs.lanesShut || []).includes(g);   // the rail too since 2026-10-12: its heads are its marks and counts
   /** What the stream says, drawn once a frame (2026-10-03): a gh batch is a burst of `session` events in one task, and
    *  each drew the whole list. A frame, or 100 ms where there are no frames (a hidden window: the badge still follows). */
   function renderBoardSoon() {
@@ -4181,14 +4196,14 @@ const toolName = n => {
     const where = !s.alive || inVsCode(s) ? ''
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip elsewhere" title="${s.live?.entrypoint === 'cli' ? 'Running in a terminal outside the board' : 'Running outside the board'} — ⌥⌘C takes it over here">${ICON.term}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : '');
-    return `<div class="card ${s.status} ${ROOMY.has(rankOf(s)) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
+    return `<div class="card ${s.status} ${ROOMY.has(rankOf(s)) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
       <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${act}${cardTickets(s)}${cardFaces(s)}${cardPrs(s)}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${ticks(markHits(s.title, q))}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${rn('ag:' + s.id, s.agents)} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${liveSlot(s)}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${ticks(esc(s.lastReply))}</div>` : ''}
       ${asking(s) ? askHtml(s) : ''}${moveHtml(s) || MOVE_SLOT}
-      <span class="abbr" title="${esc(`${s.project} · ${s.title}`)}">${esc(projAbbr(s.project))}</span>
+      <span class="abbr" data-n="${projAbbr(s.project).length}" title="${esc(`${s.project} · ${s.title}`)}">${esc(projAbbr(s.project))}</span><i class="rdot" aria-hidden="true"></i>
     </div>`;
   }
   // The card's live line (2026-10-11): what is happening now, filled after the render (fillLive) — never in the markup,
