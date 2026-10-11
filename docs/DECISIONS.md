@@ -43,6 +43,11 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   a moment only when your tick made it so: the head's pixel mark hops and throws a dozen pixel sparks. A list that is
   caught up because its last ready chat was ticked elsewhere, or that loads that way, shows the head still. The mark is
   the clauding lane's sprite held at its full frame: still, since motion on the board means running.
+* **6 · the question heard**: the asking card's red simply went when the answer came, and the ring started — nothing
+  said the board had heard you. Now the sonar runs once backwards: a red outline drawing in from where the pings fade
+  to the card's edge, half a second, while the ring of what Claude does next fades in under it. An outline's offset
+  rather than a transform, because the card's two pseudo-elements are taken by the ring and its cover; a one-off on one
+  card. Marked and replayed like the landing (`heardAt`, a negative delay), so a card rebuilt mid-way carries on.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 

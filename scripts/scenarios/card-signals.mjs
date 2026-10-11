@@ -242,6 +242,9 @@ export default async function (ctx) {
       input: { questions: [{ question: 'Which one?', options: [{ label: 'this' }, { label: 'that' }] }] } }).map(l => JSON.stringify(l)).join('\n') + '\n');
     await ctx.waitFor(`[...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work')?.classList.contains('working')`,
       { what: 'the card back at work', timeout: 5000 });
+    // the question heard (2026-10-11): the card played the sonar backwards as it went back to work
+    out.heard = await ctx.evaluate(`window.peix.motion().filter(m => m.kind === 'heard').map(m => m.id)`);
+    ctx.assert.ok(out.heard.includes(nw.id), 'the answered card hears it');
     await ctx.sleep(1200);   // past the alert's debounce
     out.alertsAfter = await ctx.evaluate(`window.__alerts.filter(a => a.title === 'Normal work').map(a => a.kind)`);
     ctx.assert.deepEqual(out.alertsAfter, ['needs-input'], 'and no second alert for a question whose line arrived with its answer');

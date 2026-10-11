@@ -283,7 +283,9 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   border is red and **pings leave it** (2026-10-09, `@keyframes sonar`; it blinked before) — its `::before` and `::after`
   as two outlines half a beat apart, scaled out and faded, the card `overflow: visible` to let them out — with the
   question and its answer count on the card
-  (`askHtml`). The three CSS rules are in priority order — work beats a monitor, a question beats both — **and each
+  (`askHtml`). **Answered, it hears it** (2026-10-11): a chat that stops asking while alive is noted in `heardAt` by the
+  `session` handler, and `flareLanded` gives its card `heard` with a negative `--heard-delay` — an outline drawing in
+  from where the pings fade to the edge, and the ring of what comes next fading in (`ringin`); `heard` in `motion()`. The three CSS rules are in priority order — work beats a monitor, a question beats both — **and each
   sets every variable**. The chips beside the title say the numbers (`N agents`, `monitor`). **The ring is a conic
   gradient on a square `::before` turned by a `transform`, under an `::after` cover in the card's background 2 px in,
   on the edge itself** (2026-09-29): a card with a ring has no border — its padding takes the 2 px, so nothing inside

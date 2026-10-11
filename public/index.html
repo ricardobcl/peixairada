@@ -644,6 +644,13 @@
     border: 2px solid var(--needs); pointer-events: none; animation: sonar 1.8s cubic-bezier(.2, .6, .3, 1) infinite; }
   .card.asking::after { animation-delay: -.9s; }
   @keyframes sonar { from { transform: scale(1); opacity: .7; } to { transform: scale(1.035, 1.16); opacity: 0; } }
+  /* …and answered (2026-10-11, flareLanded from heardAt): the sonar once backwards — a red ring drawing in from where
+     the pings fade to the card's edge — and the light of what it does next fading in. Its own delay (--heard-delay), as
+     a rebuilt card carries a landing on; backwards only, so the card's own outline is its own once it has run. */
+  @keyframes heard { from { outline: 2px solid transparent; outline-offset: 10px; } 30% { outline-color: var(--needs); outline-offset: 5px; } to { outline: 2px solid transparent; outline-offset: -2px; } }
+  .card.heard { animation: heard .5s ease-out backwards; animation-delay: var(--heard-delay, 0ms); }
+  .card.heard:is(.working, .watching)::before { animation: ring var(--spins, 1.4s) linear infinite, ringin .5s ease-out backwards; }
+  @keyframes ringin { from { opacity: 0; } }
   @keyframes ring { to { transform: rotate(360deg); } }
   /* The edge light (2026-10-09, prefs.edgeLight — <html data-light="edge">): the same readings — --lit, one light per
      sub-agent (--seg), --spins — running down the card's lit 3 px edge instead of round it. The card keeps its border
@@ -1784,6 +1791,7 @@
     .card.asking { border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
     .card.asking::before, .card.asking::after { animation: none; opacity: 0; }   /* no pings: the red border and its glow */
     .card.landed { animation: none; }
+    .card.heard { animation: none; } .card.heard::before { animation: none; }   /* answered: the red simply goes */
     .card.landed::before { animation: none; content: none; }   /* no wash */
     .dot.working, .dot.needs-input { animation: none; }
     .pix, .pix svg { animation: none; }
@@ -3016,8 +3024,18 @@
   // The reply landed: a chat that goes from clauding to ready flares its card's edge once (the `landed` animation,
   // LANDED_MS) — marked by the session handler, applied here with a negative delay so a rebuild mid-flare carries on.
   const LANDED_MS = 1100, landedAt = new Map();   // chat id → when it landed (the flare and the wash: 1.1 s, 2026-10-09)
+  // The question answered (2026-10-11): a chat that stops asking while its claude lives gets `heard`, the same way —
+  // the sonar once backwards, closing in on the card, and the ring of what it does next fading in.
+  const HEARD_MS = 500, heardAt = new Map();
   function flareLanded() {
     const t = performance.now();
+    for (const [id, at] of heardAt) {
+      const el = cardNodes.get(id)?.el, gone = t - at;
+      if (gone >= HEARD_MS || !el || REDUCED.matches) { heardAt.delete(id); continue; }
+      if (el.classList.contains('heard')) continue;
+      el.classList.add('heard'); el.style.setProperty('--heard-delay', `-${Math.max(1, Math.round(gone))}ms`);
+      el.addEventListener('animationend', e => { if (e.animationName === 'heard') { el.classList.remove('heard'); el.style.removeProperty('--heard-delay'); } }, { once: true });
+    }
     for (const [id, at] of landedAt) {
       const el = cardNodes.get(id)?.el, gone = t - at;
       if (gone >= LANDED_MS || !el || REDUCED.matches) { landedAt.delete(id); continue; }
@@ -6700,8 +6718,10 @@
       const s = JSON.parse(e.data), was = state.sessions.get(s.id); state.sessions.set(s.id, s); sessionSeen.set(s.id, (sessionSeen.get(s.id) || 0) + 1);
       const landed = was?.status === 'working' && s.status === 'idle' && !s.done;
       if (landed) { landedAt.set(s.id, performance.now()); noteMotion(s.id, 'landed'); }   // the reply landed: the card flares once (flareLanded)
+      const heard = was && asking(was) && !asking(s) && s.alive && !s.done;
+      if (heard) { heardAt.set(s.id, performance.now()); noteMotion(s.id, 'heard'); }   // the question answered: its card hears it (flareLanded)
       if (s.id === state.current && !visible(s) && s.done) leaveChat();   // an empty chat ticked done: its card is gone, and so is the chat
-      if (landed) renderBoard(); else renderBoardSoon();   // a landing is drawn as it is said, flare and all
+      if (landed || heard) renderBoard(); else renderBoardSoon();   // a landing is drawn as it is said, flare and all
       ovSoon();   // the overview (⌥⌘A, 2026-10-10) follows its chats while it is up
       homeSoon(landed);   // …and the home its facts, the day again when a turn lands
       if (s.id === state.current) { renderHead(s); syncTerm(s); renderPresence(); }
