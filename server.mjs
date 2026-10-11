@@ -2259,9 +2259,11 @@ function endVsWebWithUs() {
   process.on('exit', () => { if (vsweb) { try { process.kill(-vsweb.pid, 'SIGTERM'); } catch { try { vsweb.kill(); } catch {} } } });
   for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) process.on(sig, () => process.exit(0));
 }
-const vswebAnswers = () => fetch(VSWEB_URL, { signal: AbortSignal.timeout(1500) }).then(r => { r.body?.cancel(); return true; }, () => false);
-async function ensureVsWeb() {
-  if (await vswebAnswers()) return { ok: true, url: VSWEB_URL, started: false };
+// `path` is what is asked of it: the root by default — which starts the newest build's server —, a build by name for
+// freshenVsWeb, which only has it fetched
+const vswebAnswers = (path = '') => fetch(VSWEB_URL + path, { signal: AbortSignal.timeout(1500) }).then(r => { r.body?.cancel(); return r.status; }, () => 0);
+async function ensureVsWeb(path = '') {
+  if (await vswebAnswers(path)) return { ok: true, url: VSWEB_URL, started: false };
   const code = codeBin();
   if (!code) return { code: 501, error: 'code CLI not found — run "Shell Command: Install \'code\' command in PATH" in VS Code, or set CODE_BIN' };
   if (!vsweb) {
@@ -2275,10 +2277,39 @@ async function ensureVsWeb() {
   const t0 = Date.now();
   while (Date.now() - t0 < 60_000) {   // the first run downloads the server build
     await new Promise(r => setTimeout(r, 500));
-    if (await vswebAnswers()) return { ok: true, url: VSWEB_URL, started: true };
+    const status = await vswebAnswers(path); if (status) return { ok: true, url: VSWEB_URL, started: true, status };
     if (!vsweb) return { code: 500, error: 'code serve-web exited before it answered' };
   }
   return { code: 504, error: `code serve-web did not answer on ${VSWEB_PORT} within 60 s` };
+}
+// …and kept on the newest build in the background (2026-10-11): serve-web serves VS Code's newest release and fetches it
+// only when it is first asked for it, so the first open after a release waited on the download (serve-web's 202 page).
+// Every VSWEB_FRESH_MS the board asks VS Code's update service which build is the newest (VSWEB_UPDATE_URL) and, when
+// serve-web's cache (the CLI's data dir) has not got it, asks serve-web for that build by name — `/<quality>-<commit>/`,
+// which makes it download it now, answering 202 at once. serve-web starts that build's server once it is in, and lets
+// it go after an hour with no one on it. Nothing is asked of serve-web while it has the newest, and serve-web is started
+// for it only when there is something to fetch. 0 turns it off (every test server).
+const VSWEB_FRESH_MS = Number(process.env.VSWEB_FRESH_MS ?? 60 * 60_000);
+const VSWEB_UPDATE_URL = process.env.VSWEB_UPDATE_URL || 'https://update.code.visualstudio.com/api/latest';
+const vswebCache = commit => join(process.env.VSCODE_CLI_DATA_DIR || join(homedir(), '.vscode', 'cli'), 'serve-web', commit);
+/** The quality the `code` CLI is of — stable, insider — from its app's product.json, beside its bin folder. */
+function vswebQuality(code) { try { return JSON.parse(readFileSync(join(dirname(dirname(realpathSync(code))), 'product.json'), 'utf8')).quality || 'stable'; } catch { return 'stable'; } }
+let vswebFreshing = false, vswebAsked = null;   // the build last asked for, and when: one still downloading is not asked for again
+async function freshenVsWeb() {
+  const code = codeBin(); if (!code || vswebFreshing) return;
+  vswebFreshing = true;
+  try {
+    const quality = vswebQuality(code), arch = process.arch === 'arm64' ? 'arm64' : 'x64';
+    const r = await fetch(`${VSWEB_UPDATE_URL}/server-darwin-${arch}-web/${quality}`, { signal: AbortSignal.timeout(15_000) });
+    if (!r.ok) throw new Error(`the update service said ${r.status}`);
+    const { version: commit, name } = await r.json();
+    if (!/^[0-9a-f]{40}$/.test(commit || '')) throw new Error('the update service named no build');
+    if (existsSync(vswebCache(commit)) || (vswebAsked?.commit === commit && Date.now() - vswebAsked.at < 15 * 60_000)) return;
+    vswebAsked = { commit, at: Date.now() };
+    const up = await ensureVsWeb(`${quality}-${commit}/`); if (!up.ok) throw new Error(up.error);   // serve-web started for it if need be, and asked for that build: a 202 while it fetches it
+    console.log(`[peixairada] VS Code Web: ${name || commit.slice(0, 8)} is out — serve-web fetching it in the background${up.started ? ', started for it' : ''}`);
+  } catch (e) { console.error(`[peixairada] VS Code Web: could not keep it on the newest build — ${e.message}`); }
+  finally { vswebFreshing = false; }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -3199,6 +3230,7 @@ setInterval(pollPeacock, PEACOCK_POLL_MS);
 pollRepos();
 setInterval(pollRepos, PEACOCK_POLL_MS);
 setInterval(reloadConfig, CONFIG_POLL_MS);   // a stat against the board's own record of it: a save-by-rename, a file not there yet, one made and gone between two looks
+if (VSWEB_FRESH_MS > 0) { setTimeout(freshenVsWeb, Math.min(90_000, VSWEB_FRESH_MS)); setInterval(freshenVsWeb, VSWEB_FRESH_MS); }   // VS Code Web on the newest build, before you open it
 for (const s of sessions.values()) if (s.alive) scanAgents(s);
 // An agent gone quiet stops counting; a task past its expiry stops running. Both are only visible on a push, and
 // a chat whose last word was "monitor started" has nothing else to push.

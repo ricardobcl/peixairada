@@ -146,6 +146,7 @@ What the board records as you use it — done ticks, titles, pins — stays in `
 | `USAGE` | on | `off` hides the plan usage |
 | `JIRA_API_TOKEN` | the keychain's | the Jira token, if you'd rather not keep it in the keychain |
 | `DRAWER_IDLE_MS` | 24 h | an unwatched idle drawer ends itself; `0` never |
+| `VSWEB_FRESH_MS` | 1 h | how often VS Code Web's newest build is fetched ahead of time; `0` never |
 | `CLAUDE_BIN` `GH_BIN` `CODE_BIN` `TASK_BIN` | from `PATH` | where the CLIs are |
 | `CLAUDE_DIR` · `STATE_FILE` | `~/.claude` · `~/Library/Application Support/peixAIrada/state.json` | what it reads · keeps |
 | `CONFIG_FILE` | `~/.config/peixairada/config.json` (beside `STATE_FILE` when that is set) | the setup |
@@ -178,7 +179,8 @@ The login agent takes `PORT`, `NOTIFY` and your `PATH` at `scripts/launchd.sh in
 ## 🔒 Good to know
 
 - Transcripts hold everything Claude read. The server listens on `127.0.0.1` only, with no login — keep it that way.
-- Only `gh` (PR states, clones), the plan-usage call and Jira (once you set it up) leave your machine.
+- Only `gh` (PR states, clones), the plan-usage call, Jira (once you set it up) and, with VS Code installed, an hourly
+  look at VS Code's update service (so VS Code Web has its newest build before you open it) leave your machine.
 - A chat running elsewhere is never written to: take it over, or continue it where it is.
 
 ## 🛠 Hacking

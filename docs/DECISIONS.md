@@ -5,6 +5,28 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-11, night, later — VS Code Web on its newest build before it is opened
+
+Ricardo: "sometime when opening VScode, it's starts downloading the newest version I guess. can we auto-update in the
+background so I don't want for the update when I need to open vscode?"
+
+* **What the wait was**: `code serve-web` serves VS Code's newest release, checks for one hourly, and fetches a build
+  only when a page asks for it — the pane opened after a release got serve-web's 202 "downloading" page until the
+  build was in (that afternoon: 1.141.0, the minute he opened it). The board restarting kills serve-web with it, so a
+  fresh one asked again.
+* **The board fetches it ahead**: once an hour (90 s after boot first) it asks VS Code's update service which build is
+  the newest and, when serve-web's cache has not got it, asks serve-web for that build by name (`/stable-<commit>/`):
+  serve-web answers 202 at once and downloads it in the background — 13 s, measured against the real CLI and update
+  service, into a throwaway data dir. Not the root: that starts the newest build's server (a few hundred MB of node)
+  even when nothing is new, so the board asks for nothing while the cache has the newest, and starts serve-web only
+  when there is something to fetch. After a download serve-web starts that build's server and lets it go after an
+  hour with no one on it.
+* **A new call leaves the Mac**: the update service, hourly, only with a `code` CLI — the README's list says so, and
+  `VSWEB_FRESH_MS=0` turns it off (every test server).
+* **Not done**: the leftover servers of old builds. One from 11 days before was still running, orphaned — its
+  serve-web gone with an earlier board, its process group not. Quit by hand on Ricardo's word ("can you kill that rogue
+  vscode?"); nothing here ends processes it did not start.
+
 ## Decisions of 2026-10-11, night — the tile's tabs, one family; tiles and the floating header by default
 
 Ricardo, on the Round IV studies (the chat tile's tabs — a contact sheet, seven directions): "let's go with Q1, Q5 and

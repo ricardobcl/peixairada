@@ -58,6 +58,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `scripts/verify.mjs`, `scripts/scenario.mjs`, `scripts/scenarios/` | The browser harness (see Verifying) |
 | `scripts/fakeclaude.mjs`, `scripts/fixture.mjs` | A stand-in CLI for tests; a `~/.claude` look-alike |
 | `scripts/fakejira.mjs` | Jira Cloud's three calls (projects, `myself`, `bulkfetch`) on a loopback port, from a list — `startFakeJira`, for the tests and scenarios |
+| `scripts/fakecode.mjs` | `code serve-web` for the VS Code Web test: a build asked for by name lands in `VSCODE_CLI_DATA_DIR` a moment later, with a 202; `FAKE_CODE_LOG` logs every request |
 | `scripts/fakepmset.mjs`, `scripts/fakecaffeinate.mjs` | `pmset` (its SleepDisabled in `FAKE_PMSET_FILE`; `FAKE_PMSET_FAIL` fails a set) and `caffeinate -i -w` (lives until its pid goes; `FAKE_CAFFEINATE_PIDS` logs it) — every test server's (`PMSET_BIN`, `CAFFEINATE_BIN`, `AWAKE_ADMIN=none`) |
 | `scripts/fakegh.mjs`, `scripts/readme-shots.mjs` | `gh api graphql` answered from a file (`GH_BIN`, `FAKEGH_PRS`, `FAKEGH_VIEWER`; a PR's entry is handed back whole, so it can carry the turn's fields; one it does not name is a NOT_FOUND, as GitHub's), and `gh repo clone` without the network (git's progress over `FAKEGH_CLONE_MS`, a `.git/config`; a repo named `no-such-…` is GitHub's error); the README's screenshots from a made-up board → `docs/shots/` — never shoot the real one |
 | `scripts/check.sh`, `scripts/check-page.mjs`, `scripts/map.mjs` | Static checks; the section maps |
@@ -140,8 +141,18 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   `<NAME>_BIN` overrides. A file it can run, not any path that exists; none found is looked for again a minute later
   (2026-10-03). The login agent's PATH is the installing shell's, then the system's (`launchd.sh`, 2026-10-01). The
   network calls are `gh` (PR state and title), the usage endpoint — one usage question at a time, its answer kept a
-  minute, a failure half a minute (`planUsage`) — and, once the setup names a site, Jira (`jiraAsk`; its token never
-  reaches the page, nor the setup file — `GET /api/jira` says only where it is: `env` · `keychain` · `file`).
+  minute, a failure half a minute (`planUsage`) —, once the setup names a site, Jira (`jiraAsk`; its token never
+  reaches the page, nor the setup file — `GET /api/jira` says only where it is: `env` · `keychain` · `file`) — and,
+  with a `code` CLI, VS Code's update service once an hour (`freshenVsWeb`, below).
+* **VS Code Web is kept on its newest build** (2026-10-11, `freshenVsWeb`, every `VSWEB_FRESH_MS` — an hour, the first
+  90 s after boot; 0 off, every test server's): serve-web fetches a release only when it is first asked for it, so the
+  first open after one waited on its 202 "downloading" page. The board asks the update service which build is the
+  newest (`VSWEB_UPDATE_URL`, `server-darwin-<arch>-web/<quality>`, the quality from the `code` app's product.json) and,
+  when serve-web's cache (`$VSCODE_CLI_DATA_DIR` or `~/.vscode/cli`, `serve-web/<commit>`) has not got it, asks serve-web
+  for **that build by name, `/<quality>-<commit>/`** — never its root, which starts the newest build's server — starting
+  serve-web for it if need be (`ensureVsWeb(path)`); serve-web answers 202 and downloads it, then starts its server and
+  lets it go after an hour unused. A build asked for is not asked for again for 15 min. Read only under `~/.vscode`.
+  → `test/vsweb.test.mjs` (`scripts/fakecode.mjs`).
 * **A PR is polled by how recently its chat was touched** (2026-09-28): `sweepPrs` on the registry poll queues what
   `duePrs` says — a PR never asked about (so boot asks every one, the recent chats' first), else by `PR_POLL`: every
   minute for a chat touched within the hour, 5 min within the day, 30 within three days, **never after**. Touched is
@@ -1241,7 +1252,8 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   which also keeps the first run's welcome away; an empty `CLAUDE_DIR` of its own unless given a fixture; the fake gh
   (`GH_BIN`, no PR file: GitHub shows nothing); fake `caffeinate` and `pmset`, run without a password dialog
   (`AWAKE_ADMIN=none`); Jira's token in a file of its own (`JIRA_TOKEN_FILE`), no jira-cli config and no inherited
-  `JIRA_API_TOKEN`; a `ZDOTDIR` with no rc files for its drawers' zsh; and no inherited
+  `JIRA_API_TOKEN`; a `ZDOTDIR` with no rc files for its drawers' zsh; VS Code Web never kept fresh (`VSWEB_FRESH_MS`
+  0: no update service, no serve-web started); and no inherited
   `CONFIG_FILE`, `TERMS_DIR` or XDG dirs. Its config file is beside its `STATE_FILE`, never the real one. Up is its own
   `listening` line. `meta.env` is spread last. `waitFor(fn, {timeout, what})`, `srv.post(path, body)` and `tmpDir()`
   (a temp dir that goes with the process) are the tests' polls, POSTs and dirs.
