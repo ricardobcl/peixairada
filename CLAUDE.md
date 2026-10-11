@@ -903,6 +903,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   **Commit…, Push and PR… type the command into the chat's zsh, unrun** (`typeInShell`); **a note on a line is a
   prompt typed into the chat's claude** when it is in a drawer here (`sendToClaude`), copied otherwise. Diff lines are
   highlight.js per line by extension (`DIFF_LANG`). → `test/changes.test.mjs`, `scripts/scenarios/changes-tab.mjs`.
+* **A tool call wears its state** (2026-10-11, `toolRes`, `toolMark`): each tool_use row starts with `.tst[data-tu]` —
+  `run` (a ring turning while `#log.working`, which `renderPresence` sets; still otherwise), `ok` (a dot), `err` (a red
+  cross) — from the results the open chat's entries hold; a result arriving for a row already drawn sets its mark with a
+  pop, and a folded run's summary carries the turning ring while any of its calls is out.
 * **The transcript reads as a conversation** (2026-10-08, from the agent apps): your words are a bubble on the right,
   as wide as they are (`.msg.user`); Claude's run the width under **one who-line a turn** — a text after another of
   the same turn is `.cont` (`logView.lastWho`, reset by a turn's end, an interrupt, a compaction); and **the reply that

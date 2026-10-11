@@ -81,6 +81,11 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   board. The server already kept each chat's last tool calls for the overview's tiles; the summary now carries the
   newest of the turn (`doing`), so no second fetch. Not in the card's markup: a tool call every few seconds would have
   rebuilt the card, and its ring, that often — the reason a tool call was kept out of the markup in the first place.
+* **14 · tool calls, live** (GitHub Actions' step list): the transcript's tool rows said what was called and, a row
+  later, what came back; nothing said which call was still out. Each call now starts with its state — a ring turning
+  until its result comes, then a dot, or a red cross for an error — and a folded run of calls turns on its summary, so
+  the open chat's foot says *working on this one* without opening the run. A call whose chat is no longer at work (an
+  interrupt, a claude that ended) keeps a still ring: motion means running.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 

@@ -1367,6 +1367,13 @@
   .codefold[open] > .codebox > pre { border-top: 0; border-radius: 0 0 8px 8px; }   /* one seam, not two borders */
   .tool { margin: 0 0 4px; font-size: 12px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; display: flex; gap: 8px; padding: 3px 8px; background: var(--tool-bg); border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tool b { color: var(--ink); font-weight: 600; }
+  .tool .tst, .toolgroup > summary .tst { flex: none; align-self: center; position: relative; width: 9px; height: 9px; margin-right: -2px; border-radius: 50%; }
+  .toolgroup > summary .tst { display: inline-block; vertical-align: -1px; margin-right: 6px; }
+  .tool .tst.ok { background: color-mix(in srgb, var(--idle) 80%, transparent); scale: .6; }
+  .tool .tst.err::before, .tool .tst.err::after { content: ''; position: absolute; left: 50%; top: 50%; width: 10px; height: 2px; margin: -1px 0 0 -5px; border-radius: 1px; background: var(--needs); rotate: 45deg; }
+  .tool .tst.err::after { rotate: -45deg; }
+  :is(.tool, .toolgroup > summary) .tst.run { border: 1.5px solid var(--line); }
+  #log.working :is(.tool, .toolgroup > summary) .tst.run { border-color: var(--working); border-right-color: transparent; animation: ring .8s linear infinite; }
   .tool.err { color: var(--needs); }
   .sysline { margin: 10px auto; text-align: center; font-size: 11px; color: var(--muted); }
   .sysline.day { margin: 14px auto 12px; }
@@ -1830,6 +1837,7 @@
     .pix, .pix svg { animation: none; }
     .shim > .sw { display: none; }   /* no light runs across clauding */
     .ck[data-checks="pending"] svg { animation: none; stroke-dasharray: none; }   /* CI running: a still ring */
+    #log.working :is(.tool, .toolgroup > summary) .tst.run { animation: none; border-right-color: var(--working); }   /* a tool call running: a still ring */
     .shead .hpr .ck.now path, :is(.shead .hpr, #slist .cpr).sheen::after { animation: none; }   /* an answer, a merge: there, not drawn */
     #log > .in { animation: none; }
     dialog, dialog:not([open]), .pop, .pop[hidden], .note, .note.out { transform: none; }
@@ -6600,7 +6608,7 @@
       const foot = e.turnEnd && e.role === 'assistant' ? `<div class="turnfoot"><button class="tcopy" type="button" data-ts="${esc(e.ts || '')}" title="Copy what Claude said this turn">${ICON.copy}<span>copy</span></button>${e.worked ? `<span class="worked" title="from your last word to this reply">worked for ${workedFor(e.worked)}</span>` : ''}</div>` : '';
       return `<div class="msg ${e.role}${cont ? ' cont' : ''}"${cont && at ? ` title="${at}"` : ''}><div class="who"><span>${e.role === 'user' ? 'You' : 'Claude'}</span><span>${at}</span></div><div class="bubble"><div class="text ${r.cls}">${r.html}</div></div>${foot}</div>`;
     }
-    if (e.kind === 'tool_use') return `<div class="tool"><b>${esc(e.name)}</b><span>${esc(e.text)}</span></div>`;
+    if (e.kind === 'tool_use') return `<div class="tool"><i class="tst ${toolMark(e.toolUseId)}" data-tu="${esc(e.toolUseId || '')}" aria-hidden="true"></i><b>${esc(e.name)}</b><span>${esc(e.text)}</span></div>`;
     if (e.kind === 'tool_result') return `<div class="tool ${e.isError ? 'err' : ''}"><span>↳</span><span>${esc(e.text || '(no output)')}</span></div>`;
     if (e.kind === 'interrupt' || e.kind === 'compact') return `<div class="sysline">${esc(e.text)}</div>`;
     return '';
@@ -6610,7 +6618,8 @@
     const errs = run.filter(e => e.kind === 'tool_result' && e.isError).length;
     const byName = {}; for (const u of uses) byName[u.name] = (byName[u.name] || 0) + 1;
     const label = Object.entries(byName).sort((a, b) => b[1] - a[1]).map(([n, c]) => c > 1 ? `${n} ×${c}` : n).join(', ');
-    return `${uses.length} tool call${uses.length === 1 ? '' : 's'} · ${esc(label)}${errs ? ` · <span class="err">${errs} error${errs > 1 ? 's' : ''}</span>` : ''}`;
+    const pending = uses.some(u => toolMark(u.toolUseId) === 'run');   // a call still out: the folded run says so too
+    return `${pending ? '<i class="tst run" aria-hidden="true"></i>' : ''}${uses.length} tool call${uses.length === 1 ? '' : 's'} · ${esc(label)}${errs ? ` · <span class="err">${errs} error${errs > 1 ? 's' : ''}</span>` : ''}`;
   }
   const toolGroupHtml = run => `<details class="toolgroup"><summary>${toolSummaryHtml(run)}</summary>${run.map(entryHtml).join('')}</details>`;
   // The transcript is appended to, not rewritten (2026-09-27): every `entries` event rebuilt the whole log — each
@@ -6620,6 +6629,12 @@
   // <details> was drawn again on every push before, a turn's worth of rows parsed and linkified per push), its open
   // state kept. Another chat, or another list (a fetch hands the page a new array), starts the log over.
   const logView = { arr: null, n: 0, run: [], group: null, drawnRun: 0 };
+  // A tool call's state, at its row's start (2026-10-11, GitHub Actions' steps): turning while its result has not come
+  // (still while the chat is not at work — #log.working, renderPresence), a dot once it has, a red cross for an error.
+  // `toolRes`: every result the open chat's entries hold, by the call it answers; a result arriving for a row already
+  // drawn sets its mark, with a pop.
+  const toolRes = new Map();
+  const toolMark = id => !id || !toolRes.has(id) ? 'run' : toolRes.get(id) ? 'err' : 'ok';
   const htmlNodes = (html, cwd) => { const t = document.createElement('template'); t.innerHTML = html; linkify(t.content, cwd); return t.content; };
   function renderLog() {
     const log = $('#log'), cwd = state.sessions.get(state.current)?.cwd;
@@ -6628,6 +6643,12 @@
     // The same chat drawn again (a reconnect's fetch) keeps your place in it, and lights no pill for what you had read
     // (2026-10-03: thrown to the top, and "37 new replies" for the whole transcript).
     const keep = resetting && log.dataset.sid === (state.current || '') && !stick ? log.scrollHeight - log.scrollTop : null;
+    if (resetting) { toolRes.clear(); for (const e of state.entries) if (e.kind === 'tool_result' && e.toolUseId) toolRes.set(e.toolUseId, !!e.isError); }
+    else for (const e of state.entries.slice(logView.n)) if (e.kind === 'tool_result' && e.toolUseId && !toolRes.has(e.toolUseId)) {
+      toolRes.set(e.toolUseId, !!e.isError);
+      const m = log.querySelector(`.tst[data-tu="${CSS.escape(e.toolUseId)}"]`);
+      if (m) { m.className = 'tst ' + toolMark(e.toolUseId); if (!REDUCED.matches) m.animate([{ scale: .2, opacity: 0 }, { scale: 1, opacity: 1 }], { duration: 320, easing: SPRING, id: 'tst' }); }
+    }
     if (resetting) { log.innerHTML = ''; log.dataset.sid = state.current || ''; Object.assign(logView, { arr: state.entries, n: 0, run: [], group: null, drawnRun: 0, fresh: 0, dayKey: new Date().toDateString(), lastWho: null }); }
     // What comes while you read fades in (`.in`); the first fill stands still. New nodes go before the log's tail —
     // the presence line and the new-reply pill, which stay last.
@@ -6701,6 +6722,7 @@
   }, VERB_MS);
   function renderPresence() {
     const log = $('#log'), s = state.sessions.get(state.current);
+    log.classList.toggle('working', s?.status === 'working');   // a tool call without its result turns only while the chat works
     const html = !s ? '' : s.status === 'working' ? `<div class="presence" title="Claude is working on a reply">${PIX}<span class="w"><span class="verb"><span class="vw">${shim('clauding…')}</span></span>${s.agents ? ` <em>· ${s.agents} agent${s.agents === 1 ? '' : 's'} at work</em>` : ''}</span></div>`
       : asking(s) ? `<div class="presence ask">${askHtml(s)}</div>` : '';
     let el = log.querySelector(':scope > .presence');

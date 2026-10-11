@@ -5,6 +5,7 @@
 // Then a long chat, for what comes while you read: a reply written in while the log is scrolled up fades in and
 // lights the "↓ new reply" pill at the foot; a click on it scrolls to the end and puts it away; a reply that comes
 // while you are at the end is simply shown, no pill.
+import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -50,6 +51,12 @@ export default async function (ctx) {
     await ctx.settle();
     out.verb = await ctx.evaluate(`document.querySelector('#log > .presence .verb').textContent`);
     ctx.assert.match(out.verb, /^(trawling|filleting|netting|haggling|gutting|brining|scaling|deboning|reeling in|casting|salting|shoaling|smoking)…$/, 'a fish verb, alone in its cell');
+    // a tool call still out turns — on its row and on the folded run's summary — and its result makes it a dot (2026-10-11)
+    out.tst = await ctx.evaluate(`(m => m && { cls: m.className, tu: m.dataset.tu, summary: !!document.querySelector('#log .toolgroup > summary .tst.run'), anim: getComputedStyle(m).animationName })(document.querySelector('#log .tool .tst'))`);
+    ctx.assert.deepEqual([out.tst?.cls, out.tst?.summary, out.tst?.anim], ['tst run', true, 'ring'], 'the build call turns');
+    appendFileSync(working.file, JSON.stringify({ isSidechain: false, userType: 'external', entrypoint: 'cli', cwd, sessionId: working.id, version: 'fixture', gitBranch: 'main', parentUuid: null, type: 'user', uuid: randomUUID(), timestamp: new Date().toISOString(),
+      message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: out.tst.tu, content: 'built in 4s' }] } }) + '\n');
+    await ctx.waitFor(`document.querySelector('#log .tst[data-tu="${out.tst.tu}"]')?.classList.contains('ok') && !document.querySelector('#log .toolgroup > summary .tst')`, { what: 'the call answered: a dot' });
     await ctx.shot('clauding');
 
     // the reply lands: the presence goes, the reply is the last thing
