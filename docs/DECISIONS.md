@@ -16,6 +16,25 @@ view".
   and their heads were the columns' and did nothing. Now anything that is not a tile or a control (a button, a link, a
   box) closes it, the bar's words included. A press that began on a tile and was let go off it — a selection dragged
   out of a tile's tail — lands its click on the column, so the press has to have been on nothing too.
+* **What covered the new chat**: the floating header lets a half with no strip run up behind it — the transcript pads
+  only its words, the drawer was simply taller (late morning). A terminal draws from its top: under `tui: fullscreen`
+  Claude Code puts its banner on the second row and pins its prompt to the bottom, with the gap between, and a zsh's
+  first prompt is its first row — so the start of every new chat, and of every /clear (how most chats here begin),
+  sat behind the header. Read off the live drawers' screens through their holders (`{t:'snap'}`, read-only).
+* **A drawer starts under the header while its screen has room, and runs up behind it once full.** Room is the
+  longest run of blank rows on the screen: a full fullscreen claude has a blank first row and one over its prompt, so
+  two at most is full; back under takes room for the rows the header covers and four more — a /clear, a /compact, a
+  zsh's `clear`. The band between is so that the grow, which shows those rows again, does not undo itself; and a want
+  is acted on only when seen twice 200 ms apart, since a repaint read between its clear and its draw is a blank
+  screen. Every change is a resize and a whole Claude Code repaint, sent at once. Kept per drawer, so a chat switched
+  back to comes up as it was left; a drawer never seen starts under unless it is a resume. Always under was the other
+  way — it gives up the rows behind the header for good, which the floating header was for.
+* **With the focus view it moves at turns**: the view shows the prompt and the latest step, so a turn under way has
+  room and sits under the header, and a long final reply fills the screen and runs it up behind — a resize each way,
+  at a moment Claude Code repaints anyway.
+* **The fake claude draws as `tui: fullscreen` with `FAKE_TUI=fullscreen`**: the alternate screen, the transcript from
+  the top, the prompt pinned, a reply growing in place. Its usual drawing is bottom-anchored (the transcript scrolls
+  up above the live region), where the top of a new chat is blank anyway and nothing was ever covered.
 
 ## Decisions of 2026-10-11, late night — the header's black dissolves in; the fish eats
 

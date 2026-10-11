@@ -6,7 +6,8 @@
 // transcript scrolls above, a live region sits at the bottom (rule · prompt · rule · three status lines), the
 // status timer rewrites only its own cells every second, and a resize (SIGWINCH) repaints the whole region —
 // which is exactly the behaviour behind the truncated-replay bug of 2026-09-20, and what the drawer tests need.
-// It refuses to run without CLAUDE_DIR set to something other than ~/.claude: it must never write the real one.
+// FAKE_TUI=fullscreen draws as `tui: fullscreen` does instead (see paint). It refuses to run without CLAUDE_DIR set to
+// something other than ~/.claude: it must never write the real one.
 import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { homedir, userInfo } from 'node:os';
@@ -48,12 +49,19 @@ const reply = text => `You said: ${text}\n\nThis is the fake claude — one para
 const t0reg = Date.now();
 const register = (status = 'idle') => writeFileSync(regFile, JSON.stringify({ pid: process.pid, sessionId, cwd, startedAt: t0reg, version: 'fake', kind: 'interactive', entrypoint: 'cli', name: 'fake-' + basename(cwd), status, statusUpdatedAt: Date.now() }));
 register();
-const bye = code => { try { unlinkSync(regFile); } catch {} out('\x1b[?2004l\x1b[?1004l\x1b[?25h\n'); process.exit(code); };
+const bye = code => { try { unlinkSync(regFile); } catch {} out(`${FULL ? '\x1b[?1049l' : ''}\x1b[?2004l\x1b[?1004l\x1b[?25h\n`); process.exit(code); };
 for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) process.on(sig, () => bye(sig === 'SIGHUP' ? 129 : 143));
 
 const out = s => process.stdout.write(s);
 const cols = () => process.stdout.columns || 80, rows = () => process.stdout.rows || 24;
 const LIVE = 6;                                   // rule, prompt, rule, status ×3
+// FAKE_TUI=fullscreen is Claude Code's `tui: fullscreen` (2026-10-11): the alternate screen, the transcript drawn from
+// the top under a blank first row and the live region pinned to the bottom, the newest lines kept once it overflows,
+// every change a whole repaint (paint). What say() put up since the last commit() the next say() replaces — a reply
+// growing in place, as it does there, rather than each step of it scrolling away.
+const FULL = process.env.FAKE_TUI === 'fullscreen';
+let shown = [], mark = 0;
+const commit = () => { mark = shown.length; };
 const t0 = Date.now();
 let input = '', tokens = 12300, dollars = 0;
 const rule = () => '─'.repeat(cols());
@@ -83,6 +91,11 @@ function drawLive() {
   out(`  \x1b[33m⏵⏵ fake mode on\x1b[0m (shift+tab to cycle) · ← for agents`);
   out(at(top + 1, 3 + [...input].length) + '\x1b[?25h');
 }
+function paint() {
+  const view = shown.slice(Math.max(0, shown.length - (rows() - LIVE - 1)));
+  out(`\x1b[?25l\x1b[H\x1b[2J${view.map((l, i) => at(i + 2, 1) + l).join('')}`);
+  lastRows = 0; drawLive();
+}
 /** Only the timer's cells — Claude Code's status bar does the same, so a replay that starts after the paint shows lone digits. */
 function tick() {
   const col = status2prefix().length + 1;
@@ -90,6 +103,7 @@ function tick() {
 }
 /** Transcript text goes above the live region: erase it, print, make room, draw it again at the bottom. */
 function say(lines) {
+  if (FULL) { shown.splice(mark, Infinity, ...lines); return paint(); }
   out(`${at(rows() - LIVE + 1, 1)}\x1b[J`);
   out(lines.join('\n') + '\n' + '\n'.repeat(LIVE - 1));
   drawLive();
@@ -97,7 +111,7 @@ function say(lines) {
 async function turn(text) {
   register('busy');
   userLine(text);
-  say([`\x1b[36m>\x1b[0m ${text}`, '']);
+  say([`\x1b[36m>\x1b[0m ${text}`, '']); commit();
   tokens += 900 + text.length * 7; dollars += 0.01;
   const r = reply(text);
   const chunks = r.split('\n');
@@ -107,7 +121,7 @@ async function turn(text) {
   for (const c of chunks) { acc.push(c); say(['\x1b[2m● fake is thinking…\x1b[0m', ...acc]); await new Promise(res => setTimeout(res, 60)); }
   assistantLine(r);
   register('idle');
-  say([`\x1b[32m●\x1b[0m ${chunks[0]}`, ...chunks.slice(1), '', `\x1b[2m✻ Done in ${elapsed()}\x1b[0m`]);
+  say([`\x1b[32m●\x1b[0m ${chunks[0]}`, ...chunks.slice(1), '', `\x1b[2m✻ Done in ${elapsed()}\x1b[0m`]); commit();
 }
 /** /compact, as Claude Code 2.1.28x writes it: the typed command as a plain prompt line first (no tags — it reads as a
  *  prompt), busy while it summarises, then the boundary, the summary, the command's own tagged lines — and no
@@ -124,7 +138,7 @@ async function compact() {
   line({ ...base(), type: 'user', message: { role: 'user', content: '<command-name>/compact</command-name>\n            <command-message>compact</command-message>\n            <command-args></command-args>' } });
   line({ ...base(), type: 'user', message: { role: 'user', content: '<local-command-stdout>Compacted (ctrl+o to see full summary)</local-command-stdout>' } });
   register('idle');
-  say(['\x1b[2mCompacted (ctrl+o to see full summary)\x1b[0m', '']);
+  say(['\x1b[2mCompacted (ctrl+o to see full summary)\x1b[0m', '']); commit();
 }
 
 process.stdin.setRawMode?.(true); process.stdin.resume(); process.stdin.setEncoding('utf8');
@@ -132,8 +146,8 @@ out('\x1b[?2004h\x1b[?1004h');   // bracketed paste, focus reporting — the mod
 // History on resume: the transcript's last turns, the way Claude Code prints them back.
 const history = [];
 if (existsSync(file)) for (const raw of readFileSync(file, 'utf8').split('\n')) { try { const j = JSON.parse(raw); const t = j.message?.content?.find?.(c => c.type === 'text')?.text; if (t && (j.type === 'user' || j.type === 'assistant')) history.push(`${j.type === 'user' ? '\x1b[36m>\x1b[0m' : '\x1b[32m●\x1b[0m'} ${t.split('\n')[0].slice(0, 200)}`); } catch {} }
-out('\x1b[2J\x1b[H');
-say([`\x1b[1mfake claude\x1b[0m · session ${sessionId}${arg('--resume') ? ' (resumed)' : ''} · ${cwd}`, ...history.slice(-8), '']);
+out(`${FULL ? '\x1b[?1049h' : ''}\x1b[2J\x1b[H`);
+say([`\x1b[1mfake claude\x1b[0m · session ${sessionId}${arg('--resume') ? ' (resumed)' : ''} · ${cwd}`, ...history.slice(-8), '']); commit();
 /** /clear, as Claude Code does it: the same process goes on under a new session id — the registry file says so — with a
  *  fresh transcript and the screen started over. The board must follow the pid to the new chat (2026-09-20). The new
  *  transcript is written at once with the command's own lines — a caveat, the command, its empty output — which are
@@ -146,11 +160,11 @@ function clearSession() {
   line({ ...base(), type: 'user', message: { role: 'user', content: '<command-name>/clear</command-name>\n            <command-message>clear</command-message>\n            <command-args></command-args>' } });
   line({ ...base(), type: 'system', subtype: 'local_command', content: '<local-command-stdout></local-command-stdout>', level: 'info' });
   register();
-  out('\x1b[2J\x1b[H');
-  say([`\x1b[1mfake claude\x1b[0m · session ${sessionId} (cleared) · ${cwd}`, '']);
+  out('\x1b[2J\x1b[H'); shown = []; mark = 0;
+  say([`\x1b[1mfake claude\x1b[0m · session ${sessionId} (cleared) · ${cwd}`, '']); commit();
 }
 const timer = setInterval(tick, 1000);
-process.stdout.on('resize', drawLive);
+process.stdout.on('resize', FULL ? paint : drawLive);
 let ctrlC = 0, busy = false, focusView = false;
 process.stdin.on('data', async d => {
   for (const ch of d) {
@@ -164,7 +178,7 @@ process.stdin.on('data', async d => {
       if (text === '/compact' && !busy) { busy = true; await compact(); busy = false; continue; }
       // /focus, the view toggle the board's header button types in (2026-09-20): the real one answers with exactly
       // this line, and the board reads it back off the screen to know which way it went.
-      if (text === '/focus') { focusView = !focusView; say([`\x1b[2mFocus view ${focusView ? 'enabled' : 'disabled'}\x1b[0m`, '']); continue; }
+      if (text === '/focus') { focusView = !focusView; say([`\x1b[2mFocus view ${focusView ? 'enabled' : 'disabled'}\x1b[0m`, '']); commit(); continue; }
       if (text && !busy) { busy = true; await turn(text); busy = false; } else drawLive();
       continue;
     }

@@ -56,7 +56,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `mac/icon/MakeIcon.swift`, `mac/build.sh` | The icon, drawn in CoreGraphics; compile + bundle + sign + install (the version is `package.json`'s) |
 | `scripts/launchd.sh` | The server as a login agent; `restart [--after N]` |
 | `scripts/verify.mjs`, `scripts/scenario.mjs`, `scripts/scenarios/` | The browser harness (see Verifying) |
-| `scripts/fakeclaude.mjs`, `scripts/fixture.mjs` | A stand-in CLI for tests; a `~/.claude` look-alike |
+| `scripts/fakeclaude.mjs`, `scripts/fixture.mjs` | A stand-in CLI for tests (`FAKE_TUI=fullscreen`: drawn as Claude Code's `tui: fullscreen`, from the top); a `~/.claude` look-alike |
 | `scripts/fakejira.mjs` | Jira Cloud's three calls (projects, `myself`, `bulkfetch`) on a loopback port, from a list — `startFakeJira`, for the tests and scenarios |
 | `scripts/fakecode.mjs` | `code serve-web` for the VS Code Web test: a build asked for by name lands in `VSCODE_CLI_DATA_DIR` a moment later, with a 202; `FAKE_CODE_LOG` logs every request |
 | `scripts/fakepmset.mjs`, `scripts/fakecaffeinate.mjs` | `pmset` (its SleepDisabled in `FAKE_PMSET_FILE`; `FAKE_PMSET_FAIL` fails a set) and `caffeinate -i -w` (lives until its pid goes; `FAKE_CAFFEINATE_PIDS` logs it) — every test server's (`PMSET_BIN`, `CAFFEINATE_BIN`, `AWAKE_ADMIN=none`) |
@@ -390,7 +390,12 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   pads down by `--float-h` (`floatH`, a ResizeObserver on the three: from the column's top to under the last one shown;
   a transcript at its end stays there), but **a half with no strip runs up behind it**: the transcript pads only its
   words (zoomed: the lengths divided by `--chat-zoom`), the drawer is simply taller, both masked to a third over that
-  height, the wash moved onto `.gbody` while the transcript shows. **At the notch its top edge dips round the camera
+  height, the wash moved onto `.gbody` while the transcript shows — **but a drawer starts under it while its screen has
+  room** (2026-10-11, late night; `.gterm.under`, `checkRoom` on its writes): a terminal draws from its top, so a new
+  chat's banner was behind the header. The longest run of blank rows decides — two at most is full, and it runs up
+  behind; room for the header's rows and `ROOM_MORE` besides (a /clear) brings it back — each want seen twice
+  `ROOM_MS` apart, every change a resize; kept per drawer (`underOf`), a new one under unless resumed.
+  → `scripts/scenarios/drawer-under-head.mjs`. **At the notch its top edge dips round the camera
   housing** (`headNotch`, from `layoutNotch`): a clip-path run wide of the box (its shadow stays). **With tiles the dip
   is the tile's own line round the housing** (2026-10-11, afternoon; a second line under it before): the top edge bends
   into it — a `HEAD_BEND` circle tangent to the edge and to the line's side or corner — and follows it a pixel under
@@ -1240,8 +1245,8 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   scroll-driven ones, which run as long as the list can scroll — and for a pending draw. `ctx`: `evaluate`, `waitFor`, `send`, `reload`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
-  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The sixty-three in
-  `scripts/scenarios/` are the regression checks for the drawer (a chat switched to with it open, too), the hotkeys, the tab strip and the split, the new-chat
+  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The sixty-four in
+  `scripts/scenarios/` are the regression checks for the drawer (a chat switched to with it open, and a new one under the floating header, too), the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
   marks and the PR stack, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, a PR's turn, the chat's links,
   the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short, the resume bar, keeping the Mac awake, Jira tickets, the transcript's turns, a PR's CI, the floating header, the status bar, the light under the pointer, the Mac's line-editing keys in the drawer, a chat's folder cloned before it resumes, the themes, the launcher and the keys sheet, the changes tab, the overview, the tiles, the home, the lanes that fold, and the small motions of 2026-10-11 (`small-motions.mjs`, one section each, for those no other scenario had a place for).

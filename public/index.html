@@ -1300,6 +1300,9 @@
     background: var(--grain), linear-gradient(165deg, color-mix(in srgb, var(--hbg) 24%, transparent), color-mix(in srgb, var(--hbg) 6%, transparent) 70%, transparent); }
   :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody > :not(#log, .gterm) { margin-top: var(--float-h, 0px); }
   :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody > .gterm { border-top: 0; -webkit-mask-image: var(--fade); mask-image: var(--fade); }
+  /* …but a drawer with room on its screen starts under it (2026-10-11, late night; .under, checkRoom): a new chat's banner,
+     a zsh's first prompt, are at a terminal's top */
+  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody > .gterm.under { margin-top: var(--float-h, 0px); -webkit-mask-image: none; mask-image: none; }
   /* the transcript is zoomed (⌘+ ⌘−), and so is every length on it */
   :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody > #log {
     --fh: calc(var(--float-h, 0px) / var(--chat-zoom, 1)); background: none; padding-top: calc(16px + var(--fh)); scroll-padding-top: var(--fh);
@@ -5678,6 +5681,7 @@
     tm.xt.registerLinkProvider({ provideLinks: (y, cb) => cb(termLinks(tm, y)) });   // the paths on a line (2026-09-26)
     tm.xt.open($(tm.el.tbody));
     tm.xt.onData(d => termSend(tm, d));
+    tm.xt.onWriteParsed(() => roomSoon(tm));   // under the floating header or behind it (checkRoom)
     $(tm.el.tbody).addEventListener('mousedown', () => focusGroup(tm.g));   // typing in a half is being in it
     new ResizeObserver(() => fitTerm(tm)).observe($(tm.el.tbody));
     // The observer sees the body change size — not xterm's cell change size under it. On a display-scale change
@@ -5734,6 +5738,36 @@
   // same change and re-measures in its handler, and the refit must run after that — hence the timeout.
   function watchDpr(tm) {
     matchMedia(`(resolution: ${devicePixelRatio}dppx)`).addEventListener('change', () => { setTimeout(() => fitTerm(tm), 50); watchDpr(tm); }, { once: true });
+  }
+  // A drawer the floating header covers starts under it while its screen has room (2026-10-11, late night): a terminal
+  // draws from its top — Claude Code's banner, a zsh's first prompt — and the header hid the start of every new chat.
+  // Once the screen is full it runs up behind the header as the transcript's words do, older lines faint under it.
+  // Room is the longest run of blank rows on the screen: full is two at most (a fullscreen claude keeps a blank first
+  // row and one over its prompt); back under the header takes room for the rows it covers and ROOM_MORE besides — a
+  // /clear, a /compact. The band between, and a want seen twice ROOM_MS apart, keep it from see-sawing: every change is
+  // a resize and a whole repaint, and a repaint read between its clear and its draw is a blank screen. Kept per
+  // drawer (`underOf`), so a chat switched back to comes up as it was left; one never seen starts under unless resumed.
+  const UNDER_HEAD = ':root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody > .gterm';
+  const ROOM_FULL = 2, ROOM_MORE = 4, ROOM_MS = 200;
+  const underOf = new Map();   // drawer id → it sits under the header
+  function setUnder(tm, on) { if (tm.id) underOf.set(tm.id, on); tm.roomWant = null; $(tm.el.term).classList.toggle('under', on); }
+  function blankRun(xt) {
+    const b = xt.buffer.active; let run = 0, most = 0;
+    for (let y = 0; y < xt.rows; y++) { if (b.getLine(b.baseY + y)?.translateToString(true).trim()) run = 0; else most = Math.max(most, ++run); }
+    return most;
+  }
+  function roomSoon(tm) { if (!tm.roomTimer) tm.roomTimer = setTimeout(() => { tm.roomTimer = 0; checkRoom(tm); }, ROOM_MS); }
+  function checkRoom(tm) {
+    const el = $(tm.el.term);
+    if (!tm.id || !tm.xt || el.hidden || !el.matches(UNDER_HEAD)) return;
+    if (tm.refits) return roomSoon(tm);   // a refit or a nudge under way: the screen is between two sizes
+    const fh = parseFloat($('#chat').style.getPropertyValue('--float-h')) || 0, cell = $(tm.el.tbody).querySelector('.xterm-screen')?.offsetHeight / tm.xt.rows;
+    if (!fh || !(cell > 0)) return;
+    const under = el.classList.contains('under'), room = blankRun(tm.xt);
+    const want = under ? room > ROOM_FULL : room >= Math.ceil(fh / cell) + ROOM_MORE;
+    if (want === under) { tm.roomWant = null; return; }
+    if (tm.roomWant !== want) { tm.roomWant = want; return roomSoon(tm); }
+    setUnder(tm, want); fitTerm(tm, true);   // the PTY told at once: the repaint at the new size is what fixes the screen
   }
   // For the next "the drawer looks wrong" report: the numbers that decide the terminal's grid, readable from the
   // console (the page's script is one closure, so nothing else in it is). Grid vs body vs what fit would propose.
@@ -5804,6 +5838,7 @@
     detachTerm(tm);
     ensureXterm(tm); tm.xt.reset(); tm.held = [];   // what the last socket had waiting behind a refit is that drawer's
     Object.assign(tm, { id: t.id, sessionId: t.sessionId, cwd: t.cwd, kind: t.shell ? 'shell' : 'claude', exited: t.exited, sent: null, lost: false });
+    setUnder(tm, underOf.get(t.id) ?? !t.resume);   // before the first fit: as it was left, a new one under the header
     drawer.err = null;
     showDrawer(tm, true);
     const ws = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`);
@@ -5845,6 +5880,7 @@
   function termEnded(tm, code) {
     const wasNew = !tm.sessionId && !state.current;
     focusView.delete(tm.sessionId);   // the view was that process's, not the chat's
+    underOf.delete(tm.id);
     detachTerm(tm); showDrawer(tm, false);
     if (wasNew) $('#log').innerHTML = `<div class="empty">The terminal ended (exit ${code}) before a chat began — the server log says why.</div>`;
     const s = state.sessions.get(state.current); if (s) { renderTabs(s); renderHead(s); }
