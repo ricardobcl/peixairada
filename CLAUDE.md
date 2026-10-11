@@ -523,7 +523,9 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
 * **Ticking the open chat moves on** (2026-09-30): `tickDone` — the card's ✓ and ↩, the chats step's ✓ — opens the
   card below it in the list as shown, else the one above, stepping over done cards; a chat ticked while another is
   open moves nothing. The move is made **at the click**, not on the server's answer (an empty chat's `session` event
-  would `leaveChat` first). → `scripts/scenarios/tick-next.mjs`.
+  would `leaveChat` first). **The card's ✓ is felt first** (2026-10-11): it fills with the ready green and draws its stroke
+  (`.act.tk`, `ICON.tick`, `tkdraw`), and the move and the server's answer wait `TICK_MS` for it — a redraw before would
+  take the mark with it; a second click meanwhile does nothing. Under reduced motion, at once. `tick` in `motion()`. → `scripts/scenarios/tick-next.mjs`.
 * **The list's frame reads its geometry once** (2026-09-27): `listChanged()` runs once a frame — `listGeom()` (every
   card's top and height, the window, the rail) first, then `drawEdges(g)`, `drawTimeline(g)`, `drawSplit(g)` and
   `drawTrail(g)`. A read after a write is a layout each; keep the reads at the top. The pointer

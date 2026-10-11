@@ -32,6 +32,12 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   digits are dressed after the draw and undressed when they land. The strips' digits are CSS content and the number
   stays in the text beside them, out of sight: the first cut put 0–9 in the text, and two scenarios read a count as
   0123456789 mid-roll.
+* **4 · a tick is felt** (Things' checkbox): the ✓ was a text glyph that vanished with its card; it is a stroke now,
+  which fills and draws itself where it was clicked, and the Done count rolls on. **The server is told once the stroke
+  is drawn** (230 ms), not at the click: its answer redraws the card — as a done one, or folding it away — and a mark on
+  the old node would go with it. The open chat's move to the next card waits as well, for the same reason (the move
+  redraws the ticked card without its `.active`); it was made at the click so an empty chat's event could not leave the
+  column first, and both still happen in that order.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 

@@ -870,6 +870,12 @@
   .act { font: inherit; font-size: 16px; line-height: 1; width: 22px; height: 20px; padding: 0; border: 0; border-radius: 6px; background: transparent;
     color: var(--ink); cursor: pointer; flex: none; opacity: 0; display: inline-grid; place-items: center; transition: opacity .12s; }
   .card:hover .act, .act:focus-visible { opacity: .7; }
+  .act .tk { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  /* Ticked (2026-10-11): the button fills with the ready green and the ✓ draws its stroke — then the server is told
+     (tickDone, TICK_MS) and the card folds or moves to the done ones as before. */
+  .act.tk { opacity: 1; color: #fff; background: var(--idle); }
+  .act.tk .tk path { stroke-dasharray: 14; animation: tkdraw .2s ease-out both; }
+  @keyframes tkdraw { from { stroke-dashoffset: 14; } to { stroke-dashoffset: 0; } }
   /* Every small control eases its hover (2026-09-27, night): the ink, the edge and the wash, 120 ms — the one rule. */
   :is(.btn, .fchip, .ptab, .hmi, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
   /* …and dips to 97 % while pressed (2026-10-11), springing back on release; a row of a menu or the project's line
@@ -1789,6 +1795,7 @@
     #resume.cloning .ric::after { animation: none; }   /* cloning: the ring still, the line along the top and the percent say it */
     #slist .card .top .tprs > * { transition: color .12s, border-color .12s, background-color .12s, box-shadow .12s; }
     .rn.rolling .rcol > span { transition: none; }   /* a count shows its number (rollIn rolls nothing then; this for a switch mid-roll) */
+    .act.tk .tk path { animation: none; }   /* the ✓ is there, not drawn (tickDone tells the server at once) */
     .card:active, :is(.btn, .fchip, .ptab, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button):active { scale: none; }   /* a press does not dip */
   }
 
@@ -2372,6 +2379,8 @@
   // Inline SVG, not emoji: these sit at ~11px inside muted snippet text, where emoji come with their
   // own colours and weight and stop reading as part of the sentence. `currentColor` keeps them typographic.
   const ICON = {
+    // the card's ✓ (2026-10-11; the text glyph before): a stroke, so a tick can draw it
+    tick: '<svg class="ic tk" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.4 8.5 6.5 11.5 12.6 4.8"/></svg>',
     // a crystal ball: the oracle project's mark (see PROJECT_ICONS)
     oracle: '<svg class="ic pic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 1.5a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm-2 2a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2Z"/><path d="M4.6 12.3h6.8l1.3 2.2H3.3Z"/></svg>',
     you: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 8.2a3.1 3.1 0 1 0 0-6.2 3.1 3.1 0 0 0 0 6.2Zm0 1.4c-3.1 0-5.6 1.7-5.6 3.8V14h11.2v-.6c0-2.1-2.5-3.8-5.6-3.8Z"/></svg>',
@@ -3556,7 +3565,7 @@
     const replyLast = showReply && String(s.lastReplyAt || '') >= String(s.lastUserAt || '');
     const older = who => s.lastPrompt && showReply && (who === 'you') === replyLast ? ' older' : '';
     const act = s.done ? `<button class="act" data-act="reopen" title="Untick — bring it back">↩</button>`
-      : canTick(s) ? `<button class="act" data-act="done" title="Tick as done (persisted; comes back on new activity)">✓</button>` : '';
+      : canTick(s) ? `<button class="act" data-act="done" title="Tick as done (persisted; comes back on new activity)">${ICON.tick}</button>` : '';
     // The ✓ / ↩ and the PR chips end the top row — the project name's height; the F for Fable (2026-09-27) and the
     // age stand beside the title since 2026-09-28, where there is more room.
     const fable = onFable(s) ? `<span class="fable" title="on Fable — ${esc(s.model)}, the model Claude last answered with">${ICON.fable}</span>` : '';
@@ -4096,15 +4105,26 @@
   // the list as shown, the one that slides into its place, else the one above; done cards are skipped, and a chat
   // ticked while another is open moves nothing. The move is made at the click, not on the answer: an empty chat's
   // `session` event would leave it first.
-  function tickDone(id, done, anchor) {
-    if (done && id === state.current) {
-      const cards = [...document.querySelectorAll('#slist > .card')], i = cards.findIndex(c => c.dataset.id === id);
-      const open = c => !c.classList.contains('done');
-      const next = i < 0 ? null : cards.slice(i + 1).find(open) || cards.slice(0, i).reverse().find(open);
-      if (next) openSession(next.dataset.id);
-    }
-    api('POST', `/api/sessions/${id}/done`, { done })   // the card the click was on is redrawn by the move
-      .catch(err => note(anchor.isConnected ? anchor : document.querySelector(`#slist > .card[data-id="${id}"]`), `Could not tick it: ${err.message}`, true));
+  // A tick is felt (2026-10-11, Things' checkbox): the ✓ fills and draws its stroke where it was clicked, and the
+  // server is told once it has (TICK_MS) — its answer redraws the card, as done or gone, which would take the mark with it.
+  const TICK_MS = 230;
+  function tickDone(id, done, anchor, mark = null) {
+    const go = () => {
+      if (done && id === state.current) moveOn(id);
+      api('POST', `/api/sessions/${id}/done`, { done })   // the card the click was on is redrawn by the move
+        .catch(err => note(anchor.isConnected ? anchor : document.querySelector(`#slist > .card[data-id="${id}"]`), `Could not tick it: ${err.message}`, true));
+    };
+    if (!done || !mark || REDUCED.matches) return go();
+    if (mark.classList.contains('tk')) return;   // a second click while it draws
+    mark.classList.add('tk'); noteMotion(id, 'tick');
+    mark.animate([{ scale: .7 }, { scale: 1 }], { duration: 360, easing: SPRING, id: 'tick' });
+    setTimeout(go, TICK_MS);   // the open chat moves on with it: a move first would redraw the card, the mark with it
+  }
+  function moveOn(id) {
+    const cards = [...document.querySelectorAll('#slist > .card')], i = cards.findIndex(c => c.dataset.id === id);
+    const open = c => !c.classList.contains('done');
+    const next = i < 0 ? null : cards.slice(i + 1).find(open) || cards.slice(0, i).reverse().find(open);
+    if (next) openSession(next.dataset.id);
   }
   // ⌥⌘← / ⌥⌘→ (2026-09-20):
   // the tab beside the current one in the strip, wrapping round; the same path as a click on it. The chat alone: a note.
@@ -4442,7 +4462,7 @@
     const ctk = e.target.closest('.ctk');
     if (ctk) { e.stopPropagation(); openSession(card.dataset.id); openExternal(ctk.dataset.url, { s: state.sessions.get(card.dataset.id) }); return; }   // …or that ticket
     const act = e.target.closest('.act');
-    if (act) { e.stopPropagation(); tickDone(card.dataset.id, act.dataset.act === 'done', card); return; }
+    if (act) { e.stopPropagation(); tickDone(card.dataset.id, act.dataset.act === 'done', card, act); return; }
     openSession(card.dataset.id);
   });
 

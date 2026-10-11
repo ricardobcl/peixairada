@@ -58,5 +58,19 @@ export default async function (ctx) {
   await ctx.server.post(`api/sessions/${two.id}/done`, { done: false });
   await ctx.waitFor(`document.querySelector('.gsep.lane.ready b')?.textContent === '2'`, { what: 'both ready again' });
   await ctx.settle();
+
+  // ---- 4 · a tick is felt: the ✓ fills and draws its stroke, and only then is the server told — the card goes to the
+  // done ones and the Done count rolls on ----
+  const card2 = `document.querySelector('#slist > .card[data-id="${two.id}"]')`;
+  await ctx.evaluate(`${card2}.querySelector('.act[data-act="done"]').click()`);
+  out.tick = await ctx.evaluate(`({ mark: !!${card2}.querySelector('.act.tk .tk'), done: ${card2}.classList.contains('done'), drawing: ${card2}.querySelector('.act.tk path').getAnimations().map(a => a.animationName) })`);
+  ctx.assert.deepEqual(out.tick, { mark: true, done: false, drawing: ['tkdraw'] }, 'the ✓ draws itself before the card is done');
+  await ctx.waitFor(`${card2}?.classList.contains('done')`, { what: 'the card ticked done once the stroke is drawn' });
+  await ctx.settle();
+  out.ticked = await ctx.evaluate(`({ done: document.querySelector('.gsep.lane.done b')?.textContent, rolled: window.peix.motion().filter(m => m.kind === 'roll').map(m => m.id).slice(-3) })`);
+  ctx.assert.equal(out.ticked.done, '1', 'the Done lane counts it');
+  await ctx.server.post(`api/sessions/${two.id}/done`, { done: false });
+  await ctx.waitFor(`document.querySelector('.gsep.lane.ready b')?.textContent === '2'`, { what: 'both ready again' });
+  await ctx.settle();
   return out;
 }
