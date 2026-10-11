@@ -280,8 +280,11 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   **lifted towards white** (`--glow`, 2026-10-02: OKLCH, 85 % of the way to white, hue and chroma kept — the colour
   itself went round a navy unseen; the landing flare is the same light); **watching** (`s.tasks`) is one light in
   `--watch`, slowly, and can sit on a *ready* card — **its newest event on the card's live line**, each new one rolled
-  in and the light blipping once (2026-10-11, `liveSlot`, `fillLive`, `liveSeen`; `blip` in `motion()`): the line is an
-  empty slot in the markup, filled after the render, so an event keeps the card's node; **asking** (`needs-input` while alive) has **no ring**: the card's
+  in and the light blipping once (2026-10-11, `liveSlot`, `fillLive`, `liveSeen`; `blip` and `event` in `motion()`);
+  **a clauding card's live line is the tool it called last** (the summary's `doing`, `doingOf` on the server: the
+  newest tool_use since your last word), flipping to the next like a split-flap board (`flap`). The line is an empty
+  slot in the markup, filled after the render — its memo in properties, since `data-at` is `fillAges`' — so an event or
+  a tool call keeps the card's node; **asking** (`needs-input` while alive) has **no ring**: the card's
   border is red and **pings leave it** (2026-10-09, `@keyframes sonar`; it blinked before) — its `::before` and `::after`
   as two outlines half a beat apart, scaled out and faded, the card `overflow: visible` to let them out — with the
   question and its answer count on the card

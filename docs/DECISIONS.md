@@ -76,6 +76,11 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   a fish market — trawling, filleting, netting, haggling (a *peixeirada* is a fishwives' quarrel), gutting, brining…
   — every few seconds, rolled up and in, still shimmering. English, as the board's words are. In place rather than in
   the markup, so the line is not rebuilt each time and a check that reads it as it appears still reads *clauding…*.
+* **13 · what it is doing**: a clauding card says the tool it called last and what for — *Bash · run the tests*,
+  *Edit · retry.ts*, *Agent · review the diff* — on the live line #9 made, and flips to the next like a split-flap
+  board. The server already kept each chat's last tool calls for the overview's tiles; the summary now carries the
+  newest of the turn (`doing`), so no second fetch. Not in the card's markup: a tool call every few seconds would have
+  rebuilt the card, and its ring, that often — the reason a tool call was kept out of the markup in the first place.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 

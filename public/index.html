@@ -792,6 +792,8 @@
   .card .state.live .ll { grid-area: 1 / 1; display: flex; align-items: center; gap: 5px; min-width: 0; white-space: nowrap; }
   .card .state.live .ll > span { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .card .state.live .ic { width: 11px; height: 11px; flex: none; color: var(--watch); }
+  .card .state.live { perspective: 160px; }
+  .card .state.live b { flex: none; font: 600 11px/16px -apple-system, BlinkMacSystemFont, sans-serif; color: var(--ink); }
   #sessions[data-cards="compact"] .card .state.live { display: none; }
   #sessions[data-even] .card .title { -webkit-line-clamp: 1; }
   #sessions[data-even] .card .state.needs-input { display: none; }
@@ -3712,12 +3714,14 @@
     </div>`;
   }
   // The card's live line (2026-10-11): what is happening now, filled after the render (fillLive) — never in the markup,
-  // so a new event or a new tool call keeps the card's node, and the ring on it. A monitor's: its newest event, rolled
-  // in, the watching light blipping once per event.
-  const liveSlot = s => watching(s) && s.alive ? '<div class="state live"></div>' : '';
+  // so a new event or a new tool call keeps the card's node, and the ring on it. A turn at work: the tool it called last
+  // and what for (the server's `doing`), flipping to the next like a split-flap board. Else a monitor's: its newest
+  // event, rolled in, the watching light blipping once per event.
+  const liveSlot = s => s.alive && !s.done && (s.status === 'working' || watching(s)) ? '<div class="state live"></div>' : '';
   const liveSeen = new Map();   // chat id → { text, n }: what its line said last, and how many events
   function liveOf(s) {
     const ts = s.alive ? s.tasks || [] : [], n = ts.reduce((a, t) => a + (t.events || 0), 0);
+    if (s.status === 'working' && s.doing) return { html: `<b>${esc(s.doing.name)}</b><span>${esc(s.doing.text)}</span>`, n, flap: true, at: s.doing.ts };
     const ev = ts.filter(t => t.last).sort((a, b) => String(b.lastEventAt || '').localeCompare(String(a.lastEventAt || '')))[0];
     return { html: ev ? `${ICON.watch}<span>${esc(ev.last)}</span>` : '', n };
   }
@@ -3725,14 +3729,17 @@
     for (const el of root.querySelectorAll('.card .state.live')) {
       const card = el.closest('.card'), id = card.dataset.id, s = state.sessions.get(id); if (!s) continue;
       const v = liveOf(s), was = liveSeen.get(id); liveSeen.set(id, v);
-      if (el.dataset.html === v.html) continue;
-      const moved = was && was.html !== v.html && !REDUCED.matches;
+      if (el._html === v.html && el._at === (v.at || '')) continue;   // properties, not data-*: data-at is fillAges' (an age it writes)
+      el._at = v.at || '';
+      const moved = was && (was.html !== v.html || (was.at || '') !== (v.at || '')) && !REDUCED.matches;
       if (moved && !el.childElementCount && was.html) el.innerHTML = `<span class="ll">${was.html}</span>`;   // a node made anew: from what the old one said
-      el.dataset.html = v.html;
+      el._html = v.html;
       if (!moved || !el.childElementCount) { el.innerHTML = v.html ? `<span class="ll">${v.html}</span>` : ''; continue; }
       const old = el.lastElementChild, nu = html2el(`<span class="ll">${v.html}</span>`); el.append(nu);
-      old.animate([{ transform: 'none', opacity: 1 }, { transform: 'translateY(-100%)', opacity: 0 }], { duration: 220, easing: EASE_OUT, fill: 'forwards', id: 'live' }).onfinish = () => old.remove();
-      nu.animate([{ transform: 'translateY(100%)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 320, easing: SPRING, id: 'live' });
+      // a split-flap's turn for a tool call (the old half falls away, the new one swings down), a roll for an event
+      old.animate(v.flap ? [{ transform: 'none', opacity: 1 }, { transform: 'translateY(-40%) rotateX(80deg)', opacity: 0 }] : [{ transform: 'none', opacity: 1 }, { transform: 'translateY(-100%)', opacity: 0 }], { duration: 220, easing: EASE_OUT, fill: 'forwards', id: 'live' }).onfinish = () => old.remove();
+      nu.animate(v.flap ? [{ transform: 'translateY(40%) rotateX(-80deg)', opacity: 0 }, { transform: 'none', opacity: 1 }] : [{ transform: 'translateY(100%)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: v.flap ? 260 : 320, easing: v.flap ? EASE_OUT : SPRING, id: 'live' });
+      noteMotion(id, v.flap ? 'flap' : 'event');
       if (was && v.n > was.n) {   // an event: the watching light blips
         noteMotion(id, 'blip');
         card.animate([{ boxShadow: `0 0 0 0 transparent` }, { boxShadow: `0 0 0 1px ${cssToken('--watch')}, 0 0 16px ${cssToken('--watch')}`, offset: .2 }, { boxShadow: '0 0 0 0 transparent' }], { duration: 700, easing: 'ease-out', id: 'blip' });

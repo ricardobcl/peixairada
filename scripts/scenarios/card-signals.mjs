@@ -213,6 +213,17 @@ export default async function (ctx) {
     await ctx.waitFor(`window.peix.sessions().find(s => s.title === 'A real background job').tasks.length === 0`,
       { what: 'the command let go once its output file was closed', timeout: 20000 });
 
+    // ---- what a turn is doing, on its card (2026-10-11): the tool it called last, flipped to the next ----
+    const nwLive = `[...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work')?.querySelector('.state.live')?.textContent`;
+    out.doing = await ctx.evaluate(nwLive);
+    ctx.assert.match(out.doing || '', /^Bash/, `the tool at work: ${out.doing}`);
+    const nwc = chat('Normal work');
+    appendFileSync(nwc.file, toolLines({ id: nwc.id, cwd, name: 'Grep', input: { pattern: 'parseArgs', path: 'src' }, at: new Date() }).map(l => JSON.stringify(l)).join('\n') + '\n');
+    await ctx.waitFor(`window.peix.motion().some(m => m.kind === 'flap' && m.id === '${nwc.id}')`, { what: 'the line flipping to the next tool' });
+    await ctx.settle();
+    out.doing2 = await ctx.evaluate(nwLive);
+    ctx.assert.match(out.doing2 || '', /^Grep/, `the next: ${out.doing2}`);
+
     // ---- a monitor's event, on its card (2026-10-11): the live line says the newest, and a new one rolls in with a blip ----
     const b = chat('Watching CI'), live = `[...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title')?.textContent === 'Watching CI')?.querySelector('.state.live')?.textContent`;
     out.live = await ctx.evaluate(live);

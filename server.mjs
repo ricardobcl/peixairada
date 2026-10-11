@@ -584,6 +584,7 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     status,
     agents: s.agentsRunning || 0,   // sub-agents at work — what keeps the status 'working' past the main turn's end
     tasks: runningTasks(s),         // monitors and background commands still running behind the turn
+    doing: status === 'working' ? doingOf(s) : null,   // the turn's newest tool call: the card's live line (2026-10-11)
     // the question it is waiting on and which tool asked, when the transcript has it; else only what the registry
     // says it is waiting for — the question itself is written with its answer (see waitingOn)
     ask: status !== 'needs-input' ? null : s.status === 'needs-input' && s.ask ? s.ask : { tool: null, text: null, options: 0, waitingFor: waitingOn(s) || null },
@@ -1293,6 +1294,18 @@ function noteRecent(s, e) {
   if (e.name) r.name = e.name; if (e.toolUseId) r.toolUseId = e.toolUseId; if (e.isError) r.isError = true;
   (s.recent ||= []).push(r);
   if (s.recent.length > RECENT_MAX) s.recent.splice(0, s.recent.length - RECENT_MAX);
+}
+
+/** What a turn at work is doing now (2026-10-11), for the card's live line: the newest tool call since your last word
+ *  — its tool and what it was given, as the transcript summarizes it — or null when the turn has called none yet. */
+function doingOf(s) {
+  const r = s.recent || [];
+  for (let i = r.length - 1; i >= 0; i--) {
+    const x = r[i];
+    if (x.role === 'user' && (x.kind === 'text' || x.kind === 'interrupt')) return null;
+    if (x.kind === 'tool_use') return { name: x.name || 'tool', text: x.text || '', ts: x.ts || null };
+  }
+  return null;
 }
 
 function pushEntry(s, entry) {
@@ -3113,7 +3126,7 @@ server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTe
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
