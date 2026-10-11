@@ -1005,6 +1005,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   (`window.peixReply` — the chat's drawer over the page's own socket, else one opened for it, which sends no size;
   `window.peixDone` — `tickDone`, where `canTick`); the snooze is the same alert again, by the system's clock. The page
   says whether a drawer runs here on the alert it posts (`drawer`). → `scripts/scenarios/notify-actions.mjs`.
+* **The board zooms as a whole in the app** (2026-10-12, `prefs.pageZoom`, the settings' *text size*): `{type: 'zoom'}`
+  sets the board view's `pageZoom`; the page's CSS px are then `zoom` points, and main.swift turns what crosses — the
+  pane's rects (×), `peixPane`'s edge and `peixFill`'s housing (÷). Never CSS `zoom` on the root (rects read and written
+  back as CSS would scale twice). A browser zooms itself.
 * **Both web views are inspectable** (main.swift sets it): Safari → Develop reaches the real app.
 * **The app's server lifecycle** (`ServerController`, main-thread throughout): `start` adopts a server already
   answering, waits for the launchd agent when its plist is installed, else runs the bundled one — one at a time,

@@ -239,6 +239,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   var needsInput: [[String: String]] = []
   var newReplies: [[String: String]] = []
   var yourMoves: [[String: String]] = [], clauding: [[String: String]] = []   // the status menu's too, not counted (2026-10-12)
+  // The board's own zoom (2026-10-12, the settings' text size): the web view's pageZoom, so the page's CSS px are
+  // `zoom` points — what the page and the shell say of places (the pane's rects, the housing, the pane's edge) is
+  // turned between the two here.
+  var zoom: CGFloat = 1
   var badged: (waiting: [[String: String]], replies: [[String: String]], moves: [[String: String]], clauding: [[String: String]]) = ([], [], [], [])   // what the badge and the status menu last showed
   var useUN = false              // native notifications available?
   var fillSaved: (frame: NSRect, mask: NSWindow.StyleMask, opts: NSApplication.PresentationOptions)?   // set while ⌃⌘F fills the screen: what to come back to
@@ -454,7 +458,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// The page cannot see the pane — native views over its chat column — so it is told whether one is up and where
   /// the focused one starts (points, which are the board view's CSS px). window.peix reports it for the harness.
   func tellPane() {
-    let left = paneFocus.flatMap { paneRects[$0]?.minX } ?? 0
+    let left = (paneFocus.flatMap { paneRects[$0]?.minX } ?? 0) / zoom
     web.evaluateJavaScript("window.peixPane && window.peixPane(\(paneOverlay.isHidden ? "false" : "true"), \(Int(left)))", completionHandler: nil)
   }
   /// Where a page is now, for the strip to show and copy — with the key it belongs to, since the board may have
@@ -972,7 +976,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     var notch = "null"
     if fillSaved != nil, let screen = window.screen, screen.safeAreaInsets.top > 0,
        let l = screen.auxiliaryTopLeftArea, let r = screen.auxiliaryTopRightArea {
-      notch = "{top: \(screen.safeAreaInsets.top), left: \(l.maxX - window.frame.minX), right: \(r.minX - window.frame.minX)}"
+      notch = "{top: \(screen.safeAreaInsets.top / zoom), left: \((l.maxX - window.frame.minX) / zoom), right: \((r.minX - window.frame.minX) / zoom)}"
     }
     web.evaluateJavaScript("window.peixFill && window.peixFill(\(fillSaved != nil), \(notch))", completionHandler: nil)
   }
@@ -1076,12 +1080,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     case "pane":
       let places: [PanePlace] = (body["panes"] as? [[String: Any]] ?? []).compactMap { r in
         guard let key = r["key"] as? String else { return nil }
-        let d = { (n: String) in CGFloat((r[n] as? Double) ?? 0) }
+        let d = { (n: String) in CGFloat((r[n] as? Double) ?? 0) * self.zoom }
         return PanePlace(key: key, rect: CGRect(x: d("left"), y: d("top"), width: d("width"), height: d("height")))
       }
       setPane(chat: body["id"] as? String, keys: body["keys"] as? [String] ?? [], places: places, focus: body["focus"] as? String)
     case "nav":
       paneNav(body["what"] as? String ?? "")
+    case "zoom":   // the settings' text size (2026-10-12)
+      let z = CGFloat(min(2, max(0.5, body["value"] as? Double ?? 1)))
+      if z != zoom { zoom = z; web.pageZoom = z; logLine("zoom: \(z)"); tellFill(); tellPane() }
     case "chat":   // the open chat (2026-09-27, night): the window is named after it, and its folder is the represented file
       let title = body["title"] as? String ?? "", project = body["project"] as? String ?? "", cwd = body["cwd"] as? String ?? ""
       window.title = title.isEmpty ? "peixAIrada" : (project.isEmpty ? title : "\(project) · \(title)")

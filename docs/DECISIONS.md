@@ -200,6 +200,12 @@ the order they landed.
   the size above or below, 16 down to 15, 17 and 19 to 18. 14 px is a step of its own: the header's title, measured
   to the pixel round the camera housing, kept its size. The rail's four-letter names keep their 8.5 px. A page-wide
   zoom (A2) is one variable away now, but A2 zooms the page itself.
+* **A2 — the whole board larger or smaller**: every size was in px, ⌘+ and ⌘− zoom only the chat and its drawer,
+  and the app's board view had no magnification. *Text size* under Look — 90, 100, 110, 125 or 140 % — is the app's
+  web view's `pageZoom`, so the page's CSS px stay its own and everything inside it agrees; what crosses to the shell
+  is turned between the two there (the pane's rects, the housing's place, the pane's edge). Not CSS `zoom` on the
+  root: rectangles read back and written again as CSS (the list's slides, the notch, the trail) would have been scaled
+  twice. In a browser the row says to use its own View → Zoom.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 
