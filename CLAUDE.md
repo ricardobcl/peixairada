@@ -669,10 +669,15 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   **the faces, `#people` moved in**, before the fish since 2026-10-11, later, so GitHub's mark stays put as they fold —,
   **`#sbSwim`, the pixel fish swimming at the pace of what is at work** (2026-10-11, RunCat's cat;
   `swimAt(n)` from `renderBar`, n the clauding chats and their agents: one `swim` animation whose rate
-  `updatePlaybackRate` changes in place (`swimRate`), **never still** — at 0 half the pace, `.rest`, a bubble now and
-  then from its mouth (paused there until 2026-10-11, later) — **and back and forth**, mirrored at either end
-  (`swimFrames`: a length each way, the turn two keyframes at .5; `swimTurned` says which way it faces), its tail
-  wagging; a lane of its own, outside the redrawn slots, **the bar's free room** since 2026-10-11, later (64 px before:
+  `updatePlaybackRate` changes in place (`swimPace`: `swimRate`, times `DART` while it darts), **never still** — at 0
+  half the pace, `.rest` (paused there until 2026-10-11, later) — **and back and forth**, mirrored at either end
+  (`swimFrames`: a length each way, the turn two keyframes at .5; `fishAt` says where it is and which way it faces, from
+  the swim's own clock, never a rect), its tail wagging; **a pet that eats** (2026-10-11, late night): now and then it
+  blurps a bubble or three ahead of itself (`blurp`, room ahead only), chases them — its lips (`.m`) away while
+  `.open`, darting the last `DART_PX` — and gulps each, the body swelling (`gulp`); every third, a burp rises; one it
+  turned from pops after `FOOD_MS`; the pointer on it is a pat (`pat`: it wiggles, `.fw`, and blurps one). `feed` is a
+  frame loop only while a bubble is out, reading no layout; `blurp`, `dart`, `gulp`, `burp`, `pat` in `motion()`,
+  `peix.state().swim`; none under reduced motion (no swim). A lane of its own, outside the redrawn slots, **the bar's free room** since 2026-10-11, later (64 px before:
   `flex: 1`; `swimFrames`/`swimMs` follow its width at the same speed in pixels, its place kept, a `ResizeObserver` on
   it), the fish an SVG of `FISH`; a click is ⌥⌘A) — and `#sbRight`:
   the machine (`prefs.barStats`: CPU and memory by default since 2026-10-09 — `sbStats`, none, before; a pick there

@@ -5,10 +5,11 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
-## Decisions of 2026-10-11, late night — the header's black dissolves in
+## Decisions of 2026-10-11, late night — the header's black dissolves in; the fish eats
 
 Ricardo: "on the chat bar, the transition from the background color and the black bar with the title of the chat could
-be faded in pixel form".
+be faded in pixel form" and "the fish on status bar could blurp some bubbles to the front, so he can it eat - make it
+more fun, like a pet".
 
 * **The header's black comes in over a pixel dissolve.** The black right of the project's name (`.shead::after`) began
   on a hard edge at the separator; its first 40 px are now masked by `HEAD_FADE`, a 10 × 16 pattern of 4 px pixels,
@@ -19,6 +20,18 @@ be faded in pixel form".
   between the name and the title was too narrow for a fade (a 24 px band was a strip of checks), so the separator's
   span keeps 32 px and the band reaches 4 px past it each side: the title starts 30 px further right. `--hsplit` still
   says where the black is whole, so the notch's check and the open chat's light are unchanged.
+* **The status bar's fish eats.** Now and then (2.6 s ticks, half the time at rest, a third at work, only with nothing
+  out) it blurps one to three bubbles 16–44 px ahead of itself — never past where it turns — which bob where they land.
+  It swims on to them; within 6 px its lips go (an open mouth, the swimmer's own path), within 10 px it darts at three
+  times its pace, and at its mouth the bubble is drawn in and its body swells. Every third one gulped, a burp rises (the
+  rising bubble it used to make at rest, which this replaces). A bubble it turned away from rises and pops after 12 s.
+  The pointer on the fish is a pat: it wiggles (the whole fish turned, a group inside the svg — the svg's transform is
+  the swim's) and blurps one. Its click is still the overview.
+* **No layout in the loop.** Where the fish is comes from the swim animation's own clock and the lane's width, the same
+  arithmetic as its keyframes, so the frame loop that watches for a bite reads no rect — and it runs only while a bubble
+  is out. The dart is a playback rate (`swimPace`), so the scenario that read the rate at rest reads it net of a dart.
+* **Not done**: food dropped by the user (a click is the overview's), or the fish following the pointer — the swim is
+  one animation on the compositor, and steering it would make it the main thread's.
 
 ## Decisions of 2026-10-11, night, later — VS Code Web on its newest build before it is opened
 

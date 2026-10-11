@@ -131,7 +131,8 @@ export default async function (ctx) {
 
   // ---- 21 · the fish in the status bar: nothing at work, it still swims, at half the pace, back and forth in its lane
   // (2026-10-11, later: it stopped before, and went off one side to come back on the other) ----
-  const fishAt = `(l => l && (a => ({ rest: l.classList.contains('rest'), fish: !!l.querySelector('svg.swimmer .ft'), running: a?.playState, rate: a?.playbackRate,
+  // (its rate is its pace, or three times that while it darts at a bubble — below)
+  const fishAt = `(l => l && (a => ({ rest: l.classList.contains('rest'), fish: !!l.querySelector('svg.swimmer .ft'), running: a?.playState, rate: a?.playbackRate / (window.peix.state().swim.dart ? 3 : 1),
     inLane: (r => r.left >= l.getBoundingClientRect().left - 1 && r.right <= l.getBoundingClientRect().right + 1)(l.querySelector('svg').getBoundingClientRect()) }))(document.getAnimations().find(a => a.id === 'swim')))(document.querySelector('#sbSwim'))`;
   out.swim = await ctx.evaluate(fishAt);
   ctx.assert.deepEqual(out.swim, { rest: true, fish: true, running: 'running', rate: .5, inLane: true }, `swimming slowly, in the lane: ${JSON.stringify(out.swim)}`);
@@ -144,6 +145,27 @@ export default async function (ctx) {
   ctx.assert.ok(s0.right <= 3 && s2.x <= 3 && s3.x <= 3 && s5.right <= 3 && s1.x > s2.x && s4.x > s3.x, `end to end and back: ${JSON.stringify(out.path)}`);
   ctx.assert.deepEqual(out.path.map(p => p.facing), ['left', 'left', 'left', 'right', 'right', 'right'], 'turning at the end');
   ctx.assert.ok(out.path.every(p => p.x >= 0 && p.right >= 0), 'never outside the lane');
+
+  // …and it eats (2026-10-11, late night): the pointer on it is a pat — it wiggles, and blurps a bubble out ahead of itself;
+  // it swims after it, its mouth open at the last and darting the last stretch, and gulps it, its pace back after;
+  // every third one gulped, a burp rises. The fish is put in the lane's middle heading left first, so there is room
+  // ahead — only with nothing out, in the same evaluation, so a blurp of its own is never left behind it.
+  const patIt = `(l => { if (window.peix.state().swim.food.length) return false; (a => { a.currentTime = a.effect.getTiming().duration * .25; })(document.getAnimations().find(a => a.id === 'swim'));
+    l.querySelector('svg').dispatchEvent(new PointerEvent('pointerenter')); return true; })(document.querySelector('#sbSwim'))`;
+  await ctx.waitFor(`!window.peix.state().swim.food.length`, { what: 'nothing out to eat', timeout: 15_000 });
+  const m21 = await ctx.evaluate(`window.peix.motion().length`), eaten = await ctx.evaluate(`window.peix.state().swim.eaten`);
+  await ctx.evaluate(`(l => { window.__opened = false; new MutationObserver(() => { window.__opened ||= l.classList.contains('open'); }).observe(l, { attributes: true }); })(document.querySelector('#sbSwim'))`);
+  ctx.assert.ok(await ctx.evaluate(patIt), 'patted');
+  await ctx.waitFor(`window.peix.state().swim.food.length`, { what: 'a bubble blurped out', timeout: 4000 });
+  out.food = await ctx.evaluate(`(s => ({ kinds: window.peix.motion().slice(${m21}).map(m => m.kind).filter(k => k === 'pat' || k === 'blurp'), ahead: s.food.every(x => x < document.querySelector('#sbSwim svg').getBoundingClientRect().left - document.querySelector('#sbSwim').getBoundingClientRect().left), shown: document.querySelectorAll('#sbSwim .food').length }))(window.peix.state().swim)`);
+  ctx.assert.deepEqual([out.food.kinds[0], out.food.kinds.includes('blurp'), out.food.ahead, out.food.shown > 0], ['pat', true, true, true], `a pat, then a bubble ahead of its mouth: ${JSON.stringify(out.food)}`);
+  await ctx.waitFor(`!window.peix.state().swim.food.length && window.peix.state().swim.eaten > ${eaten}`, { what: 'the bubbles gulped', timeout: 15_000 });
+  await ctx.sleep(300);
+  out.ate = await ctx.evaluate(`({ kinds: [...new Set(window.peix.motion().slice(${m21}).map(m => m.kind).filter(k => /^(dart|gulp)$/.test(k)))], opened: window.__opened, left: document.querySelectorAll('#sbSwim .food').length, rate: document.getAnimations().find(a => a.id === 'swim').playbackRate, open: document.querySelector('#sbSwim').classList.contains('open') })`);
+  ctx.assert.deepEqual(out.ate, { kinds: ['dart', 'gulp'], opened: true, left: 0, rate: .5, open: false }, `chased, mouth open, gulped, its pace back: ${JSON.stringify(out.ate)}`);
+  for (const until = Date.now() + 40_000; !(await ctx.evaluate(`window.peix.motion().slice(${m21}).some(m => m.kind === 'burp')`)) && Date.now() < until;) { await ctx.evaluate(patIt); await ctx.sleep(600); }
+  out.burp = await ctx.evaluate(`window.peix.motion().slice(${m21}).filter(m => m.kind === 'gulp' || m.kind === 'burp').map(m => m.kind + (m.kind === 'gulp' ? m.dy : ''))`);
+  ctx.assert.ok(out.burp.includes('burp') && out.burp.filter(k => k.startsWith('gulp')).some(k => +k.slice(4) % 3 === 0), `a burp after every third: ${JSON.stringify(out.burp)}`);
 
   // ---- 22 · an empty list is the fish, resting, and the way to fill it ----
   await ctx.fill('#q', 'zzqqxx');
