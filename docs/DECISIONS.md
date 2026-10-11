@@ -175,6 +175,11 @@ the order they landed.
   theme; the tag the accent mixed towards the ink; the lane's head and the day lines the plain muted ink; the
   comments darker; and **a done card dimmed by colour** — its title and snippet muted, the card desaturated — not by
   `opacity: .55`, which dimmed the text with it.
+* **A3 — a state said in words, out of sight**: on the rail and under a query no lane head names a card's state, the
+  CI badge was an SVG with no text, a tool row's mark too, and the unread badge a bare number. A card now starts with
+  its lane's name — and *watching*, *N agents at work* — in `.vh` (clipped, read; the rolling counts' `.rv` pattern);
+  a CI badge says *CI passed · failing · running* (not in a PR row, which says it already); a tool row's mark is an
+  image named *running · done · failed*; the unread badge is labelled *N unread*.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

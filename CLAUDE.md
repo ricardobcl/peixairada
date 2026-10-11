@@ -297,6 +297,9 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   speckles at 7 %): the chat header's, the transcript's wash (`#log`) and the tiles' wallpaper, its first background
   layer — where a dark gradient across a wide box bands into steps. Not the cards (narrow, and their first layer is the
   lit edge, which the harness reads). A new wide gradient takes it the same way.
+* **What colour or motion says, words say too, out of sight** (2026-10-12, `.vh`): a card starts with its lane's name
+  (and *watching*, *N agents at work*), a CI badge with *CI passed · failing · running* (`ckHtml(pr, said)`: not where
+  a row says it), a tool row's mark is `role=img` with its state, the unread badge has its label.
 * **Small text reads at AA in both themes** (2026-10-12): the state, ticket and badge fills are deep enough for their ink
   (`--pr-*`, `--tk-*`, `--unread`), each theme has its own `--needs`, and a done card is dimmed by colour (`filter:
   saturate`, its words muted), never `opacity`. A new small-text colour gets its ratio checked.
