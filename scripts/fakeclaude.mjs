@@ -60,6 +60,9 @@ const LIVE = 6;                                   // rule, prompt, rule, status 
 // every change a whole repaint (paint). What say() put up since the last commit() the next say() replaces — a reply
 // growing in place, as it does there, rather than each step of it scrolling away.
 const FULL = process.env.FAKE_TUI === 'fullscreen';
+// FAKE_SCREEN=<file.json> (2026-10-11, the README's drawer shot): `{ screen: [lines], status: [three lines] }` drawn in
+// place of the banner and the history, and of the status lines under the prompt — the timer still.
+const SCREEN = process.env.FAKE_SCREEN ? JSON.parse(readFileSync(process.env.FAKE_SCREEN, 'utf8')) : null;
 let shown = [], mark = 0;
 const commit = () => { mark = shown.length; };
 const t0 = Date.now();
@@ -86,18 +89,36 @@ function drawLive() {
   out(`\x1b[2m${rule()}\x1b[0m\n`);
   out(`\x1b[1m❯\x1b[0m ${input}\n`);
   out(`\x1b[2m${rule()}\x1b[0m\n`);
-  out(`  📂 ${basename(cwd)} | 🌿 main | \x1b[32mFake 1\x1b[0m | 💪 \x1b[33mtest\x1b[0m | 🆔 \x1b[35m${sessionId.slice(0, 8)}\x1b[0m\n`);
-  out(`${status2prefix()}${elapsed()}\x1b[33m${status2suffix()}\x1b[0m\n`);
-  out(`  \x1b[33m⏵⏵ fake mode on\x1b[0m (shift+tab to cycle) · ← for agents`);
+  if (SCREEN) out([0, 1, 2].map(i => SCREEN.status?.[i] || '').join('\n'));
+  else {
+    out(`  📂 ${basename(cwd)} | 🌿 main | \x1b[32mFake 1\x1b[0m | 💪 \x1b[33mtest\x1b[0m | 🆔 \x1b[35m${sessionId.slice(0, 8)}\x1b[0m\n`);
+    out(`${status2prefix()}${elapsed()}\x1b[33m${status2suffix()}\x1b[0m\n`);
+    out(`  \x1b[33m⏵⏵ fake mode on\x1b[0m (shift+tab to cycle) · ← for agents`);
+  }
   out(at(top + 1, 3 + [...input].length) + '\x1b[?25h');
 }
+/** A line of FAKE_SCREEN's wrapped at its words to the width, the rest under its text — after a ⏺, a >, a ⎿ or a list's
+ *  dash —, as Claude Code wraps; its colours carry over, the terminal keeping them across the rows. */
+const visible = l => [...l.replace(/\x1b\[[0-9;]*m/g, '')].length;
+function wrapScreen(l, w) {
+  if (visible(l) <= w) return [l];
+  const ind = ' '.repeat(/^\s*(?:(?:⏺|>|⎿|-)\s+)?/.exec(l.replace(/\x1b\[[0-9;]*m/g, ''))[0].length), out = [];
+  let cur = null;
+  for (const word of l.split(' ')) {
+    if (cur !== null && visible(cur.trim()) && visible(cur) + 1 + visible(word) > w) { out.push(cur); cur = ind + word; }
+    else cur = cur === null ? word : cur + ' ' + word;
+  }
+  return [...out, cur];
+}
 function paint() {
-  const view = shown.slice(Math.max(0, shown.length - (rows() - LIVE - 1)));
+  const all = SCREEN ? shown.flatMap(l => wrapScreen(l, cols())) : shown;
+  const view = all.slice(Math.max(0, all.length - (rows() - LIVE - 1)));
   out(`\x1b[?25l\x1b[H\x1b[2J${view.map((l, i) => at(i + 2, 1) + l).join('')}`);
   lastRows = 0; drawLive();
 }
 /** Only the timer's cells — Claude Code's status bar does the same, so a replay that starts after the paint shows lone digits. */
 function tick() {
+  if (SCREEN) return;
   const col = status2prefix().length + 1;
   out(`\x1b7${at(rows() - 1, col)}${elapsed()}\x1b8`);
 }
@@ -147,7 +168,7 @@ out('\x1b[?2004h\x1b[?1004h');   // bracketed paste, focus reporting — the mod
 const history = [];
 if (existsSync(file)) for (const raw of readFileSync(file, 'utf8').split('\n')) { try { const j = JSON.parse(raw); const t = j.message?.content?.find?.(c => c.type === 'text')?.text; if (t && (j.type === 'user' || j.type === 'assistant')) history.push(`${j.type === 'user' ? '\x1b[36m>\x1b[0m' : '\x1b[32m●\x1b[0m'} ${t.split('\n')[0].slice(0, 200)}`); } catch {} }
 out(`${FULL ? '\x1b[?1049h' : ''}\x1b[2J\x1b[H`);
-say([`\x1b[1mfake claude\x1b[0m · session ${sessionId}${arg('--resume') ? ' (resumed)' : ''} · ${cwd}`, ...history.slice(-8), '']); commit();
+say(SCREEN ? SCREEN.screen : [`\x1b[1mfake claude\x1b[0m · session ${sessionId}${arg('--resume') ? ' (resumed)' : ''} · ${cwd}`, ...history.slice(-8), '']); commit();
 /** /clear, as Claude Code does it: the same process goes on under a new session id — the registry file says so — with a
  *  fresh transcript and the screen started over. The board must follow the pid to the new chat (2026-09-20). The new
  *  transcript is written at once with the command's own lines — a caveat, the command, its empty output — which are

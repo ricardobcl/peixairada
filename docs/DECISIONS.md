@@ -5,6 +5,35 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
+
+Ricardo: "readme screenshots needs a refresher. also, highlight the features like opening terminal, github, vscode in
+chat and different configurations".
+
+* **The shots are the board as it starts now** — tiles, the floating header, the status bar — and seventeen of them,
+  not seven: the board in both appearances, the chat with what is beside it, its changes, the overview, home, the
+  launcher (⌥⌘K's picker before), the cards and the timeline, and six looks (tiles off, the rail, the stack, compact
+  cards with the edge light, a dark and a light theme) beside simple colours. **WebP at 92**: the grain made each PNG
+  megabytes — 3.9 MB for the seventeen against 12 for the seven.
+* **A new section, *Everything about a chat, beside it***, under the hero: one shot of a chat with Claude Code in the
+  drawer, a zsh, the PR and VS Code Web on tabs in the other half, the PR's row open under the header — and a table of
+  the keys (⌥⌘C T G E D, ⌘2 · ⌥⌘2). The two feature bullets it replaces went from the list. A second section, *Make it
+  yours*, is the looks; the simple-colours pair moved there from the top.
+* **The pane is the app's, so the shots fake its shell**: the bridge as `pane-tabs.mjs` fakes it, and every page the app
+  would put in a native view over a half is an iframe there. **VS Code Web is the real thing** — a `code serve-web` of
+  the script's own on the made-up repo (its own server data; the user's settings it reads from the browser seeded into
+  IndexedDB by a page of its origin first: a dark theme, no welcome, no trust prompt, no AI panel), behind a small proxy
+  that drops serve-web's `X-Frame-Options` and `frame-ancestors` and passes its sockets through; Quick Open, typed over
+  CDP, opens the card's stylesheet, the uncommitted edit in its gutter. Without the `code` CLI that shot goes without it.
+  **GitHub's page is not drawn**: it cannot be framed, and the made-up PR is nobody's — the PR is its tab in the strip
+  and its row under the header, which is the board's own drawing of it.
+* **Claude Code in the drawer is the fake claude, drawing a screen the script writes** (`FAKE_SCREEN`, wrapped at its
+  words to the drawer's width as Claude Code wraps): the banner, the turn's tool calls, the edit's diff, the reply.
+* **The made-up board is made up all the way**: the Mac's CPU and memory (`/api/stats`) and the snapshot's user and host
+  (the home's `user@host`, the About box) are answered in the page, as the plan usage was; the storefront is a git repo
+  with the chat's edit uncommitted, so the changes tab and VS Code's gutter show it; the PRs carry people, CI and one at
+  your move, so the faces, the CI marks and the *your move* tag are in the shots.
+
 ## Decisions of 2026-10-11, late night, later still — the WebKit check in the repo
 
 Ricardo, asked whether the check that found the rings' bug should join the harness: "continue".

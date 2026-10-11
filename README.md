@@ -13,18 +13,40 @@
 </div>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/shots/board-dark.png">
-  <img src="docs/shots/board-light.png" alt="The board: chat cards coloured by project on the left, the open chat on the right">
-</picture>
-
-<p align="center"><sub>Every project in its colour — or, with <b>simple colours</b> on (Settings › Board), every project in black and the states in grey:</sub></p>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/shots/simple-dark.png">
-  <img src="docs/shots/simple-light.png" alt="The same board with simple colours: every project in black, the states in grey, the PRs and the question still in colour">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/shots/board-dark.webp">
+  <img src="docs/shots/board-light.webp" alt="The board: chat cards coloured by project on the left, in lanes — asking you, clauding, ready — and the open chat on the right">
 </picture>
 
 It reads what Claude Code already writes to `~/.claude` — no plugin, no private API, and it never writes there.
+
+## 💬 Everything about a chat, beside it
+
+Open a chat and its terminal, its PR, its editor and its changes are a key away — each on a tab of the chat, the
+column split in two halves when there's more than one thing to look at.
+
+<img src="docs/shots/chat-dark.webp" alt="A chat with Claude Code resumed in the drawer on the left, the PR's state and CI under the header, and the repo open in VS Code Web on the right">
+
+| Key | Beside the chat |
+|---|---|
+| ⌥⌘C | 🖥️ **Claude Code itself** — the real terminal, in a drawer: resume any chat, or take over one running in iTerm or VS Code. A chat whose Claude has ended resumes 5 s after you open it (or on a click), cloning its repo first when its folder isn't checked out. Drawers survive the board's restarts. |
+| ⌥⌘T | 🐚 **A shell** in the chat's folder, on a tab of its own. |
+| ⌥⌘G | 🐙 **The PR on GitHub** — its page on a tab; its state, its CI and whose move it is under the header. |
+| ⌥⌘E | 🧩 **VS Code Web** on the chat's folder. |
+| ⌥⌘D | 🔀 **The chat's changes** — this turn's edits, everything uncommitted, or the branch against its base, as a diff. Commit… and Push type into its shell; a note on a line goes to Claude. |
+| ⌘2 · ⌥⌘2 | ◫ **Split** the column side by side, or one half over the other; drag a tab across, ⌘W closes a half. |
+
+GitHub and VS Code open in the chat in the Mac app; in a browser they open in a tab of their own.
+
+<table>
+  <tr>
+    <td><img width="420" src="docs/shots/changes-dark.webp" alt="The chat's changes beside Claude: the uncommitted diff of the file it edited, Commit… and Push above it"></td>
+    <td><img width="420" src="docs/shots/overview-dark.webp" alt="⌥⌘A: every live chat in columns — asking you, clauding, watching — each showing what it is doing"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>⌥⌘D — the diff of what Claude just did, the list folded to a rail (⌥⌘B)</sub></td>
+    <td align="center"><sub>⌥⌘A — every agent at once, by what it wants from you</sub></td>
+  </tr>
+</table>
 
 ## ✨ Features
 
@@ -33,10 +55,6 @@ It reads what Claude Code already writes to `~/.claude` — no plugin, no privat
 - 💡 **The card's edge tells you why it's busy** — each card a lit edge in its project's colour; a light runs round it
   (or down the edge, if you'd rather) while Claude works, one per sub-agent, slower for a monitor; a question pings out
   in red.
-- 🖥️ **Claude in a drawer** — resume any chat in the real Claude Code terminal, inside the board: a chat whose Claude
-  has ended says so, and resumes 5 s after you open it (or on a click, if you'd rather) — cloning its repo first, with
-  the progress showing, when its folder isn't checked out. Drawers survive restarts; chats running in iTerm or VS Code
-  can be taken over.
 - 🔔 **Alerts** — a notification when a chat finishes or needs you; a Dock badge and menu-bar list in the app.
 - 🐙 **PRs** — chips in GitHub's colours, stacked on a card and fanned out under the pointer (scroll them when they're
   more than fit); a chat with an open PR is named after it. A PR you reviewed or wrote fills in, notifies you and brings its ticked chat back when it's your
@@ -48,9 +66,6 @@ It reads what Claude Code already writes to `~/.claude` — no plugin, no privat
   colour, or named sets of folders.
 - 🌑 **Simple colours** — a quieter board: every project in black (or one colour you pick), the states in grey; PRs
   and faces keep their colours, and the accent is left for what needs you.
-- 🪟 **Tabs and splits** — a shell, VS Code Web and GitHub pages beside the chat — and the chat's **changes**: its last
-  turn's edits, the uncommitted tree or the branch, as a diff; Commit… and Push type into its shell, and a note on a
-  line goes to Claude.
 - 🗺️ **Every agent at once** — ⌥⌘A lays out every live chat by what it wants (asking, clauding, watching, unread),
   each showing what it is doing right now; the *tiles* switch lays the board out as Hyprland does, and ⌥⌘S stacks the
   busy chats beside the open one.
@@ -69,12 +84,53 @@ It reads what Claude Code already writes to `~/.claude` — no plugin, no privat
 
 <table>
   <tr>
-    <td><img width="380" src="docs/shots/cards-dark.png" alt="Cards: asking, three sub-agents, working, and a monitor"></td>
-    <td><img width="380" src="docs/shots/timeline-dark.png" alt="The timeline swelled under the pointer, every day's label out"></td>
+    <td><img width="380" src="docs/shots/cards-dark.webp" alt="Cards: asking, working with your move on its PR, three sub-agents, and a monitor"></td>
+    <td><img width="380" src="docs/shots/timeline-dark.webp" alt="The timeline swelled under the pointer, every day's label out"></td>
   </tr>
   <tr>
-    <td align="center"><sub>asking · sub-agents · working · watching</sub></td>
+    <td align="center"><sub>asking · clauding, your move on its PR · sub-agents · watching</sub></td>
     <td align="center"><sub>point at the scrollbar and the days come out</sub></td>
+  </tr>
+</table>
+
+<p align="center"><img width="760" src="docs/shots/home-dark.webp" alt="Home: the board's facts beside a pixel fish, and the day — every chat's turns, waits and monitors since the morning"><br><sub>⌥⌘0 — home: the board at a glance, and your day</sub></p>
+
+## 🎛️ Make it yours
+
+Every look is a switch in Settings › Board (⌘,), or a key — and the board starts with tiles and the floating header on,
+as at the top.
+
+<table>
+  <tr>
+    <td><img width="420" src="docs/shots/look-plain.webp" alt="Tiles off: one plain column, the header across the chat"></td>
+    <td><img width="420" src="docs/shots/look-rail.webp" alt="The list folded to a rail of squares, one per chat"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Tiles</b> off — the plain column, the header edge to edge</sub></td>
+    <td align="center"><sub><b>⌥⌘B</b> — the list folded to a rail, a square per chat</sub></td>
+  </tr>
+  <tr>
+    <td><img width="420" src="docs/shots/look-stack.webp" alt="The stack: the chats asking or clauding as live tiles beside the open one"></td>
+    <td><img width="420" src="docs/shots/look-edge.webp" alt="Compact cards, all one height, their light running down the left edge"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>⌥⌘S</b> — the busy chats stacked beside the open one, live</sub></td>
+    <td align="center"><sub><b>Compact</b> cards, one height, and the <b>edge light</b></sub></td>
+  </tr>
+  <tr>
+    <td><img width="420" src="docs/shots/look-tokyo.webp" alt="The Tokyo Night theme"></td>
+    <td><img width="420" src="docs/shots/look-latte.webp" alt="The Catppuccin Latte theme, in light mode"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>⌥⌘Y</b> — a theme for dark (Tokyo Night)…</sub></td>
+    <td align="center"><sub>…and one for light (Catppuccin Latte)</sub></td>
+  </tr>
+  <tr>
+    <td><img width="420" src="docs/shots/simple-dark.webp" alt="Simple colours, dark: every project in black, the states in grey"></td>
+    <td><img width="420" src="docs/shots/simple-light.webp" alt="Simple colours, light"></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><sub><b>Simple colours</b> — every project in black (or one colour you pick), the states in grey; PRs and faces keep theirs</sub></td>
   </tr>
 </table>
 
@@ -117,7 +173,10 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
 
 **Settings** — ⌘, or ··· in the chat's header:
 
-- **Board** — notifications, the theme, simple colours (every project in black, or one colour you pick, the states in grey, for a quieter board), the edge light, the status bar and what it shows, tiles and the floating header (both on to begin with), card size, ⌥ as Meta.
+- **Board** — notifications, sounds, the theme, simple colours (every project in black, or one colour you pick, the
+  states in grey, for a quieter board), tiles and their stack and glow, the floating header (tiles and the header on to
+  begin with), the edge light and the light under the pointer, rings in step, the status bar and what it shows, card
+  size, auto-resume, ⌥ as Meta.
 - **Setup** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
   project ⌥⌘O starts a chat in, a short name and a colour where Peacock has none, per project, and your Jira site,
   email and API token (the token goes to your keychain, never into the file).
@@ -174,7 +233,7 @@ The login agent takes `PORT`, `NOTIFY` and your `PATH` at `scripts/launchd.sh in
 
 `?` (or Settings › Keys) lists the rest.
 
-<p align="center"><img src="docs/shots/picker-dark.png" alt="⌥⌘K, the chat picker" width="620"></p>
+<p align="center"><img src="docs/shots/launcher-dark.webp" alt="⌥⌘L, the launcher: chats, projects, a new chat, PRs, every switch, the theme, settings, keys" width="560"></p>
 
 ## 🔒 Good to know
 
@@ -186,7 +245,8 @@ The login agent takes `PORT`, `NOTIFY` and your `PATH` at `scripts/launchd.sh in
 ## 🛠 Hacking
 
 `npm test` · `npm run check` · `npm run scenarios` — and `npm run scenario -- scripts/readme-shots.mjs` redraws these
-screenshots from a made-up board. The browser checks drive Google Chrome (`CHROME` points at another).
+screenshots from a made-up board (VS Code Web's wants the `code` CLI). The browser checks drive Google Chrome (`CHROME`
+points at another); `npm run webkit` runs the board in WebKit, the app's engine.
 [CLAUDE.md](CLAUDE.md) holds the working notes, [docs/DECISIONS.md](docs/DECISIONS.md) the why.
 
 <div align="center"><br><sub>🐟 A <i>peixarada</i> is a Portuguese fish feast — more than anyone planned for.</sub></div>
