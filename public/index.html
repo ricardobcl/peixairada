@@ -276,7 +276,7 @@
   main:not(.scompact) #shd { grid-row: 4; }
   main.scompact #people { display: none; }
   main:not(.scompact) #sfoot { grid-row: 4; grid-column: 2; background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); align-items: center; gap: 2px; padding: 0 10px 0 0; position: relative; }
-  main:not(.scompact) #shd { padding-right: 4px; overflow: hidden; }   /* a list at its narrowest clips the chips rather than run them under the usage */
+  main:not(.scompact) #shd { padding-right: 4px; overflow: hidden; }   /* a list at its narrowest clips the row rather than run it under the usage */
   main.scompact #sfoot { grid-row: 2; } main.scompact #shd { grid-row: 3; } main.scompact #stitle { grid-row: 4; }
   /* the cards start under the camera's strip when the list is under the housing (the head used to pad down instead) */
   main.notch #sessions.npad #slist { padding-top: var(--notch-top, 0px); }
@@ -409,8 +409,8 @@
   #shd .btn.icon { padding: 3px 5px; }
   :is(#shd, #sbar) #filters { display: flex; align-items: center; gap: 3px; flex: 1 1 auto; text-transform: none; letter-spacing: 0; font-weight: 400; }
   /* The magnifier is a field as wide as the row leaves it (2026-09-27; an icon-sized pill until then, and the box took
-     the chips' place while it was open): at rest a pill from the fish — or the project's name — to the first chip, the
-     icon at its left end; open, the icon is the field's left cap and the box runs on to the chips, which stay. */
+     the chips' place while it was open; the chips went 2026-10-11, later): open, the icon is the field's left cap
+     and the box takes the row's spare room. */
   :is(#shd, #sbar) .fsearch { flex: none; height: 20px; }   /* small again since 2026-09-28: the row has the foot's rings and cog to hold now */
   :is(#shd, #sbar) #filters.searching .fsearch { flex: none; min-width: 0; color: var(--accent); border-color: var(--accent); background: var(--bg); border-right: 0; border-radius: 12px 0 0 12px; padding-right: 3px; }
   :is(#shd, #sbar) .fq { flex: 1 1 0; width: 0; height: 20px; margin-left: -3px; border-left: 0; border-radius: 0 12px 12px 0; padding-left: 3px; }   /* width 0: a box's own width is what it asks of the row, and it would push ＋ out; open, it takes the room the chips leave */
@@ -422,7 +422,6 @@
   .fq { font: inherit; font-size: 11px; padding: 2px 8px; border: 1px solid var(--accent); border-radius: 12px; background: var(--bg); color: var(--ink); width: 150px; min-width: 0; }
   .fq[hidden] { display: none; }
   .fq:focus { outline: none; }
-  #fchips { display: contents; }
   /* a project's mark (PROJECT_ICONS), inline before its name */
   .pic { width: 13px; height: 13px; fill: currentColor; vertical-align: -2px; margin-right: 4px; flex: none; }
   .pc { font-size: 10.5px; font-weight: 700; border-radius: 9px; padding: 0 6px; line-height: 16px; color: #fff; }
@@ -443,20 +442,6 @@
   #chat.dropping > * { pointer-events: none; }
 
   /* ---- sessions of the selected project ---- */
-  /* The state chips, in the head's one row since 2026-09-24: a dot in the state's colour and the count — the word
-     only where the column is wide enough to hold it, and in the tooltip always. A chip that is on has its dot filled
-     and its edge in the colour; off, the dot is a ring and the chip goes quiet. */
-  .fchip { --c: var(--muted); font: inherit; font-size: 11px; padding: 1px 5px; border: 1px solid transparent; border-radius: 12px; background: var(--ctl); color: var(--muted); cursor: pointer; white-space: nowrap; display: inline-flex; gap: 3px; align-items: center; flex: none; }
-  .fchip.ready { --c: var(--idle); } .fchip.working { --c: var(--working); } .fchip.done { --c: var(--ended); }
-  .fchip i { width: 7px; height: 7px; border-radius: 50%; box-sizing: border-box; border: 1.5px solid var(--c); flex: none; }
-  .fchip .lb { display: none; }
-  @container (min-width: 600px) { .fchip .lb { display: inline; } }
-  @container (max-width: 340px) { .fchip .n { display: none; } }   /* near the list's narrowest, the dots alone, so the name keeps some room */
-  .fchip .n { font-weight: 700; font-variant-numeric: tabular-nums; }
-  .fchip:hover { color: var(--ink); }
-  .fchip.on { color: var(--ink); background: color-mix(in srgb, var(--c) 22%, transparent); }
-  .fchip.on i { background: var(--c); }
-  .fchip:not(.on) { opacity: .75; }
   /* no room above the first card (2026-09-29): its top is the chat header's */
   #slist { overflow-y: auto; overflow-x: hidden; min-width: 0; padding: 0 8px 8px; display: flex; flex-direction: column; gap: 7px; position: relative; scrollbar-width: none; }   /* positioned: the cards' offsetTop is the list's */
   #slist::-webkit-scrollbar { display: none; }   /* the timeline beside it is the scrollbar, with the days on it */
@@ -484,6 +469,14 @@
   .gsep.lane.working { color: color-mix(in srgb, var(--working) 80%, var(--ink)); }
   .gsep.lane.ready > i { border: 2px solid var(--idle); background: radial-gradient(var(--idle) 30%, transparent 36%); }
   .gsep.lane.done > i { background: var(--ended); }
+  /* A lane's head folds its lane (2026-10-11, later; laneShut): the whole head a toggle, a chevron at its end turned
+     down while open, the head dimmed while folded; the count stays, so a folded lane still says how much is in it. */
+  .gsep.lane[data-lane] { cursor: pointer; user-select: none; border-radius: 5px; }
+  .gsep.lane[data-lane]:hover .ln { color: var(--ink); }
+  .gsep.lane .lc { flex: none; width: 7px; height: 7px; margin: 0 3px 0 -2px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; rotate: 45deg; translate: 0 -2px; opacity: .7; transition: rotate .15s var(--ease-out), translate .15s var(--ease-out); }
+  .gsep.lane.shut .lc { rotate: -45deg; translate: -1px 0; }
+  .gsep.lane.shut { opacity: .7; }
+  .gsep.lane.shut:hover { opacity: 1; }
   /* The shimmer (shim(), 2026-10-11): the window is the word's own width, its mask a soft band in the middle, and it
      and the copy in it move by the same 68 % of that width in opposite directions — the band sweeps the word, the copy
      stays over it. Phased with the rings (phaseAnims). */
@@ -969,10 +962,10 @@
   .act.tk .tk path { stroke-dasharray: 14; animation: tkdraw .2s ease-out both; }
   @keyframes tkdraw { from { stroke-dashoffset: 14; } to { stroke-dashoffset: 0; } }
   /* Every small control eases its hover (2026-09-27, night): the ink, the edge and the wash, 120 ms — the one rule. */
-  :is(.btn, .fchip, .ptab, .hmi, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
+  :is(.btn, .ptab, .hmi, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
   /* …and dips to 97 % while pressed (2026-10-11), springing back on release; a row of a menu or the project's line
      does not — a whole row shrinking reads as a glitch, not a press. */
-  :is(.btn, .fchip, .ptab, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
+  :is(.btn, .ptab, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, .gsep.lane[data-lane]):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
   .act:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .dot.working { background: var(--working); animation: pulse 1.4s ease-in-out infinite; }
@@ -1045,7 +1038,6 @@
   #sbFind { padding: 0 8px; border-right: 1px solid var(--line); }
   #sbFind #filters { flex: none; gap: 4px; }
   #sbar .fq { flex: none; width: 210px; }
-  #sbar .fchip .lb { display: inline; }   /* room for the words, which the list's foot gave from 600 px of list */
   #sbPeople { flex: 1 1 auto; min-width: 0; display: flex; justify-content: center; align-items: center; }
   #sbar #people { padding: 0 8px; border: 0; gap: 4px; max-width: 100%; }
   #sbar #people :is(button:not(.pgh), img, .face) { width: 18px; height: 18px; font-size: 9.5px; }
@@ -1867,7 +1859,7 @@
   .card .title, .card .snip, .msg .text, .presence, .prrow .t { text-wrap: pretty; }
   .empty, .gempty, dialog p.help, #slist .none, #picklist .none, .pop .opt span { text-wrap: balance; }
   .card .title { overflow-wrap: break-word; hyphens: auto; }
-  .badge, .chip, :is(.card .cpr, .shead .hpr), .pkrow .num, #counts, .fchip .n, .sedge b, .tl-lab, .prrow .num, .pop .keys kbd, .lognew b, #resume .n { font-variant-numeric: tabular-nums; }
+  .badge, .chip, :is(.card .cpr, .shead .hpr), .pkrow .num, #counts, .sedge b, .tl-lab, .prrow .num, .pop .keys kbd, .lognew b, #resume .n { font-variant-numeric: tabular-nums; }
   ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
   :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
@@ -1919,7 +1911,7 @@
     #slist .card .top .tprs > * { transition: color .12s, border-color .12s, background-color .12s, box-shadow .12s; }
     .rn.rolling .rcol > span { transition: none; }   /* a count shows its number (rollIn rolls nothing then; this for a switch mid-roll) */
     .act.tk .tk path { animation: none; }   /* the ✓ is there, not drawn (tickDone tells the server at once) */
-    .card:active, :is(.btn, .fchip, .ptab, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button):active { scale: none; }   /* a press does not dip */
+    .card:active, :is(.btn, .ptab, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button):active { scale: none; }   /* a press does not dip */
   }
 
   /* ---- syntax highlighting (highlight.js class names, our colours) ---- */
@@ -1943,7 +1935,7 @@
 <body>
 <main id="main">
   <section id="sessions">
-    <div class="colhead" id="shd"><span class="brand" id="brandBtn" title="About peixAIrada" role="button"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g class="fishg"><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g></g><g class="stars" fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" autocomplete="off" spellcheck="false" hidden><span id="fchips"></span></span></div>
+    <div class="colhead" id="shd"><span class="brand" id="brandBtn" title="About peixAIrada" role="button"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g class="fishg"><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g></g><g class="stars" fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" autocomplete="off" spellcheck="false" hidden></span></div>
     <div id="tline" aria-label="The list's days — point to read them, drag to scroll, click one to go there"><div class="tl-catch"></div><div class="tl-thumb"></div><div class="tl-labs"></div></div>
     <div id="slist"></div>
     <div class="tl-glass"></div>
@@ -2148,7 +2140,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map() };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleFold: false, cardSpot: true, tiles: false, tileStack: false, changesScope: 'turn', skinDark: null, skinLight: null, skinExact: false };
+  const prefs = { project: 'all', lanesShut: ['done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleFold: false, cardSpot: true, tiles: false, tileStack: false, changesScope: 'turn', skinDark: null, skinLight: null, skinExact: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -2158,8 +2150,10 @@
   // day first again (both 2026-09-28)
   for (const k of ['sound', 'showAll', 'toolsMode', 'foldCode', 'foldBy', 'dates']) delete prefs[k];
   // the one-of-four filter (before 2026-09-20) becomes the set of states shown; 'all' was every state
-  if ('filter' in prefs) { prefs.filters = prefs.filter === 'all' ? ['ready', 'working', 'done'] : [prefs.filter]; delete prefs.filter; }
-  if (!Array.isArray(prefs.filters)) prefs.filters = ['ready', 'working', 'done'];
+  // the state chips went (2026-10-11, later) — the lanes fold instead (lanesShut, Done shut to begin with); a filter
+  // saved before is dropped, or a state switched off then would be hidden with nothing left to bring it back
+  delete prefs.filter; delete prefs.filters;
+  if (!Array.isArray(prefs.lanesShut)) prefs.lanesShut = ['done'];
   // what the status bar adds (sbStats, none by default until 2026-10-09, then CPU and memory as barStats): a pick carries
   // over; the empty default every saved prefs held does not, or nobody would see the new one
   if ('sbStats' in prefs) { if (Array.isArray(prefs.sbStats) && prefs.sbStats.length) prefs.barStats = prefs.sbStats; delete prefs.sbStats; }
@@ -2195,7 +2189,6 @@
   }
   const qShow = on => { const inp = $('#q'); inp.hidden = !on; $('#filters').classList.toggle('searching', on); if (on) { inp.focus(); inp.select(); } };
   // the state chips, on #filters itself: it moves between the list's foot and the status bar (dockBar)
-  $('#filters').addEventListener('click', e => { const f = e.target.closest('.fchip'); if (!f) return; const k = f.dataset.f; prefs.filters = FILTERS.map(x => x[0]).filter(x => x === k ? !filterOn(k) : filterOn(x)); savePrefs(); renderBoard(); });
   {
     const btn = $('#qBtn'), inp = $('#q');
     btn.onclick = () => qShow(inp.hidden);
@@ -3020,9 +3013,9 @@
     : `<span class="sq"${style ? ` style="${style}"` : ''}></span>`;
 
   // ---- render: both lists ------------------------------------------------------------
-  // The three states as chips, each a toggle (prefs.filters, remembered); all three on is what "all" used to be.
-  const FILTERS = [['ready', 'ready'], ['working', 'clauding'], ['done', 'done']];
-  const filterOn = k => prefs.filters.includes(k);
+  // A lane folds (2026-10-11, later; three state chips filtered the list before): its head is a toggle, its cards hidden
+  // and its count kept — prefs.lanesShut, Done shut to begin with. Not on the rail, which draws no heads to open one by.
+  const laneShut = g => !prefs.sessionsCompact && (prefs.lanesShut || []).includes(g);
   /** What the stream says, drawn once a frame (2026-10-03): a gh batch is a burst of `session` events in one task, and
    *  each drew the whole list. A frame, or 100 ms where there are no frames (a hidden window: the badge still follows). */
   function renderBoardSoon() {
@@ -3087,7 +3080,7 @@
   // as wide as the word, masked to a soft band, moving one way while the bright copy in it (its ::before, from
   // data-t, so the text is said once) moves the other; both transforms, so nothing repaints.
   const shim = t => `<span class="shim">${esc(t)}<span class="sw" data-t="${esc(t)}" aria-hidden="true"></span></span>`;
-  const laneHtml = (g, n) => `<div class="gsep lane ${g}" title="${n} ${LANES[g][1]}">${g === 'working' ? PIX : '<i></i>'}<span class="ln">${g === 'working' ? shim(LANES[g][0]) : LANES[g][0]}</span><b>${rn('lane:' + g, n)}</b></div>`;
+  const laneHtml = (g, n, shut = false) => `<div class="gsep lane ${g}${shut ? ' shut' : ''}" data-lane="${g}" role="button" tabindex="0" aria-expanded="${!shut}" title="${n} ${LANES[g][1]} — click to ${shut ? 'show' : 'fold'} them">${g === 'working' ? PIX : '<i></i>'}<span class="ln">${g === 'working' ? shim(LANES[g][0]) : LANES[g][0]}</span><b>${rn('lane:' + g, n)}</b><span class="lc" aria-hidden="true"></span></div>`;
   // …and when no lane waits on you, a still one that says so (renderSessionList); its mark is the clauding head's at
   // rest. Reached by a tick it earns a moment, once: the mark hops and throws a few sparks (caughtUp).
   const ZERO_HTML = `<div class="gsep lane zero" title="Nothing waits on you — no chat ready and no question">${PIX}<span class="ln">All caught up</span></div>`;
@@ -3186,7 +3179,7 @@
     // is in the match's order, not the board's, and the lines that say where a state or a day ends are left out.
     const q = $('#q').value.trim().toLowerCase();
     const score = new Map();
-    const who = renderPeople(p.sessions.filter(s => filterOn(bucket(s)))) ? prefs.person : null;   // may let go of a person no longer in view
+    const who = renderPeople(p.sessions.filter(s => !laneShut(rankOf(s)))) ? prefs.person : null;   // may let go of a person no longer in view
     const list = (!q ? p.sessions : p.sessions.filter(s => { const m = fuzzy(chatFields(s), q); if (m) score.set(s.id, m.score); return !!m; })).filter(s => !who || hasPerson(s, who));
     const counts = {};
     for (const s of list) counts[bucket(s)] = (counts[bucket(s)] || 0) + 1;
@@ -3194,7 +3187,8 @@
     // needs a group above it); inside each group your last touch, newest first. A finished job moves its card
     // into the ready group, where its last prompt puts it. That order is also how a query's ties are broken.
     const board = (a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byWord(a, b);
-    const shown = list.filter(s => filterOn(bucket(s))).sort(q ? (a, b) => (score.get(b.id) - score.get(a.id)) || board(a, b) : board);
+    const ordered = list.slice().sort(q ? (a, b) => (score.get(b.id) - score.get(a.id)) || board(a, b) : board);
+    const shown = q ? ordered : ordered.filter(s => !laneShut(rankOf(s)));   // a query shows every match, folded or not
     // The project filter's one cue: a click is ⌥⌘P's picker, × goes back to ALL. The square is only a colour here —
     // the colour picker is the chat header's.
     // The head names the project and nothing else (2026-09-27): no colour square — the chat header's is the picker —
@@ -3205,28 +3199,31 @@
     $('#stitle').title = p.key === ALL ? '' : `${p.custom ? `${p.name}: ${p.cwds.join(', ') || 'no folders yet'}` : p.key} — click or ⌥⌘P for another`;
     // No ＋ since 2026-09-28: ⌥⌘N, which opens on
     // the project in view.
-    setHtml($('#fchips'), FILTERS.map(([k, label]) => `<button class="fchip ${k} ${filterOn(k) ? 'on' : ''}" data-f="${k}" title="${counts[k] || 'no'} ${label} — click to ${filterOn(k) ? 'hide' : 'show'} them"><i></i><span class="lb">${label}</span><span class="n">${rn('chip:' + k, counts[k] || 0)}</span></button>`).join(''));
-    const b = shown.map(rankOf);   // a lane's head over the first card of each group (laneHtml)
+    const b = shown.map(rankOf), every = ordered.map(rankOf);   // a lane's head over each group (laneHtml), folded or not
     // …and a day's line under every run of cards from one day: the card whose next one is from another day, or none.
     const days = shown.map(dayName), inLane = {};
-    for (const g of b) inLane[g] = (inLane[g] || 0) + 1;
-    const dividerBefore = i => !q && b[i] !== b[i - 1] ? laneHtml(b[i], inLane[b[i]]) : '';
+    for (const g of every) inLane[g] = (inLane[g] || 0) + 1;
     // the timeline's runs: the cards of one day *and* one state group in a row — none while a query orders the list
     tl.runs = [];
     if (!q) shown.forEach((s, i) => { const r = tl.runs[tl.runs.length - 1]; if (r && r.g === b[i] && r.day === days[i]) r.n++; else tl.runs.push({ g: b[i], day: days[i], at: wordAt(s), i, n: 1 }); });
     const dayAfter = i => !q && days[i] && days[i + 1] !== days[i] ? dayHtml(days[i]) : '';
     // All caught up (2026-10-11): nothing in the project waits on you — no ready chat and no question — while the list
-    // still shows something (the clauding, the done): a still head where the Ready lane goes, before the done cards.
-    const zeroAt = q || counts.ready || !shown.length ? -1 : (i => i < 0 ? shown.length : i)(b.indexOf('done'));
+    // still holds something (the clauding, the done): a still head where the Ready lane goes, before the done lane.
+    const zero = !q && !counts.ready && ordered.length > 0;
     const items = [];
-    shown.forEach((s, i) => { const d = dividerBefore(i), a = dayAfter(i); if (i === zeroAt) items.push({ html: ZERO_HTML }); if (d) items.push({ html: d }); items.push({ id: s.id, html: cardHtml(s, p, q) }); if (a) items.push({ html: a }); });
-    if (zeroAt === shown.length) items.push({ html: ZERO_HTML });
+    if (q) shown.forEach(s => items.push({ id: s.id, html: cardHtml(s, p, q) }));
+    else for (const g of new Set(every)) {   // the lanes present, in rank order: each its head, then its cards unless folded
+      if (zero && g === 'done') items.push({ html: ZERO_HTML });
+      items.push({ html: laneHtml(g, inLane[g], laneShut(g)) });
+      if (!laneShut(g)) shown.forEach((s, i) => { if (b[i] !== g) return; items.push({ id: s.id, html: cardHtml(s, p, q) }); const a = dayAfter(i); if (a) items.push({ html: a }); });
+    }
+    if (zero && !every.includes('done')) items.push({ html: ZERO_HTML });
     // An empty list (2026-10-11) is the home's fish, resting, over what is empty and the key that fills it — a bubble
     // now and then (the bar's own interval), nothing else moving.
-    const [none, how] = q ? ['Nothing matches', 'another word, or Esc for every chat'] : !prefs.filters.length ? ['Every state is switched off', 'turn a chip back on'] : prefs.filters.length < FILTERS.length ? [`Nothing ${FILTERS.filter(([k]) => filterOn(k)).map(([, w]) => w).join(' or ')}`, 'the chips below show the rest'] : ['No chats yet', '⌥⌘N starts one'];
+    const [none, how] = q ? ['Nothing matches', 'another word, or Esc for every chat'] : ['No chats yet', '⌥⌘N starts one'];
     drawCards(items, `<div class="none"><span class="nfish">${SWIM_FISH.replace('class="swimmer"', 'class="restfish"').replace('width="26" height="11"', 'width="52" height="22"')}</span><b>${esc(none)}</b><span>${esc(how)}</span></div>`);
     fillAges($('#slist')); fillLive($('#slist')); fadeSoon();
-    caughtUp(zeroAt >= 0);
+    caughtUp(zero);
     phaseAnims();
     markQsel();
     listChanged();
@@ -4775,9 +4772,18 @@
     const t = e.target.closest('.card .tprs'); if (!t || t._fan) return;
     t._fan = true; t.addEventListener('wheel', fanWheel, { passive: false }); t.addEventListener('pointerleave', fanLeave);
   });
+  // a lane's head, clicked or ⏎/space on it (2026-10-11, later): its lane folds or opens — the cards fold away as a
+  // ticked one does, and come back fading in (drawCards' own moves)
+  function foldLane(g, byKey = false) {
+    const shut = new Set(prefs.lanesShut || []); if (shut.has(g)) shut.delete(g); else shut.add(g);
+    prefs.lanesShut = [...shut]; savePrefs(); noteMotion(g, shut.has(g) ? 'fold' : 'unfold');
+    renderBoard(); if (byKey) document.querySelector(`#slist > .gsep.lane[data-lane="${g}"]`)?.focus({ preventScroll: true });   // the head drawn anew keeps the keys
+  }
+  $('#slist').addEventListener('keydown', e => { const l = e.target.closest?.('.gsep.lane[data-lane]'); if (l && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); foldLane(l.dataset.lane, true); } });
   $('#sessions').addEventListener('click', e => {
     if (e.target.closest('#stitle .sx')) { selectProject(ALL); return; }
     if (e.target.closest('#stitle')) { pickOpen('project'); return; }
+    const lane = e.target.closest('#slist > .gsep.lane[data-lane]'); if (lane) return foldLane(lane.dataset.lane);
     const card = e.target.closest('.card'); if (!card) return;
     const cpr = e.target.closest('.cpr');
     if (cpr) { e.stopPropagation(); openSession(card.dataset.id); showPr(cpr.dataset.url); return; }   // that chat, with that PR open

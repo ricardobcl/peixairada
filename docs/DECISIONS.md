@@ -25,6 +25,15 @@ anything and it does't look pretty with the floating chat bar".
 * **Pies, not bars**: CPU, memory and the plan's windows were each a 40 px bar and a number — memory's was *34.6 GB /
   48.0 GB*. Each is a label, a 12 px pie of what is spent and its percent now; memory a percent like the rest (*RAM
   72 %*), its sizes in the tooltip. Half the width, and a pie reads at a glance the way the menu bar's own do.
+* **Lanes that fold, no state chips**: the three chips (ready · clauding · done) filtered the list from the status
+  bar; the lanes' heads say the same three things over the cards themselves, so the heads became the toggles and the
+  chips went — from the bar and from the list's foot alike. A folded lane keeps its head and its count, so it still
+  says how much is in it; Done is last, as it always was, and **folded to begin with**: what you ticked is out of the
+  way until you ask for it. A ticked chat folds into it as it went when its chip was off. A query shows every match,
+  folded or not — a search that hid what it found would be a search that lies. Not on the rail, which has no heads to
+  open a lane by. A filter saved from before is dropped on load, since nothing could bring back a state it hid; the
+  harness opens every lane, as most scenarios tick a chat and look for its card, and `lanes.mjs` asks for the
+  board's own default.
 
 ## Decisions of 2026-10-11 — the third studies built: twenty-eight small motions
 

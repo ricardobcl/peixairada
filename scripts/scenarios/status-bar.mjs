@@ -27,7 +27,7 @@ export default async function (ctx) {
   // the clock, far right (2026-10-11, later): the time, the day in its tooltip
   out.clock = await ctx.evaluate(`(c => ({ text: c?.textContent, now: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), last: c === [...document.querySelectorAll('#sbRight > .seg')].pop(), gap: Math.round(document.querySelector('#sbar').getBoundingClientRect().right - c.getBoundingClientRect().right), tip: c?.title }))(document.querySelector('#sbar .clock'))`);
   ctx.assert.ok(out.clock.text === out.clock.now && out.clock.last && out.clock.gap < 8 && out.clock.tip, `the clock at the far right: ${JSON.stringify(out.clock)}`);
-  ctx.assert.deepEqual([out.rest.find, out.rest.footRow], ['sbFind', 'none'], 'the search and the chips in the bar, the list\'s foot row gone');
+  ctx.assert.deepEqual([out.rest.find, out.rest.footRow], ['sbFind', 'none'], 'the search in the bar, the list\'s foot row gone');
   ctx.assert.ok(await ctx.evaluate(`document.querySelector('#sbFind').getBoundingClientRect().left - document.querySelector('#sbar').getBoundingClientRect().left < 12`), 'far left');
   // the search works from there: the magnifier opens the box, a query narrows the list, Esc puts it away
   const cards = () => ctx.evaluate(`document.querySelectorAll('#slist > .card').length`);
@@ -37,11 +37,8 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length < ${all}`, { what: 'the list narrowed from the bar' });
   await ctx.evaluate(`document.querySelector('#q').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === ${all}`, { what: 'every card again' });
-  // a state chip there filters as it did in the list's foot
-  await ctx.evaluate(`document.querySelector('#sbar .fchip.ready').click()`);
-  await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 0`, { what: 'the ready cards switched off' });
-  await ctx.evaluate(`document.querySelector('#sbar .fchip.ready').click()`);
-  await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === ${all}`, { what: 'and on' });
+  // no state chips there since 2026-10-11, later: the lanes' heads fold the list (scripts/scenarios/lanes.mjs)
+  ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('#sbar .fchip').length`), 0, 'no state chips in the bar');
   // the connection opens the About box (the fish's, whose row went)
   await ctx.evaluate(`document.querySelector('#sbar .conn').click()`);
   await ctx.waitFor(`document.querySelector('#about').open`, { what: 'the About box from the bar' });

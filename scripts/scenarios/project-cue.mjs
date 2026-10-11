@@ -29,28 +29,28 @@ export default async function (ctx) {
   // One row atop the list (2026-09-24): the filters and ＋ are in the head, the cards start right under it, ＋ is an
   // icon alone, and on ALL it is ⌥⌘N's flow; since 2026-09-28 the foot — the cog, the usage — ends that row, and « went
   out.row = await ctx.evaluate(`JSON.stringify((() => { const h = document.querySelector('#shd'), r = h.getBoundingClientRect(), f = document.querySelector('#sfoot').getBoundingClientRect();
-    return { inHead: ['#qBtn', '#fchips'].every(q => h.contains(document.querySelector(q))), fold: !!document.querySelector('#sessPinBtn'), plus: !!document.querySelector('#newChatBtn'), h: Math.round(r.height),
+    return { inHead: h.contains(document.querySelector('#qBtn')), fold: !!document.querySelector('#sessPinBtn'), plus: !!document.querySelector('#newChatBtn'), h: Math.round(r.height),
       foot: [Math.round(f.top), Math.round(f.height), Math.round(f.left - r.right)], head: [Math.round(r.top), Math.round(r.height)],
       under: Math.round(r.top - document.querySelector('#slist').getBoundingClientRect().bottom), bottom: Math.round(document.querySelector('#main').getBoundingClientRect().bottom - r.bottom),   // the board's foot: the status bar is under it (2026-10-09)
      
-      chips: [...document.querySelectorAll('#fchips .fchip')].map(c => c.className.replace(/\s+/g, ' ').trim()) }; })())`).then(JSON.parse);
-  ctx.assert.equal(out.row.inHead, true, 'the magnifier and the chips are in the head');
+      chips: document.querySelectorAll('.fchip').length }; })())`).then(JSON.parse);
+  ctx.assert.equal(out.row.inHead, true, 'the magnifier is in the head');
   ctx.assert.equal(out.row.plus, false, 'no ＋ — ⌥⌘N (2026-09-28)');
   ctx.assert.equal(out.row.fold, false, 'no « — ⌥⌘B folds the list');
   ctx.assert.deepEqual([out.row.foot[0], out.row.foot[1], out.row.foot[2]], [out.row.head[0], out.row.head[1], 0], 'the foot is the head row\'s right end, as tall');
   ctx.assert.ok(out.row.h <= 44 && out.row.under === 0 && out.row.bottom === 0, `one row, under the cards, at the window's foot (2026-09-28, later): ${JSON.stringify(out.row)}`);
-  ctx.assert.deepEqual(out.row.chips, ['fchip ready on', 'fchip working on', 'fchip done on'], 'the three state chips, on');
+  ctx.assert.equal(out.row.chips, 0, 'no state chips: the lanes fold instead (2026-10-11, later)');
   // The magnifier is small (2026-09-28; a field from the fish to the first chip from 2026-09-27): open, its icon is the
   // box's left cap and the box takes the room the row has spare — the rings', too, while it is open
   const field = () => ctx.evaluate(`JSON.stringify((() => { const x = q => { const r = document.querySelector(q).getBoundingClientRect(); return r.width ? [Math.round(r.left), Math.round(r.right)] : null; };
-    return { fish: x('#brandBtn'), btn: x('#qBtn'), box: x('#q'), chip: x('#fchips .fchip') }; })())`).then(JSON.parse);
+    return { fish: x('#brandBtn'), btn: x('#qBtn'), box: x('#q') }; })())`).then(JSON.parse);
   out.field = { rest: await field() };
   const { rest } = out.field;
-  ctx.assert.ok(rest.btn[0] - rest.fish[1] <= 6 && rest.chip[0] - rest.btn[1] <= 4 && rest.btn[1] - rest.btn[0] < 30, `at rest the magnifier is an icon beside the fish: ${JSON.stringify(rest)}`);
+  ctx.assert.ok(rest.btn[0] - rest.fish[1] <= 6 && rest.btn[1] - rest.btn[0] < 30, `at rest the magnifier is an icon beside the fish: ${JSON.stringify(rest)}`);
   await ctx.evaluate(`document.querySelector('#qBtn').click()`);
   out.field.open = await field();
   const { open } = out.field;
-  ctx.assert.ok(open.box && open.box[0] <= open.btn[1] && open.chip[0] - open.box[1] <= 4 && open.btn[0] === rest.btn[0] && open.box[1] - open.btn[0] > 80, `open, the icon and the box are one field before the chips: ${JSON.stringify(open)}`);
+  ctx.assert.ok(open.box && open.box[0] <= open.btn[1] && open.btn[0] === rest.btn[0] && open.box[1] - open.btn[0] > 80, `open, the icon and the box are one field: ${JSON.stringify(open)}`);
   ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#usage')).display`), 'none', 'the rings make room while it is open');
   await ctx.shot('1b-search', { x: 0, y: 0, width: 520, height: 140 });
   await ctx.evaluate(`document.querySelector('#q').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);

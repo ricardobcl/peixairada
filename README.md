@@ -28,7 +28,8 @@ It reads what Claude Code already writes to `~/.claude` — no plugin, no privat
 
 ## ✨ Features
 
-- 🚦 **Sorted by who owes whom** — in lanes: asking you first, then clauding, then ready. *Done* is a tick you give.
+- 🚦 **Sorted by who owes whom** — in lanes: asking you first, then clauding, then ready. *Done* is a tick you give, and
+  its lane starts folded; a click on any lane's head folds or opens it.
 - 💡 **The card's edge tells you why it's busy** — each card a lit edge in its project's colour; a light runs round it
   (or down the edge, if you'd rather) while Claude works, one per sub-agent, slower for a monitor; a question pings out
   in red.
@@ -61,9 +62,9 @@ It reads what Claude Code already writes to `~/.claude` — no plugin, no privat
   its newest event; a pixel fish in the status bar swims at the pace of the agents at work, and floats belly-up while
   the board has lost its server. In the app the trackpad bumps as a divider snaps; sounds, if you switch them on. All of it stills under the system's
   *reduce motion*.
-- 📊 **A status bar** — along the window's foot: the search and the state filters, connected and live chats, drawers,
-  the faces on your PRs, your plan's limits (or its monthly spend cap), keeping the Mac awake (with the lid closed too,
-  by Touch ID where sudo takes it; greyed out when the Mac wouldn't sleep anyway, as on a charger set never to), CPU and memory, and optionally what Claude's processes hold.
+- 📊 **A status bar** — along the window's foot: the search, the connection, what asks you, the faces on your PRs,
+  your plan's limits (or its monthly spend cap) as small pies, keeping the Mac awake (with the lid closed too,
+  by Touch ID where sudo takes it; greyed out when the Mac wouldn't sleep anyway, as on a charger set never to), CPU and memory as pies too, optionally what Claude's processes hold — and the time, at the far right.
 
 <table>
   <tr>

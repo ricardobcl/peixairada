@@ -61,8 +61,9 @@ export default async function (ctx) {
   ctx.assert.equal(out.enter[0].id, id6, 'the new card leads');
   n0 = (await motion(ctx)).length;
 
-  // the done chip switched off: the done card folds shut where it stands, takes no click meanwhile, and is gone after
-  await ctx.evaluate(`document.querySelector('#fchips .fchip.done').click()`);
+  // the Done lane folded (its chip switched off, before 2026-10-11): the done card folds shut where it stands, takes no
+  // click meanwhile, and is gone after
+  await ctx.evaluate(`document.querySelector('#slist > .gsep.lane[data-lane="done"]').click()`);
   await ctx.waitFor(`window.peix.motion().slice(${n0}).some(m => m.id === ${JSON.stringify(id2)} && m.kind === 'leave')`, { what: 'the done card folding', every: 40, timeout: 3000 });
   out.leave = await ctx.evaluate(`JSON.stringify((w => w ? { leaving: true, dataId: w.querySelector('.card')?.dataset.id || null, pointer: getComputedStyle(w).pointerEvents, anims: w.getAnimations().map(a => a.id), counted: document.querySelectorAll('#slist > .card').length } : { leaving: false })(document.querySelector('#slist > .leaving')))`).then(JSON.parse);
   if (out.leave.leaving) {   // caught in the act: the fold is a WAAPI animation on a wrapper, the card inside with no id, out of the list's count

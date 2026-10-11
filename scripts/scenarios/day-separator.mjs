@@ -76,11 +76,11 @@ export default async function (ctx) {
   out.done = (await strip(ctx)).map(x => x.lane ? `[${x.lane}]` : x.sep ? x.day : x.card);
   ctx.assert.deepEqual(out.done, ['[ready]', 'this morning', 'today', 'two days back, later', 'two days back', ddmmyyyy(d2), 'three days back', ddmmyyyy(d3), '[done]', 'a minute ago', 'today'], 'today twice, each run under its own line — the done one in its lane');
 
-  // Only the done card in view — the ready chip off: still one line, under it, saying so
-  await ctx.evaluate(`document.querySelector('#fchips .fchip.ready').click()`);
+  // Only the done card in view — the Ready lane folded (its chip off, before 2026-10-11): still one line, under it
+  await ctx.evaluate(`document.querySelector('#slist > .gsep.lane[data-lane="ready"]').click()`);
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 1`, { what: 'the done card alone' });
   await ctx.settle();   // the ready cards fold out first; strip reads every child of the list
   out.filtered = (await strip(ctx)).map(x => x.lane ? `[${x.lane}]` : x.sep ? x.day : x.card);
-  ctx.assert.deepEqual(out.filtered, ['[done]', 'a minute ago', 'today'], 'the day closes under its only card');
+  ctx.assert.deepEqual(out.filtered, ['[ready]', '[done]', 'a minute ago', 'today'], 'the folded lane\'s head, and the day closes under the only card');
   return out;
 }

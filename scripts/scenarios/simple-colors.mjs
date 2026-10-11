@@ -2,7 +2,7 @@
 // asking, one on an open PR with a face and a block of code. What this checks: off (the default), the cards, the
 // splitter and the open chat's header wear the folder's colour, the list ALL's black, a PR chip its state's green; the
 // settings' switch turns the board to black and greys — every card, the list and the header in black, the clauding
-// light, the state chips' dots and the code in grey — while a question is still the accent, the PR chips, GitHub's faces and your mark
+// light, the lanes' marks and the code in grey — while a question is still the accent, the PR chips, GitHub's faces and your mark
 // keep their colours (the theme is the projects' colours and the states', not the people's or the PRs'), and the setup
 // still shows the folder's colour (it is where the colour is set). Another colour can stand for every project instead
 // of the black — picked under the switch, or at the chat header's square, which then leaves Peacock's alone — and
@@ -74,7 +74,7 @@ export default async function (ctx) {
         open: __chroma(cs(plain, 'background-image')), head: __chroma(cs(document.querySelector('#chat'), '--hbg')),
         split: __chroma(cs(document.querySelector('#main'), '--openc')), lit: __chroma(cs(card(${JSON.stringify(busy.id)}), '--lit')),
         pr: __chroma(cs(plain.querySelector('.cpr[data-state="open"]'), 'background-color')), hpr: __chroma(cs(document.querySelector('.shead .hpr[data-state="open"]'), 'background-color')),
-        dots: [...document.querySelectorAll('#fchips .fchip')].map(c => __chroma(cs(c, '--c'))),
+        dots: [...document.querySelectorAll('#slist > .gsep.lane.working')].map(l => __chroma(cs(l, 'color'))).concat([...document.querySelectorAll('#slist > .gsep.lane.ready > i')].map(i => __chroma(cs(i, 'border-top-color')))),   // the lanes' (the state chips' until 2026-10-11, later)
         code: ['.hljs-keyword', '.hljs-string'].map(q => __chroma(cs(document.querySelector('#log ' + q), 'color'))),
         face: cs(plain.querySelector('.faces img'), 'filter'), you: __chroma(cs(plain.querySelector('.snip.you b'), 'color')),
         asking: card(${JSON.stringify(asking.id)}).classList.contains('asking'), needs: cs(root, '--needs').trim(), accent: cs(root, '--accent').trim(),

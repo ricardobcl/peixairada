@@ -34,7 +34,7 @@ export default async function (ctx) {
   const names = Object.fromEntries(chats.map((c, i) => [c.id, ['On one', 'On two', 'On none'][i]]));
   const titles = () => ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#slist > .card')].map(c => c.dataset.id))`).then(JSON.parse).then(ids => ids.map(id => names[id]).filter(Boolean));
   const row = () => ctx.evaluate(`JSON.stringify({ hidden: document.querySelector('#people').hidden, on: document.querySelector('#people').classList.contains('on'),
-    faces: [...document.querySelectorAll('#people button[data-login]')].map(b => b.dataset.login + (b.classList.contains('on') ? '*' : '')), ready: +document.querySelector('#fchips .fchip.ready .n').textContent })`).then(JSON.parse);
+    faces: [...document.querySelectorAll('#people button[data-login]')].map(b => b.dataset.login + (b.classList.contains('on') ? '*' : '')), ready: +(document.querySelector('#slist > .gsep.lane.ready b')?.textContent || 0) })`).then(JSON.parse);   // the Ready lane's count (the chip's until 2026-10-11, later)
   const click = async login => { await ctx.evaluate(`document.querySelector('#people button[data-login="${login}"]').click()`); await ctx.sleep(100); await ctx.settle(); };
 
   // narrowed to the folder, so the fixture's own chats (and their PRs) stay out of it
