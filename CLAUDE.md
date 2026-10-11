@@ -894,6 +894,11 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   (`homeOf`), written down only for a tab that was **dragged across** (`moveTab`, pointer events; a press that moves
   under 5 px is a click) and forgotten with the split. `keysIn(s, g)` is a strip's list; `setTab` shows a tab in *its*
   half and takes the keys there. ⌥⌘←→ walk both strips as one row. An auto split whose half empties folds.
+* **A strip moves rather than jumps** (2026-10-11, `tabMotion`, from `renderTabs`, which reads the strip only when
+  it is about to draw it anew and only for the same chat): the highlight slides from the tab that had it (`.ptabpill`
+  over the strip, the new `.on` tab `.slid` — plain — until it lands), a new tab grows in from nothing, a closed one
+  folds where it stood as a stand-in `.ptabgone` — never a `.ptab`, so what counts the tabs counts the real ones. A
+  strip coming out of hiding just appears. `tabslide`, `tabgrow`, `tabfold` in `motion()`.
 * **A half whose one tab is not a web page has no strip** (2026-09-28): split, claude, the zsh or the editor alone in
   a half makes its strip `.lone` — emptied, a 2 px rule, the accent under the keys and the line elsewhere, **the same
   height either way**, so moving the keys resizes no terminal. A web page alone keeps its strip (the address, ‹ › ↻ ↗),

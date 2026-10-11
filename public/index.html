@@ -1255,11 +1255,17 @@
      moving the keys never resizes a terminal. A web page keeps its strip, for the address and ‹ › ↻ ↗; so does an empty
      half, where a tab is dropped. */
   .ptabs.lone { padding: 0; height: 2px; border: 0; background: var(--line); overflow: hidden; }
-  .ptab { flex: none; font: inherit; font-size: 11.5px; padding: 2px 9px; border: 1px solid transparent; border-radius: 6px; background: var(--ctl); color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .ptab, .ptabgone { flex: none; font: inherit; font-size: 11.5px; padding: 2px 9px; border: 1px solid transparent; border-radius: 6px; background: var(--ctl); color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
   .ptab:hover { color: var(--ink); background: var(--ctl-hi); }
   .ptab .ic { width: 12px; height: 12px; flex: none; fill: currentColor; margin-left: -2px; opacity: .8; }
   .ptab .ic.burst { fill: var(--accent); opacity: 1; }
   .ptab.on { color: var(--ink); background: color-mix(in srgb, var(--accent) 22%, transparent); }
+  /* the highlight on its way (tabMotion): a pill of the on tab's tint sliding over the strip; the tab it goes to plain
+     until it lands; a closed tab's stand-in folding */
+  .ptabs { position: relative; }
+  .ptabpill { position: absolute; left: 0; top: 4px; bottom: 4px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 22%, transparent); pointer-events: none; }
+  .ptab.on.slid { background: var(--ctl); }
+  .ptabgone { overflow: hidden; white-space: nowrap; pointer-events: none; }
   .ptabs .pdrop { color: var(--muted); font-style: italic; padding: 2px 4px; }
   /* A tab on its way to the other half (2026-09-25): it stays in its strip, faded, while a copy follows the pointer,
      and the half under the pointer lights its strip — the one place the drop is always visible, the app's pane
@@ -5502,7 +5508,7 @@
       const navs = (isPaneTab(cur) ? '<button class="nav" data-nav="back" title="Back">‹</button><button class="nav" data-nav="forward" title="Forward">›</button><button class="nav" data-nav="reload" title="Reload">↻</button><button class="nav" data-nav="external" title="Open this page in your browser">↗</button>' : '')
         + (two ? `<button class="nav gturn" title="${stackNow() ? 'The halves side by side · ⌘1 ⌘2' : 'The halves one over the other · ⌥⌘1 ⌥⌘2'}">${stackNow() ? '◫' : '⊟'}</button>` : '')
         + (two ? '<button class="nav gclose" title="Close this half — the other one becomes the whole column · ⌘W">⨯</button>' : '');
-      setHtml(el, keys.map(k =>
+      const html = keys.map(k =>
         k === 'chat' ? tab(k, termLive(s) ? 'claude' : 'chat', `${termLive(s) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C`, '', ICON.claude)
         : k === 'shell' ? tab(k, shName(), `A ${shName()} in ${s.cwd || 'its folder'} · ⌥⌘T`, 'End this shell', ICON.term)
         : k === 'changes' ? tab(k, 'changes', `What this chat changed in ${s.cwd || 'its folder'} · ⌥⌘D`, 'Close the changes', ICON.diff)
@@ -5510,8 +5516,39 @@
         : tab(k, 'VS Code', `${s.cwd} in VS Code Web · ⌥⌘E`, 'Close the editor', ICON.vscode)).join('')
         + (two && !keys.length ? '<span class="pdrop">drop a tab here</span>' : '')
         + (isPaneTab(cur) ? `<span class="purl" data-key="${esc(cur)}" data-url="${esc(paneUrl(cur))}" title="${esc(paneUrl(cur))} — click to copy">${esc(bareUrl(paneUrl(cur)))}</span>` : '')
-        + (navs ? `<span class="navs">${navs}</span>` : ''));
+        + (navs ? `<span class="navs">${navs}</span>` : '');
+      // the strip moves (2026-10-11): what it held is read before it is drawn anew, for tabMotion — only when it will be
+      const prev = el._drawn !== html && el._sid === s?.id && !REDUCED.matches ? [...el.querySelectorAll('.ptab[data-tab]')].map(b => ({ k: b.dataset.tab, l: b.offsetLeft, w: b.offsetWidth, on: b.classList.contains('on'), html: b.innerHTML })) : null;
+      if (setHtml(el, html) && prev?.length) tabMotion(el, prev);   // a strip coming out of hiding just appears
+      el._sid = s?.id;
     }
+  }
+  // A strip that changed under the same chat moves rather than jumps (2026-10-11, Linear's and Arc's strips): the
+  // highlight slides from the tab that had it to the one that has it (a pill over the strip, the new tab plain until it
+  // lands), a new tab grows in from nothing, and a closed one folds where it stood (a stand-in, .ptabgone, not a .ptab:
+  // whatever counts the tabs counts the real ones). A key's switch of tab slides too: it is one move, not a walk.
+  function tabMotion(el, prev) {
+    const now = [...el.querySelectorAll('.ptab[data-tab]')], had = new Set(prev.map(p => p.k)), has = new Set(now.map(b => b.dataset.tab));
+    for (const b of now) if (!had.has(b.dataset.tab)) {
+      const cs = getComputedStyle(b), w = b.offsetWidth;
+      b.animate([{ width: '0px', paddingLeft: '0px', paddingRight: '0px', opacity: 0 }, { width: w + 'px', paddingLeft: cs.paddingLeft, paddingRight: cs.paddingRight, opacity: 1 }], { duration: 200, easing: EASE_OUT, id: 'tabgrow' });
+      noteMotion(b.dataset.tab, 'tabgrow');
+    }
+    prev.forEach((p, i) => {
+      if (has.has(p.k)) return;
+      const after = prev.slice(i + 1).map(q => now.find(b => b.dataset.tab === q.k)).find(Boolean);
+      const g = html2el(`<span class="ptabgone" aria-hidden="true">${p.html}</span>`); g.querySelector('.x')?.remove();
+      el.insertBefore(g, after || el.querySelector('.purl, .navs, .pdrop'));
+      g.animate([{ width: p.w + 'px', opacity: 1 }, { width: '0px', paddingLeft: '0px', paddingRight: '0px', marginLeft: '-4px', opacity: 0 }], { duration: 180, easing: EASE_OUT, fill: 'forwards', id: 'tabfold' }).onfinish = () => g.remove();
+      noteMotion(p.k, 'tabfold');
+    });
+    const was = prev.find(p => p.on), on = el.querySelector('.ptab.on[data-tab]');
+    if (!was || !on || was.k === on.dataset.tab) return;
+    const from = now.find(b => b.dataset.tab === was.k), fl = from ? from.offsetLeft : was.l, fw = from ? from.offsetWidth : was.w;
+    const pill = html2el('<i class="ptabpill" aria-hidden="true"></i>'); el.append(pill); on.classList.add('slid');
+    noteMotion(on.dataset.tab, 'tabslide');
+    pill.animate([{ transform: `translateX(${fl}px)`, width: fw + 'px' }, { transform: `translateX(${on.offsetLeft}px)`, width: on.offsetWidth + 'px' }], { duration: 200, easing: EASE_OUT, fill: 'forwards', id: 'tabslide' })
+      .finished.catch(() => {}).then(() => { pill.remove(); on.classList.remove('slid'); });
   }
   // The shell's word: the chat's pages, the ones to show and where each one goes — a half's body, in CSS px
   // (points in the app). The overlay covers the whole window and each web view is placed inside it, so the two

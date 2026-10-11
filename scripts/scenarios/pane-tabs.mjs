@@ -108,11 +108,14 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#ptabsB .ptab[data-tab=${JSON.stringify(firstGh)}]').click()`);
   await ctx.waitFor(`document.querySelector('#ptabsB .ptab.on')?.dataset.tab === ${JSON.stringify(firstGh)}`, { what: 'the first PR tab on again' });
   ctx.assert.equal((await lastPane()).show, firstGh); ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#prbar')`), false, 'no strip under the header');
+  // the highlight slid there from the zsh's tab (2026-10-11)
+  ctx.assert.ok(await ctx.evaluate(`window.peix.motion().some(m => m.kind === 'tabslide' && m.id === ${JSON.stringify(firstGh)})`), 'the highlight slides to the tab clicked');
   ctx.assert.equal('gh:' + await ctx.peix('state().pr'), firstGh, 'the board knows which PR is in front');
   out.url.back = await purl();
   ctx.assert.equal(out.url.back.url, deep, 'the address it was left on comes back with the tab');
   await ctx.evaluate(`document.querySelector('#ptabsB .ptab[data-tab=${JSON.stringify(firstGh)}] .x').click()`);
   out.closed = { tabs: await tabsNow(), pane: await lastPane() };
+  ctx.assert.ok(await ctx.evaluate(`window.peix.motion().some(m => m.kind === 'tabfold' && m.id === ${JSON.stringify(firstGh)})`), 'the closed tab folds where it stood (2026-10-11)');
   ctx.assert.equal(out.closed.tabs.length, 3); ctx.assert.equal(out.closed.tabs[0].on, true, 'its half shows the first of its own tabs left, the zsh');
   ctx.assert.equal(out.closed.pane.show, null); ctx.assert.equal(out.closed.pane.keys.length, 2);
   // the tab a chat is on comes back with it: the other PR's, left on, survives a trip to the plain chat

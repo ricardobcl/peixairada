@@ -105,6 +105,11 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   tile *clicked*, which wears a theme the board was not showing: it spreads from that tile in a circle over the old
   look. And the simple colours switch, from the switch. A view transition does the work — both engines have them — with
   the default cross-fade turned off, so it is one page clipped over the other.
+* **19 · the tab strip**: the highlight slides to the tab that takes it, a tab opened grows in, a tab closed folds
+  where it stood — Linear's and Arc's strips. The strip is drawn by markup, so the old one is read just before it is
+  replaced, and only when it is about to be; a closed tab's fold is a stand-in that is not a tab. The study kept the
+  keys' switches instant; on reflection a switch of tab is one move to one place, not a walk through many, so ⌥⌘←→
+  slides as a click does — the list's ⌥⌘↑↓ is the walk that stays a jump.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 
