@@ -456,7 +456,11 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   → the black step of `scripts/scenarios/simple-colors.mjs`.
 * **With no chat open the column is home** (2026-10-10; its header says *Home*; its counts are buttons to what is behind
   them, `.hgo` — the chat asking, the overview, the PRs at your move — and a line of keys under the blocks, 2026-10-12; `showHome`, from `leaveChat` when its log is `NO_CHAT.log` and
-  from a snapshot with nothing to open; ⌥⌘0 from anywhere): fastfetch's block — a pixel fish (`FISH`) in the accent,
+  from a snapshot with nothing to open; ⌥⌘0 from anywhere): fastfetch's block — **an ASCII sunset at sea** (2026-10-12, `makeSea`: ascii.rest's *ocean-sunset*, MIT, ported as it
+  stands — a halftone of · • ● on a 200 × 100 grid, each glyph masked once and blitted into one ImageData at 15 fps while
+  home is on screen; the board's fish leaps across the sun now and then and on a click, `seaLeap`; a still frame, the
+  fish at the top of its leap, under reduced motion; `peix.sea()`; the canvas outlives the draws, the facts and the day
+  drawn into boxes of their own) where the pixel fish (`FISH`) in the accent was,
   the board's facts in key: value lines (`about.user`, `about.host` from the server; chats, agents, PRs, the plan, the
   Mac from the status bar's stats, the theme) and the palette's blocks — then **the day**: `GET /api/today?since=<the
   page's midnight>` (`dayOf`), a row per chat that did anything since, most recent first, on an axis from the hour half

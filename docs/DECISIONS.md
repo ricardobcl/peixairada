@@ -104,6 +104,16 @@ the order they landed.
   count with something behind it is a button in the line's own type, dotted under: *asking you* opens the chat asking,
   *live*, *clauding*, *at work* and *watching* the overview, *at your move* the launcher's PRs. Under the palette's
   blocks, the keys a new board most needs: ⌥⌘L, ⌥⌘K, ⌥⌘N, ⌥⌘A and ?.
+* **Home's ASCII art — the sunset itself, and our fish in it**: *ocean sunset* (ascii.rest, by bas3line, MIT — its
+  notice is in the code with it) is ported from its TypeScript as it stands: the sun past a pine headland, cloud lit
+  from below, a glitter path, swells, a sloop, shaded per cell on a 200 × 100 grid and drawn as a halftone of · • ●.
+  It is home's fastfetch logo, where the pixel fish was, ~520 px wide beside the facts. **The board's part**: the fish
+  (`FISH`, at .85, mirrored and tilted along its path, never past ~43°) leaps across the sun every 16–40 s, a spray
+  where it leaves and re-enters the water — and on a click. **Drawn cheaply**: each glyph drawn once into a mask, the
+  palette blended over the scene's ground into a table, and every frame written into one ImageData — 15 fps, 18 ms at
+  worst between frames in WebKit — only while home is on screen and the page in view; one still frame, the fish at the
+  top of its leap, under reduced motion. The canvas outlives home's draws (the facts are redrawn every few seconds),
+  which now go into boxes of their own.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 
