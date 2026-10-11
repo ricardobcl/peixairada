@@ -2655,6 +2655,15 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 // sentence (plain), and a title like Add `deleteUserForm` read its ticks aloud. Over escaped markup, a run with no tag
 // in it — a match marked inside one keeps its ticks.
 const ticks = html => html.replace(/`([^`<>\n]{1,80})`/g, '<code class="icode">$1</code>');
+// An MCP tool by its server and its name (2026-10-12): mcp__claude_ai_Slack__slack_search_users ran a folded run's
+// summary over two lines; it is Slack: search users — the server's prefix (claude_ai_, plugin_<pkg>_) and the tool's
+// repeat of the server dropped, underscores spaces. Anything else is its own name.
+const toolName = n => {
+  const m = /^mcp__(.+?)__(.+)$/.exec(n || ''); if (!m) return n || '';
+  const srv = m[1].replace(/^claude_ai_/, '').replace(/^plugin_[^_]+_/, ''), lo = srv.toLowerCase().replace(/[-\s]/g, '_') + '_';
+  const tool = m[2].toLowerCase().startsWith(lo) ? m[2].slice(lo.length) : m[2];
+  return `${srv.replace(/[_-]+/g, ' ')}: ${tool.replace(/_/g, ' ')}`;
+};
   const rel = ts => { if (!ts) return ''; const d = (Date.now() - new Date(ts)) / 1000; if (d < 60) return `${Math.max(0, d | 0)}s`; if (d < 3600) return `${(d / 60) | 0}m`; if (d < 86400) return `${(d / 3600) | 0}h`; return `${(d / 86400) | 0}d`; };
   // A chat with a PR is titled by it, which is a title the user never wrote and Claude never chose —
   // hover says which PR it is and keeps Claude's own title reachable rather than losing it.
@@ -4138,7 +4147,7 @@ const ticks = html => html.replace(/`([^`<>\n]{1,80})`/g, '<code class="icode">$
   const liveSeen = new Map();   // chat id → { text, n }: what its line said last, and how many events
   function liveOf(s) {
     const ts = s.alive ? s.tasks || [] : [], n = ts.reduce((a, t) => a + (t.events || 0), 0);
-    if (s.status === 'working' && s.doing) return { html: `<b>${esc(s.doing.name)}</b><span>${esc(s.doing.text)}</span>`, n, flap: true, at: s.doing.ts };
+    if (s.status === 'working' && s.doing) return { html: `<b>${esc(toolName(s.doing.name))}</b><span>${esc(s.doing.text)}</span>`, n, flap: true, at: s.doing.ts };
     const ev = ts.filter(t => t.last).sort((a, b) => String(b.lastEventAt || '').localeCompare(String(a.lastEventAt || '')))[0];
     return { html: ev ? `${ICON.watch}<span>${esc(ev.last)}</span>` : '', n };
   }
@@ -6558,7 +6567,7 @@ const ticks = html => html.replace(/`([^`<>\n]{1,80})`/g, '<code class="icode">$
     const short = t => cwd ? String(t || '').split(cwd + '/').join('') : t;   // a path in the chat's folder, from there
     for (const x of items) {
       if (x.kind === 'tool_use' && (x.name === 'AskUserQuestion' || x.name === 'ExitPlanMode')) continue;   // the question is the tile's own line
-      if (x.kind === 'tool_use') { const r = res.get(x.toolUseId); rows.push(`<div class="tl ${r ? (r.isError ? 'err' : 'ok') : 'run'}"><i></i><b>${esc(x.name)}</b><span>${esc(short(x.text))}</span><em>${r ? esc(firstLine(short(r.text))) : '…'}</em></div>`); }
+      if (x.kind === 'tool_use') { const r = res.get(x.toolUseId); rows.push(`<div class="tl ${r ? (r.isError ? 'err' : 'ok') : 'run'}"><i></i><b>${esc(toolName(x.name))}</b><span>${esc(short(x.text))}</span><em>${r ? esc(firstLine(short(r.text))) : '…'}</em></div>`); }
       else if (x.kind === 'text') rows.push(x.role === 'assistant' ? `<div class="say">${esc(x.text)}</div>` : `<div class="you">${esc(x.text)}</div>`);
       else if (x.kind === 'interrupt') rows.push('<div class="you">— interrupted</div>');
     }
@@ -7287,7 +7296,7 @@ const ticks = html => html.replace(/`([^`<>\n]{1,80})`/g, '<code class="icode">$
       const foot = e.turnEnd && e.role === 'assistant' ? `<div class="turnfoot"><button class="tcopy" type="button" data-ts="${esc(e.ts || '')}" title="Copy what Claude said this turn">${ICON.copy}<span>copy</span></button>${e.worked ? `<span class="worked" title="from your last word to this reply">worked for ${workedFor(e.worked)}</span>` : ''}</div>` : '';
       return `<div class="msg ${e.role}${cont ? ' cont' : ''}"${cont && at ? ` title="${at}"` : ''}><div class="who"><span>${e.role === 'user' ? 'You' : 'Claude'}</span><span>${at}</span></div><div class="bubble"><div class="text ${r.cls}">${r.html}</div></div>${foot}</div>`;
     }
-    if (e.kind === 'tool_use') return `<div class="tool"><i class="tst ${toolMark(e.toolUseId)}" data-tu="${esc(e.toolUseId || '')}" aria-hidden="true"></i><b>${esc(e.name)}</b><span>${esc(e.text)}</span></div>`;
+    if (e.kind === 'tool_use') return `<div class="tool"><i class="tst ${toolMark(e.toolUseId)}" data-tu="${esc(e.toolUseId || '')}" aria-hidden="true"></i><b${toolName(e.name) !== e.name ? ` title="${esc(e.name)}"` : ''}>${esc(toolName(e.name))}</b><span>${esc(e.text)}</span></div>`;
     if (e.kind === 'tool_result') return `<div class="tool ${e.isError ? 'err' : ''}"><span>↳</span><span>${esc(e.text || '(no output)')}</span></div>`;
     if (e.kind === 'interrupt' || e.kind === 'compact') return `<div class="sysline">${esc(e.text)}</div>`;
     return '';
@@ -7295,7 +7304,7 @@ const ticks = html => html.replace(/`([^`<>\n]{1,80})`/g, '<code class="icode">$
   function toolSummaryHtml(run) {
     const uses = run.filter(e => e.kind === 'tool_use');
     const errs = run.filter(e => e.kind === 'tool_result' && e.isError).length;
-    const byName = {}; for (const u of uses) byName[u.name] = (byName[u.name] || 0) + 1;
+    const byName = {}; for (const u of uses) byName[toolName(u.name)] = (byName[toolName(u.name)] || 0) + 1;
     const label = Object.entries(byName).sort((a, b) => b[1] - a[1]).map(([n, c]) => c > 1 ? `${n} ×${c}` : n).join(', ');
     const pending = uses.some(u => toolMark(u.toolUseId) === 'run');   // a call still out: the folded run says so too
     return `${pending ? '<i class="tst run" aria-hidden="true"></i>' : ''}${uses.length} tool call${uses.length === 1 ? '' : 's'} · ${esc(label)}${errs ? ` · <span class="err">${errs} error${errs > 1 ? 's' : ''}</span>` : ''}`;

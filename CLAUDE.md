@@ -1049,6 +1049,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   **Commit…, Push and PR… type the command into the chat's zsh, unrun** (`typeInShell`); **a note on a line is a
   prompt typed into the chat's claude** when it is in a drawer here (`sendToClaude`), copied otherwise. Diff lines are
   highlight.js per line by extension (`DIFF_LANG`). → `test/changes.test.mjs`, `scripts/scenarios/changes-tab.mjs`.
+* **An MCP tool is named by its server and tool** (2026-10-12, `toolName`): *Slack: search users*, in the rows, a run's
+  summary, the card's live line and the tiles; the raw name is the row's tooltip.
 * **A tool call wears its state** (2026-10-11, `toolRes`, `toolMark`): each tool_use row starts with `.tst[data-tu]` —
   `run` (a ring turning while `#log.working`, which `renderPresence` sets; still otherwise), `ok` (a dot), `err` (a red
   cross) — from the results the open chat's entries hold; a result arriving for a row already drawn sets its mark with a

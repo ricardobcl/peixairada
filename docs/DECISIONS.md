@@ -20,6 +20,10 @@ the order they landed.
   `repo#n`, any other loses its scheme and its long segments. For the last prompt, the last reply and the tiles'
   words; a tool's input and result stay as they were. **Backticks stay**, and the page draws them as code in a title, a
   card's snippet, the pickers, the header, the tiles and home (`ticks()`, `code.icode` — `.ic` is the icons' class).
+* **C2 — an MCP tool by its server and its name** (`toolName`): `mcp__claude_ai_Slack__slack_search_users` is *Slack:
+  search users* — the server's prefix (`claude_ai_`, `plugin_<pkg>_`) and the tool's repeat of the server dropped — in
+  the transcript's rows (the raw name their tooltip), a folded run's summary (counted by that name), the card's live
+  line and the tiles. A colon, not ·, which the summary already uses between its parts.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 
