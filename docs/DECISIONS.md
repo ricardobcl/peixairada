@@ -126,6 +126,11 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   width or at half the window, the halves even); a tab let go in the other half bumps as it lands; the timeline's thumb
   bumps at each run of days it crosses, a level passed. Apple's guidance, kept: only in answer to the hand, always with
   something seen (the snap, the landing, the label), and sparingly — once on entering a stop, not while held there.
+* **25 · sounds, off by default** (Tweetbot's): the board in front shows no notification for an alert — you are
+  looking at it — but you may not be looking at the card. A switch makes it heard: a soft tick for a reply or a PR come
+  round, two rising notes for a question. Off by default: sound is the one thing on a Mac that reaches everyone in the
+  room. Web Audio rather than files, so nothing is shipped; a page cannot start sound until it has been touched, so
+  the context is made on the first press or key after the switch is on.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 

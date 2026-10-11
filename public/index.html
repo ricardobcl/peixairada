@@ -1977,6 +1977,7 @@
     <label class="opt" title="On, the panels are tiles, Hyprland's way: gaps over a wallpaper, each bordered in its project's colour, whole on the one the keys are in — and, with the stack, beside the open chat up to three tiles of the chats of the list that are asking or clauding, each its drawer drawn small or its last tool calls, a click making one the chat"><input type="checkbox" id="tilesOn"><span><b>tiles</b> — the chats asking or clauding stacked beside the open one, as Hyprland tiles windows</span></label>
     <label class="opt sub" id="tileStackRow" title="The third column: up to three tiles of the chats asking or clauding, beside the open one — off, tiles are the look alone (⌥⌘S puts it in and out of view)"><input type="checkbox" id="tileStackOn"><span><b>the stack</b> — the chats asking or clauding beside the open one · ⌥⌘S</span></label>
     <label class="opt" title="On, the chat header is a bar inset from the window's edges, rounded and shadowed; off, it runs edge to edge as before"><input type="checkbox" id="headFloat"><span><b>floating header</b> — the chat header as a rounded bar inset from the edges</span></label>
+    <label class="opt" title="A soft tick when a reply lands, two notes when a chat asks you — only while the board is the window in front (behind it, the system's notification has its own sound)"><input type="checkbox" id="soundsOn"><span><b>sounds</b> — a tick for a reply, two notes for a question, while the board is in front</span></label>
     <div class="dens" title="How much of each chat its card carries — a question waiting on you shows at every size">
       <b>cards</b><input type="range" id="cardsSize" min="0" max="2" step="1" value="0" list="cardsStops" aria-label="Card size">
       <datalist id="cardsStops"><option value="0"></option><option value="1"></option><option value="2"></option></datalist>
@@ -2126,7 +2127,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map() };
-  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, statusBar: true, barStats: ['cpu', 'mem'], peopleFold: false, cardSpot: true, tiles: false, tileStack: false, changesScope: 'turn', skinDark: null, skinLight: null, skinExact: false };
+  const prefs = { project: 'all', filters: ['ready', 'working', 'done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: false, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleFold: false, cardSpot: true, tiles: false, tileStack: false, changesScope: 'turn', skinDark: null, skinLight: null, skinExact: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -4171,7 +4172,7 @@
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
   const SWITCHES = [['notifyOn', 'Notifications'], ['simpleColors', 'Simple colours'], ['skinExact', 'Exact project colours under a theme'], ['ringsInStep', 'Rings in step'],
-    ['edgeLight', 'Edge light'], ['cardSpot', 'Light under the pointer'], ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['tileStackOn', 'Tiles: the stack'], ['headFloat', 'Floating header'], ['autoResume', 'Auto-resume'], ['optMeta', '⌥ is Meta in the terminal']];
+    ['edgeLight', 'Edge light'], ['cardSpot', 'Light under the pointer'], ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['tileStackOn', 'Tiles: the stack'], ['headFloat', 'Floating header'], ['soundsOn', 'Sounds'], ['autoResume', 'Auto-resume'], ['optMeta', '⌥ is Meta in the terminal']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
     { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },
@@ -6986,8 +6987,31 @@
   // ---- alerts --------------------------------------------------------------------------
   // No in-page toast: alerts surface as the unread badge on the card and its project plus a *system*
   // notification (the Mac app posts its own; a plain browser gets the Notification API one below).
+  // Sounds (2026-10-11, Tweetbot's; Settings → Board → *sounds*, prefs.sounds, off by default): an alert that comes while
+  // the board is the window in front — where no notification shows — is heard: a soft tick for a reply or a PR come
+  // round, two rising notes for a question. Web Audio, two oscillators each; the context is made on a press or a key
+  // (a page may not start sound by itself) and the switch's own change, which plays the tick to hear it.
+  let audio = null;
+  const audioUp = () => { if (!prefs.sounds) return null; try { audio ||= new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); } catch { audio = null; } return audio; };
+  for (const ev of ['pointerdown', 'keydown']) document.addEventListener(ev, audioUp, { capture: true, passive: true });
+  function tone(f, t0, dur, type, vol) {
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + .006); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+    o.connect(g).connect(audio.destination); o.start(t0); o.stop(t0 + dur + .02);
+  }
+  function chime(kind) {
+    if (!prefs.sounds || !audio || audio.state !== 'running') return;
+    noteMotion(null, 'sound:' + kind);
+    const t = audio.currentTime + .02;
+    if (kind === 'needs-input') { tone(784, t, .15, 'triangle', .09); tone(1174.7, t + .14, .22, 'triangle', .09); }
+    else { tone(1318.5, t, .18, 'sine', .08); tone(659.3, t, .26, 'sine', .05); }
+  }
+  $('#soundsOn').checked = !!prefs.sounds;
+  $('#soundsOn').addEventListener('change', e => { prefs.sounds = e.target.checked; savePrefs(); if (audioUp()) setTimeout(() => chime('reply'), 30); });
   function onAlert(a) {
     const viewing = a.sessionId && a.sessionId === state.current && document.visibilityState === 'visible' && document.hasFocus();
+    if (document.visibilityState === 'visible' && document.hasFocus()) chime(a.kind);   // in front: heard rather than shown
     if (a.sessionId && !viewing) state.unread.set(a.sessionId, (state.unread.get(a.sessionId) || 0) + 1);
     renderBoard();
     // the badge that just came, or grew, pops in — a one-shot on the node the render made

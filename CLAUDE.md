@@ -634,7 +634,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, PR
   turns; `STATE_FILE` overrides) and the user's `~/.config/peixairada/config.json` (the setup, below), both shared by
   the app and every browser; the browser's `localStorage` `peixairada-prefs`
-  (selected project, filters, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the theme for each appearance, the tiles and their stack, the changes tab's scope, the person the list is narrowed to, ⌥ as Meta, auto-resume, the edge light, the light under the pointer, the floating header, the status bar and what it adds, the faces folded, drawer open/height — the keys are the `prefs` literal,
+  (selected project, filters, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the theme for each appearance, the tiles and their stack, the changes tab's scope, the person the list is narrowed to, ⌥ as Meta, auto-resume, the edge light, the light under the pointer, the floating header, sounds, the status bar and what it adds, the faces folded, drawer open/height — the keys are the `prefs` literal,
   and old ones are deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it
   renders reads its state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
 * **The setup is the user's file, and nothing about one Mac is written in the code** (2026-09-28; the file since
@@ -792,7 +792,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   in the app the app menu's *Settings…*, which asks `peixKey` as ⌘W does), the chat header's ··· (`#settingsBtn`, the
   menu's last row) and, with no chat open, the empty header's own ··· (`#noChatMore`, delegated — `leaveChat` rewrites
   the header). A head (the name, the counts, × `#settingsClose`), a segmented control (`.stabs`) over three panes
-  (`.spane`): **Board** — the notifications switch (`#notifyOn`), the rings' step (`#ringsInStep`), the edge light (`#edgeLight`), the light under the pointer (`#cardSpot`), the floating header (`#headFloat`), the status bar (`#sbarOn`) and what it adds (`#sbarStats`), the cards' size
+  (`.spane`): **Board** — the notifications switch (`#notifyOn`), the rings' step (`#ringsInStep`), the edge light (`#edgeLight`), the light under the pointer (`#cardSpot`), the floating header (`#headFloat`), sounds (`#soundsOn`), the status bar (`#sbarOn`) and what it adds (`#sbarStats`), the cards' size
   (`.dens`), auto-resume (`#autoResume`), ⌥ as Meta (`#optMeta`), what is hidden (`#hidden`) — no date format (DD-MM-YYYY, `fmtDate`); **Setup** — the server's (`#setup`); **Keys** — the list (`.keys`). The class
   is still `pop`, so every row keeps its `.pop …` rule. Esc, the backdrop, ×, ⌘, or ⌘W close it; its `close` drops a
   setup row half typed. **It is modal**: the pane is down while it is up (`postPane`), and the ⌥⌘ / ⌘ keys are swallowed
@@ -1092,6 +1092,9 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
 * **Never name a modifier class after something the page also selects by**: the walkers take `#slist > .card`; the
   usage's messages wear `.unote`, since `.note` is `note()`'s fixed-position popup.
 * No in-page toasts: alerts are the badge plus a system notification; the app sets `NOTIFY=off` on its own server.
+  **With the board the window in front, an alert can be heard instead** (2026-10-11, `chime`, Settings → Board →
+  *sounds*, `prefs.sounds`, off by default): a tick for a reply or a PR, two rising notes for a question — Web Audio,
+  its context made on a press or a key (`audioUp`), the switch's change playing the tick; `sound:<kind>` in `motion()`.
   **The cog's switch is the server's word** (`notifications` in the state file, `PUT /api/notifications`, a
   `notifications` event): off, every alert still goes out but `quiet: true`, and the three posters (main.swift, the
   page's `Notification`, the server's osascript) each skip it. A new poster has to read `quiet` too — and `heading`,

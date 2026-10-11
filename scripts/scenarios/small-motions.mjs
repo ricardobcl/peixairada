@@ -148,5 +148,19 @@ export default async function (ctx) {
   await ctx.drag({ x: sp.left + 520, y: sp.y }, { x: sp.left + 384, y: sp.y });
   out.snap = await ctx.evaluate(`({ width: window.peix.prefs().sessionsWidth, bumps: window.peix.motion().slice(${m24}).filter(m => m.kind === 'haptic:alignment').length })`);
   ctx.assert.deepEqual(out.snap, { width: 380, bumps: 1 }, 'snapped to the list\'s own width, with one bump');
+
+  // ---- 25 · sounds, off by default: switched on (a hand's click, so the page may make sound), it plays its tick; an
+  // alert with the board in front is heard ----
+  ctx.assert.equal((await ctx.peix('prefs()')).sounds, false, 'off to begin with');
+  await ctx.cmd('Comma');
+  await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
+  await ctx.settle();
+  const so = await ctx.evaluate(at('#soundsOn'));
+  for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await ctx.send('Input.dispatchMouseEvent', { type, x: so.x, y: so.y, button: 'left', buttons: type === 'mousePressed' ? 1 : 0, clickCount: 1 });
+  await ctx.waitFor(`window.peix.motion().some(m => m.kind === 'sound:reply')`, { what: 'the tick, to hear it', timeout: 3000 });
+  await ctx.cmd('Comma'); await ctx.waitFor(`!document.querySelector('#settings').open`, { what: 'the settings closed' });
+  const m25 = await ctx.evaluate(`window.peix.motion().length`);
+  await ctx.server.post('api/test-notify', {});
+  await ctx.waitFor(`window.peix.motion().slice(${m25}).some(m => m.kind === 'sound:reply')`, { what: 'the alert heard', timeout: 4000 });
   return out;
 }
