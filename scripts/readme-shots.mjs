@@ -127,7 +127,8 @@ const agentDir = join(dirname(agents.file), agents.id, 'subagents');
 mkdirSync(agentDir, { recursive: true });
 for (const n of [1, 2, 3]) writeFileSync(join(agentDir, `agent-${n}.jsonl`), JSON.stringify({ isSidechain: true, type: 'user', message: { role: 'user', content: 'go' } }) + '\n');
 
-export const meta = { server: true, fixture: claudeDir, env: { GH_BIN: join(ROOT, 'scripts', 'fakegh.mjs'), FAKEGH_PRS: prsFile, ORG: 'acme', ORG_DIR: work } };
+// the board as it starts: Done folded (2026-10-11, later — the harness opens every lane unless told)
+export const meta = { server: true, fixture: claudeDir, env: { GH_BIN: join(ROOT, 'scripts', 'fakegh.mjs'), FAKEGH_PRS: prsFile, ORG: 'acme', ORG_DIR: work }, prefs: { lanesShut: ['done'] } };
 
 // What /api/usage would answer, for the footer — the page's fetch answers it before the server is asked.
 const inMin = m => new Date(now + m * 60_000).toISOString();
@@ -153,7 +154,7 @@ export default async function (ctx) {
       window.fetch = (url, o) => String(url).includes('/api/usage') ? Promise.resolve(new Response(JSON.stringify(u), { status: 200, headers: { 'content-type': 'application/json' } })) : f(url, o); })()` });
     await ctx.server.post(`/api/sessions/${chat('Rewrite the getting-started guide').id}/done`, { done: true });
     await ctx.reload();
-    await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === ${chats.length}`, { what: 'every card', timeout: 15000 });
+    await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === ${chats.length - 1} && document.querySelector('#slist > .gsep.lane.done.shut')`, { what: 'every card but the done one, folded into its lane', timeout: 15000 });
     await ctx.waitFor(`window.peix.sessions().some(s => s.agents === 3)`, { what: 'the three sub-agents', timeout: 20000 });
     const grid = chat('Dark mode for the product grid');
     await ctx.openChat(grid.id);
