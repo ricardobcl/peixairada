@@ -5,6 +5,21 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-11, late night — the header's black dissolves in
+
+Ricardo: "on the chat bar, the transition from the background color and the black bar with the title of the chat could
+be faded in pixel form".
+
+* **The header's black comes in over a pixel dissolve.** The black right of the project's name (`.shead::after`) began
+  on a hard edge at the separator; its first 40 px are now masked by `HEAD_FADE`, a 10 × 16 pattern of 4 px pixels,
+  each column a tenth more black. Tried on the made-up board at 2× (the Retina scale): a Bayer matrix read as a
+  checkerboard, R2 and interleaved-gradient noise as diagonal or vertical stripes, plain random noise as clumps; blue
+  noise — best-candidate ranks, the lowest of each column kept so every column has exactly its share — reads as the
+  black dissolving. 2 and 3 px pixels were finer sand; 4 px reads as pixels at the header's 14 px type. The 26 px
+  between the name and the title was too narrow for a fade (a 24 px band was a strip of checks), so the separator's
+  span keeps 32 px and the band reaches 4 px past it each side: the title starts 30 px further right. `--hsplit` still
+  says where the black is whole, so the notch's check and the open chat's light are unchanged.
+
 ## Decisions of 2026-10-11, night, later — VS Code Web on its newest build before it is opened
 
 Ricardo: "sometime when opening VScode, it's starts downloading the newest version I guess. can we auto-update in the

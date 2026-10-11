@@ -415,7 +415,11 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   header's ground), set by `paintHeadSplit()` after `layoutNotch(); fitHeadPrs()` and on `peixFill`; `.shead`
   isolates so the paint sits under the row. The title (`.shead h2 .t`) and everything right of the h2 borrow the dark
   theme's inks (the variables; their colour through `:where`, so a control's own rule still wins). At the notch the
-  housing is inside the black.
+  housing is inside the black. **The black comes in over a pixel dissolve** (2026-10-11, late night; a hard edge
+  before): `HEAD_FADE`, `#` a black pixel of 4 px, each column more of them, which ones blue noise — the mask of the
+  `::after`'s first `--hfade-w` (40 px), from 4 px after the name to 4 px past `--hsplit`; the `.sep` keeps that room
+  less 8 px (the colour square centred on it), so the title starts 30 px further right than it did. No `--hsplit`, no
+  black, as before.
 * **A colour as dark as that black turns the black grey** (2026-10-01; `nearBlack`, Peacock's brightness under 40):
   the open chat's (`tintChat` → `main.darkchat`) makes the header's `::after` and the splitter's `::after`/`::before`
   `#4a4a45`. Simple colours' black, or a project painted `#000000`. No grey ground under a list of black cards since
