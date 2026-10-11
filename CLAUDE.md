@@ -403,7 +403,13 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   its outer edge (no seam), the corners concentric (`HOUSING_R` + `TILE_BW`, shared with `tileNotch`); without tiles,
   the housing `HEAD_GAP` clear. The header's border there is `#chat > svg.hcut`, drawn outside the header, which clips
   what it holds — with tiles only the two bends, the tile's `.ncut` (over it) drawing the rest. The header keeps its
-  place and height.
+  place and height — **but for its title, which runs on under the housing** (2026-10-11, late night; `headDrop`,
+  `.tunder`): a title longer than the room left of the housing no longer jumps it; the h2 reaches at least the
+  housing's far side (`flex: 1 0 …`, the chips past it, `fitHeadPrs` reserving as much), and the header is lowered
+  (`--hdrop`, on its top margin, so the row stays centred) by what the glyphs need to clear the dip's line by
+  `HEAD_CLEAR` (2 px) — their top the canvas's measure of the title in its own font, of `Hdl` at least, so titles of
+  one font lower it alike; with tiles about a pixel in Chrome, none in the app. More than `HEAD_DROP_MAX` (8) — the
+  plain column without tiles, where the header sits 10 px higher, wants 14 — and it jumps as the plain header's does.
   → `scripts/scenarios/head-float.mjs`.
 * **The chat header is a gradient of the project's colour**: `tintChat()` sets `--repo`, `--rink`, `--rover`/`--rover2`
   and `#chat.tinted`; `--rink` is the ink that reads on it (`inkOn()`), every control in `.shead` redrawn in it; the
@@ -806,7 +812,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   the h2's width and right margin, which `fitHeadPrs` then measures) — **unless the title's whole text does not fit
   left of the housing** (a `Range` measures it; `scrollWidth` is never under the box's): then `.tright`, the h2 grows
   again and the title's own margin jumps the housing, the project alone staying left (`fitHeadPrs` reserves the jump
-  and `TITLE_ROOM`), and
+  and `TITLE_ROOM`) — the floating header's runs on under the housing instead, lowered a little (`.tunder`, above), and
   whichever has not the room pads down by the strip (`.npad`). `NSFullScreenMenuItemEverywhere` is registered false;
   the frame's autosave is off while filled; ⌘W leaves the fill first; Info.plist says
   `NSPrefersDisplaySafeAreaCompatibilityMode` false. On this Mac the strip is 32 pt and the housing x 771.5–956.5 of

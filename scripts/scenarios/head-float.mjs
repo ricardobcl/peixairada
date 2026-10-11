@@ -62,6 +62,24 @@ export default async function (ctx) {
     return { under: at(mid, c.bottom + 0.5), inside: at(mid, c.bottom - 3), beside: at(c.left - 0.5, h.top + 13), bends: document.querySelector('#chat > .hcut path').getAttribute('d').split('M').length - 1 }; })())`).then(JSON.parse);
   ctx.assert.deepEqual(out.tiled, { under: 'header', inside: 'behind', beside: 'header', bends: 2 }, `the header meets the tile's line: ${JSON.stringify(out.tiled)}`);
   await ctx.shot('notch-tiles', { x: N.left - 200, y: 0, width: 585, height: 90 });
+  // a title longer than the room left of the housing runs on under it (2026-10-11, late night) rather than jump it: the
+  // header lowered by what its glyphs need to clear the tile's line round the housing, a pixel or two, and the chips
+  // right of the housing still
+  const long = 'A title long enough to run on from the project, under the camera housing and well past it, to the chips beyond';
+  await ctx.server.api(`/api/sessions/${two.id}/title`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: long }) });
+  await ctx.waitFor(`document.querySelector('#shead h2 .t')?.textContent === ${JSON.stringify(long)} && document.querySelector('#shead').classList.contains('tunder')`, { what: 'the long title under the housing' });
+  await ctx.settle();
+  out.under = await ctx.evaluate(`JSON.stringify((() => { const h = document.querySelector('#shead'), t = h.querySelector('h2 .t'), r = document.createRange(); r.selectNodeContents(t);
+    const tr = r.getBoundingClientRect(), cs = getComputedStyle(t), c = document.createElement('canvas').getContext('2d');
+    c.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+    const m = c.measureText(t.textContent), glyphs = tr.top + m.fontBoundingBoxAscent - m.actualBoundingBoxAscent, line = document.querySelector('#chat > .ncut').getBoundingClientRect().bottom;
+    return { jumps: h.classList.contains('tright') || !!t.style.marginLeft, from: Math.round(tr.left) < ${N.left}, past: Math.round(tr.right) > ${N.right}, clear: +(glyphs - line).toFixed(2),
+      drop: parseFloat(h.style.getPropertyValue('--hdrop')) || 0, chips: Math.round(document.querySelector('#prToggle').getBoundingClientRect().left) >= ${N.right} }; })())`).then(JSON.parse);
+  ctx.assert.ok(!out.under.jumps && out.under.from && out.under.past && out.under.chips, `the title from the left, on under the housing, the chips past it: ${JSON.stringify(out.under)}`);
+  ctx.assert.ok(out.under.clear >= 1.5 && out.under.drop <= 8, `its glyphs clear of the line round the housing, the header lowered a little at most: ${JSON.stringify(out.under)}`);
+  await ctx.shot('notch-under', { x: N.left - 300, y: 0, width: 785, height: 90 });
+  await ctx.server.api(`/api/sessions/${two.id}/title`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: '' }) });
+  await ctx.waitFor(`!document.querySelector('#shead').classList.contains('tunder') && !document.querySelector('#shead').style.getPropertyValue('--hdrop')`, { what: 'its own title again, the header back up' });
   await ctx.evaluate(`document.querySelector('#tilesOn').click()`);
   await ctx.waitFor(`!document.querySelector('.ncut')`, { what: 'tiles off' });
   await ctx.evaluate(`window.peixFill(false, null)`);

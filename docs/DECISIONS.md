@@ -5,9 +5,11 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
-## Decisions of 2026-10-11, late night, after — rings in step in the app; a 24-hour clock
+## Decisions of 2026-10-11, late night, after — rings in step in the app; a 24-hour clock; the title under the housing
 
-Ricardo: "the "rings in step" seems to not be working"; "I want 24H format in status bar".
+Ricardo: "the "rings in step" seems to not be working"; "I want 24H format in status bar"; "now that we have a
+floating header, seems like we have just about the space to have the tile always on the left and if it goes to the
+middle where the notch is, they do intersect? if they do, just try to lower a couple pixels until they don't collide".
 
 * **The switch worked in Chrome and nowhere else.** `phaseAnims` set each ring's `startTime` (0, or a time hashed from
   the chat's id); the script read it back, the harness's Chrome drew it, and `card-signals` passed. In a `WKWebView` —
@@ -24,6 +26,16 @@ Ricardo: "the "rings in step" seems to not be working"; "I want 24H format in st
 * **The status bar's clock is on 24 hours** (`hourCycle: 'h23'`, two digits: 09:05), whatever the locale says; it
   read the time as the transcript's who-lines do (8:47 PM in an English locale). The who-lines and the home are left
   as they were — the ask was the bar's.
+* **The floating header's title stays on the left and runs on under the housing** ("tile" read as the title: the one
+  thing in the header that moved for the housing). It jumped the housing whenever its whole text did not fit left of
+  it (`.tright`, 2026-09-28); with the header dipping round the housing there is a line's room under it. Measured with
+  tiles, the housing 32 px tall: the tile's line round it ends at 34, the title's glyphs began at 35.4 in Chrome and
+  36.4 in WebKit — so they did not quite collide, but touched. The header is lowered by what the glyphs need to clear
+  the line by 2 px (`HEAD_CLEAR`): a pixel in Chrome, none in the app. Lowered as a whole (its top margin), not padded,
+  so its row stays centred; the glyphs' top is measured from the title's own text and `Hdl`, so two chats' titles
+  lower it alike and the header does not hop between them. Without tiles the header sits 10 px higher (no gap above
+  it) and would want 14 px — not a couple — so there the title jumps as before (`HEAD_DROP_MAX`, 8). The chips stay
+  right of the housing: the h2 reaches its far side at least.
 
 ## Decisions of 2026-10-11, late night, last — the header's black fades in smoothly (Round V, S8)
 
