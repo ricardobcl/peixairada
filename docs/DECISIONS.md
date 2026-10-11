@@ -52,6 +52,9 @@ the order they landed.
   move, clauding, new replies — is large whatever the slider says, the rest at its size; a class on the card
   (`.roomy`, from its rank) and an attribute on the list, so the switch, like the slider, redraws nothing. The harness
   starts its pages on large (the scenarios read the cards' words); `card-sizes.mjs` asks for the board's own.
+* **L3 — a chat running elsewhere wears a terminal's mark**, not *CLI*: its tooltip says where (a terminal outside the
+  board, or outside it) and that ⌥⌘C takes it over here. A drawer here still says nothing; VS Code's own chat still
+  nothing on the card; *VS Code too* still a chip.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

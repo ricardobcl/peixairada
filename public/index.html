@@ -788,6 +788,7 @@
      of the folder's name, quietly. It shows wherever the server has a record, so only the folders whose Taskfile
      launches claude ever wear one. A card too dark or too tinted for the colour borrows the card's own ink. */
   .card .top .chip.env { color: var(--repo, var(--muted)); background: none; padding-left: 0; font-weight: 600; }
+  .card .top .chip.elsewhere { display: inline-flex; align-items: center; padding: 0 4px; } .card .top .chip.elsewhere .ic { width: 11px; height: 11px; }
   .card .abbr { display: none; }   /* only the folded rail shows it */
   .card.black .top .chip.env, .card.active .top .chip.env, .card:hover .top .chip.env { color: inherit; opacity: .8; }
   /* the open chat: a solid tint of its colour under a ring of it (2026-09-20); every other card keeps the gradient
@@ -4170,11 +4171,12 @@ const toolName = n => {
     const fable = onFable(s) ? `<span class="fable" title="on Fable — ${esc(s.model)}, the model Claude last answered with">${ICON.fable}</span>` : '';
     const tip = titleTip(s);
     const showRepo = p.key === ALL || p.custom;
-    // Where it runs, when that is news: a drawer here is the norm and says nothing (2026-09-23); a CLI elsewhere, VS
+    // Where it runs, when that is news: a drawer here is the norm and says nothing (2026-09-23); a CLI elsewhere — a
+    // terminal's mark since 2026-10-12, its tooltip saying where and that ⌥⌘C takes it over; *CLI* before —, VS
     // Code running it too, still do. VS Code's own chat wore its logo here until 2026-09-28 — the chat header's ···
     // still says it (*VS Code's chat*).
     const where = !s.alive || inVsCode(s) ? ''
-      : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip">${entryLabel(s)}</span>`)
+      : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip elsewhere" title="${s.live?.entrypoint === 'cli' ? 'Running in a terminal outside the board' : 'Running outside the board'} — ⌥⌘C takes it over here">${ICON.term}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs a claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${ROOMY.has(rankOf(s)) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
       <div class="top">${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${act}${cardTickets(s)}${cardFaces(s)}${cardPrs(s)}</div>
