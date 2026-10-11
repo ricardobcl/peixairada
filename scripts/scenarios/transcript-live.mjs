@@ -85,6 +85,13 @@ export default async function (ctx) {
     ctx.assert.equal(out.longFill.faded, 0, 'nothing fades in on the first fill');
     ctx.assert.ok(out.longFill.gap < 80 && out.longFill.top > 500, `opened at the end (${out.longFill.top} down, ${out.longFill.gap} to go)`);
     ctx.assert.equal(out.longFill.pill.there, false, 'no pill yet');
+    // the header's shadow (2026-10-11): on the transcript scrolled down, none at its top
+    const shade = () => ctx.evaluate(`getComputedStyle(document.querySelector('#shead'), '::before').opacity`).then(Number);
+    out.shade = { down: await shade() };
+    await ctx.evaluate(`document.querySelector('#log').scrollTop = 0`); await ctx.sleep(200);
+    out.shade.top = await shade();
+    await ctx.evaluate(`document.querySelector('#log').scrollTop = document.querySelector('#log').scrollHeight`); await ctx.sleep(200);
+    ctx.assert.deepEqual([out.shade.down, out.shade.top], [1, 0], `a shadow once scrolled: ${JSON.stringify(out.shade)}`);
     await ctx.evaluate(`document.querySelector('#log').scrollTo({ top: 0, behavior: 'auto' })`);
     await ctx.sleep(200);
     const n0 = (await ctx.peix('motion()')).length;

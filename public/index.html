@@ -310,8 +310,19 @@
      (--slist, visible here through main's timeline-scope) slides the black up by the scroll — --smax, how far the list
      scrolls, is its end. The black is taller than any window, so sliding it never bares its foot; the bar clips it.
      Where the engine has no scroll timelines (.scrolls absent), drawSplit writes the on-screen place on every scroll. */
-  main { timeline-scope: --slist; }
+  main { timeline-scope: --slist, --log; }
   #slist { scroll-timeline: --slist y; }
+  /* The header's shadow on the transcript (2026-10-11, the Mac's toolbars): there only once the transcript has scrolled —
+     a scroll-driven fade on the log's own timeline over its first 24 px, the compositor's; without scroll timelines,
+     --shade from the log's scroll listener. The header lifts over what is under it to let it out. */
+  #log { scroll-timeline: --log y; }
+  .shead { z-index: 3; }
+  .shead::before { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 10px; margin-top: 1px; pointer-events: none;
+    background: linear-gradient(color-mix(in srgb, #000 22%, transparent), transparent); opacity: var(--shade, 0); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .shead::before { background: linear-gradient(rgba(0, 0, 0, .55), transparent); } }
+  :root[data-theme="dark"] .shead::before { background: linear-gradient(rgba(0, 0, 0, .55), transparent); }
+  @supports (animation-timeline: scroll()) { .shead::before { animation: shade linear both; animation-timeline: --log; animation-range: 0 24px; } }
+  @keyframes shade { from { opacity: 0; } to { opacity: 1; } }
   #splitter::after { content: ''; position: absolute; left: 0; right: 0; top: var(--split, 100%); height: 400vh; background: var(--crust, #000); pointer-events: none; }
   #splitter::before { content: ''; position: absolute; left: 0; right: 0; top: var(--sfoot, 100%); bottom: 0; z-index: 1; background: var(--crust, #000); pointer-events: none; }
   #splitter.scrolls::after { animation: split-scroll linear both; animation-timeline: --slist; }
@@ -6894,7 +6905,10 @@
     if (pill !== log.lastElementChild) log.append(pill);
     pill.classList.add('on'); noteMotion(state.current, 'pill', replies);
   }
-  $('#log').addEventListener('scroll', () => { const log = $('#log'); if (log.scrollHeight - log.scrollTop - log.clientHeight < 80) logNew(0); }, { passive: true });
+  $('#log').addEventListener('scroll', () => {
+    const log = $('#log'); if (log.scrollHeight - log.scrollTop - log.clientHeight < 80) logNew(0);
+    if (!SPLIT_SCROLLS) $('#shead').style.setProperty('--shade', Math.min(1, log.scrollTop / 24).toFixed(2));   // the header's shadow, by hand
+  }, { passive: true });
   // Presence at the foot of the transcript (2026-09-27, night): while the open chat is clauding, Claude's mark and the
   // word — a reply on its way is seen where you are reading, not only on the card — with the sub-agents' count when
   // there is one; while it is asking, the question in the card's red. Kept the last thing in the log, gone when the

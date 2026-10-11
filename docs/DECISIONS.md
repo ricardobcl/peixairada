@@ -135,6 +135,10 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   — shows its steps on an 8-bit panel. A faint tile of still noise over them dithers the steps away, the trick the
   well-made dark sites use; a few percent of white speckle, so it reads as texture, never as dirt. Static: nothing
   moves, nothing is drawn again.
+* **27 · the scroll shadow** (the Mac's toolbars, which show their edge only once something is under them): the
+  chat header casts a soft shadow onto the transcript once it has scrolled from its top, and none at the top. A fade on
+  the log's own scroll timeline, the compositor's like the splitter's black, so it is never a frame behind the scroll.
+  The study's list-top shadow was left out: the list's top already has its end pill counting the cards out of sight.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 

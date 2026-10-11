@@ -262,6 +262,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   or agents chip) is a tint of that colour instead. `--ctl` is the ink at 7 %, **set on every element** (`*`), so it
   follows an `--ink` borrowed there (a black card, the header's black). Text boxes, dialogs and popovers keep their
   edges; a semantic edge (the red of a failure, the accent round an open box) stays.
+* **The header casts a shadow on a scrolled transcript** (2026-10-11): `.shead::before`, under the header's edge
+  (the header lifted, `z-index: 3`), faded in over the log's first 24 px of scroll by a scroll-driven animation on
+  `--log` (`#log`'s `scroll-timeline`, seen through `main`'s `timeline-scope`); without scroll timelines, `--shade` from
+  the log's scroll listener (`SPLIT_SCROLLS`).
 * **The broad gradients wear grain** (2026-10-11, `--grain` on `:root`: a 160 px tile of still SVG noise, white
   speckles at 7 %): the chat header's, the transcript's wash (`#log`) and the tiles' wallpaper, its first background
   layer — where a dark gradient across a wide box bands into steps. Not the cards (narrow, and their first layer is the
