@@ -23,7 +23,7 @@ export default async function (ctx) {
   out.rest = await look();
   ctx.assert.deepEqual([out.rest.hidden, out.rest.attr, out.rest.bottom, out.rest.mainBottom], [false, true, 0, 0], `on by default, at the window's foot, under the board: ${JSON.stringify(out.rest)}`);
   ctx.assert.equal(out.rest.segs[0], 'connected');
-  ctx.assert.match(out.rest.segs[1], /^\d+ live$/);
+  ctx.assert.ok(!out.rest.segs.some(t => /\blive$|drawer|shell/.test(t)), `no live count, no drawers or shells (2026-10-11): ${JSON.stringify(out.rest.segs)}`);
   ctx.assert.deepEqual([out.rest.find, out.rest.footRow], ['sbFind', 'none'], 'the search and the chips in the bar, the list\'s foot row gone');
   ctx.assert.ok(await ctx.evaluate(`document.querySelector('#sbFind').getBoundingClientRect().left - document.querySelector('#sbar').getBoundingClientRect().left < 12`), 'far left');
   // the search works from there: the magnifier opens the box, a query narrows the list, Esc puts it away

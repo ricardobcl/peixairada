@@ -5,6 +5,21 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-11, later — the status bar trimmed, lanes that fold, the live notch taken out
+
+Ricardo, having lived with the morning's list: "status bar: add a clock at far right · remove "X live", "X drawers .
+Y shells" · bars like cpu, ram, tokens -> move to a more concise pie-chart · we can remove the "ready | clauding |
+done" from the status bar and just have the "ready | clauding | done" title clickable on the cards tile, collapsing.
+done should be last and should be collapsed by default" — and "remove the new animation for the notch - doesn't bring
+anything and it does't look pretty with the floating chat bar".
+
+* **The live notch, taken out** (#23 below): its commit was dropped before anything was pushed, the switch and its
+  34 px of room round the housing with it — the header's row is 10 px from the housing again. With the floating header
+  the black shape hung over the header's inset bar rather than growing out of the screen's edge, and the ears said
+  nothing the list and the status bar's fish do not.
+* **The status bar, trimmed**: the live chats' count and the drawers and shells went; how many chats are asking you
+  (red) and how many monitors run stay, each only while there is one — what may want you, not what is merely open.
+
 ## Decisions of 2026-10-11 — the third studies built: twenty-eight small motions
 
 Ricardo: "we need more animations, small design details, something to spice up the app. search the web for

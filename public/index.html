@@ -2776,12 +2776,12 @@
     const el = $('#sbar'); if (!el || el.hidden || !state.snapshots) return;
     const all = [...state.sessions.values()], n = f => all.filter(f).length, plural = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`;
     const ask = n(s => asking(s));
-    const drawers = n(s => s.terminal && s.terminal.exited === null), shells = n(s => s.shell && s.shell.exited === null);
     const mons = all.reduce((a, s) => a + (s.alive ? (s.tasks || []).length : 0), 0);
     const left = [`<button class="seg conn${bar.conn ? '' : ' off'}${bar.back ? ' back' : ''}" title="${bar.conn ? 'Connected to the board\'s server' : 'The server is not answering — reconnecting'} — click for the About box">${FISH_LOGO()}${bar.conn ? 'connected' : 'reconnecting…'}</button>`,
-      `<span class="seg" title="claudes running here and elsewhere${ask ? ' · waiting on your answer' : ''}">${rn('live', n(s => s.alive))} live${ask ? ` · <em>${rn('asking', ask)} asking</em>` : ''}</span>`];
-    const busy = [drawers && plural(drawers, 'drawer'), shells && plural(shells, 'shell'), mons && plural(mons, 'monitor')].filter(Boolean);
-    if (busy.length) left.push(`<span class="seg" title="claude sessions in drawers here · shells · monitors and background commands running">${busy.join(' · ')}</span>`);
+      // the live chats and the drawers and shells went (2026-10-11, later: Ricardo, "remove 'X live', 'X drawers · Y
+      // shells'"); what waits on you and what is watching stay, each only while there is one
+      ...(ask ? [`<span class="seg" title="chats waiting on your answer">${`<em>${rn('asking', ask)} asking</em>`}</span>`] : []),
+      ...(mons ? [`<span class="seg" title="monitors and background commands running">${plural(mons, 'monitor').replace(/^\d+/, d => rn('mons', d))}</span>`] : [])];
     for (const c of state.clones.values()) left.push(`<span class="seg cl" title="gh repo clone ${esc(c.ref)} into ${esc(homePath(c.dir))} — ${esc(cloneSays(c))}">${ICON.download}cloning <b>${esc(c.ref)}</b><i style="--p:${(c.percent || 0) / 100}"></i>${c.percent || 0}%</span>`);
     const st = bar.stats, want = prefs.barStats || [], stat = [], right = [];
     if (want.includes('cpu')) stat.push(sbMeter('CPU', st.cpu ?? 0, st.cpu == null ? '…' : `${st.cpu}%`, st.cpu >= 90 ? 'var(--needs)' : 'var(--watch)', 'every core\'s time spent busy, the last 3 s', st.cpu == null ? null : `${rn('cpu', st.cpu)}%`));
