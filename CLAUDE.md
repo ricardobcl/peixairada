@@ -377,7 +377,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   pads down by `--float-h` (`floatH`, a ResizeObserver on the three: from the column's top to under the last one shown;
   a transcript at its end stays there), but **a half with no strip runs up behind it**: the transcript pads only its
   words (zoomed: the lengths divided by `--chat-zoom`), the drawer is simply taller, both masked to a third over that
-  height, the wash moved onto `.gbody` while the transcript shows.
+  height, the wash moved onto `.gbody` while the transcript shows. **At the notch its top edge dips round the camera
+  housing** (`headNotch`, from `layoutNotch`): a clip-path run wide of the box (its shadow stays), shoulders of
+  `HEAD_BEND`, the lower corners the housing's curve and the gap as far as the depth allows; the border round the dip
+  is `#chat > svg.hcut`, drawn outside the header, which clips what it holds. The header keeps its place and height.
   → `scripts/scenarios/head-float.mjs`.
 * **The chat header is a gradient of the project's colour**: `tintChat()` sets `--repo`, `--rink`, `--rover`/`--rover2`
   and `#chat.tinted`; `--rink` is the ink that reads on it (`inkOn()`), every control in `.shead` redrawn in it; the

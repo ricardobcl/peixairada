@@ -38,6 +38,11 @@ and PR events".
   drawer — where a chat run here is read — is simply taller, its top rows behind the bar, faint round it. Only where
   nothing else stands between: a half with a tab strip, a page or the changes starts under the header as before, as
   does a split's other half, and stacked, the lower one.
+* **…and bends round the notch** (the same message: "the intersection of the header with the notch should be soften by
+  bending a bit like the tile bends, just a little so we don't lose vertical space"): the header ran under the camera
+  housing, the housing's black over its own. Its top edge now dips round it, a few pixels clear (and clear of the tiles'
+  border round it), the shoulders rounded and the corners following the housing's — and the header stays where it was,
+  so the row loses nothing. Its border runs round the dip.
 
 ## Decisions of 2026-10-11, later — the status bar trimmed, lanes that fold, the live notch taken out
 
