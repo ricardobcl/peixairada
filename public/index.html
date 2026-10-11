@@ -761,14 +761,11 @@
   /* the open chat: a solid tint of its colour under a ring of it (2026-09-20); every other card keeps the gradient
      wash */
   .card.active { border-color: var(--lift); outline: 2px solid var(--lift); outline-offset: -1px; --tint: 65%; --reach: 100%; --fall: .5; }
-  /* …and it bleeds into the splitter (2026-09-26): over the list's
-     padding to the column's edge, against the bar in the same colour (#splitter, --openc). Not on the rail of squares,
-     which has no splitter. */
-  main:not(.scompact) #slist > .card.active { margin-right: -8px;
-    /* …seamlessly (2026-09-29): the card's tint rises to the full colour over its last 44 px, so it meets the bar
-       in the bar's own colour — the card's wash under it, as .card draws it. */
-    background-image: linear-gradient(to right, transparent calc(100% - 44px), var(--repo, var(--nocolor))),
-      linear-gradient(to right, var(--edge) 3px, transparent 3px), radial-gradient(circle var(--spotr) at var(--mx) var(--my), color-mix(in srgb, var(--spotc) var(--spot), transparent), transparent), linear-gradient(90deg, color-mix(in srgb, var(--wash) var(--tint), var(--panel)), calc(var(--reach) * var(--fall)), var(--panel) var(--reach)); }
+  /* …and it runs into the splitter (2026-09-26): over the list's padding to the column's edge, against the bar in the
+     same colour (#splitter, --openc). Not on the rail of squares, which has no splitter. Its tint no longer rises to the
+     full colour over its last 44 px to meet the bar (2026-09-29 to 2026-10-11, afternoon): its glow falls to the panel
+     at its right edge, as every card's does. */
+  main:not(.scompact) #slist > .card.active { margin-right: -8px; }
   /* A card in the board's own black (a project the setup paints #000000): 65 % of black over a light panel is a mid-grey
      nothing reads on, so the tint is the colour itself and the card borrows the dark theme's inks — they inherit,
      so title, snips, times and the two speaker marks follow in one rule. In the dark theme they are what they were. */

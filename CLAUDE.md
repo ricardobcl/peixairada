@@ -541,10 +541,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   since 2026-09-28, the background running under it: `background-origin: border-box`): only the clauding card and the
   open one wear the colour round their border (the hovered one did until 2026-10-11, afternoon). **ALL** (`key: 'all'`) is black in both
   themes — `BLACK`, through `projColor()` — and so is a folder the setup paints `#000000`. A card in that black is
-  `.card.black`; `--ring` turns its clauding light white wherever the card under it is dark. **The open card bleeds
-  into the splitter**: `main:not(.scompact) #slist > .card.active` runs to the column's edge, its glow rising to the
-  full colour over its last 44 px so it meets the bar seamlessly (a `background-image` layer over the edge and the
-  glow, 2026-09-29), and `#splitter` is `--open`
+  `.card.black`; `--ring` turns its clauding light white wherever the card under it is dark. **The open card runs
+  into the splitter**: `main:not(.scompact) #slist > .card.active` runs to the column's edge, its glow falling to the
+  panel at its right edge as every card's (it rose to the full colour over its last 44 px to meet the bar, 2026-09-29
+  to 2026-10-11, afternoon), and `#splitter` is `--open`
   on `main` (set by `tintChat`); the bar ends at the card's edge as drawn — its rect, plus the outline's pixel
   (`splitEnd`). **The splitter wears it only down to the open card**
   (2026-09-28): black under it (`#splitter::after` from `--split`); the open card out of sight below, the colour runs

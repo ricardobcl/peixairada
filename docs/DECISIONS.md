@@ -9,7 +9,8 @@ by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-1
 
 Ricardo, with a screenshot of the board filled at the notch, tiles and the floating header on: "seems like some times
 the "..." is wraping around and making 2 rows, which shouldn't happen"; "the card on hover should no highlight the
-borders".
+borders"; "the card selected should not have the aggressive gradient on the right - should be background color
+(usually black)".
 
 * **The header's row never wraps.** The header is a wrapping flex row (the details fold under it as a second line),
   and a line breaks on its items' basis sizes before anything shrinks: the *your move* line's was its whole reason (a
@@ -21,6 +22,10 @@ borders".
   keeps its 170 px; ··· is always on its line.
 * **Hover lights no border.** The hovered card's border and halo in its colour went; the glow still spreads under the
   pointer. The colour round the edge is the open card's and the clauding one's alone.
+* **The open card's right is the panel.** Its glow rose to the full colour over its last 44 px to meet the splitter in
+  the bar's own colour (2026-09-29) — with tiles, where the splitter is a gap, a block of colour at the card's end for
+  nothing, and loud anywhere. It now falls to the panel at its right edge as every card's does; the card still runs
+  over the list's padding, and its 2 px outline meets the bar.
 
 ## Decisions of 2026-10-11, midday — a PR taken off a chat
 
