@@ -70,6 +70,10 @@ the order they landed.
   where even that is too wide beside one chip; and the title keeps **40 % of the row** at least, beside the old floor
   (its repo name and `TITLE_ROOM`). Both counts are in the markup and measured in the one layout. The notch keeps two
   chips right of the housing (six before).
+* **C1 — Claude's prose keeps a measure**: at 1700 px a line ran to ~200 characters. Its paragraphs, lists, quotes and
+  headings stop at 80ch; a code block, a table, a rule and an image take the width they need. Your bubble was already
+  capped. The conversation is not centred: the bubbles on the right and the words on the left stay where the eye knows
+  them.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

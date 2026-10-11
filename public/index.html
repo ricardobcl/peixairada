@@ -1495,6 +1495,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .msg .turnfoot .tcopy:hover { color: var(--ink); background: var(--ctl); }
   .msg .turnfoot .tcopy.did { color: var(--idle); }
   .msg.assistant .bubble { padding: 4px 2px; }
+/* Claude's prose keeps to a reading measure (2026-10-12): at 1700 px a line ran to ~200 characters. Its paragraphs,
+   lists, quotes and headings stop at 80ch; a code block, a table, a rule and an image take the width they need. */
+.msg.assistant .text > :is(p, ul, ol, blockquote, h1, h2, h3, h4, h5, h6, dl) { max-width: 80ch; }
   .msg .who { font-size: 11px; color: var(--muted); margin: 0 0 5px 2px; display: flex; gap: 8px; }
   .msg .text { white-space: pre-wrap; word-break: break-word; line-height: 1.62; }
   /* Inline code: a tint and a warm ink, no border. These paragraphs are dense with `code`, and a

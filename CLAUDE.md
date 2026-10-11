@@ -1075,7 +1075,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   cross) — from the results the open chat's entries hold; a result arriving for a row already drawn sets its mark with a
   pop, and a folded run's summary carries the turning ring while any of its calls is out.
 * **The transcript reads as a conversation** (2026-10-08, from the agent apps): your words are a bubble on the right,
-  as wide as they are (`.msg.user`); Claude's run the width under **one who-line a turn** — a text after another of
+  as wide as they are (`.msg.user`); Claude's paragraphs, lists, quotes and headings stop at 80ch (2026-10-12), its
+  code, tables and images taking the width they need; Claude's run the width under **one who-line a turn** — a text after another of
   the same turn is `.cont` (`logView.lastWho`, reset by a turn's end, an interrupt, a compaction); and **the reply that
   ends a turn has a footer**: *copy* (every text of the turn, as markdown — `.tcopy`, found by `data-ts`) and *worked
   for 12m 4s* — the server marks that entry `turnEnd` and `worked` (`s.turnStart`: your prompt, else a turn's first
