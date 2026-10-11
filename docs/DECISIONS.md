@@ -193,6 +193,13 @@ the order they landed.
   overview's and the list's ends' blurs go solid. Under forced colours a card is outlined in the system's text colour,
   the open one in its highlight, and the marks that are colour alone (lane dots, the rail's dot, the CI badge, a tool's
   state, the counts) keep theirs.
+* **L7 — a type scale and radii**: the CSS used eighteen font sizes from 9 to 19 px in half-pixel steps and fourteen
+  radii, one of each a rule wanted. Seven sizes (`--fs-2xs` 10 · `--fs-xs` 11 · `--fs-sm` 12 · `--fs-md` 13 ·
+  `--fs-base` 14 · `--fs-lg` 15 · `--fs-xl` 18) and five radii (3 · 4 · 6 · 10 · 14 px), every `font-size`, `font`
+  shorthand and single `border-radius` in the page's CSS moved to the nearest — 9 and 9.5 px up to 10, the halves to
+  the size above or below, 16 down to 15, 17 and 19 to 18. 14 px is a step of its own: the header's title, measured
+  to the pixel round the camera housing, kept its size. The rail's four-letter names keep their 8.5 px. A page-wide
+  zoom (A2) is one variable away now, but A2 zooms the page itself.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

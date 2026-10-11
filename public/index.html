@@ -6,6 +6,11 @@
 <title>peixAIrada</title>
 <link rel="stylesheet" href="/vendor/xterm.css">
 <style>
+  /* The type scale and the radii (2026-10-12): eighteen sizes from 9 to 19 px in half-pixel steps and fourteen radii
+     were one of each a rule wanted. Seven sizes, five radii; a new rule takes one of them (a fit that needs its own —
+     the rail's four-letter names — keeps its number). */
+  :root { --fs-2xs: 10px; --fs-xs: 11px; --fs-sm: 12px; --fs-md: 13px; --fs-base: 14px; --fs-lg: 15px; --fs-xl: 18px;
+    --r-1: 3px; --r-2: 4px; --r-3: 6px; --r-4: 10px; --r-5: 14px; }
   :root {
     --bg: #f6f6f4; --panel: #ffffff; --ink: #1c1c1a; --muted: #6b6b66; --line: #e5e5e0; --accent: #c96442;
     --working: #d9a82a; --idle: #2f9e5b; --needs: #c53535; --ended: #a3a39e; --unread: #b04f2e;   /* a red and the unread badge's that read at small sizes (2026-10-12: #d64545 4.05, #c96442 3.9 against AA's 4.5) */
@@ -69,10 +74,10 @@
      root, and the two places that borrow the dark theme's ink, so it follows a black card and the header's black. A new
      rule that sets --ink sets these two beside it. */
   :root, .card.black:is(:hover, .active, .qsel), .shead > :not(h2, .details) { --ctl: color-mix(in srgb, var(--ink) 7%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 13%, transparent); }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; height: 100vh; display: grid; grid-template-rows: minmax(0, 1fr) auto; overflow: hidden; }   /* the board, then the status bar */
+  body { margin: 0; background: var(--bg); color: var(--ink); font: var(--fs-base)/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; height: 100vh; display: grid; grid-template-rows: minmax(0, 1fr) auto; overflow: hidden; }   /* the board, then the status bar */
 
   /* ---- header ---- */
-  .btn { font: inherit; font-size: 12px; padding: 5px 10px; border: 1px solid transparent; background: var(--ctl); color: var(--ink); border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .btn { font: inherit; font-size: var(--fs-sm); padding: 5px 10px; border: 1px solid transparent; background: var(--ctl); color: var(--ink); border-radius: var(--r-3); cursor: pointer; white-space: nowrap; }
   .btn:hover { background: var(--ctl-hi); }
   .btn.icon { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; color: var(--muted); }
   .btn.icon .ic { width: 15px; height: 15px; vertical-align: 0; fill: currentColor; }
@@ -82,7 +87,7 @@
   #termBtn.on { color: var(--accent); border-color: var(--accent); }
   #termBtn.take { color: var(--ink); }                                        /* live in another terminal: can be taken over */
   #termBtn.take.arm { color: var(--needs); border-color: var(--needs); }      /* armed: the next click ends that claude */
-  .btn.icon .lbl { font-size: 11px; }
+  .btn.icon .lbl { font-size: var(--fs-xs); }
   /* No page header since 2026-09-20 — the Mac window has its own title bar, and a second bar was a strip of
      controls nobody touched twice a day. The fish sits at the top left of the chat list (of the projects strip until
      2026-09-24) and is a light, not a button (it goes dim when the SSE stream drops); everything the board has to
@@ -94,56 +99,56 @@
      the chat header's ··· or ⌘, — the dialog rules give it the fade, the backdrop, Esc and the pane going down. A head
      (the name, the counts, ×), a segmented control over three panes: the board's own switches, the server's setup,
      the keys. The class is still `pop`: every row inside is styled as `.pop …`. */
-  #settings { width: min(560px, 94vw); height: min(640px, 86vh); padding: 0; border: 0; border-radius: 16px; overflow: hidden; background: var(--panel); color: var(--ink); font-size: 12px;
+  #settings { width: min(560px, 94vw); height: min(640px, 86vh); padding: 0; border: 0; border-radius: var(--r-5); overflow: hidden; background: var(--panel); color: var(--ink); font-size: var(--fs-sm);
     box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 8%, transparent) inset, 0 30px 90px rgba(0, 0, 0, .45); }
   #settings[open] { display: grid; grid-template-rows: auto auto minmax(0, 1fr); outline: none; }
   #settings .shd2 { display: flex; align-items: center; gap: 10px; padding: 16px 16px 12px 22px; }
-  .pop h4 { margin: 0; flex: 1; font-size: 16px; display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+  .pop h4 { margin: 0; flex: 1; font-size: var(--fs-lg); display: flex; align-items: baseline; gap: 10px; min-width: 0; }
   .pop h4 em { font-style: normal; color: var(--accent); }
-  .pop h4 .sub { font-size: 11.5px; font-weight: 400; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #settings .sclose { flex: none; width: 26px; height: 26px; border: 0; border-radius: 50%; background: var(--ctl); color: var(--muted); font: inherit; font-size: 16px; line-height: 1; cursor: pointer; }
+  .pop h4 .sub { font-size: var(--fs-sm); font-weight: 400; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #settings .sclose { flex: none; width: 26px; height: 26px; border: 0; border-radius: 50%; background: var(--ctl); color: var(--muted); font: inherit; font-size: var(--fs-lg); line-height: 1; cursor: pointer; }
   #settings .sclose:hover { background: var(--ctl-hi); color: var(--ink); }
   /* the tabs: a segmented control, the one in front raised on it */
-  #settings .stabs { display: flex; gap: 2px; margin: 0 22px 10px; padding: 3px; width: max-content; border-radius: 9px; background: var(--ctl); }
-  #settings .stabs button { font: inherit; font-size: 12px; font-weight: 600; padding: 4px 16px; border: 0; border-radius: 7px; background: none; color: var(--muted); cursor: pointer; }
+  #settings .stabs { display: flex; gap: 2px; margin: 0 22px 10px; padding: 3px; width: max-content; border-radius: var(--r-4); background: var(--ctl); }
+  #settings .stabs button { font: inherit; font-size: var(--fs-sm); font-weight: 600; padding: 4px 16px; border: 0; border-radius: var(--r-3); background: none; color: var(--muted); cursor: pointer; }
   #settings .stabs button:hover { color: var(--ink); }
   #settings .stabs button.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .22); }
   #settings .spane { overflow: auto; padding: 4px 22px 20px; align-content: start; }
   #settings .spane[hidden] { display: none; }
   /* in a pane of their own, the setup and the keys need no rule above them, nor the first switch */
   #settings .spane > .opt:first-child, #settings .spane > .setup, #settings .spane > .keys { margin-top: 0; padding-top: 0; border-top: 0; }
-  #settings .keys .kh { display: block; margin-top: 10px; font: 700 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }   /* the groups (2026-10-12) */
+  #settings .keys .kh { display: block; margin-top: 10px; font: 700 var(--fs-xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }   /* the groups (2026-10-12) */
   #settings .keys .kh:first-child { margin-top: 0; }
   /* The keys, so they can be looked up: two columns under a rule, the chord in ink, what it does in muted. */
-  .pop .keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: baseline; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
-  .pop .keys .kh { grid-column: 1 / -1; font-size: 11px; }
+  .pop .keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: baseline; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--muted); }
+  .pop .keys .kh { grid-column: 1 / -1; font-size: var(--fs-xs); }
   /* The one switch (2026-09-23): system notifications on or off, the server's word so the app and every tab agree. */
-  .pop .opt { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); cursor: pointer; }
+  .pop .opt { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--muted); cursor: pointer; }
   .pop .opt[hidden] { display: none; }
   .pop .opt.sub { margin: -2px 0 0 43px; padding-top: 0; border-top: 0; }   /* a switch of the row above's (compact's same height), under its slider */
   .pop .opt b { font-weight: 600; color: var(--ink); }
-  .pop .opt input { appearance: none; -webkit-appearance: none; position: relative; margin: 0; width: 28px; height: 16px; border-radius: 8px; background: var(--line); cursor: pointer; transition: background .15s; }
+  .pop .opt input { appearance: none; -webkit-appearance: none; position: relative; margin: 0; width: 28px; height: 16px; border-radius: var(--r-3); background: var(--line); cursor: pointer; transition: background .15s; }
   .pop .opt input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: transform .15s; }
   .pop .opt input:checked { background: var(--accent); }
   .pop .opt input:checked::after { transform: translateX(12px); }
   .pop .opt input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   /* How much of a chat its card carries (2026-09-25): a slider of three stops under the switch — large as the cards
      always were, medium the last word only, compact neither word. The stop names are the slider's scale, and a click. */
-  .pop .dens { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; align-items: center; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
+  .pop .dens { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; align-items: center; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--muted); }
   .pop .dens b { font-weight: 600; color: var(--ink); }
   .pop .dens input { width: 100%; margin: 0; accent-color: var(--accent); cursor: pointer; }
-  .pop .dens .stops { grid-column: 2; display: flex; justify-content: space-between; font-size: 11px; }
+  .pop .dens .stops { grid-column: 2; display: flex; justify-content: space-between; font-size: var(--fs-xs); }
   .pop .dens .stops span { cursor: pointer; }
   .pop .dens .stops span:hover { color: var(--ink); }
   .pop .dens .stops .on { color: var(--ink); font-weight: 600; }
   /* What ⌥⌘N's ✕ took off the board, and the only way back to it. Empty is nothing at all — the popover is the
      switch and the keys until something is hidden. */
-  .pop .hid { display: grid; gap: 3px; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
+  .pop .hid { display: grid; gap: 3px; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--muted); }
   .pop .hid:empty { display: none; }
   .pop .hid .hrow { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: baseline; }
   .pop .hid .hrow b { font-weight: 600; color: var(--ink); }
   .pop .hid .hrow span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pop .hid button { font: inherit; font-size: 11px; border: 1px solid transparent; background: var(--ctl); color: var(--ink); border-radius: 6px; padding: 1px 7px; cursor: pointer; }
+  .pop .hid button { font: inherit; font-size: var(--fs-xs); border: 1px solid transparent; background: var(--ctl); color: var(--ink); border-radius: var(--r-3); padding: 1px 7px; cursor: pointer; }
   .pop .hid button:hover { border-color: var(--accent); color: var(--accent); }
   .pop .scol { display: grid; gap: 9px; align-content: start; min-width: 0; }
   /* The setup (2026-09-28; dressed the same night): three sections — the folders of repos, ⌥⌘O's project, the projects'
@@ -151,11 +156,11 @@
      own settings are. A path or a name is text until the pointer or the keyboard is on it; the small fields (the org,
      the short name) and the pickers wear a fill; a project's row leads with its square as the rail draws it, in its
      colour; × comes with the pointer. */
-  .pop .setup { display: grid; gap: 22px; font-size: 12px; color: var(--muted); }
+  .pop .setup { display: grid; gap: 22px; font-size: var(--fs-sm); color: var(--muted); }
   .pop .setup .sgh { display: grid; gap: 2px; margin: 0 4px 8px; }
-  .pop .setup .sgh b { font-size: 13px; font-weight: 650; color: var(--ink); }
-  .pop .setup .sgh span { font-size: 11.5px; line-height: 1.45; }
-  .pop .slist { border-radius: 10px; background: color-mix(in srgb, var(--ink) 4.5%, transparent); }
+  .pop .setup .sgh b { font-size: var(--fs-md); font-weight: 650; color: var(--ink); }
+  .pop .setup .sgh span { font-size: var(--fs-sm); line-height: 1.45; }
+  .pop .slist { border-radius: var(--r-4); background: color-mix(in srgb, var(--ink) 4.5%, transparent); }
   .pop .srow { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto 22px; gap: 8px; align-items: center; min-height: 44px; padding: 7px 10px 7px 12px; }
   .pop .srow + .srow::before { content: ''; position: absolute; top: 0; left: 42px; right: 0; border-top: 1px solid var(--line); }
   .pop .srow.proj { grid-template-columns: 42px minmax(0, 1fr) 60px 22px 22px; gap: 10px; }
@@ -166,25 +171,25 @@
   .pop .srow.jtok { grid-template-columns: 22px minmax(0, 1fr) 22px; }
   .pop .setup .sfoot.sjst { margin-top: 8px; }
   .pop .setup .sfoot .serr { color: var(--needs); }
-  .pop .srow .sic { display: grid; place-items: center; color: var(--muted); font-size: 14px; }
+  .pop .srow .sic { display: grid; place-items: center; color: var(--muted); font-size: var(--fs-base); }
   .pop .srow .sic .ic { width: 16px; height: 16px; fill: currentColor; }
   .pop .srow.add .sic, .pop .srow.padd .sic { color: var(--accent); }
   .pop .srow.padd { padding-left: 22px; }   /* its ＋ under the squares' middle */
-  .pop .setup :is(input[type=text], input[type=password]) { font: inherit; font-size: 12.5px; min-width: 0; height: 28px; padding: 0 8px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--ink); }
+  .pop .setup :is(input[type=text], input[type=password]) { font: inherit; font-size: var(--fs-md); min-width: 0; height: 28px; padding: 0 8px; border: 1px solid transparent; border-radius: var(--r-3); background: transparent; color: var(--ink); }
   .pop .setup :is(input[type=text], input[type=password]):hover { background: var(--ctl); }
   .pop .setup :is(input[type=text], input[type=password]):focus { outline: none; background: var(--panel); border-color: var(--accent); }
   .pop .setup input:disabled { opacity: .5; pointer-events: none; }
   .pop .setup input::placeholder { color: var(--muted); opacity: .85; }
   /* the org: github.com/ and the name, one pill */
-  .pop .sorgw { display: inline-flex; align-items: center; height: 28px; padding-left: 9px; border: 1px solid transparent; border-radius: 7px; background: var(--ctl); font-size: 11.5px; color: var(--muted); cursor: text; }
+  .pop .sorgw { display: inline-flex; align-items: center; height: 28px; padding-left: 9px; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); font-size: var(--fs-sm); color: var(--muted); cursor: text; }
   .pop .sorgw:hover { background: var(--ctl-hi); }
   .pop .sorgw:focus-within { background: var(--panel); border-color: var(--accent); }
   .pop .setup .sorgw input[type=text] { width: 88px; height: 26px; padding: 0 8px 0 1px; border: 0; border-radius: 0 7px 7px 0; background: transparent; font-weight: 600; }
   .pop .srow .pn { display: grid; min-width: 0; }
-  .pop .srow .pn b { display: inline-flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 600; color: var(--ink); }
-  .pop .srow .pn small { font-size: 10.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pop .srow .pn b { display: inline-flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-md); font-weight: 600; color: var(--ink); }
+  .pop .srow .pn small { font-size: var(--fs-xs); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* a project's square, the rail's: its short name on its colour, the ink that reads there (--nocolor without one) */
-  .pop .stile { display: grid; place-items: center; width: 42px; height: 30px; background: var(--nocolor); color: var(--ink); font-size: 10.5px; font-weight: 800; letter-spacing: .4px; overflow: hidden; white-space: nowrap; }
+  .pop .stile { display: grid; place-items: center; width: 42px; height: 30px; background: var(--nocolor); color: var(--ink); font-size: var(--fs-xs); font-weight: 800; letter-spacing: .4px; overflow: hidden; white-space: nowrap; }
   .pop .setup input.sab { width: 60px; padding: 0 4px; text-align: center; font-weight: 700; letter-spacing: .4px; background: var(--ctl); }
   .pop .setup input.sab:hover { background: var(--ctl-hi); }
   .pop .ssw { position: relative; width: 22px; height: 22px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 20%, transparent); cursor: pointer; transition: transform .12s; }
@@ -192,23 +197,23 @@
   .pop .ssw.none { background: none; box-shadow: none; border: 1.5px dashed color-mix(in srgb, var(--ink) 32%, transparent); }
   .pop .ssw:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
   .pop .ssw input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer; }
-  .pop .sdel { font: inherit; font-size: 15px; line-height: 1; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; opacity: 0; transition: opacity .12s, background-color .12s, color .12s; }
+  .pop .sdel { font: inherit; font-size: var(--fs-lg); line-height: 1; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; opacity: 0; transition: opacity .12s, background-color .12s, color .12s; }
   .pop .srow:hover .sdel, .pop .sdel:focus-visible { opacity: 1; }
   .pop .sdel:hover { color: var(--needs); background: color-mix(in srgb, var(--needs) 14%, transparent); }
-  .pop .srow.quick kbd { font: inherit; font-size: 11.5px; font-weight: 700; color: var(--ink); padding: 2px 7px; border-radius: 6px; background: var(--ctl); box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--ink) 14%, transparent); }
+  .pop .srow.quick kbd { font: inherit; font-size: var(--fs-sm); font-weight: 700; color: var(--ink); padding: 2px 7px; border-radius: var(--r-3); background: var(--ctl); box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--ink) 14%, transparent); }
   .pop .srow.quick .ssel { display: flex; align-items: center; gap: 6px; min-width: 0; }
   .pop .srow.quick .ssel .ic { flex: none; width: 15px; height: 15px; fill: var(--accent); }
-  .pop .setup select { appearance: none; -webkit-appearance: none; flex: 1; min-width: 0; width: 100%; max-width: none; height: 28px; padding: 0 28px 0 9px; border: 1px solid transparent; border-radius: 7px; font: inherit; font-size: 12.5px; color: var(--ink); cursor: pointer;
+  .pop .setup select { appearance: none; -webkit-appearance: none; flex: 1; min-width: 0; width: 100%; max-width: none; height: 28px; padding: 0 28px 0 9px; border: 1px solid transparent; border-radius: var(--r-3); font: inherit; font-size: var(--fs-md); color: var(--ink); cursor: pointer;
     background: var(--ctl) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238f8e86' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center / 10px 6px; }
   .pop .setup select:hover { background-color: var(--ctl-hi); }
   .pop .setup select.sadd { background-color: transparent; color: var(--muted); }
   .pop .setup select.sadd:hover { background-color: var(--ctl); color: var(--ink); }
-  .pop .setup .sfoot { margin: -8px 4px 0; font-size: 11px; }
-  .pop .setup .sfoot code { font-size: 10.5px; }
+  .pop .setup .sfoot { margin: -8px 4px 0; font-size: var(--fs-xs); }
+  .pop .setup .sfoot code { font-size: var(--fs-xs); }
   .pop .setup .sfoot.serr { color: var(--needs); }
   .pop .keys kbd { font: inherit; font-weight: 600; color: var(--ink); white-space: nowrap; }
-  .pop .keys em { font-style: normal; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--ink); }
-  .pop select, .colhead select { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; max-width: 180px; }
+  .pop .keys em { font-style: normal; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--fs-xs); color: var(--ink); }
+  .pop select, .colhead select { font: inherit; font-size: var(--fs-sm); padding: 4px 6px; border: 1px solid var(--line); border-radius: var(--r-3); background: transparent; color: inherit; max-width: 180px; }
   .brand.off .logo { filter: grayscale(1); opacity: .5; }   /* the SSE stream is down: the board is frozen */
   /* …and its fish floats belly-up (2026-10-11): flipped, the sparks out, bobbing; back, it flips over and wiggles. The
      same on the status bar's connection, whose fish is drawn anew with the bar — hence animations, not transitions. */
@@ -246,7 +251,7 @@
   #sbar .conn .logo :is(.fishg g, .stars) { fill: var(--idle); }
   #sbar .conn .logo .fishg path[fill] { fill: var(--bar, var(--panel)); }
   #sbar .conn.off .logo { filter: grayscale(1); opacity: .6; }
-  #counts { font-size: 11px; font-weight: 400; color: var(--muted); white-space: nowrap; }
+  #counts { font-size: var(--fs-xs); font-weight: 400; color: var(--muted); white-space: nowrap; }
 
   /* ---- layout: sessions | splitter | chat (one half or two) ---- */
   main { display: flex; min-height: 0; min-width: 0; }
@@ -298,7 +303,7 @@
      still read from the rail. Everything inside the card goes; .abbr is the only child left standing. */
   main.scompact #sessions { width: 58px; min-width: 0; }
   main.scompact #shd #filters, main.scompact #stitle > :not(.ab), main.scompact #splitter { display: none; }
-  main.scompact #stitle .ab { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .4px; color: var(--ink); }
+  main.scompact #stitle .ab { display: block; font-size: var(--fs-xs); font-weight: 800; letter-spacing: .4px; color: var(--ink); }
   main.scompact #stitle { justify-content: center; padding: 5px 0 13px; border-top: 0; background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); }
   main.scompact #stitle:hover { background: color-mix(in srgb, var(--repo, var(--nocolor)) 26%, var(--panel)); }
   main.scompact #shd { flex-direction: column; padding: 8px 0; gap: 8px; min-height: 0; }
@@ -306,15 +311,15 @@
   main.scompact #slist > .card { padding: 0; min-height: 36px; display: grid; place-items: center;
     background: color-mix(in srgb, var(--repo, var(--nocolor)) 55%, var(--panel)); }
   main.scompact #slist > .card > * { display: none; }
-  main.scompact #slist > .card .abbr { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .4px; max-width: 100%; overflow: hidden; }
+  main.scompact #slist > .card .abbr { display: block; font-size: var(--fs-xs); font-weight: 800; letter-spacing: .4px; max-width: 100%; overflow: hidden; }
   /* (2026-10-12) a short name of three letters or four set smaller, so it fits its square rather than lose its end;
      a dot where the chat wants you without a ring or a red edge to say it — a PR at your move, a new reply — and a
      square that has waited longer than four days (Idle) or is done, dimmed */
-  main.scompact #slist > .card .abbr[data-n="3"] { font-size: 9.5px; letter-spacing: 0; }
+  main.scompact #slist > .card .abbr[data-n="3"] { font-size: var(--fs-2xs); letter-spacing: 0; }
   main.scompact #slist > .card .abbr:is([data-n="4"], [data-n="5"]) { font-size: 8.5px; letter-spacing: -.2px; }
   .card .rdot { display: none; }
   main.scompact #slist > .card:is([data-rank="move"], [data-rank="replied"]) .rdot { display: block; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--idle); box-shadow: 0 0 0 1.5px var(--panel); }
-  main.scompact #slist > .card[data-rank="move"] .rdot { background: var(--accent); border-radius: 1px; transform: rotate(45deg); }
+  main.scompact #slist > .card[data-rank="move"] .rdot { background: var(--accent); border-radius: var(--r-1); transform: rotate(45deg); }
   main.scompact #slist > .card:is([data-rank="idle"], [data-rank="done"]) { filter: saturate(.35) brightness(.8); }
   main.scompact #slist .gsep { display: none; }   /* no room for a line, or for Claude's mark, on a rail of squares */
   /* …but a lane's head is its mark and its count (2026-10-12), so a folded lane can be opened from the rail */
@@ -322,7 +327,7 @@
   main.scompact #slist .gsep.lane[data-lane] :is(.ln, .lc) { display: none; }
   main.scompact #slist .gsep.lane[data-lane] b { margin: 0; }
   main.scompact #slist .gsep.lane.shut { opacity: .7; }
-  main.scompact #slist .none { padding: 14px 2px; font-size: 10px; }
+  main.scompact #slist .none { padding: 14px 2px; font-size: var(--fs-2xs); }
   /* The bar between the list and the chat is the open chat's colour (2026-09-26): --openc on main (registered, so it eases; --openb, its edges, went on 2026-09-29), set with the chat's
      tint, so the open card, the bar and the chat's header are one stroke of it — see .card.active. */
   #splitter { width: 6px; flex: none; cursor: col-resize; background: var(--openc); position: relative; overflow: hidden; }
@@ -417,15 +422,15 @@
   :root[data-head="float"] main.tiles.split #groups { padding-top: calc(var(--float-h, 0px) + 4px); }
   :root[data-head="float"] main.tiles.split #groups > .grp { padding-top: 0; }
   :root[data-head="float"] main.tiles.split #groups > #gsplit { margin-top: 0; }
-  .gempty { color: var(--muted); text-align: center; align-self: center; padding: 0 20px; font-size: 12.5px; line-height: 1.8; }
+  .gempty { color: var(--muted); text-align: center; align-self: center; padding: 0 20px; font-size: var(--fs-md); line-height: 1.8; }
   /* A VS Code chat: read here, continued there. The whole pane says so — an outline, so nothing moves. */
   /* The pane is washed in the project's colour — none for a folder without one (transparent mixed with
      transparent). Where the chat lives is the header menu's to say (its VS Code row), not a colour, since 2026-09-20. */
   #log { background: var(--grain), linear-gradient(165deg, color-mix(in srgb, var(--hbg) 24%, transparent), color-mix(in srgb, var(--hbg) 6%, transparent) 70%, transparent); }
   /* Every other chat is a CLI chat, lived here or in a terminal: the same wash in orange, no outline. */
-  .colhead { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); font-weight: 700; min-width: 0; min-height: 43px; }
-  .colhead .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--ink); font-weight: 800; display: flex; align-items: center; gap: 7px; }
-  .colhead .sq { width: 10px; height: 10px; border-radius: 3px; background: var(--repo, var(--nocolor)); flex: none; }
+  .colhead { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: .7px; color: var(--muted); font-weight: 700; min-width: 0; min-height: 43px; }
+  .colhead .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; font-size: var(--fs-base); color: var(--ink); font-weight: 800; display: flex; align-items: center; gap: 7px; }
+  .colhead .sq { width: 10px; height: 10px; border-radius: var(--r-1); background: var(--repo, var(--nocolor)); flex: none; }
   .colhead .btn.icon { padding: 3px 7px; }
 
   /* ---- projects: a folder, or a named set of folders ---- */
@@ -434,12 +439,12 @@
      go back to ALL, which is the one project without one. The list's left edge and the head's tint are the
      project's colour, ALL's black. */
   #stitle { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 8px 6px 12px; cursor: pointer; border-top: 1px solid var(--line);
-    background: color-mix(in srgb, var(--repo, var(--nocolor)) 30%, var(--panel)); color: var(--ink); font-size: 13px; font-weight: 800; white-space: nowrap; }
+    background: color-mix(in srgb, var(--repo, var(--nocolor)) 30%, var(--panel)); color: var(--ink); font-size: var(--fs-md); font-weight: 800; white-space: nowrap; }
   #stitle[hidden] { display: none; }   /* on ALL; a flex box beats the attribute's own display */
   #stitle:hover { background: color-mix(in srgb, var(--repo, var(--nocolor)) 40%, var(--panel)); }
   #stitle > .t { flex: 0 1 auto; min-width: 0; display: block; overflow: hidden; text-overflow: ellipsis; }   /* a block, so a long name ends in … */
   #stitle .ab { display: none; }   /* the short name, for the rail */
-  #stitle .sx { flex: none; margin-left: auto; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font-size: 15px; font-weight: 400; line-height: 1; color: var(--muted); }
+  #stitle .sx { flex: none; margin-left: auto; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font-size: var(--fs-lg); font-weight: 400; line-height: 1; color: var(--muted); }
   #stitle .sx:hover { color: var(--ink); background: var(--inline-bg); }
   /* One row under the list (2026-09-24, atop it then): the fish, the filters — the magnifier and the three state
      chips —, the usage. The project's name has the row above since 2026-10-08. */
@@ -454,16 +459,16 @@
   :is(#shd, #sbar) #filters.searching .fsearch { flex: none; min-width: 0; color: var(--accent); border-color: var(--accent); background: var(--bg); border-right: 0; border-radius: 12px 0 0 12px; padding-right: 3px; }
   :is(#shd, #sbar) .fq { flex: 1 1 0; width: 0; height: 20px; margin-left: -3px; border-left: 0; border-radius: 0 12px 12px 0; padding-left: 3px; }   /* width 0: a box's own width is what it asks of the row, and it would push ＋ out; open, it takes the room the chips leave */
   /* the filter boxes: a magnifier in the row, the box itself only while it is open or has text */
-  .fsearch { font: inherit; border: 1px solid transparent; background: var(--ctl); color: var(--muted); border-radius: 12px; padding: 2px 7px; cursor: pointer; display: inline-flex; align-items: center; flex: none; }
+  .fsearch { font: inherit; border: 1px solid transparent; background: var(--ctl); color: var(--muted); border-radius: var(--r-4); padding: 2px 7px; cursor: pointer; display: inline-flex; align-items: center; flex: none; }
   .fsearch .ic { width: 12px; height: 12px; fill: currentColor; }
   .fsearch:hover { color: var(--ink); background: var(--ctl-hi); }
   .fsearch.on, .btn.icon.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
-  .fq { font: inherit; font-size: 11px; padding: 2px 8px; border: 1px solid var(--accent); border-radius: 12px; background: var(--bg); color: var(--ink); width: 150px; min-width: 0; }
+  .fq { font: inherit; font-size: var(--fs-xs); padding: 2px 8px; border: 1px solid var(--accent); border-radius: var(--r-4); background: var(--bg); color: var(--ink); width: 150px; min-width: 0; }
   .fq[hidden] { display: none; }
   .fq:focus { outline: none; }
   /* a project's mark (PROJECT_ICONS), inline before its name */
   .pic { width: 13px; height: 13px; fill: currentColor; vertical-align: -2px; margin-right: 4px; flex: none; }
-  .pc { font-size: 10.5px; font-weight: 700; border-radius: 9px; padding: 0 6px; line-height: 16px; color: #fff; }
+  .pc { font-size: var(--fs-xs); font-weight: 700; border-radius: var(--r-4); padding: 0 6px; line-height: 16px; color: #fff; }
   .pc.working { background: var(--working); color: #2a2205; } .pc.ready { background: var(--idle); }
   /* The square is the colour picker where it stands for one folder (the chat header's, beside the project's name):
      click opens the colour panel, ⌥-click clears. #colorInput is the one real control on the page, kept out of the re-rendered
@@ -471,7 +476,7 @@
   .sq.pick { cursor: pointer; transition: transform .12s; }
   .sq.pick:hover { transform: scale(1.35); box-shadow: 0 0 0 2px var(--panel), 0 0 0 3px var(--muted); }
   #colorInput { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
-  .note { position: fixed; z-index: 60; font-size: 11px; line-height: 1.4; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, .18); max-width: 340px; pointer-events: none; }
+  .note { position: fixed; z-index: 60; font-size: var(--fs-xs); line-height: 1.4; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-3); padding: 4px 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, .18); max-width: 340px; pointer-events: none; }
   .note.err { border-color: var(--needs); color: var(--needs); }
   .note { transition: opacity .12s, transform .12s; }   /* in from 3 px up; note() adds .out before it removes it */
   @starting-style { .note { opacity: 0; transform: translateY(-3px); } }
@@ -496,26 +501,26 @@
      it bursts back, over the divider's margin (hence overflow: visible). Both are transforms, the compositor's, both
      2.4 s long, so phaseAnims() putting both at 0 keeps the hop on the burst. A frame is 18 px of strip; a keyframe
      starts on a frame's boundary, k / 24 of the cycle. */
-  .gsep { margin: 2px 10px; font: 600 11px/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: var(--muted); white-space: nowrap; overflow: hidden; user-select: none; }
+  .gsep { margin: 2px 10px; font: 600 var(--fs-xs)/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: var(--muted); white-space: nowrap; overflow: hidden; user-select: none; }
   /* A lane's head (2026-10-09): its mark, its name in small caps, its count at the right end — the first thing in the
      list, so the list's top keeps its padding over it; the mark is a dot in the state's colour (asking ringed, ready
      hollow), and Claude's in pixels for the clauding. */
-  .gsep.lane { display: flex; align-items: center; gap: 8px; margin: 10px 2px 1px 4px; font: 750 10.5px/18px -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); overflow: visible; }
+  .gsep.lane { display: flex; align-items: center; gap: 8px; margin: 10px 2px 1px 4px; font: 750 var(--fs-xs)/18px -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); overflow: visible; }
   .gsep.lane:first-child { margin-top: 4px; }
   .gsep.lane > i { width: 10px; height: 10px; flex: none; margin: 0 4px; border-radius: 50%; box-sizing: border-box; }
-  .gsep.lane b { margin-left: auto; padding: 0 7px; border-radius: 9px; background: var(--ctl-hi); color: var(--ink); font-size: 10.5px; font-weight: 700; letter-spacing: 0; line-height: 16px; }
+  .gsep.lane b { margin-left: auto; padding: 0 7px; border-radius: var(--r-4); background: var(--ctl-hi); color: var(--ink); font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0; line-height: 16px; }
   .gsep.lane.asking { color: var(--needs); } .gsep.lane.asking > i { background: var(--needs); box-shadow: 0 0 0 3px color-mix(in srgb, var(--needs) 25%, transparent); }
   .gsep.lane.working { color: color-mix(in srgb, var(--working) 55%, var(--ink)); }
   .gsep.lane.ready > i { border: 2px solid var(--idle); background: radial-gradient(var(--idle) 30%, transparent 36%); }
   .gsep.lane.done > i { background: var(--ended); }
-  .gsep.lane.move { color: color-mix(in srgb, var(--accent) 85%, var(--ink)); } .gsep.lane.move > i { background: var(--accent); border-radius: 2px; transform: rotate(45deg) scale(.8); }
+  .gsep.lane.move { color: color-mix(in srgb, var(--accent) 85%, var(--ink)); } .gsep.lane.move > i { background: var(--accent); border-radius: var(--r-1); transform: rotate(45deg) scale(.8); }
   .gsep.lane.replied > i { background: var(--idle); box-shadow: 0 0 0 3px color-mix(in srgb, var(--idle) 25%, transparent); }
   .gsep.lane.idle > i { border: 2px solid var(--ended); }
   .gsep.lane.away { cursor: pointer; opacity: .85; } .gsep.lane.away:hover { opacity: 1; }
   #sbar .seg.ask { cursor: pointer; }
   /* A lane's head folds its lane (2026-10-11, later; laneShut): the whole head a toggle, a chevron at its end turned
      down while open, the head dimmed while folded; the count stays, so a folded lane still says how much is in it. */
-  .gsep.lane[data-lane] { cursor: pointer; user-select: none; border-radius: 5px; }
+  .gsep.lane[data-lane] { cursor: pointer; user-select: none; border-radius: var(--r-2); }
   .gsep.lane[data-lane]:hover .ln { color: var(--ink); }
   .gsep.lane .lc { flex: none; width: 7px; height: 7px; margin: 0 3px 0 -2px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; rotate: 45deg; translate: 0 -2px; opacity: .7; transition: rotate .15s var(--ease-out), translate .15s var(--ease-out); }
   .gsep.lane.shut .lc { rotate: -45deg; translate: -1px 0; }
@@ -555,8 +560,8 @@
   .gsep.day { display: flex; align-items: center; gap: 8px; text-align: left; }
   .gsep.day b { font-weight: 700; color: var(--muted); flex: none; }
   .gsep.day::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-  #slist .none { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 0; display: grid; justify-items: center; gap: 4px; }
-  #slist .none b { color: var(--ink); font-weight: 600; font-size: 12.5px; }
+  #slist .none { color: var(--muted); font-size: var(--fs-sm); text-align: center; padding: 30px 0; display: grid; justify-items: center; gap: 4px; }
+  #slist .none b { color: var(--ink); font-weight: 600; font-size: var(--fs-md); }
   #slist .none .nfish { position: relative; margin-bottom: 6px; }
   #slist .none .nfish svg { display: block; opacity: .85; }
   #slist .none .nfish .b { fill: var(--accent); } #slist .none .nfish .s { fill: color-mix(in srgb, var(--accent) 60%, #000); } #slist .none .nfish .e { fill: var(--bg); }
@@ -593,11 +598,11 @@
   #tline .tl-catch { left: -4px; top: 0; bottom: 0; width: 24px; }
   /* The thumb, the one thing on the rail at rest: the board's orange (the usage bars' --spend, under it), which reads
      beside any project's edge — on the edge itself it vanished on an orange project. Wider under the pointer. */
-  #tline .tl-thumb { left: 3px; width: 5px; border-radius: 3px; background: var(--spend); opacity: .9; transition: left .15s, width .15s, opacity .15s; }
+  #tline .tl-thumb { left: 3px; width: 5px; border-radius: var(--r-1); background: var(--spend); opacity: .9; transition: left .15s, width .15s, opacity .15s; }
   #tline:hover .tl-thumb, #tline.drag .tl-thumb { left: 2px; width: 8px; opacity: 1; }
   #tline .tl-thumb[hidden] { display: none; }
   /* A day's label: the day, then how many of that run and in which state — out over the cards, from the rail (TL_LX in). */
-  #tline .tl-lab { left: 16px; top: 0; transform-origin: 0 50%; white-space: nowrap; font-size: 10.5px; line-height: 15px; padding: 0 7px; border-radius: 8px;
+  #tline .tl-lab { left: 16px; top: 0; transform-origin: 0 50%; white-space: nowrap; font-size: var(--fs-xs); line-height: 15px; padding: 0 7px; border-radius: var(--r-3);
     background: var(--panel); border: 1px solid transparent; color: var(--ink); box-shadow: 0 2px 10px rgba(0, 0, 0, .18); pointer-events: none; opacity: 0; font-weight: 600; }
   #tline .tl-lab i { font-style: normal; font-weight: 400; color: var(--muted); }
   #tline .tl-lab.on { pointer-events: auto; cursor: pointer; }
@@ -612,7 +617,7 @@
   .sedge.down { align-self: end; align-items: flex-end; justify-content: flex-end; height: 24px; padding: 0 14px 4px 0; background: linear-gradient(transparent, var(--bg) 80%); }
   main.scompact .sedge.down { justify-content: center; padding-right: 0; }   /* the rail: no room to one side */
   .sedge.on { opacity: 1; }
-  :is(.sedge, .lognew) button { pointer-events: auto; font: inherit; font-size: 11px; line-height: 16px; color: var(--muted); background: color-mix(in srgb, var(--ink) 9%, var(--panel)); border: 1px solid transparent; border-radius: 10px; padding: 1px 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); white-space: nowrap; }
+  :is(.sedge, .lognew) button { pointer-events: auto; font: inherit; font-size: var(--fs-xs); line-height: 16px; color: var(--muted); background: color-mix(in srgb, var(--ink) 9%, var(--panel)); border: 1px solid transparent; border-radius: var(--r-4); padding: 1px 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, .12); white-space: nowrap; }
   .sedge:not(.on) button { pointer-events: none; }
   :is(.sedge, .lognew) button:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 15%, var(--panel)); }
   .sedge b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -688,7 +693,7 @@
   :root[data-theme="dark"] .card { --spotc: oklch(from var(--lift) calc(l + (1 - l) * .3) c h); }
   /* the project's name in its colour, a step towards what reads on the panel: lighter in the dark, darker in the light —
      in the dark from --lift's floor (2026-10-09, late night: a black's name, .45, sank into its grey glow) */
-  .card .top .repo { color: oklch(from var(--repo, var(--muted)) min(l, .5) c h); text-transform: uppercase; letter-spacing: .8px; font-size: 11px; }
+  .card .top .repo { color: oklch(from var(--repo, var(--muted)) min(l, .5) c h); text-transform: uppercase; letter-spacing: .8px; font-size: var(--fs-xs); }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card .top .repo { color: oklch(from var(--repo, var(--muted)) calc(max(l, .62) + (1 - max(l, .62)) * .45) c h); } }
   :root[data-theme="dark"] .card .top .repo { color: oklch(from var(--repo, var(--muted)) calc(max(l, .62) + (1 - max(l, .62)) * .45) c h); }
   .card.black .top .repo { color: var(--ink); }
@@ -849,7 +854,7 @@
   /* On a card it shares the title's row, so it takes at most half of it and the title keeps the rest. */
   .card .trow .chip.watch { margin-top: 3px; max-width: 50%; }
   .shead .chip.watch { flex: 1 1 0; min-width: 64px; max-width: max-content; }   /* as the move's line: room left, never a second row */
-  .card .repo { font-weight: 800; font-size: 13px; letter-spacing: .1px; flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .repo { font-weight: 800; font-size: var(--fs-md); letter-spacing: .1px; flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* The letters the magnifier's query landed on (2026-09-25), as ⌥⌘K bolds them — underlined here as well, because
      a card is tinted in its project's colour and the accent alone does not read on every one of them. */
   .card :is(.title, .repo) b { font-weight: 700; color: var(--accent); text-decoration: underline 1.5px; text-underline-offset: 2px; }
@@ -864,15 +869,15 @@
      room, so nothing in the row moves when it comes — the one mark there that is a reading, not a state. */
   /* The age and the F moved beside the title on 2026-09-28: after it and its chips, before the unread
      count, on its first line — 18 px, the title's line. */
-  .card .trow .time { flex: none; font-size: 10px; line-height: 18px; color: inherit; opacity: 0; transition: opacity .12s; }
+  .card .trow .time { flex: none; font-size: var(--fs-2xs); line-height: 18px; color: inherit; opacity: 0; transition: opacity .12s; }
   .card:hover .trow .time { opacity: .8; }
   /* on Fable (2026-09-27): a stylized F with a spark, in the accent — the card's own ink on the solid tint */
   .card .trow .fable { color: var(--accent); flex: none; display: inline-flex; align-items: center; height: 18px; }
   .card .trow .fable .ic { width: 15px; height: 15px; }
   .card:is(.active, :hover, .qsel) .fable { color: inherit; }
   .card .top .act { height: 18px; }
-  .card .title { margin-top: 4px; font-size: 13.5px; font-weight: 500; line-height: 1.35; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
-  .card .snip { margin-top: 5px; font-size: 12px; line-height: 1.4; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .card .title { margin-top: 4px; font-size: var(--fs-md); font-weight: 500; line-height: 1.35; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .card .snip { margin-top: 5px; font-size: var(--fs-sm); line-height: 1.4; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
   .card .snip.you { -webkit-line-clamp: 2; }
   /* The cog's slider (prefs.cards): medium drops whichever of the two words is the older one — the card marks it —,
      compact drops both. The markup always holds both, so moving the slider re-renders nothing. */
@@ -885,13 +890,13 @@
   .card .state.moveslot { display: none; }
   /* The live line (fillLive, 2026-10-11): one line of what is happening now — a monitor's newest event — each new one
      rolled in from below; the line's spans share one grid cell while they swap. Not at compact. */
-  .card .state.live { display: grid; margin-top: 4px; overflow: hidden; font: 11px/16px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
+  .card .state.live { display: grid; margin-top: 4px; overflow: hidden; font: var(--fs-xs)/16px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
   .card .state.live:empty { display: none; }
   .card .state.live .ll { grid-area: 1 / 1; display: flex; align-items: center; gap: 5px; min-width: 0; white-space: nowrap; }
   .card .state.live .ll > span { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .card .state.live .ic { width: 11px; height: 11px; flex: none; color: var(--watch); }
   .card .state.live { perspective: 160px; }
-  .card .state.live b { flex: none; font: 600 11px/16px -apple-system, BlinkMacSystemFont, sans-serif; color: var(--ink); }
+  .card .state.live b { flex: none; font: 600 var(--fs-xs)/16px -apple-system, BlinkMacSystemFont, sans-serif; color: var(--ink); }
   #sessions[data-cards="compact"] .card .state.live { display: none; }
   /* …unless cards go by lane (2026-10-12, data-bylane, prefs.cardsByLane): a card in a lane that wants you is large. */
   #sessions[data-bylane] .card.roomy .snip { display: -webkit-box; }
@@ -905,7 +910,7 @@
   .card .snip.claude { color: var(--snip-claude); }
   .card .snip b { font-weight: 600; margin-right: 5px; display: inline; }
 /* backticks in a title or a snippet (2026-10-12, ticks()): the transcript's inline code, a size down, no border */
-code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .88em; background: var(--inline-bg); padding: .08em .3em; border-radius: 3px; overflow-wrap: anywhere; hyphens: none; }
+code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .88em; background: var(--inline-bg); padding: .08em .3em; border-radius: var(--r-1); overflow-wrap: anywhere; hyphens: none; }
   .card .snip.you b { color: var(--you); }
   .card .snip.claude b { color: var(--accent); }
   /* The speaker is a glyph, so it has to sit on the text baseline rather than above it, and it
@@ -915,7 +920,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .card .snip.claude .ic { width: 14px; height: 14px; vertical-align: -.24em; }
   /* Only needs-input gets a status line: the dot says stale / working / your turn, this is the one
      state worth a word. Entrypoint, session name and branch live in the chat header. */
-  .card .state { font-size: 11px; font-weight: 600; margin-top: 4px; }
+  .card .state { font-size: var(--fs-xs); font-weight: 600; margin-top: 4px; }
   /* the PRs it mentions: number and GitHub's state colour, nothing more; a click opens that PR. Last in the top row
      (cardPrs), and a stack since 2026-10-04: the first on top at the row's end, three under it 5 px further left
      each, so a sliver of their colour shows, and every other one under the third; the pointer on the stack fans them
@@ -953,25 +958,25 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .card .top .faces > :is(img, .face) { position: relative; z-index: calc(99 - var(--i, 0)); width: 16px; height: 16px; flex: none; border-radius: 50%; box-shadow: 0 0 0 1.5px var(--panel); background: var(--ctl-hi); transition: margin .3s var(--spring); }
   .card .top .faces > :not(:first-child) { margin-right: -12px; }
   .card .top .faces:hover > :not(:first-child) { margin-right: 2px; }
-  .card .top .faces .face { display: grid; place-items: center; font-size: 9px; font-weight: 700; color: var(--ink); text-transform: uppercase; }
+  .card .top .faces .face { display: grid; place-items: center; font-size: var(--fs-2xs); font-weight: 700; color: var(--ink); text-transform: uppercase; }
   /* Everyone in the PRs of the chats in view, a row under the cards (renderPeople, 2026-09-29): a face a button, a click
      narrows the list to that person's chats and rings the face in the accent, the others dimmed; again, every chat. */
   #people { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 6px 10px; border-top: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
   #people[hidden] { display: none; }
   #people > .ic { flex: none; width: 13px; height: 13px; fill: var(--muted); margin-right: 2px; }
   /* GitHub's mark, the fold's button (2026-10-09): the count beside it while folded */
-  #people button.pgh { width: auto; height: 22px; display: inline-flex; align-items: center; gap: 4px; padding: 0 5px; margin-right: 2px; border-radius: 11px; color: var(--muted); font: inherit; font-size: 11px; }
+  #people button.pgh { width: auto; height: 22px; display: inline-flex; align-items: center; gap: 4px; padding: 0 5px; margin-right: 2px; border-radius: var(--r-4); color: var(--muted); font: inherit; font-size: var(--fs-xs); }
   #people button.pgh:hover { transform: none; color: var(--ink); background: var(--ctl); }
   #people button.pgh .ic { width: 14px; height: 14px; fill: currentColor; }
   #people.on button.pgh:not(.on) { opacity: 1; }   /* the fold's button is not a face to dim */
   #people button { flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; transition: opacity .12s, transform .12s, box-shadow .12s; }
   #people button:hover { transform: scale(1.12); }
-  #people :is(img, .face) { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--ctl-hi); font-size: 11px; font-weight: 700; color: var(--ink); text-transform: uppercase; }
+  #people :is(img, .face) { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--ctl-hi); font-size: var(--fs-xs); font-weight: 700; color: var(--ink); text-transform: uppercase; }
   #people.on button:not(.on) { opacity: .35; }
   #people.on button:not(.on):hover { opacity: .8; }
   #people button.on { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent); }
   /* a PR as a chip — the card's, and the chat header's (.hpr) since 2026-09-24 */
-  :is(.card .cpr, .shead .hpr) { font-size: 10.5px; font-weight: 600; line-height: 16px; border: 1px solid transparent; border-radius: 4px; padding: 0 5px; color: var(--muted); background: var(--ctl); }
+  :is(.card .cpr, .shead .hpr) { font-size: var(--fs-xs); font-weight: 600; line-height: 16px; border: 1px solid transparent; border-radius: var(--r-2); padding: 0 5px; color: var(--muted); background: var(--ctl); }
   :is(.card .cpr, .shead .hpr)[data-state="open"] { --prc: var(--pr-open); }
   :is(.card .cpr, .shead .hpr)[data-state="merged"] { --prc: var(--pr-merged); }
   :is(.card .cpr, .shead .hpr)[data-state="closed"] { --prc: var(--pr-closed); }
@@ -984,14 +989,14 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* a Jira ticket as a chip (2026-10-08): the PR chip's shape, in its status category's colour — on the card a stack of
      its own as the PRs are (.tprs.ttks, 2026-10-11; the first ticket and a count before), the branch's, else the last
      named, on top; in the header among the PRs, last, so they fold first */
-  .card .ctk { font-size: 10.5px; font-weight: 600; line-height: 16px; border: 1px solid transparent; border-radius: 4px; padding: 0 5px; white-space: nowrap; cursor: pointer; }
+  .card .ctk { font-size: var(--fs-xs); font-weight: 600; line-height: 16px; border: 1px solid transparent; border-radius: var(--r-2); padding: 0 5px; white-space: nowrap; cursor: pointer; }
   .card .ctk:hover { filter: brightness(1.12); }
   :is(.card .ctk, .shead .hpr.tk, .prrow.tk)[data-cat="todo"] { --prc: var(--tk-todo); }
   :is(.card .ctk, .shead .hpr.tk, .prrow.tk)[data-cat="doing"] { --prc: var(--tk-doing); }
   :is(.card .ctk, .shead .hpr.tk, .prrow.tk)[data-cat="done"] { --prc: var(--tk-done); }
   :is(.card .ctk, .shead .hpr.tk)[data-cat] { background: var(--prc); border-color: var(--prc); color: var(--bg); }
   .prrow.tk .st { width: 86px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--prc); }
-  .prrow.tk .who { flex: none; color: var(--muted); font-size: 11px; }
+  .prrow.tk .who { flex: none; color: var(--muted); font-size: var(--fs-xs); }
   .prrow.tk .who.me { color: var(--accent); font-weight: 600; }
   :is(.card, .presence) .state.needs-input { color: var(--needs); display: flex; align-items: baseline; gap: 5px; }
   :is(.card, .presence) .state.needs-input .ic { width: 11px; height: 11px; flex: none; align-self: center; }
@@ -999,7 +1004,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :is(.card, .presence) .state.needs-input .opts { color: var(--muted); font-weight: 500; flex: none; }
   /* a PR come round to you: a tag filled in the accent — like the chip it names, it reads on any project's tint — on
      the card's line (moveHtml), and in the chat header before the PR chips with the reason beside it (headMove) */
-  .ymove { flex: none; display: inline-flex; align-items: center; gap: 3px; padding: 0 5px 0 4px; border-radius: 3px; background: color-mix(in srgb, var(--accent) 82%, var(--ink)); color: var(--bg); font-size: 9.5px; font-weight: 700; line-height: 15px; letter-spacing: .4px; text-transform: uppercase; white-space: nowrap; }
+  .ymove { flex: none; display: inline-flex; align-items: center; gap: 3px; padding: 0 5px 0 4px; border-radius: var(--r-1); background: color-mix(in srgb, var(--accent) 82%, var(--ink)); color: var(--bg); font-size: var(--fs-2xs); font-weight: 700; line-height: 15px; letter-spacing: .4px; text-transform: uppercase; white-space: nowrap; }
   .ymove .ic { width: 10px; height: 10px; }
   .card .state.prmove { color: var(--ink); display: flex; align-items: baseline; gap: 6px; }
   .card .state.moveslot { align-items: baseline; gap: 6px; }   /* the line's own metrics, for the place it holds */
@@ -1007,13 +1012,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* It never wraps the row (2026-10-11, afternoon: ··· went to a second line beside the housing): a flex basis of 0,
      growing into the room the row leaves up to its own width — the reason ellipsized —, and no narrower than the tag and
      the count (--hmin, fitHeadPrs, which folds the PR chips to leave that much; min-content is the whole reason). */
-  .shead .hmove { flex: 1 1 0; min-width: var(--hmin, 0px); max-width: max-content; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+  .shead .hmove { flex: 1 1 0; min-width: var(--hmin, 0px); max-width: max-content; display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); font-weight: 600; }
   .shead > .hfold { display: none; }   /* put away by fitHeadPrs where the row has no room for it */
   .shead .hmove .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .shead .hmove .n { flex: none; opacity: .7; font-weight: 500; }
   /* Done/reopen: an icon at the end of the top row, not a bordered pill in a row of its own. Bigger, and only under
      the pointer, since 2026-09-26: it keeps its box at rest, so nothing in the row moves when it comes. */
-  .act { font: inherit; font-size: 16px; line-height: 1; width: 22px; height: 20px; padding: 0; border: 0; border-radius: 6px; background: transparent;
+  .act { font: inherit; font-size: var(--fs-lg); line-height: 1; width: 22px; height: 20px; padding: 0; border: 0; border-radius: var(--r-3); background: transparent;
     color: var(--ink); cursor: pointer; flex: none; opacity: 0; display: inline-grid; place-items: center; transition: opacity .12s; }
   .card:hover .act, .act:focus-visible { opacity: .7; }
   .act .tk { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
@@ -1041,8 +1046,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .dot.needs-input { background: var(--idle); animation: pulse .8s ease-in-out infinite; }   /* ready, and asking */
   .dot.stale, .dot.unknown, .dot.done { background: var(--ended); animation: none; }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
-  .badge { background: var(--unread); color: #fff; border-radius: 10px; padding: 0 6px; font-size: 11px; font-weight: 600; min-width: 18px; text-align: center; flex: none; }
-  .chip { font-size: 10px; border: 1px solid transparent; background: var(--ctl); border-radius: 4px; padding: 0 4px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; min-width: 0; flex: 0 1 auto; }
+  .badge { background: var(--unread); color: #fff; border-radius: var(--r-4); padding: 0 6px; font-size: var(--fs-xs); font-weight: 600; min-width: 18px; text-align: center; flex: none; }
+  .chip { font-size: var(--fs-2xs); border: 1px solid transparent; background: var(--ctl); border-radius: var(--r-2); padding: 0 4px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; min-width: 0; flex: 0 1 auto; }
 
   /* ---- plan usage: the chat list's footer ---- */
   /* The numbers `/usage` shows, always in view (2026-09-24). Open, a row per window: its name, a thin
@@ -1055,7 +1060,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #sfoot { display: flex; min-width: 0; border-top: 1px solid var(--line); background: var(--panel); }
   /* folded, the foot is one row of 34 px, the cog's cell and the rings side by side ("a bit smaller vertically":
      44 px until the same day) */
-  #usage { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); flex: 1; display: grid; align-content: center; min-height: 34px; padding: 7px 12px 8px 6px; font-size: 11px; color: var(--muted); min-width: 0; user-select: none; }
+  #usage { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); flex: 1; display: grid; align-content: center; min-height: 34px; padding: 7px 12px 8px 6px; font-size: var(--fs-xs); color: var(--muted); min-width: 0; user-select: none; }
   #usage[hidden] { display: none; }
   #usage button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; width: 100%; min-width: 0; display: flex; align-items: center; gap: 6px; text-align: left; cursor: pointer; }
   #usage button:hover { color: var(--ink); }
@@ -1073,29 +1078,29 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      window's colour (orange, red from 90 %), the percent in the ink beside it */
   main:not(.scompact) #usage .uchip { gap: 4px; }
   main:not(.scompact) #usage .uchip.grant { display: none; }   /* a credit grant runs out rather than resets: the rows over the row say it, the row has the limits */
-  main:not(.scompact) #usage .uchip .uk { font: 800 9.5px/1 ui-rounded, "SF Pro Rounded", ui-sans-serif, system-ui, sans-serif; letter-spacing: .5px; padding: 2px 4px; border-radius: 4px; background: color-mix(in srgb, var(--u) 22%, transparent); color: var(--u); }
-  main:not(.scompact) #usage .uchip b { font-size: 11px; }
+  main:not(.scompact) #usage .uchip .uk { font: 800 var(--fs-2xs)/1 ui-rounded, "SF Pro Rounded", ui-sans-serif, system-ui, sans-serif; letter-spacing: .5px; padding: 2px 4px; border-radius: var(--r-2); background: color-mix(in srgb, var(--u) 22%, transparent); color: var(--u); }
+  main:not(.scompact) #usage .uchip b { font-size: var(--fs-xs); }
   main:not(.scompact) #sessions:has(#filters.searching) #usage { display: none; }   /* the box open: its room, the rings' too */
-  main:not(.scompact) #usage .uopen { position: absolute; bottom: 100%; right: 6px; z-index: 30; width: 300px; box-sizing: border-box; padding: 10px 12px 12px; border-radius: 10px; background: var(--panel); box-shadow: 0 10px 34px rgba(0, 0, 0, .22);
+  main:not(.scompact) #usage .uopen { position: absolute; bottom: 100%; right: 6px; z-index: 30; width: 300px; box-sizing: border-box; padding: 10px 12px 12px; border-radius: var(--r-4); background: var(--panel); box-shadow: 0 10px 34px rgba(0, 0, 0, .22);
     visibility: hidden; opacity: 0; transition: opacity .12s, visibility 0s .12s; }
   main:not(.scompact) #usage:hover .uopen { visibility: visible; opacity: 1; transition: opacity .12s .25s, visibility 0s .25s; }
   main:not(.scompact) #usage.pin .uopen { visibility: visible; opacity: 1; transition: opacity .12s, visibility 0s; }
   main:not(.scompact) #usage .uhd .uchev { transform: rotate(180deg); }
-  :is(#usage, #sbar) .uhd { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 7px; }
+  :is(#usage, #sbar) .uhd { font-size: var(--fs-2xs); font-weight: 700; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 7px; }
   /* one grid for every row, so the bars start and the numbers end in one line whatever the names' lengths; the rows
      9 px apart (5 until 2026-09-26) */
   :is(#usage, #sbar) .urows { display: grid; grid-template-columns: auto minmax(36px, 1fr) auto auto; gap: 9px 9px; }
   :is(#usage, #sbar) .urow { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; white-space: nowrap; }
   :is(#usage, #sbar) .ul { overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
-  :is(#usage, #sbar) .ubar { position: relative; height: 5px; border-radius: 3px; background: var(--utrack); }
-  :is(#usage, #sbar) .ubar i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: linear-gradient(90deg, color-mix(in srgb, var(--u) 50%, transparent), var(--u)); }
-  :is(#usage, #sbar) .ubar b { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ink); opacity: .4; }
+  :is(#usage, #sbar) .ubar { position: relative; height: 5px; border-radius: var(--r-1); background: var(--utrack); }
+  :is(#usage, #sbar) .ubar i { position: absolute; inset: 0 auto 0 0; border-radius: var(--r-1); background: linear-gradient(90deg, color-mix(in srgb, var(--u) 50%, transparent), var(--u)); }
+  :is(#usage, #sbar) .ubar b { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: var(--r-1); background: var(--ink); opacity: .4; }
   :is(#usage, #sbar) .up { font-weight: 700; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
-  :is(#usage, #sbar) .ur { text-align: right; font-size: 10.5px; font-variant-numeric: tabular-nums; }
+  :is(#usage, #sbar) .ur { text-align: right; font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
   /* ---- the status bar (2026-10-09, the studies' F — Orca's): the machine at the window's foot, segments parted by
      hairlines; its meters a word, a 40 px bar and the figure; the plan usage a button whose panel of rows rises over
      the board, the list's foot then without its own (data-sbar) ---- */
-  #sbar { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); display: flex; align-items: stretch; height: 26px; min-width: 0; padding: 0 2px; position: relative; z-index: 20; font-size: 11px; color: var(--muted);
+  #sbar { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); display: flex; align-items: stretch; height: 26px; min-width: 0; padding: 0 2px; position: relative; z-index: 20; font-size: var(--fs-xs); color: var(--muted);
     background: var(--bar, var(--panel)); border-top: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #sbar { background: var(--bar, #0f0f0e); } }
   #sbar[hidden] { display: none; }
@@ -1109,7 +1114,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #sbPeople { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; }
   #sbPeople:has(> #people:not([hidden])) { border-right: 1px solid var(--line); }   /* GitHub's mark and the faces before the fish (2026-10-11, later): the mark stays put as they fold */
   #sbar #people { padding: 0 8px; border: 0; gap: 4px; max-width: 100%; }
-  #sbar #people :is(button:not(.pgh), img, .face) { width: 18px; height: 18px; font-size: 9.5px; }
+  #sbar #people :is(button:not(.pgh), img, .face) { width: 18px; height: 18px; font-size: var(--fs-2xs); }
   /* folded (prefs.peopleCompact, the default — 2026-10-11, later): GitHub's mark alone, but for the face the list is
      narrowed to; the faces fade and shrink away and back, display held by allow-discrete until the fade is over */
   #people button:not(.pgh) { transition: opacity .15s var(--ease-out), scale .15s var(--ease-out), display .15s allow-discrete, transform .12s, box-shadow .12s; }
@@ -1123,7 +1128,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* a meter is a pie (2026-10-11, later; a 40 px bar before): what is spent in its colour, from twelve o'clock, on the
      track — the label, the pie, the percent, as concise as the menu bar's own */
   #sbar .m i { display: block; flex: none; width: 12px; height: 12px; border-radius: 50%; background: conic-gradient(var(--u, var(--spend)) var(--p), var(--utrack) 0); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--u, var(--spend)) 35%, transparent); }
-  #sbar .m { font-size: 10.5px; } #sbar .m + .m { margin-left: 9px; }
+  #sbar .m { font-size: var(--fs-xs); } #sbar .m + .m { margin-left: 9px; }
   #sbar .us.stale { opacity: .55; } #sbar .us .unote { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
   /* keeping the Mac awake: the cup in amber, the laptop in red while each holds; a muted mark while off */
   #sbar .aw { color: var(--spend); font-weight: 650; } #sbar .lidb { color: var(--needs); font-weight: 650; }
@@ -1131,13 +1136,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #sbar .aw.moot { color: var(--muted); font-weight: inherit; }   /* nothing to hold off (2026-10-09): on, muted all the same */
   #sbar .conn { cursor: pointer; }
   #sbar .cl { color: var(--accent); font-variant-numeric: tabular-nums; } #sbar .cl .ic { width: 13px; height: 13px; fill: currentColor; } #sbar .cl b { color: var(--ink); font-weight: 650; }
-  #sbar .cl i { display: block; flex: none; width: 40px; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--accent) calc(var(--p, 0) * 100%), var(--utrack) 0); }
-  #sbar .sbpanel { position: absolute; bottom: calc(100% + 6px); right: 8px; width: 300px; box-sizing: border-box; padding: 10px 12px 12px; border-radius: 10px; background: var(--panel); box-shadow: 0 10px 34px rgba(0, 0, 0, .25); color: var(--muted); font-size: 12px; white-space: normal; }
+  #sbar .cl i { display: block; flex: none; width: 40px; height: 4px; border-radius: var(--r-1); background: linear-gradient(90deg, var(--accent) calc(var(--p, 0) * 100%), var(--utrack) 0); }
+  #sbar .sbpanel { position: absolute; bottom: calc(100% + 6px); right: 8px; width: 300px; box-sizing: border-box; padding: 10px 12px 12px; border-radius: var(--r-4); background: var(--panel); box-shadow: 0 10px 34px rgba(0, 0, 0, .25); color: var(--muted); font-size: var(--fs-sm); white-space: normal; }
   :root[data-sbar] #usage { display: none; }
   /* the list's foot row — the fish, the search and the chips, the usage — goes while the bar is on (2026-10-09): what it
      held is the bar's; on the rail too, which keeps the project's short name (#stitle) */
   :root[data-sbar] :is(#shd, #sfoot) { display: none; }
-  :is(#usage, #sbar) .umoney { grid-column: 1 / -1; margin-top: -3px; font-size: 10.5px; font-variant-numeric: tabular-nums; }   /* a cap in money: what is spent of it, under its bar */
+  :is(#usage, #sbar) .umoney { grid-column: 1 / -1; margin-top: -3px; font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }   /* a cap in money: what is spent of it, under its bar */
   #usage .unote { line-height: 1.35; white-space: normal; text-align: left; }   /* not `.note`: that is note()'s popup — position: fixed, and note() removes every one */
   /* folded, the rings 20 px apart where the list has the room (12 until 2026-09-27 — the open rows had had the same ask
      the day before); under 350 px of list 20 would push the chevron, then a ring, onto a second line, so there they
@@ -1152,16 +1157,16 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   main.scompact #usage { flex: none; padding: 8px 0 6px; }
   main.scompact #usage .uopen, main.scompact #usage .uchev { display: none; }
   main.scompact #usage .uline { display: flex; flex-direction: column; row-gap: 9px; cursor: default; }
-  main.scompact #usage .uchip { position: relative; flex-direction: column; gap: 2px; font-size: 9.5px; }
+  main.scompact #usage .uchip { position: relative; flex-direction: column; gap: 2px; font-size: var(--fs-2xs); }
   main.scompact #usage .uring { --w: 3px; width: 32px; height: 32px; }
-  main.scompact #usage .uchip b { position: absolute; top: 0; left: 0; right: 0; line-height: 32px; text-align: center; font-size: 9.5px; letter-spacing: -.2px; }
-  main.scompact #usage .unote { font-size: 9px; padding: 0 3px; text-align: center; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }   /* the rest is on hover */
+  main.scompact #usage .uchip b { position: absolute; top: 0; left: 0; right: 0; line-height: 32px; text-align: center; font-size: var(--fs-2xs); letter-spacing: -.2px; }
+  main.scompact #usage .unote { font-size: var(--fs-2xs); padding: 0 3px; text-align: center; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }   /* the rest is on hover */
 
   /* ---- chat pane ---- */
   .shead { position: relative; padding: 7px 12px; border-bottom: 1px solid var(--line); background: var(--panel); display: flex; gap: 6px 9px; align-items: center; flex-wrap: wrap; min-width: 0; min-height: 43px; }
   /* The title takes what is left and truncates. flex-basis must NOT be auto: a long title would then
      exceed the line on its own and push the status, buttons and every chip onto the next one. */
-  .shead h2 { margin: 0; font-size: 14px; flex: 1 1 170px; min-width: 0; display: flex; gap: 12px; align-items: center; overflow: hidden; }   /* 12: the header's padding, so the name has the same room either side (2026-09-26) */
+  .shead h2 { margin: 0; font-size: var(--fs-base); flex: 1 1 170px; min-width: 0; display: flex; gap: 12px; align-items: center; overflow: hidden; }   /* 12: the header's padding, so the name has the same room either side (2026-09-26) */
   /* The repo is the identifier you navigate by, so it does not shrink — the title absorbs the
      truncation instead, and only past 60% does the repo start to ellipsise too. */
   .shead h2 .repo { font-weight: 800; flex: 0 0 auto; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
@@ -1184,20 +1189,20 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      itself while the pointer is in the header, so nothing moves under the pointer and the row stays as quiet as
      it was. On a tinted header the square is the header's own colour, so it is read by its border — the ink that
      reads on that tint, at a third. */
-  .shead h2 .sq { position: absolute; top: 50%; transform: translate(calc(-50% + var(--hfade-w) / 2 - 8px), -50%); width: 11px; height: 11px; border-radius: 3px; background: var(--repo, var(--nocolor)); border: 1px solid color-mix(in srgb, var(--rink, var(--muted)) 45%, transparent); opacity: 0; transition: opacity .12s, transform .12s; }
+  .shead h2 .sq { position: absolute; top: 50%; transform: translate(calc(-50% + var(--hfade-w) / 2 - 8px), -50%); width: 11px; height: 11px; border-radius: var(--r-1); background: var(--repo, var(--nocolor)); border: 1px solid color-mix(in srgb, var(--rink, var(--muted)) 45%, transparent); opacity: 0; transition: opacity .12s, transform .12s; }
   .shead h2 .sq.pick:hover { transform: translate(calc(-50% + var(--hfade-w) / 2 - 8px), -50%) scale(1.35); }   /* the picker's own scale, around the same centre */
   .shead:hover h2 .sq, .shead h2 .sq:focus-visible { opacity: 1; }
-  .shead .path { font-size: 12px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .shead .path { font-size: var(--fs-sm); color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   /* Everything that was a button at the header's right lives under ··· (2026-09-24): the title, the PRs, a running
      task's chip and ··· are all the row holds. The one exception is the >_ button while it has something to say — armed
      to take a chat over ("sure?") or failed — because a warning under a fold is not a warning. */
-  .shead .hmore { flex: none; display: inline-flex; align-items: center; padding: 4px 6px; margin: -2px -4px -2px 0; border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; }
+  .shead .hmore { flex: none; display: inline-flex; align-items: center; padding: 4px 6px; margin: -2px -4px -2px 0; border: 0; border-radius: var(--r-3); background: none; color: var(--muted); cursor: pointer; }
   .shead .hmore .ic { width: 16px; height: 16px; fill: currentColor; }
   .shead .hmore:hover, .shead .hmore.on { color: var(--ink); background: var(--inline-bg); }
   #chat.tinted .shead .hmore { color: color-mix(in srgb, var(--rink) 78%, transparent); }
   /* the Mac kept awake (2026-10-08): a pill before ···, the spend's amber; red-tinged when not even the lid sleeps it */
-  .shead .awake { --aw: var(--spend); flex: none; display: inline-flex; align-items: center; gap: 5px; height: 22px; margin: -2px 0; padding: 0 9px 0 7px; border: 1px solid transparent; border-radius: 11px;
-    background: color-mix(in srgb, var(--aw) 20%, transparent); color: var(--aw); font: inherit; font-size: 11px; font-weight: 700; letter-spacing: .2px; cursor: pointer; }
+  .shead .awake { --aw: var(--spend); flex: none; display: inline-flex; align-items: center; gap: 5px; height: 22px; margin: -2px 0; padding: 0 9px 0 7px; border: 1px solid transparent; border-radius: var(--r-4);
+    background: color-mix(in srgb, var(--aw) 20%, transparent); color: var(--aw); font: inherit; font-size: var(--fs-xs); font-weight: 700; letter-spacing: .2px; cursor: pointer; }
   .shead .awake.lid { --aw: var(--needs); }
   .shead .awake .ic { width: 14px; height: 14px; fill: currentColor; }
   .shead .awake:hover { background: color-mix(in srgb, var(--aw) 32%, transparent); }
@@ -1214,25 +1219,25 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* The menu: a non-modal <dialog>, so the pane goes down while it is up (postPane sends no page with a dialog
      open) and Esc closes it the way it closes every other; right-aligned under ···, one row per action — its mark,
      what it does, and its state or key on the right. */
-  #hmenu { position: fixed; inset: auto; margin: 0; z-index: 45; width: 264px; padding: 5px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, .22); }
-  #hmenu .hmi { display: grid; grid-template-columns: 18px 1fr auto; gap: 9px; align-items: center; width: 100%; padding: 6px 8px; border: 0; border-radius: 6px; background: none; font: inherit; font-size: 12.5px; color: var(--ink); text-align: left; cursor: pointer; }
+  #hmenu { position: fixed; inset: auto; margin: 0; z-index: 45; width: 264px; padding: 5px; border-radius: var(--r-4); box-shadow: 0 10px 30px rgba(0, 0, 0, .22); }
+  #hmenu .hmi { display: grid; grid-template-columns: 18px 1fr auto; gap: 9px; align-items: center; width: 100%; padding: 6px 8px; border: 0; border-radius: var(--r-3); background: none; font: inherit; font-size: var(--fs-md); color: var(--ink); text-align: left; cursor: pointer; }
   #hmenu .hmi:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 12%, transparent); }
   #hmenu .hmi:disabled { opacity: .45; cursor: default; }
   /* the right-click menu (2026-10-12): ···'s rows, at the pointer */
-  #ctxm { position: fixed; inset: auto; margin: 0; z-index: 46; min-width: 220px; max-width: 320px; padding: 5px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, .22); }
-  #ctxm button { display: block; width: 100%; text-align: left; padding: 6px 9px; border: 0; border-radius: 6px; background: none; font: inherit; font-size: 12.5px; color: var(--ink); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #ctxm { position: fixed; inset: auto; margin: 0; z-index: 46; min-width: 220px; max-width: 320px; padding: 5px; border-radius: var(--r-4); box-shadow: 0 10px 30px rgba(0, 0, 0, .22); }
+  #ctxm button { display: block; width: 100%; text-align: left; padding: 6px 9px; border: 0; border-radius: var(--r-3); background: none; font: inherit; font-size: var(--fs-md); color: var(--ink); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #ctxm button:hover, #ctxm button:focus-visible { background: color-mix(in srgb, var(--accent) 12%, transparent); outline: none; }
   #ctxm button.warn { color: var(--needs); } #ctxm hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
   #hmenu .hmi .ic { width: 15px; height: 15px; fill: currentColor; justify-self: center; }
   #hmenu .hmi .ic.tk { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }   /* done for good's ✓, a stroke as on the card */
   #hmenu .hmi .dot { justify-self: center; }
-  #hmenu .hmi .gl { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; font-weight: 700; letter-spacing: -1px; justify-self: center; }
-  #hmenu .hmi .k { font-size: 11px; color: var(--muted); }
+  #hmenu .hmi .gl { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--fs-xs); font-weight: 700; letter-spacing: -1px; justify-self: center; }
+  #hmenu .hmi .k { font-size: var(--fs-xs); color: var(--muted); }
   #hmenu .hmi.on .k { color: var(--accent); font-weight: 600; }
-  #hmenu .hmi.info { cursor: default; color: var(--vscode); font-size: 12px; }
+  #hmenu .hmi.info { cursor: default; color: var(--vscode); font-size: var(--fs-sm); }
   #hmenu .hmi.info:hover { background: none; }
   #hmenu .sep { height: 1px; margin: 4px 6px; background: var(--line); }
-  .shead a { color: var(--accent); font-size: 12px; }
+  .shead a { color: var(--accent); font-size: var(--fs-sm); }
   /* Path, branch and the session chips fold away behind ··· — what stays in view is the status,
      the PRs and the buttons. display:flex would beat the UA [hidden] rule, hence the override. */
   .shead .details { flex-basis: 100%; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
@@ -1278,10 +1283,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      colour, as one button; a click unfolds #prlist under the header — one row per PR — and folds it back. The fold
      is a pref (prsOpen), not the chat's. On a tinted header the chips sit on the panel, so the state colours read on
      any project's. */
-  .shead .hprs { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 1px 4px; margin: -3px 0; border: 1px solid transparent; border-radius: 7px; background: none; font: inherit; color: var(--muted); cursor: pointer; }
+  .shead .hprs { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 1px 4px; margin: -3px 0; border: 1px solid transparent; border-radius: var(--r-3); background: none; font: inherit; color: var(--muted); cursor: pointer; }
   /* taller than the cards', to be seen (2026-09-24); the edge was 2 px until the wash below made that its job
      ("we can go back on the extra thick border"), and keeps the stronger colour */
-  .shead .hpr { font-size: 11.5px; line-height: 24px; padding: 0 7px; border-radius: 6px;   /* the tile's controls' 26 px (2026-10-11, Q1; 22 before) */
+  .shead .hpr { font-size: var(--fs-sm); line-height: 24px; padding: 0 7px; border-radius: var(--r-3);   /* the tile's controls' 26 px (2026-10-11, Q1; 22 before) */
     /* …on a wash of their own colour, deeper at the top left (the same evening: "a bit of background gradient, to make
        it prettier") — since 2026-09-28 only a chip whose state is not known yet: the rest are solid (above) */
     background: linear-gradient(160deg, color-mix(in srgb, var(--prc, var(--muted)) var(--prg), var(--panel)), color-mix(in srgb, var(--prc, var(--muted)) 7%, var(--panel)) 80%); }
@@ -1305,12 +1310,12 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* ⌥ held over a PR's chip, or its row under the header (2026-10-11): an ✕, white on red, over its number — ⌥-click
      takes the PR off the chat (unlinkPr). Nothing moves: the number goes clear under it, the row's pads by a shadow. */
   :root[data-alt] :is(.shead .hpr[data-url]:hover, .prrow[data-url]:hover .num) { position: relative; color: transparent; background: var(--needs); border-color: var(--needs); box-shadow: 0 0 0 var(--xpad, 0) var(--needs); cursor: pointer; }
-  :root[data-alt] .prrow[data-url]:hover .num { --xpad: 3px; border-radius: 3px; }
+  :root[data-alt] .prrow[data-url]:hover .num { --xpad: 3px; border-radius: var(--r-1); }
   :root[data-alt] .shead .hpr[data-url]:hover .ck { visibility: hidden; }
   :root[data-alt] :is(.shead .hpr[data-url]:hover, .prrow[data-url]:hover .num)::before { content: ''; position: absolute; inset: 0; background: #fff;
     -webkit-mask: var(--xmask) center / 18px no-repeat; mask: var(--xmask) center / 18px no-repeat; }
   :root { --xmask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.6 4.6 11.4 11.4M11.4 4.6 4.6 11.4' fill='none' stroke='%23000' stroke-width='1.9' stroke-linecap='round'/%3E%3C/svg%3E"); }
-  .prrow .ckw { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
+  .prrow .ckw { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-xs); color: var(--muted); }
   .prrow .ckw .ck { margin: 0; }
   .prrow .ckw[data-checks="fail"] { color: var(--pr-closed); font-weight: 600; }
   #chat.tinted .shead .hprs { color: color-mix(in srgb, var(--rink) 78%, transparent); }
@@ -1321,9 +1326,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      plain one): the chat header a bar inset from the window's edges, rounded, an edge of the project's colour and a
      shadow under it; the PR rows under it take the same insets. The open chat's light no longer runs round its box
      (trailGeom): the box does not touch the splitter. */
-  :root[data-head="float"] #shead { margin: calc(10px + var(--hdrop, 0px)) 14px 4px; border: 1px solid color-mix(in srgb, var(--repo, var(--line)) 45%, var(--line)); border-radius: 14px; overflow: hidden;
+  :root[data-head="float"] #shead { margin: calc(10px + var(--hdrop, 0px)) 14px 4px; border: 1px solid color-mix(in srgb, var(--repo, var(--line)) 45%, var(--line)); border-radius: var(--r-5); overflow: hidden;
     box-shadow: 0 10px 30px -8px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255, 255, 255, .06); }
-  :root[data-head="float"] #prlist { margin: 0 14px 4px; border: 1px solid var(--line); border-radius: 10px; }
+  :root[data-head="float"] #prlist { margin: 0 14px 4px; border: 1px solid var(--line); border-radius: var(--r-4); }
   @media (prefers-color-scheme: dark) { :root[data-head="float"]:not([data-theme="light"]) #shead { box-shadow: 0 12px 34px -6px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .06); } }
   /* …and it floats (2026-10-11, late morning): the chat runs up behind it to the column's top, faint where it shows
      round it. #groups spans the header's rows, which stand over it; a half the header floats over (both side by side,
@@ -1354,47 +1359,47 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #chat.hcutp { position: relative; }
   #chat > .hcut { position: absolute; z-index: 4; pointer-events: none; overflow: visible; fill: none; }
   #prlist[hidden] { display: none; }
-  .prrow { display: flex; align-items: baseline; gap: 9px; min-width: 0; padding: 2px 0; font-size: 12px; color: var(--ink); text-decoration: none; }
-  .prrow .st { flex: none; width: 52px; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: .5px; color: var(--muted); }
+  .prrow { display: flex; align-items: baseline; gap: 9px; min-width: 0; padding: 2px 0; font-size: var(--fs-sm); color: var(--ink); text-decoration: none; }
+  .prrow .st { flex: none; width: 52px; font-weight: 700; text-transform: uppercase; font-size: var(--fs-2xs); letter-spacing: .5px; color: var(--muted); }
   :is(.prrow, .pkrow)[data-state="open"] .st { color: var(--pr-open); } :is(.prrow, .pkrow)[data-state="merged"] .st { color: var(--pr-merged); }
   :is(.prrow, .pkrow)[data-state="closed"] .st { color: var(--pr-closed); } :is(.prrow, .pkrow)[data-state="draft"] .st { color: var(--pr-draft); }
-  .prrow .num { flex: none; color: var(--muted); font-size: 11px; }
+  .prrow .num { flex: none; color: var(--muted); font-size: var(--fs-xs); }
   .prrow .t { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
   .prrow .t.pending { font-weight: 400; color: var(--muted); font-style: italic; }
-  .prrow .meta { flex: none; color: var(--muted); font-size: 11px; }
-  .prrow .why { flex: 0 1 auto; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent); font-size: 11px; font-weight: 600; }
+  .prrow .meta { flex: none; color: var(--muted); font-size: var(--fs-xs); }
+  .prrow .why { flex: 0 1 auto; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent); font-size: var(--fs-xs); font-weight: 600; }
   .prrow:hover .t { text-decoration: underline; }
   .prrow[hidden] { display: none; }
-  #prlist .more { justify-self: start; font: inherit; font-size: 11px; color: var(--accent); background: none; border: 0; padding: 1px 0 0 61px; cursor: pointer; }
+  #prlist .more { justify-self: start; font: inherit; font-size: var(--fs-xs); color: var(--accent); background: none; border: 0; padding: 1px 0 0 61px; cursor: pointer; }
   #prlist .more:hover { text-decoration: underline; }
   /* ---- a second claude on this chat: VS Code opened a chat that runs here (see renderRival) ---- */
-  #rival { border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--needs) 12%, var(--panel)); padding: 6px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 12px; color: var(--ink); min-width: 0; line-height: 1.4; }
+  #rival { border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--needs) 12%, var(--panel)); padding: 6px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: var(--fs-sm); color: var(--ink); min-width: 0; line-height: 1.4; }
   #rival[hidden] { display: none; }
   #rival .t { flex: 1 1 300px; min-width: 0; }
   #rival b { color: var(--needs); }
-  #rival .btn { padding: 2px 8px; font-size: 11px; flex: none; }
+  #rival .btn { padding: 2px 8px; font-size: var(--fs-xs); flex: none; }
   #log { overflow-y: auto; padding: 16px 18px 40px; zoom: var(--chat-zoom, 1); }   /* ⌘+ / ⌘- · no scroll-behavior: every scrollTop the page sets is a jump (opening a chat flew down a long one); the pill asks for its glide itself */
   #shead h2 .t { cursor: text; }
-  #shead h2 input.tedit { font: inherit; font-weight: inherit; width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid var(--accent); border-radius: 6px; padding: 0 6px; background: var(--bg); color: var(--ink); }
+  #shead h2 input.tedit { font: inherit; font-weight: inherit; width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid var(--accent); border-radius: var(--r-3); padding: 0 6px; background: var(--bg); color: var(--ink); }
   #shead h2 input.tedit:focus { outline: none; }
   /* ---- resume: a chat whose claude has ended (2026-10-07) ---- */
   /* Where the reply box was: the column shows a transcript and nothing more, and the way back into the chat is one
      button, in the accent. Counting down to the auto-resume, a line runs along the bar's top edge — a transform, kept on
      the countdown's own clock (renderResume sets its time) — and the button counts the seconds. */
-  #resume { position: relative; border-top: 1px solid var(--line); background: var(--panel); padding: 10px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; font-size: 12px; line-height: 1.4; }
+  #resume { position: relative; border-top: 1px solid var(--line); background: var(--panel); padding: 10px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; font-size: var(--fs-sm); line-height: 1.4; }
   #resume[hidden] { display: none; }   /* display:flex above would otherwise beat the UA [hidden] rule */
   #resume .ric { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--ctl); color: var(--muted); }
   #resume .ric .ic { width: 14px; height: 14px; fill: currentColor; }
   #resume .t { flex: 1 1 260px; min-width: 0; display: grid; gap: 1px; }
-  #resume .t b { font-size: 13px; color: var(--ink); }
+  #resume .t b { font-size: var(--fs-md); color: var(--ink); }
   #resume .t span { color: var(--muted); }
-  #resume .t code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; white-space: nowrap; }
+  #resume .t code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--fs-xs); white-space: nowrap; }
   #resume.err .ric, #resume.err .t b { color: var(--needs); }
   #resume .btn { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; }
   #resume .rgo { background: var(--accent); color: var(--bg); font-weight: 600; }
   #resume .rgo:hover { background: color-mix(in srgb, var(--accent) 85%, var(--ink)); }
   #resume .rgo .ic { width: 10px; height: 10px; fill: currentColor; }
-  #resume .rgo .k { font-weight: 400; opacity: .7; font-size: 11px; }
+  #resume .rgo .k { font-weight: 400; opacity: .7; font-size: var(--fs-xs); }
   #resume .rgo:disabled { opacity: .6; cursor: default; }
   #resume::before { content: ''; position: absolute; left: 0; right: 0; top: -1px; height: 2px; background: var(--accent); transform: scaleX(0); transform-origin: left; pointer-events: none; }
   #resume.counting::before { animation: rfill var(--resume-ms, 5s) linear forwards; }
@@ -1407,7 +1412,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* a clone said where it was asked for — a new chat's column, the picker's line: its progress, the bar under it */
   .clonebox { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); overflow-wrap: anywhere; }
   .clonebox .cp { display: block; margin-top: 6px; color: var(--ink); font-variant-numeric: tabular-nums; }
-  .clonebox .cbar { display: block; width: min(320px, 100%); height: 3px; margin: 10px auto 0; border-radius: 2px; background: var(--utrack); overflow: hidden; }
+  .clonebox .cbar { display: block; width: min(320px, 100%); height: 3px; margin: 10px auto 0; border-radius: var(--r-1); background: var(--utrack); overflow: hidden; }
   .clonebox .cbar::after { content: ''; display: block; height: 100%; background: var(--accent); transform: scaleX(var(--p, 0)); transform-origin: left; transition: transform .3s ease-out; }
   /* ---- terminal drawer: the real claude, in a PTY on the server ---- */
   /* One explicit column of minmax(0, 1fr): the implicit `auto` column took the xterm screen's pixel width as its
@@ -1426,14 +1431,14 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #chat { --tablit: oklch(from var(--repo, var(--accent)) min(l, .58) c h); }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #chat { --tablit: oklch(from var(--repo, var(--accent)) max(l, .66) c h); } }
   :root[data-theme="dark"] #chat { --tablit: oklch(from var(--repo, var(--accent)) max(l, .66) c h); }
-  .ptabs { display: flex; gap: 4px; height: 38px; padding: 0 8px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 12px; align-items: center; container-type: inline-size; }
+  .ptabs { display: flex; gap: 4px; height: 38px; padding: 0 8px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: var(--fs-sm); align-items: center; container-type: inline-size; }
   .ptabs[hidden] { display: none; }
   /* A half holding one tab has nothing to choose between (2026-09-28): split, its strip is a 2 px rule,
      the accent under the keys (the .on rule above fills it) and the line elsewhere — the same height either way, so
      moving the keys never resizes a terminal. A web page keeps its strip, for the address and ‹ › ↻ ↗; so does an empty
      half, where a tab is dropped. */
   .ptabs.lone { padding: 0; height: 2px; border: 0; background: var(--line); overflow: hidden; }
-  .ptab, .ptabgone { position: relative; flex: none; font: inherit; font-size: 12px; font-weight: 500; height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+  .ptab, .ptabgone { position: relative; flex: none; font: inherit; font-size: var(--fs-sm); font-weight: 500; height: 26px; padding: 0 10px; border: 0; border-radius: var(--r-3); background: transparent; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
   .ptab:hover { color: var(--ink); background: var(--ctl); }
   .ptab > .ic { width: 13px; height: 13px; flex: none; fill: currentColor; opacity: .75; }
   .ptab > .ic.burst { fill: var(--accent); opacity: 1; }
@@ -1441,7 +1446,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .ptab.on > .ic:not(.burst) { fill: var(--tablit); opacity: 1; }
   /* A tab's × is its mark's place under the pointer, not a glyph at its end; a strip short of room folds the tabs
      behind the one in front to their marks, the name in the tooltip. */
-  .ptab > .x { position: absolute; left: 9px; top: 50%; translate: 0 -50%; width: 15px; height: 15px; display: grid; place-items: center; border-radius: 4px; opacity: 0; color: var(--ink); }
+  .ptab > .x { position: absolute; left: 9px; top: 50%; translate: 0 -50%; width: 15px; height: 15px; display: grid; place-items: center; border-radius: var(--r-2); opacity: 0; color: var(--ink); }
   .ptab:hover > .x { opacity: 1; background: var(--ctl-hi); }
   .ptab:hover:has(> .x) > .ic { opacity: 0; }
   .ptab > .x:hover { color: var(--needs); }
@@ -1454,14 +1459,14 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .ptab.addr .purl { flex: 1 1 auto; min-width: 0; margin: 0; color: var(--ink); text-align: left; }
   .ptab.addr .purl .h { color: var(--muted); }
   .ptab.addr .navs { margin: 0; flex: none; }
-  .ptab.addr .nav { width: 22px; height: 22px; border-radius: 5px; }
+  .ptab.addr .nav { width: 22px; height: 22px; border-radius: var(--r-2); }
   /* the highlight on its way (tabMotion): a pill of the on tab's tint sliding over the strip; the tab it goes to plain
      until it lands; a closed tab's stand-in folding */
   .ptabs { position: relative; }
-  .ptabpill { position: absolute; left: 0; top: 6px; height: 26px; border-radius: 6px; background: color-mix(in srgb, var(--tablit) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tablit) 42%, transparent); pointer-events: none; }
+  .ptabpill { position: absolute; left: 0; top: 6px; height: 26px; border-radius: var(--r-3); background: color-mix(in srgb, var(--tablit) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tablit) 42%, transparent); pointer-events: none; }
   .ptab.on.slid { background: transparent; box-shadow: none; }
   .ptabgone { overflow: hidden; white-space: nowrap; pointer-events: none; }
-  .ptabs .pdrop { height: 26px; line-height: 24px; padding: 0 10px; border: 1px dashed var(--line); border-radius: 6px; color: var(--muted); }
+  .ptabs .pdrop { height: 26px; line-height: 24px; padding: 0 10px; border: 1px dashed var(--line); border-radius: var(--r-3); color: var(--muted); }
   /* A tab on its way to the other half (2026-09-25): it stays in its strip, faded, while a copy follows the pointer,
      and the half under the pointer lights its strip — the one place the drop is always visible, the app's pane
      being a native view over the body. */
@@ -1483,7 +1488,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     color: var(--muted); cursor: pointer; user-select: text; }
   .ptabs .purl:hover { color: var(--ink); }
   .ptabs .navs { display: flex; gap: 2px; }
-  .ptabs :is(.nav, .gmore) { flex: none; width: 26px; height: 26px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
+  .ptabs :is(.nav, .gmore) { flex: none; width: 26px; height: 26px; padding: 0; display: grid; place-items: center; border: 0; border-radius: var(--r-3); background: transparent; color: var(--muted); cursor: pointer; }
   .ptabs :is(.nav, .gmore):hover { color: var(--ink); background: var(--ctl); }
   .ptabs .gmore .ic { width: 14px; height: 14px; fill: currentColor; }
   /* content-box on purpose: the fit addon reads getComputedStyle(parent).height/width and subtracts only the
@@ -1504,8 +1509,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .msg.assistant.cont { margin-top: -6px; }
   .msg.assistant.cont .who { display: none; }   /* the turn's second word on: the who-line said it once */
   /* under the reply that ends a turn (2026-10-08): copy the turn's words, and how long it worked */
-  .msg .turnfoot { display: flex; align-items: center; gap: 10px; margin: 4px 0 0 2px; font-size: 11px; color: var(--muted); }
-  .msg .turnfoot .tcopy { display: inline-flex; align-items: center; gap: 4px; padding: 2px 5px; margin-left: -5px; border: 0; border-radius: 5px; background: none; font: inherit; color: inherit; cursor: pointer; }
+  .msg .turnfoot { display: flex; align-items: center; gap: 10px; margin: 4px 0 0 2px; font-size: var(--fs-xs); color: var(--muted); }
+  .msg .turnfoot .tcopy { display: inline-flex; align-items: center; gap: 4px; padding: 2px 5px; margin-left: -5px; border: 0; border-radius: var(--r-2); background: none; font: inherit; color: inherit; cursor: pointer; }
   .msg .turnfoot .tcopy .ic { width: 13px; height: 13px; fill: currentColor; }
   .msg .turnfoot .tcopy:hover { color: var(--ink); background: var(--ctl); }
   .msg .turnfoot .tcopy.did { color: var(--idle); }
@@ -1513,22 +1518,22 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 /* Claude's prose keeps to a reading measure (2026-10-12): at 1700 px a line ran to ~200 characters. Its paragraphs,
    lists, quotes and headings stop at 80ch; a code block, a table, a rule and an image take the width they need. */
 .msg.assistant .text > :is(p, ul, ol, blockquote, h1, h2, h3, h4, h5, h6, dl) { max-width: 80ch; }
-  .msg .who { font-size: 11px; color: var(--muted); margin: 0 0 5px 2px; display: flex; gap: 8px; }
+  .msg .who { font-size: var(--fs-xs); color: var(--muted); margin: 0 0 5px 2px; display: flex; gap: 8px; }
   .msg .text { white-space: pre-wrap; word-break: break-word; line-height: 1.62; }
   /* Inline code: a tint and a warm ink, no border. These paragraphs are dense with `code`, and a
      bordered chip per term turns a sentence into a fence of boxes — and, being taller than the words
      around it, it makes every line that contains one taller than the ones that don't. .88em keeps a
      monospace term the same visual size as the prose it sits in. */
-  .msg .text code { background: var(--inline-bg); color: var(--code-ink); padding: .12em .34em; border-radius: 4px;
+  .msg .text code { background: var(--inline-bg); color: var(--code-ink); padding: .12em .34em; border-radius: var(--r-2);
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .88em; }
   /* Blocks do keep a border — there the point is to delimit, not to sit inside a sentence. */
-  .msg .text pre { background: var(--code-bg); border: 1px solid var(--code-line); padding: 11px 13px; border-radius: 8px;
-    overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
+  .msg .text pre { background: var(--code-bg); border: 1px solid var(--code-line); padding: 11px 13px; border-radius: var(--r-3);
+    overflow-x: auto; font-size: var(--fs-md); line-height: 1.55; }
   .msg .text pre code { background: none; padding: 0; color: inherit; border-radius: 0; font-size: inherit; }
   .text.md { white-space: normal; }
   .md p { margin: 0 0 11px; } .md > :last-child { margin-bottom: 0; } .md > :first-child { margin-top: 0; }
   .md h1, .md h2, .md h3, .md h4 { margin: 18px 0 8px; line-height: 1.3; font-weight: 600; }
-  .md h1 { font-size: 18px; } .md h2 { font-size: 16px; } .md h3 { font-size: 14.5px; } .md h4 { font-size: 13.5px; }
+  .md h1 { font-size: var(--fs-xl); } .md h2 { font-size: var(--fs-lg); } .md h3 { font-size: var(--fs-base); } .md h4 { font-size: var(--fs-md); }
   .md ul, .md ol { margin: 8px 0 12px; padding-left: 22px; } .md li { margin: 5px 0; } .md li > p { margin: 0 0 5px; }
   .md li > ul, .md li > ol { margin: 5px 0 0; }
   .md pre { margin: 10px 0 13px; }
@@ -1537,25 +1542,25 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      scrolls sideways; the wrapper takes the pre's margins. Inside a fold the summary already names the language. */
   .md .codebox { position: relative; margin: 10px 0 13px; }
   .md .codebox > pre { margin: 0; }
-  .codebox .cbar { position: absolute; top: 6px; right: 7px; display: flex; gap: 6px; align-items: center; font: 500 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); opacity: 0; transition: opacity .12s; }
+  .codebox .cbar { position: absolute; top: 6px; right: 7px; display: flex; gap: 6px; align-items: center; font: 500 var(--fs-xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); opacity: 0; transition: opacity .12s; }
   .codebox:hover .cbar, .codebox .cbar:focus-within { opacity: 1; }
   .codebox .lang { padding: 3px 4px; }
-  .codebox .copy { font: inherit; border: 1px solid transparent; background: color-mix(in srgb, var(--ink) 7%, var(--code-bg)); color: var(--muted); border-radius: 5px; padding: 3px 7px; cursor: pointer; transition: color .12s, border-color .12s; }
+  .codebox .copy { font: inherit; border: 1px solid transparent; background: color-mix(in srgb, var(--ink) 7%, var(--code-bg)); color: var(--muted); border-radius: var(--r-2); padding: 3px 7px; cursor: pointer; transition: color .12s, border-color .12s; }
   .codebox .copy:hover { color: var(--ink); border-color: var(--accent); }
   .codebox .copy.did { color: var(--idle); border-color: var(--idle); }
-  .md table { border-collapse: collapse; margin: 10px 0 13px; font-size: 13px; display: block; overflow-x: auto; max-width: 100%; }
+  .md table { border-collapse: collapse; margin: 10px 0 13px; font-size: var(--fs-md); display: block; overflow-x: auto; max-width: 100%; }
   .md th, .md td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
   .md th { background: var(--tool-bg); font-weight: 600; }
   .md blockquote { margin: 10px 0; padding: 3px 13px; border-left: 3px solid var(--line); color: var(--muted); }
   .md a { color: var(--accent); text-decoration: none; } .md a:hover { text-decoration: underline; }
-  .md a[href^="vscode:"]::after { content: " ↗"; font-size: 10px; opacity: .6; }
+  .md a[href^="vscode:"]::after { content: " ↗"; font-size: var(--fs-2xs); opacity: .6; }
   /* the paths and pages a tool row names are links too (2026-09-26, linkify): quiet, the row is one muted line */
   .tool a { color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; } .tool a:hover { color: var(--accent); }
   .md hr { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
   .md img { max-width: 100%; }
   .md input[type=checkbox] { margin: 0 6px 0 0; }
   .toolgroup { margin: 2px 0 10px; }
-  .toolgroup > summary, .codefold > summary { cursor: pointer; list-style: none; font-size: 11.5px; color: var(--muted); padding: 4px 8px; border-radius: 6px; background: var(--tool-bg); border: 1px solid transparent; user-select: none; }
+  .toolgroup > summary, .codefold > summary { cursor: pointer; list-style: none; font-size: var(--fs-sm); color: var(--muted); padding: 4px 8px; border-radius: var(--r-3); background: var(--tool-bg); border: 1px solid transparent; user-select: none; }
   .toolgroup > summary::-webkit-details-marker, .codefold > summary::-webkit-details-marker { display: none; }
   /* One chevron that turns (2026-09-27, night; ▸ swapped for ▾ before), and a body that fades and rises in as the
      fold opens — `::details-content`, both engines. Chrome also runs the height, which needs interpolate-size; WebKit
@@ -1576,30 +1581,30 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .codefold { margin: 6px 0 10px; } .codefold > summary { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; } .codefold[open] > summary { margin-bottom: 0; border-radius: 6px 6px 0 0; }
   .codefold[open] > .codebox { margin-top: 0; }
   .codefold[open] > .codebox > pre { border-top: 0; border-radius: 0 0 8px 8px; }   /* one seam, not two borders */
-  .tool { margin: 0 0 4px; font-size: 12px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; display: flex; gap: 8px; padding: 3px 8px; background: var(--tool-bg); border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tool { margin: 0 0 4px; font-size: var(--fs-sm); color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; display: flex; gap: 8px; padding: 3px 8px; background: var(--tool-bg); border-radius: var(--r-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tool b { color: var(--ink); font-weight: 600; }
   .tool .tst, .toolgroup > summary .tst { flex: none; align-self: center; position: relative; width: 9px; height: 9px; margin-right: -2px; border-radius: 50%; }
   .toolgroup > summary .tst { display: inline-block; vertical-align: -1px; margin-right: 6px; }
   .tool .tst.ok { background: color-mix(in srgb, var(--idle) 80%, transparent); scale: .6; }
-  .tool .tst.err::before, .tool .tst.err::after { content: ''; position: absolute; left: 50%; top: 50%; width: 10px; height: 2px; margin: -1px 0 0 -5px; border-radius: 1px; background: var(--needs); rotate: 45deg; }
+  .tool .tst.err::before, .tool .tst.err::after { content: ''; position: absolute; left: 50%; top: 50%; width: 10px; height: 2px; margin: -1px 0 0 -5px; border-radius: var(--r-1); background: var(--needs); rotate: 45deg; }
   .tool .tst.err::after { rotate: -45deg; }
   :is(.tool, .toolgroup > summary) .tst.run { border: 1.5px solid var(--line); }
   #log.working :is(.tool, .toolgroup > summary) .tst.run { border-color: var(--working); border-right-color: transparent; animation: ring .8s linear infinite; }
   .tool.err { color: var(--needs); }
-  .sysline { margin: 10px auto; text-align: center; font-size: 11px; color: var(--muted); }
+  .sysline { margin: 10px auto; text-align: center; font-size: var(--fs-xs); color: var(--muted); }
   .sysline.day { margin: 14px auto 12px; }
-  .sysline.day b { font: 600 11px/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: var(--muted); }   /* the list's day line, in the transcript */
+  .sysline.day b { font: 600 var(--fs-xs)/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: var(--muted); }   /* the list's day line, in the transcript */
   /* Times and ages in tabular figures (2026-09-27, night), so a digit changing under them moves nothing beside it. */
   .msg .who, .card .trow .time, .pkrow .t, .prrow .meta, #hmenu .hmi .k, #hmenu .hmi [data-at] { font-variant-numeric: tabular-nums; }
   /* Presence at the foot of the transcript (2026-09-27, night): while the open chat is clauding, Claude's mark (the
      divider's sprite) and the word under the last message — a reply on its way is seen where you are reading, not
      only on the card — with the sub-agents' count when there is one; while it is asking, the question, in the card's
      red and the card's own markup (askHtml). renderPresence keeps it the last thing in the log. */
-  .presence { display: flex; align-items: center; gap: 8px; margin: 2px 0 6px 2px; min-height: 18px; font-size: 11.5px; color: var(--muted); }
+  .presence { display: flex; align-items: center; gap: 8px; margin: 2px 0 6px 2px; min-height: 18px; font-size: var(--fs-sm); color: var(--muted); }
   .presence .pix { flex: none; }
   .presence .w { font-weight: 600; }
   .presence .w em { font-style: normal; font-weight: 400; }
-  .presence .state.needs-input { font-size: 12px; font-weight: 600; min-width: 0; }
+  .presence .state.needs-input { font-size: var(--fs-sm); font-weight: 600; min-width: 0; }
   .presence .state.needs-input .ic { width: 12px; height: 12px; }
   /* A message that arrives fades in from 4 px down (2026-09-27, night) — what comes while the chat is open; the first
      fill stands still (renderLog marks `.in`). */
@@ -1617,84 +1622,84 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .empty { color: var(--muted); text-align: center; margin-top: 30vh; padding: 0 20px; }
 
   /* ---- the changes tab: what this chat changed in its folder (2026-10-10) ---- */
-  #chg { grid-row: 1; grid-column: 1; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); background: var(--panel); font-size: 12.5px; }
+  #chg { grid-row: 1; grid-column: 1; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); background: var(--panel); font-size: var(--fs-md); }
   #chg[hidden] { display: none; }
   #chg .cbar { display: grid; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
   #chg .r1, #chg .r2 { display: flex; align-items: center; gap: 10px; min-width: 0; }
-  #chg .br { display: inline-flex; align-items: center; gap: 6px; font: 600 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); white-space: nowrap; }
+  #chg .br { display: inline-flex; align-items: center; gap: 6px; font: 600 var(--fs-sm) ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); white-space: nowrap; }
   #chg .br .ic { width: 14px; height: 14px; fill: var(--muted); }
   #chg .br.base { color: var(--muted); } #chg .arrow { color: var(--muted); }
-  #chg .up { color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  #chg .up { color: var(--muted); font-size: var(--fs-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   #chg .acts { margin-left: auto; display: flex; gap: 6px; flex: none; }
-  #chg .cbtn { font: inherit; font-size: 12px; font-weight: 600; padding: 3px 10px; border: 1px solid transparent; border-radius: 6px; background: var(--ctl); color: var(--ink); cursor: pointer; white-space: nowrap; }
+  #chg .cbtn { font: inherit; font-size: var(--fs-sm); font-weight: 600; padding: 3px 10px; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); color: var(--ink); cursor: pointer; white-space: nowrap; }
   #chg .cbtn:hover { background: var(--ctl-hi); }
   #chg .cbtn.pr { background: color-mix(in srgb, var(--pr-open) 22%, transparent); color: var(--pr-open); }
   #chg .cbtn.pri { background: var(--accent); color: var(--bg); }
-  #chg .cseg { display: inline-flex; padding: 2px; border-radius: 7px; background: var(--ctl); flex: none; }
-  #chg .cseg button { font: inherit; font-size: 11.5px; padding: 2px 10px; border: 0; border-radius: 5px; background: none; color: var(--muted); cursor: pointer; }
+  #chg .cseg { display: inline-flex; padding: 2px; border-radius: var(--r-3); background: var(--ctl); flex: none; }
+  #chg .cseg button { font: inherit; font-size: var(--fs-sm); padding: 2px 10px; border: 0; border-radius: var(--r-2); background: none; color: var(--muted); cursor: pointer; }
   #chg .cseg button.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .3); }
   #chg .sum { color: var(--muted); white-space: nowrap; } #chg .r2 .cbtn { margin-left: auto; }
   #chg .a { color: var(--pr-open); } #chg .d { color: var(--pr-closed); }
-  #chg .sum .a, #chg .sum .d, #chg em .a, #chg em .d { font: 600 11.5px ui-monospace, monospace; }
+  #chg .sum .a, #chg .sum .d, #chg em .a, #chg em .d { font: 600 var(--fs-sm) ui-monospace, monospace; }
   #chg .cbody { display: grid; grid-template-columns: minmax(150px, 230px) minmax(0, 1fr); min-height: 0; }
   #chg .cfiles { overflow-y: auto; border-right: 1px solid var(--line); padding: 6px 0; display: grid; align-content: start; }
   #chg .cf { display: flex; align-items: center; gap: 7px; padding: 4px 12px; border: 0; background: none; font: inherit; color: var(--ink); text-align: left; cursor: pointer; min-width: 0; }
   #chg .cf:hover { background: var(--ctl); } #chg .cf.on { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: inset 2px 0 var(--accent); }
-  #chg .cf b { font: 700 10px ui-monospace, monospace; color: var(--working); width: 10px; flex: none; } #chg .cf b.a { color: var(--pr-open); } #chg .cf b.d { color: var(--pr-closed); }
+  #chg .cf b { font: 700 var(--fs-2xs) ui-monospace, monospace; color: var(--working); width: 10px; flex: none; } #chg .cf b.a { color: var(--pr-open); } #chg .cf b.d { color: var(--pr-closed); }
   #chg .cf .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; min-width: 0; flex: 1; }
   #chg .cf .nm .dir { color: var(--muted); }
   #chg .cf em { font-style: normal; flex: none; }
-  #chg .cdiff { overflow: auto; font: 12px/19px ui-monospace, SFMono-Regular, Menlo, monospace; }
+  #chg .cdiff { overflow: auto; font: var(--fs-sm)/19px ui-monospace, SFMono-Regular, Menlo, monospace; }
   #chg .fh { position: sticky; top: 0; z-index: 1; display: flex; gap: 8px; padding: 6px 12px; border-bottom: 1px solid var(--line); background: var(--bg); font-weight: 600; color: var(--ink); }
   #chg .fh em { margin-left: auto; font-style: normal; }
   #chg .dl { position: relative; display: grid; grid-template-columns: 40px 40px 18px minmax(0, 1fr); white-space: pre; color: var(--ink); min-width: max-content; }
-  #chg .dl .na, #chg .dl .nb { text-align: right; padding-right: 8px; color: var(--muted); opacity: .7; font-size: 11px; user-select: none; }
+  #chg .dl .na, #chg .dl .nb { text-align: right; padding-right: 8px; color: var(--muted); opacity: .7; font-size: var(--fs-xs); user-select: none; }
   #chg .dl .sg { position: relative; color: var(--muted); user-select: none; }
   #chg .dl code { font: inherit; padding-right: 16px; }
   #chg .dl.add { background: color-mix(in srgb, var(--pr-open) 14%, transparent); } #chg .dl.add .sg, #chg .dl.add .nb { color: var(--pr-open); opacity: 1; }
   #chg .dl.del { background: color-mix(in srgb, var(--pr-closed) 14%, transparent); } #chg .dl.del .sg, #chg .dl.del .na { color: var(--pr-closed); opacity: 1; }
   #chg .dl.hunk { background: color-mix(in srgb, var(--hl-fn) 10%, transparent); } #chg .dl.hunk code { color: var(--hl-meta); }
   #chg .dl.meta code { color: var(--muted); font-style: italic; }
-  #chg .dlp { position: absolute; left: -2px; top: 1px; width: 17px; height: 17px; padding: 0; border: 0; border-radius: 4px; background: var(--accent); color: var(--bg); font: 700 12px/17px -apple-system, sans-serif; cursor: pointer; opacity: 0; }
+  #chg .dlp { position: absolute; left: -2px; top: 1px; width: 17px; height: 17px; padding: 0; border: 0; border-radius: var(--r-2); background: var(--accent); color: var(--bg); font: 700 var(--fs-sm)/17px -apple-system, sans-serif; cursor: pointer; opacity: 0; }
   #chg .dl:hover .dlp { opacity: 1; }
-  #chg .lnote { display: grid; gap: 8px; margin: 4px 14px 8px 98px; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--accent); background: var(--bg); font: 12.5px/1.45 -apple-system, BlinkMacSystemFont, sans-serif; color: var(--ink); max-width: 640px; }
-  #chg .lnote .who { font-size: 11px; color: var(--muted); }
-  #chg .lnote textarea { font: inherit; resize: vertical; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: inherit; outline: none; }
+  #chg .lnote { display: grid; gap: 8px; margin: 4px 14px 8px 98px; padding: 9px 11px; border-radius: var(--r-3); border: 1px solid var(--accent); background: var(--bg); font: var(--fs-md)/1.45 -apple-system, BlinkMacSystemFont, sans-serif; color: var(--ink); max-width: 640px; }
+  #chg .lnote .who { font-size: var(--fs-xs); color: var(--muted); }
+  #chg .lnote textarea { font: inherit; resize: vertical; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--panel); color: inherit; outline: none; }
   #chg .lnote textarea:focus { border-color: var(--accent); }
   #chg .lnote .row { display: flex; gap: 6px; justify-content: flex-end; }
   #chg .cempty { padding: 40px 20px; color: var(--muted); text-align: center; } #chg .cempty.sm { padding: 10px 16px; text-align: left; }
   /* the header's +n −n (2026-10-10), the drawn black's inks, before the your-move tag and the PR chips */
-  .shead .hdiff { display: inline-flex; gap: 5px; align-items: center; flex: none; height: 26px; padding: 0 8px; border: 1px solid transparent; border-radius: 6px; background: var(--ctl); font: 600 11.5px ui-monospace, monospace; cursor: pointer; }
+  .shead .hdiff { display: inline-flex; gap: 5px; align-items: center; flex: none; height: 26px; padding: 0 8px; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); font: 600 var(--fs-sm) ui-monospace, monospace; cursor: pointer; }
   .shead .hdiff:hover { background: var(--ctl-hi); }
   .shead .hdiff .a { color: var(--pr-open); } .shead .hdiff .d { color: var(--pr-closed); }
 
   /* ---- home (2026-10-10): the column with no chat open — fastfetch's block, then the day ---- */
   .home { display: grid; align-content: start; gap: 30px; max-width: 1180px; margin: 0 auto; padding: 34px 36px 40px; }
   .home .hff { display: flex; gap: 40px; align-items: center; flex-wrap: wrap; justify-content: center; }
-  .home .hsea { flex: none; max-width: 100%; aspect-ratio: 2 / 1; height: auto; border-radius: 6px; background: #0b0817; cursor: pointer; }   /* the sea (2026-10-12; the pixel fish alone before) — a picture: its own ground, whatever the theme */
-  .home .hkv { font: 13px/1.75 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); min-width: 0; }
+  .home .hsea { flex: none; max-width: 100%; aspect-ratio: 2 / 1; height: auto; border-radius: var(--r-3); background: #0b0817; cursor: pointer; }   /* the sea (2026-10-12; the pixel fish alone before) — a picture: its own ground, whatever the theme */
+  .home .hkv { font: var(--fs-md)/1.75 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); min-width: 0; }
   .home .hkv .hh { font-weight: 700; } .home .hkv .hh span { color: var(--accent); }
   .home .hkv .hrule { width: 24ch; border-top: 1px solid var(--muted); margin: 4px 0 6px; }
   .home .hkv > div:not(.hh, .hrule, .hblocks, .hkeys) { display: flex; gap: 0; }
   /* (2026-10-12) a count with something behind it is a button in the line's own type; the keys to begin with under the blocks */
   .home .hgo { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted color-mix(in srgb, currentColor 45%, transparent); text-underline-offset: 3px; }
   .home .hgo:hover { text-decoration-style: solid; }
-  .home .hkeys { margin-top: 12px; color: var(--muted); font-size: 12px; max-width: 46ch; } .home .hkeys s { text-decoration: none; opacity: .6; }
-  .home .hkeys kbd { font: inherit; color: var(--ink); background: var(--ctl); border-radius: 4px; padding: 0 5px; }
+  .home .hkeys { margin-top: 12px; color: var(--muted); font-size: var(--fs-sm); max-width: 46ch; } .home .hkeys s { text-decoration: none; opacity: .6; }
+  .home .hkeys kbd { font: inherit; color: var(--ink); background: var(--ctl); border-radius: var(--r-2); padding: 0 5px; }
   .home .hkv > div > b { flex: none; width: 9ch; color: var(--accent); font-weight: 700; }
   .home .hkv em { font-style: normal; color: var(--needs); font-weight: 600; } .home .hkv u { text-decoration: none; color: var(--working); } .home .hkv s { text-decoration: none; color: var(--muted); }
   .home .hkv strong { font-weight: 700; }
   .home .hblocks { display: flex; margin-top: 10px; } .home .hblocks i { width: 24px; height: 13px; }
-  .home .hday h3 { margin: 0 0 12px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; font-size: 12px; letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted); font-weight: 600; }
-  .home .hday h3 b { color: var(--ink); letter-spacing: .2px; text-transform: none; font-size: 15px; }
-  .home .hday .lg { margin-left: auto; display: flex; gap: 14px; letter-spacing: 0; text-transform: none; font-size: 11.5px; font-weight: 500; }
+  .home .hday h3 { margin: 0 0 12px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; font-size: var(--fs-sm); letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .home .hday h3 b { color: var(--ink); letter-spacing: .2px; text-transform: none; font-size: var(--fs-lg); }
+  .home .hday .lg { margin-left: auto; display: flex; gap: 14px; letter-spacing: 0; text-transform: none; font-size: var(--fs-sm); font-weight: 500; }
   .home .hday .lg i { display: inline-block; width: 18px; height: 8px; margin-right: 6px; vertical-align: 0; }
   .home .lg i.w { background: var(--muted); } .home .lg i.m { height: 3px; vertical-align: 2px; background: var(--watch); }
   .home :is(.lg, .htrack) i.a { background: repeating-linear-gradient(135deg, var(--needs) 0 3px, color-mix(in srgb, var(--needs) 35%, transparent) 3px 6px); }
-  .home .hgrid { display: grid; grid-template-columns: minmax(0, 280px) minmax(0, 1fr) auto; row-gap: 6px; column-gap: 14px; align-items: center; font-size: 12px; }
+  .home .hgrid { display: grid; grid-template-columns: minmax(0, 280px) minmax(0, 1fr) auto; row-gap: 6px; column-gap: 14px; align-items: center; font-size: var(--fs-sm); }
   .home .hrow { display: flex; gap: 8px; align-items: baseline; min-width: 0; padding: 2px 0; border: 0; background: none; font: inherit; color: var(--ink); text-align: left; cursor: pointer; white-space: nowrap; }
   .home .hrow:hover span { text-decoration: underline; }
-  .home .hrow b { flex: none; font-size: 10px; letter-spacing: .7px; text-transform: uppercase; color: oklch(from var(--repo, var(--muted)) max(l, .62) c h); }
+  .home .hrow b { flex: none; font-size: var(--fs-2xs); letter-spacing: .7px; text-transform: uppercase; color: oklch(from var(--repo, var(--muted)) max(l, .62) c h); }
   .home .hrow span { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .home .htrack { position: relative; height: 16px; background: repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px var(--step)); }
   .home .htrack i { position: absolute; top: 3px; height: 10px; min-width: 2px; }
@@ -1702,10 +1707,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .home .htrack i.m { top: 7px; height: 3px; background: var(--watch); }
   .home .htrack i.now { box-shadow: 2px 0 0 var(--ink); }
   .home .hnow { position: absolute; top: -5px; bottom: -5px; width: 2px; background: var(--accent); }
-  .home .htot { font: 11.5px ui-monospace, monospace; color: var(--muted); white-space: nowrap; } .home .htot em { font-style: normal; color: var(--needs); }
-  .home .haxis { position: relative; height: 14px; font: 10.5px ui-monospace, monospace; color: var(--muted); }
+  .home .htot { font: var(--fs-sm) ui-monospace, monospace; color: var(--muted); white-space: nowrap; } .home .htot em { font-style: normal; color: var(--needs); }
+  .home .haxis { position: relative; height: 14px; font: var(--fs-xs) ui-monospace, monospace; color: var(--muted); }
   .home .haxis span { position: absolute; transform: translateX(-50%); }
-  .home .hsum { margin-top: 14px; padding: 10px 14px; border-radius: 8px; background: color-mix(in srgb, var(--ink) 5%, transparent); font-size: 12.5px; color: var(--muted); display: flex; gap: 22px; flex-wrap: wrap; }
+  .home .hsum { margin-top: 14px; padding: 10px 14px; border-radius: var(--r-3); background: color-mix(in srgb, var(--ink) 5%, transparent); font-size: var(--fs-md); color: var(--muted); display: flex; gap: 22px; flex-wrap: wrap; }
   .home .hsum b { color: var(--ink); } .home .hsum em { font-style: normal; color: var(--needs); font-weight: 700; } .home .hsum .r { margin-left: auto; }
   .home .hnone { color: var(--muted); padding: 6px 0; }
 
@@ -1748,16 +1753,16 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #stack { display: none; }
   main.tiles #stack:not([hidden]) { flex: 0 0 clamp(300px, 30vw, 520px); margin-left: 8px; display: grid; grid-auto-rows: minmax(0, 1fr); gap: 8px; min-height: 0; min-width: 0; }
   .stile { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; min-width: 0; border: 2px solid color-mix(in srgb, var(--tile-edge, var(--nocolor)) 30%, var(--tile-line)); background: var(--bg); cursor: pointer; }
-  .stile header { display: flex; align-items: center; gap: 8px; min-width: 0; height: 26px; padding: 0 10px; border-bottom: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+  .stile header { display: flex; align-items: center; gap: 8px; min-width: 0; height: 26px; padding: 0 10px; border-bottom: 1px solid var(--line); font-size: var(--fs-xs); color: var(--muted); }
   /* the stack's own ×, at the first tile's top left: the stack can go, and its title says the key that brings it back */
-  .stile header .sclose { flex: none; display: grid; place-items: center; width: 18px; height: 18px; margin-left: -5px; padding: 0; border: 1px solid transparent; border-radius: 4px; background: var(--ctl); color: var(--muted); font: 14px/1 system-ui, sans-serif; cursor: pointer; }
+  .stile header .sclose { flex: none; display: grid; place-items: center; width: 18px; height: 18px; margin-left: -5px; padding: 0; border: 1px solid transparent; border-radius: var(--r-2); background: var(--ctl); color: var(--muted); font: var(--fs-base)/1 system-ui, sans-serif; cursor: pointer; }
   .stile header .sclose:hover { background: var(--ctl-hi); color: var(--ink); }
-  .stile header b { flex: none; font-size: 10px; letter-spacing: .7px; text-transform: uppercase; color: oklch(from var(--repo, var(--muted)) max(l, .66) c h); }
+  .stile header b { flex: none; font-size: var(--fs-2xs); letter-spacing: .7px; text-transform: uppercase; color: oklch(from var(--repo, var(--muted)) max(l, .66) c h); }
   .stile header .tt { color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .stile header em { margin-left: auto; flex: none; font-style: normal; font-weight: 600; color: var(--working); }
   .stile.ask header em { color: var(--needs); }
   .stile.ask:not(.kf) { border-color: var(--needs); box-shadow: 0 0 0 1px var(--needs), 0 0 22px -4px var(--needs); }
-  .stile .sbody { position: relative; overflow: hidden; display: grid; align-content: start; gap: 3px; padding: 8px 10px; background: var(--term-bg); font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--snip-claude); min-height: 0; }
+  .stile .sbody { position: relative; overflow: hidden; display: grid; align-content: start; gap: 3px; padding: 8px 10px; background: var(--term-bg); font: var(--fs-sm)/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--snip-claude); min-height: 0; }
   .stile .sbody.over { align-content: end; }   /* its tail under the tile's head, unless longer than the tile: then its newest rows (2026-10-12; always at the foot before) */
   .stile .sbody.live { display: block; padding: 0; }
   main.tiles + #sbar, main.tiles ~ #sbar { margin: 8px; border: 2px solid var(--tile-line); }
@@ -1766,36 +1771,36 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #ov { width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; padding: 18px 22px 20px; border: 0; border-radius: 0; background: color-mix(in srgb, var(--bg) 62%, transparent); backdrop-filter: blur(14px) saturate(.85); outline: none; display: none; }
   #ov[open] { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 16px; }
   #ov::backdrop { background: transparent; }
-  #ov .ovtop { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 13px; }
-  #ov .ovtop h1 { margin: 0; font-size: 17px; color: var(--ink); }
+  #ov .ovtop { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: var(--fs-md); }
+  #ov .ovtop h1 { margin: 0; font-size: var(--fs-xl); color: var(--ink); }
   #ov .chips { display: flex; gap: 6px; flex-wrap: wrap; }
-  #ov .chips span { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 10px; background: var(--ctl); color: var(--ink); font-weight: 600; font-size: 12px; }
+  #ov .chips span { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: var(--r-4); background: var(--ctl); color: var(--ink); font-weight: 600; font-size: var(--fs-sm); }
   #ov .chips i, #ov .oc h2 i { width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--muted)); }
   #ov .chips span.nil { color: var(--muted); font-weight: 500; } #ov .chips span.nil i { background: var(--muted); opacity: .5; }   /* a zero says nothing in colour (2026-10-12) */
   #ov .ask { --c: var(--needs); } #ov .work { --c: var(--working); } #ov .watch { --c: var(--watch); } #ov .ready { --c: var(--idle); }
-  #ov .keys { margin-left: auto; display: flex; gap: 14px; align-items: center; font-size: 12px; }
-  #ov kbd { font: 600 11px ui-monospace, monospace; color: var(--ink); background: var(--ctl-hi); padding: 1px 5px; border-radius: 4px; margin-right: 4px; }
-  #ov .ovclose { font: inherit; font-size: 18px; line-height: 1; padding: 2px 8px; border: 0; border-radius: 6px; background: var(--ctl); color: var(--muted); cursor: pointer; }
+  #ov .keys { margin-left: auto; display: flex; gap: 14px; align-items: center; font-size: var(--fs-sm); }
+  #ov kbd { font: 600 var(--fs-xs) ui-monospace, monospace; color: var(--ink); background: var(--ctl-hi); padding: 1px 5px; border-radius: var(--r-2); margin-right: 4px; }
+  #ov .ovclose { font: inherit; font-size: var(--fs-xl); line-height: 1; padding: 2px 8px; border: 0; border-radius: var(--r-3); background: var(--ctl); color: var(--muted); cursor: pointer; }
   #ov .ovcols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; min-height: 0; }
   #ov .oc { display: grid; align-content: start; gap: 12px; min-width: 0; overflow-y: auto; padding: 2px; }
   #ov .oc.nil { min-width: 120px; opacity: .55; }   /* its head and its 0, nothing under (2026-10-12; "none" under it before) */
-  #ov .oc h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--c); }
-  #ov .oc h2 b { margin-left: auto; font-size: 11px; color: var(--ink); background: var(--ctl); padding: 1px 7px; border-radius: 8px; }
-  #ov .none { color: var(--muted); font-size: 12px; padding: 4px 2px; }
+  #ov .oc h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: var(--fs-xs); letter-spacing: 1.2px; text-transform: uppercase; color: var(--c); }
+  #ov .oc h2 b { margin-left: auto; font-size: var(--fs-xs); color: var(--ink); background: var(--ctl); padding: 1px 7px; border-radius: var(--r-3); }
+  #ov .none { color: var(--muted); font-size: var(--fs-sm); padding: 4px 2px; }
   #ov .ot { position: relative; display: grid; gap: 7px; padding: 10px 12px 11px 15px; background: var(--panel); border: 1px solid var(--line); box-shadow: inset 3px 0 var(--repo, var(--nocolor)), 0 18px 40px -22px rgb(0 0 0 / .6); cursor: pointer; min-width: 0; }
   #ov .ot { transform-origin: 0 0; }
   /* the tile opened, growing into the chat column (ovGo): a popover, so it is over the dialog closing under it */
   .ovghost { position: fixed; inset: auto; margin: 0; padding: 0; border: 1px solid var(--line); background: var(--panel); box-shadow: inset 3px 0 var(--repo); transform-origin: 0 0; pointer-events: none; overflow: hidden; }
   #ov .ot:hover, #ov .ot.sel { border-color: color-mix(in srgb, var(--accent) 70%, transparent); }
   #ov .ot.ask { border-color: var(--needs); box-shadow: inset 3px 0 var(--repo, var(--nocolor)), 0 0 0 1px var(--needs), 0 0 26px -6px var(--needs); }
-  #ov .ot header { display: flex; align-items: center; gap: 8px; font-size: 10.5px; letter-spacing: .8px; text-transform: uppercase; min-width: 0; }
+  #ov .ot header { display: flex; align-items: center; gap: 8px; font-size: var(--fs-xs); letter-spacing: .8px; text-transform: uppercase; min-width: 0; }
   #ov .ot header b { color: oklch(from var(--repo, var(--muted)) max(l, .66) c h); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #ov .ot header kbd { margin: 0; display: grid; place-items: center; min-width: 17px; height: 17px; background: var(--ink); color: var(--bg); font-weight: 800; }
-  #ov .ot .age { margin-left: auto; display: flex; gap: 6px; align-items: center; color: var(--muted); letter-spacing: 0; text-transform: none; font-size: 11px; white-space: nowrap; }
+  #ov .ot .age { margin-left: auto; display: flex; gap: 6px; align-items: center; color: var(--muted); letter-spacing: 0; text-transform: none; font-size: var(--fs-xs); white-space: nowrap; }
   #ov .ot .wait { color: var(--needs); font-weight: 600; }
-  #ov .ot .un { display: inline-grid; place-items: center; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--unread); color: var(--bg); font-size: 10px; }
-  #ov .ot h3 { margin: 0; font-size: 14px; line-height: 1.3; color: var(--ink); }
-  #ov .obody { display: grid; gap: 3px; padding: 7px 9px; background: var(--term-bg); font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--snip-claude); min-width: 0; overflow: hidden; }
+  #ov .ot .un { display: inline-grid; place-items: center; min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--r-3); background: var(--unread); color: var(--bg); font-size: var(--fs-2xs); }
+  #ov .ot h3 { margin: 0; font-size: var(--fs-base); line-height: 1.3; color: var(--ink); }
+  #ov .obody { display: grid; gap: 3px; padding: 7px 9px; background: var(--term-bg); font: var(--fs-sm)/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--snip-claude); min-width: 0; overflow: hidden; }
   #ov .obody.live { position: relative; display: block; height: 190px; padding: 0; }
   :is(#ov, #stack) .mini { position: absolute; left: 6px; bottom: 4px; transform-origin: bottom left; pointer-events: none; }
   :is(#ov, #stack) .mini .xterm-viewport { overflow: hidden !important; }
@@ -1807,27 +1812,27 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :is(#ov, #stack) .tl span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   :is(#ov, #stack) .tl em { margin-left: auto; font-style: normal; color: var(--muted); padding-left: 8px; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
   :is(#ov, #stack) .tl.run em { color: var(--working); }
-  :is(#ov, #stack) .say { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 12px; color: var(--ink); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  :is(#ov, #stack) .say { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: var(--fs-sm); color: var(--ink); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   :is(#ov, #stack) .say.none { color: var(--muted); }
   :is(#ov, #stack) .you { color: var(--you); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #ov .ot > .tl { font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
-  #ov .ag { font-size: 12px; color: var(--working); font-weight: 600; }
-  #ov .q { font-size: 13px; color: var(--ink); font-weight: 600; }
+  #ov .ot > .tl { font: var(--fs-sm)/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  #ov .ag { font-size: var(--fs-sm); color: var(--working); font-weight: 600; }
+  #ov .q { font-size: var(--fs-md); color: var(--ink); font-weight: 600; }
   #ov .ans { display: flex; flex-wrap: wrap; gap: 6px; }
-  #ov .ans button { font: inherit; font-size: 12px; padding: 4px 9px; border: 0; border-radius: 5px; background: var(--ctl); color: var(--ink); cursor: pointer; }
+  #ov .ans button { font: inherit; font-size: var(--fs-sm); padding: 4px 9px; border: 0; border-radius: var(--r-2); background: var(--ctl); color: var(--ink); cursor: pointer; }
   #ov .ans button:hover:not(:disabled) { background: color-mix(in srgb, var(--needs) 24%, transparent); }
   #ov .ans button:disabled { opacity: .6; cursor: default; }
-  #ov .ans b { font: 700 11px ui-monospace, monospace; color: var(--needs); margin-right: 6px; }
-  #ov .ot footer { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted); min-width: 0; }
+  #ov .ans b { font: 700 var(--fs-xs) ui-monospace, monospace; color: var(--needs); margin-right: 6px; }
+  #ov .ot footer { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); color: var(--muted); min-width: 0; }
   #ov .ot footer .br { font-family: ui-monospace, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   #ov .ot footer .a { color: var(--pr-open); font-family: ui-monospace, monospace; } #ov .ot footer .d { color: var(--pr-closed); font-family: ui-monospace, monospace; }
   #ov .ot footer .r { margin-left: auto; white-space: nowrap; }
-  #ov .opr { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; border-radius: 4px; font: 700 11px/16px -apple-system, sans-serif; color: var(--bg); background: var(--pr-open); }
+  #ov .opr { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; border-radius: var(--r-2); font: 700 var(--fs-xs)/16px -apple-system, sans-serif; color: var(--bg); background: var(--pr-open); }
   #ov .opr[data-state="draft"] { background: var(--pr-draft); }
   #ov .opr .ck { width: 11px; height: 11px; } #ov .opr .ck svg { width: 11px; height: 11px; fill: currentColor; }
 
   /* ---- project editor ---- */
-  dialog { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); padding: 16px 18px; width: min(600px, 92vw); }
+  dialog { border: 1px solid var(--line); border-radius: var(--r-4); background: var(--panel); color: var(--ink); padding: 16px 18px; width: min(600px, 92vw); }
   dialog::backdrop { background: rgba(0, 0, 0, .35); }
   /* Dialogs come and go rather than pop (2026-09-27, night): @starting-style gives the open state something to
      transition from, and `display` and `overlay` with allow-discrete hold the element — and its place in the top
@@ -1848,67 +1853,67 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* ⌥⌘Y, the themes (2026-10-10): a grid of tiles, each the board drawn small in the theme's colours — the list's
      cards with their edges, the header's project and black, a transcript, the palette along the foot. */
   #themes { padding: 12px; width: min(980px, 94vw); margin-top: 8vh; }
-  #themes .thin input { width: 100%; box-sizing: border-box; font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: inherit; outline: none; }
+  #themes .thin input { width: 100%; box-sizing: border-box; font: inherit; font-size: var(--fs-base); padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: inherit; outline: none; }
   #themes .thin input:focus { border-color: var(--accent); }
   #themegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 12px; max-height: 64vh; overflow-y: auto; padding: 3px; }
   #themegrid .tt { padding: 0; border: 0; background: none; text-align: left; font: inherit; color: var(--ink); cursor: pointer; min-width: 0; }
-  #themegrid .tshot { position: relative; display: grid; grid-template-columns: 38% 1fr; height: 104px; background: var(--tbg); border-radius: 7px; overflow: hidden; outline: 1px solid color-mix(in srgb, var(--ink) 10%, transparent); }
+  #themegrid .tshot { position: relative; display: grid; grid-template-columns: 38% 1fr; height: 104px; background: var(--tbg); border-radius: var(--r-3); overflow: hidden; outline: 1px solid color-mix(in srgb, var(--ink) 10%, transparent); }
   #themegrid .tt.sel .tshot { outline: 2px solid var(--accent); outline-offset: 2px; }
   #themegrid .tt:hover:not(.sel) .tshot { outline-color: color-mix(in srgb, var(--ink) 30%, transparent); }
   #themegrid .ml { display: grid; align-content: start; gap: 4px; padding: 6px 5px; }
   #themegrid .mc { display: grid; gap: 3px; height: 17px; padding: 4px 5px; background: linear-gradient(90deg, color-mix(in srgb, var(--c) 34%, var(--tpn)), var(--tpn) 70%); border-left: 2px solid var(--c); }
   #themegrid .mc.ask { outline: 1px solid var(--tnd); }
-  #themegrid .mc u { display: block; height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--tink) 55%, transparent); }
+  #themegrid .mc u { display: block; height: 3px; border-radius: var(--r-1); background: color-mix(in srgb, var(--tink) 55%, transparent); }
   #themegrid .mc u + u { background: color-mix(in srgb, var(--tmu) 60%, transparent); }
   #themegrid .mr { display: grid; grid-template-rows: 13px 1fr; background: var(--tpn); }
   #themegrid .mh { display: flex; background: var(--tcr); } #themegrid .mh b { width: 34%; background: var(--thd); }
   #themegrid .mt { display: grid; align-content: start; gap: 6px; padding: 8px; }
-  #themegrid .mt u { display: block; height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--tink) 45%, transparent); }
-  #themegrid .mt u.code { height: 16px; border-radius: 3px; background: var(--tcr); }
-  #themegrid .mt s { justify-self: end; width: 40%; height: 8px; border-radius: 5px; background: color-mix(in srgb, var(--tink) 14%, var(--tpn)); }
+  #themegrid .mt u { display: block; height: 3px; border-radius: var(--r-1); background: color-mix(in srgb, var(--tink) 45%, transparent); }
+  #themegrid .mt u.code { height: 16px; border-radius: var(--r-1); background: var(--tcr); }
+  #themegrid .mt s { justify-self: end; width: 40%; height: 8px; border-radius: var(--r-2); background: color-mix(in srgb, var(--tink) 14%, var(--tpn)); }
   #themegrid .sw { position: absolute; left: 38%; right: 0; bottom: 0; height: 4px; display: flex; } #themegrid .sw i { flex: 1; }
-  #themegrid .nm { display: flex; align-items: baseline; gap: 7px; margin-top: 7px; font-size: 12.5px; font-weight: 600; }
-  #themegrid .nm em { font-style: normal; font-weight: 500; font-size: 11px; color: var(--accent); }
-  #themegrid .nm small { margin-left: auto; font-size: 11px; font-weight: 500; color: var(--muted); }
+  #themegrid .nm { display: flex; align-items: baseline; gap: 7px; margin-top: 7px; font-size: var(--fs-md); font-weight: 600; }
+  #themegrid .nm em { font-style: normal; font-weight: 500; font-size: var(--fs-xs); color: var(--accent); }
+  #themegrid .nm small { margin-left: auto; font-size: var(--fs-xs); font-weight: 500; color: var(--muted); }
   #themegrid .none { color: var(--muted); padding: 8px; }
-  #themes .thfoot { display: flex; gap: 12px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
+  #themes .thfoot { display: flex; gap: 12px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--muted); }
   #themes .thfoot #themenote { color: var(--ink); }
   #themes .thfoot .spacer { flex: 1; }
   /* ⌥⌘L, the launcher (2026-10-10): the pickers' rows with a mark in front and a section's head over its first */
-  .pkhd { padding: 8px 8px 3px; font-size: 10.5px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted); }
+  .pkhd { padding: 8px 8px 3px; font-size: var(--fs-xs); font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted); }
   .pkrow.lx { grid-template-columns: 22px minmax(0, 1fr) auto auto; }
-  .pkrow.lx .g { display: grid; place-items: center; min-width: 0; color: var(--muted); font-size: 13px; }
+  .pkrow.lx .g { display: grid; place-items: center; min-width: 0; color: var(--muted); font-size: var(--fs-md); }
   .pkrow.lx .g .ic { width: 14px; height: 14px; fill: currentColor; }
   .pkrow.lx.sel .g { color: var(--accent); }
-  .pkrow.lx .num { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
-  .pkrow.lx .num kbd { font: 600 10.5px ui-monospace, monospace; padding: 1px 5px; border-radius: 4px; background: var(--ctl); color: var(--ink); }
-  .pkrow.lx .t { color: var(--muted); font-size: 12px; min-width: 14px; text-align: right; }
-  .pkrow.lx .st { font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
+  .pkrow.lx .num { font-size: var(--fs-sm); color: var(--muted); white-space: nowrap; }
+  .pkrow.lx .num kbd { font: 600 var(--fs-xs) ui-monospace, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl); color: var(--ink); }
+  .pkrow.lx .t { color: var(--muted); font-size: var(--fs-sm); min-width: 14px; text-align: right; }
+  .pkrow.lx .st { font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
   .pkrow.lx .st[data-state="asking"] { color: var(--needs); } .pkrow.lx .st[data-state="clauding"] { color: var(--working); } .pkrow.lx .st[data-state="ready"] { color: var(--idle); }
-  .pkrow.lx .ac { font: 700 12px ui-monospace, monospace; color: var(--accent); }
-  .pkrow.lx .lpr { font: 700 10.5px/15px -apple-system, sans-serif; padding: 0 4px; border-radius: 4px; color: var(--bg); background: var(--pr-open); }
+  .pkrow.lx .ac { font: 700 var(--fs-sm) ui-monospace, monospace; color: var(--accent); }
+  .pkrow.lx .lpr { font: 700 var(--fs-xs)/15px -apple-system, sans-serif; padding: 0 4px; border-radius: var(--r-2); color: var(--bg); background: var(--pr-open); }
   .pkrow.lx .lpr[data-state="merged"] { background: var(--pr-merged); } .pkrow.lx .lpr[data-state="closed"] { background: var(--pr-closed); } .pkrow.lx .lpr[data-state="draft"] { background: var(--pr-draft); } .pkrow.lx .lpr[data-state=""] { background: var(--muted); }
   .pkrow.lx.pr, .pkrow.lx.ticket { grid-template-columns: auto minmax(0, 1fr) auto auto; }
-  .pkrow.lx .ltk { font: 700 10.5px/15px -apple-system, sans-serif; padding: 0 4px; border-radius: 4px; color: #fff; background: var(--tk-todo); }
+  .pkrow.lx .ltk { font: 700 var(--fs-xs)/15px -apple-system, sans-serif; padding: 0 4px; border-radius: var(--r-2); color: #fff; background: var(--tk-todo); }
   .pkrow.lx .ltk[data-cat="doing"] { background: var(--tk-doing); } .pkrow.lx .ltk[data-cat="done"] { background: var(--tk-done); }
-  .pkrow.lx .ymove { font-size: 10.5px; color: var(--accent); }
-  .lsw { display: inline-block; position: relative; width: 26px; height: 15px; border-radius: 8px; background: var(--ctl-hi); vertical-align: middle; }
+  .pkrow.lx .ymove { font-size: var(--fs-xs); color: var(--accent); }
+  .lsw { display: inline-block; position: relative; width: 26px; height: 15px; border-radius: var(--r-3); background: var(--ctl-hi); vertical-align: middle; }
   .lsw i { position: absolute; left: 2px; top: 2px; width: 11px; height: 11px; border-radius: 50%; background: var(--muted); transition: left .12s; }
   .lsw.on { background: var(--accent); } .lsw.on i { left: 13px; background: #fff; }
   /* ?, every key on a sheet (2026-10-10): the settings' Keys, two columns, a box that narrows them */
   #keysheet { width: min(1100px, 94vw); max-height: 88vh; padding: 16px 20px; margin-top: 5vh; display: none; }
   #keysheet[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 12px; }
   #keysheet .kshd { display: flex; align-items: center; gap: 14px; }
-  #keysheet .kshd h3 { margin: 0; font-size: 18px; }
-  #keysheet .kshd input { flex: 0 1 340px; font: inherit; font-size: 13.5px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: inherit; outline: none; }
+  #keysheet .kshd h3 { margin: 0; font-size: var(--fs-xl); }
+  #keysheet .kshd input { flex: 0 1 340px; font: inherit; font-size: var(--fs-md); padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: inherit; outline: none; }
   #keysheet .kshd input:focus { border-color: var(--accent); }
-  #keysheet .kswhere { margin-left: auto; font-size: 11.5px; color: var(--muted); }
-  #keysheet kbd { font: 600 11px ui-monospace, monospace; padding: 1px 5px; border-radius: 4px; background: var(--ctl-hi); color: var(--ink); white-space: nowrap; }
+  #keysheet .kswhere { margin-left: auto; font-size: var(--fs-sm); color: var(--muted); }
+  #keysheet kbd { font: 600 var(--fs-xs) ui-monospace, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl-hi); color: var(--ink); white-space: nowrap; }
   #ksbody { overflow-y: auto; columns: 2; column-gap: 32px; }
-  #ksbody .kr { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); break-inside: avoid; font-size: 12.5px; color: var(--muted); }
+  #ksbody .kr { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); break-inside: avoid; font-size: var(--fs-md); color: var(--muted); }
   #ksbody .kr[hidden] { display: none; }
-  #ksbody .ksh { display: block; break-after: avoid; margin: 14px 0 2px; font: 700 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
-  #ksbody .kr i { display: block; font-style: normal; color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+  #ksbody .ksh { display: block; break-after: avoid; margin: 14px 0 2px; font: 700 var(--fs-xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+  #ksbody .kr i { display: block; font-style: normal; color: var(--muted); font-size: var(--fs-sm); margin-top: 2px; }
   #ksbody .kr kbd { justify-self: start; }
   #ksbody .kr em { font-style: normal; color: var(--ink); font-weight: 600; }
   #keysheet .none { margin: 0; color: var(--muted); }
@@ -1918,10 +1923,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      closes it. Its facts come with the snapshot (state.about). */
   #about { width: min(400px, 92vw); text-align: center; padding: 24px 24px 18px; outline: none; }   /* nothing in it takes focus, so the dialog would wear the ring */
   #about .logo { width: 72px; height: 72px; }
-  #about h3 { margin: 8px 0 0; font-size: 19px; }
+  #about h3 { margin: 8px 0 0; font-size: var(--fs-xl); }
   #about h3 em { font-style: normal; color: var(--accent); }
-  #about .tag { margin: 4px 0 14px; font-size: 12.5px; color: var(--muted); }
-  #about .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; text-align: left; font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
+  #about .tag { margin: 4px 0 14px; font-size: var(--fs-md); color: var(--muted); }
+  #about .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; text-align: left; font-size: var(--fs-sm); color: var(--muted); overflow-wrap: anywhere; }
   #about .facts b { color: var(--ink); font-weight: 600; text-align: right; }
   #about .help { margin: 14px 0 0; }
   /* The first run (2026-10-01): where the repos live, asked once, About's look — the fish, a question, a line of why —
@@ -1929,11 +1934,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #welcome { width: min(500px, 92vw); padding: 24px 24px 16px; outline: none; }
   #welcome .wlogo { display: block; width: 56px; height: 56px; margin: 0 auto; }
   #welcome .wlogo .logo { width: 100%; height: 100%; }
-  #welcome h3 { margin: 8px 0 0; font-size: 17px; text-align: center; }
-  #welcome .tag { margin: 6px 8px 16px; font-size: 12.5px; line-height: 1.45; color: var(--muted); text-align: center; }
-  #welcome .wsugs { display: grid; margin-bottom: 14px; border-radius: 10px; background: color-mix(in srgb, var(--ink) 4.5%, transparent); }
+  #welcome h3 { margin: 8px 0 0; font-size: var(--fs-xl); text-align: center; }
+  #welcome .tag { margin: 6px 8px 16px; font-size: var(--fs-md); line-height: 1.45; color: var(--muted); text-align: center; }
+  #welcome .wsugs { display: grid; margin-bottom: 14px; border-radius: var(--r-4); background: color-mix(in srgb, var(--ink) 4.5%, transparent); }
   #welcome .wsugs:empty { display: none; }
-  #welcome .wsug { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 44px; padding: 7px 12px; border: 1px solid transparent; border-radius: 10px; background: none; color: var(--muted); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+  #welcome .wsug { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 44px; padding: 7px 12px; border: 1px solid transparent; border-radius: var(--r-4); background: none; color: var(--muted); font: inherit; font-size: var(--fs-sm); text-align: left; cursor: pointer; }
   #welcome .wsug + .wsug::before { content: ''; position: absolute; top: -1px; left: 44px; right: 0; border-top: 1px solid var(--line); }
   #welcome .wsug:hover { background: var(--ctl); }
   #welcome .wsug.on { background: color-mix(in srgb, var(--accent) 14%, transparent); border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
@@ -1941,41 +1946,41 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #welcome .wsug .ic { width: 16px; height: 16px; fill: currentColor; justify-self: center; }
   #welcome .wsug.on .ic { color: var(--accent); }
   #welcome .wsug .pn { display: grid; min-width: 0; }
-  #welcome .wsug b { font-size: 12.5px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #welcome .wsug small { font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #welcome .wsug .wo { font-size: 11.5px; white-space: nowrap; }
-  #welcome .wform { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; align-items: center; font-size: 12px; }
+  #welcome .wsug b { font-size: var(--fs-md); font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #welcome .wsug small { font-size: var(--fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #welcome .wsug .wo { font-size: var(--fs-sm); white-space: nowrap; }
+  #welcome .wform { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; align-items: center; font-size: var(--fs-sm); }
   #welcome .wform > label { color: var(--muted); text-align: right; }
   #welcome .wrow { display: flex; gap: 8px; min-width: 0; }
   #welcome .wrow input[type=text] { flex: 1; min-width: 0; }
-  #welcome .worgw { flex: 1; display: inline-flex; align-items: center; min-width: 0; padding-left: 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--muted); font-size: 12.5px; cursor: text; }
+  #welcome .worgw { flex: 1; display: inline-flex; align-items: center; min-width: 0; padding-left: 9px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: var(--muted); font-size: var(--fs-md); cursor: text; }
   #welcome .worgw:focus-within { border-color: var(--accent); }
   #welcome .worgw input[type=text] { padding-left: 1px; border: 0; background: transparent; font-weight: 600; outline: none; }
   #welcome #wdir:focus { outline: none; border-color: var(--accent); }
-  #welcome .werr { min-height: 16px; margin: 8px 0 0; font-size: 12px; color: var(--needs); text-align: center; }
+  #welcome .werr { min-height: 16px; margin: 8px 0 0; font-size: var(--fs-sm); color: var(--needs); text-align: center; }
   #welcome .dfoot { margin-top: 6px; }
-  #welcome .wwhere { min-width: 0; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #welcome .wwhere { min-width: 0; font-size: var(--fs-xs); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #welcome .wok { background: var(--accent); color: var(--bg); font-weight: 600; }
   #welcome .wok:hover { background: color-mix(in srgb, var(--accent) 86%, var(--ink)); }
-  #pick input { width: 100%; box-sizing: border-box; font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: inherit; outline: none; }
+  #pick input { width: 100%; box-sizing: border-box; font: inherit; font-size: var(--fs-base); padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: inherit; outline: none; }
   #pick input:focus { border-color: var(--accent); }
   #picklist { margin-top: 6px; max-height: 50vh; overflow-y: auto; display: grid; gap: 1px; }
-  #settings .shd { margin: 14px 0 2px; font: 700 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }   /* the Board pane's sections (2026-10-12) */
+  #settings .shd { margin: 14px 0 2px; font: 700 var(--fs-xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }   /* the Board pane's sections (2026-10-12) */
   #settings .spane > .shd:first-child { margin-top: 2px; }
   #settings details.sadv > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 10px; } #settings details.sadv > summary::-webkit-details-marker { display: none; }
-  #settings details.sadv > summary span { font-size: 11.5px; color: var(--muted); }
+  #settings details.sadv > summary span { font-size: var(--fs-sm); color: var(--muted); }
   #settings details.sadv > summary .shd::before { content: '▸ '; } #settings details.sadv[open] > summary .shd::before { content: '▾ '; }
   #settings .lightpick { display: flex; align-items: center; gap: 10px; } #settings .lightpick > span:first-of-type { flex: 1; }
-  #settings .sseg { display: inline-flex; gap: 2px; padding: 2px; border-radius: 7px; background: var(--ctl); }
-  #settings .sseg button { font: inherit; font-size: 12px; border: 0; background: none; color: var(--muted); padding: 3px 10px; border-radius: 5px; cursor: pointer; }
+  #settings .sseg { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-3); background: var(--ctl); }
+  #settings .sseg button { font: inherit; font-size: var(--fs-sm); border: 0; background: none; color: var(--muted); padding: 3px 10px; border-radius: var(--r-2); cursor: pointer; }
   #settings .sseg button[aria-checked="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 0 0 1px var(--line); }
-  #pickfoot { margin: 6px 4px 0; padding-top: 6px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
-  #pickfoot kbd { font: 600 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); background: var(--ctl); border-radius: 4px; padding: 2px 5px; margin-left: 4px; } #pickfoot s { text-decoration: none; opacity: .6; }
-  .pkrow { display: grid; grid-template-columns: auto 1fr auto auto; gap: 9px; align-items: center; padding: 6px 8px; border-radius: 7px; cursor: pointer; min-width: 0; }
-  .pkrow .sq { width: 10px; height: 10px; border-radius: 3px; background: var(--repo, var(--nocolor)); }
-  .pkrow .n { font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  #pickfoot { margin: 6px 4px 0; padding-top: 6px; border-top: 1px solid var(--line); font-size: var(--fs-xs); color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+  #pickfoot kbd { font: 600 var(--fs-xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); background: var(--ctl); border-radius: var(--r-2); padding: 2px 5px; margin-left: 4px; } #pickfoot s { text-decoration: none; opacity: .6; }
+  .pkrow { display: grid; grid-template-columns: auto 1fr auto auto; gap: 9px; align-items: center; padding: 6px 8px; border-radius: var(--r-3); cursor: pointer; min-width: 0; }
+  .pkrow .sq { width: 10px; height: 10px; border-radius: var(--r-1); background: var(--repo, var(--nocolor)); }
+  .pkrow .n { font-weight: 700; font-size: var(--fs-md); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .pkrow :is(.n, .num) b { color: var(--accent); }
-  .pkrow .n .cur { font-weight: 400; font-size: 11px; color: var(--muted); margin-left: 6px; }
+  .pkrow .n .cur { font-weight: 400; font-size: var(--fs-xs); color: var(--muted); margin-left: 6px; }
   /* ⌥⌘G: the same rows over the chat's PRs — state · repo#n · title · age, as #prlist lays them out. */
   .pkrow.pr { grid-template-columns: 52px auto 1fr auto; }
   .pkrow.chat { grid-template-columns: auto 1fr auto auto auto; }   /* ⌥⌘K: colour · title · project · state · your last touch */
@@ -1989,44 +1994,44 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .pkrow.clone .n .cur { color: var(--muted); }
   .pkrow.env .num { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .pkrow.chat[data-state="clauding"] .st { color: var(--working); } .pkrow.chat[data-state="asking"] .st { color: var(--needs); } .pkrow.chat[data-state="ready"] .st { color: var(--idle); }
-  .pkrow .st { font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: .5px; color: var(--muted); }
-  .pkrow .num { color: var(--muted); font-size: 11px; }
+  .pkrow .st { font-weight: 700; text-transform: uppercase; font-size: var(--fs-2xs); letter-spacing: .5px; color: var(--muted); }
+  .pkrow .num { color: var(--muted); font-size: var(--fs-xs); }
   .pkrow .n.pending { font-weight: 400; color: var(--muted); font-style: italic; }
   .pkrow .pills { display: flex; gap: 5px; }
-  .pkrow .t { font-size: 11px; color: var(--muted); }
+  .pkrow .t { font-size: var(--fs-xs); color: var(--muted); }
   .pkrow.sel { background: color-mix(in srgb, var(--accent) 16%, transparent); }
   /* ⌥⌘N only: ✕ takes the row off the board's lists (2026-09-22). One more column on the rows that have it, and the
      button only inks itself on the row under the pointer or the selection — a column of crosses reads as a list of
      things to delete, which this is not. */
   .pkrow.hides { grid-template-columns: auto 1fr auto auto auto; }
-  .pkrow .pkx { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; line-height: 1; padding: 2px 5px; border-radius: 6px; cursor: pointer; opacity: 0; }
+  .pkrow .pkx { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-md); line-height: 1; padding: 2px 5px; border-radius: var(--r-3); cursor: pointer; opacity: 0; }
   .pkrow:hover .pkx, .pkrow.sel .pkx { opacity: .75; }
   .pkrow .pkx:hover { opacity: 1; color: var(--needs); background: var(--inline-bg); }
   /* ⌥⌘P, since the column went (2026-09-24): ✎ on a named project opens its editor, and ＋ new project closes the list,
      never filtered out — the two things the column's rows did that no key did. */
   .pkrow.named { grid-template-columns: auto 1fr auto auto auto; }
-  .pkrow .pked { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12px; line-height: 1; padding: 2px 5px; border-radius: 6px; cursor: pointer; opacity: 0; }
+  .pkrow .pked { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-sm); line-height: 1; padding: 2px 5px; border-radius: var(--r-3); cursor: pointer; opacity: 0; }
   .pkrow:hover .pked, .pkrow.sel .pked { opacity: .75; }
   .pkrow .pked:hover { opacity: 1; color: var(--ink); background: var(--inline-bg); }
   .pkrow.newproj .n { color: var(--accent); font-weight: 600; }
   /* ⌥⌘N / ⌥⌘O's chats step (2026-09-28): ✓ ticks a chat done, the card's ✓ in a row — in the row under the pointer
      or the selection only, as on the card. A column of its own on every row, filled or not, so the ages line up. */
   .pkrow.chat.ticks { grid-template-columns: auto 1fr auto auto auto 22px; }
-  .pkrow .pkdone { width: 22px; height: 20px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--ink); font: inherit; font-size: 15px; line-height: 1; cursor: pointer; opacity: 0; display: inline-grid; place-items: center; }
+  .pkrow .pkdone { width: 22px; height: 20px; padding: 0; border: 0; border-radius: var(--r-3); background: transparent; color: var(--ink); font: inherit; font-size: var(--fs-lg); line-height: 1; cursor: pointer; opacity: 0; display: inline-grid; place-items: center; }
   .pkrow:hover button.pkdone, .pkrow.sel button.pkdone, .pkrow button.pkdone:focus-visible { opacity: .7; }
   .pkrow button.pkdone:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
-  #picklist .none { padding: 12px; color: var(--muted); font-size: 12px; text-align: center; }
-  dialog h3 { margin: 0 0 10px; font-size: 15px; }
-  dialog p.help { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
-  dialog input[type=text], dialog textarea { font: inherit; font-size: 13px; width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--ink); }
-  dialog textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; min-height: 48px; resize: vertical; }
-  #pfolders { max-height: 38vh; overflow-y: auto; margin: 8px 0 10px; display: flex; flex-direction: column; gap: 3px; border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; }
-  #pfolders label { display: flex; gap: 7px; align-items: baseline; font-size: 12.5px; cursor: pointer; min-width: 0; }
-  #pfolders label span { color: var(--muted); font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-  #pfolders .none { color: var(--muted); font-size: 12px; }
+  #picklist .none { padding: 12px; color: var(--muted); font-size: var(--fs-sm); text-align: center; }
+  dialog h3 { margin: 0 0 10px; font-size: var(--fs-lg); }
+  dialog p.help { margin: 0 0 8px; font-size: var(--fs-sm); color: var(--muted); }
+  dialog input[type=text], dialog textarea { font: inherit; font-size: var(--fs-md); width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: var(--ink); }
+  dialog textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--fs-sm); min-height: 48px; resize: vertical; }
+  #pfolders { max-height: 38vh; overflow-y: auto; margin: 8px 0 10px; display: flex; flex-direction: column; gap: 3px; border: 1px solid var(--line); border-radius: var(--r-3); padding: 6px 8px; }
+  #pfolders label { display: flex; gap: 7px; align-items: baseline; font-size: var(--fs-md); cursor: pointer; min-width: 0; }
+  #pfolders label span { color: var(--muted); font-size: var(--fs-xs); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  #pfolders .none { color: var(--muted); font-size: var(--fs-sm); }
   .dfoot { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
   .dfoot .spacer { flex: 1; }
-  .dfoot .err { color: var(--needs); font-size: 12px; }
+  .dfoot .err { color: var(--needs); font-size: var(--fs-sm); }
   .dfoot .danger { color: var(--needs); }
 
   /* A count that rolls (rollIn, 2026-10-11): while it rolls, each digit a window one line tall onto a strip of 0–9 —

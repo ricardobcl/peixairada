@@ -252,6 +252,9 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   list's `pointermove`, its scroll and after `renderSessionList` (a card redrawn under a still pointer is a new node).
   With it on, hover keeps the rest glow (`.active` and `.qsel` keep theirs); off, hover spreads it as before. Not on
   the rail. → `scripts/scenarios/card-spot.mjs`.
+* **Type and corners are a scale** (2026-10-12): `--fs-2xs` 10 · `--fs-xs` 11 · `--fs-sm` 12 · `--fs-md` 13 · `--fs-base` 14
+  · `--fs-lg` 15 · `--fs-xl` 18 px, and `--r-1` … `--r-5` (3 · 4 · 6 · 10 · 14 px); a new rule takes one of them, a fit
+  that needs its own number (the rail's four-letter names) says why.
 * **Motion is a handful of tokens** (2026-10-11): `--ease-out`, `--spring` and `--spring-soft` on `:root` — the springs
   `linear()` curves of a damped oscillator — and `--t-hover`, the small controls' ease; the script's `EASE_OUT`,
   `SPRING`, `SPRING_SOFT` read them (`cssToken`). Something that settles eases out, something that arrives springs (the

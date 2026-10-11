@@ -99,6 +99,7 @@ export default async function (ctx) {
     const N = await ctx.evaluate(`(w => ({ top: 32, left: w / 2 - 92.5, right: w / 2 + 92.5 }))(innerWidth)`);
     await ctx.evaluate(`window.peixFill(true, ${JSON.stringify(N)})`);
     await ctx.waitFor(`!!document.querySelector('#chat.ncutp > .ncut')`, { what: 'the chat cut round the housing' });
+    await ctx.settle();   // the header's title laid round the housing first: read mid-way, it was a pixel past the line now and then
     out.cut = await ctx.evaluate(`(() => { const c = document.querySelector('#chat > .ncut'), r = c.getBoundingClientRect(); return { left: r.left, right: r.right, bottom: r.bottom, color: getComputedStyle(c).borderLeftColor, round: getComputedStyle(c).borderBottomLeftRadius + ' ' + getComputedStyle(c).borderBottomRightRadius, caps: [getComputedStyle(document.querySelector('#chat > .ncap.l')).borderTopRightRadius, getComputedStyle(document.querySelector('#chat > .ncap.r')).borderTopLeftRadius], h2: document.querySelector('#shead h2').getBoundingClientRect().right }; })()`);
     ctx.assert.deepEqual([out.cut.left, out.cut.right, out.cut.bottom], [N.left - 2, N.right + 2, N.top + 2], 'the border round the housing, no gap');
     ctx.assert.equal(out.cut.color, 'rgb(224, 93, 68)', 'in the chat’s colour');

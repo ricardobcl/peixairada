@@ -94,7 +94,9 @@ export default async function (ctx) {
   out.fan = await look(many.id);
   const f = out.fan.chips, box = out.fan.tprs;
   ctx.assert.equal(f[0].r, chips[0].r, 'the top chip stays where it was');
-  ctx.assert.deepEqual(f.map(c => c.l), f.map((_, i) => chips[0].l - (w + 5) * i), 'side by side, 5 px apart, leftwards');
+  // (a chip's width is fractional since the type scale, 2026-10-12, and the positions are read rounded: within a pixel)
+  const step = (f[0].l - f[f.length - 1].l) / (f.length - 1);
+  ctx.assert.ok(Math.abs(step - (w + 5)) <= 1 && f.every((c, i) => Math.abs(c.l - (chips[0].l - step * i)) <= 1), `side by side, 5 px apart, leftwards: ${f.map(c => c.l)} (a chip ${w} px)`);
   ctx.assert.ok(out.fan.scroll.over, `eight are more than the row holds: the fan scrolls (${box.w} px of ${(w + 5) * MANY.length})`);
   ctx.assert.equal(out.fan.repo, out.rest.repo, 'the folder\'s name keeps its width: the fan takes the free room only');
   ctx.assert.equal(out.fan.act, out.rest.act - (box.w - tprs.w), 'the ✓ moved left by what the fan took');
