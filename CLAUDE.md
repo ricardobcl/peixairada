@@ -317,7 +317,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   `--watch`, slowly, and can sit on a *ready* card — **its newest event on the card's live line**, each new one rolled
   in and the light blipping once (2026-10-11, `liveSlot`, `fillLive`, `liveSeen`; `blip` and `event` in `motion()`);
   **a clauding card's live line is the tool it called last** (the summary's `doing`, `doingOf` on the server: the
-  newest tool_use since your last word), flipping to the next like a split-flap board (`flap`). The line is an empty
+  newest tool_use since your last word; a path in it from the chat's folder, a long one its last two segments —
+  `pathTail`, the tiles' too), flipping to the next like a split-flap board (`flap`). The line is an empty
   slot in the markup, filled after the render — its memo in properties, since `data-at` is `fillAges`' — so an event or
   a tool call keeps the card's node; **asking** (`needs-input` while alive) has **no ring**: the card's
   border is red and **pings leave it** (2026-10-09, `@keyframes sonar`; it blinked before) — its `::before` and `::after`

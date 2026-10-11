@@ -24,6 +24,10 @@ the order they landed.
   search users* — the server's prefix (`claude_ai_`, `plugin_<pkg>_`) and the tool's repeat of the server dropped — in
   the transcript's rows (the raw name their tooltip), a folded run's summary (counted by that name), the card's live
   line and the tiles. A colon, not ·, which the summary already uses between its parts.
+* **L4 — a long path keeps its end** (`pathTail`): the live line cut `Read /private/tmp/claude-501/-Users-…` at its
+  end, the file name lost. Word by word: in the chat's folder a path is from there, under a home it starts at `~`, and
+  one still over 34 characters is `…/` and its last two segments. The card's live line and the tiles; the transcript's
+  rows keep the whole path, which is a link there.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 
