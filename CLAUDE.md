@@ -569,6 +569,9 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   every frame and once after — drawn once after the render, the splitter's colour and the open chat's light stood
   where the card had been until the next update; and the open card's own size is watched (`watchOpen`). A new
   animation that moves cards goes through `follow`. → the slide step of `scripts/scenarios/open-light.mjs`.
+* **An empty list is the fish** (2026-10-11): `drawCards`' empty markup is the home's fish at rest (`SWIM_FISH`, 2 px a
+  pixel, its tail still), what is empty in a word and the way to fill it (a query: Esc; the chips; ⌥⌘N) — a bubble from
+  its mouth now and then, from the bar's own interval. None of it on the rail but the words.
 * **The list's two ends count the cards out of sight**: `#sup` / `#sdown` (`.sedge`), over the list's grid cell (so
   `#slist` has a definite `grid-column`), a pill on a fog of `--bg`; a card is out of sight when its *middle* is past
   the edge (`drawEdges`, by `offsetTop`, hence `#slist { position: relative }`). A dot: red when one out there is

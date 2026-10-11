@@ -132,5 +132,13 @@ export default async function (ctx) {
   // ---- 21 · the fish in the status bar: nothing at work, it rests in its lane ----
   out.swim = await ctx.evaluate(`(l => l && { rest: l.classList.contains('rest'), fish: !!l.querySelector('svg.swimmer .ft'), inLane: (r => r.left >= l.getBoundingClientRect().left - 1 && r.right <= l.getBoundingClientRect().right + 1)(l.querySelector('svg').getBoundingClientRect()) })(document.querySelector('#sbSwim'))`);
   ctx.assert.deepEqual(out.swim, { rest: true, fish: true, inLane: true }, 'resting, in the lane');
+
+  // ---- 22 · an empty list is the fish, resting, and the way to fill it ----
+  await ctx.fill('#q', 'zzqqxx');
+  await ctx.waitFor(`!!document.querySelector('#slist > .none .nfish svg')`, { what: 'the empty list\'s fish' });
+  out.empty = await ctx.evaluate(`[...document.querySelectorAll('#slist > .none > b, #slist > .none > span:not(.nfish)')].map(e => e.textContent)`);
+  ctx.assert.deepEqual(out.empty, ['Nothing matches', 'another word, or Esc for every chat']);
+  await ctx.fill('#q', '');
+  await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 2`, { what: 'the cards back' });
   return out;
 }

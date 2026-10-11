@@ -502,7 +502,13 @@
      before, two hairlines for an hour). */
   .gsep.day { text-align: center; }
   .gsep.day b { font-weight: 700; color: var(--muted); }
-  #slist .none { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 0; }
+  #slist .none { color: var(--muted); font-size: 12px; text-align: center; padding: 30px 0; display: grid; justify-items: center; gap: 4px; }
+  #slist .none b { color: var(--ink); font-weight: 600; font-size: 12.5px; }
+  #slist .none .nfish { position: relative; margin-bottom: 6px; }
+  #slist .none .nfish svg { display: block; opacity: .85; }
+  #slist .none .nfish .b { fill: var(--accent); } #slist .none .nfish .s { fill: color-mix(in srgb, var(--accent) 60%, #000); } #slist .none .nfish .e { fill: var(--bg); }
+  #slist .none .bub { position: absolute; width: 5px; height: 5px; border-radius: 50%; border: 1px solid var(--muted); pointer-events: none; }
+  main.scompact #slist .none .nfish, main.scompact #slist .none b + span { display: none; }
   /* ---- the chat list's timeline: its days, down the left edge ---- */
   /* (2026-09-25; pared down 2026-09-26) A slim rail down the far left of the list, beside its coloured edge, the list
      in miniature: at rest the thumb alone, an orange pill where the window is — an overlay scrollbar, on the left.
@@ -2715,7 +2721,12 @@
     swim.anim.updatePlaybackRate([0, 1, 1.35, 1.9, 2.3][Math.min(n, 4)] + Math.max(0, n - 4) * .45);
     swim.anim.play(); noteMotion(null, 'swim', n);
   }
-  setInterval(() => {   // resting, a bubble now and then
+  setInterval(() => {   // resting, a bubble now and then — and the empty list's fish (renderSessionList), from its mouth
+    const nf = !document.hidden && !REDUCED.matches && document.querySelector('#slist > .none .nfish');
+    if (nf && Math.random() < .5) {
+      const b = document.createElement('i'); b.className = 'bub'; b.style.left = '3px'; b.style.top = '8px'; nf.append(b);
+      b.animate([{ transform: 'translate(0, 0) scale(.5)', opacity: 0 }, { opacity: .9, offset: .15 }, { transform: 'translate(-6px, -18px) scale(1)', opacity: 0 }], { duration: 1600, easing: 'ease-out', fill: 'forwards' }).onfinish = () => b.remove();
+    }
     const lane = $('#sbSwim'); if (document.hidden || !lane?.classList.contains('rest') || REDUCED.matches || $('#sbar').hidden) return;
     const f = lane.firstChild, r = f.getBoundingClientRect(), l = lane.getBoundingClientRect(), b = document.createElement('i');
     b.className = 'bub'; b.style.left = `${r.left - l.left + 2}px`; b.style.top = `${r.top - l.top + 3}px`; lane.append(b);
@@ -3161,7 +3172,10 @@
     const items = [];
     shown.forEach((s, i) => { const d = dividerBefore(i), a = dayAfter(i); if (i === zeroAt) items.push({ html: ZERO_HTML }); if (d) items.push({ html: d }); items.push({ id: s.id, html: cardHtml(s, p, q) }); if (a) items.push({ html: a }); });
     if (zeroAt === shown.length) items.push({ html: ZERO_HTML });
-    drawCards(items, `<div class="none">${q ? 'Nothing matches' : !prefs.filters.length ? 'Every state is switched off — turn a chip back on' : prefs.filters.length < FILTERS.length ? 'Nothing here' : 'No chats yet — ⌥⌘N starts one'}</div>`);
+    // An empty list (2026-10-11) is the home's fish, resting, over what is empty and the key that fills it — a bubble
+    // now and then (the bar's own interval), nothing else moving.
+    const [none, how] = q ? ['Nothing matches', 'another word, or Esc for every chat'] : !prefs.filters.length ? ['Every state is switched off', 'turn a chip back on'] : prefs.filters.length < FILTERS.length ? [`Nothing ${FILTERS.filter(([k]) => filterOn(k)).map(([, w]) => w).join(' or ')}`, 'the chips below show the rest'] : ['No chats yet', '⌥⌘N starts one'];
+    drawCards(items, `<div class="none"><span class="nfish">${SWIM_FISH.replace('class="swimmer"', 'class="restfish"').replace('width="26" height="11"', 'width="52" height="22"')}</span><b>${esc(none)}</b><span>${esc(how)}</span></div>`);
     fillAges($('#slist')); fillLive($('#slist'));
     caughtUp(zeroAt >= 0);
     phaseAnims();

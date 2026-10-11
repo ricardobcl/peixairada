@@ -118,6 +118,9 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   each clauding chat and each of its sub-agents — and rests, blowing a bubble now and then, when nothing is. The pace
   is the swim's playback rate, changed in place, so the fish never jumps when the count does; its lane is a slot of its
   own, so the bar's redraws never restart it. A click opens the overview: the fish *is* the agents at work.
+* **22 · empty, with a fish**: a list with nothing in it said so in grey; it shows the fish resting now, what is empty
+  (*Nothing matches*, *Nothing clauding*, *No chats yet*) and the key or the gesture that fills it. It barely moves — a
+  bubble now and then — because nothing is running.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 
