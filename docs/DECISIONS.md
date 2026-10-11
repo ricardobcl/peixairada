@@ -90,6 +90,11 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   whole. It can still arrive the way a streamed one reads: when it lands while you are at the end of the log, its
   paragraphs, code and lists come up one after another, 45 ms apart, out of a slight blur. Scrolled up, it fades in as
   before and lights the pill: nobody is watching it arrive.
+* **16 · the title travels**: a card clicked open sends its title up into the header, where the chat's name now lives,
+  as the header's colour eases from the last chat's to this one's. A copy flies rather than the element itself — the
+  header is drawn by markup and the card stays where it is — on one line, scaled from the card's size to the header's.
+  The study named the View Transitions API; a hand-made FLIP needed no snapshot of the page, which the app's native pane
+  (its web views over the chat column) could not be part of anyway. A click only: ⌥⌘↑↓ is a key's move, and instant.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 

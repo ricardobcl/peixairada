@@ -538,6 +538,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   something else in view, a still lane head says so where the Ready lane goes (before the done cards) — the pixel mark
   at rest, in the ready green; reached from a ✓ within 3 s (`lastTickAt`) its mark hops and throws pixel sparks, once.
   None under a query. → `scripts/scenarios/day-separator.mjs`, the caught-up section of `small-motions.mjs`.
+* **A card clicked open sends its title into the header** (2026-10-11, `flyFrom`, `flyTitle`): a copy on one line
+  (`.flytitle`, fixed, over everything) from the card's title to `#shead h2 .t`, translated and scaled from the card's
+  size to the header's while the header's own waits at opacity 0; `fly` in `motion()`. The card's click handler only —
+  never a key, a picker or the chat already open.
 * **A chat opened from elsewhere is located** (2026-10-11, `openSession(id, { locate: true })`, `locateCard`): from
   ⌥⌘K and the chats step, the launcher, a notification, the address (a deep link, the app's notifications), the
   overview, a tile and the home, its card is scrolled to and a band of its light sweeps across it once (`.card > .loc`,

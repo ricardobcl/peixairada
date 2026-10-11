@@ -105,5 +105,18 @@ export default async function (ctx) {
   ctx.assert.equal(out.located.ids.length, 1, 'one flash');
   ctx.assert.equal(out.located.ids[0], out.located.current, 'on the chat it opened');
   await ctx.waitFor(`document.querySelectorAll('#slist .loc').length === 0`, { what: 'the sweep gone', timeout: 4000 });
+
+  // ---- 16 · the title travels: a card clicked open sends its title into the header; ⌥⌘↓ does not ----
+  const other = (await ctx.evaluate(`window.peix.state().current`)) === one.id ? two : one;
+  const p16 = await ctx.evaluate(at(`#slist > .card[data-id="${other.id}"] .title`));
+  const m16 = await ctx.evaluate(`window.peix.motion().length`);
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: p16.x, y: p16.y });
+  await mouse('mousePressed', p16); await mouse('mouseReleased', p16);
+  out.fly = await ctx.evaluate(`({ fly: document.querySelector('.flytitle')?.textContent, hidden: document.querySelector('#shead h2 .t')?.style.opacity, head: document.querySelector('#shead h2 .t')?.textContent })`);
+  ctx.assert.equal(out.fly.fly, out.fly.head, 'a copy of the title on its way to the header');
+  ctx.assert.equal(out.fly.hidden, '0', 'the header\'s own waits');
+  await ctx.waitFor(`!document.querySelector('.flytitle') && document.querySelector('#shead h2 .t')?.style.opacity === ''`, { what: 'the title landed', timeout: 4000 });
+  await ctx.key('ArrowDown'); await ctx.settle();
+  ctx.assert.equal((await ctx.evaluate(`window.peix.motion().slice(${m16})`)).filter(m => m.kind === 'fly').length, 1, 'a key flies nothing');
   return out;
 }
