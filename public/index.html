@@ -1666,10 +1666,18 @@
      ALL the open chat's), faint, and whole on the panel the keys are in ---- */
   :root { --tile-line: color-mix(in srgb, var(--ink) 16%, var(--bg)); --tile-grey: color-mix(in srgb, var(--ink) 74%, var(--bg)); }
   /* the wallpaper in the hue of the project in view — the open chat's, else the list's, else the theme's accent (tileTints);
-     registered, so a change of chat eases it, and not inherited: the body alone reads it */
-  @property --wallc { syntax: '<color>'; inherits: false; initial-value: transparent; }
-  body { --wallc: var(--accent); transition: --wallc .25s; }
-  body:has(main.tiles) { background: var(--grain), radial-gradient(110% 80% at 88% 6%, color-mix(in srgb, var(--wallc) 34%, var(--bg)), transparent 58%), radial-gradient(90% 70% at 8% 96%, color-mix(in srgb, var(--wallc) 20%, var(--bg)), transparent 62%), var(--bg); }
+     registered, so a change of chat eases it. A fixed layer under the board (#wall, the body's ground before), so that
+     its bright glow can be a layer of its own: #wall i, the glow's ellipse as the body's gradient drew it (110 % × 80 %
+     of the window to transparent at 58 %, so 127.6vw × 92.8vh), centred on its own origin and put at 88 % 6 % by a
+     transform — and moved after the pointer by one (2026-10-11, late night; prefs.wallFollow, wallFollow): the compositor's,
+     so a move repaints nothing. The grain over both, still. */
+  @property --wallc { syntax: '<color>'; inherits: true; initial-value: transparent; }
+  #wall { display: none; }
+  body:has(main.tiles) #wall { display: block; position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; --wallc: var(--accent); transition: --wallc .25s;
+    background: radial-gradient(90% 70% at 8% 96%, color-mix(in srgb, var(--wallc) 20%, var(--bg)), transparent 62%), var(--bg); }
+  #wall::after { content: ''; position: absolute; inset: 0; background: var(--grain); }
+  #wall i { position: absolute; left: 0; top: 0; width: 127.6vw; height: 92.8vh; margin: -46.4vh 0 0 -63.8vw; will-change: transform;
+    background: radial-gradient(closest-side, color-mix(in srgb, var(--wallc) 34%, var(--bg)), transparent); transform: translate(88vw, 6vh); transition: transform 1.1s var(--ease-out); }
   main.tiles { padding: 8px 8px 0; }
   main.tiles #splitter { width: 8px; background: transparent; }
   main.tiles #splitter::before, main.tiles #splitter::after { display: none; }
@@ -1994,6 +2002,7 @@
   :root[data-colors="simple"] .pc { color: var(--bg); }
 
   @media (prefers-reduced-motion: reduce) {
+    #wall i { transition: none; }   /* the wallpaper's glow stays in its corner (wallOn) */
     .card.working::before, .card.watching::before { animation: none; background: var(--lit); }
     :root[data-light="edge"] .card:is(.working, .watching)::before { height: 100%; filter: none; }   /* the edge steady in the light, as the ring's band is */
     #trail { background: var(--lit); }   /* no comet under it (drawTrail makes none): the band steady in the light's colour */
@@ -2049,6 +2058,7 @@
 </style>
 </head>
 <body>
+<div id="wall" aria-hidden="true"><i></i></div>
 <main id="main">
   <section id="sessions">
     <div class="colhead" id="shd"><span class="brand" id="brandBtn" title="About peixAIrada" role="button"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g class="fishg"><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g></g><g class="stars" fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" autocomplete="off" spellcheck="false" hidden></span></div>
@@ -2104,6 +2114,7 @@
     <label class="opt" title="On, a strip at the window's foot says what the machine is doing — the connection, the chats clauding and asking, the drawers and shells and monitors, the plan usage and whether the Mac is kept awake; the list's foot keeps only its filters"><input type="checkbox" id="sbarOn" checked><span><b>status bar</b> — the search, the chats, the faces, the plan usage and keeping the Mac awake at the window's foot; off, they go back under the list and into the chat header</span></label>
     <div class="opt sub sbstats" id="sbarStats" title="What else the status bar says — asked of the Mac every 3 s while shown"><span><b>also</b></span><label><input type="checkbox" data-stat="cpu"> CPU</label><label><input type="checkbox" data-stat="mem"> memory</label><label><input type="checkbox" data-stat="claude"> Claude's memory</label></div>
     <label class="opt" title="On, the panels are tiles, Hyprland's way: gaps over a wallpaper, each bordered in its project's colour, whole on the one the keys are in — and, with the stack, beside the open chat up to three tiles of the chats of the list that are asking or clauding, each its drawer drawn small or its last tool calls, a click making one the chat"><input type="checkbox" id="tilesOn"><span><b>tiles</b> — the chats asking or clauding stacked beside the open one, as Hyprland tiles windows</span></label>
+    <label class="opt sub" id="wallFollowRow" title="The wallpaper's bright glow, behind the tiles, eases after the pointer wherever it goes on the board and stays where it left it; off, it stays in its corner"><input type="checkbox" id="wallFollow"><span><b>the glow follows the pointer</b> — the wallpaper's light behind the tiles</span></label>
     <label class="opt sub" id="tileStackRow" title="The third column: up to three tiles of the chats asking or clauding, beside the open one — off, tiles are the look alone (⌥⌘S puts it in and out of view)"><input type="checkbox" id="tileStackOn"><span><b>the stack</b> — the chats asking or clauding beside the open one · ⌥⌘S</span></label>
     <label class="opt" title="On, the chat header is a bar inset from the window's edges, rounded and shadowed; off, it runs edge to edge as before"><input type="checkbox" id="headFloat"><span><b>floating header</b> — the chat header as a rounded bar inset from the edges</span></label>
     <label class="opt" title="A soft tick when a reply lands, two notes when a chat asks you — only while the board is the window in front (behind it, the system's notification has its own sound)"><input type="checkbox" id="soundsOn"><span><b>sounds</b> — a tick for a reply, two notes for a question, while the board is in front</span></label>
@@ -2266,7 +2277,7 @@
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map() };
-  const prefs = { project: 'all', lanesShut: ['done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, changesScope: 'turn', skinDark: null, skinLight: null, skinExact: false };
+  const prefs = { project: 'all', lanesShut: ['done'], sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'large', ringsInStep: true, optMeta: true, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', skinDark: null, skinLight: null, skinExact: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // keys from the lane board (before 2026-09-19): harmless, but no reason to carry them
   for (const k of ['groupByRepo', 'compact', 'chatVisible', 'chatSide', 'chatWidth', 'collapsed', 'repoCollapsed', 'tight', 'showTools']) delete prefs[k];
@@ -2761,7 +2772,7 @@
     if (!p) return; tileTints.p = p;
     const chat = tintChat.color, own = p.key === ALL ? null : projColor(p), wall = chat || own;
     $('#sessions').style.setProperty('--tile-edge', tileEdge(p.key === ALL ? chat || projColor(p) : own));
-    document.body.style.setProperty('--wallc', wall ? tileEdge(wall) : 'var(--accent)');
+    $('#wall').style.setProperty('--wallc', wall ? tileEdge(wall) : 'var(--accent)');
   }
   const folderName = cwd => cwd ? cwd.split('/').filter(Boolean).pop() || cwd : '(no folder)';
   // What the cog's setup says of a project, by the name the board shows — so a worktree or a second checkout of it is
@@ -4446,7 +4457,7 @@
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
   const SWITCHES = [['notifyOn', 'Notifications'], ['simpleColors', 'Simple colours'], ['skinExact', 'Exact project colours under a theme'], ['ringsInStep', 'Rings in step'],
-    ['edgeLight', 'Edge light'], ['cardSpot', 'Light under the pointer'], ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['tileStackOn', 'Tiles: the stack'], ['headFloat', 'Floating header'], ['soundsOn', 'Sounds'], ['autoResume', 'Auto-resume'], ['optMeta', '⌥ is Meta in the terminal']];
+    ['edgeLight', 'Edge light'], ['cardSpot', 'Light under the pointer'], ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['tileStackOn', 'Tiles: the stack'], ['wallFollow', 'Tiles: the glow follows the pointer'], ['headFloat', 'Floating header'], ['soundsOn', 'Sounds'], ['autoResume', 'Auto-resume'], ['optMeta', '⌥ is Meta in the terminal']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
     { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },
@@ -6586,6 +6597,7 @@
   function applyTiles() {
     $('#main').classList.toggle('tiles', !!prefs.tiles); $('#tilesOn').checked = !!prefs.tiles;
     $('#tileStackOn').checked = !!prefs.tileStack; $('#tileStackRow').hidden = !prefs.tiles;
+    $('#wallFollow').checked = !!prefs.wallFollow; $('#wallFollowRow').hidden = !prefs.tiles; wallGo();
     tilesOn = !!prefs.tiles; stackOn = tilesOn && !!prefs.tileStack;
     if (!stackOn) { $('#stack').hidden = true; sweepMinis(stackMinis, true); stackTiles.clear(); $('#stack').innerHTML = ''; clearInterval(stackTimer); stackTimer = 0; }
     else renderStack();
@@ -6623,6 +6635,15 @@
     const t = e.target.closest('.stile'); if (t) openSession(t.dataset.id, { locate: true });
   });
   $('#tilesOn').addEventListener('change', e => { prefs.tiles = e.target.checked; savePrefs(); applyTiles(); });
+  $('#wallFollow').addEventListener('change', e => { prefs.wallFollow = e.target.checked; savePrefs(); wallGo(); });
+  // The wallpaper's glow after the pointer (2026-10-11, late night): its place, once a frame, from every pointer move on the
+  // board, and the transition eases it there — a lag that reads as light under glass. It stays where the pointer left
+  // the page (into the pane, out of the window); the switch off, under reduced motion or without tiles, it is back in
+  // its corner. `wallGo()` with no move puts it where it should be now.
+  let wallAt = null, wallRaf = 0;
+  const wallOn = () => tilesOn && !!prefs.wallFollow && !REDUCED.matches;
+  function wallGo() { wallRaf = 0; $('#wall i').style.transform = wallOn() && wallAt ? `translate(${wallAt.x}px, ${wallAt.y}px)` : ''; }
+  document.addEventListener('pointermove', e => { if (!wallOn()) return; wallAt = { x: e.clientX, y: e.clientY }; wallRaf ||= requestAnimationFrame(wallGo); }, { passive: true });
   $('#tileStackOn').addEventListener('change', e => { prefs.tileStack = e.target.checked; if (prefs.tileStack) prefs.tiles = true; savePrefs(); applyTiles(); });   // the launcher's row, with tiles off: the stack is theirs
   /** ⌥⌘S (2026-10-10): the stack in and out of view, as Omarchy's SUPER+S does its scratchpad — with tiles off, tiles on
    *  and the stack with them, since the stack is theirs. Not forwarded from the app's pane: VS Code Web's Save All. */

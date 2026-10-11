@@ -5,11 +5,12 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
-## Decisions of 2026-10-11, late night, after — rings in step in the app; a 24-hour clock; the title under the housing
+## Decisions of 2026-10-11, late night, after — rings in step in the app; a 24-hour clock; the title under the housing; the wallpaper's glow follows the pointer
 
 Ricardo: "the "rings in step" seems to not be working"; "I want 24H format in status bar"; "now that we have a
 floating header, seems like we have just about the space to have the tile always on the left and if it goes to the
-middle where the notch is, they do intersect? if they do, just try to lower a couple pixels until they don't collide".
+middle where the notch is, they do intersect? if they do, just try to lower a couple pixels until they don't collide";
+"the background glow behind the tiles could move with the cursor".
 
 * **The switch worked in Chrome and nowhere else.** `phaseAnims` set each ring's `startTime` (0, or a time hashed from
   the chat's id); the script read it back, the harness's Chrome drew it, and `card-signals` passed. In a `WKWebView` —
@@ -36,6 +37,13 @@ middle where the notch is, they do intersect? if they do, just try to lower a co
   lower it alike and the header does not hop between them. Without tiles the header sits 10 px higher (no gap above
   it) and would want 14 px — not a couple — so there the title jumps as before (`HEAD_DROP_MAX`, 8). The chips stay
   right of the housing: the h2 reaches its far side at least.
+* **The wallpaper's bright glow follows the pointer**, eased (1.1 s on `--ease-out`, retargeted every frame, so it
+  trails like light under glass) and left where the pointer leaves the page. The glow was a gradient on the body's
+  ground; moving that would repaint the window under the board on every move, so the wallpaper became a fixed layer of
+  its own (`#wall`) and the glow a child of it moved by a transform — the compositor's. Its size and colour are what
+  they were, so at rest nothing changed; it shows only in the tiles' gaps, so the effect is the gaps near the pointer
+  lighting. A switch under tiles (*the glow follows the pointer*, on), as the board's looks are; still under reduced
+  motion.
 
 ## Decisions of 2026-10-11, late night, last — the header's black fades in smoothly (Round V, S8)
 

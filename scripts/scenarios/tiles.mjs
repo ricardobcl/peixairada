@@ -6,7 +6,8 @@
 // asking and clauding chats, asking first, never the open one: the one in a drawer as its screen drawn small (the prompt
 // typed there in it), the other as its tail (the command running); the border follows a press into the list; a click on
 // a tile makes it the chat and the one left joins the stack. The stack is a switch of its own and ⌥⌘S, off to begin with
-// (tiles are the look alone), and the × on its first tile hides it; off, the stack and the gaps go.
+// (tiles are the look alone), and the × on its first tile hides it; off, the stack and the gaps go. The wallpaper's glow
+// eases after the pointer (2026-10-11, late night), a transform, and its switch off puts it back in its corner.
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { makeFixture, toolLines } from '../fixture.mjs';
@@ -67,13 +68,30 @@ export default async function (ctx) {
     await paint('#e05d44');
     await ctx.waitFor(`getComputedStyle(document.querySelector('#chat')).getPropertyValue('--tile-edge').trim() === '#e05d44'`, { what: 'the chat’s border in its colour' });
     ctx.assert.equal(await border('#sessions'), 'rgb(224, 93, 68)', 'the list on ALL, with the keys: the open chat’s colour');
-    const wall = `getComputedStyle(document.body).getPropertyValue('--wallc').trim()`;
+    const wall = `getComputedStyle(document.querySelector('#wall')).getPropertyValue('--wallc').trim()`;
     await ctx.waitFor(`${wall} === 'rgb(224, 93, 68)'`, { what: 'the wallpaper in the chat’s hue' });
     const faint = await border('#chat');
     ctx.assert.notEqual(faint, 'rgb(224, 93, 68)', 'the chat without the keys: its colour, faint');
     await ctx.evaluate(`document.querySelector('#chat').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))`);
     ctx.assert.equal(await border('#chat'), 'rgb(224, 93, 68)', 'with the keys: its colour, whole');
     await ctx.settle(); await ctx.shot('tiles');
+
+    // the wallpaper's glow after the pointer, by a transform (its own layer: nothing repaints), then back to its corner
+    const glow = `(() => { const m = new DOMMatrix(getComputedStyle(document.querySelector('#wall i')).transform); return [Math.round(m.e), Math.round(m.f)]; })()`;
+    const rest = await ctx.evaluate(glow), vw = await ctx.evaluate(`[innerWidth, innerHeight]`);
+    ctx.assert.deepEqual(rest, [Math.round(vw[0] * .88), Math.round(vw[1] * .06)], 'the glow in its corner, 88 % 6 %, as the body drew it');
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 300, y: 500 });
+    await ctx.waitFor(`document.querySelector('#wall i').style.transform === 'translate(300px, 500px)'`, { what: 'the glow sent after the pointer' });
+    await ctx.sleep(250); out.glowMid = await ctx.evaluate(glow);
+    ctx.assert.ok(out.glowMid[0] < rest[0] && out.glowMid[0] > 300, `it eases there, not jumps: ${out.glowMid}`);
+    await ctx.waitFor(`${glow}.join() === '300,500'`, { what: 'the glow under the pointer', timeout: 4000 });
+    ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#wall i')).transitionProperty`), 'transform', 'a transform, eased');
+    await ctx.evaluate(`document.querySelector('#wallFollow').click()`);
+    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#wall i').style.transform`), '', 'its switch off: back to its corner');
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 600, y: 300 });
+    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#wall i').style.transform`), '', 'and it stays there');
+    await ctx.evaluate(`document.querySelector('#wallFollow').click()`);
+    ctx.assert.equal(await ctx.evaluate(`window.peix.prefs().wallFollow`), true, 'a pref');
 
     // at the notch the chat is cut round the housing, hugging it (2026-10-11, later; the gap away before), its border round
     // the cut and its title clear of it;

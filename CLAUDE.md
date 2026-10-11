@@ -721,7 +721,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   and which are for good, the PRs taken off a chat, named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, PR
   turns; `STATE_FILE` overrides) and the user's `~/.config/peixairada/config.json` (the setup, below), both shared by
   the app and every browser; the browser's `localStorage` `peixairada-prefs`
-  (selected project, the lanes folded, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the theme for each appearance, the tiles and their stack, the changes tab's scope, the person the list is narrowed to, ⌥ as Meta, auto-resume, the edge light, the light under the pointer, the floating header, sounds, the status bar and what it adds, the faces folded, drawer open/height — the keys are the `prefs` literal,
+  (selected project, the lanes folded, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the theme for each appearance, the tiles, their stack and their glow, the changes tab's scope, the person the list is narrowed to, ⌥ as Meta, auto-resume, the edge light, the light under the pointer, the floating header, sounds, the status bar and what it adds, the faces folded, drawer open/height — the keys are the `prefs` literal,
   and old ones are deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it
   renders reads its state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
 * **The setup is the user's file, and nothing about one Mac is written in the code** (2026-09-28; the file since
@@ -972,8 +972,13 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   that reads on the ground; none `--nocolor`) — 30 % of it into `--tile-line`, and **whole on the panel the keys are in**
   (`.kf`, from a press or a focus inside it: the list, the chat or a tile; Omarchy's gradient border until the same
   evening). **The list on ALL, no project's, wears the open chat's colour**, and **the wallpaper is in that hue**
-  (`--wallc` on the body, registered and eased: the chat column's colour, else the list's project's, else the accent —
-  `tileTints`, from `renderSessionList` and `tintChat`). **At the notch a panel the housing reaches is cut round it**,
+  (`--wallc` on `#wall`, registered and eased: the chat column's colour, else the list's project's, else the accent —
+  `tileTints`, from `renderSessionList` and `tintChat`). **Its bright glow eases after the pointer** (2026-10-11, late
+  night; *the glow follows the pointer* under the tiles' switch, `prefs.wallFollow`, on): the wallpaper is `#wall`, a
+  fixed layer under the board (the body's ground before), and its glow `#wall i`, the same ellipse, a layer of its own
+  moved by a transform — `wallGo`, once a frame from the document's `pointermove`, the `transition` easing it — so a
+  move repaints nothing; it stays where the pointer left the page, and off, under reduced motion or without tiles it
+  is in its corner (88 % 6 %). **At the notch a panel the housing reaches is cut round it**,
   hugging it (2026-10-11, later; the tiles' gap away before), its border running round the cut (`tileNotch`, from
   `layoutNotch` and `renderStack`: the panel's `clip-path` is the hole — the housing's own shape, its lower corners
   `HOUSING_R`, 9 px by eye, the system does not say it —, `.ncut` the border's three sides, concentric with it, its
