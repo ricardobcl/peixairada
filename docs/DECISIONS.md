@@ -141,6 +141,13 @@ the order they landed.
 * **P2 — the menu bar's menu lists what wants you, and what is at work**: *Asking you*, *Your move* (each chat with a
   PR at your move, the newest move's PR before its title), *New replies* and *Clauding*, a section each, twelve rows at
   most, each opening its chat; only the first and third are counted on the icon.
+* **P1 — a notification can be answered where it shows**: the app's banners carry a category. A reply on a chat whose
+  drawer runs here: *Reply…* (a text box; what is typed goes into the chat's Claude), *Done* and *In 15 minutes*; a
+  reply elsewhere: *Done* and *In 15 minutes*; a question or a PR's turn: *In 15 minutes* alone — a ✓ ends the chat's
+  processes, and a question is Claude waiting, so it is not ticked from a banner. Reply… and Done go through the page
+  (`peixReply`: the drawer over the page's socket to it when the chat is open, else one opened for the reply and closed,
+  which sends no size; `peixDone`: the card's own tick, where the card offers one); the snooze is the same banner again
+  fifteen minutes later. A question's answers are not buttons: the transcript has them only once answered.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

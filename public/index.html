@@ -7896,6 +7896,19 @@ const toolName = n => {
   document.addEventListener('dragleave', e => { if (hasFiles(e) && !e.relatedTarget) setDropping(false); });
   document.addEventListener('drop', async e => { if (!hasFiles(e)) return; e.preventDefault(); setDropping(false); attachPaths(await uploadFiles([...e.dataTransfer.files])); });
   window.peixDrop = paths => attachPaths(Array.isArray(paths) ? paths : []);   // the Mac app, with real paths
+  // A notification answered where it shows (the app's, 2026-10-12): Done is the card's ✓ (offered only where the card
+  // offers it), a reply is typed into the chat's Claude in its drawer here — over the page's own socket to it when the
+  // chat is open, else one opened for the reply and closed after it, which sends no size, so the drawer is not resized.
+  window.peixDone = id => { const s = state.sessions.get(id); if (s && !s.done && canTick(s)) tickDone(id, true, $('#shead')); };
+  window.peixReply = async (id, text) => {
+    const s = state.sessions.get(id), d = s && drawerOf(s), body = String(text || '').replace(/\r?\n/g, '\x1b\r'); if (!d || !body) return false;
+    const tm = claudeTm(s); if (tm) { termSend(tm, body); setTimeout(() => termSend(tm, '\r'), 60); return true; }
+    const ws = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${d.id}/ws`);
+    return new Promise(res => {
+      ws.onopen = () => { ws.send(JSON.stringify({ t: 'in', d: body })); setTimeout(() => { ws.send(JSON.stringify({ t: 'in', d: '\r' })); setTimeout(() => { ws.close(); res(true); }, 200); }, 80); };
+      ws.onerror = () => res(false);
+    });
+  };
   window.peixDragging = on => setDropping(!!on);
   const pastedFiles = e => [...(e.clipboardData?.files || [])];
   for (const tm of terms) $(tm.el.tbody).addEventListener('paste', e => {   // capture, so xterm's own paste (the text, a file's name) does not run
@@ -8266,7 +8279,7 @@ const toolName = n => {
     // the badge that just came, or grew, pops in — a one-shot on the node the render made
     const badge = a.sessionId && !viewing && !REDUCED.matches && document.querySelector(`#slist > .card[data-id="${a.sessionId}"] .badge`);
     if (badge) { noteMotion(a.sessionId, 'pop'); badge.animate([{ transform: 'scale(.5)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 380, easing: SPRING, id: 'pop' }); }
-    if (inApp) post({ type: 'alert', kind: a.kind, heading: a.heading || '', project: a.project || '', title: a.title || '', snippet: a.snippet || '', sessionId: a.sessionId || '', serverNotify: !!state.serverNotify, quiet: !!a.quiet });   // the app posts the banner and counts the Dock's badge
+    if (inApp) post({ type: 'alert', kind: a.kind, heading: a.heading || '', project: a.project || '', title: a.title || '', snippet: a.snippet || '', sessionId: a.sessionId || '', serverNotify: !!state.serverNotify, quiet: !!a.quiet, drawer: !!(a.sessionId && state.sessions.get(a.sessionId) && drawerOf(state.sessions.get(a.sessionId))) });   // drawer: the banner can take a reply (2026-10-12)   // the app posts the banner and counts the Dock's badge
     if (a.quiet) return;   // notifications off (the cog): the unread count above, nothing else
     if ('Notification' in window && Notification.permission === 'granted' && !viewing) {
       const n = new Notification(a.heading || `${a.kind === 'reply' ? 'Claude replied' : 'Claude is asking you'} · ${a.project}`, { body: `${a.title}\n${a.snippet || ''}`, tag: a.sessionId || 'test' });

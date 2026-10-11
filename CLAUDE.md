@@ -973,6 +973,12 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   the window, the halves' divider to even halves (both within `SNAP_PX`), a tab dropped into the other half
   (`moveTab`), the timeline's thumb crossing a run (`tlScrub`). Only under a hand on a Force Touch trackpad — the page
   says when, never whether; in a browser it is a `haptic:<kind>` in `motion()` and nothing else.
+* **A notification can be answered where it shows** (2026-10-12): the app's carry a category — a reply on a chat
+  with a drawer here *Reply… · Done · In 15 minutes*, one elsewhere *Done · In 15 minutes*, a question or a PR's turn
+  *In 15 minutes* alone (a ✓ ends the chat's processes; a question is Claude waiting). Reply… and Done go to the page
+  (`window.peixReply` — the chat's drawer over the page's own socket, else one opened for it, which sends no size;
+  `window.peixDone` — `tickDone`, where `canTick`); the snooze is the same alert again, by the system's clock. The page
+  says whether a drawer runs here on the alert it posts (`drawer`). → `scripts/scenarios/notify-actions.mjs`.
 * **Both web views are inspectable** (main.swift sets it): Safari → Develop reaches the real app.
 * **The app's server lifecycle** (`ServerController`, main-thread throughout): `start` adopts a server already
   answering, waits for the launchd agent when its plist is installed, else runs the bundled one — one at a time,
@@ -1314,11 +1320,11 @@ overlap, lone digits were all invisible in the code and obvious on screen. Look 
   scroll-driven ones, which run as long as the list can scroll — and for a pending draw. `ctx`: `evaluate`, `waitFor`, `send`, `reload`,
   `sleep`, `shot(label)`, `key(code)`, `cmd(code)` (a plain ⌘), `openChat(id)`, `screen(g)`, `waitPrompt(ms, g)`,
   `type(text, g)` (the drawer's keyboard), `fill(selector, text)` (a box on the page), `drag(from, to, mid)`,
-  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The sixty-four in
+  `peix(expr)`, `server.api/post/terminals/restart/logText`, `fixture.chats`, `assert`. The sixty-five in
   `scripts/scenarios/` are the regression checks for the drawer (a chat switched to with it open, and a new one under the floating header, too), the hotkeys, the tab strip and the split, the new-chat
   flow, the project step, the chat list's rules, its filter, its ends, its timeline and its motion, the card sizes and
   marks and the PR stack, the notifications switch, the usage bar, the project cue, the header's PRs and its ··· menu, a PR's turn, the chat's links,
-  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short, the resume bar, keeping the Mac awake, Jira tickets, the transcript's turns, a PR's CI, the floating header, the status bar, the light under the pointer, the Mac's line-editing keys in the drawer, a chat's folder cloned before it resumes, the themes, the launcher and the keys sheet, the changes tab, the overview, the tiles, the home, the lanes that fold, and the small motions of 2026-10-11 (`small-motions.mjs`, one section each, for those no other scenario had a place for).
+  the notch, reduced motion, the transcript's presence line, the code blocks' bar, the window's title, the cog's setup, the open chat's light, /compact in the drawer, the people row, the tick moving on, simple colours, the first run's welcome, a PR named short, the resume bar, keeping the Mac awake, Jira tickets, the transcript's turns, a PR's CI, the floating header, the status bar, the light under the pointer, the Mac's line-editing keys in the drawer, a chat's folder cloned before it resumes, the themes, the launcher and the keys sheet, the changes tab, the overview, the tiles, the home, the lanes that fold, a notification answered where it shows, and the small motions of 2026-10-11 (`small-motions.mjs`, one section each, for those no other scenario had a place for).
 * **`npm run scenarios` runs the lot**, one at a time — four servers and four Chromes at once is how a suite
   starts failing on the clock rather than on the board. A failure is **run once more**: passing then is reported
   `FLAKY`, and the suite still exits 0; `--no-retry` is the honest gate.

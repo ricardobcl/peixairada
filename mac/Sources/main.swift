@@ -1070,7 +1070,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                project: body["project"] as? String ?? "",
                title: body["title"] as? String ?? "",
                snippet: body["snippet"] as? String ?? "",
-               sessionId: body["sessionId"] as? String ?? "")
+               sessionId: body["sessionId"] as? String ?? "",
+               drawer: body["drawer"] as? Bool ?? false)
       }
     case "pane":
       let places: [PanePlace] = (body["panes"] as? [[String: Any]] ?? []).compactMap { r in
@@ -1117,6 +1118,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     guard Bundle.main.bundleIdentifier != nil else { return }
     let center = UNUserNotificationCenter.current()
     center.delegate = self
+    // What an alert can be answered with where it shows (2026-10-12): a reply — written into the chat's Claude when its
+    // drawer runs here —, done (the card's ✓), or later (the same alert again in 15 minutes). A question is opened, or
+    // put off; a ✓ is not offered on it, since a tick ends the chat's processes and a question is Claude waiting.
+    let later = UNNotificationAction(identifier: "snooze", title: "In 15 minutes", options: [])
+    let done = UNNotificationAction(identifier: "done", title: "Done", options: [])
+    let reply = UNTextInputNotificationAction(identifier: "reply", title: "Reply…", options: [], textInputButtonTitle: "Send", textInputPlaceholder: "to Claude, in its drawer")
+    center.setNotificationCategories([
+      UNNotificationCategory(identifier: "reply-drawer", actions: [reply, done, later], intentIdentifiers: [], options: []),
+      UNNotificationCategory(identifier: "reply", actions: [done, later], intentIdentifiers: [], options: []),
+      UNNotificationCategory(identifier: "later", actions: [later], intentIdentifiers: [], options: []),
+    ])
     center.getNotificationSettings { settings in
       logLine("notifications: current authorization = \(settings.authorizationStatus.rawValue)")
     }
@@ -1129,7 +1141,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
 
   /// `heading` is the server's own when it has one (a PR come round to you: "Your move · repo#n"), else the kind's.
-  private func notify(kind: String, heading given: String, project: String, title: String, snippet: String, sessionId: String) {
+  private func notify(kind: String, heading given: String, project: String, title: String, snippet: String, sessionId: String, drawer: Bool = false) {
     let heading = !given.isEmpty ? given : (kind == "reply" ? "Claude replied" : "Claude is asking you") + (project.isEmpty ? "" : " · \(project)")
     let body = [title, snippet].filter { !$0.isEmpty }.joined(separator: "\n")
     guard useUN else {
@@ -1141,6 +1153,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     content.body = body
     content.sound = .default
     content.userInfo = ["sessionId": sessionId]
+    content.categoryIdentifier = sessionId.isEmpty ? "" : kind == "reply" ? (drawer ? "reply-drawer" : "reply") : "later"
     let req = UNNotificationRequest(identifier: sessionId.isEmpty ? UUID().uuidString : sessionId,
                                     content: content, trigger: nil)
     UNUserNotificationCenter.current().add(req) { [weak self] err in
@@ -1162,10 +1175,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   func userNotificationCenter(_ center: UNUserNotificationCenter,
                               didReceive response: UNNotificationResponse,
                               withCompletionHandler completionHandler: @escaping () -> Void) {
-    if let id = response.notification.request.content.userInfo["sessionId"] as? String, !id.isEmpty {
-      open(sessionId: id)
-    } else {
-      showWindow(nil)
+    let id = response.notification.request.content.userInfo["sessionId"] as? String ?? ""
+    switch response.actionIdentifier {
+    case "reply" where !id.isEmpty:   // into the chat's Claude, by the page (peixReply): the drawer's socket is the page's to speak
+      let text = (response as? UNTextInputNotificationResponse)?.userText ?? ""
+      logLine("notify: reply to \(id.prefix(8)) (\(text.count) chars)")
+      if !text.isEmpty { web.evaluateJavaScript("window.peixReply?.(\(jsLit(id)), \(jsLit(text)))", completionHandler: nil) }
+    case "done" where !id.isEmpty:
+      logLine("notify: done \(id.prefix(8))")
+      web.evaluateJavaScript("window.peixDone?.(\(jsLit(id)))", completionHandler: nil)
+    case "snooze":
+      let again = UNNotificationRequest(identifier: (id.isEmpty ? UUID().uuidString : id) + "-later", content: response.notification.request.content,
+                                        trigger: UNTimeIntervalNotificationTrigger(timeInterval: 15 * 60, repeats: false))
+      UNUserNotificationCenter.current().add(again) { err in logLine("notify: later \(err.map { "failed: \($0.localizedDescription)" } ?? "in 15 min")") }
+    default:
+      if !id.isEmpty { open(sessionId: id) } else { showWindow(nil) }
     }
     completionHandler()
   }
