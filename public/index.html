@@ -206,6 +206,23 @@
   .pop .keys em { font-style: normal; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--ink); }
   .pop select, .colhead select { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; max-width: 180px; }
   .brand.off .logo { filter: grayscale(1); opacity: .5; }   /* the SSE stream is down: the board is frozen */
+  /* …and its fish floats belly-up (2026-10-11): flipped, the sparks out, bobbing; back, it flips over and wiggles. The
+     same on the status bar's connection, whose fish is drawn anew with the bar — hence animations, not transitions. */
+  .logo .fishg { transform-box: view-box; transform-origin: 512px 512px; }
+  .logo .stars { transition: opacity .4s; }
+  :is(.brand.off, #sbar .conn.off) .logo .fishg { animation: bellyup .55s cubic-bezier(.5, 0, .25, 1) both; }
+  :is(.brand.off, #sbar .conn.off) .logo .stars { opacity: 0; }
+  :is(.brand.off, #sbar .conn.off) .logo { animation: bob 2.6s ease-in-out .55s infinite; }
+  :is(.brand.back, #sbar .conn.back) .logo .fishg { animation: bellyback .8s ease-out both; }
+  @keyframes bellyup { from { transform: none; } to { transform: scaleY(-1); } }
+  @keyframes bellyback { from { transform: scaleY(-1); } 45% { transform: none; } 62% { transform: rotate(-14deg); } 80% { transform: rotate(7deg); } to { transform: none; } }
+  @keyframes bob { 0%, 100% { transform: none; } 50% { transform: translateY(-1.5px) rotate(-6deg); } }
+  /* in the bar the fish is the connection's light, as the dot it replaced was: no square, the fish in the ready green */
+  #sbar .conn .logo { width: 15px; height: 15px; flex: none; }
+  #sbar .conn .logo rect { display: none; }
+  #sbar .conn .logo :is(.fishg g, .stars) { fill: var(--idle); }
+  #sbar .conn .logo .fishg path[fill] { fill: var(--bar, var(--panel)); }
+  #sbar .conn.off .logo { filter: grayscale(1); opacity: .6; }
   #counts { font-size: 11px; font-weight: 400; color: var(--muted); white-space: nowrap; }
 
   /* ---- layout: sessions | splitter | chat (one half or two) ---- */
@@ -1002,8 +1019,6 @@
   #sbar #people button.pgh { height: 20px; }
   #sbRight .seg { border-right: 0; border-left: 1px solid var(--line); }
   #sbar button.seg { cursor: pointer; } #sbar button.seg:is(:hover, .on) { background: var(--ctl); color: var(--ink); }
-  #sbar .conn i { width: 7px; height: 7px; border-radius: 50%; background: var(--idle); box-shadow: 0 0 5px var(--idle); }
-  #sbar .conn i.off { background: var(--needs); box-shadow: none; }
   #sbar .w { color: var(--working); font-weight: 600; } #sbar em { font-style: normal; color: var(--needs); font-weight: 650; }
   #sbar .m { display: inline-flex; align-items: center; gap: 5px; } #sbar .m + .m { margin-left: 11px; } #sbar .m b { color: var(--ink); font-weight: 650; }
   #sbar .m i { display: block; flex: none; width: 40px; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--u, var(--spend)) var(--p), var(--utrack) var(--p)); }
@@ -1847,6 +1862,8 @@
     .card.landed::before { animation: none; content: none; }   /* no wash */
     .dot.working, .dot.needs-input { animation: none; }
     .pix, .pix svg { animation: none; }
+    :is(.brand, #sbar .conn) .logo, :is(.brand, #sbar .conn) .logo .fishg { animation: none !important; }   /* belly-up, still; upright, at once */
+    :is(.brand.off, #sbar .conn.off) .logo .fishg { transform: scaleY(-1); }
     .shim > .sw { display: none; }   /* no light runs across clauding */
     .ck[data-checks="pending"] svg { animation: none; stroke-dasharray: none; }   /* CI running: a still ring */
     #log.working :is(.tool, .toolgroup > summary) .tst.run { animation: none; border-right-color: var(--working); }   /* a tool call running: a still ring */
@@ -1889,7 +1906,7 @@
 <body>
 <main id="main">
   <section id="sessions">
-    <div class="colhead" id="shd"><span class="brand" id="brandBtn" title="About peixAIrada" role="button"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g><g fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" autocomplete="off" spellcheck="false" hidden><span id="fchips"></span></span></div>
+    <div class="colhead" id="shd"><span class="brand" id="brandBtn" title="About peixAIrada" role="button"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g class="fishg"><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g></g><g class="stars" fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="title / branch / prompt…" autocomplete="off" spellcheck="false" hidden><span id="fchips"></span></span></div>
     <div id="tline" aria-label="The list's days — point to read them, drag to scroll, click one to go there"><div class="tl-catch"></div><div class="tl-thumb"></div><div class="tl-labs"></div></div>
     <div id="slist"></div>
     <div class="tl-glass"></div>
@@ -2664,13 +2681,14 @@
   const bar = { stats: {}, conn: true, open: false, busy: false };
   const fmtBytes = b => b >= 2 ** 30 ? `${(b / 2 ** 30).toFixed(1)} GB` : `${Math.round(b / 2 ** 20)} MB`;
   const sbMeter = (label, pct, text, color, tip = `${label}: ${text}`, html = null) => `<span class="m" title="${esc(tip)}">${esc(label)}<i style="--p:${Math.max(0, Math.min(100, pct)).toFixed(1)}%;--u:${color}"></i><b>${html ?? esc(text)}</b></span>`;
+  const FISH_LOGO = () => $('#brandBtn').innerHTML;   // the fish, for the bar's connection: the same mark, belly-up while the stream is down
   function renderBar() {
     const el = $('#sbar'); if (!el || el.hidden || !state.snapshots) return;
     const all = [...state.sessions.values()], n = f => all.filter(f).length, plural = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`;
     const ask = n(s => asking(s));
     const drawers = n(s => s.terminal && s.terminal.exited === null), shells = n(s => s.shell && s.shell.exited === null);
     const mons = all.reduce((a, s) => a + (s.alive ? (s.tasks || []).length : 0), 0);
-    const left = [`<button class="seg conn" title="${bar.conn ? 'Connected to the board\'s server' : 'The server is not answering — reconnecting'} — click for the About box"><i class="${bar.conn ? 'ok' : 'off'}"></i>${bar.conn ? 'connected' : 'reconnecting…'}</button>`,
+    const left = [`<button class="seg conn${bar.conn ? '' : ' off'}${bar.back ? ' back' : ''}" title="${bar.conn ? 'Connected to the board\'s server' : 'The server is not answering — reconnecting'} — click for the About box">${FISH_LOGO()}${bar.conn ? 'connected' : 'reconnecting…'}</button>`,
       `<span class="seg" title="claudes running here and elsewhere${ask ? ' · waiting on your answer' : ''}">${rn('live', n(s => s.alive))} live${ask ? ` · <em>${rn('asking', ask)} asking</em>` : ''}</span>`];
     const busy = [drawers && plural(drawers, 'drawer'), shells && plural(shells, 'shell'), mons && plural(mons, 'monitor')].filter(Boolean);
     if (busy.length) left.push(`<span class="seg" title="claude sessions in drawers here · shells · monitors and background commands running">${busy.join(' · ')}</span>`);
@@ -6968,8 +6986,12 @@
   }
   function connect() {
     const es = new EventSource('/events');
-    es.onopen = () => { $('#brandBtn').classList.remove('off'); bar.conn = true; renderBar(); };
-    es.onerror = () => { $('#brandBtn').classList.add('off'); bar.conn = false; renderBar(); };
+    es.onopen = () => {
+      const was = $('#brandBtn').classList.contains('off');
+      $('#brandBtn').classList.remove('off'); $('#brandBtn').classList.toggle('back', was); bar.conn = true; bar.back = was; renderBar();
+      if (was) { noteMotion(null, 'fishback'); clearTimeout(bar.backT); bar.backT = setTimeout(() => { $('#brandBtn').classList.remove('back'); bar.back = false; renderBar(); }, 900); }
+    };
+    es.onerror = () => { $('#brandBtn').classList.add('off'); $('#brandBtn').classList.remove('back'); bar.conn = false; bar.back = false; renderBar(); };
     es.addEventListener('snapshot', e => {
       const d = JSON.parse(e.data); state.snapshots++;   // the harness waits on the count: a reloaded page has its board
       state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.peacock = d.peacock || {}; state.repos = d.repos || {};

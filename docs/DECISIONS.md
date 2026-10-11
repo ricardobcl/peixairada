@@ -110,6 +110,10 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   replaced, and only when it is about to be; a closed tab's fold is a stand-in that is not a tab. The study kept the
   keys' switches instant; on reflection a switch of tab is one move to one place, not a walk through many, so ⌥⌘←→
   slides as a click does — the list's ⌥⌘↑↓ is the walk that stays a jump.
+* **20 · the fish belly-up**: the SSE light was the logo greyed out; now the fish in it floats belly-up, its sparks
+  gone, bobbing — a dead fish is a frozen board — and flips back over with a wiggle when the stream returns. With the
+  status bar on the list's head row (and so its fish) is hidden, so the bar's connection, a green dot before, is the
+  fish itself now: green and upright while connected, grey and belly-up while not.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 

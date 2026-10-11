@@ -789,7 +789,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   (`.dens`), auto-resume (`#autoResume`), ⌥ as Meta (`#optMeta`), what is hidden (`#hidden`) — no date format (DD-MM-YYYY, `fmtDate`); **Setup** — the server's (`#setup`); **Keys** — the list (`.keys`). The class
   is still `pop`, so every row keeps its `.pop …` rule. Esc, the backdrop, ×, ⌘, or ⌘W close it; its `close` drops a
   setup row half typed. **It is modal**: the pane is down while it is up (`postPane`), and the ⌥⌘ / ⌘ keys are swallowed
-  under it — close it first (the scenarios do). The fish is the SSE light and, clicked, **the About box** (`#about`, a modal dialog:
+  under it — close it first (the scenarios do). The fish is the SSE light — **belly-up while the stream is down** (2026-10-11: `.fishg` flipped, the sparks
+  out, bobbing, grey; back, it flips over and wiggles, `.back` for 900 ms; the status bar's connection wears the same
+  fish, in the ready green with no square, as its light — `FISH_LOGO()`, animations rather than transitions since the
+  bar redraws it; `fishback` in `motion()`) — and, clicked, **the About box** (`#about`, a modal dialog:
   version, process and paths from the snapshot's `about`, and the chats' counts). **Long code is always folded**
   (2026-09-28): a block over six lines, no switch in the settings and no `{ }` row per chat. **Every `pre` in the transcript is
   inside a `.codebox`** (2026-09-27, night; `md()`): the bar with the language and the copy button is its first
