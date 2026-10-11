@@ -1240,6 +1240,27 @@
     box-shadow: 0 10px 30px -8px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255, 255, 255, .06); }
   :root[data-head="float"] #prlist { margin: 0 14px 4px; border: 1px solid var(--line); border-radius: 10px; }
   @media (prefers-color-scheme: dark) { :root[data-head="float"]:not([data-theme="light"]) #shead { box-shadow: 0 12px 34px -6px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .06); } }
+  /* …and it floats (2026-10-11, late morning): the chat runs up behind it to the column's top, faint where it shows
+     round it. #groups spans the header's rows, which stand over it; a half the header floats over (both side by side,
+     the top one stacked) pads down by their height (--float-h, floatH) — but for one with no strip, whose transcript
+     pads only its words and whose drawer is simply taller: both run up behind the header, masked to a third over that
+     height, the wash on the half's body so it does not fade with them. */
+  :root[data-head="float"] #groups { grid-row: 1 / 5; }
+  :root[data-head="float"] :is(#shead, #prlist, #rival, #groups, #resume) { grid-column: 1; }   /* overlapping: each placed, or one goes to a column of its own */
+  :root[data-head="float"] :is(#prlist, #rival) { position: relative; z-index: 3; }
+  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child) { padding-top: var(--float-h, 0px); }
+  :root[data-head="float"] #groups:not(.stack) > #gsplit { margin-top: var(--float-h, 0px); }
+  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) { padding-top: 0; }
+  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody {
+    --fade: linear-gradient(rgb(0 0 0 / .33) calc(var(--float-h, 0px) - 18px), #000 calc(var(--float-h, 0px) + 14px)); }
+  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody:has(> #log:not([hidden])) {
+    background: var(--grain), linear-gradient(165deg, color-mix(in srgb, var(--hbg) 24%, transparent), color-mix(in srgb, var(--hbg) 6%, transparent) 70%, transparent); }
+  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody > :not(#log, .gterm) { margin-top: var(--float-h, 0px); }
+  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody > .gterm { border-top: 0; -webkit-mask-image: var(--fade); mask-image: var(--fade); }
+  /* the transcript is zoomed (⌘+ ⌘−), and so is every length on it */
+  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody > #log {
+    --fh: calc(var(--float-h, 0px) / var(--chat-zoom, 1)); background: none; padding-top: calc(16px + var(--fh)); scroll-padding-top: var(--fh);
+    -webkit-mask-image: linear-gradient(rgb(0 0 0 / .33) calc(var(--fh) - 18px), #000 calc(var(--fh) + 14px)); mask-image: linear-gradient(rgb(0 0 0 / .33) calc(var(--fh) - 18px), #000 calc(var(--fh) + 14px)); }
   #prlist[hidden] { display: none; }
   .prrow { display: flex; align-items: baseline; gap: 9px; min-width: 0; padding: 2px 0; font-size: 12px; color: var(--ink); text-decoration: none; }
   .prrow .st { flex: none; width: 52px; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: .5px; color: var(--muted); }
@@ -3433,7 +3454,7 @@
   $('#cardSpot').checked = !!prefs.cardSpot;
   $('#cardSpot').addEventListener('change', e => { prefs.cardSpot = e.target.checked; savePrefs(); applySpot(); });
   $('#headFloat').checked = !!prefs.headFloat;
-  $('#headFloat').addEventListener('change', e => { prefs.headFloat = e.target.checked; savePrefs(); applyHead(); layoutNotch(); fitHeadPrs(); paintHeadSplit(); listChanged(); });
+  $('#headFloat').addEventListener('change', e => { prefs.headFloat = e.target.checked; savePrefs(); applyHead(); layoutNotch(); fitHeadPrs(); paintHeadSplit(); floatH(); listChanged(); });
   $('#edgeLight').checked = !!prefs.edgeLight;
   $('#edgeLight').addEventListener('change', e => { prefs.edgeLight = e.target.checked; savePrefs(); applyLight(); listChanged(); phaseAnims(true); });
   $('#ringsInStep').checked = prefs.ringsInStep !== false;
@@ -5184,6 +5205,23 @@
     chat.classList.toggle('npad', !!n && !hole && hr.left < n.right + NP);
     tileNotch();
   }
+  // The floating header's rows' height, for the chat that runs up behind them (2026-10-11, late morning): from the
+  // column's top to under the last one shown — the header, the PR rows, the rival's bar. The transcript at its end
+  // stays at its end.
+  function floatH() {
+    const chat = $('#chat'), was = chat.style.getPropertyValue('--float-h');
+    if (!prefs.headFloat) { if (was) chat.style.removeProperty('--float-h'); return; }
+    const top = $('#groups').getBoundingClientRect().top, log = $('#log');
+    const bottom = Math.max(top, ...['#shead', '#prlist', '#rival'].map(id => $(id)).filter(el => el.getClientRects().length)
+      .map(el => el.getBoundingClientRect().bottom + (parseFloat(getComputedStyle(el).marginBottom) || 0)));
+    const h = `${Math.round(bottom - top)}px`; if (h === was) return;
+    const end = log.scrollHeight - log.scrollTop - log.clientHeight < 4;
+    chat.style.setProperty('--float-h', h);
+    if (end) log.scrollTop = log.scrollHeight;
+  }
+  new ResizeObserver(floatH).observe($('#shead'));
+  new ResizeObserver(floatH).observe($('#prlist'));
+  new ResizeObserver(floatH).observe($('#rival'));
   /** Where the header's black starts (after the project's name, at the separator's right edge) and how far down it goes
    *  (the first row: the details under it keep the header's ground) — read once the row is laid out: after the notch
    *  and the chips' fold. */

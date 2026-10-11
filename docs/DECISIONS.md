@@ -5,7 +5,7 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
-## Decisions of 2026-10-11, late morning — done for good
+## Decisions of 2026-10-11, late morning — done for good; the header floats
 
 Ricardo: "why do I have 4 [one service's] chats always poping up on my feed? right now their are after this chat. are
 the PRs associated really having new events? if so, we should have a way to permanently say: done, forgot about this
@@ -31,6 +31,13 @@ and PR events".
   a tick of another kind (a plain ✓, a /clear's) is a plain chat again. Nothing to forget by hand.
 * **Not done: telling a rebase from a change.** A force-push that only rebases is a move all the same; telling them
   apart wants each push's patch, a call per PR per push. This morning's push changed code, so it would not have helped.
+* **The floating header floats** (Ricardo: "I like the floating chat header, but it shuold be really floating, meaning
+  the chat should fade a bit but go behind it to the top"): it was a bar inset over a column that started under it, so
+  the inset was only a frame. Now the chat runs up behind it to the column's top: the transcript starts its words under
+  the header (and the PR rows, when open) and scrolls on up behind, shown at a third in the gutters round the bar; the
+  drawer — where a chat run here is read — is simply taller, its top rows behind the bar, faint round it. Only where
+  nothing else stands between: a half with a tab strip, a page or the changes starts under the header as before, as
+  does a split's other half, and stacked, the lower one.
 
 ## Decisions of 2026-10-11, later — the status bar trimmed, lanes that fold, the live notch taken out
 

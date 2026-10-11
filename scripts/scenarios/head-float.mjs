@@ -1,6 +1,8 @@
 // The floating header (2026-10-09, the design studies' E), a switch to compare with the plain one: on, the chat
 // header is a rounded bar inset from the column's edges, the PR rows under it inset alike; the choice outlives a
-// reload; off, the header runs edge to edge again.
+// reload; off, the header runs edge to edge again. And it floats (2026-10-11, late morning): the transcript runs up
+// behind it to the column's top, its words starting under it and faint over that height — under the PR rows too when
+// they are open.
 export const meta = { server: true, fixture: 'auto' };
 
 export default async function (ctx) {
@@ -23,7 +25,22 @@ export default async function (ctx) {
   out.rows = await ctx.evaluate(`(r => Math.round(r.left - document.querySelector('#chat').getBoundingClientRect().left))(document.querySelector('#prlist').getBoundingClientRect())`);
   ctx.assert.equal(out.rows, 14, 'the PR rows under it inset alike');
   await ctx.shot('float', { x: 380, y: 0, width: 1320, height: 140 });
+  const behind = () => ctx.evaluate(`JSON.stringify((() => { const g = document.querySelector('#groups').getBoundingClientRect(), log = document.querySelector('#log'), l = log.getBoundingClientRect(),
+    under = Math.max(...['#shead', '#prlist'].map(id => document.querySelector(id)).filter(e => e.getClientRects().length).map(e => e.getBoundingClientRect().bottom)),
+    first = log.querySelector(':scope > .msg, :scope > .sysline').getBoundingClientRect().top;
+    return { logTop: Math.round(l.top - g.top), fh: getComputedStyle(document.querySelector('#chat')).getPropertyValue('--float-h'), under: Math.round(under - g.top), gap: Math.round(first - under), mask: getComputedStyle(log).maskImage.slice(0, 40) }; })())`).then(JSON.parse);
+  out.behindRows = await behind();
+  ctx.assert.equal(out.behindRows.logTop, 0, `the transcript runs up to the column's top: ${JSON.stringify(out.behindRows)}`);
+  ctx.assert.equal(out.behindRows.fh, `${out.behindRows.under + 4}px`, 'its rows\' height, the PR rows in it');
+  ctx.assert.ok(out.behindRows.gap > 0, 'the first words start under the PR rows');
+  ctx.assert.match(out.behindRows.mask, /^linear-gradient/, 'and fade over that height');
   await ctx.evaluate(`document.querySelector('#prToggle').click()`);
+  await ctx.waitFor(`getComputedStyle(document.querySelector('#chat')).getPropertyValue('--float-h') !== '${out.behindRows.fh}'`, { what: 'the rows\' height without the PR rows' });
+  await ctx.settle();
+  out.behind = await behind();
+  ctx.assert.equal(out.behind.fh, `${out.behind.under + 4}px`, 'the PR rows folded: the header alone');
+  ctx.assert.ok(out.behind.under < out.behindRows.under && out.behind.gap === out.behindRows.gap, `the words move up with it: ${JSON.stringify([out.behind, out.behindRows])}`);
+
 
   await ctx.reload();
   await ctx.openChat(two.id);
@@ -32,5 +49,7 @@ export default async function (ctx) {
   await ctx.settle();
   out.off = await head();
   ctx.assert.deepEqual([out.off.attr, out.off.radius, out.off.left], [null, '0px', 0], 'off: edge to edge again');
+  out.offLog = await ctx.evaluate(`(l => Math.round(l.top - document.querySelector('#shead').getBoundingClientRect().bottom))(document.querySelector('#log').getBoundingClientRect())`);
+  ctx.assert.ok(out.offLog >= 0, `and the transcript under it: ${out.offLog}`);
   return out;
 }

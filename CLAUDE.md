@@ -370,7 +370,14 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
 * **The floating header is a switch, to try** (2026-10-09, the studies' E; Settings → Board → *floating header*,
   `prefs.headFloat` → `<html data-head="float">`): `#shead` a rounded bar inset 14 px from the column's sides and 10 px
   from its top, an edge of the project's colour and a shadow; `#prlist` inset alike. With it the open chat's light
-  does not run round the header's box (`trailGeom`'s `box` is null — it no longer touches the splitter).
+  does not run round the header's box (`trailGeom`'s `box` is null — it no longer touches the splitter). **It floats
+  over the chat** (2026-10-11, late morning): `#groups` spans the header's rows (`grid-row: 1 / 5`, and every row of
+  `#chat` placed in column 1 — of two overlapping items one left to auto-placement goes to a column of its own), with
+  `#shead`, `#prlist` and `#rival` over it; a half the header floats over (both side by side, the top one stacked)
+  pads down by `--float-h` (`floatH`, a ResizeObserver on the three: from the column's top to under the last one shown;
+  a transcript at its end stays there), but **a half with no strip runs up behind it**: the transcript pads only its
+  words (zoomed: the lengths divided by `--chat-zoom`), the drawer is simply taller, both masked to a third over that
+  height, the wash moved onto `.gbody` while the transcript shows.
   → `scripts/scenarios/head-float.mjs`.
 * **The chat header is a gradient of the project's colour**: `tintChat()` sets `--repo`, `--rink`, `--rover`/`--rover2`
   and `#chat.tinted`; `--rink` is the ink that reads on it (`inkOn()`), every control in `.shead` redrawn in it; the
