@@ -140,5 +140,13 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.empty, ['Nothing matches', 'another word, or Esc for every chat']);
   await ctx.fill('#q', '');
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 2`, { what: 'the cards back' });
+
+  // ---- 24 · a bump where a divider snaps: the list's splitter pulled to its own width (380) snaps there and says so ----
+  const sp = await ctx.evaluate(`(r => ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), left: Math.round(document.querySelector('#sessions').getBoundingClientRect().left) }))(document.querySelector('#splitter').getBoundingClientRect())`);
+  await ctx.drag({ x: sp.x, y: sp.y }, { x: sp.left + 520, y: sp.y });
+  const m24 = await ctx.evaluate(`window.peix.motion().length`);
+  await ctx.drag({ x: sp.left + 520, y: sp.y }, { x: sp.left + 384, y: sp.y });
+  out.snap = await ctx.evaluate(`({ width: window.peix.prefs().sessionsWidth, bumps: window.peix.motion().slice(${m24}).filter(m => m.kind === 'haptic:alignment').length })`);
+  ctx.assert.deepEqual(out.snap, { width: 380, bumps: 1 }, 'snapped to the list\'s own width, with one bump');
   return out;
 }

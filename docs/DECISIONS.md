@@ -121,6 +121,11 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
 * **22 · empty, with a fish**: a list with nothing in it said so in grey; it shows the fish resting now, what is empty
   (*Nothing matches*, *Nothing clauding*, *No chats yet*) and the key or the gesture that fills it. It barely moves — a
   bubble now and then — because nothing is running.
+* **24 · trackpad haptics** (Apple's alignment pattern, `NSHapticFeedbackManager`): the app can do what a web page
+  cannot — bump the hand on the trackpad. A divider dragged near a stop snaps to it and bumps (the list at its own
+  width or at half the window, the halves even); a tab let go in the other half bumps as it lands; the timeline's thumb
+  bumps at each run of days it crosses, a level passed. Apple's guidance, kept: only in answer to the hand, always with
+  something seen (the snap, the landing, the label), and sparingly — once on entering a stop, not while held there.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 

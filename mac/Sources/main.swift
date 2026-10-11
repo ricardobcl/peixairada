@@ -1077,6 +1077,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       window.representedURL = cwd.isEmpty ? nil : URL(fileURLWithPath: cwd, isDirectory: true)   // the proxy icon, and ⌘-click on the title for the path
     case "focus":
       window.makeFirstResponder(web)
+    case "haptic":   // a bump on the trackpad (2026-10-11): a divider at a stop, a tab dropped, a run of days crossed
+      let pattern: NSHapticFeedbackManager.FeedbackPattern = switch body["kind"] as? String {
+        case "levelChange": .levelChange
+        case "generic": .generic
+        default: .alignment
+      }
+      NSHapticFeedbackManager.defaultPerformer.perform(pattern, performanceTime: .now)
     case "external":
       if let s = body["url"] as? String, let url = URL(string: s) { NSWorkspace.shared.open(url) }
     case "chooseFolder":   // the first run's Choose… (2026-10-01): the system's folder panel, its path back to the page

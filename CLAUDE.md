@@ -842,6 +842,11 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   above the pane) and drives WKWebView's own `find(_:configuration:)`: no match count, the match *is* the page's
   selection, so closing the bar drops it (`kDropSelection`). Typing searches from the top (`runFind(fromTop:)`), ⏎ /
   ⇧⏎ step, a miss turns the text red. A pane change closes it; `findQuery` outlives it.
+* **The trackpad bumps** (2026-10-11, `haptic(kind)` → `{type: 'haptic', kind}` → `NSHapticFeedbackManager`'s
+  `.alignment`, `.levelChange`, `.generic`): the list's splitter snapping to the list's own width (`LIST_W`) or half
+  the window, the halves' divider to even halves (both within `SNAP_PX`), a tab dropped into the other half
+  (`moveTab`), the timeline's thumb crossing a run (`tlScrub`). Only under a hand on a Force Touch trackpad — the page
+  says when, never whether; in a browser it is a `haptic:<kind>` in `motion()` and nothing else.
 * **Both web views are inspectable** (main.swift sets it): Safari → Develop reaches the real app.
 * **The app's server lifecycle** (`ServerController`, main-thread throughout): `start` adopts a server already
   answering, waits for the launchd agent when its plist is installed, else runs the bundled one — one at a time,

@@ -2474,13 +2474,25 @@
     // layout after every width written.
     const splitter = $('#splitter'); let dragging = false, left = 0;
     splitter.addEventListener('mousedown', e => { if (e.button !== 0 || e.ctrlKey) return; dragging = true; left = $('#sessions').getBoundingClientRect().left; splitter.classList.add('drag'); document.body.style.userSelect = 'none'; e.preventDefault(); });
+    // …and it snaps to the list's own width and to half the window (2026-10-11), with a bump on the trackpad as it does
+    let snapped = null;
     window.addEventListener('mousemove', e => {
       if (!dragging) return;
-      prefs.sessionsWidth = Math.round(Math.max(300, Math.min(innerWidth * .6, e.clientX - left)));
+      const w = Math.round(Math.max(300, Math.min(innerWidth * .6, e.clientX - left))), stop = [LIST_W, Math.round(innerWidth / 2)].find(d => Math.abs(w - d) <= SNAP_PX);
+      prefs.sessionsWidth = stop ?? w;
+      if (stop && snapped !== stop) haptic('alignment');
+      snapped = stop ?? null;
       $('#sessions').style.width = prefs.sessionsWidth + 'px';
     });
     window.addEventListener('mouseup', () => { if (!dragging) return; dragging = false; splitter.classList.remove('drag'); document.body.style.userSelect = ''; savePrefs(); });
   }
+
+  // A bump on the trackpad (2026-10-11, Apple's alignment and level haptics): the app's shell performs it — only under a
+  // hand on a Force Touch trackpad, so the page says when, never whether — for a divider snapping to a stop, a tab
+  // dropped into the other half, the timeline's thumb crossing a run of days. A browser has none; `haptic:<kind>` in
+  // motion() either way.
+  const SNAP_PX = 8, LIST_W = 380;   // a divider's pull towards a stop; the list's own width (prefs' default)
+  function haptic(kind = 'alignment') { noteMotion(null, 'haptic:' + kind); if (inApp) post({ type: 'haptic', kind }); }
 
   // ---- helpers -----------------------------------------------------------------------
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -3642,6 +3654,11 @@
   function tlScrub(py, grab) {
     const g = tlGeom();
     g.list.scrollTop = (py - TL_PAD) / g.H * g.full - grab * g.list.clientHeight;
+    // a run of days crossed under the thumb is a level passed (2026-10-11): which run the window's top is in
+    const top = g.list.scrollTop, cards = [...g.list.querySelectorAll(':scope > .card')], first = cards.find(c => c.offsetTop + c.offsetHeight > top);
+    const i = first ? cards.indexOf(first) : -1, run = tl.runs.findIndex(r => i >= r.i && i < r.i + r.n);
+    if (run >= 0 && tl.hapticRun != null && run !== tl.hapticRun) haptic('levelChange');
+    tl.hapticRun = run;
   }
   {
     const rail = $('#tline'), railY = e => e.clientY - rail.getBoundingClientRect().top;
@@ -3667,7 +3684,7 @@
       // it is, since the pointer is the warp's fixed point); on the track the thumb comes to the pointer, centred
       const th = rail.querySelector('.tl-thumb'), onThumb = !th.hidden && y >= th.offsetTop && y <= th.offsetTop + th.offsetHeight;
       const grab = onThumb ? (y - top) / Math.max(1, bottom - top) : .5;
-      tl.press = { y0: e.clientY, grab, run, moved: false };
+      tl.press = { y0: e.clientY, grab, run, moved: false }; tl.hapticRun = null;
       rail.setPointerCapture(e.pointerId);
       if (!lab && !gap && grab === .5) tlScrub(y, grab);
     });
@@ -5489,6 +5506,7 @@
       shows the next of its own, or nothing — and a split the board made itself folds away then (syncTerm). */
   function moveTab(s, k, g) {
     if (!isSplit(s)) return;
+    haptic('generic');   // the tab let go in the other half: felt as it lands
     if (!homes.has(s.id)) homes.set(s.id, new Map());
     homes.get(s.id).set(k, g);
     setTab(s, k);
@@ -5823,7 +5841,10 @@
     window.addEventListener('mousemove', e => {
       if (!dragging) return;
       const r = $('#groups').getBoundingClientRect(), stack = stackNow();
-      const at = Math.max(.15, Math.min(.85, stack ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width));
+      const raw = Math.max(.15, Math.min(.85, stack ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width));
+      const near = Math.abs(raw - .5) * (stack ? r.height : r.width) <= SNAP_PX, at = near ? .5 : raw;   // even halves pull (2026-10-11)
+      if (near && !bar.snapped) haptic('alignment');
+      bar.snapped = near;
       if (stack) prefs.stackAt = at; else prefs.splitAt = at;
       applySplit();
     });
