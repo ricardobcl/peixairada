@@ -138,6 +138,9 @@ the order they landed.
   number** — the chats asking you and the ones with a new reply (`wanting()`, posted as `needs` and `replied`) — where
   the badge counted the alerts that came while the app was in the back, and the menu bar the questions; the status
   menu lists both, a section each, and the page's title counts the same.
+* **P2 — the menu bar's menu lists what wants you, and what is at work**: *Asking you*, *Your move* (each chat with a
+  PR at your move, the newest move's PR before its title), *New replies* and *Clauding*, a section each, twelve rows at
+  most, each opening its chat; only the first and third are counted on the icon.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

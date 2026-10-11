@@ -238,7 +238,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   // in the back before, the menu bar the questions), and the status menu lists them.
   var needsInput: [[String: String]] = []
   var newReplies: [[String: String]] = []
-  var badged: (waiting: [[String: String]], replies: [[String: String]]) = ([], [])   // what the badge and the status menu last showed
+  var yourMoves: [[String: String]] = [], clauding: [[String: String]] = []   // the status menu's too, not counted (2026-10-12)
+  var badged: (waiting: [[String: String]], replies: [[String: String]], moves: [[String: String]], clauding: [[String: String]]) = ([], [], [], [])   // what the badge and the status menu last showed
   var useUN = false              // native notifications available?
   var fillSaved: (frame: NSRect, mask: NSWindow.StyleMask, opts: NSApplication.PresentationOptions)?   // set while ⌃⌘F fills the screen: what to come back to
   var fillSignal: DispatchSourceSignal!   // SIGUSR1 is ⌃⌘F from a shell
@@ -724,9 +725,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     let menu = NSMenu()
     menu.addItem(withTitle: "Show Board", action: #selector(showWindow(_:)), keyEquivalent: "").target = self
     menu.addItem(.separator())
-    // what wants you, a section each (2026-10-12): the chats asking you, then the ones with a new reply
-    let sections: [(String, [[String: String]])] = [("Asking you", needsInput), ("New replies", newReplies)]
-    if sections.allSatisfy({ $0.1.isEmpty }) {
+    // what wants you, a section each (2026-10-12): the chats asking you, the PRs at your move, the new replies — and
+    // what Claude is at work in, last
+    let sections: [(String, [[String: String]])] = [("Asking you", needsInput), ("Your move", yourMoves), ("New replies", newReplies), ("Clauding", clauding)]
+    if sections.prefix(3).allSatisfy({ $0.1.isEmpty }) {
       menu.addItem(withTitle: "Nothing is asking you", action: nil, keyEquivalent: "").isEnabled = false
     }
     for (heading, chats) in sections where !chats.isEmpty {
@@ -1025,8 +1027,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
 
   private func refreshBadges() {
-    guard badged.waiting != needsInput || badged.replies != newReplies else { return }   // the status menu was rebuilt per message before (2026-09-27)
-    badged = (needsInput, newReplies)
+    guard badged.waiting != needsInput || badged.replies != newReplies || badged.moves != yourMoves || badged.clauding != clauding else { return }   // the status menu was rebuilt per message before (2026-09-27)
+    badged = (needsInput, newReplies, yourMoves, clauding)
     let wanting = needsInput.count + newReplies.count
     NSApp.dockTile.badgeLabel = wanting > 0 ? String(wanting) : nil
     statusItem.button?.title = wanting > 0 ? " \(wanting)" : ""
@@ -1048,6 +1050,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       }
       needsInput = (body["needs"] as? [[String: Any]] ?? []).map(brief)
       newReplies = (body["replied"] as? [[String: Any]] ?? []).map(brief)
+      yourMoves = (body["moves"] as? [[String: Any]] ?? []).map(brief)
+      clauding = (body["working"] as? [[String: Any]] ?? []).map(brief)
       refreshBadges()
       // A chat that starts asking while the app is in the back bounces the Dock icon once (2026-09-27, night): a
       // question is the stopped state, and the badge only counts. AppKit ignores the request while the app is active,

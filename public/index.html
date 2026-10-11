@@ -3376,8 +3376,12 @@ const toolName = n => {
   function postState() {
     const w = wanting(), brief = s => ({ id: s.id, project: s.project, title: s.title });
     const needs = w.needs.map(brief), replies = w.replied.map(brief);
-    const sig = JSON.stringify([needs, replies]); if (sig === postState.last) return; postState.last = sig;
-    post({ type: 'state', needs, replied: replies });
+    // …and for the status menu alone (2026-10-12, P2): the PRs at your move, by chat, and what is clauding
+    const live = [...state.sessions.values()].filter(s => visible(s) && !s.done);
+    const moves = live.filter(s => !asking(s) && yourMove(s)).sort(byWord).map(s => ({ ...brief(s), title: `${movedPrs(s)[0]?.label || ''} — ${s.title}` }));
+    const working = live.filter(s => bucket(s) === 'working').sort(byWord).map(brief);
+    const sig = JSON.stringify([needs, replies, moves, working]); if (sig === postState.last) return; postState.last = sig;
+    post({ type: 'state', needs, replied: replies, moves, working });
   }
   // The chats asking you, one after another from the one open (the status bar's count, 2026-10-12)
   function nextAsking() {

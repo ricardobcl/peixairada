@@ -938,9 +938,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   **With the pane hidden, Esc is the page's**: a capture-phase handler closes an open dialog or popover itself and
   `preventDefault()`s; with nothing to close the key is untouched.
 * **The app hears the board's own state** (2026-09-27; an injected script with its own SSE stream before): the page
-  posts `{type: 'state', needs, replied}` from `renderBoard` when what wants you changes (`postState`, `wanting()`:
+  posts `{type: 'state', needs, replied, moves, working}` from `renderBoard` when what wants you changes (`postState`, `wanting()`:
   the chats asking you and the ones with a new reply; **the Dock's badge and the menu bar's count are both their number**
-  and the status menu lists them, 2026-10-12 — the badge counted the alerts that came while the app was in the back,
+  and the status menu lists them — with the PRs at your move and what is clauding, uncounted — 2026-10-12; the badge
+  counted the alerts that came while the app was in the back,
   the menu bar the questions; the page's own title the same), each alert as
   it comes with `serverNotify` (the snapshot's `notify === 'native'`) and `quiet`, and the pane's places; the shell's
   `hub` handler reads only those. `refreshBadges` redraws the badge and the status menu only on a change (`badged`).
