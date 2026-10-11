@@ -2066,6 +2066,26 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-colors="simple"] :is(.card .snip.claude b, .card .trow .fable) { color: var(--muted); }
   :root[data-colors="simple"] .pc { color: var(--bg); }
 
+  /* macOS's Increase Contrast (2026-10-12): the muted ink nearer the ink, the lines and the controls' fills stronger,
+     and an edge on every control that is a fill alone — the board's controls have no border, which a fill of 7 % of
+     the ink does not make up for. Three :roots deep, so it beats a theme's and the dark block's tokens. */
+  @media (prefers-contrast: more) {
+    :root:root:root { --muted: color-mix(in srgb, var(--ink) 78%, var(--bg)); --line: color-mix(in srgb, var(--ink) 38%, var(--bg)); }
+    :root, .card.black:is(:hover, .active, .qsel), .shead > :not(h2, .details) { --ctl: color-mix(in srgb, var(--ink) 14%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent); }
+    :is(.btn, .chip, .ptab, .hmore, .act, .fsearch, .sedge button, #sbar .seg, .gsep.lane b, .sseg, .seg button, #ctxm, #hmenu) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
+    .card { border-color: var(--line); } .card .snip, .card .state.live { color: var(--ink); }
+  }
+  /* Reduce transparency: the blurs behind the overview and the list's ends go solid */
+  @media (prefers-reduced-transparency: reduce) {
+    #ov, .sedge, .tl-glass { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+    #ov { background: var(--bg); }
+  }
+  /* Forced colours (Windows' high contrast, a browser's own): the system's palette, the marks that are colour alone kept */
+  @media (forced-colors: active) {
+    .card { border: 1px solid CanvasText; } .card.active { outline: 2px solid Highlight; }
+    :is(.gsep.lane > i, .rdot, .ck, .tst, .pc, .badge) { forced-color-adjust: none; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     #wall i { transition: none; }   /* the wallpaper's glow stays in its corner (wallOn) */
     .card.working::before, .card.watching::before { animation: none; background: var(--lit); }

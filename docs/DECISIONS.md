@@ -187,6 +187,12 @@ the order they landed.
   `:focus-visible` draws no ring for a pointer's open); *screen reader* under Terminal turns on xterm's
   `screenReaderMode` in every drawer (`prefs.termReader`, off); and the small terminals of the overview and the stack
   are `inert`, so their helper text areas are out of the tab order.
+* **A5 — Increase Contrast, Reduce Transparency, forced colours**: none were heard. With macOS's Increase Contrast
+  (`prefers-contrast: more`) the muted ink comes nearer the ink, the lines and the controls' fills are stronger, every
+  control that is a fill alone gets an edge, a card its border and its words the ink. With Reduce Transparency the
+  overview's and the list's ends' blurs go solid. Under forced colours a card is outlined in the system's text colour,
+  the open one in its highlight, and the marks that are colour alone (lane dots, the rail's dot, the CI badge, a tool's
+  state, the counts) keep theirs.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

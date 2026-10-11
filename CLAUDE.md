@@ -311,6 +311,9 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   one `:where(…):focus-visible` ring — a text box that wants its border as its focus keeps its own `:focus { outline:
   none }`, which out-specifies it — and `overscroll-behavior: contain` on every scroller. A new number, list or control
   joins those lists rather than getting a rule of its own.
+* **Increase Contrast, Reduce Transparency and forced colours have a block each** (2026-10-12), before the reduced-motion
+  one: the muted ink, the lines and `--ctl` stronger and an edge on every fill-only control; the blurs solid; the
+  colour-only marks kept (`forced-color-adjust: none`). A new fill-only control joins the first block's list.
 * **Every animation has its line in the reduced-motion block** (2026-09-27, night): the one
   `@media (prefers-reduced-motion: reduce)` at the end of the CSS stills the ring (a flat edge in `--lit`), the
   question's pings (a steady red border and its glow), the pulse, the spinner, the flare and every transform; `drawCards` reads `REDUCED` and puts
