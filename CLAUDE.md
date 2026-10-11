@@ -814,8 +814,11 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   is a `note()`. **A key held down is one press** (`e.repeat` is swallowed, the arrows aside), and `termAction` takes
   one press per chat at a time (`termAsking`). **A late answer acts on its own chat only**: `renderHead` draws the open
   chat's header and nothing else, a drawer the server just started attaches through `showTerminal` (the half holding
-  its chat tab, if still open), and ⌥⌘T's zsh and the editor's page wait on a chat that was left. The cog lists every key (`.keys` in `#settings`) — keep it in step by hand, with `boardKeys` in
-  main.swift.
+  its chat tab, if still open), and ⌥⌘T's zsh and the editor's page wait on a chat that was left. **Every key is a row of `KEYS`** (2026-10-12; the Keys pane was typed by hand before): what you press, its group
+  (*Go to · This chat · Layout · Look · In the drawer · In a page*), one line, the rest its tooltip, and the codes it
+  is in HOTKEYS or CMDKEYS — the Keys pane and the ? sheet are drawn from it, and `scripts/check-page.mjs` (`npm run
+  check`) fails a HOTKEYS or CMDKEYS code with no row, a row no map answers, or a ⌥⌘ letter `boardKeys` in main.swift
+  does not forward (⌥⌘S aside).
 * **Plain ⌘ is the window's shape, and lives in `CMDKEYS`**: **1** and **2** the left and right halves of the chat column — ⌘2 splits it the first time —,
   **W** closes the half the keys are in, or a dialog that is up, **0** closes the *other* half (`hotOnlyHalf`; with
   one half it is the chat's size back to normal). ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this

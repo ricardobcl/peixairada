@@ -63,7 +63,7 @@ export default async function (ctx) {
   await set('#quickSel', repo);
   await until(async () => (await cfg()).quick === repo, { what: '⌥⌘O saved' });
   await ctx.waitFor(`!!${cardOf(two.id)}?.querySelector('.repo svg')`, { what: 'the crystal ball on its card' });
-  ctx.assert.ok((await ctx.evaluate(`document.querySelector('#quickKey').textContent`)).startsWith(`${repo} — `));
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#quickKey').textContent`), `a new chat in ${repo}`);
 
   // ---- a short name for the rail, a colour where Peacock gives none, and ⌥-click to take it off ----
   await set('.sadd', repo);

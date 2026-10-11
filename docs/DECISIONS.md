@@ -153,6 +153,12 @@ the order they landed.
   the theme, tiles and theirs, the floating header, the status bar and its stats), *Terminal* (⌥ as Meta) — and
   *Lights and motion*, folded: the rings in step, the light under the pointer, and the edge light as **a choice, card
   light *ring* or *edge*** (its checkbox stays, hidden, so the launcher's Toggle row still flips it). Every id kept.
+* **W6 — the keys from one table, grouped and checked**: about forty keys in code order, each a sentence long, kept by
+  hand in three places. `KEYS` is the one list — what you press, its group (*Go to · This chat · Layout · Look · In the
+  drawer · In a page*), one line, the rest as its tooltip (on the ? sheet, a second line), and the codes it is in the
+  maps — and the Keys pane and the sheet are drawn from it; ⌥⌘O's row says *a new chat in oracle*, not *oracle —
+  oracle — a new chat there…*. `npm run check` holds HOTKEYS, CMDKEYS and the app's `boardKeys` to it. The sheet's
+  filter hides a group's head with its rows.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

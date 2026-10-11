@@ -26,7 +26,7 @@ export default async function (ctx) {
   ctx.assert.match(out.noQuickNote, /No project for ⌥⌘O yet — the settings \(⌘,\)/);
   await ctx.evaluate(`document.querySelectorAll('.note').forEach(n => n.remove())`);
   await ctx.server.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ quick: 'oracle' }) });
-  await ctx.waitFor(`document.querySelector('#quickKey').textContent.startsWith('oracle — ')`, { what: 'the setup reaching the page, the cog\'s key line with it' });
+  await ctx.waitFor(`document.querySelector('#quickKey').textContent === 'a new chat in oracle'`, { what: 'the setup reaching the page, the cog\'s key line with it' });
   await ctx.key('KeyO'); out.noOracleNote = await txt('.note');
   ctx.assert.match(out.noOracleNote, /No oracle folder/);
   await ctx.evaluate(`document.querySelectorAll('.note').forEach(n => n.remove())`);
@@ -192,7 +192,10 @@ export default async function (ctx) {
   out.escIdle = await escOn('body'); ctx.assert.equal(out.escIdle, false, 'with nothing to close, Esc is left alone');
   // the cog lists the keys
   out.cog = await ctx.evaluate(`[...document.querySelectorAll('#settings .keys kbd')].map(k => k.textContent)`);
-  ctx.assert.deepEqual(out.cog.slice(0, 20), ['⌥⌘T', '⌥⌘E', '⌥⌘G', '⌥⌘C', '⌥⌘O', '⌥⌘P', '⌥⌘K', '⌥⌘F', '⌥⌘N', '⌥⌘B', '⌥⌘L', '?', '⌥⌘0', '⌥⌘A', '⌥⌘S', '⌥⌘D', '⌥⌘Y', '⌥⌘↑↓', '⌥⌘←→', '⌥⌘W']);
+  // grouped since 2026-10-12, from one table (KEYS): Go to, This chat, Layout, Look, In the drawer, In a page
+  out.groups = await ctx.evaluate(`[...document.querySelectorAll('#settings .keys .kh')].map(k => k.textContent)`);
+  ctx.assert.deepEqual(out.groups, ['Go to', 'This chat', 'Layout', 'Look', 'In the drawer', 'In a page']);
+  ctx.assert.deepEqual(out.cog.slice(0, 16), ['⌥⌘K', '⌥⌘L', '⌥⌘P', '⌥⌘F', '⌥⌘N', '⌥⌘O', '⌥⌘↑↓', '⌥⌘A', '⌥⌘0', '?', '⌥⌘C', '⌥⌘T', '⌥⌘E', '⌥⌘G', '⌥⌘D', '⌥⌘W']);
   ctx.assert.ok(!out.cog.includes('⌘B'), 'the fold is ⌥⌘B since 2026-10-02, not ⌘B');
   await ctx.shot('cog');
   return out;

@@ -90,7 +90,7 @@ export default async function (ctx) {
 
   // the cog lists the key, beside K
   out.cog = await ctx.evaluate(`[...document.querySelectorAll('#settings .keys kbd')].map(k => k.textContent)`);
-  ctx.assert.equal(out.cog[out.cog.indexOf('⌥⌘K') + 1], '⌥⌘F');
+  ctx.assert.equal(out.cog[out.cog.indexOf('⌥⌘K') + 3], '⌥⌘F', 'in Go to, after the launcher and the projects (the keys grouped, 2026-10-12)');
   out.arrest = arrest.id.slice(0, 8);
   return out;
 }

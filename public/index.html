@@ -112,7 +112,8 @@
   #settings .spane[hidden] { display: none; }
   /* in a pane of their own, the setup and the keys need no rule above them, nor the first switch */
   #settings .spane > .opt:first-child, #settings .spane > .setup, #settings .spane > .keys { margin-top: 0; padding-top: 0; border-top: 0; }
-  #settings .keys .kh { display: none; }
+  #settings .keys .kh { display: block; margin-top: 10px; font: 700 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }   /* the groups (2026-10-12) */
+  #settings .keys .kh:first-child { margin-top: 0; }
   /* The keys, so they can be looked up: two columns under a rule, the chord in ink, what it does in muted. */
   .pop .keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: baseline; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
   .pop .keys .kh { grid-column: 1 / -1; font-size: 11px; }
@@ -1901,6 +1902,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #ksbody { overflow-y: auto; columns: 2; column-gap: 32px; }
   #ksbody .kr { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); break-inside: avoid; font-size: 12.5px; color: var(--muted); }
   #ksbody .kr[hidden] { display: none; }
+  #ksbody .ksh { display: block; break-after: avoid; margin: 14px 0 2px; font: 700 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+  #ksbody .kr i { display: block; font-style: normal; color: var(--muted); font-size: 11.5px; margin-top: 2px; }
   #ksbody .kr kbd { justify-self: start; }
   #ksbody .kr em { font-style: normal; color: var(--ink); font-weight: 600; }
   #keysheet .none { margin: 0; color: var(--muted); }
@@ -2192,43 +2195,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <div id="hidden" class="hid"></div>
   </div>
   <div class="spane" data-tab="setup" hidden><div id="setup" class="setup"></div></div>
-  <div class="spane" data-tab="keys" hidden><div class="keys" title="From anywhere on the board, the terminal included">
-    <span class="kh">keys</span>
-    <kbd>⌥⌘T</kbd><span>a shell in this folder, a tab beside the chat · again to show it</span>
-    <kbd>⌥⌘E</kbd><span>edit: this folder in VS Code Web, on a tab</span>
-    <kbd>⌥⌘G</kbd><span>its PR on GitHub, on a tab · the repo when it has none · a picker with several, every time</span>
-    <kbd>⌥⌘C</kbd><span>this chat's Claude, in its drawer — starts it, or takes over one running elsewhere</span>
-    <kbd>⌥⌘O</kbd><span id="quickKey">a new chat in the project the settings name — its environments first, when its Taskfile has some</span>
-    <kbd>⌥⌘P</kbd><span>project picker — or a click on the project's name atop the chat list · ✎ edits a named one, ＋ makes one</span>
-    <kbd>⌥⌘K</kbd><span>chat picker — every ready or clauding chat, fuzzy: <em>chk rtr</em> finds <em>checkout retry</em></span>
-    <kbd>⌥⌘F</kbd><span>the chat list's own filter, fuzzy the same way — the best match leads · ↑↓ walk the cards · ⏎ opens one · esc clears it</span>
-    <kbd>⌥⌘N</kbd><span id="newKey">a chat — the project in view first, ⏎ ⏎ a new one there · or a project, a folder of your repos, or ＋ clone one · then its open chats or ＋ a new one · ✕ takes a row off the board</span>
-    <kbd>⌥⌘B</kbd><span>fold the chat list into a rail, and back</span>
-    <kbd>⌥⌘L</kbd><span>the launcher — every chat, project, PR, ticket, action and switch in one box: <em>&gt;</em> the actions and switches, <em>#</em> the PRs, <em>@</em> the projects, <em>!</em> the tickets · empty, a menu: → into a row, ← back · Toggle flips the settings' switches</span>
-    <kbd>?</kbd><span>this list, on a sheet of its own, searchable — outside a box or a terminal</span>
-    <kbd>⌥⌘0</kbd><span>home: no chat open — the board's facts and the day, every chat a row of when it clauded and when it waited on you · a row opens its chat</span>
-    <kbd>⌥⌘A</kbd><span>the overview: every live chat at once — Asking you · Clauding · Watching · New replies — each with what it is doing now: its drawer's screen when it runs here, else its last tool calls · 1–9 opens one · a question's answer types its digit into the chat's drawer</span>
-    <kbd>⌥⌘S</kbd><span>tiles' stack in and out of view — the chats asking or clauding beside the open one (Omarchy's scratchpad key) · with tiles off, tiles and the stack together · not from a page in the pane, where it is VS Code's Save All</span>
-    <kbd>⌥⌘D</kbd><span>what this chat changed in its folder, on a tab — its last turn's edits, the uncommitted tree or the branch against its base · Commit… and Push type into its zsh · + on a line sends Claude a note · the header's +n −n too</span>
-    <kbd>⌥⌘Y</kbd><span>theme — Omarchy's twelve and the board's own, the board behind follows the arrows · ⏎ keeps it for its appearance, dark or light · esc puts back what was worn</span>
-    <kbd>⌥⌘↑↓</kbd><span>the chat above / below in the list</span>
-    <kbd>⌥⌘←→</kbd><span>the tab to the left / right: chat, shell, GitHub pages, VS Code — split, across both halves' strips · drag a tab onto the other half to move it there</span>
-    <kbd>⌥⌘W</kbd><span>close the tab the keys are in: the shell ends, a page or VS Code Web goes — the ··· menu too · split, a half with one tab shows no strip</span>
-    <kbd>⌥⌘1 ⌥⌘2</kbd><span>the halves one over the other: the top one, the bottom one — ⌥⌘2 splits the chat that way the first time; side by side, either turns it</span>
-    <kbd>⌘,</kbd><span>these settings — the chat header's ··· has them too</span>
-    <kbd>⌘1 ⌘2</kbd><span>the left half of the chat, the right one — ⌘2 splits it in two the first time; one over the other, either turns it back · the digit is the pane, the modifier the layout</span>
-    <kbd>⌘W</kbd><span>close the half the keys are in — or the picker · with one half it is the window's own key</span>
-    <kbd>⌘0</kbd><span>only this half: the other one closes and this tab is the column · with one half, the size back to normal</span>
-    <kbd>⌃⌘F</kbd><span>full screen up to the notch, in the app — the green button too (⌥-click zooms): the strip beside the camera takes the list's head and the chat's title · remembered across launches</span>
-    <kbd>⌘+ ⌘−</kbd><span>chat and terminal size</span>
-    <kbd>⌘K</kbd><span>clear the drawer — on the server's copy of its screen too, so it stays clear</span>
-    <kbd>⇧⏎</kbd><span>newline in the terminal's prompt</span>
-    <kbd>⌘← ⌘→</kbd><span>the start / end of the terminal's line, as in iTerm · ⌥← ⌥→ a word · ⌘⌫ ⌘⌦ delete to the start / end · ⌥⌫ ⌥⌦ a word — in claude and in the shell</span>
-    <kbd>esc</kbd><span>closes a picker or popover · back to the chat from a page's tab · never leaves full screen while one is up</span>
-    <kbd>⌘R · ⇧⌘R</kbd><span>reload — the page in the pane while one is up, else the board · restart the server, in the app</span>
-    <kbd>⌘F · ⌘G</kbd><span>find on the page in the pane, as in a browser — ⏎ ⇧⏎ or ⌘G ⇧⌘G step the matches, esc closes the bar, in the app</span>
-    <kbd>pinch</kbd><span>zoom a GitHub or VS Code page in the pane, as in Safari · its address sits in the strip, click to copy</span>
-  </div></div>
+  <div class="spane" data-tab="keys" hidden><div class="keys" title="From anywhere on the board, the terminal included"></div></div>
 </dialog>
 <dialog id="hmenu" aria-label="This chat's actions"></dialog>
 <dialog id="about" aria-label="About peixAIrada"></dialog>
@@ -4704,16 +4671,64 @@ const toolName = n => {
   }
   // ?: the sheet of every key — Omarchy's Super+K — from anywhere but a box or a terminal, or the launcher's Keys. The
   // settings' Keys pane is its source, so the list is kept in one place; the box narrows it.
+  // Every key in one table (2026-10-12; typed by hand into the Keys pane before, beside HOTKEYS and main.swift's
+  // boardKeys): [what you press, its group, what it does in a line, the rest for its tooltip, the codes it is in
+  // HOTKEYS (alt:) or CMDKEYS (cmd:)]. The Keys pane and the ? sheet are drawn from it, grouped, and `npm run check`
+  // holds HOTKEYS, CMDKEYS and the app's forwarder to it (scripts/check-page.mjs). A row with an id is one the setup
+  // rewrites (⌥⌘O's project, ⌥⌘N's folders).
+  const KEYS = [
+    ['⌥⌘K', 'Go to', 'a chat — every project, fuzzy: <em>chk rtr</em> finds <em>checkout retry</em>', 'asking, clauding or ready, in the list\'s order', ['alt:KeyK']],
+    ['⌥⌘L', 'Go to', 'anything — chats, projects, PRs, tickets, actions and switches', '> actions and switches, # PRs, @ projects, ! tickets · empty, a menu: → into a row, ← back', ['alt:KeyL']],
+    ['⌥⌘P', 'Go to', 'a project — or a click on the project\'s name atop the list', '✎ edits a named one, ＋ makes one', ['alt:KeyP']],
+    ['⌥⌘F', 'Go to', 'the list\'s own filter, fuzzy', 'the best match leads · ↑↓ walk the cards · ⏎ opens one · esc clears it', ['alt:KeyF']],
+    ['⌥⌘N', 'Go to', 'a new chat — the project in view first', 'or a project, a folder of your repos, or ＋ clone one · then its open chats or ＋ a new one · ✕ takes a row off the board', ['alt:KeyN'], 'newKey'],
+    ['⌥⌘O', 'Go to', 'a new chat in the setup\'s quick project', 'its environments first, when its Taskfile has some', ['alt:KeyO'], 'quickKey'],
+    ['⌥⌘↑↓', 'Go to', 'the chat above / below in the list', '', ['alt:ArrowUp', 'alt:ArrowDown']],
+    ['⌥⌘A', 'Go to', 'the overview: every live chat at once', 'Asking you · Clauding · Watching · New replies, each with what it is doing now · 1–9 opens one · a question\'s answer types its digit into the chat\'s drawer', ['alt:KeyA']],
+    ['⌥⌘0', 'Go to', 'home — the board\'s facts and your day', 'no chat open · a row opens its chat', ['alt:Digit0']],
+    ['?', 'Go to', 'this list, on a sheet of its own', 'outside a box or a terminal', []],
+    ['⌥⌘C', 'This chat', 'its Claude, in its drawer', 'starts it, or takes over one running elsewhere', ['alt:KeyC']],
+    ['⌥⌘T', 'This chat', 'a shell in its folder, on a tab', 'again to show it', ['alt:KeyT']],
+    ['⌥⌘E', 'This chat', 'its folder in VS Code Web, on a tab', '', ['alt:KeyE']],
+    ['⌥⌘G', 'This chat', 'its PR on GitHub, on a tab', 'the repo when it has none · a picker with several', ['alt:KeyG']],
+    ['⌥⌘D', 'This chat', 'what it changed, on a tab', 'its last turn\'s edits, the uncommitted tree or the branch against its base · Commit… and Push type into its shell · + on a line sends Claude a note', ['alt:KeyD']],
+    ['⌥⌘W', 'This chat', 'close the tab the keys are in', 'the shell ends, a page or VS Code Web goes', ['alt:KeyW']],
+    ['⌘1 ⌘2', 'Layout', 'the left half, the right one', '⌘2 splits the chat in two the first time; one over the other, either turns it back · the digit is the half, the modifier the layout', ['cmd:Digit1', 'cmd:Digit2']],
+    ['⌥⌘1 ⌥⌘2', 'Layout', 'the top half, the bottom one', '⌥⌘2 splits the chat that way the first time; side by side, either turns it', ['alt:Digit1', 'alt:Digit2']],
+    ['⌥⌘←→', 'Layout', 'the tab to the left / right', 'across both halves\' strips · drag a tab onto the other half to move it there', ['alt:ArrowLeft', 'alt:ArrowRight']],
+    ['⌘W', 'Layout', 'close the half the keys are in', 'or the picker · with one half, the window\'s own key — ⌥⌘W is a tab', ['cmd:KeyW']],
+    ['⌘0', 'Layout', 'only this half — the other closes', 'with one half, the chat\'s size back to normal', ['cmd:Digit0']],
+    ['⌥⌘B', 'Layout', 'fold the list into a rail, and back', '', ['alt:KeyB']],
+    ['⌥⌘S', 'Layout', 'the stack of busy chats beside the open one', 'tiles\' · with tiles off, both together · not from a page in the pane, where it is VS Code\'s Save All', ['alt:KeyS']],
+    ['⌃⌘F', 'Layout', 'full screen up to the notch, in the app', 'the green button too (⌥-click zooms) · remembered across launches', []],
+    ['⌥⌘Y', 'Look', 'the theme', 'the board behind follows the arrows · ⏎ keeps it for its appearance · esc puts back what was worn', ['alt:KeyY']],
+    ['⌘,', 'Look', 'the settings', 'the chat header\'s ··· has them too', ['cmd:Comma']],
+    ['⌘+ ⌘−', 'In the drawer', 'the chat\'s and the drawer\'s size', '', []],
+    ['⌘K', 'In the drawer', 'clear the drawer', 'on the server\'s copy of its screen too, so it stays clear', []],
+    ['⇧⏎', 'In the drawer', 'a newline in the prompt', '', []],
+    ['⌘← ⌘→', 'In the drawer', 'the line\'s start / end, as in iTerm', '⌥← ⌥→ a word · ⌘⌫ ⌘⌦ delete to the start / end · ⌥⌫ ⌥⌦ a word', []],
+    ['esc', 'In a page', 'back to the chat from a page\'s tab', 'closes a picker or a popover first · never leaves full screen while one is up', []],
+    ['⌘R · ⇧⌘R', 'In a page', 'reload the page in the pane, else the board', '⇧⌘R restarts the server, in the app', []],
+    ['⌘F · ⌘G', 'In a page', 'find on the page in the pane', '⏎ ⇧⏎ or ⌘G ⇧⌘G step the matches · esc closes the bar · in the app', []],
+    ['pinch', 'In a page', 'zoom a page in the pane, as in Safari', 'its address sits in the strip, a click copies it', []],
+  ];
+  const keysHtml = (rows, row) => [...new Set(rows.map(k => k[1]))].map(g => `<span class="kh">${esc(g)}</span>${rows.filter(k => k[1] === g).map(row).join('')}`).join('');
+  $('#settings .keys').innerHTML = keysHtml(KEYS, ([k, , d, more, , id]) => `<kbd>${k}</kbd><span${id ? ` id="${id}"` : ''}${more ? ` title="${esc(more)}"` : ''}>${d}</span>`);
   function keysOpen() {
     const dlg = $('#keysheet'); if (dlg.open) return;
     if (inApp) post({ type: 'focus' });
-    $('#ksbody').innerHTML = [...$('#settings .keys').children].filter(n => n.tagName === 'KBD').map(k => `<div class="kr"><kbd>${k.innerHTML}</kbd><span>${k.nextElementSibling?.innerHTML || ''}</span></div>`).join('');
+    $('#ksbody').innerHTML = keysHtml(KEYS, ([k, , d, more, , id]) => `<div class="kr"><kbd>${k}</kbd><span>${(id && $('#' + id)?.innerHTML) || d}${(id && $('#' + id)?.title) || more ? `<i>${esc((id && $('#' + id)?.title) || more)}</i>` : ''}</span></div>`).replace(/<span class="kh">/g, '<span class="kh ksh">');
     $('#ksq').value = ''; ksFilter();
     dlg.showModal(); repostPane(); $('#ksq').focus();
   }
   function ksFilter() {
     const words = $('#ksq').value.trim().toLowerCase().split(/\s+/).filter(Boolean); let n = 0;   // every word somewhere in the row: a sheet this long matches anything fuzzily
-    for (const r of $('#ksbody').children) { const t = r.textContent.toLowerCase(), on = words.every(w => t.includes(w)); r.hidden = !on; n += on; }
+    let head = null, any = false;   // a group's head stands while any of its rows does (2026-10-12)
+    for (const r of $('#ksbody').children) {
+      if (r.classList.contains('ksh')) { if (head) head.hidden = !any; head = r; any = false; continue; }
+      const t = r.textContent.toLowerCase(), on = words.every(w => t.includes(w)); r.hidden = !on; n += on; any ||= on;
+    }
+    if (head) head.hidden = !any;
     $('#ksnone').hidden = !!n;
   }
   $('#ksq').addEventListener('input', ksFilter);
@@ -4950,8 +4965,10 @@ const toolName = n => {
       + jiraSetup(c.jira, setupUi.jira)
       + (c.error ? `<p class="sfoot serr">${esc(c.error)} — the board keeps what it had and writes nothing over it until the file reads.</p>` : '')
       + `<p class="sfoot">${c.file ? `In <code>${esc(homePath(c.file))}</code>, yours to edit by hand too — ` : 'Kept by the server — '}the app and every browser on this Mac share it.</p>`;
-    $('#quickKey').textContent = c.quick ? `${c.quick} — a new chat there: its environments first, when its Taskfile launches claude, then their open chats` : 'a new chat in the project the setup names — none yet';
-    $('#newKey').textContent = `a chat — a project${roots.length ? `, a folder in ${roots.map(r => homePath(r.dir)).join(' or ')}` : ''}${roots.some(r => r.org) ? ', or ＋ clone a repo' : ''} · then its open chats or ＋ a new one · ✕ takes a row off the board`;
+    // the two rows the setup names, one line each as every row (2026-10-12), the rest in their tooltips
+    $('#quickKey').textContent = c.quick ? `a new chat in ${c.quick}` : 'a new chat in the setup\'s quick project — none yet';
+    $('#quickKey').title = c.quick ? 'its environments first, when its Taskfile launches Claude, then their open chats' : 'Settings → Setup → Quick chat names it';
+    $('#newKey').title = `or a project${roots.length ? `, a folder in ${roots.map(r => homePath(r.dir)).join(' or ')}` : ''}${roots.some(r => r.org) ? ', or ＋ clone a repo' : ''} · then its open chats or ＋ a new one · ✕ takes a row off the board`;
     $('#pextra').placeholder = `${roots[0] ? homePath(roots[0].dir) : '~/code'}/some-repo`;
     if (html === setupUi.drawn && !force) return;
     if (!force && box.contains(document.activeElement)) { setupUi.stale = true; return; }
