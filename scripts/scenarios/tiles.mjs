@@ -75,19 +75,21 @@ export default async function (ctx) {
     ctx.assert.equal(await border('#chat'), 'rgb(224, 93, 68)', 'with the keys: its colour, whole');
     await ctx.settle(); await ctx.shot('tiles');
 
-    // at the notch the chat is cut round the housing, the gap away, its border round the cut and its title clear of it;
+    // at the notch the chat is cut round the housing, hugging it (2026-10-11, later; the gap away before), its border round
+    // the cut and its title clear of it;
     // the fill off, it is whole again
     const N = await ctx.evaluate(`(w => ({ top: 32, left: w / 2 - 92.5, right: w / 2 + 92.5 }))(innerWidth)`);
     await ctx.evaluate(`window.peixFill(true, ${JSON.stringify(N)})`);
     await ctx.waitFor(`!!document.querySelector('#chat.ncutp > .ncut')`, { what: 'the chat cut round the housing' });
     out.cut = await ctx.evaluate(`(() => { const c = document.querySelector('#chat > .ncut'), r = c.getBoundingClientRect(); return { left: r.left, right: r.right, bottom: r.bottom, color: getComputedStyle(c).borderLeftColor, round: getComputedStyle(c).borderBottomLeftRadius + ' ' + getComputedStyle(c).borderBottomRightRadius, caps: [getComputedStyle(document.querySelector('#chat > .ncap.l')).borderTopRightRadius, getComputedStyle(document.querySelector('#chat > .ncap.r')).borderTopLeftRadius], h2: document.querySelector('#shead h2').getBoundingClientRect().right }; })()`);
-    ctx.assert.deepEqual([out.cut.left, out.cut.right, out.cut.bottom], [N.left - 10, N.right + 10, N.top + 10], 'the border round the housing, the gap away');
+    ctx.assert.deepEqual([out.cut.left, out.cut.right, out.cut.bottom], [N.left - 2, N.right + 2, N.top + 2], 'the border round the housing, no gap');
     ctx.assert.equal(out.cut.color, 'rgb(224, 93, 68)', 'in the chat’s colour');
-    ctx.assert.ok(out.cut.h2 <= N.left - 19.5, 'the title clear of the border');
-    ctx.assert.equal(out.cut.round, '19px 19px', 'its lower corners round, concentric with the housing’s');
+    ctx.assert.ok(out.cut.h2 <= N.left - 11.5, 'the title clear of the border');
+    ctx.assert.equal(out.cut.round, '11px 11px', 'its lower corners round, concentric with the housing’s');
     ctx.assert.deepEqual(out.cut.caps, ['9px', '9px'], 'and the panel’s corners beside its top, as the screen flares into the housing');
-    ctx.assert.ok(await ctx.evaluate(`!document.querySelector('#chat').contains(document.elementFromPoint(${N.left - 9}, document.querySelector('#chat').getBoundingClientRect().top + 1))`), 'outside that corner is not the chat’s');
-    ctx.assert.ok(await ctx.evaluate(`!document.querySelector('#chat').contains(document.elementFromPoint(${N.left + 4}, ${N.top + 4}))`), 'the gap is not the chat’s');
+    ctx.assert.ok(await ctx.evaluate(`!document.querySelector('#chat').contains(document.elementFromPoint(${N.left - 1}, document.querySelector('#chat').getBoundingClientRect().top + 1))`), 'outside that corner is not the chat’s');
+    ctx.assert.ok(await ctx.evaluate(`!document.querySelector('#chat').contains(document.elementFromPoint(${N.left + 20}, ${N.top - 2}))`), 'the housing is not the chat’s');
+    ctx.assert.ok(await ctx.evaluate(`document.querySelector('#chat').contains(document.elementFromPoint(${N.left + 20}, ${N.top + 4}))`), 'just under it is');
     await ctx.evaluate(`document.body.insertAdjacentHTML('beforeend', '<i id="housing" style="position:fixed;z-index:99;top:0;left:${N.left}px;width:${N.right - N.left}px;height:${N.top}px;background:#000;border-radius:0 0 9px 9px"></i><i id="ear1" style="position:fixed;z-index:99;top:0;left:${N.left - 9}px;width:9px;height:9px;background:radial-gradient(circle at 0 100%, transparent 8.5px, #000 9px)"></i><i id="ear2" style="position:fixed;z-index:99;top:0;left:${N.right}px;width:9px;height:9px;background:radial-gradient(circle at 100% 100%, transparent 8.5px, #000 9px)"></i>')`);
     await ctx.settle(); await ctx.shot('tiles-notch');
     // the screen's top corners: the list's left and the stack's first tile's right round, the chat between them square

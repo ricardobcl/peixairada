@@ -42,6 +42,14 @@ anything and it does't look pretty with the floating chat bar".
   list that lies. The faces fade and shrink away rather than vanish (`display` held by `allow-discrete`). It is a new
   pref (`peopleCompact`); the old fold's is dropped on load, since everyone had it saved as off. The fish's lane is the bar's free room rather than 64 px, the faces after it: it swims the whole width at the speed
   it had, and keeps its place when the window's width moves.
+* **Three more, from the app** (Ricardo: "the chat tile should not leave any gap to the notch, so we maximize space to
+  the floating header (maintain the curvature of the tile border) - move the gh icon that toggle the avatars in the
+  status bar to the left of the fish, so GH icon is static when folding/unfolding - make the fish always move, just
+  faster if more claudes are working, and when it hits one of sides, it turns back instead of wraping around"):
+  * **The cut hugs the housing**: with tiles at the notch the panel was cut 8 px wide of the camera housing, the
+    wallpaper showing in a band round it, and the header's row kept 20 px clear. The hole is the housing's own shape
+    now — its lower corners the housing's radius, the border's 2 px round them concentric — and the row keeps 12 px
+    clear, so the header (floating or not) has 8 px more either side of it.
 
 ## Decisions of 2026-10-11 — the third studies built: twenty-eight small motions
 

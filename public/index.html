@@ -5122,8 +5122,9 @@
   // header draw and every change of its size, since a resize moves the hole; nothing else on the page knows about the
   // fill.
   const NOTCH_PAD = 10, NOTCH_TITLE = 220, NOTCH_TAIL = 120;
-  // with tiles the housing has a border round it, the tiles' gap away (tileNotch): the row keeps clear of that too
-  const notchPad = () => prefs.tiles ? NOTCH_PAD + 10 : NOTCH_PAD;
+  // with tiles the housing has a border round it, hugging it (tileNotch, 2026-10-11, later; the tiles' gap away before):
+  // the row keeps clear of that too
+  const notchPad = () => prefs.tiles ? NOTCH_PAD + 2 : NOTCH_PAD;
   function layoutNotch() {
     const n = state.notch, main = $('#main'), list = $('#sessions'), chat = $('#chat'), head = $('#shead'), h2 = head.querySelector('h2');
     if (!n && !main.classList.contains('notch')) return;   // no housing, and nothing laid around one to undo
@@ -6230,26 +6231,27 @@
     p.classList.add('kf');
   };
   document.addEventListener('pointerdown', markKf, true); document.addEventListener('focusin', markKf, true);
-  // At the notch (2026-10-10): a panel the camera housing reaches is cut round it, the tiles' gap away — the panel's
-  // clip-path the hole, so the wallpaper shows in the gap — and its border runs round the cut (.ncut: the left, bottom
-  // and right sides, the panel's own colour by `inherit`), as if the housing were a window of its own. Its lower corners
-  // are round, concentric with the housing's (HOUSING_R, the radius of a MacBook's, by eye), and so are the panel's two
+  // At the notch (2026-10-10): a panel the camera housing reaches is cut round it — the panel's clip-path the hole, the
+  // housing's own shape, no gap (2026-10-11, later; the tiles' gap away before, the wallpaper showing in it), so the
+  // floating header has the room — and its border runs round the cut (.ncut: the left, bottom and right sides, the
+  // panel's own colour by `inherit`), as if the housing were a window of its own. Its lower corners are round, the
+  // housing's own (HOUSING_R, the radius of a MacBook's, by eye), the border's concentric with them, and so are the panel's two
   // corners beside its top, as the screen flares into the housing there (.ncap, a quarter of border each; the flare's
   // radius taken as the housing's own — 8 px of gap below the screen's edge, they cannot be concentric). From
   // layoutNotch (the fill, every header drawn or resized) and renderStack.
   function tileNotch() {
-    const GAP = 8, BW = 2, M = 60, HOUSING_R = 9, n = tilesOn ? state.notch : null;
+    const BW = 2, M = 60, HOUSING_R = 9, n = tilesOn ? state.notch : null;
     const panels = [$('#sessions'), $('#chat'), ...document.querySelectorAll('#stack .stile')];
     if (!n && !panels.some(p => p.classList.contains('ncutp'))) return;
     const rects = panels.map(p => p.getBoundingClientRect());   // every read, then every write
     panels.forEach((p, i) => {
-      const r = rects[i], cut = !!n && r.width > 0 && r.top < n.top + GAP && r.left < n.right + GAP && r.right > n.left - GAP;
+      const r = rects[i], cut = !!n && r.width > 0 && r.top < n.top + BW && r.left < n.right + BW && r.right > n.left - BW;
       let c = p.querySelector(':scope > .ncut');
       if (!cut) { if (p.classList.contains('ncutp')) { p.classList.remove('ncutp'); p.style.clipPath = ''; for (const x of p.querySelectorAll(':scope > :is(.ncut, .ncap)')) x.remove(); } return; }
-      // in the panel's border box: the hole from the housing's left less the gap to its right plus it, down to its bottom
-      // plus it; a side past the panel's edge has no border of its own (the hole runs off that edge)
-      const x1 = n.left - GAP - r.left, x2 = n.right + GAP - r.left, y2 = n.top + GAP - r.top, L = x1 > 0, R = x2 < r.width;
-      const a = L ? x1 : -M, b = R ? x2 : r.width + M, k = Math.min(HOUSING_R + GAP, (b - a) / 2, y2);   // the cut's lower corners
+      // in the panel's border box: the hole is the housing, its left to its right, down to its bottom; a side past the
+      // panel's edge has no border of its own (the hole runs off that edge)
+      const x1 = n.left - r.left, x2 = n.right - r.left, y2 = n.top - r.top, L = x1 > 0, R = x2 < r.width;
+      const a = L ? x1 : -M, b = R ? x2 : r.width + M, k = Math.min(HOUSING_R, (b - a) / 2, y2);   // the cut's lower corners
       const t = Math.max(0, Math.min(HOUSING_R, y2 - k));   // the panel's corners beside the cut's top
       const hole = `${L ? `M${a - t} ${-M}V0A${t} ${t} 0 0 1 ${a} ${t}` : `M${a} ${-M}`}V${y2 - k}A${k} ${k} 0 0 0 ${a + k} ${y2}H${b - k}A${k} ${k} 0 0 0 ${b} ${y2 - k}${R ? `V${t}A${t} ${t} 0 0 1 ${b + t} 0` : ''}V${-M}Z`;
       p.classList.add('ncutp');

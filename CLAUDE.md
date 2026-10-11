@@ -909,11 +909,12 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   evening). **The list on ALL, no project's, wears the open chat's colour**, and **the wallpaper is in that hue**
   (`--wallc` on the body, registered and eased: the chat column's colour, else the list's project's, else the accent —
   `tileTints`, from `renderSessionList` and `tintChat`). **At the notch a panel the housing reaches is cut round it**,
-  the gap away, its border running round the cut (`tileNotch`, from `layoutNotch` and `renderStack`: the panel's
-  `clip-path` is the hole, `.ncut` the border's three sides, its colour the panel's by `border-color: inherit`; the lower
-  corners round, concentric with the housing's — `HOUSING_R`, 9 px by eye, the system does not say it — and the panel's
-  corners beside its top round too, where the screen flares into the housing: `.ncap`, a quarter ring each), and the row
-  keeps `notchPad()` clear of it — 20 px with tiles, `NOTCH_PAD` without. **On that screen the tiles in its two top
+  hugging it (2026-10-11, later; the tiles' gap away before), its border running round the cut (`tileNotch`, from
+  `layoutNotch` and `renderStack`: the panel's `clip-path` is the hole — the housing's own shape, its lower corners
+  `HOUSING_R`, 9 px by eye, the system does not say it —, `.ncut` the border's three sides, concentric with it, its
+  colour the panel's by `border-color: inherit`; and the panel's corners beside its top round too, where the screen
+  flares into the housing: `.ncap`, a quarter ring each), and the row keeps `notchPad()` clear of it — 12 px with tiles
+  (the border's 2), `NOTCH_PAD` without. **On that screen the tiles in its two top
   corners round as the screen's do** (`main.tiles.notch`, `--screen-r` 10 px — the screen's radius by eye less the gap;
   the list's top left, and the first tile of the stack's top right, or the chat's without one; `overflow: hidden`, so
   the header's black does not square it off): a housing is what says the screen is a MacBook's own, so a fill on an
