@@ -446,7 +446,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
 * **⌥⌘A is the overview, every live agent at once** (2026-10-10; `#ov`, a modal `<dialog>` over the whole window, the
   board blurred under it): `ovColumns` — Asking you, Clauding, Watching (a live chat's tasks), Ready with unread
   replies — every project, done chats never; a tile per chat, numbered in reading order (1–9 and ⏎ open, the arrows
-  move), drawn again on its chats' `session` events (`ovSoon`). **A tile is a live tile** (shared with the stack, see
+  move; **a click on nothing closes it** — not a tile or a control, pressed and let go there, `ovNothing`, 2026-10-11,
+  late night), drawn again on its chats' `session` events (`ovSoon`). **A tile is a live tile** (shared with the stack, see
   *The chat column's two halves*): the chat's drawer here as a read-only xterm (`mountMini` — it never sends a resize,
   so the PTY keeps the size the chat's own view gave it; scaled to the tile down to .7, cropped past that, the bottom
   left in view), else its tail (`tailHtml` over `GET /api/tails?ids=`, polled every 2 s while up). The server keeps

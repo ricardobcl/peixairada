@@ -2,7 +2,8 @@
 // watching a monitor — and one long ended. What this checks: ⌥⌘A lays every live chat out in its column (Asking you ·
 // Clauding · Watching), numbered in reading order; each tile shows its tail — the running command with no result yet,
 // the monitor's last event — and the asking one its question and answers (not clickable: it is not in a drawer here);
-// the ended chat is nowhere; a digit opens its tile's chat and the overview goes; Esc closes it.
+// the ended chat is nowhere; a digit opens its tile's chat and the overview goes; Esc closes it, and so does a click on
+// nothing (2026-10-11).
 import { spawn } from 'node:child_process';
 import { makeFixture, replyLines, taskNoteLine, toolLines } from '../fixture.mjs';
 
@@ -57,6 +58,21 @@ export default async function (ctx) {
     await ctx.waitFor(`document.querySelector('#ov').open`, { what: 'the overview again' });
     await ctx.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }))`);
     await ctx.waitFor(`!document.querySelector('#ov').open`, { what: 'Esc closed it' });
+    // a click on nothing closes it (2026-10-11): the room under a column's tiles — but not a press that began on a tile
+    await ctx.key('KeyA');
+    await ctx.waitFor(`document.querySelector('#ov').open`, { what: 'the overview once more' });
+    await ctx.settle();
+    const mouse = async (type, x, y) => ctx.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons: type === 'mousePressed' ? 1 : 0, clickCount: 1 });
+    const room = await ctx.evaluate(`(() => { const c = document.querySelector('#ov .oc.watch').getBoundingClientRect(), t = document.querySelector('#ov .oc.watch .ot').getBoundingClientRect();
+      return { x: (c.left + c.right) / 2, y: (t.bottom + c.bottom) / 2, tx: (t.left + t.right) / 2, ty: t.top + 12, empty: document.elementFromPoint((c.left + c.right) / 2, (t.bottom + c.bottom) / 2)?.closest('.oc') !== null && !document.elementFromPoint((c.left + c.right) / 2, (t.bottom + c.bottom) / 2)?.closest('.ot') }; })()`);
+    ctx.assert.ok(room.empty, 'there is room under the watching tile');
+    await mouse('mouseMoved', room.tx, room.ty); await mouse('mousePressed', room.tx, room.ty);
+    await mouse('mouseMoved', room.x, room.y); await mouse('mouseReleased', room.x, room.y);
+    await ctx.sleep(300);
+    ctx.assert.ok(await ctx.evaluate(`document.querySelector('#ov').open`), 'a press dragged off a tile does not close it');
+    await mouse('mousePressed', room.x, room.y); await mouse('mouseReleased', room.x, room.y);
+    await ctx.waitFor(`!document.querySelector('#ov').open`, { what: 'a click on nothing closed it' });
+    ctx.assert.equal(await ctx.evaluate(`window.peix.state().current`), work.id, 'and opened nothing');
     return out;
   } finally { for (const s of sleeps) try { s.kill(); } catch {} }
 }

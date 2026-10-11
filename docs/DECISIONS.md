@@ -5,6 +5,18 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-11, late night, later — a new chat's drawer under the floating header; the overview closes on nothing
+
+Ricardo: "when opening a new chat the initial part is now covered by the floating top bar. can we the chat not as high
+initially so it's not covered?" and "on the all agented overview, if I click on the empty space it should dismisss the
+view".
+
+* **A click on nothing closes the overview**, as Mission Control's does. It closed only on a click that landed on the
+  dialog itself — its padding, a few pixels round the edge; the columns fill the window, so the room under their tiles
+  and their heads were the columns' and did nothing. Now anything that is not a tile or a control (a button, a link, a
+  box) closes it, the bar's words included. A press that began on a tile and was let go off it — a selection dragged
+  out of a tile's tail — lands its click on the column, so the press has to have been on nothing too.
+
 ## Decisions of 2026-10-11, late night — the header's black dissolves in; the fish eats
 
 Ricardo: "on the chat bar, the transition from the background color and the black bar with the title of the chat could

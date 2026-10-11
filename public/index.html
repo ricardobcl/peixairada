@@ -6619,7 +6619,7 @@
   // chat a tile with what it is doing now, its branch, the size of its uncommitted change, its PR and CI. A digit opens
   // the tile it is on (1–9, in reading order), the arrows and ⏎ too, Esc closes. A question the transcript has words
   // for shows its answers; with the chat in a drawer here a click on one opens it and types that answer's digit.
-  const ov = { sel: 0, list: [], minis: new Map(), timer: 0, raf: 0 };
+  const ov = { sel: 0, list: [], minis: new Map(), timer: 0, raf: 0, downOn: null };
   function ovColumns() {
     const live = [...state.sessions.values()].filter(s => visible(s) && !s.done).sort(byWord), used = new Set();
     const take = f => live.filter(s => !used.has(s.id) && f(s)).map(s => (used.add(s.id), s));
@@ -6690,8 +6690,13 @@
     tick(); ov.timer = setInterval(tick, 2000);
   }
   $('#ov').addEventListener('close', () => { clearInterval(ov.timer); sweepMinis(ov.minis, true); });
+  // A click on nothing closes it, as Mission Control's does (2026-10-11, late night): the room round and under the tiles, a column's
+  // head, the bar's words — anything not a tile or a control. Pressed and let go there both: a press that began on a
+  // tile (a selection dragged off it) lands its click on the column, and is not one.
+  const ovNothing = t => !t.closest('.ot, button, a, input');
+  $('#ov').addEventListener('pointerdown', e => { ov.downOn = ovNothing(e.target); });
   $('#ov').addEventListener('click', e => {
-    if (e.target === e.currentTarget || e.target.closest('.ovclose')) return $('#ov').close();
+    if (e.target.closest('.ovclose') || (ov.downOn !== false && ovNothing(e.target))) return $('#ov').close();
     const ans = e.target.closest('[data-ans]'), tile = e.target.closest('.ot'); if (!tile) return;
     const s = state.sessions.get(tile.dataset.id); if (!s) return;
     if (ans) { $('#ov').close(); answerInDrawer(s, ans.dataset.ans); } else ovGo(s, tile);
