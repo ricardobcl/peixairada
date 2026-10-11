@@ -8,19 +8,19 @@
 <style>
   :root {
     --bg: #f6f6f4; --panel: #ffffff; --ink: #1c1c1a; --muted: #6b6b66; --line: #e5e5e0; --accent: #c96442;
-    --working: #d9a82a; --idle: #2f9e5b; --needs: #d64545; --ended: #a3a39e; --unread: #c96442;
+    --working: #d9a82a; --idle: #2f9e5b; --needs: #c53535; --ended: #a3a39e; --unread: #b04f2e;   /* a red and the unread badge's that read at small sizes (2026-10-12: #d64545 4.05, #c96442 3.9 against AA's 4.5) */
     --watch: #0e8a8a;   /* a monitor or a background command still running: cool, because nothing is waiting on you */
     --spend: #e8782a;   /* the plan usage's bars and rings: what is spent, in orange */
     --prg: 28%;          /* how much of a PR's state colour the header chip's wash starts at — more on the dark panel, where less shows */
     --user-bg: #f0efe9; --tool-bg: #f7f7f4; --code-bg: #efeee8; --code-line: #dedcd2;
     --code-ink: #a8442a; --inline-bg: rgba(0, 0, 0, .055);
     --you: #2f8b7c; --snip-claude: #45443f; --vscode: #0066b8;
-    --pr-open: #2f9e5b; --pr-merged: #8250df; --pr-closed: #d64545; --pr-draft: #8b8b85;
-    --tk-todo: #758195; --tk-doing: #1d6fd8; --tk-done: #22a06b;   /* a Jira ticket's status category (2026-10-08), Jira's own blue and green */
+    --pr-open: #1f7d45; --pr-merged: #7442d0; --pr-closed: #c53535; --pr-draft: #6e6e68;   /* deep enough for the page's ground as ink on them (2026-10-12; 3.15 and 3.17 for open and draft before) */
+    --tk-todo: #5e6a7c; --tk-doing: #1a62c2; --tk-done: #1a7f55;   /* a Jira ticket's status category (2026-10-08), Jira's own blue and green, a shade deeper (2026-10-12) */
     --term-bg: #f4f3ee; --term-sel: rgba(201, 100, 66, .28);   /* the accent, as ::selection is */
     --nocolor: #b9b9b3;   /* light gray: a project without a Peacock colour, wherever a colour is needed (the tab, the swatch, the card's edge and wash) */
     /* Syntax colours, one set per theme — the whole highlight.js palette hangs off these eight. */
-    --hl-com: #97968d; --hl-key: #9c27a0; --hl-str: #4a8c3f; --hl-num: #98651a;
+    --hl-com: #6f6e66; --hl-key: #9c27a0; --hl-str: #4a8c3f; --hl-num: #98651a;
     --hl-fn: #2f6fd0; --hl-cls: #a8791a; --hl-var: #cf4b3c; --hl-meta: #6b7f9e;
     /* Motion (2026-10-11): one ease out for what settles, and two springs for what arrives with a touch of overshoot —
        linear() curves of a damped oscillator (damping .6 and .82) sampled at 40 stops; --t-hover the small controls'
@@ -38,7 +38,7 @@
     --user-bg: #23231f; --tool-bg: #1f1f1c; --code-bg: #101010; --code-line: #2e2e2a; --ended: #5d5d58;
     --code-ink: #e0a284; --inline-bg: rgba(255, 255, 255, .075);
     --you: #4fb8a8; --snip-claude: #c9c7bd; --vscode: #4aa5f0; --nocolor: #66665f; --watch: #45c8c8; --spend: #f28a3c; --prg: 44%;
-    --pr-open: #3fb950; --pr-merged: #a371f7; --pr-closed: #f85149; --pr-draft: #8b8b85;
+    --pr-open: #3fb950; --pr-merged: #a371f7; --pr-closed: #f85149; --needs: #ef6060; --pr-draft: #8b8b85;
     --tk-todo: #8c9bab; --tk-doing: #579dff; --tk-done: #4bce97;
     --term-bg: #111110; --term-sel: rgba(224, 138, 104, .32);
     --hl-com: #7c7c74; --hl-key: #c678dd; --hl-str: #98c379; --hl-num: #d19a66;
@@ -54,7 +54,7 @@
   :root[data-colors="simple"] {
     --working: #6b6b66; --idle: #3a3a36; --needs: #c96442; --watch: #8b8b85; --spend: #8b8b85;
     --vscode: #6b6b66; --code-ink: #45443f;
-    --hl-com: #97968d; --hl-key: #1c1c1a; --hl-str: #6b6b66; --hl-num: #1c1c1a;
+    --hl-com: #6f6e66; --hl-key: #1c1c1a; --hl-str: #6b6b66; --hl-num: #1c1c1a;
     --hl-fn: #1c1c1a; --hl-cls: #1c1c1a; --hl-var: #1c1c1a; --hl-meta: #6b6b66;
   }
   @media (prefers-color-scheme: dark) { :root[data-colors="simple"]:not([data-theme="light"]) {
@@ -496,7 +496,7 @@
      it bursts back, over the divider's margin (hence overflow: visible). Both are transforms, the compositor's, both
      2.4 s long, so phaseAnims() putting both at 0 keeps the hop on the burst. A frame is 18 px of strip; a keyframe
      starts on a frame's boundary, k / 24 of the cycle. */
-  .gsep { margin: 2px 10px; font: 600 11px/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: color-mix(in srgb, var(--muted) 80%, transparent); white-space: nowrap; overflow: hidden; user-select: none; }
+  .gsep { margin: 2px 10px; font: 600 11px/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: var(--muted); white-space: nowrap; overflow: hidden; user-select: none; }
   /* A lane's head (2026-10-09): its mark, its name in small caps, its count at the right end — the first thing in the
      list, so the list's top keeps its padding over it; the mark is a dot in the state's colour (asking ringed, ready
      hollow), and Claude's in pixels for the clauding. */
@@ -505,7 +505,7 @@
   .gsep.lane > i { width: 10px; height: 10px; flex: none; margin: 0 4px; border-radius: 50%; box-sizing: border-box; }
   .gsep.lane b { margin-left: auto; padding: 0 7px; border-radius: 9px; background: var(--ctl-hi); color: var(--ink); font-size: 10.5px; font-weight: 700; letter-spacing: 0; line-height: 16px; }
   .gsep.lane.asking { color: var(--needs); } .gsep.lane.asking > i { background: var(--needs); box-shadow: 0 0 0 3px color-mix(in srgb, var(--needs) 25%, transparent); }
-  .gsep.lane.working { color: color-mix(in srgb, var(--working) 80%, var(--ink)); }
+  .gsep.lane.working { color: color-mix(in srgb, var(--working) 55%, var(--ink)); }
   .gsep.lane.ready > i { border: 2px solid var(--idle); background: radial-gradient(var(--idle) 30%, transparent 36%); }
   .gsep.lane.done > i { background: var(--ended); }
   .gsep.lane.move { color: color-mix(in srgb, var(--accent) 85%, var(--ink)); } .gsep.lane.move > i { background: var(--accent); border-radius: 2px; transform: rotate(45deg) scale(.8); }
@@ -832,7 +832,7 @@
   /* (2026-10-01) Every card in view as dark as the dark theme's ground (nearBlack, renderSessionList): the ground behind
      them is a grey, so the cards still stand out of it. The light theme's ground is light enough as it is. */
   /* (no grey ground under a list of near-black cards since 2026-10-09: the ink cards are the panel, whatever their colour) */
-  .card.done { opacity: .55; }
+  .card.done { filter: saturate(.45); } .card.done :is(.title, .snip) { color: var(--muted); }   /* dimmed by colour, not opacity (2026-10-12: its snippet read 2.15 to 1) */
   /* done for good (2026-10-11): its PRs no longer count here, and their chips say so in grey */
   .card.forgood .tprs:not(.ttks) { filter: grayscale(1); }
   .card.gone { opacity: .8; }   /* no live process: still ready, but a resume is coming */
@@ -999,7 +999,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :is(.card, .presence) .state.needs-input .opts { color: var(--muted); font-weight: 500; flex: none; }
   /* a PR come round to you: a tag filled in the accent — like the chip it names, it reads on any project's tint — on
      the card's line (moveHtml), and in the chat header before the PR chips with the reason beside it (headMove) */
-  .ymove { flex: none; display: inline-flex; align-items: center; gap: 3px; padding: 0 5px 0 4px; border-radius: 3px; background: var(--accent); color: var(--bg); font-size: 9.5px; font-weight: 700; line-height: 15px; letter-spacing: .4px; text-transform: uppercase; white-space: nowrap; }
+  .ymove { flex: none; display: inline-flex; align-items: center; gap: 3px; padding: 0 5px 0 4px; border-radius: 3px; background: color-mix(in srgb, var(--accent) 82%, var(--ink)); color: var(--bg); font-size: 9.5px; font-weight: 700; line-height: 15px; letter-spacing: .4px; text-transform: uppercase; white-space: nowrap; }
   .ymove .ic { width: 10px; height: 10px; }
   .card .state.prmove { color: var(--ink); display: flex; align-items: baseline; gap: 6px; }
   .card .state.moveslot { align-items: baseline; gap: 6px; }   /* the line's own metrics, for the place it holds */

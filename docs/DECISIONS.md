@@ -167,6 +167,14 @@ the order they landed.
   chat's rows now include Rename it, Take #n off it, Move this tab to the other half and Let go of its project's colour.
   (The menu's first build put a `const` from further down straight into a listener — the page stopped at load until
   the next save. `check-page.mjs` compiles; a load is what finds that.)
+* **A1 — the light theme's small text reads**: ratios from the tokens put the PR chips at 3.15 (open) and 3.17 (draft),
+  the ticket chips at 3.08 and 3.64, the *your move* tag at 3.60 in 9.5 px, the unread badge at 3.90, the Clauding
+  lane's head at 2.90, the asking red at 4.05 (4.21 in the dark, where it was never redefined), a done card's snippet
+  at 2.15, the day lines at 3.34, the code's comments at 2.56 — against AA's 4.5. The state fills and the ticket fills a
+  shade deeper in the light, the page's ground still their ink; the unread badge deeper in both; a red for each
+  theme; the tag the accent mixed towards the ink; the lane's head and the day lines the plain muted ink; the
+  comments darker; and **a done card dimmed by colour** — its title and snippet muted, the card desaturated — not by
+  `opacity: .55`, which dimmed the text with it.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

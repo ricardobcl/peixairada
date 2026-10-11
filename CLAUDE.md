@@ -297,6 +297,9 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   speckles at 7 %): the chat header's, the transcript's wash (`#log`) and the tiles' wallpaper, its first background
   layer — where a dark gradient across a wide box bands into steps. Not the cards (narrow, and their first layer is the
   lit edge, which the harness reads). A new wide gradient takes it the same way.
+* **Small text reads at AA in both themes** (2026-10-12): the state, ticket and badge fills are deep enough for their ink
+  (`--pr-*`, `--tk-*`, `--unread`), each theme has its own `--needs`, and a done card is dimmed by colour (`filter:
+  saturate`, its words muted), never `opacity`. A new small-text colour gets its ratio checked.
 * **The small print is one CSS section** (2026-09-27, night, before the reduced-motion block): `text-wrap` for prose
   and centred texts, tabular figures for every count and age, `::selection` in the accent (and `--term-sel` to match),
   one `:where(…):focus-visible` ring — a text box that wants its border as its focus keeps its own `:focus { outline:
