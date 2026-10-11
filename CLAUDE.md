@@ -599,7 +599,11 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   slots** (2026-10-09, later): `#sbFind` far left — **the search and the state chips, `#filters` itself moved in**
   (`dockBar`, its handlers with it; the chips' click is on `#filters`) —, `#sbLeft` — the connection (the stream's open
   and error, `bar.conn`; a click is the About box, the fish's whose row went), the live chats and how many are asking,
-  the drawers · shells · monitors —, `#sbPeople` in the middle — **the faces, `#people` moved in** — and `#sbRight`:
+  the drawers · shells · monitors —, **`#sbSwim`, the pixel fish swimming at the pace of what is at work** (2026-10-11, RunCat's cat;
+  `swimAt(n)` from `renderBar`, n the clauding chats and their agents: one `swim` animation whose rate
+  `updatePlaybackRate` changes in place, paused where it is at 0 — `.rest`, a bubble now and then — its tail wagging; a
+  lane of its own, outside the redrawn slots, the fish an SVG of `FISH`; a click is ⌥⌘A), `#sbPeople` in the middle —
+  **the faces, `#people` moved in** — and `#sbRight`:
   the machine (`prefs.barStats`: CPU and memory by default since 2026-10-09 — `sbStats`, none, before; a pick there
   carries over —, Claude's memory a box in the settings — `GET
   /api/stats?want=cpu,mem,claude`, every 3 s while shown and visible, `machineStats` on the server: the cores' busy share

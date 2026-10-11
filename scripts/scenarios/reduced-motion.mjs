@@ -18,6 +18,8 @@ const read = ctx => ctx.evaluate(`JSON.stringify((() => {
     ring: anim(w, '::before'), ringBg: w ? getComputedStyle(w, '::before').backgroundImage : null,
     blink: anim(a, '::before'), border: a ? getComputedStyle(a).borderTopColor : null,
     pix: anim(pix), dialog: getComputedStyle(document.querySelector('#pick')).transform,
+    // the small motions of 2026-10-11 that say a state: the shimmer on clauding, the status bar's fish wagging
+    shim: (e => e ? getComputedStyle(e).display : null)(document.querySelector('.gsep.lane.working .shim > .sw')), wag: anim(document.querySelector('#sbSwim .ft')),
   };
 })())`).then(JSON.parse);
 
@@ -41,6 +43,7 @@ export default async function (ctx) {
     ctx.assert.equal(out.full.ring, 'ring', 'the clauding card runs its ring');
     ctx.assert.equal(out.full.blink, 'sonar', 'the asking card pings (2026-10-09; it blinked before)');
     ctx.assert.equal(out.full.pix, 'pix', 'the spinner steps its frames');
+    ctx.assert.deepEqual([out.full.shim, out.full.wag], ['block', 'wag'], 'a light runs across Clauding, the fish wags its tail');
 
     // reduced: the same readings, still
     await reduce(ctx, true);
@@ -52,6 +55,7 @@ export default async function (ctx) {
     ctx.assert.match(out.reduced.border, /^rgb\(214, 69, 69\)|^rgb\(248, 81, 73\)/, 'and holds the red border');
     ctx.assert.equal(out.reduced.pix, 'none', 'the spinner holds its frame');
     ctx.assert.equal(out.reduced.dialog, 'none', 'a closed dialog has no offset to rise from');
+    ctx.assert.deepEqual([out.reduced.shim, out.reduced.wag], ['none', 'none'], 'no light across Clauding, the fish still');
     await ctx.shot('reduced');
 
     // the list puts a card in place rather than sliding it: Ready one ticked done moves without a move recorded

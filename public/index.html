@@ -219,6 +219,15 @@
   @keyframes bob { 0%, 100% { transform: none; } 50% { transform: translateY(-1.5px) rotate(-6deg); } }
   /* in the bar the fish is the connection's light, as the dot it replaced was: no square, the fish in the ready green */
   #sbar .conn .logo { width: 15px; height: 15px; flex: none; }
+  /* the fish swimming at the agents' pace (swimAt): a lane between the counts and the faces */
+  #sbSwim { position: relative; flex: none; width: 64px; overflow: hidden; cursor: pointer; border-right: 1px solid var(--line); }
+  #sbSwim .swimmer { position: absolute; left: 0; top: calc(50% - 5.5px); }
+  #sbSwim .b { fill: var(--accent); } #sbSwim .s { fill: color-mix(in srgb, var(--accent) 60%, #000); } #sbSwim .e { fill: var(--bar, var(--panel)); }
+  #sbSwim .ft { transform-box: fill-box; transform-origin: 0 50%; animation: wag var(--wag, .3s) ease-in-out infinite alternate; }
+  #sbSwim.rest .swimmer { animation: fbob 1.6s ease-in-out infinite alternate; }
+  #sbSwim .bub { position: absolute; width: 4px; height: 4px; border-radius: 50%; border: 1px solid var(--muted); pointer-events: none; }
+  @keyframes wag { to { transform: scaleY(.45); } }
+  @keyframes fbob { to { translate: 0 1px; } }
   #sbar .conn .logo rect { display: none; }
   #sbar .conn .logo :is(.fishg g, .stars) { fill: var(--idle); }
   #sbar .conn .logo .fishg path[fill] { fill: var(--bar, var(--panel)); }
@@ -1862,6 +1871,7 @@
     .card.landed::before { animation: none; content: none; }   /* no wash */
     .dot.working, .dot.needs-input { animation: none; }
     .pix, .pix svg { animation: none; }
+    #sbSwim .ft, #sbSwim.rest .swimmer { animation: none; }   /* the fish still, in the lane's left */
     :is(.brand, #sbar .conn) .logo, :is(.brand, #sbar .conn) .logo .fishg { animation: none !important; }   /* belly-up, still; upright, at once */
     :is(.brand.off, #sbar .conn.off) .logo .fishg { transform: scaleY(-1); }
     .shim > .sw { display: none; }   /* no light runs across clauding */
@@ -1942,7 +1952,7 @@
   </section>
   <section id="stack" hidden aria-label="The chats asking or clauding"></section>
 </main>
-<footer id="sbar" hidden><div id="sbFind"></div><div id="sbLeft"></div><div id="sbPeople"></div><div id="sbRight"></div></footer>
+<footer id="sbar" hidden><div id="sbFind"></div><div id="sbLeft"></div><div id="sbSwim" role="button" aria-label="Every agent at work (⌥⌘A)"></div><div id="sbPeople"></div><div id="sbRight"></div></footer>
 <div id="trail" aria-hidden="true" hidden></div>
 <dialog id="settings" class="pop" aria-label="Settings" tabindex="-1">
   <div class="shd2"><h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4><button class="sclose" id="settingsClose" title="Close · esc" aria-label="Close">×</button></div>
@@ -2681,7 +2691,36 @@
   const bar = { stats: {}, conn: true, open: false, busy: false };
   const fmtBytes = b => b >= 2 ** 30 ? `${(b / 2 ** 30).toFixed(1)} GB` : `${Math.round(b / 2 ** 20)} MB`;
   const sbMeter = (label, pct, text, color, tip = `${label}: ${text}`, html = null) => `<span class="m" title="${esc(tip)}">${esc(label)}<i style="--p:${Math.max(0, Math.min(100, pct)).toFixed(1)}%;--u:${color}"></i><b>${html ?? esc(text)}</b></span>`;
-  const FISH_LOGO = () => $('#brandBtn').innerHTML;   // the fish, for the bar's connection: the same mark, belly-up while the stream is down
+  const FISH_LOGO = () => $('#brandBtn').innerHTML;
+  // The pixel fish (the home's, 2026-10-10), 26 × 11, head to the left: # its body, = its scales, o its eye.
+  const FISH = ['..........######..........', '.......############.....##', '.....################..###', '...####=####=####=####.###', '..##o##=####=####=#######.',
+    '.###=##=####=####=######..', '..######=####=####=######.', '...#####=####=####=###.###', '.....################..###', '.......############.....##', '..........######..........'];
+  // …and swimming in the status bar at the pace of the agents at work (2026-10-11, RunCat's cat): `#sbSwim`, a lane of
+  // its own outside the bar's redrawn slots, the fish an SVG of those pixels — its tail a group of its own, wagging. The
+  // swim is one animation whose rate follows the count (updatePlaybackRate keeps its place), paused where it is when
+  // nothing is at work, the fish then resting with a bubble now and then. A click is the overview.
+  const fishRuns = (from, to, ch) => FISH.flatMap((r, y) => [...r.slice(from, to).matchAll(new RegExp(`[${ch}]+`, 'g'))].map(m => `M${m.index + from} ${y}h${m[0].length}v1h-${m[0].length}z`)).join('');
+  const SWIM_FISH = `<svg class="swimmer" viewBox="0 0 26 11" width="26" height="11" shape-rendering="crispEdges" aria-hidden="true"><g class="fb"><path class="b" d="${fishRuns(0, 21, '#')}"/><path class="s" d="${fishRuns(0, 21, '=')}"/><path class="e" d="${fishRuns(0, 21, 'o')}"/></g><g class="ft"><path class="b" d="${fishRuns(21, 26, '#')}"/></g></svg>`;
+  const swim = { n: -1, anim: null, bubbles: 0 };
+  function swimAt(n) {
+    const lane = $('#sbSwim'); if (!lane) return;
+    if (!lane.firstChild) { lane.innerHTML = SWIM_FISH; lane.addEventListener('click', () => ovOpen()); }
+    lane.title = n ? `${n} at work — the fish swims at their pace · click for every agent (⌥⌘A)` : 'nothing at work — click for every agent (⌥⌘A)';
+    if (n === swim.n) return; swim.n = n;
+    const f = lane.firstChild, w = lane.clientWidth || 64;
+    lane.classList.toggle('rest', !n); lane.style.setProperty('--wag', n ? `${Math.max(.14, .5 / Math.sqrt(n))}s` : '1.6s');
+    if (REDUCED.matches) return;
+    if (!swim.anim) { swim.anim = f.animate([{ transform: `translateX(${w}px)` }, { transform: 'translateX(-28px)' }], { duration: 6000, iterations: Infinity, id: 'swim' }); swim.anim.currentTime = 6000 * (w + 26) / 2 / (w + 28); }   // from the lane's middle
+    if (!n) { swim.anim.pause(); return; }
+    swim.anim.updatePlaybackRate([0, 1, 1.35, 1.9, 2.3][Math.min(n, 4)] + Math.max(0, n - 4) * .45);
+    swim.anim.play(); noteMotion(null, 'swim', n);
+  }
+  setInterval(() => {   // resting, a bubble now and then
+    const lane = $('#sbSwim'); if (document.hidden || !lane?.classList.contains('rest') || REDUCED.matches || $('#sbar').hidden) return;
+    const f = lane.firstChild, r = f.getBoundingClientRect(), l = lane.getBoundingClientRect(), b = document.createElement('i');
+    b.className = 'bub'; b.style.left = `${r.left - l.left + 2}px`; b.style.top = `${r.top - l.top + 3}px`; lane.append(b);
+    b.animate([{ transform: 'translate(0, 0) scale(.5)', opacity: 0 }, { opacity: .9, offset: .15 }, { transform: 'translate(-4px, -12px) scale(1)', opacity: 0 }], { duration: 1400, easing: 'ease-out', fill: 'forwards' }).onfinish = () => b.remove();
+  }, 2600);   // the fish, for the bar's connection: the same mark, belly-up while the stream is down
   function renderBar() {
     const el = $('#sbar'); if (!el || el.hidden || !state.snapshots) return;
     const all = [...state.sessions.values()], n = f => all.filter(f).length, plural = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`;
@@ -2709,6 +2748,7 @@
       `<button class="seg lidb${aw.lid ? '' : ' off'}" id="sbLid" aria-pressed="${!!aw.lid}" title="${esc(aw.lid ? 'This Mac does not sleep, not even with its lid closed (pmset disablesleep) — mind the battery and the heat in a bag. Click to let it sleep with the lid shut again (Touch ID or your password)' : 'Keep this Mac awake with its lid closed too (pmset disablesleep) — Touch ID or your password each time; mind the battery in a bag')}">${ICON.lid}${state.lidAsking ? '<span>Touch ID…</span>' : aw.lid ? '<span>lid closed</span>' : ''}</button>`);
     const rows = usage.data?.windows || [];
     setHtml($('#sbLeft'), left.join(''));
+    swimAt(all.reduce((a, s) => a + (s.alive && s.status === 'working' ? 1 + (s.agents || 0) : 0), 0));
     setHtml($('#sbRight'), right.join('') + (bar.open && rows.length ? `<div class="sbpanel"><div class="uhd">plan usage</div><div class="urows">${usageRows(rows)}</div></div>` : ''));
     rollSoon();
   }
@@ -6236,8 +6276,6 @@
   // the day is asked of the server (GET /api/today) on showing, every minute and when a turn lands, the rest is drawn
   // from what the page holds.
   const home = { day: null, asking: false, timer: 0, soon: 0 };
-  const FISH = ['..........######..........', '.......############.....##', '.....################..###', '...####=####=####=####.###', '..##o##=####=####=#######.',
-    '.###=##=####=####=######..', '..######=####=####=######.', '...#####=####=####=###.###', '.....################..###', '.......############.....##', '..........######..........'];
   const FISH_PX = FISH.map(r => [...r].map(c => `<i${c === '#' ? ' class="b"' : c === '=' ? ' class="s"' : c === 'o' ? ' class="e"' : ''}></i>`).join('')).join('');
   const dur = ms => { const m = Math.round((ms || 0) / 60_000); return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`; };
   function showHome() {

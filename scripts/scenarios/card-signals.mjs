@@ -213,6 +213,11 @@ export default async function (ctx) {
     await ctx.waitFor(`window.peix.sessions().find(s => s.title === 'A real background job').tasks.length === 0`,
       { what: 'the command let go once its output file was closed', timeout: 20000 });
 
+    // ---- the status bar's fish swims at the agents' pace (2026-10-11): three clauding chats, one with three agents ----
+    out.swim = await ctx.evaluate(`({ rest: document.querySelector('#sbSwim').classList.contains('rest'), n: window.peix.motion().filter(m => m.kind === 'swim').map(m => m.dy).pop(), rate: document.getAnimations().find(a => a.id === 'swim')?.playbackRate })`);
+    ctx.assert.equal(out.swim.rest, false, 'swimming');
+    ctx.assert.ok(out.swim.n >= 6 && out.swim.rate > 2.3, `at the pace of every one at work: ${JSON.stringify(out.swim)}`);
+
     // ---- what a turn is doing, on its card (2026-10-11): the tool it called last, flipped to the next ----
     const nwLive = `[...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work')?.querySelector('.state.live')?.textContent`;
     out.doing = await ctx.evaluate(nwLive);

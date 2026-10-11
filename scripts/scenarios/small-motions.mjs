@@ -128,5 +128,9 @@ export default async function (ctx) {
   await restarting;
   await ctx.waitFor(`window.peix.motion().some(m => m.kind === 'fishback')`, { what: 'the fish flipped back', timeout: 15_000 });
   ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#sbar .conn .logo .fishg')).animationName`), 'bellyback', 'it flips over');
+
+  // ---- 21 · the fish in the status bar: nothing at work, it rests in its lane ----
+  out.swim = await ctx.evaluate(`(l => l && { rest: l.classList.contains('rest'), fish: !!l.querySelector('svg.swimmer .ft'), inLane: (r => r.left >= l.getBoundingClientRect().left - 1 && r.right <= l.getBoundingClientRect().right + 1)(l.querySelector('svg').getBoundingClientRect()) })(document.querySelector('#sbSwim'))`);
+  ctx.assert.deepEqual(out.swim, { rest: true, fish: true, inLane: true }, 'resting, in the lane');
   return out;
 }

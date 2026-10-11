@@ -114,6 +114,10 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   gone, bobbing — a dead fish is a frozen board — and flips back over with a wiggle when the stream returns. With the
   status bar on the list's head row (and so its fish) is hidden, so the bar's connection, a green dot before, is the
   fish itself now: green and upright while connected, grey and belly-up while not.
+* **21 · RunCat, as a fish**: the home's pixel fish swims in a lane of the status bar, faster the more is at work —
+  each clauding chat and each of its sub-agents — and rests, blowing a bubble now and then, when nothing is. The pace
+  is the swim's playback rate, changed in place, so the fish never jumps when the count does; its lane is a slot of its
+  own, so the bar's redraws never restart it. A click opens the overview: the fish *is* the agents at work.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 
