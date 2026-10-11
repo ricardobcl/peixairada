@@ -5233,28 +5233,40 @@
     tileNotch(); headNotch();
   }
   // The floating header bends round the camera housing (2026-10-11, late morning; it ran under the housing before, the
-  // housing's black over its own): where the housing reaches into it, its top edge dips round it, HEAD_GAP clear of it
-  // (the tiles' border round it too), the dip's shoulders rounded by HEAD_BEND and its lower corners the housing's
-  // curve as far as the depth allows — the header keeps its place and its height. Clipped as the tiles are (the clip
-  // runs wide of the box, so its shadow stays, and up to the top through the dip); its border round the dip is .hcut,
-  // a path in #chat over it, since the header clips what it holds (overflow, for its rounded corners).
-  const HEAD_BEND = 8;
+  // housing's black over its own): where the housing reaches into it, its top edge dips round it, the header keeping
+  // its place and its height. With tiles the dip is the tile's own border round the housing (2026-10-11, afternoon; it
+  // ran HEAD_GAP below it before, a second line): the header's top edge bends down into that line, a HEAD_BEND curve
+  // tangent to both, and follows it round — under its outer edge, the corners concentric with the housing's. Without tiles,
+  // the housing HEAD_GAP clear. Clipped as the tiles are (the clip runs wide of the box, so its shadow stays, and up to
+  // the top through the dip); its border is .hcut, a path in #chat over it, since the header clips what it holds
+  // (overflow, for its rounded corners) — with tiles only its two bends, the tile's line drawing the rest.
+  const HEAD_BEND = 10, HEAD_GAP = 4, HOUSING_R = 9, TILE_BW = 2;   // the housing's lower corners, by eye; the tiles' border
   function headNotch() {
-    const head = $('#shead'), chat = $('#chat'), n = prefs.headFloat ? state.notch : null, M = 60, G = tilesOn ? 5 : 4;
+    const head = $('#shead'), chat = $('#chat'), n = prefs.headFloat ? state.notch : null, M = 60, tiled = tilesOn, G = tiled ? TILE_BW - 1 : HEAD_GAP;   // a pixel under the tile's line: no seam between them
     let svg = chat.querySelector(':scope > .hcut');
     const r = n && head.getBoundingClientRect(), cut = !!n && r.width > 0 && r.top < n.top + G && r.left < n.right + G && r.right > n.left - G;
     if (!cut) { if (svg) { svg.remove(); head.style.clipPath = ''; chat.classList.remove('hcutp'); } return; }
     // every read, then every write
     const cr = chat.getBoundingClientRect(), cs = getComputedStyle(head), bw = parseFloat(cs.borderTopWidth) || 0, color = cs.borderTopColor;
-    // in the header's border box: the dip from the housing's left to its right, down to its bottom, each HEAD_GAP wider
+    // in the header's border box: the dip from the housing's left to its right, down to its bottom, each G wider
     const a0 = n.left - G - r.left, b0 = n.right + G - r.left, y2 = n.top + G - r.top, L = a0 > HEAD_BEND, R = b0 < r.width - HEAD_BEND;
-    const a = L ? a0 : -M, b = R ? b0 : r.width + M, t = Math.min(HEAD_BEND, y2 / 2), k = Math.max(0, Math.min(9 + G, (b - a) / 2, y2 - t));
-    const hole = `${L ? `M${a - t} ${-M}V0A${t} ${t} 0 0 1 ${a} ${t}` : `M${a} ${-M}`}V${y2 - k}A${k} ${k} 0 0 0 ${a + k} ${y2}H${b - k}A${k} ${k} 0 0 0 ${b} ${y2 - k}${R ? `V${t}A${t} ${t} 0 0 1 ${b + t} 0` : ''}V${-M}Z`;
+    const a = L ? a0 : -M, b = R ? b0 : r.width + M, t = HEAD_BEND;
+    const K = Math.max(0, Math.min(HOUSING_R + G, (b - a) / 2, y2)), yc = y2 - K;   // the dip's lower corners and their centres' height
+    // The bend: a circle of radius t tangent to the top edge and to the dip — its straight side when that reaches t
+    // down, else its corner, outside (centres K + t apart). Left: where it leaves the top edge (fx) and meets the dip
+    // (px, py); the right is the mirror image.
+    const sh = yc >= t ? null : Math.sqrt((K + t) ** 2 - (t - yc) ** 2);
+    const fx = sh ? a + K - sh : a - t, px = sh ? a + K - sh * K / (K + t) : a, py = sh ? yc + (t - yc) * K / (K + t) : t, m = x => a + b - x;
+    const hole = (L ? `M${fx} ${-M}V0A${t} ${t} 0 0 1 ${px} ${py}${sh ? '' : `V${yc}`}` : `M${a} ${-M}V${yc}`) + `A${K} ${K} 0 0 0 ${a + K} ${y2}H${b - K}`
+      + (R ? `${sh ? `A${K} ${K} 0 0 0 ${m(px)} ${py}` : `A${K} ${K} 0 0 0 ${b} ${yc}V${t}`}A${t} ${t} 0 0 1 ${m(fx)} 0` : `A${K} ${K} 0 0 0 ${b} ${yc}`) + `V${-M}Z`;
     head.style.clipPath = `path(evenodd, 'M${-M} ${-M}H${r.width + M}V${r.height + M}H${-M}Z ${hole}')`;
-    // the border's middle, half its width inside the header: round the shoulders, down, round the corners, across
-    const h = bw / 2;
-    const d = (L ? `M${a - t} ${h}A${t - h} ${t - h} 0 0 1 ${a - h} ${t}V${y2 - k}A${k + h} ${k + h} 0 0 0 ${a + k} ${y2 + h}` : `M0 ${y2 + h}`)
-      + (R ? `H${b - k}A${k + h} ${k + h} 0 0 0 ${b + h} ${y2 - k}V${t}A${t - h} ${t - h} 0 0 1 ${b + t} ${h}` : `H${r.width}`);
+    // the border's middle, half its width inside the header: the bends, and without tiles down and round the dip
+    // between them (the point on the bend's circle t - h from its centre is on the dip's K + h from its own)
+    const h = bw / 2, q = sh ? (t - h) / t : 0, qx = sh ? fx + (px - fx) * q : a - h, qy = sh ? t + (py - t) * q : t;
+    const bendL = `M${fx} ${h}A${t - h} ${t - h} 0 0 1 ${qx} ${qy}`, bendR = `A${t - h} ${t - h} 0 0 1 ${m(fx)} ${h}`;
+    const d = tiled ? (L ? bendL : '') + (R ? `M${m(qx)} ${qy}${bendR}` : '')
+      : (L ? `${bendL}${sh ? '' : `V${yc}`}A${K + h} ${K + h} 0 0 0 ${a + K} ${y2 + h}` : `M0 ${y2 + h}`)
+        + (R ? `H${b - K}${sh ? `A${K + h} ${K + h} 0 0 0 ${m(qx)} ${qy}` : `A${K + h} ${K + h} 0 0 0 ${b + h} ${yc}V${t}`}${bendR}` : `H${r.width}`);
     if (!svg) { svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('class', 'hcut'); svg.innerHTML = '<path/>'; chat.append(svg); }
     chat.classList.add('hcutp');
     Object.assign(svg.style, { left: `${r.left - cr.left - chat.clientLeft}px`, top: `${r.top - cr.top - chat.clientTop}px`, width: `${r.width}px`, height: `${y2 + bw}px` });
@@ -6396,7 +6408,7 @@
   // radius taken as the housing's own — 8 px of gap below the screen's edge, they cannot be concentric). From
   // layoutNotch (the fill, every header drawn or resized) and renderStack.
   function tileNotch() {
-    const BW = 2, M = 60, HOUSING_R = 9, n = tilesOn ? state.notch : null;
+    const BW = TILE_BW, M = 60, n = tilesOn ? state.notch : null;
     const panels = [$('#sessions'), $('#chat'), ...document.querySelectorAll('#stack .stile')];
     if (!n && !panels.some(p => p.classList.contains('ncutp'))) return;
     const rects = panels.map(p => p.getBoundingClientRect());   // every read, then every write

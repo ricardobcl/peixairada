@@ -5,6 +5,18 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-11, late afternoon — the header meets the tile's line
+
+Ricardo: "on "It bends around the notch" it should meet with the tile border, not go below it. my point was to not go
+straight and bend a little to meet the tragetory of the tile line".
+
+* **The floating header bends into the tile's line.** It dipped round the housing as a second line 5 px under the
+  tile's own, two parallel curves. With tiles the dip is now that line: the header's top edge bends down into it — a
+  10 px curve tangent to the edge and to the line where it meets it (the line's side, or, the header being only 12 px
+  below the tile's top, its rounded corner) — and follows it round, a pixel under its outer edge so no seam of the
+  wallpaper shows between them. The header's own border is only the two bends; the tile's line draws the rest.
+  Without tiles there is no line to meet, and the dip stays a few pixels clear of the housing.
+
 ## Decisions of 2026-10-11, afternoon — the header's row holds; quieter cards
 
 Ricardo, with a screenshot of the board filled at the notch, tiles and the floating header on: "seems like some times

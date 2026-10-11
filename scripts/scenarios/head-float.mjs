@@ -2,7 +2,8 @@
 // header is a rounded bar inset from the column's edges, the PR rows under it inset alike; the choice outlives a
 // reload; off, the header runs edge to edge again. And it floats (2026-10-11, late morning): the transcript runs up
 // behind it to the column's top, its words starting under it and faint over that height — under the PR rows too when
-// they are open; at the notch its top edge dips round the camera housing, the header keeping its place.
+// they are open; at the notch its top edge dips round the camera housing, the header keeping its place — with tiles,
+// bending into the tile's own line round the housing and following it, no second line under it (2026-10-11, afternoon).
 export const meta = { server: true, fixture: 'auto' };
 
 export default async function (ctx) {
@@ -51,6 +52,18 @@ export default async function (ctx) {
     return { top: Math.round(r.top - c.top), clip: /evenodd/.test(h.style.clipPath), inDip: at(${N.top} + 2), underDip: at(${N.top} + 4 + 3), beside: document.elementFromPoint(${N.left} - 30, r.top + 3)?.closest('#shead') ? 'header' : 'behind', d: document.querySelector('#chat > .hcut path').getAttribute('d') }; })())`).then(JSON.parse);
   ctx.assert.deepEqual([out.notch.top, out.notch.clip, out.notch.inDip, out.notch.underDip, out.notch.beside], [10, true, 'behind', 'header', 'header'], `the dip: ${JSON.stringify(out.notch)}`);
   await ctx.shot('notch', { x: N.left - 200, y: 0, width: 585, height: 90 });
+  // with tiles the dip is the tile's line: the header reaches up under it — a pixel past its outer edge, at the bottom
+  // and beside the housing — and its own border is only the two bends into it
+  await ctx.evaluate(`document.querySelector('#tilesOn').click()`);
+  await ctx.waitFor(`!!document.querySelector('#chat.ncutp > .ncut') && /M[^M]*M/.test(document.querySelector('#chat > .hcut path')?.getAttribute('d') || '')`, { what: 'the tile cut, and the header\'s two bends' });
+  await ctx.settle();
+  out.tiled = await ctx.evaluate(`JSON.stringify((() => { const c = document.querySelector('#chat > .ncut').getBoundingClientRect(), h = document.querySelector('#shead').getBoundingClientRect(), mid = (c.left + c.right) / 2;
+    const at = (x, y) => document.elementFromPoint(x, y)?.closest('#shead') ? 'header' : 'behind';   // the line itself takes no pointer
+    return { under: at(mid, c.bottom + 0.5), inside: at(mid, c.bottom - 3), beside: at(c.left - 0.5, h.top + 13), bends: document.querySelector('#chat > .hcut path').getAttribute('d').split('M').length - 1 }; })())`).then(JSON.parse);
+  ctx.assert.deepEqual(out.tiled, { under: 'header', inside: 'behind', beside: 'header', bends: 2 }, `the header meets the tile's line: ${JSON.stringify(out.tiled)}`);
+  await ctx.shot('notch-tiles', { x: N.left - 200, y: 0, width: 585, height: 90 });
+  await ctx.evaluate(`document.querySelector('#tilesOn').click()`);
+  await ctx.waitFor(`!document.querySelector('.ncut')`, { what: 'tiles off' });
   await ctx.evaluate(`window.peixFill(false, null)`);
   await ctx.settle();
   ctx.assert.equal(await ctx.evaluate(`!document.querySelector('#chat > .hcut') && !document.querySelector('#shead').style.clipPath`), true, 'out of the fill, no dip');
