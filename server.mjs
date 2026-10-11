@@ -641,6 +641,29 @@ function snippet(text, n = 240) {
   const t = String(text || '').replace(/\s+/g, ' ').trim();
   return t.length > n ? cut(t, n - 1) + '…' : t;
 }
+/** Markdown as a sentence (2026-10-12): a card, a picker and an alert show the start of a prompt or a reply, and the
+ *  syntax was drawn as it stood — `[a link](https://…)`, `## a heading`, `- an item`, a PR's whole URL over three lines.
+ *  A link is its words, a heading or a quote loses its marker, an item starts with ·, a table's cells are put in a row,
+ *  bold and emphasis go; a GitHub PR or issue URL is `repo#n` (the board's own short reference), any other URL loses its
+ *  scheme and its long segments. Inline code keeps its backticks: the page draws them as code. */
+const GH_URL_RE = /https?:\/\/(?:www\.)?github\.com\/[\w.-]+\/([\w.-]+)\/(?:pull|issues)\/(\d+)[^\s)\]>]*/g;
+const ITEM_RE = /^\s*(?:[-*+]|\d{1,3}[.)])\s+/;
+function plain(text) {
+  return String(text || '').replace(/^\s*(?:```|~~~).*$/gm, '').split('\n').map(l => {
+    if (/^\s*\|?[\s:|-]*-{2,}[\s:|-]*$/.test(l) && l.includes('-')) return '';   // a table's rule, or a --- one
+    l = l.replace(/^\s*(?:>\s?)+/, '').replace(/^\s{0,3}#{1,6}\s+/, '');
+    const item = ITEM_RE.test(l); if (item) l = l.replace(ITEM_RE, '');
+    l = l.replace(/^\s*\|(.*)\|\s*$/, (_, row) => row.split('|').map(c => c.trim()).filter(Boolean).join(' · '));
+    return (item ? '· ' : '') + l;
+  }).join('\n')
+    .replace(/!?\[([^\]\n]*)\]\((?:[^()\s]|\([^()\s]*\))+\)/g, '$1')
+    .replace(/<(https?:\/\/[^>\s]+)>/g, '$1')
+    .replace(/(\*\*|__)(?=\S)([^\n]*?\S)\1/g, '$2')
+    .replace(/(^|[\s(])\*(?=[^\s*])([^*\n]*?[^\s*])\*(?=[\s).,;:!?]|$)/gm, '$1$2')
+    .replace(GH_URL_RE, '$1#$2')
+    .replace(/https?:\/\/(?:www\.)?([^\s)\]>]+)/g, (_, rest) => rest.replace(/\/$/, '').split('/').map(seg => seg.length > 24 ? seg.slice(0, 12) + '…' : seg).join('/'));
+}
+const plainSnippet = (text, n) => snippet(plain(String(text || '').slice(0, Math.max(2000, n * 8))), n);   // the start is all a snippet shows: a long reply is not walked whole
 
 function summarizeToolInput(name, input = {}) {
   try {
@@ -1317,7 +1340,7 @@ function setStatus(s, status, ts) {
 const RECENT_MAX = 16;
 function noteRecent(s, e) {
   if (!['tool_use', 'tool_result', 'text', 'interrupt'].includes(e.kind)) return;
-  const r = { role: e.role, kind: e.kind, ts: e.ts, text: snippet(e.text, e.kind === 'tool_result' ? 120 : 220) };
+  const r = { role: e.role, kind: e.kind, ts: e.ts, text: e.kind === 'text' ? plainSnippet(e.text, 220) : snippet(e.text, e.kind === 'tool_result' ? 120 : 220) };
   if (e.name) r.name = e.name; if (e.toolUseId) r.toolUseId = e.toolUseId; if (e.isError) r.isError = true;
   (s.recent ||= []).push(r);
   if (s.recent.length > RECENT_MAX) s.recent.splice(0, s.recent.length - RECENT_MAX);
@@ -1353,7 +1376,7 @@ function fold(s, line) {
   switch (line.type) {
     case 'ai-title': if (line.aiTitle) s.title = line.aiTitle; return true;
     case 'custom-title': s.customTitle = line.customTitle || line.title || null; return true;
-    case 'last-prompt': if (!s.lastPrompt && line.lastPrompt) s.lastPrompt = snippet(line.lastPrompt, 200); return true;   // whole, it was a card's and a search's to carry
+    case 'last-prompt': if (!s.lastPrompt && line.lastPrompt) s.lastPrompt = plainSnippet(line.lastPrompt, 200); return true;   // whole, it was a card's and a search's to carry
     case 'pr-link': {
       const url = line.prUrl || line.url;
       if (url) notePr(s, url, ts, null);
@@ -1402,7 +1425,7 @@ function fold(s, line) {
       if (SYNTHETIC_RE.test(text)) return false;
       pushEntry(s, { role: 'user', kind: 'text', text, ts, uuid: line.uuid });
       notePrs(s, text, ts, 'user'); noteTickets(s, text, ts, 'user');
-      s.lastPrompt = snippet(text, 200);
+      s.lastPrompt = plainSnippet(text, 200);
       if (!s.turnStart || s.status !== 'working') { s.turnStart = ts; s.turnFiles = new Set(); }   // a prompt starts the turn; one typed mid-turn is part of it — and the files it edits (the changes tab's `turn`)
       s.lastActivity = ts; s.lastUserAt = ts;
       setStatus(s, 'working', ts);
@@ -1432,7 +1455,7 @@ function fold(s, line) {
       // working and its reply was never alerted), unless what ran out was a tool call Claude Code goes on with.
       if (TURN_ENDS.has(m.stop_reason) && !(m.stop_reason === 'max_tokens' && blocks.some(b => b.type === 'tool_use'))) {
         const text = textOf(blocks).trim();
-        if (text) { s.lastReply = snippet(text, 300); s.lastReplyAt = ts; }
+        if (text) { s.lastReply = plainSnippet(text, 300); s.lastReplyAt = ts; }
         // the reply that ends the turn, and how long since your last word it took — the transcript's footer under it
         // (2026-10-08); pushed in this same tick, so the page gets it marked
         if (said) { said.turnEnd = true; const ms = Date.parse(ts) - Date.parse(s.turnStart); if (ms > 0) said.worked = ms; }
@@ -3195,7 +3218,7 @@ server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTe
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {

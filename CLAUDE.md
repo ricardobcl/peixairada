@@ -107,6 +107,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   in it was alerted once), `live`/`rivals`/`alive`/`startedAt`/`openedAt`/`agentsRunning` carry over, a
   tail re-read keeps `prev.tasks`, and the replaced object's timers are cleared. A registry-made placeholder (no file
   yet) is **not** silent: its first reply is news. → `test/reindex.test.mjs`.
+* **A prompt's and a reply's snippet is markdown as a sentence** (2026-10-12, `plain`, `plainSnippet`): a link is its
+  words, headings, quotes and list markers go (an item starts with ·), a GitHub PR or issue URL is `repo#n`, other URLs
+  lose their scheme and long segments — `lastPrompt`, `lastReply`, the tiles' words. Backticks stay; the page draws
+  them as code (`ticks()` over escaped markup, `code.icode`). → the last test of `test/transcript.test.mjs`.
 * **`summary()` reads only.** `pruneTasks` (the poll) deletes expired tasks; `sortedSummaries` builds one
   `termIndex()` and hands it to `summary(s, ti)` (a single summary still asks `termOf`/`shellOf`).
 * **Bodies go through `jsonBody(req)`**: `readRaw` collects the bytes and decodes them whole (a character split across

@@ -5,6 +5,22 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-12 — the UI/UX review, built
+
+A review of the board (a page of 38 findings, each a letter and a number) got: "do: T1, T2, T3, T5 · L1 — let's try
+to do this dynamic card sizing, but make it an option. also, compact size should be the default. · L3–L7 · C1, C2, C3,
+C5, C6 · V1–V5 · W1–W7 · A1–A5 · P1, P2 · can we add a cool ascii art to homescreen like this one:
+https://ascii.rest/ocean-sunset/ ?" Not asked for: T4 (a motion budget), T6 (cards reachable by keyboard,
+pickers a screen reader can use, a ✓ naming its chat, a live region), C4 (type to resume). One commit each, below in
+the order they landed.
+
+* **T2 — a snippet is markdown as a sentence** (`plain`, server): cards showed `[a link](https://claude.ai/…)`,
+  `## a heading`, `- an item` and a PR's whole URL over three lines. A link is its words, a heading or a quote loses
+  its marker, an item starts with ·, a table's cells sit in a row, bold and emphasis go; a GitHub PR or issue URL is
+  `repo#n`, any other loses its scheme and its long segments. For the last prompt, the last reply and the tiles'
+  words; a tool's input and result stay as they were. **Backticks stay**, and the page draws them as code in a title, a
+  card's snippet, the pickers, the header, the tiles and home (`ticks()`, `code.icode` — `.ic` is the icons' class).
+
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 
 Ricardo: "readme screenshots needs a refresher. also, highlight the features like opening terminal, github, vscode in

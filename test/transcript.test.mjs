@@ -216,3 +216,20 @@ test('a snippet never ends in half an emoji', () => {
   assert.ok(t.isWellFormed(), JSON.stringify(t.slice(-4)));
   assert.ok(t.endsWith('…'));
 });
+
+test('a card\'s snippet is markdown as a sentence: links, headings, items, tables and GitHub URLs (2026-10-12)', () => {
+  const { plain } = srv;
+  assert.equal(plain('[Snapshot report](https://claude.ai/code/artifact/3f9c1e27-58aa-4c0b-9d1e-7b2f0c4a91d3) is up.'), 'Snapshot report is up.');
+  assert.equal(plain('## What changed\n- Rebased onto `main`\n- **Updated** the goldens'), 'What changed\n· Rebased onto `main`\n· Updated the goldens');
+  assert.equal(plain('review https://github.com/acme/storefront/pull/479/files and acme/storefront#12'), 'review storefront#479 and acme/storefront#12');
+  assert.equal(plain('see https://example.com/a/very-long-segment-that-goes-on-and-on/x'), 'see example.com/a/very-long-se…/x');
+  assert.equal(plain('| PR | Finding |\n|---|---|\n| #1 | a |'), 'PR · Finding\n\n#1 · a');
+  assert.equal(plain('> quoted\n```js\nconst a = 1;\n```'), 'quoted\n\nconst a = 1;\n');
+  assert.equal(plain('a * b * c and snake_case_name stay'), 'a * b * c and snake_case_name stay');
+  assert.equal(plain('an *emphasis* here'), 'an emphasis here');
+  const s = newSession('md', '/x/md.jsonl');
+  fold(s, user('review https://github.com/acme/widgets/pull/7'));
+  assert.equal(s.lastPrompt, 'review widgets#7');
+  fold(s, assistant([{ type: 'text', text: '## Done\n- [the doc](https://x.y/z) is up' }]));
+  assert.equal(s.lastReply, 'Done · the doc is up');
+});
