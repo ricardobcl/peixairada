@@ -454,7 +454,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   eased) — `--lift` on every card but `.card.black:not(:hover, .qsel)`, where it is the black; its lines are the grey.
   `--repo` stays the colour as set for the rail's squares, the header, the splitter and the open card's bleed into it.
   → the black step of `scripts/scenarios/simple-colors.mjs`.
-* **With no chat open the column is home** (2026-10-10; `showHome`, from `leaveChat` when its log is `NO_CHAT.log` and
+* **With no chat open the column is home** (2026-10-10; its header says *Home*; its counts are buttons to what is behind
+  them, `.hgo` — the chat asking, the overview, the PRs at your move — and a line of keys under the blocks, 2026-10-12; `showHome`, from `leaveChat` when its log is `NO_CHAT.log` and
   from a snapshot with nothing to open; ⌥⌘0 from anywhere): fastfetch's block — a pixel fish (`FISH`) in the accent,
   the board's facts in key: value lines (`about.user`, `about.host` from the server; chats, agents, PRs, the plan, the
   Mac from the status bar's stats, the theme) and the palette's blocks — then **the day**: `GET /api/today?since=<the

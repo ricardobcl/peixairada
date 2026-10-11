@@ -1669,7 +1669,12 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .home .hkv { font: 13px/1.75 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); min-width: 0; }
   .home .hkv .hh { font-weight: 700; } .home .hkv .hh span { color: var(--accent); }
   .home .hkv .hrule { width: 24ch; border-top: 1px solid var(--muted); margin: 4px 0 6px; }
-  .home .hkv > div:not(.hh, .hrule, .hblocks) { display: flex; gap: 0; }
+  .home .hkv > div:not(.hh, .hrule, .hblocks, .hkeys) { display: flex; gap: 0; }
+  /* (2026-10-12) a count with something behind it is a button in the line's own type; the keys to begin with under the blocks */
+  .home .hgo { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted color-mix(in srgb, currentColor 45%, transparent); text-underline-offset: 3px; }
+  .home .hgo:hover { text-decoration-style: solid; }
+  .home .hkeys { margin-top: 12px; color: var(--muted); font-size: 12px; } .home .hkeys s { text-decoration: none; opacity: .6; }
+  .home .hkeys kbd { font: inherit; color: var(--ink); background: var(--ctl); border-radius: 4px; padding: 0 5px; }
   .home .hkv > div > b { flex: none; width: 9ch; color: var(--accent); font-weight: 700; }
   .home .hkv em { font-style: normal; color: var(--needs); font-weight: 600; } .home .hkv u { text-decoration: none; color: var(--working); } .home .hkv s { text-decoration: none; color: var(--muted); }
   .home .hkv strong { font-weight: 700; }
@@ -2113,7 +2118,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   </section>
   <div id="splitter" title="Drag to resize"></div>
   <section id="chat">
-    <div class="shead" id="shead"><h2>Pick a chat</h2><button class="hmore" id="noChatMore" title="Settings · ⌘,"></button></div>
+    <div class="shead" id="shead"><h2>Home</h2><button class="hmore" id="noChatMore" title="Settings · ⌘,"></button></div>
     <div id="prlist" hidden></div>
     <div id="rival" hidden></div>
     <div id="groups">
@@ -6966,12 +6971,14 @@ const toolName = n => {
     const kv = (k, v) => `<div><b>${k}</b><span>${v}</span></div>`, sep = '<s>·</s>';
     // a count in red or amber only when there is one (2026-10-12): "0 asking you" in red read as an alarm
     const hot = (tag, n, html) => n ? `<${tag}>${html}</${tag}>` : html;
+    // …and a count that has something behind it is a way there (2026-10-12): the chat asking you, the overview, the PRs
+    const go = (k, n, html) => n ? `<button class="hgo" data-go="${k}" title="${HOME_GO[k]}">${html}</button>` : html;
     const facts = [
       kv('Board', `${esc(a.version || '?')} ${sep} up ${a.since ? dur(Date.now() - a.since) : '?'}${inApp ? ` ${sep} the app` : ''}`),
-      kv('Chats', `${all.filter(s => !s.done).length} ${sep} ${alive.length} live ${sep} ${hot('em', alive.filter(asking).length, `${alive.filter(asking).length} asking you`)} ${sep} ${hot('u', all.filter(s => bucket(s) === 'working').length, `${all.filter(s => bucket(s) === 'working').length} clauding`)}`),
-      kv('Agents', `${agents} at work ${sep} ${tasks} watching ${sep} ${drawers} in a drawer here`),
+      kv('Chats', `${all.filter(s => !s.done).length} ${sep} ${go('ov', alive.length, `${alive.length} live`)} ${sep} ${go('ask', alive.filter(asking).length, hot('em', alive.filter(asking).length, `${alive.filter(asking).length} asking you`))} ${sep} ${go('ov', all.filter(s => bucket(s) === 'working').length, hot('u', all.filter(s => bucket(s) === 'working').length, `${all.filter(s => bucket(s) === 'working').length} clauding`))}`),
+      kv('Agents', `${go('ov', agents, `${agents} at work`)} ${sep} ${go('ov', tasks, `${tasks} watching`)} ${sep} ${drawers} in a drawer here`),
       kv('Today', d ? `Claude worked <strong>${dur(d.totals.worked)}</strong> ${sep} waited on you ${hot('em', d.totals.waited, dur(d.totals.waited))}` : '…'),
-      kv('PRs', `${open.length} open ${sep} ${hot('em', prs.filter(p => p.turn?.you).length, `${prs.filter(p => p.turn?.you).length} at your move`)} ${sep} ${open.filter(p => p.checks === 'pending').length} CI running`),
+      kv('PRs', `${open.length} open ${sep} ${go('prs', prs.filter(p => p.turn?.you).length, hot('em', prs.filter(p => p.turn?.you).length, `${prs.filter(p => p.turn?.you).length} at your move`))} ${sep} ${open.filter(p => p.checks === 'pending').length} CI running`),
       win.length ? kv('Plan', win.filter(w => !w.grant).slice(0, 4).map(w => `${esc(uShort(w))} ${Math.round(w.percent)}%`).join(` ${sep} `)) : '',
       kv('Mac', `${bar.stats.cpu != null ? `CPU ${bar.stats.cpu}% ${sep} ` : ''}${bar.stats.mem ? `${(bar.stats.mem.used / 2 ** 30).toFixed(1)} / ${Math.round(bar.stats.mem.total / 2 ** 30)} GB ${sep} ` : ''}${state.awake.awake ? 'kept awake' : 'sleeps as set'}`),
       kv('Theme', esc(skinName(skinOn()))),
@@ -6994,10 +7001,18 @@ const toolName = n => {
       <div class="hsum"><span><b>${d.totals.questions} question${d.totals.questions === 1 ? '' : 's'}</b> today${d.totals.median != null ? `, answered in <b>${dur(d.totals.median)}</b> on the median` : ''}</span>${d.totals.longest ? `<span>the longest wait: <em>${dur(d.totals.longest.ms)}</em> — ${esc(state.sessions.get(d.totals.longest.id)?.project || 'a chat')} at ${new Date(d.totals.longest.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}${d.totals.longest.open ? ', and still waiting' : ''}</span>` : ''}<span class="r">⌥⌘0 here from anywhere · a row opens its chat</span></div>`;
     setHtml(el, `<div class="hff"><div class="hfish" aria-hidden="true">${FISH_PX}</div><div class="hkv">
         <div class="hh">${esc(a.user || 'you')}<span>@</span>${esc(a.host || 'peixairada')}</div><div class="hrule"></div>${facts}
-        <div class="hblocks">${['--needs', '--working', '--idle', '--watch', '--accent', '--spend', '--you', '--ink'].map(v => `<i style="background:var(${v})"></i>`).join('')}</div></div></div>
+        <div class="hblocks">${['--needs', '--working', '--idle', '--watch', '--accent', '--spend', '--you', '--ink'].map(v => `<i style="background:var(${v})"></i>`).join('')}</div>
+        <div class="hkeys"><kbd>⌥⌘L</kbd> everything <s>·</s> <kbd>⌥⌘K</kbd> a chat <s>·</s> <kbd>⌥⌘N</kbd> a new one <s>·</s> <kbd>⌥⌘A</kbd> the overview <s>·</s> <kbd>?</kbd> every key</div></div></div>
       <div class="hday"><h3><b>Today</b><span>every chat, ${new Date(t0).getHours().toString().padStart(2, '0')}:00 to now</span><span class="lg"><span><i class="w"></i>clauding</span><span><i class="a"></i>waiting on you</span><span><i class="m"></i>watching</span></span></h3>${day}</div>`);
   }
-  $('#log').addEventListener('click', e => { const r = e.target.closest('.home .hrow'); if (r) openSession(r.dataset.id, { locate: true }); });
+  const HOME_GO = { ask: 'Open the chat asking you', ov: 'The overview — every live chat · ⌥⌘A', prs: 'The PRs at your move' };
+  $('#log').addEventListener('click', e => {
+    const r = e.target.closest('.home .hrow'); if (r) return openSession(r.dataset.id, { locate: true });
+    const g = e.target.closest('.home .hgo')?.dataset.go;
+    if (g === 'ask') { const s = [...state.sessions.values()].filter(x => visible(x) && asking(x)).sort(byWord)[0]; if (s) openSession(s.id, { locate: true }); }
+    else if (g === 'ov') ovOpen();
+    else if (g === 'prs') pickOpen('prs');
+  });
 
   // ---- a chat's folder not checked out: cloned first (2026-10-09) ----------------------------------------------------
   // A spawn the server refuses for a folder that is not there names the repo that would bring it back (`clone`: under

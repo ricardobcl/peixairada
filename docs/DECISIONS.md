@@ -100,6 +100,10 @@ the order they landed.
 * **V4 — home's day starts with the day's work**: from 8:00 (or earlier), an evening's work was a sliver at the right
   of a fourteen-hour axis. It starts at the hour half an hour before the first span, still not before midnight, and
   runs to the hour after now.
+* **V5 — home is called home, and its counts go somewhere**: the header said *Pick a chat* over it; it says *Home*. A
+  count with something behind it is a button in the line's own type, dotted under: *asking you* opens the chat asking,
+  *live*, *clauding*, *at work* and *watching* the overview, *at your move* the launcher's PRs. Under the palette's
+  blocks, the keys a new board most needs: ⌥⌘L, ⌥⌘K, ⌥⌘N, ⌥⌘A and ?.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 
