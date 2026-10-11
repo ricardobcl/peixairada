@@ -132,6 +132,12 @@ the order they landed.
   named theirs. **The launcher's prefixes went under its list** (`#pickfoot`, `PICK_FOOT`): its placeholder was cut off
   at *@ proje*; it says *Anything — chats, projects, PRs, tickets, actions*, and a line under the rows has `>` `#` `@`
   `!` and → into a menu.
+* **W4 — what wants you can be clicked, and counts one thing**: the status bar's *N asking you* is a button that opens
+  the chats asking you one after another from the one open (`nextAsking`). With a project in view, a line over the
+  lanes says how many ask you in other projects, and a click is ALL. **The Dock's badge and the menu bar's count are one
+  number** — the chats asking you and the ones with a new reply (`wanting()`, posted as `needs` and `replied`) — where
+  the badge counted the alerts that came while the app was in the back, and the menu bar the questions; the status
+  menu lists both, a section each, and the page's title counts the same.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

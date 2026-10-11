@@ -233,9 +233,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   let paneDelegate = PaneDelegate()
   let server = ServerController()
   var statusItem: NSStatusItem!
-  var unread = 0                 // alerts that arrived while the window was not in front
+  // What wants you, as the page posts it (2026-10-12): the chats asking you and the ones with a new reply — the Dock's
+  // badge and the menu bar's count are both their number (the badge counted the alerts that came while the window was
+  // in the back before, the menu bar the questions), and the status menu lists them.
   var needsInput: [[String: String]] = []
-  var badged: (unread: Int, waiting: [[String: String]]) = (0, [])   // what the badge and the status menu last showed
+  var newReplies: [[String: String]] = []
+  var badged: (waiting: [[String: String]], replies: [[String: String]]) = ([], [])   // what the badge and the status menu last showed
   var useUN = false              // native notifications available?
   var fillSaved: (frame: NSRect, mask: NSWindow.StyleMask, opts: NSApplication.PresentationOptions)?   // set while ⌃⌘F fills the screen: what to come back to
   var fillSignal: DispatchSourceSignal!   // SIGUSR1 is ⌃⌘F from a shell
@@ -259,7 +262,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
     NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification,
                                            object: window, queue: .main) { [weak self] _ in
-      self?.unread = 0; self?.refreshBadges()
+      self?.refreshBadges()
     }
 
     // `kill -USR1 $(pgrep -x peixAIrada)` is ⌃⌘F from a shell: a session in a drawer has no way to press a key in the
@@ -721,11 +724,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     let menu = NSMenu()
     menu.addItem(withTitle: "Show Board", action: #selector(showWindow(_:)), keyEquivalent: "").target = self
     menu.addItem(.separator())
-    if needsInput.isEmpty {
+    // what wants you, a section each (2026-10-12): the chats asking you, then the ones with a new reply
+    let sections: [(String, [[String: String]])] = [("Asking you", needsInput), ("New replies", newReplies)]
+    if sections.allSatisfy({ $0.1.isEmpty }) {
       menu.addItem(withTitle: "Nothing is asking you", action: nil, keyEquivalent: "").isEnabled = false
-    } else {
-      menu.addItem(withTitle: "Asking you", action: nil, keyEquivalent: "").isEnabled = false
-      for s in needsInput {
+    }
+    for (heading, chats) in sections where !chats.isEmpty {
+      menu.addItem(withTitle: heading, action: nil, keyEquivalent: "").isEnabled = false
+      for s in chats.prefix(12) {
         let item = NSMenuItem(title: "  \(s["project"] ?? "")  ·  \(s["title"] ?? "")",
                               action: #selector(openFromMenu(_:)), keyEquivalent: "")
         item.target = self; item.representedObject = s["id"]
@@ -1019,11 +1025,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
 
   private func refreshBadges() {
-    guard badged.unread != unread || badged.waiting != needsInput else { return }   // the status menu was rebuilt per message before (2026-09-27)
-    badged = (unread, needsInput)
-    NSApp.dockTile.badgeLabel = unread > 0 ? String(unread) : nil
-    let waiting = needsInput.count
-    statusItem.button?.title = waiting > 0 ? " \(waiting)" : (unread > 0 ? " \(unread)" : "")
+    guard badged.waiting != needsInput || badged.replies != newReplies else { return }   // the status menu was rebuilt per message before (2026-09-27)
+    badged = (needsInput, newReplies)
+    let wanting = needsInput.count + newReplies.count
+    NSApp.dockTile.badgeLabel = wanting > 0 ? String(wanting) : nil
+    statusItem.button?.title = wanting > 0 ? " \(wanting)" : ""
     rebuildStatusMenu()
   }
 
@@ -1037,10 +1043,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     switch type {
     case "state":   // the chats waiting on you, posted by the page when that changes (48k `state:` log lines before, one per burst)
       let asked = Set(needsInput.map { $0["id"] ?? "" })
-      needsInput = (body["needs"] as? [[String: Any]] ?? []).map {
-        ["id": $0["id"] as? String ?? "", "project": $0["project"] as? String ?? "",
-         "title": $0["title"] as? String ?? ""]
+      let brief: ([String: Any]) -> [String: String] = {
+        ["id": $0["id"] as? String ?? "", "project": $0["project"] as? String ?? "", "title": $0["title"] as? String ?? ""]
       }
+      needsInput = (body["needs"] as? [[String: Any]] ?? []).map(brief)
+      newReplies = (body["replied"] as? [[String: Any]] ?? []).map(brief)
       refreshBadges()
       // A chat that starts asking while the app is in the back bounces the Dock icon once (2026-09-27, night): a
       // question is the stopped state, and the badge only counts. AppKit ignores the request while the app is active,
@@ -1051,7 +1058,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       // Quiet: notifications are off (the board's cog). The Dock still counts it; no banner.
       let quiet = body["quiet"] as? Bool ?? false
       logLine("alert: kind=\(body["kind"] as? String ?? "?") project=\(body["project"] as? String ?? "?") focused=\(focused) serverNotify=\(body["serverNotify"] as? Bool ?? false) quiet=\(quiet) useUN=\(useUN)")
-      if !focused { unread += 1; refreshBadges() }
       // If the user is running a server that already posts its own notifications, don't double up.
       let serverNotifies = body["serverNotify"] as? Bool ?? false
       if !focused && !serverNotifies && !quiet {

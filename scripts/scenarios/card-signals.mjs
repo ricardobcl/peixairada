@@ -195,6 +195,12 @@ export default async function (ctx) {
     out.order = await ctx.evaluate(`[...document.querySelectorAll('#slist > *')].map(e => e.classList.contains('lane') ? 'lane:' + e.querySelector('.ln').textContent + ' ' + e.querySelector('b').textContent : e.classList.contains('gsep') ? 'line' : e.querySelector('.title')?.textContent)`);
     ctx.assert.deepEqual(out.order.slice(0, 11), ['lane:Asking you 2', 'Blocked on a prompt', 'Waiting on you', 'lane:Clauding 4', 'Normal work', 'Three agents out', 'Both at once', 'A real background job', 'lane:Ready 3', 'line', 'Watching CI'],
       'the questions first, then the clauding chats by your last touch, then the ready ones — each group under its lane\'s head and count (2026-10-09; one divider before), Ready\'s days labelled over them (2026-10-12)');
+    // the status bar's count of them opens them, one after another (2026-10-12)
+    const titleOf = () => ctx.evaluate(`window.peix.session(window.peix.state().current)?.title || null`);
+    await ctx.evaluate(`document.querySelector('#sbar .seg.ask').click()`); await ctx.waitFor(`!!window.peix.state().current`, { what: 'a chat open from the count' });
+    const firstAsk = await titleOf();
+    await ctx.evaluate(`document.querySelector('#sbar .seg.ask').click()`); await ctx.sleep(300);
+    ctx.assert.deepEqual([firstAsk, await titleOf()].sort(), ['Blocked on a prompt', 'Waiting on you'], 'the two asking chats, one click each');
     // Claude's mark in pixels heads the clauding lane, its frames and its hop on the document clock (2026-09-27 as the
     // divider between the clauding and the ready cards; a school of fish before, then the smooth starburst for an evening)
     out.divider = await ctx.evaluate(`JSON.stringify((d => ({ svg: !!d.querySelector('.pix svg'), dots: d.querySelectorAll('i').length, anims: d.getAnimations({ subtree: true }).map(a => a.animationName + '@' + a.startTime).sort() }))(document.querySelector('#slist .gsep.lane.working')))`).then(JSON.parse);
