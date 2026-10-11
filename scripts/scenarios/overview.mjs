@@ -43,10 +43,15 @@ export default async function (ctx) {
     ctx.assert.equal(await ctx.evaluate(`document.querySelector('#ov .ot[data-id="${ask.id}"] .q').textContent`), 'Which queue should the webhooks go through?');
     ctx.assert.deepEqual(await ctx.evaluate(`[...document.querySelectorAll('#ov .ot[data-id="${ask.id}"] .ans button')].map(b => [b.textContent, b.disabled])`), [['1SQS', true], ['2Redis streams', true], ['3Postgres', true]]);
     await ctx.settle(); await ctx.shot('overview');
+    // it zoomed in from the cards (2026-10-11), every tile
+    out.zoom = await ctx.evaluate(`window.peix.motion().filter(m => m.kind === 'ovzoom').map(m => m.dy)`);
+    ctx.assert.ok(out.zoom.length === 1 && out.zoom[0] >= 3, `the tiles grew out of the list: ${JSON.stringify(out.zoom)}`);
 
     // a digit opens its tile's chat
     await ctx.evaluate(`document.querySelector('#ov').dispatchEvent(new KeyboardEvent('keydown', { key: '2', bubbles: true, cancelable: true }))`);
     await ctx.waitFor(`!document.querySelector('#ov').open && window.peix.state().current === '${work.id}'`, { what: 'tile 2 opened' });
+    ctx.assert.ok(await ctx.evaluate(`window.peix.motion().some(m => m.kind === 'ovgrow' && m.id === '${work.id}')`), 'the tile grew into the chat column');
+    await ctx.waitFor(`!document.querySelector('.ovghost')`, { what: 'its ghost gone', timeout: 4000 });
     // Esc closes it
     await ctx.key('KeyA');
     await ctx.waitFor(`document.querySelector('#ov').open`, { what: 'the overview again' });

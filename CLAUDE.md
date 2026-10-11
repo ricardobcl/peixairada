@@ -401,6 +401,10 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   monitor's last event is `last` on its task; a question's answers are `ask.labels` — **known only once the
   transcript has the question, which is written with its answer** (see *How it reads*): a live question usually shows
   as the drawer's own screen. An answer clicked opens the chat and types its digit into the drawer (`answerInDrawer`).
+  **It zooms** (2026-10-11, Mission Control's): opened, each tile grows out of its chat's card (`ovZoomIn`, a FLIP from
+  the card's rectangle, 18 ms apart; one out of sight rises in place), and a tile opened grows into the chat column as
+  the overview goes (`ovGo`: a ghost `.ovghost`, a popover so it is over the closing dialog); `ovzoom`, `ovgrow` in
+  `motion()`.
   → `scripts/scenarios/overview.mjs`.
 * **The chat header is drawn only when it changed** (2026-09-27): `renderHead` compares the header's, the menu's and
   the PR rows' markup with `drawn` and sets innerHTML only when different, then `layoutNotch(); fitHeadPrs()` only for

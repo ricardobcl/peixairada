@@ -95,6 +95,11 @@ the board's tokens — and "Build 1, 2, 3, … 28": all of them, one commit each
   header is drawn by markup and the card stays where it is — on one line, scaled from the card's size to the header's.
   The study named the View Transitions API; a hand-made FLIP needed no snapshot of the page, which the app's native pane
   (its web views over the chat column) could not be part of anyway. A click only: ⌥⌘↑↓ is a key's move, and instant.
+* **17 · the overview zooms** (Mission Control, Hyprland's overview): ⌥⌘A's tiles grow out of their cards in the list
+  behind the blur — a FLIP from each card's rectangle — so the overview reads as the list laid out, not a new place;
+  and the tile you open grows into the chat column as the overview fades. That ghost is a popover: a closing modal
+  dialog keeps its place in the top layer until its fade is over, and anything in the page would have grown under it.
+  It is a key's mode, but not a key's move — the zoom is the way in and out, once each, not a step repeated.
 
 ## Decisions of 2026-10-10, evening — the second studies built: themes, tiles, home, the launcher, the overview, changes
 

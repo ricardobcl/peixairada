@@ -1559,6 +1559,9 @@
   #ov .oc h2 b { margin-left: auto; font-size: 11px; color: var(--ink); background: var(--ctl); padding: 1px 7px; border-radius: 8px; }
   #ov .none { color: var(--muted); font-size: 12px; padding: 4px 2px; }
   #ov .ot { position: relative; display: grid; gap: 7px; padding: 10px 12px 11px 15px; background: var(--panel); border: 1px solid var(--line); box-shadow: inset 3px 0 var(--repo, var(--nocolor)), 0 18px 40px -22px rgb(0 0 0 / .6); cursor: pointer; min-width: 0; }
+  #ov .ot { transform-origin: 0 0; }
+  /* the tile opened, growing into the chat column (ovGo): a popover, so it is over the dialog closing under it */
+  .ovghost { position: fixed; inset: auto; margin: 0; padding: 0; border: 1px solid var(--line); background: var(--panel); box-shadow: inset 3px 0 var(--repo); transform-origin: 0 0; pointer-events: none; overflow: hidden; }
   #ov .ot:hover, #ov .ot.sel { border-color: color-mix(in srgb, var(--accent) 70%, transparent); }
   #ov .ot.ask { border-color: var(--needs); box-shadow: inset 3px 0 var(--repo, var(--nocolor)), 0 0 0 1px var(--needs), 0 0 26px -6px var(--needs); }
   #ov .ot header { display: flex; align-items: center; gap: 8px; font-size: 10.5px; letter-spacing: .8px; text-transform: uppercase; min-width: 0; }
@@ -6100,10 +6103,34 @@
     for (const s of ov.list) wantDiffStat(s);
   }
   const ovSoon = () => { if ($('#ov').open && !ov.raf) ov.raf = requestAnimationFrame(renderOverview); };
+  // The overview zooms (2026-10-11, Mission Control's): opened, each tile grows out of its chat's card in the list — a
+  // FLIP from the card's rectangle, a few ms apart — and a tile whose card is out of sight rises in place; a tile opened
+  // grows into the chat column as the overview goes (ovGo: a ghost of it in the top layer, over the closing dialog).
+  function ovZoomIn() {
+    if (REDUCED.matches) return;
+    let i = 0;
+    for (const t of $('#ovcols').querySelectorAll('.ot')) {
+      const c = document.querySelector(`#slist > .card[data-id="${CSS.escape(t.dataset.id)}"]`), b = t.getBoundingClientRect();
+      const a = c?.getClientRects().length ? c.getBoundingClientRect() : null, seen = a && a.bottom > 0 && a.top < innerHeight && b.width && b.height;
+      t.animate([{ transform: seen ? `translate(${a.left - b.left}px, ${a.top - b.top}px) scale(${a.width / b.width}, ${a.height / b.height})` : 'translateY(8px) scale(.96)', opacity: seen ? .45 : 0 }, { transform: 'none', opacity: 1 }],
+        { duration: 300, easing: EASE_OUT, delay: Math.min(i++, 8) * 18, fill: 'backwards', id: 'ovzoom' });
+    }
+    noteMotion(null, 'ovzoom', i);
+  }
+  function ovGo(s, tile, how = () => openSession(s.id, { locate: true })) {
+    const a = tile?.getBoundingClientRect(), b = $('#chat').getBoundingClientRect();
+    $('#ov').close(); how();
+    if (!a || REDUCED.matches || !b.width) return;
+    const g = document.createElement('div'); g.className = 'ovghost'; g.popover = 'manual'; g.style.cssText = `left: ${a.left}px; top: ${a.top}px; width: ${a.width}px; height: ${a.height}px; --repo: ${repoColor(s.cwd) || 'var(--nocolor)'}`;
+    document.body.append(g); try { g.showPopover(); } catch {}
+    noteMotion(s.id, 'ovgrow');
+    g.animate([{ transform: 'none', opacity: 1 }, { opacity: .85, offset: .7 }, { transform: `translate(${b.left - a.left}px, ${b.top - a.top}px) scale(${b.width / a.width}, ${b.height / a.height})`, opacity: 0 }], { duration: 320, easing: EASE_OUT, fill: 'forwards', id: 'ovgrow' })
+      .finished.catch(() => {}).then(() => g.remove());
+  }
   function ovOpen() {
     const dlg = $('#ov'); if (dlg.open) return dlg.close();
     if (inApp) post({ type: 'focus' });
-    ov.sel = 0; dlg.showModal(); repostPane(); renderOverview(); dlg.focus();
+    ov.sel = 0; dlg.showModal(); repostPane(); renderOverview(); dlg.focus(); ovZoomIn();
     const tick = () => loadTails(ov.list.filter(s => !drawerOf(s)).map(s => s.id), ovSoon);
     tick(); ov.timer = setInterval(tick, 2000);
   }
@@ -6112,13 +6139,12 @@
     if (e.target === e.currentTarget || e.target.closest('.ovclose')) return $('#ov').close();
     const ans = e.target.closest('[data-ans]'), tile = e.target.closest('.ot'); if (!tile) return;
     const s = state.sessions.get(tile.dataset.id); if (!s) return;
-    $('#ov').close();
-    if (ans) answerInDrawer(s, ans.dataset.ans); else openSession(s.id, { locate: true });
+    if (ans) { $('#ov').close(); answerInDrawer(s, ans.dataset.ans); } else ovGo(s, tile);
   });
   $('#ov').addEventListener('keydown', e => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const i = /^[1-9]$/.test(e.key) ? +e.key - 1 : e.key === 'Enter' ? ov.sel : -1;
-    if (i >= 0) { e.preventDefault(); const s = ov.list[i]; if (s) { $('#ov').close(); openSession(s.id, { locate: true }); } return; }
+    if (i >= 0) { e.preventDefault(); const s = ov.list[i]; if (s) ovGo(s, $(`#ovcols .ot[data-id="${CSS.escape(s.id)}"]`)); return; }
     const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
     if (step) { e.preventDefault(); ov.sel = Math.max(0, Math.min(ov.list.length - 1, ov.sel + step)); renderOverview(); $('#ovcols .ot.sel')?.scrollIntoView({ block: 'nearest' }); }
   });
