@@ -74,6 +74,10 @@ the order they landed.
   headings stop at 80ch; a code block, a table, a rule and an image take the width they need. Your bubble was already
   capped. The conversation is not centred: the bubbles on the right and the words on the left stay where the eye knows
   them.
+* **C3 — the resume bar says what you need to act**: *Claude isn't running in this chat*, and a second line only when
+  there is something to know — last used in VS Code (resuming moves it here; the tab there will not follow), a folder to
+  clone first, a folder gone, no folder known, a failure. *What you see is its transcript … Resume runs claude --resume
+  on it, in a terminal here* went: the button's tooltip says what it runs.
 
 ## Decisions of 2026-10-11, towards midnight — the README's screenshots again, and what a chat has beside it
 

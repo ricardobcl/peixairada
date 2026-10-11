@@ -30,7 +30,7 @@ export default async function (ctx) {
   await ctx.waitFor(SHOWN, { what: 'the resume bar on a stale chat' });
   out.bar = await ctx.evaluate(`({ title: ${BAR}.querySelector('.t b').textContent, go: document.querySelector('#resumeGo')?.textContent, no: !!document.querySelector('#resumeNo'),
     counting: ${BAR}.classList.contains('counting'), box: !!document.querySelector('#composer, #composeText, #resume textarea'), h: ${BAR}.getBoundingClientRect().height })`);
-  ctx.assert.match(out.bar.title, /claude has ended/, 'the bar says the session ended');
+  ctx.assert.match(out.bar.title, /Claude isn’t running/, 'the bar says Claude is not running there (claude has ended, before 2026-10-12)');
   ctx.assert.match(out.bar.go, /^Resume⌥⌘C$/, 'one button: Resume');
   ctx.assert.ok(!out.bar.no && !out.bar.counting, 'no countdown with the switch off');
   ctx.assert.ok(!out.bar.box, 'no reply box');

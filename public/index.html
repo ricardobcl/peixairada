@@ -7196,13 +7196,16 @@ const toolName = n => {
       return;
     }
     // A chat last continued in VS Code is resumed here as any other (2026-09-20): the one thing to know is that the
-    // tab there, if it is still open, will not follow it.
+    // tab there, if it is still open, will not follow it. The words are what you need to act and nothing else
+    // (2026-10-12; "What you see is its transcript … Resume runs claude --resume on it, in a terminal here" before):
+    // one line, and a second only when there is something to know — the button's tooltip says what it runs.
+    const more = err ? esc(err)
+      : !s.cwd ? 'No folder is known for it, so it cannot be resumed from here.'
+      : s.folderMissing && s.cloneRef ? `Its folder, ${where}, is not checked out — resuming clones <b>${esc(s.cloneRef)}</b> there first.`
+      : s.folderMissing ? `Its folder, ${where}, is not there, and no folder of repos with an org holds it to clone from. Put it back, then resume.`
+      : inVsCode(s) ? 'Last used in VS Code. Resuming moves it here; the tab there will not follow.' : '';
     setHtml(box, `<span class="ric">${ICON.term}</span>
-      <span class="t"><b>${err ? 'Could not resume this chat' : 'This chat’s claude has ended'}</b><span>${err ? esc(err)
-        : !s.cwd ? 'What you see is its transcript — and with no folder known for it, it cannot be resumed from here.'
-        : s.folderMissing && s.cloneRef ? `What you see is its transcript. Its folder, ${where}, is not checked out: Resume clones <b>${esc(s.cloneRef)}</b> there first, then runs <code>claude --resume</code> on it, in a terminal here.`
-        : s.folderMissing ? `What you see is its transcript. Its folder, ${where}, is not there, and no folder of repos with an org holds it to clone it from — put it back, then resume.`
-        : `What you see is its transcript.${inVsCode(s) ? ' It was last continued in VS Code: resumed here it is a CLI chat, and the tab there will not follow it.' : ''} Resume runs <code>claude --resume</code> on it, in a terminal here.`}</span></span>
+      <span class="t"><b>${err ? 'Could not resume this chat' : 'Claude isn’t running in this chat'}</b>${more ? `<span>${more}</span>` : ''}</span>
       ${counting ? '<button class="btn" id="resumeNo" title="Stay on the transcript — Resume waits for you · esc">Not now</button>' : ''}
       ${s.cwd ? `<button class="btn rgo" id="resumeGo"${going ? ' disabled' : ''} title="${counting ? `${label} now — ` : ''}${s.folderMissing && s.cloneRef ? `gh repo clone ${esc(s.cloneRef)}, then ` : ''}claude --resume on this chat, in a terminal here · ⌥⌘C">${s.folderMissing && s.cloneRef ? ICON.download : ICON.play}${going ? 'resuming…' : counting ? `${label} in <span class="n"></span>` : label}<span class="k">⌥⌘C</span></button>` : ''}`);
     if (counting) {

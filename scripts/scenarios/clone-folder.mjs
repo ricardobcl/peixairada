@@ -33,7 +33,7 @@ export default async function (ctx) {
   await ctx.openChat(widgets.id);
   await ctx.waitFor(`!${bar}.hidden`, { what: 'the resume bar' });
   out.before = await resume(ctx);
-  ctx.assert.match(out.before.text, /Its folder, .*widgets, is not checked out: Resume clones acme\/widgets there first/);
+  ctx.assert.match(out.before.text, /Its folder, .*widgets, is not checked out — resuming clones acme\/widgets there first/);
   ctx.assert.match(out.before.go, /^Clone and resume/);
 
   // ---- Resume: the bar is the clone, the status bar has it, then the drawer in the cloned folder ----
@@ -69,7 +69,7 @@ export default async function (ctx) {
   await ctx.openChat(lost.id);
   await ctx.waitFor(`!${bar}.hidden`, { what: 'the bar on the third chat' });
   out.lost = await resume(ctx);
-  ctx.assert.match(out.lost.text, /is not there, and no folder of repos with an org holds it to clone it from/);
+  ctx.assert.match(out.lost.text, /is not there, and no folder of repos with an org holds it to clone from/);
   ctx.assert.match(out.lost.go, /^Resume/);
 
   // ---- ⌥⌘N in a folder not checked out: the column is the clone, then the new chat ----

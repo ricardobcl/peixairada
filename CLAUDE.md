@@ -1193,7 +1193,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   a drawer.
 * **A chat whose claude has ended is its transcript, with the resume bar under it** (2026-10-07; a one-shot
   `claude --resume -p` reply box before, gone with its route): `#resume`, the chat column's row 5, drawn by
-  `renderResume` from `renderHead` while `resumable(s)` — no process, a file, no drawer on the chat; Resume is
+  `renderResume` from `renderHead` while `resumable(s)` — no process, a file, no drawer on the chat; *Claude isn't
+  running in this chat*, a second line only when there is something to know (2026-10-12); Resume is
   `termAction` (>_'s path, ⌥⌘C). **Opening such a chat counts down to its resume** (`armResume` from `openSession`,
   `AUTO_RESUME_MS`; `prefs.autoResume`, the settings' *auto-resume*): the button counts, a line runs along the bar's top
   (`rfill`, its time set from the countdown's), and `termAction(s, { stay: true })` keeps the tab and the keys. Not
