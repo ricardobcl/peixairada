@@ -57,9 +57,13 @@ export default async function (ctx) {
 
   // CPU and memory from the start (2026-10-09), Claude's memory a box in the settings away: the server's numbers
   ctx.assert.deepEqual(await ctx.peix('prefs().barStats'), ['cpu', 'mem'], 'CPU and memory on by default');
-  await ctx.waitFor(`/CPU\\s*\\d+%/.test(document.querySelector('#sbar').textContent) && /memory\\s*[\\d.]+ (GB|MB) \\/ [\\d.]+ GB/.test(document.querySelector('#sbar').textContent)`, { timeout: 8000, what: 'CPU and memory in the bar' });
+  // as pies since 2026-10-11, later: the label, a round pie of what is spent, the percent
+  await ctx.waitFor(`document.querySelectorAll('#sbar .m i').length >= 4`, { what: 'the pies', timeout: 8000 });
+  out.pie = await ctx.evaluate(`(i => ({ w: i.offsetWidth, h: i.offsetHeight, round: getComputedStyle(i).borderRadius, bg: getComputedStyle(i).backgroundImage.slice(0, 14) }))(document.querySelector('#sbar .m i'))`);
+  ctx.assert.deepEqual(out.pie, { w: 12, h: 12, round: '50%', bg: 'conic-gradient' }, 'a pie, not a bar');
+  await ctx.waitFor(`/CPU\\s*\\d+%/.test(document.querySelector('#sbar').textContent) && /RAM\\s*\\d+%/.test(document.querySelector('#sbar').textContent)`, { timeout: 8000, what: 'CPU and memory in the bar' });
   await ctx.evaluate(`document.querySelector('#sbarStats [data-stat="claude"]').click()`);
-  await ctx.waitFor(`/CPU\\s*\\d+%/.test(document.querySelector('#sbar').textContent) && /memory\\s*[\\d.]+ (GB|MB) \\/ [\\d.]+ GB/.test(document.querySelector('#sbar').textContent) && /claude\\s*\\d+ MB/.test(document.querySelector('#sbar').textContent)`, { timeout: 8000, what: 'the machine numbers' });
+  await ctx.waitFor(`/CPU\\s*\\d+%/.test(document.querySelector('#sbar').textContent) && /RAM\\s*\\d+%/.test(document.querySelector('#sbar').textContent) && /claude\\s*\\d+ MB/.test(document.querySelector('#sbar').textContent)`, { timeout: 8000, what: 'the machine numbers' });
   ctx.assert.deepEqual(await ctx.peix('prefs().barStats'), ['cpu', 'mem', 'claude']);
 
   // the Mac kept awake says so here too (its own buttons: keep-awake.mjs), and a click there lets it sleep

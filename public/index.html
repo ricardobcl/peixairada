@@ -1054,7 +1054,10 @@
   #sbar button.seg { cursor: pointer; } #sbar button.seg:is(:hover, .on) { background: var(--ctl); color: var(--ink); }
   #sbar .w { color: var(--working); font-weight: 600; } #sbar em { font-style: normal; color: var(--needs); font-weight: 650; }
   #sbar .m { display: inline-flex; align-items: center; gap: 5px; } #sbar .m + .m { margin-left: 11px; } #sbar .m b { color: var(--ink); font-weight: 650; }
-  #sbar .m i { display: block; flex: none; width: 40px; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--u, var(--spend)) var(--p), var(--utrack) var(--p)); }
+  /* a meter is a pie (2026-10-11, later; a 40 px bar before): what is spent in its colour, from twelve o'clock, on the
+     track — the label, the pie, the percent, as concise as the menu bar's own */
+  #sbar .m i { display: block; flex: none; width: 12px; height: 12px; border-radius: 50%; background: conic-gradient(var(--u, var(--spend)) var(--p), var(--utrack) 0); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--u, var(--spend)) 35%, transparent); }
+  #sbar .m { font-size: 10.5px; } #sbar .m + .m { margin-left: 9px; }
   #sbar .us.stale { opacity: .55; } #sbar .us .unote { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
   /* keeping the Mac awake: the cup in amber, the laptop in red while each holds; a muted mark while off */
   #sbar .aw { color: var(--spend); font-weight: 650; } #sbar .lidb { color: var(--needs); font-weight: 650; }
@@ -2786,7 +2789,7 @@
     for (const c of state.clones.values()) left.push(`<span class="seg cl" title="gh repo clone ${esc(c.ref)} into ${esc(homePath(c.dir))} — ${esc(cloneSays(c))}">${ICON.download}cloning <b>${esc(c.ref)}</b><i style="--p:${(c.percent || 0) / 100}"></i>${c.percent || 0}%</span>`);
     const st = bar.stats, want = prefs.barStats || [], stat = [], right = [];
     if (want.includes('cpu')) stat.push(sbMeter('CPU', st.cpu ?? 0, st.cpu == null ? '…' : `${st.cpu}%`, st.cpu >= 90 ? 'var(--needs)' : 'var(--watch)', 'every core\'s time spent busy, the last 3 s', st.cpu == null ? null : `${rn('cpu', st.cpu)}%`));
-    if (want.includes('mem')) stat.push(st.mem ? sbMeter('memory', st.mem.used / st.mem.total * 100, `${fmtBytes(st.mem.used)} / ${fmtBytes(st.mem.total)}`, st.mem.used / st.mem.total >= .9 ? 'var(--needs)' : 'var(--watch)', 'memory used, as Activity Monitor counts it, of all there is') : sbMeter('memory', 0, '…', 'var(--watch)'));
+    if (want.includes('mem')) { const pct = st.mem ? Math.round(st.mem.used / st.mem.total * 100) : null; stat.push(st.mem ? sbMeter('RAM', pct, `${pct}%`, pct >= 90 ? 'var(--needs)' : 'var(--watch)', `memory used, as Activity Monitor counts it: ${fmtBytes(st.mem.used)} of ${fmtBytes(st.mem.total)}`, `${rn('mem', pct)}%`) : sbMeter('RAM', 0, '…', 'var(--watch)')); }
     if (want.includes('claude')) stat.push(`<span class="m" title="what the live claude processes hold in memory (their children aside)">claude <b>${st.claude?.rss != null ? fmtBytes(st.claude.rss) : '…'}</b>${st.claude?.n ? ` · ${st.claude.n}` : ''}</span>`);
     if (stat.length) right.push(`<span class="seg">${stat.join('')}</span>`);
     if (!usage.off) {

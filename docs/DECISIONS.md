@@ -22,6 +22,9 @@ anything and it does't look pretty with the floating chat bar".
 * **A clock, far right**: in the fill the menu bar is hidden, and its clock with it; the status bar's last segment is
   the time now, written as the transcript's who-lines write it (the locale's), the whole date in its tooltip, drawn
   again on the minute.
+* **Pies, not bars**: CPU, memory and the plan's windows were each a 40 px bar and a number — memory's was *34.6 GB /
+  48.0 GB*. Each is a label, a 12 px pie of what is spent and its percent now; memory a percent like the rest (*RAM
+  72 %*), its sizes in the tooltip. Half the width, and a pie reads at a glance the way the menu bar's own do.
 
 ## Decisions of 2026-10-11 — the third studies built: twenty-eight small motions
 

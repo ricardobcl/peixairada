@@ -623,7 +623,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   carries over —, Claude's memory a box in the settings — `GET
   /api/stats?want=cpu,mem,claude`, every 3 s while shown and visible, `machineStats` on the server: the cores' busy share
   since the last ask, vm_stat's used as Activity Monitor counts it, `ps` over the registry's live claude pids), **the
-  plan usage as meters** — with the bar on, the list's foot has none (`:root[data-sbar] #usage`) — whose click lifts its
+  plan usage as meters** — every meter a pie since 2026-10-11, later (`sbMeter`: the label, a 12 px `conic-gradient`
+  pie of what is spent in its colour, the percent; RAM a percent too, its sizes in the tooltip) — with the bar on, the list's foot has none (`:root[data-sbar] #usage`) — whose click lifts its
   rows in a panel (`usageRows`, shared with `#usage`; a click elsewhere, by `composedPath()`, puts it away), and **both
   awake switches** (`#sbAwake` the cup, amber while on, muted while it has nothing to hold off; `#sbLid` the laptop, red while on, *Touch ID…* while sudo asks;
   muted marks while off), and **the clock, last** (2026-10-11, later: `.clock`, the time as the who-lines say it, the day
