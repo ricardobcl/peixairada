@@ -3010,10 +3010,11 @@
     const aw = state.awake;
     right.push(`<button class="seg aw${aw.awake ? '' : ' off'}${cupMoot(aw) ? ' moot' : ''}" id="sbAwake" aria-pressed="${!!aw.awake}" title="${esc(cupTip(aw))}">${ICON.cup}${aw.awake ? '<span>awake</span>' : ''}</button>`,
       `<button class="seg lidb${aw.lid ? '' : ' off'}" id="sbLid" aria-pressed="${!!aw.lid}" title="${esc(aw.lid ? 'This Mac does not sleep, not even with its lid closed (pmset disablesleep) — mind the battery and the heat in a bag. Click to let it sleep with the lid shut again (Touch ID or your password)' : 'Keep this Mac awake with its lid closed too (pmset disablesleep) — Touch ID or your password each time; mind the battery in a bag')}">${ICON.lid}${state.lidAsking ? '<span>Touch ID…</span>' : aw.lid ? '<span>lid closed</span>' : ''}</button>`);
-    // the clock, far right (2026-10-11, later): the time as the transcript's who-lines say it, the day in its tooltip —
-    // the menu bar's is hidden in the fill. Drawn again on the minute (clockTick).
+    // the clock, far right (2026-10-11, later): the time on a 24-hour clock whatever the locale (2026-10-11, late
+    // night; the who-lines' 12 before), the day in its tooltip — the menu bar's is hidden in the fill. Drawn again on
+    // the minute (clockTick).
     const now = new Date();
-    right.push(`<span class="seg clock" title="${esc(now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))}">${esc(now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))}</span>`);
+    right.push(`<span class="seg clock" title="${esc(now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))}">${esc(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }))}</span>`);
     const rows = usage.data?.windows || [];
     setHtml($('#sbLeft'), left.join(''));
     swimAt(all.reduce((a, s) => a + (s.alive && s.status === 'working' ? 1 + (s.agents || 0) : 0), 0));

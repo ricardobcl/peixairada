@@ -5,9 +5,9 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
-## Decisions of 2026-10-11, late night, after — rings in step in the app
+## Decisions of 2026-10-11, late night, after — rings in step in the app; a 24-hour clock
 
-Ricardo: "the "rings in step" seems to not be working".
+Ricardo: "the "rings in step" seems to not be working"; "I want 24H format in status bar".
 
 * **The switch worked in Chrome and nowhere else.** `phaseAnims` set each ring's `startTime` (0, or a time hashed from
   the chat's id); the script read it back, the harness's Chrome drew it, and `card-signals` passed. In a `WKWebView` —
@@ -21,6 +21,9 @@ Ricardo: "the "rings in step" seems to not be working".
   pending animation's start unresolved, so the start is set after it, which also makes Chrome's exact (it read
   2e-13). The same twelve, and the live board's two clauding cards (one ring remade 700 ms late, then the switch off
   and on), came out in step in WebKit; off, each at its own.
+* **The status bar's clock is on 24 hours** (`hourCycle: 'h23'`, two digits: 09:05), whatever the locale says; it
+  read the time as the transcript's who-lines do (8:47 PM in an English locale). The who-lines and the home are left
+  as they were — the ask was the bar's.
 
 ## Decisions of 2026-10-11, late night, last — the header's black fades in smoothly (Round V, S8)
 
