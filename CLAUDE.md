@@ -511,8 +511,11 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   gaps going to 0, so the grid's own width follows the fan on the transform's curve. The box is `flex: 999 0 0`
   between `min-content` (the stack) and `max-content` (the fan): it takes the row's free room and never the folder's
   name. → `scripts/scenarios/card-pr-stack.mjs`. **Before them, the faces** (`cardFaces`, `.top .faces`, 2026-09-29):
-  who else had a hand in the chat's PRs, merged across them, newest first — three GitHub avatars overlapping (an
-  initial when there is no `avatar`) and `+n`; the tooltip says what each did, PR by PR. The images come from GitHub's
+  who else had a hand in the chat's PRs, merged across them, newest first — GitHub's avatars (an initial when there is
+  no `avatar`), **a pile** (2026-10-11, late afternoon; three overlapping a little and `+n` before): up to `CARD_FACES`,
+  the newest on top at its right end, each other one under the one before with 4 px of it showing (`row-reverse`, a
+  margin of −12 px, `z-index` from `--i`), spread side by side under the pointer (the margins, on the spring); the
+  tooltip says what each did, PR by PR. The images come from GitHub's
   avatar host; the tests hand the fake gh `data:` faces so nothing is fetched.
 * **The people row: everyone in the PRs of the chats in view, under the cards** (`#people`, `renderPeople`,
   2026-09-29): the project's chats in the lanes open give their PRs' `people`, merged by login, newest

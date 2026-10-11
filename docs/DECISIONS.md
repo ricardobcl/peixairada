@@ -5,6 +5,16 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-11, evening, later — the faces a pile
+
+Ricardo: "the user avatars on cards should be a LOT more compact on top of each other and then reveal more on hover.
+remove the "+1" etc. on the cards, for users".
+
+* **The faces are a pile.** Three faces overlapping by 4 px and a `+n` became up to eight in a pile the PR stack's way
+  round: the newest on top at the right end, by the chips, each other one under the one before with 4 px of it
+  showing — six faces take 36 px where three and a count took about 55. The pointer on the pile spreads them side by
+  side, each whole, on the spring; each face keeps its tooltip.
+
 ## Decisions of 2026-10-11, evening — a drawer switched to does not jump
 
 Ricardo: "when switching chats, the claude chat seeems to start higher than it shuold then it quickly goes back down a

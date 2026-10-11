@@ -7,7 +7,9 @@
 // the row holds, so the fan scrolls: a wheel turned over it goes deeper (leftwards) and the list under it stays put, a
 // sideways swipe too; the deepest PR scrolled into sight opens on a click. The pointer gone, the fan is back at its
 // start and the stack as it was. Two chips of one colour still read as two (an edge between them). A lone chip is its
-// own width and does not move. Under reduced motion the fan is at once.
+// own width and does not move. Under reduced motion the fan is at once. And the faces before the chips (2026-10-11, late
+// afternoon): a pile, the newest on top at its right end and 4 px of each other one showing, no count — spread side by
+// side under the pointer, each whole.
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,10 +17,14 @@ import { tmpDir } from '../../lib/testserver.mjs';
 import { makeFixture } from '../fixture.mjs';
 
 const dir = tmpDir('peix-stack-'), file = join(dir, 'prs.json');
+const ago = min => new Date(Date.now() - min * 60_000).toISOString().replace(/\.\d+Z$/, 'Z');
+const face = login => ({ login, __typename: 'User', avatarUrl: 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#8250df"/><text x="8" y="12" font-size="10" text-anchor="middle" fill="#fff">${login[0]}</text></svg>`) });
 const MANY = [101, 102, 103, 104, 105, 106, 107, 108], STATES = [{ state: 'OPEN' }, { state: 'MERGED' }, { state: 'CLOSED' }, { state: 'OPEN', isDraft: true }];
 writeFileSync(file, JSON.stringify({
   ...Object.fromEntries(MANY.map((n, i) => [`acme/app#${n}`, { ...STATES[i % 4], title: `Many ${n}` }])),
-  'acme/app#201': { state: 'OPEN', title: 'Pair one' }, 'acme/app#202': { state: 'OPEN', title: 'Pair two' },
+  'acme/app#201': { state: 'OPEN', title: 'Pair one', createdAt: ago(300), author: face('ana'), reviews: { nodes: [{ author: face('rui'), state: 'APPROVED', submittedAt: ago(50) }, { author: face('eva'), state: 'COMMENTED', submittedAt: ago(40) }] },
+    comments: { nodes: [{ author: face('joe'), createdAt: ago(30) }, { author: face('kim'), createdAt: ago(20) }] } },
+  'acme/app#202': { state: 'OPEN', title: 'Pair two', author: face('lou') },
   'acme/app#301': { state: 'MERGED', title: 'Alone' },
 }));
 
@@ -143,5 +149,20 @@ export default async function (ctx) {
   ctx.assert.equal(out.reduced.left, now0.chips[0].l - (w + 5), 'fanned already');
   await point(5, 5);
   await ctx.send('Emulation.setEmulatedMedia', { features: [] });
+
+  // ---- the faces: a pile, spread under the pointer, no count ----
+  await ctx.waitFor(`${card(pair.id)}.querySelectorAll('.faces > *').length === 6`, { timeout: 10_000, what: 'the pair\'s six faces' });
+  await ctx.settle();
+  const faces = () => ctx.evaluate(`JSON.stringify([...${card(pair.id)}.querySelectorAll('.faces > *')].map(f => { const r = f.getBoundingClientRect(); return { who: f.getAttribute('alt'), l: Math.round(r.left), r: Math.round(r.right), z: +getComputedStyle(f).zIndex }; }))`).then(JSON.parse);
+  out.pile = await faces();
+  ctx.assert.equal(out.pile[0].who, 'kim', 'the newest on top…');
+  ctx.assert.ok(out.pile.every((f, i) => !i || (out.pile[i - 1].l - f.l === 4 && f.z < out.pile[i - 1].z)), `…each other one under the one before, 4 px of it showing: ${JSON.stringify(out.pile)}`);
+  ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('#slist .card .more').length`), 0, 'no count on any card');
+  await point(out.pile[0].r - 3, await ctx.evaluate(`(r => r.top + r.height / 2)(${card(pair.id)}.querySelector('.faces').getBoundingClientRect())`));
+  await ctx.sleep(450); await ctx.settle();
+  out.spread = await faces();
+  ctx.assert.ok(out.spread.every((f, i) => !i || f.r <= out.spread[i - 1].l), `spread under the pointer, side by side: ${JSON.stringify(out.spread)}`);
+  await ctx.shot('faces-spread', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: 40 }))(${card(pair.id)}.getBoundingClientRect())`));
+  await point(5, 5);
   return out;
 }

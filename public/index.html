@@ -891,12 +891,15 @@
   .card .top .tprs:not(:hover) > :not(:last-child) { box-shadow: -1px 0 0 var(--panel); }
   .card .top .tprs > :not(:first-child) { clip-path: inset(0 0 0 -2px); }
   .card .top .tprs:not(:hover) > :not(:first-child) { color: transparent; clip-path: inset(0 calc(100% - 9px) 0 -2px); }
-  /* The people in the chat's PRs, before the chips (cardFaces, 2026-09-29): GitHub's faces, overlapping a little as a
-     facepile does, each ringed in the panel's colour so the overlap reads; one without a face is its initial. */
-  .card .top .faces { display: inline-flex; align-items: center; flex: none; padding-left: 4px; }
-  .card .top .faces > :is(img, .face) { width: 16px; height: 16px; flex: none; margin-left: -4px; border-radius: 50%; box-shadow: 0 0 0 1.5px var(--panel); background: var(--ctl-hi); }
+  /* The people in the chat's PRs, before the chips (cardFaces, 2026-09-29): GitHub's faces, each ringed in the panel's
+     colour so an overlap reads; one without a face is its initial. A pile since 2026-10-11, late afternoon (three
+     overlapping a little and a count before): the newest on top at its right end, by the chips, each other one under
+     the one before and 4 px of it showing to its left — the pointer on the pile spreads them side by side, whole. */
+  .card .top .faces { display: inline-flex; flex-direction: row-reverse; align-items: center; flex: none; padding-left: 4px; }
+  .card .top .faces > :is(img, .face) { position: relative; z-index: calc(99 - var(--i, 0)); width: 16px; height: 16px; flex: none; border-radius: 50%; box-shadow: 0 0 0 1.5px var(--panel); background: var(--ctl-hi); transition: margin .3s var(--spring); }
+  .card .top .faces > :not(:first-child) { margin-right: -12px; }
+  .card .top .faces:hover > :not(:first-child) { margin-right: 2px; }
   .card .top .faces .face { display: grid; place-items: center; font-size: 9px; font-weight: 700; color: var(--ink); text-transform: uppercase; }
-  .card .top .faces .more { margin-left: 3px; font-size: 10px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
   /* Everyone in the PRs of the chats in view, a row under the cards (renderPeople, 2026-09-29): a face a button, a click
      narrows the list to that person's chats and rings the face in the accent, the others dimmed; again, every chat. */
   #people { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 6px 10px; border-top: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
@@ -1963,6 +1966,7 @@
     #resume.counting::before { animation: none; }   /* no line runs: the button counts the seconds alone */
     #resume.cloning .ric::after { animation: none; }   /* cloning: the ring still, the line along the top and the percent say it */
     #slist .card .top .tprs > * { transition: color .12s, border-color .12s, background-color .12s, box-shadow .12s; }
+    .card .top .faces > * { transition: none; }   /* the pile spreads at once */
     .rn.rolling .rcol > span { transition: none; }   /* a count shows its number (rollIn rolls nothing then; this for a switch mid-roll) */
     .act.tk .tk path { animation: none; }   /* the ✓ is there, not drawn (tickDone tells the server at once) */
     .card:active, :is(.btn, .ptab, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button):active { scale: none; }   /* a press does not dip */
@@ -3896,13 +3900,13 @@
    *  slivers, `--span` how many chips' width each sliver's column is fanned. */
   const STACK_SLIVERS = 3;
   /** Who else has had a hand in the chat's PRs — each PR's author, reviewers, commenters and pushers, the server's
-   *  `people`, you left out — as GitHub's faces, the newest first: three, and a count for the rest (2026-09-29). The
-   *  tooltip says what each did, PR by PR. */
-  const CARD_FACES = 3;
+   *  `people`, you left out — as GitHub's faces, the newest first (2026-09-29): a pile since 2026-10-11, late
+   *  afternoon, the pointer spreading it, and no count — the first CARD_FACES. The tooltip says what each did, PR by PR. */
+  const CARD_FACES = 8;
   /** A person's GitHub face — their avatar, or their initial when GitHub gave none. */
-  const faceHtml = (p, tip = '') => p.avatar
-    ? `<img src="${esc(p.avatar)}" alt="${esc(p.login)}"${tip ? ` title="${esc(tip)}"` : ''} loading="lazy" decoding="async" referrerpolicy="no-referrer">`
-    : `<span class="face"${tip ? ` title="${esc(tip)}"` : ''}>${esc(p.login[0])}</span>`;
+  const faceHtml = (p, tip = '', attrs = '') => p.avatar
+    ? `<img src="${esc(p.avatar)}" alt="${esc(p.login)}"${tip ? ` title="${esc(tip)}"` : ''}${attrs} loading="lazy" decoding="async" referrerpolicy="no-referrer">`
+    : `<span class="face"${tip ? ` title="${esc(tip)}"` : ''}${attrs}>${esc(p.login[0])}</span>`;
   function cardFaces(s) {
     const by = new Map();
     for (const pr of s.prs || []) for (const p of pr.people || []) {
@@ -3913,8 +3917,7 @@
       by.set(p.login, had);
     }
     const all = [...by.values()].sort((a, b) => b.at.localeCompare(a.at)); if (!all.length) return '';
-    const rest = all.slice(CARD_FACES);
-    return `<span class="faces">${all.slice(0, CARD_FACES).map(p => faceHtml(p, `${p.login} — ${p.what.join(' · ')}`)).join('')}${rest.length ? `<span class="more" title="${esc(rest.map(p => p.login).join(', '))}">+${rest.length}</span>` : ''}</span>`;
+    return `<span class="faces">${all.slice(0, CARD_FACES).map((p, i) => faceHtml(p, `${p.login} — ${p.what.join(' · ')}`, i ? ` style="--i:${i}"` : '')).join('')}</span>`;
   }
   function cardPrs(s) {
     const prs = s.prs || []; if (!prs.length) return '';
