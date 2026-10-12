@@ -77,8 +77,8 @@ GitHub and VS Code open in the chat in the Mac app; in a browser they open in a 
   busy chats beside the open one.
 - 🏠 **Home** — with no chat open: an ASCII sunset at sea with our fish leaping across the sun (click it), the board at
   a glance — each count a way to what it counts — and your day, every chat's turns and how long each waited on you.
-- 🎨 **Themes** — Omarchy's twelve (Tokyo Night, Catppuccin, Gruvbox, Nord, Rosé Pine…), one for dark and one for
-  light; your projects keep their hue in the theme's shades.
+- 🎨 **Themes** — Omarchy's twelve (Tokyo Night, Catppuccin, Gruvbox, Nord, Rosé Pine…), dark or light whatever macOS
+  shows — or one of each, following it; your projects keep their hue in the theme's shades.
 - 🐟 **It moves when something happens** — counts roll to their new value, a ✓ draws itself, an answered question's
   ring closes in, a PR's CI is drawn in as it lands; a clauding card names the tool it is running, a monitor's card
   its newest event; a pixel fish in the status bar swims back and forth, faster the more agents are at work, blurps bubbles ahead of
@@ -128,8 +128,8 @@ as at the top.
     <td><img width="420" src="docs/shots/look-latte.webp" alt="The Catppuccin Latte theme, in light mode"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>⌥⌘Y</b> — a theme for dark (Tokyo Night)…</sub></td>
-    <td align="center"><sub>…and one for light (Catppuccin Latte)</sub></td>
+    <td align="center"><sub><b>⌥⌘Y</b> — a dark theme (Tokyo Night)…</sub></td>
+    <td align="center"><sub>…or a light one (Catppuccin Latte), whatever macOS shows</sub></td>
   </tr>
   <tr>
     <td><img width="420" src="docs/shots/simple-dark.webp" alt="Simple colours, dark: every project in black, the states in grey"></td>
@@ -181,7 +181,7 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
 
 - **Board** — *Alerts*: notifications, sounds · *Chats*: card size (compact, or large only where a chat wants you),
   auto-resume · *Look*: text size (the whole board, in the app), simple colours (every project in black, or one colour
-  you pick, the states in grey), the theme, tiles and their stack and glow, the floating header (tiles and the header
+  you pick, the states in grey), the theme and whether it follows macOS, tiles and their stack and glow, the floating header (tiles and the header
   on to begin with), the status bar and what it shows · *Terminal*: ⌥ as Meta, a screen reader in the drawer · and,
   folded, *Lights and motion*: the card light (round the card or down its edge), rings in step, the light under the
   pointer.

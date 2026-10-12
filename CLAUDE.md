@@ -272,9 +272,15 @@ for `$HOME`'s home and the account's.
   the people keep their colours. The setup's squares read `ownColor`. **A new colour on the board reads a token or
   `repoColor`, never a hex or `ownColor` of its own, or it shows through.** → `simple-colors.mjs`.
 * **A theme is every surface at once** (2026-10-10; ⌥⌘Y, `SKINS`, `skinCss`, `applySkin`): a block of tokens under
-  `:root:root[data-skin=…]` in its own appearance's media query (three classes deep, beating `:root` and the dark
-  block). Two slots, `prefs.skinDark` / `prefs.skinLight`, worn by the system's appearance (`skinOn`). The CSS's
-  blacks read `--crust`, `--bar`, `--hd-*`. A project's colour moves to the theme's nearest hue (`skinColor` in
+  `:root:root[data-skin=…]` (three classes deep, beating `:root` and the dark block), set only beside its own
+  appearance. **The appearance is the board's, whatever macOS shows** (2026-10-12): `<html data-theme="dark|light">`,
+  which every dark rule reads — **never `prefers-color-scheme`**; a new one is `:root[data-theme="dark"] …` —, set
+  before the first paint by the head's script from `prefs.look` and kept by `applySkin`. Worn (`wornKey()`, `skinOn()`):
+  `prefs.skin` (a theme, `own-dark` or `own-light`), or with *follow macOS* (`prefs.skinFollow`; the harness's
+  default, `launchChrome`) the slot of the system's appearance (`slotOf`: `prefs.skinDark` / `prefs.skinLight`, which
+  every pick fills). The app's window wears the appearance kept (`appearance` → `window.appearance`, remembered as
+  `peixairada.dark`; none while following), so the pane's pages follow it. The CSS's blacks read `--crust`, `--bar`,
+  `--hd-*`. A project's colour moves to the theme's nearest hue (`skinColor` in
   `repoColor`; `prefs.skinExact` keeps it); the drawer's sixteen colours are the theme's (`xtTheme`, `ANSI`). A tile
   clicked reveals from the point (`revealFrom`, a view transition). **A colour that reads no token is one no theme
   reaches.** → `themes.mjs`.
@@ -838,8 +844,8 @@ the live board at load — `npm run verify -- "typeof window.peix"`.
   screen WebKit runs no frames); a locked screen hides it, and it says so.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports `meta`
   (`server`, `fake`, `fixture`, `env`, `prefs` — what the page starts from; **without it a page starts with every
-  lane open, large cards, and neither tiles nor the floating header**: the scenarios measure the plain column, and the
-  ones about those turn them on) and a default `async (ctx) => result`. The runner starts a throwaway server on a free
+  lane open, large cards, neither tiles nor the floating header, and the theme following the emulated colour scheme**:
+  the scenarios measure the plain column, and the ones about those turn them on) and a default `async (ctx) => result`. The runner starts a throwaway server on a free
   port with its own state dir, builds the fixture, runs the fake claude when asked, launches Chrome with **focus
   emulation on**, and cleans up everything on any exit within 15 s (`--keep` to inspect). **`ctx.reload()`** waits
   for the new document's snapshot — never a reload and a sleep; `openChat` waits for that chat's log

@@ -5,6 +5,32 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-12. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-12, night — a theme is worn whatever macOS shows
+
+Ricardo: "the dark and light themes are restricted to the system light/dark setting, but they should be decoupled".
+
+* **The board picks its own appearance.** The 2026-10-10 themes kept a dark theme for while macOS is dark and a light
+  one for while it is light, because the page's dark rules hung off `prefers-color-scheme`, which a page cannot set —
+  and forcing it was thought to need the app's `NSAppearance`, which a browser never has. It needs neither: every dark
+  rule now reads `<html data-theme="dark|light">`, which the page sets (`applySkin`), with `color-scheme` beside it so
+  the native controls and scrollbars agree. A head script sets it before the first paint from what the board wore
+  last (`prefs.look`) — the vendored scripts load before the page's own, so without it a dark board on a light Mac
+  would flash light at every load.
+* **The theme picked is worn** (`prefs.skin`: a theme, or the board's own dark or light — the grid's two own tiles),
+  and ⌥⌘Y's arrows preview any theme in its own appearance: no more *it cannot show now*. A board from before wears
+  what its slot for macOS's appearance gave it, so nothing changes on the upgrade until a pick.
+* **Following macOS stays, as a switch** (Settings › Look, *follow macOS*, off; the launcher's switches too): on, the
+  two slots as before, Ghostty's `dark:…,light:…`. A pick fills its appearance's slot either way, so turning it on
+  finds the themes last picked for each; turning it off keeps what was worn. VS Code's model: one theme, unless
+  auto-detect is on.
+* **In the app the window wears the board's appearance** (`{type: 'appearance', dark}` → `window.appearance`; null
+  while following): the pane's pages (GitHub dark beside a dark board on a light Mac), the find bar, the ground under
+  the page and a page still loading. Kept as `peixairada.dark` so the next launch's window is right before the page
+  says. While following, nothing is forced — the board's media query has to keep saying macOS's appearance.
+* **The harness follows the emulated colour scheme** (`launchChrome` sets `skinFollow` unless given): `DARK=1` and the
+  scenarios that flip the scheme mid-run (simple colours, the PR turn, the README's shots) keep working; `themes.mjs`
+  starts from the board's own default and checks both ways, the head script's choice included.
+
 ## Decisions of 2026-10-12, evening — the working notes pared again
 
 Claude Code, on starting a session here: "CLAUDE.md is over the 150.0k-char limit (163.9k chars)"; Ricardo: "can we

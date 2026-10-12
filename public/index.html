@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>peixAIrada</title>
+<script>
+  // The board's appearance before its first paint (2026-10-12): the one it wore last (prefs.look, kept by applySkin),
+  // unless its theme follows macOS — then, as with no prefs at all, the system's. The page's script below takes over.
+  (() => { let p = {}; try { p = JSON.parse(localStorage.getItem('peixairada-prefs') || '{}') || {}; } catch {}
+    const look = !p.skinFollow && (p.look === 'dark' || p.look === 'light') ? p.look : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = look; })();
+</script>
 <link rel="stylesheet" href="/vendor/xterm.css">
 <style>
   /* The type scale and the radii (2026-10-12): eighteen sizes from 9 to 19 px in half-pixel steps and fourteen radii
@@ -36,9 +43,13 @@
     --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
     --spring: linear(0, .025, .09, .182, .29, .405, .52, .63, .731, .819, .895, .957, 1.006, 1.043, 1.068, 1.085, 1.093, 1.095, 1.092, 1.085, 1.076, 1.065, 1.055, 1.044, 1.033, 1.024, 1.016, 1.009, 1.003, .999, .995, .993, .992, .991, .991, .991, .992, .993, .994, .995, 1);
     --spring-soft: linear(0, .013, .048, .099, .16, .228, .298, .369, .439, .506, .569, .628, .682, .73, .774, .813, .847, .876, .902, .924, .942, .957, .97, .98, .989, .995, 1, 1.004, 1.007, 1.009, 1.01, 1.011, 1.011, 1.011, 1.011, 1.01, 1.009, 1.009, 1.008, 1.007, 1);
-    color-scheme: light dark;
+    color-scheme: light;
   }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  /* The board's appearance is its own (2026-10-12): data-theme on the root, dark or light — set before the first paint by
+     the head's script and kept by applySkin from the theme worn, which follows macOS only when asked (prefs.skinFollow).
+     Every dark rule reads it; none reads prefers-color-scheme. */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
     --bg: #141413; --panel: #1c1c1a; --ink: #e8e6df; --muted: #9a998f; --line: #2c2c29; --accent: #e08a68;
     --user-bg: #23231f; --tool-bg: #1f1f1c; --code-bg: #101010; --code-line: #2e2e2a; --ended: #5d5d58;
     --code-ink: #e0a284; --inline-bg: rgba(255, 255, 255, .075);
@@ -48,7 +59,7 @@
     --term-bg: #111110; --term-sel: rgba(224, 138, 104, .32);
     --hl-com: #7c7c74; --hl-key: #c678dd; --hl-str: #98c379; --hl-num: #d19a66;
     --hl-fn: #61afef; --hl-cls: #e5c07b; --hl-var: #e06c75; --hl-meta: #8fa6c4;
-  } }
+  }
   /* Simple colours (2026-10-01):
      greys and the one accent. A project's colour goes (repoColor answers the one colour picked under the switch,
      prefs.simpleColor, or black, the default — simpleTint),
@@ -62,12 +73,12 @@
     --hl-com: #6f6e66; --hl-key: #1c1c1a; --hl-str: #6b6b66; --hl-num: #1c1c1a;
     --hl-fn: #1c1c1a; --hl-cls: #1c1c1a; --hl-var: #1c1c1a; --hl-meta: #6b6b66;
   }
-  @media (prefers-color-scheme: dark) { :root[data-colors="simple"]:not([data-theme="light"]) {
+  :root[data-colors="simple"][data-theme="dark"] {
     --working: #9a998f; --idle: #e8e6df; --needs: #e08a68; --watch: #7c7c74; --spend: #8b8b85;
     --vscode: #9a998f; --code-ink: #d6d4cc;
     --hl-com: #7c7c74; --hl-key: #e8e6df; --hl-str: #b5b3aa; --hl-num: #e8e6df;
     --hl-fn: #e8e6df; --hl-cls: #e8e6df; --hl-var: #e8e6df; --hl-meta: #9a998f;
-  } }
+  }
   * { box-sizing: border-box; }
   /* A control's fill, and its fill under the pointer (2026-09-28): the ink over whatever is under it. Set where --ink is
      (2026-10-03; on every element before — two colour mixes resolved on each transcript node and terminal span): the
@@ -349,7 +360,6 @@
   .shead { z-index: 3; }
   .shead::before { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 10px; margin-top: 1px; pointer-events: none;
     background: linear-gradient(color-mix(in srgb, #000 22%, transparent), transparent); opacity: var(--shade, 0); }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .shead::before { background: linear-gradient(rgba(0, 0, 0, .55), transparent); } }
   :root[data-theme="dark"] .shead::before { background: linear-gradient(rgba(0, 0, 0, .55), transparent); }
   @supports (animation-timeline: scroll()) { .shead::before { animation: shade linear both; animation-timeline: --log; animation-range: 0 24px; } }
   @keyframes shade { from { opacity: 0; } to { opacity: 1; } }
@@ -682,7 +692,6 @@
      colour as set — the project's name reads its own way (below), and the rail's squares, the header and the splitter
      (the open card's bleed into it too) wear it as it is. */
   .card { --lift: oklch(from var(--repo, var(--nocolor)) min(l, .72) c h); }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card { --lift: oklch(from var(--repo, var(--nocolor)) max(l, .62) c h); } }
   :root[data-theme="dark"] .card { --lift: oklch(from var(--repo, var(--nocolor)) max(l, .62) c h); }
   /* …but a black project's glow is its black (2026-10-09, towards morning): --wash, the glow's colour, is --lift on every
      other card and the black itself on a black one — its lines (the edge, the border, the ring's track) the grey that
@@ -691,12 +700,10 @@
   @property --wash { syntax: '<color>'; inherits: false; initial-value: transparent; }
   .card.black:not(:hover, .qsel) { --wash: var(--repo); }
   /* in the dark a light is lighter than its colour: a dark project's (a forest green) was barely there */
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card { --spotc: oklch(from var(--lift) calc(l + (1 - l) * .3) c h); } }
   :root[data-theme="dark"] .card { --spotc: oklch(from var(--lift) calc(l + (1 - l) * .3) c h); }
   /* the project's name in its colour, a step towards what reads on the panel: lighter in the dark, darker in the light —
      in the dark from --lift's floor (2026-10-09, late night: a black's name, .45, sank into its grey glow) */
   .card .top .repo { color: oklch(from var(--repo, var(--muted)) min(l, .5) c h); text-transform: uppercase; letter-spacing: .8px; font-size: var(--fs-xs); }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card .top .repo { color: oklch(from var(--repo, var(--muted)) calc(max(l, .62) + (1 - max(l, .62)) * .45) c h); } }
   :root[data-theme="dark"] .card .top .repo { color: oklch(from var(--repo, var(--muted)) calc(max(l, .62) + (1 - max(l, .62)) * .45) c h); }
   .card.black .top .repo { color: var(--ink); }
   /* Claude at work: a light runs round the card's edge. A conic gradient on a square pseudo-element bigger than
@@ -835,7 +842,7 @@
      and its glow run in: white wherever the card under them is dark — the dark theme, and the solid tint the
      hovered and open card wear in either theme (above). On the light theme's pale wash the black's own light, lifted
      (--glow), a grey on the black edge. */
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card.black { --ring: #fff; } }
+  :root[data-theme="dark"] .card.black { --ring: #fff; }
   /* (2026-10-01) Every card in view as dark as the dark theme's ground (nearBlack, renderSessionList): the ground behind
      them is a grey, so the cards still stand out of it. The light theme's ground is light enough as it is. */
   /* (no grey ground under a list of near-black cards since 2026-10-09: the ink cards are the panel, whatever their colour) */
@@ -1104,7 +1111,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      the board, the list's foot then without its own (data-sbar) ---- */
   #sbar { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); display: flex; align-items: stretch; height: 26px; min-width: 0; padding: 0 2px; position: relative; z-index: 20; font-size: var(--fs-xs); color: var(--muted);
     background: var(--bar, var(--panel)); border-top: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #sbar { background: var(--bar, #0f0f0e); } }
+  :root[data-theme="dark"] #sbar { background: var(--bar, #0f0f0e); }
   #sbar[hidden] { display: none; }
   #sbar .seg { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 0 11px; border: 0; border-right: 1px solid var(--line); background: none; font: inherit; color: inherit; }
   /* its slots (2026-10-09): the search and the state chips (#filters, moved in), the left's segments, the faces (#people,
@@ -1276,9 +1283,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      page, pulling the eye off the transcript, and a light theme's header (Latte's) showed a light one reads. The panel
      and the light inks then, the splitter's black too — but at the notch, where the black is the camera housing's
      colour and the header's right is the housing's own, it stays. A theme sets its own (below). */
-  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]):not([data-skin]) main:not(.notch) { --crust: var(--panel); --hd-ink: var(--ink); --hd-muted: var(--muted); --hd-line: var(--line); --hd-panel: var(--panel); --hd-inline: var(--inline-bg); }
-    :root:not([data-theme="dark"]):not([data-skin]) main.darkchat:not(.notch) .shead::after, :root:not([data-theme="dark"]):not([data-skin]) main.darkchat:not(.notch) #splitter::after, :root:not([data-theme="dark"]):not([data-skin]) main.darkchat:not(.notch) #splitter::before { background: var(--crust); } }
   :root[data-theme="light"]:not([data-skin]) main:not(.notch) { --crust: var(--panel); --hd-ink: var(--ink); --hd-muted: var(--muted); --hd-line: var(--line); --hd-panel: var(--panel); --hd-inline: var(--inline-bg); }
+  :root[data-theme="light"]:not([data-skin]) main.darkchat:not(.notch) .shead::after, :root[data-theme="light"]:not([data-skin]) main.darkchat:not(.notch) #splitter::after, :root[data-theme="light"]:not([data-skin]) main.darkchat:not(.notch) #splitter::before { background: var(--crust); }
   /* a theme (2026-10-10) paints this black in its own darkest, --crust, and its inks are the theme's (--hd-*) */
   .shead > :not(h2, .details) { --ink: var(--hd-ink, #e8e6df); --muted: var(--hd-muted, #9a998f); --line: var(--hd-line, #2c2c29); --rink: var(--hd-ink, #e8e6df); --panel: var(--hd-panel, #1c1c1a); --inline-bg: var(--hd-inline, rgba(255, 255, 255, .075)); }
   :where(.shead > :not(h2, .details)) { color: var(--ink); }   /* for what inherits its ink; a control's own rule still wins */
@@ -1338,7 +1344,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-head="float"] #shead { margin: calc(10px + var(--hdrop, 0px)) 14px 4px; border: 1px solid color-mix(in srgb, var(--repo, var(--line)) 45%, var(--line)); border-radius: var(--r-5); overflow: hidden;
     box-shadow: 0 10px 30px -8px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255, 255, 255, .06); }
   :root[data-head="float"] #prlist { margin: 0 14px 4px; border: 1px solid var(--line); border-radius: var(--r-4); }
-  @media (prefers-color-scheme: dark) { :root[data-head="float"]:not([data-theme="light"]) #shead { box-shadow: 0 12px 34px -6px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .06); } }
+  :root[data-head="float"][data-theme="dark"] #shead { box-shadow: 0 12px 34px -6px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .06); }
   /* …and it floats (2026-10-11, late morning): the chat runs up behind it to the column's top, faint where it shows
      round it. #groups spans the header's rows, which stand over it; a half the header floats over (both side by side,
      the top one stacked) pads down by their height (--float-h, floatH) — but for one with no strip, whose transcript
@@ -1438,7 +1444,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      rule of the half with the keys, in the chat's colour lifted to read on the panel (--tablit, as a card's --lift) —
      never the accent, which is the board's call to you; the glyphs drawn (ICON's strokes). */
   #chat { --tablit: oklch(from var(--repo, var(--accent)) min(l, .58) c h); }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #chat { --tablit: oklch(from var(--repo, var(--accent)) max(l, .66) c h); } }
   :root[data-theme="dark"] #chat { --tablit: oklch(from var(--repo, var(--accent)) max(l, .66) c h); }
   .ptabs { display: flex; gap: 4px; height: 38px; padding: 0 8px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: var(--fs-sm); align-items: center; container-type: inline-size; }
   .ptabs[hidden] { display: none; }
@@ -2219,7 +2224,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <div class="opt lightpick zoompick" title="Everything on the board, larger or smaller — the app's own zoom; in a browser, its View menu's"><span><b>text size</b> — the whole board</span><span class="sseg" role="radiogroup" aria-label="Text size" id="zoomPick"><button type="button" role="radio" data-z="0.9">90 %</button><button type="button" role="radio" data-z="1">100 %</button><button type="button" role="radio" data-z="1.1">110 %</button><button type="button" role="radio" data-z="1.25">125 %</button><button type="button" role="radio" data-z="1.4">140 %</button></span><span class="zhint">your browser's View → Zoom</span></div>
     <label class="opt" title="On, every project wears one colour — black, or the one picked under this switch — instead of its own (Peacock's and the setup's stay set, for VS Code and for when this is off), and no state or code has a colour of its own — a PR's chip and the people's faces keep theirs; the accent is left for what wants you — a question, your move, an unread count"><input type="checkbox" id="simpleColors"><span><b>simple colours</b> — every project in one colour, the states in greys; off, each project in its own</span></label>
     <label class="opt sub" id="tintRow" hidden><span class="ssw" id="tintSw"><input type="color" id="simpleTint" value="#000000" aria-label="The one colour every project wears"></span><span><b>one colour</b> for every project, black until you pick one — the chat header's square picks it too · ⌥-click back to black</span></label>
-    <div class="opt" title="A theme is every surface at once — the cards, the transcript, the code, the drawer's colours, the header's black and the status bar. A dark one is worn while macOS is dark, a light one while it is light"><span><b>theme</b> — <span id="themeNames"></span> <button class="btn" id="themeBtn">choose… ⌥⌘Y</button></span></div>
+    <div class="opt" title="A theme is every surface at once — the cards, the transcript, the code, the drawer's colours, the header's black and the status bar — and its appearance, dark or light, whatever macOS shows"><span><b>theme</b> — <span id="themeNames"></span> <button class="btn" id="themeBtn">choose… ⌥⌘Y</button></span></div>
+    <label class="opt sub" title="On, the board is dark while macOS is dark and light while it is light, each in the theme last picked for it; off, the theme picked is worn — and its appearance — whatever macOS shows"><input type="checkbox" id="skinFollow"><span><b>follow macOS</b> — a dark theme while macOS is dark, a light one while it is light; off, the theme picked whatever macOS shows</span></label>
     <label class="opt sub" title="Off, under a theme each project's Peacock colour moves to the nearest of the theme's own hues; on, it is worn as set"><input type="checkbox" id="skinExact"><span><b>exact project colours</b> under a theme — off, each moves to the theme's nearest hue</span></label>
     <label class="opt" title="On, the panels are tiles, Hyprland's way: gaps over a wallpaper, each bordered in its project's colour, whole on the one the keys are in — and, with the stack, beside the open chat up to three tiles of the chats of the list that are asking or clauding, each its drawer drawn small or its last tool calls, a click making one the chat"><input type="checkbox" id="tilesOn"><span><b>tiles</b> — the panels as tiles, Hyprland's way: gaps over a wallpaper, each bordered in its project's colour</span></label>
     <label class="opt sub" id="wallFollowRow" title="The wallpaper's bright glow, behind the tiles, eases after the pointer wherever it goes on the board and stays where it left it; off, it stays in its corner"><input type="checkbox" id="wallFollow"><span><b>the glow follows the pointer</b> — the wallpaper's light behind the tiles</span></label>
@@ -2258,7 +2264,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 <dialog id="themes" aria-label="Theme">
   <div class="thin"><input type="text" id="themeq" placeholder="Theme — type to filter · ←↑↓→ the board follows · ⏎ keeps it · esc" autocomplete="off" spellcheck="false"></div>
   <div id="themegrid"></div>
-  <div class="thfoot"><span id="themenote"></span><span class="spacer"></span><span>a dark theme is worn while macOS is dark, a light one while it is light</span></div>
+  <div class="thfoot"><span id="themenote"></span><span class="spacer"></span><span id="themehow"></span></div>
 </dialog>
 <dialog id="ov" aria-label="Overview — every live chat" tabindex="-1">
   <div class="ovtop"><h1>Overview</h1><div class="chips" id="ovchips"></div><div class="keys"><span><kbd>1–9</kbd>open</span><span><kbd>←↑↓→</kbd><kbd>⏎</kbd></span><span><kbd>esc</kbd>back</span><button class="ovclose" title="Close · esc">×</button></div></div>
@@ -2352,7 +2358,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map() };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', skinDark: null, skinLight: null, skinExact: false };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', skin: null, skinFollow: false, skinDark: null, skinLight: null, skinExact: false, look: null };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -2514,9 +2520,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // ---- themes: one keystroke re-skins the board (2026-10-10) ----------------------------------------------
   // Omarchy's way: a theme is every surface at once — the cards, the transcript, the code, the drawer's sixteen colours,
   // the header's black and the status bar — picked from a grid that the board behind follows (⌥⌘Y). Omarchy's twelve.
-  // A theme is light or dark, and the page cannot pick its own appearance (the dark rules hang off the system's), so
-  // there are two slots, as Ghostty's `theme = dark:…,light:…`: a dark theme is worn while macOS is dark, a light one
-  // while it is light, and none is the board's own (prefs.skinDark, prefs.skinLight). A project keeps its hue — its
+  // A theme is light or dark, and the board wears its appearance whatever macOS shows (2026-10-12; the dark rules read
+  // the root's data-theme): the theme picked is worn (prefs.skin — a theme, or the board's own 'own-dark' / 'own-light').
+  // Following macOS is a switch (prefs.skinFollow): then the slots, as Ghostty's `theme = dark:…,light:…`, a dark theme
+  // worn while macOS is dark, a light one while it is light — a pick fills its appearance's slot either way, none being
+  // the board's own (prefs.skinDark, prefs.skinLight). A project keeps its hue — its
   // Peacock colour moves to the theme's nearest (skinColor) — unless prefs.skinExact keeps it as set. `crust` is the
   // theme's darkest (lightest, in a light one): the header's black, the splitter's, the status bar's ground.
   const SKINS = {
@@ -2575,22 +2583,20 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     light: { name: 'peixAIrada', dark: false, bg: '#f6f6f4', panel: '#ffffff', crust: '#000000', ink: '#1c1c1a', muted: '#6b6b66', line: '#e5e5e0', accent: '#c96442', working: '#d9a82a', idle: '#2f9e5b', needs: '#d64545', watch: '#0e8a8a', proj: ['#3b7ddd', '#8a5cf6', '#2e9e6a', '#e5892a'] },
   };
   const ANSI = ['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white', 'brightBlack', 'brightRed', 'brightGreen', 'brightYellow', 'brightBlue', 'brightMagenta', 'brightCyan', 'brightWhite'];
-  // Each theme a block of tokens under its own data-skin, inside its own appearance's media query: worn only in that
-  // appearance, whatever the slot says. Three classes deep, so it wins over :root and the dark block's two; the states
-  // and the syntax only outside simple colours, whose greys win where it is on.
+  // Each theme a block of tokens under its own data-skin, set only beside its own appearance's data-theme (applySkin).
+  // Three classes deep, so it wins over :root and the dark block's two; the states and the syntax only outside simple
+  // colours, whose greys win where it is on.
   const skinCss = (k, t) => {
     const [com, key, str, num, fn, cls, vr, meta] = t.hl, at = `:root:root[data-skin="${k}"]`;
-    return `@media (prefers-color-scheme: ${t.dark ? 'dark' : 'light'}) {
-  ${at} { --bg: ${t.bg}; --panel: ${t.panel}; --ink: ${t.ink}; --muted: ${t.muted}; --line: ${t.line}; --accent: ${t.accent}; --unread: ${t.accent}; --ended: color-mix(in srgb, ${t.muted} 70%, ${t.bg});
+    return `${at} { --bg: ${t.bg}; --panel: ${t.panel}; --ink: ${t.ink}; --muted: ${t.muted}; --line: ${t.line}; --accent: ${t.accent}; --unread: ${t.accent}; --ended: color-mix(in srgb, ${t.muted} 70%, ${t.bg});
     --user-bg: ${t.raise}; --tool-bg: color-mix(in srgb, ${t.raise} 60%, ${t.panel}); --code-bg: ${t.code}; --code-line: ${t.line}; --inline-bg: color-mix(in srgb, ${t.ink} 8%, transparent);
     --snip-claude: color-mix(in srgb, ${t.ink} 82%, ${t.panel}); --nocolor: ${t.muted}; --term-bg: ${t.code}; --term-sel: color-mix(in srgb, ${t.accent} 30%, transparent);
     --crust: ${t.crust}; --bar: ${t.crust}; --hd-ink: ${t.ink}; --hd-muted: ${t.muted}; --hd-line: ${t.line}; --hd-panel: ${t.panel}; --hd-inline: color-mix(in srgb, ${t.ink} 8%, transparent); }
   ${at}:not([data-colors="simple"]) { --working: ${t.working}; --idle: ${t.idle}; --needs: ${t.needs}; --watch: ${t.watch}; --spend: ${t.spend}; --you: ${t.watch}; --code-ink: ${num};
-    --hl-com: ${com}; --hl-key: ${key}; --hl-str: ${str}; --hl-num: ${num}; --hl-fn: ${fn}; --hl-cls: ${cls}; --hl-var: ${vr}; --hl-meta: ${meta}; }
-}`;
+    --hl-com: ${com}; --hl-key: ${key}; --hl-str: ${str}; --hl-num: ${num}; --hl-fn: ${fn}; --hl-cls: ${cls}; --hl-var: ${vr}; --hl-meta: ${meta}; }`;
   };
   document.head.append(Object.assign(document.createElement('style'), { id: 'skins', textContent: Object.entries(SKINS).map(([k, t]) => skinCss(k, t)).join('\n') }));
-  const darkNow = () => matchMedia('(prefers-color-scheme: dark)').matches;
+  const sysDark = () => matchMedia('(prefers-color-scheme: dark)').matches;   // macOS's, which the board follows only when asked
   // A new look spreads from where it was asked for (2026-10-11, Telegram's theme switch): the change made inside a view
   // transition, the new page revealed in a circle growing from that point over the old one. No point — a key — or no
   // view transitions, or reduced motion: the change at once.
@@ -2604,10 +2610,18 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       noteMotion(null, 'look');
     }).catch(() => {});
   }
-  let skinPreview;   // what the picker shows while it is up: a key, null for the board's own, undefined when it is down
-  /** The theme worn now: the picker's preview, else the slot of the appearance in use — and only one of that appearance. */
-  const skinOn = () => { const k = skinPreview !== undefined ? skinPreview : darkNow() ? prefs.skinDark : prefs.skinLight; return SKINS[k] && SKINS[k].dark === darkNow() ? k : null; };
+  const isSkin = k => !!SKINS[k] || k === 'own-dark' || k === 'own-light';
+  const skinDarkOf = k => SKINS[k] ? SKINS[k].dark : k === 'own-dark';
+  /** An appearance's slot: the theme kept for it, else the board's own in it. */
+  const slotOf = dark => { const k = dark ? prefs.skinDark : prefs.skinLight; return SKINS[k] && SKINS[k].dark === dark ? k : dark ? 'own-dark' : 'own-light'; };
+  if (!isSkin(prefs.skin)) prefs.skin = slotOf(sysDark());   // a board from before (or a new one) wears what macOS's slot gave it
+  let skinPreview;   // the tile the picker shows while it is up ('own-dark', 'own-light' or a theme), undefined when it is down
+  /** What is worn now: the picker's preview, else the theme picked — or, following macOS, its appearance's slot. */
+  const wornKey = () => skinPreview ?? (prefs.skinFollow ? slotOf(sysDark()) : prefs.skin);
+  /** The theme worn now, null for the board's own. */
+  const skinOn = () => SKINS[wornKey()] ? wornKey() : null;
   const skinName = k => SKINS[k]?.name || 'the board’s own';
+  const skinLabel = k => SKINS[k]?.name || `the board’s own ${skinDarkOf(k) ? 'dark' : 'light'}`;
   // A project's colour under a theme: the nearest of the theme's own hues, by the hue's angle; a grey, a black, a white
   // and a colour the theme has no match for stay as set.
   const hueOf = hex => {
@@ -2623,24 +2637,35 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     for (const p of SKINS[k].proj) { const q = hueOf(p); if (q === null) continue; const d = Math.min(Math.abs(h - q), 360 - Math.abs(h - q)); if (d < bd) { bd = d; best = p; } }
     return best;
   }
-  /** The theme on the root, and its name in the settings. The terminals and the board's colours follow (reskin). */
+  /** The theme and its appearance on the root, and its name in the settings. The terminals and the board's colours
+   *  follow (reskin). The app's window wears the appearance kept (not a preview) — its pages, its find bar, its ground —
+   *  or macOS's while the theme follows it, so the board's own media query still says macOS's then. */
+  let lookPosted;
   function applySkin() {
-    const k = skinOn();
-    if (k) document.documentElement.dataset.skin = k; else delete document.documentElement.dataset.skin;
-    $('#themeNames').innerHTML = `<b>${skinName(prefs.skinDark)}</b> while dark · <b>${skinName(prefs.skinLight)}</b> while light`;   // the table's own names: nothing to escape (and esc is declared further down)
+    const k = wornKey(), root = document.documentElement, look = skinDarkOf(k) ? 'dark' : 'light';
+    root.dataset.theme = look;
+    if (SKINS[k]) root.dataset.skin = k; else delete root.dataset.skin;
+    if (skinPreview === undefined && prefs.look !== look) { prefs.look = look; savePrefs(); }   // for the head's first paint
+    const want = prefs.skinFollow ? null : skinDarkOf(prefs.skin);
+    if (want !== lookPosted) { lookPosted = want; window.webkit?.messageHandlers?.hub?.postMessage({ type: 'appearance', dark: want }); }   // post is declared further down
+    $('#themeNames').innerHTML = prefs.skinFollow ? `<b>${skinName(prefs.skinDark)}</b> while macOS is dark · <b>${skinName(prefs.skinLight)}</b> while light` : `<b>${skinLabel(prefs.skin)}</b>`;   // the table's own names: nothing to escape (and esc is declared further down)
+    $('#skinFollow').checked = !!prefs.skinFollow;
     $('#skinExact').checked = !!prefs.skinExact;
   }
   applySkin();
   const reskin = () => { applySkin(); for (const tm of [...terms, ...stackMinis.values(), ...ov.minis.values()]) if (tm.xt) tm.xt.options.theme = xtTheme(); redrawColors(); };
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', reskin);
   $('#skinExact').addEventListener('change', e => { prefs.skinExact = e.target.checked; savePrefs(); reskin(); });
+  // Off, what was worn stays worn, whatever macOS does next; on, macOS's appearance picks the slot.
+  $('#skinFollow').addEventListener('change', e => { const on = e.target.checked; revealFrom(centreOf(e.target), () => { if (!on) prefs.skin = wornKey(); prefs.skinFollow = on; savePrefs(); reskin(); }); });
   $('#themeBtn').addEventListener('click', () => { settingsOpen(false); themesOpen(); });
-  // ⌥⌘Y: the grid. The arrows move and the board behind follows (a theme of the other appearance cannot show: it says
-  // so); ⏎ or a click keeps one in its appearance's slot; Esc, or a click on the backdrop, puts back what was worn.
+  // ⌥⌘Y: the grid. The arrows move and the board behind follows, in the tile's appearance; ⏎ or a click wears it and
+  // keeps it in its appearance's slot (following macOS, it is worn while macOS is in that appearance); Esc, or a click
+  // on the backdrop, puts back what was worn.
   const themePick = { list: [], sel: 0, kept: false };
   const miniSkin = (k, t, i) => {
     const p = t.proj, card = (c, w1, w2, ask) => `<i class="mc${ask ? ' ask' : ''}" style="--c:${c}"><u style="width:${w1}%"></u><u style="width:${w2}%"></u></i>`;
-    const slot = t.dark ? prefs.skinDark : prefs.skinLight, worn = (SKINS[slot] ? slot : t.dark ? 'own-dark' : 'own-light') === k;
+    const worn = (prefs.skinFollow ? slotOf(t.dark) : prefs.skin) === k;
     return `<button class="tt${i === themePick.sel ? ' sel' : ''}" data-i="${i}" style="--tbg:${t.bg};--tpn:${t.panel};--tcr:${t.crust};--tink:${t.ink};--tmu:${t.muted};--tnd:${t.needs};--thd:${p[0]}">
       <span class="tshot"><span class="ml">${card(t.needs, 70, 45, 1)}${card(p[1], 80, 55)}${card(p[0], 60, 70)}${card(p[2], 75, 40)}</span>
         <span class="mr"><span class="mh"><b></b></span><span class="mt"><u style="width:82%"></u><u style="width:64%"></u><u class="code" style="width:90%"></u><u style="width:48%"></u><s></s></span></span>
@@ -2655,8 +2680,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     $('#themegrid').innerHTML = themePick.list.map(([k, t], i) => miniSkin(k, t, i)).join('') || '<div class="none">no theme matches</div>';
     const [k, t] = themePick.list[themePick.sel] || [];
     if (!t) return;
-    skinPreview = k.startsWith('own-') ? null : k;
-    $('#themenote').textContent = t.dark === darkNow() ? `${t.name} — ⏎ wears it while macOS is ${t.dark ? 'dark' : 'light'}` : `${t.name} is a ${t.dark ? 'dark' : 'light'} theme: ⏎ keeps it for when macOS is ${t.dark ? 'dark' : 'light'} — it cannot show now`;
+    skinPreview = k;
+    const look = t.dark ? 'dark' : 'light';
+    $('#themenote').textContent = !prefs.skinFollow ? `${t.name} — ⏎ wears it` : t.dark === sysDark() ? `${t.name} — ⏎ wears it while macOS is ${look}` : `${t.name} — ⏎ keeps it for when macOS is ${look}`;
+    $('#themehow').textContent = prefs.skinFollow ? 'following macOS: a dark theme while it is dark, a light one while it is light' : 'worn whatever macOS shows · Settings › Look can follow macOS';
     $('#themegrid .tt.sel')?.scrollIntoView({ block: 'nearest' });
     reskin();
   }
@@ -2664,9 +2691,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     const dlg = $('#themes'); if (dlg.open) return;
     if (inApp) post({ type: 'focus' });
     themePick.kept = false; $('#themeq').value = '';
-    const k = darkNow() ? prefs.skinDark : prefs.skinLight;
+    const k = wornKey();
     const all = [['own-dark'], ...Object.keys(SKINS).filter(x => SKINS[x].dark).map(x => [x]), ['own-light'], ...Object.keys(SKINS).filter(x => !SKINS[x].dark).map(x => [x])];
-    themePick.sel = Math.max(0, all.findIndex(([x]) => x === (SKINS[k] ? k : darkNow() ? 'own-dark' : 'own-light')));
+    themePick.sel = Math.max(0, all.findIndex(([x]) => x === k));
     dlg.showModal(); repostPane(); themesRender(); $('#themeq').focus();
   }
   // `from`: where the pick was made — a tile clicked — for the theme to spread from there in a circle (revealFrom); ⏎
@@ -2675,6 +2702,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     const [k, t] = themePick.list[i] || []; if (!t) return;
     const v = k.startsWith('own-') ? null : k;
     if (t.dark) prefs.skinDark = v; else prefs.skinLight = v;
+    prefs.skin = k;
     savePrefs(); themePick.kept = true;
     revealFrom(i === themePick.sel ? null : from, () => { skinPreview = undefined; $('#themes').close(); reskin(); });   // the close event comes a task later
   }
@@ -4635,7 +4663,7 @@ const toolName = n => {
   // `>` narrows it to the actions and switches, `#` to the PRs, `@` to the projects, `!` to the tickets. Empty, it is a
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
-  const SWITCHES = [['notifyOn', 'Notifications'], ['simpleColors', 'Simple colours'], ['skinExact', 'Exact project colours under a theme'], ['ringsInStep', 'Rings in step'],
+  const SWITCHES = [['notifyOn', 'Notifications'], ['simpleColors', 'Simple colours'], ['skinFollow', 'Theme follows macOS'], ['skinExact', 'Exact project colours under a theme'], ['ringsInStep', 'Rings in step'],
     ['edgeLight', 'Edge light'], ['cardSpot', 'Light under the pointer'], ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['tileStackOn', 'Tiles: the stack'], ['wallFollow', 'Tiles: the glow follows the pointer'], ['headFloat', 'Floating header'], ['soundsOn', 'Sounds'], ['autoResume', 'Auto-resume'], ['optMeta', '⌥ is Meta in the terminal']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
@@ -4773,7 +4801,7 @@ const toolName = n => {
     ['⌥⌘B', 'Layout', 'fold the list into a rail, and back', '', ['alt:KeyB']],
     ['⌥⌘S', 'Layout', 'the stack of busy chats beside the open one', 'tiles\' · with tiles off, both together · not from a page in the pane, where it is VS Code\'s Save All', ['alt:KeyS']],
     ['⌃⌘F', 'Layout', 'full screen up to the notch, in the app', 'the green button too (⌥-click zooms) · remembered across launches', []],
-    ['⌥⌘Y', 'Look', 'the theme', 'the board behind follows the arrows · ⏎ keeps it for its appearance · esc puts back what was worn', ['alt:KeyY']],
+    ['⌥⌘Y', 'Look', 'the theme', 'the board behind follows the arrows · ⏎ wears it · esc puts back what was worn', ['alt:KeyY']],
     ['⌘,', 'Look', 'the settings', 'the chat header\'s ··· has them too', ['cmd:Comma']],
     ['⌘+ ⌘−', 'In the drawer', 'the chat\'s and the drawer\'s size', '', []],
     ['⌘K', 'In the drawer', 'clear the drawer', 'on the server\'s copy of its screen too, so it stays clear', []],
@@ -6062,7 +6090,6 @@ const toolName = n => {
     watchDpr(tm);
     window.addEventListener('focus', () => fitTerm(tm));
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') fitTerm(tm); });
-    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { tm.xt.options.theme = xtTheme(); });
   }
   // The same rule as lib/refit.mjs, kept by hand (this page has no build step): a screen that grows has to park
   // its cursor on the last line of the buffer for the length of the resize, or xterm appends blank rows at the
@@ -7752,7 +7779,7 @@ const toolName = n => {
       kv('PRs', `${open.length} open ${sep} ${go('prs', prs.filter(p => p.turn?.you).length, hot('em', prs.filter(p => p.turn?.you).length, `${prs.filter(p => p.turn?.you).length} at your move`))} ${sep} ${open.filter(p => p.checks === 'pending').length} CI running`),
       win.length ? kv('Plan', win.filter(w => !w.grant).slice(0, 4).map(w => `${esc(uShort(w))} ${Math.round(w.percent)}%`).join(` ${sep} `)) : '',
       kv('Mac', `${bar.stats.cpu != null ? `CPU ${bar.stats.cpu}% ${sep} ` : ''}${bar.stats.mem ? `${(bar.stats.mem.used / 2 ** 30).toFixed(1)} / ${Math.round(bar.stats.mem.total / 2 ** 30)} GB ${sep} ` : ''}${state.awake.awake ? 'kept awake' : 'sleeps as set'}`),
-      kv('Theme', esc(skinName(skinOn()))),
+      kv('Theme', esc(skinLabel(wornKey()) + (prefs.skinFollow ? ' · following macOS' : ''))),
     ].join('');
     // the day: from the hour of its first span, half an hour before it (2026-10-12; from 8:00 before, which left an
     // evening's work a sliver at the right of a fourteen-hour axis), to the hour after now

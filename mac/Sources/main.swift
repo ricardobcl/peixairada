@@ -16,6 +16,7 @@ let kPort = ProcessInfo.processInfo.environment["PEIXAIRADA_PORT"].flatMap(Int.i
 let kURL = URL(string: "http://127.0.0.1:\(kPort)/")!
 let kFrameName = "peixairada.main"   // the window's frame in the defaults — off while ⌃⌘F fills the screen
 let kFillKey = "peixairada.fill"      // whether the board filled the screen when it was last up: a relaunch comes back filled
+let kDarkKey = "peixairada.dark"      // the board's own appearance when it last said one (none: it follows macOS), for the next launch
 let kLog = FileManager.default.homeDirectoryForCurrentUser
   .appendingPathComponent("Library/Logs/peixairada.log")
 let kAppLog = FileManager.default.homeDirectoryForCurrentUser
@@ -329,6 +330,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     window.isReleasedWhenClosed = false
     window.titlebarAppearsTransparent = false
     window.backgroundColor = ground   // what shows until the page paints, and behind a web view that draws none (above)
+    // The board's appearance is its own (2026-10-12): it says which (`appearance`), and the window wears it — the
+    // ground above, the pane's pages, the find bar. As it was last said until the page says again.
+    if let dark = UserDefaults.standard.object(forKey: kDarkKey) as? Bool { window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua) }
     // The board fills the window; the pane is a transparent overlay over all of it, and each page's web view is
     // placed inside it where the page says — one half of the chat column, or both, below their tab strips. An
     // overlay, not a split: the board's columns never reflow under it, and it lets clicks that miss a page through.
@@ -406,7 +410,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     w.translatesAutoresizingMaskIntoConstraints = false
     w.isHidden = true
     w.wantsLayer = true
-    w.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor   // the overlay is clear: a page still loading needs its own
+    window.effectiveAppearance.performAsCurrentDrawingAppearance {   // the board's appearance, which may not be macOS's
+      w.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor   // the overlay is clear: a page still loading needs its own
+    }
     paneOverlay.addSubview(w)
     let frame = [w.leadingAnchor.constraint(equalTo: paneOverlay.leadingAnchor, constant: 0),
                  w.topAnchor.constraint(equalTo: paneOverlay.topAnchor, constant: 0),
@@ -1095,6 +1101,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       window.representedURL = cwd.isEmpty ? nil : URL(fileURLWithPath: cwd, isDirectory: true)   // the proxy icon, and ⌘-click on the title for the path
     case "focus":
       window.makeFirstResponder(web)
+    case "appearance":   // the board's dark or light, whatever macOS shows (2026-10-12); null while its theme follows macOS
+      let dark = body["dark"] as? Bool
+      window.appearance = dark.flatMap { NSAppearance(named: $0 ? .darkAqua : .aqua) }
+      if let dark { UserDefaults.standard.set(dark, forKey: kDarkKey) } else { UserDefaults.standard.removeObject(forKey: kDarkKey) }
+      logLine("appearance: \(dark.map { $0 ? "dark" : "light" } ?? "macOS's")")
     case "haptic":   // a bump on the trackpad (2026-10-11): a divider at a stop, a tab dropped, a run of days crossed
       let pattern: NSHapticFeedbackManager.FeedbackPattern = switch body["kind"] as? String {
         case "levelChange": .levelChange

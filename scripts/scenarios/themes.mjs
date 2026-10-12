@@ -1,8 +1,10 @@
 // Themes (2026-10-10). A folder with a Peacock blue and a chat in it. What this checks: ⌥⌘Y opens the grid on the theme
 // worn (the board's own); an arrow previews the next — the root wears its data-skin, the tokens follow, the card's blue
 // moves to the theme's own blue, the header's black and the status bar's ground are the theme's darkest — and Esc puts
-// the board's own back. ⏎ keeps one in its appearance's slot: a dark theme is worn while the system is dark and not
-// while it is light, where the light slot's is; a reload keeps both. "Exact project colours" leaves Peacock's blue as set.
+// the board's own back. ⏎ wears one whatever the system shows (2026-10-12): a dark theme stays dark when the system
+// turns light, a light one is light in a dark system, a reload keeps it, and the first paint is it (the head's script).
+// Following macOS (the switch) wears each appearance's slot, which a pick fills; a theme of the other appearance still
+// previews. "Exact project colours" leaves Peacock's blue as set.
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -13,7 +15,7 @@ const BLUE = '#3b7ddd';
 mkdirSync(join(cwd, '.vscode'), { recursive: true });
 writeFileSync(join(cwd, '.vscode', 'settings.json'), JSON.stringify({ 'peacock.color': BLUE }));
 
-export const meta = { server: true, fixture: 'auto' };
+export const meta = { server: true, fixture: 'auto', prefs: { skinFollow: false } };   // the board's own: the harness follows the system
 
 export default async function (ctx) {
   const out = {}, now = Date.now();
@@ -25,6 +27,14 @@ export default async function (ctx) {
   const repo = () => ctx.evaluate(`document.querySelector('#slist > .card[data-id="${chat.id}"]')?.style.getPropertyValue('--repo') || null`);
   const keyIn = k => ctx.evaluate(`document.querySelector('#themeq').dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(k)}, bubbles: true, cancelable: true }))`);
   const escape = () => ctx.evaluate(`document.querySelector('#themeq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }))`);
+  const look = () => ctx.evaluate(`document.documentElement.dataset.theme`);
+  const pick = async (q, k) => {
+    await ctx.key('KeyY');
+    await ctx.waitFor(`document.querySelector('#themes').open`, { what: `the grid, for ${q}` });
+    await ctx.fill('#themeq', q);
+    await ctx.waitFor(`document.documentElement.dataset.skin === ${JSON.stringify(k)}`, { what: `${q} previewed` });
+  };
+  const follow = async on => { await ctx.evaluate(`(b => b.checked === ${on} || b.click())(document.querySelector('#skinFollow'))`); await ctx.waitFor(`window.peix.prefs().skinFollow === ${on}`, { what: `follow macOS ${on ? 'on' : 'off'}` }); };
 
   await media(true);
   await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${chat.id}"]')?.style.getPropertyValue('--repo') === '${BLUE}'`, { what: "the folder's Peacock blue", timeout: 10000 });
@@ -46,48 +56,67 @@ export default async function (ctx) {
   await ctx.waitFor(`!document.querySelector('#themes').open && !document.documentElement.dataset.skin`, { what: 'Esc puts the board’s own back' });
   ctx.assert.equal(await repo(), BLUE, 'the blue back as set');
 
-  // ⏎ keeps Gruvbox for the dark slot
-  await ctx.key('KeyY');
-  await ctx.waitFor(`document.querySelector('#themes').open`, { what: 'the grid again' });
-  await ctx.fill('#themeq', 'gruv');
-  await ctx.waitFor(`document.documentElement.dataset.skin === 'gruvbox'`, { what: 'the filtered preview' });
+  // ⏎ wears Gruvbox
+  await pick('gruv', 'gruvbox');
   await keyIn('Enter');
   await ctx.waitFor(`!document.querySelector('#themes').open && document.documentElement.dataset.skin === 'gruvbox'`, { what: 'Gruvbox kept' });
-  ctx.assert.equal((await ctx.peix('prefs()')).skinDark, 'gruvbox');
+  ctx.assert.deepEqual((({ skin, skinDark, look }) => ({ skin, skinDark, look }))(await ctx.peix('prefs()')), { skin: 'gruvbox', skinDark: 'gruvbox', look: 'dark' });
   ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#sbar')).backgroundColor`), 'rgb(29, 32, 33)', "the status bar on the theme's crust");
-  ctx.assert.match(await ctx.evaluate(`document.querySelector('#themeNames').textContent`), /Gruvbox while dark/);
-
-  // light: the dark theme is not worn; the light slot's is, once picked
-  await media(false);
-  await ctx.waitFor(`!document.documentElement.dataset.skin`, { what: 'no dark theme in the light' });
-  await ctx.key('KeyY');
-  await ctx.waitFor(`document.querySelector('#themes').open`, { what: 'the grid in the light' });
-  await ctx.fill('#themeq', 'latte');
-  await ctx.waitFor(`document.documentElement.dataset.skin === 'catppuccin-latte'`, { what: 'Latte previewed' });
-  await keyIn('Enter');
-  await ctx.waitFor(`!document.querySelector('#themes').open`, { what: 'Latte kept' });
-  ctx.assert.equal(await root('--bg'), '#eff1f5', "Latte's ground");
-  await ctx.settle(); await ctx.shot('latte');
-
-  // a dark theme picked in the light says it cannot show, and is kept for the dark
-  await ctx.key('KeyY');
-  await ctx.waitFor(`document.querySelector('#themes').open`, { what: 'the grid once more' });
-  await ctx.fill('#themeq', 'nord');
-  await ctx.waitFor(`/cannot show now/.test(document.querySelector('#themenote').textContent)`, { what: 'the note for the other appearance' });
-  ctx.assert.equal(await skin(), null, 'a dark theme does not show in the light');
-  await escape();
-  await ctx.waitFor(`document.documentElement.dataset.skin === 'catppuccin-latte'`, { what: 'Latte back' });
-
-  // a reload keeps both; dark again is Gruvbox; exact colours leave the blue as set
-  await ctx.reload();
-  await ctx.waitFor(`document.documentElement.dataset.skin === 'catppuccin-latte'`, { what: 'Latte after a reload' });
-  await media(true);
-  await ctx.waitFor(`document.documentElement.dataset.skin === 'gruvbox'`, { what: 'Gruvbox in the dark' });
+  ctx.assert.match(await ctx.evaluate(`document.querySelector('#themeNames').textContent`), /^Gruvbox$/);
   await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${chat.id}"]')?.style.getPropertyValue('--repo') === '#83a598'`, { what: "the blue in Gruvbox's blue" });
   await ctx.evaluate(`document.querySelector('#skinExact').click()`);
   await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${chat.id}"]')?.style.getPropertyValue('--repo') === '${BLUE}'`, { what: 'the exact blue' });
   await ctx.evaluate(`document.querySelector('#skinExact').click()`);
   await ctx.settle(); out.shot = await ctx.shot('gruvbox');
+
+  // the system turns light: the board stays in Gruvbox, dark; a dark theme previews in the light
+  await media(false); await ctx.sleep(300);
+  ctx.assert.deepEqual([await skin(), await look(), await root('--bg')], ['gruvbox', 'dark', '#282828'], 'Gruvbox, dark, in a light system');
+  await pick('nord', 'nord');
+  ctx.assert.match(await ctx.evaluate(`document.querySelector('#themenote').textContent`), /^Nord — ⏎ wears it$/);
+  await escape();
+  await ctx.waitFor(`!document.querySelector('#themes').open && document.documentElement.dataset.skin === 'gruvbox'`, { what: 'Gruvbox back' });
+
+  // the system dark again, a light theme picked: the board light in a dark system — its tokens and its native controls
+  await media(true);
+  await pick('latte', 'catppuccin-latte');
+  await keyIn('Enter');
+  await ctx.waitFor(`!document.querySelector('#themes').open && document.documentElement.dataset.skin === 'catppuccin-latte'`, { what: 'Latte kept' });
+  ctx.assert.deepEqual([await look(), await root('--bg'), await ctx.evaluate(`getComputedStyle(document.documentElement).colorScheme`)], ['light', '#eff1f5', 'light'], "Latte's ground, light, in a dark system");
+  ctx.assert.deepEqual((({ skin, skinDark, skinLight, look }) => ({ skin, skinDark, skinLight, look }))(await ctx.peix('prefs()')), { skin: 'catppuccin-latte', skinDark: 'gruvbox', skinLight: 'catppuccin-latte', look: 'light' }, 'worn, and kept in the light slot');
+  await ctx.settle(); await ctx.shot('latte');
+
+  // a reload keeps it; the head's script paints the first frame in it — or in the system's, following it or with no prefs
+  await ctx.reload();
+  await ctx.waitFor(`document.documentElement.dataset.skin === 'catppuccin-latte'`, { what: 'Latte after a reload' });
+  ctx.assert.equal(await look(), 'light', 'light after a reload, in a dark system');
+  out.head = JSON.parse(await ctx.evaluate(`JSON.stringify((src => [[{ look: 'light' }, true], [{ look: 'light', skinFollow: true }, true], [{ look: 'dark' }, false], [null, false], ['{', true]].map(([p, dark]) => {
+    const doc = { documentElement: { dataset: {} } };
+    new Function('localStorage', 'matchMedia', 'document', src)({ getItem: () => p === null ? null : typeof p === 'string' ? p : JSON.stringify(p) }, () => ({ matches: dark }), doc);
+    return doc.documentElement.dataset.theme;
+  }))(document.head.querySelector('script').textContent))`));
+  ctx.assert.deepEqual(out.head, ['light', 'dark', 'dark', 'light', 'dark'], 'the first paint: the look kept, else the system');
+
+  // following macOS: each appearance its slot — Gruvbox in the dark, Latte in the light
+  await follow(true);
+  await ctx.waitFor(`document.documentElement.dataset.skin === 'gruvbox'`, { what: 'the dark slot in a dark system' });
+  ctx.assert.match(await ctx.evaluate(`document.querySelector('#themeNames').textContent`), /Gruvbox while macOS is dark · Catppuccin Latte while light/);
+  await media(false);
+  await ctx.waitFor(`document.documentElement.dataset.skin === 'catppuccin-latte' && document.documentElement.dataset.theme === 'light'`, { what: 'the light slot in a light system' });
+  // a dark theme picked in the light shows while previewed, and is kept for the dark
+  await pick('nord', 'nord');
+  ctx.assert.equal(await look(), 'dark', 'Nord previewed, dark, in a light system');
+  ctx.assert.match(await ctx.evaluate(`document.querySelector('#themenote').textContent`), /keeps it for when macOS is dark/);
+  await keyIn('Enter');
+  await ctx.waitFor(`!document.querySelector('#themes').open && document.documentElement.dataset.skin === 'catppuccin-latte'`, { what: 'Latte still worn in the light' });
+  ctx.assert.equal((await ctx.peix('prefs()')).skinDark, 'nord', 'Nord kept for the dark');
+  await media(true);
+  await ctx.waitFor(`document.documentElement.dataset.skin === 'nord'`, { what: 'Nord in the dark' });
+
+  // following off: what is worn stays, whatever the system does next
+  await follow(false);
+  await media(false); await ctx.sleep(300);
+  ctx.assert.deepEqual([await skin(), await look()], ['nord', 'dark'], 'Nord kept, dark, in a light system');
 
   // a tile clicked spreads its theme in a circle from where it was (2026-10-11): a view transition, the new page clipped
   await ctx.key('KeyY');
