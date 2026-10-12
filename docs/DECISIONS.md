@@ -5,6 +5,19 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-12. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-12, night, last — a page's × closes it
+
+Ricardo: "when I click on X on the address bar for a webpage, it bounces and sometime the click release is not on the X
+anymore, so it fails to close".
+
+* **The address does not dip, nor does a tab pressed on its ×**: the press dip of 2026-10-11 scaled the whole tab to
+  97 % round its middle, and the page in front is a tab up to 560 px wide — its ×, at the left over the mark, moved some
+  8 px towards the middle while held. A press near the ×'s left edge was let go off it, and a click whose press and
+  release are on different elements lands on what holds both: the tab, which only opens itself. The address is a
+  field (it holds the URL and ‹ › ↻ ↗, each a button that dips on its own), so it never dips; a plain tab still does,
+  but not under a press on its ×. `pane-tabs.mjs` closes the page by a real press at the ×'s near edge, held while a
+  dip would land.
+
 ## Decisions of 2026-10-12, night, later still — the board updates itself
 
 Ricardo: "can we implement an auto-update functionality that pull code and restart what's need to update? can be

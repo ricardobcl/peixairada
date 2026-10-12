@@ -114,7 +114,17 @@ export default async function (ctx) {
   ctx.assert.equal('gh:' + await ctx.peix('state().pr'), firstGh, 'the board knows which PR is in front');
   out.url.back = await purl();
   ctx.assert.equal(out.url.back.url, deep, 'the address it was left on comes back with the tab');
-  await ctx.evaluate(`document.querySelector('#ptabsB .ptab[data-tab=${JSON.stringify(firstGh)}] .x').click()`);
+  // × closes it — pressed as a hand does (2026-10-12): at the ×'s near edge, held while a dip would land, let go where it
+  // went down. The address is a field and does not dip: 97 % of it carried the × out from under the pointer, and the
+  // release was a click on the tab, which stayed.
+  const xAt = await ctx.evaluate(`(r => ({ x: Math.round(r.left + 3), y: Math.round(r.top + r.height / 2) }))(document.querySelector('#ptabsB .ptab[data-tab=${JSON.stringify(firstGh)}] .x').getBoundingClientRect())`);
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: xAt.x, y: xAt.y });
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: xAt.x, y: xAt.y, button: 'left', buttons: 1, clickCount: 1 });
+  await ctx.sleep(150);
+  out.pressed = await ctx.evaluate(`(e => { e.getAnimations().forEach(a => { try { a.finish(); } catch {} }); return getComputedStyle(e).scale; })(document.querySelector('#ptabsB .ptab.addr'))`);
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: xAt.x, y: xAt.y, button: 'left', buttons: 0, clickCount: 1 });
+  await ctx.waitFor(`!document.querySelector('#ptabsB .ptab[data-tab=${JSON.stringify(firstGh)}]')`, { what: 'the page\'s tab closed by its ×', timeout: 3000 });
+  ctx.assert.equal(out.pressed, 'none', 'the address held down does not dip');
   out.closed = { tabs: await tabsNow(), pane: await lastPane() };
   ctx.assert.ok(await ctx.evaluate(`window.peix.motion().some(m => m.kind === 'tabfold' && m.id === ${JSON.stringify(firstGh)})`), 'the closed tab folds where it stood (2026-10-11)');
   ctx.assert.equal(out.closed.tabs.length, 3); ctx.assert.equal(out.closed.tabs[0].on, true, 'its half shows the first of its own tabs left, the zsh');

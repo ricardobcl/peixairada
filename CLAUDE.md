@@ -218,7 +218,8 @@ for `$HOME`'s home and the account's.
   `--ease-out`, `--spring`, `--spring-soft` (`linear()` curves, read by the script through `cssToken`) and `--t-hover`.
   A new rule takes one — settling eases out, arriving springs —, and a fit that needs its own number says why. **A press
   dips by the `scale` property** (the FLIP's `transform` and the ring's stay theirs): a card 99 % unless the press is on
-  a control in it (`:has`), small controls 97 %. → `small-motions.mjs` (the 2026-10-11 motions, one section each).
+  a control in it (`:has`), small controls 97 % — never the address, nor a tab pressed on its × (2026-10-12: it moved
+  the × off the pointer). → `small-motions.mjs` (the 2026-10-11 motions, one section each), `pane-tabs.mjs`.
 * **Counts roll** (`rn(key, n)`, `rollSoon`): a count is plain text in `.rn[data-rk]`; after a draw, one whose key
   showed another number becomes a digit strip, plain text again `ROLL_MS` later — so `setHtml` and the reconciles
   compare the same strings, and `textContent` reads the number mid-roll (`.rv`).

@@ -1054,8 +1054,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* Every small control eases its hover (2026-09-27, night): the ink, the edge and the wash, 120 ms — the one rule. */
   :is(.btn, .ptab, .hmi, .hmore, .hprs, .nav, .gmore, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
   /* …and dips to 97 % while pressed (2026-10-11), springing back on release; a row of a menu or the project's line
-     does not — a whole row shrinking reads as a glitch, not a press. */
-  :is(.btn, .ptab, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, .gsep.lane[data-lane]):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
+     does not — a whole row shrinking reads as a glitch, not a press. Nor does the address, a field, or a tab pressed on
+     its × (2026-10-12): 97 % of a wide tab carries the × out from under the pointer, and the release is the tab's click. */
+  :is(.btn, .ptab:not(.addr, :has(> .x:active)), .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, .gsep.lane[data-lane]):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
   .act:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .dot.working { background: var(--working); animation: pulse 1.4s ease-in-out infinite; }
