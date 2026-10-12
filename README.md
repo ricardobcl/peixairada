@@ -169,9 +169,13 @@ mac/build.sh install           # the Mac app, in /Applications (optional — any
 `security` read the *Claude Code-credentials* keychain item (that's the plan usage — *Always Allow*), and the app to
 show notifications.
 
-**Updating**: `git pull && npm install`, then `scripts/launchd.sh restart` — your chats stay open — and
-`mac/build.sh install` when `mac/` or the dependencies changed. After switching Node versions, or installing a CLI
-somewhere new, run `scripts/launchd.sh install` and `mac/build.sh install` again.
+**Updating** is the board's own job: every half hour it looks for new commits on your checkout's branch and, once
+you've left it be for two minutes, pulls them — a fast-forward, never over a change of yours — and starts again what
+they changed: the packages, the server (your chats stay open), the page, the app. A commit whose server doesn't start
+is undone and skipped. Settings › Board › *Updates* says where it stands, checks now, or turns it off; off, it's
+`git pull && npm install`, then `scripts/launchd.sh restart` and `mac/build.sh install` when `mac/` changed. After
+switching Node versions, or installing a CLI somewhere new, run `scripts/launchd.sh install` and `mac/build.sh install`
+again.
 
 **Removing**: `scripts/launchd.sh uninstall`, then delete `/Applications/peixAIrada.app` — and `~/.config/peixairada`
 and `~/Library/Application Support/peixAIrada` to forget your setup and the board's state.
@@ -183,7 +187,8 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
 - **Board** — *Alerts*: notifications, sounds · *Chats*: card size (compact, or large only where a chat wants you),
   auto-resume · *Look*: text size (the whole board, in the app), simple colours (every project in black, or one colour
   you pick, the states in grey), the theme and whether it follows macOS, tiles and their stack and glow, the floating header (tiles and the header
-  on to begin with), the status bar and what it shows · *Terminal*: ⌥ as Meta, a screen reader in the drawer · and,
+  on to begin with), the status bar and what it shows · *Terminal*: ⌥ as Meta, a screen reader in the drawer ·
+  *Updates*: whether the board updates itself, where it stands, check now · and,
   folded, *Lights and motion*: the card light (round the card or down its edge), rings in step, the light under the
   pointer.
 - **Setup** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
@@ -249,8 +254,9 @@ same for the open chat.
 ## 🔒 Good to know
 
 - Transcripts hold everything Claude read. The server listens on `127.0.0.1` only, with no login — keep it that way.
-- Only `gh` (PR states, clones), the plan-usage call, Jira (once you set it up) and, with VS Code installed, an hourly
-  look at VS Code's update service (so VS Code Web has its newest build before you open it) leave your machine.
+- Only `gh` (PR states, clones), the plan-usage call, Jira (once you set it up), a `git fetch` of the board's own
+  checkout every half hour (its updates) and, with VS Code installed, an hourly look at VS Code's update service (so VS
+  Code Web has its newest build before you open it) leave your machine.
 - A chat running elsewhere is never written to: take it over, or continue it where it is.
 
 ## 🛠 Hacking

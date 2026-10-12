@@ -5,6 +5,41 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-12. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-12, night, later still — the board updates itself
+
+Ricardo: "can we implement an auto-update functionality that pull code and restart what's need to update? can be
+turn-off in settings".
+
+* **An update is a pull of the checkout the agent runs from, and only a fast-forward**: the server fetches its
+  branch's upstream (that branch alone, no FETCH_HEAD, no tags) and moves to it when the branch is strictly behind.
+  Never a merge or a rebase, never over a tracked file changed here (untracked files are left be — one the commits
+  would write over fails the merge, and says so), and a branch with commits of its own is said to have diverged and is
+  left. Sessions commit to this checkout's main, so *ahead, nothing to pull* is the usual answer here, and the right one.
+* **Only the login agent looks by the clock** — every half hour, the first a minute after it starts. A server run by
+  hand looks only when asked, so nobody's working copy moves because a board was run from it; the agent is known as
+  launchd's own child (`XPC_SERVICE_NAME` alone is not enough: a drawer's shell inherits the agent's environment, so
+  `npm start` in a drawer would pass for it).
+* **Not while you work**: an update waits until nothing has been typed into a drawer, nor done on the board, for two
+  minutes — a restart drops the drawers' sockets for a moment, and the app's rebuild quits and reopens it. *Check now*
+  is asked for, so it does not wait; with the switch off the line says how many commits are waiting, and the button
+  becomes *update now*.
+* **What changed starts again, and nothing else**: the packages (`npm install`, then a restart), the server (the agent
+  restarted — the drawers stay, each a holder; serve-web goes with the server, as on any restart), the page (it reloads
+  itself), the app (`mac/build.sh install`, detached, only when `mac/` changed: the app runs the agent's server and its
+  page). Docs, tests and the harness start nothing.
+* **The page reloads itself once it is left be**: at once when the update was asked for from it, or while it is
+  hidden; otherwise not under a dialog, not while a box has the keyboard, not with a page of the pane in front, not
+  within 15 s of a key or a click — and never before the server is back from its own restart, since a page loaded from
+  one about to go is half a page (its vendored scripts come after it).
+* **A commit that does not start is not kept**: before anything restarts, the new page's script is compiled
+  (check-page) and the new server started on a spare port with a state of its own — the tests' throwaway server,
+  imported fresh from the checkout. A failure undoes the fast-forward (`git reset --keep`) and holds that commit back
+  until a newer one comes, so one broken push to main cannot take every board down with it.
+* **The switch is the server's** (the state file's `autoUpdate`, on), as notifications are: one setting for the app and
+  every browser. Settings › Board › *Updates* says where the checkout stands; the About box its commit.
+* Not done: the agent's plist is not installed again when `scripts/launchd.sh` changes (`launchd.sh install` by hand),
+  and the app is rebuilt when the update is taken, not at its own quiet moment — the build takes about a minute.
+
 ## Decisions of 2026-10-12, night, later — a round of your move let go
 
 Ricardo: "if I click on option and hover on "your move" on a card or chat tile, an X should be there to dismiss this

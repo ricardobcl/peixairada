@@ -139,6 +139,19 @@ for `$HOME`'s home and the account's.
   server's): the board asks the update service for the newest build and, when serve-web's cache lacks it, asks
   serve-web for **that build by name, `/<quality>-<commit>/`** — never its root, which starts a server — so the first
   open after a release does not wait on its download. Read only under `~/.vscode`. → `test/vsweb.test.mjs`.
+* **The board updates itself from its checkout** (2026-10-12; `checkUpdate`, `autoUpdate` in the state file, Settings ›
+  Updates, `GET/PUT/POST /api/update`, an `update` event): only the agent looks by the clock (`UNDER_AGENT`: launchd's
+  own child — a server started in a drawer has its environment; every `UPDATE_EVERY_MS`, 0 for every other server),
+  fetching its branch's upstream alone (no FETCH_HEAD, no tags) and **fast-forwarding only** — not over a tracked change
+  (`dirty`), a branch that moved on its own (`diverged`), a held commit, or within `UPDATE_QUIET_MS` of a key sent to a
+  drawer or anything done on the board (`lastTouchAt`); *check now* (`asked`) skips that wait, *update now* (`apply`)
+  the switch and the hold too (`whyNot`). What the commits touched starts again (`updateParts`): `npm install`, the
+  agent (`launchd.sh restart`, detached), the app (`mac/build.sh install`, detached, `mac/` only), the page — it reloads
+  itself once left be (`takeUpdate`, `reloadBusy`: at once if asked for there; never before the new server is back).
+  **First the new page compiles and the new server starts on a spare port** (`preflight`, the checkout's
+  lib/testserver.mjs); one that does not is undone (`git reset --keep`) and held (`updateHeld`) until a newer commit.
+  `UPDATE_DIR`, `UPDATE_RESTART_BIN`, `UPDATE_BUILD_BIN`, `NPM_BIN` are the tests'. → `test/update.test.mjs`,
+  `auto-update.mjs`.
 * **A PR is polled by how recently its chat was touched** (2026-09-28, `sweepPrs`, `duePrs`, `PR_POLL`): never asked
   → at once; then every minute within the hour, 5 min within the day, 30 within three days, never after. Touched is
   `lastActivity` or `s.openedAt` (a page fetching the chat, which also asks at once unless asked within `PR_TTL_MS`).
@@ -457,7 +470,7 @@ for `$HOME`'s home and the account's.
   keeping the last numbers (`.stale`). `USAGE=off` (every test server) hides it. → `usage-bar.mjs`.
 * **State lives in four places**: the server's `~/Library/Application Support/peixAIrada/state.json` (`STATE_FILE`;
   ticks, seen, for good, unlinked PRs, named projects, titles, pins, hidden, `envs`, notifications, PR turns,
-  awake) and the user's `~/.config/peixairada/config.json` (the setup, below) — both shared by the app and every
+  awake, the update's switch and record) and the user's `~/.config/peixairada/config.json` (the setup, below) — both shared by the app and every
   browser —; the browser's `localStorage` `peixairada-prefs` (the keys are the `prefs` literal, and old ones are
   deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it renders reads its
   state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
@@ -871,7 +884,7 @@ the live board at load — `npm run verify -- "typeof window.peix"`.
   `REGISTRY_POLL_MS` 1200, `TASK_GRACE_MS` 400, `CONFIG_POLL_MS` 200; its own `ORG_DIR` (no welcome), `CLAUDE_DIR`
   (empty unless a fixture), config beside its `STATE_FILE`; the fakes (`GH_BIN`, `caffeinate`, `pmset` with
   `AWAKE_ADMIN=none`); Jira's token in its own file (`JIRA_TOKEN_FILE`), no inherited `JIRA_API_TOKEN`; a `ZDOTDIR`
-  with no rc files; `VSWEB_FRESH_MS` 0; `USAGE=off`; no inherited `CONFIG_FILE`, `TERMS_DIR` or XDG dirs. Up is its
+  with no rc files; `VSWEB_FRESH_MS` 0; `UPDATE_EVERY_MS` 0; `USAGE=off`; no inherited `CONFIG_FILE`, `TERMS_DIR` or XDG dirs. Up is its
   `listening` line; `meta.env` is spread last. `waitFor(fn, {timeout, what})`, `srv.post(path, body)` and `tmpDir()`
   are the tests' polls, POSTs and dirs.
 * **Test against the fake claude, not real chats**: `scripts/fakeclaude.mjs` via `CLAUDE_BIN` (`fake: true`) is

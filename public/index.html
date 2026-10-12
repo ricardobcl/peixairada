@@ -154,6 +154,8 @@
   .pop .dens .stops .on { color: var(--ink); font-weight: 600; }
   /* What ⌥⌘N's ✕ took off the board, and the only way back to it. Empty is nothing at all — the popover is the
      switch and the keys until something is hidden. */
+  .pop .opt.upd { grid-template-columns: 1fr auto; cursor: default; }   /* the update's word and its button (2026-10-12) */
+  .pop .opt.upd .uerr { color: var(--needs); }
   .pop .hid { display: grid; gap: 3px; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--muted); }
   .pop .hid:empty { display: none; }
   .pop .hid .hrow { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: baseline; }
@@ -2243,6 +2245,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <h4 class="shd">Terminal</h4>
     <label class="opt" title="On, ⌥ with a letter is Meta in the terminal, as iTerm's Esc+ — ⌥B ⌥F move a word, ⌥⌫ deletes one; ⌥ with a digit or a sign still types what the keyboard makes. Off, ⌥ types whatever your layout composes (⌥L is @ on a German one)"><input type="checkbox" id="optMeta" checked><span><b>⌥ is Meta</b> in the terminal — off, ⌥ types what your keyboard composes</span></label>
     <label class="opt" title="xterm's screen-reader mode: the drawer's lines kept in a live region VoiceOver follows — a little slower to draw"><input type="checkbox" id="termReader"><span><b>screen reader</b> in the drawer — its lines read out as they come</span></label>
+    <h4 class="shd">Updates</h4>
+    <label class="opt" title="On, the board looks for new commits on its checkout's upstream every half hour and, when there are some and nothing has been done on the board for two minutes, pulls them — a fast-forward only, never over a change of yours — and starts again what they changed: the packages, the server (the chats in drawers stay), this page (once you leave it be) and the app. A commit whose server does not start is undone and held back"><input type="checkbox" id="autoUpdate" checked><span><b>update itself</b> — pulls the board's new commits and starts again what they changed: the server, this page, the app</span></label>
+    <div class="opt sub upd" id="updRow"><span id="updSay"></span><button type="button" class="btn" id="updBtn">check now</button></div>
     <details class="sadv"><summary><h4 class="shd">Lights and motion</h4><span>the clauding light, its pace, the glow under the pointer</span></summary>
     <div class="opt lightpick" title="Where a clauding card's light runs: round the whole card (the ring), or down its coloured edge — one light per sub-agent either way, a monitor's slowly. The open chat's light runs on past its card only with the ring"><input type="checkbox" id="edgeLight" hidden><span><b>card light</b> — round the card or down its edge</span><span class="sseg" role="radiogroup" aria-label="Card light"><button type="button" role="radio" data-light="ring">ring</button><button type="button" role="radio" data-light="edge">edge</button></span></div>
     <label class="opt" title="On, every clauding card's light stands at the same angle — the blinks and the dots too; off, each card runs at its own. Either way a card rebuilt by an update carries on where it was"><input type="checkbox" id="ringsInStep" checked><span><b>rings in step</b> — every card's light at the same angle; off, each at its own</span></label>
@@ -2346,6 +2351,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · PRs: the strip under the header, and where a GitHub link goes
 //   js  · links in the chat: files and pages
 //   js  · chat header
+//   js  · a right-click menu (2026-10-12)
 //   js  · terminal drawer: the real claude in a PTY on the server, attached over a WebSocket
 //   js  · the two halves: ⌘1 and ⌘2
 //   js  · the changes tab: what this chat changed in its folder (2026-10-10)
@@ -2353,6 +2359,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · tiles: the chats that want an eye, stacked beside the open one (2026-10-10)
 //   js  · ⌥⌘A: the overview, every live agent at once (2026-10-10)
 //   js  · home: the chat column with no chat open (2026-10-10)
+//   js  · home's sea (2026-10-12): an ASCII sunset at sea, the board's fish leaping in it
 //   js  · a chat's folder not checked out: cloned first (2026-10-09)
 //   js  · keeping the Mac awake (2026-10-08)
 //   js  · resume: a chat whose claude has ended
@@ -2364,7 +2371,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 // Map ▴
 (() => {
   const $ = s => document.querySelector(s);
-  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map() };
+  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null };
   const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', skin: null, skinFollow: false, skinDark: null, skinLight: null, skinExact: false, look: null };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
@@ -2474,6 +2481,76 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     state.notifications = e.target.checked;
     api('PUT', '/api/notifications', { on: state.notifications }).catch(e => { state.notifications = !state.notifications; showNotify(); note($('#notifyOn'), `Could not save the switch: ${e.message}`, true); });   // refused: it shows what the server has
     if (state.notifications && !inApp && window.Notification?.permission === 'default') Notification.requestPermission();
+  });
+  // The board's own code kept up to date (2026-10-12): the server's switch and its word on the checkout (checkUpdate in
+  // server.mjs), and the page reloading itself once an update has changed it — at once when the update was asked for
+  // here, else once the page is left be: no dialog up, no box being typed in, no page of the pane in front, nothing
+  // pressed for RELOAD_IDLE_MS (hidden, none of that matters). Never before the server is back from its own restart: a
+  // page loaded from one about to go is half a page.
+  const LOADED_AT = Date.now(), RELOAD_IDLE_MS = 15_000;
+  let inputAt = Date.now(), updAsked = 0;
+  const reload = { want: null, since: 0, t: 0, why: null };
+  for (const t of ['keydown', 'pointerdown', 'wheel']) addEventListener(t, () => { inputAt = Date.now(); }, { capture: true, passive: true });
+  const shortSha = h => h ? h.slice(0, 7) : '?';
+  const UPD_PARTS = { deps: 'the packages', server: 'the server', page: 'the page', app: 'the app' };
+  /** The settings' line for the update, and whether its button updates (rather than looks). */
+  function updateSay(u) {
+    if (!u || u.checkout === null) return { say: 'not looked yet' };
+    if (u.checkout === false) return { say: 'this board does not run from a git checkout — <code>mac/build.sh install</code> brings the app up to date', none: true };
+    const up = esc(u.upstream || 'the remote'), many = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`, fresh = `${many(u.behind, 'new commit')} on ${up}`;
+    let say = u.busy === 'checking' ? `looking at ${up}…` : u.busy === 'updating' ? `updating to <code>${shortSha(u.up)}</code>…` : u.error ? `<span class="uerr">${esc(u.error)}</span>` : ({
+      detached: 'the checkout is on no branch — nothing to follow',
+      'no-upstream': `<b>${esc(u.branch)}</b> follows no remote branch — nothing to pull`,
+      current: u.ahead ? `<code>${shortSha(u.head)}</code> is ${many(u.ahead, 'commit')} ahead of ${up} — nothing to pull` : `up to date · <code>${shortSha(u.head)}</code>`,
+      diverged: `this checkout and ${up} have each moved on, ${u.ahead} here and ${u.behind} there — not pulled`,
+      changes: `${fresh}, not pulled: ${many(u.dirty, 'file')} changed here`,
+      off: `${fresh} — the switch is off`,
+      held: `<code>${shortSha(u.held?.to)}</code> was not kept: ${esc(u.held?.why || '')} — the next commit is tried`,
+      busy: `${fresh} — pulled once nothing has been done on the board for ${Math.round(u.quiet / 60_000)} min`,
+    })[u.why] || `<code>${shortSha(u.head)}</code>${u.checkedAt ? '' : ' · not looked yet'}`;
+    if (u.pending?.length) say += ` · ${u.pending.map(k => k === 'server' ? 'restart the server to wear it (<code>scripts/launchd.sh restart</code>)' : 'rebuild the app to wear it (<code>mac/build.sh install</code>)').join(', ')}`;
+    if (u.checkedAt && !u.busy) say += ` · looked ${rel(u.checkedAt)} ago`;
+    if (!u.every) say += ' · it looks only when asked: this server is not the login agent';
+    if (u.last) say += `<br>last updated ${rel(u.last.at)} ago, ${many(u.last.count, 'commit')}${u.last.parts.length ? ` — ${u.last.parts.map(k => UPD_PARTS[k]).join(', ').replace(/, ([^,]*)$/, ' and $1')} started again` : ''}`;
+    return { say, apply: u.behind > 0 && !u.ahead && ['off', 'busy', 'held'].includes(u.why) };
+  }
+  function showUpdate() {
+    const u = state.update, w = updateSay(u), b = $('#updBtn');
+    $('#autoUpdate').checked = u?.on !== false; $('#autoUpdate').disabled = !!w.none;
+    setHtml($('#updSay'), w.say);
+    b.textContent = w.apply ? 'update now' : 'check now'; b.dataset.apply = w.apply ? '1' : ''; b.disabled = !!(u?.busy || w.none);
+  }
+  /** The server's word on the update — the snapshot's, an `update` event's, an answer's. A newer page is wanted once an
+   *  update that changed the page came after this one was loaded. */
+  function takeUpdate(u) {
+    if (!u) return;
+    state.update = u; showUpdate();
+    if (!reload.want && u.last?.parts?.includes('page') && Date.parse(u.last.at) > LOADED_AT) { reload.want = u.last.to; reload.since = Date.now(); reloadSoon(); }
+  }
+  function reloadBusy() {
+    if (!bar.conn || (state.update?.restarting && Date.now() - reload.since < 60_000)) return 'server';
+    if (document.hidden || Date.now() - updAsked < 5 * 60_000) return null;
+    if (document.querySelector('dialog[open]')) return 'dialog';
+    if (document.activeElement?.matches('textarea:not(.xterm-helper-textarea), input:not([type=checkbox], [type=radio], [type=range], [type=color], [type=button]), [contenteditable]:not([contenteditable=false])')) return 'typing';
+    if (inApp && state.paneVisible) return 'pane';
+    if (Date.now() - inputAt < RELOAD_IDLE_MS) return 'input';
+    return null;
+  }
+  function reloadSoon() {
+    clearTimeout(reload.t);
+    if (!reload.want) return;
+    reload.why = reloadBusy();
+    if (!reload.why) { location.reload(); return; }
+    reload.t = setTimeout(reloadSoon, 1000);
+  }
+  $('#autoUpdate').addEventListener('change', e => {
+    const on = e.target.checked;
+    api('PUT', '/api/update', { on }).then(takeUpdate).catch(err => { e.target.checked = !on; note(e.target, `Could not save the switch: ${err.message}`, true); });
+  });
+  $('#updBtn').addEventListener('click', e => {
+    const b = e.currentTarget, apply = b.dataset.apply === '1';
+    updAsked = Date.now(); b.disabled = true;
+    api('POST', '/api/update', { apply }).then(takeUpdate).catch(err => { showUpdate(); note(b, `Could not look: ${err.message}`, true); });
   });
   // How much a card carries (2026-09-25): large is the card as it always was, your last prompt and Claude's last reply;
   // medium keeps only the last word of the two, whoever said it; compact keeps neither — the title, its chips, its PRs.
@@ -4670,7 +4747,7 @@ const toolName = n => {
   // `>` narrows it to the actions and switches, `#` to the PRs, `@` to the projects, `!` to the tickets. Empty, it is a
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
-  const SWITCHES = [['notifyOn', 'Notifications'], ['simpleColors', 'Simple colours'], ['skinFollow', 'Theme follows macOS'], ['skinExact', 'Exact project colours under a theme'], ['ringsInStep', 'Rings in step'],
+  const SWITCHES = [['notifyOn', 'Notifications'], ['autoUpdate', 'Update itself'], ['simpleColors', 'Simple colours'], ['skinFollow', 'Theme follows macOS'], ['skinExact', 'Exact project colours under a theme'], ['ringsInStep', 'Rings in step'],
     ['edgeLight', 'Edge light'], ['cardSpot', 'Light under the pointer'], ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['tileStackOn', 'Tiles: the stack'], ['wallFollow', 'Tiles: the glow follows the pointer'], ['headFloat', 'Floating header'], ['soundsOn', 'Sounds'], ['autoResume', 'Auto-resume'], ['optMeta', '⌥ is Meta in the terminal']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
@@ -6207,6 +6284,7 @@ const toolName = n => {
       strips: state.sessions.has(state.current) ? [0, 1].map(g => keysIn(state.sessions.get(state.current), g)) : [[], []],
       timeline: { k: tl.k, want: tl.want, press: !!tl.press, shown: $('#sessions').classList.contains('tlshow'), runs: tl.runs.map(r => ({ g: r.g, day: r.day, n: r.n, i: r.i })) },
       termId: curTerm().id, termSession: curTerm().sessionId, termExited: curTerm().exited,
+      reload: reload.want ? { to: reload.want, why: reload.why } : null,
       resume: autoResume.id ? { id: autoResume.id, left: Math.max(0, Math.round(autoResume.at - performance.now())) } : null,
       swim: { n: swim.n, pace: swimRate(Math.max(0, swim.n)), dart: swim.dart, food: swim.food.map(b => b.x), eaten: swim.eaten } }),   // the bar's fish: its pace without a dart, what it has to eat (lane x)
     session: id => { const s = state.sessions.get(id || state.current); return s ? structuredClone(s) : null; },
@@ -8541,6 +8619,7 @@ const toolName = n => {
     const a = state.about || {}, all = projectList()[0] || {};
     const facts = [
       ['version', esc(a.version || '?')],
+      ['code', (u => !u?.checkout ? (u?.checkout === false ? 'not a git checkout' : '?') : `<code>${shortSha(u.head)}</code>${u.branch ? ` on ${esc(u.branch)}` : ''}${u.last ? ` · updated ${rel(u.last.at)} ago` : ''}${u.on ? '' : ' · updates off'}`)(state.update)],
       ['server', `http://127.0.0.1:${a.port || location.port}${a.node ? ` · node ${esc(a.node)}` : ''}${a.pid ? ` · pid ${a.pid}` : ''}${a.since ? ` · up ${rel(a.since)}` : ''}`],
       ['reads', `${esc(homePath(a.claudeDir || '~/.claude'))} — and writes nothing there`],
       ['setup', esc(homePath(a.configFile || '?'))],
@@ -8605,6 +8684,7 @@ const toolName = n => {
       if (d.config) state.config = d.config;
       renderSetup();
       state.notifications = d.notifications !== false; showNotify();
+      takeUpdate(d.update);
       if (d.awake) { state.awake = awakeOf(d.awake); drawAwake(); }   // the empty header's mark; a chat's header draws its own
       state.clones = new Map((d.clones || []).map(c => [c.dir, c]));   // the clones under way, a reload in the middle of one
       state.serverNotify = d.notify === 'native';   // the server posts its own banners: the app must not double them
@@ -8638,6 +8718,7 @@ const toolName = n => {
     es.addEventListener('pins', e => { state.pins = JSON.parse(e.data).pins || []; renderBoardSoon(); });
     es.addEventListener('hidden', e => { state.hidden = JSON.parse(e.data).hidden || []; renderBoard(); if ($('#pick').open) pickRender(); });
     es.addEventListener('notifications', e => { state.notifications = JSON.parse(e.data).on !== false; showNotify(); });
+    es.addEventListener('update', e => takeUpdate(JSON.parse(e.data)));
     es.addEventListener('awake', e => { state.awake = awakeOf(JSON.parse(e.data)); awakeChanged(); });
     es.addEventListener('clone', e => cloneEvent(JSON.parse(e.data)));
     es.addEventListener('config', e => { const c = JSON.parse(e.data); if (JSON.stringify(c) === JSON.stringify(state.config)) return; state.config = c; configChanged(); });   // the echo of a save made here is no news

@@ -30,6 +30,7 @@
 //      · the day: when each chat clauded, waited on you, watched (2026-10-10)
 //      · what a chat changed: its folder's diff, for the changes tab (2026-10-10)
 //  VS Code Web: the editor UI served by `code serve-web`, for the pane beside the board
+//  The board's own code, kept up to date from its checkout (2026-10-12)
 //  Terminals: a real `claude` in a PTY, attached to from the page over a WebSocket
 //      · the holder protocol: newline-delimited JSON over the holder's socket (see lib/termhold.mjs)
 //      · launchers: a folder's own way to start claude
@@ -154,6 +155,9 @@ let prTurns = {};
 // Keep the Mac awake — the chat header menu's switch (2026-10-08): a `caffeinate -i` of the server's own while it is
 // on, and on again after a restart. The lid's setting is the system's and is read from it, never kept here (keepAwake).
 let awakeOn = false;
+// The board's own code, kept up to date from its checkout (2026-10-12; see checkUpdate): the switch, the last update made
+// (`updated`: {at, from, to, count, parts}) and a commit held back because it did not start here ({to, why, at}).
+let autoUpdate = true, updateLast = null, updateHeld = null;
 
 // One-time move from the old ~/.peixairada location. Same filesystem, so the rename is atomic; the
 // empty directory is left behind rather than removing something we did not create.
@@ -185,6 +189,9 @@ try {
   setup = st.config;   // from before CONFIG_FILE — cleaned and moved there below, once what does it is defined
   prTurns = st.prTurns && typeof st.prTurns === 'object' ? st.prTurns : {};
   awakeOn = st.awake === true;
+  autoUpdate = st.autoUpdate !== false;
+  updateLast = st.updated && typeof st.updated === 'object' ? st.updated : null;
+  updateHeld = st.updateHeld && typeof st.updateHeld === 'object' ? st.updateHeld : null;
 } catch (e) {
   if (e.code !== 'ENOENT') {
     const bad = `${stateFrom}.bad-${Date.now()}`;
@@ -198,7 +205,7 @@ function saveState() {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, awake: awakeOn }, null, 1));
+    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, awake: awakeOn, autoUpdate, updated: updateLast, updateHeld }, null, 1));
     renameSync(tmp, STATE_FILE);
   } catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
@@ -2360,6 +2367,164 @@ async function freshenVsWeb() {
 }
 
 // ---------------------------------------------------------------------------------------------
+// The board's own code, kept up to date from its checkout (2026-10-12)
+// ---------------------------------------------------------------------------------------------
+// The login agent runs the board from a git checkout (scripts/launchd.sh), so an update is a pull. Every UPDATE_EVERY_MS
+// the agent fetches its branch's upstream and, with the switch on (`autoUpdate`, the settings' Updates), fast-forwards to
+// it — never a merge or a rebase, and never over a change of yours: a tracked file changed here, a branch that has moved
+// on its own, a commit held back, each is said and waited out — once nothing has been typed into a drawer or done on the
+// board for UPDATE_QUIET_MS. What the commits touched is started again (`updateParts`): the packages installed, the agent
+// restarted (`launchd.sh restart`: the drawers stay, each a holder), the page reloaded (by itself, once it is left be: the
+// `update` event), the app rebuilt (`mac/build.sh install`, detached: it quits and reopens the app). Before any of that the
+// new page is compiled and the new server started on a spare port (lib/testserver.mjs): one that does not come up is
+// undone (`git reset --keep`) and its commit held back until a newer one comes. Only the agent looks by itself; a server
+// run by hand, or a test's, looks when asked (`POST /api/update`). Knobs: UPDATE_DIR (the checkout), UPDATE_QUIET_MS, and
+// UPDATE_RESTART_BIN / UPDATE_BUILD_BIN / NPM_BIN, what is run to restart, rebuild and install (the tests' stand-ins).
+const UNDER_AGENT = process.env.XPC_SERVICE_NAME === 'net.peixairada.server' && process.ppid === 1;   // launchd's own child, not a server started from a drawer (whose environment is the agent's)
+const UPDATE_EVERY_MS = Number(process.env.UPDATE_EVERY_MS ?? (UNDER_AGENT ? 30 * 60_000 : 0));
+const UPDATE_QUIET_MS = Number(process.env.UPDATE_QUIET_MS ?? 2 * 60_000);
+const UPDATE_DIR = process.env.UPDATE_DIR || __dirname;
+const APP_DIR = '/Applications/peixAIrada.app';
+const restartBin = process.env.UPDATE_RESTART_BIN || (UNDER_AGENT ? join(UPDATE_DIR, 'scripts', 'launchd.sh') : '');
+const buildBin = process.env.UPDATE_BUILD_BIN || (UNDER_AGENT && existsSync(APP_DIR) ? join(UPDATE_DIR, 'mac', 'build.sh') : '');
+let lastTouchAt = 0;   // the last key sent to a drawer, or anything the board was asked to do (the HTTP handler)
+const upd = { busy: null, checkout: null, checkedAt: null, error: null, why: null, pending: [] };
+let updRetry = null;
+/** What a change to these files asks for, in the order it is done — pure. `deps`: npm install; `server`: a restart;
+ *  `page`: a reload; `app`: a rebuild. The rest (docs, tests, the harness) asks for nothing. */
+function updateParts(files) {
+  const has = new Set();
+  for (const f of files) {
+    if (/^package(-lock)?\.json$/.test(f)) has.add('deps').add('server');
+    else if (f === 'server.mjs' || f.startsWith('lib/')) has.add('server');
+    else if (f.startsWith('public/')) has.add('page');
+    else if (f.startsWith('mac/')) has.add('app');
+  }
+  return ['deps', 'server', 'page', 'app'].filter(k => has.has(k));
+}
+const updateState = () => { const { remote, merge, ...u } = upd; return { on: autoUpdate, every: UPDATE_EVERY_MS, quiet: UPDATE_QUIET_MS, ...u, last: updateLast, held: updateHeld }; };
+const sayUpdate = () => broadcast('update', updateState());
+/** The environment of what an update runs: the server's, minus the nesting markers and the agent's own name, with the
+ *  running node first on PATH (npm and build.sh want a node, and the agent's PATH may have none), and git never asking. */
+function updateEnv() {
+  const env = { ...cleanEnv(), PATH: `${dirname(process.execPath)}:${process.env.PATH || '/usr/bin:/bin'}`, GIT_TERMINAL_PROMPT: '0' };
+  delete env.XPC_SERVICE_NAME;
+  return env;
+}
+const errText = e => (String(e?.stderr || '').trim().split('\n').filter(Boolean).pop() || (e?.killed ? 'it took too long' : String(e?.message || e).split('\n')[0])).replace(/^(fatal|error): /, '').slice(0, 300);
+function gitIn(args, timeout = 30_000) {
+  const bin = findBin('git', 'the board does not update itself');
+  if (!bin) return Promise.reject(new Error('git is not installed'));
+  return execFileP(bin, ['--no-optional-locks', '-C', UPDATE_DIR, ...args], { env: updateEnv(), timeout, maxBuffer: 8 << 20 }).then(r => r.stdout.trim());
+}
+/** Where the checkout stands, read locally: its branch and upstream, how far each is past the other, how many tracked
+ *  files are changed. Not a checkout — the app's bundled copy, or a folder inside some other repository — is `checkout: false`. */
+async function readCheckout() {
+  const top = await gitIn(['rev-parse', '--show-toplevel']).catch(() => '');
+  let here = UPDATE_DIR; try { here = realpathSync(UPDATE_DIR); } catch {}
+  if (!top || realpathSync(top) !== here) return { checkout: false };
+  const co = { checkout: true, head: await gitIn(['rev-parse', 'HEAD']), branch: null, upstream: null, up: null, ahead: 0, behind: 0, dirty: 0, remote: null, merge: null };
+  co.branch = await gitIn(['symbolic-ref', '--quiet', '--short', 'HEAD']).catch(() => null);
+  if (!co.branch) return co;
+  co.remote = await gitIn(['config', `branch.${co.branch}.remote`]).catch(() => null);
+  co.merge = await gitIn(['config', `branch.${co.branch}.merge`]).catch(() => null);
+  co.upstream = await gitIn(['rev-parse', '--abbrev-ref', '@{u}']).catch(() => null);
+  if (!co.upstream) return co;
+  co.up = await gitIn(['rev-parse', '@{u}']);
+  [co.ahead, co.behind] = (await gitIn(['rev-list', '--left-right', '--count', 'HEAD...@{u}'])).split(/\s+/).map(Number);
+  co.dirty = (await gitIn(['status', '--porcelain', '--untracked-files=no'])).split('\n').filter(Boolean).length;
+  return co;
+}
+/** Why the checkout is not to be moved now, or null. `asked`: from the page (no waiting for quiet); `apply`: its
+ *  *update now* (the switch off and a held commit do not stop it). Waiting for quiet looks again when it would be. */
+function whyNot(asked, apply) {
+  if (!upd.checkout) return 'none';
+  if (!upd.branch) return 'detached';
+  if (!upd.upstream) return 'no-upstream';
+  if (!upd.behind) return 'current';
+  if (upd.ahead) return 'diverged';
+  if (upd.dirty) return 'changes';
+  if (!autoUpdate && !apply) return 'off';
+  if (updateHeld?.to === upd.up && !apply) return 'held';
+  const rest = UPDATE_QUIET_MS - (Date.now() - lastTouchAt);
+  if (!asked && rest > 0) { updRetry = setTimeout(checkUpdate, rest + 1000); return 'busy'; }
+  return null;
+}
+/** Look for new commits, and take them when nothing says not to. One at a time; the answer is the state after it. */
+async function checkUpdate({ asked = false, apply = false } = {}) {
+  if (upd.busy) return updateState();
+  clearTimeout(updRetry); updRetry = null;
+  upd.busy = 'checking'; sayUpdate();
+  try {
+    Object.assign(upd, await readCheckout(), { error: null });
+    // its branch alone, and no FETCH_HEAD: a `git pull` of yours at the same moment reads its own
+    if (upd.upstream && upd.remote && upd.merge) { await gitIn(['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', upd.remote, upd.merge], 120_000); Object.assign(upd, await readCheckout()); }
+    upd.checkedAt = new Date().toISOString();
+    upd.why = whyNot(asked, apply);
+    if (!upd.why) { upd.busy = 'updating'; sayUpdate(); await applyUpdate(); }
+  } catch (e) { upd.error = errText(e); console.error(`[peixairada] update: ${upd.error}`); }
+  finally { upd.busy = null; sayUpdate(); }
+  return updateState();
+}
+async function applyUpdate() {
+  const from = upd.head, to = upd.up, count = upd.behind;
+  const parts = updateParts((await gitIn(['diff', '--name-only', from, to])).split('\n').filter(Boolean));
+  await gitIn(['merge', '--ff-only', '--quiet', to], 60_000);
+  try {
+    if (parts.includes('deps')) await npmInstall();
+    await preflight(parts, to);
+  } catch (e) {
+    const undo = await gitIn(['reset', '--quiet', '--keep', from]).then(() => '', err => ` — and undoing it failed: ${errText(err)}`);
+    if (parts.includes('deps')) await npmInstall().catch(() => {});
+    updateHeld = { to, why: e.message, at: new Date().toISOString() }; saveState();
+    Object.assign(upd, await readCheckout().catch(() => ({})));
+    upd.why = 'held';
+    throw new Error(`${to.slice(0, 7)} was not kept: ${e.message}${undo}`);
+  }
+  updateHeld = null;
+  updateLast = { at: new Date().toISOString(), from, to, count, parts };
+  saveState();
+  Object.assign(upd, await readCheckout(), { why: 'current' });
+  console.log(`[peixairada] updated ${from.slice(0, 7)} → ${to.slice(0, 7)} (${count} commit${count === 1 ? '' : 's'}): ${parts.join(', ') || 'nothing to start again'}`);
+  upd.pending = parts.filter(p => p === 'server' ? !restartBin : p === 'app' ? !buildBin && existsSync(APP_DIR) : false);
+  if (parts.includes('app') && buildBin) { detach(buildBin, ['install', '--detached']); console.log('[peixairada] update: rebuilding the app — it quits and opens again'); }
+  if (parts.includes('server') && restartBin) { upd.restarting = true; setTimeout(() => detach(restartBin, ['restart', '--detached']), 1000); }   // the answer and the event go out first
+}
+async function npmInstall() {
+  const beside = join(dirname(process.execPath), 'npm');
+  const npm = process.env.NPM_BIN || (canRun(beside) ? beside : findBin('npm', 'an update that changes the packages is not taken'));
+  if (!npm) throw new Error('npm not found');
+  await execFileP(npm, ['install', '--no-audit', '--no-fund'], { cwd: UPDATE_DIR, env: updateEnv(), timeout: 10 * 60_000, maxBuffer: 16 << 20 }).catch(e => { throw new Error(`npm install failed: ${errText(e)}`); });
+}
+/** The new code, tried before it is kept: the page's script compiled, the server started on a spare port with a state
+ *  of its own (the tests' throwaway server, imported fresh from the checkout) and its page asked for. */
+async function preflight(parts, to) {
+  const check = join(UPDATE_DIR, 'scripts', 'check-page.mjs');
+  if (parts.includes('page') && existsSync(check)) await execFileP(process.execPath, [check, join(UPDATE_DIR, 'public', 'index.html')], { cwd: UPDATE_DIR, env: updateEnv(), timeout: 60_000 }).catch(e => { throw new Error(`its page does not compile (${(String(e.stderr || '').trim().split('\n')[0] || errText(e)).replace(`${UPDATE_DIR}/`, '').slice(0, 200)})`); });
+  if (!parts.includes('server')) return;
+  const { startTestServer } = await import(`${pathToFileURL(join(UPDATE_DIR, 'lib', 'testserver.mjs')).href}?${to}`);
+  let srv;
+  try { srv = await startTestServer({ env: { UPDATE_EVERY_MS: '0' } }); }
+  catch (e) { console.error(`[peixairada] update: ${to.slice(0, 7)}'s server did not start —\n${e.message}`); throw new Error(`its server did not start (${(e.message.match(/^.*(Error|error).*$/gm) || [e.message.split('\n')[0]]).pop().trim().slice(0, 200)})`); }
+  try { const r = await srv.api('/'); if (!r.ok) throw new Error(`its server answered ${r.status} for the page`); }
+  finally { await srv.stop(); }
+}
+/** Run what restarts or rebuilds, cut loose: its own process group (the agent's restart ends this process, and launchd
+ *  the job's group with it), its output in the state folder's update.log. */
+function detach(bin, args) {
+  const log = join(dirname(STATE_FILE), 'update.log');
+  try {
+    mkdirSync(dirname(log), { recursive: true });
+    const fd = openSync(log, 'a');
+    try {
+      const p = spawn(bin, args, { cwd: UPDATE_DIR, env: updateEnv(), detached: true, stdio: ['ignore', fd, fd] });
+      p.on('error', e => console.error(`[peixairada] update: ${basename(bin)} did not start — ${e.message}`));
+      p.unref();
+    } finally { closeSync(fd); }
+  } catch (e) { console.error(`[peixairada] update: could not run ${basename(bin)} — ${e.message}`); }
+}
+
+// ---------------------------------------------------------------------------------------------
 // Terminals: a real `claude` in a PTY, attached to from the page over a WebSocket
 // ---------------------------------------------------------------------------------------------
 // Chatting from the board means running Claude Code itself, not re-implementing its UI: the process
@@ -2911,7 +3076,7 @@ function attachTermSocket(req, socket, head) {
     ws.on('message', data => {
       if (t.exited !== null) return;
       let msg; try { msg = JSON.parse(data.toString()); } catch { return; }
-      if (msg.t === 'in' && typeof msg.d === 'string') holderSend(t, { t: 'in', d: msg.d });
+      if (msg.t === 'in' && typeof msg.d === 'string') { holderSend(t, { t: 'in', d: msg.d }); lastTouchAt = Date.now(); }   // typing: no update until it rests
       else if (msg.t === 'resize' && msg.cols > 0 && msg.rows > 0) {
         const cols = Math.min(500, msg.cols | 0), rows = Math.min(200, msg.rows | 0);
         t.cols = cols; t.rows = rows; holderSend(t, { t: 'resize', cols, rows });
@@ -2962,6 +3127,7 @@ const server = createServer(async (req, res) => {
     if (why) return json(res, 403, { error: `not the board's own page (${why})` });
     const url = new URL(req.url, 'http://localhost');   // the path and the query: the Host was foreign()'s to judge
     const p = url.pathname;
+    if (req.method !== 'GET' && p !== '/api/update' && !p.endsWith('/seen')) lastTouchAt = Date.now();   // something done on the board (a reply shown is the page's own doing): no update until it rests
     if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
       const html = readFileSync(join(__dirname, 'public', 'index.html'));
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
@@ -3035,6 +3201,16 @@ const server = createServer(async (req, res) => {
       saveState(); broadcast('notifications', { on: notificationsOn });
       return json(res, 200, { ok: true, on: notificationsOn });
     }
+    // The board's own code (2026-10-12, checkUpdate): where it stands; the switch; look now — and, `apply`, update now
+    if (req.method === 'GET' && p === '/api/update') return json(res, 200, updateState());
+    if (req.method === 'PUT' && p === '/api/update') {
+      const body = await jsonBody(req);
+      if (typeof body.on !== 'boolean') return json(res, 400, { error: 'expected {on: true|false}' });
+      autoUpdate = body.on; saveState(); sayUpdate();
+      if (autoUpdate && UPDATE_EVERY_MS > 0) checkUpdate();   // on again: what came while it was off, once the board rests
+      return json(res, 200, updateState());
+    }
+    if (req.method === 'POST' && p === '/api/update') { const body = await jsonBody(req); return json(res, 200, await checkUpdate({ asked: true, apply: body.apply === true })); }
     if (req.method === 'GET' && p === '/api/stats') return json(res, 200, await machineStats(new Set((url.searchParams.get('want') || '').split(',').filter(Boolean))));
     if (req.method === 'GET' && p === '/api/awake') { await readPower(); return json(res, 200, awakeState()); }
     if (req.method === 'PUT' && p === '/api/awake') {   // the menu's two switches: {awake} holds idle sleep off, {lid} sleep with the lid shut (a password)
@@ -3238,7 +3414,7 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
     if (req.method === 'GET' && p === '/events') {
-      const snap = JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), about: aboutInfo(), awake: awakeState(), clones: [...clones.values()].map(cloneState) });
+      const snap = JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), about: aboutInfo(), awake: awakeState(), clones: [...clones.values()].map(cloneState), update: updateState() });
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
       res.write(`event: snapshot\ndata: ${snap}\n\n`);
       sseClients.add(res);
@@ -3258,7 +3434,7 @@ server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTe
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
@@ -3295,6 +3471,8 @@ pollRepos();
 setInterval(pollRepos, PEACOCK_POLL_MS);
 setInterval(reloadConfig, CONFIG_POLL_MS);   // a stat against the board's own record of it: a save-by-rename, a file not there yet, one made and gone between two looks
 if (VSWEB_FRESH_MS > 0) { setTimeout(freshenVsWeb, Math.min(90_000, VSWEB_FRESH_MS)); setInterval(freshenVsWeb, VSWEB_FRESH_MS); }   // VS Code Web on the newest build, before you open it
+readCheckout().then(co => { Object.assign(upd, co); sayUpdate(); }, e => { upd.error = errText(e); });   // where the checkout stands, for the settings, before the first look
+if (UPDATE_EVERY_MS > 0) { setTimeout(checkUpdate, Math.min(60_000, UPDATE_EVERY_MS)); setInterval(checkUpdate, UPDATE_EVERY_MS); }   // the board's own new commits (checkUpdate)
 for (const s of sessions.values()) if (s.alive) scanAgents(s);
 // An agent gone quiet stops counting; a task past its expiry stops running. Both are only visible on a push, and
 // a chat whose last word was "monitor started" has nothing else to push.
