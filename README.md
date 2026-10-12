@@ -50,10 +50,11 @@ GitHub and VS Code open in the chat in the Mac app; in a browser they open in a 
 
 ## ✨ Features
 
-- 🚦 **Sorted by who owes whom** — in lanes: asking you, your move (a PR waits on you), clauding, new replies (Claude
-  answered since you last looked), ready, and idle (untouched for more than four days). *Done* is a tick you give;
-  Idle and Done start folded, and a click on any lane's head folds or opens it. Cards are compact unless you'd rather
-  — or large only in the lanes that want you.
+- 🚦 **Sorted by who owes whom** — in lanes: asking you, clauding, then the rest by their last word — ready, and idle
+  (untouched for more than four days). *Done* is a tick you give; Idle and Done start folded, and a click on any lane's
+  head folds or opens it. **The funnel** beside the search shows only the chats with a PR at your move, or only those
+  Claude answered since you last looked. Cards are compact unless you'd rather — or large only for the chats that want
+  you.
 - 💡 **The card's edge tells you why it's busy** — each card a lit edge in its project's colour; a light runs round it
   (or down the edge, if you'd rather) while Claude works, one per sub-agent, slower for a monitor; a question pings out
   in red.

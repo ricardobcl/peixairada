@@ -318,8 +318,8 @@
   main.scompact #slist > .card .abbr[data-n="3"] { font-size: var(--fs-2xs); letter-spacing: 0; }
   main.scompact #slist > .card .abbr:is([data-n="4"], [data-n="5"]) { font-size: 8.5px; letter-spacing: -.2px; }
   .card .rdot { display: none; }
-  main.scompact #slist > .card:is([data-rank="move"], [data-rank="replied"]) .rdot { display: block; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--idle); box-shadow: 0 0 0 1.5px var(--panel); }
-  main.scompact #slist > .card[data-rank="move"] .rdot { background: var(--accent); border-radius: var(--r-1); transform: rotate(45deg); }
+  main.scompact #slist > .card:is([data-want="move"], [data-want="replied"]) .rdot { display: block; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--idle); box-shadow: 0 0 0 1.5px var(--panel); }
+  main.scompact #slist > .card[data-want="move"] .rdot { background: var(--accent); border-radius: var(--r-1); transform: rotate(45deg); }
   main.scompact #slist > .card:is([data-rank="idle"], [data-rank="done"]) { filter: saturate(.35) brightness(.8); }
   main.scompact #slist .gsep { display: none; }   /* no room for a line, or for Claude's mark, on a rail of squares */
   /* …but a lane's head is its mark and its count (2026-10-12), so a folded lane can be opened from the rail */
@@ -463,6 +463,9 @@
   .fsearch .ic { width: 12px; height: 12px; fill: currentColor; }
   .fsearch:hover { color: var(--ink); background: var(--ctl-hi); }
   .fsearch.on, .btn.icon.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
+  /* the list's filter (2026-10-12, #fBtn): a funnel after the magnifier, saying which filter while one is on */
+  #fBtn .fl { margin-left: 5px; font-size: var(--fs-xs); white-space: nowrap; }
+  #fBtn .fl:empty { display: none; }
   .fq { font: inherit; font-size: var(--fs-xs); padding: 2px 8px; border: 1px solid var(--accent); border-radius: var(--r-4); background: var(--bg); color: var(--ink); width: 150px; min-width: 0; }
   .fq[hidden] { display: none; }
   .fq:focus { outline: none; }
@@ -513,8 +516,6 @@
   .gsep.lane.working { color: color-mix(in srgb, var(--working) 55%, var(--ink)); }
   .gsep.lane.ready > i { border: 2px solid var(--idle); background: radial-gradient(var(--idle) 30%, transparent 36%); }
   .gsep.lane.done > i { background: var(--ended); }
-  .gsep.lane.move { color: color-mix(in srgb, var(--accent) 85%, var(--ink)); } .gsep.lane.move > i { background: var(--accent); border-radius: var(--r-1); transform: rotate(45deg) scale(.8); }
-  .gsep.lane.replied > i { background: var(--idle); box-shadow: 0 0 0 3px color-mix(in srgb, var(--idle) 25%, transparent); }
   .gsep.lane.idle > i { border: 2px solid var(--ended); }
   .gsep.lane.away { cursor: pointer; opacity: .85; } .gsep.lane.away:hover { opacity: 1; }
   #sbar .seg.ask { cursor: pointer; }
@@ -526,6 +527,7 @@
   .gsep.lane.shut .lc { rotate: -45deg; translate: -1px 0; }
   .gsep.lane.shut { opacity: .7; }
   .gsep.lane.shut:hover { opacity: 1; }
+  .gsep.lane.still { cursor: default; } .gsep.lane.still .lc { display: none; } .gsep.lane.still:hover .ln { color: inherit; }   /* under a filter: every match shown, nothing to fold */
   /* The shimmer (shim(), 2026-10-11): the window is the word's own width, its mask a soft band in the middle, and it
      and the copy in it move by the same 68 % of that width in opposite directions — the band sweeps the word, the copy
      stays over it. Phased with the rings (phaseAnims). */
@@ -1228,6 +1230,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #ctxm button { display: block; width: 100%; text-align: left; padding: 6px 9px; border: 0; border-radius: var(--r-3); background: none; font: inherit; font-size: var(--fs-md); color: var(--ink); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #ctxm button:hover, #ctxm button:focus-visible { background: color-mix(in srgb, var(--accent) 12%, transparent); outline: none; }
   #ctxm button.warn { color: var(--needs); } #ctxm hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
+  /* a menu of choices (the list's filter, 2026-10-12): a tick before the one chosen, a mark and a count per row */
+  #ctxm.checks button { display: flex; align-items: center; position: relative; padding-left: 26px; }
+  #ctxm.checks button[aria-checked="true"]::before { content: ''; position: absolute; left: 10px; top: 50%; width: 8px; height: 4px; border: solid var(--accent); border-width: 0 0 1.5px 1.5px; rotate: -45deg; translate: 0 -75%; }
+  #ctxm .cmk { flex: none; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; }
+  #ctxm .cmk.move { background: var(--accent); border-radius: var(--r-1); rotate: 45deg; scale: .85; }
+  #ctxm .cmk.replied { background: var(--idle); }
+  #ctxm .cn { margin-left: auto; padding-left: 18px; color: var(--muted); font-variant-numeric: tabular-nums; }
   #hmenu .hmi .ic { width: 15px; height: 15px; fill: currentColor; justify-self: center; }
   #hmenu .hmi .ic.tk { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }   /* done for good's ✓, a stroke as on the card */
   #hmenu .hmi .dot { justify-self: center; }
@@ -2152,7 +2161,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 <div id="wall" aria-hidden="true"><i></i></div>
 <main id="main">
   <section id="sessions">
-    <div class="colhead" id="shd"><span class="brand" id="brandBtn" title="About peixAIrada" role="button"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g class="fishg"><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g></g><g class="stars" fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="filters"><button class="fsearch" id="qBtn" title="Filter chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="this project’s chats, done too — title, branch, prompt…" autocomplete="off" spellcheck="false" hidden></span></div>
+    <div class="colhead" id="shd"><span class="brand" id="brandBtn" title="About peixAIrada" role="button"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g class="fishg"><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g></g><g class="stars" fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="filters"><button class="fsearch" id="qBtn" title="Search this project’s chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="this project’s chats, done too — title, branch, prompt…" autocomplete="off" spellcheck="false" hidden><button class="fsearch" id="fBtn" aria-haspopup="menu" aria-pressed="false" title="Show only some chats — a PR at your move, or a new reply"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2.5h12.5a.5.5 0 0 1 .38.82L10 8.9v4.35a.5.5 0 0 1-.28.45l-2.5 1.2A.5.5 0 0 1 6.5 14.45V8.9L1.37 3.32a.5.5 0 0 1 .38-.82Z"/></svg><span class="fl"></span></button></span></div>
     <div id="tline" aria-label="The list's days — point to read them, drag to scroll, click one to go there"><div class="tl-catch"></div><div class="tl-thumb"></div><div class="tl-labs"></div></div>
     <div id="slist"></div>
     <div class="tl-glass"></div>
@@ -2343,7 +2352,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map() };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', skinDark: null, skinLight: null, skinExact: false };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', skinDark: null, skinLight: null, skinExact: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -2364,6 +2373,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   delete prefs.filter; delete prefs.filters;
   delete prefs.peopleFold;   // the faces folded to a count (2026-10-09, off by default) became peopleCompact (2026-10-11, later): folded by default
   if (!Array.isArray(prefs.lanesShut)) prefs.lanesShut = ['done', 'idle'];
+  prefs.lanesShut = prefs.lanesShut.filter(g => g !== 'move' && g !== 'replied');   // lanes for a morning (2026-10-12), filters since
+  if (prefs.listFilter !== 'move' && prefs.listFilter !== 'replied') prefs.listFilter = null;
   // what the status bar adds (sbStats, none by default until 2026-10-09, then CPU and memory as barStats): a pick carries
   // over; the empty default every saved prefs held does not, or nobody would see the new one
   if ('sbStats' in prefs) { if (Array.isArray(prefs.sbStats) && prefs.sbStats.length) prefs.barStats = prefs.sbStats; delete prefs.sbStats; }
@@ -3306,18 +3317,27 @@ const toolName = n => {
   // The list's order, and the ⌥⌘K picker's (2026-09-21): a chat waiting on *your* answer first — it costs you a
   // second and unblocks a whole turn — then clauding, then ready, done last. The filters and the counts still go by
   // `bucket`, so an asking chat is a ready one everywhere it is counted; only the order knows the difference.
-  // Ready split three ways, and a PR at your move a lane of its own (2026-10-12): the board had 106 ready chats, 77 of
-  // them untouched for a week, 13 with a PR waiting on you somewhere among them. A chat with a PR at your move; then one
-  // Claude answered since the board last showed it (`seenAt`, the server's, kept in its state file); then the rest —
   // Ready while you were in it within the last four days (today and the three before), Idle past that, folded to
-  // begin with. A clauding chat stays Clauding whatever its PRs say: nothing is asked of you while it works.
-  const RANK = { asking: 0, move: 1, working: 2, replied: 3, ready: 4, idle: 5, done: 6 };
+  // begin with (2026-10-12: the board had 106 ready chats, 77 of them untouched for a week). A PR at your move and a
+  // reply the board has not shown you were lanes of their own above Clauding that morning, and are a filter of the
+  // list since (FILTERS): the main view is the clauding chats first and the rest by their last word.
+  const RANK = { asking: 0, working: 1, ready: 2, idle: 3, done: 4 };
   const IDLE_DAYS = 3;   // the days before today a chat stays Ready
-  const ROOMY = new Set(['asking', 'move', 'working', 'replied']);   // the lanes a card is large in, cards by lane on
   const yourMove = s => !s.forGood && (s.prs || []).some(p => p.turn?.you && (p.state === 'open' || p.state === 'draft' || !p.state));
+  // a reply after the board last showed the chat (`seenAt`, the server's, kept in its state file)
   const replied = s => !!s.seenAt && !!s.lastReplyAt && s.lastReplyAt >= (s.lastUserAt || '') && s.lastReplyAt > s.seenAt;
   const idleSince = () => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - IDLE_DAYS); return d.toISOString(); };
-  const rankOf = s => { const b = bucket(s); return asking(s) ? 'asking' : b !== 'ready' ? b : yourMove(s) ? 'move' : replied(s) ? 'replied' : wordAt(s) < idleSince() ? 'idle' : 'ready'; };
+  const rankOf = s => { const b = bucket(s); return asking(s) ? 'asking' : b !== 'ready' ? b : wordAt(s) < idleSince() ? 'idle' : 'ready'; };
+  // The list's filters (2026-10-12, prefs.listFilter, the funnel beside the magnifier): the chats with a PR at your
+  // move — clauding ones too, the PR waits on you all the same — or the ready ones with a new reply. Done chats never.
+  const FILTERS = {
+    move: { name: 'Your move', none: 'No PR at your move', tip: 'chats with a PR waiting on you', test: s => bucket(s) !== 'done' && yourMove(s) },
+    replied: { name: 'New replies', none: 'No new replies', tip: 'chats Claude answered since you last looked', test: s => bucket(s) === 'ready' && replied(s) },
+  };
+  const listFilter = () => FILTERS[prefs.listFilter] || null;
+  const wantOf = s => FILTERS.move.test(s) ? 'move' : FILTERS.replied.test(s) ? 'replied' : '';   // the rail's dot
+  // the cards large with cards by lane on: a chat asking you, clauding, at your move or with a new reply
+  const roomy = s => asking(s) || bucket(s) === 'working' || !!wantOf(s);
   // What the filters and the pickers search, as separate fields: the picker's matcher hunts each word *within* one
   // of them, so `wapi` has to be somewhere in the project or the branch and cannot be spelled out of letters
   // borrowed from a title and a prompt (2026-09-21). Short and identifying first — ties go to the earlier field.
@@ -3435,17 +3455,18 @@ const toolName = n => {
   const PIX = `<span class="pix"><svg viewBox="0 0 ${PIX_SHEET[0].length} 9" shape-rendering="crispEdges" aria-hidden="true"><path d="${
     PIX_SHEET.flatMap((row, y) => [...row.matchAll(/#+/g)].map(m => `M${m.index} ${y}h${m[0].length}v1h-${m[0].length}z`)).join('')}"/></svg></span>`;
   // Lanes (2026-10-09, the studies' C — Paseo's grouped sidebar; one divider between the clauding and the ready cards
-  // before): a head over each group the list ranks by — Asking you · Clauding · Ready · Done — with its mark and how
-  // many cards it holds. Claude's mark in pixels is the Clauding head's. Under a query, which ranks by the match, none.
-  const LANES = { asking: ['Asking you', 'chats waiting on your answer'], move: ['Your move', 'chats with a PR at your move'], working: ['Clauding', 'chats Claude is at work in'], replied: ['New replies', 'chats Claude answered since you last looked'], ready: ['Ready', 'chats Claude is done in, seen'], idle: ['Idle', `ready chats untouched since before the last ${IDLE_DAYS + 1} days`], done: ['Done', 'chats ticked done'] };
+  // before): a head over each group the list ranks by — Asking you · Clauding · Ready · Idle · Done — with its mark and
+  // how many cards it holds. Claude's mark in pixels is the Clauding head's. Under a query, which ranks by the match,
+  // none; under a filter, which shows every match, a head that does not fold (`still`).
+  const LANES = { asking: ['Asking you', 'chats waiting on your answer'], working: ['Clauding', 'chats Claude is at work in'], ready: ['Ready', 'chats Claude is done in'], idle: ['Idle', `ready chats untouched since before the last ${IDLE_DAYS + 1} days`], done: ['Done', 'chats ticked done'] };
   // A word that shimmers while Claude works (2026-10-11, Claude Code's own spinner): a light runs across it — a window
   // as wide as the word, masked to a soft band, moving one way while the bright copy in it (its ::before, from
   // data-t, so the text is said once) moves the other; both transforms, so nothing repaints.
   const shim = t => `<span class="shim">${esc(t)}<span class="sw" data-t="${esc(t)}" aria-hidden="true"></span></span>`;
-  const laneHtml = (g, n, shut = false) => `<div class="gsep lane ${g}${shut ? ' shut' : ''}" data-lane="${g}" role="button" tabindex="0" aria-expanded="${!shut}" title="${n} ${LANES[g][1]} — click to ${shut ? 'show' : 'fold'} them">${g === 'working' ? PIX : '<i></i>'}<span class="ln">${g === 'working' ? shim(LANES[g][0]) : LANES[g][0]}</span><b>${rn('lane:' + g, n)}</b><span class="lc" aria-hidden="true"></span></div>`;
+  const laneHtml = (g, n, shut = false, still = false) => `<div class="gsep lane ${g}${shut ? ' shut' : ''}${still ? ' still' : ''}" data-lane="${g}"${still ? '' : ` role="button" tabindex="0" aria-expanded="${!shut}"`} title="${n} ${LANES[g][1]}${still ? '' : ` — click to ${shut ? 'show' : 'fold'} them`}">${g === 'working' ? PIX : '<i></i>'}<span class="ln">${g === 'working' ? shim(LANES[g][0]) : LANES[g][0]}</span><b>${rn('lane:' + g, n)}</b><span class="lc" aria-hidden="true"></span></div>`;
   // …and when no lane waits on you, a still one that says so (renderSessionList); its mark is the clauding head's at
   // rest. Reached by a tick it earns a moment, once: the mark hops and throws a few sparks (caughtUp).
-  const ZERO_HTML = `<div class="gsep lane zero" title="Nothing waits on you — no question, no PR at your move, no new reply, no chat ready">${PIX}<span class="ln">All caught up</span></div>`;
+  const ZERO_HTML = `<div class="gsep lane zero" title="Nothing waits on you — no question, no chat ready">${PIX}<span class="ln">All caught up</span></div>`;
   let lastTickAt = 0, wasCaughtUp = null;
   function caughtUp(now) {
     const was = wasCaughtUp; wasCaughtUp = now;
@@ -3550,8 +3571,10 @@ const toolName = n => {
     // is in the match's order, not the board's, and the lines that say where a state or a day ends are left out.
     const q = $('#q').value.trim().toLowerCase();
     const score = new Map();
-    const who = renderPeople(p.sessions.filter(s => !laneShut(rankOf(s)))) ? prefs.person : null;   // may let go of a person no longer in view
-    const list = (!q ? p.sessions : p.sessions.filter(s => { const m = fuzzy(chatFields(s), q); if (m) score.set(s.id, m.score); return !!m; })).filter(s => !who || hasPerson(s, who));
+    // a filter (FILTERS) narrows the list before anything else counts it, and shows every match, folded or not
+    const flt = listFilter(), pool = flt ? p.sessions.filter(flt.test) : p.sessions, inView = s => !!(q || flt) || !laneShut(rankOf(s));
+    const who = renderPeople(pool.filter(inView)) ? prefs.person : null;   // may let go of a person no longer in view
+    const list = (!q ? pool : pool.filter(s => { const m = fuzzy(chatFields(s), q); if (m) score.set(s.id, m.score); return !!m; })).filter(s => !who || hasPerson(s, who));
     const counts = {};
     for (const s of list) counts[bucket(s)] = (counts[bucket(s)] || 0) + 1;
     // clauding on top, then ready, done last (2026-09-20: one rule between the live cards and the ready ones, which
@@ -3559,7 +3582,7 @@ const toolName = n => {
     // into the ready group, where its last prompt puts it. That order is also how a query's ties are broken.
     const board = (a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byWord(a, b);
     const ordered = list.slice().sort(q ? (a, b) => (score.get(b.id) - score.get(a.id)) || board(a, b) : board);
-    const shown = q ? ordered : ordered.filter(s => !laneShut(rankOf(s)));   // a query shows every match, folded or not
+    const shown = ordered.filter(inView);   // a query shows every match, folded or not, and so does a filter
     // The project filter's one cue: a click is ⌥⌘P's picker, × goes back to ALL. The square is only a colour here —
     // the colour picker is the chat header's.
     // The head names the project and nothing else (2026-09-27): no colour square — the chat header's is the picker —
@@ -3581,10 +3604,10 @@ const toolName = n => {
     if (!q) shown.forEach((s, i) => { const r = tl.runs[tl.runs.length - 1]; if (r && r.g === b[i] && r.day === days[i]) r.n++; else tl.runs.push({ g: b[i], day: days[i], at: wordAt(s), i, n: 1 }); });
     const allToday = {}; shown.forEach((s, i) => { allToday[b[i]] = allToday[b[i]] !== false && days[i] === 'Today'; });
     const dayBefore = i => !q && days[i] && !allToday[b[i]] && (i === 0 || b[i - 1] !== b[i] || days[i - 1] !== days[i]) ? dayHtml(days[i]) : '';
-    // All caught up (2026-10-11): nothing in the project waits on you — no question, no PR at your move, no new reply and
-    // no ready chat (2026-10-12) — while the list still holds something (the clauding, the idle, the done): a still head
-    // where the Ready lane goes, before the idle and done lanes.
-    const zero = !q && !ordered.some(s => ['asking', 'move', 'replied', 'ready'].includes(rankOf(s))) && ordered.length > 0;
+    // All caught up (2026-10-11): nothing in the project waits on you — no question and no ready chat — while the list
+    // still holds something (the clauding, the idle, the done): a still head where the Ready lane goes, before the idle
+    // and done lanes. Not under a filter, which is about something else.
+    const zero = !q && !flt && !ordered.some(s => ['asking', 'ready'].includes(rankOf(s))) && ordered.length > 0;
     const items = [];
     // chats asking you outside the project in view (2026-10-12): a line over the lanes says how many, a click is ALL
     const away = p.key === ALL || q ? 0 : [...state.sessions.values()].filter(s => visible(s) && asking(s) && !inProject(s, p)).length;
@@ -3592,16 +3615,17 @@ const toolName = n => {
     if (q) shown.forEach(s => items.push({ id: s.id, html: cardHtml(s, p, q) }));
     else for (const g of new Set(every)) {   // the lanes present, in rank order: each its head, then its cards unless folded
       if (zero && (g === 'idle' || g === 'done') && !items.some(x => x.html === ZERO_HTML)) items.push({ html: ZERO_HTML });
-      items.push({ html: laneHtml(g, inLane[g], laneShut(g)) });
-      if (!laneShut(g)) shown.forEach((s, i) => { if (b[i] !== g) return; const a = dayBefore(i); if (a) items.push({ html: a }); items.push({ id: s.id, html: cardHtml(s, p, q) }); });
+      items.push({ html: laneHtml(g, inLane[g], !flt && laneShut(g), !!flt) });
+      if (flt || !laneShut(g)) shown.forEach((s, i) => { if (b[i] !== g) return; const a = dayBefore(i); if (a) items.push({ html: a }); items.push({ id: s.id, html: cardHtml(s, p, q) }); });
     }
     if (zero && !items.some(x => x.html === ZERO_HTML)) items.push({ html: ZERO_HTML });
     // An empty list (2026-10-11) is the home's fish, resting, over what is empty and the key that fills it — a bubble
     // now and then (the bar's own interval), nothing else moving.
-    const [none, how] = q ? ['Nothing matches', 'another word, or Esc for every chat'] : ['No chats yet', '⌥⌘N starts one'];
+    const [none, how] = q ? ['Nothing matches', 'another word, or Esc for every chat'] : flt ? [flt.none, 'the funnel shows every chat again'] : ['No chats yet', '⌥⌘N starts one'];
     drawCards(items, `<div class="none"><span class="nfish">${SWIM_FISH.replace('class="swimmer"', 'class="restfish"').replace('width="26" height="11"', 'width="52" height="22"')}</span><b>${esc(none)}</b><span>${esc(how)}</span></div>`);
     fillAges($('#slist')); fillLive($('#slist')); fadeSoon();
     caughtUp(zero);
+    drawFilter(p);
     phaseAnims();
     markQsel();
     listChanged();
@@ -4263,7 +4287,7 @@ const toolName = n => {
     const where = !s.alive || inVsCode(s) ? ''
       : (s.terminal && s.terminal.exited === null ? '' : `<span class="chip elsewhere" title="${s.live?.entrypoint === 'cli' ? 'Running in a terminal outside the board' : 'Running outside the board'} — ⌥⌘C takes it over here">${ICON.term}</span>`)
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs Claude on this chat too — open it to end it">VS Code too</span>` : '');
-    return `<div class="card ${s.status} ${ROOMY.has(rankOf(s)) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
+    return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" data-want="${wantOf(s)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
       <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) ? ", watching" : ""}${s.agents ? `, ${s.agents} agents at work` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${act}${cardTickets(s)}${cardFaces(s)}${cardPrs(s)}</div>
       <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${ticks(markHits(s.title, q))}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${rn('ag:' + s.id, s.agents)} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${liveSlot(s)}
@@ -4623,7 +4647,9 @@ const toolName = n => {
     const s = state.sessions.get(state.current), of = s ? ` — ${s.title}` : '';
     return [
       { name: 'New chat', hint: '⌥⌘N', fn: () => pickOpen('new'), stay: true },
-      { name: 'Filter the chat list', hint: '⌥⌘F', fn: hotFind },
+      { name: 'Search the chat list', hint: '⌥⌘F', fn: hotFind },
+      ...Object.entries(FILTERS).filter(([k]) => prefs.listFilter !== k).map(([k, f]) => ({ name: `Show only: ${f.name.toLowerCase()}`, sub: ` — ${f.tip}`, fn: () => setFilter(k) })),
+      ...(prefs.listFilter ? [{ name: 'Show every chat again', sub: ` — no ${listFilter().name.toLowerCase()} filter`, fn: () => setFilter(null) }] : []),
       { name: prefs.sessionsCompact ? 'Unfold the chat list' : 'Fold the chat list to a rail', hint: '⌥⌘B', fn: toggleSessions },
       { name: 'Choose a theme', hint: '⌥⌘Y', fn: themesOpen },
       { name: 'Settings', hint: '⌘,', fn: () => settingsOpen(true) },
@@ -4726,7 +4752,7 @@ const toolName = n => {
     ['⌥⌘K', 'Go to', 'a chat — every project, fuzzy: <em>chk rtr</em> finds <em>checkout retry</em>', 'asking, clauding or ready, in the list\'s order', ['alt:KeyK']],
     ['⌥⌘L', 'Go to', 'anything — chats, projects, PRs, tickets, actions and switches', '> actions and switches, # PRs, @ projects, ! tickets · empty, a menu: → into a row, ← back', ['alt:KeyL']],
     ['⌥⌘P', 'Go to', 'a project — or a click on the project\'s name atop the list', '✎ edits a named one, ＋ makes one', ['alt:KeyP']],
-    ['⌥⌘F', 'Go to', 'the list\'s own filter, fuzzy', 'the best match leads · ↑↓ walk the cards · ⏎ opens one · esc clears it', ['alt:KeyF']],
+    ['⌥⌘F', 'Go to', 'the list\'s own search, fuzzy', 'the best match leads · ↑↓ walk the cards · ⏎ opens one · esc clears it', ['alt:KeyF']],
     ['⌥⌘N', 'Go to', 'a new chat — the project in view first', 'or a project, a folder of your repos, or ＋ clone one · then its open chats or ＋ a new one · ✕ takes a row off the board', ['alt:KeyN'], 'newKey'],
     ['⌥⌘O', 'Go to', 'a new chat in the setup\'s quick project', 'its environments first, when its Taskfile has some', ['alt:KeyO'], 'quickKey'],
     ['⌥⌘↑↓', 'Go to', 'the chat above / below in the list', '', ['alt:ArrowUp', 'alt:ArrowDown']],
@@ -5250,6 +5276,7 @@ const toolName = n => {
   // a lane's head, clicked or ⏎/space on it (2026-10-11, later): its lane folds or opens — the cards fold away as a
   // ticked one does, and come back fading in (drawCards' own moves)
   function foldLane(g, byKey = false) {
+    if (listFilter()) return;   // a filter shows every match: its heads do not fold
     const shut = new Set(prefs.lanesShut || []); if (shut.has(g)) shut.delete(g); else shut.add(g);
     prefs.lanesShut = [...shut]; savePrefs(); noteMotion(g, shut.has(g) ? 'fold' : 'unfold');
     renderBoard(); if (byKey) document.querySelector(`#slist > .gsep.lane[data-lane="${g}"]`)?.focus({ preventScroll: true });   // the head drawn anew keeps the keys
@@ -5746,18 +5773,44 @@ const toolName = n => {
     if (e.target.closest('input, textarea, .tbody, #log .text, #log pre')) return;   // a box, a terminal, the words: the system's menu
     const rows = ctxRows(e); if (!rows) return;
     e.preventDefault();
-    const m = $('#ctxm'); m.innerHTML = rows.map((r, i) => r.hr ? '<hr>' : `<button type="button" data-i="${i}"${r.warn ? ' class="warn"' : ''}>${esc(r.t)}</button>`).join('');
-    m._rows = rows; if (!m.open) m.show();
-    const w = m.offsetWidth, h = m.offsetHeight;
-    m.style.left = `${Math.min(e.clientX, innerWidth - w - 8)}px`; m.style.top = `${Math.min(e.clientY, innerHeight - h - 8)}px`;
-    m.querySelector('button')?.focus({ preventScroll: true }); repostPane();
+    ctxShow(rows, e.clientX, e.clientY, 'ctx');
   });
+  // The menu's rows at a point — or ending at it, `above` (a control at the window's foot) — and from what (`m._from`):
+  // a row with `on` is a choice, ticked when on; `mark` and `n` a mark before it and a count after.
+  const ctxRow = (r, i) => r.hr ? '<hr>' : `<button type="button" data-i="${i}"${r.warn ? ' class="warn"' : ''}${'on' in r ? ` role="menuitemradio" aria-checked="${!!r.on}"` : ''}${r.tip ? ` title="${esc(r.tip)}"` : ''}>${r.mark ? `<i class="cmk ${r.mark}"></i>` : ''}${esc(r.t)}${r.n != null ? `<span class="cn">${r.n}</span>` : ''}</button>`;
+  function ctxShow(rows, x, y, from, above = false) {
+    const m = $('#ctxm'); m.innerHTML = rows.map(ctxRow).join(''); m.classList.toggle('checks', rows.some(r => 'on' in r));
+    m._rows = rows; m._from = from; if (!m.open) m.show();
+    const w = m.offsetWidth, h = m.offsetHeight;
+    m.style.left = `${Math.max(8, Math.min(x, innerWidth - w - 8))}px`; m.style.top = `${Math.max(8, Math.min(above ? y - h : y, innerHeight - h - 8))}px`;
+    (m.querySelector('[aria-checked="true"]') || m.querySelector('button'))?.focus({ preventScroll: true }); repostPane();
+  }
   $('#ctxm').addEventListener('click', e => { const b = e.target.closest('button[data-i]'); if (!b) return; const r = $('#ctxm')._rows[+b.dataset.i]; $('#ctxm').close(); r?.fn?.(); });
   $('#ctxm').addEventListener('keydown', e => {
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return; e.preventDefault();
     const bs = [...$('#ctxm').querySelectorAll('button')], i = bs.indexOf(document.activeElement); bs[(i + (e.key === 'ArrowDown' ? 1 : bs.length - 1)) % bs.length]?.focus();
   });
-  document.addEventListener('pointerdown', e => { if ($('#ctxm').open && !e.composedPath().includes($('#ctxm'))) $('#ctxm').close(); }, true);
+  document.addEventListener('pointerdown', e => { const m = $('#ctxm'); if (m.open && !e.composedPath().includes(m)) { m.close(); m._shut = performance.now(); } }, true);
+  // The list's filter (2026-10-12): the funnel's menu — every chat, or only the ones with a PR at your move, or with a
+  // new reply — counted in the project in view (fCounts, from drawFilter). A press on the funnel that closed its own
+  // menu leaves it closed.
+  let fCounts = {};
+  function setFilter(k) { prefs.listFilter = FILTERS[k] ? k : null; savePrefs(); renderBoard(); $('#slist').scrollTop = 0; }
+  function drawFilter(p) {
+    const f = listFilter(), b = $('#fBtn'), fl = b.querySelector('.fl');
+    fCounts = Object.fromEntries(Object.entries(FILTERS).map(([k, x]) => [k, p.sessions.filter(x.test).length]));
+    const label = f ? `${f.name} · ${fCounts[prefs.listFilter]}` : '';
+    if (fl.textContent !== label) fl.textContent = label;
+    b.classList.toggle('on', !!f); b.setAttribute('aria-pressed', String(!!f));
+    b.title = f ? `Only the ${f.tip} — click for every chat, or the other filter` : 'Show only some chats — a PR at your move, or a new reply';
+  }
+  $('#fBtn').addEventListener('click', () => {
+    const m = $('#ctxm'), b = $('#fBtn'); if (m._from === 'filter' && performance.now() - (m._shut || 0) < 400) return;
+    const r = b.getBoundingClientRect(), up = r.top > innerHeight / 2;
+    ctxShow([{ t: 'Every chat', on: !prefs.listFilter, fn: () => setFilter(null) }, { hr: true },
+      ...Object.entries(FILTERS).map(([k, f]) => ({ t: f.name, tip: `Only the ${f.tip}`, mark: k, n: fCounts[k] || 0, on: prefs.listFilter === k, fn: () => setFilter(prefs.listFilter === k ? null : k) }))],
+      r.left, up ? r.top - 6 : r.bottom + 6, 'filter', up);
+  });
   $('#ctxm').addEventListener('close', () => repostPane());   // an arrow: repostPane is a const further down
   function unlinkPr(s, el) {
     const url = el.dataset.url; if (!url || el.dataset.going) return;
@@ -8343,8 +8396,8 @@ const toolName = n => {
     l.firstChild.animate([{ transform: 'translateX(-100%)' }, { transform: 'translateX(250%)' }], { duration: 650, easing: 'cubic-bezier(.4, 0, .2, 1)', id: 'locate' }).onfinish = () => l.remove();
   }
   // The board showed the chat (2026-10-12): the server keeps when, and a reply after it is a new one (the New replies
-  // lane). On opening it, and on a reply landing while it is the chat in front; the summary is told at once, so its card
-  // does not wait for the server's push to leave the lane.
+  // filter, the rail's dot, the Dock's badge). On opening it, and on a reply landing while it is the chat in front; the
+  // summary is told at once, so its card does not wait for the server's push to stop being new.
   function markSeen(id) {
     const s = state.sessions.get(id), at = new Date().toISOString(); if (!s) return;
     if (s.seenAt) s.seenAt = at;

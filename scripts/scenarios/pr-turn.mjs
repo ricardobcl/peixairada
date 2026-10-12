@@ -7,7 +7,7 @@
 // night: "just replied … left a comment and still says your move"). And the card itself (the chip was all): a line
 // under the card — a *your move* tag, the PR and why — at every card size, the PR chips last in the top row, where the
 // F would be, solid whatever their turn, the reason in the chat header too, and the chat ranked by the move — above a
-// newer chat, under today's line. And done for good (2026-10-11): ⌥-click on the ✓ forgets the chat's PRs — a push is
+// newer chat, under today's line — and the funnel's Your move narrowing the list to it (2026-10-12). And done for good (2026-10-11): ⌥-click on the ✓ forgets the chat's PRs — a push is
 // nothing to it, the PR is not asked about for it — until ↩.
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -57,7 +57,9 @@ export default async function (ctx) {
     ctx.assert.equal(out.waiting.last, 'tprs', 'the chips end the top row');
     ctx.assert.equal(out.waiting.move, null, '…and no line on the card');
     ctx.assert.equal(out.waiting.rank, 1, 'the fixture\'s other chat, a second newer, ranks above it');
-    // the faces of who else is in its PRs (2026-09-29): ana wrote both and pushed to #12; you are not among them
+    // the faces of who else is in its PRs (2026-09-29): ana wrote both and pushed to #12; you are not among them — once
+    // the image has loaded, which a data: one does a frame or two after the card is drawn
+    await ctx.waitFor(`[...${card}.querySelectorAll('.top .faces img')].every(i => i.complete && i.naturalWidth > 0)`, { what: 'the faces loaded' });
     out.faces = await ctx.evaluate(`JSON.stringify([...${card}.querySelectorAll('.top .faces > *')].map(f => [f.tagName, f.getAttribute('alt'), f.title, f.complete && f.naturalWidth > 0]))`).then(JSON.parse);
     ctx.assert.deepEqual(out.faces, [['IMG', 'ana', 'ana — #13 opened it · #12 opened it, pushed', true]], `one face, ana's, before the chips: ${JSON.stringify(out.faces)}`);
 
@@ -98,7 +100,9 @@ export default async function (ctx) {
     // …which slid in as it came (2026-10-11): the card was there before, its tag was not
     ctx.assert.ok(await ctx.evaluate(`window.peix.motion().some(m => m.kind === 'move' && m.id === '${two.id}')`), 'the tag slides in');
     ctx.assert.equal(out.moved.rank, 0, 'the move is the chat\'s newest word: it tops the list');
-    ctx.assert.equal(await ctx.evaluate(`${card}.previousElementSibling?.matches('.gsep.lane:first-child') ? 'first' : null`), 'first', 'nothing above it but its lane\'s head (2026-10-09)');
+    // nothing above it but its lane's head (2026-10-09) and today's label, which a run of cards has over it since 2026-10-12
+    // (the other chat is yesterday's) — and a lane of its own that morning, which needed none
+    ctx.assert.equal(await ctx.evaluate(`(d => d?.matches('.gsep.day') && d.textContent.trim() === 'Today' && d.previousElementSibling?.matches('.gsep.lane:first-child') ? 'first' : null)(${card}.previousElementSibling)`), 'first', 'nothing above it but its lane\'s head and today\'s label');
     out.compact = await ctx.evaluate(`(() => { const l = document.querySelector('#sessions'), was = l.dataset.cards; l.dataset.cards = 'compact';
       const shown = !!${card}.querySelector('.state.prmove').getClientRects().length; l.dataset.cards = was; return shown; })()`);
     ctx.assert.equal(out.compact, true, 'the line shows on a compact card too');
@@ -112,6 +116,16 @@ export default async function (ctx) {
     ctx.assert.equal(out.even.shown, true, 'same height keeps the your-move line');
     ctx.assert.equal(out.even.slot, 'hidden', 'a card without one holds its place, unseen');
     ctx.assert.equal(out.even.heights[0], out.even.heights[1], `one height: ${out.even.heights}`);
+    // the funnel's Your move (2026-10-12; a lane over Clauding that morning): this chat alone, and every chat again
+    const choose = async t => { await ctx.evaluate(`document.querySelector('#fBtn').click()`); await ctx.waitFor(`document.querySelector('#ctxm').open`, { what: 'the funnel\'s menu' });
+      await ctx.evaluate(`[...document.querySelectorAll('#ctxm button')].find(b => b.textContent.startsWith(${JSON.stringify(t)})).click()`); };
+    await choose('Your move');
+    await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 1`, { what: 'the list narrowed to the chat at your move' });
+    out.yours = await ctx.evaluate(`JSON.stringify({ id: document.querySelector('#slist > .card').dataset.id, says: document.querySelector('#fBtn .fl').textContent })`).then(JSON.parse);
+    ctx.assert.deepEqual(out.yours, { id: two.id, says: 'Your move · 1' }, 'the chat with a PR at your move, the funnel saying so');
+    await choose('Every chat');
+    await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 2 && !document.querySelector('#fBtn.on')`, { what: 'every chat again' });
+    await ctx.settle();
     const list = () => ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: 330 }))(document.querySelector('#slist').getBoundingClientRect())`);
     await ctx.shot('1-card', await list());
     await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] }); await ctx.settle();

@@ -199,7 +199,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   on ALL, `hidden`), a click being ⌥⌘P's picker, and × at the row's end back to ALL; **the chat header's folder name
   toggles it** (that folder, then ALL; `.repo.on` while it is the filter). The list's edge and the rows' tint are
   the project's colour. **The controls are one row, the usage included** (2026-09-28): the fish (the SSE light), `#filters` — the magnifier, an icon at rest (`#qBtn`); open, the left cap of
-  `#q` (`width: 0; flex: 1 1 0`), which takes the row's spare room and the rings' (hidden while it is open, `:has`) —
+  `#q` (`width: 0; flex: 1 1 0`), which takes the row's spare room and the rings' (hidden while it is open, `:has`),
+  and the funnel after it (`#fBtn`, the list's filter, below) —
   no state chips since 2026-10-11, later (the lanes fold instead, below; `#sessions` is still a size container) — no ＋ since 2026-09-28: ⌥⌘N, which opens on the project in view (⏎ ⏎ is a new chat there); then **`#sfoot`, in
   the head's grid row as a column of its own** (`main:not(.scompact)`): the usage. No cog: the settings are ⌘, and ···. **No « / »**: ⌥⌘B
   folds and unfolds. The row clips rather than run its controls under the usage. On the rail the fish and, under it for a
@@ -369,7 +370,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   the rule, `abbrRule`, gets wrong) on a solid tint of its colour, and the card's own edge — clauding, the agents' count, a monitor and a
   question still read from the rail. Everything inside the card is `display: none` there; `.abbr` is the only child
   left standing, and it carries the hover tooltip — but for `.rdot` (2026-10-12): a dot at the square's corner for a
-  PR at your move (the accent's diamond) or a new reply (green), by the card's `data-rank`, and an idle or done square
+  PR at your move (the accent's diamond) or a new reply (green), by the card's `data-want` (`wantOf`), and an idle or done square
   dimmed; a short name of three letters or more is set smaller (`data-n`). **The lanes fold on the rail too**, their
   heads there a mark and a count, a click on one still folding it.
 * **A project is a folder** (the registry's `cwd`, never the transcript's) **or a named set of folders** (state
@@ -597,7 +598,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
 * **A card comes in three sizes, the cog's slider** (`#cardsSize`, `prefs.cards`): *large* — your last prompt and
   Claude's last reply —, *medium* the last word only, *compact* neither — **compact the default** (2026-10-12; a board
   saved on large, the old default, moved once, `cardsMoved`). **By lane** (`#cardsByLane`, `prefs.cardsByLane`, off): a
-  card in a lane that wants you (`ROOMY`: asking, your move, clauding, new replies) is `.roomy` and, with the list's
+  card that wants you (`roomy(s)`: asking, clauding, a PR at your move, a new reply) is `.roomy` and, with the list's
   `data-bylane`, large whatever the slider says. `cardHtml` always writes both `.snip`s and
   marks the older one `.older` (Claude's reply is the last word when `lastReplyAt ≥ lastUserAt`); CSS hides by
   `#sessions[data-cards]`, so the slider re-renders nothing. The question line (`askHtml`) shows at every size —
@@ -643,20 +644,17 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   snapshot lacks renders the board from its fetch. **It has the ✓ like any idle chat, and ticked it is gone** — no dimmed done card, nothing to resume: `visible()`
   drops an empty chat once done, and the column moves on to the next card (`tickDone`) or, with none, leaves it
   (`leaveChat()`, from the `session` event; ＋ goes through the same function). → `scripts/scenarios/new-chat-card.mjs`, the card checks in `drawer-clear.mjs`.
-* **A chat waiting on your answer first, then a PR at your move, clauding, new replies, ready, idle, done last**
-  (`RANK` / `rankOf`, 2026-10-12; asking · clauding · ready · done before): **Your move** a chat with a PR waiting on
-  you (`yourMove`, not done for good), **New replies** one whose last word is Claude's and came after the board last
-  showed it (`replied`: the summary's `seenAt` — the server's `seen` in the state file, `POST /api/sessions/:id/seen`
-  from `markSeen` on opening a chat and on a reply landing in the one in front; never shown, `seenSince`, the first
-  boot that kept it), **Ready** the rest whose last word is from today or the `IDLE_DAYS` (3) before, **Idle** older —
-  folded to begin with (and once, `lanesIdle`, on a board saved with Done alone folded). Membership: asking beats
-  clauding beats your move. → `test/seen.test.mjs`, `scripts/scenarios/lanes.mjs`. Inside each
+* **A chat waiting on your answer first, then clauding, then ready, idle, done last** (`RANK` / `rankOf`): **Ready** a
+  chat whose last word is from today or the `IDLE_DAYS` (3) before, **Idle** older — folded to begin with (2026-10-12;
+  and once, `lanesIdle`, on a board saved with Done alone folded). A PR at your move and a new reply were lanes of
+  their own above Clauding for a morning (2026-10-12) and are **the list's filter** since — not the main view (below).
+  → `scripts/scenarios/lanes.mjs`. Inside each
   group **by the last word, yours or Claude's** (`wordAt`: the newer of `lastUserAt` and `lastReplyAt`; a tool call
   is not a word — **a PR come round to you is**, at its `turn.movedAt`: `movedAt(s)`, in both copies), newest first; a project ranks by its newest chat. Every count goes by `bucket()`,
   where an asking chat is a ready one — only the order knows the difference, in the list and in ⌥⌘K. **The lines
   between the cards** (`.gsep`): **a lane's head over each group** (2026-10-09, `laneHtml`, `.gsep.lane.<group>`; one
-  divider between the clauding and the ready cards before) — its mark, its name (`.ln`: *Asking you · Your move ·
-  Clauding · New replies · Ready · Idle · Done*) and its count at the right end, none under a query — **and a toggle that folds its lane** (2026-10-11,
+  divider between the clauding and the ready cards before) — its mark, its name (`.ln`: *Asking you · Clauding ·
+  Ready · Idle · Done*) and its count at the right end, none under a query — **and a toggle that folds its lane** (2026-10-11,
   later; three state chips filtered the list before): `data-lane`, a click or ⏎/space (`foldLane`), `prefs.lanesShut`
   — **Done and Idle folded to begin with** — the head dimmed with its chevron turned and its count kept, its cards folding away
   as a ticked one does (`laneShut`; not on the rail, which draws no heads; the harness opens every lane unless a
@@ -669,6 +667,18 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   something else in view, a still lane head says so where the Ready lane goes (before the done cards) — the pixel mark
   at rest, in the ready green; reached from a ✓ within 3 s (`lastTickAt`) its mark hops and throws pixel sparks, once.
   None under a query. → `scripts/scenarios/day-separator.mjs`, the caught-up section of `small-motions.mjs`.
+* **The list's filter is the funnel beside the magnifier** (2026-10-12, `#fBtn`, `FILTERS`, `prefs.listFilter`; the
+  status bar's, or the list's foot with the bar off — it is in `#filters`): its menu (`#ctxm` through `ctxShow`, a
+  tick on the choice, each counted in the project in view — `drawFilter`, `fCounts`) is *Every chat* · *Your move*
+  (`yourMove`: a PR waiting on you, not done for good — a clauding chat too) · *New replies* (`replied`: a ready chat
+  whose last word is Claude's and came after the board last showed it — the summary's `seenAt`, the server's `seen` in
+  the state file, `POST /api/sessions/:id/seen` from `markSeen` on opening a chat and on a reply landing in the one in
+  front; never shown, `seenSince`, the first boot that kept it). Done chats never. On, the list is narrowed before
+  anything counts it, the lanes keep their order and **every match shows, folded or not** — the heads `.still`, which
+  do not fold (`foldLane` does nothing) —, the funnel says which and how many (`.fl`), the caught-up head is not
+  drawn, and an empty list says so. The launcher has *Show only: …* and *Show every chat again*. The rail's dot, the
+  Dock's badge and the menu bar still read `replied`. → `test/seen.test.mjs`, the filter steps of
+  `scripts/scenarios/lanes.mjs` (New replies) and `pr-turn.mjs` (Your move).
 * **A card clicked open sends its title into the header** (2026-10-11, `flyFrom`, `flyTitle`): a copy on one line
   (`.flytitle`, fixed, over everything) from the card's title to `#shead h2 .t`, translated and scaled from the card's
   size to the header's while the header's own waits at opacity 0; `fly` in `motion()`. The card's click handler only —
@@ -771,7 +781,7 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   and which are for good, the PRs taken off a chat, named projects, board titles, pins, hidden, the environment each chat was started in, notifications on or off, PR
   turns; `STATE_FILE` overrides) and the user's `~/.config/peixairada/config.json` (the setup, below), both shared by
   the app and every browser; the browser's `localStorage` `peixairada-prefs`
-  (selected project, the lanes folded, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the theme for each appearance, the tiles, their stack and their glow, the changes tab's scope, the person the list is narrowed to, ⌥ as Meta, auto-resume, the edge light, the light under the pointer, the floating header, sounds, the status bar and what it adds, the faces folded, drawer open/height — the keys are the `prefs` literal,
+  (selected project, the lanes folded, widths, zoom, folds, card size and compact's same height, simple colours and their one colour, the theme for each appearance, the tiles, their stack and their glow, the changes tab's scope, the person the list is narrowed to, the list's filter, ⌥ as Meta, auto-resume, the edge light, the light under the pointer, the floating header, sounds, the status bar and what it adds, the faces folded, drawer open/height — the keys are the `prefs` literal,
   and old ones are deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it
   renders reads its state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
 * **The setup is the user's file, and nothing about one Mac is written in the code** (2026-09-28; the file since
@@ -881,7 +891,8 @@ folder above it, for `$HOME`'s home and the account's (2026-10-03; a string comp
   lines**. The title and the folder name are bolded (`markHits`). ↑↓ in the box walk a `.qsel` card, ⏎ opens it and
   keeps the query; the mark shows only while the box has the keyboard (`markQsel()`, on every render). The project in
   view still applies; a folded lane does not — a query shows every match. → `scripts/scenarios/chat-filter.mjs`.
-* **A right-click is a menu where ⌥-click, a double-click or a drag did alone** (2026-10-12, `#ctxm`, `ctxRows`): on a
+* **A right-click is a menu where ⌥-click, a double-click or a drag did alone** (2026-10-12, `#ctxm`, `ctxRows`, shown
+  by `ctxShow` — the list's filter's menu too): on a
   card — Open, Rename…, Done / Done for good / Back on the board, Take #n off this chat for each PR, Copy its link; on a
   PR chip (card, header, row) — Open the PR, Take it off this chat; on the colour square — Pick a colour…, Let go of the
   colour. Not in a box, a terminal or the transcript's words (the system's menu there). The launcher has the open

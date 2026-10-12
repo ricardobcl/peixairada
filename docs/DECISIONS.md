@@ -5,6 +5,26 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-09. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-12, later — your move is a filter, not a lane
+
+Of the morning's lanes (T1, below): "I think "your move" should be a filter that I can trigger maybe on new "filter"
+button on manu bar. I still like to have clauding first, and then the rest order by last update. filtering by "your
+move" should be an add-on, not the main view".
+
+* **The lanes are Asking you · Clauding · Ready · Idle · Done** again but for Idle: a chat at your move is where its
+  last word puts it (a PR come round to you still counts as one, `movedAt`), and so is a chat with a new reply — a lane
+  of its own above Ready was the same break in "the rest order by last update". Asking you stays over Clauding, as it
+  was before the morning: it is a turn waiting on you, and rare. Idle stays: it is the tail of that order, folded.
+* **The funnel** (`#fBtn`, after the magnifier in `#filters`, so in the status bar — the board's bar at the foot; the
+  list's foot with it off): *Every chat · Your move · New replies*, each counted in the project in view, the choice
+  ticked; on, it names the filter and its count. New replies came along because it is the same kind of thing — a
+  question you ask of the list now and then, which the morning made a lane. Done chats are in neither; a clauding chat
+  is in Your move (the PR waits on you all the same). A filter shows every match, folded or not, so the heads it draws
+  do not fold, and *All caught up* is not drawn under one. Kept in the prefs, as the person the list is narrowed to.
+  The menu is the right-click's (`ctxShow`), its rows able to be choices with a mark and a count.
+* What the morning built for the two stays: the server's `seen`, the rail's dot (`data-want` now, not the rank), cards
+  by lane making those cards large, the Dock's badge and the menu bar counting new replies.
+
 ## Decisions of 2026-10-12 — the UI/UX review, built
 
 A review of the board (a page of 38 findings, each a letter and a number) got: "do: T1, T2, T3, T5 · L1 — let's try
@@ -45,7 +65,8 @@ the order they landed.
   begin with; a board saved with only Done folded gets Idle folded too, once (`lanesIdle`), one that opened every lane
   (the harness) keeps it. A clauding chat stays Clauding whatever its PRs say. *All caught up* now means no question,
   no PR at your move, no new reply and nothing ready. The overview's fourth column is *New replies* (the server's, or
-  the page's unread count while it has one).
+  the page's unread count while it has one). Your move and New replies left the lanes the same day, for a filter (the
+  entry above).
 * **L1 — compact by default, and cards by lane, a switch**: compact (the title, its chips, the question and your
   move) is the default; a board saved on large — the old default, saved with every pref — moves to compact once
   (`cardsMoved`), medium stays. *By lane*, under the slider and off: a card in a lane that wants you — asking, your

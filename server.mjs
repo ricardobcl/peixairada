@@ -118,7 +118,7 @@ let forGoodMarks = {};
 let unlinked = {};
 // When the board last showed a chat (2026-10-12): sessionId -> ISO time — the page says so when it opens one, and when a
 // reply lands on the chat it shows (POST /api/sessions/:id/seen). A reply after it is a new one: the list's New replies
-// lane. A chat never shown counts from `seenSince`, the moment the board first kept this, so nothing from before it is
+// filter. A chat never shown counts from `seenSince`, the moment the board first kept this, so nothing from before it is
 // new.
 let seen = {}, seenSince = null;
 // Custom projects: id -> { id, name, cwds, createdAt }. A name over one or more folders — multi-repo

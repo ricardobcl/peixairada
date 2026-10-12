@@ -53,13 +53,6 @@ export default async function (ctx) {
   await project(ctx, 'daylines-repo');
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 5`, { what: 'the list narrowed to the five' });
   await ctx.settle();   // the other project's cards fold out of the list first (2026-09-27, night); strip reads every child
-  // written after the board's first boot, today's two are new replies until shown (2026-10-12, the lanes): shown, so
-  // the five are one Ready lane, which is what the labels are about — once the clock is past the newest reply, which
-  // the fixture stamps a second ahead
-  await ctx.sleep(Math.max(0, today.getTime() + 1100 - Date.now()));
-  for (const c of chats) await ctx.server.post(`api/sessions/${c.id}/seen`, {});
-  await ctx.waitFor(`!document.querySelector('#slist > .gsep.lane.replied')`, { what: 'no new replies left' });
-  await ctx.settle();
 
   out.all = await strip(ctx);
   await ctx.shot('day-lines');

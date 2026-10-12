@@ -2,9 +2,10 @@
 // cards fold away, the head and its count stay — and Done is folded to begin with (the board's own default, asked for
 // here: the harness opens every lane otherwise). A chat ticked done folds into it; a click opens it, another folds the
 // Ready lane; ⏎ on a head does the same; a reload keeps what was folded; a query shows every match, folded or not.
-// And Ready split three ways (2026-10-12): a chat untouched for longer than four days is Idle, folded to begin with — on
-// a board saved with Done alone folded too, once; a reply the board has not shown is a New reply, until the chat is
-// opened — which the server keeps, so a reload does not bring it back. (Your move, a PR waiting on you: pr-turn.mjs.)
+// And Idle (2026-10-12): a chat untouched for longer than four days is Idle, folded to begin with — on a board saved
+// with Done alone folded too, once. A reply the board has not shown stays where its last word puts it (a lane of its
+// own that morning) and is what the funnel's New replies shows — every match, under heads that do not fold — until the
+// chat is opened, which the server keeps, so a reload does not bring it back. (The funnel's Your move: pr-turn.mjs.)
 import { appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { makeFixture, replyLines, slugOf } from '../fixture.mjs';
@@ -60,19 +61,36 @@ export default async function (ctx) {
   await ctx.settle();
   await ctx.shot('lanes', { x: 0, y: 0, width: 420, height: 320 });
 
-  // an old chat is Idle, folded; a reply the board has not shown is a New reply, until the chat is opened
+  // an old chat is Idle, folded; a reply the board has not shown is Ready as any, and the funnel's New replies
   const [old] = makeFixture(ctx.fixture.dir, [{ cwd: one.cwd, title: 'an old one', prompt: 'from last week', reply: 'yes', at: new Date(Date.now() - 9 * 86_400_000) }]).chats;
   await ctx.waitFor(`document.querySelector('#slist > .gsep.lane.idle.shut')?.querySelector('b')?.textContent === '1'`, { what: 'the old chat, counted on the folded Idle head' });
   ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#slist > .card[data-id="${old.id}"]')`), false, 'its card folded away');
   appendFileSync(join(ctx.fixture.dir, 'projects', slugOf(one.cwd), one.id + '.jsonl'), replyLines({ id: one.id, cwd: one.cwd, text: 'And one more thing.' }).map(l => JSON.stringify(l)).join('\n') + '\n');
-  await ctx.waitFor(`document.querySelector('#slist > .gsep.lane.replied + .card')?.dataset.id === '${one.id}'`, { what: 'the reply in New replies' });
+  await ctx.waitFor(`(s => s?.lastReplyAt > s?.seenAt)(window.peix.session('${one.id}'))`, { what: 'the reply, after the board last showed the chat' });
   await ctx.settle(); await ctx.waitFor(`!document.querySelector('.rn.rolling')`);
   out.replied = await lanes(ctx);
-  ctx.assert.deepEqual(out.replied, ['lane:replied 1', 'card', 'lane:idle (folded) 1', 'lane:done (folded) 1'], 'New replies over the rest');
+  ctx.assert.deepEqual(out.replied, ['lane:ready 1', 'card', 'lane:idle (folded) 1', 'lane:done (folded) 1'], 'no lane of its own: Ready, by its last word');
+  const menu = () => ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#ctxm button')].map(b => b.textContent + (b.getAttribute('aria-checked') === 'true' ? ' ✓' : '')))`).then(JSON.parse);
+  const choose = async t => { await ctx.evaluate(`document.querySelector('#fBtn').click()`); await ctx.waitFor(`document.querySelector('#ctxm').open`, { what: 'the funnel\'s menu' });
+    await ctx.evaluate(`[...document.querySelectorAll('#ctxm button')].find(b => b.textContent.startsWith(${JSON.stringify(t)})).click()`); };
+  await ctx.evaluate(`document.querySelector('#fBtn').click()`);
+  out.menu = await menu();
+  ctx.assert.deepEqual(out.menu, ['Every chat ✓', 'Your move0', 'New replies1'], 'the funnel: every chat, or one of the two, each counted');
+  await ctx.evaluate(`document.querySelector('#ctxm').close()`);
+  await choose('New replies');
+  await ctx.waitFor(`document.querySelector('#fBtn.on')`, { what: 'the funnel on' });
+  await ctx.settle(); await ctx.waitFor(`!document.querySelector('.rn.rolling')`);
+  out.filtered = { lanes: await lanes(ctx), still: await ctx.evaluate(`!!document.querySelector('#slist > .gsep.lane.ready.still') && !document.querySelector('#slist > .gsep.lane.ready[role]')`),
+    says: await ctx.evaluate(`document.querySelector('#fBtn .fl').textContent`) };
+  ctx.assert.deepEqual(out.filtered, { lanes: ['lane:ready 1', 'card'], still: true, says: 'New replies · 1' }, 'the new reply alone, its head one that does not fold, the funnel saying so');
+  await ctx.shot('filter', { x: 0, y: 0, width: 420, height: 200 });
   await ctx.openChat(one.id);
-  await ctx.waitFor(`document.querySelector('#slist > .gsep.lane.ready + * + .card, #slist > .gsep.lane.ready + .card')?.dataset.id === '${one.id}'`, { what: 'opened, it is Ready' });
+  await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 0 && document.querySelector('#slist .none b')?.textContent === 'No new replies'`, { what: 'opened, it is no new reply' });
   await ctx.reload();
-  await ctx.waitFor(`!document.querySelector('#slist > .gsep.lane.replied') && !!document.querySelector('#slist > .gsep.lane.ready')`, { what: 'and still Ready after a reload: the server kept that it was shown' });
+  await ctx.waitFor(`document.querySelector('#fBtn.on') && document.querySelector('#slist .none b')?.textContent === 'No new replies'`, { what: 'after a reload too: the server kept that it was shown, the page the filter' });
   ctx.assert.ok((await ctx.peix(`session('${one.id}')`)).seenAt > (await ctx.peix(`session('${one.id}')`)).lastReplyAt, 'seen after its reply');
+  await choose('Every chat');
+  await ctx.waitFor(`!document.querySelector('#fBtn.on') && document.querySelectorAll('#slist > .card').length === 1`, { what: 'every chat again' });
+  ctx.assert.deepEqual(await lanes(ctx), ['lane:ready 1', 'card', 'lane:idle (folded) 1', 'lane:done (folded) 1'], 'the folds as they were');
   return out;
 }
