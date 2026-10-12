@@ -17,6 +17,11 @@ done
 echo "› shell"
 for f in scripts/launchd.sh scripts/check.sh; do [ -f "$f" ] && sh -n "$f"; done
 bash -n mac/build.sh
+# CLAUDE.md is loaded into every session in this repo, whole: past its budget, a bullet has grown a story, and the story
+# belongs in docs/DECISIONS.md (2026-10-12). Characters, as Claude Code counts them — it warns at 150 000.
+echo "› CLAUDE.md size"
+node -e 'const n = require("fs").readFileSync("CLAUDE.md", "utf8").length, max = 120000;
+if (n > max) { console.error(`CLAUDE.md is ${n} characters, over its ${max}: pare its bullets to their rules, the stories go to docs/DECISIONS.md`); process.exit(1); }'
 if command -v swiftc >/dev/null 2>&1; then
   MIN_OS=$(sed -n 's/^MIN_OS=\(.*\)$/\1/p' mac/build.sh)
   echo "› swiftc -typecheck (macOS $MIN_OS)"
