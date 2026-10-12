@@ -64,7 +64,8 @@ GitHub and VS Code open in the chat in the Mac app; in a browser they open in a 
   clauding.
 - 🐙 **PRs** — chips in GitHub's colours, stacked on a card and fanned out under the pointer (scroll them when they're
   more than fit); a chat with an open PR is named after it. A PR you reviewed or wrote fills in, notifies you and brings its ticked chat back when it's your
-  move again — a push, a reply, a review. ⌥-click the ✓ to tick a chat done for good: its PRs won't bring it back. Take a PR
+  move again — a push, a reply, a review. Nothing to do yet? ⌥-click *your move* to let the round go: the next move
+  tells you. ⌥-click the ✓ to tick a chat done for good: its PRs won't bring it back. Take a PR
   off a chat from its chip's right-click menu (or ⌥-click) — until you name it there yourself.
 - 🎫 **Jira tickets** — a ticket a chat names (`ACME-12`, a link, its branch) wears its status on the card and in the
   header, beside its PRs. Set your site, email and an API token in Setup.

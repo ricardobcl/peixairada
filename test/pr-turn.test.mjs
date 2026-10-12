@@ -7,7 +7,7 @@ import { tmpDir } from '../lib/testserver.mjs';
 
 const tmp = tmpDir('peix-test-');
 process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
-const { prTurn, prPeople, setPrInfo, isDone, doneMarks, forGoodMarks, newSession, notePr, unlinkPr, unlinked, sessions, prStatus, prChecks, summary, duePrs } = await import('../server.mjs');
+const { prTurn, prPeople, setPrInfo, isDone, doneMarks, forGoodMarks, newSession, notePr, unlinkPr, unlinked, waiveTurn, moveTurn, sessions, prStatus, prChecks, summary, duePrs } = await import('../server.mjs');
 
 const t = h => new Date(Date.UTC(2026, 8, 28, h)).toISOString().replace('.000', '');   // GitHub writes no milliseconds
 const user = login => ({ login, __typename: 'User' });
@@ -132,6 +132,37 @@ test('a PR taken off a chat stays off — its lines, a re-read, a move on it —
   assert.deepEqual(s.prs.map(p => p.url), [b, a], 'a word of yours after brings it back');
   notePr(s, b, t(17), 'claude');
   assert.equal(s.prs[0].count, 2, '…and Claude\'s count again from there');
+});
+
+test('a round let go: not your move until the next one comes, which is news — and an answer of yours ends it', () => {
+  const url = 'https://github.com/acme/r/pull/30', at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+  const s = newSession('waive', '/x/waive.jsonl');
+  s.lastActivity = new Date(at(9)).toISOString(); notePr(s, url, s.lastActivity, 'user'); sessions.set(s.id, s);
+  const hers = h => ({ author: user('ana'), createdAt: t(h) }), said = (...hs) => prTurn(pr({ comments: { nodes: hs.map(h => h === 'me' ? { author: user('me'), createdAt: t(14) } : hers(h)) } }), 'me');
+  setPrInfo(url, 'open', 'PR', prTurn(pr(), 'me'), at(10));
+  assert.equal(waiveTurn(url), false, 'nothing at your move to let go');
+  setPrInfo(url, 'open', 'PR', said(11), at(11));
+  doneMarks[s.id] = new Date(at(11, 30)).toISOString();
+  assert.equal(waiveTurn(url), true);
+  assert.deepEqual((({ you, waived, why }) => ({ you, waived, why }))(s.prs[0].turn), { you: false, waived: true, why: '1 comment from ana' }, 'the reason kept, at your move no more');
+  assert.equal(prStatus.get(url).turn.waived, true, 'the PR\'s record too, for a chat that names it next');
+  assert.equal(waiveTurn(url), false, 'let go once');
+  setPrInfo(url, 'open', 'PR', said(11), at(12));
+  assert.equal(s.prs[0].turn.you, false, 'asked again: the same round, still let go');
+  assert.equal(isDone(s), true, 'and the tick holds');
+  // the next move: news, at the board's time — the chat un-ticked and the alert said (released)
+  setPrInfo(url, 'open', 'PR', said(11, 13), at(13));
+  assert.deepEqual([s.prs[0].turn.you, s.prs[0].turn.waived, s.prs[0].turn.movedAt], [true, undefined, new Date(at(13)).toISOString()]);
+  assert.equal(isDone(s), false, 'the next move brings the chat back');
+  const other = 'https://github.com/acme/r/pull/31';
+  prStatus.set(other, { turn: moveTurn(other, said(11), at(11)).turn });
+  assert.equal(waiveTurn(other), true);
+  assert.deepEqual((({ moved, released }) => ({ moved, released }))(moveTurn(other, said(11, 13), at(13))), { moved: true, released: true }, 'a move after a round let go is said, whoever had it before');
+  // an answer ends the round: let go, answered, then hers again is a move as ever, from them
+  prStatus.set(other, { turn: moveTurn(other, said(11, 13), at(13)).turn });
+  assert.equal(waiveTurn(other), true);
+  assert.equal(moveTurn(other, said(11, 13, 'me'), at(14)).turn.waived, undefined, 'answered: no mark left');
+  assert.deepEqual((({ moved, released, from }) => ({ moved, released, from }))(moveTurn(other, said(11, 13, 'me', 15), at(15))), { moved: true, released: false, from: 'them' });
 });
 
 test('a PR the board has never looked at moves at GitHub\'s time for it, and one it cannot see keeps its record', () => {

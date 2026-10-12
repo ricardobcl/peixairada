@@ -943,7 +943,7 @@ function queueSessionPrs(s) { for (const pr of s.prs) queuePr(pr.url); }
 function setPrInfo(url, state, title, found, now = Date.now(), people, missing = false, created = null, checks = null) {
   const chats = [...sessions.values()].filter(s => s.prs.some(p => p.url === url));
   const ticked = chats.filter(isDone);
-  const { turn, moved, from } = moveTurn(url, found, now);
+  const { turn, moved, from, released } = moveTurn(url, found, now);
   const known = prStatus.get(url);
   if (people === undefined) people = known?.people ?? null;   // a PR we could not see: who we knew of stands
   if (missing) { state = known?.state ?? null; title = known?.title ?? null; checks = known?.checks ?? null; }
@@ -953,9 +953,9 @@ function setPrInfo(url, state, title, found, now = Date.now(), people, missing =
     const pr = s.prs.find(p => p.url === url);
     if (pr.state !== state || pr.title !== title || pr.checks !== checks || JSON.stringify(pr.turn ?? null) !== same || JSON.stringify(pr.people ?? null) !== faces) { pr.state = state; pr.title = title; pr.turn = turn; pr.people = people; pr.checks = checks; schedulePush(s); }
   }
-  // Said once, as the ball comes back to you — or when a chat you had ticked comes back with it; never on a chat done
-  // for good, and not at all when every chat that mentions it is.
-  if (moved && (from === 'them' || ticked.some(s => !isDone(s)))) notifyPr(url, turn, chats.filter(s => !forgotten(s)));
+  // Said once, as the ball comes back to you — or when a chat you had ticked comes back with it, or the next move after
+  // a round let go; never on a chat done for good, and not at all when every chat that mentions it is.
+  if (moved && (from === 'them' || released || ticked.some(s => !isDone(s)))) notifyPr(url, turn, chats.filter(s => !forgotten(s)));
 }
 
 function drainPrQueue() {
@@ -1137,10 +1137,27 @@ function moveTurn(url, t, now = Date.now()) {
   if (t === undefined) return { turn: null, moved: false, from: prev?.key };
   if (!t) { if (prev) { delete prTurns[url]; turnsDirty = true; } return { turn: null, moved: false, from: prev?.key }; }
   const moved = !!prev && prev.key !== t.key && t.you && newsIn(prev.key, t.key);
-  if (!prev || moved) { prTurns[url] = { key: t.key, at: new Date(prev ? now : Date.parse(t.at) || now).toISOString() }; turnsDirty = true; }
+  if (!prev || moved) { prTurns[url] = { key: t.key, at: new Date(prev ? now : Date.parse(t.at) || now).toISOString() }; turnsDirty = true; }   // a move ends a round let go
   else if (prev.key !== t.key) { prTurns[url] = { ...prev, key: t.key }; turnsDirty = true; }
-  const { key, ...turn } = t;
-  return { turn: { ...turn, movedAt: prTurns[url].at }, moved, from: prev?.key };   // moved is only ever a move to you
+  if (prTurns[url].waived && !t.you) { delete prTurns[url].waived; turnsDirty = true; }   // answered: the round is over
+  const { key, ...turn } = t, shown = { ...turn, movedAt: prTurns[url].at };
+  return { turn: prTurns[url].waived ? waivedTurn(shown) : shown, moved, from: prev?.key, released: moved && !!prev?.waived };   // moved is only ever a move to you
+}
+/**
+ * A round let go (2026-10-12): your move, and nothing to do about it yet — ⌥-click on a chat's "your move". The PR
+ * reads as not at your move (`you: false`, `waived`: it was) until something new comes round, which is a move and an
+ * alert as any other (moveTurn drops the mark); a word of yours that answers it ends the round, and the mark with it.
+ * The mark is the PR's record in prTurns (`waived`: the key let go), so a restart keeps it.
+ */
+const waivedTurn = turn => ({ ...turn, you: false, waived: true });
+function waiveTurn(url) {
+  const rec = prTurns[url], known = prStatus.get(url);
+  if (!rec || !known?.turn?.you) return false;
+  rec.waived = rec.key;
+  const turn = waivedTurn(known.turn);
+  prStatus.set(url, { ...known, turn });
+  for (const s of sessions.values()) { const pr = s.prs.find(p => p.url === url); if (pr) { pr.turn = turn; schedulePush(s); } }
+  return true;
 }
 
 /** A PR come round to you: one alert, on the chat touched last of those that mention it. */
@@ -3084,6 +3101,14 @@ const server = createServer(async (req, res) => {
       saveState(); schedulePush(s);
       return json(res, 200, { ok: true, seenAt: seen[s.id] });
     }
+    if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/waive$/))) {   // the chat's PRs at your move, let go this round (2026-10-12)
+      const s = sessions.get(m[1]);
+      if (!s) return json(res, 404, { error: 'unknown session' });
+      const urls = s.prs.filter(p => p.turn?.you).map(p => p.url).filter(waiveTurn);
+      if (!urls.length) return json(res, 409, { error: 'nothing at your move' });
+      saveState();
+      return json(res, 200, { ok: true, waived: urls });
+    }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/unlink$/))) {   // a PR taken off the chat (2026-10-11): { url }
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
@@ -3233,7 +3258,7 @@ server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTe
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {

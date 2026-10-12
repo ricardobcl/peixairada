@@ -154,6 +154,11 @@ for `$HOME`'s home and the account's.
   a word, another tick or ↩ ends it) is `forgotten(s)`: its PRs neither un-tick, rank, alert nor are asked about for
   it. ⌥ held over its ✓ shows the ✕ (`<html data-alt>` from `altHeld` — in the app a key pressed with the pane in
   front never reaches the page). → `test/pr-turn.test.mjs`, `pr-turn.mjs`.
+* **A round let go** (2026-10-12; ⌥-click on a card's `.prmove` or the header's `.hmove`, or their right-click row → `letGo` →
+  `POST /api/sessions/:id/waive` → `waiveTurn`): the chat's PRs at your move read `you: false, waived: true` — no line,
+  no count, no un-tick — until the next move (`newsIn`), which `moveTurn` reports as `released` and `setPrInfo` alerts
+  whoever had the turn before; an answer of yours (`!t.you`) drops the mark. The mark is `waived` (the key let go) on
+  the PR's `prTurns` record, so a restart keeps it. → `test/pr-turn.test.mjs`, `let-go.mjs`.
 * **A PR knows who had a hand in it** (2026-09-29): every person in `PR_FIELDS` comes with `avatarUrl(size: 48)`
   (`WHO`), and `prPeople` — pure — gives author, reviewers, commenters and pushers, newest first, at most
   `PEOPLE_MAX`, you and the bots left out; a PR the call could not see keeps the faces it had.

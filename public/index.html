@@ -1025,6 +1025,12 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .shead > .hfold { display: none; }   /* put away by fitHeadPrs where the row has no room for it */
   .shead .hmove .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .shead .hmove .n { flex: none; opacity: .7; font-weight: 500; }
+  /* ⌥ held over a "your move" — a card's line or the chat header's (2026-10-12): its tag turns red, an ✕ for its PR
+     mark, and ⌥-click lets the round go (letGo): not your move until the next one, which alerts as ever. */
+  :root[data-alt] :is(#slist .card .prmove, .shead .hmove):hover { cursor: pointer; }
+  :root[data-alt] :is(#slist .card .prmove, .shead .hmove):hover .ymove { background: var(--needs); color: #fff; }
+  :root[data-alt] :is(#slist .card .prmove, .shead .hmove):hover .ymove .ic { display: none; }
+  :root[data-alt] :is(#slist .card .prmove, .shead .hmove):hover .ymove::before { content: ''; flex: none; width: 10px; height: 10px; background: currentColor; -webkit-mask: var(--xmask) center / contain no-repeat; mask: var(--xmask) center / contain no-repeat; }
   /* Done/reopen: an icon at the end of the top row, not a bordered pill in a row of its own. Bigger, and only under
      the pointer, since 2026-09-26: it keeps its box at rest, so nothing in the row moves when it comes. */
   .act { font: inherit; font-size: var(--fs-lg); line-height: 1; width: 22px; height: 20px; padding: 0; border: 0; border-radius: var(--r-3); background: transparent;
@@ -1383,6 +1389,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .prrow .t.pending { font-weight: 400; color: var(--muted); font-style: italic; }
   .prrow .meta { flex: none; color: var(--muted); font-size: var(--fs-xs); }
   .prrow .why { flex: 0 1 auto; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent); font-size: var(--fs-xs); font-weight: 600; }
+  .prrow .why.let { color: var(--muted); font-weight: 500; }   /* a round let go (2026-10-12): still said, quietly */
   .prrow:hover .t { text-decoration: underline; }
   .prrow[hidden] { display: none; }
   #prlist .more { justify-self: start; font: inherit; font-size: var(--fs-xs); color: var(--accent); background: none; border: 0; padding: 1px 0 0 61px; cursor: pointer; }
@@ -4235,7 +4242,7 @@ const toolName = n => {
   }
   /** The chat's PRs come round to you, the newest move first. */
   const movedPrs = s => (s.prs || []).filter(p => p.turn?.you).sort((a, b) => String(b.turn.movedAt).localeCompare(String(a.turn.movedAt)));
-  const moveTip = prs => prs.map(p => `${p.label} — your move: ${p.turn.why}`).join('\n');
+  const moveTip = prs => prs.map(p => `${p.label} — your move: ${p.turn.why}`).join('\n') + '\n⌥-click: let this round go — the next move tells you';
   /** The card's line for them, after the question's, at every card size: the tag, then the newest move's #n and its
    *  reason, the others counted; none on a ticked card (the tick after the move is "seen"). */
   function moveHtml(s) {
@@ -5322,6 +5329,8 @@ const toolName = n => {
     if (ctk) { e.stopPropagation(); openSession(card.dataset.id); openExternal(ctk.dataset.url, { s: state.sessions.get(card.dataset.id) }); return; }   // …or that ticket
     const act = e.target.closest('.act');
     if (act) { e.stopPropagation(); tickDone(card.dataset.id, act.dataset.act === 'done', card, act, e.altKey); return; }
+    const mv = e.altKey && e.target.closest('.prmove');
+    if (mv) { e.stopPropagation(); letGo(state.sessions.get(card.dataset.id), mv); return; }   // ⌥ on "your move": this round let go
     const from = card.dataset.id !== state.current && flyFrom(card);
     openSession(card.dataset.id);
     if (from) flyTitle(from);
@@ -5513,7 +5522,7 @@ const toolName = n => {
   // Whose move a PR is at (the server's prTurn, 2026-09-28): `you` — pushed since your review, replied to, reviewed —
   // fills its chip, on the card and in the header, and its row says why; `them` only says so in the tooltip.
   const turnOf = pr => pr.turn ? (pr.turn.you ? 'you' : 'them') : '';
-  const turnTip = pr => !pr.turn ? '' : pr.turn.you ? `your move — ${pr.turn.why}` : pr.turn.why;
+  const turnTip = pr => !pr.turn ? '' : pr.turn.you ? `your move — ${pr.turn.why}` : pr.turn.waived ? `your move, let go this round — ${pr.turn.why}; the next move tells you` : pr.turn.why;
   const PR_ROWS = 6;   // a chat that lists PRs mentions dozens; the block shows this many and folds the rest behind "more"
   // A PR's CI on its head commit (2026-10-09, the chat header only — the cards have enough to say): GitHub's rollup of
   // its checks, a badge on the header's chip and a word on its row; none for a PR merged or closed.
@@ -5523,7 +5532,7 @@ const toolName = n => {
   const ckHtml = (pr, said = false) => { const c = prCk(pr); return c ? `<i class="ck" data-checks="${c}"><svg viewBox="0 0 16 16" aria-hidden="true">${CK_ICON[c]}</svg>${said ? '' : `<span class="vh">, CI ${c === 'pass' ? 'passed' : c === 'fail' ? 'failing' : 'running'}</span>`}</i>` : ''; };   // in words too (2026-10-12), but where the row says them (said)
   const UNLINK_TIP = '⌥-click: take it off this chat — naming it again yourself brings it back';
   const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" href="${/^https:\/\//.test(pr.url) ? esc(pr.url) : '#'}" target="_blank" rel="noopener"
-      title="${esc(`${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}${pr.turn ? `\n${turnTip(pr)}` : ''}\n${UNLINK_TIP}`)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span>${pr.turn?.you ? `<span class="why">your move · ${esc(pr.turn.why)}</span>` : ''}${prCk(pr) ? `<span class="ckw" data-checks="${prCk(pr)}">${ckHtml(pr, true)}${{ pass: 'passed', fail: 'failing', pending: 'running' }[prCk(pr)]}</span>` : ''}<span class="meta">${rel(pr.lastAt)}</span></a>`;
+      title="${esc(`${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}${pr.turn ? `\n${turnTip(pr)}` : ''}\n${UNLINK_TIP}`)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span>${pr.turn?.you ? `<span class="why">your move · ${esc(pr.turn.why)}</span>` : pr.turn?.waived ? `<span class="why let">let go · ${esc(pr.turn.why)}</span>` : ''}${prCk(pr) ? `<span class="ckw" data-checks="${prCk(pr)}">${ckHtml(pr, true)}${{ pass: 'passed', fail: 'failing', pending: 'running' }[prCk(pr)]}</span>` : ''}<span class="meta">${rel(pr.lastAt)}</span></a>`;
   /** A ticket's row under the header, after the PRs' (2026-10-08): its status, key, summary, and whose it is. */
   const ticketRow = (t, hide) => `<a class="prrow tk"${hide ? ' hidden' : ''} data-cat="${esc(t.cat)}" href="${/^https?:\/\//.test(t.url) ? esc(t.url) : '#'}" target="_blank" rel="noopener" title="${esc(`${t.url}\n${ticketTip(t)}`)}"><span class="st">${esc(t.status || t.cat)}</span><span class="num">${esc(t.key)}</span><span class="t">${esc(t.summary || t.key)}</span><span class="who${t.assignee?.me ? ' me' : ''}">${t.assignee ? esc(t.assignee.me ? 'yours' : t.assignee.name) : 'unassigned'}</span></a>`;
   // Claude Code's own /focus — "just your prompt, summary, and response", every step in between hidden — on the
@@ -5785,6 +5794,8 @@ const toolName = n => {
       const s = state.sessions.get(card?.dataset.id || state.current), url = chip.dataset.url; if (!s || !url) return null;
       return [{ t: 'Open the PR', fn: () => openExternal(url, { s }) }, { t: 'Take it off this chat', warn: true, fn: () => unlinkUrl(s, url) }];
     }
+    const hm = e.target.closest('#shead .hmove');
+    if (hm) { const s = state.sessions.get(state.current); return s && [{ t: 'Let this round go — the next move tells you', fn: () => letGo(s, $('#shead .hmove')) }]; }
     if (sq) return state.peacock[sq.dataset.cwd] ? [{ t: 'Pick a colour…', fn: () => sq.click() }, { t: 'Let go of the colour', fn: () => clearColor(sq.dataset.cwd) }] : [{ t: 'Pick a colour…', fn: () => sq.click() }];
     if (!card) return null;
     const s = state.sessions.get(card.dataset.id); if (!s) return null;
@@ -5793,6 +5804,7 @@ const toolName = n => {
       { t: 'Rename…', fn: async () => { await openSession(s.id); editTitle(state.sessions.get(s.id) || s); } },
       ...(s.done ? [{ t: 'Back on the board (↩)', fn: () => tickDone(s.id, false, card) }]
         : canTick(s) ? [{ t: 'Done', fn: () => tickDone(s.id, true, card) }, ...(s.prs?.length && !s.forGood ? [{ t: 'Done for good — its PRs forgotten', fn: () => tickDone(s.id, true, card, null, true) }] : [])] : []),
+      ...(movedPrs(s).length ? [{ t: 'Let this round of your move go', fn: () => letGo(s, card.querySelector('.state.prmove')) }] : []),
       ...((s.prs || []).length ? [{ hr: true }, ...(s.prs || []).slice(0, 6).map(pr => ({ t: `Take ${pr.label.replace(/^.*?#/, '#')} off this chat`, fn: () => unlinkUrl(s, pr.url) }))] : []),
       { hr: true }, { t: 'Copy its link', fn: () => copyText(`${location.origin}/#${s.id}`).then(ok => note(card, ok ? 'Link copied' : 'Could not copy it', !ok)) },
     ];
@@ -5849,6 +5861,24 @@ const toolName = n => {
       note(seen(el.isConnected ? el : $('#prToggle')), `Could not take it off: ${err.message}`, true);
     }), fold ? UNLINK_MS : 0);
   }
+  /** ⌥-click on a chat's "your move" (2026-10-12): its PRs at your move let go this round — not your move, nor counted,
+   *  until the next move on one, which alerts as any other (the server's waiveTurn). The line fades, then the server is
+   *  told; the chat's update takes the line away. */
+  function letGo(s, el = null) {
+    if (!s || el?.dataset.going) return;
+    if (el) el.dataset.going = '1';
+    noteMotion(s.id, 'letgo');
+    const fade = !el || REDUCED.matches ? null : el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: UNLINK_MS, easing: EASE_OUT, fill: 'forwards', id: 'letgo' });
+    setTimeout(() => api('POST', `/api/sessions/${s.id}/waive`).catch(err => {
+      fade?.cancel(); if (el) delete el.dataset.going;
+      note(seen(el), `Could not let it go: ${err.message}`, true);
+    }), fade ? UNLINK_MS : 0);
+  }
+  $('#shead').addEventListener('click', e => {   // ⌥ on the header's "your move": this round let go
+    const mv = e.altKey && e.target.closest('.hmove'); if (!mv) return;
+    e.preventDefault(); e.stopPropagation();
+    letGo(state.sessions.get(state.current), mv);
+  }, true);
   $('#prlist').addEventListener('click', e => {   // before #chat's link handler, which would open the PR
     const r = e.altKey && e.target.closest('.prrow[data-url]'); if (!r) return;
     e.preventDefault(); e.stopPropagation();

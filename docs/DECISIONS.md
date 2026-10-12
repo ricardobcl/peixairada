@@ -5,6 +5,25 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-12. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-12, night, later — a round of your move let go
+
+Ricardo: "if I click on option and hover on "your move" on a card or chat tile, an X should be there to dismiss this
+round (e.g. I don't have anything to do just yet, but want an alert for the next event that trigger "your move")".
+
+* **⌥ over *your move* is an ✕** — on the card's line and on the chat header's (the chat's tile, with tiles on): the
+  tag turns red and its PR mark an ✕, as ⌥ over the ✓ shows done for good's and ⌥ over a PR chip its unlink. The whole
+  line is the target, not the 15 px tag; ⌥-click lets the round go for every PR of the chat at your move — the card
+  says one *your move*, so all of them, or the tag would stay for the next.
+* **Let go is the PR's, not the chat's**: the move is the PR's, so every chat that names it stops saying it. Not your
+  move, not counted (the Dock, the menu bar, the funnel), no un-tick — but still said, quietly, on the PR's row under
+  the header (*let go · pushed since your review*) and its tooltips, so it is not lost.
+* **Until the next move**, which is a move like any other: what counts as one is what already did (`newsIn`: a new
+  head, a newer word of theirs, a new request), its alert said even though the turn was yours before (`released` —
+  the alert had only ever been for a turn coming *from* theirs, or a chat you had ticked). A word of yours that answers
+  it ends the round and the mark. Kept on the PR's `prTurns` record, so a restart lets nothing back.
+* No undo: the next move brings it back, and a mistaken ⌥-click costs one round's line. Done for good is the other
+  way to quiet a PR — for the chat, and for as long as its tick stands.
+
 ## Decisions of 2026-10-12, night — a theme is worn whatever macOS shows
 
 Ricardo: "the dark and light themes are restricted to the system light/dark setting, but they should be decoupled".
