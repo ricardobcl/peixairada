@@ -85,7 +85,8 @@ GitHub and VS Code open in the chat in the Mac app; in a browser they open in a 
   its newest event; a pixel fish in the status bar swims back and forth, faster the more agents are at work, blurps bubbles ahead of
   itself and chases them down (it wiggles when the pointer pats it), and floats belly-up while the board has lost its server. In the app the trackpad bumps as a divider snaps; sounds, if you switch them on. All of it stills under the system's
   *reduce motion*.
-- 📊 **A status bar** — along the window's foot: the search, the connection, what asks you, the faces on your PRs,
+- 📊 **A status bar** — along the window's foot: the search, the connection, what asks you, the board's own update
+  (new commits waiting and why, each step with a bar while it runs, a page waiting to be reloaded), the faces on your PRs,
   your plan's limits (or its monthly spend cap) as small pies, keeping the Mac awake (with the lid closed too,
   by Touch ID where sudo takes it; greyed out when the Mac wouldn't sleep anyway, as on a charger set never to), CPU and memory as pies too, optionally what Claude's processes hold — and the time, at the far right.
 

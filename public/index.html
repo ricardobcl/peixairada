@@ -1153,6 +1153,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #sbar .aw.moot { color: var(--muted); font-weight: inherit; }   /* nothing to hold off (2026-10-09): on, muted all the same */
   #sbar .conn { cursor: pointer; }
   #sbar .cl { color: var(--accent); font-variant-numeric: tabular-nums; } #sbar .cl .ic { width: 13px; height: 13px; fill: currentColor; } #sbar .cl b { color: var(--ink); font-weight: 650; }
+  /* the board's own update (2026-10-12): new commits waiting, the update under way step by step, a page to reload */
+  #sbar .upg { color: var(--accent); font-variant-numeric: tabular-nums; } #sbar .upg .ic { width: 13px; height: 13px; flex: none; } #sbar .upg .ic:not(.st) { fill: currentColor; } #sbar .upg .ic.st { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  #sbar .upg.run .ic { animation: upgspin 1.1s linear infinite; } @keyframes upgspin { to { rotate: 360deg; } }
+  #sbar .upg i { display: block; flex: none; width: 40px; height: 4px; border-radius: var(--r-1); background: linear-gradient(90deg, var(--accent) calc(var(--p, 0) * 100%), var(--utrack) 0); }
+  #sbar .upg.err { color: var(--needs); } #sbar .upg.done { color: var(--muted); }
   #sbar .cl i { display: block; flex: none; width: 40px; height: 4px; border-radius: var(--r-1); background: linear-gradient(90deg, var(--accent) calc(var(--p, 0) * 100%), var(--utrack) 0); }
   #sbar .sbpanel { position: absolute; bottom: calc(100% + 6px); right: 8px; width: 300px; box-sizing: border-box; padding: 10px 12px 12px; border-radius: var(--r-4); background: var(--panel); box-shadow: 0 10px 34px rgba(0, 0, 0, .25); color: var(--muted); font-size: var(--fs-sm); white-space: normal; }
   :root[data-sbar] #usage { display: none; }
@@ -2127,6 +2132,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     .card.landed::before { animation: none; content: none; }   /* no wash */
     .dot.working, .dot.needs-input { animation: none; }
     .pix, .pix svg { animation: none; }
+    #sbar .upg.run .ic { animation: none; }   /* the update under way: its words and its bar say it */
     #sbSwim .ft, #sbSwim.rest .swimmer, #sbSwim .food { animation: none; }   /* the fish still, in the lane's left — and nothing to eat (no swim, no blurp) */
     :is(.brand, #sbar .conn) .logo, :is(.brand, #sbar .conn) .logo .fishg { animation: none !important; }   /* belly-up, still; upright, at once */
     :is(.brand.off, #sbar .conn.off) .logo .fishg { transform: scaleY(-1); }
@@ -2493,12 +2499,25 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   for (const t of ['keydown', 'pointerdown', 'wheel']) addEventListener(t, () => { inputAt = Date.now(); }, { capture: true, passive: true });
   const shortSha = h => h ? h.slice(0, 7) : '?';
   const UPD_PARTS = { deps: 'the packages', server: 'the server', page: 'the page', app: 'the app' };
+  const UPD_STEPS = { pull: 'pulling', deps: 'installing the packages', page: 'trying the new page', server: 'trying the new server', restart: 'restarting the server', build: 'rebuilding the app' };
+  const many = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`;
+  /** The update's run as words: the step it is at and how far that is (`p`, 0–1), or null while nothing runs. A restart
+   *  or a page waiting on one is said for a minute at most — a restart that never came is not for ever. */
+  function updRun(u) {
+    if (!u) return null;
+    const n = u.steps?.length || 0, at = k => n ? (u.steps.indexOf(k) + .5) / n : null;
+    if (u.busy === 'updating') return { say: UPD_STEPS[u.steps?.[u.step]] || 'updating', p: n && u.step >= 0 ? (u.step + .5) / n : null, of: n && u.step >= 0 ? `${u.step + 1} of ${n}` : '' };
+    const fresh = u.last && Date.now() - Date.parse(u.last.at) < 60_000;
+    if ((u.restarting || reload.why === 'server') && fresh) return { say: UPD_STEPS.restart, p: at('restart') };
+    if (u.building) return { say: UPD_STEPS.build, p: null };
+    return null;
+  }
   /** The settings' line for the update, and whether its button updates (rather than looks). */
   function updateSay(u) {
     if (!u || u.checkout === null) return { say: 'not looked yet' };
     if (u.checkout === false) return { say: 'this board does not run from a git checkout — <code>mac/build.sh install</code> brings the app up to date', none: true };
-    const up = esc(u.upstream || 'the remote'), many = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`, fresh = `${many(u.behind, 'new commit')} on ${up}`;
-    let say = u.busy === 'checking' ? `looking at ${up}…` : u.busy === 'updating' ? `updating to <code>${shortSha(u.up)}</code>…` : u.error ? `<span class="uerr">${esc(u.error)}</span>` : ({
+    const up = esc(u.upstream || 'the remote'), fresh = `${many(u.behind, 'new commit')} on ${up}`, run = updRun(u);
+    let say = u.busy === 'checking' ? `looking at ${up}…` : u.busy === 'updating' ? `updating to <code>${shortSha(u.up)}</code> — ${run.say}${run.of ? ` (${run.of})` : ''}…` : u.error ? `<span class="uerr">${esc(u.error)}</span>` : ({
       detached: 'the checkout is on no branch — nothing to follow',
       'no-upstream': `<b>${esc(u.branch)}</b> follows no remote branch — nothing to pull`,
       current: u.ahead ? `<code>${shortSha(u.head)}</code> is ${many(u.ahead, 'commit')} ahead of ${up} — nothing to pull` : `up to date · <code>${shortSha(u.head)}</code>`,
@@ -2508,11 +2527,34 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       held: `<code>${shortSha(u.held?.to)}</code> was not kept: ${esc(u.held?.why || '')} — the next commit is tried`,
       busy: `${fresh} — pulled once nothing has been done on the board for ${Math.round(u.quiet / 60_000)} min`,
     })[u.why] || `<code>${shortSha(u.head)}</code>${u.checkedAt ? '' : ' · not looked yet'}`;
+    if (run && u.busy !== 'updating') say += ` · ${run.say}…`;
+    else if (u.last?.build?.done && !u.last.build.ok) say += ` · <span class="uerr">the app was not rebuilt: ${esc(u.last.build.why || '')}</span> — <code>mac/build.sh install</code>`;
     if (u.pending?.length) say += ` · ${u.pending.map(k => k === 'server' ? 'restart the server to wear it (<code>scripts/launchd.sh restart</code>)' : 'rebuild the app to wear it (<code>mac/build.sh install</code>)').join(', ')}`;
     if (u.checkedAt && !u.busy) say += ` · looked ${rel(u.checkedAt)} ago`;
     if (!u.every) say += ' · it looks only when asked: this server is not the login agent';
-    if (u.last) say += `<br>last updated ${rel(u.last.at)} ago, ${many(u.last.count, 'commit')}${u.last.parts.length ? ` — ${u.last.parts.map(k => UPD_PARTS[k]).join(', ').replace(/, ([^,]*)$/, ' and $1')} started again` : ''}`;
+    if (u.last) say += `<br>last update ${rel(u.last.at)} ago: ${many(u.last.count, 'commit')}${u.last.parts.length ? `, touching ${u.last.parts.map(k => UPD_PARTS[k]).join(', ').replace(/, ([^,]*)$/, ' and $1')}` : ''}`;
     return { say, apply: u.behind > 0 && !u.ahead && ['off', 'busy', 'held'].includes(u.why) };
+  }
+  /** The status bar's word on the update (2026-10-12): what it is doing, step by step; a page that waits to be reloaded
+   *  (a click reloads it); an update that failed or was held back; new commits not taken, and why; for a minute, what
+   *  came. Nothing while it is up to date. A click opens Settings › Updates. */
+  function updSeg() {
+    const u = state.update; if (!u?.checkout) return '';
+    const seg = (cls, icon, words, tip, p = null) => `<button class="seg upg ${cls}" title="${esc(tip)} — click ${cls === 'page' ? 'to reload it now' : 'for Settings › Updates'}">${icon}<span>${words}</span>${p == null ? '' : `<i style="--p:${p.toFixed(2)}"></i>`}</button>`;
+    const run = updRun(u), tip = updateSay(u).say.replace(/<br>/g, ' · ').replace(/<[^>]+>/g, '');
+    if (run) return seg('run', ICON.reload, `${esc(run.say)}…`, tip, run.p);
+    if (reload.want) return seg('page', ICON.reload, 'updated · reload the page', `The board's page was updated — it reloads by itself once you leave it be (${{ dialog: 'a dialog is up', typing: 'a box has the keyboard', pane: 'a page of the pane is in front', input: 'you are at it' }[reload.why] || 'any moment'})`);
+    if (u.failed || u.why === 'held') return seg('err', ICON.reload, u.why === 'held' ? 'update held back' : 'update failed', tip);
+    if (u.last?.build?.done && !u.last.build.ok) return seg('err', ICON.reload, 'the app was not rebuilt', tip);
+    const why = { off: 'updates off', changes: 'changes here', diverged: 'diverged', busy: 'once you rest' }[u.why];
+    if (u.behind > 0 && why) return seg('new', ICON.download, `${many(u.behind, 'new commit')} · ${why}`, tip);
+    if (u.last && Date.now() - Date.parse(u.last.at) < 60_000) return seg('done', ICON.reload, `updated · ${many(u.last.count, 'commit')}`, tip);
+    return '';
+  }
+  function updatesOpen() {
+    settingsOpen(true);
+    $('#settings .stabs [data-tab="board"]').click();
+    $('#updRow').scrollIntoView({ block: 'center' });
   }
   function showUpdate() {
     const u = state.update, w = updateSay(u), b = $('#updBtn');
@@ -2526,9 +2568,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     if (!u) return;
     state.update = u; showUpdate();
     if (!reload.want && u.last?.parts?.includes('page') && Date.parse(u.last.at) > LOADED_AT) { reload.want = u.last.to; reload.since = Date.now(); reloadSoon(); }
+    renderBar();
   }
   function reloadBusy() {
-    if (!bar.conn || (state.update?.restarting && Date.now() - reload.since < 60_000)) return 'server';
+    if (!bar.conn || state.update?.busy || (state.update?.restarting && Date.now() - reload.since < 60_000)) return 'server';   // the update still under way, or its restart
     if (document.hidden || Date.now() - updAsked < 5 * 60_000) return null;
     if (document.querySelector('dialog[open]')) return 'dialog';
     if (document.activeElement?.matches('textarea:not(.xterm-helper-textarea), input:not([type=checkbox], [type=radio], [type=range], [type=color], [type=button]), [contenteditable]:not([contenteditable=false])')) return 'typing';
@@ -2539,8 +2582,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   function reloadSoon() {
     clearTimeout(reload.t);
     if (!reload.want) return;
-    reload.why = reloadBusy();
+    const was = reload.why; reload.why = reloadBusy();
     if (!reload.why) { location.reload(); return; }
+    if (was !== reload.why) renderBar();
     reload.t = setTimeout(reloadSoon, 1000);
   }
   $('#autoUpdate').addEventListener('change', e => {
@@ -3236,6 +3280,7 @@ const toolName = n => {
       ...(ask ? [`<button class="seg ask" title="chats waiting on your answer — click for the next one">${`<em>${rn('asking', ask)} asking you</em>`}</button>`] : []),
       ...(mons ? [`<span class="seg" title="monitors and background commands running">${rn('mons', mons)} watching</span>`] : [])];
     for (const c of state.clones.values()) left.push(`<span class="seg cl" title="gh repo clone ${esc(c.ref)} into ${esc(homePath(c.dir))} — ${esc(cloneSays(c))}">${ICON.download}cloning <b>${esc(c.ref)}</b><i style="--p:${(c.percent || 0) / 100}"></i>${c.percent || 0}%</span>`);
+    left.push(updSeg());
     const st = bar.stats, want = prefs.barStats || [], stat = [], right = [];
     if (want.includes('cpu')) stat.push(sbMeter('CPU', st.cpu ?? 0, st.cpu == null ? '…' : `${st.cpu}%`, st.cpu >= 90 ? 'var(--needs)' : 'var(--watch)', 'every core\'s time spent busy, the last 3 s', st.cpu == null ? null : `${rn('cpu', st.cpu)}%`));
     if (want.includes('mem')) { const pct = st.mem ? Math.round(st.mem.used / st.mem.total * 100) : null; stat.push(st.mem ? sbMeter('RAM', pct, `${pct}%`, pct >= 90 ? 'var(--needs)' : 'var(--watch)', `memory used, as Activity Monitor counts it: ${fmtBytes(st.mem.used)} of ${fmtBytes(st.mem.total)}`, `${rn('mem', pct)}%`) : sbMeter('RAM', 0, '…', 'var(--watch)')); }
@@ -3289,6 +3334,7 @@ const toolName = n => {
     if (e.target.closest('.us')) { bar.open = !bar.open; renderBar(); return; }
     if (e.target.closest('.conn')) { aboutOpen(); return; }
     if (e.target.closest('.seg.ask')) { nextAsking(); return; }   // (2026-10-12) the count opens the chats it counts, one after another
+    if (e.target.closest('.seg.upg')) { if (reload.want && reload.why !== 'server') location.reload(); else updatesOpen(); return; }
     const aw = e.target.closest('#sbAwake'); if (aw) { setAwake({ awake: !state.awake.awake }, aw); return; }
     const lid = e.target.closest('#sbLid'); if (lid && !state.lidAsking) setAwake({ lid: !state.awake.lid }, lid);
   });

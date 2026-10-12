@@ -39,6 +39,17 @@ turn-off in settings".
   every browser. Settings › Board › *Updates* says where the checkout stands; the About box its commit.
 * Not done: the agent's plist is not installed again when `scripts/launchd.sh` changes (`launchd.sh install` by hand),
   and the app is rebuilt when the update is taken, not at its own quiet moment — the build takes about a minute.
+* **The status bar says it** — Ricardo, after the first cut: "does it says somewhere (like status bar) that an updated
+  is available and does it show progress when its happening?" (it did not: only the settings' line). A segment in the
+  bar's left, after the clones and like them: *N new commits* and why they wait (*updates off*, *changes here*,
+  *diverged*, *once you rest*); the update under way as its step — pulling, installing the packages, trying the new
+  page, trying the new server, rebuilding the app, restarting the server — with a bar for how far, and a turning mark;
+  *updated · reload the page* while the page waits to be left be (a click reloads it now); *update held back*, *update
+  failed*, *the app was not rebuilt*; for a minute after, *updated · N commits*. Nothing while it is up to date — the
+  bar is for what wants a look. A click opens Settings › Updates, whose line says the same with the step's number.
+* **The app's rebuild is followed to its end**, though the server's restart usually comes a second after it starts:
+  the build's pid is kept on the update's record, the new server watches it, and build.sh's last word (`installed →`)
+  says whether it went — a failure is said in the bar and the settings, with `mac/build.sh install` to run by hand.
 
 ## Decisions of 2026-10-12, night, later — a round of your move let go
 

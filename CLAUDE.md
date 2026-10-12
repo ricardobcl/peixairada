@@ -147,7 +147,10 @@ for `$HOME`'s home and the account's.
   drawer or anything done on the board (`lastTouchAt`); *check now* (`asked`) skips that wait, *update now* (`apply`)
   the switch and the hold too (`whyNot`). What the commits touched starts again (`updateParts`): `npm install`, the
   agent (`launchd.sh restart`, detached), the app (`mac/build.sh install`, detached, `mac/` only), the page — it reloads
-  itself once left be (`takeUpdate`, `reloadBusy`: at once if asked for there; never before the new server is back).
+  itself once left be (`takeUpdate`, `reloadBusy`: at once if asked for there; never mid-update nor before the new
+  server is back). **Its progress is the status bar's** (`updSeg`, `updRun`): the server's `steps`/`step`, `restarting`,
+  `building` (the app's rebuild followed by its pid across the restart, `watchBuild`, ended by its log's `installed →`),
+  `failed`; new commits not taken and why; a page waiting (a click reloads it).
   **First the new page compiles and the new server starts on a spare port** (`preflight`, the checkout's
   lib/testserver.mjs); one that does not is undone (`git reset --keep`) and held (`updateHeld`) until a newer commit.
   `UPDATE_DIR`, `UPDATE_RESTART_BIN`, `UPDATE_BUILD_BIN`, `NPM_BIN` are the tests'. → `test/update.test.mjs`,
@@ -453,7 +456,8 @@ for `$HOME`'s home and the account's.
   one. `peix.state().timeline`. → `timeline.mjs`.
 * **The status bar is the machine at the window's foot** (2026-10-09; `#sbar`, `renderBar`, `body`'s grid row 2;
   `prefs.statusBar` → `<html data-sbar>`, on): `#sbFind` (`#filters` moved in by `dockBar`, handlers and all),
-  `#sbLeft` (the connection, `bar.conn`, its click the About box; the asking and monitor counts while any), `#sbPeople`
+  `#sbLeft` (the connection, `bar.conn`, its click the About box; the asking and monitor counts while any; the update,
+  `updSeg`), `#sbPeople`
   (`#people` moved in), `#sbSwim`, and `#sbRight` — the machine (`prefs.barStats`; `GET /api/stats?want=cpu,mem,claude`
   every 3 s while shown, `machineStats`), the usage as pie meters (`sbMeter`; a click lifts its rows, `usageRows`),
   both awake switches (`#sbAwake`, `#sbLid`), and the clock (24-hour, `hourCycle: 'h23'`; `clockTick`). `#sbLeft` and

@@ -2388,7 +2388,9 @@ const APP_DIR = '/Applications/peixAIrada.app';
 const restartBin = process.env.UPDATE_RESTART_BIN || (UNDER_AGENT ? join(UPDATE_DIR, 'scripts', 'launchd.sh') : '');
 const buildBin = process.env.UPDATE_BUILD_BIN || (UNDER_AGENT && existsSync(APP_DIR) ? join(UPDATE_DIR, 'mac', 'build.sh') : '');
 let lastTouchAt = 0;   // the last key sent to a drawer, or anything the board was asked to do (the HTTP handler)
-const upd = { busy: null, checkout: null, checkedAt: null, error: null, why: null, pending: [] };
+// `steps`/`step`: what the update under way does and where it is (the status bar's progress); `failed`: its error, when the
+// update itself went wrong — not a look that could not reach the remote; `building`: the app's rebuild running.
+const upd = { busy: null, checkout: null, checkedAt: null, error: null, failed: null, why: null, pending: [], steps: null, step: -1, building: false };
 let updRetry = null;
 /** What a change to these files asks for, in the order it is done — pure. `deps`: npm install; `server`: a restart;
  *  `page`: a reload; `app`: a rebuild. The rest (docs, tests, the harness) asks for nothing. */
@@ -2454,25 +2456,30 @@ function whyNot(asked, apply) {
 async function checkUpdate({ asked = false, apply = false } = {}) {
   if (upd.busy) return updateState();
   clearTimeout(updRetry); updRetry = null;
-  upd.busy = 'checking'; sayUpdate();
+  upd.busy = 'checking'; upd.steps = null; upd.step = -1; sayUpdate();
   try {
     Object.assign(upd, await readCheckout(), { error: null });
     // its branch alone, and no FETCH_HEAD: a `git pull` of yours at the same moment reads its own
     if (upd.upstream && upd.remote && upd.merge) { await gitIn(['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', upd.remote, upd.merge], 120_000); Object.assign(upd, await readCheckout()); }
     upd.checkedAt = new Date().toISOString();
     upd.why = whyNot(asked, apply);
-    if (!upd.why) { upd.busy = 'updating'; sayUpdate(); await applyUpdate(); }
-  } catch (e) { upd.error = errText(e); console.error(`[peixairada] update: ${upd.error}`); }
+    if (upd.why === 'current') upd.failed = null;
+    if (!upd.why) { upd.busy = 'updating'; upd.failed = null; await applyUpdate(); }
+  } catch (e) { upd.error = errText(e); if (upd.busy === 'updating') upd.failed = upd.error; console.error(`[peixairada] update: ${upd.error}`); }
   finally { upd.busy = null; sayUpdate(); }
   return updateState();
 }
 async function applyUpdate() {
   const from = upd.head, to = upd.up, count = upd.behind;
   const parts = updateParts((await gitIn(['diff', '--name-only', from, to])).split('\n').filter(Boolean));
+  const has = k => parts.includes(k), checkPage = has('page') && existsSync(join(UPDATE_DIR, 'scripts', 'check-page.mjs'));
+  upd.steps = ['pull', ...(has('deps') ? ['deps'] : []), ...(checkPage ? ['page'] : []), ...(has('server') ? ['server'] : []), ...(has('app') && buildBin ? ['build'] : []), ...(has('server') && restartBin ? ['restart'] : [])];
+  const step = k => { upd.step = upd.steps.indexOf(k); sayUpdate(); };
+  step('pull');
   await gitIn(['merge', '--ff-only', '--quiet', to], 60_000);
   try {
-    if (parts.includes('deps')) await npmInstall();
-    await preflight(parts, to);
+    if (has('deps')) { step('deps'); await npmInstall(); }
+    await preflight(parts, to, step);
   } catch (e) {
     const undo = await gitIn(['reset', '--quiet', '--keep', from]).then(() => '', err => ` — and undoing it failed: ${errText(err)}`);
     if (parts.includes('deps')) await npmInstall().catch(() => {});
@@ -2487,8 +2494,34 @@ async function applyUpdate() {
   Object.assign(upd, await readCheckout(), { why: 'current' });
   console.log(`[peixairada] updated ${from.slice(0, 7)} → ${to.slice(0, 7)} (${count} commit${count === 1 ? '' : 's'}): ${parts.join(', ') || 'nothing to start again'}`);
   upd.pending = parts.filter(p => p === 'server' ? !restartBin : p === 'app' ? !buildBin && existsSync(APP_DIR) : false);
-  if (parts.includes('app') && buildBin) { detach(buildBin, ['install', '--detached']); console.log('[peixairada] update: rebuilding the app — it quits and opens again'); }
-  if (parts.includes('server') && restartBin) { upd.restarting = true; setTimeout(() => detach(restartBin, ['restart', '--detached']), 1000); }   // the answer and the event go out first
+  if (has('app') && buildBin) { step('build'); startBuild(); }
+  if (has('server') && restartBin) { upd.restarting = true; step('restart'); setTimeout(() => detach(restartBin, ['restart', '--detached']), 1000); }   // the answer and the event go out first
+}
+/** The app's rebuild, followed to its end: by its exit while this server is its parent, else — after the restart that
+ *  usually comes with it — by its pid every few seconds and its log's last word (build.sh says `installed →`). Kept on
+ *  the update's record ({pid, at, done, ok, why}), so the settings and the status bar say how it went. */
+const BUILD_LOG = join(dirname(STATE_FILE), 'app-build.log');
+function startBuild() {
+  try { writeFileSync(BUILD_LOG, ''); } catch {}
+  const p = detach(buildBin, ['install', '--detached'], BUILD_LOG);
+  if (!p?.pid) { updateLast.build = { at: new Date().toISOString(), done: new Date().toISOString(), ok: false, why: `${basename(buildBin)} did not start` }; saveState(); return; }
+  console.log('[peixairada] update: rebuilding the app — it quits and opens again');
+  updateLast.build = { pid: p.pid, at: new Date().toISOString() }; saveState();
+  upd.building = true;
+  p.once('exit', code => buildEnded(code));
+}
+function buildEnded(code = null) {
+  const b = updateLast?.build; if (!b || b.done) return;
+  let tail = ''; try { tail = readFileSync(BUILD_LOG, 'utf8').trim(); } catch {}
+  const ok = code === 0 || (code === null && /installed → /.test(tail));
+  updateLast.build = { ...b, done: new Date().toISOString(), ok, ...(ok ? {} : { why: (tail.split('\n').pop() || `it exited ${code}`).slice(0, 200) }) };
+  upd.building = false; saveState(); sayUpdate();
+  console.log(`[peixairada] update: the app ${ok ? 'rebuilt' : `was not rebuilt — ${updateLast.build.why}`}`);
+}
+function watchBuild() {
+  const b = updateLast?.build; if (!b || b.done) return;
+  if (b.pid && pidAlive(b.pid)) { if (!upd.building) { upd.building = true; sayUpdate(); } setTimeout(watchBuild, 3000); }
+  else buildEnded();
 }
 async function npmInstall() {
   const beside = join(dirname(process.execPath), 'npm');
@@ -2498,10 +2531,12 @@ async function npmInstall() {
 }
 /** The new code, tried before it is kept: the page's script compiled, the server started on a spare port with a state
  *  of its own (the tests' throwaway server, imported fresh from the checkout) and its page asked for. */
-async function preflight(parts, to) {
+async function preflight(parts, to, step = () => {}) {
   const check = join(UPDATE_DIR, 'scripts', 'check-page.mjs');
+  if (parts.includes('page') && existsSync(check)) step('page');
   if (parts.includes('page') && existsSync(check)) await execFileP(process.execPath, [check, join(UPDATE_DIR, 'public', 'index.html')], { cwd: UPDATE_DIR, env: updateEnv(), timeout: 60_000 }).catch(e => { throw new Error(`its page does not compile (${(String(e.stderr || '').trim().split('\n')[0] || errText(e)).replace(`${UPDATE_DIR}/`, '').slice(0, 200)})`); });
   if (!parts.includes('server')) return;
+  step('server');
   const { startTestServer } = await import(`${pathToFileURL(join(UPDATE_DIR, 'lib', 'testserver.mjs')).href}?${to}`);
   let srv;
   try { srv = await startTestServer({ env: { UPDATE_EVERY_MS: '0' } }); }
@@ -2510,9 +2545,8 @@ async function preflight(parts, to) {
   finally { await srv.stop(); }
 }
 /** Run what restarts or rebuilds, cut loose: its own process group (the agent's restart ends this process, and launchd
- *  the job's group with it), its output in the state folder's update.log. */
-function detach(bin, args) {
-  const log = join(dirname(STATE_FILE), 'update.log');
+ *  the job's group with it), its output in a log of the state folder's. The child, or null. */
+function detach(bin, args, log = join(dirname(STATE_FILE), 'update.log')) {
   try {
     mkdirSync(dirname(log), { recursive: true });
     const fd = openSync(log, 'a');
@@ -2520,8 +2554,9 @@ function detach(bin, args) {
       const p = spawn(bin, args, { cwd: UPDATE_DIR, env: updateEnv(), detached: true, stdio: ['ignore', fd, fd] });
       p.on('error', e => console.error(`[peixairada] update: ${basename(bin)} did not start — ${e.message}`));
       p.unref();
+      return p;
     } finally { closeSync(fd); }
-  } catch (e) { console.error(`[peixairada] update: could not run ${basename(bin)} — ${e.message}`); }
+  } catch (e) { console.error(`[peixairada] update: could not run ${basename(bin)} — ${e.message}`); return null; }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -3471,7 +3506,8 @@ pollRepos();
 setInterval(pollRepos, PEACOCK_POLL_MS);
 setInterval(reloadConfig, CONFIG_POLL_MS);   // a stat against the board's own record of it: a save-by-rename, a file not there yet, one made and gone between two looks
 if (VSWEB_FRESH_MS > 0) { setTimeout(freshenVsWeb, Math.min(90_000, VSWEB_FRESH_MS)); setInterval(freshenVsWeb, VSWEB_FRESH_MS); }   // VS Code Web on the newest build, before you open it
-readCheckout().then(co => { Object.assign(upd, co); sayUpdate(); }, e => { upd.error = errText(e); });   // where the checkout stands, for the settings, before the first look
+readCheckout().then(co => { Object.assign(upd, co); sayUpdate(); }, e => { upd.error = errText(e); });
+watchBuild();   // an app's rebuild that outlived the restart it came with   // where the checkout stands, for the settings, before the first look
 if (UPDATE_EVERY_MS > 0) { setTimeout(checkUpdate, Math.min(60_000, UPDATE_EVERY_MS)); setInterval(checkUpdate, UPDATE_EVERY_MS); }   // the board's own new commits (checkUpdate)
 for (const s of sessions.values()) if (s.alive) scanAgents(s);
 // An agent gone quiet stops counting; a task past its expiry stops running. Both are only visible on a push, and

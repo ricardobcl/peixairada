@@ -6,7 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sleep, startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
@@ -29,13 +29,15 @@ function project() {
   git(root, 'init', '-q', '--bare', '-b', 'main', origin);
   git(dev, 'remote', 'add', 'origin', origin); git(dev, 'push', '-q', '-u', 'origin', 'main');
   git(root, 'clone', '-q', origin, co);
-  const stand = name => { const f = join(root, name); writeFileSync(f, `#!/bin/sh\necho "${name} $*" >> "${marks}"\n`); chmodSync(f, 0o755); return f; };
-  const env = { UPDATE_DIR: co, UPDATE_RESTART_BIN: stand('restart'), UPDATE_BUILD_BIN: stand('build'), NPM_BIN: stand('npm') };
+  const stand = (name, then = '') => { const f = join(root, name); writeFileSync(f, `#!/bin/sh\necho "${name} $*" >> "${marks}"\n${then}`); chmodSync(f, 0o755); return f; };
+  // the app's build as build.sh ends: `installed →`, or a compiler's complaint; slow when asked to (a file says so)
+  const build = stand('build', `[ -f "${root}/build-slow" ] && sleep 2\n[ -f "${root}/build-fails" ] && { echo "swiftc: error: no such module 'Cocoa'"; exit 1; }\necho "installed → /Applications/peixAIrada.app"\n`);
+  const env = { UPDATE_DIR: co, UPDATE_RESTART_BIN: stand('restart'), UPDATE_BUILD_BIN: build, NPM_BIN: stand('npm') };
   /** a commit on origin, as from someone else's machine; its sha */
   const push = (files, msg = 'a change') => { write(dev, files); git(dev, 'add', '-A'); git(dev, 'commit', '-q', '-m', msg); git(dev, 'push', '-q'); return git(dev, 'rev-parse', 'HEAD'); };
   const head = () => git(co, 'rev-parse', 'HEAD');
   const asked = () => existsSync(marks) ? readFileSync(marks, 'utf8').trim().split('\n') : [];
-  return { root, co, env, git, write, push, head, asked };
+  return { root, co, env, git, write, push, head, asked, flag: (name, on) => on ? writeFileSync(join(root, name), '') : rmSync(join(root, name), { force: true }) };
 }
 
 test('what a change asks for: packages, the server, the page, the app — and nothing for the rest', () => {
@@ -62,25 +64,41 @@ test('a pull, asked for: fast-forwarded, what it touched started again, a commit
     assert.deepEqual([st.why, st.error, st.behind, st.last.count, st.last.parts, st.last.to], ['current', null, 0, 1, ['page'], a]);
     assert.deepEqual(p.asked(), [], 'nothing restarted for a page');
 
-    // the server and the app: the agent restarted, the app rebuilt
-    const b = p.push({ 'server.mjs': TINY + '// b\n', 'mac/Sources/main.swift': readFileSync(join(ROOT, 'mac/Sources/main.swift'), 'utf8') + '// b\n' }, 'the server and the app');
+    // the server and the app: the agent restarted, the app rebuilt — each a step the status bar says
+    const swift = readFileSync(join(ROOT, 'mac/Sources/main.swift'), 'utf8');
+    const b = p.push({ 'server.mjs': TINY + '// b\n', 'mac/Sources/main.swift': swift + '// b\n' }, 'the server and the app');
     st = await look();
     assert.deepEqual([p.head(), st.last.parts, st.restarting], [b, ['server', 'app'], true]);
+    assert.deepEqual([st.steps, st.step], [['pull', 'server', 'build', 'restart'], 3], 'the steps, and the last one reached');
     await waitFor(() => p.asked().length === 2, { what: 'the restart and the build' });
     assert.deepEqual(p.asked().sort(), ['build install --detached', 'restart restart --detached']);
+    st = await waitFor(async () => { const b = (await srv.api('api/update')).body; return b.last.build?.done && b; }, { what: 'the build\'s end' });
+    assert.deepEqual([st.building, st.last.build.ok], [false, true]);
+
+    // a rebuild that outlives the server's restart: followed by the new server, and one that fails is said
+    p.flag('build-slow', true); p.flag('build-fails', true);
+    p.push({ 'mac/Sources/main.swift': swift + '// b2\n' }, 'the app again');
+    st = await look();
+    assert.equal(st.building, true, 'building');
+    await srv.restart();
+    st = (await srv.api('api/update')).body;
+    assert.deepEqual([st.building, st.last.build.done], [true, undefined], 'the new server knows the build still runs');
+    st = await waitFor(async () => { const b = (await srv.api('api/update')).body; return b.last.build?.done && b; }, { timeout: 10_000, what: 'the build\'s end, seen from the new server' });
+    assert.deepEqual([st.building, st.last.build.ok, st.last.build.why], [false, false, "swiftc: error: no such module 'Cocoa'"]);
+    p.flag('build-slow', false); p.flag('build-fails', false);
 
     // a server that does not start: undone, and held back until a newer commit comes
-    const c = p.push({ 'server.mjs': "throw new Error('boom: this server does not start');\n" }, 'a broken server');
+    const kept = p.head(), c = p.push({ 'server.mjs': "throw new Error('boom: this server does not start');\n" }, 'a broken server');
     st = await look();
-    assert.equal(p.head(), b, 'undone');
+    assert.equal(p.head(), kept, 'undone');
     assert.match(st.error, new RegExp(`^${c.slice(0, 7)} was not kept: its server did not start \\(.*boom: this server does not start`));
-    assert.deepEqual([st.why, st.held.to, st.behind], ['held', c, 1]);
+    assert.deepEqual([st.why, st.held.to, st.behind, st.failed], ['held', c, 1, st.error], 'the update itself failed: the status bar says so');
     assert.equal(p.git(p.co, 'status', '--porcelain'), '', 'the checkout as it was');
     st = await look();
-    assert.deepEqual([st.why, st.error, p.head()], ['held', null, b], 'asked again: still held, and said without an error');
+    assert.deepEqual([st.why, st.error, p.head()], ['held', null, kept], 'asked again: still held, and said without an error');
     const d = p.push({ 'server.mjs': TINY + '// d\n' }, 'the fix');
     st = await look();
-    assert.deepEqual([p.head(), st.held, st.last.count], [d, null, 2], 'the next commit taken, the held one with it');
+    assert.deepEqual([p.head(), st.held, st.failed, st.last.count], [d, null, null, 2], 'the next commit taken, the held one with it');
 
     // a page whose script does not compile: held back the same way
     const e = p.push({ 'public/index.html': PAGE.replace('</body>', '<script>let x = ;</script></body>') }, 'a broken page');
