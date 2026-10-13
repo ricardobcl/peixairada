@@ -572,9 +572,11 @@ for `$HOME`'s home and the account's.
   `peixKey(code, mods)` says which map and **returns whether the key was taken**; `cmdKeys` in main.swift is the
   forwarder's copy (a digit as `Digit<n>`; `npm run check` holds it). ⌘K is *not* here (the drawer's clear), nor ⌘+ ⌘−
   (`chatZoomKey`, which sees ⌘0 only when nothing is split).
-* **⌘W is the Window menu's item, not the forwarder's**: a key equivalent is dispatched before any responder.
-  `closeHalfOrWindow` asks the board (`peixKey('KeyW','cmd')`) and calls `performClose` only on false. Anything else
-  the board wants off a ⌘ a menu item claims goes the same way (⌘, does).
+* **⌘W is the Window menu's item, not the forwarder's**: a key equivalent goes to the key window's views before the
+  menu (2026-10-14, measured), and a web view with the keys hands it to its page — so the menu hears only a ⌘W the page
+  left alone (a GitHub page's, a native view's; not the board's, whose CMDKEYS take it). `closeHalfOrWindow` asks the
+  board (`peixKey('KeyW','cmd')`) and calls `performClose` only on false. Anything else the board wants off a ⌘ a menu
+  item claims goes the same way (⌘, does).
 * **⌘W in VS Code Web with no editor open closes its tab** (2026-10-14; `editorEmptyScript`, `closeWhenEmpty` in
   main.swift → `window.peixPaneClose(key)` → `dropTab`): a page in the pane hears ⌘W before the Window menu, and the
   workbench's close-editor takes it whatever is open. A script in the `ide:` views alone takes it first only when the

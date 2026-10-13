@@ -195,7 +195,7 @@ export default async function (ctx) {
   // grouped since 2026-10-12, from one table (KEYS): Go to, This chat, Layout, Look, In the drawer, In a page
   out.groups = await ctx.evaluate(`[...document.querySelectorAll('#settings .keys .kh')].map(k => k.textContent)`);
   ctx.assert.deepEqual(out.groups, ['Go to', 'This chat', 'Layout', 'Look', 'In the drawer', 'In a page']);
-  ctx.assert.deepEqual(out.cog.slice(0, 18), ['⌥⌘K', '⌥⌘L', '⌥⌘P', '⌥⌘F', '⌥⌘N', '⌥⌘O', '⌥⌘↑↓', '⌥⌘A', '⌥⌘0', '?', '⌥⌘C', '⌘T', '⌥⌘T', '⌥⌘E', '⌥⌘G', '⌥⌘D', '⌘W', '⌥⌘W']);
+  ctx.assert.deepEqual(out.cog.slice(0, 19), ['⌥⌘K', '⌥⌘L', '⌥⌘P', '⌥⌘F', '⌥⌘N', '⌥⌘O', '⌥⌘↑↓', '⌥⌘A', '⌥⌘0', '?', '⌥⌘C', '⌘T', '⌥⌘T', '⌥⌘E', '⌥⌘V', '⌥⌘G', '⌥⌘D', '⌘W', '⌥⌘W']);
   ctx.assert.ok(!out.cog.includes('⌘B'), 'the fold is ⌥⌘B since 2026-10-02, not ⌘B');
   await ctx.shot('cog');
   return out;
