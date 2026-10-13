@@ -20,6 +20,7 @@ GitHub's noreply address (this repo's `user.email`).
 ```sh
 scripts/launchd.sh install          # the server as a login agent, run from this checkout — the recommended setup
 scripts/launchd.sh restart [--after N]   # after a server.mjs change; the drawers stay (holders); N s first, so a recap lands
+scripts/worktree.sh new <name> | list | done <name>... | prune   # parallel work beside other sessions (below)
 mac/build.sh install                # the native app (bundles node, node_modules, lib/) into /Applications — Swift changes
 npm start                           # node server.mjs → http://127.0.0.1:7331, by hand
 npm test                            # node:test over test/ — pure logic, and the drawers end to end (≈30 s, four files at once)
@@ -45,6 +46,12 @@ npm run map                         # rewrite the section maps at the top of ser
 * **A session that runs in a drawer**: finish the work, write the notes and the recap first, and run
   `restart --after 20` last. `GET /api/terminals` says which chats are in drawers. `launchd.sh` and `build.sh`
   detach themselves when run from a drawer (`PEIXAIRADA_DRAWER`, the app's bundle id). → Findings: *build.sh from a drawer*.
+* **Parallel work goes in a worktree, `scripts/worktree.sh`** (2026-10-14): `new <name>` is `.claude/worktrees/<name>`
+  on its branch from the local main (origin is behind), with no node_modules link — Node and `npm run check` find the
+  checkout's up the folders. Land it on main (a fast-forward, else a cherry-pick), then `done <name>`: the worktree and
+  its branch go only when every commit is on main (by patch), nothing is uncommitted and no process is inside, never by
+  force; `prune` does it for every finished one left an hour. These worktrees are disposable; removing one is routine.
+  → `test/worktree-script.test.mjs`.
 
 ## Layout
 
@@ -59,6 +66,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `mac/Sources/main.swift` | The native shell: window, the pane (web views per page), server lifecycle, Dock badge, menu bar, notifications, the hotkey forwarder |
 | `mac/icon/MakeIcon.swift`, `mac/build.sh` | The icon, drawn in CoreGraphics; compile + bundle + sign + install (the version is `package.json`'s) |
 | `scripts/launchd.sh` | The server as a login agent; `restart [--after N]` |
+| `scripts/worktree.sh` | A worktree per piece of parallel work: made from main, removed only with its work on main, never forced |
 | `scripts/verify.mjs`, `scripts/scenario.mjs`, `scripts/scenarios.mjs`, `scripts/scenarios/` | The browser harness (see Verifying) |
 | `scripts/perf.mjs`, `lib/animcheck.mjs` | The board's CPU in WebKit on a made-up busy board, and what keeps WebKit's frames on the main thread (see Verifying) |
 | `scripts/webkit.mjs`, `scripts/webkit.swift` | The live board in a `WKWebView` (the app's engine), the window captured as its compositor drew it |

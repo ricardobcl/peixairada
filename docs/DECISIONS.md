@@ -17,6 +17,28 @@ Ricardo: "map hotkey V to open the current project in vscode. add a entry for th
   window*; `boardKeys` in main.swift forwards V from the pane (VS Code Web has nothing on ⌥⌘V). Not a row of ··· : its
   *open in VS Code* went on 2026-09-29, asked for.
 
+## Decisions of 2026-10-14 — a worktree's life is a script
+
+Ricardo, after a night of agents working in worktrees beside the other sessions, and their cleanup refused by Claude
+Code's auto-mode classifier as *Modify Shared Resources* (`rm <worktree>/node_modules && git worktree remove … && git
+branch -d …`, where the same command for another worktree half an hour before had passed; the app's install was
+refused too, as *Interfere With Workloads*): "is this going to be a recurring issue? … anything we can do to improve?"
+It is: every parallel round makes worktrees, and by then other sessions made their own (`simplify`, `vsweb-*`).
+
+* **`scripts/worktree.sh`**: `new`, `list`, `done`, `prune`. The guards are the script's, so a session need not argue
+  them each time: a worktree goes only when every commit is on main — `git cherry`, so a cherry-picked commit counts —,
+  `git status` shows nothing (untracked included) and no process's current folder is inside it (`lsof -d cwd`, read
+  once); then plain `git worktree remove` and `branch -d` (`-D` only when the patch check proved a cherry-pick).
+  `prune` also leaves a worktree with no commit of its own (someone's start: `simplify` had only been fast-forwarded)
+  and one touched within the hour. Run from inside a worktree, it works on the main checkout's (`--git-common-dir`).
+* **No node_modules link.** Most likely what the classifier read as a shared resource being removed: a symlink to the
+  checkout's node_modules, deleted with `rm`. A worktree inside the repo needs none: Node walks up the folders to
+  the checkout's (124 tests and a scenario passed in one without it), and `check.sh`'s vendored-xterm compare now walks
+  up too. An old worktree's link is unlinked by the script, after checking it points at the checkout's.
+* **What the script cannot do alone**: a narrow `permissions.allow` rule (`Bash(scripts/worktree.sh:*)`) is what skips
+  the classifier for it — documented as resolved before the classifier runs; an `autoMode` block in a project's
+  settings is not read at all, and `autoMode.allow` entries are prose, not patterns. The rule is Ricardo's to add.
+
 ## Decisions of 2026-10-13, on a branch, at the end — ⌥⌘N's ＋ in this folder or a new worktree
 
 Ricardo, on the row the entry below added: "the new "new chat on a new branch" what does it do? creat a new branch?

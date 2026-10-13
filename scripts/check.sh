@@ -11,11 +11,13 @@ node scripts/check-page.mjs public/index.html
 # The holder's headless xterm is pinned to the vendored client's version (the screen is drawn by one and read by the
 # other), and public/vendor is copied from node_modules by hand: a drift on either side shows here, not in a drawer.
 echo "› vendored xterm = node_modules"
+# The nearest node_modules up the folders, as Node finds it: a worktree inside the repo has none of its own (2026-10-14).
+NM=$PWD; while [ ! -d "$NM/node_modules" ] && [ "$NM" != / ]; do NM=$(dirname "$NM"); done; NM="$NM/node_modules"
 for p in @xterm/xterm/lib/xterm.js:xterm.js @xterm/xterm/css/xterm.css:xterm.css @xterm/addon-fit/lib/addon-fit.js:xterm-addon-fit.js @xterm/addon-web-links/lib/addon-web-links.js:xterm-addon-web-links.js; do
-  cmp -s "node_modules/${p%%:*}" "public/vendor/${p##*:}" || { echo "public/vendor/${p##*:} differs from node_modules/${p%%:*}" >&2; exit 1; }
+  cmp -s "$NM/${p%%:*}" "public/vendor/${p##*:}" || { echo "public/vendor/${p##*:} differs from $NM/${p%%:*}" >&2; exit 1; }
 done
 echo "› shell"
-for f in scripts/launchd.sh scripts/check.sh; do [ -f "$f" ] && sh -n "$f"; done
+for f in scripts/launchd.sh scripts/check.sh scripts/worktree.sh; do [ -f "$f" ] && sh -n "$f"; done
 bash -n mac/build.sh
 # CLAUDE.md is loaded into every session in this repo, whole: past its budget, a bullet has grown a story, and the story
 # belongs in docs/DECISIONS.md (2026-10-12). Characters, as Claude Code counts them — it warns at 150 000.
