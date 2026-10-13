@@ -538,7 +538,8 @@ for `$HOME`'s home and the account's.
   group, one line, and the codes it is in HOTKEYS or CMDKEYS — the Keys pane and the ? sheet are drawn from it, and
   `npm run check` (`check-page.mjs`) fails a code with no row, a row no map answers, or a ⌥⌘ letter `boardKeys` in
   main.swift does not forward (⌥⌘S aside). The letters: **T** the chat's zsh tab (`hotShell()` →
-  `POST /api/sessions/:id/shell`, `s.shells`, `shName()`), **E** VS Code Web in the pane, **G** the chat's PR on GitHub
+  `POST /api/sessions/:id/shell`, `s.shells`, `shName()`), **E** VS Code Web in the pane, **V** the folder in VS Code's
+  own window (2026-10-14, `hotVsCodeApp`; no chat open, the project in view when a folder), **G** the chat's PR on GitHub
   (several → the picker in `pr` mode; none → the repo, `state.repos`), **C** the chat's claude (`termAction()`, the `>_`
   path), **W** the tab the keys are in, closed (`hotCloseTab()` → `dropTab()`), **P** projects, **K** chats
   (`chatFields()`), **F** the list's box (`hotFind()`), **B** the rail (`toggleSessions`), **Y** themes (`themesOpen`),

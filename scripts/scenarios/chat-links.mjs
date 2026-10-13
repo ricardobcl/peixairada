@@ -5,7 +5,8 @@
 // (peix.links reads a line's). What this checks is the anchors of one reply, in order, and the link on a line the fake
 // claude echoes. With Zed as the editor (2026-10-13, Settings › Board › editor) the same links are zed://file ones — the
 // transcript drawn again at the switch —; ⌥⌘E stays VS Code Web (Zed has no web version for the pane), ··· has the folder
-// in Zed beside it, and the settings say so under the pick (2026-10-13, later).
+// in Zed beside it, and the settings say so under the pick (2026-10-13, later). ⌥⌘V opens the folder in VS Code itself
+// whichever is picked (2026-10-14).
 import { makeFixture } from '../fixture.mjs';
 
 export const meta = { server: true, fake: true, fixture: 'auto' };
@@ -61,12 +62,13 @@ export default async function (ctx) {
     window.fetch = (u, o) => String(u).endsWith('/api/vscode-web') ? Promise.resolve(new Response('{"url":"http://127.0.0.1:1/"}', { headers: { 'content-type': 'application/json' } })) : f(u, o);
     try {
       document.querySelector('#zedBtn').click();
+      document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyV', key: '◊', metaKey: true, altKey: true, bubbles: true, cancelable: true }));
       document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE', key: 'π', metaKey: true, altKey: true, bubbles: true, cancelable: true }));
       await new Promise(r => setTimeout(r, 300));
     } finally { HTMLAnchorElement.prototype.click = click; window.open = open; window.fetch = f; }
     return JSON.stringify(seen);
   })()`).then(JSON.parse);
-  ctx.assert.deepEqual(out.zed.opened, [`zed://file${cwd}`, `window.open http://127.0.0.1:1/?folder=${encodeURIComponent(cwd)}`], 'the folder in Zed from ···, and ⌥⌘E VS Code Web as ever');
+  ctx.assert.deepEqual(out.zed.opened, [`zed://file${cwd}`, `vscode://file${cwd}`, `window.open http://127.0.0.1:1/?folder=${encodeURIComponent(cwd)}`], 'the folder in Zed from ···, in VS Code itself from ⌥⌘V with Zed picked, and ⌥⌘E VS Code Web as ever');
 
   // in the drawer: the path on the line the fake echoes is a link with the same href, on the cells it occupies
   const live = ctx.fixture.chats[0];

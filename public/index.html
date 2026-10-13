@@ -5041,6 +5041,7 @@ const toolName = n => {
         ...(shellLive(s) ? [{ name: `Another ${shName()} beside it`, sub: of, hint: '⌘T', fn: () => startShell(s, true) }] : []),
         ...(s.prs?.length ? [{ name: 'Its PR on GitHub', sub: of, hint: '⌥⌘G', fn: hotGh }] : []),
         ...(inApp ? [{ name: 'Its folder in VS Code Web', sub: of, hint: '⌥⌘E', fn: hotVsCode }] : []),
+        ...(s.cwd ? [{ name: 'Its folder in VS Code — its own window', sub: of, hint: '⌥⌘V', fn: hotVsCodeApp }] : []),
         ...(onZed() && s.cwd ? [{ name: 'Its folder in Zed — its own window', sub: of, fn: () => $('#zedBtn')?.click() }] : []),
         ...(canTick(s) ? [{ name: 'Tick it done', sub: of, fn: () => tickDone(s.id, true, $('#shead')) }] : []),
         ...(canTick(s) && s.prs?.length && !s.forGood ? [{ name: 'Done for good — its PRs forgotten', sub: of, fn: () => tickDone(s.id, true, $('#shead'), null, true) }] : []),
@@ -5160,6 +5161,7 @@ const toolName = n => {
     ['⌘T', 'This chat', 'a new tab — another shell, or from a web page a blank one', 'from claude\'s drawer, a shell, the transcript or the changes, a shell in its folder · from a GitHub page or VS Code Web, a blank tab with the keys in its address — type one, or words to search · it opens beside the chat', ['cmd:KeyT']],
     ['⌥⌘T', 'This chat', 'a shell in its folder, on a tab', 'shown if it has one — ⌘T opens another · again from it: its half fills the column, and back', ['alt:KeyT']],
     ['⌥⌘E', 'This chat', 'its folder in VS Code Web, on a tab', 'again from it: its half fills the column, and back · VS Code Web whichever editor files open in — Zed has no web version', ['alt:KeyE']],
+    ['⌥⌘V', 'This chat', 'its folder in VS Code, its own window', 'the app, outside the board — ⌥⌘E is VS Code Web on a tab · with no chat open, the project in view when it is a folder', ['alt:KeyV']],
     ['⌥⌘G', 'This chat', 'its PR on GitHub, on a tab', 'the repo when it has none · a picker with several · a tab followed elsewhere leaves it a new one · again from its page: its half fills the column, and back', ['alt:KeyG']],
     ['⌥⌘D', 'This chat', 'what it changed, on a tab', 'its last turn\'s edits, the uncommitted tree or the branch against its base · Commit… and Push type into its shell · + on a line sends Claude a note · again from it: its half fills the column, and back', ['alt:KeyD']],
     ['⌘W', 'This chat', 'close the tab the keys are in', 'the shell ends, a page or VS Code Web goes · on the chat\'s own tab, its half closes — with one half, the window\'s own key · a dialog up closes first', ['cmd:KeyW']],
@@ -5212,7 +5214,7 @@ const toolName = n => {
   // ⌥⌘ + a letter, from anywhere — the drawer included: capture phase, so its xterm never sees them; e.code,
   // because with ⌥ held e.key is a symbol ('ø' for O) on a Mac. One letter per place the open chat lives: T a
   // fresh zsh in its folder (the pane's zsh tab — a holder like claude's), E the editor — VS Code Web in the pane, the
-  // web button's route —, G the chat's PR on GitHub — straight to it
+  // web button's route —, V the folder in VS Code's own window (2026-10-14), G the chat's PR on GitHub — straight to it
   // with one, the picker with several — every time, a tab open or not, the one showing marked (2026-09-20); each PR is
   // its own tab, so nothing reloads —, C the claude session: the >_ button's path (the drawer shown or started,
   // arm-and-take-over included, so a chat live elsewhere takes two presses). W closes the tab the keys are in
@@ -5225,7 +5227,7 @@ const toolName = n => {
   // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiff, KeyA: ovOpen, KeyS: hotStack, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  const HOTKEYS = { KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyV: hotVsCodeApp, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiff, KeyA: ovOpen, KeyS: hotStack, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -5328,6 +5330,13 @@ const toolName = n => {
     showChat(s); syncTerm(s); focusBoard(); return true;
   }
   function hotVsCode() { const b = $('#webBtn'); if (b) b.click(); else noChat(); }
+  // ⌥⌘V (2026-10-14): the folder in VS Code itself — its own window, outside the board, whichever editor files open in;
+  // ⌥⌘E is VS Code Web on a tab. The open chat's folder, else the project in view when that is a folder.
+  function hotVsCodeApp() {
+    const dir = state.sessions.get(state.current)?.cwd || (prefs.project?.startsWith('/') ? prefs.project : null);
+    if (!dir) return note($('#shead'), 'Open a chat first — or pick a project that is a folder');
+    openExternal(EDITORS.vscode.file + encodeURI(dir));
+  }
   // ⌥⌘↑ / ⌥⌘↓ (2026-09-20): the chat above or below in the list as it stands — filters and order included; from no
   // chat, or one the list does not show, the top or the bottom; the ends stop.
   // ⌥⌘F (2026-09-25): the chat list's magnifier, from anywhere, and it

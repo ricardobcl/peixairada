@@ -711,13 +711,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   // (2026-09-27; by key code, since ⌥ composes a symbol over a digit on a Portuguese layout), W to close the tab the
   // keys are in (2026-09-28 — VS Code Web's own ⌥⌘W, whole word in its find, is given up for it), B to fold the chat
   // list (⌘B until 2026-10-02; VS Code Web's ⌥⌘B, its secondary side bar, is given up for it), Y the themes, L the launcher, D a chat's changes, A the overview and 0 the home (2026-10-10), R the
-  // board reloaded (2026-10-13 — VS Code Web's ⌥⌘R, reveal in Finder, has no Finder to reveal in);
+  // board reloaded (2026-10-13 — VS Code Web's ⌥⌘R, reveal in Finder, has no Finder to reveal in), V the folder in VS Code's
+  // own window (2026-10-14);
   // and ⌘ + one of the
   // layout keys (CMDKEYS there): 0, 1 and 2 for the halves of the chat column, and T a new tab (2026-10-13 — VS Code Web's
   // ⌘T, a symbol in the workspace, is given up for it; ⌘W is the Window menu's). Pressed while the pane has the keyboard: its web views are not the board's, so the page
   // would never hear it. Forwarded through peixKey as the page's e.code and which map it belongs to; the page asks
   // for the keyboard back ({type: "focus"}) only when it opens a dialog.
-  static let boardKeys: Set<String> = ["t", "e", "g", "c", "w", "o", "p", "k", "f", "n", "b", "y", "l", "d", "a", "r"]
+  static let boardKeys: Set<String> = ["t", "e", "v", "g", "c", "w", "o", "p", "k", "f", "n", "b", "y", "l", "d", "a", "r"]
   static let cmdKeys: Set<String> = ["0", "1", "2", "t"]
   static func hotkeyCode(_ e: NSEvent) -> (code: String, mods: String)? {
     let held = e.modifierFlags.intersection([.command, .option, .control, .shift])

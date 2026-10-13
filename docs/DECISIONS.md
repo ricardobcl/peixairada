@@ -2,8 +2,20 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-13. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-14. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-14 — ⌥⌘V, the folder in VS Code itself
+
+Ricardo: "map hotkey V to open the current project in vscode. add a entry for the same".
+
+* **⌥⌘V opens the open chat's folder in VS Code's own window** (`hotVsCodeApp`): `vscode://file<folder>`, which VS Code
+  opens as a folder (a window it already has on it comes forward), whichever editor files open in — Zed picked, ⌥⌘V is
+  still VS Code, as asked. The chat's folder, not its repo: a chat in a worktree opens the tree it edits, as ⌥⌘E and
+  ··· 's Zed row do. No chat open, the project in view when it is a folder; else a note. ⌥⌘E stays VS Code Web on a tab.
+* **The entries**: a row of `KEYS` (the Keys pane and the ? sheet) and the launcher's *Its folder in VS Code — its own
+  window*; `boardKeys` in main.swift forwards V from the pane (VS Code Web has nothing on ⌥⌘V). Not a row of ··· : its
+  *open in VS Code* went on 2026-09-29, asked for.
 
 ## Decisions of 2026-10-13, on a branch, at the end — ⌥⌘N's ＋ in this folder or a new worktree
 
