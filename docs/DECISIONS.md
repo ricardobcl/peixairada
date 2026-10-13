@@ -5,6 +5,30 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-13. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-13, after the last, later still — Zed as the editor
+
+Ricardo: "can we also support ZED instead of vscode? if so, it would could have a setting to change the default
+editor".
+
+* **One setting, two editors** (`prefs.editor`: `vscode`, the default, or `zed`; Settings › Board › Chats, a
+  segmented pick like the card light's). A browser's prefs, not the setup file: the server never needs it — VS Code
+  Web's server and its freshening stay as they are, unused while Zed is picked.
+* **File links are the same URL in another scheme**: Zed's open listener takes `zed://file<path>`, URL-decoded, and
+  parses a `:line:col` suffix off it as its CLI does (a file whose own name ends that way wins) — the shape of
+  `vscode://file`. So `pathHref` and `md()`'s `[file:42](…#L42)` build one URL through `fileUrl` (the path now
+  `encodeURI`d, so one with a space is a URL wherever it is parsed — Swift's `URL(string:)` on macOS 13 refuses it; marked's already-encoded hrefs are decoded first),
+  and the app's navigation policy hands any scheme to the system unchanged — no Swift change. A switch redraws the open
+  transcript (`logView.arr = null`); the drawer's links are read on hover, so they follow at once.
+* **⌥⌘E is the folder in Zed's own window**: Zed has no web build, so there is nothing to put in the pane — no tab,
+  and ⌥⌘E pressed again does not zoom a half (the zoom-again stays VS Code Web's). The ··· row keeps its id
+  (`#webBtn`) and is named by the editor (*Zed*, its mark from Simple Icons, CC0); the launcher offers it in a browser
+  too, since nothing in it needs the app.
+* **In a browser an app's URL is followed as a link**, not `window.open`ed: a new tab for `zed://` (or a drawer's
+  `vscode://` link, as before) stayed blank behind the browser's question.
+* Not checked on this Mac: Zed is not installed here, so the hand-over itself is read off Zed's source
+  (`crates/zed/src/zed/open_listener.rs`: `zed://file`, `derive_paths_with_position`), not seen. The scenario holds the
+  URLs, the redraw, the row and ⌥⌘E's URL (`chat-links.mjs`).
+
 ## Decisions of 2026-10-13, after the last, later — the board's frames, profiled
 
 Ricardo: "the app seems a bit slugish, animations etc.. do a deep analysis and profile to find issues", and on the

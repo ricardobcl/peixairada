@@ -513,7 +513,7 @@ for `$HOME`'s home and the account's.
   group, one line, and the codes it is in HOTKEYS or CMDKEYS — the Keys pane and the ? sheet are drawn from it, and
   `npm run check` (`check-page.mjs`) fails a code with no row, a row no map answers, or a ⌥⌘ letter `boardKeys` in
   main.swift does not forward (⌥⌘S aside). The letters: **T** the chat's zsh tab (`hotShell()` →
-  `POST /api/sessions/:id/shell`, `s.shells`, `shName()`), **E** VS Code Web in the pane, **G** the chat's PR on GitHub
+  `POST /api/sessions/:id/shell`, `s.shells`, `shName()`), **E** the editor on the chat's folder (`hotEditor`), **G** the chat's PR on GitHub
   (several → the picker in `pr` mode; none → the repo, `state.repos`), **C** the chat's claude (`termAction()`, the `>_`
   path), **W** the tab the keys are in, closed (`hotCloseTab()` → `dropTab()`), **P** projects, **K** chats
   (`chatFields()`), **F** the list's box (`hotFind()`), **B** the rail (`toggleSessions`), **Y** themes (`themesOpen`),
@@ -814,10 +814,15 @@ for `$HOME`'s home and the account's.
   → `focus-view.mjs`.
 * **Paths and pages in the chat are links**: a file path in the transcript or a drawer's line — `/absolute` (under a
   root, or with an extension), `./relative`, `folder/file.ext`, `~/…`, `name.ext:12`, after Claude Code's `@` — opens
-  in VS Code at that line (`vscode://file`, relative to the chat's `cwd`; `PATH_RE`, `pathHref`, `chatLinks`; not
+  in the editor at that line (`fileUrl`, relative to the chat's `cwd`; `PATH_RE`, `pathHref`, `chatLinks`; not
   after a `+` or an in-word `@`, or it is quadratic); a web URL opens in the pane on a tab of the chat
   (`openExternal(url, { ide, s })`). The transcript is linkified as rendered (`linkify`); the drawer has a link
   provider beside the web-links addon (`termLinks`, `peix.links(y)`). → `chat-links.mjs`.
+* **The editor is VS Code or Zed** (2026-10-13; `prefs.editor`, `EDITORS`, `#edPick` in Settings › Board › Chats):
+  both open `<scheme>://file/<path>:<line>:<col>`, which the app hands to the system and a browser follows as a link
+  (never `window.open`, which leaves a blank tab). ⌥⌘E and `#webBtn` are VS Code Web on a tab, or the folder in Zed's
+  own window (`onZed()`: no web build to frame, so no tab and no zoom-again). A switch redraws the transcript
+  (`logView.arr = null`), so its links follow; the drawer's are read on hover. → `chat-links.mjs`.
 * **Attaching a file is typing its path** (`@dir/file`, spaces as `\ `); the app hands real paths over the bridge
   (`peixDrop`), a browser uploads (`PUT /api/attach`). ⌘V with an image sends ⌃V to claude in the app.
 * **`termEnv()` strips only `CLAUDECODE` and `CLAUDE_CODE_*`** (the CLI refuses to nest) and keeps `CLAUDE_DIR`.

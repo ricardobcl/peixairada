@@ -3,7 +3,8 @@
 // web URL is an anchor to the page (in the app, a tab of the chat). What only looks like a path stays text: and/or, a
 // date, a version, a route, a domain. In the drawer the same paths are links, through a provider on the terminal
 // (peix.links reads a line's). What this checks is the anchors of one reply, in order, and the link on a line the fake
-// claude echoes.
+// claude echoes. With Zed as the editor (2026-10-13, Settings › Board › editor) the same links are zed://file ones — the
+// transcript drawn again at the switch —, and ⌥⌘E opens the folder in Zed instead of VS Code Web.
 import { makeFixture } from '../fixture.mjs';
 
 export const meta = { server: true, fake: true, fixture: 'auto' };
@@ -34,6 +35,30 @@ export default async function (ctx) {
   ], 'every file and page an anchor, in order, and nothing that only looks like one');
   await ctx.shot('transcript');
 
+  // Zed: the radio in the settings, the transcript's links drawn again for it, ··· naming it, ⌥⌘E following it
+  await ctx.evaluate(`document.querySelector('#edPick [data-ed="zed"]').click()`);
+  out.zed = await ctx.evaluate(`JSON.stringify({
+    pref: window.peix.prefs().editor,
+    checked: [...document.querySelectorAll('#edPick [data-ed]')].map(b => b.dataset.ed + ':' + b.getAttribute('aria-checked')),
+    anchors: [...document.querySelectorAll('#log a[href]')].map(a => [a.textContent, a.getAttribute('href'), a.title]),
+    row: document.querySelector('#webBtn .lbl').textContent,
+  })`).then(JSON.parse);
+  ctx.assert.equal(out.zed.pref, 'zed'); ctx.assert.deepEqual(out.zed.checked, ['vscode:false', 'zed:true']);
+  ctx.assert.deepEqual(out.zed.anchors.map(a => a[1]), out.anchors.map(a => a[1].replace(/^vscode:/, 'zed:')), 'the same links, each a zed://file one');
+  ctx.assert.equal(out.zed.anchors[1][2], `Open ${cwd}/src/app.js:42 in Zed`);
+  ctx.assert.equal(out.zed.anchors[7][2], `Open ${cwd}/src/y.ts:3 in Zed`, 'the [file:3](…#L3) one too');
+  ctx.assert.equal(out.zed.row, 'Zed', '··· offers the folder in Zed, not VS Code Web');
+  // ⌥⌘E: in a browser the URL is followed as a link (the app hands it to the system), no tab, no VS Code Web started
+  out.zed.e = await ctx.evaluate(`(() => {
+    const seen = [], click = HTMLAnchorElement.prototype.click, open = window.open;
+    HTMLAnchorElement.prototype.click = function () { seen.push(this.href); };
+    window.open = u => { seen.push('window.open ' + u); };
+    try { document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE', key: 'π', metaKey: true, altKey: true, bubbles: true, cancelable: true })); }
+    finally { HTMLAnchorElement.prototype.click = click; window.open = open; }
+    return JSON.stringify(seen);
+  })()`).then(JSON.parse);
+  ctx.assert.deepEqual(out.zed.e, [`zed://file${cwd}`], '⌥⌘E opens the chat\'s folder in Zed');
+
   // in the drawer: the path on the line the fake echoes is a link with the same href, on the cells it occupies
   const live = ctx.fixture.chats[0];
   await ctx.openChat(live.id);
@@ -46,7 +71,11 @@ export default async function (ctx) {
     const cwd = window.peix.session(document.querySelector('#slist > .card.active').dataset.id).cwd;
     return JSON.stringify({ y, x, cwd, links: window.peix.links(y), blank: window.peix.links(y + 1) });
   })()`).then(JSON.parse);
-  ctx.assert.deepEqual(out.drawer.links, [{ text: 'src/app.js:42', href: `vscode://file${out.drawer.cwd}/src/app.js:42`, range: { start: { x: out.drawer.x, y: out.drawer.y }, end: { x: out.drawer.x + 'src/app.js:42'.length - 1, y: out.drawer.y } } }], 'the path on the screen is a link on its own cells, into the chat\'s folder');
+  ctx.assert.deepEqual(out.drawer.links, [{ text: 'src/app.js:42', href: `zed://file${out.drawer.cwd}/src/app.js:42`, range: { start: { x: out.drawer.x, y: out.drawer.y }, end: { x: out.drawer.x + 'src/app.js:42'.length - 1, y: out.drawer.y } } }], 'the path on the screen is a link on its own cells, into the chat\'s folder — in Zed while it is the editor');
   ctx.assert.deepEqual(out.drawer.blank, [], 'a line without one has none');
+  await ctx.evaluate(`document.querySelector('#edPick [data-ed="vscode"]').click()`);
+  out.drawer.back = await ctx.evaluate(`JSON.stringify(window.peix.links(${out.drawer.y}).map(l => l.href))`).then(JSON.parse);
+  ctx.assert.deepEqual(out.drawer.back, [`vscode://file${out.drawer.cwd}/src/app.js:42`], 'and VS Code again once it is picked back');
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#webBtn .lbl').textContent`), 'VS Code Web');
   return out;
 }

@@ -1615,7 +1615,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .md th { background: var(--tool-bg); font-weight: 600; }
   .md blockquote { margin: 10px 0; padding: 3px 13px; border-left: 3px solid var(--line); color: var(--muted); }
   .md a { color: var(--accent); text-decoration: none; } .md a:hover { text-decoration: underline; }
-  .md a[href^="vscode:"]::after { content: " ↗"; font-size: var(--fs-2xs); opacity: .6; }
+  .md a:is([href^="vscode:"], [href^="zed:"])::after { content: " ↗"; font-size: var(--fs-2xs); opacity: .6; }
   /* the paths and pages a tool row names are links too (2026-09-26, linkify): quiet, the row is one muted line */
   .tool a { color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; } .tool a:hover { color: var(--accent); }
   .md hr { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
@@ -2269,6 +2269,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <label class="opt sub" title="On, a chat asking you, one with a PR at your move, one Claude is at work in and one with a new reply have large cards whatever the size above — the rest are at that size"><input type="checkbox" id="cardsByLane"><span><b>by lane</b> — large where a chat wants you, the size above for the rest</span></label>
     <label class="opt sub" id="evenRow" title="Compact cards all the same height: the title on one line and the your-move line under it, held empty on a card without one; the question is left to the card's red edge and its pings" hidden><input type="checkbox" id="cardsEven"><span><b>same height</b> — every compact card a title line and a your-move line tall</span></label>
     <label class="opt" title="On, a chat Claude isn’t running in — one you open from the list, a picker, a key or a link — runs claude --resume in a terminal here 5 s after it opens, unless you press Not now or Esc, or move on. A chat ticked done, and the one the page opens on a reload, wait for the Resume button"><input type="checkbox" id="autoResume" checked><span><b>auto-resume</b> — a chat Claude isn’t running in resumes 5 s after you open it; off, it waits for the Resume button</span></label>
+    <div class="opt lightpick" title="Where a file named in a chat opens, at its line — a path in a reply or on a drawer's screen is a link to it — and what ⌥⌘E opens: with VS Code, the chat's folder in VS Code Web on a tab of the pane; with Zed, the folder in Zed's own window (it has no web build to put in the pane)"><span><b>editor</b> — files named in a chat open in it, and ⌥⌘E its folder</span><span class="sseg" role="radiogroup" aria-label="Editor" id="edPick"><button type="button" role="radio" data-ed="vscode">VS Code</button><button type="button" role="radio" data-ed="zed">Zed</button></span></div>
     <h4 class="shd">Look</h4>
     <div class="opt lightpick zoompick" title="Everything on the board, larger or smaller — the app's own zoom; in a browser, its View menu's"><span><b>text size</b> — the whole board</span><span class="sseg" role="radiogroup" aria-label="Text size" id="zoomPick"><button type="button" role="radio" data-z="0.9">90 %</button><button type="button" role="radio" data-z="1">100 %</button><button type="button" role="radio" data-z="1.1">110 %</button><button type="button" role="radio" data-z="1.25">125 %</button><button type="button" role="radio" data-z="1.4">140 %</button></span><span class="zhint">your browser's View → Zoom</span></div>
     <label class="opt" title="On, every project wears one colour — black, or the one picked under this switch — instead of its own (Peacock's and the setup's stay set, for VS Code and for when this is off), and no state or code has a colour of its own — a PR's chip and the people's faces keep theirs; the accent is left for what wants you — a question, your move, an unread count"><input type="checkbox" id="simpleColors"><span><b>simple colours</b> — every project in one colour, the states in greys; off, each project in its own</span></label>
@@ -2412,7 +2413,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', skin: null, skinFollow: false, skinDark: null, skinLight: null, skinExact: false, look: null };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, skinExact: false, look: null };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -3018,7 +3019,9 @@ const toolName = n => {
     diff: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M7.25 2.5h1.5v2.25H11v1.5H8.75V8.5h-1.5V6.25H5v-1.5h2.25ZM5 10.5h6V12H5Z"/><path fill-rule="evenodd" d="M2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11A1.5 1.5 0 0 1 2.5 1Zm0 1.5v11h11v-11Z"/></svg>',
     // a branch (Primer's git-branch, MIT): the changes tab's branch
     branch: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 3.25a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.493 2.493 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25Zm-6 0a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Zm8.25-.75a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM4.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"/></svg>',
-    vscode: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>'
+    vscode: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>',
+    // Zed's mark (Simple Icons, CC0): the editor row and the setting when Zed is the editor (2026-10-13)
+    zed: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.25 1.5a.75.75 0 0 0-.75.75v16.5H0V2.25A2.25 2.25 0 0 1 2.25 0h20.095c1.002 0 1.504 1.212.795 1.92L10.764 14.298h3.486V12.75h1.5v1.922a1.125 1.125 0 0 1-1.125 1.125H9.264l-2.578 2.578h11.689V9h1.5v9.375a1.5 1.5 0 0 1-1.5 1.5H5.185L2.562 22.5H21.75a.75.75 0 0 0 .75-.75V5.25H24v16.5A2.25 2.25 0 0 1 21.75 24H1.655C.653 24 .151 22.788.86 22.08L13.19 9.75H9.75v1.5h-1.5V9.375A1.125 1.125 0 0 1 9.375 8.25h5.314l2.625-2.625H5.625V15h-1.5V5.625a1.5 1.5 0 0 1 1.5-1.5h13.19L21.438 1.5z"/></svg>'
   };
   $('#noChatMore').innerHTML = ICON.more;
   const entryLabel = s => s.terminal && s.terminal.exited === null ? 'a drawer here' : s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : s.live?.entrypoint === 'cli' ? 'a terminal elsewhere' : s.alive ? 'elsewhere' : 'not running';   // the words, not the entrypoint's (2026-10-12; CLI, live, stale before)
@@ -4867,7 +4870,7 @@ const toolName = n => {
         { name: `A ${shName()} in its folder`, sub: of, hint: '⌥⌘T', fn: hotShell },
         ...(shellLive(s) ? [{ name: `Another ${shName()} beside it`, sub: of, hint: '⌘T', fn: () => startShell(s, true) }] : []),
         ...(s.prs?.length ? [{ name: 'Its PR on GitHub', sub: of, hint: '⌥⌘G', fn: hotGh }] : []),
-        ...(inApp ? [{ name: 'Its folder in VS Code Web', sub: of, hint: '⌥⌘E', fn: hotVsCode }] : []),
+        ...(inApp || onZed() ? [{ name: `Its folder in ${edRow()}`, sub: of, hint: '⌥⌘E', fn: hotEditor }] : []),
         ...(canTick(s) ? [{ name: 'Tick it done', sub: of, fn: () => tickDone(s.id, true, $('#shead')) }] : []),
         ...(canTick(s) && s.prs?.length && !s.forGood ? [{ name: 'Done for good — its PRs forgotten', sub: of, fn: () => tickDone(s.id, true, $('#shead'), null, true) }] : []),
         // what was the pointer's alone (2026-10-12): a rename, a PR taken off, a tab moved across, a colour let go
@@ -4985,7 +4988,7 @@ const toolName = n => {
     ['⌥⌘C', 'This chat', 'its Claude, in its drawer', 'starts it, or takes over one running elsewhere · again from it: its half fills the column, and back', ['alt:KeyC']],
     ['⌘T', 'This chat', 'a new tab — another shell, or from a web page a blank one', 'from claude\'s drawer, a shell, the transcript or the changes, a shell in its folder · from a GitHub page or VS Code Web, a blank tab with the keys in its address — type one, or words to search · it opens beside the chat', ['cmd:KeyT']],
     ['⌥⌘T', 'This chat', 'a shell in its folder, on a tab', 'shown if it has one — ⌘T opens another · again from it: its half fills the column, and back', ['alt:KeyT']],
-    ['⌥⌘E', 'This chat', 'its folder in VS Code Web, on a tab', 'again from it: its half fills the column, and back', ['alt:KeyE']],
+    ['⌥⌘E', 'This chat', 'its folder in the editor — VS Code Web on a tab, or Zed', 'Settings › Board › editor picks · again from VS Code Web: its half fills the column, and back', ['alt:KeyE']],
     ['⌥⌘G', 'This chat', 'its PR on GitHub, on a tab', 'the repo when it has none · a picker with several · a tab followed elsewhere leaves it a new one · again from its page: its half fills the column, and back', ['alt:KeyG']],
     ['⌥⌘D', 'This chat', 'what it changed, on a tab', 'its last turn\'s edits, the uncommitted tree or the branch against its base · Commit… and Push type into its shell · + on a line sends Claude a note · again from it: its half fills the column, and back', ['alt:KeyD']],
     ['⌘W', 'This chat', 'close the tab the keys are in', 'the shell ends, a page or VS Code Web goes · on the chat\'s own tab, its half closes — with one half, the window\'s own key · a dialog up closes first', ['cmd:KeyW']],
@@ -5051,7 +5054,7 @@ const toolName = n => {
   // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiff, KeyA: ovOpen, KeyS: hotStack, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  const HOTKEYS = { KeyT: hotShellKey, KeyE: hotEditorKey, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiff, KeyA: ovOpen, KeyS: hotStack, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -5095,7 +5098,7 @@ const toolName = n => {
   function hotShellKey() { return zoomAgain(isShellTab) || hotShell(); }
   const ghPages = s => s.prs?.length ? s.prs.map(pr => pr.url) : s.cwd && state.repos[s.cwd] ? [state.repos[s.cwd]] : [];   // what ⌥⌘G opens
   function hotGhKey() { return zoomAgain((k, s) => isPageTab(k) && ghPages(s).some(u => atPage(paneUrl(k), u))) || hotGh(); }
-  function hotVsCodeKey() { return zoomAgain(k => /^ide:/.test(k || '')) || hotVsCode(); }
+  function hotEditorKey() { return (!onZed() && zoomAgain(k => /^ide:/.test(k || ''))) || hotEditor(); }
   function hotDiffKey() { return zoomAgain(k => k === 'changes') || hotDiff(); }
   /** ⌥⌘R (2026-10-13; ⌘R's before, which is the page's in the pane now): the board, reloaded where it is. */
   function hotReload() { location.reload(); }
@@ -5132,7 +5135,7 @@ const toolName = n => {
     if (!s || !isPaneTab(tabOf(s))) return false;
     showChat(s); syncTerm(s); focusBoard(); return true;
   }
-  function hotVsCode() { const b = $('#webBtn'); if (b) b.click(); else noChat(); }
+  function hotEditor() { const b = $('#webBtn'); if (b) b.click(); else noChat(); }
   // ⌥⌘↑ / ⌥⌘↓ (2026-09-20): the chat above or below in the list as it stands — filters and order included; from no
   // chat, or one the list does not show, the top or the bottom; the ends stop.
   // ⌥⌘F (2026-09-25): the chat list's magnifier, from anywhere, and it
@@ -5620,8 +5623,10 @@ const toolName = n => {
    *  taken for it before — a dev server's link replaced the folder's editor). `s`: the chat it is for, the open one
    *  unless said — an answer that comes after that chat was left records its tab there and shows nothing. */
   function openExternal(url, { ide = false, s = state.sessions.get(state.current) } = {}) {
-    if (!inApp) { window.open(url, '_blank', 'noopener'); return; }
-    if (!IN_PANE.test(url) || !s) { post({ type: 'external', url }); return; }   // vscode://, mailto:… — the system's
+    // in a browser an app's URL (vscode://, zed://) is followed as a link is — the browser hands it over, or asks —, not
+    // in a tab of its own, which stays blank (2026-10-13)
+    if (!inApp) { if (IN_PANE.test(url)) window.open(url, '_blank', 'noopener'); else { const a = document.createElement('a'); a.href = url; a.click(); } return; }
+    if (!IN_PANE.test(url) || !s) { post({ type: 'external', url }); return; }   // vscode://, zed://, mailto:… — the system's
     // A page of the chat, on a tab of its own in the strip (2026-09-20): web pages one per URL, in the order first
     // opened — a PR, a docs page, a dev server (2026-09-26; the strip's ↗ is the way out to the browser); the folder's
     // editor, one per folder. Remembered here so they come back with the chat; the shell keeps a web view per page and
@@ -5642,8 +5647,8 @@ const toolName = n => {
   function showPr(url) { shownPr.url = url; openExternal(url); }
   // Every link in the chat pane passes here: a PR chip or a PR link in a reply opens the PR (in the app, on a tab
   // of the chat); any other web link inside the app goes through openExternal — a tab of the pane — because a
-  // web view without a UI delegate simply drops target=_blank. A vscode:// link is left to navigate: the shell's
-  // navigation policy hands it to VS Code (a browser asks); the board's own links are the board's.
+  // web view without a UI delegate simply drops target=_blank. A vscode:// or zed:// link is left to navigate: the
+  // shell's navigation policy hands it to the editor (a browser asks); the board's own links are the board's.
   // The copy button on a code block (2026-09-27, night): the block's text to the clipboard — the async API, else the
   // selection and execCommand (a page that is not a secure context, an old engine) — and "copied" on the button for a
   // second. The button itself is what says whether it worked; there is no toast.
@@ -5677,7 +5682,7 @@ const toolName = n => {
   // ---- links in the chat: files and pages -------------------------------------------
   // (2026-09-26) A file
   // path in the transcript or the drawer — /absolute, ./relative, folder/file.ext, ~/…, a bare name.ext:12 — is a
-  // link that opens it in VS Code at that line, the href md() already gives the [file:42](src/file.ts#L42) links
+  // link that opens it in the editor at that line, the href md() already gives the [file:42](src/file.ts#L42) links
   // Claude writes, resolved against the chat's folder; a web URL is a link that opens the page in the pane, on a tab
   // of the chat (openExternal). The transcript is linkified after every render (linkify — each text node the
   // markdown and the tool rows left, anchors and summaries skipped); the drawer has a link provider beside the
@@ -5692,7 +5697,25 @@ const toolName = n => {
   // a 40 000-character line of them took 800 ms on the main thread; an @ that begins a word (Claude Code's) still may.
   const PATH_RE = /(?<![\w.\/~+-])(?<![\w.\/~+@-]@)(?:(?:~|\.{1,2})?\/[\w.@+-]+(?:\/[\w.@+-]+)*|\.?[\w+-][\w@+-]*(?:\/[\w.@+-]+)*\/[\w@+-][\w.@+-]*\.[A-Za-z0-9]{1,8}|[\w@+-][\w.@+-]*\.[A-Za-z0-9]{1,8}(?=:\d))(?::\d+(?::\d+)?)?/g;
   const EXT_RE = /\.[A-Za-z0-9]{1,8}$/;
-  /** A path's vscode://file URL against the chat's folder, or null for one that is no file of ours: ~ needs a home
+  // The editor (2026-10-13, prefs.editor, Settings › Board › Chats): VS Code or Zed. Each opens a file at a line from a
+  // URL of the same shape — <scheme>://file/<absolute path>:<line>:<col>, the path percent-decoded —, which the app
+  // hands to the system and a browser asks about; ⌥⌘E is VS Code Web on a tab of the pane, or the folder in Zed's own
+  // window, since Zed has no web build to frame. A switch draws the transcript again, so its links follow.
+  const EDITORS = { vscode: { name: 'VS Code', file: 'vscode://file' }, zed: { name: 'Zed', file: 'zed://file' } };
+  const editor = () => EDITORS[prefs.editor] || EDITORS.vscode;
+  const onZed = () => editor() === EDITORS.zed;
+  const fileUrl = (abs, line, col) => `${editor().file}${encodeURI(abs)}${line ? ':' + line : ''}${line && col ? ':' + col : ''}`;
+  const unURI = u => { try { return decodeURI(u); } catch { return u; } };
+  const filePath = href => unURI(href.replace(/^(?:vscode|zed):\/\/file/, ''));   // the tooltip's
+  const edPick = () => { for (const b of document.querySelectorAll('#edPick [data-ed]')) b.setAttribute('aria-checked', String(EDITORS[b.dataset.ed] === editor())); };
+  for (const b of document.querySelectorAll('#edPick [data-ed]')) b.addEventListener('click', () => {
+    if (EDITORS[b.dataset.ed] === editor()) return;
+    prefs.editor = b.dataset.ed; savePrefs(); edPick();
+    const s = state.sessions.get(state.current); if (!s) return;
+    logView.arr = null; renderLog(); renderHead(s);   // the transcript's links and ··· name the editor
+  });
+  edPick();
+  /** A path's file URL in the editor against the chat's folder, or null for one that is no file of ours: ~ needs a home
       (read off the folder), a relative path needs the folder, an absolute one a known root or an extension. */
   function pathHref(p, cwd) {
     const m = /^(.*?)(?::(\d+)(?::(\d+))?)?$/.exec(p); let f = m[1];
@@ -5700,7 +5723,7 @@ const toolName = n => {
     else if (f.startsWith('/')) { if (!PATH_ROOTS.test(f) && !EXT_RE.test(f)) return null; }
     else { if (!cwd) return null; f = `${cwd}/${f}`; }
     const out = []; for (const seg of f.split('/')) { if (seg === '.' || seg === '') continue; if (seg === '..') out.pop(); else out.push(seg); }
-    return `vscode://file/${out.join('/')}${m[2] ? ':' + m[2] : ''}${m[3] ? ':' + m[3] : ''}`;
+    return fileUrl('/' + out.join('/'), m[2], m[3]);
   }
   /** Where the links are in a run of text: [{ start, end, href, web }], the pages first and no path inside one. */
   function chatLinks(text, cwd) {
@@ -5728,7 +5751,7 @@ const toolName = n => {
       for (const l of links) {
         frag.append(t.slice(at, l.start));
         const a = document.createElement('a'); a.href = l.href; a.textContent = t.slice(l.start, l.end);
-        if (l.web) { a.target = '_blank'; a.rel = 'noopener'; } else a.title = `Open ${l.href.slice('vscode://file'.length)} in VS Code`;
+        if (l.web) { a.target = '_blank'; a.rel = 'noopener'; } else a.title = `Open ${filePath(l.href)} in ${editor().name}`;
         frag.append(a); at = l.end;
       }
       frag.append(t.slice(at)); n.replaceWith(frag);
@@ -5772,6 +5795,8 @@ const toolName = n => {
     ? 'Focus view is on in this session — your prompt, the summary and the reply only. Click to show every step again (/focus in the terminal)'
     : 'Focus view: your prompt, the summary and the reply only, the steps hidden. Click to turn it on (/focus in the terminal)';
   const WEB_TIP = "Open this folder in VS Code Web — the editor served locally by `code serve-web`, in the pane here (a separate VS Code: trust the folder once, then Claude Code is in its sidebar) · ⌥⌘E";
+  const ZED_TIP = "Open this folder in Zed — in a window of its own, as Zed has no web build to put in the pane; the files named in this chat open there too · ⌥⌘E";
+  const edRow = () => onZed() ? 'Zed' : 'VS Code Web';   // what ⌥⌘E opens, by name
   // The header, the menu and the PR rows are set only when their markup changed (2026-09-27): every SSE update of the
   // open chat rebuilt all three — a live <dialog>, its rows detached under the pointer — and rebound nine handlers,
   // then laid the notch and the chips out again. The handlers are still bound on every call: they close over `s`,
@@ -5807,7 +5832,7 @@ const toolName = n => {
     const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo${s.cwd && prefs.project === s.cwd ? ' on' : ''}" title="${s.cwd && prefs.project === s.cwd ? 'Every project again (ALL)' : 'Show this folder\'s chats — click again for every project'}">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${ticks(esc(s.title))}</span></h2>
       ${diffChip(s)}${headMove(s)}${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
-      <button class="hmore" id="moreBtn" aria-haspopup="dialog" aria-expanded="false" title="This chat: Claude in its drawer, a shell, VS Code Web, its changes, focus view, path and branch — and the settings">${ICON.more}</button>
+      <button class="hmore" id="moreBtn" aria-haspopup="dialog" aria-expanded="false" title="This chat: Claude in its drawer, a shell, ${edRow()}, its changes, focus view, path and branch — and the settings">${ICON.more}</button>
       <div class="details"${prefs.headDetails ? '' : ' hidden'}>
         <span class="path">${esc(s.cwd || '')}${s.gitBranch && s.gitBranch !== 'HEAD' ? ' @ ' + esc(s.gitBranch) : ''}</span>
         ${s.live ? `<span class="chip">${entryLabel(s)}</span>` : ''}${s.live?.name ? `<span class="chip" title="session name">${esc(s.live.name)}</span>` : ''}${
@@ -5820,7 +5845,7 @@ const toolName = n => {
       s.cwd && !loud ? `${termBtn('hmi')}<span class="lbl">${termWord}</span><span class="k">⌥⌘C</span></button>` : '',
       termLive(s) ? `<button class="hmi${focusOn(s.id) ? ' on' : ''}" id="viewBtn" aria-pressed="${focusOn(s.id)}" title="${esc(viewTip(s))}">${ICON.view}<span>focus view</span><span class="k">${focusOn(s.id) ? 'on' : 'off'}</span></button>` : '',
       s.cwd ? `<button class="hmi" id="chgBtn" title="What this chat changed in its folder — the diff, by turn, uncommitted or the branch">${ICON.diff}<span class="lbl">changes</span><span class="k">⌥⌘D</span></button>` : '',
-      s.cwd ? `<button class="hmi" id="webBtn" title="${WEB_TIP}">${ICON.vscode}<span class="lbl">VS Code Web</span><span class="k">⌥⌘E</span></button>` : '',
+      s.cwd ? `<button class="hmi" id="webBtn" title="${onZed() ? ZED_TIP : WEB_TIP}">${onZed() ? ICON.zed : ICON.vscode}<span class="lbl">${edRow()}</span><span class="k">⌥⌘E</span></button>` : '',
       // what a tab's × does, for the tabs that lose their strip alone in a half (2026-09-28) — ⌘W with the keys in it
       shellLive(s) ? `<button class="hmi" id="shellEndBtn" title="End this chat's ${shName()}${shellsOf(s).length > 1 ? ' the keys are in, else its first,' : ''} and close its tab — exit in it does the same · ⌘W with the keys in it"><span class="gl">×</span><span>end the ${shName()}</span><span class="k"></span></button>` : '',
       ideKey(s) ? `<button class="hmi" id="ideCloseBtn" title="Close VS Code Web's tab — ⌥⌘E opens it again · ⌘W with the keys in it"><span class="gl">×</span><span>close VS Code Web</span><span class="k"></span></button>` : '',
@@ -5849,7 +5874,8 @@ const toolName = n => {
     renderResume(s); renderRival(s);
     $('#detailsBtn').onclick = () => { prefs.headDetails = !prefs.headDetails; savePrefs(); renderHead(s); };
     const wb = $('#webBtn');
-    if (wb) wb.onclick = async () => {
+    if (wb && onZed()) wb.onclick = () => { menu.close(); openExternal(fileUrl(s.cwd)); };   // Zed's own window: nothing to start, no tab
+    else if (wb) wb.onclick = async () => {
       wb.disabled = true; wb.querySelector('.lbl').textContent = 'starting…';
       try {
         const d = await api('POST', '/api/vscode-web');
@@ -8585,7 +8611,7 @@ const toolName = n => {
   }
   const ABS_URL = /^([a-z][a-z0-9+.-]*:|\/\/|#)/i;
   // Full GFM via marked, sanitised by DOMPurify (replies may contain raw HTML). Relative links —
-  // Claude writes [file.ts:42](src/file.ts#L42) — are resolved against the session cwd and opened in VS Code.
+  // Claude writes [file.ts:42](src/file.ts#L42) — are resolved against the session cwd and opened in the editor.
   function md(t, cwd) {
     if (!hasMd) return { html: mdFallback(t), cls: '' };
     let html;
@@ -8607,9 +8633,9 @@ const toolName = n => {
       if (ABS_URL.test(href)) { a.target = '_blank'; a.rel = 'noopener'; continue; }
       const m = href.match(/^([^#?]+)(?:#L(\d+))?/);
       if (!m) continue;
-      const abs = m[1].startsWith('/') ? m[1] : `${cwd || ''}/${m[1].replace(/^\.\//, '')}`;
-      a.setAttribute('href', `vscode://file${abs}${m[2] ? ':' + m[2] : ''}`);
-      a.title = `Open ${abs}${m[2] ? ':' + m[2] : ''} in VS Code`;
+      const abs = unURI(m[1].startsWith('/') ? m[1] : `${cwd || ''}/${m[1].replace(/^\.\//, '')}`);   // marked's href comes encoded
+      a.setAttribute('href', fileUrl(abs, m[2]));
+      a.title = `Open ${abs}${m[2] ? ':' + m[2] : ''} in ${editor().name}`;
     }
     // Every block in a .codebox with its bar — the language, a copy button — and the long ones folded, always
     // (2026-09-28; a switch in the settings and a { } row per chat under ··· before). Claude Code cannot fold the code
