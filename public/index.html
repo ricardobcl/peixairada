@@ -244,19 +244,18 @@
   #sbar .clock { border-right: 0; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
   /* the fish swimming at the agents' pace (swimAt): a lane between the faces and the machine's numbers */
   #sbSwim { position: relative; flex: 1 1 auto; min-width: 64px; overflow: hidden; cursor: pointer; }   /* the bar's free room (2026-10-11, later; 64 px before) */
-  #sbSwim .swimmer { position: absolute; left: 0; top: calc(50% - 5.5px); }
+  #sbSwim .swimmer { position: absolute; left: 0; top: calc(50% - 5.5px); display: flex; }
+  #sbSwim .fw { display: flex; } #sbSwim :is(.fb, .ft) { display: block; flex: none; overflow: visible; }   /* boxes, not SVG groups: the compositor's (swimAt) */
   #sbSwim .b { fill: var(--accent); } #sbSwim .s { fill: color-mix(in srgb, var(--accent) 60%, #000); } #sbSwim .e { fill: var(--bar, var(--panel)); }
-  #sbSwim .ft { transform-box: fill-box; transform-origin: 0 50%; animation: wag var(--wag, .3s) ease-in-out infinite alternate; }
+  #sbSwim .ft { transform-origin: 0 50%; animation: wag var(--wag, .3s) ease-in-out infinite alternate; }
   #sbSwim.rest .swimmer { animation: fbob 1.6s ease-in-out infinite alternate; }
   #sbSwim .bub { position: absolute; width: 4px; height: 4px; border-radius: 50%; border: 1px solid var(--muted); pointer-events: none; }
   /* what it eats (2026-10-11, late night): bubbles it blurps ahead of itself, bobbing where they land until it gulps them —
      its lips (.m) away while its mouth is open, its body swelling from the tail end (.fb), the whole fish turned by a pat
-     (.fw; the svg's own transform is the swim's) */
-  #sbSwim .swimmer { overflow: visible; }
+     (.fw; the swimmer's own transform is the swim's) */
   #sbSwim .food { border-color: color-mix(in srgb, var(--ink) 55%, transparent); background: color-mix(in srgb, var(--accent) 18%, transparent); animation: bbob 1.1s ease-in-out infinite alternate; }
   #sbSwim.open .m { visibility: hidden; }
-  #sbSwim .fb { transform-box: fill-box; transform-origin: 100% 50%; }
-  #sbSwim .fw { transform-box: fill-box; transform-origin: 50% 50%; }
+  #sbSwim .fb { transform-origin: 100% 50%; }
   @keyframes bbob { from { translate: 0 -1px; } to { translate: 0 1px; } }
   @keyframes wag { to { transform: scaleY(.45); } }
   @keyframes fbob { to { translate: 0 1px; } }
@@ -3184,15 +3183,21 @@ const toolName = n => {
   const FISH = ['..........######..........', '.......############.....##', '.....################..###', '...####=####=####=####.###', '..##o##=####=####=#######.',
     '.###=##=####=####=######..', '..######=####=####=######.', '...#####=####=####=###.###', '.....################..###', '.......############.....##', '..........######..........'];
   // …and swimming in the status bar at the pace of the agents at work (2026-10-11, RunCat's cat): `#sbSwim`, a lane of
-  // its own outside the bar's redrawn slots, the fish an SVG of those pixels — its tail a group of its own, wagging. The
-  // swim is one animation whose rate follows the count (updatePlaybackRate keeps its place). It never stops (2026-10-11,
+  // its own outside the bar's redrawn slots, the fish an SVG of those pixels — its tail one of its own, wagging. The
+  // swim is one animation whose pace follows the count (swimPaceTo keeps its place). It never stops (2026-10-11,
   // later; paused while nothing was at work before): nothing at work, it potters at half the pace; and it swims back
   // and forth, turning at either end (it went off the left and came back on the right before). A click is the overview.
-  // Its lips are a path of their own (m, 2026-10-11, late night): hidden, its mouth is open. The whole fish is a group
-  // (.fw) a pat can turn, the svg's own transform being the swim's.
+  // Its lips are a path of their own (m, 2026-10-11, late night): hidden, its mouth is open. The whole fish is a box
+  // (.fw) a pat can turn, the swimmer's own transform being the swim's.
+  // Boxes, not SVG groups (2026-10-13): the swimmer a span, its body (.fb) and its tail (.ft) an svg each — WebKit never
+  // hands an SVG group's transform to the compositor, so the tail's wag, always running, kept every frame of the board
+  // on the main thread (a style pass and a walk of every layer, each frame); an svg in an HTML box it does.
   const fishRuns = (from, to, ch, rows = FISH) => rows.flatMap((r, y) => [...r.slice(from, to).matchAll(new RegExp(`[${ch}]+`, 'g'))].map(m => `M${m.index + from} ${y}h${m[0].length}v1h-${m[0].length}z`)).join('');
   const SWIM_ROWS = FISH.map((r, y) => y === 5 ? `.mmm${r.slice(4)}` : r);
-  const SWIM_FISH = `<svg class="swimmer" viewBox="0 0 26 11" width="26" height="11" shape-rendering="crispEdges" aria-hidden="true"><g class="fw"><g class="fb"><path class="b" d="${fishRuns(0, 21, '#', SWIM_ROWS)}"/><path class="b m" d="${fishRuns(0, 21, 'm', SWIM_ROWS)}"/><path class="s" d="${fishRuns(0, 21, '=')}"/><path class="e" d="${fishRuns(0, 21, 'o')}"/></g><g class="ft"><path class="b" d="${fishRuns(21, 26, '#')}"/></g></g></svg>`;
+  const FISH_BODY = `<path class="b" d="${fishRuns(0, 21, '#', SWIM_ROWS)}"/><path class="b m" d="${fishRuns(0, 21, 'm', SWIM_ROWS)}"/><path class="s" d="${fishRuns(0, 21, '=')}"/><path class="e" d="${fishRuns(0, 21, 'o')}"/>`, FISH_TAIL = `<path class="b" d="${fishRuns(21, 26, '#')}"/>`;
+  const SWIM_FISH = `<span class="swimmer" aria-hidden="true"><span class="fw"><svg class="fb" viewBox="0 0 21 11" width="21" height="11" shape-rendering="crispEdges">${FISH_BODY}</svg>`
+    + `<svg class="ft" viewBox="21 0 5 11" width="5" height="11" shape-rendering="crispEdges">${FISH_TAIL}</svg></span></span>`;
+  const REST_FISH = `<svg class="restfish" viewBox="0 0 26 11" width="52" height="22" shape-rendering="crispEdges" aria-hidden="true">${FISH_BODY}${FISH_TAIL}</svg>`;   // the empty list's, still
   const swim = { n: -1, anim: null, w: 0, h: 0, food: [], eaten: 0, dart: false, raf: 0, patAt: -Infinity };
   // The lane is the bar's free room (2026-10-11, later), so its width moves: the swim's path is the lane's width and its
   // length keeps the fish's speed in pixels (92 px in 6 s, as in the 64 px lane it had), and a new width keeps where the
@@ -3203,10 +3208,17 @@ const toolName = n => {
     { transform: `translateX(${SWIM_PAD}px) scaleX(-1)`, offset: .5 }, { transform: `translateX(${swimEnd(w)}px) scaleX(-1)` }];
   const swimMs = w => Math.max(1000, 6000 * 2 * (swimEnd(w) - SWIM_PAD) / 92);
   const swimRate = n => [.5, 1, 1.35, 1.9, 2.3][Math.min(n, 4)] + Math.max(0, n - 4) * .45;
+  // The pace is the swim's length, not its playback rate (2026-10-13): a rate other than 1 had WebKit resolve the swim on
+  // the main thread every frame. A new pace or a new lane keeps where the fish is in its loop, at the new length.
+  const swimLen = () => swim.anim.effect.getTiming().duration;
+  function swimPaceTo(w = swim.w) {
+    const a = swim.anim, D = swimLen(), p = (a.currentTime % D) / D, d = swimMs(w) / swimPace();
+    if (Math.abs(d - D) < 1) return;
+    a.effect.updateTiming({ duration: d }); a.currentTime = p * d;
+  }
   new ResizeObserver(() => {
     const lane = $('#sbSwim'), a = swim.anim, w = lane.clientWidth; if (!a || !w || w === swim.w) return;
-    const at = (a.currentTime % swimMs(swim.w)) / swimMs(swim.w); swim.w = w;
-    a.effect.setKeyframes(swimFrames(w)); a.effect.updateTiming({ duration: swimMs(w) }); a.currentTime = at * swimMs(w);
+    a.effect.setKeyframes(swimFrames(w)); swimPaceTo(w); swim.w = w;
   }).observe($('#sbSwim'));
   function swimAt(n) {
     const lane = $('#sbSwim'); if (!lane) return;
@@ -3217,7 +3229,7 @@ const toolName = n => {
     lane.classList.toggle('rest', !n); lane.style.setProperty('--wag', n ? `${Math.max(.14, .5 / Math.sqrt(n))}s` : '1.6s');
     if (REDUCED.matches) return;
     if (!swim.anim) { swim.anim = f.animate(swimFrames(w), { duration: swimMs(w), iterations: Infinity, id: 'swim' }); swim.anim.currentTime = swimMs(w) / 4; swim.w = w; }   // from the lane's middle, heading left
-    swim.anim.updatePlaybackRate(swimPace()); noteMotion(null, 'swim', n);
+    swimPaceTo(); noteMotion(null, 'swim', n);
   }
   // It eats (2026-10-11, late night): now and then it blurps a bubble or three out ahead of it and swims after them — its
   // mouth open for the last few pixels, darting the last DART_PX at DART times its pace — and gulps each one it reaches,
@@ -3226,7 +3238,7 @@ const toolName = n => {
   // is comes from the swim's own clock (fishAt), never a rect, so the frame loop (feed) reads no layout; it runs only
   // while a bubble is out. None of it under reduced motion: there is no swim to chase with.
   const DART = 3, DART_PX = 10, FOOD_MS = 12_000, SPIT_MS = 420;
-  const fishAt = () => { const D = swimMs(swim.w), p = (swim.anim.currentTime % D) / D, e = swimEnd(swim.w);
+  const fishAt = () => { const D = swimLen(), p = (swim.anim.currentTime % D) / D, e = swimEnd(swim.w);
     return p < .5 ? { x: e + (SWIM_PAD - e) * p * 2, dir: -1 } : { x: SWIM_PAD + (e - SWIM_PAD) * (p - .5) * 2, dir: 1 }; };
   const mouthOf = f => f.x + (f.dir < 0 ? 1 : 25);   // its lips' front pixel, whichever way it faces
   const swimPace = () => swimRate(Math.max(0, swim.n)) * (swim.dart ? DART : 1);
@@ -3256,7 +3268,7 @@ const toolName = n => {
       else if (ahead > 0) near = Math.min(near, ahead);
     }
     lane.classList.toggle('open', near < 6);
-    if ((near < DART_PX) !== swim.dart) { swim.dart = !swim.dart; swim.anim.updatePlaybackRate(swimPace()); if (swim.dart) noteMotion(null, 'dart'); }
+    if ((near < DART_PX) !== swim.dart) { swim.dart = !swim.dart; swimPaceTo(); if (swim.dart) noteMotion(null, 'dart'); }
     if (swim.food.length) swim.raf = requestAnimationFrame(feed);
   }
   function gulp(b, m, lane) {
@@ -3804,7 +3816,7 @@ const toolName = n => {
     // An empty list (2026-10-11) is the home's fish, resting, over what is empty and the key that fills it — a bubble
     // now and then (the bar's own interval), nothing else moving.
     const [none, how] = q ? ['Nothing matches', 'another word, or Esc for every chat'] : flt ? [flt.none, 'the funnel shows every chat again'] : ['No chats yet', '⌥⌘N starts one'];
-    drawCards(items, `<div class="none"><span class="nfish">${SWIM_FISH.replace('class="swimmer"', 'class="restfish"').replace('width="26" height="11"', 'width="52" height="22"')}</span><b>${esc(none)}</b><span>${esc(how)}</span></div>`);
+    drawCards(items, `<div class="none"><span class="nfish">${REST_FISH}</span><b>${esc(none)}</b><span>${esc(how)}</span></div>`);
     fillAges($('#slist')); fillLive($('#slist')); fadeSoon();
     caughtUp(zero);
     drawFilter(p);
@@ -6416,7 +6428,7 @@ const toolName = n => {
       termId: curTerm().id, termSession: curTerm().sessionId, termExited: curTerm().exited,
       reload: reload.want ? { to: reload.want, why: reload.why } : null,
       resume: autoResume.id ? { id: autoResume.id, left: Math.max(0, Math.round(autoResume.at - performance.now())) } : null,
-      swim: { n: swim.n, pace: swimRate(Math.max(0, swim.n)), dart: swim.dart, food: swim.food.map(b => b.x), eaten: swim.eaten } }),   // the bar's fish: its pace without a dart, what it has to eat (lane x)
+      swim: { n: swim.n, pace: swimRate(Math.max(0, swim.n)), rate: swim.anim ? +(swimMs(swim.w) / swimLen()).toFixed(3) : 0, dart: swim.dart, food: swim.food.map(b => b.x), eaten: swim.eaten } }),   // the bar's fish: its pace without a dart, what it has to eat (lane x)
     session: id => { const s = state.sessions.get(id || state.current); return s ? structuredClone(s) : null; },
     motion: () => MOTION.map(m => ({ ...m })),
     trail: () => ({ on: !!trail.sig, loop: trail.loop.map(p => [...p]), L: trail.L, v: trail.v, blobs: trail.blobs.length }),   // the open chat's light past its card (drawTrail)   // the list's last moves: {id, kind: flip | enter | leave, at}

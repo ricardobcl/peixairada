@@ -225,7 +225,7 @@ export default async function (ctx) {
       { what: 'the command let go once its output file was closed', timeout: 20000 });
 
     // ---- the status bar's fish swims at the agents' pace (2026-10-11): three clauding chats, one with three agents ----
-    out.swim = await ctx.evaluate(`({ rest: document.querySelector('#sbSwim').classList.contains('rest'), n: window.peix.motion().filter(m => m.kind === 'swim').map(m => m.dy).pop(), rate: document.getAnimations().find(a => a.id === 'swim')?.playbackRate })`);
+    out.swim = await ctx.evaluate(`({ rest: document.querySelector('#sbSwim').classList.contains('rest'), n: window.peix.motion().filter(m => m.kind === 'swim').map(m => m.dy).pop(), rate: window.peix.state().swim.rate })`);
     ctx.assert.equal(out.swim.rest, false, 'swimming');
     ctx.assert.ok(out.swim.n >= 6 && out.swim.rate > 2.3, `at the pace of every one at work: ${JSON.stringify(out.swim)}`);
 

@@ -32,6 +32,19 @@ the server (0.5 %) and the drawers (a 10 Hz spinner, +1–3 %) were not it.
   restyles walks them all. The whole board at rest 39 % → 26 % of a core. The frozen frames (every animation paused
   at 0) before and after are the same but for 20 px of a lane's chevron, antialiased a hair differently; nothing in
   a card reaches past the list (the chips' and faces' z-indexes are inside the card's own context).
+* **The status bar's fish is boxes, and its pace its length.** Its tail wagged as an SVG `<g>`, whose transform WebKit
+  never composites — 4.5 % of a core on a page of 400 plain cards, and on the board every frame a style pass and a
+  layer walk, since the wag never stops; and its pace was `updatePlaybackRate`, a rate other than 1, which kept the
+  swim resolved on the main thread too (0 % at rate 1, 3.5 % at 1.4, on the same page). Now the swimmer is a span
+  holding an svg for the body (`.fb`, the gulp's swell) and one for the tail (`.ft`, the wag) inside `.fw` (the pat's
+  turn), the same pixels and the same pivots (fill-box origins become the boxes' own: the tail's left middle, the
+  body's right middle, the fish's middle half a pixel left), and the pace is the swim's length (`swimPaceTo`, its place
+  in the loop kept, as the lane's ResizeObserver already did). Alone, the swim and the wag are now 1–2 % over nothing;
+  the whole board at rest 26 % → 10 % of a core. The empty list's resting fish keeps a single svg (`REST_FISH`).
+  `small-motions` reads the pace from `peix.state().swim.rate`, and three of its waits no longer race the board's own
+  clock (they failed on the commit before too, under load): the motion log read by time, not by an index the capped
+  log shifts; a pat waits for a moment with no bubble out and no burp due; the lane's count alone is waited on to stop
+  rolling, not the bar's CPU, which rolls every 3 s.
 
 ## Decisions of 2026-10-13, after the last — the board no longer updates itself unless asked
 

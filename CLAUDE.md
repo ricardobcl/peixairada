@@ -465,9 +465,12 @@ for `$HOME`'s home and the account's.
   both awake switches (`#sbAwake`, `#sbLid`), and the clock (24-hour, `hourCycle: 'h23'`; `clockTick`). `#sbLeft` and
   `#sbRight` are drawn by markup (`setHtml`); **the moved-in nodes are never redrawn by the bar**. On, the list's foot
   row goes (`:root[data-sbar] :is(#shd, #sfoot)`); off, `dockBar(false)` puts them back. **The fish** (`swimAt(n)`, n
-  the clauding chats and their agents): one `swim` animation whose rate changes in place (`updatePlaybackRate`), never
-  still; `fishAt` reads where it is from the swim's own clock, never a rect, and `feed` (its bubbles) is a frame loop
-  only while one is out, reading no layout; a click is ⌥⌘A; `peix.state().swim`. → `status-bar.mjs`.
+  the clauding chats and their agents): one `swim` animation whose pace is its length (`swimPaceTo`: its place kept —
+  never `updatePlaybackRate`, a rate other than 1 keeps WebKit's frames on the main thread), never still; a span of
+  two svgs, body (`.fb`) and tail (`.ft`), **never SVG groups** — WebKit composites no group's transform, and the wag
+  never stops (2026-10-13); `fishAt` reads where it is from the swim's own clock, never a rect, and `feed` (its
+  bubbles) is a frame loop only while one is out, reading no layout; a click is ⌥⌘A; `peix.state().swim` (`rate` the
+  pace it swims at). → `status-bar.mjs`, `small-motions.mjs`.
 * **The plan usage with the bar off** is `#usage` in `#sfoot`: a tag per limit (`uShort`: 5H, 1W, a model's initial,
   CR a grant — kept out of the row, `uGrant` —, $ a cap in money, `.umoney`) and its percent; its rows (a bar in
   `--spend`, red from 90 % — `uColor` —, the clock's tick `uPace`/`uSpan`, the time to reset) a panel on hover or a
