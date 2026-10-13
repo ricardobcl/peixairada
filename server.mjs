@@ -19,6 +19,7 @@
 //      · …and whether they are open, merged or closed
 //      · …and whose move it is
 //      · Jira tickets named in the chat (2026-10-08)
+//      · the branch moved under a chat (2026-10-13)
 //  Sub-agents: <slug>/<id>/subagents/agent-*.jsonl — one at work keeps the chat clauding
 //      · background tasks: a monitor, or a command left running
 //  Live-session registry (~/.claude/sessions/<pid>.json)
@@ -123,6 +124,9 @@ let unlinked = {};
 // filter. A chat never shown counts from `seenSince`, the moment the board first kept this, so nothing from before it is
 // new.
 let seen = {}, seenSince = null;
+// The branch moved under a chat, and you said you know (2026-10-13): sessionId -> the move (`from→to`) — the header's chip
+// clicked. It lasts until that move is gone (driftNews): the next one shows again.
+let driftAcks = {};
 // Custom projects: id -> { id, name, cwds, createdAt }. A name over one or more folders — multi-repo
 // work, an investigation. Folders themselves need no record: they come from the sessions' cwds.
 let projects = {};
@@ -182,6 +186,7 @@ try {
   forGoodMarks = st.forGood && typeof st.forGood === 'object' ? st.forGood : {};
   unlinked = st.unlinked && typeof st.unlinked === 'object' ? st.unlinked : {};
   seen = st.seen && typeof st.seen === 'object' ? st.seen : {}; seenSince = typeof st.seenSince === 'string' ? st.seenSince : null;
+  driftAcks = st.driftAcks && typeof st.driftAcks === 'object' ? st.driftAcks : {};
   projects = st.projects || {};
   titles = st.titles || {};
   pinned = Array.isArray(st.pinned) ? st.pinned.filter(k => typeof k === 'string') : [];
@@ -207,7 +212,7 @@ function saveState() {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld }, null, 1));
+    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld }, null, 1));
     renameSync(tmp, STATE_FILE);
   } catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
@@ -547,6 +552,8 @@ function newSession(id, file) {
     entries: [], entryCount: 0, loaded: false,
     offset: 0, partial: '', dec: null, reading: false, truncatedHead: false,   // where the tail reads from, its unfinished line and character (indexFile)
     agentsRunning: 0, ask: null, tasks: null, taskCalls: null,   // sub-agents at work (scanAgents); the question a tool asked; background tasks and the calls that started them
+    branches: [], branchBase: null, gitCmds: [], drift: null, driftDue: null,   // the branch under the chat as its lines tell it, and a move no git of its own explains (noteBranch)
+    headNow: null, diskDrift: null, diskSeen: null, headOk: null, peers: [],      // its checkout's HEAD as read on the poll, and what that says (noteHead)
     pendingNotify: null, notifyTimer: null, pushTimer: null, newEntries: []
   };
 }
@@ -627,6 +634,9 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     rivals: s.rivals, tailEntrypoint: s.entrypoint, tailEntrypointAt: s.entrypointAt,
     done: isDone(s), doneAt: doneMarks[s.id] || null, forGood: forgotten(s),
     seenAt: seen[s.id] || seenSince,   // the board last showed it: a reply after is a new one (2026-10-12)
+    // the branch moved under it (2026-10-13): what its checkout is on now and what the chat was on, and who else runs in
+    // that checkout — while its claude runs, and not once you said you know
+    drift: (d => d && { from: d.from, to: d.to, at: d.at, peers: s.peers || [] })(driftOf(s)), headNow: s.alive ? s.headNow : null,
     // its folder not there, and the repo a clone would bring it back from (2026-10-09; the resume bar says so before
     // the resume clones it) — asked of a chat with no claude only: one running has its folder
     ...(!s.alive && s.cwd && !existsSync(s.cwd) ? { folderMissing: true, cloneRef: cloneFor(s.cwd)?.ref || null } : {})
@@ -1361,6 +1371,161 @@ function jiraCliConfig() {
   try { const t = readFileSync(file, 'utf8'); const v = k => new RegExp(`^${k}:\\s*"?([^"\\n]+?)"?\\s*$`, 'm').exec(t)?.[1] || null; const site = jiraSite(v('server')); return site ? { site, email: v('login') } : null; } catch { return null; }
 }
 
+// ---- the branch moved under a chat (2026-10-13) -----------------------------------------------------------------------
+// Claude Code writes the checkout's branch on every line (`gitBranch`, `HEAD` while detached). In the 422 newest
+// transcripts it changed mid-chat 334 times with the folder unchanged, and 61 of those followed no git command of the
+// chat's own within the hour: another chat, or you, moved the branch under it — and Claude went on editing whatever was
+// checked out. Two signals say so. The transcript: a change between lines that the chat's own git does not explain
+// (`noteBranch` → `s.drift`). The disk, for a chat writing nothing: its checkout's HEAD file read on the registry poll
+// (`sweepHeads` → `s.headNow`, `s.diskDrift`). A move through `HEAD` and back (a rebase) is none; a word of yours clears
+// it, as does the chat moving back or on by its own hand; a click on the header's chip says you know (`driftAcks`).
+// Shown only while the chat's claude runs: an ended chat's next word is yours, which clears it anyway.
+// The study's commands (checkout, switch, rebase, reset, stash, pull, merge, worktree, gh pr checkout), and a branch
+// renamed or a bisect: right after git and its own options, so a commit message that says "merge" is no move.
+const GIT_MOVE_RE = /\bgit(?:\s+-[Cc]\s+(?:"[^"]*"|'[^']*'|\S+)|\s+--?[\w-]+(?:=\S+)?)*\s+(?:checkout|switch|rebase|reset|stash|pull|merge|worktree|bisect|branch\s+(?:-[mM]|--move))\b|\bgh\s+pr\s+checkout\b/;
+const DRIFT_WINDOW_MS = 60 * 60_000;
+const BRANCHES_MAX = 6, GIT_CMDS_MAX = 40, AGENT_GIT_BYTES = 4 << 20;
+const driftKey = d => `${d.from}→${d.to}`;
+/** A Bash command of the chat's — its own, a sub-agent's, a `!` one of yours — that can move the branch. */
+function noteGitCmd(cmds, cmd, ts) {
+  if (!cmd || !GIT_MOVE_RE.test(cmd)) return;
+  cmds.push({ at: Date.parse(ts) || 0, cmd: cut(String(cmd), 400) });
+  if (cmds.length > GIT_CMDS_MAX) cmds.shift();
+}
+const bashCmds = line => (Array.isArray(line.message?.content) ? line.message.content : []).filter(b => b?.type === 'tool_use' && b.name === 'Bash').map(b => b.input?.command);
+const namesBranch = (cmd, b) => new RegExp(`(?:^|[\\s'"/:=])${b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[\\s'";&|)])`).test(cmd);
+/** Whether the chat's own git explains a move to `to` seen at `at`: any of those commands in the hour before (the
+ *  study's rule), or one since the chat was on the branch it left (`since`) that names the new one. Claude Code's
+ *  gitBranch lags its own checkout — of 185 checkouts that moved it, the result's line still carried the old branch
+ *  in 166, and the new one came lines, minutes and once hours later — so the line before the change says nothing. */
+const ownMove = (cmds, at, to, since) => (cmds || []).some(c => c.at <= at + 2000 && (c.at >= at - DRIFT_WINDOW_MS || (c.at >= since - 2000 && namesBranch(c.cmd, to))));
+/** The same asked of the chat's sub-agents' transcripts — read only when a move is not otherwise explained. */
+function agentsMoved(s, at, to, since) {
+  const dir = agentsDir(s); let names = [];
+  if (dir) try { names = readdirSync(dir); } catch {}
+  const from = Math.min(at - DRIFT_WINDOW_MS, Math.max(since, at - 24 * 3600_000)), cmds = [];
+  for (const n of names) {
+    if (!n.endsWith('.jsonl')) continue;
+    const f = join(dir, n); let st; try { st = statSync(f); } catch { continue; }
+    if (st.mtimeMs < from - 2000 || !st.size) continue;   // done before the window: nothing of it is in it
+    const len = Math.min(st.size, AGENT_GIT_BYTES), buf = Buffer.alloc(len);
+    try { const fd = openSync(f, 'r'); try { readSync(fd, buf, 0, len, st.size - len); } finally { closeSync(fd); } } catch { continue; }
+    for (const raw of buf.toString('utf8').split('\n')) {
+      if (!raw.includes('"Bash"')) continue;
+      let l; try { l = JSON.parse(raw); } catch { continue; }
+      if (l.type === 'assistant') for (const c of bashCmds(l)) noteGitCmd(cmds, c, l.timestamp);
+    }
+  }
+  return ownMove(cmds, at, to, since);
+}
+/** A line's branch. `s.branchBase` is the branch the chat is on as its lines tell it — `{name, cwd, from, at}`, the
+ *  first and last line of the run —, `s.branches` the last few it was on. A change in the same folder that the chat's
+ *  own git does not explain is drift, from the branch the chat was on before anything moved under it; back there is
+ *  none. Whether a sub-agent moved it is asked once the lines in hand are folded (settleDrift). */
+function noteBranch(s, line, ts) {
+  const b = line.gitBranch, cwd = line.cwd || s.cwd, at = Date.parse(ts) || 0;
+  if (!b) return;
+  if (s.branches.at(-1)?.name !== b) { s.branches.push({ name: b, at: ts }); if (s.branches.length > BRANCHES_MAX) s.branches.shift(); }
+  if (b === 'HEAD') return;   // detached, mostly mid-rebase: where it lands is what counts
+  const base = s.branchBase;
+  if (!base || base.cwd !== cwd) { s.branchBase = { name: b, cwd, from: at, at }; s.drift = null; return; }   // the first line, or another folder
+  if (base.name === b) { base.at = at; return; }
+  const ok = s.headOk === b; s.headOk = null;
+  s.branchBase = { name: b, cwd, from: at, at };
+  if (ok || s.drift?.from === b || ownMove(s.gitCmds, at, b, base.from)) { s.drift = null; s.driftDue = null; return; }
+  s.drift = { from: s.drift?.from || base.name, to: b, at: ts };
+  s.driftDue = { at, to: b, since: base.from, working: statusOf(s) === 'working' };
+}
+/** A word of yours: whatever moved before it, you have had your say — the drift goes, and the branch the folder was on
+ *  as you spoke is taken as the chat's (`headOk`), for the lines that are still to catch up with it. */
+function branchHeard(s) {
+  s.drift = null; s.driftDue = null; s.diskDrift = null; s.diskSeen = null;
+  if (!s.reading) s.headOk = s.headNow && s.headNow !== 'HEAD' && s.headNow !== s.branchBase?.name ? s.headNow : null;   // a re-read's prompts are old: the head now is not what they saw
+  if (s.pendingNotify === 'drift') s.pendingNotify = null;
+}
+/** The drift as it stands: the disk's (newer) or the transcript's, while the claude runs, unless the folder is back on
+ *  the chat's branch. `driftOf` leaves out one you said you know. */
+function rawDrift(s) {
+  const d = s.alive ? s.diskDrift || s.drift : null;
+  return d && !(s.headNow && s.headNow === d.from) ? d : null;
+}
+const driftOf = s => { const d = rawDrift(s); return d && driftAcks[s.id] !== driftKey(d) ? d : null; };
+/** After a batch of lines (indexFile, tailFile): a new drift a sub-agent explains goes; then the news. True when the
+ *  drift changed here. */
+function settleDrift(s) {
+  const due = s.driftDue; s.driftDue = null;
+  const gone = !!(due && s.drift?.to === due.to && agentsMoved(s, due.at, due.to, due.since));
+  if (gone) s.drift = null;
+  driftNews(s, !!due?.working && !gone);
+  return gone;
+}
+/** An acknowledgement lasts until the move it was for is gone; an alert goes out once per move, and only for a chat at
+ *  work — Claude editing the wrong branch is the case that matters. */
+function driftNews(s, working) {
+  const raw = rawDrift(s), k = raw && driftKey(raw);
+  if (!indexing && driftAcks[s.id] && driftAcks[s.id] !== k) { delete driftAcks[s.id]; saveState(); }
+  const d = driftOf(s), said = d ? driftKey(d) : null;
+  if (said === (s.driftSaid ?? null)) return;
+  s.driftSaid = said;
+  if (said && working) queueNotify(s, 'drift');
+}
+/** The work tree a folder is in: the nearest folder at or above it with a `.git` — a directory, or a worktree's file.
+ *  Not checkoutOf, which climbs from a worktree to its repo; a worktree has a HEAD of its own. */
+function gitTopOf(cwd) {
+  if (!cwd?.startsWith('/')) return null;
+  for (let d = cwd; d && d !== '/' && d !== homedir(); d = dirname(d)) if (existsSync(join(d, '.git'))) return d;
+  return null;
+}
+/** The branch checked out there, as Claude Code writes it: the name, `HEAD` when detached, null for no checkout. A
+ *  read of the HEAD file, no git spawned; a worktree's `.git` names its own git dir, as ghRepoOf reads it. */
+function headAt(top) {
+  if (!top) return null;
+  try {
+    let git = join(top, '.git');
+    if (!statSync(git).isDirectory()) git = resolve(top, /^gitdir:\s*(.+)$/m.exec(readFileSync(git, 'utf8'))[1].trim());
+    const h = readFileSync(join(git, 'HEAD'), 'utf8').trim(), m = /^ref:\s*refs\/heads\/(.+)$/.exec(h);
+    return m ? m[1] : /^[0-9a-f]{40,64}$/.test(h) ? 'HEAD' : null;
+  } catch { return null; }
+}
+const headOf = cwd => headAt(gitTopOf(cwd));
+/** The disk's half: the folder's head against the branch the chat's lines last said. A move judged once per pair —
+ *  the chat's own stays its own however long its lines take to catch up. True when the summary's part changed. */
+function noteHead(s, head, now = Date.now()) {
+  const before = JSON.stringify([s.headNow, s.diskDrift]), base = s.branchBase;
+  s.headNow = head;
+  let d = null;
+  if (head && head !== 'HEAD' && base && head !== base.name && head !== s.headOk && head !== s.drift?.from) {
+    const key = `${base.name}→${head}`;
+    if (s.diskSeen?.key === key) d = s.diskSeen.drift;
+    else {
+      d = ownMove(s.gitCmds, now, head, base.from) || agentsMoved(s, now, head, base.from) ? null : { from: s.drift?.from || base.name, to: head, at: new Date(now).toISOString() };
+      s.diskSeen = { key, drift: d };
+    }
+  } else s.diskSeen = null;
+  s.diskDrift = d;
+  return JSON.stringify([s.headNow, s.diskDrift]) !== before;
+}
+/** On the registry poll: every live chat's checkout's HEAD, each read once, and who else runs in it — the chip's
+ *  tooltip names them. */
+function sweepHeads(now = Date.now()) {
+  const tops = new Map(), heads = new Map(), live = [];
+  for (const s of sessions.values()) {
+    if (!s.alive) { if (s.headNow || s.diskDrift) { s.headNow = null; s.diskDrift = null; s.diskSeen = null; schedulePush(s); } continue; }
+    const cwd = s.branchBase?.cwd || s.cwd || s.live?.cwd; if (!cwd) continue;
+    if (!tops.has(cwd)) tops.set(cwd, gitTopOf(cwd));
+    const top = tops.get(cwd); if (!top) continue;
+    if (!heads.has(top)) heads.set(top, headAt(top));
+    live.push([s, top]);
+  }
+  for (const [s, top] of live) {
+    const peers = live.filter(([o, t]) => t === top && o !== s).map(([o]) => o.id), was = driftOf(s);
+    const moved = noteHead(s, heads.get(top), now), peersMoved = JSON.stringify(peers) !== JSON.stringify(s.peers || []);
+    s.peers = peers;
+    if (moved || (peersMoved && driftOf(s)) || was !== driftOf(s)) schedulePush(s);
+    driftNews(s, statusOf(s) === 'working');
+  }
+}
+
 function setStatus(s, status, ts) {
   if (s.status !== status) {
     s.status = status;
@@ -1423,6 +1588,7 @@ function fold(s, line) {
       if (line.cwd) s.cwd = line.cwd;
       if (line.entrypoint) { s.entrypoint = line.entrypoint; s.entrypointAt = ts; }
       if (line.gitBranch) { s.gitBranch = line.gitBranch; if (line.gitBranch !== s.ticketBranch) noteBranchTicket(s, line.gitBranch, ts); }
+      noteBranch(s, line, ts);
       if (line.isMeta || line.isCompactSummary) return false;
       const content = line.message?.content;
       const blocks = Array.isArray(content) ? content : null;
@@ -1455,17 +1621,19 @@ function fold(s, line) {
       if (!text) return false;
       if (TASK_NOTE_RE.test(text)) return noteTaskEvent(s, text, ts);   // a monitor's event, or the end of one
       if (CLEAR_RE.test(text)) { s.clearedAt = ts; tickCleared(s); }   // a chat born of /clear: the one it left is done
+      if (text.startsWith('<bash-input>')) noteGitCmd(s.gitCmds, /<bash-input>([\s\S]*?)<\/bash-input>/.exec(text)?.[1], ts);   // a `!` command of yours: the chat's own
       if (SYNTHETIC_RE.test(text)) return false;
       pushEntry(s, { role: 'user', kind: 'text', text, ts, uuid: line.uuid });
       notePrs(s, text, ts, 'user'); noteTickets(s, text, ts, 'user');
       s.lastPrompt = plainSnippet(text, 200);
+      branchHeard(s);
       if (!s.turnStart || s.status !== 'working') { s.turnStart = ts; s.turnFiles = new Set(); }   // a prompt starts the turn; one typed mid-turn is part of it — and the files it edits (the changes tab's `turn`)
       s.lastActivity = ts; s.lastUserAt = ts;
       setStatus(s, 'working', ts);
       return true;
     }
     case 'assistant': {
-      if (line.isSidechain) return false;
+      if (line.isSidechain) { for (const c of bashCmds(line)) noteGitCmd(s.gitCmds, c, ts); return false; }   // a sub-agent's git is the chat's own
       if (line.cwd) s.cwd = line.cwd;
       if (line.entrypoint) { s.entrypoint = line.entrypoint; s.entrypointAt = ts; }
       const m = line.message || {};
@@ -1480,9 +1648,11 @@ function fold(s, line) {
           if (EDIT_TOOLS.has(b.name) && (b.input?.file_path || b.input?.notebook_path)) (s.turnFiles ||= new Set()).add(b.input.file_path || b.input.notebook_path);
           if (NEEDS_INPUT_TOOLS.has(b.name)) { s.askOpen = { id: b.id, from: ts }; needsInput = true; s.ask = { tool: b.name, text: summarizeToolInput(b.name, b.input), options: b.input?.questions?.[0]?.options?.length || 0, labels: (b.input?.questions?.[0]?.options || []).slice(0, 9).map(o => snippet(o?.label, 40)) }; }
           if (b.name === 'Monitor' || (b.name === 'Bash' && b.input?.run_in_background)) noteTaskCall(s, b);
+          if (b.name === 'Bash') noteGitCmd(s.gitCmds, b.input?.command, ts);
           if (b.name === 'TaskStop' && s.tasks?.size) { const j = JSON.stringify(b.input || ''); for (const id of [...s.tasks.keys()]) if (j.includes(id)) s.tasks.delete(id); }
         }
       }
+      noteBranch(s, line, ts);
       s.lastActivity = ts;
       // A turn ends at end_turn — or at max_tokens or a refusal (2026-10-03: a turn that ran out of tokens stayed
       // working and its reply was never alerted), unless what ran out was a tool call Claude Code goes on with.
@@ -1552,7 +1722,7 @@ function indexFile(file, { full = false } = {}) {
   const prev = sessions.get(id);
   const s = newSession(id, file);
   if (prev) {
-    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'openedAt', 'agentsRunning']) s[k] = prev[k];
+    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'openedAt', 'agentsRunning', 'headNow', 'headOk', 'peers']) s[k] = prev[k];
     clearTimeout(prev.pushTimer); clearTimeout(prev.notifyTimer);
     s.silent = !!prev.file;
   }
@@ -1569,6 +1739,8 @@ function indexFile(file, { full = false } = {}) {
   s.newEntries = []; // initial load: nothing is "new"
   if (!s.cwd && prev?.cwd) s.cwd = prev.cwd;
   if (!s.tasks?.size && prev?.tasks?.size) s.tasks = prev.tasks;   // a tail re-read has not seen the calls that started them
+  if (prev) { s.diskDrift = prev.diskDrift; s.diskSeen = prev.diskSeen; }   // the disk's word, not the transcript's: a re-read's old prompts do not clear it
+  settleDrift(s);
   delete s.silent;
   sessions.set(id, s);
   fileToSession.set(file, id);
@@ -1599,6 +1771,7 @@ function tailFile(file) {
   s.partial = text.slice(nl + 1);
   let changed = false;
   parseLines(text.slice(0, nl + 1), line => { if (fold(s, line)) changed = true; });
+  if (settleDrift(s)) changed = true;
   if (changed || s.newEntries.length) schedulePush(s);
 }
 
@@ -1880,11 +2053,21 @@ function fireNotify(s) {
   const kind = s.pendingNotify; s.pendingNotify = null;
   if (!kind) return;
   if (kind === 'needs-input' && statusOf(s) !== 'needs-input') return;   // answered within the debounce: nothing to say
+  if (kind === 'drift') return driftNotify(s);
   const sum = summary(s);
   const asked = sum.ask?.text || (sum.ask?.waitingFor ? `Waiting on you: ${sum.ask.waitingFor}` : 'Waiting for your input');
   const evt = { kind, sessionId: s.id, project: sum.project, title: sum.title, name: s.live?.name || null, cwd: s.cwd, snippet: kind === 'reply' ? sum.lastReply : asked, ts: new Date().toISOString(), quiet: !notificationsOn };
   broadcast('alert', evt);
   if (notificationsOn) nativeNotify(kind === 'reply' ? `Claude replied · ${sum.project}` : `Claude is asking you · ${sum.project}`, sum.title, evt.snippet || '');
+}
+
+/** The branch moved under a chat at work (2026-10-13): said with a heading of its own, as a PR's turn is. */
+function driftNotify(s) {
+  const d = driftOf(s); if (!d) return;   // gone, or said you know, within the debounce
+  const sum = summary(s), heading = `Branch moved · ${sum.project}`, n = (s.peers || []).length;
+  const snippet = `${d.to} now · was ${d.from}${n ? ` — ${n} other chat${n === 1 ? ' runs' : 's run'} in this checkout` : ''}`;
+  broadcast('alert', { kind: 'drift', sessionId: s.id, project: sum.project, title: sum.title, heading, name: s.live?.name || null, cwd: s.cwd, snippet, ts: new Date().toISOString(), quiet: !notificationsOn });
+  if (notificationsOn) nativeNotify(heading, sum.title, snippet);
 }
 
 function schedulePush(s) {
@@ -3379,6 +3562,16 @@ const server = createServer(async (req, res) => {
       saveState(); schedulePush(s);
       return json(res, 200, { ok: true, seenAt: seen[s.id] });
     }
+    if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/drift$/))) {   // the branch moved under it, and you know (2026-10-13)
+      const s = sessions.get(m[1]);
+      if (!s) return json(res, 404, { error: 'unknown session' });
+      const d = rawDrift(s);
+      if (!d) return json(res, 409, { error: 'its branch has not moved under it' });
+      driftAcks[s.id] = driftKey(d); s.driftSaid = null;
+      for (const id of Object.keys(driftAcks)) if (!sessions.has(id)) delete driftAcks[id];
+      saveState(); schedulePush(s);
+      return json(res, 200, { ok: true, acked: driftAcks[s.id] });
+    }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/waive$/))) {   // the chat's PRs at your move, let go this round (2026-10-12)
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
@@ -3541,7 +3734,7 @@ server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTe
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
@@ -3564,6 +3757,7 @@ loadConfig();
 scanProjects();
 await adoptHolders();   // before the registry: a drawer's own process is what makes a chat's live process "mine"
 loadRegistry();
+sweepHeads();   // the checkouts' branches as they stand, in silence: a move from before the restart is no news
 indexing = false;
 // Statuses alone could wait for a chat to be opened; titles cannot — they head every card, so the whole
 // board needs them up front. Batched 40 to a GraphQL call, in the background, the recent chats' first.
@@ -3592,6 +3786,7 @@ setInterval(() => {
   }
   sweepTasks();
   sweepDrawers();
+  sweepHeads();
   sweepPrs();
   sweepTickets();
   readPower();   // the lid's setting and idle sleep are the system's: whoever changes them, or the charger, the marks follow

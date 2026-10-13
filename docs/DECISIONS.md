@@ -50,6 +50,55 @@ word on the way in. Not picked: a ⤡ in the status bar, rows in ··· and the 
 * **The keys sheet's esc row** no longer says it never leaves full screen: nothing has, since the fill replaced the
   system's full screen.
 
+## Decisions of 2026-10-13, late night — the branch moved under a chat
+
+The ask, from the branch-views study (its *Detect drift*): warn when a chat's branch is moved under it — by another chat
+or by hand — because the dangerous case is Claude editing the wrong branch; a chip in the header saying what the folder
+is on now and what the chat was on, a mark on the card, an alert when it happens to a chat at work.
+
+* **Two signals, one move.** The transcript: Claude Code writes `gitBranch` on every line, so a change between lines in
+  the same folder that the chat's own git does not explain is drift (`noteBranch` → `s.drift`). The disk: each live
+  chat's checkout's HEAD file, read on the registry poll with no git spawned — a worktree's own, from its `.git` file's
+  `gitdir:` (`sweepHeads`, `headAt`, `noteHead` → `s.headNow`, `s.diskDrift`) — for a chat that writes nothing while
+  its branch moves. The summary's `drift` is the disk's when it has one (newer), else the transcript's; the same move
+  seen by both is one move (`from→to`), alerted once.
+* **What the chat's own git is.** The study's commands (checkout, switch, rebase, reset, stash, pull, merge, worktree,
+  `gh pr checkout`) plus a branch renamed and a bisect, read right after `git` and its own options — a commit message
+  saying *merge* is no move —, from the chat's Bash calls, a sidechain's, a sub-agent's own transcript (read only when
+  nothing else explains the move, `agentsMoved`) and a `!` command typed into the chat. Explained: one in the hour before
+  (the study's rule), **or one since the chat was on the old branch that names the new one**. Measured before building:
+  Claude Code's branch lags the chat's own checkout — of 185 checkouts that moved it, the result's line still carried the
+  old branch in 166, the new one coming lines, minutes and once six hours later —, so "the line before" explains nothing
+  and an hour is not always enough; the branch's name in the command is.
+* **None of it is drift**: a move through `HEAD` and back (a rebase), a move back to where the chat was, another folder.
+  A move first seen on your prompt is yours: **a word of yours clears it**, and takes the folder's branch as it stood as
+  the chat's (`headOk`) for the lines still to catch up — so the transcript saying the same move later is no new one.
+  Through `HEAD` and elsewhere is a move; `HEAD` left standing (someone's detached checkout) is not flagged.
+* **Shown only while the chat's claude runs.** An ended chat's next word is yours, which clears it anyway, and an old
+  card wearing a move from its last turn would be noise.
+* **The chip** `.hdrift`, before the changes' count: the branch glyph, *main now · was feat/tax-rounding*, a 16 % tint of
+  `--needs` with its words in that red pulled 30 % towards the header's ink — so it reads on the header's black and on
+  the light theme's panel (6.2 light, 7.7 dark, measured in `branch-drift.mjs`; ≈ 5.6 on the notch's black in the light
+  theme, by hand). It gives way as the move's line does (`--hmin`, the words first) and folds last, after the move's line
+  and the changes' count; `fitHeadPrs` now folds a header with no PRs too, which it never had to. Its tooltip names the
+  other live chats in that checkout (`peers`), *(clauding)* on one at work. **The card** wears the red branch beside its
+  title (`.trow .drift`, 4.9 / 5.3 against the ground) with the move alone in its markup, so the others coming and going
+  rebuild no card. Both say it in words to a screen reader (`.vh`).
+* **Dismissal: a click on the chip sets that move aside** — card mark and all — until it is gone (`driftAcks` in the state
+  file, by `from→to`; `POST /api/sessions/:id/drift`). The next move shows again; the move going (your word, the branch
+  back) drops the set-aside. Simpler than a timer, and the state file keeps it across a restart, as the move itself is
+  read again from the transcript and the disk.
+* **The alert** is `kind: 'drift'` with a heading (*Branch moved · widgets*) and the move as its snippet, through
+  `queueNotify` — never on the boot's scan, a re-read or the boot's first look at the disks — and only for a chat at
+  work. Your word within the debounce takes it back. In front of the board it chimes as a question does.
+* **The study's figure, measured again**: its own rule over the 422 newest transcripts finds 334 changes with the folder
+  unchanged (51 round trips through `HEAD`, as it said) but 61 with no git command of the chat's own in the hour before,
+  not 222 — that figure was not reproduced. The rule as built flags 24 moves in 21 chats of the 422; 37 more were first
+  seen on your prompt.
+* Open: the study's list includes four commands that never change which branch is checked out (stash, reset, pull,
+  merge); dropping them would catch a move made within an hour of one. A resumed chat whose folder moved while it was
+  ended says nothing (your first word clears it). The app's banner for it has the snooze only, as a PR's turn does.
+
 ## Decisions of 2026-10-13, night — the harness for the board's frames; npm test under load; no perf skill
 
 Ricardo, on the round's report: "commit and push. also improve harness, leave notes for future work if needed and check

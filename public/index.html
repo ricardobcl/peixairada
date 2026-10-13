@@ -1059,9 +1059,20 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      growing into the room the row leaves up to its own width — the reason ellipsized —, and no narrower than the tag and
      the count (--hmin, fitHeadPrs, which folds the PR chips to leave that much; min-content is the whole reason). */
   .shead .hmove { flex: 1 1 0; min-width: var(--hmin, 0px); max-width: max-content; display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); font-weight: 600; }
-  .shead > .hfold { display: none; }   /* put away by fitHeadPrs where the row has no room for it */
   .shead .hmove .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .shead .hmove .n { flex: none; opacity: .7; font-weight: 500; }
+  /* The branch moved under the chat (2026-10-13): a tint of the failure red, its words in that red pulled towards the
+     header's ink — so they read on the header's black and on the light theme's panel alike; it gives way as the move's
+     line does (--hmin, fitHeadPrs), to the branch now, and folds last. The card's mark is the red branch alone. */
+  .shead .hdrift { --dr: color-mix(in oklab, var(--needs) 70%, var(--ink)); flex: 1 1 0; min-width: var(--hmin, 0px); max-width: max-content; display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px 0 7px; border: 1px solid transparent; border-radius: var(--r-3);
+    background: color-mix(in srgb, var(--needs) 16%, transparent); color: var(--dr); font: inherit; font-size: var(--fs-sm); font-weight: 500; white-space: nowrap; overflow: hidden; cursor: pointer; }
+  .shead .hdrift:hover { background: color-mix(in srgb, var(--needs) 26%, transparent); }
+  .shead .hdrift .ic { width: 13px; height: 13px; flex: none; fill: currentColor; }
+  .shead .hdrift .n { flex: none; } .shead .hdrift .n b { font-weight: 700; }
+  .shead .hdrift .q { overflow: hidden; text-overflow: ellipsis; min-width: 0; opacity: .85; }
+  .card .trow .drift { color: var(--needs); flex: none; display: inline-flex; align-items: center; height: 18px; }
+  .card .trow .drift .ic { width: 13px; height: 13px; fill: currentColor; }
+  .shead > .hfold { display: none; }   /* put away by fitHeadPrs where the row has no room for it */
   /* ⌥ held over a "your move" — a card's line or the chat header's (2026-10-12): its tag turns red, an ✕ for its PR
      mark, and ⌥-click lets the round go (letGo): not your move until the next one, which alerts as ever. */
   :root[data-alt] :is(#slist .card .prmove, .shead .hmove):hover { cursor: pointer; }
@@ -2161,7 +2172,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   @media (prefers-contrast: more) {
     :root:root:root { --muted: color-mix(in srgb, var(--ink) 78%, var(--bg)); --line: color-mix(in srgb, var(--ink) 38%, var(--bg)); }
     :root, .card.black:is(:hover, .active, .qsel), .shead > :not(h2, .details) { --ctl: color-mix(in srgb, var(--ink) 14%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent); }
-    :is(.btn, .chip, .ptab, .hmore, .pfold, .act, .fsearch, .sedge button, #sbar .seg, .gsep.lane b, .sseg, .seg button, #ctxm, #hmenu) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
+    :is(.btn, .chip, .hdrift, .ptab, .hmore, .pfold, .act, .fsearch, .sedge button, #sbar .seg, .gsep.lane b, .sseg, .seg button, #ctxm, #hmenu) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
     .card { border-color: var(--line); } .card .snip, .card .state.live { color: var(--ink); }
   }
   /* Reduce transparency: the blurs behind the overview and the list's ends go solid */
@@ -2172,7 +2183,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* Forced colours (Windows' high contrast, a browser's own): the system's palette, the marks that are colour alone kept */
   @media (forced-colors: active) {
     .card { border: 1px solid CanvasText; } .card.active { outline: 2px solid Highlight; }
-    :is(.gsep.lane > i, .rdot, .ck, .tst, .pc, .badge) { forced-color-adjust: none; }
+    :is(.gsep.lane > i, .rdot, .ck, .tst, .pc, .badge, .card .trow .drift) { forced-color-adjust: none; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -4485,6 +4496,18 @@ const toolName = n => {
     const prs = movedPrs(s); if (!prs.length) return '';
     return `<span class="hmove" title="${esc(moveTip(prs))}"><b class="ymove">${ICON.pr}your move</b><span class="q">${esc(prs[0].label)} · ${esc(prs[0].turn.why)}</span>${prs.length > 1 ? `<span class="n">+${prs.length - 1}</span>` : ''}</span>`;
   }
+  /** The branch moved under the chat (2026-10-13; the server's `drift`): the header's chip says what its checkout is on
+   *  now and what the chat was on, its tooltip who else runs in that checkout; the card wears a red branch beside its
+   *  title — the move alone in its markup, so the others coming and going rebuild no card. A click on the chip says you
+   *  know, until the branch moves again. */
+  function driftTip(s) {
+    const d = s.drift, peers = (d.peers || []).map(id => state.sessions.get(id)).filter(Boolean);
+    return `${d.to} is checked out in ${s.project} now — this chat was on ${d.from}.\n`
+      + (peers.length ? `Also running in this checkout: ${peers.map(p => `${p.title}${p.status === 'working' ? ' (clauding)' : ''}`).join(' · ')}` : 'No other chat on the board runs in this checkout.')
+      + '\nClick once you know — it shows again when the branch moves again.';
+  }
+  const driftChip = s => s.drift ? `<button class="hdrift" id="driftBtn" title="${esc(driftTip(s))}"><span class="vh">The branch moved under this chat: </span>${ICON.branch}<span class="n"><b>${esc(s.drift.to)}</b> now</span><span class="q">· was ${esc(s.drift.from)}</span></button>` : '';
+  const driftMark = s => s.drift ? `<span class="drift" title="${esc(`The branch moved under it: ${s.drift.to} now, was ${s.drift.from}`)}">${ICON.branch}<span class="vh">, its branch moved</span></span>` : '';
   /** The card's PR chips, last in its top row — the F's place, the F left of them (2026-09-28) —: every PR the chat
    *  mentions, a stack since 2026-10-04 (the CSS). The top one and the three slivers under it are the first four in the
    *  chat's order, every one at your move among them, and the rest follow in that order under the third; the pointer
@@ -4553,7 +4576,7 @@ const toolName = n => {
         + (hasRival(s) ? `<span class="chip vsc" title="VS Code runs Claude on this chat too — open it to end it">VS Code too</span>` : '');
     return `<div class="card ${s.status} ${roomy(s) ? 'roomy' : ''} ${watching(s) ? 'watching' : ''} ${asking(s) ? 'asking' : ''} ${s.done ? `done${s.forGood ? ' forgood' : ''}` : !s.alive ? 'gone' : ''} ${s.id === state.current ? 'active' : ''} ${color === BLACK ? 'black' : ''}" data-id="${esc(s.id)}" data-rank="${rankOf(s)}" data-want="${wantOf(s)}" style="${repoStyle(color)}${s.agents ? `;--lights:${Math.min(5, s.agents)}` : ''}">
       <div class="top"><span class="vh">${esc(LANES[rankOf(s)]?.[0] || "")}${watching(s) ? ", watching" : ""}${s.agents ? `, ${s.agents} agents at work` : ""} — </span>${showRepo ? `<span class="repo" title="${esc(s.cwd || '')}">${projIcon(s.project)}${markHits(s.project, q)}</span>` : ''}${s.env ? `<span class="chip env" title="started with \`task ${esc(s.env)}\` in ${esc(s.cwd || 'its folder')} — ⌥⌘O lists this chat under it">${esc(s.env)}</span>` : ''}<span class="grow"></span>${where}${act}${cardTickets(s)}${cardFaces(s)}${cardPrs(s)}</div>
-      <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${ticks(markHits(s.title, q))}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${rn('ag:' + s.id, s.agents)} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
+      <div class="trow"><div class="title"${tip ? ` title="${esc(tip)}"` : ''}>${ticks(markHits(s.title, q))}</div>${s.agents ? `<span class="chip agents" title="sub-agents at work — the chat stays clauding until they are done, and the card runs a light for each">${rn('ag:' + s.id, s.agents)} agent${s.agents === 1 ? '' : 's'}</span>` : ''}${taskChip(s)}${driftMark(s)}${s.lastActivity || s.startedAt ? '<span class="time"></span>' : ''}${fable}${un ? `<span class="badge" aria-label="${un} unread">${rn('un:' + s.id, un)}</span>` : ''}</div>
       ${liveSlot(s)}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${ticks(esc(s.lastReply))}</div>` : ''}
@@ -5944,7 +5967,7 @@ const toolName = n => {
       prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}"${prCk(pr) ? ` data-checks="${prCk(pr)}"` : ''} title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}${prCk(pr) ? `\n${CK_TIP[prCk(pr)]}` : ''}${pr.turn ? `\n${turnTip(pr)}` : ''}\n${UNLINK_TIP}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}${ckHtml(pr)}</span>`).join('')
     }${tks.map(t => `<span class="hpr tk" data-cat="${esc(t.cat)}" title="${esc(ticketTip(t))}">${esc(t.key)}</span>`).join('')}<span class="hpr more" data-said="${esc(said.replace(' and ', ' · '))}" hidden></span><span class="hpr more short" hidden></span></button>`;
     const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo${s.cwd && prefs.project === s.cwd ? ' on' : ''}" title="${s.cwd && prefs.project === s.cwd ? 'Every project again (ALL)' : 'Show this folder\'s chats — click again for every project'}">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${ticks(esc(s.title))}</span></h2>
-      ${diffChip(s)}${headMove(s)}${hprs}${taskChip(s)}
+      ${driftChip(s)}${diffChip(s)}${headMove(s)}${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
       <button class="hmore" id="moreBtn" aria-haspopup="dialog" aria-expanded="false" title="This chat: Claude in its drawer, a shell, VS Code Web${onZed() ? ', its folder in Zed' : ''}, its changes, focus view, path and branch — and the settings">${ICON.more}</button>
       <div class="details"${prefs.headDetails ? '' : ' hidden'}>
@@ -6258,48 +6281,61 @@ const toolName = n => {
     e.preventDefault(); e.stopPropagation();
     const s = state.sessions.get(state.current); if (s) unlinkPr(s, r);
   }, true);
+  $('#shead').addEventListener('click', e => {   // the branch moved under it (2026-10-13): you know — gone at the click, the server's word following
+    if (!e.target.closest('#driftBtn')) return;
+    const s = state.sessions.get(state.current); if (!s?.drift) return;
+    s.drift = null; renderHead(s); renderBoard();
+    api('POST', `/api/sessions/${s.id}/drift`).catch(err => note($('#shead'), `Could not set the branch's move aside: ${err.message}`, true));
+  });
   const TITLE_MIN = 170;   // the title's own flex-basis (.shead h2), below which the row wraps
   const TITLE_SHARE = .4, CHIPS_MAX = 2;   // the title keeps 40 % of the row at least, and the row two chips (2026-10-12)
   function fitHeadPrs() {
-    const head = $('#shead'), t = $('#prToggle'); if (!t) return;
-    const chips = [...t.querySelectorAll('.hpr:not(.more)')], more = t.querySelector('.hpr.more:not(.short)'), short = t.querySelector('.hpr.more.short');
+    // no PRs, the row still folds (2026-10-13): the changes' count and the branch's move have no chips to give way first
+    const head = $('#shead'), t = $('#prToggle'); if (!t && !head.querySelector(':scope > :is(#diffBtn, .hdrift)')) return;
+    const chips = t ? [...t.querySelectorAll('.hpr:not(.more)')] : [], more = t?.querySelector('.hpr.more:not(.short)'), short = t?.querySelector('.hpr.more.short');
     for (const c of chips) c.hidden = false;
     // the whole count, not the folded one (2026-10-12): it opens the list of them all — and +n where even one chip and
     // the whole count leave the title short of its room, both measured in the one layout; its arrow up while the list is
     // open (2026-10-13), the way it goes
     const way = prefs.prsOpen ? '▴' : '▾';
-    more.hidden = false; more.textContent = `${more.dataset.said || `+${chips.length}`} ${way}`;
-    short.hidden = false; short.textContent = `+${chips.length} ${way}`;
+    if (t) { more.hidden = false; more.textContent = `${more.dataset.said || `+${chips.length}`} ${way}`; short.hidden = false; short.textContent = `+${chips.length} ${way}`; }
     for (const el of head.querySelectorAll(':scope > .hfold')) el.classList.remove('hfold');   // and what the last fit put away
     // Every width in one layout, then the arithmetic (2026-09-27; hiding a chip and measuring the row again, per chip,
     // was a layout each): the button is its frame plus the chips shown, a gap between each, plus +n when any are hidden.
     const cs = getComputedStyle(head), gap = parseFloat(cs.columnGap) || 0, h2 = head.querySelector('h2');
     const row = [...head.children].filter(el => el.tagName !== 'H2' && el !== t && !el.classList.contains('details') && el.getClientRects().length);
-    // what grows (the move's line, a task's chip: flex 1 1 0) counts at its least — it gives way before a chip folds
-    const mv = head.querySelector('.hmove'), mvMin = mv ? [...mv.children].reduce((w, c) => w + (c.classList.contains('q') ? 0 : c.getBoundingClientRect().width), 0) + (parseFloat(getComputedStyle(mv).columnGap) || 0) * (mv.children.length - 1) : 0;
-    const least = el => el === mv ? mvMin : getComputedStyle(el).flexGrow !== '0' ? parseFloat(getComputedStyle(el).minWidth) || 0 : el.getBoundingClientRect().width;
+    // what grows (the move's line, the branch's move, a task's chip: flex 1 1 0) counts at its least — it gives way
+    // before a chip folds; the first two at their marks alone, their words (.q) going first
+    const shrunk = el => { const kids = [...el.children].filter(c => !c.classList.contains('vh')), st = getComputedStyle(el);
+      return kids.reduce((w, c) => w + (c.classList.contains('q') ? 0 : c.getBoundingClientRect().width), 0) + (parseFloat(st.columnGap) || 0) * (kids.length - 1)
+        + parseFloat(st.paddingLeft) + parseFloat(st.paddingRight) + parseFloat(st.borderLeftWidth) + parseFloat(st.borderRightWidth); };
+    const mv = head.querySelector('.hmove'), dr = head.querySelector('.hdrift'), mins = new Map([mv, dr].filter(Boolean).map(el => [el, shrunk(el)]));
+    const least = el => mins.has(el) ? mins.get(el) : getComputedStyle(el).flexGrow !== '0' ? parseFloat(getComputedStyle(el).minWidth) || 0 : el.getBoundingClientRect().width;
     const title = head.classList.contains('tright') && state.notch ? state.notch.right + notchPad() - h2.getBoundingClientRect().left + TITLE_ROOM   // the title past the housing: the jump, then its room
       : head.classList.contains('tunder') && state.notch ? Math.max(state.notch.right + notchPad() - h2.getBoundingClientRect().left, (head.querySelector('h2 .repo')?.offsetWidth || 0) + TITLE_ROOM)   // under it: on to its far side, the title shown left of it and under it
       : head.classList.contains('hole') ? h2.getBoundingClientRect().width + (parseFloat(h2.style.marginRight) || 0)   // the hole: the title's width is set, and the housing beside it is spent
       : Math.max(TITLE_MIN, (head.querySelector('h2 .repo')?.offsetWidth || 0) + TITLE_ROOM, (head.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) * TITLE_SHARE);
     let room = head.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - title
       - row.reduce((w, el) => w + least(el), 0) - gap * (row.length + 1);
-    const cw = chips.map(c => c.getBoundingClientRect().width), mw = more.getBoundingClientRect().width, sw = short.getBoundingClientRect().width, tg = parseFloat(getComputedStyle(t).columnGap) || 0;
-    const all = t.getBoundingClientRect().width, frame = all - cw.reduce((a, b) => a + b, 0) - mw - sw - tg * (chips.length + 1);
+    if (!t) room += gap;   // no chips' button: one gap fewer
+    const cw = chips.map(c => c.getBoundingClientRect().width), mw = more?.getBoundingClientRect().width || 0, sw = short?.getBoundingClientRect().width || 0, tg = t ? parseFloat(getComputedStyle(t).columnGap) || 0 : 0;
+    const all = t?.getBoundingClientRect().width || 0, frame = all - cw.reduce((a, b) => a + b, 0) - mw - sw - tg * (chips.length + 1);
     // two chips at most (2026-10-12; as many as fitted before — eleven took the title down to fifteen letters), the rest
     // behind the whole count, which opens the list
-    const wide = (n, m) => frame + cw.slice(0, n).reduce((a, b) => a + b, 0) + (n === chips.length ? tg * (n - 1) : tg * n + m);
+    const wide = (n, m) => !t ? 0 : frame + cw.slice(0, n).reduce((a, b) => a + b, 0) + (n === chips.length ? tg * (n - 1) : tg * n + m);
     let shown = Math.min(chips.length, CHIPS_MAX), width = wide(shown, mw), terse = false;
     while (shown > 1 && width > room) { shown--; width = wide(shown, mw); }
     if (width > room && shown < chips.length) { terse = true; width = wide(shown, sw); }
     // Down to one chip and the row still too full (2026-10-11): the move's line goes, then the changes' count — the card
-    // says the one, ··· has the other — so the row stays one line, ··· on it, whatever the column's width.
+    // says the one, ··· has the other — and last the branch's move, which the card's red branch still says (2026-10-13),
+    // so the row stays one line, ··· on it, whatever the column's width.
     const off = [];
-    for (const el of [mv, head.querySelector('#diffBtn')]) if (el && row.includes(el) && width > room) { room += least(el) + gap; off.push(el); }
+    for (const el of [mv, head.querySelector('#diffBtn'), dr]) if (el && row.includes(el) && width > room) { room += least(el) + gap; off.push(el); }
     for (const el of off) el.classList.add('hfold');
     for (let i = shown; i < chips.length; i++) chips[i].hidden = true;
+    for (const [el, w] of mins) el.style.setProperty('--hmin', `${Math.ceil(w)}px`);
+    if (!t) return;
     more.hidden = shown === chips.length || terse; short.hidden = shown === chips.length || !terse;
-    if (mv) mv.style.setProperty('--hmin', `${Math.ceil(mvMin)}px`);
     const left = shown === chips.length ? null : terse ? short : more;
     if (left) { if (terse) short.textContent = `+${chips.length - shown} ${way}`; left.title = `${chips.length - shown} more:\n` + chips.slice(shown).map(c => c.title.split('\n')[0]).join('\n'); }
   }
@@ -9026,7 +9062,7 @@ const toolName = n => {
     if (!prefs.sounds || !audio || audio.state !== 'running') return;
     noteMotion(null, 'sound:' + kind);
     const t = audio.currentTime + .02;
-    if (kind === 'needs-input') { tone(784, t, .15, 'triangle', .09); tone(1174.7, t + .14, .22, 'triangle', .09); }
+    if (kind === 'needs-input' || kind === 'drift') { tone(784, t, .15, 'triangle', .09); tone(1174.7, t + .14, .22, 'triangle', .09); }
     else { tone(1318.5, t, .18, 'sine', .08); tone(659.3, t, .26, 'sine', .05); }
   }
   $('#soundsOn').checked = !!prefs.sounds;
