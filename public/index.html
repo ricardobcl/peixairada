@@ -404,6 +404,13 @@
   /* …and right of the housing, what follows the title stands at the far right, as it does with no housing (2026-09-28):
      the h2 no longer grows there. */
   .shead.hole > h2 + * { margin-left: auto; }
+  /* ⌃⌘F's word on the way in (2026-10-13, fillHint): a pill under the head row, centred on the housing (on the window
+     without one), the panel's ink on the panel — nothing to press, gone after FILL_HINT_MS */
+  #fillHint { position: fixed; z-index: 60; translate: -50% 0; padding: 6px 14px; border: 1px solid var(--line); border-radius: var(--r-5); background: var(--panel); color: var(--ink); font-size: var(--fs-sm); white-space: nowrap; pointer-events: none; box-shadow: 0 8px 26px rgba(0, 0, 0, .22); transition: opacity .25s var(--ease-out), translate .25s var(--ease-out); }
+  @starting-style { #fillHint { opacity: 0; translate: -50% -6px; } }
+  #fillHint.out { opacity: 0; translate: -50% -4px; }
+  #fillHint b { font-weight: 650; }
+  #fillHint kbd { font: 600 var(--fs-xs) ui-monospace, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl-hi); color: var(--ink); }
   /* The chat column is one half or two (2026-09-22): ⌘2 splits it, ⌘1 / ⌘2 put the keys in the left or the right
      one. Each half has its own tab strip and its own body — the transcript, a terminal, or a page in the app's
      pane — and a tab belongs to exactly one of them. The left half keeps the plain ids: it is the whole column
@@ -2189,6 +2196,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     #log.working :is(.tool, .toolgroup > summary) .tst.run { animation: none; border-right-color: var(--working); }   /* a tool call running: a still ring */
     .shead .hpr .ck.now path, :is(.shead .hpr, #slist .cpr).sheen::after { animation: none; }   /* an answer, a merge: there, not drawn */
     #log > .in { animation: none; }
+    #fillHint, #fillHint.out { translate: -50% 0; } @starting-style { #fillHint { translate: -50% 0; } }   /* the fill's word fades, in place */
     dialog, dialog:not([open]), .pop, .pop[hidden], .note, .note.out { transform: none; }
     @starting-style { dialog[open], .pop:not([hidden]), .note { transform: none; } }
     .toolgroup > summary::before, .codefold > summary::before { transition: none; }
@@ -2428,8 +2436,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 // Map ▴
 (() => {
   const $ = s => document.querySelector(s);
-  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, skinExact: false, look: null };
+  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, skinExact: false, look: null, fillHints: 0 };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -5056,7 +5064,7 @@ const toolName = n => {
     ['⌘K', 'In the drawer', 'clear the drawer', 'on the server\'s copy of its screen too, so it stays clear', []],
     ['⇧⏎', 'In the drawer', 'a newline in the prompt', '', []],
     ['⌘← ⌘→', 'In the drawer', 'the line\'s start / end, as in iTerm', '⌥← ⌥→ a word · ⌘⌫ ⌘⌦ delete to the start / end · ⌥⌫ ⌥⌦ a word', []],
-    ['esc', 'In a page', 'back to the chat from a page\'s tab', 'closes a picker or a popover first · never leaves full screen while one is up', []],
+    ['esc', 'In a page', 'back to the chat from a page\'s tab', 'closes a picker or a popover first', []],
     ['⌘R', 'In a page', 'reload the page in the pane', 'VS Code Web hears its own ⌘R · ⌥⌘R reloads the board', []],
     ['⌘F · ⌘G', 'In a page', 'find on the page in the pane', '⏎ ⇧⏎ or ⌘G ⇧⌘G step the matches · esc closes the bar · in the app', []],
     ['pinch', 'In a page', 'zoom a page in the pane, as in Safari', 'its address sits in the strip, a click copies it', []],
@@ -5136,7 +5144,28 @@ const toolName = n => {
   window.peixPane = (visible, left) => { state.paneVisible = !!visible; state.paneLeft = Number(left) || 0; };
   // …and whether the window fills the screen (⌃⌘F in the app) and, on a screen with a camera housing, where that is —
   // the strip's height and the x range the housing covers, in this page's px — or null on a screen without one (layoutNotch).
-  window.peixFill = (on, notch) => { state.fill = !!on; state.notch = on && notch && notch.top > 0 ? notch : null; layoutNotch(); fitHeadPrs(); paintHeadSplit(); };   // renderHead's order: the chips fold for the new geometry
+  window.peixFill = (on, notch) => {
+    const was = state.fill, heard = state.fillHeard;
+    state.fillHeard = true; state.fill = !!on; state.notch = on && notch && notch.top > 0 ? notch : null;
+    layoutNotch(); fitHeadPrs(); paintHeadSplit();   // renderHead's order: the chips fold for the new geometry
+    if (on && !was && heard) fillHint(); else if (!on) $('#fillHint')?.remove();
+  };
+  // ⌃⌘F's word on the way in (2026-10-13): the fill gone on while this page heard it off — ⌃⌘F, the green button, the
+  // fish's menu — never on a load or a launch that finds it on (the first word a page hears), and the first FILL_HINTS
+  // times in all (prefs.fillHints). Under the head row, centred on the housing; a status, so a reader says it too.
+  const FILL_HINTS = 3, FILL_HINT_MS = 3200;
+  function fillHint() {
+    if ((prefs.fillHints || 0) >= FILL_HINTS) return;
+    prefs.fillHints = (prefs.fillHints || 0) + 1; savePrefs();
+    $('#fillHint')?.remove();
+    const n = state.notch, head = $('#shead').getBoundingClientRect(), el = document.createElement('div');
+    el.id = 'fillHint'; el.setAttribute('role', 'status');
+    el.innerHTML = `<b>Full screen</b>${n ? ', up to the notch' : ''} · <kbd>⌃⌘F</kbd> leaves it, or the green light ${n ? 'at the top edge' : 'after a hold at the top edge'}`;
+    el.style.left = `${n ? (n.left + n.right) / 2 : innerWidth / 2}px`;
+    el.style.top = `${Math.round(Math.max(head.bottom, n?.top || 0) + 10)}px`;
+    document.body.append(el);
+    setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, FILL_HINT_MS);
+  }
   const noChat = () => note($('#shead'), 'Open a chat first');
   // A chat's own key pressed again from the tab it brings up, the keys in it (2026-10-13): that half fills the column,
   // the other kept behind it, and again the two come back — a ⌘0 that undoes itself (toggleZoom). ⌥⌘C on a claude that

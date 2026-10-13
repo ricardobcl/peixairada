@@ -39,6 +39,16 @@ word on the way in. Not picked: a ⤡ in the status bar, rows in ··· and the 
   * The app log says `fill: lights down (menu bar N pt)` and `fill: lights up (why)`. Not checkable outside the app:
     the harness is a page, and the strip is native. The study's mock (the lights under a drawn menu bar) is what it
     is meant to look like.
+* **A word on the way in** (`fillHint`): the fill gone on while the page heard it off — ⌃⌘F, the green button, the
+  fish's menu — puts a pill under the head row, centred on the housing (the window without one): *Full screen, up to
+  the notch · ⌃⌘F leaves it, or the green light at the top edge* (without a housing, *…after a hold at the top edge*),
+  for 3.2 s, then it fades (in place under reduced motion). A load or a launch that finds the fill on says nothing:
+  the first `peixFill` a page hears is never a change (`state.fillHeard`). Three times in all (`prefs.fillHints`) —
+  the board lives filled and comes back filled, so it is a lesson, not a habit. Not an alert, so not against *no
+  in-page toasts*: it answers what the hand just did, as `note()` does, and it is a `status` for a reader. Its own
+  element, not `.note` (that is `note()`'s popup, removed by every call). A page up in the pane, a native view, can cover its lower edge.
+* **The keys sheet's esc row** no longer says it never leaves full screen: nothing has, since the fill replaced the
+  system's full screen.
 
 ## Decisions of 2026-10-13, night — the harness for the board's frames; npm test under load; no perf skill
 

@@ -567,7 +567,9 @@ for `$HOME`'s home and the account's.
   (2026-10-13; `lightsTick` in `dockTick`, asking `menuBarVisible()` only with the pointer in the menu bar's height):
   a strip under it, over the pane too — the lights (`LightButton`: green `toggleFill`, yellow `lightsMinimize`, red
   `closeHalfOrWindow`) and the window's title —, the menu bar held out over it (`lightsOut` in `fillOptions`) until
-  the pointer is below the strip; the app log says `fill: lights down|up`. The page hears `peixFill(on, notch)` — the strip's height and the housing's x range in
+  the pointer is below the strip; the app log says `fill: lights down|up`. **The fill gone on while the page heard it
+  off says so once** (`fillHint`, `#fillHint` under the head row, `FILL_HINT_MS`): never on a load that finds it on
+  (`state.fillHeard`), the first `FILL_HINTS` times in all (`prefs.fillHints`). → `fill-hint.mjs`. The page hears `peixFill(on, notch)` — the strip's height and the housing's x range in
   CSS px, null without one — and **`layoutNotch()` lays the top row round it** (reads, then writes; with no housing
   and nothing to undo it returns at once): the header's title left of the housing and its chips right
   (`.shead.hole`), unless the whole title does not fit (a `Range` measures it; `scrollWidth` never reads under the
