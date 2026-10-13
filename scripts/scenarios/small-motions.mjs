@@ -139,7 +139,9 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.swim, { rest: true, fish: true, running: 'running', rate: .5, inLane: true }, `swimming slowly, in the lane: ${JSON.stringify(out.swim)}`);
   // its path, sampled: from the right end to the left facing left, turned there, back to the right facing right — never
   // outside the lane (the animation is moved by hand and put back)
-  out.path = await ctx.evaluate(`(() => { const a = document.getAnimations().find(a => a.id === 'swim'), l = document.querySelector('#sbSwim'), f = l.querySelector('.swimmer'), d = a.effect.getTiming().duration, t0 = a.currentTime, lr = l.getBoundingClientRect(), at = [];
+  // two frames first (2026-10-13): the path is the lane's width, set by its ResizeObserver a frame after the bar moved —
+  // a count rolling or the connection's word changes the lane's room, and a read in between saw the old path
+  out.path = await ctx.evaluate(`(async () => { await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); const a = document.getAnimations().find(a => a.id === 'swim'), l = document.querySelector('#sbSwim'), f = l.querySelector('.swimmer'), d = a.effect.getTiming().duration, t0 = a.currentTime, lr = l.getBoundingClientRect(), at = [];
     a.pause(); for (const k of [0, .25, .4999, .5001, .75, .9999]) { a.currentTime = d * k; const r = f.getBoundingClientRect(); at.push({ k, x: Math.round(r.left - lr.left), right: Math.round(lr.right - r.right), facing: new DOMMatrix(getComputedStyle(f).transform).a < 0 ? 'right' : 'left' }); }
     a.currentTime = t0; a.play(); return at; })()`);
   const [s0, s1, s2, s3, s4, s5] = out.path;
@@ -169,7 +171,8 @@ export default async function (ctx) {
   out.food = await ctx.evaluate(`(s => ({ kinds: window.peix.motion().filter(m => m.at >= ${m21}).map(m => m.kind).filter(k => k === 'pat' || k === 'blurp'), ahead: s.food.every(x => x < document.querySelector('#sbSwim .swimmer').getBoundingClientRect().left - document.querySelector('#sbSwim').getBoundingClientRect().left), shown: document.querySelectorAll('#sbSwim .food').length }))(window.peix.state().swim)`);
   ctx.assert.deepEqual([out.food.kinds[0], out.food.kinds.includes('blurp'), out.food.ahead, out.food.shown > 0], ['pat', true, true, true], `a pat, then a bubble ahead of its mouth: ${JSON.stringify(out.food)}`);
   await ctx.waitFor(`!window.peix.state().swim.food.length && window.peix.state().swim.eaten > ${eaten}`, { what: 'the bubbles gulped', timeout: 15_000 });
-  await ctx.sleep(300);
+  // …and gone from the lane: each leaves on its animation's finish, which a busy headless page can run late (2026-10-13)
+  await ctx.waitFor(`!document.querySelector('#sbSwim .food')`, { what: 'the gulped bubbles gone from the lane', timeout: 5000 });
   out.ate = await ctx.evaluate(`({ kinds: [...new Set(window.peix.motion().filter(m => m.at >= ${m21}).map(m => m.kind).filter(k => /^(dart|gulp)$/.test(k)))], opened: window.__opened, left: document.querySelectorAll('#sbSwim .food').length, rate: window.peix.state().swim.rate, open: document.querySelector('#sbSwim').classList.contains('open') })`);
   ctx.assert.deepEqual(out.ate, { kinds: ['dart', 'gulp'], opened: true, left: 0, rate: .5, open: false }, `chased, mouth open, gulped, its pace back: ${JSON.stringify(out.ate)}`);
   for (const until = Date.now() + 40_000; !(await ctx.evaluate(`window.peix.motion().filter(m => m.at >= ${m21}).some(m => m.kind === 'burp')`)) && Date.now() < until;) { await ctx.evaluate(patIt); await ctx.sleep(600); }
