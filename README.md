@@ -161,7 +161,7 @@ as at the top.
 `claude`, `gh` and the rest:
 
 ```sh
-git clone git@github.com:ricardobcl/peixairada.git && cd peixairada
+git clone https://github.com/ricardobcl/peixairada.git && cd peixairada
 npm install                    # node-pty comes prebuilt for macOS: no compiler needed
 scripts/launchd.sh install     # the server, started at login → http://127.0.0.1:7331
 mac/build.sh install           # the Mac app, in /Applications (optional — any browser works)
