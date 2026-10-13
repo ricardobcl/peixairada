@@ -833,7 +833,9 @@ for `$HOME`'s home and the account's.
   `<system-reminder>` blocks (strip them *first* — a prompt can follow one) and `<local-command…>` synthetic lines.
 * `.cards > * { flex: none }` is load-bearing; `.card { --repo: initial }` too (custom properties inherit), and
   `.card { isolation: isolate }`: the ring and its cover sit at z-index -1 under the card's background only because
-  the card is its own stacking context.
+  the card is its own stacking context. **So is `#slist { isolation: isolate }`** (2026-10-13): in a scroller that is
+  no stacking context WebKit makes every such card a layer of its own, with a clip layer — 1,325 CALayers for 400
+  cards, 117 with it. A new scroller of positioned boxes gets one too.
 * `.shead { min-width: 0 }` and a fixed `flex-basis` on `.shead h2`; PR chips are direct children of the header.
 * **Every grid row in the chat column is placed by hand** — `#chat`'s, each half's `.ptabs` / `.gbody`, and
   `#sessions`' (whose *column* is placed too: the timeline, the glass and the ends lie over the list's cell). A hidden

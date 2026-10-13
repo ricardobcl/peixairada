@@ -508,6 +508,11 @@
   /* ---- sessions of the selected project ---- */
   /* no room above the first card (2026-09-29): its top is the chat header's */
   #slist { overflow-y: auto; overflow-x: hidden; min-width: 0; padding: 0 8px 8px; display: flex; flex-direction: column; gap: 7px; position: relative; scrollbar-width: none; }   /* positioned: the cards' offsetTop is the list's */
+  /* …and a stacking context of its own (2026-10-13): WebKit scrolls the list on the compositor, and a card — positioned,
+     its own stacking context — in a scroller that is not one has to be a layer of its own to scroll with it, each with
+     a clip layer the list's size: 1,325 CALayers for 400 cards, 117 with this, and every frame that restyles walks them
+     all (36 % of a core at rest → 25 % on its own, measured in a WKWebView). Nothing in a card reaches past the list. */
+  #slist { isolation: isolate; }
   #slist::-webkit-scrollbar { display: none; }   /* the timeline beside it is the scrollbar, with the days on it */
   main.scompact #slist { scrollbar-width: auto; }
   main.scompact #slist::-webkit-scrollbar { display: initial; }

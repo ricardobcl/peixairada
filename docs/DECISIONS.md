@@ -24,6 +24,14 @@ the server (0.5 %) and the drawers (a 10 Hz spinner, +1–3 %) were not it.
   drawn, 1.6 %. With it gone the rings, the shimmer, the header's shade and the Clauding head's pixels are each 2–6 %
   over the 3.6 % of nothing at all. Alone it moves the whole board nothing (39 %): the fish still keeps every frame on
   the main thread — the next entries.
+* **The list is a stacking context of its own** (`#slist { isolation: isolate }`). It was positioned but not one, so
+  the cards — positioned, each its own stacking context — sat in the stacking context above it, and WebKit, which
+  scrolls the list on the compositor, made each a layer of its own to scroll with it, each under a clip layer the
+  list's size: the layer tree dump (`_caLayerTreeAsText`) counted 1,325 CALayers on this board, 117 with it (156 on
+  the made-up one), and every frame that
+  restyles walks them all. The whole board at rest 39 % → 26 % of a core. The frozen frames (every animation paused
+  at 0) before and after are the same but for 20 px of a lane's chevron, antialiased a hair differently; nothing in
+  a card reaches past the list (the chips' and faces' z-indexes are inside the card's own context).
 
 ## Decisions of 2026-10-13, after the last — the board no longer updates itself unless asked
 
