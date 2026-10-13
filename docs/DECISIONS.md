@@ -5,7 +5,7 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-13. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
-## Decisions of 2026-10-13, after Zed, later — the board's frames, the next round
+## Decisions of 2026-10-13, after Zed, later still — the board's frames, the next round
 
 Ricardo, on the list of what was left (the entry "the board's frames, profiled", below): "do it". Measured as before:
 the made-up 400-card board with the user's prefs in a WKWebView, the median of three where it says so.
@@ -27,7 +27,9 @@ the made-up 400-card board with the user's prefs in a WKWebView, the median of t
   rect every frame, after the frame's writes; it now reads it once per card, again after a scroll, a render or the list
   resized. The hidden timeline's thumb and labels were placed on every scroll frame; a frame asked for by a scroll alone
   now leaves it be (`listChanged(true)`) — `show()` draws it as it comes out, and a render still does, so it is right
-  at rest as `timeline.mjs` reads it.
+  at rest as `timeline.mjs` reads it. Measured with every card shown, against the commit before: the pointer moving
+  16.7 / 14.8 → 13.2 / 11.8 % of a core, the glow under it ~20 → 18–19 %, scrolling 36.7 → 31–33 %; with the long
+  lanes held back (below) 10–11, 14 and 17 %.
 * **No full style pass on a clock.** A count that rolled (the bar's CPU and memory every 3 s, a lane's count) laid
   its strips out at the old digit with `void document.body.offsetWidth` — a style pass and a layout of the whole page,
   and in WebKit a walk of every layer — so that a transition had somewhere to start; each strip now rolls by an
@@ -44,10 +46,10 @@ the made-up 400-card board with the user's prefs in a WKWebView, the median of t
 * **A long lane shows its newest 30 cards and a line for the rest** (`LANE_CAP`; Idle and Done, the two that only
   grow). With every lane open here the list held 400 cards, ~13,000 elements, each restyled, laid out and walked on
   every render. Now the line — *272 more done chats*, `+272` on the rail — shows the rest when clicked, until the page
-  is loaded again (`laneMore`, page state: kept, the list would be back to 400 for good); the open chat's card is there
-  whatever its place, and a query or a filter shows every match; a lane's head still counts them all. On the made-up
-  board: 400 → 130 cards, 13,081 → 5,154 elements; at rest 9.1 → 6.6 % of a core; at one chat event a second 11.9 →
-  8.1 %; a clauding chat opened in 215–244 ms → 120–147. `long-lanes.mjs` holds it.
+  is loaded again (`laneMore`, page state: in the prefs, one click would put the 400 back for good); the open chat's
+  card is there whatever its place, and a query or a filter shows every match; a lane's head still counts them all. On
+  the made-up board: 400 → 130 cards, 13,081 → 5,154 elements; at rest 9.1 → 6.6 % of a core; at one chat event a
+  second 11.9 → 8.1 %; a clauding chat opened in 215–244 ms → 120–147. `long-lanes.mjs` holds it.
 * **A guard: `npm run perf` and `compositor-rules.mjs`.** Every one of the day's causes passed every scenario — Chrome
   composites what WebKit does not. `lib/animcheck.mjs` is the rules as one expression to run on the board: nothing
   never-ending (a scroll-driven one counts) on an SVG element inside an svg, at a playback rate other than 1, or with
@@ -59,6 +61,32 @@ the made-up 400-card board with the user's prefs in a WKWebView, the median of t
   numbers. Against the page as it was that morning, from a worktree: the scenario names four of the five causes and
   `npm run perf` all five, rest 31 %, pointer 37 %, scroll 81 % with 40 frames dropped — every ceiling broken; against
   this one, 8.9 / 10.7 / 17.1 % and a frame or two.
+* **Not changed: the done cards' `filter: saturate(.45)`.** With a layer each, a done card is painted through its filter
+  only when it repaints, not on every scroll; the glow run over done cards cost the same with the filter as with
+  `filter: none` (13.5 / 14.2 / 13.2 % of a core against 13.0 / 13.9 / 13.7) — nothing to win by trading it for colours.
+* **Memory: no leak found.** The app's web process held 1.6–1.8 GB after hours (~730–790 MB WebKit malloc, 630–830 MB
+  graphics) against ~0.4 GB for a fresh page — but held it: its malloc read 787, 785 and 727 MB over five hours of its
+  uptime, not climbing. A WebKit soak on the made-up board — a chat event a second, a chat opened every 8 s, the
+  pointer moved and the list scrolled, 20 minutes — rose from 474 MB to ~650 by its seventh minute and stayed there
+  (malloc ~270 MB, graphics ~360 MB, surging now and then to ~850 MB and falling back), its DOM at 5,157 nodes at the
+  end as at the start: what grew between two heap censuses was DOM nodes and finished animations, and it
+  fell back as WebKit's collector ran (283 → 266 MB) — waiting on it, not kept. Chrome's heap stayed flat over 120 chat
+  opens (6–7 MB, the same node count). The same soak without a layer per card held the same. Relaunched onto this
+  page — 130 cards rather than 400, ~550 layers rather than 1,325 — the app held 493 MB ten minutes in.
+* **Together, this round**, from the commit before it on the made-up board in WebKit: at rest ~7.5–9 → 6.6 % of a
+  core; the pointer moving 15–17 → 10–11 %; the glow under it ~20 → 14 %; a chat event a second 11.9 → 8.1 %; a
+  clauding chat opened in 215–244 → 120–147 ms (Chrome 165–240 → 92–127); with the screen locked, a hidden page
+  (0.2 % in the harness). `npm run perf`: 8.9 % at rest, 10.7 with the pointer, 17.1 scrolling, no rule broken. The
+  scenarios pass (`tiles` flaked once on its known pixel at the notch); `npm test` passes file by file — a run of all
+  at once under this Mac's load loses one of the server's timing tests now and then, as it did before this round. The
+  app, rebuilt and relaunched onto this page: its web process at ~13 % of a core a few minutes in and ~1 % ten minutes
+  in with a chat and its drawer open (~40 % that morning), 493 MB (1.6 GB that morning, after hours).
+* **Left, measured**: *the home's sea* (`seaRun`, `seaPaint`) paints its 200 × 100 halftone fifteen times a second in
+  script while no chat is open — 13–15 % of a core against 5–7 with a chat open in the harness, ~21 % in the app just
+  relaunched onto it (its rAF callbacks half the main thread's samples); fewer frames, only the rows that move, or a
+  rest after a minute without the pointer would keep most of it. *A chat's open* still restyles the board once
+  (Chrome: 4,800 elements, 22 ms — `tintChat`'s colours on `#chat` and `main` inherit everywhere, eased or not); setting
+  them on the few surfaces that read them would leave a few hundred.
 
 ## Decisions of 2026-10-13, after Zed, later — Zed is where files open, not the pane
 
