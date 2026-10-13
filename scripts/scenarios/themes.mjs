@@ -4,7 +4,7 @@
 // the board's own back. ⏎ wears one whatever the system shows (2026-10-12): a dark theme stays dark when the system
 // turns light, a light one is light in a dark system, a reload keeps it, and the first paint is it (the head's script).
 // Following macOS (the switch) wears each appearance's slot, which a pick fills; a theme of the other appearance still
-// previews. "Exact project colours" leaves Peacock's blue as set.
+// previews.
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -64,9 +64,6 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#sbar')).backgroundColor`), 'rgb(29, 32, 33)', "the status bar on the theme's crust");
   ctx.assert.match(await ctx.evaluate(`document.querySelector('#themeNames').textContent`), /^Gruvbox$/);
   await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${chat.id}"]')?.style.getPropertyValue('--repo') === '#83a598'`, { what: "the blue in Gruvbox's blue" });
-  await ctx.evaluate(`document.querySelector('#skinExact').click()`);
-  await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${chat.id}"]')?.style.getPropertyValue('--repo') === '${BLUE}'`, { what: 'the exact blue' });
-  await ctx.evaluate(`document.querySelector('#skinExact').click()`);
   await ctx.settle(); out.shot = await ctx.shot('gruvbox');
 
   // the system turns light: the board stays in Gruvbox, dark; a dark theme previews in the light

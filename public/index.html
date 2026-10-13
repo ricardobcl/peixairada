@@ -2359,7 +2359,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <div class="opt lightpick zoompick" title="Everything on the board, larger or smaller — the app's own zoom; in a browser, its View menu's"><span><b>text size</b> — the whole board</span><span class="sseg" role="radiogroup" aria-label="Text size" id="zoomPick"><button type="button" role="radio" data-z="0.9">90 %</button><button type="button" role="radio" data-z="1">100 %</button><button type="button" role="radio" data-z="1.1">110 %</button><button type="button" role="radio" data-z="1.25">125 %</button><button type="button" role="radio" data-z="1.4">140 %</button></span><span class="zhint">your browser's View → Zoom</span></div>
     <div class="opt" title="A theme is every surface at once — the cards, the transcript, the code, the drawer's colours, the header's black and the status bar — and its appearance, dark or light, whatever macOS shows"><span><b>theme</b> — <span id="themeNames"></span> <button class="btn" id="themeBtn">choose… ⌥⌘Y</button></span></div>
     <label class="opt sub" title="On, the board is dark while macOS is dark and light while it is light, each in the theme last picked for it; off, the theme picked is worn — and its appearance — whatever macOS shows"><input type="checkbox" id="skinFollow"><span><b>follow macOS</b> — a dark theme while macOS is dark, a light one while it is light; off, the theme picked whatever macOS shows</span></label>
-    <label class="opt sub" title="Off, under a theme each project's Peacock colour moves to the nearest of the theme's own hues; on, it is worn as set"><input type="checkbox" id="skinExact"><span><b>exact project colours</b> under a theme — off, each moves to the theme's nearest hue</span></label>
     <label class="opt" title="On, the panels are tiles, Hyprland's way: gaps over a wallpaper, each bordered in its project's colour, whole on the one the keys are in — and, with the stack, beside the open chat up to three tiles of the chats of the list that are asking or clauding, each its drawer drawn small or its last tool calls, a click making one the chat"><input type="checkbox" id="tilesOn"><span><b>tiles</b> — the panels as tiles, Hyprland's way: gaps over a wallpaper, each bordered in its project's colour</span></label>
     <label class="opt sub" id="wallFollowRow" title="The wallpaper's bright glow, behind the tiles, eases after the pointer wherever it goes on the board and stays where it left it; off, it stays in its corner"><input type="checkbox" id="wallFollow"><span><b>the glow follows the pointer</b> — the wallpaper's light behind the tiles</span></label>
     <label class="opt sub" id="tileStackRow" title="The third column: up to three tiles of the chats asking or clauding, beside the open one — off, tiles are the look alone (⌥⌘S puts it in and out of view)"><input type="checkbox" id="tileStackOn"><span><b>the stack</b> — the chats asking or clauding beside the open one · ⌥⌘S</span></label>
@@ -2507,7 +2506,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, skinExact: false, look: null, fillHints: 0, toured: false };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -2528,7 +2527,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   delete prefs.filter; delete prefs.filters;
   delete prefs.peopleFold;   // the faces folded to a count (2026-10-09, off by default) became peopleCompact (2026-10-11, later): folded by default
   // the experimental switches pared (2026-10-14): what they chose is now the only way, or gone
-  for (const k of ['simpleColors', 'simpleColor']) delete prefs[k];
+  for (const k of ['simpleColors', 'simpleColor', 'skinExact']) delete prefs[k];
   if (!Array.isArray(prefs.lanesShut)) prefs.lanesShut = ['done', 'idle'];
   prefs.lanesShut = prefs.lanesShut.filter(g => g !== 'move' && g !== 'replied');   // lanes for a morning (2026-10-12), filters since
   if (prefs.listFilter !== 'move' && prefs.listFilter !== 'replied') prefs.listFilter = null;
@@ -2775,7 +2774,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // Following macOS is a switch (prefs.skinFollow): then the slots, as Ghostty's `theme = dark:…,light:…`, a dark theme
   // worn while macOS is dark, a light one while it is light — a pick fills its appearance's slot either way, none being
   // the board's own (prefs.skinDark, prefs.skinLight). A project keeps its hue — its
-  // Peacock colour moves to the theme's nearest (skinColor) — unless prefs.skinExact keeps it as set. `crust` is the
+  // Peacock colour moves to the theme's nearest (skinColor; worn as set until 2026-10-14 was a switch). `crust` is the
   // theme's darkest (lightest, in a light one): the header's black, the splitter's, the status bar's ground.
   const SKINS = {
     'tokyo-night': { name: 'Tokyo Night', dark: true, bg: '#1a1b26', panel: '#1f2335', raise: '#24283b', crust: '#16161e', ink: '#c0caf5', muted: '#8790bd', line: '#292e42', accent: '#7aa2f7',
@@ -2881,7 +2880,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return (x * 60 + 360) % 360;
   };
   function skinColor(c) {
-    const k = skinOn(), h = hueOf(c); if (!k || prefs.skinExact || h === null) return c;
+    const k = skinOn(), h = hueOf(c); if (!k || h === null) return c;
     let best = c, bd = 1e9;
     for (const p of SKINS[k].proj) { const q = hueOf(p); if (q === null) continue; const d = Math.min(Math.abs(h - q), 360 - Math.abs(h - q)); if (d < bd) { bd = d; best = p; } }
     return best;
@@ -2899,12 +2898,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     if (want !== lookPosted) { lookPosted = want; window.webkit?.messageHandlers?.hub?.postMessage({ type: 'appearance', dark: want }); }   // post is declared further down
     $('#themeNames').innerHTML = prefs.skinFollow ? `<b>${skinName(prefs.skinDark)}</b> while macOS is dark · <b>${skinName(prefs.skinLight)}</b> while light` : `<b>${skinLabel(prefs.skin)}</b>`;   // the table's own names: nothing to escape (and esc is declared further down)
     $('#skinFollow').checked = !!prefs.skinFollow;
-    $('#skinExact').checked = !!prefs.skinExact;
   }
   applySkin();
   const reskin = () => { applySkin(); for (const tm of [...terms, ...stackMinis.values(), ...ov.minis.values()]) if (tm.xt) tm.xt.options.theme = xtTheme(); redrawColors(); };
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', reskin);
-  $('#skinExact').addEventListener('change', e => { prefs.skinExact = e.target.checked; savePrefs(); reskin(); });
   // Off, what was worn stays worn, whatever macOS does next; on, macOS's appearance picks the slot.
   $('#skinFollow').addEventListener('change', e => { const on = e.target.checked; revealFrom(centreOf(e.target), () => { if (!on) prefs.skin = wornKey(); prefs.skinFollow = on; savePrefs(); reskin(); }); });
   $('#themeBtn').addEventListener('click', () => { settingsOpen(false); themesOpen(); });
@@ -5010,7 +5007,7 @@ const toolName = n => {
   // `>` narrows it to the actions and switches, `#` to the PRs, `@` to the projects, `!` to the tickets. Empty, it is a
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
-  const SWITCHES = [['notifyOn', 'Notifications'], ['autoUpdate', 'Update itself'], ['skinFollow', 'Theme follows macOS'], ['skinExact', 'Exact project colours under a theme'], ['ringsInStep', 'Rings in step'],
+  const SWITCHES = [['notifyOn', 'Notifications'], ['autoUpdate', 'Update itself'], ['skinFollow', 'Theme follows macOS'], ['ringsInStep', 'Rings in step'],
     ['edgeLight', 'Edge light'], ['cardSpot', 'Light under the pointer'], ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['tileStackOn', 'Tiles: the stack'], ['wallFollow', 'Tiles: the glow follows the pointer'], ['headFloat', 'Floating header'], ['soundsOn', 'Sounds'], ['autoResume', 'Auto-resume'], ['optMeta', '⌥ is Meta in the terminal']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },

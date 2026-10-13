@@ -326,7 +326,7 @@ for `$HOME`'s home and the account's.
   every pick fills). The app's window wears the appearance kept (`appearance` → `window.appearance`, remembered as
   `peixairada.dark`; none while following), so the pane's pages follow it. The CSS's blacks read `--crust`, `--bar`,
   `--hd-*`. A project's colour moves to the theme's nearest hue (`skinColor` in
-  `repoColor`; `prefs.skinExact` keeps it); the drawer's sixteen colours are the theme's (`xtTheme`, `ANSI`). A tile
+  `repoColor`); the drawer's sixteen colours are the theme's (`xtTheme`, `ANSI`). A tile
   clicked reveals from the point (`revealFrom`, a view transition). **A colour that reads no token is one no theme
   reaches.** → `themes.mjs`.
 * **The floating header** (2026-10-09, on by default; `prefs.headFloat` → `<html data-head="float">`): `#shead` and

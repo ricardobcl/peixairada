@@ -19,6 +19,8 @@ pref for a switch that went is deleted on load.
   the states and the syntax theirs. The chat header's square always writes Peacock's. The scenario's other half — the
   project's colour, the setup's square, black standing out — is `scripts/scenarios/project-colors.mjs`, its black now a
   Peacock black picked at the square.
+* **Exact project colours** (2026-10-10) — gone: under a theme a project's Peacock colour always moves to the theme's
+  nearest hue (`skinColor`); the board's own theme wears it as set.
 
 ## Decisions of 2026-10-14, on a branch — the tour
 
