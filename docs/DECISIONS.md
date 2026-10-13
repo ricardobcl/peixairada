@@ -60,6 +60,25 @@ the made-up 400-card board with the user's prefs in a WKWebView, the median of t
   `npm run perf` all five, rest 31 %, pointer 37 %, scroll 81 % with 40 frames dropped — every ceiling broken; against
   this one, 8.9 / 10.7 / 17.1 % and a frame or two.
 
+## Decisions of 2026-10-13, after Zed, later — Zed is where files open, not the pane
+
+Ricardo, on whether Zed could open inside the board as VS Code Web does — "you can leave 2. but make it clear on settings
+what this does, so we don't creat false expectations".
+
+* **Zed cannot be in the pane**: VS Code Web is VS Code's own UI served as a web page (`code serve-web`), which a
+  WKWebView shows; Zed is native, drawn by its own GPU framework, with no web build (1.0, April 2026, is macOS, Linux and
+  Windows binaries; WebAssembly only for its extensions), and macOS has no way to put another app's window inside
+  ours. Holding Zed's own window over the pane through Accessibility was offered and left: a separate window, its own
+  title bar and keyboard, behind the board at a click.
+* **So the setting is where files open, and only that**: *files open in — VS Code · Zed*, each the app's own window
+  outside the board. ⌥⌘E and ··· 's VS Code Web row stay VS Code Web whichever is picked (its zoom-again too); with
+  Zed picked ··· adds *its folder in Zed* (↗, no key) and the launcher a row for it. Under the pick, whenever Zed is
+  picked, a line says in so many words what it is not: *Zed opens in its own window, outside the board — it has no
+  web version the pane could show. ⌥⌘E stays VS Code Web, on a tab here; ··· has the chat's folder in Zed.* The Keys
+  sheet's ⌥⌘E row and the README say the same.
+* What the earlier entry made ⌥⌘E do with Zed — the folder in Zed's own window — is now that ··· row; nothing else
+  about the links or the install changed.
+
 ## Decisions of 2026-10-13, after Zed — Zed installed when it is picked
 
 Ricardo, on Zed not being on this Mac: "how do I install? put that on readme also (optional). or... can we just

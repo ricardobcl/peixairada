@@ -31,7 +31,7 @@ column split in two halves when there's more than one thing to look at.
 | ⌥⌘C | 🖥️ **Claude Code itself** — the real terminal, in a drawer: resume any chat, or take over one running in iTerm or VS Code. A chat whose Claude has ended resumes 5 s after you open it (or on a click), cloning its repo first when its folder isn't checked out. Drawers survive the board's restarts. |
 | ⌥⌘T · ⌘T | 🐚 **A shell** in the chat's folder, on a tab of its own — ⌘T opens another, or on a web page a blank tab, its address ready to type into. ⌘W closes the tab you are in. |
 | ⌥⌘G | 🐙 **The PR on GitHub** — its page on a tab; its state, its CI and whose move it is under the header. |
-| ⌥⌘E | 🧩 **Your editor** on the chat's folder — VS Code Web on a tab, or Zed in its own window (Settings › Board › editor). A file path in a chat opens there too, at its line. |
+| ⌥⌘E | 🧩 **VS Code Web** on the chat's folder. A file path clicked in a chat opens at its line in VS Code or Zed, in its own window (Settings › Board › files open in). |
 | ⌥⌘D | 🔀 **The chat's changes** — this turn's edits, everything uncommitted, or the branch against its base, as a diff. Commit… and Push type into its shell; a note on a line goes to Claude. |
 | ⌘2 · ⌥⌘2 | ◫ **Split** the column side by side, or one half over the other; drag a tab across, ⌘0 closes the other half. Press a tab's key again from it (⌥⌘C, ⌥⌘T, ⌥⌘G, ⌥⌘E, ⌥⌘D) and its half fills the column; once more, both are back. |
 
@@ -153,8 +153,8 @@ as at the top.
 | Node ≥ 22 | the server | `brew install node` — or mise, nvm, asdf |
 | Claude Code, signed in | the chats themselves | `curl -fsSL https://claude.ai/install.sh \| bash`, then run `claude` once to sign in |
 | [GitHub CLI](https://cli.github.com), signed in | PR states, faces and turns, cloning | `brew install gh && gh auth login` |
-| VS Code | ⌥⌘E (VS Code Web) and file links, unless Zed is the editor; [Peacock](https://marketplace.visualstudio.com/items?itemName=johnpapa.vscode-peacock) for project colours | [code.visualstudio.com](https://code.visualstudio.com) |
-| [Zed](https://zed.dev) (optional) | ⌥⌘E and file links, once picked in Settings › Board › editor — picking it installs it with Homebrew when it isn't there | `brew install --cask zed`, or [zed.dev/download](https://zed.dev/download) |
+| VS Code | ⌥⌘E (VS Code Web), and file links unless they open in Zed; [Peacock](https://marketplace.visualstudio.com/items?itemName=johnpapa.vscode-peacock) for project colours | [code.visualstudio.com](https://code.visualstudio.com) |
+| [Zed](https://zed.dev) (optional) | file links, in Zed's own window, once picked in Settings › Board › files open in — picking it installs it with Homebrew when it isn't there. Not in the pane: Zed has no web version, so ⌥⌘E stays VS Code Web | `brew install --cask zed`, or [zed.dev/download](https://zed.dev/download) |
 | [Task](https://taskfile.dev) | folders whose Taskfile starts Claude | `brew install go-task` |
 
 **Then**, from the shell you use every day — the login agent keeps its `PATH` and its `node`, which is how it finds
@@ -241,7 +241,7 @@ The login agent takes `PORT`, `NOTIFY` and your `PATH` at `scripts/launchd.sh in
 | ⌥⌘P · ⌥⌘F | pick a project · filter the list |
 | ⌥⌘↑ ⌥⌘↓ | previous · next chat |
 | ⌥⌘C | this chat's Claude, in the drawer |
-| ⌥⌘T · ⌥⌘E · ⌥⌘G | a shell · the editor (VS Code Web or Zed) · the PR |
+| ⌥⌘T · ⌥⌘E · ⌥⌘G | a shell · VS Code Web · the PR |
 | ⌘T · ⌘W | a new tab — a shell, or a page from a page · close the tab you are in |
 | ⌘2 · ⌘0 | split · close the other half |
 | ⌥⌘B | fold the list |

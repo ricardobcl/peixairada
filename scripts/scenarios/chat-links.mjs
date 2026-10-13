@@ -4,7 +4,8 @@
 // date, a version, a route, a domain. In the drawer the same paths are links, through a provider on the terminal
 // (peix.links reads a line's). What this checks is the anchors of one reply, in order, and the link on a line the fake
 // claude echoes. With Zed as the editor (2026-10-13, Settings › Board › editor) the same links are zed://file ones — the
-// transcript drawn again at the switch —, and ⌥⌘E opens the folder in Zed instead of VS Code Web.
+// transcript drawn again at the switch —; ⌥⌘E stays VS Code Web (Zed has no web version for the pane), ··· has the folder
+// in Zed beside it, and the settings say so under the pick (2026-10-13, later).
 import { makeFixture } from '../fixture.mjs';
 
 export const meta = { server: true, fake: true, fixture: 'auto' };
@@ -35,30 +36,37 @@ export default async function (ctx) {
   ], 'every file and page an anchor, in order, and nothing that only looks like one');
   await ctx.shot('transcript');
 
-  // Zed: the radio in the settings, the transcript's links drawn again for it, ··· naming it, ⌥⌘E following it
+  // Zed: the radio in the settings, the transcript's links drawn again for it, ··· with a row for Zed's own window
   await ctx.evaluate(`document.querySelector('#edPick [data-ed="zed"]').click()`);
   await ctx.waitFor(`!!window.peix.state().editors?.zed?.app`, { what: 'Zed installed — the test server\'s fake brew, into its own apps folder' });
   out.zed = await ctx.evaluate(`JSON.stringify({
     pref: window.peix.prefs().editor,
     checked: [...document.querySelectorAll('#edPick [data-ed]')].map(b => b.dataset.ed + ':' + b.getAttribute('aria-checked')),
     anchors: [...document.querySelectorAll('#log a[href]')].map(a => [a.textContent, a.getAttribute('href'), a.title]),
-    row: document.querySelector('#webBtn .lbl').textContent,
+    rows: ['#webBtn', '#zedBtn'].map(q => document.querySelector(q + ' .lbl')?.textContent),
+    said: document.querySelector('#edSay .edwhy')?.textContent || '',
   })`).then(JSON.parse);
   ctx.assert.equal(out.zed.pref, 'zed'); ctx.assert.deepEqual(out.zed.checked, ['vscode:false', 'zed:true']);
   ctx.assert.deepEqual(out.zed.anchors.map(a => a[1]), out.anchors.map(a => a[1].replace(/^vscode:/, 'zed:')), 'the same links, each a zed://file one');
   ctx.assert.equal(out.zed.anchors[1][2], `Open ${cwd}/src/app.js:42 in Zed`);
   ctx.assert.equal(out.zed.anchors[7][2], `Open ${cwd}/src/y.ts:3 in Zed`, 'the [file:3](…#L3) one too');
-  ctx.assert.equal(out.zed.row, 'Zed', '··· offers the folder in Zed, not VS Code Web');
-  // ⌥⌘E: in a browser the URL is followed as a link (the app hands it to the system), no tab, no VS Code Web started
-  out.zed.e = await ctx.evaluate(`(() => {
-    const seen = [], click = HTMLAnchorElement.prototype.click, open = window.open;
+  ctx.assert.deepEqual(out.zed.rows, ['VS Code Web', 'its folder in Zed'], '··· keeps VS Code Web and adds the folder in Zed');
+  ctx.assert.match(out.zed.said, /^Zed opens in its own window, outside the board .* ⌥⌘E stays VS Code Web/, 'the settings say what Zed is not');
+  // what each opens, the browser's ways out caught: the folder in Zed followed as a link (the app hands it to the system),
+  // ⌥⌘E still VS Code Web (its server asked, then its page)
+  out.zed.opened = await ctx.evaluate(`(async () => {
+    const seen = [], click = HTMLAnchorElement.prototype.click, open = window.open, f = window.fetch;
     HTMLAnchorElement.prototype.click = function () { seen.push(this.href); };
     window.open = u => { seen.push('window.open ' + u); };
-    try { document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE', key: 'π', metaKey: true, altKey: true, bubbles: true, cancelable: true })); }
-    finally { HTMLAnchorElement.prototype.click = click; window.open = open; }
+    window.fetch = (u, o) => String(u).endsWith('/api/vscode-web') ? Promise.resolve(new Response('{"url":"http://127.0.0.1:1/"}', { headers: { 'content-type': 'application/json' } })) : f(u, o);
+    try {
+      document.querySelector('#zedBtn').click();
+      document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE', key: 'π', metaKey: true, altKey: true, bubbles: true, cancelable: true }));
+      await new Promise(r => setTimeout(r, 300));
+    } finally { HTMLAnchorElement.prototype.click = click; window.open = open; window.fetch = f; }
     return JSON.stringify(seen);
   })()`).then(JSON.parse);
-  ctx.assert.deepEqual(out.zed.e, [`zed://file${cwd}`], '⌥⌘E opens the chat\'s folder in Zed');
+  ctx.assert.deepEqual(out.zed.opened, [`zed://file${cwd}`, `window.open http://127.0.0.1:1/?folder=${encodeURIComponent(cwd)}`], 'the folder in Zed from ···, and ⌥⌘E VS Code Web as ever');
 
   // in the drawer: the path on the line the fake echoes is a link with the same href, on the cells it occupies
   const live = ctx.fixture.chats[0];

@@ -139,6 +139,7 @@
   .pop .opt.sub { margin: -2px 0 0 43px; padding-top: 0; border-top: 0; }   /* a switch of the row above's (compact's same height), under its slider */
   .pop .opt.edsay { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: -2px; padding-top: 0; border-top: 0; color: var(--muted); }   /* Zed not here: installing, failed, or where to get it (2026-10-13) */
   .pop .opt.edsay .err { color: var(--needs); }
+  .pop .opt.edsay .edwhy { flex-basis: 100%; }   /* what Zed is not: in the pane (2026-10-13, later) */
   .pop .opt b { font-weight: 600; color: var(--ink); }
   .pop .opt input { appearance: none; -webkit-appearance: none; position: relative; margin: 0; width: 28px; height: 16px; border-radius: var(--r-3); background: var(--line); cursor: pointer; transition: background .15s; }
   .pop .opt input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: transform .15s; }
@@ -2276,7 +2277,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <label class="opt sub" title="On, a chat asking you, one with a PR at your move, one Claude is at work in and one with a new reply have large cards whatever the size above — the rest are at that size"><input type="checkbox" id="cardsByLane"><span><b>by lane</b> — large where a chat wants you, the size above for the rest</span></label>
     <label class="opt sub" id="evenRow" title="Compact cards all the same height: the title on one line and the your-move line under it, held empty on a card without one; the question is left to the card's red edge and its pings" hidden><input type="checkbox" id="cardsEven"><span><b>same height</b> — every compact card a title line and a your-move line tall</span></label>
     <label class="opt" title="On, a chat Claude isn’t running in — one you open from the list, a picker, a key or a link — runs claude --resume in a terminal here 5 s after it opens, unless you press Not now or Esc, or move on. A chat ticked done, and the one the page opens on a reload, wait for the Resume button"><input type="checkbox" id="autoResume" checked><span><b>auto-resume</b> — a chat Claude isn’t running in resumes 5 s after you open it; off, it waits for the Resume button</span></label>
-    <div class="opt lightpick" title="Where a file named in a chat opens, at its line — a path in a reply or on a drawer's screen is a link to it — and what ⌥⌘E opens: with VS Code, the chat's folder in VS Code Web on a tab of the pane; with Zed, the folder in Zed's own window (it has no web build to put in the pane)"><span><b>editor</b> — files named in a chat open in it, and ⌥⌘E its folder</span><span class="sseg" role="radiogroup" aria-label="Editor" id="edPick"><button type="button" role="radio" data-ed="vscode">VS Code</button><button type="button" role="radio" data-ed="zed">Zed</button></span></div>
+    <div class="opt lightpick" title="Where a file path clicked in a chat opens, at its line — a path in a reply, a tool call or on a drawer's screen: in VS Code or in Zed, each the app's own window, outside the board. Not ⌥⌘E: that is VS Code Web on a tab of the pane whichever is picked, since Zed has no web version the pane could show"><span><b>files open in</b> — a path clicked in a chat or a drawer opens there, at its line, in that app's own window</span><span class="sseg" role="radiogroup" aria-label="Editor" id="edPick"><button type="button" role="radio" data-ed="vscode">VS Code</button><button type="button" role="radio" data-ed="zed">Zed</button></span></div>
     <div class="opt edsay" id="edSay" role="status" hidden></div>
     <h4 class="shd">Look</h4>
     <div class="opt lightpick zoompick" title="Everything on the board, larger or smaller — the app's own zoom; in a browser, its View menu's"><span><b>text size</b> — the whole board</span><span class="sseg" role="radiogroup" aria-label="Text size" id="zoomPick"><button type="button" role="radio" data-z="0.9">90 %</button><button type="button" role="radio" data-z="1">100 %</button><button type="button" role="radio" data-z="1.1">110 %</button><button type="button" role="radio" data-z="1.25">125 %</button><button type="button" role="radio" data-z="1.4">140 %</button></span><span class="zhint">your browser's View → Zoom</span></div>
@@ -4910,7 +4911,8 @@ const toolName = n => {
         { name: `A ${shName()} in its folder`, sub: of, hint: '⌥⌘T', fn: hotShell },
         ...(shellLive(s) ? [{ name: `Another ${shName()} beside it`, sub: of, hint: '⌘T', fn: () => startShell(s, true) }] : []),
         ...(s.prs?.length ? [{ name: 'Its PR on GitHub', sub: of, hint: '⌥⌘G', fn: hotGh }] : []),
-        ...(inApp || onZed() ? [{ name: `Its folder in ${edRow()}`, sub: of, hint: '⌥⌘E', fn: hotEditor }] : []),
+        ...(inApp ? [{ name: 'Its folder in VS Code Web', sub: of, hint: '⌥⌘E', fn: hotVsCode }] : []),
+        ...(onZed() && s.cwd ? [{ name: 'Its folder in Zed — its own window', sub: of, fn: () => $('#zedBtn')?.click() }] : []),
         ...(canTick(s) ? [{ name: 'Tick it done', sub: of, fn: () => tickDone(s.id, true, $('#shead')) }] : []),
         ...(canTick(s) && s.prs?.length && !s.forGood ? [{ name: 'Done for good — its PRs forgotten', sub: of, fn: () => tickDone(s.id, true, $('#shead'), null, true) }] : []),
         // what was the pointer's alone (2026-10-12): a rename, a PR taken off, a tab moved across, a colour let go
@@ -5028,7 +5030,7 @@ const toolName = n => {
     ['⌥⌘C', 'This chat', 'its Claude, in its drawer', 'starts it, or takes over one running elsewhere · again from it: its half fills the column, and back', ['alt:KeyC']],
     ['⌘T', 'This chat', 'a new tab — another shell, or from a web page a blank one', 'from claude\'s drawer, a shell, the transcript or the changes, a shell in its folder · from a GitHub page or VS Code Web, a blank tab with the keys in its address — type one, or words to search · it opens beside the chat', ['cmd:KeyT']],
     ['⌥⌘T', 'This chat', 'a shell in its folder, on a tab', 'shown if it has one — ⌘T opens another · again from it: its half fills the column, and back', ['alt:KeyT']],
-    ['⌥⌘E', 'This chat', 'its folder in the editor — VS Code Web on a tab, or Zed', 'Settings › Board › editor picks · again from VS Code Web: its half fills the column, and back', ['alt:KeyE']],
+    ['⌥⌘E', 'This chat', 'its folder in VS Code Web, on a tab', 'again from it: its half fills the column, and back · VS Code Web whichever editor files open in — Zed has no web version', ['alt:KeyE']],
     ['⌥⌘G', 'This chat', 'its PR on GitHub, on a tab', 'the repo when it has none · a picker with several · a tab followed elsewhere leaves it a new one · again from its page: its half fills the column, and back', ['alt:KeyG']],
     ['⌥⌘D', 'This chat', 'what it changed, on a tab', 'its last turn\'s edits, the uncommitted tree or the branch against its base · Commit… and Push type into its shell · + on a line sends Claude a note · again from it: its half fills the column, and back', ['alt:KeyD']],
     ['⌘W', 'This chat', 'close the tab the keys are in', 'the shell ends, a page or VS Code Web goes · on the chat\'s own tab, its half closes — with one half, the window\'s own key · a dialog up closes first', ['cmd:KeyW']],
@@ -5094,7 +5096,7 @@ const toolName = n => {
   // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShellKey, KeyE: hotEditorKey, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiff, KeyA: ovOpen, KeyS: hotStack, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  const HOTKEYS = { KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiff, KeyA: ovOpen, KeyS: hotStack, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -5138,7 +5140,7 @@ const toolName = n => {
   function hotShellKey() { return zoomAgain(isShellTab) || hotShell(); }
   const ghPages = s => s.prs?.length ? s.prs.map(pr => pr.url) : s.cwd && state.repos[s.cwd] ? [state.repos[s.cwd]] : [];   // what ⌥⌘G opens
   function hotGhKey() { return zoomAgain((k, s) => isPageTab(k) && ghPages(s).some(u => atPage(paneUrl(k), u))) || hotGh(); }
-  function hotEditorKey() { return (!onZed() && zoomAgain(k => /^ide:/.test(k || ''))) || hotEditor(); }
+  function hotVsCodeKey() { return zoomAgain(k => /^ide:/.test(k || '')) || hotVsCode(); }
   function hotDiffKey() { return zoomAgain(k => k === 'changes') || hotDiff(); }
   /** ⌥⌘R (2026-10-13; ⌘R's before, which is the page's in the pane now): the board, reloaded where it is. */
   function hotReload() { location.reload(); }
@@ -5175,7 +5177,7 @@ const toolName = n => {
     if (!s || !isPaneTab(tabOf(s))) return false;
     showChat(s); syncTerm(s); focusBoard(); return true;
   }
-  function hotEditor() { const b = $('#webBtn'); if (b) b.click(); else noChat(); }
+  function hotVsCode() { const b = $('#webBtn'); if (b) b.click(); else noChat(); }
   // ⌥⌘↑ / ⌥⌘↓ (2026-09-20): the chat above or below in the list as it stands — filters and order included; from no
   // chat, or one the list does not show, the top or the bottom; the ends stop.
   // ⌥⌘F (2026-09-25): the chat list's magnifier, from anywhere, and it
@@ -5741,10 +5743,11 @@ const toolName = n => {
   // a 40 000-character line of them took 800 ms on the main thread; an @ that begins a word (Claude Code's) still may.
   const PATH_RE = /(?<![\w.\/~+-])(?<![\w.\/~+@-]@)(?:(?:~|\.{1,2})?\/[\w.@+-]+(?:\/[\w.@+-]+)*|\.?[\w+-][\w@+-]*(?:\/[\w.@+-]+)*\/[\w@+-][\w.@+-]*\.[A-Za-z0-9]{1,8}|[\w@+-][\w.@+-]*\.[A-Za-z0-9]{1,8}(?=:\d))(?::\d+(?::\d+)?)?/g;
   const EXT_RE = /\.[A-Za-z0-9]{1,8}$/;
-  // The editor (2026-10-13, prefs.editor, Settings › Board › Chats): VS Code or Zed. Each opens a file at a line from a
-  // URL of the same shape — <scheme>://file/<absolute path>:<line>:<col>, the path percent-decoded —, which the app
-  // hands to the system and a browser asks about; ⌥⌘E is VS Code Web on a tab of the pane, or the folder in Zed's own
-  // window, since Zed has no web build to frame. A switch draws the transcript again, so its links follow.
+  // The editor files open in (2026-10-13, prefs.editor, Settings › Board › Chats): VS Code or Zed. Each opens a file at a
+  // line from a URL of the same shape — <scheme>://file/<absolute path>:<line>:<col>, the path percent-decoded —, which
+  // the app hands to the system and a browser asks about. ⌥⌘E is VS Code Web on a tab of the pane whichever is picked
+  // (2026-10-13, later): Zed has no web build to frame, and its own window is ··· 's *the folder in Zed*. A switch
+  // draws the transcript again, so its links follow.
   const EDITORS = { vscode: { name: 'VS Code', file: 'vscode://file' }, zed: { name: 'Zed', file: 'zed://file' } };
   const editor = () => EDITORS[prefs.editor] || EDITORS.vscode;
   const onZed = () => editor() === EDITORS.zed;
@@ -5762,9 +5765,10 @@ const toolName = n => {
   edPick();
   // Zed picked and not on this Mac is Zed installed (2026-10-13): the server's `brew install --cask zed`, the line under
   // the pick saying how far it is (edSay, from the `editor` events), failed and why, or — no Homebrew — where to get it.
-  // Until it is there, ⌥⌘E and a file link say so where they were clicked (zedNote) rather than hand the system a URL
-  // nothing answers.
+  // Until it is there, ··· 's folder in Zed and a file link say so where they were clicked (zedNote) rather than hand the
+  // system a URL nothing answers. Under the pick, whenever Zed is picked, what it is not: in the pane (ZED_NOT).
   const ZED_GET = 'https://zed.dev/download';
+  const ZED_NOT = 'Zed opens in its own window, outside the board — it has no web version the pane could show. ⌥⌘E stays VS Code Web, on a tab here; ··· has the chat\'s folder in Zed.';
   const zedMissing = () => onZed() && !!state.editors?.zed && !state.editors.zed.app;
   const zedWhy = () => state.editors?.zed?.installing ? 'Zed is still being installed — a moment' : "Zed isn't installed — Settings › Board › editor installs it";
   function zedNote(at) { note(at, zedWhy(), true); }
@@ -5777,11 +5781,12 @@ const toolName = n => {
   async function wantZed() { await loadEditors(); const z = state.editors?.zed; if (z && !z.app && !z.installing && z.brew) await installZed(); }
   function edSay() {
     const box = $('#edSay'), z = state.editors?.zed; if (!box) return;
-    const html = !onZed() || !z || z.app ? ''
+    const said = !onZed() || !z || z.app ? ''
       : z.installing ? `<span>installing Zed with Homebrew…</span><span>${esc(z.line || '')}</span>`
       : z.error ? `<span class="err">Zed's install failed — ${esc(z.error)}</span><button type="button" class="btn" data-zed="install">try again</button>`
       : z.brew ? `<span>Zed isn't on this Mac</span><button type="button" class="btn" data-zed="install">install it</button><span>with Homebrew</span>`
       : `<span>Zed isn't on this Mac, and there is no Homebrew to install it with</span><button type="button" class="btn" data-zed="get">get it from zed.dev</button>`;
+    const html = onZed() ? said + `<span class="edwhy">${ZED_NOT}</span>` : '';
     box.hidden = !html; setHtml(box, html);
   }
   $('#edSay').addEventListener('click', e => {
@@ -5869,8 +5874,7 @@ const toolName = n => {
     ? 'Focus view is on in this session — your prompt, the summary and the reply only. Click to show every step again (/focus in the terminal)'
     : 'Focus view: your prompt, the summary and the reply only, the steps hidden. Click to turn it on (/focus in the terminal)';
   const WEB_TIP = "Open this folder in VS Code Web — the editor served locally by `code serve-web`, in the pane here (a separate VS Code: trust the folder once, then Claude Code is in its sidebar) · ⌥⌘E";
-  const ZED_TIP = "Open this folder in Zed — in a window of its own, as Zed has no web build to put in the pane; the files named in this chat open there too · ⌥⌘E";
-  const edRow = () => onZed() ? 'Zed' : 'VS Code Web';   // what ⌥⌘E opens, by name
+  const ZED_TIP = "Open this folder in Zed — its own window, outside the board: Zed has no web version the pane could show (⌥⌘E is VS Code Web here)";
   // The header, the menu and the PR rows are set only when their markup changed (2026-09-27): every SSE update of the
   // open chat rebuilt all three — a live <dialog>, its rows detached under the pointer — and rebound nine handlers,
   // then laid the notch and the chips out again. The handlers are still bound on every call: they close over `s`,
@@ -5906,7 +5910,7 @@ const toolName = n => {
     const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo${s.cwd && prefs.project === s.cwd ? ' on' : ''}" title="${s.cwd && prefs.project === s.cwd ? 'Every project again (ALL)' : 'Show this folder\'s chats — click again for every project'}">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${ticks(esc(s.title))}</span></h2>
       ${diffChip(s)}${headMove(s)}${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
-      <button class="hmore" id="moreBtn" aria-haspopup="dialog" aria-expanded="false" title="This chat: Claude in its drawer, a shell, ${edRow()}, its changes, focus view, path and branch — and the settings">${ICON.more}</button>
+      <button class="hmore" id="moreBtn" aria-haspopup="dialog" aria-expanded="false" title="This chat: Claude in its drawer, a shell, VS Code Web${onZed() ? ', its folder in Zed' : ''}, its changes, focus view, path and branch — and the settings">${ICON.more}</button>
       <div class="details"${prefs.headDetails ? '' : ' hidden'}>
         <span class="path">${esc(s.cwd || '')}${s.gitBranch && s.gitBranch !== 'HEAD' ? ' @ ' + esc(s.gitBranch) : ''}</span>
         ${s.live ? `<span class="chip">${entryLabel(s)}</span>` : ''}${s.live?.name ? `<span class="chip" title="session name">${esc(s.live.name)}</span>` : ''}${
@@ -5919,7 +5923,8 @@ const toolName = n => {
       s.cwd && !loud ? `${termBtn('hmi')}<span class="lbl">${termWord}</span><span class="k">⌥⌘C</span></button>` : '',
       termLive(s) ? `<button class="hmi${focusOn(s.id) ? ' on' : ''}" id="viewBtn" aria-pressed="${focusOn(s.id)}" title="${esc(viewTip(s))}">${ICON.view}<span>focus view</span><span class="k">${focusOn(s.id) ? 'on' : 'off'}</span></button>` : '',
       s.cwd ? `<button class="hmi" id="chgBtn" title="What this chat changed in its folder — the diff, by turn, uncommitted or the branch">${ICON.diff}<span class="lbl">changes</span><span class="k">⌥⌘D</span></button>` : '',
-      s.cwd ? `<button class="hmi" id="webBtn" title="${onZed() ? ZED_TIP : WEB_TIP}">${onZed() ? ICON.zed : ICON.vscode}<span class="lbl">${edRow()}</span><span class="k">⌥⌘E</span></button>` : '',
+      s.cwd ? `<button class="hmi" id="webBtn" title="${WEB_TIP}">${ICON.vscode}<span class="lbl">VS Code Web</span><span class="k">⌥⌘E</span></button>` : '',
+      s.cwd && onZed() ? `<button class="hmi" id="zedBtn" title="${ZED_TIP}">${ICON.zed}<span class="lbl">its folder in Zed</span><span class="k">↗</span></button>` : '',
       // what a tab's × does, for the tabs that lose their strip alone in a half (2026-09-28) — ⌘W with the keys in it
       shellLive(s) ? `<button class="hmi" id="shellEndBtn" title="End this chat's ${shName()}${shellsOf(s).length > 1 ? ' the keys are in, else its first,' : ''} and close its tab — exit in it does the same · ⌘W with the keys in it"><span class="gl">×</span><span>end the ${shName()}</span><span class="k"></span></button>` : '',
       ideKey(s) ? `<button class="hmi" id="ideCloseBtn" title="Close VS Code Web's tab — ⌥⌘E opens it again · ⌘W with the keys in it"><span class="gl">×</span><span>close VS Code Web</span><span class="k"></span></button>` : '',
@@ -5948,8 +5953,8 @@ const toolName = n => {
     renderResume(s); renderRival(s);
     $('#detailsBtn').onclick = () => { prefs.headDetails = !prefs.headDetails; savePrefs(); renderHead(s); };
     const wb = $('#webBtn');
-    if (wb && onZed()) wb.onclick = () => { menu.close(); if (zedMissing()) zedNote(seen(wb)); else openExternal(fileUrl(s.cwd)); };   // Zed's own window: nothing to start, no tab
-    else if (wb) wb.onclick = async () => {
+    const zb = $('#zedBtn'); if (zb) zb.onclick = () => { menu.close(); if (zedMissing()) zedNote(seen(zb)); else openExternal(fileUrl(s.cwd)); };   // Zed's own window: nothing to start, no tab
+    if (wb) wb.onclick = async () => {
       wb.disabled = true; wb.querySelector('.lbl').textContent = 'starting…';
       try {
         const d = await api('POST', '/api/vscode-web');
