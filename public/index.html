@@ -672,7 +672,7 @@
   @property --slope { syntax: '<percentage>'; inherits: false; initial-value: 8%; }
   @property --reach { syntax: '<percentage>'; inherits: false; initial-value: 24%; }
   @property --fall { syntax: '<number>'; inherits: false; initial-value: .5; }
-  /* The glow under the pointer (2026-10-09, prefs.cardSpot — <html data-spot>): a round light of the colour between the
+  /* The glow under the pointer (2026-10-09; a switch until 2026-10-14): a round light of the colour between the
      edge and the glow, at --mx / --my — where the pointer is in the card, written by the script once a frame — --spot
      strong; 0 % at rest, so it is transparent and the card is as it was, and it fades in and out with the pointer (the
      .card transition). Registered not inheriting, so a move restyles the card alone; the ring's ::after cover takes the
@@ -698,11 +698,9 @@
      FLIP's transform and the ring's are left alone — but not while the press is on a control inside it, which dips
      itself. */
   .card:active:not(:has(:is(button, a, .cpr, .ctk, .face):active)) { scale: .99; transition-duration: .06s; transition-timing-function: ease-out; }
-  /* With the light under the pointer, hover is that light — the edge's glow stays as it is at rest (it grew across the
-     card before, and still does with the switch off); the open card and the magnifier's mark keep theirs. Not on the
-     rail's squares, too small for it. */
-  :root[data-spot] main:not(.scompact) .card:hover { --spot: 55%; }
-  :root[data-spot] .card:hover:not(.active, .qsel) { --tint: 50%; --reach: 60%; }
+  /* Hover is that light — the edge's glow stays as it is at rest (it grew across the card until 2026-10-09); the open
+     card and the magnifier's mark keep theirs. Not on the rail's squares, too small for it. */
+  main:not(.scompact) .card:hover { --spot: 55%; }
   /* The colour as it reads on the panel (2026-10-09, late night): the edge, the glow, the light under the pointer, the
      border of a hovered, open or clauding card and the ring's track wear --lift — the project's colour with its
      lightness held where it shows against the panel: no darker than .62 in the dark (a black, a navy, a maroon were a
@@ -816,10 +814,9 @@
   .card > .loc { position: absolute; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
   .card > .loc i { position: absolute; inset: 0 auto 0 0; width: 45%; background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--glow) 45%, transparent), transparent); }
   @keyframes wash { from { transform: scale(0); opacity: 1; } 40% { transform: scale(5); opacity: .55; } to { transform: scale(7.5); opacity: 0; } }
-  /* Hover and the open chat enhance the card's own colour, never the accent (2026-09-20): hover spreads the glow; the
-     open card adds a 2px ring of the colour over its border — a three-pixel edge. Hover lit the border too, with a
-     halo, until 2026-10-11, afternoon: the colour round the edge is the open and the clauding card's alone. */
-  .card:hover { --tint: 60%; --reach: 90%; }
+  /* Hover and the open chat enhance the card's own colour, never the accent (2026-09-20): hover is the light under the
+     pointer; the open card adds a 2px ring of the colour over its border — a three-pixel edge. Hover lit the border
+     too, with a halo, until 2026-10-11, afternoon: the colour round the edge is the open and the clauding card's alone. */
   .chip.vsc { color: var(--vscode); background: color-mix(in srgb, var(--vscode) 16%, transparent); }
   /* The environment a chat was started in (`task production-workload`…, 2026-09-21): beside the folder on the card,
      in the project's own colour, because it is a fact about *where* the chat runs — not about its process, which is
@@ -2090,9 +2087,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #picklist { margin-top: 6px; max-height: 50vh; overflow-y: auto; display: grid; gap: 1px; }
   #settings .shd { margin: 14px 0 2px; font: 700 var(--fs-xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }   /* the Board pane's sections (2026-10-12) */
   #settings .spane > .shd:first-child { margin-top: 2px; }
-  #settings details.sadv > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 10px; } #settings details.sadv > summary::-webkit-details-marker { display: none; }
-  #settings details.sadv > summary span { font-size: var(--fs-sm); color: var(--muted); }
-  #settings details.sadv > summary .shd::before { content: '▸ '; } #settings details.sadv[open] > summary .shd::before { content: '▾ '; }
   #settings .lightpick { display: flex; align-items: center; gap: 10px; } #settings .lightpick > span:first-of-type { flex: 1; }
   #settings .sseg { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-3); background: var(--ctl); }
   #settings .sseg button { font: inherit; font-size: var(--fs-sm); border: 0; background: none; color: var(--muted); padding: 3px 10px; border-radius: var(--r-2); cursor: pointer; }
@@ -2352,9 +2346,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <h4 class="shd">Updates</h4>
     <label class="opt" title="The board looks for new commits on its checkout's upstream every half hour, and the status bar says when there are some. On, it also pulls them once nothing has been done on the board for two minutes — a fast-forward only, never over a change of yours — and starts again what they changed: the packages, the server (the chats in drawers stay), this page (once you leave it be) and the app. A commit whose server does not start is undone and held back. Off, update now below takes them"><input type="checkbox" id="autoUpdate"><span><b>update itself</b> — pulls the board's new commits and starts again what they changed: the server, this page, the app; off, the status bar says they came</span></label>
     <div class="opt sub upd" id="updRow"><span id="updSay"></span><button type="button" class="btn" id="updBtn">check now</button></div>
-    <details class="sadv"><summary><h4 class="shd">Lights and motion</h4><span>the glow under the pointer</span></summary>
-    <label class="opt" title="On, a round light of the card's colour follows the pointer over the card it is on, and the edge's glow stays as it is; off, hover spreads the edge's glow across the card"><input type="checkbox" id="cardSpot" checked><span><b>light under the pointer</b> — a hovered card's glow follows the pointer; off, it spreads from the edge</span></label>
-    </details>
     <div id="hidden" class="hid"></div>
   </div>
   <div class="spane" data-tab="setup" hidden role="tabpanel" id="spSetup" aria-labelledby="stSetup"><div id="setup" class="setup"></div></div>
@@ -2485,7 +2476,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -2506,7 +2497,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   delete prefs.filter; delete prefs.filters;
   delete prefs.peopleFold;   // the faces folded to a count (2026-10-09, off by default) became peopleCompact (2026-10-11, later): folded by default
   // the experimental switches pared (2026-10-14): what they chose is now the only way, or gone
-  for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume', 'edgeLight', 'ringsInStep']) delete prefs[k];
+  for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume', 'edgeLight', 'ringsInStep', 'cardSpot']) delete prefs[k];
   if (!Array.isArray(prefs.lanesShut)) prefs.lanesShut = ['done', 'idle'];
   prefs.lanesShut = prefs.lanesShut.filter(g => g !== 'move' && g !== 'replied');   // lanes for a morning (2026-10-12), filters since
   if (prefs.listFilter !== 'move' && prefs.listFilter !== 'replied') prefs.listFilter = null;
@@ -4090,11 +4081,6 @@ const toolName = n => {
   // The floating header (2026-10-09, the studies' E): a switch, to compare with the plain one in use.
   const applyHead = () => { if (prefs.headFloat) document.documentElement.dataset.head = 'float'; else delete document.documentElement.dataset.head; };
   applyHead();
-  // The glow under the pointer (2026-10-09): on by default, the switch to compare with hover's glow spread from the edge.
-  const applySpot = () => { if (prefs.cardSpot) document.documentElement.dataset.spot = ''; else delete document.documentElement.dataset.spot; };
-  applySpot();
-  $('#cardSpot').checked = !!prefs.cardSpot;
-  $('#cardSpot').addEventListener('change', e => { prefs.cardSpot = e.target.checked; savePrefs(); applySpot(); });
   $('#headFloat').checked = !!prefs.headFloat;
   $('#headFloat').addEventListener('change', e => { prefs.headFloat = e.target.checked; savePrefs(); applyHead(); layoutNotch(); fitHeadPrs(); paintHeadSplit(); floatH(); listChanged(); });
   // ---- the list's ends: how many cards are out of sight ---------------------------------
@@ -4272,7 +4258,7 @@ const toolName = n => {
     });
   }
   $('#slist').addEventListener('scroll', () => listChanged(true), { passive: true });
-  // The glow under the pointer (2026-10-09, prefs.cardSpot): the hovered card's --mx / --my, the pointer's place in it,
+  // The glow under the pointer (2026-10-09): the hovered card's --mx / --my, the pointer's place in it,
   // read and written once a frame. A scroll moves another card under a still pointer, and a card redrawn under it is a
   // new node with none, so both ask again (the scroll here, renderSessionList). A function, and its state on it: the
   // list renders before this line has run.
@@ -4281,7 +4267,7 @@ const toolName = n => {
   // scroll, a render (spotSoon() with no event) or the list resized reads it again.
   function spotSoon(e) {
     if (e?.clientX != null) { spotSoon.x = e.clientX; spotSoon.y = e.clientY; } else spotSoon.r = null;
-    if (!prefs.cardSpot || spotSoon.raf || spotSoon.x == null) return;
+    if (spotSoon.raf || spotSoon.x == null) return;
     spotSoon.raf = requestAnimationFrame(() => {
       spotSoon.raf = 0;
       const c = document.querySelector('#slist > .card:hover'); if (!c) return;
@@ -4969,7 +4955,7 @@ const toolName = n => {
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
   const SWITCHES = [['notifyOn', 'Notifications'], ['autoUpdate', 'Update itself'], ['skinFollow', 'Theme follows macOS'],
-    ['cardSpot', 'Light under the pointer'], ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['tileStackOn', 'Tiles: the stack'], ['wallFollow', 'Tiles: the glow follows the pointer'], ['headFloat', 'Floating header'], ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal']];
+    ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['tileStackOn', 'Tiles: the stack'], ['wallFollow', 'Tiles: the glow follows the pointer'], ['headFloat', 'Floating header'], ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
     { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },

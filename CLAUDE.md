@@ -226,10 +226,10 @@ for `$HOME`'s home and the account's.
   every move by its `id`. → `list-motion.mjs`. **A landing** is `landed` (`landedAt` from `working` → `idle`;
   `flareLanded()` sets a negative `animation-delay` for `LANDED_MS`, so a rebuilt card carries it on).
 * **A card's glow is registered properties, never a `background`**: the lit 3 px edge (`--edge`, the first
-  `background` layer) and a glow from it, `--tint` · `--reach` · `--fall`; hover, `.active` and `.qsel` set the
-  numbers and the `transition` eases them. A new card state that wants a glow sets the variables. The outline is
+  `background` layer) and a glow from it, `--tint` · `--reach` · `--fall`; `.active` and `.qsel` set the
+  numbers (hover is the light under the pointer) and the `transition` eases them. A new card state that wants a glow sets the variables. The outline is
   `1px solid transparent` at rest, so nothing moves.
-* **Under the pointer a card's glow follows it** (2026-10-09, `prefs.cardSpot` → `<html data-spot>`): a
+* **Under the pointer a card's glow follows it** (2026-10-09): a
   `radial-gradient` layer at `--mx` / `--my`, `--spot` strong in `--spotc` — registered, not inheriting, so a move
   restyles one card; `spotSoon` writes it once a frame on the `:hover` card, and after a render (a card redrawn under
   a still pointer is a new node), **the card's rect read once** — again after a scroll, a render or a resize, never
@@ -649,8 +649,7 @@ for `$HOME`'s home and the account's.
   → `clone-folder.mjs`.
 * **The settings are one modal dialog** (`#settings`): ⌘, (`CMDKEYS.Comma`; in the app the menu's *Settings…* asks
   `peixKey`), the header's ··· row (`#settingsBtn`) and the empty header's ··· (`#noChatMore`, delegated — `leaveChat`
-  rewrites the header). Three panes (`.spane`) under `.stabs`: **Board** (sections `h4.shd`, *Lights and motion*
-  folded in `details.sadv`), **Setup** (`#setup`), **Keys** (`.keys`). The class is still `pop`, so rows keep their
+  rewrites the header). Three panes (`.spane`) under `.stabs`: **Board** (sections `h4.shd`), **Setup** (`#setup`), **Keys** (`.keys`). The class is still `pop`, so rows keep their
   `.pop …` rules. **It is modal**: the pane is down and the ⌥⌘ / ⌘ keys are swallowed under it — close it first (the
   scenarios do); its `close` drops a setup row half typed. **The fish is the SSE light**, belly-up while the stream is
   down (`FISH_LOGO()`; animations, not transitions, since the bar redraws it); clicked, the About box (`#about`).

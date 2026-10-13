@@ -1,7 +1,6 @@
 // The glow under the pointer (2026-10-09): a round light of the card's colour follows the pointer over the card it is
 // on — --mx / --my, the pointer's place in the card, written once a frame — and fades in and out with it (--spot); the
-// edge's glow stays as at rest meanwhile, and a card the pointer is not on has no light. The switch in the settings
-// turns it off — hover spreads the edge's glow across the card again — and the choice outlives a reload.
+// edge's glow stays as at rest meanwhile, and a card the pointer is not on has no light (a switch until 2026-10-14).
 export const meta = { server: true, fixture: 'auto' };
 
 const at = i => `document.querySelectorAll('#slist > .card')[${i}]`;
@@ -19,7 +18,6 @@ export default async function (ctx) {
   const out = {};
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 2`, { what: 'the two chats' });
   await ctx.settle();
-  ctx.assert.equal(await ctx.evaluate(`'spot' in document.documentElement.dataset`), true, 'on by default');
   const r = await rect(ctx, 0);
 
   // ---- the light where the pointer is, and only on its card ----
@@ -44,17 +42,5 @@ export default async function (ctx) {
   out.left = await look(ctx, 0);
   ctx.assert.equal(out.left.mx, `${p2.x}px`, 'where the pointer left it');
 
-  // ---- the switch off: hover spreads the edge's glow again, and stays off over a reload ----
-  await ctx.evaluate(`document.querySelector('#cardSpot').click()`);
-  ctx.assert.equal(await ctx.evaluate(`'spot' in document.documentElement.dataset`), false, 'off');
-  await ctx.reload();
-  await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 2`, { what: 'the two chats again' });
-  await ctx.settle();
-  ctx.assert.equal(await ctx.evaluate(`!document.querySelector('#cardSpot').checked && !('spot' in document.documentElement.dataset)`), true, 'the choice outlives a reload');
-  const r2 = await rect(ctx, 0);
-  await point(ctx, r2, .5, .5);
-  await ctx.waitFor(`getComputedStyle(${at(0)}).getPropertyValue('--tint') === '60%'`, { what: 'hover\'s glow spread across the card' });
-  out.off = await look(ctx, 0);
-  ctx.assert.equal(out.off.spot, '0%', 'no light under the pointer');
   return out;
 }

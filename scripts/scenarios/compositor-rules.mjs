@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { ANIM_RULES } from '../../lib/animcheck.mjs';
 import { makeFixture, toolLines, taskNoteLine } from '../fixture.mjs';
 
-export const meta = { server: true, fixture: 'auto', prefs: { tiles: true, headFloat: true, statusBar: true, cardSpot: true, wallFollow: true, cards: 'compact' } };
+export const meta = { server: true, fixture: 'auto', prefs: { tiles: true, headFloat: true, statusBar: true, wallFollow: true, cards: 'compact' } };
 
 export default async function (ctx) {
   const out = {}, cwd = join(tmpdir(), 'peix-rules', 'rules-repo'), now = Date.now();

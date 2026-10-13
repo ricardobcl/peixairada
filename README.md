@@ -176,8 +176,7 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
   where files open · *Look*: text size (the whole board, in the app), the theme and whether it follows macOS, tiles and their stack and glow, the floating header (tiles and the header
   on to begin with), the status bar and what it shows · *Terminal*: ⌥ as Meta, a screen reader in the drawer ·
   *Updates*: whether the board updates itself (off to begin with: the status bar says when new commits came, and
-  *update now* takes them), where it stands, check now · and,
-  folded, *Lights and motion*: the light under the pointer.
+  *update now* takes them), where it stands, check now.
 - **Setup** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
   project ⌥⌘O starts a chat in, a short name and a colour where Peacock has none, per project, and your Jira site,
   email and API token (the token goes to your keychain, never into the file).

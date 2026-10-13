@@ -28,6 +28,9 @@ pref for a switch that went is deleted on load.
   every card's animations start at 0 on the document clock (`phaseAnims`, no `phaseOf`). The edge light's CSS
   (`data-light`, `@keyframes edge`), its ring | edge pick, both launcher toggles and their scenario steps went;
   launcher.mjs flips Sounds instead.
+* **The light under the pointer** (2026-10-09) — always on: hover is that light, never the edge's glow spread across
+  the card (`.card:hover`'s `--tint` / `--reach` went, and `data-spot`). With it the settings' *Lights and motion* fold
+  had nothing left in it, and went too.
 
 ## Decisions of 2026-10-14, on a branch — the tour
 
