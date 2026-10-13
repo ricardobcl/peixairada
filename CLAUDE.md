@@ -562,7 +562,8 @@ for `$HOME`'s home and the account's.
   change of desktop (`tuckMenuBar`); the Dock comes out only after 0.7 s at its edge (`dockTick`, 10 Hz while filled
   and active). The system's full screen is not offered (`.fullScreenNone`; a plain click on the green button is the
   fill, `windowShouldZoom`; `NSFullScreenMenuItemEverywhere` and Info.plist's
-  `NSPrefersDisplaySafeAreaCompatibilityMode` are false; ⌘W leaves the fill first). The page hears `peixFill(on, notch)` — the strip's height and the housing's x range in
+  `NSPrefersDisplaySafeAreaCompatibilityMode` are false; ⌘W leaves the fill first). *Exit Full Screen* is View's item
+  and the fish's (`rebuildStatusMenu`), titles flipped in `validateMenuItem`. The page hears `peixFill(on, notch)` — the strip's height and the housing's x range in
   CSS px, null without one — and **`layoutNotch()` lays the top row round it** (reads, then writes; with no housing
   and nothing to undo it returns at once): the header's title left of the housing and its chips right
   (`.shead.hole`), unless the whole title does not fit (a `Range` measures it; `scrollWidth` never reads under the

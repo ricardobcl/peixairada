@@ -5,6 +5,19 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-13. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-13, late night — a way out of the fill
+
+Ricardo, living filled: nothing on screen says how to leave the board's own full screen; options, with mocks. A study
+(six options on the made-up board at the notch, the menu bar and the lights drawn over it) had the only visible way out
+behind the auto-hidden menu bar — View › Exit Full Screen — the green button gone with the window's border, and the
+launcher, the ··· menu, Settings and the fish's menu silent. Picked: the fish's menu, the lights with the menu bar, a
+word on the way in. Not picked: a ⤡ in the status bar, rows in ··· and the launcher, a pill under the housing.
+
+* **The fish's menu says it** (`rebuildStatusMenu`): *Exit Full Screen ⌃⌘F* above Reload, *Enter* while windowed —
+  `toggleFill`, its title flipped by `validateMenuItem` as View's is. With the board in the back the fill still covers
+  the screen and the menu bar is the other app's, so the fish is then the one native control in reach. Its ⌃⌘F is a
+  hint: a status item's key equivalents answer only while its menu is open.
+
 ## Decisions of 2026-10-13, night — the harness for the board's frames; npm test under load; no perf skill
 
 Ricardo, on the round's report: "commit and push. also improve harness, leave notes for future work if needed and check

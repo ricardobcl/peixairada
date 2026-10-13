@@ -804,6 +804,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       }
     }
     menu.addItem(.separator())
+    // ⌃⌘F's way out where the menu bar shows it (2026-10-13): filled, the View menu is behind the auto-hidden menu bar, and
+    // with the board in the back the fill still covers the screen — this menu is then the one control in reach. Its
+    // title flips with View's (validateMenuItem).
+    let full = menu.addItem(withTitle: fillSaved != nil ? "Exit Full Screen" : "Enter Full Screen", action: #selector(toggleFill(_:)), keyEquivalent: "f")
+    full.keyEquivalentModifierMask = [.control, .command]; full.target = self
+    menu.addItem(.separator())
     menu.addItem(withTitle: "Reload", action: #selector(reloadBoard(_:)), keyEquivalent: "").target = self
     menu.addItem(withTitle: "Restart Server", action: #selector(restartServer(_:)), keyEquivalent: "").target = self
     menu.addItem(withTitle: "Open Server Log", action: #selector(openLog(_:)), keyEquivalent: "").target = self
