@@ -155,9 +155,10 @@ let prTurns = {};
 // Keep the Mac awake — the chat header menu's switch (2026-10-08): a `caffeinate -i` of the server's own while it is
 // on, and on again after a restart. The lid's setting is the system's and is read from it, never kept here (keepAwake).
 let awakeOn = false;
-// The board's own code, kept up to date from its checkout (2026-10-12; see checkUpdate): the switch, the last update made
-// (`updated`: {at, from, to, count, parts}) and a commit held back because it did not start here ({to, why, at}).
-let autoUpdate = true, updateLast = null, updateHeld = null;
+// The board's own code, kept up to date from its checkout (2026-10-12; see checkUpdate): the switch (off: the new commits
+// are said, not taken — 2026-10-13), the last update made (`updated`: {at, from, to, count, parts}) and a commit held back
+// because it did not start here ({to, why, at}).
+let autoUpdate = false, updateLast = null, updateHeld = null;
 
 // One-time move from the old ~/.peixairada location. Same filesystem, so the rename is atomic; the
 // empty directory is left behind rather than removing something we did not create.
@@ -189,7 +190,7 @@ try {
   setup = st.config;   // from before CONFIG_FILE — cleaned and moved there below, once what does it is defined
   prTurns = st.prTurns && typeof st.prTurns === 'object' ? st.prTurns : {};
   awakeOn = st.awake === true;
-  autoUpdate = st.autoUpdate !== false;
+  autoUpdate = st.selfUpdate === true;   // files from 2026-10-12 carry `autoUpdate`, the old default's true written on every save — ignored, gone on the next one
   updateLast = st.updated && typeof st.updated === 'object' ? st.updated : null;
   updateHeld = st.updateHeld && typeof st.updateHeld === 'object' ? st.updateHeld : null;
 } catch (e) {
@@ -205,7 +206,7 @@ function saveState() {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, awake: awakeOn, autoUpdate, updated: updateLast, updateHeld }, null, 1));
+    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld }, null, 1));
     renameSync(tmp, STATE_FILE);
   } catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
@@ -2370,10 +2371,11 @@ async function freshenVsWeb() {
 // The board's own code, kept up to date from its checkout (2026-10-12)
 // ---------------------------------------------------------------------------------------------
 // The login agent runs the board from a git checkout (scripts/launchd.sh), so an update is a pull. Every UPDATE_EVERY_MS
-// the agent fetches its branch's upstream and, with the switch on (`autoUpdate`, the settings' Updates), fast-forwards to
-// it — never a merge or a rebase, and never over a change of yours: a tracked file changed here, a branch that has moved
-// on its own, a commit held back, each is said and waited out — once nothing has been typed into a drawer or done on the
-// board for UPDATE_QUIET_MS. What the commits touched is started again (`updateParts`): the packages installed, the agent
+// the agent fetches its branch's upstream and says what came (the status bar's *N new commits*); with the switch on
+// (`autoUpdate`, the settings' Updates — off by default since 2026-10-13) it fast-forwards to it — never a merge or a
+// rebase, and never over a change of yours: a tracked file changed here, a branch that has moved on its own, a commit
+// held back, each is said and waited out — once nothing has been typed into a drawer or done on the board for
+// UPDATE_QUIET_MS. What the commits touched is started again (`updateParts`): the packages installed, the agent
 // restarted (`launchd.sh restart`: the drawers stay, each a holder), the page reloaded (by itself, once it is left be: the
 // `update` event), the app rebuilt (`mac/build.sh install`, detached: it quits and reopens the app). Before any of that the
 // new page is compiled and the new server started on a spare port (lib/testserver.mjs): one that does not come up is

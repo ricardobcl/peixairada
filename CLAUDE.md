@@ -139,8 +139,9 @@ for `$HOME`'s home and the account's.
   server's): the board asks the update service for the newest build and, when serve-web's cache lacks it, asks
   serve-web for **that build by name, `/<quality>-<commit>/`** — never its root, which starts a server — so the first
   open after a release does not wait on its download. Read only under `~/.vscode`. → `test/vsweb.test.mjs`.
-* **The board updates itself from its checkout** (2026-10-12; `checkUpdate`, `autoUpdate` in the state file, Settings ›
-  Updates, `GET/PUT/POST /api/update`, an `update` event): only the agent looks by the clock (`UNDER_AGENT`: launchd's
+* **The board updates itself from its checkout** (2026-10-12; `checkUpdate`, `selfUpdate` in the state file — **off by
+  default** (2026-10-13): what came is said, *update now* takes it —, Settings › Updates, `GET/PUT/POST /api/update`, an
+  `update` event): only the agent looks by the clock (`UNDER_AGENT`: launchd's
   own child — a server started in a drawer has its environment; every `UPDATE_EVERY_MS`, 0 for every other server),
   fetching its branch's upstream alone (no FETCH_HEAD, no tags) and **fast-forwarding only** — not over a tracked change
   (`dirty`), a branch that moved on its own (`diverged`), a held commit, or within `UPDATE_QUIET_MS` of a key sent to a

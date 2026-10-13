@@ -5,6 +5,21 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-13. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-13, after the last — the board no longer updates itself unless asked
+
+Ricardo: "turn off auto-update by default - but still leave alert of a new version".
+
+* **The switch is off to begin with**; the looking is not. The agent still fetches every half hour, and what came is
+  the status bar's *N new commits* — the news alone, no *· updates off* after it, since off is now the usual state and
+  not a reason worth saying (*changes here*, *diverged* and *once you rest* still are, with the switch on). A click
+  opens Settings › Updates, whose line reads *N new commits on origin/main — update now takes them* and whose button
+  is *update now*. The About box names the switch only when it is on (*updates itself*).
+* **A new key, so the old default goes with it**: the state file's `autoUpdate` was `true` in every file, written by
+  each save since the switch came a day earlier, and could not be told from a switch turned on by hand. The switch is
+  now `selfUpdate`; the old key is ignored and dropped on the next save, so every board starts off, this one included.
+  On is one click (Settings › Board › Updates).
+* Not done: with the status bar off, new commits are said only in the settings' line.
+
 ## Decisions of 2026-10-13, last — a PR opened again is a tab still at it
 
 Ricardo: "when opening a PR, if the tag address does not start with the PR link, open a new tab".

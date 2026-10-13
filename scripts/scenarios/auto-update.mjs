@@ -1,12 +1,13 @@
 // The board updating itself (2026-10-12), as the page sees it. The server's checkout is a throwaway clone of a bare
 // "origin" that a second clone pushes to (test/update.test.mjs has the server's side); the agent's restart is a stand-in
 // that writes it was asked, and the scenario restarts the server itself, as launchd would. What this checks: the
-// settings' Updates row says where the checkout stands; *check now* with a commit that changes the page pulls it and
-// reloads the page at once; one pulled by the server on its own waits for the page to be left be — not under a dialog,
-// not while keys are pressed — and then reloads it; one that changes the server too waits for the new server before
-// the page reloads; the switch is the server's. The status bar says it all as it goes: a page waiting to be reloaded,
-// the restart, a step under way with its bar (the packages, slowed down here), new commits not taken and why — a click
-// opening Settings › Updates.
+// settings' Updates row says where the checkout stands; the switch is off by default (2026-10-13), so a commit that
+// changes the page is said — the status bar's *1 new commit*, *update now* in the settings — and taken, the page
+// reloaded at once, only when asked; switched on, one pulled by the server on its own waits for the page to be left be
+// — not under a dialog, not while keys are pressed — and then reloads it; one that changes the server too waits for the
+// new server before the page reloads; the switch is the server's. The status bar says it all as it goes: a page waiting
+// to be reloaded, the restart, a step under way with its bar (the packages, slowed down here), new commits not taken
+// and why — a click opening Settings › Updates.
 import { execFileSync } from 'node:child_process';
 import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -51,14 +52,26 @@ export default async function (ctx) {
     await ctx.waitFor(`/up to date/.test(document.querySelector('#updSay').textContent)`, { what: 'a look: up to date' });
     out.first = await say();
     ctx.assert.match(out.first, new RegExp(`^up to date · ${git(co, 'rev-parse', '--short=7', 'HEAD')} · looked \\d+s ago · it looks only when asked`), out.first);
-    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#autoUpdate').checked`), true, 'on by default');
+    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#autoUpdate').checked`), false, 'off by default');
     ctx.assert.equal(await seg(), null, 'up to date: the status bar says nothing');
     await ctx.evaluate(`document.querySelector('#updRow').scrollIntoView({ block: 'center' })`); await ctx.settle();
     await ctx.shot('1-up-to-date', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(document.querySelector('#settings').getBoundingClientRect())`));
 
-    // check now, with a commit that changes the page: pulled, and the page reloaded at once — the dialog notwithstanding
-    const a = push();
+    // check now, with a commit that changes the page: said, not taken — the status bar's alert, update now offered
+    const first = git(co, 'rev-parse', 'HEAD'), a = push();
     await mark();
+    await ctx.evaluate(`document.querySelector('#updBtn').click()`);
+    await ctx.waitFor(`document.querySelector('#updBtn').textContent === 'update now'`, { what: 'update now, offered' });
+    ctx.assert.equal(git(co, 'rev-parse', 'HEAD'), first, 'not pulled');
+    out.offered = await say();
+    ctx.assert.match(out.offered, /^1 new commit on origin\/main — update now takes them/);
+    await ctx.waitFor(`document.querySelector('#sbLeft .upg.new')`, { what: 'the status bar saying a new commit came' });
+    out.newSeg = await seg();
+    ctx.assert.equal(out.newSeg.text, '1 new commit', 'the news alone: off is the default, not a reason');
+    ctx.assert.match(out.newSeg.tip, /update now takes them .* — click for Settings › Updates$/);
+    await barShot('0-bar-new');
+
+    // update now: pulled, and the page reloaded at once — the dialog notwithstanding
     await ctx.evaluate(`document.querySelector('#updBtn').click()`);
     await reloaded('the page reloaded at once');
     ctx.assert.equal(git(co, 'rev-parse', 'HEAD'), a, 'pulled');
@@ -67,10 +80,13 @@ export default async function (ctx) {
     await ctx.waitFor(`document.querySelector('#sbLeft .upg')`, { what: 'the status bar saying it' });
     ctx.assert.deepEqual(await seg().then(x => [x.cls, x.text]), ['seg upg done', 'updated · 1 commit'], 'for a minute, what came');
 
-    // pulled by the server on its own: the page waits while a dialog is up and while keys are pressed, then reloads
+    // switched on, pulled by the server on its own: the page waits while a dialog is up and while keys are pressed, then reloads
     await mark();
     await ctx.cmd('Comma');
     await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings again' });
+    await ctx.evaluate(`document.querySelector('#autoUpdate').click()`);
+    for (let i = 0; i < 30 && (await ctx.server.api('api/update')).body.on !== true; i++) await ctx.sleep(100);
+    ctx.assert.equal((await ctx.server.api('api/update')).body.on, true, 'the server switched on');
     const b = push();
     await ctx.server.post('/api/update', {});
     ctx.assert.equal(git(co, 'rev-parse', 'HEAD'), b);
@@ -125,10 +141,10 @@ export default async function (ctx) {
     await ctx.evaluate(`document.querySelector('#updBtn').click()`);
     await ctx.waitFor(`document.querySelector('#updBtn').textContent === 'update now'`, { what: 'update now, offered' });
     out.off = await say();
-    ctx.assert.match(out.off, /^1 new commit on origin\/main — the switch is off/);
+    ctx.assert.match(out.off, /^1 new commit on origin\/main — update now takes them/);
     await ctx.evaluate(`document.querySelector('#settings').close()`);
     await ctx.waitFor(`document.querySelector('#sbLeft .upg.new')`, { what: 'the status bar saying new commits wait' });
-    ctx.assert.equal((await seg()).text, '1 new commit · updates off');
+    ctx.assert.equal((await seg()).text, '1 new commit');
     await barShot('4-bar-new');
     await ctx.evaluate(`document.querySelector('#sbLeft .upg').click()`);
     await ctx.waitFor(`document.querySelector('#settings').open && document.querySelector('#settings [data-tab="board"]').classList.contains('on')`, { what: 'a click opening the settings at Updates' });

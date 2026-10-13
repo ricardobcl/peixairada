@@ -170,11 +170,12 @@ mac/build.sh install           # the Mac app, in /Applications (optional — any
 `security` read the *Claude Code-credentials* keychain item (that's the plan usage — *Always Allow*), and the app to
 show notifications.
 
-**Updating** is the board's own job: every half hour it looks for new commits on your checkout's branch and, once
-you've left it be for two minutes, pulls them — a fast-forward, never over a change of yours — and starts again what
-they changed: the packages, the server (your chats stay open), the page, the app. A commit whose server doesn't start
-is undone and skipped. Settings › Board › *Updates* says where it stands, checks now, or turns it off; off, it's
-`git pull && npm install`, then `scripts/launchd.sh restart` and `mac/build.sh install` when `mac/` changed. After
+**Updating** is the board's own job: every half hour it looks for new commits on your checkout's branch, and the
+status bar says when some have come. *Update now* (Settings › Board › *Updates*, a click on that word away) pulls them
+— a fast-forward, never over a change of yours — and starts again what they changed: the packages, the server (your
+chats stay open), the page, the app; a commit whose server doesn't start is undone and skipped. Switch *update itself*
+on and it does so on its own, once you've left it be for two minutes. By hand it's `git pull && npm install`, then
+`scripts/launchd.sh restart` and `mac/build.sh install` when `mac/` changed. After
 switching Node versions, or installing a CLI somewhere new, run `scripts/launchd.sh install` and `mac/build.sh install`
 again.
 
@@ -189,7 +190,8 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
   auto-resume · *Look*: text size (the whole board, in the app), simple colours (every project in black, or one colour
   you pick, the states in grey), the theme and whether it follows macOS, tiles and their stack and glow, the floating header (tiles and the header
   on to begin with), the status bar and what it shows · *Terminal*: ⌥ as Meta, a screen reader in the drawer ·
-  *Updates*: whether the board updates itself, where it stands, check now · and,
+  *Updates*: whether the board updates itself (off to begin with: the status bar says when new commits came, and
+  *update now* takes them), where it stands, check now · and,
   folded, *Lights and motion*: the card light (round the card or down its edge), rings in step, the light under the
   pointer.
 - **Setup** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the

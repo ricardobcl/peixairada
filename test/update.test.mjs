@@ -49,17 +49,24 @@ test('what a change asks for: packages, the server, the page, the app — and no
 });
 
 test('a pull, asked for: fast-forwarded, what it touched started again, a commit that does not start held back, and nothing over a change here', { timeout: 60_000 }, async () => {
-  const p = project();
-  const srv = await startTestServer({ env: { ...p.env, UPDATE_QUIET_MS: '60000' } });
+  const p = project(), dir = tmpDir('peix-');
+  writeFileSync(join(dir, 'state.json'), JSON.stringify({ autoUpdate: true }));   // as every save wrote it on 2026-10-12, when on was the default
+  const srv = await startTestServer({ dir, env: { ...p.env, UPDATE_QUIET_MS: '60000' } });
   const look = async (body = {}) => (await srv.post('api/update', body)).body;
+  const turn = async on => (await srv.api('api/update', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ on }) })).body.on;
   try {
     const st0 = await waitFor(async () => { const b = (await srv.api('api/update')).body; return b.checkout && b; }, { what: 'the checkout read at boot' });
-    assert.deepEqual([st0.on, st0.every, st0.branch, st0.upstream, st0.behind], [true, 0, 'main', 'origin/main', 0], 'a server run by hand looks only when asked');
+    assert.deepEqual([st0.on, st0.every, st0.branch, st0.upstream, st0.behind], [false, 0, 'main', 'origin/main', 0], 'off by default, the old key notwithstanding; a server run by hand looks only when asked');
     assert.equal((await look()).why, 'current', 'nothing new');
 
-    // the page: fast-forwarded, nothing restarted (the page reloads itself)
-    const a = p.push({ 'public/index.html': PAGE + '<!-- a -->\n' }, 'the page');
+    // off (2026-10-13): a new commit said — the status bar's alert — and not taken
+    const first = p.head(), a = p.push({ 'public/index.html': PAGE + '<!-- a -->\n' }, 'the page');
     let st = await look();
+    assert.deepEqual([st.why, st.behind, st.up, p.head()], ['off', 1, a, first], 'seen, not pulled');
+    assert.equal(await turn(true), true);
+
+    // the page: fast-forwarded, nothing restarted (the page reloads itself)
+    st = await look();
     assert.equal(p.head(), a, 'fast-forwarded');
     assert.deepEqual([st.why, st.error, st.behind, st.last.count, st.last.parts, st.last.to], ['current', null, 0, 1, ['page'], a]);
     assert.deepEqual(p.asked(), [], 'nothing restarted for a page');
@@ -124,12 +131,13 @@ test('a pull, asked for: fast-forwarded, what it touched started again, a commit
     p.git(p.co, 'checkout', 'README.md');
 
     // the switch off: said, not taken — unless asked to (update now)
-    assert.equal((await srv.api('api/update', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ on: false }) })).body.on, false);
+    assert.equal(await turn(false), false);
     st = await look();
     assert.deepEqual([st.why, st.behind, p.head()], ['off', 1, before]);
     st = await look({ apply: true });
     assert.deepEqual([st.why, p.head()], ['current', f]);
-    assert.equal(JSON.parse(readFileSync(join(srv.dir, 'state.json'), 'utf8')).autoUpdate, false, 'the switch is the state file\'s');
+    const saved = JSON.parse(readFileSync(join(srv.dir, 'state.json'), 'utf8'));
+    assert.deepEqual([saved.selfUpdate, saved.autoUpdate], [false, undefined], 'the switch is the state file\'s, the old key gone');
 
     // a branch that moved on its own: never merged, never rebased
     p.write(p.co, { 'mine.txt': 'a commit of mine\n' }); p.git(p.co, 'add', 'mine.txt'); p.git(p.co, 'commit', '-q', '-m', 'mine');
@@ -141,8 +149,9 @@ test('a pull, asked for: fast-forwarded, what it touched started again, a commit
 });
 
 test('on its own: looked at by the clock, taken once nothing has been done on the board for a while', { timeout: 40_000 }, async () => {
-  const p = project();
-  const srv = await startTestServer({ env: { ...p.env, UPDATE_EVERY_MS: '400', UPDATE_QUIET_MS: '2500' } });
+  const p = project(), dir = tmpDir('peix-');
+  writeFileSync(join(dir, 'state.json'), JSON.stringify({ selfUpdate: true }));   // switched on
+  const srv = await startTestServer({ dir, env: { ...p.env, UPDATE_EVERY_MS: '400', UPDATE_QUIET_MS: '2500' } });
   try {
     const a = p.push({ 'public/index.html': PAGE + '<!-- a -->\n' });
     await waitFor(() => p.head() === a, { timeout: 8000, what: 'the commit taken by the clock' });
