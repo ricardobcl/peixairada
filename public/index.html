@@ -1040,7 +1040,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .shead .hdrift .q { overflow: hidden; text-overflow: ellipsis; min-width: 0; opacity: .85; }
   .card .trow .drift { color: var(--needs); flex: none; display: inline-flex; align-items: center; height: 18px; }
   .card .trow .drift .ic { width: 13px; height: 13px; fill: currentColor; }
-  .shead > .hfold { display: none; }   /* put away by fitHeadPrs where the row has no room for it */
+  .shead > .hfold, .shead > .hdiff.hfold { display: none; }   /* put away by fitHeadPrs where the row has no room for it — the changes' count's own display, later and as specific, beat it until 2026-10-14 */
   /* ⌥ held over a "your move" — a card's line or the chat header's (2026-10-12): its tag turns red, an ✕ for its PR
      mark, and ⌥-click lets the round go (letGo): not your move until the next one, which alerts as ever. */
   :root[data-alt] :is(#slist .card .prmove, .shead .hmove):hover { cursor: pointer; }
