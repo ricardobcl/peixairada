@@ -933,7 +933,9 @@ the live board at load — `npm run verify -- "typeof window.peix"`.
 * **What only the app shows is checked in WebKit** (`npm run webkit -- "<body>"`): the harness is Chrome, and a bug of
   WebKit's passes every scenario. It runs an async body on the live board in a `WKWebView` (`frame`, `sleep`, `until`;
   `--hash`, `URL`, `SIZE`, `PREFS`); `--shot` saves the window as **the compositor** drew it, and `--then` runs a body
-  on that frame (`shot.px(x, y)`, `shot.where(test, rect)`). The window is opaque and on screen by one pixel (off a
+  on that frame (`shot.px(x, y)`, `shot.where(test, rect)`). A body asks the shell for `layers()` (the compositor's
+  tree), `footprint()` (the web process's memory) and `say(line)`; `WK_BORDERS` / `WK_COUNTERS` draw WebKit's layer
+  borders and repaint counts into the shot (2026-10-13). The window is opaque and on screen by one pixel (off a
   screen WebKit runs no frames); a locked screen or a sleeping display hides it, and it says so; a mirror of the main
   screen is not another screen (2026-10-13).
 * **What a change costs is read in WebKit too** (`npm run perf`, 2026-10-13): a 400-chat board with the lights on, the

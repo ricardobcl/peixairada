@@ -6,13 +6,17 @@
 //   npm run webkit -- --hash <session-id> --shot /tmp/wk.png "return peix.state().current"
 //   npm run webkit -- --then "return shot.where((r, g, b) => r > 200 && g < 60)" "<a body that draws something red>"
 //   URL=http://127.0.0.1:7399/ SIZE=1280x800 PREFS='{"tiles":false}' npm run webkit -- "…"
+//   WK_BORDERS=1 npm run webkit -- --shot /tmp/layers.png "return (await layers()).match(/\\(layer bounds/g).length"
 // The body is an async function's: `return` what to print; `frame()`, `sleep(ms)` and `until(fn, ms)` are at hand, and
 // it runs once the board has its snapshot (with --hash, once that chat is open). In --then, `shot.px(x, y)` is
 // [r, g, b] in sRGB at a point in CSS px, and `shot.where(test, [x, y, w, h])` the count and centroid of the pixels
-// that pass. The page starts from no prefs but auto-resume off (`PREFS` over them): the app's defaults, tiles and the
-// floating header on. `WAIT` (s) before the capture, 0.3 by default; `TIMEOUT` (s) for the whole run, 30. A locked
-// screen hides the page and WebKit runs no frames: it says so and gives up. The Swift is compiled on first use, and
-// again when it changes, into node_modules/.cache.
+// that pass. A body can also ask the shell (2026-10-13): `await layers()` is the compositor's layer tree as text, one
+// `(layer bounds …)` a layer; `await footprint()` the web process's memory, `{ now, peak }` in MB; `say(line)` prints
+// a line at once. `WK_BORDERS=1` and `WK_COUNTERS=1` draw WebKit's compositing borders and repaint counters into a
+// --shot — what is a layer of its own, what paints again. The page starts from no prefs but auto-resume off (`PREFS`
+// over them): the app's defaults, tiles and the floating header on. `WAIT` (s) before the capture, 0.3 by default;
+// `TIMEOUT` (s) for the whole run, 30. A locked screen hides the page and WebKit runs no frames: it says so and gives
+// up. The Swift is compiled on first use, and again when it changes, into node_modules/.cache.
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';

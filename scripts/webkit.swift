@@ -4,8 +4,10 @@
 // drew it — CGWindowListCreateImage on its own window, which needs no Screen Recording grant. The window is opaque and
 // on screen by one pixel, in a corner of the main screen no other screen touches: wholly off a screen, WebKit hides
 // the page and runs no frames; at 1 % alpha the capture comes back premultiplied, its colours in steps of 85.
-// Floating, on every Space, no mouse; WK_PIDFILE is given the web process's pid. Driven by scripts/webkit.mjs, which
-// compiles it:
+// Floating, on every Space, no mouse; WK_PIDFILE is given the web process's pid. WK_BORDERS and WK_COUNTERS draw
+// WebKit's compositing borders and repaint counters into the page (what is a layer, what repaints), and a body can ask
+// this side for the compositor's layer tree, the web process's memory, or a line said at once (2026-10-13; see `Asks`).
+// Driven by scripts/webkit.mjs, which compiles it:
 //   webkit <url> <body> <shot.png or ""> <then or "">
 import AppKit
 import WebKit
@@ -23,6 +25,8 @@ let tools = """
   const frame = () => new Promise(r => requestAnimationFrame(r)), sleep = ms => new Promise(r => setTimeout(r, ms));
   const until = async (fn, ms = 10000, what = String(fn)) => { const t0 = Date.now(); for (;;) { const v = await fn(); if (v) return v;
     if (Date.now() - t0 > ms) throw new Error('timed out waiting for ' + what); await sleep(50); } };
+  const ask = what => window.webkit.messageHandlers.wk.postMessage(what);
+  const layers = () => ask('layers'), footprint = () => ask('footprint'), say = line => ask('say:' + line);
   """
 let ready = """
   if (document.visibilityState === 'hidden') throw new Error('the page is hidden (the screen locked, or asleep?): WebKit runs no frames then');
@@ -58,8 +62,41 @@ let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: W, height: H), styleMa
 let config = WKWebViewConfiguration()
 config.websiteDataStore = .nonPersistent()
 config.userContentController.addUserScript(WKUserScript(source: seed, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+// WebKit's own debug drawing, by preference setters the SDK does not declare
+func setPref(_ name: String) {
+  let sel = Selector(name), p = config.preferences
+  guard p.responds(to: sel) else { return FileHandle.standardError.write("this WebKit has no \(name)\n".data(using: .utf8)!) }
+  typealias Set = @convention(c) (AnyObject, Selector, Bool) -> Void
+  unsafeBitCast(p.method(for: sel), to: Set.self)(p, sel, true)
+}
+if env["WK_BORDERS"] != nil { setPref("_setCompositingBordersVisible:") }
+if env["WK_COUNTERS"] != nil { setPref("_setCompositingRepaintCountersVisible:") }
 let wv = WKWebView(frame: win.contentView!.bounds, configuration: config)
 win.contentView!.addSubview(wv)
+// What a body can ask of this side (2026-10-13): `layers()`, the compositor's tree of CALayers as text, one
+// `(layer bounds …)` a layer (1,325 for 400 cards was that day's explosion); `footprint()`, the web process's memory as
+// Activity Monitor counts it, `{ now, peak }` in MB; `say(line)`, the line on stderr at once — a run's progress, which
+// scripts/perf.mjs reads to start `sample` on a phase.
+final class Asks: NSObject, WKScriptMessageHandlerWithReply {
+  func userContentController(_ c: WKUserContentController, didReceive m: WKScriptMessage, replyHandler: @escaping (Any?, String?) -> Void) {
+    let what = m.body as? String ?? ""
+    if what.hasPrefix("say:") {
+      FileHandle.standardError.write((what.dropFirst(4) + "\n").data(using: .utf8)!)
+      return replyHandler(true, nil)
+    }
+    switch what {
+    case "layers": replyHandler((wv.perform(Selector(("_caLayerTreeAsText")))?.takeUnretainedValue() as? String) ?? "", nil)
+    case "footprint":
+      guard let pid = (wv.value(forKey: "_webProcessIdentifier") as? NSNumber)?.int32Value else { return replyHandler(nil, "no web process") }
+      var info = rusage_info_current()
+      let rc = withUnsafeMutablePointer(to: &info) { $0.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { proc_pid_rusage(pid, RUSAGE_INFO_CURRENT, $0) } }
+      if rc != 0 { return replyHandler(nil, "proc_pid_rusage: \(String(cString: strerror(errno)))") }
+      replyHandler(["now": Double(info.ri_phys_footprint) / 1_048_576, "peak": Double(info.ri_lifetime_max_phys_footprint) / 1_048_576], nil)
+    default: replyHandler(nil, "no such ask: \(what)")
+    }
+  }
+}
+wv.configuration.userContentController.addScriptMessageHandler(Asks(), contentWorld: .page, name: "wk")
 win.ignoresMouseEvents = true; win.level = .floating
 win.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
 // one pixel of it on the main screen, in the first corner where the rest falls on no other screen
