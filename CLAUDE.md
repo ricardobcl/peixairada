@@ -515,7 +515,7 @@ for `$HOME`'s home and the account's.
   project (`hotOracle()`), **↑↓** the chat above or below as shown (`hotMove()`), **←→** the tab beside, wrapping
   (`hotTab()`), **1 / 2** the halves stood one over the other (`hotGroup(g, true)`), **R** the board reloaded
   (`hotReload`; 2026-10-13, ⌘R's before). **C T G E D pressed again from the tab they bring up** (a claude live here, a
-  zsh, a page, the editor, the changes — the HOTKEYS entries are `hot…Key`, `zoomAgain` before the plain `hot…`) fill
+  zsh, a page at the chat's PR, the editor, the changes — the HOTKEYS entries are `hot…Key`, `zoomAgain` before the plain `hot…`) fill
   the column with that half, and back (`toggleZoom`, see *The chat column's two halves*); `typeInShell` and the launcher
   call the plain ones. Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A `dialog[open]` swallows them;
   nothing to act on is a `note()`; a key held down is one press (`e.repeat`, the arrows aside) and `termAction` one
@@ -612,13 +612,18 @@ for `$HOME`'s home and the account's.
   bounces the Dock once.
 * **The page owns the tabs**: each half's strip lists `chat` (`claude` while the session runs here), `shell:<id>` per
   live zsh (`shellsOf`, the server's `shells`; named zsh, zsh 2…), `gh:<url>` per web page the chat opened (the strip's
-  ↗ goes out to the browser) and `ide:<url>` for its folder's editor — `tabKeys()` from `state.paneGh` (per chat) and
-  `state.paneIde` (per folder); `tabs` holds each chat's `[left, right]`, read through `placeOf()`. `syncTerm()` keeps
+  ↗ goes out to the browser) and `ide:<url>` for its folder's editor — `tabKeys()` from `state.paneGh` (per chat, the
+  keys) and `state.paneIde` (per folder); `tabs` holds each chat's `[left, right]`, read through `placeOf()`. `syncTerm()` keeps
   both bodies right and posts one `{type:'pane', id, keys, panes, focus}` (`postPane`): the shell keeps a web view per
   page (`paneViews`, up to `paneViewsMax`, the chat's own spared). **The overlay covers the whole window** and lets a
   click on no page through (`PaneOverlay.hitTest`). `‹ › ↻ ↗` are `{type:'nav'}`; × forgets a page (`closeTab`). In a
   browser the tabs are chat and zsh only (`inApp`). GitHub cannot be iframed, hence the `WKWebView`; one with no UI
   delegate drops `target=_blank`, hence `PaneDelegate`. → Findings: *the pane*.
+* **A page opened again is the tab still at it** (2026-10-13, `openExternal` → `pageTab`): the page or further in
+  (`atPage`: then `/`, `?`, `#` or the end); a tab followed elsewhere leaves it a new tab, `gh2:<url>`, `gh3:`…
+  (`pageKey`, `isPageTab`; the shell loads a key's URL past its first colon), never a key whose lingering view
+  (`paneUrls`) is somewhere else. A tab is named for its address, and clicked is shown as it stands (`openTab`).
+  → `pr-tab-again.mjs`.
 * **A page in the pane behaves like a browser tab**: ⌘R reloads it (2026-10-13: a key monitor in
   `installHotkeyForwarder`, never a menu key equivalent, which would take the key first — VS Code Web's ⌘R is its own,
   and with no page up ⌘R goes on to whatever has the keys; the View menu's *Reload Page* carries none, *Reload Board* is

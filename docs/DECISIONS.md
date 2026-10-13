@@ -5,6 +5,28 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-13. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-13, last — a PR opened again is a tab still at it
+
+Ricardo: "when opening a PR, if the tag address does not start with the PR link, open a new tab".
+
+* **A page opened again is the tab it already has only while that tab is at it** (`pageTab`): its address the page or
+  further in — a PR's files, a comment on it, its checks (`atPage`: the page's URL, then `/`, `?`, `#` or nothing, so
+  `pull/12` is not `pull/123`). A tab followed somewhere else — an issue, another repo, a run — was showing what it was
+  opened at under its old name; opening the PR brought that page forward, not the PR. Now the PR gets a new tab, where a
+  new tab goes and in front, and the old one stays where it went. Any tab at the page will do, the one opened at it
+  first, so a repo's tab followed into the PR is the PR's too. Every page goes the same way, not only PRs — the chip,
+  ⌥⌘G and its picker, a link in the chat, a blank tab's ⏎ — since it is one rule in one place (`openExternal`).
+* **A tab is named for where it is**: the strip's label and tooltip read the address (`paneUrl`), not the key's — two
+  tabs opened at one PR, one of them followed off it, would otherwise both read `widgets#12`.
+* **Two tabs of one page need two names**: the key was the URL, one tab per page. A second is `gh2:<url>`, then `gh3:`
+  (`pageKey`) — the shell already reads a key's URL past the first colon, so nothing changed there — and
+  `state.paneGh` holds the keys, not the URLs. **A name is never one whose view the shell keeps somewhere else**: a
+  closed tab's view lingers until it needs the room, and a key is shown as its view stands, so reopening a PR whose old
+  tab had wandered and been closed would have shown where it wandered.
+* **A tab clicked is shown as it stands** (`openTab` no longer goes through `showPr`), and **⌥⌘G fills the column only
+  from a page at one of the chat's PRs** (the repo with none) — from a page followed elsewhere it opens the PR, as the
+  ask reads; a docs page or a run is not what ⌥⌘G brings up (the later-still entry below had any page).
+
 ## Decisions of 2026-10-13, later still — ⌥⌘R reloads the board; a tab's key again fills the column
 
 Ricardo: "change the refresh app to hotkey R, and leave the cmd R to refresh webpages and such (or whatever vscode does

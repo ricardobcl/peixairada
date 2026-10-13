@@ -4884,10 +4884,10 @@ const toolName = n => {
   /** The open chat's own pages that are not on a tab of it: its PRs, its tickets, its repository on GitHub. */
   function chatPages(s) {
     if (!s) return [];
-    const open = new Set(state.paneGh.get(s.id) || []), repo = s.cwd && state.repos[s.cwd];
-    return [...(s.prs || []).filter(pr => !open.has(pr.url)).map(pr => ({ kind: 'pr', id: 'pr:' + pr.url, pr })),
-      ...(s.tickets || []).filter(t => t.url && !open.has(t.url)).map(t => ({ kind: 'ticket', id: 'tk:' + t.key, t })),
-      ...(repo && !open.has(repo) ? [{ kind: 'url', id: 'url:' + repo, url: repo, name: `${bareUrl(repo).replace(/^github\.com\//, '')} on GitHub` }] : [])];
+    const open = u => !!pageTab(s, u), repo = s.cwd && state.repos[s.cwd];   // on a tab: a tab still at it
+    return [...(s.prs || []).filter(pr => !open(pr.url)).map(pr => ({ kind: 'pr', id: 'pr:' + pr.url, pr })),
+      ...(s.tickets || []).filter(t => t.url && !open(t.url)).map(t => ({ kind: 'ticket', id: 'tk:' + t.key, t })),
+      ...(repo && !open(repo) ? [{ kind: 'url', id: 'url:' + repo, url: repo, name: `${bareUrl(repo).replace(/^github\.com\//, '')} on GitHub` }] : [])];
   }
   const LAUNCH_SECTIONS = { chat: 'Chats', project: 'Projects', pr: 'Pull requests', ticket: 'Tickets', action: 'Actions', toggle: 'Switches', menu: '' };
   /** The launcher's rows for a query (none: the menu): each section's best matches, best first, at most six — all of
@@ -4953,7 +4953,7 @@ const toolName = n => {
     ['⌘T', 'This chat', 'a new tab — another shell, or from a web page a blank one', 'from claude\'s drawer, a shell, the transcript or the changes, a shell in its folder · from a GitHub page or VS Code Web, a blank tab with the keys in its address — type one, or words to search · it opens beside the chat', ['cmd:KeyT']],
     ['⌥⌘T', 'This chat', 'a shell in its folder, on a tab', 'shown if it has one — ⌘T opens another · again from it: its half fills the column, and back', ['alt:KeyT']],
     ['⌥⌘E', 'This chat', 'its folder in VS Code Web, on a tab', 'again from it: its half fills the column, and back', ['alt:KeyE']],
-    ['⌥⌘G', 'This chat', 'its PR on GitHub, on a tab', 'the repo when it has none · a picker with several · again from a page: its half fills the column, and back', ['alt:KeyG']],
+    ['⌥⌘G', 'This chat', 'its PR on GitHub, on a tab', 'the repo when it has none · a picker with several · a tab followed elsewhere leaves it a new one · again from its page: its half fills the column, and back', ['alt:KeyG']],
     ['⌥⌘D', 'This chat', 'what it changed, on a tab', 'its last turn\'s edits, the uncommitted tree or the branch against its base · Commit… and Push type into its shell · + on a line sends Claude a note · again from it: its half fills the column, and back', ['alt:KeyD']],
     ['⌘W', 'This chat', 'close the tab the keys are in', 'the shell ends, a page or VS Code Web goes · on the chat\'s own tab, its half closes — with one half, the window\'s own key · a dialog up closes first', ['cmd:KeyW']],
     ['⌥⌘W', 'This chat', 'close the tab the keys are in, never more', 'as ⌘W, but on the chat\'s tab it says so, and never closes a half or the window', ['alt:KeyW']],
@@ -5055,11 +5055,13 @@ const toolName = n => {
   const noChat = () => note($('#shead'), 'Open a chat first');
   // A chat's own key pressed again from the tab it brings up, the keys in it (2026-10-13): that half fills the column,
   // the other kept behind it, and again the two come back — a ⌘0 that undoes itself (toggleZoom). ⌥⌘C on a claude that
-  // runs here, ⌥⌘T on a zsh, ⌥⌘G on a page, ⌥⌘E on the editor, ⌥⌘D on the changes; with one half, what it always did.
+  // runs here, ⌥⌘T on a zsh, ⌥⌘G on a page at the chat's PR (its repo with none: a page followed elsewhere is not what ⌥⌘G
+  // brings up), ⌥⌘E on the editor, ⌥⌘D on the changes; with one half, what it always did.
   function zoomAgain(on) { const s = state.sessions.get(state.current); return !!(s && on(tabOf(s), s) && toggleZoom(s)); }
   function hotClaudeKey() { return zoomAgain((k, s) => k === 'chat' && termLive(s)) || hotClaude(); }
   function hotShellKey() { return zoomAgain(isShellTab) || hotShell(); }
-  function hotGhKey() { return zoomAgain(k => /^gh:/.test(k || '')) || hotGh(); }
+  const ghPages = s => s.prs?.length ? s.prs.map(pr => pr.url) : s.cwd && state.repos[s.cwd] ? [state.repos[s.cwd]] : [];   // what ⌥⌘G opens
+  function hotGhKey() { return zoomAgain((k, s) => isPageTab(k) && ghPages(s).some(u => atPage(paneUrl(k), u))) || hotGh(); }
   function hotVsCodeKey() { return zoomAgain(k => /^ide:/.test(k || '')) || hotVsCode(); }
   function hotDiffKey() { return zoomAgain(k => k === 'changes') || hotDiff(); }
   /** ⌥⌘R (2026-10-13; ⌘R's before, which is the page's in the pane now): the board, reloaded where it is. */
@@ -5591,14 +5593,13 @@ const toolName = n => {
     // opened — a PR, a docs page, a dev server (2026-09-26; the strip's ↗ is the way out to the browser); the folder's
     // editor, one per folder. Remembered here so they come back with the chat; the shell keeps a web view per page and
     // shows the one the tab says (syncTerm → postPane). The key's `gh:` is the name every page tab kept from when
-    // GitHub's were the only ones.
-    const gh = !ide;
-    let fresh = false;
-    if (gh) { const l = state.paneGh.get(s.id) || []; fresh = !l.includes(url); if (fresh) l.push(url); state.paneGh.set(s.id, l); }
-    else if (s.cwd) { fresh = state.paneIde.get(s.cwd) !== url; state.paneIde.set(s.cwd, url); }
+    // GitHub's were the only ones. A page opened again is the tab it already has — while that tab is still at it: one
+    // followed somewhere else leaves the page a new tab (2026-10-13, pageTab).
+    let k = ide ? 'ide:' + url : pageTab(s, url), fresh = !k;
+    if (ide) { fresh = false; if (s.cwd) { fresh = state.paneIde.get(s.cwd) !== url; state.paneIde.set(s.cwd, url); } }
+    else if (fresh) { k = pageKey(s, url); state.paneGh.set(s.id, [...(state.paneGh.get(s.id) || []), k]); }
     if (s.id !== state.current) return;
-    const k = (gh ? 'gh:' : 'ide:') + url;
-    if (fresh) openNewTab(s, k); else setTab(s, k);   // a page opened again is the tab it already has
+    if (fresh) openNewTab(s, k); else setTab(s, k);
     syncTerm(s);
   }
   // The PR in front of you, for ⌥⌘G's picker to mark *current*. There was a strip under the header with what gh said
@@ -6398,7 +6399,7 @@ const toolName = n => {
   window.peix = {
     sea: () => ({ leaping: !!sea.leap, frames: sea.frames || 0, running: !!sea.raf, cell: sea.cell }),   // home's sea (2026-10-12)
     state: () => ({ current: state.current, snapshots: state.snapshots, rendering: !!renderBoardSoon.t, project: prefs.project, person: prefs.person, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft, fill: state.fill, notch: state.notch, hidden: [...state.hidden],
-      paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, [...v]])), tab: state.sessions.has(state.current) ? tabOf(state.sessions.get(state.current)) : null, tabs: state.sessions.has(state.current) ? tabKeys(state.sessions.get(state.current)) : [], pr: shownPr.url,
+      paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, v.map(pageUrl)])), paneTabs: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, [...v]])), tab: state.sessions.has(state.current) ? tabOf(state.sessions.get(state.current)) : null, tabs: state.sessions.has(state.current) ? tabKeys(state.sessions.get(state.current)) : [], pr: shownPr.url,
       split: splitNow(), stacked: stackNow(), zoomed: zoomed.get(state.current) ?? null, focusG, halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
       strips: state.sessions.has(state.current) ? [0, 1].map(g => keysIn(state.sessions.get(state.current), g)) : [[], []],
       timeline: { k: tl.k, want: tl.want, press: !!tl.press, shown: $('#sessions').classList.contains('tlshow'), runs: tl.runs.map(r => ({ g: r.g, day: r.day, n: r.n, i: r.i })) },
@@ -6528,7 +6529,8 @@ const toolName = n => {
   const homeOf = (s, k) => homes.get(s.id)?.get(k) ?? (k === 'chat' ? 0 : 1);
   /** The tabs a half's strip lists: every one of the chat's with one half, its own with two. */
   const keysIn = (s, g) => !isSplit(s) ? (g ? [] : tabKeys(s)) : tabKeys(s).filter(k => homeOf(s, k) === g);
-  const isPaneTab = t => /^(gh|ide):/.test(t || '');
+  const isPaneTab = t => /^(gh\d*|ide):/.test(t || '');
+  const isPageTab = t => /^gh\d*:/.test(t || '');   // a web page's: gh:<url>, or gh2:<url>… for the same page again
   /** What each half is showing, read against the tabs it actually has now: a key that is gone falls away, and a
       half whose tab went shows the first of its own that is left — or nothing, which is what an emptied half says. */
   function placeOf(s) {
@@ -6548,7 +6550,19 @@ const toolName = n => {
   // VS Code · storefront, the URL in its tooltip, and a click still copies the URL.
   const ideName = u => { try { const f = new URL(u).searchParams.get('folder'); return f ? f.replace(/\/+$/, '').split('/').pop() : ''; } catch { return ''; } };
   const addrHtml = (k, u) => k.startsWith('ide:') && ideName(u) ? `<span class="h">VS Code · </span>${esc(ideName(u))}` : urlHtml(u);
-  const paneUrl = k => paneUrls.get(k) || k.slice(k.indexOf(':') + 1);
+  const pageUrl = k => k.slice(k.indexOf(':') + 1);   // where a tab was opened — all the shell reads of its key
+  const paneUrl = k => paneUrls.get(k) || pageUrl(k);
+  /** An address at a page: the page, or further into it — a PR's files, a comment on it, its checks. */
+  const atPage = (addr, url) => { const u = url.replace(/\/+$/, ''); return addr === url || addr.startsWith(u) && /^([/?#]|$)/.test(addr.slice(u.length)); };
+  /** The chat's tab for a page (2026-10-13): the one opened at it while it is still there, else any that is there now.
+   *  A tab followed somewhere else is that somewhere's — opening the page again gives it a tab of its own. */
+  const pageTab = (s, url) => { const at = (state.paneGh.get(s.id) || []).filter(k => atPage(paneUrl(k), url)); return at.find(k => pageUrl(k) === url) || at[0] || null; };
+  /** A new tab's key for a page: gh:<url>, else gh2:<url>, gh3:<url>… — none a tab of the chat has, nor one whose view
+   *  the shell keeps somewhere else (a closed tab's lingers where it was left, and a key is shown as its view stands). */
+  function pageKey(s, url) {
+    const had = new Set(state.paneGh.get(s.id) || []);
+    for (let n = 1; ; n++) { const k = `gh${n > 1 ? n : ''}:${url}`; if (!had.has(k) && (!paneUrls.has(k) || atPage(paneUrls.get(k), url))) return k; }
+  }
   window.peixPaneUrl = (key, url) => {
     if (!url) return;
     paneUrls.set(key, url);
@@ -6557,7 +6571,7 @@ const toolName = n => {
     }
   };
   const ideKey = s => inApp && s?.cwd && state.paneIde.get(s.cwd) ? 'ide:' + state.paneIde.get(s.cwd) : null;
-  const paneKeys = s => !inApp || !s ? [] : [...(state.paneGh.get(s.id) || []).map(u => 'gh:' + u), ...(ideKey(s) ? [ideKey(s)] : [])];
+  const paneKeys = s => !inApp || !s ? [] : [...(state.paneGh.get(s.id) || []), ...(ideKey(s) ? [ideKey(s)] : [])];
   // A blank tab (2026-10-13, ⌘T on a page): a browser's new tab — nothing on it yet, its address a box with the keys in
   // it, and under it, in the half, what the box would open (blankHtml). `new:<n>`, after the pages; the page chosen
   // takes its place (fillBlank). Page state only, as the changes tab is.
@@ -6613,7 +6627,8 @@ const toolName = n => {
     splits.delete(s.id); autoSplit.delete(s.id); homes.delete(s.id);
     tabs.set(s.id, [keep, null]);
   }
-  const paneLabel = k => { const m = /github\.com\/[^/]+\/([^/]+)\/pull\/(\d+)/.exec(k); if (m) return `${m[1]}#${m[2]}`; try { return new URL(k.slice(3)).hostname.replace(/^www\./, ''); } catch { return 'page'; } };
+  /** A page's tab is named for where it is (2026-10-13; where it was opened before): a PR as repo#n, else its host. */
+  const paneLabel = u => { const m = /github\.com\/[^/]+\/([^/]+)\/pull\/(\d+)/.exec(u); if (m) return `${m[1]}#${m[2]}`; try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return 'page'; } };
   // Keep the pane right for the viewed chat: the body under the strip — its zsh on that tab, its claude drawer while
   // it runs here (attached under a page's tab too: the native pane covers it, nothing re-attaches on the way back), the
   // transcript otherwise — then the strip, then the shell's word (postPane). Runs on every open and SSE update, so it
@@ -6659,7 +6674,7 @@ const toolName = n => {
     const two = isSplit(s);
     for (const tm of terms) {
       const g = tm.g, el = $(tm.el.tabs), cur = p[g], keys = s ? keysIn(s, g) : g ? [] : ['chat'];
-      const lone = two && keys.length === 1 && !keys[0].startsWith('gh:') && !isBlankTab(keys[0]);   // a page's or a blank tab's strip is its address
+      const lone = two && keys.length === 1 && !isPageTab(keys[0]) && !isBlankTab(keys[0]);   // a page's or a blank tab's strip is its address
       $(tm.el.grp).classList.toggle('on', g === focusG);
       el.hidden = g === 0 ? !two && keys.length < 2 : false;
       el.classList.toggle('lone', lone);
@@ -6683,7 +6698,7 @@ const toolName = n => {
         k === 'chat' ? tab(k, termLive(s) ? 'claude' : 'chat', `${termLive(s) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C`, '', ICON.claude)
         : isShellTab(k) ? tab(k, shLabel(s, k), `A ${shName()} in ${s.cwd || 'its folder'} · ⌥⌘T · ⌘T another`, 'End this shell', ICON.term)
         : k === 'changes' ? tab(k, 'changes', `What this chat changed in ${s.cwd || 'its folder'} · ⌥⌘D`, 'Close the changes', ICON.diff)
-        : k.startsWith('gh:') ? tab(k, paneLabel(k), GH_PR.test(k.slice(3)) ? `${k.slice(3)} · ⌥⌘G` : k.slice(3), 'Close this page', GH_PR.test(k.slice(3)) ? ICON.pr : ICON.globe)
+        : isPageTab(k) ? tab(k, paneLabel(paneUrl(k)), GH_PR.test(paneUrl(k)) ? `${paneUrl(k)} · ⌥⌘G` : paneUrl(k), 'Close this page', GH_PR.test(paneUrl(k)) ? ICON.pr : ICON.globe)
         : isBlankTab(k) ? tab(k, 'New tab', 'A new tab, nothing on it yet · ⌘T', 'Close this tab', ICON.globe)
         : tab(k, 'VS Code', `${s.cwd} in VS Code Web · ⌥⌘E`, 'Close the editor', ICON.vscode)).join('')
         + (two && !keys.length ? '<span class="pdrop">drop a tab here</span>' : '')
@@ -6825,7 +6840,7 @@ const toolName = n => {
       const s = state.sessions.get(state.current);
       if (!s || to === null || to === from || !tabKeys(s).includes(k)) return;
       moveTab(s, k, to);
-      if (k.startsWith('gh:')) showPr(k.slice(3)); else { syncTerm(s); renderHead(s); focusBoard(); focusTerm(); }
+      if (isPageTab(k)) { shownPr.url = pageUrl(k); syncTerm(s); } else { syncTerm(s); renderHead(s); focusBoard(); focusTerm(); }
     });
     window.addEventListener('pointercancel', end);
     window.addEventListener('blur', end);
@@ -6846,10 +6861,10 @@ const toolName = n => {
     note(el, ok ? 'Address copied' : 'Could not copy — select it and ⌘C', !ok);
   }
   /** A tab chosen — by a click or ⌥⌘←/→: it comes up in its own half, which becomes the one the keys are in.
-      A GitHub page opens through its strip too; the rest is syncTerm, and the keyboard follows. */
+      A page is shown as it stands, wherever it was followed to, and keeps the keys; the rest, the keyboard follows. */
   function openTab(s, k) {
     setTab(s, k);
-    if (k.startsWith('gh:')) showPr(k.slice(3));
+    if (isPageTab(k)) { shownPr.url = pageUrl(k); syncTerm(s); }
     else { syncTerm(s); focusBoard(); focusTerm(); }
   }
   // ---- the two halves: ⌘1 and ⌘2 -----------------------------------------------------
@@ -6965,7 +6980,7 @@ const toolName = n => {
     if (g >= 0) { const ks = keysIn(s, g), i = ks.indexOf(k); p[g] = ks[i + 1] || ks[i - 1] || null; tabs.set(s.id, p); }
     if (isShellTab(k)) { const t = shellOfTab(s, k); if (t) api('DELETE', `/api/terminals/${t.id}`).catch(e => note(seen($('#ptabs')), `Could not end the zsh: ${e.message}`, true)); syncTerm(s); return; }
     if (k === 'changes') changesOpen.delete(s.id);
-    else if (k.startsWith('gh:')) state.paneGh.set(s.id, (state.paneGh.get(s.id) || []).filter(u => 'gh:' + u !== k));
+    else if (isPageTab(k)) state.paneGh.set(s.id, (state.paneGh.get(s.id) || []).filter(x => x !== k));
     else if (isBlankTab(k)) blanks.set(s.id, (blanks.get(s.id) || []).filter(b => 'new:' + b.n !== k));
     else if (s.cwd) state.paneIde.delete(s.cwd);
     homes.get(s.id)?.delete(k);
@@ -7063,10 +7078,10 @@ const toolName = n => {
     const url = x.kind === 'pr' ? x.pr.url : x.kind === 'ticket' ? x.t.url : x.url, g = isSplit(s) ? homeOf(s, k) : 0;
     blanks.set(s.id, (blanks.get(s.id) || []).filter(b => 'new:' + b.n !== k)); homes.get(s.id)?.delete(k);
     if (!inApp || !IN_PANE.test(url)) { openExternal(url, { s }); syncTerm(s); focusBoard(); focusTerm(); return; }
-    const l = state.paneGh.get(s.id) || []; if (!l.includes(url)) l.push(url); state.paneGh.set(s.id, l);
-    if (isSplit(s)) { if (!homes.has(s.id)) homes.set(s.id, new Map()); homes.get(s.id).set('gh:' + url, g); }
+    const t = pageTab(s, url) || pageKey(s, url), l = state.paneGh.get(s.id) || []; if (!l.includes(t)) state.paneGh.set(s.id, [...l, t]);
+    if (isSplit(s)) { if (!homes.has(s.id)) homes.set(s.id, new Map()); homes.get(s.id).set(t, g); }
     if (GH_PR.test(url)) shownPr.url = url;
-    setTab(s, 'gh:' + url); syncTerm(s);
+    setTab(s, t); syncTerm(s);
   }
   /** esc in the box: what was typed goes, and with nothing typed the tab does — it never held anything. */
   function blankEscape(s, k) {
