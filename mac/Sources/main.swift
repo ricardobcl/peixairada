@@ -1057,6 +1057,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   private var misses = 0
   private var recovering = false          // a start is in flight — don't race it with a second one
   private var boardShown = false          // the board, not a message, is what the window shows
+  private var boardPid: Int32 = 0        // its web process, logged once each time it is a new one (`npm run perf -- --app`)
 
   private func bringUpServer(restart: Bool = false) {
     recovering = true
@@ -1291,7 +1292,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-    if webView.url?.port == kPort { boardShown = true }
+    if webView.url?.port == kPort {
+      boardShown = true
+      // which web process draws the board, for `npm run perf -- --app` (2026-10-13): the app's others are the pane's
+      if let pid = (webView.value(forKey: "_webProcessIdentifier") as? NSNumber)?.int32Value, pid > 0, pid != boardPid {
+        boardPid = pid; logLine("board: web process \(pid)")
+      }
+    }
     tellFill()   // a reload forgets the fill
   }
   /// The board's web process gone (killed under memory pressure, crashed): WebKit leaves the view blank and reloads

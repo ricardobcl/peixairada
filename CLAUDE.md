@@ -26,7 +26,7 @@ npm test                            # node:test over test/ — pure logic, and t
 npm run check                       # static: every script parses, the page's script compiles, the vendored xterm = node_modules, shell, swiftc -typecheck, this file's size (≈10 s)
 npm run verify -- "<js>"            # one expression on the live board in headless Chrome (see Verifying)
 npm run webkit -- "<body>"          # the same in WebKit, the app's engine; --shot is the compositor's own frame
-npm run perf                        # the board's CPU in WebKit on a busy made-up board, at rest / pointer / scroll, and the animation rules (≈25 s)
+npm run perf                        # the board's cost in WebKit on a busy made-up board, and the animation rules (≈40 s); --against <ref>, --app
 npm run scenario -- scripts/scenarios/<name>.mjs   # a multi-step browser check on its own server (see Verifying)
 npm run scenarios                   # all of them, one at a time, with a verdict (several minutes); `-- drawer` narrows it
 npm run map                         # rewrite the section maps at the top of server.mjs and index.html
@@ -939,11 +939,15 @@ the live board at load — `npm run verify -- "typeof window.peix"`.
   screen WebKit runs no frames); a locked screen or a sleeping display hides it, and it says so; a mirror of the main
   screen is not another screen (2026-10-13).
 * **What a change costs is read in WebKit too** (`npm run perf`, 2026-10-13): a 400-chat board with the lights on, the
-  web process's CPU (`WK_PIDFILE`) at rest, with the pointer moving and scrolling, against ceilings (`CEIL_REST` …),
-  and **the animation rules** (`lib/animcheck.mjs`: nothing never-ending on an SVG child, at a playback rate other than
-  1 or with nothing drawn; no inherited registered property transitioned over a big subtree) — which Chrome checks too
-  (`compositor-rules.mjs`), all but the box WebKit runs an animation on without drawing it. Every cause of 2026-10-13
-  passed every scenario. A change to motion, the list or the page's structure runs it before it lands.
+  web process's CPU (`WK_PIDFILE`) at rest, with the pointer moving, scrolling and on home, a chat opened from its
+  card, the layers and the memory, against ceilings (`CEIL_REST` …), and **the animation rules** (`lib/animcheck.mjs`:
+  nothing never-ending on an SVG child, at a playback rate other than 1 or with nothing drawn; no inherited registered
+  property transitioned over a big subtree) — which Chrome checks too (`compositor-rules.mjs`), all but the box WebKit
+  runs an animation on without drawing it. Every cause of 2026-10-13
+  passed every scenario. A change to motion, the list or the page's structure runs it before it lands — `--against
+  <ref>` puts the same board on that commit beside it (a worktree, the runs interleaved; `--runs n` for medians),
+  `--sample` says where the time went (macOS `sample`, the top of the stacks). **The app as it runs** is `--app`: its
+  board's web process (main.swift logs `board: web process <pid>`) — CPU, memory, where the time went.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports `meta`
   (`server`, `fake`, `fixture`, `env`, `prefs` — what the page starts from; **without it a page starts with every
   lane open, large cards, neither tiles nor the floating header, and the theme following the emulated colour scheme**:

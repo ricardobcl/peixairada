@@ -270,7 +270,7 @@ same for the open chat.
 `npm test` · `npm run check` · `npm run scenarios` — and `npm run scenario -- scripts/readme-shots.mjs` redraws these
 screenshots from a made-up board (VS Code Web's wants the `code` CLI). The browser checks drive Google Chrome (`CHROME`
 points at another); `npm run webkit` runs the board in WebKit, the app's engine, and `npm run perf` measures what it costs
-there on a busy made-up board.
+there on a busy made-up board (`-- --against <commit>` beside an older one, `-- --app` the app as it runs).
 [CLAUDE.md](CLAUDE.md) holds the working notes, [docs/DECISIONS.md](docs/DECISIONS.md) the why.
 
 Home's sunset is [*ocean sunset*](https://ascii.rest/ocean-sunset/) by [bas3line](https://github.com/bas3line/ascii)
