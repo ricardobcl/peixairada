@@ -48,6 +48,17 @@ the made-up 400-card board with the user's prefs in a WKWebView, the median of t
   whatever its place, and a query or a filter shows every match; a lane's head still counts them all. On the made-up
   board: 400 → 130 cards, 13,081 → 5,154 elements; at rest 9.1 → 6.6 % of a core; at one chat event a second 11.9 →
   8.1 %; a clauding chat opened in 215–244 ms → 120–147. `long-lanes.mjs` holds it.
+* **A guard: `npm run perf` and `compositor-rules.mjs`.** Every one of the day's causes passed every scenario — Chrome
+  composites what WebKit does not. `lib/animcheck.mjs` is the rules as one expression to run on the board: nothing
+  never-ending (a scroll-driven one counts) on an SVG element inside an svg, at a playback rate other than 1, or with
+  nothing drawn; no inherited registered property under a transition on an element with more than 50 under it.
+  `compositor-rules.mjs` runs it in Chrome with the lights on (tiles, the floating header, the bar and its fish, two
+  chats clauding, one asking, one watching); `npm run perf` runs it in WebKit — the only engine that keeps an
+  animation on a box it does not draw — on a 400-chat board, and measures the web process's CPU (its pid from the
+  harness, `WK_PIDFILE`) at rest, with the pointer moving and scrolling, against ceilings about twice the day's
+  numbers. Against the page as it was that morning, from a worktree: the scenario names four of the five causes and
+  `npm run perf` all five, rest 31 %, pointer 37 %, scroll 81 % with 40 frames dropped — every ceiling broken; against
+  this one, 8.9 / 10.7 / 17.1 % and a frame or two.
 
 ## Decisions of 2026-10-13, after Zed — Zed installed when it is picked
 

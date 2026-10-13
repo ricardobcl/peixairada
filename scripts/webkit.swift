@@ -4,7 +4,8 @@
 // drew it — CGWindowListCreateImage on its own window, which needs no Screen Recording grant. The window is opaque and
 // on screen by one pixel, in a corner of the main screen no other screen touches: wholly off a screen, WebKit hides
 // the page and runs no frames; at 1 % alpha the capture comes back premultiplied, its colours in steps of 85.
-// Floating, on every Space, no mouse. Driven by scripts/webkit.mjs, which compiles it:
+// Floating, on every Space, no mouse; WK_PIDFILE is given the web process's pid. Driven by scripts/webkit.mjs, which
+// compiles it:
 //   webkit <url> <body> <shot.png or ""> <then or "">
 import AppKit
 import WebKit
@@ -101,6 +102,10 @@ final class Loaded: NSObject, WKNavigationDelegate {
   var once = false
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
     if once { return }; once = true
+    // the web process's pid, for a caller that reads its CPU time (scripts/perf.mjs, 2026-10-13)
+    if let f = env["WK_PIDFILE"], let pid = webView.value(forKey: "_webProcessIdentifier") as? NSNumber {
+      try? "\(pid.intValue)".write(toFile: f, atomically: true, encoding: .utf8)
+    }
     run(tools + ready + body, ["HASH": env["WK_HASH"] ?? ""]) { out in
       print(out)
       if shotPath.isEmpty && then.isEmpty { return finish() }
