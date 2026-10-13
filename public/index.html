@@ -1489,6 +1489,19 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .ptab.addr .purl .h { color: var(--muted); }
   .ptab.addr .navs { margin: 0; flex: none; }
   .ptab.addr .nav { width: 22px; height: 22px; border-radius: var(--r-2); }
+  /* A blank tab (2026-10-13, ⌘T on a page): its address a box to type into, lit while it has the keys, and the half
+     under it the list of what ⏎ would open — the pickers' rows, on the panel. */
+  .ptab.addr.blank { cursor: text; }
+  .ptab.addr.blank:focus-within { box-shadow: inset 0 0 0 1px var(--accent); }
+  .ptab.addr .paddr { flex: 1 1 auto; min-width: 0; height: 22px; margin: 0 4px 0 0; padding: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; }
+  .ptab.addr .paddr::placeholder { color: var(--muted); }
+  .gblank { min-height: 0; overflow: auto; background: var(--panel); display: grid; align-content: start; justify-items: center; gap: 12px; padding: 28px 16px; }
+  .gblank .blist { width: min(640px, 100%); display: grid; gap: 2px; }
+  .gblank .bhd { padding: 0 8px 4px; font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); }
+  .gblank .bnone { padding: 6px 8px; color: var(--muted); }
+  .gblank .bkeys { width: min(640px, 100%); padding: 0 8px; font-size: var(--fs-xs); color: var(--muted); }
+  .gblank .bkeys kbd { margin-left: 8px; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl); color: var(--ink); font: 600 var(--fs-xs) ui-monospace, monospace; }
+  .gblank .bkeys kbd:first-child { margin-left: 0; }
   /* the highlight on its way (tabMotion): a pill of the on tab's tint sliding over the strip; the tab it goes to plain
      until it lands; a closed tab's stand-in folding */
   .ptabs { position: relative; }
@@ -2085,7 +2098,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
   :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
-  #slist, #log, #picklist, #pfolders, #prlist, .gterm .tbody, .pop { overscroll-behavior: contain; }
+  #slist, #log, #picklist, #pfolders, #prlist, .gterm .tbody, .gblank, .pop { overscroll-behavior: contain; }
   .card .top .tprs { overscroll-behavior-x: contain; }   /* sideways only: a wheel down a stack at rest is the list's */
 
   /* ---- reduced motion: the board says the same, still ---- */
@@ -4589,7 +4602,6 @@ const toolName = n => {
     chats: ctx => `${ctx.name}${ctx.env ? ` · task ${ctx.env}` : ''} — an open chat, or ＋ a new one · type to filter · ↑↓ · ⏎ · esc`,
     launch: 'Anything — chats, projects, PRs, tickets, actions · ⏎ · esc',
     toggle: 'Switches — ⏎ flips one, the menu stays · ← back · esc', prs: "Pull requests — every chat's · ⏎ opens the chat and the PR · ← back · esc",
-    page: 'A page on a new tab — its address, or words to search the web · ⏎ · esc',
   };
   const PICK_NOUN = { pr: 'PR', prs: 'PR', chat: 'chat', chats: 'chat', folder: 'folder', env: 'environment', launch: 'thing', toggle: 'switch' };   // for "no … matches"; the rest are projects
   const homePath = f => f.replace(/^\/Users\/[^/]+(?=\/|$)/, '~');
@@ -4687,10 +4699,6 @@ const toolName = n => {
       const raw = $('#pickq').value, lq = raw.replace(/^[>#@!]/, '').trim().toLowerCase();
       pick.list = pick.mode === 'launch' ? launchRows(raw) : pick.mode === 'toggle' ? hunt(toggleRows(), t => [t.name]) : hunt(allPrs(), pr => [pr.label, pr.title || '', pr.chat || '']).map(pr => ({ kind: 'pr', id: 'pr:' + pr.url, pr }));
       row = (x, i) => launchRow(x, i, sel, text => markHits(text, lq));
-    } else if (pick.mode === 'page') {   // ⌘T on a page (2026-10-13): what was typed first, then the chat's own pages not on a tab
-      const raw = $('#pickq').value.trim();
-      pick.list = [...(raw ? [typedPage(raw)] : []), ...hunt(chatPages(state.sessions.get(state.current)), x => x.kind === 'pr' ? [x.pr.label, x.pr.title || ''] : x.kind === 'ticket' ? [x.t.key, x.t.summary || ''] : [x.name, x.url])];
-      row = (x, i) => launchRow(x, i, sel, mark);
     } else if (pick.mode === 'pr') {
       pick.list = hunt(state.sessions.get(state.current)?.prs || [], pr => [pr.label, pr.title || '']);
       row = (pr, i) => `<div class="pkrow pr${sel(i)}" data-i="${i}" data-state="${esc(pr.state || '')}" title="${esc(pr.url)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${mark(pr.label)}</span><span class="n${pr.title ? '' : ' pending'}">${pr.title ? mark(pr.title) : 'title on its way from gh…'}${pr.url === shownPr.url ? '<span class="cur">current</span>' : ''}</span><span class="t" data-at="${esc(pr.lastAt || '')}"></span></div>`;
@@ -4736,7 +4744,7 @@ const toolName = n => {
     if (was) { const i = pick.list.findIndex(x => x.isNew ? was.isNew : x.id === was.id); if (i >= 0) pick.sel = i; }
     pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
     const rows = pick.list.map(row);
-    $('#picklist').innerHTML = rows.join('') || (pick.mode === 'page' ? '<div class="none">an address, or words to search</div>' : `<div class="none">no ${PICK_NOUN[pick.mode] || 'project'} matches</div>`);
+    $('#picklist').innerHTML = rows.join('') || `<div class="none">no ${PICK_NOUN[pick.mode] || 'project'} matches</div>`;
     fillAges($('#picklist'));
     $('#picklist .pkrow.sel')?.scrollIntoView({ block: 'nearest' });
   }
@@ -4745,7 +4753,6 @@ const toolName = n => {
     if (['launch', 'toggle', 'prs'].includes(pick.mode)) return launchChoose(x);
     if (!x) { dlg.close(); return; }
     if (pick.mode === 'pr') { dlg.close(); showPr(x.url); }
-    else if (pick.mode === 'page') { dlg.close(); openExternal(x.kind === 'pr' ? x.pr.url : x.kind === 'ticket' ? x.t.url : x.url); }
     else if (pick.mode === 'chat') { dlg.close(); openSession(x.id, { locate: true }); }
     else if (pick.mode === 'new') {   // a project's, or a folder's, open chats with ＋ a new one — or the clone first
       if (x.clone) cloneAndStart(x); else chatsStep({ key: x.key, name: x.name, cwds: x.cwds });
@@ -4866,7 +4873,7 @@ const toolName = n => {
     for (const s of [...state.sessions.values()].filter(visible).sort(byWord)) for (const t of s.tickets || []) if (!seen.has(t.key)) seen.set(t.key, { ...t, chatId: s.id, chat: s.title });
     return [...seen.values()];
   }
-  /** ⌘T's box, typed into: an address as given, a bare host over https (localhost and the loopback over http), and
+  /** A new tab's address, typed into (⌘T on a page): an address as given, a bare host over https (localhost and the loopback over http), and
    *  anything else a search — a browser's address bar. */
   function typedPage(raw) {
     const url = /^[a-z][\w+.-]*:\/\//i.test(raw) ? raw
@@ -4899,9 +4906,9 @@ const toolName = n => {
     return [...chats, ...projects, ...prs, ...tickets, ...actions, ...toggles];
   }
   const swHtml = on => `<span class="lsw${on ? ' on' : ''}"><i></i></span>`;
-  /** One launcher row; a section's first carries its head. */
-  function launchRow(x, i, sel, mark) {
-    const head = pick.mode === 'launch' && LAUNCH_SECTIONS[x.kind] && pick.list[i - 1]?.kind !== x.kind ? `<div class="pkhd">${LAUNCH_SECTIONS[x.kind]}</div>` : '';
+  /** One launcher row; a section's first carries its head — the launcher's, not a new tab's list of pages. */
+  function launchRow(x, i, sel, mark, heads = pick.mode === 'launch') {
+    const head = heads && LAUNCH_SECTIONS[x.kind] && pick.list[i - 1]?.kind !== x.kind ? `<div class="pkhd">${LAUNCH_SECTIONS[x.kind]}</div>` : '';
     const r = (cls, g, n, num, t, style = '') => `${head}<div class="pkrow lx ${cls}${sel(i)}" data-i="${i}"${style}><span class="g">${g}</span><span class="n">${n}</span><span class="num">${num}</span><span class="t">${t}</span></div>`;
     if (x.kind === 'chat') { const s = x.s; return r('chat', '<span class="sq"></span>', `${ticks(mark(s.title))}${s.id === state.current ? '<span class="cur">current</span>' : ''}`, `${projIcon(s.project)}${mark(s.project)}`, `<span class="st" data-state="${chatState(s)}">${s.done ? 'done' : chatState(s)}</span>`, ` style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"`); }
     if (x.kind === 'project') return r('project', '<span class="sq"></span>', `${projIcon(x.p.name)}${mark(x.p.name)}${x.p.key === prefs.project ? '<span class="cur">current</span>' : ''}`, '', '', ` style="${repoStyle(projColor(x.p))}"`);
@@ -4909,7 +4916,7 @@ const toolName = n => {
     if (x.kind === 'ticket') { const t = x.t; return r('ticket', `<span class="ltk" data-cat="${esc(t.cat)}">${esc(t.key)}</span>`, mark(t.summary || t.key), esc(t.chat || ''), `<span class="st">${esc((t.status || '').toLowerCase())}</span>`, ` title="${esc(t.url)}"`); }
     if (x.kind === 'action') return r('action', '<span class="ac">&gt;</span>', `${mark(x.name)}${x.sub ? `<span class="cur">${esc(x.sub)}</span>` : ''}`, x.hint ? `<kbd>${esc(x.hint)}</kbd>` : '', '');
     if (x.kind === 'toggle') return r('toggle', '<span class="ac">⏻</span>', mark(x.name), x.hint ? esc(x.hint) : '', swHtml(x.on()));
-    if (x.kind === 'url') return r('url', ICON.globe, x.id === 'url:typed' ? esc(x.name) : mark(x.name), '', '', ` title="${esc(x.url)}"`);   // ⌘T's box: a page
+    if (x.kind === 'url') return r('url', ICON.globe, x.id === 'url:typed' ? esc(x.name) : mark(x.name), '', '', ` title="${esc(x.url)}"`);   // a new tab's: a page
     return r('menu', x.icon || '', mark(x.name), x.hint ? `<kbd>${esc(x.hint)}</kbd>` : '', x.leaf ? '' : '›');   // a menu row
   }
   function launchChoose(x) {
@@ -4943,7 +4950,7 @@ const toolName = n => {
     ['⌥⌘0', 'Go to', 'home — the board\'s facts and your day', 'no chat open · a row opens its chat', ['alt:Digit0']],
     ['?', 'Go to', 'this list, on a sheet of its own', 'outside a box or a terminal', []],
     ['⌥⌘C', 'This chat', 'its Claude, in its drawer', 'starts it, or takes over one running elsewhere', ['alt:KeyC']],
-    ['⌘T', 'This chat', 'a new tab — another shell, or from a web page an address to open', 'from claude\'s drawer, a shell, the transcript or the changes, a shell in its folder · from a GitHub page or VS Code Web, a box for the address — or words to search · it opens beside the chat', ['cmd:KeyT']],
+    ['⌘T', 'This chat', 'a new tab — another shell, or from a web page a blank one', 'from claude\'s drawer, a shell, the transcript or the changes, a shell in its folder · from a GitHub page or VS Code Web, a blank tab with the keys in its address — type one, or words to search · it opens beside the chat', ['cmd:KeyT']],
     ['⌥⌘T', 'This chat', 'a shell in its folder, on a tab', 'again to show it — ⌘T opens another', ['alt:KeyT']],
     ['⌥⌘E', 'This chat', 'its folder in VS Code Web, on a tab', '', ['alt:KeyE']],
     ['⌥⌘G', 'This chat', 'its PR on GitHub, on a tab', 'the repo when it has none · a picker with several', ['alt:KeyG']],
@@ -5073,7 +5080,9 @@ const toolName = n => {
   function hotEscape() {
     const dlg = document.querySelector('dialog[open]'); if (dlg) { dlg.close(); return true; }
     if (stopResume()) return true;   // the countdown to a resume, before the page goes
-    const s = state.sessions.get(state.current); if (!s || !isPaneTab(tabOf(s))) return false;
+    const s = state.sessions.get(state.current);
+    if (s && isBlankTab(tabOf(s))) { blankEscape(s, tabOf(s)); return true; }   // the pane up beside it: the shell took the box's own esc
+    if (!s || !isPaneTab(tabOf(s))) return false;
     showChat(s); syncTerm(s); focusBoard(); return true;
   }
   function hotVsCode() { const b = $('#webBtn'); if (b) b.click(); else noChat(); }
@@ -5163,11 +5172,12 @@ const toolName = n => {
   /** A zsh tab's name: the shell's, and its place among the chat's when it has several — zsh, zsh 2, zsh 3. */
   const shLabel = (s, k) => { const i = shellsOf(s).findIndex(t => 'shell:' + t.id === k); return shName() + (i > 0 ? ` ${i + 1}` : ''); };
   // ⌘T (2026-10-13): a new tab of the kind the keys are in. In a terminal — claude's drawer, a zsh — or on the chat, the
-  // changes or an empty half, another zsh in the chat's folder, as iTerm's ⌘T; on a page — GitHub, VS Code Web — a box
-  // for the address, as a browser's (pickOpen('page')). Either opens where a new tab does (openNewTab).
+  // changes or an empty half, another zsh in the chat's folder, as iTerm's ⌘T; on a page — GitHub, VS Code Web, a blank
+  // tab — a blank tab, as a browser's (openBlank). Either opens where a new tab does (openNewTab).
   function hotNewTab() {
     const s = state.sessions.get(state.current); if (!s) return noChat();
-    if (isPaneTab(tabOf(s))) return pickOpen('page');
+    const k = tabOf(s);
+    if (isPaneTab(k) || isBlankTab(k)) return openBlank(s);
     focusBoard(); startShell(s, true);
   }
   function hotGh() {
@@ -6181,7 +6191,7 @@ const toolName = n => {
   let focusG = 0;                                   // the half the keys, the pickers and a new tab act on
   const curTerm = () => terms[focusG];
   const termFor = id => id ? terms.find(t => t.id === id) || null : null;
-  const focusTerm = () => { const tm = curTerm(); if (tm.xt && tm.id) tm.xt.focus(); };
+  const focusTerm = () => { const tm = curTerm(); if (tm.xt && tm.id) tm.xt.focus(); else $(GEL[focusG].tabs).querySelector('.ptab.blank .paddr')?.focus(); };   // or a blank tab's address
   function xtTheme() {
     const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
     const ansi = SKINS[skinOn()]?.ansi;   // a theme's sixteen colours (2026-10-10); none, xterm's own
@@ -6533,7 +6543,14 @@ const toolName = n => {
   };
   const ideKey = s => inApp && s?.cwd && state.paneIde.get(s.cwd) ? 'ide:' + state.paneIde.get(s.cwd) : null;
   const paneKeys = s => !inApp || !s ? [] : [...(state.paneGh.get(s.id) || []).map(u => 'gh:' + u), ...(ideKey(s) ? [ideKey(s)] : [])];
-  const tabKeys = s => ['chat', ...shellsOf(s).map(t => 'shell:' + t.id), ...(s && changesOpen.has(s.id) ? ['changes'] : []), ...paneKeys(s)];
+  // A blank tab (2026-10-13, ⌘T on a page): a browser's new tab — nothing on it yet, its address a box with the keys in
+  // it, and under it, in the half, what the box would open (blankHtml). `new:<n>`, after the pages; the page chosen
+  // takes its place (fillBlank). Page state only, as the changes tab is.
+  const blanks = new Map();   // chat id → [{ n, q, sel }]: the box's text and the row ⏎ opens
+  let blankSeq = 0;
+  const isBlankTab = k => /^new:/.test(k || '');
+  const blankOf = (s, k) => (s && blanks.get(s.id) || []).find(b => 'new:' + b.n === k) || null;
+  const tabKeys = s => ['chat', ...shellsOf(s).map(t => 'shell:' + t.id), ...(s && changesOpen.has(s.id) ? ['changes'] : []), ...paneKeys(s), ...(s && blanks.get(s.id) || []).map(b => 'new:' + b.n)];
   const tabOf = s => placeOf(s)[focusG];
   /** A tab put on show, in the half whose strip lists it — the one there is, unsplit — and the keys go with it.
       There is one transcript, one xterm per half and one web view per page, so a tab lives in exactly one half;
@@ -6598,7 +6615,7 @@ const toolName = n => {
       else if (tm.id) { detachTerm(tm); showDrawer(tm, false); }
     }
     placeLog(s, p); placeChanges(s, p);
-    renderTabs(s, p); postPane(s, p);
+    renderTabs(s, p); placeBlanks(s, p); postPane(s, p);
   }
   // There is one transcript and it goes to whichever half holds the chat tab — moved, not copied, so the renderer
   // and its scroll position stay put. A live drawer is that half's body, so the transcript hides under it rather
@@ -6627,7 +6644,7 @@ const toolName = n => {
     const two = isSplit(s);
     for (const tm of terms) {
       const g = tm.g, el = $(tm.el.tabs), cur = p[g], keys = s ? keysIn(s, g) : g ? [] : ['chat'];
-      const lone = two && keys.length === 1 && !keys[0].startsWith('gh:');
+      const lone = two && keys.length === 1 && !keys[0].startsWith('gh:') && !isBlankTab(keys[0]);   // a page's or a blank tab's strip is its address
       $(tm.el.grp).classList.toggle('on', g === focusG);
       el.hidden = g === 0 ? !two && keys.length < 2 : false;
       el.classList.toggle('lone', lone);
@@ -6638,6 +6655,7 @@ const toolName = n => {
       // page in front its own address, with ‹ › ↻ ↗ in it (Q5) — a div, since it holds buttons
       const tab = (k, label, title, x, icon = '') => {
         const close = x ? `<span class="x" title="${esc(x)}">${ICON.close}</span>` : '';
+        if (cur === k && isBlankTab(k)) return `<div class="ptab on addr blank" role="tab" aria-selected="true" data-tab="${esc(k)}" title="${esc('A new tab — type an address, or words to search' + tip)}">${icon}<input class="paddr" type="text" placeholder="Search or enter an address" aria-label="Address" spellcheck="false" autocomplete="off" autocapitalize="off">${close}</div>`;
         if (cur === k && isPaneTab(k)) return `<div class="ptab on pane addr" role="tab" aria-selected="true" tabindex="0" data-tab="${esc(k)}" title="${esc(title + tip)}">${icon}<span class="purl" data-key="${esc(k)}" data-url="${esc(paneUrl(k))}" title="${esc(paneUrl(k))} — click to copy">${addrHtml(k, paneUrl(k))}</span><span class="navs">`
           + `<button class="nav" data-nav="back" title="Back">${ICON.back}</button><button class="nav" data-nav="forward" title="Forward">${ICON.forward}</button><button class="nav" data-nav="reload" title="Reload">${ICON.reload}</button><button class="nav" data-nav="external" title="Open this page in your browser">${ICON.external}</button></span>${close}</div>`;
         return `<button class="ptab${cur === k ? ' on' : ''}${isPaneTab(k) ? ' pane' : ''}" role="tab" aria-selected="${cur === k}" data-tab="${esc(k)}" title="${esc(title + tip)}">${icon}${esc(label)}${close}</button>`;
@@ -6651,12 +6669,19 @@ const toolName = n => {
         : isShellTab(k) ? tab(k, shLabel(s, k), `A ${shName()} in ${s.cwd || 'its folder'} · ⌥⌘T · ⌘T another`, 'End this shell', ICON.term)
         : k === 'changes' ? tab(k, 'changes', `What this chat changed in ${s.cwd || 'its folder'} · ⌥⌘D`, 'Close the changes', ICON.diff)
         : k.startsWith('gh:') ? tab(k, paneLabel(k), GH_PR.test(k.slice(3)) ? `${k.slice(3)} · ⌥⌘G` : k.slice(3), 'Close this page', GH_PR.test(k.slice(3)) ? ICON.pr : ICON.globe)
+        : isBlankTab(k) ? tab(k, 'New tab', 'A new tab, nothing on it yet · ⌘T', 'Close this tab', ICON.globe)
         : tab(k, 'VS Code', `${s.cwd} in VS Code Web · ⌥⌘E`, 'Close the editor', ICON.vscode)).join('')
         + (two && !keys.length ? '<span class="pdrop">drop a tab here</span>' : '')
         + half;
       // the strip moves (2026-10-11): what it held is read before it is drawn anew, for tabMotion — only when it will be
       const prev = el._drawn !== html && el._sid === s?.id && !REDUCED.matches ? [...el.querySelectorAll('.ptab[data-tab]')].map(b => ({ k: b.dataset.tab, l: b.offsetLeft, w: b.offsetWidth, on: b.classList.contains('on'), html: b.innerHTML })) : null;
-      if (setHtml(el, html) && prev?.length) tabMotion(el, prev);   // a strip coming out of hiding just appears
+      const box = el.querySelector('.ptab.blank .paddr'), typing = box && document.activeElement === box && [box.selectionStart, box.selectionEnd];
+      const drew = setHtml(el, html);
+      if (drew && prev?.length) tabMotion(el, prev);   // a strip coming out of hiding just appears
+      // a blank tab's box keeps what was typed out of the markup, so typing redraws nothing — and is given it back when
+      // something else redraws the strip, the keys and the caret too
+      const nb = drew && el.querySelector('.ptab.blank .paddr');   // not a closed one's stand-in, folding
+      if (nb) { nb.value = blankOf(s, nb.closest('.ptab').dataset.tab)?.q || ''; if (typing) { nb.focus(); nb.setSelectionRange(...typing); } }
       if (el._drawn === html) fadeSoon();
       el._sid = s?.id;
     }
@@ -6725,6 +6750,7 @@ const toolName = n => {
     if (e.target.closest('.gturn')) return stackSplit(s, !stacked.has(s.id));
     const nav = e.target.closest('.nav'); if (nav) { focusGroup(g); post({ type: 'nav', what: nav.dataset.nav }); return; }
     const url = e.target.closest('.purl'); if (url) return copyPaneUrl(url);
+    if (e.target.closest('.paddr')) return;   // a blank tab's address: typed into, not a tab to open
     const b = e.target.closest('.ptab'); if (!b) return;
     const k = b.dataset.tab;
     if (e.target.closest('.x')) return closeTab(s, k);
@@ -6757,7 +6783,7 @@ const toolName = n => {
       drag = null;
     };
     $('#groups').addEventListener('pointerdown', e => {
-      const b = e.target.closest('.ptab'); if (!b || e.button !== 0 || e.target.closest('.x, .nav, .purl')) return;   // the address and its buttons are not the tab's handle
+      const b = e.target.closest('.ptab'); if (!b || e.button !== 0 || e.target.closest('.x, .nav, .purl, .paddr')) return;   // the address and its buttons are not the tab's handle
       if (!splitNow()) return;
       drag = { k: b.dataset.tab, from: b.closest('.ptabs').id === 'ptabsB' ? 1 : 0, x: e.clientX, y: e.clientY, b, ghost: null };
     });
@@ -6904,14 +6930,17 @@ const toolName = n => {
     window.addEventListener('mouseup', () => { if (!dragging) return; dragging = false; bar.classList.remove('drag'); document.body.style.userSelect = ''; savePrefs(); fitTerm(); });
   }
   // × on a tab: the zsh ends (the server says so, and the tab goes with it); a page is forgotten here — its view
-  // lingers in the shell until it needs the room — and the chat tab takes its place.
+  // lingers in the shell until it needs the room. The tab in front closed, the one beside it comes forward, as in a
+  // browser (2026-10-13; the half's first did before): the one to its right, else its left — a zsh's at once, while the
+  // server is still ending it.
   function closeTab(s, k) {
-    if (isShellTab(k)) { const t = shellOfTab(s, k); if (t) api('DELETE', `/api/terminals/${t.id}`).catch(e => note(seen($('#ptabs')), `Could not end the zsh: ${e.message}`, true)); return; }
+    const p = placeOf(s), g = p.indexOf(k);
+    if (g >= 0) { const ks = keysIn(s, g), i = ks.indexOf(k); p[g] = ks[i + 1] || ks[i - 1] || null; tabs.set(s.id, p); }
+    if (isShellTab(k)) { const t = shellOfTab(s, k); if (t) api('DELETE', `/api/terminals/${t.id}`).catch(e => note(seen($('#ptabs')), `Could not end the zsh: ${e.message}`, true)); syncTerm(s); return; }
     if (k === 'changes') changesOpen.delete(s.id);
     else if (k.startsWith('gh:')) state.paneGh.set(s.id, (state.paneGh.get(s.id) || []).filter(u => 'gh:' + u !== k));
+    else if (isBlankTab(k)) blanks.set(s.id, (blanks.get(s.id) || []).filter(b => 'new:' + b.n !== k));
     else if (s.cwd) state.paneIde.delete(s.cwd);
-    const p = placeOf(s);
-    if (p.includes(k)) tabs.set(s.id, p.map(x => x === k ? null : x));   // placeOf fills the gap from what that half has left
     homes.get(s.id)?.delete(k);
     syncTerm(s);
   }
@@ -6965,6 +6994,81 @@ const toolName = n => {
     try { d = await api('POST', `/api/sessions/${s.id}/takeover`, termSize()); } catch (e) { drawer.err = e.message; }
     if (d) showTerminal(s, d.terminal);
     renderHead(state.sessions.get(s.id) || s);
+  }
+  // ---- a blank tab: ⌘T on a page (2026-10-13) ----------------------------------------------------------------------
+  /** A blank tab, in front where a new tab goes, the keys in its address. */
+  function openBlank(s) {
+    const b = { n: ++blankSeq, q: '', sel: 0 };
+    blanks.set(s.id, [...(blanks.get(s.id) || []), b]);
+    openNewTab(s, 'new:' + b.n);
+    syncTerm(s); focusBoard(); focusTerm();
+  }
+  /** What the box would open: what was typed first, then the chat's own pages not on a tab, the best match first. */
+  function blankRows(s, b) {
+    const q = b.q.trim(), pages = chatPages(s);
+    if (!q) return pages;
+    const hits = [];
+    pages.forEach((x, i) => { const m = fuzzy(x.kind === 'pr' ? [x.pr.label, x.pr.title || ''] : x.kind === 'ticket' ? [x.t.key, x.t.summary || ''] : [x.name, x.url], q.toLowerCase()); if (m) hits.push([m.score, i, x]); });
+    return [typedPage(q), ...hits.sort((a, c) => c[0] - a[0] || a[1] - c[1]).map(h => h[2])];
+  }
+  /** The half under a blank tab: the rows its box would open, the one ⏎ takes marked. */
+  function blankHtml(s, b) {
+    const rows = blankRows(s, b), q = b.q.trim().toLowerCase();
+    b.sel = Math.max(0, Math.min(b.sel, rows.length - 1));
+    return `<div class="blist">${rows.length ? (q ? '' : `<div class="bhd">This chat's pages</div>`) + rows.map((x, i) => launchRow(x, i, j => j === b.sel ? ' sel' : '', t => markHits(t, q), false)).join('')
+      : '<div class="bnone">Type an address, or words to search the web</div>'}</div><div class="bkeys"><kbd>⏎</kbd> opens <kbd>↑↓</kbd> picks <kbd>esc</kbd> ${b.q ? 'clears' : 'closes the tab'}</div>`;
+  }
+  /** Each half showing a blank tab gets its list, the other halves none. */
+  function placeBlanks(s, p) {
+    for (const tm of terms) {
+      const host = $(tm.el.body), b = s && isBlankTab(p[tm.g]) ? blankOf(s, p[tm.g]) : null;
+      let el = host.querySelector(':scope > .gblank');
+      if (!b) { el?.remove(); continue; }
+      if (!el) el = host.appendChild(html2el('<div class="gblank"></div>'));
+      el.dataset.tab = p[tm.g];
+      setHtml(el, blankHtml(s, b));
+    }
+  }
+  /** The tab becomes the page: in its half and its place, in front. A link the pane does not take goes where
+      openExternal sends it, and the blank tab goes. */
+  function fillBlank(s, k, x) {
+    if (!x) return;
+    const url = x.kind === 'pr' ? x.pr.url : x.kind === 'ticket' ? x.t.url : x.url, g = isSplit(s) ? homeOf(s, k) : 0;
+    blanks.set(s.id, (blanks.get(s.id) || []).filter(b => 'new:' + b.n !== k)); homes.get(s.id)?.delete(k);
+    if (!inApp || !IN_PANE.test(url)) { openExternal(url, { s }); syncTerm(s); focusBoard(); focusTerm(); return; }
+    const l = state.paneGh.get(s.id) || []; if (!l.includes(url)) l.push(url); state.paneGh.set(s.id, l);
+    if (isSplit(s)) { if (!homes.has(s.id)) homes.set(s.id, new Map()); homes.get(s.id).set('gh:' + url, g); }
+    if (GH_PR.test(url)) shownPr.url = url;
+    setTab(s, 'gh:' + url); syncTerm(s);
+  }
+  /** esc in the box: what was typed goes, and with nothing typed the tab does — it never held anything. */
+  function blankEscape(s, k) {
+    const b = blankOf(s, k); if (!b) return;
+    if (b.q) { b.q = ''; b.sel = 0; const box = document.querySelector(`.ptab[data-tab="${k}"] .paddr`); if (box) box.value = ''; syncTerm(s); focusTerm(); }
+    else dropTab(s, k);
+  }
+  /** The box's own keys and its text; a row clicked; a press on the half's empty part keeps the keys in the box. */
+  {
+    const at = e => { const k = e.target.closest?.('.ptab.blank, .gblank')?.dataset.tab, s = state.sessions.get(state.current); return { s, k, b: s && blankOf(s, k) }; };
+    $('#groups').addEventListener('input', e => {
+      if (!e.target.matches?.('.paddr')) return;
+      const { s, b } = at(e); if (!b) return;
+      b.q = e.target.value; b.sel = 0; placeBlanks(s, placeOf(s));
+    });
+    $('#groups').addEventListener('keydown', e => {
+      if (!e.target.matches?.('.paddr') || e.metaKey || e.ctrlKey || e.altKey) return;
+      const { s, k, b } = at(e); if (!b) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); b.sel += e.key === 'ArrowDown' ? 1 : -1; placeBlanks(s, placeOf(s)); }
+      else if (e.key === 'Enter') { e.preventDefault(); fillBlank(s, k, blankRows(s, b)[b.sel]); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); blankEscape(s, k); }
+    });
+    $('#groups').addEventListener('mousedown', e => {
+      const list = e.target.closest?.('.gblank'); if (!list) return;
+      e.preventDefault();   // the box keeps the keys
+      const { s, k, b } = at(e), row = e.target.closest('.pkrow');
+      if (b && row) fillBlank(s, k, blankRows(s, b)[+row.dataset.i]);
+      else focusTerm();
+    });
   }
   // ---- the changes tab: what this chat changed in its folder (2026-10-10) -------------------------------------------
   // Conductor's review pane, as a tab beside claude and the zsh (⌥⌘D, the header's +n −n): the branch, how far from its
@@ -8781,7 +8885,7 @@ const toolName = n => {
     es.addEventListener('snapshot', e => {
       const d = JSON.parse(e.data); state.snapshots++;   // the harness waits on the count: a reloaded page has its board
       state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.peacock = d.peacock || {}; state.repos = d.repos || {};
-      for (const m of [tabs, homes, splits, autoSplit, stacked, focusView, state.unread, state.paneGh, changesOpen, diffStats]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);   // a chat gone from the board takes its page state with it
+      for (const m of [tabs, homes, splits, autoSplit, stacked, focusView, state.unread, state.paneGh, changesOpen, blanks, diffStats]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);   // a chat gone from the board takes its page state with it
       state.about = d.about || {};
       if (d.config) state.config = d.config;
       renderSetup();

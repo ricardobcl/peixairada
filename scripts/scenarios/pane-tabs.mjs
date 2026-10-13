@@ -127,8 +127,8 @@ export default async function (ctx) {
   ctx.assert.equal(out.pressed, 'none', 'the address held down does not dip');
   out.closed = { tabs: await tabsNow(), pane: await lastPane() };
   ctx.assert.ok(await ctx.evaluate(`window.peix.motion().some(m => m.kind === 'tabfold' && m.id === ${JSON.stringify(firstGh)})`), 'the closed tab folds where it stood (2026-10-11)');
-  ctx.assert.equal(out.closed.tabs.length, 3); ctx.assert.equal(out.closed.tabs[0].on, true, 'its half shows the first of its own tabs left, the zsh');
-  ctx.assert.equal(out.closed.pane.show, null); ctx.assert.equal(out.closed.pane.keys.length, 2);
+  ctx.assert.equal(out.closed.tabs.length, 3); ctx.assert.equal(out.closed.tabs.find(t => t.on)?.k, out.two.tabs[1].k, 'the tab beside it comes forward, as in a browser — the other PR, to its right (2026-10-13)');
+  ctx.assert.equal(out.closed.pane.show, out.two.tabs[1].k); ctx.assert.equal(out.closed.pane.keys.length, 2);
   // the tab a chat is on comes back with it: the other PR's, left on, survives a trip to the plain chat
   const other = out.two.tabs[1].k;
   await ctx.evaluate(`document.querySelector('#ptabsB .ptab[data-tab=${JSON.stringify(other)}]').click()`);

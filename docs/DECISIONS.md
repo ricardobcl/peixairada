@@ -5,6 +5,25 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-13. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-13, later — ⌘T on a page is a blank tab
+
+Ricardo: "the opening tab should be more like a browser and open immediately the empty tab to write something, vs the
+current popup".
+
+* **⌘T on a page opens a blank tab at once**, a browser's new tab: no dialog — the tab is there, in front where a new
+  tab goes, and the keys are in its address, the field the page in front already is in the strip. Under it, in the
+  half, the list the box had: what was typed first (an address, a bare host, words to search), then the chat's own
+  pages not on a tab, the one ⏎ opens marked, ↑↓ to pick, a click to open. ⏎ turns the tab into the page in its place,
+  and the page takes the keys; esc empties the box, then closes the tab (it never held anything); ⌘W and its × close
+  it; ⌘T on it opens another. The pickers' `page` mode is gone.
+* **What is typed lives outside the markup**: the strip is drawn only when its markup changes, so typing redraws
+  nothing; when something else redraws it, the text, the keys and the caret are put back. A closed tab's stand-in,
+  folding for 180 ms, is a copy of its markup — the box included —, so the box is always looked for in a live
+  `.ptab.blank`, never as `.paddr` alone (the first try threw on exactly that, and left the list standing).
+* **The tab in front closed, the one beside it comes forward** — its right, else its left — as a browser's does; the
+  half's first came forward before, which sent two ⌘W meant for two blank tabs to one of them and the PR. A zsh's
+  neighbour comes forward at once, while the server is still ending it.
+
 ## Decisions of 2026-10-13 — ⌘T and ⌘W are the tabs'
 
 Ricardo: "cmd W should close the terminal focused or the webpage focused" and "cmd T should open a new terminal or web

@@ -521,7 +521,7 @@ for `$HOME`'s home and the account's.
 * **Plain ⌘ is the window's shape and its tabs, in `CMDKEYS`**: **1** / **2** the left and right halves (⌘2 splits the
   first time), **0** closes the *other* half (`hotOnlyHalf`); **T** a new tab of the kind the keys are in (2026-10-13,
   `hotNewTab`: in a terminal, on the chat, the changes or an empty half another zsh, `startShell(s, true)`; on a page
-  the address box, `pickOpen('page')` — typed first, `typedPage`, then `chatPages`), **W** the tab the keys are in
+  or a blank tab a blank tab, `openBlank` — see *Placement*), **W** the tab the keys are in
   (`hotClose` → `dropTab`; a dialog up first; on the chat's tab or an empty half, the half; with one half, `false`).
   `peixKey(code, mods)` says which map and **returns whether the key was taken**; `cmdKeys` in main.swift is the
   forwarder's copy (a digit as `Digit<n>`; `npm run check` holds it). ⌘K is *not* here (the drawer's clear), nor ⌘+ ⌘−
@@ -691,7 +691,16 @@ for `$HOME`'s home and the account's.
   `pane-tabs.mjs`.
 * **Placement is derived**: `tabs` holds `[left, right]` per chat and `placeOf(s)` reads it against `keysIn` *now* —
   a key that is gone falls away. `tabOf(s)` is the focused half's. A half with nothing says what would fill it
-  (`.gempty`), and its strip takes a drop (`.pdrop`).
+  (`.gempty`), and its strip takes a drop (`.pdrop`). **The tab in front closed, the one beside it comes forward**
+  (2026-10-13, `closeTab`): its right, else its left — a zsh's at once, before the server says it ended.
+* **A blank tab is a browser's new tab** (2026-10-13, ⌘T on a page; `blanks`, `new:<n>` after the pages, page state
+  only): in front, its address a box with the keys (`.ptab.blank .paddr` — what was typed is kept out of the markup, so
+  typing redraws nothing, and given back with the caret when the strip redraws), and under it, in the half, what ⏎
+  would open (`.gblank`, `placeBlanks` from `syncTerm`, `blankRows`: typed first — `typedPage`: an address, a bare host,
+  else a search —, then `chatPages`). ⏎ or a click puts the page in its place (`fillBlank`); esc empties the box, then
+  closes the tab (`blankEscape`, also `hotEscape`'s: with the pane up the app takes esc). `focusTerm` focuses the box
+  where a terminal would be. Never `.paddr` alone: a closed tab's stand-in (`.ptabgone`) carries a copy.
+  → `tab-keys.mjs`.
 * **The changes tab is git in the chat's folder, read when asked** (2026-10-10; ⌥⌘D, the header's `#diffBtn`, ···'s
   `#chgBtn`): a tab `changes` while the chat is in `changesOpen`, one element `#chg` moved into its half
   (`placeChanges`, from `syncTerm`). `GET /api/sessions/:id/changes?scope=` — `uncommitted` (untracked as added),
