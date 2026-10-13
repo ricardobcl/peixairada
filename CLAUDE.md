@@ -431,7 +431,9 @@ for `$HOME`'s home and the account's.
   `pix`, `pixhop`). **A day label over each run of one day in a lane** (`dayHtml()`, `dayBefore`, `dayName()`; none in
   a lane all today). **All caught up** (`ZERO_HTML`, `caughtUp`): no ready chat and no question, a still head where
   Ready goes; reached from a ✓ (`lastTickAt`) it sparks once. **Your move and new replies are the funnel's filters,
-  never lanes.** → `lanes.mjs`, `day-separator.mjs`.
+  never lanes.** **A long lane holds back** (2026-10-13; `LANE_CAP` 30, Idle and Done): its newest cards and a
+  `.gsep.more` line for the rest, which shows them until a reload (`laneMore`); the open chat's card whatever its place;
+  a query or a filter every match. → `lanes.mjs`, `day-separator.mjs`, `long-lanes.mjs`.
 * **The list's filter is the funnel** (2026-10-12; `#fBtn`, `FILTERS`, `prefs.listFilter`; its menu through
   `ctxShow`, counted by `fCounts`): *Every chat* · *Your move* (`yourMove`: a PR waiting on you, not done for good) ·
   *New replies* (`replied`: a ready chat whose last word is Claude's and came after the board last showed it —

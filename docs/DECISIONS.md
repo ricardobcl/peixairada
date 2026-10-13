@@ -41,6 +41,13 @@ the made-up 400-card board with the user's prefs in a WKWebView, the median of t
   for those rules on most DOM changes (its trace: `allDescendantsMightBeInvalid` on the body, a dozen restyles of
   ~12,900 elements a chat's open): a clauding chat's open restyled for 127–165 ms and took 165–240 ms; now 37–43 and
   92–127. WebKit measured no difference — this one is the browser's. `UNDER_HEAD` follows.
+* **A long lane shows its newest 30 cards and a line for the rest** (`LANE_CAP`; Idle and Done, the two that only
+  grow). With every lane open here the list held 400 cards, ~13,000 elements, each restyled, laid out and walked on
+  every render. Now the line — *272 more done chats*, `+272` on the rail — shows the rest when clicked, until the page
+  is loaded again (`laneMore`, page state: kept, the list would be back to 400 for good); the open chat's card is there
+  whatever its place, and a query or a filter shows every match; a lane's head still counts them all. On the made-up
+  board: 400 → 130 cards, 13,081 → 5,154 elements; at rest 9.1 → 6.6 % of a core; at one chat event a second 11.9 →
+  8.1 %; a clauding chat opened in 215–244 ms → 120–147. `long-lanes.mjs` holds it.
 
 ## Decisions of 2026-10-13, after Zed — Zed installed when it is picked
 

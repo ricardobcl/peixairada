@@ -556,6 +556,11 @@
   /* A lane's head folds its lane (2026-10-11, later; laneShut): the whole head a toggle, a chevron at its end turned
      down while open, the head dimmed while folded; the count stays, so a folded lane still says how much is in it. */
   .gsep.lane[data-lane] { cursor: pointer; user-select: none; border-radius: var(--r-2); }
+  /* the rest of a long lane, held back (renderSessionList, LANE_CAP; 2026-10-13): a quiet line, a click shows it */
+  .gsep.more { margin: 4px 10px 2px; padding: 3px 0; text-align: center; cursor: pointer; border-radius: var(--r-2); }
+  .gsep.more:hover { color: var(--ink); background: var(--ctl); }
+  .gsep.more .ms { display: none; }
+  main.scompact #slist .gsep.more { display: block; margin: 2px 0; letter-spacing: 0; } main.scompact #slist .gsep.more .mn { display: none; } main.scompact #slist .gsep.more .ms { display: inline; }
   .gsep.lane[data-lane]:hover .ln { color: var(--ink); }
   .gsep.lane .lc { flex: none; width: 7px; height: 7px; margin: 0 3px 0 -2px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; rotate: 45deg; translate: 0 -2px; opacity: .7; transition: rotate .15s var(--ease-out), translate .15s var(--ease-out); }
   .gsep.lane.shut .lc { rotate: -45deg; translate: -1px 0; }
@@ -3681,6 +3686,12 @@ const toolName = n => {
   // as wide as the word, masked to a soft band, moving one way while the bright copy in it (its ::before, from
   // data-t, so the text is said once) moves the other; both transforms, so nothing repaints.
   const shim = t => `<span class="shim">${esc(t)}<span class="sw" data-t="${esc(t)}" aria-hidden="true"></span></span>`;
+  // A long lane shows its newest LANE_CAP cards and a line for the rest (2026-10-13): every card in the page is restyled,
+  // laid out and walked on each render — with every lane open here 400 cards, ~13,000 elements, and Idle and Done only
+  // grow. The line shows the rest until the page is loaded again; the open chat's card is there whatever its place, a
+  // query and a filter show every match.
+  const LANE_CAP = 30, CAPPED = new Set(['idle', 'done']), laneMore = new Set();
+  const moreHtml = (g, n) => `<div class="gsep more" data-more="${g}" role="button" tabindex="0" title="Show the other ${n} ${LANES[g][1]}"><span class="mn">${n} more ${LANES[g][0].toLowerCase()} chat${n === 1 ? '' : 's'}</span><span class="ms">+${n}</span></div>`;
   const laneHtml = (g, n, shut = false, still = false) => `<div class="gsep lane ${g}${shut ? ' shut' : ''}${still ? ' still' : ''}" data-lane="${g}"${still ? '' : ` role="button" tabindex="0" aria-expanded="${!shut}"`} title="${n} ${LANES[g][1]}${still ? '' : ` — click to ${shut ? 'show' : 'fold'} them`}">${g === 'working' ? PIX : '<i></i>'}<span class="ln">${g === 'working' ? shim(LANES[g][0]) : LANES[g][0]}</span><b>${rn('lane:' + g, n)}</b><span class="lc" aria-hidden="true"></span></div>`;
   // …and when no lane waits on you, a still one that says so (renderSessionList); its mark is the clauding head's at
   // rest. Reached by a tick it earns a moment, once: the mark hops and throws a few sparks (caughtUp).
@@ -3800,7 +3811,12 @@ const toolName = n => {
     // into the ready group, where its last prompt puts it. That order is also how a query's ties are broken.
     const board = (a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byWord(a, b);
     const ordered = list.slice().sort(q ? (a, b) => (score.get(b.id) - score.get(a.id)) || board(a, b) : board);
-    const shown = ordered.filter(inView);   // a query shows every match, folded or not, and so does a filter
+    const held = {}, seen = {};   // a long lane's newest LANE_CAP (laneMore lets one go), not under a query or a filter
+    const shown = ordered.filter(inView).filter(s => {   // a query shows every match, folded or not, and so does a filter
+      const g = rankOf(s); if (q || flt || !CAPPED.has(g) || laneMore.has(g)) return true;
+      seen[g] = (seen[g] || 0) + 1; if (seen[g] <= LANE_CAP || s.id === state.current) return true;
+      held[g] = (held[g] || 0) + 1; return false;
+    });
     // The project filter's one cue: a click is ⌥⌘P's picker, × goes back to ALL. The square is only a colour here —
     // the colour picker is the chat header's.
     // The head names the project and nothing else (2026-09-27): no colour square — the chat header's is the picker —
@@ -3835,6 +3851,7 @@ const toolName = n => {
       if (zero && (g === 'idle' || g === 'done') && !items.some(x => x.html === ZERO_HTML)) items.push({ html: ZERO_HTML });
       items.push({ html: laneHtml(g, inLane[g], !flt && laneShut(g), !!flt) });
       if (flt || !laneShut(g)) shown.forEach((s, i) => { if (b[i] !== g) return; const a = dayBefore(i); if (a) items.push({ html: a }); items.push({ id: s.id, html: cardHtml(s, p, q) }); });
+      if (held[g] && !laneShut(g)) items.push({ html: moreHtml(g, held[g]) });
     }
     if (zero && !items.some(x => x.html === ZERO_HTML)) items.push({ html: ZERO_HTML });
     // An empty list (2026-10-11) is the home's fish, resting, over what is empty and the key that fills it — a bubble
@@ -5571,11 +5588,14 @@ const toolName = n => {
     renderBoard(); if (byKey) document.querySelector(`#slist > .gsep.lane[data-lane="${g}"]`)?.focus({ preventScroll: true });   // the head drawn anew keeps the keys
   }
   $('#slist').addEventListener('keydown', e => { const l = e.target.closest?.('.gsep.lane[data-lane]'); if (l && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); foldLane(l.dataset.lane, true); } });
+  const moreLane = g => { laneMore.add(g); noteMotion(g, 'more'); renderBoard(); };   // a long lane's rest (LANE_CAP)
+  $('#slist').addEventListener('keydown', e => { const m = e.target.closest?.('.gsep.more[data-more]'); if (m && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); moreLane(m.dataset.more); } });
   $('#sessions').addEventListener('click', e => {
     if (e.target.closest('#stitle .sx')) { selectProject(ALL); return; }
     if (e.target.closest('#stitle')) { pickOpen('project'); return; }
     if (e.target.closest('#slist > .gsep.lane[data-away]')) { prefs.project = ALL; savePrefs(); renderBoard(); return; }
     const lane = e.target.closest('#slist > .gsep.lane[data-lane]'); if (lane) return foldLane(lane.dataset.lane);
+    const more = e.target.closest('#slist > .gsep.more[data-more]'); if (more) return moreLane(more.dataset.more);
     const card = e.target.closest('.card'); if (!card) return;
     const cpr = e.target.closest('.cpr');
     if (cpr) { e.stopPropagation(); openSession(card.dataset.id); showPr(cpr.dataset.url); return; }   // that chat, with that PR open
