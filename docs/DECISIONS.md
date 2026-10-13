@@ -64,6 +64,28 @@ if we need a perf-skill". Pushed (`7b3f0ef..aa14719`); then what the profiling h
   - *The peak memory*: 1.0–1.2 GB within a 40 s run that ends at ~500 MB — which phase (the six opens?) by
     `footprint()` after each.
 
+## Decisions of 2026-10-13, after the frames — the PR list folds from its foot
+
+Ricardo, on the header's PR list: once it is unfolded nothing says how to fold it again — an arrow at the list's foot
+would.
+
+* **The open list ends in an arrow up that folds it** (`#prFold`, in a `.pfoot` row after the rows): a stroked chevron
+  (`ICON.up`, the tab strip's family) centred on the controls' fill, 56 × 18 px, `--ctl-hi` and the ink under the
+  pointer, the small controls' hover ease and 97 % press. It does what the chips do — `showPrs(false)`, the one path
+  (the pref, `renderHead`) — and lives in the list's own markup, so `drawn.prs` still decides when it is redrawn.
+  Centred because the eye ends at the bottom of what it just read and an arrow in the middle reads as *put this away*;
+  a full-width bar was the other shape, heavier than the rows over it. `… n more` keeps the left of the same line, so
+  the foot costs one line at most.
+* **The opener says which way it goes**: the whole count's ▾ (`10 PRs ▾`, `+9 ▾`) is ▴ while the list is open — the
+  text arrow it already had, turned, not a new glyph. With every chip shown there is no count; the chips' fill (`.on`)
+  is the state, as before. `#prToggle` names the list it opens (`aria-controls`).
+* **From the keyboard the keys stay on the chips**: the arrow goes with the list and a toggle redraws the header, so
+  either pressed with Enter or Space (no clicks counted, the button focused) puts the focus on the new `#prToggle`. A
+  mouse click or a script's `.click()` moves nothing.
+* `header-prs.mjs` checks the arrow (a named button under every row, in the middle, nothing over it), a real click
+  folding the list (pref, `aria-expanded`, the rows still there), the chips unfolding it, and Enter both ways with the
+  focus kept; `header-prs-fit.mjs` the count's ▴ and ▾.
+
 ## Decisions of 2026-10-13, after Zed, later still — the board's frames, the next round
 
 Ricardo, on the list of what was left (the entry "the board's frames, profiled", below): "do it". Measured as before:

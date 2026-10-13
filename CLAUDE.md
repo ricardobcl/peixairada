@@ -382,7 +382,9 @@ for `$HOME`'s home and the account's.
   its repo name plus `TITLE_ROOM` and `TITLE_SHARE` of the row; on every new header and the header's
   `ResizeObserver`. **The row never wraps**: the move's line and a task's chip shrink to `--hmin`, then go
   (`.hfold`); ··· stays on the title's line. `#prlist` (`prefs.prsOpen`) is rendered folded too, so ⌥⌘G and the
-  harness read `#prlist .prrow`. → `header-prs-fit.mjs`, `header-prs.mjs`, the narrow step of `pr-turn.mjs`.
+  harness read `#prlist .prrow`. **Open, its foot's arrow up folds it** (2026-10-13; `#prFold` in `.pfoot`, `showPrs`
+  as the chips', keys left on `#prToggle`), and the count's ▾ is ▴. → `header-prs-fit.mjs`, `header-prs.mjs`, the
+  narrow step of `pr-turn.mjs`.
 * **A PR chip GitHub has answered for is solid** (`--prc`, its state's colour), one not known yet an outline. **A PR
   at your move is said by name, not by its chip's look**: `data-turn` (`turnOf(pr)`: `you` · `them` · empty)
   on `.cpr`, `.hpr`, `.prrow` and the tooltips (`turnTip`); the card's line (`moveHtml`, `.ymove`, at every size, not

@@ -1,6 +1,7 @@
 // The chat's PRs in the header (2026-09-24). What this checks: a chat with PRs
 // shows them as the cards' chips in the header row, one button, with the rows under the header folded; a click
-// unfolds them and a second folds them back; the fold outlives a reload (a pref, not the chat's); a row still opens
+// unfolds them and a second folds them back, as does the arrow up at the open list's foot (2026-10-13), clicked or
+// pressed with Enter — the keys then on the chips; the fold outlives a reload (a pref, not the chat's); a row still opens
 // its PR; a chat without PRs has neither. ⌥ over a chip, or a row, shows an ✕ in red without moving a thing, and
 // ⌥-click takes that PR off the chat (2026-10-11): gone from the header, the rows and the server's summary, kept off
 // when Claude names it again and across a restart (its lines read afresh), back when you name it.
@@ -33,6 +34,32 @@ export default async function (ctx) {
   out.open = await head();
   ctx.assert.deepEqual([out.open.shown, out.open.expanded, out.open.pref], [true, 'true', true], 'a click lists them, one per row');
   await ctx.shot('2-open', { x: 400, y: 0, width: 1300, height: 160 });
+
+  // the list's foot is an arrow up that folds it (2026-10-13): under the last row, in the middle, a button that says what
+  // it does; a real click on it folds the list as the chips do, and the chips unfold it again
+  await ctx.settle();
+  out.arrow = await ctx.evaluate(`JSON.stringify((() => { const pl = document.querySelector('#prlist'), b = pl.querySelector('#prFold'), r = b.getBoundingClientRect(), l = pl.getBoundingClientRect();
+    return { tag: b.tagName, label: b.getAttribute('aria-label'), controls: b.getAttribute('aria-controls'), last: pl.lastElementChild.contains(b), svg: !!b.querySelector('svg.ic.st'),
+      under: Math.round(r.top - Math.max(...[...pl.querySelectorAll('.prrow')].map(row => row.getBoundingClientRect().bottom))), inside: Math.round(l.bottom - r.bottom),
+      centre: Math.round((r.left + r.width / 2) - (l.left + l.width / 2)), x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), w: Math.round(r.width), h: Math.round(r.height) }; })())`).then(JSON.parse);
+  ctx.assert.deepEqual([out.arrow.tag, out.arrow.label, out.arrow.controls, out.arrow.last, out.arrow.svg], ['BUTTON', 'Fold the list', 'prlist', true, true], `the foot: a button, named, drawn as a stroke — ${JSON.stringify(out.arrow)}`);
+  ctx.assert.ok(out.arrow.under > 0 && out.arrow.inside >= 0, `…under every row, inside the list (${out.arrow.under} px under, ${out.arrow.inside} px from its foot)`);
+  ctx.assert.ok(Math.abs(out.arrow.centre) <= 1, `…in its middle (${out.arrow.centre} px off)`);
+  ctx.assert.ok(out.arrow.w >= 40 && out.arrow.h >= 16, `…big enough to hit (${out.arrow.w}×${out.arrow.h})`);
+  ctx.assert.equal(await ctx.evaluate(`document.elementFromPoint(${out.arrow.x}, ${out.arrow.y})?.closest('#prFold') ? 'arrow' : 'covered'`), 'arrow', 'nothing over it');
+  for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await ctx.send('Input.dispatchMouseEvent', { type, x: out.arrow.x, y: out.arrow.y, ...type === 'mouseMoved' ? {} : { button: 'left', clickCount: 1 } });
+  out.arrowed = await head();
+  ctx.assert.deepEqual([out.arrowed.shown, out.arrowed.expanded, out.arrowed.pref, out.arrowed.rows], [false, 'false', false, 2], 'a click on it folds the list — the pref, the chips\' aria-expanded, the rows still there for ⌥⌘G');
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 500 });
+  await ctx.evaluate(`document.querySelector('#prToggle').click()`);
+  ctx.assert.deepEqual(await head().then(h => [h.shown, h.expanded, h.pref]), [true, 'true', true], 'and the chips unfold it again');
+  // from the keyboard: Enter on the arrow folds it, and the keys land on the chips — the arrow went with the list
+  await ctx.evaluate(`document.querySelector('#prFold').focus()`);
+  for (const type of ['keyDown', 'keyUp']) await ctx.send('Input.dispatchKeyEvent', { type, key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, ...type === 'keyDown' ? { text: '\r' } : {} });
+  out.keyed = await ctx.evaluate(`JSON.stringify({ pref: window.peix.prefs().prsOpen, focus: document.activeElement?.id || document.activeElement?.tagName })`).then(JSON.parse);
+  ctx.assert.deepEqual([out.keyed.pref, out.keyed.focus], [false, 'prToggle'], `Enter on the arrow folds it, the keys on the chips — ${JSON.stringify(out.keyed)}`);
+  for (const type of ['keyDown', 'keyUp']) await ctx.send('Input.dispatchKeyEvent', { type, key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, ...type === 'keyDown' ? { text: '\r' } : {} });
+  ctx.assert.deepEqual(await ctx.evaluate(`JSON.stringify([window.peix.prefs().prsOpen, document.activeElement?.id])`).then(JSON.parse), [true, 'prToggle'], 'and Enter there unfolds it, the keys staying');
   await ctx.reload();
   await ctx.waitFor(`document.querySelectorAll('.card').length > 0`, { what: 'the board again' });
   await ctx.openChat(two.id);

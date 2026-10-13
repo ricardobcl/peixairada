@@ -1080,11 +1080,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-alt] .card:hover .act:hover:has(.fx) { opacity: 1; color: #fff; background: var(--needs); }
   .act.tk.fg { color: #fff; background: var(--needs); }
   /* Every small control eases its hover (2026-09-27, night): the ink, the edge and the wash, 120 ms — the one rule. */
-  :is(.btn, .ptab, .hmi, .hmore, .hprs, .nav, .gmore, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
+  :is(.btn, .ptab, .hmi, .hmore, .hprs, .pfold, .nav, .gmore, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
   /* …and dips to 97 % while pressed (2026-10-11), springing back on release; a row of a menu or the project's line
      does not — a whole row shrinking reads as a glitch, not a press. Nor does the address, a field, or a tab pressed on
      its × (2026-10-12): 97 % of a wide tab carries the × out from under the pointer, and the release is the tab's click. */
-  :is(.btn, .ptab:not(.addr, :has(> .x:active)), .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, .gsep.lane[data-lane]):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
+  :is(.btn, .ptab:not(.addr, :has(> .x:active)), .hmore, .hprs, .pfold, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, .gsep.lane[data-lane]):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
   .act:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .dot.working { background: var(--working); animation: pulse 1.4s ease-in-out infinite; }
@@ -1430,6 +1430,12 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .prrow[hidden] { display: none; }
   #prlist .more { justify-self: start; font: inherit; font-size: var(--fs-xs); color: var(--accent); background: none; border: 0; padding: 1px 0 0 61px; cursor: pointer; }
   #prlist .more:hover { text-decoration: underline; }
+  /* The list's foot (2026-10-13): an arrow up, centred on the controls' fill, folds it as the chips above do — and the
+     rest's "… n more" keeps the left of the same line. */
+  #prlist .pfoot { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin-top: 3px; }
+  #prlist .pfold { grid-column: 2; display: grid; place-items: center; width: 56px; height: 18px; padding: 0; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); color: var(--muted); cursor: pointer; }
+  #prlist .pfold:hover { background: var(--ctl-hi); color: var(--ink); }
+  #prlist .pfold .ic.st { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   /* ---- a second claude on this chat: VS Code opened a chat that runs here (see renderRival) ---- */
   #rival { border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--needs) 12%, var(--panel)); padding: 6px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: var(--fs-sm); color: var(--ink); min-width: 0; line-height: 1.4; }
   #rival[hidden] { display: none; }
@@ -2148,7 +2154,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   @media (prefers-contrast: more) {
     :root:root:root { --muted: color-mix(in srgb, var(--ink) 78%, var(--bg)); --line: color-mix(in srgb, var(--ink) 38%, var(--bg)); }
     :root, .card.black:is(:hover, .active, .qsel), .shead > :not(h2, .details) { --ctl: color-mix(in srgb, var(--ink) 14%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent); }
-    :is(.btn, .chip, .ptab, .hmore, .act, .fsearch, .sedge button, #sbar .seg, .gsep.lane b, .sseg, .seg button, #ctxm, #hmenu) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
+    :is(.btn, .chip, .ptab, .hmore, .pfold, .act, .fsearch, .sedge button, #sbar .seg, .gsep.lane b, .sseg, .seg button, #ctxm, #hmenu) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
     .card { border-color: var(--line); } .card .snip, .card .state.live { color: var(--ink); }
   }
   /* Reduce transparency: the blurs behind the overview and the list's ends go solid */
@@ -2198,7 +2204,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     .card .top .faces > * { transition: none; }   /* the pile spreads at once */
     /* a count shows its number: rollIn rolls nothing under reduced motion (REDUCED) */
     .act.tk .tk path { animation: none; }   /* the ✓ is there, not drawn (tickDone tells the server at once) */
-    .card:active, :is(.btn, .ptab, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button):active { scale: none; }   /* a press does not dip */
+    .card:active, :is(.btn, .ptab, .hmore, .hprs, .pfold, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button):active { scale: none; }   /* a press does not dip */
   }
 
   /* ---- syntax highlighting (highlight.js class names, our colours) ---- */
@@ -2983,6 +2989,7 @@ const toolName = n => {
     // the tab strip's glyphs, drawn (2026-10-11, the studies' Q1; ‹ › ↻ ↗ ◫ ⊟ ⨯ × in text before): strokes, .st
     back: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5 5.5 8 10 12.5"/></svg>',
     forward: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5"/></svg>',
+    up: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 10.25 8 5.75 12.5 10.25"/></svg>',   // the PR list's foot: fold it (2026-10-13)
     reload: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M12.6 6.4A4.9 4.9 0 1 0 12.9 9.6"/><path d="M13 3v3.5H9.5"/></svg>',
     external: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 3.5h6v6M12.5 3.5 4 12"/></svg>',
     side: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M8 2.5v11"/></svg>',
@@ -5904,7 +5911,7 @@ const toolName = n => {
     // shows two at most, and those are the ones it must
     const prs = [...(s.prs || [])].sort((a, b) => (turnOf(b) === 'you') - (turnOf(a) === 'you') || (turnOf(a) === 'you' ? String(b.turn.movedAt || '').localeCompare(String(a.turn.movedAt || '')) : 0)), tks = s.tickets || [], prsOpen = !!prefs.prsOpen;
     const said = [prs.length ? `${prs.length} PR${prs.length === 1 ? '' : 's'}` : '', tks.length ? `${tks.length} ticket${tks.length === 1 ? '' : 's'}` : ''].filter(Boolean).join(' and ');
-    const hprs = !prs.length && !tks.length ? '' : `<button class="hprs${prsOpen ? ' on' : ''}" id="prToggle" aria-expanded="${prsOpen}" title="${said} in this chat — click to ${prsOpen ? 'fold the list' : 'list them, one per row'}${prs.length ? ' · ⌥⌘G opens a PR' : ''}">${
+    const hprs = !prs.length && !tks.length ? '' : `<button class="hprs${prsOpen ? ' on' : ''}" id="prToggle" aria-controls="prlist" aria-expanded="${prsOpen}" title="${said} in this chat — click to ${prsOpen ? 'fold the list' : 'list them, one per row'}${prs.length ? ' · ⌥⌘G opens a PR' : ''}">${
       prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}"${prCk(pr) ? ` data-checks="${prCk(pr)}"` : ''} title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}${prCk(pr) ? `\n${CK_TIP[prCk(pr)]}` : ''}${pr.turn ? `\n${turnTip(pr)}` : ''}\n${UNLINK_TIP}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}${ckHtml(pr)}</span>`).join('')
     }${tks.map(t => `<span class="hpr tk" data-cat="${esc(t.cat)}" title="${esc(ticketTip(t))}">${esc(t.key)}</span>`).join('')}<span class="hpr more" data-said="${esc(said.replace(' and ', ' · '))}" hidden></span><span class="hpr more short" hidden></span></button>`;
     const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo${s.cwd && prefs.project === s.cwd ? ' on' : ''}" title="${s.cwd && prefs.project === s.cwd ? 'Every project again (ALL)' : 'Show this folder\'s chats — click again for every project'}">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [s.cwd] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${ticks(esc(s.title))}</span></h2>
@@ -5941,14 +5948,20 @@ const toolName = n => {
     if (state.prsFor !== s.id) { state.prsFor = s.id; state.prsAll = false; }   // "more" is per chat, not sticky
     const pl = $('#prlist'); pl.hidden = (!prs.length && !tks.length) || !prsOpen;   // the rows are there folded too — ⌥⌘G and the harness read them
     const rows = [...prs.map(pr => hide => prRow(pr, hide)), ...tks.map(t => hide => ticketRow(t, hide))];
+    // the list's foot (2026-10-13): "… n more" on the left, and in the middle an arrow up that folds the list as the
+    // chips do — where the eye ends up, under the rows
     const prsHtml = rows.map((row, i) => row(i >= PR_ROWS && !state.prsAll)).join('')
-      + (rows.length > PR_ROWS ? `<button class="more" id="prMore">${state.prsAll ? 'fewer' : `… ${rows.length - PR_ROWS} more`}</button>` : '');
+      + `<div class="pfoot">${rows.length > PR_ROWS ? `<button class="more" id="prMore">${state.prsAll ? 'fewer' : `… ${rows.length - PR_ROWS} more`}</button>` : ''}<button class="pfold" id="prFold" aria-controls="prlist" aria-label="Fold the list" title="Fold the list — the chips in the header do the same">${ICON.up}</button></div>`;
     if (prsHtml !== drawn.prs) pl.innerHTML = drawn.prs = prsHtml;
     const pm = pl.querySelector('#prMore'); if (pm) pm.onclick = () => { state.prsAll = !state.prsAll; renderHead(s); };   // onclick, not a listener per draw
+    // pressed from the keyboard (no clicks counted, the button focused), the keys stay on the chips: the header they sat
+    // in, or the arrow, is gone with the draw
+    const showPrs = (open, e) => { const keys = !e.detail && document.activeElement === e.currentTarget; prefs.prsOpen = open; savePrefs(); renderHead(s); if (keys) $('#prToggle')?.focus(); };
     const pt = $('#prToggle'); if (pt) pt.onclick = e => {
       const c = e.altKey && e.target.closest('.hpr[data-url]'); if (c) return unlinkPr(s, c);   // ⌥ on a chip: that PR off the chat
-      prefs.prsOpen = !prefs.prsOpen; savePrefs(); renderHead(s);
+      showPrs(!prefs.prsOpen, e);
     };
+    pl.querySelector('#prFold').onclick = e => showPrs(false, e);
     if (headNew) { layoutNotch(); fitHeadPrs(); paintHeadSplit(); postChat(s); if (menu.open) { $('#moreBtn').classList.add('on'); $('#moreBtn').setAttribute('aria-expanded', 'true'); } }   // the menu's state is not the markup's: opening it redrew the whole header
     renderResume(s); renderRival(s);
     $('#detailsBtn').onclick = () => { prefs.headDetails = !prefs.headDetails; savePrefs(); renderHead(s); };
@@ -6223,9 +6236,11 @@ const toolName = n => {
     const chips = [...t.querySelectorAll('.hpr:not(.more)')], more = t.querySelector('.hpr.more:not(.short)'), short = t.querySelector('.hpr.more.short');
     for (const c of chips) c.hidden = false;
     // the whole count, not the folded one (2026-10-12): it opens the list of them all — and +n where even one chip and
-    // the whole count leave the title short of its room, both measured in the one layout
-    more.hidden = false; more.textContent = `${more.dataset.said || `+${chips.length}`} ▾`;
-    short.hidden = false; short.textContent = `+${chips.length} ▾`;
+    // the whole count leave the title short of its room, both measured in the one layout; its arrow up while the list is
+    // open (2026-10-13), the way it goes
+    const way = prefs.prsOpen ? '▴' : '▾';
+    more.hidden = false; more.textContent = `${more.dataset.said || `+${chips.length}`} ${way}`;
+    short.hidden = false; short.textContent = `+${chips.length} ${way}`;
     for (const el of head.querySelectorAll(':scope > .hfold')) el.classList.remove('hfold');   // and what the last fit put away
     // Every width in one layout, then the arithmetic (2026-09-27; hiding a chip and measuring the row again, per chip,
     // was a layout each): the button is its frame plus the chips shown, a gap between each, plus +n when any are hidden.
@@ -6257,7 +6272,7 @@ const toolName = n => {
     more.hidden = shown === chips.length || terse; short.hidden = shown === chips.length || !terse;
     if (mv) mv.style.setProperty('--hmin', `${Math.ceil(mvMin)}px`);
     const left = shown === chips.length ? null : terse ? short : more;
-    if (left) { if (terse) short.textContent = `+${chips.length - shown} ▾`; left.title = `${chips.length - shown} more:\n` + chips.slice(shown).map(c => c.title.split('\n')[0]).join('\n'); }
+    if (left) { if (terse) short.textContent = `+${chips.length - shown} ${way}`; left.title = `${chips.length - shown} more:\n` + chips.slice(shown).map(c => c.title.split('\n')[0]).join('\n'); }
   }
   // The header's size changed: its width moves the fold (a height alone — a chip fold, the details — does not, and a
   // fold that changes the height would otherwise run this again); under the housing every change moves the hole.

@@ -1,7 +1,8 @@
 // The header's PR chips use the row (2026-09-24) — and since 2026-10-12, two at most, the rest behind the whole count
 // (*10 PRs ▾*, which opens the list), with the title keeping 40 % of the row: eleven chips had taken a title down to
 // fifteen letters. A chat mentioning ten PRs: wide, two chips and the count; narrowed to where two do not fit, one and
-// +n — the whole count too wide there — the row still one line, the title's room clear; wide again, two.
+// +n — the whole count too wide there — the row still one line, the title's room clear; wide again, two. The count's ▾
+// is ▴ while the list is open (2026-10-13).
 import { makeFixture } from '../fixture.mjs';
 
 export const meta = { server: true, fixture: 'auto' };
@@ -37,5 +38,13 @@ export default async function (ctx) {
   await ctx.send('Emulation.clearDeviceMetricsOverride'); await ctx.sleep(300);
   out.back = await fit();
   ctx.assert.deepEqual([out.back.shown, out.back.more], [2, '10 PRs ▾'], 'wide again: two');
+
+  // the count's arrow is the way the list goes (2026-10-13): up while it is open, down again once its foot folds it
+  await ctx.evaluate(`document.querySelector('#prToggle').click()`);
+  out.open = await fit();
+  ctx.assert.deepEqual([out.open.shown, out.open.more], [2, '10 PRs ▴'], 'open: the count points up');
+  await ctx.evaluate(`document.querySelector('#prFold').click()`);
+  out.folded = await fit();
+  ctx.assert.deepEqual([out.folded.more, await ctx.evaluate(`window.peix.prefs().prsOpen`)], ['10 PRs ▾', false], 'folded from the list\'s foot: down again');
   return out;
 }
