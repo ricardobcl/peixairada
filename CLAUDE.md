@@ -648,7 +648,7 @@ for `$HOME`'s home and the account's.
   `<org>/<name>`**, null under no such root or inside a repo that is there. The page's `withCheckout(key, spawn)`
   clones and asks again, for a resume (`openTerminalFor`), ⌥⌘T and a new chat. What it draws reads `state.clones`
   (`cloneShown`: the resume bar's progress `.cloning`/`--clone-p`, a new chat's `.clonebox`, the status bar's `.cl`).
-  A chat with no claude says `folderMissing` and `cloneRef` (not `gone`); without `cloneRef` auto-resume does not arm.
+  A chat with no claude says `folderMissing` and `cloneRef` (not `gone`).
   → `clone-folder.mjs`.
 * **The settings are one modal dialog** (`#settings`): ⌘, (`CMDKEYS.Comma`; in the app the menu's *Settings…* asks
   `peixKey`), the header's ··· row (`#settingsBtn`) and the empty header's ··· (`#noChatMore`, delegated — `leaveChat`
@@ -931,12 +931,8 @@ for `$HOME`'s home and the account's.
 * **Live chats are never written to** from the board (a second writer on one transcript); stale ones are resumed in
   a drawer.
 * **A chat whose claude has ended is its transcript with the resume bar under it** (2026-10-07; `#resume`, row 5,
-  `renderResume` from `renderHead` while `resumable(s)`: no process, a file, no drawer). Resume is `termAction`.
-  **Opening such a chat counts down to its resume** (`armResume` from `openSession`, `AUTO_RESUME_MS`,
-  `prefs.autoResume`; `termAction(s, { stay: true })`); Not now, Esc, another chat and the switch stop it
-  (`stopResume`), a dialog holds it; a done chat, one whose claude ends while open and the one a load opens
-  (`openSession(id, { auto: false })`) wait for the button. **The harness has it off**: `launchChrome` writes
-  `autoResume: false` unless set — `verify --hash` drives the live board. `peix.state().resume`. → `resume-bar.mjs`.
+  `renderResume` from `renderHead` while `resumable(s)`: no process, a file, no drawer). Resume is `termAction`, and
+  only the button (or ⌥⌘C) starts it — nothing resumes a chat by itself. → `resume-bar.mjs`.
 
 ## Invariants that bit us — one line each, the story in Findings
 

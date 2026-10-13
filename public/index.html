@@ -1491,8 +1491,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #resume .rgo .k { font-weight: 400; opacity: .7; font-size: var(--fs-xs); }
   #resume .rgo:disabled { opacity: .6; cursor: default; }
   #resume::before { content: ''; position: absolute; left: 0; right: 0; top: -1px; height: 2px; background: var(--accent); transform: scaleX(0); transform-origin: left; pointer-events: none; }
-  #resume.counting::before { animation: rfill var(--resume-ms, 5s) linear forwards; }
-  @keyframes rfill { to { transform: none; } }
   /* the chat's folder cloned first (2026-10-09): the line along the top is git's progress, a ring turns round the mark */
   #resume.cloning::before { transform: scaleX(var(--clone-p, 0)); transition: transform .3s ease-out; }
   #resume.cloning .ric { position: relative; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
@@ -2268,7 +2266,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     #people button:not(.pgh) { transition: opacity .12s, box-shadow .12s; }   /* the faces fold at once, and come back fading */
     .pop .opt input::after, #tline .tl-thumb { transition: none; }
     .card .top .tprs { transition: none; }   /* the stack fans at once */
-    #resume.counting::before { animation: none; }   /* no line runs: the button counts the seconds alone */
     #resume.cloning .ric::after { animation: none; }   /* cloning: the ring still, the line along the top and the percent say it */
     #slist .card .top .tprs > * { transition: color .12s, border-color .12s, background-color .12s, box-shadow .12s; }
     .card .top .faces > * { transition: none; }   /* the pile spreads at once */
@@ -2352,7 +2349,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     </div>
     <label class="opt sub" title="On, a chat asking you, one with a PR at your move, one Claude is at work in and one with a new reply have large cards whatever the size above — the rest are at that size"><input type="checkbox" id="cardsByLane"><span><b>by lane</b> — large where a chat wants you, the size above for the rest</span></label>
     <label class="opt sub" id="evenRow" title="Compact cards all the same height: the title on one line and the your-move line under it, held empty on a card without one; the question is left to the card's red edge and its pings" hidden><input type="checkbox" id="cardsEven"><span><b>same height</b> — every compact card a title line and a your-move line tall</span></label>
-    <label class="opt" title="On, a chat Claude isn’t running in — one you open from the list, a picker, a key or a link — runs claude --resume in a terminal here 5 s after it opens, unless you press Not now or Esc, or move on. A chat ticked done, and the one the page opens on a reload, wait for the Resume button"><input type="checkbox" id="autoResume" checked><span><b>auto-resume</b> — a chat Claude isn’t running in resumes 5 s after you open it; off, it waits for the Resume button</span></label>
     <div class="opt lightpick" title="Where a file path clicked in a chat opens, at its line — a path in a reply, a tool call or on a drawer's screen: in VS Code or in Zed, each the app's own window, outside the board. Not ⌥⌘E: that is VS Code Web on a tab of the pane whichever is picked, since Zed has no web version the pane could show"><span><b>files open in</b> — a path clicked in a chat or a drawer opens there, at its line, in that app's own window</span><span class="sseg" role="radiogroup" aria-label="Editor" id="edPick"><button type="button" role="radio" data-ed="vscode">VS Code</button><button type="button" role="radio" data-ed="zed">Zed</button></span></div>
     <div class="opt edsay" id="edSay" role="status" hidden></div>
     <h4 class="shd">Look</h4>
@@ -2506,7 +2502,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -2527,7 +2523,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   delete prefs.filter; delete prefs.filters;
   delete prefs.peopleFold;   // the faces folded to a count (2026-10-09, off by default) became peopleCompact (2026-10-11, later): folded by default
   // the experimental switches pared (2026-10-14): what they chose is now the only way, or gone
-  for (const k of ['simpleColors', 'simpleColor', 'skinExact']) delete prefs[k];
+  for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume']) delete prefs[k];
   if (!Array.isArray(prefs.lanesShut)) prefs.lanesShut = ['done', 'idle'];
   prefs.lanesShut = prefs.lanesShut.filter(g => g !== 'move' && g !== 'replied');   // lanes for a morning (2026-10-12), filters since
   if (prefs.listFilter !== 'move' && prefs.listFilter !== 'replied') prefs.listFilter = null;
@@ -2974,7 +2970,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     let took = false;
     const dlg = document.querySelector('dialog[open]');
     if (dlg) { dlg.close(); took = true; }
-    else if (!e.target.closest?.('.tbody') && stopResume()) took = true;   // the countdown to a resume, stopped (a terminal keeps its Esc)
     if (!took) return;
     e.preventDefault(); e.stopPropagation();
   }, true);
@@ -5008,7 +5003,7 @@ const toolName = n => {
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
   const SWITCHES = [['notifyOn', 'Notifications'], ['autoUpdate', 'Update itself'], ['skinFollow', 'Theme follows macOS'], ['ringsInStep', 'Rings in step'],
-    ['edgeLight', 'Edge light'], ['cardSpot', 'Light under the pointer'], ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['tileStackOn', 'Tiles: the stack'], ['wallFollow', 'Tiles: the glow follows the pointer'], ['headFloat', 'Floating header'], ['soundsOn', 'Sounds'], ['autoResume', 'Auto-resume'], ['optMeta', '⌥ is Meta in the terminal']];
+    ['edgeLight', 'Edge light'], ['cardSpot', 'Light under the pointer'], ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['tileStackOn', 'Tiles: the stack'], ['wallFollow', 'Tiles: the glow follows the pointer'], ['headFloat', 'Floating header'], ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
     { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },
@@ -5319,7 +5314,6 @@ const toolName = n => {
   // Split, the chat is in the left half and the keys go there; the page beside it stays up (showChat).
   function hotEscape() {
     const dlg = document.querySelector('dialog[open]'); if (dlg) { dlg.close(); return true; }
-    if (stopResume()) return true;   // the countdown to a resume, before the page goes
     const s = state.sessions.get(state.current);
     if (s && isBlankTab(tabOf(s))) { blankEscape(s, tabOf(s)); return true; }   // the pane up beside it: the shell took the box's own esc
     if (!s || !isPaneTab(tabOf(s))) return false;
@@ -6976,7 +6970,6 @@ const toolName = n => {
       termId: curTerm().id, termSession: curTerm().sessionId, termExited: curTerm().exited,
       reload: reload.want ? { to: reload.want, why: reload.why } : null,
       editor: prefs.editor, editors: state.editors,
-      resume: autoResume.id ? { id: autoResume.id, left: Math.max(0, Math.round(autoResume.at - performance.now())) } : null,
       swim: { n: swim.n, pace: swimRate(Math.max(0, swim.n)), rate: swim.anim ? +(swimMs(swim.w) / swimLen()).toFixed(3) : 0, dart: swim.dart, food: swim.food.map(b => b.x), eaten: swim.eaten } }),   // the bar's fish: its pace without a dart, what it has to eat (lane x)
     session: id => { const s = state.sessions.get(id || state.current); return s ? structuredClone(s) : null; },
     motion: () => MOTION.map(m => ({ ...m })),
@@ -8841,17 +8834,16 @@ const toolName = n => {
   // elsewhere — arm and, pressed again, take over. The terminal takes the keyboard at the end: attachTerm does that
   // when its socket opens, this covers one that was already showing (⌥⌘C as "put me in the terminal").
   const termAsking = new Set();   // the chats whose drawer is being asked for: a second press meanwhile is the same press
-  // `stay` is the auto-resume's (2026-10-07): the drawer starts where the chat tab is, and the tab on show and the keys stay.
-  async function termAction(s, { stay = false } = {}) {
+  async function termAction(s) {
     if (termAsking.has(s.id)) return;
-    stopResume(); drawer.err = null; if (!stay) showChat(s);
+    drawer.err = null; showChat(s);
     termAsking.add(s.id); renderResume(s);
     try {
       if (takeable(s)) await (drawer.arm === s.id ? takeOver(s) : armTakeOver(s));
       else await openTerminalFor(s);
     } finally { termAsking.delete(s.id); }
     renderResume(state.sessions.get(s.id) || s);
-    if (!stay) focusTerm();
+    focusTerm();
   }
   // A new chat in a folder: `claude` there — unless the folder's Taskfile launches claude itself (oracle's `task
   // production-workload` and friends set a cluster's environment first, 2026-09-20), in which case the environment is
@@ -8976,46 +8968,19 @@ const toolName = n => {
   // A chat with no process is its transcript and nothing more (2026-10-07; a box under it sent a one-shot
   // `claude --resume -p` reply before, and read as if the chat were still there). The bar under the column says so,
   // and its button is >_'s: `claude --resume` in a drawer here. Not under a terminal on the same chat — that drawer is
-  // the chat — nor on one live elsewhere, whose take-over is >_'s, armed twice. Opened from the list, a picker, a key
-  // or a link, the chat resumes by itself AUTO_RESUME_MS later (`prefs.autoResume`, the settings' switch): Not now,
-  // Esc, another chat or the switch stop it, and a dialog up holds it until it closes. A chat ticked done, one whose
-  // claude ends while it is open, and the one a reload opens wait for the button.
-  const AUTO_RESUME_MS = 5000;
-  const autoResume = { id: null, at: 0, timer: null, tick: null };   // the countdown: its chat, when it fires (performance.now())
+  // the chat — nor on one live elsewhere, whose take-over is >_'s, armed twice. It waits for the button (a countdown to
+  // a resume by itself was a switch until 2026-10-14).
   const resumable = s => !!(s && !s.alive && s.file && !termLive(s) && !terms.some(tm => tm.id && tm.sessionId === s.id && tm.exited === null));
-  $('#resume').style.setProperty('--resume-ms', AUTO_RESUME_MS + 'ms');
-  function armResume(s) {
-    stopResume();
-    if (prefs.autoResume === false || !resumable(s) || s.done || !s.cwd || (s.folderMissing && !s.cloneRef)) return;   // a folder no clone brings back: the resume would only fail
-    Object.assign(autoResume, { id: s.id, at: performance.now() + AUTO_RESUME_MS, timer: setTimeout(fireResume, AUTO_RESUME_MS), tick: setInterval(countResume, 200) });
-  }
-  /** The countdown, stopped — whether there was one (Esc takes the key only then). */
-  function stopResume() {
-    if (!autoResume.id) return false;
-    clearTimeout(autoResume.timer); clearInterval(autoResume.tick);
-    const s = state.sessions.get(autoResume.id); autoResume.id = null;
-    if (s) renderResume(s);
-    return true;
-  }
-  function fireResume() {
-    const s = state.sessions.get(autoResume.id);
-    if (!s || s.id !== state.current || !resumable(s) || s.done) return stopResume();
-    if (document.querySelector('dialog[open]')) { autoResume.timer = setTimeout(fireResume, 250); return; }   // a picker, the settings: once it closes
-    clearInterval(autoResume.tick); autoResume.id = null;
-    termAction(s, { stay: true });   // the tab it is on stays, and so do the keys
-  }
-  function countResume() { const n = $('#resume .n'); if (n) n.textContent = Math.max(1, Math.ceil((autoResume.at - performance.now()) / 1000)); }
   function renderResume(s) {
     if (s && s.id !== state.current) return;   // the open chat's only, as its header
     const box = $('#resume');
-    if (!resumable(s)) { box.hidden = true; if (autoResume.id) stopResume(); return; }
-    if (autoResume.id === s.id && s.done) { stopResume(); return; }   // ticked done while it counted (stopResume draws it)
-    const going = termAsking.has(s.id), counting = autoResume.id === s.id, err = drawer.err;
+    if (!resumable(s)) { box.hidden = true; return; }
+    const going = termAsking.has(s.id), err = drawer.err;
     // cloning its folder first (2026-10-09), or about to: `folderMissing` and `cloneRef` are the server's, on the summary
     const w = cloneWaits.get(s.id), cl = w && (state.clones.get(w.dir) || { phase: null, percent: 0 });
     const where = `<code>${esc(homePath(s.cwd || ''))}</code>`, label = s.folderMissing && s.cloneRef ? 'Clone and resume' : 'Resume';
     box.hidden = false;
-    box.classList.toggle('err', !!err); box.classList.toggle('counting', counting); box.classList.toggle('cloning', !!w);
+    box.classList.toggle('err', !!err); box.classList.toggle('cloning', !!w);
     if (w) box.style.setProperty('--clone-p', (cl.percent || 0) / 100);
     if (w) {
       setHtml(box, `<span class="ric">${ICON.download}</span>
@@ -9034,18 +8999,9 @@ const toolName = n => {
       : inVsCode(s) ? 'Last used in VS Code. Resuming moves it here; the tab there will not follow.' : '';
     setHtml(box, `<span class="ric">${ICON.term}</span>
       <span class="t"><b>${err ? 'Could not resume this chat' : 'Claude isn’t running in this chat'}</b>${more ? `<span>${more}</span>` : ''}</span>
-      ${counting ? '<button class="btn" id="resumeNo" title="Stay on the transcript — Resume waits for you · esc">Not now</button>' : ''}
-      ${s.cwd ? `<button class="btn rgo" id="resumeGo"${going ? ' disabled' : ''} title="${counting ? `${label} now — ` : ''}${s.folderMissing && s.cloneRef ? `gh repo clone ${esc(s.cloneRef)}, then ` : ''}claude --resume on this chat, in a terminal here · ⌥⌘C">${s.folderMissing && s.cloneRef ? ICON.download : ICON.play}${going ? 'resuming…' : counting ? `${label} in <span class="n"></span>` : label}<span class="k">⌥⌘C</span></button>` : ''}`);
-    if (counting) {
-      countResume();
-      // the line along the top on the countdown's clock: a new chat's countdown, with the class never off, ran on from where the last one was
-      for (const a of box.getAnimations({ subtree: true })) if (a.animationName === 'rfill') a.currentTime = Math.max(0, AUTO_RESUME_MS - (autoResume.at - performance.now()));
-    }
+      ${s.cwd ? `<button class="btn rgo" id="resumeGo"${going ? ' disabled' : ''} title="${s.folderMissing && s.cloneRef ? `gh repo clone ${esc(s.cloneRef)}, then ` : ''}claude --resume on this chat, in a terminal here · ⌥⌘C">${s.folderMissing && s.cloneRef ? ICON.download : ICON.play}${going ? 'resuming…' : label}<span class="k">⌥⌘C</span></button>` : ''}`);
     const go = box.querySelector('#resumeGo'); if (go) go.onclick = () => termAction(state.sessions.get(s.id) || s);
-    const no = box.querySelector('#resumeNo'); if (no) no.onclick = stopResume;
   }
-  $('#autoResume').checked = prefs.autoResume !== false;
-  $('#autoResume').addEventListener('change', e => { prefs.autoResume = e.target.checked; savePrefs(); if (!prefs.autoResume) stopResume(); });
   // ---- attachments: files dropped on the board, images pasted --------------------------------
   // What claude wants is a path: an @-mention (`@dir/file`, a space escaped as `\ ` — how the CLI itself writes
   // one) typed into the drawer's prompt. In the Mac app the shell sees the
@@ -9365,7 +9321,6 @@ const toolName = n => {
     if (stick) log.scrollTop = log.scrollHeight;
   }
 
-  // `auto`: whether a chat whose claude has ended counts down to its resume (armResume) — not for the one a load opens.
   // The title travels (2026-10-11, Rauno Freiberg's *motion shows where it came from*): a card clicked open sends its
   // title — a copy on one line — from where it sat on the card to the header's, scaled from the card's size to the
   // header's, while the header's own title waits hidden; the header's colour eases as it always has. A click only:
@@ -9401,7 +9356,7 @@ const toolName = n => {
     if (s.seenAt) s.seenAt = at;
     api('POST', `/api/sessions/${encodeURIComponent(id)}/seen`).catch(() => {});
   }
-  async function openSession(id, { auto = true, locate = false } = {}) {
+  async function openSession(id, { locate = false } = {}) {
     if (id !== state.current) drawer.err = null;   // a failure to start a drawer is the chat's it happened on (2026-10-07)
     state.current = id; state.unread.delete(id); hidePr(); markSeen(id);
     // the address names the open chat at once (2026-10-02; after the fetch before, so a chat left before its answer
@@ -9412,7 +9367,6 @@ const toolName = n => {
     if (s0 && !inProject(s0, projectStub(prefs.project))) { prefs.project = projDir(s0.cwd) || '?'; savePrefs(); }
     renderBoard();
     if (locate && s0) { document.querySelector(`#slist > .card[data-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' }); locateCard(id); }
-    if (auto) armResume(s0); else stopResume();
     if (s0) renderHead(s0);
     if (s0) syncTerm(s0);   // the tab it was on comes back at once — a page in the pane, its zsh; the drawer after the fetch (a chat not yet in the snapshot keeps what is attached until then)
     awaitEntries(id);
@@ -9423,7 +9377,6 @@ const toolName = n => {
     // (2026-10-02) — it drew this chat's transcript under the other's header
     if (state.current !== id) return;
     const s1 = takeSession(id, data, seen); takeEntries(id, data);
-    if (!s0 && auto) armResume(s1);
     renderHead(s1); renderLog(); syncTerm(s1);
     // A chat the snapshot did not have yet — the drawer's new one, told of over the `terminal` event before its own
     // `session` push — gets its card, and the project switch above, from the answer.
@@ -9554,7 +9507,7 @@ const toolName = n => {
       state.serverNotify = d.notify === 'native';   // the server posts its own banners: the app must not double them
       renderBoard(); welcomeSync();
       const want = location.hash.slice(1);
-      if (want && !state.current && state.sessions.has(want)) openSession(want, { auto: false });   // a reload resumes nothing by itself
+      if (want && !state.current && state.sessions.has(want)) openSession(want);
       else if (!state.current) showHome();   // nothing to open: the home (2026-10-10)
       // A snapshot with a chat already open is a reconnect — the server restarted, the stream dropped — and the entries
       // pushed while the stream was down never came (2026-09-27): fetch the open chat again, in place. Not openSession,

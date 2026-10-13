@@ -47,13 +47,12 @@ let shotTools = """
         for (let i = Math.max(0, Math.round(x * S)); i < Math.min(cv.width, Math.round((x + w) * S)); i++) if (test(...at(i, j))) { n++; sx += i; sy += j; }
       return n ? { n, x: +(sx / n / S).toFixed(1), y: +(sy / n / S).toFixed(1) } : { n: 0 }; } };
   """
-// The page's prefs start empty (a store of its own), with auto-resume off — on the live board a chat opened would
-// otherwise resume itself in a drawer — and WK_PREFS over them.
+// The page's prefs start empty (a store of its own), WK_PREFS over them.
 let seed = """
   window.__wkErrs = []; addEventListener('error', e => __wkErrs.push(String(e.message) + ' @' + e.lineno));
   addEventListener('unhandledrejection', e => __wkErrs.push('unhandled rejection: ' + String(e.reason)));
   try { const k = 'peixairada-prefs', p = JSON.parse(localStorage.getItem(k) || '{}'); Object.assign(p, \(env["WK_PREFS"] ?? "{}"));
-    if (!('autoResume' in p)) p.autoResume = false; localStorage.setItem(k, JSON.stringify(p)); } catch {}
+    localStorage.setItem(k, JSON.stringify(p)); } catch {}
   """
 
 let app = NSApplication.shared

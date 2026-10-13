@@ -21,6 +21,9 @@ pref for a switch that went is deleted on load.
   Peacock black picked at the square.
 * **Exact project colours** (2026-10-10) — gone: under a theme a project's Peacock colour always moves to the theme's
   nearest hue (`skinColor`); the board's own theme wears it as set.
+* **The auto-resume countdown** (2026-10-07) — gone: a chat whose claude has ended waits for Resume (or ⌥⌘C) however
+  it was opened; Not now, the line along the bar's top, Esc's turn at it and `openSession`'s `auto` went, and the
+  harness no longer turns it off (`launchChrome`, `webkit.swift`).
 
 ## Decisions of 2026-10-14, on a branch — the tour
 
