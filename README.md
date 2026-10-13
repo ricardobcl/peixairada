@@ -29,11 +29,11 @@ column split in two halves when there's more than one thing to look at.
 | Key | Beside the chat |
 |---|---|
 | ⌥⌘C | 🖥️ **Claude Code itself** — the real terminal, in a drawer: resume any chat, or take over one running in iTerm or VS Code. A chat whose Claude has ended resumes 5 s after you open it (or on a click), cloning its repo first when its folder isn't checked out. Drawers survive the board's restarts. |
-| ⌥⌘T | 🐚 **A shell** in the chat's folder, on a tab of its own. |
+| ⌥⌘T · ⌘T | 🐚 **A shell** in the chat's folder, on a tab of its own — ⌘T opens another, or on a web page a box for an address. ⌘W closes the tab you are in. |
 | ⌥⌘G | 🐙 **The PR on GitHub** — its page on a tab; its state, its CI and whose move it is under the header. |
 | ⌥⌘E | 🧩 **VS Code Web** on the chat's folder. |
 | ⌥⌘D | 🔀 **The chat's changes** — this turn's edits, everything uncommitted, or the branch against its base, as a diff. Commit… and Push type into its shell; a note on a line goes to Claude. |
-| ⌘2 · ⌥⌘2 | ◫ **Split** the column side by side, or one half over the other; drag a tab across, ⌘W closes a half. |
+| ⌘2 · ⌥⌘2 | ◫ **Split** the column side by side, or one half over the other; drag a tab across, ⌘0 closes the other half. |
 
 GitHub and VS Code open in the chat in the Mac app; in a browser they open in a tab of their own.
 
@@ -239,7 +239,8 @@ The login agent takes `PORT`, `NOTIFY` and your `PATH` at `scripts/launchd.sh in
 | ⌥⌘↑ ⌥⌘↓ | previous · next chat |
 | ⌥⌘C | this chat's Claude, in the drawer |
 | ⌥⌘T · ⌥⌘E · ⌥⌘G | a shell · VS Code Web · the PR |
-| ⌘2 · ⌘W | split · close a half |
+| ⌘T · ⌘W | a new tab — a shell, or a page from a page · close the tab you are in |
+| ⌘2 · ⌘0 | split · close the other half |
 | ⌥⌘B | fold the list |
 | ⌥⌘L | the launcher: chats, projects, PRs, tickets, actions, switches |
 | ⌥⌘A · ⌥⌘D · ⌥⌘0 | the overview: every live chat at once · this chat's changes · home |

@@ -56,7 +56,7 @@ export default async function (ctx) {
   await ctx.waitFor(`!!window.peix.session(${JSON.stringify(c.id)})?.shell`, { timeout: 15_000, what: 'the shell' });
   await ctx.cmd('Digit1'); await ctx.cmd('Digit0');
   await ctx.waitFor(`document.querySelectorAll('#ptabs .ptab').length === 2`, { timeout: 10_000, what: 'both tabs in one strip' });
-  out.tabs = await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#ptabs .ptab')].map(t => [t.dataset.tab, !!t.querySelector('svg.ic'), !!t.querySelector('svg.burst')]))`).then(JSON.parse);
+  out.tabs = await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#ptabs .ptab')].map(t => [t.dataset.tab.split(':')[0], !!t.querySelector('svg.ic'), !!t.querySelector('svg.burst')]))`).then(JSON.parse);
   ctx.assert.deepEqual(out.tabs, [['chat', true, true], ['shell', true, false]], 'a mark on each tab');
   await ctx.settle();
   await ctx.shot('2-tabs', { x: 380, y: 0, width: 700, height: 90 });

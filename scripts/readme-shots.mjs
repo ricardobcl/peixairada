@@ -424,7 +424,7 @@ export default async function (ctx) {
     await board();
 
     // 9 · in the chat: Claude in the drawer on the left; a zsh, the PR and VS Code Web on tabs on the right
-    await ctx.key('KeyT'); await ctx.waitFor(`window.peix.state().tabs.includes('shell')`, { what: 'the zsh tab', timeout: 15000 });
+    await ctx.key('KeyT'); await ctx.waitFor(`window.peix.state().tabs.some(k => k.startsWith('shell:'))`, { what: 'the zsh tab', timeout: 15000 });
     await ctx.key('KeyG'); await ctx.waitFor(`window.peix.state().tabs.some(k => k.startsWith('gh:'))`, { what: 'the PR tab' });
     await ctx.key('KeyC'); await ctx.waitFor(`window.peix.state().termSession === ${JSON.stringify(grid.id)} && !window.peix.state().termExited`, { what: 'Claude in the drawer', timeout: 20000 });
     await ctx.waitFor(`String(window.peix.screen(0)).includes('accept edits')`, { what: 'the drawer drawn', timeout: 15000 }).catch(() => ctx.log('the drawer\'s screen was not read back'));

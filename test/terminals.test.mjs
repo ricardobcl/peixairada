@@ -139,9 +139,13 @@ test('a zsh drawer: a holder running zsh -l -i in the chat folder, beside the cl
     assert.equal(r.status, 201, JSON.stringify(r.body));
     const t = r.body.terminal; assert.equal(t.shell, true); assert.equal(t.sessionId, chat.id); assert.equal(t.resume, false);
     const again = await srv.api(`api/sessions/${chat.id}/shell`, { method: 'POST' });
-    assert.equal(again.status, 200); assert.equal(again.body.terminal.id, t.id, 'one zsh per chat');
+    assert.equal(again.status, 200); assert.equal(again.body.terminal.id, t.id, 'the chat\'s zsh, answered with again');
+    // ⌘T (2026-10-13): `fresh` starts another beside it, every time
+    const more = await srv.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30, fresh: true });
+    assert.equal(more.status, 201, JSON.stringify(more.body)); assert.notEqual(more.body.terminal.id, t.id, 'a second zsh');
     const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
-    assert.equal(s.shell?.id, t.id, 'the chat carries its zsh'); assert.equal(s.terminal, null, 'and it is not its claude drawer');
+    assert.equal(s.shell?.id, t.id, 'the chat carries its first zsh'); assert.equal(s.terminal, null, 'and it is not its claude drawer');
+    assert.deepEqual(s.shells.map(x => x.id), [t.id, more.body.terminal.id], 'and every zsh, oldest first');
     assert.equal(s.alive, false, 'a shell is no claude: the chat is not live');
     const a = attach(srv.url, t.id, { until: 'peix-shell-22', timeout: 20_000 });
     await a.opened; await waitFor(() => /[%$#] *$/.test(a.text().replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')), { timeout: 10_000, what: 'the shell\'s prompt' });
@@ -150,6 +154,8 @@ test('a zsh drawer: a holder running zsh -l -i in the chat folder, beside the cl
     assert.ok(out.all.includes('peix-shell-22'), `the zsh ran the command: ${JSON.stringify(out.all.slice(-300))}`);
     const d = await srv.api(`api/terminals/${t.id}`, { method: 'DELETE' }); assert.equal(d.status, 200);
     await waitFor(async () => (await srv.terminals()).find(x => x.id === t.id)?.exited != null, { what: 'the zsh ending' });
+    const after = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
+    assert.equal(after.shells.find(x => x.id === more.body.terminal.id)?.exited, null, 'the other zsh lives on');
   } finally { await srv.stop(); }
 });
 

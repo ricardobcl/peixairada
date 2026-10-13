@@ -1,6 +1,6 @@
 // ⌘2 splits the chat column in two and ⌘1 / ⌘2 move the keys between the halves (2026-09-22). What this keeps
-// honest: a tab lives in exactly one half, both halves can hold a live terminal at the same time, ⌘W leaves the half
-// the keys were not in, and ⌘0 leaves the one they are in (with nothing split it is the chat's size again). Since
+// honest: a tab lives in exactly one half, both halves can hold a live terminal at the same time, ⌘W on the chat leaves
+// the half the keys were not in, and ⌘0 leaves the one they are in (with nothing split it is the chat's size again). Since
 // 2026-09-25 a split always puts claude in the left half, whatever the column was showing. Since 2026-09-28 a half
 // whose one tab is not a web page has no strip — a 2 px rule, the accent under the keys, the same height either way —
 // and ⌥⌘W closes the tab the keys are in; an empty half keeps its strip (the drop, and ⋯ for ⊟ ⨯). A tab dragged across
@@ -9,8 +9,8 @@
 // with tiles, each half a tile — 8 px apart, bordered, whole on the half with the keys, a lone strip nothing at all.
 export const meta = { server: true, fake: true, fixture: 'auto' };
 
-const halves = ctx => ctx.peix('state().halves');
-const strips = ctx => ctx.evaluate(`JSON.stringify(['#ptabs', '#ptabsB'].map(id => [...document.querySelectorAll(id + ' .ptab')].map(b => b.dataset.tab)))`).then(JSON.parse);
+const halves = ctx => ctx.peix('state().halves').then(h => h.map(k => k && k.split(':')[0]));   // a zsh's tab is shell:<its id>
+const strips = ctx => ctx.evaluate(`JSON.stringify(['#ptabs', '#ptabsB'].map(id => [...document.querySelectorAll(id + ' .ptab')].map(b => b.dataset.tab.split(':')[0])))`).then(JSON.parse);
 // each strip: a rule (.lone) or a strip, and how tall
 const rules = ctx => ctx.evaluate(`JSON.stringify(['#ptabs', '#ptabsB'].map(id => (e => ({ lone: e.classList.contains('lone'), h: Math.round(e.getBoundingClientRect().height) }))(document.querySelector(id))))`).then(JSON.parse);
 const shown = ctx => ctx.evaluate(`JSON.stringify({ termA: !document.querySelector('#term').hidden, termB: !document.querySelector('#termB').hidden, log: !document.querySelector('#log').hidden, logIn: document.querySelector('#log').parentElement.id, empty: !!document.querySelector('.gempty') })`).then(JSON.parse);
@@ -58,9 +58,9 @@ export default async function (ctx) {
 
   // ⌥⌘T opens the zsh in the half the keys are in: two live terminals, side by side, and no strip over either
   await ctx.key('KeyT');
-  await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === '["chat","shell"]'`, { what: 'the zsh in the right half' });
+  await ctx.waitFor(`JSON.stringify(window.peix.state().halves.map(k => k && k.split(':')[0])) === '["chat","shell"]'`, { what: 'the zsh in the right half' });
   await ctx.waitFor(`window.peix.term(1).ws === 1 && window.peix.term(0).ws === 1`, { what: 'both halves attached' });
-  ctx.assert.deepEqual(await ctx.peix('state().strips'), [['chat'], ['shell']], 'each half holds its own tab');
+  ctx.assert.deepEqual(await ctx.peix('state().strips').then(s => s.map(l => l.map(k => k.split(':')[0]))), [['chat'], ['shell']], 'each half holds its own tab');
   ctx.assert.deepEqual(await strips(ctx), [[], []], 'one tab each: neither strip lists anything');
   ctx.assert.deepEqual((await rules(ctx)).map(x => [x.lone, x.h]), [[true, 2], [true, 2]], 'both are a 2 px rule');
   const two = await shown(ctx);
@@ -88,7 +88,7 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#ptabs').classList.contains('lone')`), false, 'and no rule where its strip would be');
   await ctx.openChat(chat.id);
   await ctx.waitFor(`window.peix.state().split === true`, { what: 'the split chat still split' });
-  await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === '["chat","shell"]'`, { what: 'both halves back as they were' });
+  await ctx.waitFor(`JSON.stringify(window.peix.state().halves.map(k => k && k.split(':')[0])) === '["chat","shell"]'`, { what: 'both halves back as they were' });
   await ctx.waitFor(`window.peix.term(1).ws === 1 && window.peix.term(0).ws === 1`, { what: 'both halves attached again' });
 
   // ⌘1 goes back to the left half — and neither terminal changes size, the rule being as tall lit as not; ⌥⌘→ walks
@@ -101,7 +101,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual(await sizes(), was, 'moving the keys resized neither terminal');
   await ctx.key('ArrowRight');
   await ctx.waitFor(`window.peix.state().focusG === 1`, { what: '⌥⌘→ across the divider' });
-  ctx.assert.equal(await ctx.peix('state().tab'), 'shell', 'onto the zsh, which stayed where it was');
+  ctx.assert.match(await ctx.peix('state().tab'), /^shell:/, 'onto the zsh, which stayed where it was');
 
   // ⌥⌘W on the chat's tab closes nothing: it has no ×, and says what does
   await ctx.cmd('Digit1');
@@ -110,25 +110,25 @@ export default async function (ctx) {
   ctx.assert.deepEqual(await halves(ctx), ['chat', 'shell'], 'and both halves are as they were');
   await ctx.evaluate(`document.querySelectorAll('.note').forEach(n => n.remove())`);
 
-  // ⌘W closes the half the keys are in — the left one, claude's — and the zsh is the column, claude a tab beside it
+  // ⌘W on the chat's tab closes the half the keys are in — the left one, claude's — and the zsh is the column, claude a
+  // tab beside it (on any other tab ⌘W closes that tab: tab-keys.mjs)
   ctx.assert.equal(await ctx.evaluate(`window.peixKey('KeyW', 'cmd')`), true, '⌘W was the board\'s to take');
   await ctx.waitFor(`window.peix.state().split === false`, { what: 'the split closed' });
   ctx.assert.deepEqual(await halves(ctx), ['shell', null], 'the half the keys were not in is what stayed');
   ctx.assert.deepEqual(await strips(ctx), [['chat', 'shell'], []], 'one half with two tabs: its strip lists both');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#ptabs').classList.contains('lone')`), false, 'a whole strip, not a rule');
-  ctx.assert.equal(await ctx.evaluate(`window.peixKey('KeyW', 'cmd')`), false, 'with one half ⌘W is the window\'s again');
 
   // ⌘2 again, from the zsh alone: claude takes the left half back and the zsh goes beside it (2026-09-25), the keys
   // staying on the zsh
   await ctx.cmd('Digit2');
-  await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === '["chat","shell"]'`, { what: 'the split again, claude on the left' });
+  await ctx.waitFor(`JSON.stringify(window.peix.state().halves.map(k => k && k.split(':')[0])) === '["chat","shell"]'`, { what: 'the split again, claude on the left' });
   ctx.assert.equal(await ctx.peix('state().focusG'), 1, 'the keys stay on the zsh, now in the right half');
 
   // ⌥⌘W there ends the zsh (2026-09-28) — the
   // keys go back to claude, and a split asked for by hand keeps its half, empty, with its strip back
   await ctx.key('KeyW');
   await ctx.waitFor(`!window.peix.session().shell || window.peix.session().shell.exited !== null`, { what: 'the zsh ended by ⌥⌘W' });   // it lingers, exited, for a while
-  await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === '["chat",null]'`, { what: 'the right half empty' });
+  await ctx.waitFor(`JSON.stringify(window.peix.state().halves.map(k => k && k.split(':')[0])) === '["chat",null]'`, { what: 'the right half empty' });
   ctx.assert.equal(await ctx.peix('state().split'), true, 'the split asked for by hand stays');
   ctx.assert.equal(await ctx.peix('state().focusG'), 0, 'the keys went back to claude');
   ctx.assert.deepEqual((await rules(ctx)).map(x => x.lone), [true, false], 'the empty half has its strip again');
@@ -138,6 +138,7 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#ptabsB .gclose').click()`);
   await ctx.waitFor(`window.peix.state().split === false`, { what: 'the right half closed' });
   ctx.assert.deepEqual(await halves(ctx), ['chat', null], 'the right ⨯ leaves the chat');
+  ctx.assert.equal(await ctx.evaluate(`window.peixKey('KeyW', 'cmd')`), false, 'on the chat with one half ⌘W is the window\'s again');
   const end = await shown(ctx);
   ctx.assert.deepEqual({ termA: end.termA, termB: end.termB, logIn: end.logIn }, { termA: true, termB: false, logIn: 'gbody' },
     'the claude drawer is the whole column again');
@@ -147,7 +148,7 @@ export default async function (ctx) {
   await ctx.cmd('Digit2');
   await ctx.waitFor(`window.peix.state().split === true`, { what: 'split once more' });
   await ctx.key('KeyT');
-  await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === '["chat","shell"]'`, { what: 'a new zsh in the right half' });
+  await ctx.waitFor(`JSON.stringify(window.peix.state().halves.map(k => k && k.split(':')[0])) === '["chat","shell"]'`, { what: 'a new zsh in the right half' });
   const before = await halves(ctx);
   ctx.assert.equal(await ctx.peix('state().focusG'), 1, 'the keys in the right half');
   await ctx.cmd('Digit0');

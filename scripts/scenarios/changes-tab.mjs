@@ -64,7 +64,7 @@ export default async function (ctx) {
 
   // Commit…: typed into the zsh, not run
   await ctx.evaluate(`document.querySelector('#chg [data-act="commit"]').click()`);
-  await ctx.waitFor(`window.peix.state().tabs.includes('shell') && window.peix.screen(1).some(r => r.includes('git commit -v'))`, { what: 'git commit -v typed in the zsh', timeout: 20000 });
+  await ctx.waitFor(`window.peix.state().tabs.some(k => k.startsWith('shell:')) && window.peix.screen(1).some(r => r.includes('git commit -v'))`, { what: 'git commit -v typed in the zsh', timeout: 20000 });
   out.commitTyped = true;
 
   // ⌥⌘W on the changes tab closes it

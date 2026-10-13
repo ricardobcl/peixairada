@@ -4589,6 +4589,7 @@ const toolName = n => {
     chats: ctx => `${ctx.name}${ctx.env ? ` · task ${ctx.env}` : ''} — an open chat, or ＋ a new one · type to filter · ↑↓ · ⏎ · esc`,
     launch: 'Anything — chats, projects, PRs, tickets, actions · ⏎ · esc',
     toggle: 'Switches — ⏎ flips one, the menu stays · ← back · esc', prs: "Pull requests — every chat's · ⏎ opens the chat and the PR · ← back · esc",
+    page: 'A page on a new tab — its address, or words to search the web · ⏎ · esc',
   };
   const PICK_NOUN = { pr: 'PR', prs: 'PR', chat: 'chat', chats: 'chat', folder: 'folder', env: 'environment', launch: 'thing', toggle: 'switch' };   // for "no … matches"; the rest are projects
   const homePath = f => f.replace(/^\/Users\/[^/]+(?=\/|$)/, '~');
@@ -4686,6 +4687,10 @@ const toolName = n => {
       const raw = $('#pickq').value, lq = raw.replace(/^[>#@!]/, '').trim().toLowerCase();
       pick.list = pick.mode === 'launch' ? launchRows(raw) : pick.mode === 'toggle' ? hunt(toggleRows(), t => [t.name]) : hunt(allPrs(), pr => [pr.label, pr.title || '', pr.chat || '']).map(pr => ({ kind: 'pr', id: 'pr:' + pr.url, pr }));
       row = (x, i) => launchRow(x, i, sel, text => markHits(text, lq));
+    } else if (pick.mode === 'page') {   // ⌘T on a page (2026-10-13): what was typed first, then the chat's own pages not on a tab
+      const raw = $('#pickq').value.trim();
+      pick.list = [...(raw ? [typedPage(raw)] : []), ...hunt(chatPages(state.sessions.get(state.current)), x => x.kind === 'pr' ? [x.pr.label, x.pr.title || ''] : x.kind === 'ticket' ? [x.t.key, x.t.summary || ''] : [x.name, x.url])];
+      row = (x, i) => launchRow(x, i, sel, mark);
     } else if (pick.mode === 'pr') {
       pick.list = hunt(state.sessions.get(state.current)?.prs || [], pr => [pr.label, pr.title || '']);
       row = (pr, i) => `<div class="pkrow pr${sel(i)}" data-i="${i}" data-state="${esc(pr.state || '')}" title="${esc(pr.url)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${mark(pr.label)}</span><span class="n${pr.title ? '' : ' pending'}">${pr.title ? mark(pr.title) : 'title on its way from gh…'}${pr.url === shownPr.url ? '<span class="cur">current</span>' : ''}</span><span class="t" data-at="${esc(pr.lastAt || '')}"></span></div>`;
@@ -4731,7 +4736,7 @@ const toolName = n => {
     if (was) { const i = pick.list.findIndex(x => x.isNew ? was.isNew : x.id === was.id); if (i >= 0) pick.sel = i; }
     pick.sel = Math.max(0, Math.min(pick.sel, pick.list.length - 1));
     const rows = pick.list.map(row);
-    $('#picklist').innerHTML = rows.join('') || `<div class="none">no ${PICK_NOUN[pick.mode] || 'project'} matches</div>`;
+    $('#picklist').innerHTML = rows.join('') || (pick.mode === 'page' ? '<div class="none">an address, or words to search</div>' : `<div class="none">no ${PICK_NOUN[pick.mode] || 'project'} matches</div>`);
     fillAges($('#picklist'));
     $('#picklist .pkrow.sel')?.scrollIntoView({ block: 'nearest' });
   }
@@ -4740,6 +4745,7 @@ const toolName = n => {
     if (['launch', 'toggle', 'prs'].includes(pick.mode)) return launchChoose(x);
     if (!x) { dlg.close(); return; }
     if (pick.mode === 'pr') { dlg.close(); showPr(x.url); }
+    else if (pick.mode === 'page') { dlg.close(); openExternal(x.kind === 'pr' ? x.pr.url : x.kind === 'ticket' ? x.t.url : x.url); }
     else if (pick.mode === 'chat') { dlg.close(); openSession(x.id, { locate: true }); }
     else if (pick.mode === 'new') {   // a project's, or a folder's, open chats with ＋ a new one — or the clone first
       if (x.clone) cloneAndStart(x); else chatsStep({ key: x.key, name: x.name, cwds: x.cwds });
@@ -4819,6 +4825,7 @@ const toolName = n => {
       ...(!s ? [] : [
         { name: 'Its Claude, in its drawer', sub: of, hint: '⌥⌘C', fn: hotClaude },
         { name: `A ${shName()} in its folder`, sub: of, hint: '⌥⌘T', fn: hotShell },
+        ...(shellLive(s) ? [{ name: `Another ${shName()} beside it`, sub: of, hint: '⌘T', fn: () => startShell(s, true) }] : []),
         ...(s.prs?.length ? [{ name: 'Its PR on GitHub', sub: of, hint: '⌥⌘G', fn: hotGh }] : []),
         ...(inApp ? [{ name: 'Its folder in VS Code Web', sub: of, hint: '⌥⌘E', fn: hotVsCode }] : []),
         ...(canTick(s) ? [{ name: 'Tick it done', sub: of, fn: () => tickDone(s.id, true, $('#shead')) }] : []),
@@ -4859,6 +4866,22 @@ const toolName = n => {
     for (const s of [...state.sessions.values()].filter(visible).sort(byWord)) for (const t of s.tickets || []) if (!seen.has(t.key)) seen.set(t.key, { ...t, chatId: s.id, chat: s.title });
     return [...seen.values()];
   }
+  /** ⌘T's box, typed into: an address as given, a bare host over https (localhost and the loopback over http), and
+   *  anything else a search — a browser's address bar. */
+  function typedPage(raw) {
+    const url = /^[a-z][\w+.-]*:\/\//i.test(raw) ? raw
+      : /^(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)(:\d+)?([/?#]\S*)?$/i.test(raw) ? 'http://' + raw
+      : /^[\w-]+(\.[\w-]+)+(:\d+)?([/?#]\S*)?$/.test(raw) ? 'https://' + raw : null;
+    return url ? { kind: 'url', id: 'url:typed', url, name: `Open ${bareUrl(url)}` } : { kind: 'url', id: 'url:typed', url: 'https://www.google.com/search?q=' + encodeURIComponent(raw), name: `Search the web for “${raw}”` };
+  }
+  /** The open chat's own pages that are not on a tab of it: its PRs, its tickets, its repository on GitHub. */
+  function chatPages(s) {
+    if (!s) return [];
+    const open = new Set(state.paneGh.get(s.id) || []), repo = s.cwd && state.repos[s.cwd];
+    return [...(s.prs || []).filter(pr => !open.has(pr.url)).map(pr => ({ kind: 'pr', id: 'pr:' + pr.url, pr })),
+      ...(s.tickets || []).filter(t => t.url && !open.has(t.url)).map(t => ({ kind: 'ticket', id: 'tk:' + t.key, t })),
+      ...(repo && !open.has(repo) ? [{ kind: 'url', id: 'url:' + repo, url: repo, name: `${bareUrl(repo).replace(/^github\.com\//, '')} on GitHub` }] : [])];
+  }
   const LAUNCH_SECTIONS = { chat: 'Chats', project: 'Projects', pr: 'Pull requests', ticket: 'Tickets', action: 'Actions', toggle: 'Switches', menu: '' };
   /** The launcher's rows for a query (none: the menu): each section's best matches, best first, at most six — all of
    *  them under a prefix. */
@@ -4886,6 +4909,7 @@ const toolName = n => {
     if (x.kind === 'ticket') { const t = x.t; return r('ticket', `<span class="ltk" data-cat="${esc(t.cat)}">${esc(t.key)}</span>`, mark(t.summary || t.key), esc(t.chat || ''), `<span class="st">${esc((t.status || '').toLowerCase())}</span>`, ` title="${esc(t.url)}"`); }
     if (x.kind === 'action') return r('action', '<span class="ac">&gt;</span>', `${mark(x.name)}${x.sub ? `<span class="cur">${esc(x.sub)}</span>` : ''}`, x.hint ? `<kbd>${esc(x.hint)}</kbd>` : '', '');
     if (x.kind === 'toggle') return r('toggle', '<span class="ac">⏻</span>', mark(x.name), x.hint ? esc(x.hint) : '', swHtml(x.on()));
+    if (x.kind === 'url') return r('url', ICON.globe, x.id === 'url:typed' ? esc(x.name) : mark(x.name), '', '', ` title="${esc(x.url)}"`);   // ⌘T's box: a page
     return r('menu', x.icon || '', mark(x.name), x.hint ? `<kbd>${esc(x.hint)}</kbd>` : '', x.leaf ? '' : '›');   // a menu row
   }
   function launchChoose(x) {
@@ -4919,15 +4943,16 @@ const toolName = n => {
     ['⌥⌘0', 'Go to', 'home — the board\'s facts and your day', 'no chat open · a row opens its chat', ['alt:Digit0']],
     ['?', 'Go to', 'this list, on a sheet of its own', 'outside a box or a terminal', []],
     ['⌥⌘C', 'This chat', 'its Claude, in its drawer', 'starts it, or takes over one running elsewhere', ['alt:KeyC']],
-    ['⌥⌘T', 'This chat', 'a shell in its folder, on a tab', 'again to show it', ['alt:KeyT']],
+    ['⌘T', 'This chat', 'a new tab — another shell, or from a web page an address to open', 'from claude\'s drawer, a shell, the transcript or the changes, a shell in its folder · from a GitHub page or VS Code Web, a box for the address — or words to search · it opens beside the chat', ['cmd:KeyT']],
+    ['⌥⌘T', 'This chat', 'a shell in its folder, on a tab', 'again to show it — ⌘T opens another', ['alt:KeyT']],
     ['⌥⌘E', 'This chat', 'its folder in VS Code Web, on a tab', '', ['alt:KeyE']],
     ['⌥⌘G', 'This chat', 'its PR on GitHub, on a tab', 'the repo when it has none · a picker with several', ['alt:KeyG']],
     ['⌥⌘D', 'This chat', 'what it changed, on a tab', 'its last turn\'s edits, the uncommitted tree or the branch against its base · Commit… and Push type into its shell · + on a line sends Claude a note', ['alt:KeyD']],
-    ['⌥⌘W', 'This chat', 'close the tab the keys are in', 'the shell ends, a page or VS Code Web goes', ['alt:KeyW']],
+    ['⌘W', 'This chat', 'close the tab the keys are in', 'the shell ends, a page or VS Code Web goes · on the chat\'s own tab, its half closes — with one half, the window\'s own key · a dialog up closes first', ['cmd:KeyW']],
+    ['⌥⌘W', 'This chat', 'close the tab the keys are in, never more', 'as ⌘W, but on the chat\'s tab it says so, and never closes a half or the window', ['alt:KeyW']],
     ['⌘1 ⌘2', 'Layout', 'the left half, the right one', '⌘2 splits the chat in two the first time; one over the other, either turns it back · the digit is the half, the modifier the layout', ['cmd:Digit1', 'cmd:Digit2']],
     ['⌥⌘1 ⌥⌘2', 'Layout', 'the top half, the bottom one', '⌥⌘2 splits the chat that way the first time; side by side, either turns it', ['alt:Digit1', 'alt:Digit2']],
     ['⌥⌘←→', 'Layout', 'the tab to the left / right', 'across both halves\' strips · drag a tab onto the other half to move it there', ['alt:ArrowLeft', 'alt:ArrowRight']],
-    ['⌘W', 'Layout', 'close the half the keys are in', 'or the picker · with one half, the window\'s own key — ⌥⌘W is a tab', ['cmd:KeyW']],
     ['⌘0', 'Layout', 'only this half — the other closes', 'with one half, the chat\'s size back to normal', ['cmd:Digit0']],
     ['⌥⌘B', 'Layout', 'fold the list into a rail, and back', '', ['alt:KeyB']],
     ['⌥⌘S', 'Layout', 'the stack of busy chats beside the open one', 'tiles\' · with tiles off, both together · not from a page in the pane, where it is VS Code\'s Save All', ['alt:KeyS']],
@@ -4991,7 +5016,8 @@ const toolName = n => {
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
   // half goes and the one the keys are in becomes the column (2026-09-22), and with one half there is nothing to close,
   // so it is still what it always was — the chat's size back to normal.
-  const CMDKEYS = { Digit1: () => hotGroup(0), Digit2: () => hotGroup(1), Digit0: hotOnlyHalf, KeyW: hotCloseHalf, Comma: settingsToggle };
+  // ⌘T and ⌘W are the tabs' (2026-10-13), a browser's and iTerm's: a new one of the kind the keys are in, and that one closed.
+  const CMDKEYS = { Digit1: () => hotGroup(0), Digit2: () => hotGroup(1), Digit0: hotOnlyHalf, KeyT: hotNewTab, KeyW: hotClose, Comma: settingsToggle };
   // Every hotkey says whether it took the key, and ⌘W is the one that is asked: in the app it arrives as the
   // Window menu's own ⌘W, which closes the window when the board has nothing to close instead (see main.swift).
   // A dialog up swallows the rest, as it always did — but not ⌘W, which is how you close the dialog.
@@ -5000,7 +5026,7 @@ const toolName = n => {
     const fn = (mods === 'cmd' ? CMDKEYS : HOTKEYS)[code];
     if (!fn) return false;
     if ($('#hmenu').open) $('#hmenu').close();   // the header's menu is a dialog, but not one that should swallow a key
-    if (fn !== hotCloseHalf && !(fn === settingsToggle && $('#settings').open) && document.querySelector('dialog[open]')) return false;
+    if (fn !== hotClose && !(fn === settingsToggle && $('#settings').open) && document.querySelector('dialog[open]')) return false;
     return fn() !== false;
   };
   document.addEventListener('keydown', e => {
@@ -5109,19 +5135,40 @@ const toolName = n => {
     const keys = [...keysIn(s, 0), ...keysIn(s, 1)]; if (keys.length < 2) return note($('#shead'), 'Only the chat here — ⌥⌘T a zsh, ⌥⌘G its PR, ⌥⌘E the editor');
     openTab(s, keys[(keys.indexOf(tabOf(s)) + dir + keys.length) % keys.length]);
   }
-  // ⌥⌘T: a fresh zsh in the chat's folder, inline — the pane's zsh tab, like a new tab in iTerm (2026-09-20). One per
-  // chat: started on the first press, shown on the next ones; `exit` or the tab's × ends it. A failure is a note.
+  // ⌥⌘T: a fresh zsh in the chat's folder, inline — the pane's zsh tab, like a new tab in iTerm (2026-09-20). The
+  // chat's zsh: started on the first press, shown on the next ones — the one the keys are in, else the first (⌘T opens
+  // another, 2026-10-13); `exit` or the tab's × ends it. A failure is a note. Answers the zsh it showed, or null.
   async function hotShell() {
+    const s = state.sessions.get(state.current); if (!s) { noChat(); return null; }
+    const on = shellOfTab(s, tabOf(s)) || shellsOf(s)[0];
+    if (!on) return startShell(s, false);
+    setTab(s, 'shell:' + on.id); syncTerm(s); focusBoard(); focusTerm();
+    return on;
+  }
+  /** A zsh started in the chat's folder, on a new tab: the chat's first (⌥⌘T), or `fresh` another beside the ones it has
+      (⌘T). Answers it, or null. */
+  async function startShell(s, fresh) {
+    if (!s.cwd) { note($('#shead'), 'No folder known for this chat', true); return null; }
+    let t;
+    try { t = (await withCheckout(`shell:${s.id}`, () => api('POST', `/api/sessions/${s.id}/shell`, { ...termSize(), fresh }), c => note($('#shead'), `Its folder is not checked out — cloning ${c.ref} first, then the ${shName()}`))).terminal; }
+    catch (e) { note($('#shead'), e.message, true); return null; }
+    const now = state.sessions.get(s.id) || s;   // the SSE update says the same a moment later — or said it already
+    if (!(now.shells || []).some(x => x.id === t.id)) now.shells = [...(now.shells || []), t];
+    if (!now.shell || now.shell.exited !== null) now.shell = t;
+    if (state.current !== s.id) return t;   // another chat by now: its tab waits on this one, not over that
+    openNewTab(now, 'shell:' + t.id);
+    syncTerm(now); focusBoard(); focusTerm();
+    return t;
+  }
+  /** A zsh tab's name: the shell's, and its place among the chat's when it has several — zsh, zsh 2, zsh 3. */
+  const shLabel = (s, k) => { const i = shellsOf(s).findIndex(t => 'shell:' + t.id === k); return shName() + (i > 0 ? ` ${i + 1}` : ''); };
+  // ⌘T (2026-10-13): a new tab of the kind the keys are in. In a terminal — claude's drawer, a zsh — or on the chat, the
+  // changes or an empty half, another zsh in the chat's folder, as iTerm's ⌘T; on a page — GitHub, VS Code Web — a box
+  // for the address, as a browser's (pickOpen('page')). Either opens where a new tab does (openNewTab).
+  function hotNewTab() {
     const s = state.sessions.get(state.current); if (!s) return noChat();
-    if (!s.cwd) return note($('#shead'), 'No folder known for this chat', true);
-    const fresh = !shellLive(s);   // the first press opens a tab; the next ones only show it
-    if (fresh) {
-      try { s.shell = (await withCheckout(`shell:${s.id}`, () => api('POST', `/api/sessions/${s.id}/shell`, termSize()), c => note($('#shead'), `Its folder is not checked out — cloning ${c.ref} first, then the ${shName()}`))).terminal; }   // the SSE update says the same a moment later
-      catch (e) { return note($('#shead'), e.message, true); }
-      if (state.current !== s.id) return;   // another chat by now: its tab waits on this one, not over that
-    }
-    if (fresh) openNewTab(s, 'shell'); else setTab(s, 'shell');
-    syncTerm(s); focusBoard(); focusTerm();
+    if (isPaneTab(tabOf(s))) return pickOpen('page');
+    focusBoard(); startShell(s, true);
   }
   function hotGh() {
     const s = state.sessions.get(state.current); if (!s) return noChat();
@@ -5718,9 +5765,9 @@ const toolName = n => {
       termLive(s) ? `<button class="hmi${focusOn(s.id) ? ' on' : ''}" id="viewBtn" aria-pressed="${focusOn(s.id)}" title="${esc(viewTip(s))}">${ICON.view}<span>focus view</span><span class="k">${focusOn(s.id) ? 'on' : 'off'}</span></button>` : '',
       s.cwd ? `<button class="hmi" id="chgBtn" title="What this chat changed in its folder — the diff, by turn, uncommitted or the branch">${ICON.diff}<span class="lbl">changes</span><span class="k">⌥⌘D</span></button>` : '',
       s.cwd ? `<button class="hmi" id="webBtn" title="${WEB_TIP}">${ICON.vscode}<span class="lbl">VS Code Web</span><span class="k">⌥⌘E</span></button>` : '',
-      // what a tab's × does, for the tabs that lose their strip alone in a half (2026-09-28) — ⌥⌘W with the keys in it
-      shellLive(s) ? `<button class="hmi" id="shellEndBtn" title="End this chat's ${shName()} and close its tab — exit in it does the same · ⌥⌘W with the keys in it"><span class="gl">×</span><span>end the ${shName()}</span><span class="k"></span></button>` : '',
-      ideKey(s) ? `<button class="hmi" id="ideCloseBtn" title="Close VS Code Web's tab — ⌥⌘E opens it again · ⌥⌘W with the keys in it"><span class="gl">×</span><span>close VS Code Web</span><span class="k"></span></button>` : '',
+      // what a tab's × does, for the tabs that lose their strip alone in a half (2026-09-28) — ⌘W with the keys in it
+      shellLive(s) ? `<button class="hmi" id="shellEndBtn" title="End this chat's ${shName()}${shellsOf(s).length > 1 ? ' the keys are in, else its first,' : ''} and close its tab — exit in it does the same · ⌘W with the keys in it"><span class="gl">×</span><span>end the ${shName()}</span><span class="k"></span></button>` : '',
+      ideKey(s) ? `<button class="hmi" id="ideCloseBtn" title="Close VS Code Web's tab — ⌥⌘E opens it again · ⌘W with the keys in it"><span class="gl">×</span><span>close VS Code Web</span><span class="k"></span></button>` : '',
       inVsCode(s) ? `<div class="hmi info" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the Claude behind it; ${s.alive ? 'the Claude here row takes it over' : 'continue it here or there'}">${ICON.vscode}<span>VS Code's chat</span><span></span></div>` : '',
       canTick(s) && s.prs?.length && !s.forGood ? `<button class="hmi" id="forGoodBtn" title="Tick it done and forget its PRs: a push, a review or a reply on one no longer brings it back, moves it up or alerts you — a word in it, or ↩, ends that">${ICON.forget}<span>done for good</span><span class="k">⌥-click ✓</span></button>` : '',
       '<div class="sep"></div>',
@@ -5757,7 +5804,7 @@ const toolName = n => {
     };
     const tb = $('#termBtn'); if (tb) tb.onclick = () => { menu.close(); termAction(s); };
     const cb = $('#chgBtn'); if (cb) cb.onclick = () => { menu.close(); hotDiff(); };
-    const sb = $('#shellEndBtn'); if (sb) sb.onclick = () => { menu.close(); dropTab(s, 'shell'); };
+    const sb = $('#shellEndBtn'); if (sb) sb.onclick = () => { menu.close(); const k = isShellTab(tabOf(s)) ? tabOf(s) : shellLive(s) && 'shell:' + shellsOf(s)[0].id; if (k) dropTab(s, k); };
     const ib = $('#ideCloseBtn'); if (ib) ib.onclick = () => { menu.close(); if (ideKey(s)) dropTab(s, ideKey(s)); };
     const fg = $('#forGoodBtn'); if (fg) fg.onclick = () => { menu.close(); tickDone(s.id, true, $('#shead'), null, true); };
     $('#settingsBtn').onclick = () => settingsOpen(true);
@@ -6438,9 +6485,14 @@ const toolName = n => {
     const s = state.sessions.get(state.current); if (s) { renderTabs(s); renderHead(s); }
   }
   const termLive = s => !!(s?.terminal && s.terminal.exited === null);
-  const shellLive = s => !!(s?.shell && s.shell.exited === null);
+  /** The chat's zsh tabs (2026-10-13: ⌘T opens another beside the first): every live one, oldest first — the server's
+      `shells`, each its tab `shell:<terminal id>`. */
+  const shellsOf = s => (s?.shells || (s?.shell ? [s.shell] : [])).filter(t => t.exited === null);
+  const shellLive = s => shellsOf(s).length > 0;
+  const isShellTab = k => /^shell:/.test(k || '');
+  const shellOfTab = (s, k) => shellsOf(s).find(t => 'shell:' + t.id === k) || null;
   // Which tab a chat is on — page state, per chat: 'chat' (the claude session while it runs here, else the rendered
-  // chat), 'shell' while its zsh lives, or one of its pages in the app's pane — 'gh:<url>' a GitHub page (a PR each),
+  // chat), 'shell:<id>' while a zsh of it lives, or one of its pages in the app's pane — 'gh:<url>' a GitHub page (a PR each),
   // 'ide:<url>' its folder's editor (2026-09-20). The pages a chat opened are remembered here (state.paneGh per chat,
   // state.paneIde per folder), so they come back with the chat; a tab whose page is gone falls back to the chat.
   const tabs = new Map();
@@ -6481,7 +6533,7 @@ const toolName = n => {
   };
   const ideKey = s => inApp && s?.cwd && state.paneIde.get(s.cwd) ? 'ide:' + state.paneIde.get(s.cwd) : null;
   const paneKeys = s => !inApp || !s ? [] : [...(state.paneGh.get(s.id) || []).map(u => 'gh:' + u), ...(ideKey(s) ? [ideKey(s)] : [])];
-  const tabKeys = s => ['chat', ...(shellLive(s) ? ['shell'] : []), ...(s && changesOpen.has(s.id) ? ['changes'] : []), ...paneKeys(s)];
+  const tabKeys = s => ['chat', ...shellsOf(s).map(t => 'shell:' + t.id), ...(s && changesOpen.has(s.id) ? ['changes'] : []), ...paneKeys(s)];
   const tabOf = s => placeOf(s)[focusG];
   /** A tab put on show, in the half whose strip lists it — the one there is, unsplit — and the keys go with it.
       There is one transcript, one xterm per half and one web view per page, so a tab lives in exactly one half;
@@ -6541,7 +6593,7 @@ const toolName = n => {
     const p = placeOf(s);
     for (const tm of terms) {
       const k = p[tm.g];
-      const want = !s || !k ? null : k === 'shell' ? s.shell : k === 'chat' && termLive(s) ? s.terminal : null;
+      const want = !s || !k ? null : isShellTab(k) ? shellOfTab(s, k) : k === 'chat' && termLive(s) ? s.terminal : null;
       if (want) { if (tm.id !== want.id || tm.lost) attachTerm(tm, want); }
       else if (tm.id) { detachTerm(tm); showDrawer(tm, false); }
     }
@@ -6593,10 +6645,10 @@ const toolName = n => {
       // the half's own, ◫ (or ⊟) and ⨯, behind a ⋯ at the strip's end (Q5)
       const half = two ? `<button class="gmore" title="This half: turn the split, close it">${ICON.more}</button><span class="gacts">`
         + `<button class="nav gturn" data-to="${stackNow() ? 'side' : 'over'}" title="${stackNow() ? 'The halves side by side · ⌘1 ⌘2' : 'The halves one over the other · ⌥⌘1 ⌥⌘2'}">${stackNow() ? ICON.side : ICON.over}</button>`
-        + `<button class="nav gclose" title="Close this half — the other one becomes the whole column · ⌘W">${ICON.close}</button></span>` : '';
+        + `<button class="nav gclose" title="Close this half — the other one becomes the whole column · ⌘0 from that one">${ICON.close}</button></span>` : '';
       const html = keys.map(k =>
         k === 'chat' ? tab(k, termLive(s) ? 'claude' : 'chat', `${termLive(s) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C`, '', ICON.claude)
-        : k === 'shell' ? tab(k, shName(), `A ${shName()} in ${s.cwd || 'its folder'} · ⌥⌘T`, 'End this shell', ICON.term)
+        : isShellTab(k) ? tab(k, shLabel(s, k), `A ${shName()} in ${s.cwd || 'its folder'} · ⌥⌘T · ⌘T another`, 'End this shell', ICON.term)
         : k === 'changes' ? tab(k, 'changes', `What this chat changed in ${s.cwd || 'its folder'} · ⌥⌘D`, 'Close the changes', ICON.diff)
         : k.startsWith('gh:') ? tab(k, paneLabel(k), GH_PR.test(k.slice(3)) ? `${k.slice(3)} · ⌥⌘G` : k.slice(3), 'Close this page', GH_PR.test(k.slice(3)) ? ICON.pr : ICON.globe)
         : tab(k, 'VS Code', `${s.cwd} in VS Code Web · ⌥⌘E`, 'Close the editor', ICON.vscode)).join('')
@@ -6802,11 +6854,14 @@ const toolName = n => {
     syncTerm(s); if (s) renderHead(s);
     focusBoard(); focusTerm();
   }
-  // ⌘W (2026-09-22): the half the keys are in, the way it closes
-  // an editor rather than the window. A dialog goes first — with the picker up ⌘W is how you get rid of it — and
-  // with one half there is nothing of the board's to close, so the key is handed back and the window takes it.
-  function hotCloseHalf() {
+  // ⌘W (2026-10-13): the tab the keys are in, as a browser's or iTerm's ⌘W — a zsh ended, a page or the editor let go,
+  // the changes closed (dropTab, ⌥⌘W's). The chat's own tab is never closed: on it, or on a half with nothing, ⌘W
+  // closes the half (its whole job from 2026-09-22), and with one half there is nothing of the board's to close, so the
+  // key is handed back and the window takes it. A dialog goes first — with the picker up ⌘W is how you get rid of it.
+  function hotClose() {
     const dlg = document.querySelector('dialog[open]'); if (dlg) { dlg.close(); return true; }
+    const s = state.sessions.get(state.current), k = s && tabOf(s);
+    if (k && k !== 'chat') { dropTab(s, k); return true; }
     if (!splitNow()) return false;
     closeHalf(focusG);
     return true;
@@ -6851,7 +6906,7 @@ const toolName = n => {
   // × on a tab: the zsh ends (the server says so, and the tab goes with it); a page is forgotten here — its view
   // lingers in the shell until it needs the room — and the chat tab takes its place.
   function closeTab(s, k) {
-    if (k === 'shell') { if (s.shell) api('DELETE', `/api/terminals/${s.shell.id}`).catch(e => note(seen($('#ptabs')), `Could not end the zsh: ${e.message}`, true)); return; }
+    if (isShellTab(k)) { const t = shellOfTab(s, k); if (t) api('DELETE', `/api/terminals/${t.id}`).catch(e => note(seen($('#ptabs')), `Could not end the zsh: ${e.message}`, true)); return; }
     if (k === 'changes') changesOpen.delete(s.id);
     else if (k.startsWith('gh:')) state.paneGh.set(s.id, (state.paneGh.get(s.id) || []).filter(u => 'gh:' + u !== k));
     else if (s.cwd) state.paneIde.delete(s.cwd);
@@ -7007,9 +7062,9 @@ const toolName = n => {
   }
   /** A command typed into the chat's zsh, unrun: the tab opened or shown, then the text once its socket is up. */
   async function typeInShell(s, cmd, at) {
-    await hotShell();
+    const sh = await hotShell(); if (!sh) return;
     for (let i = 0; i < 60; i++) {
-      const sh = state.sessions.get(s.id)?.shell || s.shell, tm = sh && termFor(sh.id);
+      const tm = termFor(sh.id);
       if (tm?.ws?.readyState === 1) { await new Promise(r => setTimeout(r, 350)); termSend(tm, cmd); focusTerm(); return; }
       await new Promise(r => setTimeout(r, 100));
     }

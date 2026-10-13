@@ -7,7 +7,7 @@
 // — the keys turn the rest — and the zsh's × is the ··· menu's (or ⌥⌘W).
 export const meta = { server: true, fake: true, fixture: 'auto' };
 
-const halves = ctx => ctx.peix('state().halves');
+const halves = ctx => ctx.peix('state().halves').then(h => h.map(k => k && k.split(':')[0]));   // a zsh's tab is shell:<its id>
 const rects = ctx => ctx.evaluate(`JSON.stringify(Object.fromEntries(['#grp', '#grpB', '#gsplit', '#groups'].map(id => { const r = document.querySelector(id).getBoundingClientRect(); return [id.slice(1), { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }]; })))`).then(JSON.parse);
 const layout = ctx => ctx.evaluate(`JSON.stringify({ stack: document.querySelector('#groups').classList.contains('stack'), dir: getComputedStyle(document.querySelector('#groups')).flexDirection, cursor: getComputedStyle(document.querySelector('#gsplit')).cursor, turn: document.querySelector('#ptabsB .gturn')?.dataset.to || null })`).then(JSON.parse);
 const ids = ctx => Promise.all([0, 1].map(g => ctx.peix(`term(${g}).id`)));
@@ -39,7 +39,7 @@ export default async function (ctx) {
 
   // ⌥⌘T puts the zsh in the bottom half: two live terminals, one over the other, each fitted to its own body
   await ctx.key('KeyT');
-  await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === '["chat","shell"]'`, { what: 'the zsh in the bottom half' });
+  await ctx.waitFor(`JSON.stringify(window.peix.state().halves.map(k => k && k.split(':')[0])) === '["chat","shell"]'`, { what: 'the zsh in the bottom half' });
   await ctx.waitFor(`window.peix.term(1).ws === 1 && window.peix.term(0).ws === 1`, { what: 'both halves attached' });
   await ctx.waitFor(`[...document.querySelectorAll('#termBodyB .xterm-rows > div')].some(r => /[$%❯]/.test(r.textContent))`, { what: 'the zsh prompt in the bottom half' });
   await fits(ctx);
@@ -84,7 +84,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual([await ctx.peix('state().split'), (await layout(ctx)).stack], [false, false], 'the other chat is one half, in a row');
   await ctx.openChat(chat.id);
   await ctx.waitFor(`window.peix.state().stacked === true`, { what: 'the stacked chat still stacked' });
-  await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === '["chat","shell"]'`, { what: 'both halves back as they were' });
+  await ctx.waitFor(`JSON.stringify(window.peix.state().halves.map(k => k && k.split(':')[0])) === '["chat","shell"]'`, { what: 'both halves back as they were' });
 
   // ⌘W closes the half the keys are in — the top one — and the zsh is the column
   await ctx.cmd('Digit1');
@@ -111,11 +111,11 @@ export default async function (ctx) {
   ctx.assert.deepEqual(await halves(ctx), ['shell', null], 'the zsh, which the keys were in, is the column');
 
   // the layout outlives the split: the zsh ended and opened again, the board's own split comes back stacked
-  await ctx.evaluate(`document.querySelector('#ptabs .ptab[data-tab="shell"] .x').click()`);
+  await ctx.evaluate(`document.querySelector('#ptabs .ptab[data-tab^="shell:"] .x').click()`);
   await ctx.waitFor(`!window.peix.session().shell || window.peix.session().shell.exited !== null`, { what: 'the zsh ended' });   // it lingers, exited, for a while
-  await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === '["chat",null]'`, { what: 'the chat alone' });
+  await ctx.waitFor(`JSON.stringify(window.peix.state().halves.map(k => k && k.split(':')[0])) === '["chat",null]'`, { what: 'the chat alone' });
   await ctx.key('KeyT');
-  await ctx.waitFor(`JSON.stringify(window.peix.state().halves) === '["chat","shell"]'`, { what: 'a new zsh beside the chat' });
+  await ctx.waitFor(`JSON.stringify(window.peix.state().halves.map(k => k && k.split(':')[0])) === '["chat","shell"]'`, { what: 'a new zsh beside the chat' });
   ctx.assert.equal(await ctx.peix('state().stacked'), true, 'the split the board made itself is stacked, as the chat was left');
   await ctx.waitFor(`window.peix.term(1).ws === 1`, { what: 'the new zsh attached below' });
   await fits(ctx);

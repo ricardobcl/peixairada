@@ -505,7 +505,7 @@ for `$HOME`'s home and the account's.
   press, its group, one line, and the codes it is in HOTKEYS or CMDKEYS — the Keys pane and the ? sheet are drawn
   from it, and `npm run check` (`check-page.mjs`) fails a code with no row, a row no map answers, or a ⌥⌘ letter
   `boardKeys` in main.swift does not forward (⌥⌘S aside). The letters: **T** the chat's zsh tab (`hotShell()` →
-  `POST /api/sessions/:id/shell`, `s.shell`, `shName()`), **E** VS Code Web in the pane, **G** the chat's PR on GitHub
+  `POST /api/sessions/:id/shell`, `s.shells`, `shName()`), **E** VS Code Web in the pane, **G** the chat's PR on GitHub
   (several → the picker in `pr` mode; none → the repo, `state.repos`), **C** the chat's claude (`termAction()`, the
   `>_` path), **W** the tab the keys are in, closed (`hotCloseTab()` → `dropTab()`), **P** projects, **K** chats
   (`chatFields()`), **F** the list's box (`hotFind()`), **B** the rail (`toggleSessions`), **Y** themes (`themesOpen`), **L** the
@@ -518,10 +518,13 @@ for `$HOME`'s home and the account's.
   press per chat at a time (`termAsking`). **A late answer acts on its own chat only**: `renderHead` draws the open
   chat's header alone, a new drawer attaches through `showTerminal`, and ⌥⌘T's zsh and the editor's page wait on a
   chat that was left.
-* **Plain ⌘ is the window's shape, in `CMDKEYS`**: **1** / **2** the left and right halves (⌘2 splits the first
-  time), **W** closes the half the keys are in or a dialog that is up, **0** closes the *other* half
-  (`hotOnlyHalf`). `peixKey(code, mods)` says which map and **returns whether the key was taken**; `cmdKeys` in
-  main.swift is the forwarder's copy (a digit as `Digit<n>`). ⌘K is *not* here (the drawer's clear), nor ⌘+ ⌘−
+* **Plain ⌘ is the window's shape and its tabs, in `CMDKEYS`**: **1** / **2** the left and right halves (⌘2 splits the
+  first time), **0** closes the *other* half (`hotOnlyHalf`); **T** a new tab of the kind the keys are in (2026-10-13,
+  `hotNewTab`: in a terminal, on the chat, the changes or an empty half another zsh, `startShell(s, true)`; on a page
+  the address box, `pickOpen('page')` — typed first, `typedPage`, then `chatPages`), **W** the tab the keys are in
+  (`hotClose` → `dropTab`; a dialog up first; on the chat's tab or an empty half, the half; with one half, `false`).
+  `peixKey(code, mods)` says which map and **returns whether the key was taken**; `cmdKeys` in main.swift is the
+  forwarder's copy (a digit as `Digit<n>`; `npm run check` holds it). ⌘K is *not* here (the drawer's clear), nor ⌘+ ⌘−
   (`chatZoomKey`, which sees ⌘0 only when nothing is split).
 * **⌘W is the Window menu's item, not the forwarder's**: a key equivalent is dispatched before any responder.
   `closeHalfOrWindow` asks the board (`peixKey('KeyW','cmd')`) and calls `performClose` only on false. Anything else
@@ -603,15 +606,15 @@ for `$HOME`'s home and the account's.
   `{type: 'chat', project, title, cwd}` from `renderHead` and `leaveChat` (`postChat`: the window's title and
   `representedURL`). `refreshBadges` redraws only on a change (`badged`); a newly asking chat with the app in the back
   bounces the Dock once.
-* **The page owns the tabs**: each half's strip lists `chat` (`claude` while the session runs here), `shell` while a
-  zsh lives, `gh:<url>` per web page the chat opened (the strip's ↗ goes out to the browser) and `ide:<url>` for its
-  folder's editor — `tabKeys()` from `state.paneGh` (per chat) and `state.paneIde` (per folder); `tabs` holds each
-  chat's `[left, right]`, read through `placeOf()`. `syncTerm()` keeps both bodies right and posts one
-  `{type:'pane', id, keys, panes, focus}` (`postPane`): the shell keeps a web view per page (`paneViews`, up to
-  `paneViewsMax`, the chat's own spared). **The overlay covers the whole window** and lets a click on no page through
-  (`PaneOverlay.hitTest`). `‹ › ↻ ↗` are `{type:'nav'}`; × forgets a page (`closeTab`). In a browser the tabs are chat
-  and zsh only (`inApp`). GitHub cannot be iframed, hence the `WKWebView`; one with no UI delegate drops
-  `target=_blank`, hence `PaneDelegate`. → Findings: *the pane*.
+* **The page owns the tabs**: each half's strip lists `chat` (`claude` while the session runs here), `shell:<id>` per
+  live zsh (`shellsOf`, the server's `shells`; named zsh, zsh 2…), `gh:<url>` per web page the chat opened (the strip's
+  ↗ goes out to the browser) and `ide:<url>` for its folder's editor — `tabKeys()` from `state.paneGh` (per chat) and
+  `state.paneIde` (per folder); `tabs` holds each chat's `[left, right]`, read through `placeOf()`. `syncTerm()` keeps
+  both bodies right and posts one `{type:'pane', id, keys, panes, focus}` (`postPane`): the shell keeps a web view per
+  page (`paneViews`, up to `paneViewsMax`, the chat's own spared). **The overlay covers the whole window** and lets a
+  click on no page through (`PaneOverlay.hitTest`). `‹ › ↻ ↗` are `{type:'nav'}`; × forgets a page (`closeTab`). In a
+  browser the tabs are chat and zsh only (`inApp`). GitHub cannot be iframed, hence the `WKWebView`; one with no UI
+  delegate drops `target=_blank`, hence `PaneDelegate`. → Findings: *the pane*.
 * **A page in the pane behaves like a browser tab**: ⌘R reloads it while the pane is up (`validateMenuItem` renames
   the item), pinch zooms it (`allowsMagnification`), its address sits in the strip (a click copies it,
   `copyPaneUrl`), each navigation reported as `peixPaneUrl(key, url)` (a KVO watch, `paneObs`; `paneUrls`).
@@ -681,10 +684,10 @@ for `$HOME`'s home and the account's.
   address copies it; the tab drag ignores it. The half's ◫/⊟ and ⨯ are behind ⋯ (`.gmore` → `.gopen`; `.click()` on
   `.gturn` / `.gclose` works folded). With tiles, split, each half is a tile (`#gsplit` the gap); under the floating
   header `#groups` pads by `--float-h`, not the halves. → `pane-tabs.mjs`, `split-halves.mjs`.
-* **A half whose one tab is not a web page has no strip** (`.lone`: a 2 px rule, the accent under the keys —
-  **the same height either way**, so moving the keys resizes no terminal). A web page alone keeps its strip, an empty
-  half keeps its (the drop, ⋯). The lone tab's × is ⌥⌘W's and the header menu's (`dropTab()`); ⌘W / ⌘0 close the half;
-  a lone tab cannot be dragged. Unsplit, the strip hides under two tabs. → `split-halves.mjs`, `split-stacked.mjs`,
+* **A half whose one tab is not a web page has no strip** (`.lone`: a 2 px rule, the accent under the keys — **the same
+  height either way**, so moving the keys resizes no terminal). A web page alone keeps its strip, an empty half keeps
+  its (the drop, ⋯). The lone tab's × is ⌘W's, ⌥⌘W's and the header menu's (`dropTab()`); ⌘0 closes the other half; a
+  lone tab cannot be dragged. Unsplit, the strip hides under two tabs. → `split-halves.mjs`, `split-stacked.mjs`,
   `pane-tabs.mjs`.
 * **Placement is derived**: `tabs` holds `[left, right]` per chat and `placeOf(s)` reads it against `keysIn` *now* —
   a key that is gone falls away. `tabOf(s)` is the focused half's. A half with nothing says what would fill it
@@ -721,10 +724,10 @@ for `$HOME`'s home and the account's.
   reply lands at the log's end (`reveal`, `REVEAL_GAP`). **Anything else that appends to the log goes before the
   tail**, and "the last message" is `:scope > .msg:last-of-type`. → `transcript-live.mjs`.
 * **Split or not is the chat's** (`splits`, beside `tabs`); `syncTerm` calls `applySplit()` on every open; only the
-  divider's place is the board's. **⌘W closes the half the keys are in**, each strip's ⨯ its own (`closeHalf(g)`);
-  **⌘0 closes the other**. The per-chat maps (`tabs`, `homes`, `splits`, `autoSplit`, `stacked`, `focusView`,
-  `state.unread`, `state.paneGh`) are pruned on every snapshot to the chats the board still has.
-  → `split-halves.mjs`, the split section of `pane-tabs.mjs`.
+  divider's place is the board's. **⌘W on the chat's tab closes the half the keys are in**, each strip's ⨯ its own
+  (`closeHalf(g)`); **⌘0 closes the other**. The per-chat maps (`tabs`, `homes`, `splits`, `autoSplit`, `stacked`,
+  `focusView`, `state.unread`, `state.paneGh`) are pruned on every snapshot to the chats the board still has. →
+  `split-halves.mjs`, the split section of `pane-tabs.mjs`.
 
 ## The drawer
 
@@ -737,10 +740,11 @@ for `$HOME`'s home and the account's.
   removes its files. **The socket path must stay under 104 bytes** — test state dirs are short on purpose.
 * **The drawer is automatic**: the pane's body while the chat runs here, gone when the process exits (`termEnded`);
   `syncTerm` on every open and update. **⌥⌘T is a zsh tab** beside it (a holder with `shell: true`, `shellOf()`,
-  `s.shell`; one per chat). **Done ends the chat's processes** — the drawer's holders and a claude live elsewhere
-  (SIGTERM). **An idle drawer ends itself** (`sweepDrawers`, on the registry poll): a claude idle, no sub-agent or
-  task at work, no page attached, and no word in the chat nor the drawer's start within `DRAWER_IDLE_MS` (24 h; 0
-  off) — the card goes stale and `>_` resumes it. A chat waiting on a question and every zsh are left standing.
+  `s.shell`), **⌘T another** (`fresh` on the POST, never one at a time; `shellsOf`, `s.shells`, oldest first). **Done
+  ends the chat's processes** — the drawer's holders and a claude live elsewhere (SIGTERM). **An idle drawer ends
+  itself** (`sweepDrawers`, on the registry poll): a claude idle, no sub-agent or task at work, no page attached, and no
+  word in the chat nor the drawer's start within `DRAWER_IDLE_MS` (24 h; 0 off) — the card goes stale and `>_` resumes
+  it. A chat waiting on a question and every zsh are left standing.
   → `test/idle-drawer.test.mjs`.
 * **A page that attaches gets the screen serialized, then only what followed it** (`ws.hold` until the snapshot,
   flushed minus `seq ≤ upto`). → Findings: *round three*.

@@ -9,7 +9,7 @@ export default async function (ctx) {
   const chat = ctx.fixture.chats[1];
   await ctx.openChat(chat.id);
   await ctx.key('KeyT');                       // ⌥⌘T: a zsh in the chat's folder, its own holder
-  await ctx.waitFor(`window.peix.state().tab === 'shell' && window.peix.term().ws === 1`, { what: 'the zsh tab, attached' });
+  await ctx.waitFor(`/^shell:/.test(window.peix.state().tab) && window.peix.term().ws === 1`, { what: 'the zsh tab, attached' });
 
   const type = text => ctx.type(text, 1);      // the zsh tab's keyboard, in the right half, as a hand would use it
   const marked = negate => ctx.waitFor(`${negate ? '!' : ''}[...document.querySelectorAll('#termBodyB .xterm-rows > div')].some(r => /peixmark/.test(r.textContent))`,

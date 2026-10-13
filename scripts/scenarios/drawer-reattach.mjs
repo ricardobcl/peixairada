@@ -15,16 +15,16 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#ptabs').hidden`), true, 'no tabs without a zsh');
   await ctx.shot('0-live', { x: 430, y: 0, width: 1270, height: 1000 });
   await ctx.key('KeyT');                       // ⌥⌘T: the zsh tab — the pane shows a shell now
-  await ctx.waitFor(`window.peix.state().halves[1] === 'shell' && document.querySelector('#ptabsB').classList.contains('lone')`, { what: 'the zsh tab, in the half the split made — alone there, so a rule for a strip' });
+  await ctx.waitFor(`/^shell:/.test(window.peix.state().halves[1]) && document.querySelector('#ptabsB').classList.contains('lone')`, { what: 'the zsh tab, in the half the split made — alone there, so a rule for a strip' });
   await ctx.waitFor(`window.peix.session()?.shell && window.peix.state().termId === window.peix.session().shell.id`, { what: 'the shell attached' });
   await ctx.sleep(1500);
   const shell = await ctx.screen(1);
   ctx.assert.ok(!shell.some(r => /fake mode on/.test(r)), 'the zsh tab shows the shell, not claude');
   await ctx.shot('1-zsh', { x: 430, y: 0, width: 1270, height: 1000 });
-  await ctx.cmd('KeyW');                       // the zsh's half closes: one column, claude in it, the zsh a tab
+  await ctx.cmd('Digit1'); await ctx.cmd('Digit0');   // the zsh's half closes: one column, claude in it, the zsh a tab
   await ctx.waitFor(`window.peix.state().split === false && window.peix.state().termId === window.peix.session().terminal.id`, { what: 'one column, on claude' });
   await ctx.sleep(1000);
-  await ctx.evaluate(`document.querySelector('#ptabs .ptab[data-tab="shell"]').click()`);   // the zsh tab: the claude drawer lets go
+  await ctx.evaluate(`document.querySelector('#ptabs .ptab[data-tab^="shell:"]').click()`);   // the zsh tab: the claude drawer lets go
   await ctx.waitFor(`window.peix.state().termId === window.peix.session().shell.id`, { what: 'the zsh in the column, the claude drawer let go' });
   await ctx.sleep(800);
   await ctx.key('KeyC');                       // and back to the claude session, in the one column

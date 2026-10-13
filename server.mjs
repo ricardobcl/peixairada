@@ -598,7 +598,7 @@ function statusOf(s) {
 // carries the others and the page warns and offers to end them (the take-over route, when the chat is here).
 
 function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is summarized at once
-  const prT = prTitle(s), status = statusOf(s), mine = ti ? ti.get(s.id) || NO_TERMS : { term: termOf(s), shell: shellOf(s) };
+  const prT = prTitle(s), status = statusOf(s), mine = ti ? ti.get(s.id) || NO_TERMS : { term: termOf(s), shell: shellOf(s), shells: shellsOf(s) };
   return {
     // Prefer the registry cwd: transcript lines record the shell's *current* directory, which moves with `cd`.
     id: s.id, slug: s.slug, cwd: s.live?.cwd || s.cwd, project: basename(s.live?.cwd || s.cwd || '') || s.slug,
@@ -619,7 +619,7 @@ function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is
     ask: status !== 'needs-input' ? null : s.status === 'needs-input' && s.ask ? s.ask : { tool: null, text: null, options: 0, waitingFor: waitingOn(s) || null },
     rawStatus: s.status, statusSince: s.statusSince, lastActivity: s.lastActivity, startedAt: s.startedAt,
     lastUserAt: s.lastUserAt, lastReplyAt: s.lastReplyAt,
-    alive: s.alive, live: s.live, entrypoint: s.live?.entrypoint || s.entrypoint, terminal: termSummary(mine.term), shell: termSummary(mine.shell), entryCount: s.entryCount, loaded: s.loaded, file: s.file,
+    alive: s.alive, live: s.live, entrypoint: s.live?.entrypoint || s.entrypoint, terminal: termSummary(mine.term), shell: termSummary(mine.shell), shells: mine.shells.map(termSummary), entryCount: s.entryCount, loaded: s.loaded, file: s.file,
     env: envs[s.id] || mine.term?.task || null,   // the launcher it was started with (⌥⌘O groups oracle's chats by it)
     // the other live processes on this chat, and who wrote its last turn — the page's "VS Code too" warning
     rivals: s.rivals, tailEntrypoint: s.entrypoint, tailEntrypointAt: s.entrypointAt,
@@ -1828,7 +1828,7 @@ function loadRegistry() {
     // taken over here. The chat's process is the drawer's own when there is one, else the newest live one
     // that is not VS Code's (the one you are driving), else the newest live one, else whatever is left (a
     // dead pid's file lingers until claude's housekeeping). The rest, live only, are its rivals.
-    const mine = [...terms.values()].filter(t => t.sessionId === id && t.exited === null).map(t => t.claudePid || t.pid)[0];
+    const mine = [...terms.values()].filter(t => t.sessionId === id && !t.shell && t.exited === null).map(t => t.claudePid || t.pid)[0];
     const alive = lives.filter(l => pidAlive(l.pid)).sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
     const live = alive.find(l => l.pid === mine) || alive.find(l => l.entrypoint !== 'claude-vscode') || alive[0] || lives[0];
     const rivals = alive.filter(l => l !== live);
@@ -2588,17 +2588,22 @@ const termsAvailable = () => !!nodePty && existsSync(HOLDER);
  *  same rule as termIndex, for one chat. */
 function drawerOf(s, shell) { let hit = null; for (const t of terms.values()) if (t.sessionId === s.id && !!t.shell === shell && (!hit || (hit.exited !== null && t.exited === null))) hit = t; return hit; }
 const termOf = s => drawerOf(s, false), shellOf = s => drawerOf(s, true);
-const NO_TERMS = Object.freeze({ term: null, shell: null });
+/** Every zsh of the chat (2026-10-13: ⌘T opens another), the exited ones still lingering too, oldest first — each its tab. */
+const byStart = (a, b) => String(a.startedAt).localeCompare(String(b.startedAt));
+const shellsOf = s => [...terms.values()].filter(t => t.sessionId === s.id && t.shell).sort(byStart);
+const NO_TERMS = Object.freeze({ term: null, shell: null, shells: [] });
 /** Every chat's drawer and zsh in one pass, by the same rule — for the summaries of the whole board, which asked
  *  termOf and shellOf per chat, each a walk over every terminal (322 chats × 75 terminals × 2 per snapshot, 2026-09-27). */
 function termIndex() {
   const m = new Map();
   for (const t of terms.values()) {
     if (!t.sessionId) continue;
-    let e = m.get(t.sessionId); if (!e) m.set(t.sessionId, e = { term: null, shell: null });
+    let e = m.get(t.sessionId); if (!e) m.set(t.sessionId, e = { term: null, shell: null, shells: [] });
     const k = t.shell ? 'shell' : 'term';
     if (!e[k] || (e[k].exited !== null && t.exited === null)) e[k] = t;
+    if (t.shell) e.shells.push(t);
   }
+  for (const e of m.values()) e.shells.sort(byStart);
   return m;
 }
 function termSummary(t) {
@@ -3206,13 +3211,17 @@ const server = createServer(async (req, res) => {
       catch (e) { return json(res, 500, { error: String(e.stderr || e.message).trim().split('\n')[0] }); }
     }
     // ⌥⌘T: a zsh in the chat's folder, in the pane's zsh tab — a holder like the claude one (`zsh -l -i` in the PTY),
-    // one per chat, alive until `exit` or a DELETE. The inline "new tab in iTerm" (2026-09-20).
+    // alive until `exit` or a DELETE. The inline "new tab in iTerm" (2026-09-20): the chat's zsh, started once and
+    // answered with ever after — and `fresh` (⌘T, 2026-10-13) another one beside it, every time: a second zsh harms
+    // nothing, so it is not one spawn at a time as the first is.
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/shell$/))) {
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
+      const body = await jsonBody(req), spec = { cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows, shell: true };
+      if (body.fresh === true) { const r = await spawnTerm(spec); return json(res, r.code, r); }
       const have = shellOf(s);
       if (have && have.exited === null) return json(res, 200, { terminal: termSummary(have) });
-      const r = await spawnOnce(`${s.id}:shell`, async () => { const body = await jsonBody(req); return spawnTerm({ cwd: s.live?.cwd || s.cwd, sessionId: s.id, cols: body.cols, rows: body.rows, shell: true }); });
+      const r = await spawnOnce(`${s.id}:shell`, () => spawnTerm(spec));
       return json(res, r.code, r);
     }
     if (req.method === 'PUT' && p === '/api/pins') {   // the pinned projects, in order — the whole list each time; folder cwds and c:<id>

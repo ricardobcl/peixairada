@@ -35,7 +35,7 @@ export default async function (ctx) {
   // the zsh, which is this chat's second tab: it splits the column and opens beside the claude drawer, which is
   // still attached — so the button types into that holder from here. `said` reads the half the keys are in, the zsh.
   await ctx.key('KeyT');
-  await ctx.waitFor(`window.peix.state().tab === 'shell'`, { what: 'the zsh tab, in the half the split made' });
+  await ctx.waitFor(`/^shell:/.test(window.peix.state().tab)`, { what: 'the zsh tab, in the half the split made' });
   await ctx.evaluate(`document.querySelector('#viewBtn').click()`);
   await noted('/Focus view on/');
   out.fromShell = { lit: await lit(), typedInShell: await said(/focus/) };

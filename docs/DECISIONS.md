@@ -2,8 +2,38 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-12. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-13. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-13 — ⌘T and ⌘W are the tabs'
+
+Ricardo: "cmd W should close the terminal focused or the webpage focused" and "cmd T should open a new terminal or web
+tab".
+
+* **⌘W closes the tab the keys are in**, as a browser's or iTerm's does: a zsh ends, a page or VS Code Web goes, the
+  changes close — `dropTab`, what ⌥⌘W and a tab's × already did, so the keys go back to the chat when the half empties
+  and a split the board made folds. Its old job, the half, is kept where there is no tab to close: on the chat's own
+  tab, which no key ends (✓ does, and claude is not a terminal to lose by a slip), and on an empty half; with one half
+  there it is still the window's key. A dialog up still goes first. ⌥⌘W stays as it was — a tab and never more — and
+  ⌘0 is the way to close a half from the other one, which the strip's ⨯ tooltip now says.
+* **⌘T opens a new tab of the kind the keys are in**: read as the ⌘W line reads, "the terminal focused or the webpage
+  focused". In a terminal — claude's drawer, a zsh — and on the transcript, the changes or an empty half, another zsh in
+  the chat's folder, as iTerm's ⌘T, at once; on a page, a box for the address, as a browser's ⌘T: what was typed first
+  (an address as given, a bare host over https, localhost and the loopback over http, anything else a web search), then
+  the chat's own pages not on a tab (its PRs, its tickets, its repository). Either opens where a new tab goes — beside
+  the chat, splitting the column the first time. The box is the pickers' own dialog (`pick.mode` `page`), so the pane
+  goes down under it as under any dialog.
+* **A chat has as many zsh as asked for**: one per chat until now, and a "new terminal" that showed the old one would
+  not be one. Each is its own tab, `shell:<terminal id>` — never `shell` for the first, which would hand its key to the
+  next when it ended and move the tab — named zsh, zsh 2… by its place. The server's summary carries `shells` (every
+  zsh, oldest first) beside `shell` (the first, as before, which the scenarios wait on); `POST …/shell` with `fresh`
+  starts another every time, not one at a time as the first is (a second ⌥⌘C on one transcript was the danger; a
+  second zsh is none). ⌥⌘T shows the zsh the keys are in, else the first, else starts one; ··· *end the zsh* ends the one
+  the keys are in, else the first. The registry's choice of a chat's own process now skips the zsh holders — with
+  several, one started before the claude drawer could have been taken for it.
+* **The app forwards ⌘T from the pane** (`cmdKeys`), so ⌘T in VS Code Web — its *go to symbol in workspace* — is given
+  up for it, as its ⌥⌘W was; ⌘W was the Window menu's already. `npm run check` now holds the ⌘ letters as it held the
+  ⌥⌘ ones: one the board answers and the forwarder does not is a failure. → `tab-keys.mjs`, `test/terminals.test.mjs`.
 
 ## Decisions of 2026-10-12, night, last — a page's × closes it
 

@@ -98,7 +98,7 @@ export default async function (ctx) {
   out.ide = { tabs: await tabsNow(), pane: await lastPane() };
   ctx.assert.equal(out.ide.tabs.length, 3); ctx.assert.match(out.ide.tabs[2].label, /^@VS Code · \S+$/, 'the editor in front: VS Code and its folder, not its address (2026-10-12)'); ctx.assert.match(await ctx.evaluate(`document.querySelector('#ptabsB .ptab.on.addr .purl').title`), /^http:\/\/127\.0\.0\.1:1\/\?folder=/, '…the address in its tooltip'); ctx.assert.match(out.ide.pane.show, /^ide:http:\/\/127\.0\.0\.1:1\/\?folder=/);
   // ⌥⌘T: a zsh — five tabs, the zsh second; the pane goes under it
-  await ctx.key('KeyT'); await ctx.waitFor(`document.querySelector('#ptabsB .ptab.on')?.dataset.tab === 'shell'`, { what: 'the zsh tab on', timeout: 20_000 });
+  await ctx.key('KeyT'); await ctx.waitFor(`document.querySelector('#ptabsB .ptab.on')?.dataset.tab.startsWith('shell:')`, { what: 'the zsh tab on', timeout: 20_000 });
   out.five = await strips(); ctx.assert.deepEqual(out.five, [[], ['shell', 'gh', 'gh', 'ide']], 'five tabs: claude on the left, alone and so with no strip, the rest on the right');
   out.zsh = await lastPane();
   ctx.assert.deepEqual(out.zsh.panes, [], 'the zsh took the right half from the editor; the left half is claude\'s');
@@ -141,7 +141,7 @@ export default async function (ctx) {
   // the zsh, ended: its tab goes
   const shellId = (await ctx.peix('session()')).shell.id;
   await ctx.server.api(`/api/terminals/${shellId}`, { method: 'DELETE' });
-  await ctx.waitFor(`!document.querySelector('.ptab[data-tab="shell"]')`, { what: 'the zsh tab gone', timeout: 10_000 });
+  await ctx.waitFor(`!document.querySelector('.ptab[data-tab^="shell:"]')`, { what: 'the zsh tab gone', timeout: 10_000 });
   out.end = await tabsNow();
   // A page in each half (2026-09-22), and the shell is told where each one goes — two rects side by side under
   // their own strips, and which of them has the keys. The board sends `show` too, for a shell built before the
