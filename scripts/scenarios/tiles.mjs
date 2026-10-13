@@ -3,7 +3,7 @@
 // one grey), the list's on ALL the open chat's, the wallpaper in that hue, and at the notch the chat cut round the
 // housing, its border round it, the tiles in the screen's top corners round (not on a display without a housing); the
 // border follows a press into the list; off, the gaps go. The wallpaper's glow eases after the pointer (2026-10-11, late
-// night), a transform, and its switch off puts it back in its corner. (The stack beside the open chat, ⌥⌘S, went on
+// night), a transform (a switch until 2026-10-14). (The stack beside the open chat, ⌥⌘S, went on
 // 2026-10-14.)
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
@@ -55,7 +55,7 @@ export default async function (ctx) {
     ctx.assert.equal(await border('#chat'), 'rgb(224, 93, 68)', 'with the keys: its colour, whole');
     await ctx.settle(); await ctx.shot('tiles');
 
-    // the wallpaper's glow after the pointer, by a transform (its own layer: nothing repaints), then back to its corner
+    // the wallpaper's glow after the pointer, by a transform (its own layer: nothing repaints)
     const glow = `(() => { const m = new DOMMatrix(getComputedStyle(document.querySelector('#wall i')).transform); return [Math.round(m.e), Math.round(m.f)]; })()`;
     const rest = await ctx.evaluate(glow), vw = await ctx.evaluate(`[innerWidth, innerHeight]`);
     ctx.assert.deepEqual(rest, [Math.round(vw[0] * .88), Math.round(vw[1] * .06)], 'the glow in its corner, 88 % 6 %, as the body drew it');
@@ -65,12 +65,6 @@ export default async function (ctx) {
     ctx.assert.ok(out.glowMid[0] < rest[0] && out.glowMid[0] > 300, `it eases there, not jumps: ${out.glowMid}`);
     await ctx.waitFor(`${glow}.join() === '300,500'`, { what: 'the glow under the pointer', timeout: 4000 });
     ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#wall i')).transitionProperty`), 'transform', 'a transform, eased');
-    await ctx.evaluate(`document.querySelector('#wallFollow').click()`);
-    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#wall i').style.transform`), '', 'its switch off: back to its corner');
-    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 600, y: 300 });
-    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#wall i').style.transform`), '', 'and it stays there');
-    await ctx.evaluate(`document.querySelector('#wallFollow').click()`);
-    ctx.assert.equal(await ctx.evaluate(`window.peix.prefs().wallFollow`), true, 'a pref');
 
     // at the notch the chat is cut round the housing, hugging it (2026-10-11, later; the gap away before), its border round
     // the cut and its title clear of it;

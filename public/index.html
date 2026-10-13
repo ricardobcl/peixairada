@@ -1807,7 +1807,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      registered, so a change of chat eases it. A fixed layer under the board (#wall, the body's ground before), so that
      its bright glow can be a layer of its own: #wall i, the glow's ellipse as the body's gradient drew it (110 % × 80 %
      of the window to transparent at 58 %, so 127.6vw × 92.8vh), centred on its own origin and put at 88 % 6 % by a
-     transform — and moved after the pointer by one (2026-10-11, late night; prefs.wallFollow, wallFollow): the compositor's,
+     transform — and moved after the pointer by one (2026-10-11, late night; wallGo; a switch until 2026-10-14): the compositor's,
      so a move repaints nothing. The grain over both, still. */
   @property --wallc { syntax: '<color>'; inherits: true; initial-value: transparent; }
   #wall { display: none; }
@@ -2319,7 +2319,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <div class="opt" title="A theme is every surface at once — the cards, the transcript, the code, the drawer's colours, the header's black and the status bar — and its appearance, dark or light, whatever macOS shows"><span><b>theme</b> — <span id="themeNames"></span> <button class="btn" id="themeBtn">choose… ⌥⌘Y</button></span></div>
     <label class="opt sub" title="On, the board is dark while macOS is dark and light while it is light, each in the theme last picked for it; off, the theme picked is worn — and its appearance — whatever macOS shows"><input type="checkbox" id="skinFollow"><span><b>follow macOS</b> — a dark theme while macOS is dark, a light one while it is light; off, the theme picked whatever macOS shows</span></label>
     <label class="opt" title="On, the panels are tiles, Hyprland's way: gaps over a wallpaper, each bordered in its project's colour, whole on the one the keys are in — and, with the stack, beside the open chat up to three tiles of the chats of the list that are asking or clauding, each its drawer drawn small or its last tool calls, a click making one the chat"><input type="checkbox" id="tilesOn"><span><b>tiles</b> — the panels as tiles, Hyprland's way: gaps over a wallpaper, each bordered in its project's colour</span></label>
-    <label class="opt sub" id="wallFollowRow" title="The wallpaper's bright glow, behind the tiles, eases after the pointer wherever it goes on the board and stays where it left it; off, it stays in its corner"><input type="checkbox" id="wallFollow"><span><b>the glow follows the pointer</b> — the wallpaper's light behind the tiles</span></label>
     <label class="opt" title="On, the chat header is a bar inset from the window's edges, rounded and shadowed; off, it runs edge to edge as before"><input type="checkbox" id="headFloat"><span><b>floating header</b> — the chat header as a rounded bar inset from the edges</span></label>
     <label class="opt" title="On, a strip at the window's foot: the search, the connection, how many chats ask you and what is watching, the faces on your PRs, the fish (faster the more is at work), CPU and memory, the plan's limits, keeping the Mac awake and the clock — the list's foot then has none of them"><input type="checkbox" id="sbarOn" checked><span><b>status bar</b> — the search, what asks you and what is watching, the faces, the fish, the machine and the plan, keeping the Mac awake and the clock at the window's foot; off, the search, the faces and the plan return to the list's foot and the awake switches to the chat header</span></label>
     <div class="opt sub sbstats" id="sbarStats" title="What else the status bar says — asked of the Mac every 3 s while shown"><span><b>also</b></span><label><input type="checkbox" data-stat="cpu"> CPU</label><label><input type="checkbox" data-stat="mem"> memory</label><label><input type="checkbox" data-stat="claude"> Claude's memory</label></div>
@@ -2459,7 +2458,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, tiles: true, wallFollow: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, tiles: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -2480,7 +2479,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   delete prefs.filter; delete prefs.filters;
   delete prefs.peopleFold;   // the faces folded to a count (2026-10-09, off by default) became peopleCompact (2026-10-11, later): folded by default
   // the experimental switches pared (2026-10-14): what they chose is now the only way, or gone
-  for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume', 'edgeLight', 'ringsInStep', 'cardSpot', 'tileStack']) delete prefs[k];
+  for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume', 'edgeLight', 'ringsInStep', 'cardSpot', 'tileStack', 'wallFollow']) delete prefs[k];
   if (!Array.isArray(prefs.lanesShut)) prefs.lanesShut = ['done', 'idle'];
   prefs.lanesShut = prefs.lanesShut.filter(g => g !== 'move' && g !== 'replied');   // lanes for a morning (2026-10-12), filters since
   if (prefs.listFilter !== 'move' && prefs.listFilter !== 'replied') prefs.listFilter = null;
@@ -4937,7 +4936,7 @@ const toolName = n => {
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
   const SWITCHES = [['notifyOn', 'Notifications'], ['autoUpdate', 'Update itself'], ['skinFollow', 'Theme follows macOS'],
-    ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['wallFollow', 'Tiles: the glow follows the pointer'], ['headFloat', 'Floating header'], ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal']];
+    ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['headFloat', 'Floating header'], ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
     { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },
@@ -7862,23 +7861,21 @@ const toolName = n => {
   var tilesOn = false;   // var, not let: renderBoard is older than this block and asks before it has run
   function applyTiles() {
     $('#main').classList.toggle('tiles', !!prefs.tiles); $('#tilesOn').checked = !!prefs.tiles;
-    $('#wallFollow').checked = !!prefs.wallFollow; $('#wallFollowRow').hidden = !prefs.tiles; wallGo();
+    wallGo();
     tilesOn = !!prefs.tiles;
     if (tilesOn && !document.querySelector('#main .kf')) $('#chat').classList.add('kf');   // the chat, at first
     requestAnimationFrame(() => { fitTerm(); listChanged(); repostPane(); layoutNotch(); fitHeadPrs(); });
   }
   $('#tilesOn').addEventListener('change', e => { prefs.tiles = e.target.checked; savePrefs(); applyTiles(); });
-  $('#wallFollow').addEventListener('change', e => { prefs.wallFollow = e.target.checked; savePrefs(); wallGo(); });
   // The wallpaper's glow after the pointer (2026-10-11, late night): its place, once a frame, from every pointer move on the
   // board, and the transition eases it there — a lag that reads as light under glass. It stays where the pointer left
-  // the page (into the pane, out of the window); the switch off, under reduced motion or without tiles, it is back in
-  // its corner. `wallGo()` with no move puts it where it should be now.
+  // the page (into the pane, out of the window); under reduced motion or without tiles, it is back in its corner. `wallGo()` with no move puts it where it should be now.
   // Its target is set WALL_MS apart at most (2026-10-13; every frame before): each is a new 1.1 s transition, a style
   // pass and in WebKit a layer walk — 16–18 % of a core with the pointer moving against 7.5 at rest. The ease starts from
   // where the glow is, so eight a second still glide.
   let wallAt = null, wallRaf = 0, wallLast = -Infinity;
   const WALL_MS = 125;
-  const wallOn = () => tilesOn && !!prefs.wallFollow && !REDUCED.matches;
+  const wallOn = () => tilesOn && !REDUCED.matches;
   function wallGo() { clearTimeout(wallRaf); wallRaf = 0; wallLast = performance.now(); $('#wall i').style.transform = wallOn() && wallAt ? `translate(${wallAt.x}px, ${wallAt.y}px)` : ''; }
   document.addEventListener('pointermove', e => { if (!wallOn()) return; wallAt = { x: e.clientX, y: e.clientY }; wallRaf ||= setTimeout(() => requestAnimationFrame(wallGo), Math.max(0, wallLast + WALL_MS - performance.now())); }, { passive: true });
   // the panel the keys are in wears the border: the list or the chat (a pointer press or a focus inside it)

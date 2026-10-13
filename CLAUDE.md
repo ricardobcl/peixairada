@@ -735,7 +735,7 @@ for `$HOME`'s home and the account's.
   panel's border its project's colour** (`--tile-edge` from `tileEdge` in `tintChat` and `tileTints`;
   a near-black one `--tile-grey`, none `--nocolor`), 30 % at rest and whole on the panel the keys are in (`.kf`). The
   list on ALL wears the open chat's colour; **the wallpaper** (`#wall`, `--wallc` registered and eased) is in that
-  hue, its glow (`#wall i`) following the pointer by a transform (`wallGo`, `prefs.wallFollow`) — a move repaints
+  hue, its glow (`#wall i`) following the pointer by a transform (`wallGo`) — a move repaints
   nothing; its target set `WALL_MS` (125) apart at most, each a new transition (2026-10-13). `tilesOn` is a `var`, as `renderBoard` runs before
   the block has. **At the notch** a panel the housing reaches is cut round it (`tileNotch` from `layoutNotch`: a `clip-path`, `.ncut` the border, `.ncap` the corners;
   `HOUSING_R` by eye) and the row keeps `notchPad()` clear; the top corners round as the screen's
