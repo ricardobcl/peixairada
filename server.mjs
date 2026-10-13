@@ -1405,25 +1405,36 @@ function jiraCliConfig() {
 // (`sweepHeads` → `s.headNow`, `s.diskDrift`). A move through `HEAD` and back (a rebase) is none; a word of yours clears
 // it, as does the chat moving back or on by its own hand; a click on the header's chip says you know (`driftAcks`).
 // Shown only while the chat's claude runs: an ended chat's next word is yours, which clears it anyway.
-// The study's commands (checkout, switch, rebase, reset, stash, pull, merge, worktree, gh pr checkout), and a branch
-// renamed or a bisect: right after git and its own options, so a commit message that says "merge" is no move.
-const GIT_MOVE_RE = /\bgit(?:\s+-[Cc]\s+(?:"[^"]*"|'[^']*'|\S+)|\s+--?[\w-]+(?:=\S+)?)*\s+(?:checkout|switch|rebase|reset|stash|pull|merge|worktree|bisect|branch\s+(?:-[mM]|--move))\b|\bgh\s+pr\s+checkout\b/;
+// The commands that can change which branch is checked out — checkout, switch, rebase, worktree, gh pr checkout, a branch
+// renamed, a bisect, `git stash branch` —, the subcommand whole and right after git and its own options: a commit
+// message that says "switch" is no move, nor is `merge-base`. Not stash, reset, pull or merge (2026-10-13): they never
+// change the branch, and within the hour of one an outside move went unsaid — `merge` matched merge-base and merge-tree.
+const GIT_MOVE_RE = /\bgit(?:\s+-[Cc]\s+(?:"[^"]*"|'[^']*'|\S+)|\s+--?[\w-]+(?:=\S+)?)*\s+(?:checkout|switch|rebase|worktree|bisect|branch\s+(?:-[mM]|--move)|stash\s+branch)(?![\w-])|\bgh\s+pr\s+checkout(?![\w-])/;
 const DRIFT_WINDOW_MS = 60 * 60_000;
+// The chat's own move can come after the line that first shows its branch (2026-10-13): Claude Code writes a message's
+// lines once the call in it has run, so its thinking or text line carries the branch a `git switch -c` on a later line
+// of the same message made — in 71 of the 1500 newest transcripts, 63 of them in that message, 40 within 2 s of it and
+// the rest up to 16 s, by the lines' own times. So a command of the same message that names the branch counts whatever
+// its time, any other one up to MOVE_SLACK_MS after; and a move is judged MOVE_SLACK_MS after it is seen, a HEAD file
+// seen moved on a second look as long after the first — before anything is shown or alerted (settleDrift, noteHead).
+const MOVE_SLACK_MS = 2000;
 const BRANCHES_MAX = 6, GIT_CMDS_MAX = 40, AGENT_GIT_BYTES = 4 << 20;
 const driftKey = d => `${d.from}→${d.to}`;
 /** A Bash command of the chat's — its own, a sub-agent's, a `!` one of yours — that can move the branch. */
-function noteGitCmd(cmds, cmd, ts) {
+function noteGitCmd(cmds, cmd, ts, msg = null) {   // msg: the assistant message it was called in
   if (!cmd || !GIT_MOVE_RE.test(cmd)) return;
-  cmds.push({ at: Date.parse(ts) || 0, cmd: cut(String(cmd), 400) });
+  cmds.push({ at: Date.parse(ts) || 0, cmd: cut(String(cmd), 400), msg });
   if (cmds.length > GIT_CMDS_MAX) cmds.shift();
 }
 const bashCmds = line => (Array.isArray(line.message?.content) ? line.message.content : []).filter(b => b?.type === 'tool_use' && b.name === 'Bash').map(b => b.input?.command);
 const namesBranch = (cmd, b) => new RegExp(`(?:^|[\\s'"/:=])${b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[\\s'";&|)])`).test(cmd);
-/** Whether the chat's own git explains a move to `to` seen at `at`: any of those commands in the hour before (the
- *  study's rule), or one since the chat was on the branch it left (`since`) that names the new one. Claude Code's
- *  gitBranch lags its own checkout — of 185 checkouts that moved it, the result's line still carried the old branch
- *  in 166, and the new one came lines, minutes and once hours later — so the line before the change says nothing. */
-const ownMove = (cmds, at, to, since) => (cmds || []).some(c => c.at <= at + 2000 && (c.at >= at - DRIFT_WINDOW_MS || (c.at >= since - 2000 && namesBranch(c.cmd, to))));
+/** Whether the chat's own git explains a move to `to` seen at `at` on a line of message `msg`: any of those commands in
+ *  the hour before (the study's rule), or one since the chat was on the branch it left (`since`) that names the new one,
+ *  or one later in that same message that names it. Claude Code's gitBranch lags its own checkout — of 185 checkouts
+ *  that moved it, the result's line still carried the old branch in 166, and the new one came lines, minutes and once
+ *  hours later — so the line before the change says nothing. */
+const ownMove = (cmds, at, to, since, msg = null) => (cmds || []).some(c => (c.at <= at + MOVE_SLACK_MS && (c.at >= at - DRIFT_WINDOW_MS || (c.at >= since - MOVE_SLACK_MS && namesBranch(c.cmd, to))))
+  || (msg && c.msg === msg && namesBranch(c.cmd, to)));
 /** The same asked of the chat's sub-agents' transcripts — read only when a move is not otherwise explained. */
 function agentsMoved(s, at, to, since) {
   const dir = agentsDir(s); let names = [];
@@ -1438,17 +1449,18 @@ function agentsMoved(s, at, to, since) {
     for (const raw of buf.toString('utf8').split('\n')) {
       if (!raw.includes('"Bash"')) continue;
       let l; try { l = JSON.parse(raw); } catch { continue; }
-      if (l.type === 'assistant') for (const c of bashCmds(l)) noteGitCmd(cmds, c, l.timestamp);
+      if (l.type === 'assistant') for (const c of bashCmds(l)) noteGitCmd(cmds, c, l.timestamp, l.message?.id);
     }
   }
   return ownMove(cmds, at, to, since);
 }
 /** A line's branch. `s.branchBase` is the branch the chat is on as its lines tell it — `{name, cwd, from, at}`, the
  *  first and last line of the run —, `s.branches` the last few it was on. A change in the same folder that the chat's
- *  own git does not explain is drift, from the branch the chat was on before anything moved under it; back there is
- *  none. Whether a sub-agent moved it is asked once the lines in hand are folded (settleDrift). */
+ *  own git does not explain so far is a drift held for judgement (`s.driftDue`), from the branch the chat was on before
+ *  anything moved under it; back there is none. The lines still to come and its sub-agents may explain it (settleDrift);
+ *  until then the drift shown is the one before (`shown`). */
 function noteBranch(s, line, ts) {
-  const b = line.gitBranch, cwd = line.cwd || s.cwd, at = Date.parse(ts) || 0;
+  const b = line.gitBranch, cwd = line.cwd || s.cwd, at = Date.parse(ts) || 0, msg = line.type === 'assistant' && line.message?.id || null;
   if (!b) return;
   if (s.branches.at(-1)?.name !== b) { s.branches.push({ name: b, at: ts }); if (s.branches.length > BRANCHES_MAX) s.branches.shift(); }
   if (b === 'HEAD') return;   // detached, mostly mid-rebase: where it lands is what counts
@@ -1457,10 +1469,13 @@ function noteBranch(s, line, ts) {
   if (base.name === b) { base.at = at; return; }
   const ok = s.headOk === b; s.headOk = null;
   s.branchBase = { name: b, cwd, from: at, at };
-  if (ok || s.drift?.from === b || ownMove(s.gitCmds, at, b, base.from)) { s.drift = null; s.driftDue = null; return; }
-  s.drift = { from: s.drift?.from || base.name, to: b, at: ts };
-  s.driftDue = { at, to: b, since: base.from, working: statusOf(s) === 'working' };
+  if (ok || s.drift?.from === b || ownMove(s.gitCmds, at, b, base.from, msg)) { s.drift = null; s.driftDue = null; return; }
+  const shown = shownDrift(s);
+  s.drift = { from: s.drift?.from || base.name, to: b, at: ts, since: base.from, msg };
+  s.driftDue = { at, to: b, working: statusOf(s) === 'working', shown, base, until: s.reading ? 0 : Date.now() + MOVE_SLACK_MS };   // a whole read has the lines after it in hand
 }
+/** The transcript's drift as shown: one held for judgement shows the one before it. */
+const shownDrift = s => s.driftDue ? s.driftDue.shown : s.drift;
 /** A word of yours: whatever moved before it, you have had your say — the drift goes, and the branch the folder was on
  *  as you spoke is taken as the chat's (`headOk`), for the lines that are still to catch up with it. */
 function branchHeard(s) {
@@ -1471,18 +1486,28 @@ function branchHeard(s) {
 /** The drift as it stands: the disk's (newer) or the transcript's, while the claude runs, unless the folder is back on
  *  the chat's branch. `driftOf` leaves out one you said you know. */
 function rawDrift(s) {
-  const d = s.alive ? s.diskDrift || s.drift : null;
+  const d = s.alive ? s.diskDrift || shownDrift(s) : null;
   return d && !(s.headNow && s.headNow === d.from) ? d : null;
 }
 const driftOf = s => { const d = rawDrift(s); return d && driftAcks[s.id] !== driftKey(d) ? d : null; };
-/** After a batch of lines (indexFile, tailFile): a new drift a sub-agent explains goes; then the news. True when the
- *  drift changed here. */
-function settleDrift(s) {
-  const due = s.driftDue; s.driftDue = null;
-  const gone = !!(due && s.drift?.to === due.to && agentsMoved(s, due.at, due.to, due.since));
+/** After a batch of lines (indexFile, tailFile), and on its own timer: a drift held is judged once MOVE_SLACK_MS has
+ *  passed since it was seen — the chat's own command on a line written after it, or a sub-agent's, explains it —, and
+ *  only then shown and alerted: the alert's debounce starts after the judgement, so nothing is said and taken back. A
+ *  drift shown goes too when a command within its slack turns up late. True when what is shown may have changed. */
+function settleDrift(s, now = Date.now()) {
+  const due = s.driftDue;
+  if (due?.until > now) {
+    clearTimeout(s.driftTimer);
+    s.driftTimer = setTimeout(() => { s.driftTimer = null; if (sessions.get(s.id) === s) { settleDrift(s); schedulePush(s); } }, due.until - now + 20);
+    s.driftTimer.unref?.();
+    return false;
+  }
+  s.driftDue = null;
+  const d = s.drift, at = d && Date.parse(d.at);
+  const gone = !!(d && (ownMove(s.gitCmds, at, d.to, d.since, d.msg) || (due && agentsMoved(s, at, d.to, d.since))));
   if (gone) s.drift = null;
   driftNews(s, !!due?.working && !gone);
-  return gone;
+  return gone || !!due;
 }
 /** An acknowledgement lasts until the move it was for is gone; an alert goes out once per move, and only for a chat at
  *  work — Claude editing the wrong branch is the case that matters. */
@@ -1513,19 +1538,20 @@ function headAt(top) {
   } catch { return null; }
 }
 const headOf = cwd => headAt(gitTopOf(cwd));
-/** The disk's half: the folder's head against the branch the chat's lines last said. A move judged once per pair —
- *  the chat's own stays its own however long its lines take to catch up. True when the summary's part changed. */
+/** The disk's half: the folder's head against the branch the chat's lines last said. A move is judged on a look
+ *  MOVE_SLACK_MS after the first (the chat's own switch is in its transcript only once the message that made it is
+ *  written), and once per pair — the chat's own stays its own however long its lines take to catch up. True when the
+ *  summary's part changed. */
 function noteHead(s, head, now = Date.now()) {
-  const before = JSON.stringify([s.headNow, s.diskDrift]), base = s.branchBase;
+  const before = JSON.stringify([s.headNow, s.diskDrift]), base = s.driftDue?.base || s.branchBase;   // a move held is not the chat's branch yet
   s.headNow = head;
   let d = null;
   if (head && head !== 'HEAD' && base && head !== base.name && head !== s.headOk && head !== s.drift?.from) {
     const key = `${base.name}→${head}`;
-    if (s.diskSeen?.key === key) d = s.diskSeen.drift;
-    else {
-      d = ownMove(s.gitCmds, now, head, base.from) || agentsMoved(s, now, head, base.from) ? null : { from: s.drift?.from || base.name, to: head, at: new Date(now).toISOString() };
-      s.diskSeen = { key, drift: d };
-    }
+    if (s.diskSeen?.key !== key) s.diskSeen = { key, at: now, drift: undefined };   // seen: judged on a later look
+    else if (s.diskSeen.drift === undefined && now - s.diskSeen.at >= MOVE_SLACK_MS)
+      s.diskSeen.drift = ownMove(s.gitCmds, now, head, base.from) || agentsMoved(s, now, head, base.from) ? null : { from: s.drift?.from || base.name, to: head, at: new Date(now).toISOString() };
+    d = s.diskSeen.drift || null;
   } else s.diskSeen = null;
   s.diskDrift = d;
   return JSON.stringify([s.headNow, s.diskDrift]) !== before;
@@ -1658,7 +1684,7 @@ function fold(s, line) {
       return true;
     }
     case 'assistant': {
-      if (line.isSidechain) { for (const c of bashCmds(line)) noteGitCmd(s.gitCmds, c, ts); return false; }   // a sub-agent's git is the chat's own
+      if (line.isSidechain) { for (const c of bashCmds(line)) noteGitCmd(s.gitCmds, c, ts, line.message?.id); return false; }   // a sub-agent's git is the chat's own
       if (line.cwd) s.cwd = line.cwd;
       if (line.entrypoint) { s.entrypoint = line.entrypoint; s.entrypointAt = ts; }
       const m = line.message || {};
@@ -1673,7 +1699,7 @@ function fold(s, line) {
           if (EDIT_TOOLS.has(b.name) && (b.input?.file_path || b.input?.notebook_path)) (s.turnFiles ||= new Set()).add(b.input.file_path || b.input.notebook_path);
           if (NEEDS_INPUT_TOOLS.has(b.name)) { s.askOpen = { id: b.id, from: ts }; needsInput = true; s.ask = { tool: b.name, text: summarizeToolInput(b.name, b.input), options: b.input?.questions?.[0]?.options?.length || 0, labels: (b.input?.questions?.[0]?.options || []).slice(0, 9).map(o => snippet(o?.label, 40)) }; }
           if (b.name === 'Monitor' || (b.name === 'Bash' && b.input?.run_in_background)) noteTaskCall(s, b);
-          if (b.name === 'Bash') noteGitCmd(s.gitCmds, b.input?.command, ts);
+          if (b.name === 'Bash') noteGitCmd(s.gitCmds, b.input?.command, ts, m.id);
           if (b.name === 'TaskStop' && s.tasks?.size) { const j = JSON.stringify(b.input || ''); for (const id of [...s.tasks.keys()]) if (j.includes(id)) s.tasks.delete(id); }
         }
       }
@@ -1748,7 +1774,7 @@ function indexFile(file, { full = false } = {}) {
   const s = newSession(id, file);
   if (prev) {
     for (const k of ['live', 'rivals', 'alive', 'startedAt', 'openedAt', 'agentsRunning', 'headNow', 'headOk', 'peers']) s[k] = prev[k];
-    clearTimeout(prev.pushTimer); clearTimeout(prev.notifyTimer);
+    clearTimeout(prev.pushTimer); clearTimeout(prev.notifyTimer); clearTimeout(prev.driftTimer);
     s.silent = !!prev.file;
   }
   const start = full || st.size <= TAIL_BYTES ? 0 : st.size - TAIL_BYTES;

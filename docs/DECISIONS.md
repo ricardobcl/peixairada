@@ -216,9 +216,32 @@ is on now and what the chat was on, a mark on the card, an alert when it happens
   unchanged (51 round trips through `HEAD`, as it said) but 61 with no git command of the chat's own in the hour before,
   not 222 — that figure was not reproduced. The rule as built flags 24 moves in 21 chats of the 422; 37 more were first
   seen on your prompt.
-* Open: the study's list includes four commands that never change which branch is checked out (stash, reset, pull,
-  merge); dropping them would catch a move made within an hour of one. A resumed chat whose folder moved while it was
-  ended says nothing (your first word clears it). The app's banner for it has the snooze only, as a PR's turn does.
+* Open: A resumed chat whose folder moved while it was ended says nothing (your first word clears it). The app's banner
+  for it has the snooze only, as a PR's turn does. Any branch-changing command of the chat's own explains every move in
+  the hour after it (the study's rule), so a move made from outside within an hour of the chat's own checkout is not
+  said — the scenario's outside move runs in a chat that has made none.
+* **2026-10-13, later — the rule, measured and fixed in three parts** (asked for once the measurement below was in):
+  * **Stash, reset, pull and merge are not the chat's own move any more.** None of them changes which branch is checked
+    out, and `\bmerge\b` matched `merge-base` and `merge-tree` — read-only, and the bulk of what the four were: of 1,344
+    of them in the 422 newest transcripts, 713 merge-base and 198 merge-tree, against 34 merges, 31 pulls, 98 resets and
+    273 stashes (none a `stash branch`). Dropping the four raised 3 flags, all hidden by merge-base or merge-tree: two
+    were moves from outside (a chat whose git in the hour was show, grep, fetch, log), one the chat's own switch. So the
+    list is the commands that can move the branch — checkout, switch, rebase, worktree, bisect, a branch renamed,
+    `gh pr checkout`, and `git stash branch` —, the subcommand whole (`(?![\w-])`).
+  * **The line order.** That one was the chat's own `git switch -c` on the line after the first line showing its
+    branch: Claude Code writes a message's lines once its call has run, so its thinking line carries the new branch.
+    Over the 1,500 newest transcripts this happens in 71 moves — 63 in the same message, 40 within 2 s by the lines'
+    times, the rest up to 16 s (the 8 others a later message, 5–24 s on). A move is now held (`driftDue`, the drift
+    before still shown) and judged `MOVE_SLACK_MS` (2 s) after it is seen, on a timer as well as on each batch; a command
+    in the same message that names the branch counts whatever its time, another up to 2 s after. Nothing is shown or
+    alerted before the judgement, so the alert's 400 ms debounce starts after it and nothing is said and taken back. The
+    disk had the same race — its HEAD file moves before the message is written —, so a move there is judged on a second
+    look 2 s after the first, against the branch before a move still held (without that, the transcript catching up
+    with the disk's move dropped the chip for the hold and said it twice).
+  * **Measured** with the board's own code over the 422 newest transcripts: 20 flags in 16 chats, against main's 24 in
+    21 — the two moves from outside the four hid are said now, and six of main's were the chat's own `checkout` or
+    `switch -c` naming the branch on the next line 1.2–1.9 s later, gone. None of the 20 had a branch-changing command of
+    the chat's own in the hour before.
 
 ## Decisions of 2026-10-13, night — the harness for the board's frames; npm test under load; no perf skill
 

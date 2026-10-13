@@ -4,7 +4,10 @@
 // before the changes' count reads "main now · was feat/tax-rounding", its tooltip names the other chat and screen
 // readers hear it; the card wears the red branch, the other card none; the lines catching up are the same move, no second
 // alert; the row stays one line narrowed; a click on the chip sets it aside, card and all, and the next move shows
-// again; a word of yours clears it. Tiles and the floating header on, for the shots (DARK=1 for the dark ones).
+// again; a word of yours clears it. And two more chats at work, each in a checkout of its own: one's own `git switch -c`
+// on the line after the one that first shows the branch, its HEAD file moved before either is written — held, judged its
+// own, nothing shown nor said —; the other's branch moved from outside on a line of its transcript and its HEAD — said
+// once. Tiles and the floating header on, for the shots (DARK=1 for the dark ones).
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
@@ -17,7 +20,7 @@ export const meta = { server: true, fixture: 'auto', prefs: { tiles: true, headF
 export default async function (ctx) {
   const out = {};
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'peix-drift-')), cwd = join(root, 'widgets');
-  const sleeps = [0, 1].map(() => spawn('sleep', ['180'], { stdio: 'ignore' }));
+  const sleeps = [0, 1, 2, 3].map(() => spawn('sleep', ['180'], { stdio: 'ignore' }));
   try {
     // a checkout as far as the board reads one: the HEAD file, which is all it reads
     mkdirSync(join(cwd, '.git'), { recursive: true });
@@ -139,6 +142,47 @@ export default async function (ctx) {
     ctx.assert.deepEqual([out.cleared.drift, out.cleared.headNow], [null, 'feat/rates'], 'and a poll later the folder\'s branch is the chat\'s, though its line still said main');
     out.acksAfter = JSON.parse(readFileSync(join(ctx.server.dir, 'state.json'), 'utf8')).driftAcks;
     ctx.assert.deepEqual(out.acksAfter, {}, 'the set-aside went with its move');
+
+    // ---- the chat's own switch, written after the line that first shows its branch: nothing shown, nothing said ----
+    const now = () => Date.now() - T;
+    const alone = (folder, title, branch, pid) => {   // a chat at work in a checkout of its own
+      const dir = join(root, folder); mkdirSync(join(dir, '.git'), { recursive: true });
+      const c = { id: randomUUID(), head: b => writeFileSync(join(dir, '.git', 'HEAD'), `ref: refs/heads/${b}\n`) };
+      c.at = (l, msg) => ({ ...l, cwd: dir, ...msg && { message: { ...l.message, id: msg } } });
+      c.add = (...ls) => appendFileSync(c.file, ls.map(l => JSON.stringify(c.at(...[].concat(l)))).join('\n') + '\n');
+      c.head(branch);
+      const proj = join(ctx.fixture.dir, 'projects', slugOf(dir)); mkdirSync(proj, { recursive: true }); c.file = join(proj, `${c.id}.jsonl`);
+      writeFileSync(c.file, [c.at(prompt(c.id, branch, now() - 20_000, 'run the tests')), c.at(calls(c.id, branch, now() - 15_000, 'npm test')), { type: 'ai-title', sessionId: c.id, aiTitle: title }].map(l => JSON.stringify(l)).join('\n') + '\n');
+      writeFileSync(join(ctx.fixture.dir, 'sessions', `${pid}.json`), JSON.stringify({ pid, sessionId: c.id, cwd: dir, startedAt: T - 3600_000, version: 'fixture', kind: 'interactive', entrypoint: 'cli', status: 'busy', statusUpdatedAt: Date.now() }));
+      return c;
+    };
+    const saidTo = id => ctx.evaluate(`window.__alerts.filter(a => a.sessionId === ${JSON.stringify(id)}).map(a => [a.kind, a.heading, a.snippet])`);
+    const own = alone('gadgets', 'Gadgets, a branch of its own', 'feat/start', sleeps[2].pid);
+    await ctx.waitFor(`window.peix.session(${JSON.stringify(own.id)})?.headNow === 'feat/start'`, { what: 'the third chat, its checkout read', timeout: 15_000 });
+    const looks = [], watch = setInterval(() => sum(own.id).then(x => looks.push(x?.drift || null), () => {}), 200);
+    try {
+      own.head('feat/new');   // its switch has run
+      await ctx.sleep(1500);   // a poll or more sees the HEAD file moved, the transcript not yet
+      const msg = 'msg_' + randomUUID().slice(0, 8), at = now();
+      own.add([line(own.id, 'feat/new', at, 'assistant', [{ type: 'thinking', thinking: 'A branch for it.' }], { model: 'fixture-1', stop_reason: 'tool_use' }), msg]);
+      await ctx.sleep(400);   // the call's line, a moment later: its own read of the file
+      own.add([calls(own.id, 'feat/new', at + 1000, 'git switch -c feat/new && npm test'), msg]);
+      await ctx.sleep(5000);   // past the hold, two looks at the disk and the alert's debounce
+    } finally { clearInterval(watch); }
+    out.ownSwitch = { looks: looks.length, shown: looks.filter(Boolean).length, alerts: (await saidTo(own.id)).length, headNow: (await sum(own.id)).headNow };
+    ctx.assert.ok(out.ownSwitch.looks >= 20, `looked all along (${out.ownSwitch.looks})`);
+    ctx.assert.deepEqual([out.ownSwitch.shown, out.ownSwitch.alerts, out.ownSwitch.headNow], [0, 0, 'feat/new'], 'its own switch: never shown, never said');
+
+    // ---- an outside move on a chat at work, in its transcript and its HEAD: said once ----
+    const moved2 = alone('gizmos', 'Gizmos, moved from outside', 'feat/gizmo', sleeps[3].pid);
+    await ctx.waitFor(`window.peix.session(${JSON.stringify(moved2.id)})?.headNow === 'feat/gizmo'`, { what: 'the fourth chat, its checkout read', timeout: 15_000 });
+    moved2.head('main');
+    moved2.add(said(moved2.id, 'main', now(), 'The tests are still running.', 'tool_use'));
+    await ctx.waitFor(`window.__alerts.some(a => a.sessionId === ${JSON.stringify(moved2.id)})`, { what: 'the outside move said', timeout: 15_000 });
+    await ctx.sleep(2500);   // the other signal's judgement, and its debounce: no second word
+    out.outside = { drift: (await sum(moved2.id)).drift, alerts: await saidTo(moved2.id) };
+    ctx.assert.deepEqual([out.outside.drift?.from, out.outside.drift?.to], ['feat/gizmo', 'main'], 'the move on the summary');
+    ctx.assert.deepEqual(out.outside.alerts, [['drift', 'Branch moved · gizmos', 'main now · was feat/gizmo']], 'said once');
     return out;
   } finally {
     for (const p of sleeps) p.kill();
