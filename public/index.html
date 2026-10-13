@@ -2104,7 +2104,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .rn.rolling { position: relative; display: inline-flex; height: 1lh; overflow: hidden; vertical-align: bottom; }
   .rn.rolling .rv { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }   /* read, not seen (2026-10-12): a state said by colour or motion alone */   /* the number, as text, out of sight */
-  .rn.rolling .rcol > span { display: block; transition: transform .55s var(--spring); }
+  .rn.rolling .rcol > span { display: block; }   /* rolled by an animation of its own (rollIn, 2026-10-13), not a transition */
   .rn.rolling .rcol > span::before { content: "0\A 1\A 2\A 3\A 4\A 5\A 6\A 7\A 8\A 9"; white-space: pre; }
   /* ---- the small print: wrapping, figures, selection, focus, overscroll ---- */
   /* (2026-09-27, night) Prose wraps prettily and a short centred text balances; a title breaks at a word (with
@@ -2190,7 +2190,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     #resume.cloning .ric::after { animation: none; }   /* cloning: the ring still, the line along the top and the percent say it */
     #slist .card .top .tprs > * { transition: color .12s, border-color .12s, background-color .12s, box-shadow .12s; }
     .card .top .faces > * { transition: none; }   /* the pile spreads at once */
-    .rn.rolling .rcol > span { transition: none; }   /* a count shows its number (rollIn rolls nothing then; this for a switch mid-roll) */
+    /* a count shows its number: rollIn rolls nothing under reduced motion (REDUCED) */
     .act.tk .tk path { animation: none; }   /* the ✓ is there, not drawn (tickDone tells the server at once) */
     .card:active, :is(.btn, .ptab, .hmore, .hprs, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button):active { scale: none; }   /* a press does not dip */
   }
@@ -3179,9 +3179,15 @@ const toolName = n => {
       go.push([el, now]);
     }
     if (!go.length) return;
-    void document.body.offsetWidth;   // the strips stand at the old digits before they move
+    // each strip rolls by an animation of its own from the old digit (2026-10-13): a transition needed the old digit laid
+    // out first — `void document.body.offsetWidth`, a whole style pass and layout, and in WebKit a layer walk, at every
+    // count that moved (the bar's CPU and memory every 3 s)
     for (const [el, now] of go) {
-      for (const strip of el.querySelectorAll('.rcol > span')) strip.style.transform = `translateY(${-strip.dataset.to * 10}%)`;
+      for (const strip of el.querySelectorAll('.rcol > span')) {
+        const to = `translateY(${-strip.dataset.to * 10}%)`;
+        strip.animate([{ transform: strip.style.transform }, { transform: to }], { duration: ROLL_MS, easing: SPRING });
+        strip.style.transform = to;
+      }
       noteMotion(el.dataset.rk, 'roll');
       setTimeout(() => { if (el.isConnected) { el.textContent = now; el.classList.remove('rolling'); } }, ROLL_MS + 80);
     }
@@ -3599,7 +3605,7 @@ const toolName = n => {
    *  each drew the whole list. A frame, or 100 ms where there are no frames (a hidden window: the badge still follows). */
   function renderBoardSoon() {
     if (renderBoardSoon.t) return;
-    const run = () => { renderBoard(); phaseAnims(true); };   // in the frame already: the new nodes' rings phased before it paints
+    const run = () => { renderBoard(); if (phaseAnims.queued) phaseAnims(true); };   // in the frame already: the new nodes' rings phased before it paints
     renderBoardSoon.raf = requestAnimationFrame(run); renderBoardSoon.t = setTimeout(run, 100);
   }
   function renderBoard() {
@@ -3834,11 +3840,11 @@ const toolName = n => {
     // An empty list (2026-10-11) is the home's fish, resting, over what is empty and the key that fills it — a bubble
     // now and then (the bar's own interval), nothing else moving.
     const [none, how] = q ? ['Nothing matches', 'another word, or Esc for every chat'] : flt ? [flt.none, 'the funnel shows every chat again'] : ['No chats yet', '⌥⌘N starts one'];
-    drawCards(items, `<div class="none"><span class="nfish">${REST_FISH}</span><b>${esc(none)}</b><span>${esc(how)}</span></div>`);
+    const drawn = drawCards(items, `<div class="none"><span class="nfish">${REST_FISH}</span><b>${esc(none)}</b><span>${esc(how)}</span></div>`);
     fillAges($('#slist')); fillLive($('#slist')); fadeSoon();
     caughtUp(zero);
     drawFilter(p);
-    phaseAnims();
+    if (drawn) phaseAnims();
     markQsel();
     listChanged();
     spotSoon();
@@ -3920,12 +3926,12 @@ const toolName = n => {
     }
     lineNodes = lines;
     for (const id of [...cardNodes.keys()]) if (!want.has(id)) cardNodes.delete(id);
-    if (!nodes.length) { list.innerHTML = empty; return; }
+    if (!nodes.length) { list.innerHTML = empty; return true; }
     // Nothing moved, nothing new, nothing gone — most updates (2026-10-03: every one measured every card twice and
     // made every line anew): the list is left as it is, and nothing is read.
     let i = 0, same = true;
     for (const c of list.children) { if (c.classList.contains('leaving')) continue; if (c !== nodes[i++]) { same = false; break; } }
-    if (same && i === nodes.length) { flareLanded(); return; }
+    if (same && i === nodes.length) { flareLanded(); return false; }   // …and nothing new to phase
     const lr = move ? list.getBoundingClientRect() : null, before = new Map();
     if (move) {
       for (const c of cardNodes.values()) if (c.el.isConnected) before.set(c.el, c.el.getBoundingClientRect());
@@ -3944,7 +3950,7 @@ const toolName = n => {
     skip();
     for (const el of gone) leaveCard(el, lr);
     flareLanded();
-    if (!move) return;
+    if (!move) return true;
     for (const a of [...sliding]) if (a.id === 'flip') a.cancel();   // the true place, not where a slide had got to
     // every read first, then every animation: a read after an animate() is a style flush each
     const moves = [];
@@ -3960,6 +3966,7 @@ const toolName = n => {
       if (kind === 'enter') slide(el, 'enter', [{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: v, transform: 'none' }], { duration: ENTER_MS, easing: 'ease-out' });
       else slide(el, 'flip', [{ transform: `translateY(${v}px)` }, { transform: 'none' }], { duration: FLIP_MS, easing: EASE_OUT }, Math.round(v));
     }
+    return true;
   }
   // The card is wrapped in a `div.leaving` that folds shut around it (height, opacity and the list's 7 px gap to
   // nothing): the card itself keeps its look, loses its data-id, and — no longer a child of the list — is out of
@@ -3994,6 +4001,10 @@ const toolName = n => {
   // too — the switch moved no ring at all; the current time first moved every one. The start after it resolves a
   // pending one (its current time leaves it unresolved) and makes a running one's exact (Chrome's was 2e-13 off).
   // Chrome takes the start alone, so the harness never saw it.
+  // Only when something new may have started (2026-10-13): getAnimations() is a style pass, and in WebKit a walk of every
+  // layer, and it ran twice a render — the render's own call and renderBoardSoon's at once — whether a node was made or
+  // not. A run at once now clears a queued one, renderBoardSoon runs it at once only when the render queued one, and a
+  // render that changed no node (drawCards: false) queues none.
   function phaseAnims(now = false) {
     const run = () => {
       phaseAnims.queued = false; const at = document.timeline.currentTime;
@@ -4005,7 +4016,7 @@ const toolName = n => {
     };
     if (now) return run();
     if (phaseAnims.queued) return; phaseAnims.queued = true;
-    requestAnimationFrame(run);
+    requestAnimationFrame(() => { if (phaseAnims.queued) run(); });
   }
   // Where a clauding card's light runs (2026-10-09, the studies' M5): round the card — the ring, as always — or down its
   // lit edge, the ink card's own colour. <html data-light="edge"> picks it in CSS; the open chat's light past its card

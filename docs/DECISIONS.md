@@ -28,6 +28,14 @@ the made-up 400-card board with the user's prefs in a WKWebView, the median of t
   resized. The hidden timeline's thumb and labels were placed on every scroll frame; a frame asked for by a scroll alone
   now leaves it be (`listChanged(true)`) — `show()` draws it as it comes out, and a render still does, so it is right
   at rest as `timeline.mjs` reads it.
+* **No full style pass on a clock.** A count that rolled (the bar's CPU and memory every 3 s, a lane's count) laid
+  its strips out at the old digit with `void document.body.offsetWidth` — a style pass and a layout of the whole page,
+  and in WebKit a walk of every layer — so that a transition had somewhere to start; each strip now rolls by an
+  animation of its own from the old digit, and the transition is gone. `phaseAnims()` asked `getAnimations()` — a style
+  pass too — twice a render, the render's own call and `renderBoardSoon`'s at once, whether or not a node had been
+  made; now `drawCards` says whether it changed the list, a render that did not queues nothing, `renderBoardSoon` runs
+  a queued one at once, and that run clears the queue. The presence line's verb (3.2 s) and the header's menu still
+  phase what they make.
 
 ## Decisions of 2026-10-13, after Zed — Zed installed when it is picked
 

@@ -225,7 +225,8 @@ for `$HOME`'s home and the account's.
   the × off the pointer). → `small-motions.mjs` (the 2026-10-11 motions, one section each), `pane-tabs.mjs`.
 * **Counts roll** (`rn(key, n)`, `rollSoon`): a count is plain text in `.rn[data-rk]`; after a draw, one whose key
   showed another number becomes a digit strip, plain text again `ROLL_MS` later — so `setHtml` and the reconciles
-  compare the same strings, and `textContent` reads the number mid-roll (`.rv`).
+  compare the same strings, and `textContent` reads the number mid-roll (`.rv`). Each strip rolls by an animation of
+  its own from the old digit — never a transition after a forced layout (2026-10-13).
 * **Dialogs, `.pop` and `.note` ease in and out with `@starting-style`** and `allow-discrete`: a closed dialog is
   still `display: block` for 140 ms with `open` already off — read `open`, never `display`. One that must vanish at
   once sets `transition: none`. `note()` fades its popup (`.out`) before removing it.
@@ -272,7 +273,9 @@ for `$HOME`'s home and the account's.
   (the summary's `doing`, `doingOf`; paths by `pathTail`), a watching card's newest event. **`phaseAnims()`** (once a
   frame before paint; `true` at once) puts every `ring`, `edge`, `sonar`, `pulse`, `pix` and `pixhop` at start 0 on
   the document clock — or hashed from the chat's id with *rings in step* off (`prefs.ringsInStep`) — by its
-  `currentTime` first, then its `startTime` (see the invariants). → `card-signals.mjs`.
+  `currentTime` first, then its `startTime` (see the invariants) — only when something new may have started: a render
+  queues it when `drawCards` changed the list (it says so), `renderBoardSoon` runs a queued one at once, and a run at
+  once clears the queued one (2026-10-13; `getAnimations()` is a style pass). → `card-signals.mjs`.
 * **The open chat's light runs past its card** (2026-09-29; `#trail`, `drawTrail(g)` from `trailGeom()`): while it
   is clauding or watching, the open card, the splitter down to it (`splitEnd`) and the header's project box are one
   shape, the light running clockwise round its edge — a fixed overlay clipped to a 2 px band (`clip-path: path(evenodd,
