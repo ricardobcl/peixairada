@@ -5,6 +5,28 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-13. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-13, later still — ⌥⌘R reloads the board; a tab's key again fills the column
+
+Ricardo: "change the refresh app to hotkey R, and leave the cmd R to refresh webpages and such (or whatever vscode does
+with that hotkey)" and "when already focussed and I use the hotkey to open that same pane, just toggle the fullscreen
+… I'm focussed on web, then I do hotkey C to focus on claude, if I do again hotkey C it goes fullscreen (like cmd 0),
+and I do again cmd C, it goes back to 2 panes. Same for web/terminal/vscode/diff".
+
+* **⌥⌘R reloads the board, ⌘R only ever a page's**: ⌘R was the View menu's *Reload*, the page in the pane while it was
+  up and the board otherwise — and a menu's key equivalent comes before any page, so VS Code Web never heard ⌘R. Now
+  the menu has *Reload Page* with no key and *Reload Board* on ⌥⌘R (the board's own HOTKEYS has R too, forwarded from
+  the pane, and a browser's page answers it); ⌘R is a key monitor's: the page on top of the pane reloads, unless it is
+  VS Code Web, which hears its own ⌘R, and with no page up the key goes on to whatever has the keys (the board ignores
+  it). VS Code Web's ⌥⌘R, *reveal in Finder*, has no Finder to reveal in.
+* **A tab's key pressed again from that tab fills the column with its half**, and once more gives the two back:
+  ⌥⌘C on a claude that runs here, ⌥⌘T on a zsh, ⌥⌘G on a page (any — so with several PRs the picker comes from
+  another tab, or ⌥⌘←→ walks to them), ⌥⌘E on the editor, ⌥⌘D on the changes. Not ⌘0, which closes the other half and
+  merges its tabs into one strip — there would be nothing to give back — but a zoom, tmux's: the other half is only
+  hidden, its terminal keeps its size (the PTY hears no resize, so claude does not repaint behind it) and its page is
+  not laid over the column. **It holds while the keys stay in that half**: going to a tab of the half behind it — its
+  key, ⌘1/⌘2, ⌥⌘←→, a new tab that opens there — brings both back, as selecting another pane unzooms tmux. With one
+  half the key does what it always did. The first press only goes to the tab, as before.
+
 ## Decisions of 2026-10-13, later — ⌘T on a page is a blank tab
 
 Ricardo: "the opening tab should be more like a browser and open immediately the empty tab to write something, vs the

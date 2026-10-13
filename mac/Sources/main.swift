@@ -657,13 +657,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   // the chat above or below, ← → for the tab beside, 1 and 2 for the top and bottom halves of a stacked chat column
   // (2026-09-27; by key code, since ⌥ composes a symbol over a digit on a Portuguese layout), W to close the tab the
   // keys are in (2026-09-28 — VS Code Web's own ⌥⌘W, whole word in its find, is given up for it), B to fold the chat
-  // list (⌘B until 2026-10-02; VS Code Web's ⌥⌘B, its secondary side bar, is given up for it), Y the themes, L the launcher, D a chat's changes, A the overview and 0 the home (2026-10-10);
+  // list (⌘B until 2026-10-02; VS Code Web's ⌥⌘B, its secondary side bar, is given up for it), Y the themes, L the launcher, D a chat's changes, A the overview and 0 the home (2026-10-10), R the
+  // board reloaded (2026-10-13 — VS Code Web's ⌥⌘R, reveal in Finder, has no Finder to reveal in);
   // and ⌘ + one of the
   // layout keys (CMDKEYS there): 0, 1 and 2 for the halves of the chat column, and T a new tab (2026-10-13 — VS Code Web's
   // ⌘T, a symbol in the workspace, is given up for it; ⌘W is the Window menu's). Pressed while the pane has the keyboard: its web views are not the board's, so the page
   // would never hear it. Forwarded through peixKey as the page's e.code and which map it belongs to; the page asks
   // for the keyboard back ({type: "focus"}) only when it opens a dialog.
-  static let boardKeys: Set<String> = ["t", "e", "g", "c", "w", "o", "p", "k", "f", "n", "b", "y", "l", "d", "a"]
+  static let boardKeys: Set<String> = ["t", "e", "g", "c", "w", "o", "p", "k", "f", "n", "b", "y", "l", "d", "a", "r"]
   static let cmdKeys: Set<String> = ["0", "1", "2", "t"]
   static func hotkeyCode(_ e: NSEvent) -> (code: String, mods: String)? {
     let held = e.modifierFlags.intersection([.command, .option, .control, .shift])
@@ -698,6 +699,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
   }
   private func installHotkeyForwarder() {
+    // ⌘R (2026-10-13): the page on top of the pane reloads, as in a browser — but not VS Code Web, whose own key it is
+    // (it hears it), and not the board, which ⌥⌘R reloads: with neither up, the key goes on to whatever has the keys.
+    NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
+      guard let self = self, e.window === self.window, e.modifierFlags.intersection([.command, .option, .control, .shift]) == [.command],
+            e.charactersIgnoringModifiers?.lowercased() == "r", !self.paneOverlay.isHidden,
+            let key = self.paneFocus, !key.hasPrefix("ide:"), let w = self.paneViews[key] else { return e }
+      w.reload()
+      return nil
+    }
     NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
       guard let self = self, !self.paneOverlay.isHidden, let hot = AppDelegate.hotkeyCode(e),
             let fr = self.window.firstResponder as? NSView,
@@ -752,7 +762,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       }
     }
     menu.addItem(.separator())
-    menu.addItem(withTitle: "Reload", action: #selector(reload(_:)), keyEquivalent: "").target = self
+    menu.addItem(withTitle: "Reload", action: #selector(reloadBoard(_:)), keyEquivalent: "").target = self
     menu.addItem(withTitle: "Restart Server", action: #selector(restartServer(_:)), keyEquivalent: "").target = self
     menu.addItem(withTitle: "Open Server Log", action: #selector(openLog(_:)), keyEquivalent: "").target = self
     menu.addItem(.separator())
@@ -795,7 +805,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
     let viewItem = NSMenuItem(); main.addItem(viewItem)
     let view = NSMenu(title: "View")
-    view.addItem(withTitle: "Reload", action: #selector(reload(_:)), keyEquivalent: "r").target = self
+    // ⌘R is a page's, never the menu's (2026-10-13): the key monitor reloads the page in the pane with it and leaves it to
+    // VS Code Web and the board, so this item carries no key equivalent — one would take ⌘R before VS Code could
+    view.addItem(withTitle: "Reload Page", action: #selector(reloadPage(_:)), keyEquivalent: "").target = self
+    let board = view.addItem(withTitle: "Reload Board", action: #selector(reloadBoard(_:)), keyEquivalent: "r")
+    board.keyEquivalentModifierMask = [.option, .command]; board.target = self
     view.addItem(withTitle: "Restart Server", action: #selector(restartServer(_:)), keyEquivalent: "R").target = self
     view.addItem(.separator())
     // ⌃⌘F is the board's own full screen (toggleFill), not the system's. AppKit adds an Enter Full Screen of its own to
@@ -820,17 +834,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     window.makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)
   }
-  /// ⌘R reloads what you are looking at: the page on top of the pane while the pane is up (GitHub, the editor —
-  /// the board's own tab strip has ↻ for it too), the board itself otherwise. The menu item says which.
-  @objc func reload(_ sender: Any?) {
-    if let w = paneFocus.flatMap({ paneViews[$0] }), !paneOverlay.isHidden { w.reload(); return }
-    web.load(URLRequest(url: kURL))
+  /// The page on top of the pane, reloaded (the strip's ↻ does it too) — ⌘R through the key monitor, or the menu.
+  @objc func reloadPage(_ sender: Any?) {
+    if let w = paneFocus.flatMap({ paneViews[$0] }), !paneOverlay.isHidden { w.reload() }
+  }
+  /// The board itself (⌥⌘R, 2026-10-13; ⌘R's when no page was up before): reloaded where it is, the open chat's address
+  /// kept — or loaded afresh over a message.
+  @objc func reloadBoard(_ sender: Any?) {
+    if boardShown { web.reload() } else { web.load(URLRequest(url: kURL)) }
   }
   func validateMenuItem(_ item: NSMenuItem) -> Bool {
     let paneUp = paneOverlay != nil && !paneOverlay.isHidden
-    if item.action == #selector(reload(_:)) {
-      item.title = paneUp ? "Reload Page" : "Reload"
-    }
+    if item.action == #selector(reloadPage(_:)) { return paneUp && paneFocus.flatMap({ paneViews[$0] }) != nil }
     if item.action == #selector(toggleFill(_:)) {
       item.title = fillSaved != nil ? "Exit Full Screen" : "Enter Full Screen"
     }

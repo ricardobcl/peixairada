@@ -33,7 +33,7 @@ column split in two halves when there's more than one thing to look at.
 | ⌥⌘G | 🐙 **The PR on GitHub** — its page on a tab; its state, its CI and whose move it is under the header. |
 | ⌥⌘E | 🧩 **VS Code Web** on the chat's folder. |
 | ⌥⌘D | 🔀 **The chat's changes** — this turn's edits, everything uncommitted, or the branch against its base, as a diff. Commit… and Push type into its shell; a note on a line goes to Claude. |
-| ⌘2 · ⌥⌘2 | ◫ **Split** the column side by side, or one half over the other; drag a tab across, ⌘0 closes the other half. |
+| ⌘2 · ⌥⌘2 | ◫ **Split** the column side by side, or one half over the other; drag a tab across, ⌘0 closes the other half. Press a tab's key again from it (⌥⌘C, ⌥⌘T, ⌥⌘G, ⌥⌘E, ⌥⌘D) and its half fills the column; once more, both are back. |
 
 GitHub and VS Code open in the chat in the Mac app; in a browser they open in a tab of their own.
 
@@ -246,6 +246,7 @@ The login agent takes `PORT`, `NOTIFY` and your `PATH` at `scripts/launchd.sh in
 | ⌥⌘A · ⌥⌘D · ⌥⌘0 | the overview: every live chat at once · this chat's changes · home |
 | ⌥⌘S | the busy chats stacked beside the open one (tiles) |
 | ⌥⌘Y | the theme |
+| ⌥⌘R · ⌘R | reload the board · reload the page in the pane (VS Code Web keeps its own ⌘R) |
 
 `?` (or Settings › Keys) lists the rest, grouped. A right-click on a card, a PR chip or a project's colour square has
 what ⌥-click and a double-click do — rename, tick done, take a PR off, let go of a colour — and the launcher has the

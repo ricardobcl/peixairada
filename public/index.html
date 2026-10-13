@@ -4949,12 +4949,12 @@ const toolName = n => {
     ['⌥⌘A', 'Go to', 'the overview: every live chat at once', 'Asking you · Clauding · Watching · New replies, each with what it is doing now · 1–9 opens one · a question\'s answer types its digit into the chat\'s drawer', ['alt:KeyA']],
     ['⌥⌘0', 'Go to', 'home — the board\'s facts and your day', 'no chat open · a row opens its chat', ['alt:Digit0']],
     ['?', 'Go to', 'this list, on a sheet of its own', 'outside a box or a terminal', []],
-    ['⌥⌘C', 'This chat', 'its Claude, in its drawer', 'starts it, or takes over one running elsewhere', ['alt:KeyC']],
+    ['⌥⌘C', 'This chat', 'its Claude, in its drawer', 'starts it, or takes over one running elsewhere · again from it: its half fills the column, and back', ['alt:KeyC']],
     ['⌘T', 'This chat', 'a new tab — another shell, or from a web page a blank one', 'from claude\'s drawer, a shell, the transcript or the changes, a shell in its folder · from a GitHub page or VS Code Web, a blank tab with the keys in its address — type one, or words to search · it opens beside the chat', ['cmd:KeyT']],
-    ['⌥⌘T', 'This chat', 'a shell in its folder, on a tab', 'again to show it — ⌘T opens another', ['alt:KeyT']],
-    ['⌥⌘E', 'This chat', 'its folder in VS Code Web, on a tab', '', ['alt:KeyE']],
-    ['⌥⌘G', 'This chat', 'its PR on GitHub, on a tab', 'the repo when it has none · a picker with several', ['alt:KeyG']],
-    ['⌥⌘D', 'This chat', 'what it changed, on a tab', 'its last turn\'s edits, the uncommitted tree or the branch against its base · Commit… and Push type into its shell · + on a line sends Claude a note', ['alt:KeyD']],
+    ['⌥⌘T', 'This chat', 'a shell in its folder, on a tab', 'shown if it has one — ⌘T opens another · again from it: its half fills the column, and back', ['alt:KeyT']],
+    ['⌥⌘E', 'This chat', 'its folder in VS Code Web, on a tab', 'again from it: its half fills the column, and back', ['alt:KeyE']],
+    ['⌥⌘G', 'This chat', 'its PR on GitHub, on a tab', 'the repo when it has none · a picker with several · again from a page: its half fills the column, and back', ['alt:KeyG']],
+    ['⌥⌘D', 'This chat', 'what it changed, on a tab', 'its last turn\'s edits, the uncommitted tree or the branch against its base · Commit… and Push type into its shell · + on a line sends Claude a note · again from it: its half fills the column, and back', ['alt:KeyD']],
     ['⌘W', 'This chat', 'close the tab the keys are in', 'the shell ends, a page or VS Code Web goes · on the chat\'s own tab, its half closes — with one half, the window\'s own key · a dialog up closes first', ['cmd:KeyW']],
     ['⌥⌘W', 'This chat', 'close the tab the keys are in, never more', 'as ⌘W, but on the chat\'s tab it says so, and never closes a half or the window', ['alt:KeyW']],
     ['⌘1 ⌘2', 'Layout', 'the left half, the right one', '⌘2 splits the chat in two the first time; one over the other, either turns it back · the digit is the half, the modifier the layout', ['cmd:Digit1', 'cmd:Digit2']],
@@ -4964,6 +4964,7 @@ const toolName = n => {
     ['⌥⌘B', 'Layout', 'fold the list into a rail, and back', '', ['alt:KeyB']],
     ['⌥⌘S', 'Layout', 'the stack of busy chats beside the open one', 'tiles\' · with tiles off, both together · not from a page in the pane, where it is VS Code\'s Save All', ['alt:KeyS']],
     ['⌃⌘F', 'Layout', 'full screen up to the notch, in the app', 'the green button too (⌥-click zooms) · remembered across launches', []],
+    ['⌥⌘R', 'Look', 'reload the board', 'the chat you are on kept · ⇧⌘R restarts the server too, in the app · ⌘R is the page\'s in the pane', ['alt:KeyR']],
     ['⌥⌘Y', 'Look', 'the theme', 'the board behind follows the arrows · ⏎ wears it · esc puts back what was worn', ['alt:KeyY']],
     ['⌘,', 'Look', 'the settings', 'the chat header\'s ··· has them too', ['cmd:Comma']],
     ['⌘+ ⌘−', 'In the drawer', 'the chat\'s and the drawer\'s size', '', []],
@@ -4971,7 +4972,7 @@ const toolName = n => {
     ['⇧⏎', 'In the drawer', 'a newline in the prompt', '', []],
     ['⌘← ⌘→', 'In the drawer', 'the line\'s start / end, as in iTerm', '⌥← ⌥→ a word · ⌘⌫ ⌘⌦ delete to the start / end · ⌥⌫ ⌥⌦ a word', []],
     ['esc', 'In a page', 'back to the chat from a page\'s tab', 'closes a picker or a popover first · never leaves full screen while one is up', []],
-    ['⌘R · ⇧⌘R', 'In a page', 'reload the page in the pane, else the board', '⇧⌘R restarts the server, in the app', []],
+    ['⌘R', 'In a page', 'reload the page in the pane', 'VS Code Web hears its own ⌘R · ⌥⌘R reloads the board', []],
     ['⌘F · ⌘G', 'In a page', 'find on the page in the pane', '⏎ ⇧⏎ or ⌘G ⇧⌘G step the matches · esc closes the bar · in the app', []],
     ['pinch', 'In a page', 'zoom a page in the pane, as in Safari', 'its address sits in the strip, a click copies it', []],
   ];
@@ -5017,7 +5018,7 @@ const toolName = n => {
   // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShell, KeyE: hotVsCode, KeyG: hotGh, KeyC: hotClaude, KeyW: hotCloseTab, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiff, KeyA: ovOpen, KeyS: hotStack, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  const HOTKEYS = { KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiff, KeyA: ovOpen, KeyS: hotStack, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -5052,6 +5053,17 @@ const toolName = n => {
   // the strip's height and the x range the housing covers, in this page's px — or null on a screen without one (layoutNotch).
   window.peixFill = (on, notch) => { state.fill = !!on; state.notch = on && notch && notch.top > 0 ? notch : null; layoutNotch(); fitHeadPrs(); paintHeadSplit(); };   // renderHead's order: the chips fold for the new geometry
   const noChat = () => note($('#shead'), 'Open a chat first');
+  // A chat's own key pressed again from the tab it brings up, the keys in it (2026-10-13): that half fills the column,
+  // the other kept behind it, and again the two come back — a ⌘0 that undoes itself (toggleZoom). ⌥⌘C on a claude that
+  // runs here, ⌥⌘T on a zsh, ⌥⌘G on a page, ⌥⌘E on the editor, ⌥⌘D on the changes; with one half, what it always did.
+  function zoomAgain(on) { const s = state.sessions.get(state.current); return !!(s && on(tabOf(s), s) && toggleZoom(s)); }
+  function hotClaudeKey() { return zoomAgain((k, s) => k === 'chat' && termLive(s)) || hotClaude(); }
+  function hotShellKey() { return zoomAgain(isShellTab) || hotShell(); }
+  function hotGhKey() { return zoomAgain(k => /^gh:/.test(k || '')) || hotGh(); }
+  function hotVsCodeKey() { return zoomAgain(k => /^ide:/.test(k || '')) || hotVsCode(); }
+  function hotDiffKey() { return zoomAgain(k => k === 'changes') || hotDiff(); }
+  /** ⌥⌘R (2026-10-13; ⌘R's before, which is the page's in the pane now): the board, reloaded where it is. */
+  function hotReload() { location.reload(); }
   const focusBoard = () => { if (inApp) post({ type: 'focus' }); };   // the key may have come from the pane: the board needs the keyboard back
   function hotClaude() {
     const s = state.sessions.get(state.current); if (!s) return noChat();
@@ -6185,6 +6197,9 @@ const toolName = n => {
   // way it was left. The divider's place is the board's for each layout (prefs.splitAt, prefs.stackAt): a tall column
   // and a wide one want it in different places.
   const stacked = new Set();
+  // …and which half of a split chat fills the column, the other kept as it was behind it (2026-10-13, a chat's key pressed
+  // again — zoomAgain): held while the keys stay in that half, so going to a tab of the other one brings both back.
+  const zoomed = new Map();   // chat id → 0 | 1
   const isSplit = s => !!s && splits.has(s.id);
   const splitNow = () => splits.has(state.current);
   const stackNow = () => splitNow() && stacked.has(state.current);
@@ -6384,7 +6399,7 @@ const toolName = n => {
     sea: () => ({ leaping: !!sea.leap, frames: sea.frames || 0, running: !!sea.raf, cell: sea.cell }),   // home's sea (2026-10-12)
     state: () => ({ current: state.current, snapshots: state.snapshots, rendering: !!renderBoardSoon.t, project: prefs.project, person: prefs.person, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft, fill: state.fill, notch: state.notch, hidden: [...state.hidden],
       paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, [...v]])), tab: state.sessions.has(state.current) ? tabOf(state.sessions.get(state.current)) : null, tabs: state.sessions.has(state.current) ? tabKeys(state.sessions.get(state.current)) : [], pr: shownPr.url,
-      split: splitNow(), stacked: stackNow(), focusG, halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
+      split: splitNow(), stacked: stackNow(), zoomed: zoomed.get(state.current) ?? null, focusG, halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
       strips: state.sessions.has(state.current) ? [0, 1].map(g => keysIn(state.sessions.get(state.current), g)) : [[], []],
       timeline: { k: tl.k, want: tl.want, press: !!tl.press, shown: $('#sessions').classList.contains('tlshow'), runs: tl.runs.map(r => ({ g: r.g, day: r.day, n: r.n, i: r.i })) },
       termId: curTerm().id, termSession: curTerm().sessionId, termExited: curTerm().exited,
@@ -6727,7 +6742,7 @@ const toolName = n => {
   function postPane(s, p = placeOf(s)) {
     if (!inApp) return;
     const shut = !!document.querySelector('dialog[open]');
-    const panes = shut ? [] : p.map((k, g) => isPaneTab(k) ? { key: k, ...groupRect(g) } : null).filter(Boolean);
+    const panes = shut ? [] : p.map((k, g) => isPaneTab(k) && !$(GEL[g].grp).hidden ? { key: k, ...groupRect(g) } : null).filter(Boolean);   // not behind a half filling the column
     const focus = (!shut && isPaneTab(p[focusG]) ? p[focusG] : null) || panes[0]?.key || null;
     const msg = { type: 'pane', id: s?.id || null, keys: paneKeys(s), panes, focus, show: focus, left: panes[0]?.left || 0, top: panes[0]?.top || 0 };
     const sig = JSON.stringify(msg); if (sig === postPane.last) return;   // syncTerm posts on every update of the open chat; the shell lays its views out again on each
@@ -6846,18 +6861,30 @@ const toolName = n => {
   function applySplit() {
     const on = splitNow(), stack = stackNow();
     if (!on) focusG = 0;
+    if (zoomed.has(state.current) && (!on || zoomed.get(state.current) !== focusG)) zoomed.delete(state.current);   // the keys left the half that filled the column
+    const z = zoomed.get(state.current) ?? null;
     $('#main').classList.toggle('split', on);
-    $('#groups').classList.toggle('stack', stack);
-    $('#grpB').hidden = !on; $('#gsplit').hidden = !on;
+    $('#groups').classList.toggle('stack', stack && z === null);   // one half showing is laid out as a column, whichever it is
+    $('#groups').classList.toggle('zoomed', z !== null);
+    $('#grp').hidden = z === 1; $('#grpB').hidden = !on || z === 0; $('#gsplit').hidden = !on || z !== null;
     const at = Math.max(.15, Math.min(.85, (stack ? prefs.stackAt : prefs.splitAt) || .5));
-    $('#grp').style.flex = on ? `${at} 1 0` : '1 1 0';
-    $('#grpB').style.flex = `${1 - at} 1 0`;
+    $('#grp').style.flex = on && z === null ? `${at} 1 0` : '1 1 0';
+    $('#grpB').style.flex = z === 1 ? '1 1 0' : `${1 - at} 1 0`;
+  }
+  /** The half the keys are in fills the column, or the two come back. False with nothing split. */
+  function toggleZoom(s) {
+    if (!isSplit(s)) return false;
+    if (zoomed.get(s.id) === focusG) zoomed.delete(s.id); else zoomed.set(s.id, focusG);
+    syncTerm(s);
+    if (!isPaneTab(tabOf(s))) { focusBoard(); focusTerm(); }   // a page keeps the keys: the shell gives them to it again
+    return true;
   }
   /** Which half the keys are in. Re-renders the strips (the rule moves) and tells the shell which page to focus. */
   function focusGroup(g) {
     const to = splitNow() ? g : 0;
     if (to === focusG) return;
     focusG = to;
+    if (zoomed.has(state.current)) applySplit();   // into the half behind the one filling the column: both come back
     const s = state.sessions.get(state.current);
     renderTabs(s || null); postPane(s || null);
     if (s) renderHead(s);
@@ -8885,7 +8912,7 @@ const toolName = n => {
     es.addEventListener('snapshot', e => {
       const d = JSON.parse(e.data); state.snapshots++;   // the harness waits on the count: a reloaded page has its board
       state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.peacock = d.peacock || {}; state.repos = d.repos || {};
-      for (const m of [tabs, homes, splits, autoSplit, stacked, focusView, state.unread, state.paneGh, changesOpen, blanks, diffStats]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);   // a chat gone from the board takes its page state with it
+      for (const m of [tabs, homes, splits, autoSplit, stacked, zoomed, focusView, state.unread, state.paneGh, changesOpen, blanks, diffStats]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);   // a chat gone from the board takes its page state with it
       state.about = d.about || {};
       if (d.config) state.config = d.config;
       renderSetup();

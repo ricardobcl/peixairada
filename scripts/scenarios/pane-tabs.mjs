@@ -75,7 +75,9 @@ export default async function (ctx) {
   await ctx.evaluate(`getSelection().removeAllRanges(); document.querySelectorAll('.note').forEach(n => n.remove())`);
   await ctx.evaluate(`document.querySelector(${STRIP}).querySelector('.nav[data-nav="reload"]').click()`);
   ctx.assert.deepEqual(await ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'nav').pop())`).then(JSON.parse), { type: 'nav', what: 'reload' });
-  // ⌥⌘G again: the picker (always, with several); the other row → a second tab, on
+  // ⌥⌘G again from the chat: the picker (always, with several — from a page it fills the column with the page's half,
+  // half-zoom.mjs); the other row → a second tab, on
+  await ctx.cmd('Digit1');
   await ctx.key('KeyG'); await ctx.waitFor(`document.querySelector('#pick').open`, { what: 'the picker again' });
   await ctx.evaluate(`document.querySelector('#picklist .pkrow.pr:not(:has(.cur))').click()`);
   await ctx.waitFor(`document.querySelectorAll('#ptabsB .ptab[data-tab^="gh:"]').length === 2`, { what: 'two PR tabs, both in the right half' });

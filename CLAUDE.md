@@ -501,23 +501,27 @@ for `$HOME`'s home and the account's.
 
 ## Hotkeys and the pane
 
-* **`HOTKEYS` in index.html is the whole ⌥⌘ family, and every key is a row of `KEYS`** (2026-10-12): what you
-  press, its group, one line, and the codes it is in HOTKEYS or CMDKEYS — the Keys pane and the ? sheet are drawn
-  from it, and `npm run check` (`check-page.mjs`) fails a code with no row, a row no map answers, or a ⌥⌘ letter
-  `boardKeys` in main.swift does not forward (⌥⌘S aside). The letters: **T** the chat's zsh tab (`hotShell()` →
+* **`HOTKEYS` in index.html is the whole ⌥⌘ family, and every key is a row of `KEYS`** (2026-10-12): what you press, its
+  group, one line, and the codes it is in HOTKEYS or CMDKEYS — the Keys pane and the ? sheet are drawn from it, and
+  `npm run check` (`check-page.mjs`) fails a code with no row, a row no map answers, or a ⌥⌘ letter `boardKeys` in
+  main.swift does not forward (⌥⌘S aside). The letters: **T** the chat's zsh tab (`hotShell()` →
   `POST /api/sessions/:id/shell`, `s.shells`, `shName()`), **E** VS Code Web in the pane, **G** the chat's PR on GitHub
-  (several → the picker in `pr` mode; none → the repo, `state.repos`), **C** the chat's claude (`termAction()`, the
-  `>_` path), **W** the tab the keys are in, closed (`hotCloseTab()` → `dropTab()`), **P** projects, **K** chats
-  (`chatFields()`), **F** the list's box (`hotFind()`), **B** the rail (`toggleSessions`), **Y** themes (`themesOpen`), **L** the
-  launcher (`pickOpen('launch')`), **D** changes (`hotDiff`), **A** the overview (`ovOpen`), **S** the stack (`hotStack`; not in `boardKeys`: in the pane ⌥⌘S stays
-  VS Code Web's Save All), **0** home (`hotHome`), **N** a new chat as steps of one dialog (`new` → `chats` → `folder` → `env`,
-  `newChatIn()`), **O** the same on the setup's `quick` project (`hotOracle()`), **↑↓** the chat above or below as
-  shown (`hotMove()`), **←→** the tab beside, wrapping (`hotTab()`), **1 / 2** the halves stood one over the other
-  (`hotGroup(g, true)`). Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A `dialog[open]` swallows them;
+  (several → the picker in `pr` mode; none → the repo, `state.repos`), **C** the chat's claude (`termAction()`, the `>_`
+  path), **W** the tab the keys are in, closed (`hotCloseTab()` → `dropTab()`), **P** projects, **K** chats
+  (`chatFields()`), **F** the list's box (`hotFind()`), **B** the rail (`toggleSessions`), **Y** themes (`themesOpen`),
+  **L** the launcher (`pickOpen('launch')`), **D** changes (`hotDiff`), **A** the overview (`ovOpen`), **S** the stack
+  (`hotStack`; not in `boardKeys`: in the pane ⌥⌘S stays VS Code Web's Save All), **0** home (`hotHome`), **N** a new
+  chat as steps of one dialog (`new` → `chats` → `folder` → `env`, `newChatIn()`), **O** the same on the setup's `quick`
+  project (`hotOracle()`), **↑↓** the chat above or below as shown (`hotMove()`), **←→** the tab beside, wrapping
+  (`hotTab()`), **1 / 2** the halves stood one over the other (`hotGroup(g, true)`), **R** the board reloaded
+  (`hotReload`; 2026-10-13, ⌘R's before). **C T G E D pressed again from the tab they bring up** (a claude live here, a
+  zsh, a page, the editor, the changes — the HOTKEYS entries are `hot…Key`, `zoomAgain` before the plain `hot…`) fill
+  the column with that half, and back (`toggleZoom`, see *The chat column's two halves*); `typeInShell` and the launcher
+  call the plain ones. Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A `dialog[open]` swallows them;
   nothing to act on is a `note()`; a key held down is one press (`e.repeat`, the arrows aside) and `termAction` one
   press per chat at a time (`termAsking`). **A late answer acts on its own chat only**: `renderHead` draws the open
-  chat's header alone, a new drawer attaches through `showTerminal`, and ⌥⌘T's zsh and the editor's page wait on a
-  chat that was left.
+  chat's header alone, a new drawer attaches through `showTerminal`, and ⌥⌘T's zsh and the editor's page wait on a chat
+  that was left.
 * **Plain ⌘ is the window's shape and its tabs, in `CMDKEYS`**: **1** / **2** the left and right halves (⌘2 splits the
   first time), **0** closes the *other* half (`hotOnlyHalf`); **T** a new tab of the kind the keys are in (2026-10-13,
   `hotNewTab`: in a terminal, on the chat, the changes or an empty half another zsh, `startShell(s, true)`; on a page
@@ -615,8 +619,10 @@ for `$HOME`'s home and the account's.
   click on no page through (`PaneOverlay.hitTest`). `‹ › ↻ ↗` are `{type:'nav'}`; × forgets a page (`closeTab`). In a
   browser the tabs are chat and zsh only (`inApp`). GitHub cannot be iframed, hence the `WKWebView`; one with no UI
   delegate drops `target=_blank`, hence `PaneDelegate`. → Findings: *the pane*.
-* **A page in the pane behaves like a browser tab**: ⌘R reloads it while the pane is up (`validateMenuItem` renames
-  the item), pinch zooms it (`allowsMagnification`), its address sits in the strip (a click copies it,
+* **A page in the pane behaves like a browser tab**: ⌘R reloads it (2026-10-13: a key monitor in
+  `installHotkeyForwarder`, never a menu key equivalent, which would take the key first — VS Code Web's ⌘R is its own,
+  and with no page up ⌘R goes on to whatever has the keys; the View menu's *Reload Page* carries none, *Reload Board* is
+  ⌥⌘R, `reloadBoard`), pinch zooms it (`allowsMagnification`), its address sits in the strip (a click copies it,
   `copyPaneUrl`), each navigation reported as `peixPaneUrl(key, url)` (a KVO watch, `paneObs`; `paneUrls`).
 * **⌘F finds on that page**: the Edit menu's *Find… · Find Next · Find Previous*, greyed with the pane down; a native
   bar (`buildFindBar`, the pane's top right) over WKWebView's `find(_:configuration:)` — no count, the match is the
@@ -735,8 +741,13 @@ for `$HOME`'s home and the account's.
 * **Split or not is the chat's** (`splits`, beside `tabs`); `syncTerm` calls `applySplit()` on every open; only the
   divider's place is the board's. **⌘W on the chat's tab closes the half the keys are in**, each strip's ⨯ its own
   (`closeHalf(g)`); **⌘0 closes the other**. The per-chat maps (`tabs`, `homes`, `splits`, `autoSplit`, `stacked`,
-  `focusView`, `state.unread`, `state.paneGh`) are pruned on every snapshot to the chats the board still has. →
-  `split-halves.mjs`, the split section of `pane-tabs.mjs`.
+  `zoomed`, `focusView`, `state.unread`, `state.paneGh`, `blanks`) are pruned on every snapshot to the chats the board
+  still has. → `split-halves.mjs`, the split section of `pane-tabs.mjs`.
+* **A half can fill the column and give it back** (2026-10-13, `zoomed`: chat → half, `toggleZoom`): the other half is
+  hidden as it is (`.grp[hidden]`), never unsplit — its terminal is not resized (`fitTerm` gets no size from a hidden
+  body), its page not posted (`postPane` skips a hidden half) —, `#groups.zoomed` on and `.stack` off. **It holds while
+  the keys stay in that half**: `applySplit` drops it otherwise, and `focusGroup` runs `applySplit` while one is held,
+  so ⌘1/⌘2, ⌥⌘←→ or a key of a tab behind it bring both back. → `half-zoom.mjs`.
 
 ## The drawer
 
