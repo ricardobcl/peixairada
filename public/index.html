@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="peix-page" content="">
 <title>peixAIrada</title>
 <script>
   // The board's appearance before its first paint (2026-10-12): the one it wore last (prefs.look, kept by applySkin),
@@ -2637,7 +2638,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
    *  (a click reloads it); an update that failed or was held back; new commits not taken, and why; for a minute, what
    *  came. Nothing while it is up to date. A click opens Settings › Updates. */
   function updSeg() {
-    const u = state.update; if (!u?.checkout) return '';
+    const u = state.update; if (!u?.checkout && !reload.want) return '';   // a page wanted after a restart is said off a checkout too (pageFollows)
     const seg = (cls, icon, words, tip, p = null) => `<button class="seg upg ${cls}" title="${esc(tip)} — click ${cls === 'page' ? 'to reload it now' : 'for Settings › Updates'}">${icon}<span>${words}</span>${p == null ? '' : `<i style="--p:${p.toFixed(2)}"></i>`}</button>`;
     const run = updRun(u), tip = updateSay(u).say.replace(/<br>/g, ' · ').replace(/<[^>]+>/g, '');
     if (run) return seg('run', ICON.reload, `${esc(run.say)}…`, tip, run.p);
@@ -2667,6 +2668,18 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     state.update = u; showUpdate();
     if (!reload.want && u.last?.parts?.includes('page') && Date.parse(u.last.at) > LOADED_AT) { reload.want = u.last.to; reload.since = Date.now(); reloadSoon(); }
     renderBar();
+  }
+  /** The page follows a restart (2026-10-13): the server stamps the page it serves, and its own boot, in the head's meta
+   *  (`peix-page`), and a snapshot says which page is on disk now. One from a server started since — a restart by hand
+   *  after a pull — with another page wants a reload, as an update's does. A reconnect to the same server reloads
+   *  nothing: a page edited under it is live on a reload by hand, as before. */
+  let pageSince = null;
+  function pageFollows(d) {
+    const m = document.querySelector('meta[name="peix-page"]'), since = d.about?.since;
+    pageSince ??= Number(m?.dataset.since) || since;
+    const restarted = since !== pageSince; pageSince = since;
+    if (!restarted || reload.want || !m?.content || !d.page || d.page === m.content) return;
+    reload.want = d.page; reload.since = Date.now(); reloadSoon();
   }
   function reloadBusy() {
     if (!bar.conn || state.update?.busy || (state.update?.restarting && Date.now() - reload.since < 60_000)) return 'server';   // the update still under way, or its restart
@@ -9335,7 +9348,7 @@ const toolName = n => {
       if (d.config) state.config = d.config;
       renderSetup();
       state.notifications = d.notifications !== false; showNotify();
-      takeUpdate(d.update);
+      takeUpdate(d.update); pageFollows(d);
       if (d.awake) { state.awake = awakeOf(d.awake); drawAwake(); }   // the empty header's mark; a chat's header draws its own
       state.clones = new Map((d.clones || []).map(c => [c.dir, c]));   // the clones under way, a reload in the middle of one
       state.editors = d.editors || null; edSay();   // whether Zed is on this Mac, and its install

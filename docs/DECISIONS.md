@@ -5,6 +5,30 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-13. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-13, at the end — the page follows a restart
+
+Ricardo, on the README's install: "should we present a reload + restart server to the user? or just simplify to
+restart? not sure of all the downsides of restarting the server". The answer was both, kept apart — a reload costs
+nothing, a restart has costs (below) — and the one place a user is told to do either, the update by hand, made a
+restart alone: "do 1."
+
+* **What a restart costs**, as weighed: the board down for its boot (~1 s for 422 chats); PR states, tickets, faces
+  and the plan usage are memory only, so they blank until GitHub and Jira answer again (and stay blank offline);
+  VS Code Web ends with the server (`endVsWebWithUs`), so an editor tab loses its connection; a clone, Zed's install
+  or an update step under way is cut off; the agent runs the working tree's `server.mjs`, so a restart while a session
+  has it half edited leaves the board down. Chats, drawers (holders), ticks and settings are untouched.
+* **The page follows a restart** (`PAGE_FILE`, `pageStamp`, `pageFollows`): `/` is served with
+  `<meta name="peix-page" content="<stamp>" data-since="<boot>">` — a sha1 of the file as on disk, before the meta is
+  filled, and the serving server's `SINCE` — and every snapshot names the page on disk now (`page`). A snapshot from a
+  server started since, with another page, sets `reload.want` and `reloadSoon` waits as an update's reload does; the
+  status bar's *updated · reload the page* shows off a checkout too (the app's bundled server). A reconnect to the
+  same server reloads nothing, so a page edited under a running server is still live only on a reload by hand.
+* **The README's update by hand** is `git pull && npm install && scripts/launchd.sh restart` (and `mac/build.sh
+  install` when `mac/` changed) — no ⌥⌘R.
+* **Not done**: the app's *Restart Server* still loads `/` once the server is back, so it lands on home rather than
+  the chat that was open; and Reload Board stays beside it in the menus.
+* → `test/update.test.mjs` (the stamp, the boot, a restart), `scripts/scenarios/restart-page.mjs`.
+
 ## Decisions of 2026-10-13, on a branch, later still — chats in worktrees
 
 The study's end state: a chat for a PR's branch lives in that branch's tree, so its folder *is* the branch — the

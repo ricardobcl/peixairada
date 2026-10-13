@@ -171,7 +171,7 @@ notifications.
 **Updating**: the status bar says when new commits have come; click it, then *update now*. It pulls them — a
 fast-forward, never over a change of yours — and restarts only what they changed: the packages, the server (your chats
 stay open), the page, the app. *Update itself*, beside it, does so on its own once you've left the board be for two
-minutes. By hand: `git pull && npm install && scripts/launchd.sh restart`, then ⌥⌘R to reload the board, and
+minutes. By hand: `git pull && npm install && scripts/launchd.sh restart` — the board's page follows —, and
 `mac/build.sh install` when `mac/` changed. After switching Node versions, or installing a CLI outside the `PATH` you
 installed with, run the last two install lines again.
 

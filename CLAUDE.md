@@ -34,8 +34,9 @@ npm run map                         # rewrite the section maps at the top of ser
 
 * **The server is a launchd agent run from the repo; the app adopts whatever answers on 7331.** Quitting or
   rebuilding the app touches no chat. A page change is live on reload (the agent serves the working tree's
-  `public/`); a `server.mjs` change needs `restart`, which does not end the drawers (each is a holder, see *The
-  drawer*). The app's bundled server is the fallback for a Mac without the agent. → Findings: *launchd agent*.
+  `public/`); a `server.mjs` change needs `restart`, which brings a changed page along and does not end the drawers
+  (each is a holder, see *The drawer*). The app's bundled server is the fallback for a Mac without the agent.
+  → Findings: *launchd agent*.
 * **Node ≥ 22** (the harness uses the global WebSocket), **`npm install` first.** Runtime deps: `node-pty` (native),
   `ws`, `@xterm/headless` 5.5.0 and `@xterm/addon-serialize` 0.13.0 — pinned exactly to the vendored xterm's version,
   which `npm run check` compares with `node_modules`. The xterm client packages are dev-only sources for
@@ -161,6 +162,10 @@ for `$HOME`'s home and the account's.
   lib/testserver.mjs); one that does not is undone (`git reset --keep`) and held (`updateHeld`) until a newer commit.
   `UPDATE_DIR`, `UPDATE_RESTART_BIN`, `UPDATE_BUILD_BIN`, `NPM_BIN` are the tests'. → `test/update.test.mjs`,
   `auto-update.mjs`.
+* **The page follows a restart** (2026-10-13; `pageStamp`, `pageFollows`): `/` is served with `<meta name="peix-page">`
+  — a stamp of the file on disk and the serving boot (`SINCE`) —, every snapshot names the page on disk (`page`); one
+  from a server started since, with another page, wants a reload as an update's does (`reload.want`). A reconnect to
+  the same server reloads nothing. → `test/update.test.mjs`, `restart-page.mjs`.
 * **A PR is polled by how recently its chat was touched** (2026-09-28, `sweepPrs`, `duePrs`, `PR_POLL`): never asked
   → at once; then every minute within the hour, 5 min within the day, 30 within three days, never after. Touched is
   `lastActivity` or `s.openedAt` (a page fetching the chat, which also asks at once unless asked within `PR_TTL_MS`).

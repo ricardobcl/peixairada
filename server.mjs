@@ -45,6 +45,7 @@
 // Map ▴
 
 
+import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import {
   accessSync, appendFileSync, chmodSync, closeSync, constants as fsc, existsSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, watch, writeFileSync
@@ -3660,6 +3661,14 @@ function sortedSummaries() {
   return [...sessions.values()].map(s => summary(s, ti)).sort((a, b) => wordAt(b).localeCompare(wordAt(a)));
 }
 
+// The page follows a restart (2026-10-13): it is served with a stamp of itself and the boot of the server serving it
+// (`SINCE`) in its head's meta, and every snapshot says which page is on disk now (`page`) — so a page that hears a
+// server started since it was served, with another page on disk, reloads itself as an update's does (`pageFollows` in
+// index.html): a restart by hand after a pull brings the page along. Read whole each time, as it is served: the agent
+// serves the working tree's.
+const PAGE_FILE = join(__dirname, 'public', 'index.html');
+const pageStamp = html => createHash('sha1').update(html).digest('hex').slice(0, 12);
+
 // Requests wait for the boot, which starts once the port is ours (main()). Everything a route does is inside the try,
 // and every answer's head is written only once its body is in hand: a throw after a writeHead used to throw again in
 // the catch's own writeHead, and the rejection nobody handled ended the server (2026-10-03).
@@ -3673,9 +3682,10 @@ const server = createServer(async (req, res) => {
     const p = url.pathname;
     if (req.method !== 'GET' && p !== '/api/update' && !p.endsWith('/seen')) lastTouchAt = Date.now();   // something done on the board (a reply shown is the page's own doing): no update until it rests
     if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
-      const html = readFileSync(join(__dirname, 'public', 'index.html'));
+      const html = readFileSync(PAGE_FILE, 'utf8');
+      const body = html.replace('<meta name="peix-page" content="">', `<meta name="peix-page" content="${pageStamp(html)}" data-since="${SINCE}">`);
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
-      return res.end(html);
+      return res.end(body);
     }
     let m;
     if (req.method === 'GET' && (m = p.match(/^\/vendor\/([\w.-]+\.(js|css))$/))) {
@@ -4002,7 +4012,7 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
     if (req.method === 'GET' && p === '/events') {
-      const snap = JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), about: aboutInfo(), awake: awakeState(), clones: [...clones.values()].map(cloneState), update: updateState(), editors: editorState() });
+      const snap = JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), about: aboutInfo(), awake: awakeState(), clones: [...clones.values()].map(cloneState), update: updateState(), editors: editorState(), page: pageStamp(readFileSync(PAGE_FILE, 'utf8')) });
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
       res.write(`event: snapshot\ndata: ${snap}\n\n`);
       sseClients.add(res);

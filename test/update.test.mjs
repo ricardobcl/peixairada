@@ -5,6 +5,7 @@
 // stand-ins that write down what they were asked.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -169,5 +170,33 @@ test('not a checkout — the app\'s bundled copy — says so, and pulls nothing'
   try {
     const st = (await srv.post('api/update', { apply: true })).body;
     assert.deepEqual([st.checkout, st.why, st.error], [false, 'none', null]);
+  } finally { await srv.stop(); }
+});
+
+test('the page follows a restart: served with a stamp of itself and the boot that served it, every snapshot names the page on disk', { timeout: 40_000 }, async () => {
+  const srv = await startTestServer();
+  /** the stream's snapshot, and the stream let go */
+  const snapshot = async () => {
+    const res = await fetch(srv.url + 'events'), reader = res.body.getReader(), dec = new TextDecoder();
+    let buf = '';
+    try {
+      for (;;) {
+        const { value, done } = await reader.read(); if (done) throw new Error('the stream ended before its snapshot');
+        buf += dec.decode(value, { stream: true });
+        const m = /^event: snapshot\ndata: (.*?)\n\n/s.exec(buf); if (m) return JSON.parse(m[1]);
+      }
+    } finally { reader.cancel().catch(() => {}); }
+  };
+  try {
+    const html = await (await fetch(srv.url)).text();
+    const m = /<meta name="peix-page" content="([0-9a-f]{12})" data-since="(\d+)">/.exec(html);
+    assert.ok(m, 'the head carries the stamp and the boot');
+    assert.equal(m[1], createHash('sha1').update(readFileSync(join(ROOT, 'public', 'index.html'))).digest('hex').slice(0, 12), 'the stamp is the file\'s, not the page as served');
+    const a = await snapshot();
+    assert.deepEqual([a.page, a.about.since], [m[1], Number(m[2])], 'the server that served it: the same page, the same boot');
+    await srv.restart();
+    const b = await snapshot();
+    assert.equal(b.page, m[1], 'the same page on disk');
+    assert.notEqual(b.about.since, Number(m[2]), 'another boot');
   } finally { await srv.stop(); }
 });
