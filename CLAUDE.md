@@ -842,7 +842,9 @@ for `$HOME`'s home and the account's.
   `.card { isolation: isolate }`: the ring and its cover sit at z-index -1 under the card's background only because
   the card is its own stacking context. **So is `#slist { isolation: isolate }`** (2026-10-13): in a scroller that is
   no stacking context WebKit makes every such card a layer of its own, with a clip layer — 1,325 CALayers for 400
-  cards, 117 with it. A new scroller of positioned boxes gets one too.
+  cards, 117 with it. A new scroller of positioned boxes gets one too. **And each card is a layer inside it**
+  (`#slist > .card { will-change: transform }`): painted into the list's tiles instead, a scroll repainted every card
+  it exposed and a glow under the pointer its tile (scrolling a frame at a time dropped 34–44 frames in 6 s, 0 so).
 * `.shead { min-width: 0 }` and a fixed `flex-basis` on `.shead h2`; PR chips are direct children of the header.
 * **Every grid row in the chat column is placed by hand** — `#chat`'s, each half's `.ptabs` / `.gbody`, and
   `#sessions`' (whose *column* is placed too: the timeline, the glass and the ends lie over the list's cell). A hidden

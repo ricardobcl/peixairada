@@ -32,6 +32,14 @@ the server (0.5 %) and the drawers (a 10 Hz spinner, +1–3 %) were not it.
   restyles walks them all. The whole board at rest 39 % → 26 % of a core. The frozen frames (every animation paused
   at 0) before and after are the same but for 20 px of a lane's chevron, antialiased a hair differently; nothing in
   a card reaches past the list (the chips' and faces' z-indexes are inside the card's own context).
+* **…and each card is a layer of its own inside it** (`#slist > .card { will-change: transform }`), as every card was
+  before but now under the list's own layer, with no clip layer each: 544 CALayers. With the cards painted into the
+  list's tiles, the fixes above had made scrolling worse — a scroll driven a frame at a time (12 px a frame) dropped
+  34–44 frames in 6 s against 17 before, every exposed card painted, the done ones through their filter —, and a
+  glow under the pointer repainted the tile it was in (41 % of a core). With a layer each: the scroll 39 % of a core
+  and no frame dropped, the glow 21 %, at rest and a chat's open the same or a hair better, and the web process's
+  memory the same (~440 MB, ~280 MB of it graphics: WebKit gives no backing to a layer out of sight). The frozen
+  frames are the same.
 * **The status bar's fish is boxes, and its pace its length.** Its tail wagged as an SVG `<g>`, whose transform WebKit
   never composites — 4.5 % of a core on a page of 400 plain cards, and on the board every frame a style pass and a
   layer walk, since the wag never stops; and its pace was `updatePlaybackRate`, a rate other than 1, which kept the

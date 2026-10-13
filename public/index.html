@@ -517,6 +517,12 @@
      a clip layer the list's size: 1,325 CALayers for 400 cards, 117 with this, and every frame that restyles walks them
      all (36 % of a core at rest → 25 % on its own, measured in a WKWebView). Nothing in a card reaches past the list. */
   #slist { isolation: isolate; }
+  /* …and each card a layer of its own inside it (2026-10-13), as it was before but now without a clip layer each: with
+     the cards painted into the list's tiles, every scroll exposed cards to paint and every glow under the pointer
+     repainted the tile it is in — a scroll driven a frame at a time dropped 34–44 frames in 6 s, 0 with this; the glow
+     followed by the pointer 41 % of a core, 21 % with this; at rest and opening a chat the same or a hair better, and
+     the memory the same (WebKit gives no backing to a layer out of sight). 544 CALayers for 400 cards. */
+  #slist > .card { will-change: transform; }
   #slist::-webkit-scrollbar { display: none; }   /* the timeline beside it is the scrollbar, with the days on it */
   main.scompact #slist { scrollbar-width: auto; }
   main.scompact #slist::-webkit-scrollbar { display: initial; }
