@@ -137,6 +137,8 @@
   .pop .opt { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--muted); cursor: pointer; }
   .pop .opt[hidden] { display: none; }
   .pop .opt.sub { margin: -2px 0 0 43px; padding-top: 0; border-top: 0; }   /* a switch of the row above's (compact's same height), under its slider */
+  .pop .opt.edsay { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: -2px; padding-top: 0; border-top: 0; color: var(--muted); }   /* Zed not here: installing, failed, or where to get it (2026-10-13) */
+  .pop .opt.edsay .err { color: var(--needs); }
   .pop .opt b { font-weight: 600; color: var(--ink); }
   .pop .opt input { appearance: none; -webkit-appearance: none; position: relative; margin: 0; width: 28px; height: 16px; border-radius: var(--r-3); background: var(--line); cursor: pointer; transition: background .15s; }
   .pop .opt input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: transform .15s; }
@@ -2270,6 +2272,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <label class="opt sub" id="evenRow" title="Compact cards all the same height: the title on one line and the your-move line under it, held empty on a card without one; the question is left to the card's red edge and its pings" hidden><input type="checkbox" id="cardsEven"><span><b>same height</b> — every compact card a title line and a your-move line tall</span></label>
     <label class="opt" title="On, a chat Claude isn’t running in — one you open from the list, a picker, a key or a link — runs claude --resume in a terminal here 5 s after it opens, unless you press Not now or Esc, or move on. A chat ticked done, and the one the page opens on a reload, wait for the Resume button"><input type="checkbox" id="autoResume" checked><span><b>auto-resume</b> — a chat Claude isn’t running in resumes 5 s after you open it; off, it waits for the Resume button</span></label>
     <div class="opt lightpick" title="Where a file named in a chat opens, at its line — a path in a reply or on a drawer's screen is a link to it — and what ⌥⌘E opens: with VS Code, the chat's folder in VS Code Web on a tab of the pane; with Zed, the folder in Zed's own window (it has no web build to put in the pane)"><span><b>editor</b> — files named in a chat open in it, and ⌥⌘E its folder</span><span class="sseg" role="radiogroup" aria-label="Editor" id="edPick"><button type="button" role="radio" data-ed="vscode">VS Code</button><button type="button" role="radio" data-ed="zed">Zed</button></span></div>
+    <div class="opt edsay" id="edSay" role="status" hidden></div>
     <h4 class="shd">Look</h4>
     <div class="opt lightpick zoompick" title="Everything on the board, larger or smaller — the app's own zoom; in a browser, its View menu's"><span><b>text size</b> — the whole board</span><span class="sseg" role="radiogroup" aria-label="Text size" id="zoomPick"><button type="button" role="radio" data-z="0.9">90 %</button><button type="button" role="radio" data-z="1">100 %</button><button type="button" role="radio" data-z="1.1">110 %</button><button type="button" role="radio" data-z="1.25">125 %</button><button type="button" role="radio" data-z="1.4">140 %</button></span><span class="zhint">your browser's View → Zoom</span></div>
     <label class="opt" title="On, every project wears one colour — black, or the one picked under this switch — instead of its own (Peacock's and the setup's stay set, for VS Code and for when this is off), and no state or code has a colour of its own — a PR's chip and the people's faces keep theirs; the accent is left for what wants you — a question, your move, an unread count"><input type="checkbox" id="simpleColors"><span><b>simple colours</b> — every project in one colour, the states in greys; off, each project in its own</span></label>
@@ -2395,6 +2398,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · a right-click menu (2026-10-12)
 //   js  · terminal drawer: the real claude in a PTY on the server, attached over a WebSocket
 //   js  · the two halves: ⌘1 and ⌘2
+//   js  · a blank tab: ⌘T on a page (2026-10-13)
 //   js  · the changes tab: what this chat changed in its folder (2026-10-10)
 //   js  · live tiles: a chat drawn small — its drawer's screen, or the last few things it did (2026-10-10)
 //   js  · tiles: the chats that want an eye, stacked beside the open one (2026-10-10)
@@ -2412,7 +2416,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 // Map ▴
 (() => {
   const $ = s => document.querySelector(s);
-  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null };
+  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null };
   const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, skinExact: false, look: null };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
@@ -2493,7 +2497,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     if ($('#hmenu').open) $('#hmenu').close();
     if (inApp) post({ type: 'focus' });   // from the pane's keys, the board needs the keyboard back
     dlg.showModal(); dlg.focus(); repostPane();   // the dialog itself takes the focus, not × wearing its ring
-    loadJira();
+    loadJira(); loadEditors();
   };
   const settingsToggle = () => settingsOpen(!$('#settings').open);
   $('#settings').addEventListener('close', () => { if (setupUi.pending.size) { setupUi.pending.clear(); renderSetup(); } repostPane(); });
@@ -5675,6 +5679,7 @@ const toolName = n => {
   $('#chat').addEventListener('click', e => {
     const a = e.target.closest('a[href]'); if (!a) return;
     const href = a.getAttribute('href') || '';
+    if (href.startsWith('zed:') && zedMissing()) { e.preventDefault(); zedNote(a); return; }
     if (GH_PR.test(href) && !a.dataset.ext) { e.preventDefault(); showPr(href.match(GH_PR)[0]); return; }
     if (inApp && /^https?:/.test(href) && !href.startsWith(location.origin)) { e.preventDefault(); openExternal(href); }
   });
@@ -5710,11 +5715,41 @@ const toolName = n => {
   const edPick = () => { for (const b of document.querySelectorAll('#edPick [data-ed]')) b.setAttribute('aria-checked', String(EDITORS[b.dataset.ed] === editor())); };
   for (const b of document.querySelectorAll('#edPick [data-ed]')) b.addEventListener('click', () => {
     if (EDITORS[b.dataset.ed] === editor()) return;
-    prefs.editor = b.dataset.ed; savePrefs(); edPick();
+    prefs.editor = b.dataset.ed; savePrefs(); edPick(); edSay();
+    if (onZed()) wantZed();
     const s = state.sessions.get(state.current); if (!s) return;
     logView.arr = null; renderLog(); renderHead(s);   // the transcript's links and ··· name the editor
   });
   edPick();
+  // Zed picked and not on this Mac is Zed installed (2026-10-13): the server's `brew install --cask zed`, the line under
+  // the pick saying how far it is (edSay, from the `editor` events), failed and why, or — no Homebrew — where to get it.
+  // Until it is there, ⌥⌘E and a file link say so where they were clicked (zedNote) rather than hand the system a URL
+  // nothing answers.
+  const ZED_GET = 'https://zed.dev/download';
+  const zedMissing = () => onZed() && !!state.editors?.zed && !state.editors.zed.app;
+  const zedWhy = () => state.editors?.zed?.installing ? 'Zed is still being installed — a moment' : "Zed isn't installed — Settings › Board › editor installs it";
+  function zedNote(at) { note(at, zedWhy(), true); }
+  async function loadEditors() { try { state.editors = await api('GET', '/api/editors'); } catch {} edSay(); }
+  async function installZed() {
+    try { state.editors = await api('POST', '/api/editors/zed/install'); }
+    catch (e) { state.editors = { ...state.editors, zed: { ...state.editors?.zed, installing: false, error: e.message } }; }
+    edSay();
+  }
+  async function wantZed() { await loadEditors(); const z = state.editors?.zed; if (z && !z.app && !z.installing && z.brew) await installZed(); }
+  function edSay() {
+    const box = $('#edSay'), z = state.editors?.zed; if (!box) return;
+    const html = !onZed() || !z || z.app ? ''
+      : z.installing ? `<span>installing Zed with Homebrew…</span><span>${esc(z.line || '')}</span>`
+      : z.error ? `<span class="err">Zed's install failed — ${esc(z.error)}</span><button type="button" class="btn" data-zed="install">try again</button>`
+      : z.brew ? `<span>Zed isn't on this Mac</span><button type="button" class="btn" data-zed="install">install it</button><span>with Homebrew</span>`
+      : `<span>Zed isn't on this Mac, and there is no Homebrew to install it with</span><button type="button" class="btn" data-zed="get">get it from zed.dev</button>`;
+    box.hidden = !html; setHtml(box, html);
+  }
+  $('#edSay').addEventListener('click', e => {
+    const b = e.target.closest('[data-zed]'); if (!b) return;
+    if (b.dataset.zed === 'install') installZed();
+    else if (inApp) post({ type: 'external', url: ZED_GET }); else window.open(ZED_GET, '_blank', 'noopener');
+  });
   /** A path's file URL in the editor against the chat's folder, or null for one that is no file of ours: ~ needs a home
       (read off the folder), a relative path needs the folder, an absolute one a known root or an extension. */
   function pathHref(p, cwd) {
@@ -5764,7 +5799,7 @@ const toolName = n => {
     let text = ''; const cell = [];
     for (let x = 0; x < line.length; x++) { const c = line.getCell(x); if (!c || c.getWidth() === 0) continue; const ch = c.getChars() || ' '; for (let i = 0; i < ch.length; i++) cell.push(x); text += ch; }
     const links = chatLinks(text, tm.cwd || state.sessions.get(state.current)?.cwd).filter(l => !l.web)   // the drawer's folder: a new chat's has no chat yet
-      .map(l => ({ text: text.slice(l.start, l.end), href: l.href, range: { start: { x: cell[l.start] + 1, y }, end: { x: cell[l.end - 1] + 1, y } }, activate: () => openExternal(l.href) }));
+      .map(l => ({ text: text.slice(l.start, l.end), href: l.href, range: { start: { x: cell[l.start] + 1, y }, end: { x: cell[l.end - 1] + 1, y } }, activate: ev => zedMissing() ? zedNote({ getBoundingClientRect: () => new DOMRect(ev?.clientX || 0, ev?.clientY || 0, 0, 0) }) : openExternal(l.href) }));
     return links.length ? links : undefined;
   }
 
@@ -5874,7 +5909,7 @@ const toolName = n => {
     renderResume(s); renderRival(s);
     $('#detailsBtn').onclick = () => { prefs.headDetails = !prefs.headDetails; savePrefs(); renderHead(s); };
     const wb = $('#webBtn');
-    if (wb && onZed()) wb.onclick = () => { menu.close(); openExternal(fileUrl(s.cwd)); };   // Zed's own window: nothing to start, no tab
+    if (wb && onZed()) wb.onclick = () => { menu.close(); if (zedMissing()) zedNote(seen(wb)); else openExternal(fileUrl(s.cwd)); };   // Zed's own window: nothing to start, no tab
     else if (wb) wb.onclick = async () => {
       wb.disabled = true; wb.querySelector('.lbl').textContent = 'starting…';
       try {
@@ -6464,6 +6499,7 @@ const toolName = n => {
       timeline: { k: tl.k, want: tl.want, press: !!tl.press, shown: $('#sessions').classList.contains('tlshow'), runs: tl.runs.map(r => ({ g: r.g, day: r.day, n: r.n, i: r.i })) },
       termId: curTerm().id, termSession: curTerm().sessionId, termExited: curTerm().exited,
       reload: reload.want ? { to: reload.want, why: reload.why } : null,
+      editor: prefs.editor, editors: state.editors,
       resume: autoResume.id ? { id: autoResume.id, left: Math.max(0, Math.round(autoResume.at - performance.now())) } : null,
       swim: { n: swim.n, pace: swimRate(Math.max(0, swim.n)), rate: swim.anim ? +(swimMs(swim.w) / swimLen()).toFixed(3) : 0, dart: swim.dart, food: swim.food.map(b => b.x), eaten: swim.eaten } }),   // the bar's fish: its pace without a dart, what it has to eat (lane x)
     session: id => { const s = state.sessions.get(id || state.current); return s ? structuredClone(s) : null; },
@@ -8994,6 +9030,7 @@ const toolName = n => {
       takeUpdate(d.update);
       if (d.awake) { state.awake = awakeOf(d.awake); drawAwake(); }   // the empty header's mark; a chat's header draws its own
       state.clones = new Map((d.clones || []).map(c => [c.dir, c]));   // the clones under way, a reload in the middle of one
+      state.editors = d.editors || null; edSay();   // whether Zed is on this Mac, and its install
       state.serverNotify = d.notify === 'native';   // the server posts its own banners: the app must not double them
       renderBoard(); welcomeSync();
       const want = location.hash.slice(1);
@@ -9028,6 +9065,7 @@ const toolName = n => {
     es.addEventListener('update', e => takeUpdate(JSON.parse(e.data)));
     es.addEventListener('awake', e => { state.awake = awakeOf(JSON.parse(e.data)); awakeChanged(); });
     es.addEventListener('clone', e => cloneEvent(JSON.parse(e.data)));
+    es.addEventListener('editor', e => { state.editors = JSON.parse(e.data); edSay(); });
     es.addEventListener('config', e => { const c = JSON.parse(e.data); if (JSON.stringify(c) === JSON.stringify(state.config)) return; state.config = c; configChanged(); });   // the echo of a save made here is no news
     es.addEventListener('terminal', e => {
       const t = JSON.parse(e.data);

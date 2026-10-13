@@ -5,6 +5,28 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-13. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-13, after Zed — Zed installed when it is picked
+
+Ricardo, on Zed not being on this Mac: "how do I install? put that on readme also (optional). or... can we just
+install on-demand if we choose zed in settings?"
+
+* **Picking Zed without it installs it**: the page asks the server (`POST /api/editors/zed/install`), which runs
+  `brew install --cask zed` — the app into /Applications, the `zed` CLI beside brew, no password, and Zed updates
+  itself from then on. Homebrew because it is how this Mac's tools came (gh, task, node) and needs no admin prompt;
+  Zed's own `install.sh` would be a script piped from the network into the board's process. One install at a time, a
+  second ask joins it; brew's newest `==>` line is the settings' line under the pick (`#edSay`, `editor` events),
+  its `Error:` line too, with *try again*. No brew: the line points at zed.dev's download.
+* **Launch Services is told of the app** (`lsregister -f`) once it is there, so a `zed://` link is answered before
+  Zed was ever opened — not seen to be needed, but cheap and idempotent.
+* **Until it is there, the board says so where you clicked** (`zedNote`): ⌥⌘E, a transcript's `zed:` link and a
+  drawer's — macOS would otherwise be handed a URL nothing answers, which in the app fails without a word.
+* **Where Zed is looked for** is `APP_DIRS` (/Applications, ~/Applications; Zed Preview too), read on every ask, and
+  the settings ask again when opened, so a Zed installed by hand is seen.
+* **No test reaches brew or /Applications**: every test server has `APP_DIRS` of its own, `BREW_BIN` the fake
+  (`scripts/fakebrew.mjs`, which writes a Zed.app with an Info.plist) and `LSREGISTER_BIN` `/usr/bin/true`.
+  `chat-links` now waits for that fake install after picking Zed.
+* The README's requirements row says both ways: picking it, or `brew install --cask zed` / zed.dev/download.
+
 ## Decisions of 2026-10-13, after the last, later still — Zed as the editor
 
 Ricardo: "can we also support ZED instead of vscode? if so, it would could have a setting to change the default

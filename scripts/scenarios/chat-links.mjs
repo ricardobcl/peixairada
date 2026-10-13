@@ -37,6 +37,7 @@ export default async function (ctx) {
 
   // Zed: the radio in the settings, the transcript's links drawn again for it, ··· naming it, ⌥⌘E following it
   await ctx.evaluate(`document.querySelector('#edPick [data-ed="zed"]').click()`);
+  await ctx.waitFor(`!!window.peix.state().editors?.zed?.app`, { what: 'Zed installed — the test server\'s fake brew, into its own apps folder' });
   out.zed = await ctx.evaluate(`JSON.stringify({
     pref: window.peix.prefs().editor,
     checked: [...document.querySelectorAll('#edPick [data-ed]')].map(b => b.dataset.ed + ':' + b.getAttribute('aria-checked')),

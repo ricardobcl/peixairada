@@ -154,7 +154,7 @@ as at the top.
 | Claude Code, signed in | the chats themselves | `curl -fsSL https://claude.ai/install.sh \| bash`, then run `claude` once to sign in |
 | [GitHub CLI](https://cli.github.com), signed in | PR states, faces and turns, cloning | `brew install gh && gh auth login` |
 | VS Code | ⌥⌘E (VS Code Web) and file links, unless Zed is the editor; [Peacock](https://marketplace.visualstudio.com/items?itemName=johnpapa.vscode-peacock) for project colours | [code.visualstudio.com](https://code.visualstudio.com) |
-| [Zed](https://zed.dev) (optional) | ⌥⌘E and file links, once picked in Settings › Board › editor | `brew install --cask zed` |
+| [Zed](https://zed.dev) (optional) | ⌥⌘E and file links, once picked in Settings › Board › editor — picking it installs it with Homebrew when it isn't there | `brew install --cask zed`, or [zed.dev/download](https://zed.dev/download) |
 | [Task](https://taskfile.dev) | folders whose Taskfile starts Claude | `brew install go-task` |
 
 **Then**, from the shell you use every day — the login agent keeps its `PATH` and its `node`, which is how it finds

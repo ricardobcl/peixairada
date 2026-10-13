@@ -60,7 +60,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `scripts/verify.mjs`, `scripts/scenario.mjs`, `scripts/scenarios.mjs`, `scripts/scenarios/` | The browser harness (see Verifying) |
 | `scripts/webkit.mjs`, `scripts/webkit.swift` | The live board in a `WKWebView` (the app's engine), the window captured as its compositor drew it |
 | `scripts/fakeclaude.mjs`, `scripts/fixture.mjs` | A stand-in CLI for tests (`FAKE_TUI=fullscreen`: drawn as Claude Code's `tui: fullscreen`; `FAKE_SCREEN`: a screen given); a `~/.claude` look-alike |
-| `scripts/fakegh.mjs`, `fakejira.mjs`, `fakecode.mjs`, `fakepmset.mjs`, `fakecaffeinate.mjs`, `faketask.mjs` | `gh` (`api graphql` from `FAKEGH_PRS`, `FAKEGH_VIEWER` — a PR it does not name is a NOT_FOUND —, and `repo clone` offline), Jira's three calls (`startFakeJira`), `code serve-web`, `pmset`, `caffeinate`, `task` — what every test server runs instead of the real ones; each file's head says its knobs |
+| `scripts/fakegh.mjs`, `fakejira.mjs`, `fakecode.mjs`, `fakepmset.mjs`, `fakecaffeinate.mjs`, `faketask.mjs`, `fakebrew.mjs` | `gh` (`api graphql` from `FAKEGH_PRS`, `FAKEGH_VIEWER` — a PR it does not name is a NOT_FOUND —, and `repo clone` offline), Jira's three calls (`startFakeJira`), `code serve-web`, `pmset`, `caffeinate`, `task`, `brew install --cask zed` — what every test server runs instead of the real ones; each file's head says its knobs |
 | `scripts/readme-shots.mjs` | The README's screenshots from a made-up board → `docs/shots/`, WebP — never shoot the real one |
 | `scripts/check.sh`, `scripts/check-page.mjs`, `scripts/map.mjs` | Static checks; the section maps |
 | `test/` | `node:test` files (`npm test`) |
@@ -128,13 +128,14 @@ for `$HOME`'s home and the account's.
   administrator dialog (a cancel is a 409, `cancelled`); `AWAKE_ADMIN` is `sudo` · `osascript` · `none` (the tests).
   **The lid's setting is the system's, never kept here**: `readPower` reads `pmset -g` on every registry poll, with
   the idle sleep in use and the power source (`idleSleep`, `power`); the cup is muted while it has nothing to hold
-  off (`cupMoot`, `cupTip`). It is the one thing the board changes outside its own files besides a Peacock colour and
-  a clone. → `test/awake.test.mjs`, `keep-awake.mjs`.
+  off (`cupMoot`, `cupTip`). It is the one thing the board changes outside its own files besides a Peacock colour, a
+  clone and Zed's install. → `test/awake.test.mjs`, `keep-awake.mjs`.
 * **Every CLI the server shells out to goes through `findBin()`** — `git` too — the app's server has a bare PATH;
   `<NAME>_BIN` overrides; a file it can run, looked for again a minute after none was found. The login agent's PATH
   is the installing shell's, then the system's. **The network calls**: `gh` (PRs), the usage endpoint (one ask at a
   time, kept a minute, a failure half a minute — `planUsage`), Jira once the setup names a site (`jiraAsk`; its token
-  never reaches the page or the setup file — `GET /api/jira` says only where it is), and VS Code's update service.
+  never reaches the page or the setup file — `GET /api/jira` says only where it is), VS Code's update service, and
+  Homebrew when Zed is picked and missing.
 * **VS Code Web is kept on its newest build** (2026-10-11, `freshenVsWeb`, every `VSWEB_FRESH_MS`; 0 off, every test
   server's): the board asks the update service for the newest build and, when serve-web's cache lacks it, asks
   serve-web for **that build by name, `/<quality>-<commit>/`** — never its root, which starts a server — so the first
@@ -822,7 +823,10 @@ for `$HOME`'s home and the account's.
   both open `<scheme>://file/<path>:<line>:<col>`, which the app hands to the system and a browser follows as a link
   (never `window.open`, which leaves a blank tab). ⌥⌘E and `#webBtn` are VS Code Web on a tab, or the folder in Zed's
   own window (`onZed()`: no web build to frame, so no tab and no zoom-again). A switch redraws the transcript
-  (`logView.arr = null`), so its links follow; the drawer's are read on hover. → `chat-links.mjs`.
+  (`logView.arr = null`), so its links follow; the drawer's are read on hover. → `chat-links.mjs`. **Picking Zed
+  without it installs it** (`wantZed` → `POST /api/editors/zed/install` → `installZed`: `brew install --cask zed`, one
+  at a time, then `lsregister -f`); `zedApp()` looks in `APP_DIRS`; `editor` events and `editors` in the snapshot draw
+  `#edSay`; until it is there ⌥⌘E and a `zed:` link say so (`zedNote`). → `test/editors.test.mjs`, `zed-install.mjs`.
 * **Attaching a file is typing its path** (`@dir/file`, spaces as `\ `); the app hands real paths over the bridge
   (`peixDrop`), a browser uploads (`PUT /api/attach`). ⌘V with an image sends ⌃V to claude in the app.
 * **`termEnv()` strips only `CLAUDECODE` and `CLAUDE_CODE_*`** (the CLI refuses to nest) and keeps `CLAUDE_DIR`.
@@ -940,7 +944,8 @@ the live board at load — `npm run verify -- "typeof window.peix"`.
   `REGISTRY_POLL_MS` 1200, `TASK_GRACE_MS` 400, `CONFIG_POLL_MS` 200; its own `ORG_DIR` (no welcome), `CLAUDE_DIR`
   (empty unless a fixture), config beside its `STATE_FILE`; the fakes (`GH_BIN`, `caffeinate`, `pmset` with
   `AWAKE_ADMIN=none`); Jira's token in its own file (`JIRA_TOKEN_FILE`), no inherited `JIRA_API_TOKEN`; a `ZDOTDIR`
-  with no rc files; `VSWEB_FRESH_MS` 0; `UPDATE_EVERY_MS` 0; `USAGE=off`; no inherited `CONFIG_FILE`, `TERMS_DIR` or XDG dirs. Up is its
+  with no rc files; `VSWEB_FRESH_MS` 0; `UPDATE_EVERY_MS` 0; `USAGE=off`; `APP_DIRS` its own, `BREW_BIN` the fake,
+  `LSREGISTER_BIN` `/usr/bin/true`; no inherited `CONFIG_FILE`, `TERMS_DIR` or XDG dirs. Up is its
   `listening` line; `meta.env` is spread last. `waitFor(fn, {timeout, what})`, `srv.post(path, body)` and `tmpDir()`
   are the tests' polls, POSTs and dirs.
 * **Test against the fake claude, not real chats**: `scripts/fakeclaude.mjs` via `CLAUDE_BIN` (`fake: true`) is
