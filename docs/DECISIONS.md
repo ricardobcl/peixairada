@@ -5,6 +5,37 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-13. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-13, on a branch, at the end — ⌥⌘N's ＋ in this folder or a new worktree
+
+Ricardo, on the row the entry below added: "the new "new chat on a new branch" what does it do? creat a new branch?
+should it be a worktree? a branch by itself will not make the session not conflit with another ongoing session no?" It
+was a worktree already, but three things were not right: a name that was already out somewhere went into that tree
+silently (`main`: the folder itself, beside every chat there); the trees it made were never removed (the sweep went by
+a PR, and these had none); and the row said "origin's main" whatever the default was. Then: "yes, but in a new
+worktree. also, improve the text for that option and maybe bring it up to 2nd place, or combine it with the same row
+in the new chat and allow to use left/right arrows to toggle "normal chat | chat + worktree"".
+
+* **One ＋, with a switch** — *this folder | new worktree*, the settings' segmented look — rather than a second row
+  that reads like the first. Under the name and the switch, a line of what ⏎ does, both ways, so the row keeps its
+  height: *in widgets as it stands — on main*, or for the branch typed. The foot says ←→.
+* **The arrows go past the box's ends**: → with the caret at the end turns it to *new worktree* (and onto ＋ from any
+  row: type, →, ⏎), ← with it at the start back. Inside the text they still move the caret — the name is often edited.
+* **On *new worktree* the text is the branch's name, not a query**: the chats stay as they are, unmarked, and ＋ stays
+  selected. Where the name is already is asked a beat after the last key (`GET /api/worktrees/branch`, `branchWhere`:
+  `git check-ref-format --branch`, the local and remote-tracking refs as last fetched — no network — and the tree that
+  has it out, with its live chats): *a new branch from origin/main* (the default named, `originDefault`), *a branch
+  here* or *origin's branch* (each a worktree of its own), or *already out in widgets/.claude/worktrees/x: ⏎ shares that
+  worktree — 1 chat at work there*, in red. Sharing is asked for only then (`share`); without it the POST is a 409
+  (`out`) and the row says so.
+* **The sweep takes a new branch's tree too**: once the PR opened from it is merged or closed (`prOfBranch`: its repo's,
+  headed by that branch, not a fork's, open or opened since the tree was made — a name used again is not its old PR's;
+  kept as the record's `pr`), or once its commits are on origin's default branch as last fetched (`landed`) — then the
+  same `keepWorktree` rules and never `--force`. A tree with nothing done in it stays: nothing says it is finished.
+  Gone from origin is no signal — a branch never pushed is gone too.
+* **Not done**: a Taskfile's launcher is not offered for the worktree's chat (`newChat` straight, as the PR rows'
+  Chat); a tree left with nothing in it is removed by hand.
+* → `test/worktrees.test.mjs` (where a branch is, sharing asked for, the sweep's two ways), `scripts/scenarios/chat-worktree.mjs`.
+
 ## Decisions of 2026-10-13, at the end — the page follows a restart
 
 Ricardo, on the README's install: "should we present a reload + restart server to the user? or just simplify to

@@ -1,8 +1,10 @@
 // The editor at a branch (2026-10-13): a PR's branch on disk without moving the branch under the folder's chats — the
 // tree that has it, else one made inside the repo (`.claude/worktrees/<slug>`), tracking origin's branch, or detached
 // for a fork's PR or review only; node_modules linked when the lockfiles match; the trees made removed only once their
-// PR is merged or closed and nothing holds them; and when the folder itself may be switched. Temp repos throughout: a
-// bare origin with PRs as GitHub keeps them (refs/pull/<n>/head), a checkout of it that reads as acme/widgets.
+// PR is merged or closed and nothing holds them; and when the folder itself may be switched. A new chat's branch
+// (⌥⌘N's new worktree): where it is already, a tree out shared only when asked, and its tree removed once the PR opened
+// from it is merged or its commits are on origin's main. Temp repos throughout: a bare origin with PRs as GitHub keeps
+// them (refs/pull/<n>/head), a checkout of it that reads as acme/widgets.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -14,7 +16,7 @@ import { tmpDir } from '../lib/testserver.mjs';
 const tmp = tmpDir('peix-wt-');
 process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
 process.env.GIT_CONFIG_GLOBAL = '/dev/null'; process.env.GIT_CONFIG_NOSYSTEM = '1';   // no global ignore file: the board's own exclude is what keeps the trees out of status
-const { ensureWorktree, linkModules, newSession, prRefs, projectDir, sessions, setPrInfo, summary, sweepWorktrees, switchGuard, worktreesFor, worktreesMade } = await import('../server.mjs');
+const { branchWhere, ensureWorktree, linkModules, newSession, prRefs, projectDir, sessions, setPrInfo, summary, sweepWorktrees, switchGuard, worktreesFor, worktreesMade } = await import('../server.mjs');
 
 const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
 const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env }).toString().trim();
@@ -126,4 +128,43 @@ test('a chat in a worktree inside the repo is the repo\'s, with the branch it is
   s.alive = false;
   const plain = newSession(randomUUID(), null); plain.cwd = co;
   assert.deepEqual([summary(plain).project, summary(plain).worktree], ['widgets', null]);
+});
+
+test('a new chat\'s branch: where it is already, and a tree that has it out shared only when asked', async () => {
+  git(seed, 'push', '-q', origin, 'main:refs/heads/feat/c'); git(co, 'fetch', '-q', 'origin');
+  assert.deepEqual(await branchWhere(co, 'feat/brand-new'), { name: 'feat/brand-new', ok: true, local: false, origin: false, tree: null, main: false, live: 0, dflt: 'main' });
+  assert.equal((await branchWhere(co, 'feat/x.lock')).ok, false, 'git’s own rule');
+  assert.equal((await branchWhere(co, '--force')).ok, false, 'never an option');
+  assert.deepEqual(await branchWhere(co, 'feat/c').then(b => [b.local, b.origin, b.tree]), [false, true, null], 'origin’s, as last fetched');
+  assert.deepEqual(await branchWhere(co, 'feat/b').then(b => [b.tree, b.main]), [real, true], 'the folder’s own');
+  assert.deepEqual(await branchWhere(wt('feat-new'), 'feat/new').then(b => [b.tree, b.main, b.local]), [wt('feat-new'), false, true], 'out in a tree the board made — asked from inside it too');
+  const s = newSession(randomUUID(), null); s.alive = true; s.live = { cwd: join(wt('feat-new'), 'src') }; sessions.set(s.id, s);
+  assert.equal((await branchWhere(co, 'feat/new')).live, 1, 'a chat at work there');
+  sessions.delete(s.id);
+  const out = await ensureWorktree({ cwd: co, branch: 'feat/new', fresh: true });
+  assert.deepEqual([out.code, out.out, out.path], [409, true, wt('feat-new')]); assert.match(out.error, /feat\/new is out in .*feat-new already/);
+  assert.equal((await ensureWorktree({ cwd: co, branch: 'feat/new', fresh: true, share: true })).path, wt('feat-new'), 'asked for: that tree');
+  const c = await ensureWorktree({ cwd: co, branch: 'feat/c', fresh: true });
+  assert.deepEqual([c.path, c.made, git(c.path, 'rev-parse', '--abbrev-ref', '@{u}')], [wt('feat-c'), true, 'origin/feat/c'], 'origin’s branch: a tree of its own, tracking it');
+});
+
+test('a new branch\'s tree goes once the PR opened from it is merged, or its commits are on origin\'s main — one with nothing done in it stays', async () => {
+  const t = wt('feat-new');
+  writeFileSync(join(t, 'n.js'), 'n\n'); git(t, 'add', '.'); git(t, 'commit', '-qm', 'n'); git(t, 'push', '-q', 'origin', 'feat/new');
+  assert.deepEqual(await sweepWorktrees(), [], 'no PR from it, nothing on main: kept');
+  setPrInfo(url(30), 'merged', 'Old', null, Date.now(), undefined, false, '2020-01-01T00:00:00Z', null, refs('feat/new'));
+  assert.deepEqual(await sweepWorktrees(), [], 'a PR of that name merged before the tree was made is not its');
+  assert.equal(worktreesMade[t].pr, null);
+  setPrInfo(url(31), 'open', 'New', null, Date.now(), undefined, false, new Date().toISOString(), null, refs('feat/new'));
+  assert.deepEqual(await sweepWorktrees(), []);
+  assert.equal(worktreesMade[t].pr, url(31), 'the PR opened from it, kept as its own');
+  setPrInfo(url(31), 'merged', 'New', null, Date.now(), undefined, false, null, null, refs('feat/new'));
+  assert.deepEqual(await sweepWorktrees(), [t], 'merged: removed');
+  // merged with no PR the board knows of: its commits on origin's main
+  const l = await ensureWorktree({ cwd: co, branch: 'feat/landed', fresh: true });
+  writeFileSync(join(l.path, 'l.js'), 'l\n'); git(l.path, 'add', '.'); git(l.path, 'commit', '-qm', 'l');
+  assert.deepEqual(await sweepWorktrees(), [], 'a commit no remote has: kept');
+  git(l.path, 'push', '-q', 'origin', 'HEAD:main'); git(co, 'fetch', '-q', 'origin');
+  assert.deepEqual(await sweepWorktrees(), [l.path], 'on origin’s main: removed');
+  assert.ok(existsSync(wt('feat-c')), 'nothing done in it: it stays');
 });

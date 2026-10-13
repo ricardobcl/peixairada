@@ -2,10 +2,11 @@
 // nowhere; another chat is in another folder. What this checks: the PR row's Chat makes a worktree inside the repo for
 // the branch and starts a chat there (the fake claude); that chat is the repo's — its card says widgets and wears the
 // branch, the project pickers list widgets once and never the worktree, the header's folder narrows the list to both
-// widgets chats; the launcher's PR row has Chat too; and ⌥⌘N's chats step ends in "new chat on a new branch", which
-// makes a worktree from origin's main for the name typed and starts a chat in it.
+// widgets chats; the launcher's PR row has Chat too; and ⌥⌘N's chats step gives ＋ a switch — this folder or a new
+// worktree (←→, a click) — whose row says what the branch typed would do, in red where it would share a tree, and
+// makes a worktree from origin's main for a new name and starts a chat in it.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -80,22 +81,51 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelector('#picklist .pkrow.pr .pkchat[data-url="${u14}"]')`, { what: 'Chat on the launcher’s PR row' });
   await ctx.evaluate(`document.querySelector('#pick').close()`);
 
-  // ⌥⌘N: the chats step ends in "new chat on a new branch"; a name typed, ⏎ — a worktree from origin's main and a chat in it
+  // ⌥⌘N: the chats step's ＋ has a switch, this folder | new worktree — → past the box's end, ← past its start, or a
+  // click. On "new worktree" the box names the branch and the row says what ⏎ would do; ⏎ makes a worktree from origin's
+  // main and starts a chat in it
+  const press = (key, at) => ctx.evaluate(`(q => { ${at === undefined ? '' : `q.setSelectionRange(${at}, ${at});`} q.dispatchEvent(new KeyboardEvent('keydown', { key: '${key}', bubbles: true, cancelable: true })); })(document.querySelector('#pickq'))`);
+  const plus = () => ctx.evaluate(`(r => r && { n: r.querySelector('.n').firstChild.textContent + (r.querySelector('.n b')?.textContent || ''), say: r.querySelector('.cur').textContent, tone: r.querySelector('.cur').className, wt: r.classList.contains('wt'), sel: r.classList.contains('sel'), on: r.querySelector('.pkmode [aria-checked="true"]')?.textContent, foot: document.querySelector('#pickfoot').hidden ? null : document.querySelector('#pickfoot').textContent })(document.querySelector('#picklist .pkrow.new'))`);
   await ctx.key('KeyN');
   await ctx.waitFor(`document.querySelector('#pick').open && document.querySelector('#picklist .pkrow.sel')`, { what: '⌥⌘N' });
-  await ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);
-  await ctx.waitFor(`document.querySelector('#picklist .pkrow.branch')`, { what: 'the new-branch row', timeout: 10000 });
-  out.steps = await ctx.evaluate(`[...document.querySelectorAll('#picklist .pkrow .n')].map(n => n.textContent)`);
-  ctx.assert.equal(out.steps[0], '＋ new chat'); ctx.assert.equal(out.steps.at(-1), '＋ new chat on a new branch…');
+  await press('Enter');
+  await ctx.waitFor(`document.querySelector('#picklist .pkrow.new .pkmode')`, { what: 'the switch on ＋', timeout: 10000 });
+  out.here = await plus();
+  ctx.assert.deepEqual([out.here.n, out.here.say, out.here.on, out.here.wt], ['＋ new chat', 'in widgets as it stands — on main', 'this folder', false], JSON.stringify(out.here));
+  await ctx.settle(); await ctx.shot('2-this-folder');
+  ctx.assert.match(out.here.foot, /←→ ＋ new chat in this folder, or in a new worktree/);
+  ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('#picklist .pkrow.branch').length`), 0, 'no row of its own any more');
+  await press('ArrowRight');
+  out.empty = await plus();
+  ctx.assert.deepEqual([out.empty.n, out.empty.say, out.empty.on, out.empty.wt], ['＋ new chat in a new worktree', 'type a branch name — a new one starts from origin/main', 'new worktree', true], JSON.stringify(out.empty));
+  // the folder's own branch, and one out in the PR's worktree with a chat at work there: ⏎ would share them — in red
+  await ctx.fill('#pickq', 'main');
+  await ctx.waitFor(`/own branch/.test(document.querySelector('#picklist .pkrow.new .cur').textContent)`, { what: 'main: the folder’s own' });
+  out.main = await plus();
+  ctx.assert.deepEqual([out.main.say, out.main.tone, out.main.sel], ['already widgets\'s own branch: ⏎ shares that folder', 'cur warn', true], JSON.stringify(out.main));
+  await ctx.fill('#pickq', 'feat/tax-rounding');
+  await ctx.waitFor(`/out in/.test(document.querySelector('#picklist .pkrow.new .cur').textContent)`, { what: 'feat/tax-rounding: out in its worktree' });
+  ctx.assert.equal((await plus()).say, 'already out in widgets/.claude/worktrees/feat-tax-rounding: ⏎ shares that worktree — 1 chat at work there');
+  await ctx.settle(); await ctx.shot('2-shared');
+  await ctx.fill('#pickq', 'feat/bad..name');
+  await ctx.waitFor(`/not a name/.test(document.querySelector('#picklist .pkrow.new .cur').textContent)`, { what: 'a name git refuses' });
+  // ← at the box's start back to this folder (the text a query again), → at its end over again, a click likewise
+  await press('ArrowLeft', 0);
+  ctx.assert.equal((await plus()).on, 'this folder');
   await ctx.fill('#pickq', 'feat/new-thing');
-  await ctx.waitFor(`document.querySelector('#picklist .pkrow.branch .n').textContent === '＋ new chat on a new branch feat/new-thing'`, { what: 'the name in the row' });
-  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#picklist .pkrow.sel .n').textContent`), '＋ new chat', 'a name no chat has: ＋ selected, as before');
-  await ctx.settle(); await ctx.shot('2-new-branch');
-  await ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))`);
-  await ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);
+  ctx.assert.equal((await plus()).sel, true, 'a name no chat has: ＋ selected, as before');
+  await press('ArrowRight');
+  ctx.assert.equal((await plus()).on, 'new worktree');
+  await ctx.evaluate(`document.querySelector('#picklist .pkmode [data-wt="0"]').click()`);
+  ctx.assert.equal((await plus()).on, 'this folder', 'a click');
+  await ctx.evaluate(`document.querySelector('#picklist .pkmode [data-wt="1"]').click()`);
+  await ctx.waitFor(`document.querySelector('#picklist .pkrow.new .cur').textContent === 'a new branch from origin/main, in a worktree of its own'`, { what: 'a new name: what ⏎ does' });
+  ctx.assert.equal(await ctx.evaluate(`document.activeElement.id`), 'pickq', 'the box keeps the keys');
+  await ctx.settle(); await ctx.shot('2-new-worktree');
+  await press('Enter');
   for (let i = 0; i < 150 && !(await termIn(wt('feat-new-thing'))); i++) await ctx.sleep(100);
   ctx.assert.ok(await termIn(wt('feat-new-thing')), 'a chat started in .claude/worktrees/feat-new-thing');
   ctx.assert.equal(git(wt('feat-new-thing'), 'rev-parse', 'HEAD'), git(repo, 'rev-parse', 'origin/main'), 'from origin’s main');
-  ctx.assert.ok(existsSync(wt('feat-new-thing')));
+  ctx.assert.equal(git(wt('feat-new-thing'), 'branch', '--show-current'), 'feat/new-thing');
   return out;
 }

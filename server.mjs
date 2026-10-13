@@ -30,6 +30,7 @@
 //      · keeping the Mac awake: an idle-sleep assertion, and the lid's own setting (2026-10-08)
 //      · the day: when each chat clauded, waited on you, watched (2026-10-10)
 //      · what a chat changed: its folder's diff, for the changes tab (2026-10-10)
+//      · the editor at a branch: a working tree per branch (2026-10-13)
 //  VS Code Web: the editor UI served by `code serve-web`, for the pane beside the board
 //      · Zed: the other editor, found and installed when it is picked (2026-10-13)
 //  The board's own code, kept up to date from its checkout (2026-10-12)
@@ -2474,6 +2475,8 @@ const gitOr = (cwd, args, dflt = null) => gitOut(cwd, args).then(o => o.trim(), 
 // do — no checkout of that repo, origin unreachable — `gh pr diff` does, from GitHub (`gh: true` asks for it).
 const BRANCH_NAME = /^(?!-)(?!.*\.\.)[\w./-]{1,200}$/;   // a base asked for by name: a branch, never an option
 const GIT_NET = { timeout: 60_000, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } };
+/** origin's default branch as this checkout last heard it (origin/HEAD), no network — else main. */
+const originDefault = async root => (await gitOr(root, ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD']))?.replace(/^origin\//, '') || 'main';
 /** Which PR `pr=` names — a number (the checkout's repo) or a URL — and whether it is the checkout's repo's. */
 function prAsked(ask, root) {
   const said = String(ask || ''), m = PR_ONE.exec(said), n = Number(m?.[3] || /^#?(\d+)$/.exec(said)?.[1]);
@@ -2627,7 +2630,18 @@ async function worktreesFor(cwd) {
     else w.modules = mainLock && await gitOr(w.path, ['rev-parse', `HEAD:${lock}`]) === mainLock ? 'same' : 'differ';
     if (worktreesMade[w.path]) w.made = true;
   }
-  return { here, main, repo: own ? `${own.owner}/${own.name}` : null, worktrees: list };
+  return { here, main, repo: own ? `${own.owner}/${own.name}` : null, dflt: await originDefault(main), worktrees: list };
+}
+/** Where a branch named for a new chat already is (2026-10-13; ⌥⌘N's worktree switch, as its name is typed): `ok` false
+ *  for a name git would refuse; else `local` / `origin` (as this checkout last heard it — no network), and the tree that
+ *  has it out (`tree`; `main` when that is the repo's own folder) with how many live chats work there. */
+async function branchWhere(cwd, name) {
+  const w = await worktreesFor(cwd); if (w.error) return w;
+  if (!BRANCH_NAME.test(name) || await gitOr(w.main, ['check-ref-format', '--branch', name]) === null) return { name, ok: false, dflt: w.dflt };
+  const [local, origin] = await Promise.all([`refs/heads/${name}`, `refs/remotes/origin/${name}`].map(r => gitOr(w.main, ['rev-parse', '--verify', '--quiet', r])));
+  const t = w.worktrees.find(x => x.branch === name);
+  const live = t ? [...sessions.values()].filter(s => s.alive && treeOf(s.live?.cwd || s.cwd) === t.path).length : 0;
+  return { name, ok: true, local: !!local, origin: !!origin, tree: t?.path ?? null, main: !!t && t.path === w.main, live, dflt: w.dflt };
 }
 
 // ---- the editor at a branch: a working tree per branch (2026-10-13) -------------------------------------------------
@@ -2639,7 +2653,7 @@ async function worktreesFor(cwd) {
 // when asked and the lockfiles match. The trees made here are the state file's `worktrees`; only they are ever removed.
 const wtSlug = b => String(b).replace(/[^\w.-]+/g, '-').replace(/^[-.]+|[-.]+$/g, '').slice(0, 80) || 'wt';
 const wtAsking = new Map();   // one making per repo and branch at a time: a second ask waits for the first's tree
-async function ensureWorktree({ cwd, pr = null, branch = null, detach = false, fresh = false }) {
+async function ensureWorktree({ cwd, pr = null, branch = null, detach = false, fresh = false, share = false }) {
   const w = await worktreesFor(cwd); if (w.error) return { code: 409, error: w.error };
   let want = null, refs = null;
   if (pr) {
@@ -2652,7 +2666,12 @@ async function ensureWorktree({ cwd, pr = null, branch = null, detach = false, f
   }
   if (!pr && (!branch || detach)) return { code: 400, error: detach ? 'detached at what? — a PR' : 'which branch?' };
   if (branch && !BRANCH_NAME.test(branch)) return { code: 400, error: `${branch} is not a branch name` };
-  if (!detach) { const t = w.worktrees.find(x => x.branch === branch); if (t) return { path: t.path, branch, made: false, here: t.path === w.here }; }
+  if (!detach) {
+    const t = w.worktrees.find(x => x.branch === branch);
+    // a new chat's branch (fresh) out in a tree already: that tree is shared only when asked for — the page said so first
+    if (t && fresh && !share) return { code: 409, error: `${branch} is out in ${tildePath(t.path)} already — a chat there shares its files`, path: t.path, out: true };
+    if (t) return { path: t.path, branch, made: false, here: t.path === w.here };
+  }
   const key = `${w.main}\0${detach ? `pr-${want?.n}` : branch}`;
   if (wtAsking.has(key)) return wtAsking.get(key);
   const p = makeWorktree(w, { want, refs, branch, detach, fresh }).finally(() => wtAsking.delete(key));
@@ -2680,7 +2699,7 @@ async function makeWorktree(w, { want, refs, branch, detach, fresh }) {
     catch (e) {
       if (!fresh) return fail(e, `no branch ${branch} here, nor on origin`);
       // a new branch (a new chat on one): from origin's default branch as origin has it now, tracking nothing yet
-      const dflt = (await gitOr(main, ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD']))?.replace(/^origin\//, '') || 'main';
+      const dflt = w.dflt;
       try { await gitOut(main, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', 'origin', `+refs/heads/${dflt}:refs/remotes/origin/${dflt}`], GIT_NET); } catch {}
       const from = await gitOr(main, ['rev-parse', '--verify', '--quiet', `origin/${dflt}`]) ? `origin/${dflt}` : 'HEAD';
       start = ['--no-track', '-b', branch, null, from];
@@ -2720,27 +2739,56 @@ async function keepWorktree(path, rec) {
   if (head !== rec.head && await gitOr(path, ['rev-list', '--max-count=1', 'HEAD', '--not', '--remotes'], 'x')) return 'commits not pushed';
   return null;
 }
-/** The trees the board made for a PR that is merged or closed, removed — `git worktree remove`, never --force, so git
- *  itself refuses anything with work in it — when nothing holds them (keepWorktree). A tree gone by hand is forgotten. */
+/** The PR opened from a new branch's tree (2026-10-13): its repo's, headed by that branch, not a fork's — open, or opened
+ *  since the tree was made (a branch name used again: the PR merged under it long ago is not this tree's). The newest. */
+function prOfBranch(rec) {
+  const own = ghRepoOf(rec.repo); if (!own) return null;
+  const pre = prKey(own.owner, own.name, ''), made = Date.parse(rec.at) || 0;
+  let best = null;
+  for (const [url, p] of prStatus) {
+    if (!url.startsWith(pre) || p.refs?.head !== rec.branch || p.refs.fork || !p.state) continue;
+    if ((p.state === 'merged' || p.state === 'closed') && !(Date.parse(p.created) >= made)) continue;
+    if (!best || (Date.parse(p.created) || 0) > (Date.parse(best[1].created) || 0)) best = [url, p];
+  }
+  return best?.[0] ?? null;
+}
+/** Whether a new branch's tree has commits since it was made, all of them on origin's default branch now — merged with
+ *  no PR the board knows of, or fast-forwarded — as this checkout last fetched it. */
+async function landed(path, rec) {
+  const head = await gitOr(path, ['rev-parse', 'HEAD']);
+  if (!head || head === rec.head) return false;
+  return await gitOr(path, ['merge-base', '--is-ancestor', 'HEAD', `origin/${await originDefault(rec.repo)}`], false) !== false;
+}
+/** The trees the board made, removed once their work is done — a PR's merged or closed; a new branch's (2026-10-13) by
+ *  the PR opened from it (`prOfBranch`, kept as its `pr`), else once its commits are on origin's default branch — with
+ *  `git worktree remove`, never --force, so git itself refuses anything with work in it, and only when nothing holds
+ *  them (keepWorktree). A new branch's tree with nothing done in it stays. A tree gone by hand is forgotten. */
 const WT_SWEEP_MS = Number(process.env.WT_SWEEP_MS || 10 * 60_000);
 let wtSweeping = false, wtSweptAt = 0;
 async function sweepWorktrees() {
   if (wtSweeping) return []; wtSweeping = true; wtSweptAt = Date.now();
   const gone = []; let changed = false;
+  const drop = async (path, rec, why) => {
+    try {
+      if (await keepWorktree(path, rec)) return;
+      if (rec.linked) try { if (lstatSync(join(path, 'node_modules')).isSymbolicLink()) unlinkSync(join(path, 'node_modules')); } catch {}
+      await gitOut(rec.repo, ['worktree', 'remove', path]);
+      delete worktreesMade[path]; changed = true; gone.push(path);
+      console.log(`[peixairada] worktree ${tildePath(path)} removed — ${why}, nothing in it`);
+    } catch (e) { console.error(`[peixairada] worktree ${tildePath(path)} kept: ${String(e.stderr || e.message).trim().split('\n')[0]}`); }
+  };
   try {
     for (const [path, rec] of Object.entries(worktreesMade)) {
       if (!existsSync(path)) { delete worktreesMade[path]; changed = true; continue; }
+      if (!rec.pr && rec.branch) {
+        const url = prOfBranch(rec);
+        if (url) { rec.pr = url; changed = true; }
+        else { if (await landed(path, rec).catch(() => false)) await drop(path, rec, 'its commits are on origin’s default branch'); continue; }
+      }
       if (!rec.pr) continue;
       const st = prStatus.get(rec.pr)?.state;
       if (!st) { queuePr(rec.pr); continue; }   // asked about: the chat that named it may be gone
-      if (st !== 'merged' && st !== 'closed') continue;
-      try {
-        if (await keepWorktree(path, rec)) continue;
-        if (rec.linked) try { if (lstatSync(join(path, 'node_modules')).isSymbolicLink()) unlinkSync(join(path, 'node_modules')); } catch {}
-        await gitOut(rec.repo, ['worktree', 'remove', path]);
-        delete worktreesMade[path]; changed = true; gone.push(path);
-        console.log(`[peixairada] worktree ${tildePath(path)} removed — its PR is ${st}, nothing in it`);
-      } catch (e) { console.error(`[peixairada] worktree ${tildePath(path)} kept: ${String(e.stderr || e.message).trim().split('\n')[0]}`); }
+      if (st === 'merged' || st === 'closed') await drop(path, rec, `its PR is ${st}`);
     }
   } finally { wtSweeping = false; if (changed) saveState(); }
   return gone;
@@ -3758,10 +3806,14 @@ const server = createServer(async (req, res) => {
       try { const r = await worktreesFor(url.searchParams.get('cwd')); return json(res, r.error ? 409 : 200, r); }
       catch (e) { return json(res, 500, { error: String(e.stderr || e.message).trim().split('\n')[0] }); }
     }
+    if (req.method === 'GET' && p === '/api/worktrees/branch') {   // a new chat's branch, as its name is typed: where it is already
+      try { const r = await branchWhere(url.searchParams.get('cwd'), url.searchParams.get('name') || ''); return json(res, r.error ? 409 : 200, r); }
+      catch (e) { return json(res, 500, { error: String(e.stderr || e.message).trim().split('\n')[0] }); }
+    }
     if (req.method === 'POST' && p === '/api/worktrees') {
       const b = await jsonBody(req);
       const r = await ensureWorktree({ cwd: typeof b.cwd === 'string' ? b.cwd : null, pr: typeof b.pr === 'string' || typeof b.pr === 'number' ? String(b.pr) : null,
-        branch: typeof b.branch === 'string' ? b.branch : null, detach: b.detach === true, fresh: b.fresh === true }).catch(e => ({ code: 500, error: e.message }));
+        branch: typeof b.branch === 'string' ? b.branch : null, detach: b.detach === true, fresh: b.fresh === true, share: b.share === true }).catch(e => ({ code: 500, error: e.message }));
       return json(res, r.error ? r.code || 500 : 200, r);
     }
     if (req.method === 'POST' && p === '/api/worktrees/modules') {
@@ -4058,7 +4110,7 @@ server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTe
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {

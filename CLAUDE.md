@@ -608,9 +608,11 @@ for `$HOME`'s home and the account's.
   scope's ready and clauding chats by `byWord` under ＋ *new chat* — **shown even when the scope has none**, so ⏎
   starts one. ⌥⌘N scopes it to the project, ⌥⌘O to one environment (`then: 'chats'` rides `folder` and `env`).
   Typing filters the chats only and moves the selection onto the first match (`pick.typed`), else ＋. **A folder that
-  is a git checkout ends in *＋ new chat on a new branch*** (2026-10-13; `isBranch`, never filtered out): the text
-  typed is the branch, `newChatOnBranch` makes its worktree from origin's default branch (`fresh`) and starts the chat
-  there. A chat's environment is `s.env`
+  is a git checkout gives ＋ a switch, *this folder | new worktree*** (2026-10-13; `pick.git`, `pick.wt`, `pickWt`: →
+  past the box's end, ← past its start, a click): on *new worktree* the text is the branch's name, not a query, and ＋
+  says what ⏎ would do (`wtSay` from `brAsk` → `GET /api/worktrees/branch`, `branchWhere`: a new branch from origin's
+  default, one here or on origin, or **one out in a tree already — said in red, and only then `share`d**; the POST
+  refuses it otherwise, `out`); `newChatOnBranch` makes the worktree and starts the chat. A chat's environment is `s.env`
   (`.chip.env` on its card); the `env` step counts each (`envCounts`). An idle chat's row has the card's ✓
   (`button.pkdone`, `canTick(s)`); ticked, it leaves on the `session` event (`pickRender(true)` keeps the selection)
   and the picker stays up. → `new-chat-flow.mjs`.
@@ -779,7 +781,7 @@ for `$HOME`'s home and the account's.
   then its buttons (`.pract`; Diff → `openPrDiff`, Editor ▾ and Chat below). The PR's branches are `pr.refs` (`prRefs` from `PR_FIELDS`'
   `headRefName baseRefName baseRefOid isCrossRepository headRepository`). → `test/changes.test.mjs`, `changes-pr.mjs`.
 * **A PR's branch in the editor is a working tree, never the folder switched** (2026-10-13; the row's **Editor ▾**,
-  `editorMenu`): `POST /api/worktrees {cwd, pr | branch, detach, fresh}` → `ensureWorktree` **finds the tree that has
+  `editorMenu`): `POST /api/worktrees {cwd, pr | branch, detach, fresh, share}` → `ensureWorktree` **finds the tree that has
   the branch first** (the folder itself, any worktree: never "already checked out"), else makes one **inside the repo,
   `<repo>/.claude/worktrees/<slug>`** (`makeWorktree`): a local branch as is, origin's `--track`, a fork's PR or *review
   only* `--detach` at its head (fetched into the object store alone), a `fresh` one `--no-track` from origin's default.
@@ -787,7 +789,8 @@ for `$HOME`'s home and the account's.
   installed**: `GET /api/worktrees` says each tree's `modules` (`here` · `same` lockfile · `differ`), *Link
   node_modules* is `POST /api/worktrees/modules` (a symlink to the main tree's), else `npm ci` typed into the zsh,
   unrun. The trees made are the state file's `worktrees` (`worktreesMade`) and **only those are removed**, by
-  `sweepWorktrees` (every `WT_SWEEP_MS` on the poll): their PR merged or closed, nothing in them (`busyIn`), clean,
+  `sweepWorktrees` (every `WT_SWEEP_MS` on the poll): their PR merged or closed — a new branch's, the PR opened from it
+  (`prOfBranch`: open, or opened since) or its commits on origin's default (`landed`) —, nothing in them (`busyIn`), clean,
   no commit no remote has (`keepWorktree`) — `git worktree remove`, never `--force`. *Switch this folder…* types
   `git switch <branch>` into the chat's zsh, unrun, and only when `GET /api/sessions/:id/switch?branch=`
   (`switchGuard`) finds no other chat or drawer in the tree (`treeOf`: `gitTopOf`, real; a nested worktree is its own; on it already is `headAt`'s), no chat
