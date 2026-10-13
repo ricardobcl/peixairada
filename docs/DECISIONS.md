@@ -17,6 +17,28 @@ word on the way in. Not picked: a ⤡ in the status bar, rows in ··· and the 
   `toggleFill`, its title flipped by `validateMenuItem` as View's is. With the board in the back the fill still covers
   the screen and the menu bar is the other app's, so the fish is then the one native control in reach. Its ⌃⌘F is a
   hint: a status item's key equivalents answer only while its menu is open.
+* **The lights come down with the menu bar**, as the system's full screen shows its title bar: when the menu bar
+  comes out — the pointer at the top edge beside a housing, the 1 s hold elsewhere (`menuOut`) — a 28 pt strip slides
+  in under it (`lightsDown`), the three lights on the left and the window's title (the open chat, as the page posts
+  it) in the middle, over the board and the pane's pages (the last of the content view's subviews). Green leaves the
+  fill, yellow minimizes (`lightsMinimize`: the fill's borderless mask gains `.miniaturizable`, and the fill's options
+  are dropped while the window is in the Dock, which they would otherwise keep hidden), red is ⌘W's path
+  (`closeHalfOrWindow`: a tab or a half first, then the window).
+  * **The menu bar is held out while the strip is down** (`lightsOut`: `fillOptions()` then hides the Dock alone) —
+    an auto-hidden menu bar goes as soon as the pointer leaves it, which is on the way down to the lights. Both go
+    once the pointer is below the strip (`lightsBand`) or off the screen, never under an open menu of the app's
+    (the tick's run loop is tracking it); beside a housing the bar is tucked half a second on (`tuckMenuBar`), which
+    has unstuck an auto-hidden bar before.
+  * **The tick stays cheap**: `menuBarVisible()` is asked only while the pointer is within the menu bar's height of
+    the top (`fillMenuH`, the housing's strip or the main menu's own height, read in `placeFill`), and not at all
+    while the strip is down.
+  * **Drawn, not the system's** (`LightButton`, `LightsGroup`): on a borderless window the standard buttons only beep
+    (`performClose`/`performZoom` want the title bar's own buttons), and they draw no marks outside a title bar. A
+    12 pt disc each, a shade darker pressed; the three marks show together while the pointer is over any of them (a
+    tracking area); green's mark is the two corners pointing in, and its tooltip says ⌃⌘F.
+  * The app log says `fill: lights down (menu bar N pt)` and `fill: lights up (why)`. Not checkable outside the app:
+    the harness is a page, and the strip is native. The study's mock (the lights under a drawn menu bar) is what it
+    is meant to look like.
 
 ## Decisions of 2026-10-13, night — the harness for the board's frames; npm test under load; no perf skill
 
