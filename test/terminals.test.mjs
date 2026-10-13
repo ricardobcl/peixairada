@@ -114,7 +114,7 @@ test('a launcher: a folder whose Taskfile launches claude lists it, a new chat t
     const t = r.body.terminal;
     assert.equal(t.task, 'production-workload'); assert.equal(t.sessionId, null);
     assert.match(srv.logText(), /terminal t\d+-\w+: task production-workload in/);
-    const linked = await waitFor(async () => (await srv.terminals()).find(x => x.id === t.id)?.sessionId || null, { timeout: 10_000, what: 'the terminal learning its session id although claude is not the PTY\'s process' });
+    const linked = await waitFor(async () => (await srv.terminals()).find(x => x.id === t.id)?.sessionId || null, { what: 'the terminal learning its session id although claude is not the PTY\'s process' });
     const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === linked);
     assert.ok(s.alive, 'the chat is alive'); assert.notEqual(s.live.pid, t.pid, 'with a claude below task, not task itself'); assert.equal(s.terminal?.id, t.id, 'and the drawer is its');
     const meta = srv.holders().find(h => h.id === t.id);
@@ -124,7 +124,7 @@ test('a launcher: a folder whose Taskfile launches claude lists it, a new chat t
     // /clear there: the same claude under a new id — and claude is not the PTY's process, task is (2026-10-03: the
     // drawer stayed on the old chat, and the new one read as live in another terminal)
     const p = attach(srv.url, t.id, { timeout: 3000 }); await p.opened; p.ws.send2({ t: 'in', d: '/clear\r' });
-    const moved = await waitFor(async () => { const id = (await srv.terminals()).find(x => x.id === t.id)?.sessionId; return id !== linked && id; }, { timeout: 10_000, what: 'the drawer following /clear to the new chat' });
+    const moved = await waitFor(async () => { const id = (await srv.terminals()).find(x => x.id === t.id)?.sessionId; return id !== linked && id; }, { what: 'the drawer following /clear to the new chat' });
     const s2 = (await srv.api('api/sessions')).body.sessions.find(s => s.id === moved);
     assert.equal(s2.terminal?.id, t.id, 'the new chat has the drawer'); assert.equal(s2.live.pid, s.live.pid, 'the same claude');
   } finally { await srv.stop(); }
@@ -148,7 +148,7 @@ test('a zsh drawer: a holder running zsh -l -i in the chat folder, beside the cl
     assert.deepEqual(s.shells.map(x => x.id), [t.id, more.body.terminal.id], 'and every zsh, oldest first');
     assert.equal(s.alive, false, 'a shell is no claude: the chat is not live');
     const a = attach(srv.url, t.id, { until: 'peix-shell-22', timeout: 20_000 });
-    await a.opened; await waitFor(() => /[%$#] *$/.test(a.text().replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')), { timeout: 10_000, what: 'the shell\'s prompt' });
+    await a.opened; await waitFor(() => /[%$#] *$/.test(a.text().replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')), { what: 'the shell\'s prompt' });
     a.ws.send2({ t: 'in', d: 'echo peix-shell-$((20+2))\r' });
     const out = await a;
     assert.ok(out.all.includes('peix-shell-22'), `the zsh ran the command: ${JSON.stringify(out.all.slice(-300))}`);

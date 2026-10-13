@@ -48,7 +48,7 @@ test('end to end: what Jira knows wears its status, what it does not is never sh
     assert.equal(jira.bulk.length, 0, 'and nothing asked');
     const put = await srv.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jira: { site: jira.url, email: jira.email } }) });
     assert.equal(put.status, 200, JSON.stringify(put.body));
-    await waitFor(async () => (await chat(fx.chats[0].id)).tickets.length === 2, { timeout: 10_000, what: 'the chat\'s two tickets' });
+    await waitFor(async () => (await chat(fx.chats[0].id)).tickets.length === 2, { what: 'the chat\'s two tickets' });
     const t = (await chat(fx.chats[0].id)).tickets;
     assert.deepEqual(t.map(x => [x.key, x.cat, x.status, x.summary]), [['ACME-12', 'doing', 'In Progress', 'Fees for the new market'], ['OPS-7', 'done', 'Done', 'Rotate the keys']]);
     assert.equal(t[0].url, `${jira.url}/browse/ACME-12`, 'the site\'s own link');

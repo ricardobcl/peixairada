@@ -6,7 +6,7 @@
   "description": "One board for every Claude Code chat on this Mac — live transcripts, lanes, alerts, and a real claude terminal in the chat pane",
   "scripts": {
     "start": "node server.mjs",
-    "test": "node --test test/*.test.mjs",
+    "test": "node --test --test-concurrency=4 test/*.test.mjs",
     "check": "sh scripts/check.sh",
     "verify": "node scripts/verify.mjs",
     "webkit": "node scripts/webkit.mjs",

@@ -90,7 +90,7 @@ test('a pull, asked for: fast-forwarded, what it touched started again, a commit
     await srv.restart();
     st = (await srv.api('api/update')).body;
     assert.deepEqual([st.building, st.last.build.done], [true, undefined], 'the new server knows the build still runs');
-    st = await waitFor(async () => { const b = (await srv.api('api/update')).body; return b.last.build?.done && b; }, { timeout: 10_000, what: 'the build\'s end, seen from the new server' });
+    st = await waitFor(async () => { const b = (await srv.api('api/update')).body; return b.last.build?.done && b; }, { what: 'the build\'s end, seen from the new server' });
     assert.deepEqual([st.building, st.last.build.ok, st.last.build.why], [false, false, "swiftc: error: no such module 'Cocoa'"]);
     p.flag('build-slow', false); p.flag('build-fails', false);
 

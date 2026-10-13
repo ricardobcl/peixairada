@@ -22,7 +22,7 @@ scripts/launchd.sh install          # the server as a login agent, run from this
 scripts/launchd.sh restart [--after N]   # after a server.mjs change; the drawers stay (holders); N s first, so a recap lands
 mac/build.sh install                # the native app (bundles node, node_modules, lib/) into /Applications — Swift changes
 npm start                           # node server.mjs → http://127.0.0.1:7331, by hand
-npm test                            # node:test over test/ — pure logic, and the drawers end to end (≈12 s)
+npm test                            # node:test over test/ — pure logic, and the drawers end to end (≈30 s, four files at once)
 npm run check                       # static: every script parses, the page's script compiles, the vendored xterm = node_modules, shell, swiftc -typecheck, this file's size (≈10 s)
 npm run verify -- "<js>"            # one expression on the live board in headless Chrome (see Verifying)
 npm run webkit -- "<body>"          # the same in WebKit, the app's engine; --shot is the compositor's own frame
@@ -969,7 +969,9 @@ the live board at load — `npm run verify -- "typeof window.peix"`.
   with no rc files; `VSWEB_FRESH_MS` 0; `UPDATE_EVERY_MS` 0; `USAGE=off`; `APP_DIRS` its own, `BREW_BIN` the fake,
   `LSREGISTER_BIN` `/usr/bin/true`; no inherited `CONFIG_FILE`, `TERMS_DIR` or XDG dirs. Up is its
   `listening` line; `meta.env` is spread last. `waitFor(fn, {timeout, what})`, `srv.post(path, body)` and `tmpDir()`
-  are the tests' polls, POSTs and dirs.
+  are the tests' polls, POSTs and dirs. **A wait's timeout is for what never comes** (15 s by default, 2026-10-13):
+  with test files side by side, every spawn is slow on this Mac (an endpoint agent checks each exec) — a fake claude
+  that registers in 1.2 s alone took over 10; `npm test` runs four files at once for the same reason.
 * **Test against the fake claude, not real chats**: `scripts/fakeclaude.mjs` via `CLAUDE_BIN` (`fake: true`) is
   instant and touches nothing. A test against the real `~/.claude` names it as `claudeDir` outright (read-only), uses
   a stale chat and `DELETE`s the terminals it made.
