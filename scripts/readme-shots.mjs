@@ -401,13 +401,11 @@ export default async function (ctx) {
     const looks = [
       ['look-plain', { tiles: false, headFloat: false }, true],
       ['look-rail', { tiles: true, headFloat: true, sessionsCompact: true }, true],
-      ['look-stack', { sessionsCompact: false, tileStack: true }, true],
-      ['look-tokyo', { tileStack: false, cards: 'large', cardsEven: false, skinDark: 'tokyo-night' }, true],
+      ['look-tokyo', { sessionsCompact: false, cards: 'large', cardsEven: false, skinDark: 'tokyo-night' }, true],
       ['look-latte', { skinDark: null, skinLight: 'catppuccin-latte' }, false],
     ];
     for (const [name, prefs, dark] of looks) {
       await theme(dark); await board(prefs);
-      if (prefs.tileStack) await ctx.waitFor(`document.querySelectorAll('#stack .stile, #stack > *').length > 0`, { what: 'the stack', timeout: 8000 }).catch(() => {});
       await ctx.sleep(500); await snap(name);
     }
     await scale(2); await theme(true); await board({ skinLight: null });

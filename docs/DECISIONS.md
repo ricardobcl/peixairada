@@ -31,6 +31,9 @@ pref for a switch that went is deleted on load.
 * **The light under the pointer** (2026-10-09) — always on: hover is that light, never the edge's glow spread across
   the card (`.card:hover`'s `--tint` / `--reach` went, and `data-spot`). With it the settings' *Lights and motion* fold
   had nothing left in it, and went too.
+* **The stack** (2026-10-10) — gone: no third column of live tiles beside the open chat, no ⌥⌘S (its row in `KEYS`,
+  and check-page's exception for it). The live tiles themselves (`mountMini`, `tailHtml`, `/api/tails`) are the
+  overview's; the screen's top-right corner at the notch is the chat's.
 
 ## Decisions of 2026-10-14, on a branch — the tour
 

@@ -1585,7 +1585,7 @@ function setStatus(s, status, ts) {
   }
 }
 
-/** The last few things a chat did, kept for every chat, open or not (2026-10-10): what the overview's and the stack's
+/** The last few things a chat did, kept for every chat, open or not (2026-10-10): what the overview's
  *  tiles show of one with no drawer here — its tool calls with their results, its words — short. */
 const RECENT_MAX = 16;
 function noteRecent(s, e) {
@@ -3785,7 +3785,7 @@ const server = createServer(async (req, res) => {
       const since = Number(url.searchParams.get('since')) || new Date().setHours(0, 0, 0, 0);
       return json(res, 200, dayOf([...sessions.values()], since));
     }
-    // the overview's and the stack's tiles (2026-10-10): the last few things each of these chats did
+    // the overview's tiles (2026-10-10): the last few things each of these chats did
     if (req.method === 'GET' && p === '/api/tails') {
       const ids = (url.searchParams.get('ids') || '').split(',').filter(Boolean).slice(0, 40);
       return json(res, 200, { tails: Object.fromEntries(ids.map(id => [id, sessions.get(id)?.recent || []])) });

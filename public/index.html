@@ -1799,8 +1799,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .home .hsum b { color: var(--ink); } .home .hsum em { font-style: normal; color: var(--needs); font-weight: 700; } .home .hsum .r { margin-left: auto; }
   .home .hnone { color: var(--muted); padding: 6px 0; }
 
-  /* ---- tiles (2026-10-10): Hyprland's master and stack — gaps over a wallpaper, square edges, each panel's border its
-     project's colour (--tile-edge, set by tintChat, tileTints and renderStack: a black one --tile-grey; the list's on
+  /* ---- tiles (2026-10-10): Hyprland's — gaps over a wallpaper, square edges, each panel's border its
+     project's colour (--tile-edge, set by tintChat and tileTints: a black one --tile-grey; the list's on
      ALL the open chat's), faint, and whole on the panel the keys are in ---- */
   :root { --tile-line: color-mix(in srgb, var(--ink) 16%, var(--bg)); --tile-grey: color-mix(in srgb, var(--ink) 74%, var(--bg)); }
   /* the wallpaper in the hue of the project in view — the open chat's, else the list's, else the theme's accent (tileTints);
@@ -1822,9 +1822,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   main.tiles ~ #trail { display: none !important; }
   main.tiles :is(#sessions, #chat) { border: 2px solid color-mix(in srgb, var(--tile-edge, var(--nocolor)) 30%, var(--tile-line)); background: var(--bg); }
   main.tiles:not(.scompact) #slist > .card.active { margin-right: 0; }
-  main.tiles .kf:is(#sessions, #chat, .stile) { border-color: var(--tile-edge, var(--nocolor)); }
+  main.tiles .kf:is(#sessions, #chat) { border-color: var(--tile-edge, var(--nocolor)); }
   /* at the notch, the panel the housing reaches cut round it and its border round the cut (tileNotch) */
-  main.tiles :is(#sessions, #chat, .stile).ncutp { position: relative; }
+  main.tiles :is(#sessions, #chat).ncutp { position: relative; }
   .ncut { position: absolute; z-index: 6; pointer-events: none; border: 2px solid; border-top: 0; border-color: inherit; }
   .ncap { position: absolute; z-index: 6; pointer-events: none; border: 0 solid; border-color: inherit; }
   .ncap.l { border-top-width: 2px; border-right-width: 2px; } .ncap.r { border-top-width: 2px; border-left-width: 2px; }
@@ -1834,22 +1834,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      the tile's is that less the gap). Clipped, so a header's black does not square the corner off again. */
   main.tiles.notch { --screen-r: 10px; }
   main.tiles.notch > #sessions { border-top-left-radius: var(--screen-r); overflow: hidden; }
-  main.tiles.notch:not(:has(> #stack:not([hidden]))) > #chat, main.tiles.notch > #stack:not([hidden]) > .stile:first-child { border-top-right-radius: var(--screen-r); overflow: hidden; }
-  #stack { display: none; }
-  main.tiles #stack:not([hidden]) { flex: 0 0 clamp(300px, 30vw, 520px); margin-left: 8px; display: grid; grid-auto-rows: minmax(0, 1fr); gap: 8px; min-height: 0; min-width: 0; }
-  .stile { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; min-width: 0; border: 2px solid color-mix(in srgb, var(--tile-edge, var(--nocolor)) 30%, var(--tile-line)); background: var(--bg); cursor: pointer; }
-  .stile header { display: flex; align-items: center; gap: 8px; min-width: 0; height: 26px; padding: 0 10px; border-bottom: 1px solid var(--line); font-size: var(--fs-xs); color: var(--muted); }
-  /* the stack's own ×, at the first tile's top left: the stack can go, and its title says the key that brings it back */
-  .stile header .sclose { flex: none; display: grid; place-items: center; width: 18px; height: 18px; margin-left: -5px; padding: 0; border: 1px solid transparent; border-radius: var(--r-2); background: var(--ctl); color: var(--muted); font: var(--fs-base)/1 system-ui, sans-serif; cursor: pointer; }
-  .stile header .sclose:hover { background: var(--ctl-hi); color: var(--ink); }
-  .stile header b { flex: none; font-size: var(--fs-2xs); letter-spacing: .7px; text-transform: uppercase; color: oklch(from var(--repo, var(--muted)) max(l, .66) c h); }
-  .stile header .tt { color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-  .stile header em { margin-left: auto; flex: none; font-style: normal; font-weight: 600; color: var(--working); }
-  .stile.ask header em { color: var(--needs); }
-  .stile.ask:not(.kf) { border-color: var(--needs); box-shadow: 0 0 0 1px var(--needs), 0 0 22px -4px var(--needs); }
-  .stile .sbody { position: relative; overflow: hidden; display: grid; align-content: start; gap: 3px; padding: 8px 10px; background: var(--term-bg); font: var(--fs-sm)/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--snip-claude); min-height: 0; }
-  .stile .sbody.over { align-content: end; }   /* its tail under the tile's head, unless longer than the tile: then its newest rows (2026-10-12; always at the foot before) */
-  .stile .sbody.live { display: block; padding: 0; }
+  main.tiles.notch > #chat { border-top-right-radius: var(--screen-r); overflow: hidden; }
   main.tiles + #sbar, main.tiles ~ #sbar { margin: 8px; border: 2px solid var(--tile-line); }
 
   /* ---- ⌥⌘A, the overview (2026-10-10): the board blurred, every live chat a tile in its column ---- */
@@ -1887,19 +1872,19 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #ov .ot h3 { margin: 0; font-size: var(--fs-base); line-height: 1.3; color: var(--ink); }
   #ov .obody { display: grid; gap: 3px; padding: 7px 9px; background: var(--term-bg); font: var(--fs-sm)/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--snip-claude); min-width: 0; overflow: hidden; }
   #ov .obody.live { position: relative; display: block; height: 190px; padding: 0; }
-  :is(#ov, #stack) .mini { position: absolute; left: 6px; bottom: 4px; transform-origin: bottom left; pointer-events: none; }
-  :is(#ov, #stack) .mini .xterm-viewport { overflow: hidden !important; }
-  :is(#ov, #stack) .tl { display: flex; gap: 7px; align-items: baseline; white-space: nowrap; overflow: hidden; min-width: 0; }
-  :is(#ov, #stack) .tl i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--idle); transform: translateY(-1px); }
-  :is(#ov, #stack) .tl.run i { background: var(--working); box-shadow: 0 0 0 3px color-mix(in srgb, var(--working) 25%, transparent); }
-  :is(#ov, #stack) .tl.err i { background: var(--needs); } :is(#ov, #stack) .tl.watch i { background: var(--watch); }
-  :is(#ov, #stack) .tl b { color: var(--ink); font-weight: 600; }
-  :is(#ov, #stack) .tl span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  :is(#ov, #stack) .tl em { margin-left: auto; font-style: normal; color: var(--muted); padding-left: 8px; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
-  :is(#ov, #stack) .tl.run em { color: var(--working); }
-  :is(#ov, #stack) .say { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: var(--fs-sm); color: var(--ink); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-  :is(#ov, #stack) .say.none { color: var(--muted); }
-  :is(#ov, #stack) .you { color: var(--you); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #ov .mini { position: absolute; left: 6px; bottom: 4px; transform-origin: bottom left; pointer-events: none; }
+  #ov .mini .xterm-viewport { overflow: hidden !important; }
+  #ov .tl { display: flex; gap: 7px; align-items: baseline; white-space: nowrap; overflow: hidden; min-width: 0; }
+  #ov .tl i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--idle); transform: translateY(-1px); }
+  #ov .tl.run i { background: var(--working); box-shadow: 0 0 0 3px color-mix(in srgb, var(--working) 25%, transparent); }
+  #ov .tl.err i { background: var(--needs); } #ov .tl.watch i { background: var(--watch); }
+  #ov .tl b { color: var(--ink); font-weight: 600; }
+  #ov .tl span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  #ov .tl em { margin-left: auto; font-style: normal; color: var(--muted); padding-left: 8px; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
+  #ov .tl.run em { color: var(--working); }
+  #ov .say { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: var(--fs-sm); color: var(--ink); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  #ov .say.none { color: var(--muted); }
+  #ov .you { color: var(--you); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #ov .ot > .tl { font: var(--fs-sm)/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
   #ov .ag { font-size: var(--fs-sm); color: var(--working); font-weight: 600; }
   #ov .q { font-size: var(--fs-md); color: var(--ink); font-weight: 600; }
@@ -2309,7 +2294,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     </div>
     <div id="resume" hidden></div>
   </section>
-  <section id="stack" hidden aria-label="The chats asking or clauding"></section>
 </main>
 <footer id="sbar" hidden><div id="sbFind"></div><div id="sbLeft"></div><div id="sbPeople"></div><div id="sbSwim" role="button" aria-label="Every agent at work (⌥⌘A)"></div><div id="sbRight"></div></footer>
 <div id="trail" aria-hidden="true" hidden></div>
@@ -2336,7 +2320,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <label class="opt sub" title="On, the board is dark while macOS is dark and light while it is light, each in the theme last picked for it; off, the theme picked is worn — and its appearance — whatever macOS shows"><input type="checkbox" id="skinFollow"><span><b>follow macOS</b> — a dark theme while macOS is dark, a light one while it is light; off, the theme picked whatever macOS shows</span></label>
     <label class="opt" title="On, the panels are tiles, Hyprland's way: gaps over a wallpaper, each bordered in its project's colour, whole on the one the keys are in — and, with the stack, beside the open chat up to three tiles of the chats of the list that are asking or clauding, each its drawer drawn small or its last tool calls, a click making one the chat"><input type="checkbox" id="tilesOn"><span><b>tiles</b> — the panels as tiles, Hyprland's way: gaps over a wallpaper, each bordered in its project's colour</span></label>
     <label class="opt sub" id="wallFollowRow" title="The wallpaper's bright glow, behind the tiles, eases after the pointer wherever it goes on the board and stays where it left it; off, it stays in its corner"><input type="checkbox" id="wallFollow"><span><b>the glow follows the pointer</b> — the wallpaper's light behind the tiles</span></label>
-    <label class="opt sub" id="tileStackRow" title="The third column: up to three tiles of the chats asking or clauding, beside the open one — off, tiles are the look alone (⌥⌘S puts it in and out of view)"><input type="checkbox" id="tileStackOn"><span><b>the stack</b> — the chats asking or clauding beside the open one · ⌥⌘S</span></label>
     <label class="opt" title="On, the chat header is a bar inset from the window's edges, rounded and shadowed; off, it runs edge to edge as before"><input type="checkbox" id="headFloat"><span><b>floating header</b> — the chat header as a rounded bar inset from the edges</span></label>
     <label class="opt" title="On, a strip at the window's foot: the search, the connection, how many chats ask you and what is watching, the faces on your PRs, the fish (faster the more is at work), CPU and memory, the plan's limits, keeping the Mac awake and the clock — the list's foot then has none of them"><input type="checkbox" id="sbarOn" checked><span><b>status bar</b> — the search, what asks you and what is watching, the faces, the fish, the machine and the plan, keeping the Mac awake and the clock at the window's foot; off, the search, the faces and the plan return to the list's foot and the awake switches to the chat header</span></label>
     <div class="opt sub sbstats" id="sbarStats" title="What else the status bar says — asked of the Mac every 3 s while shown"><span><b>also</b></span><label><input type="checkbox" data-stat="cpu"> CPU</label><label><input type="checkbox" data-stat="mem"> memory</label><label><input type="checkbox" data-stat="claude"> Claude's memory</label></div>
@@ -2460,7 +2443,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · a blank tab: ⌘T on a page (2026-10-13)
 //   js  · the changes tab: what this chat changed in its folder (2026-10-10)
 //   js  · live tiles: a chat drawn small — its drawer's screen, or the last few things it did (2026-10-10)
-//   js  · tiles: the chats that want an eye, stacked beside the open one (2026-10-10)
+//   js  · tiles: the board's panels laid out as Hyprland's (2026-10-10)
 //   js  · ⌥⌘A: the overview, every live agent at once (2026-10-10)
 //   js  · home: the chat column with no chat open (2026-10-10)
 //   js  · home's sea (2026-10-12): an ASCII sunset at sea, the board's fish leaping in it
@@ -2476,7 +2459,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, tiles: true, wallFollow: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -2497,7 +2480,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   delete prefs.filter; delete prefs.filters;
   delete prefs.peopleFold;   // the faces folded to a count (2026-10-09, off by default) became peopleCompact (2026-10-11, later): folded by default
   // the experimental switches pared (2026-10-14): what they chose is now the only way, or gone
-  for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume', 'edgeLight', 'ringsInStep', 'cardSpot']) delete prefs[k];
+  for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume', 'edgeLight', 'ringsInStep', 'cardSpot', 'tileStack']) delete prefs[k];
   if (!Array.isArray(prefs.lanesShut)) prefs.lanesShut = ['done', 'idle'];
   prefs.lanesShut = prefs.lanesShut.filter(g => g !== 'move' && g !== 'replied');   // lanes for a morning (2026-10-12), filters since
   if (prefs.listFilter !== 'move' && prefs.listFilter !== 'replied') prefs.listFilter = null;
@@ -2870,7 +2853,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     $('#skinFollow').checked = !!prefs.skinFollow;
   }
   applySkin();
-  const reskin = () => { applySkin(); for (const tm of [...terms, ...stackMinis.values(), ...ov.minis.values()]) if (tm.xt) tm.xt.options.theme = xtTheme(); redrawColors(); };
+  const reskin = () => { applySkin(); for (const tm of [...terms, ...ov.minis.values()]) if (tm.xt) tm.xt.options.theme = xtTheme(); redrawColors(); };
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', reskin);
   // Off, what was worn stays worn, whatever macOS does next; on, macOS's appearance picks the slot.
   $('#skinFollow').addEventListener('change', e => { const on = e.target.checked; revealFrom(centreOf(e.target), () => { if (!on) prefs.skin = wornKey(); prefs.skinFollow = on; savePrefs(); reskin(); }); });
@@ -3661,7 +3644,6 @@ const toolName = n => {
     renderBoardSoon.raf = requestAnimationFrame(run); renderBoardSoon.t = setTimeout(run, 100);
   }
   function renderBoard() {
-    stackSoon();   // the tiles beside the chat (2026-10-10), drawn in the frame after the list
     cancelAnimationFrame(renderBoardSoon.raf); clearTimeout(renderBoardSoon.t); renderBoardSoon.t = 0;
     const every = projectList();
     if (!every.some(p => p.key === prefs.project)) prefs.project = ALL;
@@ -4955,7 +4937,7 @@ const toolName = n => {
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
   const SWITCHES = [['notifyOn', 'Notifications'], ['autoUpdate', 'Update itself'], ['skinFollow', 'Theme follows macOS'],
-    ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['tileStackOn', 'Tiles: the stack'], ['wallFollow', 'Tiles: the glow follows the pointer'], ['headFloat', 'Floating header'], ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal']];
+    ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['wallFollow', 'Tiles: the glow follows the pointer'], ['headFloat', 'Floating header'], ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
     { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },
@@ -5114,7 +5096,6 @@ const toolName = n => {
     ['⌥⌘←→', 'Layout', 'the tab to the left / right', 'across both halves\' strips · drag a tab onto the other half to move it there', ['alt:ArrowLeft', 'alt:ArrowRight']],
     ['⌘0', 'Layout', 'only this half — the other closes', 'with one half, the chat\'s size back to normal', ['cmd:Digit0']],
     ['⌥⌘B', 'Layout', 'fold the list into a rail, and back', '', ['alt:KeyB']],
-    ['⌥⌘S', 'Layout', 'the stack of busy chats beside the open one', 'tiles\' · with tiles off, both together · not from a page in the pane, where it is VS Code\'s Save All', ['alt:KeyS']],
     ['⌃⌘F', 'Layout', 'full screen up to the notch, in the app', 'the green button too (⌥-click zooms) · filled, the lights come down with the menu bar at the top edge, and green leaves · remembered across launches', []],
     ['⌥⌘R', 'Look', 'reload the board', 'the chat you are on kept · ⇧⌘R restarts the server too, in the app · ⌘R is the page\'s in the pane', ['alt:KeyR']],
     ['⌥⌘Y', 'Look', 'the theme', 'the board behind follows the arrows · ⏎ wears it · esc puts back what was worn', ['alt:KeyY']],
@@ -5170,7 +5151,7 @@ const toolName = n => {
   // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyV: hotVsCodeApp, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiff, KeyA: ovOpen, KeyS: hotStack, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  const HOTKEYS = { KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyV: hotVsCodeApp, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiff, KeyA: ovOpen, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -7805,7 +7786,7 @@ const toolName = n => {
   });
 
   // ---- live tiles: a chat drawn small — its drawer's screen, or the last few things it did (2026-10-10) --------------
-  // What the overview (⌥⌘A) and the stack beside the chat (the tiles switch) show of a chat that is not the open one.
+  // What the overview (⌥⌘A) shows of a chat that is not the open one (and the stack beside the chat, until 2026-10-14).
   // A chat in a drawer here is its screen: an xterm of its own, attached read-only — it never sends a resize, so the
   // PTY keeps the size the chat's own view gave it — at that size, scaled down to the tile within reason and cropped
   // past that, the bottom left (Claude Code's prompt and a question's box) in view. Any other is its tail: the server's
@@ -7873,59 +7854,19 @@ const toolName = n => {
   }
   const drawerOf = s => s.terminal && s.terminal.exited === null && !s.terminal.shell ? s.terminal : null;
 
-  // ---- tiles: the chats that want an eye, stacked beside the open one (2026-10-10) -----------------------------------
-  // Hyprland's master and stack, Settings → Board → tiles (prefs.tiles): the open chat is the master; with the stack
-  // (prefs.tileStack, ⌥⌘S — off to begin with, the look alone) beside it up to three live chats of the list as it stands
-  // that are asking or clauding, asking first — each a live tile (its drawer drawn small, else its tail). A click on one
-  // makes it the master. Its look is Hyprland's: gaps over a wallpaper of
-  // the theme's colours, square edges, each panel's border its project's colour (`tileEdge`, a black one grey) — faint,
-  // and whole on the panel the keys are in (`.kf`) — a tile that asks ringed red. Drawn with the board (stackSoon, from
-  // renderBoard) and kept by chat (a tile's drawer is not re-attached).
-  var tilesOn = false, stackOn = false;   // var, not let: renderBoard is older than this block and asks before it has run
-  const STACK_MAX = 3, stackMinis = new Map(), stackTiles = new Map();
-  let stackRaf = 0, stackTimer = 0;
-  function stackSoon() { if (stackOn && !stackRaf) stackRaf = requestAnimationFrame(renderStack); }
+  // ---- tiles: the board's panels laid out as Hyprland's (2026-10-10) ------------------------------------------------
+  // Settings → Board → tiles (prefs.tiles). Its look is Hyprland's: gaps over a wallpaper of the theme's colours, square
+  // edges, each panel's border its project's colour (`tileEdge`, a black one grey) — faint, and whole on the panel the
+  // keys are in (`.kf`). (The stack, up to three live tiles of the chats asking or clauding beside the open one, ⌥⌘S,
+  // went on 2026-10-14.)
+  var tilesOn = false;   // var, not let: renderBoard is older than this block and asks before it has run
   function applyTiles() {
     $('#main').classList.toggle('tiles', !!prefs.tiles); $('#tilesOn').checked = !!prefs.tiles;
-    $('#tileStackOn').checked = !!prefs.tileStack; $('#tileStackRow').hidden = !prefs.tiles;
     $('#wallFollow').checked = !!prefs.wallFollow; $('#wallFollowRow').hidden = !prefs.tiles; wallGo();
-    tilesOn = !!prefs.tiles; stackOn = tilesOn && !!prefs.tileStack;
-    if (!stackOn) { $('#stack').hidden = true; sweepMinis(stackMinis, true); stackTiles.clear(); $('#stack').innerHTML = ''; clearInterval(stackTimer); stackTimer = 0; }
-    else renderStack();
-    if (tilesOn && !document.querySelector('#main .kf')) $('#chat').classList.add('kf');   // the chat, at first and when a tile that had it went with the stack
+    tilesOn = !!prefs.tiles;
+    if (tilesOn && !document.querySelector('#main .kf')) $('#chat').classList.add('kf');   // the chat, at first
     requestAnimationFrame(() => { fitTerm(); listChanged(); repostPane(); layoutNotch(); fitHeadPrs(); });
   }
-  function stackChats() {
-    const ids = [...document.querySelectorAll('#slist > .card')].map(c => c.dataset.id);
-    return ids.map(id => state.sessions.get(id)).filter(s => s && s.id !== state.current && s.alive && !s.done && (asking(s) || bucket(s) === 'working')).slice(0, STACK_MAX);
-  }
-  function renderStack() {
-    stackRaf = 0;
-    const el = $('#stack'), list = stackChats();
-    el.hidden = !list.length;
-    for (const [id, t] of stackTiles) if (!list.some(s => s.id === id)) { t.remove(); stackTiles.delete(id); }
-    list.forEach((s, i) => {
-      let t = stackTiles.get(s.id);
-      if (!t) { t = document.createElement('article'); t.className = 'stile'; t.dataset.id = s.id; t.innerHTML = '<header></header><div class="sbody"></div>'; stackTiles.set(s.id, t); }
-      if (el.children[i] !== t) el.insertBefore(t, el.children[i] || null);
-      t.className = `stile ${asking(s) ? 'ask' : 'work'}${t.classList.contains('kf') ? ' kf' : ''}`;
-      const color = repoColor(s.cwd); t.style.cssText = `${repoStyle(color)};--tile-edge:${tileEdge(color)}`;
-      setHtml(t.querySelector('header'), `${i ? '' : '<button class="sclose" title="Hide the stack — ⌥⌘S brings it back" aria-label="Hide the stack">×</button>'}<b>${projIcon(s.project)}${esc(s.project)}</b><span class="tt">${ticks(esc(s.title))}</span><em>${asking(s) ? `● asking you ${rel(s.statusSince)}` : `✻ clauding${s.agents ? ` · ${s.agents} agents` : ''}`}</em>`);
-      const d = drawerOf(s), body = t.querySelector('.sbody');
-      body.classList.toggle('live', !!d);
-      if (d) { if (body.dataset.term !== d.id) { body.innerHTML = ''; body.dataset.term = d.id; } mountMini(stackMinis, body, d, !asking(s)); }
-      else { delete body.dataset.term; setHtml(body, tailHtml(tails.get(s.id), 14, s.cwd)); }
-      body.classList.toggle('over', !d && body.scrollHeight > body.clientHeight + 1);   // a tail longer than its tile keeps its newest rows (2026-10-12)
-    });
-    sweepMinis(stackMinis); tileNotch();
-    // the tails of the tiles with no drawer here, asked again every few seconds while there are any
-    const want = list.filter(s => !drawerOf(s)).map(s => s.id);
-    if (want.length && !stackTimer) { const tick = () => { const ids = stackChats().filter(s => !drawerOf(s)).map(s => s.id); if (ids.length) loadTails(ids, stackSoon); else { clearInterval(stackTimer); stackTimer = 0; } }; tick(); stackTimer = setInterval(tick, 2500); }
-  }
-  $('#stack').addEventListener('click', e => {
-    if (e.target.closest('.sclose')) return hotStack();   // the × on the first tile: the stack out of view, as ⌥⌘S
-    const t = e.target.closest('.stile'); if (t) openSession(t.dataset.id, { locate: true });
-  });
   $('#tilesOn').addEventListener('change', e => { prefs.tiles = e.target.checked; savePrefs(); applyTiles(); });
   $('#wallFollow').addEventListener('change', e => { prefs.wallFollow = e.target.checked; savePrefs(); wallGo(); });
   // The wallpaper's glow after the pointer (2026-10-11, late night): its place, once a frame, from every pointer move on the
@@ -7940,17 +7881,10 @@ const toolName = n => {
   const wallOn = () => tilesOn && !!prefs.wallFollow && !REDUCED.matches;
   function wallGo() { clearTimeout(wallRaf); wallRaf = 0; wallLast = performance.now(); $('#wall i').style.transform = wallOn() && wallAt ? `translate(${wallAt.x}px, ${wallAt.y}px)` : ''; }
   document.addEventListener('pointermove', e => { if (!wallOn()) return; wallAt = { x: e.clientX, y: e.clientY }; wallRaf ||= setTimeout(() => requestAnimationFrame(wallGo), Math.max(0, wallLast + WALL_MS - performance.now())); }, { passive: true });
-  $('#tileStackOn').addEventListener('change', e => { prefs.tileStack = e.target.checked; if (prefs.tileStack) prefs.tiles = true; savePrefs(); applyTiles(); });   // the launcher's row, with tiles off: the stack is theirs
-  /** ⌥⌘S (2026-10-10): the stack in and out of view, as Omarchy's SUPER+S does its scratchpad — with tiles off, tiles on
-   *  and the stack with them, since the stack is theirs. Not forwarded from the app's pane: VS Code Web's Save All. */
-  function hotStack() {
-    if (prefs.tiles) prefs.tileStack = !prefs.tileStack; else prefs.tiles = prefs.tileStack = true;
-    savePrefs(); applyTiles();
-  }
-  // the panel the keys are in wears the border: the list, the chat, or a tile (a pointer press or a focus inside it)
+  // the panel the keys are in wears the border: the list or the chat (a pointer press or a focus inside it)
   const markKf = e => {
     if (!tilesOn) return;
-    const p = e.target.closest?.('#sessions, #chat, .stile'); if (!p) return;
+    const p = e.target.closest?.('#sessions, #chat'); if (!p) return;
     for (const x of document.querySelectorAll('main.tiles .kf')) if (x !== p) x.classList.remove('kf');
     p.classList.add('kf');
   };
@@ -7962,10 +7896,10 @@ const toolName = n => {
   // housing's own (HOUSING_R, the radius of a MacBook's, by eye), the border's concentric with them, and so are the panel's two
   // corners beside its top, as the screen flares into the housing there (.ncap, a quarter of border each; the flare's
   // radius taken as the housing's own — 8 px of gap below the screen's edge, they cannot be concentric). From
-  // layoutNotch (the fill, every header drawn or resized) and renderStack.
+  // layoutNotch (the fill, every header drawn or resized).
   function tileNotch() {
     const BW = TILE_BW, M = 60, n = tilesOn ? state.notch : null;
-    const panels = [$('#sessions'), $('#chat'), ...document.querySelectorAll('#stack .stile')];
+    const panels = [$('#sessions'), $('#chat')];
     if (!n && !panels.some(p => p.classList.contains('ncutp'))) return;
     const rects = panels.map(p => p.getBoundingClientRect());   // every read, then every write
     panels.forEach((p, i) => {

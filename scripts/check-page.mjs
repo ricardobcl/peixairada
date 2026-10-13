@@ -17,8 +17,8 @@ console.log(`${file}: ${n} inline script${n === 1 ? '' : 's'} compile`);
 
 // The keys (2026-10-12): every code in HOTKEYS and CMDKEYS has its row in KEYS — the Keys pane and the ? sheet are
 // drawn from it —, every row's code is one of theirs, and the app forwards every ⌥⌘ letter the board answers while a
-// page in the pane has the keyboard, and every ⌘ letter and digit (mac/Sources/main.swift's boardKeys and cmdKeys; ⌥⌘S
-// is left to VS Code Web's Save All, and ⌘W and ⌘, are the menus', not the forwarder's).
+// page in the pane has the keyboard, and every ⌘ letter and digit (mac/Sources/main.swift's boardKeys and cmdKeys; ⌘W
+// and ⌘, are the menus', not the forwarder's).
 if (file.endsWith('public/index.html')) {
   const keysOf = name => { const m = html.match(new RegExp(`const ${name} = \\{(.*?)\\};`)); return m ? [...m[1].matchAll(/(?:^\s*|[,{]\s*)(\w+):/g)].map(x => x[1]) : null; };
   const hot = keysOf('HOTKEYS'), cmd = keysOf('CMDKEYS'), table = html.match(/const KEYS = \[([\s\S]*?)\n  \];/);
@@ -34,7 +34,7 @@ if (file.endsWith('public/index.html')) {
     const fwd = set('boardKeys'), cmdFwd = set('cmdKeys');
     if (!fwd || !cmdFwd) fail('main.swift: boardKeys or cmdKeys not found');
     else {
-      for (const c of hot.filter(c => /^Key[A-Z]$/.test(c) && c !== 'KeyS')) if (!fwd.includes(c.slice(3).toLowerCase())) fail(`⌥⌘${c.slice(3)} is the board's, but the app does not forward it from the pane (boardKeys)`);
+      for (const c of hot.filter(c => /^Key[A-Z]$/.test(c))) if (!fwd.includes(c.slice(3).toLowerCase())) fail(`⌥⌘${c.slice(3)} is the board's, but the app does not forward it from the pane (boardKeys)`);
       for (const c of cmd.filter(c => /^(Key[A-Z]|Digit\d)$/.test(c) && c !== 'KeyW')) if (!cmdFwd.includes(c.slice(-1).toLowerCase())) fail(`⌘${c.slice(-1)} is the board's, but the app does not forward it from the pane (cmdKeys)`);
     }
     if (!process.exitCode) console.log(`${file}: ${hot.length} ⌥⌘ and ${cmd.length} ⌘ keys, each with its row; the app forwards the letters`);

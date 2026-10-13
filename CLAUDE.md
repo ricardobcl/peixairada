@@ -365,7 +365,7 @@ for `$HOME`'s home and the account's.
 * **⌥⌘A is the overview** (2026-10-10; `#ov`, a modal dialog): `ovColumns` — Asking you, Clauding, Watching, New
   replies — every project, never a done chat; a tile per chat (1–9 and ⏎ open, the arrows move, a click on nothing
   closes — `ovNothing`), `ovSoon` on its chats' events; it zooms out of the cards and into the column (`ovZoomIn`,
-  `ovGo`). **A tile is a live tile** (the stack's too): the chat's drawer as a read-only xterm (`mountMini` — **it never
+  `ovGo`). **A tile is a live tile**: the chat's drawer as a read-only xterm (`mountMini` — **it never
   sends a resize**, so the PTY keeps the size the chat's own view gave it; scaled down to .7, then cropped, Claude
   Code's footer below the edge unless asking — `footRows`, `placeMini`), else its tail (`tailHtml` over
   `GET /api/tails?ids=`, every 2 s; the server's `s.recent`, `noteRecent`). A question's answers (`ask.labels`) are
@@ -544,14 +544,13 @@ for `$HOME`'s home and the account's.
 * **`HOTKEYS` in index.html is the whole ⌥⌘ family, and every key is a row of `KEYS`** (2026-10-12): what you press, its
   group, one line, and the codes it is in HOTKEYS or CMDKEYS — the Keys pane and the ? sheet are drawn from it, and
   `npm run check` (`check-page.mjs`) fails a code with no row, a row no map answers, or a ⌥⌘ letter `boardKeys` in
-  main.swift does not forward (⌥⌘S aside). The letters: **T** the chat's zsh tab (`hotShell()` →
+  main.swift does not forward. The letters: **T** the chat's zsh tab (`hotShell()` →
   `POST /api/sessions/:id/shell`, `s.shells`, `shName()`), **E** VS Code Web in the pane, **V** the folder in VS Code's
   own window (2026-10-14, `hotVsCodeApp`; no chat open, the project in view when a folder), **G** the chat's PR on GitHub
   (several → the picker in `pr` mode; none → the repo, `state.repos`), **C** the chat's claude (`termAction()`, the `>_`
   path), **W** the tab the keys are in, closed (`hotCloseTab()` → `dropTab()`), **P** projects, **K** chats
   (`chatFields()`), **F** the list's box (`hotFind()`), **B** the rail (`toggleSessions`), **Y** themes (`themesOpen`),
-  **L** the launcher (`pickOpen('launch')`), **D** changes (`hotDiff`), **A** the overview (`ovOpen`), **S** the stack
-  (`hotStack`; not in `boardKeys`: in the pane ⌥⌘S stays VS Code Web's Save All), **0** home (`hotHome`), **N** a new
+  **L** the launcher (`pickOpen('launch')`), **D** changes (`hotDiff`), **A** the overview (`ovOpen`), **0** home (`hotHome`), **N** a new
   chat as steps of one dialog (`new` → `chats` → `folder` → `env`, `newChatIn()`), **O** the same on the setup's `quick`
   project (`hotOracle()`), **↑↓** the chat above or below as shown (`hotMove()`), **←→** the tab beside, wrapping
   (`hotTab()`), **1 / 2** the halves stood one over the other (`hotGroup(g, true)`), **R** the board reloaded
@@ -733,15 +732,12 @@ for `$HOME`'s home and the account's.
   `#groups.stack`; the second strip's `.gturn` turns it too. The app forwards ⌥⌘1 / ⌥⌘2 by key code (18, 19). **A zsh
   ended by its × lingers on the summary with `exited` set** — wait on that. → `split-stacked.mjs`.
 * **Tiles** (2026-10-10; `prefs.tiles` → `main.tiles`, on by default; `tilesOn`): gaps, square panels, **each
-  panel's border its project's colour** (`--tile-edge` from `tileEdge` in `tintChat`, `tileTints` and `renderStack`;
+  panel's border its project's colour** (`--tile-edge` from `tileEdge` in `tintChat` and `tileTints`;
   a near-black one `--tile-grey`, none `--nocolor`), 30 % at rest and whole on the panel the keys are in (`.kf`). The
   list on ALL wears the open chat's colour; **the wallpaper** (`#wall`, `--wallc` registered and eased) is in that
   hue, its glow (`#wall i`) following the pointer by a transform (`wallGo`, `prefs.wallFollow`) — a move repaints
-  nothing; its target set `WALL_MS` (125) apart at most, each a new transition (2026-10-13). **The stack** (`prefs.tileStack`, off; ⌥⌘S, `hotStack`; `stackOn`): `#stack`, a third column — up to three
-  live chats asking or clauding, never the open one (`stackChats`), each a live tile (`mountMini` into `stackMinis`,
-  else `tailHtml`), kept by chat (`stackTiles`), drawn in the frame after the board (`stackSoon`; `tilesOn` and
-  `stackOn` are `var`s, as `renderBoard` runs before the block has). **At the notch** a panel the housing reaches is cut
-  round it (`tileNotch` from `layoutNotch` and `renderStack`: a `clip-path`, `.ncut` the border, `.ncap` the corners;
+  nothing; its target set `WALL_MS` (125) apart at most, each a new transition (2026-10-13). `tilesOn` is a `var`, as `renderBoard` runs before
+  the block has. **At the notch** a panel the housing reaches is cut round it (`tileNotch` from `layoutNotch`: a `clip-path`, `.ncut` the border, `.ncap` the corners;
   `HOUSING_R` by eye) and the row keeps `notchPad()` clear; the top corners round as the screen's
   (`main.tiles.notch`, `--screen-r`) only where a housing says the screen is a MacBook's. → `tiles.mjs`.
 * **A new tab opens in the second half, and splits the column the first time** (`openNewTab()` — a zsh, a page, the
