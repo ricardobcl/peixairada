@@ -1391,18 +1391,18 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-head="float"] :is(#prlist, #rival) { position: relative; z-index: 3; }
   :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child) { padding-top: var(--float-h, 0px); }
   :root[data-head="float"] #groups:not(.stack) > #gsplit { margin-top: var(--float-h, 0px); }
-  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) { padding-top: 0; }
-  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody {
+  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child).nostrip { padding-top: 0; }
+  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child).nostrip > .gbody {
     --fade: linear-gradient(rgb(0 0 0 / .33) calc(var(--float-h, 0px) - 18px), #000 calc(var(--float-h, 0px) + 14px)); }
-  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody:has(> #log:not([hidden])) {
+  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child).nostrip > .gbody.haslog {
     background: var(--grain), linear-gradient(165deg, color-mix(in srgb, var(--hbg-eased) 24%, transparent), color-mix(in srgb, var(--hbg-eased) 6%, transparent) 70%, transparent); }
-  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody > :not(#log, .gterm) { margin-top: var(--float-h, 0px); }
-  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody > .gterm { border-top: 0; -webkit-mask-image: var(--fade); mask-image: var(--fade); }
+  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child).nostrip > .gbody > :not(#log, .gterm) { margin-top: var(--float-h, 0px); }
+  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child).nostrip > .gbody > .gterm { border-top: 0; -webkit-mask-image: var(--fade); mask-image: var(--fade); }
   /* …but a drawer with room on its screen starts under it (2026-10-11, late night; .under, checkRoom): a new chat's banner,
      a zsh's first prompt, are at a terminal's top */
-  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody > .gterm.under { margin-top: var(--float-h, 0px); -webkit-mask-image: none; mask-image: none; }
+  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child).nostrip > .gbody > .gterm.under { margin-top: var(--float-h, 0px); -webkit-mask-image: none; mask-image: none; }
   /* the transcript is zoomed (⌘+ ⌘−), and so is every length on it */
-  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody > #log {
+  :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child).nostrip > .gbody > #log {
     --fh: calc(var(--float-h, 0px) / var(--chat-zoom, 1)); background: none; padding-top: calc(16px + var(--fh)); scroll-padding-top: var(--fh);
     -webkit-mask-image: linear-gradient(rgb(0 0 0 / .33) calc(var(--fh) - 18px), #000 calc(var(--fh) + 14px)); mask-image: linear-gradient(rgb(0 0 0 / .33) calc(var(--fh) - 18px), #000 calc(var(--fh) + 14px)); }
   /* At the notch it bends round the camera housing (headNotch): clipped round it, and its border round the dip drawn
@@ -2233,9 +2233,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <div id="prlist" hidden></div>
     <div id="rival" hidden></div>
     <div id="groups">
-      <div class="grp on" id="grp">
+      <div class="grp on nostrip" id="grp">
         <div class="ptabs" id="ptabs" role="tablist" aria-label="This chat's tabs" hidden></div>
-        <div class="gbody" id="gbody">
+        <div class="gbody haslog" id="gbody">
           <div id="chg" hidden></div>
           <div id="log"><div class="empty"></div></div>
           <div class="gterm" id="term" hidden><div class="tbody" id="termBody"></div></div>
@@ -6483,7 +6483,7 @@ const toolName = n => {
   // /clear, a /compact. The band between, and a want seen twice ROOM_MS apart, keep it from see-sawing: every change is
   // a resize and a whole repaint, and a repaint read between its clear and its draw is a blank screen. Kept per
   // drawer (`underOf`), so a chat switched back to comes up as it was left; one never seen starts under unless resumed.
-  const UNDER_HEAD = ':root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody > .gterm';
+  const UNDER_HEAD = ':root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child).nostrip > .gbody > .gterm';
   const ROOM_FULL = 2, ROOM_MORE = 4, ROOM_MS = 200;
   const underOf = new Map();   // drawer id → it sits under the header
   function setUnder(tm, on) { if (tm.id) underOf.set(tm.id, on); tm.roomWant = null; $(tm.el.term).classList.toggle('under', on); }
@@ -6769,6 +6769,7 @@ const toolName = n => {
     const host = $(GEL[g].body);
     if (el.parentElement !== host) { const top = el.scrollTop; host.insertBefore(el, host.firstChild); el.scrollTop = top; }
     const was = el.hidden; el.hidden = at < 0 || !!terms[g].id;
+    for (const tm of terms) $(tm.el.body).classList.toggle('haslog', !el.hidden && el.parentElement === $(tm.el.body));   // as .nostrip
     if (was && !el.hidden) el.scrollTop = el.scrollHeight;   // out from under the drawer: what came while it was hidden was never scrolled to
     for (const tm of terms) {
       const host = $(tm.el.body), had = host.querySelector('.gempty'), want = isSplit(s) && !p[tm.g];
@@ -6791,6 +6792,7 @@ const toolName = n => {
       const lone = two && keys.length === 1 && !isPageTab(keys[0]) && !isBlankTab(keys[0]);   // a page's or a blank tab's strip is its address
       $(tm.el.grp).classList.toggle('on', g === focusG);
       el.hidden = g === 0 ? !two && keys.length < 2 : false;
+      $(tm.el.grp).classList.toggle('nostrip', el.hidden);   // the floating header's rules read it — a class, not :has() (2026-10-13)
       el.classList.toggle('lone', lone);
       if (el.hidden || lone || (g === 1 && !two)) { setHtml(el, ''); continue; }   // nothing drawn, nothing left over to be found
       const tip = two ? ' · drag it to the other half to move it there' : '';

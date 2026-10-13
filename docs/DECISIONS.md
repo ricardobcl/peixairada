@@ -36,6 +36,11 @@ the made-up 400-card board with the user's prefs in a WKWebView, the median of t
   made; now `drawCards` says whether it changed the list, a render that did not queues nothing, `renderBoardSoon` runs
   a queued one at once, and that run clears the queue. The presence line's verb (3.2 s) and the header's menu still
   phase what they make.
+* **The floating header's half without a strip is a class** (`.grp.nostrip`, set by `renderTabs`; `.gbody.haslog`,
+  set by `placeLog`), not `:has(> .ptabs[hidden])` and `:has(> #log:not([hidden]))`. Chrome invalidated whole subtrees
+  for those rules on most DOM changes (its trace: `allDescendantsMightBeInvalid` on the body, a dozen restyles of
+  ~12,900 elements a chat's open): a clauding chat's open restyled for 127–165 ms and took 165–240 ms; now 37–43 and
+  92–127. WebKit measured no difference — this one is the browser's. `UNDER_HEAD` follows.
 
 ## Decisions of 2026-10-13, after Zed — Zed installed when it is picked
 

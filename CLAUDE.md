@@ -317,6 +317,8 @@ for `$HOME`'s home and the account's.
   `#chat` placed in column 1: two overlapping items, one auto-placed, take two columns). A half with a strip pads down
   by `--float-h` (`floatH`, a ResizeObserver); one without runs up behind it — **but a drawer starts under it while its
   screen has room** (`.gterm.under`, `checkRoom`, `underOf`; a terminal draws from its top). → `drawer-under-head.mjs`.
+  A half without a strip is `.grp.nostrip` (`renderTabs`) and the body holding the log `.gbody.haslog` (`placeLog`) —
+  **classes, never `:has()`** (2026-10-13): Chrome restyled the whole board on most DOM changes for those rules.
   **At the notch** its top edge dips round the camera housing (`headNotch` from `layoutNotch`; with tiles along the
   tile's own line — `HEAD_BEND`, `HOUSING_R` + `TILE_BW` —, the border there `svg.hcut`), and a long title runs on
   under the housing, the header lowered by `--hdrop` (`headDrop`, `.tunder`) up to `HEAD_DROP_MAX`, past which it
