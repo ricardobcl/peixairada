@@ -238,7 +238,7 @@ The login agent takes `PORT`, `NOTIFY` and your `PATH` at `scripts/launchd.sh in
 | ⌥⌘C | this chat's Claude, in the drawer |
 | ⌥⌘T · ⌥⌘E · ⌥⌘G | a shell · VS Code Web · the PR |
 | ⌥⌘V | the chat's folder in VS Code, its own window |
-| ⌘T · ⌘W | a new tab — a shell, or a page from a page · close the tab you are in |
+| ⌘T · ⌘W | a new tab — a shell, or a page from a page · close the tab you are in (VS Code Web's editors first, as in VS Code) |
 | ⌘2 · ⌘0 | split · close the other half |
 | ⌥⌘B | fold the list |
 | ⌥⌘L | the launcher: chats, projects, PRs, tickets, actions, switches |

@@ -2,7 +2,8 @@
 // another zsh in the chat's folder, as many as asked for, each its own tab (zsh, zsh 2) where a new tab goes; on a
 // page it opens a blank tab, as a browser's does: in front, the keys in its address, and under it what ⏎ would open —
 // what was typed first (an address, a bare host, words to search), then the chat's own pages not on a tab. ⌘W closes the tab the keys are in — a zsh ends, a page goes — and on the chat's own tab with
-// one half it is the window's key. The app's bridge is faked, as in pane-tabs.mjs, so pages are tabs.
+// one half it is the window's key. VS Code Web with no editor open asks for its own tab to go (2026-10-14,
+// peixPaneClose). The app's bridge is faked, as in pane-tabs.mjs, so pages are tabs.
 export const meta = { server: true, fake: true, fixture: 'auto' };
 export default async function (ctx) {
   const [chat] = ctx.fixture.chats;   // the one with two PRs
@@ -113,6 +114,21 @@ export default async function (ctx) {
   await ctx.cmd('Digit1');
   await ctx.cmd('KeyT');
   await ctx.waitFor(`/^shell:/.test(window.peix.state().tab)`, { what: 'a zsh, not a blank tab' });
+
+  // VS Code Web keeps ⌘W for its editors, and with none open the shell names its tab (2026-10-14, peixPaneClose): that
+  // tab goes, by its key — wherever the keys are — and a key that is not one of the chat's tabs closes nothing
+  await ctx.evaluate(`window.__realFetch = window.fetch; window.fetch = (u, o) => String(u).endsWith('/api/vscode-web') ? Promise.resolve({ ok: true, status: 200, json: async () => ({ url: 'http://127.0.0.1:1/' }) }) : window.__realFetch(u, o)`);
+  await ctx.key('KeyE');
+  await ctx.waitFor(`(window.peix.state().tab || '').startsWith('ide:')`, { what: 'the editor on a tab, the keys in it' });
+  const ide = await ctx.peix('state().tab'), before = await ctx.peix('state().strips');
+  await ctx.evaluate(`window.peixPaneClose('ide:http://127.0.0.1:1/?folder=%2Fnot-this-chat')`);
+  ctx.assert.deepEqual(await ctx.peix('state().strips'), before, 'another key closes nothing');
+  await ctx.cmd('Digit1');
+  await ctx.evaluate(`window.peixPaneClose(${JSON.stringify(ide)})`);
+  await ctx.waitFor(`!window.peix.state().tabs.includes(${JSON.stringify(ide)})`, { what: 'the editor\'s tab closed' });
+  ctx.assert.equal(await ctx.peix('state().focusG'), 0, 'the keys stay in the half they were in');
+  ctx.assert.deepEqual((await ctx.peix('state().strips'))[1], before[1].filter(k => k !== ide), 'the rest of its strip as it was');
+  ctx.assert.ok(!(await ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'pane').pop())`).then(JSON.parse)).keys.includes(ide), 'the shell is told the page is no longer the chat\'s');
   ctx.assert.deepEqual(await ctx.evaluate('JSON.stringify(window.__errs)').then(JSON.parse), [], 'nothing threw');
   return out;
 }

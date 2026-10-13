@@ -5164,7 +5164,7 @@ const toolName = n => {
     ['⌥⌘V', 'This chat', 'its folder in VS Code, its own window', 'the app, outside the board — ⌥⌘E is VS Code Web on a tab · with no chat open, the project in view when it is a folder', ['alt:KeyV']],
     ['⌥⌘G', 'This chat', 'its PR on GitHub, on a tab', 'the repo when it has none · a picker with several · a tab followed elsewhere leaves it a new one · again from its page: its half fills the column, and back', ['alt:KeyG']],
     ['⌥⌘D', 'This chat', 'what it changed, on a tab', 'its last turn\'s edits, the uncommitted tree or the branch against its base · Commit… and Push type into its shell · + on a line sends Claude a note · again from it: its half fills the column, and back', ['alt:KeyD']],
-    ['⌘W', 'This chat', 'close the tab the keys are in', 'the shell ends, a page or VS Code Web goes · on the chat\'s own tab, its half closes — with one half, the window\'s own key · a dialog up closes first', ['cmd:KeyW']],
+    ['⌘W', 'This chat', 'close the tab the keys are in', 'the shell ends, a page goes, VS Code Web once no editor is open in it (its ⌘W closes them first) · on the chat\'s own tab, its half closes — with one half, the window\'s own key · a dialog up closes first', ['cmd:KeyW']],
     ['⌥⌘W', 'This chat', 'close the tab the keys are in, never more', 'as ⌘W, but on the chat\'s tab it says so, and never closes a half or the window', ['alt:KeyW']],
     ['⌘1 ⌘2', 'Layout', 'the left half, the right one', '⌘2 splits the chat in two the first time; one over the other, either turns it back · the digit is the half, the modifier the layout', ['cmd:Digit1', 'cmd:Digit2']],
     ['⌥⌘1 ⌥⌘2', 'Layout', 'the top half, the bottom one', '⌥⌘2 splits the chat that way the first time; side by side, either turns it', ['alt:Digit1', 'alt:Digit2']],
@@ -6119,7 +6119,7 @@ const toolName = n => {
       s.cwd && onZed() ? `<button class="hmi" id="zedBtn" title="${ZED_TIP}">${ICON.zed}<span class="lbl">its folder in Zed</span><span class="k">↗</span></button>` : '',
       // what a tab's × does, for the tabs that lose their strip alone in a half (2026-09-28) — ⌘W with the keys in it
       shellLive(s) ? `<button class="hmi" id="shellEndBtn" title="End this chat's ${shName()}${shellsOf(s).length > 1 ? ' the keys are in, else its first,' : ''} and close its tab — exit in it does the same · ⌘W with the keys in it"><span class="gl">×</span><span>end the ${shName()}</span><span class="k"></span></button>` : '',
-      ideKey(s) ? `<button class="hmi" id="ideCloseBtn" title="Close VS Code Web's tab — ⌥⌘E opens it again · ⌘W with the keys in it"><span class="gl">×</span><span>close VS Code Web</span><span class="k"></span></button>` : '',
+      ideKey(s) ? `<button class="hmi" id="ideCloseBtn" title="Close VS Code Web's tab — ⌥⌘E opens it again · ⌘W in it once no editor is open, ⌥⌘W any time"><span class="gl">×</span><span>close VS Code Web</span><span class="k"></span></button>` : '',
       inVsCode(s) ? `<div class="hmi info" title="VS Code's chat — its extension ${s.alive ? 'runs' : 'ran'} the Claude behind it; ${s.alive ? 'the Claude here row takes it over' : 'continue it here or there'}">${ICON.vscode}<span>VS Code's chat</span><span></span></div>` : '',
       canTick(s) && s.prs?.length && !s.forGood ? `<button class="hmi" id="forGoodBtn" title="Tick it done and forget its PRs: a push, a review or a reply on one no longer brings it back, moves it up or alerts you — a word in it, or ↩, ends that">${ICON.forget}<span>done for good</span><span class="k">⌥-click ✓</span></button>` : '',
       '<div class="sep"></div>',
@@ -7266,6 +7266,9 @@ const toolName = n => {
   // …and a click on a page in the pane, which the shell reports (2026-09-28): a native view over the half, so the page
   // never saw it, and ⌘W and ⌥⌘W went on acting on the half the keys had been in before.
   window.peixPaneFocus = key => { const s = state.sessions.get(state.current), g = s ? placeOf(s).indexOf(key) : -1; if (g >= 0) focusGroup(g); };
+  // …and ⌘W in VS Code Web with no editor open (2026-10-14), which the editor keeps from the Window menu: the shell
+  // hears it from the page and names the view's tab, which goes as ⌘W's would — by that key, not the half's.
+  window.peixPaneClose = key => { const s = state.sessions.get(state.current); if (s && tabKeys(s).includes(key)) dropTab(s, key); };
   // A tab dragged to the other half moves there (2026-09-25) — the strips list only their own tabs now, so this is
   // how one goes across. Pointer events and not HTML drag and drop: the drop can land over the app's pane, a native
   // view the page cannot see, and the board's web view keeps getting the drag's moves (AppKit sends them to the view

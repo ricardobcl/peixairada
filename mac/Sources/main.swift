@@ -460,6 +460,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     w.allowsBackForwardNavigationGestures = true
     w.allowsMagnification = true                 // pinch to zoom, Safari's own gesture — off by default in a WKWebView
     if w.responds(to: Selector(("setInspectable:"))) { w.setValue(true, forKey: "inspectable") }
+    closeWhenEmpty(w, key)
     w.translatesAutoresizingMaskIntoConstraints = false
     w.isHidden = true
     w.wantsLayer = true
@@ -528,7 +529,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
   /// ⌘W: the board's business first — the half of the chat column the keys are in, or a picker that is up — and
   /// the window only when it says it took neither (2026-09-22).
-  /// It has to be the menu item: a key equivalent is dispatched before any responder, so the page never sees ⌘W.
+  /// It is the menu item: a key equivalent is dispatched before any responder's keyDown — to the key window's views
+  /// first, though, and the menu after them (2026-10-14, measured): a web view with the keys hands ⌘W to its page, and
+  /// the menu hears only what the page left alone — a GitHub page's ⌘W, not the board's (its CMDKEYS take it) nor VS
+  /// Code Web's.
   @objc func closeHalfOrWindow(_ sender: Any?) {
     // another window in front (the About panel): it is the one ⌘W closes, not a half of the board
     guard NSApp.keyWindow == nil || NSApp.keyWindow === window else { NSApp.keyWindow?.performClose(sender); return }
@@ -537,6 +541,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       if self.fillSaved != nil { self.toggleFill(nil) }   // borderless, the window has no close button for performClose to press
       self.window.performClose(nil)
     }
+  }
+  // ⌘W in VS Code Web with no editor open closes its tab (2026-10-14), as it closes desktop VS Code's window. A page
+  // in the pane hears ⌘W before the Window menu does — AppKit offers a key equivalent to the key window's views first,
+  // and WKWebView takes it for the page, handing it back only when the page leaves it alone — and the workbench never
+  // leaves it: its close-editor is ⌘W with no condition, so with nothing to close the key was swallowed. This script
+  // takes ⌘W first only when the editor area is empty, one group and no editor in it: the editor part's own `empty`
+  // (its isEmpty, `count === 1 && activeGroup.isEmpty`, which VS Code's CSS styles by — 1.139 to 1.141 alike). The
+  // board then drops the tab of the view it came from, by its key. An editor open, ⌘W is VS Code's; a key held down is
+  // one press; an event the page made itself (a webview's keys, passed on) is left alone.
+  static let editorEmptyScript = """
+    addEventListener('keydown', e => {
+      if (!e.isTrusted || !e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || e.key.toLowerCase() !== 'w') return;
+      const parts = document.querySelectorAll('.monaco-workbench .part.editor > .content');
+      if (parts.length !== 1 || !parts[0].classList.contains('empty')) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (!e.repeat) webkit.messageHandlers.peixPaneClose.postMessage('empty');
+    }, true);
+    """
+  /// The editor's views (`ide:`) get the script and its handler — once per content controller, should views share one.
+  private func closeWhenEmpty(_ w: WKWebView, _ key: String) {
+    let ucc = w.configuration.userContentController
+    guard key.hasPrefix("ide:"), !ucc.userScripts.contains(where: { $0.source == AppDelegate.editorEmptyScript }) else { return }
+    ucc.addUserScript(WKUserScript(source: AppDelegate.editorEmptyScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+    ucc.add(EditorEmpty { [weak self] in self?.editorEmpty($0) }, name: "peixPaneClose")
+  }
+  /// Heard from an editor's view: its main frame, at the origin of the page its key opened, and nothing else.
+  private func editorEmpty(_ m: WKScriptMessage) {
+    let o = m.frameInfo.securityOrigin
+    guard let key = paneViews.first(where: { $0.value === m.webView })?.key, key.hasPrefix("ide:"),
+          let page = URL(string: String(key.dropFirst(4))), m.frameInfo.isMainFrame, o.host == page.host, o.port == page.port ?? 0 else { return }
+    logLine("pane: ⌘W on an empty editor — \(key) closed")
+    web.evaluateJavaScript("window.peixPaneClose && window.peixPaneClose(\(jsLit(key)))", completionHandler: nil)
   }
   /// ⌘, — the board's settings dialog (2026-09-28: they left the list's cog for the chat header's ···). A menu item's
   /// key equivalent comes before any responder, so it asks the page itself, as ⌘W does.
@@ -1547,6 +1583,14 @@ final class PaneDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
   private func sheet(_ a: NSAlert, over v: WKWebView, _ done: @escaping (NSApplication.ModalResponse) -> Void) {
     if let w = v.window { a.beginSheetModal(for: w, completionHandler: done) } else { done(a.runModal()) }
   }
+}
+
+/// What an editor's view says when ⌘W finds it empty (2026-10-14, AppDelegate.closeWhenEmpty): a page in the pane is not
+/// the board, so it is heard apart from the board's bridge.
+final class EditorEmpty: NSObject, WKScriptMessageHandler {
+  private let heard: (WKScriptMessage) -> Void
+  init(_ heard: @escaping (WKScriptMessage) -> Void) { self.heard = heard }
+  func userContentController(_ ucc: WKUserContentController, didReceive m: WKScriptMessage) { heard(m) }
 }
 
 /// The pane's overlay covers the whole window so each page can sit where the board puts it. A click that lands on

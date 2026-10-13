@@ -575,6 +575,11 @@ for `$HOME`'s home and the account's.
 * **⌘W is the Window menu's item, not the forwarder's**: a key equivalent is dispatched before any responder.
   `closeHalfOrWindow` asks the board (`peixKey('KeyW','cmd')`) and calls `performClose` only on false. Anything else
   the board wants off a ⌘ a menu item claims goes the same way (⌘, does).
+* **⌘W in VS Code Web with no editor open closes its tab** (2026-10-14; `editorEmptyScript`, `closeWhenEmpty` in
+  main.swift → `window.peixPaneClose(key)` → `dropTab`): a page in the pane hears ⌘W before the Window menu, and the
+  workbench's close-editor takes it whatever is open. A script in the `ide:` views alone takes it first only when the
+  editor part is `.content.empty` (one group, no editor) and the tab of the view it came from goes, by its key. An
+  editor open, ⌘W is VS Code's; ⌥⌘W closes the tab any time. → `tab-keys.mjs`.
 * **⌃⌘F is the board's own full screen, up to the notch** (`toggleFill` in main.swift; `BoardWindow`, borderless, the
   whole screen; remembered as `peixairada.fill`; `kill -USR1 $(pgrep -x peixAIrada)` toggles it too, the app log
   saying `fill: on …`). The menu bar is auto-hidden beside a camera housing and hidden outright without one

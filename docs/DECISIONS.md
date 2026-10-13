@@ -5,6 +5,50 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-14. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-14 — ⌘W closes an empty VS Code Web
+
+Ricardo: "⌘W inside VS Code Web that does not have any tab open should close VS Code, like the real VS Code does."
+Desktop VS Code binds ⌘W to *close window* when `!editorIsOpen && singleEditorGroup` — desktop only; the web build
+has no such binding.
+
+* **Why it did nothing — the key path, measured** (a WKWebView over VS Code Web 1.141.1, a Window › Close item on ⌘W,
+  ⌘W posted to NSApp as an NSEvent with the window key): AppKit offers a key equivalent to the key window's views
+  *before* the main menu; WKWebView, the first responder, takes it (`performKeyEquivalent` → YES), hands it to the page
+  and sends it back through NSApp only when the page leaves it alone. VS Code's close-editor is ⌘W with no `when`
+  (`workbench.action.closeActiveEditor`, 2101; the web build's `_assertBrowserConflicts` drops only ⌥⌘←→ and ⌘digits
+  now), so the keydown is `defaultPrevented` whatever is open: an editor closes, and with none the key is spent — the
+  menu's Close, the board's ⌘W, never ran. With the harness app not active there is no key window and AppKit sends ⌘W
+  straight to the menu, which is not the app's path: the runs that count made it active, only around the keys and only
+  after a minute with no input.
+* **The signal is the editor part's own `empty`** (`.part.editor > .content.empty`): `EditorPart.updateContainer`
+  toggles it from `isEmpty`, which is `count === 1 && activeGroup.isEmpty` — desktop's condition exactly — and VS
+  Code's CSS styles by it (the focused empty group's outline). The same line is in all five builds on this Mac, 1.139.0
+  to 1.141.1. A group's own `.editor-group-container.empty` would not do: two groups, one empty, is VS Code's to fold.
+  More than one editor part in the document leaves ⌘W to VS Code.
+* **The script** (`editorEmptyScript`, main.swift): a capture-phase keydown on the window, at document start, main
+  frame, in the `ide:` views alone — nothing changes for the other pages. Plain ⌘W by `e.key` (the character, as the
+  menu's key equivalent goes); trusted events only, so a webview's keys the workbench passes on as an event of its own
+  never close anything; a key held down is one press (the repeats are swallowed, as VS Code would spend them).
+* **The native side is its own handler** (`EditorEmpty` → `editorEmpty`), not the board's bridge, whose `hub` hears
+  the board's origin alone: the view a message came from is looked up in `paneViews`, and only an `ide:` one's main
+  frame at its key's origin is heard; then `peixPaneClose(<key>)` is evaluated on the board — by key rather than
+  `peixKey('KeyW', 'cmd')`, so the tab that goes is that view's whatever half the board has the keys in. The board
+  drops it as ⌘W drops any tab not the chat's (`dropTab`); a key that is not one of the open chat's tabs closes
+  nothing. Script and handler go on a view's content controller once (`closeWhenEmpty`), so pane views that came to
+  share one configuration would not add the handler's name twice — an exception, which ends the app.
+* **Verified**: before — ⌘W over the Welcome page and over a.txt closed them, and on nothing was prevented with the
+  menu never called. After — the same with an editor open (handler not called), with the keys in a text editor too;
+  on nothing the handler once and VS Code unchanged; held down (one press, two repeats) once; split into two groups,
+  ⌘W closed one copy (VS Code folded its group), then the other, and only then was the handler asked. main.swift's
+  own `closeWhenEmpty`, `editorEmpty` and `EditorEmpty`, lifted whole into the harness: on nothing the board view was
+  asked `window.peixPaneClose("ide:…")`; a key at another origin asked nothing; `closeWhenEmpty` twice on one view
+  added once. The board's side in `tab-keys.mjs`. **Not run**: the installed app itself.
+* **Found on the way, not changed**: the board's own page hears ⌘W the same way, and its CMDKEYS listener prevents it
+  before `hotClose` says whether it took it — so with the board's web view holding the keys and nothing of the board's
+  to close (one half, on the chat), ⌘W closes nothing and the window stays; `closeHalfOrWindow` runs only for a pane
+  page that leaves ⌘W alone (GitHub) or a native view (the find bar). Measured the same way on this branch's board, no
+  chat open: prevented, the menu never called. Its comment, which said the page never sees ⌘W, says so now.
+
 ## Decisions of 2026-10-14 — ⌥⌘V, the folder in VS Code itself
 
 Ricardo: "map hotkey V to open the current project in vscode. add a entry for the same".
