@@ -215,7 +215,8 @@ for `$HOME`'s home and the account's.
 * **Under the pointer a card's glow follows it** (2026-10-09, `prefs.cardSpot` → `<html data-spot>`): a
   `radial-gradient` layer at `--mx` / `--my`, `--spot` strong in `--spotc` — registered, not inheriting, so a move
   restyles one card; `spotSoon` writes it once a frame on the `:hover` card, and after a render (a card redrawn under
-  a still pointer is a new node). Not on the rail. → `card-spot.mjs`.
+  a still pointer is a new node), **the card's rect read once** — again after a scroll, a render or a resize, never
+  every frame (2026-10-13). Not on the rail. → `card-spot.mjs`.
 * **Type, corners and motion are tokens**: `--fs-2xs` … `--fs-xl` (10–18 px), `--r-1` … `--r-5` (3–14 px), and
   `--ease-out`, `--spring`, `--spring-soft` (`linear()` curves, read by the script through `cssToken`) and `--t-hover`.
   A new rule takes one — settling eases out, arriving springs —, and a fit that needs its own number says why. **A press
@@ -460,7 +461,8 @@ for `$HOME`'s home and the account's.
   (`TL_W`, ≥ `TL_MIN`) the window. **The swell is a fisheye** round the pointer (`tlWarp`, `TL_R`, `TL_MAX`), which
   stays fixed, so a drag reads the list's position off it (`tlScrub`); by the clock (`tlAnimate`, `tl.k`, `tl.K`;
   `REDUCED` jumps). The rail's hit area is `.tl-catch` (`TL_CATCH`, `tl.reach`); a press on no label is on the `.near`
-  one. `peix.state().timeline`. → `timeline.mjs`.
+  one. **Hidden, a frame a scroll alone asked for does not draw it** (`listChanged(true)`, 2026-10-13); `show()` and
+  anything else asking do. `peix.state().timeline`. → `timeline.mjs`.
 * **The status bar is the machine at the window's foot** (2026-10-09; `#sbar`, `renderBar`, `body`'s grid row 2;
   `prefs.statusBar` → `<html data-sbar>`, on): `#sbFind` (`#filters` moved in by `dockBar`, handlers and all),
   `#sbLeft` (the connection, `bar.conn`, its click the About box; the asking and monitor counts while any; the update,
@@ -681,7 +683,7 @@ for `$HOME`'s home and the account's.
   a near-black one `--tile-grey`, none `--nocolor`), 30 % at rest and whole on the panel the keys are in (`.kf`). The
   list on ALL wears the open chat's colour; **the wallpaper** (`#wall`, `--wallc` registered and eased) is in that
   hue, its glow (`#wall i`) following the pointer by a transform (`wallGo`, `prefs.wallFollow`) — a move repaints
-  nothing. **The stack** (`prefs.tileStack`, off; ⌥⌘S, `hotStack`; `stackOn`): `#stack`, a third column — up to three
+  nothing; its target set `WALL_MS` (125) apart at most, each a new transition (2026-10-13). **The stack** (`prefs.tileStack`, off; ⌥⌘S, `hotStack`; `stackOn`): `#stack`, a third column — up to three
   live chats asking or clauding, never the open one (`stackChats`), each a live tile (`mountMini` into `stackMinis`,
   else `tailHtml`), kept by chat (`stackTiles`), drawn in the frame after the board (`stackSoon`; `tilesOn` and
   `stackOn` are `var`s, as `renderBoard` runs before the block has). **At the notch** a panel the housing reaches is cut

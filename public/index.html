@@ -4035,13 +4035,17 @@ const toolName = n => {
   // still being shown. A dot on it when one of them is asking you (red) or clauding: the two states a card should not
   // be able to hide. A click scrolls a screenful that way. Drawn at most once a frame: on scroll, after every render,
   // when the list's box changes size (a fold, the splitter, the window) and when the cards do (the cog's slider).
-  function listChanged() {   // called from applyCards before this line has run, hence the flag on the function
+  // A frame asked for by a scroll alone leaves the timeline be while it is out of sight (2026-10-13): every scroll frame
+  // wrote its thumb's and labels' places, hidden — show() draws it as it comes out, and anything else asking draws it.
+  function listChanged(scrolled = false) {   // called from applyCards before this line has run, hence the flag on the function
+    listChanged.other ||= !scrolled;
     if (listChanged.queued) return;
     listChanged.queued = true;
     requestAnimationFrame(() => {
-      listChanged.queued = false;
+      const timeline = listChanged.other || tl.K > 0 || !!tl.press || $('#sessions').classList.contains('tlshow');
+      listChanged.queued = false; listChanged.other = false;
       const g = listGeom();   // every read of the frame first, then the writes: a read after a write is a layout each (2026-09-27)
-      drawEdges(g); drawTimeline(g); drawSplit(g); drawTrail(g);
+      drawEdges(g); if (timeline) drawTimeline(g); drawSplit(g); drawTrail(g);
       watchOpen(g.open?.el);
       if (sliding.size) listChanged();   // a card is still on its way: the next frame too
     });
@@ -4200,24 +4204,28 @@ const toolName = n => {
       b.title = `${o.n} chat${o.n === 1 ? '' : 's'} ${way}${o.ask ? ` — ${o.ask} asking you` : ''}${o.work ? `${o.ask ? ',' : ' —'} ${o.work} clauding` : ''} · click for a screenful ${i ? 'down' : 'up'}`;
     });
   }
-  $('#slist').addEventListener('scroll', () => listChanged(), { passive: true });
+  $('#slist').addEventListener('scroll', () => listChanged(true), { passive: true });
   // The glow under the pointer (2026-10-09, prefs.cardSpot): the hovered card's --mx / --my, the pointer's place in it,
   // read and written once a frame. A scroll moves another card under a still pointer, and a card redrawn under it is a
   // new node with none, so both ask again (the scroll here, renderSessionList). A function, and its state on it: the
   // list renders before this line has run.
+  // The card's place is read once, not every frame (2026-10-13): a move over the same card is the pointer against the
+  // rect it had — a read in the frame came after the frame's writes, a style pass and in WebKit a layer walk each; a
+  // scroll, a render (spotSoon() with no event) or the list resized reads it again.
   function spotSoon(e) {
-    if (e?.clientX != null) { spotSoon.x = e.clientX; spotSoon.y = e.clientY; }
+    if (e?.clientX != null) { spotSoon.x = e.clientX; spotSoon.y = e.clientY; } else spotSoon.r = null;
     if (!prefs.cardSpot || spotSoon.raf || spotSoon.x == null) return;
     spotSoon.raf = requestAnimationFrame(() => {
       spotSoon.raf = 0;
       const c = document.querySelector('#slist > .card:hover'); if (!c) return;
-      const r = c.getBoundingClientRect();
+      if (c !== spotSoon.c || !spotSoon.r) { spotSoon.c = c; spotSoon.r = c.getBoundingClientRect(); }
+      const r = spotSoon.r;
       c.style.setProperty('--mx', `${Math.round(spotSoon.x - r.left)}px`); c.style.setProperty('--my', `${Math.round(spotSoon.y - r.top)}px`);
     });
   }
   $('#slist').addEventListener('pointermove', spotSoon, { passive: true });
   $('#slist').addEventListener('scroll', () => spotSoon(), { passive: true });
-  new ResizeObserver(() => { listChanged(); fadeOver(true); }).observe($('#slist'));
+  new ResizeObserver(() => { listChanged(); fadeOver(true); spotSoon.r = null; }).observe($('#slist'));
   for (const el of document.querySelectorAll('.sedge')) el.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     const list = $('#slist');
@@ -7472,10 +7480,14 @@ const toolName = n => {
   // board, and the transition eases it there — a lag that reads as light under glass. It stays where the pointer left
   // the page (into the pane, out of the window); the switch off, under reduced motion or without tiles, it is back in
   // its corner. `wallGo()` with no move puts it where it should be now.
-  let wallAt = null, wallRaf = 0;
+  // Its target is set WALL_MS apart at most (2026-10-13; every frame before): each is a new 1.1 s transition, a style
+  // pass and in WebKit a layer walk — 16–18 % of a core with the pointer moving against 7.5 at rest. The ease starts from
+  // where the glow is, so eight a second still glide.
+  let wallAt = null, wallRaf = 0, wallLast = -Infinity;
+  const WALL_MS = 125;
   const wallOn = () => tilesOn && !!prefs.wallFollow && !REDUCED.matches;
-  function wallGo() { wallRaf = 0; $('#wall i').style.transform = wallOn() && wallAt ? `translate(${wallAt.x}px, ${wallAt.y}px)` : ''; }
-  document.addEventListener('pointermove', e => { if (!wallOn()) return; wallAt = { x: e.clientX, y: e.clientY }; wallRaf ||= requestAnimationFrame(wallGo); }, { passive: true });
+  function wallGo() { clearTimeout(wallRaf); wallRaf = 0; wallLast = performance.now(); $('#wall i').style.transform = wallOn() && wallAt ? `translate(${wallAt.x}px, ${wallAt.y}px)` : ''; }
+  document.addEventListener('pointermove', e => { if (!wallOn()) return; wallAt = { x: e.clientX, y: e.clientY }; wallRaf ||= setTimeout(() => requestAnimationFrame(wallGo), Math.max(0, wallLast + WALL_MS - performance.now())); }, { passive: true });
   $('#tileStackOn').addEventListener('change', e => { prefs.tileStack = e.target.checked; if (prefs.tileStack) prefs.tiles = true; savePrefs(); applyTiles(); });   // the launcher's row, with tiles off: the stack is theirs
   /** ⌥⌘S (2026-10-10): the stack in and out of view, as Omarchy's SUPER+S does its scratchpad — with tiles off, tiles on
    *  and the stack with them, since the stack is theirs. Not forwarded from the app's pane: VS Code Web's Save All. */

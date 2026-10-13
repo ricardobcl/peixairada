@@ -20,6 +20,14 @@ the made-up 400-card board with the user's prefs in a WKWebView, the median of t
   core → 0.2. AppKit takes the keys off a view whose ancestor is hidden, so the first responder is kept and put back —
   a drawer typed into after an unlock has them. The page's script still runs: the stream, the alerts and the badge
   carry on, their timers slowed. The app log says `away: lock, display — the board hidden` and `away: back`.
+* **The pointer's and the scroll's paths do less a frame.** With the board otherwise still, the pointer moving anywhere
+  cost 16–18 % of a core against 7.5 at rest: the wallpaper's glow (`wallGo`) took a new 1.1 s transition every frame —
+  a style pass and in WebKit a walk of every layer each —, and now takes one `WALL_MS` (125 ms) apart at most; the ease
+  starts from where the glow is, so eight a second still glide. The card's glow (`spotSoon`) read the hovered card's
+  rect every frame, after the frame's writes; it now reads it once per card, again after a scroll, a render or the list
+  resized. The hidden timeline's thumb and labels were placed on every scroll frame; a frame asked for by a scroll alone
+  now leaves it be (`listChanged(true)`) — `show()` draws it as it comes out, and a render still does, so it is right
+  at rest as `timeline.mjs` reads it.
 
 ## Decisions of 2026-10-13, after Zed — Zed installed when it is picked
 
