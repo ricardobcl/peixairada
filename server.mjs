@@ -611,11 +611,24 @@ function statusOf(s) {
 // in it, and a turn typed there forks the chat. The registry shows every process, so `rivals` on the summary
 // carries the others and the page warns and offers to end them (the take-over route, when the chat is here).
 
+// A chat in a worktree inside a repo — `<repo>/.claude/worktrees/<name>`, where the board and Claude Code's --worktree
+// make them — is the repo's (2026-10-13): its project is the repo's name, and the page keys its folder project by the
+// repo (projDir there). `worktree` says which tree and branch: its HEAD as the registry poll read it while the chat runs
+// (`headNow`, the drift's), else the branch Claude Code last wrote, else the one the board made it on.
+const WT_IN = /\/\.claude\/worktrees\/([^/]+)(?:\/.*)?$/;
+const projectDir = cwd => cwd ? cwd.replace(WT_IN, '') : cwd;
+function worktreeOf(s, cwd) {
+  const m = WT_IN.exec(cwd || ''); if (!m) return null;
+  let made = null; try { made = worktreesMade[realpathSync(cwd.slice(0, m.index) + `/.claude/worktrees/${m[1]}`)]; } catch {}
+  const now = s.alive && s.headNow !== 'HEAD' ? s.headNow : null;
+  return { name: m[1], branch: now || s.gitBranch || made?.branch || null };
+}
 function summary(s, ti = null) {   // `ti`: termIndex(), when the whole board is summarized at once
   const prT = prTitle(s), status = statusOf(s), mine = ti ? ti.get(s.id) || NO_TERMS : { term: termOf(s), shell: shellOf(s), shells: shellsOf(s) };
+  const cwd = s.live?.cwd || s.cwd;
   return {
     // Prefer the registry cwd: transcript lines record the shell's *current* directory, which moves with `cd`.
-    id: s.id, slug: s.slug, cwd: s.live?.cwd || s.cwd, project: basename(s.live?.cwd || s.cwd || '') || s.slug,
+    id: s.id, slug: s.slug, cwd, project: basename(projectDir(cwd) || '') || s.slug, worktree: worktreeOf(s, cwd),
     gitBranch: s.gitBranch, model: s.model,
     // The PR title beats Claude's own: it is what the work is called everywhere else — the PR page, the
     // branch, standup. A title the user typed still wins over both.
@@ -4009,7 +4022,7 @@ server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTe
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, parseWorktrees, worktreesFor, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {

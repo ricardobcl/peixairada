@@ -14,7 +14,7 @@ import { tmpDir } from '../lib/testserver.mjs';
 const tmp = tmpDir('peix-wt-');
 process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
 process.env.GIT_CONFIG_GLOBAL = '/dev/null'; process.env.GIT_CONFIG_NOSYSTEM = '1';   // no global ignore file: the board's own exclude is what keeps the trees out of status
-const { ensureWorktree, linkModules, newSession, prRefs, sessions, setPrInfo, sweepWorktrees, switchGuard, worktreesFor, worktreesMade } = await import('../server.mjs');
+const { ensureWorktree, linkModules, newSession, prRefs, projectDir, sessions, setPrInfo, summary, sweepWorktrees, switchGuard, worktreesFor, worktreesMade } = await import('../server.mjs');
 
 const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
 const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env }).toString().trim();
@@ -110,4 +110,20 @@ test('the folder\'s own branch switched only when nothing else works there — s
   assert.deepEqual((await switchGuard(s, 'feat/a')).why, ['another chat works here — Other work', '1 file is not committed']);
   assert.deepEqual(folder().branch, 'feat/b', 'nothing switched');
   for (const x of [s, o, n]) sessions.delete(x.id);
+});
+
+test('a chat in a worktree inside the repo is the repo\'s, with the branch it is on', () => {
+  assert.equal(projectDir('/c/widgets/.claude/worktrees/feat-x'), '/c/widgets');
+  assert.equal(projectDir('/c/widgets/.claude/worktrees/feat-x/src'), '/c/widgets');
+  assert.equal(projectDir('/c/widgets-feat-x'), '/c/widgets-feat-x', 'one beside the repo is its own folder');
+  assert.equal(projectDir('/c/widgets'), '/c/widgets');
+  const s = newSession(randomUUID(), null); s.cwd = wt('feat-new');
+  assert.deepEqual([summary(s).project, summary(s).worktree], ['widgets', { name: 'feat-new', branch: 'feat/new' }], 'the branch the board made it on, before Claude Code says one');
+  s.gitBranch = 'feat/renamed';
+  assert.deepEqual(summary(s).worktree, { name: 'feat-new', branch: 'feat/renamed' }, 'then the one Claude Code saw');
+  s.alive = true; s.headNow = 'feat/now';
+  assert.deepEqual(summary(s).worktree, { name: 'feat-new', branch: 'feat/now' }, 'and while it runs, its HEAD as the poll read it');
+  s.alive = false;
+  const plain = newSession(randomUUID(), null); plain.cwd = co;
+  assert.deepEqual([summary(plain).project, summary(plain).worktree], ['widgets', null]);
 });

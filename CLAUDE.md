@@ -291,7 +291,10 @@ for `$HOME`'s home and the account's.
   (ring, agents, monitor, question) still read; inside the card everything is `display: none` but `.abbr` (it carries
   the tooltip) and `.rdot` (a PR at your move or a new reply, `wantOf` → `data-want`). The lanes fold on the rail too.
 * **A project is a folder** (the registry's `cwd`, never the transcript's) **or a named set of folders** (state
-  file); worktrees under a repo count as the repo. Pinned projects head the pickers (`state.pins`, `PUT /api/pins`).
+  file); worktrees under a repo count as the repo — a named project's by its prefix (`inFolder`), Peacock's colour by
+  the folder above, and **a folder project keyed by the repo for a chat in `<repo>/.claude/worktrees/<name>`**
+  (2026-10-13; `projDir`, the server's `projectDir` → the summary's `project`; its pins, hiding and name are the
+  repo's, its card wears its branch, `.chip.wtb` from `s.worktree` — `headNow` while it runs, else `gitBranch`). Pinned projects head the pickers (`state.pins`, `PUT /api/pins`).
   **✕ on a row of ⌥⌘N hides a project** (`hidden` in the state file, `PUT /api/hidden`; `projectList()` and
   `freeFolders()` skip it); its chats still show under ALL; starting a chat there puts it back (`newChat`).
 * **A project's colour is Peacock's** — `pollPeacock()` reads the nearest `.vscode/settings.json` at or above every
@@ -594,12 +597,15 @@ for `$HOME`'s home and the account's.
 * **⌥⌘L is the launcher** (2026-10-10; `#pick` in mode `launch`): `launchRows` gives each section's best (chats,
   projects, PRs `allPrs`, tickets `allTickets`, `actionRows`, `toggleRows`), all under a prefix (`>` `#` `@` `!`); a
   section's head is `.pkhd`, not a `.pkrow`. Empty, it is `LAUNCH_MENU` (→/⏎ into a row with ›, ←/⌫ back,
-  `ctx.back`). **A switch is the settings' own checkbox, clicked** (`SWITCHES`), so its handler runs. **`?` is the
+  `ctx.back`). A PR row whose branch GitHub named has **Chat** (`button.pkchat`, ⌥⏎ — `chatOnPr`). **A switch is the settings' own checkbox, clicked** (`SWITCHES`), so its handler runs. **`?` is the
   sheet of every key** (`keysOpen`, `#keysheet`) outside a box or a terminal. → `launcher.mjs`.
 * **The last step of the new-chat flow is a list of chats** (`scopeChats()`, `chatsStep()`, `newFromChats()`): the
   scope's ready and clauding chats by `byWord` under ＋ *new chat* — **shown even when the scope has none**, so ⏎
   starts one. ⌥⌘N scopes it to the project, ⌥⌘O to one environment (`then: 'chats'` rides `folder` and `env`).
-  Typing filters the chats only and moves the selection onto the first match. A chat's environment is `s.env`
+  Typing filters the chats only and moves the selection onto the first match (`pick.typed`), else ＋. **A folder that
+  is a git checkout ends in *＋ new chat on a new branch*** (2026-10-13; `isBranch`, never filtered out): the text
+  typed is the branch, `newChatOnBranch` makes its worktree from origin's default branch (`fresh`) and starts the chat
+  there. A chat's environment is `s.env`
   (`.chip.env` on its card); the `env` step counts each (`envCounts`). An idle chat's row has the card's ✓
   (`button.pkdone`, `canTick(s)`); ticked, it leaves on the `session` event (`pickRender(true)` keeps the selection)
   and the picker stays up. → `new-chat-flow.mjs`.
@@ -765,7 +771,7 @@ for `$HOME`'s home and the account's.
   chat; the picker `prScopeMenu` through `ctxShow`), a `.csrc` line saying where it was read, no Commit… or Push, a
   note prefixed `PR #n`. **Each `#prlist` row is a `.prline`** — the `.prrow` link, where its branch lives
   (`.prwhere`, `whereOf` over `GET /api/worktrees?cwd=` — `worktreesFor`, `parseWorktrees`; `wtOf` keeps it 10 s),
-  then its buttons (`.pract`; Diff → `openPrDiff`). The PR's branches are `pr.refs` (`prRefs` from `PR_FIELDS`'
+  then its buttons (`.pract`; Diff → `openPrDiff`, Editor ▾ and Chat below). The PR's branches are `pr.refs` (`prRefs` from `PR_FIELDS`'
   `headRefName baseRefName baseRefOid isCrossRepository headRepository`). → `test/changes.test.mjs`, `changes-pr.mjs`.
 * **A PR's branch in the editor is a working tree, never the folder switched** (2026-10-13; the row's **Editor ▾**,
   `editorMenu`): `POST /api/worktrees {cwd, pr | branch, detach, fresh}` → `ensureWorktree` **finds the tree that has
@@ -782,8 +788,10 @@ for `$HOME`'s home and the account's.
   (`switchGuard`) finds no other chat or drawer in the tree (`treeOf`: `gitTopOf`, real; a nested worktree is its own; on it already is `headAt`'s), no chat
   mid-turn, nothing uncommitted, no merge or rebase, the branch out nowhere else — the menu's disabled row says why
   (`ctxRow`'s `off`). Opened in the editor picked (`openEditorAt`): Zed's window, or VS Code Web on a tab of the chat's
-  own (`state.paneWt`, beside `paneIde`'s; named `<repo> @ <branch>`, `ideLabels`). → `test/worktrees.test.mjs`,
-  `editor-branch.mjs`.
+  own (`state.paneWt`, beside `paneIde`'s; named `<repo> @ <branch>`, `ideLabels`). **Chat** (the row's, the
+  launcher's) is `chatOnPr`: the same tree, and `newChat` in it — the chat's folder is then its branch, so its
+  changes, editor and zsh are the branch's by construction. → `test/worktrees.test.mjs`, `editor-branch.mjs`,
+  `chat-worktree.mjs`.
 * **An MCP tool is named by its server and tool** (`toolName`: *Slack: search users*) in the rows, a run's summary,
   the card's live line and the tiles; the raw name is the row's tooltip.
 * **A tool call wears its state** (`toolRes`, `toolMark`): `.tst[data-tu]` — `run` (turning while `#log.working`),

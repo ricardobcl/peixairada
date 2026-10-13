@@ -5,6 +5,32 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-13. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-13, on a branch, later still — chats in worktrees
+
+The study's end state: a chat for a PR's branch lives in that branch's tree, so its folder *is* the branch — the
+changes tab, the editor, ⌥⌘T's zsh, Commit… and Push are right by construction, and nothing moves under the chats of
+the repo's own folder.
+
+* **Chat** on a PR row and on the launcher's PR rows (⌥⏎ there): `ensureWorktree`, the tree that has the branch or one
+  made inside the repo (the entry below), then `newChat` in it — `POST /api/terminals {cwd}`, no new route. The PR
+  whose branch is the folder's own gets a chat in the folder.
+* **⌥⌘N, *＋ new chat on a new branch***: the chats step of a folder that is a git checkout ends in it, never filtered
+  out; the text typed is the branch's name, made from origin's default branch (`fresh`: fetched first, `--no-track`,
+  so a push names its own upstream rather than main's). A name no chat has still selects ＋ *new chat*, as before —
+  the branch row is chosen, never fallen into.
+* **Grouped under the repo, by the rule there was.** CLAUDE.md's "worktrees under a repo count as the repo" held for a
+  named project (`inFolder`, a prefix) and Peacock's colour (the nearest settings at or above), but a folder project
+  was keyed by its exact cwd: a chat in `.claude/worktrees/feat-x` was a project named `feat-x`. Now a folder project's
+  key is the cwd with `/.claude/worktrees/<name>…` taken off (`projDir`; the server's `projectDir` names the summary's
+  `project`), so the pins, the hiding, the header's folder toggle, the colour square and the setup's per-name entries
+  are the repo's — one mechanism, the path. Only that location: a worktree beside its repo (`../widgets-x`, this
+  Mac's old habit) is a folder of its own, as before, and ⌥⌘N's folder step still leaves those out.
+* **The card wears the branch** (`.chip.wtb`, `s.worktree` — `{name, branch}`: while the chat runs its tree's HEAD as
+  the drift's registry poll reads it (`headNow`), else the branch Claude Code last wrote on a line, else the one the
+  board made the tree on), beside the project's name. The drift's other facts are reused the same way: the switch
+  guard's tree is `gitTopOf`'s and its "on it already" `headAt`'s.
+* → `test/worktrees.test.mjs` (the summary's project and branch), `scripts/scenarios/chat-worktree.mjs`.
+
 ## Decisions of 2026-10-13, on a branch, later — a PR's branch in the editor
 
 The study's second half (the entry below): to edit a PR whose branch the folder does not have out, a working tree of
