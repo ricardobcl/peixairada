@@ -60,10 +60,52 @@ the server (0.5 %) and the drawers (a 10 Hz spinner, +1–3 %) were not it.
   a copy of its own that does not inherit (`--hbg-eased` on `.shead`, `#log` and the floating header's `.gbody`; the
   veils on `.shead`), the divider its own `background-color` — its existing .15 s transition, so it now eases in .15 s
   rather than .25 s. The header still slides from one colour to the next (sampled across a switch: blue, teal, green
-  over 250 ms); a frame of the ease restyles 48 elements. Opening a clauding chat took 450–600 ms in WebKit, and
-  220–275 with those transitions turned off altogether (measured before the change). The other half of an open's
+  over 250 ms); a frame of the ease restyles 48 elements, and the frozen frames are the same but for ages that moved
+  on. Opening a clauding chat took 450–600 ms in WebKit, and 220–275 with those transitions turned off altogether
+  (measured before the change). The other half of an open's
   cost is still there: a dozen full restyles in Chrome, from the floating header's `:has()` rules and the open path's
   reads after writes — *Next*, below.
+* **Together** — the page as it was against this one, on the made-up board with the user's prefs, in a WKWebView, the
+  medians: at rest 38.8 → 7.5 % of a core; 1,358 → 544 CALayers; the list scrolled a frame at a time 97 → 39 %, its
+  8–17 dropped frames in 6 s none; the pointer moving over the board 39 → 16–18 %; the glow under it 45 → 21 %; a
+  clauding chat opened in 445–570 ms → 220–250. The app keeps the page it loaded: ⌥⌘R takes this one. `npm test`
+  and the scenarios pass as on the commit before (one timing test of the server's and `small-motions` flaked there
+  too under this Mac's load; two more of the latter's waits now wait for the board instead).
+* **Next, by what each would bring for its effort** (not done; measured where a number is given):
+  1. *The board at rest while nobody looks* (small; Swift). With the screen locked and the display off the app's web
+     process still ran at ~40 % of a core — timer-driven style passes and layouts, no frames drawn — where the
+     harness's page, which WebKit hides then, costs 0.1 %: the app's page is not hidden. Hiding the board's web
+     view on `NSWorkspace.screensDidSleepNotification` and the lock (`com.apple.screenIsLocked`), shown again on wake,
+     should bring it near the hidden page's 0.1 %. Re-measure first: with the four fixes in, less may be left to save.
+  2. *The floating header's `:has(> .ptabs[hidden])` rules as a class* (small; `renderTabs` knows when a strip is
+     hidden; `UNDER_HEAD` follows). In Chrome they make most DOM changes restyle the whole board — a chat's open spent
+     135–190 ms restyling, 40 without them. WebKit showed no difference, so it is the browser's gain, not the app's.
+  3. *Fewer cards in the page* (medium). Every lane open here is 400 cards, ~13,000 elements; every restyle, layout,
+     hit test and render scales with them. At rest after the fixes, the same board with Idle and Done folded is ~4
+     points lower; a render per chat event costs ~60 ms of the main thread in WebKit (1 event a second adds ~6 % of a
+     core). The newest few done cards and a *N more* row would keep most of it (drawCards, the lane counts, the
+     timeline's runs and the ends all count cards); `content-visibility` on resting cards was tried: 12 → 10.6 % at
+     rest but chat opens ~10 % slower.
+  4. *Interaction paths* (small each). `wallGo` starts a new 1.1 s transition on every pointer frame anywhere on the
+     board; `spotSoon` reads the hovered card's rect every frame and every scroll; `drawTimeline` writes the hidden
+     timeline's labels and thumb on every scroll frame and render. Reading the card's rect once on enter, moving the
+     glow by one retargeted animation, and not drawing the timeline until it is called would leave a scroll frame
+     restyling nothing but what scrolls. After the fixes the pointer moving anywhere costs 16–18 % of a core against
+     7.5 at rest, the glow following it 21 %.
+  5. *Forced layouts on a clock* (small). `rollIn`'s `void document.body.offsetWidth` on every rolling count — the
+     bar's CPU and memory every 3 s —, `phaseAnims`' `getAnimations()` flush after every render and every verb of
+     the presence line (3.2 s): each is a full style pass and layout, and in WebKit a layer walk. A rolling count can
+     start from a frame's `requestAnimationFrame` pair; `phaseAnims` need only touch animations of nodes made since.
+  6. *Done cards dimmed by colours, not `filter: saturate(.45)`* (small–medium): a done card is painted through a
+     filter each time it repaints; with a layer each that is no longer every scroll (unfiltered, the tile-painted list
+     dropped 24 frames rather than 34–44). Small now, unmeasured.
+  7. *A guard* (medium): all four of today's causes passed every scenario — Chrome composites what WebKit does not.
+     An `npm run perf` on the made-up board in a WKWebView (CPU at rest and scrolling, against a ceiling), and a
+     scenario that fails on a running animation whose target is an SVG child or has no box, a playback rate other than
+     1, or a transition on an inherited registered property.
+  8. *Memory* (medium, unknown gain): after hours the app's web process held 1.6–1.8 GB (785 MB WebKit malloc,
+     630–830 MB graphics) against 463 MB for a fresh page; the graphics should fall with the layers (to be read after
+     a reload), the malloc wants a long soak and heap snapshots — Chrome's heap stayed flat over 120 chat opens.
 
 ## Decisions of 2026-10-13, after the last — the board no longer updates itself unless asked
 
