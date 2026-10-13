@@ -5,6 +5,26 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-13. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-13, after the last, later — the board's frames, profiled
+
+Ricardo: "the app seems a bit slugish, animations etc.. do a deep analysis and profile to find issues", and on the
+findings: "yes, implemente 1-4 and then give me the next improvements and expected gains/effort".
+
+The board's web process ran at ~40 % of a core at rest, its main thread busy in ~94 % of an 8 s `sample`: every frame
+a style pass and then WebKit's walk of every layer to decide what is composited (`computeCompositingRequirements`), over
+~1,300 CALayers for a list of 400 cards (every lane open here). Two things multiplied: animations that kept every frame
+on the main thread, and what each frame then cost. Measured in a WKWebView — the app's engine — on a made-up board
+shaped like this one (400 chats, 300 done, five clauding, the user's prefs), each variant three times, the median;
+the server (0.5 %) and the drawers (a 10 Hz spinner, +1–3 %) were not it.
+
+* **The splitter's scroll-driven black is off where it is not drawn** — with tiles and on the rail
+  (`:is(main.tiles, main.scompact) #splitter.scrolls::after`). There `#splitter::after` is `display: none`, but WebKit
+  keeps its animation, and this one, kept, had it resolve the board's animations on the main thread every frame: the
+  five rings alone (every other animation cancelled) were 5 % of a core, with it 23 %; tiles off, where the black is
+  drawn, 1.6 %. With it gone the rings, the shimmer, the header's shade and the Clauding head's pixels are each 2–6 %
+  over the 3.6 % of nothing at all. Alone it moves the whole board nothing (39 %): the fish still keeps every frame on
+  the main thread — the next entries.
+
 ## Decisions of 2026-10-13, after the last — the board no longer updates itself unless asked
 
 Ricardo: "turn off auto-update by default - but still leave alert of a new version".

@@ -849,6 +849,10 @@ for `$HOME`'s home and the account's.
 * **A running animation is moved by its `currentTime`, never its `startTime` alone**: WebKit — the app — hands a
   transform to the compositor, and a start set after it has reads back from the script but never reaches the screen;
   Chrome takes either, so the harness cannot see it. The proof is the compositor's frame: `npm run webkit`.
+* **In WebKit one main-thread animation makes every frame a style pass and a walk of every layer** (2026-10-13): a
+  running animation needs a box that is drawn — WebKit keeps one on a `display: none` pseudo-element, and the
+  splitter's scroll-driven black, so kept with tiles and on the rail, took the rings off the compositor (turned off
+  there: `#splitter.scrolls::after`). The cost is read off the web process (`sample <WebContent pid>`), never Chrome.
 * **A read after a write is a layout**: the list's frame (`listGeom`), `fitHeadPrs` and `layoutNotch` read
   everything first; keep it so.
 * `projIcon(name)` marks ⌥⌘O's project wherever its name is written; `projAbbr` is the rail's squares. Both, and a

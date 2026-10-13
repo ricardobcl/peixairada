@@ -369,6 +369,11 @@
   #splitter::before { content: ''; position: absolute; left: 0; right: 0; top: var(--sfoot, 100%); bottom: 0; z-index: 1; background: var(--crust, #000); pointer-events: none; }
   #splitter.scrolls::after { animation: split-scroll linear both; animation-timeline: --slist; }
   @keyframes split-scroll { to { transform: translateY(calc(0px - var(--smax, 0px))); } }
+  /* …and none where the black is not drawn (2026-10-13): with tiles, and on the rail. WebKit keeps the animation of a
+     pseudo-element that has no box, and this one, kept, had it resolve the board's animations on the main thread every
+     frame — the rings and the shimmer off the compositor, each frame a style pass and a walk of every layer (measured in
+     a WKWebView on 400 cards: the rings alone 5 % of a core, with it 23 %; with tiles off, where it is drawn, 1.6 %). */
+  :is(main.tiles, main.scompact) #splitter.scrolls::after { animation: none; }
   #splitter:is(:hover, .drag)::after, #splitter:is(:hover, .drag)::before { opacity: 0; transition: opacity 0s .3s; }
   #splitter.drag::after, #splitter.drag::before { transition: none; }   /* a drag lights the whole bar at once, its black too */
   #splitter:hover, #splitter.drag { background: var(--accent); }
