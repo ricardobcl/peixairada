@@ -10,6 +10,8 @@
 //   `repo clone <owner/name> <dir> [-- --progress]` (2026-10-09): no network — the folder made at once, as git makes it,
 // git's progress on stderr over FAKEGH_CLONE_MS (1200 by default), then a `.git/config` naming the origin and a README.
 // A repo named `no-such-…` is one GitHub has not got: gh's error, a non-zero exit, and the folder gone again.
+//   `pr diff <url> [--color never]` (2026-10-13): the PR's entry's `diff`, a unified patch as GitHub's; an entry with none,
+// or no entry, is gh's error and a non-zero exit.
 // Anything else asked of it fails, loudly.
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -36,6 +38,12 @@ if (cmd === 'repo' && sub === 'clone') {
       if (progress) process.stderr.write('Resolving deltas: 100% (3/3), done.\n');
     }, ms / steps);
   }
+} else if (cmd === 'pr' && sub === 'diff') {
+  let prs = {};
+  try { prs = JSON.parse(readFileSync(process.env.FAKEGH_PRS, 'utf8')); } catch {}
+  const m = /github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d+)/.exec(flag || ''), pr = m && prs[`${m[1]}/${m[2]}#${m[3]}`];
+  if (pr?.diff) process.stdout.write(pr.diff);
+  else { console.error(`could not find pull request diff: ${pr ? 'no diff in the fixture' : 'HTTP 404: Not Found'}`); process.exitCode = 1; }
 } else {
   if (cmd !== 'api' || sub !== 'graphql' || flag !== '-f' || !arg?.startsWith('query=')) { console.error(`fakegh: only \`api graphql -f query=…\` is faked, not: ${process.argv.slice(2).join(' ')}`); process.exit(2); }
   let prs = {};

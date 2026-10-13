@@ -745,7 +745,7 @@ function notePr(s, url, ts, by, ref = null) {
     // The owner rarely disambiguates and eats half the width of the chip; the URL is in the tooltip.
     label: m ? `${m[2]}#${m[3]}` : clean.replace(/^https?:\/\/(www\.)?github\.com\//, ''),
     count: 0, by: null, firstAt: ts, ref,
-    state: prStatus.get(clean)?.state ?? null, title: prStatus.get(clean)?.title ?? null, turn: prStatus.get(clean)?.turn ?? null, people: prStatus.get(clean)?.people ?? null, checks: prStatus.get(clean)?.checks ?? null
+    state: prStatus.get(clean)?.state ?? null, title: prStatus.get(clean)?.title ?? null, turn: prStatus.get(clean)?.turn ?? null, people: prStatus.get(clean)?.people ?? null, checks: prStatus.get(clean)?.checks ?? null, refs: prStatus.get(clean)?.refs ?? null
   };
   if (!ref) pr.ref = null; else if (ref === 'repo' && pr.ref) pr.ref = 'repo';
   if (by) { pr.count++; pr.by = by; }
@@ -959,18 +959,19 @@ function queueSessionPrs(s) { for (const pr of s.prs) queuePr(pr.url); }
 /** What GitHub said of one PR: `found` is prTurn's answer, undefined for a PR it would not show us — `missing`, whose
  *  state and title are what was known before (2026-10-03: they were wiped, and the card's title fell back to Claude's
  *  over an SSO prompt or one field GitHub would not resolve), asked again an hour later. */
-function setPrInfo(url, state, title, found, now = Date.now(), people, missing = false, created = null, checks = null) {
+function setPrInfo(url, state, title, found, now = Date.now(), people, missing = false, created = null, checks = null, refs = null) {
   const chats = [...sessions.values()].filter(s => s.prs.some(p => p.url === url));
   const ticked = chats.filter(isDone);
   const { turn, moved, from, released } = moveTurn(url, found, now);
   const known = prStatus.get(url);
   if (people === undefined) people = known?.people ?? null;   // a PR we could not see: who we knew of stands
   if (missing) { state = known?.state ?? null; title = known?.title ?? null; checks = known?.checks ?? null; }
-  prStatus.set(url, { state, title, turn, people, checks, checkedAt: now, missing, created: created ?? known?.created ?? null });   // created: shownPr's
-  const same = JSON.stringify(turn), faces = JSON.stringify(people);
+  refs ??= known?.refs ?? null;   // a PR we could not see keeps the branches we knew
+  prStatus.set(url, { state, title, turn, people, checks, refs, checkedAt: now, missing, created: created ?? known?.created ?? null });   // created: shownPr's
+  const same = JSON.stringify(turn), faces = JSON.stringify(people), branches = JSON.stringify(refs);
   for (const s of chats) {
     const pr = s.prs.find(p => p.url === url);
-    if (pr.state !== state || pr.title !== title || pr.checks !== checks || JSON.stringify(pr.turn ?? null) !== same || JSON.stringify(pr.people ?? null) !== faces) { pr.state = state; pr.title = title; pr.turn = turn; pr.people = people; pr.checks = checks; schedulePush(s); }
+    if (pr.state !== state || pr.title !== title || pr.checks !== checks || JSON.stringify(pr.turn ?? null) !== same || JSON.stringify(pr.people ?? null) !== faces || JSON.stringify(pr.refs ?? null) !== branches) { pr.state = state; pr.title = title; pr.turn = turn; pr.people = people; pr.checks = checks; pr.refs = refs; schedulePush(s); }
   }
   // Said once, as the ball comes back to you — or when a chat you had ticked comes back with it, or the next move after
   // a round let go; never on a chat done for good, and not at all when every chat that mentions it is.
@@ -1017,7 +1018,7 @@ function drainPrQueue() {
         : pr.state === 'CLOSED' ? 'closed'
         : pr.isDraft ? 'draft' : 'open';
       if (!pr && none.has(`p${i}`)) forgetRef(url);
-      setPrInfo(url, state, pr?.title || null, pr && me ? prTurn(pr, me) : undefined, Date.now(), pr ? prPeople(pr, me) : undefined, !pr, pr?.createdAt, prChecks(pr));
+      setPrInfo(url, state, pr?.title || null, pr && me ? prTurn(pr, me) : undefined, Date.now(), pr ? prPeople(pr, me) : undefined, !pr, pr?.createdAt, prChecks(pr), prRefs(pr));
     });
     if (turnsDirty) { turnsDirty = false; pruneTurns(); saveState(); }
     if (prQueue.size) drainPrQueue();
@@ -1031,6 +1032,7 @@ function drainPrQueue() {
 // Every person comes with a face since 2026-09-29 (`avatarUrl`, a scalar: no cost) — prPeople, the cards' faces.
 const WHO = 'login __typename avatarUrl(size: 48)';
 const PR_FIELDS = `title state isDraft createdAt headRefOid author { ${WHO} }`
+  + ' headRefName baseRefName baseRefOid isCrossRepository headRepository { nameWithOwner }'   // where its branch is (2026-10-13): scalars, no cost
   + ' viewerLatestReview { submittedAt commit { oid } }'
   + ' reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } } } }'
   + ` reviews(last: 20) { nodes { author { ${WHO} } state submittedAt } }`
@@ -1042,6 +1044,10 @@ const PR_FIELDS = `title state isDraft createdAt headRefOid author { ${WHO} }`
 /** The head commit's checks as the chat header says them: pass · fail · pending, or null for none (2026-10-09). */
 const CHECKS = { SUCCESS: 'pass', FAILURE: 'fail', ERROR: 'fail', PENDING: 'pending', EXPECTED: 'pending' };
 const prChecks = pr => CHECKS[pr?.commits?.nodes?.[0]?.commit?.statusCheckRollup?.state] ?? null;
+/** A PR's branches as the changes tab and the editor want them (2026-10-13): its head's name and commit, its base's,
+ *  and whether the head lives in a fork — whose branch name means nothing in this checkout. Null for no answer. */
+const prRefs = pr => pr?.headRefName ? { head: pr.headRefName, headOid: pr.headRefOid || null, base: pr.baseRefName || null, baseOid: pr.baseRefOid || null,
+  fork: !!pr.isCrossRepository, from: pr.headRepository?.nameWithOwner || null } : null;
 let turnsDirty = false;
 
 const isBot = a => !a?.login || a.__typename === 'Bot' || /\[bot\]$/.test(a.login);
@@ -2416,11 +2422,76 @@ const gitOut = async (cwd, args, opts = {}) => {
   return stdout;
 };
 const gitOr = (cwd, args, dflt = null) => gitOut(cwd, args).then(o => o.trim(), () => dflt);
-/** The changes of a chat's folder in one scope — or `{stat}` alone (the header's chip): the counts, no patch. */
-async function changesOf(s, scope = 'uncommitted', statOnly = false) {
+// A PR of the checkout's repo as GitHub shows it (2026-10-13): `refs/pull/<n>/head` against where it left its base,
+// read from origin into the object store alone — `--refmap=` and `--no-write-fetch-head` write no ref and no FETCH_HEAD
+// (a `git pull` mid-way in this checkout reads that), and nothing is checked out — so a chat on another branch of the
+// same folder never notices. ls-remote says where both are; only what is not here yet is fetched. Whatever git cannot
+// do — no checkout of that repo, origin unreachable — `gh pr diff` does, from GitHub (`gh: true` asks for it).
+const BRANCH_NAME = /^(?!-)(?!.*\.\.)[\w./-]{1,200}$/;   // a base asked for by name: a branch, never an option
+const GIT_NET = { timeout: 60_000, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } };
+/** Which PR `pr=` names — a number (the checkout's repo) or a URL — and whether it is the checkout's repo's. */
+function prAsked(ask, root) {
+  const said = String(ask || ''), m = PR_ONE.exec(said), n = Number(m?.[3] || /^#?(\d+)$/.exec(said)?.[1]);
+  if (!n) return null;
+  const own = root && ghRepoOf(root);
+  return { n, url: m ? prKey(m[1], m[2], n) : own ? prKey(own.owner, own.name, n) : null,
+    mine: !m || (!!own && `${m[1]}/${m[2]}`.toLowerCase() === `${own.owner}/${own.name}`.toLowerCase()) };
+}
+async function prRange(root, n, base) {
+  base ||= (await gitOr(root, ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD']))?.replace(/^origin\//, '')
+    || /^ref: refs\/heads\/(\S+)\tHEAD$/m.exec(await gitOut(root, ['ls-remote', '--symref', 'origin', 'HEAD'], GIT_NET).catch(() => ''))?.[1] || 'main';
+  const want = [`refs/pull/${n}/head`, `refs/heads/${base}`];
+  let ls; try { ls = await gitOut(root, ['ls-remote', 'origin', ...want], GIT_NET); }
+  catch (e) { return { error: `origin did not answer: ${String(e.stderr || e.message).trim().split('\n')[0]}`, gh: true }; }
+  const oid = Object.fromEntries(ls.split('\n').filter(Boolean).map(l => l.split('\t').reverse()));
+  if (!oid[want[0]]) return { error: `origin has no PR #${n}`, gh: true };
+  if (!oid[want[1]]) return { error: `origin has no branch ${base}`, gh: true };
+  const missing = [];
+  for (const r of want) if (await gitOr(root, ['cat-file', '-e', `${oid[r]}^{commit}`], false) === false) missing.push(r);
+  if (missing.length) {
+    try { await gitOut(root, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', '--refmap=', 'origin', ...missing], GIT_NET); }
+    catch (e) { return { error: `could not fetch PR #${n}: ${String(e.stderr || e.message).trim().split('\n')[0]}`, gh: true }; }
+  }
+  const from = await gitOr(root, ['merge-base', oid[want[1]], oid[want[0]]]);
+  if (!from) return { error: `PR #${n} shares no history with ${base}`, gh: true };
+  return { n, head: oid[want[0]], base, baseOid: oid[want[1]], from, fetched: missing.length > 0 };
+}
+/** One file's patch counted as numstat would: its status, the lines added and removed after its first hunk. */
+function patchStat(text) {
+  let add = 0, del = 0, inHunk = false;
+  for (const l of String(text).split('\n')) {
+    if (l.startsWith('@@')) { inHunk = true; continue; }
+    if (inHunk && l.startsWith('+')) add++; else if (inHunk && l.startsWith('-')) del++;
+  }
+  return { status: /^new file mode/m.test(text) ? 'A' : /^deleted file mode/m.test(text) ? 'D' : 'M', add, del, binary: /^(Binary files |GIT binary patch)/m.test(text) };
+}
+/** A patch over CHANGES_MAX: whole files, as many as fit. */
+function capPatch(patch) {
+  if (patch.length <= CHANGES_MAX) return { patch, truncated: false };
+  let kept = ''; for (const c of splitPatch(patch)) { if (kept.length + c.text.length > CHANGES_MAX) break; kept += c.text; }
+  return { patch: kept, truncated: true };
+}
+/** The PR's diff from GitHub — no checkout of its repo here, or git could not reach it: `why` says which. */
+async function prFromGh(want, why, cwd) {
+  const bin = ghBin(); if (!bin || !want.url) return { error: why };
+  let out; try { out = (await execFileP(bin, ['pr', 'diff', want.url, '--color', 'never'], { timeout: 30_000, maxBuffer: 32e6 })).stdout; }
+  catch (e) { return { error: `${why} — and gh pr diff: ${String(e.stderr || e.message).trim().split('\n')[0]}` }; }
+  const files = splitPatch(out).map(c => ({ path: c.path, ...patchStat(c.text) })).sort((a, b) => a.path.localeCompare(b.path));
+  const refs = prStatus.get(want.url)?.refs, { patch, truncated } = capPatch(out);
+  return { cwd, root: null, branch: null, base: refs?.base ?? null, scope: 'pr', upstream: null, files,
+    add: files.reduce((n, f) => n + f.add, 0), del: files.reduce((n, f) => n + f.del, 0), patch, truncated,
+    pr: { n: want.n, url: want.url, head: refs?.headOid ?? null, headName: refs?.head ?? null, base: refs?.base ?? null, source: 'gh', why } };
+}
+/** The changes of a chat's folder in one scope — or `{stat}` alone (the header's chip): the counts, no patch. `ask` is
+ *  scope `pr`'s: `{pr, base}`. */
+async function changesOf(s, scope = 'uncommitted', statOnly = false, ask = {}) {
   const cwd = s.live?.cwd || s.cwd;
+  const root = cwd && existsSync(cwd) ? await gitOr(cwd, ['rev-parse', '--show-toplevel']) : null;
+  const want = scope === 'pr' && prAsked(ask.pr, root);
+  if (scope === 'pr' && !want) return { error: 'which PR? — pr=<its number or URL>' };
+  if (want && !root) return prFromGh(want, 'its folder is not a git checkout', cwd);
+  if (want && !want.mine) return prFromGh(want, `it is not in this checkout's repo`, cwd);
   if (!cwd || !existsSync(cwd)) return { error: 'its folder is not there' };
-  const root = await gitOr(cwd, ['rev-parse', '--show-toplevel']);
   if (!root) return { error: 'its folder is not in a git repository' };
   const head = await gitOr(root, ['rev-parse', '--verify', '--quiet', 'HEAD']);
   const branch = head ? await gitOr(root, ['rev-parse', '--abbrev-ref', 'HEAD'], 'HEAD') : await gitOr(root, ['symbolic-ref', '--short', 'HEAD'], 'HEAD');
@@ -2431,6 +2502,15 @@ async function changesOf(s, scope = 'uncommitted', statOnly = false) {
     const mb = base && await gitOr(root, ['merge-base', 'HEAD', base]);
     if (mb) from = mb; else base = null;
   }
+  let pr = null;
+  if (want) {
+    const refs = want.url && prStatus.get(want.url)?.refs;   // its base as GitHub says it — a stacked PR's is another PR's branch
+    pr = await prRange(root, want.n, ask.base || refs?.base);
+    if (pr.error) return pr.gh && want.url ? prFromGh(want, pr.error, cwd) : { error: pr.error };
+    Object.assign(pr, { url: want.url, headName: refs?.head ?? null, source: 'git' });
+    from = pr.from; base = pr.base;
+  }
+  const range = pr ? [from, pr.head] : [from];   // a PR is between two commits; every other scope, a commit and the tree
   let paths = [];
   if (scope === 'turn') {
     // git names the root by its real path (/private/var/… for a /var/… folder): the files are made real to match
@@ -2440,9 +2520,9 @@ async function changesOf(s, scope = 'uncommitted', statOnly = false) {
   }
   const only = paths.length ? ['--', ...paths] : [];
   const [num, names, untracked] = await Promise.all([
-    gitOut(root, ['diff', '--numstat', '--no-renames', from, ...only]),
-    gitOut(root, ['diff', '--name-status', '--no-renames', from, ...only]),
-    gitOut(root, ['ls-files', '--others', '--exclude-standard', ...only]),
+    gitOut(root, ['diff', '--numstat', '--no-renames', ...range, ...only]),
+    gitOut(root, ['diff', '--name-status', '--no-renames', ...range, ...only]),
+    pr ? '' : gitOut(root, ['ls-files', '--others', '--exclude-standard', ...only]),
   ]);
   const stat = parseNumstat(num), status = parseNameStatus(names);
   const files = Object.entries(stat).map(([path, n]) => ({ path, status: status[path] || 'M', ...n }));
@@ -2456,17 +2536,14 @@ async function changesOf(s, scope = 'uncommitted', statOnly = false) {
   files.sort((a, b) => a.path.localeCompare(b.path));
   const add = files.reduce((n, f) => n + f.add, 0), del = files.reduce((n, f) => n + f.del, 0);
   if (statOnly) return { root, branch, add, del, files: files.length };
-  const upName = head && await gitOr(root, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']);
+  const upName = head && !pr && await gitOr(root, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']);
   const counts = upName && (await gitOr(root, ['rev-list', '--left-right', '--count', '@{u}...HEAD'], '')).split(/\s+/).map(Number);
   const upstream = upName ? { name: upName, behind: counts?.[0] || 0, ahead: counts?.[1] || 0 } : null;
-  let patch = await gitOut(root, ['diff', '--no-renames', '--no-color', '--no-ext-diff', '-U3', from, ...only]);
+  let patch = await gitOut(root, ['diff', '--no-renames', '--no-color', '--no-ext-diff', '-U3', ...range, ...only]);
   for (const [path, body] of bodies) if (body) patch += addedPatch(path, body);
-  let truncated = false;
-  if (patch.length > CHANGES_MAX) {   // whole files, as many as fit
-    let kept = ''; for (const c of splitPatch(patch)) { if (kept.length + c.text.length > CHANGES_MAX) { truncated = true; break; } kept += c.text; }
-    patch = kept;
-  }
-  return { cwd, root, branch, base, scope, upstream, files, add, del, patch, truncated };
+  let truncated; ({ patch, truncated } = capPatch(patch));
+  return { cwd, root, branch, base, scope, upstream, files, add, del, patch, truncated,
+    ...pr && { pr: { n: pr.n, url: pr.url, head: pr.head, headName: pr.headName, base: pr.base, baseOid: pr.baseOid, fetched: pr.fetched, source: 'git' } } };
 }
 // The header's chip asks often (each open, each turn's end): the counts are kept a few seconds per folder.
 const changeStats = new Map();
@@ -2476,6 +2553,26 @@ async function changeStat(s) {
   const v = await changesOf(s, 'uncommitted', true).catch(e => ({ error: e.message }));
   changeStats.set(key, { at: Date.now(), v });
   return v;
+}
+// A checkout's working trees (2026-10-13), as `git worktree list --porcelain` says them: which branch each holds — the
+// changes tab's PR picker and the PR rows say where a PR's branch lives; the editor opens the tree that has it.
+function parseWorktrees(text) {
+  const out = [];
+  for (const block of String(text).split(/\n\n+/)) {
+    const w = {}; for (const l of block.split('\n')) { const i = l.indexOf(' '); if (l) w[i < 0 ? l : l.slice(0, i)] = i < 0 ? true : l.slice(i + 1); }
+    if (typeof w.worktree !== 'string') continue;
+    out.push({ path: w.worktree, head: typeof w.HEAD === 'string' ? w.HEAD : null, branch: typeof w.branch === 'string' ? w.branch.replace(/^refs\/heads\//, '') : null,
+      detached: !!w.detached, bare: !!w.bare, prunable: !!w.prunable });
+  }
+  return out;
+}
+/** The working trees of the checkout `cwd` is in: `here` its own, `main` the repo's first, `repo` its GitHub name. */
+async function worktreesFor(cwd) {
+  if (!cwd || !existsSync(cwd)) return { error: 'its folder is not there' };
+  const here = await gitOr(cwd, ['rev-parse', '--show-toplevel']); if (!here) return { error: 'its folder is not in a git repository' };
+  const list = parseWorktrees(await gitOut(here, ['worktree', 'list', '--porcelain'])).filter(w => !w.bare);
+  const own = ghRepoOf(here);
+  return { here, main: list[0]?.path || here, repo: own ? `${own.owner}/${own.name}` : null, worktrees: list };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -3443,12 +3540,19 @@ const server = createServer(async (req, res) => {
       const ids = (url.searchParams.get('ids') || '').split(',').filter(Boolean).slice(0, 40);
       return json(res, 200, { tails: Object.fromEntries(ids.map(id => [id, sessions.get(id)?.recent || []])) });
     }
-    // the changes tab (2026-10-10): the chat's folder's diff in a scope, or ?stat=1 for the header's counts
+    // the changes tab (2026-10-10): the chat's folder's diff in a scope — `pr` with `pr=<n or URL>` (and `base=`) a PR's,
+    // from origin's refs (2026-10-13) —, or ?stat=1 for the header's counts
     if (req.method === 'GET' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/changes$/))) {
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
-      const scope = ['uncommitted', 'branch', 'turn'].includes(url.searchParams.get('scope')) ? url.searchParams.get('scope') : 'uncommitted';
-      try { const r = url.searchParams.get('stat') ? await changeStat(s) : await changesOf(s, scope); return json(res, r.error ? 409 : 200, r); }
+      const scope = ['uncommitted', 'branch', 'turn', 'pr'].includes(url.searchParams.get('scope')) ? url.searchParams.get('scope') : 'uncommitted';
+      const ask = { pr: url.searchParams.get('pr'), base: BRANCH_NAME.test(url.searchParams.get('base') || '') ? url.searchParams.get('base') : null };   // scope pr's: which, and against what
+      try { const r = url.searchParams.get('stat') ? await changeStat(s) : await changesOf(s, scope, false, ask); return json(res, r.error ? 409 : 200, r); }
+      catch (e) { return json(res, 500, { error: String(e.stderr || e.message).trim().split('\n')[0] }); }
+    }
+    // the working trees of a chat's checkout and the branch each holds (2026-10-13)
+    if (req.method === 'GET' && p === '/api/worktrees') {
+      try { const r = await worktreesFor(url.searchParams.get('cwd')); return json(res, r.error ? 409 : 200, r); }
       catch (e) { return json(res, 500, { error: String(e.stderr || e.message).trim().split('\n')[0] }); }
     }
     // ⌥⌘T: a zsh in the chat's folder, in the pane's zsh tab — a holder like the claude one (`zsh -l -i` in the PTY),
@@ -3734,7 +3838,7 @@ server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTe
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, parseWorktrees, worktreesFor, prRefs, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {

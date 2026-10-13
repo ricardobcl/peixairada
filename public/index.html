@@ -1304,6 +1304,14 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #ctxm .cmk.move { background: var(--accent); border-radius: var(--r-1); rotate: 45deg; scale: .85; }
   #ctxm .cmk.replied { background: var(--idle); }
   #ctxm .cn { margin-left: auto; padding-left: 18px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  /* a row with a second line (2026-10-13): what it is, then where or why — the PR pickers */
+  #ctxm button.two, #ctxm.checks button.two { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: baseline; white-space: normal; }
+  #ctxm button.two > .ct { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #ctxm button.two .cn { padding-left: 0; font-size: var(--fs-xs); }
+  #ctxm .csub { grid-column: 1 / -1; font-size: var(--fs-xs); color: var(--muted); }
+  #ctxm button:disabled { cursor: default; color: var(--muted); } #ctxm button:disabled:hover { background: none; }
+  #ctxm button:disabled .csub { color: var(--needs); }
+  #ctxm.wide { max-width: 380px; }
   #hmenu .hmi .ic { width: 15px; height: 15px; fill: currentColor; justify-self: center; }
   #hmenu .hmi .ic.tk { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }   /* done for good's ✓, a stroke as on the card */
   #hmenu .hmi .dot { justify-self: center; }
@@ -1446,6 +1454,18 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .prrow .why.let { color: var(--muted); font-weight: 500; }   /* a round let go (2026-10-12): still said, quietly */
   .prrow:hover .t { text-decoration: underline; }
   .prrow[hidden] { display: none; }
+  /* a PR row's own controls (2026-10-13): where its branch lives, then what to do with it — after the row's link, not
+     in it (a button in a link is the link's) */
+  #prlist .prline { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+  #prlist .prline[hidden] { display: none; }
+  #prlist .prline > .prrow { flex: 1 1 auto; }
+  #prlist .prwhere { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
+  #prlist .prwhere .ic { width: 11px; height: 11px; fill: currentColor; }
+  #prlist .prwhere.here { color: var(--pr-open); } #prlist .prwhere.wt { color: var(--working); }
+  #prlist .practs { flex: none; display: inline-flex; gap: 4px; align-self: center; }
+  #prlist .pract { font: inherit; font-size: var(--fs-2xs); font-weight: 600; padding: 1px 7px; border: 1px solid transparent; border-radius: var(--r-2); background: var(--ctl); color: var(--muted); cursor: pointer; white-space: nowrap; }
+  #prlist .pract:hover { background: var(--ctl-hi); color: var(--ink); }
+  #prlist .pract.on { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); }
   #prlist .more { justify-self: start; font: inherit; font-size: var(--fs-xs); color: var(--accent); background: none; border: 0; padding: 1px 0 0 61px; cursor: pointer; }
   #prlist .more:hover { text-decoration: underline; }
   /* The list's foot (2026-10-13): an arrow up, centred on the controls' fill, folds it as the chips above do — and the
@@ -1733,6 +1753,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #chg .cseg button { font: inherit; font-size: var(--fs-sm); padding: 2px 10px; border: 0; border-radius: var(--r-2); background: none; color: var(--muted); cursor: pointer; }
   #chg .cseg button.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .3); }
   #chg .sum { color: var(--muted); white-space: nowrap; } #chg .r2 .cbtn { margin-left: auto; }
+  #chg .cseg button.prsc { white-space: nowrap; }   /* PR #n ▾ (2026-10-13): the scope that is a PR, its picker behind the ▾ */
+  #chg .csrc { color: var(--muted); font-size: var(--fs-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  #chg .csrc b { color: var(--ink); font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--fs-xs); }
   #chg .a { color: var(--pr-open); } #chg .d { color: var(--pr-closed); }
   #chg .sum .a, #chg .sum .d, #chg em .a, #chg em .d { font: 600 var(--fs-sm) ui-monospace, monospace; }
   #chg .cbody { display: grid; grid-template-columns: minmax(150px, 230px) minmax(0, 1fr); min-height: 0; }
@@ -5921,6 +5944,31 @@ const toolName = n => {
   const UNLINK_TIP = '⌥-click: take it off this chat — naming it again yourself brings it back';
   const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" href="${/^https:\/\//.test(pr.url) ? esc(pr.url) : '#'}" target="_blank" rel="noopener"
       title="${esc(`${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}${pr.turn ? `\n${turnTip(pr)}` : ''}\n${UNLINK_TIP}`)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span>${pr.turn?.you ? `<span class="why">your move · ${esc(pr.turn.why)}</span>` : pr.turn?.waived ? `<span class="why let">let go · ${esc(pr.turn.why)}</span>` : ''}${prCk(pr) ? `<span class="ckw" data-checks="${prCk(pr)}">${ckHtml(pr, true)}${{ pass: 'passed', fail: 'failing', pending: 'running' }[prCk(pr)]}</span>` : ''}<span class="meta">${rel(pr.lastAt)}</span></a>`;
+  // Where each of a chat's PR branches is checked out (2026-10-13): the checkout's working trees, asked when the PR rows
+  // or the changes tab's picker want them and kept a while (GET /api/worktrees) — only for a chat with PRs.
+  const wtData = new Map();   // cwd → { at, v, asking }
+  function wtOf(cwd, then) {
+    if (!cwd) return null;
+    const hit = wtData.get(cwd);
+    if (!hit || (!hit.asking && Date.now() - hit.at > 10_000)) {
+      wtData.set(cwd, { ...hit, asking: true, at: hit?.at || 0 });
+      api('GET', `/api/worktrees?cwd=${encodeURIComponent(cwd)}`).catch(e => ({ error: e.message }))
+        .then(v => { const was = JSON.stringify(wtData.get(cwd)?.v ?? null); wtData.set(cwd, { at: Date.now(), v }); if (was !== JSON.stringify(v)) then?.(); });
+    }
+    return hit?.v || null;
+  }
+  /** Where a PR's head is: in this folder, another working tree of the checkout, nowhere here, or in another repo than
+   *  the checkout's — by the branch's name, or for a fork's PR (whose name means nothing here) a tree detached at it. */
+  function whereOf(s, pr) {
+    const w = wtOf(s.cwd), r = pr.refs; if (!w || w.error || !pr.number) return null;
+    if (!w.repo || !pr.url.startsWith(`https://github.com/${w.repo.toLowerCase()}/`)) return { k: 'away', t: 'not this folder’s repo' };
+    if (!r) return null;
+    const t = r.fork ? w.worktrees.find(x => x.detached && x.head === r.headOid) : w.worktrees.find(x => x.branch === r.head);
+    if (!t) return { k: 'none', t: r.fork ? 'a fork’s, not checked out' : 'not checked out' };
+    return { k: t.path === w.here ? 'here' : 'wt', t: t.path === w.here ? 'this folder' : t.path === w.main ? 'the repo’s folder' : `worktree ${t.path.split('/').pop()}`, path: t.path };
+  }
+  /** A PR's row and its own controls beside it (2026-10-13): where its branch lives, Diff. */
+  const prLine = (s, pr, hide) => { const w = whereOf(s, pr); return `<div class="prline"${hide ? ' hidden' : ''}>${prRow(pr, hide)}${w ? `<span class="prwhere ${w.k}"${w.path ? ` title="${esc(w.path)}"` : ''}>${ICON.branch}${esc(w.t)}</span>` : ''}${pr.number ? `<span class="practs"><button type="button" class="pract" data-pract="diff" data-url="${esc(pr.url)}" title="Its diff in the changes tab, as GitHub shows it — read from origin, nothing checked out">Diff</button></span>` : ''}</div>`; };
   /** A ticket's row under the header, after the PRs' (2026-10-08): its status, key, summary, and whose it is. */
   const ticketRow = (t, hide) => `<a class="prrow tk"${hide ? ' hidden' : ''} data-cat="${esc(t.cat)}" href="${/^https?:\/\//.test(t.url) ? esc(t.url) : '#'}" target="_blank" rel="noopener" title="${esc(`${t.url}\n${ticketTip(t)}`)}"><span class="st">${esc(t.status || t.cat)}</span><span class="num">${esc(t.key)}</span><span class="t">${esc(t.summary || t.key)}</span><span class="who${t.assignee?.me ? ' me' : ''}">${t.assignee ? esc(t.assignee.me ? 'yours' : t.assignee.name) : 'unassigned'}</span></a>`;
   // Claude Code's own /focus — "just your prompt, summary, and response", every step in between hidden — on the
@@ -5999,7 +6047,8 @@ const toolName = n => {
     if (menuHtml !== drawn.menu) { menu.innerHTML = drawn.menu = menuHtml; fillAges(menu); phaseAnims(); if (menu.open) placeMenu(); }   // the state dot's pulse, rebuilt with the menu — and its age, which the markup leaves out
     if (state.prsFor !== s.id) { state.prsFor = s.id; state.prsAll = false; }   // "more" is per chat, not sticky
     const pl = $('#prlist'); pl.hidden = (!prs.length && !tks.length) || !prsOpen;   // the rows are there folded too — ⌥⌘G and the harness read them
-    const rows = [...prs.map(pr => hide => prRow(pr, hide)), ...tks.map(t => hide => ticketRow(t, hide))];
+    if (prs.length) wtOf(s.cwd, () => renderHead(state.sessions.get(s.id)));   // where their branches are, for the rows
+    const rows = [...prs.map(pr => hide => prLine(s, pr, hide)), ...tks.map(t => hide => ticketRow(t, hide))];
     // the list's foot (2026-10-13): "… n more" on the left, and in the middle an arrow up that folds the list as the
     // chips do — where the eye ends up, under the rows
     const prsHtml = rows.map((row, i) => row(i >= PR_ROWS && !state.prsAll)).join('')
@@ -6214,9 +6263,10 @@ const toolName = n => {
   });
   // The menu's rows at a point — or ending at it, `above` (a control at the window's foot) — and from what (`m._from`):
   // a row with `on` is a choice, ticked when on; `mark` and `n` a mark before it and a count after.
-  const ctxRow = (r, i) => r.hr ? '<hr>' : `<button type="button" data-i="${i}"${r.warn ? ' class="warn"' : ''}${'on' in r ? ` role="menuitemradio" aria-checked="${!!r.on}"` : ''}${r.tip ? ` title="${esc(r.tip)}"` : ''}>${r.mark ? `<i class="cmk ${r.mark}"></i>` : ''}${esc(r.t)}${r.n != null ? `<span class="cn">${r.n}</span>` : ''}</button>`;
+  // `sub` a second line — where a PR's branch is, why a row is `off` (disabled) — 2026-10-13
+  const ctxRow = (r, i) => r.hr ? '<hr>' : `<button type="button" data-i="${i}"${r.warn || r.sub ? ` class="${r.warn ? 'warn' : ''}${r.warn && r.sub ? ' ' : ''}${r.sub ? 'two' : ''}"` : ''}${r.off ? ' disabled' : ''}${'on' in r ? ` role="menuitemradio" aria-checked="${!!r.on}"` : ''}${r.tip ? ` title="${esc(r.tip)}"` : ''}>${r.mark ? `<i class="cmk ${r.mark}"></i>` : ''}${r.sub ? `<span class="ct">${esc(r.t)}</span>` : esc(r.t)}${r.n != null ? `<span class="cn">${esc(String(r.n))}</span>` : ''}${r.sub ? `<span class="csub">${esc(r.sub)}</span>` : ''}</button>`;
   function ctxShow(rows, x, y, from, above = false) {
-    const m = $('#ctxm'); m.innerHTML = rows.map(ctxRow).join(''); m.classList.toggle('checks', rows.some(r => 'on' in r));
+    const m = $('#ctxm'); m.innerHTML = rows.map(ctxRow).join(''); m.classList.toggle('checks', rows.some(r => 'on' in r)); m.classList.toggle('wide', rows.some(r => r.sub));
     m._rows = rows; m._from = from; if (!m.open) m.show();
     const w = m.offsetWidth, h = m.offsetHeight;
     m.style.left = `${Math.max(8, Math.min(x, innerWidth - w - 8))}px`; m.style.top = `${Math.max(8, Math.min(above ? y - h : y, innerHeight - h - 8))}px`;
@@ -6286,6 +6336,12 @@ const toolName = n => {
     const s = state.sessions.get(state.current); if (!s?.drift) return;
     s.drift = null; renderHead(s); renderBoard();
     api('POST', `/api/sessions/${s.id}/drift`).catch(err => note($('#shead'), `Could not set the branch's move aside: ${err.message}`, true));
+  });
+  $('#prlist').addEventListener('click', e => {   // a PR row's own controls (2026-10-13)
+    const b = e.target.closest('.pract'); if (!b) return;
+    e.preventDefault(); e.stopPropagation();
+    const s = state.sessions.get(state.current); if (!s) return;
+    if (b.dataset.pract === 'diff') openPrDiff(s, b.dataset.url);
   });
   const TITLE_MIN = 170;   // the title's own flex-basis (.shead h2), below which the row wraps
   const TITLE_SHARE = .4, CHIPS_MAX = 2;   // the title keeps 40 % of the row at least, and the row two chips (2026-10-12)
@@ -7340,7 +7396,23 @@ const toolName = n => {
   // Commit… and Push type the command into the chat's zsh, unrun; a note on a line is a prompt typed into its claude.
   // One element, moved into the half that shows the tab as the transcript is (placeChanges).
   const changesOpen = new Set();   // chats with the tab, while the page lives
-  const changes = { id: null, scope: prefs.changesScope || 'turn', data: null, at: 0, upto: null, asking: 0, note: null };
+  const changes = { id: null, scope: prefs.changesScope || 'turn', data: null, at: 0, upto: null, asking: 0, note: null, pr: new Map() };   // pr: chat → the PR its PR scope shows
+  // The PR scope (2026-10-13): one of the chat's PRs as GitHub shows it — read from origin's refs into the object store,
+  // or GitHub's own diff when the folder is not that repo's checkout — whatever branch the folder has out.
+  const scopePrs = s => (s?.prs || []).filter(p => p.number);   // a GitHub PR: a pr-link elsewhere has no number
+  const prOfScope = s => { const l = scopePrs(s), u = changes.pr.get(s.id); return l.find(p => p.url === u) || l.find(p => p.state === 'open' || p.state === 'draft') || l[0] || null; };
+  const scopeOf = s => changes.scope === 'pr' && !prOfScope(s) ? 'uncommitted' : changes.scope;
+  /** The PR scope on this PR — the tab opened or brought forward. */
+  function openPrDiff(s, url) {
+    changes.pr.set(s.id, url); changes.scope = prefs.changesScope = 'pr'; savePrefs(); changes.sel = null;
+    hotDiff();
+  }
+  /** The PR scope's picker: the chat's PRs, each with its branch and where it is checked out. */
+  function prScopeMenu(s, at) {
+    const r = at.getBoundingClientRect(), cur = changes.scope === 'pr' && prOfScope(s);
+    ctxShow(scopePrs(s).map(p => ({ t: `#${p.number} ${p.title || p.label}`, n: p.refs?.head || '', sub: whereOf(s, p)?.t || (p.refs ? '' : 'its branch not known yet'), on: p === cur,
+      fn: () => { changes.pr.set(s.id, p.url); changes.scope = prefs.changesScope = 'pr'; savePrefs(); changes.sel = null; loadChanges(s); } })), r.left, r.bottom + 4, 'prscope');
+  }
   const diffStats = new Map();     // chat id → { add, del, files, at } — the header's chip; asked every few seconds at most
   const DIFF_LANG = { js: 'javascript', mjs: 'javascript', cjs: 'javascript', jsx: 'javascript', ts: 'typescript', tsx: 'typescript', css: 'css', scss: 'scss', html: 'xml', xml: 'xml', svg: 'xml', md: 'markdown', json: 'json', py: 'python', go: 'go', rb: 'ruby', rs: 'rust', swift: 'swift', sh: 'bash', zsh: 'bash', yml: 'yaml', yaml: 'yaml', sql: 'sql', java: 'java', kt: 'kotlin', c: 'c', h: 'c', cpp: 'cpp', php: 'php' };
   function wantDiffStat(s) {
@@ -7367,10 +7439,11 @@ const toolName = n => {
     if (changes.id !== s.id || !changes.at || (changes.upto !== s.lastActivity && Date.now() - changes.at > 1500)) loadChanges(s);
   }
   async function loadChanges(s) {
-    const n = ++changes.asking, scope = changes.scope;
+    const n = ++changes.asking, scope = scopeOf(s), q = scope === 'pr' ? `pr&pr=${encodeURIComponent(prOfScope(s).url)}` : scope;
     if (changes.id !== s.id) { changes.id = s.id; changes.data = null; changes.note = null; renderChanges(s); }
     changes.at = Date.now(); changes.upto = s.lastActivity;
-    let d; try { d = await api('GET', `/api/sessions/${s.id}/changes?scope=${scope}`); } catch (e) { d = { error: e.message }; }
+    if (scope === 'pr') wtOf(s.cwd, () => state.current === s.id && renderChanges(s));   // the picker's "where"
+    let d; try { d = await api('GET', `/api/sessions/${s.id}/changes?scope=${q}`); } catch (e) { d = { error: e.message }; }
     if (n !== changes.asking || state.current !== s.id) return;
     changes.data = d;
     if (!d.error && scope === 'uncommitted') { diffStats.set(s.id, { add: d.add, del: d.del, files: d.files.length, at: Date.now() }); renderHead(s); }
@@ -7392,11 +7465,12 @@ const toolName = n => {
   }
   const hlLine = (text, lang) => { try { return lang ? hljs.highlight(text, { language: lang, ignoreIllegals: true }).value : esc(text); } catch { return esc(text); } };
   function renderChanges(s) {
-    const el = $('#chg'), d = changes.data, sc = changes.scope;
-    const seg = `<span class="cseg">${[['turn', 'this turn'], ['uncommitted', 'uncommitted'], ['branch', 'branch vs base']].map(([k, w]) => `<button data-scope="${k}" class="${sc === k ? 'on' : ''}">${w}</button>`).join('')}</span>`;
+    const el = $('#chg'), d = changes.data, sc = scopeOf(s), spr = prOfScope(s);
+    const seg = `<span class="cseg">${[['turn', 'this turn'], ['uncommitted', 'uncommitted'], ['branch', 'branch vs base']].map(([k, w]) => `<button data-scope="${k}" class="${sc === k ? 'on' : ''}">${w}</button>`).join('')}${
+      spr ? `<button data-scope="pr" class="prsc${sc === 'pr' ? ' on' : ''}" aria-haspopup="${scopePrs(s).length > 1 ? 'menu' : 'false'}" title="A PR's diff as GitHub shows it, read from origin — nothing checked out${scopePrs(s).length > 1 ? ' · click for the chat’s other PRs' : ''}">PR #${spr.number}${scopePrs(s).length > 1 ? ' ▾' : ''}</button>` : ''}</span>`;
     if (!d || d.error) { el.innerHTML = `<div class="cbar"><div class="r2">${seg}<button class="cbtn" data-act="reload" title="Read it again">↻</button></div></div><div class="cempty">${d ? esc(d.error) : 'reading git…'}</div>`; return; }
     const up = d.upstream ? `${d.upstream.ahead ? `↑${d.upstream.ahead}` : ''}${d.upstream.behind ? ` ↓${d.upstream.behind}` : ''}${!d.upstream.ahead && !d.upstream.behind ? 'up to date' : ''} · ${esc(d.upstream.name)}` : 'no upstream';
-    const pr = (s.prs || []).find(p => p.state === 'open' || p.state === 'draft') || null;
+    const pr = (s.prs || []).find(p => p.state === 'open' || p.state === 'draft') || null, dp = d.pr;
     const chunks = new Map(splitDiff(d.patch).map(c => [c.path, c.text]));
     const files = d.files.map(f => `<button class="cf${f.path === changes.sel ? ' on' : ''}" data-path="${esc(f.path)}" title="${esc(f.path)}"><b class="${f.status === 'A' ? 'a' : f.status === 'D' ? 'd' : ''}">${esc(f.status)}</b><span class="nm"><span class="dir">${esc(f.path.replace(/[^/]*$/, ''))}</span>${esc(f.path.split('/').pop())}</span><em>${f.binary ? 'bin' : `<span class="a">+${f.add}</span> <span class="d">−${f.del}</span>`}</em></button>`).join('');
     const body = d.files.map(f => {
@@ -7407,7 +7481,15 @@ const toolName = n => {
         : ls.map(x => x.t === 'hunk' ? `<div class="dl hunk"><span class="na"></span><span class="nb"></span><span class="sg"></span><code>${esc(x.text)}</code></div>`
           : `<div class="dl ${x.t}" data-line="${x.b ?? x.a ?? ''}"><span class="na">${x.a ?? ''}</span><span class="nb">${x.b ?? ''}</span><span class="sg">${x.t === 'add' ? '+' : x.t === 'del' ? '−' : ''}${x.t !== 'meta' ? '<button class="dlp" title="A note on this line — typed into its Claude as a prompt">+</button>' : ''}</span><code>${x.t === 'meta' ? esc(x.text) : hlLine(x.text, lang)}</code></div>`).join('')}</section>`;
     }).join('');
-    el.innerHTML = `<div class="cbar">
+    // a PR's: its head → its base, where it was read from, and the PR itself — the folder's Commit… and Push are not its
+    const src = !dp ? '' : dp.source === 'gh' ? `from GitHub (gh pr diff) — ${esc(dp.why)}` : `as pushed, at <b>${esc(String(dp.head).slice(0, 7))}</b> · read from origin, nothing checked out`;
+    el.innerHTML = dp ? `<div class="cbar">
+      <div class="r1"><span class="br">${ICON.branch}${esc(dp.headName || `#${dp.n}`)}</span>${d.base ? `<span class="arrow">→</span><span class="br base">${esc(d.base)}</span>` : ''}
+        <span class="acts"><button class="cbtn pr" data-act="pr" title="${esc(dp.url || '')}">#${dp.n} ↗</button></span></div>
+      <div class="r2">${seg}<span class="sum"><span class="a">+${d.add}</span> <span class="d">−${d.del}</span> in ${d.files.length} file${d.files.length === 1 ? '' : 's'}</span><button class="cbtn" data-act="reload" title="Read it again">↻</button></div>
+      <div class="r3 csrc" title="${esc(src.replace(/<[^>]+>/g, ''))}">${src}</div></div>
+      ${d.files.length ? `<div class="cbody"><div class="cfiles">${files}</div><div class="cdiff">${body}${d.truncated ? '<div class="cempty sm">…the rest is too long to show here</div>' : ''}</div></div>`
+        : '<div class="cempty">nothing different from its base</div>'}` : `<div class="cbar">
       <div class="r1"><span class="br">${ICON.branch}${esc(d.branch)}</span>${d.base ? `<span class="arrow">→</span><span class="br base">${esc(d.base)}</span>` : ''}<span class="up">${up}</span>
         <span class="acts"><button class="cbtn" data-act="commit" title="Types git commit -v into this chat's ${shName()}, not run — ⏎ there runs it">Commit…</button><button class="cbtn" data-act="push" title="Types git push into this chat's ${shName()}, not run">Push</button>${pr ? `<button class="cbtn pr" data-act="pr" title="${esc(pr.url)}">${esc(pr.label.replace(/^.*?#/, '#'))} ↗</button>` : `<button class="cbtn" data-act="newpr" title="Types gh pr create --fill into this chat's ${shName()}, not run">PR…</button>`}</span></div>
       <div class="r2">${seg}<span class="sum"><span class="a">+${d.add}</span> <span class="d">−${d.del}</span> in ${d.files.length} file${d.files.length === 1 ? '' : 's'}</span><button class="cbtn" data-act="reload" title="Read it again">↻</button></div></div>
@@ -7440,9 +7522,11 @@ const toolName = n => {
   $('#chg').addEventListener('click', e => {
     const s = state.sessions.get(state.current); if (!s) return;
     const sc = e.target.closest('[data-scope]');
+    if (sc?.dataset.scope === 'pr' && scopePrs(s).length > 1) return prScopeMenu(s, sc);   // which PR: the picker
     if (sc) { changes.scope = prefs.changesScope = sc.dataset.scope; savePrefs(); changes.sel = null; return loadChanges(s); }
     const act = e.target.closest('[data-act]')?.dataset.act;
     if (act === 'reload') return loadChanges(s);
+    if (act === 'pr' && changes.data?.pr?.url) return showPr(changes.data.pr.url);
     if (act === 'commit') return typeInShell(s, 'git commit -v', e.target);
     if (act === 'push') return typeInShell(s, 'git push', e.target);
     if (act === 'newpr') return typeInShell(s, 'gh pr create --fill', e.target);
@@ -7461,7 +7545,8 @@ const toolName = n => {
   });
   function sendNote(s, box) {
     const text = box.querySelector('textarea').value.trim(); if (!text) return;
-    sendToClaude(s, `${box.dataset.path}:${box.dataset.line} — ${text}`, box.querySelector('[data-note="send"]'));
+    const dp = changes.data?.pr;   // a line of a PR's diff: Claude is told which PR — the folder may have another branch out
+    sendToClaude(s, `${dp ? `PR #${dp.n} ` : ''}${box.dataset.path}:${box.dataset.line} — ${text}`, box.querySelector('[data-note="send"]'));
     box.remove();
   }
   $('#chg').addEventListener('keydown', e => {

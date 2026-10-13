@@ -62,7 +62,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `scripts/perf.mjs`, `lib/animcheck.mjs` | The board's CPU in WebKit on a made-up busy board, and what keeps WebKit's frames on the main thread (see Verifying) |
 | `scripts/webkit.mjs`, `scripts/webkit.swift` | The live board in a `WKWebView` (the app's engine), the window captured as its compositor drew it |
 | `scripts/fakeclaude.mjs`, `scripts/fixture.mjs` | A stand-in CLI for tests (`FAKE_TUI=fullscreen`: drawn as Claude Code's `tui: fullscreen`; `FAKE_SCREEN`: a screen given); a `~/.claude` look-alike |
-| `scripts/fakegh.mjs`, `fakejira.mjs`, `fakecode.mjs`, `fakepmset.mjs`, `fakecaffeinate.mjs`, `faketask.mjs`, `fakebrew.mjs` | `gh` (`api graphql` from `FAKEGH_PRS`, `FAKEGH_VIEWER` — a PR it does not name is a NOT_FOUND —, and `repo clone` offline), Jira's three calls (`startFakeJira`), `code serve-web`, `pmset`, `caffeinate`, `task`, `brew install --cask zed` — what every test server runs instead of the real ones; each file's head says its knobs |
+| `scripts/fakegh.mjs`, `fakejira.mjs`, `fakecode.mjs`, `fakepmset.mjs`, `fakecaffeinate.mjs`, `faketask.mjs`, `fakebrew.mjs` | `gh` (`api graphql` from `FAKEGH_PRS`, `FAKEGH_VIEWER` — a PR it does not name is a NOT_FOUND —, `repo clone` offline, `pr diff` from an entry's `diff`), Jira's three calls (`startFakeJira`), `code serve-web`, `pmset`, `caffeinate`, `task`, `brew install --cask zed` — what every test server runs instead of the real ones; each file's head says its knobs |
 | `scripts/readme-shots.mjs` | The README's screenshots from a made-up board → `docs/shots/`, WebP — never shoot the real one |
 | `scripts/check.sh`, `scripts/check-page.mjs`, `scripts/map.mjs` | Static checks; the section maps |
 | `test/` | `node:test` files (`npm test`) |
@@ -135,7 +135,8 @@ for `$HOME`'s home and the account's.
   clone and Zed's install. → `test/awake.test.mjs`, `keep-awake.mjs`.
 * **Every CLI the server shells out to goes through `findBin()`** — `git` too — the app's server has a bare PATH;
   `<NAME>_BIN` overrides; a file it can run, looked for again a minute after none was found. The login agent's PATH
-  is the installing shell's, then the system's. **The network calls**: `gh` (PRs), the usage endpoint (one ask at a
+  is the installing shell's, then the system's. **The network calls**: `gh` (PRs, a PR's diff), `git` to a checkout's
+  origin when a PR's diff is asked (`GIT_TERMINAL_PROMPT=0`), the usage endpoint (one ask at a
   time, kept a minute, a failure half a minute — `planUsage`), Jira once the setup names a site (`jiraAsk`; its token
   never reaches the page or the setup file — `GET /api/jira` says only where it is), VS Code's update service, and
   Homebrew when Zed is picked and missing.
@@ -588,7 +589,8 @@ for `$HOME`'s home and the account's.
   has the keyboard (`markQsel()`). → `chat-filter.mjs`.
 * **A right-click is a menu where ⌥-click, a double-click or a drag did alone** (2026-10-12; `#ctxm`, `ctxRows`,
   `ctxShow`): a card, a PR chip, the colour square — not a box, a terminal or the transcript's words, which keep the
-  system's. The launcher has the open chat's rows too. → `context-menu.mjs`.
+  system's. The launcher has the open chat's rows too. A row may carry `sub` (a second line, `.two`) and `off`
+  (disabled, its `sub` the reason). → `context-menu.mjs`.
 * **⌥⌘L is the launcher** (2026-10-10; `#pick` in mode `launch`): `launchRows` gives each section's best (chats,
   projects, PRs `allPrs`, tickets `allTickets`, `actionRows`, `toggleRows`), all under a prefix (`>` `#` `@` `!`); a
   section's head is `.pkhd`, not a `.pkrow`. Empty, it is `LAUNCH_MENU` (→/⏎ into a row with ›, ←/⌫ back,
@@ -751,10 +753,20 @@ for `$HOME`'s home and the account's.
   `#chgBtn`): a tab `changes` while the chat is in `changesOpen`, one element `#chg` moved into its half
   (`placeChanges`, from `syncTerm`). `GET /api/sessions/:id/changes?scope=` — `uncommitted` (untracked as added),
   `branch` (against the merge base with origin's default branch), `turn` (the uncommitted diff of the files the last
-  turn edited, `s.turnFiles`) — and `?stat=1` for the chip (kept 4 s per folder, `changeStat`); `prefs.changesScope`.
-  Re-read when the chat moved on or by ↻; nothing is polled. **Commit…, Push and PR… type the command into the chat's
+  turn edited, `s.turnFiles`) — and `?stat=1` for the chip (kept 4 s per folder, `changeStat`);
+  `prefs.changesScope`. Re-read when the chat moved on or by ↻; nothing is polled. **Commit…, Push and PR… type the command into the chat's
   zsh, unrun** (`typeInShell`); a note on a line is a prompt typed into the drawer's claude (`sendToClaude`), else
   copied. → `test/changes.test.mjs`, `changes-tab.mjs`.
+* **A PR's diff never touches the folder** (2026-10-13; scope `pr`, `&pr=<n or URL>&base=`; `prRange`): `ls-remote`
+  for `refs/pull/<n>/head` and the PR's base (`baseRefName`, else origin's default), then a fetch of what is missing
+  **into the object store alone** — `--refmap=`, `--no-write-fetch-head`: no ref, no FETCH_HEAD, no checkout — and
+  `merge-base..head`. What git cannot (no checkout of that repo, origin unreachable) is `gh pr diff` (`prFromGh`,
+  `patchStat`; `pr.source`, `pr.why`). The page: `PR #n ▾` in `.cseg` (`scopePrs`, `prOfScope`, `changes.pr` per
+  chat; the picker `prScopeMenu` through `ctxShow`), a `.csrc` line saying where it was read, no Commit… or Push, a
+  note prefixed `PR #n`. **Each `#prlist` row is a `.prline`** — the `.prrow` link, where its branch lives
+  (`.prwhere`, `whereOf` over `GET /api/worktrees?cwd=` — `worktreesFor`, `parseWorktrees`; `wtOf` keeps it 10 s),
+  then its buttons (`.pract`; Diff → `openPrDiff`). The PR's branches are `pr.refs` (`prRefs` from `PR_FIELDS`'
+  `headRefName baseRefName baseRefOid isCrossRepository headRepository`). → `test/changes.test.mjs`, `changes-pr.mjs`.
 * **An MCP tool is named by its server and tool** (`toolName`: *Slack: search users*) in the rows, a run's summary,
   the card's live line and the tiles; the raw name is the row's tooltip.
 * **A tool call wears its state** (`toolRes`, `toolMark`): `.tst[data-tu]` — `run` (turning while `#log.working`),

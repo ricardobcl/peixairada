@@ -5,10 +5,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { addedPatch, changesOf, fold, newSession, parseNameStatus, parseNumstat, splitPatch } from '../server.mjs';
+import { fileURLToPath } from 'node:url';
+import { addedPatch, changesOf, fold, newSession, parseNameStatus, parseNumstat, parseWorktrees, patchStat, prRefs, setPrInfo, splitPatch, worktreesFor } from '../server.mjs';
 import { tmpDir } from '../lib/testserver.mjs';
 
 test('the parsers: numstat, name-status, a patch split by file, an untracked file as added', () => {
@@ -67,4 +68,81 @@ test('a chat\'s changes in its three scopes, from a real repo', async () => {
   assert.match((await changesOf(nowhere)).error, /not there/);
   const plain = newSession(randomUUID(), null); plain.cwd = tmpDir('peix-nogit-');
   assert.match((await changesOf(plain)).error, /not in a git repository/);
+});
+
+test('a PR\'s changes from origin\'s refs, the checkout and its refs untouched (2026-10-13)', async () => {
+  const dir = tmpDir('peix-chgpr-'), origin = join(dir, 'origin.git'), work = join(dir, 'work'), repo = join(dir, 'widgets');
+  const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
+  const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env }).toString().trim();
+  execFileSync('git', ['init', '-q', '--bare', '-b', 'main', origin]);
+  execFileSync('git', ['init', '-q', '-b', 'main', work]);
+  writeFileSync(join(work, 'cart.js'), 'export const total = items => items.length;\n'); writeFileSync(join(work, 'README.md'), '# widgets\n');
+  git(work, 'add', '.'); git(work, 'commit', '-q', '-m', 'base'); git(work, 'push', '-q', origin, 'main');
+  // PR #7 lives on origin as GitHub keeps one — refs/pull/7/head, no branch of it here — and main moved on after it left
+  git(work, 'checkout', '-q', '-b', 'tax');
+  writeFileSync(join(work, 'cart.js'), 'export const total = (items, tax = 0) => items.length * (1 + tax);\n'); writeFileSync(join(work, 'tax.js'), 'export const VAT = 0.23;\n');
+  git(work, 'add', '.'); git(work, 'commit', '-q', '-m', 'tax'); git(work, 'push', '-q', origin, 'tax:refs/pull/7/head');
+  git(work, 'checkout', '-q', 'main'); writeFileSync(join(work, 'README.md'), '# widgets\n\nlater on main\n'); git(work, 'commit', '-qam', 'later'); git(work, 'push', '-q', origin, 'main');
+
+  // the chat's checkout: GitHub's address for origin (read as acme/widgets), another branch, an edit not committed
+  execFileSync('git', ['clone', '-q', '--no-local', '--config', `url.${origin}.insteadOf=https://github.com/acme/widgets`, 'https://github.com/acme/widgets', repo], { stdio: 'pipe', env });
+  git(repo, 'checkout', '-q', '-b', 'other'); writeFileSync(join(repo, 'README.md'), '# widgets\n\nmine, not committed\n');
+  const before = { head: git(repo, 'rev-parse', 'HEAD'), branch: git(repo, 'branch', '--show-current'), status: git(repo, 'status', '--porcelain'), refs: git(repo, 'for-each-ref') };
+  const s = newSession(randomUUID(), null); s.cwd = repo;
+
+  const pr = await changesOf(s, 'pr', false, { pr: 'https://github.com/acme/widgets/pull/7' });
+  assert.equal(pr.error, undefined);
+  assert.deepEqual(pr.files.map(f => [f.path, f.status, f.add, f.del]), [['cart.js', 'M', 1, 1], ['tax.js', 'A', 1, 0]], 'the PR’s own two files — not main’s later README, nor the checkout’s edit');
+  assert.equal(pr.base, 'main'); assert.equal(pr.branch, 'other', 'the checkout’s branch, as it was');
+  assert.equal(pr.pr.n, 7); assert.equal(pr.pr.fetched, true); assert.equal(pr.upstream, null);
+  assert.match(pr.patch, /^\+export const VAT = 0\.23;$/m);
+  assert.deepEqual({ head: git(repo, 'rev-parse', 'HEAD'), branch: git(repo, 'branch', '--show-current'), status: git(repo, 'status', '--porcelain'), refs: git(repo, 'for-each-ref') }, before, 'HEAD, the tree and every ref untouched');
+  assert.equal(existsSync(join(repo, '.git', 'FETCH_HEAD')), false, 'no FETCH_HEAD written');
+
+  const again = await changesOf(s, 'pr', false, { pr: '#7' });
+  assert.equal(again.pr.fetched, false, 'what is here already is not fetched again');
+  assert.deepEqual(again.files.map(f => f.path), ['cart.js', 'tax.js']);
+  assert.match((await changesOf(s, 'pr', false, {})).error, /which PR/);
+
+  // what git cannot read comes from GitHub: a PR of another repo, one origin has not got — gh pr diff (the fake)
+  const prs = join(dir, 'prs.json');
+  writeFileSync(prs, JSON.stringify({ 'acme/gadgets#7': { state: 'OPEN', title: 'Gadgets', diff: 'diff --git a/g.js b/g.js\nnew file mode 100644\n--- /dev/null\n+++ b/g.js\n@@ -0,0 +1,2 @@\n+one\n+two\n' } }));
+  process.env.GH_BIN = fileURLToPath(new URL('../scripts/fakegh.mjs', import.meta.url)); process.env.FAKEGH_PRS = prs;
+  const other = await changesOf(s, 'pr', false, { pr: 'https://github.com/acme/gadgets/pull/7' });
+  assert.deepEqual([other.pr.source, other.pr.why, other.files.map(f => [f.path, f.status, f.add, f.del])], ['gh', 'it is not in this checkout\'s repo', [['g.js', 'A', 2, 0]]]);
+  assert.equal(other.branch, null, 'nothing of the checkout read');
+  assert.match((await changesOf(s, 'pr', false, { pr: '8' })).error, /^origin has no PR #8 — and gh pr diff: could not find pull request diff/);
+  const nowhere = newSession(randomUUID(), null); nowhere.cwd = join(dir, 'gone');
+  assert.equal((await changesOf(nowhere, 'pr', false, { pr: 'https://github.com/acme/gadgets/pull/7' })).pr.why, 'its folder is not a git checkout');
+
+  // the base is the PR's own as GitHub says it (a stacked PR's is another branch), known once gh answered for it
+  git(work, 'push', '-q', origin, 'tax:refs/heads/tax'); git(work, 'checkout', '-q', '-b', 'rounding', 'tax');
+  writeFileSync(join(work, 'tax.js'), 'export const VAT = 0.23;\nexport const round2 = x => Math.round(x * 100) / 100;\n');
+  git(work, 'commit', '-qam', 'rounding'); git(work, 'push', '-q', origin, 'rounding:refs/pull/9/head');
+  const url9 = 'https://github.com/acme/widgets/pull/9';
+  assert.deepEqual((await changesOf(s, 'pr', false, { pr: url9 })).files.map(f => f.path), ['cart.js', 'tax.js'], 'against main: the tax PR’s commit too');
+  setPrInfo(url9, 'open', 'Rounding', null, Date.now(), undefined, false, null, null, prRefs({ headRefName: 'rounding', baseRefName: 'tax', headRefOid: 'x' }));
+  const stacked = await changesOf(s, 'pr', false, { pr: url9 });
+  assert.deepEqual([stacked.base, stacked.pr.headName, stacked.files.map(f => [f.path, f.add, f.del])], ['tax', 'rounding', [['tax.js', 1, 0]]], 'against its base: its own commit alone');
+});
+
+test('a patch counted by file, as numstat would (gh pr diff\'s, 2026-10-13)', () => {
+  assert.deepEqual(patchStat('diff --git a/x b/x\nindex 1..2\n--- a/x\n+++ b/x\n@@ -1,2 +1,2 @@\n--- a line that was a rule\n+++ and one that is\n ctx\n'), { status: 'M', add: 1, del: 1, binary: false });
+  assert.deepEqual(patchStat('diff --git a/n b/n\nnew file mode 100644\n--- /dev/null\n+++ b/n\n@@ -0,0 +1 @@\n+n\n'), { status: 'A', add: 1, del: 0, binary: false });
+  assert.deepEqual(patchStat('diff --git a/i.png b/i.png\ndeleted file mode 100644\nBinary files a/i.png and /dev/null differ\n'), { status: 'D', add: 0, del: 0, binary: true });
+});
+
+test('a checkout\'s working trees and the branch each holds (2026-10-13)', async () => {
+  assert.deepEqual(parseWorktrees('worktree /r\nHEAD aaa\nbranch refs/heads/main\n\nworktree /r/.claude/worktrees/x\nHEAD bbb\ndetached\n\nworktree /gone\nHEAD ccc\nbranch refs/heads/feat/y\nprunable gitdir file points to non-existent location\n'), [
+    { path: '/r', head: 'aaa', branch: 'main', detached: false, bare: false, prunable: false },
+    { path: '/r/.claude/worktrees/x', head: 'bbb', branch: null, detached: true, bare: false, prunable: false },
+    { path: '/gone', head: 'ccc', branch: 'feat/y', detached: false, bare: false, prunable: true }]);
+  const repo = tmpDir('peix-wtl-');
+  const git = (...a) => execFileSync('git', ['-C', repo, ...a], { stdio: 'pipe', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } }).toString().trim();
+  git('init', '-q', '-b', 'main'); writeFileSync(join(repo, 'a'), 'a\n'); git('add', '.'); git('commit', '-qm', 'a');
+  git('worktree', 'add', '-q', '-b', 'feat', join(repo, '.claude', 'worktrees', 'feat'));
+  const real = git('rev-parse', '--show-toplevel');
+  const w = await worktreesFor(join(repo, '.claude', 'worktrees', 'feat'));
+  assert.deepEqual([w.here, w.main, w.repo, w.worktrees.map(x => [x.path, x.branch])], [join(real, '.claude', 'worktrees', 'feat'), real, null, [[real, 'main'], [join(real, '.claude', 'worktrees', 'feat'), 'feat']]]);
+  assert.match((await worktreesFor(tmpDir('peix-nogit-'))).error, /not in a git repository/);
 });

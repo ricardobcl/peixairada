@@ -5,6 +5,45 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-13. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-13, on a branch — a PR's diff without its checkout
+
+Ricardo: "Both the git diff view and edit (VS Code Web) could benefit from opening in the correct branch. One challenge
+is to have multiple PRs for the current project in the same chat, but that could be fixed with some buttons to
+'open+change to branch' or 'switch to branch'. At the same time, we may have concurrent chats doing other stuff and we
+can easily change branches due to changes. Are worktrees the answer?" A study on the branch `branch-views` answered:
+not for reading a PR — git diffs one with nothing checked out —, yes for editing one (the entries after this), and the
+board never switches a shared checkout. He picked the PR diff, the editor at a branch, chats in worktrees, and a
+warning when a branch moves under a chat (built apart). This is the first.
+
+* **Why**: the changes tab read only the folder's HEAD, and a chat's folder is shared. In 400 recent transcripts read
+  for the field alone, 75 chats saw `gitBranch` change mid-chat, and of 333 such switches with the folder unchanged
+  two in three followed no git command of that chat's within the hour — another chat or the user moved the branch
+  under it. 187 of the 400 named two PRs or more, and only 47 of those ever changed branch: most PRs a chat talks of
+  are not the folder's checkout.
+* **Read from origin into the object store alone** (`prRange`): `git ls-remote origin refs/pull/<n>/head
+  refs/heads/<base>`, then a fetch of only what is not here, `--no-tags --no-write-fetch-head --refmap=` — objects,
+  and nothing else: no ref moves, no FETCH_HEAD (a `git pull` running in another chat reads it between its fetch and
+  its merge), nothing checked out. The diff is `merge-base(base, head)..head`, as GitHub shows it; the base is the PR's
+  own (`baseRefName`, now in `PR_FIELDS` with the head's name, the base's commit and whether the head is a fork's —
+  `prRefs`, `pr.refs`): a stacked PR is diffed against the PR under it. ls-remote every time rather than GraphQL's
+  commit, which is up to a poll old: a push is seen at once.
+* **GitHub's diff when git cannot** (`prFromGh`): a PR of another repo than the checkout's, a folder that is no
+  checkout, an origin that does not answer or has no such PR — `gh pr diff <url>`, counted by `patchStat`. GitHub
+  caps it (some hundreds of files); the tab says which it was (`.csrc`: *as pushed, at <oid> · read from origin,
+  nothing checked out*, or *from GitHub (gh pr diff) — why*).
+* **The tab**: `PR #n ▾` closes the scope row; with several PRs it opens a picker (`#ctxm`, rows of two lines — `sub`
+  — added to `ctxRow` for this) naming each PR's branch and where it lives. In the PR scope Commit… and Push go (they
+  are the folder's), `#n ↗` stays, and a note on a line is prefixed `PR #n`, since Claude's folder may have another
+  branch out. The scope is remembered as the others are; the PR is per chat (`changes.pr`), else its first open one.
+* **The PR rows**: each is a `.prline` — the link as it was (`.prrow`, still what the harness and ⌥⌘G read), where its
+  branch lives (*this folder* · *worktree x* · *the repo's folder* · *not checked out* · *not this folder's repo*, from
+  `GET /api/worktrees?cwd=`, `git worktree list --porcelain`), and **Diff**. A button in a link would be the link's,
+  hence the line around it.
+* → `test/changes.test.mjs` (a bare origin with `refs/pull/7/head`, a checkout on another branch with an edit: the
+  PR's files only, HEAD, the tree, every ref and FETCH_HEAD as they were; nothing fetched twice; GitHub's diff for
+  another repo, a folder that is none, a PR origin lacks; a stacked PR against its base; the worktree list),
+  `scripts/scenarios/changes-pr.mjs`; the fake gh answers `pr diff` from an entry's `diff`.
+
 ## Decisions of 2026-10-13, late night — a way out of the fill
 
 Ricardo, living filled: nothing on screen says how to leave the board's own full screen; options, with mocks. A study
