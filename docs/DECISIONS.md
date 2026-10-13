@@ -5,6 +5,37 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-13. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-13, on a branch, later — a PR's branch in the editor
+
+The study's second half (the entry below): to edit a PR whose branch the folder does not have out, a working tree of
+its own — the folder's branch never moves under the chats in it. Ricardo chose the place: inside the repo.
+
+* **The tree that has the branch first** (`ensureWorktree`): `git worktree list --porcelain` — the folder itself when it
+  is on the branch, any worktree that has it (one beside the repo too). Only then one is made: git refuses a branch
+  out twice, and a second tree of one branch is a second place to commit to.
+* **Made inside the repo**, `<repo>/.claude/worktrees/<slug>` — where Claude Code's `--worktree` puts its own; the
+  repo's Peacock colour, its named projects (a prefix) and VS Code Web's trust of the repo reach it; a tree not
+  ignored there goes into the repo's `.git/info/exclude`, never a tracked file. Origin's branch is checked out
+  `--track`ing it, a local one as is; a fork's PR (its branch name means nothing here) or *review only* is `--detach`ed
+  at the PR's head, fetched into the object store alone as the diff does — nothing to push to.
+* **Nothing is installed.** node_modules is what a worktree costs (on this Mac 30 MB to 1.1 GB each, 92 of 137 with
+  their own): *Link node_modules from <repo>* (a symlink to the main tree's) only when the lockfile's blob is the main
+  tree's, else *npm ci there…* typed into the chat's zsh, unrun.
+* **Removed only what the board made, and never by force** (`sweepWorktrees`): its PR merged or closed (asked about if
+  no chat names it any more), no live chat or drawer in it, `git status` clean, no commit beyond the one it was made at
+  that no remote has — then `git worktree remove`, which itself refuses a tree with work in it. A tree gone by hand is
+  forgotten.
+* **"Switch this folder…" is said, not done**: `git switch <branch>` typed into the chat's zsh, unrun, offered only
+  when no other chat (live, or touched in the last day) and no other drawer is in that tree, this chat is not mid-turn,
+  nothing is uncommitted, no merge or rebase is under way and the branch is out nowhere else; otherwise the row is
+  there, disabled, saying which of those stands in the way (`ctxRow` learned `off`).
+* **VS Code Web on a tab of the chat's**, named `<repo> @ <branch>` (`state.paneWt` beside the folder's own
+  `paneIde`, so the folder's editor stays); with Zed picked, Zed's window on the tree.
+* → `test/worktrees.test.mjs` (temp repos: made and found again, the folder's own branch reused, a fork's PR and review
+  only detached, a fresh branch from origin's main, node_modules linked, the sweep keeping a dirty tree, one with an
+  unpushed commit and one with a live chat, and removing the clean one; the switch guard),
+  `scripts/scenarios/editor-branch.mjs`.
+
 ## Decisions of 2026-10-13, on a branch — a PR's diff without its checkout
 
 Ricardo: "Both the git diff view and edit (VS Code Web) could benefit from opening in the correct branch. One challenge

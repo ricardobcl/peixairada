@@ -2470,7 +2470,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 // Map ▴
 (() => {
   const $ = s => document.querySelector(s);
-  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null };
+  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null };
   const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, skinExact: false, look: null, fillHints: 0 };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
@@ -5749,7 +5749,7 @@ const toolName = n => {
   /** `ide`: the folder's editor, which only the editor's own row opens (2026-10-03; any http://127.0.0.1:<port>/ was
    *  taken for it before — a dev server's link replaced the folder's editor). `s`: the chat it is for, the open one
    *  unless said — an answer that comes after that chat was left records its tab there and shows nothing. */
-  function openExternal(url, { ide = false, s = state.sessions.get(state.current) } = {}) {
+  function openExternal(url, { ide = false, s = state.sessions.get(state.current), folder = s?.cwd } = {}) {
     // in a browser an app's URL (vscode://, zed://) is followed as a link is — the browser hands it over, or asks —, not
     // in a tab of its own, which stays blank (2026-10-13)
     if (!inApp) { if (IN_PANE.test(url)) window.open(url, '_blank', 'noopener'); else { const a = document.createElement('a'); a.href = url; a.click(); } return; }
@@ -5761,7 +5761,8 @@ const toolName = n => {
     // GitHub's were the only ones. A page opened again is the tab it already has — while that tab is still at it: one
     // followed somewhere else leaves the page a new tab (2026-10-13, pageTab).
     let k = ide ? 'ide:' + url : pageTab(s, url), fresh = !k;
-    if (ide) { fresh = false; if (s.cwd) { fresh = state.paneIde.get(s.cwd) !== url; state.paneIde.set(s.cwd, url); } }
+    if (ide && folder !== s.cwd) { const l = state.paneWt.get(s.id) || []; fresh = !l.includes(url); if (fresh) state.paneWt.set(s.id, [...l, url]); }   // another tree's editor: a tab of its own (2026-10-13)
+    else if (ide) { fresh = false; if (s.cwd) { fresh = state.paneIde.get(s.cwd) !== url; state.paneIde.set(s.cwd, url); } }
     else if (fresh) { k = pageKey(s, url); state.paneGh.set(s.id, [...(state.paneGh.get(s.id) || []), k]); }
     if (s.id !== state.current) return;
     if (fresh) openNewTab(s, k); else setTab(s, k);
@@ -5957,6 +5958,8 @@ const toolName = n => {
     }
     return hit?.v || null;
   }
+  /** …asked now, for a menu that acts on it: the trees as they are, node_modules and all. */
+  async function wtNow(cwd) { const v = await api('GET', `/api/worktrees?cwd=${encodeURIComponent(cwd)}`).catch(e => ({ error: e.message })); wtData.set(cwd, { at: Date.now(), v }); return v; }
   /** Where a PR's head is: in this folder, another working tree of the checkout, nowhere here, or in another repo than
    *  the checkout's — by the branch's name, or for a fork's PR (whose name means nothing here) a tree detached at it. */
   function whereOf(s, pr) {
@@ -5967,8 +5970,13 @@ const toolName = n => {
     if (!t) return { k: 'none', t: r.fork ? 'a fork’s, not checked out' : 'not checked out' };
     return { k: t.path === w.here ? 'here' : 'wt', t: t.path === w.here ? 'this folder' : t.path === w.main ? 'the repo’s folder' : `worktree ${t.path.split('/').pop()}`, path: t.path };
   }
-  /** A PR's row and its own controls beside it (2026-10-13): where its branch lives, Diff. */
-  const prLine = (s, pr, hide) => { const w = whereOf(s, pr); return `<div class="prline"${hide ? ' hidden' : ''}>${prRow(pr, hide)}${w ? `<span class="prwhere ${w.k}"${w.path ? ` title="${esc(w.path)}"` : ''}>${ICON.branch}${esc(w.t)}</span>` : ''}${pr.number ? `<span class="practs"><button type="button" class="pract" data-pract="diff" data-url="${esc(pr.url)}" title="Its diff in the changes tab, as GitHub shows it — read from origin, nothing checked out">Diff</button></span>` : ''}</div>`; };
+  /** A PR's row and its own controls beside it (2026-10-13): where its branch lives, Diff, and — for a PR of this
+   *  checkout's repo whose branch GitHub has named — the editor at that branch. */
+  const prLine = (s, pr, hide) => {
+    const w = whereOf(s, pr), ed = w && w.k !== 'away' && pr.refs;
+    return `<div class="prline"${hide ? ' hidden' : ''}>${prRow(pr, hide)}${w ? `<span class="prwhere ${w.k}"${w.path ? ` title="${esc(w.path)}"` : ''}>${ICON.branch}${esc(w.t)}</span>` : ''}${pr.number ? `<span class="practs"><button type="button" class="pract" data-pract="diff" data-url="${esc(pr.url)}" title="Its diff in the changes tab, as GitHub shows it — read from origin, nothing checked out">Diff</button>${
+      ed ? `<button type="button" class="pract" data-pract="editor" data-url="${esc(pr.url)}" aria-haspopup="menu" title="Its branch in the editor — the folder that has it, or a worktree of its own">Editor ▾</button>` : ''}</span>` : ''}</div>`;
+  };
   /** A ticket's row under the header, after the PRs' (2026-10-08): its status, key, summary, and whose it is. */
   const ticketRow = (t, hide) => `<a class="prrow tk"${hide ? ' hidden' : ''} data-cat="${esc(t.cat)}" href="${/^https?:\/\//.test(t.url) ? esc(t.url) : '#'}" target="_blank" rel="noopener" title="${esc(`${t.url}\n${ticketTip(t)}`)}"><span class="st">${esc(t.status || t.cat)}</span><span class="num">${esc(t.key)}</span><span class="t">${esc(t.summary || t.key)}</span><span class="who${t.assignee?.me ? ' me' : ''}">${t.assignee ? esc(t.assignee.me ? 'yours' : t.assignee.name) : 'unassigned'}</span></a>`;
   // Claude Code's own /focus — "just your prompt, summary, and response", every step in between hidden — on the
@@ -6342,7 +6350,48 @@ const toolName = n => {
     e.preventDefault(); e.stopPropagation();
     const s = state.sessions.get(state.current); if (!s) return;
     if (b.dataset.pract === 'diff') openPrDiff(s, b.dataset.url);
+    else if (b.dataset.pract === 'editor') editorMenu(s, b.dataset.url, b);
   });
+  // ---- the editor at a PR's branch (2026-10-13) ------------------------------------------------------------------------
+  // The folder that has the branch, else a worktree of its own inside the repo (POST /api/worktrees: found, or made),
+  // or the PR's head detached for review only — opened in the editor picked: VS Code Web on a tab of the chat named
+  // `<repo> @ <branch>`, or Zed's window. Switching the chat's own folder is offered last, typed into its zsh unrun, and
+  // only when nothing else works there (GET …/switch says why not).
+  const repoName = w => (w?.main || '').split('/').pop();
+  async function editorMenu(s, url, at) {
+    const pr = (s.prs || []).find(p => p.url === url), r = pr?.refs; if (!pr || !r) return;
+    const w = await wtNow(s.cwd), where = whereOf(s, pr), name = repoName(w), b = r.head;
+    const guard = r.fork || where?.k === 'here' ? null : await api('GET', `/api/sessions/${s.id}/switch?branch=${encodeURIComponent(b)}`).catch(e => ({ ok: false, why: [e.message] }));
+    const inEd = onZed() ? 'in Zed' : 'in VS Code Web', tree = where?.path && w?.worktrees.find(t => t.path === where.path);
+    const rows = [];
+    if (where?.k === 'here') rows.push({ t: `Open this folder ${inEd}`, sub: `it is on ${b}`, fn: () => openEditorAt(s, where.path, null, at) });
+    else if (where?.k === 'wt') rows.push({ t: `Open ${where.t} ${inEd}`, sub: `${treeName(w, where.path)} · on ${b}`, fn: () => openEditorAt(s, where.path, `${name} @ ${b}`, at) });
+    else if (!r.fork) rows.push({ t: `A worktree for it, ${inEd}`, sub: `${name}/.claude/worktrees/${b.replace(/[^\w.-]+/g, '-')} · on ${b}, tracking origin`, fn: () => worktreeFor(s, { pr: url }, `${name} @ ${b}`, at) });
+    rows.push({ t: r.fork ? `Review it, detached, ${inEd}` : 'Review only, detached', sub: `at ${r.headOid ? r.headOid.slice(0, 7) : 'its head'} — nothing to commit to; removed once the PR is merged or closed and nothing is in it`, fn: () => worktreeFor(s, { pr: url, detach: true }, `${name} @ #${pr.number}`, at) });
+    if (tree?.modules === 'same') rows.push({ t: `Link node_modules from ${name}`, sub: 'its lockfile is the same — nothing installed', fn: () => api('POST', '/api/worktrees/modules', { path: tree.path }).then(() => { wtData.delete(s.cwd); note(at, 'node_modules linked'); }, e => note(at, e.message, true)) });
+    else if (tree?.modules === 'differ') rows.push({ t: 'npm ci there…', sub: `its lockfile differs — typed into the ${shName()}, not run`, fn: () => typeInShell(s, `cd ${shellWord(tree.path)} && npm ci`, at) });
+    if (guard) rows.push({ hr: true }, { t: `Switch this folder to ${b}…`, off: !guard.ok, sub: guard.ok ? `git switch ${b} typed into its ${shName()}, not run` : `not offered: ${guard.why.join(' · ')}`, fn: () => typeInShell(s, `git switch ${b}`, at) });
+    else if (r.fork) rows.push({ hr: true }, { t: 'Switch this folder…', off: true, sub: 'not offered: a fork’s branch' });
+    const rc = at.getBoundingClientRect();
+    ctxShow(rows, rc.right - 360, rc.bottom + 4, 'editor');
+  }
+  /** A tree's path said from its repo — widgets/.claude/worktrees/x —, else its last two folders. */
+  const treeName = (w, p) => w?.main && p.startsWith(w.main + '/') ? repoName(w) + p.slice(w.main.length) : p.split('/').slice(-2).join('/');
+  async function worktreeFor(s, ask, label, at) {
+    note(at, 'Finding its tree…');
+    let t; try { t = await api('POST', '/api/worktrees', { cwd: s.cwd, ...ask }); } catch (e) { return note(at, e.message, true); }
+    wtData.delete(s.cwd); renderHead(state.sessions.get(s.id));   // where its branch lives, again
+    openEditorAt(s, t.path, t.here ? null : label, at);
+  }
+  /** A folder in the editor picked: Zed's window, or VS Code Web on a tab of the chat — the chat's own folder its
+   *  usual tab, any other one of its own, named by `label`. */
+  async function openEditorAt(s, path, label, at) {
+    if (onZed()) return zedMissing() ? zedNote(at) : openExternal(fileUrl(path));
+    let d; try { d = await api('POST', '/api/vscode-web'); } catch (e) { return note(at, `VS Code Web did not start: ${e.message}`, true); }
+    const u = `${d.url}?folder=${encodeURIComponent(path)}`;
+    if (label && path !== s.cwd) ideLabels.set(u, label);
+    openExternal(u, { ide: true, s, folder: path });
+  }
   const TITLE_MIN = 170;   // the title's own flex-basis (.shead h2), below which the row wraps
   const TITLE_SHARE = .4, CHIPS_MAX = 2;   // the title keeps 40 % of the row at least, and the row two chips (2026-10-12)
   function fitHeadPrs() {
@@ -6824,7 +6873,9 @@ const toolName = n => {
   // The editor's address is its folder (2026-10-12): VS Code Web's is 127.0.0.1:7332/?folder=%2FUsers%2F… — it says
   // VS Code · storefront, the URL in its tooltip, and a click still copies the URL.
   const ideName = u => { try { const f = new URL(u).searchParams.get('folder'); return f ? f.replace(/\/+$/, '').split('/').pop() : ''; } catch { return ''; } };
-  const addrHtml = (k, u) => k.startsWith('ide:') && ideName(u) ? `<span class="h">VS Code · </span>${esc(ideName(u))}` : urlHtml(u);
+  const ideLabels = new Map();   // a worktree's editor (2026-10-13): its URL → `<repo> @ <branch>`, the name of its tab
+  const ideLabel = k => ideLabels.get(pageUrl(k)) || null;
+  const addrHtml = (k, u) => k.startsWith('ide:') && (ideLabel(k) || ideName(u)) ? `<span class="h">VS Code · </span>${esc(ideLabel(k) || ideName(u))}` : urlHtml(u);
   const pageUrl = k => k.slice(k.indexOf(':') + 1);   // where a tab was opened — all the shell reads of its key
   const paneUrl = k => paneUrls.get(k) || pageUrl(k);
   /** An address at a page: the page, or further into it — a PR's files, a comment on it, its checks. */
@@ -6846,7 +6897,7 @@ const toolName = n => {
     }
   };
   const ideKey = s => inApp && s?.cwd && state.paneIde.get(s.cwd) ? 'ide:' + state.paneIde.get(s.cwd) : null;
-  const paneKeys = s => !inApp || !s ? [] : [...(state.paneGh.get(s.id) || []), ...(ideKey(s) ? [ideKey(s)] : [])];
+  const paneKeys = s => !inApp || !s ? [] : [...(state.paneGh.get(s.id) || []), ...(ideKey(s) ? [ideKey(s)] : []), ...(state.paneWt.get(s.id) || []).map(u => 'ide:' + u)];
   // A blank tab (2026-10-13, ⌘T on a page): a browser's new tab — nothing on it yet, its address a box with the keys in
   // it, and under it, in the half, what the box would open (blankHtml). `new:<n>`, after the pages; the page chosen
   // takes its place (fillBlank). Page state only, as the changes tab is.
@@ -6977,6 +7028,7 @@ const toolName = n => {
         : k === 'changes' ? tab(k, 'changes', `What this chat changed in ${s.cwd || 'its folder'} · ⌥⌘D`, 'Close the changes', ICON.diff)
         : isPageTab(k) ? tab(k, paneLabel(paneUrl(k)), GH_PR.test(paneUrl(k)) ? `${paneUrl(k)} · ⌥⌘G` : paneUrl(k), 'Close this page', GH_PR.test(paneUrl(k)) ? ICON.pr : ICON.globe)
         : isBlankTab(k) ? tab(k, 'New tab', 'A new tab, nothing on it yet · ⌘T', 'Close this tab', ICON.globe)
+        : ideLabel(k) ? tab(k, ideLabel(k), `${ideName(pageUrl(k))} — a worktree — in VS Code Web`, 'Close the editor', ICON.vscode)
         : tab(k, 'VS Code', `${s.cwd} in VS Code Web · ⌥⌘E`, 'Close the editor', ICON.vscode)).join('')
         + (two && !keys.length ? '<span class="pdrop">drop a tab here</span>' : '')
         + half;
@@ -7259,6 +7311,7 @@ const toolName = n => {
     if (k === 'changes') changesOpen.delete(s.id);
     else if (isPageTab(k)) state.paneGh.set(s.id, (state.paneGh.get(s.id) || []).filter(x => x !== k));
     else if (isBlankTab(k)) blanks.set(s.id, (blanks.get(s.id) || []).filter(b => 'new:' + b.n !== k));
+    else if ((state.paneWt.get(s.id) || []).includes(pageUrl(k))) state.paneWt.set(s.id, state.paneWt.get(s.id).filter(u => u !== pageUrl(k)));
     else if (s.cwd) state.paneIde.delete(s.cwd);
     homes.get(s.id)?.delete(k);
     syncTerm(s);
@@ -9237,7 +9290,7 @@ const toolName = n => {
     es.addEventListener('snapshot', e => {
       const d = JSON.parse(e.data); state.snapshots++;   // the harness waits on the count: a reloaded page has its board
       state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.peacock = d.peacock || {}; state.repos = d.repos || {};
-      for (const m of [tabs, homes, splits, autoSplit, stacked, zoomed, focusView, state.unread, state.paneGh, changesOpen, blanks, diffStats]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);   // a chat gone from the board takes its page state with it
+      for (const m of [tabs, homes, splits, autoSplit, stacked, zoomed, focusView, state.unread, state.paneGh, state.paneWt, changesOpen, blanks, diffStats]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);   // a chat gone from the board takes its page state with it
       state.about = d.about || {};
       if (d.config) state.config = d.config;
       renderSetup();

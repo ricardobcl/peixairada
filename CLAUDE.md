@@ -132,7 +132,7 @@ for `$HOME`'s home and the account's.
   **The lid's setting is the system's, never kept here**: `readPower` reads `pmset -g` on every registry poll, with
   the idle sleep in use and the power source (`idleSleep`, `power`); the cup is muted while it has nothing to hold
   off (`cupMoot`, `cupTip`). It is the one thing the board changes outside its own files besides a Peacock colour, a
-  clone and Zed's install. → `test/awake.test.mjs`, `keep-awake.mjs`.
+  clone, Zed's install and a worktree it makes (below). → `test/awake.test.mjs`, `keep-awake.mjs`.
 * **Every CLI the server shells out to goes through `findBin()`** — `git` too — the app's server has a bare PATH;
   `<NAME>_BIN` overrides; a file it can run, looked for again a minute after none was found. The login agent's PATH
   is the installing shell's, then the system's. **The network calls**: `gh` (PRs, a PR's diff), `git` to a checkout's
@@ -500,7 +500,7 @@ for `$HOME`'s home and the account's.
   keeping the last numbers (`.stale`). `USAGE=off` (every test server) hides it. → `usage-bar.mjs`.
 * **State lives in four places**: the server's `~/Library/Application Support/peixAIrada/state.json` (`STATE_FILE`;
   ticks, seen, for good, unlinked PRs, a branch's move set aside, named projects, titles, pins, hidden, `envs`, notifications, PR turns,
-  awake, the update's switch and record) and the user's `~/.config/peixairada/config.json` (the setup, below) — both shared by the app and every
+  awake, the update's switch and record, the worktrees it made) and the user's `~/.config/peixairada/config.json` (the setup, below) — both shared by the app and every
   browser —; the browser's `localStorage` `peixairada-prefs` (the keys are the `prefs` literal, and old ones are
   deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it renders reads its
   state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
@@ -767,6 +767,23 @@ for `$HOME`'s home and the account's.
   (`.prwhere`, `whereOf` over `GET /api/worktrees?cwd=` — `worktreesFor`, `parseWorktrees`; `wtOf` keeps it 10 s),
   then its buttons (`.pract`; Diff → `openPrDiff`). The PR's branches are `pr.refs` (`prRefs` from `PR_FIELDS`'
   `headRefName baseRefName baseRefOid isCrossRepository headRepository`). → `test/changes.test.mjs`, `changes-pr.mjs`.
+* **A PR's branch in the editor is a working tree, never the folder switched** (2026-10-13; the row's **Editor ▾**,
+  `editorMenu`): `POST /api/worktrees {cwd, pr | branch, detach, fresh}` → `ensureWorktree` **finds the tree that has
+  the branch first** (the folder itself, any worktree: never "already checked out"), else makes one **inside the repo,
+  `<repo>/.claude/worktrees/<slug>`** (`makeWorktree`): a local branch as is, origin's `--track`, a fork's PR or *review
+  only* `--detach` at its head (fetched into the object store alone), a `fresh` one `--no-track` from origin's default.
+  One making per repo and branch (`wtAsking`); a tree not ignored goes in the repo's `info/exclude`. **Nothing is
+  installed**: `GET /api/worktrees` says each tree's `modules` (`here` · `same` lockfile · `differ`), *Link
+  node_modules* is `POST /api/worktrees/modules` (a symlink to the main tree's), else `npm ci` typed into the zsh,
+  unrun. The trees made are the state file's `worktrees` (`worktreesMade`) and **only those are removed**, by
+  `sweepWorktrees` (every `WT_SWEEP_MS` on the poll): their PR merged or closed, nothing in them (`busyIn`), clean,
+  no commit no remote has (`keepWorktree`) — `git worktree remove`, never `--force`. *Switch this folder…* types
+  `git switch <branch>` into the chat's zsh, unrun, and only when `GET /api/sessions/:id/switch?branch=`
+  (`switchGuard`) finds no other chat or drawer in the tree (`treeOf`: `gitTopOf`, real; a nested worktree is its own; on it already is `headAt`'s), no chat
+  mid-turn, nothing uncommitted, no merge or rebase, the branch out nowhere else — the menu's disabled row says why
+  (`ctxRow`'s `off`). Opened in the editor picked (`openEditorAt`): Zed's window, or VS Code Web on a tab of the chat's
+  own (`state.paneWt`, beside `paneIde`'s; named `<repo> @ <branch>`, `ideLabels`). → `test/worktrees.test.mjs`,
+  `editor-branch.mjs`.
 * **An MCP tool is named by its server and tool** (`toolName`: *Slack: search users*) in the rows, a run's summary,
   the card's live line and the tiles; the raw name is the row's tooltip.
 * **A tool call wears its state** (`toolRes`, `toolMark`): `.tst[data-tu]` — `run` (turning while `#log.working`),

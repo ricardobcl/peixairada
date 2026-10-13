@@ -47,7 +47,7 @@
 
 import { createServer } from 'node:http';
 import {
-  accessSync, chmodSync, closeSync, constants as fsc, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, renameSync, rmSync, statSync, unlinkSync, watch, writeFileSync
+  accessSync, appendFileSync, chmodSync, closeSync, constants as fsc, existsSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, watch, writeFileSync
 } from 'node:fs';
 import { connect as netConnect } from 'node:net';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
@@ -164,6 +164,10 @@ let awakeOn = false;
 // are said, not taken — 2026-10-13), the last update made (`updated`: {at, from, to, count, parts}) and a commit held back
 // because it did not start here ({to, why, at}).
 let autoUpdate = false, updateLast = null, updateHeld = null;
+// The working trees the board made for a branch (2026-10-13; ensureWorktree): path -> { repo (its main tree), branch
+// (null: detached), pr, head (the commit it was made at), linked (node_modules a link of ours), at }. Only these are
+// ever removed, and only by sweepWorktrees.
+let worktreesMade = {};
 
 // One-time move from the old ~/.peixairada location. Same filesystem, so the rename is atomic; the
 // empty directory is left behind rather than removing something we did not create.
@@ -199,6 +203,7 @@ try {
   autoUpdate = st.selfUpdate === true;   // files from 2026-10-12 carry `autoUpdate`, the old default's true written on every save — ignored, gone on the next one
   updateLast = st.updated && typeof st.updated === 'object' ? st.updated : null;
   updateHeld = st.updateHeld && typeof st.updateHeld === 'object' ? st.updateHeld : null;
+  worktreesMade = st.worktrees && typeof st.worktrees === 'object' ? st.worktrees : {};
 } catch (e) {
   if (e.code !== 'ENOENT') {
     const bad = `${stateFrom}.bad-${Date.now()}`;
@@ -212,7 +217,7 @@ function saveState() {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld }, null, 1));
+    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, worktrees: worktreesMade }, null, 1));
     renameSync(tmp, STATE_FILE);
   } catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
@@ -2566,13 +2571,161 @@ function parseWorktrees(text) {
   }
   return out;
 }
-/** The working trees of the checkout `cwd` is in: `here` its own, `main` the repo's first, `repo` its GitHub name. */
+/** The working trees of the checkout `cwd` is in: `here` its own, `main` the repo's first, `repo` its GitHub name; each
+ *  tree's `modules` says whether it can run the repo's JavaScript — `here` (a node_modules of its own or linked), `same`
+ *  (none, and its lockfile is the main tree's: a link to that one's would do), `differ`, or null (not a node project). */
 async function worktreesFor(cwd) {
   if (!cwd || !existsSync(cwd)) return { error: 'its folder is not there' };
   const here = await gitOr(cwd, ['rev-parse', '--show-toplevel']); if (!here) return { error: 'its folder is not in a git repository' };
   const list = parseWorktrees(await gitOut(here, ['worktree', 'list', '--porcelain'])).filter(w => !w.bare);
-  const own = ghRepoOf(here);
-  return { here, main: list[0]?.path || here, repo: own ? `${own.owner}/${own.name}` : null, worktrees: list };
+  const own = ghRepoOf(here), main = list[0]?.path || here;
+  const lock = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml'].find(f => existsSync(join(main, f)));
+  const mainLock = lock && existsSync(join(main, 'node_modules')) && await gitOr(main, ['rev-parse', `HEAD:${lock}`]);
+  for (const w of list) {
+    if (w.path === main || !existsSync(join(w.path, 'package.json'))) w.modules = null;
+    else if (existsSync(join(w.path, 'node_modules'))) w.modules = 'here';
+    else w.modules = mainLock && await gitOr(w.path, ['rev-parse', `HEAD:${lock}`]) === mainLock ? 'same' : 'differ';
+    if (worktreesMade[w.path]) w.made = true;
+  }
+  return { here, main, repo: own ? `${own.owner}/${own.name}` : null, worktrees: list };
+}
+
+// ---- the editor at a branch: a working tree per branch (2026-10-13) -------------------------------------------------
+// A PR's branch on disk without moving the branch under the chats of the folder: the tree that has it already — the
+// folder itself, a worktree — else a new one inside the repo, `<repo>/.claude/worktrees/<slug>` (where Claude Code's
+// --worktree puts its own: the repo's Peacock colour, its named projects and VS Code Web's trust of it reach there). A
+// branch of origin's is checked out tracking it; a fork's PR, or one asked for review only, is detached at its head —
+// nothing to push to, and never "already checked out". Nothing is installed: node_modules is linked from the main tree
+// when asked and the lockfiles match. The trees made here are the state file's `worktrees`; only they are ever removed.
+const wtSlug = b => String(b).replace(/[^\w.-]+/g, '-').replace(/^[-.]+|[-.]+$/g, '').slice(0, 80) || 'wt';
+const wtAsking = new Map();   // one making per repo and branch at a time: a second ask waits for the first's tree
+async function ensureWorktree({ cwd, pr = null, branch = null, detach = false, fresh = false }) {
+  const w = await worktreesFor(cwd); if (w.error) return { code: 409, error: w.error };
+  let want = null, refs = null;
+  if (pr) {
+    want = prAsked(pr, w.main); if (!want) return { code: 400, error: 'which PR? — its number or URL' };
+    if (!want.mine) return { code: 409, error: `that PR is not in this checkout's repo${w.repo ? ` (${w.repo})` : ''}` };
+    refs = prStatus.get(want.url)?.refs || null;
+    if (!refs && !detach) return { code: 409, error: 'its branch is not known yet — GitHub has not answered for it' };
+    branch = refs?.head ?? null;
+    if (refs?.fork) detach = true;   // a fork's branch name means nothing here
+  }
+  if (!pr && (!branch || detach)) return { code: 400, error: detach ? 'detached at what? — a PR' : 'which branch?' };
+  if (branch && !BRANCH_NAME.test(branch)) return { code: 400, error: `${branch} is not a branch name` };
+  if (!detach) { const t = w.worktrees.find(x => x.branch === branch); if (t) return { path: t.path, branch, made: false, here: t.path === w.here }; }
+  const key = `${w.main}\0${detach ? `pr-${want?.n}` : branch}`;
+  if (wtAsking.has(key)) return wtAsking.get(key);
+  const p = makeWorktree(w, { want, refs, branch, detach, fresh }).finally(() => wtAsking.delete(key));
+  wtAsking.set(key, p);
+  return p;
+}
+async function makeWorktree(w, { want, refs, branch, detach, fresh }) {
+  const main = w.main, fail = (e, what) => ({ code: 500, error: `${what}: ${String(e.stderr || e.message).trim().split('\n')[0]}` });
+  let oid = null, start = [];
+  if (detach) {
+    oid = refs?.headOid;
+    if (!oid || await gitOr(main, ['cat-file', '-e', `${oid}^{commit}`], false) === false) {
+      try {   // its head into the object store alone, as a PR's diff does
+        const ls = await gitOut(main, ['ls-remote', 'origin', `refs/pull/${want.n}/head`], GIT_NET);
+        oid = ls.split('\t')[0].trim(); if (!oid) return { code: 409, error: `origin has no PR #${want.n}` };
+        if (await gitOr(main, ['cat-file', '-e', `${oid}^{commit}`], false) === false) await gitOut(main, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', '--refmap=', 'origin', `refs/pull/${want.n}/head`], GIT_NET);
+      } catch (e) { return fail(e, `could not fetch PR #${want.n}`); }
+    }
+    const t = w.worktrees.find(x => x.detached && x.head === oid); if (t) return { path: t.path, branch: null, made: false, detached: true, here: t.path === w.here };
+    start = ['--detach', null, oid];
+  } else if (await gitOr(main, ['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`])) {
+    start = [null, branch];   // a branch of this repo's, checked out nowhere
+  } else {
+    try { await gitOut(main, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', 'origin', `+refs/heads/${branch}:refs/remotes/origin/${branch}`], GIT_NET); start = ['--track', '-b', branch, null, `origin/${branch}`]; }
+    catch (e) {
+      if (!fresh) return fail(e, `no branch ${branch} here, nor on origin`);
+      // a new branch (a new chat on one): from origin's default branch as origin has it now, tracking nothing yet
+      const dflt = (await gitOr(main, ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD']))?.replace(/^origin\//, '') || 'main';
+      try { await gitOut(main, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', 'origin', `+refs/heads/${dflt}:refs/remotes/origin/${dflt}`], GIT_NET); } catch {}
+      const from = await gitOr(main, ['rev-parse', '--verify', '--quiet', `origin/${dflt}`]) ? `origin/${dflt}` : 'HEAD';
+      start = ['--no-track', '-b', branch, null, from];
+    }
+  }
+  const dir = join(main, '.claude', 'worktrees'), slug = wtSlug(detach ? `pr-${want.n}` : branch);
+  let path = join(dir, slug); for (let i = 2; existsSync(path); i++) path = join(dir, `${slug}-${i}`);
+  try { await gitOut(main, ['worktree', 'add', '--quiet', ...start.map(a => a ?? path)]); }
+  catch (e) { return fail(e, 'git worktree add failed'); }
+  // out of the repo's own status, where no ignore file says so already: the repo's info/exclude, never a tracked file
+  if (await gitOr(main, ['check-ignore', '-q', path], false) === false) try { appendFileSync(join(await gitOr(main, ['rev-parse', '--git-common-dir']).then(d => resolve(main, d)), 'info', 'exclude'), '\n/.claude/worktrees/\n'); } catch {}
+  worktreesMade[path] = { repo: main, branch: detach ? null : branch, pr: want?.url ?? null, head: await gitOr(path, ['rev-parse', 'HEAD']), at: new Date().toISOString() };
+  saveState();
+  console.log(`[peixairada] worktree ${tildePath(path)} made for ${detach ? `PR #${want.n}, detached` : branch}`);
+  return { path, branch: detach ? null : branch, made: true, detached: !!detach, here: false };
+}
+/** A worktree's node_modules linked to its main tree's — only when the lockfiles are the same (worktreesFor's `same`). */
+async function linkModules(path) {
+  const w = await worktreesFor(path), t = w.worktrees?.find(x => x.path === w.here);
+  if (!t || t.path === w.main) return { code: 409, error: 'not a worktree of a checkout' };
+  if (t.modules !== 'same') return { code: 409, error: t.modules === 'here' ? 'it has a node_modules already' : 'its lockfile is not the main tree\'s — npm ci there instead' };
+  try { symlinkSync(join(w.main, 'node_modules'), join(t.path, 'node_modules')); } catch (e) { return { code: 500, error: e.message }; }
+  if (worktreesMade[t.path]) { worktreesMade[t.path].linked = true; saveState(); }
+  return { ok: true, path: t.path };
+}
+/** The work tree a path is in (gitTopOf), real — as git names the trees it lists. */
+const treeOf = p => { const t = gitTopOf(p); try { return t && realpathSync(t); } catch { return null; } };
+/** Whether a chat or a drawer works in that tree: a live chat's folder, a drawer not ended. */
+const busyIn = tree => [...sessions.values()].some(s => s.alive && treeOf(s.live?.cwd || s.cwd) === tree) || [...terms.values()].some(t => t.exited === null && treeOf(t.cwd) === tree);
+/** Why a tree the board made stays — null when nothing holds it: a chat or a drawer in it, a change not committed, a
+ *  commit no remote has (beyond the one it was made at). */
+async function keepWorktree(path, rec) {
+  if (busyIn(path)) return 'a chat or a drawer is in it';
+  const st = (await gitOut(path, ['status', '--porcelain'])).split('\n').filter(l => l && !(rec.linked && l === '?? node_modules'));
+  if (st.length) return 'changes not committed';
+  const head = await gitOr(path, ['rev-parse', 'HEAD']);
+  if (head !== rec.head && await gitOr(path, ['rev-list', '--max-count=1', 'HEAD', '--not', '--remotes'], 'x')) return 'commits not pushed';
+  return null;
+}
+/** The trees the board made for a PR that is merged or closed, removed — `git worktree remove`, never --force, so git
+ *  itself refuses anything with work in it — when nothing holds them (keepWorktree). A tree gone by hand is forgotten. */
+const WT_SWEEP_MS = Number(process.env.WT_SWEEP_MS || 10 * 60_000);
+let wtSweeping = false, wtSweptAt = 0;
+async function sweepWorktrees() {
+  if (wtSweeping) return []; wtSweeping = true; wtSweptAt = Date.now();
+  const gone = []; let changed = false;
+  try {
+    for (const [path, rec] of Object.entries(worktreesMade)) {
+      if (!existsSync(path)) { delete worktreesMade[path]; changed = true; continue; }
+      if (!rec.pr) continue;
+      const st = prStatus.get(rec.pr)?.state;
+      if (!st) { queuePr(rec.pr); continue; }   // asked about: the chat that named it may be gone
+      if (st !== 'merged' && st !== 'closed') continue;
+      try {
+        if (await keepWorktree(path, rec)) continue;
+        if (rec.linked) try { if (lstatSync(join(path, 'node_modules')).isSymbolicLink()) unlinkSync(join(path, 'node_modules')); } catch {}
+        await gitOut(rec.repo, ['worktree', 'remove', path]);
+        delete worktreesMade[path]; changed = true; gone.push(path);
+        console.log(`[peixairada] worktree ${tildePath(path)} removed — its PR is ${st}, nothing in it`);
+      } catch (e) { console.error(`[peixairada] worktree ${tildePath(path)} kept: ${String(e.stderr || e.message).trim().split('\n')[0]}`); }
+    }
+  } finally { wtSweeping = false; if (changed) saveState(); }
+  return gone;
+}
+/** Whether this chat's folder may have its branch switched to `branch` — never by the board: the switch is typed
+ *  into the chat's zsh, unrun, and offered only when no other chat works in that tree, this one is not mid-turn,
+ *  nothing is uncommitted and no merge or rebase is under way. `why` says what stands in the way. */
+async function switchGuard(s, branch) {
+  const cwd = s.live?.cwd || s.cwd, tree = treeOf(cwd), why = [];
+  if (!tree || !headAt(tree)) return { ok: false, why: ['its folder is not a git checkout'] };
+  if (headAt(tree) === branch) return { ok: false, why: [`it is on ${branch} already`] };
+  const elsewhere = parseWorktrees(await gitOut(tree, ['worktree', 'list', '--porcelain'])).find(w => w.branch === branch);
+  if (elsewhere) why.push(`${branch} is out in ${basename(elsewhere.path)} — open that instead`);   // git would refuse it
+  if (statusOf(s) === 'working') why.push('this chat is mid-turn');
+  const name = o => titles[o.id] || o.customTitle || o.title || 'a chat';
+  const others = [...sessions.values()].filter(o => o.id !== s.id && treeOf(o.live?.cwd || o.cwd) === tree);
+  const live = others.filter(o => o.alive), recent = others.filter(o => !o.alive && Date.now() - Date.parse(o.lastActivity || 0) < 86_400_000);
+  if (live.length) why.push(`another chat works here — ${live.slice(0, 2).map(name).join(', ')}${live.length > 2 ? ` and ${live.length - 2} more` : ''}`);
+  else if (recent.length) why.push(`another chat was here today — ${name(recent[0])}`);
+  if ([...terms.values()].some(t => t.exited === null && t.sessionId !== s.id && treeOf(t.cwd) === tree)) why.push('another chat’s drawer is open here');
+  const dirty = (await gitOut(tree, ['status', '--porcelain', '--untracked-files=no'])).split('\n').filter(Boolean).length;
+  if (dirty) why.push(`${dirty} file${dirty === 1 ? ' is' : 's are'} not committed`);
+  const gd = await gitOr(tree, ['rev-parse', '--absolute-git-dir']);
+  if (gd && ['MERGE_HEAD', 'rebase-merge', 'rebase-apply', 'CHERRY_PICK_HEAD', 'REVERT_HEAD'].some(f => existsSync(join(gd, f)))) why.push('a merge or a rebase is under way');
+  return { ok: !why.length, why, branch, tree };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -3550,10 +3703,28 @@ const server = createServer(async (req, res) => {
       try { const r = url.searchParams.get('stat') ? await changeStat(s) : await changesOf(s, scope, false, ask); return json(res, r.error ? 409 : 200, r); }
       catch (e) { return json(res, 500, { error: String(e.stderr || e.message).trim().split('\n')[0] }); }
     }
-    // the working trees of a chat's checkout and the branch each holds (2026-10-13)
+    // the working trees of a chat's checkout and the branch each holds (2026-10-13); a tree for a PR's branch or a new
+    // one — the one that has it, else made (ensureWorktree); its node_modules linked to the main tree's
     if (req.method === 'GET' && p === '/api/worktrees') {
       try { const r = await worktreesFor(url.searchParams.get('cwd')); return json(res, r.error ? 409 : 200, r); }
       catch (e) { return json(res, 500, { error: String(e.stderr || e.message).trim().split('\n')[0] }); }
+    }
+    if (req.method === 'POST' && p === '/api/worktrees') {
+      const b = await jsonBody(req);
+      const r = await ensureWorktree({ cwd: typeof b.cwd === 'string' ? b.cwd : null, pr: typeof b.pr === 'string' || typeof b.pr === 'number' ? String(b.pr) : null,
+        branch: typeof b.branch === 'string' ? b.branch : null, detach: b.detach === true, fresh: b.fresh === true }).catch(e => ({ code: 500, error: e.message }));
+      return json(res, r.error ? r.code || 500 : 200, r);
+    }
+    if (req.method === 'POST' && p === '/api/worktrees/modules') {
+      const b = await jsonBody(req), r = await linkModules(typeof b.path === 'string' ? b.path : null).catch(e => ({ code: 500, error: e.message }));
+      return json(res, r.error ? r.code || 500 : 200, r);
+    }
+    // whether the chat's folder may be switched to a branch — the board types `git switch` into its zsh, unrun, only then
+    if (req.method === 'GET' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/switch$/))) {
+      const s = sessions.get(m[1]); if (!s) return json(res, 404, { error: 'unknown session' });
+      const branch = url.searchParams.get('branch') || '';
+      if (!BRANCH_NAME.test(branch)) return json(res, 400, { error: 'which branch?' });
+      return json(res, 200, await switchGuard(s, branch).catch(e => ({ ok: false, why: [e.message] })));
     }
     // ⌥⌘T: a zsh in the chat's folder, in the pane's zsh tab — a holder like the claude one (`zsh -l -i` in the PTY),
     // alive until `exit` or a DELETE. The inline "new tab in iTerm" (2026-09-20): the chat's zsh, started once and
@@ -3838,7 +4009,7 @@ server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTe
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, parseWorktrees, worktreesFor, prRefs, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, parseWorktrees, worktreesFor, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
@@ -3891,6 +4062,7 @@ setInterval(() => {
   sweepTasks();
   sweepDrawers();
   sweepHeads();
+  if (Date.now() - wtSweptAt > WT_SWEEP_MS) sweepWorktrees();   // the trees made for a PR since merged or closed
   sweepPrs();
   sweepTickets();
   readPower();   // the lid's setting and idle sleep are the system's: whoever changes them, or the charger, the marks follow
