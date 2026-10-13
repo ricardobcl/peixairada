@@ -267,18 +267,23 @@
 
   /* ---- layout: sessions | splitter | chat (one half or two) ---- */
   main { display: flex; min-height: 0; min-width: 0; }
-  /* The chat's colour eases from one chat to the next (2026-09-27, night): the header's ground and its two veils, the
-     transcript's wash and the divider are registered colours set by tintChat — --repo itself cannot be registered, its
-     fallback to --nocolor is what a colourless card relies on — and a registered colour interpolates, so a switch of
-     chat slides the header from one project's colour to the other's over 250 ms rather than cutting. The ink (--rink)
-     still cuts: a grey half-way between white and black reads on neither. Inherited, so the descendants that read
-     them see every step. */
-  @property --hbg { syntax: '<color>'; inherits: true; initial-value: transparent; }
-  @property --hveil { syntax: '<color>'; inherits: true; initial-value: transparent; }
-  @property --hveil2 { syntax: '<color>'; inherits: true; initial-value: transparent; }
-  @property --openc { syntax: '<color>'; inherits: true; initial-value: transparent; }
-  main { --openc: var(--panel); transition: --openc .25s; }
-  #chat { --hbg: var(--nocolor); transition: --hbg .25s, --hveil .25s, --hveil2 .25s; }
+  /* The chat's colour eases from one chat to the next (2026-09-27, night): a switch of chat slides the header from one
+     project's colour to the other's over 250 ms rather than cutting. The ink (--rink) still cuts: a grey half-way
+     between white and black reads on neither. tintChat sets the colours — the header's ground and its two veils, the
+     transcript's wash (--hbg, --hveil, --hveil2 on #chat) and the divider's (--openc on main), plain properties.
+     The ease is the surfaces' own (2026-10-13): each that draws one eases a registered copy that is not inherited
+     (--hbg-eased …), the divider its background-color. Registered and inherited on #chat and main, as they were, every
+     element under them was restyled on every frame of the ease — the whole board for a quarter of a second at each
+     switch, and in WebKit a walk of every layer after each: a clauding chat took 450–600 ms to open, 220–275 without
+     it. A new surface in the chat's colour reads --hbg-eased and joins the rule below. --repo itself cannot be
+     registered: its fallback to --nocolor is what a colourless card relies on. */
+  @property --hbg-eased { syntax: '<color>'; inherits: false; initial-value: transparent; }
+  @property --hveil-eased { syntax: '<color>'; inherits: false; initial-value: transparent; }
+  @property --hveil2-eased { syntax: '<color>'; inherits: false; initial-value: transparent; }
+  main { --openc: var(--panel); }
+  #chat { --hbg: var(--nocolor); }
+  :where(.shead, #log, .gbody) { --hbg-eased: var(--hbg); transition: --hbg-eased .25s; }   /* :where — the header's own list below wins */
+  .shead { --hveil-eased: var(--hveil); --hveil2-eased: var(--hveil2); transition: --hbg-eased .25s, --hveil-eased .25s, --hveil2-eased .25s; }
   #sessions { border-left: 4px solid var(--repo, var(--nocolor)); }
   #sessions .colhead { background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); }
   /* 300 px at the narrowest (260 until the head became one row: below 300 the project's name had no room left) */
@@ -340,7 +345,7 @@
   main.scompact #slist .gsep.lane[data-lane] b { margin: 0; }
   main.scompact #slist .gsep.lane.shut { opacity: .7; }
   main.scompact #slist .none { padding: 14px 2px; font-size: var(--fs-2xs); }
-  /* The bar between the list and the chat is the open chat's colour (2026-09-26): --openc on main (registered, so it eases; --openb, its edges, went on 2026-09-29), set with the chat's
+  /* The bar between the list and the chat is the open chat's colour (2026-09-26): --openc on main (its background-color eases, 2026-10-13; --openb, its edges, went on 2026-09-29), set with the chat's
      tint, so the open card, the bar and the chat's header are one stroke of it — see .card.active. */
   #splitter { width: 6px; flex: none; cursor: col-resize; background: var(--openc); position: relative; overflow: hidden; }
   /* …down to the open chat's card only, black under it (2026-09-28): --split is
@@ -442,7 +447,7 @@
   /* A VS Code chat: read here, continued there. The whole pane says so — an outline, so nothing moves. */
   /* The pane is washed in the project's colour — none for a folder without one (transparent mixed with
      transparent). Where the chat lives is the header menu's to say (its VS Code row), not a colour, since 2026-09-20. */
-  #log { background: var(--grain), linear-gradient(165deg, color-mix(in srgb, var(--hbg) 24%, transparent), color-mix(in srgb, var(--hbg) 6%, transparent) 70%, transparent); }
+  #log { background: var(--grain), linear-gradient(165deg, color-mix(in srgb, var(--hbg-eased) 24%, transparent), color-mix(in srgb, var(--hbg-eased) 6%, transparent) 70%, transparent); }
   /* Every other chat is a CLI chat, lived here or in a terminal: the same wash in orange, no outline. */
   .colhead { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: .7px; color: var(--muted); font-weight: 700; min-width: 0; min-height: 43px; }
   .colhead .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; font-size: var(--fs-base); color: var(--ink); font-weight: 800; display: flex; align-items: center; gap: 7px; }
@@ -1287,9 +1292,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      colour on a panel-coloured pill, so it reads on any project. */
   /* A gradient, not a block (2026-09-20): the colour
      itself at the top left, and towards the right — and, more lightly, down the header — a veil that pulls it *away*
-     from the ink: darker under white ink, lighter under dark ink (--hveil across, --hveil2 down, set by tintChat; registered, so a chat switch eases), so
+     from the ink: darker under white ink, lighter under dark ink (--hveil across, --hveil2 down, set by tintChat; eased by the header, so a chat switch eases), so
      the buttons at the far end keep their contrast whichever ink the colour chose; the bottom-right corner is deepest. */
-  #chat.tinted .shead { background: var(--grain), linear-gradient(180deg, transparent 15%, var(--hveil2)), linear-gradient(100deg, transparent 8%, var(--hveil)), var(--hbg); color: var(--rink); border-bottom-color: color-mix(in srgb, var(--rink) 20%, var(--hbg)); }
+  #chat.tinted .shead { background: var(--grain), linear-gradient(180deg, transparent 15%, var(--hveil2-eased)), linear-gradient(100deg, transparent 8%, var(--hveil-eased)), var(--hbg-eased); color: var(--rink); border-bottom-color: color-mix(in srgb, var(--rink) 20%, var(--hbg-eased)); }
   /* Right of the project's name the header is black (2026-09-28): the camera housing's colour, so at the notch the
      housing is part of it. Painted by ::after from --hsplit (the separator's right edge) down to --hrow (the first row;
      the details under it keep the header's ground), both set by paintHeadSplit; the title and what follows it borrow
@@ -1382,7 +1387,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody {
     --fade: linear-gradient(rgb(0 0 0 / .33) calc(var(--float-h, 0px) - 18px), #000 calc(var(--float-h, 0px) + 14px)); }
   :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody:has(> #log:not([hidden])) {
-    background: var(--grain), linear-gradient(165deg, color-mix(in srgb, var(--hbg) 24%, transparent), color-mix(in srgb, var(--hbg) 6%, transparent) 70%, transparent); }
+    background: var(--grain), linear-gradient(165deg, color-mix(in srgb, var(--hbg-eased) 24%, transparent), color-mix(in srgb, var(--hbg-eased) 6%, transparent) 70%, transparent); }
   :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody > :not(#log, .gterm) { margin-top: var(--float-h, 0px); }
   :root[data-head="float"] :is(#groups:not(.stack) > .grp, #groups.stack > .grp:first-child):has(> .ptabs[hidden]) > .gbody > .gterm { border-top: 0; -webkit-mask-image: var(--fade); mask-image: var(--fade); }
   /* …but a drawer with room on its screen starts under it (2026-10-11, late night; .under, checkRoom): a new chat's banner,

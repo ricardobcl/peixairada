@@ -45,6 +45,17 @@ the server (0.5 %) and the drawers (a 10 Hz spinner, +1–3 %) were not it.
   clock (they failed on the commit before too, under load): the motion log read by time, not by an index the capped
   log shifts; a pat waits for a moment with no bubble out and no burp due; the lane's count alone is waited on to stop
   rolling, not the bar's CPU, which rolls every 3 s.
+* **The colour eases on the surfaces that draw it.** The header's ground and veils, the transcript's wash and the
+  divider were registered colours that inherit, on `#chat` and `main`, under a 250 ms transition: every frame of each
+  switch of chat restyled every element below them — the whole board (Chrome's trace: ~12,900 elements a frame), and
+  in WebKit a walk of every layer after each. Now `tintChat` sets plain properties where it did and each surface eases
+  a copy of its own that does not inherit (`--hbg-eased` on `.shead`, `#log` and the floating header's `.gbody`; the
+  veils on `.shead`), the divider its own `background-color` — its existing .15 s transition, so it now eases in .15 s
+  rather than .25 s. The header still slides from one colour to the next (sampled across a switch: blue, teal, green
+  over 250 ms); a frame of the ease restyles 48 elements. Opening a clauding chat took 450–600 ms in WebKit, and
+  220–275 with those transitions turned off altogether (measured before the change). The other half of an open's
+  cost is still there: a dozen full restyles in Chrome, from the floating header's `:has()` rules and the open path's
+  reads after writes — *Next*, below.
 
 ## Decisions of 2026-10-13, after the last — the board no longer updates itself unless asked
 

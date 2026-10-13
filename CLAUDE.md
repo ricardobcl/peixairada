@@ -318,8 +318,12 @@ for `$HOME`'s home and the account's.
   jumps the housing as the plain header's does. → `head-float.mjs`.
 * **The chat header is a gradient of the project's colour**: `tintChat()` sets `--repo`, `--rink` (the ink on it,
   `inkOn()`), `--rover`/`--rover2` and `#chat.tinted`; no colour, the plain panel header. **The colour eases from chat
-  to chat** through registered colours — `--hbg`, `--hveil`, `--hveil2` on `#chat`, `--openc` on `main`; `--repo`
-  stays unregistered (its fallback is load-bearing). A new surface in the chat's colour reads `--hbg`. The colour
+  to chat on the surfaces that draw it** (2026-10-13): `tintChat` sets plain `--hbg`, `--hveil`, `--hveil2` on `#chat`
+  and `--openc` on `main`; `.shead`, `#log` and the floating header's `.gbody` ease registered copies that do not
+  inherit (`--hbg-eased`, `--hveil-eased`, `--hveil2-eased`), the splitter its `background-color`. **Never an
+  inherited registered property under a transition**: every element below it is restyled each frame. `--repo` stays
+  unregistered (its fallback is load-bearing). A new surface in the chat's colour reads `--hbg-eased` and joins the
+  `:where(.shead, #log, .gbody)` rule. The colour
   square (`.sq.pick`; `colorAt` remembers which header opened it) sits at the `.sep`'s x, out of the flow.
 * **Only the project's name is on its colour; the rest of the header is black** — `.shead::after` from `--hsplit`
   down `--hrow`, fading in over `--hfade-w` (`paintHeadSplit()` after `layoutNotch(); fitHeadPrs()` and on
