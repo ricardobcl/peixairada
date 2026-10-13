@@ -5,6 +5,22 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-13. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-13, after Zed, later — the board's frames, the next round
+
+Ricardo, on the list of what was left (the entry "the board's frames, profiled", below): "do it". Measured as before:
+the made-up 400-card board with the user's prefs in a WKWebView, the median of three where it says so.
+
+* **Nobody looking, the board is hidden** (`watchAway`, `showAway` in main.swift). With the screen locked and the
+  display off, the app's web process had run at ~40 % of a core — timer-driven style passes and layouts, nothing
+  drawn: WebKit did not count the page hidden. The window's content is now hidden while the screen is locked, the
+  display asleep, the screen saver up or the session switched away (`com.apple.screenIsLocked`, `screensDidSleep`,
+  `com.apple.screensaver.didstart`, `sessionDidResignActive`, each with its opposite), and shown once all have
+  cleared, or the app comes forward — a missed opposite must not leave the board blank. Hiding a superview makes every
+  web view in it hidden to WebKit: measured with the harness's own view, `visibilitychange` to `hidden` and 8.7 % of a
+  core → 0.2. AppKit takes the keys off a view whose ancestor is hidden, so the first responder is kept and put back —
+  a drawer typed into after an unlock has them. The page's script still runs: the stream, the alerts and the badge
+  carry on, their timers slowed. The app log says `away: lock, display — the board hidden` and `away: back`.
+
 ## Decisions of 2026-10-13, after Zed — Zed installed when it is picked
 
 Ricardo, on Zed not being on this Mac: "how do I install? put that on readme also (optional). or... can we just

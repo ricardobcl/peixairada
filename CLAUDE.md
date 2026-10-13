@@ -654,6 +654,10 @@ for `$HOME`'s home and the account's.
   `pageZoom`, and main.swift turns what crosses — the pane's rects (×), `peixPane`'s edge and `peixFill`'s housing (÷).
   **Never CSS `zoom` on the root** (rects read and written back would scale twice). A browser zooms itself.
 * **Both web views are inspectable** (main.swift sets it): Safari → Develop reaches the real app.
+* **Nobody looking, the board is hidden** (2026-10-13, `watchAway`, `showAway`): the screen locked, the display
+  asleep, the screen saver up or the session switched away hides the window's content — every web view in it, so WebKit
+  stops their frames and animations (a page it knows is hidden costs ~0; the board ran at ~40 % of a core locked) —
+  until all have cleared or the app comes forward; the first responder is put back. The app log says `away: …`.
 * **The app's server lifecycle** (`ServerController`, main-thread throughout): `start` adopts a server already
   answering, waits for the launchd agent when its plist is installed, else runs the bundled one — one at a time, its
   log appended (`O_APPEND`); `restart` is `launchctl kickstart -k` for an adopted agent, else waits for the probe to

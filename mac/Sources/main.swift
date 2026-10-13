@@ -265,6 +265,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     buildStatusItem()
     buildWindow()
     setUpNotifications()
+    watchAway()
 
     NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification,
                                            object: window, queue: .main) { [weak self] _ in
@@ -287,10 +288,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// Filled and behind another app, there is no pointer to watch for a hold at the Dock's edge: the poll stops, and
   /// comes back with the app — with the Dock's edge read again, in case it moved meanwhile.
   func applicationDidResignActive(_ note: Notification) { fillTick?.invalidate(); fillTick = nil; edgeSince = nil; topSince = nil }
-  func applicationDidBecomeActive(_ note: Notification) { if fillSaved != nil && fillTick == nil { startDockTick() }; tuckMenuBarSoon() }
+  func applicationDidBecomeActive(_ note: Notification) {
+    if fillSaved != nil && fillTick == nil { startDockTick() }; tuckMenuBarSoon()
+    if !away.isEmpty { away.removeAll(); showAway() }   // in front again: someone is looking, whatever was missed
+  }
   func applicationShouldTerminateAfterLastWindowClosed(_ app: NSApplication) -> Bool { false }
   func applicationShouldHandleReopen(_ app: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
     showWindow(nil); return true
+  }
+
+  // ---- nobody looking --------------------------------------------------------------------------
+  // (2026-10-13) The screen locked, the display asleep, the screen saver up, the session switched away: the board's web
+  // views went on as if seen — with the screen locked and the display off its web process ran at ~40 % of a core — while
+  // a page WebKit knows is hidden costs nothing (0.2 % against 8.7 shown, measured with a superview hidden). So the
+  // window's content is hidden while any of them holds, and every web view in it with it (the board, the pane's pages):
+  // WebKit stops their frames and animations and slows their timers. The script still runs — the stream, the alerts and
+  // the badge carry on, a little later. Shown again once they have all cleared, the keys where they were.
+  var away = Set<String>()
+  var awayResponder: NSResponder?
+  private func watchAway() {
+    let ws = NSWorkspace.shared.notificationCenter, dn = DistributedNotificationCenter.default()
+    let marks: [(NotificationCenter, Notification.Name, String, Bool)] = [
+      (ws, NSWorkspace.screensDidSleepNotification, "display", true), (ws, NSWorkspace.screensDidWakeNotification, "display", false),
+      (ws, NSWorkspace.sessionDidResignActiveNotification, "session", true), (ws, NSWorkspace.sessionDidBecomeActiveNotification, "session", false),
+      (dn, Notification.Name("com.apple.screenIsLocked"), "lock", true), (dn, Notification.Name("com.apple.screenIsUnlocked"), "lock", false),
+      (dn, Notification.Name("com.apple.screensaver.didstart"), "saver", true), (dn, Notification.Name("com.apple.screensaver.didstop"), "saver", false),
+    ]
+    for (center, name, why, on) in marks {
+      center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+        guard let self else { return }
+        let was = self.away.isEmpty
+        if on { self.away.insert(why) } else { self.away.remove(why) }
+        if was != self.away.isEmpty { self.showAway() }
+      }
+    }
+  }
+  /// The content hidden while anything keeps the board unseen, shown once nothing does — the first responder put back:
+  /// AppKit moves the keys off a view whose ancestor is hidden, and a drawer typed into after an unlock must have them.
+  private func showAway() {
+    guard let content else { return }
+    let hide = !away.isEmpty
+    guard content.isHidden != hide else { return }
+    if hide { awayResponder = window.firstResponder }
+    content.isHidden = hide
+    if !hide, let r = awayResponder { window.makeFirstResponder(r); awayResponder = nil }
+    logLine(hide ? "away: \(away.sorted().joined(separator: ", ")) — the board hidden" : "away: back — the board shown")
   }
 
   // ---- UI ------------------------------------------------------------------------------------
