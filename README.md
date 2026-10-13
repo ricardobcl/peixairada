@@ -144,41 +144,36 @@ as at the top.
 
 ## 🚀 Install
 
-**First, what it runs on** — the last three are optional: without one, only what it is for is missing.
-
-| | For | Install |
-|---|---|---|
-| macOS 13 or later | the app, the login agent, the keychain | |
-| Xcode Command Line Tools | `git`, and `swiftc` for the app | `xcode-select --install` |
-| Node ≥ 22 | the server | `brew install node` — or mise, nvm, asdf |
-| Claude Code, signed in | the chats themselves | `curl -fsSL https://claude.ai/install.sh \| bash`, then run `claude` once to sign in |
-| [GitHub CLI](https://cli.github.com), signed in | PR states, faces and turns, cloning | `brew install gh && gh auth login` |
-| VS Code | ⌥⌘E (VS Code Web), and file links unless they open in Zed; [Peacock](https://marketplace.visualstudio.com/items?itemName=johnpapa.vscode-peacock) for project colours | [code.visualstudio.com](https://code.visualstudio.com) |
-| [Zed](https://zed.dev) (optional) | file links, in Zed's own window, once picked in Settings › Board › files open in — picking it installs it with Homebrew when it isn't there. Not in the pane: Zed has no web version, so ⌥⌘E stays VS Code Web | `brew install --cask zed`, or [zed.dev/download](https://zed.dev/download) |
-| [Task](https://taskfile.dev) | folders whose Taskfile starts Claude | `brew install go-task` |
-
-**Then**, from the shell you use every day — the login agent keeps its `PATH` and its `node`, which is how it finds
-`claude`, `gh` and the rest:
+**You need** macOS 13 or later, the Xcode Command Line Tools (`xcode-select --install`), Node ≥ 22 (`brew install node`,
+or mise, nvm, asdf) and Claude Code, signed in. **Then**, from the shell you use every day — the server takes its `PATH`
+and its `node`, which is how it finds `claude`, `gh` and the rest:
 
 ```sh
 git clone https://github.com/ricardobcl/peixairada.git && cd peixairada
-npm install                    # node-pty comes prebuilt for macOS: no compiler needed
+npm install
 scripts/launchd.sh install     # the server, started at login → http://127.0.0.1:7331
 mac/build.sh install           # the Mac app, in /Applications (optional — any browser works)
 ```
 
-**On first open** the board asks where your repos live, its guess from your chats already filled in. macOS asks to let
-`security` read the *Claude Code-credentials* keychain item (that's the plan usage — *Always Allow*), and the app to
-show notifications.
+**On first open** the board asks where your repos live, its guess from your chats already filled in; macOS asks to let
+`security` read the *Claude Code-credentials* keychain item (your plan usage — *Always Allow*), and the app to show
+notifications.
 
-**Updating** is the board's own job: every half hour it looks for new commits on your checkout's branch, and the
-status bar says when some have come. *Update now* (Settings › Board › *Updates*, a click on that word away) pulls them
-— a fast-forward, never over a change of yours — and starts again what they changed: the packages, the server (your
-chats stay open), the page, the app; a commit whose server doesn't start is undone and skipped. Switch *update itself*
-on and it does so on its own, once you've left it be for two minutes. By hand it's `git pull && npm install`, then
-`scripts/launchd.sh restart` and `mac/build.sh install` when `mac/` changed. After
-switching Node versions, or installing a CLI somewhere new, run `scripts/launchd.sh install` and `mac/build.sh install`
-again.
+**Optional** — each adds one thing:
+
+| | Adds | Install |
+|---|---|---|
+| [GitHub CLI](https://cli.github.com), signed in | PRs — their state, CI, faces and whose move — and cloning repos | `brew install gh && gh auth login` |
+| VS Code | ⌥⌘E (VS Code Web beside the chat) and file links | [code.visualstudio.com](https://code.visualstudio.com) |
+| [Zed](https://zed.dev) | file links in Zed instead (Settings › Board) | none: picking it installs it |
+| [Task](https://taskfile.dev) | new chats in folders whose Taskfile starts Claude | `brew install go-task` |
+
+**Updating**: the status bar says when new commits have come; click it, then *update now*. It pulls them — a
+fast-forward, never over a change of yours — and restarts only what they changed: the packages, the server (your chats
+stay open), the page, the app. *Update itself*, beside it, does so on its own once you've left the board be for two
+minutes. By hand: `git pull && npm install && scripts/launchd.sh restart`, then ⌥⌘R to reload the board, and
+`mac/build.sh install` when `mac/` changed. After switching Node versions, or installing a CLI outside the `PATH` you
+installed with, run the last two install lines again.
 
 **Removing**: `scripts/launchd.sh uninstall`, then delete `/Applications/peixAIrada.app` — and `~/.config/peixairada`
 and `~/Library/Application Support/peixAIrada` to forget your setup and the board's state.
