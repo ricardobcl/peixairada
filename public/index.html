@@ -789,20 +789,6 @@
   .card.heard:is(.working, .watching)::before { animation: ring var(--spins, 1.4s) linear infinite, ringin .5s ease-out backwards; }
   @keyframes ringin { from { opacity: 0; } }
   @keyframes ring { to { transform: rotate(360deg); } }
-  /* The edge light (2026-10-09, prefs.edgeLight — <html data-light="edge">): the same readings — --lit, one light per
-     sub-agent (--seg), --spins — running down the card's lit 3 px edge instead of round it. The card keeps its border
-     but on the left (no band for a ring; the overflow clips at the padding box, and the edge is to be in it — its
-     padding takes the 2 px), the strip is twice the card's height with a light every card-height ÷ lights, and one turn
-     moves it down by a card's height — a transform, so the compositor's. The ::after cover has nothing to cover. */
-  :root[data-light="edge"] .card:is(.working, .watching):not(.asking) { border-width: 2px 2px 2px 0; padding: 8px 10px 7px 12px; border-color: transparent;
-    box-shadow: -8px 0 22px -10px var(--lit), 0 0 24px -4px color-mix(in srgb, var(--lit) 35%, transparent); }
-  :root[data-light="edge"] .card:is(.working, .watching):not(.asking)::after { content: none; }
-  :root[data-light="edge"] .card:is(.working, .watching):not(.asking)::before { left: 0; top: 0; width: 3px; height: 200%; margin: 0; aspect-ratio: auto; filter: drop-shadow(0 0 3px var(--lit));
-    background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(50% / var(--lights, 1) * .25), var(--lit) calc(50% / var(--lights, 1) * .5), transparent calc(50% / var(--lights, 1) * .75), transparent calc(50% / var(--lights, 1)));
-    animation-name: edge; }
-  :root[data-light="edge"] .card.watching:not(.working)::before { --lights: 1; }
-  :root[data-light="edge"] .card:is(.working, .watching):is(.active, .qsel) { border-color: var(--lift); }
-  @keyframes edge { from { transform: translateY(-50%); } to { transform: none; } }
   /* The reply landed (2026-09-27, night): the moment a card stops clauding — the ring gone, the one event the board is
      watched for all day — its edge flares in the card's own light and settles to the plain edge over LANDED_MS, once.
      drawCards sets the class from landedAt, with a negative delay, so a card rebuilt mid-flare carries on where it was;
@@ -2237,7 +2223,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   @media (prefers-reduced-motion: reduce) {
     #wall i { transition: none; }   /* the wallpaper's glow stays in its corner (wallOn) */
     .card.working::before, .card.watching::before { animation: none; background: var(--lit); }
-    :root[data-light="edge"] .card:is(.working, .watching)::before { height: 100%; filter: none; }   /* the edge steady in the light, as the ring's band is */
     #trail { background: var(--lit); }   /* no comet under it (drawTrail makes none): the band steady in the light's colour */
     .card.asking { border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
     .card.asking::before, .card.asking::after { animation: none; opacity: 0; }   /* no pings: the red border and its glow */
@@ -2367,9 +2352,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <h4 class="shd">Updates</h4>
     <label class="opt" title="The board looks for new commits on its checkout's upstream every half hour, and the status bar says when there are some. On, it also pulls them once nothing has been done on the board for two minutes — a fast-forward only, never over a change of yours — and starts again what they changed: the packages, the server (the chats in drawers stay), this page (once you leave it be) and the app. A commit whose server does not start is undone and held back. Off, update now below takes them"><input type="checkbox" id="autoUpdate"><span><b>update itself</b> — pulls the board's new commits and starts again what they changed: the server, this page, the app; off, the status bar says they came</span></label>
     <div class="opt sub upd" id="updRow"><span id="updSay"></span><button type="button" class="btn" id="updBtn">check now</button></div>
-    <details class="sadv"><summary><h4 class="shd">Lights and motion</h4><span>the clauding light, its pace, the glow under the pointer</span></summary>
-    <div class="opt lightpick" title="Where a clauding card's light runs: round the whole card (the ring), or down its coloured edge — one light per sub-agent either way, a monitor's slowly. The open chat's light runs on past its card only with the ring"><input type="checkbox" id="edgeLight" hidden><span><b>card light</b> — round the card or down its edge</span><span class="sseg" role="radiogroup" aria-label="Card light"><button type="button" role="radio" data-light="ring">ring</button><button type="button" role="radio" data-light="edge">edge</button></span></div>
-    <label class="opt" title="On, every clauding card's light stands at the same angle — the blinks and the dots too; off, each card runs at its own. Either way a card rebuilt by an update carries on where it was"><input type="checkbox" id="ringsInStep" checked><span><b>rings in step</b> — every card's light at the same angle; off, each at its own</span></label>
+    <details class="sadv"><summary><h4 class="shd">Lights and motion</h4><span>the glow under the pointer</span></summary>
     <label class="opt" title="On, a round light of the card's colour follows the pointer over the card it is on, and the edge's glow stays as it is; off, hover spreads the edge's glow across the card"><input type="checkbox" id="cardSpot" checked><span><b>light under the pointer</b> — a hovered card's glow follows the pointer; off, it spreads from the edge</span></label>
     </details>
     <div id="hidden" class="hid"></div>
@@ -2502,7 +2485,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -2523,7 +2506,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   delete prefs.filter; delete prefs.filters;
   delete prefs.peopleFold;   // the faces folded to a count (2026-10-09, off by default) became peopleCompact (2026-10-11, later): folded by default
   // the experimental switches pared (2026-10-14): what they chose is now the only way, or gone
-  for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume']) delete prefs[k];
+  for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume', 'edgeLight', 'ringsInStep']) delete prefs[k];
   if (!Array.isArray(prefs.lanesShut)) prefs.lanesShut = ['done', 'idle'];
   prefs.lanesShut = prefs.lanesShut.filter(g => g !== 'move' && g !== 'replied');   // lanes for a morning (2026-10-12), filters since
   if (prefs.listFilter !== 'move' && prefs.listFilter !== 'replied') prefs.listFilter = null;
@@ -4076,14 +4059,11 @@ const toolName = n => {
   // render every such animation is put at start time 0 on the document clock, so the new node is exactly where the old
   // one was — and so every ring turns in step. Once at 0 it stays there. A CSSTransition (the age fading in) has no
   // animationName, so it is left alone. getAnimations() is the document's running animations, a few dozen at most, and
-  // the style flush it forces is the one the frame was about to do. In step is the cog's choice (2026-09-27): off, a
-  // card's animations start from a time of its own, hashed from the chat's id — as steady across renders as 0, only not
-  // shared. The header's dot and the divider have no card and stay at 0. Flipping the switch re-phases what is running,
-  // so the change shows at once.
-  const PHASED = new Set(['ring', 'edge', 'sonar', 'pulse', 'pix', 'pixhop', 'shimw', 'shimi']);
-  const phaseOf = a => { if (prefs.ringsInStep !== false) return 0; const id = a.effect?.target?.closest?.('.card')?.dataset.id || ''; let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0; return -(h % 60000); };
+  // the style flush it forces is the one the frame was about to do. (Each card at a start of its own, hashed from the
+  // chat's id, was a switch from 2026-09-27 to 2026-10-14.)
+  const PHASED = new Set(['ring', 'sonar', 'pulse', 'pix', 'pixhop', 'shimw', 'shimi']);
   // Once a frame, before it paints: the list and the header both ask after a render, and getAnimations() flushes style
-  // each time. `now` is the switch's: the change shows at once, and reads at once.
+  // each time. `now`: at once, and read at once.
   // The phase is set as the current time that start would mean first, and the start after it (2026-10-11): WebKit — the
   // app's — hands the transform to the compositor, and a startTime set once it has done so reads back from the script
   // but never reaches the screen. Measured in a WKWebView, twelve rings made and phased at six moments (in the task that
@@ -4099,20 +4079,14 @@ const toolName = n => {
     const run = () => {
       phaseAnims.queued = false; const at = document.timeline.currentTime;
       for (const a of document.getAnimations()) if (PHASED.has(a.animationName)) {
-        const t = phaseOf(a);
-        if (a.startTime === t && !a.pending) continue;
-        a.currentTime = at - t; if (a.startTime !== t) a.startTime = t;
+        if (a.startTime === 0 && !a.pending) continue;
+        a.currentTime = at; if (a.startTime !== 0) a.startTime = 0;
       }
     };
     if (now) return run();
     if (phaseAnims.queued) return; phaseAnims.queued = true;
     requestAnimationFrame(() => { if (phaseAnims.queued) run(); });
   }
-  // Where a clauding card's light runs (2026-10-09, the studies' M5): round the card — the ring, as always — or down its
-  // lit edge, the ink card's own colour. <html data-light="edge"> picks it in CSS; the open chat's light past its card
-  // (trailGeom) is the ring's alone.
-  const applyLight = () => { if (prefs.edgeLight) document.documentElement.dataset.light = 'edge'; else delete document.documentElement.dataset.light; };
-  applyLight();
   // The floating header (2026-10-09, the studies' E): a switch, to compare with the plain one in use.
   const applyHead = () => { if (prefs.headFloat) document.documentElement.dataset.head = 'float'; else delete document.documentElement.dataset.head; };
   applyHead();
@@ -4123,14 +4097,6 @@ const toolName = n => {
   $('#cardSpot').addEventListener('change', e => { prefs.cardSpot = e.target.checked; savePrefs(); applySpot(); });
   $('#headFloat').checked = !!prefs.headFloat;
   $('#headFloat').addEventListener('change', e => { prefs.headFloat = e.target.checked; savePrefs(); applyHead(); layoutNotch(); fitHeadPrs(); paintHeadSplit(); floatH(); listChanged(); });
-  $('#edgeLight').checked = !!prefs.edgeLight;
-  $('#edgeLight').addEventListener('change', e => { prefs.edgeLight = e.target.checked; savePrefs(); applyLight(); listChanged(); phaseAnims(true); lightPick(); });
-  // the switch is a choice of two (2026-10-12): ring or edge — the checkbox stays, hidden, for the launcher's Toggle row
-  const lightPick = () => { for (const b of document.querySelectorAll('.lightpick [data-light]')) b.setAttribute('aria-checked', String((b.dataset.light === 'edge') === !!prefs.edgeLight)); };
-  for (const b of document.querySelectorAll('.lightpick [data-light]')) b.addEventListener('click', () => { const on = b.dataset.light === 'edge'; if (on !== !!prefs.edgeLight) $('#edgeLight').click(); });
-  lightPick();
-  $('#ringsInStep').checked = prefs.ringsInStep !== false;
-  $('#ringsInStep').addEventListener('change', e => { prefs.ringsInStep = e.target.checked; savePrefs(); phaseAnims(true); });
   // ---- the list's ends: how many cards are out of sight ---------------------------------
   // (2026-09-25): a pill at each end, counting the cards more than half out of view that way — a card cut in two is
   // still being shown. A dot on it when one of them is asking you (red) or clauding: the two states a card should not
@@ -4274,7 +4240,7 @@ const toolName = n => {
    *  open and the list is not the rail. The card's own light — its colour, its pace, how many — when it is in the list. */
   function trailGeom(open) {
     const s = state.sessions.get(state.current), head = $('#shead');
-    if (!s || s.done || asking(s) || !(s.status === 'working' || watching(s)) || prefs.edgeLight || prefs.tiles || $('#main').classList.contains('scompact') || !head.querySelector('h2 .sep')) return null;   // tiles (2026-10-10): the gap is no splitter to run up
+    if (!s || s.done || asking(s) || !(s.status === 'working' || watching(s)) || prefs.tiles || $('#main').classList.contains('scompact') || !head.querySelector('h2 .sep')) return null;   // tiles (2026-10-10): the gap is no splitter to run up
     const hr = head.getBoundingClientRect(), hs = parseFloat(head.style.getPropertyValue('--hsplit')), hrow = head.style.getPropertyValue('--hrow');
     const work = s.status === 'working', card = open?.el.getBoundingClientRect();
     return { card, box: hs > 0 && !prefs.headFloat ? { l: hr.left, t: hr.top, r: hr.left + hs, b: hr.top + (hrow.endsWith('px') ? parseFloat(hrow) : hr.height) } : null,
@@ -5002,8 +4968,8 @@ const toolName = n => {
   // `>` narrows it to the actions and switches, `#` to the PRs, `@` to the projects, `!` to the tickets. Empty, it is a
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
-  const SWITCHES = [['notifyOn', 'Notifications'], ['autoUpdate', 'Update itself'], ['skinFollow', 'Theme follows macOS'], ['ringsInStep', 'Rings in step'],
-    ['edgeLight', 'Edge light'], ['cardSpot', 'Light under the pointer'], ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['tileStackOn', 'Tiles: the stack'], ['wallFollow', 'Tiles: the glow follows the pointer'], ['headFloat', 'Floating header'], ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal']];
+  const SWITCHES = [['notifyOn', 'Notifications'], ['autoUpdate', 'Update itself'], ['skinFollow', 'Theme follows macOS'],
+    ['cardSpot', 'Light under the pointer'], ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['tileStackOn', 'Tiles: the stack'], ['wallFollow', 'Tiles: the glow follows the pointer'], ['headFloat', 'Floating header'], ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
     { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },

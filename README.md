@@ -116,12 +116,10 @@ as at the top.
     <td align="center"><sub><b>⌥⌘B</b> — the list folded to a rail, a square per chat</sub></td>
   </tr>
   <tr>
-    <td><img width="420" src="docs/shots/look-stack.webp" alt="The stack: the chats asking or clauding as live tiles beside the open one"></td>
-    <td><img width="420" src="docs/shots/look-edge.webp" alt="Compact cards, all one height, their light running down the left edge"></td>
+    <td colspan="2"><img width="420" src="docs/shots/look-stack.webp" alt="The stack: the chats asking or clauding as live tiles beside the open one"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>⌥⌘S</b> — the busy chats stacked beside the open one, live</sub></td>
-    <td align="center"><sub><b>Compact</b> cards, one height, and the <b>edge light</b></sub></td>
+    <td align="center" colspan="2"><sub><b>⌥⌘S</b> — the busy chats stacked beside the open one, live</sub></td>
   </tr>
   <tr>
     <td><img width="420" src="docs/shots/look-tokyo.webp" alt="The Tokyo Night theme"></td>
@@ -179,8 +177,7 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
   on to begin with), the status bar and what it shows · *Terminal*: ⌥ as Meta, a screen reader in the drawer ·
   *Updates*: whether the board updates itself (off to begin with: the status bar says when new commits came, and
   *update now* takes them), where it stands, check now · and,
-  folded, *Lights and motion*: the card light (round the card or down its edge), rings in step, the light under the
-  pointer.
+  folded, *Lights and motion*: the light under the pointer.
 - **Setup** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
   project ⌥⌘O starts a chat in, a short name and a colour where Peacock has none, per project, and your Jira site,
   email and API token (the token goes to your keychain, never into the file).

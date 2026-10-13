@@ -275,9 +275,7 @@ for `$HOME`'s home and the account's.
   `overscroll-behavior: contain` on every scroller. A new number, list or control joins those lists.
 * **Every animation has its line in the one `@media (prefers-reduced-motion: reduce)` block** at the end of the CSS;
   `drawCards` reads `REDUCED`. A new animation adds a line there, and to `reduced-motion.mjs` if it is a state's.
-* **The card's edge is one ring with four readings** — or, with *edge light* (`prefs.edgeLight` →
-  `<html data-light="edge">`), the same readings running down the lit left edge (`@keyframes edge`). `--lit` is what
-  runs, `--seg` how much of the edge one light owns (`100% / --lights`, one per sub-agent), `--spins` how fast.
+* **The card's edge is one ring with four readings**. `--lit` is what runs, `--seg` how much of the edge one light owns (`100% / --lights`, one per sub-agent), `--spins` how fast.
   **Clauding**: the project's colour lifted towards white (`--glow`, OKLCH). **Watching** (`s.tasks`): one light in
   `--watch`, slowly — on a ready card too. **Asking** (`needs-input` while alive): no ring — a red border and pings
   (`@keyframes sonar` on `::before` and `::after`, the card `overflow: visible`), the question on the card
@@ -288,9 +286,8 @@ for `$HOME`'s home and the account's.
   only. **The live line** (`liveSlot`, `fillLive`, `liveSeen`) is an empty slot in the markup filled after the
   render, its memo in properties, so a tool call or an event keeps the card's node: a clauding card's last tool call
   (the summary's `doing`, `doingOf`; paths by `pathTail`), a watching card's newest event. **`phaseAnims()`** (once a
-  frame before paint; `true` at once) puts every `ring`, `edge`, `sonar`, `pulse`, `pix` and `pixhop` at start 0 on
-  the document clock — or hashed from the chat's id with *rings in step* off (`prefs.ringsInStep`) — by its
-  `currentTime` first, then its `startTime` (see the invariants) — only when something new may have started: a render
+  frame before paint; `true` at once) puts every `ring`, `sonar`, `pulse`, `pix` and `pixhop` at start 0 on the
+  document clock, every card in step, by its `currentTime` first, then its `startTime` (see the invariants) — only when something new may have started: a render
   queues it when `drawCards` changed the list (it says so), `renderBoardSoon` runs a queued one at once, and a run at
   once clears the queued one (2026-10-13; `getAnimations()` is a style pass). → `card-signals.mjs`.
 * **The open chat's light runs past its card** (2026-09-29; `#trail`, `drawTrail(g)` from `trailGeom()`): while it

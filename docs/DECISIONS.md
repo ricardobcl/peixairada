@@ -24,6 +24,10 @@ pref for a switch that went is deleted on load.
 * **The auto-resume countdown** (2026-10-07) — gone: a chat whose claude has ended waits for Resume (or ⌥⌘C) however
   it was opened; Not now, the line along the bar's top, Esc's turn at it and `openSession`'s `auto` went, and the
   harness no longer turns it off (`launchChrome`, `webkit.swift`).
+* **The card light and rings in step** (2026-10-09 and 2026-09-27) — gone: a clauding card's light is the ring, and
+  every card's animations start at 0 on the document clock (`phaseAnims`, no `phaseOf`). The edge light's CSS
+  (`data-light`, `@keyframes edge`), its ring | edge pick, both launcher toggles and their scenario steps went;
+  launcher.mjs flips Sounds instead.
 
 ## Decisions of 2026-10-14, on a branch — the tour
 

@@ -402,8 +402,7 @@ export default async function (ctx) {
       ['look-plain', { tiles: false, headFloat: false }, true],
       ['look-rail', { tiles: true, headFloat: true, sessionsCompact: true }, true],
       ['look-stack', { sessionsCompact: false, tileStack: true }, true],
-      ['look-edge', { tileStack: false, edgeLight: true, cards: 'compact', cardsEven: true }, true],
-      ['look-tokyo', { edgeLight: false, cards: 'large', cardsEven: false, skinDark: 'tokyo-night' }, true],
+      ['look-tokyo', { tileStack: false, cards: 'large', cardsEven: false, skinDark: 'tokyo-night' }, true],
       ['look-latte', { skinDark: null, skinLight: 'catppuccin-latte' }, false],
     ];
     for (const [name, prefs, dark] of looks) {

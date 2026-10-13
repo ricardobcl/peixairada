@@ -55,15 +55,15 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelector('#pick').open`, { what: 'the launcher once more' });
   for (let i = 0; i < 4; i++) await key('ArrowDown');
   await key('ArrowRight');
-  await ctx.waitFor(`[...document.querySelectorAll('#picklist .pkrow.toggle')].some(r => r.textContent.includes('Edge light'))`, { what: 'the switches' });
-  const edge = (await rows()).findIndex(r => r.text === 'Edge light');
-  for (let i = 0; i < edge; i++) await key('ArrowDown');
-  ctx.assert.equal((await ctx.peix('prefs()')).edgeLight, false);
+  await ctx.waitFor(`[...document.querySelectorAll('#picklist .pkrow.toggle')].some(r => r.textContent.includes('Sounds'))`, { what: 'the switches' });
+  const sounds = (await rows()).findIndex(r => r.text === 'Sounds');
+  for (let i = 0; i < sounds; i++) await key('ArrowDown');
+  ctx.assert.equal((await ctx.peix('prefs()')).sounds, false);
   await key('Enter');
-  await ctx.waitFor(`window.peix.prefs().edgeLight === true && document.querySelector('#pick').open && document.querySelector('#picklist .pkrow.sel .lsw.on')`, { what: 'the edge light on, the menu up' });
+  await ctx.waitFor(`window.peix.prefs().sounds === true && document.querySelector('#pick').open && document.querySelector('#picklist .pkrow.sel .lsw.on')`, { what: 'the sounds on, the menu up' });
   await ctx.settle(); await ctx.shot('toggle');
   await key('Enter');
-  await ctx.waitFor(`window.peix.prefs().edgeLight === false`, { what: 'and off again' });
+  await ctx.waitFor(`window.peix.prefs().sounds === false`, { what: 'and off again' });
   await key('ArrowLeft');
   await ctx.waitFor(`document.querySelectorAll('#picklist .pkrow.menu').length === 12`, { what: 'back on the menu' });
 

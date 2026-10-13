@@ -174,22 +174,17 @@ export default async function (ctx) {
     ctx.assert.deepEqual(out.ring.map(r => r.start), [0, 0], 'the ring is at start time 0 on the document clock, before the update and on the new card after it');
     ctx.assert.deepEqual(out.ring[1].props, ['transform'], 'and it is a transform animation, the kind the compositor runs');
     for (const r of out.ring) ctx.assert.ok(Math.min(Math.abs(r.angle - r.expect), 360 - Math.abs(r.angle - r.expect)) <= 3, `the light is where the clock says: ${r.angle}° for ${r.expect}°`);
-    // The cog's switch (2026-09-27): off, each card's ring runs at a phase of its own, hashed from the chat's id —
-    // steady across renders, only not shared; on again, all at 0
+    // every clauding card's ring in step, at 0 (a phase of each card's own was a switch until 2026-10-14)
     const starts = () => ctx.evaluate(`JSON.stringify(Object.fromEntries([...document.querySelectorAll('#slist .card.working')].map(c => [c.querySelector('.title').textContent, c.getAnimations({ subtree: true }).find(a => a.animationName === 'ring')?.startTime])))`).then(JSON.parse);
-    await ctx.evaluate(`document.querySelector('#ringsInStep').click()`);
-    out.scattered = await starts();
-    ctx.assert.ok(Object.keys(out.scattered).length >= 3 && Object.values(out.scattered).every(t => t < 0) && new Set(Object.values(out.scattered)).size > 1, `off, every ring has a start of its own: ${JSON.stringify(out.scattered)}`);
-    ctx.assert.equal(await ctx.evaluate(`window.peix.prefs().ringsInStep`), false, '…and the choice is a pref');
+    out.starts = await starts();
+    ctx.assert.ok(Object.keys(out.starts).length >= 3 && Object.values(out.starts).every(t => t === 0), `every ring in step: ${JSON.stringify(out.starts)}`);
     // Another tool call changes nothing on the card, so the card keeps its node (2026-09-27: the list is reconciled, not
     // rebuilt) — the update lands, the server's word moves, and every ring stays where it was
     const was = await ctx.peix(`session(${JSON.stringify(work.id)}).lastActivity`);
     appendFileSync(work.file, toolLines({ id: work.id, cwd, name: 'Bash', input: { command: 'npm run lint', description: 'lint' }, at: new Date() }).map(l => JSON.stringify(l)).join('\n') + '\n');
     await ctx.waitFor(`window.peix.session(${JSON.stringify(work.id)}).lastActivity !== ${JSON.stringify(was)}`, { what: 'the update on the chat' });
     ctx.assert.ok(await ctx.evaluate(`[...document.querySelectorAll('#slist .card')].find(c => c.querySelector('.title')?.textContent === 'Normal work').__seen > 0`), 'a card whose markup did not change keeps its node');
-    ctx.assert.deepEqual(await starts(), out.scattered, '…and each ring where it was');
-    await ctx.evaluate(`document.querySelector('#ringsInStep').click()`);
-    ctx.assert.ok(Object.values(await starts()).every(t => t === 0), 'on again, every ring in step');
+    ctx.assert.deepEqual(await starts(), out.starts, '…and each ring where it was');
 
     // ---- and it leads the list: a question costs you a second and unblocks a turn (2026-09-21) ----
     out.order = await ctx.evaluate(`[...document.querySelectorAll('#slist > *')].map(e => e.classList.contains('lane') ? 'lane:' + e.querySelector('.ln').textContent + ' ' + e.querySelector('b').textContent : e.classList.contains('gsep') ? 'line' : e.querySelector('.title')?.textContent)`);
@@ -284,18 +279,13 @@ export default async function (ctx) {
     out.alertsAfter = await ctx.evaluate(`window.__alerts.filter(a => a.title === 'Normal work').map(a => a.kind)`);
     ctx.assert.deepEqual(out.alertsAfter, ['needs-input'], 'and no second alert for a question whose line arrived with its answer');
 
-    // ---- the ink card's lit edge (2026-10-09), and the edge light: the ring's readings down that edge ----
+    // ---- the ink card's lit edge (2026-10-09), the ring round it (the edge light, its readings down that edge, was a
+    // switch until 2026-10-14) ----
     const look = t => ctx.evaluate(`JSON.stringify((c => ({ bg: getComputedStyle(c).backgroundImage.slice(0, 40), anim: getComputedStyle(c, '::before').animationName, w: getComputedStyle(c, '::before').width,
       lights: c.style.getPropertyValue('--lights') || '1' }))([...document.querySelectorAll('#slist > .card')].find(c => c.querySelector('.title')?.textContent === ${JSON.stringify(t)})))`).then(JSON.parse);
     out.ring = await look('Normal work');
     ctx.assert.ok(out.ring.bg.startsWith('linear-gradient(to right') && out.ring.anim === 'ring', `the lit edge first, the ring round: ${JSON.stringify(out.ring)}`);
-    await ctx.evaluate(`document.querySelector('#edgeLight').click()`);
-    await ctx.waitFor(`document.documentElement.dataset.light === 'edge'`, { what: 'the edge light on' });
-    out.edge = [await look('Normal work'), await look('Three agents out')];
-    ctx.assert.deepEqual(out.edge.map(e => [e.anim, e.w, e.lights]), [['edge', '3px', '1'], ['edge', '3px', '3']], `down the edge, a light per agent: ${JSON.stringify(out.edge)}`);
-    await ctx.shot('card-signals-edge', { x: 0, y: 0, width: 400, height: 700 });
-    await ctx.evaluate(`document.querySelector('#edgeLight').click()`);
-    ctx.assert.equal((await look('Normal work')).anim, 'ring', 'off: the ring again');
+    ctx.assert.equal((await look('Three agents out')).lights, '3', 'a light per agent');
     return out;
   } finally {
     for (const p of [...sleeps, holder]) { try { p.kill(); } catch {} }
