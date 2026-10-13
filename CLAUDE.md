@@ -907,7 +907,8 @@ the live board at load — `npm run verify -- "typeof window.peix"`.
   WebKit's passes every scenario. It runs an async body on the live board in a `WKWebView` (`frame`, `sleep`, `until`;
   `--hash`, `URL`, `SIZE`, `PREFS`); `--shot` saves the window as **the compositor** drew it, and `--then` runs a body
   on that frame (`shot.px(x, y)`, `shot.where(test, rect)`). The window is opaque and on screen by one pixel (off a
-  screen WebKit runs no frames); a locked screen hides it, and it says so.
+  screen WebKit runs no frames); a locked screen or a sleeping display hides it, and it says so; a mirror of the main
+  screen is not another screen (2026-10-13).
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports `meta`
   (`server`, `fake`, `fixture`, `env`, `prefs` — what the page starts from; **without it a page starts with every
   lane open, large cards, neither tiles nor the floating header, and the theme following the emulated colour scheme**:

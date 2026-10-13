@@ -64,7 +64,10 @@ win.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
 // one pixel of it on the main screen, in the first corner where the rest falls on no other screen
 if let main = NSScreen.screens.first {
   let f = main.frame, corners = [(f.maxX - 1, f.minY - H + 1), (f.minX - W + 1, f.minY - H + 1), (f.maxX - 1, f.maxY - 1), (f.minX - W + 1, f.maxY - 1)]
-  let spot = corners.first { c in NSScreen.screens.dropFirst().allSatisfy { !$0.frame.intersects(NSRect(x: c.0, y: c.1, width: W, height: H)) } }
+  // a mirror of the main screen has its frame (2026-10-13: a display mirrored left no corner clear): the same pixels,
+  // not another screen the window could show on
+  let others = NSScreen.screens.dropFirst().filter { $0.frame != f }
+  let spot = corners.first { c in others.allSatisfy { !$0.frame.intersects(NSRect(x: c.0, y: c.1, width: W, height: H)) } }
   if let (x, y) = spot { win.setFrameOrigin(NSPoint(x: x, y: y)) } else { fail("no corner of the main screen is clear of the others") }
 }
 win.orderFrontRegardless()
