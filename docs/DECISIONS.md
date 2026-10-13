@@ -5,6 +5,21 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-14. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-14, on a branch — the experimental switches pared
+
+Ricardo: "I want to remove some features/settings that we experimental and I don't use a lot, so we have let bugs and
+more cohision. e.g.: tiles is the only choice; same for glow background; status bar is mandatory; floating header is
+the only option; more?" Asked which more, against the prefs his app had saved, he took the card light (the ring, in
+step), simple colours, the stack, the auto-resume countdown and exact project colours; the card sizes and *follow
+macOS* stay. Each switch went in a commit of its own: the way he had it is now the only way, and the code, the
+settings' rows, the launcher's toggles, the scenarios and the harness defaults for the other way went with it. A saved
+pref for a switch that went is deleted on load.
+
+* **Simple colours** (2026-10-01) — gone: every project wears its own colour (Peacock's, the setup's, a theme's hue),
+  the states and the syntax theirs. The chat header's square always writes Peacock's. The scenario's other half — the
+  project's colour, the setup's square, black standing out — is `scripts/scenarios/project-colors.mjs`, its black now a
+  Peacock black picked at the square.
+
 ## Decisions of 2026-10-14, on a branch — the tour
 
 Ricardo: "the have a lot of features now. seems to be hard to discover if you're a new user. can we do a walkthrough

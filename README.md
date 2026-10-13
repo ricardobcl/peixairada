@@ -71,8 +71,6 @@ GitHub and VS Code open in the chat in the Mac app; in a browser they open in a 
   header, beside its PRs. Set your site, email and an API token in Setup.
 - 🎨 **Projects** — folders in their [Peacock](https://marketplace.visualstudio.com/items?itemName=johnpapa.vscode-peacock)
   colour, or named sets of folders.
-- 🌑 **Simple colours** — a quieter board: every project in black (or one colour you pick), the states in grey; PRs
-  and faces keep their colours, and the accent is left for what needs you.
 - 🗺️ **Every agent at once** — ⌥⌘A lays out every live chat by what it wants (asking, clauding, watching, new replies),
   each showing what it is doing right now; the *tiles* switch lays the board out as Hyprland does, and ⌥⌘S stacks the
   busy chats beside the open one.
@@ -133,13 +131,6 @@ as at the top.
     <td align="center"><sub><b>⌥⌘Y</b> — a dark theme (Tokyo Night)…</sub></td>
     <td align="center"><sub>…or a light one (Catppuccin Latte), whatever macOS shows</sub></td>
   </tr>
-  <tr>
-    <td><img width="420" src="docs/shots/simple-dark.webp" alt="Simple colours, dark: every project in black, the states in grey"></td>
-    <td><img width="420" src="docs/shots/simple-light.webp" alt="Simple colours, light"></td>
-  </tr>
-  <tr>
-    <td align="center" colspan="2"><sub><b>Simple colours</b> — every project in black (or one colour you pick), the states in grey; PRs and faces keep theirs</sub></td>
-  </tr>
 </table>
 
 ## 🚀 Install
@@ -184,8 +175,7 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
 **Settings** — ⌘, or ··· in the chat's header:
 
 - **Board** — *Alerts*: notifications, sounds · *Chats*: card size (compact, or large only where a chat wants you),
-  auto-resume · *Look*: text size (the whole board, in the app), simple colours (every project in black, or one colour
-  you pick, the states in grey), the theme and whether it follows macOS, tiles and their stack and glow, the floating header (tiles and the header
+  auto-resume · *Look*: text size (the whole board, in the app), the theme and whether it follows macOS, tiles and their stack and glow, the floating header (tiles and the header
   on to begin with), the status bar and what it shows · *Terminal*: ⌥ as Meta, a screen reader in the drawer ·
   *Updates*: whether the board updates itself (off to begin with: the status bar says when new commits came, and
   *update now* takes them), where it stands, check now · and,

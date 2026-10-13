@@ -396,15 +396,10 @@ export default async function (ctx) {
     await snap('overview-dark');
     await ctx.key('Escape'); await ctx.evaluate(`document.querySelector('dialog[open]')?.close()`);
 
-    // 6 · simple colours: every project in black, the states in grey — the settings' switch, as a click turns it
-    await ctx.evaluate(`document.querySelector('#simpleColors').click()`);
-    await ctx.waitFor(`document.documentElement.dataset.colors === 'simple'`, { what: 'simple colours' });
-    for (const dark of [true, false]) { await theme(dark); await snap(`simple-${dark ? 'dark' : 'light'}`); }
-
-    // 7 · the ways it can look, smaller: each a switch or a key, the board reloaded on it
+    // 6 · the ways it can look, smaller: each a switch or a key, the board reloaded on it
     await scale(1);
     const looks = [
-      ['look-plain', { simpleColors: false, tiles: false, headFloat: false }, true],
+      ['look-plain', { tiles: false, headFloat: false }, true],
       ['look-rail', { tiles: true, headFloat: true, sessionsCompact: true }, true],
       ['look-stack', { sessionsCompact: false, tileStack: true }, true],
       ['look-edge', { tileStack: false, edgeLight: true, cards: 'compact', cardsEven: true }, true],
@@ -418,12 +413,12 @@ export default async function (ctx) {
     }
     await scale(2); await theme(true); await board({ skinLight: null });
 
-    // 8 · home, ⌥⌘0: the board at a glance and the day
+    // 7 · home, ⌥⌘0: the board at a glance and the day
     await ctx.key('Digit0'); await ctx.waitFor(`document.querySelector('#home .hh')`, { what: 'the home' });
     await ctx.sleep(800); await snap('home-dark');
     await board();
 
-    // 9 · in the chat: Claude in the drawer on the left; a zsh, the PR and VS Code Web on tabs on the right
+    // 8 · in the chat: Claude in the drawer on the left; a zsh, the PR and VS Code Web on tabs on the right
     await ctx.key('KeyT'); await ctx.waitFor(`window.peix.state().tabs.some(k => k.startsWith('shell:'))`, { what: 'the zsh tab', timeout: 15000 });
     await ctx.key('KeyG'); await ctx.waitFor(`window.peix.state().tabs.some(k => k.startsWith('gh:'))`, { what: 'the PR tab' });
     await ctx.key('KeyC'); await ctx.waitFor(`window.peix.state().termSession === ${JSON.stringify(grid.id)} && !window.peix.state().termExited`, { what: 'Claude in the drawer', timeout: 20000 });
@@ -453,7 +448,7 @@ export default async function (ctx) {
     await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 600, y: 500 });
     await snap('chat-dark');
 
-    // 10 · ⌥⌘D, the chat's changes beside it — the list folded to its rail (⌥⌘B), for the room
+    // 9 · ⌥⌘D, the chat's changes beside it — the list folded to its rail (⌥⌘B), for the room
     await ctx.key('KeyB'); await ctx.waitFor(`window.peix.prefs().sessionsCompact`, { what: 'the rail' });
     await ctx.key('KeyD'); await ctx.waitFor(`window.peix.state().tab === 'changes' && document.querySelector('#chg .dfile, #chg .dl, #chg pre, #chg table')`, { what: 'the changes', timeout: 15000 }).catch(() => ctx.log('the changes did not show as expected'));
     await ctx.sleep(800);

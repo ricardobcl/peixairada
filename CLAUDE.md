@@ -313,12 +313,9 @@ for `$HOME`'s home and the account's.
 * **A project's colour is Peacock's** — `pollPeacock()` reads the nearest `.vscode/settings.json` at or above every
   folder, stopping short of `$HOME`; the board can set it (`PUT/DELETE /api/peacock`, a text edit of the JSONC,
   tested). None → `--nocolor`, unless the setup gives one (`projCfg`); `#000000` is `BLACK`, with its inks. The
-  header's colour square is the picker (`#colorInput`).
-* **Simple colours** (2026-10-01, `prefs.simpleColors` → `<html data-colors="simple">`, `applyColors`): `repoColor`
-  and `projColor` answer **one colour** for every project, ALL included (`prefs.simpleColor`, `simpleTint()`, black
-  until picked; `setTint`), and `:root[data-colors="simple"]` redefines the state, spend and syntax tokens. A PR and
-  the people keep their colours. The setup's squares read `ownColor`. **A new colour on the board reads a token or
-  `repoColor`, never a hex or `ownColor` of its own, or it shows through.** → `simple-colors.mjs`.
+  header's colour square is the picker (`#colorInput`); it and the setup's squares read `ownColor`, the board
+  `repoColor` (a theme's hue). **A new colour on the board reads a token or `repoColor`, never a hex or `ownColor` of
+  its own, or a theme does not reach it.** → `project-colors.mjs`.
 * **A theme is every surface at once** (2026-10-10; ⌥⌘Y, `SKINS`, `skinCss`, `applySkin`): a block of tokens under
   `:root:root[data-skin=…]` (three classes deep, beating `:root` and the dark block), set only beside its own
   appearance. **The appearance is the board's, whatever macOS shows** (2026-10-12): `<html data-theme="dark|light">`,
@@ -360,7 +357,7 @@ for `$HOME`'s home and the account's.
   or too light for the panel is held where it shows**: `--lift` (`oklch(from … max(l, .62) c h)` dark, `min(l, .72)`
   light) for the edge, glow, spot, border and track; the glow's colour `--wash` is `--lift` but on
   `.card.black:not(:hover, .qsel)`, whose ground stays black. `--repo` stays the colour as set (rail, header,
-  splitter). → the black step of `simple-colors.mjs`.
+  splitter). → the black step of `project-colors.mjs`.
 * **With no chat open the column is home** (2026-10-10; `showHome`, from `leaveChat` and a snapshot with nothing to
   open; ⌥⌘0): the sea (`makeSea`, after ascii.rest's *ocean-sunset*, MIT; a canvas that outlives the draws, 15 fps
   while on screen, still under reduced motion; `peix.sea()`), the board's facts (`about.user`, `about.host`), and the
