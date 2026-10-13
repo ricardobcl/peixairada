@@ -5,6 +5,65 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-13. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-13, night — the harness for the board's frames; npm test under load; no perf skill
+
+Ricardo, on the round's report: "commit and push. also improve harness, leave notes for future work if needed and check
+if we need a perf-skill". Pushed (`7b3f0ef..aa14719`); then what the profiling had done by hand went into the scripts.
+
+* **`npm run perf` measures what the day measured by hand.** Besides rest, the pointer and the scroll: *home* (no chat
+  open, the sea), *a chat opened* from its card (three clauding, three not; the click to the log drawn and two frames),
+  *the layers* (the compositor's tree, counted) and *the memory* (the web process's footprint, now and its peak).
+  `--runs n` takes medians; `--against <ref>` starts the same board on that commit's page and server from a detached
+  worktree (this checkout's `node_modules`) and interleaves the runs, A B then B A — the before-and-after that took a
+  script and a second server each time; `--sample` runs macOS `sample` on the web process through each phase and
+  prints the top of its stacks, idle waits left out; `--json` for a script. `--app [s]` measures the app as it runs —
+  the board's web process (named by main.swift in the app log, `board: web process <pid>`, from the next build; until
+  then the first web process the app started): its CPU over s seconds, its memory and where its time went. The body
+  says when each phase starts (`say('phase …')` on stderr), so a sample covers its phase. `--against` reaches back to
+  2026-10-03 (the harness waits on `peix.state().snapshots`).
+* **The WebKit harness answers asks** (`Asks` in webkit.swift, a `WKScriptMessageHandlerWithReply`): a body's
+  `await layers()` is `_caLayerTreeAsText`, `await footprint()` is `proc_pid_rusage` on the web process (the
+  footprint Activity Monitor shows, and its lifetime peak), `say(line)` a line on stderr at once. `WK_BORDERS=1` and
+  `WK_COUNTERS=1` turn on WebKit's compositing borders and repaint counters (preference setters the SDK does not
+  declare) — what is a layer and what paints, in a `--shot`. All three were throwaway copies of the harness that day.
+* **The numbers, one run each, the screen awake**: this tree at rest 5.2–7.2 % of a core, the pointer 6.3–7.9, the
+  scroll 14.6–16.2 (a frame or two over 20 ms), home 10.8–13.9, a chat opened in 125–129 ms, 274–279 layers,
+  490–520 MB (peak 1.0–1.2 GB); `--against 33ac94c~1`, the page before the first round: 34.5 / 34.2 / 94.5 (31 slow frames) / 42.6 %,
+  417 ms, 1,359 layers, 610 MB, and five rules broken — the splitter's undrawn animation, the fish's SVG group and its
+  rate, `--openc` over 12,555 elements and the header's colours. The live board with the app's own prefs, home and a
+  clauding chat open, breaks none. `--app`, with this chat streaming into the board: ~16 % of a core, 630–640 MB.
+* **`npm test` holds under load.** Run whole, it lost one of the drawer tests one run in two or three — each time
+  another (`tied to its session by pid`, `the resumed chat alive`, `both fakes registered`, `the newest build`). Alone
+  each passes in 1–3 s; side by side the Mac's endpoint-security agent ran at 115–120 % of a core vetting every exec,
+  and a fake claude that registers in 1.2 s alone took over 10. Three changes: `waitFor` waits 15 s by default — a
+  timeout is for what never comes, and a passing wait never spends it — and the tests' own 10 s waits use it; the
+  suite runs four files at once (`--test-concurrency=4`; ≈31 s against ≈29) — three runs green, where thirteen at once
+  still lost one in three; and `idle-drawer.test.mjs` had a race of its own: both drawers were started and *then*
+  both pages attached, so the first sat unwatched while the second's holder started and was ended before anyone looked
+  (its log: `idle 0 h with no page on it — ending it` before the other's `claude in`); each page now goes on as soon
+  as its drawer is there, and the window is 3 s.
+* **No perf skill.** A skill would hold the procedure; the procedure is now the script's flags, written at its head,
+  and CLAUDE.md — read by every session — points at it (*Verifying*: `npm run perf`, `--against`, `--sample`, `--app`;
+  and *the cost is read off the web process, never Chrome*). A skill would be a fourth place to keep in step, and
+  `.claude/` is ignored by this Mac's global gitignore, so it would live outside the repo unless forced in. Worth it
+  only if profiling grows steps no script can take.
+* **Left, for later** — each with what to run:
+  - *The home's sea*, measured now by perf's `home`: 10.8–13.9 % against 5.8–7.2 at rest; its sample is `cos`, `exp`,
+    `pow` and `memmove` — the halftone painted in script fifteen times a second (`seaRun`, `seaPaint`). Fewer frames,
+    only the rows that move, or a rest after a minute untouched.
+  - *A chat's open restyles the board once* (Chrome: 4,800 elements, 22 ms — `tintChat`'s colours on `#chat` and
+    `main` inherit everywhere); setting them on the few surfaces that read them.
+  - *Something paints at rest*: `RenderBox::computeVisibleRectsInContainer` leads the rest phase's sample (a third to
+    two fifths of what it lists) — repaint rects, with the board still. `WK_COUNTERS=1` on the made-up board (perf's
+    prefs, a `--shot` after a few seconds) says which layer's count climbs.
+  - *The app's board busier than the made-up one* (~16 % against 6–7 with this chat streaming; its sample keeps
+    animation upkeep — `DocumentTimeline::currentTime`, `updateFinishedState`): `--app` on a quiet board, and
+    `getAnimations().length` there, to see whether finished animations pile up.
+  - *The peak memory*: 1.0–1.2 GB within a 40 s run that ends at ~500 MB — which phase (the six opens?) by
+    `footprint()` after each.
+  - *The board hidden in the app* (2026-10-13's first fix) was measured in the harness only; the app log shows it
+    working (`away: saver — the board hidden` … `away: back`); `--app` while it is hidden is the number.
+
 ## Decisions of 2026-10-13, after Zed, later still — the board's frames, the next round
 
 Ricardo, on the list of what was left (the entry "the board's frames, profiled", below): "do it". Measured as before:
