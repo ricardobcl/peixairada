@@ -118,8 +118,9 @@ word on the way in. Not picked: a ⤡ in the status bar, rows in ··· and the 
   in under it (`lightsDown`), the three lights on the left and the window's title (the open chat, as the page posts
   it) in the middle, over the board and the pane's pages (the last of the content view's subviews). Green leaves the
   fill, yellow minimizes (`lightsMinimize`: the fill's borderless mask gains `.miniaturizable`, and the fill's options
-  are dropped while the window is in the Dock, which they would otherwise keep hidden), red is ⌘W's path
-  (`closeHalfOrWindow`: a tab or a half first, then the window).
+  are dropped while the window is in the Dock, which they would otherwise keep hidden), red quits the app. It was
+  first ⌘W's path (`closeHalfOrWindow`: a tab or a half first, then the window); asked, Ricardo: "it should quit the
+  app" — filled, the window is the app, and a red light that closes a tab is a surprise.
   * **The menu bar is held out while the strip is down** (`lightsOut`: `fillOptions()` then hides the Dock alone) —
     an auto-hidden menu bar goes as soon as the pointer leaves it, which is on the way down to the lights. Both go
     once the pointer is below the strip (`lightsBand`) or off the screen, never under an open menu of the app's

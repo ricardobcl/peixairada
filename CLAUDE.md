@@ -572,7 +572,7 @@ for `$HOME`'s home and the account's.
   and the fish's (`rebuildStatusMenu`), titles flipped in `validateMenuItem`. **The lights come down with the menu bar**
   (2026-10-13; `lightsTick` in `dockTick`, asking `menuBarVisible()` only with the pointer in the menu bar's height):
   a strip under it, over the pane too — the lights (`LightButton`: green `toggleFill`, yellow `lightsMinimize`, red
-  `closeHalfOrWindow`) and the window's title —, the menu bar held out over it (`lightsOut` in `fillOptions`) until
+  quits) and the window's title —, the menu bar held out over it (`lightsOut` in `fillOptions`) until
   the pointer is below the strip; the app log says `fill: lights down|up`. **The fill gone on while the page heard it
   off says so once** (`fillHint`, `#fillHint` under the head row, `FILL_HINT_MS`): never on a load that finds it on
   (`state.fillHeard`), the first `FILL_HINTS` times in all (`prefs.fillHints`). → `fill-hint.mjs`. The page hears `peixFill(on, notch)` — the strip's height and the housing's x range in

@@ -1053,8 +1053,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   // behind the hidden menu bar. So the lights come down with the menu bar, as the system's full screen shows its title
   // bar: when the menu bar comes out — the pointer at the top edge beside a housing, its hold elsewhere (menuOut) — a
   // strip slides in under it, the three lights on the left and the window's title (the page's chat) in the middle,
-  // over the board and the pane's pages alike. Green leaves the fill, yellow minimizes, red is ⌘W's path
-  // (closeHalfOrWindow). While the strip is down the menu bar is held out (fillOptions), or it would slide away as the
+  // over the board and the pane's pages alike. Green leaves the fill, yellow minimizes, red quits the app
+  // (2026-10-13: the window is the app, so its close is the app's). While the strip is down the menu bar is held out (fillOptions), or it would slide away as the
   // pointer left it for the lights; both go once the pointer is below the strip. Drawn here (LightButton): a
   // borderless window's standard buttons only beep, and show no marks outside a title bar.
 
@@ -1127,7 +1127,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     lights.translatesAutoresizingMaskIntoConstraints = false
     lights.isHidden = true
     lightsGroup = LightsGroup([
-      LightButton(.close, tip: "Close", target: self, action: #selector(closeHalfOrWindow(_:))),
+      LightButton(.close, tip: "Quit peixAIrada", target: NSApp, action: #selector(NSApplication.terminate(_:))),
       LightButton(.minimize, tip: "Minimize", target: self, action: #selector(lightsMinimize(_:))),
       LightButton(.fill, tip: "Exit Full Screen (⌃⌘F)", target: self, action: #selector(toggleFill(_:))),
     ])
