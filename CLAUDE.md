@@ -693,6 +693,11 @@ for `$HOME`'s home and the account's.
   bar (`buildFindBar`, the pane's top right) over WKWebView's `find(_:configuration:)` — no count, the match is the
   page's selection, dropped on close (`kDropSelection`); typing searches from the top (`runFind(fromTop:)`), a miss
   turns red. A pane change closes it; `findQuery` outlives it.
+* **VS Code Web is told the Mac's keyboard layout** (2026-10-14, `KeyboardMap`, `ide:` views only): WebKit has no
+  `navigator.keyboard`, so its shortcuts were U.S. until a key typed made it guess one of its 16 bundled layouts. A user
+  script gives it Chrome's `getLayoutMap()` (`KeyboardMap.current()`, UCKeyTranslate unshifted, over the `peixKeyboard`
+  reply handler) and a `layoutchange` on a new input source (`layoutChanged`). Portugal's is not bundled: it picks
+  Spanish ISO, as in Chrome. Text typed was never affected.
 * **The trackpad bumps** (`haptic(kind)` → `{type: 'haptic'}` → `NSHapticFeedbackManager`): a splitter snapping
   (`LIST_W`, half the window, even halves — `SNAP_PX`), a tab dropped across (`moveTab`), the timeline's thumb crossing
   a run. In a browser it is a `haptic:<kind>` in `motion()` and nothing else.

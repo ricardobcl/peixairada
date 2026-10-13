@@ -8,6 +8,7 @@
 // The page knows it is in the app (the `hub` message handler) and posts what the shell needs — the chats waiting on you,
 // each alert, the pane's places — and takes the shell's word back through window.peix* calls.
 
+import Carbon
 import Cocoa
 import WebKit
 import UserNotifications
@@ -232,6 +233,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   var findField: NSSearchField!
   var findQuery = ""                           // what was last searched for — ⌘G carries on with it after the bar closes
   let paneDelegate = PaneDelegate()
+  let keyboardMap = KeyboardMap()                // the Mac's layout for VS Code Web's pages (2026-10-14)
   let server = ServerController()
   var statusItem: NSStatusItem!
   // What wants you, as the page posts it (2026-10-12): the chats asking you and the ones with a new reply — the Dock's
@@ -461,6 +463,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     w.allowsMagnification = true                 // pinch to zoom, Safari's own gesture — off by default in a WKWebView
     if w.responds(to: Selector(("setInspectable:"))) { w.setValue(true, forKey: "inspectable") }
     closeWhenEmpty(w, key)
+    if key.hasPrefix("ide:") { keyboardMap.install(on: w) }   // the editor: which layout the keys type in
     w.translatesAutoresizingMaskIntoConstraints = false
     w.isHidden = true
     w.wantsLayer = true
@@ -1597,6 +1600,90 @@ final class EditorEmpty: NSObject, WKScriptMessageHandler {
 /// none of them belongs to the board underneath, so the overlay never claims one for itself.
 final class PaneOverlay: NSView {
   override func hitTest(_ point: NSPoint) -> NSView? { let v = super.hitTest(point); return v === self ? nil : v }
+}
+
+/// The Mac's keyboard layout for VS Code Web (2026-10-14). WebKit has no Keyboard Map API, so the workbench cannot ask
+/// which layout the keys type in: it starts on U.S. and guesses again from single keys typed, against the 16 Mac
+/// layouts it bundles — on a Portuguese Mac ⌘ and its - key commented a line and ⌘⇧7 (its /) did not, until a - or a '
+/// was typed and the guess turned Spanish. The editor's pages get Chrome's API here: getLayoutMap() is what the current
+/// layout gives each key unshifted (UCKeyTranslate; a dead key its mark), and a change of input source is a
+/// `layoutchange` — so VS Code takes the bundled layout nearest the Mac's from the start, as it does in Chrome (Spanish
+/// ISO for Portugal's, which it has not got; a layout of the user's own in its keyboardLayout.json then matches whole).
+final class KeyboardMap: NSObject, WKScriptMessageHandlerWithReply {
+  /// KeyboardEvent.code → macOS key code: the keys Chrome's map names, ISO's two as WebKit's events name them
+  static let keys: [(String, UInt16)] = [
+    ("KeyA", 0x00), ("KeyS", 0x01), ("KeyD", 0x02), ("KeyF", 0x03), ("KeyH", 0x04), ("KeyG", 0x05), ("KeyZ", 0x06),
+    ("KeyX", 0x07), ("KeyC", 0x08), ("KeyV", 0x09), ("IntlBackslash", 0x0A), ("KeyB", 0x0B), ("KeyQ", 0x0C),
+    ("KeyW", 0x0D), ("KeyE", 0x0E), ("KeyR", 0x0F), ("KeyY", 0x10), ("KeyT", 0x11), ("Digit1", 0x12), ("Digit2", 0x13),
+    ("Digit3", 0x14), ("Digit4", 0x15), ("Digit6", 0x16), ("Digit5", 0x17), ("Equal", 0x18), ("Digit9", 0x19),
+    ("Digit7", 0x1A), ("Minus", 0x1B), ("Digit8", 0x1C), ("Digit0", 0x1D), ("BracketRight", 0x1E), ("KeyO", 0x1F),
+    ("KeyU", 0x20), ("BracketLeft", 0x21), ("KeyI", 0x22), ("KeyP", 0x23), ("KeyL", 0x25), ("KeyJ", 0x26),
+    ("Quote", 0x27), ("KeyK", 0x28), ("Semicolon", 0x29), ("Backslash", 0x2A), ("Comma", 0x2B), ("Slash", 0x2C),
+    ("KeyN", 0x2D), ("KeyM", 0x2E), ("Period", 0x2F), ("Backquote", 0x32), ("IntlYen", 0x5D), ("IntlRo", 0x5E),
+  ]
+  static let script = """
+    (() => {
+      const ask = window.webkit?.messageHandlers?.peixKeyboard;
+      if (navigator.keyboard || !ask) return;
+      let map = null;   // the layout's, until it changes
+      class Keyboard extends EventTarget {
+        getLayoutMap() {
+          map ||= ask.postMessage('map').then(m => new Map(Object.entries(m))).catch(e => { map = null; throw e; });
+          return map.then(m => new Map(m));
+        }
+        lock() { return Promise.resolve(); }   // VS Code's when it thinks it is full screen, which a pane's page never is
+        unlock() {}
+      }
+      const kb = new Keyboard();
+      kb.addEventListener('layoutchange', () => { map = null; });
+      Object.defineProperty(Navigator.prototype, 'keyboard', { configurable: true, enumerable: true, get: () => kb });
+    })();
+    """
+  private let views = NSHashTable<WKWebView>.weakObjects()
+  override init() {
+    super.init()
+    let changed = Notification.Name(kTISNotifySelectedKeyboardInputSourceChanged as String)
+    DistributedNotificationCenter.default().addObserver(self, selector: #selector(layoutChanged), name: changed, object: nil)
+  }
+  /// Another input source chosen: each page asks for the map again.
+  @objc func layoutChanged() {
+    for w in views.allObjects {
+      w.evaluateJavaScript("navigator.keyboard?.dispatchEvent(new Event('layoutchange'))", completionHandler: nil)
+    }
+  }
+  /// The API in the view's pages, from its next load on.
+  func install(on w: WKWebView) {
+    let ucc = w.configuration.userContentController
+    ucc.addUserScript(WKUserScript(source: KeyboardMap.script, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+    ucc.removeScriptMessageHandler(forName: "peixKeyboard", contentWorld: .page)   // a second on one controller throws
+    ucc.addScriptMessageHandler(self, contentWorld: .page, name: "peixKeyboard")
+    views.add(w)
+  }
+  /// What the current layout gives each key with no modifier; nil for a layout with no Unicode table.
+  static func current() -> [String: String]? {
+    guard let src = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
+          let p = TISGetInputSourceProperty(src, kTISPropertyUnicodeKeyLayoutData) else { return nil }
+    let data = Unmanaged<CFData>.fromOpaque(p).takeUnretainedValue() as Data
+    return data.withUnsafeBytes { raw -> [String: String]? in
+      guard let layout = raw.bindMemory(to: UCKeyboardLayout.self).baseAddress else { return nil }
+      var map: [String: String] = [:]
+      let down = UInt16(kUCKeyActionDown), kb = UInt32(LMGetKbdType())
+      for (code, vk) in keys {
+        var dead: UInt32 = 0, n = 0, chars = [UniChar](repeating: 0, count: 4)
+        var ok = UCKeyTranslate(layout, vk, down, 0, kb, 0, &dead, 4, &n, &chars) == noErr
+        if ok && dead != 0 {   // a dead key types nothing yet: its mark is what it gives before a space
+          ok = UCKeyTranslate(layout, 0x31, down, 0, kb, 0, &dead, 4, &n, &chars) == noErr
+        }
+        if ok && n > 0 { map[code] = String(utf16CodeUnits: chars, count: n) }
+      }
+      return map
+    }
+  }
+  func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage,
+                             replyHandler: @escaping @MainActor @Sendable (Any?, String?) -> Void) {
+    guard let map = KeyboardMap.current() else { return replyHandler(nil, "this keyboard layout has no Unicode table") }
+    replyHandler(map, nil)
+  }
 }
 
 /// One of the fill's lights (2026-10-13), drawn as a title bar draws its own: a 12 pt disc in the system's colour, a

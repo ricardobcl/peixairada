@@ -5,6 +5,65 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-14. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-14, on a branch — VS Code Web and the Mac's keyboard layout
+
+Ricardo: "Does VS Code Web respect the user's keyboard layout? Heard a report that the layout inside VS Code Web was
+in EN while the user's Mac was in PT." Read in the installed build (1.141.1) and measured on this Mac, whose input
+source is Portuguese (`com.apple.keylayout.Portuguese`, an ISO keyboard).
+
+* **Text typed is the Mac's**: it comes through the system's input path (a textarea), whatever VS Code thinks the
+  layout is (ç º + ' - measured). What follows the layout VS Code believes in is its **shortcuts and their labels**,
+  and the status bar's *Layout: …* item. *In EN* was that: *Layout: U.S.*
+* **How the workbench learns the layout in a browser** (`BrowserKeyboardMapperFactory`): it asks
+  `navigator.keyboard.getLayoutMap()` — Chromium's alone — at load, on `layoutchange`, and whenever a key typed is not
+  what the active layout says; without it, it starts on U.S. and matches **the one key just typed** (no modifier, not
+  dead, not composing) against the layouts it bundles, taking the first that has it, only when that is strictly
+  better for that key. It bundles 16 Mac layouts (`layout.contribution.darwin.js`): U.S., British, Spanish ISO,
+  German, French, Italian Pro, Brazilian Pro, Polish Pro, Russian, Dvorak, U.S. International PC, U.S. Extended and
+  four input methods — **no Portugal**. The `keyboard.layout` setting pins one of those, or a layout of the user's own
+  in `keyboardLayout.json` (*Configure Keyboard Layout*, from the status bar item).
+* **In Chrome** (a tab of its own): the map is the Mac's (50 keys, `getLayoutMap`), VS Code scores each bundled
+  layout by the unshifted keys that differ — Spanish ISO and Italian Pro 7, U.S. and seven others 8 — and takes
+  **Spanish ISO**, the first of the tie, from the start.
+* **In the app's pane** (WebKit, no `navigator.keyboard`): **U.S. on every load**. Portugal's ç º ´ + ~ keys match no
+  bundled layout, so it stays U.S. until a - ' or < is typed bare, then Spanish ISO for the rest of that load.
+  Measured with keystrokes synthesized as NSEvents carrying the Portuguese layout's characters (a WKWebView harness
+  over a private `code serve-web`): under U.S. ⌘ with the key printed - commented a line and ⌘⇧7 (the Portuguese ⌘/)
+  did nothing; after typing `ç-`, ⌘⇧7 commented and ⌘- did not. The labels, from the command palette:
+
+  | Command | U.S. (WebKit at load) | Spanish ISO (Chrome; WebKit later) | Portuguese, exact |
+  |---|---|---|---|
+  | Toggle Line Comment | ⌘ / | ⇧ ⌘ 7 | ⇧ ⌘ 7 |
+  | Indent / Outdent Line | ⌘ ] / ⌘ [ | ⌃ ⌥ ⌘ + / ⌃ ⌥ ⌘ \` | ⌃ ⌥ ⌘ 9 / ⌃ ⌥ ⌘ 8 |
+  | Split Editor | ⌘ \ | ⌃ ⌥ ⌘ º | ⌘ \ |
+  | Go to Bracket | ⇧ ⌘ \ | ⌃ ⌥ ⌘ 1 | ⇧ ⌘ \ |
+  | Toggle Terminal | ⌃ \` | ⌃ \` | ⌃ ⇧ ´ |
+  | Fold / Unfold | ⌥ ⌘ [ / ⌥ ⌘ ] | none | none |
+* **The editor's pages get Chrome's API** (`KeyboardMap` in main.swift, installed on `ide:` views only): a user
+  script defines `navigator.keyboard` — `getLayoutMap()` answered by a reply handler (`peixKeyboard`) with what the
+  current layout gives each key unshifted (`UCKeyTranslate`; a dead key its spacing mark), kept until a
+  `layoutchange`, which the app dispatches on `kTISNotifySelectedKeyboardInputSourceChanged`; `lock()` / `unlock()`
+  are there because VS Code calls them when it thinks it is full screen. The map is Chrome's to the code point on this
+  Mac (the same 50 keys, ISO's two keys named as WebKit's events name them). In the harness the pane's VS Code is
+  then *Spanish ISO* from the first frame, ⌘⇧7 comments from the first key, and the guess holds through ç, + and º.
+* **Its one other effect**: with `navigator.keyboard` there VS Code's `BrowserFeatures.keyboard` is *full screen*
+  rather than *none* — it stops leaving ⌘1–9 and ⌥⌘←→ to the browser only when it believes it is full screen, which a
+  pane's page never is (`outerWidth` is 0 in a WKWebView, and the pane is never the screen's height). Nothing changes
+  in which shortcuts it takes.
+* **Exact Portuguese is VS Code's own `keyboardLayout.json`**: the layout as desktop VS Code prints it (*Developer:
+  Inspect Key Mappings (JSON)*) pasted into *Configure Keyboard Layout*. Written into the harness's profile, the
+  workbench took it at the first key Spanish could not explain (a ç, a +, an ⌥ character — *Layout: Portuguese*, the
+  table's last column) and kept it; without the map too, but U.S. until a - and Spanish until a ç (measured). It
+  reads the file only after its first pick, so each load still starts on Spanish with the map. The file lives in the
+  browser profile (IndexedDB `vscode-web-db`, `/User/keyboardLayout.json`), so **the board does not write it** — that
+  is VS Code's internals; it is the user's to paste, once per profile.
+* **What does not help**: `keyboard.dispatch: keyCode` — WebKit's keyCode for ⌘⇧7 is `/` with ⇧ held, so nothing
+  reaches Toggle Line Comment (measured); `keyboard.layout` pinned to a bundled one is what the map now picks anyway.
+  The app's own key monitors take ⌥⌘ and ⌘ with a few keys and ⌘R, never a bare or ⌥ key, so typing is theirs alone.
+* **Not verified**: in the installed app (not rebuilt here); a real change of input source (the notification is the
+  documented one, the page's side was driven through `layoutChanged`); real keystrokes from the hardware, dead keys and
+  composition (VS Code ignores those for its guess).
+
 ## Decisions of 2026-10-14 — ⌘W closes an empty VS Code Web
 
 Ricardo: "⌘W inside VS Code Web that does not have any tab open should close VS Code, like the real VS Code does."
