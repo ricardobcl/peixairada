@@ -36,6 +36,20 @@ pref for a switch that went is deleted on load.
   overview's; the screen's top-right corner at the notch is the chat's.
 * **The wallpaper's glow follows the pointer** (2026-10-11) — always, under tiles; reduced motion still keeps it in its
   corner (`wallOn`).
+* **Tiles** (2026-10-10) — the only layout: `main.tiles` is in the markup, never toggled, and its rules stay the
+  panels' look (folding each into the plain rule it overrides would move specificity under rules that win today).
+  What only the plain column drew went: the splitter in the open chat's colour down to its card and black under it
+  (`drawSplit`, `--split`, the scroll-driven black — the one WebKit kept animating under tiles, 2026-10-13), the open
+  card running into it, and the open chat's light past its card (`#trail`, `drawTrail`, `trailGeom`, which tiles had
+  turned off since 2026-10-10), and the 2 px rule under a lone strip with the accent under the half the keys are in
+  (tiles had made the rule nothing and the accent none). `open-light.mjs` keeps its ring step as `card-ring.mjs`; the
+  harness no longer turns tiles off, so every scenario measures the tiled board.
+* **Found on the way**: the header's changes' count never folded — `.shead > .hfold` lost to `.shead .hdiff`'s own
+  display, later and as specific — so in a column of 420 px (the tiles' 4 px of border took the header under the 424 it
+  had fitted in) the row wrapped, ··· on a second line. Its own commit, before the tiles'.
+* **Not the plain look's to rerun**: `cog-setup`, `hotkeys` and `project-cue` fail run from a worktree under
+  `.claude/worktrees/` — the fixture's chat is the checkout, which is now its repo's project (2026-10-13) — on `main` as
+  here; in the checkout itself the chat's folder is its project.
 
 ## Decisions of 2026-10-14, on a branch — the tour
 

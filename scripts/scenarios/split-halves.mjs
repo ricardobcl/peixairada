@@ -2,7 +2,7 @@
 // honest: a tab lives in exactly one half, both halves can hold a live terminal at the same time, ⌘W on the chat leaves
 // the half the keys were not in, and ⌘0 leaves the one they are in (with nothing split it is the chat's size again). Since
 // 2026-09-25 a split always puts claude in the left half, whatever the column was showing. Since 2026-09-28 a half
-// whose one tab is not a web page has no strip — a 2 px rule, the accent under the keys, the same height either way —
+// whose one tab is not a web page has no strip — the tile's border says where the keys are —
 // and ⌥⌘W closes the tab the keys are in; an empty half keeps its strip (the drop, and ⋯ for ⊟ ⨯). A tab dragged across
 // is pane-tabs.mjs's: a page gives a half the second tab a drag starts from. The strip's family (2026-10-11, the studies'
 // Q1/Q5/Q7): its controls 26 px, radius 6; the half's ⊟ ⨯ out beside ⋯ on a click, folded as the pointer leaves; and
@@ -11,7 +11,7 @@ export const meta = { server: true, fake: true, fixture: 'auto' };
 
 const halves = ctx => ctx.peix('state().halves').then(h => h.map(k => k && k.split(':')[0]));   // a zsh's tab is shell:<its id>
 const strips = ctx => ctx.evaluate(`JSON.stringify(['#ptabs', '#ptabsB'].map(id => [...document.querySelectorAll(id + ' .ptab')].map(b => b.dataset.tab.split(':')[0])))`).then(JSON.parse);
-// each strip: a rule (.lone) or a strip, and how tall
+// each strip: none (.lone) or a strip, and how tall
 const rules = ctx => ctx.evaluate(`JSON.stringify(['#ptabs', '#ptabsB'].map(id => (e => ({ lone: e.classList.contains('lone'), h: Math.round(e.getBoundingClientRect().height) }))(document.querySelector(id))))`).then(JSON.parse);
 const shown = ctx => ctx.evaluate(`JSON.stringify({ termA: !document.querySelector('#term').hidden, termB: !document.querySelector('#termB').hidden, log: !document.querySelector('#log').hidden, logIn: document.querySelector('#log').parentElement.id, empty: !!document.querySelector('.gempty') })`).then(JSON.parse);
 
@@ -33,8 +33,8 @@ export default async function (ctx) {
   ctx.assert.deepEqual(await halves(ctx), ['chat', null], 'the chat stayed on the left');
   ctx.assert.ok((await shown(ctx)).empty, 'the empty half says what would fill it');
   const e = await rules(ctx);
-  ctx.assert.deepEqual(e.map(x => x.lone), [true, false], 'claude alone has a rule for a strip; the empty half keeps its strip');
-  ctx.assert.equal(e[0].h, 2, 'the rule is 2 px');
+  ctx.assert.deepEqual(e.map(x => x.lone), [true, false], 'claude alone has no strip; the empty half keeps its strip');
+  ctx.assert.equal(e[0].h, 0, 'nothing at all where it would be');
   ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#ptabsB .pdrop') && !!document.querySelector('#ptabsB .gclose') && !!document.querySelector('#ptabsB .gturn')`), true, 'the empty strip: the drop, ⊟ and ⨯');
   await ctx.shot('empty');
   const family = () => ctx.evaluate(`JSON.stringify((d => ({ h: Math.round(d.getBoundingClientRect().height), r: getComputedStyle(d).borderTopLeftRadius,
@@ -44,17 +44,13 @@ export default async function (ctx) {
   ctx.assert.equal((await family()).shut, false, '⋯ puts them out');
   await ctx.evaluate(`document.querySelector('#ptabsB').dispatchEvent(new PointerEvent('pointerleave'))`);
   ctx.assert.equal((await family()).shut, true, '…and the pointer leaving the strip folds them');
-  // with tiles, each half a tile of its own
-  await ctx.evaluate(`document.querySelector('#tilesOn').click()`);
-  await ctx.waitFor(`document.querySelector('#main').classList.contains('tiles')`, { what: 'tiles' });
+  // each half a tile of its own
   await ctx.settle();
   const tiled = await ctx.evaluate(`JSON.stringify({ borders: ['#grp', '#grpB'].map(id => getComputedStyle(document.querySelector(id)).borderTopWidth), on: ['#grp', '#grpB'].map(id => getComputedStyle(document.querySelector(id)).borderTopColor),
     gap: Math.round(document.querySelector('#gsplit').getBoundingClientRect().width), rule: Math.round(document.querySelector('#ptabs').getBoundingClientRect().height) })`).then(JSON.parse);
   ctx.assert.deepEqual([tiled.borders, tiled.gap, tiled.rule], [['2px', '2px'], 8, 0], `tiles: each half bordered, 8 px between, the lone strip nothing — ${JSON.stringify(tiled)}`);
   ctx.assert.notEqual(tiled.on[0], tiled.on[1], 'the half with the keys whole, the other faint');
   await ctx.shot('tiled');
-  await ctx.evaluate(`document.querySelector('#tilesOn').click()`);
-  await ctx.waitFor(`!document.querySelector('#main').classList.contains('tiles')`, { what: 'tiles off' });
 
   // ⌥⌘T opens the zsh in the half the keys are in: two live terminals, side by side, and no strip over either
   await ctx.key('KeyT');
@@ -62,15 +58,15 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.term(1).ws === 1 && window.peix.term(0).ws === 1`, { what: 'both halves attached' });
   ctx.assert.deepEqual(await ctx.peix('state().strips').then(s => s.map(l => l.map(k => k.split(':')[0]))), [['chat'], ['shell']], 'each half holds its own tab');
   ctx.assert.deepEqual(await strips(ctx), [[], []], 'one tab each: neither strip lists anything');
-  ctx.assert.deepEqual((await rules(ctx)).map(x => [x.lone, x.h]), [[true, 2], [true, 2]], 'both are a 2 px rule');
+  ctx.assert.deepEqual((await rules(ctx)).map(x => [x.lone, x.h]), [[true, 0], [true, 0]], 'neither has a strip');
   const two = await shown(ctx);
   ctx.assert.deepEqual({ termA: two.termA, termB: two.termB, empty: two.empty }, { termA: true, termB: true, empty: false }, 'a drawer in each half');
   ctx.assert.ok(!two.log, 'the transcript is under the claude drawer, not beside it');
   await ctx.waitFor(`[...document.querySelectorAll('#termBodyB .xterm-rows > div')].some(r => /[$%❯]/.test(r.textContent))`, { what: 'the zsh prompt in the right half' });
   ctx.assert.ok((await ctx.screen(1)).length, 'ctx.screen(1) reads the right half');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#grpB').classList.contains('on') && !document.querySelector('#grp').classList.contains('on')`), true, 'the right half is the one marked');
-  ctx.assert.ok(/inset/.test(await ctx.evaluate(`getComputedStyle(document.querySelector('#ptabsB')).boxShadow`)), 'and its rule is the accent');
-  ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#ptabs')).boxShadow`), 'none', 'the other one\'s is not');
+  const edge = id => ctx.evaluate(`getComputedStyle(document.querySelector('${id}')).borderTopColor`);
+  ctx.assert.notEqual(await edge('#grpB'), await edge('#grp'), 'and its tile\'s border is whole, the other one\'s faint');
   await ctx.shot('split');
 
   // the fit is each half's own: neither terminal runs past its body
@@ -91,13 +87,13 @@ export default async function (ctx) {
   await ctx.waitFor(`JSON.stringify(window.peix.state().halves.map(k => k && k.split(':')[0])) === '["chat","shell"]'`, { what: 'both halves back as they were' });
   await ctx.waitFor(`window.peix.term(1).ws === 1 && window.peix.term(0).ws === 1`, { what: 'both halves attached again' });
 
-  // ⌘1 goes back to the left half — and neither terminal changes size, the rule being as tall lit as not; ⌥⌘→ walks
+  // ⌘1 goes back to the left half — and neither terminal changes size, the border being as wide lit as not; ⌥⌘→ walks
   // the halves as one row, into the zsh on the right
   const sizes = () => Promise.all([0, 1].map(g => ctx.peix(`term(${g})`).then(d => `${d.cols}×${d.rows}`)));
   const was = await sizes();
   await ctx.cmd('Digit1');
   ctx.assert.equal(await ctx.peix('state().focusG'), 0, '⌘1 put the keys back in the left half');
-  ctx.assert.ok(/inset/.test(await ctx.evaluate(`getComputedStyle(document.querySelector('#ptabs')).boxShadow`)), 'the left rule lit');
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#grp').classList.contains('on')`), true, 'the left tile marked');
   ctx.assert.deepEqual(await sizes(), was, 'moving the keys resized neither terminal');
   await ctx.key('ArrowRight');
   await ctx.waitFor(`window.peix.state().focusG === 1`, { what: '⌥⌘→ across the divider' });
@@ -116,7 +112,7 @@ export default async function (ctx) {
   await ctx.waitFor(`window.peix.state().split === false`, { what: 'the split closed' });
   ctx.assert.deepEqual(await halves(ctx), ['shell', null], 'the half the keys were not in is what stayed');
   ctx.assert.deepEqual(await strips(ctx), [['chat', 'shell'], []], 'one half with two tabs: its strip lists both');
-  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#ptabs').classList.contains('lone')`), false, 'a whole strip, not a rule');
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#ptabs').classList.contains('lone')`), false, 'a whole strip, not none');
 
   // ⌘2 again, from the zsh alone: claude takes the left half back and the zsh goes beside it (2026-09-25), the keys
   // staying on the zsh

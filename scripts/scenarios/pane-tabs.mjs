@@ -8,7 +8,7 @@
 // (peixPaneUrl), shown without its scheme, copied whole by a click, and remembered per page across tab switches.
 // Since 2026-09-25 each half's strip lists its own tabs — claude on the left, the pages and the zsh on the right —
 // and a page dragged onto the left half is up there, beside the one on the right. Since 2026-09-28 a half whose one
-// tab is not a web page has no strip, only a 2 px rule (claude alone on the left, the editor alone on the right), a
+// tab is not a web page has no strip (claude alone on the left, the editor alone on the right), a
 // page alone keeps its strip for the address; a click on a page tells the board its half has the keys
 // (peixPaneFocus); ⌥⌘W closes the tab the keys are in, and ··· closes the editor. Since 2026-10-11 (the studies' Q5) the
 // page in front is its own address: its tab grows into the field, ‹ › ↻ ↗ inside it, and a page behind wears its name.
@@ -41,7 +41,7 @@ export default async function (ctx) {
   ctx.assert.equal(out.one.halves[0], 'chat', '…and the chat keeps the left one');
   ctx.assert.deepEqual(await ctx.peix('state().strips').then(s => s.map(l => l.map(k => k.split(':')[0]))), [['chat'], ['gh']], 'each half holds its own tabs');
   ctx.assert.deepEqual(await strips(), [[], ['gh']], 'claude alone has no strip; a page alone keeps its own');
-  ctx.assert.deepEqual(await lone(), [true, false], 'the left one is a rule');
+  ctx.assert.deepEqual(await lone(), [true, false], 'the left one has none');
   ctx.assert.equal(out.one.tabs.length, 1); ctx.assert.match(out.one.tabs[0].label, /^@github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+$/, 'in front, the page is its address');
   ctx.assert.equal(out.one.pane.show, out.one.tabs[0].k); ctx.assert.deepEqual(out.one.pane.keys, [out.one.tabs[0].k]);
   const strip = await ctx.evaluate(`(r => ({ left: Math.round(document.querySelector('#gbodyB').getBoundingClientRect().left), bottom: Math.round(r.bottom) }))(document.querySelector('#ptabsB').getBoundingClientRect())`);
@@ -156,7 +156,7 @@ export default async function (ctx) {
   ctx.assert.equal(litA, 'grp', 'the half under the pointer lit up while the tab was on its way');
   await ctx.waitFor(`window.peix.state().halves[0] === ${JSON.stringify(other)}`, { what: 'the PR dragged into the left half' });
   ctx.assert.deepEqual(await strips(), [['chat', 'gh'], []], 'the PR is the left strip\'s now, and the editor alone on the right has no strip');
-  ctx.assert.deepEqual(await lone(), [false, true], 'the right one is a rule');
+  ctx.assert.deepEqual(await lone(), [false, true], 'the right one has none');
   ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('.ptab.ghost, .grp.drop, body.tabdrag')`), false, 'nothing of the drag is left behind');
   const both = await lastPane();
   ctx.assert.equal(both.panes.length, 2, 'a page placed in each half');

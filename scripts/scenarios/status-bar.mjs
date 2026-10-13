@@ -21,7 +21,7 @@ export default async function (ctx) {
   await ctx.reload();
   await ctx.waitFor(`document.querySelectorAll('#sbar .us .m').length === 2`, { what: 'the bar with the usage in it' });
   out.rest = await look();
-  ctx.assert.deepEqual([out.rest.hidden, out.rest.attr, out.rest.bottom, out.rest.mainBottom], [false, true, 0, 0], `on by default, at the window's foot, under the board: ${JSON.stringify(out.rest)}`);
+  ctx.assert.deepEqual([out.rest.hidden, out.rest.attr, out.rest.bottom, out.rest.mainBottom], [false, true, 8, -8], `on by default, at the window's foot, under the board, the tiles' gap round it: ${JSON.stringify(out.rest)}`);
   ctx.assert.equal(out.rest.segs[0], 'connected');
   ctx.assert.ok(!out.rest.segs.some(t => /\blive$|drawer|shell/.test(t)), `no live count, no drawers or shells (2026-10-11): ${JSON.stringify(out.rest.segs)}`);
   // the clock, far right (2026-10-11, later): the time on a 24-hour clock (2026-10-11, late night), the day in its tooltip

@@ -26,8 +26,9 @@ export default async function (ctx) {
   let l = await layout(ctx), r = await rects(ctx);
   ctx.assert.deepEqual({ stack: l.stack, dir: l.dir, cursor: l.cursor }, { stack: true, dir: 'column', cursor: 'row-resize' }, 'the column stands, the divider resizes up and down');
   ctx.assert.ok(r.grpB.y >= r.grp.y + r.grp.h, `the second half (y ${r.grpB.y}) is under the first (ends ${r.grp.y + r.grp.h})`);
-  ctx.assert.ok(Math.abs(r.grp.w - r.groups.w) <= 1 && Math.abs(r.grpB.w - r.groups.w) <= 1, 'both halves are as wide as the column');
-  ctx.assert.ok(r.gsplit.h === 6 && Math.abs(r.gsplit.w - r.groups.w) <= 1, `the divider is 6 px tall across the column (${r.gsplit.w}×${r.gsplit.h})`);
+  const inner = r.groups.w - 16;   // the tiles' 8 px round the halves
+  ctx.assert.ok(Math.abs(r.grp.w - inner) <= 1 && Math.abs(r.grpB.w - inner) <= 1, 'both halves are as wide as the column');
+  ctx.assert.ok(r.gsplit.h === 8 && Math.abs(r.gsplit.w - inner) <= 1, `the divider is the tiles' 8 px gap across the column (${r.gsplit.w}×${r.gsplit.h})`);
   ctx.assert.equal(l.turn, 'side', 'the empty half\'s strip offers the side-by-side layout (◫)');
   await ctx.shot('stacked-empty');
   // …and turns it: side by side, then stacked again
@@ -44,7 +45,7 @@ export default async function (ctx) {
   await ctx.waitFor(`[...document.querySelectorAll('#termBodyB .xterm-rows > div')].some(r => /[$%❯]/.test(r.textContent))`, { what: 'the zsh prompt in the bottom half' });
   await fits(ctx);
   ctx.assert.deepEqual(await ctx.evaluate(`JSON.stringify(['#ptabs', '#ptabsB'].map(id => { const e = document.querySelector(id); return [e.classList.contains('lone'), Math.round(e.getBoundingClientRect().height)]; }))`).then(JSON.parse),
-    [[true, 2], [true, 2]], 'one tab in each half: a 2 px rule over each, no strip');
+    [[true, 0], [true, 0]], 'one tab in each half: no strip over either');
   await ctx.shot('stacked');
 
   // ⌘2 on a stacked split turns it side by side — the same terminals in the same halves, nothing re-attached
@@ -73,7 +74,7 @@ export default async function (ctx) {
   ctx.assert.ok(Math.abs(p.stackAt - .3) < .02, `the stacked divider is at ${p.stackAt}`);
   ctx.assert.equal(p.splitAt, .5, 'the side-by-side divider did not move');
   r = await rects(ctx);
-  ctx.assert.ok(Math.abs(r.grp.h - (r.groups.h - 6) * .3) <= 3, `the top half is 30 % of the column (${r.grp.h} of ${r.groups.h})`);
+  ctx.assert.ok(Math.abs(r.grp.h - (r.groups.h - 16 - 8) * .3) <= 3, `the top half is 30 % of the column (${r.grp.h} of ${r.groups.h})`);
   await fits(ctx);
   await ctx.shot('dragged');
 

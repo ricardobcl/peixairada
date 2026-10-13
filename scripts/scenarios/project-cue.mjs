@@ -38,7 +38,7 @@ export default async function (ctx) {
   ctx.assert.equal(out.row.plus, false, 'no ＋ — ⌥⌘N (2026-09-28)');
   ctx.assert.equal(out.row.fold, false, 'no « — ⌥⌘B folds the list');
   ctx.assert.deepEqual([out.row.foot[0], out.row.foot[1], out.row.foot[2]], [out.row.head[0], out.row.head[1], 0], 'the foot is the head row\'s right end, as tall');
-  ctx.assert.ok(out.row.h <= 44 && out.row.under === 0 && out.row.bottom === 0, `one row, under the cards, at the window's foot (2026-09-28, later): ${JSON.stringify(out.row)}`);
+  ctx.assert.ok(out.row.h <= 44 && out.row.under === 0 && out.row.bottom === 2, `one row, under the cards, at the tile's foot (2026-09-28, later): ${JSON.stringify(out.row)}`);
   ctx.assert.equal(out.row.chips, 0, 'no state chips: the lanes fold instead (2026-10-11, later)');
   // The magnifier is small (2026-09-28; a field from the fish to the first chip from 2026-09-27): open, its icon is the
   // box's left cap and the box takes the room the row has spare — the rings', too, while it is open

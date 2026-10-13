@@ -1,9 +1,9 @@
-// Tiles (2026-10-10). Two live chats — one asking, one clauding with a command running. What this checks: with the
-// switch on, the board is Hyprland's — gaps, square panels, each border its project's colour, whole on the chat (a black
-// one grey), the list's on ALL the open chat's, the wallpaper in that hue, and at the notch the chat cut round the
-// housing, its border round it, the tiles in the screen's top corners round (not on a display without a housing); the
-// border follows a press into the list; off, the gaps go. The wallpaper's glow eases after the pointer (2026-10-11, late
-// night), a transform (a switch until 2026-10-14). (The stack beside the open chat, ⌥⌘S, went on
+// Tiles (2026-10-10; the only layout since 2026-10-14). Two live chats — one asking, one clauding with a command
+// running. What this checks: the board is Hyprland's — gaps, square panels, each border its project's colour, whole
+// on the chat (a black one grey), the list's on ALL the open chat's, the wallpaper in that hue, and at the notch the
+// chat cut round the housing, its border round it, the tiles in the screen's top corners round (not on a display
+// without a housing); the border follows a press into the list. The wallpaper's glow eases after the pointer
+// (2026-10-11, late night), a transform (a switch until 2026-10-14). (The stack beside the open chat, ⌥⌘S, went on
 // 2026-10-14.)
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
@@ -28,10 +28,8 @@ export default async function (ctx) {
     const [ask, work] = chats;
     await ctx.waitFor(`window.peix.session('${ask.id}')?.status === 'needs-input' && window.peix.session('${work.id}')?.status === 'working'`, { what: 'the two live chats', timeout: 20000 });
 
-    // tiles on, the asking chat open
-    await ctx.evaluate(`document.querySelector('#tilesOn').click()`);
+    // the asking chat open
     await ctx.openChat(ask.id);
-    await ctx.waitFor(`document.querySelector('#main').classList.contains('tiles')`, { what: 'tiles on' });
     await ctx.settle(); await ctx.shot('tiles-alone');
     ctx.assert.equal(await ctx.evaluate(`document.querySelector('.kf')?.id`), 'chat', 'the chat wears the border');
     ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('main')).paddingTop`), '8px', 'the gaps');
@@ -96,9 +94,6 @@ export default async function (ctx) {
     await ctx.waitFor(`${wall} === '${grey}' && document.querySelector('#sessions').style.getPropertyValue('--tile-edge') === 'var(--tile-grey)'`, { what: 'its wallpaper and the list’s border grey' });
     await ctx.settle(); await ctx.shot('tiles-black');
 
-    // tiles off: no gaps
-    await ctx.evaluate(`document.querySelector('#tilesOn').click()`);
-    await ctx.waitFor(`!document.querySelector('#main').classList.contains('tiles') && getComputedStyle(document.querySelector('main')).paddingTop === '0px'`, { what: 'tiles off' });
     return out;
   } finally { for (const s of sleeps) try { s.kill(); } catch {} }
 }

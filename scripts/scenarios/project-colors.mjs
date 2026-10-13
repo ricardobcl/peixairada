@@ -1,10 +1,9 @@
 // A project's colour (2026-10-01 as the simple colours' scenario; the switch went on 2026-10-14). A folder with a
 // Peacock colour and three chats in it: one clauding, one asking, one on an open PR with a face and a block of code.
-// What this checks: the cards, the splitter and the open chat's header wear the folder's colour, the list ALL's black, a
+// What this checks: the cards and the open chat's header wear the folder's colour, the list ALL's black, a
 // PR chip its state's green, the code its syntax colours; the setup shows the folder's colour (it is where the colour is
 // set); the chat header's square writes Peacock's. Black still stands out: the black beside it — the header right of the
-// project, the splitter under the open card, the dark theme's ground behind the cards — turns grey, and an open black
-// card's ink is light.
+// project — turns grey, and an open black card's ink is light.
 import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -67,7 +66,7 @@ export default async function (ctx) {
         tinted: document.querySelector('#chat').classList.contains('tinted'),
         card: __chroma(cs(card(${JSON.stringify(asking.id)}), 'background-image')),
         open: __chroma(cs(plain, 'background-image')), head: __chroma(cs(document.querySelector('.shead'), '--hbg-eased')),   // the header's own eased copy (2026-10-13)
-        split: __chroma(cs(document.querySelector('#splitter'), 'background-color')), lit: __chroma(cs(card(${JSON.stringify(busy.id)}), '--lit')),
+        lit: __chroma(cs(card(${JSON.stringify(busy.id)}), '--lit')),
         pr: __chroma(cs(plain.querySelector('.cpr[data-state="open"]'), 'background-color')), hpr: __chroma(cs(document.querySelector('.shead .hpr[data-state="open"]'), 'background-color')),
         dots: [...document.querySelectorAll('#slist > .gsep.lane.working')].map(l => __chroma(cs(l, 'color'))).concat([...document.querySelectorAll('#slist > .gsep.lane.ready > i')].map(i => __chroma(cs(i, 'border-top-color')))),   // the lanes' (the state chips' until 2026-10-11, later)
         code: ['.hljs-keyword', '.hljs-string'].map(q => __chroma(cs(document.querySelector('#log ' + q), 'color'))),
@@ -80,7 +79,7 @@ export default async function (ctx) {
     ctx.assert.deepEqual(out.full.repo, [COLOR, COLOR], 'the cards wear the folder\'s colour');
     ctx.assert.equal(out.full.list, '#000000', 'ALL is black');
     ctx.assert.equal(out.full.tinted, true, 'the chat header is tinted');
-    for (const k of ['card', 'open', 'head', 'split', 'lit', 'pr', 'hpr']) ctx.assert.ok(out.full[k] > 40, `${k} in a colour: ${JSON.stringify(out.full)}`);
+    for (const k of ['card', 'open', 'head', 'lit', 'pr', 'hpr']) ctx.assert.ok(out.full[k] > 40, `${k} in a colour: ${JSON.stringify(out.full)}`);
     ctx.assert.ok(out.full.dots.some(c => c > 40) && out.full.code.every(c => c > 40), `the lanes' marks and the code in colour: ${JSON.stringify(out.full)}`);
     ctx.assert.equal(out.full.face, 'none', 'a face in its colours');
     ctx.assert.ok(out.full.you > 40, `your mark in its colour: ${out.full.you}`);
@@ -99,12 +98,12 @@ export default async function (ctx) {
     await ctx.waitFor(`!document.querySelector('#settings').open`, { what: 'the settings closed' });
 
     // 3 · black, picked at the chat header's square: written as Peacock's, and what was black beside it is grey, in both
-    // themes (the list's ground stays: the ink cards are the panel whatever their colour, 2026-10-09)
+    // themes
     const peacock = () => JSON.parse(readFileSync(join(cwd, '.vscode', 'settings.json'), 'utf8'))['peacock.color'];
     const scheme = dark => ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: dark ? 'dark' : 'light' }] });
     const frame = () => ctx.evaluate(`JSON.stringify({ dark: document.querySelector('#main').classList.contains('darkchat'), 
-      head: getComputedStyle(document.querySelector('.shead'), '::after').backgroundColor, split: getComputedStyle(document.querySelector('#splitter'), '::after').backgroundColor,
-      ground: getComputedStyle(document.querySelector('#sessions')).backgroundColor, ink: getComputedStyle(document.querySelector('#slist > .card.active .repo')).color,
+      head: getComputedStyle(document.querySelector('.shead'), '::after').backgroundColor,
+      ink: getComputedStyle(document.querySelector('#slist > .card.active .repo')).color,
       lift: (c => { const p = document.createElement('i'); p.style.color = 'var(--lift)'; c.append(p); const v = getComputedStyle(p).color; p.remove(); return v; })(document.querySelector('#slist > .card.active')),
       wash: getComputedStyle(document.querySelector('#slist > .card.active')).getPropertyValue('--wash') })`).then(JSON.parse);
     out.mid = await frame();
@@ -118,11 +117,10 @@ export default async function (ctx) {
       await scheme(dark); await ctx.waitFor(`document.documentElement.dataset.theme === '${dark ? 'dark' : 'light'}'`, { what: 'the board in that appearance' }); await ctx.sleep(100);
       out[dark ? 'blackDark' : 'blackLight'] = await frame();
     }
-    ctx.assert.deepEqual([out.blackDark.head, out.blackDark.split, out.blackDark.ground], ['rgb(74, 74, 69)', 'rgb(74, 74, 69)', 'rgba(0, 0, 0, 0)'],
-      `dark: the header right of the project and the splitter under the card are grey, the list's ground as it was: ${JSON.stringify(out.blackDark)}`);
-    // in the light the header's black and the splitter's are the panel since 2026-10-12 (off the notch): no grey to need
-    ctx.assert.deepEqual([out.blackLight.head, out.blackLight.split, out.blackLight.ground, out.blackLight.ink], ['rgb(255, 255, 255)', 'rgb(255, 255, 255)', 'rgba(0, 0, 0, 0)', 'rgb(28, 28, 26)'],
-      `light: the header right of the project and the splitter the panel, the light ground as it was, the open black card's name in the page's ink: ${JSON.stringify(out.blackLight)}`);
+    ctx.assert.equal(out.blackDark.head, 'rgb(74, 74, 69)', `dark: the header right of the project is grey: ${JSON.stringify(out.blackDark)}`);
+    // in the light the header's black is the panel since 2026-10-12 (off the notch): no grey to need
+    ctx.assert.deepEqual([out.blackLight.head, out.blackLight.ink], ['rgb(255, 255, 255)', 'rgb(28, 28, 26)'],
+      `light: the header right of the project the panel, the open black card's name in the page's ink: ${JSON.stringify(out.blackLight)}`);
     // the card's edge, glow and border wear the colour as it reads on the panel (2026-10-09, late night): in the dark a
     // black is a grey there, its lightness held at .62; on the light panel it is black as set
     ctx.assert.deepEqual([out.blackDark.lift, out.blackLight.lift], ['oklch(0.62 0 0)', 'oklch(0 0 0)'], `the black card's lit colour: ${JSON.stringify([out.blackDark, out.blackLight])}`);

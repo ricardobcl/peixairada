@@ -5,7 +5,7 @@
 // a status, its text at AA on its ground in both themes; it goes after a few seconds; on again while on (a zoom, a
 // change of screen) says nothing; it goes with the fill; past FILL_HINTS in all it is never said; and under reduced
 // motion it fades in place.
-export const meta = { server: true, fixture: 'auto', prefs: { tiles: true, headFloat: true } };
+export const meta = { server: true, fixture: 'auto', prefs: { headFloat: true } };
 const NOTCH = { top: 32, left: 771.5, right: 956.5 };
 
 export default async function (ctx) {

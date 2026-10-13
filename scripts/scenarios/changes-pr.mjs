@@ -51,7 +51,7 @@ const before = { head: git(repo, 'rev-parse', 'HEAD'), branch: git(repo, 'branch
 export const meta = {
   server: true, fixture: claudeDir,
   env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: prsFile, PR_TTL_MS: '300' },
-  prefs: { tiles: true, headFloat: true, prsOpen: true, changesScope: 'turn' },
+  prefs: { headFloat: true, prsOpen: true, changesScope: 'turn' },
 };
 
 export default async function (ctx) {

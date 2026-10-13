@@ -255,9 +255,9 @@
   /* The chat's colour eases from one chat to the next (2026-09-27, night): a switch of chat slides the header from one
      project's colour to the other's over 250 ms rather than cutting. The ink (--rink) still cuts: a grey half-way
      between white and black reads on neither. tintChat sets the colours — the header's ground and its two veils, the
-     transcript's wash (--hbg, --hveil, --hveil2 on #chat) and the divider's (--openc on main), plain properties.
+     transcript's wash (--hbg, --hveil, --hveil2 on #chat), plain properties.
      The ease is the surfaces' own (2026-10-13): each that draws one eases a registered copy that is not inherited
-     (--hbg-eased …), the divider its background-color. Registered and inherited on #chat and main, as they were, every
+     (--hbg-eased …). Registered and inherited on #chat and main, as they were, every
      element under them was restyled on every frame of the ease — the whole board for a quarter of a second at each
      switch, and in WebKit a walk of every layer after each: a clauding chat took 450–600 ms to open, 220–275 without
      it. A new surface in the chat's colour reads --hbg-eased and joins the rule below. --repo itself cannot be
@@ -265,11 +265,9 @@
   @property --hbg-eased { syntax: '<color>'; inherits: false; initial-value: transparent; }
   @property --hveil-eased { syntax: '<color>'; inherits: false; initial-value: transparent; }
   @property --hveil2-eased { syntax: '<color>'; inherits: false; initial-value: transparent; }
-  main { --openc: var(--panel); }
   #chat { --hbg: var(--nocolor); }
   :where(.shead, #log, .gbody) { --hbg-eased: var(--hbg); transition: --hbg-eased .25s; }   /* :where — the header's own list below wins */
   .shead { --hveil-eased: var(--hveil); --hveil2-eased: var(--hveil2); transition: --hbg-eased .25s, --hveil-eased .25s, --hveil2-eased .25s; }
-  #sessions { border-left: 4px solid var(--repo, var(--nocolor)); }
   #sessions .colhead { background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); }
   /* 300 px at the narrowest (260 until the head became one row: below 300 the project's name had no room left) */
   #sessions { width: 380px; min-width: 300px; max-width: 60vw; flex: none; display: grid; grid-template-rows: minmax(0, 1fr) auto auto auto; min-height: 0; container-type: inline-size; }
@@ -330,20 +328,10 @@
   main.scompact #slist .gsep.lane[data-lane] b { margin: 0; }
   main.scompact #slist .gsep.lane.shut { opacity: .7; }
   main.scompact #slist .none { padding: 14px 2px; font-size: var(--fs-2xs); }
-  /* The bar between the list and the chat is the open chat's colour (2026-09-26): --openc on main (its background-color eases, 2026-10-13; --openb, its edges, went on 2026-09-29), set with the chat's
-     tint, so the open card, the bar and the chat's header are one stroke of it — see .card.active. */
-  #splitter { width: 6px; flex: none; cursor: col-resize; background: var(--openc); position: relative; overflow: hidden; }
-  /* …down to the open chat's card only, black under it (2026-09-28): --split is
-     where the open card ends, from the splitter's top (drawSplit) — the card out of sight below, the colour runs to the
-     list's foot; above, or not in the list, all black. ::before blacks the bar beside the list's foot row (--sfoot).
-     The black moves with the list's scroll by itself (2026-09-29): a --split rewritten from each
-     scroll event came a frame or two behind the list, whose scroll is the compositor's. So --split is in the list's own
-     coordinates, set only when the card moves in the list, and a scroll-driven animation on the list's timeline
-     (--slist, visible here through main's timeline-scope) slides the black up by the scroll — --smax, how far the list
-     scrolls, is its end. The black is taller than any window, so sliding it never bares its foot; the bar clips it.
-     Where the engine has no scroll timelines (.scrolls absent), drawSplit writes the on-screen place on every scroll. */
-  main { timeline-scope: --slist, --log; }
-  #slist { scroll-timeline: --slist y; }
+  /* The bar between the list and the chat (2026-09-26): a gap of the tiles', dragged to size the list. It was the open
+     chat's colour down to its card, black under it, until tiles were the only layout (2026-10-14). */
+  #splitter { width: 8px; flex: none; cursor: col-resize; position: relative; }
+  main { timeline-scope: --log; }
   /* The header's shadow on the transcript (2026-10-11, the Mac's toolbars): there only once the transcript has scrolled —
      a scroll-driven fade on the log's own timeline over its first 24 px, the compositor's; without scroll timelines,
      --shade from the log's scroll listener. The header lifts over what is under it to let it out. */
@@ -354,23 +342,11 @@
   :root[data-theme="dark"] .shead::before { background: linear-gradient(rgba(0, 0, 0, .55), transparent); }
   @supports (animation-timeline: scroll()) { .shead::before { animation: shade linear both; animation-timeline: --log; animation-range: 0 24px; } }
   @keyframes shade { from { opacity: 0; } to { opacity: 1; } }
-  #splitter::after { content: ''; position: absolute; left: 0; right: 0; top: var(--split, 100%); height: 400vh; background: var(--crust, #000); pointer-events: none; }
-  #splitter::before { content: ''; position: absolute; left: 0; right: 0; top: var(--sfoot, 100%); bottom: 0; z-index: 1; background: var(--crust, #000); pointer-events: none; }
-  #splitter.scrolls::after { animation: split-scroll linear both; animation-timeline: --slist; }
-  @keyframes split-scroll { to { transform: translateY(calc(0px - var(--smax, 0px))); } }
-  /* …and none where the black is not drawn (2026-10-13): with tiles, and on the rail. WebKit keeps the animation of a
-     pseudo-element that has no box, and this one, kept, had it resolve the board's animations on the main thread every
-     frame — the rings and the shimmer off the compositor, each frame a style pass and a walk of every layer (measured in
-     a WKWebView on 400 cards: the rings alone 5 % of a core, with it 23 %; with tiles off, where it is drawn, 1.6 %). */
-  :is(main.tiles, main.scompact) #splitter.scrolls::after { animation: none; }
-  #splitter:is(:hover, .drag)::after, #splitter:is(:hover, .drag)::before { opacity: 0; transition: opacity 0s .3s; }
-  #splitter.drag::after, #splitter.drag::before { transition: none; }   /* a drag lights the whole bar at once, its black too */
-  #splitter:hover, #splitter.drag { background: var(--accent); }
   /* The dividers light up after a beat, as VS Code's sash does (2026-09-27, night): a pointer crossing on its way to the
      chat no longer flashes them; a drag lights at once. */
-  #splitter, #gsplit { transition: background-color .15s; }
-  #splitter:hover, #gsplit:hover { transition-delay: .3s; }
-  #splitter.drag, #gsplit.drag { transition: none; }
+  #gsplit { transition: background-color .15s; }
+  #gsplit:hover { transition-delay: .3s; }
+  #gsplit.drag { transition: none; }
   #chat { --repo: initial; flex: 1; min-width: 320px; display: grid; grid-template-rows: auto auto auto 1fr auto; grid-template-columns: minmax(0, 1fr); min-height: 0; }
   /* Placed by hand: #prlist, #rival and #resume hide with display:none, which takes them out of auto-placement
      and slid the body into an auto row — a gap under it on a short chat, the drawer pushed off the bottom
@@ -410,16 +386,13 @@
   .gbody { min-height: 0; min-width: 0; display: grid; grid-template-rows: 1fr; grid-template-columns: minmax(0, 1fr); }
   .gbody > * { grid-area: 1 / 1; }
   #gsplit { width: 6px; flex: none; cursor: col-resize; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--panel); }
-  #gsplit:hover, #gsplit.drag { background: var(--accent); }   /* eased and delayed with #splitter, above */
+  #gsplit:hover, #gsplit.drag { background: var(--accent); }   /* eased and delayed, above */
   #gsplit[hidden] { display: none; }
   /* The same two halves one over the other (2026-09-27, ⌥⌘1 / ⌥⌘2): #groups turns into a column and the divider lies
      across it. The halves keep their flex basis (applySplit), which runs along whichever axis is the main one, so
      nothing else moves. */
   #groups.stack { flex-direction: column; }
   #groups.stack > #gsplit { width: auto; height: 6px; cursor: row-resize; border-left: 0; border-right: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-  /* Which half the keys are in: a 2 px rule under its tabs (inset, so nothing moves by a pixel when it lights up), in
-     the chat's colour since 2026-10-11 (--tablit; the accent before). Only worth saying when there are two halves. */
-  main.split .grp.on > .ptabs { box-shadow: inset 0 -2px 0 var(--tablit); }
   /* Each half a tile of its own (2026-10-11, the studies' Q7): with tiles and two halves, 8 px round and between them —
      the divider is the gap — and each bordered as the tiles are, 30 % of the project's colour and whole on the half the
      keys are in, so the rule under a strip has nothing left to say and a lone strip is nothing at all. */
@@ -429,8 +402,6 @@
   main.tiles.split #gsplit:is(:hover, .drag) { background: color-mix(in srgb, var(--tile-edge, var(--nocolor)) 40%, transparent); }
   main.tiles.split .grp:not([hidden]) { border: 2px solid color-mix(in srgb, var(--tile-edge, var(--nocolor)) 30%, var(--tile-line)); }
   main.tiles.split .grp.on { border-color: var(--tile-edge, var(--nocolor)); }
-  main.tiles.split .grp.on > .ptabs { box-shadow: none; }
-  main.tiles.split .grp > .ptabs.lone { height: 0; }
   /* …under the floating header, below it: the halves' tops are the tiles' own, not behind the bar */
   :root[data-head="float"] main.tiles.split #groups { padding-top: calc(var(--float-h, 0px) + 4px); }
   :root[data-head="float"] main.tiles.split #groups > .grp { padding-top: 0; }
@@ -751,11 +722,6 @@
      colour (--track). */
   .card:is(.working, .watching):not(.asking) { border-width: 0; padding: 10px 12px 9px; }
   .card.active:is(.working, .watching) { outline-width: 1px; outline-offset: 0; }   /* the open card's edge outside the band, not over it */
-  /* The open chat's light, when it runs past the card (drawTrail): the overlay is clipped to the band along the shape's
-     outline, a faint track of the light's colour on it, and the comet's blobs are moved by their own animations. */
-  #trail { position: fixed; inset: 0; z-index: 30; pointer-events: none; background: color-mix(in srgb, var(--lit) 25%, transparent); }
-  #trail i { position: absolute; left: 0; top: 0; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; background: radial-gradient(closest-side, var(--lit) 30%, transparent); will-change: transform; }
-  main.trail #slist > .card.active::before, main.trail #slist > .card.active::after { content: none; }
   .card.working::before, .card.watching::before { content: ''; position: absolute; z-index: -1; left: 50%; top: 50%; width: 160%; aspect-ratio: 1; margin: -80% 0 0 -80%; pointer-events: none;
     background: repeating-conic-gradient(var(--track) 0 calc(var(--seg) * var(--tail, .45)), var(--lit) calc(var(--seg) * .92), var(--track) var(--seg));
     animation: ring var(--spins, 1.4s) linear infinite; }
@@ -833,11 +799,6 @@
   /* the open chat: a solid tint of its colour under a ring of it (2026-09-20); every other card keeps the gradient
      wash */
   .card.active { border-color: var(--lift); outline: 2px solid var(--lift); outline-offset: -1px; --tint: 65%; --reach: 100%; --fall: .5; }
-  /* …and it runs into the splitter (2026-09-26): over the list's padding to the column's edge, against the bar in the
-     same colour (#splitter, --openc). Not on the rail of squares, which has no splitter. Its tint no longer rises to the
-     full colour over its last 44 px to meet the bar (2026-09-29 to 2026-10-11, afternoon): its glow falls to the panel
-     at its right edge, as every card's does. */
-  main:not(.scompact) #slist > .card.active { margin-right: -8px; }
   /* A card in the board's own black (a project the setup paints #000000): 65 % of black over a light panel is a mid-grey
      nothing reads on, so the tint is the colour itself and the card borrows the dark theme's inks — they inherit,
      so title, snips, times and the two speaker marks follow in one rule. In the dark theme they are what they were. */
@@ -1312,15 +1273,14 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .shead { isolation: isolate; }
   .shead::after { content: ''; position: absolute; top: 0; right: 0; left: calc(var(--hsplit, calc(100% + var(--hfade-in))) - var(--hfade-in)); height: var(--hrow, 100%); background: var(--crust, #000); z-index: -1; pointer-events: none;
     -webkit-mask: linear-gradient(90deg, transparent, #000 var(--hfade-w)); mask: linear-gradient(90deg, transparent, #000 var(--hfade-w)); }
-  /* (2026-10-01) The open chat's colour as dark as that black (nearBlack, tintChat): the black beside it — here, and
-     the splitter under the open card — is a grey, so the project's box and the card still stand out of it. */
-  main.darkchat .shead::after, main.darkchat #splitter::after, main.darkchat #splitter::before { background: #4a4a45; }
+  /* (2026-10-01) The open chat's colour as dark as that black (nearBlack, tintChat): the black beside it is a grey, so the project's box and the card still stand out of it. */
+  main.darkchat .shead::after { background: #4a4a45; }
   /* In the board's own light theme the black follows the appearance (2026-10-12): it was the heaviest thing on a light
      page, pulling the eye off the transcript, and a light theme's header (Latte's) showed a light one reads. The panel
-     and the light inks then, the splitter's black too — but at the notch, where the black is the camera housing's
+     and the light inks then — but at the notch, where the black is the camera housing's
      colour and the header's right is the housing's own, it stays. A theme sets its own (below). */
   :root[data-theme="light"]:not([data-skin]) main:not(.notch) { --crust: var(--panel); --hd-ink: var(--ink); --hd-muted: var(--muted); --hd-line: var(--line); --hd-panel: var(--panel); --hd-inline: var(--inline-bg); }
-  :root[data-theme="light"]:not([data-skin]) main.darkchat:not(.notch) .shead::after, :root[data-theme="light"]:not([data-skin]) main.darkchat:not(.notch) #splitter::after, :root[data-theme="light"]:not([data-skin]) main.darkchat:not(.notch) #splitter::before { background: var(--crust); }
+  :root[data-theme="light"]:not([data-skin]) main.darkchat:not(.notch) .shead::after { background: var(--crust); }
   /* a theme (2026-10-10) paints this black in its own darkest, --crust, and its inks are the theme's (--hd-*) */
   .shead > :not(h2, .details) { --ink: var(--hd-ink, #e8e6df); --muted: var(--hd-muted, #9a998f); --line: var(--hd-line, #2c2c29); --rink: var(--hd-ink, #e8e6df); --panel: var(--hd-panel, #1c1c1a); --inline-bg: var(--hd-inline, rgba(255, 255, 255, .075)); }
   :where(.shead > :not(h2, .details)) { color: var(--ink); }   /* for what inherits its ink; a control's own rule still wins */
@@ -1375,8 +1335,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #prlist { border-bottom: 1px solid var(--line); background: var(--panel); padding: 4px 12px 5px; display: grid; gap: 1px; min-width: 0; }
   /* The floating header (2026-10-09, the studies' E — prefs.headFloat, <html data-head="float">, to try beside the
      plain one): the chat header a bar inset from the window's edges, rounded, an edge of the project's colour and a
-     shadow under it; the PR rows under it take the same insets. The open chat's light no longer runs round its box
-     (trailGeom): the box does not touch the splitter. */
+     shadow under it; the PR rows under it take the same insets. */
   :root[data-head="float"] #shead { margin: calc(10px + var(--hdrop, 0px)) 14px 4px; border: 1px solid color-mix(in srgb, var(--repo, var(--line)) 45%, var(--line)); border-radius: var(--r-5); overflow: hidden;
     box-shadow: 0 10px 30px -8px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255, 255, 255, .06); }
   :root[data-head="float"] #prlist { margin: 0 14px 4px; border: 1px solid var(--line); border-radius: var(--r-4); }
@@ -1502,11 +1461,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-theme="dark"] #chat { --tablit: oklch(from var(--repo, var(--accent)) max(l, .66) c h); }
   .ptabs { display: flex; gap: 4px; height: 38px; padding: 0 8px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: var(--fs-sm); align-items: center; container-type: inline-size; }
   .ptabs[hidden] { display: none; }
-  /* A half holding one tab has nothing to choose between (2026-09-28): split, its strip is a 2 px rule,
-     the accent under the keys (the .on rule above fills it) and the line elsewhere — the same height either way, so
-     moving the keys never resizes a terminal. A web page keeps its strip, for the address and ‹ › ↻ ↗; so does an empty
-     half, where a tab is dropped. */
-  .ptabs.lone { padding: 0; height: 2px; border: 0; background: var(--line); overflow: hidden; }
+  /* A half holding one tab has nothing to choose between (2026-09-28): split, it has no strip — the tile's border says
+     which half the keys are in (a 2 px rule under the strip did, the accent under the keys, until tiles were the only
+     layout, 2026-10-14). A web page keeps its strip, for the address and ‹ › ↻ ↗; so does an empty half, where a tab is
+     dropped. */
+  .ptabs.lone { padding: 0; height: 0; border: 0; overflow: hidden; }
   .ptab, .ptabgone { position: relative; flex: none; font: inherit; font-size: var(--fs-sm); font-weight: 500; height: 26px; padding: 0 10px; border: 0; border-radius: var(--r-3); background: transparent; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
   .ptab:hover { color: var(--ink); background: var(--ctl); }
   .ptab > .ic { width: 13px; height: 13px; flex: none; fill: currentColor; opacity: .75; }
@@ -1799,7 +1758,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .home .hsum b { color: var(--ink); } .home .hsum em { font-style: normal; color: var(--needs); font-weight: 700; } .home .hsum .r { margin-left: auto; }
   .home .hnone { color: var(--muted); padding: 6px 0; }
 
-  /* ---- tiles (2026-10-10): Hyprland's — gaps over a wallpaper, square edges, each panel's border its
+  /* ---- tiles (2026-10-10; the only layout since 2026-10-14 — main.tiles is in the markup, and its rules are the
+     panels' look): Hyprland's — gaps over a wallpaper, square edges, each panel's border its
      project's colour (--tile-edge, set by tintChat and tileTints: a black one --tile-grey; the list's on
      ALL the open chat's), faint, and whole on the panel the keys are in ---- */
   :root { --tile-line: color-mix(in srgb, var(--ink) 16%, var(--bg)); --tile-grey: color-mix(in srgb, var(--ink) 74%, var(--bg)); }
@@ -1810,18 +1770,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      transform — and moved after the pointer by one (2026-10-11, late night; wallGo; a switch until 2026-10-14): the compositor's,
      so a move repaints nothing. The grain over both, still. */
   @property --wallc { syntax: '<color>'; inherits: true; initial-value: transparent; }
-  #wall { display: none; }
-  body:has(main.tiles) #wall { display: block; position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; --wallc: var(--accent); transition: --wallc .25s;
+  #wall { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; --wallc: var(--accent); transition: --wallc .25s;
     background: radial-gradient(90% 70% at 8% 96%, color-mix(in srgb, var(--wallc) 20%, var(--bg)), transparent 62%), var(--bg); }
   #wall::after { content: ''; position: absolute; inset: 0; background: var(--grain); }
   #wall i { position: absolute; left: 0; top: 0; width: 127.6vw; height: 92.8vh; margin: -46.4vh 0 0 -63.8vw; will-change: transform;
     background: radial-gradient(closest-side, color-mix(in srgb, var(--wallc) 34%, var(--bg)), transparent); transform: translate(88vw, 6vh); transition: transform 1.1s var(--ease-out); }
   main.tiles { padding: 8px 8px 0; }
-  main.tiles #splitter { width: 8px; background: transparent; }
-  main.tiles #splitter::before, main.tiles #splitter::after { display: none; }
-  main.tiles ~ #trail { display: none !important; }
   main.tiles :is(#sessions, #chat) { border: 2px solid color-mix(in srgb, var(--tile-edge, var(--nocolor)) 30%, var(--tile-line)); background: var(--bg); }
-  main.tiles:not(.scompact) #slist > .card.active { margin-right: 0; }
   main.tiles .kf:is(#sessions, #chat) { border-color: var(--tile-edge, var(--nocolor)); }
   /* at the notch, the panel the housing reaches cut round it and its border round the cut (tileNotch) */
   main.tiles :is(#sessions, #chat).ncutp { position: relative; }
@@ -2202,7 +2157,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   @media (prefers-reduced-motion: reduce) {
     #wall i { transition: none; }   /* the wallpaper's glow stays in its corner (wallOn) */
     .card.working::before, .card.watching::before { animation: none; background: var(--lit); }
-    #trail { background: var(--lit); }   /* no comet under it (drawTrail makes none): the band steady in the light's colour */
     .card.asking { border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
     .card.asking::before, .card.asking::after { animation: none; opacity: 0; }   /* no pings: the red border and its glow */
     .card.landed { animation: none; }
@@ -2258,7 +2212,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 </head>
 <body>
 <div id="wall" aria-hidden="true"><i></i></div>
-<main id="main">
+<main id="main" class="tiles">
   <section id="sessions">
     <div class="colhead" id="shd"><span class="brand" id="brandBtn" title="About peixAIrada" role="button"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g class="fishg"><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g></g><g class="stars" fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="filters"><button class="fsearch" id="qBtn" title="Search this project’s chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="this project’s chats, done too — title, branch, prompt…" autocomplete="off" spellcheck="false" hidden><button class="fsearch" id="fBtn" aria-haspopup="menu" aria-pressed="false" title="Show only some chats — a PR at your move, or a new reply"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2.5h12.5a.5.5 0 0 1 .38.82L10 8.9v4.35a.5.5 0 0 1-.28.45l-2.5 1.2A.5.5 0 0 1 6.5 14.45V8.9L1.37 3.32a.5.5 0 0 1 .38-.82Z"/></svg><span class="fl"></span></button></span></div>
     <div id="tline" aria-label="The list's days — point to read them, drag to scroll, click one to go there"><div class="tl-catch"></div><div class="tl-thumb"></div><div class="tl-labs"></div></div>
@@ -2296,7 +2250,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   </section>
 </main>
 <footer id="sbar" hidden><div id="sbFind"></div><div id="sbLeft"></div><div id="sbPeople"></div><div id="sbSwim" role="button" aria-label="Every agent at work (⌥⌘A)"></div><div id="sbRight"></div></footer>
-<div id="trail" aria-hidden="true" hidden></div>
 <dialog id="settings" class="pop" aria-label="Settings" tabindex="-1">
   <div class="shd2"><h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4><button class="btn" id="tourBtn" title="The board's main parts, one at a time — a minute">Take the tour</button><button class="sclose" id="settingsClose" title="Close · esc" aria-label="Close">×</button></div>
   <nav class="stabs" role="tablist" aria-label="Settings"><button role="tab" data-tab="board" class="on" aria-selected="true" aria-controls="spBoard" id="stBoard">Board</button><button role="tab" data-tab="setup" aria-selected="false" aria-controls="spSetup" id="stSetup" tabindex="-1">Setup</button><button role="tab" data-tab="keys" aria-selected="false" aria-controls="spKeys" id="stKeys" tabindex="-1">Keys</button></nav>
@@ -2318,7 +2271,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <div class="opt lightpick zoompick" title="Everything on the board, larger or smaller — the app's own zoom; in a browser, its View menu's"><span><b>text size</b> — the whole board</span><span class="sseg" role="radiogroup" aria-label="Text size" id="zoomPick"><button type="button" role="radio" data-z="0.9">90 %</button><button type="button" role="radio" data-z="1">100 %</button><button type="button" role="radio" data-z="1.1">110 %</button><button type="button" role="radio" data-z="1.25">125 %</button><button type="button" role="radio" data-z="1.4">140 %</button></span><span class="zhint">your browser's View → Zoom</span></div>
     <div class="opt" title="A theme is every surface at once — the cards, the transcript, the code, the drawer's colours, the header's black and the status bar — and its appearance, dark or light, whatever macOS shows"><span><b>theme</b> — <span id="themeNames"></span> <button class="btn" id="themeBtn">choose… ⌥⌘Y</button></span></div>
     <label class="opt sub" title="On, the board is dark while macOS is dark and light while it is light, each in the theme last picked for it; off, the theme picked is worn — and its appearance — whatever macOS shows"><input type="checkbox" id="skinFollow"><span><b>follow macOS</b> — a dark theme while macOS is dark, a light one while it is light; off, the theme picked whatever macOS shows</span></label>
-    <label class="opt" title="On, the panels are tiles, Hyprland's way: gaps over a wallpaper, each bordered in its project's colour, whole on the one the keys are in — and, with the stack, beside the open chat up to three tiles of the chats of the list that are asking or clauding, each its drawer drawn small or its last tool calls, a click making one the chat"><input type="checkbox" id="tilesOn"><span><b>tiles</b> — the panels as tiles, Hyprland's way: gaps over a wallpaper, each bordered in its project's colour</span></label>
     <label class="opt" title="On, the chat header is a bar inset from the window's edges, rounded and shadowed; off, it runs edge to edge as before"><input type="checkbox" id="headFloat"><span><b>floating header</b> — the chat header as a rounded bar inset from the edges</span></label>
     <label class="opt" title="On, a strip at the window's foot: the search, the connection, how many chats ask you and what is watching, the faces on your PRs, the fish (faster the more is at work), CPU and memory, the plan's limits, keeping the Mac awake and the clock — the list's foot then has none of them"><input type="checkbox" id="sbarOn" checked><span><b>status bar</b> — the search, what asks you and what is watching, the faces, the fish, the machine and the plan, keeping the Mac awake and the clock at the window's foot; off, the search, the faces and the plan return to the list's foot and the awake switches to the chat header</span></label>
     <div class="opt sub sbstats" id="sbarStats" title="What else the status bar says — asked of the Mac every 3 s while shown"><span><b>also</b></span><label><input type="checkbox" data-stat="cpu"> CPU</label><label><input type="checkbox" data-stat="mem"> memory</label><label><input type="checkbox" data-stat="claude"> Claude's memory</label></div>
@@ -2420,7 +2372,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · render: both lists
 //   js  · the people row: everyone in the PRs of the chats in view
 //   js  · the list's ends: how many cards are out of sight
-//   js  · the open chat's light runs on past its card
 //   js  · the chat list's timeline: its days, down the left edge
 //   js  · ⌥⌘P: the project picker. The board's projects, pinned first; the box filters by name.
 //   js  · the pickers' matcher: fuzzy since 2026-09-21
@@ -2458,7 +2409,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, tiles: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -2479,7 +2430,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   delete prefs.filter; delete prefs.filters;
   delete prefs.peopleFold;   // the faces folded to a count (2026-10-09, off by default) became peopleCompact (2026-10-11, later): folded by default
   // the experimental switches pared (2026-10-14): what they chose is now the only way, or gone
-  for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume', 'edgeLight', 'ringsInStep', 'cardSpot', 'tileStack', 'wallFollow']) delete prefs[k];
+  for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume', 'edgeLight', 'ringsInStep', 'cardSpot', 'tileStack', 'wallFollow', 'tiles']) delete prefs[k];
   if (!Array.isArray(prefs.lanesShut)) prefs.lanesShut = ['done', 'idle'];
   prefs.lanesShut = prefs.lanesShut.filter(g => g !== 'move' && g !== 'replied');   // lanes for a morning (2026-10-12), filters since
   if (prefs.listFilter !== 'move' && prefs.listFilter !== 'replied') prefs.listFilter = null;
@@ -3089,10 +3040,10 @@ const toolName = n => {
   };
   const inkOn = color => { const b = brightness(color); return b === null ? 'var(--ink)' : b >= 128 ? '#1c1c1a' : '#ffffff'; };
   // A colour too close to the board's black to be told from it (2026-10-01): the black beside it — the chat header's
-  // right of the project and the splitter under the open card (main.darkchat) — turns grey. (The dark theme's ground
+  // right of the project (main.darkchat) — turns grey. (The dark theme's ground
   // behind a list of such cards did too, until the ink cards of 2026-10-09 made every card the panel.)
   const nearBlack = color => { const b = brightness(color); return b !== null && b < 40; };
-  // A tile's border with tiles on (2026-10-10): its project's colour, a black one the grey that reads on the ground
+  // A tile's border (2026-10-10): its project's colour, a black one the grey that reads on the ground
   const tileEdge = color => !color ? 'var(--nocolor)' : nearBlack(color) ? 'var(--tile-grey)' : color;
   // The chat pane in a project's colour: --repo for the header and the transcript's wash, --rink for what reads
   // on the header, --hveil and --hveil2 the veils its gradient ends in, across and down (away from the ink: black
@@ -3100,8 +3051,6 @@ const toolName = n => {
   const tintChat = color => {
     const c = $('#chat'); c.classList.toggle('tinted', !!color); $('#main').classList.toggle('darkchat', nearBlack(color));
     c.style.setProperty('--tile-edge', tileEdge(color));
-    // the splitter: the chat's colour, the grey of none, the panel until a chat is open — registered (main's rule), so the change eases
-    $('#main').style.setProperty('--openc', color || 'var(--nocolor)');
     c.style.setProperty('--hbg', color || 'var(--nocolor)');   // the header's ground and the transcript's wash, eased
     if (color) {
       const ink = inkOn(color), veil = a => ink === '#ffffff' ? `rgb(0 0 0 / ${a})` : `rgb(255 255 255 / ${a + .08})`;
@@ -3915,8 +3864,8 @@ const toolName = n => {
   const noteMotion = (id, kind, dy = 0) => { MOTION.push({ id, kind, at: Math.round(performance.now()), dy }); if (MOTION.length > 1000) MOTION.shift(); };   // a check slices it from a length it read: kept long enough not to roll under it (64 until 2026-10-11, when the counts' rolls and the live lines came)
   const slide = (el, kind, frames, opts, dy = 0) => { noteMotion(el.dataset.id || null, kind, dy); return follow(el.animate(frames, { ...opts, id: kind })); };
   // The list's frame follows a slide (2026-10-02): it was drawn once after a render, from rects read while the cards had
-  // only begun to move — so the splitter's colour and the open chat's light stood where the open card had been until the
-  // next update, seconds later. While anything in the list moves the frame is drawn every frame, and once more after.
+  // only begun to move — so what is drawn from the cards' places stood where they had been until the next update,
+  // seconds later. While anything in the list moves the frame is drawn every frame, and once more after.
   const sliding = new Set();
   const follow = a => { sliding.add(a); const end = () => { sliding.delete(a); listChanged(); }; a.addEventListener('finish', end); a.addEventListener('cancel', end); listChanged(); return a; };
   // The reply landed: a chat that goes from clauding to ready flares its card's edge once (the `landed` animation,
@@ -4079,120 +4028,18 @@ const toolName = n => {
       const timeline = listChanged.other || tl.K > 0 || !!tl.press || $('#sessions').classList.contains('tlshow');
       listChanged.queued = false; listChanged.other = false;
       const g = listGeom();   // every read of the frame first, then the writes: a read after a write is a layout each (2026-09-27)
-      drawEdges(g); if (timeline) drawTimeline(g); drawSplit(g); drawTrail(g);
+      drawEdges(g); if (timeline) drawTimeline(g);
       watchOpen(g.open?.el);
       if (sliding.size) listChanged();   // a card is still on its way: the next frame too
     });
   }
   // …and when the open card changes size with no render of the list (an age a digit longer, the title beside it wrapping
-  // to another line): the splitter and the light are drawn from it
+  // to another line): the ends count from it
   const openSize = new ResizeObserver(() => listChanged());
   let sized = null;
   const watchOpen = el => { if (el === sized) return; if (sized) openSize.unobserve(sized); sized = el || null; if (sized) openSize.observe(sized); };
-  /** The splitter in the open chat's colour down to where its card ends, as the list is scrolled; black under it. */
-  const SPLIT_SCROLLS = CSS.supports('timeline-scope: --a') && CSS.supports('animation-timeline: scroll()');
-  if (SPLIT_SCROLLS) $('#splitter').classList.add('scrolls');
-  function drawSplit(g) {
-    const sp = $('#splitter'), set = (k, v) => { if (sp.style.getPropertyValue(k) !== v) sp.style.setProperty(k, v); };
-    // where the black starts: in the list's coordinates when the scroll slides it (the card's bottom as at scroll 0 —
-    // the same on every scroll, so a scroll writes nothing), on screen when it cannot; no card, above everything
-    const end = !SPLIT_SCROLLS ? splitEnd(g) - g.sp.top : g.openRect ? g.openRect.bottom + 1 + g.top - g.sp.top : -1e5;
-    set('--split', `${Math.round(SPLIT_SCROLLS ? end : Math.max(0, end))}px`);
-    set('--smax', `${Math.max(0, g.sh - g.ch)}px`);
-    set('--sfoot', `${Math.round(g.box.bottom - g.sp.top)}px`);
-  }
-  /** Where the splitter's colour ends, on screen: the open card's bottom edge, held inside the list's window. The edge
-   *  as drawn — the card's rect, not its rounded offsets, and its outline's 1 px outside it (2026-09-29). */
-  const splitEnd = g => !g.openRect ? g.box.top : Math.max(g.box.top, Math.min(g.box.bottom, g.openRect.bottom + 1));
-  // ---- the open chat's light runs on past its card ----------------------------------------------------------------
-  // (2026-09-29). The open card, the splitter down to it and the project's box atop the chat are one shape
-  // in one colour; while the chat is clauding or watching, its light runs round the edge of that shape rather than the
-  // card's alone — clockwise, as the ring turns: up the splitter, round the box, down again and round the card.
-  // #trail is an overlay the window's size, clipped to a band as wide as a card's border just inside the shape's outline
-  // (clip-path, even-odd: the outline and the same inset). The light is a comet of round blobs, the head brightest,
-  // each moved along the outline by a transform — the compositor's kind of motion, like the ring. Its speed is the
-  // ring's (the card's perimeter per --spins), its lights the card's, one per sub-agent; the card's own ring stands down
-  // (main.trail). Drawn in the list's frame; when the shape changes (a scroll, a resize) each light keeps its place on
-  // the outline, which starts at the box's top right, the corner that does not move. On the rail, nothing: no splitter.
-  const TRAIL_W = 2, TRAIL_GAP = 22;   // the band, a comet's spacing (a blob's 64 px are the CSS's)
-  const trail = { sig: '', loop: [], blobs: [], L: 0, v: 0, head: 0, at: 0 };
-  /** The outline of a union of rectangles — the longest loop, clockwise on screen (the inside on the right), from its
-   *  top-right corner, straight runs merged. Edges within 3 px are one, so a pixel's step makes no notch. */
-  function outline(rects) {
-    const snap = vals => { const m = new Map(); let last = null; for (const v of [...new Set(vals)].sort((a, b) => a - b)) { if (last === null || v - last >= 3) last = v; m.set(v, last); } return m; };
-    const mx = snap(rects.flatMap(r => [r.l, r.r])), my = snap(rects.flatMap(r => [r.t, r.b]));
-    const rs = rects.map(r => ({ l: mx.get(r.l), r: mx.get(r.r), t: my.get(r.t), b: my.get(r.b) })).filter(r => r.r > r.l && r.b > r.t);
-    const xs = [...new Set(rs.flatMap(r => [r.l, r.r]))].sort((a, b) => a - b), ys = [...new Set(rs.flatMap(r => [r.t, r.b]))].sort((a, b) => a - b);
-    const cell = (i, j) => i >= 0 && j >= 0 && i < xs.length - 1 && j < ys.length - 1 && rs.some(r => r.l <= xs[i] && xs[i + 1] <= r.r && r.t <= ys[j] && ys[j + 1] <= r.b);
-    const from = new Map(), edge = (a, b) => { const k = a.join(); if (!from.has(k)) from.set(k, []); from.get(k).push(b); };
-    for (let i = 0; i < xs.length - 1; i++) for (let j = 0; j < ys.length - 1; j++) {
-      if (!cell(i, j)) continue;
-      const [l, r, t, b] = [xs[i], xs[i + 1], ys[j], ys[j + 1]];
-      if (!cell(i, j - 1)) edge([l, t], [r, t]);
-      if (!cell(i + 1, j)) edge([r, t], [r, b]);
-      if (!cell(i, j + 1)) edge([r, b], [l, b]);
-      if (!cell(i - 1, j)) edge([l, b], [l, t]);
-    }
-    let best = [], bestLen = 0;
-    while (from.size) {
-      const start = from.keys().next().value, loop = [];
-      let k = start;
-      do { const outs = from.get(k), next = outs.pop(); if (!outs.length) from.delete(k); loop.push(k.split(',').map(Number)); k = next.join(); } while (k !== start && from.has(k));
-      const pts = loop.filter((p, i) => { const a = loop[(i + loop.length - 1) % loop.length], b = loop[(i + 1) % loop.length]; return !((a[0] === p[0] && p[0] === b[0]) || (a[1] === p[1] && p[1] === b[1])); });
-      const len = pts.reduce((n, p, i) => { const q = pts[(i + 1) % pts.length]; return n + Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]); }, 0);
-      if (len > bestLen) { best = pts; bestLen = len; }
-    }
-    const top = best.reduce((m, p, i) => (p[1] < best[m][1] || (p[1] === best[m][1] && p[0] > best[m][0]) ? i : m), 0);
-    return [...best.slice(top), ...best.slice(0, top)];
-  }
-  /** The loop moved w in, square corners kept: each point along both of its edges' inward normals. */
-  const insetLoop = (loop, w) => loop.map((p, i) => {
-    const a = loop[(i + loop.length - 1) % loop.length], b = loop[(i + 1) % loop.length], d1 = [Math.sign(p[0] - a[0]), Math.sign(p[1] - a[1])], d2 = [Math.sign(b[0] - p[0]), Math.sign(b[1] - p[1])];
-    return [p[0] + w * (-d1[1] - d2[1]), p[1] + w * (d1[0] + d2[0])];
-  });
-  const loopPath = loop => `M${loop.map(p => `${p[0]} ${p[1]}`).join('L')}Z`;
-  function drawTrail(g) {
-    const el = $('#trail'), t = g.trail;
-    const off = () => { if (!trail.sig) return; trail.sig = ''; trail.loop = []; el.hidden = true; for (const b of trail.blobs) b.el.remove(); trail.blobs = []; $('#main').classList.remove('trail'); };
-    if (!t) return off();
-    const rects = [];
-    if (t.box) rects.push({ ...t.box, l: g.sp.right });
-    const end = splitEnd(g);
-    if (end > g.sp.top + 1) rects.push({ l: g.sp.left, t: g.sp.top, r: g.sp.right, b: end });
-    if (t.card) { const ct = Math.max(g.box.top, t.card.top), cb = Math.min(g.box.bottom, t.card.bottom); if (cb > ct + 1) rects.push({ l: t.card.left, t: ct, r: g.sp.left, b: cb }); }
-    const loop = outline(rects.map(r => ({ l: Math.round(r.l), t: Math.round(r.t), r: Math.round(r.r), b: Math.round(r.b) })));
-    if (loop.length < 4) return off();
-    const mid = insetLoop(loop, TRAIL_W / 2), seg = mid.map((p, i) => { const q = mid[(i + 1) % mid.length]; return Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]); });
-    const L = seg.reduce((a, b) => a + b, 0), v = t.perim / t.spins, K = REDUCED.matches ? 0 : Math.max(2, Math.round(t.perim * .47 / t.n / TRAIL_GAP)), n = t.n;
-    const sig = `${loopPath(loop)}|${t.lit}|${v}|${n}|${K}`;
-    if (sig === trail.sig) return;
-    const first = !trail.sig; trail.sig = sig; trail.loop = loop;
-    el.hidden = false; el.style.setProperty('--lit', t.lit);
-    el.style.clipPath = `path(evenodd, '${loopPath(loop)} ${loopPath(insetLoop(loop, TRAIL_W))}')`;
-    $('#main').classList.add('trail');
-    // where the head is now on the old outline, carried onto the new one (both start at the box's top right)
-    const now = document.timeline.currentTime || 0;
-    trail.head = first || !trail.L ? 0 : ((trail.head + trail.v * (now - trail.at) / 1000) % trail.L + trail.L) % L;
-    Object.assign(trail, { L, v, at: now });
-    let s0 = 0;
-    const frames = mid.map((p, i) => { const f = { transform: `translate(${p[0]}px, ${p[1]}px)`, offset: s0 / L }; s0 += seg[i]; return f; });
-    frames.push({ transform: frames[0].transform, offset: 1 });
-    const dur = L / v * 1000;
-    // each blob with its animation, kept (2026-10-03: fetched back with getAnimations() per blob per shape — a style
-    // flush each, every frame of a slide or a scroll with a clauding chat open)
-    let made = false;
-    if (trail.blobs.length !== n * K) {
-      for (const b of trail.blobs) b.el.remove();
-      made = true;
-      trail.blobs = Array.from({ length: n * K }, (_, j) => { const b = document.createElement('i'), i = j % K; b.style.opacity = ((1 - i / K) ** 1.5).toFixed(3); el.append(b); return { el: b, anim: b.animate(frames, { duration: dur, iterations: Infinity }) }; });
-    }
-    trail.blobs.forEach(({ anim: a }, j) => {
-      const i = j % K, k = Math.floor(j / K);
-      if (!made) { a.effect.setKeyframes(frames); a.effect.updateTiming({ duration: dur }); }
-      const p = ((trail.head - k * L / n - i * TRAIL_GAP) % L + L) % L;
-      a.currentTime = p / L * dur;
-    });
-  }
+  // Scroll timelines (the header's shadow on the transcript): where there are none, the log's scroll listener writes it.
+  const SCROLL_TIMELINES = CSS.supports('timeline-scope: --a') && CSS.supports('animation-timeline: scroll()');
   /** The list's geometry, read once a frame: its window, each card's place, the rail's height and each run's top. */
   function listGeom() {
     const list = $('#slist'), rail = $('#tline'), cards = [];
@@ -4201,21 +4048,7 @@ const toolName = n => {
     const open = cards.find(c => c.el.classList.contains('active'));
     return { list, rail, cards, open, top: list.scrollTop, ch: list.clientHeight, sh: list.scrollHeight, H, full, y: v => TL_PAD + v / full * H,
       tops: tl.runs.map(r => cards[r.i]?.top || 0), railOn: !!rail && rail.offsetParent !== null,
-      box: list.getBoundingClientRect(), sp: $('#splitter').getBoundingClientRect(), openRect: open?.el.getBoundingClientRect(), trail: trailGeom(open) };
-  }
-  /** What the open chat's light needs, read with the list's geometry: null unless it is clauding or watching, a chat is
-   *  open and the list is not the rail. The card's own light — its colour, its pace, how many — when it is in the list. */
-  function trailGeom(open) {
-    const s = state.sessions.get(state.current), head = $('#shead');
-    if (!s || s.done || asking(s) || !(s.status === 'working' || watching(s)) || prefs.tiles || $('#main').classList.contains('scompact') || !head.querySelector('h2 .sep')) return null;   // tiles (2026-10-10): the gap is no splitter to run up
-    const hr = head.getBoundingClientRect(), hs = parseFloat(head.style.getPropertyValue('--hsplit')), hrow = head.style.getPropertyValue('--hrow');
-    const work = s.status === 'working', card = open?.el.getBoundingClientRect();
-    return { card, box: hs > 0 && !prefs.headFloat ? { l: hr.left, t: hr.top, r: hr.left + hs, b: hr.top + (hrow.endsWith('px') ? parseFloat(hrow) : hr.height) } : null,
-      // the shape is the project's colour through and through, and the light on it is white (2026-10-02) — the lightest
-      // thing on every colour; it was the header's ink until then, near-black on a light colour: a shadow going round,
-      // not a light. A monitor's is its own colour
-      lit: work ? '#ffffff' : 'var(--watch)',
-      spins: work ? 1.4 : 6, n: work ? Math.min(5, s.agents || 1) : 1, perim: card ? 2 * (card.width + card.height) : 2 * (hr.left + 150) };
+      box: list.getBoundingClientRect() };
   }
   function drawEdges(g) {
     const bottom = g.top + g.ch;
@@ -4936,7 +4769,7 @@ const toolName = n => {
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
   const SWITCHES = [['notifyOn', 'Notifications'], ['autoUpdate', 'Update itself'], ['skinFollow', 'Theme follows macOS'],
-    ['sbarOn', 'Status bar'], ['tilesOn', 'Tiles'], ['headFloat', 'Floating header'], ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal']];
+    ['sbarOn', 'Status bar'], ['headFloat', 'Floating header'], ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
     { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },
@@ -6222,9 +6055,9 @@ const toolName = n => {
   // header draw and every change of its size, since a resize moves the hole; nothing else on the page knows about the
   // fill.
   const NOTCH_PAD = 10, NOTCH_TITLE = 220, NOTCH_TAIL = 120;
-  // with tiles the housing has a border round it, hugging it (tileNotch, 2026-10-11, later; the tiles' gap away before):
+  // the housing has a tile's border round it, hugging it (tileNotch, 2026-10-11, later; the tiles' gap away before):
   // the row keeps clear of that too
-  const notchPad = () => prefs.tiles ? NOTCH_PAD + 2 : NOTCH_PAD;
+  const notchPad = () => NOTCH_PAD + 2;
   // The floating header's title runs on under the housing rather than jump it (2026-10-11, late night): the header dips
   // round the housing, and under the dip there is just about a line's room. Where the glyphs would touch the dip's
   // line, the header is lowered by what they need to clear it by HEAD_CLEAR — lowered, not padded, so its row stays
@@ -6236,7 +6069,7 @@ const toolName = n => {
     c.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
     const m = c.measureText(t.textContent), ink = Math.max(m.actualBoundingBoxAscent, c.measureText('Hdl').actualBoundingBoxAscent);
     const top = tr.top + m.fontBoundingBoxAscent - ink - (parseFloat(head.style.getPropertyValue('--hdrop')) || 0);   // the glyphs' top, the header not lowered
-    const line = n.top + (tilesOn ? TILE_BW : HEAD_GAP + (parseFloat(getComputedStyle(head).borderTopWidth) || 0));   // the dip's line: the tile's round the housing, else the header's own
+    const line = n.top + TILE_BW;   // the dip's line: the tile's round the housing
     const drop = Math.max(0, Math.ceil(line + HEAD_CLEAR - top));
     return drop <= HEAD_DROP_MAX ? drop : null;
   }
@@ -6273,15 +6106,15 @@ const toolName = n => {
   }
   // The floating header bends round the camera housing (2026-10-11, late morning; it ran under the housing before, the
   // housing's black over its own): where the housing reaches into it, its top edge dips round it, the header keeping
-  // its place and its height. With tiles the dip is the tile's own border round the housing (2026-10-11, afternoon; it
-  // ran HEAD_GAP below it before, a second line): the header's top edge bends down into that line, a HEAD_BEND curve
-  // tangent to both, and follows it round — under its outer edge, the corners concentric with the housing's. Without tiles,
-  // the housing HEAD_GAP clear. Clipped as the tiles are (the clip runs wide of the box, so its shadow stays, and up to
-  // the top through the dip); its border is .hcut, a path in #chat over it, since the header clips what it holds
-  // (overflow, for its rounded corners) — with tiles only its two bends, the tile's line drawing the rest.
-  const HEAD_BEND = 10, HEAD_GAP = 4, HOUSING_R = 9, TILE_BW = 2;   // the housing's lower corners, by eye; the tiles' border
+  // its place and its height. The dip is the tile's own border round the housing (2026-10-11, afternoon; it ran 4 px
+  // below it before, a second line): the header's top edge bends down into that line, a HEAD_BEND curve tangent to
+  // both, and follows it round — under its outer edge, the corners concentric with the housing's. Clipped as the tiles
+  // are (the clip runs wide of the box, so its shadow stays, and up to the top through the dip); its border is .hcut, a
+  // path in #chat over it, since the header clips what it holds (overflow, for its rounded corners) — only its two
+  // bends, the tile's line drawing the rest.
+  const HEAD_BEND = 10, HOUSING_R = 9, TILE_BW = 2;   // the housing's lower corners, by eye; the tiles' border
   function headNotch() {
-    const head = $('#shead'), chat = $('#chat'), n = prefs.headFloat ? state.notch : null, M = 60, tiled = tilesOn, G = tiled ? TILE_BW - 1 : HEAD_GAP;   // a pixel under the tile's line: no seam between them
+    const head = $('#shead'), chat = $('#chat'), n = prefs.headFloat ? state.notch : null, M = 60, G = TILE_BW - 1;   // a pixel under the tile's line: no seam between them
     let svg = chat.querySelector(':scope > .hcut');
     const r = n && head.getBoundingClientRect(), cut = !!n && r.width > 0 && r.top < n.top + G && r.left < n.right + G && r.right > n.left - G;
     if (!cut) { if (svg) { svg.remove(); head.style.clipPath = ''; chat.classList.remove('hcutp'); } return; }
@@ -6299,13 +6132,11 @@ const toolName = n => {
     const hole = (L ? `M${fx} ${-M}V0A${t} ${t} 0 0 1 ${px} ${py}${sh ? '' : `V${yc}`}` : `M${a} ${-M}V${yc}`) + `A${K} ${K} 0 0 0 ${a + K} ${y2}H${b - K}`
       + (R ? `${sh ? `A${K} ${K} 0 0 0 ${m(px)} ${py}` : `A${K} ${K} 0 0 0 ${b} ${yc}V${t}`}A${t} ${t} 0 0 1 ${m(fx)} 0` : `A${K} ${K} 0 0 0 ${b} ${yc}`) + `V${-M}Z`;
     head.style.clipPath = `path(evenodd, 'M${-M} ${-M}H${r.width + M}V${r.height + M}H${-M}Z ${hole}')`;
-    // the border's middle, half its width inside the header: the bends, and without tiles down and round the dip
-    // between them (the point on the bend's circle t - h from its centre is on the dip's K + h from its own)
+    // the border's middle, half its width inside the header: the bends (the point on the bend's circle t - h from its
+    // centre is on the dip's K + h from its own)
     const h = bw / 2, q = sh ? (t - h) / t : 0, qx = sh ? fx + (px - fx) * q : a - h, qy = sh ? t + (py - t) * q : t;
     const bendL = `M${fx} ${h}A${t - h} ${t - h} 0 0 1 ${qx} ${qy}`, bendR = `A${t - h} ${t - h} 0 0 1 ${m(fx)} ${h}`;
-    const d = tiled ? (L ? bendL : '') + (R ? `M${m(qx)} ${qy}${bendR}` : '')
-      : (L ? `${bendL}${sh ? '' : `V${yc}`}A${K + h} ${K + h} 0 0 0 ${a + K} ${y2 + h}` : `M0 ${y2 + h}`)
-        + (R ? `H${b - K}${sh ? `A${K + h} ${K + h} 0 0 0 ${m(qx)} ${qy}` : `A${K + h} ${K + h} 0 0 0 ${b + h} ${yc}V${t}`}${bendR}` : `H${r.width}`);
+    const d = (L ? bendL : '') + (R ? `M${m(qx)} ${qy}${bendR}` : '');
     if (!svg) { svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('class', 'hcut'); svg.innerHTML = '<path/>'; chat.append(svg); }
     chat.classList.add('hcutp');
     Object.assign(svg.style, { left: `${r.left - cr.left - chat.clientLeft}px`, top: `${r.top - cr.top - chat.clientTop}px`, width: `${r.width}px`, height: `${y2 + bw}px` });
@@ -6337,7 +6168,6 @@ const toolName = n => {
     const hr = head.getBoundingClientRect(), right = sep.getBoundingClientRect().right, d = head.querySelector('.details:not([hidden])');
     head.style.setProperty('--hsplit', `${Math.round(right - hr.left)}px`);
     head.style.setProperty('--hrow', d ? `${Math.round(d.getBoundingClientRect().top - hr.top - 3)}px` : '100%');
-    listChanged();   // the open chat's light runs round the box this paints (drawTrail)
   }
   // A PR taken off the chat (2026-10-11): ⌥-click on its chip in the header or its row under it — one the chat only
   // mentioned in passing. The chip or row folds out where it stands, then the server is told (UNLINK_MS: its answer
@@ -6904,8 +6734,7 @@ const toolName = n => {
       editor: prefs.editor, editors: state.editors,
       swim: { n: swim.n, pace: swimRate(Math.max(0, swim.n)), rate: swim.anim ? +(swimMs(swim.w) / swimLen()).toFixed(3) : 0, dart: swim.dart, food: swim.food.map(b => b.x), eaten: swim.eaten } }),   // the bar's fish: its pace without a dart, what it has to eat (lane x)
     session: id => { const s = state.sessions.get(id || state.current); return s ? structuredClone(s) : null; },
-    motion: () => MOTION.map(m => ({ ...m })),
-    trail: () => ({ on: !!trail.sig, loop: trail.loop.map(p => [...p]), L: trail.L, v: trail.v, blobs: trail.blobs.length }),   // the open chat's light past its card (drawTrail)   // the list's last moves: {id, kind: flip | enter | leave, at}
+    motion: () => MOTION.map(m => ({ ...m })),   // the list's last moves: {id, kind: flip | enter | leave, at}
     sessions: () => [...state.sessions.values()].map(s => ({ id: s.id, project: s.project, cwd: s.cwd, env: s.env || null, title: s.title, status: s.status, alive: s.alive, prs: (s.prs || []).length, terminal: s.terminal?.id || null, agents: s.agents || 0, tasks: s.tasks || [], ask: s.ask || null })),
     prefs: () => ({ ...prefs }),
     tour: () => ({ open: $('#tour').open, at: tour.i, step: tour.steps[tour.i]?.id || null, steps: tour.steps.map(t => t.id), drawn: tour.drawn, parts: tour.els.map(el => el.id ? '#' + el.id : `#slist > .card[data-id="${el.dataset.id}"]`) }),   // the tour (2026-10-14)
@@ -7168,7 +6997,7 @@ const toolName = n => {
   // split, as it always did; an empty half's shows, since it is where a tab is dropped. While there are two, each
   // strip ends in the ⨯ that closes *its* half (⌘W closes the one the keys are in). With a page's tab on, ‹ › ↻ ↗ for
   // its view at the right, and the address it is at. A half whose one tab is not a web page — claude, the zsh, the
-  // editor — has no strip at all, only the 2 px rule (.lone, 2026-09-28): ⌥⌘W and the ··· menu close what its × would
+  // editor — has no strip at all (.lone, 2026-09-28): ⌥⌘W and the ··· menu close what its × would
   // have, ⌘W and ⌘0 the half, and ⌥⌘1 / ⌥⌘2 against ⌘1 / ⌘2 turn it.
   function renderTabs(s, p = placeOf(s)) {
     const two = isSplit(s);
@@ -7854,19 +7683,11 @@ const toolName = n => {
   const drawerOf = s => s.terminal && s.terminal.exited === null && !s.terminal.shell ? s.terminal : null;
 
   // ---- tiles: the board's panels laid out as Hyprland's (2026-10-10) ------------------------------------------------
-  // Settings → Board → tiles (prefs.tiles). Its look is Hyprland's: gaps over a wallpaper of the theme's colours, square
-  // edges, each panel's border its project's colour (`tileEdge`, a black one grey) — faint, and whole on the panel the
-  // keys are in (`.kf`). (The stack, up to three live tiles of the chats asking or clauding beside the open one, ⌥⌘S,
-  // went on 2026-10-14.)
-  var tilesOn = false;   // var, not let: renderBoard is older than this block and asks before it has run
-  function applyTiles() {
-    $('#main').classList.toggle('tiles', !!prefs.tiles); $('#tilesOn').checked = !!prefs.tiles;
-    wallGo();
-    tilesOn = !!prefs.tiles;
-    if (tilesOn && !document.querySelector('#main .kf')) $('#chat').classList.add('kf');   // the chat, at first
-    requestAnimationFrame(() => { fitTerm(); listChanged(); repostPane(); layoutNotch(); fitHeadPrs(); });
-  }
-  $('#tilesOn').addEventListener('change', e => { prefs.tiles = e.target.checked; savePrefs(); applyTiles(); });
+  // The only layout since 2026-10-14 (a switch, Settings → Board → tiles, before; main.tiles is in the markup). Its look
+  // is Hyprland's: gaps over a wallpaper of the theme's colours, square edges, each panel's border its project's colour
+  // (`tileEdge`, a black one grey) — faint, and whole on the panel the keys are in (`.kf`). (The stack, up to three
+  // live tiles of the chats asking or clauding beside the open one, ⌥⌘S, went on 2026-10-14 too.)
+  $('#chat').classList.add('kf');   // the chat wears the border at first
   // The wallpaper's glow after the pointer (2026-10-11, late night): its place, once a frame, from every pointer move on the
   // board, and the transition eases it there — a lag that reads as light under glass. It stays where the pointer left
   // the page (into the pane, out of the window); under reduced motion or without tiles, it is back in its corner. `wallGo()` with no move puts it where it should be now.
@@ -7875,12 +7696,11 @@ const toolName = n => {
   // where the glow is, so eight a second still glide.
   let wallAt = null, wallRaf = 0, wallLast = -Infinity;
   const WALL_MS = 125;
-  const wallOn = () => tilesOn && !REDUCED.matches;
+  const wallOn = () => !REDUCED.matches;
   function wallGo() { clearTimeout(wallRaf); wallRaf = 0; wallLast = performance.now(); $('#wall i').style.transform = wallOn() && wallAt ? `translate(${wallAt.x}px, ${wallAt.y}px)` : ''; }
   document.addEventListener('pointermove', e => { if (!wallOn()) return; wallAt = { x: e.clientX, y: e.clientY }; wallRaf ||= setTimeout(() => requestAnimationFrame(wallGo), Math.max(0, wallLast + WALL_MS - performance.now())); }, { passive: true });
   // the panel the keys are in wears the border: the list or the chat (a pointer press or a focus inside it)
   const markKf = e => {
-    if (!tilesOn) return;
     const p = e.target.closest?.('#sessions, #chat'); if (!p) return;
     for (const x of document.querySelectorAll('main.tiles .kf')) if (x !== p) x.classList.remove('kf');
     p.classList.add('kf');
@@ -7895,7 +7715,7 @@ const toolName = n => {
   // radius taken as the housing's own — 8 px of gap below the screen's edge, they cannot be concentric). From
   // layoutNotch (the fill, every header drawn or resized).
   function tileNotch() {
-    const BW = TILE_BW, M = 60, n = tilesOn ? state.notch : null;
+    const BW = TILE_BW, M = 60, n = state.notch;
     const panels = [$('#sessions'), $('#chat')];
     if (!n && !panels.some(p => p.classList.contains('ncutp'))) return;
     const rects = panels.map(p => p.getBoundingClientRect());   // every read, then every write
@@ -7925,7 +7745,7 @@ const toolName = n => {
       }
     });
   }
-  applyTiles();
+  wallGo();
 
   // ---- ⌥⌘A: the overview, every live agent at once (2026-10-10) ------------------------------------------------------
   // Hyprland's overview and a kanban's columns: Asking you · Clauding · Watching · Ready, unread — every project, each
@@ -9169,7 +8989,7 @@ const toolName = n => {
   }
   $('#log').addEventListener('scroll', () => {
     const log = $('#log'); if (log.scrollHeight - log.scrollTop - log.clientHeight < 80) logNew(0);
-    if (!SPLIT_SCROLLS) $('#shead').style.setProperty('--shade', Math.min(1, log.scrollTop / 24).toFixed(2));   // the header's shadow, by hand
+    if (!SCROLL_TIMELINES) $('#shead').style.setProperty('--shade', Math.min(1, log.scrollTop / 24).toFixed(2));   // the header's shadow, by hand
   }, { passive: true });
   // Presence at the foot of the transcript (2026-09-27, night): while the open chat is clauding, Claude's mark and the
   // word — a reply on its way is seen where you are reading, not only on the card — with the sub-agents' count when

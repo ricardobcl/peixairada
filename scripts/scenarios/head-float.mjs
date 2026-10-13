@@ -2,14 +2,14 @@
 // header is a rounded bar inset from the column's edges, the PR rows under it inset alike; the choice outlives a
 // reload; off, the header runs edge to edge again. And it floats (2026-10-11, late morning): the transcript runs up
 // behind it to the column's top, its words starting under it and faint over that height — under the PR rows too when
-// they are open; at the notch its top edge dips round the camera housing, the header keeping its place — with tiles,
-// bending into the tile's own line round the housing and following it, no second line under it (2026-10-11, afternoon).
+// they are open; at the notch its top edge dips round the camera housing, the header keeping its place — bending into
+// the tile's own line round the housing and following it, no second line under it (2026-10-11, afternoon).
 export const meta = { server: true, fixture: 'auto' };
 
 export default async function (ctx) {
   const [two] = ctx.fixture.chats, out = {};
-  const head = () => ctx.evaluate(`JSON.stringify((() => { const h = document.querySelector('#shead'), c = document.querySelector('#chat').getBoundingClientRect(), r = h.getBoundingClientRect(), cs = getComputedStyle(h);
-    return { attr: document.documentElement.dataset.head || null, radius: cs.borderTopLeftRadius, left: Math.round(r.left - c.left), right: Math.round(c.right - r.right), top: Math.round(r.top - c.top),
+  const head = () => ctx.evaluate(`JSON.stringify((() => { const h = document.querySelector('#shead'), ch = document.querySelector('#chat'), c = ch.getBoundingClientRect(), r = h.getBoundingClientRect(), cs = getComputedStyle(h), bw = ch.clientLeft;   // inside the tile's border
+    return { attr: document.documentElement.dataset.head || null, radius: cs.borderTopLeftRadius, left: Math.round(r.left - c.left - bw), right: Math.round(c.right - r.right - bw), top: Math.round(r.top - c.top - bw),
       chips: document.querySelectorAll('#shead .hpr:not(.more):not([hidden])').length, more: !!document.querySelector('#moreBtn') }; })())`).then(JSON.parse);
   await ctx.openChat(two.id);
   await ctx.waitFor(`document.querySelectorAll('#shead .hpr').length >= 2`, { what: 'the header with its PRs' });
@@ -23,7 +23,7 @@ export default async function (ctx) {
   ctx.assert.ok(out.float.chips >= 1 && out.float.more, 'its chips and ··· still in it');
   await ctx.evaluate(`document.querySelector('#prToggle').click()`);
   await ctx.settle();
-  out.rows = await ctx.evaluate(`(r => Math.round(r.left - document.querySelector('#chat').getBoundingClientRect().left))(document.querySelector('#prlist').getBoundingClientRect())`);
+  out.rows = await ctx.evaluate(`(r => Math.round(r.left - document.querySelector('#chat').getBoundingClientRect().left - document.querySelector('#chat').clientLeft))(document.querySelector('#prlist').getBoundingClientRect())`);
   ctx.assert.equal(out.rows, 14, 'the PR rows under it inset alike');
   await ctx.shot('float', { x: 380, y: 0, width: 1320, height: 140 });
   const behind = () => ctx.evaluate(`JSON.stringify((() => { const g = document.querySelector('#groups').getBoundingClientRect(), log = document.querySelector('#log'), l = log.getBoundingClientRect(),
@@ -47,14 +47,8 @@ export default async function (ctx) {
   await ctx.evaluate(`window.peixFill(true, ${JSON.stringify(N)})`);
   await ctx.waitFor(`!!document.querySelector('#chat > .hcut')`, { what: 'the dip round the housing' });
   await ctx.settle();
-  out.notch = await ctx.evaluate(`JSON.stringify((() => { const h = document.querySelector('#shead'), r = h.getBoundingClientRect(), c = document.querySelector('#chat').getBoundingClientRect(), mid = ${(N.left + N.right) / 2};
-    const at = y => document.elementFromPoint(mid, y)?.closest('#shead') ? 'header' : 'behind';
-    return { top: Math.round(r.top - c.top), clip: /evenodd/.test(h.style.clipPath), inDip: at(${N.top} + 2), underDip: at(${N.top} + 4 + 3), beside: document.elementFromPoint(${N.left} - 30, r.top + 3)?.closest('#shead') ? 'header' : 'behind', d: document.querySelector('#chat > .hcut path').getAttribute('d') }; })())`).then(JSON.parse);
-  ctx.assert.deepEqual([out.notch.top, out.notch.clip, out.notch.inDip, out.notch.underDip, out.notch.beside], [10, true, 'behind', 'header', 'header'], `the dip: ${JSON.stringify(out.notch)}`);
-  await ctx.shot('notch', { x: N.left - 200, y: 0, width: 585, height: 90 });
-  // with tiles the dip is the tile's line: the header reaches up under it — a pixel past its outer edge, at the bottom
-  // and beside the housing — and its own border is only the two bends into it
-  await ctx.evaluate(`document.querySelector('#tilesOn').click()`);
+  // the dip is the tile's line: the header reaches up under it — a pixel past its outer edge, at the bottom and beside
+  // the housing — and its own border is only the two bends into it
   await ctx.waitFor(`!!document.querySelector('#chat.ncutp > .ncut') && /M[^M]*M/.test(document.querySelector('#chat > .hcut path')?.getAttribute('d') || '')`, { what: 'the tile cut, and the header\'s two bends' });
   await ctx.settle();
   out.tiled = await ctx.evaluate(`JSON.stringify((() => { const c = document.querySelector('#chat > .ncut').getBoundingClientRect(), h = document.querySelector('#shead').getBoundingClientRect(), mid = (c.left + c.right) / 2;
@@ -80,8 +74,6 @@ export default async function (ctx) {
   await ctx.shot('notch-under', { x: N.left - 300, y: 0, width: 785, height: 90 });
   await ctx.server.api(`/api/sessions/${two.id}/title`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: '' }) });
   await ctx.waitFor(`!document.querySelector('#shead').classList.contains('tunder') && !document.querySelector('#shead').style.getPropertyValue('--hdrop')`, { what: 'its own title again, the header back up' });
-  await ctx.evaluate(`document.querySelector('#tilesOn').click()`);
-  await ctx.waitFor(`!document.querySelector('.ncut')`, { what: 'tiles off' });
   await ctx.evaluate(`window.peixFill(false, null)`);
   await ctx.settle();
   ctx.assert.equal(await ctx.evaluate(`!document.querySelector('#chat > .hcut') && !document.querySelector('#shead').style.clipPath`), true, 'out of the fill, no dip');

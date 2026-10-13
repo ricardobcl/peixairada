@@ -72,7 +72,7 @@ GitHub and VS Code open in the chat in the Mac app; in a browser they open in a 
 - 🎨 **Projects** — folders in their [Peacock](https://marketplace.visualstudio.com/items?itemName=johnpapa.vscode-peacock)
   colour, or named sets of folders.
 - 🗺️ **Every agent at once** — ⌥⌘A lays out every live chat by what it wants (asking, clauding, watching, new replies),
-  each showing what it is doing right now; the *tiles* switch lays the board out as Hyprland does.
+  each showing what it is doing right now; the board's panels are tiles, laid out as Hyprland does.
 - 🏠 **Home** — with no chat open: an ASCII sunset at sea with our fish leaping across the sun (click it), the board at
   a glance — each count a way to what it counts — and your day, every chat's turns and how long each waited on you.
 - 🎨 **Themes** — Omarchy's twelve (Tokyo Night, Catppuccin, Gruvbox, Nord, Rosé Pine…), dark or light whatever macOS
@@ -102,17 +102,15 @@ GitHub and VS Code open in the chat in the Mac app; in a browser they open in a 
 
 ## 🎛️ Make it yours
 
-Every look is a switch in Settings › Board (⌘,), or a key — and the board starts with tiles and the floating header on,
-as at the top.
+Every look is a switch in Settings › Board (⌘,), or a key — and the board starts with the floating header on, as at the
+top.
 
 <table>
   <tr>
-    <td><img width="420" src="docs/shots/look-plain.webp" alt="Tiles off: one plain column, the header across the chat"></td>
-    <td><img width="420" src="docs/shots/look-rail.webp" alt="The list folded to a rail of squares, one per chat"></td>
+    <td align="center" colspan="2"><img width="420" src="docs/shots/look-rail.webp" alt="The list folded to a rail of squares, one per chat"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Tiles</b> off — the plain column, the header edge to edge</sub></td>
-    <td align="center"><sub><b>⌥⌘B</b> — the list folded to a rail, a square per chat</sub></td>
+    <td align="center" colspan="2"><sub><b>⌥⌘B</b> — the list folded to a rail, a square per chat</sub></td>
   </tr>
   <tr>
     <td><img width="420" src="docs/shots/look-tokyo.webp" alt="The Tokyo Night theme"></td>
@@ -166,8 +164,8 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
 **Settings** — ⌘, or ··· in the chat's header:
 
 - **Board** — *Alerts*: notifications, sounds · *Chats*: card size (compact, or large only where a chat wants you),
-  where files open · *Look*: text size (the whole board, in the app), the theme and whether it follows macOS, tiles, the floating header (tiles and the header
-  on to begin with), the status bar and what it shows · *Terminal*: ⌥ as Meta, a screen reader in the drawer ·
+  where files open · *Look*: text size (the whole board, in the app), the theme and whether it follows macOS, the floating header (on to
+  begin with), the status bar and what it shows · *Terminal*: ⌥ as Meta, a screen reader in the drawer ·
   *Updates*: whether the board updates itself (off to begin with: the status bar says when new commits came, and
   *update now* takes them), where it stands, check now.
 - **Setup** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the

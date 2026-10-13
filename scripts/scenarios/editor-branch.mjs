@@ -55,7 +55,7 @@ const before = folder();
 export const meta = {
   server: true, fixture: claudeDir,
   env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: prsFile, PR_TTL_MS: '300' },
-  prefs: { tiles: true, headFloat: true, prsOpen: true },
+  prefs: { headFloat: true, prsOpen: true },
 };
 
 export default async function (ctx) {

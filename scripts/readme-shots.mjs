@@ -294,12 +294,12 @@ if (VS.child) {
 }
 
 // the board as it starts — the app's own defaults: tiles, the floating header, the status bar, Done folded (the
-// harness opens every lane and turns the first two off unless told)
+// harness opens every lane and turns the floating header off unless told)
 export const meta = {
   server: true, fake: true, fixture: claudeDir,
   env: { GH_BIN: join(ROOT, 'scripts', 'fakegh.mjs'), FAKEGH_PRS: prsFile, FAKEGH_VIEWER: 'me', ORG: 'acme', ORG_DIR: work,
     VSWEB_PORT: String(VS.port), FAKE_TUI: 'fullscreen', FAKE_SCREEN: screenFile },
-  prefs: { lanesShut: ['done'], tiles: true, headFloat: true, changesScope: 'uncommitted' },
+  prefs: { lanesShut: ['done'], headFloat: true, changesScope: 'uncommitted' },
 };
 
 // What /api/usage and /api/stats would answer — the page's fetch answers them before the server is asked — and the
@@ -399,8 +399,7 @@ export default async function (ctx) {
     // 6 · the ways it can look, smaller: each a switch or a key, the board reloaded on it
     await scale(1);
     const looks = [
-      ['look-plain', { tiles: false, headFloat: false }, true],
-      ['look-rail', { tiles: true, headFloat: true, sessionsCompact: true }, true],
+      ['look-rail', { headFloat: true, sessionsCompact: true }, true],
       ['look-tokyo', { sessionsCompact: false, cards: 'large', cardsEven: false, skinDark: 'tokyo-night' }, true],
       ['look-latte', { skinDark: null, skinLight: 'catppuccin-latte' }, false],
     ];

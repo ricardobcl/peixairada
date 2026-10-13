@@ -70,7 +70,7 @@ export default async function (ctx) {
   await listWidth(820);
   out.wide = await read();
   ctx.assert.deepEqual([out.wide.listPad, out.wide.chatPad, out.wide.hole, out.wide.h2Flex], [true, true, false, ''], 'the list under the housing: both pad, no hole');
-  ctx.assert.deepEqual([out.wide.listPad0, out.wide.headPad, out.wide.cardTop >= 32, out.wide.afterTop >= 32], [32, 39, true, true], '…by the strip, and the rows are under it');
+  ctx.assert.deepEqual([out.wide.listPad0, out.wide.headPad, out.wide.cardTop >= 32, out.wide.afterTop >= 32], [38, 39, true, true], `…by the strip and the tile's border round the housing, and the rows are under it: ${JSON.stringify(out.wide)}`);
   ctx.assert.deepEqual(out.wide.underHousing, [], 'nothing under the housing');
   await ctx.shot('2-list-under', { x: 0, y: 0, width: 1728, height: 90 });
 

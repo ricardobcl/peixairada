@@ -258,7 +258,7 @@ for `$HOME`'s home and the account's.
   semantic one (a failure's red, an open box's accent).
 * **The header's shadow on a scrolled transcript** is `.shead::before` on a scroll-driven animation (`#log`'s
   `--log` timeline, through `main`'s `timeline-scope`); `--shade` from the scroll listener without scroll timelines
-  (`SPLIT_SCROLLS`).
+  (`SCROLL_TIMELINES`).
 * **A name too long fades, not …** (`fadeOver`, `fadeSoon`): a mask only where `.over` says it overflows — the header's
   title and `.purl` on every draw, a card's title once per node (`.ovr`) and when the list's width moves.
 * **The broad gradients wear grain** (`--grain` as their first layer: the header, `#log`'s wash, the wallpaper) —
@@ -290,13 +290,6 @@ for `$HOME`'s home and the account's.
   document clock, every card in step, by its `currentTime` first, then its `startTime` (see the invariants) — only when something new may have started: a render
   queues it when `drawCards` changed the list (it says so), `renderBoardSoon` runs a queued one at once, and a run at
   once clears the queued one (2026-10-13; `getAnimations()` is a style pass). → `card-signals.mjs`.
-* **The open chat's light runs past its card** (2026-09-29; `#trail`, `drawTrail(g)` from `trailGeom()`): while it
-  is clauding or watching, the open card, the splitter down to it (`splitEnd`) and the header's project box are one
-  shape, the light running clockwise round its edge — a fixed overlay clipped to a 2 px band (`clip-path: path(evenodd,
-  …)`, `outline()`, `insetLoop()`), blobs (`#trail i`) moved by WAAPI transforms, no paint per frame. Pace and lights
-  are the card's ring's; `main.trail` stands the card's own ring down; an unchanged shape draws nothing. Not on the
-  rail; not round the box under the floating header (`box` null); not at all with tiles. `peix.trail()`.
-  → `open-light.mjs`.
 * **Folded (⌥⌘B), the list is a rail of squares**: `projAbbr` on a solid tint of the colour, the card's own edge
   (ring, agents, monitor, question) still read; inside the card everything is `display: none` but `.abbr` (it carries
   the tooltip) and `.rdot` (a PR at your move or a new reply, `wantOf` → `data-want`). The lanes fold on the rail too.
@@ -333,15 +326,15 @@ for `$HOME`'s home and the account's.
   screen has room** (`.gterm.under`, `checkRoom`, `underOf`; a terminal draws from its top). → `drawer-under-head.mjs`.
   A half without a strip is `.grp.nostrip` (`renderTabs`) and the body holding the log `.gbody.haslog` (`placeLog`) —
   **classes, never `:has()`** (2026-10-13): Chrome restyled the whole board on most DOM changes for those rules.
-  **At the notch** its top edge dips round the camera housing (`headNotch` from `layoutNotch`; with tiles along the
-  tile's own line — `HEAD_BEND`, `HOUSING_R` + `TILE_BW` —, the border there `svg.hcut`), and a long title runs on
+  **At the notch** its top edge dips round the camera housing (`headNotch` from `layoutNotch`; along the tile's own
+  line — `HEAD_BEND`, `HOUSING_R` + `TILE_BW` —, the border there `svg.hcut`), and a long title runs on
   under the housing, the header lowered by `--hdrop` (`headDrop`, `.tunder`) up to `HEAD_DROP_MAX`, past which it
   jumps the housing as the plain header's does. → `head-float.mjs`.
 * **The chat header is a gradient of the project's colour**: `tintChat()` sets `--repo`, `--rink` (the ink on it,
   `inkOn()`), `--rover`/`--rover2` and `#chat.tinted`; no colour, the plain panel header. **The colour eases from chat
-  to chat on the surfaces that draw it** (2026-10-13): `tintChat` sets plain `--hbg`, `--hveil`, `--hveil2` on `#chat`
-  and `--openc` on `main`; `.shead`, `#log` and the floating header's `.gbody` ease registered copies that do not
-  inherit (`--hbg-eased`, `--hveil-eased`, `--hveil2-eased`), the splitter its `background-color`. **Never an
+  to chat on the surfaces that draw it** (2026-10-13): `tintChat` sets plain `--hbg`, `--hveil`, `--hveil2` on `#chat`;
+  `.shead`, `#log` and the floating header's `.gbody` ease registered copies that do not inherit (`--hbg-eased`,
+  `--hveil-eased`, `--hveil2-eased`). **Never an
   inherited registered property under a transition**: every element below it is restyled each frame. `--repo` stays
   unregistered (its fallback is load-bearing). A new surface in the chat's colour reads `--hbg-eased` and joins the
   `:where(.shead, #log, .gbody)` rule. The colour
@@ -353,8 +346,7 @@ for `$HOME`'s home and the account's.
 * **A colour as dark as that black turns it grey** (`nearBlack` → `main.darkchat`). **On a card, a colour too dark
   or too light for the panel is held where it shows**: `--lift` (`oklch(from … max(l, .62) c h)` dark, `min(l, .72)`
   light) for the edge, glow, spot, border and track; the glow's colour `--wash` is `--lift` but on
-  `.card.black:not(:hover, .qsel)`, whose ground stays black. `--repo` stays the colour as set (rail, header,
-  splitter). → the black step of `project-colors.mjs`.
+  `.card.black:not(:hover, .qsel)`, whose ground stays black. `--repo` stays the colour as set (rail, header). → the black step of `project-colors.mjs`.
 * **With no chat open the column is home** (2026-10-10; `showHome`, from `leaveChat` and a snapshot with nothing to
   open; ⌥⌘0): the sea (`makeSea`, after ascii.rest's *ocean-sunset*, MIT; a canvas that outlives the draws, 15 fps
   while on screen, still under reduced motion; `peix.sea()`), the board's facts (`about.user`, `about.host`), and the
@@ -426,12 +418,8 @@ for `$HOME`'s home and the account's.
   rail). → `card-marks.mjs`.
 * **Only the open card and a clauding one wear the colour round their border**; the rest have the lit left edge alone
   (`background-origin: border-box` under a transparent border). **ALL** (`key: 'all'`) is `BLACK` through
-  `projColor()`, as is a folder painted `#000000`: `.card.black`, where `--ring` turns the light white. **The open card
-  runs into the splitter**: `#splitter` is `--open` (from `tintChat`) down to the open card's edge as drawn
-  (`splitEnd`), black under it — `#splitter::after` from `--split`, in the list's own coordinates, written by
-  `drawSplit(g)` only when the card moves in the list, slid by the scroll through a scroll-driven animation on the
-  `--slist` timeline (the old on-screen `--split` per scroll where there are none, `SPLIT_SCROLLS`). The open card
-  out of sight below, the colour runs to the foot (`--sfoot`); above, the splitter is black.
+  `projColor()`, as is a folder painted `#000000`: `.card.black`, where `--ring` turns the light white. `#splitter`
+  is the tiles' gap between the list and the chat, dragged to size the list.
 * **A new chat has a card before its first word**: `visible()` shows a live chat with no transcript (not VS Code's);
   its `startedAt` — the moment the board first saw the id — is its time and place, carried over by `indexFile`, the
   last fallback of `wordAt` (both copies). **Empty is no word, not no file**: `/clear` writes lines at once, none of
@@ -469,10 +457,9 @@ for `$HOME`'s home and the account's.
   click**, not on the server's answer (an empty chat's `session` event would `leaveChat` first), after `TICK_MS` for
   the ✓'s own draw (`.act.tk`; a second click does nothing; at once under reduced motion). → `tick-next.mjs`.
 * **The list's frame reads its geometry once** (`listChanged()`, once a frame): `listGeom()` first, then
-  `drawEdges(g)`, `drawTimeline(g)`, `drawSplit(g)`, `drawTrail(g)` — keep the reads at the top. **It follows the
-  list's motion**: while a slide or a fold runs (`follow()`, `sliding`) it draws every frame and once after, and the
-  open card's size is watched (`watchOpen`). A new animation that moves cards goes through `follow`.
-  → the slide step of `open-light.mjs`.
+  `drawEdges(g)`, `drawTimeline(g)` — keep the reads at the top. **It follows the list's motion**: while a slide or a
+  fold runs (`follow()`, `sliding`) it draws every frame and once after, and the open card's size is watched
+  (`watchOpen`). A new animation that moves cards goes through `follow`.
 * **An empty list is the fish at rest** (`SWIM_FISH`) and the way to fill it (Esc for a query; ⌥⌘N).
 * **The list's two ends count the cards out of sight** (`#sup` / `#sdown`, `.sedge`, over the list's grid cell, so
   `#slist` has a definite `grid-column`): a card is out of sight when its *middle* is past the edge (`drawEdges`, by
@@ -731,13 +718,13 @@ for `$HOME`'s home and the account's.
   the split** (`unsplit` leaves it); the divider's place is the board's, one per layout (`prefs.splitAt`, `prefs.stackAt`). Stacked is
   `#groups.stack`; the second strip's `.gturn` turns it too. The app forwards ⌥⌘1 / ⌥⌘2 by key code (18, 19). **A zsh
   ended by its × lingers on the summary with `exited` set** — wait on that. → `split-stacked.mjs`.
-* **Tiles** (2026-10-10; `prefs.tiles` → `main.tiles`, on by default; `tilesOn`): gaps, square panels, **each
+* **Tiles are the layout** (2026-10-10; the only one since 2026-10-14 — `main.tiles` is in the markup, never toggled,
+  the hook of the panels' rules): gaps, square panels, **each
   panel's border its project's colour** (`--tile-edge` from `tileEdge` in `tintChat` and `tileTints`;
   a near-black one `--tile-grey`, none `--nocolor`), 30 % at rest and whole on the panel the keys are in (`.kf`). The
   list on ALL wears the open chat's colour; **the wallpaper** (`#wall`, `--wallc` registered and eased) is in that
   hue, its glow (`#wall i`) following the pointer by a transform (`wallGo`) — a move repaints
-  nothing; its target set `WALL_MS` (125) apart at most, each a new transition (2026-10-13). `tilesOn` is a `var`, as `renderBoard` runs before
-  the block has. **At the notch** a panel the housing reaches is cut round it (`tileNotch` from `layoutNotch`: a `clip-path`, `.ncut` the border, `.ncap` the corners;
+  nothing; its target set `WALL_MS` (125) apart at most, each a new transition (2026-10-13). **At the notch** a panel the housing reaches is cut round it (`tileNotch` from `layoutNotch`: a `clip-path`, `.ncut` the border, `.ncap` the corners;
   `HOUSING_R` by eye) and the row keeps `notchPad()` clear; the top corners round as the screen's
   (`main.tiles.notch`, `--screen-r`) only where a housing says the screen is a MacBook's. → `tiles.mjs`.
 * **A new tab opens in the second half, and splits the column the first time** (`openNewTab()` — a zsh, a page, the
@@ -758,10 +745,10 @@ for `$HOME`'s home and the account's.
   640 px (`.ptabs` is a size container) the tabs behind fold to marks and lose the × (⌥⌘W). **The page in front is its
   own address**: `div.ptab.addr` (it holds buttons) with `.purl` (`urlHtml`, `addrHtml`) and `.navs`; a click on the
   address copies it; the tab drag ignores it. The half's ◫/⊟ and ⨯ are behind ⋯ (`.gmore` → `.gopen`; `.click()` on
-  `.gturn` / `.gclose` works folded). With tiles, split, each half is a tile (`#gsplit` the gap); under the floating
+  `.gturn` / `.gclose` works folded). Split, each half is a tile (`#gsplit` the gap); under the floating
   header `#groups` pads by `--float-h`, not the halves. → `pane-tabs.mjs`, `split-halves.mjs`.
-* **A half whose one tab is not a web page has no strip** (`.lone`: a 2 px rule, the accent under the keys — **the same
-  height either way**, so moving the keys resizes no terminal). A web page alone keeps its strip, an empty half keeps
+* **A half whose one tab is not a web page has no strip** (`.lone`, of no height: the tile's border says where the keys
+  are, so moving them resizes no terminal). A web page alone keeps its strip, an empty half keeps
   its (the drop, ⋯). The lone tab's × is ⌘W's, ⌥⌘W's and the header menu's (`dropTab()`); ⌘0 closes the other half; a
   lone tab cannot be dragged. Unsplit, the strip hides under two tabs. → `split-halves.mjs`, `split-stacked.mjs`,
   `pane-tabs.mjs`.
@@ -953,9 +940,8 @@ for `$HOME`'s home and the account's.
   transform to the compositor, and a start set after it has reads back from the script but never reaches the screen;
   Chrome takes either, so the harness cannot see it. The proof is the compositor's frame: `npm run webkit`.
 * **In WebKit one main-thread animation makes every frame a style pass and a walk of every layer** (2026-10-13): a
-  running animation needs a box that is drawn — WebKit keeps one on a `display: none` pseudo-element, and the
-  splitter's scroll-driven black, so kept with tiles and on the rail, took the rings off the compositor (turned off
-  there: `#splitter.scrolls::after`). The cost is read off the web process (`sample <WebContent pid>`), never Chrome.
+  running animation needs a box that is drawn — WebKit keeps one on a `display: none` pseudo-element (the splitter's
+  scroll-driven black, kept under tiles, took the rings off the compositor; it went with the plain layout, 2026-10-14). The cost is read off the web process (`sample <WebContent pid>`), never Chrome.
 * **A read after a write is a layout**: the list's frame (`listGeom`), `fitHeadPrs` and `layoutNotch` read
   everything first; keep it so.
 * `projIcon(name)` marks ⌥⌘O's project wherever its name is written; `projAbbr` is the rail's squares. Both, and a
@@ -1017,8 +1003,8 @@ the live board at load — `npm run verify -- "typeof window.peix"`.
   board's web process (main.swift logs `board: web process <pid>`) — CPU, memory, where the time went.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports `meta`
   (`server`, `fake`, `fixture`, `env`, `prefs` — what the page starts from; **without it a page starts with every
-  lane open, large cards, neither tiles nor the floating header, the theme following the emulated colour scheme, the tour taken**:
-  the scenarios measure the plain column, and the ones about those turn them on) and a default `async (ctx) => result`. The runner starts a throwaway server on a free
+  lane open, large cards, not the floating header, the theme following the emulated colour scheme, the tour taken**: the
+  scenarios measure the plain header, and the ones about it turn it on) and a default `async (ctx) => result`. The runner starts a throwaway server on a free
   port with its own state dir, builds the fixture, runs the fake claude when asked, launches Chrome with **focus
   emulation on**, and cleans up everything on any exit within 15 s (`--keep` to inspect). **`ctx.reload()`** waits
   for the new document's snapshot — never a reload and a sleep; `openChat` waits for that chat's log
