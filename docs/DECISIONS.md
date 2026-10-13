@@ -31,7 +31,9 @@ if we need a perf-skill". Pushed (`7b3f0ef..aa14719`); then what the profiling h
   490–520 MB (peak 1.0–1.2 GB); `--against 33ac94c~1`, the page before the first round: 34.5 / 34.2 / 94.5 (31 slow frames) / 42.6 %,
   417 ms, 1,359 layers, 610 MB, and five rules broken — the splitter's undrawn animation, the fish's SVG group and its
   rate, `--openc` over 12,555 elements and the header's colours. The live board with the app's own prefs, home and a
-  clauding chat open, breaks none. `--app`, with this chat streaming into the board: ~16 % of a core, 630–640 MB.
+  clauding chat open, breaks none. `--app`, with this chat streaming into the board: ~16 % of a core, 630–640 MB; and
+  with the display asleep (`away: display — the board hidden` in the app log), 0.0 % over 10 s, 683 MB — the first
+  round's fix in the app itself, against ~40 % with the screen locked that morning.
 * **`npm test` holds under load.** Run whole, it lost one of the drawer tests one run in two or three — each time
   another (`tied to its session by pid`, `the resumed chat alive`, `both fakes registered`, `the newest build`). Alone
   each passes in 1–3 s; side by side the Mac's endpoint-security agent ran at 115–120 % of a core vetting every exec,
@@ -61,8 +63,6 @@ if we need a perf-skill". Pushed (`7b3f0ef..aa14719`); then what the profiling h
     `getAnimations().length` there, to see whether finished animations pile up.
   - *The peak memory*: 1.0–1.2 GB within a 40 s run that ends at ~500 MB — which phase (the six opens?) by
     `footprint()` after each.
-  - *The board hidden in the app* (2026-10-13's first fix) was measured in the harness only; the app log shows it
-    working (`away: saver — the board hidden` … `away: back`); `--app` while it is hidden is the number.
 
 ## Decisions of 2026-10-13, after Zed, later still — the board's frames, the next round
 
