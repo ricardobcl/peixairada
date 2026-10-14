@@ -49,7 +49,7 @@
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import {
-  accessSync, appendFileSync, chmodSync, closeSync, constants as fsc, existsSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, watch, writeFileSync
+  accessSync, appendFileSync, chmodSync, closeSync, constants as fsc, existsSync, fstatSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, watch, writeFileSync
 } from 'node:fs';
 import { connect as netConnect } from 'node:net';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
@@ -1705,7 +1705,8 @@ function fold(s, line) {
         else if (b.type === 'tool_use') {
           pushEntry(s, { role: 'assistant', kind: 'tool_use', name: b.name, text: summarizeToolInput(b.name, b.input), toolUseId: b.id, ts });
           if (EDIT_TOOLS.has(b.name) && (b.input?.file_path || b.input?.notebook_path)) (s.turnFiles ||= new Set()).add(b.input.file_path || b.input.notebook_path);
-          if (NEEDS_INPUT_TOOLS.has(b.name)) { s.askOpen = { id: b.id, from: ts }; needsInput = true; s.ask = { tool: b.name, text: summarizeToolInput(b.name, b.input), options: b.input?.questions?.[0]?.options?.length || 0, labels: (b.input?.questions?.[0]?.options || []).slice(0, 9).map(o => snippet(o?.label, 40)) }; }
+          if (NEEDS_INPUT_TOOLS.has(b.name)) { const opts = b.input?.questions?.[0]?.options, list = Array.isArray(opts) ? opts : [];   // a model's own input: options as a string once (2026-10-14)
+            s.askOpen = { id: b.id, from: ts }; needsInput = true; s.ask = { tool: b.name, text: summarizeToolInput(b.name, b.input), options: list.length, labels: list.slice(0, 9).map(o => snippet(o?.label, 40)) }; }
           if (b.name === 'Monitor' || (b.name === 'Bash' && b.input?.run_in_background)) noteTaskCall(s, b);
           if (b.name === 'Bash') noteGitCmd(s.gitCmds, b.input?.command, ts, m.id);
           if (b.name === 'TaskStop' && s.tasks?.size) { const j = JSON.stringify(b.input || ''); for (const id of [...s.tasks.keys()]) if (j.includes(id)) s.tasks.delete(id); }
@@ -1738,13 +1739,18 @@ function fold(s, line) {
   }
 }
 
-function parseLine(raw, onLine) {
+/** A line that throws in the folding is that line lost, never the file (2026-10-14): one malformed tool call threw
+ *  out of the boot's scan and ended the server for good, out of a tail and lost the rest of its chunk, out of a whole
+ *  read and the chat's /messages answered 500. Said once per file. */
+const badFiles = new Set();
+function parseLine(raw, onLine, file) {
   if (!raw) return;
   let line;
   try { line = JSON.parse(raw); } catch { return; }
-  onLine(line);
+  try { onLine(line); }
+  catch (e) { if (!badFiles.has(file)) { badFiles.add(file); console.error(`[peixairada] ${file}: a line could not be folded, skipped — ${e?.message || e}`); } }
 }
-function parseLines(text, onLine) { for (const raw of text.split('\n')) parseLine(raw, onLine); }
+function parseLines(text, onLine, file) { for (const raw of text.split('\n')) parseLine(raw, onLine, file); }
 
 const READ_CHUNK = 1 << 20;
 /**
@@ -1775,8 +1781,8 @@ function readLines(fd, start, end, onLine, dec = new StringDecoder('utf8')) {
  * long over). A chat the registry made a placeholder for has had no transcript read yet: its first lines are news.
  */
 function indexFile(file, { full = false } = {}) {
-  let st;
-  try { st = statSync(file); } catch { return null; }
+  let st, fd;
+  try { fd = openSync(file, 'r'); st = fstatSync(fd); } catch { if (fd != null) closeSync(fd); return null; }   // gone since the readdir or the event: a file deleted mid-scan ended the boot (2026-10-14)
   const id = basename(file, '.jsonl');
   const prev = sessions.get(id);
   const s = newSession(id, file);
@@ -1788,11 +1794,10 @@ function indexFile(file, { full = false } = {}) {
   const start = full || st.size <= TAIL_BYTES ? 0 : st.size - TAIL_BYTES;
   s.loaded = start === 0 || full;
   s.truncatedHead = start > 0;
-  const fd = openSync(file, 'r');
   s.dec = new StringDecoder('utf8'); s.reading = true;
   try {
     let skip = start > 0;   // a tail starts mid-line: the first "line" is the end of one
-    s.partial = readLines(fd, start, st.size, raw => { if (skip) skip = false; else parseLine(raw, line => fold(s, line)); }, s.dec);
+    s.partial = readLines(fd, start, st.size, raw => { if (skip) skip = false; else parseLine(raw, line => fold(s, line), file); }, s.dec);
   } finally { closeSync(fd); s.reading = false; }
   s.offset = st.size;
   s.newEntries = []; // initial load: nothing is "new"
@@ -1816,7 +1821,7 @@ function tailFile(file) {
   try { st = statSync(file); } catch { return; }
   if (st.size < s.offset) { const ns = indexFile(file, { full: s.loaded }); if (ns) { applyLiveness(ns); schedulePush(ns); } return; }
   if (st.size === s.offset) return;
-  const fd = openSync(file, 'r');
+  let fd; try { fd = openSync(file, 'r'); } catch { return; }
   let text;
   try {
     const buf = Buffer.alloc(st.size - s.offset);
@@ -1829,7 +1834,7 @@ function tailFile(file) {
   const nl = text.lastIndexOf('\n');
   s.partial = text.slice(nl + 1);
   let changed = false;
-  parseLines(text.slice(0, nl + 1), line => { if (fold(s, line)) changed = true; });
+  parseLines(text.slice(0, nl + 1), line => { if (fold(s, line)) changed = true; }, file);
   if (settleDrift(s)) changed = true;
   if (changed || s.newEntries.length) schedulePush(s);
 }
@@ -1998,7 +2003,7 @@ function scanProjects() {
     try { names = readdirSync(dir); } catch { continue; }
     for (const name of names) {
       if (!name.endsWith('.jsonl')) continue;
-      indexFile(join(dir, name));
+      try { indexFile(join(dir, name)); } catch (e) { console.error(`[peixairada] ${join(dir, name)} could not be read — ${e?.message || e}`); }   // one chat, never the boot (2026-10-14)
     }
   }
 }
