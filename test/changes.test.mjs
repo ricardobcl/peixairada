@@ -2,6 +2,7 @@
 // untracked files too; the branch against where it left its base; or only the files the last turn edited. The
 // parsers alone, then a real repo in a temp dir: a commit on main, a branch with a commit of its own, an edit, a new
 // file, and a transcript whose last turn edited one of them.
+import './env.mjs';   // first: server.mjs reads where its state lives as it is imported
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';

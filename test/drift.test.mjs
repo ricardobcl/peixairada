@@ -4,6 +4,7 @@
 // MOVE_SLACK_MS after it is seen — the chat's own switch can come on the next line — and only then shown. Commands that
 // never change the branch (stash, reset, pull, merge, merge-base…) explain nothing. And the disk's half: the checkout's
 // HEAD file, a worktree's its own, against the branch the chat's lines last said, judged on a second look.
+import './env.mjs';   // first: server.mjs reads where its state lives as it is imported
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';

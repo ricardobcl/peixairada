@@ -168,8 +168,8 @@ test('the first run: asked until answered, the guesses from the chats, a folder 
 });
 
 test('an import of the server moves nothing: the setup leaves the state file at boot only', () => {
-  // test/agents.test.mjs imports server.mjs with no STATE_FILE of its own, so its state file is the real one — and the
-  // move, at the module's top level when first written, ran against this Mac's files from `npm test`.
+  // test/agents.test.mjs imported server.mjs with no STATE_FILE of its own (until test/env.mjs, 2026-10-14), so its state
+  // file was the real one — and the move, at the module's top level when first written, ran against this Mac's files.
   const home = realpathSync(tmpDir('peix-home-'));
   const state = join(home, 'Library', 'Application Support', 'peixAIrada', 'state.json');
   mkdirSync(join(state, '..'), { recursive: true });

@@ -3,6 +3,7 @@
 // throwaway one, cloned from a bare "origin" that a second clone pushes to; its server.mjs a few lines that answer, its
 // lib/testserver.mjs, check-page and page the real ones (the pre-flight runs them); the restart, the app's build and npm
 // stand-ins that write down what they were asked; the installed app a folder with an Info.plist, stamped as build.sh does.
+import './env.mjs';   // first: server.mjs reads where its state lives as it is imported
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';

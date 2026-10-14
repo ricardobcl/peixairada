@@ -1,5 +1,6 @@
 // What a turn is doing now (2026-10-11): the newest tool call since your last word, which the card's live line names
 // and flips to the next — none before the turn calls one, none once you have spoken again.
+import './env.mjs';   // first: server.mjs reads where its state lives as it is imported
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';

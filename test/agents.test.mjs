@@ -1,5 +1,6 @@
 // A sub-agent's transcript (<session>/subagents/agent-*.jsonl) counts as running until its last line is an end_turn —
 // and not at all once it has gone quiet for a while (a killed agent never writes its end_turn).
+import './env.mjs';   // first: server.mjs reads where its state lives as it is imported
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { utimesSync, writeFileSync } from 'node:fs';

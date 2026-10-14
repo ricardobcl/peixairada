@@ -8,6 +8,8 @@ echo "› node --check"
 for f in server.mjs lib/*.mjs scripts/*.mjs scripts/scenarios/*.mjs test/*.mjs; do [ -f "$f" ] && node --check "$f"; done
 echo "› the page's script"
 node scripts/check-page.mjs public/index.html
+echo "› the tests: their environment"
+node scripts/check-tests.mjs
 # The holder's headless xterm is pinned to the vendored client's version (the screen is drawn by one and read by the
 # other), and public/vendor is copied from node_modules by hand: a drift on either side shows here, not in a drawer.
 echo "› vendored xterm = node_modules"

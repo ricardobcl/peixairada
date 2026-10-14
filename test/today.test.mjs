@@ -1,6 +1,7 @@
 // The day (2026-10-10): the home's timeline of every chat — its turns, the questions it waited on you for, its
 // monitors — from the transcript as it is folded. A chat that asked mid-turn worked the turn less the wait; a chat
 // clauding now, or asking now, has a span to now; the totals' median and longest wait are the questions'.
+import './env.mjs';   // first: server.mjs reads where its state lives as it is imported
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
