@@ -1506,8 +1506,18 @@ function agentsMoved(s, at, to, since) {
   }
   return ownMove(cmds, at, to, since);
 }
+/** Whether two folders are one checkout (2026-10-14): Claude's `cd src` is no other branch. Each folder's work tree is
+ *  looked up a minute at most (`topSeen`) — every line asks; a folder in none is only itself. */
+const topSeen = new Map();   // folder -> { top, at }
+function treeTop(cwd) {
+  const hit = topSeen.get(cwd), now = Date.now();
+  if (hit && now - hit.at < 60_000) return hit.top;
+  const top = gitTopOf(cwd); topSeen.set(cwd, { top, at: now });
+  return top;
+}
+const sameTree = (a, b) => a === b || (!!a && !!b && (treeTop(a) || a) === (treeTop(b) || b));
 /** A line's branch. `s.branchBase` is the branch the chat is on as its lines tell it — `{name, cwd, from, at}`, the
- *  first and last line of the run —, `s.branches` the last few it was on. A change in the same folder that the chat's
+ *  first and last line of the run —, `s.branches` the last few it was on. A change in the same checkout that the chat's
  *  own git does not explain so far is a drift held for judgement (`s.driftDue`), from the branch the chat was on before
  *  anything moved under it; back there is none. The lines still to come and its sub-agents may explain it (settleDrift);
  *  until then the drift shown is the one before (`shown`). */
@@ -1517,7 +1527,7 @@ function noteBranch(s, line, ts) {
   if (s.branches.at(-1)?.name !== b) { s.branches.push({ name: b, at: ts }); if (s.branches.length > BRANCHES_MAX) s.branches.shift(); }
   if (b === 'HEAD') return;   // detached, mostly mid-rebase: where it lands is what counts
   const base = s.branchBase;
-  if (!base || base.cwd !== cwd) { s.branchBase = { name: b, cwd, from: at, at }; s.drift = null; return; }   // the first line, or another folder
+  if (!base || !sameTree(base.cwd, cwd)) { s.branchBase = { name: b, cwd, from: at, at }; s.drift = null; return; }   // the first line, or another checkout
   if (base.name === b) { base.at = at; return; }
   const ok = s.headOk === b; s.headOk = null;
   s.branchBase = { name: b, cwd, from: at, at };

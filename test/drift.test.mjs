@@ -224,3 +224,20 @@ test('a reftable checkout\'s branch is git\'s word, not its HEAD file\'s stub (2
     assert.equal(headOf(repo), 'HEAD', 'detached');
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('Claude in a folder of the same checkout is on the same branch; a worktree inside it is another (2026-10-14)', () => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'peix-tree-'))), repo = join(dir, 'widgets'), wt = join(repo, '.claude', 'worktrees', 'feat-wt');
+  try {
+    mkdirSync(join(repo, '.git'), { recursive: true }); mkdirSync(join(repo, 'src')); mkdirSync(wt, { recursive: true });
+    writeFileSync(join(wt, '.git'), `gitdir: ${join(repo, '.git', 'worktrees', 'feat-wt')}\n`);
+    const in_ = (line, cwd) => ({ ...line, cwd });
+    const s = chat(in_(user(0, 'feat/a', 'go'), repo), in_(say(5, 'feat/a'), repo), in_(say(20, 'main'), repo));
+    assert.equal(moved(s), 'feat/a → main');
+    fold(s, in_(say(30, 'main'), join(repo, 'src'))); settleDrift(s, LATER());
+    assert.equal(moved(s), 'feat/a → main', 'a line from its src folder keeps the move');
+    fold(s, in_(say(40, 'main'), repo)); settleDrift(s, LATER());
+    assert.equal(moved(s), 'feat/a → main', '…and back at the top it stands');
+    fold(s, in_(say(50, 'feat/wt'), wt)); settleDrift(s, LATER());
+    assert.equal(moved(s), null, 'a worktree inside the repo is a checkout of its own');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
