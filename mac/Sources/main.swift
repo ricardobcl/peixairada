@@ -828,6 +828,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       guard let self = self, !self.paneOverlay.isHidden, let hot = AppDelegate.hotkeyCode(e),
             let fr = self.window.firstResponder as? NSView,
             fr.isDescendant(of: self.paneOverlay) || (self.findBar != nil && fr.isDescendant(of: self.findBar)) else { return e }
+      // a key held down is one press, as the board's own listener has it — the arrows walk on (2026-10-14: ⌥⌘G held on a
+      // page filled the column and gave it back over and over, ⌥⌘R reloaded the board as many times); a repeat is swallowed
+      if e.isARepeat && !hot.code.hasPrefix("Arrow") { return nil }
       self.web.evaluateJavaScript("window.peixKey && window.peixKey('\(hot.code)', '\(hot.mods)')", completionHandler: nil)
       return nil
     }
