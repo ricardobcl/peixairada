@@ -2,7 +2,7 @@
 // the socket's snapshot, a server restart with the holder alive under it, adoption, and the kill.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -241,4 +241,24 @@ test('a drawer has none of the board\'s own configuration: PORT and every knob t
     assert.deepEqual(names.filter(n => reads.has(n) && !KEEP.has(n)), [], 'nothing else the server reads either');
     assert.ok(!names.includes('TERM_LINGER_MS'), 'nor the holder\'s own knob');
   } finally { await srv.stop(); }
+});
+
+test('a socket path past 103 bytes is said before anything is spawned, by the server and by the holder (2026-10-14)', { timeout: 40_000 }, async () => {
+  const { spawn } = await import('node:child_process');
+  const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
+  const deep = join(tmpDir('peix-'), 'd'.repeat(100));
+  const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { TERMS_DIR: deep } });
+  try {
+    const r = await srv.post(`api/sessions/${fx.chats[1].id}/shell`, { cols: 100, rows: 30 });
+    assert.equal(r.status, 500); assert.match(r.body.error, /too deep for a socket: .* is \d+ bytes, macOS takes 103/);
+    assert.equal(existsSync(deep), false, 'no holder was started: not even its folder made');
+  } finally { await srv.stop(); }
+  // the holder on its own, given such a folder (an older server's): it says so in its meta and starts no PTY
+  mkdirSync(deep, { recursive: true });
+  const id = 'tlong';
+  writeFileSync(join(deep, `${id}.json`), JSON.stringify({ id, cwd: tmpdir(), bin: '/bin/sleep', args: ['30'], shell: false, sh: '/bin/zsh', cols: 80, rows: 24 }));
+  const h = spawn(process.execPath, [join(ROOT, 'lib', 'termhold.mjs'), deep, id], { stdio: 'ignore' });
+  const code = await new Promise(res => h.on('exit', res));
+  const meta = JSON.parse(readFileSync(join(deep, `${id}.json`), 'utf8'));
+  assert.equal(code, 1); assert.match(meta.error, /socket path is too long/); assert.equal(meta.pid, null, 'no PTY spawned');
 });

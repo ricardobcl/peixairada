@@ -3220,6 +3220,7 @@ const TERMS_DIR = process.env.TERMS_DIR || join(dirname(STATE_FILE), 'terms');
 const HOLDER = join(__dirname, 'lib', 'termhold.mjs');
 const TERM_LINGER_MS = Number(process.env.TERM_LINGER_MS || 5 * 60_000);   // an exited holder keeps its last screen this long (the holder's own timer; this one forgets it here)
 const HOLDER_START_MS = 15_000;
+const SOCK_MAX = 103;   // bytes in a Unix socket's path: macOS's sun_path holds 104, one kept for its NUL (lib/termhold.mjs has its copy)
 const terms = new Map();              // id -> { id, sessionId, cwd, pid, holderPid, resume, startedAt, exited, cols, rows, sock, clients, snapQ, lastSnap }
 let termSeq = 0;
 const termsAvailable = () => !!nodePty && existsSync(HOLDER);
@@ -3576,6 +3577,9 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
   }
   const args = task ? [task] : shell || !sessionId ? [] : ['--resume', sessionId];
   const id = `t${++termSeq}-${Date.now().toString(36)}`;
+  // past it the holder could not listen, and said only that it exited (2026-10-14) — said here, before anything is spawned
+  const sock = join(TERMS_DIR, `${id}.sock`);
+  if (Buffer.byteLength(sock) > SOCK_MAX) return { code: 500, error: `the drawers' folder is too deep for a socket: ${sock} is ${Buffer.byteLength(sock)} bytes, macOS takes ${SOCK_MAX} — set TERMS_DIR to a shorter folder` };
   try { mkdirSync(TERMS_DIR, { recursive: true }); } catch {}
   const spec = { id, sessionId, cwd, bin, args, shell, sh: shell ? LOGIN_SHELL : RUN_SHELL, task, cols: Math.min(500, Math.max(20, cols | 0)), rows: Math.min(200, Math.max(5, rows | 0)), resume: !shell && !!sessionId, startedAt: new Date().toISOString() };
   const logFile = join(TERMS_DIR, `${id}.log`);
