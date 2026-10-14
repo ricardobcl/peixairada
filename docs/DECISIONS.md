@@ -5,6 +5,18 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-14. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-14, on a branch — today unlabelled
+
+Ricardo: "the 'today' separator on chats column could be implicit. we save vertical space and less visual noise".
+
+* **The chat list draws no *Today* label** (`dayBefore`): a lane's cards are newest first, so the cards at its top
+  with no label over them are today's, and the first label — *Yesterday*, a weekday, a date — is where today ends. A
+  lane all today already had none (2026-10-12); now a lane that goes on into older days starts with its cards too, one
+  line less. Today brought back in a later lane (a done card from this morning after older ready ones) stands at the
+  top of its lane unlabelled, as in the first.
+* **Only the list's**: the transcript's day lines keep *Today* (there it is where the chat came back after older
+  days, not the top of anything), as do the timeline's runs (`tl.runs`) and home's day.
+
 ## Decisions of 2026-10-14, on a branch — the app behind its checkout
 
 Ricardo: "the update app is not updated the mac app".

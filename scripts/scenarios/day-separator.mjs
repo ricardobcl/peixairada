@@ -1,10 +1,11 @@
 // The day's labels in the chat list. The fish have swum between the clauding cards and the ready ones since
 // 2026-09-20; since 2026-09-22 a second school marked where the day turned over, and from 2026-09-23 a line under
 // every day's run of cards named it in the middle. Since 2026-10-12 the label is *over* its run, at the left with a
-// hairline after it — under it, it read as the next run's — and names the day as a person would: Today, Yesterday,
-// the weekday within the week, else DD-MM-YYYY; a lane whose cards are all from today has none. What this checks is
-// the labels' places and names, that the day stands at the left with nothing on it moving, and that a day the list
-// brings back (a done card from today, after older ready ones) gets a label of its own. The list is narrowed to the
+// hairline after it — under it, it read as the next run's — and names the day as a person would: Yesterday, the
+// weekday within the week, else DD-MM-YYYY. Today has none since 2026-10-14 (a lane all today had none before): a
+// lane's cards are newest first, so what stands over its first label is today's. What this checks is the labels'
+// places and names, that the day stands at the left with nothing on it moving, and that today brought back by the list
+// (a done card from today, after older ready ones) goes unlabelled in its own lane. The list is narrowed to the
 // scenario's folder by the project picker, not the magnifier: a query orders the list by the match since 2026-09-25,
 // and leaves the labels out (scripts/scenarios/chat-filter.mjs).
 import { makeFixture } from '../fixture.mjs';
@@ -57,26 +58,26 @@ export default async function (ctx) {
   out.all = await strip(ctx);
   await ctx.shot('day-lines');
   const expect = [
-    { lane: 'ready' }, { sep: 'day', day: 'Today' }, { card: 'a minute ago' }, { card: 'this morning' },
+    { lane: 'ready' }, { card: 'a minute ago' }, { card: 'this morning' },
     { sep: 'day', day: named(d2, 2) }, { card: 'two days back, later' }, { card: 'two days back' },
     { sep: 'day', day: named(d3, 3) }, { card: 'three days back' },
   ];
-  ctx.assert.deepEqual(out.all.map(x => x.sep ? { sep: x.sep, day: x.day } : x), expect, 'a label over each day, naming it: Today, then the weekday');
+  ctx.assert.deepEqual(out.all.map(x => x.sep ? { sep: x.sep, day: x.day } : x), expect, 'a label over each day but today\'s, naming it: the weekday');
   for (const x of out.all.filter(x => x.sep)) {
     ctx.assert.ok(Math.abs(x.off) <= 1, `${x.day} starts its line (${x.off}px in)`);
     ctx.assert.deepEqual(x.sides, [], `${x.day} stands alone on its line`);
     ctx.assert.equal(x.anim, 0, `and nothing on ${x.day}'s line moves`);
   }
 
-  // Done cards come last, whatever their day: ticking today's newest brings today back after the older days, and
-  // that run gets a line of its own
+  // Done cards come last, whatever their day: ticking today's newest brings today back after the older days, at the
+  // top of a lane of its own, unlabelled
   // (a tick only holds once the chat's last activity is behind it, and today's two are stamped up to a second ahead)
   const tick = () => ctx.server.api(`api/sessions/${chats[1].id}/done`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ done: true }) });
   for (let i = 0; i < 70 && !(await tick()).body.done; i++) await ctx.sleep(1000);
   await ctx.waitFor(`[...document.querySelectorAll('#slist > .card')].pop()?.querySelector('.title')?.textContent === 'a minute ago'`, { what: 'the done card at the bottom' });
   await ctx.settle();
   out.done = (await strip(ctx)).map(x => x.lane ? `[${x.lane}]` : x.sep ? x.day : x.card);
-  ctx.assert.deepEqual(out.done, ['[ready]', 'Today', 'this morning', named(d2, 2), 'two days back, later', 'two days back', named(d3, 3), 'three days back', '[done]', 'a minute ago'], 'today again in the done lane, which needs no label of its own — the done one in its lane');
+  ctx.assert.deepEqual(out.done, ['[ready]', 'this morning', named(d2, 2), 'two days back, later', 'two days back', named(d3, 3), 'three days back', '[done]', 'a minute ago'], 'today again in the done lane, unlabelled there too — the done one in its lane');
 
   // Only the done card in view — the Ready lane folded (its chip off, before 2026-10-11): still one line, under it
   await ctx.evaluate(`document.querySelector('#slist > .gsep.lane[data-lane="ready"]').click()`);

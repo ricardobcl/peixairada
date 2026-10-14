@@ -435,8 +435,8 @@ for `$HOME`'s home and the account's.
   order knows. **Each group has a lane head** (`laneHtml`, `.gsep.lane.<group>`, its count at the right; none under a
   query) that folds it (`data-lane`, `foldLane`, `prefs.lanesShut`; Idle and Done folded at first; the harness opens
   every lane unless a scenario's `prefs` say otherwise). The Clauding head's mark is Claude in pixels (`PIX_SHEET`,
-  `pix`, `pixhop`). **A day label over each run of one day in a lane** (`dayHtml()`, `dayBefore`, `dayName()`; none in
-  a lane all today). **All caught up** (`ZERO_HTML`, `caughtUp`): no ready chat and no question, a still head where
+  `pix`, `pixhop`). **A day label over each run of one day in a lane** (`dayHtml()`, `dayBefore`, `dayName()`) **but
+  today's** (2026-10-14): newest first, what stands over a lane's first label is today. **All caught up** (`ZERO_HTML`, `caughtUp`): no ready chat and no question, a still head where
   Ready goes; reached from a ✓ (`lastTickAt`) it sparks once. **Your move and new replies are the funnel's filters,
   never lanes.** **A long lane holds back** (2026-10-13; `LANE_CAP` 30, Idle and Done): its newest cards and a
   `.gsep.more` line for the rest, which shows them until a reload (`laneMore`); the open chat's card whatever its place;

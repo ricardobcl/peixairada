@@ -100,9 +100,9 @@ export default async function (ctx) {
     // …which slid in as it came (2026-10-11): the card was there before, its tag was not
     ctx.assert.ok(await ctx.evaluate(`window.peix.motion().some(m => m.kind === 'move' && m.id === '${two.id}')`), 'the tag slides in');
     ctx.assert.equal(out.moved.rank, 0, 'the move is the chat\'s newest word: it tops the list');
-    // nothing above it but its lane's head (2026-10-09) and today's label, which a run of cards has over it since 2026-10-12
-    // (the other chat is yesterday's) — and a lane of its own that morning, which needed none
-    ctx.assert.equal(await ctx.evaluate(`(d => d?.matches('.gsep.day') && d.textContent.trim() === 'Today' && d.previousElementSibling?.matches('.gsep.lane:first-child') ? 'first' : null)(${card}.previousElementSibling)`), 'first', 'nothing above it but its lane\'s head and today\'s label');
+    // nothing above it but its lane's head (2026-10-09) — today wears no label (2026-10-14), though the other chat is
+    // yesterday's and has one
+    ctx.assert.equal(await ctx.evaluate(`(d => d?.matches('.gsep.lane:first-child') ? 'first' : null)(${card}.previousElementSibling)`), 'first', 'nothing above it but its lane\'s head');
     out.compact = await ctx.evaluate(`(() => { const l = document.querySelector('#sessions'), was = l.dataset.cards; l.dataset.cards = 'compact';
       const shown = !!${card}.querySelector('.state.prmove').getClientRects().length; l.dataset.cards = was; return shown; })()`);
     ctx.assert.equal(out.compact, true, 'the line shows on a compact card too');
