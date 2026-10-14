@@ -66,7 +66,7 @@ const SCREEN = process.env.FAKE_SCREEN ? JSON.parse(readFileSync(process.env.FAK
 let shown = [], mark = 0;
 const commit = () => { mark = shown.length; };
 const t0 = Date.now();
-let input = '', tokens = 12300, dollars = 0;
+let input = '', cur = 0, tokens = 12300, dollars = 0;   // the prompt's text and the cursor in it, in code points
 const rule = () => '─'.repeat(cols());
 const elapsed = () => { const s = Math.floor((Date.now() - t0) / 1000); return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`; };
 const status2prefix = () => `  ctx ${(tokens / 1000).toFixed(1)}K/1.0M ${'▓'.repeat(Math.max(1, Math.round(tokens / 100000)))}${'░'.repeat(10 - Math.max(1, Math.round(tokens / 100000)))} ${Math.round(tokens / 10000)}% | elapsed `;
@@ -87,7 +87,7 @@ function drawLive() {
   // after a grow while the cursor went to the bottom rows — a key typed then landed in the transcript
   out(`\x1b[?25l${at(from, 1)}\x1b[J${at(top, 1)}`);
   out(`\x1b[2m${rule()}\x1b[0m\n`);
-  out(`\x1b[1m❯\x1b[0m ${input}\n`);
+  out(`\x1b[1m❯\x1b[0m ${promptText()}\n`);
   out(`\x1b[2m${rule()}\x1b[0m\n`);
   if (SCREEN) out([0, 1, 2].map(i => SCREEN.status?.[i] || '').join('\n'));
   else {
@@ -95,8 +95,12 @@ function drawLive() {
     out(`${status2prefix()}${elapsed()}\x1b[33m${status2suffix()}\x1b[0m\n`);
     out(`  \x1b[33m⏵⏵ fake mode on\x1b[0m (shift+tab to cycle) · ← for agents`);
   }
-  out(at(top + 1, 3 + [...input].length) + '\x1b[?25h');
+  out(at(top + 1, 3 + cur) + '\x1b[?25h');
 }
+/** The prompt's text as its one row shows it: a newline (Shift+Enter) as ⏎ — the real one grows the box a row instead. */
+const promptText = () => input.replace(/\n/g, '⏎');
+/** The prompt's row alone, after an edit: the text, the rest of the row cleared, the cursor where it is in the text. */
+function drawPrompt() { const top = rows() - LIVE + 1; out(`${at(top + 1, 1)}\x1b[2K\x1b[1m❯\x1b[0m ${promptText()}${at(top + 1, 3 + cur)}`); }
 /** A line of FAKE_SCREEN's wrapped at its words to the width, the rest under its text — after a ⏺, a >, a ⎿ or a list's
  *  dash —, as Claude Code wraps; its colours carry over, the terminal keeping them across the rows. */
 const visible = l => [...l.replace(/\x1b\[[0-9;]*m/g, '')].length;
@@ -132,7 +136,7 @@ function say(lines) {
 async function turn(text) {
   register('busy');
   userLine(text);
-  say([`\x1b[36m>\x1b[0m ${text}`, '']); commit();
+  say([...text.split('\n').map((l, i) => `${i ? '  ' : '\x1b[36m>\x1b[0m '}${l}`), '']); commit();
   tokens += 900 + text.length * 7; dollars += 0.01;
   const r = reply(text);
   const chunks = r.split('\n');
@@ -187,23 +191,71 @@ function clearSession() {
 const timer = setInterval(tick, 1000);
 process.stdout.on('resize', FULL ? paint : drawLive);
 let ctrlC = 0, busy = false, focusView = false;
+// The keys, read as a terminal app reads them (2026-10-14): escape sequences whole — focus reports, arrows and the
+// edit keys, a bracketed paste —, Shift+Enter (the drawer's ESC CR) a newline in the prompt, the line-editing keys the
+// drawer sends for the Mac's (⌃A ⌃E ⌃U ⌃K, ESC b / f / d, ESC DEL) acted on. Before, every ESC was dropped and the rest
+// of its sequence typed — so a typed I, O or [ was dropped too, as the tail of a focus report, and ESC CR was Enter.
+const cps = () => [...input];
+const edit = (from, to, text = '') => { const c = cps(); c.splice(from, to - from, ...text); input = c.join(''); cur = from + [...text].length; };
+const isWord = ch => /[\p{L}\p{N}_]/u.test(ch || '');
+const lineStart = () => { const c = cps(); let i = cur; while (i > 0 && c[i - 1] !== '\n') i--; return i; };
+const lineEnd = () => { const c = cps(); let i = cur; while (i < c.length && c[i] !== '\n') i++; return i; };
+const wordBack = () => { const c = cps(); let i = cur; while (i > 0 && !isWord(c[i - 1])) i--; while (i > 0 && isWord(c[i - 1])) i--; return i; };
+const wordAhead = () => { const c = cps(); let i = cur; while (i < c.length && !isWord(c[i])) i++; while (i < c.length && isWord(c[i])) i++; return i; };
+const CSI = /^\x1b\[([0-9;?]*)[\x20-\x2f]*([\x40-\x7e])/;
+let pasting = false;
+async function submit() {
+  const text = input.trim(); input = ''; cur = 0;
+  if (text === '/exit' || text === '/quit') bye(0);
+  if (text === '/clear') return clearSession();
+  if (text === '/compact' && !busy) { busy = true; await compact(); busy = false; return; }
+  // /focus, the view toggle the board's header button types in (2026-09-20): the real one answers with exactly
+  // this line, and the board reads it back off the screen to know which way it went.
+  if (text === '/focus') { focusView = !focusView; say([`\x1b[2mFocus view ${focusView ? 'enabled' : 'disabled'}\x1b[0m`, '']); commit(); return; }
+  if (text && !busy) { busy = true; await turn(text); busy = false; } else drawLive();
+}
 process.stdin.on('data', async d => {
-  for (const ch of d) {
+  const was = input, wasAt = cur;
+  for (let i = 0; i < d.length;) {
+    const rest = d.slice(i), ch = String.fromCodePoint(rest.codePointAt(0));   // a whole code point: an emoji is two halves
+    if (pasting) {   // a bracketed paste is text, its newlines too, up to its end
+      const end = rest.indexOf('\x1b[201~');
+      const text = (end < 0 ? rest : rest.slice(0, end)).replace(/\r\n?/g, '\n');
+      edit(cur, cur, text); i += end < 0 ? rest.length : end + 6; if (end >= 0) pasting = false; continue;
+    }
+    if (ch === '\x1b') {
+      const csi = CSI.exec(rest);
+      if (csi) {
+        const [all, arg, fin] = csi;
+        if (fin === 'D') cur = Math.max(0, cur - 1); else if (fin === 'C') cur = Math.min(cps().length, cur + 1);
+        else if (fin === 'H') cur = lineStart(); else if (fin === 'F') cur = lineEnd();
+        else if (fin === '~' && arg === '3') edit(cur, Math.min(cps().length, cur + 1));
+        else if (fin === '~' && (arg === '1' || arg === '7')) cur = lineStart(); else if (fin === '~' && (arg === '4' || arg === '8')) cur = lineEnd();
+        else if (fin === '~' && arg === '200') pasting = true;
+        i += all.length; continue;   // the rest — a focus report (I, O), up and down, a paste's end out of place — is nothing to the prompt
+      }
+      const next = rest[1];
+      if (next === 'O' && rest.length > 2) {   // SS3: the arrows in the application mode
+        const fin = rest[2];
+        if (fin === 'D') cur = Math.max(0, cur - 1); else if (fin === 'C') cur = Math.min(cps().length, cur + 1); else if (fin === 'H') cur = lineStart(); else if (fin === 'F') cur = lineEnd();
+        i += 3; continue;
+      }
+      if (next === '\r') edit(cur, cur, '\n');   // Shift+Enter, as the drawer sends it: a newline, not a send
+      else if (next === '\x7f' || next === '\b') edit(wordBack(), cur);   // ⌥⌫
+      else if (next === 'b') cur = wordBack(); else if (next === 'f') cur = wordAhead();   // ⌥← ⌥→, Meta as readline has them
+      else if (next === 'd') edit(cur, wordAhead());   // ⌥⌦
+      i += next === undefined ? 1 : 2; continue;   // a lone ESC, or Meta with any other key: nothing
+    }
+    i += ch.length;
     if (ch === '\x03') { if (++ctrlC >= 2) bye(0); continue; }
     if (ch === '\x04') bye(0);
-    if (ch === '\x1b') continue;   // escape sequences (focus in/out, arrows) are ignored; the rest of a multi-byte one arrives as its own chars
-    if (ch === '\r' || ch === '\n') {
-      const text = input.trim(); input = '';
-      if (text === '/exit' || text === '/quit') bye(0);
-      if (text === '/clear') { clearSession(); continue; }
-      if (text === '/compact' && !busy) { busy = true; await compact(); busy = false; continue; }
-      // /focus, the view toggle the board's header button types in (2026-09-20): the real one answers with exactly
-      // this line, and the board reads it back off the screen to know which way it went.
-      if (text === '/focus') { focusView = !focusView; say([`\x1b[2mFocus view ${focusView ? 'enabled' : 'disabled'}\x1b[0m`, '']); commit(); continue; }
-      if (text && !busy) { busy = true; await turn(text); busy = false; } else drawLive();
-      continue;
-    }
-    if (ch === '\x7f' || ch === '\b') { input = [...input].slice(0, -1).join(''); drawLive(); continue; }
-    if (ch >= ' ' && !/[\[IO]/.test(ch) || ch > '\x7f') { input += ch; out(ch); }   // `[`, I, O arrive as tails of focus sequences
+    if (ch === '\r' || ch === '\n') { await submit(); continue; }
+    if (ch === '\x01') { cur = lineStart(); continue; }   // ⌃A, ⌘← in the drawer
+    if (ch === '\x05') { cur = lineEnd(); continue; }   // ⌃E, ⌘→
+    if (ch === '\x15') { edit(lineStart(), cur); continue; }   // ⌃U, ⌘⌫
+    if (ch === '\x0b') { edit(cur, lineEnd()); continue; }   // ⌃K, ⌘⌦
+    if (ch === '\x7f' || ch === '\b') { if (cur > 0) edit(cur - 1, cur); continue; }
+    if (ch >= ' ') edit(cur, cur, ch);
   }
+  if (input !== was || cur !== wasAt) drawPrompt();
 });
