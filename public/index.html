@@ -6719,7 +6719,9 @@ const toolName = n => {
   // copies, never the live objects. The page's script is one IIFE, so nothing else in it is reachable.
   window.peix = {
     sea: () => ({ leaping: !!sea.leap, frames: sea.frames || 0, running: !!sea.raf, cell: sea.cell }),   // home's sea (2026-10-12)
-    state: () => ({ current: state.current, snapshots: state.snapshots, rendering: !!renderBoardSoon.t, project: prefs.project, person: prefs.person, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft, fill: state.fill, notch: state.notch, hidden: [...state.hidden],
+    // `rendering`: a draw still to come — the list's (renderBoardSoon) and the frames queued after one (2026-10-14: the
+    // counts' roll, the fades, the list's ends and timeline, the rings' phase), which ctx.settle() missed
+    state: () => ({ current: state.current, snapshots: state.snapshots, rendering: !!(renderBoardSoon.t || rollSoon.f || fadeSoon.f || listChanged.queued || phaseAnims.queued), project: prefs.project, person: prefs.person, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft, fill: state.fill, notch: state.notch, hidden: [...state.hidden],
       paneGh: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, v.map(pageUrl)])), paneTabs: Object.fromEntries([...state.paneGh].map(([k, v]) => [k, [...v]])), tab: state.sessions.has(state.current) ? tabOf(state.sessions.get(state.current)) : null, tabs: state.sessions.has(state.current) ? tabKeys(state.sessions.get(state.current)) : [], pr: shownPr.url,
       split: splitNow(), stacked: stackNow(), zoomed: zoomed.get(state.current) ?? null, focusG, halves: state.sessions.has(state.current) ? placeOf(state.sessions.get(state.current)) : [null, null],
       strips: state.sessions.has(state.current) ? [0, 1].map(g => keysIn(state.sessions.get(state.current), g)) : [[], []],
