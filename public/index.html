@@ -964,6 +964,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* how long ago the move came (2026-10-14): as the card's age, under the pointer only and keeping its room */
   .card .state.prmove .mt { flex: none; font-size: var(--fs-2xs); white-space: nowrap; opacity: 0; transition: opacity .12s; }
   .card:hover .state.prmove .mt { opacity: .8; }
+  .rtag { flex: none; display: inline-flex; align-items: center; padding: 0 5px; border-radius: var(--r-1); font-size: var(--fs-2xs); font-weight: 700; line-height: 15px; letter-spacing: .4px; text-transform: uppercase; white-space: nowrap; }
+  .rtag.move { background: color-mix(in srgb, var(--accent) 82%, var(--ink)); color: var(--bg); }
+  .rtag.ok { background: color-mix(in srgb, var(--pr-open) 20%, transparent); color: var(--pr-open); }
+  .rtag.let { background: var(--ctl-hi); color: var(--muted); }
   /* It never wraps the row (2026-10-11, afternoon: ··· went to a second line beside the housing): a flex basis of 0,
      growing into the room the row leaves up to its own width — the reason ellipsized —, and no narrower than the tag and
      the count (--hmin, fitHeadPrs, which folds the PR chips to leave that much; min-content is the whole reason). */
@@ -1303,6 +1307,20 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #prlist .pract { font: inherit; font-size: var(--fs-2xs); font-weight: 600; padding: 1px 7px; border: 1px solid transparent; border-radius: var(--r-2); background: var(--ctl); color: var(--muted); cursor: pointer; white-space: nowrap; }
   #prlist .pract:hover { background: var(--ctl-hi); color: var(--ink); }
   #prlist .pract.on { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); }
+  /* each PR's round under its row (2026-10-15): the strip of its last rounds on the clock (fillTrack), the tag, since when,
+     the round before, and Let go · Ask Claude, or Undo — the row's own "your move · …" says it no more */
+  #prlist .prline.withround .why { display: none; }
+  #prlist .prround { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 0 0 6px 61px; font-size: var(--fs-xs); }
+  #prlist .prround[hidden] { display: none; }
+  #prlist .prround .say { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+  #prlist .prround .was, #prlist .prround[data-k="them"] .say { color: var(--muted); }
+  .rtrack { position: relative; flex: none; width: 96px; height: 10px; border-radius: 5px; background: var(--ctl); }
+  .rtrack i { position: absolute; }
+  .rtrack .rs { top: 3px; height: 4px; border-radius: 2px; background: var(--ctl-hi); }
+  .rtrack .rs.open { background: var(--accent); } .rtrack .rs.answered { background: color-mix(in srgb, var(--pr-open) 75%, transparent); }
+  .rtrack .rs.let { background: repeating-linear-gradient(90deg, var(--muted) 0 2px, transparent 2px 4px); }
+  .rtrack .rd { top: 2px; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: var(--muted); box-shadow: 0 0 0 1.5px var(--panel); }
+  .rtrack .rd.open { background: var(--accent); } .rtrack .rd.answered { background: var(--pr-open); }
   #pick .pkchat { margin-left: 8px; font: inherit; font-size: var(--fs-2xs); font-weight: 600; padding: 1px 7px; border: 1px solid transparent; border-radius: var(--r-2); background: var(--ctl); color: var(--muted); cursor: pointer; }
   #pick .pkchat:hover { background: var(--ctl-hi); color: var(--ink); }
   #prlist .more { justify-self: start; font: inherit; font-size: var(--fs-xs); color: var(--accent); background: none; border: 0; padding: 1px 0 0 61px; cursor: pointer; }
@@ -2054,7 +2072,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .card .title, .card .snip, .msg .text, .presence, .prrow .t { text-wrap: pretty; }
   .empty, .gempty, dialog p.help, #slist .none, #picklist .none, .pop .opt span { text-wrap: balance; }
   .card .title { overflow-wrap: break-word; hyphens: auto; }
-  .badge, .chip, :is(.card .cpr, .shead .hpr), .pkrow .num, #counts, .sedge b, .tl-lab, .prrow .num, .pop .keys kbd, .lognew b, #resume .n { font-variant-numeric: tabular-nums; }
+  .badge, .chip, :is(.card .cpr, .shead .hpr), .pkrow .num, #counts, .sedge b, .tl-lab, .prrow .num, .pop .keys kbd, .lognew b, #resume .n, .prround .say { font-variant-numeric: tabular-nums; }
   ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
   :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
@@ -3662,6 +3680,7 @@ const toolName = n => {
       const tip = prTip(pr); if (el.title !== tip) el.title = tip;
     }
     for (const el of root.querySelectorAll('[data-at]')) { const t = rel(el.dataset.at); if (el.textContent !== t) el.textContent = t; }
+    for (const el of root.querySelectorAll('.rtrack')) fillTrack(el);   // a PR's rounds on the clock (2026-10-15)
   }
   const dayHtml = day => `<div class="gsep day" title="below: the chats you were in ${day === 'Yesterday' ? 'yesterday' : 'on ' + day}"><b>${day}</b></div>`;
   // ---- the people row: everyone in the PRs of the chats in view ---------------------------------------------------
@@ -4254,6 +4273,52 @@ const toolName = n => {
   }
   /** A card with no move holds the line's place when compact's same height is on (.moveslot, hidden everywhere else). */
   const MOVE_SLOT = `<div class="state moveslot" aria-hidden="true"><b class="ymove">${ICON.pr}your move</b><span class="q">#0</span></div>`;   // the tag and a word: the real line's metrics
+  // ---- a PR's rounds (2026-10-15): the server's ledger (prLogs) — each PR's last three rounds come with it (pr.rounds):
+  // a move come round to you (`from`, `why`), let go (`let`), and how it ended (`end`, `how`: answered · let go · gone,
+  // `by` the chat whose push or reply it was). The PR rows say each one's round and the one before.
+  /** A time as the who-line says it, the day before it when it is not today's. */
+  const when = ts => { if (!ts) return ''; const t = new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), d = dayOf(ts); return d === 'Today' ? t : `${d} ${t}`; };
+  /** Where a PR stands, as its rounds say it: you · let (let go) · ok (answered, theirs since) · them — the round now
+   *  (`cur`) and the one before (`prev`); null for a PR with no turn, merged or closed. */
+  function roundOf(pr) {
+    const t = pr.turn, rs = pr.rounds || [], last = rs.at(-1), open = last && !last.end ? last : null;
+    if (!t || !(pr.state === 'open' || pr.state === 'draft')) return null;
+    if (t.you || t.waived) return { k: t.you ? 'you' : 'let', cur: open, prev: open ? rs.at(-2) : last };
+    if (last?.how === 'answered') return { k: 'ok', cur: last, prev: rs.at(-2) };
+    return { k: 'them', cur: null, prev: last };
+  }
+  const BY = { push: 'pushed', review: 'reviewed', comment: 'commented', reply: 'replied' };
+  /** Your word that closed a round: what it was and where from — this chat, another, or GitHub alone. */
+  const byWords = (r, s) => r.by ? `you ${BY[r.by.x] || 'answered'} from ${r.by.c === s.id ? 'this chat' : 'another chat'}` : 'you answered';
+  const howWords = (r, s) => r.how === 'answered' ? byWords(r, s) : r.how === 'let go' ? 'let go' : r.how === 'gone' ? 'its reason went' : r.how || '';
+  const prevWords = (r, s) => `${r.why} ${when(r.from)}${r.end ? ` → ${howWords(r, s)} ${when(r.end)}` : ''}`;
+  /** A round's strip: each round a bar on the time from the first one's start to now — placed by fillAges (fillTrack),
+   *  so the markup holds times and nothing that moves with the clock. */
+  const trackHtml = pr => `<span class="rtrack" aria-hidden="true">${(pr.rounds || []).map(r => {
+    const k = !r.end ? (r.let ? 'let' : 'open') : r.how === 'answered' ? 'answered' : r.how === 'let go' ? 'let' : 'gone';
+    return `<i class="rs ${k}" data-a="${esc(r.from)}" data-b="${esc(r.end || '')}"></i><i class="rd open" data-a="${esc(r.from)}"></i>${r.end ? `<i class="rd ${k}" data-a="${esc(r.end)}"></i>` : ''}`;
+  }).join('')}</span>`;
+  function fillTrack(el) {
+    const marks = [...el.children], now = Date.now(), t0 = Math.min(...marks.map(m => Date.parse(m.dataset.a)).filter(n => n));
+    if (!isFinite(t0)) return;
+    const span = Math.max(now - t0, 3600_000), x = ms => `${Math.max(0, Math.min(100, (ms - t0) / span * 100)).toFixed(2)}%`;
+    for (const m of marks) {
+      const a = Date.parse(m.dataset.a); if (m.style.left !== x(a)) m.style.left = x(a);
+      if (m.classList.contains('rs')) { const w = `${Math.max(1.5, ((Date.parse(m.dataset.b) || now) - a) / span * 100).toFixed(2)}%`; if (m.style.width !== w) m.style.width = w; }
+    }
+  }
+  const RTAG = { you: '<b class="rtag move">your move</b>', let: '<b class="rtag let">let go</b>', ok: '<b class="rtag ok">answered</b>', them: '' };
+  /** A PR row's round, under it: the strip, the tag, since when, the round before, and what can be done about it. */
+  function roundLine(s, pr, hide) {
+    const r = roundOf(pr); if (!r || (r.k === 'them' && !r.prev)) return '';
+    const say = r.k === 'you' ? (r.cur ? `since ${when(r.cur.from)} · unanswered <span data-at="${esc(r.cur.from)}"></span>` : esc(pr.turn.why))
+      : r.k === 'let' ? `${esc(pr.turn.why)} · let go${r.cur?.let ? ` ${when(r.cur.let)}` : ''}, nothing since`
+      : r.k === 'ok' ? `${esc(byWords(r.cur, s))} ${when(r.cur.end)} · ${esc(pr.turn.why)}`
+      : esc(pr.turn.why);
+    const acts = r.k === 'you' ? `<button type="button" class="pract" data-pract="letgo" data-url="${esc(pr.url)}" title="Let this PR's round go — not your move until the next one, which tells you; the chat's other PRs keep theirs">Let go</button><button type="button" class="pract" data-pract="ask" data-url="${esc(pr.url)}" title="Type it into this chat's Claude, unsent — ⏎ sends it">Ask Claude</button>`
+      : r.k === 'let' ? `<button type="button" class="pract" data-pract="undo" data-url="${esc(pr.url)}" title="Your move again, as it was">Undo</button>` : '';
+    return `<div class="prround" data-k="${r.k}" data-url="${esc(pr.url)}"${hide ? ' hidden' : ''}>${trackHtml(pr)}${RTAG[r.k]}<span class="say">${say}${r.prev ? `<span class="was"> · before: ${esc(prevWords(r.prev, s))}</span>` : ''}</span>${acts ? `<span class="practs">${acts}</span>` : ''}</div>`;
+  }
   /** The chat header's: the tag, then the newest move's PR and reason, the others counted — right of the title. */
   function headMove(s) {
     const prs = movedPrs(s); if (!prs.length) return '';
@@ -5903,9 +5968,9 @@ const toolName = n => {
   /** A PR's row and its own controls beside it (2026-10-13): where its branch lives, Diff, and — for a PR of this
    *  checkout's repo whose branch GitHub has named — the editor at that branch. */
   const prLine = (s, pr, hide) => {
-    const w = whereOf(s, pr), ed = w && w.k !== 'away' && pr.refs;
-    return `<div class="prline"${hide ? ' hidden' : ''}>${prRow(pr, hide)}${w ? `<span class="prwhere ${w.k}"${w.path ? ` title="${esc(w.path)}"` : ''}>${ICON.branch}${esc(w.t)}</span>` : ''}${pr.number ? `<span class="practs"><button type="button" class="pract" data-pract="diff" data-url="${esc(pr.url)}" title="Its diff in the changes tab, as GitHub shows it — read from origin, nothing checked out">Diff</button>${
-      ed ? `<button type="button" class="pract" data-pract="editor" data-url="${esc(pr.url)}" aria-haspopup="menu" title="Its branch in the editor — the folder that has it, or a worktree of its own">Editor ▾</button><button type="button" class="pract" data-pract="chat" data-url="${esc(pr.url)}" title="A new chat on its branch — in the folder that has it out, else in a worktree of its own">Chat</button>` : ''}</span>` : ''}</div>`;
+    const w = whereOf(s, pr), ed = w && w.k !== 'away' && pr.refs, round = roundLine(s, pr, hide);
+    return `<div class="prline${round ? ' withround' : ''}"${hide ? ' hidden' : ''}>${prRow(pr, hide)}${w ? `<span class="prwhere ${w.k}"${w.path ? ` title="${esc(w.path)}"` : ''}>${ICON.branch}${esc(w.t)}</span>` : ''}${pr.number ? `<span class="practs"><button type="button" class="pract" data-pract="diff" data-url="${esc(pr.url)}" title="Its diff in the changes tab, as GitHub shows it — read from origin, nothing checked out">Diff</button>${
+      ed ? `<button type="button" class="pract" data-pract="editor" data-url="${esc(pr.url)}" aria-haspopup="menu" title="Its branch in the editor — the folder that has it, or a worktree of its own">Editor ▾</button><button type="button" class="pract" data-pract="chat" data-url="${esc(pr.url)}" title="A new chat on its branch — in the folder that has it out, else in a worktree of its own">Chat</button>` : ''}</span>` : ''}</div>${round}`;
   };
   /** A ticket's row under the header, after the PRs' (2026-10-08): its status, key, summary, and whose it is. */
   const ticketRow = (t, hide) => `<a class="prrow tk"${hide ? ' hidden' : ''} data-cat="${esc(t.cat)}" href="${/^https?:\/\//.test(t.url) ? esc(t.url) : '#'}" target="_blank" rel="noopener" title="${esc(`${t.url}\n${ticketTip(t)}`)}"><span class="st">${esc(t.status || t.cat)}</span><span class="num">${esc(t.key)}</span><span class="t">${esc(t.summary || t.key)}</span><span class="who${t.assignee?.me ? ' me' : ''}">${t.assignee ? esc(t.assignee.me ? 'yours' : t.assignee.name) : 'unassigned'}</span></a>`;
@@ -6276,10 +6341,25 @@ const toolName = n => {
     const b = e.target.closest('.pract'); if (!b) return;
     e.preventDefault(); e.stopPropagation();
     const s = state.sessions.get(state.current); if (!s) return;
-    if (b.dataset.pract === 'diff') openPrDiff(s, b.dataset.url);
+    if (b.dataset.pract === 'letgo' || b.dataset.pract === 'undo') roundGo(s, b.dataset.url, b.dataset.pract === 'undo', b);
+    else if (b.dataset.pract === 'ask') askClaude(s, b.dataset.url, b);
+    else if (b.dataset.pract === 'diff') openPrDiff(s, b.dataset.url);
     else if (b.dataset.pract === 'editor') editorMenu(s, b.dataset.url, b);
     else if (b.dataset.pract === 'chat') chatOnPr(s, b.dataset.url, b);
   });
+  /** One PR's round let go, or taken back (2026-10-15): the server's word redraws the row. */
+  function roundGo(s, url, undo, at) {
+    if (at.disabled) return; at.disabled = true;
+    api('POST', `/api/sessions/${s.id}/waive`, undo ? { url, undo: true } : { url }).catch(err => { at.disabled = false; note(at, `Could not ${undo ? 'take it back' : 'let it go'}: ${err.message}`, true); });
+  }
+  /** What came round on a PR, typed into the chat's Claude unsent — the drawer's, else copied. */
+  async function askClaude(s, url, at) {
+    const pr = s.prs?.find(p => p.url === url); if (!pr?.turn) return;
+    const text = `${pr.turn.why} on ${pr.url} — read it and address it`, tm = claudeTm(s);
+    if (!tm) { const ok = await copyText(text); return note(at, `No claude of this chat in a drawer here${ok ? ' — the prompt is copied' : ''} · ⌥⌘C starts one`, true); }
+    showChat(s); termSend(tm, text); focusTerm();
+    note(at, 'Typed into Claude — ⏎ sends it');
+  }
   /** A new chat on a PR's branch (2026-10-13): in the tree that has it out, else in a worktree made for it — the chat's
    *  folder is then its branch, and its changes, its editor and its zsh are the branch's by construction. */
   async function chatOnPr(s, url, at) {
