@@ -1535,10 +1535,16 @@ final class PaneDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
     if let url = navigationAction.request.url { webView.load(URLRequest(url: url)) }
     return nil
   }
+  /// What a page in the pane may hand to another app (2026-10-14): a link clicked in its own main frame — not a script, a
+  /// redirect or a frame inside it — and only to these, mail, the editors and GitHub Desktop. Any other scheme not the
+  /// web's is cancelled: every one went to NSWorkspace, file: included, with no click at all.
+  static let outSchemes: Set<String> = ["mailto", "vscode", "vscode-insiders", "zed", "x-github-client"]
   func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
                decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void) {
     if let url = action.request.url, let scheme = url.scheme?.lowercased(), !["http", "https", "about", "blob", "data"].contains(scheme) {
-      NSWorkspace.shared.open(url)
+      let clicked = action.navigationType == .linkActivated && action.sourceFrame.isMainFrame
+      if clicked && PaneDelegate.outSchemes.contains(scheme) { NSWorkspace.shared.open(url) }
+      else { logLine("pane: \(scheme): not opened, from \(webView.url?.host ?? "?") — \(clicked ? "not a scheme handed on" : "no link clicked in the page")") }
       return decisionHandler(.cancel)
     }
     decisionHandler(.allow)
