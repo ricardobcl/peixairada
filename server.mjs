@@ -173,8 +173,9 @@ let awakeOn = false;
 // done, ok, why} — 2026-10-14, the update's own `build` before).
 let autoUpdate = false, updateLast = null, updateHeld = null, appBuild = null;
 // The working trees the board made for a branch (2026-10-13; ensureWorktree): path -> { repo (its main tree), branch
-// (null: detached), pr, head (the commit it was made at), linked (node_modules a link of ours), at }. Only these are
-// ever removed, and only by sweepWorktrees.
+// (null: detached), pr, prState (its PR's state as it was made, then as the sweep last saw it open — 2026-10-14), head
+// (the commit it was made at), linked (node_modules a link of ours), at }. Only these are ever removed, and only by
+// sweepWorktrees.
 let worktreesMade = {};
 
 // The state file is read once the port is ours (2026-10-14; at import before): a server that waited behind another for
@@ -2910,7 +2911,7 @@ async function makeWorktree(w, { want, refs, branch, detach, fresh }) {
   catch (e) { return fail(e, 'git worktree add failed'); }
   // out of the repo's own status, where no ignore file says so already: the repo's info/exclude, never a tracked file
   if (await gitOr(main, ['check-ignore', '-q', path], false) === false) try { appendFileSync(join(await gitOr(main, ['rev-parse', '--git-common-dir']).then(d => resolve(main, d)), 'info', 'exclude'), '\n/.claude/worktrees/\n'); } catch {}
-  worktreesMade[path] = { repo: main, branch: detach ? null : branch, pr: want?.url ?? null, head: await gitOr(path, ['rev-parse', 'HEAD']), at: new Date().toISOString() };
+  worktreesMade[path] = { repo: main, branch: detach ? null : branch, pr: want?.url ?? null, ...want && { prState: prStatus.get(want.url)?.state ?? null }, head: await gitOr(path, ['rev-parse', 'HEAD']), at: new Date().toISOString() };
   saveState();
   console.log(`[peixairada] worktree ${tildePath(path)} made for ${detach ? `PR #${want.n}, detached` : branch}`);
   return { path, branch: detach ? null : branch, made: true, detached: !!detach, here: false };
@@ -2963,7 +2964,9 @@ async function landed(path, rec) {
 /** The trees the board made, removed once their work is done — a PR's merged or closed; a new branch's (2026-10-13) by
  *  the PR opened from it (`prOfBranch`, kept as its `pr`), else once its commits are on origin's default branch — with
  *  `git worktree remove`, never --force, so git itself refuses anything with work in it, and only when nothing holds
- *  them (keepWorktree). A new branch's tree with nothing done in it stays. A tree gone by hand is forgotten. */
+ *  them (keepWorktree). A new branch's tree with nothing done in it stays. A tree gone by hand is forgotten. A tree made
+ *  for a PR merged or closed already (2026-10-14: Editor ▾ on any PR row), or before GitHub said, is a look at it: only
+ *  a merge or a close after the sweep has seen the PR open counts (`prState`). */
 const WT_SWEEP_MS = Number(process.env.WT_SWEEP_MS || 10 * 60_000);
 let wtSweeping = false, wtSweptAt = 0;
 async function sweepWorktrees() {
@@ -2989,7 +2992,8 @@ async function sweepWorktrees() {
       if (!rec.pr) continue;
       const st = prStatus.get(rec.pr)?.state;
       if (!st) { queuePr(rec.pr); continue; }   // asked about: the chat that named it may be gone
-      if (st === 'merged' || st === 'closed') await drop(path, rec, `its PR is ${st}`);
+      if (st === 'merged' || st === 'closed') { if (rec.prState === undefined || rec.prState === 'open' || rec.prState === 'draft') await drop(path, rec, `its PR is ${st}`); }
+      else if (rec.prState !== st) { rec.prState = st; changed = true; }   // open: a merge or a close from now on is its end
     }
   } finally { wtSweeping = false; if (changed) saveState(); }
   return gone;

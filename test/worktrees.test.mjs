@@ -31,7 +31,7 @@ const branch = (name, n, file, { pushBranch = true } = {}) => {
   git(seed, 'push', '-q', origin, `${name}:refs/pull/${n}/head`, ...pushBranch ? [`${name}:refs/heads/${name}`] : []);
   return git(seed, 'rev-parse', 'HEAD');
 };
-branch('feat/a', 21, 'a2.js'); branch('feat/b', 22, 'b.js'); const fork = branch('fork-main', 23, 'f.js', { pushBranch: false });
+branch('feat/a', 21, 'a2.js'); branch('feat/b', 22, 'b.js'); const fork = branch('fork-main', 23, 'f.js', { pushBranch: false }); branch('feat/old', 24, 'o.js');
 execFileSync('git', ['clone', '-q', '--no-local', '--config', `url.${origin}.insteadOf=https://github.com/acme/widgets`, 'https://github.com/acme/widgets', co], { stdio: 'pipe', env });
 git(co, 'checkout', '-q', 'feat/b'); mkdirSync(join(co, 'node_modules', 'x'), { recursive: true });
 const real = git(co, 'rev-parse', '--show-toplevel'), wt = n => join(real, '.claude', 'worktrees', n);
@@ -105,6 +105,18 @@ test('the sweep removes a tree it made once its PR is merged or closed and nothi
   sessions.delete(s.id);
   assert.deepEqual(await sweepWorktrees(), [wt('pr-23')]);
   assert.ok(existsSync(wt('pr-21')) && existsSync(wt('feat-new')) && existsSync(real));
+});
+
+test('a tree made for a PR merged or closed already is a look at it: kept, until the sweep sees the PR open again (2026-10-14)', async () => {
+  setPrInfo(url(24), 'merged', 'Old', null, Date.now(), undefined, false, null, null, refs('feat/old'));
+  const t = await ensureWorktree({ cwd: co, pr: url(24) });                         // Editor ▾ on a merged PR's row
+  assert.deepEqual([t.path, t.made, worktreesMade[t.path].prState], [wt('feat-old'), true, 'merged']);
+  assert.deepEqual(await sweepWorktrees(), [], 'merged before it was made: kept');
+  assert.ok(existsSync(t.path));
+  setPrInfo(url(24), 'open', 'Old', null, Date.now(), undefined, false, null, null, refs('feat/old'));   // reopened
+  assert.deepEqual(await sweepWorktrees(), []);
+  setPrInfo(url(24), 'closed', 'Old', null, Date.now(), undefined, false, null, null, refs('feat/old'));
+  assert.deepEqual(await sweepWorktrees(), [t.path], 'closed after the sweep saw it open: removed');
 });
 
 test('the folder\'s own branch switched only when nothing else works there — said, not done', async () => {
