@@ -62,7 +62,14 @@ try {   // a server or a Chrome that does not come up: what did come up is ended
     if (meta.fixture === 'auto' && !keep) cleanups.push(() => rmSync(dir, { recursive: true, force: true }));   // 1359 of them in $TMPDIR before this
     // The temp dir as claude reports it (/private/var/…, not /var/…): a fake started there registers its real path, and a
     // fixture chat under the other spelling would be another folder to the board — a second project named T.
-    fixture = meta.fixture === 'auto' ? defaultFixture(dir, { cwdA: process.cwd(), cwdB: realpathSync(tmpdir()) }) : { dir, chats: [] };
+    // Chat A's folder is a temp one of its own too, repo-a (2026-10-14): it was this checkout, so the board read its
+    // Peacock colour, branch and changes, and a resume, a zsh or a worktree made from chat A acted on the real repo.
+    let cwdA = null;
+    if (meta.fixture === 'auto') {
+      const repos = realpathSync(mkdtempSync(join(tmpdir(), 'peix-repo-'))); cwdA = join(repos, 'repo-a'); mkdirSync(cwdA);
+      if (!keep) cleanups.push(() => rmSync(repos, { recursive: true, force: true }));
+    }
+    fixture = meta.fixture === 'auto' ? defaultFixture(dir, { cwdA, cwdB: realpathSync(tmpdir()) }) : { dir, chats: [] };
     log(`fixture ${dir}${fixture.chats.length ? ' — chats ' + fixture.chats.map(c => c.id.slice(0, 8)).join(', ') : ''}`);
   }
   if (meta.server || !boardUrl) {

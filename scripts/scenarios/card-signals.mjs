@@ -138,7 +138,7 @@ export default async function (ctx) {
     })))`).then(JSON.parse);
     ctx.assert.ok(rail.every(r => r.shows === 'none'), 'the cards show nothing but their short name');
     ctx.assert.ok(rail.every(r => r.w > 30 && r.w < 60), 'and they are squares in a rail');
-    ctx.assert.deepEqual([...new Set(rail.map(r => r.abbr))], ['SR', 'T', 'PE'], 'signals-repo · T · peixairada');
+    ctx.assert.deepEqual([...new Set(rail.map(r => r.abbr))], ['SR', 'T', 'RA'], 'signals-repo · T · repo-a');
     ctx.assert.ok(rail.some(r => r.cls.includes('asking')), 'the question still reads from the rail');
     ctx.assert.equal(rail.find(r => r.lights === '3')?.cls.join(), 'working', 'and so do the three agents');
     await ctx.shot('rail', { x: 0, y: 0, width: 300, height: 900 });

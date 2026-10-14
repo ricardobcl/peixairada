@@ -18,7 +18,7 @@ export default async function (ctx) {
   await ctx.waitFor(`window.__posts.some(m => m.type === 'chat')`, { what: 'the chat told to the shell' });
   out.first = await chats();
   ctx.assert.equal(out.first.length, 1, 'once');
-  ctx.assert.deepEqual(out.first[0], { type: 'chat', project: 'peixairada', title: 'Two PRs mentioned', cwd: a.cwd }, 'its project, title and folder');
+  ctx.assert.deepEqual(out.first[0], { type: 'chat', project: 'repo-a', title: 'Two PRs mentioned', cwd: a.cwd }, 'its project, title and folder');
 
   // a render that leaves the header as it was says nothing more
   await ctx.evaluate(`window.peix && document.dispatchEvent(new Event('visibilitychange'))`);
