@@ -262,3 +262,34 @@ test('a socket path past 103 bytes is said before anything is spawned, by the se
   const meta = JSON.parse(readFileSync(join(deep, `${id}.json`), 'utf8'));
   assert.equal(code, 1); assert.match(meta.error, /socket path is too long/); assert.equal(meta.pid, null, 'no PTY spawned');
 });
+
+test('a snapshot carries what the serialize addon leaves out: the mouse\'s SGR encoding, a hidden cursor, the scroll region (2026-10-14)', { timeout: 30_000 }, async () => {
+  const { spawn } = await import('node:child_process');
+  const { connect } = await import('node:net');
+  const { Terminal } = await import('@xterm/headless').then(m => m.default ?? m);
+  const dir = tmpDir('peix-h-'), id = 'tmodes', zdot = join(dir, 'zdot'); mkdirSync(zdot);
+  // what a fullscreen TUI sends: the alternate screen, mouse tracking in SGR, the cursor hidden, a region, the cursor in it
+  const tui = "printf '\\033[?1049h\\033[?1000h\\033[?1006h\\033[?25l\\033[3;20r\\033[5;7Hhello'; exec sleep 30";
+  writeFileSync(join(dir, `${id}.json`), JSON.stringify({ id, cwd: dir, bin: '/bin/sh', args: ['-c', tui], shell: false, sh: '/bin/zsh', cols: 80, rows: 24 }));
+  const h = spawn(process.execPath, [join(ROOT, 'lib', 'termhold.mjs'), dir, id], { stdio: 'ignore', env: { ...process.env, ZDOTDIR: zdot } });
+  let sock;
+  try {
+    sock = await waitFor(() => new Promise(res => { const s = connect(join(dir, `${id}.sock`)); s.once('connect', () => res(s)); s.once('error', () => res(null)); }), { what: 'the holder\'s socket' });
+    sock.setEncoding('utf8');
+    let buf = '', snap = null;
+    sock.on('data', c => { buf += c; let i; while ((i = buf.indexOf('\n')) >= 0) { const m = JSON.parse(buf.slice(0, i)); buf = buf.slice(i + 1); if (m.t === 'snap') snap = m; } });
+    await waitFor(async () => { snap = null; sock.write(JSON.stringify({ t: 'snap' }) + '\n'); await waitFor(() => snap, { what: 'a snapshot' }); return snap.d.includes('hello'); }, { what: 'a snapshot of the TUI drawn' });
+    // the page: a fresh xterm written the snapshot, as attachTerm does after reset()
+    const page = new Terminal({ cols: 80, rows: 24, scrollback: 5000, allowProposedApi: true });
+    await new Promise(r => page.write(snap.d, r));
+    const core = page._core, b = page.buffer.active;
+    assert.equal(page.modes.mouseTrackingMode, 'vt200', 'mouse tracking, which the addon did carry');
+    assert.equal(core.coreMouseService.activeEncoding, 'SGR', 'and its SGR encoding — not X10\'s, which the page never sends');
+    assert.equal(core.coreService.isCursorHidden, true, 'the cursor stays hidden');
+    assert.deepEqual([core.buffer.scrollTop, core.buffer.scrollBottom], [2, 19], 'the scroll region is the TUI\'s');
+    assert.deepEqual([b.type, b.cursorY, b.cursorX], ['alternate', 4, 11], 'and the cursor where the TUI left it, not homed by the region');
+    let sent = ''; const d = core.coreService.onData(s => sent += s);
+    core.coreMouseService.triggerMouseEvent({ col: 9, row: 4, x: 0, y: 0, button: 4, action: 0, ctrl: false, alt: false, shift: false }); d.dispose();
+    assert.equal(sent, '\x1b[<64;10;5M', 'a wheel step reaches the TUI as it asked for it');
+  } finally { sock?.end(); h.kill('SIGTERM'); await new Promise(r => h.exitCode !== null ? r() : h.on('exit', r)); }
+});
