@@ -27,7 +27,7 @@ export default async function (ctx) {
 
   // the window at 760 px (the list's widest is short of what would leave the column that narrow): a column of ~380 px,
   // where two chips cannot fit beside the title's room
-  await ctx.send('Emulation.setDeviceMetricsOverride', { width: 778, height: 900, deviceScaleFactor: 1, mobile: false }); await ctx.sleep(300);   // 760 before the tiles' 18 px of gaps and borders (2026-10-14)
+  await ctx.send('Emulation.setDeviceMetricsOverride', { width: 806, height: 900, deviceScaleFactor: 1, mobile: false }); await ctx.sleep(300);   // 760 before the tiles' 18 px of gaps and borders and the floating header's 28 px of insets (2026-10-14)
   out.narrow = await fit();
   ctx.assert.equal(out.narrow.shown, 1, `narrowed: one chip (${out.narrow.shown} shown)`);
   ctx.assert.equal(out.narrow.more, '+9 ▾', '…and, the whole count too wide beside one chip and the title\'s room, +n');

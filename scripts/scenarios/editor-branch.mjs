@@ -55,7 +55,7 @@ const before = folder();
 export const meta = {
   server: true, fixture: claudeDir,
   env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: prsFile, PR_TTL_MS: '300' },
-  prefs: { headFloat: true, prsOpen: true },
+  prefs: { prsOpen: true },
 };
 
 export default async function (ctx) {
@@ -92,7 +92,7 @@ export default async function (ctx) {
   await ctx.waitFor(`${ideTab} && window.peix.state().tab === ${ideTab}`, { what: 'the worktree’s editor tab, in front', timeout: 30000 });
   ctx.assert.equal(git(wt('feat-tax-rounding'), 'rev-parse', '--abbrev-ref', '@{u}'), 'origin/feat/tax-rounding');
   ctx.assert.deepEqual(folder(), before, 'the folder’s branch untouched');
-  await ctx.waitFor(`document.querySelector('#prlist .prrow[data-url="${u(14)}"]').closest('.prline').querySelector('.prwhere').textContent === 'worktree feat-tax-rounding'`, { what: '#14’s row saying where its branch is now', timeout: 15000 });
+  await ctx.waitFor(`document.querySelector('#prlist .prrow[data-url="${u(14)}"]')?.closest('.prline')?.querySelector('.prwhere')?.textContent === 'worktree feat-tax-rounding'`, { what: '#14’s row saying where its branch is now', timeout: 15000 });
   const posted = await ctx.evaluate(`JSON.stringify(window.__posts.filter(m => m.type === 'pane').pop()?.panes?.map(p => p.key) || [])`).then(JSON.parse);
   ctx.assert.ok(posted.some(k => k.includes(encodeURIComponent(wt('feat-tax-rounding')))), 'the shell asked to show VS Code Web on the worktree');
 

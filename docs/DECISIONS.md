@@ -50,6 +50,9 @@ pref for a switch that went is deleted on load.
 * **Not the plain look's to rerun**: `cog-setup`, `hotkeys` and `project-cue` fail run from a worktree under
   `.claude/worktrees/` — the fixture's chat is the checkout, which is now its repo's project (2026-10-13) — on `main` as
   here; in the checkout itself the chat's folder is its project.
+* **The floating header** (2026-10-09) — the only header: `<html data-head="float">` is in the markup, its rules as
+  they were; the switch, `applyHead` and the plain header's turns in `layoutNotch`, `headNotch` and `floatH` went, and
+  the harness no longer turns it off — the scenarios measure the board as it is.
 
 ## Decisions of 2026-10-14, on a branch — the tour
 

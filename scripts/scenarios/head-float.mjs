@@ -1,9 +1,9 @@
-// The floating header (2026-10-09, the design studies' E), a switch to compare with the plain one: on, the chat
-// header is a rounded bar inset from the column's edges, the PR rows under it inset alike; the choice outlives a
-// reload; off, the header runs edge to edge again. And it floats (2026-10-11, late morning): the transcript runs up
-// behind it to the column's top, its words starting under it and faint over that height — under the PR rows too when
-// they are open; at the notch its top edge dips round the camera housing, the header keeping its place — bending into
-// the tile's own line round the housing and following it, no second line under it (2026-10-11, afternoon).
+// The floating header (2026-10-09, the design studies' E; the only header since 2026-10-14): the chat header is a
+// rounded bar inset from the column's edges, the PR rows under it inset alike. And it floats (2026-10-11, late
+// morning): the transcript runs up behind it to the column's top, its words starting under it and faint over that
+// height — under the PR rows too when they are open; at the notch its top edge dips round the camera housing, the
+// header keeping its place — bending into the tile's own line round the housing and following it, no second line under
+// it (2026-10-11, afternoon).
 export const meta = { server: true, fixture: 'auto' };
 
 export default async function (ctx) {
@@ -13,10 +13,6 @@ export default async function (ctx) {
       chips: document.querySelectorAll('#shead .hpr:not(.more):not([hidden])').length, more: !!document.querySelector('#moreBtn') }; })())`).then(JSON.parse);
   await ctx.openChat(two.id);
   await ctx.waitFor(`document.querySelectorAll('#shead .hpr').length >= 2`, { what: 'the header with its PRs' });
-  out.plain = await head();
-  ctx.assert.deepEqual([out.plain.attr, out.plain.radius, out.plain.left, out.plain.top], [null, '0px', 0, 0], `plain: edge to edge (${JSON.stringify(out.plain)})`);
-
-  await ctx.evaluate(`document.querySelector('#headFloat').click()`);
   await ctx.settle();
   out.float = await head();
   ctx.assert.deepEqual([out.float.attr, out.float.radius, out.float.left, out.float.right, out.float.top], ['float', '14px', 14, 14, 10], `floating: a rounded bar inset (${JSON.stringify(out.float)})`);
@@ -78,14 +74,5 @@ export default async function (ctx) {
   await ctx.settle();
   ctx.assert.equal(await ctx.evaluate(`!document.querySelector('#chat > .hcut') && !document.querySelector('#shead').style.clipPath`), true, 'out of the fill, no dip');
 
-  await ctx.reload();
-  await ctx.openChat(two.id);
-  ctx.assert.equal((await head()).attr, 'float', 'the choice outlives a reload');
-  await ctx.evaluate(`document.querySelector('#headFloat').click()`);
-  await ctx.settle();
-  out.off = await head();
-  ctx.assert.deepEqual([out.off.attr, out.off.radius, out.off.left], [null, '0px', 0], 'off: edge to edge again');
-  out.offLog = await ctx.evaluate(`(l => Math.round(l.top - document.querySelector('#shead').getBoundingClientRect().bottom))(document.querySelector('#log').getBoundingClientRect())`);
-  ctx.assert.ok(out.offLog >= 0, `and the transcript under it: ${out.offLog}`);
   return out;
 }

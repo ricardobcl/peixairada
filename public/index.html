@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-head="float">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1333,8 +1333,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #chat.tinted .shead .hprs:hover, #chat.tinted .shead .hprs.on { background: color-mix(in srgb, var(--rink) 12%, transparent); }
   /* ---- The chat's PRs, one per row under the header: state, repo#n, the whole title. ---- */
   #prlist { border-bottom: 1px solid var(--line); background: var(--panel); padding: 4px 12px 5px; display: grid; gap: 1px; min-width: 0; }
-  /* The floating header (2026-10-09, the studies' E — prefs.headFloat, <html data-head="float">, to try beside the
-     plain one): the chat header a bar inset from the window's edges, rounded, an edge of the project's colour and a
+  /* The floating header (2026-10-09, the studies' E; the only header since 2026-10-14 — <html data-head="float"> is in
+     the markup, never toggled, the hook of its rules): the chat header a bar inset from the window's edges, rounded, an edge of the project's colour and a
      shadow under it; the PR rows under it take the same insets. */
   :root[data-head="float"] #shead { margin: calc(10px + var(--hdrop, 0px)) 14px 4px; border: 1px solid color-mix(in srgb, var(--repo, var(--line)) 45%, var(--line)); border-radius: var(--r-5); overflow: hidden;
     box-shadow: 0 10px 30px -8px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255, 255, 255, .06); }
@@ -2271,7 +2271,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <div class="opt lightpick zoompick" title="Everything on the board, larger or smaller — the app's own zoom; in a browser, its View menu's"><span><b>text size</b> — the whole board</span><span class="sseg" role="radiogroup" aria-label="Text size" id="zoomPick"><button type="button" role="radio" data-z="0.9">90 %</button><button type="button" role="radio" data-z="1">100 %</button><button type="button" role="radio" data-z="1.1">110 %</button><button type="button" role="radio" data-z="1.25">125 %</button><button type="button" role="radio" data-z="1.4">140 %</button></span><span class="zhint">your browser's View → Zoom</span></div>
     <div class="opt" title="A theme is every surface at once — the cards, the transcript, the code, the drawer's colours, the header's black and the status bar — and its appearance, dark or light, whatever macOS shows"><span><b>theme</b> — <span id="themeNames"></span> <button class="btn" id="themeBtn">choose… ⌥⌘Y</button></span></div>
     <label class="opt sub" title="On, the board is dark while macOS is dark and light while it is light, each in the theme last picked for it; off, the theme picked is worn — and its appearance — whatever macOS shows"><input type="checkbox" id="skinFollow"><span><b>follow macOS</b> — a dark theme while macOS is dark, a light one while it is light; off, the theme picked whatever macOS shows</span></label>
-    <label class="opt" title="On, the chat header is a bar inset from the window's edges, rounded and shadowed; off, it runs edge to edge as before"><input type="checkbox" id="headFloat"><span><b>floating header</b> — the chat header as a rounded bar inset from the edges</span></label>
     <label class="opt" title="On, a strip at the window's foot: the search, the connection, how many chats ask you and what is watching, the faces on your PRs, the fish (faster the more is at work), CPU and memory, the plan's limits, keeping the Mac awake and the clock — the list's foot then has none of them"><input type="checkbox" id="sbarOn" checked><span><b>status bar</b> — the search, what asks you and what is watching, the faces, the fish, the machine and the plan, keeping the Mac awake and the clock at the window's foot; off, the search, the faces and the plan return to the list's foot and the awake switches to the chat header</span></label>
     <div class="opt sub sbstats" id="sbarStats" title="What else the status bar says — asked of the Mac every 3 s while shown"><span><b>also</b></span><label><input type="checkbox" data-stat="cpu"> CPU</label><label><input type="checkbox" data-stat="mem"> memory</label><label><input type="checkbox" data-stat="claude"> Claude's memory</label></div>
     <h4 class="shd">Terminal</h4>
@@ -2409,7 +2408,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -2430,7 +2429,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   delete prefs.filter; delete prefs.filters;
   delete prefs.peopleFold;   // the faces folded to a count (2026-10-09, off by default) became peopleCompact (2026-10-11, later): folded by default
   // the experimental switches pared (2026-10-14): what they chose is now the only way, or gone
-  for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume', 'edgeLight', 'ringsInStep', 'cardSpot', 'tileStack', 'wallFollow', 'tiles']) delete prefs[k];
+  for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume', 'edgeLight', 'ringsInStep', 'cardSpot', 'tileStack', 'wallFollow', 'tiles', 'headFloat']) delete prefs[k];
   if (!Array.isArray(prefs.lanesShut)) prefs.lanesShut = ['done', 'idle'];
   prefs.lanesShut = prefs.lanesShut.filter(g => g !== 'move' && g !== 'replied');   // lanes for a morning (2026-10-12), filters since
   if (prefs.listFilter !== 'move' && prefs.listFilter !== 'replied') prefs.listFilter = null;
@@ -4008,11 +4007,6 @@ const toolName = n => {
     if (phaseAnims.queued) return; phaseAnims.queued = true;
     requestAnimationFrame(() => { if (phaseAnims.queued) run(); });
   }
-  // The floating header (2026-10-09, the studies' E): a switch, to compare with the plain one in use.
-  const applyHead = () => { if (prefs.headFloat) document.documentElement.dataset.head = 'float'; else delete document.documentElement.dataset.head; };
-  applyHead();
-  $('#headFloat').checked = !!prefs.headFloat;
-  $('#headFloat').addEventListener('change', e => { prefs.headFloat = e.target.checked; savePrefs(); applyHead(); layoutNotch(); fitHeadPrs(); paintHeadSplit(); floatH(); listChanged(); });
   // ---- the list's ends: how many cards are out of sight ---------------------------------
   // (2026-09-25): a pill at each end, counting the cards more than half out of view that way — a card cut in two is
   // still being shown. A dot on it when one of them is asking you (red) or clauding: the two states a card should not
@@ -4769,7 +4763,7 @@ const toolName = n => {
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
   const SWITCHES = [['notifyOn', 'Notifications'], ['autoUpdate', 'Update itself'], ['skinFollow', 'Theme follows macOS'],
-    ['sbarOn', 'Status bar'], ['headFloat', 'Floating header'], ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal']];
+    ['sbarOn', 'Status bar'], ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
     { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },
@@ -6061,7 +6055,7 @@ const toolName = n => {
   // The floating header's title runs on under the housing rather than jump it (2026-10-11, late night): the header dips
   // round the housing, and under the dip there is just about a line's room. Where the glyphs would touch the dip's
   // line, the header is lowered by what they need to clear it by HEAD_CLEAR — lowered, not padded, so its row stays
-  // centred — up to HEAD_DROP_MAX; past that the title jumps as the plain header's does. The glyphs' top is the
+  // centred — up to HEAD_DROP_MAX; past that the title jumps the housing. The glyphs' top is the
   // canvas's measure of the title in its own font, and of 'Hdl' at least, so two titles of one font lower it alike.
   const HEAD_CLEAR = 2, HEAD_DROP_MAX = 8;
   function headDrop(head, t, tr, n) {
@@ -6087,7 +6081,7 @@ const toolName = n => {
     const tx = hole && t && sep ? sep.getBoundingClientRect().right + (parseFloat(getComputedStyle(h2).columnGap) || 0) : 0;
     const tr = tx ? (r => (r.selectNodeContents(t), r.getBoundingClientRect()))(document.createRange()) : null;   // the text's own box: scrollWidth is never under the box's
     const over = hole && !!tx && tx + tr.width > n.left - NP;   // the title is longer than the room left of the housing
-    const drop = over && prefs.headFloat ? headDrop(head, t, tr, n) : null, under = drop != null, tright = over && !under;   // under it, or over it
+    const drop = over ? headDrop(head, t, tr, n) : null, under = drop != null, tright = over && !under;   // under it, or over it
     main.classList.toggle('notch', !!n);
     main.style.setProperty('--notch-top', `${n ? n.top : 0}px`);
     list.classList.toggle('npad', !!n && lr > n.left - NP);
@@ -6114,7 +6108,7 @@ const toolName = n => {
   // bends, the tile's line drawing the rest.
   const HEAD_BEND = 10, HOUSING_R = 9, TILE_BW = 2;   // the housing's lower corners, by eye; the tiles' border
   function headNotch() {
-    const head = $('#shead'), chat = $('#chat'), n = prefs.headFloat ? state.notch : null, M = 60, G = TILE_BW - 1;   // a pixel under the tile's line: no seam between them
+    const head = $('#shead'), chat = $('#chat'), n = state.notch, M = 60, G = TILE_BW - 1;   // a pixel under the tile's line: no seam between them
     let svg = chat.querySelector(':scope > .hcut');
     const r = n && head.getBoundingClientRect(), cut = !!n && r.width > 0 && r.top < n.top + G && r.left < n.right + G && r.right > n.left - G;
     if (!cut) { if (svg) { svg.remove(); head.style.clipPath = ''; chat.classList.remove('hcutp'); } return; }
@@ -6147,7 +6141,6 @@ const toolName = n => {
   // stays at its end.
   function floatH() {
     const chat = $('#chat'), was = chat.style.getPropertyValue('--float-h');
-    if (!prefs.headFloat) { if (was) chat.style.removeProperty('--float-h'); return; }
     const top = $('#groups').getBoundingClientRect().top, log = $('#log');
     const bottom = Math.max(top, ...['#shead', '#prlist', '#rival'].map(id => $(id)).filter(el => el.getClientRects().length)
       .map(el => el.getBoundingClientRect().bottom + (parseFloat(getComputedStyle(el).marginBottom) || 0)));

@@ -15,7 +15,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { slugOf } from '../fixture.mjs';
 
-export const meta = { server: true, fixture: 'auto', prefs: { headFloat: true } };
+export const meta = { server: true, fixture: 'auto' };
 
 export default async function (ctx) {
   const out = {};

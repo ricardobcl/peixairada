@@ -102,8 +102,7 @@ GitHub and VS Code open in the chat in the Mac app; in a browser they open in a 
 
 ## 🎛️ Make it yours
 
-Every look is a switch in Settings › Board (⌘,), or a key — and the board starts with the floating header on, as at the
-top.
+Every look is a switch in Settings › Board (⌘,), or a key.
 
 <table>
   <tr>
@@ -164,8 +163,8 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
 **Settings** — ⌘, or ··· in the chat's header:
 
 - **Board** — *Alerts*: notifications, sounds · *Chats*: card size (compact, or large only where a chat wants you),
-  where files open · *Look*: text size (the whole board, in the app), the theme and whether it follows macOS, the floating header (on to
-  begin with), the status bar and what it shows · *Terminal*: ⌥ as Meta, a screen reader in the drawer ·
+  where files open · *Look*: text size (the whole board, in the app), the theme and whether it follows macOS, the status bar and what it
+  shows · *Terminal*: ⌥ as Meta, a screen reader in the drawer ·
   *Updates*: whether the board updates itself (off to begin with: the status bar says when new commits came, and
   *update now* takes them), where it stands, check now.
 - **Setup** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the

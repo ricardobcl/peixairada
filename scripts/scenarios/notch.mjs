@@ -5,7 +5,8 @@
 // dragged under the housing pads its head down, and the header, too far left for a title, pads down too; a list past
 // the housing leaves a header that lifts as it is; the rail is the lifted case; and the fill going off puts it all
 // back. Since 2026-09-28: what follows the title stands at the far right, the header is black from the project's name
-// on, and a title that does not fit left of the housing goes right of it — a short one stays left.
+// on, and a title that does not fit left of the housing runs on under it (the floating header's way, the only header
+// since 2026-10-14; it went right of the housing before) — a short one stays left.
 import { makeFixture } from '../fixture.mjs';
 
 export const meta = { server: true, fixture: 'auto', prefs: { statusBar: false } };   // the fish at the list's foot: with the status bar on (the default since 2026-10-09) the row is gone
@@ -38,10 +39,10 @@ export default async function (ctx) {
       afterLeft: after ? Math.round(after.getBoundingClientRect().left) : null, afterTop: after ? Math.round(after.getBoundingClientRect().top) : null,
       underHousing: parts.filter(under).map(el => el.textContent.trim().slice(0, 30)),
       chips: [...head.querySelectorAll('#prToggle .hpr:not(.more)')].filter(c => !c.hidden).length, more: [...head.querySelectorAll('.hpr.more')].some(m => !m.hidden),
-      title: h2.querySelector('.t')?.getBoundingClientRect().width | 0, tright: head.classList.contains('tright'),
+      title: h2.querySelector('.t')?.getBoundingClientRect().width | 0, tright: head.classList.contains('tright'), tunder: head.classList.contains('tunder'),
       tLeft: Math.round(h2.querySelector('.t').getBoundingClientRect().left), tRight: Math.round(h2.querySelector('.t').getBoundingClientRect().right),
       repoRight: Math.round(h2.querySelector('.repo').getBoundingClientRect().right), sepRight: Math.round(h2.querySelector('.sep').getBoundingClientRect().right),
-      tailRight: Math.round(head.querySelector('.hmore').getBoundingClientRect().right + parseFloat(getComputedStyle(head.querySelector('.hmore')).marginRight)), headInner: Math.round(head.getBoundingClientRect().right - parseFloat(getComputedStyle(head).paddingRight)),
+      tailRight: Math.round(head.querySelector('.hmore').getBoundingClientRect().right + parseFloat(getComputedStyle(head.querySelector('.hmore')).marginRight)), headInner: Math.round(head.getBoundingClientRect().right - parseFloat(getComputedStyle(head).paddingRight) - parseFloat(getComputedStyle(head).borderRightWidth)),
       split: Math.round(head.getBoundingClientRect().left + parseFloat(head.style.getPropertyValue('--hsplit'))), oneLine: after ? Math.abs(after.getBoundingClientRect().top - h2.getBoundingClientRect().top) < 12 : null };
   })())`).then(JSON.parse);
 
@@ -51,12 +52,12 @@ export default async function (ctx) {
   // The fill, the list at its usual width: both heads in the strip, the header with a hole where the housing is
   await fill(true);
   out.on = await read();
-  ctx.assert.deepEqual([out.on.notch, out.on.top, out.on.listPad, out.on.chatPad, out.on.hole], [true, '32px', false, false, true], 'filled: the list lifted, the header holed');
+  ctx.assert.deepEqual([out.on.notch, out.on.top, out.on.listPad, out.on.chatPad, out.on.tunder], [true, '32px', false, false, true], `filled: the list lifted, the title on under the housing: ${JSON.stringify(out.on)}`);
   ctx.assert.ok(out.on.listRight < NOTCH.left, `the list ends short of the housing (${out.on.listRight})`);
   ctx.assert.deepEqual([out.on.listPad0, out.on.headPad], [0, 7], 'the list\'s cards and the chat\'s header at the top, their own padding — the list\'s row is at its foot (2026-09-28, later), the first card flush with the top (2026-09-29)');
   ctx.assert.ok(out.on.fishTop > 500, `the fish at the foot (${out.on.fishTop})`);
   ctx.assert.ok(out.on.repoRight < NOTCH.left - 9, `the project's name left of the housing (${out.on.repoRight})`);
-  ctx.assert.ok(out.on.tright && out.on.tLeft >= NOTCH.right + 9 && out.on.tLeft < NOTCH.right + 20, `a title too long for the left goes right of the housing (${out.on.tLeft})`);
+  ctx.assert.ok(!out.on.tright && out.on.tLeft < NOTCH.left && out.on.tRight > NOTCH.right, `a title too long for the left runs on under the housing (${out.on.tLeft}–${out.on.tRight})`);
   ctx.assert.ok(out.on.afterLeft >= NOTCH.right + 9, `the chips start past it (${out.on.afterLeft})`);
   ctx.assert.equal(out.on.tailRight, out.on.headInner, 'and what follows the title stands at the far right (2026-09-28)');
   ctx.assert.equal(out.on.split, out.on.sepRight, `the header is black from the project's name on, the housing inside it (${out.on.split})`);
@@ -90,10 +91,10 @@ export default async function (ctx) {
   await ctx.shot('3-rail', { x: 0, y: 0, width: 1728, height: 60 });
   await ctx.key('KeyB'); await ctx.sleep(250);
 
-  // A redraw of the header keeps the hole (the h2 is rebuilt): the chips' fold toggled
+  // A redraw of the header keeps its way round the housing (the h2 is rebuilt): the chips' fold toggled
   await ctx.evaluate(`document.querySelector('#prToggle').click()`); await ctx.sleep(250);
   out.redrawn = await read();
-  ctx.assert.deepEqual([out.redrawn.hole, out.redrawn.underHousing], [true, []], 'redrawn, the hole is there again');
+  ctx.assert.deepEqual([out.redrawn.tunder, out.redrawn.underHousing], [true, []], 'redrawn, the title runs on under the housing again');
   await ctx.evaluate(`document.querySelector('#prToggle').click()`); await ctx.sleep(100);
 
   // A title short enough for the left of the housing stays there, the chips still at the far right

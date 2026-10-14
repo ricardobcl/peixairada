@@ -74,7 +74,7 @@ export default async function (ctx) {
   ctx.assert.ok(Math.abs(p.stackAt - .3) < .02, `the stacked divider is at ${p.stackAt}`);
   ctx.assert.equal(p.splitAt, .5, 'the side-by-side divider did not move');
   r = await rects(ctx);
-  ctx.assert.ok(Math.abs(r.grp.h - (r.groups.h - 16 - 8) * .3) <= 3, `the top half is 30 % of the column (${r.grp.h} of ${r.groups.h})`);
+  ctx.assert.ok(Math.abs(r.grp.h - (r.grp.h + r.grpB.h) * .3) <= 3, `the top half is 30 % of the column (${r.grp.h} of ${r.groups.h})`);
   await fits(ctx);
   await ctx.shot('dragged');
 

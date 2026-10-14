@@ -71,10 +71,10 @@ export default async function (ctx) {
     await ctx.evaluate(`window.peixFill(true, ${JSON.stringify(N)})`);
     await ctx.waitFor(`!!document.querySelector('#chat.ncutp > .ncut')`, { what: 'the chat cut round the housing' });
     await ctx.settle();   // the header's title laid round the housing first: read mid-way, it was a pixel past the line now and then
-    out.cut = await ctx.evaluate(`(() => { const c = document.querySelector('#chat > .ncut'), r = c.getBoundingClientRect(); return { left: r.left, right: r.right, bottom: r.bottom, color: getComputedStyle(c).borderLeftColor, round: getComputedStyle(c).borderBottomLeftRadius + ' ' + getComputedStyle(c).borderBottomRightRadius, caps: [getComputedStyle(document.querySelector('#chat > .ncap.l')).borderTopRightRadius, getComputedStyle(document.querySelector('#chat > .ncap.r')).borderTopLeftRadius], h2: document.querySelector('#shead h2').getBoundingClientRect().right }; })()`);
+    out.cut = await ctx.evaluate(`(() => { const c = document.querySelector('#chat > .ncut'), r = c.getBoundingClientRect(); return { left: r.left, right: r.right, bottom: r.bottom, color: getComputedStyle(c).borderLeftColor, round: getComputedStyle(c).borderBottomLeftRadius + ' ' + getComputedStyle(c).borderBottomRightRadius, caps: [getComputedStyle(document.querySelector('#chat > .ncap.l')).borderTopRightRadius, getComputedStyle(document.querySelector('#chat > .ncap.r')).borderTopLeftRadius], h2: document.querySelector('#shead h2').getBoundingClientRect().right, under: document.querySelector('#shead').classList.contains('tunder') }; })()`);
     ctx.assert.deepEqual([out.cut.left, out.cut.right, out.cut.bottom], [N.left - 2, N.right + 2, N.top + 2], 'the border round the housing, no gap');
     ctx.assert.equal(out.cut.color, 'rgb(224, 93, 68)', 'in the chat’s colour');
-    ctx.assert.ok(out.cut.h2 <= N.left - 11.5, 'the title clear of the border');
+    ctx.assert.ok(out.cut.h2 <= N.left - 11.5 || out.cut.under, `the title clear of the border, or on under it (head-float.mjs): ${JSON.stringify(out.cut)} ${JSON.stringify(N)}`);
     ctx.assert.equal(out.cut.round, '11px 11px', 'its lower corners round, concentric with the housing’s');
     ctx.assert.deepEqual(out.cut.caps, ['9px', '9px'], 'and the panel’s corners beside its top, as the screen flares into the housing');
     ctx.assert.ok(await ctx.evaluate(`!document.querySelector('#chat').contains(document.elementFromPoint(${N.left - 1}, document.querySelector('#chat').getBoundingClientRect().top + 1))`), 'outside that corner is not the chat’s');

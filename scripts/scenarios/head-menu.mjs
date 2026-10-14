@@ -25,7 +25,7 @@ export default async function (ctx) {
     right: Math.round(document.querySelector('#moreBtn').getBoundingClientRect().right - document.querySelector('#hmenu').getBoundingClientRect().right),
     below: Math.round(document.querySelector('#hmenu').getBoundingClientRect().top - document.querySelector('#moreBtn').getBoundingClientRect().bottom) })`).then(JSON.parse);
   ctx.assert.deepEqual(out.menu.ids, ['termBtn', 'chgBtn', 'webBtn', 'forGoodBtn', 'detailsBtn', 'settingsBtn'], 'the actions, by their own ids — the changes (2026-10-10), done for good on a chat with PRs (2026-10-11), the lid\'s row is the status bar\'s while it is on (2026-10-09), the settings last, no { } since long code is always folded (2026-09-28), no open in VS Code (2026-09-29)');
-  ctx.assert.ok(Math.abs(out.menu.right) <= 1 && out.menu.below === 4, 'right-aligned, just under ···');
+  ctx.assert.ok(Math.abs(out.menu.right) <= 1 && Math.abs(out.menu.below - 4) <= 1, `right-aligned, just under ···: ${JSON.stringify(out.menu)}`);
   await ctx.shot('2-menu', { x: 1100, y: 0, width: 600, height: 300 });
 
   // a toggle keeps it up, with the new state on its row

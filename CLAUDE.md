@@ -319,7 +319,8 @@ for `$HOME`'s home and the account's.
   `repoColor`); the drawer's sixteen colours are the theme's (`xtTheme`, `ANSI`). A tile
   clicked reveals from the point (`revealFrom`, a view transition). **A colour that reads no token is one no theme
   reaches.** → `themes.mjs`.
-* **The floating header** (2026-10-09, on by default; `prefs.headFloat` → `<html data-head="float">`): `#shead` and
+* **The header floats** (2026-10-09; the only header since 2026-10-14 — `<html data-head="float">` is in the markup,
+  never toggled, the hook of its rules): `#shead` and
   `#prlist` inset and rounded, **over the chat** — `#groups` spans the header's rows (`grid-row: 1 / 5`, every row of
   `#chat` placed in column 1: two overlapping items, one auto-placed, take two columns). A half with a strip pads down
   by `--float-h` (`floatH`, a ResizeObserver); one without runs up behind it — **but a drawer starts under it while its
@@ -329,7 +330,7 @@ for `$HOME`'s home and the account's.
   **At the notch** its top edge dips round the camera housing (`headNotch` from `layoutNotch`; along the tile's own
   line — `HEAD_BEND`, `HOUSING_R` + `TILE_BW` —, the border there `svg.hcut`), and a long title runs on
   under the housing, the header lowered by `--hdrop` (`headDrop`, `.tunder`) up to `HEAD_DROP_MAX`, past which it
-  jumps the housing as the plain header's does. → `head-float.mjs`.
+  jumps the housing. → `head-float.mjs`.
 * **The chat header is a gradient of the project's colour**: `tintChat()` sets `--repo`, `--rink` (the ink on it,
   `inkOn()`), `--rover`/`--rover2` and `#chat.tinted`; no colour, the plain panel header. **The colour eases from chat
   to chat on the surfaces that draw it** (2026-10-13): `tintChat` sets plain `--hbg`, `--hveil`, `--hveil2` on `#chat`;
@@ -1003,8 +1004,8 @@ the live board at load — `npm run verify -- "typeof window.peix"`.
   board's web process (main.swift logs `board: web process <pid>`) — CPU, memory, where the time went.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports `meta`
   (`server`, `fake`, `fixture`, `env`, `prefs` — what the page starts from; **without it a page starts with every
-  lane open, large cards, not the floating header, the theme following the emulated colour scheme, the tour taken**: the
-  scenarios measure the plain header, and the ones about it turn it on) and a default `async (ctx) => result`. The runner starts a throwaway server on a free
+  lane open, large cards, the theme following the emulated colour scheme and the tour taken**: the scenarios read the
+  words on the cards, and the ones about those turn the board's own on) and a default `async (ctx) => result`. The runner starts a throwaway server on a free
   port with its own state dir, builds the fixture, runs the fake claude when asked, launches Chrome with **focus
   emulation on**, and cleans up everything on any exit within 15 s (`--keep` to inspect). **`ctx.reload()`** waits
   for the new document's snapshot — never a reload and a sleep; `openChat` waits for that chat's log

@@ -5,7 +5,7 @@
 // top at the header's rows' foot, the banner on its first rows and in sight); filled with turns, it runs up behind the
 // header once its screen is full — once, no see-saw — taller by the rows the header covers, faded there; a /clear
 // starts it over, and it goes back under.
-export const meta = { server: true, fake: true, fixture: 'auto', prefs: { headFloat: true }, env: { FAKE_TUI: 'fullscreen' } };
+export const meta = { server: true, fake: true, fixture: 'auto', env: { FAKE_TUI: 'fullscreen' } };
 
 export default async function (ctx) {
   const out = {};
