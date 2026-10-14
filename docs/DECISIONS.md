@@ -5,6 +5,21 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-14. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-14, on a branch — update from the status bar
+
+Ricardo: "does the "check now" also updates the app if auto-update is not on? if not, we should have a "Updated" instead
+of "check now" if we detected there's a new version, so it's easy to do" — the settings' button already turned into
+*update now* once a look found something; asked whether the status bar's word should take it too: "yes".
+
+* **The status bar's word on news is *update now* itself** (`updNow`): when what it says is what the settings'
+  *update now* would take (`canPull`: new commits it can fast-forward to; `canBuild`: the app behind `mac/`, rebuilt
+  alone — the button's own test, split in two so each word goes by its own), a click takes it, with no detour through
+  Settings. The words say so — *1 new commit · update*, *the app is behind · rebuild* — and the tooltip says what the
+  click does (the app quits and opens again). As with the button, the page reloads at once when the update changed it.
+* **What it cannot take still opens Settings › Updates**: changes here, a diverged checkout, an update held back or
+  failed, an app this server does not build (`manual`) — there the click is for the reason, which the settings spell
+  out. *Once you rest* (the switch on, the board not quiet yet) keeps its words; a click takes it now.
+
 ## Decisions of 2026-10-14, on a branch — a PR's number finds its chat
 
 Ricardo: "hotkey K does not work very well. I type "[n]" and I was expecting to match the chat that has a PR [n]

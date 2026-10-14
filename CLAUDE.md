@@ -165,7 +165,9 @@ for `$HOME`'s home and the account's.
   itself once left be (`takeUpdate`, `reloadBusy`: at once if asked for there; never mid-update nor before the new
   server is back). **Its progress is the status bar's** (`updSeg`, `updRun`): the server's `steps`/`step`, `restarting`,
   `building` (the app's rebuild followed by its pid across the restart, `watchBuild`, ended by its log's `installed →`),
-  `failed`; new commits not taken and why; a page waiting (a click reloads it).
+  `failed`; new commits not taken and why; a page waiting (a click reloads it). **News *update now* would take is a click
+  that takes it** (2026-10-14; `canPull`, `canBuild` → `data-take`, `updNow`): *1 new commit · update*, *the app is behind
+  · rebuild*; anything else opens Settings › Updates.
   **First the new page compiles and the new server starts on a spare port** (`preflight`, the checkout's
   lib/testserver.mjs); one that does not is undone (`git reset --keep`) and held (`updateHeld`) until a newer commit.
   **The app is held against the checkout, pull or none** (2026-10-14; `readApp`, `appWhyNot` → `app`, `appWhy`;

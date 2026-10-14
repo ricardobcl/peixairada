@@ -7,8 +7,9 @@
 // — not under a dialog, not while keys are pressed — and then reloads it; one that changes the server too waits for the
 // new server before the page reloads; the switch is the server's. The status bar says it all as it goes: a page waiting
 // to be reloaded, the restart, a step under way with its bar (the packages, slowed down here), new commits not taken
-// and why — a click opening Settings › Updates. Last (2026-10-14): a commit made in the checkout itself, which no pull
-// brings, leaves the installed app behind mac/ — said in the bar and the settings, and *update now* rebuilds it alone.
+// and why — a click opening Settings › Updates, or, on news *update now* would take, taking it (2026-10-14: *1 new commit
+// · update*). Last (2026-10-14): a commit made in the checkout itself, which no pull brings, leaves the installed app
+// behind mac/ — said in the bar and the settings, and a click on the bar's word rebuilds it alone.
 import { execFileSync } from 'node:child_process';
 import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -47,7 +48,7 @@ export default async function (ctx) {
   const mark = () => ctx.evaluate(`window.__mark = 1`);
   const reloaded = what => ctx.waitFor(`!window.__mark && window.peix?.state().snapshots > 0`, { timeout: 25_000, what });
   const say = () => ctx.evaluate(`document.querySelector('#updSay').textContent`);
-  const seg = () => ctx.evaluate(`(b => b && { cls: b.className, text: b.textContent, tip: b.title, p: b.querySelector('i')?.style.getPropertyValue('--p') || null })(document.querySelector('#sbLeft .upg'))`);
+  const seg = () => ctx.evaluate(`(b => b && { cls: b.className, text: b.textContent, tip: b.title, p: b.querySelector('i')?.style.getPropertyValue('--p') || null, take: b.dataset.take || null })(document.querySelector('#sbLeft .upg'))`);
   const barShot = label => ctx.evaluate(`(r => ({ x: r.left, y: r.top - 4, width: Math.min(r.width, 900), height: r.height + 8 }))(document.querySelector('#sbar').getBoundingClientRect())`).then(r => ctx.shot(label, r));
   try {
     // where it stands
@@ -72,8 +73,8 @@ export default async function (ctx) {
     ctx.assert.match(out.offered, /^1 new commit on origin\/main — update now takes them/);
     await ctx.waitFor(`document.querySelector('#sbLeft .upg.new')`, { what: 'the status bar saying a new commit came' });
     out.newSeg = await seg();
-    ctx.assert.equal(out.newSeg.text, '1 new commit', 'the news alone: off is the default, not a reason');
-    ctx.assert.match(out.newSeg.tip, /update now takes them .* — click for Settings › Updates$/);
+    ctx.assert.equal(out.newSeg.text, '1 new commit · update', 'the news and what a click does: off is the default, not a reason');
+    ctx.assert.match(out.newSeg.tip, /update now takes them .* — click to update now$/);
     await barShot('0-bar-new');
 
     // update now: pulled, and the page reloaded at once — the dialog notwithstanding
@@ -149,32 +150,52 @@ export default async function (ctx) {
     ctx.assert.match(out.off, /^1 new commit on origin\/main — update now takes them/);
     await ctx.evaluate(`document.querySelector('#settings').close()`);
     await ctx.waitFor(`document.querySelector('#sbLeft .upg.new')`, { what: 'the status bar saying new commits wait' });
-    ctx.assert.equal((await seg()).text, '1 new commit');
+    out.offSeg = await seg();
+    ctx.assert.deepEqual([out.offSeg.text, out.offSeg.take], ['1 new commit · update', '1'], 'what a click on it does, said');
     await barShot('4-bar-new');
+
+    // a tracked change here: not pulled over — the word says why, and a click opens Settings › Updates instead
+    const dirty = join(co, 'scripts', 'check-page.mjs'), clean = readFileSync(dirty, 'utf8');
+    writeFileSync(dirty, `${clean}// mine\n`);
+    await ctx.server.post('/api/update', {});
+    await ctx.waitFor(`document.querySelector('#sbLeft .upg.new')?.textContent === '1 new commit · changes here'`, { what: 'the status bar saying why it is not taken' });
+    out.changesSeg = await seg();
+    ctx.assert.equal(out.changesSeg.take, null, 'nothing a click could take');
+    ctx.assert.match(out.changesSeg.tip, / — click for Settings › Updates$/);
     await ctx.evaluate(`document.querySelector('#sbLeft .upg').click()`);
     await ctx.waitFor(`document.querySelector('#settings').open && document.querySelector('#settings [data-tab="board"]').classList.contains('on')`, { what: 'a click opening the settings at Updates' });
+    ctx.assert.match(await say(), /^1 new commit on origin\/main, not pulled: 1 file changed here/);
     await ctx.settle();
     await ctx.evaluate(`document.querySelector('#updRow').scrollIntoView({ block: 'center' })`); await ctx.settle();
-    await ctx.shot('2-off', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(document.querySelector('#settings').getBoundingClientRect())`));
+    await ctx.shot('2-changes', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(document.querySelector('#settings').getBoundingClientRect())`));
+
+    // the change undone: a click on the word takes the commit, the page reloaded at once, as update now does
+    writeFileSync(dirty, clean);
+    await ctx.evaluate(`document.querySelector('#settings').close()`);
+    await ctx.server.post('/api/update', {});
+    await ctx.waitFor(`document.querySelector('#sbLeft .upg.new')?.textContent === '1 new commit · update'`, { what: 'the commit takeable again' });
+    const d = git(dev, 'rev-parse', 'HEAD');
+    await mark();
+    await ctx.evaluate(`document.querySelector('#sbLeft .upg').click()`);
+    await reloaded('the page reloaded after a click on the bar');
+    ctx.assert.equal(git(co, 'rev-parse', 'HEAD'), d, 'pulled by the click');
 
     // a commit made here, to mac/: nothing to pull, and the app behind it all the same — said, and rebuilt alone
-    await mark();
-    await ctx.evaluate(`document.querySelector('#updBtn').click()`);   // the pending commit taken first: up to date with origin
-    await reloaded('the page reloaded after the last pull');
     ctx.assert.equal(readFileSync(marks, 'utf8').includes('build'), false, 'no build while the app was built from mac/ as it stands');
     writeFileSync(join(co, 'mac', 'Sources', 'main.swift'), readFileSync(join(co, 'mac', 'Sources', 'main.swift'), 'utf8') + '// mine\n');
     git(co, 'commit', '-q', '-am', 'a change of mine, never pushed');
     await ctx.server.post('/api/update', {});
     await ctx.waitFor(`document.querySelector('#sbLeft .upg.new')`, { what: 'the status bar saying the app is behind' });
     out.appSeg = await seg();
-    ctx.assert.equal(out.appSeg.text, 'the app is behind');
-    ctx.assert.match(out.appSeg.tip, /ahead of origin\/main — nothing to pull · the app is behind mac\/ here — update now rebuilds it/);
+    ctx.assert.deepEqual([out.appSeg.text, out.appSeg.take], ['the app is behind · rebuild', '1']);
+    ctx.assert.match(out.appSeg.tip, /ahead of origin\/main — nothing to pull · the app is behind mac\/ here — update now rebuilds it .* — click to rebuild it now \(it quits and opens again\)$/);
     await barShot('5-bar-app');
-    await ctx.evaluate(`document.querySelector('#sbLeft .upg').click()`);
-    await ctx.waitFor(`document.querySelector('#settings').open && document.querySelector('#updBtn').textContent === 'update now'`, { what: 'update now, for the app' });
-    await ctx.settle();
+    await ctx.cmd('Comma');
+    await ctx.waitFor(`document.querySelector('#settings').open && document.querySelector('#updBtn').textContent === 'update now'`, { what: 'update now, for the app, in the settings too' });
+    await ctx.evaluate(`document.querySelector('#updRow').scrollIntoView({ block: 'center' })`); await ctx.settle();
     await ctx.shot('3-app-behind', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(document.querySelector('#settings').getBoundingClientRect())`));
-    await ctx.evaluate(`document.querySelector('#updBtn').click()`);
+    await ctx.evaluate(`document.querySelector('#settings').close()`);
+    await ctx.evaluate(`document.querySelector('#sbLeft .upg').click()`);   // the bar's word, as the button would
     await ctx.waitFor(`document.querySelector('#sbLeft .upg.run')?.textContent === 'rebuilding the app…'`, { what: 'the app, being rebuilt' });
     ctx.assert.match(await say(), /rebuilding the app…/);
     await ctx.waitFor(`!document.querySelector('#sbLeft .upg:is(.new, .run, .err)') && /^[0-9a-f]{7} is 1 commit ahead/.test(document.querySelector('#updSay').textContent) && !/the app/.test(document.querySelector('#updSay').textContent)`, { timeout: 10_000, what: 'the app rebuilt: nothing left to say' });

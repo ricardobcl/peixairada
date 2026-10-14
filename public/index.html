@@ -2484,6 +2484,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       changes: `not rebuilt over ${many(a.changes, 'change')} to it here`, pull: 'rebuilt with the commits',
     })[u.appWhy] || '<code>mac/build.sh install</code> rebuilds it'}`;
   }
+  // What *update now* would take: new commits it can fast-forward to, the switch or the rest aside; the app behind mac/,
+  // rebuilt alone. The settings' button and the status bar's word (2026-10-14) both go by them.
+  const canPull = u => u.behind > 0 && !u.ahead && ['off', 'busy', 'held'].includes(u.why);
+  const canBuild = u => !u.busy && ['off', 'tried', 'busy'].includes(u.appWhy);
   /** The settings' line for the update, and whether its button updates (rather than looks). */
   function updateSay(u) {
     if (!u || u.checkout === null) return { say: 'not looked yet' };
@@ -2505,23 +2509,24 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     if (u.checkedAt && !u.busy) say += ` · looked ${rel(u.checkedAt)} ago`;
     if (!u.every) say += ' · it looks only when asked: this server is not the login agent';
     if (u.last) say += `<br>last update ${rel(u.last.at)} ago: ${many(u.last.count, 'commit')}${u.last.parts.length ? `, touching ${u.last.parts.map(k => UPD_PARTS[k]).join(', ').replace(/, ([^,]*)$/, ' and $1')}` : ''}`;
-    return { say, apply: (u.behind > 0 && !u.ahead && ['off', 'busy', 'held'].includes(u.why)) || (!u.busy && ['off', 'tried', 'busy'].includes(u.appWhy)) };
+    return { say, apply: canPull(u) || canBuild(u) };
   }
   /** The status bar's word on the update (2026-10-12): what it is doing, step by step; a page that waits to be reloaded
    *  (a click reloads it); an update that failed or was held back; new commits not taken, and why; for a minute, what
-   *  came. Nothing while it is up to date. A click opens Settings › Updates. */
+   *  came. Nothing while it is up to date. A click opens Settings › Updates — but on news *update now* would take, where
+   *  it is *update now* (2026-10-14: `data-take`, `updNow`), and the words say so. */
   function updSeg() {
     const u = state.update; if (!u?.checkout && !reload.want) return '';   // a page wanted after a restart is said off a checkout too (pageFollows)
-    const seg = (cls, icon, words, tip, p = null) => `<button class="seg upg ${cls}" title="${esc(tip)} — click ${cls === 'page' ? 'to reload it now' : 'for Settings › Updates'}">${icon}<span>${words}</span>${p == null ? '' : `<i style="--p:${p.toFixed(2)}"></i>`}</button>`;
+    const seg = (cls, icon, words, tip, p = null, take = '') => `<button class="seg upg ${cls}"${take ? ' data-take="1"' : ''} title="${esc(tip)} — click ${cls === 'page' ? 'to reload it now' : take || 'for Settings › Updates'}">${icon}<span>${words}</span>${p == null ? '' : `<i style="--p:${p.toFixed(2)}"></i>`}</button>`;
     const run = updRun(u), tip = updateSay(u).say.replace(/<br>/g, ' · ').replace(/<[^>]+>/g, '');
     if (run) return seg('run', ICON.reload, `${esc(run.say)}…`, tip, run.p);
     if (reload.want) return seg('page', ICON.reload, 'updated · reload the page', `The board's page was updated — it reloads by itself once you leave it be (${{ dialog: 'a dialog is up', typing: 'a box has the keyboard', pane: 'a page of the pane is in front', input: 'you are at it' }[reload.why] || 'any moment'})`);
     if (u.failed || u.why === 'held') return seg('err', ICON.reload, u.why === 'held' ? 'update held back' : 'update failed', tip);
     if (appFailed(u)) return seg('err', ICON.reload, 'the app was not rebuilt', tip);
     const why = { off: '', changes: ' · changes here', diverged: ' · diverged', busy: ' · once you rest' }[u.why];   // off, the default: new commits are the news, not the switch (2026-10-13)
-    if (u.behind > 0 && why != null) return seg('new', ICON.download, `${many(u.behind, 'new commit')}${why}`, tip);
+    if (u.behind > 0 && why != null) return seg('new', ICON.download, `${many(u.behind, 'new commit')}${why || (canPull(u) ? ' · update' : '')}`, tip, null, canPull(u) ? 'to update now' : '');
     const appWhy = { off: '', tried: '', manual: '', changes: ' · changes here', busy: ' · once you rest' }[u.appWhy];   // nothing to pull, and the app older than mac/ here (2026-10-14)
-    if (u.app?.behind && appWhy != null) return seg('new', ICON.download, `the app is behind${appWhy}`, tip);
+    if (u.app?.behind && appWhy != null) return seg('new', ICON.download, `the app is behind${appWhy || (canBuild(u) ? ' · rebuild' : '')}`, tip, null, canBuild(u) ? 'to rebuild it now (it quits and opens again)' : '');
     if (u.last && Date.now() - Date.parse(u.last.at) < 60_000) return seg('done', ICON.reload, `updated · ${many(u.last.count, 'commit')}`, tip);
     return '';
   }
@@ -2577,6 +2582,15 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     const on = e.target.checked;
     api('PUT', '/api/update', { on }).then(takeUpdate).catch(err => { e.target.checked = !on; note(e.target, `Could not save the switch: ${err.message}`, true); });
   });
+  /** *update now* from the status bar (2026-10-14): the settings' button without the settings — the page reloads at once
+   *  when it is done, as it does for the button. One ask at a time; the bar's word follows the server's. */
+  let updPosting = false;
+  function updNow() {
+    if (updPosting) return;
+    updPosting = true; updAsked = Date.now();
+    api('POST', '/api/update', { apply: true }).then(takeUpdate)
+      .catch(err => note($('#sbLeft .upg') || $('#sbar'), `Could not update: ${err.message}`, true)).finally(() => { updPosting = false; });
+  }
   $('#updBtn').addEventListener('click', e => {
     const b = e.currentTarget, apply = b.dataset.apply === '1';
     updAsked = Date.now(); b.disabled = true;
@@ -3299,7 +3313,7 @@ const toolName = n => {
     if (e.target.closest('.us')) { bar.open = !bar.open; renderBar(); return; }
     if (e.target.closest('.conn')) { aboutOpen(); return; }
     if (e.target.closest('.seg.ask')) { nextAsking(); return; }   // (2026-10-12) the count opens the chats it counts, one after another
-    if (e.target.closest('.seg.upg')) { if (reload.want && reload.why !== 'server') location.reload(); else updatesOpen(); return; }
+    const upg = e.target.closest('.seg.upg'); if (upg) { if (reload.want && reload.why !== 'server') location.reload(); else if (upg.dataset.take) updNow(); else updatesOpen(); return; }
     const aw = e.target.closest('#sbAwake'); if (aw) { setAwake({ awake: !state.awake.awake }, aw); return; }
     const lid = e.target.closest('#sbLid'); if (lid && !state.lidAsking) setAwake({ lid: !state.awake.lid }, lid);
   });
