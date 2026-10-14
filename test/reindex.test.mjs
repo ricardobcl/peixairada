@@ -78,3 +78,26 @@ test('an append read while a character was half written decodes whole', { timeou
     assert.equal(last, 'não, ação');
   } finally { await srv.stop(); }
 });
+
+test('two kinds of alert within the debounce both go out — a branch moved under a chat at work, and its reply (2026-10-14)', { timeout: 30_000 }, async () => {
+  const fx = defaultFixture(tmpDir('peix-fx-'));
+  const id = randomUUID(), cwd = fx.chats[1].cwd;
+  writeFileSync(join(fx.dir, 'sessions', `${process.pid}.json`), JSON.stringify({ pid: process.pid, sessionId: id, cwd, startedAt: Date.now(), version: 'fixture', kind: 'interactive', entrypoint: 'cli', status: 'busy' }));
+  const srv = await startTestServer({ claudeDir: fx.dir });
+  try {
+    const a = await alerts(srv.url);
+    // read in one go, as the first lines of a chat the registry announced: the move is judged at the read's end, the
+    // reply queued while it was read — one window
+    const t = s => new Date(Date.now() - 30_000 + s * 1000).toISOString(), base = (s, gitBranch) => ({ cwd, sessionId: id, entrypoint: 'cli', gitBranch, timestamp: t(s) });
+    const lines = [
+      { ...base(0, 'feat/a'), type: 'user', uuid: randomUUID(), message: { role: 'user', content: 'round the tax' } },
+      { ...base(1, 'feat/a'), type: 'assistant', message: { id: 'm1', role: 'assistant', stop_reason: 'tool_use', content: [{ type: 'text', text: 'on it' }] } },
+      { ...base(2, 'main'), type: 'assistant', message: { id: 'm2', role: 'assistant', stop_reason: 'tool_use', content: [{ type: 'text', text: 'still on it' }] } },
+      { ...base(3, 'main'), type: 'assistant', message: { id: 'm3', role: 'assistant', stop_reason: 'end_turn', content: [{ type: 'text', text: 'rounded' }] } },
+    ];
+    writeFileSync(join(fx.dir, 'projects', slugOf(cwd), `${id}.jsonl`), lines.map(l => JSON.stringify(l)).join('\n') + '\n');
+    await waitFor(() => a.got.length >= 2, { timeout: 8000, what: 'two alerts' }).catch(() => {});   // the assertion below says what came
+    await sleep(600); a.stop();
+    assert.deepEqual(a.got.map(x => x.kind).sort(), ['drift', 'reply'], JSON.stringify(a.got.map(x => [x.kind, x.snippet])));
+  } finally { await srv.stop(); }
+});

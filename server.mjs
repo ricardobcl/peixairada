@@ -569,7 +569,7 @@ function newSession(id, file) {
     agentsRunning: 0, ask: null, tasks: null, taskCalls: null,   // sub-agents at work (scanAgents); the question a tool asked; background tasks and the calls that started them
     branches: [], branchBase: null, gitCmds: [], drift: null, driftDue: null,   // the branch under the chat as its lines tell it, and a move no git of its own explains (noteBranch)
     headNow: null, diskDrift: null, diskSeen: null, headOk: null, peers: [],      // its checkout's HEAD as read on the poll, and what that says (noteHead)
-    pendingNotify: null, notifyTimer: null, pushTimer: null, newEntries: []
+    pendingNotify: null, notifyTimer: null, pushTimer: null, newEntries: []   // the kinds of alert owed (queueNotify), a Set
   };
 }
 
@@ -1490,7 +1490,7 @@ const shownDrift = s => s.driftDue ? s.driftDue.shown : s.drift;
 function branchHeard(s) {
   s.drift = null; s.driftDue = null; s.diskDrift = null; s.diskSeen = null;
   if (!s.reading) s.headOk = s.headNow && s.headNow !== 'HEAD' && s.headNow !== s.branchBase?.name ? s.headNow : null;   // a re-read's prompts are old: the head now is not what they saw
-  if (s.pendingNotify === 'drift') s.pendingNotify = null;
+  s.pendingNotify?.delete('drift');
 }
 /** The drift as it stands: the disk's (newer) or the transcript's, while the claude runs, unless the folder is back on
  *  the chat's branch. `driftOf` leaves out one you said you know. */
@@ -1671,7 +1671,7 @@ function fold(s, line) {
         if (s.status === 'needs-input') {   // question answered — that was you
           s.lastUserAt = ts; setStatus(s, 'working', ts);
           // …and the question's line arrived with its answer (see waitingOn): an alert for it now would be after the fact
-          if (s.pendingNotify === 'needs-input') s.pendingNotify = null;
+          s.pendingNotify?.delete('needs-input');
         }
         return true;
       }
@@ -1822,7 +1822,7 @@ function indexFile(file, { full = false } = {}) {
   delete s.silent;
   sessions.set(id, s);
   fileToSession.set(file, id);
-  if (prev) { if (prev.pendingNotify) queueNotify(s, prev.pendingNotify); schedulePush(s); }   // an alert still owed, and the fresh summary
+  if (prev) { for (const k of prev.pendingNotify || []) queueNotify(s, k); schedulePush(s); }   // the alerts still owed, and the fresh summary
   return s;
 }
 
@@ -2157,15 +2157,17 @@ function nativeNotify(title, subtitle, body) {
 
 function queueNotify(s, kind) {
   if (indexing || s.silent) return;   // the boot's scan, or a chat being re-read (indexFile): nothing in it is news
-  s.pendingNotify = kind;
+  (s.pendingNotify ||= new Set()).add(kind);   // one of each kind (2026-10-14): a branch's move and a reply in one window were one alert, the other lost — and a move is said once
   clearTimeout(s.notifyTimer);
   // Debounce: the thinking block and the text block of one reply land as separate lines.
   s.notifyTimer = setTimeout(() => fireNotify(s), 400);
 }
 
 function fireNotify(s) {
-  const kind = s.pendingNotify; s.pendingNotify = null;
-  if (!kind) return;
+  const kinds = s.pendingNotify; s.pendingNotify = null;
+  for (const kind of kinds || []) alertOf(s, kind);
+}
+function alertOf(s, kind) {
   if (kind === 'needs-input' && statusOf(s) !== 'needs-input') return;   // answered within the debounce: nothing to say
   if (kind === 'drift') return driftNotify(s);
   const sum = summary(s);
