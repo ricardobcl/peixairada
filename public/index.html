@@ -7041,8 +7041,11 @@ const toolName = n => {
     if (!inApp) return;
     const shut = !!document.querySelector('dialog[open]');
     const panes = shut ? [] : p.map((k, g) => isPaneTab(k) && !$(GEL[g].grp).hidden ? { key: k, ...groupRect(g) } : null).filter(Boolean);   // not behind a half filling the column
-    const focus = (!shut && isPaneTab(p[focusG]) ? p[focusG] : null) || panes[0]?.key || null;
-    const msg = { type: 'pane', id: s?.id || null, keys: paneKeys(s), panes, focus, show: focus, left: panes[0]?.left || 0, top: panes[0]?.top || 0 };
+    // the page with the keys, or null when they are the board's — claude, a zsh, the changes — with a page beside them
+    // (2026-10-14): the first page stood in for them, so the shell gave that page the keys on its next change, and as
+    // the message did not change between the two, a move from claude back to the page was never posted
+    const focus = !shut && isPaneTab(p[focusG]) && panes.some(x => x.key === p[focusG]) ? p[focusG] : null;
+    const msg = { type: 'pane', id: s?.id || null, keys: paneKeys(s), panes, focus, show: focus || panes[0]?.key || null, left: panes[0]?.left || 0, top: panes[0]?.top || 0 };
     const sig = JSON.stringify(msg); if (sig === postPane.last) return;   // syncTerm posts on every update of the open chat; the shell lays its views out again on each
     postPane.last = sig; post(msg);
   }

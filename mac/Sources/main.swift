@@ -225,7 +225,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   var paneRects: [String: CGRect] = [:]        // …and what the page last said it was, for the find bar
   var paneKeys: [String] = []                  // the open chat's pages — spared by the eviction
   var paneShownKeys: [String] = []             // the pages up, one per half of the chat column; empty hides the overlay
-  var paneFocus: String?                       // the one the keys, ⌘F and ‹ › ↻ ↗ act on
+  var paneFocus: String?                       // the one with the keys — nil while they are the board's (2026-10-14)
+  /// The page ⌘F, ⌘R and ‹ › ↻ ↗ act on: the one with the keys, else the first one up — the keys can be in claude's
+  /// drawer beside a page (2026-10-14).
+  var paneTarget: String? { paneFocus ?? paneShownKeys.first }
   static let paneViewsMax = 8
   var findBar: NSVisualEffectView!             // ⌘F's bar, over the focused page's top right corner; hidden until asked for
   var findRightC: NSLayoutConstraint!         // …placed from that page's rect, so it follows the keys between halves
@@ -510,7 +513,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     for (key, v) in paneViews { v.isHidden = !shown.contains(key) }
     paneShownKeys = shown
     paneOverlay.isHidden = shown.isEmpty
-    paneFocus = focus.flatMap { shown.contains($0) ? $0 : nil } ?? shown.first
+    paneFocus = focus.flatMap { shown.contains($0) ? $0 : nil }   // none: the board keeps the keys, a page beside them or not
     layoutFindBar()
     guard shown != was || paneFocus != wasFocus else { return }
     closeFind(focusPage: false)
@@ -521,7 +524,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// The page cannot see the pane — native views over its chat column — so it is told whether one is up and where
   /// the focused one starts (points, which are the board view's CSS px). window.peix reports it for the harness.
   func tellPane() {
-    let left = (paneFocus.flatMap { paneRects[$0]?.minX } ?? 0) / zoom
+    let left = (paneTarget.flatMap { paneRects[$0]?.minX } ?? 0) / zoom
     web.evaluateJavaScript("window.peixPane && window.peixPane(\(paneOverlay.isHidden ? "false" : "true"), \(Int(left)))", completionHandler: nil)
   }
   /// Where a page is now, for the strip to show and copy — with the key it belongs to, since the board may have
@@ -584,7 +587,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
   /// ‹ › ↻ ↗ from the strip, for the page on top.
   func paneNav(_ what: String) {
-    guard let w = paneFocus.flatMap({ paneViews[$0] }) else { return }
+    guard let w = paneTarget.flatMap({ paneViews[$0] }) else { return }
     switch what {
     case "back": w.goBack()
     case "forward": w.goForward()
@@ -649,7 +652,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
   /// The bar sits over the top right of the page that has the keys — whichever half that is.
   private func layoutFindBar() {
-    guard findBar != nil, let r = paneFocus.flatMap({ paneRects[$0] }) else { return }
+    guard findBar != nil, let r = paneTarget.flatMap({ paneRects[$0] }) else { return }
     findRightC.constant = r.maxX - 14
     findTopC.constant = r.minY + 12
   }
@@ -692,7 +695,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// One pass over the page on top. A query that just changed starts from the top of the document — that means
   /// dropping the selection first, since WebKit's find carries on from wherever the last match left it.
   private func runFind(fromTop: Bool, forward: Bool) {
-    guard !paneOverlay.isHidden, let w = paneFocus.flatMap({ paneViews[$0] }) else { return }
+    guard !paneOverlay.isHidden, let w = paneTarget.flatMap({ paneViews[$0] }) else { return }
     let q = findQuery
     guard !q.isEmpty else { findField.textColor = .labelColor; clearFindSelection(); return }
     let go = { [weak self] in
@@ -709,7 +712,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
 
   private func clearFindSelection() {
-    paneFocus.flatMap({ paneViews[$0] })?.evaluateJavaScript(kDropSelection, completionHandler: nil)
+    paneTarget.flatMap({ paneViews[$0] })?.evaluateJavaScript(kDropSelection, completionHandler: nil)
   }
 
   /// The bar goes, the match's highlight with it (it is the page's selection), and the page takes the keyboard back.
@@ -786,7 +789,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         guard let v = self.paneViews[k], !v.isHidden else { return false }
         return v.bounds.contains(v.convert(e.locationInWindow, from: nil))
       }
-      if let key = key, key != self.paneFocus {
+      if let key = key {   // always (2026-10-14): the board's half is its own to compare, a click on the half it has already moves nothing
         self.web.evaluateJavaScript("window.peixPaneFocus && window.peixPaneFocus(\(jsLit(key)))", completionHandler: nil)
       }
       return e
@@ -798,7 +801,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
       guard let self = self, e.window === self.window, e.modifierFlags.intersection([.command, .option, .control, .shift]) == [.command],
             e.charactersIgnoringModifiers?.lowercased() == "r", !self.paneOverlay.isHidden,
-            let key = self.paneFocus, !key.hasPrefix("ide:"), let w = self.paneViews[key] else { return e }
+            let key = self.paneTarget, !key.hasPrefix("ide:"), let w = self.paneViews[key] else { return e }
       w.reload()
       return nil
     }
@@ -936,7 +939,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
   /// The page on top of the pane, reloaded (the strip's ↻ does it too) — ⌘R through the key monitor, or the menu.
   @objc func reloadPage(_ sender: Any?) {
-    if let w = paneFocus.flatMap({ paneViews[$0] }), !paneOverlay.isHidden { w.reload() }
+    if let w = paneTarget.flatMap({ paneViews[$0] }), !paneOverlay.isHidden { w.reload() }
   }
   /// The board itself (⌥⌘R, 2026-10-13; ⌘R's when no page was up before): reloaded where it is, the open chat's address
   /// kept — or loaded afresh over a message.
@@ -945,7 +948,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
   func validateMenuItem(_ item: NSMenuItem) -> Bool {
     let paneUp = paneOverlay != nil && !paneOverlay.isHidden
-    if item.action == #selector(reloadPage(_:)) { return paneUp && paneFocus.flatMap({ paneViews[$0] }) != nil }
+    if item.action == #selector(reloadPage(_:)) { return paneUp && paneTarget.flatMap({ paneViews[$0] }) != nil }
     if item.action == #selector(toggleFill(_:)) {
       item.title = fillSaved != nil ? "Exit Full Screen" : "Enter Full Screen"
     }

@@ -78,6 +78,27 @@ export default async function (ctx) {
   // ⌥⌘G again from the chat: the picker (always, with several — from a page it fills the column with the page's half,
   // half-zoom.mjs); the other row → a second tab, on
   await ctx.cmd('Digit1');
+  // …the keys on claude, beside a page, are the board's (2026-10-14): the shell is told no page has them — the first
+  // page stood in for them, so the shell gave it the keys on its next change, and the walk back to it, the same message,
+  // was never posted. A dialog closed over them leaves them there.
+  const paneFocus = () => lastPane().then(m => m.focus);
+  ctx.assert.equal(await paneFocus(), null, '⌘1 onto claude: no page has the keys');
+  await ctx.key('ArrowRight');
+  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(ghKey)}`, { what: '⌥⌘→: the page' });
+  ctx.assert.equal(await paneFocus(), ghKey, '⌥⌘→ onto the page gives it the keys');
+  await ctx.key('ArrowLeft');
+  await ctx.waitFor(`window.peix.state().tab === 'chat'`, { what: '⌥⌘←: claude' });
+  ctx.assert.equal(await paneFocus(), null, '⌥⌘← takes them back');
+  await ctx.key('ArrowRight');
+  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(ghKey)}`, { what: '⌥⌘→: the page again' });
+  ctx.assert.equal(await paneFocus(), ghKey, '…and ⌥⌘→ again is posted again');
+  await ctx.cmd('Digit1');
+  await ctx.cmd('Comma');
+  await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings up' });
+  ctx.assert.deepEqual((await lastPane()).panes, [], 'the pane down under the dialog');
+  await ctx.evaluate(`document.querySelector('#settings').close()`);
+  await ctx.waitFor(`window.__posts.filter(m => m.type === 'pane').pop().panes.length === 1`, { what: 'the settings closed, the pane posted up again' });
+  ctx.assert.deepEqual(await lastPane().then(m => [m.panes.length, m.focus]), [1, null], 'the page back up, the keys still the board\'s');
   await ctx.key('KeyG'); await ctx.waitFor(`document.querySelector('#pick').open`, { what: 'the picker again' });
   await ctx.evaluate(`document.querySelector('#picklist .pkrow.pr:not(:has(.cur))').click()`);
   await ctx.waitFor(`document.querySelectorAll('#ptabsB .ptab[data-tab^="gh:"]').length === 2`, { what: 'two PR tabs, both in the right half' });
