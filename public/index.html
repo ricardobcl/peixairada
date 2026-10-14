@@ -964,10 +964,34 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /* how long ago the move came (2026-10-14): as the card's age, under the pointer only and keeping its room */
   .card .state.prmove .mt { flex: none; font-size: var(--fs-2xs); white-space: nowrap; opacity: 0; transition: opacity .12s; }
   .card:hover .state.prmove .mt { opacity: .8; }
+  /* a PR's rounds on the card (2026-10-15): "answered" a while after your word, in the move line's place, and a mark per PR in
+     play when there is more than the one the line names; the pointer on either shows the rounds (#rpop) */
+  .card .state.prans { display: flex; align-items: baseline; gap: 6px; color: var(--ink); }
+  .card .state.prans .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; color: var(--pr-open); }
+  .card .state.prans .mt { flex: none; font-size: var(--fs-2xs); white-space: nowrap; opacity: 0; transition: opacity .12s; }
+  .card:hover .state.prans .mt { opacity: .8; }
   .rtag { flex: none; display: inline-flex; align-items: center; padding: 0 5px; border-radius: var(--r-1); font-size: var(--fs-2xs); font-weight: 700; line-height: 15px; letter-spacing: .4px; text-transform: uppercase; white-space: nowrap; }
   .rtag.move { background: color-mix(in srgb, var(--accent) 82%, var(--ink)); color: var(--bg); }
   .rtag.ok { background: color-mix(in srgb, var(--pr-open) 20%, transparent); color: var(--pr-open); }
   .rtag.let { background: var(--ctl-hi); color: var(--muted); }
+  .card .prpips { display: flex; gap: 10px; margin-top: 4px; min-width: 0; overflow: hidden; font-size: var(--fs-2xs); font-weight: 600; color: var(--muted); white-space: nowrap; }
+  .card .prpips .pp { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+  .card .prpips .pp b { font-weight: 700; color: var(--ink); }
+  .card .prpips .pp i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+  .card .prpips .pp[data-k="you"] { color: var(--accent); } .card .prpips .pp[data-k="you"] i { background: var(--accent); }
+  .card .prpips .pp[data-k="ok"] i { background: var(--pr-open); }
+  .card .prpips .pp[data-k="let"] i { background: none; box-shadow: inset 0 0 0 1px var(--muted); }
+  #sessions[data-even] .card .prpips { display: none; }   /* one height for every card: the rounds are the pointer's */
+  #rpop { position: fixed; z-index: 45; display: grid; gap: 3px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-4); background: var(--panel);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .28); font-size: var(--fs-xs); line-height: 1.4; color: var(--ink); pointer-events: none; opacity: 0; transition: opacity .12s var(--ease-out); }
+  #rpop.on { opacity: 1; }
+  #rpop .rph { margin-top: 3px; font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); }
+  #rpop .rpr { display: grid; grid-template-columns: auto auto minmax(0, 1fr); column-gap: 6px; align-items: baseline; }
+  #rpop .rpr .n { font-weight: 700; } #rpop .rpr .w { min-width: 0; }
+  #rpop .rpr .was { display: block; color: var(--muted); }
+  #rpop .rpr[data-k="them"] .w { color: var(--muted); }
+  #rpop .rev { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; color: var(--muted); } #rpop .rev b { color: var(--ink); font-weight: 600; }
+  #rpop .rpf { margin-top: 4px; padding-top: 5px; border-top: 1px solid var(--line); font-size: var(--fs-2xs); color: var(--muted); }
   /* It never wraps the row (2026-10-11, afternoon: ··· went to a second line beside the housing): a flex basis of 0,
      growing into the room the row leaves up to its own width — the reason ellipsized —, and no narrower than the tag and
      the count (--hmin, fitHeadPrs, which folds the PR chips to leave that much; min-content is the whole reason). */
@@ -2072,7 +2096,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .card .title, .card .snip, .msg .text, .presence, .prrow .t { text-wrap: pretty; }
   .empty, .gempty, dialog p.help, #slist .none, #picklist .none, .pop .opt span { text-wrap: balance; }
   .card .title { overflow-wrap: break-word; hyphens: auto; }
-  .badge, .chip, :is(.card .cpr, .shead .hpr), .pkrow .num, #counts, .sedge b, .tl-lab, .prrow .num, .pop .keys kbd, .lognew b, #resume .n, .prround .say { font-variant-numeric: tabular-nums; }
+  .badge, .chip, :is(.card .cpr, .shead .hpr), .pkrow .num, #counts, .sedge b, .tl-lab, .prrow .num, .pop .keys kbd, .lognew b, #resume .n, .prround .say, .prpips, #rpop { font-variant-numeric: tabular-nums; }
   ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
   :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
@@ -4269,13 +4293,16 @@ const toolName = n => {
   function moveHtml(s) {
     const prs = movedPrs(s); if (!prs.length || s.done) return '';
     const t = prs[0].turn, at = t.at || t.movedAt || '';
-    return `<div class="state prmove" title="${esc(moveTip(prs))}"><b class="ymove">${ICON.pr}your move</b><span class="q">${esc(prs[0].label.replace(/^.*?#/, '#'))} · ${esc(t.why)}</span>${at ? `<span class="mt"><span data-at="${esc(at)}"></span> ago</span>` : ''}</div>`;   // the others in its tooltip: a card counts nothing (2026-10-11)
+    return `<div class="state prmove"><b class="ymove">${ICON.pr}your move</b><span class="q">${esc(prs[0].label.replace(/^.*?#/, '#'))} · ${esc(t.why)}</span>${at ? `<span class="mt"><span data-at="${esc(at)}"></span> ago</span>` : ''}</div>`;   // the others in its tooltip: a card counts nothing (2026-10-11)
   }
   /** A card with no move holds the line's place when compact's same height is on (.moveslot, hidden everywhere else). */
   const MOVE_SLOT = `<div class="state moveslot" aria-hidden="true"><b class="ymove">${ICON.pr}your move</b><span class="q">#0</span></div>`;   // the tag and a word: the real line's metrics
   // ---- a PR's rounds (2026-10-15): the server's ledger (prLogs) — each PR's last three rounds come with it (pr.rounds):
   // a move come round to you (`from`, `why`), let go (`let`), and how it ended (`end`, `how`: answered · let go · gone,
-  // `by` the chat whose push or reply it was). The PR rows say each one's round and the one before.
+  // `by` the chat whose push or reply it was). The PR rows say each one's round and the one before, the card names every
+  // PR in play when it has more than the one its line names, says "answered" a while after your word, and the pointer
+  // on those lines shows the rounds.
+  const PIP_OK_MS = 12 * 3600_000, ANSWERED_MS = 30 * 60_000;
   /** A time as the who-line says it, the day before it when it is not today's. */
   const when = ts => { if (!ts) return ''; const t = new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), d = dayOf(ts); return d === 'Today' ? t : `${d} ${t}`; };
   /** Where a PR stands, as its rounds say it: you · let (let go) · ok (answered, theirs since) · them — the round now
@@ -4319,6 +4346,73 @@ const toolName = n => {
       : r.k === 'let' ? `<button type="button" class="pract" data-pract="undo" data-url="${esc(pr.url)}" title="Your move again, as it was">Undo</button>` : '';
     return `<div class="prround" data-k="${r.k}" data-url="${esc(pr.url)}"${hide ? ' hidden' : ''}>${trackHtml(pr)}${RTAG[r.k]}<span class="say">${say}${r.prev ? `<span class="was"> · before: ${esc(prevWords(r.prev, s))}</span>` : ''}</span>${acts ? `<span class="practs">${acts}</span>` : ''}</div>`;
   }
+  /** The chat's PRs in play — at your move, let go, answered within PIP_OK_MS —, the newest move first. */
+  function inPlay(s) {
+    const now = Date.now(), order = { you: 0, let: 1, ok: 2 };
+    return (s.prs || []).map(pr => ({ pr, r: roundOf(pr) })).filter(({ r }) => r && (r.k === 'you' || r.k === 'let' || (r.k === 'ok' && now - Date.parse(r.cur.end) < PIP_OK_MS)))
+      .sort((a, b) => order[a.r.k] - order[b.r.k] || String(b.pr.turn.movedAt || '').localeCompare(String(a.pr.turn.movedAt || '')));
+  }
+  const PIP_SAY = { you: 'your move', let: 'let go', ok: 'answered' };
+  /** Every PR in play, when the card has one besides the PR its move line names: a mark and a word each. */
+  function pipsHtml(s) {
+    if (s.done) return '';
+    const play = inPlay(s), lead = movedPrs(s)[0]?.url;
+    if (!play.some(x => x.pr.url !== lead)) return '';
+    return `<div class="prpips">${play.slice(0, 3).map(({ pr, r }) => `<span class="pp" data-k="${r.k}"><b>${esc(pr.label.replace(/^.*?#/, '#'))}</b><i></i>${PIP_SAY[r.k]}</span>`).join('')}${play.length > 3 ? '<span class="pp more">…</span>' : ''}</div>`;
+  }
+  /** Your word just closed a round, and nothing is at your move: the card says so for ANSWERED_MS. */
+  function answeredHtml(s) {
+    if (s.done || movedPrs(s).length) return '';
+    const now = Date.now(), hit = (s.prs || []).map(pr => ({ pr, r: roundOf(pr) })).filter(({ r }) => r?.k === 'ok' && now - Date.parse(r.cur.end) < ANSWERED_MS)
+      .sort((a, b) => b.r.cur.end.localeCompare(a.r.cur.end))[0];
+    if (!hit) return '';
+    return `<div class="state prans"><b class="rtag ok">answered</b><span class="q">${esc(hit.pr.label.replace(/^.*?#/, '#'))} · ${esc(byWords(hit.r.cur, s))}</span><span class="mt"><span data-at="${esc(hit.r.cur.end)}"></span> ago</span></div>`;
+  }
+  // The rounds under the pointer (2026-10-15): resting on a card's move line, its "answered" or its PRs' marks shows the
+  // chat's PRs as their rows say them, and the last few events on them (GET /api/sessions/:id/prlog, kept a while) —
+  // over the list, under the line, so no page in the pane can cover it. Read-only: the pointer passes through it.
+  const prlogs = new Map();   // chat id → { at, v, asking }
+  function prlogOf(s, then) {
+    const hit = prlogs.get(s.id);
+    if (!hit || (!hit.asking && Date.now() - hit.at > 15_000)) {
+      prlogs.set(s.id, { ...hit, asking: true, at: hit?.at || 0 });
+      api('GET', `/api/sessions/${s.id}/prlog`).catch(() => null).then(v => { prlogs.set(s.id, { at: Date.now(), v }); then?.(); });
+    }
+    return hit?.v || null;
+  }
+  const EV_SAY = e => e.k === 'opened' ? 'opened it' : e.k === 'review' ? ({ APPROVED: 'approved', CHANGES_REQUESTED: 'asked for changes', DISMISSED: 'dismissed a review' }[e.s] || 'reviewed')
+    : e.k === 'comment' ? 'commented' : e.k === 'push' ? (e.f ? 'force-pushed' : e.n > 1 ? `pushed ${e.n} commits` : 'pushed') : e.k === 'ask' ? 'asked for your review'
+    : e.k === 'chat' ? `${{ push: 'pushed', review: 'reviewed', comment: 'commented', reply: 'replied', merge: 'merged it', opened: 'opened it' }[e.x] || e.x}` : e.k === 'board' ? (e.x === 'back' ? 'took the let-go back' : 'let it go') : e.k;
+  function rpopHtml(s) {
+    const K = { you: 0, let: 1, ok: 2, them: 3 }, rows = (s.prs || []).map(pr => ({ pr, r: roundOf(pr) })).filter(({ r }) => r).sort((a, b) => K[a.r.k] - K[b.r.k]);   // as the marks go
+    const log = prlogOf(s, () => { if (rpop.sid === s.id) rpopShow(); });
+    const evs = (log?.prs || []).flatMap(p => p.ev.map(e => ({ ...e, label: p.label }))).sort((a, b) => a.a.localeCompare(b.a)).slice(-3);
+    return `<div class="rph">this chat’s PRs</div>${rows.map(({ pr, r }) => `<div class="rpr" data-k="${r.k}"><span class="n">${esc(pr.label.replace(/^.*?#/, '#'))}</span>${RTAG[r.k]}<span class="w">${r.k === 'you' ? `${esc(pr.turn.why)} · ${when(r.cur?.from || pr.turn.at)}` : r.k === 'let' ? `${esc(pr.turn.why)} · let go` : r.k === 'ok' ? `${esc(byWords(r.cur, s))} ${when(r.cur.end)} · ${esc(pr.turn.why)}` : esc(pr.turn.why)}${r.prev ? `<span class="was">before: ${esc(prevWords(r.prev, s))}</span>` : ''}</span></div>`).join('')}${
+      evs.length ? `<div class="rph">latest</div>${evs.map(e => `<div class="rev"><span class="t">${esc(when(e.a))}</span><span>${esc(e.label.replace(/^.*?#/, '#'))} · <b>${e.w === '' ? 'you' : esc(e.w || 'someone')}</b> ${esc(EV_SAY(e))}${e.k === 'chat' ? (e.c === s.id ? ' from this chat' : ' from another chat') : ''}</span></div>`).join('')}` : ''}<div class="rpf">⌥-click “your move”: let this round go · the PR list (⌥⌘G) for one PR</div>`;
+  }
+  const rpop = { el: null, sid: null, anchor: null, timer: 0 };
+  function rpopShow() {
+    const s = state.sessions.get(rpop.sid), a = rpop.anchor;
+    if (!s || !a?.isConnected) return rpopHide();
+    const el = rpop.el ||= Object.assign(document.createElement('div'), { id: 'rpop', role: 'tooltip' });
+    if (!el.isConnected) document.body.append(el);
+    const html = rpopHtml(s); if (el._drawn !== html) { el.innerHTML = el._drawn = html; }
+    const card = a.closest('.card').getBoundingClientRect(), r = a.getBoundingClientRect(), h = el.offsetHeight;
+    const top = r.bottom + 6 + h <= innerHeight - 8 ? r.bottom + 6 : Math.max(8, card.top - 6 - h);
+    Object.assign(el.style, { left: `${Math.round(card.left + 6)}px`, width: `${Math.round(card.width - 12)}px`, top: `${Math.round(top)}px` });
+    el.classList.add('on');
+  }
+  function rpopHide() { clearTimeout(rpop.timer); rpop.sid = rpop.anchor = null; rpop.el?.classList.remove('on'); }
+  const RPOP_AT = '.card .state.prmove, .card .state.prans, .card .prpips';
+  $('#slist').addEventListener('pointerover', e => {
+    const a = e.target.closest(RPOP_AT);
+    if (!a || $('main').classList.contains('scompact')) return;
+    if (a === rpop.anchor) return;
+    rpopHide(); rpop.anchor = a; rpop.sid = a.closest('.card').dataset.id;
+    rpop.timer = setTimeout(rpopShow, 350);
+  });
+  $('#slist').addEventListener('pointerout', e => { if (rpop.anchor && !rpop.anchor.contains(e.relatedTarget)) rpopHide(); });
+  $('#slist').addEventListener('scroll', rpopHide, { passive: true });
   /** The chat header's: the tag, then the newest move's PR and reason, the others counted — right of the title. */
   function headMove(s) {
     const prs = movedPrs(s); if (!prs.length) return '';
@@ -4408,7 +4502,7 @@ const toolName = n => {
       ${liveSlot(s)}
       ${s.lastPrompt ? `<div class="snip you${older('you')}"><b title="You">${ICON.you}</b>${ticks(esc(s.lastPrompt))}</div>` : ''}
       ${showReply ? `<div class="snip claude${older('claude')}"><b title="Claude">${ICON.claude}</b>${ticks(esc(s.lastReply))}</div>` : ''}
-      ${asking(s) ? askHtml(s) : ''}${moveHtml(s) || MOVE_SLOT}
+      ${asking(s) ? askHtml(s) : ''}${moveHtml(s) || answeredHtml(s) || MOVE_SLOT}${pipsHtml(s)}
       <span class="abbr" data-n="${projAbbr(s.project).length}" title="${esc(`${s.project} · ${s.title}`)}">${esc(projAbbr(s.project))}</span><i class="rdot" aria-hidden="true"></i>
     </div>`;
   }

@@ -1,8 +1,10 @@
 // A chat's PRs and their rounds (2026-10-15). GitHub is the fake gh, answering from a file the scenario rewrites: two
 // PRs of yours in one chat — #12, ana commented: your move; #13, priya approved: your move. What this checks: each PR's
 // row under the header says its round (since when, unanswered) with Let go and Ask Claude; Let go on #13 lets that one
-// go alone — #12 stays at your move — and Undo takes it back; your word on #12 closes its round: the row says answered;
-// rui's next comment opens a new round, whose row names the one before.
+// go alone — #12 stays at your move — and Undo takes it back; your word on #12 closes its round: the row says answered,
+// and with nothing left at your move the card says "answered" in the move line's place and marks each PR in play; the
+// pointer on that line shows the rounds and the latest events; rui's next comment opens a new round, whose row names the
+// one before.
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -61,11 +63,33 @@ export default async function (ctx) {
   await ctx.waitFor(`${row(12)}?.dataset.k === 'ok'`, { timeout: 20_000, what: '#12 answered' });
   out.answered = await rowSays(12);
   ctx.assert.match(out.answered.say, /^you answered .+ · waiting on reviews$/, out.answered.say);
+  await ctx.waitFor(`${card}?.querySelector('.state.prans')`, { what: 'the card saying answered' });
+  out.card = await ctx.evaluate(`JSON.stringify({ line: ${card}.querySelector('.state.prans .q').textContent, move: !!${card}.querySelector('.state.prmove'), pips: [...${card}.querySelectorAll('.prpips .pp')].map(p => p.dataset.k + ' ' + p.textContent) })`).then(JSON.parse);
+  ctx.assert.deepEqual(out.card, { line: '#12 · you answered', move: false, pips: ['let #13let go', 'ok #12answered'] });
+  // the pointer on that line: the rounds, and the latest on them
+  await ctx.settle();   // the card moves down its lane: no move of yours on it now
+  const at = await centre(`#slist > .card[data-id="${two.id}"] .state.prans`);
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y });
+  await ctx.waitFor(`document.querySelector('#rpop.on') && document.querySelector('#rpop .rev')`, { what: 'the rounds under the pointer, with the latest events' });
+  await ctx.settle();
+  out.pop = await ctx.evaluate(`JSON.stringify({ rows: [...document.querySelectorAll('#rpop .rpr')].map(r => r.dataset.k + ' ' + r.querySelector('.n').textContent), latest: [...document.querySelectorAll('#rpop .rev')].map(r => r.lastElementChild.textContent), foot: document.querySelector('#rpop .rpf').textContent,
+    below: document.querySelector('#rpop').getBoundingClientRect().top >= ${card}.querySelector('.state.prans').getBoundingClientRect().bottom })`).then(JSON.parse);
+  ctx.assert.deepEqual(out.pop.rows, ['let #13', 'ok #12'], 'as the marks go');
+  ctx.assert.ok(out.pop.latest.includes('#12 · you commented') && out.pop.latest.some(l => l.includes('let it go')), JSON.stringify(out.pop.latest));
+  ctx.assert.match(out.pop.foot, /⌥-click “your move”: let this round go/);
+  ctx.assert.ok(out.pop.below, 'under the line, over the list');
+  await ctx.shot('2-answered-card', await ctx.evaluate(`(r => ({ x: 0, y: Math.max(0, r.top - 20), width: r.right + 20, height: 360 }))(${card}.getBoundingClientRect())`));
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 900, y: 600 });
+  await ctx.waitFor(`!document.querySelector('#rpop.on')`, { what: 'gone with the pointer' });
+
   // rui comments on #12: a new round, which names the one before; the card's move line is back
   write([ana, answer, rui]);
   await ctx.waitFor(`${row(12)}?.dataset.k === 'you'`, { timeout: 20_000, what: '#12 at your move again' });
   out.again = await rowSays(12);
   ctx.assert.match(out.again.say, /before: 1 comment from ana .+ → you answered /, out.again.say);
+  await ctx.waitFor(`${card}?.querySelector('.state.prmove') && !${card}.querySelector('.state.prans')`, { what: 'the move line back' });
+  out.pips = await ctx.evaluate(`JSON.stringify([...${card}.querySelectorAll('.prpips .pp')].map(p => p.dataset.k))`).then(JSON.parse);
+  ctx.assert.deepEqual(out.pips, ['you', 'let'], 'one at your move, one let go: both marked');
   await ctx.shot('3-new-round');
   return out;
 }

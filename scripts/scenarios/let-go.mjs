@@ -46,7 +46,11 @@ export default async function (ctx) {
     await ctx.evaluate(`(() => { window.__alerts = []; window.__es = new EventSource('/events'); window.__es.addEventListener('alert', e => window.__alerts.push(JSON.parse(e.data))); })()`);
     await ctx.waitFor(`window.__es.readyState === 1`, { what: 'a listener for the alerts' });
     await ctx.settle();
-    ctx.assert.match(await ctx.evaluate(`${card}.querySelector('.state.prmove').title`), /⌥-click: let this round go/, 'the line says so');
+    // the line says so: the pointer resting on it shows the PR's rounds, the ⌥-click at their foot (2026-10-15; its tooltip before)
+    const rest = await centre(`#slist > .card[data-id="${two.id}"] .state.prmove`);
+    await mouse('mouseMoved', rest, false);
+    await ctx.waitFor(`document.querySelector('#rpop.on .rpf')`, { what: 'the rounds under the pointer' });
+    ctx.assert.match(await ctx.evaluate(`document.querySelector('#rpop .rpf').textContent`), /⌥-click “your move”: let this round go/, 'the line says so');
 
     // ⌥ held over the line: the tag in red, an ✕ for its mark; without ⌥, the tag as it is
     const line = `#slist > .card[data-id="${two.id}"] .state.prmove`, at = await centre(line);
