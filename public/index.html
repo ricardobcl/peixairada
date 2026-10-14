@@ -6593,8 +6593,12 @@ const toolName = n => {
     // calls fit(), which is what ⌘+ did by hand. Refit on that, and on focus and on coming back into view, the
     // moments a page that sat behind something comes back; fit() sends a resize only when the numbers moved.
     watchDpr(tm);
-    window.addEventListener('focus', () => fitTerm(tm));
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') fitTerm(tm); });
+    // And back in front it says its size again (2026-10-14): another page on the same drawer — a second window, a browser
+    // beside the app — sized the PTY meanwhile, and `sent` alone kept this one quiet for good. At the size it has, the
+    // kernel sends no SIGWINCH: nothing repaints.
+    const again = () => { tm.sent = null; fitTerm(tm); };
+    window.addEventListener('focus', again);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') again(); });
   }
   // The same rule as lib/refit.mjs, kept by hand (this page has no build step): a screen that grows has to park
   // its cursor on the last line of the buffer for the length of the resize, or xterm appends blank rows at the

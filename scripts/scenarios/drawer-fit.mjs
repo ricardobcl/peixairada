@@ -1,5 +1,8 @@
 // The drawer's grid fits its body: after attach, after a display-scale change, and after a zoom step — no row
-// clipped at the bottom, no column past the right edge (the 2026-09-20 geometry fixes, kept honest).
+// clipped at the bottom, no column past the right edge (the 2026-09-20 geometry fixes, kept honest). And the PTY is this
+// page's size again once it is back in front, after another page on the drawer sized it (2026-10-14).
+import { waitFor } from '../../lib/testserver.mjs';
+
 export const meta = { server: true, fake: true, fixture: 'auto' };
 export default async function (ctx) {
   const chat = ctx.fixture.chats[1];
@@ -27,7 +30,17 @@ export default async function (ctx) {
   const c = await fits('after ⌘+');
   ctx.assert.ok(c.zoom > a.zoom, 'the zoom step took');
   await ctx.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: '0', metaKey: true, bubbles: true, cancelable: true }))`); await ctx.sleep(800);
-  await fits('after ⌘0');
+  const z = await fits('after ⌘0');
   await fills('after ⌘0');
+  // Another page on the same drawer sizes the PTY (a second window, a browser beside the app); this one, back in front,
+  // says its size again (2026-10-14) — it kept quiet for good, its own last size unchanged, and drew a screen painted for another
+  const id = (await ctx.peix('state()')).termId, size = async () => { const t = (await ctx.server.terminals()).find(t => t.id === id); return `${t.cols}×${t.rows}`; };
+  const other = new WebSocket(`${ctx.server.url.replace(/^http/, 'ws')}api/terminals/${id}/ws`);
+  await new Promise(r => other.addEventListener('open', r, { once: true }));
+  other.send(JSON.stringify({ t: 'resize', cols: 60, rows: 15 }));
+  await waitFor(async () => (await size()) === '60×15', { what: 'the other page\'s size on the PTY' });
+  other.close();
+  await ctx.evaluate(`window.dispatchEvent(new Event('focus'))`);
+  await waitFor(async () => (await size()) === `${z.cols}×${z.rows}`, { what: `this page's size (${z.cols}×${z.rows}) back on the PTY once it is in front`, timeout: 5000 });
   return { attach: a, scale2: b, zoomed: c };
 }
