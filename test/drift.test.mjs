@@ -208,3 +208,19 @@ test('the head is read from the checkout\'s HEAD file — a worktree\'s its own 
     assert.equal(moved(twice), 'feat/a → feat/b', 'the disk\'s newer word, from where the chat was before anything moved');
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('a reftable checkout\'s branch is git\'s word, not its HEAD file\'s stub (2026-10-14)', t => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'peix-head-'))), repo = join(dir, 'widgets'), wt = join(dir, 'widgets-wt');
+  const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' } });
+  try {
+    try { git(dir, 'init', '-q', '--ref-format=reftable', '-b', 'main', repo); } catch { return t.skip('this git has no reftable'); }
+    git(repo, '-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-q', '--allow-empty', '-m', 'one');
+    assert.equal(headOf(repo), 'main', 'not `.invalid`');
+    git(repo, 'checkout', '-q', '-b', 'feat/x');
+    assert.equal(headOf(repo), 'feat/x', 'asked again once the tables changed');
+    git(repo, 'worktree', 'add', '-q', '-b', 'feat/wt', wt);
+    assert.deepEqual([headOf(wt), headOf(repo)], ['feat/wt', 'feat/x'], 'a worktree\'s its own');
+    git(repo, 'checkout', '-q', '--detach');
+    assert.equal(headOf(repo), 'HEAD', 'detached');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});

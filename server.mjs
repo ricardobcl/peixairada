@@ -1579,15 +1579,30 @@ function gitTopOf(cwd) {
   return null;
 }
 /** The branch checked out there, as Claude Code writes it: the name, `HEAD` when detached, null for no checkout. A
- *  read of the HEAD file, no git spawned; a worktree's `.git` names its own git dir, as ghRepoOf reads it. */
+ *  read of the HEAD file, no git spawned but for a reftable one; a worktree's `.git` names its own git dir, as ghRepoOf
+ *  reads it. */
 function headAt(top) {
   if (!top) return null;
   try {
     let git = join(top, '.git');
     if (!statSync(git).isDirectory()) git = resolve(top, /^gitdir:\s*(.+)$/m.exec(readFileSync(git, 'utf8'))[1].trim());
     const h = readFileSync(join(git, 'HEAD'), 'utf8').trim(), m = /^ref:\s*refs\/heads\/(.+)$/.exec(h);
+    if (m?.[1] === '.invalid') return reftableHead(top, git);   // no branch is named so
     return m ? m[1] : /^[0-9a-f]{40,64}$/.test(h) ? 'HEAD' : null;
   } catch { return null; }
+}
+/** A reftable repository's (git 2.45's, git 3's default) HEAD file is a stub on `.invalid`, every chat in one a drift
+ *  to it (2026-10-14): its HEAD is in the tables, so git says it — asked again only when their list has changed. */
+const reftableHeads = new Map();   // git dir -> { stamp: its reftable/tables.list, head }
+function reftableHead(top, git) {
+  const stamp = readFileSync(join(git, 'reftable', 'tables.list'), 'utf8'), hit = reftableHeads.get(git);
+  if (hit?.stamp === stamp) return hit.head;
+  const bin = findBin('git', 'a reftable checkout\'s branch goes unread'); if (!bin) return null;
+  let head = null;
+  try { head = execFileSync(bin, ['-C', top, 'symbolic-ref', '-q', '--short', 'HEAD'], { encoding: 'utf8', timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'] }).trim() || null; }
+  catch (e) { if (e.status === 1) head = 'HEAD'; }   // 1: no symbolic ref — detached
+  if (head) reftableHeads.set(git, { stamp, head });
+  return head;
 }
 const headOf = cwd => headAt(gitTopOf(cwd));
 /** The disk's half: the folder's head against the branch the chat's lines last said. A move is judged on a look
