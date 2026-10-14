@@ -6,7 +6,8 @@
 // with Done alone folded too, once. A reply the board has not shown stays where its last word puts it (a lane of its
 // own that morning) and is what the funnel's New replies shows — every match, under heads that do not fold — until the
 // chat is opened, which the server keeps, so a reload does not bring it back. (The funnel's Your move: pr-turn.mjs.)
-import { appendFileSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { makeFixture, replyLines, slugOf } from '../fixture.mjs';
 
@@ -92,5 +93,22 @@ export default async function (ctx) {
   await choose('Every chat');
   await ctx.waitFor(`!document.querySelector('#fBtn.on') && document.querySelectorAll('#slist > .card').length === 1`, { what: 'every chat again' });
   ctx.assert.deepEqual(await lanes(ctx), ['lane:ready 1', 'card', 'lane:idle (folded) 1', 'lane:done (folded) 1'], 'the folds as they were');
+
+  // what wants you counts what the lanes call asking (2026-10-14): a question on a chat ticked done is in the Done lane,
+  // not Asking you — and no longer in the page's title, the Dock's badge or the menu bar's count either
+  const sleeper = spawn('sleep', ['120'], { stdio: 'ignore' });
+  try {
+    const [q] = makeFixture(ctx.fixture.dir, [{ cwd: one.cwd, title: 'a question', prompt: 'may I?', reply: 'asking', at: new Date(), live: { pid: sleeper.pid, status: 'waiting', waitingFor: 'permission prompt' } }]).chats;
+    // a claude the tick cannot end — its registry's start is not the process's (one in VS Code that comes back, one the
+    // signal has not reached yet): still alive and asking, but done
+    const reg = join(ctx.fixture.dir, 'sessions', `${sleeper.pid}.json`);
+    writeFileSync(reg, JSON.stringify({ ...JSON.parse(readFileSync(reg, 'utf8')), procStart: 'Thu Jan  1 00:00:00 1970' }));
+    await ctx.waitFor(`window.peix.session('${q.id}')?.status === 'needs-input' && document.title.startsWith('(1) ')`, { what: 'the question, counted in the title' });
+    await ctx.server.post(`api/sessions/${q.id}/done`, { done: true });
+    await ctx.waitFor(`window.peix.session('${q.id}')?.done === true`, { what: 'the asking chat ticked done' });
+    await ctx.sleep(300);
+    out.doneAsking = await ctx.evaluate(`JSON.stringify({ title: document.title, alive: window.peix.session('${q.id}').alive, status: window.peix.session('${q.id}').status, bar: !!document.querySelector('#sbar .seg.ask') })`).then(JSON.parse);
+    ctx.assert.deepEqual({ title: out.doneAsking.title, bar: out.doneAsking.bar }, { title: 'peixAIrada', bar: false }, `a done chat's question is counted nowhere: ${JSON.stringify(out.doneAsking)}`);
+  } finally { try { sleeper.kill(); } catch {} }
   return out;
 }

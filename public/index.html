@@ -3546,7 +3546,8 @@ const toolName = n => {
   // …and what wants you, one meaning for the Dock's badge and the menu bar's count (2026-10-12; the badge counted the
   // alerts that came while the app was in the back, the menu bar the questions): the chats asking you and the ones with
   // a new reply — the menu lists them.
-  const wanting = () => { const all = [...state.sessions.values()]; return { needs: all.filter(s => s.alive && s.status === 'needs-input'), replied: all.filter(s => visible(s) && !s.done && !asking(s) && replied(s)).sort(byWord) }; };
+  // what asks is what the list and the bar call asking (2026-10-14; any live claude waiting before, a chat ticked done too)
+  const wanting = () => { const all = [...state.sessions.values()]; return { needs: all.filter(s => visible(s) && asking(s)), replied: all.filter(s => visible(s) && !s.done && !asking(s) && replied(s)).sort(byWord) }; };
   function postState() {
     const w = wanting(), brief = s => ({ id: s.id, project: s.project, title: s.title });
     const needs = w.needs.map(brief), replies = w.replied.map(brief);
@@ -3719,7 +3720,10 @@ const toolName = n => {
     // a filter (FILTERS) narrows the list before anything else counts it, and shows every match, folded or not
     const flt = listFilter(), pool = flt ? p.sessions.filter(flt.test) : p.sessions, inView = s => !!(q || flt) || !laneShut(rankOf(s));
     const who = renderPeople(pool.filter(inView)) ? prefs.person : null;   // may let go of a person no longer in view
-    const list = (!q ? pool : pool.filter(s => { const m = fuzzy(chatFields(s), q); if (m) score.set(s.id, m.score); return !!m; })).filter(s => !who || hasPerson(s, who));
+    // the query and the face narrow the project's chats, not only the filter's — the funnel counts with them (2026-10-14)
+    if (q) for (const s of p.sessions) { const m = fuzzy(chatFields(s), q); if (m) score.set(s.id, m.score); }
+    const narrow = s => (!q || score.has(s.id)) && (!who || hasPerson(s, who));
+    const list = pool.filter(narrow);
     const counts = {};
     for (const s of list) counts[bucket(s)] = (counts[bucket(s)] || 0) + 1;
     // clauding on top, then ready, done last (2026-09-20: one rule between the live cards and the ready ones, which
@@ -3776,7 +3780,7 @@ const toolName = n => {
     const drawn = drawCards(items, `<div class="none"><span class="nfish">${REST_FISH}</span><b>${esc(none)}</b><span>${esc(how)}</span></div>`);
     fillAges($('#slist')); fillLive($('#slist')); fadeSoon();
     caughtUp(zero);
-    drawFilter(p);
+    drawFilter(p, narrow);
     if (drawn) phaseAnims();
     markQsel();
     listChanged();
@@ -6201,13 +6205,14 @@ const toolName = n => {
   });
   document.addEventListener('pointerdown', e => { const m = $('#ctxm'); if (m.open && !e.composedPath().includes(m)) { m.close(); m._shut = performance.now(); } }, true);
   // The list's filter (2026-10-12): the funnel's menu — every chat, or only the ones with a PR at your move, or with a
-  // new reply — counted in the project in view (fCounts, from drawFilter). A press on the funnel that closed its own
-  // menu leaves it closed.
+  // new reply — counted in the project in view (fCounts, from drawFilter), as the list would show it: the query and the
+  // face narrowing it too (2026-10-14; the project's alone before, a count the list did not show). A press on the funnel
+  // that closed its own menu leaves it closed.
   let fCounts = {};
   function setFilter(k) { prefs.listFilter = FILTERS[k] ? k : null; savePrefs(); renderBoard(); $('#slist').scrollTop = 0; }
-  function drawFilter(p) {
+  function drawFilter(p, narrow = () => true) {
     const f = listFilter(), b = $('#fBtn'), fl = b.querySelector('.fl');
-    fCounts = Object.fromEntries(Object.entries(FILTERS).map(([k, x]) => [k, p.sessions.filter(x.test).length]));
+    fCounts = Object.fromEntries(Object.entries(FILTERS).map(([k, x]) => [k, p.sessions.filter(s => x.test(s) && narrow(s)).length]));
     const label = f ? `${f.name} · ${fCounts[prefs.listFilter]}` : '';
     if (fl.textContent !== label) fl.textContent = label;
     b.classList.toggle('on', !!f); b.setAttribute('aria-pressed', String(!!f));

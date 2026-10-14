@@ -81,11 +81,24 @@ export default async function (ctx) {
   await click('ana');
   out.ana = { ...(await row()), titles: await titles() };
   ctx.assert.deepEqual([out.ana.faces, out.ana.titles, out.ana.ready], [['eva', 'rui', 'ana*'], ['On one'], 1], 'another face moves the filter');
+  // the funnel counts what the list would show (2026-10-14): the face narrowing it, and a query, as the list does
+  const funnel = async () => { await ctx.evaluate(`document.querySelector('#fBtn').click()`); await ctx.waitFor(`document.querySelector('#ctxm').open`, { what: "the funnel's menu" });
+    const m = await ctx.evaluate(`[...document.querySelectorAll('#ctxm button')].map(b => b.textContent).filter(t => /^(Your move|New replies)\\d+$/.test(t))`);
+    await ctx.evaluate(`document.querySelector('#ctxm').close()`); await ctx.sleep(200); return m; };
+  out.funnelAna = await funnel();
+  ctx.assert.deepEqual(out.funnelAna, ['Your move0', 'New replies0'], `with ana's face, the funnel counts ana's chats alone: ${JSON.stringify(out.funnelAna)}`);
   ctx.assert.equal((await ctx.peix('prefs()')).person, 'ana', 'and it is a pref');
 
   await click('ana');
   out.back = { ...(await row()), titles: await titles() };
   ctx.assert.deepEqual([out.back.on, out.back.titles.length, out.back.ready], [false, 3, 3], 'the same face again: every chat');
+  ctx.assert.deepEqual(await funnel(), ['Your move1', 'New replies0'], "every chat: On two's PR at your move");
+  await ctx.fill('#q', 'zzqqxx');
+  await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 0`, { what: 'a query matching nothing' });
+  out.funnelQuery = await funnel();
+  ctx.assert.deepEqual(out.funnelQuery, ['Your move0', 'New replies0'], `…and none under a query that leaves no chat: ${JSON.stringify(out.funnelQuery)}`);
+  await ctx.fill('#q', '');
+  await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 3`, { what: 'every chat again' });
 
   // in the status bar (2026-10-09; under the list's cards with the bar off, until it was always there, 2026-10-14) — since
   // 2026-10-11, later, after the left's segments and before the fish's lane, which takes the bar's free room
