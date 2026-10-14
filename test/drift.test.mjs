@@ -20,6 +20,7 @@ const user = (t, branch, text) => ({ ...base(t, branch), type: 'user', message: 
 const bash = (t, branch, command, id = randomUUID()) => ({ ...base(t, branch), type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', id, name: 'Bash', input: { command } }], stop_reason: 'tool_use' } });
 const result = (t, branch, id = 'x') => ({ ...base(t, branch), type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: 'ok' }] } });
 const say = (t, branch, text = 'working on it') => ({ ...base(t, branch), type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text }], stop_reason: 'tool_use' } });
+const rest = (t, branch, text = 'Done.') => ({ ...base(t, branch), type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text }], stop_reason: 'end_turn' } });   // the turn over: waiting on you
 const LATER = () => Date.now() + 60_000;   // past the slack: a held move is judged
 const chat = (...lines) => { const s = newSession(randomUUID(), null); s.alive = true; for (const l of lines) fold(s, l); settleDrift(s, LATER()); return s; };
 const look = (s, head, now) => { noteHead(s, head, now); return noteHead(s, head, now + 2000); };   // the disk's two looks
@@ -165,7 +166,7 @@ test('the head is read from the checkout\'s HEAD file — a worktree\'s its own 
     assert.equal(headOf(dir), null, 'no checkout');
     git(repo, 'checkout', '-q', 'main');
 
-    const s = chat({ ...user(0, 'feat/tax-rounding', 'round it'), cwd: repo });
+    const s = chat({ ...user(0, 'feat/tax-rounding', 'round it'), cwd: repo }, { ...rest(1, 'feat/tax-rounding'), cwd: repo });
     const now = T0 + 60_000;
     assert.equal(noteHead(s, headOf(repo), now), true);
     assert.equal(s.headNow, 'main');
@@ -193,8 +194,32 @@ test('the head is read from the checkout\'s HEAD file — a worktree\'s its own 
     fold(late, { ...bash(65, 'feat/late', 'git switch -c feat/late'), cwd: repo }); settleDrift(late, LATER());
     noteHead(late, 'feat/late', now + 2000);
     assert.equal(moved(late), null, 'the HEAD file moved before the line that moved it was written: its own, on the second look');
+    // …and written after the second look: `git switch -c feat/slow && npm ci`, the message a minute later (2026-10-14)
+    for (const lag of ['feat/slow', 'feat/a']) {   // its lines carrying the new branch, or still the old one
+      const slow = chat({ ...user(0, 'feat/a', 'make a branch and install'), cwd: repo });
+      noteHead(slow, 'feat/slow', now + 8000); noteHead(slow, 'feat/slow', now + 18_000); settleDrift(slow, LATER());
+      assert.deepEqual([moved(slow), slow.driftSaid ?? null], [null, null], `at work, no line of its own since: held, nothing said (${lag})`);
+      noteHead(slow, 'feat/slow', now + 60_000);
+      assert.equal(moved(slow), null, `…a minute on still (${lag})`);
+      fold(slow, { ...bash(1, lag, 'git switch -c feat/slow && npm ci'), cwd: repo }); settleDrift(slow, LATER());
+      noteHead(slow, 'feat/slow', now + 70_000); settleDrift(slow, LATER());
+      assert.deepEqual([moved(slow), slow.driftSaid ?? null], [null, null], `the line that moved it come in: its own, never shown (${lag})`);
+    }
+    const long = chat({ ...user(0, 'feat/a', 'install it all'), cwd: repo });
+    look(long, 'feat/long', now);
+    noteHead(long, 'feat/long', now + 5 * 60_000);   // DISK_HOLD_MS
+    assert.equal(moved(long), 'feat/a → feat/long', 'held five minutes at most: then shown');
+    fold(long, { ...bash(2, 'feat/a', 'git switch feat/long && npm ci'), cwd: repo }); settleDrift(long, LATER());
+    noteHead(long, 'feat/long', now + 5 * 60_000 + 10_000);
+    assert.equal(moved(long), null, 'the line that moved it, come in later still: its own after all, and gone');
+    const busy = chat({ ...user(0, 'feat/a', 'go on'), cwd: repo });
+    look(busy, 'main', now);
+    assert.equal(moved(busy), null, 'held while nothing of its own has come in…');
+    fold(busy, { ...say(80, 'feat/a', 'Still on it.'), cwd: repo }); settleDrift(busy, LATER());
+    noteHead(busy, 'main', now + 12_000);
+    assert.equal(moved(busy), 'feat/a → main', '…a line in, and no git of its own: someone else\'s move, shown');
 
-    const heard = chat({ ...user(0, 'feat/a', 'go'), cwd: repo });
+    const heard = chat({ ...user(0, 'feat/a', 'go'), cwd: repo }, { ...rest(1, 'feat/a'), cwd: repo });
     look(heard, 'main', now);
     assert.equal(moved(heard), 'feat/a → main');
     fold(heard, { ...user(100, 'feat/a', 'fine, stay on main'), cwd: repo });
@@ -203,7 +228,7 @@ test('the head is read from the checkout\'s HEAD file — a worktree\'s its own 
     fold(heard, { ...say(130, 'main'), cwd: repo }); settleDrift(heard, LATER());
     assert.equal(moved(heard), null, '…and the lines catching up later are no move either');
 
-    const twice = chat({ ...user(0, 'feat/a', 'go'), cwd: repo }, { ...say(10, 'main'), cwd: repo });
+    const twice = chat({ ...user(0, 'feat/a', 'go'), cwd: repo }, { ...say(10, 'main'), cwd: repo }, { ...rest(11, 'main'), cwd: repo });
     look(twice, 'feat/b', now);
     assert.equal(moved(twice), 'feat/a → feat/b', 'the disk\'s newer word, from where the chat was before anything moved');
   } finally { rmSync(dir, { recursive: true, force: true }); }

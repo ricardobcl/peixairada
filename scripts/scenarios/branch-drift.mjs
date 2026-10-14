@@ -1,6 +1,7 @@
 // The branch moved under a chat (2026-10-13). Two live chats in one checkout: one at work whose lines say
 // feat/tax-rounding while the folder's HEAD says main — someone moved it —, and one idle on main beside it. What is
-// checked: the poll reads the HEAD file and the chat at work is alerted once (kind drift, a heading); the header's chip
+// checked: the poll reads the HEAD file and, a line of the chat's come in after it, the chat at work is alerted once
+// (kind drift, a heading) — held before, its own switch's message being written after the call (2026-10-14); the chip
 // before the changes' count reads "main now · was feat/tax-rounding", its tooltip names the other chat and screen
 // readers hear it; the card wears the red branch, the other card none; the lines catching up are the same move, no second
 // alert; the row stays one line narrowed; a click on the chip sets it aside, card and all, and the next move shows
@@ -55,7 +56,12 @@ export default async function (ctx) {
     const sum = id => ctx.server.api('api/sessions').then(r => r.body.sessions.find(s => s.id === id));
     const card = id => `document.querySelector('#slist > .card[data-id="${id}"]')`;
 
-    // ---- the poll reads the HEAD file: the chat at work is told, once ----
+    // ---- the poll reads the HEAD file: the chat at work is told, once — once a line of its own has come in since, for
+    // a chat at work writes the message of its own switch only after the call (2026-10-14) ----
+    await ctx.waitFor(`window.peix.session(${JSON.stringify(moved.id)})?.headNow === 'main'`, { what: 'the HEAD file read', timeout: 15_000 });
+    await ctx.sleep(2500);   // looks past the slack: held, nothing of its own come in
+    ctx.assert.equal((await sum(moved.id)).drift, null, 'held while the chat at work has written nothing since');
+    appendFileSync(moved.file, JSON.stringify(said(moved.id, 'feat/tax-rounding', -95_000, 'The tests pass; now the rates.', 'tool_use')) + '\n');
     await ctx.waitFor(`window.peix.session(${JSON.stringify(moved.id)})?.drift?.to === 'main'`, { what: 'the drift on the summary', timeout: 15_000 });
     out.summary = await sum(moved.id);
     ctx.assert.deepEqual([out.summary.drift.from, out.summary.drift.to, out.summary.headNow], ['feat/tax-rounding', 'main', 'main'], 'the folder on main, the chat\'s lines on feat/tax-rounding');
@@ -128,8 +134,10 @@ export default async function (ctx) {
     await ctx.sleep(1500);
     ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#driftBtn')`), false, 'a poll later, still aside');
 
-    // ---- the next move shows again ----
+    // ---- the next move shows again, with the chat's next line ----
     head('feat/rates');
+    await ctx.waitFor(`window.peix.session(${JSON.stringify(moved.id)})?.headNow === 'feat/rates'`, { what: 'the next move read', timeout: 15_000 });
+    appendFileSync(moved.file, JSON.stringify(said(moved.id, 'main', 2000, 'Still running.', 'tool_use')) + '\n');
     await ctx.waitFor(`document.querySelector('#driftBtn .n')?.textContent === 'feat/rates now'`, { what: 'the chip back for the next move', timeout: 15_000 });
     out.next = await ctx.evaluate(`document.querySelector('#driftBtn .q').textContent`);
     ctx.assert.equal(out.next, '· was feat/tax-rounding', 'from where the chat was before anything moved');

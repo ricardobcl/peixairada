@@ -610,6 +610,7 @@ function newSession(id, file) {
     agentsRunning: 0, ask: null, tasks: null, taskCalls: null, tasksGone: null,   // sub-agents at work (scanAgents); the question a tool asked; background tasks, the calls that started them, and the ids the poll let go (letTaskGo)
     branches: [], branchBase: null, gitCmds: [], drift: null, driftDue: null,   // the branch under the chat as its lines tell it, and a move no git of its own explains (noteBranch)
     headNow: null, diskDrift: null, diskSeen: null, headOk: null, peers: [],      // its checkout's HEAD as read on the poll, and what that says (noteHead)
+    linesIn: 0,   // its own lines come in since the read (noteBranch): a disk move under a chat at work waits for one (noteHead)
     pendingNotify: null, notifyTimer: null, pushTimer: null, newEntries: []   // the kinds of alert owed (queueNotify), a Set
   };
 }
@@ -1550,6 +1551,7 @@ const sameTree = (a, b) => a === b || (!!a && !!b && (treeTop(a) || a) === (tree
  *  until then the drift shown is the one before (`shown`). */
 function noteBranch(s, line, ts) {
   const b = line.gitBranch, cwd = line.cwd || s.cwd, at = Date.parse(ts) || 0, msg = line.type === 'assistant' && line.message?.id || null;
+  if (!s.reading) s.linesIn++;
   if (!b) return;
   if (s.branches.at(-1)?.name !== b) { s.branches.push({ name: b, at: ts }); if (s.branches.length > BRANCHES_MAX) s.branches.shift(); }
   if (b === 'HEAD') return;   // detached, mostly mid-rebase: where it lands is what counts
@@ -1645,17 +1647,26 @@ const headOf = cwd => headAt(gitTopOf(cwd));
 /** The disk's half: the folder's head against the branch the chat's lines last said. A move is judged on a look
  *  MOVE_SLACK_MS after the first (the chat's own switch is in its transcript only once the message that made it is
  *  written), and once per pair — the chat's own stays its own however long its lines take to catch up. True when the
- *  summary's part changed. */
-function noteHead(s, head, now = Date.now()) {
+ *  summary's part changed.
+ *  A chat at work writes the message that moved it only once its call has run — `git switch -c x && npm ci` a minute
+ *  on (2026-10-14) —, so a move its own git does not explain yet waits for a line of the chat's come in after it was
+ *  seen, or DISK_HOLD_MS; and a move judged is its own after all when such a line names it late. `boot`: the restart's
+ *  look, judged at once — a move from before it was judged then. */
+const DISK_HOLD_MS = 5 * 60_000;
+function noteHead(s, head, now = Date.now(), boot = false) {
   const before = JSON.stringify([s.headNow, s.diskDrift]), base = s.driftDue?.base || s.branchBase;   // a move held is not the chat's branch yet
   s.headNow = head;
   let d = null;
   if (head && head !== 'HEAD' && base && head !== base.name && head !== s.headOk && head !== s.drift?.from) {
     const key = `${base.name}→${head}`;
-    if (s.diskSeen?.key !== key) s.diskSeen = { key, at: now, drift: undefined };   // seen: judged on a later look
-    else if (s.diskSeen.drift === undefined && now - s.diskSeen.at >= MOVE_SLACK_MS)
-      s.diskSeen.drift = ownMove(s.gitCmds, now, head, base.from) || agentsMoved(s, now, head, base.from) ? null : { from: s.drift?.from || base.name, to: head, at: new Date(now).toISOString() };
-    d = s.diskSeen.drift || null;
+    if (s.diskSeen?.key !== key) s.diskSeen = { key, at: now, lines: s.linesIn, drift: undefined };   // seen: judged on a later look
+    const seen = s.diskSeen;
+    if (seen.drift === undefined && (boot || now - seen.at >= MOVE_SLACK_MS)) {
+      if (ownMove(s.gitCmds, now, head, base.from)) seen.drift = null;
+      else if (boot || statusOf(s) !== 'working' || s.linesIn > seen.lines || now - seen.at >= DISK_HOLD_MS)
+        seen.drift = agentsMoved(s, now, head, base.from) ? null : { from: s.drift?.from || base.name, to: head, at: new Date(now).toISOString() };
+    } else if (seen.drift && ownMove(s.gitCmds, Date.parse(seen.drift.at), head, base.from)) seen.drift = null;
+    d = seen.drift || null;
   } else s.diskSeen = null;
   s.diskDrift = d;
   return JSON.stringify([s.headNow, s.diskDrift]) !== before;
@@ -1912,7 +1923,7 @@ function indexFile(file, { full = false } = {}) {
   s.newEntries = []; // initial load: nothing is "new"
   if (!s.cwd && prev?.cwd) s.cwd = prev.cwd;
   if (!s.tasks?.size && prev?.tasks?.size) s.tasks = prev.tasks;   // a tail re-read has not seen the calls that started them
-  if (prev) { s.diskDrift = prev.diskDrift; s.diskSeen = prev.diskSeen; }   // the disk's word, not the transcript's: a re-read's old prompts do not clear it
+  if (prev) { s.diskDrift = prev.diskDrift; s.diskSeen = prev.diskSeen; s.linesIn = prev.linesIn; }   // the disk's word, not the transcript's: a re-read's old prompts do not clear it
   settleDrift(s);
   delete s.silent;
   sessions.set(id, s);
