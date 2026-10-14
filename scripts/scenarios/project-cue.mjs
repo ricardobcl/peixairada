@@ -1,13 +1,12 @@
-// The board without its projects column (2026-09-24). What this checks: there is
-// no column; the fish heads the chat list (and, clicked, is the About box, 2026-09-27); the list's head names the
-// project — on a row of its own over the controls since 2026-10-08, and the chat header's folder name toggles it — and
-// is the way to another — a click is ⌥⌘P's picker, × goes back to ALL, which shows nothing at all and
-// no colour square since 2026-09-27 —, open list or rail; the two things only the column's rows did
-// are in the picker (✎ on a named project, ＋ new project last); and the cog still owns the window's bottom left
-// pixel, from the list's foot, with the popover opening beside its cell.
+// The board without its projects column (2026-09-24). What this checks: there is no column; the list's foot names the
+// project — on a row of its own since 2026-10-08, and the chat header's folder name toggles it — and is the way to
+// another — a click is ⌥⌘P's picker, × goes back to ALL, which shows nothing at all and no colour square since
+// 2026-09-27 —, open list or rail; the two things only the column's rows did are in the picker (✎ on a named project,
+// ＋ new project last); the settings are the header's ··· and ⌘,; and the fish — the status bar's since 2026-10-09 (it
+// headed the list's foot row until then) — is the About box (2026-09-27).
 import { readFileSync } from 'node:fs';
 
-export const meta = { server: true, fixture: 'auto', prefs: { statusBar: false } };   // the list's foot row is what this is about: with the status bar on (the default since 2026-10-09) it is the bar's
+export const meta = { server: true, fixture: 'auto' };
 
 export default async function (ctx) {
   const out = {};
@@ -16,45 +15,15 @@ export default async function (ctx) {
   const pickOpen = () => ctx.evaluate(`document.querySelector('#pick').open`);
   const closePick = () => ctx.evaluate(`document.querySelector('#pick').close()`);
 
-  // One column: the fish first in the list's head
-  out.layout = await ctx.evaluate(`JSON.stringify({ projects: !!document.querySelector('#projects, #plist'), first: document.querySelector('#shd').firstElementChild.id,
-    fishX: Math.round(document.querySelector('#brandBtn').getBoundingClientRect().left) })`).then(JSON.parse);
-  ctx.assert.deepEqual(out.layout, { projects: false, first: 'brandBtn', fishX: out.layout.fishX }, 'no projects column, and the fish heads the chat list');
-  ctx.assert.ok(out.layout.fishX < 24, 'at the window\'s left');
+  // One column, and none of the list's old controls in it: no ＋ (⌥⌘N, 2026-09-28), no « (⌥⌘B), no state chips (the
+  // lanes fold instead, 2026-10-11, later) — the search and the filter are the status bar's (status-bar.mjs)
+  out.layout = await ctx.evaluate(`JSON.stringify({ projects: !!document.querySelector('#projects, #plist'), plus: !!document.querySelector('#newChatBtn'), fold: !!document.querySelector('#sessPinBtn'),
+    chips: document.querySelectorAll('.fchip').length, search: document.querySelector('#qBtn').closest('#sbar, #sessions')?.id })`).then(JSON.parse);
+  ctx.assert.deepEqual(out.layout, { projects: false, plus: false, fold: false, chips: 0, search: 'sbar' }, 'no projects column, and the list\'s controls are the bar\'s');
   out.all = await head();
   ctx.assert.deepEqual([out.all.text, out.all.hidden], ['', true], 'ALL says nothing: no filter is the default (2026-09-27; the word alone before)');
   ctx.assert.equal(out.all.x, false, 'ALL has nothing to clear');
   await ctx.shot('1-all', { x: 0, y: 0, width: 520, height: 140 });
-
-  // One row atop the list (2026-09-24): the filters and ＋ are in the head, the cards start right under it, ＋ is an
-  // icon alone, and on ALL it is ⌥⌘N's flow; since 2026-09-28 the foot — the cog, the usage — ends that row, and « went
-  out.row = await ctx.evaluate(`JSON.stringify((() => { const h = document.querySelector('#shd'), r = h.getBoundingClientRect(), f = document.querySelector('#sfoot').getBoundingClientRect();
-    return { inHead: h.contains(document.querySelector('#qBtn')), fold: !!document.querySelector('#sessPinBtn'), plus: !!document.querySelector('#newChatBtn'), h: Math.round(r.height),
-      foot: [Math.round(f.top), Math.round(f.height), Math.round(f.left - r.right)], head: [Math.round(r.top), Math.round(r.height)],
-      under: Math.round(r.top - document.querySelector('#slist').getBoundingClientRect().bottom), bottom: Math.round(document.querySelector('#main').getBoundingClientRect().bottom - r.bottom),   // the board's foot: the status bar is under it (2026-10-09)
-     
-      chips: document.querySelectorAll('.fchip').length }; })())`).then(JSON.parse);
-  ctx.assert.equal(out.row.inHead, true, 'the magnifier is in the head');
-  ctx.assert.equal(out.row.plus, false, 'no ＋ — ⌥⌘N (2026-09-28)');
-  ctx.assert.equal(out.row.fold, false, 'no « — ⌥⌘B folds the list');
-  ctx.assert.deepEqual([out.row.foot[0], out.row.foot[1], out.row.foot[2]], [out.row.head[0], out.row.head[1], 0], 'the foot is the head row\'s right end, as tall');
-  ctx.assert.ok(out.row.h <= 44 && out.row.under === 0 && out.row.bottom === 2, `one row, under the cards, at the tile's foot (2026-09-28, later): ${JSON.stringify(out.row)}`);
-  ctx.assert.equal(out.row.chips, 0, 'no state chips: the lanes fold instead (2026-10-11, later)');
-  // The magnifier is small (2026-09-28; a field from the fish to the first chip from 2026-09-27): open, its icon is the
-  // box's left cap and the box takes the room the row has spare — the rings', too, while it is open
-  const field = () => ctx.evaluate(`JSON.stringify((() => { const x = q => { const r = document.querySelector(q).getBoundingClientRect(); return r.width ? [Math.round(r.left), Math.round(r.right)] : null; };
-    return { fish: x('#brandBtn'), btn: x('#qBtn'), box: x('#q') }; })())`).then(JSON.parse);
-  out.field = { rest: await field() };
-  const { rest } = out.field;
-  ctx.assert.ok(rest.btn[0] - rest.fish[1] <= 6 && rest.btn[1] - rest.btn[0] < 30, `at rest the magnifier is an icon beside the fish: ${JSON.stringify(rest)}`);
-  await ctx.evaluate(`document.querySelector('#qBtn').click()`);
-  out.field.open = await field();
-  const { open } = out.field;
-  ctx.assert.ok(open.box && open.box[0] <= open.btn[1] && open.btn[0] === rest.btn[0] && open.box[1] - open.btn[0] > 80, `open, the icon and the box are one field: ${JSON.stringify(open)}`);
-  ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#usage')).display`), 'none', 'the rings make room while it is open');
-  await ctx.shot('1b-search', { x: 0, y: 0, width: 520, height: 140 });
-  await ctx.evaluate(`document.querySelector('#q').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
-  ctx.assert.deepEqual(await field(), rest, 'Esc puts the field back as it was');
 
   // The head is the picker — on ALL there is nothing to click, so ⌥⌘P
   await ctx.key('KeyP');
@@ -70,11 +39,11 @@ export default async function (ctx) {
   ctx.assert.ok(out.proj.text.startsWith(folder) && !out.proj.hidden, 'the head names the project chosen');
   ctx.assert.equal(out.proj.x, true, '…with × beside it');
   ctx.assert.equal(out.proj.sq, false, '…and no colour square: the chat header\'s is the picker (2026-09-27)');
-  // A row of its own over the controls (2026-10-08): the whole list's width, the name whole and × in sight — squeezed
+  // A row of its own at the list's foot (2026-10-08): the whole list's width, the name whole and × in sight — squeezed
   // into the controls' row before, a list at its usual width showed × alone
-  out.projRow = await ctx.evaluate(`JSON.stringify((() => { const r = q => document.querySelector(q).getBoundingClientRect(), t = document.querySelector('#stitle .t'), row = r('#stitle'), shd = r('#shd'), list = r('#sessions'), x = r('#stitle .sx');
-    return { full: Math.round(list.right - list.left - 4 - row.width), above: Math.round(shd.top - row.bottom), whole: t.scrollWidth <= t.clientWidth, x: x.width > 0 && x.right <= row.right, foot: Math.round(r('#sfoot').top - shd.top) }; })())`).then(JSON.parse);
-  ctx.assert.deepEqual(out.projRow, { full: 0, above: 0, whole: true, x: true, foot: 0 }, `the project's row: full width, over the controls, the name whole, × in it: ${JSON.stringify(out.projRow)}`);
+  out.projRow = await ctx.evaluate(`JSON.stringify((() => { const r = q => document.querySelector(q).getBoundingClientRect(), t = document.querySelector('#stitle .t'), row = r('#stitle'), s = document.querySelector('#sessions'), list = r('#sessions'), x = r('#stitle .sx');
+    return { full: Math.round(list.width - 2 * s.clientLeft - row.width), foot: Math.round(list.bottom - s.clientTop - row.bottom), whole: t.scrollWidth <= t.clientWidth, x: x.width > 0 && x.right <= row.right }; })())`).then(JSON.parse);
+  ctx.assert.deepEqual(out.projRow, { full: 0, foot: 0, whole: true, x: true }, `the project's row: full width, at the list's foot, the name whole, × in it: ${JSON.stringify(out.projRow)}`);
   await ctx.evaluate(`document.querySelector('#stitle .t').click()`);
   ctx.assert.equal(await pickOpen(), true, 'a click on the name opens the picker');
   await closePick();
@@ -101,7 +70,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.fresh, { editor: true, title: 'New project', name: '' }, '＋ new project opens an empty editor');
   await ctx.evaluate(`document.querySelector('#pdlg').close()`);
 
-  // The rail keeps the fish and, for a project, its short name — the picker's handle there (the square, until 2026-09-27)
+  // The rail keeps, for a project, its short name — the picker's handle there (the square, until 2026-09-27)
   await ctx.key('KeyP');
   await ctx.evaluate(`(() => { const q = document.querySelector('#pickq'); q.value = ${JSON.stringify(folder)}; q.dispatchEvent(new Event('input')); q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })()`);
   await ctx.key('KeyB');
@@ -141,7 +110,7 @@ export default async function (ctx) {
 
   // The fish, clicked, is the About box (2026-09-27): modal, centred, saying the package's version and what the
   // board touches; Esc closes it
-  await ctx.evaluate(`document.querySelector('#brandBtn').click()`);
+  await ctx.evaluate(`document.querySelector('#sbar .conn').click()`);
   await ctx.settle();   // a dialog rises as it opens (2026-09-27, night): centred once it has
   out.about = await ctx.evaluate(`JSON.stringify((d => { const r = d.getBoundingClientRect(); return { open: d.open, modal: d.matches(':modal'),
     centred: Math.abs((r.left + r.width / 2) - innerWidth / 2) < 2 && Math.abs((r.top + r.height / 2) - innerHeight / 2) < 2, text: d.textContent.replace(/\\s+/g, ' ') }; })(document.querySelector('#about')))`).then(JSON.parse);

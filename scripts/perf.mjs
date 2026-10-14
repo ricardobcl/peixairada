@@ -154,7 +154,7 @@ const stop = async () => {
 process.on('SIGINT', () => stop().then(() => process.exit(130)));
 
 // ---- one run: the page in WebKit, its phases, and the web process's CPU time sampled beside it ----
-const prefs = { statusBar: true, barStats: ['cpu', 'mem'], lanesShut: [], cards: 'compact', cardsEven: true, skin: 'own-dark', look: 'dark' };
+const prefs = { barStats: ['cpu', 'mem'], lanesShut: [], cards: 'compact', cardsEven: true, skin: 'own-dark', look: 'dark' };
 const body = `await sleep(3000);
   const rules = ${ANIM_RULES}, list = document.querySelector('#slist'), out = { phases: [], opens: [] };
   const phase = async (name, step) => { await say('phase ' + name + ' ' + ${WIN / 1000});

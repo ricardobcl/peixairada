@@ -53,6 +53,14 @@ pref for a switch that went is deleted on load.
 * **The floating header** (2026-10-09) — the only header: `<html data-head="float">` is in the markup, its rules as
   they were; the switch, `applyHead` and the plain header's turns in `layoutNotch`, `headNotch` and `floatH` went, and
   the harness no longer turns it off — the scenarios measure the board as it is.
+* **The status bar** (2026-10-09) — always there, so the list's foot row it replaced went: the fish (its SSE light now
+  the bar's `.conn` alone, its logo a `<template id="logo">` for the About box and the welcome), the search and the
+  funnel (`#filters`, now in `#sbFind` in the markup), the faces (`#people`, in `#sbPeople`), the plan usage as tags and
+  rings (`#usage`, `renderUsage`; the bar's pies and rows stay), and the header's cup and the lid's row in ··· that
+  stood in for the bar's switches. `dockBar`, `data-sbar` and the harness's `statusBar: false` went with them;
+  `usage-bar.mjs` checks the bar's usage now, and `project-cue.mjs`, `notch.mjs`, `people-row.mjs`, `keep-awake.mjs`,
+  `status-bar.mjs` and `tour.mjs` lost their steps about the bar off — the tour's bar step is the bar's alone, its logo
+  the template's (and its last card no longer names tiles among the settings).
 
 ## Decisions of 2026-10-14, on a branch — the tour
 

@@ -163,7 +163,7 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
 **Settings** — ⌘, or ··· in the chat's header:
 
 - **Board** — *Alerts*: notifications, sounds · *Chats*: card size (compact, or large only where a chat wants you),
-  where files open · *Look*: text size (the whole board, in the app), the theme and whether it follows macOS, the status bar and what it
+  where files open · *Look*: text size (the whole board, in the app), the theme and whether it follows macOS, what else the status bar
   shows · *Terminal*: ⌥ as Meta, a screen reader in the drawer ·
   *Updates*: whether the board updates itself (off to begin with: the status bar says when new commits came, and
   *update now* takes them), where it stands, check now.

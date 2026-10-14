@@ -9,7 +9,7 @@
 // since 2026-10-14; it went right of the housing before) — a short one stays left.
 import { makeFixture } from '../fixture.mjs';
 
-export const meta = { server: true, fixture: 'auto', prefs: { statusBar: false } };   // the fish at the list's foot: with the status bar on (the default since 2026-10-09) the row is gone
+export const meta = { server: true, fixture: 'auto' };
 const NOTCH = { top: 32, left: 771.5, right: 956.5 };
 
 export default async function (ctx) {
@@ -26,14 +26,13 @@ export default async function (ctx) {
   // and its top above the strip's bottom).
   const read = () => ctx.evaluate(`JSON.stringify((() => {
     const N = ${JSON.stringify(NOTCH)}, main = document.querySelector('#main'), list = document.querySelector('#sessions'), chat = document.querySelector('#chat');
-    const head = document.querySelector('#shead'), h2 = head.querySelector('h2'), shd = document.querySelector('#shd');
+    const head = document.querySelector('#shead'), h2 = head.querySelector('h2');
     const under = el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.top < N.top && r.right > N.left && r.left < N.right; };
     const parts = [...head.querySelectorAll('*')].filter(el => el.getClientRects().length && el.textContent.trim() && !el.querySelector('*'));
     const after = [...head.children].find(el => el !== h2 && !el.classList.contains('details') && el.getClientRects().length);
     return { notch: main.classList.contains('notch'), top: main.style.getPropertyValue('--notch-top'),
       listPad: list.classList.contains('npad'), chatPad: chat.classList.contains('npad'), hole: head.classList.contains('hole'),
       listRight: Math.round(list.getBoundingClientRect().right), headLeft: Math.round(head.getBoundingClientRect().left),
-      fishTop: Math.round(document.querySelector('#brandBtn').getBoundingClientRect().top), shdPad: parseFloat(getComputedStyle(shd).paddingTop),
       listPad0: parseFloat(getComputedStyle(document.querySelector('#slist')).paddingTop), cardTop: Math.round(document.querySelector('#slist > .card')?.getBoundingClientRect().top ?? -1),
       headPad: parseFloat(getComputedStyle(head).paddingTop), h2Right: Math.round(h2.getBoundingClientRect().right), h2Flex: h2.style.flex,
       afterLeft: after ? Math.round(after.getBoundingClientRect().left) : null, afterTop: after ? Math.round(after.getBoundingClientRect().top) : null,
@@ -54,8 +53,7 @@ export default async function (ctx) {
   out.on = await read();
   ctx.assert.deepEqual([out.on.notch, out.on.top, out.on.listPad, out.on.chatPad, out.on.tunder], [true, '32px', false, false, true], `filled: the list lifted, the title on under the housing: ${JSON.stringify(out.on)}`);
   ctx.assert.ok(out.on.listRight < NOTCH.left, `the list ends short of the housing (${out.on.listRight})`);
-  ctx.assert.deepEqual([out.on.listPad0, out.on.headPad], [0, 7], 'the list\'s cards and the chat\'s header at the top, their own padding — the list\'s row is at its foot (2026-09-28, later), the first card flush with the top (2026-09-29)');
-  ctx.assert.ok(out.on.fishTop > 500, `the fish at the foot (${out.on.fishTop})`);
+  ctx.assert.deepEqual([out.on.listPad0, out.on.headPad], [0, 7], 'the list\'s cards and the chat\'s header at the top, their own padding, the first card flush with the top (2026-09-29)');
   ctx.assert.ok(out.on.repoRight < NOTCH.left - 9, `the project's name left of the housing (${out.on.repoRight})`);
   ctx.assert.ok(!out.on.tright && out.on.tLeft < NOTCH.left && out.on.tRight > NOTCH.right, `a title too long for the left runs on under the housing (${out.on.tLeft}–${out.on.tRight})`);
   ctx.assert.ok(out.on.afterLeft >= NOTCH.right + 9, `the chips start past it (${out.on.afterLeft})`);

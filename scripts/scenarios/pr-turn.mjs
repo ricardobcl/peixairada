@@ -159,7 +159,7 @@ export default async function (ctx) {
       ctx.assert.ok(row.dy <= 3, `··· on the title's row in a ${row.chat} px column: ${JSON.stringify(row)}`);
       ctx.assert.ok(row.tag >= 60 || row.tag === 0, `the tag whole, or the line put away: ${JSON.stringify(row)}`);
     }
-    ctx.assert.deepEqual([out.narrow[0].tag >= 60, out.narrow[0].clipped], [true, true], 'first the reason gives way, the tag whole');
+    ctx.assert.deepEqual([out.narrow[0].tag >= 60, out.narrow[0].clipped], [true, true], `first the reason gives way, the tag whole: ${JSON.stringify(out.narrow)}`);
     ctx.assert.equal(out.narrow.at(-1).tag, 0, 'narrower, the line goes');
     await ctx.shot('2-header-narrow', await ctx.evaluate(`(r => ({ x: r.left, y: 0, width: r.width, height: 110 }))(document.querySelector('#chat').getBoundingClientRect())`));
     await ctx.evaluate(`Object.assign(document.querySelector('#sessions').style, { width: ${JSON.stringify(listW)}, maxWidth: '' })`); await ctx.sleep(300);

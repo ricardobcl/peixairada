@@ -85,9 +85,8 @@
      controls nobody touched twice a day. The fish sits at the top left of the chat list (of the projects strip until
      2026-09-24) and is a light, not a button (it goes dim when the SSE stream drops); everything the board has to
      say for itself is in the one popover at the bottom left, behind the cog: the notifications switch and the keys.
-     The plan usage is the chat list's footer, beside the cog (#usage). */
-  .brand { position: relative; width: 28px; height: 28px; flex: none; display: inline-flex; cursor: pointer; }
-  .brand .logo { width: 28px; height: 28px; }
+     The fish and the plan usage are the status bar's since 2026-10-09 (the list's foot row's until it was the only way,
+     2026-10-14); the logo is a template (#logo) the bar, the About box and the welcome draw. */
   /* The settings (2026-09-28; a popover off the cog at the list's foot before): a modal dialog, centred, from
      the chat header's ··· or ⌘, — the dialog rules give it the fade, the backdrop, Esc and the pane going down. A head
      (the name, the counts, ×), a segmented control over three panes: the board's own switches, the server's setup,
@@ -211,16 +210,15 @@
   .pop .setup .sfoot.serr { color: var(--needs); }
   .pop .keys kbd { font: inherit; font-weight: 600; color: var(--ink); white-space: nowrap; }
   .pop .keys em { font-style: normal; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--fs-xs); color: var(--ink); }
-  .pop select, .colhead select { font: inherit; font-size: var(--fs-sm); padding: 4px 6px; border: 1px solid var(--line); border-radius: var(--r-3); background: transparent; color: inherit; max-width: 180px; }
-  .brand.off .logo { filter: grayscale(1); opacity: .5; }   /* the SSE stream is down: the board is frozen */
+  .pop select { font: inherit; font-size: var(--fs-sm); padding: 4px 6px; border: 1px solid var(--line); border-radius: var(--r-3); background: transparent; color: inherit; max-width: 180px; }
   /* …and its fish floats belly-up (2026-10-11): flipped, the sparks out, bobbing; back, it flips over and wiggles. The
      same on the status bar's connection, whose fish is drawn anew with the bar — hence animations, not transitions. */
   .logo .fishg { transform-box: view-box; transform-origin: 512px 512px; }
   .logo .stars { transition: opacity .4s; }
-  :is(.brand.off, #sbar .conn.off) .logo .fishg { animation: bellyup .55s cubic-bezier(.5, 0, .25, 1) both; }
-  :is(.brand.off, #sbar .conn.off) .logo .stars { opacity: 0; }
-  :is(.brand.off, #sbar .conn.off) .logo { animation: bob 2.6s ease-in-out .55s infinite; }
-  :is(.brand.back, #sbar .conn.back) .logo .fishg { animation: bellyback .8s ease-out both; }
+  #sbar .conn.off .logo .fishg { animation: bellyup .55s cubic-bezier(.5, 0, .25, 1) both; }
+  #sbar .conn.off .logo .stars { opacity: 0; }
+  #sbar .conn.off .logo { animation: bob 2.6s ease-in-out .55s infinite; }
+  #sbar .conn.back .logo .fishg { animation: bellyback .8s ease-out both; }
   @keyframes bellyup { from { transform: none; } to { transform: scaleY(-1); } }
   @keyframes bellyback { from { transform: scaleY(-1); } 45% { transform: none; } 62% { transform: rotate(-14deg); } 80% { transform: rotate(7deg); } to { transform: none; } }
   @keyframes bob { 0%, 100% { transform: none; } 50% { transform: translateY(-1.5px) rotate(-6deg); } }
@@ -268,31 +266,20 @@
   #chat { --hbg: var(--nocolor); }
   :where(.shead, #log, .gbody) { --hbg-eased: var(--hbg); transition: --hbg-eased .25s; }   /* :where — the header's own list below wins */
   .shead { --hveil-eased: var(--hveil); --hveil2-eased: var(--hveil2); transition: --hbg-eased .25s, --hveil-eased .25s, --hveil2-eased .25s; }
-  #sessions .colhead { background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); }
   /* 300 px at the narrowest (260 until the head became one row: below 300 the project's name had no room left) */
-  #sessions { width: 380px; min-width: 300px; max-width: 60vw; flex: none; display: grid; grid-template-rows: minmax(0, 1fr) auto auto auto; min-height: 0; container-type: inline-size; }
+  #sessions { width: 380px; min-width: 300px; max-width: 60vw; flex: none; display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; container-type: inline-size; }
   /* Placed by hand, like the chat column's rows: a hidden block leaves auto-placement and slides the rest up a row —
      the list into the `auto` row, sized to its cards instead of the column. */
   /* One column: the timeline (#tline) lies over the list's left edge, out of sight until called (2026-09-28; a column
      of its own beside the list from 2026-09-25). Every cell is definite — the list's ends (.sedge) and the glass lie
      over the list's, which only a definite cell allows. */
   #sessions { grid-template-columns: minmax(0, 1fr); }
-  /* The list first, its row of controls under it (2026-09-28, later): the cards run from the column's top. */
-  #tline { grid-row: 1; grid-column: 1 / -1; justify-self: start; } #slist { grid-row: 1; grid-column: 1 / -1; } #shd { grid-row: 2; grid-column: 1; } #sfoot { grid-row: 3; grid-column: 1; }
-  #shd { border-bottom: 0; border-top: 1px solid var(--line); }
-  /* One row under the open list (2026-09-28): the foot — the plan usage — is the row's right end, in a column of its
-     own there; on the rail of squares it is a row of its own over the fish, which keeps the corner. */
-  main:not(.scompact) #sessions { grid-template-columns: minmax(0, 1fr) auto; }
-  /* The people row between the cards and the row (2026-09-29, renderPeople): the row and the usage one down; none on the rail. */
-  #people { grid-row: 2; grid-column: 1 / -1; }
-  /* The project in view, a row of its own over the controls (2026-10-08; squeezed into their row before, where a list at
-     its usual width left the name no room at all — only × showed): the name and ×, the whole width. */
-  #stitle { grid-row: 3; grid-column: 1 / -1; }
-  main:not(.scompact) #shd { grid-row: 4; }
-  main.scompact #people { display: none; }
-  main:not(.scompact) #sfoot { grid-row: 4; grid-column: 2; background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); align-items: center; gap: 2px; padding: 0 10px 0 0; position: relative; }
-  main:not(.scompact) #shd { padding-right: 4px; overflow: hidden; }   /* a list at its narrowest clips the row rather than run it under the usage */
-  main.scompact #sfoot { grid-row: 2; } main.scompact #shd { grid-row: 3; } main.scompact #stitle { grid-row: 4; }
+  /* The list, and the project in view under it, a row of its own (2026-10-08; squeezed into the list's foot row of
+     controls before, where a list at its usual width left the name no room at all — only × showed): the name and ×,
+     the whole width. The foot row — the fish, the search, the faces, the plan usage — is the status bar's (2026-10-09;
+     for good, 2026-10-14). */
+  #tline { grid-row: 1; grid-column: 1 / -1; justify-self: start; } #slist { grid-row: 1; grid-column: 1 / -1; }
+  #stitle { grid-row: 2; grid-column: 1 / -1; }
   /* the cards start under the camera's strip when the list is under the housing (the head used to pad down instead) */
   main.notch #sessions.npad #slist { padding-top: var(--notch-top, 0px); }
   main.notch #sessions.npad .sedge.up { padding-top: calc(5px + var(--notch-top, 0px)); }
@@ -302,11 +289,10 @@
      and the card's own edge — so what is clauding, how many agents are out, what is watching and what is asking
      still read from the rail. Everything inside the card goes; .abbr is the only child left standing. */
   main.scompact #sessions { width: 58px; min-width: 0; }
-  main.scompact #shd #filters, main.scompact #stitle > :not(.ab), main.scompact #splitter { display: none; }
+  main.scompact #stitle > :not(.ab), main.scompact #splitter { display: none; }
   main.scompact #stitle .ab { display: block; font-size: var(--fs-xs); font-weight: 800; letter-spacing: .4px; color: var(--ink); }
   main.scompact #stitle { justify-content: center; padding: 5px 0 13px; border-top: 0; background: color-mix(in srgb, var(--repo, var(--nocolor)) 18%, var(--panel)); }
   main.scompact #stitle:hover { background: color-mix(in srgb, var(--repo, var(--nocolor)) 26%, var(--panel)); }
-  main.scompact #shd { flex-direction: column; padding: 8px 0; gap: 8px; min-height: 0; }
   main.scompact #slist { padding: 7px 6px 10px; gap: 6px; }
   main.scompact #slist > .card { padding: 0; min-height: 36px; display: grid; place-items: center;
     background: color-mix(in srgb, var(--repo, var(--nocolor)) 55%, var(--panel)); }
@@ -412,10 +398,6 @@
      transparent). Where the chat lives is the header menu's to say (its VS Code row), not a colour, since 2026-09-20. */
   #log { background: var(--grain), linear-gradient(165deg, color-mix(in srgb, var(--hbg-eased) 24%, transparent), color-mix(in srgb, var(--hbg-eased) 6%, transparent) 70%, transparent); }
   /* Every other chat is a CLI chat, lived here or in a terminal: the same wash in orange, no outline. */
-  .colhead { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: .7px; color: var(--muted); font-weight: 700; min-width: 0; min-height: 43px; }
-  .colhead .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; font-size: var(--fs-base); color: var(--ink); font-weight: 800; display: flex; align-items: center; gap: 7px; }
-  .colhead .sq { width: 10px; height: 10px; border-radius: var(--r-1); background: var(--repo, var(--nocolor)); flex: none; }
-  .colhead .btn.icon { padding: 3px 7px; }
 
   /* ---- projects: a folder, or a named set of folders ---- */
   /* No column of their own since 2026-09-24. The chat
@@ -430,18 +412,13 @@
   #stitle .ab { display: none; }   /* the short name, for the rail */
   #stitle .sx { flex: none; margin-left: auto; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font-size: var(--fs-lg); font-weight: 400; line-height: 1; color: var(--muted); }
   #stitle .sx:hover { color: var(--ink); background: var(--inline-bg); }
-  /* One row under the list (2026-09-24, atop it then): the fish, the filters — the magnifier and the three state
-     chips —, the usage. The project's name has the row above since 2026-10-08. */
-  #shd { gap: 5px; padding: 7px 10px; }
-  #shd .brand, #shd .brand .logo { width: 24px; height: 24px; }
-  #shd .btn.icon { padding: 3px 5px; }
-  :is(#shd, #sbar) #filters { display: flex; align-items: center; gap: 3px; flex: 1 1 auto; text-transform: none; letter-spacing: 0; font-weight: 400; }
+  #sbar #filters { display: flex; align-items: center; gap: 3px; flex: 1 1 auto; text-transform: none; letter-spacing: 0; font-weight: 400; }
   /* The magnifier is a field as wide as the row leaves it (2026-09-27; an icon-sized pill until then, and the box took
      the chips' place while it was open; the chips went 2026-10-11, later): open, the icon is the field's left cap
      and the box takes the row's spare room. */
-  :is(#shd, #sbar) .fsearch { flex: none; height: 20px; }   /* small again since 2026-09-28: the row has the foot's rings and cog to hold now */
-  :is(#shd, #sbar) #filters.searching .fsearch { flex: none; min-width: 0; color: var(--accent); border-color: var(--accent); background: var(--bg); border-right: 0; border-radius: 12px 0 0 12px; padding-right: 3px; }
-  :is(#shd, #sbar) .fq { flex: 1 1 0; width: 0; height: 20px; margin-left: -3px; border-left: 0; border-radius: 0 12px 12px 0; padding-left: 3px; }   /* width 0: a box's own width is what it asks of the row, and it would push ＋ out; open, it takes the room the chips leave */
+  #sbar .fsearch { flex: none; height: 20px; }   /* small again since 2026-09-28: the row has the foot's rings and cog to hold now */
+  #sbar #filters.searching .fsearch { flex: none; min-width: 0; color: var(--accent); border-color: var(--accent); background: var(--bg); border-right: 0; border-radius: 12px 0 0 12px; padding-right: 3px; }
+  #sbar .fq { flex: 1 1 0; width: 0; height: 20px; margin-left: -3px; border-left: 0; border-radius: 0 12px 12px 0; padding-left: 3px; }   /* width 0: a box's own width is what it asks of the row, and it would push ＋ out; open, it takes the room the chips leave */
   /* the filter boxes: a magnifier in the row, the box itself only while it is open or has text */
   .fsearch { font: inherit; border: 1px solid transparent; background: var(--ctl); color: var(--muted); border-radius: var(--r-4); padding: 2px 7px; cursor: pointer; display: inline-flex; align-items: center; flex: none; }
   .fsearch .ic { width: 12px; height: 12px; fill: currentColor; }
@@ -1027,11 +1004,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   :root[data-alt] .card:hover .act:hover:has(.fx) { opacity: 1; color: #fff; background: var(--needs); }
   .act.tk.fg { color: #fff; background: var(--needs); }
   /* Every small control eases its hover (2026-09-27, night): the ink, the edge and the wash, 120 ms — the one rule. */
-  :is(.btn, .ptab, .hmi, .hmore, .hprs, .pfold, .nav, .gmore, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
+  :is(.btn, .ptab, .hmi, .hmore, .hprs, .pfold, .nav, .gmore, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #stitle) { transition: color var(--t-hover), border-color var(--t-hover), background-color var(--t-hover), opacity var(--t-hover), scale .25s var(--spring); }
   /* …and dips to 97 % while pressed (2026-10-11), springing back on release; a row of a menu or the project's line
      does not — a whole row shrinking reads as a glitch, not a press. Nor does the address, a field, or a tab pressed on
      its × (2026-10-12): 97 % of a wide tab carries the × out from under the pointer, and the release is the tab's click. */
-  :is(.btn, .ptab:not(.addr, :has(> .x:active)), .hmore, .hprs, .pfold, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button, .gsep.lane[data-lane]):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
+  :is(.btn, .ptab:not(.addr, :has(> .x:active)), .hmore, .hprs, .pfold, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, .gsep.lane[data-lane]):active:not(:disabled) { scale: .97; transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), .06s; transition-timing-function: ease, ease, ease, ease, ease-out; }
   .act:hover { opacity: 1; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .dot.working { background: var(--working); animation: pulse 1.4s ease-in-out infinite; }
@@ -1042,64 +1019,31 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .badge { background: var(--unread); color: #fff; border-radius: var(--r-4); padding: 0 6px; font-size: var(--fs-xs); font-weight: 600; min-width: 18px; text-align: center; flex: none; }
   .chip { font-size: var(--fs-2xs); border: 1px solid transparent; background: var(--ctl); border-radius: var(--r-2); padding: 0 4px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; min-width: 0; flex: 0 1 auto; }
 
-  /* ---- plan usage: the chat list's footer ---- */
-  /* The numbers `/usage` shows, always in view (2026-09-24). Open, a row per window: its name, a thin
-     bar in orange (green until the same day's "make the credits used color green -> orange"), red from 90 %, a tick
-     where the window's clock stands — a bar past its tick is being spent faster than time —, the percent and the
-     time to its reset. Folded (the heading, the chevron), one line of
-     rings. On the rail (⌥⌘B) the rings stack with the percent inside, whatever the fold says. */
-  /* The chat list's foot (2026-09-24): the plan usage — the cog that stood beside it went into the chat header's ···
-     on 2026-09-28. */
-  #sfoot { display: flex; min-width: 0; border-top: 1px solid var(--line); background: var(--panel); }
-  /* folded, the foot is one row of 34 px, the cog's cell and the rings side by side ("a bit smaller vertically":
-     44 px until the same day) */
-  #usage { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); flex: 1; display: grid; align-content: center; min-height: 34px; padding: 7px 12px 8px 6px; font-size: var(--fs-xs); color: var(--muted); min-width: 0; user-select: none; }
-  #sfoot #usage[hidden] { display: none; }   /* USAGE=off — two ids deep, past the head row's display (main:not(.scompact) #usage) */
-  #usage button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; width: 100%; min-width: 0; display: flex; align-items: center; gap: 6px; text-align: left; cursor: pointer; }
-  #usage button:hover { color: var(--ink); }
-  #usage .uchev { width: 12px; height: 12px; flex: none; margin-left: auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; opacity: .6; }
-  #usage button:hover .uchev { opacity: 1; }
-  #usage .uline .uchev { transform: rotate(180deg); }   /* folded, it points up: the way the rows will come */
-  /* In the head row (2026-09-28): the rings alone, 14 px, and the rows a panel under
-     the row — on hover, a beat late so a pointer on its way to the cog does not open it, or pinned by a click on the
-     rings (.pin; a click on its heading or anywhere else lets it go). The fold of 2026-09-24 went with the foot. */
-  main:not(.scompact) #usage { flex: none; min-height: 0; padding: 0 4px; display: flex; align-items: center; }
-  main:not(.scompact) #usage .uline { flex-wrap: nowrap; column-gap: 8px; width: auto; }
-  main:not(.scompact) #usage .uline :is(.uring, .uchev) { display: none; }
-  main:not(.scompact) #usage .uline .unote { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  /* in words (2026-09-28, later): "5H 42%  1W 75%  F 95%" — the tag set in the rounded face, heavy, on a wash of the
-     window's colour (orange, red from 90 %), the percent in the ink beside it */
-  main:not(.scompact) #usage .uchip { gap: 4px; }
-  main:not(.scompact) #usage .uchip.grant { display: none; }   /* a credit grant runs out rather than resets: the rows over the row say it, the row has the limits */
-  main:not(.scompact) #usage .uchip .uk { font: 800 var(--fs-2xs)/1 ui-rounded, "SF Pro Rounded", ui-sans-serif, system-ui, sans-serif; letter-spacing: .5px; padding: 2px 4px; border-radius: var(--r-2); background: color-mix(in srgb, var(--u) 22%, transparent); color: var(--u); }
-  main:not(.scompact) #usage .uchip b { font-size: var(--fs-xs); }
-  main:not(.scompact) #sessions:has(#filters.searching) #usage { display: none; }   /* the box open: its room, the rings' too */
-  main:not(.scompact) #usage .uopen { position: absolute; bottom: 100%; right: 6px; z-index: 30; width: 300px; box-sizing: border-box; padding: 10px 12px 12px; border-radius: var(--r-4); background: var(--panel); box-shadow: 0 10px 34px rgba(0, 0, 0, .22);
-    visibility: hidden; opacity: 0; transition: opacity .12s, visibility 0s .12s; }
-  main:not(.scompact) #usage:hover .uopen { visibility: visible; opacity: 1; transition: opacity .12s .25s, visibility 0s .25s; }
-  main:not(.scompact) #usage.pin .uopen { visibility: visible; opacity: 1; transition: opacity .12s, visibility 0s; }
-  main:not(.scompact) #usage .uhd .uchev { transform: rotate(180deg); }
-  :is(#usage, #sbar) .uhd { font-size: var(--fs-2xs); font-weight: 700; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 7px; }
+  /* ---- plan usage: its rows (2026-09-24) — the status bar's panel since 2026-10-09 ---- */
+  /* A row per window: its name, a thin bar in orange (green until the same day's "make the credits used color green ->
+     orange"), red from 90 %, a tick where the window's clock stands — a bar past its tick is being spent faster than
+     time —, the percent and the time to its reset. (The list's foot drew them too, under rings or tags, until the
+     status bar was the only way, 2026-10-14.) */
+  #sbar .uhd { font-size: var(--fs-2xs); font-weight: 700; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 7px; }
   /* one grid for every row, so the bars start and the numbers end in one line whatever the names' lengths; the rows
      9 px apart (5 until 2026-09-26) */
-  :is(#usage, #sbar) .urows { display: grid; grid-template-columns: auto minmax(36px, 1fr) auto auto; gap: 9px 9px; }
-  :is(#usage, #sbar) .urow { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; white-space: nowrap; }
-  :is(#usage, #sbar) .ul { overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
-  :is(#usage, #sbar) .ubar { position: relative; height: 5px; border-radius: var(--r-1); background: var(--utrack); }
-  :is(#usage, #sbar) .ubar i { position: absolute; inset: 0 auto 0 0; border-radius: var(--r-1); background: linear-gradient(90deg, color-mix(in srgb, var(--u) 50%, transparent), var(--u)); }
-  :is(#usage, #sbar) .ubar b { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: var(--r-1); background: var(--ink); opacity: .4; }
-  :is(#usage, #sbar) .up { font-weight: 700; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
-  :is(#usage, #sbar) .ur { text-align: right; font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
-  /* ---- the status bar (2026-10-09, the studies' F — Orca's): the machine at the window's foot, segments parted by
-     hairlines; its meters a word, a 40 px bar and the figure; the plan usage a button whose panel of rows rises over
-     the board, the list's foot then without its own (data-sbar) ---- */
+  #sbar .urows { display: grid; grid-template-columns: auto minmax(36px, 1fr) auto auto; gap: 9px 9px; }
+  #sbar .urow { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; white-space: nowrap; }
+  #sbar .ul { overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+  #sbar .ubar { position: relative; height: 5px; border-radius: var(--r-1); background: var(--utrack); }
+  #sbar .ubar i { position: absolute; inset: 0 auto 0 0; border-radius: var(--r-1); background: linear-gradient(90deg, color-mix(in srgb, var(--u) 50%, transparent), var(--u)); }
+  #sbar .ubar b { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: var(--r-1); background: var(--ink); opacity: .4; }
+  #sbar .up { font-weight: 700; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+  #sbar .ur { text-align: right; font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+  /* ---- the status bar (2026-10-09, the studies' F — Orca's; always there since 2026-10-14): the machine at the
+     window's foot, segments parted by hairlines; its meters a word, a 40 px bar and the figure; the plan usage a button
+     whose panel of rows rises over the board ---- */
   #sbar { --utrack: color-mix(in srgb, var(--muted) 22%, transparent); display: flex; align-items: stretch; height: 26px; min-width: 0; padding: 0 2px; position: relative; z-index: 20; font-size: var(--fs-xs); color: var(--muted);
     background: var(--bar, var(--panel)); border-top: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
   :root[data-theme="dark"] #sbar { background: var(--bar, #0f0f0e); }
-  #sbar[hidden] { display: none; }
   #sbar .seg { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 0 11px; border: 0; border-right: 1px solid var(--line); background: none; font: inherit; color: inherit; }
-  /* its slots (2026-10-09): the search and the state chips (#filters, moved in), the left's segments, the faces (#people,
-     moved in) in the middle, the right's segments — the two moved in are nodes the bar's redraws never touch */
+  /* its slots (2026-10-09): the search and the filter (#filters), the left's segments, the faces (#people) in the
+     middle, the right's segments — the first and the faces nodes of the markup the bar's redraws never touch */
   #sbFind, #sbLeft, #sbRight { display: flex; align-items: stretch; flex: none; min-width: 0; }
   #sbFind { padding: 0 8px; border-right: 1px solid var(--line); }
   #sbFind #filters { flex: none; gap: 4px; }
@@ -1136,29 +1080,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #sbar .upg.err { color: var(--needs); } #sbar .upg.done { color: var(--muted); }
   #sbar .cl i { display: block; flex: none; width: 40px; height: 4px; border-radius: var(--r-1); background: linear-gradient(90deg, var(--accent) calc(var(--p, 0) * 100%), var(--utrack) 0); }
   #sbar .sbpanel { position: absolute; bottom: calc(100% + 6px); right: 8px; width: 300px; box-sizing: border-box; padding: 10px 12px 12px; border-radius: var(--r-4); background: var(--panel); box-shadow: 0 10px 34px rgba(0, 0, 0, .25); color: var(--muted); font-size: var(--fs-sm); white-space: normal; }
-  :root[data-sbar] #usage { display: none; }
-  /* the list's foot row — the fish, the search and the chips, the usage — goes while the bar is on (2026-10-09): what it
-     held is the bar's; on the rail too, which keeps the project's short name (#stitle) */
-  :root[data-sbar] :is(#shd, #sfoot) { display: none; }
-  :is(#usage, #sbar) .umoney { grid-column: 1 / -1; margin-top: -3px; font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }   /* a cap in money: what is spent of it, under its bar */
-  #usage .unote { line-height: 1.35; white-space: normal; text-align: left; }   /* not `.note`: that is note()'s popup — position: fixed, and note() removes every one */
-  /* folded, the rings 20 px apart where the list has the room (12 until 2026-09-27 — the open rows had had the same ask
-     the day before); under 350 px of list 20 would push the chevron, then a ring, onto a second line, so there they
-     keep 12 */
-  #usage .uline { flex-wrap: wrap; column-gap: 12px; row-gap: 4px; }
-  @container (min-width: 350px) { #usage .uline { column-gap: 20px; } }
-  #usage .uchip { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
-  #usage .uchip b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
-  #usage .uring { --w: 2.5px; width: 12px; height: 12px; flex: none; border-radius: 50%; background: conic-gradient(var(--u) calc(var(--p) * 1%), var(--utrack) 0);
-    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--w) - .5px), #000 calc(100% - var(--w))); mask: radial-gradient(farthest-side, transparent calc(100% - var(--w) - .5px), #000 calc(100% - var(--w))); }
-  #usage.stale .urows, #usage.stale .uchip { opacity: .5; }   /* the last answer, kept while the server cannot get a new one */
-  main.scompact #usage { flex: none; padding: 8px 0 6px; }
-  main.scompact #usage .uopen, main.scompact #usage .uchev { display: none; }
-  main.scompact #usage .uline { display: flex; flex-direction: column; row-gap: 9px; cursor: default; }
-  main.scompact #usage .uchip { position: relative; flex-direction: column; gap: 2px; font-size: var(--fs-2xs); }
-  main.scompact #usage .uring { --w: 3px; width: 32px; height: 32px; }
-  main.scompact #usage .uchip b { position: absolute; top: 0; left: 0; right: 0; line-height: 32px; text-align: center; font-size: var(--fs-2xs); letter-spacing: -.2px; }
-  main.scompact #usage .unote { font-size: var(--fs-2xs); padding: 0 3px; text-align: center; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }   /* the rest is on hover */
+  #sbar .umoney { grid-column: 1 / -1; margin-top: -3px; font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }   /* a cap in money: what is spent of it, under its bar */
 
   /* ---- chat pane ---- */
   .shead { position: relative; padding: 7px 12px; border-bottom: 1px solid var(--line); background: var(--panel); display: flex; gap: 6px 9px; align-items: center; flex-wrap: wrap; min-width: 0; min-height: 43px; }
@@ -1198,21 +1120,6 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .shead .hmore .ic { width: 16px; height: 16px; fill: currentColor; }
   .shead .hmore:hover, .shead .hmore.on { color: var(--ink); background: var(--inline-bg); }
   #chat.tinted .shead .hmore { color: color-mix(in srgb, var(--rink) 78%, transparent); }
-  /* the Mac kept awake (2026-10-08): a pill before ···, the spend's amber; red-tinged when not even the lid sleeps it */
-  .shead .awake { --aw: var(--spend); flex: none; display: inline-flex; align-items: center; gap: 5px; height: 22px; margin: -2px 0; padding: 0 9px 0 7px; border: 1px solid transparent; border-radius: var(--r-4);
-    background: color-mix(in srgb, var(--aw) 20%, transparent); color: var(--aw); font: inherit; font-size: var(--fs-xs); font-weight: 700; letter-spacing: .2px; cursor: pointer; }
-  .shead .awake.lid { --aw: var(--needs); }
-  .shead .awake .ic { width: 14px; height: 14px; fill: currentColor; }
-  .shead .awake:hover { background: color-mix(in srgb, var(--aw) 32%, transparent); }
-  /* off (2026-10-09): the cup alone, muted, as ··· is — always there to be switched on */
-  .shead .awake.off { padding: 0 5px; background: none; color: var(--muted); }
-  .shead .awake.off .ic { width: 15px; height: 15px; }
-  .shead .awake.off:hover { color: var(--ink); background: var(--inline-bg); }
-  #chat.tinted .shead .awake.off { color: color-mix(in srgb, var(--rink) 78%, transparent); }
-  /* on with nothing to hold off (2026-10-09: set never to sleep on this power): a plain fill, muted, as a control at rest */
-  .shead .awake.moot:not(.off) { background: var(--ctl); color: var(--muted); font-weight: 600; }
-  .shead .awake.moot:not(.off):hover { background: var(--ctl-hi); color: var(--ink); }
-  #chat.tinted .shead .awake.moot:not(.off) { color: color-mix(in srgb, var(--rink) 78%, transparent); }
   #chat.tinted .shead .hmore:hover, #chat.tinted .shead .hmore.on { color: var(--rink); background: color-mix(in srgb, var(--rink) 16%, transparent); }
   /* The menu: a non-modal <dialog>, so the pane goes down while it is up (postPane sends no page with a dialog
      open) and Esc closes it the way it closes every other; right-aligned under ···, one row per action — its mark,
@@ -2166,8 +2073,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     .pix, .pix svg { animation: none; }
     #sbar .upg.run .ic { animation: none; }   /* the update under way: its words and its bar say it */
     #sbSwim .ft, #sbSwim.rest .swimmer, #sbSwim .food { animation: none; }   /* the fish still, in the lane's left — and nothing to eat (no swim, no blurp) */
-    :is(.brand, #sbar .conn) .logo, :is(.brand, #sbar .conn) .logo .fishg { animation: none !important; }   /* belly-up, still; upright, at once */
-    :is(.brand.off, #sbar .conn.off) .logo .fishg { transform: scaleY(-1); }
+    #sbar .conn .logo, #sbar .conn .logo .fishg { animation: none !important; }   /* belly-up, still; upright, at once */
+    #sbar .conn.off .logo .fishg { transform: scaleY(-1); }
     .shim > .sw { display: none; }   /* no light runs across clauding */
     .ck[data-checks="pending"] svg { animation: none; stroke-dasharray: none; }   /* CI running: a still ring */
     #log.working :is(.tool, .toolgroup > summary) .tst.run { animation: none; border-right-color: var(--working); }   /* a tool call running: a still ring */
@@ -2189,7 +2096,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     .card .top .faces > * { transition: none; }   /* the pile spreads at once */
     /* a count shows its number: rollIn rolls nothing under reduced motion (REDUCED) */
     .act.tk .tk path { animation: none; }   /* the ✓ is there, not drawn (tickDone tells the server at once) */
-    .card:active, :is(.btn, .ptab, .hmore, .hprs, .pfold, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button, #usage button):active { scale: none; }   /* a press does not dip */
+    .card:active, :is(.btn, .ptab, .hmore, .hprs, .pfold, .nav, .cpr, .act, .fsearch, .pkx, .pked, .pkdone, .sedge button):active { scale: none; }   /* a press does not dip */
   }
 
   /* ---- syntax highlighting (highlight.js class names, our colours) ---- */
@@ -2212,17 +2119,15 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 </head>
 <body>
 <div id="wall" aria-hidden="true"><i></i></div>
+<template id="logo"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g class="fishg"><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g></g><g class="stars" fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></template>
 <main id="main" class="tiles">
   <section id="sessions">
-    <div class="colhead" id="shd"><span class="brand" id="brandBtn" title="About peixAIrada" role="button"><svg class="logo" viewBox="0 0 1024 1024" aria-hidden="true"><defs><linearGradient id="lg" x1="200" y1="100" x2="824" y2="924" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#EF9267"/><stop offset="1" stop-color="#B44F2F"/></linearGradient></defs><rect x="100" y="100" width="824" height="824" rx="190" fill="url(#lg)"/><g class="fishg"><g fill="#FBF7EF" transform="translate(512 512) scale(1.1) translate(-512 -512)"><path d="M474 464Q506 324 636 458Z"/><path d="M414 508Q310 428 204 368Q258 458 304 542Q258 626 204 708Q310 656 414 574Z"/><path d="M318 542C457 352 705 424 814 530C705 660 457 732 318 542Z"/><path fill="#7A2F19" d="M716 564Q719 531 744 552Q723 527 756 524Q723 521 744 496Q719 517 716 484Q713 517 688 496Q709 521 676 524Q709 527 688 552Q713 531 716 564Z"/></g></g><g class="stars" fill="#FBF7EF"><path d="M742 372Q753 329 796 318Q753 307 742 264Q731 307 688 318Q731 329 742 372Z"/><path opacity=".85" d="M838 450Q845 425 870 418Q845 411 838 386Q831 411 806 418Q831 425 838 450Z"/><path opacity=".6" d="M838 266Q843 249 860 244Q843 239 838 222Q833 239 816 244Q833 249 838 266Z"/></g></svg></span><span id="filters"><button class="fsearch" id="qBtn" title="Search this project’s chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="this project’s chats, done too — title, branch, prompt…" autocomplete="off" spellcheck="false" hidden><button class="fsearch" id="fBtn" aria-haspopup="menu" aria-pressed="false" title="Show only some chats — a PR at your move, or a new reply"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2.5h12.5a.5.5 0 0 1 .38.82L10 8.9v4.35a.5.5 0 0 1-.28.45l-2.5 1.2A.5.5 0 0 1 6.5 14.45V8.9L1.37 3.32a.5.5 0 0 1 .38-.82Z"/></svg><span class="fl"></span></button></span></div>
     <div id="tline" aria-label="The list's days — point to read them, drag to scroll, click one to go there"><div class="tl-catch"></div><div class="tl-thumb"></div><div class="tl-labs"></div></div>
     <div id="slist"></div>
     <div class="tl-glass"></div>
     <div class="sedge up" id="sup"><button data-dir="-1"></button></div>
     <div class="sedge down" id="sdown"><button data-dir="1"></button></div>
-    <div id="people" hidden></div>
     <div id="stitle" hidden></div>
-    <div id="sfoot"><div id="usage"></div></div>
   </section>
   <div id="splitter" title="Drag to resize"></div>
   <section id="chat">
@@ -2249,7 +2154,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <div id="resume" hidden></div>
   </section>
 </main>
-<footer id="sbar" hidden><div id="sbFind"></div><div id="sbLeft"></div><div id="sbPeople"></div><div id="sbSwim" role="button" aria-label="Every agent at work (⌥⌘A)"></div><div id="sbRight"></div></footer>
+<footer id="sbar"><div id="sbFind"><span id="filters"><button class="fsearch" id="qBtn" title="Search this project’s chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="this project’s chats, done too — title, branch, prompt…" autocomplete="off" spellcheck="false" hidden><button class="fsearch" id="fBtn" aria-haspopup="menu" aria-pressed="false" title="Show only some chats — a PR at your move, or a new reply"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2.5h12.5a.5.5 0 0 1 .38.82L10 8.9v4.35a.5.5 0 0 1-.28.45l-2.5 1.2A.5.5 0 0 1 6.5 14.45V8.9L1.37 3.32a.5.5 0 0 1 .38-.82Z"/></svg><span class="fl"></span></button></span></div><div id="sbLeft"></div><div id="sbPeople"><div id="people" hidden></div></div><div id="sbSwim" role="button" aria-label="Every agent at work (⌥⌘A)"></div><div id="sbRight"></div></footer>
 <dialog id="settings" class="pop" aria-label="Settings" tabindex="-1">
   <div class="shd2"><h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4><button class="btn" id="tourBtn" title="The board's main parts, one at a time — a minute">Take the tour</button><button class="sclose" id="settingsClose" title="Close · esc" aria-label="Close">×</button></div>
   <nav class="stabs" role="tablist" aria-label="Settings"><button role="tab" data-tab="board" class="on" aria-selected="true" aria-controls="spBoard" id="stBoard">Board</button><button role="tab" data-tab="setup" aria-selected="false" aria-controls="spSetup" id="stSetup" tabindex="-1">Setup</button><button role="tab" data-tab="keys" aria-selected="false" aria-controls="spKeys" id="stKeys" tabindex="-1">Keys</button></nav>
@@ -2271,8 +2176,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <div class="opt lightpick zoompick" title="Everything on the board, larger or smaller — the app's own zoom; in a browser, its View menu's"><span><b>text size</b> — the whole board</span><span class="sseg" role="radiogroup" aria-label="Text size" id="zoomPick"><button type="button" role="radio" data-z="0.9">90 %</button><button type="button" role="radio" data-z="1">100 %</button><button type="button" role="radio" data-z="1.1">110 %</button><button type="button" role="radio" data-z="1.25">125 %</button><button type="button" role="radio" data-z="1.4">140 %</button></span><span class="zhint">your browser's View → Zoom</span></div>
     <div class="opt" title="A theme is every surface at once — the cards, the transcript, the code, the drawer's colours, the header's black and the status bar — and its appearance, dark or light, whatever macOS shows"><span><b>theme</b> — <span id="themeNames"></span> <button class="btn" id="themeBtn">choose… ⌥⌘Y</button></span></div>
     <label class="opt sub" title="On, the board is dark while macOS is dark and light while it is light, each in the theme last picked for it; off, the theme picked is worn — and its appearance — whatever macOS shows"><input type="checkbox" id="skinFollow"><span><b>follow macOS</b> — a dark theme while macOS is dark, a light one while it is light; off, the theme picked whatever macOS shows</span></label>
-    <label class="opt" title="On, a strip at the window's foot: the search, the connection, how many chats ask you and what is watching, the faces on your PRs, the fish (faster the more is at work), CPU and memory, the plan's limits, keeping the Mac awake and the clock — the list's foot then has none of them"><input type="checkbox" id="sbarOn" checked><span><b>status bar</b> — the search, what asks you and what is watching, the faces, the fish, the machine and the plan, keeping the Mac awake and the clock at the window's foot; off, the search, the faces and the plan return to the list's foot and the awake switches to the chat header</span></label>
-    <div class="opt sub sbstats" id="sbarStats" title="What else the status bar says — asked of the Mac every 3 s while shown"><span><b>also</b></span><label><input type="checkbox" data-stat="cpu"> CPU</label><label><input type="checkbox" data-stat="mem"> memory</label><label><input type="checkbox" data-stat="claude"> Claude's memory</label></div>
+    <div class="opt sbstats" id="sbarStats" title="What else the status bar at the window's foot says — asked of the Mac every 3 s"><span><b>status bar</b> — also</span><label><input type="checkbox" data-stat="cpu"> CPU</label><label><input type="checkbox" data-stat="mem"> memory</label><label><input type="checkbox" data-stat="claude"> Claude's memory</label></div>
     <h4 class="shd">Terminal</h4>
     <label class="opt" title="On, ⌥ with a letter is Meta in the terminal, as iTerm's Esc+ — ⌥B ⌥F move a word, ⌥⌫ deletes one; ⌥ with a digit or a sign still types what the keyboard makes. Off, ⌥ types whatever your layout composes (⌥L is @ on a German one)"><input type="checkbox" id="optMeta" checked><span><b>⌥ is Meta</b> in the terminal — off, ⌥ types what your keyboard composes</span></label>
     <label class="opt" title="xterm's screen-reader mode: the drawer's lines kept in a live region VoiceOver follows — a little slower to draw"><input type="checkbox" id="termReader"><span><b>screen reader</b> in the drawer — its lines read out as they come</span></label>
@@ -2348,7 +2252,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   css · projects: a folder, or a named set of folders
 //   css · sessions of the selected project
 //   css · the chat list's timeline: its days, down the left edge
-//   css · plan usage: the chat list's footer
+//   css · plan usage: its rows (2026-09-24) — the status bar's panel since 2026-10-09
 //   css · chat pane
 //   css · The chat's PRs, one per row under the header: state, repo#n, the whole title.
 //   css · a second claude on this chat: VS Code opened a chat that runs here (see renderRival)
@@ -2366,7 +2270,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · sessions column width
 //   js  · helpers
 //   js  · the status bar: the machine at the window's foot (2026-10-09)
-//   js  · plan usage: the chat list's footer
+//   js  · plan usage: the status bar's pies and their rows
 //   js  · projects
 //   js  · render: both lists
 //   js  · the people row: everyone in the PRs of the chats in view
@@ -2408,7 +2312,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -2429,7 +2333,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   delete prefs.filter; delete prefs.filters;
   delete prefs.peopleFold;   // the faces folded to a count (2026-10-09, off by default) became peopleCompact (2026-10-11, later): folded by default
   // the experimental switches pared (2026-10-14): what they chose is now the only way, or gone
-  for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume', 'edgeLight', 'ringsInStep', 'cardSpot', 'tileStack', 'wallFollow', 'tiles', 'headFloat']) delete prefs[k];
+  for (const k of ['simpleColors', 'simpleColor', 'skinExact', 'autoResume', 'edgeLight', 'ringsInStep', 'cardSpot', 'tileStack', 'wallFollow', 'tiles', 'headFloat', 'statusBar']) delete prefs[k];
   if (!Array.isArray(prefs.lanesShut)) prefs.lanesShut = ['done', 'idle'];
   prefs.lanesShut = prefs.lanesShut.filter(g => g !== 'move' && g !== 'replied');   // lanes for a morning (2026-10-12), filters since
   if (prefs.listFilter !== 'move' && prefs.listFilter !== 'replied') prefs.listFilter = null;
@@ -2467,7 +2371,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return on ? cards[qsel.i] || null : null;
   }
   const qShow = on => { const inp = $('#q'); inp.hidden = !on; $('#filters').classList.toggle('searching', on); if (on) { inp.focus(); inp.select(); } };
-  // the state chips, on #filters itself: it moves between the list's foot and the status bar (dockBar)
+  // the box and the filter, on #filters itself (the status bar's)
   {
     const btn = $('#qBtn'), inp = $('#q');
     btn.onclick = () => qShow(inp.hidden);
@@ -3180,7 +3084,7 @@ const toolName = n => {
   const bar = { stats: {}, conn: true, open: false, busy: false };
   const fmtBytes = b => b >= 2 ** 30 ? `${(b / 2 ** 30).toFixed(1)} GB` : `${Math.round(b / 2 ** 20)} MB`;
   const sbMeter = (label, pct, text, color, tip = `${label}: ${text}`, html = null) => `<span class="m" title="${esc(tip)}">${esc(label)}<i style="--p:${Math.max(0, Math.min(100, pct)).toFixed(1)}%;--u:${color}"></i><b>${html ?? esc(text)}</b></span>`;
-  const FISH_LOGO = () => $('#brandBtn').innerHTML;
+  const FISH_LOGO = () => $('#logo').innerHTML;
   // The pixel fish (the home's, 2026-10-10), 26 × 11, head to the left: # its body, = its scales, o its eye.
   const FISH = ['..........######..........', '.......############.....##', '.....################..###', '...####=####=####=####.###', '..##o##=####=####=#######.',
     '.###=##=####=####=######..', '..######=####=####=######.', '...#####=####=####=###.###', '.....################..###', '.......############.....##', '..........######..........'];
@@ -3304,11 +3208,11 @@ const toolName = n => {
       const b = document.createElement('i'); b.className = 'bub'; b.style.left = '3px'; b.style.top = '8px'; nf.append(b);
       b.animate([{ transform: 'translate(0, 0) scale(.5)', opacity: 0 }, { opacity: .9, offset: .15 }, { transform: 'translate(-6px, -18px) scale(1)', opacity: 0 }], { duration: 1600, easing: 'ease-out', fill: 'forwards' }).onfinish = () => b.remove();
     }
-    const lane = $('#sbSwim'); if (document.hidden || !lane || REDUCED.matches || $('#sbar').hidden) return;
+    const lane = $('#sbSwim'); if (document.hidden || !lane || REDUCED.matches) return;
     if (Math.random() < (lane.classList.contains('rest') ? .5 : .35)) blurp();
   }, 2600);   // the fish, for the bar's connection: the same mark, belly-up while the stream is down
   function renderBar() {
-    const el = $('#sbar'); if (!el || el.hidden || !state.snapshots) return;
+    if (!state.snapshots) return;
     const all = [...state.sessions.values()], n = f => all.filter(f).length, plural = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`;
     const ask = n(s => asking(s));
     const mons = all.reduce((a, s) => a + (s.alive ? (s.tasks || []).length : 0), 0);
@@ -3346,28 +3250,13 @@ const toolName = n => {
   }
   async function loadStats() {
     const want = prefs.barStats || [];
-    if (!want.length || bar.busy || $('#sbar').hidden || document.hidden) return;
+    if (!want.length || bar.busy || document.hidden) return;
     bar.busy = true;
     try { bar.stats = await api('GET', `/api/stats?want=${want.join(',')}`); } catch { bar.stats = {}; }
     bar.busy = false; renderBar(); homeSoon();   // the home's Mac line (2026-10-10) — after an await, so the block below has run
   }
   setInterval(loadStats, 3000);
   (function clockTick() { renderBar(); setTimeout(clockTick, 60_000 - Date.now() % 60_000 + 50); })();   // on the minute, the bar's clock
-  // The search and the state chips (#filters) and the faces (#people) move into the bar while it is on (2026-10-09) —
-  // the nodes themselves, their handlers with them — and the list's foot row (#shd: the fish, the search, the chips,
-  // the usage) goes; off, they go back where they were.
-  function dockBar(on) {
-    const f = $('#filters'), p = $('#people');
-    if (on) { $('#sbFind').append(f); $('#sbPeople').append(p); }
-    else { $('#shd').append(f); $('#sessions').insertBefore(p, $('#stitle')); }
-  }
-  function applyBar() {
-    const on = prefs.statusBar !== false;
-    document.documentElement.toggleAttribute('data-sbar', on); $('#sbar').hidden = !on; $('#sbarStats').hidden = !on;
-    dockBar(on);
-    renderBar(); loadStats();
-    if (typeof awakeChanged === 'function' && state.snapshots) awakeChanged();   // the header's cup and the menu's lid row: theirs only with the bar off
-  }
   $('#sbar').addEventListener('click', e => {
     if (e.target.closest('.us')) { bar.open = !bar.open; renderBar(); return; }
     if (e.target.closest('.conn')) { aboutOpen(); return; }
@@ -3377,24 +3266,22 @@ const toolName = n => {
     const lid = e.target.closest('#sbLid'); if (lid && !state.lidAsking) setAwake({ lid: !state.awake.lid }, lid);
   });
   document.addEventListener('click', e => { if (bar.open && !e.composedPath().includes($('#sbar'))) { bar.open = false; renderBar(); } });   // the path: the button clicked is drawn anew under the click
-  $('#sbarOn').checked = prefs.statusBar !== false;
-  $('#sbarOn').addEventListener('change', e => { prefs.statusBar = e.target.checked; savePrefs(); applyBar(); repostPane(); });
   for (const c of $('#sbarStats').querySelectorAll('input')) {
     c.checked = (prefs.barStats || []).includes(c.dataset.stat);
     c.addEventListener('change', () => { prefs.barStats = [...$('#sbarStats').querySelectorAll('input:checked')].map(x => x.dataset.stat); savePrefs(); bar.stats = {}; renderBar(); loadStats(); });
   }
-  applyBar();
+  renderBar(); loadStats();
 
-  // ---- plan usage: the chat list's footer ----------------------------------------------
-  // What `/usage` shows, always in view under the chat list (2026-09-24). Asked for on load, every
+  // ---- plan usage: the status bar's pies and their rows ------------------------------------
+  // What `/usage` shows, always in view (2026-09-24; under the chat list until the status bar had it). Asked for on load, every
   // USAGE_EVERY_MS while the page is in view — the server caches the answer for a minute, so any number of pages
   // cost one call a minute at most —, as soon as a window's reset has passed, and on the way back to a hidden page.
   // A failure keeps the last numbers, dimmed, the error on hover; with no numbers yet it is a sentence, not a blank:
   // the first ask on a Mac is a keychain prompt, and an API-key login has none. Failures back off (twice as long
   // each, to half an hour), so a keychain prompt you refused is not put back up every two minutes. USAGE=off on the
-  // server hides the bar. The markup holds both shapes, open and folded; the fold and the rail (⌥⌘B) pick in CSS.
+  // server hides the bar's segment.
   const USAGE_EVERY_MS = 120e3;
-  const usage = { data: null, err: '', off: false, at: 0, fails: 0, busy: false, html: '' };
+  const usage = { data: null, err: '', off: false, at: 0, fails: 0, busy: false };
   // Each window's tag (2026-09-28): the window's length, or a model's initial for its own week (F for Fable), CR for a
   // credit grant — and $ for a cap counted in money (2026-10-08: a plan's monthly spend cap, extra usage).
   const USAGE_SHORT = { five_hour: '5H', seven_day: '1W', seven_day_opus: 'O', seven_day_sonnet: 'S', cinder_cove: 'CR' };
@@ -3414,23 +3301,9 @@ const toolName = n => {
   const uPace = w => { const len = uSpan(w.key, w), end = w.resetsAt ? new Date(w.resetsAt).getTime() : 0; if (!len || !end) return null; const f = 1 - (end - Date.now()) / len; return f >= 0 && f <= 1 ? f : null; };
   const untilReset = iso => { if (!iso) return ''; const m = Math.max(0, Math.round((new Date(iso) - Date.now()) / 60000)); return m >= 1440 ? `${Math.floor(m / 1440)}d ${Math.floor(m % 1440 / 60)}h` : m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`; };
   const uTip = w => { const f = uPace(w); return `${w.label}: ${w.percent}% used${w.limit != null ? ` — ${uSpent(w)}` : ''}${f != null ? ` · ${Math.round(f * 100)}% of the window gone` : ''}${w.resetsAt ? ` · resets ${new Date(w.resetsAt).toLocaleString()}` : ''}`; };
-  const CHEV = '<svg class="uchev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>';
-  /** A row per window — name, bar with its clock's tick, percent, time to reset, and money for a cap in it — the panel
-   *  over the list's foot and the status bar's alike. */
+  /** A row per window — name, bar with its clock's tick, percent, time to reset, and money for a cap in it — the status
+   *  bar's panel. */
   const usageRows = ws => ws.map(w => { const f = uPace(w); return `<div class="urow" title="${esc(uTip(w))}"><span class="ul">${esc(w.label)}</span><span class="ubar"><i style="width:${Math.min(100, w.percent)}%;--u:${uColor(w.percent)}"></i>${f != null ? `<b style="left:${(f * 100).toFixed(1)}%"></b>` : ''}</span><span class="up">${w.percent}%</span><span class="ur">${untilReset(w.resetsAt)}</span>${w.limit != null ? `<span class="umoney">${esc(uSpent(w))}</span>` : ''}</div>`; }).join('');
-  function renderUsage() {
-    const box = $('#usage'), d = usage.data, ws = d?.windows || [];
-    box.hidden = usage.off;
-    box.classList.toggle('stale', !!(d && usage.err));
-    const note = !d ? usage.err || 'asking…' : !ws.length ? 'nothing reported for this account' : '';   // under the heading; the line says what it is about
-    const said = d ? ` · as of ${new Date(d.fetchedAt).toLocaleTimeString()}${usage.err ? ` — since then: ${usage.err}` : ''}` : '';
-    const chips = ws.map(w => `<span class="uchip${uGrant(w) ? ' grant' : ''}" title="${esc(uTip(w))}" style="--u:${uColor(w.percent)}"><i class="uring" style="--p:${Math.min(100, w.percent)}"></i><span class="uk">${esc(uShort(w))}</span><b>${rn('u:' + uShort(w), w.percent)}%</b></span>`).join('');
-    const rows = usageRows(ws);
-    const html = `<button class="uline" title="Claude plan usage${esc(said)}${note ? `: ${esc(note)}` : ''} — point to see it, click to keep it open">${note ? `<span class="unote">usage: ${esc(note)}</span>` : chips}${CHEV}</button>`
-      + `<div class="uopen"><button class="uhd" title="Claude plan usage${esc(said)} — click to close"><span>plan usage</span>${CHEV}</button>${note ? `<span class="unote">${esc(note)}</span>` : `<div class="urows">${rows}</div>`}</div>`;
-    if (html !== usage.html) box.innerHTML = usage.html = html;   // the 30 s tick mostly changes nothing — keep a tooltip that is up
-    renderBar(); rollSoon();
-  }
   async function loadUsage() {
     if (usage.busy) return; usage.busy = true;
     try {
@@ -3438,22 +3311,14 @@ const toolName = n => {
       if (Array.isArray(d.windows)) Object.assign(usage, { data: d, err: '', off: false, fails: 0 });
       else Object.assign(usage, { err: 'no windows in the answer', fails: usage.fails + 1 });
     } catch (e) { Object.assign(usage, { err: e.message, off: !!e.body?.off, fails: usage.fails + 1 }); }
-    Object.assign(usage, { busy: false, at: Date.now() }); renderUsage();
+    Object.assign(usage, { busy: false, at: Date.now() }); renderBar();
   }
   // Due: the interval is up (longer after failures), or a window has reset since the last answer — its numbers are old.
   const usageDue = () => Date.now() - usage.at > USAGE_EVERY_MS * 2 ** Math.min(usage.fails, 4)
     || !!usage.data?.windows.some(w => { const t = w.resetsAt ? new Date(w.resetsAt).getTime() : 0; return t > usage.at && t <= Date.now(); });
-  // In the head row the rings open the rows on hover; a click keeps them open, a click on their heading or anywhere
-  // else lets them go. The rail's rings are only to be read.
-  $('#usage').addEventListener('click', e => {
-    if (prefs.sessionsCompact) return;
-    if (e.target.closest('.uline')) $('#usage').classList.toggle('pin');
-    else if (e.target.closest('.uhd')) $('#usage').classList.remove('pin');
-  });
-  document.addEventListener('click', e => { if (!e.target.closest('#usage')) $('#usage').classList.remove('pin'); });
-  setInterval(() => { if (!document.hidden) usageDue() ? loadUsage() : renderUsage(); }, 30e3);
+  setInterval(() => { if (!document.hidden) usageDue() ? loadUsage() : renderBar(); }, 30e3);
   document.addEventListener('visibilitychange', () => { if (!document.hidden && usageDue()) loadUsage(); });
-  renderUsage(); loadUsage();
+  loadUsage();
 
   // ---- projects ----------------------------------------------------------------------
   // A project is a folder — the registry cwd, which is the stable repo path — or a name you gave to
@@ -4763,7 +4628,7 @@ const toolName = n => {
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
   const SWITCHES = [['notifyOn', 'Notifications'], ['autoUpdate', 'Update itself'], ['skinFollow', 'Theme follows macOS'],
-    ['sbarOn', 'Status bar'], ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal']];
+    ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
     { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },
@@ -5370,7 +5235,7 @@ const toolName = n => {
     if (dlg.open) return;
     welcome.make = null; $('#werr').textContent = ''; $('#wok').textContent = 'Use this folder';
     $('#wwhere').textContent = state.config.file ? `Saved to ${homePath(state.config.file)}` : '';
-    $('#welcome .wlogo').innerHTML = $('#brandBtn').innerHTML;
+    $('#welcome .wlogo').innerHTML = FISH_LOGO();
     $('#wchoose').hidden = !inApp;
     dlg.showModal(); repostPane(); $('#wdir').focus();
     api('GET', '/api/config/suggest').then(d => {
@@ -5442,16 +5307,14 @@ const toolName = n => {
       text: () => `${state.current ? 'Its transcript, as Claude writes it.' : 'With none open, this is home: your day across every chat. Click a card and its transcript comes up, live.'} When its claude runs on the board it is a real terminal to type into — <kbd>⌥⌘C</kbd> brings it up — and a chat whose claude has ended offers to resume it here. <kbd>⌥⌘N</kbd> starts a new chat.` },
     { id: 'head', need: true, side: 'below', at: () => state.current ? onScreen($('#shead')) : null, title: 'Its PRs, and the rest of it',
       text: () => 'The project and the chat’s title, then its PRs and Jira tickets: one at your move says so, its CI too, and a click lists them — each with its diff, the editor at its branch and a chat on it. <b>···</b> holds the rest: its changes, VS Code, the details.' },
-    { id: 'tabs', side: 'below', at: () => state.current ? [$('#ptabs'), $('#ptabsB')].filter(el => el.offsetHeight > 12) : null, title: 'Beside the chat, on tabs',   // a lone tab's strip is a 2 px rule: not a strip
+    { id: 'tabs', side: 'below', at: () => state.current ? [$('#ptabs'), $('#ptabsB')].filter(el => el.offsetHeight > 12) : null, title: 'Beside the chat, on tabs',   // a lone tab has no strip (.lone, of no height)
       text: () => `<kbd>⌥⌘T</kbd> a shell in its folder · <kbd>⌥⌘E</kbd> VS Code Web · <kbd>⌥⌘D</kbd> what it changed · <kbd>⌥⌘G</kbd> its PR on GitHub. <kbd>⌘2</kbd> splits the column in two, <kbd>⌘1</kbd> <kbd>⌘2</kbd> go from half to half, <kbd>⌘W</kbd> closes a tab.${inApp ? '' : ' In a browser, VS Code Web and GitHub open in tabs of their own.'}` },
-    { id: 'bar', need: true, side: 'above', at: () => onScreen($('#sbar')) || onScreen($('#usage')),
-      title: () => onScreen($('#sbar')) ? 'The machine, at the foot' : 'Your plan, at the list’s foot',
-      text: () => onScreen($('#sbar')) ? 'Who is asking you and what is watching, on the left; the fish swims faster the more Claude is at work — a click shows every live chat. On the right the Mac’s CPU and memory, your plan’s limits, the cup that keeps the Mac awake while Claude works, and the clock.'
-        : 'Each limit of your Claude plan and how much of it is spent — point at it for when it resets. The status bar, in Settings, adds the machine and the cup that keeps the Mac awake.' },
+    { id: 'bar', need: true, side: 'above', at: () => onScreen($('#sbar')), title: 'The machine, at the foot',
+      text: () => 'Who is asking you and what is watching, on the left; the fish swims faster the more Claude is at work — a click shows every live chat. On the right the Mac’s CPU and memory, your plan’s limits, the cup that keeps the Mac awake while Claude works, and the clock.' },
     { id: 'keys', mid: true, title: 'Anything, from the keyboard',
       text: () => '<kbd>⌥⌘L</kbd> finds anything — a chat, a project, a PR, a ticket, an action, a switch. <kbd>⌥⌘A</kbd> shows every live chat at once, <kbd>⌥⌘0</kbd> your day, and <kbd>?</kbd> every key.' },
     { id: 'bye', mid: true, title: 'That’s the board',
-      text: () => '<kbd>⌘,</kbd> has the settings — the themes, tiles, card sizes and where your repos live. The tour is there too, in <kbd>⌥⌘L</kbd> and on home, whenever you want it again.' },
+      text: () => '<kbd>⌘,</kbd> has the settings — the themes, card sizes and where your repos live. The tour is there too, in <kbd>⌥⌘L</kbd> and on home, whenever you want it again.' },
   ];
   /** A step's part as it stands: its elements on screen — one, or a few drawn round as one (the chat and its resume bar). */
   const tourAt = t => { try { return [t.at?.()].flat().filter(el => { const r = el?.getBoundingClientRect(); return r && r.width > 0 && r.height > 0; }); } catch { return []; } };
@@ -5476,7 +5339,7 @@ const toolName = n => {
     const el = tour.els[0], list = el?.closest('#slist');   // a card out of the list's sight comes into it — the one thing moved for the tour
     if (list && el !== list) { const r = el.getBoundingClientRect(), b = list.getBoundingClientRect(); if (r.top < b.top || r.bottom > b.bottom) el.scrollIntoView({ block: 'nearest' }); }
     $('#tour .tcard').classList.toggle('mid', !!t.mid);
-    const logo = $('#tourLogo'); logo.hidden = !t.logo; if (t.logo && !logo.firstChild) logo.innerHTML = $('#brandBtn').innerHTML;
+    const logo = $('#tourLogo'); logo.hidden = !t.logo; if (t.logo && !logo.firstChild) logo.innerHTML = FISH_LOGO();
     $('#tour .tdots').innerHTML = tour.steps.map((_, k) => `<i class="${k === tour.i ? 'on' : k < tour.i ? 'past' : ''}"></i>`).join('');
     $('#tourNum').textContent = `${tour.i + 1} of ${n}`;
     $('#tourTitle').textContent = tourVal(t.title);
@@ -5968,7 +5831,7 @@ const toolName = n => {
         ${s.live ? `<span class="chip">${entryLabel(s)}</span>` : ''}${s.live?.name ? `<span class="chip" title="session name">${esc(s.live.name)}</span>` : ''}${
           s.model ? `<span class="chip">${esc(s.model)}</span>` : ''}${s.live?.pid ? `<span class="chip">pid ${s.live.pid}</span>` : ''}
       </div>`;
-    const headNew = headHtml !== drawn.head; if (headNew) { $('#shead').innerHTML = drawn.head = headHtml; $('#shead').dataset.sid = s.id; drawAwake(); rollSoon(); fadeSoon(); }
+    const headNew = headHtml !== drawn.head; if (headNew) { $('#shead').innerHTML = drawn.head = headHtml; $('#shead').dataset.sid = s.id; rollSoon(); fadeSoon(); }
     // The menu, one row per action: its mark, what it does, and its state or key on the right. The ids are the
     // buttons' own from when they sat in the row — the hotkeys and the harness reach them by those.
     const menuHtml = [
@@ -5985,7 +5848,6 @@ const toolName = n => {
       '<div class="sep"></div>',
       `<button class="hmi${prefs.headDetails ? ' on' : ''}" id="detailsBtn" aria-expanded="${!!prefs.headDetails}" title="${esc(statusLabel[s.status] || s.status)} · click to ${prefs.headDetails ? 'hide' : 'show'} path, branch and session details under the title"><span class="dot ${s.status}"></span><span>${esc((statusLabel[s.status] || s.status || '').split(' — ')[0])}${s.statusSince ? ` · <span data-at="${esc(s.statusSince)}"></span>` : ''}</span><span class="k">${prefs.headDetails ? 'hide' : 'show'} path</span></button>`,
       '<div class="sep"></div>',
-      prefs.statusBar !== false ? '' : `<button class="hmi${state.awake.lid ? ' on' : ''}" id="lidBtn" aria-pressed="${!!state.awake.lid}" title="No sleep at all, not even with the lid closed (pmset disablesleep) — the system asks for your password each time; mind the battery in a bag">${ICON.lid}<span>awake with the lid closed</span><span class="k">${state.lidAsking ? 'password…' : state.awake.lid ? 'on' : 'off'}</span></button>`,
       '<div class="sep"></div>',
       `<button class="hmi" id="settingsBtn" title="The board's settings, its setup and its keys">${ICON.cog}<span>settings</span><span class="k">⌘,</span></button>`,
     ].join('');
@@ -6028,7 +5890,6 @@ const toolName = n => {
     const ib = $('#ideCloseBtn'); if (ib) ib.onclick = () => { menu.close(); if (ideKey(s)) dropTab(s, ideKey(s)); };
     const fg = $('#forGoodBtn'); if (fg) fg.onclick = () => { menu.close(); tickDone(s.id, true, $('#shead'), null, true); };
     $('#settingsBtn').onclick = () => settingsOpen(true);
-    const lb = $('#lidBtn'); if (lb) lb.onclick = () => { if (!state.lidAsking) setAwake({ lid: !state.awake.lid }, $('#moreBtn')); };   // a toggle: the menu stays up — the status bar's while it is on
     $('#moreBtn').onclick = e => { e.stopPropagation(); if (menu.open) menu.close(); else openMenu(); };
     const vb = $('#viewBtn'); if (vb) vb.onclick = () => toggleFocusView(s);
     $('#shead .repo').onclick = () => { if (s.cwd) selectProject(prefs.project === projDir(s.cwd) ? ALL : projDir(s.cwd)); };   // a toggle (2026-10-08)
@@ -8559,15 +8420,10 @@ const toolName = n => {
   // read or resume. The header is written here, so `drawn` starts over.
   const NO_CHAT = { head: $('#shead').innerHTML, log: $('#log').innerHTML };
   // ---- keeping the Mac awake (2026-10-08) ----------------------------------------------------------------------------
-  // A button at the header's right end, before ··· — in every header, a chat's or none's, on or off (2026-10-09; a mark
-  // shown only while on before, the switch a row of ···): a muted cup while the Mac may sleep, the cup in amber saying
-  // *awake* while the server holds idle sleep off; a click switches it. The lid's setting stays a row of ··· (it takes
-  // a password); while it holds — the system's, whoever set it — the button is a laptop in red, and its click lets the
-  // lid sleep the Mac again, after the password dialog.
-  const awakeTip = () => state.awake.lid
-    ? 'This Mac does not sleep, not even with its lid closed (pmset disablesleep) — mind the battery and the heat in a bag. Click to let it sleep with the lid shut again (asks for your password)'
-    : cupTip(state.awake, '. With the lid closed too: ···');
-  const awakeHtml = () => prefs.statusBar !== false ? '' : `<button class="awake${state.awake.lid ? ' lid' : state.awake.awake ? '' : ' off'}${!state.awake.lid && cupMoot(state.awake) ? ' moot' : ''}" id="awakeBtn" aria-pressed="${!!(state.awake.awake || state.awake.lid)}" title="${esc(awakeTip())}">${state.awake.lid ? ICON.lid : ICON.cup}${state.awake.awake || state.awake.lid ? '<span>awake</span>' : ''}</button>`;
+  // Two switches of the status bar's (renderBar: #sbAwake, #sbLid; the header's cup and a row of ··· while the bar could
+  // be off, until 2026-10-14): a muted cup while the Mac may sleep, the cup in amber saying *awake* while the server
+  // holds idle sleep off; the lid's setting takes a password, and while it holds — the system's, whoever set it — the
+  // laptop is red.
   /** The cup with nothing to hold off (2026-10-09): the Mac set never to sleep on its own on the power it draws from now
    *  (pmset's `sleep` 0 — on a charger, as System Settings › Battery › Options has it), or the lid's setting keeping it
    *  from sleeping at all. Then it is muted, on or off — on, it still holds idle sleep off the moment that changes. */
@@ -8582,39 +8438,18 @@ const toolName = n => {
     return `${why}. ${a.awake ? `On: it holds idle sleep off ${when}. Click to turn it off` : `Switch it on to hold idle sleep off ${when}`}`;
   }
   const awakeOf = d => ({ awake: !!d.awake, lid: !!d.lid, idleSleep: d.idleSleep ?? null, power: d.power ?? null });
-  /** The button into the header that is up, before its ···; again after every header drawn anew (renderHead, leaveChat).
-   *  None while the status bar is on (2026-10-09): both switches are the bar's. */
-  function drawAwake() {
-    const head = $('#shead'), html = awakeHtml(), had = head.querySelector('#awakeBtn');
-    if ((had?._html || '') === html) return false;
-    had?.remove();
-    if (!html) return true;
-    const more = head.querySelector(':scope > .hmore'); if (more) more.insertAdjacentHTML('beforebegin', html); else head.insertAdjacentHTML('beforeend', html);
-    head.querySelector('#awakeBtn')._html = html;
-    return true;
-  }
-  function awakeChanged() {
-    renderBar();
-    const s = state.sessions.get(state.current);
-    if (s) renderHead(s);
-    if (drawAwake() && s) { fitHeadPrs(); paintHeadSplit(); }
-  }
+  const awakeChanged = () => renderBar();
   async function setAwake(body, at) {
     if ('lid' in body) { state.lidAsking = true; awakeChanged(); }
     try { state.awake = awakeOf(await api('PUT', '/api/awake', body)); }
     catch (e) { if (e.body && 'awake' in e.body) state.awake = awakeOf(e.body); if (e.message !== 'cancelled') note(at || $('#shead'), `Could not ${'lid' in body ? 'change the lid\'s setting' : 'keep the Mac awake'}: ${e.message}`, true); }
     finally { state.lidAsking = false; awakeChanged(); }
   }
-  $('#shead').addEventListener('click', e => {
-    const m = e.target.closest('#awakeBtn'); if (!m) return;
-    if (state.awake.lid) { if (!state.lidAsking) setAwake({ lid: false }, m); }
-    else setAwake({ awake: !state.awake.awake }, m);
-  });
   function leaveChat(head = NO_CHAT.head, log = NO_CHAT.log, color = null) {
     state.current = null; state.entries = []; Object.assign(logOf, { id: null, gen: null, upto: null, waiting: false, pending: [] }); history.replaceState(null, '', location.pathname); hidePr(); syncTerm(null);
     const menu = $('#hmenu'); if (menu.open) menu.close();
     $('#prlist').hidden = true; $('#chat').classList.remove('vsc'); tintChat(color);
-    $('#shead').innerHTML = head; delete $('#shead').dataset.sid; drawAwake(); $('#log').innerHTML = log; drawn.head = drawn.menu = drawn.prs = null; postChat(null);
+    $('#shead').innerHTML = head; delete $('#shead').dataset.sid; $('#log').innerHTML = log; drawn.head = drawn.menu = drawn.prs = null; postChat(null);
     layoutNotch(); paintHeadSplit(); renderResume(null);
     if (log === NO_CHAT.log) showHome();   // nothing open: the home (2026-10-10)
   }
@@ -9138,10 +8973,9 @@ const toolName = n => {
       ['state', esc(homePath(a.stateFile || '?'))],
       ['chats', `${[...state.sessions.values()].filter(s => s.alive).length} live · ${all.ready ?? 0} ready · ${all.working ?? 0} clauding`],
     ];
-    $('#about').innerHTML = `${$('#brandBtn').innerHTML}<h3>peix<em>AI</em>rada</h3><p class="tag">One board for every Claude Code chat on this Mac.</p><div class="facts">${facts.map(([k, v]) => `<b>${k}</b><span>${v}</span>`).join('')}</div><p class="help">The keys and the switches are in the settings — ⌘, or the chat header's ···.</p><p class="help"><button class="btn" id="aboutTour" title="The board's main parts, one at a time — a minute">Take the tour</button></p>`;
+    $('#about').innerHTML = `${FISH_LOGO()}<h3>peix<em>AI</em>rada</h3><p class="tag">One board for every Claude Code chat on this Mac.</p><div class="facts">${facts.map(([k, v]) => `<b>${k}</b><span>${v}</span>`).join('')}</div><p class="help">The keys and the switches are in the settings — ⌘, or the chat header's ···.</p><p class="help"><button class="btn" id="aboutTour" title="The board's main parts, one at a time — a minute">Take the tour</button></p>`;
     $('#about').showModal();
   }
-  $('#brandBtn').addEventListener('click', aboutOpen);
   $('#about').addEventListener('click', e => { if (e.target === $('#about')) $('#about').close(); else if (e.target.closest('#aboutTour')) tourStart(); });   // the backdrop; the tour (2026-10-14)
   // The open chat's transcript as the page holds it (2026-10-03): which reading of the file (`gen` — a re-read numbers
   // its entries afresh), how many of them it has (`upto`), and what the stream said while a fetch was on its way
@@ -9183,11 +9017,11 @@ const toolName = n => {
   function connect() {
     const es = new EventSource('/events');
     es.onopen = () => {
-      const was = $('#brandBtn').classList.contains('off');
-      $('#brandBtn').classList.remove('off'); $('#brandBtn').classList.toggle('back', was); bar.conn = true; bar.back = was; renderBar();
-      if (was) { noteMotion(null, 'fishback'); clearTimeout(bar.backT); bar.backT = setTimeout(() => { $('#brandBtn').classList.remove('back'); bar.back = false; renderBar(); }, 900); }
+      const was = !bar.conn;
+      bar.conn = true; bar.back = was; renderBar();
+      if (was) { noteMotion(null, 'fishback'); clearTimeout(bar.backT); bar.backT = setTimeout(() => { bar.back = false; renderBar(); }, 900); }
     };
-    es.onerror = () => { $('#brandBtn').classList.add('off'); $('#brandBtn').classList.remove('back'); bar.conn = false; bar.back = false; renderBar(); };
+    es.onerror = () => { bar.conn = false; bar.back = false; renderBar(); };
     es.addEventListener('snapshot', e => {
       const d = JSON.parse(e.data); state.snapshots++;   // the harness waits on the count: a reloaded page has its board
       state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.peacock = d.peacock || {}; state.repos = d.repos || {};
@@ -9197,7 +9031,7 @@ const toolName = n => {
       renderSetup();
       state.notifications = d.notifications !== false; showNotify();
       takeUpdate(d.update); pageFollows(d);
-      if (d.awake) { state.awake = awakeOf(d.awake); drawAwake(); }   // the empty header's mark; a chat's header draws its own
+      if (d.awake) state.awake = awakeOf(d.awake);
       state.clones = new Map((d.clones || []).map(c => [c.dir, c]));   // the clones under way, a reload in the middle of one
       state.editors = d.editors || null; edSay();   // whether Zed is on this Mac, and its install
       state.serverNotify = d.notify === 'native';   // the server posts its own banners: the app must not double them

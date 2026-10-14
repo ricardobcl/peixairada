@@ -4,9 +4,9 @@
 // its part, the hole round the part (the list, a card, the search, the home column, the status bar); ← steps back;
 // esc leaves it, taken, and a note says where it waits; a reload does not bring it back; it starts again from the
 // launcher's menu, the settings' head, home's keys line, the ? sheet and the About box; with a chat open the chat step
-// is its body and its resume bar, and its header has a step of its own; with the status bar off (and no plan usage, as on
-// every test server) that step is left out and the search is found at the list's foot; Done ends it without a note;
-// under reduced motion nothing glides.
+// is its body and its resume bar, and its header has a step of its own; Done ends it without a note; under reduced
+// motion nothing glides. (With the status bar off its step was left out and the search found at the list's foot, until
+// the bar was always there, 2026-10-14.)
 export const meta = { server: true, fixture: 'auto', env: { ORG_DIR: '', ORG: '' }, prefs: { toured: false } };
 
 export default async function (ctx) {
@@ -115,7 +115,7 @@ export default async function (ctx) {
     await ctx.evaluate(`document.querySelector('#ksTour').click()`);
   });
   await again('About', async () => {
-    await ctx.evaluate(`document.querySelector('#brandBtn').click()`);
+    await ctx.evaluate(`document.querySelector('#sbar .conn').click()`);
     await ctx.waitFor(`document.querySelector('#about').open`, { what: 'About' });
     await ctx.evaluate(`document.querySelector('#aboutTour').click()`);
   });
@@ -162,20 +162,6 @@ export default async function (ctx) {
   await ctx.waitFor(`!window.peix.tour().open`, { what: 'esc' });
   await ctx.cmd('Digit0');
   await ctx.waitFor(`!window.peix.state().split`, { what: '⌘0 unsplits' });
-
-  // ---- the status bar off: no step for it, the search at the list's foot ----
-  await ctx.evaluate(`document.querySelector('#sbarOn').click()`);
-  await ctx.evaluate(`document.querySelector('#ksTour').click()`);
-  await ctx.waitFor(`window.peix.tour().open`, { what: 'the tour, the bar off' });
-  ctx.assert.deepEqual((await tour()).steps, ['hello', 'list', 'card', 'find', 'chat', 'head', 'tabs', 'keys', 'bye'], 'no bar and no plan usage: no step for them');
-  for (let i = 0; i < 3; i++) await arrow('ArrowRight');
-  await ctx.waitFor(`window.peix.tour().step === 'find'`, { what: 'the search' });
-  await ctx.settle();
-  out.findHead = await geom();
-  ctx.assert.ok(out.findHead.part && out.findHead.part.r <= 380 && out.findHead.part.b > out.findHead.H - 60 && out.findHead.card.b <= out.findHead.hole.t, `the search at the list's foot, the card above it ${JSON.stringify(out.findHead)}`);
-  await ctx.evaluate(`document.querySelector('#tourSkip').click()`);
-  await ctx.waitFor(`!window.peix.tour().open`, { what: 'Skip' });
-  await ctx.evaluate(`document.querySelector('#sbarOn').click()`);
 
   // ---- dark, and under reduced motion nothing glides ----
   await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }, { name: 'prefers-reduced-motion', value: 'reduce' }] });

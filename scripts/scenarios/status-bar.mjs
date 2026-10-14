@@ -1,9 +1,8 @@
-// The status bar (2026-10-09, the design studies' F — Orca's): the machine at the window's foot. What this checks: it is
-// there by default, under the board, saying the connection and the chats; the search and the state chips move into it,
-// far left, and work from there, while the list's foot row (the fish, the search, the chips, the usage) goes; the plan
-// usage is its meters and a click shows its rows; the connection opens the About box; CPU and memory are in it from the
-// start and the settings add Claude's memory, asked of the server; the switch off hides it and gives the list's foot its row back. The faces in its
-// middle are people-row.mjs's, keeping the Mac awake keep-awake.mjs's.
+// The status bar (2026-10-09, the design studies' F — Orca's; always there since 2026-10-14): the machine at the
+// window's foot. What this checks: it is under the board, saying the connection and the chats; the search and the
+// filter are in it, far left, and work from there; the plan usage is its meters and a click shows its rows; the
+// connection opens the About box; CPU and memory are in it from the start and the settings add Claude's memory, asked of
+// the server. The faces in its middle are people-row.mjs's, keeping the Mac awake keep-awake.mjs's.
 export const meta = { server: true, fixture: 'auto' };
 
 const USAGE = `(() => { const real = window.fetch, soon = h => new Date(Date.now() + h * 3600e3).toISOString();
@@ -13,21 +12,21 @@ const USAGE = `(() => { const real = window.fetch, soon = h => new Date(Date.now
 
 export default async function (ctx) {
   const out = {};
-  const look = () => ctx.evaluate(`JSON.stringify((b => ({ hidden: b.hidden, attr: document.documentElement.hasAttribute('data-sbar'), h: Math.round(b.getBoundingClientRect().height),
+  const look = () => ctx.evaluate(`JSON.stringify((b => ({ hidden: b.hidden, h: Math.round(b.getBoundingClientRect().height),
     bottom: Math.round(innerHeight - b.getBoundingClientRect().bottom), mainBottom: Math.round(document.querySelector('#main').getBoundingClientRect().bottom - b.getBoundingClientRect().top),
-    segs: [...b.querySelectorAll('#sbLeft .seg, #sbRight .seg:not(#sbAwake):not(#sbLid)')].map(s => s.textContent.trim().replace(/\\s+/g, ' ')), footUsage: getComputedStyle(document.querySelector('#usage')).display,
-    footRow: getComputedStyle(document.querySelector('#shd')).display, find: document.querySelector('#filters').parentElement.id }))(document.querySelector('#sbar')))`).then(JSON.parse);
+    segs: [...b.querySelectorAll('#sbLeft .seg, #sbRight .seg:not(#sbAwake):not(#sbLid)')].map(s => s.textContent.trim().replace(/\\s+/g, ' ')), 
+    find: document.querySelector('#filters').parentElement.id, faces: document.querySelector('#people').parentElement.id }))(document.querySelector('#sbar')))`).then(JSON.parse);
   await ctx.send('Page.addScriptToEvaluateOnNewDocument', { source: USAGE });
   await ctx.reload();
   await ctx.waitFor(`document.querySelectorAll('#sbar .us .m').length === 2`, { what: 'the bar with the usage in it' });
   out.rest = await look();
-  ctx.assert.deepEqual([out.rest.hidden, out.rest.attr, out.rest.bottom, out.rest.mainBottom], [false, true, 8, -8], `on by default, at the window's foot, under the board, the tiles' gap round it: ${JSON.stringify(out.rest)}`);
+  ctx.assert.deepEqual([out.rest.hidden, out.rest.bottom, out.rest.mainBottom], [false, 8, -8], `at the window's foot, under the board, the tiles' gap round it: ${JSON.stringify(out.rest)}`);
   ctx.assert.equal(out.rest.segs[0], 'connected');
   ctx.assert.ok(!out.rest.segs.some(t => /\blive$|drawer|shell/.test(t)), `no live count, no drawers or shells (2026-10-11): ${JSON.stringify(out.rest.segs)}`);
   // the clock, far right (2026-10-11, later): the time on a 24-hour clock (2026-10-11, late night), the day in its tooltip
   out.clock = await ctx.evaluate(`(c => ({ text: c?.textContent, now: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }), last: c === [...document.querySelectorAll('#sbRight > .seg')].pop(), gap: Math.round(document.querySelector('#sbar').getBoundingClientRect().right - c.getBoundingClientRect().right), tip: c?.title }))(document.querySelector('#sbar .clock'))`);
   ctx.assert.ok(out.clock.text === out.clock.now && /^([01]\d|2[0-3]):\d\d$/.test(out.clock.text) && out.clock.last && out.clock.gap < 8 && out.clock.tip, `the clock at the far right: ${JSON.stringify(out.clock)}`);
-  ctx.assert.deepEqual([out.rest.find, out.rest.footRow], ['sbFind', 'none'], 'the search in the bar, the list\'s foot row gone');
+  ctx.assert.deepEqual([out.rest.find, out.rest.faces], ['sbFind', 'sbPeople'], 'the search and the faces in the bar');
   ctx.assert.ok(await ctx.evaluate(`document.querySelector('#sbFind').getBoundingClientRect().left - document.querySelector('#sbar').getBoundingClientRect().left < 12`), 'far left');
   // the search works from there: the magnifier opens the box, a query narrows the list, Esc puts it away
   const cards = () => ctx.evaluate(`document.querySelectorAll('#slist > .card').length`);
@@ -39,12 +38,11 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === ${all}`, { what: 'every card again' });
   // no state chips there since 2026-10-11, later: the lanes' heads fold the list (scripts/scenarios/lanes.mjs)
   ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('#sbar .fchip').length`), 0, 'no state chips in the bar');
-  // the connection opens the About box (the fish's, whose row went)
+  // the connection opens the About box
   await ctx.evaluate(`document.querySelector('#sbar .conn').click()`);
   await ctx.waitFor(`document.querySelector('#about').open`, { what: 'the About box from the bar' });
   await ctx.evaluate(`document.querySelector('#about').close()`);
   ctx.assert.deepEqual(out.rest.segs.at(-2), '5H42%1W93%', 'the plan usage as meters, before the clock');
-  ctx.assert.equal(out.rest.footUsage, 'none', 'the list\'s foot without its own');
   ctx.assert.deepEqual(await ctx.evaluate(`[...document.querySelectorAll('#sbar .us .m i')].map(i => i.style.getPropertyValue('--u'))`), ['var(--spend)', 'var(--needs)'], 'red from 90');
   await ctx.evaluate(`document.querySelector('#sbar .us').click()`);
   await ctx.waitFor(`document.querySelectorAll('#sbar .sbpanel .urow').length === 2`, { what: 'the usage rows over the board' });
@@ -70,12 +68,5 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#sbAwake').click()`);
   await ctx.waitFor(`document.querySelector('#sbAwake')?.classList.contains('off')`, { what: 'awake off from the bar' });
   ctx.assert.equal((await ctx.server.api('api/awake')).body.awake, false);
-
-  // off: gone, the board to the window's foot, the usage back in the list's foot
-  await ctx.evaluate(`document.querySelector('#sbarOn').click()`);
-  out.off = await look();
-  ctx.assert.deepEqual([out.off.hidden, out.off.attr, out.off.footUsage !== 'none', out.off.footRow !== 'none', out.off.find], [true, false, true, true, 'shd'], `off: hidden, and the list's foot has its row and usage back: ${JSON.stringify(out.off)}`);
-  ctx.assert.equal(await ctx.evaluate(`Math.round(innerHeight - document.querySelector('#main').getBoundingClientRect().bottom)`), 0, 'the board to the window\'s foot');
-  await ctx.evaluate(`document.querySelector('#sbarOn').click()`);
   return out;
 }

@@ -201,12 +201,10 @@ for `$HOME`'s home and the account's.
 ## The board
 
 * **Two columns**: the selected project's chats → the chat. **The list's foot is the project filter's whole cue**
-  (`#sessions` rows: the list `minmax(0, 1fr)`, the people, the project, the controls): `#stitle` names the project
-  (`hidden` on ALL; a click is ⌥⌘P, × back to ALL), and the chat header's folder name toggles it (`.repo.on`). The
-  controls row: the fish (the SSE light), `#filters` (the magnifier `#qBtn` opening `#q`, the funnel `#fBtn`), the
-  usage (`#sfoot`); no ＋ (⌥⌘N), no cog (⌘, and ···), no « » (⌥⌘B). With the status bar on, the bar holds them (see
-  below). On the rail the fish and `projAbbr` (`.ab`) keep the bottom corner. At the notch the cards start under the
-  strip (`.npad`); elsewhere flush with the top. → `project-cue.mjs`. A chat is *ready · clauding · done*
+  (`#sessions` rows: the list `minmax(0, 1fr)`, the project): `#stitle` names the project (`hidden` on ALL; a click is
+  ⌥⌘P, × back to ALL), and the chat header's folder name toggles it (`.repo.on`); on the rail, `projAbbr` (`.ab`). The
+  fish, the search and the funnel are the status bar's (below); no ＋ (⌥⌘N), no cog (⌘, and ···), no « » (⌥⌘B). At the
+  notch the cards start under the strip (`.npad`); elsewhere flush with the top. → `project-cue.mjs`. A chat is *ready · clauding · done*
   (`bucket()`); the server keeps the finer `status` for notifications and the badge.
 * **The cards are reconciled, not rebuilt** (2026-09-27): `renderSessionList` builds `{id, html}` items and
   `drawCards` keeps the node of every card whose markup is what it was (`cardNodes`), makes the others anew, and puts
@@ -373,8 +371,7 @@ for `$HOME`'s home and the account's.
   `postPane` lowers the pane while it is up, Esc closes it, `runHotkey` closes it rather than let it swallow the key.
   Toggles leave it up (the click-outside test goes by `composedPath()`); actions close it. `>_` comes back into the
   row while armed or failed; a note about a folded button anchors at ··· (`seen()`). → `head-menu.mjs`. The awake
-  switches are the status bar's; with the bar off, `#awakeBtn` before ··· and `#lidBtn` in it (`drawAwake()`, not in
-  `drawn.head`'s markup). → `keep-awake.mjs`.
+  switches are the status bar's (`#sbAwake`, `#sbLid`). → `keep-awake.mjs`.
 * **A PR's CI is said in the chat header only** (2026-10-09): `statusCheckRollup` in `PR_FIELDS` → `prChecks` →
   `checks` (pass · fail · pending) → `.ck` on `.hpr`, for open and draft PRs. **A change is seen** (`prMoments`, keyed
   by `data-url` and place, `prShown`): a first sight plays nothing. → `pr-checks.mjs`.
@@ -475,27 +472,24 @@ for `$HOME`'s home and the account's.
   `REDUCED` jumps). The rail's hit area is `.tl-catch` (`TL_CATCH`, `tl.reach`); a press on no label is on the `.near`
   one. **Hidden, a frame a scroll alone asked for does not draw it** (`listChanged(true)`, 2026-10-13); `show()` and
   anything else asking do. `peix.state().timeline`. → `timeline.mjs`.
-* **The status bar is the machine at the window's foot** (2026-10-09; `#sbar`, `renderBar`, `body`'s grid row 2;
-  `prefs.statusBar` → `<html data-sbar>`, on): `#sbFind` (`#filters` moved in by `dockBar`, handlers and all),
-  `#sbLeft` (the connection, `bar.conn`, its click the About box; the asking and monitor counts while any; the update,
-  `updSeg`), `#sbPeople`
-  (`#people` moved in), `#sbSwim`, and `#sbRight` — the machine (`prefs.barStats`; `GET /api/stats?want=cpu,mem,claude`
-  every 3 s while shown, `machineStats`), the usage as pie meters (`sbMeter`; a click lifts its rows, `usageRows`),
+* **The status bar is the machine at the window's foot** (2026-10-09, always there since 2026-10-14; `#sbar`,
+  `renderBar`, `body`'s grid row 2): `#sbFind` (`#filters`, in the markup), `#sbLeft` (the connection, `bar.conn`, its
+  fish the SSE light and its click the About box; the asking and monitor counts while any; the update, `updSeg`),
+  `#sbPeople` (`#people`, in the markup), `#sbSwim`, and `#sbRight` — the machine (`prefs.barStats`; `GET /api/stats?want=cpu,mem,claude`
+  every 3 s, `machineStats`), the plan usage as pie meters (`sbMeter`, `uShort`: 5H, 1W, a model's initial, $ a cap in
+  money; a grant only in the rows, `uGrant`) — a click lifts its rows (`usageRows`: a bar in `--spend`, red from 90 % —
+  `uColor` —, the clock's tick `uPace`/`uSpan`, the time to reset, `.umoney`),
   both awake switches (`#sbAwake`, `#sbLid`), and the clock (24-hour, `hourCycle: 'h23'`; `clockTick`). `#sbLeft` and
-  `#sbRight` are drawn by markup (`setHtml`); **the moved-in nodes are never redrawn by the bar**. On, the list's foot
-  row goes (`:root[data-sbar] :is(#shd, #sfoot)`); off, `dockBar(false)` puts them back. **The fish** (`swimAt(n)`, n
+  `#sbRight` are drawn by markup (`setHtml`); **`#filters` and `#people` are never redrawn by the bar**. **The fish** (`swimAt(n)`, n
   the clauding chats and their agents): one `swim` animation whose pace is its length (`swimPaceTo`: its place kept —
   never `updatePlaybackRate`, a rate other than 1 keeps WebKit's frames on the main thread), never still; a span of
   two svgs, body (`.fb`) and tail (`.ft`), **never SVG groups** — WebKit composites no group's transform, and the wag
   never stops (2026-10-13); `fishAt` reads where it is from the swim's own clock, never a rect, and `feed` (its
   bubbles) is a frame loop only while one is out, reading no layout; a click is ⌥⌘A; `peix.state().swim` (`rate` the
   pace it swims at). → `status-bar.mjs`, `small-motions.mjs`.
-* **The plan usage with the bar off** is `#usage` in `#sfoot`: a tag per limit (`uShort`: 5H, 1W, a model's initial,
-  CR a grant — kept out of the row, `uGrant` —, $ a cap in money, `.umoney`) and its percent; its rows (a bar in
-  `--spend`, red from 90 % — `uColor` —, the clock's tick `uPace`/`uSpan`, the time to reset) a panel on hover or a
-  click (`.uopen`, `.pin`). On the rail, rings. Both shapes are in the markup and CSS picks (`main.scompact`).
-  `loadUsage()` on load, every `USAGE_EVERY_MS` while visible, after a reset, on coming back; backing off on failure,
-  keeping the last numbers (`.stale`). `USAGE=off` (every test server) hides it. → `usage-bar.mjs`.
+* **The plan usage is asked** by `loadUsage()` on load, every `USAGE_EVERY_MS` while visible, after a reset, on coming
+  back; backing off on failure, keeping the last numbers (`.stale`). `USAGE=off` (every test server) leaves it out of
+  the bar. → `usage-bar.mjs`.
 * **State lives in four places**: the server's `~/Library/Application Support/peixAIrada/state.json` (`STATE_FILE`;
   ticks, seen, for good, unlinked PRs, a branch's move set aside, named projects, titles, pins, hidden, `envs`, notifications, PR turns,
   awake, the update's switch and record, the worktrees it made) and the user's `~/.config/peixairada/config.json` (the setup, below) — both shared by the app and every
@@ -638,8 +632,9 @@ for `$HOME`'s home and the account's.
   `peixKey`), the header's ··· row (`#settingsBtn`) and the empty header's ··· (`#noChatMore`, delegated — `leaveChat`
   rewrites the header). Three panes (`.spane`) under `.stabs`: **Board** (sections `h4.shd`), **Setup** (`#setup`), **Keys** (`.keys`). The class is still `pop`, so rows keep their
   `.pop …` rules. **It is modal**: the pane is down and the ⌥⌘ / ⌘ keys are swallowed under it — close it first (the
-  scenarios do); its `close` drops a setup row half typed. **The fish is the SSE light**, belly-up while the stream is
-  down (`FISH_LOGO()`; animations, not transitions, since the bar redraws it); clicked, the About box (`#about`).
+  scenarios do); its `close` drops a setup row half typed. **The fish is the SSE light** (the status bar's `.conn`), belly-up
+  while the stream is down (`FISH_LOGO()` from `<template id="logo">`; animations, not transitions, since the bar redraws
+  it); clicked, the About box (`#about`).
 * **Every `pre` in the transcript is inside a `.codebox`** (`md()`): the bar (language, copy) is its first child; a
   block over six lines is always folded, `details.codefold > summary + .codebox`. A rule that reaches a `pre` goes
   through the box; the copy click is delegated on `#log`.

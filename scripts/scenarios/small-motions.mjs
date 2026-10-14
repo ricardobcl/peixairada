@@ -119,12 +119,12 @@ export default async function (ctx) {
   await ctx.key('ArrowDown'); await ctx.settle();
   ctx.assert.equal((await ctx.evaluate(`window.peix.motion().filter(m => m.at >= ${m16})`)).filter(m => m.kind === 'fly').length, 1, 'a key flies nothing');
 
-  // ---- 20 · the fish belly-up: the stream down, the status bar's fish (and the list's) floats belly-up; back, it flips
+  // ---- 20 · the fish belly-up: the stream down, the status bar's fish floats belly-up; back, it flips
   // over and wiggles ----
   const restarting = ctx.server.restart();
   await ctx.waitFor(`document.querySelector('#sbar .conn')?.classList.contains('off')`, { what: 'the stream down', timeout: 10_000 });
-  out.belly = await ctx.evaluate(`(c => ({ anim: getComputedStyle(c.querySelector('.logo .fishg')).animationName, brand: document.querySelector('#brandBtn').classList.contains('off') }))(document.querySelector('#sbar .conn'))`);
-  ctx.assert.deepEqual(out.belly, { anim: 'bellyup', brand: true }, 'belly-up, in the bar and in the list\'s head');
+  out.belly = await ctx.evaluate(`getComputedStyle(document.querySelector('#sbar .conn .logo .fishg')).animationName`);
+  ctx.assert.equal(out.belly, 'bellyup', 'belly-up in the bar');
   await restarting;
   await ctx.waitFor(`window.peix.motion().some(m => m.kind === 'fishback')`, { what: 'the fish flipped back', timeout: 15_000 });
   ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#sbar .conn .logo .fishg')).animationName`), 'bellyback', 'it flips over');

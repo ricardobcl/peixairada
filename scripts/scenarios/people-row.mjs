@@ -1,10 +1,10 @@
 // The people row (2026-09-29). Three chats: one on a PR ana wrote
 // and rui approved, one on a PR rui commented on and eva pushed to, one on no PR. GitHub is the fake gh; the faces are
 // data: images, so nothing is fetched. What this checks: the faces are folded behind GitHub's mark to begin with, and
-// the mark unfolds them; the row under the cards holds everyone in the view's PRs — you left out — once each, the newest
-// first; a face narrows the list, its counts and the chips to that person's chats and rings the face, and keeps it
-// folded; another face moves the filter; the same face again lets go; the choice is a pref; the rail has no row; in the
-// status bar, folded, the fish's lane takes the room the faces had.
+// the mark unfolds them; the row in the status bar holds everyone in the view's PRs — you left out — once each, the
+// newest first; a face narrows the list, its counts and the chips to that person's chats and rings the face, and keeps
+// it folded; another face moves the filter; the same face again lets go; the choice is a pref; folded, the fish's lane
+// takes the room the faces had.
 import { writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -22,7 +22,7 @@ writeFileSync(file, JSON.stringify({
     pushes: { nodes: [{ __typename: 'HeadRefForcePushedEvent', createdAt: ago(5), actor: eva }] }, asks: { nodes: [] }, reviewRequests: { nodes: [] } }
 }));
 
-export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, FAKEGH_VIEWER: 'me' }, prefs: { statusBar: false } };   // the faces' row under the list: with the status bar on (the default since 2026-10-09) they are in the bar — status-bar.mjs
+export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, FAKEGH_VIEWER: 'me' } };
 
 export default async function (ctx) {
   const out = {}, cwd = join(tmpdir(), 'peix-people', 'people-repo'), now = Date.now();
@@ -52,7 +52,7 @@ export default async function (ctx) {
   const mark = async () => { await ctx.evaluate(`document.querySelector('#people .pgh').click()`); await ctx.sleep(50); await ctx.settle(); };
   out.folded = await fold();
   ctx.assert.deepEqual(out.folded, { folded: true, github: true, expanded: 'false', shown: [] }, `folded to begin with: ${JSON.stringify(out.folded)}`);
-  await ctx.shot('folded', { x: 0, y: 500, width: 400, height: 500 });
+  await ctx.shot('folded', { x: 0, y: 880, width: 1700, height: 120 });
   await mark();
   out.unfolded = await fold();
   ctx.assert.deepEqual(out.unfolded, { folded: false, github: true, expanded: 'true', shown: ['eva', 'rui', 'ana'] }, `the mark unfolds them: ${JSON.stringify(out.unfolded)}`);
@@ -62,21 +62,19 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.all.faces, ['eva', 'rui', 'ana'], 'everyone in the view\'s PRs, you left out, the newest first');
   ctx.assert.equal(out.all.hidden, false);
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#people img').complete && document.querySelector('#people img').naturalWidth > 0`), true, 'their faces');
-  const lr = await ctx.evaluate(`JSON.stringify((l => ({ list: Math.round(l.getBoundingClientRect().bottom), row: Math.round(document.querySelector('#people').getBoundingClientRect().top), foot: Math.round(document.querySelector('#shd').getBoundingClientRect().top) }))(document.querySelector('#slist')))`).then(JSON.parse);
-  ctx.assert.ok(lr.row >= lr.list - 1 && lr.foot >= lr.row + 20, `the row is under the cards, over the list's row: ${JSON.stringify(lr)}`);
-  await ctx.shot('all', { x: 0, y: 500, width: 400, height: 500 });
+  await ctx.shot('all', { x: 0, y: 880, width: 1700, height: 120 });
 
   await click('rui');
   await ctx.waitFor(`window.peix.state().person === 'rui'`, { what: 'rui chosen' });
   out.rui = { ...(await row()), titles: await titles() };
   ctx.assert.deepEqual(out.rui, { hidden: false, on: true, faces: ['eva', 'rui*', 'ana'], ready: 2, titles: ['On one', 'On two'] }, 'rui is in both PRs: those two chats, counted');
-  await ctx.shot('rui', { x: 0, y: 500, width: 400, height: 500 });
+  await ctx.shot('rui', { x: 0, y: 880, width: 1700, height: 120 });
 
   // folded while narrowed: the face the list is narrowed to stays in sight, the list still narrowed; unfolded again
   await mark();
   out.narrowFolded = { ...(await fold()), titles: await titles() };
   ctx.assert.deepEqual([out.narrowFolded.folded, out.narrowFolded.shown, out.narrowFolded.titles], [true, ['rui*'], ['On one', 'On two']], `folded, rui's face kept: ${JSON.stringify(out.narrowFolded)}`);
-  await ctx.shot('folded-rui', { x: 0, y: 500, width: 400, height: 500 });
+  await ctx.shot('folded-rui', { x: 0, y: 880, width: 1700, height: 120 });
   await mark();
   ctx.assert.deepEqual((await fold()).shown, ['eva', 'rui*', 'ana'], 'the mark again: every face');
 
@@ -89,13 +87,8 @@ export default async function (ctx) {
   out.back = { ...(await row()), titles: await titles() };
   ctx.assert.deepEqual([out.back.on, out.back.titles.length, out.back.ready], [false, 3, 3], 'the same face again: every chat');
 
-  await ctx.key('KeyB'); await ctx.settle();
-  ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#people')).display`), 'none', 'no row on the rail');
-  await ctx.key('KeyB');
-
-  // the status bar on (2026-10-09): the faces are in it, and still narrow the list — since 2026-10-11, later, after the
-  // left's segments and before the fish's lane, which takes the bar's free room
-  await ctx.evaluate(`document.querySelector('#sbarOn').click()`);
+  // in the status bar (2026-10-09; under the list's cards with the bar off, until it was always there, 2026-10-14) — since
+  // 2026-10-11, later, after the left's segments and before the fish's lane, which takes the bar's free room
   await ctx.settle();
   out.docked = await ctx.evaluate(`JSON.stringify((p => { const r = p.getBoundingClientRect(), f = document.querySelector('#sbSwim').getBoundingClientRect(), l = document.querySelector('#sbLeft').getBoundingClientRect(); return { inBar: p.parentElement.id, placed: r.left >= l.right - 1 && r.right <= f.left + 1 && f.width > 200, faces: p.querySelectorAll('button[data-login]').length }; })(document.querySelector('#people')))`).then(JSON.parse);
   ctx.assert.deepEqual([out.docked.inBar, out.docked.placed, out.docked.faces], ['sbPeople', true, 3], `before the fish's wide lane: ${JSON.stringify(out.docked)}`);
@@ -112,7 +105,5 @@ export default async function (ctx) {
   ctx.assert.ok(out.barFolded.lane[1] >= out.barFolded.lane[0] + 3 * 18 && out.barFolded.people < 50, `the fish takes the faces' room: ${JSON.stringify(out.barFolded)}`);
   ctx.assert.equal(out.barFolded.mark[1], out.barFolded.mark[0], 'GitHub\'s mark where it was');
   await ctx.shot('docked-folded', { x: 0, y: 880, width: 1700, height: 120 });
-  await ctx.evaluate(`document.querySelector('#sbarOn').click()`);
-  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#people').parentElement.id`), 'sessions', 'the bar off: back under the list');
   return out;
 }
