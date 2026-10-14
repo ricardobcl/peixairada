@@ -2930,10 +2930,11 @@ const treeOf = p => { const t = gitTopOf(p); try { return t && realpathSync(t); 
 /** Whether a chat or a drawer works in that tree: a live chat's folder, a drawer not ended. */
 const busyIn = tree => [...sessions.values()].some(s => s.alive && treeOf(s.live?.cwd || s.cwd) === tree) || [...terms.values()].some(t => t.exited === null && treeOf(t.cwd) === tree);
 /** Why a tree the board made stays — null when nothing holds it: a chat or a drawer in it, a change not committed, a
- *  commit no remote has (beyond the one it was made at). */
+ *  commit no remote has (beyond the one it was made at). Untracked files and submodules are asked for whatever the
+ *  config says (2026-10-14): status.showUntrackedFiles=no hid a file never added, and `worktree remove` took it. */
 async function keepWorktree(path, rec) {
   if (busyIn(path)) return 'a chat or a drawer is in it';
-  const st = (await gitOut(path, ['status', '--porcelain'])).split('\n').filter(l => l && !(rec.linked && l === '?? node_modules'));
+  const st = (await gitOut(path, ['--no-optional-locks', 'status', '--porcelain', '--untracked-files=normal', '--ignore-submodules=none'])).split('\n').filter(l => l && !(rec.linked && l === '?? node_modules'));
   if (st.length) return 'changes not committed';
   const head = await gitOr(path, ['rev-parse', 'HEAD']);
   if (head !== rec.head && await gitOr(path, ['rev-list', '--max-count=1', 'HEAD', '--not', '--remotes'], 'x')) return 'commits not pushed';
@@ -2972,7 +2973,7 @@ async function sweepWorktrees() {
     try {
       if (await keepWorktree(path, rec)) return;
       if (rec.linked) try { if (lstatSync(join(path, 'node_modules')).isSymbolicLink()) unlinkSync(join(path, 'node_modules')); } catch {}
-      await gitOut(rec.repo, ['worktree', 'remove', path]);
+      await gitOut(rec.repo, ['-c', 'status.showUntrackedFiles=normal', 'worktree', 'remove', path]);   // git's own check reads that config too
       delete worktreesMade[path]; changed = true; gone.push(path);
       console.log(`[peixairada] worktree ${tildePath(path)} removed — ${why}, nothing in it`);
     } catch (e) { console.error(`[peixairada] worktree ${tildePath(path)} kept: ${String(e.stderr || e.message).trim().split('\n')[0]}`); }

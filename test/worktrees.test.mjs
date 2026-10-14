@@ -8,7 +8,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, lstatSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { tmpDir } from '../lib/testserver.mjs';
@@ -90,7 +90,12 @@ test('the sweep removes a tree it made once its PR is merged or closed and nothi
   assert.deepEqual(await sweepWorktrees(), [], 'both kept');
   assert.ok(existsSync(wt('feat-a')) && existsSync(wt('pr-21')));
   git(wt('feat-a'), 'checkout', '--', 'a.js');
+  git(co, 'config', 'status.showUntrackedFiles', 'no'); writeFileSync(join(wt('feat-a'), 'notes.md'), 'never added\n');   // (2026-10-14) status told to hide such a file
+  assert.deepEqual(await sweepWorktrees(), [], 'a file never added: kept, whatever status.showUntrackedFiles says');
+  assert.ok(existsSync(join(wt('feat-a'), 'notes.md')));
+  rmSync(join(wt('feat-a'), 'notes.md'));
   assert.deepEqual(await sweepWorktrees(), [wt('feat-a')], 'clean now: removed');
+  git(co, 'config', '--unset', 'status.showUntrackedFiles');
   assert.equal(existsSync(wt('feat-a')), false); assert.equal(worktreesMade[wt('feat-a')], undefined);
   assert.ok(existsSync(join(co, 'node_modules', 'x')), 'the main tree’s node_modules, which it linked to, untouched');
   // a chat in it holds it; a PR still open, a tree the board did not make, are never touched
