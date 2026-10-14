@@ -625,6 +625,9 @@ for `$HOME`'s home and the account's.
   says how far it is** (`clones`, by target folder; a second ask joins it; a spawn in it is refused until done,
   `cloneUnder`): `gh repo clone … -- --progress`, phases weighted into one percent (`CLONE_PHASES`), `clone` events
   and `clones` in the snapshot; a failure removes what git left. → `test/folders.test.mjs`.
+* **⌥⌘N's first row is a chat in no folder** (2026-10-14, `NO_FOLDER`): ⏎ starts claude at once in the board's own
+  `<state dir>/no folder` (`SCRATCH_DIR`, `about.scratch`; `spawnTerm` makes it) — never `$HOME`, whose trust Claude Code
+  keeps for a session only. Hunted like a project; the project in view keeps the selection. → `new-chat-nofolder.mjs`.
 * **A chat's folder not checked out is cloned before the chat starts** (2026-10-09): `spawnTerm` refuses a missing
   folder (or one being cloned) with `clone` — **`cloneFor(cwd)`: under a root with an org, `<root>/<name>[/…]` is
   `<org>/<name>`**, null under no such root or inside a repo that is there. The page's `withCheckout(key, spawn)`

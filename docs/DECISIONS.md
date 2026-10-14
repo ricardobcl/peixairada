@@ -32,6 +32,25 @@ Ricardo: "the update app is not updated the mac app".
 * **The build's record moved** from the last update's `build` to its own `appBuild` in the state file: a rebuild with
   nothing pulled has no update record to hang on.
 
+## Decisions of 2026-10-14, on a branch — a new chat in no folder
+
+Ricardo: "hotkey N should have as first option a new chat without a folder associated".
+
+* **⌥⌘N's first row is ＋ new chat — no folder**, and ⏎ on it starts claude at once — no chats step, no Taskfile asked.
+  The launcher's *New chat* opens the same step, so it has it too. On ALL the selection starts on it; with a project in
+  view that project keeps the selection, as since 2026-09-28. The row is hunted like the projects, so a name typed
+  hides it (and the selection never sits on it while a project is typed); *no folder* typed finds it.
+* **Where it runs: the board's own folder, `<state dir>/no folder`** (`SCRATCH_DIR`, on this Mac
+  `~/Library/Application Support/peixAIrada/no folder`; a test server's in its own state dir). Claude Code needs a
+  working directory, and `$HOME` was the other candidate — but its trust is kept for a session only (the CLI says so),
+  so every chat there would ask again, and the home's project settings and hooks stay off in it. A folder of the
+  board's is trusted once. The real path of the state folder, since that is the one claude registers.
+* **Named `no folder`** because a project's name is its folder's last part everywhere (the card, the header, the
+  pickers, the server's summary): the chats read as what they are with no special case. They are a project like any
+  other — its own row in ⌥⌘N's list once it has chats, a filter in ⌥⌘P.
+* **Made when a chat starts or resumes there** (`spawnTerm`), so nothing is created until asked and a resume after the
+  folder was deleted still works. → `test/terminals.test.mjs`, `scripts/scenarios/new-chat-nofolder.mjs`.
+
 ## Decisions of 2026-10-14, on a branch — the tour, five parts more
 
 Ricardo, on the first tour: "we're missing explaining: new chat · "your move" · auto PR linking · split 2 panes

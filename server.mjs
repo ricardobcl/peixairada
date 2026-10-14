@@ -75,7 +75,7 @@ const SESSIONS_DIR = join(CLAUDE_DIR, 'sessions');
 const PORT = Number(process.env.PORT || 7331);
 // The About box's facts (2026-09-27): the package's version, this process, and where the board reads and writes.
 const PKG = (() => { try { return JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')); } catch { return {}; } })();
-const aboutInfo = () => ({ version: PKG.version || 'dev', node: process.version, pid: process.pid, port: PORT, claudeDir: CLAUDE_DIR, stateFile: STATE_FILE, configFile: CONFIG_FILE, since: SINCE, shell: basename(LOGIN_SHELL), user: userInfo().username, host: hostname().replace(/\.local$/, '') });
+const aboutInfo = () => ({ version: PKG.version || 'dev', node: process.version, pid: process.pid, port: PORT, claudeDir: CLAUDE_DIR, stateFile: STATE_FILE, configFile: CONFIG_FILE, since: SINCE, shell: basename(LOGIN_SHELL), user: userInfo().username, host: hostname().replace(/\.local$/, ''), scratch: SCRATCH_DIR });
 const SINCE = Date.now();
 const HOST = process.env.HOST || '127.0.0.1';
 const NOTIFY = process.env.NOTIFY || 'native'; // native | off
@@ -92,6 +92,11 @@ function defaultStateFile() {
 }
 const STATE_FILE = process.env.STATE_FILE || defaultStateFile();
 const LEGACY_STATE_FILE = join(homedir(), '.peixairada', 'state.json');
+// A chat with no folder (2026-10-14, ⌥⌘N's first row) runs in one of the board's own, beside the state file: Claude Code
+// needs a working directory, and the home one's trust is for a session only — every chat there would ask again. Named so
+// that what reads a project's name off its folder (the card, the header, the pickers) says what it is. Made when a chat
+// is started or resumed there (spawnTerm). The state folder's real path, since that is the one claude registers.
+const SCRATCH_DIR = process.env.SCRATCH_DIR || join((d => { try { return realpathSync(d); } catch { return d; } })(dirname(STATE_FILE)), 'no folder');
 // The setup — where the repos live, ⌥⌘O's project, the projects' short names and colours — is the user's, in a file of
 // its own under ~/.config (2026-10-01): what someone sets once and may keep with their dotfiles, while the state file
 // churns with every tick. $XDG_CONFIG_HOME moves it, CONFIG_FILE names it; a STATE_FILE of its own (every test server)
@@ -3549,6 +3554,7 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
   const bin = shell ? LOGIN_SHELL : task ? findBin('task', 'Taskfile launchers are disabled') : claudeBin();   // a shell holder runs the shell itself (see termhold.mjs); the chat's is claude, or its launcher
   if (!bin) return { code: 503, error: task ? 'task binary not found — set TASK_BIN to its path' : 'claude binary not found — set CLAUDE_BIN to its path' };
   if (!cwd) return { code: 400, error: 'no cwd known for this chat' };
+  if (cwd === SCRATCH_DIR) try { mkdirSync(SCRATCH_DIR, { recursive: true }); } catch {}   // the no-folder chats' own: made on the first, and again after it was deleted
   // not there — or being cloned: the page clones it (`clone`, the repo it was a checkout of) and asks again (2026-10-09)
   if (!existsSync(cwd) || cloneUnder(cwd)) {
     const clone = cloneFor(cwd);

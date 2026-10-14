@@ -4342,6 +4342,10 @@ const toolName = n => {
   // environments first, then *that environment's* open chats with ＋ new chat first (hotOracle). A chat's environment
   // is the server's record of the launcher it was started with (`s.env`), so it outlives the drawer; a chat with no
   // record — a bare `claude` in the folder, or one from before the record existed — shows under ⌥⌘N, not ⌥⌘O.
+  // ⌥⌘N's first row is a chat in no folder (2026-10-14): ＋ new chat · no folder starts claude at once in the board's own
+  // folder (the server's `about.scratch`, made when a chat starts there), so a question that belongs to no repo needs no
+  // repo picked. It is hunted like the projects — a name typed hides it — and the project in view still takes the
+  // selection; on ALL the selection starts on it.
   // The chats step shows even when the scope has no chats (2026-09-22): ＋ new chat is then the
   // whole list, ⏎ starts it, esc walks away. Before, an empty scope skipped the step and the next one spawned a
   // terminal with nothing to stop it.
@@ -4420,7 +4424,7 @@ const toolName = n => {
   const PICK_HINT = {
     project: 'Project — type to filter · ↑↓ · ⏎ opens · esc', pr: 'Pull request — type to filter · ↑↓ · ⏎ opens · esc',
     chat: 'A chat — every project, asking, clauding or ready · any letters in order · ⏎ opens · esc',
-    new: () => `New chat — a project${folders.roots.length ? `, a folder in ${folders.roots.map(r => homePath(r.dir)).join(' or ')}` : ''}${folders.roots.some(r => r.org) ? `, or a name to clone from ${folders.roots.filter(r => r.org).map(r => r.org).join(' or ')}` : ''} · ↑↓ · ⏎ · esc`,
+    new: () => `New chat — a project${folders.roots.length ? `, a folder in ${folders.roots.map(r => homePath(r.dir)).join(' or ')}` : ''}${folders.roots.some(r => r.org) ? `, a name to clone from ${folders.roots.filter(r => r.org).map(r => r.org).join(' or ')}` : ''}${state.about.scratch ? ', or no folder at all' : ''} · ↑↓ · ⏎ · esc`,
     folder: ctx => `${ctx.then === 'chats' ? 'Which folder' : 'New chat — which folder'}? type to filter · ↑↓ · ⏎ · esc`,
     // named: ⌥⌘O never asked which folder. From ⌥⌘O the environment is a scope (its chats follow); from ⌥⌘N it is the last step.
     env: ctx => ctx.then === 'chats' ? `${folderName(ctx.cwd)} — which environment? its open chats, and a new one · ↑↓ · ⏎ · esc`
@@ -4430,6 +4434,7 @@ const toolName = n => {
     launch: 'Anything — chats, projects, PRs, tickets, actions · ⏎ · esc',
     toggle: 'Switches — ⏎ flips one, the menu stays · ← back · esc', prs: "Pull requests — every chat's · ⏎ opens the chat and the PR · ← back · esc",
   };
+  const NO_FOLDER = '＋ new chat — no folder';   // ⌥⌘N's first row (2026-10-14)
   const PICK_NOUN = { pr: 'PR', prs: 'PR', chat: 'chat', chats: 'chat', folder: 'folder', env: 'environment', launch: 'thing', toggle: 'switch' };   // for "no … matches"; the rest are projects
   const homePath = f => f.replace(/^\/Users\/[^/]+(?=\/|$)/, '~');
   const chatState = s => bucket(s) === 'working' ? 'clauding' : asking(s) ? 'asking' : 'ready';
@@ -4572,13 +4577,16 @@ const toolName = n => {
                // then the org's folders that are on no project, then ＋ clone for a name that is neither
       const board = projectList().filter(p => pick.mode === 'project' || (p.key !== ALL && p.cwds.length));
       const items = pick.mode === 'new' ? [...board, ...freeFolders()] : board;
-      pick.list = hunt(items, p => p.folder ? [p.name, homePath(p.cwd)] : [p.name]);
+      const none = pick.mode === 'new' && state.about.scratch ? [{ noFolder: true, name: NO_FOLDER, cwd: state.about.scratch }] : [];   // ＋ a chat in no folder, first (2026-10-14)
+      pick.list = hunt([...none, ...items], p => p.folder ? [p.name, homePath(p.cwd)] : [p.name]);
       if (pick.mode === 'new') pick.list = [...pick.list, ...cloneRows(items)];
       if (pick.mode === 'project') pick.list = [...pick.list, { newProject: true }];   // ＋ new project, last and never filtered out
       // ✕ on every row of ⌥⌘N that names a project or a folder — never on ＋ clone, which is not on the board yet.
       const hx = p => pick.mode !== 'new' ? '' : `<button class="pkx" data-key="${esc(p.key)}" title="Take ${esc(p.name)} off the board — every picker stops listing it; its chats stay under ALL and the settings (⌘,) put it back">✕</button>`;
       const ed = p => pick.mode === 'project' && p.custom ? `<button class="pked" data-id="${esc(p.id)}" title="Edit ${esc(p.name)} — its name and folders">✎</button>` : '';
-      row = (p, i) => p.newProject
+      row = (p, i) => p.noFolder
+        ? `<div class="pkrow nofolder${sel(i)}" data-i="${i}" title="A chat that belongs to no folder — claude starts at once in the board's own, ${esc(homePath(p.cwd))}"><span class="sq"></span><span class="n">${mark(p.name)}<span class="cur">${esc(homePath(p.cwd))}</span></span><span class="pills"></span><span class="t"></span></div>`
+        : p.newProject
         ? `<div class="pkrow newproj${sel(i)}" data-i="${i}" title="A name over one or more folders — multi-repo work, an investigation"><span class="sq"></span><span class="n">＋ new project<span class="cur">a name over several folders</span></span><span class="pills"></span><span class="t"></span></div>`
         : p.clone
         ? `<div class="pkrow clone${sel(i)}" data-i="${i}" title="gh repo clone ${esc(p.org)}/${esc(p.name)} into ${esc(homePath(p.root))}"><span class="sq"></span><span class="n">＋ clone ${esc(p.org)}/${esc(p.name)}<span class="cur">into ${esc(homePath(p.root))}</span></span><span class="pills"></span><span class="t"></span></div>`
@@ -4600,7 +4608,8 @@ const toolName = n => {
     if (pick.mode === 'pr') { dlg.close(); showPr(x.url); }
     else if (pick.mode === 'chat') { dlg.close(); openSession(x.id, { locate: true }); }
     else if (pick.mode === 'new') {   // a project's, or a folder's, open chats with ＋ a new one — or the clone first
-      if (x.clone) cloneAndStart(x); else chatsStep({ key: x.key, name: x.name, cwds: x.cwds });
+      if (x.noFolder) { dlg.close(); newChat(x.cwd); }   // straight in: no chats step, and no Taskfile to ask
+      else if (x.clone) cloneAndStart(x); else chatsStep({ key: x.key, name: x.name, cwds: x.cwds });
     }
     else if (pick.mode === 'chats') {
       if (x.isNew && pick.wt && pick.git) newChatOnBranch(pick.ctx.cwds[0], $('#pickq').value.trim());
@@ -4805,7 +4814,7 @@ const toolName = n => {
     ['⌥⌘L', 'Go to', 'anything — chats, projects, PRs, tickets, actions and switches', '> actions and switches, # PRs, @ projects, ! tickets · empty, a menu: → into a row, ← back', ['alt:KeyL']],
     ['⌥⌘P', 'Go to', 'a project — or a click on the project\'s name atop the list', '✎ edits a named one, ＋ makes one', ['alt:KeyP']],
     ['⌥⌘F', 'Go to', 'the list\'s own search, fuzzy', 'the best match leads · ↑↓ walk the cards · ⏎ opens one · esc clears it', ['alt:KeyF']],
-    ['⌥⌘N', 'Go to', 'a new chat — the project in view first', 'or a project, a folder of your repos, or ＋ clone one · then its open chats or ＋ a new one — in the folder, or (←→) in a new worktree on a branch of its own · ✕ takes a row off the board', ['alt:KeyN'], 'newKey'],
+    ['⌥⌘N', 'Go to', 'a new chat — the project in view first', 'or one in no folder (the first row), a project, a folder of your repos, or ＋ clone one · then its open chats or ＋ a new one — in the folder, or (←→) in a new worktree on a branch of its own · ✕ takes a row off the board', ['alt:KeyN'], 'newKey'],
     ['⌥⌘O', 'Go to', 'a new chat in the setup\'s quick project', 'its environments first, when its Taskfile has some', ['alt:KeyO'], 'quickKey'],
     ['⌥⌘↑↓', 'Go to', 'the chat above / below in the list', '', ['alt:ArrowUp', 'alt:ArrowDown']],
     ['⌥⌘A', 'Go to', 'the overview: every live chat at once', 'Asking you · Clauding · Watching · New replies, each with what it is doing now · 1–9 opens one · a question\'s answer types its digit into the chat\'s drawer', ['alt:KeyA']],
@@ -5344,7 +5353,7 @@ const toolName = n => {
     { id: 'find', side: 'above', at: () => onScreen($('#filters')), title: 'Find a chat',
       text: () => 'The magnifier — <kbd>⌥⌘F</kbd> — searches the list by any letters in order: <em>chk rtr</em> finds <em>checkout retry</em>. The funnel shows only the chats with a new reply, or a PR at your move. <kbd>⌥⌘P</kbd> narrows the list to a project, <kbd>⌥⌘K</kbd> jumps to any chat.' },
     { id: 'new', mid: true, title: 'A new chat, anywhere',
-      text: () => '<kbd>⌥⌘N</kbd> asks where — the project in view, another, any repo in your folders, or one to clone — then offers its open chats, or a new one: in the folder, or <b>on a new branch</b>, in a worktree of its own. Claude starts in a terminal on the board, and the chat has its card at once. <kbd>⌥⌘O</kbd> goes straight to your quick project.',
+      text: () => '<kbd>⌥⌘N</kbd> asks where — nowhere in particular, the project in view, another, any repo in your folders, or one to clone — then offers its open chats, or a new one: in the folder, or <b>on a new branch</b>, in a worktree of its own. Claude starts in a terminal on the board, and the chat has its card at once. <kbd>⌥⌘O</kbd> goes straight to your quick project.',
       pic: () => `<div class="tmock"><div class="hd"><kbd>⌥⌘N</kbd> › widgets</div><div class="r on">＋ new chat</div><div class="r">＋ new chat on a new branch<small>a worktree</small></div><div class="r"><i style="--c: var(--idle)"></i>Fix the checkout retry<small>ready</small></div><div class="r"><i style="--c: var(--working)"></i>Bump the SDK<small>clauding</small></div></div>` },
     { id: 'chat', at: () => state.current ? [$('#groups'), $('#resume')] : $('#chat'), title: () => state.current ? 'The chat, live' : 'The chat you open comes up here',
       text: () => `${state.current ? 'Its transcript, as Claude writes it.' : 'With none open, this is home: your day across every chat. Click a card and its transcript comes up, live.'} When its claude runs on the board it is a real terminal to type into, and a chat whose claude has ended offers to resume it here.` },

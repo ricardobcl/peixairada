@@ -2,7 +2,7 @@
 // the socket's snapshot, a server restart with the holder alive under it, adoption, and the kill.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -93,6 +93,26 @@ test('a new chat in a folder is tied to its session by pid when the fake registe
     const linked = await waitFor(async () => (await srv.terminals()).find(x => x.id === r.body.terminal.id)?.sessionId || null, { what: 'the terminal learning its session id from the registry' });
     const meta = srv.holders().find(h => h.id === r.body.terminal.id);
     assert.equal(meta.sessionId, linked, 'and told its holder, so an adoption after a restart knows it too');
+  } finally { await srv.stop(); }
+});
+
+test('a chat in no folder (2026-10-14): the board\'s own folder, made for the first chat and again for a resume after it was deleted', { timeout: 40_000 }, async () => {
+  const srv = await startTestServer({ fake: true });
+  const scratch = join(realpathSync(srv.dir), 'no folder');
+  try {
+    assert.equal(existsSync(scratch), false, 'nothing made before a chat asks for it');
+    const r = await srv.post('api/terminals', { cwd: scratch, cols: 90, rows: 24 });
+    assert.equal(r.status, 201, JSON.stringify(r.body));
+    assert.ok(existsSync(scratch), 'made for it');
+    const id = await waitFor(async () => (await srv.terminals()).find(x => x.id === r.body.terminal.id)?.sessionId || null, { what: 'the chat registered' });
+    const s = await waitFor(async () => (await srv.api('api/sessions')).body.sessions.find(x => x.id === id && x.alive), { what: 'its card' });
+    assert.deepEqual([s.cwd, s.project], [scratch, 'no folder'], 'claude runs there, and the project reads so');
+    await srv.api(`api/terminals/${r.body.terminal.id}`, { method: 'DELETE' });
+    await waitFor(async () => !(await srv.api('api/sessions')).body.sessions.find(x => x.id === id)?.alive, { what: 'its claude ended' });
+    rmSync(scratch, { recursive: true, force: true });
+    const again = await srv.post(`api/sessions/${id}/terminal`, { cols: 90, rows: 24 });
+    assert.equal(again.status, 201, JSON.stringify(again.body));
+    assert.ok(existsSync(scratch), 'made again for the resume');
   } finally { await srv.stop(); }
 });
 
