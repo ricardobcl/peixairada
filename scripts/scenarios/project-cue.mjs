@@ -101,7 +101,8 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#settings').open`), false, '⌘, toggles them');
   await ctx.evaluate(`document.querySelector('#stitle .sx').click()`);
   // The chat header's folder name is the filter's toggle (2026-10-08): a click shows that folder's chats, the next ALL
-  const chatCwd = await ctx.evaluate(`window.peix.session(window.peix.state().current).cwd`);
+  // (a chat in a worktree of a repo is the repo's project, 2026-10-13: the suite run from one)
+  const chatCwd = await ctx.evaluate(`window.peix.session(window.peix.state().current).cwd.replace(/\\/\\.claude\\/worktrees\\/[^/]+(?:\\/.*)?$/, '')`);
   await ctx.evaluate(`document.querySelector('#shead .repo').click()`);
   out.toggle = [await ctx.evaluate(`window.peix.prefs().project`), await ctx.evaluate(`document.querySelector('#shead .repo').classList.contains('on')`), await ctx.evaluate(`!document.querySelector('#stitle').hidden`)];
   ctx.assert.deepEqual(out.toggle, [chatCwd, true, true], 'the header\'s folder name filters the list to it, and says so');

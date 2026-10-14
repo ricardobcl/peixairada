@@ -73,7 +73,8 @@ export default async function (ctx) {
   // this stops where the wiring does
   const sq = `document.querySelector('#shead h2 .sq.pick')`;
   out.sq = { cwd: await ctx.evaluate(`${sq}.dataset.cwd`), opacity: await ctx.evaluate(`getComputedStyle(${sq}).opacity`) };
-  ctx.assert.equal(out.sq.cwd, (await ctx.peix('session()')).cwd, "the square is this chat's folder");
+  // a chat in a worktree of a repo is the repo's project (2026-10-13), and so is its square
+  ctx.assert.equal(out.sq.cwd, (await ctx.peix('session()')).cwd.replace(/\/\.claude\/worktrees\/[^/]+(?:\/.*)?$/, ''), "the square is this chat's folder");
   ctx.assert.equal(out.sq.opacity, '0', 'and it is not inked until the header is hovered');
   const hr = await ctx.evaluate(`JSON.stringify((r => ({ x: r.x, y: r.y, h: r.height }))(document.querySelector('#shead').getBoundingClientRect()))`).then(JSON.parse);
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: Math.round(hr.x + 20), y: Math.round(hr.y + hr.h / 2) });

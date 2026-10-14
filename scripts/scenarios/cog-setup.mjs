@@ -14,7 +14,8 @@ export const meta = { server: true, fixture: 'auto' };
 
 export default async function (ctx) {
   const out = {};
-  const [two, plain] = ctx.fixture.chats, repo = basename(two.cwd), tmp = basename(plain.cwd);
+  // the checkout is its repo's project when the suite runs from a worktree of it (2026-10-13)
+  const [two, plain] = ctx.fixture.chats, repo = basename(two.cwd.replace(/\/\.claude\/worktrees\/[^/]+(?:\/.*)?$/, '')), tmp = basename(plain.cwd);
   const cfg = () => ctx.server.api('api/config').then(r => r.body);
   /** A box in the setup, set and changed as typing and leaving it would. */
   const set = (sel, value) => ctx.evaluate(`(() => { const x = document.querySelector('#setup ${sel}'); x.value = ${JSON.stringify(value)}; x.dispatchEvent(new Event('input', { bubbles: true })); x.dispatchEvent(new Event('change', { bubbles: true })); })()`);

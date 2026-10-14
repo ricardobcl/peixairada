@@ -47,9 +47,12 @@ pref for a switch that went is deleted on load.
 * **Found on the way**: the header's changes' count never folded — `.shead > .hfold` lost to `.shead .hdiff`'s own
   display, later and as specific — so in a column of 420 px (the tiles' 4 px of border took the header under the 424 it
   had fitted in) the row wrapped, ··· on a second line. Its own commit, before the tiles'.
-* **Not the plain look's to rerun**: `cog-setup`, `hotkeys` and `project-cue` fail run from a worktree under
-  `.claude/worktrees/` — the fixture's chat is the checkout, which is now its repo's project (2026-10-13) — on `main` as
-  here; in the checkout itself the chat's folder is its project.
+* **Scenarios run from a worktree**: `cog-setup`, `hotkeys` and `project-cue` failed from a worktree under
+  `.claude/worktrees/` — the fixture's chat is the checkout, which is its repo's project there (2026-10-13) — on `main`
+  as here; they read the chat's project as the board does now (its own commit). `pr-turn`'s narrow header holds the
+  changes' count of whatever the checkout has uncommitted, so it fails on a dirty tree and passes on a clean one; and
+  `drawer-switch` flaked twice in a full run (the nudge's row-short repaint seen in a frame) and passed alone each time
+  after — neither is the switches'.
 * **The floating header** (2026-10-09) — the only header: `<html data-head="float">` is in the markup, its rules as
   they were; the switch, `applyHead` and the plain header's turns in `layoutNotch`, `headNotch` and `floatH` went, and
   the harness no longer turns it off — the scenarios measure the board as it is.
