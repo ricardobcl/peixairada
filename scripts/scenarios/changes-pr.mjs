@@ -5,13 +5,13 @@
 // the scope's PR #14 ▾ lists the chat's PRs with their branches and where they are; #16 picked comes from GitHub's
 // diff (the fake gh's); and the folder's own scopes are as they were.
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeFixture } from '../fixture.mjs';
+import { tmpDir } from '../../lib/testserver.mjs';
 
-const root = mkdtempSync(join(realpathSync(tmpdir()), 'peix-chgpr-'));
+const root = realpathSync(tmpDir('peix-chgpr-'));
 const claudeDir = join(root, 'claude'), origin = join(root, 'origin.git'), seed = join(root, 'seed'), repo = join(root, 'work', 'widgets');
 const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
 const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env }).toString().trim();

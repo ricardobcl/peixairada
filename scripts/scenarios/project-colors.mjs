@@ -5,14 +5,13 @@
 // set); the chat header's square writes Peacock's. Black still stands out: the black beside it — the header right of the
 // project — turns grey, and an open black card's ink is light.
 import { spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeFixture, toolLines } from '../fixture.mjs';
-import { waitFor } from '../../lib/testserver.mjs';
+import { tmpDir, waitFor } from '../../lib/testserver.mjs';
 
-const dir = mkdtempSync(join(tmpdir(), 'peix-colors-')), prs = join(dir, 'prs.json'), cwd = join(dir, 'calm-repo');
+const dir = tmpDir('peix-colors-'), prs = join(dir, 'prs.json'), cwd = join(dir, 'calm-repo');
 const COLOR = '#2f7fd8';
 mkdirSync(join(cwd, '.vscode'), { recursive: true });
 writeFileSync(join(cwd, '.vscode', 'settings.json'), JSON.stringify({ 'peacock.color': COLOR }));

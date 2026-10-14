@@ -6,13 +6,13 @@
 // worktree (←→, a click) — whose row says what the branch typed would do, in red where it would share a tree, and
 // makes a worktree from origin's main for a new name and starts a chat in it.
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeFixture } from '../fixture.mjs';
+import { tmpDir } from '../../lib/testserver.mjs';
 
-const root = mkdtempSync(join(realpathSync(tmpdir()), 'peix-chwt-'));
+const root = realpathSync(tmpDir('peix-chwt-'));
 const claudeDir = join(root, 'claude'), origin = join(root, 'origin.git'), seed = join(root, 'seed'), repo = join(root, 'work', 'widgets'), other = join(root, 'work', 'storefront');
 const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
 const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env }).toString().trim();

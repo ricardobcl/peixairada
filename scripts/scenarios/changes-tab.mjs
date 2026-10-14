@@ -5,12 +5,12 @@
 // into the chat's claude in its drawer as a prompt; Commit… types `git commit -v` into the chat's zsh, unrun; and the
 // tab's ⌥⌘W closes it.
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { makeFixture, toolLines } from '../fixture.mjs';
+import { tmpDir } from '../../lib/testserver.mjs';
 
-const repo = join(realpathSync(mkdtempSync(join(tmpdir(), 'peix-chg-'))), 'shop');
+const repo = join(realpathSync(tmpDir('peix-chg-')), 'shop');
 mkdirSync(join(repo, 'src'), { recursive: true });
 const g = (...a) => execFileSync('git', ['-C', repo, ...a], { stdio: 'pipe', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } });
 g('init', '-q', '-b', 'main');

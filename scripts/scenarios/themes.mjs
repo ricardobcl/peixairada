@@ -5,12 +5,12 @@
 // turns light, a light one is light in a dark system, a reload keeps it, and the first paint is it (the head's script).
 // Following macOS (the switch) wears each appearance's slot, which a pick fills; a theme of the other appearance still
 // previews.
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { makeFixture } from '../fixture.mjs';
+import { tmpDir } from '../../lib/testserver.mjs';
 
-const dir = mkdtempSync(join(tmpdir(), 'peix-themes-')), cwd = join(dir, 'blue-repo');
+const dir = tmpDir('peix-themes-'), cwd = join(dir, 'blue-repo');
 const BLUE = '#3b7ddd';
 mkdirSync(join(cwd, '.vscode'), { recursive: true });
 writeFileSync(join(cwd, '.vscode', 'settings.json'), JSON.stringify({ 'peacock.color': BLUE }));

@@ -3,13 +3,13 @@
 // to the actions, and ⏎ runs one (the list folds); → goes into Toggle, ⏎ flips a switch of the settings and the menu
 // stays, ← comes back out; `#` finds the PR by its number; and `?` outside a box opens the sheet of every key, which
 // its box narrows.
-import { mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeFixture } from '../fixture.mjs';
+import { tmpDir } from '../../lib/testserver.mjs';
 
-const dir = mkdtempSync(join(tmpdir(), 'peix-launch-')), prs = join(dir, 'prs.json');
+const dir = tmpDir('peix-launch-'), prs = join(dir, 'prs.json');
 writeFileSync(prs, JSON.stringify({ 'acme/widgets#57': { state: 'OPEN', title: 'Teach the widget to launch' } }));
 
 export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: prs } };

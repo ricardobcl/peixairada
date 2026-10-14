@@ -11,16 +11,16 @@
 // once. Tiles and the floating header on, for the shots (DARK=1 for the dark ones).
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { appendFileSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { slugOf } from '../fixture.mjs';
+import { tmpDir } from '../../lib/testserver.mjs';
 
 export const meta = { server: true, fixture: 'auto' };
 
 export default async function (ctx) {
   const out = {};
-  const root = mkdtempSync(join(realpathSync(tmpdir()), 'peix-drift-')), cwd = join(root, 'widgets');
+  const root = realpathSync(tmpDir('peix-drift-')), cwd = join(root, 'widgets');
   const sleeps = [0, 1, 2, 3].map(() => spawn('sleep', ['180'], { stdio: 'ignore' }));
   try {
     // a checkout as far as the board reads one: the HEAD file, which is all it reads

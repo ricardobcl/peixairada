@@ -2,12 +2,12 @@
 // take one of its PRs off, copy its link; on a PR chip: open it, take it off the chat — and the launcher has the same
 // rows, for the keyboard. What this checks: the card's menu and its Rename… (the header's title box), a PR taken off
 // from its chip's menu, and the launcher's rows for the open chat.
-import { mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { tmpDir } from '../../lib/testserver.mjs';
 
-const dir = mkdtempSync(join(tmpdir(), 'peix-ctx-gh-')), file = join(dir, 'prs.json');
+const dir = tmpDir('peix-ctx-gh-'), file = join(dir, 'prs.json');
 writeFileSync(file, JSON.stringify({ 'acme/repo-a#12': { state: 'OPEN', title: 'Base of the follow-up' }, 'acme/repo-a#13': { state: 'OPEN', title: 'The follow-up' } }));
 export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: file } };
 

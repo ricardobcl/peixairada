@@ -9,12 +9,12 @@
 // F would be, solid whatever their turn, the reason in the chat header too, and the chat ranked by the move — above a
 // newer chat, under today's line — and the funnel's Your move narrowing the list to it (2026-10-12). And done for good (2026-10-11): ⌥-click on the ✓ forgets the chat's PRs — a push is
 // nothing to it, the PR is not asked about for it — until ↩.
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { tmpDir } from '../../lib/testserver.mjs';
 
-const dir = mkdtempSync(join(tmpdir(), 'peix-gh-')), file = join(dir, 'prs.json');
+const dir = tmpDir('peix-gh-'), file = join(dir, 'prs.json');
 const ago = min => new Date(Date.now() - min * 60_000).toISOString().replace(/\.\d+Z$/, 'Z');
 // a face as GitHub gives one (avatarUrl), drawn here so nothing is fetched
 const user = login => ({ login, __typename: 'User', avatarUrl: 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#8250df"/><text x="8" y="12" font-size="10" text-anchor="middle" fill="#fff">${login[0]}</text></svg>`) });

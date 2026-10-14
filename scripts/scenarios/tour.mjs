@@ -9,12 +9,12 @@
 // move at the header's chips and tag (a PR of the fake gh's at your move from the start); none open, at a card's. Done
 // ends it without a note; under reduced motion nothing glides. (With the status bar off its step was left out and the
 // search found at the list's foot, until the bar was always there, 2026-10-14.)
-import { mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpDir } from '../../lib/testserver.mjs';
 
 // acme/repo-a#12 by ana: I asked for changes an hour ago, she commented since — my move. #13 nobody here touched.
-const gh = join(mkdtempSync(join(tmpdir(), 'peix-gh-')), 'prs.json');
+const gh = join(tmpDir('peix-gh-'), 'prs.json');
 const ago = min => new Date(Date.now() - min * 60_000).toISOString().replace(/\.\d+Z$/, 'Z');
 const user = login => ({ login, __typename: 'User', avatarUrl: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#8250df"/></svg>') });
 writeFileSync(gh, JSON.stringify({

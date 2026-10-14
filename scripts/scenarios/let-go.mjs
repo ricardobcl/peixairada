@@ -4,12 +4,12 @@
 // PR is asked about again and again (and through a restart) without coming back; the author's next push is a move as
 // any other: the line back and one alert. The chat header's *your move* lets go the same way, and so does the card's
 // right-click menu.
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { tmpDir } from '../../lib/testserver.mjs';
 
-const dir = mkdtempSync(join(tmpdir(), 'peix-gh-')), file = join(dir, 'prs.json');
+const dir = tmpDir('peix-gh-'), file = join(dir, 'prs.json');
 const ago = min => new Date(Date.now() - min * 60_000).toISOString().replace(/\.\d+Z$/, 'Z');
 const user = login => ({ login, __typename: 'User', avatarUrl: 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#8250df"/></svg>`) });
 const commit = (at, login) => ({ __typename: 'PullRequestCommit', commit: { committedDate: at, author: { user: { login } } } });

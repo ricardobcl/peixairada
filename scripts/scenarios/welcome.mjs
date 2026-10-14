@@ -3,14 +3,13 @@
 // guess and its row; a folder that is not there offered to be made, and made; the answer written to the config file
 // as ~/…, and the dialog gone; deleting that file brings the question back (the watch, the `config` event); a double
 // click on a guess is an answer, and ⌥⌘N lists its repo with no chat yet; Skip is an answer that lasts a reload.
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { makeFixture } from '../fixture.mjs';
-import { waitFor as until } from '../../lib/testserver.mjs';
+import { tmpDir, waitFor as until } from '../../lib/testserver.mjs';
 
 // A home of its own: the server's guesses look under it, and "make it" only makes a folder there.
-const HOME = realpathSync(mkdtempSync(join(tmpdir(), 'peix-home-')));
+const HOME = realpathSync(tmpDir('peix-home-'));
 const WORK = join(HOME, 'work');
 for (const [name, url] of [['api', 'git@github.com:acme/api.git'], ['web', 'https://github.com/acme/web'], ['docs', 'git@github.com:acme/docs.git']]) {
   mkdirSync(join(WORK, name, '.git'), { recursive: true });
