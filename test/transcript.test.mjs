@@ -190,12 +190,16 @@ test('a turn the transcript never closes ends when the process says idle — /co
   fold(s, { type: 'user', isCompactSummary: true, message: { role: 'user', content: 'This session is being continued…' }, timestamp: '2026-09-28T22:30:14.285Z' });
   fold(s, { type: 'user', message: { role: 'user', content: '<command-name>/compact</command-name>' }, timestamp: '2026-09-28T22:28:45.712Z' });
   fold(s, { type: 'user', message: { role: 'user', content: '<local-command-stdout>Compacted</local-command-stdout>' }, timestamp: '2026-09-28T22:30:14.424Z' });
-  assert.equal(summary(s).status, 'working', 'the transcript alone never says it is over');
+  assert.equal(s.status, 'idle', 'the boundary after the /compact you typed ends its turn (2026-10-14)');
+  assert.equal(s.turnStart, null);
+  s.status = 'working'; s.turnStart = '2026-09-28T22:28:45.706Z';   // …and before that, the transcript alone never said it was over
   s.live = { ...s.live, status: 'idle', statusAt: Date.parse('2026-09-28T22:30:14.500Z') };
   assert.equal(summary(s).status, 'idle', 'the process went idle after the turn began: done');
+  s.status = 'idle'; s.turnStart = null;
   // a prompt the transcript has before the registry has caught up: the idle is the last turn's, and it is clauding
   fold(s, user('and now the tests', { timestamp: '2026-09-28T22:31:00.000Z' }));
   assert.equal(summary(s).status, 'working', 'an idle older than the prompt is the turn before');
+  assert.equal(s.turnStart, '2026-09-28T22:31:00.000Z', 'its own turn, not the /compact\'s');
   s.live = { ...s.live, statusAt: undefined };
   assert.equal(summary(s).status, 'working', 'a claude that says nothing of when: the transcript stands');
 });

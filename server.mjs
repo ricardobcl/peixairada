@@ -558,6 +558,7 @@ function newSession(id, file) {
     cwd: null, gitBranch: null, model: null,
     title: null, customTitle: null, lastPrompt: null, lastReply: null, prs: [], tickets: [], ticketBranch: null,
     status: 'unknown', statusSince: null, lastActivity: null, lastUserAt: null, lastReplyAt: null, turnStart: null,
+    compacting: false,   // the turn is a /compact you typed: its compact_boundary ends it (fold)
     clearedAt: null,   // the time of the /clear this transcript begins with, if it does (tickCleared)
     startedAt: null,   // when a chat with no transcript yet came to be (loadRegistry) — the card's time and place until a first word lands
     openedAt: null,    // when a page last opened the chat (ms): its PRs are polled as if it had just been touched (prEvery)
@@ -1644,8 +1645,13 @@ function fold(s, line) {
       return true;
     }
     case 'system':
-      if (line.subtype === 'compact_boundary') pushEntry(s, { role: 'system', kind: 'compact', text: 'Conversation compacted', ts });
-      return false;
+      if (line.subtype !== 'compact_boundary') return false;
+      pushEntry(s, { role: 'system', kind: 'compact', text: 'Conversation compacted', ts });
+      if (!s.compacting) return false;   // one Claude Code ran mid-turn on its own: the turn goes on
+      // the /compact you typed is done (2026-10-14): no reply ever closes its turn, and the next prompt was taken for
+      // part of it — "worked for 182 min", a day's span over the idle hours between
+      s.compacting = false; noteSpan(s, 'w', s.turnStart, ts); s.turnStart = null; setStatus(s, 'idle', ts);
+      return true;
     case 'user': {
       if (line.isSidechain) return false;
       if (line.cwd) s.cwd = line.cwd;
@@ -1674,7 +1680,7 @@ function fold(s, line) {
         pushEntry(s, { role: 'user', kind: 'interrupt', text: raw, ts });
         s.lastActivity = ts; s.lastUserAt = ts;   // Escape is you acting on the chat too
         noteSpan(s, 'w', s.turnStart, ts); s.askOpen = null;
-        s.turnStart = null;
+        s.turnStart = null; s.compacting = false;
         setStatus(s, 'idle', ts);
         return true;
       }
@@ -1690,7 +1696,13 @@ function fold(s, line) {
       notePrs(s, text, ts, 'user'); noteTickets(s, text, ts, 'user');
       s.lastPrompt = plainSnippet(text, 200);
       branchHeard(s);
-      if (!s.turnStart || s.status !== 'working') { s.turnStart = ts; s.turnFiles = new Set(); }   // a prompt starts the turn; one typed mid-turn is part of it — and the files it edits (the changes tab's `turn`)
+      // A prompt starts the turn; one typed mid-turn is part of it — and the files it edits (the changes tab's `turn`). Not
+      // a turn the claude that began it never closed (2026-10-14): killed or crashed mid-way, and this prompt typed into
+      // the claude that resumed the chat since — begun before it started, the prompt after.
+      const born = Number(s.live?.startedAt), orphan = s.turnStart && born > Date.parse(s.turnStart) && born <= Date.parse(ts);
+      if (orphan) noteSpan(s, 'w', s.turnStart, s.lastActivity);   // the turn as far as it went
+      if (!s.turnStart || s.status !== 'working' || orphan) { s.turnStart = ts; s.turnFiles = new Set(); }
+      s.compacting = /^\/compact(\s|$)/.test(text);
       s.lastActivity = ts; s.lastUserAt = ts;
       setStatus(s, 'working', ts);
       return true;
@@ -1725,7 +1737,7 @@ function fold(s, line) {
         // (2026-10-08); pushed in this same tick, so the page gets it marked
         if (said) { said.turnEnd = true; const ms = Date.parse(ts) - Date.parse(s.turnStart); if (ms > 0) said.worked = ms; }
         noteSpan(s, 'w', s.turnStart, ts);   // the day's timeline (2026-10-10): the turn, prompt to reply
-        s.turnStart = null;
+        s.turnStart = null; s.compacting = false;
         setStatus(s, 'idle', ts);
         if (!s.agentsRunning) queueNotify(s, 'reply');   // a turn that ends with agents still at work is not the reply yet
       } else if (needsInput) {

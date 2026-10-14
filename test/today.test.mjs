@@ -39,3 +39,21 @@ test('what is going on now runs to now; what ended before the day is not there',
   assert.deepEqual(d.chats[0].spans, [{ k: 'w', from: at(10), to: null }], 'the turn before the day is left out, the one now runs on');
   assert.equal(d.chats[0].worked, 20 * 60_000);
 });
+
+test('a turn nothing closed lends its start to no other: a /compact you typed, a claude killed mid-turn (2026-10-14)', () => {
+  const c = newSession(randomUUID(), null); c.loaded = true;
+  for (const l of [user(0, '/compact'), { type: 'system', subtype: 'compact_boundary', timestamp: at(2) }, user(180, 'next thing'), reply(181)]) fold(c, l);
+  assert.deepEqual(c.day, [{ k: 'w', from: at(0), to: at(2) }, { k: 'w', from: at(180), to: at(181) }], 'the compaction, then the turn — not three hours of work');
+  assert.equal(c.entries.at(-1).worked, 60_000, 'worked for a minute, not 181');
+  const auto = newSession(randomUUID(), null);   // a compaction Claude Code ran on its own, mid-turn: the turn goes on
+  for (const l of [user(0, 'big job'), tool(1, 'b1', 'Bash', {}), { type: 'system', subtype: 'compact_boundary', timestamp: at(2) }, result(3, 'b1'), reply(4)]) fold(auto, l);
+  assert.deepEqual(auto.day, [{ k: 'w', from: at(0), to: at(4) }]);
+
+  const k = newSession(randomUUID(), null); k.loaded = true;
+  for (const l of [user(0, 'go'), tool(1, 'b1', 'Bash', {}), user(2, 'and this too')]) fold(k, l);   // typed mid-turn: part of it
+  assert.equal(k.turnStart, at(0));
+  k.live = { pid: 2, startedAt: T0 + 60 * 60_000 };   // killed at minute 2; the chat resumed in a claude started at 60
+  fold(k, user(61, 'where were we')); fold(k, reply(62));
+  assert.deepEqual(k.day, [{ k: 'w', from: at(0), to: at(2) }, { k: 'w', from: at(61), to: at(62) }], 'the killed turn as far as it went, then the new one');
+  assert.equal(k.entries.at(-1).worked, 60_000);
+});
