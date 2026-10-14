@@ -3,14 +3,14 @@
 // restart and hands it to the page (GET /api/sessions/:id/prlog).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
-import { makeFixture } from '../scripts/fixture.mjs';
+import { makeFixture, replyLines, toolLines } from '../scripts/fixture.mjs';
 
 const tmp = tmpDir('peix-test-');
 process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
-const { prTurn, prEvents, logEvents, setPrInfo, waiveTurn, newSession, notePr, sessions, prLogs, prTurns, prStatus } = await import('../server.mjs');
+const { prTurn, prEvents, logEvents, setPrInfo, waiveTurn, newSession, notePr, sessions, prLogs, prTurns, prActs, indexFile } = await import('../server.mjs');
 
 const t = (h, m = 0) => new Date(Date.UTC(2026, 9, 15, h, m)).toISOString().replace('.000', '');   // GitHub writes no milliseconds
 const at = (h, m = 0) => Date.UTC(2026, 9, 15, h, m);
@@ -129,4 +129,49 @@ test('the server keeps a PR\'s history over a restart and hands it to the page',
     assert.deepEqual(back.ev.map(e => e.id), first.ev.map(e => e.id), 'the events kept');
     assert.deepEqual(back.rounds, first.rounds, 'the rounds kept');
   } finally { await srv.stop(); }
+});
+
+test('what a Bash command does to a PR, by its words: a push and its branch, gh pr review · comment · merge · create, a gh api write', () => {
+  const said = c => prActs(c).map(a => [a.x, a.url || a.num || (a.branch ?? null), a.repo ?? null]);
+  assert.deepEqual(said('git push'), [['push', '', null]], 'the branch checked out');
+  assert.deepEqual(said('git push -u origin feat/x'), [['push', 'feat/x', null]]);
+  assert.deepEqual(said('git push --force-with-lease origin +a:refs/heads/b HEAD'), [['push', 'b', null], ['push', '', null]]);
+  assert.deepEqual(said('git push origin --delete old'), [], 'a branch deleted is no push to a PR');
+  assert.deepEqual(said('cd web && git commit -m "fix; again | more" && git push'), [['push', '', null]], 'a quoted ; and | are the message\'s');
+  assert.deepEqual(said('gh pr review 12 --approve -b "ok"'), [['review', 12, null]]);
+  assert.deepEqual(said('gh pr review https://github.com/acme/w/pull/9 -c -b x'), [['review', 'https://github.com/acme/w/pull/9', null]]);
+  assert.deepEqual(said('gh pr comment -b "done; thanks"'), [['comment', '', null]], 'no PR named: the current branch\'s');
+  assert.deepEqual(said('gh pr comment 12 -R acme/other -b x'), [['comment', 12, 'acme/other']]);
+  assert.deepEqual(said('gh pr merge 12 --squash -t "t"'), [['merge', 12, null]]);
+  assert.deepEqual(said('gh pr create --fill'), [['opened', null, null]]);
+  assert.deepEqual(said('gh pr view 12 && gh pr diff 12 && gh pr checks'), [], 'reading is no act');
+  assert.deepEqual(said('gh api repos/acme/w/pulls/12/comments/345/replies -f body=done'), [['reply', 12, 'acme/w']]);
+  assert.deepEqual(said('gh api repos/{owner}/{repo}/pulls/7/reviews --input r.json'), [['review', 7, null]], 'gh fills {owner}/{repo} from the checkout');
+  assert.deepEqual(said('gh api -X POST repos/acme/w/issues/12/comments -F body=@x'), [['comment', 12, 'acme/w']]);
+  assert.deepEqual(said('gh api repos/acme/w/pulls/12/comments --jq ".[] | .body"'), [], 'a GET reads');
+});
+
+test('a chat\'s push, review and reply go into its PRs\' ledgers, and the round its push closed says so', () => {
+  const repo = tmpDir('peix-acts-'); mkdirSync(join(repo, '.git'));
+  writeFileSync(join(repo, '.git', 'config'), '[remote "origin"]\n\turl = git@github.com:acme/shop.git\n'); writeFileSync(join(repo, '.git', 'HEAD'), 'ref: refs/heads/main\n');
+  const u40 = 'https://github.com/acme/shop/pull/40', u41 = 'https://github.com/acme/shop/pull/41', u42 = 'https://github.com/acme/shop/pull/42';
+  const d = (h, m = 0) => new Date(at(h, m));
+  const fx = makeFixture(tmpDir('peix-acts-claude-'), [{ cwd: repo, prompt: `Address the review on ${u40}, approve ${u41}, answer on ${u42}`, reply: 'On it.', at: d(10),
+    lines: id => [
+      ...toolLines({ id, cwd: repo, name: 'Bash', input: { command: 'git commit -am "Cap the jitter" && git push -u origin retry' }, result: 'To github.com:acme/shop.git', at: d(10, 20) }),
+      ...toolLines({ id, cwd: repo, name: 'Bash', input: { command: 'gh pr review 41 --approve -b "Both fixed"' }, result: '✓ Approved', at: d(10, 25) }),
+      ...toolLines({ id, cwd: repo, name: 'Bash', input: { command: 'gh api repos/{owner}/{repo}/pulls/42/comments/7/replies -f body=Yes' }, result: '{"id": 8}', at: d(10, 30) }),
+      ...toolLines({ id, cwd: repo, name: 'Bash', input: { command: 'gh pr comment 43 -b nope' }, result: null, at: d(10, 35) }),
+      ...replyLines({ id, cwd: repo, text: 'Pushed, approved, answered.', at: d(10, 40) }),
+    ] }]);
+  const s = indexFile(fx.chats[0].file); sessions.set(s.id, s);
+  assert.deepEqual(s.prActs.map(a => [a.x, a.url]), [['push', null], ['review', u41], ['reply', u42]], 'the push waits for GitHub to name #40\'s branch; a call with no result yet is none');
+  assert.deepEqual(prLogs[u41].ev.map(e => [e.k, e.x, e.c]), [['chat', 'review', s.id]]);
+  // #40, yours: ana asked for changes at 10:00 — then GitHub names its branch, and the chat's push is tied to it
+  const asked = { reviews: { nodes: [{ author: user('ana'), state: 'CHANGES_REQUESTED', submittedAt: t(10) }] } };
+  setPrInfo(u40, 'open', 'Retry', prTurn(mine(asked), 'me'), at(10, 5), undefined, false, null, null, { head: 'retry', fork: false });
+  assert.deepEqual(prLogs[u40].ev.filter(e => e.k === 'chat').map(e => [e.x, e.a]), [['push', t(10, 20)]]);
+  setPrInfo(u40, 'open', 'Retry', prTurn(mine({ ...asked, pushes: { nodes: [commit(8, 'me'), commit(10, 'me', 19)] } }), 'me', prTurns[u40]?.said), at(10, 45), undefined, false, null, null, { head: 'retry', fork: false });
+  const r = s.prs.find(p => p.url === u40).rounds[0];
+  assert.deepEqual([r.how, r.end, r.by], ['answered', t(10, 19), { c: s.id, x: 'push', a: t(10, 20) }], 'answered by the commit pushed from this chat');
 });
