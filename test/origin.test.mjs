@@ -4,8 +4,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { request } from 'node:http';
+import { hostname } from 'node:os';
+import { join } from 'node:path';
 import WebSocket from 'ws';
-import { startTestServer } from '../lib/testserver.mjs';
+import { startTestServer, tmpDir } from '../lib/testserver.mjs';
 
 const ask = (srv, headers, method = 'GET', path = '/api/sessions') => new Promise((res, rej) => {
   const r = request({ host: '127.0.0.1', port: srv.port, method, path, headers }, resp => { resp.resume(); resp.on('end', () => res(resp.statusCode)); });
@@ -41,4 +43,34 @@ test('another origin is refused on every route and on the terminal socket; the b
     assert.equal(await ask(srv, { 'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'cors' }), 200, 'the board\'s own fetch');
     assert.equal(await ask(srv, { 'sec-fetch-site': 'none', 'sec-fetch-mode': 'navigate' }), 200, 'the address typed');
   } finally { await srv.stop(); }
+});
+
+// Bound past loopback (HOST 0.0.0.0, or one of the LAN's addresses): judged by foreignTo itself, since a test server bound
+// so would have the firewall ask the user whether node may take connections (2026-10-14). A name rebound to the Mac's
+// address — the page and its Origin both on it — was the board's own page; and with HOST a LAN address, a client on the
+// LAN that sent no Origin reached every route.
+test('bound past loopback, only an address, a loopback name or this Mac\'s name is a Host, and no Origin is only for this Mac', async () => {
+  const tmp = tmpDir();
+  process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
+  const { foreignTo } = await import('../server.mjs');
+  const me = hostname().toLowerCase(), lan = '203.0.113.7';   // TEST-NET: no Mac's own address
+  const req = (headers, remoteAddress = '127.0.0.1') => ({ headers, url: '/api/terminals', socket: { remoteAddress } });
+  for (const bind of ['0.0.0.0', '::', '192.168.1.5']) {
+    const foreign = foreignTo(bind, 7331), says = (r, what) => assert.ok(foreign(r), `${bind}: ${what} is refused`), ok = (r, what) => assert.equal(foreign(r), null, `${bind}: ${what} passes`);
+    says(req({ host: 'rebind.acme.example:7331', origin: 'http://rebind.acme.example:7331', 'sec-fetch-site': 'same-origin' }), 'a rebound name, from this Mac');
+    says(req({ host: 'rebind.acme.example:7331', origin: 'http://rebind.acme.example:7331', 'sec-fetch-site': 'same-origin' }, lan), 'a rebound name, from the LAN');
+    says(req({ host: 'rebind.acme.example:7331' }), 'a rebound name with no Origin');
+    says(req({ host: '192.168.1.5:7331' }, lan), 'no Origin from the LAN');
+    says(req({ host: '192.168.1.5:7331', origin: 'http://192.168.1.20:7331' }, lan), 'another machine\'s page');
+    ok(req({ host: '192.168.1.5:7331', origin: 'http://192.168.1.5:7331' }, lan), 'a browser on the LAN at the board\'s address');
+    ok(req({ host: '127.0.0.1:7331' }), 'no Origin on this Mac');
+    ok(req({ host: '127.0.0.1:7331', origin: 'http://127.0.0.1:7331' }), 'the board\'s own page');
+    ok(req({ host: '[::1]:7331', origin: 'http://[::1]:7331' }, '::1'), 'the board by v6 loopback');
+    ok(req({ host: `${me}:7331`, origin: `http://${me}:7331` }), 'this Mac\'s own name');
+    ok(req({ host: `${me.replace(/\.local$/, '')}.local:7331`, origin: `http://${me.replace(/\.local$/, '')}.local:7331` }, lan), 'this Mac\'s .local name, from the LAN');
+  }
+  const loop = foreignTo('127.0.0.1', 7331);
+  assert.ok(loop(req({ host: '192.168.1.5:7331' })), 'on loopback, an address is no Host');
+  assert.ok(loop(req({ host: `${me}:7331` })), '…nor this Mac\'s name');
+  assert.equal(loop(req({ host: 'localhost:7331' })), null);
 });

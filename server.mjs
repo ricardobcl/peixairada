@@ -53,7 +53,7 @@ import {
 } from 'node:fs';
 import { connect as netConnect } from 'node:net';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { cpus, freemem, homedir, hostname, totalmem, userInfo } from 'node:os';
+import { cpus, freemem, homedir, hostname, networkInterfaces, totalmem, userInfo } from 'node:os';
 import { StringDecoder } from 'node:string_decoder';
 import { execFile, execFileSync, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -3804,23 +3804,33 @@ function sweepDrawers() {
 // A `null` Origin — a file:// page, a sandboxed frame — is nobody's. And a browser sends no Origin at all on a GET it
 // makes for an <img>, a <script> or a navigation, so its Sec-Fetch-Site says whose page asked (2026-10-03): only this
 // server's own, or the user typing the address; another site may at most navigate to the board itself.
-// Bound to every interface (HOST 0.0.0.0), the Host is whichever address was used: the Origin must then name that
-// same host, and no Origin is only for a client on this Mac — the LAN reached every route before.
-const LOOPBACK = new Set(['127.0.0.1', 'localhost', '[::1]', '::1', HOST]);
-const ANY_HOST = HOST === '0.0.0.0' || HOST === '::';
-const LOCAL_ADDR = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
-function foreign(req) {
-  const hostPort = String(req.headers.host || ''), host = hostPort.replace(/:\d+$/, '');
-  if (host && !ANY_HOST && !LOOPBACK.has(host)) return `host ${host}`;
-  const site = req.headers['sec-fetch-site'];
-  if (site && site !== 'same-origin' && site !== 'none' && !(req.headers['sec-fetch-mode'] === 'navigate' && /^\/(index\.html)?(\?|#|$)/.test(req.url || ''))) return `site ${site}`;
-  const origin = req.headers.origin;
-  if (origin === undefined) return ANY_HOST && !LOCAL_ADDR.has(req.socket?.remoteAddress) ? `no origin, from ${req.socket?.remoteAddress}` : null;
-  let o; try { o = new URL(origin); } catch { return `origin ${origin}`; }
-  const port = o.port || (o.protocol === 'https:' ? '443' : '80');
-  if ((ANY_HOST ? o.host !== hostPort : !LOOPBACK.has(o.hostname)) || port !== String(PORT)) return `origin ${origin}`;
-  return null;
+// Bound past loopback — every interface (HOST 0.0.0.0) or one address of the LAN's —, the Host is whichever address was
+// used: it has to be an address, a loopback name or this Mac's own name (2026-10-14: any name passed, so a name rebound
+// to the Mac's address was the board's own page again), the Origin must name that same host, and no Origin is only for
+// a client on this Mac (2026-10-14: under HOST 0.0.0.0 alone before) — the LAN reached every route before. A client on
+// the LAN that sends an Origin naming the Host is a browser there, and passes: nothing here tells it from a curl.
+/** Why a request to a server bound to `bind` on `port` is not the board's own page's asking, or null. Pure but for
+ *  this Mac's name and addresses — exported for the tests, which ask it from the LAN. */
+function foreignTo(bind, port) {
+  const loopback = new Set(['127.0.0.1', 'localhost', '[::1]', '::1', bind]), open = !['127.0.0.1', 'localhost', '::1', '[::1]'].includes(bind);
+  return req => {
+    const hostPort = String(req.headers.host || '').toLowerCase(), host = hostPort.replace(/:\d+$/, '');
+    if (host && !loopback.has(host) && !(open && (IP_HOST.test(host) || ownName(host)))) return `host ${host}`;
+    const site = req.headers['sec-fetch-site'];
+    if (site && site !== 'same-origin' && site !== 'none' && !(req.headers['sec-fetch-mode'] === 'navigate' && /^\/(index\.html)?(\?|#|$)/.test(req.url || ''))) return `site ${site}`;
+    const origin = req.headers.origin;
+    if (origin === undefined) return open && !thisMac(req.socket?.remoteAddress) ? `no origin, from ${req.socket?.remoteAddress}` : null;
+    let o; try { o = new URL(origin); } catch { return `origin ${origin}`; }
+    const p = o.port || (o.protocol === 'https:' ? '443' : '80');
+    if ((open ? o.host !== hostPort : !loopback.has(o.hostname)) || p !== String(port)) return `origin ${origin}`;
+    return null;
+  };
 }
+const IP_HOST = /^(\d{1,3}(\.\d{1,3}){3}|\[[0-9a-f:.]+\])$/;   // an address cannot be rebound: a page from it is that machine's
+const ownName = h => { const me = hostname().toLowerCase().replace(/\.local$/, ''); return h === me || h === `${me}.local`; };
+const LOCAL_ADDR = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
+const thisMac = a => !!a && (LOCAL_ADDR.has(a) || Object.values(networkInterfaces()).flat().some(i => i.address === a.replace(/^::ffff:/, '')));
+const foreign = foreignTo(HOST, PORT);
 
 // One WebSocket per attached page. Binary frames carry output — first the screen as it stands (the holder's
 // headless terminal serialized: scrollback, cells, cursor, modes), then the PTY's bytes as they come; text frames
@@ -4264,7 +4274,7 @@ server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTe
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms, foreignTo };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
