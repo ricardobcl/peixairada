@@ -536,6 +536,11 @@ for `$HOME`'s home and the account's.
   Test servers set `ORG_DIR`, so the welcome never shows unless a scenario clears it. The Setup pane (`renderSetup`,
   never redrawn under a box with the keyboard) is reached by `.srow.root(.add)`, `.sdir`, `.sorg`, `#quickSel`,
   `.srow.proj`, `.sab`, `.ssw`, `.sadd` — keep those names. → `test/config.test.mjs`, `cog-setup.mjs`, `welcome.mjs`.
+* **The tour** (2026-10-14; `#tour`, `TOUR`, `tourStart`, `tourPlace`): a modal dialog the window's size — a hole in a
+  veil (the hole's own shadow) round each step's part, the card on the side with room. Once on its own after the
+  welcome's answer (`prefs.toured`; the harness's `true`), again from Settings' head, ⌥⌘L, home, the ? sheet and About.
+  A step's part is found as the board stands (`at`); none, `need` leaves the step out, else the card is centred. A
+  new main part gets a step. → `tour.mjs`.
 * **The page asks the server through `api(method, url, body)`**: JSON in, JSON out, a throw with the server's own
   `error` (else the status) — `e.status`, `e.body`. Every caller says what went wrong where it happened, or catches on
   purpose. The attach upload keeps a raw `fetch`: its body is a file.
@@ -1027,7 +1032,7 @@ the live board at load — `npm run verify -- "typeof window.peix"`.
   board's web process (main.swift logs `board: web process <pid>`) — CPU, memory, where the time went.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports `meta`
   (`server`, `fake`, `fixture`, `env`, `prefs` — what the page starts from; **without it a page starts with every
-  lane open, large cards, neither tiles nor the floating header, and the theme following the emulated colour scheme**:
+  lane open, large cards, neither tiles nor the floating header, the theme following the emulated colour scheme, the tour taken**:
   the scenarios measure the plain column, and the ones about those turn them on) and a default `async (ctx) => result`. The runner starts a throwaway server on a free
   port with its own state dir, builds the fixture, runs the fake claude when asked, launches Chrome with **focus
   emulation on**, and cleans up everything on any exit within 15 s (`--keep` to inspect). **`ctx.reload()`** waits

@@ -2085,6 +2085,41 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #welcome .wwhere { min-width: 0; font-size: var(--fs-xs); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #welcome .wok { background: var(--accent); color: var(--bg); font-weight: 600; }
   #welcome .wok:hover { background: color-mix(in srgb, var(--accent) 86%, var(--ink)); }
+  /* The tour (2026-10-14): the board's main parts one at a time — a hole cut in a dim veil round the part, and a card
+     beside it saying what it is and its keys. A modal dialog the size of the window, so the pane goes down and the keys
+     are swallowed while it is up. The veil is the hole's own shadow, so hole and card glide from part to part together
+     (tourPlace); a step with no part to show has the hole shut in the middle, the veil whole, the card centred. */
+  #tour { --veil: rgb(0 0 0 / .42); position: fixed; inset: 0; width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; overflow: hidden; outline: none; }
+  :root[data-theme="dark"] #tour { --veil: rgb(0 0 0 / .6); }
+  #tour, #tour:not([open]) { transform: none; }   /* it fades: a veil the size of the window does not rise */
+  @starting-style { #tour[open] { transform: none; } }
+  #tour::backdrop { background: transparent; }
+  #tour .thole { position: absolute; left: 0; top: 0; width: 0; height: 0; border-radius: var(--r-3); outline: 2px solid var(--accent); box-shadow: 0 0 0 200vmax var(--veil); pointer-events: none;
+    transition: translate .34s var(--ease-out), width .34s var(--ease-out), height .34s var(--ease-out), outline-color .2s; }
+  #tour .thole.none { outline-color: transparent; }
+  #tour .tcard { position: absolute; left: 0; top: 0; width: min(340px, calc(100vw - 24px)); padding: 16px 18px 14px; border-radius: var(--r-5); background: var(--panel); color: var(--ink);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 8%, transparent) inset, 0 24px 70px rgba(0, 0, 0, .45); transition: translate .34s var(--ease-out); }
+  #tour.still :is(.thole, .tcard) { transition: none; }   /* its first place is taken, not travelled to */
+  #tour .tcard.mid { width: min(420px, calc(100vw - 24px)); text-align: center; }   /* a step with no part: hello, the keys, goodbye */
+  #tour .tin.in { animation: tourIn .24s var(--ease-out); }
+  @keyframes tourIn { from { opacity: 0; translate: 0 4px; } }
+  #tour .tlogo { display: block; width: 56px; height: 56px; margin: 2px auto 10px; } #tour .tlogo[hidden] { display: none; } #tour .tlogo .logo { width: 100%; height: 100%; }
+  #tour .tstep { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+  #tour .tcard.mid .tstep { justify-content: center; }
+  #tour .tdots { display: flex; gap: 4px; } #tour .tdots i { width: 6px; height: 6px; border-radius: 3px; background: var(--ctl-hi); } #tour .tdots i.on { width: 16px; background: var(--accent); } #tour .tdots i.past { background: color-mix(in srgb, var(--accent) 40%, transparent); }
+  #tour h3 { margin: 0; font-size: var(--fs-lg); line-height: 1.3; text-wrap: balance; }
+  #tour p { margin: 6px 0 0; font-size: var(--fs-md); line-height: 1.5; color: var(--muted); text-wrap: pretty; }
+  #tour p :is(b, em) { color: var(--ink); font-weight: 600; font-style: normal; }
+  #tour p.thow { margin-top: 10px; font-size: var(--fs-sm); } #tour p.thow:empty { display: none; }
+  #tour kbd { font: 600 var(--fs-xs) ui-monospace, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl-hi); color: var(--ink); white-space: nowrap; }
+  #tour .tfoot { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+  #tour .tfoot .spacer { flex: 1; }
+  #tour .tfoot [hidden] { display: none; }
+  #tour .tskip { background: none; color: var(--muted); } #tour .tskip:hover { background: var(--ctl); color: var(--ink); }
+  #tour .tnext { background: var(--accent); color: var(--bg); font-weight: 600; }
+  #tour .tnext:hover { background: color-mix(in srgb, var(--accent) 86%, var(--ink)); }
+  #settings .shd2 #tourBtn { flex: none; }
+  #keysheet .kshd #ksTour { flex: none; }
   #pick input { width: 100%; box-sizing: border-box; font: inherit; font-size: var(--fs-base); padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: inherit; outline: none; }
   #pick input:focus { border-color: var(--accent); }
   #picklist { margin-top: 6px; max-height: 50vh; overflow-y: auto; display: grid; gap: 1px; }
@@ -2223,6 +2258,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   @media (forced-colors: active) {
     .card { border: 1px solid CanvasText; } .card.active { outline: 2px solid Highlight; }
     :is(.gsep.lane > i, .rdot, .ck, .tst, .pc, .badge, .card .trow .drift) { forced-color-adjust: none; }
+    #tour .thole { outline-color: Highlight; } #tour .tcard { border: 1px solid CanvasText; }   /* no veil (no shadows): the ring says where */
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -2247,6 +2283,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     .shead .hpr .ck.now path, :is(.shead .hpr, #slist .cpr).sheen::after { animation: none; }   /* an answer, a merge: there, not drawn */
     #log > .in { animation: none; }
     #fillHint, #fillHint.out { translate: -50% 0; } @starting-style { #fillHint { translate: -50% 0; } }   /* the fill's word fades, in place */
+    #tour :is(.thole, .tcard) { transition: outline-color .2s; } #tour .tin.in { animation: none; }   /* the tour jumps from part to part */
     dialog, dialog:not([open]), .pop, .pop[hidden], .note, .note.out { transform: none; }
     @starting-style { dialog[open], .pop:not([hidden]), .note { transform: none; } }
     .toolgroup > summary::before, .codefold > summary::before { transition: none; }
@@ -2326,7 +2363,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 <footer id="sbar" hidden><div id="sbFind"></div><div id="sbLeft"></div><div id="sbPeople"></div><div id="sbSwim" role="button" aria-label="Every agent at work (⌥⌘A)"></div><div id="sbRight"></div></footer>
 <div id="trail" aria-hidden="true" hidden></div>
 <dialog id="settings" class="pop" aria-label="Settings" tabindex="-1">
-  <div class="shd2"><h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4><button class="sclose" id="settingsClose" title="Close · esc" aria-label="Close">×</button></div>
+  <div class="shd2"><h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4><button class="btn" id="tourBtn" title="The board's main parts, one at a time — a minute">Take the tour</button><button class="sclose" id="settingsClose" title="Close · esc" aria-label="Close">×</button></div>
   <nav class="stabs" role="tablist" aria-label="Settings"><button role="tab" data-tab="board" class="on" aria-selected="true" aria-controls="spBoard" id="stBoard">Board</button><button role="tab" data-tab="setup" aria-selected="false" aria-controls="spSetup" id="stSetup" tabindex="-1">Setup</button><button role="tab" data-tab="keys" aria-selected="false" aria-controls="spKeys" id="stKeys" tabindex="-1">Keys</button></nav>
   <div class="spane scol" data-tab="board" role="tabpanel" id="spBoard" aria-labelledby="stBoard">
     <h4 class="shd">Alerts</h4>
@@ -2387,6 +2424,14 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   <p class="werr" id="werr"></p>
   <div class="dfoot"><span class="wwhere" id="wwhere"></span><span class="spacer"></span><button class="btn" id="wskip" title="Ask no more — Settings (⌘,) › Setup adds a folder whenever you like">Skip</button><button class="btn wok" id="wok">Use this folder</button></div>
 </dialog>
+<dialog id="tour" aria-labelledby="tourTitle" aria-describedby="tourText">
+  <div class="thole"></div>
+  <div class="tcard">
+    <div class="tin"><span class="tlogo" id="tourLogo" aria-hidden="true" hidden></span><div class="tstep"><span class="tdots" aria-hidden="true"></span><span id="tourNum"></span></div><h3 id="tourTitle"></h3><p id="tourText"></p><p class="thow" id="tourHow"></p></div>
+    <div class="tfoot"><button class="btn tskip" id="tourSkip" title="Leave the tour · esc — Settings, ⌥⌘L and home have it again">Skip</button><span class="spacer"></span><button class="btn" id="tourBack" title="The step before · ←">Back</button><button class="btn tnext" id="tourNext" title="The next step · →">Next</button></div>
+  </div>
+  <span class="vh" role="status" id="tourSay"></span>
+</dialog>
 <dialog id="themes" aria-label="Theme">
   <div class="thin"><input type="text" id="themeq" placeholder="Theme — type to filter · ←↑↓→ the board follows · ⏎ keeps it · esc" autocomplete="off" spellcheck="false"></div>
   <div id="themegrid"></div>
@@ -2397,7 +2442,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   <div class="ovcols" id="ovcols"></div>
 </dialog>
 <dialog id="keysheet" aria-label="Every key">
-  <div class="kshd"><h3>Keys</h3><input type="text" id="ksq" placeholder="a key, or what it does…" autocomplete="off" spellcheck="false"><span class="kswhere"><kbd>?</kbd> outside a box or a terminal · <kbd>⌥⌘L</kbd> › Keys · esc</span></div>
+  <div class="kshd"><h3>Keys</h3><input type="text" id="ksq" placeholder="a key, or what it does…" autocomplete="off" spellcheck="false"><span class="kswhere"><kbd>?</kbd> outside a box or a terminal · <kbd>⌥⌘L</kbd> › Keys · esc</span><button class="btn" id="ksTour" title="The board's main parts, one at a time — a minute">Take the tour</button></div>
   <div id="ksbody"></div><p class="none" id="ksnone" hidden>no key matches</p>
 </dialog>
 <dialog id="pick">
@@ -2460,6 +2505,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · ⌥⌘L: the launcher, and the sheet of every key (2026-10-10)
 //   js  · the setup: the cog's second half (2026-09-28)
 //   js  · the first run: where the repos live (2026-10-01)
+//   js  · the tour: the board's main parts, one at a time (2026-10-14)
 //   js  · the colour picker
 //   js  · project editor
 //   js  · PRs: the strip under the header, and where a GitHub link goes
@@ -2489,7 +2535,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, skinExact: false, look: null, fillHints: 0 };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, ringsInStep: true, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, simpleColors: false, simpleColor: null, autoResume: true, edgeLight: false, headFloat: true, sounds: false, statusBar: true, barStats: ['cpu', 'mem'], peopleCompact: true, cardSpot: true, tiles: true, tileStack: false, wallFollow: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, skinExact: false, look: null, fillHints: 0, toured: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -5032,6 +5078,7 @@ const toolName = n => {
       { name: 'Choose a theme', hint: '⌥⌘Y', fn: themesOpen },
       { name: 'Settings', hint: '⌘,', fn: () => settingsOpen(true) },
       { name: 'Every key', hint: '?', fn: keysOpen },
+      { name: 'Take the tour', sub: ' — the board’s main parts, one at a time', fn: tourStart },
       { name: 'The overview — every live chat', hint: '⌥⌘A', fn: ovOpen },
       { name: 'Home — the day', hint: '⌥⌘0', fn: hotHome },
       { name: 'About peixAIrada', fn: aboutOpen },
@@ -5065,6 +5112,7 @@ const toolName = n => {
       { name: 'Theme', hint: '⌥⌘Y', icon: '◐', go: themesOpen, leaf: true },
       { name: 'Settings', hint: '⌘,', icon: ICON.cog, go: () => settingsOpen(true), leaf: true },
       { name: 'Keys', hint: '?', icon: ICON.key, go: keysOpen, leaf: true },
+      { name: 'Tour', hint: 'the main parts', icon: '⇢', go: tourStart, leaf: true },
       { name: 'Home', hint: '⌥⌘0', icon: '⌂', go: hotHome, leaf: true },
       { name: 'Overview', hint: '⌥⌘A', icon: '▦', go: ovOpen, leaf: true },
       { name: 'About peixAIrada', icon: '·', go: aboutOpen, leaf: true },
@@ -5642,6 +5690,7 @@ const toolName = n => {
       return;
     }
     configChanged();   // the board in the new setup; welcomeSync puts the dialog away
+    if (!prefs.toured) setTimeout(tourStart, 200);   // and once, the tour (2026-10-14) — after the dialog's own fade
   }
   $('#wok').onclick = () => {
     const dir = $('#wdir').value.trim();
@@ -5665,6 +5714,120 @@ const toolName = n => {
   // xterm's screen-reader mode (2026-10-12, off): the drawer's lines kept in a live region a reader follows
   $('#termReader').checked = !!prefs.termReader;
   $('#termReader').addEventListener('change', e => { prefs.termReader = e.target.checked; savePrefs(); for (const tm of terms) if (tm.xt) tm.xt.options.screenReaderMode = prefs.termReader; });
+  // ---- the tour: the board's main parts, one at a time (2026-10-14) ------------------------------------------------
+  // A modal dialog the size of the window (#tour): a hole in a dim veil round one part of the board and a card beside
+  // it saying what the part is and its keys — ← → or the buttons, esc or Skip to leave. It comes up on its own once,
+  // after the first run's question is answered (welcomeAnswer, unless prefs.toured), and whenever asked: Settings'
+  // head, the launcher (⌥⌘L), home's keys line, the ? sheet and the About box. A step's part is looked for on the
+  // board as it stands — a chat open or not, the list folded to a rail, the status bar on or off —: one that is not
+  // there shows the card in the middle, or is left out when the step is about it alone (`need`). Look, don't touch: the
+  // board under the veil is inert, and nothing is opened, folded or moved for the tour but a card brought into view.
+  const tour = { steps: [], i: 0, els: [], drawn: '', timer: 0, done: false };
+  /** An element with a box on screen, else null. */
+  const onScreen = el => { const r = el?.getBoundingClientRect(); return r && r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth ? el : null; };
+  /** The card the tour points at: one that is doing something, else the open chat's, else the top one. */
+  const tourCard = () => { const cs = [...document.querySelectorAll('#slist > .card')]; return cs.find(c => c.matches('.asking, .working, .watching')) || cs.find(c => c.classList.contains('active')) || cs[0] || null; };
+  const TOUR = [
+    { id: 'hello', mid: true, logo: true, title: 'Every Claude Code chat on this Mac, on one board',
+      text: () => 'The terminal’s, VS Code’s and the board’s own — read from what Claude Code already writes, and never written to. Here are the main parts, in a minute.',
+      how: () => '<kbd>←</kbd> <kbd>→</kbd> to move · <kbd>esc</kbd> to leave — Settings, <kbd>⌥⌘L</kbd> and home take you round again' },
+    { id: 'list', at: () => $('#slist > .card') ? $('#slist') : $('#sessions'), title: 'The one waiting for you is on top',
+      text: () => `${$('#slist > .card') ? '' : 'Empty for now — <kbd>⌥⌘N</kbd> starts a chat. '}Every chat sorts into lanes by what it needs: <b>Asking you</b>, <b>Clauding</b>, <b>Ready</b>, then <b>Idle</b> and <b>Done</b>, folded. In each lane the newest word leads; a lane’s head folds it.` },
+    { id: 'card', need: true, at: tourCard, title: 'A card is a chat',
+      text: () => 'Its edge says what it is doing without opening it: a light running round while Claude works, a slow one while a monitor watches, red pings while it asks you something. Its PRs sit at the top right. <b>✓</b> ticks it done; a right-click has the rest.' },
+    { id: 'find', side: 'above', at: () => onScreen($('#filters')), title: 'Find a chat',
+      text: () => 'The magnifier — <kbd>⌥⌘F</kbd> — searches the list by any letters in order: <em>chk rtr</em> finds <em>checkout retry</em>. The funnel shows only the PRs at your move, or the new replies. <kbd>⌥⌘P</kbd> narrows the list to a project, <kbd>⌥⌘K</kbd> jumps to any chat.' },
+    { id: 'chat', at: () => state.current ? [$('#groups'), $('#resume')] : $('#chat'), title: () => state.current ? 'The chat, live' : 'The chat you open comes up here',
+      text: () => `${state.current ? 'Its transcript, as Claude writes it.' : 'With none open, this is home: your day across every chat. Click a card and its transcript comes up, live.'} When its claude runs on the board it is a real terminal to type into — <kbd>⌥⌘C</kbd> brings it up — and a chat whose claude has ended offers to resume it here. <kbd>⌥⌘N</kbd> starts a new chat.` },
+    { id: 'head', need: true, side: 'below', at: () => state.current ? onScreen($('#shead')) : null, title: 'Its PRs, and the rest of it',
+      text: () => 'The project and the chat’s title, then its PRs and Jira tickets: one at your move says so, its CI too, and a click lists them — each with its diff, the editor at its branch and a chat on it. <b>···</b> holds the rest: its changes, VS Code, the details.' },
+    { id: 'tabs', side: 'below', at: () => state.current ? [$('#ptabs'), $('#ptabsB')].filter(el => el.offsetHeight > 12) : null, title: 'Beside the chat, on tabs',   // a lone tab's strip is a 2 px rule: not a strip
+      text: () => `<kbd>⌥⌘T</kbd> a shell in its folder · <kbd>⌥⌘E</kbd> VS Code Web · <kbd>⌥⌘D</kbd> what it changed · <kbd>⌥⌘G</kbd> its PR on GitHub. <kbd>⌘2</kbd> splits the column in two, <kbd>⌘1</kbd> <kbd>⌘2</kbd> go from half to half, <kbd>⌘W</kbd> closes a tab.${inApp ? '' : ' In a browser, VS Code Web and GitHub open in tabs of their own.'}` },
+    { id: 'bar', need: true, side: 'above', at: () => onScreen($('#sbar')) || onScreen($('#usage')),
+      title: () => onScreen($('#sbar')) ? 'The machine, at the foot' : 'Your plan, at the list’s foot',
+      text: () => onScreen($('#sbar')) ? 'Who is asking you and what is watching, on the left; the fish swims faster the more Claude is at work — a click shows every live chat. On the right the Mac’s CPU and memory, your plan’s limits, the cup that keeps the Mac awake while Claude works, and the clock.'
+        : 'Each limit of your Claude plan and how much of it is spent — point at it for when it resets. The status bar, in Settings, adds the machine and the cup that keeps the Mac awake.' },
+    { id: 'keys', mid: true, title: 'Anything, from the keyboard',
+      text: () => '<kbd>⌥⌘L</kbd> finds anything — a chat, a project, a PR, a ticket, an action, a switch. <kbd>⌥⌘A</kbd> shows every live chat at once, <kbd>⌥⌘0</kbd> your day, and <kbd>?</kbd> every key.' },
+    { id: 'bye', mid: true, title: 'That’s the board',
+      text: () => '<kbd>⌘,</kbd> has the settings — the themes, tiles, card sizes and where your repos live. The tour is there too, in <kbd>⌥⌘L</kbd> and on home, whenever you want it again.' },
+  ];
+  /** A step's part as it stands: its elements on screen — one, or a few drawn round as one (the chat and its resume bar). */
+  const tourAt = t => { try { return [t.at?.()].flat().filter(el => { const r = el?.getBoundingClientRect(); return r && r.width > 0 && r.height > 0; }); } catch { return []; } };
+  const tourVal = v => typeof v === 'function' ? v() : v;
+  function tourStart() {
+    for (const d of document.querySelectorAll('dialog[open]')) if (d.id !== 'tour') d.close();
+    document.querySelectorAll('.note').forEach(n => n.remove());   // a word left from before — the last tour's, say
+    const dlg = $('#tour');
+    if (inApp) post({ type: 'focus' });   // from the pane's keys, the board needs the keyboard back
+    if (!dlg.open) {
+      tour.steps = TOUR.filter(t => !t.need || tourAt(t).length); tour.done = false; tour.drawn = '';
+      dlg.classList.add('still'); dlg.showModal(); repostPane();
+      tour.timer = setInterval(tourPlace, 400); addEventListener('resize', tourPlace);   // the board goes on under it: a card moved, a chat opened elsewhere
+    }
+    tourShow(0);
+    $('#tour .tcard').getBoundingClientRect(); dlg.classList.remove('still');   // the first place taken before the glide is on
+  }
+  function tourShow(i) {
+    const n = tour.steps.length; tour.i = Math.max(0, Math.min(n - 1, i));
+    const t = tour.steps[tour.i], last = tour.i === n - 1;
+    tour.els = tourAt(t);
+    const el = tour.els[0], list = el?.closest('#slist');   // a card out of the list's sight comes into it — the one thing moved for the tour
+    if (list && el !== list) { const r = el.getBoundingClientRect(), b = list.getBoundingClientRect(); if (r.top < b.top || r.bottom > b.bottom) el.scrollIntoView({ block: 'nearest' }); }
+    $('#tour .tcard').classList.toggle('mid', !!t.mid);
+    const logo = $('#tourLogo'); logo.hidden = !t.logo; if (t.logo && !logo.firstChild) logo.innerHTML = $('#brandBtn').innerHTML;
+    $('#tour .tdots').innerHTML = tour.steps.map((_, k) => `<i class="${k === tour.i ? 'on' : k < tour.i ? 'past' : ''}"></i>`).join('');
+    $('#tourNum').textContent = `${tour.i + 1} of ${n}`;
+    $('#tourTitle').textContent = tourVal(t.title);
+    $('#tourText').innerHTML = tourVal(t.text);
+    $('#tourHow').innerHTML = t.how ? t.how() : '';
+    $('#tourBack').hidden = !tour.i; $('#tourSkip').hidden = last;
+    $('#tourNext').textContent = !tour.i ? 'Show me round' : last ? 'Done' : 'Next';
+    $('#tourSay').textContent = `Step ${tour.i + 1} of ${n}: ${$('#tourTitle').textContent}`;
+    const tin = $('#tour .tin'); tin.classList.remove('in'); void tin.offsetWidth; tin.classList.add('in');
+    tour.drawn = ''; tourPlace();
+    $('#tourNext').focus({ preventScroll: true });
+  }
+  /** The hole round the step's part and the card beside it, on whichever side has the room — the step's own first —,
+   *  else inside the part at its foot; a step with none, the card centred. Reads first, then writes, and only what moved. */
+  function tourPlace() {
+    const dlg = $('#tour'); if (!dlg.open) return;
+    const t = tour.steps[tour.i]; if (!t) return;
+    if (t.at) tour.els = tourAt(t);   // the board goes on under it: the part found again, wherever it is now
+    const card = $('#tour .tcard'), W = innerWidth, H = innerHeight, M = 12, G = 14, P = 6, top = (state.notch?.top || 0) + M;
+    const cw = card.offsetWidth, ch = card.offsetHeight, rs = tour.els.map(el => el.getBoundingClientRect());
+    const r = rs.length ? { left: Math.min(...rs.map(x => x.left)), top: Math.min(...rs.map(x => x.top)), right: Math.max(...rs.map(x => x.right)), bottom: Math.max(...rs.map(x => x.bottom)) } : null;
+    let h = null, x = (W - cw) / 2, y = (H - ch) / 2;
+    if (r && r.right > 0 && r.left < W && r.bottom > 0 && r.top < H) {   // off the window (a card scrolled away since), none
+      const l = Math.max(2, r.left - P), tp = Math.max(2, r.top - P), rt = Math.min(W - 2, r.right + P), b = Math.min(H - 2, r.bottom + P);
+      h = { x: l, y: tp, w: rt - l, h: b - tp };
+      const room = { right: W - rt - G - M, left: l - G - M, below: H - b - G - M, above: tp - G - top };
+      const side = [t.side, 'right', 'left', 'below', 'above'].find(s => s && room[s] >= (s === 'right' || s === 'left' ? cw : ch));
+      const cx = (l + rt - cw) / 2, cy = (tp + b - ch) / 2;
+      [x, y] = side === 'right' ? [rt + G, cy] : side === 'left' ? [l - G - cw, cy] : side === 'below' ? [cx, b + G] : side === 'above' ? [cx, tp - G - ch] : [cx, b - ch - 24];
+    }
+    x = Math.round(Math.max(M, Math.min(W - cw - M, x))); y = Math.round(Math.max(top, Math.min(H - ch - M, y)));
+    const hh = h ? { x: Math.round(h.x), y: Math.round(h.y), w: Math.round(h.w), h: Math.round(h.h) } : { x: Math.round(W / 2), y: Math.round(H / 2), w: 0, h: 0 };
+    const key = `${hh.x},${hh.y},${hh.w},${hh.h},${x},${y}`; if (key === tour.drawn) return; tour.drawn = key;
+    const hole = $('#tour .thole'); hole.classList.toggle('none', !h);
+    hole.style.translate = `${hh.x}px ${hh.y}px`; hole.style.width = `${hh.w}px`; hole.style.height = `${hh.h}px`;
+    card.style.translate = `${x}px ${y}px`;
+  }
+  $('#tourNext').onclick = () => { if (tour.i < tour.steps.length - 1) return tourShow(tour.i + 1); tour.done = true; $('#tour').close(); };
+  $('#tourBack').onclick = () => tourShow(tour.i - 1);
+  $('#tourSkip').onclick = () => $('#tour').close();
+  $('#tour').addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'ArrowRight' && tour.i < tour.steps.length - 1) { e.preventDefault(); tourShow(tour.i + 1); }
+    else if (e.key === 'ArrowLeft' && tour.i) { e.preventDefault(); tourShow(tour.i - 1); }
+  });
+  // Left before the end — Skip, esc, a key that closes dialogs —, it says where it waits.
+  $('#tour').addEventListener('close', () => {
+    clearInterval(tour.timer); tour.timer = 0; removeEventListener('resize', tourPlace);
+    prefs.toured = true; savePrefs();
+    if (!tour.done) note(onScreen($('#home .hgo[data-go="tour"]')) || $('#shead'), 'The tour waits in Settings (⌘,), ⌥⌘L and home, whenever you want it');
+  });
+  for (const b of ['#tourBtn', '#ksTour']) $(b).onclick = tourStart;
   // ---- the colour picker ------------------------------------------------------------------
   // One real <input type=color> for the page (#colorInput): the squares are re-rendered on every update, so the
   // control is moved under the square that was clicked and opened from there — the panel stays wired to it
@@ -6876,6 +7039,7 @@ const toolName = n => {
     trail: () => ({ on: !!trail.sig, loop: trail.loop.map(p => [...p]), L: trail.L, v: trail.v, blobs: trail.blobs.length }),   // the open chat's light past its card (drawTrail)   // the list's last moves: {id, kind: flip | enter | leave, at}
     sessions: () => [...state.sessions.values()].map(s => ({ id: s.id, project: s.project, cwd: s.cwd, env: s.env || null, title: s.title, status: s.status, alive: s.alive, prs: (s.prs || []).length, terminal: s.terminal?.id || null, agents: s.agents || 0, tasks: s.tasks || [], ask: s.ask || null })),
     prefs: () => ({ ...prefs }),
+    tour: () => ({ open: $('#tour').open, at: tour.i, step: tour.steps[tour.i]?.id || null, steps: tour.steps.map(t => t.id), drawn: tour.drawn, parts: tour.els.map(el => el.id ? '#' + el.id : `#slist > .card[data-id="${el.dataset.id}"]`) }),   // the tour (2026-10-14)
     term: g => window.peixDebug(g),
     screen: g => [...document.querySelectorAll(`${GEL[g ?? focusG].tbody} .xterm-rows > div`)].map(r => r.textContent.replace(/\s+$/, '')),
     /** The whole buffer, scrollback included — what a row that scrolled off the screen went into. */
@@ -8665,7 +8829,7 @@ const toolName = n => {
     setHtml(el.querySelector('.hkv'), `
         <div class="hh">${esc(a.user || 'you')}<span>@</span>${esc(a.host || 'peixairada')}</div><div class="hrule"></div>${facts}
         <div class="hblocks">${['--needs', '--working', '--idle', '--watch', '--accent', '--spend', '--you', '--ink'].map(v => `<i style="background:var(${v})"></i>`).join('')}</div>
-        <div class="hkeys"><kbd>⌥⌘L</kbd> anything <s>·</s> <kbd>⌥⌘K</kbd> a chat <s>·</s> <kbd>⌥⌘N</kbd> new <s>·</s> <kbd>⌥⌘A</kbd> overview <s>·</s> <kbd>?</kbd> keys</div>`);
+        <div class="hkeys"><kbd>⌥⌘L</kbd> anything <s>·</s> <kbd>⌥⌘K</kbd> a chat <s>·</s> <kbd>⌥⌘N</kbd> new <s>·</s> <kbd>⌥⌘A</kbd> overview <s>·</s> <kbd>?</kbd> keys <s>·</s> <button class="hgo" data-go="tour" title="The board’s main parts, one at a time — a minute">the tour</button></div>`);
     setHtml(el.querySelector('.hday'), `<h3><b>Today</b><span>every chat, ${new Date(t0).getHours().toString().padStart(2, '0')}:00 to now</span><span class="lg"><span><i class="w"></i>clauding</span><span><i class="a"></i>waiting on you</span><span><i class="m"></i>watching</span></span></h3>${day}`);
   }
   const HOME_GO = { ask: 'Open the chat asking you', ov: 'The overview — every live chat · ⌥⌘A', prs: 'The PRs at your move' };
@@ -8676,6 +8840,7 @@ const toolName = n => {
     if (g === 'ask') { const s = [...state.sessions.values()].filter(x => visible(x) && asking(x)).sort(byWord)[0]; if (s) openSession(s.id, { locate: true }); }
     else if (g === 'ov') ovOpen();
     else if (g === 'prs') pickOpen('prs');
+    else if (g === 'tour') tourStart();
   });
 
   // ---- a chat's folder not checked out: cloned first (2026-10-09) ----------------------------------------------------
@@ -9380,11 +9545,11 @@ const toolName = n => {
       ['state', esc(homePath(a.stateFile || '?'))],
       ['chats', `${[...state.sessions.values()].filter(s => s.alive).length} live · ${all.ready ?? 0} ready · ${all.working ?? 0} clauding`],
     ];
-    $('#about').innerHTML = `${$('#brandBtn').innerHTML}<h3>peix<em>AI</em>rada</h3><p class="tag">One board for every Claude Code chat on this Mac.</p><div class="facts">${facts.map(([k, v]) => `<b>${k}</b><span>${v}</span>`).join('')}</div><p class="help">The keys and the switches are in the settings — ⌘, or the chat header's ···.</p>`;
+    $('#about').innerHTML = `${$('#brandBtn').innerHTML}<h3>peix<em>AI</em>rada</h3><p class="tag">One board for every Claude Code chat on this Mac.</p><div class="facts">${facts.map(([k, v]) => `<b>${k}</b><span>${v}</span>`).join('')}</div><p class="help">The keys and the switches are in the settings — ⌘, or the chat header's ···.</p><p class="help"><button class="btn" id="aboutTour" title="The board's main parts, one at a time — a minute">Take the tour</button></p>`;
     $('#about').showModal();
   }
   $('#brandBtn').addEventListener('click', aboutOpen);
-  $('#about').addEventListener('click', e => { if (e.target === $('#about')) $('#about').close(); });   // the backdrop
+  $('#about').addEventListener('click', e => { if (e.target === $('#about')) $('#about').close(); else if (e.target.closest('#aboutTour')) tourStart(); });   // the backdrop; the tour (2026-10-14)
   // The open chat's transcript as the page holds it (2026-10-03): which reading of the file (`gen` — a re-read numbers
   // its entries afresh), how many of them it has (`upto`), and what the stream said while a fetch was on its way
   // (`pending`). The fetch and the stream raced: an entry pushed before the answer landed went into the last chat's

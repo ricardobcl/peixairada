@@ -5,6 +5,43 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-14. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-14, on a branch — the tour
+
+Ricardo: "the have a lot of features now. seems to be hard to discover if you're a new user. can we do a walkthrough
+of main features? should be skipable, but also we should be able to start it again later".
+
+* **A tour of the board as it stands, not of a picture of it**: a modal dialog the size of the window (`#tour`), a
+  hole cut in a dim veil round one part at a time and a card beside it saying what the part is and its keys. Ten
+  steps (`TOUR`): hello · the list and its lanes · a card and its edge · finding a chat (⌥⌘F, the funnel, ⌥⌘P, ⌥⌘K) ·
+  the chat column (the transcript, the drawer, resume — home with none open) · its header (PRs, tickets, ···) · its
+  tabs (⌥⌘T E D G, ⌘1 ⌘2 ⌘W) · the status bar · the keys (⌥⌘L, ⌥⌘A, ⌥⌘0, ?) · goodbye. Each step finds its part on
+  the board as it is — a chat open or not, the list on a rail, the status bar off, a split's strips —: a step about
+  a part alone (a card, the header, the bar) is left out without it; the others centre the card. With a chat open the
+  chat step is its body and its resume bar drawn round as one.
+* **Look, don't touch**: modal, so the board under it is inert, the pane goes down and the ⌥⌘ keys are swallowed —
+  the tour opens, folds and moves nothing, but a card brought into the list's view. An interactive tour (do the key
+  now) was weighed and left: it would have to undo what each step did, and a chat opened for it arms its resume.
+* **The veil is the hole's own shadow** (`box-shadow: 0 0 0 200vmax`), so hole and card glide together from part to
+  part on `translate`, `width` and `height` — finite transitions, nothing left running when it closes; under reduced
+  motion they jump (the ring still fades). The card goes on the side with room — the step's own first (*above* for
+  what sits at the foot, *below* for the header), then right, left, below, above — else inside the part at its foot.
+  It is placed again every 400 ms and on a resize while up: the board goes on under it.
+* **When it shows**: once on its own, after the first run's question is answered — Skip or a folder, not esc (that
+  only puts the question off) — in the window that answered, unless this browser took it already (`prefs.toured`).
+  That is a new user's moment; a board set up before it does not get it unasked. **Again**: Settings' head (*Take
+  the tour*), the launcher's menu (*Tour*) and its actions, home's keys line (*the tour*), the ? sheet and the About
+  box. Left before the end — Skip, esc —, a note says where it waits; Done says nothing.
+* **The harness takes it** (`launchChrome` writes `toured: true` unless a scenario says otherwise), since welcome.mjs
+  answers the first run's question and would find the tour over its next steps. `tour.mjs` asks for it untaken.
+* **Found on the way**: with `USAGE=off` and the status bar off, *usage: usage disabled (USAGE=off)* showed at the
+  list's foot — `#usage[hidden]` lost to the head row's `main:not(.scompact) #usage { display: flex }`. Two ids deep
+  now (`#sfoot #usage[hidden]`). And `npm run webkit` from a worktree compiled its Swift into a `node_modules/.cache`
+  of the worktree's own — a `node_modules` that check.sh then found first and compared the vendored xterm against;
+  the cache goes in the nearest `node_modules` up the folders now, as Node finds it.
+* **Open**: hotkeys.mjs and cog-setup.mjs fail when run from a worktree under `.claude/worktrees/` — the fixture's
+  folder is keyed by the repo since 2026-10-13 (a chat in a worktree is the repo's), and they expect its own name.
+  `npm run perf -- --against` links `ROOT/node_modules` into its scratch tree, which from a worktree is no folder.
+
 ## Decisions of 2026-10-14, on a branch — VS Code Web and the Mac's keyboard layout
 
 Ricardo: "Does VS Code Web respect the user's keyboard layout? Heard a report that the layout inside VS Code Web was
