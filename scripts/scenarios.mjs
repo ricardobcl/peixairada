@@ -14,7 +14,7 @@
 // forgiven: the suite still exits 0 — a browser scenario that passes on the second go is usually the machine,
 // not the board — but the line stays in the output and in the summary, so a flake that becomes a habit is seen.
 // --no-retry is the honest gate for a bisect.
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
@@ -42,6 +42,15 @@ const run = file => new Promise(resolve => {
 const why = out => (out.split('\n').find(l => /FAILED:/.test(l)) || out.split('\n').filter(Boolean).pop() || '')
   .replace(/^\[[^\]]+\]\s*/, '').replace(/^(Error|AssertionError)[^:]*:\s*/, '').slice(0, 120);
 
+/** What a run left running (2026-10-14): a process whose command line names its server's state dir (the server, its
+ *  holders) or its Chrome's profile — read off the run's own log, looked for once the run has exited. A scenario's
+ *  cleanup ends them all; one still there is the harness leaking, as three servers did from 2026-10-03 on. */
+const leftovers = out => {
+  const marks = [...out.matchAll(/\(state (\/[^\s,)]+)|chrome profile (\/\S+)/g)].map(m => m[1] || m[2]);
+  if (!marks.length) return [];
+  let ps = ''; try { ps = execFileSync('/bin/ps', ['-axww', '-o', 'pid=,command='], { encoding: 'utf8', maxBuffer: 64 << 20 }); } catch { return []; }
+  return ps.split('\n').filter(l => marks.some(m => l.includes(m))).map(l => l.trim().slice(0, 160));
+};
 const secs = ms => `${(ms / 1000).toFixed(1)}s`;
 const results = [];
 for (const file of names) {
@@ -53,18 +62,23 @@ for (const file of names) {
     process.stdout.write(`failed — again … `);
     const again = await run(file);
     if (again.code === 0) flaky = why(r.out);   // what it failed on the first time: a flake nobody can see is no use
-    r = again;
+    r = { ...again, first: r.out };
   }
   const state = r.code !== 0 ? 'FAIL' : flaky ? 'FLAKY' : 'ok';
   console.log(`${state} ${secs(r.ms)}${r.code !== 0 ? ` — ${why(r.out)}` : flaky ? ` — first run: ${flaky}` : ''}`);
   if (r.code !== 0) console.log(r.out.split('\n').filter(l => !/^\[peixairada\]/.test(l)).join('\n').trimEnd().split('\n').slice(-25).join('\n'));
-  results.push({ name, state, ms: r.ms, flaky });
+  await new Promise(res => setTimeout(res, 500));   // a process on its way out is not a leak
+  const leaks = [...(r.first ? leftovers(r.first) : []), ...leftovers(r.out)];
+  for (const l of leaks) console.log(`  LEAK ${l}`);
+  results.push({ name, state, ms: r.ms, flaky, leaks: leaks.length });
 }
 
 const bad = results.filter(r => r.state === 'FAIL');
 const flaky = results.filter(r => r.state === 'FLAKY');
+const leaky = results.filter(r => r.leaks);
 const total = results.reduce((n, r) => n + r.ms, 0);
 console.log(`\n${results.length - bad.length}/${results.length} passed in ${secs(total)}` +
   (flaky.length ? ` · flaky (passed on the second run): ${flaky.map(r => r.name).join(', ')}` : '') +
-  (bad.length ? ` · failed: ${bad.map(r => r.name).join(', ')}` : ''));
+  (bad.length ? ` · failed: ${bad.map(r => r.name).join(', ')}` : '') +
+  (leaky.length ? ` · left processes running: ${leaky.map(r => r.name).join(', ')}` : ''));
 process.exit(bad.length ? 1 : 0);

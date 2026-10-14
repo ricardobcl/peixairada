@@ -66,6 +66,7 @@ try {   // a server or a Chrome that does not come up: what did come up is ended
   }
   cdp = await launchChrome({ dark: !!process.env.DARK, prefs: meta.prefs || {} });
   cleanups.push(() => cdp.close());
+  log(`chrome profile ${cdp.profile}`);   // what scripts/scenarios.mjs looks for leftovers by, with the server's state dir
   await openBoard(cdp, boardUrl, { hash: hash || null });
 } catch (e) {
   log(`setup failed: ${e.stack || e}`); clearTimeout(bail); await finish(1);
