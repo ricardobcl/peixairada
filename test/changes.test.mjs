@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, statSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -90,6 +90,23 @@ test('names git quotes, and prefixes the config moves, read as the files they ar
     assert.deepEqual(splitPatch(un.patch).map(c => c.path).sort(), want.map(w => w[0]), 'every file\'s patch found by its name');
     if (cfg.length) g('config', '--unset', cfg[0]);
   }
+});
+
+test('one file\'s diff past every buffer is left out by name, the others shown (2026-10-14)', { timeout: 120_000 }, async () => {
+  const repo = tmpDir('peix-chgbig-');
+  const g = (...a) => execFileSync('git', ['-C', repo, ...a], { stdio: 'pipe', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } }).toString();
+  g('init', '-q', '-b', 'main');
+  writeFileSync(join(repo, 'small.js'), 'a\n'); g('add', '.'); g('commit', '-q', '-m', 'base');
+  const row = `{"id":0,"v":"${'x'.repeat(80)}"}\n`;
+  writeFileSync(join(repo, 'big.jsonl'), row.repeat(400_000)); g('add', 'big.jsonl');   // 36 MB, added: its patch a + per line, first by name
+  writeFileSync(join(repo, 'small.js'), 'b\n');
+  const s = newSession(randomUUID(), null); s.cwd = repo;
+  const un = await changesOf(s, 'uncommitted');
+  assert.deepEqual(un.files.map(f => [f.path, f.status, f.add]), [['big.jsonl', 'A', 400_000], ['small.js', 'M', 1]]);
+  assert.deepEqual([un.truncated, un.left], [true, ['big.jsonl']]);
+  assert.deepEqual(splitPatch(un.patch).map(c => c.path), ['small.js'], 'the file after it shown whole');
+  assert.ok(un.patch.length < 1e6);
+  rmSync(repo, { recursive: true, force: true });
 });
 
 test('reading a chat\'s changes leaves its index alone — files touched but not changed too (2026-10-14)', async () => {

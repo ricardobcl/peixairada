@@ -2747,11 +2747,42 @@ function patchStat(text) {
   }
   return { status: /^new file mode/m.test(text) ? 'A' : /^deleted file mode/m.test(text) ? 'D' : 'M', add, del, binary: /^(Binary files |GIT binary patch)/m.test(text) };
 }
-/** A patch over CHANGES_MAX: whole files, as many as fit. */
-function capPatch(patch) {
-  if (patch.length <= CHANGES_MAX) return { patch, truncated: false };
-  let kept = ''; for (const c of splitPatch(patch)) { if (kept.length + c.text.length > CHANGES_MAX) break; kept += c.text; }
-  return { patch: kept, truncated: true };
+/** A patch over CHANGES_MAX: whole files while they fit, one that does not left out (its path in `left`) and the rest
+ *  still taken (2026-10-14: one big file first stopped every file after it). */
+function capPatch(patch, left = []) {
+  if (patch.length <= CHANGES_MAX) return { patch, truncated: left.length > 0, left };
+  let kept = ''; for (const c of splitPatch(patch)) { if (kept.length + c.text.length > CHANGES_MAX) left.push(c.path); else kept += c.text; }
+  return { patch: kept, truncated: true, left };
+}
+/** git's patch read as it comes (2026-10-14): a file's whole while the patch so far fits in CHANGES_MAX, else only its
+ *  path (`left`) — one file's diff of 33 MB went past the buffer's end and failed the whole changes tab. */
+function gitPatch(cwd, args, opts = {}) {
+  return new Promise((done, fail) => {
+    const bin = findBin('git', 'a chat\'s changes go unread'); if (!bin) return fail(new Error('git is not installed'));
+    const p = spawn(bin, ['-C', cwd, ...args], { env: opts.env || process.env, stdio: ['ignore', 'pipe', 'pipe'] });
+    const left = []; let kept = '', cur = null, rest = '', skip = false, err = '';
+    const close = () => { if (cur && !cur.over && kept.length + cur.text.length <= CHANGES_MAX) kept += cur.text; else if (cur) left.push(cur.path); cur = null; };
+    const over = () => { if (cur) { cur.over = true; cur.text = ''; } };
+    const line = l => {
+      if (l.startsWith('diff --git ')) { close(); cur = { path: diffPath(l), text: '', over: false }; }
+      if (cur && !cur.over) { cur.text += l + '\n'; if (kept.length + cur.text.length > CHANGES_MAX) over(); }
+    };
+    p.stdout.setEncoding('utf8'); p.stderr.setEncoding('utf8');
+    p.stdout.on('data', d => {   // by lines; one longer than the whole cap is dropped as it comes, never held
+      let i = 0, j;
+      while ((j = d.indexOf('\n', i)) >= 0) { if (!skip) line(rest + d.slice(i, j)); skip = false; rest = ''; i = j + 1; }
+      if (!skip) { rest += d.slice(i); if (rest.length > CHANGES_MAX) { over(); rest = ''; skip = true; } }
+    });
+    p.stderr.on('data', d => { err += d; });
+    const timer = setTimeout(() => p.kill(), opts.timeout || 20_000);
+    p.on('error', e => { clearTimeout(timer); fail(e); });
+    p.on('close', (code, signal) => {
+      clearTimeout(timer);
+      if (code !== 0) return fail(Object.assign(new Error(signal ? 'git diff took too long' : `git diff failed: ${err.trim().split('\n')[0]}`), { stderr: err }));
+      if (rest && !skip) line(rest); close();
+      done({ patch: kept, left: left.filter(Boolean) });
+    });
+  });
 }
 /** The PR's diff from GitHub — no checkout of its repo here, or git could not reach it: `why` says which. */
 async function prFromGh(want, why, cwd) {
@@ -2759,9 +2790,9 @@ async function prFromGh(want, why, cwd) {
   let out; try { out = (await execFileP(bin, ['pr', 'diff', want.url, '--color', 'never'], { timeout: 30_000, maxBuffer: 32e6 })).stdout; }
   catch (e) { return { error: `${why} — and gh pr diff: ${String(e.stderr || e.message).trim().split('\n')[0]}` }; }
   const files = splitPatch(out).map(c => ({ path: c.path, ...patchStat(c.text) })).sort((a, b) => a.path.localeCompare(b.path));
-  const refs = prStatus.get(want.url)?.refs, { patch, truncated } = capPatch(out);
+  const refs = prStatus.get(want.url)?.refs, { patch, truncated, left } = capPatch(out);
   return { cwd, root: null, branch: null, base: refs?.base ?? null, scope: 'pr', upstream: null, files,
-    add: files.reduce((n, f) => n + f.add, 0), del: files.reduce((n, f) => n + f.del, 0), patch, truncated,
+    add: files.reduce((n, f) => n + f.add, 0), del: files.reduce((n, f) => n + f.del, 0), patch, truncated, left,
     pr: { n: want.n, url: want.url, head: refs?.headOid ?? null, headName: refs?.head ?? null, base: refs?.base ?? null, source: 'gh', why } };
 }
 /** The changes of a chat's folder in one scope — or `{stat}` alone (the header's chip): the counts, no patch. `ask` is
@@ -2824,10 +2855,10 @@ async function changesOf(s, scope = 'uncommitted', statOnly = false, ask = {}) {
     const counts = upName && (await gitOr(root, ['rev-list', '--left-right', '--count', '@{u}...HEAD'], '')).split(/\s+/).map(Number);
     const upstream = upName ? { name: upName, behind: counts?.[0] || 0, ahead: counts?.[1] || 0 } : null;
     // a/ and b/ whatever diff.noprefix or diff.mnemonicPrefix say; names with no octal where they need no quote
-    let patch = await gitOut(root, ['-c', 'core.quotePath=false', 'diff', '--no-renames', '--no-color', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', '-U3', ...range, ...only], ix?.opts);
+    let { patch, left } = await gitPatch(root, ['-c', 'core.quotePath=false', 'diff', '--no-renames', '--no-color', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', '-U3', ...range, ...only], ix?.opts);
     for (const [path, body] of bodies) if (body) patch += addedPatch(path, body);
-    let truncated; ({ patch, truncated } = capPatch(patch));
-    return { cwd, root, branch, base, scope, upstream, files, add, del, patch, truncated,
+    let truncated; ({ patch, truncated, left } = capPatch(patch, left));
+    return { cwd, root, branch, base, scope, upstream, files, add, del, patch, truncated, left,
       ...pr && { pr: { n: pr.n, url: pr.url, head: pr.head, headName: pr.headName, base: pr.base, baseOid: pr.baseOid, fetched: pr.fetched, source: 'git' } } };
   } finally { ix?.drop(); }
 }

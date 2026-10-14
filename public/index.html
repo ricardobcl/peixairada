@@ -7500,7 +7500,7 @@ const toolName = n => {
       const lang = DIFF_LANG[(f.path.split('.').pop() || '').toLowerCase()];
       const ls = diffLines(chunks.get(f.path) || '');
       return `<section class="cfile" data-path="${esc(f.path)}"><div class="fh">${esc(f.path)}<em><span class="a">+${f.add}</span> <span class="d">−${f.del}</span></em></div>${
-        f.binary ? '<div class="cempty sm">a binary file</div>' : !ls.length ? '<div class="cempty sm">no lines to show</div>'
+        d.left?.includes(f.path) ? '<div class="cempty sm">too long to show here</div>' : f.binary ? '<div class="cempty sm">a binary file</div>' : !ls.length ? '<div class="cempty sm">no lines to show</div>'
         : ls.map(x => x.t === 'hunk' ? `<div class="dl hunk"><span class="na"></span><span class="nb"></span><span class="sg"></span><code>${esc(x.text)}</code></div>`
           : `<div class="dl ${x.t}" data-line="${x.b ?? x.a ?? ''}"><span class="na">${x.a ?? ''}</span><span class="nb">${x.b ?? ''}</span><span class="sg">${x.t === 'add' ? '+' : x.t === 'del' ? '−' : ''}${x.t !== 'meta' ? '<button class="dlp" title="A note on this line — typed into its Claude as a prompt">+</button>' : ''}</span><code>${x.t === 'meta' ? esc(x.text) : hlLine(x.text, lang)}</code></div>`).join('')}</section>`;
     }).join('');
