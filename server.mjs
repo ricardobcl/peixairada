@@ -2831,7 +2831,7 @@ async function changesOf(s, scope = 'uncommitted', statOnly = false, ask = {}) {
     paths = [...(s.turnFiles || [])].map(f => relative(root, real(resolve(cwd, f)))).filter(f => f && !f.startsWith('..') && !isAbsolute(f));
     if (!paths.length) return { cwd, root, branch, scope, base, upstream: null, files: [], add: 0, del: 0, patch: '', truncated: false, note: 'nothing edited in its last turn' };
   }
-  const only = paths.length ? ['--', ...paths] : [];
+  const only = paths.length ? ['--', ...paths.map(f => `:(literal)${f}`)] : [];   // a name, never a glob: src/[id].tsx is not src/i.tsx (2026-10-14)
   const ix = pr ? null : await indexCopy(root);   // a PR is two commits: no index read
   try {
     const [num, names, untracked] = await Promise.all([

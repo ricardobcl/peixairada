@@ -92,6 +92,23 @@ test('names git quotes, and prefixes the config moves, read as the files they ar
   }
 });
 
+test('the turn\'s files are names, never patterns: src/[id].tsx is not src/i.tsx (2026-10-14)', async () => {
+  const repo = tmpDir('peix-chglit-');
+  const g = (...a) => execFileSync('git', ['-C', repo, ...a], { stdio: 'pipe', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } }).toString();
+  g('init', '-q', '-b', 'main'); mkdirSync(join(repo, 'src'));
+  for (const f of ['[id].tsx', 'i.tsx', 'd.tsx']) writeFileSync(join(repo, 'src', f), 'a\n');
+  g('add', '.'); g('commit', '-q', '-m', 'base');
+  for (const f of ['[id].tsx', 'i.tsx']) writeFileSync(join(repo, 'src', f), 'b\n');
+  writeFileSync(join(repo, 'src', '*.md'), 'n\n'); writeFileSync(join(repo, 'src', 'notes.md'), 'n\n');   // untracked: *.md, and one it would match as a glob
+  const s = newSession(randomUUID(), null); s.loaded = false;
+  fold(s, { type: 'user', cwd: repo, timestamp: new Date(Date.now() - 20_000).toISOString(), message: { role: 'user', content: 'the page' } });
+  fold(s, { type: 'assistant', cwd: repo, timestamp: new Date(Date.now() - 10_000).toISOString(), message: { role: 'assistant', content: [
+    { type: 'tool_use', id: 't1', name: 'Edit', input: { file_path: join(repo, 'src', '[id].tsx') } },
+    { type: 'tool_use', id: 't2', name: 'Write', input: { file_path: join(repo, 'src', '*.md') } }], stop_reason: 'tool_use' } });
+  const turn = await changesOf(s, 'turn');
+  assert.deepEqual(turn.files.map(f => f.path).sort(), ['src/*.md', 'src/[id].tsx'], 'the two files it edited, and nothing their names would match as patterns');
+});
+
 test('one file\'s diff past every buffer is left out by name, the others shown (2026-10-14)', { timeout: 120_000 }, async () => {
   const repo = tmpDir('peix-chgbig-');
   const g = (...a) => execFileSync('git', ['-C', repo, ...a], { stdio: 'pipe', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } }).toString();
