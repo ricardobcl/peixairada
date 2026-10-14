@@ -8,6 +8,7 @@
 // which is exactly the behaviour behind the truncated-replay bug of 2026-09-20, and what the drawer tests need.
 // FAKE_TUI=fullscreen draws as `tui: fullscreen` does instead (see paint). It refuses to run without CLAUDE_DIR set to
 // something other than ~/.claude: it must never write the real one.
+import { execFileSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { homedir, userInfo } from 'node:os';
@@ -46,8 +47,11 @@ const reply = text => `You said: ${text}\n\nThis is the fake claude — one para
 
 // ---- interactive ----
 // The registry file, rewritten on each change of state as the real one does: busy for a turn, idle between them.
+// procStart as Claude Code writes it (2026-10-14): this process's start as `ps` gives it in UTC, in the C locale — what the
+// board holds a pid against before it signals one (sameProcess); without it every check took the no-procStart shortcut.
 const t0reg = Date.now();
-const register = (status = 'idle') => writeFileSync(regFile, JSON.stringify({ pid: process.pid, sessionId, cwd, startedAt: t0reg, version: 'fake', kind: 'interactive', entrypoint: 'cli', name: 'fake-' + basename(cwd), status, statusUpdatedAt: Date.now() }));
+const procStart = (() => { try { return execFileSync('/bin/ps', ['-o', 'lstart=', '-p', String(process.pid)], { encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' } }).trim(); } catch { return undefined; } })();
+const register = (status = 'idle') => writeFileSync(regFile, JSON.stringify({ pid: process.pid, procStart, sessionId, cwd, startedAt: t0reg, version: 'fake', kind: 'interactive', entrypoint: 'cli', name: 'fake-' + basename(cwd), status, statusUpdatedAt: Date.now() }));
 register();
 const bye = code => { try { unlinkSync(regFile); } catch {} out(`${FULL ? '\x1b[?1049l' : ''}\x1b[?2004l\x1b[?1004l\x1b[?25h\n`); process.exit(code); };
 for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) process.on(sig, () => bye(sig === 'SIGHUP' ? 129 : 143));

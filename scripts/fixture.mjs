@@ -7,7 +7,9 @@
 // `live: { pid, startedAt }` writes the registry file that makes a chat *alive*: the states that only exist while a
 // claude is running — a pending question, a monitor, sub-agents — need one, and any live pid will do (the server
 // only asks whether it is there). `status` / `waitingFor` on it go into the file as Claude Code writes them
-// (`waiting` + `permission prompt` is a chat blocked on a prompt the transcript knows nothing of).
+// (`waiting` + `permission prompt` is a chat blocked on a prompt the transcript knows nothing of). A pid that is running
+// gets its `procStart` as Claude Code writes it (2026-10-14), one made up none; `live.procStart` says it outright.
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -58,6 +60,11 @@ export function replyLines({ id, cwd, text, at = new Date(), model = 'fixture-1'
     message: { model, id: 'msg_' + randomUUID().slice(0, 8), type: 'message', role: 'assistant', content: [{ type: 'text', text }], stop_reason: 'end_turn' } }];
 }
 
+/** A running process's start as `ps` gives it in UTC and the C locale — the registry's procStart — or null. */
+export function procStartOf(pid) {
+  try { process.kill(pid, 0); return execFileSync('/bin/ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' } }).trim() || null; } catch { return null; }
+}
+
 export function makeFixture(dir, chats) {
   const sessDir = join(dir, 'sessions');
   mkdirSync(sessDir, { recursive: true });
@@ -69,8 +76,9 @@ export function makeFixture(dir, chats) {
     const lines = [...chatLines({ ...c, id }), ...(typeof c.lines === 'function' ? c.lines(id) : c.lines || [])];
     writeFileSync(file, lines.map(l => JSON.stringify(l)).join('\n') + '\n');
     // The registry, for a chat that has to look alive: one file per pid, as Claude Code writes it.
+    const procStart = c.live && (c.live.procStart !== undefined ? c.live.procStart : procStartOf(c.live.pid));
     if (c.live) writeFileSync(join(sessDir, `${c.live.pid}.json`), JSON.stringify({
-      pid: c.live.pid, sessionId: id, cwd: c.cwd, startedAt: c.live.startedAt ?? Date.now() - 3600_000,
+      pid: c.live.pid, ...procStart && { procStart }, sessionId: id, cwd: c.cwd, startedAt: c.live.startedAt ?? Date.now() - 3600_000,
       version: 'fixture', kind: 'interactive', entrypoint: c.live.entrypoint || 'cli', pidDomain: process.platform,
       ...c.live.status && { status: c.live.status, statusUpdatedAt: Date.now() }, ...c.live.waitingFor && { waitingFor: c.live.waitingFor },
     }));
