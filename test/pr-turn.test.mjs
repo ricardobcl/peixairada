@@ -158,11 +158,44 @@ test('a round let go: not your move until the next one comes, which is news — 
   prStatus.set(other, { turn: moveTurn(other, said(11), at(11)).turn });
   assert.equal(waiveTurn(other), true);
   assert.deepEqual((({ moved, released }) => ({ moved, released }))(moveTurn(other, said(11, 13), at(13))), { moved: true, released: true }, 'a move after a round let go is said, whoever had it before');
-  // an answer ends the round: let go, answered, then hers again is a move as ever, from them
+  // let go, answered, then hers again is a move as ever, from them
   prStatus.set(other, { turn: moveTurn(other, said(11, 13), at(13)).turn });
   assert.equal(waiveTurn(other), true);
-  assert.equal(moveTurn(other, said(11, 13, 'me'), at(14)).turn.waived, undefined, 'answered: no mark left');
-  assert.deepEqual((({ moved, released, from }) => ({ moved, released, from }))(moveTurn(other, said(11, 13, 'me', 15), at(15))), { moved: true, released: false, from: 'them' });
+  assert.equal(moveTurn(other, said(11, 13, 'me'), at(14)).turn.waived, undefined, 'answered: not let go, not at your move');
+  assert.deepEqual((({ moved, from }) => ({ moved, from }))(moveTurn(other, said(11, 13, 'me', 15), at(15))), { moved: true, from: 'them' });
+  assert.equal(prTurns[other].waived, undefined, 'the move ends the mark');
+});
+
+test('a look that misses the reason is no answer: the reason back is no move, and a round let go stays let go (2026-10-14)', () => {
+  const url = 'https://github.com/acme/r/pull/79', at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+  const s = newSession('missed', '/x/missed.jsonl');
+  s.lastActivity = new Date(at(9)).toISOString(); notePr(s, url, s.lastActivity, 'user'); sessions.set(s.id, s);
+  // your own PR, force-pushed by ana a moment after your commits (a stack restacked under it); a look whose timeline
+  // GitHub answered as it stood before the push, or one without the comments, reads it as not at your move
+  const force = (h, by = 'ana') => ({ __typename: 'HeadRefForcePushedEvent', createdAt: t(h), actor: user(by) });
+  const look = (pushes, comments = { nodes: [] }, head = 'B') => prTurn(pr({ author: user('me'), viewerLatestReview: null, reviews: { nodes: [] }, headRefOid: head, pushes, comments }), 'me', prTurns[url]?.said);
+  const full = { nodes: [commit(11, 'me'), force(12)] }, turn = () => (({ you, waived, movedAt }) => ({ you, waived, movedAt }))(s.prs[0].turn);
+  setPrInfo(url, 'open', 'PR', look(full), at(13));
+  assert.deepEqual(turn(), { you: true, waived: undefined, movedAt: new Date(at(12)).toISOString() });
+  doneMarks[s.id] = new Date(at(13, 30)).toISOString();
+  setPrInfo(url, 'open', 'PR', look(null), at(14));
+  assert.equal(s.prs[0].turn.you, false, 'the push missing: not at your move, that look');
+  assert.deepEqual(moveTurn(url, look(full), at(15)).moved, false, 'the push back is no move');
+  setPrInfo(url, 'open', 'PR', look(full), at(15));
+  assert.deepEqual([isDone(s), turn()], [true, { you: true, waived: undefined, movedAt: new Date(at(12)).toISOString() }], 'the tick holds, the move keeps its time');
+  assert.equal(waiveTurn(url), true);
+  for (const [missing, h] of [[look(null), 16], [look(full), 17], [look({ nodes: [] }), 18], [look(full), 19]]) setPrInfo(url, 'open', 'PR', missing, at(h));
+  assert.deepEqual(turn(), { you: false, waived: true, movedAt: new Date(at(12)).toISOString() }, 'let go through every look that missed it');
+  // a word of rui's: news; a look without the comments, then with them, is the same word
+  const word = { nodes: [{ author: user('rui'), createdAt: t(20) }] };
+  setPrInfo(url, 'open', 'PR', look(full, word), at(20, 5));
+  assert.deepEqual([isDone(s), turn()], [false, { you: true, waived: undefined, movedAt: new Date(at(20, 5)).toISOString() }], 'news ends the round');
+  doneMarks[s.id] = new Date(at(20, 30)).toISOString();
+  setPrInfo(url, 'open', 'PR', look(full, null), at(21));
+  setPrInfo(url, 'open', 'PR', look(full, word), at(22));
+  assert.deepEqual([isDone(s), s.prs[0].turn.movedAt], [true, new Date(at(20, 5)).toISOString()], 'the word missing and back: no move');
+  setPrInfo(url, 'open', 'PR', look({ nodes: [commit(11, 'me'), force(12), force(23)] }, word, 'C'), at(23));
+  assert.deepEqual([isDone(s), s.prs[0].turn.movedAt], [false, new Date(at(23)).toISOString()], 'a new head is news');
 });
 
 test('a PR the board has never looked at moves at GitHub\'s time for it, and one it cannot see keeps its record', () => {

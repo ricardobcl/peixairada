@@ -188,18 +188,19 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * **A PR you wrote or reviewed has a turn** (2026-09-28; `PR_FIELDS`, `viewer`, `prTurn` — pure): `you` when someone
   else's PR moved past your last review or word, or asks for you again; on your own PR, when someone else reviewed,
   commented or pushed after your last word. Bots are nobody. **Any word of yours answers every reason before it**, and
-  only a reason that *came* is a move (`newsIn`). **A move un-ticks every chat that mentions the PR** (`isDone` against
-  `turn.movedAt`) and alerts the chat touched last (`notifyPr`, `kind: 'pr'`, a `heading`). `movedAt` is `prTurns` in
-  the state file (`moveTurn`), so a restart moves nothing. The PR is also polled by its own newest event (`PR_WATCH`,
-  `PR_WATCH_MS`). **A chat done for good** (2026-10-11; `forGoodMarks` → `forGood`, holding while that tick does —
-  a word, another tick or ↩ ends it) is `forgotten(s)`: its PRs neither un-tick, rank, alert nor are asked about for
-  it. ⌥ held over its ✓ shows the ✕ (`<html data-alt>` from `altHeld` — in the app a key pressed with the pane in
-  front never reaches the page). → `test/pr-turn.test.mjs`, `pr-turn.mjs`.
+  only a reason that *came* is a move (`newsIn` against all that came, `came`: a look that missed one is no answer,
+  2026-10-14). **A move un-ticks every chat that mentions the PR** (`isDone` against `turn.movedAt`) and alerts the
+  chat touched last (`notifyPr`, `kind: 'pr'`, a `heading`). `movedAt` is `prTurns` in the state file (`moveTurn`), so
+  a restart moves nothing. The PR is also polled by its own newest event (`PR_WATCH`, `PR_WATCH_MS`). **A chat done
+  for good** (2026-10-11; `forGoodMarks` → `forGood`, holding while that tick does — a word, another tick or ↩ ends
+  it) is `forgotten(s)`: its PRs neither un-tick, rank, alert nor are asked about for it. ⌥ held over its ✓ shows the
+  ✕ (`<html data-alt>` from `altHeld` — in the app a key pressed with the pane in front never reaches the page). →
+  `test/pr-turn.test.mjs`, `pr-turn.mjs`.
 * **A round let go** (2026-10-12; ⌥-click on a card's `.prmove` or the header's `.hmove`, or their right-click row → `letGo` →
   `POST /api/sessions/:id/waive` → `waiveTurn`): the chat's PRs at your move read `you: false, waived: true` — no line,
   no count, no un-tick — until the next move (`newsIn`), which `moveTurn` reports as `released` and `setPrInfo` alerts
-  whoever had the turn before; an answer of yours (`!t.you`) drops the mark. The mark is `waived` (the key let go) on
-  the PR's `prTurns` record, so a restart keeps it. → `test/pr-turn.test.mjs`, `let-go.mjs`.
+  whoever had the turn before. The mark is `waived` (the key let go) on the PR's `prTurns` record, so a restart keeps
+  it. → `test/pr-turn.test.mjs`, `let-go.mjs`.
 * **A PR knows who had a hand in it** (2026-09-29): every person in `PR_FIELDS` comes with `avatarUrl(size: 48)`
   (`WHO`), and `prPeople` — pure — gives author, reviewers, commenters and pushers, newest first, at most
   `PEOPLE_MAX`, you and the bots left out; a PR the call could not see keeps the faces it had.

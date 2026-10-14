@@ -1234,11 +1234,20 @@ function prPeople(pr, me) {
  * sees the PR, the board's own clock for every change after — a push committed before you ticked and pushed after
  * is news all the same, and so is one the board only learnt of after the tick. Only something that *came* is a move:
  * a new head, a newer word of theirs, a new request; a reason gone (answered by a word of yours) keeps the time.
+ * News is weighed against everything that has come round so far (`came`, 2026-10-14), never the last look alone: a
+ * look that missed the reason (a timeline GitHub answered as it stood hours before, see PR_BATCH) read as not at your
+ * move, and the next brought the same reason back as a move — an alert, the chat un-ticked, a round let go undone.
  */
+const keyParts = k => !k || k === 'them' ? ['', '', ''] : k.split('|');
 const newsIn = (was, now) => {
-  const [h0, w0, a0] = was === 'them' ? ['', '', ''] : was.split('|'), [h1, w1, a1] = now.split('|');
+  const [h0, w0, a0] = keyParts(was), [h1, w1, a1] = keyParts(now);
   // `asked` after a time is that request, its event out of the last ten asked for — ten requests to others since (2026-10-14)
   return (!!h1 && h1 !== h0) || w1 > w0 || (!!a1 && a1 !== a0 && !(a1 === 'asked' && a0));
+};
+/** `was` and what `now` brought: the newest head, word and request of either, as a key. */
+const cameIn = (was, now) => {
+  const [h0, w0, a0] = keyParts(was), [h1, w1, a1] = keyParts(now);
+  return [h1 || h0, w1 > w0 ? w1 : w0, !a1 || (a1 === 'asked' && a0) ? a0 : a1].join('|');
 };
 /** A PR no chat mentions any more and whose turn has not moved in a month leaves the state file — it grew by every PR
  *  ever reviewed (2026-10-03). A month, not at once: the boot reads only a transcript's tail, and a PR named before it
@@ -1253,18 +1262,21 @@ function moveTurn(url, t, now = Date.now()) {
   const prev = prTurns[url];
   if (t === undefined) return { turn: null, moved: false, from: prev?.key };
   if (!t) { if (prev) { delete prTurns[url]; turnsDirty = true; } return { turn: null, moved: false, from: prev?.key }; }
-  const moved = !!prev && prev.key !== t.key && t.you && newsIn(prev.key, t.key);
+  const came = prev ? prev.came ?? (prev.key === 'them' ? '' : prev.key) : '';   // a record from before 2026-10-14 has its last look alone
+  const moved = !!prev && t.you && newsIn(came, t.key);
   if (!prev || moved) { prTurns[url] = { key: t.key, at: new Date(prev ? now : Date.parse(t.at) || now).toISOString(), ...prev?.said && { said: prev.said } }; turnsDirty = true; }   // a move ends a round let go
   else if (prev.key !== t.key) { prTurns[url] = { ...prev, key: t.key }; turnsDirty = true; }
-  if (prTurns[url].waived && !t.you) { delete prTurns[url].waived; turnsDirty = true; }   // answered: the round is over
-  if (t.said && t.said > (prTurns[url].said || '')) { prTurns[url].said = t.said; turnsDirty = true; }   // your last word, for prTurn's next look
-  const { key, said, ...turn } = t, shown = { ...turn, movedAt: prTurns[url].at };
-  return { turn: prTurns[url].waived ? waivedTurn(shown) : shown, moved, from: prev?.key, released: moved && !!prev?.waived };   // moved is only ever a move to you
+  const rec = prTurns[url], all = t.you ? cameIn(came, t.key) : came;
+  if (all && rec.came !== all) { rec.came = all; turnsDirty = true; }
+  if (t.said && t.said > (rec.said || '')) { rec.said = t.said; turnsDirty = true; }   // your last word, for prTurn's next look
+  const { key, said, ...turn } = t, shown = { ...turn, movedAt: rec.at };
+  return { turn: rec.waived && t.you ? waivedTurn(shown) : shown, moved, from: prev?.key, released: moved && !!prev?.waived };   // moved is only ever a move to you
 }
 /**
  * A round let go (2026-10-12): your move, and nothing to do about it yet — ⌥-click on a chat's "your move". The PR
  * reads as not at your move (`you: false`, `waived`: it was) until something new comes round, which is a move and an
- * alert as any other (moveTurn drops the mark); a word of yours that answers it ends the round, and the mark with it.
+ * alert as any other (moveTurn drops the mark). A look that reads it answered leaves the mark (2026-10-14): after a word
+ * of yours nothing comes back to you without something new, and a look that missed the reasons was taken for one.
  * The mark is the PR's record in prTurns (`waived`: the key let go), so a restart keeps it.
  */
 const waivedTurn = turn => ({ ...turn, you: false, waived: true });
