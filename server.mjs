@@ -370,10 +370,11 @@ function reloadConfig() {
   let at = 0; try { at = statSync(CONFIG_FILE).mtimeMs; } catch {}
   if (at === configStamp) return;
   configStamp = at;
-  const before = JSON.stringify(boardConfig()), r = readConfigFile();
+  const before = JSON.stringify(boardConfig()), jiraWas = JSON.stringify(setup.jira ?? null), r = readConfigFile();
   if (r.error) { if (r.error !== configError) console.error(`[peixairada] ${r.error}`); configError = r.error; }
   else { setup = r.setup ? cleanSetup(r.setup).setup : {}; configError = null; }
-  if (JSON.stringify(boardConfig()) !== before) { folderCache.clear(); broadcast('config', boardConfig()); jiraReset(); }
+  if (JSON.stringify(boardConfig()) !== before) { folderCache.clear(); broadcast('config', boardConfig()); }
+  if (JSON.stringify(setup.jira ?? null) !== jiraWas) jiraReset();   // a root or a colour is no new site (2026-10-14)
 }
 
 // ---- Peacock: the colour VS Code paints a folder with, from its .vscode/settings.json ----------------
@@ -1313,8 +1314,9 @@ function ticketsIn(text) {
 const ticketStatus = new Map();   // key -> { found, summary, status, cat, type, assignee: {name, avatar, me}, checkedAt }
 const noTicket = new Set();       // keys Jira had no issue for: not taken up again until a restart
 let jiraProjects = null;          // the site's project keys, once asked (null: not yet — a bare key waits)
-/** Whether a key is worth a question: a site set up, and — once the site's projects are known — one of them. */
-const ticketWanted = key => !!setup.jira && !noTicket.has(key) && (!jiraProjects || jiraProjects.has(key.split('-')[0]));
+/** Whether a key is worth a question: a site set up, and one of its projects' — none until they are known (2026-10-14:
+ *  unknown asked about every key, UTF-8 and SHA-256 with them, after a reset or a failed project search). */
+const ticketWanted = key => !!setup.jira && !noTicket.has(key) && !!jiraProjects?.has(key.split('-')[0]);
 function noteTicket(s, key, ts, by, url = null) {
   const at = s.tickets.findIndex(t => t.key === key);
   const t = at >= 0 ? s.tickets.splice(at, 1)[0] : { key, url: null, count: 0, by: null, firstAt: ts, lastAt: ts };
@@ -1348,6 +1350,7 @@ function shownTickets(s) {
 const TICKET_TTL_MS = Number(process.env.TICKET_TTL_MS || 30_000);
 const ticketQueue = new Set();
 let ticketTimer = null, ticketBusy = false, jiraPauseUntil = 0, jiraPause = 0, jiraError = null, jiraMe = null, jiraProjectsAt = 0;
+let jiraGen = 0;   // one per jiraReset (2026-10-14): an answer asked for before one is the old site's or login's, and dropped
 function ticketFresh(key, ttl = TICKET_TTL_MS, now = Date.now()) {
   const e = ticketStatus.get(key); if (!e) return false;
   return now - e.checkedAt < Math.max(ttl, e.cat === 'done' ? 60 * 60_000 : 0);
@@ -1367,7 +1370,9 @@ async function sweepTickets() {
   if (!setup.jira || Date.now() < jiraPauseUntil) return;
   if (Date.now() - jiraProjectsAt > 60 * 60_000) {
     jiraProjectsAt = Date.now();
-    try { jiraProjects = await jiraProjectKeys(); } catch (e) { jiraProjectsAt = Date.now() - 55 * 60_000; return jiraFailed(e); }   // again in five minutes
+    const gen = jiraGen;
+    try { const keys = await jiraProjectKeys(); if (gen !== jiraGen) return; jiraProjects = keys; }
+    catch (e) { if (gen !== jiraGen) return; jiraProjectsAt = Date.now() - 55 * 60_000; return jiraFailed(e); }   // again in five minutes
   }
   for (const key of dueTickets(sessions.values())) queueTicket(key, 0);
 }
@@ -1425,9 +1430,11 @@ async function drainTickets() {
   if (ticketBusy || !ticketQueue.size) return;
   const batch = [...ticketQueue].slice(0, 100); for (const k of batch) ticketQueue.delete(k);
   ticketBusy = true;
+  const gen = jiraGen;
   try {
-    jiraMe ??= await jiraAsk('/rest/api/3/myself').then(m => ({ id: m?.accountId || null, name: m?.displayName || null }));
+    if (!jiraMe) { const m = await jiraAsk('/rest/api/3/myself'); if (gen === jiraGen) jiraMe ??= { id: m?.accountId || null, name: m?.displayName || null }; }
     const d = await jiraAsk('/rest/api/3/issue/bulkfetch', { issueIdsOrKeys: batch, fields: ['summary', 'status', 'issuetype', 'assignee'] });
+    if (gen !== jiraGen) return;   // the site or login changed while it was asked: its answers are another's (finally drains on)
     jiraError = null; jiraPause = 0; jiraPauseUntil = 0;
     const now = Date.now(), got = new Map((d?.issues || []).map(i => [String(i.key), i]));
     for (const key of batch) {
@@ -1437,9 +1444,8 @@ async function drainTickets() {
       if (!i) noTicket.add(key);
       setTicketInfo(key, { ...info, checkedAt: now });
     }
-  } catch (e) { jiraFailed(e); }
-  finally { ticketBusy = false; }
-  if (ticketQueue.size) drainTickets();
+  } catch (e) { if (gen === jiraGen) jiraFailed(e); }
+  finally { ticketBusy = false; if (ticketQueue.size) drainTickets(); }
 }
 function setTicketInfo(key, info) {
   const before = JSON.stringify({ ...ticketStatus.get(key), checkedAt: 0 });
@@ -1448,7 +1454,7 @@ function setTicketInfo(key, info) {
 }
 /** The site, the login or the token changed: what was learnt under the old ones is forgotten, and asked again. */
 function jiraReset() {
-  jiraToken.cache = null; jiraMe = null; jiraProjects = null; jiraProjectsAt = 0; jiraError = null; jiraPause = 0; jiraPauseUntil = 0;
+  jiraGen++; jiraToken.cache = null; jiraMe = null; jiraProjects = null; jiraProjectsAt = 0; jiraError = null; jiraPause = 0; jiraPauseUntil = 0;
   ticketStatus.clear(); noTicket.clear(); ticketQueue.clear();
   for (const s of sessions.values()) if (s.tickets.length) schedulePush(s);
   if (!indexing) sweepTickets();
@@ -1456,7 +1462,8 @@ function jiraReset() {
 /** What the settings' Setup says of it: the site, where the token is, who you are there, what went wrong. */
 async function jiraInfo() {
   const j = setup.jira, tok = j ? await jiraToken() : null;
-  if (j && tok?.token && !jiraMe && !jiraError) try { const m = await jiraAsk('/rest/api/3/myself'); jiraMe = { id: m?.accountId || null, name: m?.displayName || null }; } catch (e) { jiraError = e.message; }
+  const gen = jiraGen;
+  if (j && tok?.token && !jiraMe && !jiraError) try { const m = await jiraAsk('/rest/api/3/myself'); if (gen === jiraGen) jiraMe = { id: m?.accountId || null, name: m?.displayName || null }; } catch (e) { if (gen === jiraGen) jiraError = e.message; }
   return { site: j?.site || null, email: j?.email || null, token: tok?.from || null, me: jiraMe?.name || null, error: j ? (tok && !tok.token ? tok.why : jiraError) : null,
     tickets: [...ticketStatus.values()].filter(t => t.found).length, suggest: j ? null : jiraCliConfig() };
 }

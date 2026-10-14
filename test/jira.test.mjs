@@ -3,10 +3,10 @@
 // site has not got, never asked; one Jira has no issue for, never shown; the token kept apart from the setup file.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
-import { makeFixture } from '../scripts/fixture.mjs';
+import { sleep, startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
+import { makeFixture, replyLines } from '../scripts/fixture.mjs';
 import { startFakeJira } from '../scripts/fakejira.mjs';
 
 const tmp = tmpDir('peix-test-');
@@ -85,4 +85,40 @@ test('the token from the Setup: kept apart (the keychain; a file in a test), and
     info = (await srv.api('api/jira/token', { method: 'DELETE' })).body;
     assert.equal(info.token, null); assert.ok(!existsSync(join(srv.dir, 'jira-token')));
   } finally { await srv.stop(); await jira.close(); }
+});
+
+const putJson = (srv, path, body) => srv.api(path, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+
+test('no key is asked while the site\'s projects are not known, and a hand edit of anything but Jira asks nothing again (2026-10-14)', { timeout: 60_000 }, async () => {
+  const jira = await startFakeJira({ projects: ['ACME'], issues: { 'ACME-12': { summary: 'Fees' } }, delays: { '/rest/api/3/project/search': 4000 } });
+  const fx = makeFixture(tmpDir('peix-fx-'), [{ cwd: process.cwd(), prompt: 'hello', reply: 'hi' }]), c = fx.chats[0];
+  const srv = await startTestServer({ claudeDir: fx.dir, env: { JIRA_API_TOKEN: jira.token } });
+  try {
+    const chat = () => srv.api('api/sessions').then(r => r.body.sessions.find(s => s.id === c.id));
+    assert.equal((await putJson(srv, 'api/config', { jira: { site: jira.url, email: jira.email } })).status, 200);
+    await waitFor(() => jira.calls['/rest/api/3/project/search'] === 1, { what: 'the projects asked for' });
+    appendFileSync(c.file, replyLines({ id: c.id, cwd: c.cwd, text: 'UTF-8 is no ticket, ACME-12 is.' }).map(l => JSON.stringify(l)).join('\n') + '\n');
+    await waitFor(async () => (await chat()).tickets[0]?.key === 'ACME-12', { timeout: 30_000, what: 'ACME-12, once the projects are known' });
+    assert.deepEqual(jira.bulk.flat(), ['ACME-12'], 'UTF-8 never asked: said while the projects were on their way');
+    const conf = join(srv.dir, 'config.json'), was = JSON.parse(readFileSync(conf, 'utf8'));
+    writeFileSync(conf, JSON.stringify({ ...was, projects: { widgets: { abbr: 'WG' } } }, null, 2));
+    await waitFor(async () => (await srv.api('api/config')).body.projects?.widgets?.abbr === 'WG', { what: 'the hand edit read' });
+    await sleep(600);
+    assert.deepEqual([jira.calls['/rest/api/3/project/search'], jira.bulk.length, (await chat()).tickets.length], [1, 1, 1], 'a project\'s abbreviation is no new site: nothing forgotten, nothing asked again');
+  } finally { await srv.stop(); await jira.close(); }
+});
+
+test('answers asked of the site before a change of site are dropped, not taken for the new one\'s (2026-10-14)', { timeout: 60_000 }, async () => {
+  const old = await startFakeJira({ projects: ['ACME'], issues: {}, delays: { '/rest/api/3/issue/bulkfetch': 1500 } });
+  const now = await startFakeJira({ projects: ['ACME'], issues: { 'ACME-12': { summary: 'From the new site' } }, delays: { '/rest/api/3/project/search': 4000 } });
+  const fx = makeFixture(tmpDir('peix-fx-'), [{ cwd: process.cwd(), prompt: 'Pick up ACME-12.', reply: 'ok' }]);
+  const srv = await startTestServer({ claudeDir: fx.dir, env: { JIRA_API_TOKEN: old.token } });
+  try {
+    const chat = () => srv.api('api/sessions').then(r => r.body.sessions.find(s => s.id === fx.chats[0].id));
+    await putJson(srv, 'api/config', { jira: { site: old.url, email: old.email } });
+    await waitFor(() => old.calls['/rest/api/3/issue/bulkfetch'] === 1, { what: 'ACME-12 asked of the old site' });
+    await putJson(srv, 'api/config', { jira: { site: now.url, email: now.email } });   // while its answer — no such issue — is on its way
+    await waitFor(async () => (await chat()).tickets[0]?.summary === 'From the new site', { timeout: 30_000, what: 'the new site\'s ACME-12' });
+    assert.deepEqual(now.bulk.flat(), ['ACME-12'], 'the old site\'s "no such issue" kept it from nobody');
+  } finally { await srv.stop(); await old.close(); await now.close(); }
 });

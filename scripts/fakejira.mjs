@@ -4,9 +4,10 @@
 //   const jira = await startFakeJira({ issues: { 'ACME-12': { summary, status, cat: 'new' | 'indeterminate' | 'done', type, assignee } }, projects: ['ACME'] });
 //   … setup.jira = { site: jira.url, email: jira.email }, JIRA_API_TOKEN = jira.token … await jira.close();
 // A request without that email and token is a 401, as Jira's. `calls` counts each path; `bulk` holds every key list asked.
+// `delays` (path → ms, also on the returned object, read per request) holds an answer back — a call still in flight.
 import { createServer } from 'node:http';
 
-export async function startFakeJira({ issues = {}, projects = null, email = 'me@acme.test', token = 'fake-jira-token', me = { accountId: 'acc-me', displayName: 'Me Myself' } } = {}) {
+export async function startFakeJira({ issues = {}, projects = null, email = 'me@acme.test', token = 'fake-jira-token', me = { accountId: 'acc-me', displayName: 'Me Myself' }, delays = {} } = {}) {
   const calls = {}, bulk = [];
   const auth = `Basic ${Buffer.from(`${email}:${token}`).toString('base64')}`;
   const keys = projects || [...new Set(Object.keys(issues).map(k => k.split('-')[0]))];
@@ -19,7 +20,7 @@ export async function startFakeJira({ issues = {}, projects = null, email = 'me@
     calls[path] = (calls[path] || 0) + 1;
     const send = (code, body) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(body)); };
     if (req.headers.authorization !== auth) return send(401, { errorMessages: ['Client must be authenticated to access this resource.'] });
-    let raw = ''; req.on('data', c => { raw += c; }); req.on('end', () => {
+    let raw = ''; req.on('data', c => { raw += c; }); req.on('end', () => (delays[path] ? f => setTimeout(f, delays[path]) : f => f())(() => {
       if (req.method === 'GET' && path === '/rest/api/3/myself') return send(200, me);
       if (req.method === 'GET' && path === '/rest/api/3/project/search') return send(200, { isLast: true, values: keys.map(key => ({ key, name: key })) });
       if (req.method === 'POST' && path === '/rest/api/3/issue/bulkfetch') {
@@ -28,8 +29,8 @@ export async function startFakeJira({ issues = {}, projects = null, email = 'me@
         return send(200, { issues: found.map(k => issue(k, issues[k])), issueErrors: want.filter(k => !issues[k]).map(k => ({ issueIdsOrKeys: [k], errorMessages: ['Issue does not exist or you do not have permission to see it.'] })) });
       }
       send(404, { errorMessages: [`no such call: ${req.method} ${path}`] });
-    });
+    }));
   });
   await new Promise(res => server.listen(0, '127.0.0.1', res));
-  return { url: `http://127.0.0.1:${server.address().port}`, email, token, issues, calls, bulk, close: () => new Promise(res => server.close(res)) };
+  return { url: `http://127.0.0.1:${server.address().port}`, email, token, issues, calls, bulk, delays, close: () => new Promise(res => server.close(res)) };
 }
