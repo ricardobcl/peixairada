@@ -9274,7 +9274,11 @@ const toolName = n => {
   // and the day lines and the list's order, which the clock moves too. The cards' markup no longer carries an age, so
   // the render is a diff that rebuilds nothing on its own.
   setInterval(() => { renderBoard(); if ($('#pick').open) fillAges($('#picklist')); if ($('#hmenu').open) fillAges($('#hmenu')); if ($('#ov').open) fillAges($('#ovcols')); fillAges($('#prlist')); }, 30_000);
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && state.current) { state.unread.delete(state.current); if (replied(state.sessions.get(state.current) || {})) markSeen(state.current); renderBoard(); } });
+  // The open chat looked at again: back in view — or the window given the keys back (2026-10-14), since an alert counts a
+  // reply unread on a board that is on screen without them, and nothing else cleared it
+  const lookedAt = () => { if (document.visibilityState === 'visible' && state.current) { state.unread.delete(state.current); if (replied(state.sessions.get(state.current) || {})) markSeen(state.current); renderBoard(); } };
+  document.addEventListener('visibilitychange', lookedAt);
+  window.addEventListener('focus', lookedAt);
   // deep link: /#<session-id> opens that chat — also how the native app's notifications jump here
   window.addEventListener('hashchange', () => {
     const id = location.hash.slice(1);
