@@ -2,8 +2,44 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-14. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-15. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-15 — a PR's history, said where you look
+
+Ricardo: "having more visibility and control of what's the status of the chat in relation with the PR or PRs is a bit
+of a challange. sometimes I don't know if I address a "your move" or not, or what was the previous move, or did I
+address one PR of the chat, but there an event on another? we could have a right side "mini" event history, that
+mixes PRs events with my inputs? just an idea. do a deep analysis, investigate and present me options in an artifact".
+
+The study (a private claude.ai page, made-up board) put four questions — did I answer it, what came before, which PR
+moved, can I act on one PR — against what the board knew: it computed each turn from the last poll and kept only the
+current record; it knew when your word answered a move (`said`) and dropped it before the page; a card named one PR;
+letting go was per chat; and the chat's own pushes and replies (a week: 300 pushes, 236 posted replies or reviews, in
+52 of 125 chats) were never tied to the PR. Options A–G (a docked rail, rows that say their round, events in the
+transcript, the card's marks, a drop-down, an Activity tab, a PR's own menu) and the data under them, D1–D4.
+
+Ricardo's picks: "build B, D (pips, answered tag, hover rounds), D1, D2, D4. "let go" is enough. no "snooze" for
+now". So no "I answered elsewhere", no snooze, no Seen; the docked rail (A), the tab (F) and the comment text (D3)
+not now.
+
+* **The ledger is per PR and kept by the board** (`prLogs`): events from each poll merged by id, rounds opened by a
+  move and closed only by a word of yours at or after it. The 2026-10-14 lesson is the rule: GitHub can answer a
+  timeline from hours before, so a poll that lacks an event takes nothing back, and a poll that reads "their move"
+  without your word marks the round rather than ending it (`gone` an hour on).
+* **The chat's hand is read from its own Bash calls**, counted on a result with no error, tied to the PR by its
+  URL, its number or the branch pushed. A round it closes says so (`by`: "you pushed from this chat"), and the PR
+  is asked again a few seconds on, so the answer shows before the next poll.
+* **Let go per PR** came with B: the row's Let go acts on that PR alone, and Undo takes it back as it was (no alert,
+  no un-tick). ⌥-click on a chat's "your move" still lets every round of the chat go.
+* **B**: under each PR row, a strip of its last rounds on the clock, its tag, since when and how long unanswered,
+  the round before, and Let go · Ask Claude, or Undo. Ask Claude types what came round into the chat's drawer
+  unsent. The row's own "your move · …" gives way to it.
+* **D**: the marks of every PR in play show only when there is more than the one the move line names (a card still
+  counts nothing beyond that), and never at compact's same height. "Answered" stands in the move line's place for
+  half an hour after your word. The popover sits over the list, under the line, so no page in the pane can cover it.
+  The ⌥-click hint moved there from the line's tooltip.
+* `npm run perf` against main: the same costs, within a run's noise.
 
 ## Decisions of 2026-10-14, late night — a round let go came back with nothing new
 

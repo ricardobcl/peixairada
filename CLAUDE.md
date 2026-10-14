@@ -88,7 +88,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | Work behind the turn | `Monitor` and a `Bash` `run_in_background`: the tool_result names the task, `<task-notification>` lines carry its events and its end. `s.tasks` → `tasks`; a task dies with the claude that started it (`live.startedAt`), at its expiry (`MONITOR_MS`, `TASK_MAX_MS`) or with the chat's process (`pruneTasks`, on the poll). **A completion delivered mid-turn never becomes a line**, so `sweepTasks` runs **one** `lsof -F n` per poll over every task's output file (held open until the command exits), after `TASK_GRACE_MS`, never on lsof's own failure, names compared resolved |
 | Titles | board title (state file) › `custom-title` › the oldest still-open PR › `ai-title` › last prompt — `summary()`, `prTitle()` |
 | Model | `message.model` on assistant lines, the last one wins, `<synthetic>` skipped — `s.model` |
-| PRs mentioned | `pr-link` lines, GitHub pull URLs *and short references* in user/assistant text; most recently mentioned first; state, title and turn from `gh api graphql`, batched (see *The server*). **A short reference** (2026-10-06, `refsIn`): `#12` the checkout's repo (`ghRepoOf`, a worktree followed), `widgets#12` the org of the root holding the checkout, `acme/widgets#12`, `widgets #12` for a checkout under a root, and a list after one on its line; none in code, a link's text or a URL. **It is on the chat only once GitHub finds a PR there** (`shownPr`); a bare one not when that PR was merged or closed and opened over `REF_AGE_MS` before it was said (`pastRef`); a NOT_FOUND lets it go (`forgetRef`, `noPr`). → `test/pr-refs.test.mjs`. **A PR taken off a chat** (2026-10-11, `unlinkPr`, `POST /api/sessions/:id/unlink`) goes to `unlinked` in the state file: `notePr` takes none of the chat's lines up again, a re-read's too, but a word of yours after. → `test/pr-turn.test.mjs`, `header-prs.mjs` |
+| PRs mentioned | `pr-link` lines, GitHub pull URLs *and short references* in user/assistant text, newest mention first; state, title and turn from `gh api graphql`, batched (see *The server*). **A short reference** (2026-10-06, `refsIn`): `#12` the checkout's repo (`ghRepoOf`, a worktree followed), `widgets#12` the org of the root holding the checkout, `acme/widgets#12`, `widgets #12` under a root, a list after one on its line; none in code, a link's text or a URL. **On the chat only once GitHub finds a PR there** (`shownPr`); a bare one not when merged or closed and opened `REF_AGE_MS` before it was said (`pastRef`); a NOT_FOUND lets it go (`forgetRef`, `noPr`). → `test/pr-refs.test.mjs`. **A PR taken off a chat** (2026-10-11, `unlinkPr`, `POST /api/sessions/:id/unlink`, `unlinked`): none of the chat's lines take it up again, a re-read's neither, a word of yours after does. → `header-prs.mjs` |
 | Jira tickets named | `KEY-123` in prose (inline code counts, fenced not), `…/browse/KEY-123` links and the chat's `gitBranch` — `ticketsIn`, `noteTickets`, `noteBranchTicket` → `s.tickets`. **A bare key is asked about only when its project is the site's** (`jiraProjects`, hourly; none before they are known, an answer from before a reset dropped — `jiraGen`) and **shown only once Jira answered** (`shownTickets`); one Jira lacks is let go (`noTicket`). `bulkfetch` (≤ 100 a call; `myself` for whose), Basic auth from setup.jira `{site, email}` and a token from `JIRA_API_TOKEN`, else the keychain item *peixAIrada Jira* (written by `security -i` from stdin); polled by `prEvery` like PRs; a failure as a whole pauses, 1 min doubling to 30. → `test/jira.test.mjs` |
 | Branch moved under it | (2026-10-13) `gitBranch` on every line (`HEAD` detached): a change in the same folder no git command of the chat's own explains is held (`noteBranch` → `s.driftDue`, the drift before still shown) and judged `MOVE_SLACK_MS` after it is seen (`settleDrift`, on a timer too) — only then shown or alerted. Its own: one that can change the branch (`GIT_MOVE_RE`, the subcommand whole — no stash, reset, pull, merge, merge-base) in its Bash, a sidechain's, a `!` one, a sub-agent's file (`agentsMoved`): in the hour before, or since the old branch's run naming the new one, or later in the same message naming it (a message's lines are written after its call ran; `ownMove`). Through `HEAD` and back is none; your prompt clears it and takes the head as it stood (`branchHeard`, `headOk`). The disk: each live chat's checkout's HEAD file on the poll, a worktree's its own, each read once, a move judged on a look `MOVE_SLACK_MS` after the first (a chat at work: once a line of its own came since, `DISK_HOLD_MS` at most; a late command takes it back; the boot judges at once, in silence), against the branch before a held move (`sweepHeads`, `headAt`, `noteHead` → `headNow`, `diskDrift`, `peers`). Summary `drift` (live chats only, not set aside — `driftOf`) and `headNow`; a `drift` alert for a chat at work (`driftNotify`); a click on the chip sets that move aside (`driftAcks`, `POST /api/sessions/:id/drift`). → `test/drift.test.mjs`, `branch-drift.mjs` |
 | Plan usage | `GET https://api.anthropic.com/api/oauth/usage` with Claude Code's own OAuth bearer from the keychain item *Claude Code-credentials* — never reaching the page; `USAGE=off` disables. A cap in money (`limits[]` of `kind: 'spend'`, `extra_usage`'s cents) → `used`, `limit`, `currency` (`usageWindows`). → `test/usage.test.mjs`, Findings: *plan usage* |
@@ -180,30 +180,34 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   — a stamp of the file on disk and the serving boot (`SINCE`) —, every snapshot names the page on disk (`page`); one
   from a server started since, with another page, wants a reload as an update's does (`reload.want`). A reconnect to
   the same server reloads nothing. → `test/update.test.mjs`, `restart-page.mjs`.
-* **A PR is polled by how recently its chat was touched** (2026-09-28, `sweepPrs`, `duePrs`, `PR_POLL`): never asked
-  → at once; then every minute within the hour, 5 min within the day, 30 within three days, never after. Touched is
-  `lastActivity` or `s.openedAt` (a page fetching the chat, which also asks at once unless asked within `PR_TTL_MS`).
-  Merged and closed are never asked twice; one in flight is not queued (`prAsking`). **A call that fails as a whole
-  changes nothing** and pauses the polls, 1 min doubling to 30; one GitHub refuses as a query is asked again in halves (`prSplit`). → `test/pr-poll.test.mjs`.
+* **A PR is polled by how recently its chat was touched** (2026-09-28, `sweepPrs`, `duePrs`, `PR_POLL`): never asked →
+  at once; then every minute within the hour, 5 min within the day, 30 within three days, never after; touched is
+  `lastActivity` or `s.openedAt` (a page fetching it, asking at once past `PR_TTL_MS`). Merged and closed never twice; one
+  in flight unqueued (`prAsking`); `PR_BATCH` twenty a call (2026-10-14). **A call that fails as a whole changes
+  nothing** and pauses the polls, 1 min doubling to 30; one GitHub refuses is asked again in halves (`prSplit`). →
+  `test/pr-poll.test.mjs`.
 * **A PR you wrote or reviewed has a turn** (2026-09-28; `PR_FIELDS`, `viewer`, `prTurn` — pure): `you` when someone
-  else's PR moved past your last review or word, or asks for you again; on your own PR, when someone else reviewed,
-  commented or pushed after your last word. Bots are nobody. **Any word of yours answers every reason before it**, and
-  only a reason that *came* is a move (`newsIn` against all that came, `came`: a look that missed one is no answer,
-  2026-10-14). **A move un-ticks every chat that mentions the PR** (`isDone` against `turn.movedAt`) and alerts the
-  chat touched last (`notifyPr`, `kind: 'pr'`, a `heading`). `movedAt` is `prTurns` in the state file (`moveTurn`), so
-  a restart moves nothing. The PR is also polled by its own newest event (`PR_WATCH`, `PR_WATCH_MS`). **A chat done
-  for good** (2026-10-11; `forGoodMarks` → `forGood`, holding while that tick does — a word, another tick or ↩ ends
-  it) is `forgotten(s)`: its PRs neither un-tick, rank, alert nor are asked about for it. ⌥ held over its ✓ shows the
-  ✕ (`<html data-alt>` from `altHeld` — in the app a key pressed with the pane in front never reaches the page). →
+  else's PR moved past your last review or word, or asks for you again; on yours, when someone else reviewed,
+  commented or pushed after your last word. Bots are nobody. **Any word of yours answers every reason before it**;
+  only a reason that *came* is a move (`newsIn` against `came`, 2026-10-14). **A move un-ticks every chat that names
+  the PR** (`isDone` against `turn.movedAt`, kept in `prTurns` by `moveTurn`) and alerts the chat touched last
+  (`notifyPr`, a `heading`). Polled by its own newest event too (`PR_WATCH`). **A chat done for good** (2026-10-11;
+  `forGoodMarks` → `forGood`, while that tick holds) is `forgotten(s)`: its PRs neither un-tick, rank, alert nor are
+  asked about for it; ⌥ over its ✓ shows the ✕ (`<html data-alt>` from `altHeld`, not the key: the pane eats it). →
   `test/pr-turn.test.mjs`, `pr-turn.mjs`.
-* **A round let go** (2026-10-12; ⌥-click on a card's `.prmove` or the header's `.hmove`, or their right-click row → `letGo` →
-  `POST /api/sessions/:id/waive` → `waiveTurn`): the chat's PRs at your move read `you: false, waived: true` — no line,
-  no count, no un-tick — until the next move (`newsIn`), which `moveTurn` reports as `released` and `setPrInfo` alerts
-  whoever had the turn before. The mark is `waived` (the key let go) on the PR's `prTurns` record, so a restart keeps
-  it. → `test/pr-turn.test.mjs`, `let-go.mjs`.
-* **A PR knows who had a hand in it** (2026-09-29): every person in `PR_FIELDS` comes with `avatarUrl(size: 48)`
-  (`WHO`), and `prPeople` — pure — gives author, reviewers, commenters and pushers, newest first, at most
-  `PEOPLE_MAX`, you and the bots left out; a PR the call could not see keeps the faces it had.
+* **A round let go** (2026-10-12; ⌥-click on a card's `.prmove` or the header's `.hmove`, their right-click row →
+  `letGo` → `POST /api/sessions/:id/waive` → `waiveTurn`; one PR `{url}`, back `{url, undo}` → `unwaiveTurn`,
+  2026-10-15): its PRs at your move read `you: false, waived: true` — no line, no count, no un-tick — till the next
+  move (`released`, alerted); `waived` is on `prTurns`. → `let-go.mjs`.
+* **A PR you have a turn on keeps its history** (2026-10-15; `prLogs`): each look's events (`prEvents`) merged by id
+  (`logEvents`: a short or stale look takes none back); rounds (`noteRounds`) opened by a move at GitHub's time,
+  closed `answered` only by your word at or after it (theirs without it marks `them`, `gone` an hour on); gone with
+  the PR. `pr.rounds` the last three, `…/prlog` all. **The chat's own hand** (`prActs` → `takeActs`): a push, `gh
+  pr review · comment · merge · create`, a `gh api` POST, no error, tied by URL, number or branch, is its event
+  and a round's `by`; asked again `PR_CONFIRM_MS` on. → `test/pr-rounds.test.mjs`.
+* **A PR knows who had a hand in it** (2026-09-29): `avatarUrl(size: 48)` on each person in `PR_FIELDS` (`WHO`);
+  `prPeople` (pure) — author, reviewers, commenters, pushers, newest first, `PEOPLE_MAX`, no you nor bots; a PR the
+  call could not see keeps its faces.
 
 ## The board
 
@@ -383,35 +387,34 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `checks` (pass · fail · pending) → `.ck` on `.hpr`, for open and draft PRs. **A change is seen** (`prMoments`, keyed
   by `data-url` and place, `prShown`): a first sight plays nothing. → `pr-checks.mjs`.
 * **A chat's Jira tickets are chips as its PRs are** (2026-10-08): on the card a stack (`cardTickets`, `chipStack`,
-  `.tprs.ttks`, `.ctk[data-cat]`), the branch's first; in the header `.hpr.tk` after the PRs in `#prToggle` (so
-  `fitHeadPrs` folds them first) and `.prrow.tk` rows in `#prlist`. Setup's Jira section (`jiraSetup`): site and
-  email into the setup file, the token write-only into the keychain (`PUT /api/jira/token`). → `jira-tickets.mjs`.
+  `.tprs.ttks`, `.ctk[data-cat]`), the branch's first; in the header `.hpr.tk` after the PRs (`fitHeadPrs` folds them
+  first), `.prrow.tk` in `#prlist`. Setup's Jira section (`jiraSetup`): site and email into the setup file, the token
+  write-only into the keychain (`PUT /api/jira/token`). → `jira-tickets.mjs`.
 * **The header's PRs are chips, folded** (`#prToggle`, `fitHeadPrs()`): every width measured once, **`CHIPS_MAX` (two)
-  at most**, your move first, the rest behind the whole count (or `+n ▾`); fewer while the title would have less than
-  its repo name plus `TITLE_ROOM` and `TITLE_SHARE` of the row; on every new header and the header's
-  `ResizeObserver`. **The row never wraps**: the move's line, a task's chip and the branch's move (`.hdrift`, before
-  the changes' count) shrink to `--hmin`, then go (`.hfold`: the move's line, the count, the branch last) — with no
-  PRs too; ··· stays on the title's line. The branch's move on a card is `.trow .drift`, the move alone in its markup. `#prlist` (`prefs.prsOpen`) is rendered folded too, so ⌥⌘G and the
-  harness read `#prlist .prrow`. **Open, its foot's arrow up folds it** (2026-10-13; `#prFold` in `.pfoot`, `showPrs`
-  as the chips', keys left on `#prToggle`), and the count's ▾ is ▴. → `header-prs-fit.mjs`, `header-prs.mjs`, the
+  at most**, your move first, the rest behind the count (or `+n ▾`); fewer while the title would have less than its repo
+  name plus `TITLE_ROOM` and `TITLE_SHARE` of the row; on every new header and its `ResizeObserver`. **The row never
+  wraps**: the move's line, a task's chip and the branch's move (`.hdrift`) shrink to `--hmin`, then go (`.hfold`: the
+  move's line, the count, the branch last); ··· stays on the title's line. A card's branch move is `.trow .drift`, alone
+  in its markup. `#prlist` (`prefs.prsOpen`) is rendered folded too (⌥⌘G and the harness read `#prlist .prrow`); open,
+  its foot's arrow folds it (2026-10-13; `#prFold`, keys left on `#prToggle`), the count's ▾ then ▴. → `header-prs-fit.mjs`, `header-prs.mjs`, the
   narrow step of `pr-turn.mjs`.
 * **A PR chip GitHub has answered for is solid** (`--prc`, its state's colour), one not known yet an outline. **A PR
-  at your move is said by name, not by its chip's look**: `data-turn` (`turnOf(pr)`: `you` · `them` · empty)
-  on `.cpr`, `.hpr`, `.prrow` and the tooltips (`turnTip`); the card's line (`moveHtml`, `.ymove`, at every size, not
-  on a ticked card — **a card counts nothing**, the others in its tooltip; under the pointer how long ago the move
-  came, `.mt` — `turn.at`, else `movedAt` —, 2026-10-14), the header's (`headMove`, `.hmove`), the
-  row's `.why`. A new tag slides in (`moveMoments`; `#shead` carries `data-sid`).
+  at your move is said by name, not by its chip's look**: `data-turn` (`turnOf(pr)`: `you` · `them` · empty) on
+  `.cpr`, `.hpr`, `.prrow` and the tooltips (`turnTip`); the card's line (`moveHtml`, `.ymove`, at every size, not
+  ticked — **a card counts nothing**; under the pointer the move's age, `.mt`: `turn.at`, else `movedAt`), the
+  header's (`headMove`, `.hmove`). A new tag slides in (`moveMoments`; `#shead` carries `data-sid`). **Each PR's
+  round** (2026-10-15; `roundOf`): `.prround` under its `#prlist` row (`trackHtml` → `fillTrack`, the round before,
+  Let go · Ask Claude · Undo), its `.why` hidden; on the card each PR in play marked (`pipsHtml`, not at same
+  height), `answeredHtml` for `ANSWERED_MS`, `#rpop` on hover, over the list. → `pr-rounds.mjs`.
 * **The card's PR chips end its top row, stacked** (`cardPrs` → `chipStack`, `.top .tprs`): the first four in the
-  chat's order with every one at your move; **the pointer fans them out**, and a fan wider than the row scrolls
-  (`fanWheel`, its own non-passive listener added on `pointerover`). CSS only — a right-to-left grid, `--d`, `--i`,
-  `--under`, `--span` —, the box `flex: 999 0 0` between `min-content` and `max-content`: the row's free room, never
-  the folder's name's. → `card-pr-stack.mjs`. **Before them, the faces** (`cardFaces`, `.top .faces`, up to
-  `CARD_FACES`, a pile spread under the pointer). The tests hand the fake gh `data:` faces, so nothing is fetched.
+  chat's order and every one at your move; **the pointer fans them out**, a fan wider than the row scrolling (`fanWheel`,
+  a non-passive listener added on `pointerover`). CSS only (a right-to-left grid, `--d`, `--i`, `--under`, `--span`),
+  the box `flex: 999 0 0` between `min-content` and `max-content`: the row's free room, not the folder's. → `card-pr-stack.mjs`. **Before them, the faces** (`cardFaces`, `.top .faces`, up to
+  `CARD_FACES`, spread under the pointer); the tests' fake gh hands `data:` faces.
 * **The people row** (`#people`, `renderPeople`, `peopleOf`): everyone in the PRs of the chats in view, behind
-  GitHub's mark, folded by default (`prefs.peopleCompact` → `#people.compact`; its words set after the draw, so a fold
-  keeps the nodes). A face clicked narrows the list to the chats with that person (`prefs.person`, `hasPerson` in
-  `renderSessionList`); the same face, or the person leaving the view, lets go. Drawn only when its markup changed
-  (`peopleDrawn`); `display: none` on the rail. → `people-row.mjs`.
+  GitHub's mark, folded by default (`prefs.peopleCompact` → `#people.compact`, its words set after the draw). A face
+  clicked narrows the list to that person's chats (`prefs.person`, `hasPerson`); the same face, or the person leaving
+  the view, lets go. Drawn only when its markup changed (`peopleDrawn`); none on the rail. → `people-row.mjs`.
 * **A card comes in three sizes** (`#cardsSize`, `prefs.cards`; compact the default): *large* — your last prompt and
   Claude's last reply —, *medium* the last word, *compact* neither. `cardHtml` always writes both `.snip`s (the older
   `.older`) and CSS hides by `#sessions[data-cards]`, so the slider re-renders nothing. *By lane*
@@ -797,10 +800,9 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   the branch first** (the folder itself, any worktree: never "already checked out"), else makes one **inside the repo,
   `<repo>/.claude/worktrees/<slug>`** (`makeWorktree`): a local branch as is, origin's `--track`, a fork's PR or *review
   only* `--detach` at its head (fetched into the object store alone), a `fresh` one `--no-track` from origin's default.
-  One making per repo and branch (`wtAsking`); a tree not ignored goes in the repo's `info/exclude`. **Nothing is
-  installed**: `GET /api/worktrees` says each tree's `modules` (`here` · `same` lockfile · `differ`), *Link
-  node_modules* is `POST /api/worktrees/modules` (a symlink to the main tree's), else `npm ci` typed into the zsh,
-  unrun. The trees made are the state file's `worktrees` (`worktreesMade`) and **only those are removed**, by
+  One making per repo and branch (`wtAsking`); a tree not ignored goes in `info/exclude`. **Nothing is installed**:
+  `GET /api/worktrees` says each tree's `modules` (`here` · `same` lockfile · `differ`); *Link node_modules* is `POST
+  /api/worktrees/modules` (a symlink to the main tree's), else `npm ci` typed into the zsh, unrun. The trees made are the state file's `worktrees` (`worktreesMade`) and **only those are removed**, by
   `sweepWorktrees` (every `WT_SWEEP_MS` on the poll): their PR merged or closed after it was seen open (`prState`) — a new branch's, the PR opened from it
   (`prOfBranch`: open, or opened since) or commits of its own (`ownCommits`) on origin's default (`landed`) —, nothing in them (`busyIn`), on the branch it was made for, clean whatever `status.showUntrackedFiles` says,
   no commit no remote has (`keepWorktree`) — `git worktree remove`, never `--force`. *Switch this folder…* types
@@ -808,9 +810,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   (`switchGuard`) finds no other chat or drawer in the tree (`treeOf`: `gitTopOf`, real; a nested worktree is its own; on it already is `headAt`'s), no chat
   mid-turn, nothing uncommitted, no merge or rebase, the branch out nowhere else — the menu's disabled row says why
   (`ctxRow`'s `off`). Opened in the editor picked (`openEditorAt`): Zed's window, or VS Code Web on a tab of the chat's
-  own (`state.paneWt`, beside `paneIde`'s; named `<repo> @ <branch>`, `ideLabels`). **Chat** (the row's, the
-  launcher's) is `chatOnPr`: the same tree, and `newChat` in it — the chat's folder is then its branch, so its
-  changes, editor and zsh are the branch's by construction. → `test/worktrees.test.mjs`, `editor-branch.mjs`,
+  (`state.paneWt`; `<repo> @ <branch>`, `ideLabels`). **Chat** (the row's, the launcher's) is `chatOnPr`: `newChat` in
+  that tree — its changes, editor and zsh the branch's by construction. → `test/worktrees.test.mjs`, `editor-branch.mjs`,
   `chat-worktree.mjs`.
 * **An MCP tool is named by its server and tool** (`toolName`: *Slack: search users*) in the rows, a run's summary,
   the card's live line and the tiles; the raw name is the row's tooltip.
