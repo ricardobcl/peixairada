@@ -49,11 +49,11 @@
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import {
-  accessSync, appendFileSync, chmodSync, closeSync, constants as fsc, existsSync, fstatSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, readlinkSync, readSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, watch, writeFileSync
+  accessSync, appendFileSync, chmodSync, closeSync, constants as fsc, cpSync, existsSync, fstatSync, lstatSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, readlinkSync, readSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, watch, writeFileSync
 } from 'node:fs';
 import { connect as netConnect } from 'node:net';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { cpus, freemem, homedir, hostname, networkInterfaces, totalmem, userInfo } from 'node:os';
+import { cpus, freemem, homedir, hostname, networkInterfaces, tmpdir, totalmem, userInfo } from 'node:os';
 import { StringDecoder } from 'node:string_decoder';
 import { execFile, execFileSync, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -2667,6 +2667,17 @@ const gitOut = async (cwd, args, opts = {}) => {
   return stdout;
 };
 const gitOr = (cwd, args, dflt = null) => gitOut(cwd, args).then(o => o.trim(), () => dflt);
+/** A copy of a checkout's index for the reads that must leave it alone (2026-10-14): `git diff` against the working tree
+ *  refreshes the stat data of files touched but not changed and writes the index back — index.lock taken under a chat's
+ *  own git add or commit, the changes tab reading at each turn's end. `opts` for gitOut; the copy keeps the index's
+ *  mtime (an entry as new is still checked by content) and goes with `drop`. No index yet, no copy: nothing to spare. */
+async function indexCopy(root) {
+  const idx = resolve(root, await gitOr(root, ['rev-parse', '--git-path', 'index'], '.git/index'));
+  if (!existsSync(idx)) return { opts: {}, drop() {} };
+  const dir = mkdtempSync(join(tmpdir(), 'peix-index-')), copy = join(dir, 'index');
+  try { cpSync(idx, copy, { preserveTimestamps: true }); } catch (e) { rmSync(dir, { recursive: true, force: true }); throw e; }
+  return { opts: { env: { ...process.env, GIT_INDEX_FILE: copy } }, drop: () => rmSync(dir, { recursive: true, force: true }) };
+}
 // A PR of the checkout's repo as GitHub shows it (2026-10-13): `refs/pull/<n>/head` against where it left its base,
 // read from origin into the object store alone — `--refmap=` and `--no-write-fetch-head` write no ref and no FETCH_HEAD
 // (a `git pull` mid-way in this checkout reads that), and nothing is checked out — so a chat on another branch of the
@@ -2766,31 +2777,34 @@ async function changesOf(s, scope = 'uncommitted', statOnly = false, ask = {}) {
     if (!paths.length) return { cwd, root, branch, scope, base, upstream: null, files: [], add: 0, del: 0, patch: '', truncated: false, note: 'nothing edited in its last turn' };
   }
   const only = paths.length ? ['--', ...paths] : [];
-  const [num, names, untracked] = await Promise.all([
-    gitOut(root, ['diff', '--numstat', '--no-renames', ...range, ...only]),
-    gitOut(root, ['diff', '--name-status', '--no-renames', ...range, ...only]),
-    pr ? '' : gitOut(root, ['ls-files', '--others', '--exclude-standard', ...only]),
-  ]);
-  const stat = parseNumstat(num), status = parseNameStatus(names);
-  const files = Object.entries(stat).map(([path, n]) => ({ path, status: status[path] || 'M', ...n }));
-  const bodies = new Map();
-  for (const path of untracked.split('\n').filter(Boolean).slice(0, 200)) {
-    let body = ''; try { const f = join(root, path); if (statSync(f).size < 1e6) body = readFileSync(f, 'utf8'); } catch {}
-    const binary = body.includes('\0');
-    bodies.set(path, binary ? '' : body);
-    files.push({ path, status: 'A', add: binary || !body ? 0 : body.replace(/\n$/, '').split('\n').length, del: 0, binary, untracked: true });
-  }
-  files.sort((a, b) => a.path.localeCompare(b.path));
-  const add = files.reduce((n, f) => n + f.add, 0), del = files.reduce((n, f) => n + f.del, 0);
-  if (statOnly) return { root, branch, add, del, files: files.length };
-  const upName = head && !pr && await gitOr(root, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']);
-  const counts = upName && (await gitOr(root, ['rev-list', '--left-right', '--count', '@{u}...HEAD'], '')).split(/\s+/).map(Number);
-  const upstream = upName ? { name: upName, behind: counts?.[0] || 0, ahead: counts?.[1] || 0 } : null;
-  let patch = await gitOut(root, ['diff', '--no-renames', '--no-color', '--no-ext-diff', '-U3', ...range, ...only]);
-  for (const [path, body] of bodies) if (body) patch += addedPatch(path, body);
-  let truncated; ({ patch, truncated } = capPatch(patch));
-  return { cwd, root, branch, base, scope, upstream, files, add, del, patch, truncated,
-    ...pr && { pr: { n: pr.n, url: pr.url, head: pr.head, headName: pr.headName, base: pr.base, baseOid: pr.baseOid, fetched: pr.fetched, source: 'git' } } };
+  const ix = pr ? null : await indexCopy(root);   // a PR is two commits: no index read
+  try {
+    const [num, names, untracked] = await Promise.all([
+      gitOut(root, ['diff', '--numstat', '--no-renames', ...range, ...only], ix?.opts),
+      gitOut(root, ['diff', '--name-status', '--no-renames', ...range, ...only], ix?.opts),
+      pr ? '' : gitOut(root, ['ls-files', '--others', '--exclude-standard', ...only], ix?.opts),
+    ]);
+    const stat = parseNumstat(num), status = parseNameStatus(names);
+    const files = Object.entries(stat).map(([path, n]) => ({ path, status: status[path] || 'M', ...n }));
+    const bodies = new Map();
+    for (const path of untracked.split('\n').filter(Boolean).slice(0, 200)) {
+      let body = ''; try { const f = join(root, path); if (statSync(f).size < 1e6) body = readFileSync(f, 'utf8'); } catch {}
+      const binary = body.includes('\0');
+      bodies.set(path, binary ? '' : body);
+      files.push({ path, status: 'A', add: binary || !body ? 0 : body.replace(/\n$/, '').split('\n').length, del: 0, binary, untracked: true });
+    }
+    files.sort((a, b) => a.path.localeCompare(b.path));
+    const add = files.reduce((n, f) => n + f.add, 0), del = files.reduce((n, f) => n + f.del, 0);
+    if (statOnly) return { root, branch, add, del, files: files.length };
+    const upName = head && !pr && await gitOr(root, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']);
+    const counts = upName && (await gitOr(root, ['rev-list', '--left-right', '--count', '@{u}...HEAD'], '')).split(/\s+/).map(Number);
+    const upstream = upName ? { name: upName, behind: counts?.[0] || 0, ahead: counts?.[1] || 0 } : null;
+    let patch = await gitOut(root, ['diff', '--no-renames', '--no-color', '--no-ext-diff', '-U3', ...range, ...only], ix?.opts);
+    for (const [path, body] of bodies) if (body) patch += addedPatch(path, body);
+    let truncated; ({ patch, truncated } = capPatch(patch));
+    return { cwd, root, branch, base, scope, upstream, files, add, del, patch, truncated,
+      ...pr && { pr: { n: pr.n, url: pr.url, head: pr.head, headName: pr.headName, base: pr.base, baseOid: pr.baseOid, fetched: pr.fetched, source: 'git' } } };
+  } finally { ix?.drop(); }
 }
 // The header's chip asks often (each open, each turn's end): the counts are kept a few seconds per folder.
 const changeStats = new Map();
@@ -3035,7 +3049,7 @@ async function switchGuard(s, branch) {
   if (live.length) why.push(`another chat works here — ${live.slice(0, 2).map(name).join(', ')}${live.length > 2 ? ` and ${live.length - 2} more` : ''}`);
   else if (recent.length) why.push(`another chat was here today — ${name(recent[0])}`);
   if ([...terms.values()].some(t => t.exited === null && t.sessionId !== s.id && treeOf(t.cwd) === tree)) why.push('another chat’s drawer is open here');
-  const dirty = (await gitOut(tree, ['status', '--porcelain', '--untracked-files=no'])).split('\n').filter(Boolean).length;
+  const dirty = (await gitOut(tree, ['--no-optional-locks', 'status', '--porcelain', '--untracked-files=no'])).split('\n').filter(Boolean).length;   // no index written back (2026-10-14)
   if (dirty) why.push(`${dirty} file${dirty === 1 ? ' is' : 's are'} not committed`);
   const gd = await gitOr(tree, ['rev-parse', '--absolute-git-dir']);
   if (gd && ['MERGE_HEAD', 'rebase-merge', 'rebase-apply', 'CHERRY_PICK_HEAD', 'REVERT_HEAD'].some(f => existsSync(join(gd, f)))) why.push('a merge or a rebase is under way');

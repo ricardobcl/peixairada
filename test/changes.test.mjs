@@ -5,8 +5,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, statSync, utimesSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { addedPatch, changesOf, fold, newSession, parseNameStatus, parseNumstat, parseWorktrees, patchStat, prRefs, setPrInfo, splitPatch, worktreesFor } from '../server.mjs';
@@ -68,6 +68,27 @@ test('a chat\'s changes in its three scopes, from a real repo', async () => {
   assert.match((await changesOf(nowhere)).error, /not there/);
   const plain = newSession(randomUUID(), null); plain.cwd = tmpDir('peix-nogit-');
   assert.match((await changesOf(plain)).error, /not in a git repository/);
+});
+
+test('reading a chat\'s changes leaves its index alone — files touched but not changed too (2026-10-14)', async () => {
+  const repo = tmpDir('peix-chgix-'), tree = join(tmpDir('peix-chgixw-'), 'w');
+  const g = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } }).toString().trim();
+  g(repo, 'init', '-q', '-b', 'main');
+  for (const f of ['a.js', 'b.js', 'c.js']) writeFileSync(join(repo, f), f + '\n');
+  g(repo, 'add', '.'); g(repo, 'commit', '-q', '-m', 'base'); g(repo, 'worktree', 'add', '-q', '-b', 'w', tree);
+  for (const dir of [repo, tree]) {
+    const later = new Date(Date.now() + 5000);
+    for (const f of ['a.js', 'b.js']) utimesSync(join(dir, f), later, later);   // touched, the same bytes: stat-dirty
+    writeFileSync(join(dir, 'c.js'), 'c.js\nchanged\n');
+    const index = resolve(dir, g(dir, 'rev-parse', '--git-path', 'index'));
+    const look = () => { const st = statSync(index); return [st.ino, st.mtimeMs, readFileSync(index).toString('hex')]; };
+    const before = look(), s = newSession(randomUUID(), null); s.cwd = dir;
+    const un = await changesOf(s, 'uncommitted');
+    assert.deepEqual(un.files.map(f => [f.path, f.add, f.del]), [['c.js', 1, 0]], 'only the file changed');
+    assert.deepEqual((await changesOf(s, 'uncommitted', true)).files, 1);
+    assert.deepEqual(look(), before, `${dir === repo ? 'the checkout' : 'a worktree'}'s index not written`);
+    assert.equal(existsSync(index + '.lock'), false);
+  }
 });
 
 test('a PR\'s changes from origin\'s refs, the checkout and its refs untouched (2026-10-13)', async () => {
