@@ -188,8 +188,8 @@ export default async function (ctx) {
 
     // ---- and it leads the list: a question costs you a second and unblocks a turn (2026-09-21) ----
     out.order = await ctx.evaluate(`[...document.querySelectorAll('#slist > *')].map(e => e.classList.contains('lane') ? 'lane:' + e.querySelector('.ln').textContent + ' ' + e.querySelector('b').textContent : e.classList.contains('gsep') ? 'line' : e.querySelector('.title')?.textContent)`);
-    ctx.assert.deepEqual(out.order.slice(0, 11), ['lane:Asking you 2', 'Blocked on a prompt', 'Waiting on you', 'lane:Clauding 4', 'Normal work', 'Three agents out', 'Both at once', 'A real background job', 'lane:Ready 3', 'line', 'Watching CI'],
-      'the questions first, then the clauding chats by your last touch, then the ready ones — each group under its lane\'s head and count (2026-10-09; one divider before), Ready\'s days labelled over them (2026-10-12)');
+    ctx.assert.deepEqual(out.order.slice(0, 10), ['lane:Asking you 2', 'Blocked on a prompt', 'Waiting on you', 'lane:Clauding 4', 'Normal work', 'Three agents out', 'Both at once', 'A real background job', 'lane:Ready 3', 'Watching CI'],
+      'the questions first, then the clauding chats by your last touch, then the ready ones — each group under its lane\'s head and count (2026-10-09; one divider before), today\'s cards unlabelled at the top of Ready (2026-10-14)');
     // the status bar's count of them opens them, one after another (2026-10-12)
     const titleOf = () => ctx.evaluate(`window.peix.session(window.peix.state().current)?.title || null`);
     await ctx.evaluate(`document.querySelector('#sbar .seg.ask').click()`); await ctx.waitFor(`!!window.peix.state().current`, { what: 'a chat open from the count' });
