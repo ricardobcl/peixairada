@@ -24,8 +24,10 @@ export default async function (ctx) {
   ctx.assert.equal(out.rest.segs[0], 'connected');
   ctx.assert.ok(!out.rest.segs.some(t => /\blive$|drawer|shell/.test(t)), `no live count, no drawers or shells (2026-10-11): ${JSON.stringify(out.rest.segs)}`);
   // the clock, far right (2026-10-11, later): the time on a 24-hour clock (2026-10-11, late night), the day in its tooltip
-  out.clock = await ctx.evaluate(`(c => ({ text: c?.textContent, now: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }), last: c === [...document.querySelectorAll('#sbRight > .seg')].pop(), gap: Math.round(document.querySelector('#sbar').getBoundingClientRect().right - c.getBoundingClientRect().right), tip: c?.title }))(document.querySelector('#sbar .clock'))`);
-  ctx.assert.ok(out.clock.text === out.clock.now && /^([01]\d|2[0-3]):\d\d$/.test(out.clock.text) && out.clock.last && out.clock.gap < 8 && out.clock.tip, `the clock at the far right: ${JSON.stringify(out.clock)}`);
+  // read just after a minute turned, the clock may not have ticked yet: this minute or the one before (2026-10-14)
+  out.clock = await ctx.evaluate(`(c => { const hm = ms => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }), text = c?.textContent, t = Date.now();
+    return { text, now: [hm(t), hm(t - 60_000)], last: c === [...document.querySelectorAll('#sbRight > .seg')].pop(), gap: Math.round(document.querySelector('#sbar').getBoundingClientRect().right - c.getBoundingClientRect().right), tip: c?.title }; })(document.querySelector('#sbar .clock'))`);
+  ctx.assert.ok(out.clock.now.includes(out.clock.text) && /^([01]\d|2[0-3]):\d\d$/.test(out.clock.text) && out.clock.last && out.clock.gap < 8 && out.clock.tip, `the clock at the far right: ${JSON.stringify(out.clock)}`);
   ctx.assert.deepEqual([out.rest.find, out.rest.faces], ['sbFind', 'sbPeople'], 'the search and the faces in the bar');
   ctx.assert.ok(await ctx.evaluate(`document.querySelector('#sbFind').getBoundingClientRect().left - document.querySelector('#sbar').getBoundingClientRect().left < 12`), 'far left');
   // the search works from there: the magnifier opens the box, a query narrows the list, Esc puts it away
