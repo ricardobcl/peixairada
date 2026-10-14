@@ -1,11 +1,14 @@
 // The day (2026-10-10): the home's timeline of every chat — its turns, the questions it waited on you for, its
 // monitors — from the transcript as it is folded. A chat that asked mid-turn worked the turn less the wait; a chat
-// clauding now, or asking now, has a span to now; the totals' median and longest wait are the questions'.
+// clauding now, or asking now, has a span to now; the totals' median and longest wait are the questions'. And what the
+// page asks of a throwaway server: the day (GET /api/today), and the overview's tails (GET /api/tails).
 import './env.mjs';   // first: server.mjs reads where its state lives as it is imported
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { dayOf, fold, newSession } from '../server.mjs';
+import { startTestServer, tmpDir } from '../lib/testserver.mjs';
+import { makeFixture, toolLines } from '../scripts/fixture.mjs';
 
 const T0 = Date.parse('2026-10-10T09:00:00Z'), at = min => new Date(T0 + min * 60_000).toISOString();
 const user = (min, text) => ({ type: 'user', timestamp: at(min), message: { role: 'user', content: text } });
@@ -57,4 +60,48 @@ test('a turn nothing closed lends its start to no other: a /compact you typed, a
   fold(k, user(61, 'where were we')); fold(k, reply(62));
   assert.deepEqual(k.day, [{ k: 'w', from: at(0), to: at(2) }, { k: 'w', from: at(61), to: at(62) }], 'the killed turn as far as it went, then the new one');
   assert.equal(k.entries.at(-1).worked, 60_000);
+});
+
+test('GET /api/today: the chats with a span since the page\'s midnight, their spans and the totals (2026-10-14)', { timeout: 60_000 }, async () => {
+  const now = Date.now(), fx = makeFixture(tmpDir('peix-fx-'), [
+    { cwd: '/Users/test/widgets', title: 'Today\'s chat', prompt: 'do it', reply: 'done', at: new Date(now - 10 * 60_000) },
+    { cwd: '/Users/test/widgets', title: 'An old chat', prompt: 'then', reply: 'then done', at: new Date(now - 3 * 86_400_000) },
+  ]);
+  const [today, old] = fx.chats, srv = await startTestServer({ claudeDir: fx.dir });
+  try {
+    const since = now - 3600_000, r = await srv.api(`api/today?since=${since}`);
+    assert.equal(r.status, 200);
+    assert.deepEqual(Object.keys(r.body).sort(), ['chats', 'now', 'since', 'totals']);
+    assert.equal(r.body.since, since);
+    assert.deepEqual(r.body.chats.map(c => c.id), [today.id], 'a chat with nothing since is not there');
+    const c = r.body.chats[0];
+    assert.deepEqual(Object.keys(c).sort(), ['cwd', 'id', 'last', 'project', 'questions', 'spans', 'status', 'title', 'waited', 'worked']);
+    assert.deepEqual(c.spans, [{ k: 'w', from: new Date(now - 11 * 60_000).toISOString(), to: new Date(now - 10 * 60_000).toISOString() }], 'its turn, prompt to reply');
+    assert.deepEqual([c.title, c.cwd, c.worked, c.waited, c.questions, c.last], ['Today\'s chat', '/Users/test/widgets', 60_000, 0, 0, now - 10 * 60_000]);
+    assert.deepEqual(r.body.totals, { worked: 60_000, waited: 0, questions: 0, median: null, longest: null });
+    assert.deepEqual((await srv.api(`api/today?since=${now - 4 * 86_400_000}`)).body.chats.map(c => c.id), [today.id, old.id], 'further back, the old one too, newest first');
+    assert.equal((await srv.api('api/today?since=soon')).body.since, new Date().setHours(0, 0, 0, 0), 'no number: this midnight');
+  } finally { await srv.stop(); }
+});
+
+test('GET /api/tails: the last things each chat asked about did, sixteen at most, and nothing for one the board has not (2026-10-14)', { timeout: 60_000 }, async () => {
+  const cwd = '/Users/test/widgets', calls = id => Array.from({ length: 10 }, (_, i) => toolLines({ id, cwd, name: 'Bash', input: { command: `echo ${i}` }, result: `${i}` })).flat();
+  const fx = makeFixture(tmpDir('peix-fx-'), [{ cwd, prompt: 'look', reply: 'looked' }, { cwd, prompt: 'run them', reply: 'ran them', lines: calls }]);
+  const [plain, busy] = fx.chats, srv = await startTestServer({ claudeDir: fx.dir });
+  try {
+    const r = await srv.api(`api/tails?ids=${plain.id},${busy.id},nobody`);
+    assert.equal(r.status, 200);
+    assert.deepEqual(Object.keys(r.body.tails), [plain.id, busy.id, 'nobody']);
+    assert.deepEqual(r.body.tails[plain.id].map(x => [x.role, x.kind, x.text]), [['user', 'text', 'look'], ['assistant', 'text', 'looked']]);
+    assert.ok(r.body.tails[plain.id].every(x => typeof x.ts === 'string'));
+    const tail = r.body.tails[busy.id];
+    assert.equal(tail.length, 16, 'the newest sixteen of twenty-two');
+    assert.deepEqual(tail.slice(-2).map(x => [x.role, x.kind, x.name ?? null, x.text]), [['assistant', 'tool_use', 'Bash', tail.at(-2).text], ['user', 'tool_result', null, '9']]);
+    assert.equal(tail.at(-1).toolUseId, tail.at(-2).toolUseId, 'a result names its call');
+    assert.match(tail.at(-2).text, /echo 9/);
+    assert.deepEqual(r.body.tails.nobody, []);
+    assert.deepEqual((await srv.api('api/tails')).body, { tails: {} });
+    const many = Array.from({ length: 45 }, (_, i) => `id-${i}`).join(',');
+    assert.equal(Object.keys((await srv.api(`api/tails?ids=${many}`)).body.tails).length, 40, 'forty at most');
+  } finally { await srv.stop(); }
 });
