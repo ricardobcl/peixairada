@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 import { tmpDir } from '../lib/testserver.mjs';
 
@@ -92,4 +92,47 @@ test('a state file that does not read is kept aside, not written over; a save is
     assert.equal(JSON.parse(readFileSync(join(dir, 'state.json'), 'utf8')).notifications, false, 'the next save is a whole file');
     assert.deepEqual(readdirSync(dir).filter(f => f.endsWith('.tmp')), [], 'and leaves nothing behind');
   } finally { await srv.stop(); }
+});
+
+// A server that waits behind another for the port reads the state file once it has the port, not at its start
+// (2026-10-14): one that waited (the agent behind the app's own, an npm start beside the agent) booted on the copy it had
+// read then and saved it over what the live one had kept meanwhile.
+test('a server that waited for the port reads the state as the one before it left it, and saves nothing over it', { timeout: 60_000 }, async () => {
+  const { startTestServer, waitFor, sleep } = await import('../lib/testserver.mjs');
+  const { spawn } = await import('node:child_process');
+  const { closeSync, openSync } = await import('node:fs');
+  const a = await startTestServer({ keep: true });
+  const blog = join(a.dir, 'b.log'), fd = openSync(blog, 'a');
+  let b; try { b = spawn(process.execPath, [join(import.meta.dirname, '..', 'server.mjs')], { env: a.env, stdio: ['ignore', fd, fd] }); } finally { closeSync(fd); }
+  const said = re => re.test(readFileSync(blog, 'utf8'));
+  const put = (path, body) => fetch(a.url + path, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json());
+  try {
+    await waitFor(() => said(/port \d+ is busy/), { what: 'the second server waiting on the port' });
+    assert.deepEqual((await put('api/pins', { pins: ['/acme/made-while-it-waited'] })).pins, ['/acme/made-while-it-waited']);
+    await a.stop();
+    await waitFor(() => said(/listening on/), { what: 'the second server taking the port' });
+    await waitFor(async () => { try { return (await fetch(a.url + 'api/projects')).ok; } catch { return false; } }, { what: 'the second server answering' });
+    assert.deepEqual((await (await fetch(a.url + 'api/sessions')).json()).pins, ['/acme/made-while-it-waited'], 'the pin made while it waited');
+    await put('api/notifications', { on: false });   // a save
+    const st = JSON.parse(readFileSync(a.env.STATE_FILE, 'utf8'));
+    assert.deepEqual([st.pinned, st.notifications], [['/acme/made-while-it-waited'], false], 'saved over nothing');
+  } finally {
+    if (b.exitCode === null) { b.kill('SIGTERM'); await waitFor(() => b.exitCode !== null || b.signalCode, { what: 'the second server ended' }).catch(() => b.kill('SIGKILL')); }
+    await sleep(100);
+  }
+});
+
+// Imported (the tests), the module reads no state file, moves none and writes none (2026-10-14): six test files import it
+// with no STATE_FILE of their own, and ran the legacy move and the read on this Mac's real files. A child with a home of
+// its own, so the files it would have touched are the test's.
+test('an import with no STATE_FILE neither moves the legacy state file nor reads one', { timeout: 30_000 }, async () => {
+  const { execFileSync } = await import('node:child_process');
+  const { existsSync } = await import('node:fs');
+  const home = tmpDir('peix-home-'), legacy = join(home, '.peixairada', 'state.json'), now = join(home, 'Library', 'Application Support', 'peixAIrada', 'state.json');
+  mkdirSync(dirname(legacy), { recursive: true }); writeFileSync(legacy, JSON.stringify({ done: { x: '2026-10-01T00:00:00.000Z' } }));
+  const env = { ...process.env, HOME: home, CLAUDE_DIR: join(home, 'claude'), USAGE: 'off', NOTIFY: 'off' };
+  for (const k of ['STATE_FILE', 'CONFIG_FILE', 'XDG_CONFIG_HOME', 'XDG_STATE_HOME']) delete env[k];
+  const out = execFileSync(process.execPath, ['--input-type=module', '-e', `const m = await import(${JSON.stringify(new URL('../server.mjs', import.meta.url).href)}); console.log(JSON.stringify(m.doneMarks)); process.exit(0);`], { env, encoding: 'utf8' });
+  assert.equal(out.trim().split('\n').at(-1), '{}', 'nothing read');
+  assert.ok(existsSync(legacy) && !existsSync(now), 'nothing moved');
 });

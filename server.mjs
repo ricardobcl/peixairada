@@ -177,52 +177,63 @@ let autoUpdate = false, updateLast = null, updateHeld = null, appBuild = null;
 // ever removed, and only by sweepWorktrees.
 let worktreesMade = {};
 
-// One-time move from the old ~/.peixairada location. Same filesystem, so the rename is atomic; the
-// empty directory is left behind rather than removing something we did not create.
-if (!process.env.STATE_FILE && !existsSync(STATE_FILE) && existsSync(LEGACY_STATE_FILE)) {
+// The state file is read once the port is ours (2026-10-14; at import before): a server that waited behind another for
+// the port — the agent behind the app's own, an `npm start` beside the agent — booted on the copy it had read at its
+// start and saved it over everything the live one had kept meanwhile. Imported (the tests), the module reads nothing and
+// saves nothing: six test files import it with no STATE_FILE of their own, and ran the legacy move and the read against
+// this Mac's real files.
+let stateRead = false;
+function loadState() {
+  // One-time move from the old ~/.peixairada location. Same filesystem, so the rename is atomic; the
+  // empty directory is left behind rather than removing something we did not create.
+  if (!process.env.STATE_FILE && !existsSync(STATE_FILE) && existsSync(LEGACY_STATE_FILE)) {
+    try {
+      mkdirSync(dirname(STATE_FILE), { recursive: true });
+      renameSync(LEGACY_STATE_FILE, STATE_FILE);
+      console.log(`[peixairada] moved state to ${STATE_FILE}`);
+    } catch (e) {
+      console.error('[peixairada] could not move state, still reading the old path:', e.message);
+    }
+  }
+  // A state file that does not parse is kept beside itself (2026-10-03): it was dropped in silence, the board started
+  // from nothing — ticks, projects, titles, pins — and the first save wrote over the evidence. STATE_FILE set (a test
+  // server) never reads the legacy one, or a fresh test state would start from the user's.
+  const stateFrom = existsSync(STATE_FILE) || process.env.STATE_FILE ? STATE_FILE : LEGACY_STATE_FILE;
   try {
-    mkdirSync(dirname(STATE_FILE), { recursive: true });
-    renameSync(LEGACY_STATE_FILE, STATE_FILE);
-    console.log(`[peixairada] moved state to ${STATE_FILE}`);
+    const st = JSON.parse(readFileSync(stateFrom, 'utf8'));
+    doneMarks = st.done || {};   // files from before 2026-09-19 also carry a `pins` key — ignored, gone on the next save
+    forGoodMarks = st.forGood && typeof st.forGood === 'object' ? st.forGood : {};
+    unlinked = st.unlinked && typeof st.unlinked === 'object' ? st.unlinked : {};
+    seen = st.seen && typeof st.seen === 'object' ? st.seen : {}; seenSince = typeof st.seenSince === 'string' ? st.seenSince : null;
+    driftAcks = st.driftAcks && typeof st.driftAcks === 'object' ? st.driftAcks : {};
+    projects = st.projects || {};
+    titles = st.titles || {};
+    pinned = Array.isArray(st.pinned) ? st.pinned.filter(k => typeof k === 'string') : [];
+    hiddenProjects = Array.isArray(st.hidden) ? st.hidden.filter(k => typeof k === 'string') : [];
+    envs = st.envs || {};
+    notificationsOn = st.notifications !== false;
+    setup = st.config;   // from before CONFIG_FILE — cleaned here, moved there by loadConfig
+    prTurns = st.prTurns && typeof st.prTurns === 'object' ? st.prTurns : {};
+    awakeOn = st.awake === true;
+    autoUpdate = st.selfUpdate === true;   // files from 2026-10-12 carry `autoUpdate`, the old default's true written on every save — ignored, gone on the next one
+    updateLast = st.updated && typeof st.updated === 'object' ? st.updated : null;
+    updateHeld = st.updateHeld && typeof st.updateHeld === 'object' ? st.updateHeld : null;
+    appBuild = st.appBuild && typeof st.appBuild === 'object' ? st.appBuild : null;
+    worktreesMade = st.worktrees && typeof st.worktrees === 'object' ? st.worktrees : {};
   } catch (e) {
-    console.error('[peixairada] could not move state, still reading the old path:', e.message);
+    if (e.code !== 'ENOENT') {
+      const bad = `${stateFrom}.bad-${Date.now()}`;
+      console.error(`[peixairada] the state file does not read (${e.message}) — kept as ${bad}, starting afresh`);
+      try { renameSync(stateFrom, bad); } catch {}
+    }
   }
-}
-// A state file that does not parse is kept beside itself (2026-10-03): it was dropped in silence, the board started
-// from nothing — ticks, projects, titles, pins — and the first save wrote over the evidence. STATE_FILE set (a test
-// server) never reads the legacy one, or a fresh test state would start from the user's.
-const stateFrom = existsSync(STATE_FILE) || process.env.STATE_FILE ? STATE_FILE : LEGACY_STATE_FILE;
-try {
-  const st = JSON.parse(readFileSync(stateFrom, 'utf8'));
-  doneMarks = st.done || {};   // files from before 2026-09-19 also carry a `pins` key — ignored, gone on the next save
-  forGoodMarks = st.forGood && typeof st.forGood === 'object' ? st.forGood : {};
-  unlinked = st.unlinked && typeof st.unlinked === 'object' ? st.unlinked : {};
-  seen = st.seen && typeof st.seen === 'object' ? st.seen : {}; seenSince = typeof st.seenSince === 'string' ? st.seenSince : null;
-  driftAcks = st.driftAcks && typeof st.driftAcks === 'object' ? st.driftAcks : {};
-  projects = st.projects || {};
-  titles = st.titles || {};
-  pinned = Array.isArray(st.pinned) ? st.pinned.filter(k => typeof k === 'string') : [];
-  hiddenProjects = Array.isArray(st.hidden) ? st.hidden.filter(k => typeof k === 'string') : [];
-  envs = st.envs || {};
-  notificationsOn = st.notifications !== false;
-  setup = st.config;   // from before CONFIG_FILE — cleaned and moved there below, once what does it is defined
-  prTurns = st.prTurns && typeof st.prTurns === 'object' ? st.prTurns : {};
-  awakeOn = st.awake === true;
-  autoUpdate = st.selfUpdate === true;   // files from 2026-10-12 carry `autoUpdate`, the old default's true written on every save — ignored, gone on the next one
-  updateLast = st.updated && typeof st.updated === 'object' ? st.updated : null;
-  updateHeld = st.updateHeld && typeof st.updateHeld === 'object' ? st.updateHeld : null;
-  appBuild = st.appBuild && typeof st.appBuild === 'object' ? st.appBuild : null;
-  worktreesMade = st.worktrees && typeof st.worktrees === 'object' ? st.worktrees : {};
-} catch (e) {
-  if (e.code !== 'ENOENT') {
-    const bad = `${stateFrom}.bad-${Date.now()}`;
-    console.error(`[peixairada] the state file does not read (${e.message}) — kept as ${bad}, starting afresh`);
-    try { renameSync(stateFrom, bad); } catch {}
-  }
+  setup = cleanSetup(setup).setup;   // the state file's, from before CONFIG_FILE — loadConfig moves it there
+  stateRead = true;
 }
 /** Written beside itself and renamed over (2026-10-03; in place before): a full disk or a kill mid-write left a
  *  truncated file, which the next boot read as no state at all. */
 function saveState() {
+  if (!stateRead) return;   // never over a file this process has not read: an import, a boot still waiting for the port
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
@@ -332,7 +343,6 @@ function saveConfig() {
   try { mkdirSync(dirname(CONFIG_FILE), { recursive: true }); writeFileSync(CONFIG_FILE, JSON.stringify(out, null, 2) + '\n'); configStamp = statSync(CONFIG_FILE).mtimeMs; return null; }
   catch (e) { console.error('[peixairada] could not save the setup', e.message); return e.message; }
 }
-setup = cleanSetup(setup).setup;   // the state file's, from before CONFIG_FILE — all an import of this module (a test) sees
 /** At boot, and only then: the setup from CONFIG_FILE — moved there from the state file the first time. Never on an
  *  import: test/agents.test.mjs imports this module with no STATE_FILE of its own, and ran the move against this
  *  Mac's real files the first time it was written at the top level. */
@@ -4308,6 +4318,7 @@ server.on('error', e => {
 });
 await new Promise(res => server.listen(PORT, HOST, res));
 console.log(`[peixairada] listening on http://${HOST}:${PORT}  (notify=${NOTIFY}, terminals in ${TERMS_DIR})`);
+loadState();   // now, not at import: what a server busy on the port saved while this one waited is in it
 const t0 = Date.now();
 if (!seenSince) { seenSince = new Date().toISOString(); saveState(); }   // a reply before the board kept what it showed is no new one (2026-10-12)
 loadConfig();
