@@ -1,6 +1,6 @@
 // A chat's own key pressed again from the tab it brings up fills the column with that half, and once more brings the two
 // back (2026-10-13): a ⌘0 that undoes itself. ⌥⌘C on claude, ⌥⌘T on a zsh, ⌥⌘G on a page, ⌥⌘E on the editor, ⌥⌘D on
-// the changes. The other half is kept behind, untouched — its terminal is not resized, its page not shown — and going
+// the changes — each pressed here. The other half is kept behind, untouched — its terminal is not resized, its page not shown — and going
 // to one of its tabs brings both back. With one half the key does what it always did. ⌥⌘R reloads the board, which
 // was ⌘R's (⌘R is the pane's page's now, in the app). The app's bridge is faked, as in pane-tabs.mjs, so pages are tabs.
 export const meta = { server: true, fake: true, fixture: 'auto' };
@@ -80,6 +80,23 @@ export default async function (ctx) {
   await ctx.key('KeyC');
   await ctx.waitFor(`window.peix.state().zoomed === null`, { what: 'back again' });
   ctx.assert.equal((await lastPane()).panes.length, 1, 'the page beside it again');
+
+  // ⌥⌘D and ⌥⌘E alike (2026-10-14: ⌥⌘D was bound to hotDiff, so again from the changes only showed them again): the
+  // first press opens the tab beside claude, the keys on it; again, its half fills the column; once more, both back.
+  // The editor's route is stubbed to a URL the board would serve, as in pane-tabs.mjs.
+  await ctx.evaluate(`window.__realFetch = window.fetch; window.fetch = (u, o) => String(u).endsWith('/api/vscode-web') ? Promise.resolve({ ok: true, status: 200, json: async () => ({ url: 'http://127.0.0.1:1/' }) }) : window.__realFetch(u, o)`);
+  for (const [code, on] of [['KeyD', `window.peix.state().tab === 'changes'`], ['KeyE', `(window.peix.state().tab || '').startsWith('ide:')`]]) {
+    await ctx.key(code);
+    await ctx.waitFor(`${on} && window.peix.state().focusG === 1`, { what: `${code}: its tab beside claude, the keys on it` });
+    ctx.assert.equal((await st()).zoomed, null, `${code}: the first press only opens it`);
+    await ctx.key(code);
+    await ctx.waitFor(`window.peix.state().zoomed === 1 && ${on}`, { what: `${code} again: its half filling the column`, timeout: 4000 });
+    ctx.assert.deepEqual(await st().then(x => [x.a, x.b]), [false, true], `${code}: claude's half behind it`);
+    await ctx.key(code);
+    await ctx.waitFor(`window.peix.state().zoomed === null && !document.querySelector('#grp').hidden && ${on}`, { what: `${code} once more: both halves back`, timeout: 4000 });
+  }
+  await ctx.key('KeyC');
+  await ctx.waitFor(`window.peix.state().focusG === 0 && window.peix.state().tab === 'chat'`, { what: 'the keys on claude again' });
 
   // with one half there is nothing to fill: the key does what it did
   await ctx.cmd('Digit0');
