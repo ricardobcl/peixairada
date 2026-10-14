@@ -3,7 +3,8 @@
 // the list is folded —; the box matches the way ⌥⌘K does (letters in order, no chat holding the query literally) and
 // the best match leads, *against* the board's order; the lines between states and days are left out while a query is
 // on and come back with Esc; the letters that matched are bolded on the card; ↑↓ walk the cards from the box and ⏎
-// opens the one marked, keeping the query; and the cog lists the key.
+// opens the one marked, keeping the query; and the cog lists the key. A PR's number finds the chat that has it, in the
+// box and in ⌥⌘K (2026-10-14), though no title or prompt holds it, and ⌥⌘K's row names the PR.
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeFixture } from '../fixture.mjs';
@@ -21,11 +22,14 @@ export default async function (ctx) {
   // `res` is literally inside *arrest*, and at the start of a word in *resolvers*: the newer chat is the arrest one, so
   // the board puts it first and only a ranking by the match puts the resolvers first.
   const now = Date.now();
-  const [arrest, resolvers] = makeFixture(ctx.fixture.dir, [
+  // The third chat's PR is in Claude's reply alone: no field the box searched before held its number.
+  const [arrest, resolvers, bump] = makeFixture(ctx.fixture.dir, [
     { cwd, title: 'Arrest the drift', prompt: 'why does the drawer drift?', reply: 'a resize read at another size', at: new Date(now - 60_000) },
     { cwd, title: 'Wallet resolvers', prompt: 'tidy the graphql layer', reply: 'done', at: new Date(now - 3600_000) },
+    { cwd, title: 'Bump the ledger', prompt: 'bump it and open the PR', reply: 'Opened https://github.com/acme/widgets/pull/650 for it.', at: new Date(now - 7200_000) },
   ]).chats;
-  await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 4`, { what: 'the two chats and the fixture\'s two' });
+  await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 5`, { what: 'the three chats and the fixture\'s two' });
+  await ctx.waitFor(`window.peix.session(${JSON.stringify(bump.id)})?.prs?.length === 1`, { what: 'the PR on its chat' });
   out.before = { cards: await titles(ctx), lines: await ctx.evaluate(`document.querySelectorAll('#slist .gsep.day').length`) };
   ctx.assert.ok(out.before.lines >= 1, 'with nothing typed the day lines are there');
   ctx.assert.ok(out.before.cards.indexOf('Arrest the drift') < out.before.cards.indexOf('Wallet resolvers'), 'the board puts the newer chat first');
@@ -87,6 +91,21 @@ export default async function (ctx) {
   ctx.assert.equal(out.esc.hidden, true);
   ctx.assert.deepEqual(out.esc.cards, out.before.cards, 'the board\'s order is back');
   ctx.assert.equal(out.esc.lines, out.before.lines, 'and its lines');
+
+  // a PR's number finds the chat that has it — no title, prompt or branch holds `650`
+  await ctx.key('KeyF'); await type(ctx, '650');
+  out.number = { cards: await titles(ctx), literal: await ctx.evaluate(`[${JSON.stringify(bump.id)}].map(id => window.peix.session(id)).filter(s => [s.title, s.lastPrompt, s.gitBranch].join(' ').includes('650')).length`) };
+  ctx.assert.equal(out.number.literal, 0, 'the number is in no field searched before');
+  ctx.assert.deepEqual(out.number.cards, ['Bump the ledger'], 'the box finds the chat on PR 650');
+  await keyIn(ctx, 'Escape');
+  // …and so does ⌥⌘K, its row saying which PR matched, the number bolded
+  await ctx.key('KeyK'); await ctx.fill('#pickq', '650');
+  out.picker = await ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#picklist .pkrow.chat')].map(r => ({ title: r.querySelector('.n').firstChild.textContent, ids: r.querySelector('.ids')?.textContent ?? null, bold: [...r.querySelectorAll('.ids b')].map(b => b.textContent) })))`).then(JSON.parse);
+  ctx.assert.deepEqual(out.picker, [{ title: 'Bump the ledger', ids: 'widgets#650', bold: ['650'] }], `⌥⌘K finds it and names the PR — ${JSON.stringify(out.picker)}`);
+  await ctx.shot('pr-number', { x: 0, y: 0, width: 1200, height: 400 });
+  await ctx.fill('#pickq', 'bump');
+  ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('#picklist .pkrow.chat .ids').length`), 0, 'a query the PR does not hold names none');
+  await ctx.evaluate(`document.querySelector('#pick').close()`);
 
   // the cog lists the key, beside K
   out.cog = await ctx.evaluate(`[...document.querySelectorAll('#settings .keys kbd')].map(k => k.textContent)`);

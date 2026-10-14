@@ -5,6 +5,23 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-14. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-14, on a branch — a PR's number finds its chat
+
+Ricardo: "hotkey K does not work very well. I type "[n]" and I was expecting to match the chat that has a PR [n]
+associated with, but it doesn't show".
+
+* **What was wrong**: ⌥⌘K (and the list's box, ⌥⌘F, the chats step of ⌥⌘N, the launcher's chats) searched the title,
+  project, branch, AI title, last prompt and environment (`chatFields`) — never the chat's PRs. A number was found only
+  while the prompt that named it was the last one; a PR from Claude's reply, a `pr-link` line or an earlier prompt was
+  not there to find. (The number here, `650`, is the stand-in the scenario uses.)
+* **A chat's PRs and tickets are a field of their own** (`chatIds`: each PR's label as its chip writes it,
+  `widgets#650`, and each ticket's key), after the branch — short and identifying, so it outweighs a prompt that
+  happens to hold the digits. `650`, `#650` and `widgets 650` all land on it.
+* **⌥⌘K's row says why it matched** (`idsHit`): the PRs and tickets that hold a word of the query as typed, beside
+  the title, the letters bolded, two at most and a count — the title alone does not say why `650` found *Bump the
+  ledger*. Only a word held as typed, not fuzzily, so a letter or two of a title query does not hang every label on
+  every row. The launcher leaves its chat rows be: its PRs section, just under, shows the PR itself.
+
 ## Decisions of 2026-10-14, on a branch — today unlabelled
 
 Ricardo: "the 'today' separator on chats column could be implicit. we save vertical space and less visual noise".

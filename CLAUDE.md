@@ -588,7 +588,8 @@ for `$HOME`'s home and the account's.
   pads down by the strip (`.npad`). On this Mac the strip is 32 pt and the housing x 771.5–956.5 of 1728.
   → `notch.mjs`.
 * **The pickers match fuzzily, and with something typed the best match leads**: `fuzzy(fields, q)` — each word
-  hunted *within one field* (`chatFields(s)`), letters in order, runs and word starts worth more, gaps costing, a
+  hunted *within one field* (`chatFields(s)`; a chat's PRs and tickets are one, `chatIds` — 2026-10-14 —, and
+  ⌥⌘K's row names those a word is in, `idsHit`), letters in order, runs and word starts worth more, gaps costing, a
   field's worth falling off down the list; `hunt()` ranks; an empty box keeps each list's order. `markHits()` bolds
   what landed (`fuzzMarks`). `pickRender` fills `pick.list` and a `row` per mode and clamps the selection once.
 * **The list's magnifier matches the same way** (⌥⌘F): `renderSessionList` scores by `fuzzy(chatFields(s), q)`
