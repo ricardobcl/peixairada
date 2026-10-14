@@ -9,6 +9,9 @@
 // (evaluate, waitFor, send, sleep, shot(name), key(code), openChat(id), reload(), screen(), type(text), fill(sel, text), settle()), the throwaway server when there
 // is one (api, terminals, restart, holders, logText), the fixture's chats, `args`, `log` and node:assert as `assert`.
 // Everything is cleaned up on exit — Chrome, the server, its terminals and holders, the temp dirs — unless --keep.
+// The clock reads noon (2026-10-14): this process, the server and the page run in the Etc/GMT±N zone where it is about
+// noon now, so a fixture minutes to hours old never straddles a midnight (a day line between its chats) nor a DST change;
+// `meta.tz` names another zone, or `false` keeps the Mac's — from the setup on: the module's top level ran at noon.
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -27,9 +30,13 @@ const shotsDir = opt('--shots'), keep = flag('--keep'), timeout = Number(opt('--
 const file = argv.find(a => !a.startsWith('--'));
 if (!(timeout > 0)) { console.error('--timeout wants a number of ms'); process.exit(2); }   // NaN was a bail 1 ms in
 if (!file) { console.error('usage: node scripts/scenario.mjs <scenario.mjs> [--server] [--fake] [--fixture auto|dir] [--url URL] [--hash id] [--shots dir] [--keep] [--timeout ms] [-- args]'); process.exit(2); }
+const macTz = process.env.TZ;
+{ const now = new Date(), o = Math.round(12 - now.getUTCHours() - now.getUTCMinutes() / 60); process.env.TZ = o ? `Etc/GMT${o > 0 ? '-' : '+'}${Math.abs(o)}` : 'Etc/GMT'; }   // Etc's signs are POSIX's: GMT-5 is five hours ahead
 const mod = await import(pathToFileURL(resolve(file)).href);
 const meta = { server: wantServer, fake, fixture: fixtureOpt, ...(mod.meta || {}) };
 if (fixtureOpt) meta.fixture = fixtureOpt; if (wantServer) meta.server = true; if (fake) meta.fake = true;
+if (meta.tz === false) { if (macTz === undefined) delete process.env.TZ; else process.env.TZ = macTz; } else if (meta.tz) process.env.TZ = meta.tz;
+const tz = meta.tz === false ? null : process.env.TZ;
 const name = basename(file, '.mjs');
 const shots = shotsDir || join(tmpdir(), 'peixairada-shots'); mkdirSync(shots, { recursive: true });
 const log = (...a) => console.error(`[${name}]`, ...a);
@@ -64,7 +71,7 @@ try {   // a server or a Chrome that does not come up: what did come up is ended
     boardUrl = server.url;
     log(`server ${server.url} (state ${server.dir}${meta.fake ? ', fake claude' : ''})`);
   }
-  cdp = await launchChrome({ dark: !!process.env.DARK, prefs: meta.prefs || {} });
+  cdp = await launchChrome({ dark: !!process.env.DARK, prefs: meta.prefs || {}, tz });
   cleanups.push(() => cdp.close());
   log(`chrome profile ${cdp.profile}`);   // what scripts/scenarios.mjs looks for leftovers by, with the server's state dir
   await openBoard(cdp, boardUrl, { hash: hash || null });
@@ -76,7 +83,7 @@ try {   // a server or a Chrome that does not come up: what did come up is ended
 // split — so `ROWS(0)` is what every scenario written before the split already asked for.
 const ROWS = g => `[...document.querySelectorAll('#termBody${g ? 'B' : ''} .xterm-rows > div')]`;
 const ctx = {
-  url: boardUrl, server, fixture, args: scenarioArgs, log, assert, sleep,
+  url: boardUrl, server, fixture, args: scenarioArgs, log, assert, sleep, tz,
   // The board moves (2026-09-27, night): a card that arrived or changed rank slides for up to 220 ms, a dialog rises
   // as it opens, and a rectangle read meanwhile is mid-move — the pointer then lands on the neighbour, a box measures
   // off-centre. Measure after this: it waits for every finite animation to end — the named slides (flip · enter ·

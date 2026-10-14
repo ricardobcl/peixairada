@@ -14,8 +14,11 @@ import { randomUUID } from 'node:crypto';
 
 export const slugOf = cwd => cwd.replace(/[/.]/g, '-');
 
+/** This time yesterday, by the calendar (2026-10-14): a day of 86 400 000 ms is an hour off across a DST change. */
+export const yesterday = () => { const d = new Date(); d.setDate(d.getDate() - 1); return d; };
+
 /** The JSONL lines of one chat: prompt, reply (end_turn), optionally an ai-title. `at` is the reply's time. */
-export function chatLines({ id, cwd, prompt, reply, title = null, at = new Date(Date.now() - 86_400_000), entrypoint = 'cli', model = 'fixture-1' }) {
+export function chatLines({ id, cwd, prompt, reply, title = null, at = yesterday(), entrypoint = 'cli', model = 'fixture-1' }) {
   const ts = ms => new Date(at.getTime() + ms).toISOString();
   const u = randomUUID(), a = randomUUID();
   const base = { isSidechain: false, userType: 'external', entrypoint, cwd, sessionId: id, version: 'fixture', gitBranch: 'main' };
@@ -80,7 +83,7 @@ export function makeFixture(dir, chats) {
  *  the newer by a whole second, not by however long the first file took to write: the two landed in the same
  *  millisecond now and then, and the board's order between them was then the readdir's (card-signals, 2026-09-27). */
 export function defaultFixture(dir, { cwdA = '/Users/test/repo-a', cwdB = '/Users/test/repo-b' } = {}) {
-  const at = new Date(Date.now() - 86_400_000);
+  const at = yesterday();
   return makeFixture(dir, [
     { cwd: cwdA, at, title: 'Two PRs mentioned', prompt: 'Look at https://github.com/acme/repo-a/pull/12 and its follow-up https://github.com/acme/repo-a/pull/13', reply: 'Both reviewed. #12 is the base, #13 (https://github.com/acme/repo-a/pull/13) depends on it.' },
     { cwd: cwdB, at: new Date(at.getTime() + 1000), title: 'Plain chat', prompt: 'what day is it?', reply: 'It is a fixture. No PRs here.' },
