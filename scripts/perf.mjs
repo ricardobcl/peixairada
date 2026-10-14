@@ -137,7 +137,7 @@ const doneMarks = JSON.stringify({ done: Object.fromEntries(fx.chats.filter((c, 
 
 // One server per tree, each over the same made-up ~/.claude with a state dir of its own; the other tree's from a
 // detached worktree of the ref, with this checkout's node_modules.
-const boards = [], worktrees = [];
+const boards = [], worktrees = [], harnesses = new Set();
 async function startBoard(root, label) {
   const dir = join(base, 's' + boards.length); mkdirSync(dir); writeFileSync(join(dir, 'state.json'), doneMarks);
   const { startTestServer } = await import(pathToFileURL(join(root, 'lib', 'testserver.mjs')).href);
@@ -146,12 +146,18 @@ async function startBoard(root, label) {
   const open = (await server.api('api/sessions')).body.sessions.find(s => s.status === 'stale' && !s.done)?.id;
   const b = { label, server, open }; boards.push(b); return b;
 }
-const stop = async () => {
+let stopping = null;
+const stop = () => stopping ||= (async () => {
   for (const s of sleeps) s.kill();
+  for (const h of harnesses) h.kill();
   for (const b of boards) await b.server.stop().catch(() => {});
   for (const wt of worktrees) spawnSync('git', ['-C', ROOT, 'worktree', 'remove', '--force', wt], { stdio: 'ignore' });
-};
-process.on('SIGINT', () => stop().then(() => process.exit(130)));
+})();
+// Every way out stops the boards and removes the --against worktree, as scripts/scenario.mjs does (2026-10-14: SIGINT
+// alone before — a Bash tool's timeout is a SIGTERM, a closed terminal a SIGHUP), and never waits on them over 15 s.
+const finish = async code => { setTimeout(() => process.exit(code), 15_000).unref(); await stop(); process.exit(code); };
+for (const [sig, code] of [['SIGINT', 130], ['SIGTERM', 143], ['SIGHUP', 129]]) process.on(sig, () => finish(code));
+for (const ev of ['uncaughtException', 'unhandledRejection']) process.on(ev, e => { console.error(`${ev}: ${e?.stack || e}`); finish(1); });
 
 // ---- one run: the page in WebKit, its phases, and the web process's CPU time sampled beside it ----
 const prefs = { barStats: ['cpu', 'mem'], lanesShut: [], cards: 'compact', cardsEven: true, skin: 'own-dark', look: 'dark' };
@@ -200,7 +206,8 @@ async function measure(b, tag) {
       if (!m) process.stderr.write(line + '\n'); else if (SAMPLE) startSample(m[1], +m[2]);
     }
   });
-  const exited = new Promise(res => harness.on('close', res));
+  harnesses.add(harness);
+  const exited = new Promise(res => harness.on('close', c => { harnesses.delete(harness); res(c); }));
   let running = true; exited.then(() => { running = false; });
   (async () => { while (running) { if (existsSync(pidFile)) { const t = cpuTime(+readFileSync(pidFile, 'utf8')); if (t !== null) samples.push([Date.now(), t]); } await sleep(250); } })();
   const code = await exited;
@@ -238,7 +245,7 @@ try {
       results.get(b).push(await measure(b, `r${r}-${boards.indexOf(b)}`));
     }
   }
-} catch (e) { console.error(e.message); await stop(); process.exit(1); }
+} catch (e) { console.error(e.message); await finish(1); }
 await stop();
 
 // ---- what came out: the medians, side by side; the ceilings and the rules held against this tree ----
