@@ -5,7 +5,7 @@
 // fixture, a `sleep` as the live process; the drawer's own /clear is drawer-clear.mjs's.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -32,7 +32,8 @@ test('/clear ticks the chat it left done; a move into another chat does not', { 
   // b: a chat a /clear began a day ago, worked in since — resumed into, it is no fresh clear
   write(b, [...clearLines(b, cwd, ago(86_400_000)), ...chatLines({ id: b, cwd, prompt: 'an older chat', reply: 'sure', at: ago(3_600_000) })]);
   const sleeper = spawn('sleep', ['60'], { stdio: 'ignore' });
-  const on = id => writeFileSync(join(dir, 'sessions', `${sleeper.pid}.json`), JSON.stringify({ pid: sleeper.pid, procStart: 'Fri Oct 10 09:00:00 2026', sessionId: id, cwd, startedAt: Date.now() - 3_600_000, version: 'fixture', kind: 'interactive', entrypoint: 'cli', status: 'idle', statusUpdatedAt: Date.now() }));
+  const procStart = execFileSync('/bin/ps', ['-o', 'lstart=', '-p', String(sleeper.pid)], { encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' } }).trim();   // as Claude Code writes it: a start that is not the pid's is a dead claude's (2026-10-14)
+  const on = id => writeFileSync(join(dir, 'sessions', `${sleeper.pid}.json`), JSON.stringify({ pid: sleeper.pid, procStart, sessionId: id, cwd, startedAt: Date.now() - 3_600_000, version: 'fixture', kind: 'interactive', entrypoint: 'cli', status: 'idle', statusUpdatedAt: Date.now() }));
   on(a);
   const srv = await startTestServer({ claudeDir: dir });
   const chat = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);

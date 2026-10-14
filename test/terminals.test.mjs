@@ -179,21 +179,24 @@ test('a zsh drawer: a holder running zsh -l -i in the chat folder, beside the cl
   } finally { await srv.stop(); }
 });
 
-test('two asks for a chat\'s drawer at once start one claude, and a pid the registry outlived is not signalled', { timeout: 40_000 }, async () => {
+test('two asks for a chat\'s drawer at once start one claude, and a pid the registry outlived is no claude, nor signalled', { timeout: 40_000 }, async () => {
   const { spawn } = await import('node:child_process');
   const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
   const chat = fx.chats[1], other = fx.chats[0];
-  // a "claude" whose registry file says it started in 2001: its pid is some other process now
+  // a "claude" whose registry file says it started in 2001, waiting on you: its pid is some other process now
   const stranger = spawn('sleep', ['60'], { stdio: 'ignore' });
-  writeFileSync(join(fx.dir, 'sessions', `${stranger.pid}.json`), JSON.stringify({ pid: stranger.pid, sessionId: other.id, cwd: other.cwd, startedAt: Date.now(), procStart: 'Mon Jan  1 00:00:00 2001', kind: 'interactive', entrypoint: 'cli', status: 'idle' }));
+  writeFileSync(join(fx.dir, 'sessions', `${stranger.pid}.json`), JSON.stringify({ pid: stranger.pid, sessionId: other.id, cwd: other.cwd, startedAt: Date.now(), procStart: 'Mon Jan  1 00:00:00 2001', kind: 'interactive', entrypoint: 'cli', status: 'waiting', waitingFor: 'input needed', statusUpdatedAt: Date.now() }));
   const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
   try {
     const ask = () => srv.post(`api/sessions/${chat.id}/terminal`, { cols: 90, rows: 24 });
     const [a, b] = await Promise.all([ask(), ask()]);
     assert.equal(a.body.terminal.id, b.body.terminal.id, 'the second ask got the first one\'s drawer');
     assert.equal((await srv.terminals()).filter(t => t.sessionId === chat.id && t.exited === null).length, 1, 'one holder');
+    // liveness by pid and start (2026-10-14): the pid answers, but it is not the process that wrote the file
+    const s = (await srv.api('api/sessions')).body.sessions.find(x => x.id === other.id);
+    assert.equal(s.alive, false, 'a pid handed on is no claude'); assert.notEqual(s.status, 'needs-input', 'and nothing asks you');
     const take = await srv.post(`api/sessions/${other.id}/takeover`, { cols: 90, rows: 24 });
-    assert.equal(take.status, 409); assert.match(take.body.error, /no longer that claude/);
+    assert.equal(take.status, 409); assert.match(take.body.error, /not live anywhere/);
     assert.ok(alive(stranger.pid), 'and the process that has its pid now was left alone');
   } finally { stranger.kill(); await srv.stop(); }
 });
@@ -292,4 +295,20 @@ test('a snapshot carries what the serialize addon leaves out: the mouse\'s SGR e
     core.coreMouseService.triggerMouseEvent({ col: 9, row: 4, x: 0, y: 0, button: 4, action: 0, ctrl: false, alt: false, shift: false }); d.dispose();
     assert.equal(sent, '\x1b[<64;10;5M', 'a wheel step reaches the TUI as it asked for it');
   } finally { sock?.end(); h.kill('SIGTERM'); await new Promise(r => h.exitCode !== null ? r() : h.on('exit', r)); }
+});
+
+test('a claude live elsewhere is known by its start as Claude Code writes it, whatever the server\'s locale, and taken over', { timeout: 40_000 }, async () => {
+  const { spawn, execFileSync } = await import('node:child_process');
+  const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
+  const chat = fx.chats[1];
+  const other = spawn('sleep', ['60'], { stdio: 'ignore' });   // stands in for a claude live in iTerm
+  const procStart = execFileSync('/bin/ps', ['-o', 'lstart=', '-p', String(other.pid)], { encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', TZ: 'UTC' } }).trim();   // as Claude Code writes it
+  writeFileSync(join(fx.dir, 'sessions', `${other.pid}.json`), JSON.stringify({ pid: other.pid, sessionId: chat.id, cwd: chat.cwd, startedAt: Date.now(), procStart, kind: 'interactive', entrypoint: 'cli', status: 'idle', statusUpdatedAt: Date.now() }));
+  const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { LANG: 'en_GB.UTF-8', LC_ALL: '', LC_TIME: 'en_GB.UTF-8' } });   // where ps writes "Wed 14 Oct" for "Wed Oct 14"
+  try {
+    await waitFor(async () => (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id)?.alive, { what: 'the chat live elsewhere' });
+    const take = await srv.post(`api/sessions/${chat.id}/takeover`, { cols: 90, rows: 24 });
+    assert.ok(take.status < 300, `take over: ${take.status} ${JSON.stringify(take.body)}`);
+    await waitFor(() => !alive(other.pid) || other.exitCode !== null || other.signalCode, { what: 'the other claude ended' });
+  } finally { try { other.kill(); } catch {} await srv.stop(); }
 });

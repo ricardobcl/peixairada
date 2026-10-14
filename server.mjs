@@ -2017,9 +2017,40 @@ function pidAlive(pid) {
   try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; }
 }
 
+/** When each of `pids` started, as Claude Code writes an entry's procStart: `ps -o lstart=` with LC_ALL=C and TZ=UTC
+ *  (2026-10-14 — in the server's own locale an en_GB Mac read "Wed 14 Oct" against "Wed Oct 14": Take over answered
+ *  409 and Done left the claude running). One ps for all of them; a pid gone is not in the map. */
+const PS_ENV = { ...process.env, LC_ALL: 'C', TZ: 'UTC' };
+const squash = t => String(t || '').replace(/\s+/g, ' ').trim();
+function procStarts(pids) {
+  let out = '';
+  try { out = execFileSync('/bin/ps', ['-o', 'pid=', '-o', 'lstart=', '-p', pids.join(',')], { encoding: 'utf8', env: PS_ENV, timeout: 5000 }); } catch (e) { out = String(e.stdout || ''); }   // a pid not there is ps's exit 1, the rest still printed
+  return new Map(out.split('\n').map(l => /^\s*(\d+)\s+(\S.*)$/.exec(l)).filter(Boolean).map(m => [Number(m[1]), squash(m[2])]));
+}
+/** Whether a registry entry's process still runs (2026-10-14): its pid answers and, when the entry says when it
+ *  started, that pid started then. A claude killed, crashed or gone with a reboot leaves its file, and in time its pid
+ *  is another process's: the chat read live — clauding for good, or asking you. A verdict per pid and start, asked of
+ *  ps once (`learnStarts`, every new entry of a registry read in one); an entry with no procStart (an older claude, the
+ *  fake) is taken at its pid. */
+const startsSeen = new Map();   // `${pid}:${procStart}` -> whether that pid is still the process that wrote it
+const startKey = l => `${l.pid}:${l.procStart}`;
+function learnStarts(ls) {
+  const want = ls.filter(l => l?.procStart && !startsSeen.has(startKey(l)) && pidAlive(l.pid));
+  if (!want.length) return;
+  const at = procStarts([...new Set(want.map(l => l.pid))]);
+  for (const l of want) startsSeen.set(startKey(l), at.get(Number(l.pid)) === squash(l.procStart));
+}
+function procAlive(l) {
+  if (!l) return false;
+  if (!pidAlive(l.pid)) { startsSeen.delete(startKey(l)); return false; }   // gone: a pid handed on later is asked about anew
+  if (!l.procStart) return true;
+  learnStarts([l]);
+  return startsSeen.get(startKey(l));
+}
+
 function applyLiveness(s) {
   const wasAlive = s.alive;
-  s.alive = !!(s.live && pidAlive(s.live.pid));
+  s.alive = procAlive(s.live);
   return wasAlive !== s.alive;
 }
 
@@ -2054,6 +2085,9 @@ function loadRegistry() {
     found.get(reg.sessionId).push({ pid: reg.pid, procStart: reg.procStart, name: reg.name, entrypoint: reg.entrypoint, kind: reg.kind, cwd: reg.cwd, startedAt: reg.startedAt, version: reg.version,
       status: reg.status, statusAt: reg.statusUpdatedAt, waitingFor: reg.status === 'waiting' ? reg.waitingFor : undefined });   // what it is doing, since when, and what it waits on (waitingOn)
   }
+  const entries = [...found.values()].flat(), keys = new Set(entries.map(startKey));
+  for (const k of startsSeen.keys()) if (!keys.has(k)) startsSeen.delete(k);   // a file gone takes its verdict with it
+  learnStarts(entries);   // one ps for every entry new to the board
   const ppids = [...terms.values()].some(t => t.task && !t.sessionId && t.exited === null) ? parentPids([...found.values()].flat().map(l => l.pid).filter(pidAlive)) : null;   // a launcher's claude is below the PTY's pid
   for (const [id, lives] of found) {
     let s = sessions.get(id);
@@ -2061,14 +2095,14 @@ function loadRegistry() {
     for (const l of lives) {
       linkTermToRegistry(l.pid, s, ppids);   // a new chat's terminal learns its session id here
       const was = held.get(`${l.pid}:${l.procStart}`);
-      if (was && was !== s && pidAlive(l.pid)) { clearedFrom.set(s.id, was.id); tickCleared(s); }
+      if (was && was !== s && procAlive(l)) { clearedFrom.set(s.id, was.id); tickCleared(s); }
     }
     // Several processes can hold one chat: VS Code mounts a chat twice on its own, or reopens one that was
     // taken over here. The chat's process is the drawer's own when there is one, else the newest live one
     // that is not VS Code's (the one you are driving), else the newest live one, else whatever is left (a
     // dead pid's file lingers until claude's housekeeping). The rest, live only, are its rivals.
     const mine = [...terms.values()].filter(t => t.sessionId === id && !t.shell && t.exited === null).map(t => t.claudePid || t.pid)[0];
-    const alive = lives.filter(l => pidAlive(l.pid)).sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
+    const alive = lives.filter(procAlive).sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
     const live = alive.find(l => l.pid === mine) || alive.find(l => l.entrypoint !== 'claude-vscode') || alive[0] || lives[0];
     const rivals = alive.filter(l => l !== live);
     const changed = JSON.stringify(live) !== JSON.stringify(s.live) || JSON.stringify(rivals) !== JSON.stringify(s.rivals);
@@ -3290,13 +3324,13 @@ const drawerEnv = () => Object.fromEntries(Object.entries(termEnv()).filter(([k]
 // re-reads the registry afterwards; this only ends the process.
 const TAKEOVER_WAIT_MS = 10_000;
 /** Whether `pid` is still the process the registry entry was written by: the entry's procStart is the process's start
- *  as `ps` gives it in UTC. A dead claude's file lingers until claude's housekeeping, and its pid can be handed to any
- *  other process of yours meanwhile — Done and Take over signalled it, an editor say (2026-10-03). An entry without a
- *  procStart (an older claude) is taken at its word. */
+ *  as `ps` gives it in UTC and the C locale (procStarts). A dead claude's file lingers until claude's housekeeping, and
+ *  its pid can be handed to any other process of yours meanwhile — Done and Take over signalled it, an editor say
+ *  (2026-10-03). Asked afresh, never the liveness's kept verdict: a signal follows. An entry without a procStart (an
+ *  older claude) is taken at its word. */
 function sameProcess({ pid, procStart }) {
   if (!procStart) return true;
-  try { return execFileSync('/bin/ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', env: { ...process.env, TZ: 'UTC' } }).replace(/\s+/g, ' ').trim() === procStart.replace(/\s+/g, ' ').trim(); }
-  catch { return false; }
+  return procStarts([pid]).get(Number(pid)) === squash(procStart);
 }
 function endClaude(entry) {
   const { pid } = entry;
