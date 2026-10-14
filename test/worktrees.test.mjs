@@ -168,3 +168,14 @@ test('a new branch\'s tree goes once the PR opened from it is merged, or its com
   assert.deepEqual(await sweepWorktrees(), [l.path], 'on origin’s main: removed');
   assert.ok(existsSync(wt('feat-c')), 'nothing done in it: it stays');
 });
+
+// A repo at CLAUDE_DIR (~/.claude kept in git) or at the home above it: a tree made inside it would be under ~/.claude,
+// which the board never writes (2026-10-14).
+test('no tree is made under CLAUDE_DIR', async () => {
+  const claude = process.env.CLAUDE_DIR;
+  execFileSync('git', ['clone', '-q', '--no-local', origin, claude], { stdio: 'pipe', env });
+  const r = await ensureWorktree({ cwd: claude, branch: 'feat/fresh', fresh: true });
+  assert.equal(r.code, 409); assert.match(r.error, /the board writes nothing there/);
+  assert.equal(existsSync(join(claude, '.claude')), false, 'nothing made');
+  assert.equal(git(claude, 'worktree', 'list').split('\n').length, 1);
+});

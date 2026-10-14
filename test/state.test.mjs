@@ -78,6 +78,31 @@ test('taking Peacock\'s colour out takes its activity-bar copy too, so the colou
   assert.equal(readPeacock(cwd).color, '#00ff00', 'an activity bar painted by hand stays');
 });
 
+// Never written: anything under ~/.claude (2026-10-14) — a chat run in it put the colour square on a folder whose
+// settings file would be ~/.claude/.vscode/settings.json; nor through a folder linked into it, or another spelling of it.
+test('the colour square writes nothing under CLAUDE_DIR, however the folder is spelt or reached', { timeout: 30_000 }, async () => {
+  const { existsSync, symlinkSync } = await import('node:fs');
+  const claude = process.env.CLAUDE_DIR;
+  mkdirSync(join(claude, 'projects'), { recursive: true });
+  symlinkSync(join(claude, 'projects'), join(tmp, 'linked'));
+  const caps = claude.replace(/claude$/, 'Claude');   // the same folder where the disk ignores case
+  for (const cwd of [claude, join(claude, 'projects'), join(tmp, 'linked'), ...existsSync(caps) ? [caps] : []]) {
+    assert.throws(() => writePeacock(cwd, '#123456'), /the board writes nothing under/, cwd);
+    assert.throws(() => writePeacock(cwd, null), /the board writes nothing under/, `${cwd}, the colour taken out`);
+  }
+  assert.ok(!existsSync(join(claude, '.vscode')) && !existsSync(join(claude, 'projects', '.vscode')), 'nothing made');
+  const { startTestServer } = await import('../lib/testserver.mjs');
+  const srv = await startTestServer({});
+  try {
+    const cd = srv.env.CLAUDE_DIR, put = (path, body) => srv.api(path, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    assert.equal((await put('api/pins', { pins: [cd] })).status, 200);   // a folder the board knows, as a chat run there would be
+    const r = await put('api/peacock', { cwd: cd, color: '#123456' });
+    assert.equal(r.status, 400, r.body.error);
+    assert.match(r.body.error, /writes nothing there/);
+    assert.ok(!existsSync(join(cd, '.vscode')), 'no .vscode made in it');
+  } finally { await srv.stop(); }
+});
+
 test('a state file that does not read is kept aside, not written over; a save is whole or nothing', { timeout: 30_000 }, async () => {
   const { startTestServer } = await import('../lib/testserver.mjs');
   const { readdirSync } = await import('node:fs');

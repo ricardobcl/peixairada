@@ -383,6 +383,18 @@ function peacockFile(cwd) {
   }
   return null;
 }
+/** Whether a path is CLAUDE_DIR or in it, as the disk has it (2026-10-14): the board writes nothing there, and a chat
+ *  run in ~/.claude, a folder linked into it or another spelling of it (the disk ignores case) is no way round that.
+ *  Judged by the nearest folder of it there is, real, against CLAUDE_DIR's device and inode. */
+function inClaudeDir(p) {
+  let top; try { top = statSync(CLAUDE_DIR); } catch { return false; }
+  let q = resolve(p);
+  for (;;) { try { q = realpathSync(q); break; } catch { if (dirname(q) === q) break; q = dirname(q); } }
+  for (;; q = dirname(q)) {
+    try { const st = statSync(q); if (st.dev === top.dev && st.ino === top.ino) return true; } catch {}
+    if (dirname(q) === q) return false;
+  }
+}
 /** The text with its comments blanked to spaces, every offset kept (newlines too): what the regexes below read, so a
  *  key or a brace inside a comment is neither read nor written into (2026-10-03: a `{` in a comment above the object
  *  took the inserted key, and a commented-out colour won over the live one). */
@@ -478,6 +490,7 @@ function pollPeacock() {
 // the board follows through the poll, forced right after the write.
 function writePeacock(cwd, color) {   // color '#rrggbb', or null to take the key out
   const file = peacockFile(cwd) || join(cwd, '.vscode', 'settings.json');
+  if (inClaudeDir(file)) throw new Error(`${tildePath(file)}: the board writes nothing under ${tildePath(CLAUDE_DIR)}`);
   let txt = '';
   try { txt = readFileSync(file, 'utf8'); } catch {}
   // Every match is made on the comment-blanked copy, and the edit made at its offsets in the text itself.
@@ -2781,6 +2794,7 @@ async function ensureWorktree({ cwd, pr = null, branch = null, detach = false, f
 }
 async function makeWorktree(w, { want, refs, branch, detach, fresh }) {
   const main = w.main, fail = (e, what) => ({ code: 500, error: `${what}: ${String(e.stderr || e.message).trim().split('\n')[0]}` });
+  if (inClaudeDir(join(main, '.claude', 'worktrees'))) return { code: 409, error: `a tree here would be under ${tildePath(CLAUDE_DIR)}, Claude Code's — the board writes nothing there` };   // a repo at ~/.claude or ~ (2026-10-14)
   let oid = null, start = [];
   if (detach) {
     oid = refs?.headOid;
@@ -2821,6 +2835,7 @@ async function makeWorktree(w, { want, refs, branch, detach, fresh }) {
 async function linkModules(path) {
   const w = await worktreesFor(path), t = w.worktrees?.find(x => x.path === w.here);
   if (!t || t.path === w.main) return { code: 409, error: 'not a worktree of a checkout' };
+  if (inClaudeDir(t.path)) return { code: 409, error: `${tildePath(t.path)} is under ${tildePath(CLAUDE_DIR)} — the board writes nothing there` };
   if (t.modules !== 'same') return { code: 409, error: t.modules === 'here' ? 'it has a node_modules already' : 'its lockfile is not the main tree\'s — npm ci there instead' };
   try { symlinkSync(join(w.main, 'node_modules'), join(t.path, 'node_modules')); } catch (e) { return { code: 500, error: e.message }; }
   if (worktreesMade[t.path]) { worktreesMade[t.path].linked = true; saveState(); }
@@ -4080,6 +4095,7 @@ const server = createServer(async (req, res) => {
       const cwd = typeof body.cwd === 'string' ? body.cwd.replace(/\/+$/, '') : '';
       if (!peacockCwds().has(cwd)) return json(res, 400, { error: 'not a folder the board knows' });
       if (cwd === HOME || cwd === '/') return json(res, 400, { error: 'the home folder has no Peacock colour — it is read from a folder below it' });   // peacockFile stops short of it
+      if (inClaudeDir(cwd)) return json(res, 400, { error: `${tildePath(CLAUDE_DIR)} is Claude Code's — the board writes nothing there` });   // a chat run in it (2026-10-14)
       const color = req.method === 'DELETE' ? null : String(body.color || '').toLowerCase();
       if (color && !/^#[0-9a-f]{6}$/.test(color)) return json(res, 400, { error: 'color must be #rrggbb' });
       try {
