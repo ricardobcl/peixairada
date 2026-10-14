@@ -1215,7 +1215,8 @@ function prPeople(pr, me) {
  */
 const newsIn = (was, now) => {
   const [h0, w0, a0] = was === 'them' ? ['', '', ''] : was.split('|'), [h1, w1, a1] = now.split('|');
-  return (!!h1 && h1 !== h0) || w1 > w0 || (!!a1 && a1 !== a0);
+  // `asked` after a time is that request, its event out of the last ten asked for — ten requests to others since (2026-10-14)
+  return (!!h1 && h1 !== h0) || w1 > w0 || (!!a1 && a1 !== a0 && !(a1 === 'asked' && a0));
 };
 /** A PR no chat mentions any more and whose turn has not moved in a month leaves the state file — it grew by every PR
  *  ever reviewed (2026-10-03). A month, not at once: the boot reads only a transcript's tail, and a PR named before it

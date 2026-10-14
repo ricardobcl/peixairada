@@ -258,3 +258,21 @@ test('prChecks: the head commit\'s rollup as the header says it (2026-10-09)', (
   assert.deepEqual(['SUCCESS', 'FAILURE', 'ERROR', 'PENDING', 'EXPECTED', null].map(s => prChecks(at(s))), ['pass', 'fail', 'fail', 'pending', 'pending', null]);
   assert.equal(prChecks({}), null, 'a PR asked without the field'); assert.equal(prChecks(null), null);
 });
+
+test('a request for your review whose event falls out of the timeline asked for is the same request, no move (2026-10-14)', () => {
+  const url = 'https://github.com/acme/r/pull/77', at = (h, m = 0) => Date.UTC(2026, 8, 28, h, m);
+  const s = newSession('asks', '/x/asks.jsonl');
+  s.lastActivity = new Date(at(9)).toISOString(); notePr(s, url, s.lastActivity, 'user'); sessions.set(s.id, s);
+  const still = { reviewRequests: { nodes: [{ requestedReviewer: { login: 'me' } }] } }, ask = (h, login = 'me') => ({ createdAt: t(h), requestedReviewer: { login } });
+  setPrInfo(url, 'open', 'PR', prTurn(pr({ ...still, asks: { nodes: [ask(14)] } }), 'me'), at(15));
+  doneMarks[s.id] = new Date(at(16)).toISOString();
+  assert.equal(isDone(s), true);
+  const others = Array.from({ length: 10 }, (_, i) => ask(17, `r${i}`));
+  setPrInfo(url, 'open', 'PR', prTurn(pr({ ...still, asks: { nodes: others } }), 'me'), at(18));
+  assert.deepEqual([isDone(s), s.prs[0].turn.you, s.prs[0].turn.movedAt], [true, true, new Date(at(14)).toISOString()], 'ten requests to others: still the 14:00 one, the tick holds');
+  assert.equal(waiveTurn(url), true);
+  setPrInfo(url, 'open', 'PR', prTurn(pr({ ...still, asks: { nodes: others } }), 'me'), at(19));
+  assert.equal(s.prs[0].turn.waived, true, 'a round let go stays let go');
+  setPrInfo(url, 'open', 'PR', prTurn(pr({ ...still, asks: { nodes: [...others.slice(1), ask(20)] } }), 'me'), at(20));
+  assert.deepEqual([isDone(s), s.prs[0].turn.waived, s.prs[0].turn.movedAt], [false, undefined, new Date(at(20)).toISOString()], 'asked again after: news');
+});
