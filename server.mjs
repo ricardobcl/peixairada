@@ -3827,7 +3827,10 @@ function sweepDrawers() {
 // loopback name: a DNS name pointed at 127.0.0.1 (rebinding) would be the same page from an origin that is not ours.
 // A `null` Origin — a file:// page, a sandboxed frame — is nobody's. And a browser sends no Origin at all on a GET it
 // makes for an <img>, a <script> or a navigation, so its Sec-Fetch-Site says whose page asked (2026-10-03): only this
-// server's own, or the user typing the address; another site may at most navigate to the board itself.
+// server's own, or the user typing the address; another site may at most navigate to the board itself — a tab, never
+// a frame of its own (2026-10-14: an <iframe> of the board was a navigation too, and the page sent no word against
+// being framed — clickjacking; it says frame-ancestors 'none' and X-Frame-Options DENY now, for a browser that sends no
+// Sec-Fetch-Dest).
 // Bound past loopback — every interface (HOST 0.0.0.0) or one address of the LAN's —, the Host is whichever address was
 // used: it has to be an address, a loopback name or this Mac's own name (2026-10-14: any name passed, so a name rebound
 // to the Mac's address was the board's own page again), the Origin must name that same host, and no Origin is only for
@@ -3841,7 +3844,8 @@ function foreignTo(bind, port) {
     const hostPort = String(req.headers.host || '').toLowerCase(), host = hostPort.replace(/:\d+$/, '');
     if (host && !loopback.has(host) && !(open && (IP_HOST.test(host) || ownName(host)))) return `host ${host}`;
     const site = req.headers['sec-fetch-site'];
-    if (site && site !== 'same-origin' && site !== 'none' && !(req.headers['sec-fetch-mode'] === 'navigate' && /^\/(index\.html)?(\?|#|$)/.test(req.url || ''))) return `site ${site}`;
+    const dest = req.headers['sec-fetch-dest'];   // a navigation of a tab, not of another site's frame (2026-10-14)
+    if (site && site !== 'same-origin' && site !== 'none' && !(req.headers['sec-fetch-mode'] === 'navigate' && (!dest || dest === 'document') && /^\/(index\.html)?(\?|#|$)/.test(req.url || ''))) return `site ${site}`;
     const origin = req.headers.origin;
     if (origin === undefined) return open && !thisMac(req.socket?.remoteAddress) ? `no origin, from ${req.socket?.remoteAddress}` : null;
     let o; try { o = new URL(origin); } catch { return `origin ${origin}`; }
@@ -3946,7 +3950,7 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
       const html = readFileSync(PAGE_FILE, 'utf8');
       const body = html.replace('<meta name="peix-page" content="">', `<meta name="peix-page" content="${pageStamp(html)}" data-since="${SINCE}">`);
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': "frame-ancestors 'none'", 'x-frame-options': 'DENY' });   // nobody's frame (foreignTo)
       return res.end(body);
     }
     let m;
