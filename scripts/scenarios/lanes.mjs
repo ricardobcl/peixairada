@@ -96,13 +96,11 @@ export default async function (ctx) {
 
   // what wants you counts what the lanes call asking (2026-10-14): a question on a chat ticked done is in the Done lane,
   // not Asking you — and no longer in the page's title, the Dock's badge or the menu bar's count either
-  const sleeper = spawn('sleep', ['120'], { stdio: 'ignore' });
+  // a claude the tick does not end at once — one that takes its SIGTERM slowly (the SIGKILL comes 5 s on): still alive
+  // and asking, but done. Not a registry start that is not the process's: that reads dead since 2026-10-14 (procAlive)
+  const sleeper = spawn('/bin/sh', ['-c', "trap '' TERM; exec sleep 120"], { stdio: 'ignore' });
   try {
     const [q] = makeFixture(ctx.fixture.dir, [{ cwd: one.cwd, title: 'a question', prompt: 'may I?', reply: 'asking', at: new Date(), live: { pid: sleeper.pid, status: 'waiting', waitingFor: 'permission prompt' } }]).chats;
-    // a claude the tick cannot end — its registry's start is not the process's (one in VS Code that comes back, one the
-    // signal has not reached yet): still alive and asking, but done
-    const reg = join(ctx.fixture.dir, 'sessions', `${sleeper.pid}.json`);
-    writeFileSync(reg, JSON.stringify({ ...JSON.parse(readFileSync(reg, 'utf8')), procStart: 'Thu Jan  1 00:00:00 1970' }));
     await ctx.waitFor(`window.peix.session('${q.id}')?.status === 'needs-input' && document.title.startsWith('(1) ')`, { what: 'the question, counted in the title' });
     await ctx.server.post(`api/sessions/${q.id}/done`, { done: true });
     await ctx.waitFor(`window.peix.session('${q.id}')?.done === true`, { what: 'the asking chat ticked done' });
