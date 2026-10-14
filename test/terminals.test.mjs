@@ -3,10 +3,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { connect, createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { alive, startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
+import { alive, sleep, startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { defaultFixture } from '../scripts/fixture.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -311,4 +312,31 @@ test('a claude live elsewhere is known by its start as Claude Code writes it, wh
     assert.ok(take.status < 300, `take over: ${take.status} ${JSON.stringify(take.body)}`);
     await waitFor(() => !alive(other.pid) || other.exitCode !== null || other.signalCode, { what: 'the other claude ended' });
   } finally { try { other.kill(); } catch {} await srv.stop(); }
+});
+
+// Node takes its 'error' listener off a socket it hands to 'upgrade'; until the boot is done nobody else has put one on
+// (2026-10-14): a holder that accepts and says nothing holds the boot HELLO_MS, and a page's WebSocket reset in that
+// window ended the server — an unheard ECONNRESET.
+test('a WebSocket reset while the boot waits on a mute holder ends that socket, not the server', { timeout: 40_000 }, async () => {
+  const dir = tmpDir(); mkdirSync(join(dir, 'terms'));
+  const mute = createServer(() => {}).listen(join(dir, 'terms', 't1-mute.sock'));   // accepts, never says hello
+  writeFileSync(join(dir, 'terms', 't1-mute.json'), JSON.stringify({ id: 't1-mute', cwd: '/tmp', bin: '/bin/true', args: [] }));
+  const log = () => { try { return readFileSync(join(dir, 'server.log'), 'utf8'); } catch { return ''; } };
+  const up = startTestServer({ dir, keep: true }).then(srv => ({ srv }), err => ({ err }));
+  try {
+    const port = Number((await waitFor(() => /listening on http:\/\/127\.0\.0\.1:(\d+)/.exec(log()), { what: 'the port taken' }))[1]);
+    const c = connect(port, '127.0.0.1', () => {
+      c.write(`GET /api/terminals/t1-mute/ws HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n`);
+      setTimeout(() => c.resetAndDestroy(), 300);   // while the boot still waits for the mute holder's hello
+    });
+    c.on('error', () => {});
+    const { srv, err } = await up;
+    assert.equal(err, undefined, `the server came up: ${err?.message.split('\n')[0]}`);
+    try {
+      await sleep(300);
+      assert.equal(srv.proc.exitCode, null, 'still running');
+      assert.equal((await srv.api('api/projects')).status, 200, 'and answering');
+      assert.doesNotMatch(log(), /Unhandled 'error'/);
+    } finally { await srv.stop(); }
+  } finally { mute.close(); }
 });

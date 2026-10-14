@@ -4283,7 +4283,10 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTermSocket(req, socket, head)).catch(e => { console.error('[peixairada] upgrade:', e); socket.destroy(); }); });
+// Node takes its own 'error' listener off a socket it hands to 'upgrade', and the WebSocket server adds one only in
+// handleUpgrade, after the boot: a reset in between — a holder that never says hello holds the boot HELLO_MS — was an
+// unheard 'error' that ended the server (2026-10-14). So one goes on first, and ends the socket alone.
+server.on('upgrade', (req, socket, head) => { socket.on('error', () => socket.destroy()); booted.promise.then(() => attachTermSocket(req, socket, head)).catch(e => { console.error('[peixairada] upgrade:', e); socket.destroy(); }); });
 
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
