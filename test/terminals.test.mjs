@@ -2,7 +2,7 @@
 // the socket's snapshot, a server restart with the holder alive under it, adoption, and the kill.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -216,5 +216,29 @@ test('/clear in a drawer takes the chat\'s zsh tabs along to the new chat (2026-
     assert.equal(zt.sessionId, moved, 'the zsh is the new chat\'s, as the drawer is');
     assert.equal(srv.holders().find(h => h.id === zt.id)?.sessionId, moved, 'and its holder was told, for an adoption after a restart');
     await waitFor(async () => (await chatOf(moved))?.shells?.some(x => x.id === zt.id) && !(await chatOf(chat.id))?.shells?.length, { what: 'the new chat carrying the zsh, the old one none' });
+  } finally { await srv.stop(); }
+});
+
+test('a drawer has none of the board\'s own configuration: PORT and every knob the server reads stay the server\'s (2026-10-14)', { timeout: 40_000 }, async () => {
+  // what server.mjs reads off its environment, as it reads it — a knob added there and set by the test server is caught here
+  const src = readFileSync(join(ROOT, 'server.mjs'), 'utf8');
+  const reads = new Set([...src.matchAll(/process\.env\.([A-Z][A-Z0-9_]*)/g)].map(m => m[1]));
+  for (const m of src.matchAll(/findBin\('([a-z]+)'/g)) reads.add(`${m[1].toUpperCase()}_BIN`);
+  const KEEP = new Set(['CLAUDE_DIR', 'PATH', 'XDG_CONFIG_HOME', 'XDG_STATE_HOME', 'VSCODE_CLI_DATA_DIR', 'XPC_SERVICE_NAME', 'JIRA_API_TOKEN']);
+  const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
+  const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { TERM_LINGER_MS: '300000' } });
+  try {
+    const z = await srv.post(`api/sessions/${fx.chats[1].id}/shell`, { cols: 100, rows: 30 });
+    assert.equal(z.status, 201, JSON.stringify(z.body));
+    const a = attach(srv.url, z.body.terminal.id, { until: ':peix-end-42', timeout: 20_000 });
+    await a.opened; await waitFor(() => /[%$#] *$/.test(a.text().replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')), { what: 'the shell\'s prompt' });
+    a.ws.send2({ t: 'in', d: "printf 'peix-env-%s:' $((40+2)); env | cut -d= -f1 | tr '\\n' ' '; printf ':peix-end-%s\\n' $((40+2))\r" });
+    const out = await a, hit = out.all.match(/peix-env-42:([^:]*):peix-end-42/);
+    assert.ok(hit, `the zsh listed its environment: ${JSON.stringify(out.all.slice(-300))}`);
+    const names = hit[1].split(/\s+/).filter(Boolean);
+    assert.ok(names.includes('CLAUDE_DIR') && names.includes('PEIXAIRADA_DRAWER') && names.includes('ZDOTDIR'), `what a drawer needs is there: ${names}`);
+    assert.ok(reads.has('PORT') && !names.includes('PORT'), 'no PORT: a dev server run there does not take the board\'s');
+    assert.deepEqual(names.filter(n => reads.has(n) && !KEEP.has(n)), [], 'nothing else the server reads either');
+    assert.ok(!names.includes('TERM_LINGER_MS'), 'nor the holder\'s own knob');
   } finally { await srv.stop(); }
 });

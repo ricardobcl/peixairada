@@ -2855,7 +2855,7 @@ async function ensureVsWeb(path = '') {
   if (!code) return { code: 501, error: 'code CLI not found — run "Shell Command: Install \'code\' command in PATH" in VS Code, or set CODE_BIN' };
   if (!vsweb) {
     try {
-      vsweb = spawn(code, ['serve-web', '--host', '127.0.0.1', '--port', String(VSWEB_PORT), '--without-connection-token', '--accept-server-license-terms'], { stdio: 'ignore', env: termEnv(), detached: true });
+      vsweb = spawn(code, ['serve-web', '--host', '127.0.0.1', '--port', String(VSWEB_PORT), '--without-connection-token', '--accept-server-license-terms'], { stdio: 'ignore', env: drawerEnv(), detached: true });
       vsweb.on('exit', c => { console.log(`[peixairada] code serve-web exited (${c})`); vsweb = null; });
       // a spawn that fails is an 'error' and no 'exit' — and an 'error' nobody listens for ends the server
       vsweb.on('error', e => { console.error(`[peixairada] code serve-web: ${e.message}`); vsweb = null; binCache.delete('code'); });
@@ -3263,6 +3263,18 @@ function termEnv() {
   // PEIXAIRADA_DRAWER tells a script that its shell is a drawer (launchd.sh and build.sh check it).
   return { ...env, TERM: 'xterm-256color', COLORTERM: 'truecolor', LANG: env.LANG || 'en_US.UTF-8', PEIXAIRADA_DRAWER: '1' };
 }
+// …and minus the board's own configuration, for what you work in — a drawer, a zsh tab, VS Code Web's terminals (2026-10-14):
+// PORT is the agent's 7331 or the app's, and a `rails s`, `next dev` or `process.env.PORT || 3000` run there took the
+// board's port; HOST, NOTIFY, STATE_FILE, the clocks and the <NAME>_BIN overrides are this server's alone. Every name it
+// reads off its environment goes but CLAUDE_DIR (see above), the ones that are the system's or a tool's too (PATH, XDG_*,
+// VSCODE_CLI_DATA_DIR, JIRA_API_TOKEN) and the holder's TERM_LINGER_MS, which the holder keeps from its PTY. A knob
+// added to the server joins the list (terminals.test reads the server for them).
+const BOARD_ENV = new Set(['PORT', 'HOST', 'NOTIFY', 'USAGE', 'STATE_FILE', 'CONFIG_FILE', 'TERMS_DIR', 'SCRATCH_DIR', 'ORG', 'ORG_DIR', 'APP_DIRS', 'BOARD_APP', 'AWAKE_ADMIN',
+  'MAX_ENTRIES', 'TAIL_BYTES', 'CHANGES_MAX', 'JIRA_TOKEN_FILE', 'JIRA_CONFIG_FILE', 'UPDATE_DIR', 'VSWEB_PORT', 'VSWEB_UPDATE_URL',
+  'AGENT_STALE_MS', 'CLONE_MS', 'CONFIG_POLL_MS', 'DRAWER_IDLE_MS', 'MONITOR_MS', 'PR_TTL_MS', 'PR_WATCH_MS', 'REGISTRY_POLL_MS', 'TASK_GRACE_MS', 'TASK_MAX_MS',
+  'TICKET_TTL_MS', 'UPDATE_EVERY_MS', 'UPDATE_QUIET_MS', 'VSWEB_FRESH_MS', 'WT_SWEEP_MS', 'UPDATE_RESTART_BIN', 'UPDATE_BUILD_BIN',
+  ...['claude', 'gh', 'git', 'task', 'code', 'npm', 'brew', 'caffeinate', 'pmset', 'lsregister', 'lsof', 'ps'].map(n => `${n.toUpperCase()}_BIN`)]);   // findBin's
+const drawerEnv = () => Object.fromEntries(Object.entries(termEnv()).filter(([k]) => !BOARD_ENV.has(k)));
 
 // Take a chat over from wherever it runs — iTerm, VS Code: end that claude, then resume the chat here.
 // Nothing respawns a CLI process, and VS Code's extension does not respawn its own either (see inVsCode),
@@ -3571,7 +3583,7 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
   try {
     writeFileSync(join(TERMS_DIR, `${id}.json`), JSON.stringify(spec));
     const log = openSync(logFile, 'a');
-    child = spawn(process.execPath, [HOLDER, TERMS_DIR, id], { cwd, env: termEnv(), detached: true, stdio: ['ignore', log, log] });
+    child = spawn(process.execPath, [HOLDER, TERMS_DIR, id], { cwd, env: drawerEnv(), detached: true, stdio: ['ignore', log, log] });
     child.unref(); closeSync(log);
   } catch (e) { return { code: 500, error: `could not start a terminal holder: ${e.message}` }; }
   const t = { ...spec, pid: null, holderPid: child.pid, exited: null, sock: null, clients: new Set(), snapQ: [], lastSnap: null };
