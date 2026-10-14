@@ -3303,8 +3303,15 @@ async function applyUpdate() {
     if (has('deps')) { step('deps'); await npmInstall(); }
     await preflight(parts, to, step);
   } catch (e) {
-    const undo = await gitIn(['reset', '--quiet', '--keep', from]).then(() => '', err => ` — and undoing it failed: ${errText(err)}`);
-    if (parts.includes('deps')) await npmInstall().catch(() => {});
+    // undone only while the branch is where the pull left it (2026-10-14): a commit made here meanwhile — a session's,
+    // during npm install and the pre-flight — is never reset away; the checkout is then left as it is, and said
+    const at = await gitIn(['rev-parse', 'HEAD']).catch(() => null), br = await gitIn(['symbolic-ref', '--quiet', '--short', 'HEAD']).catch(() => null);
+    const stays = '; the checkout stays as it is, and a restart runs it';
+    const undo = br !== upd.branch ? ` — not undone: the checkout is on another branch since${stays}`
+      : at === from ? ''   // undone already, by hand
+      : at !== to ? ` — not undone: ${at?.slice(0, 7) || 'its HEAD'} was committed on it since${stays}`
+      : await gitIn(['reset', '--quiet', '--keep', from]).then(() => '', err => ` — and undoing it failed: ${errText(err)}${stays}`);
+    if (!undo && parts.includes('deps')) await npmInstall().catch(() => {});
     updateHeld = { to, why: e.message, at: new Date().toISOString() }; saveState();
     Object.assign(upd, await readCheckout().catch(() => ({})));
     upd.why = 'held';

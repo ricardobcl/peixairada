@@ -157,6 +157,23 @@ test('a pull, asked for: fast-forwarded, what it touched started again, a commit
   } finally { await srv.stop(); }
 });
 
+test('a commit made here while the pre-flight runs is never undone with the commit that failed it (2026-10-14)', { timeout: 60_000 }, async () => {
+  const p = project();
+  // npm install, as the update runs it: meanwhile a session commits in the checkout (once — the undo would install again)
+  const npm = join(p.root, 'npm-commits');
+  writeFileSync(npm, `#!/bin/sh\n[ -f "${p.root}/committed" ] && exit 0\ntouch "${p.root}/committed"\necho mine > "${p.co}/mine.txt"\ngit -c commit.gpgsign=false -c core.hooksPath=/dev/null -c user.name=t -c user.email=t@t -C "${p.co}" add mine.txt\ngit -c commit.gpgsign=false -c core.hooksPath=/dev/null -c user.name=t -c user.email=t@t -C "${p.co}" commit -q -m 'mine, mid-update'\n`);
+  chmodSync(npm, 0o755);
+  const srv = await startTestServer({ env: { ...p.env, NPM_BIN: npm, UPDATE_QUIET_MS: '60000' } });
+  try {
+    const c = p.push({ 'package.json': '{ "name": "tiny", "version": "2.0.0" }\n', 'server.mjs': "throw new Error('boom: this server does not start');\n" }, 'a broken server and a package');
+    const st = (await srv.post('api/update', { apply: true })).body;
+    assert.match(st.error, new RegExp(`^${c.slice(0, 7)} was not kept: its server did not start .* — not undone: [0-9a-f]{7} was committed on it since; the checkout stays as it is`));
+    assert.equal(p.git(p.co, 'log', '-1', '--format=%s'), 'mine, mid-update', 'the commit made meanwhile is still the branch\'s');
+    assert.equal(p.git(p.co, 'rev-parse', 'HEAD~1'), c);
+    assert.deepEqual([st.why, st.held.to], ['held', c]);
+  } finally { await srv.stop(); }
+});
+
 test('an app behind its checkout with nothing to pull: said, rebuilt by update now — never over work in mac/, by the switch not twice for one source', { timeout: 60_000 }, async () => {
   const p = project();
   p.stamp('0'.repeat(40));   // built from an older mac/ — or before the stamp
