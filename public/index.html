@@ -9070,9 +9070,10 @@ const toolName = n => {
     if (locate && s0) { document.querySelector(`#slist > .card[data-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' }); locateCard(id); }
     if (s0) renderHead(s0);
     if (s0) syncTerm(s0);   // the tab it was on comes back at once — a page in the pane, its zsh; the drawer after the fetch (a chat not yet in the snapshot keeps what is attached until then)
-    awaitEntries(id);
+    const ask = awaitEntries(id);
     const seen = sessionSeen.get(id) || 0;
     const data = await api('GET', `/api/sessions/${id}/messages`).catch(() => null);
+    if (!newest(ask)) return;   // asked again since — this chat or another: that answer is the one
     if (!data) { if (state.current === id) { takeEntries(id, { entries: [] }); renderLog(); } return; }   // nothing to show but what the stream brings
     // another chat opened while this one's answer was on its way (⌥⌘↓ ⌥⌘↑ in quick succession): the answer is stale
     // (2026-10-02) — it drew this chat's transcript under the other's header
@@ -9151,8 +9152,12 @@ const toolName = n => {
   // its entries afresh), how many of them it has (`upto`), and what the stream said while a fetch was on its way
   // (`pending`). The fetch and the stream raced: an entry pushed before the answer landed went into the last chat's
   // array, one in both was drawn twice, one pushed while a long chat was read was lost.
-  const logOf = { id: null, gen: null, upto: null, waiting: false, pending: [] };
-  const awaitEntries = id => Object.assign(logOf, { id, waiting: true, pending: logOf.id === id ? logOf.pending : [] });
+  // Each ask is numbered and only the newest answer is taken (2026-10-14): two for one chat (a double click on its card,
+  // A → B → A) took both, and the second, read before what the stream had brought since the first, put the log back.
+  const logOf = { id: null, gen: null, upto: null, waiting: false, pending: [], ask: 0 };
+  /** A fetch on its way for chat `id`: the stream's entries wait for it. Its number, for `newest()`. */
+  const awaitEntries = id => Object.assign(logOf, { id, waiting: true, ask: logOf.ask + 1, pending: logOf.id === id ? logOf.pending : [] }).ask;
+  const newest = ask => logOf.ask === ask;
   /** A fetch's answer — its entries and its count (none: whatever comes is taken whole) — then what the stream said
    *  meanwhile. */
   function takeEntries(id, data) {
@@ -9178,9 +9183,9 @@ const toolName = n => {
   async function refetchCurrent() {
     const id = state.current; if (!id) return;
     const was = { entries: state.entries, gen: logOf.gen, upto: logOf.upto }, seen = sessionSeen.get(id) || 0;
-    awaitEntries(id);
+    const ask = awaitEntries(id);
     const data = await api('GET', `/api/sessions/${id}/messages`).catch(() => null);
-    if (state.current !== id) return;
+    if (state.current !== id || !newest(ask)) return;
     if (!data) { takeEntries(id, was); renderLog(); return; }   // what it had stands, and what came meanwhile is added
     const s = takeSession(id, data, seen); takeEntries(id, data); renderHead(s); renderLog(); syncTerm(s);
   }
