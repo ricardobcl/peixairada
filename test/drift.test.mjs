@@ -91,6 +91,17 @@ test('commands that never change the branch explain nothing — merge-base and m
   }
 });
 
+test('a git command of many options is read at once — each option one way (2026-10-14)', () => {
+  for (const opts of [' --a'.repeat(24), ' --a=b'.repeat(22), ' -c -c'.repeat(20), ' -C "x"'.repeat(24)]) {
+    const s = newSession(randomUUID(), null), t0 = performance.now();
+    fold(s, bash(5, 'feat/x', `git${opts} status`));
+    assert.ok(performance.now() - t0 < 100, `\`git${opts.slice(0, 12)}… status\` folded in ${(performance.now() - t0).toFixed(0)} ms`);
+    assert.equal(s.gitCmds.length, 0, 'and it is no move');
+  }
+  const s = chat(user(0, 'feat/x', 'go'), bash(5, 'feat/x', 'git -C /Users/test/widgets -c core.x=y --git-dir=/Users/test/widgets/.git --no-pager switch main'), say(60, 'main'));
+  assert.equal(moved(s), null, 'options before the subcommand still read');
+});
+
 test('the chat\'s own switch on the line after the one that first shows its branch: held, then no drift and nothing said', () => {
   const s = newSession(randomUUID(), null); s.alive = true;
   for (const l of [user(0, 'feat/a', 'start a branch for it'), bash(4, 'feat/a', 'git log --oneline -3'), result(5, 'feat/a', 'x')]) fold(s, l);

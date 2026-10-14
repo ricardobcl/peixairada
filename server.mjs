@@ -1459,7 +1459,9 @@ function jiraCliConfig() {
 // renamed, a bisect, `git stash branch` —, the subcommand whole and right after git and its own options: a commit
 // message that says "switch" is no move, nor is `merge-base`. Not stash, reset, pull or merge (2026-10-13): they never
 // change the branch, and within the hour of one an outside move went unsaid — `merge` matched merge-base and merge-tree.
-const GIT_MOVE_RE = /\bgit(?:\s+-[Cc]\s+(?:"[^"]*"|'[^']*'|\S+)|\s+--?[\w-]+(?:=\S+)?)*\s+(?:checkout|switch|rebase|worktree|bisect|branch\s+(?:-[mM]|--move)|stash\s+branch)(?![\w-])|\bgh\s+pr\s+checkout(?![\w-])/;
+// Each option one way only (2026-10-14): `--?[\w-]+` read `--a` as `-`+`-a` or `--`+`a`, and a command of thirty options
+// held the server's thread for seconds on every fold — no dash after the dashes, no quote or dash opening -C's bare value.
+const GIT_MOVE_RE = /\bgit(?:\s+-[Cc]\s+(?:"[^"]*"|'[^']*'|(?!["'-])\S+)|\s+--?(?!-)[\w-]+(?:=\S+)?)*\s+(?:checkout|switch|rebase|worktree|bisect|branch\s+(?:-[mM]|--move)|stash\s+branch)(?![\w-])|\bgh\s+pr\s+checkout(?![\w-])/;
 const DRIFT_WINDOW_MS = 60 * 60_000;
 // The chat's own move can come after the line that first shows its branch (2026-10-13): Claude Code writes a message's
 // lines once the call in it has run, so its thinking or text line carries the branch a `git switch -c` on a later line
