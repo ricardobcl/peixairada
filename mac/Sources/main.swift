@@ -123,54 +123,68 @@ final class ServerController {
       if ServerController.agentInstalled {
         logLine("server: nothing answering yet — the launchd agent is installed, so waiting for it")
         self.adopted = true
-        self.waitUntilUp(attempts: 80, done)
+        // …and given up on, the app's own server takes its place (2026-10-14): a plist there says nothing of an agent
+        // unloaded, crashing or run from a checkout that is gone, and the watchdog only ever waited on it again
+        self.waitUntilUp(attempts: 80, done) { [weak self] in
+          logLine("server: the launchd agent did not answer (launchctl print gui/\(getuid())/\(ServerController.agentLabel) says why) — starting the app's own")
+          self?.adopted = false
+          self?.spawn(done)
+        }
         return
       }
-      guard let node = ServerController.nodePath() else {
-        done("""
-        This app bundle has no node binary. Rebuild it with mac/build.sh (it copies the node that
-        ran npm install), point PEIXAIRADA_NODE at one, or start the server yourself with
-        `npm start` and reopen this app.
-        """)
-        return
-      }
-      guard let script = Bundle.main.url(forResource: "server", withExtension: "mjs") else {
-        done("server.mjs is missing from the app bundle.")
-        return
-      }
-      let p = Process()
-      p.executableURL = URL(fileURLWithPath: node)
-      p.arguments = [script.path]
-      p.currentDirectoryURL = script.deletingLastPathComponent()
-      var env = ProcessInfo.processInfo.environment
-      env["PORT"] = String(kPort)
-      env["NOTIFY"] = "off"               // this app posts the notifications instead
-      p.environment = env
-      // appended, like the app's own log: createFile on an existing path truncated it, and Restart Server from the
-      // menu wiped the run being looked into (2026-09-27)
-      if !FileManager.default.fileExists(atPath: kLog.path) {
-        FileManager.default.createFile(atPath: kLog.path, contents: nil)
-      }
-      if let h = appendHandle(kLog) { p.standardOutput = h; p.standardError = h }   // appended, beside the agent's lines
-      p.terminationHandler = { [weak self] ended in DispatchQueue.main.async { if self?.process === ended { self?.process = nil } } }
-      do { try p.run() } catch {
-        done("Could not start the server: \(error.localizedDescription)")
-        return
-      }
-      self.process = p
-      self.waitUntilUp(attempts: 40, done)
+      self.spawn(done)
     } }
   }
 
-  private func waitUntilUp(attempts: Int, _ done: @escaping (String?) -> Void) {
+  /// The bundled server, the app's own.
+  private func spawn(_ done: @escaping (String?) -> Void) {
+    guard let node = ServerController.nodePath() else {
+      done("""
+      This app bundle has no node binary. Rebuild it with mac/build.sh (it copies the node that
+      ran npm install), point PEIXAIRADA_NODE at one, or start the server yourself with
+      `npm start` and reopen this app.
+      """)
+      return
+    }
+    guard let script = Bundle.main.url(forResource: "server", withExtension: "mjs") else {
+      done("server.mjs is missing from the app bundle.")
+      return
+    }
+    let p = Process()
+    p.executableURL = URL(fileURLWithPath: node)
+    p.arguments = [script.path]
+    p.currentDirectoryURL = script.deletingLastPathComponent()
+    var env = ProcessInfo.processInfo.environment
+    env["PORT"] = String(kPort)
+    env["NOTIFY"] = "off"               // this app posts the notifications instead
+    p.environment = env
+    // appended, like the app's own log: createFile on an existing path truncated it, and Restart Server from the
+    // menu wiped the run being looked into (2026-09-27)
+    if !FileManager.default.fileExists(atPath: kLog.path) {
+      FileManager.default.createFile(atPath: kLog.path, contents: nil)
+    }
+    if let h = appendHandle(kLog) { p.standardOutput = h; p.standardError = h }   // appended, beside the agent's lines
+    p.terminationHandler = { [weak self] ended in DispatchQueue.main.async { if self?.process === ended { self?.process = nil } } }
+    do { try p.run() } catch {
+      done("Could not start the server: \(error.localizedDescription)")
+      return
+    }
+    self.process = p
+    self.waitUntilUp(attempts: 40, done)
+  }
+
+  /// `orElse`, when given, is what follows a wait given up on, in place of the failure.
+  private func waitUntilUp(attempts: Int, _ done: @escaping (String?) -> Void, orElse: (() -> Void)? = nil) {
     guard attempts > 0 else {
+      if let orElse { return DispatchQueue.main.async(execute: orElse) }
       // given up on, it is ended: it would otherwise come up later beside the next one, or hold the port for good
       DispatchQueue.main.async { self.stop(); done("The server did not come up. See \(kLog.path)") }
       return
     }
     ServerController.isServing { ok in
-      if ok { DispatchQueue.main.async { done(nil) } }
-      else { DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { self.waitUntilUp(attempts: attempts - 1, done) } }
+      // what answers is not ours when ours has ended (the port was taken — the agent came up meanwhile): adopted
+      if ok { DispatchQueue.main.async { if self.process?.isRunning != true { self.adopted = true }; done(nil) } }
+      else { DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { self.waitUntilUp(attempts: attempts - 1, done, orElse: orElse) } }
     }
   }
 
@@ -186,9 +200,14 @@ final class ServerController {
       let k = Process()
       k.executableURL = URL(fileURLWithPath: "/bin/launchctl")
       k.arguments = ["kickstart", "-k", "gui/\(getuid())/\(ServerController.agentLabel)"]
+      // its word read (2026-10-14): an agent launchd does not have — the plist there, never loaded or booted out — has
+      // nothing restarted, and the start that follows waits on it, then runs the app's own
+      k.terminationHandler = { [weak self] k in DispatchQueue.main.async {
+        guard let self else { return }
+        logLine("server: launchctl kickstart -k \(ServerController.agentLabel) — \(k.terminationStatus == 0 ? "restarted" : "failed, exit \(k.terminationStatus)")")
+        if k.terminationStatus == 0 { self.waitUntilDown(attempts: 20) { self.start(done) } } else { self.start(done) }
+      } }
       do { try k.run() } catch { return done("Could not restart the agent: \(error.localizedDescription)") }
-      logLine("server: launchctl kickstart -k \(ServerController.agentLabel)")
-      waitUntilDown(attempts: 20) { self.start(done) }
       return
     }
     stop()
