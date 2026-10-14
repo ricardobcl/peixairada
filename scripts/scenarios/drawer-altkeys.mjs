@@ -1,8 +1,9 @@
 // ⌥ as the compose key in the drawer (2026-09-20): macOptionIsMeta reads every ⌥ chord as Meta, which costs a
 // Portuguese keyboard its @ (⌥2) — the one character Claude Code asks for by name. Over a digit or a punctuation
 // key the drawer now sends what macOS composed (the browser already hands it over as `e.key`); over a letter ⌥
-// stays Meta, where readline's word moves want it. The fake claude drops a lone ESC and echoes the rest, so
-// `❯ @b` on its prompt is exactly the two behaviours side by side.
+// stays Meta, where readline's word moves want it — unless what it composed is an ASCII character and no letter, as
+// German's ⌥L @ (2026-10-14). The fake claude drops a lone ESC and echoes the rest, so `❯ @b@|` on its prompt is the
+// behaviours side by side.
 export const meta = { server: true, fake: true, fixture: 'auto' };
 export default async function (ctx) {
   const chat = ctx.fixture.chats[1];
@@ -18,6 +19,11 @@ export default async function (ctx) {
   await ctx.waitFor(promptHas('@'), { what: 'the composed @ in the drawer' });
   await alt('∫', 'KeyB', 66);                  // ⌥b — Meta, still: ESC b, and the fake shows the bare letter
   await ctx.waitFor(promptHas('@b'), { what: 'ESC b behind it' });
+  // over a letter too, when what macOS composed is ASCII and no letter (2026-10-14): German's @ is ⌥L, Swiss's ⌥G,
+  // French's | ⌥⇧L — all Meta before, so those keyboards had no @ or | in the drawer
+  await alt('@', 'KeyL', 76);                  // ⌥L on a German layout
+  await alt('|', 'KeyL', 76);                  // ⌥⇧L on a French one
+  await ctx.waitFor(promptHas('@b@|'), { what: 'the @ and the | composed over letters' });
 
   const line = await prompt();
   ctx.assert.ok(!line.includes('∫'), '⌥+letter was not composed into the prompt');

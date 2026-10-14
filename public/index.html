@@ -6581,6 +6581,9 @@ const toolName = n => {
     note(at(), 'Sent /focus — the session said nothing back; the drawer shows what happened', true);
   }
   const ALT_COMPOSES = /^(Digit\d|Minus|Equal|Bracket(Left|Right)|Backslash|Semicolon|Quote|Comma|Period|Slash|Backquote|Intl(Backslash|Ro|Yen))$/;
+  // …and over any key, what composed into printable ASCII that is no letter (2026-10-14): German's @ is ⌥L, Swiss's ⌥G,
+  // French's | ⌥⇧L; a U.S. ⌥b composes ∫, and stays Meta
+  const ALT_ASCII = /^[\x21-\x40\x5b-\x60\x7b-\x7e]$/;
   // The Mac's own line-editing keys (2026-10-09), sent as iTerm's Natural Text Editing preset sends them: xterm sends
   // nothing at all for ⌘ with an arrow (it leaves those to the browser) and a plain DEL for ⌘⌫, and ⌥⌦ goes out as a
   // modified Delete, which Claude Code reads as delete to the line's end. Control codes, so the zsh tab reads them as
@@ -6599,11 +6602,11 @@ const toolName = n => {
     // ⌥ is also how a non-US keyboard composes: @ is ⌥2 on a Portuguese layout, | is ⌥1. macOptionIsMeta turns
     // that off wholesale — xterm takes the third-level-shift path only when `isMac && !macOptionIsMeta` — so ⌥2
     // went out as ESC 2 and there was no way to type an @, of all characters. ⌥ over a letter stays Meta (readline's
-    // ⌥b / ⌥f / ⌥⌫, and the ⌥Enter newline); over a digit or a punctuation key we send what macOS already composed,
-    // which is `e.key` itself. A dead key ('Dead') is longer than one character and falls through to xterm as before.
+    // ⌥b / ⌥f / ⌥⌫, and the ⌥Enter newline) unless it composed ASCII and no letter (ALT_ASCII); over a digit or a
+    // punctuation key we send what macOS already composed, which is `e.key` itself. A dead key ('Dead') is longer than one character and falls through to xterm as before.
     tm.xt.attachCustomKeyEventHandler(e => {
       if (e.key === 'Enter' && e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); if (e.type === 'keydown') termSend(tm, '\x1b\r'); return false; }
-      if (prefs.optMeta !== false && ALT_COMPOSES.test(e.code) && e.altKey && !e.ctrlKey && !e.metaKey && e.key.length === 1) { e.preventDefault(); if (e.type === 'keydown') termSend(tm, e.key); return false; }
+      if (prefs.optMeta !== false && e.altKey && !e.ctrlKey && !e.metaKey && e.key.length === 1 && (ALT_COMPOSES.test(e.code) || ALT_ASCII.test(e.key))) { e.preventDefault(); if (e.type === 'keydown') termSend(tm, e.key); return false; }
       if (e.code === 'KeyK' && e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) { e.preventDefault(); if (e.type === 'keydown') clearTerm(tm); return false; }
       const edit = macEdit(e); if (edit) { e.preventDefault(); if (e.type === 'keydown') termSend(tm, edit); return false; }
       return !(e.type === 'keydown' && chatZoomKey(e));
