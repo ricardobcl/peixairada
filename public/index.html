@@ -4846,8 +4846,10 @@ const toolName = n => {
     dlg.close();
     if (x.kind === 'chat') return openSession(x.id, { locate: true });
     if (x.kind === 'project') return selectProject(x.p.key);
-    if (x.kind === 'pr') return openSession(x.pr.chatId, { locate: true }).then(() => showPr(x.pr.url));
-    if (x.kind === 'ticket') return openSession(x.t.chatId, { locate: true }).then(() => openExternal(x.t.url, { s: state.sessions.get(x.t.chatId) }));
+    // the page once its chat is in, and only if that chat is still the one open (2026-10-14): a late answer opened it
+    // over whichever chat was open by then
+    if (x.kind === 'pr') return openSession(x.pr.chatId, { locate: true }).then(() => { if (state.current === x.pr.chatId) showPr(x.pr.url); });
+    if (x.kind === 'ticket') return openSession(x.t.chatId, { locate: true }).then(() => { if (state.current === x.t.chatId) openExternal(x.t.url, { s: state.sessions.get(x.t.chatId) }); });
     if (x.kind === 'action') return x.fn();
   }
   // ?: the sheet of every key — Omarchy's Super+K — from anywhere but a box or a terminal, or the launcher's Keys. The
@@ -6167,7 +6169,7 @@ const toolName = n => {
     const s = state.sessions.get(card.dataset.id); if (!s) return null;
     return [
       { t: 'Open', fn: () => openSession(s.id) },
-      { t: 'Rename…', fn: async () => { await openSession(s.id); editTitle(state.sessions.get(s.id) || s); } },
+      { t: 'Rename…', fn: async () => { await openSession(s.id); if (state.current === s.id) editTitle(state.sessions.get(s.id) || s); } },   // the box in its own header, never another's (2026-10-14)
       ...(s.done ? [{ t: 'Back on the board (↩)', fn: () => tickDone(s.id, false, card) }]
         : canTick(s) ? [{ t: 'Done', fn: () => tickDone(s.id, true, card) }, ...(s.prs?.length && !s.forGood ? [{ t: 'Done for good — its PRs forgotten', fn: () => tickDone(s.id, true, card, null, true) }] : [])] : []),
       ...(movedPrs(s).length ? [{ t: 'Let this round of your move go', fn: () => letGo(s, card.querySelector('.state.prmove')) }] : []),
@@ -8789,7 +8791,7 @@ const toolName = n => {
     box.querySelector('#rivalEnd').onclick = async () => {
       rivalEnding = s.id; renderRival(s);
       try { await api('POST', `/api/sessions/${s.id}/takeover`, termSize()); rivalEnding = null; }   // the registry changes and the SSE update re-renders the head, bar included
-      catch (e) { rivalEnding = null; renderRival(state.sessions.get(s.id) || s); const b = $('#rivalEnd'); if (b) { b.textContent = 'failed'; b.title = e.message; box._drawn = null; } }
+      catch (e) { rivalEnding = null; if (state.current !== s.id) return; renderRival(state.sessions.get(s.id) || s); const b = $('#rivalEnd'); if (b) { b.textContent = 'failed'; b.title = e.message; box._drawn = null; } }   // the bar is the open chat's: a chat left keeps its failure to itself (2026-10-14)
     };
   }
 
