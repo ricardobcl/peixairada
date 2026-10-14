@@ -1962,6 +1962,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #settings .shd { margin: 14px 0 2px; font: 700 var(--fs-xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }   /* the Board pane's sections (2026-10-12) */
   #settings .spane > .shd:first-child { margin-top: 2px; }
   #settings .lightpick { display: flex; align-items: center; gap: 10px; } #settings .lightpick > span:first-of-type { flex: 1; }
+  #settings .lightpick[hidden] { display: none; }   /* the id beats .pop .opt[hidden] */
   #settings .sseg { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-3); background: var(--ctl); }
   #settings .sseg button { font: inherit; font-size: var(--fs-sm); border: 0; background: none; color: var(--muted); padding: 3px 10px; border-radius: var(--r-2); cursor: pointer; }
   #settings .zoompick .zhint { color: var(--muted); font-size: var(--fs-sm); }
@@ -2201,6 +2202,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <div class="opt edsay" id="edSay" role="status" hidden></div>
     <h4 class="shd">Look</h4>
     <div class="opt lightpick zoompick" title="Everything on the board, larger or smaller — the app's own zoom; in a browser, its View menu's"><span><b>text size</b> — the whole board</span><span class="sseg" role="radiogroup" aria-label="Text size" id="zoomPick"><button type="button" role="radio" data-z="0.9">90 %</button><button type="button" role="radio" data-z="1">100 %</button><button type="button" role="radio" data-z="1.1">110 %</button><button type="button" role="radio" data-z="1.25">125 %</button><button type="button" role="radio" data-z="1.4">140 %</button></span><span class="zhint">your browser's View → Zoom</span></div>
+    <div class="opt lightpick" id="fsRow" title="What ⌃⌘F and the green button do in the app. Up to the notch: the board's own full screen — the whole screen, the strip either side of the camera housing included, on the desktop the window is on. Its own Space: macOS's full screen — a desktop of its own that Mission Control shows and a swipe reaches, the menu bar and the title bar coming down together at the top edge — but macOS keeps it below the camera housing, the strip either side black. On a display without a housing the two take the same room" hidden><span><b>full screen</b> — ⌃⌘F and the green button</span><span class="sseg" role="radiogroup" aria-label="Full screen" id="fsPick"><button type="button" role="radio" data-fs="fill">up to the notch</button><button type="button" role="radio" data-fs="space">its own Space</button></span></div>
     <div class="opt" title="A theme is every surface at once — the cards, the transcript, the code, the drawer's colours, the header's black and the status bar — and its appearance, dark or light, whatever macOS shows"><span><b>theme</b> — <span id="themeNames"></span> <button class="btn" id="themeBtn">choose… ⌥⌘Y</button></span></div>
     <label class="opt sub" title="On, the board is dark while macOS is dark and light while it is light, each in the theme last picked for it; off, the theme picked is worn — and its appearance — whatever macOS shows"><input type="checkbox" id="skinFollow"><span><b>follow macOS</b> — a dark theme while macOS is dark, a light one while it is light; off, the theme picked whatever macOS shows</span></label>
     <div class="opt sbstats" id="sbarStats" title="What else the status bar at the window's foot says — asked of the Mac every 3 s"><span><b>status bar</b> — also</span><label><input type="checkbox" data-stat="cpu"> CPU</label><label><input type="checkbox" data-stat="mem"> memory</label><label><input type="checkbox" data-stat="claude"> Claude's memory</label></div>
@@ -2339,7 +2341,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 (() => {
   const $ = s => document.querySelector(s);
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -4888,7 +4890,7 @@ const toolName = n => {
     ['⌥⌘←→', 'Layout', 'the tab to the left / right', 'across both halves\' strips · drag a tab onto the other half to move it there', ['alt:ArrowLeft', 'alt:ArrowRight']],
     ['⌘0', 'Layout', 'only this half — the other closes', 'with one half, the chat\'s size back to normal', ['cmd:Digit0']],
     ['⌥⌘B', 'Layout', 'fold the list into a rail, and back', '', ['alt:KeyB']],
-    ['⌃⌘F', 'Layout', 'full screen up to the notch, in the app', 'the green button too (⌥-click zooms) · filled, the lights come down with the menu bar at the top edge, and green leaves · remembered across launches', []],
+    ['⌃⌘F', 'Layout', 'full screen, in the app — up to the notch, or in a Space of its own', 'Settings › Look picks which · the green button too · up to the notch, ⌥-click zooms, and the lights come down with the menu bar at the top edge · remembered across launches', []],
     ['⌥⌘R', 'Look', 'reload the board', 'the chat you are on kept · ⇧⌘R restarts the server too, in the app · ⌘R is the page\'s in the pane', ['alt:KeyR']],
     ['⌥⌘Y', 'Look', 'the theme', 'the board behind follows the arrows · ⏎ wears it · esc puts back what was worn', ['alt:KeyY']],
     ['⌘,', 'Look', 'the settings', 'the chat header\'s ··· has them too', ['cmd:Comma']],
@@ -5664,6 +5666,12 @@ const toolName = n => {
   const applyZoom = () => { if (inApp) post({ type: 'zoom', value: prefs.pageZoom || 1 }); zoomPick(); };
   for (const b of document.querySelectorAll('#zoomPick [data-z]')) b.addEventListener('click', () => { prefs.pageZoom = +b.dataset.z; savePrefs(); applyZoom(); });
   applyZoom();
+  // Which full screen ⌃⌘F is in the app (2026-10-14): the fill, up to the notch, or macOS's own in a Space of its own —
+  // the app keeps it too, for a launch that comes back full screen before this page has loaded.
+  const fsPick = () => { for (const b of document.querySelectorAll('#fsPick [data-fs]')) b.setAttribute('aria-checked', String((b.dataset.fs === 'space') === !!prefs.fullSpace)); $('#fsRow').hidden = !inApp; };
+  const applyFull = () => { if (inApp) post({ type: 'fullscreen', space: !!prefs.fullSpace }); fsPick(); };
+  for (const b of document.querySelectorAll('#fsPick [data-fs]')) b.addEventListener('click', () => { prefs.fullSpace = b.dataset.fs === 'space'; savePrefs(); applyFull(); });
+  applyFull();
   const GH_PR = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/;
   const IN_PANE = /^https?:\/\//;   // every web page (2026-09-26; GitHub and the board's own before, the rest went to the browser)
   /** `ide`: the folder's editor, which only the editor's own row opens (2026-10-03; any http://127.0.0.1:<port>/ was

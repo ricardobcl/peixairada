@@ -569,23 +569,23 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   workbench's close-editor takes it whatever is open. A script in the `ide:` views alone takes it first only when the
   editor part is `.content.empty` (one group, no editor) and the tab of the view it came from goes, by its key. An
   editor open, ⌘W is VS Code's; ⌥⌘W closes the tab any time. → `tab-keys.mjs`.
-* **⌃⌘F is the board's own full screen, up to the notch** (`toggleFill` in main.swift; `BoardWindow`, borderless, the
-  whole screen; remembered as `peixairada.fill`; `kill -USR1 $(pgrep -x peixAIrada)` toggles it too, the app log
-  saying `fill: on …`). The menu bar is auto-hidden beside a camera housing and hidden outright without one
-  (`placeFill`, `fillOptions()`), let out by the pointer held at the top 1 s (`menuOut`), and tucked again after a
-  change of desktop (`tuckMenuBar`); the Dock comes out only after 0.7 s at its edge (`dockTick`, 10 Hz while filled
-  and active). The system's full screen is not offered (`.fullScreenNone`; a plain click on the green button is the
-  fill, `windowShouldZoom`; `NSFullScreenMenuItemEverywhere` and Info.plist's
-  `NSPrefersDisplaySafeAreaCompatibilityMode` are false; ⌘W leaves the fill first). *Exit Full Screen* is View's item
-  and the fish's (`rebuildStatusMenu`), titles flipped in `validateMenuItem`. **The lights come down with the menu bar**
-  (2026-10-13; `lightsTick` in `dockTick`, asking `menuBarVisible()` only with the pointer in the menu bar's height):
+* **⌃⌘F is the full screen Settings › Look picks** (2026-10-14; `toggleFull`; `prefs.fullSpace` → `fullscreen` →
+  `spaceMode`; on at quit, `peixairada.fill`, back on at launch; `kill -USR1 $(pgrep -x peixAIrada)` too). **Its own
+  Space** is macOS's (`.fullScreenPrimary`), below the housing (AppKit holds the frame there, measured): the page
+  hears no fill, the fill's machinery stays off. **Up to the notch is the fill** (`toggleFill`; `BoardWindow`,
+  borderless, the whole screen; `fill: on …` in the app log): the menu bar auto-hidden beside a camera housing, hidden
+  without one (`placeFill`, `fillOptions()`), let out by the pointer held at the top 1 s (`menuOut`), tucked after a
+  change of desktop (`tuckMenuBar`); the Dock out after 0.7 s at its edge (`dockTick`, 10 Hz while filled and
+  active); `.fullScreenNone`, a plain click on the green button the fill (`windowShouldZoom`); ⌘W leaves it first.
+  `NSFullScreenMenuItemEverywhere` and `NSPrefersDisplaySafeAreaCompatibilityMode` are false. *Exit Full Screen* is
+  View's item and the fish's, titles flipped in `validateMenuItem`. → `full-screen-pick.mjs`. **The lights come down with the menu bar**
+  (2026-10-13; `lightsTick`, asking `menuBarVisible()` only with the pointer that high):
   a strip under it, over the pane too — the lights (`LightButton`: green `toggleFill`, yellow `lightsMinimize`, red
   quits) and the window's title —, the menu bar held out over it (`lightsOut` in `fillOptions`) until
   the pointer is below the strip; the app log says `fill: lights down|up`. **The fill gone on while the page heard it
-  off says so once** (`fillHint`, `#fillHint` under the head row, `FILL_HINT_MS`): never on a load that finds it on
-  (`state.fillHeard`), the first `FILL_HINTS` times in all (`prefs.fillHints`). → `fill-hint.mjs`. The page hears `peixFill(on, notch)` — the strip's height and the housing's x range in
-  CSS px, null without one — and **`layoutNotch()` lays the top row round it** (reads, then writes; with no housing
-  and nothing to undo it returns at once): the header's title left of the housing and its chips right
+  off says so once** (`fillHint`, under the head row): never on a load that finds it on (`state.fillHeard`), the
+  first `FILL_HINTS` times in all. → `fill-hint.mjs`. The page hears `peixFill(on, notch)` — the strip's height and the housing's x range in
+  CSS px, null without one — and **`layoutNotch()` lays the top row round it** (reads, then writes): the header's title left of the housing and its chips right
   (`.shead.hole`), unless the whole title does not fit (a `Range` measures it; `scrollWidth` never reads under the
   box's): `.tright`, the title jumps the housing — or, floating, runs under it (`.tunder`); what has not the room
   pads down by the strip (`.npad`). On this Mac the strip is 32 pt and the housing x 771.5–956.5 of 1728.

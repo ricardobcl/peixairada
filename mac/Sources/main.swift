@@ -16,7 +16,8 @@ import UserNotifications
 let kPort = ProcessInfo.processInfo.environment["PEIXAIRADA_PORT"].flatMap(Int.init) ?? 7331
 let kURL = URL(string: "http://127.0.0.1:\(kPort)/")!
 let kFrameName = "peixairada.main"   // the window's frame in the defaults — off while ⌃⌘F fills the screen
-let kFillKey = "peixairada.fill"      // whether the board filled the screen when it was last up: a relaunch comes back filled
+let kFillKey = "peixairada.fill"      // whether the board was full screen (either kind) when it was last up: a relaunch comes back so
+let kSpaceKey = "peixairada.space"    // ⌃⌘F is the system's full screen, in a Space of its own, not the fill (2026-10-14, Settings › Look)
 let kDarkKey = "peixairada.dark"      // the board's own appearance when it last said one (none: it follows macOS), for the next launch
 let kLog = FileManager.default.homeDirectoryForCurrentUser
   .appendingPathComponent("Library/Logs/peixairada.log")
@@ -271,6 +272,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   var badged: (waiting: [[String: String]], replies: [[String: String]], moves: [[String: String]], clauding: [[String: String]]) = ([], [], [], [])   // what the badge and the status menu last showed
   var useUN = false              // native notifications available?
   var fillSaved: (frame: NSRect, mask: NSWindow.StyleMask, opts: NSApplication.PresentationOptions)?   // set while ⌃⌘F fills the screen: what to come back to
+  // Which full screen ⌃⌘F is (2026-10-14): the fill, up to the camera housing on this desktop, or the system's, in a Space
+  // of its own below the housing — the page's Settings › Look says (`fullscreen`), remembered for the next launch
+  var spaceMode = UserDefaults.standard.bool(forKey: kSpaceKey)
+  var fillAfterSpace = false              // the switch went back to the fill while in a Space: the fill once the window is out of it
   var fillSignal: DispatchSourceSignal!   // SIGUSR1 is ⌃⌘F from a shell
   var fillTick: Timer?                    // while filled: watches the pointer for a hold at the Dock's edge (dockTick)
   var dockOut = false                     // the Dock let out after a hold at its edge, until the pointer is off it again
@@ -310,7 +315,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     // app short of an Accessibility grant, and the fill is checked from there (the app log says the frame it took).
     signal(SIGUSR1, SIG_IGN)
     fillSignal = DispatchSource.makeSignalSource(signal: SIGUSR1, queue: .main)
-    fillSignal.setEventHandler { [weak self] in self?.toggleFill(nil) }
+    fillSignal.setEventHandler { [weak self] in self?.toggleFull(nil) }
     fillSignal.resume()
 
     showMessage("Starting the server…")
@@ -435,13 +440,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     // autosave then wrote the centred one over it — every launch came up in the middle).
     if !window.setFrameUsingName(kFrameName) { window.center() }
     window.setFrameAutosaveName(kFrameName)
-    // No system full screen: it always sits below the camera housing. The green button zooms instead, and
-    // windowShouldZoom makes a plain click on it the fill (toggleFill) — ⌥-click and a title bar double-click zoom.
-    window.collectionBehavior = [.fullScreenNone]
+    // The system's full screen only when Settings › Look picks it (spaceMode): it always sits below the camera housing.
+    // Otherwise the green button zooms, and windowShouldZoom makes a plain click on it the fill (toggleFill) — ⌥-click
+    // and a title bar double-click zoom.
+    window.collectionBehavior = spaceMode ? [.fullScreenPrimary] : [.fullScreenNone]
     window.delegate = self
     window.makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)
-    if UserDefaults.standard.bool(forKey: kFillKey) { toggleFill(nil) }   // as it was left
+    if UserDefaults.standard.bool(forKey: kFillKey) {   // as it was left
+      if spaceMode { DispatchQueue.main.async { self.window.toggleFullScreen(nil) } } else { toggleFill(nil) }
+    }
     // Filling the screen, the frame is the screen's: it follows the window to another display (Mission Control can
     // drag it there) and through a change of resolution, and the page hears where the housing is now.
     for name in [NSWindow.didChangeScreenNotification, NSApplication.didChangeScreenParametersNotification] {
@@ -884,7 +892,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     // ⌃⌘F's way out where the menu bar shows it (2026-10-13): filled, the View menu is behind the auto-hidden menu bar, and
     // with the board in the back the fill still covers the screen — this menu is then the one control in reach. Its
     // title flips with View's (validateMenuItem).
-    let full = menu.addItem(withTitle: fillSaved != nil ? "Exit Full Screen" : "Enter Full Screen", action: #selector(toggleFill(_:)), keyEquivalent: "f")
+    let full = menu.addItem(withTitle: isFull ? "Exit Full Screen" : "Enter Full Screen", action: #selector(toggleFull(_:)), keyEquivalent: "f")
     full.keyEquivalentModifierMask = [.control, .command]; full.target = self
     menu.addItem(.separator())
     menu.addItem(withTitle: "Reload", action: #selector(reloadBoard(_:)), keyEquivalent: "").target = self
@@ -937,10 +945,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     board.keyEquivalentModifierMask = [.option, .command]; board.target = self
     view.addItem(withTitle: "Restart Server", action: #selector(restartServer(_:)), keyEquivalent: "R").target = self
     view.addItem(.separator())
-    // ⌃⌘F is the board's own full screen (toggleFill), not the system's. AppKit adds an Enter Full Screen of its own to
-    // any View menu without a toggleFullScreen: item — the default below keeps it out; the green button stays the system's.
+    // ⌃⌘F is whichever full screen Settings › Look picks (toggleFull): the board's own fill, or the system's. AppKit adds
+    // an Enter Full Screen of its own to any View menu without a toggleFullScreen: item — the default below keeps it out.
     UserDefaults.standard.register(defaults: ["NSFullScreenMenuItemEverywhere": false])
-    let full = view.addItem(withTitle: "Enter Full Screen", action: #selector(toggleFill(_:)), keyEquivalent: "f")
+    let full = view.addItem(withTitle: "Enter Full Screen", action: #selector(toggleFull(_:)), keyEquivalent: "f")
     full.keyEquivalentModifierMask = [.control, .command]; full.target = self
     viewItem.submenu = view
 
@@ -971,8 +979,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   func validateMenuItem(_ item: NSMenuItem) -> Bool {
     let paneUp = paneOverlay != nil && !paneOverlay.isHidden
     if item.action == #selector(reloadPage(_:)) { return paneUp && paneTarget.flatMap({ paneViews[$0] }) != nil }
-    if item.action == #selector(toggleFill(_:)) {
-      item.title = fillSaved != nil ? "Exit Full Screen" : "Enter Full Screen"
+    if item.action == #selector(toggleFull(_:)) {
+      item.title = isFull ? "Exit Full Screen" : "Enter Full Screen"
     }
     if item.action == #selector(findInPage(_:)) { return paneUp }
     if item.action == #selector(findNext(_:)) || item.action == #selector(findPrevious(_:)) {
@@ -981,10 +989,58 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     return true
   }
   @objc func openLog(_ sender: Any?) { NSWorkspace.shared.open(kLog) }
-  /// ⌃⌘F, and the green button: the board fills the screen, the strip beside the camera housing included (2026-09-27).
+  /// Full screen either way: the window in one now, the fill or the system's.
+  var isFull: Bool { fillSaved != nil || window?.styleMask.contains(.fullScreen) == true }   // the status menu is built before the window
+  /// ⌃⌘F — the View menu's item, the fish's, a shell's SIGUSR1 — is the full screen Settings › Look picks (2026-10-14):
+  /// the fill (toggleFill), or the system's, in a Space of its own (spaceMode). Out of whichever the window is in.
+  @objc func toggleFull(_ sender: Any?) {
+    if fillSaved != nil { toggleFill(nil) }
+    else if spaceMode || window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil) }
+    else { toggleFill(nil) }
+  }
+  /// Settings › Look's pick (2026-10-14), posted by the page on every load and change. Turned while full screen, the
+  /// window goes from one kind to the other: out of the fill and into a Space at once; out of a Space first — its
+  /// animation runs — and into the fill when it is over (windowDidExitFullScreen).
+  func setSpaceMode(_ on: Bool) {
+    UserDefaults.standard.set(on, forKey: kSpaceKey)
+    guard on != spaceMode else { return }
+    spaceMode = on
+    logLine("full screen: \(on ? "its own Space" : "the fill")")
+    if on {
+      window.collectionBehavior = [.fullScreenPrimary]
+      if fillSaved != nil { toggleFill(nil); DispatchQueue.main.async { self.window.toggleFullScreen(nil) } }
+    } else if window.styleMask.contains(.fullScreen) {
+      fillAfterSpace = true
+      window.toggleFullScreen(nil)
+    } else {
+      window.collectionBehavior = [.fullScreenNone]
+    }
+  }
+  // The system's full screen (2026-10-14): a Space of its own — Mission Control's tile, a swipe between desktops, the
+  // menu bar and the title bar coming down together at the top edge, the Dock as full screen has it — all the
+  // system's, so the fill's machinery (dockTick, the lights, the tuck) stays off. The window sits below the housing:
+  // measured, AppKit keeps a full-screen window's frame there whatever setFrame or willUseFullScreenContentSize ask, and
+  // the strip beside the housing is the menu bar's. So the page hears no fill and no housing (tellFill). The frame's
+  // autosave is off meanwhile, as in the fill; a close leaves the Space first (AppKit's own), a quit does not.
+  func windowWillEnterFullScreen(_ note: Notification) { window.setFrameAutosaveName("") }
+  func windowDidEnterFullScreen(_ note: Notification) {
+    UserDefaults.standard.set(true, forKey: kFillKey)
+    logLine("full screen: on, its own Space \(NSStringFromRect(window.frame))")
+    tellFill()
+  }
+  func windowDidFailToEnterFullScreen(_ window: NSWindow) { window.setFrameAutosaveName(kFrameName) }
+  func windowDidExitFullScreen(_ note: Notification) {
+    window.setFrameAutosaveName(kFrameName)
+    UserDefaults.standard.set(false, forKey: kFillKey)
+    logLine("full screen: off \(NSStringFromRect(window.frame))")
+    if !spaceMode { window.collectionBehavior = [.fullScreenNone] }
+    if fillAfterSpace { fillAfterSpace = false; toggleFill(nil) } else { tellFill() }
+  }
+  /// ⌃⌘F's fill (2026-09-27): the board fills the screen, the strip beside the camera housing included.
   /// Not the system's full screen: that one always sets the window below the housing and leaves the strip black — it is
   /// where the auto-hidden menu bar slides in — and nothing in AppKit changes it (its own doc for
-  /// NSScreen.safeAreaInsets says so), which is why the window does not offer it at all (fullScreenNone). This is what
+  /// NSScreen.safeAreaInsets says so; measured again 2026-10-14), which is why the window offers it only when Settings ›
+  /// Look picks it (toggleFull). This is what
   /// Apple calls a custom full-screen experience, kitty's and Sublime Text's: the window borderless, its frame the
   /// whole screen, the menu bar auto-hidden and the Dock hidden, out only after a hold at its edge (dockTick) — on a
   /// screen with a housing; without one the menu bar is hidden outright (placeFill). The page is told where the housing
@@ -1221,9 +1277,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
   /// The green button, and a title bar double-click, come here as a zoom (fullScreenNone above): a plain click on the
   /// button is the fill; ⌥-click, and the double-click, zoom as they always did. The button's click is the current
-  /// event — one click, ⌥ up; a zoom asked for any other way is left alone.
+  /// event — one click, ⌥ up; a zoom asked for any other way is left alone. With the system's full screen picked the
+  /// button is its own, and a zoom is a zoom.
   func windowShouldZoom(_ window: NSWindow, toFrame newFrame: NSRect) -> Bool {
-    guard let e = NSApp.currentEvent, e.type == .leftMouseUp || e.type == .leftMouseDown, e.clickCount <= 1,
+    guard !spaceMode, let e = NSApp.currentEvent, e.type == .leftMouseUp || e.type == .leftMouseDown, e.clickCount <= 1,
           !e.modifierFlags.contains(.option) else { return true }
     toggleFill(nil)
     return false
@@ -1346,6 +1403,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       setPane(chat: body["id"] as? String, keys: body["keys"] as? [String] ?? [], places: places, focus: body["focus"] as? String)
     case "nav":
       paneNav(body["what"] as? String ?? "")
+    case "fullscreen":   // Settings › Look's full screen (2026-10-14): the fill, or the system's in a Space of its own
+      setSpaceMode(body["space"] as? Bool ?? false)
     case "zoom":   // the settings' text size (2026-10-12)
       let z = CGFloat(min(2, max(0.5, body["value"] as? Double ?? 1)))
       if z != zoom { zoom = z; web.pageZoom = z; logLine("zoom: \(z)"); tellFill(); tellPane() }

@@ -5,6 +5,34 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-14. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-14, night — full screen in a Space of its own, as a pick beside the fill
+
+Ricardo: "can we make the pseudo-fullscreen that we have fell more like a truly mac fullscreen app? aka use a
+independent space when full-screened etc.?"
+
+* **Measured first: the system's full screen still will not reach beside the housing** (macOS 27.0.1, the 16"; a probe
+  window in scratch, red, titled with a full-size content view as the board's). `toggleFullScreen` puts the window at
+  1728 × 1084 of 1117 — below the 32 pt strip, at y 33 in the window server's list; `setFrame` to the screen's frame
+  with `constrainFrameRect` left alone, and `window(_:willUseFullScreenContentSize:)` answering the screen's size, both
+  leave it there; a window of the window server's own (layer 24, the menu bar's) holds the strip. Also seen: a WKWebView
+  in it fills the window (the title bar's inset gone), a close leaves the Space first, a quit does not.
+* **Not tried, on purpose**: a Space made by hand (CGS/SkyLight's private calls — no tile in Mission Control, no swipe;
+  yabai needs SIP off for it) and a helper window in full screen with the board joining its Space as an auxiliary —
+  the system's black strip over it all the same, and a Space named after a window nobody sees.
+* **So it is a pick, Settings › Look › full screen** (`#fsRow`, in the app only): *up to the notch* — the fill, as it
+  was, the default — or *its own Space* — macOS's (`prefs.fullSpace`, posted as `fullscreen` on every load and change;
+  the app keeps it as `peixairada.space` for a launch that comes back full screen before the page loads). With a Space,
+  ⌃⌘F, View's and the fish's item, a shell's SIGUSR1 and the green button are `toggleFullScreen` (`toggleFull`,
+  `.fullScreenPrimary`): the menu bar and the real title bar come down together at the top edge, the Dock is macOS's
+  full-screen one, Mission Control has its tile, a swipe reaches it. The fill's own machinery —
+  `dockTick`, the lights, the tuck, `fillHint` — stays off; the page hears no fill and no housing (`tellFill`), so its
+  top row is a window's. Turned while full screen, the window goes from one to the other (`setSpaceMode`; out of a
+  Space only once its animation is over, `fillAfterSpace`). On a display without a housing the two take the same room;
+  on the 16" the Space costs the strip, 32 pt. `full-screen-pick.mjs` checks the page's side; the app's is by hand.
+* **To try in the app**: the title bar coming down at the top edge should cover the head row, not push the page down
+  (a reveal could not be driven from the probe — a warped pointer moves no menu bar); with "Displays have separate
+  Spaces" off, as on this Mac, a Space-full window blanks any other display, which is macOS's.
+
 ## Decisions of 2026-10-14, evening — a review of the whole board, and the harness tightened
 
 Ricardo: "do a thorough analysis of the code, bugs and improve harness/tests".
