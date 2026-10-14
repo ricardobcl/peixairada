@@ -2,12 +2,15 @@
 // opening it — every minute, five, thirty, then not at all; never twice once merged or closed. Pure: duePrs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpDir } from '../lib/testserver.mjs';
+import { fileURLToPath } from 'node:url';
+import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
+import { makeFixture } from '../scripts/fixture.mjs';
 
 const tmp = tmpDir('peix-test-');
 process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
-const { newSession, notePr, duePrs, prStatus } = await import('../server.mjs');
+const { newSession, notePr, notePrs, duePrs, prStatus } = await import('../server.mjs');
 
 const NOW = Date.UTC(2026, 8, 28, 12);
 const MIN = 60_000, HOUR = 60 * MIN, DAY = 24 * HOUR;
@@ -70,4 +73,34 @@ test('a PR you wrote or reviewed is watched by its own last event, whatever its 
   const watched = (n, last, ago) => prStatus.set(url(n), { state: 'open', title: 'PR ' + n, turn: { you: false, last: new Date(NOW - last).toISOString() }, checkedAt: NOW - ago });
   watched(1, HOUR, 3 * MIN); watched(2, 5 * DAY, 3 * MIN); watched(3, 5 * DAY, 11 * MIN); watched(4, 20 * DAY, 11 * MIN);
   assert.deepEqual(due([s]).sort(), [1, 3]);   // two minutes within two days of its last event, ten within two weeks, then the chat's pace
+});
+
+test('a PR\'s number is one GraphQL takes: none with a leading zero, none past 2^31−1 (2026-10-14)', () => {
+  const s = newSession('nums', '/x/nums.jsonl');
+  notePrs(s, 'https://github.com/acme/widgets/pull/012 and https://github.com/acme/widgets/pull/12, https://github.com/acme/widgets/pull/99999999999, https://github.com/acme/widgets/pull/2147483647 and https://github.com/acme/widgets/pull/2147483648', NOW, 'user');
+  assert.deepEqual(s.prs.map(p => p.label), ['widgets#2147483647', 'widgets#12'], '012 is no second #12, and the rest no PR at all');
+});
+
+test('a batch GitHub refuses as a whole is asked again in halves: the rest answered, the one it will not take let be (2026-10-14)', { timeout: 60_000 }, async () => {
+  const dir = tmpDir('peix-gh-'), prs = join(dir, 'prs.json'), gh = join(dir, 'gh.mjs'), calls = join(dir, 'calls');
+  writeFileSync(prs, JSON.stringify({ 'acme/widgets#1': { state: 'OPEN', title: 'One' }, 'acme/widgets#2': { state: 'MERGED', title: 'Two' }, 'acme/widgets#3': { state: 'OPEN', title: 'Three' } }));
+  // GitHub's answer to a query it cannot run — a parse error points into it — whenever the batch holds acme/refused
+  writeFileSync(gh, `#!/usr/bin/env node
+import { appendFileSync } from 'node:fs';
+const q = process.argv.find(a => a.startsWith('query=')) || '';
+appendFileSync(${JSON.stringify(calls)}, (q.match(/ p\\d+: /g) || []).length + '\\n');
+if (q.includes('name: "refused"')) { console.log(JSON.stringify({ errors: [{ message: 'Parse error on "4" (INT) at [1, 99]', locations: [{ line: 1, column: 99 }] }] })); console.error('gh: Parse error'); process.exit(1); }
+await import(${JSON.stringify(fileURLToPath(new URL('../scripts/fakegh.mjs', import.meta.url)))});
+`, { mode: 0o755 });
+  const pull = (repo, n) => `https://github.com/acme/${repo}/pull/${n}`;
+  const fx = makeFixture(tmpDir('peix-fx-'), [{ cwd: '/Users/test/widgets', prompt: `Look at ${pull('widgets', 1)}, ${pull('refused', 4)}, ${pull('widgets', 2)} and ${pull('widgets', 3)}`, reply: 'ok' }]);
+  const srv = await startTestServer({ claudeDir: fx.dir, env: { GH_BIN: gh, FAKEGH_PRS: prs } });
+  try {
+    const states = async () => Object.fromEntries((await srv.api('api/sessions')).body.sessions[0].prs.map(p => [p.label, p.state]));
+    await waitFor(async () => (await states())['widgets#1'] === 'open', { timeout: 45_000, what: 'the PRs beside the refused one answered' });
+    assert.deepEqual(await states(), { 'widgets#3': 'open', 'widgets#2': 'merged', 'refused#4': null, 'widgets#1': 'open' });
+    const asked = readFileSync(calls, 'utf8').trim().split('\n').map(Number);
+    assert.deepEqual(asked.slice(0, 5), [4, 2, 2, 1, 1], 'all four, then in halves down to the one it refused — each asked once');
+    assert.match(srv.logText(), /GitHub refused the query for https:\/\/github\.com\/acme\/refused\/pull\/4/);
+  } finally { await srv.stop(); }
 });

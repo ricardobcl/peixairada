@@ -788,8 +788,11 @@ function toolResultSnippet(block) { return snippet(resultText(block), 200); }
 // Claude Code writes a `pr-link` line when it opens one, but most PRs are just URLs someone typed
 // or Claude wrote, so message text is scanned too. Only message text: tool results are snipped to
 // 200 chars and half a URL would name the wrong PR.
-const PR_RE = /https?:\/\/(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d+)/g;
+// The number is one GraphQL's Int takes (2026-10-14): `pull/012` was a syntax error in the query and one past 2^31−1 an
+// invalid value — either failed the whole batch, its PRs unasked and asked again together on every sweep.
+const PR_RE = /https?:\/\/(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/([1-9]\d{0,9})(?!\d)/g;
 const PR_ONE = new RegExp(PR_RE.source);   // same pattern, no /g — safe to reuse for a single match
+const prMatch = url => { const m = PR_ONE.exec(url); return m && Number(m[3]) <= 2147483647 ? m : null; };
 const MAX_PRS = 40;
 
 /**
@@ -803,7 +806,7 @@ const MAX_PRS = 40;
  *  two chips, two turns, two alerts for one move (2026-10-03). The label keeps the case first seen. */
 const prKey = (owner, repo, n) => `https://github.com/${owner.toLowerCase()}/${repo.toLowerCase()}/pull/${n}`;
 function notePr(s, url, ts, by, ref = null) {
-  const m = PR_ONE.exec(url);
+  const m = prMatch(url);
   if (!m && (ref || !/^https?:\/\//i.test(url))) return;   // a pr-link that is no web address is nothing to put in an href
   const clean = m ? prKey(m[1], m[2], m[3]) : url;
   if (ref && noPr.has(clean)) return;
@@ -840,7 +843,7 @@ function notePrs(s, text, ts, by) {
   if (!text) return;
   text = String(text);
   const said = new Map();
-  const urls = text.includes('/pull/') ? [...text.matchAll(PR_RE)].map(m => ({ at: m.index, url: m[0], key: prKey(m[1], m[2], m[3]), ref: null })) : [];
+  const urls = text.includes('/pull/') ? [...text.matchAll(PR_RE)].filter(m => prMatch(m[0])).map(m => ({ at: m.index, url: m[0], key: prKey(m[1], m[2], m[3]), ref: null })) : [];
   for (const r of [...urls, ...text.includes('#') ? refsIn(s, text) : []].sort((a, b) => a.at - b.at)) {
     const f = said.get(r.key);
     if (!f) said.set(r.key, r); else if ((SAID_AS[r.ref] ?? 3) > (SAID_AS[f.ref] ?? 3)) Object.assign(f, { url: r.url, ref: r.ref });
@@ -975,6 +978,7 @@ const prStatus = new Map();            // url -> { state, title, turn, people, c
 const prQueue = new Set();
 let prTimer = null, prBusy = false;
 let prAsking = new Set();              // the batch gh is being asked about now: a sweep or a mention meanwhile waits for it
+let prSplit = [];                      // halves of a batch GitHub refused as a whole, asked before the queue (2026-10-14)
 let prPause = 0, prPauseUntil = 0;     // gh failing as a whole (offline, rate-limited): the polls back off, 1 min doubling to 30
 
 /** Asked about within `ttl`. Merged and closed are terminal — never asked about twice. */
@@ -1017,7 +1021,7 @@ function sweepPrs() {
 }
 
 function queuePr(url, ttl = PR_TTL_MS) {
-  if (prQueue.has(url) || prAsking.has(url) || prFresh(url, ttl)) return;
+  if (prQueue.has(url) || prAsking.has(url) || prSplit.some(b => b.includes(url)) || prFresh(url, ttl)) return;
   prQueue.add(url);
   prTimer ??= setTimeout(() => { prTimer = null; drainPrQueue(); }, 250);
 }
@@ -1048,14 +1052,14 @@ function setPrInfo(url, state, title, found, now = Date.now(), people, missing =
 }
 
 function drainPrQueue() {
-  if (prBusy || !prQueue.size) return;
+  if (prBusy || (!prQueue.size && !prSplit.length)) return;
   const bin = ghBin();
-  if (!bin) { prQueue.clear(); return; }   // no gh (yet: findBin looks again in a minute)
-  const take = [...prQueue].slice(0, PR_BATCH);
+  if (!bin) { prQueue.clear(); prSplit = []; return; }   // no gh (yet: findBin looks again in a minute)
+  const take = prSplit.shift() || [...prQueue].slice(0, PR_BATCH);
   const batch = [], parts = [];
   for (const url of take) {
     prQueue.delete(url);
-    const m = PR_ONE.exec(url);
+    const m = prMatch(url);
     if (!m) continue;
     // owner/repo/number came out of PR_RE, so they cannot break out of the query string
     parts.push(`p${batch.length}: repository(owner: "${m[1]}", name: "${m[2]}") { pullRequest(number: ${m[3]}) { ${PR_FIELDS} } }`);
@@ -1067,13 +1071,25 @@ function drainPrQueue() {
     prBusy = false; prAsking = new Set();
     // A PR we cannot resolve fails its own alias only: gh exits non-zero but still prints the rest. NOT_FOUND is
     // GitHub having nothing there for us (no such PR — an issue's number —, no such repo, or none we may see).
-    let data = null, none = new Set();
-    try { const body = JSON.parse(stdout || '{}'); data = body.data; none = new Set((body.errors || []).filter(e => e.type === 'NOT_FOUND').map(e => e.path?.[0])); } catch {}
+    let data = null, none = new Set(), refused = false;
+    try {
+      const body = JSON.parse(stdout || '{}'), errs = body.errors || [];
+      data = body.data; none = new Set(errs.filter(e => e.type === 'NOT_FOUND').map(e => e.path?.[0]));
+      refused = !data && errs.some(e => e?.locations) && !errs.some(e => e?.type === 'RATE_LIMITED');   // a parse or validation error points into the query
+    } catch {}
+    if (refused) {
+      // GitHub would not run the query as written (2026-10-14): something in one PR of it — asked again in halves, down
+      // to that one, let be as a PR it would not show (asked an hour later). It answered: nothing pauses.
+      console.error('[peixairada] pr status: GitHub refused the query for', batch.length === 1 ? batch[0] : `${batch.length} PRs — asking in halves`);
+      if (batch.length > 1) prSplit.unshift(batch.slice(0, batch.length >> 1), batch.slice(batch.length >> 1));
+      else setPrInfo(batch[0], null, null, undefined, Date.now(), undefined, true);
+      return drainPrQueue();
+    }
     if (!data) {
       // Nothing learned — offline, rate-limited, a timeout. What the cards show stands (until 2026-09-28 every PR in
       // the batch lost its state and title), the rest of the queue is dropped, and the polls back off.
       console.error('[peixairada] pr status:', String(stderr || err?.message || 'no data').trim().split('\n')[0].slice(0, 200));
-      prQueue.clear();
+      prQueue.clear(); prSplit = [];
       prPause = Math.min(prPause ? prPause * 2 : 60_000, 30 * 60_000);
       prPauseUntil = Date.now() + prPause;
       return;
@@ -1090,7 +1106,7 @@ function drainPrQueue() {
       setPrInfo(url, state, pr?.title || null, pr && me ? prTurn(pr, me, prTurns[url]?.said) : undefined, Date.now(), pr ? prPeople(pr, me) : undefined, !pr, pr?.createdAt, prChecks(pr), prRefs(pr));
     });
     if (turnsDirty) { turnsDirty = false; pruneTurns(); saveState(); }
-    if (prQueue.size) drainPrQueue();
+    if (prQueue.size || prSplit.length) drainPrQueue();
   });
 }
 
