@@ -5,6 +5,35 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-14. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-14, late night — a round let go came back with nothing new
+
+Ricardo: "potential bug: on orders-service chat open, I dismissed "your move - #12.." at least once, but after
+sometime, it comes by its own, even without changes, since the event is from 5h ago".
+
+**What happened**: the PR's last event was a force-push by a colleague at 16:41 (a stack restacked under it). From then
+until 21:28 the board alerted on that one move seven times, each after the first undoing the round let go and any
+tick, with nothing new on GitHub. The record's `movedAt` was the last of them; the server had not restarted.
+
+**Why**: GitHub answered the same query two ways. In a call of forty PRs (`PR_BATCH`), that PR's
+`timelineItems(last: 5, itemTypes: [PULL_REQUEST_COMMIT, HEAD_REF_FORCE_PUSHED_EVENT])` came back as it stood that
+morning — the force-pushes after 10:39 gone, the commits there, no error; asked alone, or in a call of thirty or
+twenty, it was right. Only the timeline asked *by type* was old: the plain `timelineItems(last: 8)` in the same call
+had the 16:41 push, and the review requests by type were current. Which PRs share a call changes with which are due,
+so the PR read *their move* on some looks and *yours* on others. And `moveTurn` weighed news against the last look:
+a look without the push was `them`, which dropped the round's mark (an answer, it thought), and the next look's push
+was news again — a move at the board's clock.
+
+* **News against everything that came** (`came` on the PR's record, `cameIn`): the newest head, word and request over
+  every look. A look that missed one is no answer and its return no move — no alert, no un-tick, `movedAt` kept. A
+  record from before keeps its last key as what came.
+* **A round let go stays so until the next move**: a look that reads the PR answered leaves the mark; it shows only
+  while the turn is yours. After a real word of yours nothing comes back without something new, so the mark changes
+  nothing there.
+* **Twenty PRs a call**: every call of twenty tried was right; the budget is the same, a point a call. A smaller call
+  is no promise — the guard is `came`.
+* What a stale look still does: the PR reads *their move* for that look (a minute, or as long as the calls are made
+  of the same PRs), with no alert and nothing undone.
+
 ## Decisions of 2026-10-14, night — full screen in a Space of its own, as a pick beside the fill
 
 Ricardo: "can we make the pseudo-fullscreen that we have fell more like a truly mac fullscreen app? aka use a

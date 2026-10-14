@@ -977,7 +977,9 @@ const PR_WATCH = [                      // [the PR's last event within, asked ev
 ];
 const PR_TTL_MS = Number(process.env.PR_TTL_MS || 30_000);
 const PR_TTL_ERROR_MS = 60 * 60_000;   // a PR we cannot see (private, deleted, no access): back off
-const PR_BATCH = 40;
+// Twenty a call (2026-10-14): in a call of forty, GitHub answered a PR's timeline asked by type from hours before —
+// the force-pushes since gone, no error said — and a call of twenty of the same PRs did not.
+const PR_BATCH = 20;
 const prStatus = new Map();            // url -> { state, title, turn, people, checkedAt }
 const prQueue = new Set();
 let prTimer = null, prBusy = false;
@@ -1116,7 +1118,7 @@ function drainPrQueue() {
 
 // ---- …and whose move it is ------------------------------------------------------------------------------------------
 // (2026-09-28 — Slack and GitHub's app were the only way to know.) The
-// same call asks what it takes to say whose move a PR is at; forty PRs cost GitHub's GraphQL budget two points.
+// same call asks what it takes to say whose move a PR is at; twenty PRs cost GitHub's GraphQL budget a point.
 // `pushes` are the newest commits and force-pushes, `asks` the review requests, both off the PR's timeline.
 // Every person comes with a face since 2026-09-29 (`avatarUrl`, a scalar: no cost) — prPeople, the cards' faces.
 const WHO = 'login __typename avatarUrl(size: 48)';
