@@ -5,6 +5,96 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-14. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-14, evening — a review of the whole board, and the harness tightened
+
+Ricardo: "do a thorough analysis of the code, bugs and improve harness/tests".
+
+**How**: eight reviewers read a slice each (the server's transcript and registry; its PRs, Jira and branch moves; its
+HTTP layer and state; its git and self-update; the drawers; the page's board; its tabs, keys and the Swift shell; the
+harness), read-only, each finding with a repro where one could be made. Nine fixers then worked one worktree each, a
+commit per finding with a test that fails before it, and the branches were landed on main by cherry-pick. About 80
+findings; all but a handful fixed. The commits say each one's story; what follows is the map.
+
+* **The server, reading Claude Code**: one malformed transcript line no longer ends the boot for good (a throw in
+  `fold` is that line lost, the scan reads each file under its own catch — `test/boot.test.mjs`); liveness checks the
+  registry's `procStart` (`procAlive`; a dead claude's file whose pid was reused read live for good, clauding or asking)
+  and `ps` is read as Claude Code writes it (`LC_ALL=C TZ=UTC`, so take-over and Done work under en_GB or pt_PT);
+  sub-agents of a claude that died before the one running now count for nothing; the transcripts are watched before
+  the boot reads them, and a live chat's file is stat'ed on the poll; a `/compact` you typed ends its turn, and a
+  prompt into a claude started after the turn began starts its own (*worked for 182 min* was a turn lent the idle
+  hours); a chat owes one alert of each kind; background tasks the poll let go stay gone over a re-read; two
+  catastrophic regexes are linear (a snippet's table rule, `GIT_MOVE_RE`).
+* **PRs, Jira, branch moves**: a malformed PR URL (`pull/012`, a number past GraphQL's Int) no longer stops every PR's
+  polls — a batch GitHub refuses as a query is asked again in halves (`prSplit`); a review request fallen out of the
+  ten asked for is no new move; your last word survives twenty comments after it (`said` in `prTurns`); a chat's own
+  slow `git switch -c … && npm ci` is no longer alerted as the branch moved under it (`linesIn`, `DISK_HOLD_MS`); a
+  restart neither re-alerts a move nor drops one set aside; Claude in a subfolder keeps the drift; a reftable checkout
+  reads its branch from git; Jira asks about no key before the site's projects are known, and drops answers from
+  before a reset (`jiraGen`).
+* **HTTP and state**: bound past loopback the Host is checked (DNS rebinding passed under `HOST=0.0.0.0`); the lid's
+  switch runs `/usr/bin/pmset` as root, never one found on the PATH; an upgrade reset during the boot no longer kills
+  the server; the state file is read once the port is ours (a server that waited saved its stale copy over the live
+  one's); the board cannot be framed by another site; nothing is written under `~/.claude` through a chat's folder
+  (`inClaudeDir`); Peacock's removal keeps comments and leading commas; a Setup save keeps keys it does not know and
+  is written beside its file and renamed over. Found by the new tests: an upload declared too large lost its 413 to a
+  reset — now read to its end first.
+* **Git and the checkouts**: the worktree sweep can no longer delete work — untracked files under
+  `status.showUntrackedFiles=no`, a tree made for a PR already merged, a tree switched to another branch, a fresh tree
+  that only pulled main; the self-update's undo never resets away a commit made meanwhile; `worktree.sh` stops when
+  `MAIN` names no commit (it force-deleted an unlanded branch); a branch named `origin/main` is refused; the changes
+  tab reads on a copy of the index (it took `index.lock` under Claude's own `git add`), parses `-z` and git's quoting
+  and prefix configs, leaves one huge file out by name instead of failing, and takes the turn's files literally.
+* **The drawers**: a `/clear` takes the chat's zsh tabs along (they stayed on the old, ticked chat, piling up); a
+  drawer no longer inherits the board's `PORT` and knobs (`drawerEnv`: a dev server in a drawer took 7331); the
+  snapshot carries the mouse's SGR encoding, a hidden cursor and the scroll region (wheel and clicks died after a
+  re-attach in lazygit, vim, Claude Code's fullscreen TUI); a socket path too long is said before anything spawns; a
+  grow under a scroll region parks the cursor right; the page in front says its size again after another page sized
+  the PTY.
+* **The page**: nothing in a transcript fetches from elsewhere (srcset, poster, media, SVG `url()` — fourteen requests
+  reached a probe); the overview, home and the PR rows no longer redraw what is under a press; the page's per-chat maps
+  follow a /clear (`carryChat`); a chat asked for twice takes only its newest answer (a double click could drop the
+  final reply); the title box left unchanged saves nothing; seen and unread follow the window's focus; a watching card
+  keeps its node; late answers act on their own chat; the counts say what the list shows; ⌥ over any key types an
+  ASCII non-letter macOS composed (German ⌥L @, French ⌥⇧L |).
+* **Keys, the pane, the app** (Swift type-checked, not run — to try after a rebuild): Esc on the board reaches the page
+  with a page up in the pane (it never reached claude: no interrupt, no Esc Esc); the shell and the page agree on which
+  half has the keys (`focus: null` unless that half shows a page); a pane page opens another app only by a link
+  clicked in its main frame, from a short list of schemes; a dead launchd agent is replaced by the app's own server; a
+  held key on a pane page is one press; ⌥⌘D again fills the column; ⌘W the board does not take reaches the Window
+  menu; the fill minimized leaves the Dock alone. `check-page.mjs` now fails a forwarded key nothing answers, a wrong
+  key code, an *again* row with no `hot…Key`.
+* **The harness**: a scenario that times out stops its server (three from 2026-10-03 were still running, orphaned);
+  test servers end with their test (`PEIX_TEST_PARENT`, a stdin pipe), run no real CLI unless named (`noclaude.mjs`,
+  the code and task fakes, an empty `UPDATE_DIR` — a test server could have fast-forwarded this checkout), move off a
+  port taken, and signal only a verified holder; `npm run scenarios` prints `LEAK`; scenarios run at noon in an
+  `Etc/GMT±N` zone (no more failures after local midnight); Chrome runs unthrottled; `openBoard` waits for the
+  snapshot (restart-page 34 → 22 s); `settle()` waits for what a draw queues; the fake claude parses keys as a
+  terminal app does and writes `procStart`; the auto fixture's chat A left this checkout (`repo-a`); fake gh answers
+  only what the query asks (`FAKEGH_FAIL` for a whole failure); every test process has its own state
+  (`test/env.mjs`); the pmset and caffeinate fakes are sh (awake.test 11 → 3 s); `npm run check` fails a bare
+  `mkdtempSync`, a route no test names, a single-quoted `${}` attribute; `npm test` loads the page (a TDZ at load);
+  new tests for uploads, bodies, gh failing, the gen/upto numbering, the state routes, today and tails. `npm test`:
+  133 → 187 tests, ≈45 s.
+* **Mended at the landing**: `card-signals.mjs`, failing on main since 8c52052 (it waited for the Today label taken off
+  the list); `lanes.mjs`, whose new step faked a live claude with a mismatched `procStart` that the liveness check now
+  reads dead (it uses a claude that ignores SIGTERM); `drawer-altkeys.mjs`, the fake's ESC b and the ⌥-letter compose
+  together; drawerEnv and a hand-spawned server against the test servers' new stdin watchdog.
+
+**Left open**: a byte-safe path for xterm's `onBinary` (X10 mouse bytes ≥ 0x80; SGR now survives a re-attach, so it
+waits); DECSCUSR and the normal screen's scroll region behind the alternate one in the snapshot; `prFromGh`'s 32 MB
+buffer; the changes tab's `branch` scope still names its base short (a `refs/heads/origin/main` made before G6 would
+shadow it); switchGuard counts trees deleted by hand; an editor open on a sweepable tree is not counted as holding it;
+⌘R on the pane reloads the first page shown when the keys are in claude beside it; a LAN client naming the board's
+Origin passes under `HOST=0.0.0.0` (nothing tells it from a browser there); the PR diff's fetch writes the object
+store of a checkout that is `~/.claude` itself; `ctx.key` dispatches on `document` (CDP keys broke on a ⌥⌘ chord
+Chrome kept); flaky under load: `drawer-switch`, `pr-turn`, awake's power read.
+
+**To try in the app** after `mac/build.sh install` (or the status bar's *the app is behind · rebuild*): with a PR
+beside claude's drawer, Esc mid-turn interrupts claude and Esc on GitHub brings the chat back; ⌥⌘G, ⌥⌘← ⌥⌘→ and typing
+lands in the page; click claude, then the PR, ⌘W closes the PR's tab; ⌘W with one half on the chat closes the window;
+holding ⌥⌘G on a page zooms once; `location.href='mailto:a@b'` from a pane page's inspector opens nothing (the log says
+`pane: mailto: not opened`); ⌃⌘F, minimize, ⌘-Tab away and back — the Dock stays.
+
 ## Decisions of 2026-10-14, on a branch — how long ago your move came
 
 Ricardo: "on the "your move" on card we should show how long was that event triggered on mouve hover".

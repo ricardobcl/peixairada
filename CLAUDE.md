@@ -23,7 +23,7 @@ scripts/launchd.sh restart [--after N]   # after a server.mjs change; the drawer
 scripts/worktree.sh new <name> | list | done <name>... | prune   # parallel work beside other sessions (below)
 mac/build.sh install                # the native app (bundles node, node_modules, lib/) into /Applications — Swift changes
 npm start                           # node server.mjs → http://127.0.0.1:7331, by hand
-npm test                            # node:test over test/ — pure logic, and the drawers end to end (≈30 s, four files at once)
+npm test                            # node:test over test/ — pure logic, and the drawers end to end (≈45 s, four files at once)
 npm run check                       # static: every script parses, the page's script compiles, the vendored xterm = node_modules, shell, swiftc -typecheck, this file's size (≈10 s)
 npm run verify -- "<js>"            # one expression on the live board in headless Chrome (see Verifying)
 npm run webkit -- "<body>"          # the same in WebKit, the app's engine; --shot is the compositor's own frame
@@ -80,8 +80,8 @@ npm run map                         # rewrite the section maps at the top of ser
 
 | Signal | Source |
 |---|---|
-| Transcript, appended live | `~/.claude/projects/<cwd-slug>/<session-id>.jsonl`, `fs.watch(recursive)` — no polling needed. Boot reads the last `TAIL_BYTES` of each; opening a chat reads it whole, a chunk at a time (`readLines`) |
-| Which sessions are alive | `~/.claude/sessions/<pid>.json` + `process.kill(pid, 0)`; watched *and* polled every 10 s (pids die silently) |
+| Transcript, appended live | `~/.claude/projects/<cwd-slug>/<session-id>.jsonl`, `fs.watch(recursive)`, started before the boot's scan; a live chat's file stat'ed on the poll too (2026-10-14). Boot reads the last `TAIL_BYTES` of each; opening a chat reads it whole, a chunk at a time (`readLines`) |
+| Which sessions are alive | `~/.claude/sessions/<pid>.json` + `process.kill(pid, 0)` and, given a `procStart`, that pid's start (`procAlive`, `LC_ALL=C TZ=UTC ps -o lstart=`, 2026-10-14); watched *and* polled every 10 s (pids die silently) |
 | Where a chat lives | `entrypoint` on user/assistant lines (`claude-vscode` / `cli`), the registry's while it runs — `inVsCode()`. Several processes on one chat: the drawer's own is `live`, else the newest non-VS Code one; the rest are `rivals` |
 | Reply finished | an assistant line whose `stop_reason` is in `TURN_ENDS` (`end_turn`, `stop_sequence`, `max_tokens` unless it cut a tool call, `refusal`; tool calls are `tool_use`) — **or the registry's `idle` with a `statusUpdatedAt` after your last word** (`statusOf`: `/compact` ends with no assistant line) — unless a **sub-agent** is at work: `<slug>/<id>/subagents/agent-*.jsonl` whose last line is not a turn's end, nor its `SubagentHandback` result, nor an interrupt, written within `AGENT_STALE_MS` (`scanAgents()`; a dead chat counts none). A background agent ends the main turn at once; this keeps the card clauding |
 | Waiting on the user | **the registry's `status: "waiting"`** — every interactive claude rewrites its `sessions/<pid>.json` on each change (`busy` · `idle` · `waiting` · `shell`), with `waitingFor` (`input needed`, `permission prompt`, …) — `waitingOn()` / `statusOf()`; any live process waiting is the chat waiting, and it beats the agents; **`dialog open` is not asking** (`NOT_ASKING`). **The transcript cannot say it**: the line that asks is written *with its answer* — only the fallback for a claude that reports no status (`s.ask`). The flip into waiting is the `needs-input` alert (`loadRegistry`) |
@@ -89,24 +89,24 @@ npm run map                         # rewrite the section maps at the top of ser
 | Titles | board title (state file) › `custom-title` › the oldest still-open PR › `ai-title` › last prompt — `summary()`, `prTitle()` |
 | Model | `message.model` on assistant lines, the last one wins, `<synthetic>` skipped — `s.model` |
 | PRs mentioned | `pr-link` lines, GitHub pull URLs *and short references* in user/assistant text; most recently mentioned first; state, title and turn from `gh api graphql`, batched (see *The server*). **A short reference** (2026-10-06, `refsIn`): `#12` the checkout's repo (`ghRepoOf`, a worktree followed), `widgets#12` the org of the root holding the checkout, `acme/widgets#12`, `widgets #12` for a checkout under a root, and a list after one on its line; none in code, a link's text or a URL. **It is on the chat only once GitHub finds a PR there** (`shownPr`); a bare one not when that PR was merged or closed and opened over `REF_AGE_MS` before it was said (`pastRef`); a NOT_FOUND lets it go (`forgetRef`, `noPr`). → `test/pr-refs.test.mjs`. **A PR taken off a chat** (2026-10-11, `unlinkPr`, `POST /api/sessions/:id/unlink`) goes to `unlinked` in the state file: `notePr` takes none of the chat's lines up again, a re-read's too, but a word of yours after. → `test/pr-turn.test.mjs`, `header-prs.mjs` |
-| Jira tickets named | `KEY-123` in prose (inline code counts, fenced not), `…/browse/KEY-123` links and the chat's `gitBranch` — `ticketsIn`, `noteTickets`, `noteBranchTicket` → `s.tickets`. **A bare key is asked about only when its project is the site's** (`jiraProjects`, hourly) and **shown only once Jira answered** (`shownTickets`); one Jira lacks is let go (`noTicket`). `bulkfetch` (≤ 100 a call; `myself` for whose), Basic auth from setup.jira `{site, email}` and a token from `JIRA_API_TOKEN`, else the keychain item *peixAIrada Jira* (written by `security -i` from stdin); polled by `prEvery` like PRs; a failure as a whole pauses, 1 min doubling to 30. → `test/jira.test.mjs` |
-| Branch moved under it | (2026-10-13) `gitBranch` on every line (`HEAD` detached): a change in the same folder no git command of the chat's own explains is held (`noteBranch` → `s.driftDue`, the drift before still shown) and judged `MOVE_SLACK_MS` after it is seen (`settleDrift`, on a timer too) — only then shown or alerted. Its own: one that can change the branch (`GIT_MOVE_RE`, the subcommand whole — no stash, reset, pull, merge, merge-base) in its Bash, a sidechain's, a `!` one, a sub-agent's file (`agentsMoved`): in the hour before, or since the old branch's run naming the new one, or later in the same message naming it (a message's lines are written after its call ran; `ownMove`). Through `HEAD` and back is none; your prompt clears it and takes the head as it stood (`branchHeard`, `headOk`). The disk: each live chat's checkout's HEAD file on the poll, a worktree's its own, each read once, a move judged on a look `MOVE_SLACK_MS` after the first, against the branch before a held move (`sweepHeads`, `headAt`, `noteHead` → `headNow`, `diskDrift`, `peers`). Summary `drift` (live chats only, not set aside — `driftOf`) and `headNow`; a `drift` alert for a chat at work (`driftNotify`); a click on the chip sets that move aside (`driftAcks`, `POST /api/sessions/:id/drift`). → `test/drift.test.mjs`, `branch-drift.mjs` |
+| Jira tickets named | `KEY-123` in prose (inline code counts, fenced not), `…/browse/KEY-123` links and the chat's `gitBranch` — `ticketsIn`, `noteTickets`, `noteBranchTicket` → `s.tickets`. **A bare key is asked about only when its project is the site's** (`jiraProjects`, hourly; none before they are known, an answer from before a reset dropped — `jiraGen`) and **shown only once Jira answered** (`shownTickets`); one Jira lacks is let go (`noTicket`). `bulkfetch` (≤ 100 a call; `myself` for whose), Basic auth from setup.jira `{site, email}` and a token from `JIRA_API_TOKEN`, else the keychain item *peixAIrada Jira* (written by `security -i` from stdin); polled by `prEvery` like PRs; a failure as a whole pauses, 1 min doubling to 30. → `test/jira.test.mjs` |
+| Branch moved under it | (2026-10-13) `gitBranch` on every line (`HEAD` detached): a change in the same folder no git command of the chat's own explains is held (`noteBranch` → `s.driftDue`, the drift before still shown) and judged `MOVE_SLACK_MS` after it is seen (`settleDrift`, on a timer too) — only then shown or alerted. Its own: one that can change the branch (`GIT_MOVE_RE`, the subcommand whole — no stash, reset, pull, merge, merge-base) in its Bash, a sidechain's, a `!` one, a sub-agent's file (`agentsMoved`): in the hour before, or since the old branch's run naming the new one, or later in the same message naming it (a message's lines are written after its call ran; `ownMove`). Through `HEAD` and back is none; your prompt clears it and takes the head as it stood (`branchHeard`, `headOk`). The disk: each live chat's checkout's HEAD file on the poll, a worktree's its own, each read once, a move judged on a look `MOVE_SLACK_MS` after the first (a chat at work: once a line of its own came since, `DISK_HOLD_MS` at most; a late command takes it back; the boot judges at once, in silence), against the branch before a held move (`sweepHeads`, `headAt`, `noteHead` → `headNow`, `diskDrift`, `peers`). Summary `drift` (live chats only, not set aside — `driftOf`) and `headNow`; a `drift` alert for a chat at work (`driftNotify`); a click on the chip sets that move aside (`driftAcks`, `POST /api/sessions/:id/drift`). → `test/drift.test.mjs`, `branch-drift.mjs` |
 | Plan usage | `GET https://api.anthropic.com/api/oauth/usage` with Claude Code's own OAuth bearer from the keychain item *Claude Code-credentials* — never reaching the page; `USAGE=off` disables. A cap in money (`limits[]` of `kind: 'spend'`, `extra_usage`'s cents) → `used`, `limit`, `currency` (`usageWindows`). → `test/usage.test.mjs`, Findings: *plan usage* |
 | Permission prompts | the registry's `waiting` (above) — they never reach the transcript |
-| Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login shell (`RUN_SHELL`: the user's zsh or bash, else `/bin/zsh`); it registers like any CLI run; a new chat is tied to its session by pid. **A folder whose Taskfile launches claude** (a task whose description mentions Claude) starts new chats as `task <name>` (`GET /api/launchers?cwd=`, `task --list --json` cached by mtime, `TASK_BIN`; `POST /api/terminals {cwd, task}`): claude is then a *descendant* of the PTY's pid, found through `ps` (`linkTermToRegistry`, `t.claudePid`), and the launcher's name is kept (`noteEnv` → `envs` → `s.env`). A resume never goes through task. **`/clear` or `/resume` in a drawer** gives the pid a new session id: `linkTermToRegistry` moves the holder and pushes **both** chats, the page follows (`terminal` event). **A /clear ticks the chat it left done** (2026-10-10, any claude's): `loadRegistry` sees a process (pid and `procStart`) under another chat (`clearedFrom`), and `tickCleared` marks the old one done once the new transcript begins with the command at or after the old chat's last word; a /resume or a fork leaves it be. → `test/clear-done.test.mjs` |
+| Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login shell (`RUN_SHELL`: the user's zsh or bash, else `/bin/zsh`); it registers like any CLI run; a new chat is tied to its session by pid. **A folder whose Taskfile launches claude** (a task whose description mentions Claude) starts new chats as `task <name>` (`GET /api/launchers?cwd=`, `task --list --json` cached by mtime, `TASK_BIN`; `POST /api/terminals {cwd, task}`): claude is then a *descendant* of the PTY's pid, found through `ps` (`linkTermToRegistry`, `t.claudePid`), and the launcher's name is kept (`noteEnv` → `envs` → `s.env`). A resume never goes through task. **`/clear` or `/resume` in a drawer** gives the pid a new session id: `linkTermToRegistry` moves the holder, and the chat's live zsh holders with it, and pushes **both** chats, the page follows (`terminal` event). **A /clear ticks the chat it left done** (2026-10-10, any claude's): `loadRegistry` sees a process (pid and `procStart`) under another chat (`clearedFrom`), and `tickCleared` marks the old one done once the new transcript begins with the command at or after the old chat's last word; a /resume or a fork leaves it be. → `test/clear-done.test.mjs` |
 
 **Never written: anything under `~/.claude`.** The board is read-only against Claude Code's data. The fake claude
 refuses to run against the real directory too — known by its device and inode, at CLAUDE_DIR or any folder above it,
-for `$HOME`'s home and the account's.
+for `$HOME`'s home and the account's. A chat's folder in it is refused where the board would write (`inClaudeDir`).
 
 ## The server
 
 * **Only the board's own page may ask** (2026-09-27): every route and the terminal upgrade refuse a request whose
   Origin is not this server's or whose Host is not a loopback name (`foreign()`); no Origin passes (curl, the app, the
   tests), a `null` one is nobody's. An `<img>`, `<script>` or navigation sends no Origin, so `Sec-Fetch-Site` must be
-  `same-origin` or `none` when sent — a navigation to `/` aside. Bound to every interface, the Origin must name the
-  Host and no Origin is only for this Mac. → `test/origin.test.mjs`.
-* **The port first, then the boot**: `main()` waits until `listen` succeeds before it adopts holders, reads the
+  `same-origin` or `none` when sent — a tab's navigation to `/` aside (`Sec-Fetch-Dest` `document`); `/` sends `frame-ancestors 'none'`. Bound past
+  loopback, the Host must be an address, a loopback name or this Mac's (`foreignTo`), and no Origin is only for this Mac. → `test/origin.test.mjs`.
+* **The port first, then the boot**: `main()` waits until `listen` succeeds before it reads the state file (`loadState`; an import neither reads nor saves it), adopts holders, reads the
   registry, polls or saves state; every request and upgrade waits for `booted`. **A route writes its head only once
   its body is in hand**, and the handler's catch destroys a response whose head went out.
 * **Nothing the server starts or accepts may emit an unheard `'error'`**: a drawer's WebSocket (`maxPayload` 8 MB),
@@ -135,7 +135,7 @@ for `$HOME`'s home and the account's.
 * **The holder socket is `setEncoding('utf8')` on both ends** — a glyph split across chunks decodes whole.
 * **Keeping the Mac awake is two switches, and only one is the board's** (2026-10-08, `keepAwake`, `setLid`,
   `/api/awake`, an `awake` event): *awake* is a `caffeinate -i -w <server pid>` held while `awake` is on in the state
-  file (one that ends on its own turns the switch off); *lid closed* is `pmset -a disablesleep 1|0` as root — through
+  file (one that ends on its own turns the switch off); *lid closed* is `/usr/bin/pmset -a disablesleep 1|0` as root (`lidRuns`) — through
   `sudo` first (Touch ID or a NOPASSWD rule; with no terminal a password is a quick failure), then osascript's
   administrator dialog (a cancel is a 409, `cancelled`); `AWAKE_ADMIN` is `sudo` · `osascript` · `none` (the tests).
   **The lid's setting is the system's, never kept here**: `readPower` reads `pmset -g` on every registry poll, with
@@ -169,7 +169,7 @@ for `$HOME`'s home and the account's.
   that takes it** (2026-10-14; `canPull`, `canBuild` → `data-take`, `updNow`): *1 new commit · update*, *the app is behind
   · rebuild*; anything else opens Settings › Updates.
   **First the new page compiles and the new server starts on a spare port** (`preflight`, the checkout's
-  lib/testserver.mjs); one that does not is undone (`git reset --keep`) and held (`updateHeld`) until a newer commit.
+  lib/testserver.mjs); one that does not is undone (`git reset --keep`, only while HEAD is still the commit pulled) and held (`updateHeld`) until a newer commit.
   **The app is held against the checkout, pull or none** (2026-10-14; `readApp`, `appWhyNot` → `app`, `appWhy`;
   `lookApp` every minute): build.sh stamps `PeixSource`, mac/'s tree as built (uncommitted work in), and one not `HEAD:mac`
   is behind — a commit made here too. Rebuilt with a pull, else alone by *update now* or the switch once quiet — by the
@@ -184,7 +184,7 @@ for `$HOME`'s home and the account's.
   → at once; then every minute within the hour, 5 min within the day, 30 within three days, never after. Touched is
   `lastActivity` or `s.openedAt` (a page fetching the chat, which also asks at once unless asked within `PR_TTL_MS`).
   Merged and closed are never asked twice; one in flight is not queued (`prAsking`). **A call that fails as a whole
-  changes nothing** and pauses the polls, 1 min doubling to 30. → `test/pr-poll.test.mjs`.
+  changes nothing** and pauses the polls, 1 min doubling to 30; one GitHub refuses as a query is asked again in halves (`prSplit`). → `test/pr-poll.test.mjs`.
 * **A PR you wrote or reviewed has a turn** (2026-09-28; `PR_FIELDS`, `viewer`, `prTurn` — pure): `you` when someone
   else's PR moved past your last review or word, or asks for you again; on your own PR, when someone else reviewed,
   commented or pushed after your last word. Bots are nobody. **Any word of yours answers every reason before it**, and
@@ -506,7 +506,7 @@ for `$HOME`'s home and the account's.
 * **The setup is the user's file; nothing about one Mac is in the code** (2026-09-28): `CONFIG_FILE` —
   `$XDG_CONFIG_HOME/peixairada/config.json`, **beside `STATE_FILE` when that is set** (every test server has its
   own); the state file's old `config` is moved there **at boot, never on an import** (`loadConfig()` from `main()` — a
-  test imports the module against the real state file). Written in place (a dotfiles symlink stays one), a root under
+  test imports the module against the real state file). Written into the file as it stands (a key it does not know stays), beside its real path and renamed over (a symlink stays one), a root under
   the home as `~/…`; **re-read on a hand edit** (`reloadConfig`, a stat every `CONFIG_POLL_MS` against
   `configStamp`); one that does not parse is `error` on the config, the board keeps what it had and a PUT is refused
   (409). Keys: `roots` (`[{dir, org}]`), `quick` (⌥⌘O's project), `projects` (`{name: {abbr, color}}`, by shown
@@ -532,8 +532,8 @@ for `$HOME`'s home and the account's.
 
 * **`HOTKEYS` in index.html is the whole ⌥⌘ family, and every key is a row of `KEYS`** (2026-10-12): what you press, its
   group, one line, and the codes it is in HOTKEYS or CMDKEYS — the Keys pane and the ? sheet are drawn from it, and
-  `npm run check` (`check-page.mjs`) fails a code with no row, a row no map answers, or a ⌥⌘ letter `boardKeys` in
-  main.swift does not forward. The letters: **T** the chat's zsh tab (`hotShell()` →
+  `npm run check` (`check-page.mjs`) fails a code with no row, a row no map answers, a ⌥⌘ key `boardKeys` in
+  main.swift does not forward or forwards unanswered, or an *again* row no `hot…Key` answers. The letters: **T** the chat's zsh tab (`hotShell()` →
   `POST /api/sessions/:id/shell`, `s.shells`, `shName()`), **E** VS Code Web in the pane, **V** the folder in VS Code's
   own window (2026-10-14, `hotVsCodeApp`; no chat open, the project in view when a folder), **G** the chat's PR on GitHub
   (several → the picker in `pr` mode; none → the repo, `state.repos`), **C** the chat's claude (`termAction()`, the `>_`
@@ -654,8 +654,9 @@ for `$HOME`'s home and the account's.
   (`hotkeyCode()`) to `window.peixKey`, and a click on a page as `peixPaneFocus(key)` (`installPaneClickMonitor()`),
   so the half with the keys follows the pointer. The shell reports `peixPane(visible, left)`. **A dialog open lowers
   the pane** (`postPane` sends no page while a `dialog[open]` exists; every dialog's `close` puts it back); `postPane`
-  posts only a message that differs. Esc with the pane up is forwarded (`hotEscape()`: a dialog closes first, else the
-  chat tab comes back); with it hidden, a capture-phase handler closes a dialog or popover itself.
+  posts only a message that differs. Esc pressed in a pane page is forwarded (`hotEscape()`: a dialog closes first, else the
+  chat tab comes back); one on the board reaches the page, whose capture-phase handler closes a dialog or popover and,
+  the pane up, does hotEscape's outside a terminal or a box (2026-10-14). The pane's `focus` is null unless the keys' half shows a page.
 * **The app hears the board's own state**: the page posts `{type: 'state', needs, replied, moves, working}` from
   `renderBoard` when what wants you changes (`postState`, `wanting()`: the chats asking and the new replies — **the
   Dock's badge and the menu bar's count are their number**, the page's title too; the status menu lists them with the
@@ -776,7 +777,8 @@ for `$HOME`'s home and the account's.
   (`placeChanges`, from `syncTerm`). `GET /api/sessions/:id/changes?scope=` — `uncommitted` (untracked as added),
   `branch` (against the merge base with origin's default branch), `turn` (the uncommitted diff of the files the last
   turn edited, `s.turnFiles`) — and `?stat=1` for the chip (kept 4 s per folder, `changeStat`);
-  `prefs.changesScope`. Re-read when the chat moved on or by ↻; nothing is polled. **Commit…, Push and PR… type the command into the chat's
+  `prefs.changesScope`. Re-read when the chat moved on or by ↻; nothing is polled; read on a copy of the index
+  (`indexCopy`), lists `-z`, a file past `CHANGES_MAX` named in `left`. **Commit…, Push and PR… type the command into the chat's
   zsh, unrun** (`typeInShell`); a note on a line is a prompt typed into the drawer's claude (`sendToClaude`), else
   copied. → `test/changes.test.mjs`, `changes-tab.mjs`.
 * **A PR's diff never touches the folder** (2026-10-13; scope `pr`, `&pr=<n or URL>&base=`; `prRange`): `ls-remote`
@@ -798,8 +800,8 @@ for `$HOME`'s home and the account's.
   installed**: `GET /api/worktrees` says each tree's `modules` (`here` · `same` lockfile · `differ`), *Link
   node_modules* is `POST /api/worktrees/modules` (a symlink to the main tree's), else `npm ci` typed into the zsh,
   unrun. The trees made are the state file's `worktrees` (`worktreesMade`) and **only those are removed**, by
-  `sweepWorktrees` (every `WT_SWEEP_MS` on the poll): their PR merged or closed — a new branch's, the PR opened from it
-  (`prOfBranch`: open, or opened since) or its commits on origin's default (`landed`) —, nothing in them (`busyIn`), clean,
+  `sweepWorktrees` (every `WT_SWEEP_MS` on the poll): their PR merged or closed after it was seen open (`prState`) — a new branch's, the PR opened from it
+  (`prOfBranch`: open, or opened since) or commits of its own (`ownCommits`) on origin's default (`landed`) —, nothing in them (`busyIn`), on the branch it was made for, clean whatever `status.showUntrackedFiles` says,
   no commit no remote has (`keepWorktree`) — `git worktree remove`, never `--force`. *Switch this folder…* types
   `git switch <branch>` into the chat's zsh, unrun, and only when `GET /api/sessions/:id/switch?branch=`
   (`switchGuard`) finds no other chat or drawer in the tree (`treeOf`: `gitTopOf`, real; a nested worktree is its own; on it already is `headAt`'s), no chat
@@ -826,8 +828,8 @@ for `$HOME`'s home and the account's.
   is `refetchCurrent()`, in place — your place kept, no pill lit. **The fetch and the stream are reconciled** (`logOf`,
   `awaitEntries` / `takeEntries` / `mergeEntries`): while a fetch is out the stream's entries wait in `pending`, and
   only those past `upto` are taken; a summary older than a `session` event is not (`sessionSeen`). `#log` has no
-  `scroll-behavior`. Images load only from `data:`; DOMPurify forbids `<style>`, `style=` and form controls but the
-  checkbox. **The log's last child is the presence line** (`renderPresence()`, while clauding or asking; its word
+  `scroll-behavior`. Nothing in it fetches from elsewhere (2026-10-14): images only from `data:`; DOMPurify forbids `<style>`, `style=`, form
+  controls but the checkbox, media, `picture`, SVG `image`/`use`, `srcset`/`poster`/`background`, an SVG `url()` not `#`. **The log's last child is the presence line** (`renderPresence()`, while clauding or asking; its word
   shimmers, `shim()`, and turns over, `VERBS`, the markup still *clauding…*), **then the new-reply pill** (`.lognew`,
   `logNew()`): new nodes go before that tail, marked `.in` (never on the first fill), or come up part by part when a
   reply lands at the log's end (`reveal`, `REVEAL_GAP`). **Anything else that appends to the log goes before the
@@ -836,7 +838,7 @@ for `$HOME`'s home and the account's.
   divider's place is the board's. **⌘W on the chat's tab closes the half the keys are in**, each strip's ⨯ its own
   (`closeHalf(g)`); **⌘0 closes the other**. The per-chat maps (`tabs`, `homes`, `splits`, `autoSplit`, `stacked`,
   `zoomed`, `focusView`, `state.unread`, `state.paneGh`, `blanks`) are pruned on every snapshot to the chats the board
-  still has. → `split-halves.mjs`, the split section of `pane-tabs.mjs`.
+  still has, and carried to the new id across a /clear (`carryChat`). → `split-halves.mjs`, the split section of `pane-tabs.mjs`.
 * **A half can fill the column and give it back** (2026-10-13, `zoomed`: chat → half, `toggleZoom`): the other half is
   hidden as it is (`.grp[hidden]`), never unsplit — its terminal is not resized (`fitTerm` gets no size from a hidden
   body), its page not posted (`postPane` skips a hidden half) —, `#groups.zoomed` on and `.stack` off. **It holds while
@@ -864,8 +866,8 @@ for `$HOME`'s home and the account's.
   flushed minus `seq ≤ upto`). → Findings: *round three*.
 * **The two screens stay in step because nothing reaches one while it refits** (2026-10-03): the holder holds its
   PTY's output, a clear and a snapshot in `held` until `refit`'s `done`, resizes one at a time to the newest size, and
-  reads the cursor behind the queue; the page holds its socket's frames the same way (`toXt`, `tm.refits`) but reads
-  the cursor at the call. A clear is numbered where it was asked for.
+  reads the cursor behind the queue; the page holds its socket's frames the same way (`toXt`, `tm.refits`); both go back only as
+  far as the park's CUD went (a scroll region stops it). A clear is numbered where it was asked for.
 * **A drawer whose socket closed while its claude runs is attached again** (`tm.lost`, a backed-off `syncTerm`, 5 s
   at most). A holder that accepts and never says hello is a failure after `HELLO_MS`.
 * **`nudgeTerm()` after every attach** — a resize one row short, then the true size 150 ms later — makes Claude
@@ -873,7 +875,8 @@ for `$HOME`'s home and the account's.
   the true size's repaint has come (`NUDGE_QUIET_MS`, `NUDGE_MAX_MS`), output is held through `toXt` (`tm.refits`).
   → `drawer-switch.mjs`.
 * **`fitTerm` sends a resize only when the size moved, and once it has stopped moving** (120 ms; at once with `now`,
-  as a socket opens): `tm.sent` is per attachment (`attachTerm`); every send is a SIGWINCH and a whole repaint. The
+  as a socket opens): `tm.sent` is per attachment (`attachTerm`), forgotten on focus and on coming into view (another page may have sized
+  the PTY); a send that moves the size is a SIGWINCH and a whole repaint. The
   prefs' `termSize` is saved only when it changed.
 * **The drawer's geometry**: `grid-template-columns: minmax(0, 1fr)` on `#term` and `#chat`, `min-width: 0;
   overflow: hidden` on `.tbody`, and `.tbody { box-sizing: content-box }` (the fit addon reads the padded size under
@@ -888,7 +891,7 @@ for `$HOME`'s home and the account's.
   ⌘⌦ ⌃K, ⌥⌦ ESC d — control codes Claude Code and zsh both read. ⌥← ⌥→ ⌥⌫ are xterm's own; ⇧, ⌃ or ⌘ with ⌥ (⌥⌘←→)
   is none of them. ⌘Z is the app's Edit menu. → `drawer-mackeys.mjs`.
 * **⌥ over a digit or punctuation types what macOS composed**: with ⌥ as Meta, the handler sends `e.key` for the
-  codes in `ALT_COMPOSES` and leaves ⌥+letter to Meta. → Findings: *⌥ is a compose key too*.
+  codes in `ALT_COMPOSES`, and over any key when it is ASCII and no letter (`ALT_ASCII`: German ⌥L @), else Meta. → Findings: *⌥ is a compose key too*.
 * **The ◎ row types `/focus`** into the chat's holder — Claude Code's focus view has no key and no API:
   `toggleFocusView()` sends it, then reads the newest `Focus view enabled|disabled` off the screen (`focusSaid()`) and
   lights `#viewBtn` from that; every attach reads it too (`readFocusFromScreen()`). The fake claude answers alike.
@@ -910,7 +913,8 @@ for `$HOME`'s home and the account's.
   `#zedBtn` and a `zed:` link say so (`zedNote`). → `test/editors.test.mjs`, `zed-install.mjs`.
 * **Attaching a file is typing its path** (`@dir/file`, spaces as `\ `); the app hands real paths over the bridge
   (`peixDrop`), a browser uploads (`PUT /api/attach`). ⌘V with an image sends ⌃V to claude in the app.
-* **`termEnv()` strips only `CLAUDECODE` and `CLAUDE_CODE_*`** (the CLI refuses to nest) and keeps `CLAUDE_DIR`.
+* **`termEnv()` strips `CLAUDECODE` and `CLAUDE_CODE_*`** (the CLI refuses to nest) and keeps `CLAUDE_DIR`; a drawer's and
+  serve-web's is `drawerEnv()`, without every name the server reads (`BOARD_ENV`: `PORT`… — terminals.test holds it).
   `exit code 129` in a drawer is SIGHUP from its holder ending, not a crash.
 * **Take-over**: a chat live in iTerm or VS Code can be resumed here — SIGTERM the other processes, wait, spawn.
   Nothing respawns a CLI claude; VS Code's tab goes dead and does not follow. → Findings: *VS Code chats can be taken over*.
@@ -971,21 +975,21 @@ for `$HOME`'s home and the account's.
 * Sign with the one Apple Development identity (stable team → App Management grants survive installs); chmod
   node-pty's spawn-helper only when the bit is missing (a same-mode chmod is still a write to the bundle).
 * macOS has no `timeout(1)`: `perl -e 'alarm shift; exec @ARGV' 60 <cmd>`. BSD sed has no `\b`.
-* `pkill -f server.mjs` also kills the app's own server — stop test servers **by port**.
+* `pkill -f server.mjs` also kills the app's own server — stop test servers **by port** (or the `--test-state` dir on their command line).
 * VS Code Web (`code serve-web`): extensions live in `~/.vscode-server`, trust in the browser profile. → Findings: *VS Code Web*.
 * Ink redraws only its live region on a resize; earlier lines keep the old width. That is Claude Code's, not ours.
 * xterm parses what it is written on its own schedule: read or wipe a screen through `write('', cb)`, never straight
   after a `write()`.
-* **`openSession` sets the address before it fetches, and drops an answer for a chat no longer open.**
-* A page out of sight (the harness's Chrome) runs its timers up to a second apart: a listener left for a
-  `setTimeout(0)` to remove outlives the next few steps (the drag's click swallow is `once` for that).
+* **`openSession` sets the address before it fetches, and takes only its newest ask's answer.**
+* The harness's Chrome runs with background throttling off (`launchChrome`), yet a listener left for a
+  `setTimeout(0)` to remove can outlive the next CDP step (the drag's click swallow is `once` for that).
 
 ## Verifying changes
 
 **Do not claim a UI change works without loading it in a real browser** — squashed cards, detached fins, column
 overlap, lone digits were all invisible in the code and obvious on screen. Look at the screenshots (`Read` renders
 PNGs). **After any edit to the page, load it**: `check-page` only compiles, and a `const` read before its line kills
-the live board at load — `npm run verify -- "typeof window.peix"`.
+the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `npm run verify` reads the live one.
 
 * `npm run verify -- "<js>"` evaluates one expression on the live board; `--hash <id>` opens a chat first,
   `--shot file.png` saves a screenshot after, `DARK=1`, `URL=http://127.0.0.1:<port>/`. `--dump-dom` is useless here
@@ -1013,7 +1017,7 @@ the live board at load — `npm run verify -- "typeof window.peix"`.
   lane open, large cards, the theme following the emulated colour scheme and the tour taken**: the scenarios read the
   words on the cards, and the ones about those turn the board's own on) and a default `async (ctx) => result`. The runner starts a throwaway server on a free
   port with its own state dir, builds the fixture, runs the fake claude when asked, launches Chrome with **focus
-  emulation on**, and cleans up everything on any exit within 15 s (`--keep` to inspect). **`ctx.reload()`** waits
+  emulation on**, and cleans up everything on any way out, all waiting on one cleanup (`--keep` to inspect; `npm run scenarios` prints `LEAK`). **`ctx.reload()`** waits
   for the new document's snapshot — never a reload and a sleep; `openChat` waits for that chat's log
   (`#log[data-sid]`). **A rectangle is read after `ctx.settle()`**: cards slide after they arrive or move, dialogs rise;
   `settle` waits for every finite animation and a pending draw. `ctx`: `evaluate`, `waitFor`, `send`, `reload`,
@@ -1023,21 +1027,20 @@ the live board at load — `npm run verify -- "typeof window.peix"`.
   suite, one file per feature, named as the bullets above point to them.
 * **`npm run scenarios` runs the lot**, one at a time. A failure is run once more: passing then is `FLAKY`, and the
   suite still exits 0; `--no-retry` is the honest gate.
-* **Not just after local midnight**: the fixtures are minutes to hours old, so a run then puts a day line between
-  them — `card-signals`, `transcript-live`, `home` and `readme-shots.mjs` fail the same on older commits. Wait, or run
-  with `TZ=` a zone where it is morning.
-* **The auto fixture's second folder is the temp dir's real path** (`realpathSync(tmpdir())`): a fake claude there
-  registers `/private/var/…`. Its two chats are a second apart, so the board's order is never the readdir's.
+* **A scenario's clock reads noon** (2026-10-14): the runner, its server and Chrome take the `Etc/GMT±N` zone where it
+  is noon now, so no day line falls between fixtures minutes apart (`meta.tz` another or `false`; `ctx.tz`).
+* **The auto fixture's folders are temp ones, real paths**: chat A's `repo-a` (no git, no colour), chat B's the temp
+  dir itself (`realpathSync(tmpdir())`) — a fake claude there registers `/private/var/…`; a running pid gets its `procStart`. Its two chats are a second apart, so the board's order is never the readdir's.
 * **Every test server gets a fast clock, an empty org directory, and nothing of this Mac's** (`lib/testserver.mjs`):
   `REGISTRY_POLL_MS` 1200, `TASK_GRACE_MS` 400, `CONFIG_POLL_MS` 200; its own `ORG_DIR` (no welcome), `CLAUDE_DIR`
-  (empty unless a fixture), config beside its `STATE_FILE`; the fakes (`GH_BIN`, `caffeinate`, `pmset` with
-  `AWAKE_ADMIN=none`); Jira's token in its own file (`JIRA_TOKEN_FILE`), no inherited `JIRA_API_TOKEN`; a `ZDOTDIR`
+  (empty unless a fixture), config beside its `STATE_FILE`; the fakes (`GH_BIN` — only the fields the query asks, `FAKEGH_FAIL` —, `caffeinate`, `pmset` with
+  `AWAKE_ADMIN=none`, `CODE_BIN`, `TASK_BIN`; `CLAUDE_BIN` `noclaude.mjs` unless `fake`), `VSWEB_PORT` free, `UPDATE_DIR` empty; Jira's token in its own file (`JIRA_TOKEN_FILE`), no inherited `JIRA_API_TOKEN`; a `ZDOTDIR`
   with no rc files; `VSWEB_FRESH_MS` 0; `UPDATE_EVERY_MS` 0; `USAGE=off`; `APP_DIRS` its own, `BREW_BIN` the fake,
   `LSREGISTER_BIN` `/usr/bin/true`; no inherited `CONFIG_FILE`, `TERMS_DIR` or XDG dirs. Up is its
-  `listening` line; `meta.env` is spread last. `waitFor(fn, {timeout, what})`, `srv.post(path, body)` and `tmpDir()`
-  are the tests' polls, POSTs and dirs. **A wait's timeout is for what never comes** (15 s by default, 2026-10-13):
-  with test files side by side, every spawn is slow on this Mac (an endpoint agent checks each exec) — a fake claude
-  that registers in 1.2 s alone took over 10; `npm test` runs four files at once for the same reason.
+  `listening` line (a port taken first moves it to a fresh one); stdin a pipe whose end stops it (`PEIX_TEST_PARENT`); `meta.env` is spread last. `waitFor(fn, {timeout, what})`, `srv.post(path, body)` and `tmpDir()`
+  are the tests' polls, POSTs and dirs (a bare `mkdtempSync` fails `npm run check`); every test process has its own
+  state (`test/env.mjs`, preloaded). **A wait's timeout is for what never comes** (15 s by default, 2026-10-13):
+  every spawn is slow on this Mac under load (an endpoint agent checks each exec).
 * **Test against the fake claude, not real chats**: `scripts/fakeclaude.mjs` via `CLAUDE_BIN` (`fake: true`) is
   instant and touches nothing. A test against the real `~/.claude` names it as `claudeDir` outright (read-only), uses
   a stale chat and `DELETE`s the terminals it made.
