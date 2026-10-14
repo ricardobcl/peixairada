@@ -1600,11 +1600,12 @@ function settleDrift(s, now = Date.now()) {
   driftNews(s, !!due?.working && !gone);
   return gone || !!due;
 }
-/** An acknowledgement lasts until the move it was for is gone; an alert goes out once per move, and only for a chat at
- *  work — Claude editing the wrong branch is the case that matters. */
+/** An acknowledgement lasts until the move it was for is gone — not while a move seen on disk awaits its judgement, which
+ *  shows none meanwhile (2026-10-14: a line in that while dropped it); an alert goes out once per move, and only for a
+ *  chat at work — Claude editing the wrong branch is the case that matters. */
 function driftNews(s, working) {
-  const raw = rawDrift(s), k = raw && driftKey(raw);
-  if (!indexing && driftAcks[s.id] && driftAcks[s.id] !== k) { delete driftAcks[s.id]; saveState(); }
+  const raw = rawDrift(s), k = raw && driftKey(raw), judging = !!s.diskSeen && s.diskSeen.drift === undefined;
+  if (!indexing && !judging && driftAcks[s.id] && driftAcks[s.id] !== k) { delete driftAcks[s.id]; saveState(); }
   const d = driftOf(s), said = d ? driftKey(d) : null;
   if (said === (s.driftSaid ?? null)) return;
   s.driftSaid = said;
@@ -1672,8 +1673,9 @@ function noteHead(s, head, now = Date.now(), boot = false) {
   return JSON.stringify([s.headNow, s.diskDrift]) !== before;
 }
 /** On the registry poll: every live chat's checkout's HEAD, each read once, and who else runs in it — the chip's
- *  tooltip names them. */
-function sweepHeads(now = Date.now()) {
+ *  tooltip names them. `boot`: the restart's, judged at once and in silence (2026-10-14) — a move said before it is not
+ *  said again on the next look. */
+function sweepHeads(now = Date.now(), boot = false) {
   const tops = new Map(), heads = new Map(), live = [];
   for (const s of sessions.values()) {
     if (!s.alive) { if (s.headNow || s.diskDrift) { s.headNow = null; s.diskDrift = null; s.diskSeen = null; schedulePush(s); } continue; }
@@ -1685,7 +1687,7 @@ function sweepHeads(now = Date.now()) {
   }
   for (const [s, top] of live) {
     const peers = live.filter(([o, t]) => t === top && o !== s).map(([o]) => o.id), was = driftOf(s);
-    const moved = noteHead(s, heads.get(top), now), peersMoved = JSON.stringify(peers) !== JSON.stringify(s.peers || []);
+    const moved = noteHead(s, heads.get(top), now, boot), peersMoved = JSON.stringify(peers) !== JSON.stringify(s.peers || []);
     s.peers = peers;
     if (moved || (peersMoved && driftOf(s)) || was !== driftOf(s)) schedulePush(s);
     driftNews(s, statusOf(s) === 'working');
@@ -4445,7 +4447,7 @@ if (existsSync(PROJECTS_DIR)) watch(PROJECTS_DIR, { recursive: true }, onFsEvent
 scanProjects();
 await adoptHolders();   // before the registry: a drawer's own process is what makes a chat's live process "mine"
 loadRegistry();
-sweepHeads();   // the checkouts' branches as they stand, in silence: a move from before the restart is no news
+sweepHeads(Date.now(), true);   // the checkouts' branches as they stand, judged in silence: a move from before the restart is no news
 indexing = false;
 // Statuses alone could wait for a chat to be opened; titles cannot — they head every card, so the whole
 // board needs them up front. Batched 40 to a GraphQL call, in the background, the recent chats' first.

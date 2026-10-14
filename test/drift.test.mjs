@@ -7,10 +7,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawn } from 'node:child_process';
+import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { sleep, startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
+import { slugOf } from '../scripts/fixture.mjs';
 import { driftOf, fold, headOf, newSession, noteHead, settleDrift } from '../server.mjs';
 
 const CWD = '/Users/test/widgets';
@@ -265,4 +267,58 @@ test('Claude in a folder of the same checkout is on the same branch; a worktree 
     fold(s, in_(say(50, 'feat/wt'), wt)); settleDrift(s, LATER());
     assert.equal(moved(s), null, 'a worktree inside the repo is a checkout of its own');
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+/** The `alert` events of a server's stream, from its snapshot on (as reindex.test reads them). */
+async function alerts(url) {
+  const res = await fetch(url + 'events'), reader = res.body.getReader(), dec = new TextDecoder(), got = [];
+  const { promise: snapshot, resolve } = Promise.withResolvers();
+  (async () => {
+    let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i; while ((i = buf.indexOf('\n\n')) >= 0) { const m = /^event: (\w+)\ndata: (.*)$/s.exec(buf.slice(0, i)); buf = buf.slice(i + 2); if (m?.[1] === 'snapshot') resolve(); if (m?.[1] === 'alert') got.push(JSON.parse(m[2])); }
+    }
+  })().catch(() => {});
+  await snapshot;
+  return { got, stop: () => reader.cancel().catch(() => {}) };
+}
+
+test('a restart says no move again and keeps the one set aside (2026-10-14)', { timeout: 120_000 }, async () => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'peix-boot-'))), repo = join(dir, 'widgets'), claude = tmpDir('peix-fx-');
+  const git = (...a) => execFileSync('git', ['-C', repo, ...a], { stdio: 'pipe', env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' } });
+  const sleeps = [0, 1].map(() => spawn('sleep', ['120'], { stdio: 'ignore' }));   // a live pid each: any will do
+  let srv, a1, a2;
+  try {
+    mkdirSync(repo); git('init', '-q', '-b', 'feat/a'); git('-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-q', '--allow-empty', '-m', 'one');
+    const proj = join(claude, 'projects', slugOf(repo)); mkdirSync(proj, { recursive: true }); mkdirSync(join(claude, 'sessions'));
+    const line = (id, ms, type, content, extra = {}) => JSON.stringify({ isSidechain: false, userType: 'external', entrypoint: 'cli', cwd: repo, sessionId: id, version: 'fixture', gitBranch: 'feat/a', parentUuid: null, uuid: randomUUID(), timestamp: new Date(Date.now() + ms).toISOString(), type, message: { role: type, content, ...extra } }) + '\n';
+    const working = (id, ms) => line(id, ms, 'assistant', [{ type: 'text', text: 'Still on it.' }], { model: 'fixture-1', id: 'msg_' + randomUUID().slice(0, 8), stop_reason: 'tool_use' });
+    const chats = sleeps.map(p => {   // two chats at work in the checkout, their lines on feat/a
+      const id = randomUUID(), file = join(proj, `${id}.jsonl`);
+      writeFileSync(file, line(id, -60_000, 'user', [{ type: 'text', text: 'round the tax' }]) + working(id, -50_000));
+      writeFileSync(join(claude, 'sessions', `${p.pid}.json`), JSON.stringify({ pid: p.pid, sessionId: id, cwd: repo, startedAt: Date.now() - 3600_000, version: 'fixture', kind: 'interactive', entrypoint: 'cli', status: 'busy', statusUpdatedAt: Date.now() }));
+      return { id, file };
+    });
+    const [acked, other] = chats;
+    srv = await startTestServer({ claudeDir: claude, env: { REGISTRY_POLL_MS: '3000' } });
+    const sum = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+    a1 = await alerts(srv.url);
+    await waitFor(async () => (await sum(other.id))?.headNow === 'feat/a', { what: 'the checkout read' });
+    git('checkout', '-q', '-b', 'main');   // someone moves it under both
+    await waitFor(async () => (await sum(other.id))?.headNow === 'main' && (await sum(acked.id))?.headNow === 'main', { what: 'the move seen' });
+    for (const c of chats) appendFileSync(c.file, working(c.id, 0));   // a line of each's own, after it: judged
+    await waitFor(() => a1.got.filter(a => a.kind === 'drift').length === 2, { timeout: 30_000, what: 'both told' });
+    assert.equal((await srv.post(`api/sessions/${acked.id}/drift`, {})).status, 200, 'one set aside');
+    a1.stop();
+
+    await srv.restart();
+    a2 = await alerts(srv.url);   // the stream waits for the boot: the boot's look is behind it
+    appendFileSync(acked.file, working(acked.id, 1000)); appendFileSync(other.file, working(other.id, 1000));   // lines in before the next look
+    await sleep(7500);   // two looks and the alerts' debounce
+    assert.deepEqual(a2.got.filter(a => a.kind === 'drift'), [], 'nobody told again');
+    assert.deepEqual(JSON.parse(readFileSync(join(srv.dir, 'state.json'), 'utf8')).driftAcks, { [acked.id]: 'feat/a\u2192main' }, 'the set-aside kept');
+    assert.deepEqual([(await sum(acked.id)).drift, (await sum(other.id)).drift?.to], [null, 'main'], 'aside still, and the other shown still');
+  } finally { a1?.stop(); a2?.stop(); await srv?.stop(); for (const p of sleeps) p.kill(); rmSync(dir, { recursive: true, force: true }); }
 });
