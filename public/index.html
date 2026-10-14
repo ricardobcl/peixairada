@@ -3650,6 +3650,10 @@ const toolName = n => {
       const at = s.lastActivity || s.startedAt || ''; if (el.dataset.at !== at) el.dataset.at = at;
       const tip = timeTip(s); if (el.title !== tip) el.title = tip;
     }
+    for (const el of root.querySelectorAll('.chip.watch')) {   // what runs behind the turn, a card's or the header's (2026-10-14)
+      const s = state.sessions.get(el.closest('.card')?.dataset.id || el.closest('#shead')?.dataset.sid); if (!s) continue;
+      const tip = (s.tasks || []).map(taskLine).join('\n'); if (el.title !== tip) el.title = tip;
+    }
     for (const el of root.querySelectorAll('.prrow[data-url]')) {   // the open chat's PR rows (2026-10-14)
       const pr = state.sessions.get(state.current)?.prs?.find(p => p.url === el.dataset.url); if (!pr) continue;
       const tip = prTip(pr); if (el.title !== tip) el.title = tip;
@@ -4210,14 +4214,15 @@ const toolName = n => {
   /** One chip for everything still running behind the turn. With one task it says *what* — the description the
    *  call gave it, which is the answer to "something is running here, but what?" and was a tooltip before
    *  (2026-09-21). With
-   *  more, it counts them by kind. The tooltip is the full list either way, with the time left and the events. */
+   *  more, it counts them by kind. The tooltip is the full list either way, with the time left and the events — written
+   *  by fillAges after the draw (2026-10-14): in the markup, every event and every minute drew the card anew. */
   function taskChip(s) {
     const t = s.tasks || []; if (!t.length) return '';
     const mon = t.filter(x => x.kind === 'monitor').length, bg = t.length - mon;
     const label = t.length === 1
       ? `${t[0].kind === 'monitor' ? 'monitor' : 'running'}${t[0].what ? ` · ${t[0].what}` : ''}`
       : [mon ? (mon > 1 ? `${mon} monitors` : 'monitor') : '', bg ? (bg > 1 ? `${bg} running` : 'running') : ''].filter(Boolean).join(' · ');
-    return `<span class="chip watch" title="${esc(t.map(taskLine).join('\n'))}">${ICON.watch}${esc(label)}</span>`;
+    return `<span class="chip watch">${ICON.watch}${esc(label)}</span>`;
   }
   /** The question itself on the card — which tool asked, what it asked, how many answers it is offering; or, when
    *  only the registry knows (the question's line is written with its answer), what Claude Code says it waits on. */
@@ -5943,6 +5948,7 @@ const toolName = n => {
           s.model ? `<span class="chip">${esc(s.model)}</span>` : ''}${s.live?.pid ? `<span class="chip">pid ${s.live.pid}</span>` : ''}
       </div>`;
     const headNew = headHtml !== drawn.head; if (headNew) { $('#shead').innerHTML = drawn.head = headHtml; $('#shead').dataset.sid = s.id; rollSoon(); fadeSoon(); }
+    fillAges($('#shead'));
     // The menu, one row per action: its mark, what it does, and its state or key on the right. The ids are the
     // buttons' own from when they sat in the row — the hotkeys and the harness reach them by those.
     const menuHtml = [
@@ -9273,7 +9279,7 @@ const toolName = n => {
   // The 30 s tick: the ages (fillAges, in the list's render and, while they are up, the picker's rows and the menu),
   // and the day lines and the list's order, which the clock moves too. The cards' markup no longer carries an age, so
   // the render is a diff that rebuilds nothing on its own.
-  setInterval(() => { renderBoard(); if ($('#pick').open) fillAges($('#picklist')); if ($('#hmenu').open) fillAges($('#hmenu')); if ($('#ov').open) fillAges($('#ovcols')); fillAges($('#prlist')); }, 30_000);
+  setInterval(() => { renderBoard(); if ($('#pick').open) fillAges($('#picklist')); if ($('#hmenu').open) fillAges($('#hmenu')); if ($('#ov').open) fillAges($('#ovcols')); fillAges($('#prlist')); fillAges($('#shead')); }, 30_000);
   // The open chat looked at again: back in view — or the window given the keys back (2026-10-14), since an alert counts a
   // reply unread on a board that is on screen without them, and nothing else cleared it
   const lookedAt = () => { if (document.visibilityState === 'visible' && state.current) { state.unread.delete(state.current); if (replied(state.sessions.get(state.current) || {})) markSeen(state.current); renderBoard(); } };
