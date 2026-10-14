@@ -125,6 +125,23 @@ test('a task belongs to the claude that started it, and to no other', () => {
   assert.deepEqual(summary(s).tasks, [], 'and nothing runs in a chat with no process at all');
 });
 
+// lsof's verdict lands on the chat as it is then (2026-10-14): a re-read while it ran replaced the object it started with.
+test('a background command nobody holds the output of is let go from the chat as it is now', async () => {
+  const { writeFileSync } = await import('node:fs');
+  process.env.LSOF_BIN = '/usr/bin/false';   // lsof's own "held by nobody": exit 1, nothing named
+  const out = join(tmp, 'bg.output'); writeFileSync(out, '');
+  const task = () => new Map([['bgdone1', { kind: 'bash', what: 'the build', at: now(0), until: null, events: 0, out }]]);
+  const was = newSession('s-sweep', '/x/s-sweep.jsonl'); was.alive = true; was.live = { pid: 1, startedAt: Date.now() - 600_000 }; was.tasks = task();
+  srv.sessions.set(was.id, was);
+  const sweep = srv.sweepTasks();
+  const s = newSession('s-sweep', '/x/s-sweep.jsonl'); s.alive = true; s.live = was.live; s.tasks = task();   // read again meanwhile
+  srv.sessions.set(s.id, s);
+  await sweep;
+  assert.equal(s.tasks.size, 0, 'the chat as it is now let it go');
+  assert.ok(s.pushTimer, 'and pushed'); assert.equal(was.pushTimer, null, 'never the object it replaced');
+  clearTimeout(s.pushTimer); srv.sessions.delete(s.id);
+});
+
 test('the question on the card is the one still waiting for an answer', () => {
   const s = newSession('s7', '/x/s7.jsonl');
   s.alive = true; s.live = { pid: 1, startedAt: Date.now() - 600_000 };

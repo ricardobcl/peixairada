@@ -1977,8 +1977,11 @@ async function sweepTasks() {
   sweeping = true;
   let held; try { held = await heldFiles([...new Set(due.map(d => d.t.out))]); } finally { sweeping = false; }
   if (!held) return;
-  for (const { s, id, t } of due) {
-    if (held.has(realPath(t.out)) || s.tasks?.get(id) !== t) continue;
+  for (const { s: was, id, t } of due) {
+    // the chat as it is now, by its id (2026-10-14): a re-read while lsof ran replaced the object, and the old one's push
+    // was a stale summary
+    const s = sessions.get(was.id);
+    if (held.has(realPath(t.out)) || !s?.tasks?.has(id)) continue;
     s.tasks.delete(id); console.log(`[peixairada] task ${id} (${t.what}) is no longer running`); schedulePush(s);
   }
 }
@@ -4251,7 +4254,7 @@ server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTe
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { sweepTasks, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
