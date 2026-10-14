@@ -78,7 +78,8 @@ has no such binding.
   now), so the keydown is `defaultPrevented` whatever is open: an editor closes, and with none the key is spent — the
   menu's Close, the board's ⌘W, never ran. With the harness app not active there is no key window and AppKit sends ⌘W
   straight to the menu, which is not the app's path: the runs that count made it active, only around the keys and only
-  after a minute with no input.
+  after a minute with no input — once an accessory app, once a regular one owning the menu bar as the app does, the
+  same. The ⌘R entry of 2026-10-13 below says a menu's key equivalent comes before any page: not what this measured.
 * **The signal is the editor part's own `empty`** (`.part.editor > .content.empty`): `EditorPart.updateContainer`
   toggles it from `isEmpty`, which is `count === 1 && activeGroup.isEmpty` — desktop's condition exactly — and VS
   Code's CSS styles by it (the focused empty group's outline). The same line is in all five builds on this Mac, 1.139.0
