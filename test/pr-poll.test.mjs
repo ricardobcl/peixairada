@@ -1,11 +1,12 @@
 // Which PRs the registry poll asks GitHub about: by how recently their chat was touched — a word in it, or a page
-// opening it — every minute, five, thirty, then not at all; never twice once merged or closed. Pure: duePrs.
+// opening it — every minute, five, thirty, then not at all; never twice once merged or closed. Pure: duePrs. And gh
+// failing as a whole, through a throwaway server: nothing changes, and the polls pause.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
+import { sleep, startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { makeFixture } from '../scripts/fixture.mjs';
 
 const tmp = tmpDir('peix-test-');
@@ -102,5 +103,40 @@ await import(${JSON.stringify(fileURLToPath(new URL('../scripts/fakegh.mjs', imp
     const asked = readFileSync(calls, 'utf8').trim().split('\n').map(Number);
     assert.deepEqual(asked.slice(0, 5), [4, 2, 2, 1, 1], 'all four, then in halves down to the one it refused — each asked once');
     assert.match(srv.logText(), /GitHub refused the query for https:\/\/github\.com\/acme\/refused\/pull\/4/);
+  } finally { await srv.stop(); }
+});
+
+test('gh failing as a whole changes nothing, and the polls pause until an answer comes (2026-10-14)', { timeout: 90_000 }, async () => {
+  const dir = tmpDir('peix-ghfail-'), prs = join(dir, 'prs.json'), fail = join(dir, 'fail');
+  const pr = (state, title) => writeFileSync(prs, JSON.stringify({ 'acme/widgets#7': { state, title } }));
+  pr('OPEN', 'First title'); writeFileSync(fail, 'HTTP 502: Bad Gateway (https://api.github.com/graphql)');
+  const fx = makeFixture(join(dir, 'claude'), [{ cwd: '/Users/test/widgets', prompt: 'Look at https://github.com/acme/widgets/pull/7', reply: 'Looked.' }]);
+  const id = fx.chats[0].id;
+  // PR_TTL_MS at 1 ms: opening the chat always asks, the way to put a call through a pause
+  const srv = await startTestServer({ claudeDir: fx.dir, env: { FAKEGH_PRS: prs, FAKEGH_FAIL: fail, PR_TTL_MS: '1' } });
+  const failed = () => (srv.logText().match(/\] pr status: gh: HTTP 502/g) || []).length;
+  const seen = async () => { const p = (await srv.api('api/sessions')).body.sessions.find(s => s.id === id).prs[0]; return { state: p.state, title: p.title }; };
+  const open = () => srv.api(`api/sessions/${id}/messages`);
+  try {
+    await waitFor(() => failed() === 1, { what: 'the boot\'s ask, failed' });
+    await sleep(4000);   // three registry polls, each of which would ask again for a PR never answered
+    assert.equal(failed(), 1, 'paused: no poll asks again');
+    assert.deepEqual(await seen(), { state: null, title: null });
+    rmSync(fail);
+    await sleep(2500);
+    assert.deepEqual(await seen(), { state: null, title: null }, 'gh would answer now, and the polls still wait');
+    await open();
+    assert.deepEqual(await waitFor(async () => (await seen()).state && seen(), { what: 'the PR, asked on opening the chat' }), { state: 'open', title: 'First title' });
+
+    pr('MERGED', 'Renamed'); writeFileSync(fail, 'HTTP 502: Bad Gateway (https://api.github.com/graphql)');
+    const turns = () => JSON.stringify(JSON.parse(readFileSync(join(srv.dir, 'state.json'), 'utf8')).prTurns), before = turns();
+    await open();
+    await waitFor(() => failed() === 2, { what: 'the second ask, failed' });
+    await sleep(500);
+    assert.deepEqual(await seen(), { state: 'open', title: 'First title' }, 'what the card showed stands');
+    assert.equal(turns(), before, 'nor what the state file keeps of it');
+    rmSync(fail);
+    await open();
+    assert.deepEqual(await waitFor(async () => (await seen()).state === 'merged' && seen(), { what: 'the PR merged' }), { state: 'merged', title: 'Renamed' });
   } finally { await srv.stop(); }
 });
