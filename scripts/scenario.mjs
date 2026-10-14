@@ -35,8 +35,11 @@ const shots = shotsDir || join(tmpdir(), 'peixairada-shots'); mkdirSync(shots, {
 const log = (...a) => console.error(`[${name}]`, ...a);
 
 const cleanups = [];
-let done = false;
-async function cleanup() { if (done) return; done = true; for (const c of cleanups.reverse()) { try { await c(); } catch (e) { log('cleanup:', e.message); } } }
+// One cleanup, which every way out waits on (2026-10-14): a second finish returned at once before — the bail closed
+// Chrome first, the dead socket failed the scenario's own wait, its catch finished again and exited while the first
+// cleanup was still in Chrome's close, and the server was never stopped (three left running since 2026-10-03).
+let cleaning = null;
+const cleanup = () => cleaning ||= (async () => { for (const c of cleanups.reverse()) { try { await c(); } catch (e) { log('cleanup:', e.message); } } })();
 /** End with `code`, cleaning up first — but never wait on a wedged server or Chrome for longer than 15 s. */
 const finish = async code => { setTimeout(() => process.exit(code), 15_000).unref(); await cleanup(); process.exit(code); };
 // Every way out cleans up (2026-10-03; SIGINT alone before: a Bash tool's timeout is a SIGTERM, a closed terminal a

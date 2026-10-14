@@ -4520,6 +4520,14 @@ const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.ar
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
 endVsWebWithUs();
+// A test's server goes with its test (2026-10-14): lib/testserver.mjs hands it a pipe for stdin and PEIX_TEST_PARENT,
+// and the pipe's end is that process gone — killed, timed out, crashed before its stop() — so the server ends its
+// drawers, which nobody else will now, and itself. A server run any other way never reads its stdin.
+if (process.env.PEIX_TEST_PARENT) {
+  let gone = false;
+  const orphaned = () => { if (gone) return; gone = true; console.error(`[peixairada] the test that started this server (pid ${process.env.PEIX_TEST_PARENT}) is gone — ending its drawers and stopping`); for (const t of terms.values()) holderSend(t, { t: 'quit' }); setTimeout(() => process.exit(0), 500); };
+  process.stdin.once('end', orphaned).once('error', orphaned).resume();
+}
 // The port first, and nothing else until it is ours (2026-10-03): a server waiting on a busy port — the agent behind
 // the app's own, an `npm start` beside the agent — adopted every holder, polled GitHub, posted alerts and wrote its
 // boot-time copy of the state file over the live server's ticks, all while serving nobody. A busy port is waited
