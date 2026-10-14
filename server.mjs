@@ -1304,6 +1304,18 @@ function waiveTurn(url) {
   for (const s of sessions.values()) { const pr = s.prs.find(p => p.url === url); if (pr) { pr.turn = turn; pr.rounds = roundsOf(url); schedulePush(s); } }
   return true;
 }
+/** A round let go, taken back (2026-10-15): your move again, as it was — no alert, no un-tick, its time kept. */
+function unwaiveTurn(url) {
+  const rec = prTurns[url], known = prStatus.get(url);
+  if (!rec?.waived || !known?.turn?.waived) return false;
+  delete rec.waived; turnsDirty = true;
+  const { waived, ...was } = known.turn, turn = { ...was, you: true };
+  prStatus.set(url, { ...known, turn });
+  const open = openRound(url); if (open) delete open.let;
+  logBoard(url, 'back');
+  for (const s of sessions.values()) { const pr = s.prs.find(p => p.url === url); if (pr) { pr.turn = turn; pr.rounds = roundsOf(url); schedulePush(s); } }
+  return true;
+}
 
 // ---- …and its history (2026-10-15) ----------------------------------------------------------------------------------
 // A PR you have a turn on keeps a ledger (`prLogs`, the state file): its rounds — a move come round to you, and how it
@@ -4614,7 +4626,14 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/waive$/))) {   // the chat's PRs at your move, let go this round (2026-10-12)
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
-      const urls = s.prs.filter(p => p.turn?.you).map(p => p.url).filter(waiveTurn);
+      // one PR's round alone, or taken back (2026-10-15: { url, undo }); no url, every one at your move, as ⌥-click does
+      const b = await jsonBody(req), one = typeof b.url === 'string' ? b.url : null;
+      if (one && !s.prs.some(p => p.url === one)) return json(res, 404, { error: 'not a PR of this chat' });
+      if (one && b.undo) {
+        if (!unwaiveTurn(one)) return json(res, 409, { error: 'not let go' });
+        saveState(); return json(res, 200, { ok: true, back: [one] });
+      }
+      const urls = (one ? [one] : s.prs.filter(p => p.turn?.you).map(p => p.url)).filter(waiveTurn);
       if (!urls.length) return json(res, 409, { error: 'nothing at your move' });
       saveState();
       return json(res, 200, { ok: true, waived: urls });
@@ -4781,7 +4800,7 @@ server.on('upgrade', (req, socket, head) => { socket.on('error', () => socket.de
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, prEvents, logEvents, noteRounds, roundsOf, prLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
+export { sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, logEvents, noteRounds, roundsOf, prLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {

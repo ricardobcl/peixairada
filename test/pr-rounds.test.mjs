@@ -123,11 +123,23 @@ test('the server keeps a PR\'s history over a restart and hands it to the page',
     assert.deepEqual([first.rounds[0].from, first.rounds[0].why], [iso(30), 'changes asked by ana']);
     const card = (await srv.api('api/sessions')).body.sessions.find(s => s.id === id).prs[0];
     assert.deepEqual(card.rounds.map(r => r.why), ['changes asked by ana'], 'the chat\'s PR carries its rounds');
+    // one PR's round let go, and taken back (2026-10-15)
+    const pr5 = 'https://github.com/acme/widgets/pull/5', waive = body => srv.post(`/api/sessions/${id}/waive`, body);
+    assert.equal((await waive({ url: 'https://github.com/acme/widgets/pull/6' })).status, 404, 'not this chat\'s');
+    assert.equal((await waive({ url: pr5 })).status, 200);
+    let one = (await srv.api('api/sessions')).body.sessions.find(s => s.id === id).prs[0];
+    assert.deepEqual([one.turn.you, one.turn.waived, !!one.rounds[0].let], [false, true, true]);
+    assert.equal((await waive({ url: pr5, undo: true })).status, 200);
+    one = (await srv.api('api/sessions')).body.sessions.find(s => s.id === id).prs[0];
+    assert.deepEqual([one.turn.you, one.turn.waived ?? null, one.rounds[0].let ?? null], [true, null, null], 'your move again, as it was');
+    assert.equal((await waive({ url: pr5, undo: true })).status, 409, 'nothing let go to take back');
+    assert.deepEqual((await log()).ev.filter(e => e.k === 'board').map(e => e.x), ['let go', 'back']);
+    const before = await log();
     await srv.restart();
     await waitFor(async () => (await srv.api('api/sessions')).body?.sessions?.length === 1, { what: 'the server back' });
     const back = await log();
-    assert.deepEqual(back.ev.map(e => e.id), first.ev.map(e => e.id), 'the events kept');
-    assert.deepEqual(back.rounds, first.rounds, 'the rounds kept');
+    assert.deepEqual(back.ev.map(e => e.id), before.ev.map(e => e.id), 'the events kept');
+    assert.deepEqual(back.rounds, before.rounds, 'the rounds kept');
   } finally { await srv.stop(); }
 });
 
