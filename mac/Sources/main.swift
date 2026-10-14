@@ -323,7 +323,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// comes back with the app — with the Dock's edge read again, in case it moved meanwhile.
   func applicationDidResignActive(_ note: Notification) { fillTick?.invalidate(); fillTick = nil; edgeSince = nil; topSince = nil; lightsUp("the app in the back") }
   func applicationDidBecomeActive(_ note: Notification) {
-    if fillSaved != nil && fillTick == nil { startDockTick() }; tuckMenuBarSoon()
+    if fillSaved != nil && fillTick == nil && !window.isMiniaturized { startDockTick() }; tuckMenuBarSoon()   // down in the Dock, it waits for the window (windowDidDeminiaturize)
     if !away.isEmpty { away.removeAll(); showAway() }   // in front again: someone is looking, whatever was missed
   }
   func applicationShouldTerminateAfterLastWindowClosed(_ app: NSApplication) -> Bool { false }
@@ -446,7 +446,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     // drag it there) and through a change of resolution, and the page hears where the housing is now.
     for name in [NSWindow.didChangeScreenNotification, NSApplication.didChangeScreenParametersNotification] {
       NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-        guard let self, self.fillSaved != nil, let screen = self.window.screen else { return }
+        guard let self, self.fillSaved != nil, !self.window.isMiniaturized, let screen = self.window.screen else { return }
         self.placeFill(on: screen)
         self.tellFill()
       }
@@ -1058,12 +1058,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: w)
   }
   func tuckMenuBar() {
-    guard fillSaved != nil, fillHousing, !dockOut, !lightsOut, NSApp.isActive, let screen = window.screen,
+    guard fillSaved != nil, fillHousing, !dockOut, !lightsOut, NSApp.isActive, !window.isMiniaturized, let screen = window.screen,
           NSEvent.mouseLocation.y < screen.frame.maxY - screen.safeAreaInsets.top - 8 else { return }
     let out = NSMenu.menuBarVisible()
     NSApp.presentationOptions = [.hideDock, .hideMenuBar]
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-      guard let self, self.fillSaved != nil else { return }
+      guard let self, self.fillSaved != nil, !self.window.isMiniaturized else { return }
       NSApp.presentationOptions = self.fillOptions()
     }
     logLine("menu bar: tucked (\(out ? "it was out" : "it was in"))")
@@ -1174,7 +1174,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     window.miniaturize(nil)
   }
   /// Down in the Dock, the fill's options would keep the Dock hidden while the app is in front — and the window with it,
-  /// out of reach; they come back with the window.
+  /// out of reach; they come back with the window. Nothing else puts them back meanwhile (2026-10-14): the app coming
+  /// forward, a change of Space or of screen, and the menu bar's tuck each did, the Dock hidden over the window in it.
   func windowDidMiniaturize(_ note: Notification) {
     guard fillSaved != nil else { return }
     fillTick?.invalidate(); fillTick = nil
