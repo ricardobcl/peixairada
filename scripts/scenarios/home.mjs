@@ -35,6 +35,24 @@ export default async function (ctx) {
     ctx.assert.match(out.sum, /the longest wait: 15m/);
     await ctx.settle(); await ctx.shot('home');
 
+    // the home is drawn again as the clock and the machine move — every 3 s with the CPU — but what is clicked keeps its
+    // node (2026-10-14): now is a CSS variable on the day, not a place in its markup, and each fact its own line; a row
+    // pressed through two redraws still opens its chat
+    out.nodes = await ctx.evaluate(`(window.__home = [...document.querySelectorAll('#home .hrow, #home .hgo')]).length`);
+    await ctx.evaluate(`(real => { Date.now = () => real() + 300_000; })(Date.now)`);   // five minutes on: the day's now moves
+    const held = await ctx.evaluate(`(r => ({ x: r.left + 20, y: (r.top + r.bottom) / 2 }))(document.querySelectorAll('#home .hrow')[${await ctx.evaluate(row(asked.id))}].getBoundingClientRect())`);
+    const mouse = (type, x, y) => ctx.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons: type === 'mousePressed' ? 1 : 0, clickCount: 1 });
+    await mouse('mouseMoved', held.x, held.y); await mouse('mousePressed', held.x, held.y);
+    await ctx.sleep(3600);
+    out.kept = await ctx.evaluate(`window.__home.filter(n => n.isConnected).length`);
+    out.now = await ctx.evaluate(`document.querySelector('#home .hgrid').style.getPropertyValue('--now')`);
+    await mouse('mouseReleased', held.x, held.y);
+    await ctx.waitFor(`window.peix.state().current === '${asked.id}'`, { what: 'the row held 3.6 s opened its chat' });
+    ctx.assert.equal(out.kept, out.nodes, 'every row and link of the home kept its node');
+    ctx.assert.match(out.now, /^\d+(\.\d+)?%$/, 'now is the day’s --now');
+    await ctx.key('Digit0');
+    await ctx.waitFor(`!window.peix.state().current && document.querySelectorAll('#home .hrow').length >= 3`, { what: 'home after the press' });
+
     // a row opens its chat; ⌥⌘0 comes back
     await ctx.evaluate(`document.querySelectorAll('#home .hrow')[${await ctx.evaluate(row(plain.id))}].click()`);
     await ctx.waitFor(`window.peix.state().current === '${plain.id}' && !document.querySelector('#home')`, { what: 'the row’s chat open' });

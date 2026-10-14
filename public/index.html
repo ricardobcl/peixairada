@@ -3650,6 +3650,10 @@ const toolName = n => {
       const at = s.lastActivity || s.startedAt || ''; if (el.dataset.at !== at) el.dataset.at = at;
       const tip = timeTip(s); if (el.title !== tip) el.title = tip;
     }
+    for (const el of root.querySelectorAll('.prrow[data-url]')) {   // the open chat's PR rows (2026-10-14)
+      const pr = state.sessions.get(state.current)?.prs?.find(p => p.url === el.dataset.url); if (!pr) continue;
+      const tip = prTip(pr); if (el.title !== tip) el.title = tip;
+    }
     for (const el of root.querySelectorAll('[data-at]')) { const t = rel(el.dataset.at); if (el.textContent !== t) el.textContent = t; }
   }
   const dayHtml = day => `<div class="gsep day" title="below: the chats you were in ${day === 'Yesterday' ? 'yesterday' : 'on ' + day}"><b>${day}</b></div>`;
@@ -3829,6 +3833,13 @@ const toolName = n => {
    *  rival's bar were set on every update — a button replaced between a press and its release loses the click, and
    *  the keyboard's focus with it. Whatever edits such a box in place has to forget `_drawn`. */
   const setHtml = (el, html) => { if (el._drawn === html) return false; el.innerHTML = el._drawn = html; return true; };
+  /** setHtml a child at a time (2026-10-14): `htmls` are the box's children, each one element's markup; a child whose
+   *  markup is what it was keeps its node, so a line that moves on its own redraws nothing beside it. */
+  function setKids(el, htmls) {
+    const tpl = document.createElement('template');
+    htmls.forEach((h, i) => { const c = el.children[i]; if (c?._drawn === h) return; tpl.innerHTML = h; const n = tpl.content.firstElementChild; n._drawn = h; if (c) c.replaceWith(n); else el.append(n); });
+    while (el.children.length > htmls.length) el.lastElementChild.remove();
+  }
   const nearList = (r, l) => r.bottom > l.top - l.height && r.top < l.bottom + l.height;   // within a screen of the list's window
   function drawCards(items, empty) {
     const list = $('#slist'), want = new Set(), nodes = [], fresh = new Set(), redrawn = [], lines = new Map(), seen = new Map();
@@ -5841,8 +5852,10 @@ const toolName = n => {
   const CK_ICON = { pass: '<path d="M3.6 8.3 6.6 11.2 12.4 4.9" />', fail: '<path d="M4.8 4.8 11.2 11.2M11.2 4.8 4.8 11.2" />', pending: '<circle cx="8" cy="8" r="4.6" />' };
   const ckHtml = (pr, said = false) => { const c = prCk(pr); return c ? `<i class="ck" data-checks="${c}"><svg viewBox="0 0 16 16" aria-hidden="true">${CK_ICON[c]}</svg>${said ? '' : `<span class="vh">, CI ${c === 'pass' ? 'passed' : c === 'fail' ? 'failing' : 'running'}</span>`}</i>` : ''; };   // in words too (2026-10-12), but where the row says them (said)
   const UNLINK_TIP = '⌥-click: take it off this chat — naming it again yourself brings it back';
-  const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" href="${/^https:\/\//.test(pr.url) ? esc(pr.url) : '#'}" target="_blank" rel="noopener"
-      title="${esc(`${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}${pr.turn ? `\n${turnTip(pr)}` : ''}\n${UNLINK_TIP}`)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span>${pr.turn?.you ? `<span class="why">your move · ${esc(pr.turn.why)}</span>` : pr.turn?.waived ? `<span class="why let">let go · ${esc(pr.turn.why)}</span>` : ''}${prCk(pr) ? `<span class="ckw" data-checks="${prCk(pr)}">${ckHtml(pr, true)}${{ pass: 'passed', fail: 'failing', pending: 'running' }[prCk(pr)]}</span>` : ''}<span class="meta">${rel(pr.lastAt)}</span></a>`;
+  // its age and the tooltip that says it are fillAges's (2026-10-14): the clock in the markup redrew the rows, and a row
+  // pressed as it was redrawn opened nothing
+  const prTip = pr => `${pr.url}\nlast mentioned ${rel(pr.lastAt)} ago · ${pr.count} mention${pr.count === 1 ? '' : 's'}${pr.turn ? `\n${turnTip(pr)}` : ''}\n${UNLINK_TIP}`;
+  const prRow = (pr, hide) => `<a class="prrow"${hide ? ' hidden' : ''} data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}" href="${/^https:\/\//.test(pr.url) ? esc(pr.url) : '#'}" target="_blank" rel="noopener"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${esc(pr.label)}</span><span class="t${pr.title ? '' : ' pending'}">${pr.title ? esc(pr.title) : 'title on its way from gh…'}</span>${pr.turn?.you ? `<span class="why">your move · ${esc(pr.turn.why)}</span>` : pr.turn?.waived ? `<span class="why let">let go · ${esc(pr.turn.why)}</span>` : ''}${prCk(pr) ? `<span class="ckw" data-checks="${prCk(pr)}">${ckHtml(pr, true)}${{ pass: 'passed', fail: 'failing', pending: 'running' }[prCk(pr)]}</span>` : ''}<span class="meta" data-at="${esc(pr.lastAt || '')}"></span></a>`;
   // Where each of a chat's PR branches is checked out (2026-10-13): the checkout's working trees, asked when the PR rows
   // or the changes tab's picker want them and kept a while (GET /api/worktrees) — only for a chat with PRs.
   const wtData = new Map();   // cwd → { at, v, asking }
@@ -5959,6 +5972,7 @@ const toolName = n => {
     const prsHtml = rows.map((row, i) => row(i >= PR_ROWS && !state.prsAll)).join('')
       + `<div class="pfoot">${rows.length > PR_ROWS ? `<button class="more" id="prMore">${state.prsAll ? 'fewer' : `… ${rows.length - PR_ROWS} more`}</button>` : ''}<button class="pfold" id="prFold" aria-controls="prlist" aria-label="Fold the list" title="Fold the list — the chips in the header do the same">${ICON.up}</button></div>`;
     if (prsHtml !== drawn.prs) pl.innerHTML = drawn.prs = prsHtml;
+    fillAges(pl);
     const pm = pl.querySelector('#prMore'); if (pm) pm.onclick = () => { state.prsAll = !state.prsAll; renderHead(s); };   // onclick, not a listener per draw
     // pressed from the keyboard (no clicks counted, the button focused), the keys stay on the chips: the header they sat
     // in, or the arrow, is gone with the draw
@@ -7605,7 +7619,8 @@ const toolName = n => {
   let tailsAsking = false;
   async function loadTails(ids, then) {
     if (!ids.length || tailsAsking) return; tailsAsking = true;
-    try { const d = await api('GET', `/api/tails?ids=${ids.map(encodeURIComponent).join(',')}`); for (const [id, items] of Object.entries(d.tails || {})) tails.set(id, items); then?.(); }
+    // `then` only on news (2026-10-14): every 2 s while the overview is up, and a draw for nothing is a draw under a press
+    try { const d = await api('GET', `/api/tails?ids=${ids.map(encodeURIComponent).join(',')}`); let news = false; for (const [id, items] of Object.entries(d.tails || {})) { if (JSON.stringify(tails.get(id)) !== JSON.stringify(items)) news = true; tails.set(id, items); } if (news) then?.(); }
     catch {} finally { tailsAsking = false; }
   }
   const firstLine = t => String(t || '').split('\n')[0].slice(0, 60);
@@ -7747,7 +7762,7 @@ const toolName = n => {
   }
   function ovTile(s, n, sel) {
     const d = drawerOf(s), st = diffStats.get(s.id), pr = (s.prs || []).find(p => p.state === 'open' || p.state === 'draft');
-    const age = asking(s) ? `<span class="wait">waiting on you ${rel(s.statusSince)}</span>` : `<span>${rel(wordAt(s))}</span>${(state.unread.get(s.id) || 0) ? `<b class="un">${state.unread.get(s.id)}</b>` : ''}`;
+    const age = asking(s) ? `<span class="wait">waiting on you <span data-at="${esc(s.statusSince || '')}"></span></span>` : `<span data-at="${esc(wordAt(s))}"></span>${(state.unread.get(s.id) || 0) ? `<b class="un">${state.unread.get(s.id)}</b>` : ''}`;
     const ask = asking(s) && s.ask ? `<div class="q">${esc(s.ask.text || `waiting for ${s.ask.waitingFor || 'you'}`)}</div>${s.ask.labels?.length ? `<div class="ans">${s.ask.labels.map((l, i) => `<button data-ans="${i + 1}"${d ? '' : ' disabled'} title="${d ? `Opens the chat and types ${i + 1} into its drawer` : 'Not in a drawer here — answer it where it runs'}"><b>${i + 1}</b>${esc(l)}</button>`).join('')}</div>` : ''}` : '';
     const tasks = (s.tasks || []).map(t => `<div class="tl watch"><i></i><b>${t.kind === 'monitor' ? 'Monitor' : 'Bash'}</b><span>${esc(t.what)}</span><em>${esc(t.last || `${t.events} events`)}</em></div>`).join('');
     const agents = s.agents ? `<div class="ag">${s.agents} agent${s.agents === 1 ? '' : 's'} at work</div>` : '';
@@ -7766,11 +7781,31 @@ const toolName = n => {
     ov.sel = Math.max(0, Math.min(ov.sel, ov.list.length - 1));
     let n = 0;
     const count = k => cols.find(c => c[0] === k)[2].length;
-    $('#ovchips').innerHTML = [['ask', 'asking you'], ['work', 'clauding'], ['watch', 'watching'], ['ready', 'new replies']].map(([k, w]) => `<span class="${k}${count(k) ? '' : ' nil'}"><i></i>${count(k)} ${w}</span>`).join('');
+    setHtml($('#ovchips'), [['ask', 'asking you'], ['work', 'clauding'], ['watch', 'watching'], ['ready', 'new replies']].map(([k, w]) => `<span class="${k}${count(k) ? '' : ' nil'}"><i></i>${count(k)} ${w}</span>`).join(''));
     // an empty column is its head alone, narrow, and the full ones share the width (2026-10-12): four equal columns
     // put the board's two live chats in a quarter of the screen beside three saying "none"
-    $('#ovcols').style.gridTemplateColumns = cols.map(([, , list]) => list.length ? 'minmax(0, 1fr)' : 'minmax(0, max-content)').join(' ');
-    $('#ovcols').innerHTML = cols.map(([k, name, list]) => `<section class="oc ${k}${list.length ? '' : ' nil'}"><h2><i></i><span>${name}</span><b>${list.length}</b></h2>${list.map(s => ovTile(s, ++n, n - 1 === ov.sel)).join('')}</section>`).join('');
+    const host = $('#ovcols'), tpl = document.createElement('template');
+    host.style.gridTemplateColumns = cols.map(([, , list]) => list.length ? 'minmax(0, 1fr)' : 'minmax(0, max-content)').join(' ');
+    // a column's head and each tile drawn only when its markup changed, a tile kept by its chat (2026-10-14): the whole
+    // overview drawn again on every event and every tails' ask took the tile under a press away before its click
+    if (host.children.length !== cols.length) host.replaceChildren(...cols.map(() => document.createElement('section')));
+    cols.forEach(([k, name, list], i) => {
+      const sec = host.children[i], cls = `oc ${k}${list.length ? '' : ' nil'}`;
+      if (sec.className !== cls) sec.className = cls;
+      const head = sec.querySelector(':scope > h2') || sec.appendChild(document.createElement('h2'));
+      setHtml(head, `<i></i><span>${name}</span><b>${list.length}</b>`);
+      const had = new Map([...sec.querySelectorAll(':scope > .ot')].map(t => [t.dataset.id, t]));
+      let prev = head;
+      for (const s of list) {
+        const html = ovTile(s, ++n, n - 1 === ov.sel);
+        let t = had.get(s.id); had.delete(s.id);
+        if (t?._drawn !== html) { tpl.innerHTML = html; const nt = tpl.content.firstElementChild; nt._drawn = html; if (t) t.replaceWith(nt); t = nt; }
+        if (prev.nextElementSibling !== t) prev.after(t);
+        prev = t;
+      }
+      for (const t of had.values()) t.remove();
+    });
+    fillAges(host);
     for (const host of $('#ovcols').querySelectorAll('.obody.live')) { const s = state.sessions.get(host.closest('.ot').dataset.id), d = s && drawerOf(s); if (d) mountMini(ov.minis, host, d, !asking(s)); }
     sweepMinis(ov.minis);
     for (const s of ov.list) wantDiffStat(s);
@@ -8428,7 +8463,7 @@ const toolName = n => {
       win.length ? kv('Plan', win.filter(w => !w.grant).slice(0, 4).map(w => `${esc(uShort(w))} ${Math.round(w.percent)}%`).join(` ${sep} `)) : '',
       kv('Mac', `${bar.stats.cpu != null ? `CPU ${bar.stats.cpu}% ${sep} ` : ''}${bar.stats.mem ? `${(bar.stats.mem.used / 2 ** 30).toFixed(1)} / ${Math.round(bar.stats.mem.total / 2 ** 30)} GB ${sep} ` : ''}${state.awake.awake ? 'kept awake' : 'sleeps as set'}`),
       kv('Theme', esc(skinLabel(wornKey()) + (prefs.skinFollow ? ' · following macOS' : ''))),
-    ].join('');
+    ].filter(Boolean);
     // the day: from the hour of its first span, half an hour before it (2026-10-12; from 8:00 before, which left an
     // evening's work a sliver at the right of a fourteen-hour axis), to the hour after now
     const now = Date.now(), mid = new Date().setHours(0, 0, 0, 0), rows = (d?.chats || []).slice(0, 12);
@@ -8441,18 +8476,20 @@ const toolName = n => {
       <div class="hgrid">
         <span></span><div class="haxis">${hours.map((h, i) => i % step ? '' : `<span style="left:${at(h)}">${new Date(h).getHours().toString().padStart(2, '0')}:00</span>`).join('')}</div><span></span>
         ${rows.map(c => `<button class="hrow" data-id="${esc(c.id)}" style="${repoStyle(repoColor(c.cwd))}" title="${esc(c.project)} · ${esc(c.title)} — open it"><b>${projIcon(c.project)}${esc(c.project)}</b><span>${ticks(esc(c.title))}</span></button>
-          <div class="htrack" style="${repoStyle(repoColor(c.cwd))};--step:calc(100% / ${hours.length - 1})">${c.spans.map(x => `<i class="${x.k}${x.to ? '' : ' now'}" style="left:${at(Date.parse(x.from))};width:calc(${at(x.to ? Date.parse(x.to) : now)} - ${at(Date.parse(x.from))})"></i>`).join('')}<span class="hnow" style="left:${at(now)}"></span></div>
+          <div class="htrack" style="${repoStyle(repoColor(c.cwd))};--step:calc(100% / ${hours.length - 1})">${c.spans.map(x => `<i class="${x.k}${x.to ? '' : ' now'}" style="left:${at(Date.parse(x.from))};width:calc(${x.to ? at(Date.parse(x.to)) : 'var(--now)'} - ${at(Date.parse(x.from))})"></i>`).join('')}<span class="hnow" style="left:var(--now)"></span></div>
           <span class="htot">${dur(c.worked)}${c.waited ? ` <em>· ${dur(c.waited)}</em>` : ''}</span>`).join('')}
       </div>
       <div class="hsum"><span><b>${d.totals.questions} question${d.totals.questions === 1 ? '' : 's'}</b> today${d.totals.median != null ? `, answered in <b>${dur(d.totals.median)}</b> on the median` : ''}</span>${d.totals.longest ? `<span>the longest wait: <em>${dur(d.totals.longest.ms)}</em> — ${esc(state.sessions.get(d.totals.longest.id)?.project || 'a chat')} at ${new Date(d.totals.longest.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}${d.totals.longest.open ? ', and still waiting' : ''}</span>` : ''}<span class="r">⌥⌘0 here from anywhere · a row opens its chat</span></div>`;
     // the sea's canvas outlives every draw: the facts and the day are drawn into boxes of their own (2026-10-12)
     if (!el.querySelector('.hsea')) el.innerHTML = '<div class="hff"><canvas class="hsea" role="img" aria-label="An ASCII sunset at sea, the board\'s fish leaping in it" title="Click, and the fish leaps"></canvas><div class="hkv"></div></div><div class="hday"></div>';
     seaMount(el.querySelector('.hsea'));
-    setHtml(el.querySelector('.hkv'), `
-        <div class="hh">${esc(a.user || 'you')}<span>@</span>${esc(a.host || 'peixairada')}</div><div class="hrule"></div>${facts}
-        <div class="hblocks">${['--needs', '--working', '--idle', '--watch', '--accent', '--spend', '--you', '--ink'].map(v => `<i style="background:var(${v})"></i>`).join('')}</div>
-        <div class="hkeys"><kbd>⌥⌘L</kbd> anything <s>·</s> <kbd>⌥⌘K</kbd> a chat <s>·</s> <kbd>⌥⌘N</kbd> new <s>·</s> <kbd>⌥⌘A</kbd> overview <s>·</s> <kbd>?</kbd> keys <s>·</s> <button class="hgo" data-go="tour" title="The board’s main parts, one at a time — a couple of minutes">the tour</button></div>`);
+    // each line drawn only when it changed, and now the day's --now, never a place in its markup (2026-10-14): the CPU
+    // every 3 s, the clock every draw, redrew the links and the rows under a press, which then clicked nothing
+    setKids(el.querySelector('.hkv'), [`<div class="hh">${esc(a.user || 'you')}<span>@</span>${esc(a.host || 'peixairada')}</div>`, '<div class="hrule"></div>', ...facts,
+        `<div class="hblocks">${['--needs', '--working', '--idle', '--watch', '--accent', '--spend', '--you', '--ink'].map(v => `<i style="background:var(${v})"></i>`).join('')}</div>`,
+        `<div class="hkeys"><kbd>⌥⌘L</kbd> anything <s>·</s> <kbd>⌥⌘K</kbd> a chat <s>·</s> <kbd>⌥⌘N</kbd> new <s>·</s> <kbd>⌥⌘A</kbd> overview <s>·</s> <kbd>?</kbd> keys <s>·</s> <button class="hgo" data-go="tour" title="The board’s main parts, one at a time — a couple of minutes">the tour</button></div>`]);
     setHtml(el.querySelector('.hday'), `<h3><b>Today</b><span>every chat, ${new Date(t0).getHours().toString().padStart(2, '0')}:00 to now</span><span class="lg"><span><i class="w"></i>clauding</span><span><i class="a"></i>waiting on you</span><span><i class="m"></i>watching</span></span></h3>${day}`);
+    el.querySelector('.hgrid')?.style.setProperty('--now', at(now));
   }
   const HOME_GO = { ask: 'Open the chat asking you', ov: 'The overview — every live chat · ⌥⌘A', prs: 'The PRs at your move' };
   $('#log').addEventListener('click', e => {
@@ -9219,7 +9256,7 @@ const toolName = n => {
   // The 30 s tick: the ages (fillAges, in the list's render and, while they are up, the picker's rows and the menu),
   // and the day lines and the list's order, which the clock moves too. The cards' markup no longer carries an age, so
   // the render is a diff that rebuilds nothing on its own.
-  setInterval(() => { renderBoard(); if ($('#pick').open) fillAges($('#picklist')); if ($('#hmenu').open) fillAges($('#hmenu')); }, 30_000);
+  setInterval(() => { renderBoard(); if ($('#pick').open) fillAges($('#picklist')); if ($('#hmenu').open) fillAges($('#hmenu')); if ($('#ov').open) fillAges($('#ovcols')); fillAges($('#prlist')); }, 30_000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && state.current) { state.unread.delete(state.current); if (replied(state.sessions.get(state.current) || {})) markSeen(state.current); renderBoard(); } });
   // deep link: /#<session-id> opens that chat — also how the native app's notifications jump here
   window.addEventListener('hashchange', () => {

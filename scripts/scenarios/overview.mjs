@@ -73,6 +73,19 @@ export default async function (ctx) {
     await mouse('mousePressed', room.x, room.y); await mouse('mouseReleased', room.x, room.y);
     await ctx.waitFor(`!document.querySelector('#ov').open`, { what: 'a click on nothing closed it' });
     ctx.assert.equal(await ctx.evaluate(`window.peix.state().current`), work.id, 'and opened nothing');
+    // a tile held a while still opens its chat (2026-10-14): the tails are asked every 2 s, and a draw that changed
+    // nothing left no tile as it was — the press's node was gone by the release, and the click with it
+    await ctx.key('KeyA');
+    await ctx.waitFor(`document.querySelector('#ov').open`, { what: 'the overview for a long press' });
+    await ctx.settle();
+    out.nodes = await ctx.evaluate(`(window.__tiles = [...document.querySelectorAll('#ov .ot')]).length`);
+    const held = await ctx.evaluate(`(r => ({ x: (r.left + r.right) / 2, y: r.top + 12 }))(document.querySelector('#ov .ot[data-id="${watch.id}"] h3').getBoundingClientRect())`);
+    await mouse('mouseMoved', held.x, held.y); await mouse('mousePressed', held.x, held.y);
+    await ctx.sleep(2200);
+    out.kept = await ctx.evaluate(`window.__tiles.filter(t => t.isConnected).length`);
+    await mouse('mouseReleased', held.x, held.y);
+    await ctx.waitFor(`!document.querySelector('#ov').open && window.peix.state().current === '${watch.id}'`, { what: 'the tile held 2.2 s opened its chat' });
+    ctx.assert.equal(out.kept, out.nodes, 'every tile kept its node through the tails asked again');
     return out;
   } finally { for (const s of sleeps) try { s.kill(); } catch {} }
 }

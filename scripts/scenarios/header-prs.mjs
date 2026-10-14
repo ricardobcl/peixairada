@@ -65,6 +65,15 @@ export default async function (ctx) {
   await ctx.openChat(two.id);
   await ctx.waitFor(`document.querySelectorAll('#prlist .prrow').length === 2`, { what: 'the rows again' });
   ctx.assert.equal((await head()).shown, true, 'still unfolded after a reload');
+  // the clock redraws no row (2026-10-14): the age and the tooltip are written after the draw, so two days on and
+  // the header drawn again, each row is the node it was, its age and its tooltip moved on
+  out.age = await ctx.evaluate(`JSON.stringify((window.__rows = [...document.querySelectorAll('#prlist .prrow')]).map(r => [r.querySelector('.meta').textContent, /last mentioned (\\S+) ago/.exec(r.title)?.[1]]))`).then(JSON.parse);
+  await ctx.evaluate(`(real => { Date.now = () => real() + 2 * 86_400_000; })(Date.now)`);
+  for (let i = 0; i < 2; i++) await ctx.evaluate(`document.querySelector('#prToggle').click()`);   // two draws of the header
+  out.aged = await ctx.evaluate(`JSON.stringify({ kept: window.__rows.every(r => r.isConnected), ages: window.__rows.map(r => [r.querySelector('.meta').textContent, /last mentioned (\\S+) ago/.exec(r.title)?.[1]]) })`).then(JSON.parse);
+  ctx.assert.ok(out.aged.kept, 'every row kept its node');
+  ctx.assert.ok(out.age.every(([m, t]) => m && m === t), `the age in the row and its tooltip: ${JSON.stringify(out.age)}`);
+  ctx.assert.ok(out.aged.ages.every(([m, t], i) => m === t && m !== out.age[i][0]), `…both two days on: ${JSON.stringify(out.aged.ages)}`);
 
   // a row still opens its PR — the board says which, and no strip comes under the header (2026-09-24)
   await ctx.evaluate(`document.querySelector('#prlist .prrow').click()`);
