@@ -723,7 +723,8 @@ function summarizeToolInput(name, input = {}) {
   try {
     switch (name) {
       case 'Bash': return input.description || (input.command || '').split('\n')[0];
-      case 'Read': case 'Edit': case 'Write': case 'NotebookEdit': return input.file_path || '';
+      case 'Read': case 'Edit': case 'MultiEdit': case 'Write': return input.file_path || '';
+      case 'NotebookEdit': return input.notebook_path || input.file_path || '';   // a notebook's path has a name of its own (2026-10-14)
       case 'Grep': case 'Glob': return `${input.pattern || ''}${input.path ? '  in ' + input.path : ''}`;
       case 'Agent': return input.description || snippet(input.prompt, 100);
       case 'Monitor': return input.description || (input.command || '').split('\n')[0];

@@ -252,6 +252,13 @@ test('a turn that ran out of tokens or was refused has ended; one cut off mid to
   assert.equal(s.status, 'working', 'a tool call cut short goes on');
 });
 
+test('a tool call is summed up by what it was given: a notebook by its path, several edits by their file (2026-10-14)', () => {
+  const { summarizeToolInput } = srv;
+  assert.equal(summarizeToolInput('NotebookEdit', { notebook_path: '/tmp/repo/a.ipynb', cell_id: 'c1', new_source: 'x = 1' }), '/tmp/repo/a.ipynb');
+  assert.equal(summarizeToolInput('MultiEdit', { file_path: '/tmp/repo/b.js', edits: [{ old_string: 'a', new_string: 'b' }] }), '/tmp/repo/b.js');
+  assert.equal(summarizeToolInput('Edit', { file_path: '/tmp/repo/c.js', old_string: 'a', new_string: 'b' }), '/tmp/repo/c.js');
+});
+
 test('a snippet never ends in half an emoji', () => {
   const t = srv.snippet('x'.repeat(238) + '😀 and more', 240);
   assert.ok(t.isWellFormed(), JSON.stringify(t.slice(-4)));
