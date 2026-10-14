@@ -21,7 +21,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ANIM_RULES } from '../lib/animcheck.mjs';
 import { sleep, tmpDir } from '../lib/testserver.mjs';
@@ -226,7 +226,9 @@ try {
     const wt = join(base, 'against'); worktrees.push(wt);
     const add = spawnSync('git', ['-C', ROOT, 'worktree', 'add', '--detach', wt, sha], { encoding: 'utf8' });
     if (add.status !== 0) throw new Error(`git worktree add: ${add.stderr}`);
-    symlinkSync(join(ROOT, 'node_modules'), join(wt, 'node_modules'));
+    // the nearest node_modules up the folders, as Node finds it (2026-10-14): a worktree inside the repo has none of its own
+    let nm = ROOT; while (!existsSync(join(nm, 'node_modules')) && dirname(nm) !== nm) nm = dirname(nm);
+    symlinkSync(join(nm, 'node_modules'), join(wt, 'node_modules'));
     await startBoard(wt, `${sha} (${AGAINST})`);
   }
   for (const b of boards) results.set(b, []);
