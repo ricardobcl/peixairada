@@ -2836,11 +2836,19 @@ async function worktreesFor(cwd) {
  *  has it out (`tree`; `main` when that is the repo's own folder) with how many live chats work there. */
 async function branchWhere(cwd, name) {
   const w = await worktreesFor(cwd); if (w.error) return w;
-  if (!BRANCH_NAME.test(name) || await gitOr(w.main, ['check-ref-format', '--branch', name]) === null) return { name, ok: false, dflt: w.dflt };
+  if (!await branchNameOk(w.main, name)) return { name, ok: false, dflt: w.dflt };
   const [local, origin] = await Promise.all([`refs/heads/${name}`, `refs/remotes/origin/${name}`].map(r => gitOr(w.main, ['rev-parse', '--verify', '--quiet', r])));
   const t = w.worktrees.find(x => x.branch === name);
   const live = t ? [...sessions.values()].filter(s => s.alive && treeOf(s.live?.cwd || s.cwd) === t.path).length : 0;
   return { name, ok: true, local: !!local, origin: !!origin, tree: t?.path ?? null, main: !!t && t.path === w.main, live, dflt: w.dflt };
+}
+/** A name the board may make a branch of (2026-10-14): git's rule, and none that another ref would answer to as well —
+ *  `origin/main` made refs/heads/origin/main, after which origin/main named it, not origin's, for every command in the
+ *  repo. Never a remote's name and a slash, refs/ heads/ remotes/ tags/, HEAD or one of git's other *HEADs. */
+async function branchNameOk(main, name) {
+  if (!BRANCH_NAME.test(name) || /^(refs|heads|remotes|tags)\//.test(name) || /^[A-Z_]*HEAD$/.test(name)) return false;
+  if (await gitOr(main, ['check-ref-format', '--branch', name]) === null) return false;
+  return !(await gitOr(main, ['remote'], '')).split('\n').some(r => r && name.startsWith(`${r}/`));
 }
 
 // ---- the editor at a branch: a working tree per branch (2026-10-13) -------------------------------------------------
@@ -2864,7 +2872,7 @@ async function ensureWorktree({ cwd, pr = null, branch = null, detach = false, f
     if (refs?.fork) detach = true;   // a fork's branch name means nothing here
   }
   if (!pr && (!branch || detach)) return { code: 400, error: detach ? 'detached at what? — a PR' : 'which branch?' };
-  if (branch && !BRANCH_NAME.test(branch)) return { code: 400, error: `${branch} is not a branch name` };
+  if (branch && !await branchNameOk(w.main, branch)) return { code: 400, error: `${branch} is not a branch name the board makes` };
   if (!detach) {
     const t = w.worktrees.find(x => x.branch === branch);
     // a new chat's branch (fresh) out in a tree already: that tree is shared only when asked for — the page said so first
@@ -2895,13 +2903,13 @@ async function makeWorktree(w, { want, refs, branch, detach, fresh }) {
   } else if (await gitOr(main, ['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`])) {
     start = [null, branch];   // a branch of this repo's, checked out nowhere
   } else {
-    try { await gitOut(main, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', 'origin', `+refs/heads/${branch}:refs/remotes/origin/${branch}`], GIT_NET); start = ['--track', '-b', branch, null, `origin/${branch}`]; }
+    try { await gitOut(main, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', 'origin', `+refs/heads/${branch}:refs/remotes/origin/${branch}`], GIT_NET); start = ['--track', '-b', branch, null, `refs/remotes/origin/${branch}`]; }
     catch (e) {
       if (!fresh) return fail(e, `no branch ${branch} here, nor on origin`);
       // a new branch (a new chat on one): from origin's default branch as origin has it now, tracking nothing yet
       const dflt = w.dflt;
       try { await gitOut(main, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', 'origin', `+refs/heads/${dflt}:refs/remotes/origin/${dflt}`], GIT_NET); } catch {}
-      const from = await gitOr(main, ['rev-parse', '--verify', '--quiet', `origin/${dflt}`]) ? `origin/${dflt}` : 'HEAD';
+      const from = await gitOr(main, ['rev-parse', '--verify', '--quiet', `refs/remotes/origin/${dflt}`]) ? `refs/remotes/origin/${dflt}` : 'HEAD';   // full refs: never a branch of that name
       start = ['--no-track', '-b', branch, null, from];
     }
   }
@@ -2963,7 +2971,7 @@ function prOfBranch(rec) {
 async function landed(path, rec) {
   const head = await gitOr(path, ['rev-parse', 'HEAD']);
   if (!head || head === rec.head) return false;
-  if (await gitOr(path, ['merge-base', '--is-ancestor', 'HEAD', `origin/${await originDefault(rec.repo)}`], false) === false) return false;
+  if (await gitOr(path, ['merge-base', '--is-ancestor', 'HEAD', `refs/remotes/origin/${await originDefault(rec.repo)}`], false) === false) return false;
   const mine = await ownCommits(path), since = (await gitOr(path, ['rev-list', `${rec.head}..HEAD`], '')).split('\n');
   return since.some(c => mine.has(c));
 }

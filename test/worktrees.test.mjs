@@ -163,6 +163,11 @@ test('a new chat\'s branch: where it is already, and a tree that has it out shar
   assert.deepEqual(await branchWhere(co, 'feat/brand-new'), { name: 'feat/brand-new', ok: true, local: false, origin: false, tree: null, main: false, live: 0, dflt: 'main' });
   assert.equal((await branchWhere(co, 'feat/x.lock')).ok, false, 'git’s own rule');
   assert.equal((await branchWhere(co, '--force')).ok, false, 'never an option');
+  for (const name of ['origin/main', 'refs/heads/x', 'remotes/origin/x', 'HEAD', 'ORIG_HEAD']) {   // (2026-10-14) a name another ref answers to as well
+    assert.equal((await branchWhere(co, name)).ok, false, name);
+    assert.equal((await ensureWorktree({ cwd: co, branch: name, fresh: true })).code, 400, name);
+  }
+  assert.equal(git(co, 'for-each-ref', 'refs/heads/origin', 'refs/heads/refs', 'refs/heads/remotes'), '', 'no branch made that shadows another ref');
   assert.deepEqual(await branchWhere(co, 'feat/c').then(b => [b.local, b.origin, b.tree]), [false, true, null], 'origin’s, as last fetched');
   assert.deepEqual(await branchWhere(co, 'feat/b').then(b => [b.tree, b.main]), [real, true], 'the folder’s own');
   assert.deepEqual(await branchWhere(wt('feat-new'), 'feat/new').then(b => [b.tree, b.main, b.local]), [wt('feat-new'), false, true], 'out in a tree the board made — asked from inside it too');
