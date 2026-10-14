@@ -6452,9 +6452,12 @@ const toolName = n => {
     const inp = document.createElement('input'); inp.className = 'tedit'; inp.value = s.boardTitle || s.title; inp.placeholder = s.aiTitle || s.prTitle || 'title';
     t.replaceWith(inp); inp.focus(); inp.select();
     let done = false;
+    const was = inp.value.trim();
     const end = async save => {
       if (done) return; done = true; state.titleEdit = null;
-      if (save) {
+      // the box left as it came saves nothing (2026-10-14): a blur PUT the title it showed — Claude's, a PR's — as the
+      // board's own, and the chat's title stopped following them
+      if (save && inp.value.trim() !== was) {
         try { const d = await api('PUT', `/api/sessions/${s.id}/title`, { title: inp.value }); const cur = state.sessions.get(s.id); if (cur) { cur.title = d.title; cur.boardTitle = d.boardTitle; } }
         catch (e) { note($('#shead'), `Could not rename: ${e.message}`, true); }
       }

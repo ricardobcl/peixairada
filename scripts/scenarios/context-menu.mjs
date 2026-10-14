@@ -26,6 +26,16 @@ export default async function (ctx) {
   await ctx.waitFor(`!!document.querySelector('#shead h2 input.tedit')`, { what: 'the title box, from Rename…' });
   ctx.assert.equal(await ctx.evaluate(`window.peix.state().current`), two.id, '…on the chat it was asked of');
   await ctx.evaluate(`document.querySelector('#shead h2 input.tedit').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
+  // the box left as it came, by a click elsewhere, names nothing (2026-10-14): the title it showed, made the board's
+  // own, stopped following Claude's and the PR's
+  ctx.assert.equal(await ctx.evaluate(`window.peix.session(${JSON.stringify(two.id)}).boardTitle ?? null`), null, 'no title of the board’s to begin with');
+  await ctx.evaluate(`document.querySelector('#shead h2 .t').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))`);
+  await ctx.waitFor(`document.activeElement?.matches('#shead h2 input.tedit')`, { what: 'the title box, from a double click' });
+  await ctx.evaluate(`document.querySelector('#shead h2 input.tedit').blur()`);
+  await ctx.waitFor(`!document.querySelector('#shead h2 input.tedit')`, { what: 'the box gone on blur' });
+  await ctx.sleep(400);
+  out.blurred = await ctx.evaluate(`JSON.stringify((s => ({ board: s.boardTitle ?? null, title: s.title }))(window.peix.session(${JSON.stringify(two.id)})))`).then(JSON.parse);
+  ctx.assert.equal(out.blurred.board, null, `a blur with nothing changed saved nothing: ${JSON.stringify(out.blurred)}`);
   // a PR chip's own menu
   await right(`${card}.querySelector('.cpr[data-url$="/pull/13"]')`);
   out.chip = await rows();
