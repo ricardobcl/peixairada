@@ -52,6 +52,20 @@ export default async function (ctx) {
   // the chat's own tab is never ⌘W's: with one half the key is the window's
   ctx.assert.equal(await ctx.evaluate(`window.peixKey('KeyW', 'cmd')`), false, 'on the chat with one half, ⌘W is the window\'s');
   ctx.assert.equal(await ctx.peix('state().tab'), 'chat');
+  // …and the key itself is left alone (2026-10-14): unprevented, the app's web view hands it on to the Window menu, whose
+  // Close closes the window — prevented, it was spent there. One the board takes is prevented: ··· up, it closes that
+  // alone; two halves, the one the keys are in.
+  const cmdW = () => ctx.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW', key: 'w', metaKey: true, bubbles: true, cancelable: true })) ? 'left' : 'prevented'`);
+  ctx.assert.equal(await cmdW(), 'left', 'on the chat with one half, the keydown is left to the window\'s menu');
+  ctx.assert.deepEqual([await ctx.peix('state().tab'), await ctx.peix('state().split')], ['chat', false], 'nothing of the board\'s closed');
+  await ctx.evaluate(`document.querySelector('#moreBtn').click()`);
+  await ctx.waitFor(`document.querySelector('#hmenu').open`, { what: '··· up' });
+  ctx.assert.equal(await cmdW(), 'prevented', '⌘W with ··· up is the board\'s');
+  ctx.assert.deepEqual([await ctx.evaluate(`document.querySelector('#hmenu').open`), await ctx.peix('state().split')], [false, false], '…and closes the menu alone');
+  await ctx.cmd('Digit2');
+  await ctx.waitFor(`window.peix.state().split && window.peix.state().focusG === 1`, { what: '⌘2: two halves, the keys in the empty one' });
+  ctx.assert.equal(await cmdW(), 'prevented', '⌘W with two halves is the board\'s');
+  await ctx.waitFor(`!window.peix.state().split && window.peix.state().tab === 'chat'`, { what: 'the half the keys were in closed' });
 
   // a page — the chat's PR, ⌥⌘G's first — and ⌘T on it opens a blank tab at once, a browser's: in front where a new
   // tab goes, the keys in its address, no dialog

@@ -4933,7 +4933,7 @@ const toolName = n => {
     if (code === 'Escape') return hotEscape();
     const fn = (mods === 'cmd' ? CMDKEYS : HOTKEYS)[code];
     if (!fn) return false;
-    if ($('#hmenu').open) $('#hmenu').close();   // the header's menu is a dialog, but not one that should swallow a key
+    if ($('#hmenu').open) { $('#hmenu').close(); if (fn === hotClose) return true; }   // the header's menu is a dialog, but not one that should swallow a key — ⌘W's aside, which closes it alone, as any dialog
     if (fn !== hotClose && !(fn === settingsToggle && $('#settings').open) && document.querySelector('dialog[open]')) return false;
     return fn() !== false;
   };
@@ -4941,9 +4941,12 @@ const toolName = n => {
     if (e.ctrlKey || e.shiftKey || !e.metaKey) return;
     const mods = e.altKey ? 'altcmd' : 'cmd';
     if (!(mods === 'cmd' ? CMDKEYS : HOTKEYS)[e.code]) return;
-    e.preventDefault(); e.stopPropagation();
-    if (e.repeat && !e.code.startsWith('Arrow')) return;   // a key held down is one press — the arrows walk on
-    runHotkey(e.code, mods);
+    e.stopPropagation();
+    if (e.repeat && !e.code.startsWith('Arrow')) return e.preventDefault();   // a key held down is one press — the arrows walk on
+    // ⌘W the board did not take — one half, on the chat's tab, nothing up — is left alone (2026-10-14): in the app the
+    // web view hands an unprevented key equivalent on to the Window menu, whose Close asks again and closes the window
+    // (closeHalfOrWindow); prevented, it was spent and the window stayed
+    if (runHotkey(e.code, mods) !== false || mods !== 'cmd' || e.code !== 'KeyW') e.preventDefault();
   }, true);
   window.peixKey = runHotkey;
   // …and tells the page whether the pane is up and where its edge is (points = this view's CSS px) — the board

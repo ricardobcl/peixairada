@@ -534,8 +534,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// the window only when it says it took neither (2026-09-22).
   /// It is the menu item: a key equivalent is dispatched before any responder's keyDown — to the key window's views
   /// first, though, and the menu after them (2026-10-14, measured): a web view with the keys hands ⌘W to its page, and
-  /// the menu hears only what the page left alone — a GitHub page's ⌘W, not the board's (its CMDKEYS take it) nor VS
-  /// Code Web's.
+  /// the menu hears only what the page left alone — a GitHub page's ⌘W, the board's when it had nothing to close
+  /// (2026-10-14: its CMDKEYS prevent only a ⌘W they took), never VS Code Web's.
   @objc func closeHalfOrWindow(_ sender: Any?) {
     // another window in front (the About panel): it is the one ⌘W closes, not a half of the board
     guard NSApp.keyWindow == nil || NSApp.keyWindow === window else { NSApp.keyWindow?.performClose(sender); return }
