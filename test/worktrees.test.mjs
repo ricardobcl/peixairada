@@ -220,3 +220,11 @@ test('no tree is made under CLAUDE_DIR', async () => {
   assert.equal(existsSync(join(claude, '.claude')), false, 'nothing made');
   assert.equal(git(claude, 'worktree', 'list').split('\n').length, 1);
 });
+
+test('a branch whose tree was deleted by hand is said so, never handed back as its tree (2026-10-14)', async () => {
+  const gone = join(tmp, 'gone-tree'); git(co, 'worktree', 'add', '-q', '-b', 'feat/gone', gone); rmSync(gone, { recursive: true, force: true });
+  assert.equal((await worktreesFor(co)).worktrees.some(t => t.branch === 'feat/gone'), false, 'not among the trees');
+  const r = await ensureWorktree({ cwd: co, branch: 'feat/gone' });
+  assert.deepEqual([r.code, r.path], [409, undefined]); assert.match(r.error, /^feat\/gone is out in .*gone-tree, a folder deleted by hand/);
+  assert.match((await branchWhere(co, 'feat/gone')).error, /deleted by hand/);
+});

@@ -2885,11 +2885,13 @@ function parseWorktrees(text) {
 }
 /** The working trees of the checkout `cwd` is in: `here` its own, `main` the repo's first, `repo` its GitHub name; each
  *  tree's `modules` says whether it can run the repo's JavaScript — `here` (a node_modules of its own or linked), `same`
- *  (none, and its lockfile is the main tree's: a link to that one's would do), `differ`, or null (not a node project). */
+ *  (none, and its lockfile is the main tree's: a link to that one's would do), `differ`, or null (not a node project).
+ *  A tree whose folder was deleted by hand (git's `prunable`) is none of them (2026-10-14): it is `gone`, where git
+ *  still holds its branch. */
 async function worktreesFor(cwd) {
   if (!cwd || !existsSync(cwd)) return { error: 'its folder is not there' };
   const here = await gitOr(cwd, ['rev-parse', '--show-toplevel']); if (!here) return { error: 'its folder is not in a git repository' };
-  const list = parseWorktrees(await gitOut(here, ['worktree', 'list', '--porcelain'])).filter(w => !w.bare);
+  const all = parseWorktrees(await gitOut(here, ['worktree', 'list', '--porcelain'])).filter(w => !w.bare), list = all.filter(w => !w.prunable);
   const own = ghRepoOf(here), main = list[0]?.path || here;
   const lock = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml'].find(f => existsSync(join(main, f)));
   const mainLock = lock && existsSync(join(main, 'node_modules')) && await gitOr(main, ['rev-parse', `HEAD:${lock}`]);
@@ -2899,8 +2901,10 @@ async function worktreesFor(cwd) {
     else w.modules = mainLock && await gitOr(w.path, ['rev-parse', `HEAD:${lock}`]) === mainLock ? 'same' : 'differ';
     if (worktreesMade[w.path]) w.made = true;
   }
-  return { here, main, repo: own ? `${own.owner}/${own.name}` : null, dflt: await originDefault(main), worktrees: list };
+  return { here, main, repo: own ? `${own.owner}/${own.name}` : null, dflt: await originDefault(main), worktrees: list, gone: all.filter(w => w.prunable) };
 }
+/** What stops a branch whose tree was deleted by hand — git still holds it out there, and refuses it anywhere else. */
+const goneSay = (branch, w) => { const g = w.gone?.find(x => x.branch === branch); return g && `${branch} is out in ${tildePath(g.path)}, a folder deleted by hand — git worktree prune lets it go`; };
 /** Where a branch named for a new chat already is (2026-10-13; ⌥⌘N's worktree switch, as its name is typed): `ok` false
  *  for a name git would refuse; else `local` / `origin` (as this checkout last heard it — no network), and the tree that
  *  has it out (`tree`; `main` when that is the repo's own folder) with how many live chats work there. */
@@ -2908,7 +2912,8 @@ async function branchWhere(cwd, name) {
   const w = await worktreesFor(cwd); if (w.error) return w;
   if (!await branchNameOk(w.main, name)) return { name, ok: false, dflt: w.dflt };
   const [local, origin] = await Promise.all([`refs/heads/${name}`, `refs/remotes/origin/${name}`].map(r => gitOr(w.main, ['rev-parse', '--verify', '--quiet', r])));
-  const t = w.worktrees.find(x => x.branch === name);
+  const t = w.worktrees.find(x => x.branch === name), gone = !t && goneSay(name, w);
+  if (gone) return { error: gone };
   const live = t ? [...sessions.values()].filter(s => s.alive && treeOf(s.live?.cwd || s.cwd) === t.path).length : 0;
   return { name, ok: true, local: !!local, origin: !!origin, tree: t?.path ?? null, main: !!t && t.path === w.main, live, dflt: w.dflt };
 }
@@ -2948,6 +2953,7 @@ async function ensureWorktree({ cwd, pr = null, branch = null, detach = false, f
     // a new chat's branch (fresh) out in a tree already: that tree is shared only when asked for — the page said so first
     if (t && fresh && !share) return { code: 409, error: `${branch} is out in ${tildePath(t.path)} already — a chat there shares its files`, path: t.path, out: true };
     if (t) return { path: t.path, branch, made: false, here: t.path === w.here };
+    const gone = goneSay(branch, w); if (gone) return { code: 409, error: gone };
   }
   const key = `${w.main}\0${detach ? `pr-${want?.n}` : branch}`;
   if (wtAsking.has(key)) return wtAsking.get(key);
