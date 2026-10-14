@@ -6602,15 +6602,21 @@ const toolName = n => {
   // The fit addon does the resize itself, so it is what gets wrapped — it clears the renderer first, which a
   // bare resize would not.
   // Like it, the caller writes nothing to the screen until `done` (toXt holds the socket's frames meanwhile). Unlike it,
-  // the cursor is read at the call, not behind the queue: a fit that waited a tick left the grid at its old size for
-  // the nudge and termSize to read, and an attach nudged the PTY to the wrong height (2026-10-03).
+  // whether to park is read at the call, not behind the queue: a fit that waited a tick left the grid at its old size
+  // for the nudge and termSize to read, and an attach nudged the PTY to the wrong height (2026-10-03). A park waits anyway.
   function refitTerm(xt, rows, resize, done = () => {}) {
     const b = xt.buffer.active;
     const tail = rows > xt.rows && b.baseY > 0
       ? Math.max(0, Math.min(b.length - 1 - (b.baseY + b.cursorY), xt.rows - 1 - b.cursorY))
       : 0;
     if (!tail) { resize(); return void done(); }
-    xt.write(`\x1b[${tail}B`, () => { resize(); xt.write(`\x1b[${tail}A`, done); });
+    // Parked from where the cursor is once the parser's queue has landed, and back only as far as it went (2026-10-14,
+    // lib/refit.mjs): a scroll region stops CUD at its bottom margin, and output still queued at the call moves it.
+    xt.write('', () => {
+      const b = xt.buffer.active, y0 = b.cursorY, n = Math.max(0, Math.min(b.length - 1 - (b.baseY + y0), xt.rows - 1 - y0));
+      if (!n) { resize(); return void done(); }
+      xt.write(`\x1b[${n}B`, () => { const went = b.cursorY - y0; resize(); xt.write(went > 0 ? `\x1b[${went}A` : '', done); });
+    });
   }
   /** What reaches a drawer's screen, in order — held while a refit runs (see refitTerm). */
   const toXt = (tm, f) => { if (tm.refits) tm.held.push(f); else f(); };
