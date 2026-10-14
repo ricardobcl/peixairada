@@ -4257,6 +4257,24 @@ console.log(`[peixairada] listening on http://${HOST}:${PORT}  (notify=${NOTIFY}
 const t0 = Date.now();
 if (!seenSince) { seenSince = new Date().toISOString(); saveState(); }   // a reply before the board kept what it showed is no new one (2026-10-12)
 loadConfig();
+// The transcripts are watched before they are read (2026-10-14): FSEvents tells only of what comes after the watch
+// starts, and a reply written while the scan or the adoption ran stayed unread until the file's next line.
+const pendingFiles = new Map(), pendingAgents = new Map();
+function onFsEvent(_ev, rel) {
+  if (!rel) return;
+  const parts = String(rel).split('/');
+  if (parts.length === 4 && parts[2] === 'subagents' && parts[3].endsWith('.jsonl')) {   // <slug>/<id>/subagents/agent-*.jsonl
+    const s = sessions.get(parts[1]); if (!s) return;
+    clearTimeout(pendingAgents.get(s.id));
+    pendingAgents.set(s.id, setTimeout(() => { pendingAgents.delete(s.id); scanAgents(sessions.get(s.id) ?? s); }, 200));   // the chat as it is then: a re-read (indexFile) replaces the object
+    return;
+  }
+  if (parts.length !== 2 || !parts[1].endsWith('.jsonl')) return; // ignore memory/, <id>/subagents/*.meta.json, etc.
+  const file = join(PROJECTS_DIR, rel);
+  clearTimeout(pendingFiles.get(file));
+  pendingFiles.set(file, setTimeout(() => { pendingFiles.delete(file); try { tailFile(file); } catch (e) { console.error('[peixairada] tail error', file, e); } }, 40));
+}
+if (existsSync(PROJECTS_DIR)) watch(PROJECTS_DIR, { recursive: true }, onFsEvent);
 scanProjects();
 await adoptHolders();   // before the registry: a drawer's own process is what makes a chat's live process "mine"
 loadRegistry();
@@ -4283,6 +4301,8 @@ for (const s of sessions.values()) if (s.alive) scanAgents(s);
 // An agent gone quiet stops counting; a task past its expiry stops running. Both are only visible on a push, and
 // a chat whose last word was "monitor started" has nothing else to push.
 setInterval(() => {
+  // a live chat's file looked at: what an event never told of is read (2026-10-14) — a stat when nothing was
+  for (const f of [...sessions.values()].filter(s => s.alive && s.file).map(s => s.file)) try { tailFile(f); } catch (e) { console.error('[peixairada] tail error', f, e); }
   for (const s of sessions.values()) {
     if (pruneTasks(s)) schedulePush(s);
     if (s.alive) scanAgents(s);
@@ -4298,22 +4318,6 @@ setInterval(() => {
 }, REGISTRY_POLL_MS);
 console.log(`[peixairada] indexed ${sessions.size} sessions (${[...sessions.values()].filter(s => s.alive).length} alive) from ${CLAUDE_DIR} in ${Date.now() - t0}ms`);
 
-const pendingFiles = new Map(), pendingAgents = new Map();
-function onFsEvent(_ev, rel) {
-  if (!rel) return;
-  const parts = String(rel).split('/');
-  if (parts.length === 4 && parts[2] === 'subagents' && parts[3].endsWith('.jsonl')) {   // <slug>/<id>/subagents/agent-*.jsonl
-    const s = sessions.get(parts[1]); if (!s) return;
-    clearTimeout(pendingAgents.get(s.id));
-    pendingAgents.set(s.id, setTimeout(() => { pendingAgents.delete(s.id); scanAgents(sessions.get(s.id) ?? s); }, 200));   // the chat as it is then: a re-read (indexFile) replaces the object
-    return;
-  }
-  if (parts.length !== 2 || !parts[1].endsWith('.jsonl')) return; // ignore memory/, <id>/subagents/*.meta.json, etc.
-  const file = join(PROJECTS_DIR, rel);
-  clearTimeout(pendingFiles.get(file));
-  pendingFiles.set(file, setTimeout(() => { pendingFiles.delete(file); try { tailFile(file); } catch (e) { console.error('[peixairada] tail error', file, e); } }, 40));
-}
-if (existsSync(PROJECTS_DIR)) watch(PROJECTS_DIR, { recursive: true }, onFsEvent);
 if (existsSync(SESSIONS_DIR)) {
   let regTimer;
   watch(SESSIONS_DIR, () => { clearTimeout(regTimer); regTimer = setTimeout(loadRegistry, 100); });
