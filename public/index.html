@@ -1921,6 +1921,30 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #tour p :is(b, em) { color: var(--ink); font-weight: 600; font-style: normal; }
   #tour p.thow { margin-top: 10px; font-size: var(--fs-sm); } #tour p.thow:empty { display: none; }
   #tour kbd { font: 600 var(--fs-xs) ui-monospace, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl-hi); color: var(--ink); white-space: nowrap; }
+  /* a step's picture: its keys as rows, a picker or a split drawn small, a PR said and the chips it becomes — in the
+     board's tokens, never its own classes but the your-move tag (.ymove), which nothing selects outside a card or the header */
+  #tour .tpic { margin-top: 10px; text-align: left; } #tour .tpic:empty { display: none; }
+  #tour .tkeys { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: baseline; font-size: var(--fs-sm); color: var(--muted); }
+  #tour .tkeys > span:nth-child(odd) { white-space: nowrap; }
+  #tour .tmock { display: grid; gap: 1px; padding: 6px; border-radius: var(--r-4); background: color-mix(in srgb, var(--ink) 4.5%, transparent); font-size: var(--fs-sm); color: var(--ink); }
+  #tour .tmock .hd { padding: 2px 8px 4px; font-size: var(--fs-xs); color: var(--muted); }
+  #tour .tmock .r { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 4px 8px; border-radius: var(--r-3); white-space: nowrap; }
+  #tour .tmock .r.on { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  #tour .tmock .r i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+  #tour .tmock .r small { margin-left: auto; padding-left: 10px; font-size: var(--fs-xs); color: var(--muted); }
+  #tour .tsplit { display: flex; justify-content: center; gap: 18px; }
+  #tour .tsplit figure { display: grid; justify-items: center; gap: 6px; margin: 0; font-size: var(--fs-xs); color: var(--muted); }
+  #tour .tsplit .w { display: grid; gap: 3px; width: 128px; height: 74px; padding: 3px; border-radius: var(--r-2); background: color-mix(in srgb, var(--ink) 9%, transparent); }
+  #tour .tsplit .w i { display: grid; place-items: center; border-radius: 2px; background: color-mix(in srgb, var(--ink) 14%, transparent); font: 700 var(--fs-xs) ui-monospace, monospace; font-style: normal; color: var(--ink); }
+  #tour .tsplit .w i.a { background: color-mix(in srgb, var(--accent) 45%, transparent); } #tour .tsplit .w i.b { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+  #tour .tsplit .side { grid-template: 1fr / 1fr 2fr 2fr; }
+  #tour .tsplit .stack { grid-template: 1fr 1fr / 1fr 4fr; } #tour .tsplit .stack i:first-child { grid-row: span 2; }
+  #tour .tlink { display: grid; gap: 6px; padding: 8px 10px; border-radius: var(--r-4); background: color-mix(in srgb, var(--ink) 4.5%, transparent); font-size: var(--fs-sm); }
+  #tour .tlink .tq { color: var(--muted); font-style: italic; }
+  #tour .tlink .tto { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+  #tour .tlink .ymove { font-style: normal; }
+  #tour .tchip { display: inline-flex; padding: 0 6px; border-radius: var(--r-1); background: var(--c, var(--pr-open)); color: var(--bg); font: 700 var(--fs-xs)/18px -apple-system, BlinkMacSystemFont, sans-serif; }
+  #tour .tchip[data-state="draft"] { --c: var(--pr-draft); } #tour .tchip.tk { --c: var(--tk-doing); }
   #tour .tfoot { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
   #tour .tfoot .spacer { flex: 1; }
   #tour .tfoot [hidden] { display: none; }
@@ -2156,7 +2180,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 </main>
 <footer id="sbar"><div id="sbFind"><span id="filters"><button class="fsearch" id="qBtn" title="Search this project’s chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="this project’s chats, done too — title, branch, prompt…" autocomplete="off" spellcheck="false" hidden><button class="fsearch" id="fBtn" aria-haspopup="menu" aria-pressed="false" title="Show only some chats — a PR at your move, or a new reply"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2.5h12.5a.5.5 0 0 1 .38.82L10 8.9v4.35a.5.5 0 0 1-.28.45l-2.5 1.2A.5.5 0 0 1 6.5 14.45V8.9L1.37 3.32a.5.5 0 0 1 .38-.82Z"/></svg><span class="fl"></span></button></span></div><div id="sbLeft"></div><div id="sbPeople"><div id="people" hidden></div></div><div id="sbSwim" role="button" aria-label="Every agent at work (⌥⌘A)"></div><div id="sbRight"></div></footer>
 <dialog id="settings" class="pop" aria-label="Settings" tabindex="-1">
-  <div class="shd2"><h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4><button class="btn" id="tourBtn" title="The board's main parts, one at a time — a minute">Take the tour</button><button class="sclose" id="settingsClose" title="Close · esc" aria-label="Close">×</button></div>
+  <div class="shd2"><h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4><button class="btn" id="tourBtn" title="The board's main parts, one at a time — a couple of minutes">Take the tour</button><button class="sclose" id="settingsClose" title="Close · esc" aria-label="Close">×</button></div>
   <nav class="stabs" role="tablist" aria-label="Settings"><button role="tab" data-tab="board" class="on" aria-selected="true" aria-controls="spBoard" id="stBoard">Board</button><button role="tab" data-tab="setup" aria-selected="false" aria-controls="spSetup" id="stSetup" tabindex="-1">Setup</button><button role="tab" data-tab="keys" aria-selected="false" aria-controls="spKeys" id="stKeys" tabindex="-1">Keys</button></nav>
   <div class="spane scol" data-tab="board" role="tabpanel" id="spBoard" aria-labelledby="stBoard">
     <h4 class="shd">Alerts</h4>
@@ -2206,7 +2230,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 <dialog id="tour" aria-labelledby="tourTitle" aria-describedby="tourText">
   <div class="thole"></div>
   <div class="tcard">
-    <div class="tin"><span class="tlogo" id="tourLogo" aria-hidden="true" hidden></span><div class="tstep"><span class="tdots" aria-hidden="true"></span><span id="tourNum"></span></div><h3 id="tourTitle"></h3><p id="tourText"></p><p class="thow" id="tourHow"></p></div>
+    <div class="tin"><span class="tlogo" id="tourLogo" aria-hidden="true" hidden></span><div class="tstep"><span class="tdots" aria-hidden="true"></span><span id="tourNum"></span></div><h3 id="tourTitle"></h3><p id="tourText"></p><div class="tpic" id="tourPic"></div><p class="thow" id="tourHow"></p></div>
     <div class="tfoot"><button class="btn tskip" id="tourSkip" title="Leave the tour · esc — Settings, ⌥⌘L and home have it again">Skip</button><span class="spacer"></span><button class="btn" id="tourBack" title="The step before · ←">Back</button><button class="btn tnext" id="tourNext" title="The next step · →">Next</button></div>
   </div>
   <span class="vh" role="status" id="tourSay"></span>
@@ -2221,7 +2245,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   <div class="ovcols" id="ovcols"></div>
 </dialog>
 <dialog id="keysheet" aria-label="Every key">
-  <div class="kshd"><h3>Keys</h3><input type="text" id="ksq" placeholder="a key, or what it does…" autocomplete="off" spellcheck="false"><span class="kswhere"><kbd>?</kbd> outside a box or a terminal · <kbd>⌥⌘L</kbd> › Keys · esc</span><button class="btn" id="ksTour" title="The board's main parts, one at a time — a minute">Take the tour</button></div>
+  <div class="kshd"><h3>Keys</h3><input type="text" id="ksq" placeholder="a key, or what it does…" autocomplete="off" spellcheck="false"><span class="kswhere"><kbd>?</kbd> outside a box or a terminal · <kbd>⌥⌘L</kbd> › Keys · esc</span><button class="btn" id="ksTour" title="The board's main parts, one at a time — a couple of minutes">Take the tour</button></div>
   <div id="ksbody"></div><p class="none" id="ksnone" hidden>no key matches</p>
 </dialog>
 <dialog id="pick">
@@ -5293,22 +5317,36 @@ const toolName = n => {
   const onScreen = el => { const r = el?.getBoundingClientRect(); return r && r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth ? el : null; };
   /** The card the tour points at: one that is doing something, else the open chat's, else the top one. */
   const tourCard = () => { const cs = [...document.querySelectorAll('#slist > .card')]; return cs.find(c => c.matches('.asking, .working, .watching')) || cs.find(c => c.classList.contains('active')) || cs[0] || null; };
+  /** A step's keys as rows: what you press, what it does. */
+  const tourKeys = rows => `<div class="tkeys">${rows.map(([k, d]) => `<span>${k.split(' ').map(x => `<kbd>${x}</kbd>`).join(' ')}</span><span>${d}</span>`).join('')}</div>`;
   const TOUR = [
     { id: 'hello', mid: true, logo: true, title: 'Every Claude Code chat on this Mac, on one board',
-      text: () => 'The terminal’s, VS Code’s and the board’s own — read from what Claude Code already writes, and never written to. Here are the main parts, in a minute.',
+      text: () => 'The terminal’s, VS Code’s and the board’s own — read from what Claude Code already writes, and never written to. Here are the main parts, in a couple of minutes.',
       how: () => '<kbd>←</kbd> <kbd>→</kbd> to move · <kbd>esc</kbd> to leave — Settings, <kbd>⌥⌘L</kbd> and home take you round again' },
     { id: 'list', at: () => $('#slist > .card') ? $('#slist') : $('#sessions'), title: 'The one waiting for you is on top',
       text: () => `${$('#slist > .card') ? '' : 'Empty for now — <kbd>⌥⌘N</kbd> starts a chat. '}Every chat sorts into lanes by what it needs: <b>Asking you</b>, <b>Clauding</b>, <b>Ready</b>, then <b>Idle</b> and <b>Done</b>, folded. In each lane the newest word leads; a lane’s head folds it.` },
     { id: 'card', need: true, at: tourCard, title: 'A card is a chat',
       text: () => 'Its edge says what it is doing without opening it: a light running round while Claude works, a slow one while a monitor watches, red pings while it asks you something. Its PRs sit at the top right. <b>✓</b> ticks it done; a right-click has the rest.' },
     { id: 'find', side: 'above', at: () => onScreen($('#filters')), title: 'Find a chat',
-      text: () => 'The magnifier — <kbd>⌥⌘F</kbd> — searches the list by any letters in order: <em>chk rtr</em> finds <em>checkout retry</em>. The funnel shows only the PRs at your move, or the new replies. <kbd>⌥⌘P</kbd> narrows the list to a project, <kbd>⌥⌘K</kbd> jumps to any chat.' },
+      text: () => 'The magnifier — <kbd>⌥⌘F</kbd> — searches the list by any letters in order: <em>chk rtr</em> finds <em>checkout retry</em>. The funnel shows only the chats with a new reply, or a PR at your move. <kbd>⌥⌘P</kbd> narrows the list to a project, <kbd>⌥⌘K</kbd> jumps to any chat.' },
+    { id: 'new', mid: true, title: 'A new chat, anywhere',
+      text: () => '<kbd>⌥⌘N</kbd> asks where — the project in view, another, any repo in your folders, or one to clone — then offers its open chats, or a new one: in the folder, or <b>on a new branch</b>, in a worktree of its own. Claude starts in a terminal on the board, and the chat has its card at once. <kbd>⌥⌘O</kbd> goes straight to your quick project.',
+      pic: () => `<div class="tmock"><div class="hd"><kbd>⌥⌘N</kbd> › widgets</div><div class="r on">＋ new chat</div><div class="r">＋ new chat on a new branch<small>a worktree</small></div><div class="r"><i style="--c: var(--idle)"></i>Fix the checkout retry<small>ready</small></div><div class="r"><i style="--c: var(--working)"></i>Bump the SDK<small>clauding</small></div></div>` },
     { id: 'chat', at: () => state.current ? [$('#groups'), $('#resume')] : $('#chat'), title: () => state.current ? 'The chat, live' : 'The chat you open comes up here',
-      text: () => `${state.current ? 'Its transcript, as Claude writes it.' : 'With none open, this is home: your day across every chat. Click a card and its transcript comes up, live.'} When its claude runs on the board it is a real terminal to type into — <kbd>⌥⌘C</kbd> brings it up — and a chat whose claude has ended offers to resume it here. <kbd>⌥⌘N</kbd> starts a new chat.` },
-    { id: 'head', need: true, side: 'below', at: () => state.current ? onScreen($('#shead')) : null, title: 'Its PRs, and the rest of it',
-      text: () => 'The project and the chat’s title, then its PRs and Jira tickets: one at your move says so, its CI too, and a click lists them — each with its diff, the editor at its branch and a chat on it. <b>···</b> holds the rest: its changes, VS Code, the details.' },
-    { id: 'tabs', side: 'below', at: () => state.current ? [$('#ptabs'), $('#ptabsB')].filter(el => el.offsetHeight > 12) : null, title: 'Beside the chat, on tabs',   // a lone tab has no strip (.lone, of no height)
-      text: () => `<kbd>⌥⌘T</kbd> a shell in its folder · <kbd>⌥⌘E</kbd> VS Code Web · <kbd>⌥⌘D</kbd> what it changed · <kbd>⌥⌘G</kbd> its PR on GitHub. <kbd>⌘2</kbd> splits the column in two, <kbd>⌘1</kbd> <kbd>⌘2</kbd> go from half to half, <kbd>⌘W</kbd> closes a tab.${inApp ? '' : ' In a browser, VS Code Web and GitHub open in tabs of their own.'}` },
+      text: () => `${state.current ? 'Its transcript, as Claude writes it.' : 'With none open, this is home: your day across every chat. Click a card and its transcript comes up, live.'} When its claude runs on the board it is a real terminal to type into, and a chat whose claude has ended offers to resume it here.` },
+    { id: 'open', side: 'below', at: () => state.current ? onScreen($('#moreBtn')) : null, title: 'Its terminal, GitHub, editor and diff',
+      text: () => `${state.current ? 'Everything the chat has' : 'Once a chat is open, everything it has'}, a key away — each on a tab beside it, and the same key again fills the column with it.${state.current ? ' Claude, the changes and VS Code Web are in <b>···</b> too.' : ''}${inApp ? '' : ' In a browser, GitHub and VS Code Web open in tabs of their own.'}`,
+      pic: () => tourKeys([['⌥⌘C', 'its Claude, in a terminal here — or taken over from where it runs'], ['⌥⌘T', 'a shell in its folder · <kbd>⌘T</kbd> another'], ['⌥⌘G', 'its PR on GitHub, or the repo'], ['⌥⌘E', 'its folder in VS Code Web · <kbd>⌥⌘V</kbd> in VS Code itself'], ['⌥⌘D', 'what it changed: the last turn, the uncommitted tree, the branch, a PR']]) },
+    { id: 'split', at: () => state.current ? $('#groups') : null, title: 'Two halves, side by side or stacked',
+      text: () => '<kbd>⌘2</kbd> splits the chat column side by side, <kbd>⌥⌘2</kbd> one over the other: the digit is the half, the modifier the layout, so <kbd>⌘1</kbd> <kbd>⌘2</kbd> or <kbd>⌥⌘1</kbd> <kbd>⌥⌘2</kbd> move between the halves, turning the split. A new tab opens in the second half; drag a tab across to move it; <kbd>⌘0</kbd> closes the other half.',
+      pic: () => `<div class="tsplit"><figure><div class="w side"><i></i><i class="a">1</i><i class="b">2</i></div><figcaption><kbd>⌘1</kbd> <kbd>⌘2</kbd> side by side</figcaption></figure><figure><div class="w stack"><i></i><i class="a">1</i><i class="b">2</i></div><figcaption><kbd>⌥⌘1</kbd> <kbd>⌥⌘2</kbd> stacked</figcaption></figure></div>` },
+    { id: 'prs', side: () => state.current ? 'below' : 'right', at: () => (state.current && onScreen($('#prToggle'))) || [...document.querySelectorAll('#slist > .card .tprs')].find(t => t.querySelector(':scope > .cpr') && onScreen(t)) || null,
+      title: 'PRs and tickets link themselves',
+      text: () => 'Every PR the chat names is put on it once GitHub finds it there — a link, <em>#12</em> or <em>widgets#12</em> in what you or Claude wrote, one Claude opened — and Jira tickets by their key or the branch’s name. A chip says its state and CI; a click on the header’s lists them, each with its diff, the editor at its branch and a chat on it. Right-click one that doesn’t belong to take it off. The PRs need <b>gh</b>, signed in.',
+      pic: () => `<div class="tlink"><span class="tq">“…#12 is the base, and acme/widgets#13 depends on it”</span><span class="tto">→ <span class="tchip" data-state="open">#12</span><span class="tchip" data-state="draft">#13</span><span class="tchip tk">PAY-311</span></span></div>` },
+    { id: 'move', side: () => onScreen($('#shead .hmove')) ? 'below' : 'above', at: () => onScreen($('#shead .hmove')) || onScreen($('#slist > .card .prmove')) || onScreen($('#fBtn')), title: 'Your move',
+      text: () => 'A PR you wrote or reviewed has a turn. When someone reviews, comments or pushes after your last word on it — or asks for your review again — it is <b>your move</b>: the card and the header say so, the chat comes back from Done and up the list, and a notification says why. Your review, comment or push answers it; ⌥-click the tag to let that round go. The funnel shows only the chats at your move.',
+      pic: () => `<div class="tlink"><span class="tto"><b class="ymove">${ICON.pr}your move</b><span class="tq">#12 · changes asked by alex</span></span></div>` },
     { id: 'bar', need: true, side: 'above', at: () => onScreen($('#sbar')), title: 'The machine, at the foot',
       text: () => 'Who is asking you and what is watching, on the left; the fish swims faster the more Claude is at work — a click shows every live chat. On the right the Mac’s CPU and memory, your plan’s limits, the cup that keeps the Mac awake while Claude works, and the clock.' },
     { id: 'keys', mid: true, title: 'Anything, from the keyboard',
@@ -5344,6 +5382,7 @@ const toolName = n => {
     $('#tourNum').textContent = `${tour.i + 1} of ${n}`;
     $('#tourTitle').textContent = tourVal(t.title);
     $('#tourText').innerHTML = tourVal(t.text);
+    $('#tourPic').innerHTML = t.pic ? t.pic() : '';
     $('#tourHow').innerHTML = t.how ? t.how() : '';
     $('#tourBack').hidden = !tour.i; $('#tourSkip').hidden = last;
     $('#tourNext').textContent = !tour.i ? 'Show me round' : last ? 'Done' : 'Next';
@@ -5366,7 +5405,7 @@ const toolName = n => {
       const l = Math.max(2, r.left - P), tp = Math.max(2, r.top - P), rt = Math.min(W - 2, r.right + P), b = Math.min(H - 2, r.bottom + P);
       h = { x: l, y: tp, w: rt - l, h: b - tp };
       const room = { right: W - rt - G - M, left: l - G - M, below: H - b - G - M, above: tp - G - top };
-      const side = [t.side, 'right', 'left', 'below', 'above'].find(s => s && room[s] >= (s === 'right' || s === 'left' ? cw : ch));
+      const side = [tourVal(t.side), 'right', 'left', 'below', 'above'].find(s => s && room[s] >= (s === 'right' || s === 'left' ? cw : ch));
       const cx = (l + rt - cw) / 2, cy = (tp + b - ch) / 2;
       [x, y] = side === 'right' ? [rt + G, cy] : side === 'left' ? [l - G - cw, cy] : side === 'below' ? [cx, b + G] : side === 'above' ? [cx, tp - G - ch] : [cx, b - ch - 24];
     }
@@ -5388,7 +5427,7 @@ const toolName = n => {
   // Left before the end — Skip, esc, a key that closes dialogs —, it says where it waits.
   $('#tour').addEventListener('close', () => {
     clearInterval(tour.timer); tour.timer = 0; removeEventListener('resize', tourPlace);
-    prefs.toured = true; savePrefs();
+    prefs.toured = true; savePrefs(); $('#tourPic').innerHTML = '';   // its pictures borrow the board's own classes (.ymove): none left behind
     if (!tour.done) note(onScreen($('#home .hgo[data-go="tour"]')) || $('#shead'), 'The tour waits in Settings (⌘,), ⌥⌘L and home, whenever you want it');
   });
   for (const b of ['#tourBtn', '#ksTour']) $(b).onclick = tourStart;
@@ -6591,7 +6630,7 @@ const toolName = n => {
     motion: () => MOTION.map(m => ({ ...m })),   // the list's last moves: {id, kind: flip | enter | leave, at}
     sessions: () => [...state.sessions.values()].map(s => ({ id: s.id, project: s.project, cwd: s.cwd, env: s.env || null, title: s.title, status: s.status, alive: s.alive, prs: (s.prs || []).length, terminal: s.terminal?.id || null, agents: s.agents || 0, tasks: s.tasks || [], ask: s.ask || null })),
     prefs: () => ({ ...prefs }),
-    tour: () => ({ open: $('#tour').open, at: tour.i, step: tour.steps[tour.i]?.id || null, steps: tour.steps.map(t => t.id), drawn: tour.drawn, parts: tour.els.map(el => el.id ? '#' + el.id : `#slist > .card[data-id="${el.dataset.id}"]`) }),   // the tour (2026-10-14)
+    tour: () => ({ open: $('#tour').open, at: tour.i, step: tour.steps[tour.i]?.id || null, steps: tour.steps.map(t => t.id), drawn: tour.drawn, parts: tour.els.map(el => { const c = el.closest('#slist > .card'), cls = [...el.classList].map(k => '.' + k).join(''); return el.id ? '#' + el.id : c ? `#slist > .card[data-id="${c.dataset.id}"]${c === el ? '' : ' ' + cls}` : el.localName + cls; }) }),   // the tour (2026-10-14)
     term: g => window.peixDebug(g),
     screen: g => [...document.querySelectorAll(`${GEL[g ?? focusG].tbody} .xterm-rows > div`)].map(r => r.textContent.replace(/\s+$/, '')),
     /** The whole buffer, scrollback included — what a row that scrolled off the screen went into. */
@@ -8323,7 +8362,7 @@ const toolName = n => {
     setHtml(el.querySelector('.hkv'), `
         <div class="hh">${esc(a.user || 'you')}<span>@</span>${esc(a.host || 'peixairada')}</div><div class="hrule"></div>${facts}
         <div class="hblocks">${['--needs', '--working', '--idle', '--watch', '--accent', '--spend', '--you', '--ink'].map(v => `<i style="background:var(${v})"></i>`).join('')}</div>
-        <div class="hkeys"><kbd>⌥⌘L</kbd> anything <s>·</s> <kbd>⌥⌘K</kbd> a chat <s>·</s> <kbd>⌥⌘N</kbd> new <s>·</s> <kbd>⌥⌘A</kbd> overview <s>·</s> <kbd>?</kbd> keys <s>·</s> <button class="hgo" data-go="tour" title="The board’s main parts, one at a time — a minute">the tour</button></div>`);
+        <div class="hkeys"><kbd>⌥⌘L</kbd> anything <s>·</s> <kbd>⌥⌘K</kbd> a chat <s>·</s> <kbd>⌥⌘N</kbd> new <s>·</s> <kbd>⌥⌘A</kbd> overview <s>·</s> <kbd>?</kbd> keys <s>·</s> <button class="hgo" data-go="tour" title="The board’s main parts, one at a time — a couple of minutes">the tour</button></div>`);
     setHtml(el.querySelector('.hday'), `<h3><b>Today</b><span>every chat, ${new Date(t0).getHours().toString().padStart(2, '0')}:00 to now</span><span class="lg"><span><i class="w"></i>clauding</span><span><i class="a"></i>waiting on you</span><span><i class="m"></i>watching</span></span></h3>${day}`);
   }
   const HOME_GO = { ask: 'Open the chat asking you', ov: 'The overview — every live chat · ⌥⌘A', prs: 'The PRs at your move' };
@@ -8973,7 +9012,7 @@ const toolName = n => {
       ['state', esc(homePath(a.stateFile || '?'))],
       ['chats', `${[...state.sessions.values()].filter(s => s.alive).length} live · ${all.ready ?? 0} ready · ${all.working ?? 0} clauding`],
     ];
-    $('#about').innerHTML = `${FISH_LOGO()}<h3>peix<em>AI</em>rada</h3><p class="tag">One board for every Claude Code chat on this Mac.</p><div class="facts">${facts.map(([k, v]) => `<b>${k}</b><span>${v}</span>`).join('')}</div><p class="help">The keys and the switches are in the settings — ⌘, or the chat header's ···.</p><p class="help"><button class="btn" id="aboutTour" title="The board's main parts, one at a time — a minute">Take the tour</button></p>`;
+    $('#about').innerHTML = `${FISH_LOGO()}<h3>peix<em>AI</em>rada</h3><p class="tag">One board for every Claude Code chat on this Mac.</p><div class="facts">${facts.map(([k, v]) => `<b>${k}</b><span>${v}</span>`).join('')}</div><p class="help">The keys and the switches are in the settings — ⌘, or the chat header's ···.</p><p class="help"><button class="btn" id="aboutTour" title="The board's main parts, one at a time — a couple of minutes">Take the tour</button></p>`;
     $('#about').showModal();
   }
   $('#about').addEventListener('click', e => { if (e.target === $('#about')) $('#about').close(); else if (e.target.closest('#aboutTour')) tourStart(); });   // the backdrop; the tour (2026-10-14)

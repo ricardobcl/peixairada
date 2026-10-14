@@ -5,6 +5,28 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-14. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-14, on a branch — the tour, five parts more
+
+Ricardo, on the first tour: "we're missing explaining: new chat · "your move" · auto PR linking · split 2 panes
+horizontal and vertical · open GH, terminal, editor and diff".
+
+* **Thirteen steps** (ten before): hello · the list · a card · finding a chat · **a new chat** · the chat column ·
+  **its terminal, GitHub, editor and diff** · **the split** · **PRs and tickets linking themselves** · **your move** ·
+  the status bar · the keys · goodbye. The header's step and the tabs' went into the new ones: ··· is where the
+  terminal-and-editor step points with a chat open, the header's chips where the PRs' does, its tag where the move's.
+* **A step whose part is not on the board carries a picture** (`pic`): the ⌥⌘N picker drawn small (＋ new chat, ＋ on
+  a new branch, its open chats), the five keys as rows (`tourKeys`: ⌥⌘C T G E D, with ⌘T and ⌥⌘V beside), the two
+  splits as two windows with their halves numbered — the digit is the half, the modifier the layout —, a sentence
+  naming `#12` and `acme/widgets#13` and the chips it becomes, the your-move tag and its reason. Drawn in the board's
+  tokens; the tag is the board's own `.ymove` (nothing selects it outside a card or the header), emptied on close.
+* **Where each points**: none open, the PRs at a card's chips and the move at a card's line (else the funnel, which
+  filters by it); a chat open, the header's chips and its tag, the card under them (`side` may depend on the part).
+  The split points at the column, the halves in it when split.
+* **Said as the code has it**: a move is GitHub's — someone else reviewing, commenting or pushing after your last word
+  on the PR, or asking for your review again — and your review, comment or push answers it (`prTurn`); the chat comes
+  back from Done (`isDone` against `movedAt`) and up the list; ⌥-click lets a round go. A PR is linked once GitHub
+  finds it where the chat said it (`shownPr`), which needs `gh`.
+
 ## Decisions of 2026-10-14, on a branch — the experimental switches pared
 
 Ricardo: "I want to remove some features/settings that we experimental and I don't use a lot, so we have let bugs and

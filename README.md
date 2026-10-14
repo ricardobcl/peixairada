@@ -135,7 +135,7 @@ mac/build.sh install           # the Mac app, in /Applications (optional — any
 ```
 
 **On first open** the board asks where your repos live, its guess from your chats already filled in, then shows you
-round its main parts in a minute — Skip it, or take it again later from Settings, ⌥⌘L or home; macOS asks to let
+round its main parts in a couple of minutes — Skip it, or take it again later from Settings, ⌥⌘L or home; macOS asks to let
 `security` read the *Claude Code-credentials* keychain item (your plan usage — *Always Allow*), and the app to show
 notifications.
 

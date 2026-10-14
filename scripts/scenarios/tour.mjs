@@ -3,11 +3,29 @@
 // swallowed under it; the hello is centred with the hole shut; → walks every step, each card on screen and clear of
 // its part, the hole round the part (the list, a card, the search, the home column, the status bar); ← steps back;
 // esc leaves it, taken, and a note says where it waits; a reload does not bring it back; it starts again from the
-// launcher's menu, the settings' head, home's keys line, the ? sheet and the About box; with a chat open the chat step
-// is its body and its resume bar, and its header has a step of its own; Done ends it without a note; under reduced
-// motion nothing glides. (With the status bar off its step was left out and the search found at the list's foot, until
-// the bar was always there, 2026-10-14.)
-export const meta = { server: true, fixture: 'auto', env: { ORG_DIR: '', ORG: '' }, prefs: { toured: false } };
+// launcher's menu, the settings' head, home's keys line, the ? sheet and the About box. The steps without a part of
+// their own — a new chat, the keys to its terminal, GitHub, editor and diff, the split — carry a picture; with a chat
+// open the chat step is its body and its resume bar, its keys point at ···, the split at the column, its PRs and its
+// move at the header's chips and tag (a PR of the fake gh's at your move from the start); none open, at a card's. Done
+// ends it without a note; under reduced motion nothing glides. (With the status bar off its step was left out and the
+// search found at the list's foot, until the bar was always there, 2026-10-14.)
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+// acme/repo-a#12 by ana: I asked for changes an hour ago, she commented since — my move. #13 nobody here touched.
+const gh = join(mkdtempSync(join(tmpdir(), 'peix-gh-')), 'prs.json');
+const ago = min => new Date(Date.now() - min * 60_000).toISOString().replace(/\.\d+Z$/, 'Z');
+const user = login => ({ login, __typename: 'User', avatarUrl: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#8250df"/></svg>') });
+writeFileSync(gh, JSON.stringify({
+  'acme/repo-a#12': { state: 'OPEN', title: 'Base of the follow-up', createdAt: ago(300), headRefOid: 'A', author: user('ana'),
+    viewerLatestReview: { submittedAt: ago(60), commit: { oid: 'A' } }, reviewRequests: { nodes: [] },
+    reviews: { nodes: [{ author: user('me'), state: 'CHANGES_REQUESTED', submittedAt: ago(60) }] }, comments: { nodes: [{ author: user('ana'), createdAt: ago(10) }] },
+    pushes: { nodes: [] }, asks: { nodes: [] } },
+  'acme/repo-a#13': { state: 'OPEN', title: 'The follow-up', author: user('ana') },
+}));
+export const meta = { server: true, fixture: 'auto', env: { ORG_DIR: '', ORG: '', FAKEGH_PRS: gh, FAKEGH_VIEWER: 'me' }, prefs: { toured: false } };
+const STEPS = ['hello', 'list', 'card', 'find', 'new', 'chat', 'open', 'split', 'prs', 'move', 'bar', 'keys', 'bye'];
 
 export default async function (ctx) {
   const out = {};
@@ -19,7 +37,7 @@ export default async function (ctx) {
     const part = parts.length ? parts.reduce((a, b) => ({ l: Math.min(a.l, b.l), t: Math.min(a.t, b.t), r: Math.max(a.r, b.r), b: Math.max(a.b, b.b) })) : null;
     if (part) Object.assign(part, { w: part.r - part.l, h: part.b - part.t });
     return { step: t.step, parts: t.parts, card: box(q('#tour .tcard')), hole: box(q('#tour .thole')), shut: q('#tour .thole').classList.contains('none'), part,
-      title: q('#tourTitle').textContent, num: q('#tourNum').textContent, next: q('#tourNext').textContent, back: !q('#tourBack').hidden, skip: !q('#tourSkip').hidden,
+      title: q('#tourTitle').textContent, pic: q('#tourPic').innerHTML, num: q('#tourNum').textContent, next: q('#tourNext').textContent, back: !q('#tourBack').hidden, skip: !q('#tourSkip').hidden,
       focus: document.activeElement?.id, W: innerWidth, H: innerHeight };
   })())`).then(JSON.parse);
   const arrow = async key => { const k = { ArrowRight: 39, ArrowLeft: 37, Escape: 27 }[key]; await ctx.send('Input.dispatchKeyEvent', { type: 'keyDown', key, code: key, windowsVirtualKeyCode: k }); await ctx.send('Input.dispatchKeyEvent', { type: 'keyUp', key, code: key, windowsVirtualKeyCode: k }); };
@@ -53,6 +71,7 @@ export default async function (ctx) {
 
   // ---- once, on its own, when the first run's question is answered ----
   await ctx.waitFor(`document.querySelector('#welcome').open`, { what: 'the first run’s question' });
+  await ctx.waitFor(`!!document.querySelector('#slist > .card .prmove')`, { what: 'the PR at my move, on its card', timeout: 20_000 });
   ctx.assert.equal((await tour()).open, false, 'not over the question');
   await ctx.evaluate(`document.querySelector('#wskip').click()`);
   await ctx.waitFor(`window.peix.tour().open`, { what: 'the tour, once the question was answered' });
@@ -60,8 +79,8 @@ export default async function (ctx) {
   out.hello = await geom();
   await ctx.shot('hello');
   ctx.assert.ok(await ctx.evaluate(`document.querySelector('#tour').matches(':modal') && !document.querySelector('#welcome').open`), 'modal, and the question gone');
-  ctx.assert.deepEqual([out.hello.step, out.hello.next, out.hello.back, out.hello.skip, out.hello.num], ['hello', 'Show me round', false, true, '1 of 9'], 'the hello: Show me round or Skip, nothing before it — and no step about the header with no chat open');
-  ctx.assert.deepEqual((await tour()).steps, ['hello', 'list', 'card', 'find', 'chat', 'tabs', 'bar', 'keys', 'bye'], 'its steps with no chat open');
+  ctx.assert.deepEqual([out.hello.step, out.hello.next, out.hello.back, out.hello.skip, out.hello.num], ['hello', 'Show me round', false, true, `1 of ${STEPS.length}`], 'the hello: Show me round or Skip, nothing before it');
+  ctx.assert.deepEqual((await tour()).steps, STEPS, 'its steps with no chat open');
   await ctx.key('KeyN');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#pick').open`), false, '⌥⌘N swallowed under it');
 
@@ -73,7 +92,11 @@ export default async function (ctx) {
   ctx.assert.ok(by('find').part && by('find').card.b <= by('find').hole.t, 'the search in the status bar, the card above it');
   ctx.assert.ok(by('chat').part && by('chat').card.r <= by('chat').hole.l, 'the home column, the card over the list beside it');
   ctx.assert.ok(by('bar').part && by('bar').part.w >= by('bar').W - 40 && by('bar').card.b <= by('bar').hole.t, 'the status bar, the card above it');
-  ctx.assert.ok(by('tabs').shut, 'no chat open: the tabs step has no part');
+  ctx.assert.ok(by('new').shut && by('new').pic.includes('＋ new chat on a new branch'), 'a new chat: no part, a picker drawn small');
+  ctx.assert.ok(by('open').shut && (by('open').pic.match(/<kbd>⌥⌘[CTGED]<\/kbd>/g) || []).length === 5, 'no chat open: the keys to its terminal, GitHub, editor and diff, as rows');
+  ctx.assert.ok(by('split').shut && (by('split').pic.match(/<figure>/g) || []).length === 2, 'no chat open: the two splits drawn');
+  ctx.assert.ok(by('prs').parts[0]?.endsWith(' .tprs') && by('prs').card.l >= by('prs').hole.r && by('prs').pic.includes('tchip'), `a card's PR chips, the card to their right ${JSON.stringify(by('prs').parts)}`);
+  ctx.assert.ok(by('move').parts[0]?.endsWith(' .state.prmove') && by('move').pic.includes('ymove'), `the your-move line on its card ${JSON.stringify(by('move').parts)}`);
   ctx.assert.deepEqual([out.first.at(-1).step, out.first.at(-1).skip], ['bye', false], 'the last: Done, no Skip');
   await arrow('ArrowRight'); await ctx.sleep(200);
   ctx.assert.equal((await tour()).open, true, '→ on the last step does not leave');
@@ -120,43 +143,43 @@ export default async function (ctx) {
     await ctx.evaluate(`document.querySelector('#aboutTour').click()`);
   });
 
-  // ---- a chat open: its body, its header, its tabs; Done ends it with no note ----
+  // ---- a chat open: its body, its ···, its column, its PRs and its move in the header; Done ends it with no note ----
   await ctx.openChat(ctx.fixture.chats[0].id);
   await ctx.settle();
   await ctx.evaluate(`document.querySelectorAll('.note').forEach(n => n.remove())`);
   await ctx.evaluate(`document.querySelector('#tourBtn').click()`);
   await ctx.waitFor(`window.peix.tour().open`, { what: 'the tour on a chat' });
-  ctx.assert.deepEqual((await tour()).steps, ['hello', 'list', 'card', 'find', 'chat', 'head', 'tabs', 'bar', 'keys', 'bye'], 'its steps with a chat open');
+  ctx.assert.deepEqual((await tour()).steps, STEPS, 'its steps with a chat open');
   out.chat = await walk('chat');
   const on = id => out.chat.find(g => g.step === id);
   ctx.assert.equal(on('chat').title, 'The chat, live');
   ctx.assert.deepEqual(on('chat').parts, ['#groups', '#resume'], 'its body and its resume bar, drawn round as one');
-  ctx.assert.ok(on('head').part && on('head').card.t >= on('head').hole.b, 'the header, the card under it');
-  ctx.assert.ok(on('tabs').shut, 'one tab: no strip to show, the card in the middle');
-  await ctx.evaluate(`window.peix.tour()`);
-  for (let i = 0; i < 4; i++) { await arrow('ArrowLeft'); await ctx.sleep(50); }
-  await ctx.waitFor(`window.peix.tour().step === 'head'`, { what: 'back to the header' });
-  await ctx.settle();
-  await ctx.shot('chat-head');
-  for (let i = 0; i < 4; i++) { await arrow('ArrowRight'); await ctx.sleep(50); }
+  ctx.assert.ok(on('open').parts[0] === '#moreBtn' && on('open').card.t >= on('open').hole.b, 'its keys: ···, the card under it');
+  ctx.assert.ok(on('split').parts[0] === '#groups', 'the split: the column');
+  ctx.assert.ok(on('prs').parts[0] === '#prToggle' && on('prs').card.t >= on('prs').hole.b, 'its PRs: the header’s chips, the card under them');
+  ctx.assert.ok(on('move').parts[0]?.includes('hmove') && on('move').card.t >= on('move').hole.b, `its move: the header’s tag, the card under it ${JSON.stringify(on('move').parts)}`);
+  for (let i = 0; i < 3; i++) { await arrow('ArrowLeft'); await ctx.sleep(50); }
+  await ctx.waitFor(`window.peix.tour().step === 'move'`, { what: 'back to the move' });
+  for (let i = 0; i < 3; i++) { await arrow('ArrowRight'); await ctx.sleep(50); }
   await ctx.waitFor(`window.peix.tour().step === 'bye'`, { what: 'on to the end' });
   await ctx.evaluate(`document.querySelector('#tourNext').click()`);
   await ctx.waitFor(`!window.peix.tour().open`, { what: 'Done' });
   await ctx.sleep(200);
   ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('.note')`), false, 'Done says nothing');
 
-  // ---- split: the tabs step is the strip ----
+  // ---- split: the split step is both halves ----
   await ctx.cmd('Digit2');
   await ctx.waitFor(`window.peix.state().split`, { what: '⌘2 splits' });
   await ctx.settle();
   await ctx.evaluate(`document.querySelector('#tourBtn').click()`);
   await ctx.waitFor(`window.peix.tour().open`, { what: 'the tour, split' });
-  for (let i = 0; i < 6; i++) await arrow('ArrowRight');
-  await ctx.waitFor(`window.peix.tour().step === 'tabs'`, { what: 'the tabs step, split' });
+  for (let i = 0; i < STEPS.indexOf('split'); i++) await arrow('ArrowRight');
+  await ctx.waitFor(`window.peix.tour().step === 'split'`, { what: 'the split step, split' });
   await ctx.settle();
   out.split = await geom();
-  await ctx.shot('tabs-split');
-  ctx.assert.ok(out.split.part && out.split.part.h > 12 && out.split.card.t >= out.split.hole.b, `split: a strip, the card under it ${JSON.stringify(out.split)}`);
+  await ctx.shot('split-split');
+  const halves = await ctx.evaluate(`JSON.stringify(['#grp', '#grpB'].map(s => { const r = document.querySelector(s).getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right)]; }))`).then(JSON.parse);
+  ctx.assert.ok(out.split.part && out.split.part.l <= halves[0][0] && out.split.part.r >= halves[1][1], `split: both halves in the hole ${JSON.stringify({ part: out.split.part, halves })}`);
   await ctx.evaluate(`document.querySelector('#tourNext').click()`);
   await arrow('Escape');
   await ctx.waitFor(`!window.peix.tour().open`, { what: 'esc' });
@@ -175,10 +198,10 @@ export default async function (ctx) {
   await ctx.settle();
   await ctx.shot('card-dark');
   await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
-  await arrow('ArrowRight'); await arrow('ArrowRight');
-  await ctx.waitFor(`window.peix.tour().step === 'chat'`, { what: 'the chat step, light' });
+  for (let i = 0; i < 2; i++) await arrow('ArrowRight');
+  await ctx.waitFor(`window.peix.tour().step === 'new'`, { what: 'the new chat step, light' });
   await ctx.settle();
-  await ctx.shot('chat-light');
+  await ctx.shot('new-light');
   await arrow('Escape');
   await ctx.waitFor(`!window.peix.tour().open`, { what: 'esc' });
   return out;

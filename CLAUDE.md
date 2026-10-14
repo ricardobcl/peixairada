@@ -515,8 +515,8 @@ for `$HOME`'s home and the account's.
 * **The tour** (2026-10-14; `#tour`, `TOUR`, `tourStart`, `tourPlace`): a modal dialog the window's size — a hole in a
   veil (the hole's own shadow) round each step's part, the card on the side with room. Once on its own after the
   welcome's answer (`prefs.toured`; the harness's `true`), again from Settings' head, ⌥⌘L, home, the ? sheet and About.
-  A step's part is found as the board stands (`at`); none, `need` leaves the step out, else the card is centred. A
-  new main part gets a step. → `tour.mjs`.
+  A step's part is found as the board stands (`at`); none, `need` leaves the step out, else the card is centred — with
+  a picture (`pic`) where a step has no part of its own. A new main part gets a step. → `tour.mjs`.
 * **The page asks the server through `api(method, url, body)`**: JSON in, JSON out, a throw with the server's own
   `error` (else the status) — `e.status`, `e.body`. Every caller says what went wrong where it happened, or catches on
   purpose. The attach upload keeps a raw `fetch`: its body is a file.
