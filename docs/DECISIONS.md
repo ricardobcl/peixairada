@@ -5,6 +5,18 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-14. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-14, on a branch — how long ago your move came
+
+Ricardo: "on the "your move" on card we should show how long was that event triggered on mouve hover".
+
+* **The card's *your move* line ends with the move's age under the pointer** (`moveHtml` → `.mt`, *1m ago*): shown as
+  the card's own age is — on the card's hover, by `opacity`, keeping its room, so nothing on the line moves when it
+  comes. The age is GitHub's time of the move's newest reason (`turn.at`: the push, the word, the review asked again),
+  else when the board saw it (`movedAt`) — the event itself, not the poll that found it. A `data-at` that `fillAges`
+  fills, so the clock rebuilds no card.
+* **Only the card's**: the header's *your move* has no room to spare (`fitHeadPrs` already folds it), and the open
+  chat is one look away from its PR rows.
+
 ## Decisions of 2026-10-14, on a branch — update from the status bar
 
 Ricardo: "does the "check now" also updates the app if auto-update is not on? if not, we should have a "Updated" instead

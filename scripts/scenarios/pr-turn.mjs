@@ -97,6 +97,18 @@ export default async function (ctx) {
     ctx.assert.equal(out.moved.badge, '1', 'and the card counts it unread');
     ctx.assert.equal(out.moved.move, '#12 · pushed since your review', 'the card says whose move and why…');
     ctx.assert.equal(await ctx.evaluate(`${card}.querySelector('.state.prmove .ymove').textContent`), 'your move', '…after the tag');
+    // …and how long ago the move came, under the pointer only, keeping its room (2026-10-14): GitHub's time of the push
+    await ctx.settle();
+    const age = () => ctx.evaluate(`JSON.stringify((m => ({ at: m.querySelector('[data-at]').dataset.at, text: m.textContent, opacity: getComputedStyle(m).opacity, w: Math.round(m.getBoundingClientRect().width) }))(${card}.querySelector('.state.prmove .mt')))`).then(JSON.parse);
+    out.age = { rest: await age(), turn: await ctx.evaluate(`(t => t.at || t.movedAt)(window.peix.session('${two.id}').prs.find(p => p.turn?.you).turn)`) };
+    ctx.assert.equal(out.age.rest.at, out.age.turn, 'the move\'s own time');
+    ctx.assert.match(out.age.rest.text, /^\d+[smhd] ago$/, `said as an age: ${out.age.rest.text}`);
+    ctx.assert.deepEqual([out.age.rest.opacity, out.age.rest.w > 0], ['0', true], 'unseen at rest, its room kept');
+    const at = await ctx.evaluate(`(r => ({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }))(${card}.getBoundingClientRect())`);
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y });
+    await ctx.waitFor(`getComputedStyle(${card}.querySelector('.state.prmove .mt')).opacity === '0.8'`, { what: 'the move\'s age under the pointer' });
+    await ctx.shot('move-age', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(${card}.getBoundingClientRect())`));
+    await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 5 });
     // …which slid in as it came (2026-10-11): the card was there before, its tag was not
     ctx.assert.ok(await ctx.evaluate(`window.peix.motion().some(m => m.kind === 'move' && m.id === '${two.id}')`), 'the tag slides in');
     ctx.assert.equal(out.moved.rank, 0, 'the move is the chat\'s newest word: it tops the list');

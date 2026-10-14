@@ -397,7 +397,8 @@ for `$HOME`'s home and the account's.
 * **A PR chip GitHub has answered for is solid** (`--prc`, its state's colour), one not known yet an outline. **A PR
   at your move is said by name, not by its chip's look**: `data-turn` (`turnOf(pr)`: `you` · `them` · empty)
   on `.cpr`, `.hpr`, `.prrow` and the tooltips (`turnTip`); the card's line (`moveHtml`, `.ymove`, at every size, not
-  on a ticked card — **a card counts nothing**, the others in its tooltip), the header's (`headMove`, `.hmove`), the
+  on a ticked card — **a card counts nothing**, the others in its tooltip; under the pointer how long ago the move
+  came, `.mt` — `turn.at`, else `movedAt` —, 2026-10-14), the header's (`headMove`, `.hmove`), the
   row's `.why`. A new tag slides in (`moveMoments`; `#shead` carries `data-sid`).
 * **The card's PR chips end its top row, stacked** (`cardPrs` → `chipStack`, `.top .tprs`): the first four in the
   chat's order with every one at your move; **the pointer fans them out**, and a fan wider than the row scrolls

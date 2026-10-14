@@ -961,6 +961,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .card .state.prmove { color: var(--ink); display: flex; align-items: baseline; gap: 6px; }
   .card .state.moveslot { align-items: baseline; gap: 6px; }   /* the line's own metrics, for the place it holds */
   .card .state:is(.prmove, .moveslot) .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  /* how long ago the move came (2026-10-14): as the card's age, under the pointer only and keeping its room */
+  .card .state.prmove .mt { flex: none; font-size: var(--fs-2xs); white-space: nowrap; opacity: 0; transition: opacity .12s; }
+  .card:hover .state.prmove .mt { opacity: .8; }
   /* It never wraps the row (2026-10-11, afternoon: ··· went to a second line beside the housing): a flex basis of 0,
      growing into the room the row leaves up to its own width — the reason ellipsized —, and no narrower than the tag and
      the count (--hmin, fitHeadPrs, which folds the PR chips to leave that much; min-content is the whole reason). */
@@ -1543,7 +1546,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .sysline.day { margin: 14px auto 12px; }
   .sysline.day b { font: 600 var(--fs-xs)/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: var(--muted); }   /* the list's day line, in the transcript */
   /* Times and ages in tabular figures (2026-09-27, night), so a digit changing under them moves nothing beside it. */
-  .msg .who, .card .trow .time, .pkrow .t, .prrow .meta, #hmenu .hmi .k, #hmenu .hmi [data-at] { font-variant-numeric: tabular-nums; }
+  .msg .who, .card .trow .time, .card .prmove .mt, .pkrow .t, .prrow .meta, #hmenu .hmi .k, #hmenu .hmi [data-at] { font-variant-numeric: tabular-nums; }
   /* Presence at the foot of the transcript (2026-09-27, night): while the open chat is clauding, Claude's mark (the
      divider's sprite) and the word under the last message — a reply on its way is seen where you are reading, not
      only on the card — with the sub-agents' count when there is one; while it is asking, the question, in the card's
@@ -4216,10 +4219,13 @@ const toolName = n => {
   const movedPrs = s => (s.prs || []).filter(p => p.turn?.you).sort((a, b) => String(b.turn.movedAt).localeCompare(String(a.turn.movedAt)));
   const moveTip = prs => prs.map(p => `${p.label} — your move: ${p.turn.why}`).join('\n') + '\n⌥-click: let this round go — the next move tells you';
   /** The card's line for them, after the question's, at every card size: the tag, then the newest move's #n and its
-   *  reason, the others counted; none on a ticked card (the tick after the move is "seen"). */
+   *  reason, the others counted; none on a ticked card (the tick after the move is "seen"). Under the pointer, how long
+   *  ago that move came (2026-10-14, `.mt`): GitHub's time of its newest reason — the push, the word, the ask again —,
+   *  else when the board saw it; a `data-at` that fillAges fills, so the clock rebuilds no card. */
   function moveHtml(s) {
     const prs = movedPrs(s); if (!prs.length || s.done) return '';
-    return `<div class="state prmove" title="${esc(moveTip(prs))}"><b class="ymove">${ICON.pr}your move</b><span class="q">${esc(prs[0].label.replace(/^.*?#/, '#'))} · ${esc(prs[0].turn.why)}</span></div>`;   // the others in its tooltip: a card counts nothing (2026-10-11)
+    const t = prs[0].turn, at = t.at || t.movedAt || '';
+    return `<div class="state prmove" title="${esc(moveTip(prs))}"><b class="ymove">${ICON.pr}your move</b><span class="q">${esc(prs[0].label.replace(/^.*?#/, '#'))} · ${esc(t.why)}</span>${at ? `<span class="mt"><span data-at="${esc(at)}"></span> ago</span>` : ''}</div>`;   // the others in its tooltip: a card counts nothing (2026-10-11)
   }
   /** A card with no move holds the line's place when compact's same height is on (.moveslot, hidden everywhere else). */
   const MOVE_SLOT = `<div class="state moveslot" aria-hidden="true"><b class="ymove">${ICON.pr}your move</b><span class="q">#0</span></div>`;   // the tag and a word: the real line's metrics
