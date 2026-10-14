@@ -56,12 +56,15 @@ test('a dropped file: written under the chat, its name made safe and kept apart 
 test('over 50 MB: a 413 that reaches the page, the connection closed after it, nothing written', { timeout: 120_000 }, async () => {
   const srv = await startTestServer();
   try {
-    // said up front: refused before a byte is read — the head alone here: a body sent on at full speed meets the close
-    // that follows the answer, and its reset can beat the answer to the page (2026-10-14, 1 run in 9 under load)
-    const said = await send(srv.url, 'PUT', 'api/attach?session=chat-1&name=big.bin', { headers: { 'content-length': MAX + 1 }, none: true });
-    assert.equal(said.status, 413);
-    assert.deepEqual(said.body, { error: 'larger than 50 MB' });
-    assert.equal(said.headers.connection, 'close');
+    // said up front: read to its end all the same, kept nowhere, then refused — refused at once, the close after the
+    // answer met the body still coming, and its reset beat the answer to the page (2026-10-14, 1 run in 9 under load)
+    for (let i = 0; i < 3; i++) {
+      const said = await send(srv.url, 'PUT', 'api/attach?session=chat-1&name=big.bin', { headers: { 'content-length': MAX + 1 }, chunks: [Buffer.alloc(MAX + 1, 0x61)] });
+      assert.equal(said.status, 413);
+      assert.deepEqual(said.body, { error: 'larger than 50 MB' });
+      assert.equal(said.headers.connection, 'close');
+      assert.equal(said.sent, 'sent', 'the whole body went: nothing was reset under it');
+    }
     // not said (chunked): read to its end — the whole body sent —, then refused the same way
     const chunks = Array.from({ length: 51 }, () => Buffer.alloc(1024 * 1024, 0x62));
     const streamed = await send(srv.url, 'PUT', 'api/attach?session=chat-1&name=stream.bin', { chunks });

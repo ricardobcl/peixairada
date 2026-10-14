@@ -558,8 +558,9 @@ const ATTACH_MAX = 50 * 1024 * 1024;
  *  was written nowhere). A route that refuses this way closes the connection after its answer. */
 function readRaw(req, max) {
   return new Promise((resolve, reject) => {
-    const chunks = []; let n = 0;
-    if (Number(req.headers['content-length']) > max) { req.resume(); return reject(new Error('too large')); }
+    // a body declared too large is read to its end too, kept nowhere, and refused only then (2026-10-14): refused at
+    // once, the close after the 413 met a body still coming, and the reset could reach the page before the answer
+    const chunks = []; let n = Number(req.headers['content-length']) > max ? max + 1 : 0;
     req.on('data', c => { n += c.length; if (n <= max) chunks.push(c); else chunks.length = 0; });
     req.on('end', () => n <= max ? resolve(Buffer.concat(chunks)) : reject(new Error('too large')));
     req.on('error', reject);
