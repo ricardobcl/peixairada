@@ -37,6 +37,31 @@ test('writePeacock: insert first, replace in place, remove with its comma — co
   assert.doesNotThrow(() => JSON.parse(text.replace(/\/\/.*$/gm, '')));
 });
 
+// The JSONC as people write it (2026-10-14): taking the colour out ate the comment on the line after it and left a leading
+// comma behind; a `null` typed in was not seen, and setting the colour added a second key; a file of comments alone lost
+// them; a CRLF file got a bare LF.
+test('writePeacock: comments after the key, commas that lead, a null value, a file of comments, CRLF', () => {
+  const cwd = join(tmp, 'jsonc'); mkdirSync(join(cwd, '.vscode'), { recursive: true });
+  const f = join(cwd, '.vscode', 'settings.json');
+  const write = (text, color) => { writeFileSync(f, text); writePeacock(cwd, color); return readFileSync(f, 'utf8'); };
+  const parses = text => JSON.parse(text.replace(/("(?:[^"\\\n]|\\.)*")|\/\/[^\n]*|\/\*[\s\S]*?\*\//g, (m, str) => str ?? '').replace(/,(\s*[}\]])/g, '$1'));
+  const cases = [
+    ['{\n  "peacock.color": "#aabbcc"\n  // trailing\n  , "a": 1\n}\n', null, '{\n  // trailing\n   "a": 1\n}\n', 'the first, commas leading, a comment after it'],
+    ['{\n  "a": 1,\n  "peacock.color": "#aabbcc"\n  // the colour above\n}\n', null, '{\n  "a": 1\n  // the colour above\n}\n', 'the last, a comment after it'],
+    ['{\n  "a": 1\n  , "peacock.color": "#aabbcc"\n  , "b": 2\n}\n', null, '{\n  "a": 1\n  , "b": 2\n}\n', 'in the middle, commas leading'],
+    ['{ "peacock.color": "#aabbcc"\n, "a": 1 }\n', null, '{ \n "a": 1 }\n', 'the first on the brace\'s line, commas leading'],
+    ['{\n  "peacock.color": null\n}\n', null, '{\n}\n', 'a null taken out'],
+    ['{\n  "editor.tabSize": 2,\n  "peacock.color": null\n}\n', '#112233', '{\n  "editor.tabSize": 2,\n  "peacock.color": "#112233"\n}\n', 'a null set: the one key'],
+    ['// my settings\n', '#112233', '// my settings\n{\n  "peacock.color": "#112233"\n}\n', 'a file of comments keeps them'],
+    ['{\r\n  "a": 1\r\n}\r\n', '#112233', '{\r\n  "peacock.color": "#112233",\r\n  "a": 1\r\n}\r\n', 'CRLF stays CRLF'],
+  ];
+  for (const [text, color, want, what] of cases) {
+    const got = write(text, color);
+    assert.equal(got, want, what);
+    assert.doesNotThrow(() => parses(got), what);
+  }
+});
+
 test('writePeacock: a folder without settings gets a new .vscode/settings.json', () => {
   const cwd = join(tmp, 'fresh'); mkdirSync(cwd, { recursive: true });
   const r = writePeacock(cwd, '#abcdef');

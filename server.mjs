@@ -495,26 +495,32 @@ function writePeacock(cwd, color) {   // color '#rrggbb', or null to take the ke
   try { txt = readFileSync(file, 'utf8'); } catch {}
   // Every match is made on the comment-blanked copy, and the edit made at its offsets in the text itself.
   const splice = (a, b, put = '') => { txt = txt.slice(0, a) + put + txt.slice(b); };
-  /** Take one key out: its line when it has one to itself, else the key alone — and the comma before it when it was
-   *  the object's last property. */
+  // A value as Peacock writes it, or one typed by hand (2026-10-14: a `null` went unseen, and setting the colour put a
+  // second key in, the null still the one JSON reads).
+  const VAL = '(?:"[^"]*"|null|true|false|-?\\d[\\d.eE+-]*)';
+  /** Take one key out: its line when it has one to itself (a leading comma too), else the key alone with what follows
+   *  it on its line — never past the line's end (2026-10-14: a comment on the next line went with it). Then the comma
+   *  left over: the one before it when it was the object's last property, the one after when it was the first and the
+   *  commas lead. */
   const drop = key => {
     const t = bareJsonc(txt);
-    const m = new RegExp(`^[ \\t]*"${key}"\\s*:\\s*"[^"]*"\\s*,?[ \\t]*(?:\\r?\\n|$)`, 'm').exec(t) || new RegExp(`"${key}"\\s*:\\s*"[^"]*"\\s*,?\\s*`).exec(t);
+    const m = new RegExp(`^[ \\t]*,?[ \\t]*"${key}"\\s*:\\s*${VAL}[ \\t]*,?[ \\t]*(?:\\r?\\n|$)`, 'm').exec(t) || new RegExp(`"${key}"\\s*:\\s*${VAL}[ \\t]*,?[ \\t]*`).exec(t);
     if (!m) return false;
     splice(m.index, m.index + m[0].length);
-    const t2 = bareJsonc(txt), before = t2.slice(0, m.index).trimEnd();
-    if (/^\s*}/.test(t2.slice(m.index)) && before.endsWith(',')) splice(before.length - 1, before.length);
+    const t2 = bareJsonc(txt), before = t2.slice(0, m.index).trimEnd(), after = t2.slice(m.index), next = t2.length - after.trimStart().length;
+    if (/^\s*}/.test(after) && before.endsWith(',')) splice(before.length - 1, before.length);
+    else if (/^\s*,/.test(after) && /[{,]$/.test(before)) splice(next, next + 1);
     return true;
   };
   if (color) {
-    const t = bareJsonc(txt), m = /("peacock\.color"\s*:\s*")([^"]*)"/.exec(t);
-    if (m) splice(m.index + m[1].length, m.index + m[1].length + m[2].length, color);
-    else if (!t.trim()) txt = `{\n  "peacock.color": "${color}"\n}\n`;
+    const t = bareJsonc(txt), m = new RegExp(`("peacock\\.color"\\s*:\\s*)(${VAL})`).exec(t), nl = txt.includes('\r\n') ? '\r\n' : '\n';   // the file's own line ends
+    if (m) splice(m.index + m[1].length, m.index + m[1].length + m[2].length, `"${color}"`);
+    else if (!t.trim()) txt = `${txt.trim() ? txt.trimEnd() + nl : ''}{${nl}  "peacock.color": "${color}"${nl}}${nl}`;   // comments alone are kept above it
     else {
       const i = t.indexOf('{');
       if (i < 0) throw new Error(`${file} does not look like a JSON object`);
       const empty = /^\s*}/.test(t.slice(i + 1));
-      splice(i + 1, i + 1, `\n  "peacock.color": "${color}"` + (empty ? (/^\s*\n/.test(txt.slice(i + 1)) ? '' : '\n') : ','));
+      splice(i + 1, i + 1, `${nl}  "peacock.color": "${color}"` + (empty ? (/^\s*\n/.test(txt.slice(i + 1)) ? '' : nl) : ','));
     }
   } else {
     const was = readPeacock(cwd)?.color;
