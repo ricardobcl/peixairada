@@ -2636,24 +2636,48 @@ function dayOf(list, since, now = Date.now()) {
 const CHANGES_MAX = Number(process.env.CHANGES_MAX || 600_000);   // the patch's characters the page gets, at most
 const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
 const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
-/** `git diff --numstat` → {path: {add, del, binary}}; a binary file says - - */
+// Paths as git wrote them (2026-10-14): -z wherever git lists them, each verbatim; a patch's heads quoted C-style where a
+// name needs it ("a/say \"hi\".txt", the bytes of UTF-8 in octal with core.quotePath on) — read back by diffPath.
+/** `git diff --numstat -z` → {path: {add, del, binary}}; a binary file says - - */
 function parseNumstat(text) {
   const out = {};
-  for (const l of String(text).split('\n')) { const m = /^(-|\d+)\t(-|\d+)\t(.+)$/.exec(l); if (m) out[m[3]] = { add: m[1] === '-' ? 0 : +m[1], del: m[2] === '-' ? 0 : +m[2], binary: m[1] === '-' }; }
+  for (const l of String(text).split('\0')) { const m = /^(-|\d+)\t(-|\d+)\t([\s\S]+)$/.exec(l); if (m) out[m[3]] = { add: m[1] === '-' ? 0 : +m[1], del: m[2] === '-' ? 0 : +m[2], binary: m[1] === '-' }; }
   return out;
 }
-/** `git diff --name-status` → {path: 'M' | 'A' | 'D' | …} */
+/** `git diff --name-status -z` → {path: 'M' | 'A' | 'D' | …} */
 function parseNameStatus(text) {
-  const out = {};
-  for (const l of String(text).split('\n')) { const m = /^([A-Z])\d*\t(.+)$/.exec(l); if (m) out[m[2]] = m[1]; }
+  const out = {}, p = String(text).split('\0');
+  for (let i = 0; i + 1 < p.length; i += 2) if (/^[A-Z]\d*$/.test(p[i])) out[p[i + 1]] = p[i][0];
   return out;
+}
+/** A name git quoted, from the `"` at `i`: its text and the index past the closing quote. */
+function unquoteGit(s, i = 0) {
+  const bytes = [], esc = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13 }, enc = new TextEncoder();
+  for (i++; i < s.length && s[i] !== '"';) {
+    if (s[i] !== '\\') { const ch = String.fromCodePoint(s.codePointAt(i)); bytes.push(...enc.encode(ch)); i += ch.length; }
+    else if (/[0-7]/.test(s[i + 1])) { bytes.push(parseInt(s.slice(i + 1, i + 4), 8)); i += 4; }
+    else { bytes.push(esc[s[i + 1]] ?? s.charCodeAt(i + 1)); i += 2; }
+  }
+  return [new TextDecoder().decode(new Uint8Array(bytes)), i + 1];
+}
+/** The b/ side's path of a `diff --git` line, quoted or not — `a/P b/P` read by its length, so a space or " b/" in the
+ *  name is no matter; null for a head that is not a/ b/. */
+function diffPath(line) {
+  const rest = String(line).slice(11);
+  let b;
+  if (rest[0] === '"') b = rest.slice(unquoteGit(rest)[1] + 1);
+  else {
+    const n = (rest.length - 5) / 2;
+    if (Number.isInteger(n) && rest.startsWith('a/') && rest.slice(n + 2, n + 5) === ' b/' && rest.slice(2, n + 2) === rest.slice(n + 5)) return rest.slice(n + 5);
+    const q = rest.indexOf(' "b/'); b = rest.slice((q >= 0 ? q : rest.indexOf(' b/')) + 1);
+  }
+  if (b[0] === '"') b = unquoteGit(b)[0];
+  return b.startsWith('b/') ? b.slice(2) : null;
 }
 /** A patch cut at each file's `diff --git` line: [{path, text}], the path the b/ side's. */
 function splitPatch(text) {
   const out = [];
-  for (const part of String(text).split(/^(?=diff --git )/m)) {
-    const m = /^diff --git a\/.+? b\/(.+)$/m.exec(part); if (m) out.push({ path: m[1], text: part });
-  }
+  for (const part of String(text).split(/^(?=diff --git )/m)) { const path = part.startsWith('diff --git ') && diffPath(part.split('\n', 1)[0]); if (path) out.push({ path, text: part }); }
   return out;
 }
 /** An untracked file as git would show it added: every line a +, up to `max` of them. */
@@ -2780,14 +2804,14 @@ async function changesOf(s, scope = 'uncommitted', statOnly = false, ask = {}) {
   const ix = pr ? null : await indexCopy(root);   // a PR is two commits: no index read
   try {
     const [num, names, untracked] = await Promise.all([
-      gitOut(root, ['diff', '--numstat', '--no-renames', ...range, ...only], ix?.opts),
-      gitOut(root, ['diff', '--name-status', '--no-renames', ...range, ...only], ix?.opts),
-      pr ? '' : gitOut(root, ['ls-files', '--others', '--exclude-standard', ...only], ix?.opts),
+      gitOut(root, ['diff', '--numstat', '-z', '--no-renames', ...range, ...only], ix?.opts),
+      gitOut(root, ['diff', '--name-status', '-z', '--no-renames', ...range, ...only], ix?.opts),
+      pr ? '' : gitOut(root, ['ls-files', '-z', '--others', '--exclude-standard', ...only], ix?.opts),
     ]);
     const stat = parseNumstat(num), status = parseNameStatus(names);
     const files = Object.entries(stat).map(([path, n]) => ({ path, status: status[path] || 'M', ...n }));
     const bodies = new Map();
-    for (const path of untracked.split('\n').filter(Boolean).slice(0, 200)) {
+    for (const path of untracked.split('\0').filter(Boolean).slice(0, 200)) {
       let body = ''; try { const f = join(root, path); if (statSync(f).size < 1e6) body = readFileSync(f, 'utf8'); } catch {}
       const binary = body.includes('\0');
       bodies.set(path, binary ? '' : body);
@@ -2799,7 +2823,8 @@ async function changesOf(s, scope = 'uncommitted', statOnly = false, ask = {}) {
     const upName = head && !pr && await gitOr(root, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']);
     const counts = upName && (await gitOr(root, ['rev-list', '--left-right', '--count', '@{u}...HEAD'], '')).split(/\s+/).map(Number);
     const upstream = upName ? { name: upName, behind: counts?.[0] || 0, ahead: counts?.[1] || 0 } : null;
-    let patch = await gitOut(root, ['diff', '--no-renames', '--no-color', '--no-ext-diff', '-U3', ...range, ...only], ix?.opts);
+    // a/ and b/ whatever diff.noprefix or diff.mnemonicPrefix say; names with no octal where they need no quote
+    let patch = await gitOut(root, ['-c', 'core.quotePath=false', 'diff', '--no-renames', '--no-color', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', '-U3', ...range, ...only], ix?.opts);
     for (const [path, body] of bodies) if (body) patch += addedPatch(path, body);
     let truncated; ({ patch, truncated } = capPatch(patch));
     return { cwd, root, branch, base, scope, upstream, files, add, del, patch, truncated,

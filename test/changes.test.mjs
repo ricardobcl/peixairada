@@ -13,10 +13,13 @@ import { addedPatch, changesOf, fold, newSession, parseNameStatus, parseNumstat,
 import { tmpDir } from '../lib/testserver.mjs';
 
 test('the parsers: numstat, name-status, a patch split by file, an untracked file as added', () => {
-  assert.deepEqual(parseNumstat('3\t1\tsrc/a.js\n-\t-\timg.png\n'), { 'src/a.js': { add: 3, del: 1, binary: false }, 'img.png': { add: 0, del: 0, binary: true } });
-  assert.deepEqual(parseNameStatus('M\tsrc/a.js\nA\tnew.txt\nD\told.txt\n'), { 'src/a.js': 'M', 'new.txt': 'A', 'old.txt': 'D' });
+  assert.deepEqual(parseNumstat('3\t1\tsrc/a.js\0-\t-\timg.png\0'), { 'src/a.js': { add: 3, del: 1, binary: false }, 'img.png': { add: 0, del: 0, binary: true } });
+  assert.deepEqual(parseNameStatus('M\0src/a.js\0A\0new.txt\0D\0old.txt\0'), { 'src/a.js': 'M', 'new.txt': 'A', 'old.txt': 'D' });
   const p = 'diff --git a/x.js b/x.js\nindex 1..2\n--- a/x.js\n+++ b/x.js\n@@ -1 +1 @@\n-a\n+b\ndiff --git a/y z.md b/y z.md\n--- a/y z.md\n+++ b/y z.md\n@@ -1 +1 @@\n-c\n+d\n';
   assert.deepEqual(splitPatch(p).map(c => c.path), ['x.js', 'y z.md']);
+  // (2026-10-14) heads git quoted — a `"`, UTF-8 in octal —, and a name with " b/" in it
+  const q = 'diff --git "a/say \\"hi\\".txt" "b/say \\"hi\\".txt"\n@@ -1 +1 @@\n-a\n+b\ndiff --git "a/a\\303\\247a\\303\\255.md" "b/a\\303\\247a\\303\\255.md"\n@@ -1 +1 @@\n-a\n+b\ndiff --git a/x b/y b/x b/y\n@@ -1 +1 @@\n-a\n+b\n';
+  assert.deepEqual(splitPatch(q).map(c => c.path), ['say "hi".txt', 'açaí.md', 'x b/y']);
   assert.ok(splitPatch(p)[0].text.endsWith('+b\n'));
   assert.equal(addedPatch('n.txt', 'one\ntwo\n'), 'diff --git a/n.txt b/n.txt\nnew file\n--- /dev/null\n+++ b/n.txt\n@@ -0,0 +1,2 @@\n+one\n+two\n');
   assert.match(addedPatch('n.txt', 'a\nb\nc\n', 2), /@@ -0,0 \+1,2 @@\n\+a\n\+b\n\\ 1 more lines/);
@@ -68,6 +71,25 @@ test('a chat\'s changes in its three scopes, from a real repo', async () => {
   assert.match((await changesOf(nowhere)).error, /not there/);
   const plain = newSession(randomUUID(), null); plain.cwd = tmpDir('peix-nogit-');
   assert.match((await changesOf(plain)).error, /not in a git repository/);
+});
+
+test('names git quotes, and prefixes the config moves, read as the files they are (2026-10-14)', async () => {
+  const repo = tmpDir('peix-chgq-');
+  const g = (...a) => execFileSync('git', ['-C', repo, ...a], { stdio: 'pipe', env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } }).toString();
+  g('init', '-q', '-b', 'main');
+  writeFileSync(join(repo, 'configuração.json'), '{\n"a": 1\n}\n'); writeFileSync(join(repo, 'say "hi".txt'), 'old\n'); writeFileSync(join(repo, 'x b'), 'x\n');
+  g('add', '.'); g('commit', '-q', '-m', 'base');
+  writeFileSync(join(repo, 'configuração.json'), '{\n"a": 2\n}\n'); writeFileSync(join(repo, 'say "hi".txt'), 'new\n'); writeFileSync(join(repo, 'x b'), 'y\n');
+  writeFileSync(join(repo, 'notas-reunião.md'), 'linha um\nlinha dois\n');   // untracked
+  const s = newSession(randomUUID(), null); s.cwd = repo;
+  const want = [['configuração.json', 'M', 1, 1], ['notas-reunião.md', 'A', 2, 0], ['say "hi".txt', 'M', 1, 1], ['x b', 'M', 1, 1]];
+  for (const cfg of [[], ['diff.noprefix', 'true'], ['diff.mnemonicPrefix', 'true']]) {
+    if (cfg.length) g('config', ...cfg);
+    const un = await changesOf(s, 'uncommitted');
+    assert.deepEqual(un.files.map(f => [f.path, f.status, f.add, f.del]), want, cfg.join('=') || 'core.quotePath as git ships it');
+    assert.deepEqual(splitPatch(un.patch).map(c => c.path).sort(), want.map(w => w[0]), 'every file\'s patch found by its name');
+    if (cfg.length) g('config', '--unset', cfg[0]);
+  }
 });
 
 test('reading a chat\'s changes leaves its index alone — files touched but not changed too (2026-10-14)', async () => {

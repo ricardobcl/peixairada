@@ -7520,8 +7520,25 @@ const toolName = n => {
         : `<div class="cempty">${esc(d.note || (sc === 'branch' ? 'nothing different from its base' : 'nothing changed — the tree is clean'))}</div>`}`;
     if (changes.sel) el.querySelector(`.cfile[data-path="${CSS.escape(changes.sel)}"]`)?.scrollIntoView({ block: 'start' });
   }
-  /** git's patch cut at each file: [{path, text}] (the server's splitPatch, kept by hand). */
-  const splitDiff = text => String(text || '').split(/^(?=diff --git )/m).map(t => ({ path: /^diff --git a\/.+? b\/(.+)$/m.exec(t)?.[1], text: t })).filter(c => c.path);
+  /** git's patch cut at each file: [{path, text}] — the server's splitPatch, diffPath and unquoteGit, kept by hand: a
+   *  name git quoted read back, `a/P b/P` by its length (2026-10-14). */
+  function unquoteGit(s, i = 0) {
+    const bytes = [], esc = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13 }, enc = new TextEncoder();
+    for (i++; i < s.length && s[i] !== '"';) {
+      if (s[i] !== '\\') { const ch = String.fromCodePoint(s.codePointAt(i)); bytes.push(...enc.encode(ch)); i += ch.length; }
+      else if (/[0-7]/.test(s[i + 1])) { bytes.push(parseInt(s.slice(i + 1, i + 4), 8)); i += 4; }
+      else { bytes.push(esc[s[i + 1]] ?? s.charCodeAt(i + 1)); i += 2; }
+    }
+    return [new TextDecoder().decode(new Uint8Array(bytes)), i + 1];
+  }
+  function diffPath(line) {
+    const rest = line.slice(11), n = (rest.length - 5) / 2;
+    if (rest[0] !== '"' && Number.isInteger(n) && rest.startsWith('a/') && rest.slice(n + 2, n + 5) === ' b/' && rest.slice(2, n + 2) === rest.slice(n + 5)) return rest.slice(n + 5);
+    let b = rest[0] === '"' ? rest.slice(unquoteGit(rest)[1] + 1) : rest.slice((rest.indexOf(' "b/') >= 0 ? rest.indexOf(' "b/') : rest.indexOf(' b/')) + 1);
+    if (b[0] === '"') b = unquoteGit(b)[0];
+    return b.startsWith('b/') ? b.slice(2) : null;
+  }
+  const splitDiff = text => String(text || '').split(/^(?=diff --git )/m).map(t => ({ path: t.startsWith('diff --git ') && diffPath(t.split('\n', 1)[0]), text: t })).filter(c => c.path);
   /** What the claude drawer of this chat is, attached on this page — or null. */
   const claudeTm = s => { const tm = termLive(s) ? termFor(s.terminal.id) : null; return tm?.ws?.readyState === 1 ? tm : null; };
   async function copyText(text) { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } }
