@@ -142,6 +142,23 @@ test('a background command nobody holds the output of is let go from the chat as
   clearTimeout(s.pushTimer); srv.sessions.delete(s.id);
 });
 
+test('a task the poll let go stays gone when the chat is read again whole (2026-10-14)', async () => {
+  const { writeFileSync } = await import('node:fs');
+  process.env.LSOF_BIN = '/usr/bin/false';
+  const out = join(tmp, 'bg2.output'); writeFileSync(out, '');
+  const file = join(tmp, 's-gone.jsonl');
+  const call = { ...assistant([{ type: 'tool_use', name: 'Bash', id: 'tg', input: { command: 'npm run build', description: 'the build', run_in_background: true } }], 'tool_use', 1), timestamp: now(1) };
+  const res = { type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'tg', content: `Command running in background with ID: bggone1. Output is being written to: ${out}.` }] }, timestamp: now(2), cwd: '/tmp/repo' };
+  writeFileSync(file, [user('build it', { timestamp: now(0) }), call, res].map(l => JSON.stringify(l)).join('\n') + '\n');
+  const s = srv.indexFile(file); s.alive = true; s.live = { pid: 1, startedAt: Date.now() - 600_000 };
+  assert.deepEqual(summary(s).tasks.map(t => t.id), ['bggone1']);
+  await srv.sweepTasks();
+  assert.deepEqual(summary(srv.sessions.get(s.id)).tasks, [], 'nobody holds its output: let go');
+  const again = srv.indexFile(file, { full: true });
+  assert.deepEqual(summary(again).tasks, [], 'and its first line read again does not start it again');
+  clearTimeout(s.pushTimer); clearTimeout(again.pushTimer); srv.sessions.delete(s.id);
+});
+
 test('the question on the card is the one still waiting for an answer', () => {
   const s = newSession('s7', '/x/s7.jsonl');
   s.alive = true; s.live = { pid: 1, startedAt: Date.now() - 600_000 };

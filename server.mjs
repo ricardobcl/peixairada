@@ -566,7 +566,7 @@ function newSession(id, file) {
     rivals: [],   // other live processes on this chat (registry entries beyond `live`) — see inVsCode()
     entries: [], entryCount: 0, loaded: false,
     offset: 0, partial: '', dec: null, reading: false, truncatedHead: false,   // where the tail reads from, its unfinished line and character (indexFile)
-    agentsRunning: 0, ask: null, tasks: null, taskCalls: null,   // sub-agents at work (scanAgents); the question a tool asked; background tasks and the calls that started them
+    agentsRunning: 0, ask: null, tasks: null, taskCalls: null, tasksGone: null,   // sub-agents at work (scanAgents); the question a tool asked; background tasks, the calls that started them, and the ids the poll let go (letTaskGo)
     branches: [], branchBase: null, gitCmds: [], drift: null, driftDue: null,   // the branch under the chat as its lines tell it, and a move no git of its own explains (noteBranch)
     headNow: null, diskDrift: null, diskSeen: null, headOk: null, peers: [],      // its checkout's HEAD as read on the poll, and what that says (noteHead)
     pendingNotify: null, notifyTimer: null, pushTimer: null, newEntries: []   // the kinds of alert owed (queueNotify), a Set
@@ -1801,7 +1801,7 @@ function indexFile(file, { full = false } = {}) {
   const prev = sessions.get(id);
   const s = newSession(id, file);
   if (prev) {
-    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'openedAt', 'agentsRunning', 'headNow', 'headOk', 'peers']) s[k] = prev[k];
+    for (const k of ['live', 'rivals', 'alive', 'startedAt', 'openedAt', 'agentsRunning', 'headNow', 'headOk', 'peers', 'tasksGone']) s[k] = prev[k];
     clearTimeout(prev.pushTimer); clearTimeout(prev.notifyTimer); clearTimeout(prev.driftTimer);
     s.silent = !!prev.file;
   }
@@ -1922,6 +1922,7 @@ function startTask(s, res, ts) {
   const body = resultText(res);
   for (const [re, kind] of TASK_ID_RE) {
     const m = re.exec(body); if (!m) continue;
+    if (s.tasksGone?.has(m[1])) return;   // let go by the poll: a re-read's line is not it running again
     const at = Date.parse(ts) || Date.now();
     const out = /Output is being written to:\s*(\S+?)\.?(?:\s|$)/.exec(body)?.[1] || null;
     (s.tasks ||= new Map()).set(m[1], { kind: hint.kind || kind, what: hint.what, at: ts, until: hint.ms ? at + hint.ms : null, events: 0, out });
@@ -1982,7 +1983,7 @@ async function sweepTasks() {
     // was a stale summary
     const s = sessions.get(was.id);
     if (held.has(realPath(t.out)) || !s?.tasks?.has(id)) continue;
-    s.tasks.delete(id); console.log(`[peixairada] task ${id} (${t.what}) is no longer running`); schedulePush(s);
+    letTaskGo(s, id); console.log(`[peixairada] task ${id} (${t.what}) is no longer running`); schedulePush(s);
   }
 }
 /** A `<task-notification>`: an event while it runs, and with a `<status>` (completed, failed, stopped) its end. */
@@ -2010,8 +2011,16 @@ function runningTasks(s) {
 function pruneTasks(s) {
   if (!s.tasks?.size) return false;
   const n = s.tasks.size, now = Date.now();
-  if (!s.alive) s.tasks.clear(); else for (const [id, t] of s.tasks) if (taskExpired(s, t, now)) s.tasks.delete(id);
+  for (const [id, t] of s.tasks) if (!s.alive || taskExpired(s, t, now)) letTaskGo(s, id);
   return s.tasks.size !== n;
+}
+/** A task the poll let go stays gone (2026-10-14): its end never reached the transcript, and a whole re-read — opening a
+ *  long chat — started it again from its first line, a chip until lsof was asked again, or, its output file cleaned up
+ *  meanwhile, until TASK_MAX_MS. The ids go over a re-read with the chat (indexFile). */
+function letTaskGo(s, id) {
+  s.tasks?.delete(id);
+  const g = (s.tasksGone ||= new Set()); g.add(id);
+  if (g.size > 200) g.delete(g.values().next().value);
 }
 
 function scanProjects() {
@@ -4254,7 +4263,7 @@ server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTe
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { sweepTasks, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
+export { sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
