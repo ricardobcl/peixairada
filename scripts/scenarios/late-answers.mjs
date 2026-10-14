@@ -2,12 +2,12 @@
 // waited for its transcript, then opened the PR — on whichever chat was open by then; Rename… opened the title box in
 // that chat's header, and a blur renamed the first chat to the second's title. What this checks, with the chat's
 // /messages answer held back by the page's fetch while another chat is opened: the PR row opens no PR, Rename… no box.
-import { mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { tmpDir } from '../../lib/testserver.mjs';
 
-const dir = mkdtempSync(join(tmpdir(), 'peix-late-gh-')), file = join(dir, 'prs.json');
+const dir = tmpDir('peix-late-gh-'), file = join(dir, 'prs.json');
 writeFileSync(file, JSON.stringify({ 'acme/repo-a#12': { state: 'OPEN', title: 'Base of the follow-up' }, 'acme/repo-a#13': { state: 'OPEN', title: 'The follow-up' } }));
 export const meta = { server: true, fixture: 'auto', env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: file } };
 
