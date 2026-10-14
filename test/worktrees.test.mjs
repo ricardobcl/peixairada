@@ -31,7 +31,7 @@ const branch = (name, n, file, { pushBranch = true } = {}) => {
   git(seed, 'push', '-q', origin, `${name}:refs/pull/${n}/head`, ...pushBranch ? [`${name}:refs/heads/${name}`] : []);
   return git(seed, 'rev-parse', 'HEAD');
 };
-branch('feat/a', 21, 'a2.js'); branch('feat/b', 22, 'b.js'); const fork = branch('fork-main', 23, 'f.js', { pushBranch: false }); branch('feat/old', 24, 'o.js');
+branch('feat/a', 21, 'a2.js'); branch('feat/b', 22, 'b.js'); const fork = branch('fork-main', 23, 'f.js', { pushBranch: false }); branch('feat/old', 24, 'o.js'); branch('feat/d', 25, 'd.js');
 execFileSync('git', ['clone', '-q', '--no-local', '--config', `url.${origin}.insteadOf=https://github.com/acme/widgets`, 'https://github.com/acme/widgets', co], { stdio: 'pipe', env });
 git(co, 'checkout', '-q', 'feat/b'); mkdirSync(join(co, 'node_modules', 'x'), { recursive: true });
 const real = git(co, 'rev-parse', '--show-toplevel'), wt = n => join(real, '.claude', 'worktrees', n);
@@ -119,6 +119,17 @@ test('a tree made for a PR merged or closed already is a look at it: kept, until
   assert.deepEqual(await sweepWorktrees(), [t.path], 'closed after the sweep saw it open: removed');
 });
 
+test('a tree on another branch, or detached at another commit, than it was made for is kept when its PR is done (2026-10-14)', async () => {
+  setPrInfo(url(25), 'open', 'D', null, Date.now(), undefined, false, null, null, refs('feat/d'));
+  const t = (await ensureWorktree({ cwd: co, pr: url(25) })).path, r = (await ensureWorktree({ cwd: co, pr: url(25), detach: true })).path;
+  git(t, 'switch', '-q', '-c', 'followup');                                          // the next piece of work, started there after the merge
+  git(r, 'checkout', '-q', '--detach', 'HEAD~1');                                    // a review tree moved to look at the commit before
+  setPrInfo(url(25), 'merged', 'D', null, Date.now(), undefined, false, null, null, refs('feat/d'));
+  assert.deepEqual(await sweepWorktrees(), [], 'both kept');
+  git(t, 'switch', '-q', 'feat/d'); git(r, 'checkout', '-q', '--detach', worktreesMade[r].head);
+  assert.deepEqual((await sweepWorktrees()).sort(), [t, r].sort(), 'back where they were made: removed');
+});
+
 test('the folder\'s own branch switched only when nothing else works there — said, not done', async () => {
   const s = newSession(randomUUID(), null); s.cwd = co; sessions.set(s.id, s);
   assert.deepEqual(await switchGuard(s, 'feat/b'), { ok: false, why: ['it is on feat/b already'] });
@@ -184,6 +195,14 @@ test('a new branch\'s tree goes once the PR opened from it is merged, or its com
   git(l.path, 'push', '-q', 'origin', 'HEAD:main'); git(co, 'fetch', '-q', 'origin');
   assert.deepEqual(await sweepWorktrees(), [l.path], 'on origin’s main: removed');
   assert.ok(existsSync(wt('feat-c')), 'nothing done in it: it stays');
+  // (2026-10-14) brought up to origin's main by a pull, nothing of its own: nothing done in it either
+  const p = await ensureWorktree({ cwd: co, branch: 'feat/pulled', fresh: true });
+  git(seed, 'fetch', '-q', origin, 'main'); git(seed, 'checkout', '-q', '-B', 'up', 'FETCH_HEAD'); writeFileSync(join(seed, 'up.js'), 'up\n');
+  git(seed, 'add', '.'); git(seed, 'commit', '-qm', 'someone else’s'); git(seed, 'push', '-q', origin, 'up:main');
+  git(p.path, 'pull', '-q', '--ff-only', 'origin', 'main');
+  assert.notEqual(git(p.path, 'rev-parse', 'HEAD'), worktreesMade[p.path].head);
+  assert.deepEqual(await sweepWorktrees(), [], 'only pulled: it stays');
+  assert.ok(existsSync(p.path));
 });
 
 // A repo at CLAUDE_DIR (~/.claude kept in git) or at the home above it: a tree made inside it would be under ~/.claude,

@@ -2930,14 +2930,17 @@ async function linkModules(path) {
 const treeOf = p => { const t = gitTopOf(p); try { return t && realpathSync(t); } catch { return null; } };
 /** Whether a chat or a drawer works in that tree: a live chat's folder, a drawer not ended. */
 const busyIn = tree => [...sessions.values()].some(s => s.alive && treeOf(s.live?.cwd || s.cwd) === tree) || [...terms.values()].some(t => t.exited === null && treeOf(t.cwd) === tree);
-/** Why a tree the board made stays — null when nothing holds it: a chat or a drawer in it, a change not committed, a
- *  commit no remote has (beyond the one it was made at). Untracked files and submodules are asked for whatever the
- *  config says (2026-10-14): status.showUntrackedFiles=no hid a file never added, and `worktree remove` took it. */
+/** Why a tree the board made stays — null when nothing holds it: a chat or a drawer in it, another branch out in it
+ *  than the one it was made for (or, detached, another commit — 2026-10-14: a `git switch -c` there after the merge is
+ *  new work), a change not committed, a commit no remote has (beyond the one it was made at). Untracked files and
+ *  submodules are asked for whatever the config says (2026-10-14): status.showUntrackedFiles=no hid a file never
+ *  added, and `worktree remove` took it. */
 async function keepWorktree(path, rec) {
   if (busyIn(path)) return 'a chat or a drawer is in it';
+  const on = await gitOr(path, ['symbolic-ref', '--quiet', '--short', 'HEAD']), head = await gitOr(path, ['rev-parse', 'HEAD']);
+  if (rec.branch ? on !== rec.branch : on !== null || head !== rec.head) return `it is on ${on || head?.slice(0, 7)} now`;
   const st = (await gitOut(path, ['--no-optional-locks', 'status', '--porcelain', '--untracked-files=normal', '--ignore-submodules=none'])).split('\n').filter(l => l && !(rec.linked && l === '?? node_modules'));
   if (st.length) return 'changes not committed';
-  const head = await gitOr(path, ['rev-parse', 'HEAD']);
   if (head !== rec.head && await gitOr(path, ['rev-list', '--max-count=1', 'HEAD', '--not', '--remotes'], 'x')) return 'commits not pushed';
   return null;
 }
@@ -2955,11 +2958,21 @@ function prOfBranch(rec) {
   return best?.[0] ?? null;
 }
 /** Whether a new branch's tree has commits since it was made, all of them on origin's default branch now — merged with
- *  no PR the board knows of, or fast-forwarded — as this checkout last fetched it. */
+ *  no PR the board knows of, or fast-forwarded — as this checkout last fetched it; and one of them at least its own
+ *  (2026-10-14): a tree only brought up to origin's branch by a pull has nothing done in it, and stays. */
 async function landed(path, rec) {
   const head = await gitOr(path, ['rev-parse', 'HEAD']);
   if (!head || head === rec.head) return false;
-  return await gitOr(path, ['merge-base', '--is-ancestor', 'HEAD', `origin/${await originDefault(rec.repo)}`], false) !== false;
+  if (await gitOr(path, ['merge-base', '--is-ancestor', 'HEAD', `origin/${await originDefault(rec.repo)}`], false) === false) return false;
+  const mine = await ownCommits(path), since = (await gitOr(path, ['rev-list', `${rec.head}..HEAD`], '')).split('\n');
+  return since.some(c => mine.has(c));
+}
+/** The commits made in a tree, as its HEAD's reflog says them: a commit (an amend too), a cherry-pick, a revert, a merge
+ *  made, a rebase's picks — never a pull or a merge that fast-forwarded, a reset, a checkout. No reflog: none. */
+const OWN_MOVE = /^(commit|cherry-pick|revert)\b|\((pick|reword|edit|squash|fixup)\): |: Merge made by /;
+async function ownCommits(path) {
+  const lines = (await gitOr(path, ['reflog', '--format=%H %gs', 'HEAD'], '')).split('\n');
+  return new Set(lines.map(l => [l.slice(0, l.indexOf(' ')), l.slice(l.indexOf(' ') + 1)]).filter(([, gs]) => OWN_MOVE.test(gs)).map(([c]) => c));
 }
 /** The trees the board made, removed once their work is done — a PR's merged or closed; a new branch's (2026-10-13) by
  *  the PR opened from it (`prOfBranch`, kept as its `pr`), else once its commits are on origin's default branch — with
