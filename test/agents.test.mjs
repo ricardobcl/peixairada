@@ -45,3 +45,20 @@ test('an agent that handed its report back is done — no end_turn ever follows 
   writeFileSync(f, user + line({ type: 'user', message: { role: 'user', content: [{ type: 'text', text: '[Request interrupted by user]' }] } }));
   assert.equal(agentRunning(f), false, 'interrupted');
 });
+
+test('an agent last written before the chat\'s claude started died with the one before; its turn ends as a chat\'s does (2026-10-14)', () => {
+  const f = join(tmpDir('peix-agents-'), 'agent-3.jsonl');
+  const line = o => JSON.stringify({ isSidechain: true, agentId: '3', ...o }) + '\n';
+  const user = line({ type: 'user', message: { role: 'user', content: 'go' } });
+  const said = (stop_reason, content = [{ type: 'text', text: 'partial' }]) => user + line({ type: 'assistant', message: { role: 'assistant', stop_reason, content } });
+  writeFileSync(f, said('tool_use'));
+  const written = Date.now() - 60_000; utimesSync(f, new Date(written), new Date(written));
+  assert.equal(agentRunning(f, Date.now(), written - 1000), true, 'the claude that started it runs on');
+  assert.equal(agentRunning(f, Date.now(), written + 1000), false, 'a claude started since — a take-over, a resume: not its agent');
+  writeFileSync(f, said('max_tokens'));
+  assert.equal(agentRunning(f), false, 'out of tokens: done');
+  writeFileSync(f, said('refusal'));
+  assert.equal(agentRunning(f), false, 'refused: done');
+  writeFileSync(f, said('max_tokens', [{ type: 'tool_use', id: 'x', name: 'Write', input: {} }]));
+  assert.equal(agentRunning(f), true, 'a tool call cut short goes on');
+});

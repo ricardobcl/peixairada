@@ -1626,6 +1626,10 @@ function pushEntry(s, entry) {
 
 const NEEDS_INPUT_TOOLS = new Set(['AskUserQuestion', 'ExitPlanMode']);
 const TURN_ENDS = new Set(['end_turn', 'stop_sequence', 'max_tokens', 'refusal']);
+/** An assistant message that ends its turn — a chat's, or a sub-agent's (agentRunning): end_turn, or max_tokens or a
+ *  refusal (2026-10-03: a turn that ran out of tokens stayed working and its reply was never alerted), unless what ran
+ *  out was a tool call Claude Code goes on with. */
+const endsTurn = m => TURN_ENDS.has(m?.stop_reason) && !(m.stop_reason === 'max_tokens' && Array.isArray(m.content) && m.content.some(b => b?.type === 'tool_use'));
 
 /** Fold one JSONL line into the session. Returns true if the session summary changed. */
 function fold(s, line) {
@@ -1714,9 +1718,7 @@ function fold(s, line) {
       }
       noteBranch(s, line, ts);
       s.lastActivity = ts;
-      // A turn ends at end_turn — or at max_tokens or a refusal (2026-10-03: a turn that ran out of tokens stayed
-      // working and its reply was never alerted), unless what ran out was a tool call Claude Code goes on with.
-      if (TURN_ENDS.has(m.stop_reason) && !(m.stop_reason === 'max_tokens' && blocks.some(b => b.type === 'tool_use'))) {
+      if (endsTurn(m)) {
         const text = textOf(blocks).trim();
         if (text) { s.lastReply = plainSnippet(text, 300); s.lastReplyAt = ts; }
         // the reply that ends the turn, and how long since your last word it took — the transcript's footer under it
@@ -1848,21 +1850,22 @@ function tailFile(file) {
 // (2026-09-20). An agent's last lines say whether it is done: an assistant end_turn; or, since agents hand their
 // report back through a tool (2026-10-03), the result of its SubagentHandback call — no end_turn ever follows it, and
 // such an agent counted for AGENT_STALE_MS more, the card clauding and the chat's own reply never alerted; or an
-// interrupt (Esc). One that went quiet AGENT_STALE_MS ago is not counted (a killed agent never writes its end).
-// Only the status is touched — not the order, not the transcript, not the alerts beyond holding the 'reply' one back
-// until the agents are done.
+// interrupt (Esc). One that went quiet AGENT_STALE_MS ago is not counted (a killed agent never writes its end), nor one
+// last written before the chat's claude started (2026-10-14: `since` — a take-over or a resume while agents ran left
+// the dead claude's agents clauding the card, its reply unalerted, for AGENT_STALE_MS). An agent's turn ends as the
+// chat's does (endsTurn). Only the status is touched — not the order, not the transcript, not the alerts beyond
+// holding the 'reply' one back until the agents are done.
 const AGENT_STALE_MS = Number(process.env.AGENT_STALE_MS || 15 * 60_000);
-const AGENT_ENDS = new Set(['end_turn', 'stop_sequence']);
 const isHandback = (line, id) => line?.type === 'assistant' && Array.isArray(line.message?.content) && line.message.content.some(b => b?.type === 'tool_use' && b.name === 'SubagentHandback' && b.id === id);
-function agentRunning(file, now = Date.now()) {
+function agentRunning(file, now = Date.now(), since = 0) {
   let st; try { st = statSync(file); } catch { return false; }
-  if (now - st.mtimeMs > AGENT_STALE_MS || !st.size) return false;
+  if (now - st.mtimeMs > AGENT_STALE_MS || st.mtimeMs < since || !st.size) return false;
   const len = Math.min(st.size, 65536), buf = Buffer.alloc(len);
   const fd = openSync(file, 'r'); try { readSync(fd, buf, 0, len, st.size - len); } finally { closeSync(fd); }
   const tail = buf.toString('utf8').trim().split('\n').slice(-8).map(l => { try { return JSON.parse(l); } catch { return null; } });
   const last = tail.at(-1);
   if (!last) return true;   // a line still being written: at work
-  if (last.type === 'assistant') return !AGENT_ENDS.has(last.message?.stop_reason);
+  if (last.type === 'assistant') return !endsTurn(last.message);
   if (last.type !== 'user') return true;   // an attachment (a token reminder) is an agent mid-way
   const c = last.message?.content;
   if (textOf(c).startsWith('[Request interrupted')) return false;
@@ -1873,7 +1876,8 @@ const agentsDir = s => s.file ? join(dirname(s.file), s.id, 'subagents') : null;
 function scanAgents(s) {
   const dir = agentsDir(s); let names = [];
   if (dir) try { names = readdirSync(dir); } catch {}
-  const running = names.filter(n => n.endsWith('.jsonl') && agentRunning(join(dir, n))).length;
+  const since = Math.min(...[s.live, ...(s.rivals || [])].map(l => Number(l?.startedAt) || 0));   // the oldest claude on the chat: an agent from before it died with the one before
+  const running = names.filter(n => n.endsWith('.jsonl') && agentRunning(join(dir, n), Date.now(), since)).length;
   if (running !== (s.agentsRunning || 0)) { s.agentsRunning = running; schedulePush(s); }
 }
 
