@@ -2829,12 +2829,15 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // count as handled, hence closing it here, in the capture phase, before anything else sees the key. With nothing to
   // close the key is not touched: the filter boxes and the rename box have their own Esc, and full screen keeps its.
   // A countdown to a chat's resume is something to close too (2026-10-07), outside a terminal.
-  // With the pane up the shell swallows Esc before the page and calls hotEscape() instead.
+  // With the pane up an Esc pressed on one of its pages is the shell's, which calls hotEscape() instead; one pressed here
+  // reaches the page (2026-10-14: the shell swallowed it too, and claude's drawer beside a page never heard its Esc), and
+  // outside a terminal or a box — which keep their own — it is hotEscape()'s as well: the chat tab back.
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape' || e.metaKey || e.ctrlKey || e.altKey) return;
     let took = false;
     const dlg = document.querySelector('dialog[open]');
     if (dlg) { dlg.close(); took = true; }
+    else if (state.paneVisible && !e.target.closest?.('input, textarea, select, [contenteditable], .tbody')) took = hotEscape();
     if (!took) return;
     e.preventDefault(); e.stopPropagation();
   }, true);
@@ -5012,13 +5015,14 @@ const toolName = n => {
     if (p.cwds.length === 1) newChatIn(p.cwds[0], 'chats'); else pickOpen('folder', { cwds: p.cwds, then: 'chats' });   // one folder: straight to the environments
   }
   // Esc with a page's tab on (2026-09-20): the chat tab, and the pane
-  // goes. Reaches here from the shell only (peixKey('Escape'), pressed on the board or in the pane, which the shell
-  // swallows while the pane is up) — so a dialog (the settings are one), whose own Esc that swallow took, closes first.
+  // goes. Reaches here from the shell (peixKey('Escape'), pressed on a page in the pane, which the shell swallows) and
+  // from the page's own Esc with the pane up, outside a terminal or a box (2026-10-14) — a dialog (the settings are one)
+  // closes first.
   // Split, the chat is in the left half and the keys go there; the page beside it stays up (showChat).
   function hotEscape() {
     const dlg = document.querySelector('dialog[open]'); if (dlg) { dlg.close(); return true; }
     const s = state.sessions.get(state.current);
-    if (s && isBlankTab(tabOf(s))) { blankEscape(s, tabOf(s)); return true; }   // the pane up beside it: the shell took the box's own esc
+    if (s && isBlankTab(tabOf(s))) { blankEscape(s, tabOf(s)); return true; }   // the keys on the board but not in its box, which has its own esc
     if (!s || !isPaneTab(tabOf(s))) return false;
     showChat(s); syncTerm(s); focusBoard(); return true;
   }

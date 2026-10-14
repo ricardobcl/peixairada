@@ -724,10 +724,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     window.makeFirstResponder(page ?? web)
   }
 
-  // Esc with the pane up, from the board or from the page in the pane: the page's business (the chat tab comes
-  // back and the pane goes) — forwarded as peixKey('Escape') and swallowed, so the window does not also leave full
-  // screen (the editor's own Esc is given up for this, by choice). With the pane hidden the key is not touched at
-  // all (dialogs, full screen, the rename box keep it).
+  // Esc with the pane up, from a page in the pane: the board's business (the chat tab comes back and the pane goes) —
+  // forwarded as peixKey('Escape') and swallowed (the editor's own Esc is given up for this, by choice). An Esc on the
+  // board's own view is not touched (2026-10-14): swallowed too, claude's drawer beside a page never heard it — no
+  // interrupt —, nor did a box; the page does hotEscape's itself outside a terminal or a box. With the pane hidden the
+  // key is not touched at all (dialogs, the rename box keep it).
   private func installEscapeMonitor() {
     NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
       guard let self = self, e.window === self.window, e.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return e }
@@ -740,7 +741,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         }
       }
       guard e.keyCode == 53, !self.paneOverlay.isHidden, let fr = self.window.firstResponder as? NSView else { return e }
-      guard fr.isDescendant(of: self.web) || fr.isDescendant(of: self.paneOverlay) else { return e }
+      guard fr.isDescendant(of: self.paneOverlay) else { return e }
       self.web.evaluateJavaScript("window.peixKey && window.peixKey('Escape')", completionHandler: nil)
       return nil
     }

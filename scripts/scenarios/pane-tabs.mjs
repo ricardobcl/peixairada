@@ -83,6 +83,20 @@ export default async function (ctx) {
   await ctx.waitFor(`document.querySelectorAll('#ptabsB .ptab[data-tab^="gh:"]').length === 2`, { what: 'two PR tabs, both in the right half' });
   out.two = { tabs: await tabsNow(), pane: await lastPane() };
   ctx.assert.equal(out.two.tabs[1].on, true); ctx.assert.equal(out.two.pane.show, out.two.tabs[1].k); ctx.assert.equal(out.two.pane.keys.length, 2);
+  // Esc pressed on the board itself with the pane up (2026-10-14): the shell lets it through — it swallowed it, and claude's
+  // drawer beside a page never heard its Esc — so the page does what the shell's would: a terminal or a box keeps it,
+  // anywhere else the chat tab comes back
+  await ctx.evaluate(`window.peixPane(true, 600)`);
+  const escAt = sel => ctx.evaluate(`document.querySelector(${JSON.stringify(sel)}).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true })) ? 'left' : 'taken'`);
+  const page2 = await ctx.peix('state().tab');
+  ctx.assert.equal(await escAt('#termBody'), 'left', 'a terminal keeps its Esc — claude\'s interrupt');
+  await ctx.evaluate(`document.querySelector('#q').value = 'x'`);
+  ctx.assert.equal(await escAt('#q'), 'left'); ctx.assert.equal(await ctx.evaluate(`document.querySelector('#q').value`), '', 'a box keeps its own: the list\'s search emptied');
+  ctx.assert.equal(await ctx.peix('state().tab'), page2, '…and neither brought the chat back');
+  ctx.assert.equal(await escAt('body'), 'taken', 'anywhere else on the board, Esc is the pane\'s');
+  ctx.assert.deepEqual([await ctx.peix('state().tab'), await ctx.peix('state().focusG')], ['chat', 0], 'the chat tab back, the keys on it');
+  await ctx.evaluate(`window.peixPane(false, 0); window.peixPaneFocus(${JSON.stringify(page2)})`);
+  ctx.assert.equal(await ctx.peix('state().tab'), page2, 'a click on the page takes the keys back to it');
   // Esc, as the shell forwards it: back to the chat — which is in the left half, so the keys go there (2026-09-25:
   // claude keeps the first half) and the page in the right half stays up, which is what two halves are for
   await ctx.evaluate(`window.peixKey('Escape')`);
