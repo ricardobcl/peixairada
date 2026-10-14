@@ -9,8 +9,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { execFileSync, spawn } from 'node:child_process';
-import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { appendFileSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { sleep, startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { slugOf } from '../scripts/fixture.mjs';
@@ -59,7 +58,7 @@ test('the chat\'s own switch, a `!` command of yours and one a sub-agent ran are
 });
 
 test('a sub-agent\'s own transcript explains a move, read only when nothing else does', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'peix-drift-')), id = randomUUID();
+  const dir = tmpDir('peix-drift-'), id = randomUUID();
   try {
     const file = join(dir, `${id}.jsonl`), agents = join(dir, id, 'subagents');
     mkdirSync(agents, { recursive: true }); writeFileSync(file, '');
@@ -154,7 +153,7 @@ test('through HEAD and back is no drift; through HEAD elsewhere is', () => {
 });
 
 test('the head is read from the checkout\'s HEAD file — a worktree\'s its own — and judged against the lines', () => {
-  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'peix-head-'))), repo = join(dir, 'widgets'), wt = join(dir, 'widgets-wt');
+  const dir = realpathSync(tmpDir('peix-head-')), repo = join(dir, 'widgets'), wt = join(dir, 'widgets-wt');
   const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' } });
   try {
     mkdirSync(join(repo, 'src'), { recursive: true });
@@ -238,7 +237,7 @@ test('the head is read from the checkout\'s HEAD file — a worktree\'s its own 
 });
 
 test('a reftable checkout\'s branch is git\'s word, not its HEAD file\'s stub (2026-10-14)', t => {
-  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'peix-head-'))), repo = join(dir, 'widgets'), wt = join(dir, 'widgets-wt');
+  const dir = realpathSync(tmpDir('peix-head-')), repo = join(dir, 'widgets'), wt = join(dir, 'widgets-wt');
   const git = (cwd, ...a) => execFileSync('git', ['-C', cwd, ...a], { stdio: 'pipe', env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' } });
   try {
     try { git(dir, 'init', '-q', '--ref-format=reftable', '-b', 'main', repo); } catch { return t.skip('this git has no reftable'); }
@@ -254,7 +253,7 @@ test('a reftable checkout\'s branch is git\'s word, not its HEAD file\'s stub (2
 });
 
 test('Claude in a folder of the same checkout is on the same branch; a worktree inside it is another (2026-10-14)', () => {
-  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'peix-tree-'))), repo = join(dir, 'widgets'), wt = join(repo, '.claude', 'worktrees', 'feat-wt');
+  const dir = realpathSync(tmpDir('peix-tree-')), repo = join(dir, 'widgets'), wt = join(repo, '.claude', 'worktrees', 'feat-wt');
   try {
     mkdirSync(join(repo, '.git'), { recursive: true }); mkdirSync(join(repo, 'src')); mkdirSync(wt, { recursive: true });
     writeFileSync(join(wt, '.git'), `gitdir: ${join(repo, '.git', 'worktrees', 'feat-wt')}\n`);
@@ -287,7 +286,7 @@ async function alerts(url) {
 }
 
 test('a restart says no move again and keeps the one set aside (2026-10-14)', { timeout: 120_000 }, async () => {
-  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'peix-boot-'))), repo = join(dir, 'widgets'), claude = tmpDir('peix-fx-');
+  const dir = realpathSync(tmpDir('peix-boot-')), repo = join(dir, 'widgets'), claude = tmpDir('peix-fx-');
   const git = (...a) => execFileSync('git', ['-C', repo, ...a], { stdio: 'pipe', env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' } });
   const sleeps = [0, 1].map(() => spawn('sleep', ['120'], { stdio: 'ignore' }));   // a live pid each: any will do
   let srv, a1, a2;

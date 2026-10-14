@@ -15,6 +15,11 @@ if (!n) { console.error(`${file}: no inline script found`); process.exit(1); }
 if (bad) process.exit(1);
 console.log(`${file}: ${n} inline script${n === 1 ? '' : 's'} compile`);
 
+// An attribute's value in single quotes is never built from `${…}` (2026-10-14): esc() escapes `"` and not `'`, so a
+// value with a quote in it would close the attribute and run on into the markup. Double quotes, as everywhere else.
+const quoted = [...html.matchAll(/=\s*'\$\{/g)].map(m => html.slice(0, m.index).split('\n').length);
+if (quoted.length) { console.error(`${file}: an attribute in single quotes built from \${…} (esc() leaves ' alone) at line ${quoted.join(', ')}`); process.exit(1); }
+
 // The keys (2026-10-12): every code in HOTKEYS and CMDKEYS has its row in KEYS — the Keys pane and the ? sheet are
 // drawn from it —, every row's code is one of theirs, and the app forwards every ⌥⌘ letter the board answers while a
 // page in the pane has the keyboard, and every ⌘ letter and digit (mac/Sources/main.swift's boardKeys and cmdKeys; ⌘W

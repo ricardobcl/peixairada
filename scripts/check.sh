@@ -1,6 +1,7 @@
 #!/bin/sh
-# Static checks, ten seconds: every script parses, the page's inline script compiles, the shell scripts parse, the
-# app's Swift type-checks against the deployment target build.sh uses, and the WebKit check's against this Mac.
+# Static checks, ten seconds: every script parses, the page's inline script compiles, the tests keep to a state and temp
+# dirs of their own and name every route (scripts/check-tests.mjs), the shell scripts parse, the app's Swift type-checks
+# against the deployment target build.sh uses, and the WebKit check's against this Mac.
 # `npm run check`. No network, no server.
 set -eu
 cd "$(dirname "$0")/.."
@@ -8,7 +9,7 @@ echo "› node --check"
 for f in server.mjs lib/*.mjs scripts/*.mjs scripts/scenarios/*.mjs test/*.mjs; do [ -f "$f" ] && node --check "$f"; done
 echo "› the page's script"
 node scripts/check-page.mjs public/index.html
-echo "› the tests: their environment"
+echo "› the tests: their environment, their temp dirs, every route named"
 node scripts/check-tests.mjs
 # The holder's headless xterm is pinned to the vendored client's version (the screen is drawn by one and read by the
 # other), and public/vendor is copied from node_modules by hand: a drift on either side shows here, not in a drawer.
