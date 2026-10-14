@@ -41,6 +41,24 @@ if [ "${1:-build}" = install ] && [ "${2:-}" != --detached ] && [ "${__CFBundleI
   exit 0
 fi
 
+# One build at a time, from any checkout (2026-10-14): the board rebuilds the app by itself when it is behind, and two
+# installs at once remove each other's app. A lock whose builder is gone is taken over.
+LOCK="/tmp/peixairada-build-$(id -u).lock"
+if ! mkdir "$LOCK" 2>/dev/null; then
+  OTHER=$(cat "$LOCK/pid" 2>/dev/null || true)
+  if [ -n "$OTHER" ] && kill -0 "$OTHER" 2>/dev/null; then echo "another build of the app is running (pid $OTHER) — nothing done" >&2; exit 1; fi
+  rm -rf "$LOCK"; mkdir "$LOCK"
+fi
+echo $$ > "$LOCK/pid"
+trap 'rm -rf "$LOCK"' EXIT
+
+# What it is built from (2026-10-14), stamped into Info.plist as PeixSource: mac/'s tree as it stands, uncommitted changes
+# in, through an index of its own (the checkout's is not touched). The board compares it with HEAD's mac/ (readApp in
+# server.mjs) to tell an app older than its checkout — commits made here as much as pulled ones. Empty outside git.
+IDX="${TMPDIR:-/tmp}/peixairada-src.$$"
+SOURCE=$( { cd "$ROOT" && export GIT_INDEX_FILE="$IDX" && git read-tree HEAD && git add -A -- mac && git write-tree --prefix=mac/; } 2>/dev/null ) || SOURCE=
+rm -f "$IDX" "$IDX.lock"
+
 echo "› icon"
 cd "$DIR/icon"
 swiftc -swift-version 5 -O -target "$TARGET" MakeIcon.swift -o makeicon
@@ -83,6 +101,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleVersion</key><string>1</string>
+  <key>PeixSource</key><string>$SOURCE</string>
   <key>LSMinimumSystemVersion</key><string>$MIN_OS</string>
   <key>NSHighResolutionCapable</key><true/>
   <!-- ⌃⌘F fills the screen up to the camera housing: never the shrunken compatibility mode for a window behind it -->

@@ -161,14 +161,18 @@ for `$HOME`'s home and the account's.
   (`dirty`), a branch that moved on its own (`diverged`), a held commit, or within `UPDATE_QUIET_MS` of a key sent to a
   drawer or anything done on the board (`lastTouchAt`); *check now* (`asked`) skips that wait, *update now* (`apply`)
   the switch and the hold too (`whyNot`). What the commits touched starts again (`updateParts`): `npm install`, the
-  agent (`launchd.sh restart`, detached), the app (`mac/build.sh install`, detached, `mac/` only), the page — it reloads
+  agent (`launchd.sh restart`, detached), the app (`mac/build.sh install`, detached) when behind, the page — it reloads
   itself once left be (`takeUpdate`, `reloadBusy`: at once if asked for there; never mid-update nor before the new
   server is back). **Its progress is the status bar's** (`updSeg`, `updRun`): the server's `steps`/`step`, `restarting`,
   `building` (the app's rebuild followed by its pid across the restart, `watchBuild`, ended by its log's `installed →`),
   `failed`; new commits not taken and why; a page waiting (a click reloads it).
   **First the new page compiles and the new server starts on a spare port** (`preflight`, the checkout's
   lib/testserver.mjs); one that does not is undone (`git reset --keep`) and held (`updateHeld`) until a newer commit.
-  `UPDATE_DIR`, `UPDATE_RESTART_BIN`, `UPDATE_BUILD_BIN`, `NPM_BIN` are the tests'. → `test/update.test.mjs`,
+  **The app is held against the checkout, pull or none** (2026-10-14; `readApp`, `appWhyNot` → `app`, `appWhy`;
+  `lookApp` every minute): build.sh stamps `PeixSource`, mac/'s tree as built (uncommitted work in), and one not `HEAD:mac`
+  is behind — a commit made here too. Rebuilt with a pull, else alone by *update now* or the switch once quiet — by the
+  clock never twice for one source (`appBuild`) —, never over work in mac/; build.sh is one at a time (a lock in /tmp).
+  `UPDATE_DIR`, `UPDATE_RESTART_BIN`, `UPDATE_BUILD_BIN`, `NPM_BIN`, `BOARD_APP` are the tests'. → `test/update.test.mjs`,
   `auto-update.mjs`.
 * **The page follows a restart** (2026-10-13; `pageStamp`, `pageFollows`): `/` is served with `<meta name="peix-page">`
   — a stamp of the file on disk and the serving boot (`SINCE`) —, every snapshot names the page on disk (`page`); one

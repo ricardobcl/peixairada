@@ -163,9 +163,10 @@ let prTurns = {};
 // on, and on again after a restart. The lid's setting is the system's and is read from it, never kept here (keepAwake).
 let awakeOn = false;
 // The board's own code, kept up to date from its checkout (2026-10-12; see checkUpdate): the switch (off: the new commits
-// are said, not taken — 2026-10-13), the last update made (`updated`: {at, from, to, count, parts}) and a commit held back
-// because it did not start here ({to, why, at}).
-let autoUpdate = false, updateLast = null, updateHeld = null;
+// are said, not taken — 2026-10-13), the last update made (`updated`: {at, from, to, count, parts}), a commit held back
+// because it did not start here ({to, why, at}) and the app's last rebuild by the board (`appBuild`: {pid, at, source,
+// done, ok, why} — 2026-10-14, the update's own `build` before).
+let autoUpdate = false, updateLast = null, updateHeld = null, appBuild = null;
 // The working trees the board made for a branch (2026-10-13; ensureWorktree): path -> { repo (its main tree), branch
 // (null: detached), pr, head (the commit it was made at), linked (node_modules a link of ours), at }. Only these are
 // ever removed, and only by sweepWorktrees.
@@ -205,6 +206,7 @@ try {
   autoUpdate = st.selfUpdate === true;   // files from 2026-10-12 carry `autoUpdate`, the old default's true written on every save — ignored, gone on the next one
   updateLast = st.updated && typeof st.updated === 'object' ? st.updated : null;
   updateHeld = st.updateHeld && typeof st.updateHeld === 'object' ? st.updateHeld : null;
+  appBuild = st.appBuild && typeof st.appBuild === 'object' ? st.appBuild : null;
   worktreesMade = st.worktrees && typeof st.worktrees === 'object' ? st.worktrees : {};
 } catch (e) {
   if (e.code !== 'ENOENT') {
@@ -219,7 +221,7 @@ function saveState() {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, worktrees: worktreesMade }, null, 1));
+    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade }, null, 1));
     renameSync(tmp, STATE_FILE);
   } catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
@@ -2954,22 +2956,26 @@ function installZed() {
 // held back, each is said and waited out — once nothing has been typed into a drawer or done on the board for
 // UPDATE_QUIET_MS. What the commits touched is started again (`updateParts`): the packages installed, the agent
 // restarted (`launchd.sh restart`: the drawers stay, each a holder), the page reloaded (by itself, once it is left be: the
-// `update` event), the app rebuilt (`mac/build.sh install`, detached: it quits and reopens the app). Before any of that the
-// new page is compiled and the new server started on a spare port (lib/testserver.mjs): one that does not come up is
-// undone (`git reset --keep`) and its commit held back until a newer one comes. Only the agent looks by itself; a server
-// run by hand, or a test's, looks when asked (`POST /api/update`). Knobs: UPDATE_DIR (the checkout), UPDATE_QUIET_MS, and
-// UPDATE_RESTART_BIN / UPDATE_BUILD_BIN / NPM_BIN, what is run to restart, rebuild and install (the tests' stand-ins).
+// `update` event), the app rebuilt (`mac/build.sh install`, detached: it quits and reopens the app) — whenever it is behind
+// the checkout's mac/, not only when a pull touched it (2026-10-14, readApp): commits made here, which no pull ever sees,
+// leave it as far behind, and that is said and rebuilt alone. Before any of that the new page is compiled and the new
+// server started on a spare port (lib/testserver.mjs): one that does not come up is undone (`git reset --keep`) and its
+// commit held back until a newer one comes. Only the agent looks by itself; a server run by hand, or a test's, looks when
+// asked (`POST /api/update`). Knobs: UPDATE_DIR (the checkout), UPDATE_QUIET_MS, UPDATE_RESTART_BIN / UPDATE_BUILD_BIN /
+// NPM_BIN, what is run to restart, rebuild and install, and BOARD_APP, the installed app (the tests' stand-ins).
 const UNDER_AGENT = process.env.XPC_SERVICE_NAME === 'net.peixairada.server' && process.ppid === 1;   // launchd's own child, not a server started from a drawer (whose environment is the agent's)
 const UPDATE_EVERY_MS = Number(process.env.UPDATE_EVERY_MS ?? (UNDER_AGENT ? 30 * 60_000 : 0));
 const UPDATE_QUIET_MS = Number(process.env.UPDATE_QUIET_MS ?? 2 * 60_000);
 const UPDATE_DIR = process.env.UPDATE_DIR || __dirname;
-const APP_DIR = '/Applications/peixAIrada.app';
+const APP_DIR = process.env.BOARD_APP || '/Applications/peixAIrada.app';   // the installed app (BOARD_APP: the tests' stand-in)
+const APP_LOOK_MS = 60_000;   // how often the installed app is held against the checkout (lookApp)
 const restartBin = process.env.UPDATE_RESTART_BIN || (UNDER_AGENT ? join(UPDATE_DIR, 'scripts', 'launchd.sh') : '');
 const buildBin = process.env.UPDATE_BUILD_BIN || (UNDER_AGENT && existsSync(APP_DIR) ? join(UPDATE_DIR, 'mac', 'build.sh') : '');
 let lastTouchAt = 0;   // the last key sent to a drawer, or anything the board was asked to do (the HTTP handler)
 // `steps`/`step`: what the update under way does and where it is (the status bar's progress); `failed`: its error, when the
-// update itself went wrong — not a look that could not reach the remote; `building`: the app's rebuild running.
-const upd = { busy: null, checkout: null, checkedAt: null, error: null, failed: null, why: null, pending: [], steps: null, step: -1, building: false };
+// update itself went wrong — not a look that could not reach the remote; `building`: the app's rebuild running; `app`: the
+// installed app against the checkout (readApp), and `appWhy` why it is not being rebuilt (appWhyNot).
+const upd = { busy: null, checkout: null, checkedAt: null, error: null, failed: null, why: null, pending: [], steps: null, step: -1, building: false, app: null, appWhy: null };
 let updRetry = null;
 /** What a change to these files asks for, in the order it is done — pure. `deps`: npm install; `server`: a restart;
  *  `page`: a reload; `app`: a rebuild. The rest (docs, tests, the harness) asks for nothing. */
@@ -2983,7 +2989,7 @@ function updateParts(files) {
   }
   return ['deps', 'server', 'page', 'app'].filter(k => has.has(k));
 }
-const updateState = () => { const { remote, merge, ...u } = upd; return { on: autoUpdate, every: UPDATE_EVERY_MS, quiet: UPDATE_QUIET_MS, ...u, last: updateLast, held: updateHeld }; };
+const updateState = () => { const { remote, merge, ...u } = upd; return { on: autoUpdate, every: UPDATE_EVERY_MS, quiet: UPDATE_QUIET_MS, ...u, last: updateLast, held: updateHeld, build: appBuild }; };
 const sayUpdate = () => broadcast('update', updateState());
 /** The environment of what an update runs: the server's, minus the nesting markers and the agent's own name, with the
  *  running node first on PATH (npm and build.sh want a node, and the agent's PATH may have none), and git never asking. */
@@ -3016,6 +3022,19 @@ async function readCheckout() {
   co.dirty = (await gitIn(['status', '--porcelain', '--untracked-files=no'])).split('\n').filter(Boolean).length;
   return co;
 }
+/** The installed app against the checkout (2026-10-14): build.sh stamps the app with the tree of mac/ it was built from
+ *  (`PeixSource` in its Info.plist), and an app whose stamp is not HEAD's mac/ is `behind` — one from before the stamp
+ *  too. `changes`: uncommitted work in mac/, which a build would take in. Null: no app installed, or no mac/ here. */
+async function readApp() {
+  if (!existsSync(APP_DIR)) return null;
+  const source = await gitIn(['rev-parse', '--verify', '--quiet', 'HEAD:mac']).catch(() => '');
+  if (!source) return null;
+  let built = null;
+  try { built = /<key>PeixSource<\/key>\s*<string>([0-9a-f]{40,64})<\/string>/.exec(readFileSync(join(APP_DIR, 'Contents', 'Info.plist'), 'utf8'))?.[1] || null; } catch {}
+  if (built === source) return { built, source, behind: false, changes: 0 };
+  return { built, source, behind: true, changes: (await gitIn(['status', '--porcelain', '--', 'mac'])).split('\n').filter(Boolean).length };
+}
+const quietLeft = () => UPDATE_QUIET_MS - (Date.now() - lastTouchAt);
 /** Why the checkout is not to be moved now, or null. `asked`: from the page (no waiting for quiet); `apply`: its
  *  *update now* (the switch off and a held commit do not stop it). Waiting for quiet looks again when it would be. */
 function whyNot(asked, apply) {
@@ -3027,9 +3046,26 @@ function whyNot(asked, apply) {
   if (upd.dirty) return 'changes';
   if (!autoUpdate && !apply) return 'off';
   if (updateHeld?.to === upd.up && !apply) return 'held';
-  const rest = UPDATE_QUIET_MS - (Date.now() - lastTouchAt);
+  const rest = quietLeft();
   if (!asked && rest > 0) { updRetry = setTimeout(checkUpdate, rest + 1000); return 'busy'; }
   return null;
+}
+/** Why the app is not to be rebuilt now, or null (2026-10-14) — pure. `pull`: a pull taken now or once the board rests
+ *  brings it along (applyUpdate). Alone: *update now* (`apply`), or the switch on and the board at rest — and by the clock
+ *  never twice for one source (`tried`): a build that failed, or left the app as it was (a stamp of changes never
+ *  committed), waits for a commit or the button. Never over uncommitted work in mac/ (`changes`). `manual`: this server
+ *  does not rebuild it (not the login agent) — `mac/build.sh install` does. */
+function appWhyNot(asked, apply, pull) {
+  const a = upd.app;
+  if (!a?.behind) return 'none';
+  if (!buildBin) return 'manual';
+  if (upd.building) return 'building';
+  if (pull) return 'pull';
+  if (a.changes) return 'changes';
+  if (apply) return null;
+  if (!autoUpdate) return 'off';
+  if (appBuild?.source === a.source) return 'tried';
+  return !asked && quietLeft() > 0 ? 'busy' : null;
 }
 /** Look for new commits, and take them when nothing says not to. One at a time; the answer is the state after it. */
 async function checkUpdate({ asked = false, apply = false } = {}) {
@@ -3041,9 +3077,13 @@ async function checkUpdate({ asked = false, apply = false } = {}) {
     // its branch alone, and no FETCH_HEAD: a `git pull` of yours at the same moment reads its own
     if (upd.upstream && upd.remote && upd.merge) { await gitIn(['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', upd.remote, upd.merge], 120_000); Object.assign(upd, await readCheckout()); }
     upd.checkedAt = new Date().toISOString();
+    upd.app = upd.checkout ? await readApp() : null;
     upd.why = whyNot(asked, apply);
     if (upd.why === 'current') upd.failed = null;
+    upd.appWhy = appWhyNot(asked, apply, !upd.why || upd.why === 'busy');
+    if (upd.appWhy === 'busy') updRetry = setTimeout(checkUpdate, quietLeft() + 1000);
     if (!upd.why) { upd.busy = 'updating'; upd.failed = null; await applyUpdate(); }
+    else if (!upd.appWhy) { upd.failed = null; startBuild(); }   // nothing to pull, and the app behind: rebuilt alone
   } catch (e) { upd.error = errText(e); if (upd.busy === 'updating') upd.failed = upd.error; console.error(`[peixairada] update: ${upd.error}`); }
   finally { upd.busy = null; sayUpdate(); }
   return updateState();
@@ -3052,7 +3092,7 @@ async function applyUpdate() {
   const from = upd.head, to = upd.up, count = upd.behind;
   const parts = updateParts((await gitIn(['diff', '--name-only', from, to])).split('\n').filter(Boolean));
   const has = k => parts.includes(k), checkPage = has('page') && existsSync(join(UPDATE_DIR, 'scripts', 'check-page.mjs'));
-  upd.steps = ['pull', ...(has('deps') ? ['deps'] : []), ...(checkPage ? ['page'] : []), ...(has('server') ? ['server'] : []), ...(has('app') && buildBin ? ['build'] : []), ...(has('server') && restartBin ? ['restart'] : [])];
+  upd.steps = ['pull', ...(has('deps') ? ['deps'] : []), ...(checkPage ? ['page'] : []), ...(has('server') ? ['server'] : []), ...(buildBin && (has('app') || upd.app?.behind) ? ['build'] : []), ...(has('server') && restartBin ? ['restart'] : [])];
   const step = k => { upd.step = upd.steps.indexOf(k); sayUpdate(); };
   step('pull');
   await gitIn(['merge', '--ff-only', '--quiet', to], 60_000);
@@ -3071,34 +3111,50 @@ async function applyUpdate() {
   updateLast = { at: new Date().toISOString(), from, to, count, parts };
   saveState();
   Object.assign(upd, await readCheckout(), { why: 'current' });
+  upd.app = await readApp();
   console.log(`[peixairada] updated ${from.slice(0, 7)} → ${to.slice(0, 7)} (${count} commit${count === 1 ? '' : 's'}): ${parts.join(', ') || 'nothing to start again'}`);
-  upd.pending = parts.filter(p => p === 'server' ? !restartBin : p === 'app' ? !buildBin && existsSync(APP_DIR) : false);
-  if (has('app') && buildBin) { step('build'); startBuild(); }
+  upd.pending = parts.filter(p => p === 'server' && !restartBin);   // the app's, when this server does not rebuild it, is appWhy's `manual`
+  upd.appWhy = appWhyNot(true, true, false);   // the commits taken: the app comes along whenever it is behind them
+  if (!upd.appWhy) { step('build'); startBuild(); }
   if (has('server') && restartBin) { upd.restarting = true; step('restart'); setTimeout(() => detach(restartBin, ['restart', '--detached']), 1000); }   // the answer and the event go out first
 }
 /** The app's rebuild, followed to its end: by its exit while this server is its parent, else — after the restart that
- *  usually comes with it — by its pid every few seconds and its log's last word (build.sh says `installed →`). Kept on
- *  the update's record ({pid, at, done, ok, why}), so the settings and the status bar say how it went. */
+ *  usually comes with it — by its pid every few seconds and its log's last word (build.sh says `installed →`). Kept as
+ *  `appBuild` ({pid, at, source, done, ok, why}), so the settings and the status bar say how it went. */
 const BUILD_LOG = join(dirname(STATE_FILE), 'app-build.log');
 function startBuild() {
+  const at = new Date().toISOString(), source = upd.app?.source || null;
   try { writeFileSync(BUILD_LOG, ''); } catch {}
   const p = detach(buildBin, ['install', '--detached'], BUILD_LOG);
-  if (!p?.pid) { updateLast.build = { at: new Date().toISOString(), done: new Date().toISOString(), ok: false, why: `${basename(buildBin)} did not start` }; saveState(); return; }
+  if (!p?.pid) { appBuild = { at, source, done: at, ok: false, why: `${basename(buildBin)} did not start` }; saveState(); return; }
   console.log('[peixairada] update: rebuilding the app — it quits and opens again');
-  updateLast.build = { pid: p.pid, at: new Date().toISOString() }; saveState();
-  upd.building = true;
+  appBuild = { pid: p.pid, at, source }; saveState();
+  upd.building = true; upd.appWhy = 'building';
   p.once('exit', code => buildEnded(code));
 }
 function buildEnded(code = null) {
-  const b = updateLast?.build; if (!b || b.done) return;
+  const b = appBuild; if (!b || b.done) return;
   let tail = ''; try { tail = readFileSync(BUILD_LOG, 'utf8').trim(); } catch {}
   const ok = code === 0 || (code === null && /installed → /.test(tail));
-  updateLast.build = { ...b, done: new Date().toISOString(), ok, ...(ok ? {} : { why: (tail.split('\n').pop() || `it exited ${code}`).slice(0, 200) }) };
+  appBuild = { ...b, done: new Date().toISOString(), ok, ...(ok ? {} : { why: (tail.split('\n').pop() || `it exited ${code}`).slice(0, 200) }) };
   upd.building = false; saveState(); sayUpdate();
-  console.log(`[peixairada] update: the app ${ok ? 'rebuilt' : `was not rebuilt — ${updateLast.build.why}`}`);
+  console.log(`[peixairada] update: the app ${ok ? 'rebuilt' : `was not rebuilt — ${appBuild.why}`}`);
+  lookApp();   // its stamp now
+}
+/** The installed app held against the checkout again (every APP_LOOK_MS, and as a build ends) — a commit made here, a
+ *  build of yours — and said when that changed. With the switch on, an app gone behind is rebuilt as a pull is taken:
+ *  by checkUpdate, once the board rests. */
+async function lookApp() {
+  if (upd.busy || !upd.checkout) return;
+  const a = await readApp().catch(() => upd.app);
+  if (upd.busy) return;
+  const was = JSON.stringify([upd.app, upd.appWhy]);
+  upd.app = a; upd.appWhy = appWhyNot(false, false, upd.why === 'busy');
+  if (UPDATE_EVERY_MS > 0 && !updRetry && (upd.appWhy === null || upd.appWhy === 'busy')) { checkUpdate(); return; }
+  if (JSON.stringify([upd.app, upd.appWhy]) !== was) sayUpdate();
 }
 function watchBuild() {
-  const b = updateLast?.build; if (!b || b.done) return;
+  const b = appBuild; if (!b || b.done) return;
   if (b.pid && pidAlive(b.pid)) { if (!upd.building) { upd.building = true; sayUpdate(); } setTimeout(watchBuild, 3000); }
   else buildEnded();
 }
@@ -4148,7 +4204,8 @@ pollRepos();
 setInterval(pollRepos, PEACOCK_POLL_MS);
 setInterval(reloadConfig, CONFIG_POLL_MS);   // a stat against the board's own record of it: a save-by-rename, a file not there yet, one made and gone between two looks
 if (VSWEB_FRESH_MS > 0) { setTimeout(freshenVsWeb, Math.min(90_000, VSWEB_FRESH_MS)); setInterval(freshenVsWeb, VSWEB_FRESH_MS); }   // VS Code Web on the newest build, before you open it
-readCheckout().then(co => { Object.assign(upd, co); sayUpdate(); }, e => { upd.error = errText(e); });
+readCheckout().then(async co => { Object.assign(upd, co); if (co.checkout) { upd.app = await readApp().catch(() => null); upd.appWhy = appWhyNot(false, false, false); } sayUpdate(); }, e => { upd.error = errText(e); });
+setInterval(lookApp, APP_LOOK_MS);
 watchBuild();   // an app's rebuild that outlived the restart it came with   // where the checkout stands, for the settings, before the first look
 if (UPDATE_EVERY_MS > 0) { setTimeout(checkUpdate, Math.min(60_000, UPDATE_EVERY_MS)); setInterval(checkUpdate, UPDATE_EVERY_MS); }   // the board's own new commits (checkUpdate)
 for (const s of sessions.values()) if (s.alive) scanAgents(s);

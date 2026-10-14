@@ -5,6 +5,33 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-14. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-14, on a branch — the app behind its checkout
+
+Ricardo: "the update app is not updated the mac app".
+
+* **What was wrong**: the update rebuilt the app only when the commits it *pulled* touched `mac/` (`updateParts`). On
+  this Mac the commits are made in the checkout the agent runs from, so there is never anything to pull: the board said
+  *up to date* while the installed app lagged every Swift change until someone ran `mac/build.sh install` by hand.
+  (`updated` in the state file was still null: the update had never run here.)
+* **The app now says what it was built from**: build.sh stamps `PeixSource` into its Info.plist — mac/'s tree as it
+  stands, uncommitted changes in, hashed through an index of its own (`git read-tree HEAD`, `add -A -- mac`,
+  `write-tree --prefix=mac/`; the checkout's index is not touched). So an app built from work later committed reads
+  as current — a stamp of `HEAD:mac` alone would have asked for one more rebuild after every build-then-commit. An
+  app from before the stamp reads as behind, once.
+* **The server holds it against `HEAD:mac`** (`readApp`): on every look, every minute (`lookApp`: one `git rev-parse`
+  and a file read) and as a build ends. Behind, it is said — the status bar's *the app is behind*, a line under Updates
+  — and rebuilt: with a pull when one is taken (whatever the pull touched), else alone by *update now*, or with the
+  switch on once the board rests, as a pull is taken. Only mac/ counts: the bundled server, lib and page are the app's
+  fallback, never what runs beside the agent, and a rebuild quits and reopens the app.
+* **By the clock, never twice for one source** (`tried`, `appBuild.source`): a build that failed, or left the stamp
+  unequal (a tree with files never committed), waits for a commit or the button — no loop of rebuilds. **Never over
+  uncommitted work in mac/** (`changes`), asked or not: a build would ship half an edit.
+* **One build at a time**: build.sh takes a lock (`/tmp/peixairada-build-<uid>.lock`, taken over when its pid is
+  gone), so the board's rebuild and one run by a session cannot remove each other's app mid-install. A build refused
+  by the lock counts as tried; once the other installs, the stamp says current and the refusal is no longer shown.
+* **The build's record moved** from the last update's `build` to its own `appBuild` in the state file: a rebuild with
+  nothing pulled has no update record to hang on.
+
 ## Decisions of 2026-10-14, on a branch — the tour, five parts more
 
 Ricardo, on the first tour: "we're missing explaining: new chat · "your move" · auto PR linking · split 2 panes
