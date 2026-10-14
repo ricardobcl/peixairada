@@ -164,6 +164,8 @@ let setup = {};
 // (2026-09-28). A PR come round to you un-ticks the chats that mention it (isDone), weighed by `at` — kept here so a
 // restart does not hand a move the board had already shown back to GitHub's own clock (moveTurn).
 let prTurns = {};
+// Each such PR's history, its rounds and events (2026-10-15; see prEvents and noteRounds): url -> { ev, r }.
+let prLogs = {};   // url -> { ev: [{ id, k, w, a, n?, s?, f?, x? }], r: [{ from, why, let?, end?, how?, them? }] }
 // Keep the Mac awake — the chat header menu's switch (2026-10-08): a `caffeinate -i` of the server's own while it is
 // on, and on again after a restart. The lid's setting is the system's and is read from it, never kept here (keepAwake).
 let awakeOn = false;
@@ -215,6 +217,7 @@ function loadState() {
     notificationsOn = st.notifications !== false;
     setup = st.config;   // from before CONFIG_FILE — cleaned here, moved there by loadConfig
     prTurns = st.prTurns && typeof st.prTurns === 'object' ? st.prTurns : {};
+    prLogs = st.prLogs && typeof st.prLogs === 'object' ? st.prLogs : {};
     awakeOn = st.awake === true;
     autoUpdate = st.selfUpdate === true;   // files from 2026-10-12 carry `autoUpdate`, the old default's true written on every save — ignored, gone on the next one
     updateLast = st.updated && typeof st.updated === 'object' ? st.updated : null;
@@ -238,7 +241,7 @@ function saveState() {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade }, null, 1));
+    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade }, null, 1));
     renameSync(tmp, STATE_FILE);
   } catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
@@ -821,7 +824,8 @@ function notePr(s, url, ts, by, ref = null) {
     // The owner rarely disambiguates and eats half the width of the chip; the URL is in the tooltip.
     label: m ? `${m[2]}#${m[3]}` : clean.replace(/^https?:\/\/(www\.)?github\.com\//, ''),
     count: 0, by: null, firstAt: ts, ref,
-    state: prStatus.get(clean)?.state ?? null, title: prStatus.get(clean)?.title ?? null, turn: prStatus.get(clean)?.turn ?? null, people: prStatus.get(clean)?.people ?? null, checks: prStatus.get(clean)?.checks ?? null, refs: prStatus.get(clean)?.refs ?? null
+    state: prStatus.get(clean)?.state ?? null, title: prStatus.get(clean)?.title ?? null, turn: prStatus.get(clean)?.turn ?? null, people: prStatus.get(clean)?.people ?? null, checks: prStatus.get(clean)?.checks ?? null, refs: prStatus.get(clean)?.refs ?? null,
+    rounds: roundsOf(clean)
   };
   if (!ref) pr.ref = null; else if (ref === 'repo' && pr.ref) pr.ref = 'repo';
   if (by) { pr.count++; pr.by = by; }
@@ -1042,15 +1046,17 @@ function setPrInfo(url, state, title, found, now = Date.now(), people, missing =
   const chats = [...sessions.values()].filter(s => s.prs.some(p => p.url === url));
   const ticked = chats.filter(isDone);
   const { turn, moved, from, released } = moveTurn(url, found, now);
+  if (state === 'merged' || state === 'closed') { if (prLogs[url]) { delete prLogs[url]; turnsDirty = true; } }   // its history ends with it
+  else noteRounds(url, found, moved, now, state);
   const known = prStatus.get(url);
   if (people === undefined) people = known?.people ?? null;   // a PR we could not see: who we knew of stands
   if (missing) { state = known?.state ?? null; title = known?.title ?? null; checks = known?.checks ?? null; }
   refs ??= known?.refs ?? null;   // a PR we could not see keeps the branches we knew
   prStatus.set(url, { state, title, turn, people, checks, refs, checkedAt: now, missing, created: created ?? known?.created ?? null });   // created: shownPr's
-  const same = JSON.stringify(turn), faces = JSON.stringify(people), branches = JSON.stringify(refs);
+  const rounds = roundsOf(url), same = JSON.stringify(turn), faces = JSON.stringify(people), branches = JSON.stringify(refs), rs = JSON.stringify(rounds);
   for (const s of chats) {
     const pr = s.prs.find(p => p.url === url);
-    if (pr.state !== state || pr.title !== title || pr.checks !== checks || JSON.stringify(pr.turn ?? null) !== same || JSON.stringify(pr.people ?? null) !== faces || JSON.stringify(pr.refs ?? null) !== branches) { pr.state = state; pr.title = title; pr.turn = turn; pr.people = people; pr.checks = checks; pr.refs = refs; schedulePush(s); }
+    if (pr.state !== state || pr.title !== title || pr.checks !== checks || JSON.stringify(pr.turn ?? null) !== same || JSON.stringify(pr.people ?? null) !== faces || JSON.stringify(pr.refs ?? null) !== branches || JSON.stringify(pr.rounds ?? null) !== rs) { pr.state = state; pr.title = title; pr.turn = turn; pr.people = people; pr.checks = checks; pr.refs = refs; pr.rounds = rounds; schedulePush(s); }
   }
   // Said once, as the ball comes back to you — or when a chat you had ticked comes back with it, or the next move after
   // a round let go; never on a chat done for good, and not at all when every chat that mentions it is.
@@ -1109,7 +1115,9 @@ function drainPrQueue() {
         : pr.state === 'CLOSED' ? 'closed'
         : pr.isDraft ? 'draft' : 'open';
       if (!pr && none.has(`p${i}`)) forgetRef(url);
-      setPrInfo(url, state, pr?.title || null, pr && me ? prTurn(pr, me, prTurns[url]?.said) : undefined, Date.now(), pr ? prPeople(pr, me) : undefined, !pr, pr?.createdAt, prChecks(pr), prRefs(pr));
+      const turn = pr && me ? prTurn(pr, me, prTurns[url]?.said) : undefined;
+      if (turn) logEvents(url, prEvents(pr, me));   // a PR you have a turn on: what this look saw, into its ledger
+      setPrInfo(url, state, pr?.title || null, turn, Date.now(), pr ? prPeople(pr, me) : undefined, !pr, pr?.createdAt, prChecks(pr), prRefs(pr));
     });
     if (turnsDirty) { turnsDirty = false; pruneTurns(); saveState(); }
     if (prQueue.size || prSplit.length) drainPrQueue();
@@ -1259,6 +1267,7 @@ function pruneTurns(now = Date.now()) {
   if (indexing) return;
   const named = new Set(); for (const s of sessions.values()) for (const p of s.prs) named.add(p.url);
   for (const [url, t] of Object.entries(prTurns)) if (!named.has(url) && now - (Date.parse(t.at) || 0) > TURN_KEEP_MS) delete prTurns[url];
+  for (const url of Object.keys(prLogs)) if (!prTurns[url] && !named.has(url)) delete prLogs[url];   // a ledger goes with its PR's record
 }
 function moveTurn(url, t, now = Date.now()) {
   const prev = prTurns[url];
@@ -1288,8 +1297,102 @@ function waiveTurn(url) {
   rec.waived = rec.key;
   const turn = waivedTurn(known.turn);
   prStatus.set(url, { ...known, turn });
-  for (const s of sessions.values()) { const pr = s.prs.find(p => p.url === url); if (pr) { pr.turn = turn; schedulePush(s); } }
+  const open = openRound(url); if (open) open.let = isoS(Date.now());
+  logBoard(url, 'let go');
+  for (const s of sessions.values()) { const pr = s.prs.find(p => p.url === url); if (pr) { pr.turn = turn; pr.rounds = roundsOf(url); schedulePush(s); } }
   return true;
+}
+
+// ---- …and its history (2026-10-15) ----------------------------------------------------------------------------------
+// A PR you have a turn on keeps a ledger (`prLogs`, the state file): its rounds — a move come round to you, and how it
+// ended: your word (`answered`), let go and then moved past (`let go`), its reason gone (`gone`), the PR merged or
+// closed — and its events: who opened, reviewed, commented, pushed or asked, from each look (prEvents), and what the
+// board did with it (let go). The page shows the rounds (each PR row's round and the one before, a card's pips and its
+// "answered") and asks for the events when it wants them (GET /api/sessions/:id/prlog). Kept by the board, never re-read
+// from one look: GitHub can answer a PR's timeline from hours before (2026-10-14), so an event is merged by its id and a
+// look without it takes nothing back, and a round closes as answered only on a word of yours newer than its move — a
+// look that reads "their move" with no such word leaves it open (`gone` after ROUND_GONE_MS of that).
+const LOG_EV_MAX = 16, LOG_ROUNDS_MAX = 6, ROUND_GONE_MS = 60 * 60_000;
+const isoS = ms => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');   // GitHub's spelling, so the ledger's times sort as one
+/**
+ * The events in one look at a PR (pure; PR_FIELDS' answer): `k` opened · review (`s` its state) · comment · push (`f`
+ * a force-push) · ask (your review asked for), `w` who — '' for you —, `a` when; the bots left out, as the turn does. An
+ * id is the kind, who and when: GitHub's times do not move, and a rebase's commits, one second each, are one push of `n`.
+ */
+function prEvents(pr, me) {
+  if (!pr) return [];
+  const ev = new Map();
+  const put = (k, by, a, more = {}) => {
+    if (!a || !by?.login || isBot(by)) return;
+    const id = `${k}:${by.login}:${a}${more.s ? ':' + more.s : ''}`, was = ev.get(id);
+    if (was) was.n = (was.n || 1) + 1; else ev.set(id, { id, k, w: by.login === me ? '' : by.login, a, ...more });
+  };
+  put('opened', pr.author, pr.createdAt);
+  for (const r of pr.reviews?.nodes || []) if (r && r.state !== 'PENDING') put('review', r.author, r.submittedAt, { s: r.state });
+  for (const c of pr.comments?.nodes || []) put('comment', c?.author, c?.createdAt);
+  for (const n of pr.pushes?.nodes || []) {
+    if (n?.__typename === 'HeadRefForcePushedEvent') put('push', n.actor, n.createdAt, { f: 1 });
+    else put('push', n?.commit?.author?.user || pr.author, n?.commit?.committedDate);   // a commit GitHub ties to no one is the author's
+  }
+  for (const a of pr.asks?.nodes || []) if (a?.requestedReviewer?.login === me && a.createdAt) ev.set(`ask:${a.createdAt}`, { id: `ask:${a.createdAt}`, k: 'ask', w: null, a: a.createdAt });
+  return [...ev.values()];
+}
+const logOf = url => prLogs[url] ||= { ev: [], r: [] };
+/** Events into a PR's ledger by id: one it has is kept, a rebase's count grows, and once full one older than the oldest
+ *  kept stays out — GitHub's windows still hold what the ledger let go, and would bring it back on every look. */
+function logEvents(url, evs) {
+  if (!evs.length) return false;
+  const log = logOf(url), byId = new Map(log.ev.map(e => [e.id, e]));
+  let added = false;
+  for (const e of evs) {
+    const was = byId.get(e.id);
+    if (was) { if ((e.n || 1) > (was.n || 1)) { was.n = e.n; added = true; } continue; }
+    if (log.ev.length >= LOG_EV_MAX && e.a < log.ev[0].a) continue;
+    log.ev.push(e); byId.set(e.id, e); added = true;
+  }
+  if (!added) return false;
+  log.ev.sort((a, b) => a.a.localeCompare(b.a));
+  if (log.ev.length > LOG_EV_MAX) log.ev.splice(0, log.ev.length - LOG_EV_MAX);
+  turnsDirty = true;
+  return true;
+}
+/** What the board did with a PR — let go, back again — into its ledger. */
+function logBoard(url, what, at = Date.now()) { const a = isoS(at); logEvents(url, [{ id: `board:${what}:${a}`, k: 'board', w: '', x: what, a }]); }
+const openRound = url => { const r = prLogs[url]?.r.at(-1); return r && !r.end ? r : null; };
+/** The rounds the page shows: the last three, the newest last. */
+const roundsOf = url => prLogs[url]?.r.length ? prLogs[url].r.slice(-3).map(r => ({ ...r })) : null;
+/**
+ * A look's turn (`t`, prTurn's) on the PR's rounds; `moved` is moveTurn's. At your move with no round open, one opens
+ * at GitHub's time for its reason; a move past a round let go ends that one and opens the next; more news keeps the
+ * round and its new reasons. Their move closes the open round only on a word of yours at or after its start (`said`),
+ * else it is marked (`them`) and ended as `gone` ROUND_GONE_MS later; at your move again, the mark goes. `null`: the PR
+ * merged, closed, or none of yours — the round ends there.
+ */
+function noteRounds(url, t, moved, now = Date.now(), state = null) {
+  if (t === undefined) return false;
+  const nowS = isoS(now);
+  let open = openRound(url), changed = false;
+  if (!t) {
+    if (!open) return false;
+    Object.assign(open, { end: nowS, how: state === 'merged' || state === 'closed' ? state : 'gone' }); delete open.them;
+    turnsDirty = true; return true;
+  }
+  if (t.you) {
+    if (open?.let && moved) { Object.assign(open, { end: nowS, how: 'let go' }); open = null; }
+    if (!open) { logOf(url).r.push({ from: t.at || nowS, why: t.why }); changed = true; }
+    else {
+      if (open.why !== t.why) { open.why = t.why; changed = true; }
+      if (open.them) { delete open.them; changed = true; }
+    }
+  } else if (open) {
+    if (t.said && t.said >= open.from) { Object.assign(open, { end: t.said, how: 'answered' }); delete open.them; changed = true; }
+    else if (!open.them) { open.them = nowS; changed = true; }
+    else if (now - Date.parse(open.them) > ROUND_GONE_MS) { Object.assign(open, { end: open.them, how: 'gone' }); delete open.them; changed = true; }
+  }
+  const r = prLogs[url]?.r;
+  if (r && r.length > LOG_ROUNDS_MAX) r.splice(0, r.length - LOG_ROUNDS_MAX);
+  if (changed) turnsDirty = true;
+  return changed;
 }
 
 /** A PR come round to you: one alert, on the chat touched last of those that mention it. */
@@ -4372,6 +4475,11 @@ const server = createServer(async (req, res) => {
       saveState();
       return json(res, 200, { ok: true, waived: urls });
     }
+    if (req.method === 'GET' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/prlog$/))) {   // its PRs' ledgers (2026-10-15): the events and the rounds
+      const s = sessions.get(m[1]);
+      if (!s) return json(res, 404, { error: 'unknown session' });
+      return json(res, 200, { prs: s.prs.filter(shownPr).filter(p => prLogs[p.url]).map(p => ({ url: p.url, label: p.label, ev: prLogs[p.url].ev, rounds: prLogs[p.url].r })) });
+    }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/unlink$/))) {   // a PR taken off the chat (2026-10-11): { url }
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
@@ -4529,7 +4637,7 @@ server.on('upgrade', (req, socket, head) => { socket.on('error', () => socket.de
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
+export { sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, prEvents, logEvents, noteRounds, roundsOf, prLogs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
