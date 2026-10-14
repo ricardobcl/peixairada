@@ -9247,9 +9247,18 @@ const toolName = n => {
       // process a new session id and the server re-linked the holder (2026-09-20). Follow it — the drawer stays
       // attached, the pane shows the chat it now runs; the old card is a stale chat now, and opening it again would
       // resume the old context in a second process.
-      if (t.sessionId && t.sessionId !== term.sessionId) { term.sessionId = t.sessionId; if (state.current !== t.sessionId) openSession(t.sessionId); }
+      if (t.sessionId && t.sessionId !== term.sessionId) { const was = term.sessionId; term.sessionId = t.sessionId; if (was) carryChat(was, t.sessionId); if (state.current !== t.sessionId) openSession(t.sessionId); }
       if (t.exited !== null) termEnded(term, t.exited);
     });
+    // The process's column goes on with it (2026-10-14): its tabs, its split and how it stands, its pages, its changes
+    // tab, its /focus — the per-chat page state, keyed by the chat it left, moved to the one it runs now; not onto a
+    // chat that has a layout of its own (a /resume into a chat the board has shown), and never its unread count.
+    function carryChat(from, to) {
+      const maps = [tabs, homes, zoomed, focusView, state.paneGh, state.paneWt, blanks, changes.pr], sets = [splits, autoSplit, stacked, changesOpen];
+      if (![...maps, ...sets].some(m => m.has(from)) || [...maps, ...sets].some(m => m.has(to))) return;
+      for (const m of maps) if (m.has(from)) { m.set(to, m.get(from)); m.delete(from); }
+      for (const m of sets) if (m.has(from)) { m.add(to); m.delete(from); }
+    }
     es.addEventListener('alert', e => onAlert(JSON.parse(e.data)));
   }
   connect();

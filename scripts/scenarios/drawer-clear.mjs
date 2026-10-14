@@ -7,6 +7,14 @@ export default async function (ctx) {
   const out = {}, chat = ctx.fixture.chats[1];
   await ctx.openChat(chat.id);
   await ctx.key('KeyC'); await ctx.waitPrompt();
+  // the column as it was laid out goes on with the process (2026-10-14): the changes in a second half, stood over the
+  // first — the chat's page state, which /clear left keyed by the chat it ended
+  await ctx.key('KeyD');
+  await ctx.waitFor(`window.peix.state().split && window.peix.state().tabs.includes('changes')`, { what: 'the changes tab in a second half' });
+  await ctx.key('Digit2');
+  await ctx.waitFor(`window.peix.state().stacked`, { what: 'the halves stood one over the other' });
+  await ctx.key('Digit1');   // the keys back in the drawer's half, stood as it is
+  await ctx.waitFor(`window.peix.state().focusG === 0 && window.peix.state().stacked`, { what: 'the keys in the top half' });
   const before = await ctx.peix('state()');
   ctx.assert.equal(before.termSession, chat.id, 'the drawer runs the chat');
   const type = text => ctx.type(text);   // the drawer's keyboard, as a hand would use it
@@ -15,6 +23,8 @@ export default async function (ctx) {
   const after = await ctx.peix('state()');
   ctx.assert.equal(after.termId, before.termId, 'the same drawer, still attached');
   ctx.assert.equal(after.termSession, after.current, 'on the new chat');
+  ctx.assert.deepEqual({ split: after.split, stacked: after.stacked, changes: after.tabs.includes('changes'), halves: after.halves }, { split: true, stacked: true, changes: true, halves: ['chat', 'changes'] },
+    `the split, its layout and the changes tab came along — ${JSON.stringify({ split: after.split, stacked: after.stacked, tabs: after.tabs, halves: after.halves })}`);
   // The new chat has a card before its first word (2026-09-27): the empty chat's, first in the list by its start — the
   // moment the board saw the id, not the process's own start, which /clear keeps —, and the open one. new-chat-card.mjs
   // checks the same for ＋. The fake writes the /clear lines before the registry names the id, as Claude Code does; a
@@ -27,7 +37,9 @@ export default async function (ctx) {
   ctx.assert.equal(card.tick, true, 'the ✓ is there to clean it up');
   await ctx.waitPrompt();
   await ctx.sleep(500);
-  ctx.assert.ok((await ctx.screen()).some(r => /\(cleared\)/.test(r)), 'the fake started over on screen');
+  // its scrollback too: in a half stood over another the drawer is short, and the fake's repaint after the nudge scrolls
+  // its first lines off the screen
+  ctx.assert.ok((await ctx.evaluate('window.peix.buffer(0)')).some(r => /\(cleared\)/.test(r)), 'the fake started over in the drawer');
   // The old chat goes stale on the registry poll, not with the switch: wait for it rather than race it. It used
   // to time out one run in six, because the chat a holder *leaves* was never pushed — linkTermToRegistry told
   // the new chat and nobody else, so the old card kept a drawer that had moved on (fixed 2026-09-22).
