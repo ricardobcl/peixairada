@@ -18,12 +18,15 @@
 // `TIMEOUT` (s) for the whole run, 30. A locked screen hides the page and WebKit runs no frames: it says so and gives
 // up. The Swift is compiled on first use, and again when it changes, into node_modules/.cache.
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const src = join(root, 'scripts/webkit.swift'), bin = join(root, 'node_modules/.cache/peixairada/webkit');
+// The cache in the nearest node_modules up the folders, as Node finds it (2026-10-14): a worktree inside the repo has
+// none of its own, and one made here for the cache was the one check.sh then compared the vendored xterm against.
+let nm = root; while (!existsSync(join(nm, 'node_modules')) && dirname(nm) !== nm) nm = dirname(nm);
+const src = join(root, 'scripts/webkit.swift'), bin = join(nm, 'node_modules/.cache/peixairada/webkit');
 const args = process.argv.slice(2), opt = name => { const i = args.indexOf(name); return i === -1 ? '' : args.splice(i, 2)[1] ?? ''; };
 const hash = opt('--hash'), shot = opt('--shot'), then = opt('--then'), body = args.join(' ');
 if (!body) { console.error('usage: npm run webkit -- [--hash <session-id>] [--shot file.png] [--then "<body>"] "<body>"'); process.exit(2); }
