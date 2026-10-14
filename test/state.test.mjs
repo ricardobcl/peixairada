@@ -153,7 +153,8 @@ test('a server that waited for the port reads the state as the one before it lef
   const { closeSync, openSync } = await import('node:fs');
   const a = await startTestServer({ keep: true });
   const blog = join(a.dir, 'b.log'), fd = openSync(blog, 'a');
-  let b; try { b = spawn(process.execPath, [join(import.meta.dirname, '..', 'server.mjs')], { env: a.env, stdio: ['ignore', fd, fd] }); } finally { closeSync(fd); }
+  // stdin a pipe, held open: a.env carries PEIX_TEST_PARENT, and a test server ends when its stdin does
+  let b; try { b = spawn(process.execPath, [join(import.meta.dirname, '..', 'server.mjs')], { env: a.env, stdio: ['pipe', fd, fd] }); } finally { closeSync(fd); }
   const said = re => re.test(readFileSync(blog, 'utf8'));
   const put = (path, body) => fetch(a.url + path, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json());
   try {
