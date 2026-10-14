@@ -234,6 +234,9 @@ test('a card\'s snippet is markdown as a sentence: links, headings, items, table
   assert.equal(plain('> quoted\n```js\nconst a = 1;\n```'), 'quoted\n\nconst a = 1;\n');
   assert.equal(plain('a * b * c and snake_case_name stay'), 'a * b * c and snake_case_name stay');
   assert.equal(plain('an *emphasis* here'), 'an emphasis here');
+  assert.equal(plain('|:-:|---|\n---\n- - -\n|-|'), '\n\n· - -\n-', 'a rule is two dashes running, in a line of nothing else');
+  const t0 = performance.now(); plain('-'.repeat(1999) + 'x\n' + '| -'.repeat(600) + '|x');
+  assert.ok(performance.now() - t0 < 50, `a long run of dashes is read in linear time (2026-10-14): ${Math.round(performance.now() - t0)} ms`);
   const s = newSession('md', '/x/md.jsonl');
   fold(s, user('review https://github.com/acme/widgets/pull/7'));
   assert.equal(s.lastPrompt, 'review widgets#7');

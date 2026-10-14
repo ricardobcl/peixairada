@@ -704,7 +704,7 @@ const GH_URL_RE = /https?:\/\/(?:www\.)?github\.com\/[\w.-]+\/([\w.-]+)\/(?:pull
 const ITEM_RE = /^\s*(?:[-*+]|\d{1,3}[.)])\s+/;
 function plain(text) {
   return String(text || '').replace(/^\s*(?:```|~~~).*$/gm, '').split('\n').map(l => {
-    if (/^\s*\|?[\s:|-]*-{2,}[\s:|-]*$/.test(l) && l.includes('-')) return '';   // a table's rule, or a --- one
+    if (/^[\s:|-]*$/.test(l) && l.includes('--')) return '';   // a table's rule, or a --- one — two tests, linear: as one regex a long run of dashes and a letter after took seconds (2026-10-14)
     l = l.replace(/^\s*(?:>\s?)+/, '').replace(/^\s{0,3}#{1,6}\s+/, '');
     const item = ITEM_RE.test(l); if (item) l = l.replace(ITEM_RE, '');
     l = l.replace(/^\s*\|(.*)\|\s*$/, (_, row) => row.split('|').map(c => c.trim()).filter(Boolean).join(' · '));
