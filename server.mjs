@@ -1087,7 +1087,7 @@ function drainPrQueue() {
         : pr.state === 'CLOSED' ? 'closed'
         : pr.isDraft ? 'draft' : 'open';
       if (!pr && none.has(`p${i}`)) forgetRef(url);
-      setPrInfo(url, state, pr?.title || null, pr && me ? prTurn(pr, me) : undefined, Date.now(), pr ? prPeople(pr, me) : undefined, !pr, pr?.createdAt, prChecks(pr), prRefs(pr));
+      setPrInfo(url, state, pr?.title || null, pr && me ? prTurn(pr, me, prTurns[url]?.said) : undefined, Date.now(), pr ? prPeople(pr, me) : undefined, !pr, pr?.createdAt, prChecks(pr), prRefs(pr));
     });
     if (turnsDirty) { turnsDirty = false; pruneTurns(); saveState(); }
     if (prQueue.size) drainPrQueue();
@@ -1131,9 +1131,11 @@ const names = ws => [...new Set(ws.map(w => w.by.login))].join(', ');
  *    comment, a review, a reply in a thread: every reply is a review), or when your review is asked for again.
  *  · Your own, when someone else writes, or pushes to it, after your last word — your comments, reviews and pushes.
  * Bots are nobody. `key` names what came round, so another push or reply is a new move; `at` is GitHub's time for the
- * newest of it; `last` the newest thing on the PR at all, whoever did it (what PR_WATCH goes by).
+ * newest of it; `last` the newest thing on the PR at all, whoever did it (what PR_WATCH goes by). `said` is your last
+ * word, and `before` the last the board knew (2026-10-14): a comment of yours twenty comments back is out of the
+ * window asked for — the PR at its busiest is no less yours to answer.
  */
-function prTurn(pr, me) {
+function prTurn(pr, me, before = '') {
   if (!pr || !me || pr.state !== 'OPEN') return null;
   const mine = pr.author?.login === me;
   const words = [
@@ -1147,7 +1149,7 @@ function prTurn(pr, me) {
     .filter(p => p.at && !p.bot).map(p => ({ at: p.at, by: p.by || pr.author?.login }));
   const push = pushes.reduce((a, p) => (!a || p.at > a.at ? p : a), null);
   const review = pr.viewerLatestReview?.submittedAt ? pr.viewerLatestReview : null;
-  const said = newest([review?.submittedAt, ...words.filter(w => w.by?.login === me).map(w => w.at), ...pushes.filter(p => p.by === me).map(p => p.at), mine && pr.createdAt]);
+  const said = newest([before, review?.submittedAt, ...words.filter(w => w.by?.login === me).map(w => w.at), ...pushes.filter(p => p.by === me).map(p => p.at), mine && pr.createdAt]);
   const asks = (pr.asks?.nodes || []).filter(a => a?.requestedReviewer?.login === me).map(a => a.createdAt);
   const last = newest([said, pr.createdAt, ...words.map(w => w.at), ...pushes.map(p => p.at), ...asks]) || null;
   if (!said) return null;
@@ -1163,7 +1165,7 @@ function prTurn(pr, me) {
   const askedAt = newest(asks);
   const again = !mine && !!review && (pr.reviewRequests?.nodes || []).some(n => n?.requestedReviewer?.login === me) && !(askedAt && said > askedAt);
   const you = pushed || theirs.length > 0 || again;
-  if (!you) return { you, mine, why: mine ? 'waiting on reviews' : `waiting on ${pr.author?.login || 'the author'}`, at: null, last, key: 'them' };
+  if (!you) return { you, mine, why: mine ? 'waiting on reviews' : `waiting on ${pr.author?.login || 'the author'}`, at: null, last, said, key: 'them' };
   const why = [];
   if (pushed) why.push(mine ? `${push.by} pushed` : 'pushed since your review');
   const approved = theirs.filter(w => w.state === 'APPROVED'), asked = theirs.filter(w => w.state === 'CHANGES_REQUESTED');
@@ -1174,7 +1176,7 @@ function prTurn(pr, me) {
   if (again) why.push('your review asked for again');
   const heard = newest(theirs.map(w => w.at));
   return {
-    you, mine, why: why.join(' · '), at: newest([pushed && push.at, heard, again && askedAt]) || null, last,
+    you, mine, why: why.join(' · '), at: newest([pushed && push.at, heard, again && askedAt]) || null, last, said,
     key: [pushed ? pr.headRefOid : '', heard, again ? askedAt || 'asked' : ''].join('|')
   };
 }
@@ -1232,10 +1234,11 @@ function moveTurn(url, t, now = Date.now()) {
   if (t === undefined) return { turn: null, moved: false, from: prev?.key };
   if (!t) { if (prev) { delete prTurns[url]; turnsDirty = true; } return { turn: null, moved: false, from: prev?.key }; }
   const moved = !!prev && prev.key !== t.key && t.you && newsIn(prev.key, t.key);
-  if (!prev || moved) { prTurns[url] = { key: t.key, at: new Date(prev ? now : Date.parse(t.at) || now).toISOString() }; turnsDirty = true; }   // a move ends a round let go
+  if (!prev || moved) { prTurns[url] = { key: t.key, at: new Date(prev ? now : Date.parse(t.at) || now).toISOString(), ...prev?.said && { said: prev.said } }; turnsDirty = true; }   // a move ends a round let go
   else if (prev.key !== t.key) { prTurns[url] = { ...prev, key: t.key }; turnsDirty = true; }
   if (prTurns[url].waived && !t.you) { delete prTurns[url].waived; turnsDirty = true; }   // answered: the round is over
-  const { key, ...turn } = t, shown = { ...turn, movedAt: prTurns[url].at };
+  if (t.said && t.said > (prTurns[url].said || '')) { prTurns[url].said = t.said; turnsDirty = true; }   // your last word, for prTurn's next look
+  const { key, said, ...turn } = t, shown = { ...turn, movedAt: prTurns[url].at };
   return { turn: prTurns[url].waived ? waivedTurn(shown) : shown, moved, from: prev?.key, released: moved && !!prev?.waived };   // moved is only ever a move to you
 }
 /**
@@ -4366,7 +4369,7 @@ server.on('upgrade', (req, socket, head) => { socket.on('error', () => socket.de
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns };
+export { sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
