@@ -92,6 +92,15 @@ test('prune takes only finished work: a commit of its own, all on main, left a w
   assert.ok(!existsSync(wt('landed')) && existsSync(wt('open')) && existsSync(wt('fresh')));
 });
 
+test('a MAIN that names nothing stops it before anything is taken — never a branch deleted by force (2026-10-14)', () => {
+  sh(['new', 'lost']); commit('lost', 'lost.txt');
+  for (const args of [['done', 'lost'], ['prune'], ['list']]) {
+    const r = sh(args, { MAIN: 'nope', QUIET_S: '0' });
+    assert.notEqual(r.code, 0, r.out); assert.match(r.out, /nope: no such branch here/);
+  }
+  assert.ok(existsSync(wt('lost')) && branches().includes('lost'), 'the worktree and its commit still there');
+});
+
 test('run from inside a worktree, it works on the main checkout\'s', () => {
   const r = spawnSync(join(wt('open'), 'scripts', 'worktree.sh'), ['list'], { cwd: wt('open'), env, encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr); assert.match(r.stdout, /^open \(open\): 1 not on main/m);

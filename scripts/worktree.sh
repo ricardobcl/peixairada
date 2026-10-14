@@ -34,9 +34,10 @@ in_use() {
   printf '%s\n' "$CWDS" | awk -v p="$1" 'index($0, p) == 1 && (length($0) == length(p) || substr($0, length(p) + 1, 1) == "/") { f = 1 } END { exit !f }'
 }
 
-# Commits at $1 with no equal patch on main.
+# Commits at $1 with no equal patch on main — a failure of git's is one, never a zero (2026-10-14).
 unlanded() {
-  git -C "$DIR" cherry "$MAIN" "$1" | grep -c '^+' || true
+  out=$(git -C "$DIR" cherry "$MAIN" "$1") || return 1
+  printf '%s\n' "$out" | grep -c '^+' || true
 }
 
 # What is in the worktree and not committed, but for an old node_modules link.
@@ -60,7 +61,7 @@ remove() {
   registered "$wt" || { echo "$1: no worktree at $wt" >&2; return 1; }
   br=$(git -C "$wt" symbolic-ref --short -q HEAD || true)
   tip=$(git -C "$wt" rev-parse HEAD)
-  n=$(unlanded "$tip")
+  n=$(unlanded "$tip") || { echo "$1: kept — its commits could not be compared with $MAIN" >&2; return 1; }
   [ "$n" -eq 0 ] || { echo "$1: kept — $n commit(s) not on $MAIN (one landed by a cherry-pick with a conflict resolved is" \
     "not the same patch: once it is on $MAIN, git -C $wt reset --keep $MAIN, then done again)" >&2; return 1; }
   left=$(loose "$wt")
@@ -83,6 +84,9 @@ remove() {
 names() {
   git -C "$DIR" worktree list --porcelain | sed -n "s|^worktree $ROOT/\([^/]*\)\$|\1|p"
 }
+
+# A MAIN that names no commit made every commit look landed, and done deleted the branch with -D (2026-10-14).
+git -C "$DIR" rev-parse --verify --quiet "$MAIN^{commit}" >/dev/null || die "$MAIN: no such branch here — nothing done"
 
 cmd="${1:-list}"
 [ $# -eq 0 ] || shift
