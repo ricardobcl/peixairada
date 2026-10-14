@@ -2399,7 +2399,7 @@ async function machineStats(want) {
 // every poll rather than remembered, and shown whoever set it. So are the idle sleep the Mac is set to on the power it
 // draws from now (`sleep`, in minutes, 0 for never) and that power (`pmset -g ps`) (2026-10-09): on a charger set never
 // to sleep, the cup has nothing to hold off, and the page says so. Tests: CAFFEINATE_BIN and PMSET_BIN are the fakes,
-// and AWAKE_ADMIN=none runs pmset as it is.
+// and AWAKE_ADMIN=none runs pmset as it is — the only way PMSET_BIN sets anything (lidRuns).
 let caffeinate = null;      // the child holding the assertion
 let lidOff = false;         // SleepDisabled, as pmset last said
 let idleSleep = null;       // the minutes idle before the Mac sleeps on the power it draws from now, 0 never; null unread
@@ -2442,19 +2442,33 @@ async function readPower() {
   if (ps != null) powerSrc = ({ AC: 'ac', Battery: 'battery', UPS: 'ups' })[/Now drawing from '(\w+) Power'/.exec(ps)?.[1]] ?? null;
   if (JSON.stringify([lidOff, idleSleep, powerSrc]) !== was) sayAwake();
 }
+// As root it is always the system's own pmset (2026-10-14): findBin's — PMSET_BIN, then the PATH, with ~/.local/bin, a
+// version manager's shims and Homebrew's on it — is whoever can write there's, and it ran with administrator privileges.
+// The one found runs only as it is (AWAKE_ADMIN=none: the tests, PMSET_BIN their fake).
+const ROOT_PMSET = '/usr/bin/pmset';
+/** The commands that turn the lid's setting, by AWAKE_ADMIN: `plain` the pmset found, run as it is (`none`); else
+ *  `sudo` and its fallback `dialog` (osascript's administrator one), both on ROOT_PMSET whatever was found. Pure. */
+function lidRuns(on, mode, found) {
+  const args = ['-a', 'disablesleep', on ? '1' : '0'];
+  if (mode === 'none') return { plain: [found, args] };
+  const q = t => `"${t.replace(/[\\"]/g, '\\$&')}"`;
+  return {
+    sudo: ['/usr/bin/sudo', [ROOT_PMSET, ...args]],
+    dialog: ['/usr/bin/osascript', ['-e', `do shell script quoted form of ${q(ROOT_PMSET)} & ${q(' ' + args.join(' '))} with prompt ${q(on ? 'peixAIrada wants to keep this Mac awake with its lid closed.' : 'peixAIrada wants to let this Mac sleep again when its lid closes.')} with administrator privileges`]],
+  };
+}
 /** Sleep with the lid shut, or not, as root: through `sudo` first — Touch ID where sudo takes it (pam_tid in
  *  /etc/pam.d/sudo_local), or a sudoers rule that asks nothing — and, when sudo cannot do it without a terminal to type a
  *  password in, through osascript's administrator dialog (2026-10-09; the dialog alone the day before). Then pmset read back. */
 async function setLid(on) {
   if (lidAsking) await lidAsking.catch(() => {});
-  const bin = findBin('pmset', 'the lid\'s setting cannot be changed'); if (!bin) throw new Error('pmset not found');
-  const args = ['-a', 'disablesleep', on ? '1' : '0'];
-  const q = t => `"${t.replace(/[\\"]/g, '\\$&')}"`;
-  const viaDialog = () => execFileP('/usr/bin/osascript', ['-e', `do shell script quoted form of ${q(bin)} & ${q(' ' + args.join(' '))} with prompt ${q(on ? 'peixAIrada wants to keep this Mac awake with its lid closed.' : 'peixAIrada wants to let this Mac sleep again when its lid closes.')} with administrator privileges`], { timeout: 5 * 60_000 });
-  // no terminal: sudo's stdin is nothing, so a password it cannot get is a quick failure, not a wait
-  const viaSudo = () => new Promise((res, rej) => execFile('/usr/bin/sudo', [bin, ...args], { timeout: 90_000, env: { ...process.env, SUDO_ASKPASS: '' } }, (err, so, se) => err ? rej(Object.assign(err, { stderr: se })) : res()).stdin?.end());
   const mode = process.env.AWAKE_ADMIN || 'sudo';
-  lidAsking = mode === 'none' ? execFileP(bin, args, { timeout: 10_000 }) : mode === 'osascript' ? viaDialog()
+  const bin = mode === 'none' ? findBin('pmset', 'the lid\'s setting cannot be changed') : canRun(ROOT_PMSET) && ROOT_PMSET; if (!bin) throw new Error('pmset not found');
+  const run = lidRuns(on, mode, bin);
+  const viaDialog = () => execFileP(...run.dialog, { timeout: 5 * 60_000 });
+  // no terminal: sudo's stdin is nothing, so a password it cannot get is a quick failure, not a wait
+  const viaSudo = () => new Promise((res, rej) => execFile(...run.sudo, { timeout: 90_000, env: { ...process.env, SUDO_ASKPASS: '' } }, (err, so, se) => err ? rej(Object.assign(err, { stderr: se })) : res()).stdin?.end());
+  lidAsking = mode === 'none' ? execFileP(...run.plain, { timeout: 10_000 }) : mode === 'osascript' ? viaDialog()
     : viaSudo().catch(e => { console.log(`[peixairada] sudo pmset did not go through (${String(e.stderr || e.message).trim().split('\n')[0]}) — asking with the dialog`); return viaDialog(); });
   try { await lidAsking; }
   catch (e) { throw new Error(/-128|cancel/i.test(String(e.stderr || e.message)) ? 'cancelled' : String(e.stderr || e.message).trim().split('\n')[0]); }
@@ -4274,7 +4288,7 @@ server.on('upgrade', (req, socket, head) => { booted.promise.then(() => attachTe
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms, foreignTo };
+export { sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, moveTurn, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {

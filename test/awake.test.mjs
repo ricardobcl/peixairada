@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { alive, startTestServer, waitFor } from '../lib/testserver.mjs';
+import { alive, startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 
 const put = (srv, body) => srv.api('api/awake', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
@@ -55,6 +55,24 @@ test('lid: pmset disablesleep, read back — whoever set it — and a failure sa
     const fail = await put(srv, { lid: true });
     assert.deepEqual([fail.status, fail.body.error, fail.body.lid], [500, 'pmset: must be run as root', false]);
   } finally { await srv.stop(); }
+});
+
+// As root it is the system's pmset, whatever the PATH or PMSET_BIN finds (2026-10-14): a pmset in ~/.local/bin, a shim or
+// Homebrew's ran through sudo and the administrator dialog. Read off the commands (lidRuns) — no test runs sudo or osascript.
+test('lid: sudo and the dialog run /usr/bin/pmset, never the one found; the one found runs only as it is', async () => {
+  const tmp = tmpDir();
+  process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
+  const { lidRuns } = await import('../server.mjs');
+  const found = join(tmp, 'bin', 'pmset');   // what PMSET_BIN or a writable folder on the PATH would hand over
+  for (const mode of ['sudo', 'osascript']) {
+    const r = lidRuns(true, mode, found);
+    assert.deepEqual(r.sudo, ['/usr/bin/sudo', ['/usr/bin/pmset', '-a', 'disablesleep', '1']], `${mode}: sudo runs the system's`);
+    assert.equal(r.dialog[0], '/usr/bin/osascript');
+    assert.match(r.dialog[1][1], /^do shell script quoted form of "\/usr\/bin\/pmset" & " -a disablesleep 1" .* with administrator privileges$/, `${mode}: the dialog runs the system's`);
+    assert.ok(!JSON.stringify(r).includes(found), `${mode}: the one found is in no command run as root`);
+    assert.equal(r.plain, undefined);
+  }
+  assert.deepEqual(lidRuns(false, 'none', found), { plain: [found, ['-a', 'disablesleep', '0']] }, 'AWAKE_ADMIN=none: the one found, as it is');
 });
 
 test('power: the idle sleep the Mac is set to on the power it draws from, and that power, as pmset says', { timeout: 20_000 }, async () => {
