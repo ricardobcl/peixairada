@@ -5,7 +5,7 @@
 // after a hand edit, never written over while it does not parse; and the first run, which asks where the repos live.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -104,6 +104,27 @@ test('the config file: moved out of the state file, read back after a hand edit,
     await srv.stop();
     rmSync(home, { recursive: true, force: true });
   }
+});
+
+// A save is the file as it stood with the board's keys put in (2026-10-14): a key the board does not know — a note, a
+// newer board's — was dropped by every save from the Setup; and it is written beside the file's real path and renamed
+// over it, where a write in place cut short left half a file — a symlink into a dotfiles repo staying one either way.
+test('a Setup save keeps the keys it does not know and a dotfiles symlink, and leaves no half file', { timeout: 60_000 }, async () => {
+  const dir = tmpDir('peix-'), dots = join(dir, 'dotfiles'), target = join(dots, 'peixairada.json'), link = join(dir, 'config.json');
+  mkdirSync(dots);
+  writeFileSync(target, JSON.stringify({ '//': 'roots are set on the other Mac', quick: 'old', projects: { widgets: { abbr: 'WG' } }, editorHints: { zed: true } }, null, 2));
+  chmodSync(target, 0o600);
+  symlinkSync(target, link);
+  const srv = await startTestServer({ dir });
+  try {
+    assert.equal((await put(srv, { quick: 'new' })).status, 200);
+    assert.ok(lstatSync(link).isSymbolicLink(), 'the link stays a link');
+    assert.deepEqual(JSON.parse(readFileSync(target, 'utf8')), { '//': 'roots are set on the other Mac', quick: 'new', projects: { widgets: { abbr: 'WG' } }, editorHints: { zed: true } }, 'the target written: the board\'s key, the others as they were, in their order');
+    assert.deepEqual(Object.keys(JSON.parse(readFileSync(target, 'utf8'))), ['//', 'quick', 'projects', 'editorHints'], 'in their order');
+    assert.equal(statSync(target).mode & 0o777, 0o600, 'its mode kept');
+    assert.deepEqual(readdirSync(dots).filter(f => f.endsWith('.tmp')), [], 'nothing left beside it');
+    assert.equal((await srv.api('api/config')).body.quick, 'new');
+  } finally { await srv.stop(); }
 });
 
 test('the first run: asked until answered, the guesses from the chats, a folder made on request', { timeout: 60_000 }, async () => {

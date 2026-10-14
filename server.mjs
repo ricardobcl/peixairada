@@ -49,7 +49,7 @@
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import {
-  accessSync, appendFileSync, chmodSync, closeSync, constants as fsc, existsSync, fstatSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, watch, writeFileSync
+  accessSync, appendFileSync, chmodSync, closeSync, constants as fsc, existsSync, fstatSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, readlinkSync, readSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, watch, writeFileSync
 } from 'node:fs';
 import { connect as netConnect } from 'node:net';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
@@ -323,7 +323,9 @@ const boardConfig = () => ({ roots: setup.roots ?? envRoots(), quick: setup.quic
   file: CONFIG_FILE, error: configError, ask: !configError && setup.roots === undefined && !envRoots().length });
 const tildePath = p => p === homedir() || p.startsWith(homedir() + '/') ? '~' + p.slice(homedir().length) : p;
 // The file is the user's as much as the board's: written with two spaces and `~/…` for a folder under the home, so it
-// reads by hand and travels with dotfiles; in place, never by a rename, so a symlink into a dotfiles repo stays one. A
+// reads by hand and travels with dotfiles; into the file as it stands, so a key the board does not know — a note, a
+// newer board's — stays (2026-10-14: a save wrote the board's four alone); beside its real path and renamed over it, so a
+// symlink into a dotfiles repo stays one and a write cut short leaves the file whole (2026-10-14: in place before). A
 // file that does not parse is said in the Setup and never written over — the board keeps what it had until it reads.
 let configError = null;
 let configStamp = 0;   // its mtime as last read or written: the poll's news is a change of it
@@ -340,8 +342,17 @@ function saveConfig() {
   if ('quick' in setup) out.quick = setup.quick;
   if (setup.projects) out.projects = setup.projects;
   if ('jira' in setup) out.jira = setup.jira;
-  try { mkdirSync(dirname(CONFIG_FILE), { recursive: true }); writeFileSync(CONFIG_FILE, JSON.stringify(out, null, 2) + '\n'); configStamp = statSync(CONFIG_FILE).mtimeMs; return null; }
-  catch (e) { console.error('[peixairada] could not save the setup', e.message); return e.message; }
+  const was = readConfigFile().setup || {};
+  let real = CONFIG_FILE;   // a symlink's target, a dangling one's too
+  try { real = realpathSync(CONFIG_FILE); } catch { try { real = resolve(dirname(CONFIG_FILE), readlinkSync(CONFIG_FILE)); } catch {} }
+  const tmp = `${real}.${process.pid}.tmp`;
+  try {
+    mkdirSync(dirname(real), { recursive: true });
+    writeFileSync(tmp, JSON.stringify({ ...was, ...out }, null, 2) + '\n');
+    try { chmodSync(tmp, statSync(real).mode & 0o7777); } catch {}   // the file's own mode, where there was one
+    renameSync(tmp, real);
+    configStamp = statSync(CONFIG_FILE).mtimeMs; return null;
+  } catch (e) { try { rmSync(tmp, { force: true }); } catch {} console.error('[peixairada] could not save the setup', e.message); return e.message; }
 }
 /** At boot, and only then: the setup from CONFIG_FILE — moved there from the state file the first time. Never on an
  *  import: test/agents.test.mjs imports this module with no STATE_FILE of its own, and ran the move against this
