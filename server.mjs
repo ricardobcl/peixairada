@@ -3665,7 +3665,13 @@ function linkTermToRegistry(pid, s, ppids = null) {
     broadcast('terminal', termSummary(t)); schedulePush(s);
     // The chat it left has to be told too, or its card keeps a drawer that is somewhere else now and only
     // something unrelated happening to it ever clears that (2026-09-22, found through drawer-clear's flake).
-    if (was && was !== s) schedulePush(was);
+    if (!was || was === s) continue;
+    // Its zsh tabs go with the drawer (2026-10-14): left on a chat /clear ticks done, they were out of reach of the
+    // chat the drawer runs, and nothing ends a zsh — each ⌥⌘T after a /clear made another. Not while the chat left
+    // still has a claude drawer of its own.
+    if (![...terms.values()].some(o => o.sessionId === was.id && !o.shell && o.exited === null))
+      for (const z of terms.values()) if (z.shell && z.sessionId === was.id && z.exited === null) { z.sessionId = s.id; holderSend(z, { t: 'meta', sessionId: s.id }); broadcast('terminal', termSummary(z)); }
+    schedulePush(was);
   }
 }
 /** One spawn per chat and kind at a time: a drawer is in `terms` only once its holder has answered, a few hundred ms

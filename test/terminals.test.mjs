@@ -197,3 +197,24 @@ test('two asks for a chat\'s drawer at once start one claude, and a pid the regi
     assert.ok(alive(stranger.pid), 'and the process that has its pid now was left alone');
   } finally { stranger.kill(); await srv.stop(); }
 });
+
+test('/clear in a drawer takes the chat\'s zsh tabs along to the new chat (2026-10-14)', { timeout: 40_000 }, async () => {
+  const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: tmpdir() });
+  const chat = fx.chats[1];
+  const srv = await startTestServer({ claudeDir: fx.dir, fake: true });
+  const chatOf = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
+  try {
+    const r = await srv.post(`api/sessions/${chat.id}/terminal`, { cols: 100, rows: 30 });
+    assert.equal(r.status, 201, JSON.stringify(r.body));
+    const t = r.body.terminal;
+    await waitFor(async () => (await chatOf(chat.id))?.alive, { what: 'the resumed chat alive' });
+    const z = await srv.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30 });
+    assert.equal(z.status, 201, JSON.stringify(z.body));
+    const p = attach(srv.url, t.id, { timeout: 3000 }); await p.opened; p.ws.send2({ t: 'in', d: '/clear\r' });
+    const moved = await waitFor(async () => { const id = (await srv.terminals()).find(x => x.id === t.id)?.sessionId; return id !== chat.id && id; }, { what: 'the drawer following /clear' });
+    const zt = (await srv.terminals()).find(x => x.id === z.body.terminal.id);
+    assert.equal(zt.sessionId, moved, 'the zsh is the new chat\'s, as the drawer is');
+    assert.equal(srv.holders().find(h => h.id === zt.id)?.sessionId, moved, 'and its holder was told, for an adoption after a restart');
+    await waitFor(async () => (await chatOf(moved))?.shells?.some(x => x.id === zt.id) && !(await chatOf(chat.id))?.shells?.length, { what: 'the new chat carrying the zsh, the old one none' });
+  } finally { await srv.stop(); }
+});
