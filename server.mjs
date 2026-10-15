@@ -2766,12 +2766,21 @@ async function claudeMem() {
     return { rss: out.reduce((a, b) => a + b, 0) * 1024, n: out.length };
   } catch (e) { return e.code === 1 ? { rss: 0, n: 0 } : { rss: null, n: pids.length }; }   // 1: none of them alive any more
 }
+// The two memories are read at most every MEM_EVERY_MS, one reading for every page that asks (2026-10-15; on every ask
+// before): each is a process (vm_stat, ps), and each page asks every 3 s. CPU is read on every ask — it spawns nothing.
+const MEM_EVERY_MS = 15_000;
+const memRead = new Map();   // 'mem' · 'claude' → { at, p }, the reading's promise
+function memOnce(kind, read) {
+  const r = memRead.get(kind);
+  if (r && Date.now() - r.at < MEM_EVERY_MS) return r.p;
+  const p = read(); memRead.set(kind, { at: Date.now(), p }); return p;
+}
 /** What the status bar asks for: `want` is a set of cpu · mem · claude. */
 async function machineStats(want) {
   const out = {};
   if (want.has('cpu')) out.cpu = cpuBusy();
-  if (want.has('mem')) out.mem = await memUsed();
-  if (want.has('claude')) out.claude = await claudeMem();
+  if (want.has('mem')) out.mem = await memOnce('mem', memUsed);
+  if (want.has('claude')) out.claude = await memOnce('claude', claudeMem);
   return out;
 }
 
