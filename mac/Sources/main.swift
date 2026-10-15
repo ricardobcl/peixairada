@@ -272,6 +272,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   var badged: (waiting: [[String: String]], replies: [[String: String]], moves: [[String: String]], clauding: [[String: String]]) = ([], [], [], [])   // what the badge and the status menu last showed
   var useUN = false              // native notifications available?
   var fillSaved: (frame: NSRect, mask: NSWindow.StyleMask, opts: NSApplication.PresentationOptions)?   // set while ⌃⌘F fills the screen: what to come back to
+  var fillSaid: String?                   // what the page last heard of the fill (tellFill): the same is not said again
   // Which full screen ⌃⌘F is (2026-10-14): the fill, up to the camera housing on this desktop, or the system's, in a Space
   // of its own below the housing — the page's Settings › Look says (`fullscreen`), remembered for the next launch
   var spaceMode = UserDefaults.standard.bool(forKey: kSpaceKey)
@@ -451,9 +452,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       if spaceMode { DispatchQueue.main.async { self.window.toggleFullScreen(nil) } } else { toggleFill(nil) }
     }
     // Filling the screen, the frame is the screen's: it follows the window to another display (Mission Control can
-    // drag it there) and through a change of resolution, and the page hears where the housing is now.
-    for name in [NSWindow.didChangeScreenNotification, NSApplication.didChangeScreenParametersNotification] {
-      NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+    // drag it there) and through a change of resolution, and the page hears where the housing is now. The board's own
+    // window's change of screen only (2026-10-15): with no object it heard every window of the app's. Both come more
+    // often than anything changes — every few seconds in use, measured — so placeFill and tellFill act only on a change.
+    for (name, object) in [(NSWindow.didChangeScreenNotification, window as Any?), (NSApplication.didChangeScreenParametersNotification, nil)] {
+      NotificationCenter.default.addObserver(forName: name, object: object, queue: .main) { [weak self] _ in
         guard let self, self.fillSaved != nil, !self.window.isMiniaturized, let screen = self.window.screen else { return }
         self.placeFill(on: screen)
         self.tellFill()
@@ -1088,7 +1091,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     fillHousing = screen.safeAreaInsets.top > 0
     fillMenuH = max(screen.safeAreaInsets.top, NSApp.mainMenu?.menuBarHeight ?? 0)   // the housing's strip beside one, the main menu's own elsewhere
     if fillMenuH <= 0 { fillMenuH = 24 }
-    NSApp.presentationOptions = fillOptions()
+    let options = fillOptions()
+    if NSApp.presentationOptions != options { NSApp.presentationOptions = options }   // the same again is the Dock's and the menu bar's work for nothing (2026-10-15)
     if window.frame != screen.frame { window.setFrame(screen.frame, display: true) }
   }
   /// The fill's options as things stand: the Dock hidden unless let out; the menu bar auto-hidden beside a housing or
@@ -1288,13 +1292,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// The page hears of the fill (peixFill): on or off and, on a screen with a camera housing, where the housing is in
   /// its own px — the strip's height and the x range the housing covers — so its top row keeps out of it and uses the
   /// strips either side. Sent on every toggle, on a change of screen, and when the board has loaded (a reload forgets).
+  /// Only when it says something new (2026-10-15, `fillSaid`): peixFill lays the top row out again, which reads the
+  /// layout — after a screen's notification, a full style and layout of the board at once, ~0.5 s of the main thread
+  /// in a page open for hours — and the screen's notifications came every few seconds with nothing changed.
   func tellFill() {
     var notch = "null"
     if fillSaved != nil, let screen = window.screen, screen.safeAreaInsets.top > 0,
        let l = screen.auxiliaryTopLeftArea, let r = screen.auxiliaryTopRightArea {
       notch = "{top: \(screen.safeAreaInsets.top / zoom), left: \((l.maxX - window.frame.minX) / zoom), right: \((r.minX - window.frame.minX) / zoom)}"
     }
-    web.evaluateJavaScript("window.peixFill && window.peixFill(\(fillSaved != nil), \(notch))", completionHandler: nil)
+    let js = "window.peixFill && window.peixFill(\(fillSaved != nil), \(notch))"
+    if js == fillSaid { return }
+    fillSaid = js
+    web.evaluateJavaScript(js, completionHandler: nil)
   }
   @objc func restartServer(_ sender: Any?) {
     guard !recovering else { return }   // a start or a restart is already on its way
@@ -1554,7 +1564,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         boardPid = pid; logLine("board: web process \(pid)")
       }
     }
-    tellFill()   // a reload forgets the fill
+    fillSaid = nil; tellFill()   // a reload forgets the fill
   }
   /// The board's web process gone (killed under memory pressure, crashed): WebKit leaves the view blank and reloads
   /// nothing, and the watchdog only asks the server.
