@@ -1,7 +1,8 @@
 // Home (2026-10-10). Three chats from today: one asked a question that waited on you a quarter of an hour, one a plain
 // turn, one clauding now. What this checks: with no chat open the column is the home — the fish and the board's facts,
 // and the day: a row per chat with its turns, the question hatched as a wait, the clauding one running to now, and the
-// sum (one question, the longest wait its chat's); a row opens its chat, and ⌥⌘0 comes back home from it.
+// sum (one question, the longest wait its chat's); a row opens its chat, and ⌥⌘0 comes back home from it; and the sea
+// rests after a minute alone (2026-10-15), until the pointer moves.
 import { spawn } from 'node:child_process';
 import { makeFixture, replyLines, toolLines } from '../fixture.mjs';
 
@@ -58,6 +59,15 @@ export default async function (ctx) {
     await ctx.waitFor(`window.peix.state().current === '${plain.id}' && !document.querySelector('#home')`, { what: 'the row’s chat open' });
     await ctx.key('Digit0');
     await ctx.waitFor(`!window.peix.state().current && document.querySelectorAll('#home .hrow').length >= 3`, { what: 'home again' });
+
+    // the sea rests after a minute with nothing from the pointer, the keys or the wheel (2026-10-15), on the frame it drew
+    // last, and a move of the pointer starts it again
+    await ctx.waitFor(`window.peix.sea().running && window.peix.sea().frames > 0`, { what: 'the sea running' });
+    await ctx.waitFor(`window.peix.sea().resting && !window.peix.sea().running`, { what: 'the sea at rest after a minute alone', timeout: 75_000, every: 1000 });
+    out.still = await ctx.evaluate(`window.peix.sea().frames`); await ctx.sleep(1500);
+    ctx.assert.equal(await ctx.evaluate(`window.peix.sea().frames`), out.still, 'no frame drawn at rest');
+    await mouse('mouseMoved', 300, 300);
+    await ctx.waitFor(`window.peix.sea().running && window.peix.sea().frames > ${out.still}`, { what: 'the sea again after a move' });
     return out;
   } finally { try { sleeper.kill(); } catch {} }
 }

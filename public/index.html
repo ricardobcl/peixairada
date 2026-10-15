@@ -6986,7 +6986,7 @@ const toolName = n => {
   // A read-only window on this closure for the console and the harness (scripts/scenario.mjs reads it as ctx.peix):
   // copies, never the live objects. The page's script is one IIFE, so nothing else in it is reachable.
   window.peix = {
-    sea: () => ({ leaping: !!sea.leap, frames: sea.frames || 0, running: !!sea.raf, cell: sea.cell }),   // home's sea (2026-10-12)
+    sea: () => ({ leaping: !!sea.leap, frames: sea.frames || 0, running: !!sea.raf, resting: sea.rested, cell: sea.cell }),   // home's sea (2026-10-12)
     // `rendering`: a draw still to come — the list's (renderBoardSoon) and the frames queued after one (2026-10-14: the
     // counts' roll, the fades, the list's ends and timeline, the rings' phase), which ctx.settle() missed
     state: () => ({ current: state.current, snapshots: state.snapshots, rendering: !!(renderBoardSoon.t || rollSoon.f || fadeSoon.f || listChanged.queued || phaseAnims.queued), project: prefs.project, person: prefs.person, sessions: state.sessions.size, pins: [...state.pins], paneVisible: state.paneVisible, paneLeft: state.paneLeft, fill: state.fill, notch: state.notch, hidden: [...state.hidden],
@@ -8173,7 +8173,9 @@ const toolName = n => {
   // size its brightness), each in the palette colour nearest its hue. What is the board's: the fish, from FISH, leaps
   // out of the glitter now and then — and on a click — dark against the sun; and the drawing: each glyph drawn once
   // into a mask, and every frame blitted into one ImageData, at 15 frames a second while home is on screen and the
-  // page in view; one still frame, the fish at the top of its leap, under reduced motion.
+  // page in view; one still frame, the fish at the top of its leap, under reduced motion. At rest after a minute with
+  // no pointer, key or wheel on the page (2026-10-15, SEA_REST_MS): it ran at 13–21 % of a core, the dearest thing on
+  // the board; it stops on the frame it last drew, and any of them starts it again (seaStir).
   //
   // ocean-sunset.ts from https://github.com/bas3line/ascii — MIT License, Copyright (c) 2026 bas3line
   // (https://github.com/bas3line). Permission is hereby granted, free of charge, to any person obtaining a copy of this
@@ -8639,8 +8641,10 @@ const toolName = n => {
   }
     return makeSea;
   })();
-  const sea = { s: null, cv: null, img: null, lut: null, masks: null, cell: 0, t0: 0, last: 0, raf: 0, leap: null, next: 0 };
-  const SEA_W = 200, SEA_H = 100, SEA_HZ = 56, SEA_FPS = 15, LEAP_MS = 1700;
+  const sea = { s: null, cv: null, img: null, lut: null, masks: null, cell: 0, t0: 0, last: 0, raf: 0, leap: null, next: 0, stirAt: 0, rested: false };
+  const SEA_W = 200, SEA_H = 100, SEA_HZ = 56, SEA_FPS = 15, LEAP_MS = 1700, SEA_REST_MS = 60_000;
+  const seaStir = () => { sea.stirAt = performance.now(); if (sea.rested && sea.cv?.isConnected && !state.current) seaRun(); };
+  for (const ev of ['pointermove', 'pointerdown', 'keydown', 'wheel']) document.addEventListener(ev, seaStir, { capture: true, passive: true });
   // the fish's cells for this moment of a leap: FISH at .85 scale, mirrored when it swims right, turned along its path
   function seaFish(lvl, col, u, lp) {
     const x = lp.x0 + lp.dir * 44 * u, y = lp.y0 - 24 * 4 * u * (1 - u), vx = lp.dir * 44, vy = -24 * 4 * (1 - 2 * u);
@@ -8681,8 +8685,8 @@ const toolName = n => {
     sea.frames = (sea.frames || 0) + 1;
   }
   function seaMount(cv) {
-    if (sea.cv === cv && sea.s) return seaRun();
-    sea.cv = cv; sea.s ||= makeSea();
+    if (sea.cv === cv && sea.s) { if (!sea.rested) seaRun(); return; }   // home drawn again (every few seconds): a sea at rest stays so
+    sea.cv = cv; sea.s ||= makeSea(); sea.stirAt = performance.now();   // home come up: a minute before it rests
     const cell = sea.cell = Math.max(3, Math.round(2.6 * (devicePixelRatio || 1)));   // a dot of ~2.6 px: the sea ~520 px wide beside the facts
     cv.width = SEA_W * cell; cv.height = SEA_H * cell; cv.style.width = `${SEA_W * cell / (devicePixelRatio || 1)}px`;
     sea.img = new ImageData(cv.width, cv.height);
@@ -8707,9 +8711,11 @@ const toolName = n => {
   }
   function seaRun() {
     if (sea.raf || REDUCED.matches) return;
+    sea.rested = false;
     const step = now => {
       sea.raf = 0;
       if (!sea.cv?.isConnected || state.current) return;   // home gone: the loop ends, showHome starts it again
+      if (now - sea.stirAt > SEA_REST_MS && !sea.leap) { sea.rested = true; return; }   // nobody about: the last frame stays
       if (document.visibilityState === 'visible' && now - sea.last >= 1000 / SEA_FPS - 2) {
         sea.last = now;
         if (!sea.leap && now >= sea.next) seaLeap(now);
