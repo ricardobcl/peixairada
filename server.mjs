@@ -2781,8 +2781,9 @@ async function machineStats(want) {
 // to sleep, and caffeinate gone by itself when the server goes (-w) — the switch is in the state file, so a restart
 // starts it again. Closing the lid still sleeps the Mac; *lid closed* is `pmset -a disablesleep 1`, which root alone may
 // set: each turn goes through sudo — Touch ID where it takes it — else osascript's administrator dialog (a password).
-// The setting is the system's — it outlives the server and a reboot — so it is read back (`pmset -g`: SleepDisabled) on
-// every poll rather than remembered, and shown whoever set it. So are the idle sleep the Mac is set to on the power it
+// The setting is the system's — it outlives the server and a reboot — so it is read back (`pmset -g`: SleepDisabled)
+// every minute (POWER_POLL_MS, 2026-10-15; on every registry poll before) rather than remembered, and shown whoever set
+// it; the board's own switch and GET /api/awake read it at once. So are the idle sleep the Mac is set to on the power it
 // draws from now (`sleep`, in minutes, 0 for never) and that power (`pmset -g ps`) (2026-10-09): on a charger set never
 // to sleep, the cup has nothing to hold off, and the page says so. Tests: CAFFEINATE_BIN and PMSET_BIN are the fakes,
 // and AWAKE_ADMIN=none runs pmset as it is — the only way PMSET_BIN sets anything (lidRuns).
@@ -2791,6 +2792,7 @@ let lidOff = false;         // SleepDisabled, as pmset last said
 let idleSleep = null;       // the minutes idle before the Mac sleeps on the power it draws from now, 0 never; null unread
 let powerSrc = null;        // 'ac' · 'battery' · 'ups', as pmset last said; null unread
 let lidAsking = null;       // Touch ID or a password dialog up: the next turn waits for it
+const POWER_POLL_MS = Number(process.env.POWER_POLL_MS || 60_000);   // two pmsets a look; a test server's is 1.2 s
 const awakeState = () => ({ awake: awakeOn && !!caffeinate, lid: lidOff, idleSleep, power: powerSrc });
 const sayAwake = () => broadcast('awake', awakeState());
 /** The switch: on starts caffeinate (once), off ends it. Answers the state, or throws when caffeinate cannot run. */
@@ -3868,7 +3870,7 @@ function termEnv() {
 // added to the server joins the list (terminals.test reads the server for them).
 const BOARD_ENV = new Set(['PORT', 'HOST', 'NOTIFY', 'USAGE', 'STATE_FILE', 'CONFIG_FILE', 'TERMS_DIR', 'SCRATCH_DIR', 'ORG', 'ORG_DIR', 'APP_DIRS', 'BOARD_APP', 'AWAKE_ADMIN',
   'MAX_ENTRIES', 'TAIL_BYTES', 'CHANGES_MAX', 'JIRA_TOKEN_FILE', 'JIRA_CONFIG_FILE', 'UPDATE_DIR', 'VSWEB_PORT', 'VSWEB_UPDATE_URL',
-  'AGENT_STALE_MS', 'CLONE_MS', 'CONFIG_POLL_MS', 'DRAWER_IDLE_MS', 'MONITOR_MS', 'PR_TTL_MS', 'PR_WATCH_MS', 'REGISTRY_POLL_MS', 'TASK_GRACE_MS', 'TASK_MAX_MS',
+  'AGENT_STALE_MS', 'CLONE_MS', 'CONFIG_POLL_MS', 'POWER_POLL_MS', 'DRAWER_IDLE_MS', 'MONITOR_MS', 'PR_TTL_MS', 'PR_WATCH_MS', 'REGISTRY_POLL_MS', 'TASK_GRACE_MS', 'TASK_MAX_MS',
   'TICKET_TTL_MS', 'UPDATE_EVERY_MS', 'UPDATE_QUIET_MS', 'VSWEB_FRESH_MS', 'WT_SWEEP_MS', 'UPDATE_RESTART_BIN', 'UPDATE_BUILD_BIN', 'PEIX_TEST_PARENT',
   ...['claude', 'gh', 'git', 'task', 'code', 'npm', 'brew', 'caffeinate', 'pmset', 'lsregister', 'lsof', 'ps'].map(n => `${n.toUpperCase()}_BIN`)]);   // findBin's
 const drawerEnv = () => Object.fromEntries(Object.entries(termEnv()).filter(([k]) => !BOARD_ENV.has(k)));
@@ -4906,8 +4908,8 @@ setInterval(() => {
   if (Date.now() - wtSweptAt > WT_SWEEP_MS) sweepWorktrees();   // the trees made for a PR since merged or closed
   sweepPrs();
   sweepTickets();
-  readPower();   // the lid's setting and idle sleep are the system's: whoever changes them, or the charger, the marks follow
 }, REGISTRY_POLL_MS);
+setInterval(readPower, POWER_POLL_MS);   // the lid's setting and idle sleep are the system's: whoever changes them, or the charger, the marks follow
 console.log(`[peixairada] indexed ${sessions.size} sessions (${[...sessions.values()].filter(s => s.alive).length} alive) from ${CLAUDE_DIR} in ${Date.now() - t0}ms`);
 
 if (existsSync(SESSIONS_DIR)) {
