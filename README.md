@@ -148,10 +148,11 @@ notifications.
 | [Zed](https://zed.dev) | file links in Zed instead (Settings › Board) | none: picking it installs it |
 | [Task](https://taskfile.dev) | new chats in folders whose Taskfile starts Claude | `brew install go-task` |
 
-**Updating**: the status bar says when new commits have come; click it, then *update now*. It pulls them — a
-fast-forward, never over a change of yours — and restarts only what they changed: the packages, the server (your chats
-stay open), the page, the app. *Update itself*, beside it, does so on its own once you've left the board be for two
-minutes. By hand: `git pull && npm install && scripts/launchd.sh restart` — the board's page follows —, and
+**Updating**: the status bar says when new commits have come; click it and it pulls them — a fast-forward that leaves
+your own changes as they are — and restarts only what they changed: the packages, the server (your chats stay open),
+the page, the app. When a file you changed is one the commits change too, or your branch has commits of its own,
+Settings › Updates names it and the command that clears the way. *Update itself* pulls on its own once you've left the
+board be for two minutes, and never while a file is changed here. By hand: `git pull && npm install && scripts/launchd.sh restart` — the board's page follows —, and
 `mac/build.sh install` when `mac/` changed. After switching Node versions, or installing a CLI outside the `PATH` you
 installed with, run the last two install lines again.
 

@@ -18,6 +18,8 @@
 //      · …and the short ways of naming one (2026-10-06)
 //      · …and whether they are open, merged or closed
 //      · …and whose move it is
+//      · …and its history (2026-10-15)
+//      · …and the chat's own hand on it (2026-10-15)
 //      · Jira tickets named in the chat (2026-10-08)
 //      · the branch moved under a chat (2026-10-13)
 //  Sub-agents: <slug>/<id>/subagents/agent-*.jsonl — one at work keeps the chat clauding
@@ -3565,7 +3567,7 @@ function updateParts(files) {
   }
   return ['deps', 'server', 'page', 'app'].filter(k => has.has(k));
 }
-const updateState = () => { const { remote, merge, ...u } = upd; return { on: autoUpdate, every: UPDATE_EVERY_MS, quiet: UPDATE_QUIET_MS, ...u, last: updateLast, held: updateHeld, build: appBuild }; };
+const updateState = () => { const { remote, merge, ...u } = upd; return { on: autoUpdate, every: UPDATE_EVERY_MS, quiet: UPDATE_QUIET_MS, dir: tildePath(UPDATE_DIR), ...u, last: updateLast, held: updateHeld, build: appBuild }; };   // dir: the settings' commands cd there (2026-10-15)
 const sayUpdate = () => broadcast('update', updateState());
 /** The environment of what an update runs: the server's, minus the nesting markers and the agent's own name, with the
  *  running node first on PATH (npm and build.sh want a node, and the agent's PATH may have none), and git never asking. */
@@ -3580,13 +3582,16 @@ function gitIn(args, timeout = 30_000) {
   if (!bin) return Promise.reject(new Error('git is not installed'));
   return execFileP(bin, ['--no-optional-locks', '-C', UPDATE_DIR, ...args], { env: updateEnv(), timeout, maxBuffer: 8 << 20 }).then(r => r.stdout.trim());
 }
-/** Where the checkout stands, read locally: its branch and upstream, how far each is past the other, how many tracked
- *  files are changed. Not a checkout — the app's bundled copy, or a folder inside some other repository — is `checkout: false`. */
+/** Where the checkout stands, read locally: its branch and upstream, how far each is past the other, the tracked files
+ *  changed here (`dirty` how many, `changed` the first by name) and, behind, those of them the new commits change too
+ *  (`clash`: what *update now* cannot pull over, 2026-10-15). Not a checkout — the app's bundled copy, or a folder inside
+ *  some other repository — is `checkout: false`. */
+const CHANGED_MAX = 20;   // the changed files named to the page; `dirty` counts them all
 async function readCheckout() {
   const top = await gitIn(['rev-parse', '--show-toplevel']).catch(() => '');
   let here = UPDATE_DIR; try { here = realpathSync(UPDATE_DIR); } catch {}
   if (!top || realpathSync(top) !== here) return { checkout: false };
-  const co = { checkout: true, head: await gitIn(['rev-parse', 'HEAD']), branch: null, upstream: null, up: null, ahead: 0, behind: 0, dirty: 0, remote: null, merge: null };
+  const co = { checkout: true, head: await gitIn(['rev-parse', 'HEAD']), branch: null, upstream: null, up: null, ahead: 0, behind: 0, dirty: 0, changed: [], clash: [], remote: null, merge: null };
   co.branch = await gitIn(['symbolic-ref', '--quiet', '--short', 'HEAD']).catch(() => null);
   if (!co.branch) return co;
   co.remote = await gitIn(['config', `branch.${co.branch}.remote`]).catch(() => null);
@@ -3595,7 +3600,10 @@ async function readCheckout() {
   if (!co.upstream) return co;
   co.up = await gitIn(['rev-parse', '@{u}']);
   [co.ahead, co.behind] = (await gitIn(['rev-list', '--left-right', '--count', 'HEAD...@{u}'])).split(/\s+/).map(Number);
-  co.dirty = (await gitIn(['status', '--porcelain', '--untracked-files=no'])).split('\n').filter(Boolean).length;
+  const names = async (...args) => (await gitIn(['diff', '--name-only', '--no-renames', '-z', ...args])).split('\0').filter(Boolean);
+  const changed = [...new Set([...await names('HEAD'), ...await names('--cached')])];   // the work tree's and the index's
+  co.dirty = changed.length; co.changed = changed.slice(0, CHANGED_MAX);
+  if (changed.length && co.behind && !co.ahead) { const theirs = new Set(await names('HEAD', '@{u}')); co.clash = changed.filter(f => theirs.has(f)); }
   return co;
 }
 /** The installed app against the checkout (2026-10-14): build.sh stamps the app with the tree of mac/ it was built from
@@ -3619,7 +3627,7 @@ function whyNot(asked, apply) {
   if (!upd.upstream) return 'no-upstream';
   if (!upd.behind) return 'current';
   if (upd.ahead) return 'diverged';
-  if (upd.dirty) return 'changes';
+  if (upd.dirty && (!apply || upd.clash.length)) return 'changes';   // *update now* pulls over them (2026-10-15) — a fast-forward keeps them —, never over one the commits change too
   if (!autoUpdate && !apply) return 'off';
   if (updateHeld?.to === upd.up && !apply) return 'held';
   const rest = quietLeft();
@@ -3671,7 +3679,7 @@ async function applyUpdate() {
   upd.steps = ['pull', ...(has('deps') ? ['deps'] : []), ...(checkPage ? ['page'] : []), ...(has('server') ? ['server'] : []), ...(buildBin && (has('app') || upd.app?.behind) ? ['build'] : []), ...(has('server') && restartBin ? ['restart'] : [])];
   const step = k => { upd.step = upd.steps.indexOf(k); sayUpdate(); };
   step('pull');
-  await gitIn(['merge', '--ff-only', '--quiet', to], 60_000);
+  await gitIn(['merge', '--ff-only', '--quiet', to], 60_000).catch(e => { throw new Error(mergeRefused(e) || errText(e)); });
   try {
     if (has('deps')) { step('deps'); await npmInstall(); }
     await preflight(parts, to, step);
@@ -3700,6 +3708,16 @@ async function applyUpdate() {
   upd.appWhy = appWhyNot(true, true, false);   // the commits taken: the app comes along whenever it is behind them
   if (!upd.appWhy) { step('build'); startBuild(); }
   if (has('server') && restartBin) { upd.restarting = true; step('restart'); setTimeout(() => detach(restartBin, ['restart', '--detached']), 1000); }   // the answer and the event go out first
+}
+/** git's refusal to fast-forward over files here, said as the settings say a clash (2026-10-15): which files, and what
+ *  to do about them — a change made since the look, or a file not in git that the commits add. Null for any other failure. */
+function mergeRefused(e) {
+  const m = /(local changes to the following files|untracked working tree files) would be (?:overwritten|removed) by merge:\n((?:\t.*\n?)+)/.exec(String(e?.stderr || ''));
+  if (!m) return null;
+  const files = m[2].split('\n').map(f => f.trim()).filter(Boolean), it = files.length === 1 ? 'it' : 'them';
+  const list = files.slice(0, 3).join(', ') + (files.length > 3 ? ` and ${files.length - 3} more` : '');
+  return m[1].startsWith('untracked') ? `not pulled: ${list}, not in git here, would be written over by the new commits — move ${it} away, then check now`
+    : `not pulled: ${list} changed here, and the new commits change ${it} too — commit or discard ${it}, then check now`;
 }
 /** The app's rebuild, followed to its end: by its exit while this server is its parent, else — after the restart that
  *  usually comes with it — by its pid every few seconds and its log's last word (build.sh says `installed →`). Kept as

@@ -6,7 +6,7 @@ import './env.mjs';   // first: server.mjs reads where its state lives as it is 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { chmodSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { updateParts } from '../server.mjs';
@@ -20,7 +20,7 @@ test('what a change asks for: packages, the server, the page, the app — and no
   assert.deepEqual(updateParts(['docs/DECISIONS.md', 'test/update.test.mjs', 'scripts/scenarios/x.mjs', 'CLAUDE.md']), []);
 });
 
-test('a pull, asked for: fast-forwarded, what it touched started again, a commit that does not start held back, and nothing over a change here', { timeout: 60_000 }, async () => {
+test('a pull, asked for: fast-forwarded, what it touched started again, a commit that does not start held back, and over a change here only when asked', { timeout: 60_000 }, async () => {
   const p = project(), dir = tmpDir('peix-');
   writeFileSync(join(dir, 'state.json'), JSON.stringify({ autoUpdate: true }));   // as every save wrote it on 2026-10-12, when on was the default
   const srv = await startTestServer({ dir, env: { ...p.env, UPDATE_QUIET_MS: '60000' } });
@@ -95,15 +95,35 @@ test('a pull, asked for: fast-forwarded, what it touched started again, a commit
     assert.deepEqual(st.last.parts, ['deps', 'server']);
     assert.ok(p.asked().includes('npm install --no-audit --no-fund'), p.asked().join('\n'));
 
-    // a tracked file changed here: said, and nothing pulled over it
+    // a tracked file changed here: said by name, and never pulled over by itself — update now pulls over it, and keeps
+    // it (2026-10-15: a package-lock.json npm rewrote left a board with no way to its updates)
     p.write(p.co, { 'README.md': 'mine\n' });
-    const f = p.push({ 'public/index.html': PAGE + '<!-- f -->\n' });
-    const before = p.head();
+    const f0 = p.push({ 'public/index.html': PAGE + '<!-- f -->\n' });
+    let before = p.head();
     st = await look();
-    assert.deepEqual([st.why, st.dirty, st.behind, p.head()], ['changes', 1, 1, before]);
-    p.git(p.co, 'checkout', 'README.md');
+    assert.deepEqual([st.why, st.dirty, st.changed, st.clash, st.behind, p.head()], ['changes', 1, ['README.md'], [], 1, before]);
+    st = await look({ apply: true });
+    assert.deepEqual([st.why, st.error, p.head(), readFileSync(join(p.co, 'README.md'), 'utf8')], ['current', null, f0, 'mine\n'], 'pulled, the change kept');
+
+    // ...but not over a file the new commits change too: said by name, update now or not
+    before = p.head();
+    p.push({ 'README.md': 'theirs\n' }, 'the readme');
+    st = await look({ apply: true });
+    assert.deepEqual([st.why, st.clash, st.behind, st.error, p.head()], ['changes', ['README.md'], 1, null, before]);
+    p.git(p.co, 'checkout', 'HEAD', '--', 'README.md');
+
+    // a file not in git here that the commits add: git refuses the fast-forward, and the refusal is said in words
+    p.write(p.co, { 'new.txt': 'mine\n' });
+    const f1 = p.push({ 'new.txt': 'theirs\n' }, 'a new file');
+    st = await look({ apply: true });
+    assert.deepEqual([st.error, st.failed, p.head()], ['not pulled: new.txt, not in git here, would be written over by the new commits — move it away, then check now', st.error, before]);
+    rmSync(join(p.co, 'new.txt'));
+    st = await look({ apply: true });
+    assert.deepEqual([st.why, st.failed, p.head()], ['current', null, f1]);
 
     // the switch off: said, not taken — unless asked to (update now)
+    before = p.head();
+    const f = p.push({ 'public/index.html': PAGE + '<!-- f2 -->\n' });
     assert.equal(await turn(false), false);
     st = await look();
     assert.deepEqual([st.why, st.behind, p.head()], ['off', 1, before]);

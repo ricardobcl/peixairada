@@ -5,6 +5,34 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-15. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-15 — update now over a change here
+
+Ricardo: "a user was on hash 9027aad and the status bar update click went to settings intead of updated. also, on
+settings the "check now" just refreshed sayint that it had new commits, but doesn't do anything, not give a force update
+option" — the board in question had `package-lock.json` changed by an `npm install`; of the three ways out offered,
+"Let's do 1 and 2": *update now* over the change, and settings that say what is in the way.
+
+* **What was wrong**: a tracked file changed here was `changes`, and nothing pulled over it, *update now* included.
+  The status bar's *· changes here* opened Settings (as decided on 2026-10-14), whose line said how many files and no
+  more, and whose button stayed *check now* — a look that found the same. A board with a lockfile npm had rewritten had
+  no way to its updates from the board at all.
+* **Update now pulls over a change** (`whyNot`: `changes` only without `apply`): a fast-forward leaves the work tree's
+  changes as they are, and git itself refuses one that would write over them; the undo of a pre-flight that failed is
+  `reset --keep`, which keeps them as well. **By the clock, never**: the switch on, a changed file still holds the
+  update — a session's work in progress is not pulled under. So the status bar's word is *N new commits · update* and
+  takes it, and the settings say the files it leaves as they are.
+* **Not over a file the commits change too** (`clash`, read with the checkout: the changed files — the index's and the
+  work tree's, `changed`, by name — met with `git diff --name-only HEAD @{u}`): said before anyone clicks — *not pulled:
+  package-lock.json changed here, and the new commits change it too — commit or discard it (`cd … && git checkout HEAD
+  -- package-lock.json` discards), then check now* —, the word *· changes here*, the button *check now*. **No force**:
+  discarding someone's change is a command they run, never the board's click.
+* **A refusal git makes anyway is said in words** (`mergeRefused`): a change made since the look, or a file not in git
+  that the commits add (which `status --untracked-files=no` never names), comes back as git's list turned into the same
+  sentence, not git's last line (*Aborting*).
+* **Diverged says what to run**: *`cd … && git pull --rebase` puts the one here on top, then check now* — a rebase is
+  not a fast-forward, so the board does not do it. The commands `cd` to the checkout (`dir` on the update's state, `~`
+  for the home).
+
 ## Decisions of 2026-10-15 — a PR's history, said where you look
 
 Ricardo: "having more visibility and control of what's the status of the chat in relation with the PR or PRs is a bit

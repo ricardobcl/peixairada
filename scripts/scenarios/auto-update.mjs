@@ -8,8 +8,9 @@
 // new server before the page reloads; the switch is the server's. The status bar says it all as it goes: a page waiting
 // to be reloaded, the restart, a step under way with its bar (the packages, slowed down here), new commits not taken
 // and why — a click opening Settings › Updates, or, on news *update now* would take, taking it (2026-10-14: *1 new commit
-// · update*). Last (2026-10-14): a commit made in the checkout itself, which no pull brings, leaves the installed app
-// behind mac/ — said in the bar and the settings, and a click on the bar's word rebuilds it alone.
+// · update*), over a file changed here too unless the commits change it (2026-10-15). Last (2026-10-14): a commit made
+// in the checkout itself, which no pull brings, leaves the installed app behind mac/ — said in the bar and the settings,
+// and a click on the bar's word rebuilds it alone.
 import { execFileSync } from 'node:child_process';
 import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -154,9 +155,19 @@ export default async function (ctx) {
     ctx.assert.deepEqual([out.offSeg.text, out.offSeg.take], ['1 new commit · update', '1'], 'what a click on it does, said');
     await barShot('4-bar-new');
 
-    // a tracked change here: not pulled over — the word says why, and a click opens Settings › Updates instead
+    // a tracked change here (2026-10-15): said by name, and pulled over by a click — git keeps it
     const dirty = join(co, 'scripts', 'check-page.mjs'), clean = readFileSync(dirty, 'utf8');
     writeFileSync(dirty, `${clean}// mine\n`);
+    await ctx.server.post('/api/update', {});
+    await ctx.waitFor(`/leaves/.test(document.querySelector('#sbLeft .upg.new')?.title)`, { what: 'the status bar naming the change it keeps' });
+    out.keepSeg = await seg();
+    ctx.assert.deepEqual([out.keepSeg.text, out.keepSeg.take], ['1 new commit · update', '1'], 'a change the commits do not touch stops nothing');
+    ctx.assert.match(out.keepSeg.tip, /^1 new commit on origin\/main — update now takes them and leaves scripts\/check-page\.mjs changed here as it is · /);
+
+    // one the new commits change too: not pulled — the word says why, and a click opens Settings › Updates, which name it
+    // and say how to discard it
+    const mine = join(co, 'public', 'index.html'), theirs = readFileSync(mine, 'utf8');
+    writeFileSync(mine, `${theirs}<!-- mine -->\n`);
     await ctx.server.post('/api/update', {});
     await ctx.waitFor(`document.querySelector('#sbLeft .upg.new')?.textContent === '1 new commit · changes here'`, { what: 'the status bar saying why it is not taken' });
     out.changesSeg = await seg();
@@ -164,21 +175,25 @@ export default async function (ctx) {
     ctx.assert.match(out.changesSeg.tip, / — click for Settings › Updates$/);
     await ctx.evaluate(`document.querySelector('#sbLeft .upg').click()`);
     await ctx.waitFor(`document.querySelector('#settings').open && document.querySelector('#settings [data-tab="board"]').classList.contains('on')`, { what: 'a click opening the settings at Updates' });
-    ctx.assert.match(await say(), /^1 new commit on origin\/main, not pulled: 1 file changed here/);
+    out.changes = await say();
+    ctx.assert.match(out.changes, /^1 new commit on origin\/main, not pulled: public\/index\.html changed here, and the new commits change it too — commit or discard it \(cd \S+ && git checkout HEAD -- public\/index\.html discards\), then check now/);
+    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#updBtn').textContent`), 'check now');
     await ctx.settle();
     await ctx.evaluate(`document.querySelector('#updRow').scrollIntoView({ block: 'center' })`); await ctx.settle();
     await ctx.shot('2-changes', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(document.querySelector('#settings').getBoundingClientRect())`));
 
-    // the change undone: a click on the word takes the commit, the page reloaded at once, as update now does
-    writeFileSync(dirty, clean);
+    // that change undone: a click on the word takes the commit over the other, which stays, the page reloaded at once
+    writeFileSync(mine, theirs);
     await ctx.evaluate(`document.querySelector('#settings').close()`);
     await ctx.server.post('/api/update', {});
-    await ctx.waitFor(`document.querySelector('#sbLeft .upg.new')?.textContent === '1 new commit · update'`, { what: 'the commit takeable again' });
+    await ctx.waitFor(`document.querySelector('#sbLeft .upg.new')?.textContent === '1 new commit · update' && !/discards/.test(document.querySelector('#sbLeft .upg.new').title)`, { what: 'the commit takeable again' });
     const d = git(dev, 'rev-parse', 'HEAD');
     await mark();
     await ctx.evaluate(`document.querySelector('#sbLeft .upg').click()`);
     await reloaded('the page reloaded after a click on the bar');
     ctx.assert.equal(git(co, 'rev-parse', 'HEAD'), d, 'pulled by the click');
+    ctx.assert.equal(readFileSync(dirty, 'utf8'), `${clean}// mine\n`, 'the change kept');
+    writeFileSync(dirty, clean);
 
     // a commit made here, to mac/: nothing to pull, and the app behind it all the same — said, and rebuilt alone
     ctx.assert.equal(readFileSync(marks, 'utf8').includes('build'), false, 'no build while the app was built from mac/ as it stands');
@@ -200,6 +215,13 @@ export default async function (ctx) {
     ctx.assert.match(await say(), /rebuilding the app…/);
     await ctx.waitFor(`!document.querySelector('#sbLeft .upg:is(.new, .run, .err)') && /^[0-9a-f]{7} is 1 commit ahead/.test(document.querySelector('#updSay').textContent) && !/the app/.test(document.querySelector('#updSay').textContent)`, { timeout: 10_000, what: 'the app rebuilt: nothing left to say' });
     ctx.assert.ok(readFileSync(marks, 'utf8').includes('build install --detached'), 'build.sh asked to install');
+
+    // and a commit on origin as well: diverged, not pulled — the settings say how to put the one here on top (2026-10-15)
+    push();
+    await ctx.server.post('/api/update', {});
+    await ctx.waitFor(`document.querySelector('#sbLeft .upg.new')?.textContent === '1 new commit · diverged'`, { what: 'the status bar saying the branch diverged' });
+    out.diverged = await say();
+    ctx.assert.match(out.diverged, /^this checkout and origin\/main have each moved on, 1 here and 1 there — not pulled: cd \S+ && git pull --rebase puts the one here on top, then check now/);
     return out;
   } finally {
     rmSync(root, { recursive: true, force: true });

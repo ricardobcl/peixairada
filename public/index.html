@@ -2549,9 +2549,17 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       changes: `not rebuilt over ${many(a.changes, 'change')} to it here`, pull: 'rebuilt with the commits',
     })[u.appWhy] || '<code>mac/build.sh install</code> rebuilds it'}`;
   }
-  // What *update now* would take: new commits it can fast-forward to, the switch or the rest aside; the app behind mac/,
-  // rebuilt alone. The settings' button and the status bar's word (2026-10-14) both go by them.
-  const canPull = u => u.behind > 0 && !u.ahead && ['off', 'busy', 'held'].includes(u.why);
+  // What *update now* would take: new commits it can fast-forward to, the switch or the rest aside — over files changed
+  // here too, unless the commits change one of them (2026-10-15, `clash`); the app behind mac/, rebuilt alone. The
+  // settings' button and the status bar's word (2026-10-14) both go by them.
+  const canPull = u => u.behind > 0 && !u.ahead && (['off', 'busy', 'held'].includes(u.why) || (u.why === 'changes' && u.clash?.length === 0));
+  /** Files by name, three at most (2026-10-15); `n` how many there are in all. */
+  const filesSay = (names = [], n = names.length) => names.length ? names.slice(0, 3).map(f => `<code>${esc(f)}</code>`).join(', ') + (n > 3 ? ` and ${n - 3} more` : '') : many(n, 'file');
+  /** A command to run in the checkout, to copy out of the settings' line: `cd` there first, a word quoted only when it must be. */
+  function inCheckout(u, ...words) {
+    const q = w => /^[\w@%+=:,./-]+$/.test(w) ? w : `'${w.replace(/'/g, `'\\''`)}'`, dir = u.dir || '.';
+    return esc(`cd ${dir.startsWith('~/') ? `~/${q(dir.slice(2))}` : q(dir)} && ${words.map(q).join(' ')}`);
+  }
   const canBuild = u => !u.busy && ['off', 'tried', 'busy'].includes(u.appWhy);
   /** The settings' line for the update, and whether its button updates (rather than looks). */
   function updateSay(u) {
@@ -2562,8 +2570,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       detached: 'the checkout is on no branch — nothing to follow',
       'no-upstream': `<b>${esc(u.branch)}</b> follows no remote branch — nothing to pull`,
       current: u.ahead ? `<code>${shortSha(u.head)}</code> is ${many(u.ahead, 'commit')} ahead of ${up} — nothing to pull` : `up to date · <code>${shortSha(u.head)}</code>`,
-      diverged: `this checkout and ${up} have each moved on, ${u.ahead} here and ${u.behind} there — not pulled`,
-      changes: `${fresh}, not pulled: ${many(u.dirty, 'file')} changed here`,
+      diverged: `this checkout and ${up} have each moved on, ${u.ahead} here and ${u.behind} there — not pulled: <code>${inCheckout(u, 'git', 'pull', '--rebase')}</code> puts ${u.ahead === 1 ? 'the one' : 'those'} here on top, then <b>check now</b>`,
+      changes: u.clash?.length ? `${fresh}, not pulled: ${filesSay(u.clash)} changed here, and the new commits change ${u.clash.length === 1 ? 'it' : 'them'} too — commit or discard ${u.clash.length === 1 ? 'it' : 'them'} (<code>${inCheckout(u, 'git', 'checkout', 'HEAD', '--', ...u.clash)}</code> discards), then <b>check now</b>`
+        : `${fresh} — <b>update now</b> takes them and leaves ${filesSay(u.changed, u.dirty)} changed here as ${u.dirty === 1 ? 'it is' : 'they are'}${u.on ? '; by itself it never pulls over a change' : ''}`,
       off: `${fresh} — <b>update now</b> takes them`,
       held: `<code>${shortSha(u.held?.to)}</code> was not kept: ${esc(u.held?.why || '')} — the next commit is tried`,
       busy: `${fresh} — pulled once nothing has been done on the board for ${Math.round(u.quiet / 60_000)} min`,
@@ -2583,12 +2592,12 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   function updSeg() {
     const u = state.update; if (!u?.checkout && !reload.want) return '';   // a page wanted after a restart is said off a checkout too (pageFollows)
     const seg = (cls, icon, words, tip, p = null, take = '') => `<button class="seg upg ${cls}"${take ? ' data-take="1"' : ''} title="${esc(tip)} — click ${cls === 'page' ? 'to reload it now' : take || 'for Settings › Updates'}">${icon}<span>${words}</span>${p == null ? '' : `<i style="--p:${p.toFixed(2)}"></i>`}</button>`;
-    const run = updRun(u), tip = updateSay(u).say.replace(/<br>/g, ' · ').replace(/<[^>]+>/g, '');
+    const run = updRun(u), tip = updateSay(u).say.replace(/<br>/g, ' · ').replace(/<[^>]+>/g, '').replace(/&(amp|lt|gt|quot);/g, (_, e) => ({ amp: '&', lt: '<', gt: '>', quot: '"' })[e]);   // text again, which seg escapes once
     if (run) return seg('run', ICON.reload, `${esc(run.say)}…`, tip, run.p);
     if (reload.want) return seg('page', ICON.reload, 'updated · reload the page', `The board's page was updated — it reloads by itself once you leave it be (${{ dialog: 'a dialog is up', typing: 'a box has the keyboard', pane: 'a page of the pane is in front', input: 'you are at it' }[reload.why] || 'any moment'})`);
     if (u.failed || u.why === 'held') return seg('err', ICON.reload, u.why === 'held' ? 'update held back' : 'update failed', tip);
     if (appFailed(u)) return seg('err', ICON.reload, 'the app was not rebuilt', tip);
-    const why = { off: '', changes: ' · changes here', diverged: ' · diverged', busy: ' · once you rest' }[u.why];   // off, the default: new commits are the news, not the switch (2026-10-13)
+    const why = { off: '', changes: canPull(u) ? '' : ' · changes here', diverged: ' · diverged', busy: ' · once you rest' }[u.why];   // off, the default: new commits are the news, not the switch (2026-10-13); changes here, unless a click pulls over them (2026-10-15)
     if (u.behind > 0 && why != null) return seg('new', ICON.download, `${many(u.behind, 'new commit')}${why || (canPull(u) ? ' · update' : '')}`, tip, null, canPull(u) ? 'to update now' : '');
     const appWhy = { off: '', tried: '', manual: '', changes: ' · changes here', busy: ' · once you rest' }[u.appWhy];   // nothing to pull, and the app older than mac/ here (2026-10-14)
     if (u.app?.behind && appWhy != null) return seg('new', ICON.download, `the app is behind${appWhy || (canBuild(u) ? ' · rebuild' : '')}`, tip, null, canBuild(u) ? 'to rebuild it now (it quits and opens again)' : '');

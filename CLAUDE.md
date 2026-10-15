@@ -155,27 +155,27 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   open after a release does not wait on its download. Read only under `~/.vscode`. → `test/vsweb.test.mjs`.
 * **The board updates itself from its checkout** (2026-10-12; `checkUpdate`, `selfUpdate` in the state file — **off by
   default** (2026-10-13): what came is said, *update now* takes it —, Settings › Updates, `GET/PUT/POST /api/update`, an
-  `update` event): only the agent looks by the clock (`UNDER_AGENT`: launchd's
-  own child — a server started in a drawer has its environment; every `UPDATE_EVERY_MS`, 0 for every other server),
-  fetching its branch's upstream alone (no FETCH_HEAD, no tags) and **fast-forwarding only** — not over a tracked change
-  (`dirty`), a branch that moved on its own (`diverged`), a held commit, or within `UPDATE_QUIET_MS` of a key sent to a
-  drawer or anything done on the board (`lastTouchAt`); *check now* (`asked`) skips that wait, *update now* (`apply`)
-  the switch and the hold too (`whyNot`). What the commits touched starts again (`updateParts`): `npm install`, the
-  agent (`launchd.sh restart`, detached), the app (`mac/build.sh install`, detached) when behind, the page — it reloads
-  itself once left be (`takeUpdate`, `reloadBusy`: at once if asked for there; never mid-update nor before the new
-  server is back). **Its progress is the status bar's** (`updSeg`, `updRun`): the server's `steps`/`step`, `restarting`,
-  `building` (the app's rebuild followed by its pid across the restart, `watchBuild`, ended by its log's `installed →`),
-  `failed`; new commits not taken and why; a page waiting (a click reloads it). **News *update now* would take is a click
-  that takes it** (2026-10-14; `canPull`, `canBuild` → `data-take`, `updNow`): *1 new commit · update*, *the app is behind
-  · rebuild*; anything else opens Settings › Updates.
+  `update` event): only the agent looks by the clock (`UNDER_AGENT`: launchd's own child, not a drawer's server; every
+  `UPDATE_EVERY_MS`, else 0), fetching its branch's upstream alone (no FETCH_HEAD, no tags) and **fast-forwarding
+  only** — not over a tracked change (`dirty`), a branch that moved on its own (`diverged`), a held commit, or within
+  `UPDATE_QUIET_MS` of a key sent to a drawer or anything done on the board (`lastTouchAt`); *check now* (`asked`) skips
+  that wait, *update now* (`apply`) the switch, the hold and a change — not one the commits change too (`clash`,
+  2026-10-15; `whyNot`); the settings name the files and what to run. What the commits touched starts again
+  (`updateParts`): `npm install`, the agent (`launchd.sh restart`, detached), the app (`mac/build.sh install`, detached)
+  when behind, the page — it reloads itself once left be (`takeUpdate`, `reloadBusy`: at once if asked for there; never
+  mid-update nor before the new server is back). **Its progress is the status bar's** (`updSeg`, `updRun`): the
+  server's `steps`/`step`, `restarting`, `building` (the app's rebuild followed by its pid across the restart,
+  `watchBuild`, ended by its log's `installed →`), `failed`; new commits not taken and why; a page waiting (a click
+  reloads it). **News *update now* would take is a click that takes it** (2026-10-14; `canPull`, `canBuild` →
+  `data-take`, `updNow`): *1 new commit · update*, *the app is behind · rebuild*; else it opens Settings › Updates.
   **First the new page compiles and the new server starts on a spare port** (`preflight`, the checkout's
-  lib/testserver.mjs); one that does not is undone (`git reset --keep`, only while HEAD is still the commit pulled) and held (`updateHeld`) until a newer commit.
-  **The app is held against the checkout, pull or none** (2026-10-14; `readApp`, `appWhyNot` → `app`, `appWhy`;
-  `lookApp` every minute): build.sh stamps `PeixSource`, mac/'s tree as built (uncommitted work in), and one not `HEAD:mac`
-  is behind — a commit made here too. Rebuilt with a pull, else alone by *update now* or the switch once quiet — by the
-  clock never twice for one source (`appBuild`) —, never over work in mac/; build.sh is one at a time (a lock in /tmp).
-  `UPDATE_DIR`, `UPDATE_RESTART_BIN`, `UPDATE_BUILD_BIN`, `NPM_BIN`, `BOARD_APP` are the tests'. → `test/update.test.mjs`,
-  `auto-update.mjs`.
+  lib/testserver.mjs); one that does not is undone (`git reset --keep`, only while HEAD is the commit pulled), held
+  (`updateHeld`) until a newer one. **The app is held against the checkout, pull or none** (2026-10-14; `readApp`,
+  `appWhyNot` → `app`, `appWhy`; `lookApp` every minute): build.sh stamps `PeixSource`, mac/'s tree as built
+  (uncommitted work in), and one not `HEAD:mac` is behind. Rebuilt with a pull, else alone by *update now* or the switch
+  once quiet — by the clock never twice for one source (`appBuild`) —, never over work in mac/; one build.sh at a time.
+  `UPDATE_DIR`, `UPDATE_RESTART_BIN`, `UPDATE_BUILD_BIN`, `NPM_BIN`, `BOARD_APP` are the tests'.
+  → `test/update.test.mjs`, `auto-update.mjs`.
 * **The page follows a restart** (2026-10-13; `pageStamp`, `pageFollows`): `/` is served with `<meta name="peix-page">`
   — a stamp of the file on disk and the serving boot (`SINCE`) —, every snapshot names the page on disk (`page`); one
   from a server started since, with another page, wants a reload as an update's does (`reload.want`). A reconnect to
