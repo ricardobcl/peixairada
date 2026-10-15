@@ -858,6 +858,8 @@ function notePrs(s, text, ts, by) {
     if (!f) said.set(r.key, r); else if ((SAID_AS[r.ref] ?? 3) > (SAID_AS[f.ref] ?? 3)) Object.assign(f, { url: r.url, ref: r.ref });
   }
   for (const r of said.values()) notePr(s, r.url, ts, by, r.ref);
+  // your words that name its PRs, for their history beside GitHub's (2026-10-15: the pointer on a card's PRs)
+  if (by === 'user' && said.size && ts) { (s.prSaid ||= []).push({ a: isoS(Date.parse(ts) || Date.now()), text: plainSnippet(text, 160), urls: [...said.keys()] }); if (s.prSaid.length > 8) s.prSaid.shift(); }
 }
 
 // ---- …and the short ways of naming one (2026-10-06) ----------------------------------------------------------------
@@ -4641,7 +4643,7 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/prlog$/))) {   // its PRs' ledgers (2026-10-15): the events and the rounds
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
-      return json(res, 200, { prs: s.prs.filter(shownPr).filter(p => prLogs[p.url]).map(p => ({ url: p.url, label: p.label, ev: prLogs[p.url].ev, rounds: prLogs[p.url].r })) });
+      return json(res, 200, { prs: s.prs.filter(shownPr).filter(p => prLogs[p.url]).map(p => ({ url: p.url, label: p.label, ev: prLogs[p.url].ev, rounds: prLogs[p.url].r })), said: s.prSaid || [] });
     }
     if (req.method === 'POST' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/unlink$/))) {   // a PR taken off the chat (2026-10-11): { url }
       const s = sessions.get(m[1]);

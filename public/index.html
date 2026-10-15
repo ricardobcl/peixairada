@@ -965,33 +965,51 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .card .state.prmove .mt { flex: none; font-size: var(--fs-2xs); white-space: nowrap; opacity: 0; transition: opacity .12s; }
   .card:hover .state.prmove .mt { opacity: .8; }
   /* a PR's rounds on the card (2026-10-15): "answered" a while after your word, in the move line's place, and a mark per PR in
-     play when there is more than the one the line names; the pointer on either shows the rounds (#rpop) */
+     play when there is more than the one the line names — each PR in its own hue (prHue); the pointer on the card's PRs
+     shows the rounds (#rpop) */
   .card .state.prans { display: flex; align-items: baseline; gap: 6px; color: var(--ink); }
   .card .state.prans .q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; color: var(--pr-open); }
-  .card .state.prans .mt { flex: none; font-size: var(--fs-2xs); white-space: nowrap; opacity: 0; transition: opacity .12s; }
-  .card:hover .state.prans .mt { opacity: .8; }
   .rtag { flex: none; display: inline-flex; align-items: center; padding: 0 5px; border-radius: var(--r-1); font-size: var(--fs-2xs); font-weight: 700; line-height: 15px; letter-spacing: .4px; text-transform: uppercase; white-space: nowrap; }
   .rtag.move { background: color-mix(in srgb, var(--accent) 82%, var(--ink)); color: var(--bg); }
   .rtag.ok { background: color-mix(in srgb, var(--pr-open) 20%, transparent); color: var(--pr-open); }
   .rtag.let { background: var(--ctl-hi); color: var(--muted); }
-  .card .prpips { display: flex; gap: 10px; margin-top: 4px; min-width: 0; overflow: hidden; font-size: var(--fs-2xs); font-weight: 600; color: var(--muted); white-space: nowrap; }
-  .card .prpips .pp { display: inline-flex; align-items: center; gap: 4px; flex: none; }
-  .card .prpips .pp b { font-weight: 700; color: var(--ink); }
+  .pchip { flex: none; display: inline-flex; align-items: center; padding: 0 5px; border-radius: var(--r-1); font-size: var(--fs-2xs); font-weight: 700; line-height: 15px; color: var(--ink);
+    background: color-mix(in srgb, var(--h) 22%, transparent); box-shadow: inset 2px 0 0 var(--h); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .card .prpips { display: flex; gap: 12px; margin-top: 6px; min-width: 0; overflow: hidden; font-size: var(--fs-xs); font-weight: 500; color: var(--muted); white-space: nowrap; }
+  .card .prpips .pp { display: inline-flex; align-items: center; gap: 5px; flex: none; }
   .card .prpips .pp i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
-  .card .prpips .pp[data-k="you"] { color: var(--accent); } .card .prpips .pp[data-k="you"] i { background: var(--accent); }
+  .card .prpips .pp[data-k="you"] { color: var(--accent); font-weight: 600; } .card .prpips .pp[data-k="you"] i { background: var(--accent); }
   .card .prpips .pp[data-k="ok"] i { background: var(--pr-open); }
   .card .prpips .pp[data-k="let"] i { background: none; box-shadow: inset 0 0 0 1px var(--muted); }
   #sessions[data-even] .card .prpips { display: none; }   /* one height for every card: the rounds are the pointer's */
-  #rpop { position: fixed; z-index: 45; display: grid; gap: 3px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-4); background: var(--panel);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, .28); font-size: var(--fs-xs); line-height: 1.4; color: var(--ink); pointer-events: none; opacity: 0; transition: opacity .12s var(--ease-out); }
+  #rpop { position: fixed; z-index: 45; display: grid; gap: 6px; padding: 10px 10px 8px; border: 1px solid var(--line); border-radius: var(--r-4);
+    background: color-mix(in srgb, var(--panel) 94%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, .35); font-size: var(--fs-sm); line-height: 1.4; color: var(--ink); pointer-events: none; opacity: 0; transition: opacity .12s var(--ease-out); }
   #rpop.on { opacity: 1; }
-  #rpop .rph { margin-top: 3px; font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); }
-  #rpop .rpr { display: grid; grid-template-columns: auto auto minmax(0, 1fr); column-gap: 6px; align-items: baseline; }
-  #rpop .rpr .n { font-weight: 700; } #rpop .rpr .w { min-width: 0; }
-  #rpop .rpr .was { display: block; color: var(--muted); }
-  #rpop .rpr[data-k="them"] .w { color: var(--muted); }
-  #rpop .rev { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; color: var(--muted); } #rpop .rev b { color: var(--ink); font-weight: 600; }
-  #rpop .rpf { margin-top: 4px; padding-top: 5px; border-top: 1px solid var(--line); font-size: var(--fs-2xs); color: var(--muted); }
+  #rpop .rph { font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); }
+  #rpop .rnow { display: grid; gap: 2px; }
+  #rpop .rpr { display: grid; grid-template-columns: auto auto minmax(0, 1fr); column-gap: 6px; row-gap: 1px; align-items: baseline; padding: 6px 8px; border-radius: var(--r-3); }
+  #rpop .rpr[data-k="you"] { background: color-mix(in srgb, var(--accent) 11%, transparent); }
+  #rpop .rpr .h { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  #rpop .rpr[data-k="them"] .h { color: var(--muted); font-weight: 500; }
+  #rpop .rpr .s { grid-column: 3; font-size: var(--fs-xs); color: var(--muted); }
+  #rpop .rpr .s .un { color: var(--accent); font-weight: 700; }
+  #rpop .rlat { display: grid; gap: 0; }
+  #rpop .rev { display: grid; grid-template-columns: 54px 16px minmax(0, 1fr); column-gap: 7px; align-items: start; padding: 4px 6px 4px 0; border-radius: var(--r-3); }
+  #rpop .rev.live { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+  #rpop .rev .t { padding-top: 1px; text-align: right; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
+  #rpop .rev .x { min-width: 0; }
+  #rpop .rev .x b { font-weight: 600; }
+  #rpop .rev .rr { margin-top: 2px; } #rpop .rev .rr.ok { font-size: var(--fs-xs); font-weight: 600; color: var(--pr-open); }
+  #rpop .rev .bub { display: inline-block; max-width: 100%; padding: 2px 8px; border-radius: 10px 10px 3px 10px; background: var(--user-bg); color: var(--ink); overflow-wrap: anywhere; }
+  #rpop .ri { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; object-fit: cover; flex: none; margin-top: 1px;
+    background: color-mix(in srgb, var(--h, var(--muted)) 75%, var(--panel)); color: var(--bg); font-size: 9px; font-weight: 700; font-style: normal; }
+  #rpop .ri .ic { width: 10px; height: 10px; }
+  #rpop .ri.you { background: color-mix(in srgb, var(--ink) 14%, transparent); color: var(--you); }
+  #rpop .ri.me { background: color-mix(in srgb, var(--you) 75%, var(--panel)); font-size: 6.5px; letter-spacing: -.2px; }
+  #rpop .ri.chat { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); }
+  #rpop .ri.board { background: var(--ctl-hi); color: var(--muted); }
+  #rpop .rpf { padding-top: 6px; border-top: 1px solid var(--line); font-size: var(--fs-2xs); color: var(--muted); }
   /* It never wraps the row (2026-10-11, afternoon: ··· went to a second line beside the housing): a flex basis of 0,
      growing into the room the row leaves up to its own width — the reason ellipsized —, and no narrower than the tag and
      the count (--hmin, fitHeadPrs, which folds the PR chips to leave that much; min-content is the whole reason). */
@@ -4353,24 +4371,33 @@ const toolName = n => {
       .sort((a, b) => order[a.r.k] - order[b.r.k] || String(b.pr.turn.movedAt || '').localeCompare(String(a.pr.turn.movedAt || '')));
   }
   const PIP_SAY = { you: 'your move', let: 'let go', ok: 'answered' };
-  /** Every PR in play, when the card has one besides the PR its move line names: a mark and a word each. */
+  // A PR's own hue (2026-10-15), so its chip reads the same in the card's marks, the rounds and their events: one of the
+  // theme's syntax tokens, by the PR's place among its chat's numbers — a theme reaches it, and no two of a chat's PRs
+  // share one (green and red are the answered's and a question's, not a PR's).
+  const PR_HUES = ['--you', '--hl-key', '--hl-cls', '--hl-fn', '--hl-meta', '--hl-num'];
+  const hueAt = i => `var(${PR_HUES[Math.abs(i) % PR_HUES.length]})`;
+  const prHue = (s, pr) => hueAt([...new Set((s.prs || []).map(p => p.number || 0))].sort((a, b) => a - b).indexOf(pr.number || 0));
+  const pchip = (s, pr) => `<span class="pchip" style="--h:${prHue(s, pr)}">${esc(pr.label.replace(/^.*?#/, '#'))}</span>`;
+  /** Every PR in play, when the card has one besides the PR its move line names: its chip, a mark and a word each. */
   function pipsHtml(s) {
     if (s.done) return '';
     const play = inPlay(s), lead = movedPrs(s)[0]?.url;
     if (!play.some(x => x.pr.url !== lead)) return '';
-    return `<div class="prpips">${play.slice(0, 3).map(({ pr, r }) => `<span class="pp" data-k="${r.k}"><b>${esc(pr.label.replace(/^.*?#/, '#'))}</b><i></i>${PIP_SAY[r.k]}</span>`).join('')}${play.length > 3 ? '<span class="pp more">…</span>' : ''}</div>`;
+    return `<div class="prpips">${play.slice(0, 3).map(({ pr, r }) => `<span class="pp" data-k="${r.k}">${pchip(s, pr)}<i></i>${PIP_SAY[r.k]}</span>`).join('')}${play.length > 3 ? '<span class="pp more">…</span>' : ''}</div>`;
   }
-  /** Your word just closed a round, and nothing is at your move: the card says so for ANSWERED_MS. */
+  /** Your word just closed a round, and nothing is at your move: the card says so, and how long ago, for ANSWERED_MS. */
   function answeredHtml(s) {
     if (s.done || movedPrs(s).length) return '';
     const now = Date.now(), hit = (s.prs || []).map(pr => ({ pr, r: roundOf(pr) })).filter(({ r }) => r?.k === 'ok' && now - Date.parse(r.cur.end) < ANSWERED_MS)
       .sort((a, b) => b.r.cur.end.localeCompare(a.r.cur.end))[0];
     if (!hit) return '';
-    return `<div class="state prans"><b class="rtag ok">answered</b><span class="q">${esc(hit.pr.label.replace(/^.*?#/, '#'))} · ${esc(byWords(hit.r.cur, s))}</span><span class="mt"><span data-at="${esc(hit.r.cur.end)}"></span> ago</span></div>`;
+    return `<div class="state prans"><b class="rtag ok">answered</b><span class="q">${esc(hit.pr.label.replace(/^.*?#/, '#'))} · ${esc(byWords(hit.r.cur, s))}, <span data-at="${esc(hit.r.cur.end)}"></span> ago</span></div>`;
   }
-  // The rounds under the pointer (2026-10-15): resting on a card's move line, its "answered" or its PRs' marks shows the
-  // chat's PRs as their rows say them, and the last few events on them (GET /api/sessions/:id/prlog, kept a while) —
-  // over the list, under the line, so no page in the pane can cover it. Read-only: the pointer passes through it.
+  // The rounds under the pointer (2026-10-15): resting on a card's PRs — its chips, its move line, its "answered", its
+  // marks — shows the chat's PRs as their rows say them, the round now tinted, and the latest on them: GitHub's events,
+  // what this chat did, and your words that named them (GET /api/sessions/:id/prlog, kept a while). Beside the card,
+  // over the chat; under the line, over the list, when a page in the pane is there (a native view covers the page).
+  // Read-only: the pointer passes through it.
   const prlogs = new Map();   // chat id → { at, v, asking }
   function prlogOf(s, then) {
     const hit = prlogs.get(s.id);
@@ -4382,36 +4409,83 @@ const toolName = n => {
   }
   const EV_SAY = e => e.k === 'opened' ? 'opened it' : e.k === 'review' ? ({ APPROVED: 'approved', CHANGES_REQUESTED: 'asked for changes', DISMISSED: 'dismissed a review' }[e.s] || 'reviewed')
     : e.k === 'comment' ? 'commented' : e.k === 'push' ? (e.f ? 'force-pushed' : e.n > 1 ? `pushed ${e.n} commits` : 'pushed') : e.k === 'ask' ? 'asked for your review'
-    : e.k === 'chat' ? `${{ push: 'pushed', review: 'reviewed', comment: 'commented', reply: 'replied', merge: 'merged it', opened: 'opened it' }[e.x] || e.x}` : e.k === 'board' ? (e.x === 'back' ? 'took the let-go back' : 'let it go') : e.k;
+    : e.k === 'chat' ? `${{ push: 'pushed', review: 'reviewed', comment: 'commented', reply: 'replied', merge: 'merged it', opened: 'opened it' }[e.x] || e.x}` : e.k === 'board' ? (e.x === 'back' ? 'took the let-go back' : 'let this round go') : e.k;
+  /** Who did it, as a small round mark: GitHub's face for a person the PR knows, else their initial; you, Claude, the board. */
+  function evMark(e, faces) {
+    if (e.said) return `<i class="ri you">${ICON.you}</i>`;
+    if (e.k === 'chat') return `<i class="ri chat">${ICON.claude}</i>`;
+    if (e.k === 'board') return '<i class="ri board">–</i>';
+    if (e.w === '') return '<i class="ri me">you</i>';
+    const f = faces.get(e.w);
+    return f ? `<img class="ri" src="${esc(f)}" alt="">` : `<i class="ri" style="--h:${hueAt([...String(e.w || '?')].reduce((a, c) => a + c.charCodeAt(0), 0))}">${esc(String(e.w || '?')[0].toUpperCase())}</i>`;
+  }
   function rpopHtml(s) {
     const K = { you: 0, let: 1, ok: 2, them: 3 }, rows = (s.prs || []).map(pr => ({ pr, r: roundOf(pr) })).filter(({ r }) => r).sort((a, b) => K[a.r.k] - K[b.r.k]);   // as the marks go
     const log = prlogOf(s, () => { if (rpop.sid === s.id) rpopShow(); });
-    const evs = (log?.prs || []).flatMap(p => p.ev.map(e => ({ ...e, label: p.label }))).sort((a, b) => a.a.localeCompare(b.a)).slice(-3);
-    return `<div class="rph">this chat’s PRs</div>${rows.map(({ pr, r }) => `<div class="rpr" data-k="${r.k}"><span class="n">${esc(pr.label.replace(/^.*?#/, '#'))}</span>${RTAG[r.k]}<span class="w">${r.k === 'you' ? `${esc(pr.turn.why)} · ${when(r.cur?.from || pr.turn.at)}` : r.k === 'let' ? `${esc(pr.turn.why)} · let go` : r.k === 'ok' ? `${esc(byWords(r.cur, s))} ${when(r.cur.end)} · ${esc(pr.turn.why)}` : esc(pr.turn.why)}${r.prev ? `<span class="was">before: ${esc(prevWords(r.prev, s))}</span>` : ''}</span></div>`).join('')}${
-      evs.length ? `<div class="rph">latest</div>${evs.map(e => `<div class="rev"><span class="t">${esc(when(e.a))}</span><span>${esc(e.label.replace(/^.*?#/, '#'))} · <b>${e.w === '' ? 'you' : esc(e.w || 'someone')}</b> ${esc(EV_SAY(e))}${e.k === 'chat' ? (e.c === s.id ? ' from this chat' : ' from another chat') : ''}</span></div>`).join('')}` : ''}<div class="rpf">⌥-click “your move”: let this round go · the PR list (⌥⌘G) for one PR</div>`;
+    const byUrl = new Map((s.prs || []).map(p => [p.url, p])), faces = new Map((s.prs || []).flatMap(p => (p.people || []).filter(x => x.avatar).map(x => [x.login, x.avatar])));
+    const now = rows.map(({ pr, r }) => {
+      const sub = r.k === 'you' ? (r.cur ? `${when(r.cur.from)} · <span data-at="${esc(r.cur.from)}"></span> ago · <b class="un">unanswered</b>` : esc(when(pr.turn.at)))
+        : r.k === 'let' ? `${r.cur ? `${when(r.cur.from)} · ` : ''}let go${r.cur?.let ? ` ${when(r.cur.let)}` : ''} · nothing since`
+        : r.k === 'ok' ? `${when(r.cur.end)} · <span data-at="${esc(r.cur.end)}"></span> ago${r.cur.by ? ` · from ${r.cur.by.c === s.id ? 'this chat' : 'another chat'}` : ''} · ${esc(pr.turn.why)}` : '';
+      const head = r.k === 'ok' ? `you ${r.cur.by ? BY[r.cur.by.x] || 'answered' : 'answered'}` : pr.turn.why;
+      return `<div class="rpr" data-k="${r.k}">${pchip(s, pr)}${RTAG[r.k] || ''}<span class="h">${esc(head)}</span>${sub || r.prev ? `<span class="s">${sub}${sub && r.prev ? '<br>' : ''}${r.prev ? `round before: ${esc(prevWords(r.prev, s))}` : ''}</span>` : ''}</div>`;
+    }).join('');
+    // the latest: GitHub's events, the chat's own, the board's, and your words naming a PR — the newest five, in order
+    // a word of yours GitHub has and this chat's own act on the same PR within two minutes are one: the chat's says where from
+    const chatAt = (log?.prs || []).flatMap(p => p.ev.filter(e => e.k === 'chat').map(e => [p.url, Date.parse(e.a)]));
+    const twin = (url, e) => e.w === '' && e.k !== 'chat' && e.k !== 'board' && chatAt.some(([u, t]) => u === url && Math.abs(t - Date.parse(e.a)) < 120_000);
+    const evs = [...(log?.prs || []).flatMap(p => p.ev.filter(e => !twin(p.url, e)).map(e => ({ ...e, url: p.url }))), ...(log?.said || []).map(x => ({ a: x.a, said: true, text: x.text, url: x.urls?.[0] }))]
+      .filter(e => byUrl.has(e.url)).sort((a, b) => a.a.localeCompare(b.a)).slice(-5);
+    const lat = evs.map(e => {
+      const pr = byUrl.get(e.url), rs = pr.rounds || [];
+      if (e.said) return `<div class="rev said"><span class="t">${esc(when(e.a))}</span>${evMark(e, faces)}<div class="x"><span class="bub">${ticks(esc(e.text))}</span></div></div>`;
+      const opens = e.k !== 'chat' && e.k !== 'board' && e.k !== 'opened' && e.w !== '' && rs.find(r => r.from === e.a);
+      const closes = rs.find(r => r.how === 'answered' && (r.by ? r.by.a === e.a && e.k === 'chat' : r.end === e.a && e.w === '' || (e.k === 'chat' && Math.abs(Date.parse(r.end) - Date.parse(e.a)) < 120_000)));
+      const live = opens && !opens.end && pr.turn?.you;
+      return `<div class="rev${live ? ' live' : ''}"><span class="t">${esc(when(e.a))}</span>${evMark(e, faces)}<div class="x">${pchip(s, pr)} <b>${e.w === '' || e.k === 'chat' || e.k === 'board' ? 'you' : esc(e.w || 'someone')}</b> ${esc(EV_SAY(e))}${e.k === 'chat' ? (e.c === s.id ? ' from this chat' : ' from another chat') : ''}${opens ? `<div class="rr">${RTAG.you}</div>` : ''}${closes ? `<div class="rr ok">✓ answers ${esc(closes.why)}</div>` : ''}</div></div>`;
+    }).join('');
+    return `<div class="rph">this chat’s PRs</div><div class="rnow">${now}</div>${lat ? `<div class="rph">latest</div><div class="rlat">${lat}</div>` : ''}<div class="rpf">⌥-click “your move”: let every round go · the PR list (⌥⌘G) for one</div>`;
   }
   const rpop = { el: null, sid: null, anchor: null, timer: 0 };
+  /** The pane's pages over the chat column, as last posted: a popover there would be under them. */
+  const paneRects = () => { try { return JSON.parse(postPane.last || '{}').panes || []; } catch { return []; } };
   function rpopShow() {
     const s = state.sessions.get(rpop.sid), a = rpop.anchor;
     if (!s || !a?.isConnected) return rpopHide();
     const el = rpop.el ||= Object.assign(document.createElement('div'), { id: 'rpop', role: 'tooltip' });
     if (!el.isConnected) document.body.append(el);
-    const html = rpopHtml(s); if (el._drawn !== html) { el.innerHTML = el._drawn = html; }
-    const card = a.closest('.card').getBoundingClientRect(), r = a.getBoundingClientRect(), h = el.offsetHeight;
-    const top = r.bottom + 6 + h <= innerHeight - 8 ? r.bottom + 6 : Math.max(8, card.top - 6 - h);
-    Object.assign(el.style, { left: `${Math.round(card.left + 6)}px`, width: `${Math.round(card.width - 12)}px`, top: `${Math.round(top)}px` });
+    const html = rpopHtml(s); if (el._drawn !== html) { el.innerHTML = el._drawn = html; fillAges(el); }
+    const card = a.closest('.card').getBoundingClientRect(), W = 390, gap = 10;
+    const beside = { left: card.right + gap, width: W };
+    el.style.width = `${W}px`;
+    const h = el.offsetHeight, top = Math.max(8, Math.min(card.top - 4, innerHeight - 8 - h));
+    const hit = r => paneRects().some(p => p.left < r.left + r.width && r.left < p.left + p.width && p.top < r.top + h && r.top < p.top + p.height);
+    if (beside.left + W <= innerWidth - 8 && !hit({ ...beside, top })) Object.assign(el.style, { left: `${Math.round(beside.left)}px`, top: `${Math.round(top)}px` });
+    else {   // a page of the pane, or no room, beside the card: under the line, over the list
+      const r = a.getBoundingClientRect();
+      el.style.width = `${Math.round(card.width - 12)}px`;
+      const h2 = el.offsetHeight, t2 = r.bottom + 6 + h2 <= innerHeight - 8 ? r.bottom + 6 : Math.max(8, card.top - 6 - h2);
+      Object.assign(el.style, { left: `${Math.round(card.left + 6)}px`, top: `${Math.round(t2)}px` });
+    }
     el.classList.add('on');
   }
   function rpopHide() { clearTimeout(rpop.timer); rpop.sid = rpop.anchor = null; rpop.el?.classList.remove('on'); }
-  const RPOP_AT = '.card .state.prmove, .card .state.prans, .card .prpips';
+  const RPOP_AT = '.card .top .tprs, .card .state.prmove, .card .state.prans, .card .prpips';
   $('#slist').addEventListener('pointerover', e => {
     const a = e.target.closest(RPOP_AT);
     if (!a || $('main').classList.contains('scompact')) return;
     if (a === rpop.anchor) return;
-    rpopHide(); rpop.anchor = a; rpop.sid = a.closest('.card').dataset.id;
+    const id = a.closest('.card').dataset.id;
+    if (rpop.sid === id && rpop.el?.classList.contains('on')) { rpop.anchor = a; return; }   // another of the same card's PRs: it stays
+    rpopHide(); rpop.anchor = a; rpop.sid = id;
     rpop.timer = setTimeout(rpopShow, 350);
   });
-  $('#slist').addEventListener('pointerout', e => { if (rpop.anchor && !rpop.anchor.contains(e.relatedTarget)) rpopHide(); });
+  $('#slist').addEventListener('pointerout', e => {
+    if (!rpop.anchor || rpop.anchor.contains(e.relatedTarget)) return;
+    const to = e.relatedTarget?.closest?.(RPOP_AT);
+    if (to && to.closest('.card')?.dataset.id === rpop.sid) return;   // on to the card's other PRs
+    rpopHide();
+  });
   $('#slist').addEventListener('scroll', rpopHide, { passive: true });
   /** The chat header's: the tag, then the newest move's PR and reason, the others counted — right of the title. */
   function headMove(s) {

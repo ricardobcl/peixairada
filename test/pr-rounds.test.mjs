@@ -121,6 +121,8 @@ test('the server keeps a PR\'s history over a restart and hands it to the page',
     const first = await log();
     assert.deepEqual(first.ev.map(e => [e.k, e.w, e.s ?? null]), [['opened', '', null], ['push', '', null], ['review', 'ana', 'CHANGES_REQUESTED']]);
     assert.deepEqual([first.rounds[0].from, first.rounds[0].why], [iso(30), 'changes asked by ana']);
+    const said = (await srv.api(`api/sessions/${id}/prlog`)).body.said;
+    assert.deepEqual(said.map(x => [x.text, x.urls]), [['Open widgets#5', ['https://github.com/acme/widgets/pull/5']]], 'your words that named it, for the history beside GitHub\'s');
     const card = (await srv.api('api/sessions')).body.sessions.find(s => s.id === id).prs[0];
     assert.deepEqual(card.rounds.map(r => r.why), ['changes asked by ana'], 'the chat\'s PR carries its rounds');
     // one PR's round let go, and taken back (2026-10-15)

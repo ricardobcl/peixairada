@@ -65,20 +65,27 @@ export default async function (ctx) {
   ctx.assert.match(out.answered.say, /^you answered .+ · waiting on reviews$/, out.answered.say);
   await ctx.waitFor(`${card}?.querySelector('.state.prans')`, { what: 'the card saying answered' });
   out.card = await ctx.evaluate(`JSON.stringify({ line: ${card}.querySelector('.state.prans .q').textContent, move: !!${card}.querySelector('.state.prmove'), pips: [...${card}.querySelectorAll('.prpips .pp')].map(p => p.dataset.k + ' ' + p.textContent) })`).then(JSON.parse);
-  ctx.assert.deepEqual(out.card, { line: '#12 · you answered', move: false, pips: ['let #13let go', 'ok #12answered'] });
+  ctx.assert.match(out.card.line, /^#12 · you answered, \d+m ago$/, out.card.line);
+  ctx.assert.deepEqual({ ...out.card, line: null }, { line: null, move: false, pips: ['let #13let go', 'ok #12answered'] });
   // the pointer on that line: the rounds, and the latest on them
   await ctx.settle();   // the card moves down its lane: no move of yours on it now
   const at = await centre(`#slist > .card[data-id="${two.id}"] .state.prans`);
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y });
   await ctx.waitFor(`document.querySelector('#rpop.on') && document.querySelector('#rpop .rev')`, { what: 'the rounds under the pointer, with the latest events' });
   await ctx.settle();
-  out.pop = await ctx.evaluate(`JSON.stringify({ rows: [...document.querySelectorAll('#rpop .rpr')].map(r => r.dataset.k + ' ' + r.querySelector('.n').textContent), latest: [...document.querySelectorAll('#rpop .rev')].map(r => r.lastElementChild.textContent), foot: document.querySelector('#rpop .rpf').textContent,
-    below: document.querySelector('#rpop').getBoundingClientRect().top >= ${card}.querySelector('.state.prans').getBoundingClientRect().bottom })`).then(JSON.parse);
-  ctx.assert.deepEqual(out.pop.rows, ['let #13', 'ok #12'], 'as the marks go');
-  ctx.assert.ok(out.pop.latest.includes('#12 · you commented') && out.pop.latest.some(l => l.includes('let it go')), JSON.stringify(out.pop.latest));
-  ctx.assert.match(out.pop.foot, /⌥-click “your move”: let this round go/);
-  ctx.assert.ok(out.pop.below, 'under the line, over the list');
-  await ctx.shot('2-answered-card', await ctx.evaluate(`(r => ({ x: 0, y: Math.max(0, r.top - 20), width: r.right + 20, height: 360 }))(${card}.getBoundingClientRect())`));
+  out.pop = await ctx.evaluate(`JSON.stringify({ rows: [...document.querySelectorAll('#rpop .rpr')].map(r => r.dataset.k + ' ' + r.querySelector('.pchip').textContent + ' ' + r.querySelector('.h').textContent), latest: [...document.querySelectorAll('#rpop .rev .x')].map(x => x.textContent), foot: document.querySelector('#rpop .rpf').textContent,
+    beside: document.querySelector('#rpop').getBoundingClientRect().left >= ${card}.getBoundingClientRect().right })`).then(JSON.parse);
+  ctx.assert.deepEqual(out.pop.rows, ['let #13 approved by priya', 'ok #12 you answered'], 'as the marks go, each its round in words');
+  ctx.assert.ok(out.pop.latest.includes('#12 you commented✓ answers 1 comment from ana') && out.pop.latest.some(l => l.includes('let this round go')), `your word, and the round it answered: ${JSON.stringify(out.pop.latest)}`);
+  ctx.assert.match(out.pop.foot, /⌥-click “your move”: let every round go/);
+  ctx.assert.ok(out.pop.beside, 'beside the card, over the chat');
+  await ctx.shot('2-answered-card', await ctx.evaluate(`(r => ({ x: 0, y: Math.max(0, r.top - 20), width: Math.min(innerWidth, r.right + 420), height: 420 }))(${card}.getBoundingClientRect())`));
+  // the card's PR chips show the same
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 900, y: 600 });
+  await ctx.waitFor(`!document.querySelector('#rpop.on')`, { what: 'gone with the pointer' });
+  const chips = await centre(`#slist > .card[data-id="${two.id}"] .top .tprs`);
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: chips.x, y: chips.y });
+  await ctx.waitFor(`document.querySelector('#rpop.on .rpr')`, { what: 'the rounds on the PR chips' });
   await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 900, y: 600 });
   await ctx.waitFor(`!document.querySelector('#rpop.on')`, { what: 'gone with the pointer' });
 

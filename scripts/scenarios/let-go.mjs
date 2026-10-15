@@ -50,7 +50,7 @@ export default async function (ctx) {
     const rest = await centre(`#slist > .card[data-id="${two.id}"] .state.prmove`);
     await mouse('mouseMoved', rest, false);
     await ctx.waitFor(`document.querySelector('#rpop.on .rpf')`, { what: 'the rounds under the pointer' });
-    ctx.assert.match(await ctx.evaluate(`document.querySelector('#rpop .rpf').textContent`), /⌥-click “your move”: let this round go/, 'the line says so');
+    ctx.assert.match(await ctx.evaluate(`document.querySelector('#rpop .rpf').textContent`), /⌥-click “your move”: let every round go/, 'the line says so');
 
     // ⌥ held over the line: the tag in red, an ✕ for its mark; without ⌥, the tag as it is
     const line = `#slist > .card[data-id="${two.id}"] .state.prmove`, at = await centre(line);

@@ -40,6 +40,15 @@ not now.
   half an hour after your word. The popover sits over the list, under the line, so no page in the pane can cover it.
   The ⌥-click hint moved there from the line's tooltip.
 * `npm run perf` against main: the same costs, within a run's noise.
+* **D drawn again as the study drew it**, the same day. Ricardo: "the main screenshot for D. in the artifact is a
+  lot prettier than what we have. the UI, and the behaviour of showing the info on PRs hover". Each PR wears a hue
+  of its own: a syntax token picked by its place among the chat's PR numbers, so no two of a chat's PRs share one,
+  and never green or red. The hue shows on its chip in the marks, the popover and its events. The popover opens on
+  the card's PR chips too, and sits beside the card over the chat, under the line only when a page of the pane is
+  there (a native view would cover it). It is a blurred panel, with the round now tinted and the round before under
+  it. Its "latest" mixes GitHub's events (with their faces), what the chat did, the board's let-go, and your own
+  words that named a PR (the server keeps the last eight of those, `prSaid`). A word of yours GitHub has and the
+  chat's act within two minutes of it are one line. The card's "answered" says how long ago in plain sight.
 
 ## Decisions of 2026-10-14, late night — a round let go came back with nothing new
 

@@ -400,12 +400,12 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   narrow step of `pr-turn.mjs`.
 * **A PR chip GitHub has answered for is solid** (`--prc`, its state's colour), one not known yet an outline. **A PR
   at your move is said by name, not by its chip's look**: `data-turn` (`turnOf(pr)`: `you` · `them` · empty) on
-  `.cpr`, `.hpr`, `.prrow` and the tooltips (`turnTip`); the card's line (`moveHtml`, `.ymove`, at every size, not
-  ticked — **a card counts nothing**; under the pointer the move's age, `.mt`: `turn.at`, else `movedAt`), the
-  header's (`headMove`, `.hmove`). A new tag slides in (`moveMoments`; `#shead` carries `data-sid`). **Each PR's
-  round** (2026-10-15; `roundOf`): `.prround` under its `#prlist` row (`trackHtml` → `fillTrack`, the round before,
-  Let go · Ask Claude · Undo), its `.why` hidden; on the card each PR in play marked (`pipsHtml`, not at same
-  height), `answeredHtml` for `ANSWERED_MS`, `#rpop` on hover, over the list. → `pr-rounds.mjs`.
+  `.cpr`, `.hpr`, `.prrow` and tooltips (`turnTip`); the card's (`moveHtml`, `.ymove`, at every size, not
+  ticked — **a card counts nothing**; hovered, the move's age, `.mt`: `turn.at`, else `movedAt`), the header's
+  (`headMove`, `.hmove`). A new tag slides in (`moveMoments`, `#shead[data-sid]`). **Each PR's round** (2026-10-15;
+  `roundOf`): `.prround` under its `#prlist` row (`trackHtml` → `fillTrack`, the round before, Let go · Ask Claude ·
+  Undo; `.why` hidden); on the card each PR in play (`pipsHtml`, `pchip` in `prHue`; not at same height),
+  `answeredHtml` for `ANSWERED_MS`, `#rpop` beside it on its PRs (a pane page there, under). → `pr-rounds.mjs`.
 * **The card's PR chips end its top row, stacked** (`cardPrs` → `chipStack`, `.top .tprs`): the first four in the
   chat's order and every one at your move; **the pointer fans them out**, a fan wider than the row scrolling (`fanWheel`,
   a non-passive listener added on `pointerover`). CSS only (a right-to-left grid, `--d`, `--i`, `--under`, `--span`),
