@@ -5,6 +5,61 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-15. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-15, later — the colours are the setup's; the server's looks slowed
+
+Ricardo, on what was offered below: "remove peacock integration, but preserve my current colors", "we're fine in
+checking memomry less frequentely", "read power/sleep every minute".
+
+* **A project's colour is the setup's alone** (`projects[name].color`, by the project's shown name; `colorKey`: a
+  worktree's is its repo's). The board reads and writes no `.vscode/settings.json` any more: gone are the stat of
+  every folder it knows every 3 s (`pollPeacock`), the header square's edit of the JSONC (`writePeacock`,
+  `PUT/DELETE /api/peacock`, a file in the repo — often a tracked one — changed by the board) and the `peacock`
+  event. The square writes the setup (`setColor` → `setProject`), as the Setup pane's swatches did already for a
+  folder Peacock left alone. VS Code's windows keep what Peacock gives them; the board no longer follows a colour
+  picked there.
+* **The colours were kept by moving them, once, on every board**: the first boot since reads Peacock for every folder
+  the board knows, as it read it (the nearest settings file at or above the folder, short of the home;
+  `peacock.color`, else the activity bar's) and writes it into the setup under the project's name, over the setup's
+  own where both were (Peacock's won on the page) — `movePeacock`, `peacockMoved` in the state file. On every board
+  that updates, not only this one: other people's boards take it by their self-update. On this one, a dry run over the
+  live board's folders before it ran: 25 colours, and of 451 chats none whose colour differs before and after. One
+  name, two folders, two colours: the first found wins, a folder before its worktree.
+* **The power settings are read every minute** (`POWER_POLL_MS`; with every 10 s registry poll before): two `pmset`s
+  a look, twelve processes a minute → two. A charger plugged in or out, or a sleep setting changed outside the board,
+  shows within a minute; the board's own switch and `GET /api/awake` read at once.
+* **The status bar's memory is read at most every 15 s, one reading for every page** (`MEM_EVERY_MS`, `memOnce`):
+  `vm_stat` and the claudes' `ps` ran on every ask, every page asking every 3 s — forty processes a minute for one
+  page. The CPU is still read on every ask; it starts no process.
+* Together: about 32 processes a minute at rest → about 6, and no folder stat'ed every 3 s. None of it is felt on the
+  board; it is the Mac's energy and its endpoint agent's work. The remotes' poll (`pollRepos`, 3 s, no process once
+  known) stays.
+* **The page open for hours, found: WebKit lets go of no script animation** — Ricardo: "do whatever you need locally to
+  find the issue. try to not push this debuggin code" (the tools stayed in a scratch folder). Looked for on a made-up
+  400-chat board in the WebKit harness, five chats writing every 1.5 s and three drawers: the page's bookkeeping
+  counted from the document's start (listeners on window, document and elements, and whether an element left the page
+  alive; timers, observers, sockets, terminals; each frame callback timed) every minute through 35 minutes of chats
+  opened, the overview, home, the picker and scrolling; then the memory by category (`footprint`), one activity at a
+  time, and the page hidden for 8 minutes and shown. Nothing of the page's grew — elements, rules, the document's
+  animations, listeners, timers, a full restyle 31–38 ms, a render ~4 ms — and hidden left nothing behind. What grew
+  was the web process's WebKit malloc: 111 → 517 MB in 25 minutes, on with the stream alone. Every `animate()` counted
+  through a `WeakRef`: none was ever released — 4,300 after 16 minutes, ~250 a minute (the counts' rolls, the live
+  line's flaps, the slides, the flown title, the overview's zoom, the bubbles) — and `getAnimations()` lists none of
+  them, their elements gone. The app's board, three and a half hours open: ~15 % of a core with the timeline's walk at
+  the top of its main thread (`DocumentTimeline::currentTime`, `WebAnimation::updateFinishedState`,
+  `removeReplacedAnimations` → `Node::isDescendantOf`), where a fresh board rests at 2–5 %. Measured apart: 20,000
+  finished animations left took the made-up board at rest from 7.6 % of a core to 13.0 %, 6.1 % once cancelled; and
+  WebKit keeps an animation alive while it has a timeline, cancelled or not — of 5,000 each, the finished and the
+  cancelled all stayed through the collections that took every one set to `timeline = null`. So each is let go of
+  seconds after it ends or is cancelled (`letGoEnded`, wrapping `Element.prototype.animate`: every call, a new one
+  too): cancelled, its timeline null — but one filling forwards on an element still in the page, not replaced, which
+  keeps its last frame. The made-up board at 16 minutes: 77 animations alive (4,289), WebKit malloc 260 MB (401). This
+  answers the *page open for hours* left below; what still grows (~6 MB a minute on that busy board, still) is not
+  known.
+* **An app reading the board's accessibility tree** stays as it was: the board's process shows hit tests from outside
+  (`WKAccessibilityWebPageObject accessibilityHitTest:`) and the tree kept up after them (~0.2 % of its main thread
+  over 20 s). Turning the tree off would cost VoiceOver; the apps allowed to read it are in System
+  Settings › Privacy & Security › Accessibility. The harness cannot be such an app: that wants the permission.
+
 ## Decisions of 2026-10-15 — the board's cost, a third round
 
 Ricardo: "do a deep analysis of performance, especially on animations and background "jobs". seems a bit sluggish the

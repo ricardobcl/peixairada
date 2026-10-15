@@ -138,10 +138,10 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   file (one that ends on its own turns the switch off); *lid closed* is `/usr/bin/pmset -a disablesleep 1|0` as root (`lidRuns`) — through
   `sudo` first (Touch ID or a NOPASSWD rule; with no terminal a password is a quick failure), then osascript's
   administrator dialog (a cancel is a 409, `cancelled`); `AWAKE_ADMIN` is `sudo` · `osascript` · `none` (the tests).
-  **The lid's setting is the system's, never kept here**: `readPower` reads `pmset -g` on every registry poll, with
-  the idle sleep in use and the power source (`idleSleep`, `power`); the cup is muted while it has nothing to hold
-  off (`cupMoot`, `cupTip`). It is the one thing the board changes outside its own files besides a Peacock colour, a
-  clone, Zed's install and a worktree it makes (below). → `test/awake.test.mjs`, `keep-awake.mjs`.
+  **The lid's setting is the system's, never kept here**: `readPower` reads `pmset -g` every minute (`POWER_POLL_MS`),
+  with the idle sleep in use and the power source (`idleSleep`, `power`); the cup is muted while it has nothing to hold
+  off (`cupMoot`, `cupTip`). It is the one thing the board changes outside
+  its own files besides a clone, Zed's install and a worktree it makes (below). → `test/awake.test.mjs`, `keep-awake.mjs`.
 * **Every CLI the server shells out to goes through `findBin()`** — `git` too — the app's server has a bare PATH;
   `<NAME>_BIN` overrides; a file it can run, looked for again a minute after none was found. The login agent's PATH
   is the installing shell's, then the system's. **The network calls**: `gh` (PRs, a PR's diff), `git` to a checkout's
@@ -223,7 +223,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   and removes nothing reads and touches nothing.** Anything that mutates a card's DOM directly is lost on the next
   change of its markup. `markQsel` re-toggles `.qsel` after every render, on the chat (`qsel.id`), not its place.
 * **What the stream says is drawn once a frame** (`renderBoardSoon`; a 100 ms timer where there are no frames): the
-  `session`, `projects`, `peacock` and `pins` events. A landing and anything a click does are drawn at once
+  `session`, `projects` and `pins` events. A landing and anything a click does are drawn at once
   (`renderBoard`, which cancels the pending one). `peix.state().rendering`; `ctx.settle()` waits for it.
 * **A box the page redraws on every update is drawn only when its markup changed** (`setHtml(el, html)`,
   `el._drawn`) — a button replaced between press and release loses its click. Whatever edits such a box in place
@@ -303,17 +303,16 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   (ring, agents, monitor, question) still read; inside the card everything is `display: none` but `.abbr` (it carries
   the tooltip) and `.rdot` (a PR at your move or a new reply, `wantOf` → `data-want`). The lanes fold on the rail too.
 * **A project is a folder** (the registry's `cwd`, never the transcript's) **or a named set of folders** (state
-  file); worktrees under a repo count as the repo — a named project's by its prefix (`inFolder`), Peacock's colour by
-  the folder above, and **a folder project keyed by the repo for a chat in `<repo>/.claude/worktrees/<name>`**
+  file); worktrees under a repo count as the repo — a named project's by its prefix (`inFolder`), its colour by
+  the repo's name (`colorKey`), and **a folder project keyed by the repo for a chat in `<repo>/.claude/worktrees/<name>`**
   (2026-10-13; `projDir`, the server's `projectDir` → the summary's `project`; its pins, hiding and name are the
   repo's, its card wears its branch, `.chip.wtb` from `s.worktree` — `headNow` while it runs, else `gitBranch`). Pinned projects head the pickers (`state.pins`, `PUT /api/pins`).
   **✕ on a row of ⌥⌘N hides a project** (`hidden` in the state file, `PUT /api/hidden`; `projectList()` and
   `freeFolders()` skip it); its chats still show under ALL; starting a chat there puts it back (`newChat`).
-* **A project's colour is Peacock's** — `pollPeacock()` reads the nearest `.vscode/settings.json` at or above every
-  folder, stopping short of `$HOME`; the board can set it (`PUT/DELETE /api/peacock`, a text edit of the JSONC,
-  tested). None → `--nocolor`, unless the setup gives one (`projCfg`); `#000000` is `BLACK`, with its inks. The
-  header's colour square is the picker (`#colorInput`); it and the setup's squares read `ownColor`, the board
-  `repoColor` (a theme's hue). **A new colour on the board reads a token or `repoColor`, never a hex or `ownColor` of
+* **A project's colour is the setup's** (2026-10-15; Peacock's moved there once, `movePeacock`):
+  `projects[name].color` by name (`colorKey`: a worktree's is its repo's). None → `--nocolor`;
+  `#000000` is `BLACK`, with its inks. The header's square is the picker (`setColor`); it and the
+  setup's squares read `ownColor`, the board `repoColor` (a theme's hue). **A new colour on the board reads a token or `repoColor`, never a hex or `ownColor` of
   its own, or a theme does not reach it.** → `project-colors.mjs`.
 * **A theme is every surface at once** (2026-10-10; ⌥⌘Y, `SKINS`, `skinCss`, `applySkin`): a block of tokens under
   `:root:root[data-skin=…]` (three classes deep, beating `:root` and the dark block), set only beside its own
@@ -487,8 +486,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * **The status bar is the machine at the window's foot** (2026-10-09, always there since 2026-10-14; `#sbar`,
   `renderBar`, `body`'s grid row 2): `#sbFind` (`#filters`, in the markup), `#sbLeft` (the connection, `bar.conn`, its
   fish the SSE light and its click the About box; the asking and monitor counts while any; the update, `updSeg`),
-  `#sbPeople` (`#people`, in the markup), `#sbSwim`, and `#sbRight` — the machine (`prefs.barStats`; `GET /api/stats?want=cpu,mem,claude`
-  every 3 s, `machineStats`), the plan usage as pie meters (`sbMeter`, `uShort`: 5H, 1W, a model's initial, $ a cap in
+  `#sbPeople` (`#people`, in the markup), `#sbSwim`, and `#sbRight` — the machine (`prefs.barStats`; `GET /api/stats?want=…`
+  every 3 s, `machineStats`, memory kept `MEM_EVERY_MS`), the plan usage as pie meters (`sbMeter`, `uShort`: 5H, 1W, a model's initial, $ a cap in
   money; a grant only in the rows, `uGrant`) — a click lifts its rows (`usageRows`: a bar in `--spend`, red from 90 % —
   `uColor` —, the clock's tick `uPace`/`uSpan`, the time to reset, `.umoney`),
   both awake switches (`#sbAwake`, `#sbLid`), and the clock (24-hour, `hourCycle: 'h23'`; `clockTick`). `#sbLeft` and
@@ -956,6 +955,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   Chrome takes either, so the harness cannot see it. The proof is the compositor's frame: `npm run webkit`.
 * **In WebKit one main-thread animation makes every frame a style pass and a walk of every layer** (2026-10-13): a
   running animation needs a box that is drawn — WebKit keeps one on a `display: none` pseudo-element. The cost is read off the web process (`sample <WebContent pid>`), never Chrome.
+* **WebKit keeps every `animate()` with a timeline** (2026-10-15) with its element, walking the ended each frame:
+  `letGoEnded` (`Element.prototype.animate`'s) cancels each when done, timeline nulled. → `animations-let-go.mjs`.
 * **A read after a write is a layout**: the list's frame (`listGeom`), `fitHeadPrs` and `layoutNotch` read
   everything first; keep it so.
 * `projIcon(name)` marks ⌥⌘O's project wherever its name is written; `projAbbr` is the rail's squares. Both, and a
@@ -980,7 +981,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * macOS has no `timeout(1)`: `perl -e 'alarm shift; exec @ARGV' 60 <cmd>`. BSD sed has no `\b`.
 * `pkill -f server.mjs` also kills the app's own server — stop test servers **by port** (or the `--test-state` dir on their command line).
 * VS Code Web (`code serve-web`): extensions live in `~/.vscode-server`, trust in the browser profile. → Findings: *VS Code Web*.
-* Ink redraws only its live region on a resize; earlier lines keep the old width. That is Claude Code's, not ours.
+* Ink redraws only its live region on a resize, earlier lines at the old width: Claude Code's, not ours.
 * xterm parses what it is written on its own schedule: read or wipe a screen through `write('', cb)`, never straight
   after a `write()`.
 * **`openSession` sets the address before it fetches, and takes only its newest ask's answer.**
@@ -989,8 +990,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 
 ## Verifying changes
 
-**Do not claim a UI change works without loading it in a real browser** — squashed cards, detached fins, column
-overlap, lone digits were all invisible in the code and obvious on screen. Look at the screenshots (`Read` renders
+**Do not claim a UI change works without loading it in a real browser** — the screen shows what code hides.
+Look at the screenshots (`Read` renders
 PNGs). **After any edit to the page, load it**: `check-page` only compiles, and a `const` read before its line kills
 the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `npm run verify` reads the live one.
 
@@ -1035,7 +1036,7 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
 * **The auto fixture's folders are temp ones, real paths**: chat A's `repo-a` (no git, no colour), chat B's the temp
   dir itself (`realpathSync(tmpdir())`) — a fake claude there registers `/private/var/…`; a running pid gets its `procStart`. Its two chats are a second apart, so the board's order is never the readdir's.
 * **Every test server gets a fast clock, an empty org directory, and nothing of this Mac's** (`lib/testserver.mjs`):
-  `REGISTRY_POLL_MS` 1200, `TASK_GRACE_MS` 400, `CONFIG_POLL_MS` 200; its own `ORG_DIR` (no welcome), `CLAUDE_DIR`
+  `REGISTRY_POLL_MS` 1200, `TASK_GRACE_MS` 400, `CONFIG_POLL_MS` 200, `POWER_POLL_MS` 1200; its own `ORG_DIR` (no welcome), `CLAUDE_DIR`
   (empty unless a fixture), config beside its `STATE_FILE`; the fakes (`GH_BIN` — only the fields the query asks, `FAKEGH_FAIL` —, `caffeinate`, `pmset` with
   `AWAKE_ADMIN=none`, `CODE_BIN`, `TASK_BIN`; `CLAUDE_BIN` `noclaude.mjs` unless `fake`), `VSWEB_PORT` free, `UPDATE_DIR` empty; Jira's token in its own file (`JIRA_TOKEN_FILE`), no inherited `JIRA_API_TOKEN`; a `ZDOTDIR`
   with no rc files; `VSWEB_FRESH_MS` 0; `UPDATE_EVERY_MS` 0; `USAGE=off`; `APP_DIRS` its own, `BREW_BIN` the fake,
@@ -1074,4 +1075,4 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
 * **PR status costs a network call**, so a chat untouched for three days is not polled (opening it asks) and merged
   or closed PRs are cached forever.
 * **The app is signed for this machine only**, not for distribution.
-* **Chat-level pins** were dropped for sorting by your own last touch; **board-set colours** for Peacock's.
+* **Chat-level pins** were dropped for sorting by your own last touch.
