@@ -2403,6 +2403,30 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 // Map ▴
 (() => {
   const $ = s => document.querySelector(s);
+  // A script animation is let go of once it is done (2026-10-15). WebKit keeps every animation `animate()` made after it
+  // ends on the document timeline, which walks the finished ones on every frame (removeReplacedAnimations, the
+  // timeline's tick), and keeps any animation with a timeline alive, cancelled or not, its element with it, out of the
+  // page or not: a board open for hours spent its frames and its memory on thousands of them, and a reload made it cheap
+  // again. So each is cancelled once done and taken off its timeline: one that fills nothing, one cancelled by its own
+  // code, one that fills forwards once its element has left the page (a bubble, a folding card, a line that fell away:
+  // each removed at its end) or a later one replaced it; seconds after, so its own handlers ran.
+  const animate0 = Element.prototype.animate, ended = new Set();
+  let endTimer = 0;
+  function letGoEnded() {
+    endTimer = 0;
+    for (const a of ended) {
+      const fills = /forwards|both/.test(a.effect?.getTiming().fill) && a.effect.target?.isConnected && a.replaceState !== 'removed';
+      if (a.playState === 'idle' || (a.playState === 'finished' && !fills)) { ended.delete(a); a.cancel(); a.timeline = null; }
+      else if (a.playState !== 'finished') ended.delete(a);   // played again
+    }
+    if (ended.size) endTimer = setTimeout(letGoEnded, 5000);   // one holding its last frame in the page: looked at again
+  }
+  const endSoon = a => { ended.add(a); endTimer ||= setTimeout(letGoEnded, 2000); };
+  Element.prototype.animate = function (...args) {
+    const a = animate0.apply(this, args);
+    a.finished.then(() => endSoon(a), () => endSoon(a));
+    return a;
+  };
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null };
   const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
