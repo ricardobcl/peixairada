@@ -69,8 +69,7 @@ GitHub and VS Code open in the chat in the Mac app; in a browser they open in a 
   off a chat from its chip's right-click menu (or ⌥-click) — until you name it there yourself.
 - 🎫 **Jira tickets** — a ticket a chat names (`ACME-12`, a link, its branch) wears its status on the card and in the
   header, beside its PRs. Set your site, email and an API token in Setup.
-- 🎨 **Projects** — folders in their [Peacock](https://marketplace.visualstudio.com/items?itemName=johnpapa.vscode-peacock)
-  colour, or named sets of folders.
+- 🎨 **Projects** — folders, or named sets of folders, each in a colour of your choosing.
 - 🗺️ **Every agent at once** — ⌥⌘A lays out every live chat by what it wants (asking, clauding, watching, new replies),
   each showing what it is doing right now; the board's panels are tiles, laid out as Hyprland does.
 - 🏠 **Home** — with no chat open: an ASCII sunset at sea with our fish leaping across the sun (click it), the board at
@@ -169,7 +168,7 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
   *Updates*: whether the board updates itself (off to begin with: the status bar says when new commits came, and
   *update now* takes them), where it stands, check now.
 - **Setup** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
-  project ⌥⌘O starts a chat in, a short name and a colour where Peacock has none, per project, and your Jira site,
+  project ⌥⌘O starts a chat in, a short name and a colour per project, and your Jira site,
   email and API token (the token goes to your keychain, never into the file).
 
 The setup is a file of yours, `~/.config/peixairada/config.json` (`$XDG_CONFIG_HOME` moves it) — edit it by hand or

@@ -1,4 +1,4 @@
-// The README's screenshots, from a made-up board: a handful of projects with Peacock colours, chats in every state,
+// The README's screenshots, from a made-up board: a handful of projects with colours, chats in every state,
 // PRs coloured by a fake gh — their CI, the people on them, one at your move —, a plan-usage answer of its own, the
 // Mac's numbers made up too: nothing from this Mac's ~/.claude, nor its name. Run it with
 //   npm run scenario -- scripts/readme-shots.mjs
@@ -26,10 +26,9 @@ const W = 1440, H = 900;
 const root = mkdtempSync(join(realpathSync(tmpdir()), 'peix-shots-'));
 const claudeDir = join(root, 'claude'), work = join(root, 'work');
 const COLORS = { storefront: '#3b7ddd', 'billing-api': '#2e9e6a', infra: '#8a5cf6', 'mobile-app': '#e5892a', 'docs-site': null };
-for (const [name, color] of Object.entries(COLORS)) {
-  mkdirSync(join(work, name, '.vscode'), { recursive: true });
-  if (color) writeFileSync(join(work, name, '.vscode', 'settings.json'), JSON.stringify({ 'peacock.color': color }, null, 2) + '\n');
-}
+for (const name of Object.keys(COLORS)) mkdirSync(join(work, name), { recursive: true });
+const configFile = join(root, 'config.json');   // the setup: the projects' colours
+writeFileSync(configFile, JSON.stringify({ projects: Object.fromEntries(Object.entries(COLORS).filter(([, c]) => c).map(([n, color]) => [n, { color }])) }, null, 2) + '\n');
 for (const name of ['admin-portal', 'analytics', 'design-system']) mkdirSync(join(work, name), { recursive: true });   // folders with no chat yet: ⌥⌘N lists them
 const cwd = name => join(work, name);
 
@@ -297,7 +296,7 @@ if (VS.child) {
 // harness opens every lane unless told)
 export const meta = {
   server: true, fake: true, fixture: claudeDir,
-  env: { GH_BIN: join(ROOT, 'scripts', 'fakegh.mjs'), FAKEGH_PRS: prsFile, FAKEGH_VIEWER: 'me', ORG: 'acme', ORG_DIR: work,
+  env: { GH_BIN: join(ROOT, 'scripts', 'fakegh.mjs'), FAKEGH_PRS: prsFile, FAKEGH_VIEWER: 'me', ORG: 'acme', ORG_DIR: work, CONFIG_FILE: configFile,
     VSWEB_PORT: String(VS.port), FAKE_TUI: 'fullscreen', FAKE_SCREEN: screenFile },
   prefs: { lanesShut: ['done'], changesScope: 'uncommitted' },
 };

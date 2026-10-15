@@ -66,7 +66,7 @@ export default async function (ctx) {
   await ctx.waitFor(`!!${cardOf(two.id)}?.querySelector('.repo svg')`, { what: 'the crystal ball on its card' });
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#quickKey').textContent`), `a new chat in ${repo}`);
 
-  // ---- a short name for the rail, a colour where Peacock gives none, and ⌥-click to take it off ----
+  // ---- a short name for the rail, a colour, and ⌥-click to take it off ----
   await set('.sadd', repo);
   await ctx.waitFor(`document.activeElement?.matches('#setup .srow.proj[data-name="${repo}"] .sab')`, { what: 'the new row, its short name box with the keyboard' });
   await set(`.srow.proj[data-name="${repo}"] .sab`, 'PX');
@@ -84,7 +84,7 @@ export default async function (ctx) {
   await ctx.shot('popover-set');
   await ctx.evaluate(`document.querySelector('#setup .srow.proj[data-name="${tmp}"] .ssw').dispatchEvent(new MouseEvent('click', { altKey: true, bubbles: true, cancelable: true }))`);
   await until(async () => !(await cfg()).projects[tmp], { what: 'the colour taken off — and the row with it, nothing left on it' });
-  await ctx.waitFor(`${cardOf(plain.id)}.style.getPropertyValue('--repo') !== '#cc3366'`, { what: 'the card back to what Peacock says' });
+  await ctx.waitFor(`${cardOf(plain.id)}.style.getPropertyValue('--repo') === ''`, { what: 'the card with no colour again' });
 
   // ---- this browser's: ⌥ in the terminal (the code's fold, always on, and the dates, day first, went on 2026-09-28) ----
   // (the days named since 2026-10-12: Yesterday, the weekday within the week, then DD-MM-YYYY; today none since 2026-10-14)

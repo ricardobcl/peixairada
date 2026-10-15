@@ -33,7 +33,6 @@ for (const f of files) {
 const DRIVEN = {
   '/': 'lib/cdp.mjs',   // the page itself: every scenario opens it
   '/vendor/:id': 'lib/cdp.mjs',   // its scripts and styles, with it
-  '/api/peacock': 'scripts/scenarios/project-colors.mjs',   // the header's colour square
   '/api/sessions/:id/drift': 'scripts/scenarios/branch-drift.mjs',   // the branch's chip clicked
   '/api/sessions/:id/waive': 'scripts/scenarios/let-go.mjs',   // ⌥-click on your move
   '/api/sessions/:id/unlink': 'scripts/scenarios/header-prs.mjs',   // ⌥-click on a PR chip

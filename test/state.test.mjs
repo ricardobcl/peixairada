@@ -1,4 +1,4 @@
-// Project input and the Peacock colour written into a JSONC settings file — the pure parts, no server running.
+// Project input, Peacock's colours moved into the setup once (2026-10-15), and the state file itself.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -8,7 +8,7 @@ import { tmpDir } from '../lib/testserver.mjs';
 
 const tmp = tmpDir('peix-test-');
 process.env.STATE_FILE = join(tmp, 'state.json'); process.env.CLAUDE_DIR = join(tmp, 'claude'); process.env.USAGE = 'off'; process.env.NOTIFY = 'off';
-const { projectInput, writePeacock, readPeacock, termSummary, summarizeToolInput, toolResultSnippet } = await import('../server.mjs');
+const { projectInput, movePeacock, termSummary, summarizeToolInput, toolResultSnippet } = await import('../server.mjs');
 
 test('projectInput: a name and absolute folders, trimmed and deduplicated; errors for the rest', () => {
   const v = projectInput({ name: '  Fees  ', cwds: ['/a/b', '/a/b/', ' /c ', ''] }, { cwds: [] });
@@ -19,56 +19,6 @@ test('projectInput: a name and absolute folders, trimmed and deduplicated; error
   assert.ok(projectInput({ name: 'x', cwds: 'nope' }, { cwds: [] }).error);
 });
 
-test('writePeacock: insert first, replace in place, remove with its comma — comments and other keys untouched', () => {
-  const cwd = join(tmp, 'repo'); mkdirSync(join(cwd, '.vscode'), { recursive: true });
-  const file = join(cwd, '.vscode', 'settings.json');
-  writeFileSync(file, '{\n  // editor\n  "editor.tabSize": 2,\n  "files.exclude": { "a": true }\n}\n');
-  let r = writePeacock(cwd, '#112233');
-  assert.equal(r.file, file); assert.equal(r.changed, true);
-  let text = readFileSync(file, 'utf8');
-  assert.match(text, /"peacock\.color": "#112233"/); assert.match(text, /\/\/ editor/); assert.match(text, /"editor\.tabSize": 2/);
-  assert.equal(readPeacock(cwd)?.color, '#112233');
-  r = writePeacock(cwd, '#445566');
-  text = readFileSync(file, 'utf8');
-  assert.equal((text.match(/peacock\.color/g) || []).length, 1); assert.match(text, /#445566/);
-  r = writePeacock(cwd, null);
-  text = readFileSync(file, 'utf8');
-  assert.doesNotMatch(text, /peacock/); assert.match(text, /"editor\.tabSize": 2/); assert.match(text, /"files\.exclude"/);
-  assert.doesNotThrow(() => JSON.parse(text.replace(/\/\/.*$/gm, '')));
-});
-
-// The JSONC as people write it (2026-10-14): taking the colour out ate the comment on the line after it and left a leading
-// comma behind; a `null` typed in was not seen, and setting the colour added a second key; a file of comments alone lost
-// them; a CRLF file got a bare LF.
-test('writePeacock: comments after the key, commas that lead, a null value, a file of comments, CRLF', () => {
-  const cwd = join(tmp, 'jsonc'); mkdirSync(join(cwd, '.vscode'), { recursive: true });
-  const f = join(cwd, '.vscode', 'settings.json');
-  const write = (text, color) => { writeFileSync(f, text); writePeacock(cwd, color); return readFileSync(f, 'utf8'); };
-  const parses = text => JSON.parse(text.replace(/("(?:[^"\\\n]|\\.)*")|\/\/[^\n]*|\/\*[\s\S]*?\*\//g, (m, str) => str ?? '').replace(/,(\s*[}\]])/g, '$1'));
-  const cases = [
-    ['{\n  "peacock.color": "#aabbcc"\n  // trailing\n  , "a": 1\n}\n', null, '{\n  // trailing\n   "a": 1\n}\n', 'the first, commas leading, a comment after it'],
-    ['{\n  "a": 1,\n  "peacock.color": "#aabbcc"\n  // the colour above\n}\n', null, '{\n  "a": 1\n  // the colour above\n}\n', 'the last, a comment after it'],
-    ['{\n  "a": 1\n  , "peacock.color": "#aabbcc"\n  , "b": 2\n}\n', null, '{\n  "a": 1\n  , "b": 2\n}\n', 'in the middle, commas leading'],
-    ['{ "peacock.color": "#aabbcc"\n, "a": 1 }\n', null, '{ \n "a": 1 }\n', 'the first on the brace\'s line, commas leading'],
-    ['{\n  "peacock.color": null\n}\n', null, '{\n}\n', 'a null taken out'],
-    ['{\n  "editor.tabSize": 2,\n  "peacock.color": null\n}\n', '#112233', '{\n  "editor.tabSize": 2,\n  "peacock.color": "#112233"\n}\n', 'a null set: the one key'],
-    ['// my settings\n', '#112233', '// my settings\n{\n  "peacock.color": "#112233"\n}\n', 'a file of comments keeps them'],
-    ['{\r\n  "a": 1\r\n}\r\n', '#112233', '{\r\n  "peacock.color": "#112233",\r\n  "a": 1\r\n}\r\n', 'CRLF stays CRLF'],
-  ];
-  for (const [text, color, want, what] of cases) {
-    const got = write(text, color);
-    assert.equal(got, want, what);
-    assert.doesNotThrow(() => parses(got), what);
-  }
-});
-
-test('writePeacock: a folder without settings gets a new .vscode/settings.json', () => {
-  const cwd = join(tmp, 'fresh'); mkdirSync(cwd, { recursive: true });
-  const r = writePeacock(cwd, '#abcdef');
-  assert.equal(r.file, join(cwd, '.vscode', 'settings.json'));
-  assert.equal(JSON.parse(readFileSync(r.file, 'utf8'))['peacock.color'], '#abcdef');
-});
-
 test('small renderers', () => {
   assert.equal(termSummary(null), null);
   assert.match(summarizeToolInput('Bash', { command: 'ls -la' }), /ls -la/);
@@ -76,55 +26,45 @@ test('small renderers', () => {
   assert.equal(typeof toolResultSnippet({ type: 'tool_result', content: 'hello' }), 'string');
 });
 
-test('writePeacock and readPeacock see through comments: a brace or a key in one is neither written into nor read', () => {
-  const cwd = join(tmp, 'commented'); mkdirSync(join(cwd, '.vscode'), { recursive: true });
-  const f = join(cwd, '.vscode', 'settings.json');
-  writeFileSync(f, '// shared settings, see {wiki}\n{\n  "editor.tabSize": 2\n}\n');
-  writePeacock(cwd, '#123456');
-  assert.equal(readFileSync(f, 'utf8'), '// shared settings, see {wiki}\n{\n  "peacock.color": "#123456",\n  "editor.tabSize": 2\n}\n', 'into the object, not the comment');
-  writeFileSync(f, '{\n  // "peacock.color": "#00ff00",\n  "peacock.color": "#0000ff",\n  "a": 1\n}\n');
-  assert.equal(readPeacock(cwd).color, '#0000ff', 'the live key, not the commented one');
-  writePeacock(cwd, '#123456');
-  assert.match(readFileSync(f, 'utf8'), /\/\/ "peacock.color": "#00ff00",\n  "peacock.color": "#123456"/, 'and the live one is the one written');
-  writeFileSync(f, '{ "url": "http://x//y", "peacock.color": "#abcdef" }');
-  writePeacock(cwd, null);
-  assert.equal(readFileSync(f, 'utf8'), '{ "url": "http://x//y" }', 'a // in a string is no comment; the comma before a last key goes with it');
+// A project's colour was Peacock's until 2026-10-15 — now the setup's, and the first boot since moves what Peacock said
+// there under each project's shown name, so the board keeps the colours it showed.
+test('movePeacock: each folder\'s Peacock colour under its project\'s name — the nearest settings file, comments seen through', () => {
+  const root = join(tmp, 'pc'), put = (dir, text) => { mkdirSync(join(root, dir, '.vscode'), { recursive: true }); writeFileSync(join(root, dir, '.vscode', 'settings.json'), text); };
+  put('api', '{\n  // "peacock.color": "#00ff00",\n  "peacock.color": "#0000FF",\n}\n');   // the live key, not the commented one; a trailing comma
+  put('web', '{ "workbench.colorCustomizations": { "activityBar.background": "#123456" } }');   // Peacock's derived colour alone
+  put('plain', '{ "editor.tabSize": 2 }');
+  mkdirSync(join(root, 'api', 'apps', 'x'), { recursive: true });
+  mkdirSync(join(root, 'api', '.claude', 'worktrees', 'wt', '.vscode'), { recursive: true });
+  writeFileSync(join(root, 'api', '.claude', 'worktrees', 'wt', '.vscode', 'settings.json'), '{ "peacock.color": "#999999" }');
+  const cwds = [join(root, 'api', '.claude', 'worktrees', 'wt'), join(root, 'api'), join(root, 'web'), join(root, 'plain'), join(root, 'api', 'apps', 'x'), join(root, 'none')];
+  const projs = { api: { abbr: 'A', color: '#ffffff' }, plain: { color: '#abcdef' }, other: { abbr: 'O' } };
+  const out = movePeacock(cwds, projs);
+  assert.deepEqual(out, {
+    api: { abbr: 'A', color: '#0000ff' },   // Peacock's won on the page, over the setup's; the folder before its worktree
+    web: { color: '#123456' },
+    x: { color: '#0000ff' },                // a folder below a repo wore the repo's
+    plain: { color: '#abcdef' }, other: { abbr: 'O' },   // nothing from Peacock: as they were
+  });
+  assert.equal(projs.api.color, '#ffffff', 'the setup handed in is not changed');
+  assert.equal(movePeacock(cwds, out), null, 'nothing new: nothing to write');
+  assert.equal(movePeacock([join(root, 'plain')], undefined), null);
 });
 
-test('taking Peacock\'s colour out takes its activity-bar copy too, so the colour does not come straight back', () => {
-  const cwd = join(tmp, 'derived'); mkdirSync(join(cwd, '.vscode'), { recursive: true });
-  const f = join(cwd, '.vscode', 'settings.json');
-  writeFileSync(f, '{\n  "peacock.color": "#ff0000",\n  "workbench.colorCustomizations": {\n    "titleBar.activeBackground": "#ff0000",\n    "activityBar.background": "#ff0000"\n  }\n}\n');
-  writePeacock(cwd, null);
-  assert.equal(readPeacock(cwd).color, null);
-  assert.equal(readFileSync(f, 'utf8'), '{\n  "workbench.colorCustomizations": {\n    "titleBar.activeBackground": "#ff0000"\n  }\n}\n');
-  writeFileSync(f, '{\n  "peacock.color": "#ff0000",\n  "workbench.colorCustomizations": { "activityBar.background": "#00ff00" }\n}\n');
-  writePeacock(cwd, null);
-  assert.equal(readPeacock(cwd).color, '#00ff00', 'an activity bar painted by hand stays');
-});
-
-// Never written: anything under ~/.claude (2026-10-14) — a chat run in it put the colour square on a folder whose
-// settings file would be ~/.claude/.vscode/settings.json; nor through a folder linked into it, or another spelling of it.
-test('the colour square writes nothing under CLAUDE_DIR, however the folder is spelt or reached', { timeout: 30_000 }, async () => {
-  const { existsSync, symlinkSync } = await import('node:fs');
-  const claude = process.env.CLAUDE_DIR;
-  mkdirSync(join(claude, 'projects'), { recursive: true });
-  symlinkSync(join(claude, 'projects'), join(tmp, 'linked'));
-  const caps = claude.replace(/claude$/, 'Claude');   // the same folder where the disk ignores case
-  for (const cwd of [claude, join(claude, 'projects'), join(tmp, 'linked'), ...existsSync(caps) ? [caps] : []]) {
-    assert.throws(() => writePeacock(cwd, '#123456'), /the board writes nothing under/, cwd);
-    assert.throws(() => writePeacock(cwd, null), /the board writes nothing under/, `${cwd}, the colour taken out`);
-  }
-  assert.ok(!existsSync(join(claude, '.vscode')) && !existsSync(join(claude, 'projects', '.vscode')), 'nothing made');
+test('the first boot moves Peacock\'s colours into the setup, and never again', { timeout: 60_000 }, async () => {
   const { startTestServer } = await import('../lib/testserver.mjs');
-  const srv = await startTestServer({});
+  const dir = tmpDir('peix-'), cwd = join(tmpDir('peix-pc-'), 'shop');
+  mkdirSync(join(cwd, '.vscode'), { recursive: true });
+  writeFileSync(join(cwd, '.vscode', 'settings.json'), '{ "peacock.color": "#2f7fd8" }');
+  writeFileSync(join(dir, 'state.json'), JSON.stringify({ pinned: [cwd] }));   // a folder the board knows
+  const srv = await startTestServer({ dir });
   try {
-    const cd = srv.env.CLAUDE_DIR, put = (path, body) => srv.api(path, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-    assert.equal((await put('api/pins', { pins: [cd] })).status, 200);   // a folder the board knows, as a chat run there would be
-    const r = await put('api/peacock', { cwd: cd, color: '#123456' });
-    assert.equal(r.status, 400, r.body.error);
-    assert.match(r.body.error, /writes nothing there/);
-    assert.ok(!existsSync(join(cd, '.vscode')), 'no .vscode made in it');
+    const config = () => JSON.parse(readFileSync(join(dir, 'config.json'), 'utf8'));
+    assert.deepEqual(config().projects, { shop: { color: '#2f7fd8' } });
+    assert.match(JSON.parse(readFileSync(join(dir, 'state.json'), 'utf8')).peacockMoved, /^20\d\d-/);
+    assert.deepEqual((await srv.api('api/config')).body.projects, { shop: { color: '#2f7fd8' } }, 'the board paints it');
+    writeFileSync(join(cwd, '.vscode', 'settings.json'), '{ "peacock.color": "#000000" }');
+    await srv.restart();
+    assert.deepEqual(config().projects, { shop: { color: '#2f7fd8' } }, 'read once: Peacock is no longer the board\'s');
   } finally { await srv.stop(); }
 });
 

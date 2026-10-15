@@ -109,7 +109,9 @@ if (APP) {
 const base = tmpDir('pxperf-'), claude = join(base, 'c'); mkdirSync(claude);
 const names = ['wallet', 'ledger', 'gateway', 'risk', 'orders', 'ira', 'execution', 'erebor', 'staking', 'rewards', 'autopilot', 'clients', 'board', 'feeds', 'web'];
 const colors = ['#1f6feb', '#2f9e5b', '#0e8a8a', '#c53535', '#8250df', '#d9a82a', '#bf8700', '#e8782a', '#3fb950', '#a371f7', '#db61a2', '#57606a', '#c96442', '#0969da', '#6e7781'];
+// each project's colour in the setup, and as Peacock's for a board from before 2026-10-15 (--against)
 const cwds = names.map((n, i) => { const d = join(base, 'r', n); mkdirSync(join(d, '.vscode'), { recursive: true }); writeFileSync(join(d, '.vscode', 'settings.json'), JSON.stringify({ 'peacock.color': colors[i] })); return d; });
+const setup = JSON.stringify({ projects: Object.fromEntries(names.map((n, i) => [n, { color: colors[i] }])) });
 const face = (login, fill) => ({ login, __typename: 'User', avatarUrl: 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="${fill}"/></svg>`) });
 const people = ['ana', 'rui', 'eva', 'joao', 'marta', 'tiago', 'ines', 'pedro'].map((l, i) => face(l, colors[i])), me = face('me', '#888');
 const ago = min => new Date(Date.now() - min * 60_000), iso = d => d.toISOString().replace(/\.\d+Z$/, 'Z');
@@ -139,7 +141,7 @@ const doneMarks = JSON.stringify({ done: Object.fromEntries(fx.chats.filter((c, 
 // detached worktree of the ref, with this checkout's node_modules.
 const boards = [], worktrees = [], harnesses = new Set();
 async function startBoard(root, label) {
-  const dir = join(base, 's' + boards.length); mkdirSync(dir); writeFileSync(join(dir, 'state.json'), doneMarks);
+  const dir = join(base, 's' + boards.length); mkdirSync(dir); writeFileSync(join(dir, 'state.json'), doneMarks); writeFileSync(join(dir, 'config.json'), setup);
   const { startTestServer } = await import(pathToFileURL(join(root, 'lib', 'testserver.mjs')).href);
   const server = await startTestServer({ claudeDir: claude, fake: true, dir, env: {
     GH_BIN: join(ROOT, 'scripts', 'fakegh.mjs'), FAKEGH_PRS: join(base, 'prs.json'), FAKEGH_VIEWER: 'me', REGISTRY_POLL_MS: '10000', TASK_GRACE_MS: '3000' } });

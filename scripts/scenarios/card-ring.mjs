@@ -1,9 +1,9 @@
-// The clauding light (2026-09-29). Two clauding chats in a folder with a Peacock colour and a few ready ones under
+// The clauding light (2026-09-29). Two clauding chats in a project with a colour and a few ready ones under
 // them. On a card the ring runs in the border's place: no border, the cover 2 px in, the colour lifted towards white;
 // a ready card keeps its border. The open card runs its own ring (its light ran on past it, #trail, until tiles were
 // the only layout — 2026-10-14), and a turn that ends puts it out.
 import { spawn } from 'node:child_process';
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { makeFixture, replyLines, toolLines } from '../fixture.mjs';
@@ -13,8 +13,9 @@ export const meta = { server: true, fixture: 'auto' };
 
 export default async function (ctx) {
   const out = {}, cwd = join(tmpdir(), 'peix-light', 'light-repo'), now = Date.now();
-  mkdirSync(join(cwd, '.vscode'), { recursive: true });
-  writeFileSync(join(cwd, '.vscode', 'settings.json'), JSON.stringify({ 'peacock.color': '#2f7fd8' }));
+  mkdirSync(cwd, { recursive: true });
+  const projects = { 'light-repo': { color: '#2f7fd8' } };
+  await ctx.server.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ projects }) });
   const sleeps = [0, 1].map(() => spawn('sleep', ['120'], { stdio: 'ignore' }));
   const live = i => ({ pid: sleeps[i].pid, startedAt: now - 3600_000 });
   const busy = (i, title, ago) => ({ cwd, title, prompt: `do ${title}`, reply: 'on it', at: new Date(now - ago), live: live(i),
@@ -26,7 +27,7 @@ export default async function (ctx) {
     ]);
     const [open] = chats;
     await ctx.waitFor(`document.querySelectorAll('#slist > .card.working').length === 2`, { what: 'the two clauding cards' });
-    await ctx.waitFor(`document.querySelector('#slist > .card.working').style.getPropertyValue('--repo') === '#2f7fd8'`, { what: "the folder's Peacock colour (polled every 3 s)", timeout: 8000 });
+    await ctx.waitFor(`document.querySelector('#slist > .card.working').style.getPropertyValue('--repo') === '#2f7fd8'`, { what: "the project's colour, from the setup" });
 
     // 1 · on a card that is not open, the light runs where the border was
     const ring = await ctx.evaluate(`JSON.stringify((c => ({ border: getComputedStyle(c).borderTopWidth, pad: getComputedStyle(c).paddingTop, cover: getComputedStyle(c, '::after').top, anim: getComputedStyle(c, '::before').animationName }))(document.querySelector('#slist > .card.working')))`).then(JSON.parse);

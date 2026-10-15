@@ -11,7 +11,8 @@
 // Map ▾ — the sections, from the file's own banners (node scripts/map.mjs rewrites this; grep a name to jump)
 //  State
 //      · the board's setup: CONFIG_FILE, the settings' Setup
-//      · Peacock: the colour VS Code paints a folder with, from its .vscode/settings.json
+//      · nothing under CLAUDE_DIR: Claude Code's, never the board's to write in
+//      · Peacock's colours, moved into the setup once (2026-10-15)
 //      · attachments: a file dropped on the board from a browser
 //  Transcript parsing
 //      · PRs mentioned in the chat
@@ -181,6 +182,7 @@ let autoUpdate = false, updateLast = null, updateHeld = null, appBuild = null;
 // (the commit it was made at), linked (node_modules a link of ours), at }. Only these are ever removed, and only by
 // sweepWorktrees.
 let worktreesMade = {};
+let peacockMoved = null;   // when Peacock's colours went into the setup (2026-10-15; movePeacock): once
 
 // The state file is read once the port is ours (2026-10-14; at import before): a server that waited behind another for
 // the port — the agent behind the app's own, an `npm start` beside the agent — booted on the copy it had read at its
@@ -226,6 +228,7 @@ function loadState() {
     updateHeld = st.updateHeld && typeof st.updateHeld === 'object' ? st.updateHeld : null;
     appBuild = st.appBuild && typeof st.appBuild === 'object' ? st.appBuild : null;
     worktreesMade = st.worktrees && typeof st.worktrees === 'object' ? st.worktrees : {};
+    peacockMoved = typeof st.peacockMoved === 'string' ? st.peacockMoved : null;
   } catch (e) {
     if (e.code !== 'ENOENT') {
       const bad = `${stateFrom}.bad-${Date.now()}`;
@@ -243,7 +246,7 @@ function saveState() {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade }, null, 1));
+    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved }, null, 1));
     renameSync(tmp, STATE_FILE);
   } catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
@@ -383,24 +386,7 @@ function reloadConfig() {
   if (JSON.stringify(setup.jira ?? null) !== jiraWas) jiraReset();   // a root or a colour is no new site (2026-10-14)
 }
 
-// ---- Peacock: the colour VS Code paints a folder with, from its .vscode/settings.json ----------------
-// A project's colour is Peacock's and nothing else (2026-09-20): a folder without one is black on the page.
-// "peacock.color" is what the user picked; the activity-bar colour Peacock derives from it is the fallback
-// for a settings file that only carries the derived customizations. A regex, not JSON.parse: settings.json
-// allows comments and trailing commas. The nearest settings file at or above the folder counts, stopping
-// short of the home directory, so a chat in apps/x of a repo wears the repo's window colour. Every folder
-// the board knows — a session's cwd, a named project's, a pinned one — is stat'ed every PEACOCK_POLL_MS
-// and re-read on mtime; a change reaches every page as a `peacock` event within seconds.
-const PEACOCK_POLL_MS = 3000;
-const peacock = new Map();   // cwd -> { file, mtime, color }
-const HOME = homedir();
-function peacockFile(cwd) {
-  for (let dir = cwd; dir && dir !== HOME && dir !== '/' && dir !== '.'; dir = dirname(dir)) {
-    const f = join(dir, '.vscode', 'settings.json');
-    if (existsSync(f)) return f;
-  }
-  return null;
-}
+// ---- nothing under CLAUDE_DIR: Claude Code's, never the board's to write in --------------------------------------
 /** Whether a path is CLAUDE_DIR or in it, as the disk has it (2026-10-14): the board writes nothing there, and a chat
  *  run in ~/.claude, a folder linked into it or another spelling of it (the disk ignores case) is no way round that.
  *  Judged by the nearest folder of it there is, real, against CLAUDE_DIR's device and inode. */
@@ -413,37 +399,52 @@ function inClaudeDir(p) {
     if (dirname(q) === q) return false;
   }
 }
-/** The text with its comments blanked to spaces, every offset kept (newlines too): what the regexes below read, so a
- *  key or a brace inside a comment is neither read nor written into (2026-10-03: a `{` in a comment above the object
- *  took the inserted key, and a commented-out colour won over the live one). */
+// ---- Peacock's colours, moved into the setup once (2026-10-15) ------------------------------------------------------
+// A project's colour was Peacock's until 2026-10-15 — the nearest .vscode/settings.json at or above a folder, stat'ed
+// every 3 s and written by the header's square — and the setup's only where Peacock gave none; now it is the setup's
+// alone (`projects[name].color`). The first boot since reads Peacock once for every folder the board knows and writes
+// what it finds into the setup under the project's shown name, over the setup's own (Peacock's won on the page), so a
+// board keeps the colours it showed; `peacockMoved` in the state file says it is done.
+const HOME = homedir();
+/** The text with its comments blanked to spaces, every offset kept: a key inside a comment is not read (2026-10-03: a
+ *  commented-out colour won over the live one). A regex, not JSON.parse: settings.json allows comments and trailing
+ *  commas. */
 const bareJsonc = txt => txt.replace(/("(?:[^"\\\n]|\\.)*")|\/\/[^\n]*|\/\*[\s\S]*?\*\//g, (m, str) => str ?? m.replace(/[^\n]/g, ' '));
-function readPeacock(cwd, prev) {
-  const file = peacockFile(cwd);
-  if (!file) return prev && !prev.file ? prev : { file: null, mtime: 0, color: null };
-  let mtime = 0;
-  try { mtime = statSync(file).mtimeMs; } catch { return { file: null, mtime: 0, color: null }; }
-  if (prev && prev.file === file && prev.mtime === mtime) return prev;
-  let color = null;
-  try {
-    const txt = bareJsonc(readFileSync(file, 'utf8'));
+/** Peacock's colour for a folder: the nearest settings file at or above it, short of the home folder — "peacock.color",
+ *  else the activity-bar colour Peacock derives from it. Null for none. */
+function peacockOf(cwd) {
+  for (let dir = cwd; dir && dir !== HOME && dir !== '/' && dir !== '.'; dir = dirname(dir)) {
+    let txt; try { txt = bareJsonc(readFileSync(join(dir, '.vscode', 'settings.json'), 'utf8')); } catch { continue; }
     const m = txt.match(/"peacock\.color"\s*:\s*"(#[0-9a-fA-F]{6})/) || txt.match(/"activityBar\.background"\s*:\s*"(#[0-9a-fA-F]{6})/);
-    color = m ? m[1].toLowerCase() : null;
-  } catch {}
-  return { file, mtime, color };
+    return m ? m[1].toLowerCase() : null;
+  }
+  return null;
 }
-function peacockCwds() {
+/** The setup's projects with Peacock's colours in: each folder under its project's shown name (the summary's
+ *  `project`), the folder itself before a worktree of it, the first colour found for a name. Null when nothing changes. */
+function movePeacock(cwds, projs = {}) {
+  const out = { ...projs }, named = new Set(), own = c => projectDir(c) === c ? 0 : 1;
+  for (const c of [...cwds].sort((a, b) => own(a) - own(b))) {
+    const name = basename(projectDir(c) || '');
+    if (!name || named.has(name)) continue;
+    const color = peacockOf(c); if (!color) continue;
+    named.add(name);
+    if (out[name]?.color !== color) out[name] = { ...out[name], color };
+  }
+  return Object.keys(out).some(n => out[n] !== projs[n]) ? out : null;
+}
+function boardCwds() {
   const out = new Set();
   for (const s of sessions.values()) { const c = s.live?.cwd || s.cwd; if (c) out.add(c); }
   for (const p of Object.values(projects)) for (const c of p.cwds || []) out.add(c);
   for (const k of pinned) if (k.startsWith('/')) out.add(k);
   return out;
 }
-const peacockColors = () => Object.fromEntries([...peacock].map(([c, v]) => [c, v.color]));
 // The folder's repository on GitHub, from `git remote get-url origin` — ⌥⌘G opens it when the chat mentions no PR
 // (2026-09-20). Asked once per folder the board knows, again after an hour; a change reaches every page as a `repos`
 // event. A folder that is no git checkout, or whose origin is not GitHub, has none.
 const repos = new Map();   // cwd -> { url, at }
-const REPO_TTL_MS = 60 * 60_000;
+const REPO_TTL_MS = 60 * 60_000, REPOS_POLL_MS = 3000;
 // `git@github.com-work:` too — an SSH host alias, the usual way to keep two GitHub accounts apart
 const GH_REMOTE = /github\.com(?:-[\w.-]+)?[:/]([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?\s*$/;
 const ghRepoUrl = remote => { const m = GH_REMOTE.exec(String(remote)); return m ? `https://github.com/${m[1]}/${m[2]}` : null; };
@@ -470,7 +471,7 @@ function ghRepoOf(cwd, now = Date.now()) {
 }
 const repoUrls = () => Object.fromEntries([...repos].filter(([, v]) => v.url).map(([c, v]) => [c, v.url]));
 function pollRepos() {
-  const want = peacockCwds(); let changed = false;
+  const want = boardCwds(); let changed = false;
   for (const c of [...repos.keys()]) if (!want.has(c)) { repos.delete(c); changed = true; }
   // Six a poll (every 3 s), not every folder at once (2026-10-03: forty gits at boot and again each hour, all on one
   // poll); and an answer that is no answer — git timed out, or is not there — keeps the URL known before. Only "no
@@ -488,69 +489,6 @@ function pollRepos() {
       if (--left === 0 && changed) broadcast('repos', { repos: repoUrls() });
     });
   }
-}
-function pollPeacock() {
-  const want = peacockCwds();
-  let changed = false;
-  for (const c of [...peacock.keys()]) if (!want.has(c)) { peacock.delete(c); changed = true; }
-  for (const c of want) {
-    const prev = peacock.get(c), next = readPeacock(c, prev);
-    if (next === prev) continue;
-    peacock.set(c, next);
-    if ((prev?.color ?? null) !== next.color) changed = true;
-  }
-  if (changed) broadcast('peacock', { colors: peacockColors() });
-}
-// ---- Setting Peacock's colour from the board: the file pollPeacock() reads — the nearest .vscode/settings.json
-// at or above the folder — or a new one in the folder itself. A text edit, never a JSON rewrite: settings.json
-// is JSONC, and its other keys, comments and formatting must come out as they went in. Peacock re-applies the
-// workbench colours when peacock.color changes (its configuration watcher), so the VS Code window follows;
-// the board follows through the poll, forced right after the write.
-function writePeacock(cwd, color) {   // color '#rrggbb', or null to take the key out
-  const file = peacockFile(cwd) || join(cwd, '.vscode', 'settings.json');
-  if (inClaudeDir(file)) throw new Error(`${tildePath(file)}: the board writes nothing under ${tildePath(CLAUDE_DIR)}`);
-  let txt = '';
-  try { txt = readFileSync(file, 'utf8'); } catch {}
-  // Every match is made on the comment-blanked copy, and the edit made at its offsets in the text itself.
-  const splice = (a, b, put = '') => { txt = txt.slice(0, a) + put + txt.slice(b); };
-  // A value as Peacock writes it, or one typed by hand (2026-10-14: a `null` went unseen, and setting the colour put a
-  // second key in, the null still the one JSON reads).
-  const VAL = '(?:"[^"]*"|null|true|false|-?\\d[\\d.eE+-]*)';
-  /** Take one key out: its line when it has one to itself (a leading comma too), else the key alone with what follows
-   *  it on its line — never past the line's end (2026-10-14: a comment on the next line went with it). Then the comma
-   *  left over: the one before it when it was the object's last property, the one after when it was the first and the
-   *  commas lead. */
-  const drop = key => {
-    const t = bareJsonc(txt);
-    const m = new RegExp(`^[ \\t]*,?[ \\t]*"${key}"\\s*:\\s*${VAL}[ \\t]*,?[ \\t]*(?:\\r?\\n|$)`, 'm').exec(t) || new RegExp(`"${key}"\\s*:\\s*${VAL}[ \\t]*,?[ \\t]*`).exec(t);
-    if (!m) return false;
-    splice(m.index, m.index + m[0].length);
-    const t2 = bareJsonc(txt), before = t2.slice(0, m.index).trimEnd(), after = t2.slice(m.index), next = t2.length - after.trimStart().length;
-    if (/^\s*}/.test(after) && before.endsWith(',')) splice(before.length - 1, before.length);
-    else if (/^\s*,/.test(after) && /[{,]$/.test(before)) splice(next, next + 1);
-    return true;
-  };
-  if (color) {
-    const t = bareJsonc(txt), m = new RegExp(`("peacock\\.color"\\s*:\\s*)(${VAL})`).exec(t), nl = txt.includes('\r\n') ? '\r\n' : '\n';   // the file's own line ends
-    if (m) splice(m.index + m[1].length, m.index + m[1].length + m[2].length, `"${color}"`);
-    else if (!t.trim()) txt = `${txt.trim() ? txt.trimEnd() + nl : ''}{${nl}  "peacock.color": "${color}"${nl}}${nl}`;   // comments alone are kept above it
-    else {
-      const i = t.indexOf('{');
-      if (i < 0) throw new Error(`${file} does not look like a JSON object`);
-      const empty = /^\s*}/.test(t.slice(i + 1));
-      splice(i + 1, i + 1, `${nl}  "peacock.color": "${color}"` + (empty ? (/^\s*\n/.test(txt.slice(i + 1)) ? '' : nl) : ','));
-    }
-  } else {
-    const was = readPeacock(cwd)?.color;
-    if (!drop('peacock\\.color')) return { file, changed: false };
-    // Peacock's own activity-bar colour is the reading's fallback, and it is the colour just taken out: it goes too,
-    // or the colour let go of came straight back (2026-10-03). Only when it is that colour — one set by hand stays.
-    const bar = /"activityBar\.background"\s*:\s*"(#[0-9a-fA-F]{6})"/.exec(bareJsonc(txt));
-    if (was && bar && bar[1].toLowerCase() === was) drop('activityBar\\.background');
-  }
-  mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, txt);
-  return { file, changed: true };
 }
 // ---- attachments: a file dropped on the board from a browser ---------------------------------
 // The Mac app hands a dropped file's *path* to the page (the shell sees the pasteboard); a plain browser
@@ -581,7 +519,6 @@ function saveAttachment(sid, name, buf) {
   writeFileSync(file, buf);
   return file;
 }
-const gitTracked = file => new Promise(resolve => { const git = findBin('git', 'whether a settings file is tracked goes unsaid'); if (!git) return resolve(false); execFile(git, ['-C', dirname(file), 'ls-files', '--error-unmatch', file], { timeout: 5000 }, err => resolve(!err)); });
 
 const projectList = () => Object.values(projects).sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
 // name: non-empty, one line; cwds: absolute paths, deduplicated. Nothing checks they exist — a project
@@ -3218,7 +3155,7 @@ async function branchNameOk(main, name) {
 // ---- the editor at a branch: a working tree per branch (2026-10-13) -------------------------------------------------
 // A PR's branch on disk without moving the branch under the chats of the folder: the tree that has it already — the
 // folder itself, a worktree — else a new one inside the repo, `<repo>/.claude/worktrees/<slug>` (where Claude Code's
-// --worktree puts its own: the repo's Peacock colour, its named projects and VS Code Web's trust of it reach there). A
+// --worktree puts its own: the repo's colour, its named projects and VS Code Web's trust of it reach there). A
 // branch of origin's is checked out tracking it; a fork's PR, or one asked for review only, is detached at its head —
 // nothing to push to, and never "already checked out". Nothing is installed: node_modules is linked from the main tree
 // when asked and the lockfiles match. The trees made here are the state file's `worktrees`; only they are ever removed.
@@ -4334,7 +4271,7 @@ function sweepDrawers() {
 
 // ---- who may ask: the board's own pages, and nothing a browser lets another site send ----------------------------
 // Loopback is no trust boundary a browser keeps: any page open in one can POST here — start a claude in a folder the
-// board knows, write a Peacock colour — and open a WebSocket to a drawer and type into it, since WebSockets have no
+// board knows, change its setup — and open a WebSocket to a drawer and type into it, since WebSockets have no
 // same-origin rule at all (2026-09-27). So a request has to be the board's own page (its Origin is this server) or
 // come from no browser at all (curl, the app's fetches and the tests send no Origin), and its Host has to be a
 // loopback name: a DNS name pointed at 127.0.0.1 (rebinding) would be the same page from an origin that is not ours.
@@ -4474,7 +4411,7 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': m[2] === 'css' ? 'text/css; charset=utf-8' : 'application/javascript; charset=utf-8', 'cache-control': 'public, max-age=86400' });
       return res.end(body);
     }
-    if (req.method === 'GET' && p === '/api/sessions') return json(res, 200, { sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), claudeDir: CLAUDE_DIR, notify: NOTIFY, notifications: notificationsOn });
+    if (req.method === 'GET' && p === '/api/sessions') return json(res, 200, { sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, repos: repoUrls(), claudeDir: CLAUDE_DIR, notify: NOTIFY, notifications: notificationsOn });
     if (req.method === 'GET' && (m = p.match(/^\/api\/sessions\/([\w-]+)\/messages$/))) {
       const s = sessions.get(m[1]);
       if (!s) return json(res, 404, { error: 'unknown session' });
@@ -4550,7 +4487,7 @@ const server = createServer(async (req, res) => {
       const body = await jsonBody(req);
       if (!Array.isArray(body.pins)) return json(res, 400, { error: 'expected {pins: [key]}' });
       pinned = [...new Set(body.pins.filter(k => typeof k === 'string' && /^(\/|c:\w+$)/.test(k)).map(k => k.slice(0, 1000)))].slice(0, 200);
-      saveState(); broadcast('pins', { pins: pinned }); pollPeacock();
+      saveState(); broadcast('pins', { pins: pinned });
       return json(res, 200, { ok: true, pins: pinned });
     }
     if (req.method === 'PUT' && p === '/api/hidden') {   // the projects taken off the board, the whole list each time — same keys as the pins
@@ -4587,20 +4524,6 @@ const server = createServer(async (req, res) => {
         if (typeof body.lid === 'boolean') await setLid(body.lid);
       } catch (e) { return json(res, e.message === 'cancelled' ? 409 : 500, { error: e.message, ...awakeState() }); }
       return json(res, 200, { ok: true, ...awakeState() });
-    }
-    if ((req.method === 'PUT' || req.method === 'DELETE') && p === '/api/peacock') {   // the board sets a folder's Peacock colour
-      const body = await jsonBody(req);
-      const cwd = typeof body.cwd === 'string' ? body.cwd.replace(/\/+$/, '') : '';
-      if (!peacockCwds().has(cwd)) return json(res, 400, { error: 'not a folder the board knows' });
-      if (cwd === HOME || cwd === '/') return json(res, 400, { error: 'the home folder has no Peacock colour — it is read from a folder below it' });   // peacockFile stops short of it
-      if (inClaudeDir(cwd)) return json(res, 400, { error: `${tildePath(CLAUDE_DIR)} is Claude Code's — the board writes nothing there` });   // a chat run in it (2026-10-14)
-      const color = req.method === 'DELETE' ? null : String(body.color || '').toLowerCase();
-      if (color && !/^#[0-9a-f]{6}$/.test(color)) return json(res, 400, { error: 'color must be #rrggbb' });
-      try {
-        const r = writePeacock(cwd, color);
-        pollPeacock();
-        return json(res, 200, { ok: true, file: r.file, changed: r.changed, tracked: await gitTracked(r.file), color });
-      } catch (e) { return json(res, 500, { error: `could not write ${e.message || e}` }); }
     }
     if (req.method === 'PUT' && p === '/api/attach') {   // a dropped file's bytes (browsers only — the app knows the path); ?session=<id>&name=<file>
       const sid = url.searchParams.get('session') || '', name = url.searchParams.get('name') || 'file';
@@ -4690,7 +4613,7 @@ const server = createServer(async (req, res) => {
       if (v.error) return json(res, 400, { error: v.error });
       const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       projects[id] = { id, ...v, createdAt: new Date().toISOString() };
-      saveState(); broadcast('projects', { projects: projectList() }); pollPeacock();
+      saveState(); broadcast('projects', { projects: projectList() });
       return json(res, 201, { project: projects[id] });
     }
     if ((req.method === 'PUT' || req.method === 'DELETE') && (m = p.match(/^\/api\/projects\/(\w+)$/))) {
@@ -4699,14 +4622,14 @@ const server = createServer(async (req, res) => {
       if (req.method === 'DELETE') {
         delete projects[m[1]];
         if (pinned.includes('c:' + m[1])) { pinned = pinned.filter(k => k !== 'c:' + m[1]); broadcast('pins', { pins: pinned }); }
-        saveState(); broadcast('projects', { projects: projectList() }); pollPeacock();
+        saveState(); broadcast('projects', { projects: projectList() });
         return json(res, 200, { ok: true });
       }
       const body = await jsonBody(req);
       const v = projectInput(body, prev);
       if (v.error) return json(res, 400, { error: v.error });
       projects[m[1]] = { ...prev, ...v };
-      saveState(); broadcast('projects', { projects: projectList() }); pollPeacock();
+      saveState(); broadcast('projects', { projects: projectList() });
       return json(res, 200, { project: projects[m[1]] });
     }
     if (req.method === 'GET' && p === '/api/usage') { const { code, body } = await planUsage(); return json(res, code, body); }
@@ -4808,7 +4731,7 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
     if (req.method === 'GET' && p === '/events') {
-      const snap = JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, peacock: peacockColors(), repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), about: aboutInfo(), awake: awakeState(), clones: [...clones.values()].map(cloneState), update: updateState(), editors: editorState(), page: pageStamp(readFileSync(PAGE_FILE, 'utf8')) });
+      const snap = JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), about: aboutInfo(), awake: awakeState(), clones: [...clones.values()].map(cloneState), update: updateState(), editors: editorState(), page: pageStamp(readFileSync(PAGE_FILE, 'utf8')) });
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
       res.write(`event: snapshot\ndata: ${snap}\n\n`);
       sseClients.add(res);
@@ -4831,7 +4754,7 @@ server.on('upgrade', (req, socket, head) => { socket.on('error', () => socket.de
 // ---------------------------------------------------------------------------------------------
 // Boot — only when run as the program. Imported (the tests), the module exposes its pure parts and does nothing.
 // ---------------------------------------------------------------------------------------------
-export { sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, logEvents, noteRounds, roundsOf, prLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, writePeacock, readPeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
+export { sweepTasks, indexFile, settleDrift, noteHead, headOf, driftOf, updateParts, doingOf, dayOf, noteSpan, parseNumstat, parseNameStatus, splitPatch, addedPatch, changesOf, patchStat, projectDir, parseWorktrees, worktreesFor, branchWhere, prRefs, ensureWorktree, linkModules, sweepWorktrees, switchGuard, worktreesMade, fold, newSession, summary, agentRunning, usageWindows, prChecks, ticketsIn, noteTickets, cleanSetup, notePr, notePrs, unlinkPr, unlinked, waiveTurn, unwaiveTurn, moveTurn, prEvents, logEvents, noteRounds, roundsOf, prLogs, prActs, takeActs, forgetRef, ghRepoOf, prTitle, duePrs, prStatus, prTurn, prPeople, setPrInfo, doneMarks, forGoodMarks, cleanPrompt, textOf, snippet, plain, summarizeToolInput, toolResultSnippet, projectInput, movePeacock, termSummary, isDone, sessions, terms, foreignTo, lidRuns, prTurns };
 const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) main().catch(e => { console.error('[peixairada] boot failed:', e); process.exit(1); });
 async function main() {
@@ -4882,6 +4805,15 @@ scanProjects();
 await adoptHolders();   // before the registry: a drawer's own process is what makes a chat's live process "mine"
 loadRegistry();
 sweepHeads(Date.now(), true);   // the checkouts' branches as they stand, judged in silence: a move from before the restart is no news
+if (!peacockMoved && !configError) {   // once, every folder known (2026-10-15); a setup that does not read waits for the next boot
+  const was = setup.projects, projs = movePeacock(boardCwds(), was);
+  if (projs) setup.projects = projs;
+  if (projs && saveConfig()) setup.projects = was;   // not written: tried again at the next boot
+  else {
+    peacockMoved = new Date().toISOString(); saveState();
+    if (projs) console.log(`[peixairada] Peacock's colours moved into ${tildePath(CONFIG_FILE)}: ${Object.keys(projs).filter(k => projs[k] !== was?.[k]).join(', ')}`);
+  }
+}
 indexing = false;
 // Statuses alone could wait for a chat to be opened; titles cannot — they head every card, so the whole
 // board needs them up front. Batched 40 to a GraphQL call, in the background, the recent chats' first.
@@ -4890,10 +4822,8 @@ sweepTickets();
 if (awakeOn) try { keepAwake(true); } catch (e) { console.error(`[peixairada] could not keep the Mac awake: ${e.message}`); }   // the switch outlives a restart
 readPower();
 cpuBusy();   // the first sample: the status bar's first ask has a share to give
-pollPeacock();
-setInterval(pollPeacock, PEACOCK_POLL_MS);
 pollRepos();
-setInterval(pollRepos, PEACOCK_POLL_MS);
+setInterval(pollRepos, REPOS_POLL_MS);
 setInterval(reloadConfig, CONFIG_POLL_MS);   // a stat against the board's own record of it: a save-by-rename, a file not there yet, one made and gone between two looks
 if (VSWEB_FRESH_MS > 0) { setTimeout(freshenVsWeb, Math.min(90_000, VSWEB_FRESH_MS)); setInterval(freshenVsWeb, VSWEB_FRESH_MS); }   // VS Code Web on the newest build, before you open it
 readCheckout().then(async co => { Object.assign(upd, co); if (co.checkout) { upd.app = await readApp().catch(() => null); upd.appWhy = appWhyNot(false, false, false); } sayUpdate(); }, e => { upd.error = errText(e); });

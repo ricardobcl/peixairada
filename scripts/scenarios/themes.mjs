@@ -1,24 +1,24 @@
-// Themes (2026-10-10). A folder with a Peacock blue and a chat in it. What this checks: ⌥⌘Y opens the grid on the theme
+// Themes (2026-10-10). A project painted blue in the setup and a chat in it. What this checks: ⌥⌘Y opens the grid on the theme
 // worn (the board's own); an arrow previews the next — the root wears its data-skin, the tokens follow, the card's blue
 // moves to the theme's own blue, the header's black and the status bar's ground are the theme's darkest — and Esc puts
 // the board's own back. ⏎ wears one whatever the system shows (2026-10-12): a dark theme stays dark when the system
 // turns light, a light one is light in a dark system, a reload keeps it, and the first paint is it (the head's script).
 // Following macOS (the switch) wears each appearance's slot, which a pick fills; a theme of the other appearance still
 // previews.
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { makeFixture } from '../fixture.mjs';
 import { tmpDir } from '../../lib/testserver.mjs';
 
 const dir = tmpDir('peix-themes-'), cwd = join(dir, 'blue-repo');
 const BLUE = '#3b7ddd';
-mkdirSync(join(cwd, '.vscode'), { recursive: true });
-writeFileSync(join(cwd, '.vscode', 'settings.json'), JSON.stringify({ 'peacock.color': BLUE }));
+mkdirSync(cwd, { recursive: true });
 
 export const meta = { server: true, fixture: 'auto', prefs: { skinFollow: false } };   // the board's own: the harness follows the system
 
 export default async function (ctx) {
-  const out = {}, now = Date.now();
+  const out = {}, now = Date.now(), projects = { 'blue-repo': { color: BLUE } };
+  await ctx.server.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ projects }) });
   const { chats } = makeFixture(ctx.fixture.dir, [{ cwd, title: 'A blue chat', prompt: 'paint it', reply: 'Painted.\n\n```js\nconst blue = 1;\n```', at: new Date(now - 60_000) }]);
   const [chat] = chats;
   const media = dark => ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: dark ? 'dark' : 'light' }] });
@@ -37,7 +37,7 @@ export default async function (ctx) {
   const follow = async on => { await ctx.evaluate(`(b => b.checked === ${on} || b.click())(document.querySelector('#skinFollow'))`); await ctx.waitFor(`window.peix.prefs().skinFollow === ${on}`, { what: `follow macOS ${on ? 'on' : 'off'}` }); };
 
   await media(true);
-  await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${chat.id}"]')?.style.getPropertyValue('--repo') === '${BLUE}'`, { what: "the folder's Peacock blue", timeout: 10000 });
+  await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${chat.id}"]')?.style.getPropertyValue('--repo') === '${BLUE}'`, { what: "the project's blue", timeout: 10000 });
   await ctx.openChat(chat.id);
   ctx.assert.equal(await skin(), null, 'no theme to begin with');
   out.ownBg = await root('--bg');

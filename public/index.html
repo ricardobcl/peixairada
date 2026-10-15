@@ -31,7 +31,7 @@
     --pr-open: #1f7d45; --pr-merged: #7442d0; --pr-closed: #c53535; --pr-draft: #6e6e68;   /* deep enough for the page's ground as ink on them (2026-10-12; 3.15 and 3.17 for open and draft before) */
     --tk-todo: #5e6a7c; --tk-doing: #1a62c2; --tk-done: #1a7f55;   /* a Jira ticket's status category (2026-10-08), Jira's own blue and green, a shade deeper (2026-10-12) */
     --term-bg: #f4f3ee; --term-sel: rgba(201, 100, 66, .28);   /* the accent, as ::selection is */
-    --nocolor: #b9b9b3;   /* light gray: a project without a Peacock colour, wherever a colour is needed (the tab, the swatch, the card's edge and wash) */
+    --nocolor: #b9b9b3;   /* light gray: a project without a colour, wherever a colour is needed (the tab, the swatch, the card's edge and wash) */
     /* Syntax colours, one set per theme — the whole highlight.js palette hangs off these eight. */
     --hl-com: #6f6e66; --hl-key: #9c27a0; --hl-str: #4a8c3f; --hl-num: #98651a;
     --hl-fn: #2f6fd0; --hl-cls: #a8791a; --hl-var: #cf4b3c; --hl-meta: #6b7f9e;
@@ -1214,8 +1214,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      the PRs and the buttons. display:flex would beat the UA [hidden] rule, hence the override. */
   .shead .details { flex-basis: 100%; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
   .shead .details[hidden] { display: none; }
-  /* The header in the project's colour — Peacock's title bar, in effect (2026-09-20). #chat.tinted while the chat's
-     folder has one; --rink is the ink that reads on it (white or near-black by the colour's luminance, set beside
+  /* The header in the project's colour, as Peacock painted VS Code's title bar (2026-09-20). #chat.tinted while the
+     chat's project has one; --rink is the ink that reads on it (white or near-black by the colour's luminance, set beside
      --repo by tintChat), and every control in the header is redrawn in it. An armed or failed button keeps its warning
      colour on a panel-coloured pill, so it reads on any project. */
   /* A gradient, not a block (2026-09-20): the colour
@@ -2403,7 +2403,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 // Map ▴
 (() => {
   const $ = s => document.querySelector(s);
-  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], peacock: {}, repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null };
+  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null };
   const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
@@ -2709,7 +2709,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // Following macOS is a switch (prefs.skinFollow): then the slots, as Ghostty's `theme = dark:…,light:…`, a dark theme
   // worn while macOS is dark, a light one while it is light — a pick fills its appearance's slot either way, none being
   // the board's own (prefs.skinDark, prefs.skinLight). A project keeps its hue — its
-  // Peacock colour moves to the theme's nearest (skinColor; worn as set until 2026-10-14 was a switch). `crust` is the
+  // colour moves to the theme's nearest (skinColor; worn as set until 2026-10-14 was a switch). `crust` is the
   // theme's darkest (lightest, in a light one): the header's black, the splitter's, the status bar's ground.
   const SKINS = {
     'tokyo-night': { name: 'Tokyo Night', dark: true, bg: '#1a1b26', panel: '#1f2335', raise: '#24283b', crust: '#16161e', ink: '#c0caf5', muted: '#8790bd', line: '#292e42', accent: '#7aa2f7',
@@ -3051,22 +3051,22 @@ const toolName = n => {
   // tab in VS Code, which goes dead and does not follow; every button and hint that offers it says so.
   const inVsCode = s => s?.entrypoint === 'claude-vscode';
   const shName = () => state.about.shell || 'zsh';   // the shell a ⌥⌘T tab is — the login shell's name, from the server
-  // A project's colour is Peacock's for its folder — state.peacock, cwd → #rrggbb, read by the server from
-  // the nearest .vscode/settings.json and pushed the moment it changes — and the first of its folders' for a
-  // named project. Nothing else since 2026-09-20 (no board-set colours, no hashed hues): a folder without
-  // one has none, `--repo` stays unset, and the CSS paints --nocolor (a light gray) wherever a colour is needed.
-  // The board paints ALL, the flat list of every chat, in its own black, in both themes — and a folder the cog gives a
-  // colour (projCfg, below) where Peacock says nothing; black there is the same black, with the same inks.
+  // A project's colour is the setup's (2026-10-15; Peacock's for its folder before, the setup's where Peacock gave
+  // none): `projects[name].color`, under the project's shown name — a worktree's its repo's (projDir) —, and for a
+  // named project the first of its folders'. No hashed hues: a folder without one has none, `--repo` stays unset, and
+  // the CSS paints --nocolor (a light gray) wherever a colour is needed. The board paints ALL, the flat list of every
+  // chat, in its own black, in both themes; a project set to black is the same black, with the same inks.
   const BLACK = '#000000';
-  const ownColor = cwds => (Array.isArray(cwds) ? cwds : [cwds]).map(c => c && (state.peacock[c] || projCfg(folderName(c)).color)).find(Boolean) || null;
+  const colorKey = cwd => folderName(projDir(cwd));   // the setup's name for a folder's colour
+  const ownColor = cwds => (Array.isArray(cwds) ? cwds : [cwds]).map(c => c && projCfg(colorKey(c)).color).find(Boolean) || null;
   // What the board paints with. The setup and the header's square read ownColor: they are where a project's colour is
   // set, so they show it.
   const repoColor = cwds => skinColor(ownColor(cwds));   // a theme moves it to its own hue (2026-10-10)
   const projColor = p => p.key === ALL ? BLACK : repoColor(p.cwds);
   const repoStyle = color => color ? `--repo:${color}` : '';
-  // The ink that reads on a colour: near-black on a light one, white on a dark one — Peacock's own rule (tinycolor's
-  // brightness, (299r + 587g + 114b) / 1000, light from 128), so the header agrees with the VS Code title bar of the
-  // same folder; WCAG luminance would put black on #007fff. Peacock writes #rrggbb; anything else gets the page's ink.
+  // The ink that reads on a colour: near-black on a light one, white on a dark one — Peacock's rule (tinycolor's
+  // brightness, (299r + 587g + 114b) / 1000, light from 128), so the header agrees with a VS Code title bar Peacock
+  // painted in it; WCAG luminance would put black on #007fff. The setup holds #rrggbb; anything else gets the page's ink.
   const brightness = color => {
     const m = /^#([0-9a-f]{3,8})$/i.exec(String(color).trim()); if (!m) return null;
     const h = m[1].length < 6 ? [...m[1]].map(c => c + c).join('') : m[1];
@@ -3460,7 +3460,7 @@ const toolName = n => {
   const inFolder = (cwd, f) => !!cwd && (cwd === f || cwd.startsWith(f.replace(/\/$/, '') + '/'));
   // A chat in a worktree inside a repo, `<repo>/.claude/worktrees/<name>`, is the repo's (2026-10-13): a folder project
   // is keyed by the repo, so its pins, its hiding, its name and its chats are the repo's — a named project took it by
-  // its prefix already (inFolder), and Peacock's colour by the folder above. Its branch is a chip on its card.
+  // its prefix already (inFolder), and its colour by the repo's name (colorKey). Its branch is a chip on its card.
   const projDir = cwd => cwd ? cwd.replace(/\/\.claude\/worktrees\/[^/]+(?:\/.*)?$/, '') : cwd;
   const inProject = (s, p) => p.key === ALL || (p.custom ? p.cwds.some(f => inFolder(s.cwd, f)) : (projDir(s.cwd) || '?') === p.key);
   const projectStub = key => key === ALL ? { key } : key.startsWith('c:') ? { key, custom: true, cwds: state.projects.find(p => 'c:' + p.id === key)?.cwds || [] } : { key };
@@ -3578,10 +3578,9 @@ const toolName = n => {
     return [stat(all), ...pins, ...rest.filter(p => p.custom), ...rest.filter(p => !p.custom).sort((a, b) => b.last.localeCompare(a.last))];
   }
   const pillsHtml = p => `${p.working ? `<span class="pc working" title="clauding">${p.working}</span>` : ''}${p.ready ? `<span class="pc ready" title="ready for you">${p.ready}</span>` : ''}${p.unread ? `<span class="badge">${p.unread}</span>` : ''}`;   // the column's counts, and the picker's
-  // The colour square — and where it stands for one folder (the chat header's) the picker: Peacock's setting, written
-  // for the VS Code window too.
+  // The colour square — and where it stands for one folder (the chat header's) the picker: the setup's colour for it.
   const sqHtml = (p, style = '') => p.cwds?.length === 1
-    ? `<span class="sq pick"${style ? ` style="${style}"` : ''} data-cwd="${esc(p.cwds[0])}" title="Colour of ${esc(p.name)} — click to pick; written as peacock.color into the folder's .vscode/settings.json, so the VS Code window shows it too; ⌥-click takes it out"></span>`
+    ? `<span class="sq pick"${style ? ` style="${style}"` : ''} data-name="${esc(colorKey(p.cwds[0]))}" title="Colour of ${esc(p.name)} — click to pick; kept in the setup (Settings › Setup › Projects); ⌥-click takes it off"></span>`
     : `<span class="sq"${style ? ` style="${style}"` : ''}></span>`;
 
   // ---- render: both lists ------------------------------------------------------------
@@ -5010,7 +5009,7 @@ const toolName = n => {
         { name: 'Rename it', sub: of, fn: () => editTitle(s) },
         ...(s.prs || []).filter(shownHere).map(pr => ({ name: `Take ${pr.label.replace(/^.*?#/, '#')} off it`, sub: ` — ${pr.title || pr.label}`, fn: () => unlinkUrl(s, pr.url) })),
         ...(isSplit(s) ? [{ name: 'Move this tab to the other half', sub: of, fn: () => moveFocused(s) }] : []),
-        ...(s.cwd && state.peacock[s.cwd] ? [{ name: 'Let go of its project’s colour', sub: ` — ${s.project}`, fn: () => clearColor(s.cwd) }] : []),
+        ...(s.cwd && ownColor(s.cwd) ? [{ name: 'Let go of its project’s colour', sub: ` — ${s.project}`, fn: () => clearColor(colorKey(s.cwd)) }] : []),
         ...(s.cwd ? [{ name: 'Copy its folder’s path', sub: ` — ${homePath(s.cwd)}`, fn: () => navigator.clipboard?.writeText(s.cwd).then(() => note($('#shead'), 'Path copied'), () => {}) }] : []),
       ]),
     ].map(a => ({ kind: 'action', id: 'ac:' + a.name, ...a }));
@@ -5437,8 +5436,7 @@ const toolName = n => {
   async function loadJira() { try { setupUi.jira = await api('GET', '/api/jira'); } catch { setupUi.jira = null; } renderSetup(); }
   const cfgProjects = () => state.config.projects || {};
   const setupNames = () => [...new Set(projectList().filter(p => p.key !== ALL).map(p => p.name))].sort((a, b) => a.localeCompare(b));
-  /** A project's square in the setup, as the rail draws it: its colour — Peacock's, else the setup's — and the ink
-   *  that reads on it. */
+  /** A project's square in the setup, as the rail draws it: its colour and the ink that reads on it. */
   function tileStyle(name, byName) {
     const p = byName.get(name), color = (p && ownColor(p.cwds)) || projCfg(name).color;
     return color ? `background:${color};color:${inkOn(color)}` : '';
@@ -5451,11 +5449,11 @@ const toolName = n => {
     const org = (v, ph) => `<label class="sorgw" title="The GitHub org ＋ clone asks for — empty, nothing is cloned into this folder">github.com/<input ${text} class="sorg" value="${esc(v)}" placeholder="${ph}"></label>`;
     const rootRow = (r, i) => `<div class="srow root" data-i="${i}"><span class="sic">${ICON.folder}</span><input ${text} class="sdir" value="${esc(homePath(r.dir))}" title="${esc(r.dir)}">${org(r.org, 'org')}<button class="sdel" title="Forget this folder — nothing in it is touched" aria-label="Forget ${esc(homePath(r.dir))}">×</button></div>`;
     const projRow = n => {
-      const p = projs[n] || {}, bp = byName.get(n), peacock = bp?.cwds.map(x => state.peacock[x]).find(Boolean);
+      const p = projs[n] || {}, bp = byName.get(n);
       return `<div class="srow proj" data-name="${esc(n)}"><span class="stile" style="${tileStyle(n, byName)}">${esc(p.abbr || abbrRule(n))}</span>`
-        + `<span class="pn" title="${esc(bp ? bp.cwds.map(homePath).join('\n') : n)}"><b>${projIcon(n)}${esc(n)}</b>${peacock ? `<small>in Peacock's ${esc(peacock)}</small>` : bp ? `<small>${esc(bp.cwds.map(homePath).join(' · '))}</small>` : ''}</span>`
+        + `<span class="pn" title="${esc(bp ? bp.cwds.map(homePath).join('\n') : n)}"><b>${projIcon(n)}${esc(n)}</b>${bp ? `<small>${esc(bp.cwds.map(homePath).join(' · '))}</small>` : ''}</span>`
         + `<input ${text} class="sab" value="${esc(p.abbr || '')}" placeholder="${esc(abbrRule(n))}" maxlength="6" title="Its short name on the rail (⌥⌘B) — empty, its initials">`
-        + `<label class="ssw${p.color ? '' : ' none'}" style="${p.color ? `--c:${p.color}` : ''}" title="${p.color ? `${p.color} where Peacock gives none — click to change, ⌥-click to take it off` : 'A colour where Peacock gives none — click to pick'}"><input type="color" value="${esc(p.color || '#808080')}"></label>`
+        + `<label class="ssw${p.color ? '' : ' none'}" style="${p.color ? `--c:${p.color}` : ''}" title="${p.color ? `${p.color} — click to change, ⌥-click to take it off` : 'A colour for it — click to pick'}"><input type="color" value="${esc(p.color || '#808080')}"></label>`
         + `<button class="sdel" title="Forget the short name and colour of ${esc(n)}" aria-label="Forget ${esc(n)}">×</button></div>`;
     };
     const quick = [...new Set([...(c.quick ? [c.quick] : []), ...all])];
@@ -5465,7 +5463,7 @@ const toolName = n => {
       + `<div class="srow root add"><span class="sic">＋</span><input ${text} class="sdir" placeholder="Add a folder of repos — ~/code">${org('', 'org')}<span></span></div></div></section>`
       + `<section class="sg">${head('Quick chat', 'A new chat in one project, its environments first when its Taskfile launches claude.')}<div class="slist">`
       + `<label class="srow quick"><kbd>⌥⌘O</kbd><span>starts a chat in</span><span class="ssel">${c.quick ? projIcon(c.quick) : ''}<select id="quickSel" title="The project ⌥⌘O starts a chat in — on its environments first, when its Taskfile launches Claude"><option value="">nothing — ⌥⌘N does it all</option>${quick.map(n => `<option${n === c.quick ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></span></label></div></section>`
-      + `<section class="sg">${head('Projects', 'A short name for the folded list (⌥⌘B), and a colour where Peacock gives none.')}<div class="slist">${names.map(projRow).join('')}`
+      + `<section class="sg">${head('Projects', 'A short name for the folded list (⌥⌘B), and its colour — the chat header\'s square sets it too.')}<div class="slist">${names.map(projRow).join('')}`
       + `<div class="srow padd"><span class="sic">＋</span><select class="sadd" title="Give a project a short name or a colour"><option value="">Add a project…</option>${all.filter(n => !names.includes(n)).map(n => `<option>${esc(n)}</option>`).join('')}</select></div></div></section>`
       + jiraSetup(c.jira, setupUi.jira)
       + (c.error ? `<p class="sfoot serr">${esc(c.error)} — the board keeps what it had and writes nothing over it until the file reads.</p>` : '')
@@ -5500,10 +5498,11 @@ const toolName = n => {
     const s = state.sessions.get(state.current); if (s) renderHead(s);
   }
   async function putConfig(part, anchor) {
-    try { state.config = (await api('PUT', '/api/config', part)).config; configChanged(); }
+    try { state.config = (await api('PUT', '/api/config', part)).config; configChanged(); return true; }
     catch (e) {
       note(anchor, e.status === 404 ? 'The running server predates the setup — scripts/launchd.sh restart' : `Not saved: ${e.message}`, true);
       renderSetup(true);   // the row as the server has it
+      return false;
     }
   }
   const rootsInBox = () => [...$('#setup').querySelectorAll('.srow.root')].map(r => ({ dir: r.querySelector('.sdir').value.trim(), org: r.querySelector('.sorg').value.trim() })).filter(r => r.dir);
@@ -5511,7 +5510,7 @@ const toolName = n => {
     const all = { ...cfgProjects() }, next = { ...all[name], ...patch };
     for (const k of Object.keys(next)) if (!next[k]) delete next[k];
     if (Object.keys(next).length) all[name] = next; else delete all[name];
-    putConfig({ projects: all }, anchor);
+    return putConfig({ projects: all }, anchor);
   }
   {
     const box = $('#setup');
@@ -5763,12 +5762,12 @@ const toolName = n => {
   // One real <input type=color> for the page (#colorInput): the squares are re-rendered on every update, so the
   // control is moved under the square that was clicked and opened from there — the panel stays wired to it
   // through any render. `input` previews the colour on the board as the panel moves and writes it once the
-  // panel rests (350 ms); `change` writes at once. The answer — which file, whether git tracks it, or why it
-  // failed — pops up by the square (`note`, a transient line, not an alert).
+  // panel rests (350 ms); `change` writes at once. It is written into the setup under the project's name
+  // (2026-10-15; into the folder's .vscode/settings.json as Peacock's before); a failure pops up by the square (`note`).
   const colorInput = $('#colorInput');
   let colorTimer = null, previewRaf = 0;
-  const written = new Map();   // cwd → the last colour written, so a rest and the panel closing do not write twice
-  const colorWas = new Map();  // cwd → its colour before the picker moved it: what a refused write goes back to (2026-10-03: the refused colour stayed on the board)
+  const written = new Map();   // name → the last colour written, so a rest and the panel closing do not write twice
+  const colorWas = new Map();  // name → its colour before the picker moved it: what a refused write goes back to (2026-10-03: the refused colour stayed on the board)
   function note(anchor, text, err) {
     document.querySelectorAll('.note').forEach(n => n.remove());
     const r = anchor?.getBoundingClientRect?.(); if (!r) return;
@@ -5781,38 +5780,36 @@ const toolName = n => {
   // The note belongs by the square that was clicked — the chat header's since 2026-09-22, the chat list's header
   // before that — and every render makes a new element, so what is remembered is where it was, not which it was.
   let colorAt = '#shead';
-  const sqFor = cwd => document.querySelector(`${colorAt} .sq.pick[data-cwd="${CSS.escape(cwd)}"]`) || document.querySelector(`.sq.pick[data-cwd="${CSS.escape(cwd)}"]`);
+  const sqFor = name => document.querySelector(`${colorAt} .sq.pick[data-name="${CSS.escape(name)}"]`) || document.querySelector(`.sq.pick[data-name="${CSS.escape(name)}"]`);
   function openColorPicker(sq) {
     colorAt = '#shead';
-    const r = sq.getBoundingClientRect();
+    const r = sq.getBoundingClientRect(), name = sq.dataset.name;
     colorInput.style.left = r.left + 'px'; colorInput.style.top = r.bottom + 'px';
-    colorInput.dataset.cwd = sq.dataset.cwd; colorInput.value = ownColor(sq.dataset.cwd) || '#b9b9b3';
-    written.set(sq.dataset.cwd, colorInput.value); colorWas.set(sq.dataset.cwd, state.peacock[sq.dataset.cwd] ?? null);
+    colorInput.dataset.name = name; colorInput.value = projCfg(name).color || '#b9b9b3';
+    written.set(name, colorInput.value); colorWas.set(name, projCfg(name).color ?? null);
     try { colorInput.showPicker(); } catch { colorInput.click(); }
   }
-  const setPeacock = async (cwd, hex) => {
+  const setColor = async (name, hex) => {
     clearTimeout(colorTimer);
-    if (written.get(cwd) === hex) return;
-    written.set(cwd, hex);
-    let d;
-    try { d = await api(hex ? 'PUT' : 'DELETE', '/api/peacock', { cwd, color: hex }); }
-    catch (e) { written.delete(cwd); if (colorWas.has(cwd)) previewColor(cwd, colorWas.get(cwd)); note(sqFor(cwd), e.status === 404 ? 'Could not write the colour: the running server predates this page and has no route for it — scripts/launchd.sh restart' : `Could not write the colour: ${e.message}`, true); return; }
-    note(sqFor(cwd), `${hex ? 'Written to' : 'Removed from'} ${homePath(d.file)}${d.tracked ? ' — git tracks that file, so it shows in git status' : ''}`);
+    if (written.get(name) === hex) return;
+    written.set(name, hex);
+    if (!await setProject(name, { color: hex || '' }, sqFor(name))) { written.delete(name); if (colorWas.has(name)) previewColor(name, colorWas.get(name)); }
   };
-  function previewColor(cwd, hex) {
-    if (hex) state.peacock[cwd] = hex; else delete state.peacock[cwd];
+  function previewColor(name, hex) {
+    const { color, ...rest } = projCfg(name);
+    state.config.projects = { ...cfgProjects(), [name]: hex ? { ...rest, color: hex } : rest };
     if (previewRaf) return;
-    previewRaf = requestAnimationFrame(() => { previewRaf = 0; renderBoard(); const s = state.sessions.get(state.current); if (s && s.cwd === cwd) renderHead(s); });
+    previewRaf = requestAnimationFrame(() => { previewRaf = 0; renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); });
   }
   colorInput.addEventListener('input', () => {
-    const { cwd } = colorInput.dataset, hex = colorInput.value;
-    previewColor(cwd, hex); clearTimeout(colorTimer); colorTimer = setTimeout(() => setPeacock(cwd, hex), 350);
+    const { name } = colorInput.dataset, hex = colorInput.value;
+    previewColor(name, hex); clearTimeout(colorTimer); colorTimer = setTimeout(() => setColor(name, hex), 350);
   });
-  colorInput.addEventListener('change', () => setPeacock(colorInput.dataset.cwd, colorInput.value));
+  colorInput.addEventListener('change', () => setColor(colorInput.dataset.name, colorInput.value));
   document.addEventListener('click', e => {   // capture: before the row's own click selects the project
     const sq = e.target.closest('.sq.pick'); if (!sq) return;
     e.stopPropagation(); e.preventDefault();
-    if (e.altKey) { const cwd = sq.dataset.cwd; colorAt = '#shead'; colorWas.set(cwd, state.peacock[cwd] ?? null); written.delete(cwd); previewColor(cwd, null); setPeacock(cwd, null); } else openColorPicker(sq);   // always asked: what was written last may have been set again elsewhere
+    if (e.altKey) clearColor(sq.dataset.name); else openColorPicker(sq);   // always asked: what was written last may have been set again elsewhere
   }, true);
   // A fanned stack of PRs wider than its row scrolls (2026-10-04): a sideways swipe by itself, and a wheel turned over
   // it too — down is deeper into the stack, leftwards — rather than the list under it, which would carry the card from
@@ -6412,16 +6409,16 @@ const toolName = n => {
   const shownHere = pr => !!pr?.url;
   const unlinkUrl = (s, url) => { const el = document.querySelector(`#shead .hpr[data-url="${CSS.escape(url)}"], #prlist .prrow[data-url="${CSS.escape(url)}"]`); if (el) return unlinkPr(s, el); api('POST', `/api/sessions/${s.id}/unlink`, { url }).catch(err => note($('#shead'), `Could not take it off: ${err.message}`, true)); };
   const moveFocused = s => { const k = tabOf(s); if (k && k !== 'chat') moveTab(s, k, placeOf(s)[0] === k ? 1 : 0); else note($('#shead'), 'The chat stays in its half — pick a tab to move', true); };
-  const clearColor = cwd => { colorAt = '#shead'; colorWas.set(cwd, state.peacock[cwd] ?? null); written.delete(cwd); previewColor(cwd, null); setPeacock(cwd, null); };
+  const clearColor = name => { colorAt = '#shead'; colorWas.set(name, projCfg(name).color ?? null); written.delete(name); previewColor(name, null); setColor(name, null); };
   function ctxRows(e) {
-    const card = e.target.closest('#slist > .card'), chip = e.target.closest('.cpr[data-url], .hpr[data-url], .prrow[data-url]'), sq = e.target.closest('.sq.pick[data-cwd]');
+    const card = e.target.closest('#slist > .card'), chip = e.target.closest('.cpr[data-url], .hpr[data-url], .prrow[data-url]'), sq = e.target.closest('.sq.pick[data-name]');
     if (chip) {
       const s = state.sessions.get(card?.dataset.id || state.current), url = chip.dataset.url; if (!s || !url) return null;
       return [{ t: 'Open the PR', fn: () => openExternal(url, { s }) }, { t: 'Take it off this chat', warn: true, fn: () => unlinkUrl(s, url) }];
     }
     const hm = e.target.closest('#shead .hmove');
     if (hm) { const s = state.sessions.get(state.current); return s && [{ t: 'Let this round go — the next move tells you', fn: () => letGo(s, $('#shead .hmove')) }]; }
-    if (sq) return state.peacock[sq.dataset.cwd] ? [{ t: 'Pick a colour…', fn: () => sq.click() }, { t: 'Let go of the colour', fn: () => clearColor(sq.dataset.cwd) }] : [{ t: 'Pick a colour…', fn: () => sq.click() }];
+    if (sq) return projCfg(sq.dataset.name).color ? [{ t: 'Pick a colour…', fn: () => sq.click() }, { t: 'Let go of the colour', fn: () => clearColor(sq.dataset.name) }] : [{ t: 'Pick a colour…', fn: () => sq.click() }];
     if (!card) return null;
     const s = state.sessions.get(card.dataset.id); if (!s) return null;
     return [
@@ -9509,7 +9506,7 @@ const toolName = n => {
     es.onerror = () => { bar.conn = false; bar.back = false; renderBar(); };
     es.addEventListener('snapshot', e => {
       const d = JSON.parse(e.data); state.snapshots++;   // the harness waits on the count: a reloaded page has its board
-      state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.peacock = d.peacock || {}; state.repos = d.repos || {};
+      state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.repos = d.repos || {};
       for (const m of [tabs, homes, splits, autoSplit, stacked, zoomed, focusView, state.unread, state.paneGh, state.paneWt, changesOpen, blanks, diffStats]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);   // a chat gone from the board takes its page state with it
       state.about = d.about || {};
       if (d.config) state.config = d.config;
@@ -9545,7 +9542,6 @@ const toolName = n => {
     });
     es.addEventListener('entries', e => { const d = JSON.parse(e.data); if (d.sessionId === state.current) { mergeEntries(d); renderLog(); } });
     es.addEventListener('projects', e => { state.projects = JSON.parse(e.data).projects || []; renderBoardSoon(); });
-    es.addEventListener('peacock', e => { state.peacock = JSON.parse(e.data).colors || {}; renderBoardSoon(); const s = state.sessions.get(state.current); if (s) renderHead(s); });
     es.addEventListener('repos', e => { state.repos = JSON.parse(e.data).repos || {}; });
     es.addEventListener('pins', e => { state.pins = JSON.parse(e.data).pins || []; renderBoardSoon(); });
     es.addEventListener('hidden', e => { state.hidden = JSON.parse(e.data).hidden || []; renderBoard(); if ($('#pick').open) pickRender(); });

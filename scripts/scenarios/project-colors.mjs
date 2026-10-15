@@ -1,11 +1,11 @@
-// A project's colour (2026-10-01 as the simple colours' scenario; the switch went on 2026-10-14). A folder with a
-// Peacock colour and three chats in it: one clauding, one asking, one on an open PR with a face and a block of code.
-// What this checks: the cards and the open chat's header wear the folder's colour, the list ALL's black, a
-// PR chip its state's green, the code its syntax colours; the setup shows the folder's colour (it is where the colour is
-// set); the chat header's square writes Peacock's. Black still stands out: the black beside it — the header right of the
+// A project's colour (2026-10-01 as the simple colours' scenario; the switch went on 2026-10-14; the setup's alone since
+// 2026-10-15, Peacock's before). A project with a colour in the setup and three chats in it: one clauding, one asking,
+// one on an open PR with a face and a block of code. What this checks: the cards and the open chat's header wear the
+// project's colour, the list ALL's black, a PR chip its state's green, the code its syntax colours; the setup shows the
+// colour; the chat header's square writes it there, and ⌥-click takes it off. Black still stands out: the black beside it — the header right of the
 // project — turns grey, and an open black card's ink is light.
 import { spawn } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeFixture, toolLines } from '../fixture.mjs';
@@ -13,8 +13,7 @@ import { tmpDir, waitFor } from '../../lib/testserver.mjs';
 
 const dir = tmpDir('peix-colors-'), prs = join(dir, 'prs.json'), cwd = join(dir, 'calm-repo');
 const COLOR = '#2f7fd8';
-mkdirSync(join(cwd, '.vscode'), { recursive: true });
-writeFileSync(join(cwd, '.vscode', 'settings.json'), JSON.stringify({ 'peacock.color': COLOR }));
+mkdirSync(cwd, { recursive: true });
 const ago = min => new Date(Date.now() - min * 60_000).toISOString().replace(/\.\d+Z$/, 'Z');
 const face = (login, fill) => ({ login, __typename: 'User', avatarUrl: 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="${fill}"/></svg>`) });
 writeFileSync(prs, JSON.stringify({
@@ -37,7 +36,10 @@ export default async function (ctx) {
   const out = {}, now = Date.now();
   const sleeps = [0, 1].map(() => spawn('sleep', ['120'], { stdio: 'ignore' }));
   const live = i => ({ pid: sleeps[i].pid, startedAt: now - 3600_000 });
+  const paint = projects => ctx.server.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ projects }) });
+  const setupColor = async () => (await ctx.server.api('api/config')).body.projects?.['calm-repo']?.color;
   try {
+    await paint({ 'calm-repo': { color: COLOR } });
     const { chats } = makeFixture(ctx.fixture.dir, [
       { cwd, title: 'Clauding', prompt: 'run the tests', reply: 'on it', at: new Date(now - 60_000), live: live(0),
         lines: id => toolLines({ id, cwd, name: 'Bash', input: { command: 'npm test', description: 'test' }, at: new Date(now - 5_000) }) },
@@ -49,7 +51,7 @@ export default async function (ctx) {
     ]);
     const [busy, asking, onPr] = chats;
     await ctx.evaluate(`window.__chroma = ${chroma.toString()}`);
-    await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${busy.id}"]')?.style.getPropertyValue('--repo') === '${COLOR}'`, { what: "the folder's Peacock colour (polled every 3 s)", timeout: 10000 });
+    await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${busy.id}"]')?.style.getPropertyValue('--repo') === '${COLOR}'`, { what: "the project's colour, from the setup", timeout: 10000 });
     await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${onPr.id}"] .cpr[data-state="open"]') && document.querySelector('#slist > .card[data-id="${onPr.id}"] .faces img')`, { what: 'the PR answered, with its face', timeout: 20000 });
     await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${asking.id}"]')?.classList.contains('asking')`, { what: 'the question on its card' });
     await ctx.openChat(onPr.id);
@@ -85,20 +87,19 @@ export default async function (ctx) {
     await ctx.shot('full');
 
     // 2 · the setup is where a colour is set: its square shows it
-    await ctx.server.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ projects: { 'calm-repo': { abbr: 'CR' } } }) });
+    await paint({ 'calm-repo': { abbr: 'CR', color: COLOR } });
     await ctx.cmd('Comma');
     await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
     await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="setup"]').click()`);
     await ctx.waitFor(`document.querySelector('#setup .srow.proj[data-name="calm-repo"] .stile')`, { what: 'the project\'s row in the setup' });
     out.tile = await ctx.evaluate(`document.querySelector('#setup .srow.proj[data-name="calm-repo"] .stile').style.background`);
-    ctx.assert.ok(chroma(out.tile) > 40, `the setup's square in the folder's colour: ${out.tile}`);
+    ctx.assert.ok(chroma(out.tile) > 40, `the setup's square in the project's colour: ${out.tile}`);
     await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="board"]').click()`);
     await ctx.cmd('Comma');
     await ctx.waitFor(`!document.querySelector('#settings').open`, { what: 'the settings closed' });
 
-    // 3 · black, picked at the chat header's square: written as Peacock's, and what was black beside it is grey, in both
-    // themes
-    const peacock = () => JSON.parse(readFileSync(join(cwd, '.vscode', 'settings.json'), 'utf8'))['peacock.color'];
+    // 3 · black, picked at the chat header's square: written into the setup, and what was black beside it is grey, in
+    // both themes
     const scheme = dark => ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: dark ? 'dark' : 'light' }] });
     const frame = () => ctx.evaluate(`JSON.stringify({ dark: document.querySelector('#main').classList.contains('darkchat'), 
       head: getComputedStyle(document.querySelector('.shead'), '::after').backgroundColor,
@@ -110,7 +111,7 @@ export default async function (ctx) {
     await ctx.evaluate(`document.querySelector('#shead .sq.pick').click()`);
     await ctx.evaluate(`(i => { i.value = '#000000'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); })(document.querySelector('#colorInput'))`);
     await ctx.waitFor(`document.querySelector('#main').classList.contains('darkchat')`, { what: 'the open chat in black' });
-    await waitFor(() => peacock() === '#000000', { what: "the square's black written as Peacock's" });
+    await waitFor(async () => (await setupColor()) === '#000000', { what: "the square's black written into the setup" });
     await ctx.settle();
     for (const dark of [true, false]) {
       await scheme(dark); await ctx.waitFor(`document.documentElement.dataset.theme === '${dark ? 'dark' : 'light'}'`, { what: 'the board in that appearance' }); await ctx.sleep(100);
@@ -132,9 +133,11 @@ export default async function (ctx) {
     await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1000, y: 500 });
     await ctx.shot('black');
 
-    // 4 · ⌥-click on the square takes Peacock's out: the folder has no colour, and the black beside it is black again
+    // 4 · ⌥-click on the square takes the colour off: the project has none, its short name stays, and the black beside
+    // it is black again
     await ctx.evaluate(`document.querySelector('#shead .sq.pick').dispatchEvent(new MouseEvent('click', { altKey: true, bubbles: true, cancelable: true }))`);
-    await waitFor(() => peacock() === undefined, { what: "Peacock's colour taken out" });
+    await waitFor(async () => (await setupColor()) === undefined, { what: 'the colour taken off' });
+    ctx.assert.deepEqual((await ctx.server.api('api/config')).body.projects, { 'calm-repo': { abbr: 'CR' } }, 'the short name kept');
     await ctx.waitFor(`!document.querySelector('#main').classList.contains('darkchat')`, { what: 'no black any more' });
     out.none = await ctx.evaluate(`document.querySelector('#slist > .card[data-id="${busy.id}"]').style.getPropertyValue('--repo')`);
     ctx.assert.equal(out.none, '', 'the cards wear no colour of their own');

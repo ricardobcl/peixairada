@@ -13,7 +13,7 @@ import { tmpDir } from '../../lib/testserver.mjs';
 export const meta = { server: true, fixture: 'auto' };
 
 export default async function (ctx) {
-  // a folder of its own: the checkout may have a Peacock colour, which a project's colour in the setup does not beat
+  // a folder of its own, under a name no other project has
   const now = Date.now(), out = {}, cwd = realpathSync(tmpDir('peix-tiles-'));
   const sleeps = [0, 1].map(() => spawn('sleep', ['300'], { stdio: 'ignore' }));
   const live = i => ({ pid: sleeps[i].pid, startedAt: now - 3600_000 });

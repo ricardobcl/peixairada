@@ -63,7 +63,7 @@ try {   // a server or a Chrome that does not come up: what did come up is ended
     // The temp dir as claude reports it (/private/var/…, not /var/…): a fake started there registers its real path, and a
     // fixture chat under the other spelling would be another folder to the board — a second project named T.
     // Chat A's folder is a temp one of its own too, repo-a (2026-10-14): it was this checkout, so the board read its
-    // Peacock colour, branch and changes, and a resume, a zsh or a worktree made from chat A acted on the real repo.
+    // colour, branch and changes, and a resume, a zsh or a worktree made from chat A acted on the real repo.
     let cwdA = null;
     if (meta.fixture === 'auto') {
       const repos = realpathSync(mkdtempSync(join(tmpdir(), 'peix-repo-'))); cwdA = join(repos, 'repo-a'); mkdirSync(cwdA);
