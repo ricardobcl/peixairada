@@ -5,6 +5,61 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-15. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-15 — the board's cost, a third round
+
+Ricardo: "do a deep analysis of performance, especially on animations and background "jobs". seems a bit sluggish the
+app sometimes. you can suggest removel or update of animations/features if there are measurable gains to be had"; on
+the findings, "do 1-3 and for 4, you can stop after 1 min".
+
+* **How it was read**: the app's board web process, its GPU process, the app and the server, their CPU each second
+  from `ps`; `sample` in back-to-back two-second chunks to catch a burst, `atos -p` for frames `sample` left bare;
+  the WebKit harness on the live board with the app's prefs, the measuring body asleep (a frame asked for every frame
+  is a rendering update every frame, and hid item 1); a chat with a live drawer opened there without attaching it
+  (`WebSocket` to `/api/terminals/` stubbed from the document's start, so no resize reached its PTY); the server
+  profiled (`--cpu-prof`) and its spawns logged on a copy of the state file over the real `~/.claude`.
+* **The pixel mark eases linearly, each frame held by two keyframes** (`pix`, `pixhop`). WebKit composites no
+  animation eased by `steps()`: the mark on the Clauding lane's head and the presence line ran on the main thread — a
+  style pass and a walk of every layer each frame — for as long as anything was clauding, which is all day here. On
+  the live board with three chats clauding, at rest: 4.5–4.9 % of a core → 1.7–2.6 % (the mark paused: 2.0–2.1);
+  `npm run perf` on the made-up board, 3.7 → 2.9. The same frames: the transforms at the start, middle and end of
+  each of the 24 compared in Chrome, old and new, identical. A frame's next keyframe sits 0.01 % (0.24 ms) before its
+  boundary, under a frame's length. `lib/animcheck.mjs` breaks on a `steps()` easing (xterm's cursor blink aside — a
+  colour and a shadow, the main thread's whatever its easing), and `npm run perf`'s rest and home phases sleep.
+* **The app tells the page of the fill only when it changed** (`fillSaid`; a reload forgets it). In the app's
+  samples every burst — ~0.5 s of the board's main thread, its GPU process at 15–20 % and the app at 6–9 % for about
+  two seconds, every 5 to 35 s while in use — was `closure #5 in AppDelegate.buildWindow` → `tellFill` →
+  `peixFill`, whose `layoutNotch` read the layout: a full style, layout and compositing pass, at once. The observer
+  heard `didChangeScreenNotification` of every window the app has (`object: nil`); it hears the board's window now,
+  and `placeFill` sets `presentationOptions` only when they differ. Not settled: what posted the notifications —
+  WebKit refreshed its screen properties in the same bursts (a display's colour or brightness, perhaps) — and whether
+  WebKit's own restyle on such a change stays; read off the app after the rebuild.
+* **Sounds rest between chimes** (`audioRest`, `AUDIO_REST_MS` 1.5 s; `ran`). Made on a press and never suspended,
+  the context rendered silence for as long as the board was shown: a real-time thread in the web process, CoreAudio's
+  IO thread in the GPU process, ~1 % of a core between them, and coreaudiod holding an idle-sleep assertion for the
+  output. In WebKit: made running, suspended 1.5 s on, started again by a chime with no press, suspended again.
+  `peix.state().audio` says which.
+* **Home's sea rests after a minute with no pointer, key or wheel** (`SEA_REST_MS`, `seaStir`), on the frame it drew
+  last; any of them starts it again. It ran at 13–21 % of a core, the dearest thing on the board. `drawHome` mounts
+  the sea again every few seconds (the stats): a sea at rest stays so — the first cut reset its clock there and never
+  rested. `home.mjs` waits out the minute.
+* **Measured and left as they are**: the cards' rings, the shimmer, the fish's chase (four frames a second on
+  average), the drawer's mask and cursor blink (within this Mac's noise), a layer per card (without them 10.3 →
+  13.9 %), a drawer streaming as Claude Code does (+1–4 points at 284 × 79), the page's script per event (~2 ms).
+* **The server and its jobs are not the cause**: ~0.3 % of a core steady; a request's p99 5 ms, the worst 19–23 ms
+  in 90 s; opening a 44 MB transcript not yet read holds the loop ~70 ms. About 32 spawns a minute at rest — `pmset`
+  twelve (readPower, every 10 s), `vm_stat` one per board every 3 s (`/api/stats`), `git` and `gh` as needed —, each
+  5–43 ms on this Mac, whose endpoint-security agent vets every exec. Offered, not made: readPower every minute, one
+  `/api/stats` answer shared by the pages, the Peacock and remotes polls every 30 s rather than 3.
+* **Left, for later**:
+  - *A page open for hours did the same work 10–20 times slower* than a fresh one showing the same chat: the 30 s
+    tick ~0.6 s of CPU against ~0.05, `peixFill` after a full invalidation ~0.5 s against 28–34 ms. Reloaded, the
+    regular spike was gone. What accumulates is not known; the page logging its element and animation counts to the
+    app log every ten minutes would show it.
+  - *An app reading the board's accessibility tree* costs a full style and layout each time
+    (`AXObjectCache::performDeferredCacheUpdate`, ~0.5 s once seen); a smaller page is the only lever.
+  - *The wallpaper's glow* is a layer 127.6 vw × 92.8 vh: ~35–90 MB of graphics memory on a 5K screen. Drawn at an
+    eighth and scaled up it would look the same.
+
 ## Decisions of 2026-10-15 — update now over a change here
 
 Ricardo: "a user was on hash 9027aad and the status bar update click went to settings intead of updated. also, on

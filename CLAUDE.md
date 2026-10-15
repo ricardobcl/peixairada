@@ -328,7 +328,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `repoColor`); the drawer's sixteen colours are the theme's (`xtTheme`, `ANSI`). A tile
   clicked reveals from the point (`revealFrom`, a view transition). **A colour that reads no token is one no theme
   reaches.** → `themes.mjs`.
-* **The header floats** (2026-10-09; the only header since 2026-10-14 — `<html data-head="float">` is in the markup,
+* **The header floats** (2026-10-09; the only one since 2026-10-14 — `<html data-head="float">` is in the markup,
   never toggled, the hook of its rules): `#shead` and
   `#prlist` inset and rounded, **over the chat** — `#groups` spans the header's rows (`grid-row: 1 / 5`, every row of
   `#chat` placed in column 1: two overlapping items, one auto-placed, take two columns). A half with a strip pads down
@@ -359,7 +359,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `.card.black:not(:hover, .qsel)`, whose ground stays black. `--repo` stays the colour as set (rail, header). → the black step of `project-colors.mjs`.
 * **With no chat open the column is home** (2026-10-10; `showHome`, from `leaveChat` and a snapshot with nothing to
   open; ⌥⌘0): the sea (`makeSea`, after ascii.rest's *ocean-sunset*, MIT; a canvas that outlives the draws, 15 fps
-  while on screen, still under reduced motion; `peix.sea()`), the board's facts (`about.user`, `about.host`), and the
+  while on screen, at rest after a minute with no input (`SEA_REST_MS`), still under reduced motion;
+  `peix.sea()`), the board's facts (`about.user`, `about.host`), and the
   day — `GET /api/today?since=<the page's midnight>`, a row per chat with its turns, questions (`a`) and monitors
   (`m`). The spans come from the transcript as folded (`noteSpan`, `s.day`), an open question from the registry
   (`live.statusAt`). `homeSoon` on session events; the day asked again each minute and on a landing.
@@ -547,7 +548,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   chat as steps of one dialog (`new` → `chats` → `folder` → `env`, `newChatIn()`), **O** the same on the setup's `quick`
   project (`hotOracle()`), **↑↓** the chat above or below as shown (`hotMove()`), **←→** the tab beside, wrapping
   (`hotTab()`), **1 / 2** the halves stood one over the other (`hotGroup(g, true)`), **R** the board reloaded
-  (`hotReload`; 2026-10-13, ⌘R's before). **C T G E D pressed again from the tab they bring up** (a claude live here, a
+  (`hotReload`, 2026-10-13). **C T G E D pressed again from the tab they bring up** (a claude live here, a
   zsh, a page at the chat's PR, the editor, the changes — the HOTKEYS entries are `hot…Key`, `zoomAgain` before the plain `hot…`) fill
   the column with that half, and back (`toggleZoom`, see *The chat column's two halves*); `typeInShell` and the launcher
   call the plain ones. Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A `dialog[open]` swallows them;
@@ -564,7 +565,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   forwarder's copy (a digit as `Digit<n>`; `npm run check` holds it). ⌘K is *not* here (the drawer's clear), nor ⌘+ ⌘−
   (`chatZoomKey`, which sees ⌘0 only when nothing is split).
 * **⌘W is the Window menu's item, not the forwarder's**: a key equivalent goes to the key window's views before the
-  menu (2026-10-14, measured), and a web view with the keys hands it to its page — so the menu hears only a ⌘W the page
+  menu (2026-10-14), and a web view with the keys hands it to its page — so the menu hears only a ⌘W the page
   left alone (a GitHub page's, a native view's; not the board's, whose CMDKEYS take it). `closeHalfOrWindow` asks the
   board (`peixKey('KeyW','cmd')`) and calls `performClose` only on false. Anything else the board wants off a ⌘ a menu
   item claims goes the same way (⌘, does).
@@ -575,7 +576,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   editor open, ⌘W is VS Code's; ⌥⌘W closes the tab any time. → `tab-keys.mjs`.
 * **⌃⌘F is the full screen Settings › Look picks** (2026-10-14; `toggleFull`; `prefs.fullSpace` → `fullscreen` →
   `spaceMode`; on at quit, `peixairada.fill`, back on at launch; `kill -USR1 $(pgrep -x peixAIrada)` too). **Its own
-  Space** is macOS's (`.fullScreenPrimary`), below the housing (AppKit holds the frame there, measured): the page
+  Space** is macOS's (`.fullScreenPrimary`), below the housing (AppKit holds the frame there): the page
   hears no fill, the fill's machinery stays off. **Up to the notch is the fill** (`toggleFill`; `BoardWindow`,
   borderless, the whole screen; `fill: on …` in the app log): the menu bar auto-hidden beside a camera housing, hidden
   without one (`placeFill`, `fillOptions()`), let out by the pointer held at the top 1 s (`menuOut`), tucked after a
@@ -589,10 +590,10 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   the pointer is below the strip; the app log says `fill: lights down|up`. **The fill gone on while the page heard it
   off says so once** (`fillHint`, under the head row): never on a load that finds it on (`state.fillHeard`), the
   first `FILL_HINTS` times in all. → `fill-hint.mjs`. The page hears `peixFill(on, notch)` — the strip's height and the housing's x range in
-  CSS px, null without one — and **`layoutNotch()` lays the top row round it** (reads, then writes): the header's title left of the housing and its chips right
+  CSS px, null without one; only when new (`fillSaid`, 2026-10-15) — and **`layoutNotch()` lays the top row round it** (reads, then writes): the header's title left of the housing and its chips right
   (`.shead.hole`), unless the whole title does not fit (a `Range` measures it; `scrollWidth` never reads under the
   box's): `.tright`, the title jumps the housing — or, floating, runs under it (`.tunder`); what has not the room
-  pads down by the strip (`.npad`). On this Mac the strip is 32 pt and the housing x 771.5–956.5 of 1728.
+  pads down by the strip (`.npad`).
   → `notch.mjs`.
 * **The pickers match fuzzily, and with something typed the best match leads**: `fuzzy(fields, q)` — each word
   hunted *within one field* (`chatFields(s)`; a chat's PRs and tickets are one, `chatIds` — 2026-10-14 —, and
@@ -948,13 +949,13 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   sets, with white, wins over `--glow`.
 * **A CSS animation starts over on a rebuilt node, and only `transform` and `opacity` run off the main thread**:
   anything that moves on a card is phased to the document clock after the render (`phaseAnims()`), and nothing
-  continuous animates a custom property, a gradient or a colour.
+  continuous animates a custom property, a gradient or a colour, nor eases by `steps()` — WebKit composites none: a
+  held frame is two keyframes on a linear easing (`pix`, 2026-10-15).
 * **A running animation is moved by its `currentTime`, never its `startTime` alone**: WebKit — the app — hands a
   transform to the compositor, and a start set after it has reads back from the script but never reaches the screen;
   Chrome takes either, so the harness cannot see it. The proof is the compositor's frame: `npm run webkit`.
 * **In WebKit one main-thread animation makes every frame a style pass and a walk of every layer** (2026-10-13): a
-  running animation needs a box that is drawn — WebKit keeps one on a `display: none` pseudo-element (the splitter's
-  scroll-driven black, kept under tiles, took the rings off the compositor; it went with the plain layout, 2026-10-14). The cost is read off the web process (`sample <WebContent pid>`), never Chrome.
+  running animation needs a box that is drawn — WebKit keeps one on a `display: none` pseudo-element. The cost is read off the web process (`sample <WebContent pid>`), never Chrome.
 * **A read after a write is a layout**: the list's frame (`listGeom`), `fitHeadPrs` and `layoutNotch` read
   everything first; keep it so.
 * `projIcon(name)` marks ⌥⌘O's project wherever its name is written; `projAbbr` is the rail's squares. Both, and a
@@ -965,7 +966,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   usage's messages wear `.unote`, since `.note` is `note()`'s popup.
 * **No in-page toasts**: alerts are the badge plus a system notification (the app sets `NOTIFY=off` on its own
   server); with the board in front an alert can be heard instead (`chime`, `prefs.sounds`, off; Web Audio made on a
-  press, `audioUp`). **The notifications switch is the server's** (`notifications` in the state file, `PUT
+  press, `audioUp`, suspended between sounds, `audioRest`). **The notifications switch is the server's** (`notifications` in the state file, `PUT
   /api/notifications`): off, every alert still goes out but `quiet: true`, and the three posters (main.swift, the
   page's `Notification`, the server's osascript) skip it. A new poster reads `quiet` — and `heading`, the server's
   title for an alert that is not Claude's. → `notifications.mjs`.
@@ -1007,13 +1008,13 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
 * **What a change costs is read in WebKit too** (`npm run perf`, 2026-10-13): a 400-chat board with the lights on, the
   web process's CPU (`WK_PIDFILE`) at rest, with the pointer moving, scrolling and on home, a chat opened from its
   card, the layers and the memory, against ceilings (`CEIL_REST` …), and **the animation rules** (`lib/animcheck.mjs`:
-  nothing never-ending on an SVG child, at a playback rate other than 1 or with nothing drawn; no inherited registered
-  property transitioned over a big subtree) — which Chrome checks too (`compositor-rules.mjs`), all but the box WebKit
-  runs an animation on without drawing it. Every cause of 2026-10-13
-  passed every scenario. A change to motion, the list or the page's structure runs it before it lands — `--against
-  <ref>` puts the same board on that commit beside it (a worktree, the runs interleaved; `--runs n` for medians),
-  `--sample` says where the time went (macOS `sample`, the top of the stacks). **The app as it runs** is `--app`: its
-  board's web process (main.swift logs `board: web process <pid>`) — CPU, memory, where the time went.
+  nothing never-ending on an SVG child, at a playback rate other than 1, by `steps()` or with nothing drawn; no
+  inherited registered property transitioned over a big subtree) — Chrome checks them too (`compositor-rules.mjs`) but
+  the undrawn box. Rest and home sleep (2026-10-15): a frame asked for each frame hides a main-thread animation. A
+  change to motion, the list or the page's structure runs it before it lands — `--against <ref>` puts the same board
+  on that commit beside it (a worktree, the runs interleaved; `--runs n`, medians), `--sample` the top of macOS
+  `sample`'s stacks. **The app as it runs** is `--app`: its board's web process (main.swift logs `board: web process
+  <pid>`) — CPU, memory, where the time went.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports `meta`
   (`server`, `fake`, `fixture`, `env`, `prefs` — what the page starts from; **without it a page starts with every
   lane open, large cards, the theme following the emulated colour scheme and the tour taken**: the scenarios read the
