@@ -196,7 +196,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.snap, { width: 380, bumps: 1 }, 'snapped to the list\'s own width, with one bump');
 
   // ---- 25 · sounds, off by default: switched on (a hand's click, so the page may make sound), it plays its tick; an
-  // alert with the board in front is heard ----
+  // alert with the board in front is heard; between the two the sound rests ----
   ctx.assert.equal((await ctx.peix('prefs()')).sounds, false, 'off to begin with');
   await ctx.cmd('Comma');
   await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
@@ -205,9 +205,12 @@ export default async function (ctx) {
   for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await ctx.send('Input.dispatchMouseEvent', { type, x: so.x, y: so.y, button: 'left', buttons: type === 'mousePressed' ? 1 : 0, clickCount: 1 });
   await ctx.waitFor(`window.peix.motion().some(m => m.kind === 'sound:reply')`, { what: 'the tick, to hear it', timeout: 3000 });
   await ctx.cmd('Comma'); await ctx.waitFor(`!document.querySelector('#settings').open`, { what: 'the settings closed' });
+  // the context rests between sounds (2026-10-15): suspended once the tick is over, started again for the alert
+  await ctx.waitFor(`window.peix.state().audio === 'suspended'`, { what: 'the sound at rest after the tick', timeout: 4000 });
   const m25 = await ctx.evaluate(`Math.round(performance.now())`);
   await ctx.server.post('api/test-notify', {});
   await ctx.waitFor(`window.peix.motion().filter(m => m.at >= ${m25}).some(m => m.kind === 'sound:reply')`, { what: 'the alert heard', timeout: 4000 });
+  await ctx.waitFor(`window.peix.state().audio === 'suspended'`, { what: 'and at rest again', timeout: 4000 });
 
   // ---- 28 · fade, not …: a title too long for the card fades out at its last line's end; a short one is left alone ----
   const long = 'A title long enough to run past three lines of a card in the list, so that its end has to go somewhere — and it fades rather than ending in an ellipsis, the way the tabs of a browser do it';

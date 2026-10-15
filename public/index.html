@@ -6996,7 +6996,7 @@ const toolName = n => {
       timeline: { k: tl.k, want: tl.want, press: !!tl.press, shown: $('#sessions').classList.contains('tlshow'), runs: tl.runs.map(r => ({ g: r.g, day: r.day, n: r.n, i: r.i })) },
       termId: curTerm().id, termSession: curTerm().sessionId, termExited: curTerm().exited,
       reload: reload.want ? { to: reload.want, why: reload.why } : null,
-      editor: prefs.editor, editors: state.editors,
+      editor: prefs.editor, editors: state.editors, audio: audio?.state ?? null,
       swim: { n: swim.n, pace: swimRate(Math.max(0, swim.n)), rate: swim.anim ? +(swimMs(swim.w) / swimLen()).toFixed(3) : 0, dart: swim.dart, food: swim.food.map(b => b.x), eaten: swim.eaten } }),   // the bar's fish: its pace without a dart, what it has to eat (lane x)
     session: id => { const s = state.sessions.get(id || state.current); return s ? structuredClone(s) : null; },
     motion: () => MOTION.map(m => ({ ...m })),   // the list's last moves: {id, kind: flip | enter | leave, at}
@@ -9383,8 +9383,19 @@ const toolName = n => {
   // the board is the window in front — where no notification shows — is heard: a soft tick for a reply or a PR come
   // round, two rising notes for a question. Web Audio, two oscillators each; the context is made on a press or a key
   // (a page may not start sound by itself) and the switch's own change, which plays the tick to hear it.
+  // It rests between sounds (2026-10-15): a context left running renders silence for as long as the board is shown — a
+  // real-time thread in the web process and another in the GPU process, and coreaudiod holding the Mac from idle sleep
+  // while the output runs. Suspended AUDIO_REST_MS after it last ran, resumed for the next sound: once a press has
+  // started it, a context may start again without one (`ran`).
+  const AUDIO_REST_MS = 1500;
   let audio = null;
-  const audioUp = () => { if (!prefs.sounds) return null; try { audio ||= new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); } catch { audio = null; } return audio; };
+  const audioRest = () => { clearTimeout(audioRest.t); audioRest.t = setTimeout(() => { if (audio?.state === 'running') audio.suspend().catch(() => {}); }, AUDIO_REST_MS); };
+  const audioUp = () => {
+    if (!prefs.sounds) return null;
+    try { if (!audio) { audio = new (window.AudioContext || window.webkitAudioContext)(); audio.onstatechange = () => { if (audio.state === 'running') { audio.ran = true; audioRest(); } }; if (audio.state === 'running') { audio.ran = true; audioRest(); } } } catch { audio = null; return null; }
+    if (!audio.ran && audio.state === 'suspended') audio.resume().catch(() => {});   // not started yet: a press may start it
+    return audio;
+  };
   for (const ev of ['pointerdown', 'keydown']) document.addEventListener(ev, audioUp, { capture: true, passive: true });
   function tone(f, t0, dur, type, vol) {
     const o = audio.createOscillator(), g = audio.createGain();
@@ -9393,11 +9404,15 @@ const toolName = n => {
     o.connect(g).connect(audio.destination); o.start(t0); o.stop(t0 + dur + .02);
   }
   function chime(kind) {
-    if (!prefs.sounds || !audio || audio.state !== 'running') return;
-    noteMotion(null, 'sound:' + kind);
-    const t = audio.currentTime + .02;
-    if (kind === 'needs-input' || kind === 'drift') { tone(784, t, .15, 'triangle', .09); tone(1174.7, t + .14, .22, 'triangle', .09); }
-    else { tone(1318.5, t, .18, 'sine', .08); tone(659.3, t, .26, 'sine', .05); }
+    if (!prefs.sounds || !audio?.ran) return;
+    const play = () => {
+      noteMotion(null, 'sound:' + kind);
+      const t = audio.currentTime + .02;
+      if (kind === 'needs-input' || kind === 'drift') { tone(784, t, .15, 'triangle', .09); tone(1174.7, t + .14, .22, 'triangle', .09); }
+      else { tone(1318.5, t, .18, 'sine', .08); tone(659.3, t, .26, 'sine', .05); }
+      audioRest();
+    };
+    if (audio.state === 'running') play(); else audio.resume().then(play, () => {});
   }
   $('#soundsOn').checked = !!prefs.sounds;
   $('#soundsOn').addEventListener('change', e => { prefs.sounds = e.target.checked; savePrefs(); if (audioUp()) setTimeout(() => chime('reply'), 30); });
