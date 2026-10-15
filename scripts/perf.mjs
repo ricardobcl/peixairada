@@ -163,10 +163,13 @@ for (const ev of ['uncaughtException', 'unhandledRejection']) process.on(ev, e =
 const prefs = { barStats: ['cpu', 'mem'], lanesShut: [], cards: 'compact', cardsEven: true, skin: 'own-dark', look: 'dark' };
 const body = `await sleep(3000);
   const rules = ${ANIM_RULES}, list = document.querySelector('#slist'), out = { phases: [], opens: [] };
+  // a phase with nothing to do each frame sleeps (2026-10-15): a frame asked for every frame is a style pass and a walk of
+  // every layer each, which hid the cost of a main-thread animation at rest (the pixel mark's steps(), 2.5 % of a core)
   const phase = async (name, step) => { await say('phase ' + name + ' ' + ${WIN / 1000});
     const iv = []; let last = 0, i = 0; const t0 = Date.now();
-    await new Promise(res => { const f = t => { if (last) iv.push(t - last); last = t; step?.(i++); if (Date.now() - t0 >= ${WIN}) res(); else requestAnimationFrame(f); }; requestAnimationFrame(f); });
-    out.phases.push({ name, t0, t1: Date.now(), frames: iv.length, dropped: iv.filter(v => v > 20).length }); };
+    if (!step) await sleep(${WIN});
+    else await new Promise(res => { const f = t => { if (last) iv.push(t - last); last = t; step(i++); if (Date.now() - t0 >= ${WIN}) res(); else requestAnimationFrame(f); }; requestAnimationFrame(f); });
+    out.phases.push({ name, t0, t1: Date.now(), frames: step ? iv.length : null, dropped: step ? iv.filter(v => v > 20).length : null }); };
   await phase('rest');
   await frame(); out.layers = ((await layers()).match(/\\(layer bounds/g) || []).length;
   await phase('pointer', i => document.dispatchEvent(new PointerEvent('pointermove', { clientX: 200 + (i * 7) % 1200, clientY: 200 + (i * 3) % 700, bubbles: true })));
@@ -265,14 +268,14 @@ console.log(col('cards in the list') + sums.map(s => col(fmt(s.cards, 0))).join(
 for (const p of PHASES) {
   if (!sums.some(s => Number.isFinite(s.phases[p].cpu))) continue;
   if (!(mine.phases[p].cpu <= CEIL[p])) over.push(p);
-  console.log(col(p + ' (% of a core)') + sums.map(s => col(`${fmt(s.phases[p].cpu)}  ${fmt(s.phases[p].dropped, 0)}/${fmt(s.phases[p].frames, 0)} slow`)).join('') + CEIL[p] + (over.at(-1) === p ? '  ← over' : ''));
+  console.log(col(p + ' (% of a core)') + sums.map(s => col(`${fmt(s.phases[p].cpu)}${Number.isFinite(s.phases[p].frames) ? `  ${fmt(s.phases[p].dropped, 0)}/${fmt(s.phases[p].frames, 0)} slow` : ''}`)).join('') + CEIL[p] + (over.at(-1) === p ? '  ← over' : ''));
 }
 if (!(mine.open <= CEIL.open)) over.push('open');
 console.log(col('a chat opened (ms)') + sums.map(s => col(fmt(s.open, 0))).join('') + CEIL.open + (over.at(-1) === 'open' ? '  ← over' : ''));
 if (!(mine.layers <= CEIL.layers)) over.push('layers');
 console.log(col('layers') + sums.map(s => col(fmt(s.layers, 0))).join('') + CEIL.layers + (over.at(-1) === 'layers' ? '  ← over' : ''));
 console.log(col('memory (MB, peak)') + sums.map(s => col(`${fmt(s.memory, 0)} (${fmt(s.peak, 0)})`)).join(''));
-console.log('(slow: frames over 20 ms of all drawn in the phase)');
+console.log('(slow: frames over 20 ms of all drawn in the phase, where it moves something each frame; rest and home sleep)');
 for (const s of sums) if (s.rules.length) console.log(`rules broken on ${s.label}:\n  ${s.rules.join('\n  ')}`);
 if (!mine.rules.length) console.log('rules: none broken on this tree (lib/animcheck.mjs)');
 if (SAMPLE) for (const s of sums) for (const [p, top] of Object.entries(s.stacks)) console.log(`where ${s.label}'s time went, ${p}:\n${stackLines(top) || '    nothing but waiting'}`);

@@ -471,11 +471,14 @@
      school of ><> swimming right since 2026-09-20, kept as one node across renders so it did not jolt, then for an
      evening the smooth starburst turning and breathing between two hairlines). The window is one frame, 9 × 9 pixels of
      2 px; the strip behind it holds the frames side by side (PIX_SHEET), and `pix` slides it a whole frame at a time —
-     steps(1) on every keyframe, so no frame is ever half shown: the star sits full, twinkles, shrinks to a dot and
-     bursts back, the way Claude Code's own spinner runs · ✢ ✳ ✶ ✻ ✽. `pixhop` lifts the window by whole pixels as
-     it bursts back, over the divider's margin (hence overflow: visible). Both are transforms, the compositor's, both
-     2.4 s long, so phaseAnims() putting both at 0 keeps the hop on the burst. A frame is 18 px of strip; a keyframe
-     starts on a frame's boundary, k / 24 of the cycle. */
+     so no frame is ever half shown: the star sits full, twinkles, shrinks to a dot and bursts back, the way Claude
+     Code's own spinner runs · ✢ ✳ ✶ ✻ ✽. `pixhop` lifts the window by whole pixels as it bursts back, over the
+     divider's margin (hence overflow: visible). Both are transforms, both 2.4 s long, so phaseAnims() putting both at 0
+     keeps the hop on the burst. A frame is 18 px of strip; a keyframe starts on a frame's boundary, k / 24 of the
+     cycle. Each frame is held by a pair of keyframes on a linear timing, the next one a hundredth of a percent (0.24 ms)
+     before its boundary — never steps() (2026-10-15): WebKit runs a steps() animation on the main thread, a style pass
+     and a walk of every layer each frame, ~2.5 % of a core for as long as anything is clauding; held pairs it composites,
+     and they show the same frames. */
   .gsep { margin: 2px 10px; font: 600 var(--fs-xs)/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: var(--muted); white-space: nowrap; overflow: hidden; user-select: none; }
   /* A lane's head (2026-10-09): its mark, its name in small caps, its count at the right end — the first thing in the
      list, so the list's top keeps its padding over it; the mark is a dot in the state's colour (asking ringed, ready
@@ -523,17 +526,17 @@
   .gsep.lane.zero .pix, .gsep.lane.zero .pix svg { animation: none; }
   .gsep.lane.zero .pix svg { fill: var(--idle); }
   .gsep.lane.zero .spark { position: absolute; width: 3px; height: 3px; pointer-events: none; }
-  .pix { flex: none; width: 18px; height: 18px; overflow: hidden; animation: pixhop 2.4s steps(1, end) infinite; }
-  .pix svg { display: block; width: 144px; height: 18px; fill: var(--accent); transform: translateX(-90px); animation: pix 2.4s steps(1, end) infinite; }
+  .pix { flex: none; width: 18px; height: 18px; overflow: hidden; animation: pixhop 2.4s linear infinite; }
+  .pix svg { display: block; width: 144px; height: 18px; fill: var(--accent); transform: translateX(-90px); animation: pix 2.4s linear infinite; }
   @keyframes pix {   /* the frames: 0 · 1 + 2 ◆ 3 ✳ 4 ✶ 5 ✽ (full) 6 and 7 the twinkle, long axes then long diagonals */
-    0% { transform: translateX(-90px); }   /* 5, at rest for 7 frames */
-    29.167% { transform: translateX(-108px); } 33.333% { transform: translateX(-126px); } 37.5% { transform: translateX(-108px); } 41.667% { transform: translateX(-126px); }   /* 6 7 6 7 */
-    45.833% { transform: translateX(-90px); }   /* 5 again, 4 frames */
-    62.5% { transform: translateX(-72px); } 66.667% { transform: translateX(-54px); } 70.833% { transform: translateX(-36px); } 75% { transform: translateX(-18px); } 79.167% { transform: translateX(0); }   /* 4 3 2 1 0: down to a dot */
-    83.333% { transform: translateX(-18px); } 87.5% { transform: translateX(-36px); } 91.667% { transform: translateX(-54px); } 95.833% { transform: translateX(-72px); }   /* 1 2 3 4, and back to 5 */
+    0%, 29.157% { transform: translateX(-90px); }   /* 5, at rest for 7 frames */
+    29.167%, 33.323% { transform: translateX(-108px); } 33.333%, 37.49% { transform: translateX(-126px); } 37.5%, 41.657% { transform: translateX(-108px); } 41.667%, 45.823% { transform: translateX(-126px); }   /* 6 7 6 7 */
+    45.833%, 62.49% { transform: translateX(-90px); }   /* 5 again, 4 frames */
+    62.5%, 66.657% { transform: translateX(-72px); } 66.667%, 70.823% { transform: translateX(-54px); } 70.833%, 74.99% { transform: translateX(-36px); } 75%, 79.157% { transform: translateX(-18px); } 79.167%, 83.323% { transform: translateX(0); }   /* 4 3 2 1 0: down to a dot */
+    83.333%, 87.49% { transform: translateX(-18px); } 87.5%, 91.657% { transform: translateX(-36px); } 91.667%, 95.823% { transform: translateX(-54px); } 95.833%, 99.99% { transform: translateX(-72px); }   /* 1 2 3 4, and back to 5 */
     100% { transform: translateX(-90px); }
   }
-  @keyframes pixhop { 0% { transform: none; } 83.333% { transform: translateY(-2px); } 87.5% { transform: translateY(-4px); } 95.833% { transform: translateY(-2px); } 100% { transform: none; } }
+  @keyframes pixhop { 0%, 83.323% { transform: translateY(0); } 83.333%, 87.49% { transform: translateY(-2px); } 87.5%, 95.823% { transform: translateY(-4px); } 95.833%, 99.99% { transform: translateY(-2px); } 100% { transform: translateY(0); } }
   /* A day's label (2026-09-23): over its run since 2026-10-12, at the left with a hairline running on to the right —
      Yesterday, the weekday, else DD-MM-YYYY; today has none since 2026-10-14. Under its run, centred and alone, before. */
   .gsep.day { display: flex; align-items: center; gap: 8px; text-align: left; }
