@@ -1263,6 +1263,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     background: linear-gradient(160deg, color-mix(in srgb, var(--prc, var(--muted)) var(--prg), var(--panel)), color-mix(in srgb, var(--prc, var(--muted)) 7%, var(--panel)) 80%); }
   .shead .hprs:hover, .shead .hprs.on { background: var(--ctl); }
   .shead .hpr.more { color: var(--muted); border-style: dashed; }
+  /* a chip opens its PR or ticket (2026-10-16), lit under the pointer as a card's is; the count, or the caret when every
+     chip is shown, unfolds the rows */
+  .shead .hpr:is([data-url], .tk):hover { filter: brightness(1.12); }
+  .shead .hcaret { min-width: 22px; font-size: var(--fs-sm); line-height: 24px; text-align: center; border-radius: var(--r-3); background: var(--ctl); }
+  .shead .hcaret:hover { background: var(--ctl-hi); }
   /* CI on the PR's head (2026-10-09): a round badge after its number, in the page's ground with the outcome's colour —
      a tick, a cross, or a ring turning while the checks run */
   :is(.shead .hpr, .prrow) .ck { --ckc: var(--pr-open); display: inline-grid; place-items: center; width: 13px; height: 13px; flex: none; margin: 0 -3px 0 4px; border-radius: 50%; background: var(--bg); vertical-align: -2px; }
@@ -2143,7 +2148,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   @media (prefers-contrast: more) {
     :root:root:root { --muted: color-mix(in srgb, var(--ink) 78%, var(--bg)); --line: color-mix(in srgb, var(--ink) 38%, var(--bg)); }
     :root, .card.black:is(:hover, .active, .qsel), .shead > :not(h2, .details) { --ctl: color-mix(in srgb, var(--ink) 14%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent); }
-    :is(.btn, .chip, .hdrift, .ptab, .hmore, .pfold, .act, .fsearch, .sedge button, #sbar .seg, .gsep.lane b, .sseg, .pkmode, .seg button, #ctxm, #hmenu) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
+    :is(.btn, .chip, .hdrift, .ptab, .hmore, .hcaret, .pfold, .act, .fsearch, .sedge button, #sbar .seg, .gsep.lane b, .sseg, .pkmode, .seg button, #ctxm, #hmenu) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
     .card { border-color: var(--line); } .card .snip, .card .state.live { color: var(--ink); }
   }
   /* Reduce transparency: the blurs behind the overview and the list's ends go solid */
@@ -6304,9 +6309,9 @@ const toolName = n => {
     // shows two at most, and those are the ones it must
     const prs = [...(s.prs || [])].sort((a, b) => (turnOf(b) === 'you') - (turnOf(a) === 'you') || (turnOf(a) === 'you' ? String(b.turn.movedAt || '').localeCompare(String(a.turn.movedAt || '')) : 0)), tks = s.tickets || [], prsOpen = !!prefs.prsOpen;
     const said = [prs.length ? `${prs.length} PR${prs.length === 1 ? '' : 's'}` : '', tks.length ? `${tks.length} ticket${tks.length === 1 ? '' : 's'}` : ''].filter(Boolean).join(' and ');
-    const hprs = !prs.length && !tks.length ? '' : `<button class="hprs${prsOpen ? ' on' : ''}" id="prToggle" aria-controls="prlist" aria-expanded="${prsOpen}" title="${said} in this chat — click to ${prsOpen ? 'fold the list' : 'list them, one per row'}${prs.length ? ' · ⌥⌘G opens a PR' : ''}">${
-      prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}"${prCk(pr) ? ` data-checks="${prCk(pr)}"` : ''} title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}${prCk(pr) ? `\n${CK_TIP[prCk(pr)]}` : ''}${pr.turn ? `\n${turnTip(pr)}` : ''}\n${UNLINK_TIP}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}${ckHtml(pr)}</span>`).join('')
-    }${tks.map(t => `<span class="hpr tk" data-cat="${esc(t.cat)}" title="${esc(ticketTip(t))}">${esc(t.key)}</span>`).join('')}<span class="hpr more" data-said="${esc(said.replace(' and ', ' · '))}" hidden></span><span class="hpr more short" hidden></span></button>`;
+    const hprs = !prs.length && !tks.length ? '' : `<button class="hprs${prsOpen ? ' on' : ''}" id="prToggle" aria-controls="prlist" aria-expanded="${prsOpen}" title="${said} in this chat — a chip opens its ${prs.length ? 'PR' : 'ticket'}, the ${prsOpen ? '▴ folds the list' : '▾ lists them, one per row'}${prs.length ? ' · ⌥⌘G opens a PR' : ''}">${
+      prs.map(pr => `<span class="hpr" data-state="${esc(pr.state || '')}" data-turn="${turnOf(pr)}" data-url="${esc(pr.url)}"${prCk(pr) ? ` data-checks="${prCk(pr)}"` : ''} title="${esc(`${pr.label}${pr.title ? ` — ${pr.title}` : ''}${pr.state ? ` (${pr.state})` : ''}${prCk(pr) ? `\n${CK_TIP[prCk(pr)]}` : ''}${pr.turn ? `\n${turnTip(pr)}` : ''}\nClick: open it · ${UNLINK_TIP}`)}">${esc(pr.label.replace(/^.*?#/, '#'))}${ckHtml(pr)}</span>`).join('')
+    }${tks.map(t => `<span class="hpr tk" data-cat="${esc(t.cat)}" data-key="${esc(t.key)}" title="${esc(`${ticketTip(t)}\nClick: open it`)}">${esc(t.key)}</span>`).join('')}<span class="hpr more" data-said="${esc(said.replace(' and ', ' · '))}" hidden></span><span class="hpr more short" hidden></span><span class="hcaret" aria-hidden="true" hidden></span></button>`;
     const headHtml = `<h2 title="${esc(titleTip(s) || `${s.project} / ${s.title}`)}"><span class="repo${s.cwd && prefs.project === projDir(s.cwd) ? ' on' : ''}" title="${s.cwd && prefs.project === projDir(s.cwd) ? 'Every project again (ALL)' : 'Show this folder\'s chats — click again for every project'}">${projIcon(s.project)}${esc(s.project)}</span><span class="sep">${s.cwd ? sqHtml({ name: s.project, cwds: [projDir(s.cwd)] }) : ''}</span><span class="t" title="Double-click to rename${s.boardTitle ? ' (renamed here)' : ''}">${ticks(esc(s.title))}</span></h2>
       ${driftChip(s)}${diffChip(s)}${headMove(s)}${hprs}${taskChip(s)}
       ${s.cwd && loud ? `${termBtn('btn icon')}<span class="lbl">${termWord}</span></button>` : ''}
@@ -6353,7 +6358,11 @@ const toolName = n => {
     // in, or the arrow, is gone with the draw
     const showPrs = (open, e) => { const keys = !e.detail && document.activeElement === e.currentTarget; prefs.prsOpen = open; savePrefs(); renderHead(s); if (keys) $('#prToggle')?.focus(); };
     const pt = $('#prToggle'); if (pt) pt.onclick = e => {
-      const c = e.altKey && e.target.closest('.hpr[data-url]'); if (c) return unlinkPr(s, c);   // ⌥ on a chip: that PR off the chat
+      const c = e.target.closest('.hpr[data-url]'); if (c && e.altKey) return unlinkPr(s, c);   // ⌥ on a chip: that PR off the chat
+      // a chip opens its PR, as a card's does (2026-10-16): another PR was the list unfolded, then its row — two clicks
+      if (c) return showPr(c.dataset.url);
+      const tk = e.target.closest('.hpr.tk[data-key]'), t = tk && (s.tickets || []).find(x => x.key === tk.dataset.key);
+      if (t) return /^https?:\/\//.test(t.url) && openExternal(t.url, { s });
       showPrs(!prefs.prsOpen, e);
     };
     pl.querySelector('#prFold').onclick = e => showPrs(false, e);
@@ -6760,13 +6769,13 @@ const toolName = n => {
   function fitHeadPrs() {
     // no PRs, the row still folds (2026-10-13): the changes' count and the branch's move have no chips to give way first
     const head = $('#shead'), t = $('#prToggle'); if (!t && !head.querySelector(':scope > :is(#diffBtn, .hdrift)')) return;
-    const chips = t ? [...t.querySelectorAll('.hpr:not(.more)')] : [], more = t?.querySelector('.hpr.more:not(.short)'), short = t?.querySelector('.hpr.more.short');
+    const chips = t ? [...t.querySelectorAll('.hpr:not(.more)')] : [], more = t?.querySelector('.hpr.more:not(.short)'), short = t?.querySelector('.hpr.more.short'), caret = t?.querySelector('.hcaret');
     for (const c of chips) c.hidden = false;
     // the whole count, not the folded one (2026-10-12): it opens the list of them all — and +n where even one chip and
     // the whole count leave the title short of its room, both measured in the one layout; its arrow up while the list is
     // open (2026-10-13), the way it goes
     const way = prefs.prsOpen ? '▴' : '▾';
-    if (t) { more.hidden = false; more.textContent = `${more.dataset.said || `+${chips.length}`} ${way}`; short.hidden = false; short.textContent = `+${chips.length} ${way}`; }
+    if (t) { more.hidden = false; more.textContent = `${more.dataset.said || `+${chips.length}`} ${way}`; short.hidden = false; short.textContent = `+${chips.length} ${way}`; caret.hidden = false; caret.textContent = way; }
     for (const el of head.querySelectorAll(':scope > .hfold')) el.classList.remove('hfold');   // and what the last fit put away
     // Every width in one layout, then the arithmetic (2026-09-27; hiding a chip and measuring the row again, per chip,
     // was a layout each): the button is its frame plus the chips shown, a gap between each, plus +n when any are hidden.
@@ -6786,11 +6795,11 @@ const toolName = n => {
     let room = head.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - title
       - row.reduce((w, el) => w + least(el), 0) - gap * (row.length + 1);
     if (!t) room += gap;   // no chips' button: one gap fewer
-    const cw = chips.map(c => c.getBoundingClientRect().width), mw = more?.getBoundingClientRect().width || 0, sw = short?.getBoundingClientRect().width || 0, tg = t ? parseFloat(getComputedStyle(t).columnGap) || 0 : 0;
-    const all = t?.getBoundingClientRect().width || 0, frame = all - cw.reduce((a, b) => a + b, 0) - mw - sw - tg * (chips.length + 1);
+    const cw = chips.map(c => c.getBoundingClientRect().width), mw = more?.getBoundingClientRect().width || 0, sw = short?.getBoundingClientRect().width || 0, kw = caret?.getBoundingClientRect().width || 0, tg = t ? parseFloat(getComputedStyle(t).columnGap) || 0 : 0;
+    const all = t?.getBoundingClientRect().width || 0, frame = all - cw.reduce((a, b) => a + b, 0) - mw - sw - kw - tg * (chips.length + 2);
     // two chips at most (2026-10-12; as many as fitted before — eleven took the title down to fifteen letters), the rest
-    // behind the whole count, which opens the list
-    const wide = (n, m) => !t ? 0 : frame + cw.slice(0, n).reduce((a, b) => a + b, 0) + (n === chips.length ? tg * (n - 1) : tg * n + m);
+    // behind the whole count, which opens the list — with none behind it, the caret does (2026-10-16: a chip opens its PR)
+    const wide = (n, m) => !t ? 0 : frame + cw.slice(0, n).reduce((a, b) => a + b, 0) + tg * n + (n === chips.length ? kw : m);
     let shown = Math.min(chips.length, CHIPS_MAX), width = wide(shown, mw), terse = false;
     while (shown > 1 && width > room) { shown--; width = wide(shown, mw); }
     if (width > room && shown < chips.length) { terse = true; width = wide(shown, sw); }
@@ -6803,7 +6812,7 @@ const toolName = n => {
     for (let i = shown; i < chips.length; i++) chips[i].hidden = true;
     for (const [el, w] of mins) el.style.setProperty('--hmin', `${Math.ceil(w)}px`);
     if (!t) return;
-    more.hidden = shown === chips.length || terse; short.hidden = shown === chips.length || !terse;
+    more.hidden = shown === chips.length || terse; short.hidden = shown === chips.length || !terse; caret.hidden = shown !== chips.length;
     const left = shown === chips.length ? null : terse ? short : more;
     if (left) { if (terse) short.textContent = `+${chips.length - shown} ${way}`; left.title = `${chips.length - shown} more:\n` + chips.slice(shown).map(c => c.title.split('\n')[0]).join('\n'); }
   }

@@ -2,7 +2,8 @@
 // shows them as the cards' chips in the header row, one button, with the rows under the header folded; a click
 // unfolds them and a second folds them back, as does the arrow up at the open list's foot (2026-10-13), clicked or
 // pressed with Enter — the keys then on the chips; the fold outlives a reload (a pref, not the chat's); a row still opens
-// its PR; a chat without PRs has neither. ⌥ over a chip, or a row, shows an ✕ in red without moving a thing, and
+// its PR; a chip opens its own, the rows left folded, and a caret after the chips unfolds them (2026-10-16); a chat
+// without PRs has neither. ⌥ over a chip, or a row, shows an ✕ in red without moving a thing, and
 // ⌥-click takes that PR off the chat (2026-10-11): gone from the header, the rows and the server's summary, kept off
 // when Claude names it again and across a restart (its lines read afresh), back when you name it.
 import { appendFileSync } from 'node:fs';
@@ -91,6 +92,21 @@ export default async function (ctx) {
   const x = sel => ctx.evaluate(`(el => JSON.stringify({ alt: document.documentElement.hasAttribute('data-alt'), x: getComputedStyle(el, '::before').content !== 'none' && getComputedStyle(el).color === 'rgba(0, 0, 0, 0)', w: el.getBoundingClientRect().width }))(document.querySelector('${sel}'))`).then(JSON.parse);
   const mouse = (type, p, alt) => ctx.send('Input.dispatchMouseEvent', { type, x: p.x, y: p.y, modifiers: alt ? 1 : 0, ...type === 'mouseMoved' ? {} : { button: 'left', clickCount: 1 } });
   const prsOf = async id => (await ctx.server.api('/api/sessions')).body.sessions.find(c => c.id === id).prs.map(p => p.url);
+  // a chip opens its PR (2026-10-16) — a real click, the rows left folded — and the caret after the chips, every one
+  // shown, is what unfolds them (the count, when some fold); the button as a whole still does for the keys or a script
+  await ctx.settle();
+  const caret = '#prToggle .hcaret', click = async p => { for (const t of ['mouseMoved', 'mousePressed', 'mouseReleased']) await mouse(t, p, false); };
+  ctx.assert.equal(await ctx.evaluate(`!document.querySelector('${caret}').hidden && document.querySelector('${caret}').textContent`), '▾', 'a caret, with both chips shown and no count');
+  await click(await mid(on(pr13)));
+  await ctx.waitFor(`window.peix.state().pr === '${pr13}'`, { what: 'the chip\'s PR opened' });
+  ctx.assert.equal(await ctx.evaluate(`window.peix.prefs().prsOpen`), false, 'one click, the rows still folded');
+  await click(await mid(caret));
+  ctx.assert.deepEqual(await head().then(h => [h.shown, h.pref, h.expanded]), [true, true, 'true'], 'the caret unfolds them');
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('${caret}').textContent`), '▴', '…and turns');
+  await ctx.shot('2b-caret-open', { x: 400, y: 0, width: 1300, height: 160 });
+  await click(await mid(caret));
+  ctx.assert.deepEqual(await head().then(h => [h.shown, h.pref]), [false, false], 'and folds them');
+  await mouse('mouseMoved', { x: 5, y: 500 }, false);
   await ctx.settle();
   const c13 = await mid(on(pr13));
   await mouse('mouseMoved', c13, false);
