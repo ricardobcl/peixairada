@@ -49,7 +49,7 @@
 // Map ▴
 
 
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { createServer } from 'node:http';
 import {
   accessSync, appendFileSync, chmodSync, closeSync, constants as fsc, cpSync, existsSync, fstatSync, lstatSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, readlinkSync, readSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, watch, writeFileSync
@@ -3352,12 +3352,30 @@ async function switchGuard(s, branch) {
 // Code extension (a workspace-side extension) running against the same ~/.claude. It is a separate
 // VS Code instance: its own settings and extensions (`~/.vscode-server/extensions`, installed once
 // with the server's own CLI — see README), and the folder must be trusted once per browser profile.
-// Started on first use and adopted if something already answers on the port; the child belongs to
-// this server, so it goes when the server goes. Loopback only, no connection token: the same trust
-// boundary as the board itself.
+// Started on first use and adopted if what already answers on the port wants this board's token; the child belongs to
+// this server, so it goes when the server goes. Loopback only, and behind a connection token (2026-10-16): started
+// `--without-connection-token`, it served the editor — its terminal, every file — to anything that reached the port: a
+// container (Docker's host.docker.internal is this Mac's loopback), another account, a web page by DNS rebinding (it
+// answers any Host). The token is a file in the state folder, this user's alone (`vsweb-token`, 0600); serve-web reads
+// it there, the page puts it on the address it opens (`tkn`), and serve-web trades it for its cookie (`vscode-tkn`) and
+// drops it from the address with a 302 — a tab's address and its reload are the plain one.
 const VSWEB_PORT = Number(process.env.VSWEB_PORT || 7332);
 const VSWEB_URL = `http://127.0.0.1:${VSWEB_PORT}/`;
+const VSWEB_TOKEN_FILE = join(dirname(STATE_FILE), 'vsweb-token');
 let vsweb = null;   // the child, while it is ours
+let vswebTok = null, vswebSure = false;   // the token as read; what answers on the port shown to want it
+/** The token serve-web is started with: the file's, else a new one written there. */
+function vswebToken() {
+  if (vswebTok) return vswebTok;
+  try {
+    const t = readFileSync(VSWEB_TOKEN_FILE, 'utf8').trim();
+    if (/^[0-9a-f]{64}$/.test(t)) { if (statSync(VSWEB_TOKEN_FILE).mode & 0o077) chmodSync(VSWEB_TOKEN_FILE, 0o600); return vswebTok = t; }
+  } catch {}
+  const t = randomBytes(32).toString('hex'), tmp = `${VSWEB_TOKEN_FILE}.${process.pid}`;
+  mkdirSync(dirname(VSWEB_TOKEN_FILE), { recursive: true });
+  writeFileSync(tmp, t, { mode: 0o600 }); renameSync(tmp, VSWEB_TOKEN_FILE);
+  return vswebTok = t;
+}
 // …and goes with it: a signal that ends this server ends the child too, instead of orphaning an
 // editor server on the port for the next run to adopt without knowing whose it is (the hooks are main()'s: an
 // import — the tests — installs nothing).
@@ -3368,15 +3386,28 @@ function endVsWebWithUs() {
   for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) process.on(sig, () => process.exit(0));
 }
 // `path` is what is asked of it: the root by default — which starts the newest build's server —, a build by name for
-// freshenVsWeb, which only has it fetched
-const vswebAnswers = (path = '') => fetch(VSWEB_URL + path, { signal: AbortSignal.timeout(1500) }).then(r => { r.body?.cancel(); return r.status; }, () => 0);
+// freshenVsWeb, which only has it fetched. With the token's cookie, unless `bare`.
+const vswebAnswers = (path = '', bare = false) => fetch(VSWEB_URL + path, { headers: bare ? {} : { cookie: `vscode-tkn=${vswebToken()}` }, signal: AbortSignal.timeout(1500) }).then(r => { r.body?.cancel(); return r.status; }, () => 0);
+/** Why what answered `status` on the port is not this board's VS Code Web, or null. One the board did not start is
+ *  asked once without the token: a serve-web that answers that — one started before 2026-10-16 that outlived its board,
+ *  or anyone's — is not adopted, nor is one that refuses the token. */
+async function vswebWhyNot(status) {
+  if (status === 403) return `something on port ${VSWEB_PORT} refuses this board's token — another VS Code Web; stop it, or set VSWEB_PORT`;
+  if (vsweb || vswebSure) return null;
+  const bare = await vswebAnswers('', true);
+  if (bare && bare !== 403) return `something on port ${VSWEB_PORT} serves VS Code Web with no token — not this board's; stop it (lsof -iTCP:${VSWEB_PORT} -sTCP:LISTEN), or set VSWEB_PORT`;
+  vswebSure = bare === 403; return null;
+}
 async function ensureVsWeb(path = '') {
-  if (await vswebAnswers(path)) return { ok: true, url: VSWEB_URL, started: false };
+  let token; try { token = vswebToken(); } catch (e) { return { code: 500, error: `could not keep VS Code Web's token in ${VSWEB_TOKEN_FILE}: ${e.message}` }; }
+  const now = await vswebAnswers(path);
+  if (now) { const why = await vswebWhyNot(now); return why ? { code: 409, error: why } : { ok: true, url: VSWEB_URL, token, started: false }; }
+  vswebSure = false;
   const code = codeBin();
   if (!code) return { code: 501, error: 'code CLI not found — run "Shell Command: Install \'code\' command in PATH" in VS Code, or set CODE_BIN' };
   if (!vsweb) {
     try {
-      vsweb = spawn(code, ['serve-web', '--host', '127.0.0.1', '--port', String(VSWEB_PORT), '--without-connection-token', '--accept-server-license-terms'], { stdio: 'ignore', env: drawerEnv(), detached: true });
+      vsweb = spawn(code, ['serve-web', '--host', '127.0.0.1', '--port', String(VSWEB_PORT), '--connection-token-file', VSWEB_TOKEN_FILE, '--accept-server-license-terms'], { stdio: 'ignore', env: drawerEnv(), detached: true });
       vsweb.on('exit', c => { console.log(`[peixairada] code serve-web exited (${c})`); vsweb = null; });
       // a spawn that fails is an 'error' and no 'exit' — and an 'error' nobody listens for ends the server
       vsweb.on('error', e => { console.error(`[peixairada] code serve-web: ${e.message}`); vsweb = null; binCache.delete('code'); });
@@ -3385,7 +3416,8 @@ async function ensureVsWeb(path = '') {
   const t0 = Date.now();
   while (Date.now() - t0 < 60_000) {   // the first run downloads the server build
     await new Promise(r => setTimeout(r, 500));
-    const status = await vswebAnswers(path); if (status) return { ok: true, url: VSWEB_URL, started: true, status };
+    const status = await vswebAnswers(path);
+    if (status) { const why = await vswebWhyNot(status); return why ? { code: 409, error: why } : { ok: true, url: VSWEB_URL, token, started: true, status }; }
     if (!vsweb) return { code: 500, error: 'code serve-web exited before it answered' };
   }
   return { code: 504, error: `code serve-web did not answer on ${VSWEB_PORT} within 60 s` };
@@ -4721,9 +4753,9 @@ const server = createServer(async (req, res) => {
       const r = installZed();
       return r.error ? json(res, r.code, { error: r.error }) : json(res, r.zed.installing ? 202 : 200, r);
     }
-    if (req.method === 'POST' && p === '/api/vscode-web') {   // VS Code Web for the pane: start it if need be, say where it is
+    if (req.method === 'POST' && p === '/api/vscode-web') {   // VS Code Web for the pane: start it if need be, say where it is and its token
       const r = await ensureVsWeb();
-      return json(res, r.ok ? 200 : r.code, r.ok ? { url: r.url, started: r.started } : { error: r.error });
+      return json(res, r.ok ? 200 : r.code, r.ok ? { url: r.url, token: r.token, started: r.started } : { error: r.error });
     }
     if (req.method === 'POST' && p === '/api/test-notify') {
       if (notificationsOn) nativeNotify('peixAIrada', 'test', 'Native notifications are working.');

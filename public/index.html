@@ -6278,7 +6278,7 @@ const toolName = n => {
       try {
         const d = await api('POST', '/api/vscode-web');
         wb.querySelector('.lbl').textContent = 'VS Code Web';
-        menu.close(); openExternal(`${d.url}?folder=${encodeURIComponent(s.cwd)}`, { ide: true, s });
+        menu.close(); openExternal(vswebAt(d, s.cwd), { ide: true, s });
       } catch (e) { wb.classList.add('err'); wb.title = e.message; wb.querySelector('.lbl').textContent = 'failed'; note(seen(wb), `VS Code Web: ${wb.title}`, true); }
       finally { wb.disabled = false; }
     };
@@ -6659,10 +6659,13 @@ const toolName = n => {
   async function openEditorAt(s, path, label, at) {
     if (onZed()) return zedMissing() ? zedNote(at) : openExternal(fileUrl(path));
     let d; try { d = await api('POST', '/api/vscode-web'); } catch (e) { return note(at, `VS Code Web did not start: ${e.message}`, true); }
-    const u = `${d.url}?folder=${encodeURIComponent(path)}`;
+    const u = vswebAt(d, path);
     if (label && path !== s.cwd) ideLabels.set(u, label);
     openExternal(u, { ide: true, s, folder: path });
   }
+  // VS Code Web's address for a folder, with its connection token (2026-10-16): serve-web trades `tkn` for its cookie and
+  // answers with the address without it, so the tab's address, its reload and a copy of it are the plain one
+  const vswebAt = (d, folder) => `${d.url}?folder=${encodeURIComponent(folder)}${d.token ? `&tkn=${encodeURIComponent(d.token)}` : ''}`;
   const TITLE_MIN = 170;   // the title's own flex-basis (.shead h2), below which the row wraps
   const TITLE_SHARE = .4, CHIPS_MAX = 2;   // the title keeps 40 % of the row at least, and the row two chips (2026-10-12)
   function fitHeadPrs() {
