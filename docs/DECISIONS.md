@@ -96,7 +96,6 @@ to expand and then click again on the Pr. come up with better UX".
   the column filled and given back, and ⌥⌘G ⏎ walking both PRs round; `pr-tab-again.mjs` the same from a second tab;
   `header-prs.mjs` a real click on a chip opening its PR with the rows left folded, and the caret unfolding them.
 
-||||||| parent of 4aecaa6 (The notes follow the tabs kept across a reload — CLAUDE.md: the per-chat maps are kept across a reload (keepTabs, sessionStorage, which lives as the shell's views do; written after syncTerm, read before the first snapshot) and sessionStorage among the places state lives, pared to fit; DECISIONS.md's entry: the report quoted, what was found (a reload forgot every chat's pages and split, and the board reloads itself now — an update's, a restart's, a new key's, a web process WebKit ended), why sessionStorage and not localStorage or the shell, the editor's tab that goes with a chat's folder when a cd moves it (named, not changed), and what to ask the user if it persists)
 ## Decisions of 2026-10-16, later — the board's key, built
 
 Ricardo, on the design below and the offer to push and build it: "do it". The two fixes before it were pushed first.
