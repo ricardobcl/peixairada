@@ -1597,7 +1597,7 @@ async function sweepTickets() {
 async function jiraToken() {
   if (process.env.JIRA_API_TOKEN) return { token: process.env.JIRA_API_TOKEN, from: 'env' };
   if (jiraToken.cache && (jiraToken.cache.token || Date.now() - jiraToken.cache.at < 5 * 60_000)) return jiraToken.cache;
-  const email = setup.jira?.email; let token = null, why = 'no API token yet — paste one in the settings\' Setup';
+  const email = setup.jira?.email; let token = null, why = 'no API token yet';   // the page says where to paste one, from where it says it (2026-10-16)
   if (process.env.JIRA_TOKEN_FILE) { try { token = readFileSync(process.env.JIRA_TOKEN_FILE, 'utf8').trim() || null; } catch {} }
   else if (process.platform === 'darwin' && email) {
     try { token = (await execFileP('/usr/bin/security', ['find-generic-password', '-s', JIRA_ITEM, '-a', email, '-w'], { timeout: 60_000 })).stdout.trim() || null; }

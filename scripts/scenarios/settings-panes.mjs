@@ -95,6 +95,15 @@ export default async function (ctx) {
   await ctx.evaluate(`window.peixVoiceOver(false)`);
   ctx.assert.deepEqual((await reader()).on, false, 'VoiceOver gone: the switch as it was');
 
+  // Jira with no token: its line says where to paste one, from where it says it (the settings' Setup, before)
+  await ctx.server.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jira: { site: 'https://acme.atlassian.net', email: 'ada@acme.dev' } }) });
+  await ctx.cmd('Comma');
+  await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings, for Jira' });
+  await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="jira"]').click()`);
+  await ctx.waitFor(`/no API token/.test(document.querySelector('#jiraSet .sjst')?.textContent || '')`, { what: 'Jira\'s line, no token' });
+  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#jiraSet .sjst').textContent`), 'no API token yet — paste one in the box above');
+  await ctx.cmd('Comma');
+
   // a new key is asked once more, in a line under its row that says what it does; the button keeps its name
   await ctx.cmd('Comma');
   await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings, for the key' });

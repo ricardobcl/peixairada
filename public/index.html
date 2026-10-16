@@ -5824,7 +5824,7 @@ const toolName = n => {
     const text = 'type="text" spellcheck="false" autocomplete="off"', sug = info?.suggest || {};
     const tok = info?.token, from = { env: 'JIRA_API_TOKEN in the server\'s environment', keychain: 'a token in your keychain', file: 'a token in the board\'s file' }[tok];
     const line = !j ? (sug.site ? `jira-cli's ${esc(sug.site)} is offered above — your email, then a token.` : 'A site and your email, then an API token.')
-      : info?.error ? `<span class="serr">${esc(info.error)}</span>`
+      : info?.error ? `<span class="serr">${esc(info.error)}${!tok && /^no API token/.test(info.error) ? ' — paste one in the box above' : ''}</span>`
       : info?.me ? `Signed in as <b>${esc(info.me)}</b>${info.tickets ? ` · ${info.tickets} ticket${info.tickets === 1 ? '' : 's'} known` : ''}.` : 'Asking Jira…';
     return `<section class="sgrp jira" data-kw="jira tickets atlassian site email token"><div class="slist">`
       + `<div class="srow jsite"><span class="sic">${ICON.ticket}</span><input ${text} class="sjsite" value="${esc(j?.site || '')}" placeholder="${esc(sug.site || 'https://acme.atlassian.net')}" title="Your Jira Cloud site"><input ${text} class="sjmail" value="${esc(j?.email || '')}" placeholder="${esc(sug.email || 'you@acme.com')}" title="The email you sign in to Jira with"><span></span></div>`
