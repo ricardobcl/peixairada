@@ -2,7 +2,7 @@
 // keys as the dialog opens, each pane alone in front and named in the head, ↑ ↓ down the sidebar. What a search shows:
 // the rows whose words hold every word typed, under their pane's name, the sidebar counting them, the words marked; a
 // word nothing holds says so; Esc lets the search go before it closes the dialog, and the keys go back to whatever had
-// them. The sidebar's foot opens the keys sheet; the Hidden group is there only while something is hidden. The drawer's
+// them; the pane last shown is in front again, after a reload too. The sidebar's foot opens the keys sheet; the Hidden group is there only while something is hidden. The drawer's
 // screen-reader mode follows VoiceOver, which the app says.
 export const meta = { server: true, fixture: 'auto' };
 
@@ -94,5 +94,12 @@ export default async function (ctx) {
   ctx.assert.equal((await ctx.peix('prefs()')).termReader, false, 'the pref untouched');
   await ctx.evaluate(`window.peixVoiceOver(false)`);
   ctx.assert.deepEqual((await reader()).on, false, 'VoiceOver gone: the switch as it was');
+
+  // the pane last shown, after a reload too (2026-10-16, prefs.settingsPane)
+  await ctx.reload();
+  await ctx.cmd('Comma');
+  await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings after a reload' });
+  ctx.assert.deepEqual(await ctx.evaluate(`[document.querySelector('#spTitle').textContent, document.querySelector('#settings .stabs .on')?.dataset.tab, document.activeElement?.id]`), ['Terminal', 'term', 'sq'], 'Terminal again, its tab lit, the box with the keys');
+  await ctx.cmd('Comma');
   return out;
 }

@@ -144,6 +144,8 @@
   .pop .srow.set.sub { padding-left: 34px; }
   .pop .srow.set.sub::before { left: 34px; }
   .pop .srow.set[hidden] { display: none; }
+  .pop .srow.sflash { border-radius: var(--r-4); animation: sflash 1.6s var(--ease-out); }   /* a row a link opened Settings on (settingsAt) */
+  @keyframes sflash { 0%, 30% { background-color: color-mix(in srgb, var(--accent) 24%, transparent); } }
   .pop .sl { display: grid; gap: 1px; min-width: 0; cursor: default; }
   .pop label.sl { cursor: pointer; }
   .pop .sl b { font-size: var(--fs-md); font-weight: 500; color: var(--ink); }
@@ -2197,6 +2199,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     .card.asking { border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
     .card.asking::before, .card.asking::after { animation: none; opacity: 0; }   /* no pings: the red border and its glow */
     .card.landed { animation: none; }
+    .pop .srow.sflash { animation-timing-function: step-end; }   /* the row a link opened Settings on: lit, then not, no fade */
     .card.heard { animation: none; } .card.heard::before { animation: none; }   /* answered: the red simply goes */
     .card.landed::before { animation: none; content: none; }   /* no wash */
     .dot.working, .dot.needs-input { animation: none; }
@@ -2526,7 +2529,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false, settingsPane: 'general' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -2638,9 +2641,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // The settings: a modal dialog (2026-09-28), from the chat header's ··· or ⌘, — the dialog's own Esc, its backdrop
   // clicked, or × close it; closing drops a setup row half typed. The pane goes down while it is up (postPane), and
   // comes back on `close`, as under any dialog. A sidebar of panes and a search box since 2026-10-16 (the settings
-  // study's B): the box has the keys as it opens, the pane in front is remembered while the page lives, and the keys go
-  // back to whatever had them once it closes.
-  const sset = { tab: 'general', opener: null };
+  // study's B): the box has the keys as it opens, the pane in front is the one last shown (prefs.settingsPane), and the
+  // keys go back to whatever had them once it closes.
+  const sset = { tab: prefs.settingsPane || 'general', opener: null };
   const settingsOpen = (on = true) => {
     const dlg = $('#settings');
     if (!on) { if (dlg.open) dlg.close(); return; }
@@ -2648,7 +2651,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     if ($('#hmenu').open) $('#hmenu').close();
     if (inApp) post({ type: 'focus' });   // from the pane's keys, the board needs the keyboard back
     sset.opener = document.activeElement !== document.body ? document.activeElement : null;
-    $('#sq').value = ''; settingsFind();
+    settingsTab(sset.tab);   // the pane last shown, its tab lit, no search
     dlg.showModal(); $('#sq').focus(); repostPane();
     loadJira(); loadEditors();
   };
@@ -2666,10 +2669,20 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   function settingsTab(tab) {
     const dlg = $('#settings'), b = dlg.querySelector(`.stabs [data-tab="${tab}"]`) || dlg.querySelector('.stabs [data-tab]');
     sset.tab = b.dataset.tab; $('#sq').value = '';
+    if (prefs.settingsPane !== sset.tab) { prefs.settingsPane = sset.tab; savePrefs(); }
     dlg.querySelectorAll('.stabs [data-tab]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', String(x === b)); x.tabIndex = x === b ? 0 : -1; });
     settingsFind(); $('#sbody').scrollTop = 0;
   }
   $('#settings .stabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) settingsTab(b.dataset.tab); });
+  /** Settings open on a row (2026-10-16): its pane in front, the row scrolled to and lit once — the status bar's update
+   *  word, its right-click's *Status bar settings…*. */
+  function settingsAt(tab, sel) {
+    settingsOpen(true); settingsTab(tab);
+    const r = $(sel); if (!r) return;
+    r.scrollIntoView({ block: 'center' });
+    r.classList.remove('sflash'); void r.offsetWidth; r.classList.add('sflash');   // once more from the start, if lit already
+    r.addEventListener('animationend', () => r.classList.remove('sflash'), { once: true });
+  }
   $('#sbody').addEventListener('click', e => { const h = e.target.closest('.sph'); if (h && $('#settings').classList.contains('finding')) settingsTab(h.closest('.spane').dataset.tab); });
   // ↑ ↓ (and ← →) between the panes, as a tab list is walked (2026-10-12; down the sidebar since 2026-10-16)
   $('#settings .stabs').addEventListener('keydown', e => {
@@ -2824,10 +2837,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     if (u.last && Date.now() - Date.parse(u.last.at) < 60_000) return seg('done', ICON.reload, `updated · ${many(u.last.count, 'commit')}`, tip);
     return '';
   }
-  function updatesOpen() {
-    settingsOpen(true); settingsTab('system');
-    $('#updRow').scrollIntoView({ block: 'center' });
-  }
+  const updatesOpen = () => settingsAt('system', '#updRow');
   function showUpdate() {
     const u = state.update, w = updateSay(u), b = $('#updBtn');
     $('#autoUpdate').checked = u?.on === true; $('#autoUpdate').disabled = !!w.none;
