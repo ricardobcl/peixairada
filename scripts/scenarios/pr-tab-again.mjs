@@ -63,11 +63,13 @@ export default async function (ctx) {
   await ctx.waitFor(`!!document.querySelector('#pick').open`, { what: 'the PR picker' });
   ctx.assert.equal(await ctx.peix('state().zoomed'), null, 'nothing filled the column');
   await ctx.evaluate(`document.querySelector('#pick').close()`);
-  // ⌥⌘G from the PR's own tab still fills the column, and back
+  // ⌥⌘G from the PR's own tab is the picker again — the chat has two (2026-10-16) — and once more fills the column, and back
   await ctx.evaluate(`document.querySelector(${JSON.stringify(`#ptabsB .ptab[data-tab="gh2:${a}"]`)}).click()`);
   await ctx.key('KeyG');
-  await ctx.waitFor(`window.peix.state().zoomed === 1`, { what: 'the PR\'s half filling the column' });
+  await ctx.waitFor(`!!document.querySelector('#pick').open && /⌥⌘G fills/.test(document.querySelector('#pickq').placeholder)`, { what: 'the picker, from the PR' });
   await ctx.key('KeyG');
+  await ctx.waitFor(`window.peix.state().zoomed === 1 && !document.querySelector('#pick').open`, { what: 'the PR\'s half filling the column' });
+  await ctx.key('KeyG'); await ctx.key('KeyG');
   await ctx.waitFor(`window.peix.state().zoomed === null`, { what: 'both back' });
 
   // the new tab followed elsewhere too, then closed: its view lingers in the shell there, so the PR's next tab is

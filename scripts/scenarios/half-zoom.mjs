@@ -1,6 +1,7 @@
 // A chat's own key pressed again from the tab it brings up fills the column with that half, and once more brings the two
 // back (2026-10-13): a ⌘0 that undoes itself. ⌥⌘C on claude, ⌥⌘T on a zsh, ⌥⌘G on a page, ⌥⌘E on the editor, ⌥⌘D on
-// the changes — each pressed here. The other half is kept behind, untouched — its terminal is not resized, its page not shown — and going
+// the changes — each pressed here; ⌥⌘G on one of two PRs is their picker first, the other selected, and the column once
+// more (2026-10-16). The other half is kept behind, untouched — its terminal is not resized, its page not shown — and going
 // to one of its tabs brings both back. With one half the key does what it always did. ⌥⌘R reloads the board, which
 // was ⌘R's (⌘R is the pane's page's now, in the app). The app's bridge is faked, as in pane-tabs.mjs, so pages are tabs.
 export const meta = { server: true, fake: true, fixture: 'auto' };
@@ -59,21 +60,44 @@ export default async function (ctx) {
   await ctx.cmd('Digit1');
   await ctx.waitFor(`window.peix.state().zoomed === null && window.peix.state().focusG === 0`, { what: '⌘1: both back, the keys left' });
 
-  // a page: ⌥⌘G opens the PR beside the zsh; again, its half fills the column — and the shell is told to lay it over
-  // the whole column; claude's half filling it instead, no page shows at all
+  // a page: ⌥⌘G opens the PR beside the zsh; the chat has two, so again (2026-10-16) is their picker, the other one
+  // selected and the one in front marked, its hint naming the column; once more, the page's half fills the column — and
+  // the shell is told to lay it over the whole column; claude's half filling it instead, no page shows at all
+  const enter = () => ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);
+  const picked = () => ctx.evaluate(`JSON.stringify({ open: document.querySelector('#pick').open, sel: document.querySelector('#picklist .pkrow.sel')?.title, cur: document.querySelector('#picklist .pkrow:has(.cur)')?.title, hint: document.querySelector('#pickq').placeholder })`).then(JSON.parse);
+  const urls = await ctx.peix(`session(${JSON.stringify(chat.id)}).prs.map(p => p.url)`);
   await ctx.key('KeyG');
-  await ctx.evaluate(`document.querySelector('#pickq').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`);
+  await enter();
   await ctx.waitFor(`(window.peix.state().tab || '').startsWith('gh:')`, { what: 'the PR on a tab' });
   const pr = await ctx.peix('state().tab');
   out.pageTwo = await lastPane();
   await ctx.key('KeyG');
+  await ctx.waitFor(`!!document.querySelector('#pick').open`, { what: 'the PRs\' picker, from one of them' });
+  out.again = await picked();
+  ctx.assert.deepEqual([out.again.cur, out.again.sel], [pr.slice(3), urls.find(u => u !== pr.slice(3))], `the one in front current, the other selected — ${JSON.stringify(out.again)}`);
+  ctx.assert.match(out.again.hint, /⌥⌘G fills the column/);
+  ctx.assert.equal((await st()).zoomed, null, 'nothing filled yet');
+  await ctx.shot('pr-picker-again');
+  await ctx.key('KeyG');
   await ctx.waitFor(`window.peix.state().zoomed === 1`, { what: 'the page\'s half filling the column' });
-  ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#pick').open`), false, 'not the PR picker');
+  ctx.assert.equal(await ctx.evaluate(`!!document.querySelector('#pick').open`), false, 'the picker gone');
   out.pageZoom = await lastPane();
   ctx.assert.equal(out.pageZoom.panes.length, 1); ctx.assert.equal(out.pageZoom.focus, pr, 'the page keeps the keys');
   ctx.assert.ok(out.pageZoom.panes[0].width > out.pageTwo.panes[0].width + 100, `laid over the whole column (${out.pageTwo.panes[0].width} → ${out.pageZoom.panes[0].width})`);
   await ctx.key('KeyG');
-  await ctx.waitFor(`window.peix.state().zoomed === null`, { what: 'back' });
+  await ctx.waitFor(`!!document.querySelector('#pick').open`, { what: 'the picker over the column' });
+  ctx.assert.match((await picked()).hint, /⌥⌘G gives the column back/);
+  await ctx.key('KeyG');
+  await ctx.waitFor(`window.peix.state().zoomed === null && !document.querySelector('#pick').open`, { what: 'back' });
+  // ⌥⌘G ⏎ walks the PRs: the other one on a tab of its own, then from it the first again, its tab as it was
+  await ctx.key('KeyG'); await enter();
+  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify('gh:' + urls.find(u => u !== pr.slice(3)))}`, { what: 'the other PR on its tab' });
+  await ctx.key('KeyG');
+  await ctx.waitFor(`!!document.querySelector('#pick').open`, { what: 'the picker from the other PR' });
+  ctx.assert.equal((await picked()).sel, pr.slice(3), 'the first one selected: the walk comes round');
+  await enter();
+  await ctx.waitFor(`window.peix.state().tab === ${JSON.stringify(pr)}`, { what: 'the first PR\'s tab again' });
+  ctx.assert.equal((await ctx.peix(`state().paneTabs[${JSON.stringify(chat.id)}]`)).length, 2, 'two tabs, one per PR');
   await ctx.key('KeyC'); await ctx.key('KeyC');
   await ctx.waitFor(`window.peix.state().zoomed === 0`, { what: 'claude filling the column' });
   ctx.assert.deepEqual((await lastPane()).panes, [], 'no page over it');

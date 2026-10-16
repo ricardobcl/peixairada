@@ -4817,7 +4817,8 @@ const toolName = n => {
   // trees when it is one git checkout (wtOf), wt: its ＋ row on "new worktree", br: the branch typed, as the server found it
   const pick = { mode: 'project', ctx: {}, list: [], sel: 0, gen: 0, cloning: false, typed: false, git: null, wt: false, br: null };
   const PICK_HINT = {
-    project: 'Project — type to filter · ↑↓ · ⏎ opens · esc', pr: 'Pull request — type to filter · ↑↓ · ⏎ opens · esc',
+    project: 'Project — type to filter · ↑↓ · ⏎ opens · esc',
+    pr: ctx => `Pull request — type to filter · ↑↓ · ⏎ opens${ctx.zoom === 'fill' ? ' · ⌥⌘G fills the column' : ctx.zoom === 'back' ? ' · ⌥⌘G gives the column back' : ''} · esc`,
     chat: 'A chat — every project, asking, clauding or ready · any letters in order · ⏎ opens · esc',
     new: () => `New chat — a project${folders.roots.length ? `, a folder in ${folders.roots.map(r => homePath(r.dir)).join(' or ')}` : ''}${folders.roots.some(r => r.org) ? `, a name to clone from ${folders.roots.filter(r => r.org).map(r => r.org).join(' or ')}` : ''}${state.about.scratch ? ', or no folder at all' : ''} · ↑↓ · ⏎ · esc`,
     folder: ctx => `${ctx.then === 'chats' ? 'Which folder' : 'New chat — which folder'}? type to filter · ↑↓ · ⏎ · esc`,
@@ -4913,6 +4914,8 @@ const toolName = n => {
     pickRender(); $('#pickq').focus();
     // ⌥⌘N starts on the project in view (2026-09-28, with ＋ gone): ⏎ takes it, a second ⏎ is a new chat there
     if (mode === 'new' && prefs.project !== ALL) { const i = pick.list.findIndex(x => x?.key === prefs.project); if (i > 0) { pick.sel = i; pickRender(); } }
+    // ⌥⌘G from a PR's page (2026-10-16): the one after it selected, so ⌥⌘G ⏎ walks the chat's PRs, the last back to the first
+    if (mode === 'pr' && ctx.at) { const i = pick.list.findIndex(pr => pr.url === ctx.at); if (i >= 0) { pick.sel = (i + 1) % pick.list.length; pickRender(); } }
   }
   /** `keep`: a redraw the server caused, not the keys — the selection stays on the chat it was on, wherever the list
    *  moved it; a chat that left gives its place to the one that slid up into it. */
@@ -4932,7 +4935,7 @@ const toolName = n => {
       row = (x, i) => launchRow(x, i, sel, text => markHits(text, lq));
     } else if (pick.mode === 'pr') {
       pick.list = hunt(state.sessions.get(state.current)?.prs || [], pr => [pr.label, pr.title || '']);
-      row = (pr, i) => `<div class="pkrow pr${sel(i)}" data-i="${i}" data-state="${esc(pr.state || '')}" title="${esc(pr.url)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${mark(pr.label)}</span><span class="n${pr.title ? '' : ' pending'}">${pr.title ? mark(pr.title) : 'title on its way from gh…'}${pr.url === shownPr.url ? '<span class="cur">current</span>' : ''}</span><span class="t" data-at="${esc(pr.lastAt || '')}"></span></div>`;
+      row = (pr, i) => `<div class="pkrow pr${sel(i)}" data-i="${i}" data-state="${esc(pr.state || '')}" title="${esc(pr.url)}"><span class="st">${esc(pr.state || 'PR')}</span><span class="num">${mark(pr.label)}</span><span class="n${pr.title ? '' : ' pending'}">${pr.title ? mark(pr.title) : 'title on its way from gh…'}${pr.url === (pick.ctx.at || shownPr.url) ? '<span class="cur">current</span>' : ''}</span><span class="t" data-at="${esc(pr.lastAt || '')}"></span></div>`;
     } else if (pick.mode === 'chat') {
       pick.list = hunt([...state.sessions.values()].filter(s => visible(s) && bucket(s) !== 'done').sort((a, b) => (RANK[rankOf(a)] - RANK[rankOf(b)]) || byWord(a, b)), chatFields);
       row = (s, i) => `<div class="pkrow chat${sel(i)}" data-i="${i}" data-state="${chatState(s)}" style="${repoStyle(repoColor(s.cwd))}" title="${esc(s.cwd || '')}"><span class="sq"></span><span class="n">${ticks(mark(s.title))}${idsHit(s, q)}${s.id === state.current ? '<span class="cur">current</span>' : ''}</span><span class="num">${projIcon(s.project)}${mark(s.project)}</span><span class="st">${chatState(s)}</span><span class="t" data-at="${esc(wordAt(s))}"></span></div>`;
@@ -5222,7 +5225,7 @@ const toolName = n => {
     ['⌥⌘T', 'This chat', 'a shell in its folder, on a tab', 'shown if it has one — ⌘T opens another · again from it: its half fills the column, and back', ['alt:KeyT']],
     ['⌥⌘E', 'This chat', 'its folder in VS Code Web, on a tab', 'again from it: its half fills the column, and back · VS Code Web whichever editor files open in — Zed has no web version', ['alt:KeyE']],
     ['⌥⌘V', 'This chat', 'its folder in VS Code, its own window', 'the app, outside the board — ⌥⌘E is VS Code Web on a tab · with no chat open, the project in view when it is a folder', ['alt:KeyV']],
-    ['⌥⌘G', 'This chat', 'its PR on GitHub, on a tab', 'the repo when it has none · a picker with several · a tab followed elsewhere leaves it a new one · again from its page: its half fills the column, and back', ['alt:KeyG']],
+    ['⌥⌘G', 'This chat', 'its PR on GitHub, on a tab', 'the repo when it has none · a picker with several — from one of them, the next selected, and ⌥⌘G once more fills the column · a tab followed elsewhere leaves it a new one · again from its page: its half fills the column, and back', ['alt:KeyG']],
     ['⌥⌘D', 'This chat', 'what it changed, on a tab', 'its last turn\'s edits, the uncommitted tree or the branch against its base · Commit… and Push type into its shell · + on a line sends Claude a note · again from it: its half fills the column, and back', ['alt:KeyD']],
     ['⌘W', 'This chat', 'close the tab the keys are in', 'the shell ends, a page goes, VS Code Web once no editor is open in it (its ⌘W closes them first) · on the chat\'s own tab, its half closes — with one half, the window\'s own key · a dialog up closes first', ['cmd:KeyW']],
     ['⌥⌘W', 'This chat', 'close the tab the keys are in, never more', 'as ⌘W, but on the chat\'s tab it says so, and never closes a half or the window', ['alt:KeyW']],
@@ -5302,6 +5305,7 @@ const toolName = n => {
     const fn = (mods === 'cmd' ? CMDKEYS : HOTKEYS)[code];
     if (!fn) return false;
     if ($('#hmenu').open) { $('#hmenu').close(); if (fn === hotClose) return true; }   // the header's menu is a dialog, but not one that should swallow a key — ⌘W's aside, which closes it alone, as any dialog
+    if (fn === hotGhKey && $('#pick').open && pick.mode === 'pr' && pick.ctx.sid) { prPickAgain(); return true; }   // the PRs' picker from one of them: ⌥⌘G again is the column's
     if (fn !== hotClose && !(fn === settingsToggle && $('#settings').open) && document.querySelector('dialog[open]')) return false;
     return fn() !== false;
   };
@@ -5353,7 +5357,19 @@ const toolName = n => {
   function hotClaudeKey() { return zoomAgain((k, s) => k === 'chat' && termLive(s)) || hotClaude(); }
   function hotShellKey() { return zoomAgain(isShellTab) || hotShell(); }
   const ghPages = s => s.prs?.length ? s.prs.map(pr => pr.url) : s.cwd && state.repos[s.cwd] ? [state.repos[s.cwd]] : [];   // what ⌥⌘G opens
-  function hotGhKey() { return zoomAgain((k, s) => isPageTab(k) && ghPages(s).some(u => atPage(paneUrl(k), u))) || hotGh(); }
+  // With several PRs (2026-10-16), ⌥⌘G again from one of them is their picker, the next one selected — ⏎ goes there, and
+  // ⌥⌘G once more (prPickAgain) fills the column: the other PRs were a mouse's two clicks away while it zoomed at once.
+  const atPrOf = (s, k) => isPageTab(k) ? (s.prs || []).find(pr => atPage(paneUrl(k), pr.url)) || null : null;
+  function hotGhKey() {
+    const s = state.sessions.get(state.current), at = s && s.prs?.length > 1 && atPrOf(s, tabOf(s));
+    if (at) return pickOpen('pr', { at: at.url, sid: s.id, zoom: isSplit(s) ? (zoomed.get(s.id) === focusG ? 'back' : 'fill') : null });
+    return zoomAgain((k, s) => isPageTab(k) && ghPages(s).some(u => atPage(paneUrl(k), u))) || hotGh();
+  }
+  /** ⌥⌘G with its picker up, opened from a PR's page: the picker goes, and that page's half fills the column — or gives it back. */
+  function prPickAgain() {
+    const s = state.sessions.get(pick.ctx.sid); $('#pick').close();
+    if (s && s.id === state.current) toggleZoom(s);
+  }
   function hotVsCodeKey() { return zoomAgain(k => /^ide:/.test(k || '')) || hotVsCode(); }
   function hotDiffKey() { return zoomAgain(k => k === 'changes') || hotDiff(); }
   /** ⌥⌘R (2026-10-13; ⌘R's before, which is the page's in the pane now): the board, reloaded where it is. */
