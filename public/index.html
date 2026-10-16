@@ -2346,7 +2346,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
           <div class="srow set" data-kw="text size zoom scale font bigger smaller"><label class="sl" for="zoomPick"><b>Text size</b><small class="zhint">Your browser’s View › Zoom</small></label><span class="ssel"><select id="zoomPick"><option value="0.9">90 %</option><option value="1">100 %</option><option value="1.1">110 %</option><option value="1.25">125 %</option><option value="1.4">140 %</option></select></span></div>
         </div></section>
         <section class="sgrp"><h6 class="sgh" id="sgBar">Status bar</h6><div class="slist" role="group" aria-labelledby="sgBar">
-          <div class="srow set" data-kw="status bar meters cpu memory ram claude" id="sbarStats"><span class="sl"><b>Show in the status bar</b><small>The CPU every 3 s, the memory every 15 s</small></span><span class="schecks"><label><input type="checkbox" data-stat="cpu"> CPU</label><label><input type="checkbox" data-stat="mem"> Memory</label><label><input type="checkbox" data-stat="claude"> Claude’s memory</label></span></div>
+          <div class="srow set" data-kw="status bar meters cpu memory ram claude" id="sbarStats"><span class="sl"><b>Show in the status bar</b><small>Also from a right-click on the status bar</small></span><span class="schecks"><label><input type="checkbox" data-stat="cpu"> CPU</label><label><input type="checkbox" data-stat="mem"> Memory</label><label><input type="checkbox" data-stat="claude"> Claude’s memory</label></span></div>
         </div></section>
       </div>
       <div class="spane" data-tab="list" hidden role="tabpanel" id="spList" aria-labelledby="stList">
@@ -3719,9 +3719,17 @@ const toolName = n => {
     const lid = e.target.closest('#sbLid'); if (lid && !state.lidAsking) setAwake({ lid: !state.awake.lid }, lid);
   });
   document.addEventListener('click', e => { if (bar.open && !e.composedPath().includes($('#sbar'))) { bar.open = false; renderBar(); } });   // the path: the button clicked is drawn anew under the click
+  // What else the bar says (prefs.barStats): Settings › Appearance's checkboxes, or a right-click on the bar (2026-10-16,
+  // ctxRows) — the settings' boxes follow either way.
+  const BAR_STATS = [['cpu', 'CPU'], ['mem', 'Memory'], ['claude', 'Claude’s memory']];
+  function setBarStats(on) {
+    prefs.barStats = BAR_STATS.map(([k]) => k).filter(k => on.includes(k)); savePrefs();
+    for (const c of $('#sbarStats').querySelectorAll('input')) c.checked = prefs.barStats.includes(c.dataset.stat);
+    bar.stats = {}; renderBar(); loadStats();
+  }
   for (const c of $('#sbarStats').querySelectorAll('input')) {
     c.checked = (prefs.barStats || []).includes(c.dataset.stat);
-    c.addEventListener('change', () => { prefs.barStats = [...$('#sbarStats').querySelectorAll('input:checked')].map(x => x.dataset.stat); savePrefs(); bar.stats = {}; renderBar(); loadStats(); });
+    c.addEventListener('change', () => setBarStats([...$('#sbarStats').querySelectorAll('input:checked')].map(x => x.dataset.stat)));
   }
   renderBar(); loadStats();
 
@@ -6776,6 +6784,13 @@ const toolName = n => {
   const moveFocused = s => { const k = tabOf(s); if (k && k !== 'chat') moveTab(s, k, placeOf(s)[0] === k ? 1 : 0); else note($('#shead'), 'The chat stays in its half — pick a tab to move', true); };
   const clearColor = name => { colorAt = '#shead'; colorWas.set(name, projCfg(name).color ?? null); written.delete(name); previewColor(name, null); setColor(name, null); };
   function ctxRows(e) {
+    // the status bar: what else it says, ticked, and its settings (2026-10-16 — as the menu bar's and the Dock's are set
+    // from a right-click on them)
+    if (e.target.closest('#sbar')) {
+      const has = k => (prefs.barStats || []).includes(k);
+      return [...BAR_STATS.map(([k, t]) => ({ t, on: has(k), check: true, fn: () => setBarStats(has(k) ? prefs.barStats.filter(x => x !== k) : [...prefs.barStats || [], k]) })),
+        { hr: true }, { t: 'Status bar settings…', fn: () => settingsAt('look', '#sbarStats') }];
+    }
     const card = e.target.closest('#slist > .card'), chip = e.target.closest('.cpr[data-url], .hpr[data-url], .prrow[data-url]'), sq = e.target.closest('.sq.pick[data-name]');
     if (chip) {
       const s = state.sessions.get(card?.dataset.id || state.current), url = chip.dataset.url; if (!s || !url) return null;
@@ -6800,12 +6815,12 @@ const toolName = n => {
     if (e.target.closest('input, textarea, .tbody, #log .text, #log pre')) return;   // a box, a terminal, the words: the system's menu
     const rows = ctxRows(e); if (!rows) return;
     e.preventDefault();
-    ctxShow(rows, e.clientX, e.clientY, 'ctx');
+    ctxShow(rows, e.clientX, e.clientY, 'ctx', !!e.target.closest('#sbar'));   // the bar's menu ends at the pointer, above it
   });
   // The menu's rows at a point — or ending at it, `above` (a control at the window's foot) — and from what (`m._from`):
   // a row with `on` is a choice, ticked when on; `mark` and `n` a mark before it and a count after.
   // `sub` a second line — where a PR's branch is, why a row is `off` (disabled) — 2026-10-13
-  const ctxRow = (r, i) => r.hr ? '<hr>' : `<button type="button" data-i="${i}"${r.warn || r.sub ? ` class="${r.warn ? 'warn' : ''}${r.warn && r.sub ? ' ' : ''}${r.sub ? 'two' : ''}"` : ''}${r.off ? ' disabled' : ''}${'on' in r ? ` role="menuitemradio" aria-checked="${!!r.on}"` : ''}${r.tip ? ` title="${esc(r.tip)}"` : ''}>${r.mark ? `<i class="cmk ${r.mark}"></i>` : ''}${r.sub ? `<span class="ct">${esc(r.t)}</span>` : esc(r.t)}${r.n != null ? `<span class="cn">${esc(String(r.n))}</span>` : ''}${r.sub ? `<span class="csub">${esc(r.sub)}</span>` : ''}</button>`;
+  const ctxRow = (r, i) => r.hr ? '<hr>' : `<button type="button" data-i="${i}"${r.warn || r.sub ? ` class="${r.warn ? 'warn' : ''}${r.warn && r.sub ? ' ' : ''}${r.sub ? 'two' : ''}"` : ''}${r.off ? ' disabled' : ''}${'on' in r ? ` role="${r.check ? 'menuitemcheckbox' : 'menuitemradio'}" aria-checked="${!!r.on}"` : ''}${r.tip ? ` title="${esc(r.tip)}"` : ''}>${r.mark ? `<i class="cmk ${r.mark}"></i>` : ''}${r.sub ? `<span class="ct">${esc(r.t)}</span>` : esc(r.t)}${r.n != null ? `<span class="cn">${esc(String(r.n))}</span>` : ''}${r.sub ? `<span class="csub">${esc(r.sub)}</span>` : ''}</button>`;
   function ctxShow(rows, x, y, from, above = false) {
     const m = $('#ctxm'); m.innerHTML = rows.map(ctxRow).join(''); m.classList.toggle('checks', rows.some(r => 'on' in r)); m.classList.toggle('wide', rows.some(r => r.sub));
     m._rows = rows; m._from = from; if (!m.open) m.show();

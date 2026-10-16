@@ -63,6 +63,24 @@ export default async function (ctx) {
   await ctx.waitFor(`/CPU\\s*\\d+%/.test(document.querySelector('#sbar').textContent) && /RAM\\s*\\d+%/.test(document.querySelector('#sbar').textContent) && /Claude\\s*\\d+ MB/.test(document.querySelector('#sbar').textContent)`, { timeout: 8000, what: 'the machine numbers' });
   ctx.assert.deepEqual(await ctx.peix('prefs().barStats'), ['cpu', 'mem', 'claude']);
 
+  // a right-click on the bar (2026-10-16): what else it says, ticked — one clicked comes off, the settings' box with it —
+  // and Status bar settings…, Settings open at that row
+  const menu = () => ctx.evaluate(`[...document.querySelectorAll('#ctxm button')].map(b => (b.getAttribute('role') === 'menuitemcheckbox' ? (b.getAttribute('aria-checked') === 'true' ? '✓ ' : '· ') : '') + b.textContent)`);
+  const rightClick = () => ctx.evaluate(`(r => document.querySelector('#sbRight').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 10, clientY: r.top + 5 })))(document.querySelector('#sbRight').getBoundingClientRect())`);
+  await rightClick();
+  await ctx.waitFor(`document.querySelector('#ctxm').open`, { what: 'the bar\'s menu' });
+  out.barMenu = await menu();
+  ctx.assert.deepEqual(out.barMenu, ['✓ CPU', '✓ Memory', '✓ Claude’s memory', 'Status bar settings…']);
+  await ctx.settle(); await ctx.shot('3-right-click', { x: 900, y: 700, width: 800, height: 300 });
+  await ctx.evaluate(`[...document.querySelectorAll('#ctxm button')].find(b => /Claude/.test(b.textContent)).click()`);
+  ctx.assert.deepEqual([await ctx.peix('prefs().barStats'), await ctx.evaluate(`document.querySelector('#sbarStats [data-stat="claude"]').checked`)], [['cpu', 'mem'], false], 'off, here and in Settings');
+  await ctx.waitFor(`!/Claude\\s*\\d+ MB/.test(document.querySelector('#sbar').textContent)`, { what: 'Claude\'s memory gone from the bar' });
+  await rightClick();
+  await ctx.waitFor(`document.querySelector('#ctxm').open`, { what: 'the bar\'s menu again' });
+  await ctx.evaluate(`[...document.querySelectorAll('#ctxm button')].find(b => /Status bar settings/.test(b.textContent)).click()`);
+  await ctx.waitFor(`document.querySelector('#settings').open && document.querySelector('#spTitle').textContent === 'Appearance' && document.querySelector('#sbarStats').classList.contains('sflash')`, { what: 'Settings at the bar\'s row' });
+  await ctx.evaluate(`document.querySelector('#settings').close()`);
+
   // the Mac kept awake says so here too (its own buttons: keep-awake.mjs), and a click there lets it sleep
   await ctx.server.api('api/awake', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ awake: true }) });
   await ctx.waitFor(`document.querySelector('#sbAwake')?.textContent === 'awake'`, { what: 'awake in the bar' });
