@@ -511,7 +511,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   ticks, seen, for good, unlinked PRs, a branch's move set aside, named projects, titles, pins, hidden, `envs`, notifications, PR turns,
   awake, the update's switch and record, the worktrees it made) and the user's `~/.config/peixairada/config.json` (the setup, below) — both shared by the app and every
   browser —; the browser's `localStorage` `peixairada-prefs` (the keys are the `prefs` literal, and old ones are
-  deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it renders reads its
+  deleted on load); `sessionStorage` the tabs (below); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it renders reads its
   state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
 * **The setup is the user's file; nothing about one Mac is in the code** (2026-09-28): `CONFIG_FILE` —
   `$XDG_CONFIG_HOME/peixairada/config.json`, **beside `STATE_FILE` when that is set**; the state file's old `config` is moved there **at boot, never on an import** (`loadConfig()` from `main()`). Written into the file as it stands (a key it does not know stays), beside its real path and renamed over (a symlink stays one), a root under
@@ -672,14 +672,13 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `representedURL`). `refreshBadges` redraws only on a change (`badged`); a newly asking chat with the app in the back
   bounces the Dock once.
 * **The page owns the tabs**: each half's strip lists `chat` (`claude` while the session runs here), `shell:<id>` per
-  live zsh (`shellsOf`, the server's `shells`; named zsh, zsh 2…), `gh:<url>` per web page the chat opened (the strip's
-  ↗ goes out to the browser) and `ide:<url>` for its folder's editor — `tabKeys()` from `state.paneGh` (per chat, the
+  live zsh (`shellsOf`, the server's `shells`; named zsh, zsh 2…), `gh:<url>` per web page the chat opened and `ide:<url>` for its folder's editor — `tabKeys()` from `state.paneGh` (per chat, the
   keys) and `state.paneIde` (per folder); `tabs` holds each chat's `[left, right]`, read through `placeOf()`. `syncTerm()` keeps
   both bodies right and posts one `{type:'pane', id, keys, panes, focus}` (`postPane`): the shell keeps a web view per
   page (`paneViews`, up to `paneViewsMax`, the chat's own spared). **The overlay covers the whole window** and lets a
   click on no page through (`PaneOverlay.hitTest`). `‹ › ↻ ↗` are `{type:'nav'}`; × forgets a page (`closeTab`). In a
-  browser the tabs are chat and zsh only (`inApp`). GitHub cannot be iframed, hence the `WKWebView`; one with no UI
-  delegate drops `target=_blank`, hence `PaneDelegate`. → Findings: *the pane*.
+  browser the tabs are chat and zsh only (`inApp`). A `WKWebView`, as GitHub cannot be iframed; `PaneDelegate`, or
+  `target=_blank` is dropped. → Findings: *the pane*.
 * **A page opened again is the tab still at it** (2026-10-13, `openExternal` → `pageTab`): the page or further in
   (`atPage`: then `/`, `?`, `#` or the end); a tab followed elsewhere leaves it a new tab, `gh2:<url>`, `gh3:`…
   (`pageKey`, `isPageTab`; the shell loads a key's URL past its first colon), never a key whose lingering view
@@ -692,13 +691,12 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `copyPaneUrl`), each navigation reported as `peixPaneUrl(key, url)` (a KVO watch, `paneObs`; `paneUrls`).
 * **⌘F finds on that page**: the Edit menu's *Find… · Find Next · Find Previous*, greyed with the pane down; a native
   bar (`buildFindBar`, the pane's top right) over WKWebView's `find(_:configuration:)` — no count, the match is the
-  page's selection, dropped on close (`kDropSelection`); typing searches from the top (`runFind(fromTop:)`), a miss
-  turns red. A pane change closes it; `findQuery` outlives it.
+  page's selection, dropped on close (`kDropSelection`); typing searches from the top (`runFind(fromTop:)`). A pane change closes it; `findQuery` outlives it.
 * **VS Code Web is told the Mac's keyboard layout** (2026-10-14, `KeyboardMap`, `ide:` views only): WebKit has no
   `navigator.keyboard`, so its shortcuts were U.S. until a key typed made it guess one of its 16 bundled layouts. A user
   script gives it Chrome's `getLayoutMap()` (`KeyboardMap.current()`, UCKeyTranslate unshifted, over the `peixKeyboard`
   reply handler) and a `layoutchange` on a new input source (`layoutChanged`). Portugal's is not bundled: it picks
-  Spanish ISO, as in Chrome. Text typed was never affected.
+  Spanish ISO, as in Chrome.
 * **The trackpad bumps** (`haptic(kind)` → `{type: 'haptic'}` → `NSHapticFeedbackManager`): a splitter snapping
   (`LIST_W`, half the window, even halves — `SNAP_PX`), a tab dropped across (`moveTab`), the timeline's thumb crossing
   a run. In a browser it is a `haptic:<kind>` in `motion()` and nothing else.
@@ -841,9 +839,10 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   tail**, and "the last message" is `:scope > .msg:last-of-type`. → `transcript-live.mjs`.
 * **Split or not is the chat's** (`splits`, beside `tabs`); `syncTerm` calls `applySplit()` on every open; only the
   divider's place is the board's. **⌘W on the chat's tab closes the half the keys are in**, each strip's ⨯ its own
-  (`closeHalf(g)`); **⌘0 closes the other**. The per-chat maps (`tabs`, `homes`, `splits`, `autoSplit`, `stacked`,
-  `zoomed`, `focusView`, `state.unread`, `state.paneGh`, `blanks`) are pruned on every snapshot to the chats the board
-  still has, and carried to the new id across a /clear (`carryChat`). → `split-halves.mjs`, the split section of `pane-tabs.mjs`.
+  (`closeHalf(g)`); **⌘0 closes the other**. The per-chat maps (`tabs`, `splits`, `state.paneGh`… — the snapshot's list)
+  are pruned on every snapshot to the chats it has, carried to the new id across a /clear (`carryChat`) and **kept
+  across a reload** (2026-10-16, `keepTabs`: sessionStorage, which lives as the shell's views do; written after
+  `syncTerm`, read before the first snapshot). → `split-halves.mjs`, `pane-tabs.mjs`, `tabs-reload.mjs`.
 * **A half can fill the column and give it back** (2026-10-13, `zoomed`: chat → half, `toggleZoom`): the other half is
   hidden as it is (`.grp[hidden]`), never unsplit — its terminal is not resized (`fitTerm` gets no size from a hidden
   body), its page not posted (`postPane` skips a hidden half) —, `#groups.zoomed` on and `.stack` off. **It holds while

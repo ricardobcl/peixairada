@@ -5,6 +5,36 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-16. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-16, night — a chat's tabs outlive a reload
+
+Ricardo, passing on another user's report: "user report that sometime the tabs inside a pane disapear for web".
+
+* **Found: a reload forgot them.** Every chat's tabs were the page's memory alone — its pages (`state.paneGh`), its
+  folder's editor and a worktree's (`paneIde`, `paneWt`), its split and how it stands, which tab each half shows. "Page
+  state, like `tabs` and `splits`: gone with a reload" (2026-09-27) was a fair price while only a reload by hand
+  reloaded the board. It reloads itself now: after an update that touched the page, once left be (`reloadBusy` waits
+  while a page is in front — so it happens when you look away), after a restart that brought another page
+  (`pageFollows`, 2026-10-13), on a new key (today), and when WebKit ends the board's web process under memory
+  pressure (the app loads it again; once here, 2026-10-06, with eight pages up). Each time the strip came back with
+  claude and the zsh alone and the split folded, while the shell's views lingered unseen — "sometimes", and only the
+  web tabs, since a zsh's tab is the server's. Reproduced in the harness: `tabs-reload.mjs`'s steps on the page before
+  this lose every page and the split.
+* **Kept in sessionStorage** (`keepTabs`, `peixairada-tabs`): what tabs read — the pages, the editors and their labels,
+  the split, the halves, the zoom, the changes tab, blank tabs, and where each page was followed (`paneUrls`, which
+  decides what opening a page again does) — written 400 ms after `syncTerm`, through which every change to a tab goes,
+  and as the page goes (`pagehide`); read before the stream's first snapshot, which prunes it. **Why sessionStorage**:
+  it lives as long as the board's web view, which is as long as the shell's views live — a reload finds the tabs and
+  the shell shows each view as it stood (measured in WKWebView: kept across `location.reload`); a relaunch, which has
+  no views, starts clean as before. `localStorage` would bring tabs back over views that are gone, and be shared by
+  every browser tab of the board; the shell could not give them back, not knowing which chat a view is for.
+* **Named, not changed**: the editor's tab is the folder's (`paneIde` by `s.cwd`), and a chat's folder moves when its
+  claude ends after a `cd` — the summary's `cwd` falls from the registry's to the transcript's last — so its *VS Code*
+  tab can go with it (4 of 195 transcripts in two weeks here, three of them chats started in the org's folder that went
+  into a repo, where their cards are better left). A view let go past `paneViewsMax` keeps its tab and loads again from
+  where it was opened. The editor alone in a half has no strip (`.lone`, 2026-09-28): a strip that goes by design.
+* **If the user still sees it**: their commit (`git -C <checkout> log -1 --oneline`), whether the board had just
+  updated or restarted, split or not, which pages (PRs, VS Code), and whether the tabs went or only the page under them.
+
 ## Decisions of 2026-10-16, later still — ⌥⌘G again with several PRs; a header chip opens its PR
 
 Ricardo: "I have this UX issue where when there's more than 1 PR and one is already open, hotkey G before opened the
@@ -32,6 +62,7 @@ to expand and then click again on the Pr. come up with better UX".
   the column filled and given back, and ⌥⌘G ⏎ walking both PRs round; `pr-tab-again.mjs` the same from a second tab;
   `header-prs.mjs` a real click on a chip opening its PR with the rows left folded, and the caret unfolding them.
 
+||||||| parent of 4aecaa6 (The notes follow the tabs kept across a reload — CLAUDE.md: the per-chat maps are kept across a reload (keepTabs, sessionStorage, which lives as the shell's views do; written after syncTerm, read before the first snapshot) and sessionStorage among the places state lives, pared to fit; DECISIONS.md's entry: the report quoted, what was found (a reload forgot every chat's pages and split, and the board reloads itself now — an update's, a restart's, a new key's, a web process WebKit ended), why sessionStorage and not localStorage or the shell, the editor's tab that goes with a chat's folder when a cd moves it (named, not changed), and what to ask the user if it persists)
 ## Decisions of 2026-10-16, later — the board's key, built
 
 Ricardo, on the design below and the offer to push and build it: "do it". The two fixes before it were pushed first.
