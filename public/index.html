@@ -179,6 +179,11 @@
   .pop .edsay .err { color: var(--needs); }
   .pop .edsay .edwhy { flex-basis: 100%; }   /* what Zed is not: in the pane (2026-10-13, later) */
   .pop .srow.stat .uerr { color: var(--needs); }
+  .pop .smore { font-size: var(--fs-xs); color: var(--muted); }   /* a status row's Details: the commands, the rest (2026-10-16) */
+  .pop .smore[hidden] { display: none; }
+  .pop .smore summary { width: max-content; margin-top: 2px; color: var(--accent); cursor: pointer; }
+  .pop .smore div { margin-top: 4px; line-height: 1.5; }
+  .pop .smore code { font-size: var(--fs-xs); overflow-wrap: anywhere; }
   /* a switch: a checkbox drawn as one, role=switch */
   .pop input.sw { flex: none; appearance: none; -webkit-appearance: none; position: relative; margin: 0; width: 30px; height: 18px; border-radius: 9px; background: color-mix(in srgb, var(--ink) 22%, transparent); cursor: pointer; transition: background .15s; }
   .pop input.sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: transform .15s; }
@@ -2360,7 +2365,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       <div class="spane" data-tab="system" hidden role="tabpanel" id="spSystem" aria-labelledby="stSystem">
         <h5 class="sph">Updates &amp; access</h5>
         <section class="sgrp"><h6 class="sgh" id="sgUpd">Updates</h6><div class="slist" role="group" aria-labelledby="sgUpd">
-          <div class="srow set stat" id="updRow" data-kw="update version commit check pull"><span class="sl"><b>This board</b><small id="updSay"></small></span><button type="button" class="btn" id="updBtn">check now</button></div>
+          <div class="srow set stat" id="updRow" data-kw="update version commit check pull"><span class="sl"><b id="updWord">Not looked yet</b><small id="updSay"></small><details class="smore" id="updMore" hidden><summary>Details</summary><div></div></details></span><button type="button" class="btn" id="updBtn">Check now</button></div>
           <div class="srow set" data-kw="update automatically auto pull itself"><label class="sl" for="autoUpdate"><b>Update automatically</b><small id="autoUpdateSay"></small></label><input type="checkbox" class="sw" role="switch" id="autoUpdate"></div>
         </div></section>
         <section class="sgrp"><h6 class="sgh" id="sgKey">Board key</h6><div class="slist" role="group" aria-labelledby="sgKey">
@@ -2777,7 +2782,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     const a = u.app; if (!a?.behind || u.building) return '';
     const fail = appFailed(u) ? ` <span class="uerr">the app was not rebuilt: ${esc(u.build.why || '')}</span> —` : '';
     return ` ·${fail || ' the app is behind <code>mac/</code> here —'} ${({
-      off: '<b>update now</b> rebuilds it (it quits and opens again)', tried: '<b>update now</b> tries again',
+      off: '<b>Update now</b> rebuilds it (it quits and opens again)', tried: '<b>Update now</b> tries again',
       busy: `rebuilt once nothing has been done on the board for ${Math.round(u.quiet / 60_000)} min`,
       changes: `not rebuilt over ${many(a.changes, 'change')} to it here`, pull: 'rebuilt with the commits',
     })[u.appWhy] || '<code>mac/build.sh install</code> rebuilds it'}`;
@@ -2794,30 +2799,42 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return esc(`cd ${dir.startsWith('~/') ? `~/${q(dir.slice(2))}` : q(dir)} && ${words.map(q).join(' ')}`);
   }
   const canBuild = u => !u.busy && ['off', 'tried', 'busy'].includes(u.appWhy);
-  /** The settings' line for the update, and whether its button updates (rather than looks). */
+  /** Settings' row for the update (2026-10-16, a status row): a few words for where it stands (`word`), one line on it
+   *  (`say`), and the rest — the commands that clear the way, why a commit was held, the last update — under Details
+   *  (`more`); and whether its button updates (rather than looks). */
   function updateSay(u) {
-    if (!u || u.checkout === null) return { say: 'not looked yet' };
-    if (u.checkout === false) return { say: 'this board does not run from a git checkout — <code>mac/build.sh install</code> brings the app up to date', none: true };
-    const up = esc(u.upstream || 'the remote'), fresh = `${many(u.behind, 'new commit')} on ${up}`, run = updRun(u);
-    let say = u.busy === 'checking' ? `looking at ${up}…` : u.busy === 'updating' ? `updating to <code>${shortSha(u.up)}</code> — ${run.say}${run.of ? ` (${run.of})` : ''}…` : u.error ? `<span class="uerr">${esc(u.error)}</span>` : ({
+    if (!u || u.checkout === null) return { word: 'Not looked yet', say: 'not looked yet' };
+    if (u.checkout === false) return { word: 'Not a git checkout', say: 'this board does not run from a git checkout — <code>mac/build.sh install</code> brings the app up to date', none: true };
+    const up = esc(u.upstream || 'the remote'), fresh = `${many(u.behind, 'new commit')} on ${up}`, run = updRun(u), more = [], them = n => n === 1 ? 'it' : 'them';
+    let say;
+    if (u.busy === 'checking') say = `looking at ${up}…`;
+    else if (u.busy === 'updating') say = `updating to <code>${shortSha(u.up)}</code> — ${run.say}${run.of ? ` (${run.of})` : ''}…`;
+    else if (u.error) say = `<span class="uerr">${esc(u.error)}</span>`;
+    else if (u.why === 'diverged') { say = `this checkout and ${up} have each moved on, ${u.ahead} here and ${u.behind} there — not pulled`; more.push(`<code>${inCheckout(u, 'git', 'pull', '--rebase')}</code> puts ${u.ahead === 1 ? 'the one' : 'those'} here on top, then <b>Check now</b>`); }
+    else if (u.why === 'changes' && u.clash?.length) { say = `${fresh}, not pulled: ${filesSay(u.clash)} changed here, and the new commits change ${them(u.clash.length)} too`; more.push(`commit or discard ${them(u.clash.length)} (<code>${inCheckout(u, 'git', 'checkout', 'HEAD', '--', ...u.clash)}</code> discards), then <b>Check now</b>`); }
+    else if (u.why === 'held') { say = `<code>${shortSha(u.held?.to)}</code> was not kept — the next commit is tried`; more.push(`why: ${esc(u.held?.why || 'it did not start')}`); }
+    else say = ({
       detached: 'the checkout is on no branch — nothing to follow',
       'no-upstream': `<b>${esc(u.branch)}</b> follows no remote branch — nothing to pull`,
       current: u.ahead ? `<code>${shortSha(u.head)}</code> is ${many(u.ahead, 'commit')} ahead of ${up} — nothing to pull` : `up to date · <code>${shortSha(u.head)}</code>`,
-      diverged: `this checkout and ${up} have each moved on, ${u.ahead} here and ${u.behind} there — not pulled: <code>${inCheckout(u, 'git', 'pull', '--rebase')}</code> puts ${u.ahead === 1 ? 'the one' : 'those'} here on top, then <b>check now</b>`,
-      changes: u.clash?.length ? `${fresh}, not pulled: ${filesSay(u.clash)} changed here, and the new commits change ${u.clash.length === 1 ? 'it' : 'them'} too — commit or discard ${u.clash.length === 1 ? 'it' : 'them'} (<code>${inCheckout(u, 'git', 'checkout', 'HEAD', '--', ...u.clash)}</code> discards), then <b>check now</b>`
-        : `${fresh} — <b>update now</b> takes them and leaves ${filesSay(u.changed, u.dirty)} changed here as ${u.dirty === 1 ? 'it is' : 'they are'}${u.on ? '; by itself it never pulls over a change' : ''}`,
-      off: `${fresh} — <b>update now</b> takes them`,
-      held: `<code>${shortSha(u.held?.to)}</code> was not kept: ${esc(u.held?.why || '')} — the next commit is tried`,
+      changes: `${fresh} — <b>Update now</b> takes them and leaves ${filesSay(u.changed, u.dirty)} changed here as ${u.dirty === 1 ? 'it is' : 'they are'}${u.on ? '; by itself it never pulls over a change' : ''}`,
+      off: `${fresh} — <b>Update now</b> takes them`,
       busy: `${fresh} — pulled once nothing has been done on the board for ${Math.round(u.quiet / 60_000)} min`,
     })[u.why] || `<code>${shortSha(u.head)}</code>${u.checkedAt ? '' : ' · not looked yet'}`;
     if (run && u.busy !== 'updating') say += ` · ${run.say}…`;
     else if (!u.busy) say += appSay(u);
-    if (u.pending?.includes('server')) say += ' · restart the server to wear it (<code>scripts/launchd.sh restart</code>)';
+    if (u.pending?.includes('server')) { say += ' · restart the server to wear it'; more.push('<code>scripts/launchd.sh restart</code> restarts it; the chats in drawers stay'); }
     if (u.checkedAt && !u.busy) say += ` · looked ${rel(u.checkedAt)} ago`;
-    if (!u.every) say += ' · it looks only when asked: this server is not the login agent';
-    if (u.last) say += `<br>last update ${rel(u.last.at)} ago: ${many(u.last.count, 'commit')}${u.last.parts.length ? `, touching ${u.last.parts.map(k => UPD_PARTS[k]).join(', ').replace(/, ([^,]*)$/, ' and $1')}` : ''}`;
-    return { say, apply: canPull(u) || canBuild(u) };
+    if (!u.every) { say += ' · it looks only when asked'; more.push('this server is not the login agent, so it looks only when asked'); }
+    if (u.last) more.push(`last update ${rel(u.last.at)} ago: ${many(u.last.count, 'commit')}${u.last.parts.length ? `, touching ${u.last.parts.map(k => UPD_PARTS[k]).join(', ').replace(/, ([^,]*)$/, ' and $1')}` : ''}`);
+    return { word: updWord(u), say, more: more.join('<br>'), apply: canPull(u) || canBuild(u) };
   }
+  /** Where the update stands, in a few words: the status row's name. */
+  const updWord = u => u.busy === 'checking' ? 'Looking…' : u.busy === 'updating' ? 'Updating…' : u.error ? 'Could not look'
+    : u.failed ? 'Update failed' : u.why === 'held' ? 'Held back' : u.why === 'diverged' ? 'Diverged'
+    : u.why === 'changes' && u.clash?.length ? 'Waiting on your changes' : u.behind > 0 ? many(u.behind, 'new commit')
+    : u.why === 'detached' ? 'On no branch' : u.why === 'no-upstream' ? 'No remote branch' : u.app?.behind ? 'The app is behind'
+    : u.ahead ? 'Ahead of the remote' : 'Up to date';
   /** The status bar's word on the update (2026-10-12): what it is doing, step by step; a page that waits to be reloaded
    *  (a click reloads it); an update that failed or was held back; new commits not taken, and why; for a minute, what
    *  came. Nothing while it is up to date. A click opens Settings › Updates — but on news *update now* would take, where
@@ -2825,7 +2842,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   function updSeg() {
     const u = state.update; if (!u?.checkout && !reload.want) return '';   // a page wanted after a restart is said off a checkout too (pageFollows)
     const seg = (cls, icon, words, tip, p = null, take = '') => `<button class="seg upg ${cls}"${take ? ' data-take="1"' : ''} title="${esc(tip)} — click ${cls === 'page' ? 'to reload it now' : take || 'for Settings › Updates'}">${icon}<span>${words}</span>${p == null ? '' : `<i style="--p:${p.toFixed(2)}"></i>`}</button>`;
-    const run = updRun(u), tip = updateSay(u).say.replace(/<br>/g, ' · ').replace(/<[^>]+>/g, '').replace(/&(amp|lt|gt|quot);/g, (_, e) => ({ amp: '&', lt: '<', gt: '>', quot: '"' })[e]);   // text again, which seg escapes once
+    const run = updRun(u), w = updateSay(u), tip = [w.say, w.more].filter(Boolean).join(' · ').replace(/<br>/g, ' · ').replace(/<[^>]+>/g, '').replace(/&(amp|lt|gt|quot);/g, (_, e) => ({ amp: '&', lt: '<', gt: '>', quot: '"' })[e]);   // text again, which seg escapes once
     if (run) return seg('run', ICON.reload, `${esc(run.say)}…`, tip, run.p);
     if (reload.want) return seg('page', ICON.reload, 'updated · reload the page', `The board's page was updated — it reloads by itself once you leave it be (${{ dialog: 'a dialog is up', typing: 'a box has the keyboard', pane: 'a page of the pane is in front', input: 'you are at it' }[reload.why] || 'any moment'})`);
     if (u.failed || u.why === 'held') return seg('err', ICON.reload, u.why === 'held' ? 'update held back' : 'update failed', tip);
@@ -2842,8 +2859,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     const u = state.update, w = updateSay(u), b = $('#updBtn');
     $('#autoUpdate').checked = u?.on === true; $('#autoUpdate').disabled = !!w.none;
     $('#autoUpdateSay').textContent = w.none ? 'Only for a board run from a git checkout' : u?.on ? 'Pulls new commits after two idle minutes, never over your changes' : 'The status bar says when new commits come';
-    setHtml($('#updSay'), w.say);
-    b.textContent = w.apply ? 'update now' : 'check now'; b.dataset.apply = w.apply ? '1' : ''; b.disabled = !!(u?.busy || w.none);
+    $('#updWord').textContent = w.word; setHtml($('#updSay'), w.say);
+    $('#updMore').hidden = !w.more; setHtml($('#updMore div'), w.more || '');
+    b.textContent = w.apply ? 'Update now' : 'Check now'; b.dataset.apply = w.apply ? '1' : ''; b.disabled = !!(u?.busy || w.none);
   }
   /** The server's word on the update — the snapshot's, an `update` event's, an answer's. A newer page is wanted once an
    *  update that changed the page came after this one was loaded. */

@@ -49,6 +49,8 @@ export default async function (ctx) {
   const mark = () => ctx.evaluate(`window.__mark = 1`);
   const reloaded = what => ctx.waitFor(`!window.__mark && window.peix?.state().snapshots > 0`, { timeout: 25_000, what });
   const say = () => ctx.evaluate(`document.querySelector('#updSay').textContent`);
+  const row = () => ctx.evaluate(`({ word: document.querySelector('#updWord').textContent, more: !document.querySelector('#updMore').hidden })`);
+  const more = () => ctx.evaluate(`document.querySelector('#updMore div').textContent`);
   const seg = () => ctx.evaluate(`(b => b && { cls: b.className, text: b.textContent, tip: b.title, p: b.querySelector('i')?.style.getPropertyValue('--p') || null, take: b.dataset.take || null })(document.querySelector('#sbLeft .upg'))`);
   const barShot = label => ctx.evaluate(`(r => ({ x: r.left, y: r.top - 4, width: Math.min(r.width, 900), height: r.height + 8 }))(document.querySelector('#sbar').getBoundingClientRect())`).then(r => ctx.shot(label, r));
   try {
@@ -59,6 +61,7 @@ export default async function (ctx) {
     await ctx.waitFor(`/up to date/.test(document.querySelector('#updSay').textContent)`, { what: 'a look: up to date' });
     out.first = await say();
     ctx.assert.match(out.first, new RegExp(`^up to date · ${git(co, 'rev-parse', '--short=7', 'HEAD')} · looked \\d+s ago · it looks only when asked`), out.first);
+    ctx.assert.deepEqual(await row(), { word: 'Up to date', more: true }, 'Up to date, and why it looks only when asked under Details');
     ctx.assert.equal(await ctx.evaluate(`document.querySelector('#autoUpdate').checked`), false, 'off by default');
     ctx.assert.equal(await seg(), null, 'up to date: the status bar says nothing');
     await ctx.evaluate(`document.querySelector('#updRow').scrollIntoView({ block: 'center' })`); await ctx.settle();
@@ -68,14 +71,14 @@ export default async function (ctx) {
     const first = git(co, 'rev-parse', 'HEAD'), a = push();
     await mark();
     await ctx.evaluate(`document.querySelector('#updBtn').click()`);
-    await ctx.waitFor(`document.querySelector('#updBtn').textContent === 'update now'`, { what: 'update now, offered' });
+    await ctx.waitFor(`document.querySelector('#updBtn').textContent === 'Update now'`, { what: 'update now, offered' });
     ctx.assert.equal(git(co, 'rev-parse', 'HEAD'), first, 'not pulled');
     out.offered = await say();
-    ctx.assert.match(out.offered, /^1 new commit on origin\/main — update now takes them/);
+    ctx.assert.match(out.offered, /^1 new commit on origin\/main — Update now takes them/);
     await ctx.waitFor(`document.querySelector('#sbLeft .upg.new')`, { what: 'the status bar saying a new commit came' });
     out.newSeg = await seg();
     ctx.assert.equal(out.newSeg.text, '1 new commit · update', 'the news and what a click does: off is the default, not a reason');
-    ctx.assert.match(out.newSeg.tip, /update now takes them .* — click to update now$/);
+    ctx.assert.match(out.newSeg.tip, /Update now takes them .* — click to update now$/);
     await barShot('0-bar-new');
 
     // update now: pulled, and the page reloaded at once — the dialog notwithstanding
@@ -146,9 +149,9 @@ export default async function (ctx) {
     ctx.assert.equal((await ctx.server.api('api/update')).body.on, false, 'the server switched off');
     push();
     await ctx.evaluate(`document.querySelector('#updBtn').click()`);
-    await ctx.waitFor(`document.querySelector('#updBtn').textContent === 'update now'`, { what: 'update now, offered' });
+    await ctx.waitFor(`document.querySelector('#updBtn').textContent === 'Update now'`, { what: 'update now, offered' });
     out.off = await say();
-    ctx.assert.match(out.off, /^1 new commit on origin\/main — update now takes them/);
+    ctx.assert.match(out.off, /^1 new commit on origin\/main — Update now takes them/);
     await ctx.evaluate(`document.querySelector('#settings').close()`);
     await ctx.waitFor(`document.querySelector('#sbLeft .upg.new')`, { what: 'the status bar saying new commits wait' });
     out.offSeg = await seg();
@@ -162,7 +165,7 @@ export default async function (ctx) {
     await ctx.waitFor(`/leaves/.test(document.querySelector('#sbLeft .upg.new')?.title)`, { what: 'the status bar naming the change it keeps' });
     out.keepSeg = await seg();
     ctx.assert.deepEqual([out.keepSeg.text, out.keepSeg.take], ['1 new commit · update', '1'], 'a change the commits do not touch stops nothing');
-    ctx.assert.match(out.keepSeg.tip, /^1 new commit on origin\/main — update now takes them and leaves scripts\/check-page\.mjs changed here as it is · /);
+    ctx.assert.match(out.keepSeg.tip, /^1 new commit on origin\/main — Update now takes them and leaves scripts\/check-page\.mjs changed here as it is · /);
 
     // one the new commits change too: not pulled — the word says why, and a click opens Settings › Updates, which name it
     // and say how to discard it
@@ -176,8 +179,11 @@ export default async function (ctx) {
     await ctx.evaluate(`document.querySelector('#sbLeft .upg').click()`);
     await ctx.waitFor(`document.querySelector('#settings').open && document.querySelector('#settings [data-tab="system"]').classList.contains('on') && document.querySelector('#updRow').classList.contains('sflash')`, { what: 'a click opening the settings at Updates' });
     out.changes = await say();
-    ctx.assert.match(out.changes, /^1 new commit on origin\/main, not pulled: public\/index\.html changed here, and the new commits change it too — commit or discard it \(cd \S+ && git checkout HEAD -- public\/index\.html discards\), then check now/);
-    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#updBtn').textContent`), 'check now');
+    ctx.assert.match(out.changes, /^1 new commit on origin\/main, not pulled: public\/index\.html changed here, and the new commits change it too · looked/);
+    // a status row (2026-10-16): its state in a word, the command that clears the way under Details
+    ctx.assert.deepEqual(await row(), { word: 'Waiting on your changes', more: true }, 'said in a word, the command under Details');
+    ctx.assert.match(await more(), /^commit or discard it \(cd \S+ && git checkout HEAD -- public\/index\.html discards\), then Check now/);
+    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#updBtn').textContent`), 'Check now');
     await ctx.settle();
     await ctx.evaluate(`document.querySelector('#updRow').scrollIntoView({ block: 'center' })`); await ctx.settle();
     await ctx.shot('2-changes', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(document.querySelector('#settings').getBoundingClientRect())`));
@@ -203,10 +209,10 @@ export default async function (ctx) {
     await ctx.waitFor(`document.querySelector('#sbLeft .upg.new')`, { what: 'the status bar saying the app is behind' });
     out.appSeg = await seg();
     ctx.assert.deepEqual([out.appSeg.text, out.appSeg.take], ['the app is behind · rebuild', '1']);
-    ctx.assert.match(out.appSeg.tip, /ahead of origin\/main — nothing to pull · the app is behind mac\/ here — update now rebuilds it .* — click to rebuild it now \(it quits and opens again\)$/);
+    ctx.assert.match(out.appSeg.tip, /ahead of origin\/main — nothing to pull · the app is behind mac\/ here — Update now rebuilds it .* — click to rebuild it now \(it quits and opens again\)$/);
     await barShot('5-bar-app');
     await ctx.cmd('Comma');
-    await ctx.waitFor(`document.querySelector('#settings').open && document.querySelector('#updBtn').textContent === 'update now'`, { what: 'update now, for the app, in the settings too' });
+    await ctx.waitFor(`document.querySelector('#settings').open && document.querySelector('#updBtn').textContent === 'Update now'`, { what: 'update now, for the app, in the settings too' });
     await ctx.evaluate(`document.querySelector('#updRow').scrollIntoView({ block: 'center' })`); await ctx.settle();
     await ctx.shot('3-app-behind', await ctx.evaluate(`(r => ({ x: r.left, y: r.top, width: r.width, height: r.height }))(document.querySelector('#settings').getBoundingClientRect())`));
     await ctx.evaluate(`document.querySelector('#settings').close()`);
@@ -221,7 +227,9 @@ export default async function (ctx) {
     await ctx.server.post('/api/update', {});
     await ctx.waitFor(`document.querySelector('#sbLeft .upg.new')?.textContent === '1 new commit · diverged'`, { what: 'the status bar saying the branch diverged' });
     out.diverged = await say();
-    ctx.assert.match(out.diverged, /^this checkout and origin\/main have each moved on, 1 here and 1 there — not pulled: cd \S+ && git pull --rebase puts the one here on top, then check now/);
+    ctx.assert.match(out.diverged, /^this checkout and origin\/main have each moved on, 1 here and 1 there — not pulled/);
+    ctx.assert.equal((await row()).word, 'Diverged');
+    ctx.assert.match(await more(), /^cd \S+ && git pull --rebase puts the one here on top, then Check now/);
     return out;
   } finally {
     rmSync(root, { recursive: true, force: true });
