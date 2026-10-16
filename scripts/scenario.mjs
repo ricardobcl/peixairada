@@ -6,7 +6,7 @@
 // A scenario is an ES module: `export const meta = { server: true, fake: true, fixture: 'auto', env: {…} }` (its
 // needs, so no flags are required — `env` goes to the throwaway server, for the ones it reads from its environment)
 // and `export default async function (ctx) { … return result }`. `ctx` carries the page
-// (evaluate, waitFor, send, sleep, shot(name), key(code), openChat(id), reload(), screen(), type(text), fill(sel, text), settle()), the throwaway server when there
+// (evaluate, waitFor, send, on(event, fn), sleep, shot(name), key(code), openChat(id), reload(), screen(), type(text), fill(sel, text), settle()), the throwaway server when there
 // is one (api, terminals, restart, holders, logText), the fixture's chats, `args`, `log` and node:assert as `assert`.
 // Everything is cleaned up on exit — Chrome, the server, its terminals and holders, the temp dirs — unless --keep.
 // The clock reads noon (2026-10-14): this process, the server and the page run in the Etc/GMT±N zone where it is about
@@ -100,7 +100,7 @@ const ctx = {
   // stream says is drawn once a frame (renderBoardSoon), so a chat's state can be ahead of its card for that long — and
   // what a draw queues for the next frame (2026-10-14: the counts' roll, the fades, the list's ends, the rings' phase).
   settle: (timeout = 4000) => cdp.waitFor(`!window.peix?.state().rendering && !document.getAnimations().some(a => a.playState === 'running' && a.timeline === document.timeline && a.effect?.getTiming?.().iterations !== Infinity)`, { timeout, every: 40, what: 'the board to settle' }),
-  evaluate: cdp.evaluate, waitFor: cdp.waitFor, send: cdp.send, reload: cdp.reload, exceptions: cdp.exceptions, console: cdp.console,
+  evaluate: cdp.evaluate, waitFor: cdp.waitFor, send: cdp.send, on: cdp.on, reload: cdp.reload, exceptions: cdp.exceptions, console: cdp.console,
   shot: async (label, clip) => { const f = join(shots, `${name}-${label}.png`); await cdp.shot(f, clip); log(`screenshot → ${f}`); return f; },
   openChat: id => openChat(cdp, id),
   /** ⌥⌘ + a letter, as the page's hotkeys expect it (e.code; e.key is a symbol with ⌥ held on a Mac). */

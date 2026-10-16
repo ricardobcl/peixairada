@@ -43,7 +43,8 @@ function assistantLine(text, stop = 'end_turn') {
   line({ parentUuid: parent, isSidechain: false, type: 'assistant', message: { model: 'fake-1', id: 'msg_' + uuid.slice(0, 8), type: 'message', role: 'assistant', content: [{ type: 'text', text }], stop_reason: stop }, uuid, timestamp: now(), entrypoint: 'cli', cwd, sessionId, version: 'fake' });
   parent = uuid;
 }
-const reply = text => `You said: ${text}\n\nThis is the fake claude — one paragraph, one code fence, done.\n\n\`\`\`sh\necho ${JSON.stringify(text)}\n\`\`\``;
+// FAKE_SCREEN's `replies` (2026-10-16, the README's clips): a prompt's own answer, for the one a clip types
+const reply = text => SCREEN?.replies?.[text] ?? `You said: ${text}\n\nThis is the fake claude — one paragraph, one code fence, done.\n\n\`\`\`sh\necho ${JSON.stringify(text)}\n\`\`\``;
 
 // ---- interactive ----
 // The registry file, rewritten on each change of state as the real one does: busy for a turn, idle between them.
@@ -65,7 +66,8 @@ const LIVE = 6;                                   // rule, prompt, rule, status 
 // growing in place, as it does there, rather than each step of it scrolling away.
 const FULL = process.env.FAKE_TUI === 'fullscreen';
 // FAKE_SCREEN=<file.json> (2026-10-11, the README's drawer shot): `{ screen: [lines], status: [three lines] }` drawn in
-// place of the banner and the history, and of the status lines under the prompt — the timer still.
+// place of the banner and the history, and of the status lines under the prompt — the timer still; `replies` (2026-10-16)
+// maps a prompt to its answer.
 const SCREEN = process.env.FAKE_SCREEN ? JSON.parse(readFileSync(process.env.FAKE_SCREEN, 'utf8')) : null;
 let shown = [], mark = 0;
 const commit = () => { mark = shown.length; };
