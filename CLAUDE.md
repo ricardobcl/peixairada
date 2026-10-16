@@ -3,7 +3,7 @@
 One board for every Claude Code chat on this Mac. Reads what Claude Code already writes to `~/.claude`; no
 private API, no cooperation from Claude Code itself. Built as a PoC on 2026-08-31 and grown from there.
 
-**Three documents, three jobs.** [README.md](README.md) is for the user. This file is the *current invariants* —
+**Three documents, three jobs.** [README.md](README.md) and [docs/GUIDE.md](docs/GUIDE.md) are for the user. This file is the *current invariants* —
 one bullet each, under stable headings, what a session must know to change the code without breaking it: the rule,
 the names to find it by, the test that holds it. [docs/DECISIONS.md](docs/DECISIONS.md) is the *why and the history*:
 dated decisions, open items, and *Findings* — the full stories (this file as it stood on 2026-09-20, 2026-09-27 and
@@ -24,7 +24,7 @@ scripts/worktree.sh new <name> | list | done <name>... | prune   # parallel work
 mac/build.sh install                # the native app (bundles node, node_modules, lib/) into /Applications — Swift changes
 npm start                           # node server.mjs → http://127.0.0.1:7331, by hand
 npm test                            # node:test over test/ — pure logic, and the drawers end to end (≈45 s, four files at once)
-npm run check                       # static: every script parses, the page's script compiles, the vendored xterm = node_modules, shell, swiftc -typecheck, this file's size (≈10 s)
+npm run check                       # static: scripts parse, the page compiles, vendored xterm = node_modules, shell, swiftc -typecheck, this file's size (≈10 s)
 npm run verify -- "<js>"            # one expression on the live board in headless Chrome (see Verifying)
 npm run webkit -- "<body>"          # the same in WebKit, the app's engine; --shot is the compositor's own frame
 npm run perf                        # the board's cost in WebKit on a busy made-up board, and the animation rules (≈40 s); --against <ref>, --app
@@ -67,13 +67,13 @@ npm run map                         # rewrite the section maps at the top of ser
 | `mac/icon/MakeIcon.swift`, `mac/build.sh` | The icon, drawn in CoreGraphics; compile + bundle + sign + install (the version is `package.json`'s) |
 | `scripts/launchd.sh` | The server as a login agent; `restart [--after N]` |
 | `scripts/worktree.sh` | A worktree per piece of parallel work: made from main, removed only with its work on main, never forced |
-| `scripts/verify.mjs`, `scripts/scenario.mjs`, `scripts/scenarios.mjs`, `scripts/scenarios/` | The browser harness (see Verifying) |
+| `scripts/verify.mjs`, `scenario.mjs`, `scenarios.mjs`, `scenarios/` | The browser harness (see Verifying) |
 | `scripts/perf.mjs`, `lib/animcheck.mjs` | The board's CPU in WebKit on a made-up busy board, and what keeps WebKit's frames on the main thread (see Verifying) |
-| `scripts/webkit.mjs`, `scripts/webkit.swift` | The live board in a `WKWebView` (the app's engine), the window captured as its compositor drew it |
-| `scripts/fakeclaude.mjs`, `scripts/fixture.mjs` | A stand-in CLI for tests (`FAKE_TUI=fullscreen`: drawn as Claude Code's `tui: fullscreen`; `FAKE_SCREEN`: a screen given); a `~/.claude` look-alike |
+| `scripts/webkit.mjs`, `webkit.swift` | The live board in a `WKWebView` (the app's engine), the window captured as its compositor drew it |
+| `scripts/fakeclaude.mjs`, `fixture.mjs` | A stand-in CLI for tests (`FAKE_TUI=fullscreen`: drawn as Claude Code's `tui: fullscreen`; `FAKE_SCREEN`: a screen given); a `~/.claude` look-alike |
 | `scripts/fakegh.mjs`, `fakejira.mjs`, `fakecode.mjs`, `fakepmset.mjs`, `fakecaffeinate.mjs`, `faketask.mjs`, `fakebrew.mjs` | `gh` (`api graphql`, `repo clone`, `pr diff`), Jira's three calls (`startFakeJira`), `code serve-web`, `pmset`, `caffeinate`, `task`, `brew install --cask zed` — what every test server runs instead of the real ones; each file's head says its knobs |
-| `scripts/readme-shots.mjs` | The README's screenshots from a made-up board → `docs/shots/`, WebP — never shoot the real one |
-| `scripts/check.sh`, `scripts/check-page.mjs`, `scripts/map.mjs` | Static checks; the section maps |
+| `scripts/readme-board.mjs`, `-shots`, `-clips` | The README's pictures from a made-up board, never the real one: stills and clips (animated WebP, `img2webp`) → `docs/shots/` |
+| `scripts/check.sh`, `check-page.mjs`, `map.mjs` | Static checks; the section maps |
 | `test/` | `node:test` files (`npm test`) |
 
 ## How it reads Claude Code

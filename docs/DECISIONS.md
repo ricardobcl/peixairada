@@ -5,6 +5,40 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-16. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-16, night — the README is the main flow, a clip per feature
+
+Ricardo: "README should be less complex and focus on main flow (e.g. 1 pane per chat, auto PR link, PR activity/status
+tracking, integrated VSCode, terminal, etc.) - main we should have those gifs or small videos per feature."
+
+* **The README is install, then the flow, one section and one clip each**: one board for every chat, one pane per
+  chat, Claude Code itself in the pane, PRs that link themselves, whose move it is, VS Code beside the chat, the
+  launcher, the overview — and a short *Good to know*. Everything else it held moved, pared where it repeated, to
+  **`docs/GUIDE.md`**: every feature, the beside-a-chat key table, the looks, the keys, install in full (the key, the
+  first open, the optional CLIs, updating, removing), settings and the setup file, what leaves the machine, the
+  environment, hacking, the sunset's credit. The guide corrects one thing the README had wrong since 2026-10-07: an
+  ended chat resumes on a click or ⌥⌘C, not 5 s after it is opened.
+* **The clips are animated WebP**, which GitHub plays in an `<img>` (a video in the repo it does not), recorded on
+  the stills' made-up board — now its own module, **`scripts/readme-board.mjs`**, which `readme-shots.mjs` (the
+  stills) and **`readme-clips.mjs`** (the clips) both import: `npm run scenario -- scripts/readme-clips.mjs --timeout
+  900000 [-- <clip>…]`. Each clip is driven as a hand would — the pointer glides, clicks, the hotkeys —, framed by
+  Chrome's screencast (`Page.startScreencast`, ~45 frames a second as drawn; the harness's `ctx.on` hears its events,
+  new in `lib/cdp.mjs`), resampled to 15 a second, a run of the same picture one frame held, and encoded by libwebp's
+  `img2webp` (Homebrew's `webp`; `-m 4 -q 68`: `-min_size` and `-m 6` took a minute or more a clip for a tenth less).
+  Timed `captureScreenshot`s were 5–8 a second. Headless Chrome draws no pointer and no keys, so the clips draw both,
+  in a manual popover of their own (the top layer, raised again over a dialog). 1200 × 750 at 1×, compact cards (the
+  board's own default), 0.45–1.1 MB a clip, 6 MB for the eight.
+* **What the board makes happen is the fixture written to**: a reply appended lands a clauding chat, a tool result
+  answers the question, a PR named in a reply becomes its chip (`acme/billing-api#57`, in the fake gh's file, named by
+  no chat until then), and `prs.json` rewritten turns a PR's CI green — the PRs' clock fast for the clips
+  (`PR_TTL_MS`, `PR_WATCH_MS`). The fake claude answers a prompt a clip types with its own words (FAKE_SCREEN's
+  `replies`); a zsh tab's prompt is the made-up `ada@studio`, never this Mac's name (a `.zshrc` in the board's ZDOTDIR).
+* **Found on the way: the stills script had broken twice since it last ran.** The fake gh refuses a fixture field the
+  query does not ask for (2026-10-14), and a push's author carried a `__typename`; and VS Code Web now wants the board's
+  token (2026-10-16, `vswebWhyNot`), so a serve-web started `--without-connection-token` was refused. The made-up
+  board's serve-web runs with a token of its own and `kit()` writes it into the test server's state folder before
+  anything asks for VS Code Web; its frames are dropped before a reload (a reload under them hung once). The stills
+  were re-shot with it, in today's look.
+
 ## Decisions of 2026-10-16, night — a chat's tabs outlive a reload
 
 Ricardo, passing on another user's report: "user report that sometime the tabs inside a pane disapear for web".
