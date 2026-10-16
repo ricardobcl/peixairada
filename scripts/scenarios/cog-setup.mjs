@@ -84,6 +84,16 @@ export default async function (ctx) {
   ctx.assert.equal(out.abbr, 'PX', "the rail's square says it");
   await ctx.key('KeyB'); await ctx.settle();
   await openSetup();
+  // the square once (2026-10-16): the short name on it, its box and the colour under it only once it is clicked
+  const shown = sel => `(e => !!e && e.getClientRects().length > 0)(document.querySelector('#setup .srow.proj[data-name="${repo}"] ${sel}'))`;
+  out.square = await ctx.evaluate(`({ text: document.querySelector('#setup .srow.proj[data-name="${repo}"] .stile').textContent, box: ${shown('.sab')}, colour: ${shown('.ssw')} })`);
+  ctx.assert.deepEqual(out.square, { text: 'PX', box: false, colour: false }, 'the square alone, closed');
+  await ctx.evaluate(`document.querySelector('#setup .srow.proj[data-name="${repo}"] .stile').click()`);
+  out.opened = await ctx.evaluate(`({ box: ${shown('.sab')}, colour: ${shown('.ssw')}, keys: document.activeElement?.matches('.sab'), expanded: document.querySelector('#setup .srow.proj[data-name="${repo}"] .stile').getAttribute('aria-expanded') })`);
+  ctx.assert.deepEqual(out.opened, { box: true, colour: true, keys: true, expanded: 'true' }, 'a click opens its short name, with the keys, and its colour');
+  await ctx.settle(); await ctx.shot('square-open');
+  await ctx.evaluate(`document.querySelector('#setup .srow.proj[data-name="${repo}"] .stile').click()`);
+  ctx.assert.equal(await ctx.evaluate(shown('.sab')), false, 'and closes them again');
   await set('.sadd', tmp);
   await set(`.srow.proj[data-name="${tmp}"] input[type=color]`, '#cc3366');
   await until(async () => (await cfg()).projects[tmp]?.color === '#cc3366', { what: 'the colour saved' });
