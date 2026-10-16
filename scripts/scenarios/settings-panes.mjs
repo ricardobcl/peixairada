@@ -59,7 +59,7 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.meters.rows, ['Show in the status bar'], 'a row found by its controls\' words');
   await find('key');
   out.key = await look();
-  ctx.assert.ok(out.key.panes.includes('system') && out.key.rows.includes('The board’s key'), `the board's key: ${JSON.stringify(out.key)}`);
+  ctx.assert.ok(out.key.panes.includes('system') && out.key.rows.includes('Required') && out.key.rows.includes('New key'), `the board's key: ${JSON.stringify(out.key)}`);
   await ctx.settle();
   await ctx.shot('2-search', await box());
   await find('zzzz');
@@ -95,11 +95,23 @@ export default async function (ctx) {
   await ctx.evaluate(`window.peixVoiceOver(false)`);
   ctx.assert.deepEqual((await reader()).on, false, 'VoiceOver gone: the switch as it was');
 
+  // a new key is asked once more, in a line under its row that says what it does; the button keeps its name
+  await ctx.cmd('Comma');
+  await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings, for the key' });
+  await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="system"]').click()`);
+  await ctx.evaluate(`document.querySelector('#keyNew').click()`);
+  out.sure = await ctx.evaluate(`({ shown: !document.querySelector('#keySure').hidden, say: document.querySelector('#keySureSay').textContent, label: document.querySelector('#keyNew').textContent, focus: document.activeElement?.id })`);
+  ctx.assert.deepEqual(out.sure, { shown: true, say: 'Every browser loses the board until it has the new key, from a tab the board opens.', label: 'New key…', focus: 'keyNo' });
+  await ctx.settle(); await ctx.shot('3-new-key', await box());
+  await ctx.evaluate(`document.querySelector('#keyNo').click()`);
+  ctx.assert.deepEqual(await ctx.evaluate(`[document.querySelector('#keySure').hidden, document.activeElement?.id]`), [true, 'keyNew'], 'Cancel: nothing made, the keys back on the button');
+  await ctx.cmd('Comma');
+
   // the pane last shown, after a reload too (2026-10-16, prefs.settingsPane)
   await ctx.reload();
   await ctx.cmd('Comma');
   await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings after a reload' });
-  ctx.assert.deepEqual(await ctx.evaluate(`[document.querySelector('#spTitle').textContent, document.querySelector('#settings .stabs .on')?.dataset.tab, document.activeElement?.id]`), ['Terminal', 'term', 'sq'], 'Terminal again, its tab lit, the box with the keys');
+  ctx.assert.deepEqual(await ctx.evaluate(`[document.querySelector('#spTitle').textContent, document.querySelector('#settings .stabs .on')?.dataset.tab, document.activeElement?.id]`), ['Updates & access', 'system', 'sq'], 'the pane last shown again, its tab lit, the box with the keys');
   await ctx.cmd('Comma');
   return out;
 }

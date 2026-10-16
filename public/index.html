@@ -153,7 +153,11 @@
   .pop .sl small:empty { display: none; }
   .pop .srow.set.off .sl b { color: var(--muted); }
   .pop .srow.set.off label.sl { cursor: default; }
-  .pop .sbtns { display: flex; gap: 6px; }
+  .pop .btn.danger { color: var(--needs); }
+  .pop .btn:disabled { opacity: .45; cursor: default; }
+  .pop .ssure { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 10px; border-radius: var(--r-3); background: color-mix(in srgb, var(--needs) 10%, transparent); font-size: var(--fs-xs); color: var(--ink); }
+  .pop .ssure[hidden] { display: none; }
+  .pop .ssure span { flex: 1 1 220px; }
   .pop .srow.set .btn kbd { font: inherit; color: var(--muted); }
   .pop .ssel select { appearance: none; -webkit-appearance: none; height: 26px; padding: 0 26px 0 9px; border: 1px solid transparent; border-radius: var(--r-3); font: inherit; font-size: var(--fs-sm); color: var(--ink); cursor: pointer;
     background: var(--ctl) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238f8e86' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 9px center / 9px 5px; }
@@ -2369,7 +2373,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
           <div class="srow set" data-kw="update automatically auto pull itself"><label class="sl" for="autoUpdate"><b>Update automatically</b><small id="autoUpdateSay"></small></label><input type="checkbox" class="sw" role="switch" id="autoUpdate"></div>
         </div></section>
         <section class="sgrp"><h6 class="sgh" id="sgKey">Board key</h6><div class="slist" role="group" aria-labelledby="sgKey">
-          <div class="srow set stat keyrow" id="keyRow" data-kw="key security access token lock browser"><span class="sl"><b>The board’s key</b><small id="keySay"></small></span><span class="sbtns"><button type="button" class="btn" id="keyReq" hidden>require it now</button><button type="button" class="btn" id="keyNew">new key</button></span></div>
+          <div class="srow set stat" id="keyRow" data-kw="key security access token lock browser required"><span class="sl"><b id="keyWord">Required</b><small id="keySay"></small></span><button type="button" class="btn" id="keyReq" hidden>Require it now</button></div>
+          <div class="srow set" id="keyNewRow" data-kw="new key reset rotate security browser"><span class="sl"><b>New key</b><small>Every browser asks for it again; the app reads it by itself</small></span><button type="button" class="btn danger" id="keyNew" aria-expanded="false" aria-controls="keySure">New key…</button>
+            <div class="ssure" id="keySure" role="group" aria-labelledby="keySureSay" hidden><span id="keySureSay">Every browser loses the board until it has the new key, from a tab the board opens.</span><button type="button" class="btn" id="keyNo">Cancel</button><button type="button" class="btn danger" id="keyYes">Make a new key</button></div></div>
         </div><p class="sgf">A file in the board’s folder only you can read. The app hands it over; a browser gets it once, from a tab the board opens.</p></section>
         <section class="sgrp"><h6 class="sgh" id="sgFile">Setup file</h6><div class="slist" role="group" aria-labelledby="sgFile">
           <div class="srow set" data-kw="setup config json file path dotfiles"><span class="sl"><b id="sfilePath">—</b><small>Yours to edit by hand too; the app and every browser on this Mac share it</small></span><button type="button" class="btn" id="sfileCopy">Copy path</button></div>
@@ -2663,7 +2669,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   const settingsToggle = () => settingsOpen(!$('#settings').open);
   $('#settings').addEventListener('close', () => {
     if (setupUi.pending.size) { setupUi.pending.clear(); renderSetup(); }
-    window.CSS?.highlights?.delete('sfind');
+    window.CSS?.highlights?.delete('sfind'); keySure(false);
     const o = sset.opener; sset.opener = null;
     if (o?.isConnected && !document.querySelector('dialog[open]') && (document.activeElement === document.body || !document.activeElement)) o.focus({ preventScroll: true });
     repostPane();
@@ -2913,16 +2919,20 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     api('POST', '/api/update', { apply: true }).then(takeUpdate)
       .catch(err => note($('#sbLeft .upg') || $('#sbar'), `Could not update: ${err.message}`, true)).finally(() => { updPosting = false; });
   }
-  // Settings › Board › Access (2026-10-16): whether the board's key is required yet, and a new one
+  // Settings › Updates & access › Board key (2026-10-16): whether the board's key is required yet, and a new one — asked
+  // once more, in a line under the row that says what it does, before it is made (a destructive action looks it).
   function showKey() {
     const k = state.key; if (!k) return;
-    $('#keySay').textContent = k.required ? 'Every page and request needs the board\'s key.' : 'Not required yet: the board answers a request without its key until the app opens with it.';
-    $('#keyReq').hidden = k.required; $('#keyNew').textContent = 'new key'; delete $('#keyNew').dataset.sure;
+    $('#keyWord').textContent = k.required ? 'Required' : 'Not required yet';
+    $('#keySay').textContent = k.required ? 'Every page and request carries the board’s key' : 'The board answers a request without it until the app opens with it';
+    $('#keyReq').hidden = k.required;
   }
   $('#keyReq').onclick = e => api('PUT', '/api/key').then(k => { state.key = k; showKey(); }).catch(err => note(e.target, err.message, true));
-  $('#keyNew').onclick = async e => {
+  const keySure = on => { $('#keySure').hidden = !on; $('#keyNew').setAttribute('aria-expanded', String(on)); };
+  $('#keyNew').onclick = () => { keySure(true); $('#keyNo').focus(); };
+  $('#keyNo').onclick = () => { keySure(false); $('#keyNew').focus(); };
+  $('#keyYes').onclick = async e => {
     const b = e.currentTarget;
-    if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'sure? every browser asks again'; setTimeout(showKey, 4000); return; }
     try { const { key } = await api('POST', '/api/key/new'); if (IN_APP && window.PEIX_KEY) post({ type: 'key' }); else { takeKey(key); location.reload(); } }
     catch (err) { note(b, `No new key: ${err.message}`, true); }
   };

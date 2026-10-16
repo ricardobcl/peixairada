@@ -26,8 +26,8 @@ export default async ctx => {
   ctx.assert.equal(await ctx.evaluate(`localStorage.getItem('peixairada-key')`), ctx.server.key, 'the board\'s own key');
   await ctx.reload();
   ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('#slist > .card').length`), 2, 'reloaded, still the board');
-  out.settings = await ctx.evaluate(`document.querySelector('#keySay').textContent`);
-  ctx.assert.match(out.settings, /needs the board's key/, 'Settings say it is required');
+  out.settings = await ctx.evaluate(`[document.querySelector('#keyWord').textContent, document.querySelector('#keySay').textContent]`);
+  ctx.assert.deepEqual(out.settings, ['Required', 'Every page and request carries the board’s key'], 'Settings say it is required');
   // a key that is not the board's any more (a new one made elsewhere): the lock again, saying why, and the stale one gone
   await ctx.evaluate(`localStorage.setItem('peixairada-key', '0'.repeat(64))`);
   await ctx.send('Page.reload');
