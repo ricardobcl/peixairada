@@ -19,6 +19,15 @@ let kFrameName = "peixairada.main"   // the window's frame in the defaults — o
 let kFillKey = "peixairada.fill"      // whether the board was full screen (either kind) when it was last up: a relaunch comes back so
 let kSpaceKey = "peixairada.space"    // ⌃⌘F is the system's full screen, in a Space of its own, not the fill (2026-10-14, Settings › Look)
 let kDarkKey = "peixairada.dark"      // the board's own appearance when it last said one (none: it follows macOS), for the next launch
+/// The board's key (2026-10-16): a file beside the server's state, this user's alone, made at the server's first boot.
+/// The app's page gets it from a script of the app's own before the page's runs (`giveKey`), and the probe sends it.
+let kKeyFile = FileManager.default.homeDirectoryForCurrentUser
+  .appendingPathComponent("Library/Application Support/peixAIrada/key")
+func boardKey() -> String? {
+  guard let s = try? String(contentsOf: kKeyFile, encoding: .utf8) else { return nil }
+  let k = s.trimmingCharacters(in: .whitespacesAndNewlines)
+  return k.count == 64 && k.allSatisfy(\.isHexDigit) ? k : nil
+}
 let kLog = FileManager.default.homeDirectoryForCurrentUser
   .appendingPathComponent("Library/Logs/peixairada.log")
 let kAppLog = FileManager.default.homeDirectoryForCurrentUser
@@ -101,6 +110,7 @@ final class ServerController {
   static func isServing(_ completion: @escaping (Bool) -> Void) {
     var req = URLRequest(url: kURL.appendingPathComponent("api/projects"))
     req.timeoutInterval = 1.2
+    if let key = boardKey() { req.setValue(key, forHTTPHeaderField: "X-Peix-Key") }   // a server from before the key ignores it
     URLSession.shared.dataTask(with: req) { _, resp, _ in
       completion((resp as? HTTPURLResponse)?.statusCode == 200)
     }.resume()
@@ -977,7 +987,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   /// The board itself (⌥⌘R, 2026-10-13; ⌘R's when no page was up before): reloaded where it is, the open chat's address
   /// kept — or loaded afresh over a message.
   @objc func reloadBoard(_ sender: Any?) {
-    if boardShown { web.reload() } else { web.load(URLRequest(url: kURL)) }
+    loadBoard(reload: boardShown)
+  }
+  /// The board loaded, or reloaded where it is, with its key given first (2026-10-16).
+  func loadBoard(reload: Bool = false) {
+    giveKey()
+    if reload { web.reload() } else { web.load(URLRequest(url: kURL)) }
+  }
+  private var keyGiven: String?
+  /// The file's key on the board's view, as `window.PEIX_KEY` before the page's script — on the board's own origin only —,
+  /// put there again when the file's has changed (a first boot, a new key). The board's view has no other user script.
+  private func giveKey() {
+    let key = boardKey()
+    guard key != keyGiven else { return }
+    keyGiven = key
+    let ucc = web.configuration.userContentController
+    ucc.removeAllUserScripts()
+    guard let key else { logLine("key: none at \(kKeyFile.path) — the board asks for it"); return }
+    let origin = String(kURL.absoluteString.dropLast())
+    ucc.addUserScript(WKUserScript(source: "if (location.origin === '\(origin)') window.PEIX_KEY = '\(key)';", injectionTime: .atDocumentStart, forMainFrameOnly: true))
   }
   func validateMenuItem(_ item: NSMenuItem) -> Bool {
     let paneUp = paneOverlay != nil && !paneOverlay.isHidden
@@ -1326,7 +1354,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     let done: (String?) -> Void = { [weak self] problem in
       guard let self else { return }
       self.recovering = false; self.misses = 0
-      if let problem { self.showMessage(problem) } else { self.web.load(URLRequest(url: kURL)) }
+      if let problem { self.showMessage(problem) } else { self.loadBoard() }
     }
     if restart { server.restart(done) } else { server.start(done) }
   }
@@ -1338,7 +1366,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         guard let self, !self.recovering else { return }
         // A message up while the server answers — ⌘R mid-restart, a boot slower than the wait — went on saying so until
         // a reload by hand (2026-10-03): the board comes back on its own.
-        if ok && !self.boardShown { logLine("watchdog: the server answers — the board again"); self.web.load(URLRequest(url: kURL)) }
+        if ok && !self.boardShown { logLine("watchdog: the server answers — the board again"); self.loadBoard() }
         self.misses = ok ? 0 : self.misses + 1
         guard self.misses >= 3 else { return }   // ~15 s of silence, not one slow answer
         logLine("watchdog: nothing answering on :\(kPort) — starting the server")
@@ -1415,6 +1443,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       paneNav(body["what"] as? String ?? "")
     case "fullscreen":   // Settings › Look's full screen (2026-10-14): the fill, or the system's in a Space of its own
       setSpaceMode(body["space"] as? Bool ?? false)
+    case "key":   // the lock's *Read the key again*, a new key made on the board (2026-10-16)
+      logLine("key: read again\(boardKey() == nil ? " — there is no key file" : "")")
+      loadBoard(reload: true)
     case "zoom":   // the settings' text size (2026-10-12)
       let z = CGFloat(min(2, max(0.5, body["value"] as? Double ?? 1)))
       if z != zoom { zoom = z; web.pageZoom = z; logLine("zoom: \(z)"); tellFill(); tellPane() }
@@ -1571,7 +1602,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
     logLine("board: its web process ended — loading it again")
     boardShown = false
-    webView.load(URLRequest(url: kURL))
+    loadBoard()
   }
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
     if isCancelled(error) { return }

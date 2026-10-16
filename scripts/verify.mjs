@@ -6,7 +6,7 @@
 //   node scripts/verify.mjs --shot /tmp/board.png "1"      # also save a screenshot after the expression
 //   DARK=1 node scripts/verify.mjs …                      # emulate prefers-color-scheme: dark
 // For anything with more than one step — attach, wait, act, measure — write a scenario (scripts/scenario.mjs).
-import { launchChrome, openBoard } from '../lib/cdp.mjs';
+import { launchChrome, liveKey, openBoard } from '../lib/cdp.mjs';
 
 const URL_ = process.env.URL || 'http://127.0.0.1:7331/';
 const TIMEOUT = Number(process.env.TIMEOUT_MS || 20000);
@@ -22,7 +22,7 @@ if (!expr) { console.error('usage: node scripts/verify.mjs [--hash <session-id>]
 let cdp = null;
 const bail = setTimeout(async () => { console.error(`timed out after ${TIMEOUT}ms`); await Promise.race([cdp?.close(), new Promise(r => setTimeout(r, 4000))]); process.exit(1); }, TIMEOUT);
 try {
-  cdp = await launchChrome({ port: process.env.CDP_PORT ? Number(process.env.CDP_PORT) : undefined, dark: !!process.env.DARK });
+  cdp = await launchChrome({ port: process.env.CDP_PORT ? Number(process.env.CDP_PORT) : undefined, dark: !!process.env.DARK, key: liveKey() });
   await openBoard(cdp, URL_, { hash });
   let out;
   try { out = { value: await cdp.evaluate(expr) }; } catch (e) { out = { error: e.message }; }

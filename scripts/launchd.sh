@@ -4,6 +4,7 @@
 #                                  # if the app is running on its own server, hand over to the agent (see below)
 #   scripts/launchd.sh restart [--after N]   # restart the agent after a change to server.mjs — the drawers stay (each
 #                                  # hangs off its own holder, lib/termhold.mjs); N seconds first, for a recap to land
+#   scripts/launchd.sh open        # the board in this Mac's browser, with its key (a tab the server opens with a ticket)
 #   scripts/launchd.sh uninstall   # stop it and remove the plist
 #   scripts/launchd.sh status      # is it loaded / running?
 #   scripts/launchd.sh logs        # tail the log
@@ -87,8 +88,8 @@ case "${1:-}" in
       echo "› peixAIrada may be running on its own server: quitting it so the agent takes the port (the drawers stay — each has its holder)"
       osascript -e 'quit app "peixAIrada"' 2>/dev/null || true
       i=0; while pgrep -xq peixAIrada && [ $i -lt 20 ]; do sleep 1; i=$((i+1)); done
-      i=0; while ! curl -sf -o /dev/null "http://127.0.0.1:$PORT/api/projects" && [ $i -lt 30 ]; do sleep 1; i=$((i+1)); done
-      if curl -sf -o /dev/null "http://127.0.0.1:$PORT/api/projects"; then open -a peixAIrada && echo "› agent answering; peixAIrada reopened and adopts it"
+      i=0; while ! curl -sf -o /dev/null "http://127.0.0.1:$PORT/api/alive" && [ $i -lt 30 ]; do sleep 1; i=$((i+1)); done
+      if curl -sf -o /dev/null "http://127.0.0.1:$PORT/api/alive"; then open -a peixAIrada && echo "› agent answering; peixAIrada reopened and adopts it"
       else echo "› the agent is not answering on $PORT yet — see $LOG; open the app once it does" >&2; fi
     fi;;
   restart)
@@ -96,6 +97,9 @@ case "${1:-}" in
     while [ $# -gt 0 ]; do case "$1" in --after) AFTER="${2:-0}"; shift; shift;; *) shift;; esac; done
     if [ "$AFTER" -gt 0 ] 2>/dev/null; then echo "› restarting in $AFTER s"; sleep "$AFTER"; fi
     launchctl kickstart -k "gui/$(id -u)/$LABEL" && echo "restarted $LABEL — the drawers hang off their holders and stay; the app reattaches by itself";;
+  open)   # the board's key (2026-10-16): the server opens the tab itself, with a ticket the page trades for the key
+    if curl -sf -o /dev/null -X POST "http://127.0.0.1:$PORT/api/key/open"; then echo "› a tab with the board's key is opening in your browser"
+    else echo "the board did not open one — not answering on $PORT, or a tab was opened a moment ago (see $LOG)" >&2; exit 1; fi;;
   uninstall)
     launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
     rm -f "$PLIST"; echo "removed $LABEL";;
@@ -103,5 +107,5 @@ case "${1:-}" in
     launchctl print "gui/$(id -u)/$LABEL" 2>/dev/null | grep -E '^\s*(state|pid|last exit code)' || echo "$LABEL is not loaded";;
   logs) tail -n 50 -f "$LOG";;
   print) plist;;
-  *) sed -n '2,10p' "$0"; exit 1;;
+  *) sed -n '2,11p' "$0"; exit 1;;
 esac

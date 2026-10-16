@@ -35,7 +35,7 @@ export default async function (ctx) {
   // Another page on the same drawer sizes the PTY (a second window, a browser beside the app); this one, back in front,
   // says its size again (2026-10-14) — it kept quiet for good, its own last size unchanged, and drew a screen painted for another
   const id = (await ctx.peix('state()')).termId, size = async () => { const t = (await ctx.server.terminals()).find(t => t.id === id); return `${t.cols}×${t.rows}`; };
-  const other = new WebSocket(`${ctx.server.url.replace(/^http/, 'ws')}api/terminals/${id}/ws`);
+  const other = new WebSocket(ctx.server.ws(`api/terminals/${id}/ws`));
   await new Promise(r => other.addEventListener('open', r, { once: true }));
   other.send(JSON.stringify({ t: 'resize', cols: 60, rows: 15 }));
   await waitFor(async () => (await size()) === '60×15', { what: 'the other page\'s size on the PTY' });

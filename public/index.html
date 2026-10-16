@@ -140,6 +140,7 @@
      switch and the keys until something is hidden. */
   .pop .opt.upd { grid-template-columns: 1fr auto; cursor: default; }   /* the update's word and its button (2026-10-12) */
   .pop .opt.upd .uerr { color: var(--needs); }
+  .pop .opt.upd.keyrow { grid-template-columns: 1fr auto auto; }   /* the board's key: what holds, and its two buttons (2026-10-16) */
   .pop .hid { display: grid; gap: 3px; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--muted); }
   .pop .hid:empty { display: none; }
   .pop .hid .hrow { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: baseline; }
@@ -1929,11 +1930,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #about .help { margin: 14px 0 0; }
   /* The first run (2026-10-01): where the repos live, asked once, About's look — the fish, a question, a line of why —
      over the server's guesses as the setup's inset rows, the two boxes, and Skip beside the answer. */
-  #welcome { width: min(500px, 92vw); padding: 24px 24px 16px; outline: none; }
-  #welcome .wlogo { display: block; width: 56px; height: 56px; margin: 0 auto; }
-  #welcome .wlogo .logo { width: 100%; height: 100%; }
-  #welcome h3 { margin: 8px 0 0; font-size: var(--fs-xl); text-align: center; }
-  #welcome .tag { margin: 6px 8px 16px; font-size: var(--fs-md); line-height: 1.45; color: var(--muted); text-align: center; }
+  :is(#welcome, #lock) { width: min(500px, 92vw); padding: 24px 24px 16px; outline: none; }
+  :is(#welcome, #lock) .wlogo { display: block; width: 56px; height: 56px; margin: 0 auto; }
+  :is(#welcome, #lock) .wlogo .logo { width: 100%; height: 100%; }
+  :is(#welcome, #lock) h3 { margin: 8px 0 0; font-size: var(--fs-xl); text-align: center; }
+  :is(#welcome, #lock) .tag { margin: 6px 8px 16px; font-size: var(--fs-md); line-height: 1.45; color: var(--muted); text-align: center; }
   #welcome .wsugs { display: grid; margin-bottom: 14px; border-radius: var(--r-4); background: color-mix(in srgb, var(--ink) 4.5%, transparent); }
   #welcome .wsugs:empty { display: none; }
   #welcome .wsug { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 44px; padding: 7px 12px; border: 1px solid transparent; border-radius: var(--r-4); background: none; color: var(--muted); font: inherit; font-size: var(--fs-sm); text-align: left; cursor: pointer; }
@@ -1958,8 +1959,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #welcome .werr { min-height: 16px; margin: 8px 0 0; font-size: var(--fs-sm); color: var(--needs); text-align: center; }
   #welcome .dfoot { margin-top: 6px; }
   #welcome .wwhere { min-width: 0; font-size: var(--fs-xs); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #welcome .wok { background: var(--accent); color: var(--bg); font-weight: 600; }
-  #welcome .wok:hover { background: color-mix(in srgb, var(--accent) 86%, var(--ink)); }
+  :is(#welcome, #lock) .wok { background: var(--accent); color: var(--bg); font-weight: 600; }
+  :is(#welcome, #lock) .wok:hover { background: color-mix(in srgb, var(--accent) 86%, var(--ink)); }
+  /* the board's key (2026-10-16): the lock, the welcome's look; what it says, and the way to the key from a terminal */
+  #lock .lsay { min-height: 16px; margin: 8px 0 0; font-size: var(--fs-sm); text-align: center; }
+  #lock .lsay.err { color: var(--needs); }
+  #lock .help { margin: 4px 0 10px; font-size: var(--fs-sm); color: var(--muted); text-align: center; }
+  #lock .dfoot { margin-top: 6px; }
   /* The tour (2026-10-14): the board's main parts one at a time — a hole cut in a dim veil round the part, and a card
      beside it saying what it is and its keys. A modal dialog the size of the window, so the pane goes down and the keys
      are swallowed while it is up. The veil is the hole's own shadow, so hole and card glide from part to part together
@@ -2272,6 +2278,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     <h4 class="shd">Terminal</h4>
     <label class="opt" title="On, ⌥ with a letter is Meta in the terminal, as iTerm's Esc+ — ⌥B ⌥F move a word, ⌥⌫ deletes one; ⌥ with a digit or a sign still types what the keyboard makes. Off, ⌥ types whatever your layout composes (⌥L is @ on a German one)"><input type="checkbox" id="optMeta" checked><span><b>⌥ is Meta</b> in the terminal — off, ⌥ types what your keyboard composes</span></label>
     <label class="opt" title="xterm's screen-reader mode: the drawer's lines kept in a live region VoiceOver follows — a little slower to draw"><input type="checkbox" id="termReader"><span><b>screen reader</b> in the drawer — its lines read out as they come</span></label>
+    <h4 class="shd">Access</h4>
+    <div class="opt sub upd keyrow" id="keyRow" title="Every ask of the server carries the board's key — a file in its state folder only you can read. The app hands it to the board; a browser gets it once, by a tab the board opens with a ticket (or scripts/launchd.sh open). A container or another account reaching the port gets nothing without it"><span id="keySay"></span><button type="button" class="btn" id="keyReq" hidden>require it now</button><button type="button" class="btn" id="keyNew">new key</button></div>
     <h4 class="shd">Updates</h4>
     <label class="opt" title="The board looks for new commits on its checkout's upstream every half hour, and the status bar says when there are some. On, it also pulls them once nothing has been done on the board for two minutes — a fast-forward only, never over a change of yours — and starts again what they changed: the packages, the server (the chats in drawers stay), this page (once you leave it be) and the app. A commit whose server does not start is undone and held back. Off, update now below takes them"><input type="checkbox" id="autoUpdate"><span><b>update itself</b> — pulls the board's new commits and starts again what they changed: the server, this page, the app; off, the status bar says they came</span></label>
     <div class="opt sub upd" id="updRow"><span id="updSay"></span><button type="button" class="btn" id="updBtn">check now</button></div>
@@ -2283,6 +2291,14 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 <dialog id="hmenu" aria-label="This chat's actions"></dialog>
 <dialog id="ctxm" aria-label="Actions"></dialog>
 <dialog id="about" aria-label="About peixAIrada"></dialog>
+<dialog id="lock" aria-labelledby="lockTitle">
+  <span class="wlogo" aria-hidden="true"></span>
+  <h3 id="lockTitle">This board wants its key</h3>
+  <p class="tag">Only a page holding the board's key reads your chats or types into a terminal — a container or another account on this Mac that reaches the port gets nothing. <span id="lockWhy"></span></p>
+  <p class="help" id="lockHow">The board opens a tab with it in this Mac's browser — or run <code>scripts/launchd.sh open</code> in its folder.</p>
+  <p class="lsay" id="lockSay" role="status"></p>
+  <div class="dfoot"><span class="spacer"></span><button class="btn wok" id="lockGo">Open with the key</button><button class="btn wok" id="lockApp" hidden>Read the key again</button></div>
+</dialog>
 <dialog id="welcome" aria-label="Where your repositories live">
   <span class="wlogo" aria-hidden="true"></span>
   <h3>Where do your repositories live?</h3>
@@ -2427,7 +2443,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     a.finished.then(() => endSoon(a), () => endSoon(a));
     return a;
   };
-  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null };
+  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null };
   const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
@@ -2457,11 +2473,48 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // over; the empty default every saved prefs held does not, or nobody would see the new one
   if ('sbStats' in prefs) { if (Array.isArray(prefs.sbStats) && prefs.sbStats.length) prefs.barStats = prefs.sbStats; delete prefs.sbStats; }
   const savePrefs = () => { try { localStorage.setItem('peixairada-prefs', JSON.stringify(prefs)); } catch {} };
+  // ---- the board's key (2026-10-16) -----------------------------------------------------------------------------------
+  // Every ask of the server carries it (the server's keyWant): `x-peix-key` from api(), `?key=` on the stream and a
+  // drawer's socket (keyed). The app hands it to the page before this script runs (PEIX_KEY, `x-peix-app` with it: the
+  // server requires the key from then on); a browser keeps it in this origin's storage, got by a ticket on the tab the
+  // server opened (`#ticket=`, keyTicket) — never a cookie, which every server on 127.0.0.1 would be sent. Turned away
+  // for want of it, the page is the lock (keyLock), and another tab of this browser taking the key opens it (`storage`).
+  const KEY_STORE = 'peixairada-key', IN_APP = !!window.webkit?.messageHandlers?.hub;
+  let boardKey = window.PEIX_KEY || (() => { try { return localStorage.getItem(KEY_STORE) || ''; } catch { return ''; } })();
+  const keyed = url => boardKey ? `${url}${url.includes('?') ? '&' : '?'}key=${encodeURIComponent(boardKey)}` : url;
+  const keyHeaders = () => boardKey ? { 'x-peix-key': boardKey, ...IN_APP && window.PEIX_KEY && { 'x-peix-app': '1' } } : {};
+  function takeKey(k) { boardKey = k; try { localStorage.setItem(KEY_STORE, k); } catch {} }
+  /** A ticket in the address — the tab the server opened — traded for the key, the address left plain. Every ask of the
+   *  page's waits for it (keyReady): one sent before would go without the key. */
+  async function keyTicket() {
+    const t = /^#ticket=([\w-]+)$/.exec(location.hash)?.[1]; if (!t) return;
+    history.replaceState(null, '', location.pathname + location.search);
+    try {
+      const r = await fetch('/api/key/claim', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ticket: t }) });
+      const d = await r.json(); if (r.ok && d.key) takeKey(d.key);
+    } catch {}
+  }
+  /** Turned away for want of the key (`missing`) or with one no longer the board's (`wrong`: a new one was made). */
+  function keyLock(why) {
+    if (why === 'wrong' && !window.PEIX_KEY) try { localStorage.removeItem(KEY_STORE); } catch {}
+    const dlg = $('#lock'); if (dlg.open) return;
+    $('#lock .wlogo').innerHTML = FISH_LOGO();
+    $('#lockWhy').textContent = why === 'wrong' ? 'The one this page held is not the board\'s any more: a new key was made.' : '';
+    $('#lockGo').hidden = IN_APP; $('#lockApp').hidden = !IN_APP; $('#lockHow').hidden = IN_APP; $('#lockSay').textContent = '';
+    dlg.showModal(); repostPane();
+  }
+  addEventListener('storage', e => { if (e.key === KEY_STORE && e.newValue && e.newValue !== boardKey) location.reload(); });
+  addEventListener('hashchange', () => { if (/^#ticket=/.test(location.hash)) keyTicket().then(() => location.reload()); });   // a ticket into this very tab
   /** One way to ask the server (2026-09-27; thirteen copies of the fetch, the header and the JSON.stringify before):
-   *  JSON in, JSON out, and a throw with the server's own words — its `error`, else the status — when it says no. */
+   *  JSON in, JSON out, and a throw with the server's own words — its `error`, else the status — when it says no. The
+   *  board's key rides along (2026-10-16); a 401 for want of it is the lock. */
+  const keyReady = keyTicket();
   async function api(method, url, body) {
-    const r = await fetch(url, body === undefined ? { method } : { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    await keyReady;
+    const headers = { ...keyHeaders(), ...body !== undefined && { 'content-type': 'application/json' } };
+    const r = await fetch(url, body === undefined ? { method, headers } : { method, headers, body: JSON.stringify(body) });
     const d = await r.json().catch(() => ({}));
+    if (r.status === 401 && d.key) keyLock(d.key);
     if (!r.ok) throw Object.assign(new Error(d.error || `HTTP ${r.status}`), { status: r.status, body: d });
     return d;
   }
@@ -2692,6 +2745,26 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     api('POST', '/api/update', { apply: true }).then(takeUpdate)
       .catch(err => note($('#sbLeft .upg') || $('#sbar'), `Could not update: ${err.message}`, true)).finally(() => { updPosting = false; });
   }
+  // Settings › Board › Access (2026-10-16): whether the board's key is required yet, and a new one
+  function showKey() {
+    const k = state.key; if (!k) return;
+    $('#keySay').textContent = k.required ? 'Every page and request needs the board\'s key.' : 'Not required yet: the board answers a request without its key until the app opens with it.';
+    $('#keyReq').hidden = k.required; $('#keyNew').textContent = 'new key'; delete $('#keyNew').dataset.sure;
+  }
+  $('#keyReq').onclick = e => api('PUT', '/api/key').then(k => { state.key = k; showKey(); }).catch(err => note(e.target, err.message, true));
+  $('#keyNew').onclick = async e => {
+    const b = e.currentTarget;
+    if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'sure? every browser asks again'; setTimeout(showKey, 4000); return; }
+    try { const { key } = await api('POST', '/api/key/new'); if (IN_APP && window.PEIX_KEY) post({ type: 'key' }); else { takeKey(key); location.reload(); } }
+    catch (err) { note(b, `No new key: ${err.message}`, true); }
+  };
+  $('#lockGo').onclick = async () => {
+    const say = $('#lockSay'); say.classList.remove('err');
+    try { await api('POST', '/api/key/open'); say.textContent = 'A tab with the key is opening in this Mac\'s browser — this one follows it.'; }
+    catch (err) { say.classList.add('err'); say.textContent = err.message; }
+  };
+  $('#lockApp').onclick = () => post({ type: 'key' });
+  $('#lock').addEventListener('cancel', e => e.preventDefault());   // nothing behind it to go back to
   $('#updBtn').addEventListener('click', e => {
     const b = e.currentTarget, apply = b.dataset.apply === '1';
     updAsked = Date.now(); b.disabled = true;
@@ -7081,7 +7154,7 @@ const toolName = n => {
     setUnder(tm, underOf.get(t.id) ?? !t.resume);   // before the first fit: as it was left, a new one under the header
     drawer.err = null;
     showDrawer(tm, true);
-    const ws = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`);
+    const ws = new WebSocket(keyed(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`));
     ws.binaryType = 'arraybuffer'; tm.ws = ws;
     ws.onopen = () => { tm.retry = 0; tm.snapped = false; fitTerm(tm, true); if (tm.g === focusG) tm.xt.focus(); readFocusFromScreen(tm); };
     ws.onmessage = e => {
@@ -7956,7 +8029,7 @@ const toolName = n => {
       const el = document.createElement('div'); el.className = 'mini'; el.inert = true;   // a picture: its helper textarea out of the tab order (2026-10-12)
       const xt = new Terminal({ cols: t.cols || 120, rows: t.rows || 30, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, lineHeight: 1.1, scrollback: 0, cursorBlink: false, disableStdin: true, theme: xtTheme() });
       xt.open(el);
-      const ws = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`); ws.binaryType = 'arraybuffer';
+      const ws = new WebSocket(keyed(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${t.id}/ws`)); ws.binaryType = 'arraybuffer';
       ws.onmessage = e => { if (typeof e.data !== 'string') xt.write(new Uint8Array(e.data), () => cropSoon(m)); else if (JSON.parse(e.data).t === 'clear') xt.write('', () => xt.clear()); };
       m = { xt, ws, el, cols: xt.cols, rows: xt.rows, scale: 1, foot: 0 };
       reg.set(t.id, m);
@@ -9041,7 +9114,7 @@ const toolName = n => {
   async function uploadFiles(files) {
     const paths = [];
     for (const f of files) {
-      const r = await fetch(`/api/attach?session=${encodeURIComponent(state.current || 'new')}&name=${encodeURIComponent(f.name || 'pasted.png')}`, { method: 'PUT', body: f });
+      const r = await fetch(`/api/attach?session=${encodeURIComponent(state.current || 'new')}&name=${encodeURIComponent(f.name || 'pasted.png')}`, { method: 'PUT', body: f, headers: keyHeaders() });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { note($('#shead'), r.status === 404 ? `Could not save ${f.name || 'the file'}: the running server predates this page and has no route for it — scripts/launchd.sh restart` : `Could not save ${f.name || 'the file'}: ${d.error || `HTTP ${r.status}`}`, true); continue; }
       paths.push(d.path);
@@ -9061,7 +9134,7 @@ const toolName = n => {
   window.peixReply = async (id, text) => {
     const s = state.sessions.get(id), d = s && drawerOf(s), body = String(text || '').replace(/\r?\n/g, '\x1b\r'); if (!d || !body) return false;
     const tm = claudeTm(s); if (tm) { termSend(tm, body); setTimeout(() => termSend(tm, '\r'), 60); return true; }
-    const ws = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${d.id}/ws`);
+    const ws = new WebSocket(keyed(`${location.origin.replace(/^http/, 'ws')}/api/terminals/${d.id}/ws`));
     return new Promise(res => {
       ws.onopen = () => { ws.send(JSON.stringify({ t: 'in', d: body })); setTimeout(() => { ws.send(JSON.stringify({ t: 'in', d: '\r' })); setTimeout(() => { ws.close(); res(true); }, 200); }, 80); };
       ws.onerror = () => res(false);
@@ -9524,15 +9597,16 @@ const toolName = n => {
     const s = takeSession(id, data, seen); takeEntries(id, data); renderHead(s); renderLog(); syncTerm(s);
   }
   function connect() {
-    const es = new EventSource('/events');
+    const es = new EventSource(keyed('/events'));
     es.onopen = () => {
       const was = !bar.conn;
       bar.conn = true; bar.back = was; renderBar();
       if (was) { noteMotion(null, 'fishback'); clearTimeout(bar.backT); bar.backT = setTimeout(() => { bar.back = false; renderBar(); }, 900); }
     };
-    es.onerror = () => { bar.conn = false; bar.back = false; renderBar(); };
+    es.onerror = () => { bar.conn = false; bar.back = false; renderBar(); if (es.readyState === EventSource.CLOSED) api('GET', '/api/key').catch(() => {}); };   // a stream turned away: for want of the key, the lock
     es.addEventListener('snapshot', e => {
       const d = JSON.parse(e.data); state.snapshots++;   // the harness waits on the count: a reloaded page has its board
+      if ($('#lock').open) $('#lock').close();   // the stream let in: the key holds
       state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.repos = d.repos || {};
       for (const m of [tabs, homes, splits, autoSplit, stacked, zoomed, focusView, state.unread, state.paneGh, state.paneWt, changesOpen, blanks, diffStats]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);   // a chat gone from the board takes its page state with it
       state.about = d.about || {};
@@ -9543,6 +9617,7 @@ const toolName = n => {
       if (d.awake) state.awake = awakeOf(d.awake);
       state.clones = new Map((d.clones || []).map(c => [c.dir, c]));   // the clones under way, a reload in the middle of one
       state.editors = d.editors || null; edSay();   // whether Zed is on this Mac, and its install
+      state.key = d.key || null; showKey();
       state.serverNotify = d.notify === 'native';   // the server posts its own banners: the app must not double them
       renderBoard(); welcomeSync();
       const want = location.hash.slice(1);
@@ -9577,6 +9652,7 @@ const toolName = n => {
     es.addEventListener('awake', e => { state.awake = awakeOf(JSON.parse(e.data)); awakeChanged(); });
     es.addEventListener('clone', e => cloneEvent(JSON.parse(e.data)));
     es.addEventListener('editor', e => { state.editors = JSON.parse(e.data); edSay(); });
+    es.addEventListener('key', e => { state.key = JSON.parse(e.data); showKey(); });
     es.addEventListener('config', e => { const c = JSON.parse(e.data); if (JSON.stringify(c) === JSON.stringify(state.config)) return; state.config = c; configChanged(); });   // the echo of a save made here is no news
     es.addEventListener('terminal', e => {
       const t = JSON.parse(e.data);
@@ -9599,7 +9675,7 @@ const toolName = n => {
     }
     es.addEventListener('alert', e => onAlert(JSON.parse(e.data)));
   }
-  connect();
+  keyReady.then(connect);   // a ticket in the address first: the stream wants the key it is traded for
   // The 30 s tick: the ages (fillAges, in the list's render and, while they are up, the picker's rows and the menu),
   // and the day lines and the list's order, which the clock moves too. The cards' markup no longer carries an age, so
   // the render is a diff that rebuilds nothing on its own.

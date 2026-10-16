@@ -43,7 +43,7 @@ export default async function (ctx) {
       x: getComputedStyle(t, '::before').content, red: (p => { p.style.color = 'var(--needs)'; document.body.append(p); const c = getComputedStyle(p).color; p.remove(); return c; })(document.createElement('i')) }))(document.querySelector(${JSON.stringify(sel)}))`).then(JSON.parse);
 
     await ctx.waitFor(`${card}?.querySelector('.state.prmove')`, { timeout: 10_000, what: 'the PR at your move, on the card' });
-    await ctx.evaluate(`(() => { window.__alerts = []; window.__es = new EventSource('/events'); window.__es.addEventListener('alert', e => window.__alerts.push(JSON.parse(e.data))); })()`);
+    await ctx.evaluate(`(() => { window.__alerts = []; window.__es = new EventSource('/events?key=' + window.PEIX_KEY); window.__es.addEventListener('alert', e => window.__alerts.push(JSON.parse(e.data))); })()`);
     await ctx.waitFor(`window.__es.readyState === 1`, { what: 'a listener for the alerts' });
     await ctx.settle();
     // the line says so: the pointer resting on it shows the PR's rounds, the ⌥-click at their foot (2026-10-15; its tooltip before)
@@ -79,7 +79,7 @@ export default async function (ctx) {
     await ctx.server.restart();
     await ctx.reload();
     await ctx.waitFor(`window.peix.session('${two.id}')?.prs?.find(p => p.url.endsWith('/pull/12'))?.turn?.waived === true`, { timeout: 10_000, what: 'let go after a restart' });
-    await ctx.evaluate(`(() => { window.__alerts = []; window.__es = new EventSource('/events'); window.__es.addEventListener('alert', e => window.__alerts.push(JSON.parse(e.data))); })()`);
+    await ctx.evaluate(`(() => { window.__alerts = []; window.__es = new EventSource('/events?key=' + window.PEIX_KEY); window.__es.addEventListener('alert', e => window.__alerts.push(JSON.parse(e.data))); })()`);
     await ctx.waitFor(`window.__es.readyState === 1`, { what: 'the listener again' });
     await ctx.sleep(1500);
     ctx.assert.equal(await ctx.evaluate(`${card}.querySelector('.state.prmove')`), null, 'no line after the restart');

@@ -270,8 +270,8 @@ test('Claude in a folder of the same checkout is on the same branch; a worktree 
 });
 
 /** The `alert` events of a server's stream, from its snapshot on (as reindex.test reads them). */
-async function alerts(url) {
-  const res = await fetch(url + 'events'), reader = res.body.getReader(), dec = new TextDecoder(), got = [];
+async function alerts(url, key) {
+  const res = await fetch(`${url}events?key=${key}`), reader = res.body.getReader(), dec = new TextDecoder(), got = [];
   const { promise: snapshot, resolve } = Promise.withResolvers();
   (async () => {
     let buf = '';
@@ -304,7 +304,7 @@ test('a restart says no move again and keeps the one set aside (2026-10-14)', { 
     const [acked, other] = chats;
     srv = await startTestServer({ claudeDir: claude, env: { REGISTRY_POLL_MS: '3000' } });
     const sum = async id => (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
-    a1 = await alerts(srv.url);
+    a1 = await alerts(srv.url, srv.key);
     await waitFor(async () => (await sum(other.id))?.headNow === 'feat/a', { what: 'the checkout read' });
     git('checkout', '-q', '-b', 'main');   // someone moves it under both
     await waitFor(async () => (await sum(other.id))?.headNow === 'main' && (await sum(acked.id))?.headNow === 'main', { what: 'the move seen' });
@@ -314,7 +314,7 @@ test('a restart says no move again and keeps the one set aside (2026-10-14)', { 
     a1.stop();
 
     await srv.restart();
-    a2 = await alerts(srv.url);   // the stream waits for the boot: the boot's look is behind it
+    a2 = await alerts(srv.url, srv.key);   // the stream waits for the boot: the boot's look is behind it
     appendFileSync(acked.file, working(acked.id, 1000)); appendFileSync(other.file, working(other.id, 1000));   // lines in before the next look
     await sleep(7500);   // two looks and the alerts' debounce
     assert.deepEqual(a2.got.filter(a => a.kind === 'drift'), [], 'nobody told again');

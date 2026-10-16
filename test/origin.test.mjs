@@ -10,12 +10,12 @@ import WebSocket from 'ws';
 import { startTestServer, tmpDir } from '../lib/testserver.mjs';
 
 const ask = (srv, headers, method = 'GET', path = '/api/sessions') => new Promise((res, rej) => {
-  const r = request({ host: '127.0.0.1', port: srv.port, method, path, headers }, resp => { resp.resume(); resp.on('end', () => res(resp.statusCode)); });
+  const r = request({ host: '127.0.0.1', port: srv.port, method, path, headers: { 'x-peix-key': srv.key, ...headers } }, resp => { resp.resume(); resp.on('end', () => res(resp.statusCode)); });
   r.on('error', rej); r.end();
 });
 /** The status the upgrade was refused with, or 'open' */
 const wsStatus = (srv, headers) => new Promise(res => {
-  const ws = new WebSocket(`ws://127.0.0.1:${srv.port}/api/terminals/nothing/ws`, { headers });
+  const ws = new WebSocket(`ws://127.0.0.1:${srv.port}/api/terminals/nothing/ws?key=${srv.key}`, { headers });
   ws.on('unexpected-response', (_req, resp) => { res(resp.statusCode); ws.terminate(); });
   ws.on('open', () => { res('open'); ws.close() }); ws.on('error', e => res(`error: ${e.code || e.message}`));   // a refused connection fails now, not at the test's timeout
 });

@@ -15,9 +15,11 @@
 // a line at once. `WK_BORDERS=1` and `WK_COUNTERS=1` draw WebKit's compositing borders and repaint counters into a
 // --shot — what is a layer of its own, what paints again. The page starts from no prefs but auto-resume off (`PREFS`
 // over them): the app's defaults, tiles and the floating header on. `WAIT` (s) before the capture, 0.3 by default;
-// `TIMEOUT` (s) for the whole run, 30. A locked screen hides the page and WebKit runs no frames: it says so and gives
+// `TIMEOUT` (s) for the whole run, 30. The page is given the board's key as the app gives it: `KEY`, else the live board's
+// (2026-10-16). A locked screen hides the page and WebKit runs no frames: it says so and gives
 // up. The Swift is compiled on first use, and again when it changes, into node_modules/.cache.
 import { spawnSync } from 'node:child_process';
+import { liveKey } from '../lib/cdp.mjs';
 import { existsSync, mkdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -42,7 +44,7 @@ if (mtime(bin) < mtime(src)) {
 }
 const r = spawnSync(bin, [process.env.URL || 'http://127.0.0.1:7331/', body, shot, then], {
   stdio: 'inherit',
-  env: { ...process.env, WK_W: w, WK_H: h, WK_HASH: hash, WK_PREFS: process.env.PREFS || '{}',
+  env: { ...process.env, WK_W: w, WK_H: h, WK_HASH: hash, WK_PREFS: process.env.PREFS || '{}', WK_KEY: liveKey(),   // KEY, else the live board's (2026-10-16)
     ...(process.env.WAIT && { WK_WAIT: process.env.WAIT }), ...(process.env.TIMEOUT && { WK_TIMEOUT: process.env.TIMEOUT }) },
 });
 process.exit(r.status ?? 1);

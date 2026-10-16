@@ -10,9 +10,9 @@ import { join } from 'node:path';
 import { startTestServer } from '../lib/testserver.mjs';
 
 /** A request by hand: the body in `chunks`, each written after a pause (no content-length unless given: chunked). */
-function send(url, method, path, chunks, headers = {}) {
+function send(srv, method, path, chunks, headers = {}) {
   return new Promise((resolve, reject) => {
-    const req = request(new URL(path, url), { method, headers: { 'content-type': 'application/json', ...headers } }, res => {
+    const req = request(new URL(path, srv.url), { method, headers: { 'content-type': 'application/json', 'x-peix-key': srv.key, ...headers } }, res => {
       let body = ''; res.setEncoding('utf8'); res.on('data', c => { body += c; });
       res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(body || 'null') }));
     });
@@ -20,7 +20,7 @@ function send(url, method, path, chunks, headers = {}) {
     (async () => { for (const c of chunks) { req.write(c); await new Promise(r => setTimeout(r, 60)); } req.end(); })().catch(reject);
   });
 }
-const pins = (srv, text, headers) => send(srv.url, 'PUT', 'api/pins', text === null ? [] : [Buffer.from(text)], headers);
+const pins = (srv, text, headers) => send(srv, 'PUT', 'api/pins', text === null ? [] : [Buffer.from(text)], headers);
 const EMPTY = { status: 400, body: { error: 'expected {pins: [key]}' } };
 
 test('a body that is not a JSON object reads as {}: none, unparseable, an array, a string, null', { timeout: 60_000 }, async () => {
@@ -40,7 +40,7 @@ test('past BODY_MAX, said up front or streamed, a body reads as {}; one at the l
     assert.equal(Buffer.byteLength(under), 1e6);
     assert.deepEqual(await pins(srv, over, { 'content-length': Buffer.byteLength(over) }), EMPTY, 'said up front');
     const halves = [over.slice(0, 600_000), over.slice(600_000)].map(s => Buffer.from(s));
-    assert.deepEqual(await send(srv.url, 'PUT', 'api/pins', halves), EMPTY, 'streamed');
+    assert.deepEqual(await send(srv, 'PUT', 'api/pins', halves), EMPTY, 'streamed');
     assert.deepEqual(await pins(srv, under), { status: 200, body: { ok: true, pins: ['/big'] } }, 'the limit itself');
     assert.equal((await srv.api('api/projects')).status, 200, 'and the server answers on');
   } finally { await srv.stop(); }
@@ -50,7 +50,7 @@ test('a character split across two chunks is read whole', { timeout: 60_000 }, a
   const srv = await startTestServer();
   try {
     const body = Buffer.from(JSON.stringify({ name: 'Ação — não', cwds: ['/work/ação'] })), cut = body.indexOf(Buffer.from('ç')) + 1;
-    const r = await send(srv.url, 'POST', 'api/projects', [body.subarray(0, cut), body.subarray(cut)]);
+    const r = await send(srv, 'POST', 'api/projects', [body.subarray(0, cut), body.subarray(cut)]);
     assert.equal(r.status, 201);
     assert.equal(r.body.project.name, 'Ação — não');
     assert.deepEqual(r.body.project.cwds, ['/work/ação']);

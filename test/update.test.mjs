@@ -153,7 +153,7 @@ test('the page follows a restart: served with a stamp of itself and the boot tha
   const srv = await startTestServer();
   /** the stream's snapshot, and the stream let go */
   const snapshot = async () => {
-    const res = await fetch(srv.url + 'events'), reader = res.body.getReader(), dec = new TextDecoder();
+    const res = await fetch(`${srv.url}events?key=${srv.key}`), reader = res.body.getReader(), dec = new TextDecoder();
     let buf = '';
     try {
       for (;;) {

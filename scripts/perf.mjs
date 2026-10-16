@@ -201,7 +201,7 @@ async function measure(b, tag) {
     sampling.push(new Promise(res => p.on('close', () => res([name, file]))));
   };
   const harness = spawn(process.execPath, [join(ROOT, 'scripts', 'webkit.mjs'), '--hash', b.open, body], {
-    env: { ...env, URL: b.server.url, SIZE: '1728x1117', PREFS: JSON.stringify(prefs), TIMEOUT: '120', WK_PIDFILE: pidFile }, stdio: ['ignore', 'pipe', 'pipe'] });
+    env: { ...env, URL: b.server.url, KEY: b.server.key || '', SIZE: '1728x1117', PREFS: JSON.stringify(prefs), TIMEOUT: '120', WK_PIDFILE: pidFile }, stdio: ['ignore', 'pipe', 'pipe'] });
   let output = '', err = '';
   harness.stdout.on('data', d => { output += d; });
   harness.stderr.on('data', d => {   // the body's `say('phase …')` lines start a sample; the rest is the harness's to say

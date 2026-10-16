@@ -255,7 +255,7 @@ export default async function (ctx) {
     // ---- a prompt going up is the registry changing, and nothing else (2026-09-22) ----
     // Claude Code rewrites its registry file on every change of state; the transcript is not touched until the
     // prompt is answered. The card has to blink, and the alert go out, on the first alone.
-    await ctx.evaluate(`window.__alerts = []; new EventSource('/events').addEventListener('alert', e => window.__alerts.push(JSON.parse(e.data)))`);
+    await ctx.evaluate(`window.__alerts = []; new EventSource('/events?key=' + window.PEIX_KEY).addEventListener('alert', e => window.__alerts.push(JSON.parse(e.data)))`);
     await ctx.sleep(300);
     const nw = chat('Normal work'), regFile = join(ctx.fixture.dir, 'sessions', `${nw.pid}.json`);
     const reg = JSON.parse(readFileSync(regFile, 'utf8'));

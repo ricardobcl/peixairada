@@ -12,8 +12,8 @@ import { chatLines, defaultFixture, replyLines, slugOf } from '../scripts/fixtur
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 /** The `alert` events of the stream, as they come — handed back once the stream's snapshot is in, so an empty list
  *  means a quiet stream, never one that did not connect (2026-10-03). */
-async function alerts(url) {
-  const res = await fetch(url + 'events'); assert.ok(res.ok, `the event stream: ${res.status}`);
+async function alerts(url, key) {
+  const res = await fetch(`${url}events?key=${key}`); assert.ok(res.ok, `the event stream: ${res.status}`);
   const reader = res.body.getReader(); const dec = new TextDecoder(); const got = [];
   const { promise: snapshot, resolve } = Promise.withResolvers();
   (async () => {
@@ -35,7 +35,7 @@ test('opening a chat the boot only tailed reads it whole without alerting for it
   try {
     const before = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
     assert.equal(before.loaded, false, 'the boot read only the tail');
-    const a = await alerts(srv.url);
+    const a = await alerts(srv.url, srv.key);
     const r = await srv.api(`api/sessions/${chat.id}/messages`);
     assert.equal(r.status, 200); assert.equal(r.body.session.loaded, true); assert.equal(r.body.entries.length, 2, 'the whole transcript now');
     assert.equal(r.body.session.lastReply, 'It is a fixture. No PRs here.');
@@ -53,7 +53,7 @@ test('a chat the registry announced first alerts when its transcript lands with 
   try {
     const placeholder = (await srv.api('api/sessions')).body.sessions.find(s => s.id === id);
     assert.ok(placeholder?.alive && !placeholder.file, 'a live chat with no transcript yet');
-    const a = await alerts(srv.url);
+    const a = await alerts(srv.url, srv.key);
     const lines = chatLines({ id, cwd, prompt: 'first words', reply: 'first answer', at: new Date() });
     writeFileSync(join(fx.dir, 'projects', slugOf(cwd), `${id}.jsonl`), lines.map(l => JSON.stringify(l)).join('\n') + '\n');
     await waitFor(() => a.got.length, { timeout: 8000, what: 'the alert' }).catch(() => {});   // the assertion below says what came
@@ -85,7 +85,7 @@ test('two kinds of alert within the debounce both go out — a branch moved unde
   writeFileSync(join(fx.dir, 'sessions', `${process.pid}.json`), JSON.stringify({ pid: process.pid, sessionId: id, cwd, startedAt: Date.now(), version: 'fixture', kind: 'interactive', entrypoint: 'cli', status: 'busy' }));
   const srv = await startTestServer({ claudeDir: fx.dir });
   try {
-    const a = await alerts(srv.url);
+    const a = await alerts(srv.url, srv.key);
     // read in one go, as the first lines of a chat the registry announced: the move is judged at the read's end, the
     // reply queued while it was read — one window
     const t = s => new Date(Date.now() - 30_000 + s * 1000).toISOString(), base = (s, gitBranch) => ({ cwd, sessionId: id, entrypoint: 'cli', gitBranch, timestamp: t(s) });

@@ -13,8 +13,8 @@ import { defaultFixture } from '../scripts/fixture.mjs';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 /** Attach like the page does: the first binary frame is the snapshot; `until` stops when a text is seen. `p.opened`
  *  is the socket open — a send before it throws — and `p.text()` what has come so far. */
-function attach(url, id, { until = null, timeout = 8000 } = {}) {
-  const ws = new WebSocket(`${url.replace(/^http/, 'ws')}api/terminals/${id}/ws`); ws.binaryType = 'arraybuffer';
+function attach(srv, id, { until = null, timeout = 8000 } = {}) {
+  const ws = new WebSocket(srv.ws(`api/terminals/${id}/ws`)); ws.binaryType = 'arraybuffer';
   ws.send2 = m => ws.send(JSON.stringify(m));
   let first = null, all = '', exit = null;
   const opened = new Promise(res => ws.addEventListener('open', res, { once: true }));
@@ -50,7 +50,7 @@ test('a drawer runs in a holder, gives a page a snapshot, survives a server rest
     await waitFor(async () => { const s = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id); return s.alive && s.live?.pid === t.pid && s.terminal?.id === t.id; }, { what: 'the resumed chat alive with the drawer as its process' });
     // a page attaches: the first frame is the whole screen (the fake's prompt and status), not a byte replay — once the
     // fake has drawn, which it does right after it registers
-    const a1 = await waitFor(async () => { const a = await attach(srv.url, t.id, { until: 'fake mode on', timeout: 1500 }); return a.first?.includes('fake mode on') && a; }, { what: 'a snapshot of the drawn screen' });
+    const a1 = await waitFor(async () => { const a = await attach(srv, t.id, { until: 'fake mode on', timeout: 1500 }); return a.first?.includes('fake mode on') && a; }, { what: 'a snapshot of the drawn screen' });
     assert.ok(a1.first.includes('❯') && a1.first.includes('fake mode on'), 'the snapshot carries the prompt and the status bar');
     assert.ok(a1.first.includes('\x1b[?2004h'), 'the snapshot carries the modes the program set');
     const snapLog = srv.logText().match(/screen snapshot (\d+) chars, (\d+)×(\d+)/);
@@ -64,12 +64,12 @@ test('a drawer runs in a holder, gives a page a snapshot, survives a server rest
     assert.ok(adopted, 'the new server lists the drawer');
     assert.equal(adopted.pid, t.pid); assert.equal(adopted.sessionId, chat.id); assert.equal(adopted.exited, null);
     assert.match(srv.logText(), /adopted — pid \d+, holder \d+, chat/);
-    const a2 = await attach(srv.url, t.id, { until: 'fake mode on' });
+    const a2 = await attach(srv, t.id, { until: 'fake mode on' });
     assert.ok(a2.first.includes('❯'), 'a page attaching after the restart gets the screen');
     const s2 = (await srv.api('api/sessions')).body.sessions.find(s => s.id === chat.id);
     assert.equal(s2.terminal?.id, t.id, 'the chat still points at its drawer');
     // type through the new server and see the fake answer
-    const p = attach(srv.url, t.id, { until: 'You said: ping', timeout: 8000 });
+    const p = attach(srv, t.id, { until: 'You said: ping', timeout: 8000 });
     await p.opened; p.ws.send2({ t: 'in', d: 'ping\r' });
     const a3 = await p;
     assert.ok(a3.all.includes('You said: ping'), 'input reaches the PTY through the adopted holder');
@@ -150,11 +150,11 @@ test('a launcher: a folder whose Taskfile launches claude lists it, a new chat t
     assert.ok(s.alive, 'the chat is alive'); assert.notEqual(s.live.pid, t.pid, 'with a claude below task, not task itself'); assert.equal(s.terminal?.id, t.id, 'and the drawer is its');
     const meta = srv.holders().find(h => h.id === t.id);
     assert.equal(meta.task, 'production-workload'); assert.equal(meta.claudePid, s.live.pid, 'the holder was told claude\'s pid, for an adoption after a restart');
-    const a = await attach(srv.url, t.id, { until: 'fake mode on' });
+    const a = await attach(srv, t.id, { until: 'fake mode on' });
     assert.ok(a.all.includes('❯'), 'a page attaching sees claude\'s prompt through task');
     // /clear there: the same claude under a new id — and claude is not the PTY's process, task is (2026-10-03: the
     // drawer stayed on the old chat, and the new one read as live in another terminal)
-    const p = attach(srv.url, t.id, { timeout: 3000 }); await p.opened; p.ws.send2({ t: 'in', d: '/clear\r' });
+    const p = attach(srv, t.id, { timeout: 3000 }); await p.opened; p.ws.send2({ t: 'in', d: '/clear\r' });
     const moved = await waitFor(async () => { const id = (await srv.terminals()).find(x => x.id === t.id)?.sessionId; return id !== linked && id; }, { what: 'the drawer following /clear to the new chat' });
     const s2 = (await srv.api('api/sessions')).body.sessions.find(s => s.id === moved);
     assert.equal(s2.terminal?.id, t.id, 'the new chat has the drawer'); assert.equal(s2.live.pid, s.live.pid, 'the same claude');
@@ -178,7 +178,7 @@ test('a zsh drawer: a holder running zsh -l -i in the chat folder, beside the cl
     assert.equal(s.shell?.id, t.id, 'the chat carries its first zsh'); assert.equal(s.terminal, null, 'and it is not its claude drawer');
     assert.deepEqual(s.shells.map(x => x.id), [t.id, more.body.terminal.id], 'and every zsh, oldest first');
     assert.equal(s.alive, false, 'a shell is no claude: the chat is not live');
-    const a = attach(srv.url, t.id, { until: 'peix-shell-22', timeout: 20_000 });
+    const a = attach(srv, t.id, { until: 'peix-shell-22', timeout: 20_000 });
     await a.opened; await waitFor(() => /[%$#] *$/.test(a.text().replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')), { what: 'the shell\'s prompt' });
     a.ws.send2({ t: 'in', d: 'echo peix-shell-$((20+2))\r' });
     const out = await a;
@@ -224,7 +224,7 @@ test('/clear in a drawer takes the chat\'s zsh tabs along to the new chat (2026-
     await waitFor(async () => (await chatOf(chat.id))?.alive, { what: 'the resumed chat alive' });
     const z = await srv.post(`api/sessions/${chat.id}/shell`, { cols: 100, rows: 30 });
     assert.equal(z.status, 201, JSON.stringify(z.body));
-    const p = attach(srv.url, t.id, { timeout: 3000 }); await p.opened; p.ws.send2({ t: 'in', d: '/clear\r' });
+    const p = attach(srv, t.id, { timeout: 3000 }); await p.opened; p.ws.send2({ t: 'in', d: '/clear\r' });
     const moved = await waitFor(async () => { const id = (await srv.terminals()).find(x => x.id === t.id)?.sessionId; return id !== chat.id && id; }, { what: 'the drawer following /clear' });
     const zt = (await srv.terminals()).find(x => x.id === z.body.terminal.id);
     assert.equal(zt.sessionId, moved, 'the zsh is the new chat\'s, as the drawer is');
@@ -244,7 +244,7 @@ test('a drawer has none of the board\'s own configuration: PORT and every knob t
   try {
     const z = await srv.post(`api/sessions/${fx.chats[1].id}/shell`, { cols: 100, rows: 30 });
     assert.equal(z.status, 201, JSON.stringify(z.body));
-    const a = attach(srv.url, z.body.terminal.id, { until: ':peix-end-42', timeout: 20_000 });
+    const a = attach(srv, z.body.terminal.id, { until: ':peix-end-42', timeout: 20_000 });
     await a.opened; await waitFor(() => /[%$#] *$/.test(a.text().replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')), { what: 'the shell\'s prompt' });
     a.ws.send2({ t: 'in', d: "printf 'peix-env-%s:' $((40+2)); env | cut -d= -f1 | tr '\\n' ' '; printf ':peix-end-%s\\n' $((40+2))\r" });
     const out = await a, hit = out.all.match(/peix-env-42:([^:]*):peix-end-42/);

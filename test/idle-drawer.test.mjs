@@ -16,7 +16,7 @@ test('an idle drawer with no page on it is ended after DRAWER_IDLE_MS; one with 
     // shell had a's ended before its fake registered (2026-10-03) — then a's page leaves. Each page goes on as soon as
     // its drawer is there (2026-10-13: waiting for both, a's sat alone while b's holder was still starting — slow with
     // every test file spawning at once — and was ended before it was looked at).
-    const page = async t => { const ws = new WebSocket(`${srv.url.replace(/^http/, 'ws')}api/terminals/${t.body.terminal.id}/ws`); await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; }); return ws; };
+    const page = async t => { const ws = new WebSocket(srv.ws(`api/terminals/${t.body.terminal.id}/ws`)); await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; }); return ws; };
     const start = async () => { const t = await srv.post('api/terminals', { cwd: process.cwd(), cols: 90, rows: 24 }); assert.equal(t.status, 201, JSON.stringify(t.body)); return [t, await page(t)]; };
     const [[a, wa], [b, ws]] = await Promise.all([start(), start()]);
     await waitFor(async () => (await srv.terminals()).filter(t => t.sessionId).length === 2, { what: 'both fakes registered and tied to their drawers' });

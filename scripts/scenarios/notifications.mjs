@@ -20,7 +20,7 @@ export default async function (ctx) {
     window.__banners = []; window.__alerts = [];
     window.Notification = class { static permission = 'granted'; static requestPermission() { return Promise.resolve('granted'); }
       constructor(title, o) { window.__banners.push({ title, body: o?.body || '' }); } close() {} };
-    window.__es = new EventSource('/events'); window.__es.addEventListener('alert', e => window.__alerts.push(JSON.parse(e.data)));
+    window.__es = new EventSource('/events?key=' + window.PEIX_KEY); window.__es.addEventListener('alert', e => window.__alerts.push(JSON.parse(e.data)));
   })()`);
   await ctx.waitFor(`window.__es.readyState === 1`, { what: 'the second listener connected' });
 

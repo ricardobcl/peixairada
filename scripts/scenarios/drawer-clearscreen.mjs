@@ -26,7 +26,7 @@ export default async function (ctx) {
   // What a re-attach would be handed: the holder's own screen, serialized. The marker must be gone from there too,
   // or the clear is a trick of this page and comes undone on the next attach (or the next server restart).
   const snap = await ctx.evaluate(`new Promise(res => {
-    const ws = new WebSocket(location.origin.replace(/^http/, 'ws') + '/api/terminals/' + window.peix.term().id + '/ws');
+    const ws = new WebSocket(location.origin.replace(/^http/, 'ws') + '/api/terminals/' + window.peix.term().id + '/ws?key=' + window.PEIX_KEY);
     ws.binaryType = 'arraybuffer'; let text = '';
     ws.onmessage = e => { if (typeof e.data !== 'string') text += new TextDecoder().decode(new Uint8Array(e.data)); };
     setTimeout(() => { try { ws.close(); } catch {} res(text); }, 1500);

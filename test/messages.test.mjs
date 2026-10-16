@@ -10,8 +10,8 @@ import { startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { chatLines, makeFixture } from '../scripts/fixture.mjs';
 
 /** The stream's events, by name, as they come — handed back once its snapshot is in. */
-async function stream(url) {
-  const res = await fetch(url + 'events'); assert.ok(res.ok, `the event stream: ${res.status}`);
+async function stream(url, key) {
+  const res = await fetch(`${url}events?key=${key}`); assert.ok(res.ok, `the event stream: ${res.status}`);
   const reader = res.body.getReader(), dec = new TextDecoder(), got = [];
   const { promise: snapshot, resolve } = Promise.withResolvers();
   (async () => {
@@ -40,7 +40,7 @@ test('gen and upto: a fetch, the stream\'s entries after it, and a reading of th
     const b = await srv.api(`api/sessions/${chat.id}/messages`);
     assert.deepEqual([b.body.gen, b.body.upto], [gen, 2], 'fetched again, the same reading');
 
-    const s = await stream(srv.url);
+    const s = await stream(srv.url, srv.key);
     appendFileSync(chat.file, lines(chat.id, cwd, 'second', 'second done'));
     appendFileSync(other.file, lines(other.id, cwd, 'unseen', 'unseen done'));
     const got = await waitFor(() => s.entries(chat.id).at(-1)?.upto === 4 && s.entries(chat.id), { what: 'the appended entries on the stream' });

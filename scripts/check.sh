@@ -20,7 +20,7 @@ for p in @xterm/xterm/lib/xterm.js:xterm.js @xterm/xterm/css/xterm.css:xterm.css
   cmp -s "$NM/${p%%:*}" "public/vendor/${p##*:}" || { echo "public/vendor/${p##*:} differs from $NM/${p%%:*}" >&2; exit 1; }
 done
 echo "› shell"
-for f in scripts/launchd.sh scripts/check.sh scripts/worktree.sh scripts/fakepmset.mjs scripts/fakecaffeinate.mjs; do [ -f "$f" ] && sh -n "$f"; done   # the two fakes are sh in a file node reads too
+for f in scripts/launchd.sh scripts/check.sh scripts/worktree.sh scripts/board.sh scripts/fakepmset.mjs scripts/fakecaffeinate.mjs; do [ -f "$f" ] && sh -n "$f"; done   # the two fakes are sh in a file node reads too
 bash -n mac/build.sh
 # CLAUDE.md is loaded into every session in this repo, whole: past its budget, a bullet has grown a story, and the story
 # belongs in docs/DECISIONS.md (2026-10-12). Characters, as Claude Code counts them — it warns at 150 000.

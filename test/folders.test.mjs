@@ -54,7 +54,7 @@ test('a folder not there: the repo that clones it, a clone joined, its progress,
   const events = [], ctl = new AbortController();
   try {
     // the stream, read as it comes: every `clone` event
-    const res = await fetch(`${srv.url}events`, { signal: ctl.signal });
+    const res = await fetch(`${srv.url}events?key=${srv.key}`, { signal: ctl.signal });
     (async () => { const dec = new TextDecoder(); let buf = ''; for await (const b of res.body) { buf += dec.decode(b, { stream: true }); let i; while ((i = buf.indexOf('\n\n')) >= 0) { const msg = buf.slice(0, i); buf = buf.slice(i + 2); if (/^event: clone$/m.test(msg)) events.push(JSON.parse(msg.match(/^data: (.*)$/m)[1])); } } })().catch(() => {});
 
     const spawn = cwd => srv.post('api/terminals', { cwd });

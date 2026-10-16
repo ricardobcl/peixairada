@@ -17,7 +17,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { launchChrome, openBoard, openChat, sleep } from '../lib/cdp.mjs';
+import { launchChrome, liveKey, openBoard, openChat, sleep } from '../lib/cdp.mjs';
 import { startTestServer } from '../lib/testserver.mjs';
 import { defaultFixture } from './fixture.mjs';
 
@@ -78,7 +78,8 @@ try {   // a server or a Chrome that does not come up: what did come up is ended
     boardUrl = server.url;
     log(`server ${server.url} (state ${server.dir}${meta.fake ? ', fake claude' : ''})`);
   }
-  cdp = await launchChrome({ dark: !!process.env.DARK, prefs: meta.prefs || {}, tz });
+  // the board's key as the app hands it (2026-10-16): the test server's, the live board's from its file; `key: false`, none
+  cdp = await launchChrome({ dark: !!process.env.DARK, prefs: meta.prefs || {}, tz, key: meta.key === false ? null : server ? server.key : liveKey() });
   cleanups.push(() => cdp.close());
   log(`chrome profile ${cdp.profile}`);   // what scripts/scenarios.mjs looks for leftovers by, with the server's state dir
   await openBoard(cdp, boardUrl, { hash: hash || null });

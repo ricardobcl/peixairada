@@ -12,7 +12,7 @@ test('seenAt: the first boot is every chat\'s, a POST moves one, the state file 
   const srv = await startTestServer({ claudeDir: fx.dir });
   try {
     const one = fx.chats[0].id;
-    const chat = async () => (await (await fetch(srv.url + 'api/sessions')).json()).sessions.find(s => s.id === one);
+    const chat = async () => (await srv.api('api/sessions')).body.sessions.find(s => s.id === one);
     await waitFor(async () => !!(await chat()), { what: 'the fixture indexed' });
     const first = await chat();
     assert.ok(first.seenAt && first.seenAt > first.lastReplyAt, 'never shown: the boot\'s time, after its reply — no new reply');

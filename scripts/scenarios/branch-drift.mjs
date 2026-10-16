@@ -44,7 +44,7 @@ export default async function (ctx) {
     if (!process.env.DARK) { await ctx.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] }); await ctx.reload(); }
     // a second listener on the stream: every alert, whatever the page does with it
     await ctx.waitFor(`document.querySelectorAll('#slist > .card').length > 0`, { what: 'the board' });
-    await ctx.evaluate(`(() => { window.__alerts = []; window.__es = new EventSource('/events'); window.__es.addEventListener('alert', e => window.__alerts.push(JSON.parse(e.data))); })()`);
+    await ctx.evaluate(`(() => { window.__alerts = []; window.__es = new EventSource('/events?key=' + window.PEIX_KEY); window.__es.addEventListener('alert', e => window.__alerts.push(JSON.parse(e.data))); })()`);
     await ctx.waitFor(`window.__es.readyState === 1`, { what: 'the second listener connected' });
 
     const beside = chat({ title: 'Checkout button spacing', pid: sleeps[1].pid, status: 'idle', lines: id => [prompt(id, 'main', -600_000, 'tighten the checkout button'), said(id, 'main', -590_000, 'Done: 12 px now.')] });

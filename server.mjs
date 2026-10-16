@@ -49,7 +49,7 @@
 // Map ▴
 
 
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
 import {
   accessSync, appendFileSync, chmodSync, closeSync, constants as fsc, cpSync, existsSync, fstatSync, lstatSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, readlinkSync, readSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, watch, writeFileSync
@@ -182,6 +182,7 @@ let autoUpdate = false, updateLast = null, updateHeld = null, appBuild = null;
 // (the commit it was made at), linked (node_modules a link of ours), at }. Only these are ever removed, and only by
 // sweepWorktrees.
 let worktreesMade = {};
+let keyEnforced = false;   // the board's key required of every ask (2026-10-16; see keyWant): once on, for good
 let peacockMoved = null;   // when Peacock's colours went into the setup (2026-10-15; movePeacock): once
 
 // The state file is read once the port is ours (2026-10-14; at import before): a server that waited behind another for
@@ -229,6 +230,7 @@ function loadState() {
     appBuild = st.appBuild && typeof st.appBuild === 'object' ? st.appBuild : null;
     worktreesMade = st.worktrees && typeof st.worktrees === 'object' ? st.worktrees : {};
     peacockMoved = typeof st.peacockMoved === 'string' ? st.peacockMoved : null;
+    keyEnforced = st.keyEnforced === true;
   } catch (e) {
     if (e.code !== 'ENOENT') {
       const bad = `${stateFrom}.bad-${Date.now()}`;
@@ -246,7 +248,7 @@ function saveState() {
   try {
     mkdirSync(dirname(STATE_FILE), { recursive: true });
     const tmp = `${STATE_FILE}.${process.pid}.tmp`;
-    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved }, null, 1));
+    writeFileSync(tmp, JSON.stringify({ done: doneMarks, forGood: forGoodMarks, unlinked, seen, seenSince, driftAcks, projects, titles, pinned, hidden: hiddenProjects, envs, notifications: notificationsOn, prTurns, prLogs, awake: awakeOn, selfUpdate: autoUpdate, updated: updateLast, updateHeld, appBuild, worktrees: worktreesMade, peacockMoved, keyEnforced }, null, 1));
     renameSync(tmp, STATE_FILE);
   } catch (e) { console.error('[peixairada] could not save state', e.message); }
 }
@@ -3365,17 +3367,7 @@ const VSWEB_TOKEN_FILE = join(dirname(STATE_FILE), 'vsweb-token');
 let vsweb = null;   // the child, while it is ours
 let vswebTok = null, vswebSure = false;   // the token as read; what answers on the port shown to want it
 /** The token serve-web is started with: the file's, else a new one written there. */
-function vswebToken() {
-  if (vswebTok) return vswebTok;
-  try {
-    const t = readFileSync(VSWEB_TOKEN_FILE, 'utf8').trim();
-    if (/^[0-9a-f]{64}$/.test(t)) { if (statSync(VSWEB_TOKEN_FILE).mode & 0o077) chmodSync(VSWEB_TOKEN_FILE, 0o600); return vswebTok = t; }
-  } catch {}
-  const t = randomBytes(32).toString('hex'), tmp = `${VSWEB_TOKEN_FILE}.${process.pid}`;
-  mkdirSync(dirname(VSWEB_TOKEN_FILE), { recursive: true });
-  writeFileSync(tmp, t, { mode: 0o600 }); renameSync(tmp, VSWEB_TOKEN_FILE);
-  return vswebTok = t;
-}
+function vswebToken() { return vswebTok ||= keyFile(VSWEB_TOKEN_FILE); }
 // …and goes with it: a signal that ends this server ends the child too, instead of orphaning an
 // editor server on the port for the next run to adopt without knowing whose it is (the hooks are main()'s: an
 // import — the tests — installs nothing).
@@ -3847,10 +3839,10 @@ function termEnv() {
 // VSCODE_CLI_DATA_DIR, JIRA_API_TOKEN) and the holder's TERM_LINGER_MS, which the holder keeps from its PTY. A knob
 // added to the server joins the list (terminals.test reads the server for them).
 const BOARD_ENV = new Set(['PORT', 'HOST', 'NOTIFY', 'USAGE', 'STATE_FILE', 'CONFIG_FILE', 'TERMS_DIR', 'SCRATCH_DIR', 'ORG', 'ORG_DIR', 'APP_DIRS', 'BOARD_APP', 'AWAKE_ADMIN',
-  'MAX_ENTRIES', 'TAIL_BYTES', 'CHANGES_MAX', 'JIRA_TOKEN_FILE', 'JIRA_CONFIG_FILE', 'UPDATE_DIR', 'VSWEB_PORT', 'VSWEB_UPDATE_URL', 'CLAUDE_JSON',
+  'MAX_ENTRIES', 'TAIL_BYTES', 'CHANGES_MAX', 'JIRA_TOKEN_FILE', 'JIRA_CONFIG_FILE', 'UPDATE_DIR', 'VSWEB_PORT', 'VSWEB_UPDATE_URL', 'CLAUDE_JSON', 'KEY_MODE',
   'AGENT_STALE_MS', 'CLONE_MS', 'CONFIG_POLL_MS', 'POWER_POLL_MS', 'DRAWER_IDLE_MS', 'MONITOR_MS', 'PR_TTL_MS', 'PR_WATCH_MS', 'REGISTRY_POLL_MS', 'TASK_GRACE_MS', 'TASK_MAX_MS',
   'TICKET_TTL_MS', 'UPDATE_EVERY_MS', 'UPDATE_QUIET_MS', 'VSWEB_FRESH_MS', 'WT_SWEEP_MS', 'UPDATE_RESTART_BIN', 'UPDATE_BUILD_BIN', 'PEIX_TEST_PARENT',
-  ...['claude', 'gh', 'git', 'task', 'code', 'npm', 'brew', 'caffeinate', 'pmset', 'lsregister', 'lsof', 'ps'].map(n => `${n.toUpperCase()}_BIN`)]);   // findBin's
+  ...['claude', 'gh', 'git', 'task', 'code', 'npm', 'brew', 'caffeinate', 'pmset', 'lsregister', 'lsof', 'ps', 'open'].map(n => `${n.toUpperCase()}_BIN`)]);   // findBin's
 const drawerEnv = () => Object.fromEntries(Object.entries(termEnv()).filter(([k]) => !BOARD_ENV.has(k)));
 
 // Take a chat over from wherever it runs — iTerm, VS Code: end that claude, then resume the chat here.
@@ -4367,6 +4359,70 @@ const LOCAL_ADDR = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 const thisMac = a => !!a && (LOCAL_ADDR.has(a) || Object.values(networkInterfaces()).flat().some(i => i.address === a.replace(/^::ffff:/, '')));
 const foreign = foreignTo(HOST, PORT);
 
+// ---- the board's key (2026-10-16) -------------------------------------------------------------------------------------
+// foreign() tells the board's own page from another site's, not from a client that writes its own headers: a container
+// (Docker's host.docker.internal is this Mac's loopback), another account on the Mac, the LAN past HOST — each could read
+// every transcript and type into a drawer as the user. So every route but the page itself wants the board's key: 32
+// random bytes in the state folder, this user's alone (`key`, 0600), sent as `x-peix-key` (the page's api()) or `?key=`
+// where no header can go (the stream, a drawer's socket), compared in constant time. Not a cookie: a cookie is per host,
+// not per port, and every server on 127.0.0.1 the browser visits would be handed it. The app gives its page the key (a
+// script of its own, before the page's); a browser gets it by a ticket (`#ticket=`, one use, a minute — POST
+// /api/key/claim), opened in the default browser by the server itself (POST /api/key/open, open to all: the key goes to
+// this Mac's screen, never to whoever asked; `scripts/launchd.sh open`). Open without it: the page, its vendored files,
+// /api/alive and those two. A wrong key is refused always; **none is refused once the key is required** — at once with
+// KEY_MODE `enforce` (every test server) or a HOST past loopback, else from the first keyed ask of the app's own page
+// (`x-peix-app`), a boot with no app installed, or Settings' switch, kept in the state file (`keyEnforced`). So a board
+// updated to this still answers its old app, which sends no key, until the rebuilt one opens with it.
+const KEY_FILE = join(dirname(STATE_FILE), 'key');
+const KEY_MODE = process.env.KEY_MODE || '';
+const LOOPBACK_BIND = ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(HOST);
+const KEY_OPEN = /^\/(index\.html|vendor\/[\w.-]+|api\/alive|api\/key\/(claim|open))?$/;
+let boardKey = '', keylessSaid = false, keyOpenAt = 0;
+const tickets = new Map();   // ticket → when it expires
+/** A key of 64 hex digits kept in `file`: the file's, else a new one written there, this user's alone. */
+function keyFile(file) {
+  try {
+    const t = readFileSync(file, 'utf8').trim();
+    if (/^[0-9a-f]{64}$/.test(t)) { if (statSync(file).mode & 0o077) chmodSync(file, 0o600); return t; }
+  } catch {}
+  return writeKey(file);
+}
+function writeKey(file) {
+  const t = randomBytes(32).toString('hex'), tmp = `${file}.${process.pid}`;
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(tmp, t, { mode: 0o600 }); renameSync(tmp, file);
+  return t;
+}
+const keyRequired = () => KEY_MODE === 'enforce' || !LOOPBACK_BIND || keyEnforced;
+const keyState = () => ({ required: keyRequired(), mode: KEY_MODE || null, file: KEY_FILE });
+function requireKey(why) {
+  if (keyEnforced) return;
+  keyEnforced = true; saveState(); broadcast('key', keyState());
+  // what came in without it while it was not required goes now: a stream, a drawer's socket
+  for (const c of sseClients) if (!c.keyed) c.end();
+  for (const t of terms.values()) for (const ws of t.clients) if (!ws.keyed) ws.close(4401, 'the board wants its key');
+  console.log(`[peixairada] the board's key is required from now on — ${why}`);
+}
+const keyMatches = k => { const a = Buffer.from(String(k)), b = Buffer.from(boardKey); return !!boardKey && a.length === b.length && timingSafeEqual(a, b); };
+/** Why `req` is not answered for want of the key — `missing` or `wrong` —, else null. */
+function keyWant(req, url) {
+  const k = req.headers['x-peix-key'] || url.searchParams.get('key');
+  if (k) {
+    if (!keyMatches(k)) return 'wrong';
+    if (req.headers['x-peix-app'] === '1') requireKey('the app\'s page came with it');
+    return null;
+  }
+  if (keyRequired()) return 'missing';
+  if (!keylessSaid) { keylessSaid = true; console.log(`[peixairada] answered ${req.method} ${url.pathname} with no key — not required until the app's page brings it, or Settings › Board says so`); }
+  return null;
+}
+function newTicket() {
+  const now = Date.now(); for (const [t, at] of tickets) if (at < now) tickets.delete(t);
+  const t = randomBytes(18).toString('base64url'); tickets.set(t, now + 60_000); return t;
+}
+/** The address this Mac's browser reaches the board at. */
+const boardUrl = () => `http://${LOOPBACK_BIND || HOST === '0.0.0.0' || HOST === '::' ? '127.0.0.1' : HOST.includes(':') && !HOST.startsWith('[') ? `[${HOST}]` : HOST}:${PORT}/`;
+
 // One WebSocket per attached page. Binary frames carry output — first the screen as it stands (the holder's
 // headless terminal serialized: scrollback, cells, cursor, modes), then the PTY's bytes as they come; text frames
 // are JSON in both directions: {t:'in', d}, {t:'resize', cols, rows} and {t:'clear'} up, {t:'clear'} and
@@ -4377,10 +4433,13 @@ const wss = new WebSocketServer({ noServer: true, maxPayload: 8 << 20 });   // a
 function attachTermSocket(req, socket, head) {
   const why = foreign(req);
   if (why) { socket.write('HTTP/1.1 403 Forbidden\r\n\r\n'); socket.destroy(); return; }
-  const m = (req.url || '').match(/^\/api\/terminals\/([\w-]+)\/ws$/);
+  const url = new URL(req.url || '/', 'http://localhost');
+  if (keyWant(req, url)) { socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n'); socket.destroy(); return; }
+  const m = url.pathname.match(/^\/api\/terminals\/([\w-]+)\/ws$/);
   const t = m && terms.get(m[1]);
   if (!t) { socket.write('HTTP/1.1 404 Not Found\r\n\r\n'); socket.destroy(); return; }
   wss.handleUpgrade(req, socket, head, ws => {
+    ws.keyed = !!(req.headers['x-peix-key'] || url.searchParams.get('key'));
     t.clients.add(ws);
     ws.hold = [];
     requestSnap(t).then(snap => {
@@ -4453,12 +4512,37 @@ const server = createServer(async (req, res) => {
     if (why) return json(res, 403, { error: `not the board's own page (${why})` });
     const url = new URL(req.url, 'http://localhost');   // the path and the query: the Host was foreign()'s to judge
     const p = url.pathname;
+    const want = !KEY_OPEN.test(p) && keyWant(req, url);
+    if (want) { res.setHeader('connection', 'close'); return json(res, 401, { error: want === 'wrong' ? 'not this board\'s key' : 'this board wants its key', key: want }); }   // its body unread: the socket goes
     if (req.method !== 'GET' && p !== '/api/update' && !p.endsWith('/seen')) lastTouchAt = Date.now();   // something done on the board (a reply shown is the page's own doing): no update until it rests
     if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
       const html = readFileSync(PAGE_FILE, 'utf8');
       const body = html.replace('<meta name="peix-page" content="">', `<meta name="peix-page" content="${pageStamp(html)}" data-since="${SINCE}">`);
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': "frame-ancestors 'none'", 'x-frame-options': 'DENY' });   // nobody's frame (foreignTo)
       return res.end(body);
+    }
+    if (req.method === 'GET' && p === '/api/alive') { res.writeHead(204); return res.end(); }   // up and booted: the app's probe, launchd.sh
+    if (req.method === 'POST' && p === '/api/key/claim') {   // a ticket for the key (see keyWant), once
+      const { ticket } = await jsonBody(req), at = typeof ticket === 'string' ? tickets.get(ticket) : null;
+      tickets.delete(ticket);
+      if (!at || at < Date.now()) return json(res, 403, { error: 'that ticket was used or is old — open the board with its key again' });
+      return json(res, 200, { key: boardKey });
+    }
+    if (req.method === 'POST' && p === '/api/key/open') {   // a tab with a ticket, in this Mac's default browser: the key goes to its screen
+      if (Date.now() - keyOpenAt < 10_000) return json(res, 429, { error: 'a tab with the key was opened a moment ago' });
+      const bin = findBin('open', 'a tab with the key cannot be opened'); if (!bin) return json(res, 501, { error: 'no open command on this Mac' });
+      keyOpenAt = Date.now();
+      execFile(bin, [`${boardUrl()}#ticket=${newTicket()}`], e => { if (e) console.error(`[peixairada] open a tab with the key: ${e.message}`); });
+      return json(res, 202, { opening: true });
+    }
+    if (req.method === 'GET' && p === '/api/key') return json(res, 200, keyState());
+    if (req.method === 'PUT' && p === '/api/key') { requireKey('asked on the board'); return json(res, 200, keyState()); }
+    if (req.method === 'POST' && p === '/api/key/new') {   // a new key: every other page and drawer socket asks for it again
+      boardKey = writeKey(KEY_FILE); tickets.clear();
+      for (const c of sseClients) c.end();
+      for (const t of terms.values()) for (const ws of t.clients) ws.close(4401, 'a new key');
+      console.log('[peixairada] a new key — every page asks for it again');
+      return json(res, 200, { key: boardKey });
     }
     let m;
     if (req.method === 'GET' && (m = p.match(/^\/vendor\/([\w.-]+\.(js|css))$/))) {
@@ -4788,9 +4872,10 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
     if (req.method === 'GET' && p === '/events') {
-      const snap = JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), about: aboutInfo(), awake: awakeState(), clones: [...clones.values()].map(cloneState), update: updateState(), editors: editorState(), page: pageStamp(readFileSync(PAGE_FILE, 'utf8')) });
+      const snap = JSON.stringify({ sessions: sortedSummaries(), projects: projectList(), pins: pinned, hidden: hiddenProjects, repos: repoUrls(), notify: NOTIFY, notifications: notificationsOn, config: boardConfig(), about: aboutInfo(), awake: awakeState(), clones: [...clones.values()].map(cloneState), update: updateState(), editors: editorState(), key: keyState(), page: pageStamp(readFileSync(PAGE_FILE, 'utf8')) });
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
       res.write(`event: snapshot\ndata: ${snap}\n\n`);
+      res.keyed = !!(req.headers['x-peix-key'] || url.searchParams.get('key'));   // one come in with no key goes when it is required (requireKey)
       sseClients.add(res);
       const ping = setInterval(() => res.write(': ping\n\n'), 25_000);
       req.on('close', () => { clearInterval(ping); sseClients.delete(res); });
@@ -4837,6 +4922,8 @@ server.on('error', e => {
 await new Promise(res => server.listen(PORT, HOST, res));
 console.log(`[peixairada] listening on http://${HOST}:${PORT}  (notify=${NOTIFY}, terminals in ${TERMS_DIR})`);
 loadState();   // now, not at import: what a server busy on the port saved while this one waited is in it
+boardKey = keyFile(KEY_FILE);
+if (!keyRequired() && !existsSync(APP_DIR)) requireKey(`no app at ${APP_DIR} to wait for`);
 const t0 = Date.now();
 if (!seenSince) { seenSince = new Date().toISOString(); saveState(); }   // a reply before the board kept what it showed is no new one (2026-10-12)
 loadConfig();

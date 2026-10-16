@@ -96,14 +96,14 @@ test('a server that waited for the port reads the state as the one before it lef
   // stdin a pipe, held open: a.env carries PEIX_TEST_PARENT, and a test server ends when its stdin does
   let b; try { b = spawn(process.execPath, [join(import.meta.dirname, '..', 'server.mjs')], { env: a.env, stdio: ['pipe', fd, fd] }); } finally { closeSync(fd); }
   const said = re => re.test(readFileSync(blog, 'utf8'));
-  const put = (path, body) => fetch(a.url + path, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json());
+  const put = (path, body) => fetch(a.url + path, { method: 'PUT', headers: { 'content-type': 'application/json', 'x-peix-key': a.key }, body: JSON.stringify(body) }).then(r => r.json());
   try {
     await waitFor(() => said(/port \d+ is busy/), { what: 'the second server waiting on the port' });
     assert.deepEqual((await put('api/pins', { pins: ['/acme/made-while-it-waited'] })).pins, ['/acme/made-while-it-waited']);
     await a.stop();
     await waitFor(() => said(/listening on/), { what: 'the second server taking the port' });
-    await waitFor(async () => { try { return (await fetch(a.url + 'api/projects')).ok; } catch { return false; } }, { what: 'the second server answering' });
-    assert.deepEqual((await (await fetch(a.url + 'api/sessions')).json()).pins, ['/acme/made-while-it-waited'], 'the pin made while it waited');
+    await waitFor(async () => { try { return (await fetch(a.url + 'api/alive')).ok; } catch { return false; } }, { what: 'the second server answering' });
+    assert.deepEqual((await a.api('api/sessions')).body.pins, ['/acme/made-while-it-waited'], 'the pin made while it waited');
     await put('api/notifications', { on: false });   // a save
     const st = JSON.parse(readFileSync(a.env.STATE_FILE, 'utf8'));
     assert.deepEqual([st.pinned, st.notifications], [['/acme/made-while-it-waited'], false], 'saved over nothing');

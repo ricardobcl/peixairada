@@ -14,7 +14,7 @@ test('the board loads: window.peix, the snapshot drawn, no exception', { timeout
   const srv = await startTestServer({ claudeDir: fx.dir });
   let cdp = null;
   try {
-    cdp = await launchChrome();
+    cdp = await launchChrome({ key: srv.key });
     await cdp.send('Page.navigate', { url: srv.url });
     // drawn, or something threw — whichever first: a page that died at load never draws
     const drawn = 'window.peix?.state().snapshots > 0 && document.querySelectorAll("#slist > .card").length === 2';

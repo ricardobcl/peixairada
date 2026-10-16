@@ -12,11 +12,11 @@ const MAX = 50 * 1024 * 1024;   // server.mjs's ATTACH_MAX
 /** A request by hand, for what fetch hides: the body in `chunks` written one by one (no content-length: chunked), and
  *  the answer's headers; `sent` says how writing the body ended. With `none`, the head alone goes and the answer is
  *  awaited before a byte of the body: a refusal said up front. */
-function send(url, method, path, { chunks = [], headers = {}, none = false } = {}) {
+function send(srv, method, path, { chunks = [], headers = {}, none = false } = {}) {
   return new Promise((resolve, reject) => {
     let answer = null, sent = none ? 'none' : null;
     const settle = () => { if (answer && sent) { resolve({ ...answer, sent }); if (none) req.destroy(); } };
-    const req = request(new URL(path, url), { method, headers }, res => {
+    const req = request(new URL(path, srv.url), { method, headers: { 'x-peix-key': srv.key, ...headers } }, res => {
       let body = '';
       res.setEncoding('utf8'); res.on('data', c => { body += c; });
       res.on('end', () => { answer = { status: res.statusCode, headers: res.headers, body: JSON.parse(body || 'null') }; settle(); });
@@ -27,7 +27,7 @@ function send(url, method, path, { chunks = [], headers = {}, none = false } = {
     (async () => { for (const c of chunks) { if (!req.write(c)) await new Promise(r => req.once('drain', r)); } req.end(); })().catch(() => {});
   });
 }
-const put = (srv, query, buf) => send(srv.url, 'PUT', `api/attach?${new URLSearchParams(query)}`, { chunks: [buf], headers: { 'content-length': buf.length } });
+const put = (srv, query, buf) => send(srv, 'PUT', `api/attach?${new URLSearchParams(query)}`, { chunks: [buf], headers: { 'content-length': buf.length } });
 
 test('a dropped file: written under the chat, its name made safe and kept apart from one already there', { timeout: 60_000 }, async () => {
   const srv = await startTestServer();
@@ -59,7 +59,7 @@ test('over 50 MB: a 413 that reaches the page, the connection closed after it, n
     // said up front: read to its end all the same, kept nowhere, then refused — refused at once, the close after the
     // answer met the body still coming, and its reset beat the answer to the page (2026-10-14, 1 run in 9 under load)
     for (let i = 0; i < 3; i++) {
-      const said = await send(srv.url, 'PUT', 'api/attach?session=chat-1&name=big.bin', { headers: { 'content-length': MAX + 1 }, chunks: [Buffer.alloc(MAX + 1, 0x61)] });
+      const said = await send(srv, 'PUT', 'api/attach?session=chat-1&name=big.bin', { headers: { 'content-length': MAX + 1 }, chunks: [Buffer.alloc(MAX + 1, 0x61)] });
       assert.equal(said.status, 413);
       assert.deepEqual(said.body, { error: 'larger than 50 MB' });
       assert.equal(said.headers.connection, 'close');
@@ -67,7 +67,7 @@ test('over 50 MB: a 413 that reaches the page, the connection closed after it, n
     }
     // not said (chunked): read to its end — the whole body sent —, then refused the same way
     const chunks = Array.from({ length: 51 }, () => Buffer.alloc(1024 * 1024, 0x62));
-    const streamed = await send(srv.url, 'PUT', 'api/attach?session=chat-1&name=stream.bin', { chunks });
+    const streamed = await send(srv, 'PUT', 'api/attach?session=chat-1&name=stream.bin', { chunks });
     assert.equal(streamed.status, 413);
     assert.equal(streamed.headers.connection, 'close');
     assert.equal(streamed.sent, 'sent');
