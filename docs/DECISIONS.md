@@ -5,6 +5,36 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-16. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-16, later — the board's key, built
+
+Ricardo, on the design below and the offer to push and build it: "do it". The two fixes before it were pushed first.
+
+* **Built as designed** (`keyWant`, `KEY_OPEN`, `requireKey`, `keyEnforced`; the page's `keyReady`, `keyTicket`,
+  `keyLock`, `#lock`; the app's `giveKey`): every route but `/`, the vendored files, `/api/alive` and the two ticket
+  routes wants the key, the stream and a drawer's socket by `?key=`. Where it differs: a new key is `POST
+  /api/key/new` (Settings › Board › Access, two clicks), not a launchd.sh verb; a terminal's way is `scripts/board.sh
+  <path>`; `scripts/launchd.sh open` asks the server for the tab. The app's probe stays `/api/projects`, now with the
+  key — a server from before the key answers it as ever —, and `/api/alive` (open, a 204) is launchd.sh's and the
+  harness's.
+* **Found on the way**: the page's first asks went out before a ticket in the address was traded, without the key,
+  and locked a page that had it a moment later — every ask now waits for the trade (`keyReady`), and a snapshot closes
+  the lock. A ticket opened into the same tab is a fragment's navigation, not a load (`hashchange`). A request turned
+  away at the door has its body unread, so the 401 closes the connection — the attach test's 50 MB upload waited
+  forever on it. What came in without a key while none was required — a stream, a drawer's socket — is ended the moment
+  the key is (`requireKey`); a new key ends every stream and socket.
+* **The harness proves every path carries it**: every test server runs `KEY_MODE=enforce` with a fake `open`
+  (`scripts/fakeopen.mjs`), its helpers send the key (`srv.api`, `srv.key`, `srv.ws`), and the scenario runner,
+  `npm run verify`, `npm run webkit` and `perf` hand the page the key as the app does (`liveKey()`; a scenario's `key:
+  false` gives none). Twelve test files made raw requests and seven scenarios opened a stream or a socket of their
+  own: all keyed (`window.PEIX_KEY` in the page, `ctx.server.ws`). 198 tests and the 91 scenarios pass
+  (`transcript-live`'s scroll shadow flaky once, clean twice alone); `test/key.test.mjs` holds the routes, the
+  tickets, a new key and the migration's two ways; `board-key.mjs` the lock, the tab with a ticket, the key kept, and
+  a stale key locked again.
+* **The migration on this Mac**: the agent restarts into a board that answers without the key (an app is installed),
+  the page reloads without one and is served; the app, rebuilt (mac/ changed), opens with the key and the board
+  requires it from then on. On other boards it is the same through *update now*; a browser alone gets the lock once.
+* Left as it is: past loopback the key crosses the LAN in the clear, as everything else there does.
+
 ## Decisions of 2026-10-16 — a security review checked: VS Code Web's token, launchers behind Claude Code's trust, the board's key designed
 
 Ricardo: "check "peixairada-report.txt" on downloads" — an outside review of 515444f (a read of the source and

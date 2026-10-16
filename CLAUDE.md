@@ -44,7 +44,7 @@ npm run map                         # rewrite the section maps at the top of ser
   `public/vendor/`; `marked`/`DOMPurify`/`highlight.js` are vendored by hand. Rebuild the app after `npm install` or
   a node switch (it copies `node_modules` and the node binary).
 * **A session that runs in a drawer**: finish the work, write the notes and the recap first, and run
-  `restart --after 20` last. `GET /api/terminals` says which chats are in drawers. `launchd.sh` and `build.sh`
+  `restart --after 20` last. `scripts/board.sh /api/terminals` says which chats are in drawers. `launchd.sh` and `build.sh`
   detach themselves when run from a drawer (`PEIXAIRADA_DRAWER`, the app's bundle id). → Findings: *build.sh from a drawer*.
 * **Parallel work goes in a worktree, `scripts/worktree.sh`** (2026-10-14): `new <name>` is `.claude/worktrees/<name>`
   on its branch from the local main (origin is behind), with no node_modules link — Node and `npm run check` find the
@@ -106,6 +106,11 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   tests), a `null` one is nobody's. An `<img>`, `<script>` or navigation sends no Origin, so `Sec-Fetch-Site` must be
   `same-origin` or `none` when sent — a tab's navigation to `/` aside (`Sec-Fetch-Dest` `document`); `/` sends `frame-ancestors 'none'`. Bound past
   loopback, the Host must be an address, a loopback name or this Mac's (`foreignTo`), and no Origin is only for this Mac. → `test/origin.test.mjs`.
+* **Every route but the page wants the board's key** (2026-10-16; `keyWant`, `KEY_OPEN`): `<state dir>/key`, 0600, as
+  `x-peix-key` (`api()`) or `?key=` (the stream, a socket); the app injects it (`giveKey` → `PEIX_KEY`), a browser
+  trades a ticket on a tab the server opens (`/api/key/open`, `keyTicket` → `localStorage`, never a cookie), else the
+  lock (`#lock`). A wrong key is refused always, none once `keyRequired()` (`KEY_MODE`, HOST past loopback,
+  `keyEnforced`: the app's page with it, no app, Settings). → `test/key.test.mjs`, `board-key.mjs`.
 * **The port first, then the boot**: `main()` waits until `listen` succeeds before it reads the state file (`loadState`; an import neither reads nor saves it), adopts holders, reads the
   registry, polls or saves state; every request and upgrade waits for `booted`. **A route writes its head only once
   its body is in hand**, and the handler's catch destroys a response whose head went out.
@@ -157,18 +162,15 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   → `test/vsweb.test.mjs`.
 * **The board updates itself from its checkout** (2026-10-12; `checkUpdate`, `selfUpdate` in the state file — **off by
   default** (2026-10-13): what came is said, *update now* takes it —, Settings › Updates, `GET/PUT/POST /api/update`, an
-  `update` event): only the agent looks by the clock (`UNDER_AGENT`: launchd's own child, not a drawer's server; every
-  `UPDATE_EVERY_MS`, else 0), fetching its branch's upstream alone (no FETCH_HEAD, no tags) and **fast-forwarding
+  `update` event): only the agent looks by the clock (`UNDER_AGENT`, `UPDATE_EVERY_MS`), fetching its branch's upstream alone (no FETCH_HEAD, no tags) and **fast-forwarding
   only** — not over a tracked change (`dirty`), a branch that moved on its own (`diverged`), a held commit, or within
   `UPDATE_QUIET_MS` of a key sent to a drawer or anything done on the board (`lastTouchAt`); *check now* (`asked`) skips
   that wait, *update now* (`apply`) the switch, the hold and a change — not one the commits change too (`clash`,
   2026-10-15; `whyNot`); the settings name the files and what to run. What the commits touched starts again
   (`updateParts`): `npm install`, the agent (`launchd.sh restart`, detached), the app (`mac/build.sh install`, detached)
   when behind, the page — it reloads itself once left be (`takeUpdate`, `reloadBusy`: at once if asked for there; never
-  mid-update nor before the new server is back). **Its progress is the status bar's** (`updSeg`, `updRun`): the
-  server's `steps`/`step`, `restarting`, `building` (the app's rebuild followed by its pid across the restart,
-  `watchBuild`, ended by its log's `installed →`), `failed`; new commits not taken and why; a page waiting (a click
-  reloads it). **News *update now* would take is a click that takes it** (2026-10-14; `canPull`, `canBuild` →
+  mid-update nor before the new server is back). **Its progress is the status bar's** (`updSeg`, `updRun`; the app's
+  rebuild followed across the restart, `watchBuild`). **News *update now* would take is a click that takes it** (2026-10-14; `canPull`, `canBuild` →
   `data-take`, `updNow`): *1 new commit · update*, *the app is behind · rebuild*; else it opens Settings › Updates.
   **First the new page compiles and the new server starts on a spare port** (`preflight`, the checkout's
   lib/testserver.mjs); one that does not is undone (`git reset --keep`, only while HEAD is the commit pulled), held
@@ -510,9 +512,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   deleted on load); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it renders reads its
   state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
 * **The setup is the user's file; nothing about one Mac is in the code** (2026-09-28): `CONFIG_FILE` —
-  `$XDG_CONFIG_HOME/peixairada/config.json`, **beside `STATE_FILE` when that is set** (every test server has its
-  own); the state file's old `config` is moved there **at boot, never on an import** (`loadConfig()` from `main()` — a
-  test imports the module against the real state file). Written into the file as it stands (a key it does not know stays), beside its real path and renamed over (a symlink stays one), a root under
+  `$XDG_CONFIG_HOME/peixairada/config.json`, **beside `STATE_FILE` when that is set**; the state file's old `config` is moved there **at boot, never on an import** (`loadConfig()` from `main()`). Written into the file as it stands (a key it does not know stays), beside its real path and renamed over (a symlink stays one), a root under
   the home as `~/…`; **re-read on a hand edit** (`reloadConfig`, a stat every `CONFIG_POLL_MS` against
   `configStamp`); one that does not parse is `error` on the config, the board keeps what it had and a PUT is refused
   (409). Keys: `roots` (`[{dir, org}]`), `quick` (⌥⌘O's project), `projects` (`{name: {abbr, color}}`, by shown
@@ -539,17 +539,17 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * **`HOTKEYS` in index.html is the whole ⌥⌘ family, and every key is a row of `KEYS`** (2026-10-12): what you press, its
   group, one line, and the codes it is in HOTKEYS or CMDKEYS — the Keys pane and the ? sheet are drawn from it, and
   `npm run check` (`check-page.mjs`) fails a code with no row, a row no map answers, a ⌥⌘ key `boardKeys` in
-  main.swift does not forward or forwards unanswered, or an *again* row no `hot…Key` answers. The letters: **T** the chat's zsh tab (`hotShell()` →
-  `POST /api/sessions/:id/shell`, `s.shells`, `shName()`), **E** VS Code Web in the pane, **V** the folder in VS Code's
-  own window (2026-10-14, `hotVsCodeApp`; no chat open, the project in view when a folder), **G** the chat's PR on GitHub
-  (several → the picker in `pr` mode; none → the repo, `state.repos`), **C** the chat's claude (`termAction()`, the `>_`
+  main.swift does not forward or forwards unanswered, or an *again* row no `hot…Key` answers. The letters: **T** the chat's zsh tab (`hotShell()`,
+  `s.shells`), **E** VS Code Web in the pane, **V** the folder in VS Code's
+  own window (`hotVsCodeApp`), **G** the chat's PR on GitHub
+  (several: the picker; none: the repo), **C** the chat's claude (`termAction()`, the `>_`
   path), **W** the tab the keys are in, closed (`hotCloseTab()` → `dropTab()`), **P** projects, **K** chats
   (`chatFields()`), **F** the list's box (`hotFind()`), **B** the rail (`toggleSessions`), **Y** themes (`themesOpen`),
   **L** the launcher (`pickOpen('launch')`), **D** changes (`hotDiff`), **A** the overview (`ovOpen`), **0** home (`hotHome`), **N** a new
   chat as steps of one dialog (`new` → `chats` → `folder` → `env`, `newChatIn()`), **O** the same on the setup's `quick`
   project (`hotOracle()`), **↑↓** the chat above or below as shown (`hotMove()`), **←→** the tab beside, wrapping
   (`hotTab()`), **1 / 2** the halves stood one over the other (`hotGroup(g, true)`), **R** the board reloaded
-  (`hotReload`, 2026-10-13). **C T G E D pressed again from the tab they bring up** (a claude live here, a
+  (`hotReload`). **C T G E D pressed again from the tab they bring up** (a claude live here, a
   zsh, a page at the chat's PR, the editor, the changes — the HOTKEYS entries are `hot…Key`, `zoomAgain` before the plain `hot…`) fill
   the column with that half, and back (`toggleZoom`, see *The chat column's two halves*); `typeInShell` and the launcher
   call the plain ones. Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A `dialog[open]` swallows them;
@@ -580,15 +580,14 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   Space** is macOS's (`.fullScreenPrimary`), below the housing (AppKit holds the frame there): the page
   hears no fill, the fill's machinery stays off. **Up to the notch is the fill** (`toggleFill`; `BoardWindow`,
   borderless, the whole screen; `fill: on …` in the app log): the menu bar auto-hidden beside a camera housing, hidden
-  without one (`placeFill`, `fillOptions()`), let out by the pointer held at the top 1 s (`menuOut`), tucked after a
-  change of desktop (`tuckMenuBar`); the Dock out after 0.7 s at its edge (`dockTick`, 10 Hz while filled and
-  active); `.fullScreenNone`, a plain click on the green button the fill (`windowShouldZoom`); ⌘W leaves it first.
+  without one (`placeFill`, `fillOptions()`), let out by the pointer at the top (`menuOut`), tucked after a change of
+  desktop (`tuckMenuBar`); the Dock out at its edge (`dockTick`); `.fullScreenNone`, a plain click on the green button the fill (`windowShouldZoom`); ⌘W leaves it first.
   `NSFullScreenMenuItemEverywhere` and `NSPrefersDisplaySafeAreaCompatibilityMode` are false. *Exit Full Screen* is
   View's item and the fish's, titles flipped in `validateMenuItem`. → `full-screen-pick.mjs`. **The lights come down with the menu bar**
-  (2026-10-13; `lightsTick`, asking `menuBarVisible()` only with the pointer that high):
+  (2026-10-13; `lightsTick`):
   a strip under it, over the pane too — the lights (`LightButton`: green `toggleFill`, yellow `lightsMinimize`, red
   quits) and the window's title —, the menu bar held out over it (`lightsOut` in `fillOptions`) until
-  the pointer is below the strip; the app log says `fill: lights down|up`. **The fill gone on while the page heard it
+  the pointer is below the strip. **The fill gone on while the page heard it
   off says so once** (`fillHint`, under the head row): never on a load that finds it on (`state.fillHeard`), the
   first `FILL_HINTS` times in all. → `fill-hint.mjs`. The page hears `peixFill(on, notch)` — the strip's height and the housing's x range in
   CSS px, null without one; only when new (`fillSaid`, 2026-10-15) — and **`layoutNotch()` lays the top row round it** (reads, then writes): the header's title left of the housing and its chips right
@@ -1018,7 +1017,7 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   `sample`'s stacks. **The app as it runs** is `--app`: its board's web process (main.swift logs `board: web process
   <pid>`) — CPU, memory, where the time went.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports `meta`
-  (`server`, `fake`, `fixture`, `env`, `prefs` — what the page starts from; **without it a page starts with every
+  (`server`, `fake`, `fixture`, `env`, `key: false`, `prefs` — what the page starts from; **without it a page starts with every
   lane open, large cards, the theme following the emulated colour scheme and the tour taken**: the scenarios read the
   words on the cards, and the ones about those turn the board's own on) and a default `async (ctx) => result`. The runner starts a throwaway server on a free
   port with its own state dir, builds the fixture, runs the fake claude when asked, launches Chrome with **focus
@@ -1041,11 +1040,11 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   (empty unless a fixture), config beside its `STATE_FILE`; the fakes (`GH_BIN` — only the fields the query asks, `FAKEGH_FAIL` —, `caffeinate`, `pmset` with
   `AWAKE_ADMIN=none`, `CODE_BIN`, `TASK_BIN`; `CLAUDE_BIN` `noclaude.mjs` unless `fake`), `VSWEB_PORT` free, `UPDATE_DIR` empty; Jira's token in its own file (`JIRA_TOKEN_FILE`), no inherited `JIRA_API_TOKEN`; a `ZDOTDIR`
   with no rc files; `VSWEB_FRESH_MS` 0; `UPDATE_EVERY_MS` 0; `USAGE=off`; `APP_DIRS` its own, `BREW_BIN` the fake,
-  `LSREGISTER_BIN` `/usr/bin/true`; no inherited `CONFIG_FILE`, `TERMS_DIR` or XDG dirs. Up is its
+  `LSREGISTER_BIN` `/usr/bin/true`; `KEY_MODE=enforce` (`srv.key`, `srv.ws(path)`), `open` a fake; no inherited `CONFIG_FILE`, `TERMS_DIR` or XDG dirs. Up is its
   `listening` line (a port taken first moves it to a fresh one); stdin a pipe whose end stops it (`PEIX_TEST_PARENT`); `meta.env` is spread last. `waitFor(fn, {timeout, what})`, `srv.post(path, body)` and `tmpDir()`
   are the tests' polls, POSTs and dirs (a bare `mkdtempSync` fails `npm run check`); every test process has its own
   state (`test/env.mjs`, preloaded). **A wait's timeout is for what never comes** (15 s by default, 2026-10-13):
-  every spawn is slow on this Mac under load (an endpoint agent checks each exec).
+  every spawn is slow on this Mac under load.
 * **Test against the fake claude, not real chats**: `scripts/fakeclaude.mjs` via `CLAUDE_BIN` (`fake: true`) is
   instant and touches nothing. A test against the real `~/.claude` names it as `claudeDir` outright (read-only), uses
   a stale chat and `DELETE`s the terminals it made.

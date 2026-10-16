@@ -129,9 +129,14 @@ and its `node`, which is how it finds `claude`, `gh` and the rest:
 ```sh
 git clone https://github.com/ricardobcl/peixairada.git && cd peixairada
 npm install
-scripts/launchd.sh install     # the server, started at login → http://127.0.0.1:7331
+scripts/launchd.sh install     # the server, started at login, on 127.0.0.1:7331
 mac/build.sh install           # the Mac app, in /Applications (optional — any browser works)
+scripts/launchd.sh open        # …or the board in your browser, with its key
 ```
+
+**The board has a key**: only a page that holds it reads your chats or types into a terminal — a container, another
+account or anything else that reaches the port gets nothing. The app has it; a browser gets it once, from
+`scripts/launchd.sh open` or the button on the page that asks for it, and keeps it.
 
 **On first open** the board asks where your repos live, its guess from your chats already filled in, then shows you
 round its main parts in a couple of minutes — Skip it, or take it again later from Settings, ⌥⌘L or home; macOS asks to let
@@ -145,7 +150,7 @@ notifications.
 | [GitHub CLI](https://cli.github.com), signed in | PRs — their state, CI, faces and whose move — and cloning repos | `brew install gh && gh auth login` |
 | VS Code | ⌥⌘E (VS Code Web beside the chat) and file links | [code.visualstudio.com](https://code.visualstudio.com) |
 | [Zed](https://zed.dev) | file links in Zed instead (Settings › Board) | none: picking it installs it |
-| [Task](https://taskfile.dev) | new chats in folders whose Taskfile starts Claude | `brew install go-task` |
+| [Task](https://taskfile.dev) | new chats in folders whose Taskfile starts Claude (folders Claude Code trusts) | `brew install go-task` |
 
 **Updating**: the status bar says when new commits have come; click it and it pulls them — a fast-forward that leaves
 your own changes as they are — and restarts only what they changed: the packages, the server (your chats stay open),
