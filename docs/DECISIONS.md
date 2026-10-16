@@ -5,6 +5,43 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-16. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-16, late night — Settings as a sidebar and a search box
+
+Ricardo: "settings is very cluttered - search literature, best UX/UI pratices and come up with improvements in an
+artifact". The study (design study VII, https://claude.ai/artifact/Sg5Q8kHfVGvFQQrJbppogA) measured the Board tab — 17
+rows in eight layouts, 266 words on screen and 686 in tooltips, 1.75 times the dialog's height — set it against Apple's
+settings and toggles guidance, NN/g (toggles, progressive disclosure, defaults), GNOME's boxed lists and libadwaita's
+searchable preferences, Microsoft's settings cards, Android's settings patterns, VS Code's settings editor, JetBrains'
+Find Action and Raycast, and offered A (tidy in place), B (a sidebar and search), C (every setting in ⌥⌘L), D1/D2
+(options where they act), cuts X1–X5 and details R1–R12. His pick: "Settings study VII: build B, D2 · cuts X1, X2, X3,
+X4, X5 · details R1, R2, R3, R4, R6, R8, R9, R10, R11, R12."
+
+* **B — a sidebar of seven panes and a search box**, 820 wide: General, Appearance, Chat list, Terminal, Projects, Jira,
+  Updates & access, split by what a setting is for, not where it is kept (prefs, the state file, the setup file). The
+  box has the keys as it opens; a search hides rows (`.nomatch`), never redraws them, so every control keeps its node
+  and listeners; the CSS highlight API marks the words (Chrome and WKWebView both have it). Esc lets a search go first.
+* **R1–R4, R12 came with it**: one row (`.srow.set`), Setup's look everywhere; names of a few words and one line, no
+  tooltips — the long explanations are the README's; card size a segmented control, text size and full screen pop-ups;
+  by lane and same height indented under the size, off with why (same height was hidden); `role=switch`, groups
+  labelled, the keys back on the opener. **X3–X5** too: the Keys tab went (the ? sheet; the two keys the setup names
+  read `keyNotes`, the Keys pane's ids before — a TDZ-free map, since renderSetup wrote into those elements), the head's
+  counts and brand went, Hidden is a group of Projects.
+* **X1 — Appearance: Auto · Dark · Light**, a theme per appearance as tiles. **Auto is the default for a new board
+  only**: every saved prefs carries `skinFollow: false` (the old default, written whole by savePrefs), and a board whose
+  owner picked a dark theme in a light macOS would turn light. Open: move existing boards to Auto once, if wanted.
+* **X2 — screen reader mode follows VoiceOver**: the app's KVO on `isVoiceOverEnabled` → `peixVoiceOver`. A page in a
+  browser cannot know; the switch stays. Needs the app rebuilt.
+* **R6** the pane last shown is a pref, `settingsAt` lands a link on its row, lit; **R8** the update's row is a word, a
+  line and Details; **R9** a new key is confirmed in a line under it, the button keeping its name; **R10** a project's
+  square once, opening colour and short name; **R11** Jira's line says *paste one in the box above* (the server says
+  only that there is none); **D2** a right-click on the status bar picks its meters.
+* **Not picked**: A (B's rows, without the sidebar, still scrolled about as far), C (⌥⌘L's six switches stay; a setting
+  row with ⏎ to flip and ⇧⏎ to open at it is the shape if wanted later), D1 (card size in the funnel's menu), R5 (a
+  dot on changed rows, reset on click), R7 (Settings over the chat column, the list left in view).
+* **Found on the way**: three init-time references to `const`s declared further down (`setHtml` from `showLook`, `terms`
+  and `inApp` from the reader's first word) — a scenario whose page never loaded showed the first; the reader's first
+  word waits for a microtask.
+
 ## Decisions of 2026-10-16, night — the README is the main flow, a clip per feature
 
 Ricardo: "README should be less complex and focus on main flow (e.g. 1 pane per chat, auto PR link, PR activity/status

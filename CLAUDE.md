@@ -27,7 +27,7 @@ npm test                            # node:test over test/ — pure logic, and t
 npm run check                       # static: scripts parse, the page compiles, vendored xterm = node_modules, shell, swiftc -typecheck, this file's size (≈10 s)
 npm run verify -- "<js>"            # one expression on the live board in headless Chrome (see Verifying)
 npm run webkit -- "<body>"          # the same in WebKit, the app's engine; --shot is the compositor's own frame
-npm run perf                        # the board's cost in WebKit on a busy made-up board, and the animation rules (≈40 s); --against <ref>, --app
+npm run perf                        # the board's cost in WebKit, and the animation rules (≈40 s; see Verifying)
 npm run scenario -- scripts/scenarios/<name>.mjs   # a multi-step browser check on its own server (see Verifying)
 npm run scenarios                   # all of them, one at a time, with a verdict (several minutes); `-- drawer` narrows it
 npm run map                         # rewrite the section maps at the top of server.mjs and index.html
@@ -168,7 +168,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   only** — not over a tracked change (`dirty`), a branch that moved on its own (`diverged`), a held commit, or within
   `UPDATE_QUIET_MS` of a key sent to a drawer or anything done on the board (`lastTouchAt`); *check now* (`asked`) skips
   that wait, *update now* (`apply`) the switch, the hold and a change — not one the commits change too (`clash`,
-  2026-10-15; `whyNot`); the settings name the files and what to run. What the commits touched starts again
+  2026-10-15; `whyNot`); Settings' row: a word, the commands under Details (`updWord`). What the commits touched starts again
   (`updateParts`): `npm install`, the agent (`launchd.sh restart`, detached), the app (`mac/build.sh install`, detached)
   when behind, the page — it reloads itself once left be (`takeUpdate`, `reloadBusy`: at once if asked for there; never
   mid-update nor before the new server is back). **Its progress is the status bar's** (`updSeg`, `updRun`; the app's
@@ -220,7 +220,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * **Two columns**: the selected project's chats → the chat. **The list's foot is the project filter's whole cue**
   (`#sessions` rows: the list `minmax(0, 1fr)`, the project): `#stitle` names the project (`hidden` on ALL; a click is
   ⌥⌘P, × back to ALL), and the chat header's folder name toggles it (`.repo.on`); on the rail, `projAbbr` (`.ab`). The
-  fish, the search and the funnel are the status bar's (below); no ＋ (⌥⌘N), no cog (⌘, and ···), no « » (⌥⌘B). At the
+  fish, the search and the funnel are the status bar's; no ＋, cog or « » (⌥⌘N, ⌘,, ⌥⌘B). At the
   notch the cards start under the strip (`.npad`); elsewhere flush with the top. → `project-cue.mjs`. A chat is *ready · clauding · done*
   (`bucket()`); the server keeps the finer `status` for notifications and the badge.
 * **The cards are reconciled, not rebuilt** (2026-09-27): `renderSessionList` builds `{id, html}` items and
@@ -253,8 +253,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `--ease-out`, `--spring`, `--spring-soft` (`linear()` curves, read by the script through `cssToken`) and `--t-hover`.
   A new rule takes one — settling eases out, arriving springs —, and a fit that needs its own number says why. **A press
   dips by the `scale` property** (the FLIP's `transform` and the ring's stay theirs): a card 99 % unless the press is on
-  a control in it (`:has`), small controls 97 % — never the address, nor a tab pressed on its × (2026-10-12: it moved
-  the × off the pointer). → `small-motions.mjs` (the 2026-10-11 motions, one section each), `pane-tabs.mjs`.
+  a control in it (`:has`), small controls 97 % — never the address, nor a tab pressed on its × (it moved
+  the × off the pointer). → `small-motions.mjs`, `pane-tabs.mjs`.
 * **Counts roll** (`rn(key, n)`, `rollSoon`): a count is plain text in `.rn[data-rk]`; after a draw, one whose key
   showed another number becomes a digit strip, plain text again `ROLL_MS` later — so `setHtml` and the reconciles
   compare the same strings, and `textContent` reads the number mid-roll (`.rv`). Each strip rolls by an animation of
@@ -279,7 +279,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * **The broad gradients wear grain** (`--grain` as their first layer: the header, `#log`'s wash, the wallpaper) —
   not the cards, whose first layer is the lit edge the harness reads. A new wide gradient takes it.
 * **Accessibility is kept by rule** (2026-10-12): the settings' `.stabs` and each half's strip are `tablist`s
-  (`aria-selected`), the small terminals `inert`, `prefs.termReader` xterm's `screenReaderMode`; what colour or motion
+  (`aria-selected`), the small terminals `inert`, `readerOn` xterm's `screenReaderMode` (VoiceOver or
+  `prefs.termReader`); what colour or motion
   says, words say too, out of sight (`.vh`: a card's lane and *watching*, a CI badge — `ckHtml(pr, said)` —, a tool
   row's state, the unread count); small text reads at AA in both themes (`--pr-*`, `--tk-*`, `--unread`, each theme's
   `--needs`; a done card dimmed by `filter: saturate`, never `opacity`) — **a new small-text colour gets its ratio
@@ -325,8 +326,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   appearance. **The appearance is the board's, whatever macOS shows** (2026-10-12): `<html data-theme="dark|light">`,
   which every dark rule reads — **never `prefers-color-scheme`**; a new one is `:root[data-theme="dark"] …` —, set
   before the first paint by the head's script from `prefs.look` and kept by `applySkin`. Worn (`wornKey()`, `skinOn()`):
-  `prefs.skin` (a theme, `own-dark` or `own-light`), or with *follow macOS* (`prefs.skinFollow`; the harness's
-  default, `launchChrome`) the slot of the system's appearance (`slotOf`: `prefs.skinDark` / `prefs.skinLight`, which
+  `prefs.skin` (a theme, `own-dark` or `own-light`), or under Appearance › Auto (`prefs.skinFollow`, the
+  default; `setLook`) the slot of the system's appearance (`slotOf`: `prefs.skinDark` / `prefs.skinLight`, which
   every pick fills). The app's window wears the appearance kept (`appearance` → `window.appearance`, remembered as
   `peixairada.dark`; none while following), so the pane's pages follow it. The CSS's blacks read `--crust`, `--bar`,
   `--hd-*`. A project's colour moves to the theme's nearest hue (`skinColor` in
@@ -423,7 +424,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   the view, lets go. Drawn only when its markup changed (`peopleDrawn`); none on the rail. → `people-row.mjs`.
 * **A card comes in three sizes** (`#cardsSize`, `prefs.cards`; compact the default): *large* — your last prompt and
   Claude's last reply —, *medium* the last word, *compact* neither. `cardHtml` always writes both `.snip`s (the older
-  `.older`) and CSS hides by `#sessions[data-cards]`, so the slider re-renders nothing. *By lane*
+  `.older`) and CSS hides by `#sessions[data-cards]`, so the size re-renders nothing. *By lane*
   (`prefs.cardsByLane` → `data-bylane`): a card that wants you (`roomy(s)`) is large. **Compact's *same height***
   (`prefs.cardsEven` → `#sessions[data-even]`): one title line, the question left to the red edge, and the move line or
   `.moveslot` — an invisible line of its metrics, never `.prmove`, which the harness reads. → `card-sizes.mjs`.
@@ -489,10 +490,10 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `REDUCED` jumps). The rail's hit area is `.tl-catch` (`TL_CATCH`, `tl.reach`); a press on no label is on the `.near`
   one. **Hidden, a frame a scroll alone asked for does not draw it** (`listChanged(true)`, 2026-10-13); `show()` and
   anything else asking do. `peix.state().timeline`. → `timeline.mjs`.
-* **The status bar is the machine at the window's foot** (2026-10-09, always there since 2026-10-14; `#sbar`,
+* **The status bar is the machine at the window's foot** (2026-10-09; `#sbar`,
   `renderBar`, `body`'s grid row 2): `#sbFind` (`#filters`, in the markup), `#sbLeft` (the connection, `bar.conn`, its
   fish the SSE light and its click the About box; the asking and monitor counts while any; the update, `updSeg`),
-  `#sbPeople` (`#people`, in the markup), `#sbSwim`, and `#sbRight` — the machine (`prefs.barStats`; `GET /api/stats?want=…`
+  `#sbPeople` (`#people`, in the markup), `#sbSwim`, and `#sbRight` — the machine (`prefs.barStats`, `setBarStats`, also a right-click; `GET /api/stats?want=…`
   every 3 s, `machineStats`, memory kept `MEM_EVERY_MS`), the plan usage as pie meters (`sbMeter`, `uShort`: 5H, 1W, a model's initial, $ a cap in
   money; a grant only in the rows, `uGrant`) — a click lifts its rows (`usageRows`: a bar in `--spend`, red from 90 % —
   `uColor` —, the clock's tick `uPace`/`uSpan`, the time to reset, `.umoney`),
@@ -524,12 +525,12 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   first run** (no roots set or in the environment, the file readable): `#welcome` (`welcomeSync`), filled from `GET
   /api/config/suggest` (`suggestRoots`, `checkoutOf`, `orgOf`); Skip is `roots: []`, Esc only puts it off; `create:
   true` (the welcome's only) makes a folder under the home; in the app Choose… is an `NSOpenPanel` (`peixFolder`).
-  Test servers set `ORG_DIR`, so the welcome never shows unless a scenario clears it. The Setup pane (`renderSetup`,
-  never redrawn under a box with the keyboard) is reached by `.srow.root(.add)`, `.sdir`, `.sorg`, `#quickSel`,
-  `.srow.proj`, `.sab`, `.ssw`, `.sadd` — keep those names. → `test/config.test.mjs`, `cog-setup.mjs`, `welcome.mjs`.
+  Settings' Projects and Jira panes
+  (`renderSetup` → `#setup`, `#jiraSet`; not redrawn under a box with the keys) are reached by
+  `.srow.root(.add)`, `.sdir`, `.sorg`, `#quickSel`, `.srow.proj` (its `.stile` opens `.ssw` and `.sab`), `.sadd` — keep those names. → `test/config.test.mjs`, `cog-setup.mjs`, `welcome.mjs`.
 * **The tour** (2026-10-14; `#tour`, `TOUR`, `tourStart`, `tourPlace`): a modal dialog the window's size — a hole in a
   veil (the hole's own shadow) round each step's part, the card on the side with room. Once on its own after the
-  welcome's answer (`prefs.toured`; the harness's `true`), again from Settings' head, ⌥⌘L, home, the ? sheet and About.
+  welcome's answer (`prefs.toured`; the harness's `true`), again from Settings' sidebar, ⌥⌘L, home, the ? sheet and About.
   A step's part is found as the board stands (`at`); none, `need` leaves the step out, else the card is centred — with
   a picture (`pic`) where a step has no part of its own. A new main part gets a step. → `tour.mjs`.
 * **The page asks the server through `api(method, url, body)`**: JSON in, JSON out, a throw with the server's own
@@ -539,7 +540,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 ## Hotkeys and the pane
 
 * **`HOTKEYS` in index.html is the whole ⌥⌘ family, and every key is a row of `KEYS`** (2026-10-12): what you press, its
-  group, one line, and the codes it is in HOTKEYS or CMDKEYS — the Keys pane and the ? sheet are drawn from it, and
+  group, one line, and the codes it is in HOTKEYS or CMDKEYS — the ? sheet is drawn from it (`keyNotes`: the setup's words), and
   `npm run check` (`check-page.mjs`) fails a code with no row, a row no map answers, a ⌥⌘ key `boardKeys` in
   main.swift does not forward or forwards unanswered, or an *again* row no `hot…Key` answers. The letters: **T** the chat's zsh tab (`hotShell()`,
   `s.shells`), **E** VS Code Web in the pane, **V** the folder in VS Code's
@@ -577,10 +578,10 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   script in the `ide:` views alone takes it first only when the
   editor part is `.content.empty` (one group, no editor) and the tab of the view it came from goes, by its key. An
   editor open, ⌘W is VS Code's; ⌥⌘W closes the tab any time. → `tab-keys.mjs`.
-* **⌃⌘F is the full screen Settings › Look picks** (2026-10-14; `toggleFull`; `prefs.fullSpace` → `fullscreen` →
+* **⌃⌘F is the full screen Settings › General picks** (2026-10-14; `toggleFull`; `prefs.fullSpace` → `fullscreen` →
   `spaceMode`; on at quit, `peixairada.fill`, back on at launch; `kill -USR1 $(pgrep -x peixAIrada)` too). **Its own
-  Space** is macOS's (`.fullScreenPrimary`), below the housing (AppKit holds the frame there): the page
-  hears no fill, the fill's machinery stays off. **Up to the notch is the fill** (`toggleFill`; `BoardWindow`,
+  Space** is macOS's (`.fullScreenPrimary`), below the housing: the page
+  hears no fill. **Up to the notch is the fill** (`toggleFill`; `BoardWindow`,
   borderless, the whole screen; `fill: on …` in the app log): the menu bar auto-hidden beside a camera housing, hidden
   without one (`placeFill`, `fillOptions()`), let out by the pointer at the top (`menuOut`), tucked after a change of
   desktop (`tuckMenuBar`); the Dock out at its edge (`dockTick`); `.fullScreenNone`, a plain click on the green button the fill (`windowShouldZoom`); ⌘W leaves it first.
@@ -607,7 +608,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   the project in view does. ↑↓ walk a `.qsel` card, ⏎ opens it and keeps the query; the mark shows only while the box
   has the keyboard (`markQsel()`). → `chat-filter.mjs`.
 * **A right-click is a menu where ⌥-click, a double-click or a drag did alone** (2026-10-12; `#ctxm`, `ctxRows`,
-  `ctxShow`): a card, a PR chip, the colour square — not a box, a terminal or the transcript's words, which keep the
+  `ctxShow`): a card, a PR chip, the colour square, the status bar — not a box, a terminal or the transcript's words, which keep the
   system's. The launcher has the open chat's rows too. A row may carry `sub` (a second line, `.two`) and `off`
   (disabled, its `sub` the reason). → `context-menu.mjs`.
 * **⌥⌘L is the launcher** (2026-10-10; `#pick` in mode `launch`): `launchRows` gives each section's best (chats,
@@ -648,11 +649,13 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   → `clone-folder.mjs`.
 * **The settings are one modal dialog** (`#settings`): ⌘, (`CMDKEYS.Comma`; in the app the menu's *Settings…* asks
   `peixKey`), the header's ··· row (`#settingsBtn`) and the empty header's ··· (`#noChatMore`, delegated — `leaveChat`
-  rewrites the header). Three panes (`.spane`) under `.stabs`: **Board** (sections `h4.shd`), **Setup** (`#setup`), **Keys** (`.keys`). The class is still `pop`, so rows keep their
-  `.pop …` rules. **It is modal**: the pane is down and the ⌥⌘ / ⌘ keys are swallowed under it — close it first (the
-  scenarios do); its `close` drops a setup row half typed. **The fish is the SSE light** (the status bar's `.conn`), belly-up
-  while the stream is down (`FISH_LOGO()` from `<template id="logo">`; animations, not transitions, since the bar redraws
-  it); clicked, the About box (`#about`).
+  rewrites the header). **A sidebar of panes and a search box** (2026-10-16; `settingsTab`, `prefs.settingsPane`;
+  `settingsAt(pane, row)` opens on a row, lit): `#sq` has the keys on open, `settingsFind` hides what does not match
+  (`.nomatch`) and marks it (`::highlight(sfind)`), Esc lets a search go first. **A setting is a `.srow.set`** — `.sl`
+  (name, one line), its control right — in a `.sgrp` (`.sgh`, `.slist`, `.sgf`); a dependent `.sub`, `.off` with the
+  reason, never hidden; `data-kw` feeds search. → `settings-panes.mjs`. The class is `pop`: rows keep `.pop …` rules. **It is modal**: the pane down, the ⌥⌘ / ⌘ keys swallowed — close it first (the scenarios
+  do); `close` drops a setup row half typed. **The fish is the SSE light**, belly-up while the stream is down
+  (`FISH_LOGO()`, `<template id="logo">`; animations, not transitions: the bar redraws it).
 * **Every `pre` in the transcript is inside a `.codebox`** (`md()`): the bar (language, copy) is its first child; a
   block over six lines is always folded, `details.codefold > summary + .codebox`. A rule that reaches a `pre` goes
   through the box; the copy click is delegated on `#log`.
@@ -693,10 +696,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   bar (`buildFindBar`, the pane's top right) over WKWebView's `find(_:configuration:)` — no count, the match is the
   page's selection, dropped on close (`kDropSelection`); typing searches from the top (`runFind(fromTop:)`). A pane change closes it; `findQuery` outlives it.
 * **VS Code Web is told the Mac's keyboard layout** (2026-10-14, `KeyboardMap`, `ide:` views only): WebKit has no
-  `navigator.keyboard`, so its shortcuts were U.S. until a key typed made it guess one of its 16 bundled layouts. A user
-  script gives it Chrome's `getLayoutMap()` (`KeyboardMap.current()`, UCKeyTranslate unshifted, over the `peixKeyboard`
-  reply handler) and a `layoutchange` on a new input source (`layoutChanged`). Portugal's is not bundled: it picks
-  Spanish ISO, as in Chrome.
+  `navigator.keyboard`; a user script gives it Chrome's `getLayoutMap()` (`KeyboardMap.current()`, UCKeyTranslate unshifted, over the `peixKeyboard`
+  reply handler) and a `layoutchange` on a new input source (`layoutChanged`). Portugal's: Spanish ISO, as in Chrome.
 * **The trackpad bumps** (`haptic(kind)` → `{type: 'haptic'}` → `NSHapticFeedbackManager`): a splitter snapping
   (`LIST_W`, half the window, even halves — `SNAP_PX`), a tab dropped across (`moveTab`), the timeline's thumb crossing
   a run. In a browser it is a `haptic:<kind>` in `motion()` and nothing else.
@@ -907,7 +908,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   (`openExternal(url, { ide, s })`). The transcript is linkified as rendered (`linkify`); the drawer has a link
   provider beside the web-links addon (`termLinks`, `peix.links(y)`). → `chat-links.mjs`.
 * **Files open in VS Code or Zed; ⌥⌘E is VS Code Web either way** (2026-10-13; `prefs.editor`, `EDITORS`, `#edPick`
-  in Settings › Board › Chats): both open `<scheme>://file/<path>:<line>:<col>` in the app's own window, which the app
+  in Settings › General): both open `<scheme>://file/<path>:<line>:<col>` in the app's own window, which the app
   hands to the system and a browser follows as a link (never `window.open`, which leaves a blank tab). Zed has no web
   version to frame, so `#webBtn` stays VS Code Web and Zed's own window is `#zedBtn` (`onZed()`); **the settings say so
   in words under the pick** (`ZED_NOT` in `#edSay`). A switch redraws the transcript (`logView.arr = null`), so its links
@@ -935,10 +936,9 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * `.cards > * { flex: none }` is load-bearing; `.card { --repo: initial }` too (custom properties inherit), and
   `.card { isolation: isolate }`: the ring and its cover sit at z-index -1 under the card's background only because
   the card is its own stacking context. **So is `#slist { isolation: isolate }`** (2026-10-13): in a scroller that is
-  no stacking context WebKit makes every such card a layer of its own, with a clip layer — 1,325 CALayers for 400
-  cards, 117 with it. A new scroller of positioned boxes gets one too. **And each card is a layer inside it**
+  no stacking context WebKit makes every such card a layer of its own, with a clip layer. A new scroller of positioned boxes gets one too. **And each card is a layer inside it**
   (`#slist > .card { will-change: transform }`): painted into the list's tiles instead, a scroll repainted every card
-  it exposed and a glow under the pointer its tile (scrolling a frame at a time dropped 34–44 frames in 6 s, 0 so).
+  it exposed and a glow under the pointer its tile.
 * `.shead { min-width: 0 }` and a fixed `flex-basis` on `.shead h2`; PR chips are direct children of the header.
 * **Every grid row in the chat column is placed by hand** — `#chat`'s, each half's `.ptabs` / `.gbody`, and
   `#sessions`' (whose *column* is placed too: the timeline, the glass and the ends lie over the list's cell). A hidden

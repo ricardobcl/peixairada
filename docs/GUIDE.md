@@ -60,7 +60,7 @@ Each is a tab of the chat; the column splits in two halves when there's more tha
 | ⌥⌘C | 🖥️ **Claude Code itself** — the real terminal: resume any chat, or take over one running in iTerm or VS Code. A chat whose Claude has ended resumes on a click (or ⌥⌘C), cloning its repo first when its folder isn't checked out. It survives the board's restarts. |
 | ⌥⌘T · ⌘T | 🐚 **A shell** in the chat's folder, on a tab of its own — ⌘T opens another, or on a web page a blank tab, its address ready to type into. ⌘W closes the tab you are in. |
 | ⌥⌘G | 🐙 **The PR on GitHub** — its page on a tab (a chip in the header opens it too); its state, its CI and whose move it is under the header. With several, ⌥⌘G again from one picks another. |
-| ⌥⌘E · ⌥⌘V | 🧩 **VS Code Web** on the chat's folder — or ⌥⌘V, the folder in VS Code itself. A file path clicked in a chat opens at its line in VS Code or Zed, in its own window (Settings › Board › files open in). |
+| ⌥⌘E · ⌥⌘V | 🧩 **VS Code Web** on the chat's folder — or ⌥⌘V, the folder in VS Code itself. A file path clicked in a chat opens at its line in VS Code or Zed, in its own window (Settings › General › Open files in). |
 | ⌥⌘D | 🔀 **The chat's changes** — this turn's edits, everything uncommitted, the branch against its base, or a PR's, as a diff. Commit… and Push type into its shell; a note on a line goes to Claude. |
 | ⌘2 · ⌥⌘2 | ◫ **Split** the column side by side, or one half over the other; drag a tab across, ⌘0 closes the other half. Press a tab's key again from it (⌥⌘C, ⌥⌘T, ⌥⌘G, ⌥⌘E, ⌥⌘D) and its half fills the column (⌥⌘G with several PRs: their picker first); once more, both are back. |
 
@@ -79,7 +79,7 @@ GitHub and VS Code open in the chat in the Mac app; in a browser they open in a 
 
 ## Make it yours
 
-Every look is a switch in Settings › Board (⌘,), or a key: the list folded to a rail of squares (⌥⌘B), Omarchy's
+Every look is in Settings › Appearance and Chat list (⌘,), or a key: the list folded to a rail of squares (⌥⌘B), Omarchy's
 twelve themes (⌥⌘Y — Tokyo Night, Catppuccin, Gruvbox, Nord, Rosé Pine…), dark or light whatever macOS shows, or one
 of each following it; your projects keep their hue in the theme's shades.
 
@@ -119,7 +119,7 @@ of each following it; your projects keep their hue in the theme's shades.
 | ⌥⌘Y | the theme |
 | ⌥⌘R · ⌘R | reload the board · reload the page in the pane (VS Code Web keeps its own ⌘R) |
 
-`?` (or Settings › Keys) lists the rest, grouped. A right-click on a card, a PR chip or a project's colour square has
+`?` (or *Keyboard shortcuts* in Settings) lists the rest, grouped. A right-click on a card, a PR chip or a project's colour square has
 what ⌥-click and a double-click do — rename, tick done, take a PR off, let go of a colour — and the launcher has the
 same for the open chat.
 
@@ -145,13 +145,13 @@ the *Claude Code-credentials* keychain item (your plan usage — *Always Allow*)
 |---|---|---|
 | [GitHub CLI](https://cli.github.com), signed in | PRs — their state, CI, faces and whose move — and cloning repos | `brew install gh && gh auth login` |
 | VS Code | ⌥⌘E (VS Code Web beside the chat) and file links | [code.visualstudio.com](https://code.visualstudio.com) |
-| [Zed](https://zed.dev) | file links in Zed instead (Settings › Board) | none: picking it installs it |
+| [Zed](https://zed.dev) | file links in Zed instead (Settings › General) | none: picking it installs it |
 | [Task](https://taskfile.dev) | new chats in folders whose Taskfile starts Claude (folders Claude Code trusts) | `brew install go-task` |
 
 **Updating**: the status bar says when new commits have come; click it and it pulls them — a fast-forward that leaves
 your own changes as they are — and restarts only what they changed: the packages, the server (your chats stay open),
 the page, the app. When a file you changed is one the commits change too, or your branch has commits of its own,
-Settings › Updates names it and the command that clears the way. *Update itself* pulls on its own once you've left the
+Settings › Updates & access says so, with the command that clears the way under Details. *Update automatically* pulls on its own once you've left the
 board be for two minutes, and never while a file is changed here. By hand: `git pull && npm install &&
 scripts/launchd.sh restart` — the board's page follows —, and `mac/build.sh install` when `mac/` changed. After
 switching Node versions, or installing a CLI outside the `PATH` you installed with, run the last two install lines
@@ -162,17 +162,22 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
 
 ## Settings and setup
 
-**Settings** — ⌘, or ··· in the chat's header:
+**Settings** — ⌘, or ··· in the chat's header — is a sidebar of panes with a search box on top (type *dark*, *zoom*
+or *key* to find a setting wherever it is):
 
-- **Board** — *Alerts*: notifications, sounds · *Chats*: card size (compact, or large only where a chat wants you),
-  where files open · *Look*: text size (the whole board, in the app), the theme and whether it follows macOS, what else
-  the status bar shows · *Terminal*: ⌥ as Meta, a screen reader in the terminal · *Access*: whether the board's key is
-  required yet, and a new key (every browser then asks for it again) · *Updates*: whether the board updates itself
-  (off to begin with: the status bar says when new commits came, and *update now* takes them), where it stands, check
-  now.
-- **Setup** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
-  project ⌥⌘O starts a chat in, a short name and a colour per project, and your Jira site, email and API token (the
-  token goes to your keychain, never into the file).
+- **General** — notifications and sounds, which editor a file path opens in, and (in the app) which full screen ⌃⌘F is.
+- **Appearance** — Auto, Dark or Light (Auto follows macOS), a theme for each as tiles (⌥⌘Y shows them all on the
+  board), the text size, and what else the status bar shows (a right-click on the bar picks that too).
+- **Chat list** — card size (compact, or larger only where a chat needs you).
+- **Terminal** — ⌥ as Meta, and a screen reader in the drawer (on by itself while VoiceOver runs).
+- **Projects** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
+  project ⌥⌘O starts a chat in, a short name and a colour per project, and the projects you hid.
+- **Jira** — your site, email and API token (the token goes to your keychain, never into the file).
+- **Updates & access** — where the board's update stands and whether it updates itself (off to begin with: the status
+  bar says when new commits came, and *Update now* takes them), whether the board's key is required yet and a new key
+  (every browser then asks for it again), and where the setup file is.
+
+The sidebar's foot has the keyboard shortcuts and the tour.
 
 The setup is a file of yours, `~/.config/peixairada/config.json` (`$XDG_CONFIG_HOME` moves it) — edit it by hand or
 keep it with your dotfiles; the board picks up a change within seconds:
