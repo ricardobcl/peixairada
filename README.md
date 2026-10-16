@@ -169,7 +169,8 @@ and `~/Library/Application Support/peixAIrada` to forget your setup and the boar
 
 - **Board** — *Alerts*: notifications, sounds · *Chats*: card size (compact, or large only where a chat wants you),
   where files open · *Look*: text size (the whole board, in the app), the theme and whether it follows macOS, what else the status bar
-  shows · *Terminal*: ⌥ as Meta, a screen reader in the drawer ·
+  shows · *Terminal*: ⌥ as Meta, a screen reader in the drawer · *Access*: whether the board's key is required yet,
+  and a new key (every browser then asks for it again) ·
   *Updates*: whether the board updates itself (off to begin with: the status bar says when new commits came, and
   *update now* takes them), where it stands, check now.
 - **Setup** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
@@ -188,7 +189,8 @@ keep it with your dotfiles; the board picks up a change within seconds:
 }
 ```
 
-What the board records as you use it — done ticks, titles, pins — stays in `~/Library/Application Support/peixAIrada/`.
+What the board records as you use it — done ticks, titles, pins — stays in `~/Library/Application Support/peixAIrada/`,
+with its key (`key`) and VS Code Web's token (`vsweb-token`).
 
 <details>
 <summary>Environment variables</summary>
@@ -204,6 +206,7 @@ What the board records as you use it — done ticks, titles, pins — stays in `
 | `CLAUDE_BIN` `GH_BIN` `CODE_BIN` `TASK_BIN` | from `PATH` | where the CLIs are |
 | `CLAUDE_DIR` · `STATE_FILE` | `~/.claude` · `~/Library/Application Support/peixAIrada/state.json` | what it reads · keeps |
 | `CONFIG_FILE` | `~/.config/peixairada/config.json` (beside `STATE_FILE` when that is set) | the setup |
+| `KEY_MODE` | — | `enforce`: the key from the first request, before the app has opened with it |
 
 The login agent takes `PORT`, `NOTIFY` and your `PATH` at `scripts/launchd.sh install`.
 
@@ -236,7 +239,9 @@ same for the open chat.
 
 ## 🔒 Good to know
 
-- Transcripts hold everything Claude read. The server listens on `127.0.0.1` only, with no login — keep it that way.
+- Transcripts hold everything Claude read. The server listens on `127.0.0.1` only, and answers nothing but its page
+  without the board's key (a file only you can read, in the state folder); VS Code Web has a token of its own. Keep it
+  on `127.0.0.1`: past it, the key crosses your network unencrypted.
 - Only `gh` (PR states, clones), the plan-usage call, Jira (once you set it up), a `git fetch` of the board's own
   checkout every half hour (its updates) and, with VS Code installed, an hourly look at VS Code's update service (so VS
   Code Web has its newest build before you open it) leave your machine.
@@ -248,7 +253,8 @@ same for the open chat.
 screenshots from a made-up board (VS Code Web's wants the `code` CLI). The browser checks drive Google Chrome (`CHROME`
 points at another); `npm run webkit` runs the board in WebKit, the app's engine, and `npm run perf` measures what it costs
 there on a busy made-up board (`-- --against <commit>` beside an older one, `-- --app` the app as it runs).
-[CLAUDE.md](CLAUDE.md) holds the working notes, [docs/DECISIONS.md](docs/DECISIONS.md) the why.
+The API from a terminal wants the key too: `scripts/board.sh /api/terminals` sends it; `npm run verify` and
+`npm run webkit` hand the page the live board's (`KEY=` for another). [CLAUDE.md](CLAUDE.md) holds the working notes, [docs/DECISIONS.md](docs/DECISIONS.md) the why.
 
 Home's sunset is [*ocean sunset*](https://ascii.rest/ocean-sunset/) by [bas3line](https://github.com/bas3line/ascii)
 (MIT), ported as it stands; the leaping fish is ours.

@@ -110,7 +110,9 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `x-peix-key` (`api()`) or `?key=` (the stream, a socket); the app injects it (`giveKey` → `PEIX_KEY`), a browser
   trades a ticket on a tab the server opens (`/api/key/open`, `keyTicket` → `localStorage`, never a cookie), else the
   lock (`#lock`). A wrong key is refused always, none once `keyRequired()` (`KEY_MODE`, HOST past loopback,
-  `keyEnforced`: the app's page with it, no app, Settings). → `test/key.test.mjs`, `board-key.mjs`.
+  `keyEnforced`: the app's page with it, no app, Settings). **A new route is keyed unless in `KEY_OPEN`; a new client
+  sends the key** (`keyed()`, `keyHeaders()`; a test's `srv.api` · `srv.ws` · `srv.key`; `window.PEIX_KEY` in a
+  scenario's page). → `test/key.test.mjs`, `board-key.mjs`.
 * **The port first, then the boot**: `main()` waits until `listen` succeeds before it reads the state file (`loadState`; an import neither reads nor saves it), adopts holders, reads the
   registry, polls or saves state; every request and upgrade waits for `booted`. **A route writes its head only once
   its body is in hand**, and the handler's catch destroys a response whose head went out.
@@ -996,9 +998,9 @@ Look at the screenshots (`Read` renders
 PNGs). **After any edit to the page, load it**: `check-page` only compiles, and a `const` read before its line kills
 the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `npm run verify` reads the live one.
 
-* `npm run verify -- "<js>"` evaluates one expression on the live board; `--hash <id>` opens a chat first,
-  `--shot file.png` saves a screenshot after, `DARK=1`, `URL=http://127.0.0.1:<port>/`. `--dump-dom` is useless here
-  (fires before the SSE snapshot); drive Chrome over CDP — `lib/cdp.mjs`.
+* `npm run verify -- "<js>"` evaluates one expression on the live board, handed its key; `--hash <id>` opens a chat
+  first, `--shot file.png` saves a screenshot after, `DARK=1`, `URL=http://127.0.0.1:<port>/` (and `KEY=`). Drive
+  Chrome over CDP (`lib/cdp.mjs`), never `--dump-dom`: it fires before the SSE snapshot.
 * **What only the app shows is checked in WebKit** (`npm run webkit -- "<body>"`): the harness is Chrome, and a bug of
   WebKit's passes every scenario. It runs an async body on the live board in a `WKWebView` (its head says the knobs);
   `--shot` saves the window as **the compositor** drew it, and `--then` runs a body on that frame. A body asks the
@@ -1040,7 +1042,7 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   (empty unless a fixture), config beside its `STATE_FILE`; the fakes (`GH_BIN` — only the fields the query asks, `FAKEGH_FAIL` —, `caffeinate`, `pmset` with
   `AWAKE_ADMIN=none`, `CODE_BIN`, `TASK_BIN`; `CLAUDE_BIN` `noclaude.mjs` unless `fake`), `VSWEB_PORT` free, `UPDATE_DIR` empty; Jira's token in its own file (`JIRA_TOKEN_FILE`), no inherited `JIRA_API_TOKEN`; a `ZDOTDIR`
   with no rc files; `VSWEB_FRESH_MS` 0; `UPDATE_EVERY_MS` 0; `USAGE=off`; `APP_DIRS` its own, `BREW_BIN` the fake,
-  `LSREGISTER_BIN` `/usr/bin/true`; `KEY_MODE=enforce` (`srv.key`, `srv.ws(path)`), `open` a fake; no inherited `CONFIG_FILE`, `TERMS_DIR` or XDG dirs. Up is its
+  `LSREGISTER_BIN` `/usr/bin/true`; `KEY_MODE=enforce`, `open` a fake; no inherited `CONFIG_FILE`, `TERMS_DIR` or XDG dirs. Up is its
   `listening` line (a port taken first moves it to a fresh one); stdin a pipe whose end stops it (`PEIX_TEST_PARENT`); `meta.env` is spread last. `waitFor(fn, {timeout, what})`, `srv.post(path, body)` and `tmpDir()`
   are the tests' polls, POSTs and dirs (a bare `mkdtempSync` fails `npm run check`); every test process has its own
   state (`test/env.mjs`, preloaded). **A wait's timeout is for what never comes** (15 s by default, 2026-10-13):
@@ -1050,8 +1052,7 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   a stale chat and `DELETE`s the terminals it made.
 * **Two measurement traps**: Claude Code stops rendering while the terminal reports focus lost — a headless page's
   `focus()` is no focus without `Emulation.setFocusEmulationEnabled` (the runner sets it); and **every re-attach that
-  moves the drawer resizes it** — the clean re-attach is a reload of the page (`Page.reload`, then `openChat`), as
-  `focus-view` does.
+  moves the drawer resizes it** — the clean re-attach is a reload of the page, then `openChat`.
 * **The fake claude scrolls before it repaints on a shrink** (`drawLive`) and after a grow draws at the bottom, as a
   terminal app would. A red drawer scenario can be the fake's geometry, not the drawer's.
 * The page's script is one IIFE: read it through `window.peix` (`state()`, `session(id)`, `sessions()`, `prefs()`,
@@ -1064,11 +1065,9 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
 
 ## Deliberately not done
 
-* **Riso, a light theme in two inks — later, not never**: the intention, palette and shapes are in `docs/studies/`.
-  When built, it is a theme to pick.
-* **The title bar as one surface with the head row**: the page would have to lay its top row out round the traffic
-  lights and leave something to drag the window by — a design for in front of the app, which lives filled.
-  → Decisions 2026-09-27, late night.
+* **Riso, a light theme in two inks — later, not never**: in `docs/studies/`; built, it is a theme to pick.
+* **The title bar as one surface with the head row** — round the traffic lights, with something to drag the window
+  by: a design for in front of the app. → Decisions 2026-09-27, late night.
 * **Making VS Code's tab follow a chat continued elsewhere** — the extension watches only `~/.claude/sessions/`.
 * **Attaching to a *live* session from the board** — its inbox socket cannot answer a permission prompt for you, and
   its message JSON is undocumented. Live chats are refused on purpose.
