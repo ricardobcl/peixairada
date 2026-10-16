@@ -3847,7 +3847,7 @@ function termEnv() {
 // VSCODE_CLI_DATA_DIR, JIRA_API_TOKEN) and the holder's TERM_LINGER_MS, which the holder keeps from its PTY. A knob
 // added to the server joins the list (terminals.test reads the server for them).
 const BOARD_ENV = new Set(['PORT', 'HOST', 'NOTIFY', 'USAGE', 'STATE_FILE', 'CONFIG_FILE', 'TERMS_DIR', 'SCRATCH_DIR', 'ORG', 'ORG_DIR', 'APP_DIRS', 'BOARD_APP', 'AWAKE_ADMIN',
-  'MAX_ENTRIES', 'TAIL_BYTES', 'CHANGES_MAX', 'JIRA_TOKEN_FILE', 'JIRA_CONFIG_FILE', 'UPDATE_DIR', 'VSWEB_PORT', 'VSWEB_UPDATE_URL',
+  'MAX_ENTRIES', 'TAIL_BYTES', 'CHANGES_MAX', 'JIRA_TOKEN_FILE', 'JIRA_CONFIG_FILE', 'UPDATE_DIR', 'VSWEB_PORT', 'VSWEB_UPDATE_URL', 'CLAUDE_JSON',
   'AGENT_STALE_MS', 'CLONE_MS', 'CONFIG_POLL_MS', 'POWER_POLL_MS', 'DRAWER_IDLE_MS', 'MONITOR_MS', 'PR_TTL_MS', 'PR_WATCH_MS', 'REGISTRY_POLL_MS', 'TASK_GRACE_MS', 'TASK_MAX_MS',
   'TICKET_TTL_MS', 'UPDATE_EVERY_MS', 'UPDATE_QUIET_MS', 'VSWEB_FRESH_MS', 'WT_SWEEP_MS', 'UPDATE_RESTART_BIN', 'UPDATE_BUILD_BIN', 'PEIX_TEST_PARENT',
   ...['claude', 'gh', 'git', 'task', 'code', 'npm', 'brew', 'caffeinate', 'pmset', 'lsregister', 'lsof', 'ps'].map(n => `${n.toUpperCase()}_BIN`)]);   // findBin's
@@ -3948,8 +3948,29 @@ function onHolderGone(t) {
 // the page asks (`GET /api/launchers?cwd=`) before starting a chat. `task --list --json` lists them; cached by the
 // Taskfile's mtime, so it runs once per edit. A resume (`claude --resume`) never goes through task: its command line is
 // the Taskfile's.
+// …and only where Claude Code trusts the folder (2026-10-16): `task --list` runs the Taskfile's code — Task resolves a
+// dotenv path templated on an `sh:` variable before it lists anything, and a repo can pin its own task for mise's shim
+// in a `.tool-versions` — so a cloned repo's or a PR's commands ran the moment its folder was picked for a new chat,
+// before Claude Code would have asked whether to trust it. Now task is asked only where Claude Code has the folder, or
+// one above it, trusted (`projects[<dir>].hasTrustDialogAccepted` in its config, as Claude Code reads it): the bar at
+// which claude itself runs the folder's hooks. Not trusted, a folder has no launchers — a new chat there is a bare
+// claude, which asks — and once trusted it has them. The config is `~/.claude.json` (`<CLAUDE_DIR>/.claude.json` for
+// another CLAUDE_DIR, as Claude Code places it for its CLAUDE_CONFIG_DIR), read again when it changes; never written.
+const CLAUDE_JSON = process.env.CLAUDE_JSON || (resolve(CLAUDE_DIR) === join(homedir(), '.claude') ? join(homedir(), '.claude.json') : join(CLAUDE_DIR, '.claude.json'));
+let trustRead = { mtime: null, dirs: new Set() };
+function claudeTrusts(cwd) {
+  let mtime; try { mtime = statSync(CLAUDE_JSON).mtimeMs; } catch { return false; }
+  if (trustRead.mtime !== mtime) {
+    let projects; try { projects = JSON.parse(readFileSync(CLAUDE_JSON, 'utf8')).projects || {}; } catch { return false; }   // caught mid-write: asked again next time
+    trustRead = { mtime, dirs: new Set(Object.entries(projects).filter(([, p]) => p?.hasTrustDialogAccepted === true).map(([d]) => d)) };
+  }
+  let real = cwd; try { real = realpathSync(cwd); } catch {}
+  for (let d of new Set([resolve(cwd), real])) for (;;) { if (trustRead.dirs.has(d)) return true; const up = dirname(d); if (up === d) break; d = up; }
+  return false;
+}
 const TASKFILES = ['Taskfile.yml', 'Taskfile.yaml', 'taskfile.yml', 'taskfile.yaml', 'Taskfile.dist.yml', 'Taskfile.dist.yaml'];
 const launcherCache = new Map();   // cwd → { mtime, launchers } — or { mtime, asking }, the run under way
+const untrustedSaid = new Set();   // the folders whose Taskfile was left unasked, logged once each
 const TASK_NAME = /^[\w:.-]+$/;
 function taskfileOf(cwd) { for (const f of TASKFILES) { const p = join(cwd, f); if (existsSync(p)) return p; } return null; }
 /** Only an answer is kept (2026-10-03): a `task` that failed — a timeout, a broken include, a shim's hiccup — was
@@ -3957,6 +3978,10 @@ function taskfileOf(cwd) { for (const f of TASKFILES) { const p = join(cwd, f); 
  *  Asks at the same time share one run. */
 function launchersFor(cwd) {
   const file = cwd && taskfileOf(cwd); if (!file) return Promise.resolve([]);
+  if (!claudeTrusts(cwd)) {
+    if (!untrustedSaid.has(cwd)) { untrustedSaid.add(cwd); console.log(`[peixairada] ${cwd}: its Taskfile is not asked for launchers — Claude Code has not trusted the folder`); }
+    return Promise.resolve([]);
+  }
   let mtime; try { mtime = statSync(file).mtimeMs; } catch { return Promise.resolve([]); }
   const hit = launcherCache.get(cwd);
   if (hit?.mtime === mtime) return hit.asking || Promise.resolve(hit.launchers);
@@ -4669,7 +4694,7 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && p === '/api/launchers') {   // the folder's Taskfile tasks that launch claude, if any (see launchersFor)
       const cwd = url.searchParams.get('cwd') || '';
       if (!cwd.startsWith('/')) return json(res, 400, { error: 'cwd must be an absolute path' });
-      return json(res, 200, { cwd, launchers: await launchersFor(cwd) });
+      return json(res, 200, { cwd, launchers: await launchersFor(cwd), untrusted: !!taskfileOf(cwd) && !claudeTrusts(cwd) });   // a Taskfile left unasked (2026-10-16)
     }
     if (req.method === 'GET' && p === '/api/folders') return json(res, 200, { roots: boardConfig().roots, folders: rootFolders() });
     if (req.method === 'POST' && p === '/api/clone') {   // a repo of a root's org, cloned into that root — then the page starts a chat in it
@@ -4709,7 +4734,7 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST' && p === '/api/terminals') {   // a new chat in a folder — `claude`, or `task <name>` when the folder launches it so
       const body = await jsonBody(req);
       const cwd = typeof body.cwd === 'string' ? body.cwd : null, task = typeof body.task === 'string' && body.task ? body.task : null;
-      if (task && !(TASK_NAME.test(task) && (await launchersFor(cwd)).some(l => l.name === task))) return json(res, 400, { error: `no launcher named ${task} in ${cwd || '(no folder)'} — its Taskfile has ${(await launchersFor(cwd)).map(l => l.name).join(', ') || 'none'}` });
+      if (task && !(TASK_NAME.test(task) && (await launchersFor(cwd)).some(l => l.name === task))) return json(res, 400, { error: `no launcher named ${task} in ${cwd || '(no folder)'} — its Taskfile has ${(await launchersFor(cwd)).map(l => l.name).join(', ') || 'none'}${cwd && !claudeTrusts(cwd) ? ' asked of it: Claude Code has not trusted the folder' : ''}` });
       const r = await spawnTerm({ cwd, cols: body.cols, rows: body.rows, task });
       return json(res, r.code, r);
     }

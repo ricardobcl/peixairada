@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { connect, createServer } from 'node:net';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { alive, sleep, startTestServer, tmpDir, waitFor } from '../lib/testserver.mjs';
 import { defaultFixture } from '../scripts/fixture.mjs';
@@ -120,12 +120,22 @@ test('a chat in no folder (2026-10-14): the board\'s own folder, made for the fi
 test('a launcher: a folder whose Taskfile launches claude lists it, a new chat there runs `task <name>`, and the chat is tied to the drawer by descent', { timeout: 40_000 }, async () => {
   const cwd = tmpDir('peix-tf-'); writeFileSync(join(cwd, 'Taskfile.yml'), 'version: "3"\n');   // the fake task never reads it; the server looks for it
   const fx = defaultFixture(tmpDir('peix-fx-'), { cwdA: process.cwd(), cwdB: cwd });
-  const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { TASK_BIN: join(ROOT, 'scripts', 'faketask.mjs') } });
+  const ran = join(tmpDir('peix-task-'), 'runs'), runs = () => existsSync(ran) ? readFileSync(ran, 'utf8').trim().split('\n') : [];
+  const srv = await startTestServer({ claudeDir: fx.dir, fake: true, env: { TASK_BIN: join(ROOT, 'scripts', 'faketask.mjs'), FAKE_TASK_LOG: ran } });
   const post = body => srv.post('api/terminals', body);
   try {
     const none = await srv.api(`api/launchers?cwd=${encodeURIComponent(process.cwd())}`);
     assert.deepEqual(none.body.launchers, [], 'a folder without a Taskfile has no launchers');
+    // its Taskfile is the folder's code: not run before Claude Code trusts the folder (2026-10-16)
+    const shut = await srv.api(`api/launchers?cwd=${encodeURIComponent(cwd)}`);
+    assert.deepEqual([shut.body.launchers, shut.body.untrusted], [[], true], 'a folder Claude Code has not trusted has none, and says why');
+    const refused = await post({ cwd, task: 'production-workload' });
+    assert.equal(refused.status, 400); assert.match(refused.body.error, /Claude Code has not trusted the folder/);
+    assert.deepEqual(runs(), [], 'and task was never run there');
+    assert.match(srv.logText(), /its Taskfile is not asked for launchers — Claude Code has not trusted the folder/);
+    writeFileSync(join(fx.dir, '.claude.json'), JSON.stringify({ projects: { [realpathSync(dirname(cwd))]: { hasTrustDialogAccepted: true } } }));   // the folder above it, as Claude Code takes it
     const l = await srv.api(`api/launchers?cwd=${encodeURIComponent(cwd)}`);
+    assert.equal(l.body.untrusted, false); assert.deepEqual(runs(), ['--list --json'], 'trusted, task is asked');
     assert.deepEqual(l.body.launchers, [{ name: 'production-workload', desc: 'Launch Claude Code against the production workload cluster' }], 'only the task whose description mentions Claude');
     assert.equal((await srv.api('api/launchers?cwd=relative')).status, 400);
     const bad = await post({ cwd, task: 'setup' });
