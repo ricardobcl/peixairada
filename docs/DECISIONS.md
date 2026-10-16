@@ -2,8 +2,73 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-15. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-16. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-16 — a security review checked: VS Code Web's token, launchers behind Claude Code's trust, the board's key designed
+
+Ricardo: "check "peixairada-report.txt" on downloads" — an outside review of 515444f (a read of the source and
+reproductions in a temporary clone, whose scripts were gone by then, so each finding was reproduced here again) —
+and, on the answer, "yes, but what's the migration path for #1?".
+
+* **The board's API asks nobody who they are — confirmed, and what reaches it is a container.** `foreign()` stops a
+  web page (a foreign Host is a 403, another site's Origin too), not a client that writes its own headers: from
+  Colima's `alpine:3`, `host.docker.internal:7331` answered 403 as is and **200 with `Host: 127.0.0.1:7331`** — any
+  image run on this Mac could read every transcript and start a zsh here as the user. Another account on the Mac
+  alike; the LAN under `HOST=0.0.0.0` already said so in `foreignTo`'s comment. Not built: the design and its
+  migration are below.
+* **A Taskfile's code ran when its folder was picked for a new chat — confirmed, narrower than reported.** Task
+  3.49.1 on made-up Taskfiles: a top-level `sh:` variable that a top-level `dotenv:` path is templated on runs on every
+  `--list`, `--no-status` or not; one used only in a description, a task's own variables and `status:` commands did
+  not run. The board asks (`newChatIn`) only when a folder is picked in the new-chat flow — not on opening a chat or
+  showing a project. Here `task` is mise's shim with no global version, which fails in most folders — but a repo's
+  own `.tool-versions` naming task makes it run, mise asking nothing. **Built**: task is asked only where Claude Code
+  trusts the folder or one above it (`claudeTrusts`: `hasTrustDialogAccepted` in `~/.claude.json`, never written) —
+  the bar at which claude runs that folder's hooks. A folder of repos trusted whole (this Mac has one) lets everything
+  under it through, as it does for claude. Not trusted, a folder has no launchers (`untrusted` on the route, logged
+  once): a new chat there is a bare claude, which asks.
+* **VS Code Web was open to anyone who reached its port — confirmed, and worse**: serve-web answered `Host:
+  rebind.example:7332` with the workbench, so beyond containers and accounts a web page could reach it by DNS
+  rebinding (not tried end to end). **Built**: a token of the board's (`vsweb-token` in the state folder, 0600),
+  serve-web started with `--connection-token-file`. Measured on the real serve-web: no token or a wrong one, 403;
+  `?tkn=` a 302 to the same address without it (the other parameters kept) and `vscode-tkn` set (7 days,
+  `SameSite=Lax`); a build by name with the cookie still a 202. The page puts `tkn` on the address it opens; a reload
+  is the plain address and the cookie. **Its migration is the restart**: serve-web is the board's child, its group
+  signalled on the way out, so the new board starts a new one with the token; one that outlived its board and answers
+  without a token is refused with the port named — never ended by the board. The board's own API still hands the token
+  out, to whoever reaches it — closed with the board's key.
+* **DOMPurify 3.4.14** is in two LOW advisories (GHSA-6688-9rhm-gjv2, GHSA-p98j-92pf-mc4p; fixed in 3.4.16), both
+  `IN_PLACE` mode; the page's one `sanitize` uses neither it nor hooks. An upgrade is housekeeping, not done. **The test
+  they saw fail** (a drawer's environment listed) passes here alone: their environment's, not the code's.
+
+**Designed, not built — the board's key (the review's finding 1), and how every board moves to it:**
+
+* **A key, not a cookie**: 32 random bytes in `<state dir>/key`, 0600. Every `/api/*`, the stream and the terminal
+  upgrade want it — `X-Peix-Key` from `api()`, `?key=` where no header can go (EventSource, WebSocket) —, compared in
+  constant time after `foreign()`, before anything is dispatched. Open without it: `/` (the page is code, no data),
+  the vendored files and the two routes below. A cookie is per host, not per port: every server on 127.0.0.1 the
+  browser visits would get it, a container's published port with them — as `vscode-tkn` reaches 7331 today. The page
+  keeps the key in its own origin's `localStorage`.
+* **How a page gets it**: the app reads the file and gives its board view the key (a document-start script, the main
+  frame only), its own probes the header. A browser by a **ticket**: `scripts/launchd.sh open` (and the app's *Open in
+  browser*) opens `/#ticket=<one use, 60 s>`; the page trades it (`POST /api/key/claim`), keeps the key and drops the
+  fragment — a ticket because the address stays in the browser's history, which may sync. A page with no key, or a
+  refused one, is a lock page whose **Open with key** asks the server (`POST /api/key/open`, open to all, one per 10 s)
+  to `open` a ticket's address itself: the key goes to the user's screen, never to whoever asked, so a container can at
+  most open a tab. The browser's other tabs take it from the `storage` event. The harness: each test server's key from
+  its state folder (`srv.api`; a CDP script for Chrome and WebKit; the update's preflight is a test server); a drawer's
+  session reads the file (`scripts/board.sh get <path>`).
+* **The migration — one change, nobody locked out mid-update**: a key sent is always checked (a wrong one refused at
+  once), but a request **with none** is refused only once `keyEnforced` (state file) is on — set by the first keyed
+  request from the app's own page, or at a boot that finds no app installed; until then it is served and logged once.
+  **With the app** (Ricardo's way, and anyone's who runs it): the self-update pulls and restarts the agent, the page
+  reloads with no key and is still served, the app rebuilds (mac/ changed) and opens with the key, and the switch
+  flips — no lock page ever seen. **A browser alone**: the first boot enforces; the tab reloads into the lock page,
+  one click, once per browser. A board whose app never rebuilds stays open, and Settings says so until it does.
+  `HOST` past loopback enforces from its first boot (the LAN was never trusted). Once on it stays on; a new key
+  (Settings, `launchd.sh key --rotate`) sends every browser back to the lock page.
+* Processes of the same user are out of its reach by design (they read the file); the holders' sockets sit behind
+  `~/Library`'s 0700.
 
 ## Decisions of 2026-10-15, later — the colours are the setup's; the server's looks slowed
 

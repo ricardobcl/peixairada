@@ -71,7 +71,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `scripts/perf.mjs`, `lib/animcheck.mjs` | The board's CPU in WebKit on a made-up busy board, and what keeps WebKit's frames on the main thread (see Verifying) |
 | `scripts/webkit.mjs`, `scripts/webkit.swift` | The live board in a `WKWebView` (the app's engine), the window captured as its compositor drew it |
 | `scripts/fakeclaude.mjs`, `scripts/fixture.mjs` | A stand-in CLI for tests (`FAKE_TUI=fullscreen`: drawn as Claude Code's `tui: fullscreen`; `FAKE_SCREEN`: a screen given); a `~/.claude` look-alike |
-| `scripts/fakegh.mjs`, `fakejira.mjs`, `fakecode.mjs`, `fakepmset.mjs`, `fakecaffeinate.mjs`, `faketask.mjs`, `fakebrew.mjs` | `gh` (`api graphql` from `FAKEGH_PRS`, `FAKEGH_VIEWER` — a PR it does not name is a NOT_FOUND —, `repo clone` offline, `pr diff` from an entry's `diff`), Jira's three calls (`startFakeJira`), `code serve-web`, `pmset`, `caffeinate`, `task`, `brew install --cask zed` — what every test server runs instead of the real ones; each file's head says its knobs |
+| `scripts/fakegh.mjs`, `fakejira.mjs`, `fakecode.mjs`, `fakepmset.mjs`, `fakecaffeinate.mjs`, `faketask.mjs`, `fakebrew.mjs` | `gh` (`api graphql`, `repo clone`, `pr diff`), Jira's three calls (`startFakeJira`), `code serve-web`, `pmset`, `caffeinate`, `task`, `brew install --cask zed` — what every test server runs instead of the real ones; each file's head says its knobs |
 | `scripts/readme-shots.mjs` | The README's screenshots from a made-up board → `docs/shots/`, WebP — never shoot the real one |
 | `scripts/check.sh`, `scripts/check-page.mjs`, `scripts/map.mjs` | Static checks; the section maps |
 | `test/` | `node:test` files (`npm test`) |
@@ -93,7 +93,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | Branch moved under it | (2026-10-13) `gitBranch` on every line (`HEAD` detached): a change in the same folder no git command of the chat's own explains is held (`noteBranch` → `s.driftDue`, the drift before still shown) and judged `MOVE_SLACK_MS` after it is seen (`settleDrift`, on a timer too) — only then shown or alerted. Its own: one that can change the branch (`GIT_MOVE_RE`, the subcommand whole — no stash, reset, pull, merge, merge-base) in its Bash, a sidechain's, a `!` one, a sub-agent's file (`agentsMoved`): in the hour before, or since the old branch's run naming the new one, or later in the same message naming it (a message's lines are written after its call ran; `ownMove`). Through `HEAD` and back is none; your prompt clears it and takes the head as it stood (`branchHeard`, `headOk`). The disk: each live chat's checkout's HEAD file on the poll, a worktree's its own, each read once, a move judged on a look `MOVE_SLACK_MS` after the first (a chat at work: once a line of its own came since, `DISK_HOLD_MS` at most; a late command takes it back; the boot judges at once, in silence), against the branch before a held move (`sweepHeads`, `headAt`, `noteHead` → `headNow`, `diskDrift`, `peers`). Summary `drift` (live chats only, not set aside — `driftOf`) and `headNow`; a `drift` alert for a chat at work (`driftNotify`); a click on the chip sets that move aside (`driftAcks`, `POST /api/sessions/:id/drift`). → `test/drift.test.mjs`, `branch-drift.mjs` |
 | Plan usage | `GET https://api.anthropic.com/api/oauth/usage` with Claude Code's own OAuth bearer from the keychain item *Claude Code-credentials* — never reaching the page; `USAGE=off` disables. A cap in money (`limits[]` of `kind: 'spend'`, `extra_usage`'s cents) → `used`, `limit`, `currency` (`usageWindows`). → `test/usage.test.mjs`, Findings: *plan usage* |
 | Permission prompts | the registry's `waiting` (above) — they never reach the transcript |
-| Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login shell (`RUN_SHELL`: the user's zsh or bash, else `/bin/zsh`); it registers like any CLI run; a new chat is tied to its session by pid. **A folder whose Taskfile launches claude** (a task whose description mentions Claude) starts new chats as `task <name>` (`GET /api/launchers?cwd=`, `task --list --json` cached by mtime, `TASK_BIN`; `POST /api/terminals {cwd, task}`): claude is then a *descendant* of the PTY's pid, found through `ps` (`linkTermToRegistry`, `t.claudePid`), and the launcher's name is kept (`noteEnv` → `envs` → `s.env`). A resume never goes through task. **`/clear` or `/resume` in a drawer** gives the pid a new session id: `linkTermToRegistry` moves the holder, and the chat's live zsh holders with it, and pushes **both** chats, the page follows (`terminal` event). **A /clear ticks the chat it left done** (2026-10-10, any claude's): `loadRegistry` sees a process (pid and `procStart`) under another chat (`clearedFrom`), and `tickCleared` marks the old one done once the new transcript begins with the command at or after the old chat's last word; a /resume or a fork leaves it be. → `test/clear-done.test.mjs` |
+| Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login shell (`RUN_SHELL`); it registers like any CLI run; a new chat is tied to its session by pid. **A folder whose Taskfile launches claude** (a task whose description mentions Claude) starts new chats as `task <name>` (`GET /api/launchers?cwd=`, `task --list --json` cached by mtime, `TASK_BIN`; `POST /api/terminals {cwd, task}`) — only where Claude Code trusts the folder or one above (2026-10-16, `claudeTrusts`, `CLAUDE_JSON`): claude is then a *descendant* of the PTY's pid, found through `ps` (`linkTermToRegistry`, `t.claudePid`), and the launcher's name is kept (`noteEnv` → `envs` → `s.env`). A resume never goes through task. **`/clear` or `/resume` in a drawer** gives the pid a new session id: `linkTermToRegistry` moves the holder, and the chat's live zsh holders with it, and pushes **both** chats, the page follows (`terminal` event). **A /clear ticks the chat it left done** (2026-10-10, any claude's): `loadRegistry` sees a process (pid and `procStart`) under another chat (`clearedFrom`), and `tickCleared` marks the old one done once the new transcript begins with the command at or after the old chat's last word; a /resume or a fork leaves it be. → `test/clear-done.test.mjs` |
 
 **Never written: anything under `~/.claude`.** The board is read-only against Claude Code's data. The fake claude
 refuses to run against the real directory too — known by its device and inode, at CLAUDE_DIR or any folder above it,
@@ -149,10 +149,12 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   time, kept a minute, a failure half a minute — `planUsage`), Jira once the setup names a site (`jiraAsk`; its token
   never reaches the page or the setup file — `GET /api/jira` says only where it is), VS Code's update service, and
   Homebrew when Zed is picked and missing.
-* **VS Code Web is kept on its newest build** (2026-10-11, `freshenVsWeb`, every `VSWEB_FRESH_MS`; 0 off, every test
-  server's): the board asks the update service for the newest build and, when serve-web's cache lacks it, asks
-  serve-web for **that build by name, `/<quality>-<commit>/`** — never its root, which starts a server — so the first
-  open after a release does not wait on its download. Read only under `~/.vscode`. → `test/vsweb.test.mjs`.
+* **VS Code Web wants the board's token** (2026-10-16; `vsweb-token` in the state folder, 0600): the page gets it from
+  `POST /api/vscode-web` and opens `?tkn=` (`vswebAt`), traded by serve-web for its cookie; one on the port the board
+  did not start, serving without it, is refused (`vswebWhyNot`). **Kept on its newest build** (2026-10-11,
+  `freshenVsWeb`, `VSWEB_FRESH_MS`; 0 in tests): the newest, when serve-web's cache lacks it, asked of serve-web **by
+  name, `/<quality>-<commit>/`** — never its root, which starts a server. Read only under `~/.vscode`.
+  → `test/vsweb.test.mjs`.
 * **The board updates itself from its checkout** (2026-10-12; `checkUpdate`, `selfUpdate` in the state file — **off by
   default** (2026-10-13): what came is said, *update now* takes it —, Settings › Updates, `GET/PUT/POST /api/update`, an
   `update` event): only the agent looks by the clock (`UNDER_AGENT`: launchd's own child, not a drawer's server; every
@@ -999,13 +1001,12 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   `--shot file.png` saves a screenshot after, `DARK=1`, `URL=http://127.0.0.1:<port>/`. `--dump-dom` is useless here
   (fires before the SSE snapshot); drive Chrome over CDP — `lib/cdp.mjs`.
 * **What only the app shows is checked in WebKit** (`npm run webkit -- "<body>"`): the harness is Chrome, and a bug of
-  WebKit's passes every scenario. It runs an async body on the live board in a `WKWebView` (`frame`, `sleep`, `until`;
-  `--hash`, `URL`, `SIZE`, `PREFS`); `--shot` saves the window as **the compositor** drew it, and `--then` runs a body
-  on that frame (`shot.px(x, y)`, `shot.where(test, rect)`). A body asks the shell for `layers()` (the compositor's
-  tree), `footprint()` (the web process's memory) and `say(line)`; `WK_BORDERS` / `WK_COUNTERS` draw WebKit's layer
-  borders and repaint counts into the shot (2026-10-13). The window is opaque and on screen by one pixel (off a
+  WebKit's passes every scenario. It runs an async body on the live board in a `WKWebView` (its head says the knobs);
+  `--shot` saves the window as **the compositor** drew it, and `--then` runs a body on that frame. A body asks the
+  shell for `layers()` (the compositor's tree), `footprint()` (the web process's memory) and `say(line)`;
+  `WK_BORDERS` / `WK_COUNTERS` draw layer borders and repaint counts into the shot (2026-10-13). The window is opaque and on screen by one pixel (off a
   screen WebKit runs no frames); a locked screen or a sleeping display hides it, and it says so; a mirror of the main
-  screen is not another screen (2026-10-13).
+  screen is not another screen.
 * **What a change costs is read in WebKit too** (`npm run perf`, 2026-10-13): a 400-chat board with the lights on, the
   web process's CPU (`WK_PIDFILE`) at rest, with the pointer moving, scrolling and on home, a chat opened from its
   card, the layers and the memory, against ceilings (`CEIL_REST` …), and **the animation rules** (`lib/animcheck.mjs`:
