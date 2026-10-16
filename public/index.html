@@ -157,6 +157,18 @@
     background: var(--ctl) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238f8e86' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 9px center / 9px 5px; }
   .pop .ssel select:hover { background-color: var(--ctl-hi); }
   .pop .ssel select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .pop .srow.set.wide { grid-template-columns: minmax(0, 1fr); }
+  .pop .stiles { display: flex; flex-wrap: wrap; gap: 7px; padding: 2px 0 4px; }
+  .pop .stiles button { position: relative; flex: none; width: 42px; height: 28px; padding: 0; border: 0; border-radius: var(--r-3); cursor: pointer;
+    background: linear-gradient(90deg, var(--tb) 0 34%, var(--tp) 34%); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 16%, transparent); }
+  .pop .stiles button::before { content: ''; position: absolute; left: 19px; top: 8px; width: 16px; height: 3px; border-radius: 2px; background: var(--ti); opacity: .8; }
+  .pop .stiles button::after { content: ''; position: absolute; left: 19px; top: 15px; width: 7px; height: 7px; border-radius: 50%; background: var(--ta); }
+  .pop .stiles button:hover { box-shadow: 0 0 0 1px var(--ink); }
+  .pop .stiles button[aria-checked="true"] { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent); }
+  .pop .stiles button:disabled { opacity: .4; cursor: default; box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 16%, transparent); }
+  .pop .stiles button:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  .pop .slink { padding: 0 5px; border: 0; border-radius: var(--r-2); background: var(--ctl); font: inherit; font-weight: 600; color: var(--ink); cursor: pointer; }
+  .pop .slink:hover { background: var(--ctl-hi); }
   .pop .schecks { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 12px; }
   .pop .schecks label { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-sm); color: var(--ink); white-space: nowrap; cursor: pointer; }
   .pop .schecks input { margin: 0; accent-color: var(--accent); }
@@ -2307,9 +2319,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       <div class="spane" data-tab="look" hidden role="tabpanel" id="spLook" aria-labelledby="stLook">
         <h5 class="sph">Appearance</h5>
         <section class="sgrp"><div class="slist" role="group" aria-label="Theme">
-          <div class="srow set" data-kw="theme colours colors skin dark light"><span class="sl"><b>Theme</b><small id="themeNames"></small></span><button type="button" class="btn" id="themeBtn">Choose… <kbd>⌥⌘Y</kbd></button></div>
-          <div class="srow set" data-kw="theme dark light mode follow macos system appearance"><label class="sl" for="skinFollow"><b>Follow macOS</b><small>A dark theme while macOS is dark, a light one while it is light</small></label><input type="checkbox" class="sw" role="switch" id="skinFollow"></div>
-        </div></section>
+          <div class="srow set" data-kw="appearance theme dark light mode follow macos system auto"><span class="sl" id="slLook"><b>Appearance</b><small id="lookSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slLook" id="lookPick"><button type="button" role="radio" data-look="auto">Auto</button><button type="button" role="radio" data-look="dark">Dark</button><button type="button" role="radio" data-look="light">Light</button></span></div>
+          <div class="srow set wide" id="darkRow" data-kw="dark theme colours colors skin"><span class="sl" id="slDark"><b>Dark theme</b><small></small></span><span class="stiles" role="radiogroup" aria-labelledby="slDark" id="darkPick"></span></div>
+          <div class="srow set wide" id="lightRow" data-kw="light theme colours colors skin"><span class="sl" id="slLight"><b>Light theme</b><small></small></span><span class="stiles" role="radiogroup" aria-labelledby="slLight" id="lightPick"></span></div>
+        </div><p class="sgf">Every theme, the board wearing each as you move through them: <button type="button" class="slink" id="themeBtn">⌥⌘Y</button></p></section>
         <section class="sgrp"><div class="slist" role="group" aria-label="Text size">
           <div class="srow set" data-kw="text size zoom scale font bigger smaller"><label class="sl" for="zoomPick"><b>Text size</b><small class="zhint">Your browser’s View › Zoom</small></label><span class="ssel"><select id="zoomPick"><option value="0.9">90 %</option><option value="1">100 %</option><option value="1.1">110 %</option><option value="1.25">125 %</option><option value="1.4">140 %</option></select></span></div>
         </div></section>
@@ -2513,7 +2526,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: false, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -2934,7 +2947,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // the header's black and the status bar — picked from a grid that the board behind follows (⌥⌘Y). Omarchy's twelve.
   // A theme is light or dark, and the board wears its appearance whatever macOS shows (2026-10-12; the dark rules read
   // the root's data-theme): the theme picked is worn (prefs.skin — a theme, or the board's own 'own-dark' / 'own-light').
-  // Following macOS is a switch (prefs.skinFollow): then the slots, as Ghostty's `theme = dark:…,light:…`, a dark theme
+  // Following macOS is Settings › Appearance › Auto (prefs.skinFollow; a switch, off by default, until 2026-10-16 — Auto
+  // is a new board's default): then the slots, as Ghostty's `theme = dark:…,light:…`, a dark theme
   // worn while macOS is dark, a light one while it is light — a pick fills its appearance's slot either way, none being
   // the board's own (prefs.skinDark, prefs.skinLight). A project keeps its hue — its
   // colour moves to the theme's nearest (skinColor; worn as set until 2026-10-14 was a switch). `crust` is the
@@ -3032,6 +3046,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   /** The theme worn now, null for the board's own. */
   const skinOn = () => SKINS[wornKey()] ? wornKey() : null;
   const skinName = k => SKINS[k]?.name || 'the board’s own';
+  /** The appearance picked: auto (following macOS), dark or light. */
+  const lookMode = () => prefs.skinFollow ? 'auto' : skinDarkOf(prefs.skin) ? 'dark' : 'light';
   const skinLabel = k => SKINS[k]?.name || `the board’s own ${skinDarkOf(k) ? 'dark' : 'light'}`;
   // A project's colour under a theme: the nearest of the theme's own hues, by the hue's angle; a grey, a black, a white
   // and a colour the theme has no match for stay as set.
@@ -3059,14 +3075,44 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     if (skinPreview === undefined && prefs.look !== look) { prefs.look = look; savePrefs(); }   // for the head's first paint
     const want = prefs.skinFollow ? null : skinDarkOf(prefs.skin);
     if (want !== lookPosted) { lookPosted = want; window.webkit?.messageHandlers?.hub?.postMessage({ type: 'appearance', dark: want }); }   // post is declared further down
-    $('#themeNames').innerHTML = prefs.skinFollow ? `<b>${skinName(prefs.skinDark)}</b> while macOS is dark · <b>${skinName(prefs.skinLight)}</b> while light` : `<b>${skinLabel(prefs.skin)}</b>`;   // the table's own names: nothing to escape (and esc is declared further down)
-    $('#skinFollow').checked = !!prefs.skinFollow;
+    showLook();
+  }
+  /** Settings › Appearance (2026-10-16; a switch, *follow macOS*, off by default before): Auto — each appearance its
+   *  slot, as macOS is — Dark or Light, whatever macOS shows; under it a theme for each appearance, as tiles. A tile
+   *  fills its slot, and is worn at once where its appearance is (Auto with macOS so, or that one picked); the other
+   *  appearance's row is off while one is picked. ⌥⌘Y is the whole grid, the board wearing each as you move. */
+  function showLook() {
+    const mode = lookMode();
+    for (const b of document.querySelectorAll('#lookPick [data-look]')) b.setAttribute('aria-checked', String(b.dataset.look === mode));
+    $('#lookSay').textContent = { auto: `Follows macOS, ${sysDark() ? 'dark' : 'light'} now`, dark: 'Dark, whatever macOS shows', light: 'Light, whatever macOS shows' }[mode];
+    for (const dark of [true, false]) {
+      const row = $(dark ? '#darkRow' : '#lightRow'), slot = slotOf(dark), off = mode === (dark ? 'light' : 'dark');
+      const tiles = [[dark ? 'own-dark' : 'own-light', OWN_SKINS[dark ? 'dark' : 'light']], ...Object.entries(SKINS).filter(([, t]) => t.dark === dark)];
+      const box = row.querySelector('.stiles'), html = tiles.map(([k, t]) => `<button type="button" role="radio" data-skin="${k}" aria-checked="${k === slot}" aria-label="${t.name}" title="${t.name}"${off ? ' disabled' : ''} style="--tb:${t.bg};--tp:${t.panel};--ti:${t.ink};--ta:${t.accent}"></button>`).join('');   // the table's own names: nothing to escape
+      if (box._drawn !== html) box.innerHTML = box._drawn = html;   // setHtml's way — it is declared further down, and this runs at load
+      row.classList.toggle('off', off);
+      row.querySelector('small').textContent = off ? `Only with Auto or ${dark ? 'Dark' : 'Light'}` : `${(SKINS[slot] || OWN_SKINS[dark ? 'dark' : 'light']).name}${mode === 'auto' ? ` while macOS is ${dark ? 'dark' : 'light'}` : ''}`;
+    }
   }
   applySkin();
   const reskin = () => { applySkin(); for (const tm of [...terms, ...ov.minis.values()]) if (tm.xt) tm.xt.options.theme = xtTheme(); redrawColors(); };
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', reskin);
-  // Off, what was worn stays worn, whatever macOS does next; on, macOS's appearance picks the slot.
-  $('#skinFollow').addEventListener('change', e => { const on = e.target.checked; revealFrom(centreOf(e.target), () => { if (!on) prefs.skin = wornKey(); prefs.skinFollow = on; savePrefs(); reskin(); }); });
+  // Auto: macOS's appearance picks the slot; Dark or Light: that slot's theme, worn whatever macOS does next.
+  function setLook(mode, from = null) {
+    if (mode === lookMode()) return;
+    revealFrom(from, () => { prefs.skinFollow = mode === 'auto'; if (mode !== 'auto') prefs.skin = slotOf(mode === 'dark'); savePrefs(); reskin(); });
+  }
+  $('#lookPick').addEventListener('click', e => { const b = e.target.closest('[data-look]'); if (b) setLook(b.dataset.look, centreOf(b)); });
+  // a tile: its appearance's slot, worn now where that appearance is
+  for (const id of ['#darkPick', '#lightPick']) $(id).addEventListener('click', e => {
+    const b = e.target.closest('[data-skin]'); if (!b || b.disabled) return;
+    const k = b.dataset.skin, was = wornKey();
+    if (skinDarkOf(k)) prefs.skinDark = k.startsWith('own-') ? null : k; else prefs.skinLight = k.startsWith('own-') ? null : k;
+    if (!prefs.skinFollow) prefs.skin = k;
+    savePrefs();
+    if (wornKey() === was) showLook();   // kept for its appearance, not worn now
+    else revealFrom(centreOf(b), reskin);
+  });
   $('#themeBtn').addEventListener('click', () => { settingsOpen(false); themesOpen(); });
   // ⌥⌘Y: the grid. The arrows move and the board behind follows, in the tile's appearance; ⏎ or a click wears it and
   // keeps it in its appearance's slot (following macOS, it is worn while macOS is in that appearance); Esc, or a click
@@ -3092,7 +3138,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     skinPreview = k;
     const look = t.dark ? 'dark' : 'light';
     $('#themenote').textContent = !prefs.skinFollow ? `${t.name} — ⏎ wears it` : t.dark === sysDark() ? `${t.name} — ⏎ wears it while macOS is ${look}` : `${t.name} — ⏎ keeps it for when macOS is ${look}`;
-    $('#themehow').textContent = prefs.skinFollow ? 'following macOS: a dark theme while it is dark, a light one while it is light' : 'worn whatever macOS shows · Settings › Look can follow macOS';
+    $('#themehow').textContent = prefs.skinFollow ? 'following macOS: a dark theme while it is dark, a light one while it is light' : 'worn whatever macOS shows · Settings › Appearance › Auto follows macOS';
     $('#themegrid .tt.sel')?.scrollIntoView({ block: 'nearest' });
     reskin();
   }
@@ -5202,12 +5248,13 @@ const toolName = n => {
   // `>` narrows it to the actions and switches, `#` to the PRs, `@` to the projects, `!` to the tickets. Empty, it is a
   // menu: → or ⏎ goes into a row with ›, ← (or ⌫ on an empty box) comes back out of one opened from here (ctx.back).
   // Toggle holds every switch of the settings, ⏎ flips one and the menu stays. The rows are the pickers' own (#pick).
-  const SWITCHES = [['notifyOn', 'Notifications'], ['autoUpdate', 'Update itself'], ['skinFollow', 'Theme follows macOS'],
+  const SWITCHES = [['notifyOn', 'Notifications'], ['autoUpdate', 'Update itself'],
     ['soundsOn', 'Sounds'], ['optMeta', '⌥ is Meta in the terminal']];
   const toggleRows = () => [
     { kind: 'toggle', id: 'tg:awake', name: 'Keep the Mac awake', hint: 'idle sleep held off', on: () => state.awake.awake, flip: () => setAwake({ awake: !state.awake.awake }) },
     { kind: 'toggle', id: 'tg:lid', name: '…with the lid closed', hint: 'Touch ID or your password', on: () => state.awake.lid, flip: () => state.lidAsking || setAwake({ lid: !state.awake.lid }) },
     ...SWITCHES.map(([el, name]) => ({ kind: 'toggle', id: 'tg:' + el, name, on: () => $('#' + el).checked, flip: () => $('#' + el).click() })),
+    { kind: 'toggle', id: 'tg:skinFollow', name: 'Theme follows macOS', hint: 'Settings › Appearance › Auto', on: () => !!prefs.skinFollow, flip: () => setLook(prefs.skinFollow ? (sysDark() ? 'dark' : 'light') : 'auto') },
   ];
   /** What ⏎ does with the dialog: `stay` re-fills it (another picker), else it closes first and the action runs. */
   const actionRows = () => {

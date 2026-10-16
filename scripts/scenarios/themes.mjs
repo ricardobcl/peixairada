@@ -3,8 +3,9 @@
 // moves to the theme's own blue, the header's black and the status bar's ground are the theme's darkest — and Esc puts
 // the board's own back. ⏎ wears one whatever the system shows (2026-10-12): a dark theme stays dark when the system
 // turns light, a light one is light in a dark system, a reload keeps it, and the first paint is it (the head's script).
-// Following macOS (the switch) wears each appearance's slot, which a pick fills; a theme of the other appearance still
-// previews.
+// Following macOS (Settings › Appearance › Auto; a switch until 2026-10-16) wears each appearance's slot, which a pick
+// fills; a theme of the other appearance still previews. Settings' tiles fill a slot too, worn at once where it shows,
+// and the other appearance's row is off while Dark or Light is picked.
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { makeFixture } from '../fixture.mjs';
@@ -34,7 +35,11 @@ export default async function (ctx) {
     await ctx.fill('#themeq', q);
     await ctx.waitFor(`document.documentElement.dataset.skin === ${JSON.stringify(k)}`, { what: `${q} previewed` });
   };
-  const follow = async on => { await ctx.evaluate(`(b => b.checked === ${on} || b.click())(document.querySelector('#skinFollow'))`); await ctx.waitFor(`window.peix.prefs().skinFollow === ${on}`, { what: `follow macOS ${on ? 'on' : 'off'}` }); };
+  const appearance = async m => { await ctx.evaluate(`document.querySelector('#lookPick [data-look="${m}"]').click()`); await ctx.waitFor(`window.peix.prefs().skinFollow === ${m === 'auto'}`, { what: `Appearance › ${m}` }); };
+  /** Settings › Appearance as it reads: the choice, and the two rows' lines and whether each is off. */
+  const pane = () => ctx.evaluate(`JSON.stringify({ mode: document.querySelector('#lookPick [aria-checked="true"]')?.dataset.look,
+    dark: document.querySelector('#darkRow small').textContent, light: document.querySelector('#lightRow small').textContent,
+    off: ['#darkRow', '#lightRow'].filter(r => document.querySelector(r).classList.contains('off')).map(r => r.slice(1)) })`).then(JSON.parse);
 
   await media(true);
   await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${chat.id}"]')?.style.getPropertyValue('--repo') === '${BLUE}'`, { what: "the project's blue", timeout: 10000 });
@@ -62,7 +67,7 @@ export default async function (ctx) {
   await ctx.waitFor(`!document.querySelector('#themes').open && document.documentElement.dataset.skin === 'gruvbox'`, { what: 'Gruvbox kept' });
   ctx.assert.deepEqual((({ skin, skinDark, look }) => ({ skin, skinDark, look }))(await ctx.peix('prefs()')), { skin: 'gruvbox', skinDark: 'gruvbox', look: 'dark' });
   ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#sbar')).backgroundColor`), 'rgb(29, 32, 33)', "the status bar on the theme's crust");
-  ctx.assert.match(await ctx.evaluate(`document.querySelector('#themeNames').textContent`), /^Gruvbox$/);
+  ctx.assert.deepEqual(await pane(), { mode: 'dark', dark: 'Gruvbox', light: 'Only with Auto or Light', off: ['lightRow'] }, 'Settings: Dark, in Gruvbox');
   await ctx.waitFor(`document.querySelector('#slist > .card[data-id="${chat.id}"]')?.style.getPropertyValue('--repo') === '#83a598'`, { what: "the blue in Gruvbox's blue" });
   await ctx.settle(); out.shot = await ctx.shot('gruvbox');
 
@@ -95,9 +100,9 @@ export default async function (ctx) {
   ctx.assert.deepEqual(out.head, ['light', 'dark', 'dark', 'light', 'dark'], 'the first paint: the look kept, else the system');
 
   // following macOS: each appearance its slot — Gruvbox in the dark, Latte in the light
-  await follow(true);
+  await appearance('auto');
   await ctx.waitFor(`document.documentElement.dataset.skin === 'gruvbox'`, { what: 'the dark slot in a dark system' });
-  ctx.assert.match(await ctx.evaluate(`document.querySelector('#themeNames').textContent`), /Gruvbox while macOS is dark · Catppuccin Latte while light/);
+  ctx.assert.deepEqual(await pane(), { mode: 'auto', dark: 'Gruvbox while macOS is dark', light: 'Catppuccin Latte while macOS is light', off: [] });
   await media(false);
   await ctx.waitFor(`document.documentElement.dataset.skin === 'catppuccin-latte' && document.documentElement.dataset.theme === 'light'`, { what: 'the light slot in a light system' });
   // a dark theme picked in the light shows while previewed, and is kept for the dark
@@ -110,10 +115,24 @@ export default async function (ctx) {
   await media(true);
   await ctx.waitFor(`document.documentElement.dataset.skin === 'nord'`, { what: 'Nord in the dark' });
 
-  // following off: what is worn stays, whatever the system does next
-  await follow(false);
+  // Dark: its slot worn, whatever the system does next
+  await appearance('dark');
   await media(false); await ctx.sleep(300);
   ctx.assert.deepEqual([await skin(), await look()], ['nord', 'dark'], 'Nord kept, dark, in a light system');
+
+  // a tile in Settings: a dark one worn at once under Dark; the light row off, its tiles not to be picked
+  await ctx.evaluate(`document.querySelector('#darkPick [data-skin="rose-pine"]').click()`);
+  await ctx.waitFor(`document.documentElement.dataset.skin === 'rose-pine'`, { what: 'Rosé Pine from its tile' });
+  ctx.assert.equal((await ctx.peix('prefs()')).skinDark, 'rose-pine', 'and kept for the dark');
+  ctx.assert.equal(await ctx.evaluate(`[...document.querySelectorAll('#lightPick [data-skin]')].every(b => b.disabled)`), true, 'the light tiles off under Dark');
+  // under Auto in a light system a dark tile is kept for the dark, not worn
+  await appearance('auto');
+  await ctx.waitFor(`document.documentElement.dataset.skin === 'catppuccin-latte'`, { what: 'Latte, the light slot' });
+  await ctx.evaluate(`document.querySelector('#darkPick [data-skin="nord"]').click()`);
+  await ctx.sleep(300);
+  ctx.assert.deepEqual([await skin(), (await ctx.peix('prefs()')).skinDark, (await pane()).dark], ['catppuccin-latte', 'nord', 'Nord while macOS is dark'], 'kept for the dark, Latte still worn');
+  await appearance('dark');
+  await ctx.waitFor(`document.documentElement.dataset.skin === 'nord'`, { what: 'Nord under Dark' });
 
   // a tile clicked spreads its theme in a circle from where it was (2026-10-11): a view transition, the new page clipped
   await ctx.key('KeyY');
