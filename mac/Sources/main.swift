@@ -284,10 +284,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   var fillSaved: (frame: NSRect, mask: NSWindow.StyleMask, opts: NSApplication.PresentationOptions)?   // set while ⌃⌘F fills the screen: what to come back to
   var fillSaid: String?                   // what the page last heard of the fill (tellFill): the same is not said again
   // Which full screen ⌃⌘F is (2026-10-14): the fill, up to the camera housing on this desktop, or the system's, in a Space
-  // of its own below the housing — the page's Settings › Look says (`fullscreen`), remembered for the next launch
+  // of its own below the housing — the page's Settings › General says (`fullscreen`), remembered for the next launch
   var spaceMode = UserDefaults.standard.bool(forKey: kSpaceKey)
   var fillAfterSpace = false              // the switch went back to the fill while in a Space: the fill once the window is out of it
   var fillSignal: DispatchSourceSignal!   // SIGUSR1 is ⌃⌘F from a shell
+  var voiceOverObs: NSKeyValueObservation?   // VoiceOver on or off, told to the page (tellVoiceOver)
   var fillTick: Timer?                    // while filled: watches the pointer for a hold at the Dock's edge (dockTick)
   var dockOut = false                     // the Dock let out after a hold at its edge, until the pointer is off it again
   var fillHousing = false                 // filled on a screen with a camera housing: the menu bar auto-hidden there, hidden outright elsewhere (placeFill)
@@ -316,6 +317,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     buildWindow()
     setUpNotifications()
     watchAway()
+    voiceOverObs = NSWorkspace.shared.observe(\.isVoiceOverEnabled) { [weak self] _, _ in DispatchQueue.main.async { self?.tellVoiceOver() } }
 
     NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification,
                                            object: window, queue: .main) { [weak self] _ in
@@ -1596,6 +1598,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
       }
     }
     fillSaid = nil; tellFill()   // a reload forgets the fill
+    tellVoiceOver()
+  }
+  /// The page hears whether VoiceOver runs (2026-10-16, `peixVoiceOver`): the drawer reads its lines out while it does —
+  /// the terminal's screen-reader mode, a switch in Settings › Terminal before, which a page alone cannot know to turn on.
+  /// Sent when the board has loaded and on every change.
+  func tellVoiceOver() {
+    web.evaluateJavaScript("window.peixVoiceOver && window.peixVoiceOver(\(NSWorkspace.shared.isVoiceOverEnabled))", completionHandler: nil)
   }
   /// The board's web process gone (killed under memory pressure, crashed): WebKit leaves the view blank and reloads
   /// nothing, and the watchdog only asks the server.

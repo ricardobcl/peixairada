@@ -2,7 +2,8 @@
 // keys as the dialog opens, each pane alone in front and named in the head, ↑ ↓ down the sidebar. What a search shows:
 // the rows whose words hold every word typed, under their pane's name, the sidebar counting them, the words marked; a
 // word nothing holds says so; Esc lets the search go before it closes the dialog, and the keys go back to whatever had
-// them. The sidebar's foot opens the keys sheet; the Hidden group is there only while something is hidden.
+// them. The sidebar's foot opens the keys sheet; the Hidden group is there only while something is hidden. The drawer's
+// screen-reader mode follows VoiceOver, which the app says.
 export const meta = { server: true, fixture: 'auto' };
 
 export default async function (ctx) {
@@ -81,5 +82,17 @@ export default async function (ctx) {
   await ctx.evaluate(`document.querySelector('#keysBtn').click()`);
   await ctx.waitFor(`document.querySelector('#keysheet').open && !document.querySelector('#settings').open`, { what: 'the keys sheet instead' });
   await ctx.evaluate(`document.querySelector('#keysheet').close()`);
+
+  // Terminal › Screen reader mode follows VoiceOver (2026-10-16): the app says so (peixVoiceOver), the switch on and off
+  // with why while it runs, the pref untouched; without it the switch is the pref
+  const reader = () => ctx.evaluate(`(r => ({ on: r.querySelector('input').checked, off: r.querySelector('input').disabled && r.classList.contains('off'), say: r.querySelector('small').textContent }))(document.querySelector('#termReader').closest('.srow'))`);
+  out.reader = { browser: await reader() };
+  ctx.assert.deepEqual(out.reader.browser, { on: false, off: false, say: 'The drawer’s lines read out as they come' });
+  await ctx.evaluate(`window.peixVoiceOver(true)`);
+  out.reader.vo = await reader();
+  ctx.assert.deepEqual(out.reader.vo, { on: true, off: true, say: 'On while VoiceOver runs' }, 'on, and off with why, while VoiceOver runs');
+  ctx.assert.equal((await ctx.peix('prefs()')).termReader, false, 'the pref untouched');
+  await ctx.evaluate(`window.peixVoiceOver(false)`);
+  ctx.assert.deepEqual((await reader()).on, false, 'VoiceOver gone: the switch as it was');
   return out;
 }

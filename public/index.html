@@ -2525,7 +2525,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     a.finished.then(() => endSoon(a), () => endSoon(a));
     return a;
   };
-  const state = { sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null };
+  const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null };
   const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
@@ -5924,8 +5924,19 @@ const toolName = n => {
   $('#optMeta').checked = prefs.optMeta !== false; optMetaSay();
   $('#optMeta').addEventListener('change', e => { prefs.optMeta = e.target.checked; savePrefs(); optMetaSay(); for (const tm of terms) if (tm.xt) tm.xt.options.macOptionIsMeta = prefs.optMeta; });
   // xterm's screen-reader mode (2026-10-12, off): the drawer's lines kept in a live region a reader follows
-  $('#termReader').checked = !!prefs.termReader;
-  $('#termReader').addEventListener('change', e => { prefs.termReader = e.target.checked; savePrefs(); for (const tm of terms) if (tm.xt) tm.xt.options.screenReaderMode = prefs.termReader; });
+  // …and it follows VoiceOver (2026-10-16): the app says whether VoiceOver runs (peixVoiceOver, at load and on each
+  // change) and the drawer reads its lines out while it does, the switch on and off with why; without it the switch keeps
+  // it on. A browser cannot know, so there the switch is the only way.
+  const readerOn = () => !!prefs.termReader || state.voiceOver;
+  function showReader() {
+    const vo = state.voiceOver, sw = $('#termReader');
+    sw.checked = readerOn(); sw.disabled = vo; sw.closest('.srow').classList.toggle('off', vo);
+    $('#termReaderSay').textContent = vo ? 'On while VoiceOver runs' : inApp ? 'The drawer’s lines read out; on by itself while VoiceOver runs' : 'The drawer’s lines read out as they come';
+    for (const tm of terms) if (tm.xt) tm.xt.options.screenReaderMode = readerOn();
+  }
+  window.peixVoiceOver = on => { state.voiceOver = !!on; showReader(); };
+  $('#termReader').addEventListener('change', e => { prefs.termReader = e.target.checked; savePrefs(); showReader(); });
+  queueMicrotask(showReader);   // once the script has run: the drawers (terms) and inApp are declared further down
   // ---- the tour: the board's main parts, one at a time (2026-10-14) ------------------------------------------------
   // A modal dialog the size of the window (#tour): a hole in a dim veil round one part of the board and a card beside
   // it saying what the part is and its keys — ← → or the buttons, esc or Skip to leave. It comes up on its own once,
@@ -7160,7 +7171,7 @@ const toolName = n => {
   const macEdit = e => e.ctrlKey || e.shiftKey || e.metaKey === e.altKey ? undefined : MAC_EDIT[`${e.metaKey ? 'cmd' : 'alt'}:${e.key}`];
   function ensureXterm(tm) {
     if (tm.xt) return;
-    tm.xt = new Terminal({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: termFontSize(), lineHeight: 1.1, cursorBlink: true, scrollback: 5000, theme: xtTheme(), macOptionIsMeta: prefs.optMeta !== false, screenReaderMode: !!prefs.termReader });
+    tm.xt = new Terminal({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: termFontSize(), lineHeight: 1.1, cursorBlink: true, scrollback: 5000, theme: xtTheme(), macOptionIsMeta: prefs.optMeta !== false, screenReaderMode: readerOn() });
     // ⌘+ / ⌘- / ⌘0 are the chat's size, not keys for claude; handled here, and the document handler skips them.
     // Shift+Enter: xterm.js sends the same \r as Enter, which submits the prompt. Claude reads ESC CR
     // (Option+Enter) as a newline — it is what its own /terminal-setup binds Shift+Enter to in VS Code's
