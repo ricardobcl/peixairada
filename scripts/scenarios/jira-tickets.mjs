@@ -22,16 +22,16 @@ export default async function (ctx) {
     await ctx.waitFor(`!!${card}`, { what: 'the chat\'s card' });
     ctx.assert.equal(await ctx.evaluate(`${card}.querySelectorAll('.ctk').length`), 0, 'no site set up, no tickets');
 
-    // The Setup: the site and the login; the token is the environment's, and the line says who Jira says you are
+    // Settings › Jira: the site and the login; the token is the environment's, and the line says who Jira says you are
     await ctx.cmd('Comma');
     await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
-    await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="setup"]').click()`);
-    await ctx.waitFor(`!!document.querySelector('#setup .sjsite')`, { what: 'the Jira section' });
-    const set = (sel, value) => ctx.evaluate(`(() => { const x = document.querySelector('#setup ${sel}'); x.value = ${JSON.stringify(value)}; x.dispatchEvent(new Event('input', { bubbles: true })); x.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+    await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="jira"]').click()`);
+    await ctx.waitFor(`!!document.querySelector('#jiraSet .sjsite')`, { what: 'the Jira pane' });
+    const set = (sel, value) => ctx.evaluate(`(() => { const x = document.querySelector('#jiraSet ${sel}'); x.value = ${JSON.stringify(value)}; x.dispatchEvent(new Event('input', { bubbles: true })); x.dispatchEvent(new Event('change', { bubbles: true })); })()`);
     await set('.sjsite', jira.url);
     await set('.sjmail', jira.email);
-    await ctx.waitFor(`/Signed in as/.test(document.querySelector('#setup .sjst')?.textContent || '')`, { timeout: 10_000, what: 'signed in, said in the Setup' });
-    out.setup = await ctx.evaluate(`JSON.stringify({ line: document.querySelector('#setup .sjst').textContent, token: document.querySelector('#setup .sjtok').placeholder })`).then(JSON.parse);
+    await ctx.waitFor(`/Signed in as/.test(document.querySelector('#jiraSet .sjst')?.textContent || '')`, { timeout: 10_000, what: 'signed in, said in the Setup' });
+    out.setup = await ctx.evaluate(`JSON.stringify({ line: document.querySelector('#jiraSet .sjst').textContent, token: document.querySelector('#jiraSet .sjtok').placeholder })`).then(JSON.parse);
     ctx.assert.match(out.setup.line, /Signed in as Me Myself/);
     ctx.assert.match(out.setup.token, /JIRA_API_TOKEN/, 'the token box says where the token is');
     ctx.assert.equal((await ctx.server.api('api/config')).body.jira.site, jira.url, 'the site in the setup');

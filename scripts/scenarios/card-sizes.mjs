@@ -1,8 +1,8 @@
-// The cog's card slider (2026-09-25). Three chats: one Claude had the
-// last word on, one you had — a second prompt, then Escape, so the reply on its card is the turn before's —, and one
-// waiting on your answer. What is checked: large shows both words on every card; medium the last one only, yours or
-// Claude's as the case is; compact neither, the cards shorter each step; the question stays at every size; the
-// slider and its stop names both move it; and the choice outlives a reload.
+// The cards' size (2026-09-25; a slider in the cog, a segmented control in Settings › Chat list since 2026-10-16).
+// Three chats: one Claude had the last word on, one you had — a second prompt, then Escape, so the reply on its card is
+// the turn before's —, and one waiting on your answer. What is checked: large shows both words on every card; medium
+// the last one only, yours or Claude's as the case is; compact neither, the cards shorter each step; the question stays
+// at every size; the two switches under it are off, with why, where they do nothing; and the choice outlives a reload.
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
@@ -10,8 +10,8 @@ import { join } from 'node:path';
 import { makeFixture } from '../fixture.mjs';
 
 // Compact is the board's default since 2026-10-12 (large before; the harness starts on large, so no `cards` here means
-// the board's own), and a switch under the slider sizes the cards by lane: the ones that want you large, the rest at
-// the slider's size.
+// the board's own), and a switch under the size sizes the cards by lane: the ones that want you large, the rest at
+// the size picked.
 export const meta = { server: true, fixture: 'auto', prefs: { cards: null } };
 
 // Per card: which words show (display, not markup — the markup always holds both), the question line, the height.
@@ -20,7 +20,10 @@ const cards = ctx => ctx.evaluate(`JSON.stringify(Object.fromEntries([...documen
   ask: !!c.querySelector('.state.needs-input') && getComputedStyle(c.querySelector('.state.needs-input')).display !== 'none',
   h: Math.round(c.getBoundingClientRect().height),
 }])))`).then(JSON.parse);
-const slider = ctx => ctx.evaluate(`({ v: document.querySelector('#cardsSize').value, list: document.querySelector('#sessions').dataset.cards, on: document.querySelector('#settings .dens .stops .on')?.textContent || null })`);
+const slider = ctx => ctx.evaluate(`({ v: document.querySelector('#cardsSize [aria-checked="true"]')?.dataset.v, list: document.querySelector('#sessions').dataset.cards, on: document.querySelector('#cardsSize [aria-checked="true"]')?.textContent.toLowerCase() || null })`);
+const pick = (ctx, v) => ctx.evaluate(`document.querySelector('#cardsSize [data-v="${v}"]').click()`);
+/** A dependent switch under the size: whether it is off, and the line under its name. */
+const dep = (ctx, row) => ctx.evaluate(`(r => ({ off: r.classList.contains('off') && r.querySelector('input').disabled, say: r.querySelector('small').textContent }))(document.querySelector('${row}'))`);
 
 export default async function (ctx) {
   const out = {};
@@ -43,17 +46,18 @@ export default async function (ctx) {
 
     // compact, the board's own default
     ctx.assert.deepEqual(await slider(ctx), { v: '2', list: 'compact', on: 'compact' }, 'compact to begin with');
-    // large, from the slider: both words everywhere
-    await ctx.evaluate(`(() => { const r = document.querySelector('#cardsSize'); r.value = '0'; r.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+    // large: both words everywhere — and by lane is off, since every card is large
+    await pick(ctx, 0);
     out.large = { slider: await slider(ctx), cards: await cards(ctx) };
     ctx.assert.deepEqual(out.large.slider, { v: '0', list: 'large', on: 'large' });
     ctx.assert.deepEqual(out.large.cards['Claude spoke last'].words, ['you: is the build green?', 'claude: green on every job']);
     ctx.assert.deepEqual(out.large.cards['You spoke last'].words, ['you: and the one beside it too', 'claude: renamed']);
     ctx.assert.equal(out.large.cards['Asking you'].ask, true);
+    ctx.assert.deepEqual(await dep(ctx, '#laneRow'), { off: true, say: 'Cards are already large' }, 'by lane: off, and why');
     await ctx.shot('large', { x: 0, y: 0, width: 420, height: 640 });
 
-    // medium, from the slider: the last word only — Claude's on one card, yours on the other
-    await ctx.evaluate(`(() => { const r = document.querySelector('#cardsSize'); r.value = '1'; r.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+    // medium: the last word only — Claude's on one card, yours on the other
+    await pick(ctx, 1);
     out.medium = { slider: await slider(ctx), cards: await cards(ctx) };
     ctx.assert.deepEqual(out.medium.slider, { v: '1', list: 'medium', on: 'medium' });
     ctx.assert.deepEqual(out.medium.cards['Claude spoke last'].words, ['claude: green on every job'], 'Claude had the last word');
@@ -61,8 +65,8 @@ export default async function (ctx) {
     ctx.assert.equal(out.medium.cards['Asking you'].ask, true, 'the question stays');
     await ctx.shot('medium', { x: 0, y: 0, width: 420, height: 640 });
 
-    // compact, from the stop's name: no words at all
-    await ctx.evaluate(`document.querySelector('#settings .dens .stops [data-v="2"]').click()`);
+    // compact: no words at all
+    await pick(ctx, 2);
     out.compact = { slider: await slider(ctx), cards: await cards(ctx) };
     ctx.assert.deepEqual(out.compact.slider, { v: '2', list: 'compact', on: 'compact' });
     for (const [t, c] of Object.entries(out.compact.cards)) ctx.assert.deepEqual(c.words, [], `no words on "${t}"`);
@@ -79,15 +83,16 @@ export default async function (ctx) {
     out.byLane = { attr: await ctx.evaluate(`document.querySelector('#sessions').hasAttribute('data-bylane')`), cards: await cards(ctx) };
     ctx.assert.equal(out.byLane.attr, true);
     ctx.assert.deepEqual(out.byLane.cards['Asking you'].words, ['you: clean the old branches', 'claude: on it'], 'the chat asking you, large');
-    ctx.assert.deepEqual(out.byLane.cards['Claude spoke last'].words, [], 'a ready one at the slider\'s size');
+    ctx.assert.deepEqual(out.byLane.cards['Claude spoke last'].words, [], 'a ready one at the size picked');
     await ctx.shot('by-lane', { x: 0, y: 0, width: 420, height: 640 });
     await ctx.evaluate(`document.querySelector('#cardsByLane').click()`); await ctx.settle();
     ctx.assert.deepEqual((await cards(ctx))['Asking you'].words, [], 'off, the asking card compact again');
 
     // compact's own switch (2026-09-29):
-    // shown under compact only; on, the title is one line and nothing hangs under it, so every card is one height
+    // on under compact only (off with why at the other sizes, 2026-10-16; hidden before); on, the title is one line and
+    // nothing hangs under it, so every card is one height
     const heights = cs => [...new Set(Object.values(cs).map(c => c.h))];
-    ctx.assert.equal(await ctx.evaluate(`document.querySelector('#evenRow').hidden`), false, 'the switch shows under compact');
+    ctx.assert.deepEqual(await dep(ctx, '#evenRow'), { off: false, say: 'Every compact card one title line tall' }, 'the switch is on offer under compact');
     ctx.assert.ok(heights(out.compact.cards).length > 1, `compact cards are of several heights: ${heights(out.compact.cards)}`);
     await ctx.evaluate(`document.querySelector('#cardsEven').click()`); await ctx.settle();
     out.even = { cards: await cards(ctx), attr: await ctx.evaluate(`document.querySelector('#sessions').hasAttribute('data-even')`) };
@@ -96,14 +101,14 @@ export default async function (ctx) {
     ctx.assert.equal(out.even.cards['Asking you'].ask, false, 'the question is left to the card\'s blinking edge');
     ctx.assert.equal(await ctx.evaluate(`[...document.querySelectorAll('#slist > .card .state.moveslot')].every(x => getComputedStyle(x).visibility === 'hidden' && x.getClientRects().length)`), true, 'no card has a move here: each holds the line\'s place, unseen');
     await ctx.shot('even', { x: 0, y: 0, width: 420, height: 640 });
-    await ctx.evaluate(`document.querySelector('#settings .dens .stops [data-v="1"]').click()`);
-    ctx.assert.deepEqual(await ctx.evaluate(`[document.querySelector('#evenRow').hidden, document.querySelector('#sessions').hasAttribute('data-even')]`), [true, false], 'medium: no switch, and nothing evened');
-    await ctx.evaluate(`document.querySelector('#settings .dens .stops [data-v="2"]').click()`);
+    await pick(ctx, 1);
+    ctx.assert.deepEqual([await dep(ctx, '#evenRow'), await ctx.evaluate(`document.querySelector('#sessions').hasAttribute('data-even')`)], [{ off: true, say: 'Only with compact cards' }, false], 'medium: the switch off, with why, and nothing evened');
+    await pick(ctx, 2);
     ctx.assert.equal(await ctx.evaluate(`document.querySelector('#sessions').hasAttribute('data-even')`), true, 'back to compact, the switch as it was left');
     ctx.assert.equal((await ctx.peix('prefs()')).cardsEven, true, 'a pref');
 
-    // the settings, to look at the slider
-    await ctx.cmd('Comma'); await ctx.settle();
+    // the settings, to look at the size and its switches
+    await ctx.cmd('Comma'); await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="list"]').click()`); await ctx.settle();
     const r = await ctx.evaluate(`(r => ({ x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) }))(document.querySelector('#settings').getBoundingClientRect())`);
     await ctx.shot('cog', r);
     await ctx.cmd('Comma');

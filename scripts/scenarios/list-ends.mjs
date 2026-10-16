@@ -74,15 +74,15 @@ export default async function (ctx) {
     ctx.assert.equal(out.end.down.on, false, 'nothing is out of sight below the end');
     ctx.assert.equal(out.end.up.n, out.end.want[0], 'the top counts all of it');
 
-    // the cog's compact cards: shorter cards under the same scroll position, and the counts follow without a scroll
+    // compact cards (Settings › Chat list): shorter cards under the same scroll position, and the counts follow without a scroll
     await scrollTo(ctx, 700);
     const before = await ends(ctx);
-    await ctx.evaluate(`(e => { e.value = 2; e.dispatchEvent(new Event('input', { bubbles: true })); })(document.querySelector('#cardsSize'))`);
+    await ctx.evaluate(`document.querySelector('#cardsSize [data-v="2"]').click()`);
     await settle(ctx);
     out.compact = await ends(ctx);
     ctx.assert.deepEqual([out.compact.up.n, out.compact.down.n], out.compact.want, 'compact cards, counted again');
     ctx.assert.notDeepEqual([out.compact.up.n, out.compact.down.n], [before.up.n, before.down.n], 'and the counts moved with them');
-    await ctx.evaluate(`(e => { e.value = 0; e.dispatchEvent(new Event('input', { bubbles: true })); })(document.querySelector('#cardsSize'))`);
+    await ctx.evaluate(`document.querySelector('#cardsSize [data-v="0"]').click()`);
 
     // folded to the rail: the number and the arrow, no word
     await ctx.key('KeyB');

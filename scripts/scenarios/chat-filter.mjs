@@ -107,8 +107,11 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('#picklist .pkrow.chat .ids').length`), 0, 'a query the PR does not hold names none');
   await ctx.evaluate(`document.querySelector('#pick').close()`);
 
-  // the cog lists the key, beside K
-  out.cog = await ctx.evaluate(`[...document.querySelectorAll('#settings .keys kbd')].map(k => k.textContent)`);
+  // the keys sheet (?) lists the key, beside K — the settings' Keys pane did too, until 2026-10-16
+  await ctx.evaluate(`document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '?', bubbles: true, cancelable: true }))`);
+  await ctx.waitFor(`document.querySelector('#keysheet').open`, { what: 'the keys sheet' });
+  out.cog = await ctx.evaluate(`[...document.querySelectorAll('#ksbody .kr kbd')].map(k => k.textContent)`);
+  await ctx.evaluate(`document.querySelector('#keysheet').close()`);
   ctx.assert.equal(out.cog[out.cog.indexOf('⌥⌘K') + 3], '⌥⌘F', 'in Go to, after the launcher and the projects (the keys grouped, 2026-10-12)');
   out.arrest = arrest.id.slice(0, 8);
   return out;

@@ -4113,7 +4113,7 @@ function cloneRepo(name, rootDir, done) {
   if (!REPO_NAME.test(name || '')) return done({ code: 400, error: `"${name}" is not a repository name` });
   const roots = boardConfig().roots.filter(r => r.org);
   const root = rootDir ? roots.find(r => r.dir === rootDir) : roots.length === 1 ? roots[0] : null;
-  if (!root) return done({ code: 400, error: rootDir ? `${rootDir} is not a folder of repos with an org — Settings › Setup sets them` : roots.length ? 'which folder of repos? more than one has an org' : 'no folder of repos has an org to clone from — Settings › Setup sets them' });
+  if (!root) return done({ code: 400, error: rootDir ? `${rootDir} is not a folder of repos with an org — Settings › Projects sets them` : roots.length ? 'which folder of repos? more than one has an org' : 'no folder of repos has an org to clone from — Settings › Projects sets them' });
   const cwd = join(root.dir, name), ref = `${root.org}/${name}`;
   const under = clones.get(cwd); if (under) { under.waiters.push(done); return; }   // one under way: its answer is this one's too
   if (existsSync(cwd)) return done({ code: 200, cwd, cloned: false });
@@ -4166,7 +4166,7 @@ async function spawnTerm({ cwd, sessionId = null, cols = 120, rows = 30, shell =
     const clone = cloneFor(cwd);
     return { code: 409, missing: cwd, clone, error: clone ? `${tildePath(cwd)} is not checked out — ${clone.ref} clones it`
       : boardConfig().roots.some(r => r.org && (cwd + sep).startsWith(r.dir + sep)) ? `${tildePath(cwd)} is not there — its repo is checked out, but not this folder in it (a worktree since removed?)`
-      : `${tildePath(cwd)} is not there, and no folder of repos with an org holds it to clone it from (Settings › Setup)` };
+      : `${tildePath(cwd)} is not there, and no folder of repos with an org holds it to clone it from (Settings › Projects)` };
   }
   const args = task ? [task] : shell || !sessionId ? [] : ['--resume', sessionId];
   const id = `t${++termSeq}-${Date.now().toString(36)}`;

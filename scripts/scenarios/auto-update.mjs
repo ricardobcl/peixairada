@@ -174,7 +174,7 @@ export default async function (ctx) {
     ctx.assert.equal(out.changesSeg.take, null, 'nothing a click could take');
     ctx.assert.match(out.changesSeg.tip, / — click for Settings › Updates$/);
     await ctx.evaluate(`document.querySelector('#sbLeft .upg').click()`);
-    await ctx.waitFor(`document.querySelector('#settings').open && document.querySelector('#settings [data-tab="board"]').classList.contains('on')`, { what: 'a click opening the settings at Updates' });
+    await ctx.waitFor(`document.querySelector('#settings').open && document.querySelector('#settings [data-tab="system"]').classList.contains('on')`, { what: 'a click opening the settings at Updates' });
     out.changes = await say();
     ctx.assert.match(out.changes, /^1 new commit on origin\/main, not pulled: public\/index\.html changed here, and the new commits change it too — commit or discard it \(cd \S+ && git checkout HEAD -- public\/index\.html discards\), then check now/);
     ctx.assert.equal(await ctx.evaluate(`document.querySelector('#updBtn').textContent`), 'check now');

@@ -88,76 +88,106 @@
      The fish and the plan usage are the status bar's since 2026-10-09 (the list's foot row's until it was the only way,
      2026-10-14); the logo is a template (#logo) the bar, the About box and the welcome draw. */
   /* The settings (2026-09-28; a popover off the cog at the list's foot before): a modal dialog, centred, from
-     the chat header's ··· or ⌘, — the dialog rules give it the fade, the backdrop, Esc and the pane going down. A head
-     (the name, the counts, ×), a segmented control over three panes: the board's own switches, the server's setup,
-     the keys. The class is still `pop`: every row inside is styled as `.pop …`. */
-  #settings { width: min(560px, 94vw); height: min(640px, 86vh); padding: 0; border: 0; border-radius: var(--r-5); overflow: hidden; background: var(--panel); color: var(--ink); font-size: var(--fs-sm);
+     the chat header's ··· or ⌘, — the dialog rules give it the fade, the backdrop, Esc and the pane going down.
+     A sidebar and search since 2026-10-16 (the settings study, direction B — macOS System Settings' shape): the search
+     box over seven panes by task, each short enough not to scroll, and the shortcuts and the tour at the sidebar's foot;
+     the head names the pane in front. Every setting is one row (`.srow.set`): its name and one line on the left, its
+     control on the right, rows in rounded groups (`.sgrp` > `.sgh` + `.slist` + `.sgf`) — the setup's look, everywhere.
+     The class is still `pop`: every row inside is styled as `.pop …`. */
+  #settings { width: min(820px, 94vw); height: min(600px, 88vh); padding: 0; border: 0; border-radius: var(--r-5); overflow: hidden; background: var(--panel); color: var(--ink); font-size: var(--fs-sm);
     box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 8%, transparent) inset, 0 30px 90px rgba(0, 0, 0, .45); }
-  #settings[open] { display: grid; grid-template-rows: auto auto minmax(0, 1fr); outline: none; }
-  #settings .shd2 { display: flex; align-items: center; gap: 10px; padding: 16px 16px 12px 22px; }
+  #settings[open] { display: grid; grid-template-columns: 200px minmax(0, 1fr); outline: none; }
+  #settings .snav { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 14px 10px 12px; background: color-mix(in srgb, var(--ink) 3%, var(--panel)); border-right: 1px solid var(--line); }
+  #settings .sfind { position: relative; display: block; margin-bottom: 10px; }
+  #settings .sfind .ic { position: absolute; left: 9px; top: 8px; width: 13px; height: 13px; fill: var(--muted); pointer-events: none; }
+  #settings .sfind input { width: 100%; box-sizing: border-box; height: 29px; padding: 0 8px 0 28px; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); font: inherit; font-size: var(--fs-md); color: var(--ink); outline: none; }
+  #settings .sfind input::placeholder { color: var(--muted); }
+  #settings .sfind input:focus { background: var(--panel); border-color: var(--accent); }
+  #settings .stabs { display: grid; gap: 1px; }
+  #settings .stabs button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 5px 8px; border: 0; border-radius: var(--r-3); background: none; font: inherit; font-size: var(--fs-md); color: var(--ink); text-align: left; white-space: nowrap; cursor: pointer; }
+  #settings .stabs button:hover { background: var(--ctl); }
+  #settings .stabs button.on { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+  #settings .stabs .ic { flex: none; width: 15px; height: 15px; fill: var(--sic); }
+  #settings .stabs span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  #settings .stabs .sn { margin-left: auto; font-size: var(--fs-xs); color: var(--accent); }
+  #settings.finding .stabs button.on:not(:focus-visible) { background: none; }   /* searching: no pane is in front */
+  #settings.finding .stabs button.dim { opacity: .45; }
+  #settings .sfootnav { display: grid; gap: 1px; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line); }
+  #settings .sfootnav button { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border: 0; border-radius: var(--r-3); background: none; font: inherit; font-size: var(--fs-sm); color: var(--muted); text-align: left; cursor: pointer; }
+  #settings .sfootnav button:hover { background: var(--ctl); color: var(--ink); }
+  #settings .sfootnav kbd { margin-left: auto; font: inherit; font-weight: 600; padding: 0 6px; border-radius: var(--r-2); background: var(--ctl); }
+  #settings .smain { display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; }
+  #settings .shd2 { display: flex; align-items: center; gap: 10px; padding: 14px 16px 6px 22px; }
   .pop h4 { margin: 0; flex: 1; font-size: var(--fs-lg); display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-  .pop h4 em { font-style: normal; color: var(--accent); }
-  .pop h4 .sub { font-size: var(--fs-sm); font-weight: 400; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #settings .sclose { flex: none; width: 26px; height: 26px; border: 0; border-radius: 50%; background: var(--ctl); color: var(--muted); font: inherit; font-size: var(--fs-lg); line-height: 1; cursor: pointer; }
   #settings .sclose:hover { background: var(--ctl-hi); color: var(--ink); }
-  /* the tabs: a segmented control, the one in front raised on it */
-  #settings .stabs { display: flex; gap: 2px; margin: 0 22px 10px; padding: 3px; width: max-content; border-radius: var(--r-4); background: var(--ctl); }
-  #settings .stabs button { font: inherit; font-size: var(--fs-sm); font-weight: 600; padding: 4px 16px; border: 0; border-radius: var(--r-3); background: none; color: var(--muted); cursor: pointer; }
-  #settings .stabs button:hover { color: var(--ink); }
-  #settings .stabs button.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .22); }
-  #settings .spane { overflow: auto; padding: 4px 22px 20px; align-content: start; }
+  #settings .sbody { display: grid; gap: 24px; align-content: start; overflow: auto; padding: 4px 20px 22px; }
+  #settings .spane { display: grid; gap: 18px; align-content: start; }
   #settings .spane[hidden] { display: none; }
-  /* in a pane of their own, the setup and the keys need no rule above them, nor the first switch */
-  #settings .spane > .opt:first-child, #settings .spane > .setup, #settings .spane > .keys { margin-top: 0; padding-top: 0; border-top: 0; }
-  #settings .keys .kh { display: block; margin-top: 10px; font: 700 var(--fs-xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }   /* the groups (2026-10-12) */
-  #settings .keys .kh:first-child { margin-top: 0; }
-  /* The keys, so they can be looked up: two columns under a rule, the chord in ink, what it does in muted. */
-  .pop .keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: baseline; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--muted); }
-  .pop .keys .kh { grid-column: 1 / -1; font-size: var(--fs-xs); }
-  /* The one switch (2026-09-23): system notifications on or off, the server's word so the app and every tab agree. */
-  .pop .opt { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--muted); cursor: pointer; }
-  .pop .opt[hidden] { display: none; }
-  .pop .opt.sub { margin: -2px 0 0 43px; padding-top: 0; border-top: 0; }   /* a switch of the row above's (compact's same height), under its slider */
-  .pop .opt.edsay { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: -2px; padding-top: 0; border-top: 0; color: var(--muted); }   /* Zed not here: installing, failed, or where to get it (2026-10-13) */
-  .pop .opt.edsay .err { color: var(--needs); }
-  .pop .opt.edsay .edwhy { flex-basis: 100%; }   /* what Zed is not: in the pane (2026-10-13, later) */
-  .pop .opt b { font-weight: 600; color: var(--ink); }
-  .pop .opt input { appearance: none; -webkit-appearance: none; position: relative; margin: 0; width: 28px; height: 16px; border-radius: var(--r-3); background: var(--line); cursor: pointer; transition: background .15s; }
-  .pop .opt input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: transform .15s; }
-  .pop .opt input:checked { background: var(--accent); }
-  .pop .opt input:checked::after { transform: translateX(12px); }
-  .pop .opt input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  /* How much of a chat its card carries (2026-09-25): a slider of three stops under the switch — large as the cards
-     always were, medium the last word only, compact neither word. The stop names are the slider's scale, and a click. */
-  .pop .dens { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; align-items: center; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--muted); }
-  .pop .dens b { font-weight: 600; color: var(--ink); }
-  .pop .dens input { width: 100%; margin: 0; accent-color: var(--accent); cursor: pointer; }
-  .pop .dens .stops { grid-column: 2; display: flex; justify-content: space-between; font-size: var(--fs-xs); }
-  .pop .dens .stops span { cursor: pointer; }
-  .pop .dens .stops span:hover { color: var(--ink); }
-  .pop .dens .stops .on { color: var(--ink); font-weight: 600; }
-  /* What ⌥⌘N's ✕ took off the board, and the only way back to it. Empty is nothing at all — the popover is the
-     switch and the keys until something is hidden. */
-  .pop .opt.upd { grid-template-columns: 1fr auto; cursor: default; }   /* the update's word and its button (2026-10-12) */
-  .pop .opt.upd .uerr { color: var(--needs); }
-  .pop .opt.upd.keyrow { grid-template-columns: 1fr auto auto; }   /* the board's key: what holds, and its two buttons (2026-10-16) */
-  .pop .hid { display: grid; gap: 3px; margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); font-size: var(--fs-sm); color: var(--muted); }
-  .pop .hid:empty { display: none; }
-  .pop .hid .hrow { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: baseline; }
-  .pop .hid .hrow b { font-weight: 600; color: var(--ink); }
-  .pop .hid .hrow span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pop .hid button { font: inherit; font-size: var(--fs-xs); border: 1px solid transparent; background: var(--ctl); color: var(--ink); border-radius: var(--r-3); padding: 1px 7px; cursor: pointer; }
-  .pop .hid button:hover { border-color: var(--accent); color: var(--accent); }
-  .pop .scol { display: grid; gap: 9px; align-content: start; min-width: 0; }
-  /* The setup (2026-09-28; dressed the same night): three sections — the folders of repos, ⌥⌘O's project, the projects'
-     short names and colours — each a title and a line of what it is for, over an inset list of rows, as the system's
-     own settings are. A path or a name is text until the pointer or the keyboard is on it; the small fields (the org,
-     the short name) and the pickers wear a fill; a project's row leads with its square as the rail draws it, in its
-     colour; × comes with the pointer. */
-  .pop .setup { display: grid; gap: 22px; font-size: var(--fs-sm); color: var(--muted); }
-  .pop .setup .sgh { display: grid; gap: 2px; margin: 0 4px 8px; }
-  .pop .setup .sgh b { font-size: var(--fs-md); font-weight: 650; color: var(--ink); }
-  .pop .setup .sgh span { font-size: var(--fs-sm); line-height: 1.45; }
+  #settings .sph { display: none; margin: 0 4px -10px; font-size: var(--fs-sm); font-weight: 650; }   /* a pane's name over its matches */
+  #settings.finding .sph { display: block; cursor: pointer; }
+  #settings.finding .sph:hover { color: var(--accent); }
+  #settings.finding .sgf, #settings .nomatch { display: none !important; }
+  #settings .snone { margin: 30px 8px; color: var(--muted); text-align: center; }
+  ::highlight(sfind) { background-color: color-mix(in srgb, var(--accent) 32%, transparent); color: inherit; }
+  /* a group: a small heading, an inset list of rows, a line under it */
+  .pop .sgrp { display: grid; min-width: 0; }
+  .pop .sgrp[hidden] { display: none; }
+  .pop .sgh { margin: 0 6px 6px; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
+  .pop .sgf { margin: 6px 6px 0; font-size: var(--fs-xs); line-height: 1.45; color: var(--muted); }
+  .pop .sgf code { font-size: var(--fs-xs); }
+  .pop .sgf.serr, .pop .sgf .serr { color: var(--needs); }
+  /* a setting: its name and one line, its control on the right; a dependent one indented under its parent, and off
+     with the reason in its line rather than gone (2026-10-16) */
+  .pop .srow.set { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; padding: 8px 12px; }
+  .pop .srow.set + .srow::before, .pop .srow + .srow.set::before { left: 12px; }
+  .pop .srow.set.sub { padding-left: 34px; }
+  .pop .srow.set.sub::before { left: 34px; }
+  .pop .srow.set[hidden] { display: none; }
+  .pop .sl { display: grid; gap: 1px; min-width: 0; cursor: default; }
+  .pop label.sl { cursor: pointer; }
+  .pop .sl b { font-size: var(--fs-md); font-weight: 500; color: var(--ink); }
+  .pop .sl small { font-size: var(--fs-xs); line-height: 1.4; color: var(--muted); }
+  .pop .sl small:empty { display: none; }
+  .pop .srow.set.off .sl b { color: var(--muted); }
+  .pop .srow.set.off label.sl { cursor: default; }
+  .pop .sbtns { display: flex; gap: 6px; }
+  .pop .srow.set .btn kbd { font: inherit; color: var(--muted); }
+  .pop .ssel select { appearance: none; -webkit-appearance: none; height: 26px; padding: 0 26px 0 9px; border: 1px solid transparent; border-radius: var(--r-3); font: inherit; font-size: var(--fs-sm); color: var(--ink); cursor: pointer;
+    background: var(--ctl) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238f8e86' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 9px center / 9px 5px; }
+  .pop .ssel select:hover { background-color: var(--ctl-hi); }
+  .pop .ssel select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .pop .schecks { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 12px; }
+  .pop .schecks label { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-sm); color: var(--ink); white-space: nowrap; cursor: pointer; }
+  .pop .schecks input { margin: 0; accent-color: var(--accent); }
+  .pop .edsay { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: var(--fs-xs); color: var(--muted); }   /* Zed not here: installing, failed, or where to get it (2026-10-13) */
+  .pop .edsay[hidden] { display: none; }
+  .pop .edsay .err { color: var(--needs); }
+  .pop .edsay .edwhy { flex-basis: 100%; }   /* what Zed is not: in the pane (2026-10-13, later) */
+  .pop .srow.stat .uerr { color: var(--needs); }
+  /* a switch: a checkbox drawn as one, role=switch */
+  .pop input.sw { flex: none; appearance: none; -webkit-appearance: none; position: relative; margin: 0; width: 30px; height: 18px; border-radius: 9px; background: color-mix(in srgb, var(--ink) 22%, transparent); cursor: pointer; transition: background .15s; }
+  .pop input.sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: transform .15s; }
+  .pop input.sw:checked { background: var(--accent); }
+  .pop input.sw:checked::after { transform: translateX(12px); }
+  .pop input.sw:disabled { opacity: .45; cursor: default; }
+  .pop input.sw:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* What ⌥⌘N's ✕ took off the board, and the only way back to it: the Projects pane's Hidden group, there while
+     something is hidden. */
+  .pop .srow.hrow { grid-template-columns: minmax(0, 1fr) auto; }
+  .pop .srow.hrow .btn { font-size: var(--fs-xs); }
+  @media (max-width: 640px) {
+    #settings[open] { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+    #settings .snav { border-right: 0; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+    #settings .stabs { display: flex; overflow-x: auto; }
+    #settings .stabs button { width: auto; }
+    #settings .sfootnav { display: none; }
+  }
+  /* The setup (2026-09-28; dressed the same night): the folders of repos, ⌥⌘O's project, the projects' short names and
+     colours (the Projects pane), and Jira's (its own) — groups as every pane's are. A path or a name is text until the
+     pointer or the keyboard is on it; the small fields (the org, the short name) and the pickers wear a fill; a
+     project's row leads with its square as the rail draws it, in its colour; × comes with the pointer. */
+  .pop .setup { display: grid; gap: 18px; font-size: var(--fs-sm); color: var(--muted); }
   .pop .slist { border-radius: var(--r-4); background: color-mix(in srgb, var(--ink) 4.5%, transparent); }
   .pop .srow { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto 22px; gap: 8px; align-items: center; min-height: 44px; padding: 7px 10px 7px 12px; }
   .pop .srow + .srow::before { content: ''; position: absolute; top: 0; left: 42px; right: 0; border-top: 1px solid var(--line); }
@@ -167,8 +197,6 @@
   .pop .srow.quick { grid-template-columns: auto auto minmax(0, 1fr); gap: 10px; }
   .pop .srow.jsite { grid-template-columns: 22px minmax(0, 1.25fr) minmax(0, 1fr) 0; }
   .pop .srow.jtok { grid-template-columns: 22px minmax(0, 1fr) 22px; }
-  .pop .setup .sfoot.sjst { margin-top: 8px; }
-  .pop .setup .sfoot .serr { color: var(--needs); }
   .pop .srow .sic { display: grid; place-items: center; color: var(--muted); font-size: var(--fs-base); }
   .pop .srow .sic .ic { width: 16px; height: 16px; fill: currentColor; }
   .pop .srow.add .sic, .pop .srow.padd .sic { color: var(--accent); }
@@ -206,11 +234,6 @@
   .pop .setup select:hover { background-color: var(--ctl-hi); }
   .pop .setup select.sadd { background-color: transparent; color: var(--muted); }
   .pop .setup select.sadd:hover { background-color: var(--ctl); color: var(--ink); }
-  .pop .setup .sfoot { margin: -8px 4px 0; font-size: var(--fs-xs); }
-  .pop .setup .sfoot code { font-size: var(--fs-xs); }
-  .pop .setup .sfoot.serr { color: var(--needs); }
-  .pop .keys kbd { font: inherit; font-weight: 600; color: var(--ink); white-space: nowrap; }
-  .pop .keys em { font-style: normal; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--fs-xs); color: var(--ink); }
   .pop select { font: inherit; font-size: var(--fs-sm); padding: 4px 6px; border: 1px solid var(--line); border-radius: var(--r-3); background: transparent; color: inherit; max-width: 180px; }
   /* …and its fish floats belly-up (2026-10-11): flipped, the sparks out, bobbing; back, it flips over and wiggles. The
      same on the status bar's connection, whose fish is drawn anew with the bar — hence animations, not transitions. */
@@ -247,7 +270,6 @@
   #sbar .conn .logo :is(.fishg g, .stars) { fill: var(--idle); }
   #sbar .conn .logo .fishg path[fill] { fill: var(--bar, var(--panel)); }
   #sbar .conn.off .logo { filter: grayscale(1); opacity: .6; }
-  #counts { font-size: var(--fs-xs); font-weight: 400; color: var(--muted); white-space: nowrap; }
 
   /* ---- layout: sessions | splitter | chat (one half or two) ---- */
   main { display: flex; min-height: 0; min-width: 0; }
@@ -2028,18 +2050,12 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #tour .tskip { background: none; color: var(--muted); } #tour .tskip:hover { background: var(--ctl); color: var(--ink); }
   #tour .tnext { background: var(--accent); color: var(--bg); font-weight: 600; }
   #tour .tnext:hover { background: color-mix(in srgb, var(--accent) 86%, var(--ink)); }
-  #settings .shd2 #tourBtn { flex: none; }
   #keysheet .kshd #ksTour { flex: none; }
   #pick input { width: 100%; box-sizing: border-box; font: inherit; font-size: var(--fs-base); padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: inherit; outline: none; }
   #pick input:focus { border-color: var(--accent); }
   #picklist { margin-top: 6px; max-height: 50vh; overflow-y: auto; display: grid; gap: 1px; }
-  #settings .shd { margin: 14px 0 2px; font: 700 var(--fs-xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }   /* the Board pane's sections (2026-10-12) */
-  #settings .spane > .shd:first-child { margin-top: 2px; }
-  #settings .lightpick { display: flex; align-items: center; gap: 10px; } #settings .lightpick > span:first-of-type { flex: 1; }
-  #settings .lightpick[hidden] { display: none; }   /* the id beats .pop .opt[hidden] */
   #settings .sseg { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-3); background: var(--ctl); }
   #settings .sseg button { font: inherit; font-size: var(--fs-sm); border: 0; background: none; color: var(--muted); padding: 3px 10px; border-radius: var(--r-2); cursor: pointer; }
-  #settings .zoompick .zhint { color: var(--muted); font-size: var(--fs-sm); }
   #settings .sseg button[aria-checked="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 0 0 1px var(--line); }
   #pickfoot { margin: 6px 4px 0; padding-top: 6px; border-top: 1px solid var(--line); font-size: var(--fs-xs); color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
   #pickfoot kbd { font: 600 var(--fs-xs)/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); background: var(--ctl); border-radius: var(--r-2); padding: 2px 5px; margin-left: 4px; } #pickfoot s { text-decoration: none; opacity: .6; }
@@ -2126,9 +2142,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
      ring for the keyboard, the accent's, on every control; the text boxes keep their border as their focus (their own
      :focus rules out-specify :where). A fling at the end of a list stays in it. */
   .card .title, .card .snip, .msg .text, .presence, .prrow .t { text-wrap: pretty; }
-  .empty, .gempty, dialog p.help, #slist .none, #picklist .none, .pop .opt span { text-wrap: balance; }
+  .empty, .gempty, dialog p.help, #slist .none, #picklist .none, .pop .sl small { text-wrap: balance; }
   .card .title { overflow-wrap: break-word; hyphens: auto; }
-  .badge, .chip, :is(.card .cpr, .shead .hpr), .pkrow .num, #counts, .sedge b, .tl-lab, .prrow .num, .pop .keys kbd, .lognew b, #resume .n, .prround .say, .prpips, #rpop { font-variant-numeric: tabular-nums; }
+  .badge, .chip, :is(.card .cpr, .shead .hpr), .pkrow .num, .sedge b, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop { font-variant-numeric: tabular-nums; }
   ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
   :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
@@ -2191,7 +2207,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     .sq.pick, .shead h2 .sq { transition: opacity .12s; }
     #people button:hover, .pop .ssw:hover { transform: none; }
     #people button:not(.pgh) { transition: opacity .12s, box-shadow .12s; }   /* the faces fold at once, and come back fading */
-    .pop .opt input::after, #tline .tl-thumb { transition: none; }
+    .pop input.sw::after, #tline .tl-thumb { transition: none; }
     .card .top .tprs { transition: none; }   /* the stack fans at once */
     #resume.cloning .ric::after { animation: none; }   /* cloning: the ring still, the line along the top and the percent say it */
     #slist .card .top .tprs > * { transition: color .12s, border-color .12s, background-color .12s, box-shadow .12s; }
@@ -2257,41 +2273,89 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   </section>
 </main>
 <footer id="sbar"><div id="sbFind"><span id="filters"><button class="fsearch" id="qBtn" title="Search this project’s chats by title, branch or prompt — any letters in order, the best match first (⌥⌘F)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg></button><input type="text" id="q" class="fq" placeholder="this project’s chats, done too — title, branch, prompt…" autocomplete="off" spellcheck="false" hidden><button class="fsearch" id="fBtn" aria-haspopup="menu" aria-pressed="false" title="Show only some chats — a PR at your move, or a new reply"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2.5h12.5a.5.5 0 0 1 .38.82L10 8.9v4.35a.5.5 0 0 1-.28.45l-2.5 1.2A.5.5 0 0 1 6.5 14.45V8.9L1.37 3.32a.5.5 0 0 1 .38-.82Z"/></svg><span class="fl"></span></button></span></div><div id="sbLeft"></div><div id="sbPeople"><div id="people" hidden></div></div><div id="sbSwim" role="button" aria-label="Every agent at work (⌥⌘A)"></div><div id="sbRight"></div></footer>
-<dialog id="settings" class="pop" aria-label="Settings" tabindex="-1">
-  <div class="shd2"><h4><span>peix<em>AI</em>rada</span><span id="counts" class="sub"></span></h4><button class="btn" id="tourBtn" title="The board's main parts, one at a time — a couple of minutes">Take the tour</button><button class="sclose" id="settingsClose" title="Close · esc" aria-label="Close">×</button></div>
-  <nav class="stabs" role="tablist" aria-label="Settings"><button role="tab" data-tab="board" class="on" aria-selected="true" aria-controls="spBoard" id="stBoard">Board</button><button role="tab" data-tab="setup" aria-selected="false" aria-controls="spSetup" id="stSetup" tabindex="-1">Setup</button><button role="tab" data-tab="keys" aria-selected="false" aria-controls="spKeys" id="stKeys" tabindex="-1">Keys</button></nav>
-  <div class="spane scol" data-tab="board" role="tabpanel" id="spBoard" aria-labelledby="stBoard">
-    <h4 class="shd">Alerts</h4>
-    <label class="opt" title="Off, nothing posts a banner — not the app, not a browser tab, not the server — and the unread counts on the cards and the Dock go on as before"><input type="checkbox" id="notifyOn" checked><span><b>notifications</b> — a banner when Claude finishes or asks you something, while the board is not in front</span></label>
-    <label class="opt" title="A soft tick when a reply lands, two notes when a chat asks you — only while the board is the window in front (behind it, the system's notification has its own sound)"><input type="checkbox" id="soundsOn"><span><b>sounds</b> — a tick for a reply, two notes for a question, while the board is in front</span></label>
-    <h4 class="shd">Chats</h4>
-    <div class="dens" title="How much of each chat its card carries — a question waiting on you shows at every size">
-      <b>cards</b><input type="range" id="cardsSize" min="0" max="2" step="1" value="2" list="cardsStops" aria-label="Card size">
-      <datalist id="cardsStops"><option value="0"></option><option value="1"></option><option value="2"></option></datalist>
-      <span class="stops"><span data-v="0" title="your last prompt and Claude's last reply, as always">large</span><span data-v="1" title="only the last word — yours or Claude's, whichever came last">medium</span><span data-v="2" title="neither: the title, its chips and its PRs">compact</span></span>
+<dialog id="settings" class="pop" aria-labelledby="spTitle" tabindex="-1">
+  <aside class="snav">
+    <label class="sfind"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1.5a5 5 0 1 0 3.03 8.97l3.5 3.5 1.06-1.06-3.5-3.5A5 5 0 0 0 6.5 1.5Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/></svg><input type="search" id="sq" placeholder="Search" aria-label="Search the settings" aria-controls="sbody" autocomplete="off" spellcheck="false"></label>
+    <nav class="stabs" role="tablist" aria-orientation="vertical" aria-label="Settings">
+      <button role="tab" data-tab="general" class="on" aria-selected="true" aria-controls="spGeneral" id="stGeneral" style="--sic: var(--muted)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M7.1 1h1.8l.4 1.9c.4.15.8.35 1.15.6l1.85-.65 1.3 2.2-1.45 1.3c.05.4.05.8 0 1.2l1.45 1.3-1.3 2.2-1.85-.65c-.35.25-.75.45-1.15.6L8.9 15H7.1l-.4-1.9c-.4-.15-.8-.35-1.15-.6l-1.85.65-1.3-2.2 1.45-1.3a4.6 4.6 0 0 1 0-1.2L2.4 7.15l1.3-2.2 1.85.65c.35-.25.75-.45 1.15-.6ZM8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z"/></svg><span>General</span><b class="sn"></b></button>
+      <button role="tab" data-tab="look" aria-selected="false" aria-controls="spLook" id="stLook" tabindex="-1" style="--sic: var(--accent)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1Zm0 1.5v11a5.5 5.5 0 0 0 0-11Z"/></svg><span>Appearance</span><b class="sn"></b></button>
+      <button role="tab" data-tab="list" aria-selected="false" aria-controls="spList" id="stList" tabindex="-1" style="--sic: var(--working)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 2.5h12v4.5H2Zm0 6.5h12v4.5H2Z"/></svg><span>Chat list</span><b class="sn"></b></button>
+      <button role="tab" data-tab="term" aria-selected="false" aria-controls="spTerm" id="stTerm" tabindex="-1" style="--sic: var(--ink)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.6 3.1 6.4 8l-4.8 4.9 1.1 1.1L8.6 8 2.7 2ZM8 12.6h6.4v1.5H8Z"/></svg><span>Terminal</span><b class="sn"></b></button>
+      <button role="tab" data-tab="setup" aria-selected="false" aria-controls="spSetup" id="stSetup" tabindex="-1" style="--sic: var(--vscode)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2A1.25 1.25 0 0 0 .5 3.25v9.5C.5 13.44 1.06 14 1.75 14h12.5c.69 0 1.25-.56 1.25-1.25v-7.5C15.5 4.56 14.94 4 14.25 4H7.6L6.2 2.4A1.25 1.25 0 0 0 5.27 2Z"/></svg><span>Projects</span><b class="sn"></b></button>
+      <button role="tab" data-tab="jira" aria-selected="false" aria-controls="spJira" id="stJira" tabindex="-1" style="--sic: var(--watch)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M1.5 3.5h13v3a1.5 1.5 0 0 0 0 3v3h-13v-3a1.5 1.5 0 0 0 0-3Zm1.5 1.5v.9a3 3 0 0 1 0 4.2V11h10v-.9a3 3 0 0 1 0-4.2V5Zm6 0h1.2v6H9Z"/></svg><span>Jira</span><b class="sn"></b></button>
+      <button role="tab" data-tab="system" aria-selected="false" aria-controls="spSystem" id="stSystem" tabindex="-1" style="--sic: var(--idle)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 .8 14 3v4.6c0 3.5-2.5 6.1-6 7.6-3.5-1.5-6-4.1-6-7.6V3Zm2.7 4.6L7.2 9 5.4 7.2 4.3 8.3l2.9 2.9 4.6-4.7Z"/></svg><span>Updates &amp; access</span><b class="sn"></b></button>
+    </nav>
+    <div class="sfootnav"><button type="button" id="keysBtn">Keyboard shortcuts <kbd>?</kbd></button><button type="button" id="tourBtn">Take the tour</button></div>
+  </aside>
+  <div class="smain">
+    <div class="shd2"><h4 id="spTitle">General</h4><button class="sclose" id="settingsClose" title="Close · esc" aria-label="Close">×</button></div>
+    <div class="sbody" id="sbody">
+      <p class="snone" id="snone" hidden></p>
+      <div class="spane" data-tab="general" role="tabpanel" id="spGeneral" aria-labelledby="stGeneral">
+        <h5 class="sph">General</h5>
+        <section class="sgrp"><h6 class="sgh" id="sgAlerts">Alerts</h6><div class="slist" role="group" aria-labelledby="sgAlerts">
+          <div class="srow set" data-kw="banner alert notify notification macos quiet"><label class="sl" for="notifyOn"><b>Notifications</b><small>When a chat finishes or asks you, while the board is in the back</small></label><input type="checkbox" class="sw" role="switch" id="notifyOn" checked></div>
+          <div class="srow set" data-kw="audio chime sound tick"><label class="sl" for="soundsOn"><b>Sounds</b><small>A tick for a reply, two notes for a question, while it is in front</small></label><input type="checkbox" class="sw" role="switch" id="soundsOn"></div>
+        </div></section>
+        <section class="sgrp"><h6 class="sgh" id="sgFiles">Files</h6><div class="slist" role="group" aria-labelledby="sgFiles">
+          <div class="srow set" data-kw="editor vscode zed path link file open"><span class="sl" id="slEd"><b>Open files in</b><small>A path clicked in a chat opens there, at its line</small></span><span class="sseg" role="radiogroup" aria-labelledby="slEd" id="edPick"><button type="button" role="radio" data-ed="vscode">VS Code</button><button type="button" role="radio" data-ed="zed">Zed</button></span><div class="edsay" id="edSay" role="status" hidden></div></div>
+        </div></section>
+        <section class="sgrp" id="fsRow" hidden><h6 class="sgh" id="sgWindow">Window</h6><div class="slist" role="group" aria-labelledby="sgWindow">
+          <div class="srow set" data-kw="full screen notch space fill green button window"><label class="sl" for="fsPick"><b>Full screen</b><small>What ⌃⌘F and the green button do</small></label><span class="ssel"><select id="fsPick"><option value="fill">Up to the notch</option><option value="space">Its own Space</option></select></span></div>
+        </div></section>
+      </div>
+      <div class="spane" data-tab="look" hidden role="tabpanel" id="spLook" aria-labelledby="stLook">
+        <h5 class="sph">Appearance</h5>
+        <section class="sgrp"><div class="slist" role="group" aria-label="Theme">
+          <div class="srow set" data-kw="theme colours colors skin dark light"><span class="sl"><b>Theme</b><small id="themeNames"></small></span><button type="button" class="btn" id="themeBtn">Choose… <kbd>⌥⌘Y</kbd></button></div>
+          <div class="srow set" data-kw="theme dark light mode follow macos system appearance"><label class="sl" for="skinFollow"><b>Follow macOS</b><small>A dark theme while macOS is dark, a light one while it is light</small></label><input type="checkbox" class="sw" role="switch" id="skinFollow"></div>
+        </div></section>
+        <section class="sgrp"><div class="slist" role="group" aria-label="Text size">
+          <div class="srow set" data-kw="text size zoom scale font bigger smaller"><label class="sl" for="zoomPick"><b>Text size</b><small class="zhint">Your browser’s View › Zoom</small></label><span class="ssel"><select id="zoomPick"><option value="0.9">90 %</option><option value="1">100 %</option><option value="1.1">110 %</option><option value="1.25">125 %</option><option value="1.4">140 %</option></select></span></div>
+        </div></section>
+        <section class="sgrp"><h6 class="sgh" id="sgBar">Status bar</h6><div class="slist" role="group" aria-labelledby="sgBar">
+          <div class="srow set" data-kw="status bar meters cpu memory ram claude" id="sbarStats"><span class="sl"><b>Show in the status bar</b><small>The CPU every 3 s, the memory every 15 s</small></span><span class="schecks"><label><input type="checkbox" data-stat="cpu"> CPU</label><label><input type="checkbox" data-stat="mem"> Memory</label><label><input type="checkbox" data-stat="claude"> Claude’s memory</label></span></div>
+        </div></section>
+      </div>
+      <div class="spane" data-tab="list" hidden role="tabpanel" id="spList" aria-labelledby="stList">
+        <h5 class="sph">Chat list</h5>
+        <section class="sgrp"><div class="slist" role="group" aria-label="Cards">
+          <div class="srow set" data-kw="card size cards density large medium compact"><span class="sl" id="slCards"><b>Card size</b><small id="cardsSay"></small></span><span class="sseg" role="radiogroup" aria-labelledby="slCards" id="cardsSize"><button type="button" role="radio" data-v="0">Large</button><button type="button" role="radio" data-v="1">Medium</button><button type="button" role="radio" data-v="2">Compact</button></span></div>
+          <div class="srow set sub" id="laneRow" data-kw="card size larger lane needs you asking"><label class="sl" for="cardsByLane"><b>Larger when a chat needs you</b><small data-d="Asking, your move, clauding or a new reply" data-off="Cards are already large"></small></label><input type="checkbox" class="sw" role="switch" id="cardsByLane"></div>
+          <div class="srow set sub" id="evenRow" data-kw="card size same height even uniform compact"><label class="sl" for="cardsEven"><b>Same height</b><small data-d="Every compact card one title line tall" data-off="Only with compact cards"></small></label><input type="checkbox" class="sw" role="switch" id="cardsEven"></div>
+        </div></section>
+      </div>
+      <div class="spane" data-tab="term" hidden role="tabpanel" id="spTerm" aria-labelledby="stTerm">
+        <h5 class="sph">Terminal</h5>
+        <section class="sgrp"><div class="slist" role="group" aria-label="Terminal">
+          <div class="srow set" data-kw="option alt meta esc keyboard terminal drawer word"><label class="sl" for="optMeta"><b>Option as Meta</b><small id="optMetaSay"></small></label><input type="checkbox" class="sw" role="switch" id="optMeta" checked></div>
+          <div class="srow set" data-kw="screen reader voiceover accessibility drawer"><label class="sl" for="termReader"><b>Screen reader mode</b><small id="termReaderSay">The drawer’s lines read out as they come</small></label><input type="checkbox" class="sw" role="switch" id="termReader"></div>
+        </div></section>
+      </div>
+      <div class="spane" data-tab="setup" hidden role="tabpanel" id="spSetup" aria-labelledby="stSetup">
+        <h5 class="sph">Projects</h5>
+        <div id="setup" class="setup"></div>
+        <section class="sgrp" id="hiddenGrp" hidden data-kw="hidden show project"><h6 class="sgh" id="sgHidden">Hidden</h6><div class="slist" id="hidden" role="group" aria-labelledby="sgHidden"></div><p class="sgf">Off the pickers. Their chats still show under ALL.</p></section>
+      </div>
+      <div class="spane" data-tab="jira" hidden role="tabpanel" id="spJira" aria-labelledby="stJira">
+        <h5 class="sph">Jira</h5>
+        <div id="jiraSet" class="setup"></div>
+      </div>
+      <div class="spane" data-tab="system" hidden role="tabpanel" id="spSystem" aria-labelledby="stSystem">
+        <h5 class="sph">Updates &amp; access</h5>
+        <section class="sgrp"><h6 class="sgh" id="sgUpd">Updates</h6><div class="slist" role="group" aria-labelledby="sgUpd">
+          <div class="srow set stat" id="updRow" data-kw="update version commit check pull"><span class="sl"><b>This board</b><small id="updSay"></small></span><button type="button" class="btn" id="updBtn">check now</button></div>
+          <div class="srow set" data-kw="update automatically auto pull itself"><label class="sl" for="autoUpdate"><b>Update automatically</b><small id="autoUpdateSay"></small></label><input type="checkbox" class="sw" role="switch" id="autoUpdate"></div>
+        </div></section>
+        <section class="sgrp"><h6 class="sgh" id="sgKey">Board key</h6><div class="slist" role="group" aria-labelledby="sgKey">
+          <div class="srow set stat keyrow" id="keyRow" data-kw="key security access token lock browser"><span class="sl"><b>The board’s key</b><small id="keySay"></small></span><span class="sbtns"><button type="button" class="btn" id="keyReq" hidden>require it now</button><button type="button" class="btn" id="keyNew">new key</button></span></div>
+        </div><p class="sgf">A file in the board’s folder only you can read. The app hands it over; a browser gets it once, from a tab the board opens.</p></section>
+        <section class="sgrp"><h6 class="sgh" id="sgFile">Setup file</h6><div class="slist" role="group" aria-labelledby="sgFile">
+          <div class="srow set" data-kw="setup config json file path dotfiles"><span class="sl"><b id="sfilePath">—</b><small>Yours to edit by hand too; the app and every browser on this Mac share it</small></span><button type="button" class="btn" id="sfileCopy">Copy path</button></div>
+        </div></section>
+      </div>
     </div>
-    <label class="opt sub" title="On, a chat asking you, one with a PR at your move, one Claude is at work in and one with a new reply have large cards whatever the size above — the rest are at that size"><input type="checkbox" id="cardsByLane"><span><b>by lane</b> — large where a chat wants you, the size above for the rest</span></label>
-    <label class="opt sub" id="evenRow" title="Compact cards all the same height: the title on one line and the your-move line under it, held empty on a card without one; the question is left to the card's red edge and its pings" hidden><input type="checkbox" id="cardsEven"><span><b>same height</b> — every compact card a title line and a your-move line tall</span></label>
-    <div class="opt lightpick" title="Where a file path clicked in a chat opens, at its line — a path in a reply, a tool call or on a drawer's screen: in VS Code or in Zed, each the app's own window, outside the board. Not ⌥⌘E: that is VS Code Web on a tab of the pane whichever is picked, since Zed has no web version the pane could show"><span><b>files open in</b> — a path clicked in a chat or a drawer opens there, at its line, in that app's own window</span><span class="sseg" role="radiogroup" aria-label="Editor" id="edPick"><button type="button" role="radio" data-ed="vscode">VS Code</button><button type="button" role="radio" data-ed="zed">Zed</button></span></div>
-    <div class="opt edsay" id="edSay" role="status" hidden></div>
-    <h4 class="shd">Look</h4>
-    <div class="opt lightpick zoompick" title="Everything on the board, larger or smaller — the app's own zoom; in a browser, its View menu's"><span><b>text size</b> — the whole board</span><span class="sseg" role="radiogroup" aria-label="Text size" id="zoomPick"><button type="button" role="radio" data-z="0.9">90 %</button><button type="button" role="radio" data-z="1">100 %</button><button type="button" role="radio" data-z="1.1">110 %</button><button type="button" role="radio" data-z="1.25">125 %</button><button type="button" role="radio" data-z="1.4">140 %</button></span><span class="zhint">your browser's View → Zoom</span></div>
-    <div class="opt lightpick" id="fsRow" title="What ⌃⌘F and the green button do in the app. Up to the notch: the board's own full screen — the whole screen, the strip either side of the camera housing included, on the desktop the window is on. Its own Space: macOS's full screen — a desktop of its own that Mission Control shows and a swipe reaches, the menu bar and the title bar coming down together at the top edge — but macOS keeps it below the camera housing, the strip either side black. On a display without a housing the two take the same room" hidden><span><b>full screen</b> — ⌃⌘F and the green button</span><span class="sseg" role="radiogroup" aria-label="Full screen" id="fsPick"><button type="button" role="radio" data-fs="fill">up to the notch</button><button type="button" role="radio" data-fs="space">its own Space</button></span></div>
-    <div class="opt" title="A theme is every surface at once — the cards, the transcript, the code, the drawer's colours, the header's black and the status bar — and its appearance, dark or light, whatever macOS shows"><span><b>theme</b> — <span id="themeNames"></span> <button class="btn" id="themeBtn">choose… ⌥⌘Y</button></span></div>
-    <label class="opt sub" title="On, the board is dark while macOS is dark and light while it is light, each in the theme last picked for it; off, the theme picked is worn — and its appearance — whatever macOS shows"><input type="checkbox" id="skinFollow"><span><b>follow macOS</b> — a dark theme while macOS is dark, a light one while it is light; off, the theme picked whatever macOS shows</span></label>
-    <div class="opt sbstats" id="sbarStats" title="What else the status bar at the window's foot says — the CPU asked of the Mac every 3 s, the memory every 15 s"><span><b>status bar</b> — also</span><label><input type="checkbox" data-stat="cpu"> CPU</label><label><input type="checkbox" data-stat="mem"> memory</label><label><input type="checkbox" data-stat="claude"> Claude's memory</label></div>
-    <h4 class="shd">Terminal</h4>
-    <label class="opt" title="On, ⌥ with a letter is Meta in the terminal, as iTerm's Esc+ — ⌥B ⌥F move a word, ⌥⌫ deletes one; ⌥ with a digit or a sign still types what the keyboard makes. Off, ⌥ types whatever your layout composes (⌥L is @ on a German one)"><input type="checkbox" id="optMeta" checked><span><b>⌥ is Meta</b> in the terminal — off, ⌥ types what your keyboard composes</span></label>
-    <label class="opt" title="xterm's screen-reader mode: the drawer's lines kept in a live region VoiceOver follows — a little slower to draw"><input type="checkbox" id="termReader"><span><b>screen reader</b> in the drawer — its lines read out as they come</span></label>
-    <h4 class="shd">Access</h4>
-    <div class="opt sub upd keyrow" id="keyRow" title="Every ask of the server carries the board's key — a file in its state folder only you can read. The app hands it to the board; a browser gets it once, by a tab the board opens with a ticket (or scripts/launchd.sh open). A container or another account reaching the port gets nothing without it"><span id="keySay"></span><button type="button" class="btn" id="keyReq" hidden>require it now</button><button type="button" class="btn" id="keyNew">new key</button></div>
-    <h4 class="shd">Updates</h4>
-    <label class="opt" title="The board looks for new commits on its checkout's upstream every half hour, and the status bar says when there are some. On, it also pulls them once nothing has been done on the board for two minutes — a fast-forward only, never over a change of yours — and starts again what they changed: the packages, the server (the chats in drawers stay), this page (once you leave it be) and the app. A commit whose server does not start is undone and held back. Off, update now below takes them"><input type="checkbox" id="autoUpdate"><span><b>update itself</b> — pulls the board's new commits and starts again what they changed: the server, this page, the app; off, the status bar says they came</span></label>
-    <div class="opt sub upd" id="updRow"><span id="updSay"></span><button type="button" class="btn" id="updBtn">check now</button></div>
-    <div id="hidden" class="hid"></div>
   </div>
-  <div class="spane" data-tab="setup" hidden role="tabpanel" id="spSetup" aria-labelledby="stSetup"><div id="setup" class="setup"></div></div>
-  <div class="spane" data-tab="keys" hidden role="tabpanel" id="spKeys" aria-labelledby="stKeys"><div class="keys" title="From anywhere on the board, the terminal included"></div></div>
 </dialog>
 <dialog id="hmenu" aria-label="This chat's actions"></dialog>
 <dialog id="ctxm" aria-label="Actions"></dialog>
@@ -2560,31 +2624,89 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   }
   // The settings: a modal dialog (2026-09-28), from the chat header's ··· or ⌘, — the dialog's own Esc, its backdrop
   // clicked, or × close it; closing drops a setup row half typed. The pane goes down while it is up (postPane), and
-  // comes back on `close`, as under any dialog. The tab in front is remembered while the page lives.
+  // comes back on `close`, as under any dialog. A sidebar of panes and a search box since 2026-10-16 (the settings
+  // study's B): the box has the keys as it opens, the pane in front is remembered while the page lives, and the keys go
+  // back to whatever had them once it closes.
+  const sset = { tab: 'general', opener: null };
   const settingsOpen = (on = true) => {
     const dlg = $('#settings');
     if (!on) { if (dlg.open) dlg.close(); return; }
     if (dlg.open) return;
     if ($('#hmenu').open) $('#hmenu').close();
     if (inApp) post({ type: 'focus' });   // from the pane's keys, the board needs the keyboard back
-    dlg.showModal(); dlg.focus(); repostPane();   // the dialog itself takes the focus, not × wearing its ring
+    sset.opener = document.activeElement !== document.body ? document.activeElement : null;
+    $('#sq').value = ''; settingsFind();
+    dlg.showModal(); $('#sq').focus(); repostPane();
     loadJira(); loadEditors();
   };
   const settingsToggle = () => settingsOpen(!$('#settings').open);
-  $('#settings').addEventListener('close', () => { if (setupUi.pending.size) { setupUi.pending.clear(); renderSetup(); } repostPane(); });
+  $('#settings').addEventListener('close', () => {
+    if (setupUi.pending.size) { setupUi.pending.clear(); renderSetup(); }
+    window.CSS?.highlights?.delete('sfind');
+    const o = sset.opener; sset.opener = null;
+    if (o?.isConnected && !document.querySelector('dialog[open]') && (document.activeElement === document.body || !document.activeElement)) o.focus({ preventScroll: true });
+    repostPane();
+  });
   $('#settings').addEventListener('click', e => { if (e.target === e.currentTarget) settingsOpen(false); });   // the backdrop
   $('#settingsClose').onclick = () => settingsOpen(false);
-  $('#settings .stabs').addEventListener('click', e => {
-    const b = e.target.closest('[data-tab]'); if (!b) return;
-    document.querySelectorAll('#settings .stabs [data-tab]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', String(x === b)); x.tabIndex = x === b ? 0 : -1; });
-    document.querySelectorAll('#settings .spane').forEach(x => { x.hidden = x.dataset.tab !== b.dataset.tab; });
-  });
-  // ← → between the tabs, as a tab list is walked (2026-10-12)
+  /** A pane in front: its tab lit, the search let go. */
+  function settingsTab(tab) {
+    const dlg = $('#settings'), b = dlg.querySelector(`.stabs [data-tab="${tab}"]`) || dlg.querySelector('.stabs [data-tab]');
+    sset.tab = b.dataset.tab; $('#sq').value = '';
+    dlg.querySelectorAll('.stabs [data-tab]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', String(x === b)); x.tabIndex = x === b ? 0 : -1; });
+    settingsFind(); $('#sbody').scrollTop = 0;
+  }
+  $('#settings .stabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) settingsTab(b.dataset.tab); });
+  $('#sbody').addEventListener('click', e => { const h = e.target.closest('.sph'); if (h && $('#settings').classList.contains('finding')) settingsTab(h.closest('.spane').dataset.tab); });
+  // ↑ ↓ (and ← →) between the panes, as a tab list is walked (2026-10-12; down the sidebar since 2026-10-16)
   $('#settings .stabs').addEventListener('keydown', e => {
-    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return; e.preventDefault();
-    const bs = [...$('#settings .stabs').querySelectorAll('[data-tab]')], i = bs.indexOf(document.activeElement), n = bs[(i + (e.key === 'ArrowRight' ? 1 : bs.length - 1)) % bs.length];
+    const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key]; if (!step) return; e.preventDefault();
+    const bs = [...$('#settings .stabs').querySelectorAll('[data-tab]')], i = bs.indexOf(document.activeElement), n = bs[(i + step + bs.length) % bs.length];
     n.click(); n.focus();
   });
+  // Search (2026-10-16): a row shows while its words — its name, its line, its keywords, a box's value, its group's and
+  // its pane's names — hold every word typed; each pane with any shows them under its name, the sidebar counts them, and
+  // the words are marked where the CSS highlight API is. Nothing is drawn anew: rows are only hidden (.nomatch), so a
+  // control keeps its node and its listeners. A row the board itself hides (the app's alone, Zed's line) stays hidden.
+  function settingsFind() {
+    const dlg = $('#settings'), raw = $('#sq').value.trim(), words = raw.toLowerCase().split(/\s+/).filter(Boolean);
+    dlg.classList.toggle('finding', !!words.length);
+    let total = 0;
+    for (const pane of dlg.querySelectorAll('.spane')) {
+      const tab = dlg.querySelector(`.stabs [data-tab="${pane.dataset.tab}"]`);
+      let n = 0;
+      for (const g of pane.querySelectorAll('.sgrp')) {
+        const head = `${tab.textContent} ${g.querySelector('.sgh')?.textContent || ''} ${g.dataset.kw || ''}`;
+        let gn = 0;
+        for (const r of g.querySelectorAll('.srow')) {
+          const text = `${head} ${r.textContent} ${r.dataset.kw || ''} ${[...r.querySelectorAll('input[type=text], select')].map(x => x.value).join(' ')}`.toLowerCase();
+          const hit = words.every(w => text.includes(w));
+          r.classList.toggle('nomatch', !hit);
+          if (hit && !r.hidden && !g.hidden) gn++;
+        }
+        g.classList.toggle('nomatch', !gn && !!words.length); n += gn;
+      }
+      pane.hidden = words.length ? !n : pane.dataset.tab !== sset.tab;
+      tab.querySelector('.sn').textContent = words.length && n ? n : '';
+      tab.classList.toggle('dim', !!words.length && !n);
+      total += n;
+    }
+    $('#snone').hidden = !words.length || !!total; $('#snone').textContent = `No setting matches “${raw}”.`;
+    $('#spTitle').textContent = words.length ? `Results for “${raw}”` : dlg.querySelector(`.stabs [data-tab="${sset.tab}"] span`).textContent;
+    if (!window.CSS?.highlights) return;
+    const ranges = [];
+    if (words.length) for (const el of dlg.querySelectorAll('.spane:not([hidden]) :is(.srow:not(.nomatch) :is(.sl, .pn), .sgrp:not(.nomatch) .sgh)')) {
+      const tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let t; (t = tw.nextNode());) {
+        const low = t.nodeValue.toLowerCase();
+        for (const w of words) for (let i = low.indexOf(w); i >= 0; i = low.indexOf(w, i + w.length)) { const r = new Range(); r.setStart(t, i); r.setEnd(t, i + w.length); ranges.push(r); }
+      }
+    }
+    CSS.highlights.set('sfind', new Highlight(...ranges));
+  }
+  $('#sq').addEventListener('input', () => { settingsFind(); $('#sbody').scrollTop = 0; });
+  // the sidebar's foot: the key sheet and the tour, the settings closed first
+  $('#keysBtn').onclick = () => { settingsOpen(false); keysOpen(); };
   // no chat open: the header's ··· is the settings alone (delegated — leaveChat writes the header anew; its icon is
   // drawn where ICON is defined, before leaveChat keeps the header)
   $('#shead').addEventListener('click', e => { if (e.target.closest('#noChatMore')) settingsOpen(true); });
@@ -2690,13 +2812,13 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return '';
   }
   function updatesOpen() {
-    settingsOpen(true);
-    $('#settings .stabs [data-tab="board"]').click();
+    settingsOpen(true); settingsTab('system');
     $('#updRow').scrollIntoView({ block: 'center' });
   }
   function showUpdate() {
     const u = state.update, w = updateSay(u), b = $('#updBtn');
     $('#autoUpdate').checked = u?.on === true; $('#autoUpdate').disabled = !!w.none;
+    $('#autoUpdateSay').textContent = w.none ? 'Only for a board run from a git checkout' : u?.on ? 'Pulls new commits after two idle minutes, never over your changes' : 'The status bar says when new commits come';
     setHtml($('#updSay'), w.say);
     b.textContent = w.apply ? 'update now' : 'check now'; b.dataset.apply = w.apply ? '1' : ''; b.disabled = !!(u?.busy || w.none);
   }
@@ -2787,9 +2909,14 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     $('#sessions').dataset.cards = prefs.cards;
     $('#sessions').toggleAttribute('data-bylane', !!prefs.cardsByLane); $('#cardsByLane').checked = !!prefs.cardsByLane;
     $('#sessions').toggleAttribute('data-even', prefs.cards === 'compact' && !!prefs.cardsEven);   // compact's own switch
-    $('#evenRow').hidden = prefs.cards !== 'compact'; $('#cardsEven').checked = !!prefs.cardsEven;
-    $('#cardsSize').value = v;
-    document.querySelectorAll('#settings .dens .stops span').forEach(x => x.classList.toggle('on', +x.dataset.v === v));
+    $('#cardsEven').checked = !!prefs.cardsEven;
+    // the settings: the size picked and what it carries, and its two switches under it — off, with why, where they do nothing
+    for (const b of document.querySelectorAll('#cardsSize [data-v]')) b.setAttribute('aria-checked', String(+b.dataset.v === v));
+    $('#cardsSay').textContent = ['Your last prompt and Claude’s last reply', 'The last word, yours or Claude’s', 'The title, its chips and its PRs'][v];
+    for (const [row, off] of [['#laneRow', prefs.cards === 'large'], ['#evenRow', prefs.cards !== 'compact']]) {
+      const r = $(row), say = r.querySelector('small');
+      r.classList.toggle('off', off); r.querySelector('input').disabled = off; say.textContent = off ? say.dataset.off : say.dataset.d;
+    }
     listChanged();   // the cards changed height under the same scroll position
   }
   const setCards = v => { prefs.cards = CARD_SIZES[v] || 'compact'; savePrefs(); applyCards(); };
@@ -2797,9 +2924,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   // new reply — large whatever the slider says, the rest at its size. cardHtml marks those cards .roomy; the list's
   // data-bylane lets the mark count, so the switch, like the slider, re-renders nothing.
   $('#cardsByLane').addEventListener('change', e => { prefs.cardsByLane = e.target.checked; savePrefs(); applyCards(); });
-  $('#cardsSize').addEventListener('input', e => setCards(+e.target.value));
+  $('#cardsSize').addEventListener('click', e => { const x = e.target.closest('[data-v]'); if (x) setCards(+x.dataset.v); });
   $('#cardsEven').addEventListener('change', e => { prefs.cardsEven = e.target.checked; savePrefs(); applyCards(); });
-  $('#settings .dens .stops').addEventListener('click', e => { const x = e.target.closest('[data-v]'); if (x) setCards(+x.dataset.v); });
   applyCards();
   // A theme's colours are drawn again on the list and the open chat's header.
   const redrawColors = () => { renderBoard(); const s = state.sessions.get(state.current); if (s) renderHead(s); };
@@ -3012,7 +3138,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     if (e.key !== 'Escape' || e.metaKey || e.ctrlKey || e.altKey) return;
     let took = false;
     const dlg = document.querySelector('dialog[open]');
-    if (dlg) { dlg.close(); took = true; }
+    if (dlg?.id === 'settings' && e.target === $('#sq') && $('#sq').value) { $('#sq').value = ''; settingsFind(); took = true; }   // a search let go first
+    else if (dlg) { dlg.close(); took = true; }
     else if (state.paneVisible && !e.target.closest?.('input, textarea, select, [contenteditable], .tbody')) took = hotEscape();
     if (!took) return;
     e.preventDefault(); e.stopPropagation();
@@ -3682,7 +3809,7 @@ const toolName = n => {
   const pillsHtml = p => `${p.working ? `<span class="pc working" title="clauding">${p.working}</span>` : ''}${p.ready ? `<span class="pc ready" title="ready for you">${p.ready}</span>` : ''}${p.unread ? `<span class="badge">${p.unread}</span>` : ''}`;   // the column's counts, and the picker's
   // The colour square — and where it stands for one folder (the chat header's) the picker: the setup's colour for it.
   const sqHtml = (p, style = '') => p.cwds?.length === 1
-    ? `<span class="sq pick"${style ? ` style="${style}"` : ''} data-name="${esc(colorKey(p.cwds[0]))}" title="Colour of ${esc(p.name)} — click to pick; kept in the setup (Settings › Setup › Projects); ⌥-click takes it off"></span>`
+    ? `<span class="sq pick"${style ? ` style="${style}"` : ''} data-name="${esc(colorKey(p.cwds[0]))}" title="Colour of ${esc(p.name)} — click to pick; kept in the setup (Settings › Projects › Projects); ⌥-click takes it off"></span>`
     : `<span class="sq"${style ? ` style="${style}"` : ''}></span>`;
 
   // ---- render: both lists ------------------------------------------------------------
@@ -3703,8 +3830,6 @@ const toolName = n => {
     if (!every.some(p => p.key === prefs.project)) prefs.project = ALL;
     const cur = every.find(p => p.key === prefs.project);
     renderSessionList(cur); renderHidden();
-    const all = every[0];
-    $('#counts').textContent = `${[...state.sessions.values()].filter(s => s.alive).length} live · ${all.ready} ready · ${all.working} clauding`;
     const w = wanting(), total = w.needs.length + w.replied.length;   // what wants you, as the Dock counts it (2026-10-12; the alerts this page saw before)
     document.title = (total ? `(${total}) ` : '') + 'peixAIrada';
     if (inApp) postState();
@@ -5239,7 +5364,7 @@ const toolName = n => {
     ['⌥⌘←→', 'Layout', 'the tab to the left / right', 'across both halves\' strips · drag a tab onto the other half to move it there', ['alt:ArrowLeft', 'alt:ArrowRight']],
     ['⌘0', 'Layout', 'only this half — the other closes', 'with one half, the chat\'s size back to normal', ['cmd:Digit0']],
     ['⌥⌘B', 'Layout', 'fold the list into a rail, and back', '', ['alt:KeyB']],
-    ['⌃⌘F', 'Layout', 'full screen, in the app — up to the notch, or in a Space of its own', 'Settings › Look picks which · the green button too · up to the notch, ⌥-click zooms, and the lights come down with the menu bar at the top edge · remembered across launches', []],
+    ['⌃⌘F', 'Layout', 'full screen, in the app — up to the notch, or in a Space of its own', 'Settings › General picks which · the green button too · up to the notch, ⌥-click zooms, and the lights come down with the menu bar at the top edge · remembered across launches', []],
     ['⌥⌘R', 'Look', 'reload the board', 'the chat you are on kept · ⇧⌘R restarts the server too, in the app · ⌘R is the page\'s in the pane', ['alt:KeyR']],
     ['⌥⌘Y', 'Look', 'the theme', 'the board behind follows the arrows · ⏎ wears it · esc puts back what was worn', ['alt:KeyY']],
     ['⌘,', 'Look', 'the settings', 'the chat header\'s ··· has them too', ['cmd:Comma']],
@@ -5253,11 +5378,12 @@ const toolName = n => {
     ['pinch', 'In a page', 'zoom a page in the pane, as in Safari', 'its address sits in the strip, a click copies it', []],
   ];
   const keysHtml = (rows, row) => [...new Set(rows.map(k => k[1]))].map(g => `<span class="kh">${esc(g)}</span>${rows.filter(k => k[1] === g).map(row).join('')}`).join('');
-  $('#settings .keys').innerHTML = keysHtml(KEYS, ([k, , d, more, , id]) => `<kbd>${k}</kbd><span${id ? ` id="${id}"` : ''}${more ? ` title="${esc(more)}"` : ''}>${d}</span>`);
+  // what the setup says of a key (⌥⌘O's project, ⌥⌘N's folders), by the row's id — renderSetup writes it
+  const keyNotes = {};
   function keysOpen() {
     const dlg = $('#keysheet'); if (dlg.open) return;
     if (inApp) post({ type: 'focus' });
-    $('#ksbody').innerHTML = keysHtml(KEYS, ([k, , d, more, , id]) => `<div class="kr"><kbd>${k}</kbd><span>${(id && $('#' + id)?.innerHTML) || d}${(id && $('#' + id)?.title) || more ? `<i>${esc((id && $('#' + id)?.title) || more)}</i>` : ''}</span></div>`).replace(/<span class="kh">/g, '<span class="kh ksh">');
+    $('#ksbody').innerHTML = keysHtml(KEYS, ([k, , d, more, , id]) => { const n = keyNotes[id] || {}, tip = n.title || more; return `<div class="kr"><kbd>${k}</kbd><span>${n.html || d}${tip ? `<i>${esc(tip)}</i>` : ''}</span></div>`; }).replace(/<span class="kh">/g, '<span class="kh ksh">');
     $('#ksq').value = ''; ksFilter();
     dlg.showModal(); repostPane(); $('#ksq').focus();
   }
@@ -5394,7 +5520,7 @@ const toolName = n => {
   // the way in.
   function hotOracle() {
     const name = state.config.quick;
-    if (!name) return note($('#shead'), 'No project for ⌥⌘O yet — the settings (⌘,) name one under Setup · ⌥⌘N starts a chat anywhere');
+    if (!name) return note($('#shead'), 'No project for ⌥⌘O yet — Settings › Projects names one (⌘,) · ⌥⌘N starts a chat anywhere');
     const p = projectList().find(x => x.name === name && x.cwds.length);
     if (!p) return note($('#shead'), `No ${name} folder on the board — ⌥⌘N starts a chat anywhere`);
     focusBoard();
@@ -5535,8 +5661,9 @@ const toolName = n => {
     : { name: folderName(key), where: homePath(key) };
   function renderHidden() {
     const box = $('#hidden'); if (!box) return;
-    setHtml(box, !state.hidden.length ? '' : `<span class="kh">hidden — off the pickers; their chats are still on the board under ALL</span>`
-      + state.hidden.map(k => { const l = hiddenLabel(k); return `<div class="hrow"><span title="${esc(l.where || k)}"><b>${esc(l.name)}</b>${l.where ? ` ${esc(l.where)}` : ''}</span><button data-key="${esc(k)}" title="Put it back on the board">show</button></div>`; }).join(''));
+    $('#hiddenGrp').hidden = !state.hidden.length;   // Settings › Projects › Hidden, there while something is (2026-10-16)
+    const drew = setHtml(box, state.hidden.map(k => { const l = hiddenLabel(k); return `<div class="srow set hrow"><span class="pn" title="${esc(l.where || k)}"><b>${esc(l.name)}</b>${l.where ? `<small>${esc(l.where)}</small>` : ''}</span><button type="button" class="btn" data-key="${esc(k)}" title="Put it back on the board">Show</button></div>`; }).join(''));
+    if (drew && $('#settings').open) settingsFind();
   }
   $('#hidden').addEventListener('click', e => { const b = e.target.closest('button'); if (b) showProject(b.dataset.key); });
 
@@ -5548,7 +5675,7 @@ const toolName = n => {
   // above it are this browser's. A box is written on change, a colour as the panel rests; what the server refuses is
   // said beside it and the row put back. The markup is drawn only when it changed, and never under a box that has the
   // keyboard: that waits for the focus to leave the section.
-  const setupUi = { drawn: '', stale: false, pending: new Set(), colors: new Map(), colorTimer: null, raf: 0, jira: null };
+  const setupUi = { pending: new Set(), colors: new Map(), colorTimer: null, raf: 0, jira: null };
   /** What the server says of Jira (2026-10-08): the site, where the token is, who you are there, what went wrong — asked
    *  as the settings open and after every change to it. */
   async function loadJira() { try { setupUi.jira = await api('GET', '/api/jira'); } catch { setupUi.jira = null; } renderSetup(); }
@@ -5575,25 +5702,27 @@ const toolName = n => {
         + `<button class="sdel" title="Forget the short name and colour of ${esc(n)}" aria-label="Forget ${esc(n)}">×</button></div>`;
     };
     const quick = [...new Set([...(c.quick ? [c.quick] : []), ...all])];
-    const head = (title, what) => `<div class="sgh"><b>${title}</b><span>${what}</span></div>`;
-    const html = `<section class="sg">${head('Repositories', '⌥⌘N offers every folder in these; with a GitHub org, ＋ clone brings one you have not got.')}<div class="slist">`
-      + roots.map(rootRow).join('')
-      + `<div class="srow root add"><span class="sic">＋</span><input ${text} class="sdir" placeholder="Add a folder of repos — ~/code">${org('', 'org')}<span></span></div></div></section>`
-      + `<section class="sg">${head('Quick chat', 'A new chat in one project, its environments first when its Taskfile launches claude.')}<div class="slist">`
-      + `<label class="srow quick"><kbd>⌥⌘O</kbd><span>starts a chat in</span><span class="ssel">${c.quick ? projIcon(c.quick) : ''}<select id="quickSel" title="The project ⌥⌘O starts a chat in — on its environments first, when its Taskfile launches Claude"><option value="">nothing — ⌥⌘N does it all</option>${quick.map(n => `<option${n === c.quick ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></span></label></div></section>`
-      + `<section class="sg">${head('Projects', 'A short name for the folded list (⌥⌘B), and its colour — the chat header\'s square sets it too.')}<div class="slist">${names.map(projRow).join('')}`
-      + `<div class="srow padd"><span class="sic">＋</span><select class="sadd" title="Give a project a short name or a colour"><option value="">Add a project…</option>${all.filter(n => !names.includes(n)).map(n => `<option>${esc(n)}</option>`).join('')}</select></div></div></section>`
-      + jiraSetup(c.jira, setupUi.jira)
-      + (c.error ? `<p class="sfoot serr">${esc(c.error)} — the board keeps what it had and writes nothing over it until the file reads.</p>` : '')
-      + `<p class="sfoot">${c.file ? `In <code>${esc(homePath(c.file))}</code>, yours to edit by hand too — ` : 'Kept by the server — '}the app and every browser on this Mac share it.</p>`;
-    // the two rows the setup names, one line each as every row (2026-10-12), the rest in their tooltips
-    $('#quickKey').textContent = c.quick ? `a new chat in ${c.quick}` : 'a new chat in the setup\'s quick project — none yet';
-    $('#quickKey').title = c.quick ? 'its environments first, when its Taskfile launches Claude, then their open chats' : 'Settings → Setup → Quick chat names it';
-    $('#newKey').title = `or a project${roots.length ? `, a folder in ${roots.map(r => homePath(r.dir)).join(' or ')}` : ''}${roots.some(r => r.org) ? ', or ＋ clone a repo' : ''} · then its open chats or ＋ a new one — in the folder, or (←→) in a new worktree on a branch of its own · ✕ takes a row off the board`;
+    const group = (title, kw, rows, foot) => `<section class="sgrp" data-kw="${kw}"><h6 class="sgh">${title}</h6><div class="slist">${rows}</div>${foot ? `<p class="sgf">${foot}</p>` : ''}</section>`;
+    const html = (c.error ? `<p class="sgf serr">${esc(c.error)} — the board keeps what it had and writes nothing over it until the file reads.</p>` : '')
+      + group('Repository folders', 'roots repos repositories folder org github clone', roots.map(rootRow).join('')
+        + `<div class="srow root add"><span class="sic">＋</span><input ${text} class="sdir" placeholder="Add a folder of repos — ~/code">${org('', 'org')}<span></span></div>`, '⌥⌘N lists every folder in these. With a GitHub org, ＋ clone fetches one you don’t have.')
+      + group('Quick chat', 'quick chat new oracle', `<label class="srow quick"><kbd>⌥⌘O</kbd><span>starts a chat in</span><span class="ssel">${c.quick ? projIcon(c.quick) : ''}<select id="quickSel" title="The project ⌥⌘O starts a chat in — on its environments first, when its Taskfile launches Claude"><option value="">nothing — ⌥⌘N does it all</option>${quick.map(n => `<option${n === c.quick ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></span></label>`, 'Its environments first, when its Taskfile launches claude.')
+      + group('Projects', 'project colour color short name abbreviation rail', names.map(projRow).join('') + `<div class="srow padd"><span class="sic">＋</span><select class="sadd" title="Give a project a short name or a colour"><option value="">Add a project…</option>${all.filter(n => !names.includes(n)).map(n => `<option>${esc(n)}</option>`).join('')}</select></div>`, 'A short name for the folded list (⌥⌘B), and a colour; the chat header’s square sets it too.');
+    // the two keys the setup names, for the ? sheet: one line each, the rest under it (2026-10-12; a list in the
+    // settings' Keys pane until 2026-10-16)
+    keyNotes.quickKey = { html: c.quick ? `a new chat in ${esc(c.quick)}` : 'a new chat in the setup\'s quick project — none yet', title: c.quick ? 'its environments first, when its Taskfile launches Claude, then their open chats' : 'Settings › Projects › Quick chat names it' };
+    keyNotes.newKey = { title: `or a project${roots.length ? `, a folder in ${roots.map(r => homePath(r.dir)).join(' or ')}` : ''}${roots.some(r => r.org) ? ', or ＋ clone a repo' : ''} · then its open chats or ＋ a new one — in the folder, or (←→) in a new worktree on a branch of its own · ✕ takes a row off the board` };
     $('#pextra').placeholder = `${roots[0] ? homePath(roots[0].dir) : '~/code'}/some-repo`;
-    if (html === setupUi.drawn && !force) return;
-    if (!force && box.contains(document.activeElement)) { setupUi.stale = true; return; }
-    box.innerHTML = setupUi.drawn = html; setupUi.stale = false;
+    $('#sfilePath').textContent = c.file ? homePath(c.file) : 'Kept by the server';
+    drawSetup(box, html, force);
+    drawSetup($('#jiraSet'), jiraSetup(c.jira, setupUi.jira), force);
+  }
+  /** A setup pane drawn anew — unless a box in it has the keys: then once they leave it (the focusout below). */
+  function drawSetup(el, html, force) {
+    if (html === el._drawn && !force) return;
+    if (!force && el.contains(document.activeElement)) { el._stale = true; return; }
+    el.innerHTML = el._drawn = html; el._stale = false;
+    if ($('#settings').open && $('#sq').value) settingsFind();
   }
   /** The Setup's Jira section (2026-10-08): the site and your login (the setup file's), the token (the keychain's — the
    *  box is write-only, and says where one is kept), and a line on how it went. */
@@ -5603,11 +5732,11 @@ const toolName = n => {
     const line = !j ? (sug.site ? `jira-cli's ${esc(sug.site)} is offered above — your email, then a token.` : 'A site and your email, then an API token.')
       : info?.error ? `<span class="serr">${esc(info.error)}</span>`
       : info?.me ? `Signed in as <b>${esc(info.me)}</b>${info.tickets ? ` · ${info.tickets} ticket${info.tickets === 1 ? '' : 's'} known` : ''}.` : 'Asking Jira…';
-    return `<section class="sg jira">${'<div class="sgh"><b>Jira</b><span>Tickets a chat names — ACME-12, a link to one, its branch — wear their status on its card and in its header, as its PRs do.</span></div>'}<div class="slist">`
+    return `<section class="sgrp jira" data-kw="jira tickets atlassian site email token"><div class="slist">`
       + `<div class="srow jsite"><span class="sic">${ICON.ticket}</span><input ${text} class="sjsite" value="${esc(j?.site || '')}" placeholder="${esc(sug.site || 'https://acme.atlassian.net')}" title="Your Jira Cloud site"><input ${text} class="sjmail" value="${esc(j?.email || '')}" placeholder="${esc(sug.email || 'you@acme.com')}" title="The email you sign in to Jira with"><span></span></div>`
       + `<div class="srow jtok"><span class="sic">${ICON.key}</span><input type="password" class="sjtok" autocomplete="off" spellcheck="false"${j ? '' : ' disabled'} placeholder="${tok ? `${esc(from)} — paste another to replace it` : 'API token — id.atlassian.com → Security → API tokens'}" title="Kept in your keychain, never in the setup file; the page never sees it again">`
-      + `${tok === 'keychain' || tok === 'file' ? '<button class="sdel sjforget" title="Forget the token" aria-label="Forget the token">×</button>' : '<span></span>'}</div></div>`
-      + `<p class="sfoot sjst">${line}</p></section>`;
+      + `${tok === 'keychain' || tok === 'file' ? '<button class="sdel sjforget" title="Forget the token" aria-label="Forget the token">×</button>' : '<span></span>'}</div>`
+      + `</div><p class="sgf sjst">${line}</p><p class="sgf">Tickets a chat names (ACME-12, a link to one, its branch) show their status on its card and header, as its PRs do.</p></section>`;
   }
   /** The setup changed — here or anywhere: everything it paints follows. */
   function configChanged() {
@@ -5630,9 +5759,8 @@ const toolName = n => {
     if (Object.keys(next).length) all[name] = next; else delete all[name];
     return putConfig({ projects: all }, anchor);
   }
-  {
-    const box = $('#setup');
-    box.addEventListener('focusout', e => { if (setupUi.stale && !box.contains(e.relatedTarget)) renderSetup(); });
+  for (const box of [$('#setup'), $('#jiraSet')]) {   // the Projects pane and Jira's, one setup
+    box.addEventListener('focusout', e => { if (box._stale && !box.contains(e.relatedTarget)) renderSetup(); });
     box.addEventListener('click', e => {
       const f = e.target.closest('.sjforget'); if (!f) return;
       api('DELETE', '/api/jira/token').then(d => { setupUi.jira = d; renderSetup(true); }, err => note(f, `Not forgotten: ${err.message}`, true));
@@ -5683,6 +5811,7 @@ const toolName = n => {
     });
     box.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input[type=text]')) e.target.blur(); });
   }
+  $('#sfileCopy').onclick = e => { const b = e.currentTarget; copyText(state.config.file || '').then(ok => note(b, ok ? 'Copied' : 'Could not copy it', !ok)); };
   // ---- the first run: where the repos live (2026-10-01) ------------------------------------------------------------
   // A board whose setup never named one (`ask`, the server's word) asks,
   // once, over everything: the folder and its GitHub org, as the server guesses them from the chats it holds
@@ -5744,8 +5873,9 @@ const toolName = n => {
   window.peixFolder = path => { if (!path) return; $('#wdir').value = homePath(path); welcomeMark(); $('#wok').focus(); };
   // The switch that is this browser's alone (2026-09-28): ⌥ in the terminal. The code's fold and how a date is
   // written were beside it for a day.
-  $('#optMeta').checked = prefs.optMeta !== false;
-  $('#optMeta').addEventListener('change', e => { prefs.optMeta = e.target.checked; savePrefs(); for (const tm of terms) if (tm.xt) tm.xt.options.macOptionIsMeta = prefs.optMeta; });
+  const optMetaSay = () => { $('#optMetaSay').textContent = prefs.optMeta !== false ? '⌥B and ⌥F move by word, ⌥⌫ deletes one' : '⌥ types what your keyboard layout composes'; };
+  $('#optMeta').checked = prefs.optMeta !== false; optMetaSay();
+  $('#optMeta').addEventListener('change', e => { prefs.optMeta = e.target.checked; savePrefs(); optMetaSay(); for (const tm of terms) if (tm.xt) tm.xt.options.macOptionIsMeta = prefs.optMeta; });
   // xterm's screen-reader mode (2026-10-12, off): the drawer's lines kept in a live region a reader follows
   $('#termReader').checked = !!prefs.termReader;
   $('#termReader').addEventListener('change', e => { prefs.termReader = e.target.checked; savePrefs(); for (const tm of terms) if (tm.xt) tm.xt.options.screenReaderMode = prefs.termReader; });
@@ -6022,15 +6152,15 @@ const toolName = n => {
   // The whole board larger or smaller (2026-10-12, the settings' text size): the app's web view zooms (pageZoom — the
   // page's CSS px stay its own, the app turns its places between the two); a browser has its own View → Zoom, which ⌘+
   // and ⌘− (the chat's own size here) do not reach. Posted on every load, as the app forgets.
-  const zoomPick = () => { for (const b of document.querySelectorAll('#zoomPick [data-z]')) b.setAttribute('aria-checked', String(+b.dataset.z === (prefs.pageZoom || 1))); $('#zoomPick').hidden = !inApp; document.querySelector('.zoompick .zhint').hidden = inApp; };
+  const zoomPick = () => { $('#zoomPick').value = String(prefs.pageZoom || 1); $('#zoomPick').hidden = !inApp; document.querySelector('#spLook .zhint').hidden = inApp; };
   const applyZoom = () => { if (inApp) post({ type: 'zoom', value: prefs.pageZoom || 1 }); zoomPick(); };
-  for (const b of document.querySelectorAll('#zoomPick [data-z]')) b.addEventListener('click', () => { prefs.pageZoom = +b.dataset.z; savePrefs(); applyZoom(); });
+  $('#zoomPick').addEventListener('change', e => { prefs.pageZoom = +e.target.value || 1; savePrefs(); applyZoom(); });
   applyZoom();
   // Which full screen ⌃⌘F is in the app (2026-10-14): the fill, up to the notch, or macOS's own in a Space of its own —
   // the app keeps it too, for a launch that comes back full screen before this page has loaded.
-  const fsPick = () => { for (const b of document.querySelectorAll('#fsPick [data-fs]')) b.setAttribute('aria-checked', String((b.dataset.fs === 'space') === !!prefs.fullSpace)); $('#fsRow').hidden = !inApp; };
+  const fsPick = () => { $('#fsPick').value = prefs.fullSpace ? 'space' : 'fill'; $('#fsRow').hidden = !inApp; };
   const applyFull = () => { if (inApp) post({ type: 'fullscreen', space: !!prefs.fullSpace }); fsPick(); };
-  for (const b of document.querySelectorAll('#fsPick [data-fs]')) b.addEventListener('click', () => { prefs.fullSpace = b.dataset.fs === 'space'; savePrefs(); applyFull(); });
+  $('#fsPick').addEventListener('change', e => { prefs.fullSpace = e.target.value === 'space'; savePrefs(); applyFull(); });
   applyFull();
   const GH_PR = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/;
   const IN_PANE = /^https?:\/\//;   // every web page (2026-09-26; GitHub and the board's own before, the rest went to the browser)
@@ -6141,7 +6271,7 @@ const toolName = n => {
   const ZED_GET = 'https://zed.dev/download';
   const ZED_NOT = 'Zed opens in its own window, outside the board — it has no web version the pane could show. ⌥⌘E stays VS Code Web, on a tab here; ··· has the chat\'s folder in Zed.';
   const zedMissing = () => onZed() && !!state.editors?.zed && !state.editors.zed.app;
-  const zedWhy = () => state.editors?.zed?.installing ? 'Zed is still being installed — a moment' : "Zed isn't installed — Settings › Board › editor installs it";
+  const zedWhy = () => state.editors?.zed?.installing ? 'Zed is still being installed — a moment' : "Zed isn't installed — Settings › General › Open files in installs it";
   function zedNote(at) { note(at, zedWhy(), true); }
   async function loadEditors() { try { state.editors = await api('GET', '/api/editors'); } catch {} edSay(); }
   async function installZed() {

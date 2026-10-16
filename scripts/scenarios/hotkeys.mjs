@@ -23,10 +23,10 @@ export default async function (ctx) {
   // ⌥⌘O with no project named for it says where to name one; named, but not on this board yet (it is pinned into place
   // further down), it says that
   await ctx.key('KeyO'); out.noQuickNote = await txt('.note');
-  ctx.assert.match(out.noQuickNote, /No project for ⌥⌘O yet — the settings \(⌘,\)/);
+  ctx.assert.match(out.noQuickNote, /No project for ⌥⌘O yet — Settings › Projects names one \(⌘,\)/);
   await ctx.evaluate(`document.querySelectorAll('.note').forEach(n => n.remove())`);
   await ctx.server.api('api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ quick: 'oracle' }) });
-  await ctx.waitFor(`document.querySelector('#quickKey').textContent === 'a new chat in oracle'`, { what: 'the setup reaching the page, the cog\'s key line with it' });
+  await ctx.waitFor(`document.querySelector('#quickSel')?.value === 'oracle'`, { what: 'the setup reaching the page' });
   await ctx.key('KeyO'); out.noOracleNote = await txt('.note');
   ctx.assert.match(out.noOracleNote, /No oracle folder/);
   await ctx.evaluate(`document.querySelectorAll('.note').forEach(n => n.remove())`);
@@ -193,10 +193,13 @@ export default async function (ctx) {
   await ctx.cmd('Comma'); await ctx.cmd('Comma');
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#settings').open`), false, '⌘, again closes them');
   out.escIdle = await escOn('body'); ctx.assert.equal(out.escIdle, false, 'with nothing to close, Esc is left alone');
-  // the cog lists the keys
-  out.cog = await ctx.evaluate(`[...document.querySelectorAll('#settings .keys kbd')].map(k => k.textContent)`);
+  // the keys sheet (?) lists the keys — the settings' Keys pane did too, until 2026-10-16
+  await ctx.evaluate(`document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '?', bubbles: true, cancelable: true }))`);
+  await ctx.waitFor(`document.querySelector('#keysheet').open`, { what: 'the keys sheet' });
+  out.cog = await ctx.evaluate(`[...document.querySelectorAll('#ksbody .kr kbd')].map(k => k.textContent)`);
   // grouped since 2026-10-12, from one table (KEYS): Go to, This chat, Layout, Look, In the drawer, In a page
-  out.groups = await ctx.evaluate(`[...document.querySelectorAll('#settings .keys .kh')].map(k => k.textContent)`);
+  out.groups = await ctx.evaluate(`[...document.querySelectorAll('#ksbody .kh')].map(k => k.textContent)`);
+  await ctx.evaluate(`document.querySelector('#keysheet').close()`);
   ctx.assert.deepEqual(out.groups, ['Go to', 'This chat', 'Layout', 'Look', 'In the drawer', 'In a page']);
   ctx.assert.deepEqual(out.cog.slice(0, 19), ['⌥⌘K', '⌥⌘L', '⌥⌘P', '⌥⌘F', '⌥⌘N', '⌥⌘O', '⌥⌘↑↓', '⌥⌘A', '⌥⌘0', '?', '⌥⌘C', '⌘T', '⌥⌘T', '⌥⌘E', '⌥⌘V', '⌥⌘G', '⌥⌘D', '⌘W', '⌥⌘W']);
   ctx.assert.ok(!out.cog.includes('⌘B'), 'the fold is ⌥⌘B since 2026-10-02, not ⌘B');

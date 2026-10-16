@@ -94,7 +94,7 @@ export default async function (ctx) {
     await ctx.waitFor(`document.querySelector('#setup .srow.proj[data-name="calm-repo"] .stile')`, { what: 'the project\'s row in the setup' });
     out.tile = await ctx.evaluate(`document.querySelector('#setup .srow.proj[data-name="calm-repo"] .stile').style.background`);
     ctx.assert.ok(chroma(out.tile) > 40, `the setup's square in the project's colour: ${out.tile}`);
-    await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="board"]').click()`);
+    await ctx.evaluate(`document.querySelector('#settings .stabs [data-tab="general"]').click()`);
     await ctx.cmd('Comma');
     await ctx.waitFor(`!document.querySelector('#settings').open`, { what: 'the settings closed' });
 

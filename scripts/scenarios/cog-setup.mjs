@@ -21,7 +21,8 @@ export default async function (ctx) {
   const set = (sel, value) => ctx.evaluate(`(() => { const x = document.querySelector('#setup ${sel}'); x.value = ${JSON.stringify(value)}; x.dispatchEvent(new Event('input', { bubbles: true })); x.dispatchEvent(new Event('change', { bubbles: true })); })()`);
   const cardOf = id => `document.querySelector('#slist > .card[data-id="${id}"]')`;
 
-  // the settings: a modal dialog since 2026-09-28 (⌘, or the chat header's ···), the setup on a tab of its own
+  // the settings: a modal dialog since 2026-09-28 (⌘, or the chat header's ···), the setup on a pane of its own (Projects;
+  // the sidebar's since 2026-10-16 — settings-panes.mjs has the rest of it)
   const openSetup = async () => {
     await ctx.cmd('Comma');
     await ctx.waitFor(`document.querySelector('#settings').open`, { what: 'the settings' });
@@ -32,7 +33,7 @@ export default async function (ctx) {
   out.popover = await ctx.evaluate(`(r => ({ modal: document.querySelector('#settings').matches(':modal'), tabs: [...document.querySelectorAll('#settings .stabs button')].map(b => b.textContent),
     shown: [...document.querySelectorAll('#settings .spane')].filter(p => !p.hidden).map(p => p.dataset.tab),
     centred: Math.abs(r.left + r.width / 2 - innerWidth / 2) < 2 && Math.abs(r.top + r.height / 2 - innerHeight / 2) < 2, fits: r.bottom <= innerHeight && r.right <= innerWidth }))(document.querySelector('#settings').getBoundingClientRect())`);
-  ctx.assert.deepEqual([out.popover.modal, out.popover.tabs, out.popover.shown], [true, ['Board', 'Setup', 'Keys'], ['setup']], 'a modal of three tabs, the setup in front');
+  ctx.assert.deepEqual([out.popover.modal, out.popover.tabs, out.popover.shown], [true, ['General', 'Appearance', 'Chat list', 'Terminal', 'Projects', 'Jira', 'Updates & access'], ['setup']], 'a modal of seven panes, the setup in front');
   ctx.assert.ok(out.popover.centred && out.popover.fits, `centred, and inside the window: ${JSON.stringify(out.popover)}`);
   await ctx.shot('popover');
 
@@ -64,7 +65,13 @@ export default async function (ctx) {
   await set('#quickSel', repo);
   await until(async () => (await cfg()).quick === repo, { what: '⌥⌘O saved' });
   await ctx.waitFor(`!!${cardOf(two.id)}?.querySelector('.repo svg')`, { what: 'the crystal ball on its card' });
-  ctx.assert.equal(await ctx.evaluate(`document.querySelector('#quickKey').textContent`), `a new chat in ${repo}`);
+  // …and the keys sheet's row for it says so (the settings' Keys pane did, until 2026-10-16)
+  await ctx.cmd('Comma');
+  await ctx.evaluate(`document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '?', bubbles: true, cancelable: true }))`);
+  await ctx.waitFor(`document.querySelector('#keysheet').open`, { what: 'the keys sheet' });
+  ctx.assert.equal(await ctx.evaluate(`(r => r.querySelector('span').firstChild.textContent)([...document.querySelectorAll('#ksbody .kr')].find(r => r.querySelector('kbd').textContent === '⌥⌘O'))`), `a new chat in ${repo}`);
+  await ctx.evaluate(`document.querySelector('#keysheet').close()`);
+  await openSetup();
 
   // ---- a short name for the rail, a colour, and ⌥-click to take it off ----
   await set('.sadd', repo);
