@@ -396,14 +396,14 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `.tprs.ttks`, `.ctk[data-cat]`), the branch's first; in the header `.hpr.tk` after the PRs (`fitHeadPrs` folds them
   first), `.prrow.tk` in `#prlist`. Setup's Jira section (`jiraSetup`): site and email into the setup file, the token
   write-only into the keychain (`PUT /api/jira/token`). → `jira-tickets.mjs`.
-* **The header's PRs are chips, folded** (`#prToggle`, `fitHeadPrs()`): every width measured once, **`CHIPS_MAX` (two)
-  at most**, your move first, the rest behind the count (or `+n ▾`); fewer while the title would have less than its repo
-  name plus `TITLE_ROOM` and `TITLE_SHARE` of the row; on every new header and its `ResizeObserver`. **The row never
-  wraps**: the move's line, a task's chip and the branch's move (`.hdrift`) shrink to `--hmin`, then go (`.hfold`: the
-  move's line, the count, the branch last); ··· stays on the title's line. A card's branch move is `.trow .drift`, alone
-  in its markup. `#prlist` (`prefs.prsOpen`) is rendered folded too (⌥⌘G and the harness read `#prlist .prrow`); open,
-  its foot's arrow folds it (2026-10-13; `#prFold`, keys left on `#prToggle`), the count's ▾ then ▴. → `header-prs-fit.mjs`, `header-prs.mjs`, the
-  narrow step of `pr-turn.mjs`.
+* **The header's PRs are chips, folded** (`#prToggle`, `fitHeadPrs()`): **`CHIPS_MAX` (two) at most**, your move
+  first, the rest behind the count (or `+n ▾`), else a caret (`.hcaret`) — either unfolds the rows; **a chip opens its
+  PR or ticket** (2026-10-16), as a card's does; fewer while the title would have less than its repo name plus
+  `TITLE_ROOM` and `TITLE_SHARE` of the row; on every new header and its `ResizeObserver`. **The row never wraps**: the
+  move's line, a task's chip and the branch's move (`.hdrift`) shrink to `--hmin`, then go (`.hfold`: the move's line,
+  the count, the branch last); ··· stays on the title's line. A card's branch move is `.trow .drift`. `#prlist`
+  (`prefs.prsOpen`) is rendered folded too (the harness reads `#prlist .prrow`); open, its foot's arrow folds it
+  (2026-10-13, `#prFold`), ▾ then ▴. → `header-prs-fit.mjs`, `header-prs.mjs`, the narrow step of `pr-turn.mjs`.
 * **A PR chip GitHub has answered for is solid** (`--prc`, its state's colour), one not known yet an outline. **A PR
   at your move is said by name, not by its chip's look**: `data-turn` (`turnOf(pr)`: `you` · `them` · empty) on
   `.cpr`, `.hpr`, `.prrow` and tooltips (`turnTip`); the card's (`moveHtml`, `.ymove`, at every size, not
@@ -544,7 +544,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   main.swift does not forward or forwards unanswered, or an *again* row no `hot…Key` answers. The letters: **T** the chat's zsh tab (`hotShell()`,
   `s.shells`), **E** VS Code Web in the pane, **V** the folder in VS Code's
   own window (`hotVsCodeApp`), **G** the chat's PR on GitHub
-  (several: the picker; none: the repo), **C** the chat's claude (`termAction()`, the `>_`
+  (several: the picker — from one of them the next selected, ⌥⌘G again the column's, `prPickAgain`; none: the repo), **C** the chat's claude (`termAction()`, the `>_`
   path), **W** the tab the keys are in, closed (`hotCloseTab()` → `dropTab()`), **P** projects, **K** chats
   (`chatFields()`), **F** the list's box (`hotFind()`), **B** the rail (`toggleSessions`), **Y** themes (`themesOpen`),
   **L** the launcher (`pickOpen('launch')`), **D** changes (`hotDiff`), **A** the overview (`ovOpen`), **0** home (`hotHome`), **N** a new
@@ -552,7 +552,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   project (`hotOracle()`), **↑↓** the chat above or below as shown (`hotMove()`), **←→** the tab beside, wrapping
   (`hotTab()`), **1 / 2** the halves stood one over the other (`hotGroup(g, true)`), **R** the board reloaded
   (`hotReload`). **C T G E D pressed again from the tab they bring up** (a claude live here, a
-  zsh, a page at the chat's PR, the editor, the changes — the HOTKEYS entries are `hot…Key`, `zoomAgain` before the plain `hot…`) fill
+  zsh, a page at its one PR, the editor, the changes — the HOTKEYS entries are `hot…Key`, `zoomAgain` before the plain `hot…`) fill
   the column with that half, and back (`toggleZoom`, see *The chat column's two halves*); `typeInShell` and the launcher
   call the plain ones. Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A `dialog[open]` swallows them;
   nothing to act on is a `note()`; a key held down is one press (`e.repeat`, the arrows aside) and `termAction` one
@@ -569,12 +569,12 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   (`chatZoomKey`, which sees ⌘0 only when nothing is split).
 * **⌘W is the Window menu's item, not the forwarder's**: a key equivalent goes to the key window's views before the
   menu (2026-10-14), and a web view with the keys hands it to its page — so the menu hears only a ⌘W the page
-  left alone (a GitHub page's, a native view's; not the board's, whose CMDKEYS take it). `closeHalfOrWindow` asks the
+  left alone. `closeHalfOrWindow` asks the
   board (`peixKey('KeyW','cmd')`) and calls `performClose` only on false. Anything else the board wants off a ⌘ a menu
   item claims goes the same way (⌘, does).
 * **⌘W in VS Code Web with no editor open closes its tab** (2026-10-14; `editorEmptyScript`, `closeWhenEmpty` in
-  main.swift → `window.peixPaneClose(key)` → `dropTab`): a page in the pane hears ⌘W before the Window menu, and the
-  workbench's close-editor takes it whatever is open. A script in the `ide:` views alone takes it first only when the
+  main.swift → `window.peixPaneClose(key)` → `dropTab`): the workbench's close-editor takes it whatever is open. A
+  script in the `ide:` views alone takes it first only when the
   editor part is `.content.empty` (one group, no editor) and the tab of the view it came from goes, by its key. An
   editor open, ⌘W is VS Code's; ⌥⌘W closes the tab any time. → `tab-keys.mjs`.
 * **⌃⌘F is the full screen Settings › Look picks** (2026-10-14; `toggleFull`; `prefs.fullSpace` → `fullscreen` →

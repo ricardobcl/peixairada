@@ -5,6 +5,33 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-16. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-16, later still — ⌥⌘G again with several PRs; a header chip opens its PR
+
+Ricardo: "I have this UX issue where when there's more than 1 PR and one is already open, hotkey G before opened the
+popup to choose what to open, and now it toggles full/split view. now to open another PR I need to click on the header
+to expand and then click again on the Pr. come up with better UX".
+
+* **⌥⌘G again from one of the chat's PRs, when it has several, is their picker** (`hotGhKey`, `atPrOf`): the PR after
+  the one in front selected (the last wraps to the first), so ⌥⌘G ⏎ walks them, and the one in front marked *current*
+  by the tab, not by the last PR opened. **⌥⌘G with that picker up closes it and fills the column** — or gives it
+  back — as the key pressed again did (`prPickAgain`, before `runHotkey`'s dialog check; the picker's hint says which).
+  With one PR, or the repo with none, nothing changed: again is the column at once. The 2026-10-13 entry gave the key
+  to the zoom and sent several PRs to another tab or ⌥⌘←→ — which reach only the PRs already on a tab. Not taken: a
+  zoom of its own on ⇧ or ⌥⏎ (a key more to learn and forward, and the rule "the key again" broken for one letter),
+  no zoom with several PRs (a review of two PRs could never fill the column by key), ⌥⌘G again cycling the PRs' tabs
+  (the third one only by way of the second, and no zoom).
+* **A chip in the header opens its PR — a ticket's its ticket —, as a card's chip always did**; the rows unfold from the
+  count, or from a caret ▾ after the chips when every one is shown (`.hcaret`, measured with the count in
+  `fitHeadPrs`, ▴ while open). The 2026-09-24 rule — the rows are what a click on the chips unfolds — made any other
+  PR two clicks and a list that pushed the chat down. The button as a whole still toggles from the keys or a script,
+  ⌥-click still takes a PR off, and the right-click menu still opens or unlinks. A PR folded behind the count stays two
+  clicks (the count, its row) — ⌥⌘G is the way to it. Not taken: a ▾ switcher in a PR tab's address (two clicks, and
+  only where the pane is), the count as a menu of the folded PRs (two clicks, and the rows' Diff · Editor · Chat out
+  of reach). Several PR pages open are a tab each, named `repo#n` — one click, as they were.
+* `half-zoom.mjs` checks ⌥⌘G again: the picker, the other PR selected, the one in front current, the hint, then
+  the column filled and given back, and ⌥⌘G ⏎ walking both PRs round; `pr-tab-again.mjs` the same from a second tab;
+  `header-prs.mjs` a real click on a chip opening its PR with the rows left folded, and the caret unfolding them.
+
 ## Decisions of 2026-10-16, later — the board's key, built
 
 Ricardo, on the design below and the offer to push and build it: "do it". The two fixes before it were pushed first.
