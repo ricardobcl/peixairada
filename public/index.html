@@ -6883,7 +6883,11 @@ const toolName = n => {
       return [...BAR_STATS.map(([k, t]) => ({ t, on: has(k), check: true, fn: () => setBarStats(has(k) ? prefs.barStats.filter(x => x !== k) : [...prefs.barStats || [], k]) })),
         { hr: true }, { t: 'Status bar settings…', fn: () => settingsAt('look', '#sbarStats') }];
     }
-    const tvc = e.target.closest('#tv .tvc[data-url]');   // a PR's chip in the timeline (2026-10-17): alone, in or out, its page
+    const tvc = e.target.closest('#tv .tvc[data-url]'), tvw = e.target.closest('#tv .tvc[data-k="you"], #tv .tvc[data-k="claude"]');   // a chip in the timeline (2026-10-17): alone, in or out, a PR's page
+    if (tvw) {
+      const s = state.sessions.get(state.current), w = tvw.dataset.k, sc = s && tvScope(s, tvModel(s)); if (!s) return null;
+      return [{ t: sc[w] && !sc[TV_WHO[w]] && !sc.on.size ? 'Everything in play again' : 'Only these', fn: () => tvSolo(s, w) }, { t: sc[w] ? 'Leave them out' : 'Bring them in', fn: () => tvSide(s, w) }];
+    }
     if (tvc) {
       const s = state.sessions.get(state.current), url = tvc.dataset.url, sc = s && tvScope(s, tvModel(s)); if (!s) return null;
       return [{ t: sc.solo === url ? 'Everything in play again' : 'Only this one', fn: () => tvSolo(s, url) }, { t: sc.on.has(url) ? 'Leave it out' : 'Bring it in', fn: () => tvToggle(s, url) }, { hr: true }, { t: 'Open it on GitHub', fn: () => openExternal(url, { s }) }];
@@ -8498,14 +8502,16 @@ const toolName = n => {
   }
   // The narrow (2026-10-17, the study's T6): which of the chat and its PRs the timeline shows — and the PR list's tracks
   // — one value per chat, kept only where it differs from in play's (tvNarrow), across a reload (keepTabs) and in the
-  // address beside the chat's id (`#<id>/tl:p=repo.482&t=about`, tvHash). A chip per PR and one for the chat: a click
-  // in or out, ⌥-click it alone, ⌥-click again everything in play; All turns or About these — the turns tied to a PR
-  // shown, the default once the PRs are fewer than in play; Folded or Everything.
-  const tvNarrow = new Map();   // chat id → { on: [url…], chat: false, turns, dens }, each only when not the default
+  // address beside the chat's id (`#<id>/tl:p=repo.482&t=about`, tvHash). A chip per PR, one for your prompts and one
+  // for Claude's turns (2026-10-17, each its own): a click in or out, ⌥-click it alone, ⌥-click again everything in
+  // play; All turns or About these — the turns tied to a PR shown, the default once the PRs are fewer than in play;
+  // Folded or Everything.
+  const tvNarrow = new Map();   // chat id → { on: [url…], you: false, claude: false, turns, dens }, each only when not the default
+  const TV_WHO = { you: 'claude', claude: 'you' };   // the chat's two chips, each to the other
   function tvScope(s, m) {
     const play = tvInPlay(s, m), n = tvNarrow.get(s.id) || {}, urls = new Set(m.prs.map(p => p.url));
     const on = n.on ? new Set(n.on.filter(u => urls.has(u))) : play, fewer = !!n.on && [...play].some(u => !on.has(u));
-    return { play, on, chat: n.chat !== false, turns: n.turns || (fewer && on.size ? 'about' : 'all'), dens: n.dens || 'fold', solo: on.size === 1 ? [...on][0] : null, n };
+    return { play, on, you: n.you !== false, claude: n.claude !== false, turns: n.turns || (fewer && on.size ? 'about' : 'all'), dens: n.dens || 'fold', solo: on.size === 1 ? [...on][0] : null, n };
   }
   const sameSet = (a, b) => a.size === b.size && [...a].every(x => b.has(x));
   function tvSet(s, change) {
@@ -8520,19 +8526,22 @@ const toolName = n => {
     if (on.has(url)) on.delete(url); else on.add(url);
     tvSet(s, { on: sameSet(on, sc.play) ? undefined : [...on] });
   }
-  /** ⌥-click: that PR alone — or, alone already, everything in play again. The chat's chip alone is the chat alone. */
+  const tvAll = { on: undefined, you: undefined, claude: undefined, turns: undefined };   // everything in play
+  /** ⌥-click: that PR alone — or, alone already, everything in play again. Your prompts' chip or Claude's alone is
+   *  that side of the chat alone. */
   function tvSolo(s, url) {
-    const sc = tvScope(s, tvModel(s));
-    if (url === 'chat') return tvSet(s, sc.chat && !sc.on.size ? { on: undefined, chat: undefined, turns: undefined } : { on: [], chat: undefined, turns: undefined });
+    const sc = tvScope(s, tvModel(s)), o = TV_WHO[url];
+    if (o) return tvSet(s, sc[url] && !sc[o] && !sc.on.size ? tvAll : { on: [], [url]: undefined, [o]: false, turns: undefined });
     tvSet(s, sc.solo === url && sc.n.on ? { on: undefined, turns: undefined } : { on: [url], turns: undefined });
   }
+  const tvSide = (s, who) => tvSet(s, { [who]: tvScope(s, tvModel(s))[who] ? false : undefined });
   const tvLabel = p => p.label.replace('#', '.');   // repo#482 → repo.482: a # is the address's own
   /** The narrow as the address carries it after the chat's id — empty for in play's. */
   function tvHash(id, n = tvNarrow.get(id)) {
     const s = state.sessions.get(id); if (!n || !s) return '';
     const by = new Map((s.prs || []).map(p => [p.url, p])), q = [];
     if (n.on) q.push('p=' + n.on.map(u => by.get(u)).filter(Boolean).map(tvLabel).join(','));
-    if (n.chat === false) q.push('c=0');
+    for (const w in TV_WHO) if (n[w] === false) q.push(w + '=0');
     if (n.turns) q.push('t=' + n.turns);
     if (n.dens) q.push('d=' + n.dens);
     return q.length ? '/tl:' + q.join('&') : '';
@@ -8543,7 +8552,7 @@ const toolName = n => {
     const t = /\/tl:([^/]*)$/.exec(location.hash)?.[1]; if (t == null || !s) return false;
     const q = new URLSearchParams(t), by = new Map((s.prs || []).map(p => [tvLabel(p).toLowerCase(), p.url])), n = {};
     if (q.has('p')) n.on = q.get('p').split(',').map(l => by.get(l.toLowerCase())).filter(Boolean);
-    if (q.get('c') === '0') n.chat = false;
+    for (const w in TV_WHO) if (q.get(w) === '0') n[w] = false;
     if (['all', 'about'].includes(q.get('t'))) n.turns = q.get('t');
     if (q.get('d') === 'all') n.dens = 'all';
     if (Object.keys(n).length) tvNarrow.set(s.id, n); else tvNarrow.delete(s.id);
@@ -8568,9 +8577,10 @@ const toolName = n => {
   function tvBarHtml(s, m, sc) {
     // every PR a chip while they are few; past that the ones in play and those switched on, the rest behind +n
     const few = m.prs.length <= TV_LANES, shown = few ? m.prs : m.prs.filter(p => sc.play.has(p.url) || sc.on.has(p.url)), rest = m.prs.length - shown.length;
-    const all = 1 + m.prs.length, nOn = (sc.chat ? 1 : 0) + sc.on.size;
+    const all = 2 + m.prs.length, nOn = sc.you + sc.claude + sc.on.size;
+    const who = (w, t, tip, h) => `<button type="button" class="tvc${sc[w] ? ' on' : ''}" data-k="${w}" aria-pressed="${sc[w]}"${h ? ` style="--h:var(${h})"` : ''} title="${tip} · ⌥-click: ${sc[w] && !sc[TV_WHO[w]] && !sc.on.size ? 'everything in play again' : 'them alone'} · right-click: more"><i></i>${t}</button>`;
     const seg = (key, v, w) => `<button type="button" data-${key}="${v}" aria-pressed="${sc[key] === v}">${w}</button>`;
-    return `<span class="tvchips" role="group" aria-label="What the timeline shows"><button type="button" class="tvc${sc.chat ? ' on' : ''}" data-k="chat" aria-pressed="${sc.chat}" title="Your prompts and Claude's turns · ⌥-click: the chat alone"><i></i>Chat</button>${shown.map(p => tvChip(s, sc, p)).join('')}${rest ? `<button type="button" class="tvc more" data-k="more" aria-haspopup="menu" title="The chat's other PRs">+${rest} ▾</button>` : ''}</span>`
+    return `<span class="tvchips" role="group" aria-label="What the timeline shows">${who('you', 'You', 'Your prompts')}${who('claude', 'Claude', 'Claude’s turns', '--accent')}${shown.map(p => tvChip(s, sc, p)).join('')}${rest ? `<button type="button" class="tvc more" data-k="more" aria-haspopup="menu" title="The chat's other PRs">+${rest} ▾</button>` : ''}</span>`
       + `<button type="button" class="tvscope" aria-haspopup="menu" title="What the timeline shows">Scope ▾ ${nOn} of ${all}</button><span class="tvgap"></span>`
       + `<span class="tvseg" role="group" aria-label="Which turns">${seg('turns', 'all', 'All turns')}${seg('turns', 'about', 'About these')}</span>`
       + `<span class="tvseg" role="group" aria-label="How much">${seg('dens', 'fold', 'Folded')}${seg('dens', 'all', 'Everything')}</span>`;
@@ -8582,17 +8592,16 @@ const toolName = n => {
     const row = p => ({ t: `${p.label.replace(/^.*?#/, '#')}${p.title ? ` ${p.title}` : ''}`, sub: tvState(p)[1], on: sc.on.has(p.url), check: true, fn: () => tvToggle(s, p.url) });
     const play = m.prs.filter(p => sc.play.has(p.url)), said = m.prs.filter(p => !sc.play.has(p.url) && named(p)), other = m.prs.filter(p => !play.includes(p) && !said.includes(p));
     const group = (t, l) => l.length ? [{ t, off: true }, ...l.map(row)] : [];
-    ctxShow([...withChat ? [{ t: 'Chat — your prompts and Claude’s turns', on: sc.chat, check: true, fn: () => tvSet(s, { chat: sc.chat ? false : undefined }) }, { hr: true }] : [],
-      ...group('In play', play), ...group('Others', other), ...group('Mentioned', said), { hr: true }, { t: 'Everything in play', fn: () => tvSet(s, { on: undefined, chat: undefined, turns: undefined }) }], r.left, r.bottom + 4, 'tvscope');
+    ctxShow([...withChat ? [{ t: 'You — your prompts', on: sc.you, check: true, fn: () => tvSide(s, 'you') }, { t: 'Claude — its turns', on: sc.claude, check: true, fn: () => tvSide(s, 'claude') }, { hr: true }] : [],
+      ...group('In play', play), ...group('Others', other), ...group('Mentioned', said), { hr: true }, { t: 'Everything in play', fn: () => tvSet(s, tvAll) }], r.left, r.bottom + 4, 'tvscope');
   }
   /** The list: a row per prompt, per turn and per event, in the order they happened, as the narrow lets them in. */
   function tvRows(s, m, sc) {
     const rows = [], shown = new Set();
-    if (sc.chat) for (const t of m.turns) {
+    if (sc.you || sc.claude) for (const t of m.turns) {
       if (sc.turns === 'about' && ![...t.about].some(u => sc.on.has(u))) continue;
-      shown.add(t);
-      if (t.you) rows.push({ k: 'you', ms: t.ms, o: 0, t });
-      if (t.tools.length || t.reply || !t.closed) rows.push({ k: 'cl', ms: Date.parse(t.end || t.last), o: 2, t });
+      if (sc.you && t.you) rows.push({ k: 'you', ms: t.ms, o: 0, t });
+      if (sc.claude && (t.tools.length || t.reply || !t.closed)) { shown.add(t); rows.push({ k: 'cl', ms: Date.parse(t.end || t.last), o: 2, t }); }   // Claude's line says its own acts; without it they are rows of their own
     }
     for (const e of m.evs) if (sc.on.has(e.url) && !(e.turn && shown.has(e.turn))) rows.push({ k: 'ev', ms: e.ms, o: 1, e, mk: tvMark(m, e) });
     rows.sort((a, b) => a.ms - b.ms || a.o - b.o);
@@ -8654,7 +8663,7 @@ const toolName = n => {
   }
   function tvLanes(s, m, sc, rows) {
     const urls = m.prs.map(p => p.url).filter(u => sc.on.has(u) && rows.some(r => tvMarkOn(r, x => x === u)));
-    const L = [...(sc.chat && rows.some(r => r.k === 'you' || r.k === 'cl') ? [{ chat: true, c: 'var(--muted)' }] : []),
+    const L = [...(rows.some(r => r.k === 'you' || r.k === 'cl') ? [{ chat: true, c: 'var(--muted)' }] : []),
       ...urls.slice(0, TV_LANES).map(u => ({ url: u, c: prHue(s, m.byUrl.get(u)) })),
       ...(urls.length > TV_LANES ? [{ more: new Set(urls.slice(TV_LANES)), c: 'var(--muted)' }] : [])];
     const cells = rows.map(() => []);
@@ -8721,9 +8730,9 @@ const toolName = n => {
   function tvTracksHtml(s, m, sc) {
     const rows = [], firsts = [];
     const sayOf = (e, pr) => `${pr.label.replace(/^.*?#/, '#')} ${e.k === 'chat' || e.k === 'board' || e.w === '' ? 'you ' : e.w ? e.w + ' ' : ''}${e.w === null ? EV_SAY(e).replace(/ it$/, '') : EV_SAY(e)}`;
-    if (sc.chat && m.turns.length) {
+    if ((sc.you || sc.claude) && m.turns.length) {
       firsts.push(m.turns[0].ms);
-      rows.push(`<div class="tk3" data-row="chat"><span class="tl3">Chat</span><span class="tp3">${m.turns.map(t => `<i class="tw" data-a="${esc(t.at)}" data-b="${esc(t.end || '')}" data-say="Claude at work"></i>${t.you ? `<i class="ty" data-a="${esc(t.at)}" data-say="${esc(`you: ${String(t.you).replace(/\s+/g, ' ').slice(0, 80)}`)}"></i>` : ''}`).join('')}</span></div>`);
+      rows.push(`<div class="tk3" data-row="chat"><span class="tl3">${sc.you && sc.claude ? 'Chat' : sc.you ? 'You' : 'Claude'}</span><span class="tp3">${m.turns.map(t => `${!sc.claude ? '' : `<i class="tw" data-a="${esc(t.at)}" data-b="${esc(t.end || '')}" data-say="Claude at work"></i>`}${sc.you && t.you ? `<i class="ty" data-a="${esc(t.at)}" data-say="${esc(`you: ${String(t.you).replace(/\s+/g, ' ').slice(0, 80)}`)}"></i>` : ''}`).join('')}</span></div>`);
     }
     for (const p of m.prs.filter(p => sc.on.has(p.url))) {
       const evs = m.evs.filter(e => e.url === p.url && (sc.dens === 'all' || e.k !== 'ci' || e.s === 'fail')), rs = m.roundsOf(p.url);
@@ -8800,7 +8809,7 @@ const toolName = n => {
       const d = dayOf(r.ms); if (d !== day && (day !== null || d !== 'Today')) html += `<div class="tvday"><b>${esc(d)}</b></div>`;
       day = d; html += tvRowHtml(s, m, sc, r, tvLaneHtml(L, cells[i]), faces);
     });
-    if (!rows.length) html = `<div class="tvnone">${!sc.chat && !sc.on.size ? 'Nothing in the narrow — ⌥-click a chip for everything in play' : m.turns.length || m.prs.length ? 'Nothing here yet' : 'No messages yet'}</div>`;
+    if (!rows.length) html = `<div class="tvnone">${!sc.you && !sc.claude && !sc.on.size ? 'Nothing in the narrow — ⌥-click a chip for everything in play' : m.turns.length || m.prs.length ? 'Nothing here yet' : 'No messages yet'}</div>`;
     // a ledger that let its oldest go (it keeps 150 a PR): the rest is GitHub's
     const old = m.prs.filter(p => sc.on.has(p.url) && m.led.get(p.url)?.older);
     if (old.length) html = `<div class="tvold">${old.map(p => `<button type="button" class="tvgh" data-u="${esc(p.url)}">older on ${pchip(s, p)} — on GitHub ↗</button>`).join('')}</div>` + html;
@@ -8839,7 +8848,7 @@ const toolName = n => {
     const go = e.target.closest('.tvgo'); if (go) return tvGo(s, go.dataset.go);
     const c = e.target.closest('.tvc');
     if (c?.dataset.url) return e.altKey ? tvSolo(s, c.dataset.url) : tvToggle(s, c.dataset.url);
-    if (c?.dataset.k === 'chat') return e.altKey ? tvSolo(s, 'chat') : tvSet(s, { chat: tvScope(s, tvModel(s)).chat ? false : undefined });
+    if (TV_WHO[c?.dataset.k]) return e.altKey ? tvSolo(s, c.dataset.k) : tvSide(s, c.dataset.k);
     if (c?.dataset.k === 'more' || e.target.closest('.tvscope')) return tvMenu(s, c || e.target.closest('.tvscope'), !c);
     const sg = e.target.closest('.tvseg button');
     if (sg?.dataset.turns) return tvSet(s, { turns: sg.dataset.turns });

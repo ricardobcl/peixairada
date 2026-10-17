@@ -181,7 +181,7 @@ export default async function (ctx) {
   const chips = () => ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#tv .tvc')].map(c => (c.classList.contains('on') ? '+' : '-') + c.textContent.trim()))`).then(JSON.parse);
   const chip = n => `#tv .tvc[data-url$="/${n}"]`;
   out.chips = await chips();
-  a.deepEqual(out.chips, ['+Chat', '-#470merged', '+#479answered', '+#482your move', '+#486let go'], `the chips: ${out.chips}`);
+  a.deepEqual(out.chips, ['+You', '+Claude', '-#470merged', '+#479answered', '+#482your move', '+#486let go'], `the chips: ${out.chips}`);
   // #479 out: its events and its lane go
   await click(chip(479));
   await T(`!document.querySelector('#tv .tvr.ev[data-url$="/479"]')`, '#479 out of the timeline');
@@ -200,6 +200,28 @@ export default async function (ctx) {
   // ⌥-click it again: everything in play, the address the chat's alone
   await click(chip(482), true);
   await T(`location.hash === '#${id}'`, 'in play again: the address the chat\'s alone');
+  // You and Claude, each its own chip: Claude's out — your prompts stay, its turns go, and what the chat did on a PR
+  // (said on Claude's line till now) is a row of its own
+  const kinds = async () => (await rows()).map(r => r.k);
+  await click('#tv .tvc[data-k="claude"]');
+  await T(`!document.querySelector('#tv .tvr.cl') && document.querySelectorAll('#tv .tvr.you').length === 4`, 'Claude\'s turns out, your prompts in');
+  out.noClaude = await rows();
+  a.ok(out.noClaude.some(r => r.k.startsWith('ev') && /from this chat/.test(r.t)), `the chat's own acts as rows: ${out.noClaude.filter(r => r.k.startsWith('ev')).map(r => r.t)}`);
+  await T(`location.hash.endsWith('/tl:claude=0')`, 'Claude out in the address');
+  await T(`document.querySelector('#tv .tvtrk3 [data-row="chat"] .tl3')?.textContent === 'You' && !document.querySelector('#tv .tvtrk3 .tw')`, 'the chat\'s track is yours alone');
+  // ⌥-click You: your prompts alone — no PR, no turn of Claude's — and again everything in play
+  await click('#tv .tvc[data-k="you"]', true);
+  await T(`document.querySelectorAll('#tv .tvc.on').length === 1 && document.querySelector('#tv .tvc.on').dataset.k === 'you'`, 'You alone');
+  a.ok((await kinds()).every(k => k === 'you'), `only your prompts: ${await kinds()}`);
+  await click('#tv .tvc[data-k="you"]', true);
+  await T(`location.hash === '#${id}' && document.querySelectorAll('#tv .tvr.cl').length > 0`, 'everything in play again');
+  // ⌥-click Claude: its turns alone; its menu says so, and brings everything back
+  await click('#tv .tvc[data-k="claude"]', true);
+  await T(`!document.querySelector('#tv .tvr.you') && document.querySelectorAll('#tv .tvr.cl').length > 0 && !document.querySelector('#tv .tvr.ev')`, 'Claude\'s turns alone');
+  out.ctxWho = await ctx.evaluate(`(() => { const b = document.querySelector('#tv .tvc[data-k="claude"]'), c = b.getBoundingClientRect(); b.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: c.left + 4, clientY: c.top + 4 })); return [...document.querySelectorAll('#ctxm button')].map(b => b.textContent); })()`);
+  a.deepEqual(out.ctxWho, ['Everything in play again', 'Leave them out'], `Claude's chip's menu: ${out.ctxWho}`);
+  await ctx.evaluate(`document.querySelector('#ctxm button').click()`);
+  await T(`location.hash === '#${id}'`, 'everything in play from the menu');
   // the mentioned one in: its merge
   await click(chip(470));
   await T(`[...document.querySelectorAll('#tv .tvr.ev[data-url$="/470"]')].some(r => r.textContent.includes('merged'))`, '#470\'s merge in the timeline');
@@ -224,7 +246,7 @@ export default async function (ctx) {
   await ctx.send('Emulation.setDeviceMetricsOverride', { width: 860, height: 860, deviceScaleFactor: 2, mobile: false });
   await ctx.settle();
   out.narrow = await ctx.evaluate(`JSON.stringify({ chips: getComputedStyle(document.querySelector('#tv .tvchips')).display, scope: document.querySelector('#tv .tvscope').textContent, shown: getComputedStyle(document.querySelector('#tv .tvscope')).display !== 'none' })`).then(JSON.parse);
-  a.deepEqual(out.narrow, { chips: 'none', scope: 'Scope ▾ 2 of 5', shown: true }, JSON.stringify(out.narrow));
+  a.deepEqual(out.narrow, { chips: 'none', scope: 'Scope ▾ 3 of 6', shown: true }, JSON.stringify(out.narrow));
   await ctx.shot('3-narrow');
   await ctx.send('Emulation.clearDeviceMetricsOverride');
   return out;
