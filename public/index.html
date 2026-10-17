@@ -1058,13 +1058,14 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #rpop .rev .x b { font-weight: 600; }
   #rpop .rev .rr { margin-top: 2px; } #rpop .rev .rr.ok { font-size: var(--fs-xs); font-weight: 600; color: var(--pr-open); }
   #rpop .rev .bub { display: inline-block; max-width: 100%; padding: 2px 8px; border-radius: 10px 10px 3px 10px; background: var(--user-bg); color: var(--ink); overflow-wrap: anywhere; }
-  #rpop .ri { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; object-fit: cover; flex: none; margin-top: 1px;
+  :is(#rpop, #tv) .ri { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; object-fit: cover; flex: none; margin-top: 1px;
     background: color-mix(in srgb, var(--h, var(--muted)) 75%, var(--panel)); color: var(--bg); font-size: 9px; font-weight: 700; font-style: normal; }
-  #rpop .ri .ic { width: 10px; height: 10px; }
-  #rpop .ri.you { background: color-mix(in srgb, var(--ink) 14%, transparent); color: var(--you); }
-  #rpop .ri.me { background: color-mix(in srgb, var(--you) 75%, var(--panel)); font-size: 6.5px; letter-spacing: -.2px; }
-  #rpop .ri.chat { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); }
-  #rpop .ri.board { background: var(--ctl-hi); color: var(--muted); }
+  :is(#rpop, #tv) .ri .ic { width: 10px; height: 10px; }
+  :is(#rpop, #tv) .ri.you { background: color-mix(in srgb, var(--ink) 14%, transparent); color: var(--you); }
+  :is(#rpop, #tv) .ri.me { background: color-mix(in srgb, var(--you) 75%, var(--panel)); font-size: 6.5px; letter-spacing: -.2px; }
+  :is(#rpop, #tv) .ri.chat { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); }
+  :is(#rpop, #tv) .ri.board { background: var(--ctl-hi); color: var(--muted); }
+  :is(#rpop, #tv) .ri.ci { background: color-mix(in srgb, var(--pr-open) 22%, transparent); color: var(--pr-open); } :is(#rpop, #tv) .ri.ci.bad { background: color-mix(in srgb, var(--pr-closed) 22%, transparent); color: var(--pr-closed); }
   #rpop .rpf { padding-top: 6px; border-top: 1px solid var(--line); font-size: var(--fs-2xs); color: var(--muted); }
   /* It never wraps the row (2026-10-11, afternoon: ··· went to a second line beside the housing): a flex basis of 0,
      growing into the room the row leaves up to its own width — the reason ellipsized —, and no narrower than the tag and
@@ -1748,6 +1749,74 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .shead .hdiff:hover { background: var(--ctl-hi); }
   .shead .hdiff .a { color: var(--pr-open); } .shead .hdiff .d { color: var(--pr-closed); }
 
+  /* ---- the timeline tab: the chat and its PRs in one order (2026-10-17) ---- */
+  #tv { grid-row: 1; grid-column: 1; min-height: 0; display: grid; grid-template-rows: auto auto minmax(0, 1fr); background: var(--panel); font-size: var(--fs-md); container: tv / inline-size; }
+  #tv[hidden] { display: none; }
+  #tv .tvbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--line); min-width: 0; }
+  #tv .tvchips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+  #tv :is(.tvc, .tvscope) { font: inherit; font-size: var(--fs-sm); font-weight: 600; line-height: 22px; padding: 0 8px; border: 1px solid transparent; border-radius: var(--r-3); background: var(--ctl); color: var(--muted); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
+  #tv :is(.tvc, .tvscope):hover { background: var(--ctl-hi); }
+  #tv .tvc > i { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--h, var(--muted)); flex: none; }
+  #tv .tvc.on { color: var(--ink); background: color-mix(in srgb, var(--h, var(--ink)) 18%, transparent); border-color: color-mix(in srgb, var(--h, var(--ink)) 40%, transparent); }
+  #tv .tvc.on > i { background: var(--h, var(--muted)); }
+  #tv .tvc .st { font-weight: 500; font-size: var(--fs-xs); color: var(--muted); }
+  #tv .tvc .st[data-k="you"] { color: var(--accent); font-weight: 700; }
+  #tv .tvscope { display: none; }   /* the chips folded into one button where the tab is narrow (below) */
+  #tv .tvgap { flex: 1 1 0; min-width: 4px; }
+  #tv .tvseg { display: inline-flex; padding: 2px; border-radius: var(--r-3); background: var(--ctl); flex: none; }
+  #tv .tvseg button { font: inherit; font-size: var(--fs-sm); padding: 1px 9px; border: 0; border-radius: var(--r-2); background: none; color: var(--muted); cursor: pointer; white-space: nowrap; }
+  #tv .tvseg button[aria-pressed="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .3); }
+  @container tv (max-width: 640px) { #tv .tvchips { display: none; } #tv .tvscope { display: inline-flex; } }
+  #tv .tvl { overflow: auto; overscroll-behavior: contain; position: relative; padding-top: 6px; }
+  #tv .tvr { display: grid; grid-template-columns: 52px var(--lw, 14px) minmax(0, 1fr); column-gap: 8px; padding: 0 14px 0 6px; min-height: 26px; }
+  #tv .tvr:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+  #tv .tvr .tm { font-size: var(--fs-xs); color: var(--muted); text-align: right; padding-top: 5px; white-space: nowrap; }
+  #tv .tvr .lns { display: flex; align-self: stretch; }
+  #tv .ln { position: relative; width: 14px; flex: none; --dy: 13px; }
+  #tv .ln > b { position: absolute; left: 50%; translate: -50% 0; width: 2px; background: color-mix(in srgb, var(--c) 55%, transparent); }
+  #tv .ln > b.u { top: 0; height: var(--dy); } #tv .ln > b.d { top: var(--dy); bottom: 0; }
+  #tv .ln > b.thick { width: 4px; background: var(--c); }
+  #tv .ln > b.dash { width: 0; background: none; border-left: 2px dashed color-mix(in srgb, var(--c) 60%, transparent); }
+  #tv .ln > em { position: absolute; left: 50%; top: var(--dy); translate: -50% -50%; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+  #tv .ln > em.move { width: 11px; height: 11px; box-shadow: 0 0 0 2px var(--panel), 0 0 0 3.5px var(--accent); }
+  #tv .ln > em.close { width: 12px; height: 12px; background: var(--pr-open); display: grid; place-items: center; }
+  #tv .ln > em.close::after { content: ""; width: 5px; height: 3px; border: solid var(--panel); border-width: 0 0 1.6px 1.6px; translate: 0 -1px; rotate: -45deg; }
+  #tv .ln > em.let { width: 9px; height: 9px; background: var(--panel); border: 1.5px solid var(--muted); }
+  #tv .ln > em.ref { width: 7px; height: 7px; background: var(--panel); border: 1.5px solid var(--c); }
+  #tv .ln > em.small { width: 5px; height: 5px; }
+  #tv .ln > em.bad { background: var(--pr-closed); }
+  #tv .ln > em.you { width: 7px; height: 7px; border-radius: 2px; background: var(--muted); }
+  #tv .ln > em.cl { width: 7px; height: 7px; background: var(--accent); }
+  #tv .tvr .ct { min-width: 0; padding: 3px 0 4px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
+  #tv .tvr .ct > .ri { align-self: center; margin-top: 0; }
+  #tv .tvr .who { font-weight: 600; }
+  #tv .tvr .w { min-width: 0; overflow-wrap: anywhere; }
+  #tv .tvr.you .bub { min-width: 0; background: var(--user-bg); border-radius: 10px 10px 3px 10px; padding: 1px 8px; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
+  #tv .tvr.cl { cursor: pointer; }
+  #tv .tvr.cl .rep { flex-basis: 100%; min-width: 0; color: var(--muted); font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #tv .tvr.cl .sum .tvat { color: var(--working); }
+  #tv .tvr.cl .tools { flex-basis: 100%; display: grid; gap: 1px; font: var(--fs-xs)/16px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
+  #tv .tvr.cl .tools span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #tv .tvr.ev[data-u] { cursor: pointer; }
+  #tv .tvr.fold { cursor: pointer; color: var(--muted); } #tv .tvr.fold .ct { font-size: var(--fs-sm); }
+  #tv .tvr.live { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+  #tv .tvr .ok { color: var(--pr-open); font-weight: 600; }
+  #tv .tvr .bad { color: var(--pr-closed); font-weight: 600; }
+  #tv .tvr .span { color: var(--muted); }
+  #tv .tvday { margin: 12px 0 6px; text-align: center; }
+  #tv .tvday b { font: 600 var(--fs-xs)/14px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1px; color: var(--muted); }
+  #tv .tvnone { padding: 36px 20px; color: var(--muted); text-align: center; }
+  #tv .tvold { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 4px 14px 8px; }
+  #tv .tvgh { font: inherit; font-size: var(--fs-xs); color: var(--muted); padding: 1px 8px; border: 1px solid transparent; border-radius: var(--r-2); background: var(--ctl); cursor: pointer; }
+  #tv .tvgh:hover { background: var(--ctl-hi); color: var(--ink); }
+  #tv .tvnow { position: sticky; bottom: 0; z-index: 1; display: grid; gap: 3px; margin-top: 8px; padding: 6px 14px 8px; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 94%, transparent); backdrop-filter: blur(8px); }
+  #tv .tvnr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: var(--fs-sm); min-width: 0; }
+  #tv .tvnr .was { color: var(--muted); }
+  #tv .tvgo { margin-left: auto; font: inherit; font-size: var(--fs-xs); font-weight: 600; line-height: 20px; padding: 0 8px; border: 1px solid transparent; border-radius: var(--r-2); background: var(--ctl); color: var(--ink); cursor: pointer; }
+  #tv .tvgo:hover { background: var(--ctl-hi); }
+  #tv .tvr.flash, #log .msg.tvhit { animation: tvflash 1.4s var(--ease-out); }
+  @keyframes tvflash { 0%, 30% { background: color-mix(in srgb, var(--accent) 26%, transparent); } 100% { background: transparent; } }
+
   /* ---- home (2026-10-10): the column with no chat open — fastfetch's block, then the day ---- */
   .home { display: grid; align-content: start; gap: 30px; max-width: 1180px; margin: 0 auto; padding: 34px 36px 40px; }
   .home .hff { display: flex; gap: 40px; align-items: center; flex-wrap: wrap; justify-content: center; }
@@ -2210,6 +2279,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   }
 
   @media (prefers-reduced-motion: reduce) {
+    #tv .tvr.flash, #log .msg.tvhit { animation-timing-function: step-end; }   /* the timeline's row gone to, the transcript's turn: lit, then not, no fade */
     #wall i { transition: none; }   /* the wallpaper's glow stays in its corner (wallOn) */
     .card.working::before, .card.watching::before { animation: none; background: var(--lit); }
     .card.asking { border-color: var(--needs); box-shadow: 0 0 0 1px color-mix(in srgb, var(--needs) 60%, transparent), 0 0 18px color-mix(in srgb, var(--needs) 40%, transparent); }
@@ -2288,6 +2358,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
         <div class="ptabs" id="ptabs" role="tablist" aria-label="This chat's tabs" hidden></div>
         <div class="gbody haslog" id="gbody">
           <div id="chg" hidden></div>
+          <div id="tv" hidden></div>
           <div id="log"><div class="empty"></div></div>
           <div class="gterm" id="term" hidden><div class="tbody" id="termBody"></div></div>
         </div>
@@ -3358,6 +3429,7 @@ const toolName = n => {
     folder: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 1A1.75 1.75 0 0 0 0 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0 0 16 13.25v-8.5A1.75 1.75 0 0 0 14.25 3H7.5a.25.25 0 0 1-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1H1.75Z"/></svg>',
     pin: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 1.5l4.5 4.5-1.6.6-2.5 2.5-.4 3.2-1.3 1.3-2.8-2.8-3.8 3.8-.7-.7 3.8-3.8-2.8-2.8 1.3-1.3 3.2-.4 2.5-2.5Z"/></svg>',
     // ± in a square: a chat's changes, its diff (2026-10-10)
+    timeline: '<svg class="ic st" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5v13M7.5 4.5h6M7.5 11.5h4"/><circle cx="4.5" cy="4.5" r="1.75"/><circle cx="4.5" cy="11.5" r="1.75"/></svg>',   // the timeline tab (2026-10-17)
     diff: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M7.25 2.5h1.5v2.25H11v1.5H8.75V8.5h-1.5V6.25H5v-1.5h2.25ZM5 10.5h6V12H5Z"/><path fill-rule="evenodd" d="M2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11A1.5 1.5 0 0 1 2.5 1Zm0 1.5v11h11v-11Z"/></svg>',
     // a branch (Primer's git-branch, MIT): the changes tab's branch
     branch: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 3.25a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.493 2.493 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25Zm-6 0a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Zm8.25-.75a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM4.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"/></svg>',
@@ -4691,13 +4763,15 @@ const toolName = n => {
     }
   }
   const RTAG = { you: '<b class="rtag move">your move</b>', let: '<b class="rtag let">let go</b>', ok: '<b class="rtag ok">answered</b>', them: '' };
+  /** A round in words: since when and how long unanswered, let go, or how your word answered it — a row's and the timeline's. */
+  const roundSay = (s, pr, r) => r.k === 'you' ? (r.cur ? `since ${when(r.cur.from)} · unanswered <span data-at="${esc(r.cur.from)}"></span>` : esc(pr.turn.why))
+    : r.k === 'let' ? `${esc(pr.turn.why)} · let go${r.cur?.let ? ` ${when(r.cur.let)}` : ''}, nothing since`
+    : r.k === 'ok' ? `${esc(byWords(r.cur, s))} ${when(r.cur.end)} · ${esc(pr.turn.why)}`
+    : esc(pr.turn.why);
   /** A PR row's round, under it: the strip, the tag, since when, the round before, and what can be done about it. */
   function roundLine(s, pr, hide) {
     const r = roundOf(pr); if (!r || (r.k === 'them' && !r.prev)) return '';
-    const say = r.k === 'you' ? (r.cur ? `since ${when(r.cur.from)} · unanswered <span data-at="${esc(r.cur.from)}"></span>` : esc(pr.turn.why))
-      : r.k === 'let' ? `${esc(pr.turn.why)} · let go${r.cur?.let ? ` ${when(r.cur.let)}` : ''}, nothing since`
-      : r.k === 'ok' ? `${esc(byWords(r.cur, s))} ${when(r.cur.end)} · ${esc(pr.turn.why)}`
-      : esc(pr.turn.why);
+    const say = roundSay(s, pr, r);
     const acts = r.k === 'you' ? `<button type="button" class="pract" data-pract="letgo" data-url="${esc(pr.url)}" title="Let this PR's round go — not your move until the next one, which tells you; the chat's other PRs keep theirs">Let go</button><button type="button" class="pract" data-pract="ask" data-url="${esc(pr.url)}" title="Type it into this chat's Claude, unsent — ⏎ sends it">Ask Claude</button>`
       : r.k === 'let' ? `<button type="button" class="pract" data-pract="undo" data-url="${esc(pr.url)}" title="Your move again, as it was">Undo</button>` : '';
     return `<div class="prround" data-k="${r.k}" data-url="${esc(pr.url)}"${hide ? ' hidden' : ''}>${trackHtml(pr)}${RTAG[r.k]}<span class="say">${say}${r.prev ? `<span class="was"> · before: ${esc(prevWords(r.prev, s))}</span>` : ''}</span>${acts ? `<span class="practs">${acts}</span>` : ''}</div>`;
@@ -4747,12 +4821,17 @@ const toolName = n => {
   }
   const EV_SAY = e => e.k === 'opened' ? 'opened it' : e.k === 'review' ? ({ APPROVED: 'approved', CHANGES_REQUESTED: 'asked for changes', DISMISSED: 'dismissed a review' }[e.s] || 'reviewed')
     : e.k === 'comment' ? 'commented' : e.k === 'push' ? (e.f ? 'force-pushed' : e.n > 1 ? `pushed ${e.n} commits` : 'pushed') : e.k === 'ask' ? 'asked for your review'
-    : e.k === 'chat' ? `${{ push: 'pushed', review: 'reviewed', comment: 'commented', reply: 'replied', merge: 'merged it', opened: 'opened it' }[e.x] || e.x}` : e.k === 'board' ? (e.x === 'back' ? 'took the let-go back' : 'let this round go') : e.k;
+    : e.k === 'chat' ? `${{ push: 'pushed', review: 'reviewed', comment: 'commented', reply: 'replied', merge: 'merged it', opened: 'opened it' }[e.x] || e.x}` : e.k === 'board' ? (e.x === 'back' ? 'took the let-go back' : 'let this round go')
+    // what happened to the PR itself, and its CI (2026-10-17, the ledger's L2): `w` null is GitHub's, a bot's or no one's
+    : e.k === 'merged' ? 'merged it' : e.k === 'closed' ? 'closed it' : e.k === 'reopened' ? 'reopened it' : e.k === 'ready' ? 'marked it ready for review'
+    : e.k === 'asked' ? (e.x ? `asked ${e.x} to review` : 'asked a team to review') : e.k === 'ci' ? (e.s === 'fail' ? 'CI failed' : 'CI passed') : e.k;
   /** Who did it, as a small round mark: GitHub's face for a person the PR knows, else their initial; you, Claude, the board. */
   function evMark(e, faces) {
     if (e.said) return `<i class="ri you">${ICON.you}</i>`;
     if (e.k === 'chat') return `<i class="ri chat">${ICON.claude}</i>`;
     if (e.k === 'board') return '<i class="ri board">–</i>';
+    if (e.k === 'ci') return `<i class="ri ci${e.s === 'fail' ? ' bad' : ''}">${e.s === 'fail' ? '✕' : '✓'}</i>`;   // a check's turn: no one's face
+    if (e.w === null) return '<i class="ri board">–</i>';   // GitHub's own, a bot's
     if (e.w === '') return '<i class="ri me">you</i>';
     const f = faces.get(e.w);
     return f ? `<img class="ri" src="${esc(f)}" alt="">` : `<i class="ri" style="--h:${hueAt([...String(e.w || '?')].reduce((a, c) => a + c.charCodeAt(0), 0))}">${esc(String(e.w || '?')[0].toUpperCase())}</i>`;
@@ -5331,6 +5410,7 @@ const toolName = n => {
         { name: `A ${shName()} in its folder`, sub: of, hint: '⌥⌘T', fn: hotShell },
         ...(shellLive(s) ? [{ name: `Another ${shName()} beside it`, sub: of, hint: '⌘T', fn: () => startShell(s, true) }] : []),
         ...(s.prs?.length ? [{ name: 'Its PR on GitHub', sub: of, hint: '⌥⌘G', fn: hotGh }] : []),
+        { name: 'Its timeline — the chat and its PRs in one order', sub: of, hint: '⌥⌘J', fn: hotTimeline },
         ...(inApp ? [{ name: 'Its folder in VS Code Web', sub: of, hint: '⌥⌘E', fn: hotVsCode }] : []),
         ...(s.cwd ? [{ name: 'Its folder in VS Code — its own window', sub: of, hint: '⌥⌘V', fn: hotVsCodeApp }] : []),
         ...(onZed() && s.cwd ? [{ name: 'Its folder in Zed — its own window', sub: of, fn: () => $('#zedBtn')?.click() }] : []),
@@ -5457,6 +5537,7 @@ const toolName = n => {
     ['⌥⌘E', 'This chat', 'its folder in VS Code Web, on a tab', 'again from it: its half fills the column, and back · VS Code Web whichever editor files open in — Zed has no web version', ['alt:KeyE']],
     ['⌥⌘V', 'This chat', 'its folder in VS Code, its own window', 'the app, outside the board — ⌥⌘E is VS Code Web on a tab · with no chat open, the project in view when it is a folder', ['alt:KeyV']],
     ['⌥⌘G', 'This chat', 'its PR on GitHub, on a tab', 'the repo when it has none · a picker with several — from one of them, the next selected, and ⌥⌘G once more fills the column · a tab followed elsewhere leaves it a new one · again from its page: its half fills the column, and back', ['alt:KeyG']],
+    ['⌥⌘J', 'This chat', 'its timeline, on a tab — the chat and its PRs in one order', 'your prompts, each of Claude\'s turns as a line, the PRs\' events between them, a lane per PR · the Now bar says each one\'s round · a turn clicked shows it in the transcript · again from it: its half fills the column, and back', ['alt:KeyJ']],
     ['⌥⌘D', 'This chat', 'what it changed, on a tab', 'its last turn\'s edits, the uncommitted tree or the branch against its base · Commit… and Push type into its shell · + on a line sends Claude a note · again from it: its half fills the column, and back', ['alt:KeyD']],
     ['⌘W', 'This chat', 'close the tab the keys are in', 'the shell ends, a page goes, VS Code Web once no editor is open in it (its ⌘W closes them first) · on the chat\'s own tab, its half closes — with one half, the window\'s own key · a dialog up closes first', ['cmd:KeyW']],
     ['⌥⌘W', 'This chat', 'close the tab the keys are in, never more', 'as ⌘W, but on the chat\'s tab it says so, and never closes a half or the window', ['alt:KeyW']],
@@ -5521,7 +5602,7 @@ const toolName = n => {
   // modifier the layout, and a key pressed on the other layout turns it (hotGroup). A modal up (the picker, the project
   // editor) swallows them all. In the app the pane is a native view with its own web views, so a key pressed there
   // never reaches this page: the shell forwards ⌥⌘ + these keys through peixKey (the same list, kept by hand there).
-  const HOTKEYS = { KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyV: hotVsCodeApp, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiffKey, KeyA: ovOpen, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
+  const HOTKEYS = { KeyJ: hotTimelineKey, KeyT: hotShellKey, KeyE: hotVsCodeKey, KeyV: hotVsCodeApp, KeyG: hotGhKey, KeyC: hotClaudeKey, KeyW: hotCloseTab, KeyR: hotReload, KeyO: hotOracle, KeyP: () => pickOpen('project'), KeyK: () => pickOpen('chat'), KeyF: hotFind, KeyN: () => pickOpen('new'), KeyB: toggleSessions, KeyY: themesOpen, KeyL: () => pickOpen('launch'), KeyD: hotDiffKey, KeyA: ovOpen, Digit0: hotHome, ArrowUp: () => hotMove(-1), ArrowDown: () => hotMove(1), ArrowLeft: () => hotTab(-1), ArrowRight: () => hotTab(1), Digit1: () => hotGroup(0, true), Digit2: () => hotGroup(1, true) };
   // Plain ⌘ + a key, the board's own layout keys: ⌘1 / ⌘2 the halves. They are a separate map because the
   // modifier is: ⌥⌘ is "this chat, over there", ⌘ alone is "this window, this shape". ⌘K is not here — the drawer
   // takes it for the terminal's clear — and neither are ⌘+ and ⌘−, which are chatZoomKey's. ⌘0 is both: the other
@@ -6580,6 +6661,7 @@ const toolName = n => {
       s.cwd && !loud ? `${termBtn('hmi')}<span class="lbl">${termWord}</span><span class="k">⌥⌘C</span></button>` : '',
       termLive(s) ? `<button class="hmi${focusOn(s.id) ? ' on' : ''}" id="viewBtn" aria-pressed="${focusOn(s.id)}" title="${esc(viewTip(s))}">${ICON.view}<span>focus view</span><span class="k">${focusOn(s.id) ? 'on' : 'off'}</span></button>` : '',
       s.cwd ? `<button class="hmi" id="chgBtn" title="What this chat changed in its folder — the diff, by turn, uncommitted or the branch">${ICON.diff}<span class="lbl">changes</span><span class="k">⌥⌘D</span></button>` : '',
+      `<button class="hmi" id="tvBtn" title="This chat and its PRs in one order: your prompts, Claude's turns, the PRs' events between them">${ICON.timeline}<span class="lbl">timeline</span><span class="k">⌥⌘J</span></button>`,
       s.cwd ? `<button class="hmi" id="webBtn" title="${WEB_TIP}">${ICON.vscode}<span class="lbl">VS Code Web</span><span class="k">⌥⌘E</span></button>` : '',
       s.cwd && onZed() ? `<button class="hmi" id="zedBtn" title="${ZED_TIP}">${ICON.zed}<span class="lbl">its folder in Zed</span><span class="k">↗</span></button>` : '',
       // what a tab's × does, for the tabs that lose their strip alone in a half (2026-09-28) — ⌘W with the keys in it
@@ -6618,7 +6700,7 @@ const toolName = n => {
     };
     pl.querySelector('#prFold').onclick = e => showPrs(false, e);
     if (headNew) { layoutNotch(); fitHeadPrs(); paintHeadSplit(); postChat(s); if (menu.open) { $('#moreBtn').classList.add('on'); $('#moreBtn').setAttribute('aria-expanded', 'true'); } }   // the menu's state is not the markup's: opening it redrew the whole header
-    renderResume(s); renderRival(s);
+    renderResume(s); renderRival(s); tvSoon();
     $('#detailsBtn').onclick = () => { prefs.headDetails = !prefs.headDetails; savePrefs(); renderHead(s); };
     const wb = $('#webBtn');
     const zb = $('#zedBtn'); if (zb) zb.onclick = () => { menu.close(); if (zedMissing()) zedNote(seen(zb)); else openExternal(fileUrl(s.cwd)); };   // Zed's own window: nothing to start, no tab
@@ -6633,6 +6715,7 @@ const toolName = n => {
     };
     const tb = $('#termBtn'); if (tb) tb.onclick = () => { menu.close(); termAction(s); };
     const cb = $('#chgBtn'); if (cb) cb.onclick = () => { menu.close(); hotDiff(); };
+    $('#tvBtn').onclick = () => { menu.close(); hotTimeline(); };
     const sb = $('#shellEndBtn'); if (sb) sb.onclick = () => { menu.close(); const k = isShellTab(tabOf(s)) ? tabOf(s) : shellLive(s) && 'shell:' + shellsOf(s)[0].id; if (k) dropTab(s, k); };
     const ib = $('#ideCloseBtn'); if (ib) ib.onclick = () => { menu.close(); if (ideKey(s)) dropTab(s, ideKey(s)); };
     const fg = $('#forGoodBtn'); if (fg) fg.onclick = () => { menu.close(); tickDone(s.id, true, $('#shead'), null, true); };
@@ -7553,7 +7636,7 @@ const toolName = n => {
   let blankSeq = 0;
   const isBlankTab = k => /^new:/.test(k || '');
   const blankOf = (s, k) => (s && blanks.get(s.id) || []).find(b => 'new:' + b.n === k) || null;
-  const tabKeys = s => ['chat', ...shellsOf(s).map(t => 'shell:' + t.id), ...(s && changesOpen.has(s.id) ? ['changes'] : []), ...paneKeys(s), ...(s && blanks.get(s.id) || []).map(b => 'new:' + b.n)];
+  const tabKeys = s => ['chat', ...shellsOf(s).map(t => 'shell:' + t.id), ...(s && changesOpen.has(s.id) ? ['changes'] : []), ...(s && timelineOpen.has(s.id) ? ['timeline'] : []), ...paneKeys(s), ...(s && blanks.get(s.id) || []).map(b => 'new:' + b.n)];
   const tabOf = s => placeOf(s)[focusG];
   /** A tab put on show, in the half whose strip lists it — the one there is, unsplit — and the keys go with it.
       There is one transcript, one xterm per half and one web view per page, so a tab lives in exactly one half;
@@ -7618,7 +7701,7 @@ const toolName = n => {
       if (want) { if (tm.id !== want.id || tm.lost) attachTerm(tm, want); }
       else if (tm.id) { detachTerm(tm); showDrawer(tm, false); }
     }
-    placeLog(s, p); placeChanges(s, p);
+    placeLog(s, p); placeChanges(s, p); placeTimeline(s, p);
     renderTabs(s, p); placeBlanks(s, p); postPane(s, p);
     keepTabsSoon();   // the tabs as they stand outlive a reload (2026-10-16)
   }
@@ -7675,6 +7758,7 @@ const toolName = n => {
         k === 'chat' ? tab(k, termLive(s) ? 'claude' : 'chat', `${termLive(s) ? 'The claude session' : 'The rendered chat'} · ⌥⌘C`, '', ICON.claude)
         : isShellTab(k) ? tab(k, shLabel(s, k), `A ${shName()} in ${s.cwd || 'its folder'} · ⌥⌘T · ⌘T another`, 'End this shell', ICON.term)
         : k === 'changes' ? tab(k, 'changes', `What this chat changed in ${s.cwd || 'its folder'} · ⌥⌘D`, 'Close the changes', ICON.diff)
+        : k === 'timeline' ? tab(k, 'timeline', 'This chat and its PRs in the order things happened · ⌥⌘J', 'Close the timeline', ICON.timeline)
         : isPageTab(k) ? tab(k, paneLabel(paneUrl(k)), GH_PR.test(paneUrl(k)) ? `${paneUrl(k)} · ⌥⌘G` : paneUrl(k), 'Close this page', GH_PR.test(paneUrl(k)) ? ICON.pr : ICON.globe)
         : isBlankTab(k) ? tab(k, 'New tab', 'A new tab, nothing on it yet · ⌘T', 'Close this tab', ICON.globe)
         : ideLabel(k) ? tab(k, ideLabel(k), `${ideName(pageUrl(k))} — a worktree — in VS Code Web`, 'Close the editor', ICON.vscode)
@@ -7964,6 +8048,7 @@ const toolName = n => {
     if (g >= 0) { const ks = keysIn(s, g), i = ks.indexOf(k); p[g] = ks[i + 1] || ks[i - 1] || null; tabs.set(s.id, p); }
     if (isShellTab(k)) { const t = shellOfTab(s, k); if (t) api('DELETE', `/api/terminals/${t.id}`).catch(e => note(seen($('#ptabs')), `Could not end the zsh: ${e.message}`, true)); syncTerm(s); return; }
     if (k === 'changes') changesOpen.delete(s.id);
+    else if (k === 'timeline') timelineOpen.delete(s.id);
     else if (isPageTab(k)) state.paneGh.set(s.id, (state.paneGh.get(s.id) || []).filter(x => x !== k));
     else if (isBlankTab(k)) blanks.set(s.id, (blanks.get(s.id) || []).filter(b => 'new:' + b.n !== k));
     else if ((state.paneWt.get(s.id) || []).includes(pageUrl(k))) state.paneWt.set(s.id, state.paneWt.get(s.id).filter(u => u !== pageUrl(k)));
@@ -8279,6 +8364,270 @@ const toolName = n => {
     if (e.key === 'Enter' && e.metaKey) { e.preventDefault(); const s = state.sessions.get(state.current); if (s) sendNote(s, box); }
     else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); box.remove(); }
   });
+
+  // ---- the timeline tab: the chat and its PRs in one order (2026-10-17) -----------------------------------------
+  // The story of a chat and its PRs was in three places — the transcript, each PR row's round, the card's popover —
+  // and read in order only by merging them in your head. One list now (VS Code's Timeline, a commit graph's lanes,
+  // Copilot's session line in a PR): your prompts, each of Claude's turns as one line, and the events of the chat's
+  // PRs between them, newest at the bottom as the transcript. At the left a lane per PR in its hue, thin while it is
+  // someone else's move, thick from the move that came round to you, a tick where your word closed the round, dashed
+  // once let go; the Now bar at the foot says where each PR stands. A tab as the changes are (⌥⌘J), one element moved
+  // into the half that shows it (placeTimeline). Read from the open chat's entries and its PRs' ledgers (GET …/prlog,
+  // asked again when one has moved); which turns are about which PR — named in it, acted on from it, the first after
+  // its move — is the page's own reading of the entries (tvModel).
+  const timelineOpen = new Set();   // chats with the tab, kept across a reload as the other tabs are (keepTabs)
+  const tv = { id: null, log: null, sig: '', asking: false, goto: null };
+  const TV_LANES = 5;               // a lane each for the first five PRs shown, the rest one grey lane between them
+  const TV_EDITS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
+  // what the ledgers hold has moved: a PR's `logged` (the server's count of its ledger's changes), its state, its round
+  const tvSig = s => (s.prs || []).map(p => `${p.url} ${p.logged || 0} ${p.state} ${p.turn?.movedAt || ''} ${(p.rounds || []).map(r => r.from + (r.end || '') + (r.let || '')).join()}`).join('\n');
+  /** The open chat's ledgers: asked when the tab or the PR list wants them, and again once one of them has moved. */
+  function tvLogOf(s) {
+    if (tv.id !== s.id) Object.assign(tv, { id: s.id, log: null, sig: '' });
+    const sig = tvSig(s);
+    if (sig !== tv.sig && !tv.asking && s.prs?.length) {
+      tv.asking = true; const id = s.id;
+      api('GET', `/api/sessions/${encodeURIComponent(id)}/prlog`).then(v => v, () => null).then(v => {
+        tv.asking = false; if (tv.id !== id) return;
+        tv.sig = sig; if (v) { tv.log = v; prlogs.set(id, { at: Date.now(), v }); }   // the card's popover reads the same
+        const now = state.sessions.get(id); if (!now || state.current !== id) return;
+        tvSoon(); if (prefs.prsOpen) renderHead(now);
+      });
+    }
+    return tv.log;
+  }
+  /** A chat's turns from its entries: your prompt (none for one a task's notice woke), Claude's calls, its last words. */
+  function tvTurns(entries) {
+    const out = []; let t = null;
+    const begin = (at, you = null) => { t = { at, you, last: at, end: null, worked: 0, tools: [], reply: '', closed: false, cut: false }; out.push(t); };
+    for (const e of entries) {
+      if (!e.ts) continue;
+      if (e.kind === 'text' && e.role === 'user') { begin(e.ts, e.text); continue; }   // one typed mid-turn starts its own line
+      if (e.kind === 'interrupt') { if (t && !t.closed) Object.assign(t, { end: e.ts, closed: true, cut: true }); continue; }
+      if (e.kind === 'compact') continue;
+      if (!t || t.closed) begin(e.ts);
+      t.last = e.ts;
+      if (e.kind === 'tool_use') t.tools.push(e);
+      else if (e.kind === 'text' && e.role === 'assistant') { t.reply = e.text; if (e.turnEnd) Object.assign(t, { end: e.ts, worked: e.worked || 0, closed: true }); }
+    }
+    return out;
+  }
+  const reLit = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  /** The chat's PRs a piece of text names: its URL, repo#n, or #n when no other PR of the chat has that number. */
+  function tvNames(s, text) {
+    const out = new Set(), prs = s.prs || []; if (!text) return out;
+    for (const p of prs) {
+      const n = p.number, repo = p.label.replace(/#.*$/, '');
+      if (new RegExp(`${reLit(p.url)}(?!\\d)`).test(text) || (n && new RegExp(`\\b${reLit(repo)}\\s?#${n}\\b`, 'i').test(text))
+        || (n && prs.filter(x => x.number === n).length === 1 && new RegExp(`(^|[^\\w/#])#${n}\\b`).test(text))) out.add(p.url);
+    }
+    return out;
+  }
+  /** What the timeline reads: the turns, each with the PRs it is about; every PR event, the chat's own tied to its turn. */
+  function tvModel(s) {
+    const prs = s.prs || [], byUrl = new Map(prs.map(p => [p.url, p])), log = tvLogOf(s);
+    const led = new Map((log?.prs || []).filter(p => byUrl.has(p.url)).map(p => [p.url, p]));
+    const roundsOf = url => led.get(url)?.rounds || byUrl.get(url)?.rounds || [];
+    const turns = tvTurns(state.entries), byTool = new Map();
+    for (const t of turns) {
+      for (const u of t.tools) if (u.toolUseId) byTool.set(u.toolUseId, t);
+      Object.assign(t, { ref: tvNames(s, t.you), acts: [], ms: Date.parse(t.at) });
+      t.about = new Set([...t.ref, ...tvNames(s, t.reply)]);
+    }
+    const evs = [], chatAt = [];
+    for (const [url, l] of led) for (const e of l.ev || []) {
+      const x = { ...e, url, ms: Date.parse(e.a) };
+      if (e.k === 'chat') {
+        chatAt.push(x);
+        if (e.c === s.id) {   // the call it was, by its id (chat:<chat>:<tool call>:<n>), else the turn it fell in
+          x.turn = byTool.get(/^chat:[^:]+:(.+):\d+$/.exec(e.id)?.[1]) || turns.find(t => t.ms <= x.ms && x.ms <= Date.parse(t.end || t.last) + 1000) || null;
+          if (x.turn) { x.turn.acts.push(x); x.turn.about.add(url); }
+        }
+      }
+      evs.push(x);
+    }
+    // a word of yours GitHub has and the chat's own act on the same PR are one, as in the card's popover: the chat's says where from
+    const twin = e => e.w === '' && e.k !== 'chat' && e.k !== 'board' && chatAt.some(c => c.url === e.url && Math.abs(c.ms - e.ms) < 120_000);
+    for (const [url] of led) for (const r of roundsOf(url)) {   // the first prompt after a move is about it
+      const a = Date.parse(r.from), b = r.end ? Date.parse(r.end) : Infinity, t = turns.find(t => t.you && t.ms >= a);
+      if (t && t.ms <= b + 60_000) t.about.add(url);
+    }
+    const m = { prs, byUrl, led, roundsOf, turns, evs: evs.filter(e => !twin(e)).sort((a, b) => a.ms - b.ms) };
+    for (const t of turns) t.closes = new Set(t.acts.filter(a => tvMark(m, a).k === 'close'));   // the acts that answered a round
+    return m;
+  }
+  /** What an event did to its PR's rounds: opened one (`move`; `live` while it waits on you), closed one, let one go. */
+  function tvMark(m, e) {
+    const rs = m.roundsOf(e.url);
+    if (e.k === 'board') return e.x === 'back' ? {} : { k: 'let' };
+    const opens = e.k !== 'chat' && e.k !== 'opened' && e.w !== '' && rs.find(r => r.from === e.a);
+    if (opens) return { k: 'move', r: opens, live: !opens.end && !!m.byUrl.get(e.url)?.turn?.you };
+    const closes = rs.find(r => r.how === 'answered' && (r.by ? e.k === 'chat' && r.by.a === e.a : (e.w === '' && r.end === e.a) || (e.k === 'chat' && Math.abs(Date.parse(r.end) - e.ms) < 120_000)));
+    if (closes) return { k: 'close', r: closes };
+    return e.k === 'ci' && e.s === 'fail' ? { k: 'bad' } : {};
+  }
+  /** The PRs in play: at your move, let go, answered in the last PIP_OK_MS, or acted on from this chat — else those
+   *  that ever came round to you, else the open ones. */
+  function tvInPlay(s, m) {
+    const play = new Set(inPlay(s).map(x => x.pr.url));
+    for (const e of m.evs) if (e.k === 'chat' && e.c === s.id) play.add(e.url);
+    if (!play.size) for (const p of m.prs) if (m.roundsOf(p.url).length) play.add(p.url);
+    if (!play.size) for (const p of m.prs) if (p.state === 'open' || p.state === 'draft') play.add(p.url);
+    return play;
+  }
+  const tvScope = (s, m) => ({ chat: true, on: tvInPlay(s, m), turns: 'all', dens: 'fold' });
+  /** The list: a row per prompt, per turn and per event, in the order they happened, as the narrow lets them in. */
+  function tvRows(s, m, sc) {
+    const rows = [], shown = new Set();
+    if (sc.chat) for (const t of m.turns) {
+      if (sc.turns === 'about' && ![...t.about].some(u => sc.on.has(u))) continue;
+      shown.add(t);
+      if (t.you) rows.push({ k: 'you', ms: t.ms, o: 0, t });
+      if (t.tools.length || t.reply || !t.closed) rows.push({ k: 'cl', ms: Date.parse(t.end || t.last), o: 2, t });
+    }
+    for (const e of m.evs) if (sc.on.has(e.url) && !(e.turn && shown.has(e.turn))) rows.push({ k: 'ev', ms: e.ms, o: 1, e, mk: tvMark(m, e) });
+    return rows.sort((a, b) => a.ms - b.ms || a.o - b.o);
+  }
+  /** A PR's lane at a moment: thick inside a round at your move, dashed once that round was let go, thin otherwise. */
+  function tvStyle(rs, ms) {
+    for (const r of rs) {
+      const a = Date.parse(r.from), b = r.end ? Date.parse(r.end) : Infinity;
+      if (ms >= a && ms < b) return r.let && ms >= Date.parse(r.let) ? 'dash' : 'thick';
+    }
+    return 'line';
+  }
+  /** What a row puts on one lane: the chat's lane its prompts and turns, a PR's its events and the turns that touch it. */
+  function tvMarkOn(r, has) {
+    if (r.k === 'ev') return has(r.e.url) ? r.mk.k || 'dot' : null;
+    if (r.k === 'fold') return r.items.some(x => has(x.e.url)) ? 'small' : null;
+    if (r.k === 'you') return [...r.t.ref].some(has) ? 'ref' : null;
+    const a = r.t.acts.find(x => has(x.url)); return a ? (r.t.closes?.has(a) ? 'close' : 'dot') : null;
+  }
+  function tvLanes(s, m, sc, rows) {
+    const urls = m.prs.map(p => p.url).filter(u => sc.on.has(u) && rows.some(r => tvMarkOn(r, x => x === u)));
+    const L = [...(sc.chat && rows.some(r => r.k === 'you' || r.k === 'cl') ? [{ chat: true, c: 'var(--muted)' }] : []),
+      ...urls.slice(0, TV_LANES).map(u => ({ url: u, c: prHue(s, m.byUrl.get(u)) })),
+      ...(urls.length > TV_LANES ? [{ more: new Set(urls.slice(TV_LANES)), c: 'var(--muted)' }] : [])];
+    const cells = rows.map(() => []);
+    L.forEach((l, li) => {
+      const has = l.url ? u => u === l.url : l.more ? u => l.more.has(u) : null;
+      const marks = rows.map(r => l.chat ? (r.k === 'you' ? 'you' : r.k === 'cl' ? 'cl' : null) : tvMarkOn(r, has));
+      const idx = marks.flatMap((x, i) => x ? [i] : []); if (!idx.length) return;
+      const open = !!l.url && ['open', 'draft'].includes(m.byUrl.get(l.url)?.state), first = idx[0], last = open ? rows.length - 1 : idx.at(-1);
+      const st = ms => l.url ? tvStyle(m.roundsOf(l.url), ms) : 'line';
+      for (let i = first; i <= last; i++) cells[i][li] = { up: i > first ? st(rows[i].ms - 1) : null, down: i < last || open ? st(rows[i].ms) : null, m: marks[i] };
+    });
+    return { L, cells };
+  }
+  const tvLaneHtml = (L, c) => L.map((l, i) => { const x = c[i]; return `<span class="ln" style="--c:${l.c}">${x ? `${x.up ? `<b class="u ${x.up}"></b>` : ''}${x.down ? `<b class="d ${x.down}"></b>` : ''}${x.m ? `<em class="${x.m}"></em>` : ''}` : ''}</span>`; }).join('');
+  const tvHm = ms => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const tvWork = ms => ms < 60_000 ? `${Math.max(1, Math.round(ms / 1000))}s` : ms < 3600_000 ? `${Math.round(ms / 60_000)}m` : `${Math.floor(ms / 3600_000)}h ${String(Math.round(ms % 3600_000 / 60_000)).padStart(2, '0')}m`;
+  /** Words as a line of the timeline: one line of plain text, a GitHub PR's URL its repo#n, the chat's own its chip. */
+  function tvText(s, text, max) {
+    let t = String(text || '').replace(/```[\s\S]*?(```|$)/g, ' ').replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/^\s*(#+|>|[-*+]|\d+\.)\s+/gm, '').replace(/(\*\*|__)/g, '')
+      .replace(/https:\/\/github\.com\/[\w.-]+\/([\w.-]+)\/(?:pull|issues)\/(\d+)(?:[/?#][^\s)]*)?/g, '$1#$2').replace(/\bhttps?:\/\//g, '').replace(/\s+/g, ' ').trim();
+    if (t.length > max) t = t.slice(0, max - 1).trimEnd() + '…';
+    const byLabel = new Map((s.prs || []).filter(p => p.number).map(p => [p.label.toLowerCase(), p])), nums = new Map((s.prs || []).filter(p => p.number).map(p => [String(p.number), p]));
+    return ticks(esc(t)).replace(/(^|[\s(])([\w.-]+)?#(\d+)\b/g, (x, pre, repo, n) => { const p = repo ? byLabel.get(`${repo}#${n}`.toLowerCase()) : nums.get(n); return p ? pre + pchip(s, p) : x; });
+  }
+  const tvSentence = t => { const p = String(t || '').replace(/```[\s\S]*?(```|$)/g, ' ').replace(/\s+/g, ' ').trim(); return /^.{12,240}?[.!?](?=\s|$)/.exec(p)?.[0] || p.slice(0, 240); };
+  /** A turn as one line (F4): how long it worked, what it edited, what it did to a PR and the round that answered. */
+  function tvTurnSum(s, m, t) {
+    const parts = [], live = !t.closed && s.status === 'working' && t === m.turns.at(-1);
+    parts.push(live ? `<span class="tvat">at work <span data-at="${esc(t.at)}"></span></span>` : !t.closed ? 'stopped' : t.cut ? 'interrupted' : t.worked ? `worked ${tvWork(t.worked)}` : 'replied');
+    const edits = t.tools.filter(u => TV_EDITS.has(u.name)).length;
+    if (edits) parts.push(many(edits, 'edit')); else if (t.tools.length) parts.push(many(t.tools.length, 'tool call'));
+    for (const a of t.acts) {
+      const pr = m.byUrl.get(a.url), mk = tvMark(m, a); if (!pr) continue;
+      parts.push(`${esc(EV_SAY(a).replace(/ it$/, ''))} ${pchip(s, pr)}${mk.k === 'close' ? ` <span class="ok">✓ answers ${esc(mk.r.why)}</span>` : ''}`);
+    }
+    return parts.join(' · ');
+  }
+  /** Who did it, before what they did: you (on GitHub, from this chat or another, on the board), a person, or no one. */
+  const tvWho = (s, e) => e.k === 'chat' ? '<b>you</b> ' : e.k === 'board' || e.w === '' ? '<b>you</b> ' : e.w ? `<b>${esc(e.w)}</b> ` : '';
+  const tvFrom = (s, e) => e.k === 'chat' ? (e.c === s.id ? ' from this chat' : ' from another chat') : '';
+  function tvRowHtml(s, m, r, lanes, faces) {
+    const tm = `<span class="tm">${r.k === 'fold' ? '' : esc(tvHm(r.ms))}</span><span class="lns" aria-hidden="true">${lanes}</span>`;
+    if (r.k === 'you') return `<div class="tvr you" data-ms="${r.ms}" data-ts="${esc(r.t.at)}">${tm}<div class="ct"><span class="who">You</span><span class="bub">${tvText(s, r.t.you, 600)}</span></div></div>`;
+    if (r.k === 'cl') {
+      return `<div class="tvr cl" data-ms="${r.ms}" data-ts="${esc(r.t.at)}" data-urls="${esc(r.t.acts.map(a => a.url).join(' '))}" title="Show this turn in the transcript">${tm}<div class="ct"><span class="who">Claude</span><span class="sum">${tvTurnSum(s, m, r.t)}</span>${r.t.reply ? `<span class="rep">${tvText(s, tvSentence(r.t.reply), 240)}</span>` : ''}</div></div>`;
+    }
+    const e = r.e, pr = m.byUrl.get(e.url), mk = r.mk;
+    const tag = mk.k === 'move' ? RTAG.you : mk.k === 'close' ? `<span class="ok">✓ answers ${esc(mk.r.why)}</span>` : mk.k === 'let' ? RTAG.let : '';
+    return `<div class="tvr ev${mk.live ? ' live' : ''}" data-ms="${r.ms}" data-id="${esc(e.id)}" data-url="${esc(e.url)}"${e.u ? ` data-u="${esc(e.u)}" title="Open it on GitHub"` : ''}>${tm}<div class="ct">${evMark(e, faces)}${pchip(s, pr)}<span class="w${mk.k === 'bad' ? ' bad' : ''}">${tvWho(s, e)}${esc(e.w === null ? EV_SAY(e).replace(/ it$/, '') : EV_SAY(e))}${tvFrom(s, e)}</span>${tag}</div></div>`;
+  }
+  /** The foot: where each PR shown stands — its round now, the one before, and a way to it. */
+  function tvNowHtml(s, m, sc) {
+    const rows = m.prs.filter(p => sc.on.has(p.url)).map(pr => ({ pr, r: roundOf(pr) })).filter(x => x.r && (x.r.k !== 'them' || x.r.prev));
+    return rows.length ? `<div class="tvnow">${rows.map(({ pr, r }) => `<div class="tvnr" data-k="${r.k}" data-url="${esc(pr.url)}">${pchip(s, pr)}${RTAG[r.k] || ''}<span class="say">${roundSay(s, pr, r)}</span>${r.prev ? `<span class="was">before: ${esc(prevWords(r.prev, s))}</span>` : ''}${r.k === 'them' ? '' : `<button type="button" class="tvgo" data-go="${esc(pr.url)}">${r.k === 'you' ? 'to the move' : 'show'}</button>`}</div>`).join('')}</div>` : '';
+  }
+  let tvFrame = 0;
+  function tvSoon() { if (!tvFrame) tvFrame = requestAnimationFrame(() => { tvFrame = 0; const s = state.sessions.get(state.current); if (s && !$('#tv').hidden) renderTimeline(s); }); }
+  function renderTimeline(s) {
+    const el = $('#tv'); if (el.hidden || !s) return;
+    if (!el.firstElementChild) el.innerHTML = '<div class="tvbar" hidden></div><div class="tvtrk" hidden></div><div class="tvl" aria-label="This chat and its PRs, in the order things happened"></div>';
+    const m = tvModel(s), sc = tvScope(s, m), rows = tvRows(s, m, sc), { L, cells } = tvLanes(s, m, sc, rows);
+    const faces = new Map(m.prs.flatMap(p => (p.people || []).filter(x => x.avatar).map(x => [x.login, x.avatar])));
+    let html = '', day = null;
+    rows.forEach((r, i) => {
+      const d = dayOf(r.ms); if (d !== day && (day !== null || d !== 'Today')) html += `<div class="tvday"><b>${esc(d)}</b></div>`;
+      day = d; html += tvRowHtml(s, m, r, tvLaneHtml(L, cells[i]), faces);
+    });
+    if (!rows.length) html = `<div class="tvnone">${m.turns.length || m.prs.length ? 'Nothing here yet' : 'No messages yet'}</div>`;
+    // a ledger that let its oldest go (it keeps 150 a PR): the rest is GitHub's
+    const old = m.prs.filter(p => sc.on.has(p.url) && m.led.get(p.url)?.older);
+    if (old.length) html = `<div class="tvold">${old.map(p => `<button type="button" class="tvgh" data-u="${esc(p.url)}">older on ${pchip(s, p)} — on GitHub ↗</button>`).join('')}</div>` + html;
+    html += tvNowHtml(s, m, sc);
+    const list = el.querySelector('.tvl'), lw = `${Math.max(1, L.length) * 14}px`;
+    const stick = list._sid !== s.id || list.scrollHeight - list.scrollTop - list.clientHeight < 40;
+    if (list.style.getPropertyValue('--lw') !== lw) list.style.setProperty('--lw', lw);
+    if (setHtml(list, html) || list._sid !== s.id) { fillAges(list); if (stick) list.scrollTop = list.scrollHeight; }
+    list._sid = s.id;
+    if (tv.goto?.id === s.id && tv.log) { const g = tv.goto; tv.goto = null; tvGo(s, g.url); }
+  }
+  /** To a PR's round in the list: the move that opened it, where it was let go, or what answered it — lit a moment. */
+  function tvGo(s, url) {
+    const pr = (s.prs || []).find(p => p.url === url), r = pr && roundOf(pr), list = $('#tv .tvl'); if (!list) return;
+    const at = r?.cur ? Date.parse(r.k === 'you' ? r.cur.from : r.k === 'let' ? r.cur.let || r.cur.from : r.cur.end || r.cur.from) : Infinity;
+    const els = [...list.querySelectorAll('.tvr[data-ms]')].filter(x => x.dataset.url === url || (x.dataset.urls || '').split(' ').includes(url));
+    const el = els.sort((a, b) => Math.abs(a.dataset.ms - at) - Math.abs(b.dataset.ms - at))[0];
+    if (!el) return note(seen($('#tv')), `Nothing of ${pr ? pr.label : 'that PR'} in the timeline yet`);
+    el.scrollIntoView({ block: 'center', behavior: REDUCED.matches ? 'auto' : 'smooth' });
+    el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+  }
+  /** A turn clicked: the transcript beside the timeline, at that turn. Under a drawer that runs it is out of sight. */
+  function tvShowTurn(s, ts, from) {
+    if (termLive(s)) return note(from, 'The transcript is under Claude’s drawer while it runs here — ⌥⌘C shows Claude');
+    if (!isSplit(s)) splitChat(s, true);
+    else if (!placeOf(s).includes('chat')) setTab(s, 'chat');
+    focusG = homeOf(s, 'timeline'); syncTerm(s);
+    const log = $('#log'), msgs = [...log.querySelectorAll('.msg[data-ts]')];
+    const hit = msgs.find(x => x.dataset.ts === ts) || msgs.find(x => x.dataset.ts > ts);
+    if (!hit) return;
+    hit.scrollIntoView({ block: 'start', behavior: REDUCED.matches ? 'auto' : 'smooth' });
+    hit.classList.remove('tvhit'); void hit.offsetWidth; hit.classList.add('tvhit');
+  }
+  $('#tv').addEventListener('click', e => {
+    const s = state.sessions.get(state.current); if (!s) return;
+    const go = e.target.closest('.tvgo'); if (go) return tvGo(s, go.dataset.go);
+    const cl = e.target.closest('.tvr.cl'); if (cl) return tvShowTurn(s, cl.dataset.ts, cl);
+    const ev = e.target.closest('.tvr.ev[data-u], .tvgh'); if (ev) return openExternal(ev.dataset.u, { s });
+  });
+  /** The element into the half that shows the tab, its place in the list kept as it moves. */
+  function placeTimeline(s, p) {
+    const el = $('#tv'), g = s ? p.indexOf('timeline') : -1;
+    if (g < 0) { el.hidden = true; return; }
+    const host = $(GEL[g].body), list = el.querySelector('.tvl'), top = list?.scrollTop;
+    if (el.parentElement !== host) { host.insertBefore(el, host.firstChild); if (list) list.scrollTop = top; }
+    const was = el.hidden; el.hidden = false;
+    if (was || el._sid !== s.id) { el._sid = s.id; renderTimeline(s); } else tvSoon();
+  }
+  function hotTimeline() {
+    const s = state.sessions.get(state.current); if (!s) return noChat();
+    if (!timelineOpen.has(s.id)) { timelineOpen.add(s.id); openNewTab(s, 'timeline'); } else setTab(s, 'timeline');
+    syncTerm(s); focusBoard();
+  }
+  function hotTimelineKey() { return zoomAgain(k => k === 'timeline') || hotTimeline(); }
 
   // ---- live tiles: a chat drawn small — its drawer's screen, or the last few things it did (2026-10-10) --------------
   // What the overview (⌥⌘A) shows of a chat that is not the open one (and the stack beside the chat, until 2026-10-14).
@@ -9553,7 +9902,7 @@ const toolName = n => {
     if (e.kind === 'text') {
       const r = md(e.text, state.sessions.get(state.current)?.cwd), at = e.ts ? new Date(e.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
       const foot = e.turnEnd && e.role === 'assistant' ? `<div class="turnfoot"><button class="tcopy" type="button" data-ts="${esc(e.ts || '')}" title="Copy what Claude said this turn">${ICON.copy}<span>copy</span></button>${e.worked ? `<span class="worked" title="from your last word to this reply">worked for ${workedFor(e.worked)}</span>` : ''}</div>` : '';
-      return `<div class="msg ${e.role}${cont ? ' cont' : ''}"${cont && at ? ` title="${at}"` : ''}><div class="who"><span>${e.role === 'user' ? 'You' : 'Claude'}</span><span>${at}</span></div><div class="bubble"><div class="text ${r.cls}">${r.html}</div></div>${foot}</div>`;
+      return `<div class="msg ${e.role}${cont ? ' cont' : ''}"${e.ts ? ` data-ts="${esc(e.ts)}"` : ''}${cont && at ? ` title="${at}"` : ''}><div class="who"><span>${e.role === 'user' ? 'You' : 'Claude'}</span><span>${at}</span></div><div class="bubble"><div class="text ${r.cls}">${r.html}</div></div>${foot}</div>`;
     }
     if (e.kind === 'tool_use') return `<div class="tool"><i class="tst ${toolMark(e.toolUseId)}" data-tu="${esc(e.toolUseId || '')}" role="img" aria-label="${({ run: 'running', ok: 'done', err: 'failed' })[toolMark(e.toolUseId)]}"></i><b${toolName(e.name) !== e.name ? ` title="${esc(e.name)}"` : ''}>${esc(toolName(e.name))}</b><span>${esc(e.text)}</span></div>`;
     if (e.kind === 'tool_result') return `<div class="tool ${e.isError ? 'err' : ''}"><span>↳</span><span>${esc(e.text || '(no output)')}</span></div>`;
@@ -9646,6 +9995,7 @@ const toolName = n => {
     if (stick) { log.scrollTop = log.scrollHeight; logNew(0); }
     else if (keep !== null) log.scrollTop = log.scrollHeight - keep;
     else if (arrived && !resetting) { logView.fresh += replies; logNew(logView.fresh, arrived); }
+    tvSoon();   // the timeline reads the same entries
   }
   // The pill at the log's foot (2026-09-27, night): what came while you were scrolled up — "new reply", "3 new
   // replies", or "more below" for tool activity alone — sticky at the bottom of the window, the twin of the list's
@@ -9833,7 +10183,7 @@ const toolName = n => {
     clearTimeout(keepTabs.t); keepTabs.t = null;
     const v = JSON.stringify({ gh: [...state.paneGh], ide: [...state.paneIde], wt: [...state.paneWt], labels: [...ideLabels], urls: [...paneUrls],
       tabs: [...tabs], homes: [...homes].map(([id, m]) => [id, [...m]]), splits: [...splits], auto: [...autoSplit], stacked: [...stacked], zoomed: [...zoomed],
-      changes: [...changesOpen], prs: [...changes.pr], blanks: [...blanks], focus: focusG });
+      changes: [...changesOpen], timeline: [...timelineOpen], prs: [...changes.pr], blanks: [...blanks], focus: focusG });
     if (v === keepTabs.was) return;
     try { sessionStorage.setItem(TABS_STORE, v); keepTabs.was = v; } catch {}   // storage refused: the tabs last as long as the page, as before
   }
@@ -9843,7 +10193,7 @@ const toolName = n => {
     if (k) {
       for (const [m, l] of [[state.paneGh, k.gh], [state.paneIde, k.ide], [state.paneWt, k.wt], [ideLabels, k.labels], [paneUrls, k.urls], [tabs, k.tabs], [zoomed, k.zoomed], [changes.pr, k.prs], [blanks, k.blanks]]) for (const [a, b] of l || []) m.set(a, b);
       for (const [id, l] of k.homes || []) homes.set(id, new Map(l));
-      for (const [m, l] of [[splits, k.splits], [autoSplit, k.auto], [stacked, k.stacked], [changesOpen, k.changes]]) for (const id of l || []) m.add(id);
+      for (const [m, l] of [[splits, k.splits], [autoSplit, k.auto], [stacked, k.stacked], [changesOpen, k.changes], [timelineOpen, k.timeline]]) for (const id of l || []) m.add(id);
       blankSeq = Math.max(blankSeq, ...[...blanks.values()].flat().map(b => b.n));
       focusG = k.focus === 1 ? 1 : 0;
       keepTabs.was = v;
@@ -9923,7 +10273,7 @@ const toolName = n => {
       const d = JSON.parse(e.data); state.snapshots++;   // the harness waits on the count: a reloaded page has its board
       if ($('#lock').open) $('#lock').close();   // the stream let in: the key holds
       state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.repos = d.repos || {};
-      for (const m of [tabs, homes, splits, autoSplit, stacked, zoomed, focusView, state.unread, state.paneGh, state.paneWt, changesOpen, blanks, diffStats]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);   // a chat gone from the board takes its page state with it
+      for (const m of [tabs, homes, splits, autoSplit, stacked, zoomed, focusView, state.unread, state.paneGh, state.paneWt, changesOpen, timelineOpen, blanks, diffStats]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);   // a chat gone from the board takes its page state with it
       state.about = d.about || {};
       if (d.config) state.config = d.config;
       renderSetup();
@@ -9983,7 +10333,7 @@ const toolName = n => {
     // tab, its /focus — the per-chat page state, keyed by the chat it left, moved to the one it runs now; not onto a
     // chat that has a layout of its own (a /resume into a chat the board has shown), and never its unread count.
     function carryChat(from, to) {
-      const maps = [tabs, homes, zoomed, focusView, state.paneGh, state.paneWt, blanks, changes.pr], sets = [splits, autoSplit, stacked, changesOpen];
+      const maps = [tabs, homes, zoomed, focusView, state.paneGh, state.paneWt, blanks, changes.pr], sets = [splits, autoSplit, stacked, changesOpen, timelineOpen];
       if (![...maps, ...sets].some(m => m.has(from)) || [...maps, ...sets].some(m => m.has(to))) return;
       for (const m of maps) if (m.has(from)) { m.set(to, m.get(from)); m.delete(from); }
       for (const m of sets) if (m.has(from)) { m.add(to); m.delete(from); }

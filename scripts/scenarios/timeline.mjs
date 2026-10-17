@@ -1,179 +1,137 @@
-// The chat list's timeline (2026-09-25; pared down 2026-09-26; out of sight until called 2026-09-28): a slim rail over
-// the far left of the list, beside its coloured edge, that is the list in miniature — the window as an orange thumb, a
-// label per run of one day's cards (in one state group) placed where the run begins. Hidden, the cards have the whole
-// width; the pointer held on the coloured edge for a second calls it out, like the Dock, swollen: the days near the
-// pointer come out over the cards as labels, the nearest largest, pushed apart so none overlap. Dragged it scrolls the
-// list, a day clicked is scrolled to, a wheel over it scrolls; off it, it goes. What this checks is the runs, where the
-// labels and the thumb sit against the list, the rail's place and its thumb's look, the call and the going, the swell,
-// the three ways of moving the list from the rail, a query (no days) and the rail of squares (no timeline).
+// The timeline tab (2026-10-17): one chat and its PRs in one order. A morning of the made-up storefront chat — four
+// prompts, the PRs they opened and answered (gh calls of the chat's own), and GitHub's side from the fake gh, moved
+// step by step so the board sees each round come and go as it would: #482 yours (joel reviewed → the chat commented →
+// mara asked: your move), #479 kenji's (pushed after your changes → the chat approved), #486 yours (priya approved →
+// let go), #470 merged long ago and named once. What this checks: ⌥⌘J opens the tab beside the chat, and again fills
+// the column; the rows — your prompts, each turn as one line with what it did to a PR, the PRs' events between them —
+// in order with a lane per PR in play (the merged one only mentioned stays out); the Now bar; a turn clicked shows it
+// in the transcript in the other half.
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
-import { makeFixture } from '../fixture.mjs';
+import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import { tmpDir } from '../../lib/testserver.mjs';
+import { slugOf } from '../fixture.mjs';
 
-export const meta = { server: true, fixture: 'auto' };
+const root = tmpDir('peix-tv-'), claudeDir = join(root, 'claude'), cwd = join(root, 'storefront'), file = join(root, 'prs.json');
+mkdirSync(join(claudeDir, 'sessions'), { recursive: true }); mkdirSync(cwd, { recursive: true });
+const now = Date.now(), at = min => new Date(now - min * 60_000), iso = min => at(min).toISOString().replace(/\.\d+Z$/, 'Z');
+const PR = n => `https://github.com/acme/storefront/pull/${n}`;
 
-const pad2 = n => String(n).padStart(2, '0');
-const noonBack = n => { const d = new Date(); d.setDate(d.getDate() - n); d.setHours(12, 0, 0, 0); return d; };
-const railDay = n => { const d = noonBack(n), dm = `${pad2(d.getDate())}-${pad2(d.getMonth() + 1)}`; return n < 7 ? `${d.toLocaleDateString('en', { weekday: 'short' })} ${dm}` : d.getFullYear() === new Date().getFullYear() ? dm : `${dm}-${d.getFullYear()}`; };
-const settled = (ctx, k) => ctx.waitFor(`window.peix.state().timeline.k === ${k}`, { what: `the swell at ${k}` });
-const move = (ctx, x, y) => ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: Math.round(x), y: Math.round(y) });
-// Where everything on the rail is, and where the list says it should be: a label's middle against its run's first
-// card, both as a fraction of the whole (the rail's inner height, the list's scroll height). At rest a label is placed
-// where its run is, unwarped, only kept inside the rail by half its height — so the first run's sits a few px low.
-const rail = ctx => ctx.evaluate(`(() => {
-  const r = document.querySelector('#tline'), l = document.querySelector('#slist'), rr = r.getBoundingClientRect(), PAD = 6, H = r.clientHeight - 2 * PAD;
-  const cards = [...l.querySelectorAll(':scope > .card')], runs = window.peix.state().timeline.runs;
-  const frac = el => (parseFloat(el.style.top) - PAD) / H;
-  const th = r.querySelector('.tl-thumb'), ts = getComputedStyle(th);
-  const labY = el => (parseFloat(/translateY\\(([-\\d.]+)px\\)/.exec(el.style.transform)?.[1] ?? NaN) + 8.5 - PAD) / H;
-  const labs = [...r.querySelectorAll('.tl-labs .tl-lab')].map((el, i) => { const b = el.getBoundingClientRect(); return { on: el.classList.contains('on'), near: el.classList.contains('near'), text: el.textContent, top: b.top, bottom: b.bottom, h: b.height, run: +el.dataset.run, at: labY(el), want: cards[runs[i].i].offsetTop / l.scrollHeight }; });
-  return JSON.stringify({ rect: rr.toJSON(), H, runs, drawn: r.querySelectorAll('.tl-tick, .tl-seg, .tl-base').length,
-    thumb: th.hidden ? null : { at: frac(th), len: parseFloat(th.style.height) / H, want: l.scrollTop / l.scrollHeight, wantLen: l.clientHeight / l.scrollHeight, width: th.getBoundingClientRect().width, color: ts.backgroundColor, spend: getComputedStyle(document.documentElement).getPropertyValue('--spend').trim() },
-    labs, scroll: l.scrollTop, full: l.scrollHeight, view: l.clientHeight });
-})()`).then(JSON.parse);
+// the chat, written as Claude Code writes it
+const id = randomUUID(), base = { isSidechain: false, userType: 'external', entrypoint: 'cli', cwd, sessionId: id, version: 'fixture', gitBranch: 'main' };
+const lines = [];
+const you = (min, text) => lines.push({ ...base, parentUuid: null, type: 'user', uuid: randomUUID(), timestamp: at(min).toISOString(), message: { role: 'user', content: [{ type: 'text', text }] } });
+const said = (min, text, end = true) => lines.push({ ...base, parentUuid: null, type: 'assistant', uuid: randomUUID(), timestamp: at(min).toISOString(),
+  message: { model: 'fixture-1', id: 'msg_' + randomUUID().slice(0, 8), type: 'message', role: 'assistant', content: [{ type: 'text', text }], stop_reason: end ? 'end_turn' : 'tool_use' } });
+const tool = (min, name, input, result) => {
+  const use = 'toolu_' + randomUUID().replace(/-/g, '').slice(0, 20);
+  lines.push({ ...base, parentUuid: null, type: 'assistant', uuid: randomUUID(), timestamp: at(min).toISOString(), message: { model: 'fixture-1', id: 'msg_' + use.slice(6, 14), type: 'message', role: 'assistant', content: [{ type: 'tool_use', id: use, name, input }], stop_reason: 'tool_use' } });
+  lines.push({ ...base, parentUuid: null, type: 'user', uuid: randomUUID(), timestamp: new Date(at(min).getTime() + 1000).toISOString(), message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: use, content: result }] } });
+};
+you(184, 'Declined cards should retry with backoff before we show the error.');
+tool(181, 'Edit', { file_path: `${cwd}/src/checkout/payments.ts` }, 'The file has been updated.');
+tool(180, 'Bash', { command: 'gh pr create --fill', description: 'Open the PR' }, PR(482));
+said(179, `Opened ${PR(482)}: three tries, 200 ms doubling, then the error as before.`);
+you(128, `joel reviewed ${PR(482)}, address his two comments`);
+tool(120, 'Edit', { file_path: `${cwd}/src/checkout/payments.ts` }, 'The file has been updated.');
+tool(118, 'Edit', { file_path: `${cwd}/src/checkout/retry.ts` }, 'The file has been updated.');
+tool(112, 'Bash', { command: `gh pr comment ${PR(482)} --body "Capped the jitter; the retry count is a setting now."`, description: 'Answer the review' }, PR(482) + '#issuecomment-1');
+said(111, 'Done: the jitter is capped and the retry count is a setting now. I answered both of joel’s threads.');
+you(82, `Now email a receipt after checkout, a separate PR, the way ${PR(470)} split the SDK bump`);
+tool(76, 'Edit', { file_path: `${cwd}/src/checkout/receipt.ts` }, 'The file has been updated.');
+tool(74, 'Bash', { command: 'gh pr create --fill', description: 'Open the PR' }, PR(486));
+said(73, `Opened ${PR(486)}: the receipt goes out from the order-completed handler, with the order’s lines and totals.`);
+you(55, `kenji pushed to ${PR(479)}, review it again`);
+tool(23, 'Bash', { command: `gh pr review ${PR(479)} --approve`, description: 'Approve it' }, '✓ Approved pull request #479');
+said(21, 'Approved #479: the two things you asked for are fixed, and the snapshots match.');
+const dir = join(claudeDir, 'projects', slugOf(cwd)); mkdirSync(dir, { recursive: true });
+writeFileSync(join(dir, `${id}.jsonl`), lines.map(l => JSON.stringify(l)).join('\n') + '\n');
+
+// GitHub's side, in three looks
+const face = (login, fill) => ({ login, __typename: 'User', avatarUrl: 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="${fill}"/></svg>`) });
+const me = face('me', '#c96442'), joel = face('joel', '#2e9e6a'), mara = face('mara', '#d14d72'), priya = face('priya', '#8a5cf6'), kenji = face('kenji', '#e5892a');
+const pr = o => ({ state: 'OPEN', headRefOid: 'A', viewerLatestReview: null, reviewRequests: { nodes: [] }, reviews: { nodes: [] }, comments: { nodes: [] }, pushes: { nodes: [] }, asks: { nodes: [] }, ...o });
+const push = (who, min) => ({ __typename: 'PullRequestCommit', commit: { committedDate: iso(min), author: { user: { login: who.login } } } });
+const ci = state => ({ commits: { nodes: [{ commit: { statusCheckRollup: { state } } }] } });
+function look(step) {
+  writeFileSync(file, JSON.stringify({
+    'acme/storefront#482': pr({ title: 'Retry declined card payments with backoff', createdAt: iso(180), author: me, pushes: { nodes: [push(me, 181)] }, ...ci(['PENDING', 'SUCCESS', 'FAILURE'][step - 1]),
+      reviews: { nodes: [{ author: joel, state: 'COMMENTED', submittedAt: iso(130) }] },
+      comments: { nodes: [...step >= 2 ? [{ author: me, createdAt: iso(112) }] : [], ...step >= 3 ? [{ author: mara, createdAt: iso(25) }] : []] } }),
+    'acme/storefront#479': pr({ title: 'Product grid follows the dark theme', createdAt: iso(300), author: kenji, headRefOid: 'B',
+      viewerLatestReview: { submittedAt: iso(step >= 2 ? 22 : 150), commit: { oid: step >= 2 ? 'B' : 'A' } },
+      reviews: { nodes: [{ author: me, state: 'CHANGES_REQUESTED', submittedAt: iso(150) }, ...step >= 2 ? [{ author: me, state: 'APPROVED', submittedAt: iso(22) }] : []] },
+      pushes: { nodes: [push(kenji, 69), push(kenji, 66), push(kenji, 63), push(kenji, 60)] } }),
+    'acme/storefront#486': pr({ title: 'Email a receipt after checkout', createdAt: iso(74), author: me, pushes: { nodes: [push(me, 76)] },
+      reviews: { nodes: [{ author: priya, state: 'APPROVED', submittedAt: iso(40) }] } }),
+    'acme/storefront#470': pr({ state: 'MERGED', title: 'Bump the payments SDK to v5', createdAt: iso(3 * 1440), author: me,
+      marks: { nodes: [{ __typename: 'MergedEvent', createdAt: iso(2 * 1440), url: PR(470), actor: { login: 'me', __typename: 'User' } }] } }),
+  }));
+}
+look(1);
+
+export const meta = {
+  server: true, fixture: claudeDir,
+  env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, FAKEGH_VIEWER: 'me', PR_WATCH_MS: '500' },
+  prefs: { cards: 'compact' },
+};
 
 export default async function (ctx) {
-  const out = {};
-  const cwd = join(tmpdir(), 'peix-tline', 'tline-repo');
-  const long = 'A reply long enough to give the card its three lines, so that fifteen of them run the list well past the bottom of the window.';
-  const now = Date.now();
-  const chat = (title, at) => ({ cwd, title, prompt: `${title}: tell me more, at a length that fills a line or two of the card`, reply: long, at });
-  const { chats } = makeFixture(ctx.fixture.dir, [
-    chat('Today one', new Date(now - 60_000)), chat('Today two', new Date(now - 120_000)), chat('Today three', new Date(now - 180_000)),
-    chat('Three days back, a', noonBack(3)), chat('Three days back, b', new Date(noonBack(3).getTime() + 60_000)),
-    chat('Three days back, c', new Date(noonBack(3).getTime() + 120_000)), chat('Three days back, d', new Date(noonBack(3).getTime() + 180_000)),
-    chat('Ten days back, a', noonBack(10)), chat('Ten days back, b', new Date(noonBack(10).getTime() + 60_000)), chat('Ten days back, c', new Date(noonBack(10).getTime() + 120_000)),
-    chat('Twenty days back, a', noonBack(20)), chat('Twenty days back, b', new Date(noonBack(20).getTime() + 60_000)),
-    chat('Done long ago', noonBack(12)), chat('Done too', new Date(noonBack(12).getTime() + 60_000)),
-  ]);
-  await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 16`, { what: 'the fourteen chats and the fixture\'s two' });
-  for (const c of chats.slice(-2)) await ctx.server.api(`api/sessions/${c.id}/done`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ done: true }) });
-  await ctx.key('KeyP');
-  await ctx.evaluate(`(() => { const q = document.querySelector('#pickq'); q.value = 'tline-repo'; q.dispatchEvent(new Event('input', { bubbles: true })); q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); })()`);
-  await ctx.waitFor(`document.querySelectorAll('#slist > .card').length === 14 && document.querySelectorAll('#slist > .card.done').length === 2`, { what: 'the list narrowed to the fourteen, two of them done' });
-  await ctx.sleep(300); await ctx.settle();
+  const out = {}, a = ctx.assert;
+  const turn = n => `document.querySelector('#slist > .card[data-id="${id}"] .cpr[data-url$="/${n}"]')?.dataset.turn`;
+  const T = (expr, what) => ctx.waitFor(expr, { timeout: 25_000, what });
+  const round = (n, k) => `(window.peix.session('${id}')?.prs || []).find(p => p.url.endsWith('/${n}'))?.rounds?.at(-1)?.${k}`;
+  const rows = () => ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#tv .tvl .tvr')].map(r => ({ k: r.className.replace('tvr ', ''), t: [...r.querySelector('.ct').childNodes].map(n => n.textContent).join(' ').replace(/\\s+/g, ' ').trim(), ms: +r.dataset.ms || 0, lanes: r.querySelectorAll('.ln').length, em: [...r.querySelectorAll('.ln em')].map(e => e.className) })))`).then(JSON.parse);
 
-  // the runs: a day and a state group in a row each — ready by your last touch, then the done ones
-  out.at = await rail(ctx);
-  ctx.assert.deepEqual(out.at.runs.map(r => [r.g, r.n]), [['ready', 3], ['ready', 4], ['idle', 3], ['idle', 2], ['done', 2]], 'five runs: two days of ready chats, two of idle ones (older than four days, 2026-10-12), then the done ones');
-  ctx.assert.equal(out.at.labs.length, 5, 'a label for each run');
-  for (const l of out.at.labs) ctx.assert.ok(Math.abs(l.at - l.want) < .006, `a label sits where its run begins in the list (${l.at.toFixed(3)} against ${l.want.toFixed(3)})`);
-  ctx.assert.ok(out.at.thumb && Math.abs(out.at.thumb.at - out.at.thumb.want) < .004 && Math.abs(out.at.thumb.len - out.at.thumb.wantLen) < .004, 'the thumb is the window');
-  ctx.assert.ok(out.at.labs.every(l => !l.on), 'no labels at rest');
-  ctx.assert.equal(out.at.drawn, 0, 'no track and no ticks: the thumb is all there is at rest (2026-09-26)');
-  // the rail at the far left, inside the tile's 2 px border (the list's 4 px coloured edge until tiles were the only
-  // layout, 2026-10-14), over the cards — 8 px on from that edge, as on the right (2026-09-28, later) — and out of sight; the thumb in the board's orange, 5 px wide until pointed at, then 8
-  const place = await ctx.evaluate(`(() => { const s = document.querySelector('#sessions').getBoundingClientRect(), t = document.querySelector('#tline'), r = t.getBoundingClientRect(), c = document.querySelector('#slist > .card').getBoundingClientRect(); return JSON.stringify({ edge: r.left - s.left, width: r.width, card: c.left - s.left, seen: getComputedStyle(t).visibility, shown: window.peix.state().timeline.shown }); })()`).then(JSON.parse);
-  ctx.assert.deepEqual(place, { edge: 2, width: 12, card: 10, seen: 'hidden', shown: false }, `the rail over the cards' edge, out of sight (${JSON.stringify(place)})`);
-  const rgb = hex => `rgb(${[1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
-  ctx.assert.equal(out.at.thumb.color, rgb(out.at.thumb.spend), `the thumb is the board's orange (${out.at.thumb.color} for ${out.at.thumb.spend})`);
-  ctx.assert.equal(out.at.thumb.width, 5, 'a 5 px pill at rest');
-  await ctx.shot('rest', { x: 0, y: 0, width: 420, height: 920 });
+  await ctx.openChat(id);
+  await T(`${turn(482)} === 'you' && ${turn(479)} === 'you' && ${turn(486)} === 'you'`, 'three PRs at your move');
+  // the board sees each round end as GitHub moves on: your comment on #482, your approval of #479
+  look(2);
+  await T(`${round(482, 'how')} === 'answered' && ${round(479, 'how')} === 'answered'`, '#482 and #479 answered');
+  await ctx.server.post(`/api/sessions/${id}/waive`, { url: PR(486) });
+  await T(`${turn(486)} === 'them'`, '#486 let go');
+  look(3);
+  await T(`${turn(482)} === 'you' && !${round(482, 'end')}`, 'mara\'s comment: #482 at your move again');
 
-  // called out: the pointer on the coloured edge — not straight away, after a second held there
-  const x = out.at.rect.left + 6, yOf = (r, i) => r.rect.top + 6 + r.labs[i].at * r.H;
-  await move(ctx, 1, yOf(out.at, 2));
-  await ctx.sleep(500);
-  ctx.assert.equal(await ctx.evaluate(`window.peix.state().timeline.shown`), false, 'not at once');
-  await ctx.waitFor(`window.peix.state().timeline.shown`, { what: 'the rail called out by a second on the edge' });
-  ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('#tline')).visibility`), 'visible');
-  // pointed at, over the third run's tick: labels come out, that one nearest and largest, none overlapping
-  await move(ctx, x, yOf(out.at, 2));
-  await settled(ctx, 1);
-  await ctx.settle();   // the thumb's own widening, a .15 s transition the swell does not wait for (it read 7.2 of 8)
-  out.hover = await rail(ctx);
-  ctx.assert.equal(out.hover.thumb.width, 8, 'the thumb widens under the pointer');
-  const shown = out.hover.labs.filter(l => l.on).sort((a, b) => a.top - b.top);
-  ctx.assert.ok(shown.length >= 3, `several days out (${shown.length})`);
-  const near = out.hover.labs.find(l => l.near);
-  ctx.assert.equal(near?.run, 2, 'the one under the pointer is the nearest');
-  ctx.assert.equal(near.text, `${railDay(10)} · 3 idle`, 'a label says its day, how many and in which state');
-  ctx.assert.ok(shown.every(l => l.h <= near.h + .5) && shown.some(l => l.h < near.h - 2), 'the nearest is the largest, the others smaller');
-  for (let i = 1; i < shown.length; i++) ctx.assert.ok(shown[i].top >= shown[i - 1].bottom - .5, 'no two labels overlap');
-  ctx.assert.deepEqual(out.hover.labs.filter(l => l.on).map(l => l.run).sort(), [0, 1, 2, 3, 4].filter(i => out.hover.labs[i].on), 'labels keep their runs');
-  ctx.assert.ok(out.hover.labs.some(l => l.text === `today · 3 ready`), 'today is today');
-  ctx.assert.equal(await ctx.evaluate(`getComputedStyle(document.querySelector('.tl-glass')).opacity`), '1', 'the glass is over the cards while the days are out');
-  await ctx.shot('swell', { x: 0, y: 0, width: 420, height: 920 });
+  // ⌥⌘J: the timeline, beside the chat
+  await ctx.key('KeyJ');
+  await T(`!document.querySelector('#tv').hidden && document.querySelector('#tv').closest('#gbodyB') && document.querySelectorAll('#tv .tvr').length > 8`, 'the timeline in the second half');
+  await ctx.settle();
+  out.half = await ctx.evaluate(`JSON.stringify({ lone: document.querySelector('#ptabsB').classList.contains('lone'), keys: document.querySelector('#grpB').classList.contains('on') })`).then(JSON.parse);
+  a.deepEqual(out.half, { lone: true, keys: true }, 'its own half, the keys in it, no strip for one tab');
+  out.rows = await rows();
+  const yous = out.rows.filter(r => r.k === 'you'), cls = out.rows.filter(r => r.k.startsWith('cl')), evs = out.rows.filter(r => r.k.startsWith('ev'));
+  a.equal(yous.length, 4, 'every prompt a bubble');
+  a.equal(cls.length, 4, 'every turn a line');
+  a.match(cls[0].t, /^Claude worked \d+m · 1 edit · opened #482/, `a turn in one line: ${cls[0].t}`);
+  a.match(cls[1].t, /2 edits · commented #482 ✓ answers/, `the push that answered the round: ${cls[1].t}`);
+  a.match(cls[3].t, /reviewed #479 ✓ answers/, cls[3].t);
+  a.ok(evs.some(r => /#482 joel reviewed/.test(r.t) && r.em.includes('move')), 'joel\'s review: a move, ringed on its lane');
+  a.ok(evs.some(r => /#482 mara commented.*your move/i.test(r.t) && r.k.includes('live')), 'mara\'s comment: the move at your move now');
+  a.ok(evs.some(r => /#486 you let this round go/.test(r.t)), 'the round let go');
+  a.ok(evs.some(r => /#482 CI failed/.test(r.t) && r.em.includes('bad')), 'CI turning red: the ledger\'s, its mark red');
+  a.ok(!out.rows.some(r => /#470/.test(r.t) && r.k.startsWith('ev')), 'the merged PR, only mentioned, has no events in the narrow');
+  a.equal(out.rows[0].lanes, 4, 'a lane for the chat and each PR in play');
+  a.ok(out.rows.every((r, i) => !i || !r.ms || r.ms >= out.rows[i - 1].ms), 'in the order things happened, newest at the bottom');
+  out.now = await ctx.evaluate(`[...document.querySelectorAll('#tv .tvnow .tvnr')].map(r => r.dataset.k + ' ' + r.querySelector('.pchip').textContent)`);
+  a.deepEqual(out.now.sort(), ['let #486', 'ok #479', 'you #482'], `the Now bar: ${out.now}`);
+  await ctx.shot('1-timeline');
 
-  // out among the labels, in the gap between two of them: still the rail — the days stay out (2026-09-25) — and a click
-  // there goes to the day ringed as nearest
-  const below = shown.find(l => l.top > near.bottom + 4);
-  const gap = { x: out.at.rect.left + 70, y: (near.bottom + below.top) / 2 };
-  await move(ctx, gap.x, gap.y);
-  await ctx.sleep(400);
-  out.gap = await ctx.evaluate(`JSON.stringify({ want: window.peix.state().timeline.want, k: window.peix.state().timeline.k, on: document.querySelectorAll('#tline .tl-labs .tl-lab.on').length, under: document.elementFromPoint(${gap.x}, ${gap.y})?.className, near: +document.querySelector('#tline .tl-lab.near')?.dataset.run })`).then(JSON.parse);
-  ctx.assert.deepEqual({ want: out.gap.want, k: out.gap.k }, { want: 1, k: 1 }, 'the days stay out with the pointer between two labels');
-  ctx.assert.equal(out.gap.under, 'tl-catch', 'the gap is the rail\'s');
-  ctx.assert.ok(out.gap.on >= 3, 'every label still out');
-  await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: Math.round(gap.x), y: Math.round(gap.y), button: 'left', buttons: 1, clickCount: 1 });
-  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: Math.round(gap.x), y: Math.round(gap.y), button: 'left', buttons: 0, clickCount: 1 });
-  const gapWant = await ctx.evaluate(`(l => Math.min(l.scrollHeight - l.clientHeight, [...l.querySelectorAll(':scope > .card')][window.peix.state().timeline.runs[${out.gap.near}].i].offsetTop - 30))(document.querySelector('#slist'))`);
-  await ctx.waitFor(`Math.abs(document.querySelector('#slist').scrollTop - ${gapWant}) < 2`, { what: 'the list at the ringed day, from a click in the gap' });
-  await ctx.evaluate(`document.querySelector('#slist').scrollTop = 0`);
-  // …and past the furthest label's right edge, it is the cards again: the days go in, and the rail goes a moment later
-  await move(ctx, out.at.rect.left + 330, gap.y);
-  await settled(ctx, 0);
-  await ctx.waitFor(`!window.peix.state().timeline.shown && getComputedStyle(document.querySelector('#tline')).visibility === 'hidden'`, { what: 'the rail gone again' });
-  // the window's own left edge, over the list's coloured edge: held there, it calls the rail, which then covers it
-  await move(ctx, 0, out.at.rect.top + out.at.rect.height / 2);
-  await settled(ctx, 1);
-  // the window's edge is the tiles' gap: the first pixel inside the list's tile is the rail's
-  ctx.assert.equal(await ctx.evaluate(`document.elementFromPoint((s => s.getBoundingClientRect().left + s.clientLeft)(document.querySelector('#sessions')), ${Math.round(out.at.rect.top + out.at.rect.height / 2)})?.className`), 'tl-catch', 'the list\'s edge is the rail\'s');
-  await move(ctx, x, yOf(out.at, 2));
-  await ctx.sleep(300);
+  // ⌥⌘J again: the half fills the column, and back
+  await ctx.key('KeyJ');
+  await T(`document.querySelector('#groups').classList.contains('zoomed')`, 'the timeline filling the column');
+  await ctx.key('KeyJ');
+  await T(`!document.querySelector('#groups').classList.contains('zoomed')`, 'the halves back');
 
-  // a click on that label: its first card to the top of the list, under the top pill
-  await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: out.at.rect.right + 30, y: (near.top + near.bottom) / 2, button: 'left', buttons: 1, clickCount: 1 });
-  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: out.at.rect.right + 30, y: (near.top + near.bottom) / 2, button: 'left', buttons: 0, clickCount: 1 });
-  const want = await ctx.evaluate(`Math.min(document.querySelector('#slist').scrollHeight - document.querySelector('#slist').clientHeight, [...document.querySelectorAll('#slist > .card')][window.peix.state().timeline.runs[2].i].offsetTop - 30)`);
-  await ctx.waitFor(`Math.abs(document.querySelector('#slist').scrollTop - ${want}) < 2`, { what: 'the list at the ten-days-back run' });
-  out.clicked = await ctx.evaluate(`document.querySelector('#slist > .card') && [...document.querySelectorAll('#slist > .card')].find(c => c.getBoundingClientRect().top >= document.querySelector('#slist').getBoundingClientRect().top + 8)?.querySelector('.title').textContent`);
-  ctx.assert.match(out.clicked, /^Ten days back/, 'the first card fully in view is that day\'s');
+  // a turn clicked: the transcript beside it, at that turn
+  await ctx.evaluate(`document.querySelectorAll('#tv .tvr.cl')[1].click()`);
+  await T(`document.querySelector('#log .msg.tvhit') && !document.querySelector('#log').hidden`, 'the turn lit in the transcript');
+  out.hit = await ctx.evaluate(`document.querySelector('#log .msg.tvhit').textContent.includes('address his two comments')`);
+  a.ok(out.hit, 'the transcript at that turn\'s prompt');
 
-  // a drag on the thumb: the list follows the pointer, to scale
-  await ctx.evaluate(`document.querySelector('#slist').scrollTop = 0`); await ctx.sleep(100);
-  // (from the list's own numbers: what the rail draws is swollen round the pointer, and only the pointer's own spot is true)
-  const railAt = (r, v) => r.rect.top + 6 + v / r.full * r.H;
-  const a = await rail(ctx), ty = railAt(a, a.scroll + a.view / 2);
-  await ctx.drag({ x: Math.round(x), y: Math.round(ty) }, { x: Math.round(x), y: Math.round(ty + 120) });
-  const b = await rail(ctx);
-  ctx.assert.ok(Math.abs(b.scroll - 120 / a.H * a.full) < 6, `dragging the thumb 120 px scrolls the list 120/H of itself (${Math.round(b.scroll)} against ${Math.round(120 / a.H * a.full)})`);
-  // a press on the track far from the thumb: the thumb comes to it, centred
-  const far = a.rect.top + 6 + .8 * a.H;
-  await ctx.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: Math.round(x), y: Math.round(far), button: 'left', buttons: 1, clickCount: 1 });
-  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: Math.round(x), y: Math.round(far), button: 'left', buttons: 0, clickCount: 1 });
-  const c = await rail(ctx), mid = railAt(c, c.scroll + c.view / 2);
-  ctx.assert.ok(Math.abs(mid - far) < 3 || c.scroll >= c.full - c.view - 1, 'a press on the track brings the thumb to it');
-  // a wheel over the rail scrolls the list
-  await ctx.evaluate(`document.querySelector('#slist').scrollTop = 0`); await ctx.sleep(100);
-  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: Math.round(x), y: Math.round(far), deltaX: 0, deltaY: 300 });
-  await ctx.waitFor(`document.querySelector('#slist').scrollTop > 100`, { what: 'the wheel over the rail scrolling the list' });
-
-  // away from the rail: the labels go back in, and the rail goes
-  await move(ctx, 900, 400);
-  await settled(ctx, 0);
-  ctx.assert.ok((await rail(ctx)).labs.every(l => !l.on), 'no labels once the pointer has left');
-  await ctx.waitFor(`getComputedStyle(document.querySelector('.tl-glass')).opacity === '0'`, { what: 'the glass gone' });
-  await ctx.waitFor(`!window.peix.state().timeline.shown`, { what: 'the rail gone' });
-  // the pointer passing over the edge without stopping calls nothing
-  await move(ctx, 1, 400); await ctx.sleep(300); await move(ctx, 200, 400); await ctx.sleep(900);
-  ctx.assert.equal(await ctx.evaluate(`window.peix.state().timeline.shown`), false, 'a pass over the edge is not a call');
-  await ctx.shot('hidden', { x: 0, y: 0, width: 420, height: 920 });
-
-  // a query orders the list by the match: no days to show, the thumb alone
-  await ctx.key('KeyF');
-  await ctx.evaluate(`(q => { q.value = 'back'; q.dispatchEvent(new Event('input', { bubbles: true })); })(document.querySelector('#q'))`);
-  await ctx.waitFor(`window.peix.state().timeline.runs.length === 0`, { what: 'no runs under a query' });
-  await ctx.sleep(100);
-  ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('#tline .tl-labs .tl-lab').length`), 0, 'and no labels');
-  await ctx.evaluate(`document.querySelector('#q').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
-  await ctx.waitFor(`window.peix.state().timeline.runs.length === 5`, { what: 'the runs back' });
-
-  // folded to the rail of squares: no timeline, and the squares have the column
-  await ctx.key('KeyB');
-  await ctx.waitFor(`document.querySelector('#main').classList.contains('scompact')`, { what: 'the rail of squares' });
-  out.folded = await ctx.evaluate(`JSON.stringify({ shown: getComputedStyle(document.querySelector('#tline')).display, list: Math.round(document.querySelector('#slist').getBoundingClientRect().left - document.querySelector('#sessions').getBoundingClientRect().left) })`).then(JSON.parse);
-  ctx.assert.deepEqual(out.folded, { shown: 'none', list: 2 }, 'no timeline on the folded list, and the squares start at its edge (inside the tile\'s border)');
-  await ctx.key('KeyB');
+  // "to the move" in the Now bar
+  await ctx.evaluate(`document.querySelector('#tv .tvnr[data-k="you"] .tvgo').click()`);
+  await T(`document.querySelector('#tv .tvr.flash')?.textContent.includes('mara')`, 'the move lit');
   return out;
 }
