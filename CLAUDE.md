@@ -88,7 +88,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | Work behind the turn | `Monitor` and a `Bash` `run_in_background`: the tool_result names the task, `<task-notification>` lines carry its events and its end. `s.tasks` → `tasks`; a task dies with the claude that started it (`live.startedAt`), at its expiry (`MONITOR_MS`, `TASK_MAX_MS`) or with the chat's process (`pruneTasks`, on the poll). **A completion delivered mid-turn never becomes a line**, so `sweepTasks` runs **one** `lsof -F n` per poll over every task's output file (held open until the command exits), after `TASK_GRACE_MS`, never on lsof's own failure, names compared resolved |
 | Titles | board title (state file) › `custom-title` › the oldest still-open PR › `ai-title` › last prompt — `summary()`, `prTitle()` |
 | Model | `message.model` on assistant lines, the last one wins, `<synthetic>` skipped — `s.model` |
-| PRs mentioned | `pr-link` lines, GitHub pull URLs *and short references* in user/assistant text, newest mention first; state, title and turn from `gh api graphql`, batched (see *The server*). **A short reference** (2026-10-06, `refsIn`): `#12` the checkout's repo (`ghRepoOf`, a worktree followed), `widgets#12` the org of the root holding the checkout, `acme/widgets#12`, `widgets #12` under a root, a list after one on its line; none in code, a link's text or a URL. **On the chat only once GitHub finds a PR there** (`shownPr`); a bare one not when merged or closed and opened `REF_AGE_MS` before it was said (`pastRef`); a NOT_FOUND lets it go (`forgetRef`, `noPr`). → `test/pr-refs.test.mjs`. **A PR taken off a chat** (2026-10-11, `unlinkPr`, `POST /api/sessions/:id/unlink`, `unlinked`): none of the chat's lines take it up again, a re-read's neither, a word of yours after does. → `header-prs.mjs` |
+| PRs mentioned | `pr-link` lines, GitHub pull URLs *and short references* in user/assistant text, newest first; `gh api graphql`, batched (see *The server*). **A short reference** (2026-10-06, `refsIn`): `#12` the checkout's repo (`ghRepoOf`, a worktree followed), `widgets#12` the org of the root holding the checkout, `acme/widgets#12`, `widgets #12` under a root, a list after one on its line; none in code, a link's text or a URL. **On the chat only once GitHub finds a PR there** (`shownPr`); a bare one not when merged or closed and opened `REF_AGE_MS` before it was said (`pastRef`); a NOT_FOUND lets it go (`forgetRef`, `noPr`). → `test/pr-refs.test.mjs`. **A PR taken off a chat** (2026-10-11, `unlinkPr`, `POST /api/sessions/:id/unlink`, `unlinked`): none of the chat's lines take it up again, a re-read's neither, a word of yours after does. → `header-prs.mjs` |
 | Jira tickets named | `KEY-123` in prose (inline code counts, fenced not), `…/browse/KEY-123` links and the chat's `gitBranch` — `ticketsIn`, `noteTickets`, `noteBranchTicket` → `s.tickets`. **A bare key is asked about only when its project is the site's** (`jiraProjects`, hourly; none before they are known, an answer from before a reset dropped — `jiraGen`) and **shown only once Jira answered** (`shownTickets`); one Jira lacks is let go (`noTicket`). `bulkfetch` (≤ 100 a call; `myself` for whose), Basic auth from setup.jira `{site, email}` and a token from `JIRA_API_TOKEN`, else the keychain item *peixAIrada Jira* (written by `security -i` from stdin); polled by `prEvery` like PRs; a failure as a whole pauses, 1 min doubling to 30. → `test/jira.test.mjs` |
 | Branch moved under it | (2026-10-13) `gitBranch` on every line (`HEAD` detached): a change in the same folder no git command of the chat's own explains is held (`noteBranch` → `s.driftDue`, the drift before still shown) and judged `MOVE_SLACK_MS` after it is seen (`settleDrift`, on a timer too) — only then shown or alerted. Its own: one that can change the branch (`GIT_MOVE_RE`, the subcommand whole — no stash, reset, pull, merge, merge-base) in its Bash, a sidechain's, a `!` one, a sub-agent's file (`agentsMoved`): in the hour before, or since the old branch's run naming the new one, or later in the same message naming it (a message's lines are written after its call ran; `ownMove`). Through `HEAD` and back is none; your prompt clears it and takes the head as it stood (`branchHeard`, `headOk`). The disk: each live chat's checkout's HEAD file on the poll, a worktree's its own, each read once, a move judged on a look `MOVE_SLACK_MS` after the first (a chat at work: once a line of its own came since, `DISK_HOLD_MS` at most; a late command takes it back; the boot judges at once, in silence), against the branch before a held move (`sweepHeads`, `headAt`, `noteHead` → `headNow`, `diskDrift`, `peers`). Summary `drift` (live chats only, not set aside — `driftOf`) and `headNow`; a `drift` alert for a chat at work (`driftNotify`); a click on the chip sets that move aside (`driftAcks`, `POST /api/sessions/:id/drift`). → `test/drift.test.mjs`, `branch-drift.mjs` |
 | Plan usage | `GET https://api.anthropic.com/api/oauth/usage` with Claude Code's own OAuth bearer from the keychain item *Claude Code-credentials* — never reaching the page; `USAGE=off` disables. A cap in money (`limits[]` of `kind: 'spend'`, `extra_usage`'s cents) → `used`, `limit`, `currency` (`usageWindows`). → `test/usage.test.mjs`, Findings: *plan usage* |
@@ -187,11 +187,10 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   from a server started since, with another page, wants a reload as an update's does (`reload.want`). A reconnect to
   the same server reloads nothing. → `test/update.test.mjs`, `restart-page.mjs`.
 * **A PR is polled by how recently its chat was touched** (2026-09-28, `sweepPrs`, `duePrs`, `PR_POLL`): never asked →
-  at once; then every minute within the hour, 5 min within the day, 30 within three days, never after; touched is
-  `lastActivity` or `s.openedAt` (a page fetching it, asking at once past `PR_TTL_MS`). Merged and closed never twice; one
-  in flight unqueued (`prAsking`); `PR_BATCH` twenty a call (2026-10-14). **A call that fails as a whole changes
-  nothing** and pauses the polls, 1 min doubling to 30; one GitHub refuses is asked again in halves (`prSplit`). →
-  `test/pr-poll.test.mjs`.
+  at once, then 1 · 5 · 30 min within the hour · day · three days, never after; touched is `lastActivity` or
+  `s.openedAt` (a fetch, asking at once past `PR_TTL_MS`). Merged and closed never twice; one in flight unqueued
+  (`prAsking`); `PR_BATCH` twenty a call. **A call that fails as a whole changes nothing** and pauses the polls, 1 min
+  doubling to 30; one GitHub refuses is asked again in halves (`prSplit`). → `test/pr-poll.test.mjs`.
 * **A PR you wrote or reviewed has a turn** (2026-09-28; `PR_FIELDS`, `viewer`, `prTurn` — pure): `you` when someone
   else's PR moved past your last review or word, or asks for you again; on yours, when someone else reviewed,
   commented or pushed after your last word. Bots are nobody. **Any word of yours answers every reason before it**;
@@ -199,20 +198,22 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   the PR** (`isDone` against `turn.movedAt`, kept in `prTurns` by `moveTurn`) and alerts the chat touched last
   (`notifyPr`, a `heading`). Polled by its own newest event too (`PR_WATCH`). **A chat done for good** (2026-10-11;
   `forGoodMarks` → `forGood`, while that tick holds) is `forgotten(s)`: its PRs neither un-tick, rank, alert nor are
-  asked about for it; ⌥ over its ✓ shows the ✕ (`<html data-alt>` from `altHeld`, not the key: the pane eats it). →
+  asked about for it; ⌥ over its ✓ shows the ✕ (`data-alt` from `altHeld`: the pane eats the key). →
   `test/pr-turn.test.mjs`, `pr-turn.mjs`.
 * **A round let go** (2026-10-12; ⌥-click on a card's `.prmove` or the header's `.hmove`, their right-click row →
   `letGo` → `POST /api/sessions/:id/waive` → `waiveTurn`; one PR `{url}`, back `{url, undo}` → `unwaiveTurn`,
   2026-10-15): its PRs at your move read `you: false, waived: true` — no line, no count, no un-tick — till the next
   move (`released`, alerted); `waived` is on `prTurns`. → `let-go.mjs`.
-* **A PR you have a turn on keeps its history** (2026-10-15; `prLogs`): each look's events (`prEvents`) merged by id
-  (`logEvents`: a short or stale look takes none back); rounds (`noteRounds`) opened by a move at GitHub's time,
-  closed `answered` only by your word at or after it (theirs without it marks `them`, `gone` an hour on); gone with
-  the PR. `pr.rounds` the last three, `…/prlog` all. **The chat's own hand** (`prActs` → `takeActs`): a push, `gh
-  pr review · comment · merge · create`, a `gh api` POST, no error, tied by URL, number or branch, is its event
-  and a round's `by`; asked again `PR_CONFIRM_MS` on. → `test/pr-rounds.test.mjs`.
-* **A PR knows who had a hand in it** (2026-09-29): `avatarUrl(size: 48)` on each person in `PR_FIELDS` (`WHO`);
-  `prPeople` (pure) — author, reviewers, commenters, pushers, newest first, `PEOPLE_MAX`, no you nor bots; a PR the
+* **A PR keeps its history** (2026-10-15; every PR a chat shows, 2026-10-17 — `prLogs`): each look's events
+  (`prEvents`, `u` each one's page; `ciEvent` a change since the last look) merged by id (`logEvents`: a short or stale
+  look takes none back; 150, `older` when GitHub has more before); rounds (`noteRounds`, a turn's, 30) opened by a move
+  at GitHub's time, closed `answered` only by your word at or after it (else `them`, `gone` an hour on). Kept past a
+  merge while a chat not done for good names it, a month on (`pruneLogs`). `pr.rounds` the last three, `pr.logged` its
+  count, `…/prlog` every shown PR. **The chat's own hand** (`prActs` → `takeActs`): a push or a `gh` that writes to a
+  PR, no error, tied by URL, number or branch, is its event and a round's `by`; asked again `PR_CONFIRM_MS` on.
+  → `test/pr-rounds.test.mjs`, `test/pr-ledger.test.mjs`.
+* **A PR knows who had a hand in it** (2026-09-29): `avatarUrl(size: 48)` on each person (`WHO`); `prPeople` —
+  author, reviewers, commenters, pushers, newest first, `PEOPLE_MAX`, no you nor bots; a PR the
   call could not see keeps its faces.
 
 ## The board

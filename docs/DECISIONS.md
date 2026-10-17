@@ -2,8 +2,42 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-16. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-17. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-17 — a PR's ledger for the chat's timeline (L1, L2)
+
+Ricardo, picking from the one-timeline study (https://claude.ai/artifact/2UTgxLtsfd496ommKuAgHy): "Timeline study:
+build T2, T3, T6 (N1, N2, N3, N4, N5), F1, F2, F3, F4, L1, L2, L4." Built in two worktrees at once, to a contract the
+page was built against (`GET /api/sessions/:id/prlog`). This entry is the server's L1 and L2; the page's T2, T3, the
+narrow, the folding and L4 have their own.
+
+* **L1, a longer ledger for every PR a chat shows** (`LOG_EV_MAX` 150, `LOG_ROUNDS_MAX` 30; 16 and 6 before): written
+  on every look that finds the PR — it was only one you had a turn on —; rounds still only where you have a turn. Kept
+  past a merge or a close while a chat not done for good names it (it went with the merge, and a merged PR's story is
+  what a timeline wants), and a month after the last day one did (`pruneLogs`, `seen`): the boot reads a transcript's
+  tail, so a PR named before it drops out of the chat's PRs until the chat is read whole — prTurns' month, for the
+  same reason. A chat done for good keeps nothing alive.
+* **`older`**: the ledger let events go (past 150), or a look's window was full and its oldest was new to the ledger
+  (`WINDOWS`, prEvents' `edge`) — GitHub held more before what the board ever saw: a PR first seen late, a day
+  offline. A full window whose oldest an earlier look saw means nothing was missed between.
+* **`logged`** on each chat's PR: the ledger's count of changes, so the page asks for /prlog again only when it moved
+  — a /prlog of ten busy PRs is ~200 KB, and the open chat's session event comes with every tool call.
+* **L2, more kinds, from the looks the polls already make**: one more timelineItems window (`marks`, the last ten —
+  merged, closed, reopened, ready for review, who and when; by a bot or nobody kept with `w: null`, since a merge
+  queue's merge is still the merge; the close GitHub writes a second after a merge left out); `asked` from the review
+  requests the query already read, with who asked (a bot asked to review is nobody, as its review is); `ci` from the
+  rollup the query already had, as a change between two looks (`ciEvent`) — never on a first look (no look is kept
+  over a restart, so the first after one says nothing), never pending, once per head and state (a stale look flipping
+  back adds nothing), at the look's time, since a rollup has none of its own. `u`: a comment's, a review's, a
+  commit's or the PR event's page, kept as what follows the PR's address (`#issuecomment-…`, `/commits/…`), handed whole.
+* **What it costs**: still one point for twenty PRs, checked with `rateLimit { cost }` on public PRs, and the fields
+  checked against GitHub's schema the same way — a wrong one is a refused query and every PR asked again in halves.
+  The state file writes each ledger on one line, about a quarter fewer bytes than laid out: a made-up busy board of 500
+  PRs and 16,500 events is 2.15 MB (2.99 laid out), 2.4 ms to stringify. This Mac's before it: 182 ledgers, 1,125
+  events, 209 KB.
+* **For the page**: /prlog's `state` is GitHub's spelling (OPEN · DRAFT · MERGED · CLOSED), the summary's stays lower
+  case; opened, a force-push, ask, asked and reopened carry no `u` (GitHub gives those none); the bots stay out.
 
 ## Decisions of 2026-10-16, late night — Settings as a sidebar and a search box
 
