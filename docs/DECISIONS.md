@@ -5,6 +5,29 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-17. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-17, later still — the timeline, found
+
+Ricardo, the evening it landed: "I'm worried that this new timeline tab will not be dicoverable.. any recomendations? at
+least we should allow clicking on the card on the alerts like "your move" to open the timeline?"
+
+* **A card's *your move* already opened it** — the line and its PR marks, from the morning's N5 — but nothing said so:
+  the hover popover's foot still read *⌥-click “your move”: let every round go · the PR list (⌥⌘G) for one*, and the
+  header's tag's tooltip spoke only of letting go. Both now say a click opens the timeline at the move (⌥⌘J).
+* **And it was racy from a card**: opened from another chat or from home, the ledger came before the chat's entries,
+  the move was gone to, and the turns drawn in after pushed it out of sight and the redraw dropped its light — the
+  scenario's new card step failed two runs in three. The move is gone to once both are in (`logOf.id`), and for
+  `TV_LIT_MS` after, a redraw finds the row again and keeps it in the middle, its light carried on, not restarted
+  (`tv.lit`, `tvLight`); a wheel or a press on the list lets go of it.
+* **More doors**: each PR row's *Timeline* beside Diff (that PR alone, `data-pract="timeline"`), *Its timeline* on a PR
+  chip's right-click (card, header, row), *Open its timeline* on a card's (at its move when it has one), ⌥⌘J in the
+  tour's keys and a tour step of its own after *Your move* (the tab when open, else ···, with a picture).
+* **A word, until it has been seen** (`tvHint`, the fill's word's look): a chat with PRs opened while the timeline has
+  never shown says *New · ⌥⌘J shows this chat and its PRs in one order — or click a your move* under the head row, once
+  a page load and three times at most (`prefs.tvHints`); the tab shown once ends it for good (`prefs.tvSeen`). The
+  harness starts the timeline seen; `timeline-tab.mjs` asks for it unseen.
+* Not done: opening the timeline on its own when a chat with a move is opened — a tab that appears unasked moves the
+  halves, and the transcript is what most opens are for.
+
 ## Decisions of 2026-10-17, later — the timeline's chat chip is two: you and Claude
 
 Ricardo, on the timeline built that morning: "we have a "chat" filter but it includes my messages and claude - separate

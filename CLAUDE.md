@@ -782,13 +782,12 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   zsh, unrun** (`typeInShell`); a note on a line is a prompt typed into the drawer's claude (`sendToClaude`), else
   copied. → `test/changes.test.mjs`, `changes-tab.mjs`.
 * **The timeline tab is the chat and its PRs in one order** (2026-10-17; ⌥⌘J, `#tvBtn`): `timeline` in `timelineOpen`,
-  `#tv` moved into its half (`placeTimeline`), drawn on show (`tvSoon`) from the entries (`tvTurns`) and the PRs'
-  ledgers (`tvLogOf`, again as `pr.logged` moves); `tvModel` ties a turn to a PR it names, acts on or follows the
-  move of. Turns one line (`tvTurnSum`), a lane per PR (`tvLanes`, `tvStyle`), the Now bar (`tvGo`), folds (`tvRuns`,
+  `#tv` moved into its half (`placeTimeline`), drawn on show (`tvSoon`) from the entries (`tvTurns`) and ledgers
+  (`tvLogOf`, on a `pr.logged` move); `tvModel` ties turns to PRs. Turns one line (`tvTurnSum`), a lane per PR (`tvLanes`, `tvStyle`), the Now bar (`tvGo`), folds (`tvRuns`,
   `tvFold`). **The narrow** (`tvNarrow` vs `tvInPlay`; `tvSolo`; you and Claude a chip each) rides the address, `#<id>/tl:p=repo.n…`
-  (`tvHash`, `tvFromHash`) — **the id is `hashId()`**; `tvOpenOn` from `.hmove`, a card's `.prmove`/`.pp`, a PR alert
-  (`hash` → the app's `userInfo`). The tracks (`tvTracksHtml`: the PR list's head, else the timeline's) hold times
-  for `fillTracks`. → `timeline-tab.mjs`.
+  (`tvHash`, `tvFromHash`) — **the id is `hashId()`**; `tvOpenOn` from `.hmove`, a card's `.prmove`/`.pp`, a PR alert,
+  a PR row's Timeline, the menus; the move gone to once both are in (`tv.lit`). Its word
+  (`tvHint`) till seen (`prefs.tvSeen`). The tracks (`tvTracksHtml`) hold times for `fillTracks`. → `timeline-tab.mjs`.
 * **A PR's diff never touches the folder** (2026-10-13; scope `pr`, `&pr=<n or URL>&base=`; `prRange`): `ls-remote`
   for `refs/pull/<n>/head` and the PR's base (`baseRefName`, else origin's default), then a fetch of what is missing
   **into the object store alone** — `--refmap=`, `--no-write-fetch-head`: no ref, no FETCH_HEAD, no checkout — and
@@ -1021,7 +1020,7 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   <pid>`) — CPU, memory, where the time went.
 * `npm run scenario -- scripts/scenarios/<name>.mjs` for anything with more than one step. A scenario exports `meta`
   (`server`, `fake`, `fixture`, `env`, `key: false`, `prefs` — what the page starts from; **without it a page starts with every
-  lane open, large cards, the theme following the emulated colour scheme and the tour taken**) and a default `async (ctx) => result`. The runner starts a throwaway server on a free
+  lane open, large cards, the theme the emulated scheme's, the tour taken, the timeline seen**) and a default `async (ctx) => result`. The runner starts a throwaway server on a free
   port with its own state dir, builds the fixture, runs the fake claude when asked, launches Chrome with **focus
   emulation on**, and cleans up everything on any way out, all waiting on one cleanup (`--keep` to inspect; `npm run scenarios` prints `LEAK`). **`ctx.reload()`** waits
   for the new document's snapshot — never a reload and a sleep; `openChat` waits for that chat's log
