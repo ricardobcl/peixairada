@@ -5,6 +5,23 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-17. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-17, later — the timeline's chat chip is two: you and Claude
+
+Ricardo, on the timeline built that morning: "we have a "chat" filter but it includes my messages and claude - separate
+the 2, so I can filter individually".
+
+* **Two chips where the chat had one** (`TV_WHO`, `tvSide`): *You* (your prompts) and *Claude* (its turns, in the
+  accent its lane marks wear), each in or out on a click, alone on ⌥-click — and ⌥-click again everything in play, as
+  a PR's chip does —, with a right-click of *Only these · Leave them out*; the Scope menu has a row each. The address
+  says each one out (`you=0`, `claude=0`); the `c=0` of the morning's single chip is gone with it — the timeline was
+  not yet pushed, so no link or kept narrow carries one.
+* **Claude out, what the chat did on a PR is a row of its own**: a push or a review of the chat's hand was said on
+  Claude's turn line and kept off the list as an event; with that line gone, the event shows (`shown` holds only the
+  turns whose line is drawn). The chat's track follows: *You* alone draws your ticks without Claude's bars, and the
+  reverse. About these still applies to both: a prompt or a turn is kept by the turn it belongs to.
+* `timeline-tab.mjs` checks Claude out (your four prompts, the chat's acts as rows, the address, the track), You alone,
+  everything back, Claude alone and its menu.
+
 ## Decisions of 2026-10-17 — one timeline for a chat and its PRs (T2, T3, the narrow, the folding, L4)
 
 Ricardo, on the study (https://claude.ai/artifact/2UTgxLtsfd496ommKuAgHy), its recommendation: "let's start with your

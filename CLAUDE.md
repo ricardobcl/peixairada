@@ -782,13 +782,13 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   zsh, unrun** (`typeInShell`); a note on a line is a prompt typed into the drawer's claude (`sendToClaude`), else
   copied. → `test/changes.test.mjs`, `changes-tab.mjs`.
 * **The timeline tab is the chat and its PRs in one order** (2026-10-17; ⌥⌘J, `#tvBtn`): `timeline` in `timelineOpen`,
-  `#tv` moved into its half (`placeTimeline`), drawn on show (`tvSoon`) from the entries (`tvTurns`) and the shown PRs'
-  ledgers (`tvLogOf`, again when a `pr.logged` moves); `tvModel` ties a turn to a PR it names, acts on or follows the
+  `#tv` moved into its half (`placeTimeline`), drawn on show (`tvSoon`) from the entries (`tvTurns`) and the PRs'
+  ledgers (`tvLogOf`, again as `pr.logged` moves); `tvModel` ties a turn to a PR it names, acts on or follows the
   move of. Turns one line (`tvTurnSum`), a lane per PR (`tvLanes`, `tvStyle`), the Now bar (`tvGo`), folds (`tvRuns`,
-  `tvFold`). **The narrow** (`tvNarrow` vs `tvInPlay`; `tvSolo`) rides the address, `#<id>/tl:p=repo.n…`
+  `tvFold`). **The narrow** (`tvNarrow` vs `tvInPlay`; `tvSolo`; you and Claude a chip each) rides the address, `#<id>/tl:p=repo.n…`
   (`tvHash`, `tvFromHash`) — **the id is `hashId()`**; `tvOpenOn` from `.hmove`, a card's `.prmove`/`.pp`, a PR alert
-  (`hash` → the app's `userInfo`). The tracks (`tvTracksHtml`: the PR list's head, else the timeline's) hold times,
-  placed by `fillTracks`. → `timeline-tab.mjs`.
+  (`hash` → the app's `userInfo`). The tracks (`tvTracksHtml`: the PR list's head, else the timeline's) hold times
+  for `fillTracks`. → `timeline-tab.mjs`.
 * **A PR's diff never touches the folder** (2026-10-13; scope `pr`, `&pr=<n or URL>&base=`; `prRange`): `ls-remote`
   for `refs/pull/<n>/head` and the PR's base (`baseRefName`, else origin's default), then a fetch of what is missing
   **into the object store alone** — `--refmap=`, `--no-write-fetch-head`: no ref, no FETCH_HEAD, no checkout — and
