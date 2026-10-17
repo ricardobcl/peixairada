@@ -20,7 +20,7 @@ export default async function (ctx) {
   await right(`${card}.querySelector('.title')`);
   out.card = await rows();
   ctx.assert.equal(await ctx.evaluate(`document.querySelector('#ctxm').open`), true, 'the menu up');
-  ctx.assert.deepEqual(out.card.slice(0, 2), ['Open', 'Rename…']);
+  ctx.assert.deepEqual(out.card.slice(0, 3), ['Open', 'Open its timelinethe chat and its PRs in one order · ⌥⌘J', 'Rename…'], JSON.stringify(out.card));   // a chat with PRs: its timeline (2026-10-17)
   ctx.assert.ok(out.card.includes('Take #12 off this chat') && out.card.includes('Copy its link'), JSON.stringify(out.card));
   await ctx.evaluate(`[...document.querySelectorAll('#ctxm button')].find(b => b.textContent === 'Rename…').click()`);
   await ctx.waitFor(`!!document.querySelector('#shead h2 input.tedit')`, { what: 'the title box, from Rename…' });
@@ -39,7 +39,7 @@ export default async function (ctx) {
   // a PR chip's own menu
   await right(`${card}.querySelector('.cpr[data-url$="/pull/13"]')`);
   out.chip = await rows();
-  ctx.assert.deepEqual(out.chip, ['Open the PR', 'Take it off this chat']);
+  ctx.assert.deepEqual(out.chip, ['Open the PR', 'Its timelineits events and the turns about it · ⌥⌘J', 'Take it off this chat']);
   await ctx.evaluate(`[...document.querySelectorAll('#ctxm button')].find(b => b.textContent === 'Take it off this chat').click()`);
   await ctx.waitFor(`window.peix.session(${JSON.stringify(two.id)}).prs.length === 1`, { timeout: 10_000, what: '#13 off the chat' });
   // the launcher has the rows for the open chat

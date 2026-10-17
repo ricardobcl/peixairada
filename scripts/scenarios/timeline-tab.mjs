@@ -74,7 +74,7 @@ look(1);
 export const meta = {
   server: true, fixture: claudeDir,
   env: { GH_BIN: fileURLToPath(new URL('../fakegh.mjs', import.meta.url)), FAKEGH_PRS: file, FAKEGH_VIEWER: 'me', PR_WATCH_MS: '500' },
-  prefs: { cards: 'compact' },
+  prefs: { cards: 'compact', tvSeen: false },   // the timeline never seen: its word comes up
 };
 
 export default async function (ctx) {
@@ -96,6 +96,9 @@ export default async function (ctx) {
   look(3);
   await T(`${turn(482)} === 'you' && !${round(482, 'end')}`, 'mara\'s comment: #482 at your move again');
 
+  // a chat with PRs, its timeline never seen: a word under the head row says it is there
+  await T(`/⌥⌘J/.test(document.querySelector('#tvHint')?.textContent || '')`, 'the timeline\'s word');
+  await ctx.settle(); await ctx.shot('0-hint');
   // ⌥⌘J: the timeline, beside the chat
   await ctx.key('KeyJ');
   await T(`!document.querySelector('#tv').hidden && document.querySelector('#tv').closest('#gbodyB') && document.querySelectorAll('#tv .tvr').length > 8`, 'the timeline in the second half');
@@ -242,6 +245,26 @@ export default async function (ctx) {
   await click(chip(482), true);   // everything in play first
   await ctx.evaluate(`location.hash = '${id}/tl:p=storefront.479'`);
   await T(`document.querySelector('#tv .tvc.on[data-url]')?.dataset.url.endsWith('/479') && document.querySelectorAll('#tv .tvc.on[data-url]').length === 1`, 'the alert\'s address soloed on #479');
+  a.equal(await ctx.evaluate(`!document.querySelector('#tvHint') && window.peix.prefs().tvSeen`), true, 'seen: the word gone, and for good');
+  // …and the card's move line, clicked as a hand would from home: the chat, its timeline on that PR, at the move
+  await click(chip(479), true);   // everything in play first
+  await ctx.key('Digit0');   // ⌥⌘0, home
+  await T(`!window.peix.state().current && !!document.querySelector('#home')`, 'home');
+  await ctx.settle();
+  const mvAt = await ctx.evaluate(`(() => { const r = document.querySelector('#slist > .card .prmove').getBoundingClientRect(); return JSON.stringify({ x: r.left + 12, y: r.top + r.height / 2 }); })()`).then(JSON.parse);
+  for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await ctx.send('Input.dispatchMouseEvent', { type, x: mvAt.x, y: mvAt.y, button: 'left', clickCount: 1 });
+  await T(`!document.querySelector('#tv').hidden && document.querySelector('#tv .tvc.on[data-url]')?.dataset.url.endsWith('/482') && document.querySelectorAll('#tv .tvc.on[data-url]').length === 1 && document.querySelector('#tv .tvr.flash')?.textContent.includes('mara')`, 'the card\'s move line: soloed on #482, at mara\'s move');
+  await ctx.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 5 });
+  // a PR row's Timeline: that PR alone
+  if (!await ctx.evaluate(`!!window.peix.prefs().prsOpen`)) await ctx.evaluate(`document.querySelector('#prToggle').click()`);
+  await click('#prlist .pract[data-pract="timeline"][data-url$="/479"]');
+  await T(`document.querySelector('#tv .tvc.on[data-url]')?.dataset.url.endsWith('/479') && document.querySelectorAll('#tv .tvc.on[data-url]').length === 1`, 'the row\'s Timeline: #479 alone');
+  await ctx.evaluate(`document.querySelector('#prlist #prFold').click()`);
+  // a card's right-click: Open its timeline — at the move it is on
+  out.cardCtx = await ctx.evaluate(`(() => { const c = document.querySelector('#slist > .card'), r = c.getBoundingClientRect(); c.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 30, clientY: r.top + 10 })); return [...document.querySelectorAll('#ctxm button')].map(b => b.firstChild.textContent); })()`);
+  a.ok(out.cardCtx.includes('Open its timeline'), `the card's menu: ${out.cardCtx}`);
+  await ctx.evaluate(`[...document.querySelectorAll('#ctxm button')].find(b => b.firstChild.textContent === 'Open its timeline').click()`);
+  await T(`document.querySelector('#tv .tvc.on[data-url]')?.dataset.url.endsWith('/482') && document.querySelectorAll('#tv .tvc.on[data-url]').length === 1`, 'the card\'s menu: #482 alone, at the move');
   // narrow: the chips fold into one Scope button
   await ctx.send('Emulation.setDeviceMetricsOverride', { width: 860, height: 860, deviceScaleFactor: 2, mobile: false });
   await ctx.settle();

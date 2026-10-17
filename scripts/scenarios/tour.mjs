@@ -25,7 +25,7 @@ writeFileSync(gh, JSON.stringify({
   'acme/repo-a#13': { state: 'OPEN', title: 'The follow-up', author: user('ana') },
 }));
 export const meta = { server: true, fixture: 'auto', env: { ORG_DIR: '', ORG: '', FAKEGH_PRS: gh, FAKEGH_VIEWER: 'me' }, prefs: { toured: false } };
-const STEPS = ['hello', 'list', 'card', 'find', 'new', 'chat', 'open', 'split', 'prs', 'move', 'bar', 'keys', 'bye'];
+const STEPS = ['hello', 'list', 'card', 'find', 'new', 'chat', 'open', 'split', 'prs', 'move', 'timeline', 'bar', 'keys', 'bye'];
 
 export default async function (ctx) {
   const out = {};
@@ -158,9 +158,10 @@ export default async function (ctx) {
   ctx.assert.ok(on('split').parts[0] === '#groups', 'the split: the column');
   ctx.assert.ok(on('prs').parts[0] === '#prToggle' && on('prs').card.t >= on('prs').hole.b, 'its PRs: the header’s chips, the card under them');
   ctx.assert.ok(on('move').parts[0]?.includes('hmove') && on('move').card.t >= on('move').hole.b, `its move: the header’s tag, the card under it ${JSON.stringify(on('move').parts)}`);
-  for (let i = 0; i < 3; i++) { await arrow('ArrowLeft'); await ctx.sleep(50); }
+  ctx.assert.ok(on('timeline').parts[0] === '#moreBtn' && on('timeline').pic.includes('⌥⌘J'), `its timeline, closed: ···, with a picture ${JSON.stringify(on('timeline').parts)}`);
+  for (let i = 0; i < 4; i++) { await arrow('ArrowLeft'); await ctx.sleep(50); }
   await ctx.waitFor(`window.peix.tour().step === 'move'`, { what: 'back to the move' });
-  for (let i = 0; i < 3; i++) { await arrow('ArrowRight'); await ctx.sleep(50); }
+  for (let i = 0; i < 4; i++) { await arrow('ArrowRight'); await ctx.sleep(50); }
   await ctx.waitFor(`window.peix.tour().step === 'bye'`, { what: 'on to the end' });
   await ctx.evaluate(`document.querySelector('#tourNext').click()`);
   await ctx.waitFor(`!window.peix.tour().open`, { what: 'Done' });

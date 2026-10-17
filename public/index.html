@@ -403,11 +403,11 @@
   .shead.hole > h2 + * { margin-left: auto; }
   /* ⌃⌘F's word on the way in (2026-10-13, fillHint): a pill under the head row, centred on the housing (on the window
      without one), the panel's ink on the panel — nothing to press, gone after FILL_HINT_MS */
-  #fillHint { position: fixed; z-index: 60; translate: -50% 0; padding: 6px 14px; border: 1px solid var(--line); border-radius: var(--r-5); background: var(--panel); color: var(--ink); font-size: var(--fs-sm); white-space: nowrap; pointer-events: none; box-shadow: 0 8px 26px rgba(0, 0, 0, .22); transition: opacity .25s var(--ease-out), translate .25s var(--ease-out); }
-  @starting-style { #fillHint { opacity: 0; translate: -50% -6px; } }
-  #fillHint.out { opacity: 0; translate: -50% -4px; }
-  #fillHint b { font-weight: 650; }
-  #fillHint kbd { font: 600 var(--fs-xs) ui-monospace, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl-hi); color: var(--ink); }
+  :is(#fillHint, #tvHint) { position: fixed; z-index: 60; translate: -50% 0; padding: 6px 14px; border: 1px solid var(--line); border-radius: var(--r-5); background: var(--panel); color: var(--ink); font-size: var(--fs-sm); white-space: nowrap; pointer-events: none; box-shadow: 0 8px 26px rgba(0, 0, 0, .22); transition: opacity .25s var(--ease-out), translate .25s var(--ease-out); }
+  @starting-style { :is(#fillHint, #tvHint) { opacity: 0; translate: -50% -6px; } }
+  :is(#fillHint, #tvHint).out { opacity: 0; translate: -50% -4px; }
+  :is(#fillHint, #tvHint) b { font-weight: 650; }
+  :is(#fillHint, #tvHint) kbd { font: 600 var(--fs-xs) ui-monospace, monospace; padding: 1px 5px; border-radius: var(--r-2); background: var(--ctl-hi); color: var(--ink); }
   /* The chat column is one half or two (2026-09-22): ⌘2 splits it, ⌘1 / ⌘2 put the keys in the left or the right
      one. Each half has its own tab strip and its own body — the transcript, a terminal, or a page in the app's
      pane — and a tab belongs to exactly one of them. The left half keeps the plain ids: it is the whole column
@@ -2316,7 +2316,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     #log.working :is(.tool, .toolgroup > summary) .tst.run { animation: none; border-right-color: var(--working); }   /* a tool call running: a still ring */
     .shead .hpr .ck.now path, :is(.shead .hpr, #slist .cpr).sheen::after { animation: none; }   /* an answer, a merge: there, not drawn */
     #log > .in { animation: none; }
-    #fillHint, #fillHint.out { translate: -50% 0; } @starting-style { #fillHint { translate: -50% 0; } }   /* the fill's word fades, in place */
+    :is(#fillHint, #tvHint), :is(#fillHint, #tvHint).out { translate: -50% 0; } @starting-style { :is(#fillHint, #tvHint) { translate: -50% 0; } }   /* the fill's word and the timeline's fade, in place */
     #tour :is(.thole, .tcard) { transition: outline-color .2s; } #tour .tin.in { animation: none; }   /* the tour jumps from part to part */
     dialog, dialog:not([open]), .pop, .pop[hidden], .note, .note.out { transform: none; }
     @starting-style { dialog[open], .pop:not([hidden]), .note { transform: none; } }
@@ -2635,7 +2635,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     return a;
   };
   const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, toured: false, settingsPane: 'general' };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general' };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -4730,7 +4730,7 @@ const toolName = n => {
   }
   /** The chat's PRs come round to you, the newest move first. */
   const movedPrs = s => (s.prs || []).filter(p => p.turn?.you).sort((a, b) => String(b.turn.movedAt).localeCompare(String(a.turn.movedAt)));
-  const moveTip = prs => prs.map(p => `${p.label} — your move: ${p.turn.why}`).join('\n') + '\n⌥-click: let this round go — the next move tells you';
+  const moveTip = prs => prs.map(p => `${p.label} — your move: ${p.turn.why}`).join('\n') + '\nclick: its timeline, at the move (⌥⌘J) · ⌥-click: let this round go — the next move tells you';
   /** The card's line for them, after the question's, at every card size: the tag, then the newest move's #n and its
    *  reason, the others counted; none on a ticked card (the tick after the move is "seen"). Under the pointer, how long
    *  ago that move came (2026-10-14, `.mt`): GitHub's time of its newest reason — the push, the word, the ask again —,
@@ -4863,7 +4863,7 @@ const toolName = n => {
       const live = opens && !opens.end && pr.turn?.you;
       return `<div class="rev${live ? ' live' : ''}"><span class="t">${esc(when(e.a))}</span>${evMark(e, faces)}<div class="x">${pchip(s, pr)} <b>${e.w === '' || e.k === 'chat' || e.k === 'board' ? 'you' : esc(e.w || 'someone')}</b> ${esc(EV_SAY(e))}${e.k === 'chat' ? (e.c === s.id ? ' from this chat' : ' from another chat') : ''}${opens ? `<div class="rr">${RTAG.you}</div>` : ''}${closes ? `<div class="rr ok">✓ answers ${esc(closes.why)}</div>` : ''}</div></div>`;
     }).join('');
-    return `<div class="rph">this chat’s PRs</div><div class="rnow">${now}</div>${lat ? `<div class="rph">latest</div><div class="rlat">${lat}</div>` : ''}<div class="rpf">⌥-click “your move”: let every round go · the PR list (⌥⌘G) for one</div>`;
+    return `<div class="rph">this chat’s PRs</div><div class="rnow">${now}</div>${lat ? `<div class="rph">latest</div><div class="rlat">${lat}</div>` : ''}<div class="rpf">click “your move” or a PR’s mark: its timeline, at the move (⌥⌘J) · ⌥-click: let every round go</div>`;
   }
   const rpop = { el: null, sid: null, anchor: null, timer: 0 };
   /** The pane's pages over the chat column, as last posted: a popover there would be under them. */
@@ -5663,6 +5663,23 @@ const toolName = n => {
     document.body.append(el);
     setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, FILL_HINT_MS);
   }
+  // The timeline's word (2026-10-17): a chat with PRs opened while its timeline was never seen says it is there, under
+  // the head row — once a page load, TV_HINTS times in all, never again once the tab has shown (prefs.tvSeen).
+  const TV_HINTS = 3, TV_HINT_MS = 6000;
+  function tvHint(s) {
+    if (prefs.tvSeen || (prefs.tvHints || 0) >= TV_HINTS || tvHint.done || !(s.prs || []).length || timelineOpen.has(s.id)) return;
+    tvHint.done = true;
+    setTimeout(() => {
+      if (state.current !== s.id || prefs.tvSeen || document.querySelector('dialog[open]')) { tvHint.done = false; return; }
+      prefs.tvHints = (prefs.tvHints || 0) + 1; savePrefs();
+      const head = $('#shead').getBoundingClientRect(), el = document.createElement('div');
+      el.id = 'tvHint'; el.setAttribute('role', 'status');
+      el.innerHTML = `<b>New</b> · <kbd>⌥⌘J</kbd> shows this chat and its PRs in one order — or click a <b>your move</b>`;
+      el.style.left = `${Math.round(head.left + head.width / 2)}px`; el.style.top = `${Math.round(head.bottom + 10)}px`;
+      document.body.append(el);
+      setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, TV_HINT_MS);
+    }, 800);
+  }
   const noChat = () => note($('#shead'), 'Open a chat first');
   // A chat's own key pressed again from the tab it brings up, the keys in it (2026-10-13): that half fills the column,
   // the other kept behind it, and again the two come back — a ⌘0 that undoes itself (toggleZoom). ⌥⌘C on a claude that
@@ -6115,7 +6132,7 @@ const toolName = n => {
       text: () => `${state.current ? 'Its transcript, as Claude writes it.' : 'With none open, this is home: your day across every chat. Click a card and its transcript comes up, live.'} When its claude runs on the board it is a real terminal to type into, and a chat whose claude has ended offers to resume it here.` },
     { id: 'open', side: 'below', at: () => state.current ? onScreen($('#moreBtn')) : null, title: 'Its terminal, GitHub, editor and diff',
       text: () => `${state.current ? 'Everything the chat has' : 'Once a chat is open, everything it has'}, a key away — each on a tab beside it, and the same key again fills the column with it.${state.current ? ' Claude, the changes and VS Code Web are in <b>···</b> too.' : ''}${inApp ? '' : ' In a browser, GitHub and VS Code Web open in tabs of their own.'}`,
-      pic: () => tourKeys([['⌥⌘C', 'its Claude, in a terminal here — or taken over from where it runs'], ['⌥⌘T', 'a shell in its folder · <kbd>⌘T</kbd> another'], ['⌥⌘G', 'its PR on GitHub, or the repo'], ['⌥⌘E', 'its folder in VS Code Web · <kbd>⌥⌘V</kbd> in VS Code itself'], ['⌥⌘D', 'what it changed: the last turn, the uncommitted tree, the branch, a PR']]) },
+      pic: () => tourKeys([['⌥⌘C', 'its Claude, in a terminal here — or taken over from where it runs'], ['⌥⌘T', 'a shell in its folder · <kbd>⌘T</kbd> another'], ['⌥⌘G', 'its PR on GitHub, or the repo'], ['⌥⌘E', 'its folder in VS Code Web · <kbd>⌥⌘V</kbd> in VS Code itself'], ['⌥⌘D', 'what it changed: the last turn, the uncommitted tree, the branch, a PR'], ['⌥⌘J', 'its timeline: the chat and its PRs in one order']]) },
     { id: 'split', at: () => state.current ? $('#groups') : null, title: 'Two halves, side by side or stacked',
       text: () => '<kbd>⌘2</kbd> splits the chat column side by side, <kbd>⌥⌘2</kbd> one over the other: the digit is the half, the modifier the layout, so <kbd>⌘1</kbd> <kbd>⌘2</kbd> or <kbd>⌥⌘1</kbd> <kbd>⌥⌘2</kbd> move between the halves, turning the split. A new tab opens in the second half; drag a tab across to move it; <kbd>⌘0</kbd> closes the other half.',
       pic: () => `<div class="tsplit"><figure><div class="w side"><i></i><i class="a">1</i><i class="b">2</i></div><figcaption><kbd>⌘1</kbd> <kbd>⌘2</kbd> side by side</figcaption></figure><figure><div class="w stack"><i></i><i class="a">1</i><i class="b">2</i></div><figcaption><kbd>⌥⌘1</kbd> <kbd>⌥⌘2</kbd> stacked</figcaption></figure></div>` },
@@ -6124,8 +6141,11 @@ const toolName = n => {
       text: () => 'Every PR the chat names is put on it once GitHub finds it there — a link, <em>#12</em> or <em>widgets#12</em> in what you or Claude wrote, one Claude opened — and Jira tickets by their key or the branch’s name. A chip says its state and CI; a click on the header’s lists them, each with its diff, the editor at its branch and a chat on it. Right-click one that doesn’t belong to take it off. The PRs need <b>gh</b>, signed in.',
       pic: () => `<div class="tlink"><span class="tq">“…#12 is the base, and acme/widgets#13 depends on it”</span><span class="tto">→ <span class="tchip" data-state="open">#12</span><span class="tchip" data-state="draft">#13</span><span class="tchip tk">PAY-311</span></span></div>` },
     { id: 'move', side: () => onScreen($('#shead .hmove')) ? 'below' : 'above', at: () => onScreen($('#shead .hmove')) || onScreen($('#slist > .card .prmove')) || onScreen($('#fBtn')), title: 'Your move',
-      text: () => 'A PR you wrote or reviewed has a turn. When someone reviews, comments or pushes after your last word on it — or asks for your review again — it is <b>your move</b>: the card and the header say so, the chat comes back from Done and up the list, and a notification says why. Your review, comment or push answers it; ⌥-click the tag to let that round go. The funnel shows only the chats at your move.',
+      text: () => 'A PR you wrote or reviewed has a turn. When someone reviews, comments or pushes after your last word on it — or asks for your review again — it is <b>your move</b>: the card and the header say so, the chat comes back from Done and up the list, and a notification says why. Your review, comment or push answers it; a click on the tag opens the timeline at the move, ⌥-click lets that round go. The funnel shows only the chats at your move.',
       pic: () => `<div class="tlink"><span class="tto"><b class="ymove">${ICON.pr}your move</b><span class="tq">#12 · changes asked by alex</span></span></div>` },
+    { id: 'timeline', side: () => onScreen($('#tv .tvl')) ? 'left' : 'below', at: () => onScreen($('#tv .tvl')) || (state.current && onScreen($('#moreBtn'))) || null, title: 'The chat and its PRs, in one order',
+      text: () => '<kbd>⌥⌘J</kbd> opens its timeline on a tab: your prompts, each of Claude’s turns as one line, and every PR’s reviews, comments, pushes and CI between them, a lane per PR. The chips at its head narrow it — you, Claude, each PR; ⌥-click one for it alone. A click on a <b>your move</b>, or its notification, lands on that PR’s move.',
+      pic: () => onScreen($('#tv .tvl')) ? '' : `<div class="tmock"><div class="hd"><kbd>⌥⌘J</kbd> › timeline</div><div class="r"><i style="--c: var(--muted)"></i>You · address joel’s two comments</div><div class="r"><i style="--c: var(--accent)"></i>Claude · worked 17m · pushed #482<small>answers joel</small></div><div class="r on"><i style="--c: var(--pr-open)"></i>#482 · mara commented<small>your move</small></div></div>` },
     { id: 'bar', need: true, side: 'above', at: () => onScreen($('#sbar')), title: 'The machine, at the foot',
       text: () => 'Who is asking you and what is watching, on the left; the fish swims faster the more Claude is at work — a click shows every live chat. On the right the Mac’s CPU and memory, your plan’s limits, the cup that keeps the Mac awake while Claude works, and the clock.' },
     { id: 'keys', mid: true, title: 'Anything, from the keyboard',
@@ -6601,7 +6621,7 @@ const toolName = n => {
    *  checkout's repo whose branch GitHub has named — the editor at that branch. */
   const prLine = (s, pr, hide) => {
     const w = whereOf(s, pr), ed = w && w.k !== 'away' && pr.refs, round = roundLine(s, pr, hide);
-    return `<div class="prline${round ? ' withround' : ''}"${hide ? ' hidden' : ''}>${prRow(pr, hide)}${w ? `<span class="prwhere ${w.k}"${w.path ? ` title="${esc(w.path)}"` : ''}>${ICON.branch}${esc(w.t)}</span>` : ''}${pr.number ? `<span class="practs"><button type="button" class="pract" data-pract="diff" data-url="${esc(pr.url)}" title="Its diff in the changes tab, as GitHub shows it — read from origin, nothing checked out">Diff</button>${
+    return `<div class="prline${round ? ' withround' : ''}"${hide ? ' hidden' : ''}>${prRow(pr, hide)}${w ? `<span class="prwhere ${w.k}"${w.path ? ` title="${esc(w.path)}"` : ''}>${ICON.branch}${esc(w.t)}</span>` : ''}${pr.number ? `<span class="practs"><button type="button" class="pract" data-pract="timeline" data-url="${esc(pr.url)}" title="Its timeline: this PR’s events and the turns about it, in one order (⌥⌘J)">Timeline</button><button type="button" class="pract" data-pract="diff" data-url="${esc(pr.url)}" title="Its diff in the changes tab, as GitHub shows it — read from origin, nothing checked out">Diff</button>${
       ed ? `<button type="button" class="pract" data-pract="editor" data-url="${esc(pr.url)}" aria-haspopup="menu" title="Its branch in the editor — the folder that has it, or a worktree of its own">Editor ▾</button><button type="button" class="pract" data-pract="chat" data-url="${esc(pr.url)}" title="A new chat on its branch — in the folder that has it out, else in a worktree of its own">Chat</button>` : ''}</span>` : ''}</div>${round}`;
   };
   /** A ticket's row under the header, after the PRs' (2026-10-08): its status, key, summary, and whose it is. */
@@ -6658,7 +6678,7 @@ const toolName = n => {
         ${s.live ? `<span class="chip">${entryLabel(s)}</span>` : ''}${s.live?.name ? `<span class="chip" title="session name">${esc(s.live.name)}</span>` : ''}${
           s.model ? `<span class="chip">${esc(s.model)}</span>` : ''}${s.live?.pid ? `<span class="chip">pid ${s.live.pid}</span>` : ''}
       </div>`;
-    const headNew = headHtml !== drawn.head; if (headNew) { $('#shead').innerHTML = drawn.head = headHtml; $('#shead').dataset.sid = s.id; rollSoon(); fadeSoon(); }
+    const headNew = headHtml !== drawn.head; if (headNew) { $('#shead').innerHTML = drawn.head = headHtml; $('#shead').dataset.sid = s.id; rollSoon(); fadeSoon(); tvHint(s); }
     fillAges($('#shead'));
     // The menu, one row per action: its mark, what it does, and its state or key on the right. The ids are the
     // buttons' own from when they sat in the row — the hotkeys and the harness reach them by those.
@@ -6895,7 +6915,7 @@ const toolName = n => {
     const card = e.target.closest('#slist > .card'), chip = e.target.closest('.cpr[data-url], .hpr[data-url], .prrow[data-url]'), sq = e.target.closest('.sq.pick[data-name]');
     if (chip) {
       const s = state.sessions.get(card?.dataset.id || state.current), url = chip.dataset.url; if (!s || !url) return null;
-      return [{ t: 'Open the PR', fn: () => openExternal(url, { s }) }, { t: 'Take it off this chat', warn: true, fn: () => unlinkUrl(s, url) }];
+      return [{ t: 'Open the PR', fn: () => openExternal(url, { s }) }, { t: 'Its timeline', sub: 'its events and the turns about it · ⌥⌘J', fn: () => { if (state.current !== s.id) openSession(s.id); tvOpenOn(s, url); } }, { t: 'Take it off this chat', warn: true, fn: () => unlinkUrl(s, url) }];
     }
     const hm = e.target.closest('#shead .hmove');
     if (hm) { const s = state.sessions.get(state.current); return s && [{ t: 'Let this round go — the next move tells you', fn: () => letGo(s, $('#shead .hmove')) }]; }
@@ -6904,6 +6924,7 @@ const toolName = n => {
     const s = state.sessions.get(card.dataset.id); if (!s) return null;
     return [
       { t: 'Open', fn: () => openSession(s.id) },
+      ...((s.prs || []).length ? [{ t: 'Open its timeline', sub: 'the chat and its PRs in one order · ⌥⌘J', fn: () => { if (state.current !== s.id) openSession(s.id); tvOpenOn(s, movedPrs(s)[0]?.url); } }] : []),
       { t: 'Rename…', fn: async () => { await openSession(s.id); if (state.current === s.id) editTitle(state.sessions.get(s.id) || s); } },   // the box in its own header, never another's (2026-10-14)
       ...(s.done ? [{ t: 'Back on the board (↩)', fn: () => tickDone(s.id, false, card) }]
         : canTick(s) ? [{ t: 'Done', fn: () => tickDone(s.id, true, card) }, ...(s.prs?.length && !s.forGood ? [{ t: 'Done for good — its PRs forgotten', fn: () => tickDone(s.id, true, card, null, true) }] : [])] : []),
@@ -7003,6 +7024,7 @@ const toolName = n => {
     if (b.dataset.pract === 'letgo' || b.dataset.pract === 'undo') roundGo(s, b.dataset.url, b.dataset.pract === 'undo', b);
     else if (b.dataset.pract === 'ask') askClaude(s, b.dataset.url, b);
     else if (b.dataset.pract === 'diff') openPrDiff(s, b.dataset.url);
+    else if (b.dataset.pract === 'timeline') tvOpenOn(s, b.dataset.url);
     else if (b.dataset.pract === 'editor') editorMenu(s, b.dataset.url, b);
     else if (b.dataset.pract === 'chat') chatOnPr(s, b.dataset.url, b);
   });
@@ -8560,10 +8582,9 @@ const toolName = n => {
   }
   /** The timeline soloed on one PR and gone to its move (N5): the header's your-move tag, a card's move line or its
    *  mark for that PR, an alert that it came round to you. */
-  function tvOpenOn(s, url) {
-    if (!s || !(s.prs || []).some(p => p.url === url)) return;
-    tvNarrow.set(s.id, { ...tvNarrow.get(s.id), on: [url] }); delete tvNarrow.get(s.id).turns;
-    tv.goto = { id: s.id, url };
+  function tvOpenOn(s, url) {   // no PR: the timeline as its narrow stands (a card's menu with no move)
+    if (!s || (url && !(s.prs || []).some(p => p.url === url))) return;
+    if (url) { tvNarrow.set(s.id, { ...tvNarrow.get(s.id), on: [url] }); delete tvNarrow.get(s.id).turns; tv.goto = { id: s.id, url }; }
     if (!timelineOpen.has(s.id)) { timelineOpen.add(s.id); openNewTab(s, 'timeline'); } else setTab(s, 'timeline');
     tvAddress(s); syncTerm(s); focusBoard();
   }
@@ -8877,6 +8898,7 @@ const toolName = n => {
     const host = $(GEL[g].body), list = el.querySelector('.tvl'), top = list?.scrollTop;
     if (el.parentElement !== host) { host.insertBefore(el, host.firstChild); if (list) list.scrollTop = top; }
     const was = el.hidden; el.hidden = false;
+    if (!prefs.tvSeen) { prefs.tvSeen = true; savePrefs(); $('#tvHint')?.remove(); }
     if (was || el._sid !== s.id) { el._sid = s.id; renderTimeline(s); } else tvSoon();
   }
   function hotTimeline() {

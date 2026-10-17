@@ -77,7 +77,7 @@ export default async function (ctx) {
     beside: document.querySelector('#rpop').getBoundingClientRect().left >= ${card}.getBoundingClientRect().right })`).then(JSON.parse);
   ctx.assert.deepEqual(out.pop.rows, ['let #13 approved by priya', 'ok #12 you answered'], 'as the marks go, each its round in words');
   ctx.assert.ok(out.pop.latest.includes('#12 you commented✓ answers 1 comment from ana') && out.pop.latest.some(l => l.includes('let this round go')), `your word, and the round it answered: ${JSON.stringify(out.pop.latest)}`);
-  ctx.assert.match(out.pop.foot, /⌥-click “your move”: let every round go/);
+  ctx.assert.match(out.pop.foot, /click “your move” or a PR’s mark: its timeline, at the move \(⌥⌘J\) · ⌥-click: let every round go/);
   ctx.assert.ok(out.pop.beside, 'beside the card, over the chat');
   await ctx.shot('2-answered-card', await ctx.evaluate(`(r => ({ x: 0, y: Math.max(0, r.top - 20), width: Math.min(innerWidth, r.right + 420), height: 420 }))(${card}.getBoundingClientRect())`));
   // the card's PR chips show the same

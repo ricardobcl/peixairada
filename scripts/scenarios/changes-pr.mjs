@@ -66,7 +66,7 @@ export default async function (ctx) {
   ctx.assert.equal(await ctx.evaluate(`document.querySelectorAll('#prlist .prrow').length`), 3, 'the rows the harness reads, one each');
 
   // Diff on #14: the tab, on the PR scope, the PR's two files — read from origin, the folder left as it was
-  await ctx.evaluate(`document.querySelector('#prlist .pract[data-url="${u(14)}"]').click()`);
+  await ctx.evaluate(`document.querySelector('#prlist .pract[data-pract="diff"][data-url="${u(14)}"]').click()`);
   const files = () => ctx.evaluate(`[...document.querySelectorAll('#chg .cf')].map(b => b.dataset.path).join()`);
   await ctx.waitFor(`!document.querySelector('#chg').hidden && [...document.querySelectorAll('#chg .cf')].map(b => b.dataset.path).join() === 'src/cart.js,src/round.js'`, { what: 'PR #14’s files', timeout: 30000 });
   out.head14 = await ctx.evaluate(`JSON.stringify({ seg: document.querySelector('#chg .cseg .on').textContent, br: [...document.querySelectorAll('#chg .r1 .br')].map(b => b.textContent), src: document.querySelector('#chg .csrc').textContent, acts: [...document.querySelectorAll('#chg .acts .cbtn')].map(b => b.textContent) })`).then(JSON.parse);
