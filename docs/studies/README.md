@@ -52,3 +52,12 @@ the console, put the file's text into a style:
 ```js
 document.head.append(Object.assign(document.createElement('style'), { textContent: String.raw`…the text of riso.css…` }))
 ```
+
+## The chat's transports — research, 2026-10-17
+
+[`chat-transports.md`](chat-transports.md): how a chat between the boards could travel — GitHub's own surfaces, true
+peer-to-peer, Nostr, Matrix, Delta Chat, CRDT sync, hosted pub/sub and serverless relays, the team-chat platforms — and
+who its people are, signed in or not. Its first half is built (a private repo's issues, `docs/DECISIONS.md`
+2026-10-17); its second is kept for later: **anonymous guests** on a keyed lane (a device keypair, the room's secret in
+an invite link, messages sealed to a room key and signed — free Nostr relays carry it), and a Cloudflare Durable
+Object as the upgrade if guests need history and bans the server enforces.

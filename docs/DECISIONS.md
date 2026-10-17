@@ -2,8 +2,55 @@
 
 What was decided, why, and what is still open, so the work can be picked up in another session.
 Newest at the top of each list. `CLAUDE.md` is the working notes (how things are built, what bit us);
-this file is the *why* and the *state*. Last updated 2026-10-17. The company, its repos and the people on its PRs go
+this file is the *why* and the *state*. Last updated 2026-10-18. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
+
+## Decisions of 2026-10-17, late night — a chat between the boards
+
+Ricardo: "how can we implement an optional peer-to-peer basic chat in the app? I thought of using a git branch in the
+repo, but not sure if we can allow anyone to write to a specific branch" — then "can we automate invites/collaborators
+of such repo with gh cli and thus, through this app?", "before committing to this solution, do a deep reseach other
+ideas on how a distributed chat could work (with auth users and/or anonymous users)", and, the research read: "I want
+to be the only one capable of inviting, or event removing members. I should be able to manage this and have the GH
+users that I most use suggestted to me (the UI should be special to the owner [me] and have a version for normal users
+that are not the admin/owner)". He made a free GitHub organization for it the same night.
+
+* **Not a branch.** GitHub grants write per repo, never per branch (rulesets only take away); the board's repo is public
+  and on a personal account, so a branch would be every message public and forever in its history, every member a
+  writer, and two pushes at once a race. GitHub stays the carrier, but as **a private repo's issues**: each open issue
+  labelled `room` a room, each comment a message.
+* **Why that one** — the research (`docs/studies/chat-transports.md`, six angles: GitHub's own surfaces, true P2P,
+  Nostr/Matrix/Delta Chat/CRDTs, hosted pub/sub and serverless relays, Slack/Discord/Zulip/IRC, identity and safety):
+  it alone gives real identities, history for a Mac that slept, membership and moderation with no server for anyone
+  to run, on the `gh` login every board already has. Peer-to-peer has no history unless a peer is always on; every
+  hosted vendor's key would sit in a public repo; Matrix's matrix.org takes no sign-up from an app; Zulip came a close
+  second (one more account each).
+* **The research's four defaults, taken**: an organization's repo (members Read — post, delete their own — and only
+  its admin invites, removes, makes and closes rooms; on a personal account every collaborator is a writer who can
+  delete anyone's words); one fixed REST URL of the newest comments polled with its ETag, from Node with `gh auth
+  token`'s token — a 304 is free (checked against GitHub that night), and `gh api` exits 1 on one; GitHub's mails about
+  the repo off for each member as the board first reads it (the repo's subscription, ignored); writes one at a time,
+  a second apart.
+* **Owner and member see two boards**: the role is GitHub's (the repo's permissions), the UI follows it — People (the
+  two heads) and ＋ a room are the admin's, so is a delete on another's message. GitHub refuses the rest from a
+  member's board anyway. **The suggestions** are `prPeople`'s across every chat's PRs — authors, reviewers,
+  commenters, pushers — by how many PRs, then how recently; any login can be typed.
+* **Invitations**: GitHub's own, accepted from the invitee's board (`PATCH /user/repository_invitations/:id`, the
+  `repo` scope gh already has; fine-grained tokens cannot). A board with no chat looks for one every ten minutes —
+  never at boot, so a board with no chat starts no `gh` for it — and at once when Settings › Chat opens; an invitation
+  counts if the repo's description starts *peixAIrada chat* (the board writes it) or the setup names the repo.
+* **Where it shows**: a segment of the status bar (unread count; *invited* when one waits) and a non-modal panel over the
+  bar's left end — rooms as tabs, the messages, a box (⏎ sends). A dialog, so the app lowers the pane while it is up;
+  a ⌥⌘ key closes it and does its own. No hotkey yet: that is a Swift change and an app rebuild for everyone.
+* **Someone else's words are drawn as text**: a renderer of its own (`chatMd`: marked with raw HTML escaped, images as
+  a word, then DOMPurify to a short list of tags and an https/mailto `href` alone), links to the system's browser —
+  never `md()`, whose links open a chat's files and pages; no chat code reaches a drawer, a claude or a notification's
+  Reply…, and a test reads the page's chat section to hold it so. Bidirectional overrides and control characters are
+  stripped on the server.
+* **Not done**: anonymous people. GitHub has no anonymous write; the research's plan for later is a keyed lane — a
+  device keypair, a room secret in an invite link, messages encrypted to a room key and signed, on free Nostr relays —
+  or a Cloudflare Durable Object (free, about 120 lines) if guests need history and bans the server enforces. Nor
+  message editing, threads, reactions, attachments, or the chat in the Dock's badge.
 
 ## Decisions of 2026-10-17, later still — the timeline, found
 

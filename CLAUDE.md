@@ -1,15 +1,14 @@
 # peixAIrada — working notes
 
 One board for every Claude Code chat on this Mac. Reads what Claude Code already writes to `~/.claude`; no
-private API, no cooperation from Claude Code itself. Built as a PoC on 2026-08-31 and grown from there.
+private API, no cooperation from Claude Code itself.
 
 **Three documents, three jobs.** [README.md](README.md) and [docs/GUIDE.md](docs/GUIDE.md) are for the user. This file is the *current invariants* —
 one bullet each, under stable headings, what a session must know to change the code without breaking it: the rule,
 the names to find it by, the test that holds it. [docs/DECISIONS.md](docs/DECISIONS.md) is the *why and the history*:
-dated decisions, open items, and *Findings* — the full stories (this file as it stood on 2026-09-20, 2026-09-27 and
-2026-10-12 is there verbatim). **A bullet here is not a story**: no "before" or "until", no pixel-by-pixel look, no
+dated decisions, open items, and *Findings* — the full stories. **A bullet here is not a story**: no "before" or "until", no
 who asked — the date of its decision is the pointer to all of that. **This file stays under 120 000 characters**
-(`npm run check` fails past it; Claude Code warns at 150 000): a new finding is a decision entry there and a line or
+(`npm run check` fails past it): a new finding is a decision entry there and a line or
 two here, and a bullet that grows is pared. **A comment in the code carries the date of its decision, never a
 person's words**: the request, quoted, goes in the decision entry (the board is shared). **Nothing names the real
 org, its repos or the people on its PRs** — `acme` and stand-ins, in the code, the tests and both docs; commits carry
@@ -21,13 +20,13 @@ GitHub's noreply address (this repo's `user.email`).
 scripts/launchd.sh install          # the server as a login agent, run from this checkout — the recommended setup
 scripts/launchd.sh restart [--after N]   # after a server.mjs change; the drawers stay (holders); N s first, so a recap lands
 scripts/worktree.sh new <name> | list | done <name>... | prune   # parallel work beside other sessions (below)
-mac/build.sh install                # the native app (bundles node, node_modules, lib/) into /Applications — Swift changes
+mac/build.sh install                # the native app into /Applications — Swift changes
 npm start                           # node server.mjs → http://127.0.0.1:7331, by hand
-npm test                            # node:test over test/ — pure logic, and the drawers end to end (≈45 s, four files at once)
-npm run check                       # static: scripts parse, the page compiles, vendored xterm = node_modules, shell, swiftc -typecheck, this file's size (≈10 s)
+npm test                            # node:test over test/, the drawers end to end too (≈45 s)
+npm run check                       # static: the page compiles, the tests' rules, swiftc -typecheck, this file's size (≈10 s)
 npm run verify -- "<js>"            # one expression on the live board in headless Chrome (see Verifying)
 npm run webkit -- "<body>"          # the same in WebKit, the app's engine; --shot is the compositor's own frame
-npm run perf                        # the board's cost in WebKit, and the animation rules (≈40 s; see Verifying)
+npm run perf                        # the board's cost in WebKit, and the animation rules (≈40 s)
 npm run scenario -- scripts/scenarios/<name>.mjs   # a multi-step browser check on its own server (see Verifying)
 npm run scenarios                   # all of them, one at a time, with a verdict (several minutes); `-- drawer` narrows it
 npm run map                         # rewrite the section maps at the top of server.mjs and index.html
@@ -71,7 +70,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `scripts/perf.mjs`, `lib/animcheck.mjs` | The board's CPU in WebKit on a made-up busy board, and what keeps WebKit's frames on the main thread (see Verifying) |
 | `scripts/webkit.mjs`, `webkit.swift` | The live board in a `WKWebView` (the app's engine), the window captured as its compositor drew it |
 | `scripts/fakeclaude.mjs`, `fixture.mjs` | A stand-in CLI for tests (`FAKE_TUI=fullscreen`: drawn as Claude Code's `tui: fullscreen`; `FAKE_SCREEN`: a screen given); a `~/.claude` look-alike |
-| `scripts/fakegh.mjs`, `fakejira.mjs`, `fakecode.mjs`, `fakepmset.mjs`, `fakecaffeinate.mjs`, `faketask.mjs`, `fakebrew.mjs` | `gh` (`api graphql`, `repo clone`, `pr diff`), Jira's three calls (`startFakeJira`), `code serve-web`, `pmset`, `caffeinate`, `task`, `brew install --cask zed` — what every test server runs instead of the real ones; each file's head says its knobs |
+| `scripts/fakegh.mjs`, `fakejira.mjs`, `fakegithub.mjs`, `fakecode.mjs`, `fakepmset.mjs`, `fakecaffeinate.mjs`, `faketask.mjs`, `fakebrew.mjs` | `gh` (`api graphql`, `repo clone`, `pr diff`), Jira's three calls (`startFakeJira`), `code serve-web`, `pmset`, `caffeinate`, `task`, `brew install --cask zed` — what every test server runs instead of the real ones; each file's head says its knobs |
 | `scripts/readme-board.mjs`, `-shots`, `-clips` | The README's pictures from a made-up board, never the real one: stills and clips (animated WebP, `img2webp`) → `docs/shots/` |
 | `scripts/check.sh`, `check-page.mjs`, `map.mjs` | Static checks; the section maps |
 | `test/` | `node:test` files (`npm test`) |
@@ -93,7 +92,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | Branch moved under it | (2026-10-13) `gitBranch` on every line (`HEAD` detached): a change in the same folder no git command of the chat's own explains is held (`noteBranch` → `s.driftDue`, the drift before still shown) and judged `MOVE_SLACK_MS` after it is seen (`settleDrift`, on a timer too) — only then shown or alerted. Its own: one that can change the branch (`GIT_MOVE_RE`, the subcommand whole — no stash, reset, pull, merge, merge-base) in its Bash, a sidechain's, a `!` one, a sub-agent's file (`agentsMoved`): in the hour before, or since the old branch's run naming the new one, or later in the same message naming it (a message's lines are written after its call ran; `ownMove`). Through `HEAD` and back is none; your prompt clears it and takes the head as it stood (`branchHeard`, `headOk`). The disk: each live chat's checkout's HEAD file on the poll, a worktree's its own, each read once, a move judged on a look `MOVE_SLACK_MS` after the first (a chat at work: once a line of its own came since, `DISK_HOLD_MS` at most; a late command takes it back; the boot judges at once, in silence), against the branch before a held move (`sweepHeads`, `headAt`, `noteHead` → `headNow`, `diskDrift`, `peers`). Summary `drift` (live chats only, not set aside — `driftOf`) and `headNow`; a `drift` alert for a chat at work (`driftNotify`); a click on the chip sets that move aside (`driftAcks`, `POST /api/sessions/:id/drift`). → `test/drift.test.mjs`, `branch-drift.mjs` |
 | Plan usage | `GET https://api.anthropic.com/api/oauth/usage` with Claude Code's own OAuth bearer from the keychain item *Claude Code-credentials* — never reaching the page; `USAGE=off` disables. A cap in money (`limits[]` of `kind: 'spend'`, `extra_usage`'s cents) → `used`, `limit`, `currency` (`usageWindows`). → `test/usage.test.mjs`, Findings: *plan usage* |
 | Permission prompts | the registry's `waiting` (above) — they never reach the transcript |
-| Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login shell (`RUN_SHELL`); it registers like any CLI run; a new chat is tied to its session by pid. **A folder whose Taskfile launches claude** (a task whose description mentions Claude) starts new chats as `task <name>` (`GET /api/launchers?cwd=`, `task --list --json` cached by mtime, `TASK_BIN`; `POST /api/terminals {cwd, task}`) — only where Claude Code trusts the folder or one above (2026-10-16, `claudeTrusts`, `CLAUDE_JSON`): claude is then a *descendant* of the PTY's pid, found through `ps` (`linkTermToRegistry`, `t.claudePid`), and the launcher's name is kept (`noteEnv` → `envs` → `s.env`). A resume never goes through task. **`/clear` or `/resume` in a drawer** gives the pid a new session id: `linkTermToRegistry` moves the holder, and the chat's live zsh holders with it, and pushes **both** chats, the page follows (`terminal` event). **A /clear ticks the chat it left done** (2026-10-10, any claude's): `loadRegistry` sees a process (pid and `procStart`) under another chat (`clearedFrom`), and `tickCleared` marks the old one done once the new transcript begins with the command at or after the old chat's last word; a /resume or a fork leaves it be. → `test/clear-done.test.mjs` |
+| Chat from the board | a holder runs `claude --resume <id>` or `claude` in the chat's cwd through an interactive login shell (`RUN_SHELL`); it registers like any CLI run; a new chat is tied to its session by pid. **A folder whose Taskfile launches claude** starts new chats as `task <name>` (`GET /api/launchers?cwd=`, `task --list --json` cached by mtime, `TASK_BIN`; `POST /api/terminals {cwd, task}`) — only where Claude Code trusts the folder or one above (2026-10-16, `claudeTrusts`, `CLAUDE_JSON`): claude is then a *descendant* of the PTY's pid, found through `ps` (`linkTermToRegistry`, `t.claudePid`), and the launcher's name is kept (`noteEnv` → `envs` → `s.env`). A resume never goes through task. **`/clear` or `/resume` in a drawer** gives the pid a new session id: `linkTermToRegistry` moves the holder, and the chat's live zsh holders with it, and pushes **both** chats, the page follows (`terminal` event). **A /clear ticks the chat it left done** (2026-10-10, any claude's): `loadRegistry` sees a process (pid and `procStart`) under another chat (`clearedFrom`), and `tickCleared` marks the old one done once the new transcript begins with the command at or after the old chat's last word; a /resume or a fork leaves it be. → `test/clear-done.test.mjs` |
 
 **Never written: anything under `~/.claude`.** The board is read-only against Claude Code's data. The fake claude
 refuses to run against the real directory too — known by its device and inode, at CLAUDE_DIR or any folder above it,
@@ -152,10 +151,10 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * **Every CLI the server shells out to goes through `findBin()`** — `git` too — the app's server has a bare PATH;
   `<NAME>_BIN` overrides; a file it can run, looked for again a minute after none was found. The login agent's PATH
   is the installing shell's, then the system's. **The network calls**: `gh` (PRs, a PR's diff), `git` to a checkout's
-  origin when a PR's diff is asked (`GIT_TERMINAL_PROMPT=0`), the usage endpoint (one ask at a
-  time, kept a minute, a failure half a minute — `planUsage`), Jira once the setup names a site (`jiraAsk`; its token
-  never reaches the page or the setup file — `GET /api/jira` says only where it is), VS Code's update service, and
-  Homebrew when Zed is picked and missing.
+  origin when a PR's diff is asked (`GIT_TERMINAL_PROMPT=0`), the usage endpoint
+  (`planUsage`), Jira once the setup names a site (`jiraAsk`; its token
+  never reaches the page or the setup file — `GET /api/jira` says only where it is), GitHub's REST API for the chat, VS
+  Code's update service, and Homebrew when Zed is picked and missing.
 * **VS Code Web wants the board's token** (2026-10-16; `vsweb-token` in the state folder, 0600): the page gets it from
   `POST /api/vscode-web` and opens `?tkn=` (`vswebAt`), traded by serve-web for its cookie; one on the port the board
   did not start, serving without it, is refused (`vswebWhyNot`). **Kept on its newest build** (2026-10-11,
@@ -173,7 +172,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   when behind, the page — it reloads itself once left be (`takeUpdate`, `reloadBusy`: at once if asked for there; never
   mid-update nor before the new server is back). **Its progress is the status bar's** (`updSeg`, `updRun`; the app's
   rebuild followed across the restart, `watchBuild`). **News *update now* would take is a click that takes it** (2026-10-14; `canPull`, `canBuild` →
-  `data-take`, `updNow`): *1 new commit · update*, *the app is behind · rebuild*; else it opens Settings › Updates.
+  `data-take`, `updNow`), else Settings › Updates.
   **First the new page compiles and the new server starts on a spare port** (`preflight`, the checkout's
   lib/testserver.mjs); one that does not is undone (`git reset --keep`, only while HEAD is the commit pulled), held
   (`updateHeld`) until a newer one. **The app is held against the checkout, pull or none** (2026-10-14; `readApp`,
@@ -214,6 +213,11 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * **A PR knows who had a hand in it** (2026-09-29): `avatarUrl(size: 48)` on each person (`WHO`); `prPeople` —
   author, reviewers, commenters, pushers, newest first, `PEOPLE_MAX`, no you nor bots; a PR the
   call could not see keeps its faces.
+* **The chat is a GitHub repo's issues** (2026-10-17; setup.chat `{repo}`, `chatTick`, `chatRoute`): the issues labelled
+  `room` the rooms, their comments the messages, over REST with gh's token (`ghRest`, `GITHUB_API`) — one fixed URL of
+  the newest comments with its ETag, a 304 free; `CHAT_FAST_MS` while a page watches, writes `CHAT_GAP_MS` apart
+  (`chatWrite`), the repo's mails off at first read (`chatQuiet`); only its `admin` invites,
+  removes and makes rooms. No repo: an invitation looked for every `CHAT_INVITES_MS`, never at boot. → `test/chat.test.mjs`.
 
 ## The board
 
@@ -303,9 +307,9 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   render, its memo in properties, so a tool call or an event keeps the card's node: a clauding card's last tool call
   (the summary's `doing`, `doingOf`; paths by `pathTail`), a watching card's newest event. **`phaseAnims()`** (once a
   frame before paint; `true` at once) puts every `ring`, `sonar`, `pulse`, `pix` and `pixhop` at start 0 on the
-  document clock, every card in step, by its `currentTime` first, then its `startTime` (see the invariants) — only when something new may have started: a render
+  document clock, every card in step, by its `currentTime` first, then its `startTime` — only when something new may have started: a render
   queues it when `drawCards` changed the list (it says so), `renderBoardSoon` runs a queued one at once, and a run at
-  once clears the queued one (2026-10-13; `getAnimations()` is a style pass). → `card-signals.mjs`.
+  once clears the queued one (2026-10-13). → `card-signals.mjs`.
 * **Folded (⌥⌘B), the list is a rail of squares**: `projAbbr` on a solid tint of the colour, the card's own edge
   (ring, agents, monitor, question) still read; inside the card everything is `display: none` but `.abbr` (it carries
   the tooltip) and `.rdot` (a PR at your move or a new reply, `wantOf` → `data-want`). The lanes fold on the rail too.
@@ -364,9 +368,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   light) for the edge, glow, spot, border and track; the glow's colour `--wash` is `--lift` but on
   `.card.black:not(:hover, .qsel)`, whose ground stays black. `--repo` stays the colour as set (rail, header). → the black step of `project-colors.mjs`.
 * **With no chat open the column is home** (2026-10-10; `showHome`, from `leaveChat` and a snapshot with nothing to
-  open; ⌥⌘0): the sea (`makeSea`, after ascii.rest's *ocean-sunset*, MIT; a canvas that outlives the draws, 15 fps
-  while on screen, at rest after a minute with no input (`SEA_REST_MS`), still under reduced motion;
-  `peix.sea()`), the board's facts (`about.user`, `about.host`), and the
+  open; ⌥⌘0): the sea (`makeSea`, a canvas that outlives the draws, 15 fps on screen, at rest after
+  `SEA_REST_MS` with no input, still under reduced motion; `peix.sea()`), the board's facts (`about.user`, `about.host`), and the
   day — `GET /api/today?since=<the page's midnight>`, a row per chat with its turns, questions (`a`) and monitors
   (`m`). The spans come from the transcript as folded (`noteSpan`, `s.day`), an open question from the registry
   (`live.statusAt`). `homeSoon` on session events; the day asked again each minute and on a landing.
@@ -447,8 +450,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   a project ranks by its newest chat. Every count goes by `bucket()`, where an asking chat is a ready one — only the
   order knows. **Each group has a lane head** (`laneHtml`, `.gsep.lane.<group>`, its count at the right; none under a
   query) that folds it (`data-lane`, `foldLane`, `prefs.lanesShut`; Idle and Done folded at first; the harness opens
-  every lane unless a scenario's `prefs` say otherwise). The Clauding head's mark is Claude in pixels (`PIX_SHEET`,
-  `pix`, `pixhop`). **A day label over each run of one day in a lane** (`dayHtml()`, `dayBefore`, `dayName()`) **but
+  every lane unless a scenario's `prefs` say otherwise). **A day label over each run of one day in a lane** (`dayHtml()`, `dayBefore`, `dayName()`) **but
   today's** (2026-10-14): newest first, what stands over a lane's first label is today. **All caught up** (`ZERO_HTML`, `caughtUp`): no ready chat and no question, a still head where
   Ready goes; reached from a ✓ (`lastTickAt`) it sparks once. **Your move and new replies are the funnel's filters,
   never lanes.** **A long lane holds back** (2026-10-13; `LANE_CAP` 30, Idle and Done): its newest cards and a
@@ -491,19 +493,21 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   anything else asking do. `peix.state().timeline`. → `timeline.mjs`.
 * **The status bar is the machine at the window's foot** (2026-10-09; `#sbar`,
   `renderBar`, `body`'s grid row 2): `#sbFind` (`#filters`, in the markup), `#sbLeft` (the connection, `bar.conn`, its
-  fish the SSE light and its click the About box; the asking and monitor counts while any; the update, `updSeg`),
+  fish the SSE light and its click the About box; the asking and monitor counts while any; the chat, `chatSeg`; the update, `updSeg`),
   `#sbPeople` (`#people`, in the markup), `#sbSwim`, and `#sbRight` — the machine (`prefs.barStats`, `setBarStats`, also a right-click; `GET /api/stats?want=…`
   every 3 s, `machineStats`, memory kept `MEM_EVERY_MS`), the plan usage as pie meters (`sbMeter`, `uShort`, `uGrant`) — a click lifts its rows (`usageRows`, `uColor`, `uPace`/`uSpan`, `.umoney`),
-  both awake switches (`#sbAwake`, `#sbLid`), and the clock (24-hour, `hourCycle: 'h23'`; `clockTick`). `#sbLeft` and
-  `#sbRight` are drawn by markup (`setHtml`); **`#filters` and `#people` are never redrawn by the bar**. **The fish** (`swimAt(n)`, n
-  the clauding chats and their agents): one `swim` animation whose pace is its length (`swimPaceTo`: its place kept —
-  never `updatePlaybackRate`, a rate other than 1 keeps WebKit's frames on the main thread), never still; a span of
-  two svgs, body (`.fb`) and tail (`.ft`), **never SVG groups** — WebKit composites no group's transform, and the wag
-  never stops (2026-10-13); `fishAt` reads where it is from the swim's own clock, never a rect, and `feed` (its
-  bubbles) is a frame loop only while one is out, reading no layout; a click is ⌥⌘A; `peix.state().swim`. → `status-bar.mjs`, `small-motions.mjs`.
+  both awake switches (`#sbAwake`, `#sbLid`), and the clock (`clockTick`, 24-hour). `#sbLeft` and
+  `#sbRight` are drawn by markup (`setHtml`); **`#filters` and `#people` are never redrawn by the bar**. **The fish** (`swimAt(n)`): one `swim` animation whose pace is its length (`swimPaceTo` — never
+  `updatePlaybackRate`: a rate other than 1 keeps WebKit's frames on the main thread); two svgs, body (`.fb`) and tail
+  (`.ft`), **never SVG groups** (WebKit composites no group's transform); `fishAt` reads the swim's clock, never a rect,
+  and `feed` is a frame loop only while a bubble is out; a click is ⌥⌘A; `peix.state().swim`. → `status-bar.mjs`, `small-motions.mjs`.
 * **The plan usage is asked** by `loadUsage()` on load, every `USAGE_EVERY_MS` while visible, after a reset, on coming
   back; backing off on failure, keeping the last numbers (`.stale`). `USAGE=off` (every test server) leaves it out of
   the bar. → `usage-bar.mjs`.
+* **The chat's panel is `#room`** (2026-10-17; `chatOpen`, non-modal, from the bar's `#sbChat`): rooms as tabs, the
+  messages drawn by `chatMd` alone (no raw HTML or image; an https or mailto link, to the system's
+  browser), the admin's people (`chatPeopleDraw`, suggested from `prPeople`); Settings › Chat joins, makes,
+  leaves (`chatSetHtml`). **No chat code reaches a drawer, a claude or `md()`** (test/chat.test.mjs). → `chat-room.mjs`.
 * **State lives in four places**: the server's `~/Library/Application Support/peixAIrada/state.json` (`STATE_FILE`;
   ticks, seen, for good, unlinked PRs, a branch's move set aside, named projects, titles, pins, hidden, `envs`, notifications, PR turns,
   awake, the update's switch and record, the worktrees it made) and the user's `~/.config/peixairada/config.json` (the setup, below) — both shared by the app and every
@@ -515,7 +519,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   the home as `~/…`; **re-read on a hand edit** (`reloadConfig`, a stat every `CONFIG_POLL_MS` against
   `configStamp`); one that does not parse is `error` on the config, the board keeps what it had and a PUT is refused
   (409). Keys: `roots` (`[{dir, org}]`), `quick` (⌥⌘O's project), `projects` (`{name: {abbr, color}}`, by shown
-  name), `jira` (`{site, email}`; `jiraSite`, http only on loopback). `cleanSetup` shapes it (strict for a PUT); a key
+  name), `jira` (`{site, email}`; `jiraSite`, http only on loopback), `chat` (`{repo}`). `cleanSetup` shapes it (strict for a PUT); a key
   never set is the default at read time (`boardConfig()`: the roots from `ORG_DIR` / `ORG`, else none). `GET/PUT
   /api/config` (a PUT replaces the keys it gives), a `config` event, `state.config`, `configChanged()`. **`ask` is the
   first run** (no roots set or in the environment, the file readable): `#welcome` (`welcomeSync`), filled from `GET
@@ -541,7 +545,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   main.swift does not forward or forwards unanswered, or an *again* row no `hot…Key` answers. The letters: **T** the chat's zsh tab (`hotShell()`,
   `s.shells`), **E** VS Code Web in the pane, **V** the folder in VS Code's
   own window (`hotVsCodeApp`), **G** the chat's PR on GitHub
-  (several: the picker — from one of them the next selected, ⌥⌘G again the column's, `prPickAgain`; none: the repo), **C** the chat's claude (`termAction()`, the `>_`
+  (several: the picker, `prPickAgain`; none: the repo), **C** the chat's claude (`termAction()`, the `>_`
   path), **W** the tab the keys are in, closed (`hotCloseTab()` → `dropTab()`), **P** projects, **K** chats
   (`chatFields()`), **F** the list's box (`hotFind()`), **B** the rail (`toggleSessions`), **Y** themes (`themesOpen`),
   **L** the launcher (`pickOpen('launch')`), **D** changes (`hotDiff`), **J** the timeline (`hotTimeline`), **A** the overview (`ovOpen`), **0** home (`hotHome`), **N** a new
@@ -551,7 +555,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   (`hotReload`). **C T G E D J pressed again from the tab they bring up** (a claude live here, a
   zsh, a page at its one PR, the editor, the changes, the timeline — the HOTKEYS entries are `hot…Key`, `zoomAgain` before the plain `hot…`) fill
   the column with that half, and back (`toggleZoom`, see *The chat column's two halves*); `typeInShell` and the launcher
-  call the plain ones. Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A `dialog[open]` swallows them;
+  call the plain ones. Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A `dialog[open]` swallows them (`#hmenu` and `#room` close instead);
   nothing to act on is a `note()`; a key held down is one press (`e.repeat`, the arrows aside) and `termAction` one
   press per chat at a time (`termAsking`). **A late answer acts on its own chat only**: `renderHead` draws the open
   chat's header alone, a new drawer attaches through `showTerminal`, and ⌥⌘T's zsh and the editor's page wait on a chat
@@ -588,7 +592,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   the pointer is below the strip. **The fill gone on while the page heard it
   off says so once** (`fillHint`, under the head row): never on a load that finds it on (`state.fillHeard`), the
   first `FILL_HINTS` times in all. → `fill-hint.mjs`. The page hears `peixFill(on, notch)` — the strip's height and the housing's x range in
-  CSS px, null without one; only when new (`fillSaid`, 2026-10-15) — and **`layoutNotch()` lays the top row round it** (reads, then writes): the header's title left of the housing and its chips right
+  CSS px, null without one; only when new (`fillSaid`, 2026-10-15) — and **`layoutNotch()` lays the top row round it**: the header's title left of the housing and its chips right
   (`.shead.hole`), unless the whole title does not fit (a `Range` measures it, never `scrollWidth`): `.tright`, the title jumps the housing — or, floating, runs under it (`.tunder`); what has not the room
   pads down by the strip (`.npad`).
   → `notch.mjs`.
@@ -706,7 +710,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * **Both web views are inspectable** (main.swift sets it): Safari → Develop reaches the real app.
 * **Nobody looking, the board is hidden** (2026-10-13, `watchAway`, `showAway`): the screen locked, the display
   asleep, the screen saver up or the session switched away hides the window's content — every web view in it, so WebKit
-  stops their frames and animations (a page it knows is hidden costs ~0; the board ran at ~40 % of a core locked) —
+  stops their frames and animations —
   until all have cleared or the app comes forward; the first responder is put back. The app log says `away: …`.
 * **The app's server lifecycle** (`ServerController`, main-thread throughout): `start` adopts a server already
   answering, waits for the launchd agent when its plist is installed, else runs the bundled one — one at a time, its
@@ -936,10 +940,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   `<system-reminder>` blocks (strip them *first* — a prompt can follow one) and `<local-command…>` synthetic lines.
 * `.cards > * { flex: none }` is load-bearing; `.card { --repo: initial }` too (custom properties inherit), and
   `.card { isolation: isolate }`: the ring and its cover sit at z-index -1 under the card's background only because
-  the card is its own stacking context. **So is `#slist { isolation: isolate }`** (2026-10-13): in a scroller that is
-  no stacking context WebKit makes every such card a layer of its own, with a clip layer. A new scroller of positioned boxes gets one too. **And each card is a layer inside it**
-  (`#slist > .card { will-change: transform }`): painted into the list's tiles instead, a scroll repainted every card
-  it exposed and a glow under the pointer its tile.
+  the card is its own stacking context. **So is `#slist { isolation: isolate }`** (2026-10-13): A new scroller of positioned boxes gets one too. **And each card is a layer inside it**
+  (`#slist > .card { will-change: transform }`).
 * `.shead { min-width: 0 }` and a fixed `flex-basis` on `.shead h2`; PR chips are direct children of the header.
 * **Every grid row in the chat column is placed by hand** — `#chat`'s, each half's `.ptabs` / `.gbody`, and
   `#sessions`' (whose *column* is placed too: the timeline, the glass and the ends lie over the list's cell). A hidden
@@ -953,9 +955,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   anything that moves on a card is phased to the document clock after the render (`phaseAnims()`), and nothing
   continuous animates a custom property, a gradient or a colour, nor eases by `steps()` — WebKit composites none: a
   held frame is two keyframes on a linear easing (`pix`, 2026-10-15).
-* **A running animation is moved by its `currentTime`, never its `startTime` alone**: WebKit — the app — hands a
-  transform to the compositor, and a start set after it has reads back from the script but never reaches the screen;
-  Chrome takes either, so the harness cannot see it. The proof is the compositor's frame: `npm run webkit`.
+* **A running animation is moved by its `currentTime`, never its `startTime` alone**: WebKit's compositor never
+  sees a start set after it has; Chrome takes either, so the harness cannot see it. The proof is the compositor's frame: `npm run webkit`.
 * **In WebKit one main-thread animation makes every frame a style pass and a walk of every layer** (2026-10-13): a
   running animation needs a box that is drawn — WebKit keeps one on a `display: none` pseudo-element. The cost is read off the web process (`sample <WebContent pid>`), never Chrome.
 * **WebKit keeps every `animate()` with a timeline** (2026-10-15) with its element, walking the ended each frame:
@@ -994,8 +995,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 ## Verifying changes
 
 **Do not claim a UI change works without loading it in a real browser** — the screen shows what code hides.
-Look at the screenshots (`Read` renders
-PNGs). **After any edit to the page, load it**: `check-page` only compiles, and a `const` read before its line kills
+Look at the screenshots. **After any edit to the page, load it**: `check-page` only compiles, and a `const` read before its line kills
 the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `npm run verify` reads the live one.
 
 * `npm run verify -- "<js>"` evaluates one expression on the live board, handed its key; `--hash <id>` opens a chat
@@ -1037,12 +1037,11 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   `REGISTRY_POLL_MS` 1200, `TASK_GRACE_MS` 400, `CONFIG_POLL_MS` 200, `POWER_POLL_MS` 1200; its own `ORG_DIR` (no welcome), `CLAUDE_DIR`
   (empty unless a fixture), config beside its `STATE_FILE`; the fakes (`GH_BIN` — only the fields the query asks, `FAKEGH_FAIL` —, `caffeinate`, `pmset` with
   `AWAKE_ADMIN=none`, `CODE_BIN`, `TASK_BIN`; `CLAUDE_BIN` `noclaude.mjs` unless `fake`), `VSWEB_PORT` free, `UPDATE_DIR` empty; Jira's token in its own file (`JIRA_TOKEN_FILE`), no inherited `JIRA_API_TOKEN`; a `ZDOTDIR`
-  with no rc files; `VSWEB_FRESH_MS` 0; `UPDATE_EVERY_MS` 0; `USAGE=off`; `APP_DIRS` its own, `BREW_BIN` the fake,
+  with no rc files; `VSWEB_FRESH_MS` 0; `UPDATE_EVERY_MS` 0; `USAGE=off`; `GITHUB_API` nowhere; `APP_DIRS` its own, `BREW_BIN` the fake,
   `LSREGISTER_BIN` `/usr/bin/true`; `KEY_MODE=enforce`, `open` a fake; no inherited `CONFIG_FILE`, `TERMS_DIR` or XDG dirs. Up is its
   `listening` line (a port taken first moves it to a fresh one); stdin a pipe whose end stops it (`PEIX_TEST_PARENT`); `meta.env` is spread last. `waitFor(fn, {timeout, what})`, `srv.post(path, body)` and `tmpDir()`
   are the tests' polls, POSTs and dirs (a bare `mkdtempSync` fails `npm run check`); every test process has its own
-  state (`test/env.mjs`, preloaded). **A wait's timeout is for what never comes** (15 s by default, 2026-10-13):
-  every spawn is slow on this Mac under load.
+  state (`test/env.mjs`, preloaded). **A wait's timeout is for what never comes** (15 s by default, 2026-10-13).
 * **Test against the fake claude, not real chats**: `scripts/fakeclaude.mjs` via `CLAUDE_BIN` (`fake: true`) is
   instant and touches nothing. A test against the real `~/.claude` names it as `claudeDir` outright (read-only), uses
   a stale chat and `DELETE`s the terminals it made.
@@ -1071,3 +1070,5 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   or closed PRs are cached forever.
 * **The app is signed for this machine only**, not for distribution.
 * **Chat-level pins** were dropped for sorting by your own last touch.
+* **Anonymous people in the chat** — GitHub has no anonymous write; a keyed lane on Nostr relays, or a Cloudflare
+  Durable Object, is the plan for it: `docs/studies/chat-transports.md`.
