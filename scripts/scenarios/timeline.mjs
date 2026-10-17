@@ -133,5 +133,56 @@ export default async function (ctx) {
   // "to the move" in the Now bar
   await ctx.evaluate(`document.querySelector('#tv .tvnr[data-k="you"] .tvgo').click()`);
   await T(`document.querySelector('#tv .tvr.flash')?.textContent.includes('mara')`, 'the move lit');
+
+  // N1 — the chips: the chat and each PR, the merged one only mentioned off
+  const chips = () => ctx.evaluate(`JSON.stringify([...document.querySelectorAll('#tv .tvc')].map(c => (c.classList.contains('on') ? '+' : '-') + c.textContent.trim()))`).then(JSON.parse);
+  const click = (sel, alt = false) => ctx.evaluate(`document.querySelector(${JSON.stringify(sel)}).dispatchEvent(new MouseEvent('click', { bubbles: true, altKey: ${alt} }))`);
+  const chip = n => `#tv .tvc[data-url$="/${n}"]`;
+  out.chips = await chips();
+  a.deepEqual(out.chips, ['+Chat', '-#470merged', '+#479answered', '+#482your move', '+#486let go'], `the chips: ${out.chips}`);
+  // #479 out: its events and its lane go
+  await click(chip(479));
+  await T(`!document.querySelector('#tv .tvr.ev[data-url$="/479"]')`, '#479 out of the timeline');
+  a.equal((await rows())[0].lanes, 3, 'its lane gone');
+  // ⌥-click #482: it alone, and the turns about it (N3's About these, the default once fewer than in play)
+  await click(chip(482), true);
+  await T(`location.hash.endsWith('/tl:p=storefront.482')`, 'the narrow in the address');
+  out.solo = await rows();
+  a.ok(out.solo.every(r => !r.k.startsWith('ev') || /#482/.test(r.t)), 'only #482\'s events');
+  a.equal(out.solo.filter(r => r.k === 'you').length, 2, `the two prompts about #482: ${out.solo.filter(r => r.k === 'you').map(r => r.t)}`);
+  a.equal(await ctx.evaluate(`document.querySelector('#tv .tvseg [data-turns="about"]').getAttribute('aria-pressed')`), 'true', 'About these');
+  await ctx.shot('2-solo');
+  // All turns: every prompt again, #482's events alone
+  await click('#tv .tvseg [data-turns="all"]');
+  await T(`document.querySelectorAll('#tv .tvr.you').length === 4`, 'every turn again');
+  // ⌥-click it again: everything in play, the address the chat's alone
+  await click(chip(482), true);
+  await T(`location.hash === '#${id}'`, 'in play again: the address the chat\'s alone');
+  // the mentioned one in: its merge
+  await click(chip(470));
+  await T(`[...document.querySelectorAll('#tv .tvr.ev[data-url$="/470"]')].some(r => r.textContent.includes('merged'))`, '#470\'s merge in the timeline');
+  // the right-click menu on a chip
+  out.ctx = await ctx.evaluate(`(() => { const c = document.querySelector('${chip(486)}').getBoundingClientRect(); document.querySelector('${chip(486)}').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: c.left + 4, clientY: c.top + 4 })); return [...document.querySelectorAll('#ctxm button')].map(b => b.textContent); })()`);
+  a.deepEqual(out.ctx, ['Only this one', 'Leave it out', 'Open it on GitHub'], `the chip's menu: ${out.ctx}`);
+  await ctx.evaluate(`document.querySelector('#ctxm button').click()`);
+  await T(`location.hash.endsWith('/tl:p=storefront.486')`, '#486 alone from the menu');
+  // a reload keeps the narrow and the tab
+  await ctx.reload();
+  await ctx.openChat(id);
+  await T(`!document.querySelector('#tv').hidden && document.querySelectorAll('#tv .tvc.on[data-url]').length === 1 && document.querySelector('#tv .tvc.on[data-url]').dataset.url.endsWith('/486')`, 'the narrow and the tab after a reload');
+  // N5 — the header's your-move tag: the timeline on that PR alone, at its move
+  await ctx.evaluate(`document.querySelector('#shead .hmove').click()`);
+  await T(`document.querySelector('#tv .tvc.on[data-url]')?.dataset.url.endsWith('/482') && document.querySelectorAll('#tv .tvc.on[data-url]').length === 1 && document.querySelector('#tv .tvr.flash')?.textContent.includes('mara')`, 'soloed on #482 and gone to mara\'s move');
+  // …and an alert's address: the same
+  await click(chip(482), true);   // everything in play first
+  await ctx.evaluate(`location.hash = '${id}/tl:p=storefront.479'`);
+  await T(`document.querySelector('#tv .tvc.on[data-url]')?.dataset.url.endsWith('/479') && document.querySelectorAll('#tv .tvc.on[data-url]').length === 1`, 'the alert\'s address soloed on #479');
+  // narrow: the chips fold into one Scope button
+  await ctx.send('Emulation.setDeviceMetricsOverride', { width: 860, height: 860, deviceScaleFactor: 2, mobile: false });
+  await ctx.settle();
+  out.narrow = await ctx.evaluate(`JSON.stringify({ chips: getComputedStyle(document.querySelector('#tv .tvchips')).display, scope: document.querySelector('#tv .tvscope').textContent, shown: getComputedStyle(document.querySelector('#tv .tvscope')).display !== 'none' })`).then(JSON.parse);
+  a.deepEqual(out.narrow, { chips: 'none', scope: 'Scope ▾ 2 of 5', shown: true }, JSON.stringify(out.narrow));
+  await ctx.shot('3-narrow');
+  await ctx.send('Emulation.clearDeviceMetricsOverride');
   return out;
 }

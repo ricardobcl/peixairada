@@ -1382,9 +1382,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     open(sessionId: id)
   }
 
-  private func open(sessionId: String) {
+  private func open(sessionId: String, hash: String = "") {
     showWindow(nil)
-    web.evaluateJavaScript("location.hash = \(jsLit(sessionId))", completionHandler: nil)
+    web.evaluateJavaScript("location.hash = \(jsLit(hash.isEmpty ? sessionId : hash))", completionHandler: nil)
   }
 
   private func refreshBadges() {
@@ -1432,7 +1432,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                title: body["title"] as? String ?? "",
                snippet: body["snippet"] as? String ?? "",
                sessionId: body["sessionId"] as? String ?? "",
-               drawer: body["drawer"] as? Bool ?? false)
+               drawer: body["drawer"] as? Bool ?? false,
+               hash: body["hash"] as? String ?? "")
       }
     case "pane":
       let places: [PanePlace] = (body["panes"] as? [[String: Any]] ?? []).compactMap { r in
@@ -1516,7 +1517,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
   }
 
   /// `heading` is the server's own when it has one (a PR come round to you: "Your move · repo#n"), else the kind's.
-  private func notify(kind: String, heading given: String, project: String, title: String, snippet: String, sessionId: String, drawer: Bool = false) {
+  /// `hash` is where a click lands when it is not the chat alone — a PR's alert, its timeline on that PR (2026-10-17).
+  private func notify(kind: String, heading given: String, project: String, title: String, snippet: String, sessionId: String, drawer: Bool = false, hash: String = "") {
     let heading = !given.isEmpty ? given : (kind == "reply" ? "Claude replied" : "Claude is asking you") + (project.isEmpty ? "" : " · \(project)")
     let body = [title, snippet].filter { !$0.isEmpty }.joined(separator: "\n")
     guard useUN else {
@@ -1527,7 +1529,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     content.title = heading
     content.body = body
     content.sound = .default
-    content.userInfo = ["sessionId": sessionId]
+    content.userInfo = ["sessionId": sessionId, "hash": hash]
     content.categoryIdentifier = sessionId.isEmpty ? "" : kind == "reply" ? (drawer ? "reply-drawer" : "reply") : "later"
     let req = UNNotificationRequest(identifier: sessionId.isEmpty ? UUID().uuidString : sessionId,
                                     content: content, trigger: nil)
@@ -1551,6 +1553,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                               didReceive response: UNNotificationResponse,
                               withCompletionHandler completionHandler: @escaping () -> Void) {
     let id = response.notification.request.content.userInfo["sessionId"] as? String ?? ""
+    let hash = response.notification.request.content.userInfo["hash"] as? String ?? ""
     switch response.actionIdentifier {
     case "reply" where !id.isEmpty:   // into the chat's Claude, by the page (peixReply): the drawer's socket is the page's to speak
       let text = (response as? UNTextInputNotificationResponse)?.userText ?? ""
@@ -1564,7 +1567,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                                         trigger: UNTimeIntervalNotificationTrigger(timeInterval: 15 * 60, repeats: false))
       UNUserNotificationCenter.current().add(again) { err in logLine("notify: later \(err.map { "failed: \($0.localizedDescription)" } ?? "in 15 min")") }
     default:
-      if !id.isEmpty { open(sessionId: id) } else { showWindow(nil) }
+      if !id.isEmpty { open(sessionId: id, hash: hash) } else { showWindow(nil) }
     }
     completionHandler()
   }

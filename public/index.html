@@ -1766,7 +1766,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   #tv .tvseg { display: inline-flex; padding: 2px; border-radius: var(--r-3); background: var(--ctl); flex: none; }
   #tv .tvseg button { font: inherit; font-size: var(--fs-sm); padding: 1px 9px; border: 0; border-radius: var(--r-2); background: none; color: var(--muted); cursor: pointer; white-space: nowrap; }
   #tv .tvseg button[aria-pressed="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .3); }
-  @container tv (max-width: 640px) { #tv .tvchips { display: none; } #tv .tvscope { display: inline-flex; } }
+  @container tv (max-width: 460px) { #tv .tvchips { display: none; } #tv .tvscope { display: inline-flex; } }   /* a half split three ways or narrower: the chips wrap above the switches until then */
   #tv .tvl { overflow: auto; overscroll-behavior: contain; position: relative; padding-top: 6px; }
   #tv .tvr { display: grid; grid-template-columns: 52px var(--lw, 14px) minmax(0, 1fr); column-gap: 8px; padding: 0 14px 0 6px; min-height: 26px; }
   #tv .tvr:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
@@ -4795,7 +4795,7 @@ const toolName = n => {
     if (s.done) return '';
     const play = inPlay(s), lead = movedPrs(s)[0]?.url;
     if (!play.some(x => x.pr.url !== lead)) return '';
-    return `<div class="prpips">${play.slice(0, 3).map(({ pr, r }) => `<span class="pp" data-k="${r.k}">${pchip(s, pr)}<i></i>${PIP_SAY[r.k]}</span>`).join('')}${play.length > 3 ? '<span class="pp more">…</span>' : ''}</div>`;
+    return `<div class="prpips">${play.slice(0, 3).map(({ pr, r }) => `<span class="pp" data-k="${r.k}" data-url="${esc(pr.url)}">${pchip(s, pr)}<i></i>${PIP_SAY[r.k]}</span>`).join('')}${play.length > 3 ? '<span class="pp more">…</span>' : ''}</div>`;
   }
   /** Your word just closed a round, and nothing is at your move: the card says so, and how long ago, for ANSWERED_MS. */
   function answeredHtml(s) {
@@ -6303,6 +6303,9 @@ const toolName = n => {
     if (act) { e.stopPropagation(); tickDone(card.dataset.id, act.dataset.act === 'done', card, act, e.altKey); return; }
     const mv = e.altKey && e.target.closest('.prmove');
     if (mv) { e.stopPropagation(); letGo(state.sessions.get(card.dataset.id), mv); return; }   // ⌥ on "your move": this round let go
+    // the move line, or a PR's mark beside it: the chat, its timeline on that PR, at the move (2026-10-17)
+    const pm = e.target.closest('.prmove, .prpips .pp[data-url]'), cs = pm && state.sessions.get(card.dataset.id);
+    if (pm && cs) { e.stopPropagation(); openSession(cs.id); tvOpenOn(cs, pm.dataset.url || movedPrs(cs)[0]?.url); return; }
     const from = card.dataset.id !== state.current && flyFrom(card);
     openSession(card.dataset.id);
     if (from) flyTitle(from);
@@ -6874,6 +6877,11 @@ const toolName = n => {
       return [...BAR_STATS.map(([k, t]) => ({ t, on: has(k), check: true, fn: () => setBarStats(has(k) ? prefs.barStats.filter(x => x !== k) : [...prefs.barStats || [], k]) })),
         { hr: true }, { t: 'Status bar settings…', fn: () => settingsAt('look', '#sbarStats') }];
     }
+    const tvc = e.target.closest('#tv .tvc[data-url]');   // a PR's chip in the timeline (2026-10-17): alone, in or out, its page
+    if (tvc) {
+      const s = state.sessions.get(state.current), url = tvc.dataset.url, sc = s && tvScope(s, tvModel(s)); if (!s) return null;
+      return [{ t: sc.solo === url ? 'Everything in play again' : 'Only this one', fn: () => tvSolo(s, url) }, { t: sc.on.has(url) ? 'Leave it out' : 'Bring it in', fn: () => tvToggle(s, url) }, { hr: true }, { t: 'Open it on GitHub', fn: () => openExternal(url, { s }) }];
+    }
     const card = e.target.closest('#slist > .card'), chip = e.target.closest('.cpr[data-url], .hpr[data-url], .prrow[data-url]'), sq = e.target.closest('.sq.pick[data-name]');
     if (chip) {
       const s = state.sessions.get(card?.dataset.id || state.current), url = chip.dataset.url; if (!s || !url) return null;
@@ -6961,10 +6969,11 @@ const toolName = n => {
       note(seen(el), `Could not let it go: ${err.message}`, true);
     }), fade ? UNLINK_MS : 0);
   }
-  $('#shead').addEventListener('click', e => {   // ⌥ on the header's "your move": this round let go
-    const mv = e.altKey && e.target.closest('.hmove'); if (!mv) return;
+  $('#shead').addEventListener('click', e => {   // ⌥ on the header's "your move": this round let go — a click, its PR's timeline (2026-10-17)
+    const mv = e.target.closest('.hmove'); if (!mv) return;
     e.preventDefault(); e.stopPropagation();
-    letGo(state.sessions.get(state.current), mv);
+    const s = state.sessions.get(state.current);
+    if (e.altKey) letGo(s, mv); else tvOpenOn(s, movedPrs(s)[0]?.url);
   }, true);
   $('#prlist').addEventListener('click', e => {   // before #chat's link handler, which would open the PR
     const r = e.altKey && e.target.closest('.prrow[data-url]'); if (!r) return;
@@ -8425,7 +8434,7 @@ const toolName = n => {
   }
   /** What the timeline reads: the turns, each with the PRs it is about; every PR event, the chat's own tied to its turn. */
   function tvModel(s) {
-    const prs = s.prs || [], byUrl = new Map(prs.map(p => [p.url, p])), log = tvLogOf(s);
+    const prs = [...s.prs || []].sort((a, b) => (a.number || 0) - (b.number || 0) || a.label.localeCompare(b.label)), byUrl = new Map(prs.map(p => [p.url, p])), log = tvLogOf(s);   // by number, as their hues go
     const led = new Map((log?.prs || []).filter(p => byUrl.has(p.url)).map(p => [p.url, p]));
     const roundsOf = url => led.get(url)?.rounds || byUrl.get(url)?.rounds || [];
     const turns = tvTurns(state.entries), byTool = new Map();
@@ -8475,7 +8484,95 @@ const toolName = n => {
     if (!play.size) for (const p of m.prs) if (p.state === 'open' || p.state === 'draft') play.add(p.url);
     return play;
   }
-  const tvScope = (s, m) => ({ chat: true, on: tvInPlay(s, m), turns: 'all', dens: 'fold' });
+  // The narrow (2026-10-17, the study's T6): which of the chat and its PRs the timeline shows — and the PR list's tracks
+  // — one value per chat, kept only where it differs from in play's (tvNarrow), across a reload (keepTabs) and in the
+  // address beside the chat's id (`#<id>/tl:p=repo.482&t=about`, tvHash). A chip per PR and one for the chat: a click
+  // in or out, ⌥-click it alone, ⌥-click again everything in play; All turns or About these — the turns tied to a PR
+  // shown, the default once the PRs are fewer than in play; Folded or Everything.
+  const tvNarrow = new Map();   // chat id → { on: [url…], chat: false, turns, dens }, each only when not the default
+  function tvScope(s, m) {
+    const play = tvInPlay(s, m), n = tvNarrow.get(s.id) || {}, urls = new Set(m.prs.map(p => p.url));
+    const on = n.on ? new Set(n.on.filter(u => urls.has(u))) : play, fewer = !!n.on && [...play].some(u => !on.has(u));
+    return { play, on, chat: n.chat !== false, turns: n.turns || (fewer && on.size ? 'about' : 'all'), dens: n.dens || 'fold', solo: on.size === 1 ? [...on][0] : null, n };
+  }
+  const sameSet = (a, b) => a.size === b.size && [...a].every(x => b.has(x));
+  function tvSet(s, change) {
+    const n = { ...tvNarrow.get(s.id), ...change };
+    for (const k of Object.keys(n)) if (n[k] === undefined) delete n[k];
+    if (Object.keys(n).length) tvNarrow.set(s.id, n); else tvNarrow.delete(s.id);
+    tvAddress(s); keepTabsSoon();
+    if (state.current === s.id) { renderTimeline(s); if (prefs.prsOpen) renderHead(s); }
+  }
+  function tvToggle(s, url) {
+    const sc = tvScope(s, tvModel(s)), on = new Set(sc.on);
+    if (on.has(url)) on.delete(url); else on.add(url);
+    tvSet(s, { on: sameSet(on, sc.play) ? undefined : [...on] });
+  }
+  /** ⌥-click: that PR alone — or, alone already, everything in play again. The chat's chip alone is the chat alone. */
+  function tvSolo(s, url) {
+    const sc = tvScope(s, tvModel(s));
+    if (url === 'chat') return tvSet(s, sc.chat && !sc.on.size ? { on: undefined, chat: undefined, turns: undefined } : { on: [], chat: undefined, turns: undefined });
+    tvSet(s, sc.solo === url && sc.n.on ? { on: undefined, turns: undefined } : { on: [url], turns: undefined });
+  }
+  const tvLabel = p => p.label.replace('#', '.');   // repo#482 → repo.482: a # is the address's own
+  /** The narrow as the address carries it after the chat's id — empty for in play's. */
+  function tvHash(id, n = tvNarrow.get(id)) {
+    const s = state.sessions.get(id); if (!n || !s) return '';
+    const by = new Map((s.prs || []).map(p => [p.url, p])), q = [];
+    if (n.on) q.push('p=' + n.on.map(u => by.get(u)).filter(Boolean).map(tvLabel).join(','));
+    if (n.chat === false) q.push('c=0');
+    if (n.turns) q.push('t=' + n.turns);
+    if (n.dens) q.push('d=' + n.dens);
+    return q.length ? '/tl:' + q.join('&') : '';
+  }
+  function tvAddress(s) { if (state.current !== s.id) return; const h = '#' + s.id + tvHash(s.id); if (location.hash !== h) history.replaceState(null, '', h); }
+  /** The narrow an address names (a link's, a reload's, an alert's), as the chat's: true when it names one. */
+  function tvFromHash(s) {
+    const t = /\/tl:([^/]*)$/.exec(location.hash)?.[1]; if (t == null || !s) return false;
+    const q = new URLSearchParams(t), by = new Map((s.prs || []).map(p => [tvLabel(p).toLowerCase(), p.url])), n = {};
+    if (q.has('p')) n.on = q.get('p').split(',').map(l => by.get(l.toLowerCase())).filter(Boolean);
+    if (q.get('c') === '0') n.chat = false;
+    if (['all', 'about'].includes(q.get('t'))) n.turns = q.get('t');
+    if (q.get('d') === 'all') n.dens = 'all';
+    if (Object.keys(n).length) tvNarrow.set(s.id, n); else tvNarrow.delete(s.id);
+    return true;
+  }
+  /** The timeline soloed on one PR and gone to its move (N5): the header's your-move tag, a card's move line or its
+   *  mark for that PR, an alert that it came round to you. */
+  function tvOpenOn(s, url) {
+    if (!s || !(s.prs || []).some(p => p.url === url)) return;
+    tvNarrow.set(s.id, { ...tvNarrow.get(s.id), on: [url] }); delete tvNarrow.get(s.id).turns;
+    tv.goto = { id: s.id, url };
+    if (!timelineOpen.has(s.id)) { timelineOpen.add(s.id); openNewTab(s, 'timeline'); } else setTab(s, 'timeline');
+    tvAddress(s); syncTerm(s); focusBoard();
+  }
+  const tvSoloHash = (id, url) => { const p = state.sessions.get(id)?.prs?.find(x => x.url === url); return p ? `${id}/tl:p=${tvLabel(p)}` : id; };
+  /** A PR's chip says where it stands, as its row does. */
+  const tvState = pr => { const r = roundOf(pr); return r ? [r.k, { you: 'your move', let: 'let go', ok: 'answered', them: 'their move' }[r.k]] : [pr.state || 'open', pr.state || 'open']; };
+  function tvChip(s, sc, p) {
+    const on = sc.on.has(p.url), [k, w] = tvState(p);
+    return `<button type="button" class="tvc${on ? ' on' : ''}" data-url="${esc(p.url)}" aria-pressed="${on}" style="--h:${prHue(s, p)}" title="${esc(`${p.label}${p.title ? ` — ${p.title}` : ''}\nclick: ${on ? 'out of' : 'into'} the timeline · ⌥-click: ${sc.solo === p.url && sc.n.on ? 'everything in play again' : 'it alone'} · right-click: more`)}"><i></i>${esc(p.label.replace(/^.*?#/, '#'))}<span class="st" data-k="${esc(k)}">${esc(w)}</span></button>`;
+  }
+  function tvBarHtml(s, m, sc) {
+    // every PR a chip while they are few; past that the ones in play and those switched on, the rest behind +n
+    const few = m.prs.length <= TV_LANES, shown = few ? m.prs : m.prs.filter(p => sc.play.has(p.url) || sc.on.has(p.url)), rest = m.prs.length - shown.length;
+    const all = 1 + m.prs.length, nOn = (sc.chat ? 1 : 0) + sc.on.size;
+    const seg = (key, v, w) => `<button type="button" data-${key}="${v}" aria-pressed="${sc[key] === v}">${w}</button>`;
+    return `<span class="tvchips" role="group" aria-label="What the timeline shows"><button type="button" class="tvc${sc.chat ? ' on' : ''}" data-k="chat" aria-pressed="${sc.chat}" title="Your prompts and Claude's turns · ⌥-click: the chat alone"><i></i>Chat</button>${shown.map(p => tvChip(s, sc, p)).join('')}${rest ? `<button type="button" class="tvc more" data-k="more" aria-haspopup="menu" title="The chat's other PRs">+${rest} ▾</button>` : ''}</span>`
+      + `<button type="button" class="tvscope" aria-haspopup="menu" title="What the timeline shows">Scope ▾ ${nOn} of ${all}</button><span class="tvgap"></span>`
+      + `<span class="tvseg" role="group" aria-label="Which turns">${seg('turns', 'all', 'All turns')}${seg('turns', 'about', 'About these')}</span>`
+      + `<span class="tvseg" role="group" aria-label="How much">${seg('dens', 'fold', 'Folded')}${seg('dens', 'all', 'Everything')}</span>`;
+  }
+  /** The chat's PRs as a menu of switches: in play, the others, the ones only mentioned — the chips' overflow, and all of them on a narrow tab. */
+  function tvMenu(s, at, withChat) {
+    const m = tvModel(s), sc = tvScope(s, m), r = at.getBoundingClientRect();
+    const named = p => !m.roundsOf(p.url).length && !m.evs.some(e => e.url === p.url && (e.w === '' || e.k === 'chat'));
+    const row = p => ({ t: `${p.label.replace(/^.*?#/, '#')}${p.title ? ` ${p.title}` : ''}`, sub: tvState(p)[1], on: sc.on.has(p.url), check: true, fn: () => tvToggle(s, p.url) });
+    const play = m.prs.filter(p => sc.play.has(p.url)), said = m.prs.filter(p => !sc.play.has(p.url) && named(p)), other = m.prs.filter(p => !play.includes(p) && !said.includes(p));
+    const group = (t, l) => l.length ? [{ t, off: true }, ...l.map(row)] : [];
+    ctxShow([...withChat ? [{ t: 'Chat — your prompts and Claude’s turns', on: sc.chat, check: true, fn: () => tvSet(s, { chat: sc.chat ? false : undefined }) }, { hr: true }] : [],
+      ...group('In play', play), ...group('Others', other), ...group('Mentioned', said), { hr: true }, { t: 'Everything in play', fn: () => tvSet(s, { on: undefined, chat: undefined, turns: undefined }) }], r.left, r.bottom + 4, 'tvscope');
+  }
   /** The list: a row per prompt, per turn and per event, in the order they happened, as the narrow lets them in. */
   function tvRows(s, m, sc) {
     const rows = [], shown = new Set();
@@ -8565,15 +8662,16 @@ const toolName = n => {
   function tvSoon() { if (!tvFrame) tvFrame = requestAnimationFrame(() => { tvFrame = 0; const s = state.sessions.get(state.current); if (s && !$('#tv').hidden) renderTimeline(s); }); }
   function renderTimeline(s) {
     const el = $('#tv'); if (el.hidden || !s) return;
-    if (!el.firstElementChild) el.innerHTML = '<div class="tvbar" hidden></div><div class="tvtrk" hidden></div><div class="tvl" aria-label="This chat and its PRs, in the order things happened"></div>';
+    if (!el.firstElementChild) el.innerHTML = '<div class="tvbar"></div><div class="tvtrk" hidden></div><div class="tvl" aria-label="This chat and its PRs, in the order things happened"></div>';
     const m = tvModel(s), sc = tvScope(s, m), rows = tvRows(s, m, sc), { L, cells } = tvLanes(s, m, sc, rows);
+    setHtml(el.querySelector('.tvbar'), tvBarHtml(s, m, sc));
     const faces = new Map(m.prs.flatMap(p => (p.people || []).filter(x => x.avatar).map(x => [x.login, x.avatar])));
     let html = '', day = null;
     rows.forEach((r, i) => {
       const d = dayOf(r.ms); if (d !== day && (day !== null || d !== 'Today')) html += `<div class="tvday"><b>${esc(d)}</b></div>`;
       day = d; html += tvRowHtml(s, m, r, tvLaneHtml(L, cells[i]), faces);
     });
-    if (!rows.length) html = `<div class="tvnone">${m.turns.length || m.prs.length ? 'Nothing here yet' : 'No messages yet'}</div>`;
+    if (!rows.length) html = `<div class="tvnone">${!sc.chat && !sc.on.size ? 'Nothing in the narrow — ⌥-click a chip for everything in play' : m.turns.length || m.prs.length ? 'Nothing here yet' : 'No messages yet'}</div>`;
     // a ledger that let its oldest go (it keeps 150 a PR): the rest is GitHub's
     const old = m.prs.filter(p => sc.on.has(p.url) && m.led.get(p.url)?.older);
     if (old.length) html = `<div class="tvold">${old.map(p => `<button type="button" class="tvgh" data-u="${esc(p.url)}">older on ${pchip(s, p)} — on GitHub ↗</button>`).join('')}</div>` + html;
@@ -8610,6 +8708,13 @@ const toolName = n => {
   $('#tv').addEventListener('click', e => {
     const s = state.sessions.get(state.current); if (!s) return;
     const go = e.target.closest('.tvgo'); if (go) return tvGo(s, go.dataset.go);
+    const c = e.target.closest('.tvc');
+    if (c?.dataset.url) return e.altKey ? tvSolo(s, c.dataset.url) : tvToggle(s, c.dataset.url);
+    if (c?.dataset.k === 'chat') return e.altKey ? tvSolo(s, 'chat') : tvSet(s, { chat: tvScope(s, tvModel(s)).chat ? false : undefined });
+    if (c?.dataset.k === 'more' || e.target.closest('.tvscope')) return tvMenu(s, c || e.target.closest('.tvscope'), !c);
+    const sg = e.target.closest('.tvseg button');
+    if (sg?.dataset.turns) return tvSet(s, { turns: sg.dataset.turns });
+    if (sg?.dataset.dens) return tvSet(s, { dens: sg.dataset.dens === 'fold' ? undefined : sg.dataset.dens });
     const cl = e.target.closest('.tvr.cl'); if (cl) return tvShowTurn(s, cl.dataset.ts, cl);
     const ev = e.target.closest('.tvr.ev[data-u], .tvgh'); if (ev) return openExternal(ev.dataset.u, { s });
   });
@@ -10089,7 +10194,7 @@ const toolName = n => {
     state.current = id; state.unread.delete(id); hidePr(); markSeen(id);
     // the address names the open chat at once (2026-10-02; after the fetch before, so a chat left before its answer
     // came put its id back over the next one's, and a link to that one was then no change of hash)
-    if (location.hash.slice(1) !== id) history.replaceState(null, '', '#' + id);
+    if (location.hash !== '#' + id + tvHash(id)) history.replaceState(null, '', '#' + id + tvHash(id));   // and the timeline's narrow beside it (2026-10-17)
     const s0 = state.sessions.get(id);
     // a deep link or a notification can point at a chat outside the selected project — switch to its folder
     if (s0 && !inProject(s0, projectStub(prefs.project))) { prefs.project = projDir(s0.cwd) || '?'; savePrefs(); }
@@ -10163,11 +10268,11 @@ const toolName = n => {
     // the badge that just came, or grew, pops in — a one-shot on the node the render made
     const badge = a.sessionId && !viewing && !REDUCED.matches && document.querySelector(`#slist > .card[data-id="${a.sessionId}"] .badge`);
     if (badge) { noteMotion(a.sessionId, 'pop'); badge.animate([{ transform: 'scale(.5)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 380, easing: SPRING, id: 'pop' }); }
-    if (inApp) post({ type: 'alert', kind: a.kind, heading: a.heading || '', project: a.project || '', title: a.title || '', snippet: a.snippet || '', sessionId: a.sessionId || '', serverNotify: !!state.serverNotify, quiet: !!a.quiet, drawer: !!(a.sessionId && state.sessions.get(a.sessionId) && drawerOf(state.sessions.get(a.sessionId))) });   // drawer: the banner can take a reply (2026-10-12)   // the app posts the banner and counts the Dock's badge
+    if (inApp) post({ type: 'alert', kind: a.kind, heading: a.heading || '', project: a.project || '', title: a.title || '', snippet: a.snippet || '', sessionId: a.sessionId || '', hash: a.kind === 'pr' && a.url && a.sessionId ? tvSoloHash(a.sessionId, a.url) : '', serverNotify: !!state.serverNotify, quiet: !!a.quiet, drawer: !!(a.sessionId && state.sessions.get(a.sessionId) && drawerOf(state.sessions.get(a.sessionId))) });   // drawer: the banner can take a reply (2026-10-12)   // the app posts the banner and counts the Dock's badge
     if (a.quiet) return;   // notifications off (the cog): the unread count above, nothing else
     if ('Notification' in window && Notification.permission === 'granted' && !viewing) {
       const n = new Notification(a.heading || `${a.kind === 'reply' ? 'Claude replied' : 'Claude is asking you'} · ${a.project}`, { body: `${a.title}\n${a.snippet || ''}`, tag: a.sessionId || 'test' });
-      n.onclick = () => { window.focus(); if (a.sessionId) openSession(a.sessionId, { locate: true }); n.close(); };
+      n.onclick = () => { window.focus(); if (a.kind === 'pr' && a.url && a.sessionId) location.hash = tvSoloHash(a.sessionId, a.url); else if (a.sessionId) openSession(a.sessionId, { locate: true }); n.close(); };   // a PR's: its timeline, at the move
     }
   }
 
@@ -10183,7 +10288,7 @@ const toolName = n => {
     clearTimeout(keepTabs.t); keepTabs.t = null;
     const v = JSON.stringify({ gh: [...state.paneGh], ide: [...state.paneIde], wt: [...state.paneWt], labels: [...ideLabels], urls: [...paneUrls],
       tabs: [...tabs], homes: [...homes].map(([id, m]) => [id, [...m]]), splits: [...splits], auto: [...autoSplit], stacked: [...stacked], zoomed: [...zoomed],
-      changes: [...changesOpen], timeline: [...timelineOpen], prs: [...changes.pr], blanks: [...blanks], focus: focusG });
+      changes: [...changesOpen], timeline: [...timelineOpen], narrow: [...tvNarrow], prs: [...changes.pr], blanks: [...blanks], focus: focusG });
     if (v === keepTabs.was) return;
     try { sessionStorage.setItem(TABS_STORE, v); keepTabs.was = v; } catch {}   // storage refused: the tabs last as long as the page, as before
   }
@@ -10191,7 +10296,7 @@ const toolName = n => {
   try {
     const v = sessionStorage.getItem(TABS_STORE), k = v && JSON.parse(v);
     if (k) {
-      for (const [m, l] of [[state.paneGh, k.gh], [state.paneIde, k.ide], [state.paneWt, k.wt], [ideLabels, k.labels], [paneUrls, k.urls], [tabs, k.tabs], [zoomed, k.zoomed], [changes.pr, k.prs], [blanks, k.blanks]]) for (const [a, b] of l || []) m.set(a, b);
+      for (const [m, l] of [[state.paneGh, k.gh], [state.paneIde, k.ide], [state.paneWt, k.wt], [ideLabels, k.labels], [paneUrls, k.urls], [tabs, k.tabs], [zoomed, k.zoomed], [changes.pr, k.prs], [blanks, k.blanks], [tvNarrow, k.narrow]]) for (const [a, b] of l || []) m.set(a, b);
       for (const [id, l] of k.homes || []) homes.set(id, new Map(l));
       for (const [m, l] of [[splits, k.splits], [autoSplit, k.auto], [stacked, k.stacked], [changesOpen, k.changes], [timelineOpen, k.timeline]]) for (const id of l || []) m.add(id);
       blankSeq = Math.max(blankSeq, ...[...blanks.values()].flat().map(b => b.n));
@@ -10273,7 +10378,7 @@ const toolName = n => {
       const d = JSON.parse(e.data); state.snapshots++;   // the harness waits on the count: a reloaded page has its board
       if ($('#lock').open) $('#lock').close();   // the stream let in: the key holds
       state.sessions = new Map(d.sessions.map(s => [s.id, s])); state.projects = d.projects || []; state.pins = d.pins || []; state.hidden = d.hidden || []; state.repos = d.repos || {};
-      for (const m of [tabs, homes, splits, autoSplit, stacked, zoomed, focusView, state.unread, state.paneGh, state.paneWt, changesOpen, timelineOpen, blanks, diffStats]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);   // a chat gone from the board takes its page state with it
+      for (const m of [tabs, homes, splits, autoSplit, stacked, zoomed, focusView, state.unread, state.paneGh, state.paneWt, changesOpen, timelineOpen, tvNarrow, blanks, diffStats]) for (const id of [...m.keys()]) if (!state.sessions.has(id)) m.delete(id);   // a chat gone from the board takes its page state with it
       state.about = d.about || {};
       if (d.config) state.config = d.config;
       renderSetup();
@@ -10285,8 +10390,8 @@ const toolName = n => {
       state.key = d.key || null; showKey();
       state.serverNotify = d.notify === 'native';   // the server posts its own banners: the app must not double them
       renderBoard(); welcomeSync();
-      const want = location.hash.slice(1);
-      if (want && !state.current && state.sessions.has(want)) openSession(want);
+      const want = hashId();
+      if (want && !state.current && state.sessions.has(want)) { tvFromHash(state.sessions.get(want)); openSession(want); }
       else if (!state.current) showHome();   // nothing to open: the home (2026-10-10)
       // A snapshot with a chat already open is a reconnect — the server restarted, the stream dropped — and the entries
       // pushed while the stream was down never came (2026-09-27): fetch the open chat again, in place. Not openSession,
@@ -10333,7 +10438,7 @@ const toolName = n => {
     // tab, its /focus — the per-chat page state, keyed by the chat it left, moved to the one it runs now; not onto a
     // chat that has a layout of its own (a /resume into a chat the board has shown), and never its unread count.
     function carryChat(from, to) {
-      const maps = [tabs, homes, zoomed, focusView, state.paneGh, state.paneWt, blanks, changes.pr], sets = [splits, autoSplit, stacked, changesOpen, timelineOpen];
+      const maps = [tabs, homes, zoomed, focusView, state.paneGh, state.paneWt, blanks, changes.pr, tvNarrow], sets = [splits, autoSplit, stacked, changesOpen, timelineOpen];
       if (![...maps, ...sets].some(m => m.has(from)) || [...maps, ...sets].some(m => m.has(to))) return;
       for (const m of maps) if (m.has(from)) { m.set(to, m.get(from)); m.delete(from); }
       for (const m of sets) if (m.has(from)) { m.add(to); m.delete(from); }
@@ -10351,9 +10456,16 @@ const toolName = n => {
   document.addEventListener('visibilitychange', lookedAt);
   window.addEventListener('focus', lookedAt);
   // deep link: /#<session-id> opens that chat — also how the native app's notifications jump here
+  const hashId = () => location.hash.slice(1).split('/')[0];
+  // …and /tl:… after the id, the timeline's narrow (2026-10-17): a link's or a PR alert's — the tab opened on it, at its move
   window.addEventListener('hashchange', () => {
-    const id = location.hash.slice(1);
-    if (id && id !== state.current && state.sessions.has(id)) openSession(id, { locate: true });
+    const id = hashId(), s = state.sessions.get(id); if (!s) return;
+    const tl = tvFromHash(s);
+    if (id !== state.current) openSession(id, { locate: true });
+    if (!tl) return;
+    const n = tvNarrow.get(id); if (n?.on?.length === 1) tv.goto = { id, url: n.on[0] };
+    if (!timelineOpen.has(id)) { timelineOpen.add(id); openNewTab(s, 'timeline'); } else setTab(s, 'timeline');
+    syncTerm(s);
   });
 })();
 </script>
