@@ -5,6 +5,56 @@ Newest at the top of each list. `CLAUDE.md` is the working notes (how things are
 this file is the *why* and the *state*. Last updated 2026-10-18. The company, its repos and the people on its PRs go
 by stand-ins here — `acme`, made-up repo names and PR numbers — since 2026-10-01; keep it so.
 
+## Decisions of 2026-10-18 — lunch: a reminder, and the menus of the places you go
+
+Ricardo: "I want to make a fun reminder that it's lunch time - maybe using the fish on the status bar. I would also like
+to have the menu dynamically scrapped daily on week days for common restaurants that we go, but most publish this on FB
+or instagram. what do you recommend?" — then "work on fun ideas to remind of lunch and see menus for the main 5 or 6
+restaurants, then shown me in an artifact the possibilities", and the list of eight places "that I want you to check if
+you can automated the scrapping for daily lunchs (check #lunch-… slack, some people already do this scrapping
+manually)". The study — Round VIII, https://claude.ai/artifact/BzVvzXMCUVyaZ2qa1aA5gx: nine live reminders on the
+bar's fish (R1–R9), eight ways to read the menus (M1–M8), five sources (S1–S5) — and his pick: "Lunch: build R4, R8, M2,
+M3; sources S1, S2, S3, S4. hotkey M should present the menu (M2)".
+
+* **What can be read, checked on a Saturday with no login**: five of the eight post the day's menu only as an
+  Instagram story; a story, and a highlight of stories, show a login wall to anyone logged out. One posts the week's
+  card on Mondays (a feed post), one the month's dishes as a caption; one publishes nothing (its menu is said at the
+  table). Facebook logged out shows a page's header or a 400, the websites and Google Maps carry no daily menu, and a
+  plain fetch of a profile gets a shell — the posts are drawn by its script. The team's channel gets the stories as
+  screenshots, by hand, three weekdays in five, as people leave.
+* **A rendered profile, logged out, is enough for the posts** (S1, `lib/instagram.mjs look`, headless Chrome): it
+  carries the 12 newest with their captions and pictures, and when the newest story went up (`latest_reel_media`, the
+  one after the account's own name — a suggested account's is near). A post's id is its time (milliseconds from
+  Instagram's epoch in its top bits, checked against three `<time>`s); `og:description`'s date is a day off (US time)
+  and `og:image` a cropped square, so neither is used.
+* **Stories through a login of the board's own** (S2): a Chrome profile in the state folder, logged into in a window
+  the board opens (it closes once the session cookie is there), with the mock keychain so that window and the headless
+  runs read the same cookies; the stories asked of the web client's own endpoint (`/api/v1/feed/reels_media/`) from a
+  page of instagram.com. **Not yet run against a real login** — the endpoint's shape is the one scrapers document.
+  A second account is advised: one that views stories on a schedule can be challenged.
+* **Claude reads every picture** (S3): `claude -p` with the picture as a stream-json message and the answer held to a
+  JSON schema — is it a lunch menu, for one day, a week or a month, each day's dishes as written, a closure. Haiku read
+  a week's card exactly in 4 s for $0.0015; each picture is read once (`reads.json`, by its id). **A print-mode claude
+  registers in `~/.claude/sessions` while it runs** — `kind: interactive`, `entrypoint: sdk-cli` — and would have been
+  a card: the board passes over its pid and its folder (`ownReader`). `--no-session-persistence` keeps its transcript
+  away; it still makes a project folder (memory) for its cwd, which is one folder of the board's.
+* **The channel** (S4): the same reader with Claude's Slack connector and its read tools alone (`--allowedTools`). The
+  connectors come up only with the user's settings loaded (`--setting-sources project` left them pending, and the
+  model saw no Slack tool), so this one runs the user's hooks. Haiku read a day's batch of six screenshots right in 27 s.
+* **R4, the sign**: a lock is lunch — the app now tells the page (`peixAway`, from `showAway`); a browser's hidden tab
+  stands in. Back after ten minutes is fed: the sign says for how long, the server hears it (`back`). Going without a
+  lock: the first move of yours ten minutes on. **R8**: the notification's category `lunch`, *Menus · Going · In 15
+  minutes*; In 15 min is the server's, so every page's sign agrees and the alert comes back by itself. **M2**: ⌥⌘M (the
+  app forwards M now), a modal chalkboard in the system's Chalkduster and Chalkboard SE — nothing fetched —, and home's
+  until lunch. **M3**: the dishes, a main each (not the soup), scrolling under the fish through lunch time.
+* **The looks**: 75, 40 and 10 minutes before lunch time and 5 after, only the places still without a menu, and the
+  channel 10 minutes either side — the stories go up between 9:00 and 11:45.
+* Not picked: the bait (R1), feeding time (R2), the grill (R3), the build-up (R5), the clock (R6), the day's band (R7),
+  the snail (R9); the list (M1), the wall (M4), finding a dish (M5), posting to the channel (M6), favourites (M7),
+  picture and text (M8); a screenshot dropped on the board (S5).
+* Open: S2 against a real login; a place that posts its menu as a video story (its still is read); Instagram changing
+  its pages or the endpoint.
+
 ## Decisions of 2026-10-17, late night — a chat between the boards
 
 Ricardo: "how can we implement an optional peer-to-peer basic chat in the app? I thought of using a git branch in the

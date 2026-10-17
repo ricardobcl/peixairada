@@ -123,6 +123,26 @@ The board turns off GitHub's own emails about the chat's repo for you (its notif
 message would mail everyone. What anyone says stays in their message: nothing from the chat is ever typed into a
 terminal or handed to Claude.
 
+## Lunch
+
+An optional reminder that it's lunch time, and the day's menus of the places you go — off until Settings › Lunch
+turns it on. Give it a time (the reminder's), the days, and each place with its Instagram account.
+
+- **Before lunch**, through the morning, the board reads each place's menu: its posts as anyone sees them — a week's
+  card, a month's dishes, a closure — and, with *Read the stories* on and an Instagram account logged in
+  (*Log in to Instagram…* opens a window; it closes itself once you're in), its stories, where most places post the
+  day's menu. A Slack channel where colleagues post the menus as screenshots is read too, if you name one. Claude reads
+  each picture once, on your plan (*Read by*: Haiku unless you pick Sonnet).
+- **⌥⌘M** shows them on a chalkboard, any time; home shows it too until lunch. A place's name opens its Instagram in
+  your browser. *Read again* reads them now.
+- **At lunch time** a sign drops into the status bar's lane over the fish — *LUNCH* — and the day's dishes scroll under
+  it; a click on either is the chalkboard. A notification comes with *Menus · Going · In 15 minutes*.
+- **Going**: the sign says *ENJOY* and the fish swims off the bar. Lock the Mac and it reads *BACK SOON*; come back
+  (ten minutes on, at least) and the fish swims in fed, burps, and the sign says how long you were out.
+
+The stories need a login because Instagram shows a story to no one logged out. A second account just for this is wiser
+than your own: one that watches stories on a schedule can be challenged.
+
 ## Keys
 
 | Key | Does |
@@ -139,6 +159,7 @@ terminal or handed to Claude.
 | ⌥⌘B | fold the list |
 | ⌥⌘L | the launcher: chats, projects, PRs, tickets, actions, switches |
 | ⌥⌘A · ⌥⌘D · ⌥⌘0 | the overview: every live chat at once · this chat's changes · home |
+| ⌥⌘M | lunch: today's menus, on a chalkboard |
 | ⌥⌘Y | the theme |
 | ⌥⌘R · ⌘R | reload the board · reload the page in the pane (VS Code Web keeps its own ⌘R) |
 

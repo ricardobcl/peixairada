@@ -58,6 +58,7 @@ npm run map                         # rewrite the section maps at the top of ser
 |---|---|
 | `server.mjs` | The backend: transcript tailing, sessions, SSE, HTTP, notifications, the holder proxy. A **section map** at its top (`npm run map`); boots only when run as the program, exports its pure parts for the tests |
 | `lib/termhold.mjs` | The holder: one process per drawer — the PTY, the exact screen, a Unix socket |
+| `lib/instagram.mjs` | Lunch's Instagram, in Chrome: a profile, the stories, the login |
 | `lib/cdp.mjs`, `lib/testserver.mjs` | Harness plumbing: headless Chrome over the DevTools protocol; a throwaway server with cleanup, `waitFor`, `post` |
 | `lib/refit.mjs` | Resizing a terminal so a grow pulls the scrollback back down (the holder's copy; the page keeps its own) |
 | `public/index.html` | The frontend, one file, no build step. A section map at the top of its script |
@@ -70,7 +71,7 @@ npm run map                         # rewrite the section maps at the top of ser
 | `scripts/perf.mjs`, `lib/animcheck.mjs` | The board's CPU in WebKit on a made-up busy board, and what keeps WebKit's frames on the main thread (see Verifying) |
 | `scripts/webkit.mjs`, `webkit.swift` | The live board in a `WKWebView` (the app's engine), the window captured as its compositor drew it |
 | `scripts/fakeclaude.mjs`, `fixture.mjs` | A stand-in CLI for tests (`FAKE_TUI=fullscreen`: drawn as Claude Code's `tui: fullscreen`; `FAKE_SCREEN`: a screen given); a `~/.claude` look-alike |
-| `scripts/fakegh.mjs`, `fakejira.mjs`, `fakegithub.mjs`, `fakecode.mjs`, `fakepmset.mjs`, `fakecaffeinate.mjs`, `faketask.mjs`, `fakebrew.mjs` | `gh` (`api graphql`, `repo clone`, `pr diff`), Jira's three calls (`startFakeJira`), `code serve-web`, `pmset`, `caffeinate`, `task`, `brew install --cask zed` — what every test server runs instead of the real ones; each file's head says its knobs |
+| `scripts/fakegh.mjs`, `fakejira.mjs`, `fakegithub.mjs`, `fakecode.mjs`, `fakepmset.mjs`, `fakecaffeinate.mjs`, `faketask.mjs`, `fakebrew.mjs`, `fakeinstagram.mjs`, `fakereader.mjs` | `gh` (`api graphql`, `repo clone`, `pr diff`), Jira's three calls (`startFakeJira`), `code serve-web`, `pmset`, `caffeinate`, `task`, `brew install --cask zed`, lunch's Instagram and reader — what every test server runs instead of the real ones; each file's head says its knobs |
 | `scripts/readme-board.mjs`, `-shots`, `-clips` | The README's pictures from a made-up board, never the real one: stills and clips (animated WebP, `img2webp`) → `docs/shots/` |
 | `scripts/check.sh`, `check-page.mjs`, `map.mjs` | Static checks; the section maps |
 | `test/` | `node:test` files (`npm test`) |
@@ -153,8 +154,8 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   is the installing shell's, then the system's. **The network calls**: `gh` (PRs, a PR's diff), `git` to a checkout's
   origin when a PR's diff is asked (`GIT_TERMINAL_PROMPT=0`), the usage endpoint
   (`planUsage`), Jira once the setup names a site (`jiraAsk`; its token
-  never reaches the page or the setup file — `GET /api/jira` says only where it is), GitHub's REST API for the chat, VS
-  Code's update service, and Homebrew when Zed is picked and missing.
+  never reaches the page or the setup file — `GET /api/jira` says only where it is), GitHub's REST API for the chat, Instagram and
+  `claude -p` for lunch, VS Code's update service, and Homebrew when Zed is picked and missing.
 * **VS Code Web wants the board's token** (2026-10-16; `vsweb-token` in the state folder, 0600): the page gets it from
   `POST /api/vscode-web` and opens `?tkn=` (`vswebAt`), traded by serve-web for its cookie; one on the port the board
   did not start, serving without it, is refused (`vswebWhyNot`). **Kept on its newest build** (2026-10-11,
@@ -218,6 +219,10 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   the newest comments with its ETag, a 304 free; `CHAT_FAST_MS` while a page watches, writes `CHAT_GAP_MS` apart
   (`chatWrite`), the repo's mails off at first read (`chatQuiet`); only its `admin` invites,
   removes and makes rooms. No repo: an invitation looked for every `CHAT_INVITES_MS`, never at boot. → `test/chat.test.mjs`.
+* **Lunch** (2026-10-18; setup.lunch; `lunchTick`, `lunchRun`): at `LUNCH_LOOKS` from `at`, for places with no menu,
+  the profile logged out and the stories through the board's login (`lib/instagram.mjs`), the Slack channel at
+  `LUNCH_SLACKS`; **each picture read once by `claude -p`** (`runReader`, `reads.json`), today's `dishesOn`'s;
+  **a reader is no chat** (`ownReader`); alert kind `lunch`. → `test/lunch.test.mjs`.
 
 ## The board
 
@@ -508,9 +513,12 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   messages drawn by `chatMd` alone (no raw HTML or image; an https or mailto link, to the system's
   browser), the admin's people (`chatPeopleDraw`, suggested from `prPeople`); Settings › Chat joins, makes,
   leaves (`chatSetHtml`). **No chat code reaches a drawer, a claude or `md()`** (test/chat.test.mjs). → `chat-room.mjs`.
+* **Lunch on the board** (2026-10-18; `lunchBar` from `renderBar`): the lane's sign (`.lsign`), the dishes (`.ltick`),
+  the fish out (`lunchOut`, `swimOff`/`swimBack`; a lock is `peixAway`), ⌥⌘M's `#lunchd`
+  and home's `.hlunch` (`chalkHtml`), `#lunchSet`. → `lunch.mjs`.
 * **State lives in four places**: the server's `~/Library/Application Support/peixAIrada/state.json` (`STATE_FILE`;
   ticks, seen, for good, unlinked PRs, a branch's move set aside, named projects, titles, pins, hidden, `envs`, notifications, PR turns,
-  awake, the update's switch and record, the worktrees it made) and the user's `~/.config/peixairada/config.json` (the setup, below) — both shared by the app and every
+  awake, the update's switch and record, the worktrees it made, lunch's day) and the user's `~/.config/peixairada/config.json` (the setup, below) — both shared by the app and every
   browser —; the browser's `localStorage` `peixairada-prefs` (the keys are the `prefs` literal, and old ones are
   deleted on load); `sessionStorage` the tabs (below); and never `~/.claude`. `renderHead` re-runs on every SSE update — anything it renders reads its
   state from prefs. **`state`'s keys are declared in its literal**; add there, not at first use.
@@ -542,17 +550,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
 * **`HOTKEYS` in index.html is the whole ⌥⌘ family, and every key is a row of `KEYS`** (2026-10-12): what you press, its
   group, one line, and the codes it is in HOTKEYS or CMDKEYS — the ? sheet is drawn from it (`keyNotes`: the setup's words), and
   `npm run check` (`check-page.mjs`) fails a code with no row, a row no map answers, a ⌥⌘ key `boardKeys` in
-  main.swift does not forward or forwards unanswered, or an *again* row no `hot…Key` answers. The letters: **T** the chat's zsh tab (`hotShell()`,
-  `s.shells`), **E** VS Code Web in the pane, **V** the folder in VS Code's
-  own window (`hotVsCodeApp`), **G** the chat's PR on GitHub
-  (several: the picker, `prPickAgain`; none: the repo), **C** the chat's claude (`termAction()`, the `>_`
-  path), **W** the tab the keys are in, closed (`hotCloseTab()` → `dropTab()`), **P** projects, **K** chats
-  (`chatFields()`), **F** the list's box (`hotFind()`), **B** the rail (`toggleSessions`), **Y** themes (`themesOpen`),
-  **L** the launcher (`pickOpen('launch')`), **D** changes (`hotDiff`), **J** the timeline (`hotTimeline`), **A** the overview (`ovOpen`), **0** home (`hotHome`), **N** a new
-  chat as steps of one dialog (`new` → `chats` → `folder` → `env`, `newChatIn()`), **O** the same on the setup's `quick`
-  project (`hotOracle()`), **↑↓** the chat above or below as shown (`hotMove()`), **←→** the tab beside, wrapping
-  (`hotTab()`), **1 / 2** the halves stood one over the other (`hotGroup(g, true)`), **R** the board reloaded
-  (`hotReload`). **C T G E D J pressed again from the tab they bring up** (a claude live here, a
+  main.swift does not forward or forwards unanswered, or an *again* row no `hot…Key` answers. The letters are `KEYS`' rows and their handlers `HOTKEYS`' entries (`hot…`; ⌥⌘N one dialog's steps, `new` → `chats` → `folder` → `env`, `newChatIn()`). **C T G E D J pressed again from the tab they bring up** (a claude live here, a
   zsh, a page at its one PR, the editor, the changes, the timeline — the HOTKEYS entries are `hot…Key`, `zoomAgain` before the plain `hot…`) fill
   the column with that half, and back (`toggleZoom`, see *The chat column's two halves*); `typeInShell` and the launcher
   call the plain ones. Capture phase, `e.code` (with ⌥ held `e.key` is a symbol). A `dialog[open]` swallows them (`#hmenu` and `#room` close instead);
@@ -703,7 +701,7 @@ for `$HOME`'s home and the account's. A chat's folder in it is refused where the
   with a drawer here *Reply… · Done · In 15 minutes*, elsewhere *Done · In 15 minutes*, a question or a PR's turn the
   snooze alone (a ✓ ends the chat's processes; a question is Claude waiting). Reply… and Done go to the page
   (`window.peixReply`: the chat's drawer, else one opened for it, sending no size; `window.peixDone`: `tickDone` where
-  `canTick`); the page says whether a drawer runs here on the alert (`drawer`). → `notify-actions.mjs`.
+  `canTick`); the page says whether a drawer runs here on the alert (`drawer`); lunch's, `peixLunch`. → `notify-actions.mjs`.
 * **The board zooms as a whole in the app** (2026-10-12, `prefs.pageZoom`): `{type: 'zoom'}` sets the board view's
   `pageZoom`, and main.swift turns what crosses — the pane's rects (×), `peixPane`'s edge and `peixFill`'s housing (÷).
   **Never CSS `zoom` on the root** (rects read and written back would scale twice). A browser zooms itself.
@@ -1037,7 +1035,7 @@ the board at load — `npm test` loads the page (`test/page-load.test.mjs`); `np
   `REGISTRY_POLL_MS` 1200, `TASK_GRACE_MS` 400, `CONFIG_POLL_MS` 200, `POWER_POLL_MS` 1200; its own `ORG_DIR` (no welcome), `CLAUDE_DIR`
   (empty unless a fixture), config beside its `STATE_FILE`; the fakes (`GH_BIN` — only the fields the query asks, `FAKEGH_FAIL` —, `caffeinate`, `pmset` with
   `AWAKE_ADMIN=none`, `CODE_BIN`, `TASK_BIN`; `CLAUDE_BIN` `noclaude.mjs` unless `fake`), `VSWEB_PORT` free, `UPDATE_DIR` empty; Jira's token in its own file (`JIRA_TOKEN_FILE`), no inherited `JIRA_API_TOKEN`; a `ZDOTDIR`
-  with no rc files; `VSWEB_FRESH_MS` 0; `UPDATE_EVERY_MS` 0; `USAGE=off`; `GITHUB_API` nowhere; `APP_DIRS` its own, `BREW_BIN` the fake,
+  with no rc files; `VSWEB_FRESH_MS` 0; `UPDATE_EVERY_MS` 0; `USAGE=off`; `GITHUB_API` nowhere; lunch's fakes, `LUNCH_TICK_MS` 300; `APP_DIRS` its own, `BREW_BIN` the fake,
   `LSREGISTER_BIN` `/usr/bin/true`; `KEY_MODE=enforce`, `open` a fake; no inherited `CONFIG_FILE`, `TERMS_DIR` or XDG dirs. Up is its
   `listening` line (a port taken first moves it to a fresh one); stdin a pipe whose end stops it (`PEIX_TEST_PARENT`); `meta.env` is spread last. `waitFor(fn, {timeout, what})`, `srv.post(path, body)` and `tmpDir()`
   are the tests' polls, POSTs and dirs (a bare `mkdtempSync` fails `npm run check`); every test process has its own
