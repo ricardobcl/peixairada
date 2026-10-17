@@ -33,7 +33,7 @@ export default async function (ctx) {
   out.popover = await ctx.evaluate(`(r => ({ modal: document.querySelector('#settings').matches(':modal'), tabs: [...document.querySelectorAll('#settings .stabs button')].map(b => b.textContent),
     shown: [...document.querySelectorAll('#settings .spane')].filter(p => !p.hidden).map(p => p.dataset.tab),
     centred: Math.abs(r.left + r.width / 2 - innerWidth / 2) < 2 && Math.abs(r.top + r.height / 2 - innerHeight / 2) < 2, fits: r.bottom <= innerHeight && r.right <= innerWidth }))(document.querySelector('#settings').getBoundingClientRect())`);
-  ctx.assert.deepEqual([out.popover.modal, out.popover.tabs, out.popover.shown], [true, ['General', 'Appearance', 'Chat list', 'Terminal', 'Projects', 'Jira', 'Updates & access'], ['setup']], 'a modal of seven panes, the setup in front');
+  ctx.assert.deepEqual([out.popover.modal, out.popover.tabs, out.popover.shown], [true, ['General', 'Appearance', 'Chat list', 'Terminal', 'Projects', 'Jira', 'Chat', 'Updates & access'], ['setup']], 'a modal of eight panes (the chat\'s since 2026-10-17), the setup in front');
   ctx.assert.ok(out.popover.centred && out.popover.fits, `centred, and inside the window: ${JSON.stringify(out.popover)}`);
   await ctx.shot('popover');
 

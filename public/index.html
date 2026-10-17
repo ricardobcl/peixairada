@@ -2250,6 +2250,57 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }   /* read, not seen (2026-10-12): a state said by colour or motion alone */   /* the number, as text, out of sight */
   .rn.rolling .rcol > span { display: block; }   /* rolled by an animation of its own (rollIn, 2026-10-13), not a transition */
   .rn.rolling .rcol > span::before { content: "0\A 1\A 2\A 3\A 4\A 5\A 6\A 7\A 8\A 9"; white-space: pre; }
+  /* ---- the chat (2026-10-17): a GitHub repo's rooms, in a panel over the board's foot ---- */
+  /* A non-modal dialog at the left of the status bar, where its segment is: the rooms as tabs, the messages, the box.
+     The owner's people view takes the messages' place. Square to the board's other panels; the words are other people's,
+     drawn plain — no images, no colours of their own. */
+  #room[open] { position: fixed; inset: auto auto 34px 8px; margin: 0; z-index: 44; width: min(420px, calc(100vw - 16px)); height: min(560px, calc(100vh - 92px)); padding: 0; box-sizing: border-box;
+    display: grid; grid-template-rows: auto minmax(0, 1fr) auto; border-radius: var(--r-4); box-shadow: 0 14px 40px rgba(0, 0, 0, .28); overflow: hidden; }
+  #room [hidden] { display: none !important; }   /* the tabs, the buttons and the box set a display of their own */
+  #room :is(.rmlog, .rmpeople) { grid-row: 2; } #room .rmfoot { grid-row: 3; }   /* placed by hand: the people view stands in the messages' row */
+  #room .rmhd { display: flex; align-items: center; gap: 2px; min-width: 0; padding: 6px 6px 6px 8px; border-bottom: 1px solid var(--line); }
+  #room .rmname { flex: 1 1 auto; min-width: 0; height: 26px; padding: 0 8px; margin-right: 4px; }
+  #room .rmtabs { display: flex; gap: 2px; flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  #room :is(.rmtab, .rmbtn) { flex: none; height: 26px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid transparent; border-radius: var(--r-3); background: none; font: inherit; color: var(--muted); cursor: pointer; }
+  #room .rmtab { padding: 0 9px; font-size: var(--fs-sm); }
+  #room .rmbtn { width: 26px; justify-content: center; padding: 0; } #room .rmbtn .ic { width: 14px; height: 14px; }
+  #room :is(.rmtab, .rmbtn):is(:hover, .on) { background: var(--ctl); color: var(--ink); }
+  #room .rmtab[aria-selected="true"] { background: var(--ctl-hi); color: var(--ink); font-weight: 600; }
+  #room .rmtab b, #sbar .chatseg b { min-width: 16px; box-sizing: border-box; padding: 0 5px; border-radius: 8px; background: var(--accent); color: var(--bg); font-size: var(--fs-2xs); font-weight: 700; line-height: 16px; text-align: center; }
+  #room :is(.rmlog, .rmpeople) { overflow-y: auto; padding: 8px 12px; font-size: var(--fs-md); }
+  #room .rmday { margin: 12px 0 2px; text-align: center; color: var(--muted); font-size: var(--fs-2xs); letter-spacing: .06em; text-transform: uppercase; }
+  #room .rmmsg { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: 9px; margin-top: 10px; }
+  #room .rmmsg.cont { margin-top: 2px; } #room .rmmsg.cont :is(.face, .rmwho) { display: none; }
+  #room .face { grid-row: span 2; width: 24px; height: 24px; border-radius: 50%; background: var(--ctl); }
+  #room .rmwho { grid-column: 2; font-size: var(--fs-xs); color: var(--muted); } #room .rmwho b { margin-right: 6px; color: var(--ink); font-size: var(--fs-sm); font-weight: 650; }
+  #room .rmmsg.mine .rmwho b { color: var(--accent); }
+  #room .rmbody { grid-column: 2; min-width: 0; line-height: 1.45; overflow-wrap: anywhere; }
+  #room .rmbody > :first-child { margin-top: 0; } #room .rmbody > :last-child { margin-bottom: 0; }
+  #room .rmbody :is(p, ul, ol, table) { margin: 0 0 6px; } #room .rmbody :is(ul, ol) { padding-left: 20px; }
+  #room .rmbody :is(h1, h2, h3, h4, h5, h6) { margin: 6px 0 4px; font-size: inherit; }
+  #room .rmbody code { padding: 1px 4px; border-radius: var(--r-1); background: var(--ctl); font-size: .92em; }
+  #room .rmbody pre { margin: 4px 0; padding: 8px; border-radius: var(--r-2); background: var(--ctl); overflow-x: auto; } #room .rmbody pre code { padding: 0; background: none; }
+  #room .rmbody blockquote { margin: 4px 0; padding-left: 10px; border-left: 2px solid var(--line); color: var(--muted); }
+  #room .rmbody a { color: var(--accent); } #room .rmbody :is(td, th) { padding: 2px 6px; border: 1px solid var(--line); }
+  #room .rmmsg .edited { margin-left: 4px; font-size: var(--fs-2xs); color: var(--muted); }
+  #room .rmdel { position: absolute; top: -2px; right: -4px; width: 22px; height: 22px; opacity: 0; } #room .rmmsg:is(:hover, :focus-within) .rmdel { opacity: 1; }
+  #room .rmmsg.going { opacity: .45; }
+  #room .rmnone { padding: 36px 16px; color: var(--muted); font-size: var(--fs-sm); text-align: center; text-wrap: balance; }
+  #room .rmfoot { display: grid; gap: 4px; padding: 8px; border-top: 1px solid var(--line); }
+  #room :is(.rmfoot textarea, .rmfind) { width: 100%; box-sizing: border-box; padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--bg); color: var(--ink); font: inherit; font-size: var(--fs-md); outline: none; }
+  #room .rmfoot textarea { min-height: 34px; max-height: 140px; resize: none; display: block; }
+  #room :is(.rmfoot textarea, .rmfind):focus { border-color: var(--accent); }
+  #room .rmsay { display: flex; gap: 10px; justify-content: space-between; font-size: var(--fs-2xs); color: var(--muted); } #room .rmsay a { color: inherit; }
+  #room .rmpeople h6 { margin: 14px 0 6px; color: var(--muted); font-size: var(--fs-2xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; } #room .rmpeople h6:first-of-type { margin-top: 10px; }
+  #room .rmp { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 4px 0; }
+  #room .rmp .face { grid-row: auto; } #room .rmp span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } #room .rmp small { margin-left: 6px; color: var(--muted); }
+  #room .rmp .btn { padding: 3px 9px; } #room .btn.danger { color: var(--needs); }
+  #room .rmsure { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: var(--r-3); background: color-mix(in srgb, var(--needs) 12%, transparent); font-size: var(--fs-sm); }
+  #room .rmsure span { flex: 1; }
+  #sbar .chatseg .ic { width: 13px; height: 13px; flex: none; } #sbar .chatseg.err { color: var(--needs); } #sbar .chatseg.inv { color: var(--accent); }
+  #chatSet .face { width: 18px; height: 18px; margin-right: 4px; border-radius: 50%; vertical-align: -4px; }
+  .pop .setup .schat { display: flex; align-items: center; gap: 6px; } .pop .setup .schat input[type=text] { width: 180px; background: var(--ctl); }
+
   /* ---- the small print: wrapping, figures, selection, focus, overscroll ---- */
   /* (2026-09-27, night) Prose wraps prettily and a short centred text balances; a title breaks at a word (with
      hyphens) rather than anywhere, a snippet keeps `anywhere` for its paths. Every count, age and number sits in
@@ -2260,11 +2311,11 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   .card .title, .card .snip, .msg .text, .presence, .prrow .t { text-wrap: pretty; }
   .empty, .gempty, dialog p.help, #slist .none, #picklist .none, .pop .sl small { text-wrap: balance; }
   .card .title { overflow-wrap: break-word; hyphens: auto; }
-  .badge, .chip, :is(.card .cpr, .shead .hpr), .pkrow .num, .sedge b, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop { font-variant-numeric: tabular-nums; }
+  .badge, .chip, :is(.card .cpr, .shead .hpr), .pkrow .num, .sedge b, .tl-lab, .prrow .num, .lognew b, #resume .n, .prround .say, .prpips, #rpop, #room :is(.rmtab b, .rmwho) { font-variant-numeric: tabular-nums; }
   ::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
   :where(button, [role="button"], a[href], summary, input, select, textarea, .pkrow):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #chat.tinted .shead :where(button, a[href]):focus-visible { outline-color: var(--rink); }
-  #slist, #log, #picklist, #pfolders, #prlist, .gterm .tbody, .gblank, .pop { overscroll-behavior: contain; }
+  #slist, #log, #picklist, #pfolders, #prlist, .gterm .tbody, .gblank, .pop, #room :is(.rmlog, .rmpeople) { overscroll-behavior: contain; }
   .card .top .tprs { overscroll-behavior-x: contain; }   /* sideways only: a wheel down a stack at rest is the list's */
 
   /* ---- reduced motion: the board says the same, still ---- */
@@ -2280,7 +2331,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   @media (prefers-contrast: more) {
     :root:root:root { --muted: color-mix(in srgb, var(--ink) 78%, var(--bg)); --line: color-mix(in srgb, var(--ink) 38%, var(--bg)); }
     :root, .card.black:is(:hover, .active, .qsel), .shead > :not(h2, .details) { --ctl: color-mix(in srgb, var(--ink) 14%, transparent); --ctl-hi: color-mix(in srgb, var(--ink) 24%, transparent); }
-    :is(.btn, .chip, .hdrift, .ptab, .hmore, .hcaret, .pfold, .act, .fsearch, .sedge button, #sbar .seg, .gsep.lane b, .sseg, .pkmode, .seg button, #ctxm, #hmenu) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
+    :is(.btn, .chip, .hdrift, .ptab, .hmore, .hcaret, .pfold, .act, .fsearch, .sedge button, #sbar .seg, .gsep.lane b, .sseg, .pkmode, .seg button, #ctxm, #hmenu, #room .rmtab, #room .rmbtn) { border: 1px solid color-mix(in srgb, var(--ink) 50%, transparent) !important; }
     .card { border-color: var(--line); } .card .snip, .card .state.live { color: var(--ink); }
   }
   /* Reduce transparency: the blurs behind the overview and the list's ends go solid */
@@ -2402,6 +2453,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
       <button role="tab" data-tab="term" aria-selected="false" aria-controls="spTerm" id="stTerm" tabindex="-1" style="--sic: var(--ink)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.6 3.1 6.4 8l-4.8 4.9 1.1 1.1L8.6 8 2.7 2ZM8 12.6h6.4v1.5H8Z"/></svg><span>Terminal</span><b class="sn"></b></button>
       <button role="tab" data-tab="setup" aria-selected="false" aria-controls="spSetup" id="stSetup" tabindex="-1" style="--sic: var(--vscode)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2A1.25 1.25 0 0 0 .5 3.25v9.5C.5 13.44 1.06 14 1.75 14h12.5c.69 0 1.25-.56 1.25-1.25v-7.5C15.5 4.56 14.94 4 14.25 4H7.6L6.2 2.4A1.25 1.25 0 0 0 5.27 2Z"/></svg><span>Projects</span><b class="sn"></b></button>
       <button role="tab" data-tab="jira" aria-selected="false" aria-controls="spJira" id="stJira" tabindex="-1" style="--sic: var(--watch)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M1.5 3.5h13v3a1.5 1.5 0 0 0 0 3v3h-13v-3a1.5 1.5 0 0 0 0-3Zm1.5 1.5v.9a3 3 0 0 1 0 4.2V11h10v-.9a3 3 0 0 1 0-4.2V5Zm6 0h1.2v6H9Z"/></svg><span>Jira</span><b class="sn"></b></button>
+      <button role="tab" data-tab="chat" aria-selected="false" aria-controls="spChat" id="stChat" tabindex="-1" style="--sic: var(--accent)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 3.6A1.6 1.6 0 0 1 4.1 2h7.8a1.6 1.6 0 0 1 1.6 1.6v5.8A1.6 1.6 0 0 1 11.9 11H7.2l-3.2 3v-3a1.6 1.6 0 0 1-1.5-1.6Z"/></svg><span>Chat</span><b class="sn"></b></button>
       <button role="tab" data-tab="system" aria-selected="false" aria-controls="spSystem" id="stSystem" tabindex="-1" style="--sic: var(--idle)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 .8 14 3v4.6c0 3.5-2.5 6.1-6 7.6-3.5-1.5-6-4.1-6-7.6V3Zm2.7 4.6L7.2 9 5.4 7.2 4.3 8.3l2.9 2.9 4.6-4.7Z"/></svg><span>Updates &amp; access</span><b class="sn"></b></button>
     </nav>
     <div class="sfootnav"><button type="button" id="keysBtn">Keyboard shortcuts <kbd>?</kbd></button><button type="button" id="tourBtn">Take the tour</button></div>
@@ -2461,6 +2513,10 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
         <h5 class="sph">Jira</h5>
         <div id="jiraSet" class="setup"></div>
       </div>
+      <div class="spane" data-tab="chat" hidden role="tabpanel" id="spChat" aria-labelledby="stChat">
+        <h5 class="sph">Chat</h5>
+        <div id="chatSet" class="setup"></div>
+      </div>
       <div class="spane" data-tab="system" hidden role="tabpanel" id="spSystem" aria-labelledby="stSystem">
         <h5 class="sph">Updates &amp; access</h5>
         <section class="sgrp"><h6 class="sgh" id="sgUpd">Updates</h6><div class="slist" role="group" aria-labelledby="sgUpd">
@@ -2482,6 +2538,12 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 <dialog id="hmenu" aria-label="This chat's actions"></dialog>
 <dialog id="ctxm" aria-label="Actions"></dialog>
 <dialog id="about" aria-label="About peixAIrada"></dialog>
+<dialog id="room" aria-label="Chat">
+  <div class="rmhd"><div class="rmtabs" id="rmtabs" role="tablist" aria-label="Rooms"></div><input type="text" class="rmfind rmname" id="rmNewName" placeholder="The new room's name — ⏎" aria-label="The new room's name" spellcheck="false" autocomplete="off" hidden><button type="button" class="rmbtn" id="rmNew" title="A new room" aria-label="A new room" hidden>＋</button><button type="button" class="rmbtn" id="rmPeople" title="People — invite and remove" aria-label="People" aria-pressed="false" hidden></button><button type="button" class="rmbtn" id="rmMore" title="More" aria-label="More"></button><button type="button" class="rmbtn" id="rmClose" title="Close · esc" aria-label="Close"></button></div>
+  <div class="rmlog" id="rmlog" role="log" aria-label="Messages"></div>
+  <div class="rmpeople" id="rmpeople" hidden><input type="text" class="rmfind" id="rmfind" placeholder="Invite someone — a GitHub login" aria-label="Invite someone: a GitHub login, or narrow the lists" spellcheck="false" autocomplete="off"><div id="rmplist"></div></div>
+  <div class="rmfoot" id="rmfoot"><textarea id="rmbox" rows="1" placeholder="Message" aria-label="Message"></textarea><div class="rmsay" id="rmsay"></div></div>
+</dialog>
 <dialog id="lock" aria-labelledby="lockTitle">
   <span class="wlogo" aria-hidden="true"></span>
   <h3 id="lockTitle">This board wants its key</h3>
@@ -2558,12 +2620,15 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   css · resume: a chat whose claude has ended (2026-10-07)
 //   css · terminal drawer: the real claude, in a PTY on the server
 //   css · the changes tab: what this chat changed in its folder (2026-10-10)
+//   css · the timeline tab: the chat and its PRs in one order (2026-10-17)
 //   css · home (2026-10-10): the column with no chat open — fastfetch's block, then the day
 //   css · ⌥⌘A, the overview (2026-10-10): the board blurred, every live chat a tile in its column
 //   css · project editor
+//   css · the chat (2026-10-17): a GitHub repo's rooms, in a panel over the board's foot
 //   css · the small print: wrapping, figures, selection, focus, overscroll
 //   css · reduced motion: the board says the same, still
 //   css · syntax highlighting (highlight.js class names, our colours)
+//   js  · the board's key (2026-10-16)
 //   js  · header controls
 //   js  · themes: one keystroke re-skins the board (2026-10-10)
 //   js  · sessions column width
@@ -2594,6 +2659,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · the two halves: ⌘1 and ⌘2
 //   js  · a blank tab: ⌘T on a page (2026-10-13)
 //   js  · the changes tab: what this chat changed in its folder (2026-10-10)
+//   js  · the timeline tab: the chat and its PRs in one order (2026-10-17)
 //   js  · live tiles: a chat drawn small — its drawer's screen, or the last few things it did (2026-10-10)
 //   js  · tiles: the board's panels laid out as Hyprland's (2026-10-10)
 //   js  · ⌥⌘A: the overview, every live agent at once (2026-10-10)
@@ -2605,7 +2671,9 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
 //   js  · attachments: files dropped on the board, images pasted
 //   js  · a second claude on this chat
 //   js  · transcript rendering
+//   js  · the chat: a GitHub repo's rooms, with the people the board is shared with (2026-10-17)
 //   js  · alerts
+//   js  · the chat column across a reload (2026-10-16)
 //   js  · SSE
 // Map ▴
 (() => {
@@ -2634,8 +2702,8 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     a.finished.then(() => endSoon(a), () => endSoon(a));
     return a;
   };
-  const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null };
-  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general' };
+  const state = { voiceOver: false, sessions: new Map(), projects: [], paneGh: new Map(), paneIde: new Map(), paneWt: new Map(), paneVisible: false, paneLeft: 0, fill: false, fillHeard: false, notch: null, pins: [], hidden: [], repos: {}, current: null, unread: new Map(), entries: [], notifications: true, serverNotify: false, about: {}, config: { roots: [], quick: null, projects: {} }, titleEdit: null, prsFor: null, prsAll: false, snapshots: 0, awake: { awake: false, lid: false, idleSleep: null, power: null }, lidAsking: false, clones: new Map(), update: null, editors: null, key: null, chat: { on: false, repo: null, rooms: [], invites: [] } };
+  const prefs = { project: 'all', lanesShut: ['done', 'idle'], lanesIdle: false, listFilter: null, sessionsWidth: 380, headDetails: false, chatZoom: 1, sessionsCompact: false, splitAt: .5, stackAt: .5, prsOpen: false, cards: 'compact', cardsByLane: false, cardsMoved: false, optMeta: true, termReader: false, pageZoom: 1, fullSpace: false, person: null, cardsEven: false, sounds: false, barStats: ['cpu', 'mem'], peopleCompact: true, changesScope: 'turn', editor: 'vscode', skin: null, skinFollow: true, skinDark: null, skinLight: null, look: null, fillHints: 0, tvSeen: false, tvHints: 0, toured: false, settingsPane: 'general', chatRoom: null };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem('peixairada-prefs') || '{}')); } catch {}
   // Compact is the cards' default (2026-10-12; large before), and a board saved with large — the old default — moves to it
   // once; one that chose medium keeps it.
@@ -2765,7 +2833,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
   $('#settings').addEventListener('close', () => {
     if (setupUi.pending.size) { setupUi.pending.clear(); renderSetup(); }
     setupUi.open = null; for (const r of document.querySelectorAll('#setup .srow.proj.open')) { r.classList.remove('open'); r.querySelector('.stile').setAttribute('aria-expanded', 'false'); }
-    window.CSS?.highlights?.delete('sfind'); keySure(false);
+    window.CSS?.highlights?.delete('sfind'); keySure(false); if (chatUi.setSure) { chatUi.setSure = false; renderChatSet(true); }
     const o = sset.opener; sset.opener = null;
     if (o?.isConnected && !document.querySelector('dialog[open]') && (document.activeElement === document.body || !document.activeElement)) o.focus({ preventScroll: true });
     repostPane();
@@ -2779,6 +2847,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     if (prefs.settingsPane !== sset.tab) { prefs.settingsPane = sset.tab; savePrefs(); }
     dlg.querySelectorAll('.stabs [data-tab]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', String(x === b)); x.tabIndex = x === b ? 0 : -1; });
     settingsFind(); $('#sbody').scrollTop = 0;
+    if (sset.tab === 'chat') loadChatSet();
   }
   $('#settings .stabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) settingsTab(b.dataset.tab); });
   /** Settings open on a row (2026-10-16): its pane in front, the row scrolled to and lit once — the status bar's update
@@ -3319,6 +3388,7 @@ code.icode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-s
     let took = false;
     const dlg = document.querySelector('dialog[open]');
     if (dlg?.id === 'settings' && e.target === $('#sq') && $('#sq').value) { $('#sq').value = ''; settingsFind(); took = true; }   // a search let go first
+    else if (dlg?.id === 'room' && chatEscape()) took = true;   // the chat's panel: a room being named, a question, the people first
     else if (dlg) { dlg.close(); took = true; }
     else if (state.paneVisible && !e.target.closest?.('input, textarea, select, [contenteditable], .tbody')) took = hotEscape();
     if (!took) return;
@@ -3452,7 +3522,10 @@ const toolName = n => {
     branch: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 3.25a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.493 2.493 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25Zm-6 0a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Zm8.25-.75a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM4.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"/></svg>',
     vscode: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>',
     // Zed's mark (Simple Icons, CC0): the editor row and the setting when Zed is the editor (2026-10-13)
-    zed: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.25 1.5a.75.75 0 0 0-.75.75v16.5H0V2.25A2.25 2.25 0 0 1 2.25 0h20.095c1.002 0 1.504 1.212.795 1.92L10.764 14.298h3.486V12.75h1.5v1.922a1.125 1.125 0 0 1-1.125 1.125H9.264l-2.578 2.578h11.689V9h1.5v9.375a1.5 1.5 0 0 1-1.5 1.5H5.185L2.562 22.5H21.75a.75.75 0 0 0 .75-.75V5.25H24v16.5A2.25 2.25 0 0 1 21.75 24H1.655C.653 24 .151 22.788.86 22.08L13.19 9.75H9.75v1.5h-1.5V9.375A1.125 1.125 0 0 1 9.375 8.25h5.314l2.625-2.625H5.625V15h-1.5V5.625a1.5 1.5 0 0 1 1.5-1.5h13.19L21.438 1.5z"/></svg>'
+    zed: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.25 1.5a.75.75 0 0 0-.75.75v16.5H0V2.25A2.25 2.25 0 0 1 2.25 0h20.095c1.002 0 1.504 1.212.795 1.92L10.764 14.298h3.486V12.75h1.5v1.922a1.125 1.125 0 0 1-1.125 1.125H9.264l-2.578 2.578h11.689V9h1.5v9.375a1.5 1.5 0 0 1-1.5 1.5H5.185L2.562 22.5H21.75a.75.75 0 0 0 .75-.75V5.25H24v16.5A2.25 2.25 0 0 1 21.75 24H1.655C.653 24 .151 22.788.86 22.08L13.19 9.75H9.75v1.5h-1.5V9.375A1.125 1.125 0 0 1 9.375 8.25h5.314l2.625-2.625H5.625V15h-1.5V5.625a1.5 1.5 0 0 1 1.5-1.5h13.19L21.438 1.5z"/></svg>',
+    // the chat (2026-10-17): a speech bubble, its status-bar segment and Settings' pane; two heads, its people
+    chat: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 3.6A1.6 1.6 0 0 1 4.1 2h7.8a1.6 1.6 0 0 1 1.6 1.6v5.8A1.6 1.6 0 0 1 11.9 11H7.2l-3.2 3v-3a1.6 1.6 0 0 1-1.5-1.6Z"/></svg>',
+    people: '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.75 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm5.5-.25a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM1 14c0-2.4 2.1-4.2 4.75-4.2S10.5 11.6 10.5 14Zm10.5 0c0-1.4-.45-2.6-1.25-3.5.35-.1.7-.15 1.05-.15 2.1 0 3.7 1.4 3.7 3.4v.25Z"/></svg>'
   };
   $('#noChatMore').innerHTML = ICON.more;
   const entryLabel = s => s.terminal && s.terminal.exited === null ? 'a drawer here' : s.live?.entrypoint === 'claude-vscode' ? 'VS Code' : s.live?.entrypoint === 'cli' ? 'a terminal elsewhere' : s.alive ? 'elsewhere' : 'not running';   // the words, not the entrypoint's (2026-10-12; CLI, live, stale before)
@@ -3764,6 +3837,7 @@ const toolName = n => {
       ...(ask ? [`<button class="seg ask" title="chats waiting on your answer — click for the next one">${`<em>${rn('asking', ask)} asking you</em>`}</button>`] : []),
       ...(mons ? [`<span class="seg" title="monitors and background commands running">${rn('mons', mons)} watching</span>`] : [])];
     for (const c of state.clones.values()) left.push(`<span class="seg cl" title="gh repo clone ${esc(c.ref)} into ${esc(homePath(c.dir))} — ${esc(cloneSays(c))}">${ICON.download}cloning <b>${esc(c.ref)}</b><i style="--p:${(c.percent || 0) / 100}"></i>${c.percent || 0}%</span>`);
+    const cs = chatSeg(); if (cs) left.splice(1, 0, cs);   // the chat (2026-10-17), after the connection
     left.push(updSeg());
     const st = bar.stats, want = prefs.barStats || [], stat = [], right = [];
     if (want.includes('cpu')) stat.push(sbMeter('CPU', st.cpu ?? 0, st.cpu == null ? '…' : `${st.cpu}%`, st.cpu >= 90 ? 'var(--needs)' : 'var(--watch)', 'every core\'s time spent busy, the last 3 s', st.cpu == null ? null : `${rn('cpu', st.cpu)}%`));
@@ -3802,6 +3876,7 @@ const toolName = n => {
   $('#sbar').addEventListener('click', e => {
     if (e.target.closest('.us')) { bar.open = !bar.open; renderBar(); return; }
     if (e.target.closest('.conn')) { aboutOpen(); return; }
+    if (e.target.closest('#sbChat')) { chatSegClick(); return; }
     if (e.target.closest('.seg.ask')) { nextAsking(); return; }   // (2026-10-12) the count opens the chats it counts, one after another
     const upg = e.target.closest('.seg.upg'); if (upg) { if (reload.want && reload.why !== 'server') location.reload(); else if (upg.dataset.take) updNow(); else updatesOpen(); return; }
     const aw = e.target.closest('#sbAwake'); if (aw) { setAwake({ awake: !state.awake.awake }, aw); return; }
@@ -5407,6 +5482,7 @@ const toolName = n => {
       { name: 'The overview — every live chat', hint: '⌥⌘A', fn: ovOpen },
       { name: 'Home — the day', hint: '⌥⌘0', fn: hotHome },
       { name: 'About peixAIrada', fn: aboutOpen },
+      ...(state.chat.on ? [{ name: 'The chat', sub: ` — ${state.chat.repo}`, fn: () => chatOpen() }] : []),
       ...(!s ? [] : [
         { name: 'Its Claude, in its drawer', sub: of, hint: '⌥⌘C', fn: hotClaude },
         { name: `A ${shName()} in its folder`, sub: of, hint: '⌥⌘T', fn: hotShell },
@@ -5620,6 +5696,7 @@ const toolName = n => {
     const fn = (mods === 'cmd' ? CMDKEYS : HOTKEYS)[code];
     if (!fn) return false;
     if ($('#hmenu').open) { $('#hmenu').close(); if (fn === hotClose) return true; }   // the header's menu is a dialog, but not one that should swallow a key — ⌘W's aside, which closes it alone, as any dialog
+    if ($('#room').open) { $('#room').close(); if (fn === hotClose) return true; }   // …nor is the chat's panel (2026-10-17): a key is back to work
     if (fn === hotGhKey && $('#pick').open && pick.mode === 'pr' && pick.ctx.sid) { prPickAgain(); return true; }   // the PRs' picker from one of them: ⌥⌘G again is the column's
     if (fn !== hotClose && !(fn === settingsToggle && $('#settings').open) && document.querySelector('dialog[open]')) return false;
     return fn() !== false;
@@ -10393,6 +10470,251 @@ const toolName = n => {
     document.querySelector(`#slist > .card[data-id="${id}"]`)?.scrollIntoView({ block: 'nearest' });
   }
 
+  // ---- the chat: a GitHub repo's rooms, with the people the board is shared with (2026-10-17) -----------------------
+  // The server reads the repo (chatTick in server.mjs); every page gets what it knows — `chat`: the rooms with their
+  // unread counts, who you are there, the invitations waiting for you — and what changed in a room (`chatmsgs`). The
+  // panel (#room, a non-modal dialog over the status bar's left end, where its segment is) shows one room at a time:
+  // its tabs, its messages, a box. The repo's admin also gets the people — invite (the people of the chats' PRs
+  // suggested), cancel, remove — and makes and closes rooms. Settings › Chat makes a repo, joins one, or leaves.
+  // What comes in is someone else's words, drawn by chatMd alone — markdown with no raw HTML, no images, no attribute
+  // but a link's address, https or mailto, opened in the system's browser —, never by md() (whose links open a chat's
+  // files and pages); and nothing here hands a word of it on: no drawer, no claude, no Reply… (test/chat.test.mjs).
+  const chatUi = { n: null, msgs: [], gone: new Set(), loading: false, view: 'log', people: null, peopleErr: null, sure: null, naming: false, sending: false, watch: 0, seenSent: 0, err: null, setSure: false };
+  $('#rmPeople').innerHTML = ICON.people; $('#rmMore').innerHTML = ICON.more; $('#rmClose').innerHTML = ICON.close;
+  const chatMarked = hasMd ? new marked.Marked({ gfm: true, breaks: true, renderer: { html: t => esc(t.text ?? ''), image: t => esc(`[image: ${t.text || t.href || ''}]`) } }) : null;
+  const CHAT_TAGS = ['p', 'br', 'strong', 'em', 'del', 's', 'code', 'pre', 'blockquote', 'ul', 'ol', 'li', 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td'];
+  const chatHtml = new Map();
+  /** A message's words as the panel draws them: raw HTML escaped by the parser, then only CHAT_TAGS, and no attribute but a
+   *  link's address — https or mailto —, which it says on hover. */
+  function chatMd(text) {
+    const t = String(text ?? ''); if (chatHtml.has(t)) return chatHtml.get(t);
+    let html = !chatMarked ? esc(t).replace(/\n/g, '<br>') : DOMPurify.sanitize(chatMarked.parse(t), { ALLOWED_TAGS: CHAT_TAGS, ALLOWED_ATTR: ['href'], ALLOWED_URI_REGEXP: /^(?:https:\/\/|mailto:)/i });
+    const tpl = document.createElement('template'); tpl.innerHTML = html;
+    for (const a of tpl.content.querySelectorAll('a')) { const h = a.getAttribute('href'); if (!h) { a.replaceWith(...a.childNodes); continue; } a.title = h; a.rel = 'noopener noreferrer'; }
+    html = tpl.innerHTML;
+    if (chatHtml.size > 2000) chatHtml.clear();
+    chatHtml.set(t, html); return html;
+  }
+  const chatClock = ts => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  const chatFace = (url, cls = 'face') => /^(https:\/\/avatars\.githubusercontent\.com\/|data:image\/)/.test(url || '') ? `<img class="${cls}" src="${esc(url)}" alt="" loading="lazy">` : `<span class="${cls}"></span>`;
+  /** The status bar's word on the chat (renderBar): its unread count, an invitation waiting, what went wrong — nothing
+   *  while there is no chat and no invitation. Reads state alone: the bar is drawn before this section has run. */
+  function chatSeg() {
+    const c = state.chat;
+    if (!c.on) return c.invites?.length ? `<button class="seg chatseg inv" id="sbChat" title="${esc(`${c.invites[0].by || 'Someone'} invited you to the chat in ${c.invites[0].repo} — click to join it`)}">${ICON.chat}invited</button>` : '';
+    const n = (c.rooms || []).reduce((a, r) => a + r.unread, 0);
+    return `<button class="seg chatseg${c.error ? ' err' : ''}" id="sbChat" title="${esc(c.error ? `The chat: ${c.error}` : `The chat in ${c.repo}${n ? ` — ${n} new` : ''} · click to open it`)}">${ICON.chat}chat${n ? `<b>${rn('chat', n)}</b>` : ''}</button>`;
+  }
+  function chatSegClick() { if (state.chat.on) { if ($('#room').open) $('#room').close(); else chatOpen(); } else settingsAt('chat', '#chatSet'); }
+  /** The panel, on a room (the last one shown, else the first) — or on its people. */
+  function chatOpen(n = null, view = 'log') {
+    const c = state.chat; if (!c.on) return settingsAt('chat', '#chatSet');
+    const dlg = $('#room'); chatUi.view = view; chatUi.sure = null;
+    if (!dlg.open) { if ($('#hmenu').open) $('#hmenu').close(); dlg.show(); repostPane(); if (inApp) post({ type: 'focus' }); chatWatch(); }
+    if (view === 'people') chatPeopleLoad();
+    chatRoomTo(n ?? (c.rooms.some(r => r.n === prefs.chatRoom) ? prefs.chatRoom : c.rooms[0]?.n ?? null));
+    chatDraw(true); renderBar();
+    if (view === 'log') $('#rmbox').focus(); else $('#rmfind').focus();
+  }
+  async function chatRoomTo(n) {
+    if (n === chatUi.n && (chatUi.msgs.length || chatUi.loading)) return;
+    Object.assign(chatUi, { n, msgs: [], gone: new Set(), loading: n != null, err: null, sure: null, seenSent: 0 });
+    if (n != null && prefs.chatRoom !== n) { prefs.chatRoom = n; savePrefs(); }
+    chatDraw(true); if (n == null) return;
+    try { const d = await api('GET', `/api/chat/messages?room=${n}`); if (chatUi.n !== n) return; chatTake(d.msgs.filter(m => !chatUi.gone.has(m.id)), []); }
+    catch (e) { if (chatUi.n === n) chatUi.err = e.message; }
+    if (chatUi.n !== n) return;
+    chatUi.loading = false; chatDraw(true); chatSeenNow();
+  }
+  /** Messages into the room shown, by their ids: an edit in place, a delete out (and kept out of a fetch still on its way). */
+  function chatTake(add, gone) {
+    const by = new Map(chatUi.msgs.map(m => [m.id, m]));
+    for (const m of add) by.set(m.id, m);
+    for (const id of gone) { by.delete(id); chatUi.gone.add(id); }
+    chatUi.msgs = [...by.values()].sort((a, b) => a.id - b.id);
+  }
+  function chatLogHtml() {
+    const c = state.chat, r = c.rooms.find(x => x.n === chatUi.n), me = c.me?.login;
+    const sure = !chatUi.sure ? '' : `<div class="rmsure" role="group"><span>${chatUi.sure === 'leave' ? (c.role === 'admin' ? 'Stop the chat on this board? It stays on GitHub, and you its admin.' : 'Leave the chat? Coming back takes a new invitation.') : `Close ${esc(r?.title || 'this room')}? Its messages stay on GitHub.`}</span><button type="button" class="btn" data-rm="unsure">Cancel</button><button type="button" class="btn danger" data-rm="${chatUi.sure}">${chatUi.sure === 'leave' ? (c.role === 'admin' ? 'Stop' : 'Leave') : 'Close it'}</button></div>`;
+    if (!c.ready) return sure + `<div class="rmnone">${esc(c.error || 'Reading the chat…')}</div>`;
+    if (!r) return sure + `<div class="rmnone">No rooms yet${c.role === 'admin' ? ' — ＋ makes one' : ''}.</div>`;
+    if (!chatUi.msgs.length) return sure + `<div class="rmnone">${esc(chatUi.err || (chatUi.loading ? 'Reading…' : `Nothing said in ${r.title} yet.`))}</div>`;
+    let out = sure, prev = null;
+    for (const m of chatUi.msgs) {
+      if (!prev || dayOf(prev.at) !== dayOf(m.at)) { out += `<div class="rmday">${esc(dayOf(m.at))}</div>`; prev = null; }
+      const cont = prev?.who === m.who && new Date(m.at) - new Date(prev.at) < 5 * 60_000, mine = m.who === me;
+      out += `<div class="rmmsg${cont ? ' cont' : ''}${mine ? ' mine' : ''}" data-id="${m.id}">${chatFace(m.face)}`
+        + `<div class="rmwho"><b>${esc(m.who)}</b><time datetime="${esc(m.at)}" title="${esc(new Date(m.at).toLocaleString())}">${esc(chatClock(m.at))}</time>${m.edited ? `<span class="edited" title="Edited ${esc(new Date(m.edited).toLocaleString())}">edited</span>` : ''}</div>`
+        + `<div class="rmbody">${chatMd(m.body)}</div>`
+        + (mine || c.role === 'admin' ? `<button type="button" class="rmbtn rmdel" data-rm="del" title="${mine ? 'Delete your message' : 'Delete this message — as the chat\'s admin'}" aria-label="Delete">${ICON.close}</button>` : '') + '</div>';
+      prev = m;
+    }
+    return out;
+  }
+  function chatDraw(toEnd = false) {
+    const dlg = $('#room'); if (!dlg.open) return;
+    const c = state.chat, admin = c.role === 'admin', people = chatUi.view === 'people', r = c.rooms.find(x => x.n === chatUi.n);
+    setHtml($('#rmtabs'), c.rooms.map(x => `<button type="button" class="rmtab" role="tab" data-n="${x.n}" aria-selected="${x.n === chatUi.n && !people}" title="${esc(x.title)}">${esc(x.title)}${x.unread && (x.n !== chatUi.n || people) ? `<b>${x.unread}</b>` : ''}</button>`).join(''));
+    $('#rmtabs').hidden = chatUi.naming; $('#rmNewName').hidden = !chatUi.naming;
+    $('#rmNew').hidden = !admin; $('#rmPeople').hidden = !admin;
+    $('#rmPeople').classList.toggle('on', people); $('#rmPeople').setAttribute('aria-pressed', String(people));
+    $('#rmlog').hidden = people; $('#rmpeople').hidden = !people; $('#rmfoot').hidden = people || !r;
+    if (people) return chatPeopleDraw();
+    const log = $('#rmlog'), atEnd = toEnd || log.scrollHeight - log.scrollTop - log.clientHeight < 48;
+    setHtml(log, chatLogHtml());
+    if (atEnd) log.scrollTop = log.scrollHeight;
+    $('#rmbox').placeholder = r ? `Message ${r.title} — ⏎ sends, ⇧⏎ a new line` : 'Message';
+    setHtml($('#rmsay'), c.repo ? `<span>${esc(c.me?.login ? `as ${c.me.login}` : '')}</span><a href="https://github.com/${esc(c.repo)}${r ? `/issues/${r.n}` : ''}" data-rm="gh" title="This room on GitHub — its messages are the issue's comments">${esc(c.repo)}${r ? ` #${r.n}` : ''}</a>` : '');
+  }
+  function chatGrow() { const b = $('#rmbox'); b.style.height = 'auto'; b.style.height = `${Math.min(140, b.scrollHeight + 2)}px`; }
+  async function chatSend() {
+    const box = $('#rmbox'); if (!box.value.trim() || chatUi.sending || chatUi.n == null) return;
+    chatUi.sending = true;
+    try { const d = await api('POST', '/api/chat/send', { room: chatUi.n, body: box.value }); box.value = ''; chatGrow(); if (d.msg.n === chatUi.n) chatTake([d.msg], []); chatDraw(true); }
+    catch (e) { note(box, `Not sent: ${e.message}`, true); }
+    finally { chatUi.sending = false; }
+  }
+  /** While the panel is up the server looks often (POST /api/chat/watch, every 15 s), else every 20 s. */
+  function chatWatch() {
+    clearInterval(chatUi.watch);
+    const ping = () => { if ($('#room').open && !document.hidden) api('POST', '/api/chat/watch', {}).catch(() => {}); };
+    ping(); chatUi.watch = setInterval(ping, 15_000);
+  }
+  /** The room shown, read to its newest message — only while it is truly in front of you. */
+  function chatSeenNow() {
+    if (!$('#room').open || chatUi.view !== 'log' || chatUi.n == null || document.hidden || !document.hasFocus()) return;
+    const top = chatUi.msgs.at(-1)?.id, r = state.chat.rooms.find(x => x.n === chatUi.n);
+    if (!top || (!r?.unread && chatUi.seenSent >= top)) return;
+    chatUi.seenSent = top; api('POST', '/api/chat/seen', { room: chatUi.n, id: top }).catch(() => {});
+  }
+  // the people (the admin's): who is in, who is invited, whom to invite — the box narrows all three, and invites a login
+  // none of them has
+  async function chatPeopleLoad() {
+    try { chatUi.people = await api('GET', '/api/chat/people'); chatUi.peopleErr = null; } catch (e) { chatUi.peopleErr = e.message; }
+    chatDraw();
+  }
+  function chatPeopleDraw() {
+    const p = chatUi.people, q = $('#rmfind').value.trim().replace(/^@/, '').toLowerCase(), c = state.chat;
+    if (!p) return setHtml($('#rmplist'), `<div class="rmnone">${esc(chatUi.peopleErr || 'Asking GitHub…')}</div>`);
+    const hit = l => !q || l.toLowerCase().includes(q), ago = ts => ts ? `${rel(ts)} ago` : '';
+    const row = (login, face, small, btns, sure = '') => `<div class="rmp" data-login="${esc(login)}">${chatFace(face)}<span><b>${esc(login)}</b>${small ? `<small>${esc(small)}</small>` : ''}</span><span>${btns}</span>${sure}</div>`;
+    const known = new Set([c.me?.login, ...p.members.map(m => m.login), ...p.invites.map(i => i.login), ...p.suggest.map(s => s.login)].filter(Boolean).map(l => l.toLowerCase()));
+    const typed = q && /^[a-z0-9][a-z0-9-]{0,38}$/i.test(q) && !known.has(q) ? row($('#rmfind').value.trim().replace(/^@/, ''), null, 'a GitHub login', '<button type="button" class="btn" data-rm="invite">Invite</button>') : '';
+    const sug = p.suggest.filter(s => hit(s.login)).map(s => row(s.login, s.face, `${s.prs} PR${s.prs === 1 ? '' : 's'} in your chats`, '<button type="button" class="btn" data-rm="invite">Invite</button>')).join('');
+    const inv = p.invites.filter(i => hit(i.login)).map(i => row(i.login, i.face, i.expired ? 'expired' : `invited ${ago(i.at)}`, `${i.expired ? '<button type="button" class="btn" data-rm="invite">Again</button>' : ''}<button type="button" class="btn" data-rm="cancel" data-id="${i.id}">Cancel</button>`)).join('');
+    const mem = p.members.filter(m => hit(m.login)).map(m => row(m.login, m.face, m.role || '', '<button type="button" class="btn danger" data-rm="sureRemove">Remove…</button>',
+      chatUi.sure === `remove:${m.login}` ? `<div class="rmsure" role="group"><span>Remove ${esc(m.login)}? They lose the chat and its history.</span><button type="button" class="btn" data-rm="unsure">Cancel</button><button type="button" class="btn danger" data-rm="remove">Remove</button></div>` : '')).join('');
+    const you = c.me ? row(c.me.login, c.me.face, 'you · its admin', '') : '';
+    setHtml($('#rmplist'), (typed ? `<h6>Invite</h6>${typed}` : '') + (sug ? `<h6>From your chats’ PRs</h6>${sug}` : '') + (inv ? `<h6>Invited</h6>${inv}` : '')
+      + `<h6>In the chat</h6>${you}${mem || (q ? '' : '<div class="rmnone">Nobody else yet — invite someone above.</div>')}`
+      + '<p class="rmnone" style="padding: 12px 0 0">An invitation is GitHub’s: they join from Settings › Chat on their board, or from GitHub’s email.</p>');
+  }
+  async function chatAct(what, body, anchor, done) {
+    try { const d = await api('POST', `/api/chat/${what}`, body); done?.(d); }
+    catch (e) { note(anchor, e.message, true); }
+  }
+  $('#room').addEventListener('click', e => {
+    const tab = e.target.closest('.rmtab'); if (tab) { chatUi.view = 'log'; chatRoomTo(Number(tab.dataset.n)); chatDraw(true); $('#rmbox').focus(); return; }
+    if (e.target.closest('#rmClose')) return $('#room').close();
+    if (e.target.closest('#rmPeople')) { chatUi.view = chatUi.view === 'people' ? 'log' : 'people'; chatUi.sure = null; if (chatUi.view === 'people') { chatPeopleLoad(); $('#rmfind').focus(); } chatDraw(true); return; }
+    if (e.target.closest('#rmNew')) { chatUi.naming = !chatUi.naming; chatDraw(); if (chatUi.naming) $('#rmNewName').focus(); return; }
+    const more = e.target.closest('#rmMore');
+    if (more) {
+      const c = state.chat, r = c.rooms.find(x => x.n === chatUi.n), b = more.getBoundingClientRect();
+      return ctxShow([...(r ? [{ t: 'This room on GitHub', fn: () => openExternal(`https://github.com/${c.repo}/issues/${r.n}`, { s: null }) }] : []),
+        ...(c.role === 'admin' && r ? [{ t: `Close ${r.title}…`, warn: true, fn: () => { chatUi.view = 'log'; chatUi.sure = 'close'; chatDraw(); } }] : []),
+        { hr: true }, { t: 'Chat settings…', fn: () => settingsAt('chat', '#chatSet') },
+        { t: c.role === 'admin' ? 'Stop the chat on this board…' : 'Leave the chat…', warn: true, fn: () => { chatUi.view = 'log'; chatUi.sure = 'leave'; chatDraw(); } }], b.left, b.bottom + 4, 'chat');
+    }
+    const a = e.target.closest('#rmlog a[href], #rmsay a[href]');
+    if (a) { e.preventDefault(); openExternal(a.href, { s: null }); return; }   // the system's browser: never a chat's pane
+    const act = e.target.closest('[data-rm]')?.dataset.rm, b = e.target.closest('[data-rm]'); if (!act) return;
+    const login = b.closest('.rmp')?.dataset.login, id = Number(b.closest('.rmmsg')?.dataset.id);
+    if (act === 'unsure') { chatUi.sure = null; chatDraw(); }
+    else if (act === 'del') { b.closest('.rmmsg').classList.add('going'); chatAct('delete', { id }, b, () => { chatTake([], [id]); chatDraw(); }); }
+    else if (act === 'close') chatAct('close', { room: chatUi.n }, b, () => { chatUi.sure = null; });
+    else if (act === 'leave') chatAct('leave', {}, b, d => { state.chat = d; $('#room').close(); chatChanged(); });
+    else if (act === 'invite') chatAct('invite', { login }, b, d => { chatUi.people = d; $('#rmfind').value = ''; chatDraw(); note($('#rmfind'), d.invited ? `Invited ${d.login} — they join from their board, or GitHub's email` : `${d.login} is in already`); });
+    else if (act === 'cancel') chatAct('cancel', { id: Number(b.dataset.id) }, b, d => { chatUi.people = d; chatDraw(); });
+    else if (act === 'sureRemove') { chatUi.sure = `remove:${login}`; chatDraw(); }
+    else if (act === 'remove') chatAct('remove', { login }, b, d => { chatUi.people = d; chatUi.sure = null; chatDraw(); });
+  });
+  $('#rmbox').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); chatSend(); } });
+  $('#rmbox').addEventListener('input', chatGrow);
+  $('#rmfind').addEventListener('input', () => chatPeopleDraw());
+  $('#rmfind').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('#rmplist').querySelector('[data-rm="invite"]')?.click(); } });
+  $('#rmNewName').addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return; e.preventDefault();
+    const box = e.target, title = box.value.trim(); if (!title) return;
+    chatAct('room', { title }, box, d => { box.value = ''; chatUi.naming = false; chatUi.view = 'log'; chatRoomTo(d.room); chatDraw(true); });
+  });
+  /** Esc in the panel lets go of one thing at a time — a room being named, a question, the people — before the panel. */
+  function chatEscape() {
+    if (chatUi.naming) { chatUi.naming = false; $('#rmNewName').value = ''; chatDraw(); return true; }
+    if (chatUi.sure) { chatUi.sure = null; chatDraw(); return true; }
+    if (chatUi.view === 'people') { chatUi.view = 'log'; chatDraw(true); $('#rmbox').focus(); return true; }
+    return false;
+  }
+  $('#room').addEventListener('close', () => { clearInterval(chatUi.watch); chatUi.watch = 0; chatUi.naming = false; chatUi.sure = null; renderBar(); });
+  for (const ev of ['focus', 'visibilitychange']) window.addEventListener(ev, chatSeenNow);
+  /** What the server knows changed: the bar, the panel, Settings' pane. */
+  function chatChanged() {
+    if (state.chat.repo !== chatUi.repo) Object.assign(chatUi, { repo: state.chat.repo, n: null, msgs: [], gone: new Set(), people: null, view: 'log', sure: null });   // another repo: nothing of the last one's
+    renderBar(); renderChatSet();
+    if (!$('#room').open) return;
+    if (!state.chat.on) return $('#room').close();
+    if (!state.chat.rooms.some(r => r.n === chatUi.n) && state.chat.ready) chatRoomTo(state.chat.rooms[0]?.n ?? null);
+    chatDraw(); chatSeenNow();
+  }
+  function chatMsgs(d) { if (d.n !== chatUi.n) return; chatTake(d.add || [], d.gone || []); chatDraw(); chatSeenNow(); }
+  /** A message from someone else, while the room is not in front of you: a chime in front, else the app's banner or the
+   *  browser's — never with a Reply… (no session), and a click opens the room. */
+  function chatAlert(a) {
+    if ($('#room').open && chatUi.view === 'log' && chatUi.n === a.room && document.visibilityState === 'visible' && document.hasFocus()) return;
+    if (document.visibilityState === 'visible' && document.hasFocus()) chime('reply');
+    if (inApp) post({ type: 'alert', kind: 'chat', heading: a.heading || 'Chat', project: '', title: a.title || '', snippet: a.snippet || '', sessionId: '', hash: '', serverNotify: !!state.serverNotify, quiet: !!a.quiet, drawer: false });
+    if (a.quiet || !('Notification' in window) || Notification.permission !== 'granted') return;
+    const n = new Notification(a.heading || 'Chat', { body: `${a.title}\n${a.snippet || ''}`, tag: `chat-${a.room}` });
+    n.onclick = () => { window.focus(); chatOpen(a.room); n.close(); };
+  }
+  // Settings › Chat: off — the invitations waiting, a repo you are in, or a new one; on — the repo, who you are in it,
+  // the people (the admin's), and leaving
+  function chatSetHtml() {
+    const c = state.chat, text = 'type="text" spellcheck="false" autocomplete="off"';
+    const group = (title, kw, rows, foot) => `<section class="sgrp" data-kw="${kw}">${title ? `<h6 class="sgh">${title}</h6>` : ''}<div class="slist">${rows}</div>${foot ? `<p class="sgf">${foot}</p>` : ''}</section>`;
+    const row = (b, small, ctl) => `<div class="srow set"><span class="sl"><b>${b}</b><small>${small}</small></span>${ctl}</div>`;
+    const invites = (c.invites || []).map(i => row(`${chatFace(i.face)} ${esc(i.by || 'Someone')} invited you`, `to the chat in ${esc(i.repo)}${i.expired ? ' — expired: ask for another' : ''}`, `<button type="button" class="btn" data-chat="join" data-id="${i.id}"${i.expired ? ' disabled' : ''}>Join</button>`)).join('');
+    if (!c.on) return (invites ? group('Invitations', 'chat invitation join invite', invites) : '')
+      + group(invites ? 'Or' : '', 'chat repo github room make new join use',
+        row('A chat you are in', 'Its repo, owner/name', `<span class="schat"><input ${text} class="schatrepo" placeholder="acme-chat/room" aria-label="The chat's repo"><button type="button" class="btn" data-chat="use">Use</button></span>`)
+        + row('A new chat', 'A private repo, made in an org or your account — then invite people from the chat', `<span class="schat"><input ${text} class="schatnew" placeholder="your-org/chat" aria-label="The new chat's repo"><button type="button" class="btn" data-chat="make">Make it</button></span>`),
+        'Off until a repo is set. A private GitHub repo is the chat: its issues labelled <code>room</code> the rooms, their comments the messages — read with your <code>gh</code> login. Only its admin invites and removes people.');
+    const admin = c.role === 'admin', state_ = c.error ? `<span class="serr">${esc(c.error)}</span>` : !c.ready ? 'Reading it…' : `${c.rooms.length} room${c.rooms.length === 1 ? '' : 's'} · ${admin ? 'you are its admin' : 'you are a member'}${c.me ? ` · as ${esc(c.me.login)}` : ''}`;
+    return group('', 'chat repo github room people invite leave',
+      row(esc(c.repo), state_, '<button type="button" class="btn" data-chat="open">Open</button>')
+      + (admin ? row('People', 'Invite, cancel an invitation, remove — only you can', '<button type="button" class="btn" data-chat="people">Manage…</button>') : '')
+      + `<div class="srow set"><span class="sl"><b>${admin ? 'Stop the chat here' : 'Leave the chat'}</b><small>${admin ? 'The repo and its rooms stay on GitHub' : 'You leave the repo'}</small></span><button type="button" class="btn danger" data-chat="sure" aria-expanded="${chatUi.setSure}" aria-controls="chatSure">${admin ? 'Stop…' : 'Leave…'}</button>`
+      + `<div class="ssure" id="chatSure" role="group" aria-labelledby="chatSureSay"${chatUi.setSure ? '' : ' hidden'}><span id="chatSureSay">${admin ? 'The chat goes from this board; the repo, its rooms and its people stay on GitHub.' : 'You leave the repo and its history; coming back takes a new invitation.'}</span><button type="button" class="btn" data-chat="unsure">Cancel</button><button type="button" class="btn danger" data-chat="leave">${admin ? 'Stop the chat' : 'Leave the chat'}</button></div></div>`,
+      'Messages are the repo’s issue comments, on GitHub; GitHub’s own emails about it are turned off for you.');
+  }
+  function renderChatSet(force = false) { drawSetup($('#chatSet'), chatSetHtml(), force); }
+  /** Settings › Chat in front: the invitations asked now, not in ten minutes. */
+  function loadChatSet() { api('GET', '/api/chat?invites=1').then(d => { state.chat = d; chatChanged(); }, () => {}); }
+  $('#chatSet').addEventListener('focusout', e => { if ($('#chatSet')._stale && !$('#chatSet').contains(e.relatedTarget)) renderChatSet(); });
+  $('#chatSet').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('.schatrepo, .schatnew')) { e.preventDefault(); e.target.nextElementSibling.click(); } });
+  $('#chatSet').addEventListener('click', e => {
+    const b = e.target.closest('[data-chat]'); if (!b) return;
+    const set = d => { state.chat = d; chatChanged(); };
+    const act = b.dataset.chat, box = b.previousElementSibling;
+    if (act === 'open') { settingsOpen(false); chatOpen(); }
+    else if (act === 'people') { settingsOpen(false); chatOpen(null, 'people'); }
+    else if (act === 'join') { b.disabled = true; api('POST', '/api/chat/join', { id: Number(b.dataset.id) }).then(d => { set(d); note($('#chatSet'), 'Joined — the chat is in the status bar'); }, err => { b.disabled = false; note(b, err.message, true); }); }
+    else if (act === 'use') { const repo = box.value.trim(); if (repo) putConfig({ chat: { repo } }, box); }
+    else if (act === 'make') { const repo = box.value.trim(); if (!repo) return; b.disabled = true; b.textContent = 'Making it…'; api('POST', '/api/chat/make', { repo }).then(d => { set(d); note($('#chatSet'), `Made ${d.repo} — invite people from the chat`); }, err => { b.disabled = false; b.textContent = 'Make it'; note(b, err.message, true); }); }
+    else if (act === 'sure' || act === 'unsure') { chatUi.setSure = act === 'sure'; renderChatSet(true); $('#chatSet').querySelector(act === 'sure' ? '#chatSure .btn' : '[data-chat="sure"]')?.focus(); }
+    else if (act === 'leave') api('POST', '/api/chat/leave', {}).then(d => { chatUi.setSure = false; set(d); }, err => note(b, err.message, true));
+  });
+
   // ---- alerts --------------------------------------------------------------------------
   // No in-page toast: alerts surface as the unread badge on the card and its project plus a *system*
   // notification (the Mac app posts its own; a plain browser gets the Notification API one below).
@@ -10434,6 +10756,7 @@ const toolName = n => {
   $('#soundsOn').checked = !!prefs.sounds;
   $('#soundsOn').addEventListener('change', e => { prefs.sounds = e.target.checked; savePrefs(); if (audioUp()) setTimeout(() => chime('reply'), 30); });
   function onAlert(a) {
+    if (a.kind === 'chat') return chatAlert(a);   // the chat's (2026-10-17): its own rules
     const viewing = a.sessionId && a.sessionId === state.current && document.visibilityState === 'visible' && document.hasFocus();
     if (document.visibilityState === 'visible' && document.hasFocus()) chime(a.kind);   // in front: heard rather than shown
     if (a.sessionId && !viewing) state.unread.set(a.sessionId, (state.unread.get(a.sessionId) || 0) + 1);
@@ -10559,6 +10882,7 @@ const toolName = n => {
       state.notifications = d.notifications !== false; showNotify();
       takeUpdate(d.update); pageFollows(d);
       if (d.awake) state.awake = awakeOf(d.awake);
+      if (d.chat) { state.chat = d.chat; chatChanged(); }
       state.clones = new Map((d.clones || []).map(c => [c.dir, c]));   // the clones under way, a reload in the middle of one
       state.editors = d.editors || null; edSay();   // whether Zed is on this Mac, and its install
       state.key = d.key || null; showKey();
@@ -10618,6 +10942,8 @@ const toolName = n => {
       for (const m of sets) if (m.has(from)) { m.add(to); m.delete(from); }
     }
     es.addEventListener('alert', e => onAlert(JSON.parse(e.data)));
+    es.addEventListener('chat', e => { state.chat = JSON.parse(e.data); chatChanged(); });
+    es.addEventListener('chatmsgs', e => chatMsgs(JSON.parse(e.data)));
   }
   keyReady.then(connect);   // a ticket in the address first: the stream wants the key it is traded for
   // The 30 s tick: the ages (fillAges, in the list's render and, while they are up, the picker's rows and the menu),

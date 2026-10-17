@@ -1,4 +1,4 @@
-// The settings as a sidebar and a search box (2026-10-16, the settings study's B): seven panes by task, the box with the
+// The settings as a sidebar and a search box (2026-10-16, the settings study's B): seven panes by task (eight since the chat's, 2026-10-17), the box with the
 // keys as the dialog opens, each pane alone in front and named in the head, ↑ ↓ down the sidebar. What a search shows:
 // the rows whose words hold every word typed, under their pane's name, the sidebar counting them, the words marked; a
 // word nothing holds says so; Esc lets the search go before it closes the dialog, and the keys go back to whatever had
@@ -49,7 +49,7 @@ export default async function (ctx) {
   await find('notif');
   out.notif = await look();
   ctx.assert.deepEqual([out.notif.title, out.notif.panes, out.notif.rows], ['Results for “notif”', ['general'], ['Notifications']]);
-  ctx.assert.deepEqual(out.notif.counts, { general: '1', look: '-', list: '-', term: '-', setup: '-', jira: '-', system: '-' }, 'counted, the rest dimmed');
+  ctx.assert.deepEqual(out.notif.counts, { general: '1', look: '-', list: '-', term: '-', setup: '-', jira: '-', chat: '-', system: '-' }, 'counted, the rest dimmed');
   ctx.assert.ok(out.notif.marks > 0, `the words marked: ${out.notif.marks}`);
   await find('same height');
   out.dependent = await look();

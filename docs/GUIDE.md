@@ -100,6 +100,29 @@ of each following it; your projects keep their hue in the theme's shades.
   </tr>
 </table>
 
+## Chat with the people you share it with
+
+An optional chat between boards — off until you turn it on. It lives in a **private GitHub repo**: each open issue
+labelled `room` is a room, each comment a message, and every board reads it with its own `gh` login, so there is no
+server to run and a Mac that slept catches up when it wakes.
+
+- **Starting it** (whoever owns it): Settings › Chat › *A new chat*, `your-org/chat` → *Make it*. The board makes the
+  repo private, its `room` label and a first room, *General*. A free GitHub organization is the best home: there its
+  members can be readers only — on a personal account every collaborator can also push and delete anyone's messages.
+- **Inviting**: the chat's **People** (the two heads in its panel, the owner's alone) suggests the people of your chats'
+  PRs, most often first, and takes any GitHub login. Only the repo's admin invites, cancels an invitation or removes
+  someone — GitHub refuses it from anyone else's board too.
+- **Joining**: an invitation shows as *invited* in the status bar and in Settings › Chat, with *Join*; GitHub mails it
+  too. A chat you're already in: its repo under *A chat you are in*.
+- **Using it**: *chat* in the status bar opens the panel (its count is what you haven't read); the rooms are its tabs,
+  ⏎ sends, ⇧⏎ is a new line, Esc closes. Markdown works; images don't show and links open in your browser. A message
+  from someone else while the room isn't in front of you is a notification. ＋ makes a room (the owner's); ··· has the
+  room on GitHub, closing it, and leaving.
+
+The board turns off GitHub's own emails about the chat's repo for you (its notifications, *ignored*) — otherwise every
+message would mail everyone. What anyone says stays in their message: nothing from the chat is ever typed into a
+terminal or handed to Claude.
+
 ## Keys
 
 | Key | Does |
@@ -173,6 +196,7 @@ or *key* to find a setting wherever it is):
 - **Projects** — your repo folders and their GitHub org (⌥⌘N lists every repo and clones the ones you don't have), the
   project ⌥⌘O starts a chat in, a short name and a colour per project, and the projects you hid.
 - **Jira** — your site, email and API token (the token goes to your keychain, never into the file).
+- **Chat** — the chat's repo: a new one, one you're in, an invitation to join; or leaving it (see below).
 - **Updates & access** — where the board's update stands and whether it updates itself (off to begin with: the status
   bar says when new commits came, and *Update now* takes them), whether the board's key is required yet and a new key
   (every browser then asks for it again), and where the setup file is.
@@ -187,14 +211,16 @@ keep it with your dotfiles; the board picks up a change within seconds:
   "roots": [{ "dir": "~/code", "org": "my-org" }],
   "quick": "my-service",
   "projects": { "my-service": { "abbr": "SVC", "color": "#2f7fd8" } },
-  "jira": { "site": "https://my-org.atlassian.net", "email": "me@my-org.com" }
+  "jira": { "site": "https://my-org.atlassian.net", "email": "me@my-org.com" },
+  "chat": { "repo": "my-org/chat" }
 }
 ```
 
 What the board records as you use it — done ticks, titles, pins — stays in `~/Library/Application Support/peixAIrada/`,
 with its key (`key`) and VS Code Web's token (`vsweb-token`).
 
-**What leaves your machine**: only `gh` (PR states, clones), the plan-usage call, Jira (once you set it up), a `git
+**What leaves your machine**: only `gh` (PR states, clones), the plan-usage call, Jira (once you set it up), the
+chat's GitHub calls (once you join one — with none, a look for an invitation every ten minutes), a `git
 fetch` of the board's own checkout every half hour (its updates) and, with VS Code installed, an hourly look at VS
 Code's update service (so VS Code Web has its newest build before you open it). Transcripts hold everything Claude
 read: keep the server on `127.0.0.1` — past it, the key crosses your network unencrypted.

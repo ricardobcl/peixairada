@@ -98,13 +98,19 @@ live terminal or what it's doing right now. The arrows walk it, ⏎ opens one.
 
 <img src="docs/shots/clip-overview.webp" alt="⌥⌘A: every live chat in columns by what it wants; the arrows move and ⏎ opens one">
 
+## 🗨️ A chat with the people you share it with
+
+Optional, and off until you set it up: a private GitHub repo whose issues are the rooms and whose comments are the
+messages — no server to run, read with the `gh` login every board already has. Its owner invites and removes people
+(the people of your PRs suggested); the others join from Settings › Chat. See [the guide](docs/GUIDE.md#chat-with-the-people-you-share-it-with).
+
 ## 🔒 Good to know
 
 - The server listens on `127.0.0.1` only and answers nothing but its own page without the board's key — a file
   only you can read; the app has it, a browser gets it once from `scripts/launchd.sh open`. Keep it on `127.0.0.1`.
 - It reads `~/.claude` and never writes there. A chat running elsewhere is never written to: take it over, or
   continue it where it is.
-- Only `gh`, your plan-usage numbers, Jira (if you set it up) and the board's own update check leave your machine.
+- Only `gh`, your plan-usage numbers, Jira and the chat (if you set them up) and the board's own update check leave your machine.
 
 **More**: [the guide](docs/GUIDE.md) — every feature, settings and the setup file, keys, updating; [CLAUDE.md](CLAUDE.md)
 holds the working notes, [docs/DECISIONS.md](docs/DECISIONS.md) the why.

@@ -20,6 +20,7 @@
 // A repo named `no-such-…` is one GitHub has not got: gh's error, a non-zero exit, and the folder gone again.
 //   `pr diff <url> [--color never]` (2026-10-13): the PR's entry's `diff`, a unified patch as GitHub's; an entry with none,
 // or no entry, is gh's error and a non-zero exit.
+//   `auth token` (2026-10-17): FAKEGH_TOKEN, else `fake-token-<FAKEGH_VIEWER or me>` — what scripts/fakegithub.mjs takes.
 // Anything else asked of it fails, loudly.
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
@@ -90,6 +91,8 @@ if (cmd === 'repo' && sub === 'clone') {
       if (progress) process.stderr.write('Resolving deltas: 100% (3/3), done.\n');
     }, ms / steps);
   }
+} else if (cmd === 'auth' && sub === 'token') {   // the chat's token (2026-10-17): FAKEGH_TOKEN, else one the fake GitHub takes for FAKEGH_VIEWER
+  process.stdout.write(`${process.env.FAKEGH_TOKEN || `fake-token-${process.env.FAKEGH_VIEWER || 'me'}`}\n`);
 } else if (cmd === 'pr' && sub === 'diff') {
   let prs = {};
   try { prs = JSON.parse(readFileSync(process.env.FAKEGH_PRS, 'utf8')); } catch {}
