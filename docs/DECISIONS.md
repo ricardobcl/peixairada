@@ -36,7 +36,7 @@ built against the ledger's contract while the server's half (the entry below) wa
 * **T3, the tracks**: in the PR list and at the timeline's head — not both on screen: with the list open above, the
   timeline leaves its own out. The window is the chat's span, six hours at most, an hour at least.
 * **Not built, not picked**: N6 (keys inside the timeline), N7 (a query), F5 (a scrubber), L3 (a comment's words), L5
-  (one route); the done chat's "since you ticked it" fold from the study's awkward cases.
+  (one route); the done chat's "since you ticked it" fold from the study's awkward cases. The scenario is `timeline-tab.mjs`: `timeline.mjs` is the list's timeline, which the first landing wrote over and the next commit put back.
 * **Measured**: `npm run perf --against main` level on every number; with the tab open at rest in WebKit the page asks
   for no frame (two in three seconds, the counts' roll); a hidden tab asks for none at all (`tvSoon`).
 
